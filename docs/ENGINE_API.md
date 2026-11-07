@@ -217,6 +217,17 @@ The Layers panel's **Map labels** group has two switches for the text Mapbox dra
 
 Code: `packages/engine/src/core/map-labels.ts`, `packages/shared/src/overlays/map-labels.ts`, `ViewerMapPort` in `packages/ui/src/map/viewer-map.ts` (the viewer's port: the admin's bundle does not carry it), and `packages/shared/src/i18n/map-labels/`, which `@hcm/shared/map-labels` exports with the panel's words.
 
+## Keyboard and gamepad
+
+Status (2026-11-07): the owner's request; scenario rows V32 and V33, `e2e/specs/viewer/input.spec.ts`, the tour's journey `input`; the contract is [research/viewer-input.md](research/viewer-input.md). Additive within v1: no property, event or method for a page to set.
+
+Single keys, listed by the help panel (`?`, or About's button): `.` and `,` later and earlier year; `o` and `i` more and less opacity of the current layer; `n` and `p` next and previous photo; `l` Layers; `?` the panel.
+
+- **They take a key only from the viewer**, or from the page's body for the page's first viewer, and never from a field, a text-like role, an open menu, or with Ctrl, Alt or Meta. Arrows, `+`, `-` and `=` stay Mapbox's, the timeline's and the lightbox's.
+- **A visitor can turn them off**, in the help panel's switch (WCAG 2.1.4). The choice is stored per city as `hcm:<cityId>:shortcuts` in localStorage, like language and theme; it is no cookie.
+- **A screen reader in browse mode keeps these letters for itself**: nothing reaches the page and nothing of its keys is overridden. Nobody using a screen reader has tested this yet.
+- **A gamepad of the standard mapping** works through the browser's Gamepad API, in the lazy chunk `gamepad-<hash>.js`, fetched only once a pad connects: left stick pans, right stick and triggers zoom, D-pad up and down move a visible focus, left and right the year, A opens, B closes, Y Layers, LB and RB photos, Start the menu, Back the panel. Any other mapping is refused with a toast. The loop stops while the tab is hidden. A page embedding the viewer in a cross-origin frame must allow `gamepad` for it to work. **Only a fake pad has tested this; no real hardware was available.**
+
 ## City Manifest v1
 
 The only data the viewer reads: a static JSON file (from the public bucket, or inline in `config.js`). Schema: `manifestSchema` in `packages/shared/src/schemas/manifest.ts`; the Bucharest seed is `seed/bucharest/manifest.static.json`. Every object is strict: an unknown key is an error (which also blocks prototype-pollution keys).
@@ -246,7 +257,7 @@ Common rules:
 | `about`, `privacy` | `{ro, en}` | Markdown subset, at most 10,000 characters |
 | `credits` | `[{label: {ro, en}, url?}]` | at most 50 |
 | `theme` | `{seedColor, tokens}` | `seedColor` `#rrggbb`; `tokens.light`, `.dark`, `.highContrastLight`, `.highContrastDark` each map 1 to 200 `--md-sys-*` names to values without `;`, braces, quotes, `:` or `url(` |
-| `basemap` | `{style, config?}` | `mapbox://styles/<owner>/<style>` or https; `config` sets Mapbox Standard configuration properties (at most 30), among them the [Map labels](#map-labels) defaults |
+| `basemap` | `{style, config?}` | `mapbox://styles/<owner>/<style>` or https; `config` sets Mapbox Standard configuration properties (at most 30), among them the [Map labels](#map-labels) defaults; a `lightPreset` here is kept, and without one the viewer sets it to `night` on a dark theme and `day` on a light one, live, with no new map load, where the style has the property |
 | `mapbox` | `{publicToken}` | a `pk.` token (URL-restricted); a secret `sk.` token is rejected |
 | `analytics` | `{measurementId?, errorEndpoint?, firebase?}` | `G-…`; https; `firebase` is `{apiKey, appId, projectId}` of the city's Firebase web app (`AIza…`, `1:<number>:web:<hex>`, a project id), written by the manifest builder and never committed. GA4 loads only with a `measurementId`, the `firebase` ids and the visitor's consent; without the ids the consent banner still asks, but nothing is sent. GA4 is told the page's origin and path, never the hash; withdrawing consent in About expires its `_ga` cookies; the viewer has no Performance Monitoring; after consent it also sends its field measurements (Core Web Vitals, the boot's timings, map failures: [ARCHITECTURE.md](ARCHITECTURE.md) → *Field measurements*) |
 | `engine` | `{minVersion?}` (optional) | the oldest engine that can read this manifest |

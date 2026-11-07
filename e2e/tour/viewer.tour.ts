@@ -65,6 +65,14 @@ test(
 );
 
 test(
+    'The shortcuts, their help panel and a refused gamepad',
+    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE'] },
+    async ({ page, context, lang }) => {
+        await expectJourneySound({ page, context, lang }, journey('input'));
+    },
+);
+
+test(
     "A city whose basemap is a custom style, without Standard's labels",
     { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE'] },
     async ({ page, context, lang }) => {

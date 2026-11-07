@@ -15,7 +15,7 @@ import type { WindowClass } from '../theme/tokens.js';
 export type { ThemeMode } from '../theme/apply.js';
 
 export type ViewerStatus = 'idle' | 'loading' | 'ready' | 'error';
-export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'about';
+export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'about' | 'help';
 export type ConsentState = 'unknown' | 'granted' | 'denied';
 export type Unsubscribe = () => void;
 
@@ -62,6 +62,8 @@ export interface ViewerState {
      * The basemap's own labels (V31): what is drawn, what the city's basemap draws by itself, and the kinds it has (null
      * until a map has answered: no switch shows).
      */
+    /** The single-key shortcuts are on (docs/research/viewer-input.md §2); the visitor can turn them off. */
+    readonly shortcuts: boolean;
     readonly mapLabels: {
         readonly shown: MapLabels;
         readonly defaults: MapLabels;
@@ -100,6 +102,8 @@ export interface ViewerStorePort {
     closeCompare(): void;
     /** The basemap's own labels, live on every map; a kind the basemap does not have is ignored. */
     setMapLabels(labels: Partial<MapLabels>): void;
+    /** Turns the single-key shortcuts on or off, and remembers it for the city. */
+    setShortcuts(enabled: boolean): void;
 }
 
 /** How `ready` settles (docs/ENGINE_API.md → JavaScript API). */

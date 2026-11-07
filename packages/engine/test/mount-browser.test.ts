@@ -1,5 +1,5 @@
 import { createLogger } from '@hcm/shared';
-import { FakeMapboxGl } from '@hcm/test-support/fake-map';
+import { FakeMap, FakeMapboxGl } from '@hcm/test-support/fake-map';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { autoBoot, browserEnvironment, engineBaseOf, startEngine, type EngineRelease } from '../src/mount.js';
@@ -55,6 +55,48 @@ function fakePage(change: Record<string, unknown> = {}): FakePage {
     };
     return { window: page as unknown as PageWindow, replaced, fonts, listeners };
 }
+
+describe('the gamepad and the colour scheme of the page', () => {
+    function schemePage(matches: boolean): {
+        readonly window: PageWindow;
+        readonly query: { matches: boolean; onchange: ((event: { matches: boolean }) => void) | null };
+    } {
+        const query = { matches, onchange: null };
+        const events = new EventTarget();
+        const page = fakePage({
+            matchMedia: () => query,
+            addEventListener: events.addEventListener.bind(events),
+            removeEventListener: events.removeEventListener.bind(events),
+            navigator: { getGamepads: () => [] },
+        });
+        return { window: page.window, query };
+    }
+
+    it('happyPath_theSchemeIsReadAndFollowedUntilUnsubscribed', () => {
+        const { window, query } = schemePage(true);
+        const scheme = browserEnvironment(window, RELEASE, createLogger('test')).colorScheme;
+        const seen: boolean[] = [];
+
+        expect(scheme?.dark()).toBe(true);
+        const stop = scheme?.subscribe((dark) => seen.push(dark));
+        query.onchange?.({ matches: false });
+        stop?.();
+
+        expect(seen).toEqual([false]);
+        expect(query.onchange).toBeNull();
+    });
+
+    it('happyPath_theWatcherLoadsNothingWithoutAPad', () => {
+        const { window } = schemePage(false);
+        const env = browserEnvironment(window, RELEASE, createLogger('test'));
+        const surface = { renderRoot: {} as Element, runInput: vi.fn(), mapCovered: () => true, toast: vi.fn() };
+
+        const stop = env.watchGamepads?.(surface, new FakeMap());
+
+        expect(stop).toBeTypeOf('function');
+        stop?.();
+    });
+});
 
 describe('browserEnvironment', () => {
     afterEach(() => {

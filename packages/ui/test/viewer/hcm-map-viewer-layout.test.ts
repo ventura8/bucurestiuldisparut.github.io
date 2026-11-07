@@ -492,3 +492,31 @@ describe('<hcm-map-viewer>: modal stacking and docked sheets', () => {
         expect(body.getBoundingClientRect().bottom).toBeLessThanOrEqual(pane.bottom);
     });
 });
+
+describe('the layers command and the focus', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_onAnExtraLargeWindowItGoesToTheDockedPanel', async () => {
+        const mounted = await mountViewer(readyState(), EXTRA_LARGE);
+
+        mounted.element.runInput('layers');
+        await mounted.element.updateComplete;
+        await vi.waitFor(() => {
+            expect(part(mounted, 'hcm-layer-panel').shadowRoot?.activeElement ?? deepActiveElement()).not.toBeNull();
+        });
+
+        expect(mounted.store.getState().sheet).toBe('layers');
+    });
+
+    it('edge_closingItMovesNoFocusIntoThePanel', async () => {
+        const mounted = await mountViewer(readyState(), COMPACT);
+
+        mounted.element.runInput('layers');
+        mounted.element.runInput('layers');
+        await mounted.element.updateComplete;
+
+        expect(mounted.store.getState().sheet).toBe('none');
+    });
+});

@@ -253,6 +253,7 @@ Sanctioned stackings (`SANCTIONED_STACKINGS`, minimal): the **open FAB menu** ma
 | A toast | the unknown photo's toast, announced |
 | Loading | the skeleton while the manifest is held |
 | The error cards | manifest not found, network failure, invalid manifest (each announced by its alert), no WebGL |
+| The shortcuts, their help panel and a refused gamepad (V32, V33; `e2e/support/gamepad.ts` is the fake pad) | the help panel from `?` (Esc), a shortcut's year in a toast, the toast refusing a pad without the standard layout |
 | Swipe compare (M4, V06; `e2e/tour/compare-states.ts`) | the divider at 50 % with the compare bar, moved from the keyboard with its focus ring, at 0 % and at 100 % (the legal line stays the viewer map's), the chooser after choosing, and on a compact window the toggle on one map |
 | The starter kit (M5, V27; `e2e/tour/kit-states.ts`) | the template's page at `/kit/` with its engine refused: the bilingual note in place of the map (`kit.loading-note`, checked in Romanian, the page's language) |
 

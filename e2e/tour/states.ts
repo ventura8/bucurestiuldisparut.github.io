@@ -4,6 +4,7 @@ import { expect, type BrowserContext, type Locator, type Page, type Route } from
 import { IMAGERY_STATES } from '../admin/specs/imagery/states.js';
 import { ADMIN_SECTION_STATES } from './admin-sections.js';
 import { COMPARE_STATES, openComparing } from './compare-states.js';
+import { bootInputJourney, INPUT_STATES } from './input-states.js';
 import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
 import { hasBottomSheets, toDetent } from './sheets.js';
 import { OPS_STATES } from '../admin/specs/ops/states.js';
@@ -113,6 +114,7 @@ const POI = 'fixture-cladire';
 
 /** Every state of the viewer the tour visits, by id. */
 const VIEWER_STATES = {
+    ...INPUT_STATES,
     'skip-link': {
         title: 'The first Tab: the skip link shows over the map with a focus ring',
         enter: async ({ page, lang }) => {
@@ -446,6 +448,12 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
         id: 'poi-about',
         boot: ({ page, lang }) => openViewer(page, { lang, hash: '16/44.42680/26.08720' }),
         states: ['poi', 'poi-peek', 'poi-full', 'about', 'about-end'],
+    },
+    {
+        title: 'The shortcuts, their help panel and a refused gamepad',
+        id: 'input',
+        boot: bootInputJourney,
+        states: ['keyboard-help', 'input-toast', 'gamepad-refused'],
     },
     {
         title: 'Swipe compare: the divider at 50 % and at both edges, from the keyboard; the toggle of a compact window; the chooser',

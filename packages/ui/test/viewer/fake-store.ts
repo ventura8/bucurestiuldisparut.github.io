@@ -45,6 +45,7 @@ export function idleState(): ViewerState {
         consent: 'unknown',
         toast: null,
         compare: null,
+        shortcuts: true,
         mapLabels: {
             shown: { streets: true, pois: true },
             defaults: { streets: true, pois: true },
@@ -160,6 +161,11 @@ export class FakeStore implements ViewerStorePort {
     flyTo(view: MapView): void {
         this.#record('flyTo', view);
         this.set({ view });
+    }
+
+    setShortcuts(enabled: boolean): void {
+        this.#record('setShortcuts', enabled);
+        this.set({ shortcuts: enabled });
     }
 
     logShare(): void {

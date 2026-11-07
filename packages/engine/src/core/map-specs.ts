@@ -34,6 +34,9 @@ import type {
 
 import { photosNearYear } from './timeline.js';
 
+/** Standard's configuration property of the basemap's light. */
+export const LIGHT_PRESET = 'lightPreset';
+
 /** Length of a view cone's sides on the map, in metres (a drawing choice, `ViewCone.distanceM`). */
 export const CONE_LENGTH_M = 60;
 
@@ -132,23 +135,27 @@ export interface MapMoment {
     readonly locale: Locale;
     readonly reducedMotion: boolean;
     readonly labels: MapLabels;
+    /** The light the theme asks of the basemap (`map-light.ts`), null when the city's basemap sets its own. */
+    readonly light: 'day' | 'night' | null;
 }
 
 /**
  * The city's `basemap.config` with the labels the visitor chose where they differ from it, so a shared link never flashes
- * the labels it turned off. Mapbox ignores a property the style does not have.
+ * the labels it turned off, and a dark theme's night, so a dark page never flashes day (day is Standard's own default, and
+ * `MapSync` writes it where a style's differs). Mapbox ignores a property the style does not have.
  */
-function basemapConfig(basemap: Basemap, labels: MapLabels): MapOptions['config'] {
+function basemapConfig(basemap: Basemap, labels: MapLabels, light: MapMoment['light']): MapOptions['config'] {
     const defaults = basemapLabels(basemap);
     const changed = MAP_LABEL_KINDS.filter((kind) => labels[kind] !== defaults[kind]).map((kind) => [MAP_LABEL_CONFIG[kind], labels[kind]]);
-    const config = { ...basemap.config, ...Object.fromEntries(changed) } as NonNullable<MapOptions['config']>;
+    const night = light === 'night' ? { [LIGHT_PRESET]: light } : {};
+    const config = { ...basemap.config, ...night, ...Object.fromEntries(changed) } as NonNullable<MapOptions['config']>;
     return Object.keys(config).length === 0 ? undefined : config;
 }
 
 /** The map of a city: its basemap, token, zoom range and bounds. */
-export function mapOptions(manifest: Manifest, { view, locale, reducedMotion, labels }: MapMoment): MapOptions {
+export function mapOptions(manifest: Manifest, { view, locale, reducedMotion, labels, light }: MapMoment): MapOptions {
     const { city } = manifest;
-    const config = basemapConfig(city.basemap, labels);
+    const config = basemapConfig(city.basemap, labels, light);
     return {
         style: city.basemap.style,
         ...(config === undefined ? {} : { config }),

@@ -48,6 +48,7 @@ export interface FakeMapOptions {
      * `mount`'s `config` overrides the properties the style has and ignores the others.
      */
     readonly basemapFlags?: Readonly<Record<string, boolean>>;
+    readonly basemapOptions?: Readonly<Record<string, string>>;
 }
 
 type Handlers = { [E in keyof MapEventMap]: Set<(payload: MapEventMap[E]) => void> };
@@ -61,6 +62,7 @@ export class FakeMap implements ViewerMapPort {
     mounted = false;
     #loads = 0;
     readonly #flags: Map<string, boolean>;
+    readonly #options: Map<string, string>;
     readonly #photoHandlers = new Set<(photoId: string) => void>();
     readonly #poiHandlers = new Set<(poiId: string) => void>();
     readonly #mapClickHandlers = new Set<(position: LngLat) => void>();
@@ -77,6 +79,7 @@ export class FakeMap implements ViewerMapPort {
         this.webgl = options.webgl ?? true;
         this.mountError = options.mountError;
         this.#flags = new Map(Object.entries(options.basemapFlags ?? { showRoadLabels: true, showPointOfInterestLabels: true }));
+        this.#options = new Map(Object.entries(options.basemapOptions ?? { lightPreset: 'day' }));
     }
 
     get mapLoadCount(): number {
@@ -112,8 +115,9 @@ export class FakeMap implements ViewerMapPort {
     /** As Mapbox does: what the style has takes the value, anything else is ignored. */
     #configure(config: NonNullable<MapOptions['config']>): void {
         for (const [name, value] of Object.entries(config)) {
-            if (typeof value === 'boolean' && this.#flags.has(name)) {
-                this.#flags.set(name, value);
+            const known = typeof value === 'boolean' ? this.#flags : this.#options;
+            if (known.has(name)) {
+                (known as Map<string, typeof value>).set(name, value);
             }
         }
     }
@@ -192,6 +196,15 @@ export class FakeMap implements ViewerMapPort {
 
     getBasemapFlag(name: string): boolean | null {
         return this.#flags.get(name) ?? null;
+    }
+
+    getBasemapOption(name: string): string | null {
+        return this.#options.get(name) ?? null;
+    }
+
+    setBasemapOption(name: string, value: string): void {
+        this.#record('setBasemapOption', name, value);
+        this.#options.set(name, value);
     }
 
     setBasemapFlag(name: string, value: boolean): void {

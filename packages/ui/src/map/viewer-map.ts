@@ -18,25 +18,41 @@ export interface ViewerMapPort extends MapPort {
     getBasemapFlag(name: string): boolean | null;
     /** Sets one live, with no new map load. Write only what `getBasemapFlag` found. */
     setBasemapFlag(name: string, value: boolean): void;
+    /** A text Standard configuration property (`lightPreset`, ...); null when the style has no such property. */
+    getBasemapOption(name: string): string | null;
+    /** Sets one live, with no new map load. Write only what `getBasemapOption` found. */
+    setBasemapOption(name: string, value: string): void;
 }
 
-/** Mapbox answers null, or throws, for a style without the import or the property; any other type is no switch either. */
-function readFlag(map: MapboxMap | null, name: string): boolean | null {
+/** Mapbox answers null, or throws, for a style without the import or the property. */
+function readConfig(map: MapboxMap | null, name: string): unknown {
     try {
-        const value = map?.getConfigProperty(IMPORT_ID, name);
-        return typeof value === 'boolean' ? value : null;
+        return map?.getConfigProperty(IMPORT_ID, name);
     } catch {
         return null;
     }
 }
 
+function readFlag(map: MapboxMap | null, name: string): boolean | null {
+    const value = readConfig(map, name);
+    return typeof value === 'boolean' ? value : null;
+}
+
+function readOption(map: MapboxMap | null, name: string): string | null {
+    const value = readConfig(map, name);
+    return typeof value === 'string' ? value : null;
+}
+
 /** `createMapboxPort` for the viewer and swipe compare's second map. */
 export function createViewerMapPort(gl: MapboxGl, env?: AdapterEnv): ViewerMapPort {
     const port = createMapboxPort(gl, env);
+    const write = (name: string, value: boolean | string): void => {
+        nativeMap(port)?.setConfigProperty(IMPORT_ID, name, value);
+    };
     return Object.assign(port, {
         getBasemapFlag: (name: string) => readFlag(nativeMap(port), name),
-        setBasemapFlag: (name: string, value: boolean) => {
-            nativeMap(port)?.setConfigProperty(IMPORT_ID, name, value);
-        },
+        setBasemapFlag: write,
+        getBasemapOption: (name: string) => readOption(nativeMap(port), name),
+        setBasemapOption: write,
     });
 }

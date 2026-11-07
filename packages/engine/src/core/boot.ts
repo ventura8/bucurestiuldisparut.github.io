@@ -12,6 +12,7 @@ import { loadManifest } from '../config/load.js';
 import type { Measurement, TelemetryContext } from '../telemetry/telemetry-port.js';
 import type { MountedMap } from './compare-port.js';
 import { readMapLabels, withMapAnswer } from './map-labels.js';
+import { mapLight } from './map-light.js';
 import { mapOptions } from './map-specs.js';
 import { MapSync } from './map-sync.js';
 import type { ViewerDeps } from './deps.js';
@@ -87,7 +88,8 @@ export class Boot {
         const { config, telemetry } = this.#host.deps;
         const stored = exactLocale(this.#host.preferences.get(config.cityId, 'lang'));
         const theme = themeOf(this.#host.preferences.get(config.cityId, 'theme'));
-        return initialState(this.#urlLocale ?? stored ?? this.defaultLocale, theme, telemetry.consent);
+        const state = initialState(this.#urlLocale ?? stored ?? this.defaultLocale, theme, telemetry.consent);
+        return { ...state, systemDark: this.#host.deps.colorScheme?.dark() === true };
     }
 
     async load(): Promise<void> {
@@ -146,7 +148,8 @@ export class Boot {
         const stored = exactLocale(this.#host.preferences.get(cityId, 'lang'));
         const theme = this.#host.preferences.get(cityId, 'theme');
         const locale = this.#urlLocale ?? stored ?? state.locale;
-        return { ...state, locale, theme: theme === null ? state.theme : themeOf(theme) };
+        const shortcuts = this.#host.preferences.get(cityId, 'shortcuts') !== 'off';
+        return { ...state, locale, shortcuts, theme: theme === null ? state.theme : themeOf(theme) };
     }
 
     async #mount(id: number, manifest: Manifest): Promise<void> {
@@ -167,7 +170,13 @@ export class Boot {
         try {
             await deps.map.mount(
                 container,
-                mapOptions(manifest, { view: state.view, locale: state.locale, reducedMotion, labels: state.mapLabels.shown }),
+                mapOptions(manifest, {
+                    view: state.view,
+                    locale: state.locale,
+                    reducedMotion,
+                    labels: state.mapLabels.shown,
+                    light: mapLight(state),
+                }),
             );
         } catch (error) {
             this.#mountFailed(id, error);

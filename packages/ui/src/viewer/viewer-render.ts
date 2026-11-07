@@ -16,12 +16,13 @@ import type { FabMenuItem } from '../components/fab-menu.js';
 import type { AttributionPart } from './attribution.js';
 import { EMPTY } from './empty.js';
 import type { MapLabelDetail } from './hcm-layer-panel.js';
+import { isDialogSheet } from './input-commands.js';
 import { DOCKED_OPEN, type Placement, type SheetMode, type ViewerLayout } from './layout.js';
 import { renderSheetFrame } from './sheet-frame.js';
 import type { ViewerError, ViewerState } from './store-port.js';
 import { photosNearYear, type TimelineStop } from './timeline-model.js';
 import { otherLocale, type MenuAction } from './viewer-actions.js';
-import { legalMirror, modalOpen, renderLegalBar, type LegalMirror } from './viewer-legal.js';
+import { legalMirror, modalOpen, renderConsentBanner, renderLegalBar, type LegalMirror } from './viewer-legal.js';
 
 /** What one render needs, derived from the store state by the element. */
 export interface ViewerView {
@@ -65,6 +66,10 @@ export interface ViewerHandlers {
     /** The Layers panel's Map labels switches (V31). */
     readonly onMapLabel: (event: CustomEvent<MapLabelDetail>) => void;
     readonly onToastDismiss: (event: Event) => void;
+    /** The help panel's switch of the single-key shortcuts. */
+    readonly onShortcuts: (event: CustomEvent<{ readonly enabled: boolean }>) => void;
+    /** About's button to the help panel. */
+    readonly onHelpOpen: (event: Event) => void;
     readonly onSkip: () => void;
     readonly onNearYear: () => void;
 }
@@ -277,20 +282,8 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
                 @hcm-select=${handlers.onMenuSelect}
             ></hcm-fab-menu>
         </div>
-        ${analytics && state.consent === 'unknown' ? consentBanner(view.locale, handlers) : nothing} ${toast(view, state, handlers)}`;
-}
-
-function consentBanner(locale: Locale, handlers: ViewerHandlers): TemplateResult {
-    return html`<div class="dock consent">
-        <hcm-consent-banner
-            data-layout-check="consent"
-            .headline=${translate(locale, 'consent.title')}
-            .body=${translate(locale, 'consent.body')}
-            .acceptLabel=${translate(locale, 'consent.accept')}
-            .declineLabel=${translate(locale, 'consent.decline')}
-            @hcm-consent=${handlers.onConsent}
-        ></hcm-consent-banner>
-    </div>`;
+        ${analytics && state.consent === 'unknown' ? renderConsentBanner(view.locale, handlers.onConsent) : nothing}
+        ${toast(view, state, handlers)}`;
 }
 
 function timeline(view: ViewerView, state: ViewerState, handlers: ViewerHandlers): TemplateResult {
@@ -437,7 +430,9 @@ function overlays(view: ViewerView, ready: Ready, legal: LegalMirror, handlers: 
     const modal = mode === 'docked' ? nothing : modalSheets(view, ready, mode, handlers);
     return html`${modal}
         <hcm-about-dialog
-            .open=${state.sheet === 'about'}
+            .open=${isDialogSheet(state.sheet)}
+            .help=${state.sheet === 'help'}
+            .shortcuts=${state.shortcuts}
             .city=${manifest.city}
             .locale=${view.locale}
             .engineVersion=${view.engineVersion}
@@ -451,6 +446,8 @@ function overlays(view: ViewerView, ready: Ready, legal: LegalMirror, handlers: 
             @hcm-consent=${handlers.onConsent}
             @hcm-locale-change=${handlers.onLocaleChange}
             @hcm-theme-change=${handlers.onThemeChange}
+            @hcm-shortcuts-change=${handlers.onShortcuts}
+            @hcm-help-open=${handlers.onHelpOpen}
         ></hcm-about-dialog>
         <hcm-lightbox
             .open=${state.lightbox && state.selectedPhotoId !== null}

@@ -10,21 +10,24 @@
  * host (`applyTheme`). It reads Mapbox GL's attribution from that container (`watchAttribution`) to show it in its
  * legal bar or in About while a modal surface covers the map (scenario V18).
  */
-import { resolveLocale, type ThemeTokens } from '@hcm/shared';
+import { resolveLocale, type MessageKey, type ThemeTokens } from '@hcm/shared';
 import { LitElement, type TemplateResult } from 'lit';
 
-import { deepActiveElement, restoreFocus } from '../components/focus.js';
+import { deepActiveElement, restoreFocus, tabbableElements } from '../components/focus.js';
 import { applyTheme } from '../theme/apply.js';
 import { BASELINE_THEME } from '../theme/baseline.js';
 import { watchAttribution, type AttributionPart } from './attribution.js';
 import { OverlayChangeTracker, overlayEvents, viewerEvents, type PublicEvent } from './events.js';
 import type { HcmTimeline } from './hcm-timeline.js';
+import { commandAllowed, runInputCommand, type InputCommand } from './input-commands.js';
 import { layoutFor, type ViewerLayout } from './layout.js';
 import { browserServices, type ViewerServices } from './services.js';
 import type { Unsubscribe, ViewerController, ViewerError, ViewerState, ViewerStorePort } from './store-port.js';
 import { timelineStops, type TimelineStop } from './timeline-model.js';
 import { syncLocale } from './viewer-actions.js';
 import { createHandlers } from './viewer-handlers.js';
+import { isViewerKey, shortcutOf } from './viewer-keyboard.js';
+import { modalOpen } from './viewer-legal.js';
 import { renderViewer, type OverlayOpacityDetail, type ViewerHandlers } from './viewer-render.js';
 import { viewerStyles } from './viewer-styles.js';
 
@@ -110,6 +113,14 @@ export class HcmMapViewer extends LitElement {
         this.#onResize(entries);
     });
 
+    readonly #onKey = (event: KeyboardEvent): void => {
+        const command = this.viewState?.shortcuts === true ? shortcutOf(event) : null;
+        if (command !== null && isViewerKey(this, event)) {
+            event.preventDefault();
+            this.runInput(command);
+        }
+    };
+
     readonly #handlers: ViewerHandlers = createHandlers({
         act: (event, action) => {
             this.#act(event, action);
@@ -147,6 +158,38 @@ export class HcmMapViewer extends LitElement {
         return this.renderRoot.querySelector<HTMLElement>('.map');
     }
 
+    /** A keyboard shortcut or a gamepad button: what the state allows of `command` (docs/research/viewer-input.md §1). */
+    runInput(command: InputCommand): void {
+        this.#act(null, (store) => {
+            if (commandAllowed(store.getState(), command)) {
+                runInputCommand(store, command);
+                this.#focusLayers(command);
+            }
+        });
+    }
+
+    /** `layers` takes the focus into the panel, also where it is always docked and nothing opens. */
+    #focusLayers(command: InputCommand): void {
+        if (command === 'layers' && (this.#store?.getState().sheet === 'layers' || layoutOf(this.viewState).layersDocked)) {
+            void this.updateComplete.then(() => {
+                tabbableElements(this.renderRoot.querySelector('hcm-layer-panel') as HTMLElement)[0]?.focus();
+            });
+        }
+    }
+
+    /** No map to move: not ready, no WebGL, or a modal surface over it (the gamepad's lazy chunk asks). */
+    mapCovered(): boolean {
+        const state = this.viewState;
+        return state?.status !== 'ready' || !state.webgl || modalOpen(state, layoutOf(state).sheetMode);
+    }
+
+    /** A toast from the gamepad's lazy chunk. */
+    toast(key: MessageKey): void {
+        this.#act(null, (store) => {
+            store.showToast(key);
+        });
+    }
+
     /** Connects the viewer to a store (and the controller that drives it); the current state renders at once. */
     attach(store: ViewerStorePort, controller: ViewerController | null): void {
         this.detach();
@@ -169,6 +212,7 @@ export class HcmMapViewer extends LitElement {
     override connectedCallback(): void {
         super.connectedCallback();
         this.#resizeObserver.observe(this);
+        this.ownerDocument.addEventListener('keydown', this.#onKey);
         this.#applyTheme(this.viewState);
         this.#subscribe();
         this.#watchAttribution();
@@ -179,6 +223,7 @@ export class HcmMapViewer extends LitElement {
 
     override disconnectedCallback(): void {
         this.#resizeObserver.disconnect();
+        this.ownerDocument.removeEventListener('keydown', this.#onKey);
         this.#unsubscribe();
         this.#unsubscribe = () => undefined;
         this.#stopAttribution();

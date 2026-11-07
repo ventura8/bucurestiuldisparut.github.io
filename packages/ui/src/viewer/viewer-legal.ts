@@ -4,10 +4,11 @@
  * would sit under it, so the viewer hides them and shows the same in its legal bar (below a sheet or the lightbox) or at
  * the foot of About (`<hcm-map-attribution>`). Without a map (loading, an error, no WebGL) there is nothing to credit.
  */
-import type { Locale } from '@hcm/shared';
+import { translate, type Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import type { AttributionPart } from './attribution.js';
+import { isDialogSheet } from './input-commands.js';
 import type { SheetMode } from './layout.js';
 import type { ViewerState } from './store-port.js';
 
@@ -16,7 +17,7 @@ export type LegalMirror = 'none' | 'bar' | 'about';
 
 /** True while a modal surface covers the frame (its content is then inert): the lightbox, About, a modal sheet. */
 export function modalOpen(state: ViewerState | null, mode: SheetMode): boolean {
-    return state !== null && (state.lightbox || state.sheet === 'about' || (mode !== 'docked' && state.sheet !== 'none'));
+    return state !== null && (state.lightbox || isDialogSheet(state.sheet) || (mode !== 'docked' && state.sheet !== 'none'));
 }
 
 /** A ready viewer that draws a map (WebGL): the only state with a Mapbox logo and attribution to keep visible. */
@@ -29,12 +30,29 @@ export function legalMirror(state: ViewerState | null, mode: SheetMode): LegalMi
     if (!hasMap(state) || !modalOpen(state, mode)) {
         return 'none';
     }
-    return state.sheet === 'about' ? 'about' : 'bar';
+    return isDialogSheet(state.sheet) ? 'about' : 'bar';
 }
 
 /** The legal bar: the viewer's last grid row, under the modal layer, so a sheet, its scrim or the lightbox ends above it. */
 export function renderLegalBar(parts: readonly AttributionPart[], locale: Locale, cssUrl: string): TemplateResult {
     return html`<div class="legal">
         <hcm-map-attribution .parts=${parts} .locale=${locale} .cssUrl=${cssUrl}></hcm-map-attribution>
+    </div>`;
+}
+
+/** The consent banner, in its dock over the map. */
+export function renderConsentBanner(
+    locale: Locale,
+    onConsent: (event: CustomEvent<{ readonly decision: 'granted' | 'denied' }>) => void,
+): TemplateResult {
+    return html`<div class="dock consent">
+        <hcm-consent-banner
+            data-layout-check="consent"
+            .headline=${translate(locale, 'consent.title')}
+            .body=${translate(locale, 'consent.body')}
+            .acceptLabel=${translate(locale, 'consent.accept')}
+            .declineLabel=${translate(locale, 'consent.decline')}
+            @hcm-consent=${onConsent}
+        ></hcm-consent-banner>
     </div>`;
 }

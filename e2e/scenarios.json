@@ -227,6 +227,34 @@
             "source": "docs/ENGINE_API.md -> Map labels; the owner's request of 2026-11-07"
         },
         {
+            "id": "V32",
+            "area": "viewer",
+            "name": "Keyboard shortcuts of the viewer and their help panel",
+            "milestone": "post-M8",
+            "source": "docs/research/viewer-input.md; the owner's request of 2026-11-07"
+        },
+        {
+            "id": "V33",
+            "area": "viewer",
+            "name": "The gamepad on the viewer",
+            "milestone": "post-M8",
+            "source": "docs/research/viewer-input.md; the owner's request of 2026-11-07"
+        },
+        {
+            "id": "V34",
+            "area": "viewer",
+            "name": "The basemap's light follows the theme",
+            "milestone": "post-M8",
+            "source": "docs/research/viewer-input.md; the owner's request of 2026-11-07"
+        },
+        {
+            "id": "V35",
+            "area": "viewer",
+            "name": "The accessibility statement in About",
+            "milestone": "post-M8",
+            "source": "docs/research/viewer-input.md; the owner's request of 2026-11-07"
+        },
+        {
             "id": "A00",
             "area": "admin",
             "name": "Admin e2e harness",
@@ -11755,6 +11783,171 @@
             "tier": "functions",
             "status": "exists",
             "notes": "The owner's live use, 2026-11-07. Tests: functions/test/imagery/locate-again.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
+            "id": "S-V32-HAPPY",
+            "behaviour": "V32",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Year, opacity, photos, Layers and the help panel from single keys",
+            "asserts": "`.`, `,`, `i`, `l`, `?` -> the timeline moves and says its year, the layer's opacity changes in the hash and a toast, Layers and the help panel open",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V32-HAPPY-PHOTOS",
+            "behaviour": "V32",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Next and previous photo step through the list and back",
+            "asserts": "`n`, `n`, `p` -> the hash names each photo, back to the first",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V32-BAD-TYPING",
+            "behaviour": "V32",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Typing in a field of the page takes no shortcut, nor does a key with a modifier",
+            "asserts": "every shortcut typed into a host page's input lands in the field and changes nothing; Alt+? opens nothing",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V32-BAD-TURNED-OFF",
+            "behaviour": "V32",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Turned off in the help panel they stay off, and About still opens the panel",
+            "asserts": "the switch off, a reload -> `?` does nothing, About's button opens the panel with the switch off",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V32-BAD-NO-LAYER",
+            "behaviour": "V32",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Opacity without a layer on show says so and changes nothing",
+            "asserts": "`o` at today -> the toast, no op in the hash",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V33-HAPPY",
+            "behaviour": "V33",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Its chunk comes only with a pad; the sticks and triggers move the map",
+            "asserts": "no gamepad chunk before a fake pad connects, one after; the left stick moves the view, the right trigger zooms; one map",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V33-HAPPY-BUTTONS",
+            "behaviour": "V33",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Its buttons: the menu, a visible focus, close, Layers, photos, the year and help",
+            "asserts": "Start opens the menu, the D-pad moves a focus with a visible ring, B closes, left and right step the year, Back opens help",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V33-BAD-NOT-STANDARD",
+            "behaviour": "V33",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A pad without the standard layout is refused and moves nothing",
+            "asserts": "mapping '' -> the refused toast, a tilted stick leaves the hash as it was",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V33-BAD-TAB-HIDDEN",
+            "behaviour": "V33",
+            "area": "viewer",
+            "path": "bad",
+            "title": "It stops while the tab is hidden and goes on when it comes back",
+            "asserts": "hidden -> a tilted stick moves nothing; visible again -> the view moves",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V33-BAD-COVERED-MAP",
+            "behaviour": "V33",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A modal surface keeps the map still",
+            "asserts": "the help panel open -> a tilted stick leaves the hash as it was",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V34-HAPPY",
+            "behaviour": "V34",
+            "area": "viewer",
+            "path": "happy",
+            "title": "It follows the theme live, with one map load",
+            "asserts": "prefers-color-scheme dark -> lightPreset night as Mapbox GL reports it; light -> day; one map created",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V34-BAD-CITY-CONFIG",
+            "behaviour": "V34",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A city's basemap.config keeps its own light",
+            "asserts": "config lightPreset dusk -> dusk under both schemes",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V34-BAD-NO-PROPERTY",
+            "behaviour": "V34",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A style without the property is left alone",
+            "asserts": "a custom style without the import -> nothing reported, the viewer works, one map created",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V35-HAPPY",
+            "behaviour": "V35",
+            "area": "viewer",
+            "path": "happy",
+            "title": "About says what works, what is missing and how to report a problem",
+            "asserts": "the heading and the three catalogue paragraphs in the page's language",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V35-BAD-BARE-CITY",
+            "behaviour": "V35",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A city with no credits and no analytics still has it",
+            "asserts": "empty credits, no analytics -> the statement shows",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
         }
     ]
 }

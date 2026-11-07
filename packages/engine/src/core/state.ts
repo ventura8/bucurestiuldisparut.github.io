@@ -20,7 +20,7 @@ import { layerIdsOfYear, snapYear, timelineYears, yearOfLayers } from './timelin
 
 export type ViewerStatus = 'idle' | 'loading' | 'ready' | 'error';
 export type ThemeMode = 'system' | 'light' | 'dark';
-export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'about';
+export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'about' | 'help';
 
 export const THEME_MODES: readonly ThemeMode[] = ['system', 'light', 'dark'];
 
@@ -75,6 +75,10 @@ export interface ViewerState {
     readonly compare: CompareView | null;
     /** The basemap's own labels, as the visitor chose them (`map-labels.ts`); the compared side draws the same. */
     readonly mapLabels: MapLabelsState;
+    /** The single-key shortcuts are on (the visitor's `shortcuts` preference, docs/research/viewer-input.md §2). */
+    readonly shortcuts: boolean;
+    /** `prefers-color-scheme: dark`, which the basemap's light follows under the `system` theme (`map-light.ts`). */
+    readonly systemDark: boolean;
 }
 
 const NO_VIEW: MapView = { center: [0, 0], zoom: 0, bearing: 0 };
@@ -100,6 +104,8 @@ export function initialState(locale: Locale, theme: ThemeMode, consent: ConsentS
         toast: null,
         compare: null,
         mapLabels: NO_MAP_LABELS,
+        shortcuts: true,
+        systemDark: false,
     };
 }
 

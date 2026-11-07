@@ -68,6 +68,8 @@ ENGINE_CHUNK_BUDGETS: Mapping[str, int] = {
     # Swipe compare (M4, docs/research/M4-interfaces.md §3.2): the second map's session and <hcm-compare>, 4.2 KB measured
     # on 2026-10-24, fetched the first time a visitor compares (the contract's ceiling: 12 KB; DECISIONS-for-review.md §55b).
     "compare": 5,
+    # The gamepad (docs/research/viewer-input.md §3), fetched only once a pad connects: 1.6 KB on 2026-11-07.
+    "gamepad": 2,
     # firebase/app and firebase/analytics, fetched only after the visitor's consent: 13.3 KB on 2026-10-24.
     "firebase-sdk": 16,
     # The field chunk (DECISIONS-for-review.md §76): Google's web-vitals (attribution build, 5.4 KB of it) and the event

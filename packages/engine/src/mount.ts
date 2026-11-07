@@ -10,6 +10,7 @@ import { DEFAULT_CONTAINER_SELECTOR, resolveLocale, translate, type EngineConfig
 import type { MapLabels } from '@hcm/shared/map-labels';
 import {
     installFonts,
+    watchGamepads,
     type HcmMapViewer,
     type ViewerBootstrap,
     type ViewerController,
@@ -18,12 +19,14 @@ import {
     type ViewerStorePort,
 } from '@hcm/ui';
 import { createViewerMapPort, type MapboxGl, type Unsubscribe, type ViewerMapPort } from '@hcm/ui/map';
+import type { GamepadSurface } from '@hcm/ui/viewer/gamepad';
 
 import { configFromAttributes, readConfig, type Result } from './config/load.js';
 import { urlLocaleOf } from './core/boot.js';
 import type { CompareModule } from './core/compare-port.js';
-import type { ViewerDeps, ViewerLocation } from './core/deps.js';
+import type { ColorSchemeSource, ViewerDeps, ViewerLocation } from './core/deps.js';
 import type { PreferenceStorage } from './core/preferences.js';
+import { colorSchemeOf, locationOf, storageOf } from './core/page-sources.js';
 import { createViewerStore, type ViewerState, type ViewerStore } from './core/store.js';
 import { createTelemetry } from './telemetry/telemetry.js';
 import type { TelemetryPort } from './telemetry/telemetry-port.js';
@@ -227,6 +230,10 @@ export interface MountEnvironment {
     readonly installFonts: (engineBase: string | undefined) => void;
     /** M4: swipe compare's lazy chunk (`compare-<hash>.js` of the ES module build, inlined in the IIFE). */
     readonly loadCompare: () => Promise<CompareModule>;
+    /** `prefers-color-scheme` of the page (the basemap's light under the `system` theme). */
+    readonly colorScheme?: ColorSchemeSource;
+    /** Listens for a gamepad, whose lazy chunk comes only once one connects; returns the function that stops it. */
+    readonly watchGamepads?: (surface: GamepadSurface, map: ViewerMapPort) => () => void;
 }
 
 /** What `window.HistoricCityMapConfig` may name before it is validated: only its container is read early. */
@@ -294,8 +301,11 @@ function start(viewer: HcmMapViewer, config: EngineConfig, env: MountEnvironment
         mapContainer: () => viewer.mapContainer,
         reducedMotion: env.reducedMotion,
         compare: { load: env.loadCompare, createMap: env.createMap, mapboxCssUrl: env.mapboxCssUrl },
+        ...(env.colorScheme === undefined ? {} : { colorScheme: env.colorScheme }),
     });
+    const stopGamepads = env.watchGamepads?.(viewer, map);
     const controller = new Controller(store, () => {
+        stopGamepads?.();
         viewer.detach();
         viewer.remove();
     });
@@ -438,42 +448,6 @@ function mapboxOf(win: Window, version: string): MapboxGl {
     return gl;
 }
 
-const NO_STORAGE: PreferenceStorage = { getItem: () => null, setItem: () => undefined, removeItem: () => undefined };
-
-/** `localStorage`, or nothing when the browser refuses it (sandboxed frames, blocked site data). */
-function storageOf(win: Window): PreferenceStorage {
-    try {
-        return win.localStorage;
-    } catch {
-        return NO_STORAGE;
-    }
-}
-
-/** The page address as the store sees it; the hash is written with `history.replaceState` (no history entries). */
-function locationOf(win: Window): ViewerLocation {
-    return {
-        get hash() {
-            return win.location.hash;
-        },
-        get href() {
-            return win.location.href;
-        },
-        get search() {
-            return win.location.search;
-        },
-        replaceHash(hash: string): void {
-            const url = hash === '' ? `${win.location.pathname}${win.location.search}` : hash;
-            win.history.replaceState(win.history.state, '', url);
-        },
-        subscribe(listener: () => void) {
-            win.addEventListener('hashchange', listener);
-            return () => {
-                win.removeEventListener('hashchange', listener);
-            };
-        },
-    };
-}
-
 function telemetryFactory(win: Window, log: Logger, release: string): MountEnvironment['createTelemetry'] {
     return (cityId) =>
         createTelemetry({
@@ -508,5 +482,8 @@ export function browserEnvironment(
             installFonts(win.document, `${engineBase ?? release.engineBase}fonts/`, win.FontFace);
         },
         loadCompare: () => import('./compare/compare.js').then((chunk) => chunk.compareModule),
+        colorScheme: colorSchemeOf(win),
+        watchGamepads: (surface, map) =>
+            watchGamepads(win, () => import('@hcm/ui/viewer/gamepad'), { surface, map, log: log.child('gamepad') }),
     };
 }

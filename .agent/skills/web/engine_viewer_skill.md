@@ -44,6 +44,8 @@ The public viewer engine `@hcm/engine` (`packages/engine`): a data-driven histor
 - The city page (`scripts/site/src/page.ts`) is one `main` landmark with a visually hidden level-one heading (the site's title, `hcm-visually-hidden` of `packages/engine/src/engine.css`) around the mount point, so all the viewer draws is inside a landmark (axe's `landmark-one-main`, `page-has-heading-one`, `region`; `docs/ENGINE_API.md` → *The three files of a city*).
 - About, credits and privacy notice in RO and EN (V13); language and theme (V11, V12); keyboard and screen reader (V14); responsive at every window class (V15); privacy and cost (V16); starter kit (V17); legal (V18); consent (V19), crash reporting (V20) and the embed API (V21).
 
+- Keyboard shortcuts and their help panel (V32), the gamepad in its lazy chunk with a fake pad in the tests (V33), the basemap's `lightPreset` following the theme (V34), the accessibility statement in About (V35): `docs/research/viewer-input.md`. A new command joins `input-commands.ts`, so both inputs get it. Every byte of the catalogues counts in the entry and the IIFE, whose margin is now nearly gone: reuse an existing message before adding one.
+
 ## Rules
 
 - Rendering: Lit templates and `textContent` only; Mapbox popups use `setDOMContent`; About and privacy are rendered by walking `parseMarkdown(...).paragraphs` into DOM nodes (`web/web_security_skill.md`). Inline styles only through the CSSOM (`cssProperties`, `web/ui_m3_adaptive_skill.md`): the city page's CSP refuses a `style` attribute.

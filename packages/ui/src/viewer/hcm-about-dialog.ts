@@ -5,16 +5,22 @@
  * empty credits hide their section (S-V13-BAD-EMPTY-CREDITS). The dialog sits in the browser's top layer, over the
  * map's own logo and attribution, so its foot shows them (`<hcm-map-attribution>`, V18) whenever the map is there.
  *
- * Events (viewer-internal): `hcm-locale-change` (`{locale}`), `hcm-theme-change` (`{theme}`), and `hcm-consent`
- * (`{decision: 'denied'}`, the kit banner's event) when the visitor withdraws consent.
+ * Its second mode is the help panel of the keyboard and the gamepad (`help`, docs/research/viewer-input.md §2). About also
+ * holds the accessibility statement (§5).
+ *
+ * Events (viewer-internal): `hcm-locale-change` (`{locale}`), `hcm-theme-change` (`{theme}`), `hcm-consent`
+ * (`{decision: 'denied'}`, the kit banner's event) when the visitor withdraws consent, `hcm-help-open` and
+ * `hcm-shortcuts-change` (`{enabled}`).
  */
 import { DEFAULT_LOCALE, LOCALES, resolveLocale, translate, type City, type Credit, type Locale } from '@hcm/shared';
-import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
+import { LitElement, css, html, type PropertyValues, type TemplateResult } from 'lit';
 
+import { tabbableElements } from '../components/focus.js';
 import type { AttributionPart } from './attribution.js';
 import { EMPTY } from './empty.js';
 import { externalLink, renderMarkdown } from './markdown.js';
 import { baseStyles, detailStyles } from './shared-styles.js';
+import { renderShortcutsHelp } from './shortcuts-help.js';
 import type { ConsentState, ThemeMode } from './store-port.js';
 
 export const HCM_ABOUT_DIALOG_TAG = 'hcm-about-dialog';
@@ -41,6 +47,8 @@ function changedValue(event: Event): string {
 export class HcmAboutDialog extends LitElement {
     static override readonly properties = {
         open: { type: Boolean },
+        help: { type: Boolean },
+        shortcuts: { type: Boolean },
         city: { attribute: false },
         locale: { type: String },
         engineVersion: { type: String, attribute: 'engine-version' },
@@ -72,10 +80,22 @@ export class HcmAboutDialog extends LitElement {
             hcm-map-attribution {
                 flex: 1 1 100%;
             }
+
+            hcm-switch {
+                margin-block: 8px;
+            }
+
+            kbd {
+                border: 1px solid;
+            }
         `,
     ];
 
     declare open: boolean;
+    /** The dialog shows the help panel instead of About. */
+    declare help: boolean;
+    /** The single-key shortcuts are on (the help panel's switch). */
+    declare shortcuts: boolean;
     declare city: City | null;
     declare locale: Locale;
     declare engineVersion: string;
@@ -92,6 +112,8 @@ export class HcmAboutDialog extends LitElement {
     constructor() {
         super();
         this.open = false;
+        this.help = false;
+        this.shortcuts = true;
         this.city = null;
         this.locale = DEFAULT_LOCALE;
         this.engineVersion = '';
@@ -107,12 +129,29 @@ export class HcmAboutDialog extends LitElement {
         const locale = this.locale;
         return html`<hcm-dialog
             .open=${this.open}
-            .headline=${translate(locale, 'about.title')}
+            .headline=${translate(locale, this.help ? 'input.help' : 'about.title')}
             .closeLabel=${translate(locale, 'action.close')}
             ?fullscreen=${this.fullscreen}
         >
-            ${this.city === null ? nothing : this.#content(this.city)} ${this.#legal()}
+            ${this.#body()} ${this.#legal()}
         </hcm-dialog>`;
+    }
+
+    /** About's button to the help panel removes the focused button: the focus goes on to the dialog's first control. */
+    protected override updated(changed: PropertyValues<this>): void {
+        if (changed.get('help') === false && this.open) {
+            tabbableElements(this.renderRoot as ShadowRoot)[0]?.focus();
+        }
+    }
+
+    #body(): TemplateResult {
+        if (this.help) {
+            return renderShortcutsHelp(this.locale, this.shortcuts, (event) => {
+                event.stopPropagation();
+                this.#emit('hcm-shortcuts-change', { enabled: event.detail.checked });
+            });
+        }
+        return this.city === null ? EMPTY : this.#content(this.city);
     }
 
     #legal(): TemplateResult {
@@ -133,13 +172,28 @@ export class HcmAboutDialog extends LitElement {
                 <h3>${city.name[locale]}</h3>
                 ${renderMarkdown(city.about[locale])}
             </section>
-            ${this.#credits(city.credits)} ${this.#preferences()}
+            ${this.#credits(city.credits)} ${this.#preferences()} ${this.#inputAndAccessibility()}
             <section>
                 <h3>${translate(locale, 'about.privacy')}</h3>
                 ${renderMarkdown(city.privacy[locale])} ${this.#consent()}
             </section>
             <p class="engine">${translate(locale, 'about.engine', { version: this.engineVersion })}</p>
         </div>`;
+    }
+
+    /** The keyboard and the gamepad, and the accessibility statement (docs/research/viewer-input.md §5). */
+    #inputAndAccessibility(): TemplateResult {
+        const locale = this.locale;
+        const onHelp = (): void => {
+            this.#emit('hcm-help-open', {});
+        };
+        return html`<section>
+            <h3>${translate(locale, 'about.accessibility')}</h3>
+            <p>${translate(locale, 'about.a11yWorks')}</p>
+            <p>${translate(locale, 'about.a11yMissing')}</p>
+            <p>${translate(locale, 'about.a11yReport')}</p>
+            <hcm-button variant="outlined" @click=${onHelp}>${translate(locale, 'input.help')}</hcm-button>
+        </section>`;
     }
 
     #credits(credits: readonly Credit[]): TemplateResult {

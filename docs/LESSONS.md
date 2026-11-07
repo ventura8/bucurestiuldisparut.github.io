@@ -2381,3 +2381,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: a targeted run while the map labels were built, then reproduced on a clean export.
     - Fix and pin: the test reads the focused row's own `.title` and asks for that heading exactly.
     - **A name composed for a screen reader is not a data format: read the part from the element that holds it.**
+393. **A button pressed on a pad's first frame looked like a missing feature.**
+    - Seen: 2026-11-07, `@S-V33-HAPPY-BUTTONS` failed on one project only: Start opened no menu.
+    - Cause: the gamepad's loop counts what is held on its first frame as already held, so a press from before the page saw the pad fires nothing. The test pressed right after the toast, which shows before that frame.
+    - Found by: the same spec on a second project, on a loaded machine.
+    - Fix and pin: the spec waits a frame after the toast (`connectedPad`); the behaviour stays, and `edge_aButtonHeldBeforeTheLoopFiresNothing` pins it.
+    - **A loop that starts by sampling has a frame in which nothing can happen: wait for it, never sleep.**
+394. **Text checked through the native `<dialog>` found nothing.**
+    - Seen: 2026-11-07, `getByRole('dialog').getByRole('switch')` and `toContainText` on About and the help panel failed with the content on screen.
+    - Cause: the kit's `<dialog>` is in the shadow root of `<hcm-dialog>` and the content is slotted, so it is no DOM descendant of the dialog.
+    - Found by: the first run of `e2e/specs/viewer/input.spec.ts`.
+    - Fix and pin: the spec reads the host, `hcm-about-dialog`.
+    - **Slotted content is a child of the host: look for it there.**
