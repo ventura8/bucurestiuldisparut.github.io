@@ -419,3 +419,39 @@ describe('<hcm-admin-photo-editor>: the image', () => {
         expect(deepText(element)).toContain(text);
     });
 });
+
+describe('<hcm-admin-photo-editor>: M13', () => {
+    beforeAll(() => {
+        defineAll();
+    });
+
+    afterEach(() => {
+        cleanup();
+    });
+
+    it('badPath_anUploaderIsNotOfferedPublishing @S-A90-BAD-OTHERS-HIDDEN', async () => {
+        const { element } = await editorOf(editor({ role: 'uploader' }));
+
+        expect(deepAll(element, 'hcm-switch')).toEqual([]);
+        expect(deepText(element)).toContain('once a moderator approves it');
+    });
+
+    it('badPath_aModeratorIsNotOfferedDelete @S-A91-BAD-NOT-ALLOWED', async () => {
+        const { element } = await editorOf(editor({ role: 'moderator' }));
+
+        expect(deepAll(element, 'hcm-button').map((button) => button.getAttribute('icon'))).not.toContain('delete');
+    });
+
+    it('happyPath_aPhotoWithNoPlaceSaysSoAndIsGivenOne', async () => {
+        const entries = Object.entries(VALUE).filter(([key]) => key !== 'location' && key !== 'bearing' && key !== 'fov');
+        const value = Object.fromEntries(entries) as typeof VALUE;
+        const { element, photos } = await editorOf(editor({ value }));
+
+        expect(deepText(element)).toContain('Where was this taken?');
+        expect(deepAll(element, '#photo-bearing')).toEqual([]);
+        deepAll(element, 'hcm-button')
+            .find((button) => button.getAttribute('icon') === 'place')
+            ?.click();
+        expect(photos.calls).toContain('placeAtCentre');
+    });
+});

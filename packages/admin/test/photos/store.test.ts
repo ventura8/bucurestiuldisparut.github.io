@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { PHOTOS_MODULE } from '../../src/photos/module.js';
 import { LAST_PIN_KEY, STICKY_KEY } from '../../src/photos/session.js';
 import { cityPlace, DEFAULT_CITY_ZOOM, type PhotosStore } from '../../src/photos/store.js';
-import { at, CITY, CONTAINER, file, photoPath, photosWorld, seedCity, seedPhoto, settle, type PhotosWorld } from './world.js';
+import { at, CITY, CONTAINER, file, photoDoc, photoPath, photosWorld, seedCity, seedPhoto, settle, type PhotosWorld } from './world.js';
 
 function area(world: PhotosWorld = photosWorld()): { world: PhotosWorld; store: PhotosStore } {
     seedCity(world);
@@ -469,8 +469,8 @@ describe('the photos area: M13', () => {
     it('happyPath_aPhotoWithNoPlaceGetsAPinAtTheMapsCentre @S-V40-HAPPY-MANIFEST', async () => {
         const world = photosWorld();
         seedCity(world);
-        const { location: _location, bearing: _bearing, ...lost } = photoDoc({ bearing: undefined });
-        world.store.put(FIRESTORE_PATHS.photo(CITY, 'lost'), lost);
+        const lost = Object.entries(photoDoc()).filter(([key]) => key !== 'location' && key !== 'bearing' && key !== 'fov');
+        world.store.put(FIRESTORE_PATHS.photo(CITY, 'lost'), Object.fromEntries(lost));
         const area = PHOTOS_MODULE.create(world.services);
         area.open(['lost']);
         await settle();

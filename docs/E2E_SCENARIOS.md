@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 116 | 1046 | 408 | 638 | 1044 | 2 | 272 |
+| 116 | 1046 | 408 | 638 | 1044 | 2 | 273 |
 
 ## Viewer
 
@@ -172,7 +172,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V40-BAD-PLACED-NEEDS-LOCATION` | V40 | bad | A placed photo still needs its location | a photos[] entry with no location, or an unplaced one with a location, or one in both lists: refused | e2e-viewer | exists | `functions/test/publish/assemble.test.ts` |
 | `S-V41-HAPPY-CORRECTION-LINK` | V41 | happy | A photo's sheet offers a correction and says its credit | Suggest a correction links to the page on that photo; Added by the credit | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
 | `S-V41-HAPPY-LINK` | V41 | happy | Contribute opens a page of its own | the menu's item opens contributeUrl in a new tab with nothing passed on | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
-| `S-V41-BAD-NO-BACKEND` | V41 | bad | A manifest without the link offers no Contribute | the menu has no Contribute | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
+| `S-V41-BAD-NO-BACKEND` | V41 | bad | A manifest without the link offers no Contribute | the menu has no Contribute | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts`<br>`functions/test/export/plan-community.test.ts` |
 | `S-V41-BAD-NO-SIGN-IN` | V41 | bad | The map signs nothing in, reads no Firestore and sets no cookie | with the link on the page: no cookie in the context, no request to Firestore, Identity Toolkit, Secure Token or Firebase | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
 
 ## Admin

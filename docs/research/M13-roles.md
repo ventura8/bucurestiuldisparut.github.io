@@ -93,7 +93,7 @@ reason and an optional source link). Both take an optional credit name.
   `reject` applies nothing. Applying is one transaction on the photo with the reviewer as `updatedBy`, so the existing
   `history.onPhotoWrite` records the previous version and `history.revert` undoes it in one click. The public photo does not change
   before that. The `suggestion.waiting` notification goes to the city's reviewers, once per group.
-- The photo's location, once set, keeps the bounds check of the manifest (`MANIFEST_SLACK`): outside the city answers
+- The photo's location, once set, keeps the bounds check of the manifest (`PHOTO_LOCATION_SLACK_DEG`): outside the city answers
   `apiError.suggestion.outsideCity`.
 
 ## 5. The manifest (additive)
@@ -153,3 +153,14 @@ account with no city at all, as before), so a moderator is not told about imager
 | Repeat after refusal | A decided group stays decided |
 | Revoked member keeps a token | The rules and `requireAccess` read `admins/{uid}` on every request |
 | Public learns of pending items | The manifest builder filters by status; pending documents are never readable without a role |
+
+## 10. As built, and what is left
+
+- A suggestion group keeps the photo's title and thumbnail from when it began (`photoTitle`, `photoThumb`), so the queue lists without reading each photo.
+- A moderator or an uploader reads no `setup/status`, so the admin's map wears the city's public token (`cityTokenOf`), and the Contribute page passes the token `contribute.context` answered.
+- The Contribute link is an item of the map's menu; a photo's sheet and the gallery hold a plain link to the page on that photo.
+- Left for a later change, none of it a way around the rules:
+    - held pictures of a pending photo its uploader deleted stay in the private bucket until a sweep is added;
+    - the editors' AI assists are still offered to a moderator or an uploader, whose call is refused (`cityEditor`) with its message;
+    - an uploader's list shows no thumbnail for a pending photo (the Review page does, with the Storage rule);
+    - no daily cap on an uploader's uploads, and the credit field exists on the photo editor only (a place takes `credit` through the rules and the schema, with no field yet).
