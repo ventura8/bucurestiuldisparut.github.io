@@ -5,6 +5,7 @@ import { IMAGERY_STATES } from '../admin/specs/imagery/states.js';
 import { ADMIN_SECTION_STATES } from './admin-sections.js';
 import { COMPARE_STATES, openComparing } from './compare-states.js';
 import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
+import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
 import { hasBottomSheets, toDetent } from './sheets.js';
 import { OPS_STATES } from '../admin/specs/ops/states.js';
 import { POIS_STATES } from '../admin/specs/pois/states.js';
@@ -327,6 +328,7 @@ const VIEWER_STATES = {
     // Swipe compare (M4, V06): the second map behind its divider, the toggle of a compact window, the chooser.
     ...COMPARE_STATES,
     ...MAP_LABEL_STATES,
+    ...PHOTO_SOURCE_STATES,
 } as const satisfies Record<string, Omit<ViewerState, 'id'>>;
 
 type ViewerStateId = keyof typeof VIEWER_STATES;
@@ -435,6 +437,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
         ],
     },
     MAP_LABEL_JOURNEY,
+    PHOTO_SOURCE_JOURNEY,
     {
         title: 'A photo at every height, its lightbox, and the photo list',
         id: 'photo',
@@ -645,6 +648,8 @@ const ADMIN_STATES = {
         title: 'Photos: the editor with a field to correct, Save off and its reason',
         visit: 'tour/admin-photos.tour.ts',
     },
+    'photos.editor-date': { title: 'Photos: a date to the day, Month and Day shown, and Source', visit: 'tour/admin-photos.tour.ts' },
+    'photos.editor-impossible-date': { title: 'Photos: a day that month does not have, Save off', visit: 'tour/admin-photos.tour.ts' },
     'photos.delete-confirm': { title: 'Photos: the delete confirmation (a dialog)', visit: 'tour/admin-photos.tour.ts' },
     'photos.deleted-undo': { title: 'Photos: the photo deleted, the snackbar offering Undo', visit: 'tour/admin-photos.tour.ts' },
     // [end photos]

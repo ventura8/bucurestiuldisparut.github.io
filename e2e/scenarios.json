@@ -11755,6 +11755,105 @@
             "tier": "functions",
             "status": "exists",
             "notes": "The owner's live use, 2026-11-07. Tests: functions/test/imagery/locate-again.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
+            "id": "S-V07-HAPPY-PRECISE-DATE",
+            "behaviour": "V07",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A photo reads at the precision of its date",
+            "asserts": "a manifest photo with year, month and day -> the sheet says '12 iulie 1976' or '12 July 1976'; with year and month -> 'Iulie 1976' or 'July 1976', through Intl",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07 (docs/research/photo-date-source.md). Tests: e2e/specs/viewer/photos.spec.ts, packages/ui/test/viewer/text.test.ts."
+        },
+        {
+            "id": "S-V07-BAD-IMPOSSIBLE-DATE",
+            "behaviour": "V07",
+            "area": "viewer",
+            "path": "bad",
+            "title": "An impossible date in a manifest is refused like any invalid value",
+            "asserts": "a photo dated 29 February of a common year -> error card error.manifest.invalid; no map, no date shown",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07 (docs/research/photo-date-source.md). Tests: e2e/specs/viewer/photos.spec.ts, packages/shared/test/schemas/manifest.test.ts."
+        },
+        {
+            "id": "S-V07-HAPPY-SOURCE-LINK",
+            "behaviour": "V07",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A photo's source is a plain link that opens in a new tab",
+            "asserts": "a manifest photo with source {url, label} -> the sheet's 'Source:' line with an anchor to the url, target _blank, rel with noopener; without a label the host name is its text",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07 (docs/research/photo-date-source.md). Tests: e2e/specs/viewer/photos.spec.ts, packages/ui/test/viewer/hcm-photo-sheet.test.ts."
+        },
+        {
+            "id": "S-V07-BAD-SOURCE-NOT-HTTPS",
+            "behaviour": "V07",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A source that is not https makes the manifest invalid",
+            "asserts": "source.url http:// -> error card error.manifest.invalid; no anchor to it anywhere",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07 (docs/research/photo-date-source.md). Tests: e2e/specs/viewer/photos.spec.ts, packages/ui/test/viewer/hcm-photo-sheet.test.ts (the second line: a target that is not https is no anchor)."
+        },
+        {
+            "id": "S-V07-BAD-NO-SOURCE",
+            "behaviour": "V07",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A photo with no source, from an old manifest, shows no source line",
+            "asserts": "a manifest without the new fields stays valid; the sheet has its licence and no source line",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07 (docs/research/photo-date-source.md). Tests: e2e/specs/viewer/photos.spec.ts."
+        },
+        {
+            "id": "S-A09-HAPPY-DATE-PRECISION",
+            "behaviour": "A09",
+            "area": "admin",
+            "path": "happy",
+            "title": "A date to the day and a source reach the public sheet, one field after the other",
+            "asserts": "Month appears once there is a year, Day once there is a month; Save writes year, month, day, sourceUrl and sourceLabel; the next manifest carries them; the public sheet shows the date and the link",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07 (docs/research/photo-date-source.md). Tests: e2e/admin/specs/photos/editor.spec.ts, functions/test/publish/assemble.test.ts, packages/ui/test/admin/photos/photo-editor.test.ts."
+        },
+        {
+            "id": "S-A09-BAD-IMPOSSIBLE-DATE",
+            "behaviour": "A09",
+            "area": "admin",
+            "path": "bad",
+            "title": "A day that month does not have is refused with its reason",
+            "asserts": "1937, February, 29 -> validation.dateImpossible at the Day field, Save off, nothing written; 1936 makes it valid and it saves; the rules refuse the same",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07 (docs/research/photo-date-source.md). Tests: e2e/admin/specs/photos/editor.spec.ts, packages/admin/test/photos/draft.test.ts, firebase/rules-tests/test/photos.test.ts."
+        },
+        {
+            "id": "S-A09-HAPPY-BULK-SOURCE",
+            "behaviour": "A09",
+            "area": "admin",
+            "path": "happy",
+            "title": "A source set on a selection reaches every selected photo",
+            "asserts": "two photos selected, Author, source and licence with an address and a name -> both documents have them",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07 (docs/research/photo-date-source.md). Tests: e2e/admin/specs/photos/editor.spec.ts."
+        },
+        {
+            "id": "S-A09-BAD-BULK-SOURCE-NOT-HTTPS",
+            "behaviour": "A09",
+            "area": "admin",
+            "path": "bad",
+            "title": "A source that is not https, set on a selection, changes nothing and says why",
+            "asserts": "http:// in the dialog -> every photo named in the report with its reason; no document changes",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07 (docs/research/photo-date-source.md). Tests: e2e/admin/specs/photos/editor.spec.ts, packages/admin/test/photos/bulk.test.ts."
         }
     ]
 }

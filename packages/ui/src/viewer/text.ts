@@ -3,7 +3,7 @@
  * Romanian), photo dates, POI year spans, counted forms and licences. Everything returned here is plain text that
  * the elements render with Lit templates, never as HTML.
  */
-import { translate, type License, type Locale, type Photo, type Poi } from '@hcm/shared';
+import { formatPhotoDate, isHttpsUrl, translate, type License, type Locale, type Photo, type Poi } from '@hcm/shared';
 
 /** A `{ro, en?}` data text (photo and POI texts: English is optional). */
 export interface DataText {
@@ -16,11 +16,14 @@ export function localizedText(text: DataText, locale: Locale): string {
     return locale === 'en' ? (text.en ?? text.ro) : text.ro;
 }
 
-type PhotoDate = Pick<Photo, 'year' | 'yearEnd' | 'dateText'>;
+type PhotoDate = Pick<Photo, 'year' | 'yearEnd' | 'month' | 'day' | 'dateText'>;
 
 function photoYears(photo: PhotoDate, locale: Locale): string {
     if (photo.year === undefined) {
         return translate(locale, 'photo.unknownYear');
+    }
+    if (photo.month !== undefined) {
+        return formatPhotoDate({ year: photo.year, month: photo.month, day: photo.day }, locale);
     }
     const year = String(photo.year);
     return photo.yearEnd === undefined || photo.yearEnd === photo.year
@@ -28,9 +31,17 @@ function photoYears(photo: PhotoDate, locale: Locale): string {
         : translate(locale, 'photo.years', { year, yearEnd: String(photo.yearEnd) });
 }
 
-/** How the photo is dated: the source's own words (`Iulie 1936`), else its year or years, else "unknown year". */
+/**
+ * How the photo is dated: the source's own words (`Vara lui 1936`), else its date at its precision (`12 iulie 1936`,
+ * `Iulie 1936`), else its year or years, else "unknown year".
+ */
 export function photoDateText(photo: PhotoDate, locale: Locale): string {
     return photo.dateText === undefined ? photoYears(photo, locale) : localizedText(photo.dateText, locale);
+}
+
+/** The text of a photo's source link: its name, else the host of its address. */
+export function photoSourceText(source: NonNullable<Photo['source']>): string {
+    return source.label ?? (isHttpsUrl(source.url) ? new URL(source.url).hostname : source.url);
 }
 
 type PoiSpan = Pick<Poi, 'yearStart' | 'yearEnd'>;

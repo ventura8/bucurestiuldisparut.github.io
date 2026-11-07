@@ -37,6 +37,7 @@ import {
     yearSchema,
     zoomSchema,
 } from './primitives.js';
+import { daySchema, monthSchema, withPhotoDate } from './photo-date.js';
 
 /** The `version` every v1 manifest carries; a different value is refused before validation. */
 export const MANIFEST_VERSION = 1;
@@ -187,13 +188,19 @@ const photoImageSchema = z.strictObject({
     h: z.number().int().min(1).max(20_000),
 });
 
-export const photoSchema = z
+/** Where the photo comes from: an https address and, optionally, its name. */
+const photoSourceSchema = z.strictObject({ url: httpsUrlSchema, label: plainText(200).optional() });
+
+const photoObjectSchema = z
     .strictObject({
         id: idSchema,
         title: localizedPartial(200),
         description: localizedPartial(5000).optional(),
         year: yearSchema.optional(),
         yearEnd: yearSchema.optional(),
+        /** The date's precision beyond the year (`docs/research/photo-date-source.md`). */
+        month: monthSchema.optional(),
+        day: daySchema.optional(),
         /** How the source dates the photo when that is more than a year (`Iulie 1936`). */
         dateText: localizedPartial(100).optional(),
         author: plainText(200).optional(),
@@ -201,6 +208,7 @@ export const photoSchema = z
         rightsHolder: plainText(200).optional(),
         /** True while the rights of a migrated photo are being confirmed (the viewer shows a note). */
         rightsReview: z.boolean().optional(),
+        source: photoSourceSchema.optional(),
         links: z.array(linkSchema).max(MAX_LINKS),
         location: latLngSchema,
         bearing: bearingSchema.optional(),
@@ -208,6 +216,8 @@ export const photoSchema = z
         image: photoImageSchema,
     })
     .refine(validYearRange, coded('validation.yearRange', ['yearEnd']));
+
+export const photoSchema = withPhotoDate(photoObjectSchema);
 
 export const manifestSchema = z
     .strictObject({

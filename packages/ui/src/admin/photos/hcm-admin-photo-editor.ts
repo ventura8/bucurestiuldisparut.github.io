@@ -20,7 +20,15 @@ import { cannotSaveText } from '../editing/issue-text.js';
 import { LeftFields } from '../editing/number-fields.js';
 import { errorTemplate, loadingTemplate, reconnectingStatus } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
-import { creditsSection, datesSection, linksSection, publishingSection, textsSection, type SectionInput } from './editor-sections.js';
+import {
+    creditsSection,
+    datesSection,
+    linksSection,
+    publishingSection,
+    sourceSection,
+    textsSection,
+    type SectionInput,
+} from './editor-sections.js';
 import { imageSection, placeSection } from './editor-place.js';
 import { PHOTO_ACCEPT, photoFiles } from './hcm-admin-photo-list.js';
 import { historyHref, localized, photoText } from './photo-text.js';
@@ -153,7 +161,7 @@ export class HcmAdminPhotoEditor extends LitElement {
         return html`<div class="pane form">
             ${this.#head(locale, editor, value)} ${this.#banners(locale, editor)} ${reconnectingStatus(locale, editor.reconnecting)}
             ${imageSection(place, this.#choose)} ${textsSection(input)} ${datesSection(input)} ${creditsSection(input)}
-            ${linksSection(input)} ${placeSection(place)} ${publishingSection(input, editor)}
+            ${sourceSection(input)} ${linksSection(input)} ${placeSection(place)} ${publishingSection(input, editor)}
             <input class="file-input" type="file" accept=${PHOTO_ACCEPT} hidden @change=${this.#chosen} />
         </div>`;
     }

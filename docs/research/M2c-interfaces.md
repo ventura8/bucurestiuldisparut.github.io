@@ -1272,3 +1272,7 @@ plans against every place of the city, read once per chosen file, so a file nami
 document fails its schema is left out of Export all aloud (`adminContent.pois.exportPartial`) and a feature naming it is refused
 (`unreadable-place`), never a second place; a file chosen or a dialog closed during that read ends the earlier file's turn
 (S-A34-BAD-FILE-CHANGED-WHILE-READING). The place's photo picker pages through the photos, and a linked photo is named past its page.
+
+## Addendum 2026-11-07: a photo's precise date and its source
+
+The editor of §6.3 gains Month and Day after Year and its own Source section (address, name), out of Author and rights: `docs/research/photo-date-source.md`.

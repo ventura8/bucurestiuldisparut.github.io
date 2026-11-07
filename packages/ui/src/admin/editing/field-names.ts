@@ -31,6 +31,8 @@ const FIELDS = [
     'year',
     'yearStart',
     'yearEnd',
+    'month',
+    'day',
     'dateText',
     'date',
     'author',

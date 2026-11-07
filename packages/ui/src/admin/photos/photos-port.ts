@@ -91,6 +91,8 @@ export interface PhotoValuePort extends StickyPort {
     readonly dateText?: LocalizedPort | undefined;
     readonly year?: number | undefined;
     readonly yearEnd?: number | undefined;
+    readonly month?: number | undefined;
+    readonly day?: number | undefined;
     readonly license: FirestoreLicense;
     readonly permissionNote?: string | undefined;
     readonly links?: readonly { readonly url: string; readonly label: string }[] | undefined;

@@ -377,6 +377,49 @@ describe('manifest v1: every rule reports a localized code', () => {
         expect(issuesOf(patched(path, value))).toContainEqual({ path: issuePath, code });
     });
 
+    it.each([
+        ['a year and a month', { yearEnd: undefined, month: 7 }],
+        ['a year, a month and a day', { yearEnd: undefined, month: 7, day: 12 }],
+        ['a month in a range of one year', { year: 1978, yearEnd: 1978, month: 12, day: 31 }],
+        ['29 February of a leap year', { year: 1936, yearEnd: undefined, month: 2, day: 29 }],
+        ['a source with a name', { source: { url: 'https://arhiva.example/1', label: 'Arhiva' } }],
+        ['a source without a name', { source: { url: 'https://arhiva.example/1' } }],
+    ])('happyPath_aPhotoWith_%s', (_name, fields) => {
+        const manifest = validManifest();
+        (manifest['photos'] as unknown[])[0] = JSON.parse(JSON.stringify({ ...validPhoto(), ...fields })) as unknown;
+
+        expect(issuesOf(manifest)).toEqual([]);
+    });
+
+    it.each([
+        ['a month without a year', { year: undefined, yearEnd: undefined, month: 7 }, 'photos[0].month', 'validation.datePart'],
+        ['a day without a month', { yearEnd: undefined, day: 12 }, 'photos[0].day', 'validation.datePart'],
+        ['a month beside a range', { month: 7 }, 'photos[0].month', 'validation.dateRange'],
+        ['month 13', { yearEnd: undefined, month: 13 }, 'photos[0].month', 'validation.tooBig'],
+        ['day 32', { yearEnd: undefined, month: 7, day: 32 }, 'photos[0].day', 'validation.tooBig'],
+        ['31 April', { yearEnd: undefined, month: 4, day: 31 }, 'photos[0].day', 'validation.dateImpossible'],
+        [
+            '29 February of a common year',
+            { year: 1937, yearEnd: undefined, month: 2, day: 29 },
+            'photos[0].day',
+            'validation.dateImpossible',
+        ],
+        ['29 February 1900', { year: 1900, yearEnd: undefined, month: 2, day: 29 }, 'photos[0].day', 'validation.dateImpossible'],
+        ['an http source', { source: { url: 'http://arhiva.example/1' } }, 'photos[0].source.url', 'validation.httpsOnly'],
+        ['a source without an address', { source: { label: 'Arhiva' } }, 'photos[0].source.url', 'validation.required'],
+        [
+            'an unknown key in a source',
+            { source: { url: 'https://a.example', name: 'x' } },
+            'photos[0].source.name',
+            'validation.unknownKey',
+        ],
+    ])('badPath_aPhotoWith_%s', (_name, fields, path, code) => {
+        const manifest = validManifest();
+        (manifest['photos'] as unknown[])[0] = JSON.parse(JSON.stringify({ ...validPhoto(), ...fields })) as unknown;
+
+        expect(issuesOf(manifest)).toContainEqual({ path, code });
+    });
+
     it('badPath_anEndYearWithoutAYear', () => {
         const manifest = patched(['photos', 0, 'year'], undefined);
 

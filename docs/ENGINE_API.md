@@ -274,10 +274,12 @@ Common rules:
 | `id` | string | unique; the `#photo=` id |
 | `title`, `description?` | `{ro, en?}` | at most 200 and 5,000 characters |
 | `year?`, `yearEnd?` | integer | 1800 to 2100; `yearEnd` needs `year` and is not before it |
-| `dateText?` | `{ro, en?}` | the source's own dating, such as `Iulie 1936` |
+| `month?`, `day?` | integer | 1 to 12 and 1 to 31: the date's precision beyond the year. A month needs a `year` (and a `yearEnd`, when present, equal to it), a day needs a month and must exist in it, leap years counted (`validation.datePart`, `validation.dateRange`, `validation.dateImpossible`). The viewer reads them through `Intl`: `12 iulie 1936`, `12 July 1936`, `Iulie 1936`, `July 1936`; the timeline keeps using the year |
+| `dateText?` | `{ro, en?}` | the source's own dating, such as `Vara lui 1936`; when present it is what the visitor reads, before any other date |
 | `author?`, `rightsHolder?` | string | at most 200 characters |
 | `license` | enum | `CC0`, `CC-BY-4.0`, `CC-BY-SA-4.0`, `PD`, `permission`, `permission-legacy` |
 | `rightsReview?` | boolean | the rights of a migrated photo are being confirmed (the viewer shows a note) |
+| `source?` | `{url, label?}` | where the photo comes from: https only, a label of at most 200 characters; the sheet shows a plain link in a new tab (`rel` with `noopener`), its text the label or else the address's host |
 | `links` | `[{url, label}]` | at most 5, https only (legacy HTML was converted to these) |
 | `location` | `{lat, lng}` | within the city bounds plus 0.5° |
 | `bearing?`, `fov?` | number | 0 to 360 and 1 to 180; a photo with a bearing gets a view cone (default field of view 60°) |
@@ -349,6 +351,7 @@ A fetch that returns 404 shows `error.manifest.notFound`, a network failure `err
 - **`config.js`, the element and the JavaScript API** change additively in minor releases; a deprecated name keeps working for at least one minor release and is removed only in a major one.
 - **The URL hash** keeps v1's grammar for the whole 1.x line; new parameters are additive and old readers ignore them. The legacy hash stays readable.
 - **Additions before 1.0.0 (M4, 2026-10-24)**: the hash's `cmp=` and `sw=`, the controller's `openCompare`, `setComparePosition` and `closeCompare`, and the event `hcm-compare-change` are part of the v1 baseline too; the manifest does not change.
+- **Additions before 1.0.0** (the owner's requests, 2026-11-07, [research/photo-date-source.md](research/photo-date-source.md)): a photo's `month`, `day` and `source`. Optional: a manifest without them stays valid and reads as before; every 1.x engine reads them, so they need no `minVersion`.
 - **Additions before 1.0.0** (PLAN Addendum 3, 2026-10-12): `photosOverlay`, `poiCategories[]`, `pois[]`, the overlay namespace rule and the `op=` overlay ids. They are part of the v1 baseline that every 1.x engine reads, so a manifest that uses them needs no `minVersion`. A Material Symbols name outside the bundled set falls back to the default pin instead of failing validation, so new icons never need a new manifest generation.
 
 ### Releases on jsDelivr

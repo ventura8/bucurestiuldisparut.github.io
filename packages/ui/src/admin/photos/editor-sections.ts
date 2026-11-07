@@ -1,6 +1,6 @@
 /**
  * The photo editor's sections (`docs/research/M2c-interfaces.md` §6.3): the texts in Romanian and English (English
- * optional, the visitor then reads Romanian), the date, author and rights, links (at most five, https only) and
+ * optional, the visitor then reads Romanian), the date, author and rights, the source, links (at most five, https only) and
  * publishing (Published, with why it cannot be switched on yet, and Rights to check). Each change is a patch of the
  * draft; nothing is written until Save.
  */
@@ -11,6 +11,7 @@ import type { AssistActionsPort, AssistViewPort } from '../assist/assist-port.js
 import { draftAssist, titleAssist } from '../assist/assist-parts.js';
 import type { FieldsLeft } from '../editing/number-fields.js';
 import { EMPTY } from '../shell/empty.js';
+import { dateParts, yearPatch } from './editor-date.js';
 import { areaField, numberField, numberOf, selectField, textField, textOf } from './editor-fields.js';
 import { LICENSE_ORDER, blockText, fieldIssue, licenseText, partId, photoText } from './photo-text.js';
 import type { LocalizedPort, PhotoEditorPort, PhotoPatchPort, PhotoValuePort } from './photos-port.js';
@@ -138,22 +139,26 @@ export function datesSection(input: SectionInput): TemplateResult {
                 readOnly: input.readOnly,
             },
             (typed) => {
-                edit({ [field]: numberOf(typed) });
+                edit(field === 'year' ? yearPatch(typed) : { yearEnd: numberOf(typed) });
             },
             input.left,
         );
     return html`<fieldset>
         <legend>${photoText(locale, 'adminContent.photos.section.dates')}</legend>
         <div class="pair">${year('year', 'year')} ${year('yearEnd', 'yearEnd')}</div>
+        ${dateParts(input)}
+        <p class="note">${photoText(locale, 'adminContent.photos.field.dateTextHint')}</p>
         ${localizedPair(input, 'dateText', { ro: 'dateTextRo', en: 'dateTextEn' }, 100)}
     </fieldset>`;
 }
 
 type CreditField = 'author' | 'rightsHolder' | 'sourceLabel' | 'sourceUrl' | 'permissionNote';
 
+const CREDIT_MAX: Partial<Record<CreditField, number>> = { sourceUrl: 2048, permissionNote: 2000 };
+
 function creditField(input: SectionInput, field: CreditField, type: 'text' | 'url' = 'text'): TemplateResult {
     const { locale, value, issues, edit } = input;
-    const max = field === 'permissionNote' ? 2000 : 200;
+    const max = CREDIT_MAX[field] ?? 200;
     const options = {
         id: `photo-${field}`,
         label: photoText(locale, `adminContent.photos.field.${field}`),
@@ -187,8 +192,17 @@ export function creditsSection(input: SectionInput): TemplateResult {
                 edit({ license: chosen as FirestoreLicense });
             },
         )}
-        ${creditField(input, 'rightsHolder')} ${creditField(input, 'sourceLabel')} ${creditField(input, 'sourceUrl', 'url')}
-        ${creditField(input, 'permissionNote')}
+        ${creditField(input, 'rightsHolder')} ${creditField(input, 'permissionNote')}
+    </fieldset>`;
+}
+
+/** Where the photo comes from: the link a visitor follows (`docs/research/photo-date-source.md` §2). */
+export function sourceSection(input: SectionInput): TemplateResult {
+    const { locale } = input;
+    return html`<fieldset>
+        <legend>${photoText(locale, 'adminContent.photos.section.source')}</legend>
+        ${creditField(input, 'sourceUrl', 'url')} ${creditField(input, 'sourceLabel')}
+        <p class="note">${photoText(locale, 'adminContent.photos.field.sourceLabelHint')}</p>
     </fieldset>`;
 }
 

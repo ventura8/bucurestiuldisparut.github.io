@@ -8,6 +8,7 @@ import { FUNCTIONS_TIMEOUT_MS } from '../../support/emulators.js';
 import type { ContentWorld } from '../../support/content.js';
 import { awaitManifest, entry, openPublicViewer, seedPublicCity } from '../../support/flows.js';
 import { adminMapReady, clickMapAt, mapPointOf, photoCone, photoMarker } from '../../support/map.js';
+import { menuDialog } from '../../support/menu.js';
 import { photosText, seedPhoto, servePhotoImages } from '../../support/photos.js';
 
 /**
@@ -204,5 +205,128 @@ test(
         await saveButton(page, lang).click();
         await saved(page, lang);
         expect((await content.document('photos/cv'))?.['location']).toEqual({ lat: MOVED[1], lng: MOVED[0] });
+    },
+);
+
+test(
+    'A date to the day and a source reach the public sheet as the admin set them, one field after the other',
+    { tag: ['@S-A09-HAPPY-DATE-PRECISION'] },
+    async ({ page, lang, content }) => {
+        test.setTimeout(180_000);
+        await openEditor(page, content, lang, true);
+        const month = field(page, lang, 'adminContent.photos.field.month');
+        const day = field(page, lang, 'adminContent.photos.field.day');
+
+        // Each part appears once the one before it is set.
+        await expect(month).toHaveCount(0);
+        await field(page, lang, 'adminContent.photos.field.year').fill('1936');
+        await expect(month).toBeVisible();
+        await expect(day).toHaveCount(0);
+        await month.selectOption('7');
+        await expect(day).toBeVisible();
+        await day.fill('12');
+        await field(page, lang, 'adminContent.photos.field.sourceUrl').fill('https://arhiva.example/cv');
+        await field(page, lang, 'adminContent.photos.field.sourceLabel').fill('Arhiva');
+
+        await saveButton(page, lang).click();
+        await saved(page, lang);
+        expect(await content.document('photos/cv')).toMatchObject({
+            year: 1936,
+            month: 7,
+            day: 12,
+            sourceUrl: 'https://arhiva.example/cv',
+            sourceLabel: 'Arhiva',
+        });
+
+        // The next manifest carries them; a visitor reads the date and follows the source.
+        const manifest = await awaitManifest(content, 'carries the date', (built) => entry(built, 'photos', 'cv')?.['day'] === 12);
+        expect(entry(manifest, 'photos', 'cv')?.['source']).toEqual({ url: 'https://arhiva.example/cv', label: 'Arhiva' });
+        await openPublicViewer(page, manifest, { lang, hash: `17/${String(START[1])}/${String(START[0])}&photo=cv` });
+        const sheet = page.locator('hcm-photo-sheet');
+        await expect(sheet.locator('.supporting')).toHaveText(lang === 'ro' ? '12 iulie 1936' : '12 July 1936');
+        await expect(sheet.getByRole('link', { name: 'Arhiva' })).toHaveAttribute('href', 'https://arhiva.example/cv');
+    },
+);
+
+test(
+    'A day that month does not have is refused with its reason, and nothing is written',
+    { tag: ['@S-A09-BAD-IMPOSSIBLE-DATE'] },
+    async ({ page, lang, content }) => {
+        test.setTimeout(120_000);
+        await openEditor(page, content, lang, false);
+
+        await field(page, lang, 'adminContent.photos.field.year').fill('1937');
+        await field(page, lang, 'adminContent.photos.field.month').selectOption('2');
+        const day = field(page, lang, 'adminContent.photos.field.day');
+        await day.fill('29');
+        await day.press('Tab');
+        const editor = page.locator('hcm-admin-photo-editor');
+        await expect(editor.getByText(translate(lang, 'validation.dateImpossible'), { exact: true })).toBeVisible();
+        await expect(saveButton(page, lang)).toBeDisabled();
+        expect((await content.document('photos/cv'))?.['year']).toBeUndefined();
+
+        // A leap year has that day: the problem goes and Save works.
+        await field(page, lang, 'adminContent.photos.field.year').fill('1936');
+        await expect(editor.getByText(translate(lang, 'validation.dateImpossible'), { exact: true })).toHaveCount(0);
+        await saveButton(page, lang).click();
+        await saved(page, lang);
+        expect(await content.document('photos/cv')).toMatchObject({ year: 1936, month: 2, day: 29 });
+    },
+);
+
+/** Opens the selection's Author, source and licence dialog for the photos already selected. */
+async function openSetFields(page: Page, lang: 'ro' | 'en'): Promise<Locator> {
+    const more = photosText(lang, 'adminContent.photos.bulk.more');
+    await page.locator('hcm-admin-photo-list .bulk-bar').getByRole('button', { name: more, exact: true }).click();
+    await menuDialog(page, more)
+        .getByRole('button', { name: photosText(lang, 'adminContent.photos.bulk.setFieldsAction'), exact: true })
+        .click();
+    await expect(page.getByRole('dialog', { name: photosText(lang, 'adminContent.photos.setFields.title') })).toBeVisible();
+    // The dialog's form is slotted content of its element (light DOM), not inside the native dialog of its shadow root.
+    return page.locator('hcm-dialog.set-fields');
+}
+
+async function selectBothPhotos(page: Page, lang: 'ro' | 'en', content: ContentWorld): Promise<void> {
+    await servePhotoImages(page);
+    await seedPublicCity(content, AT);
+    await seedPhoto(content, { id: 'one', title: 'Calea Victoriei' }, AT);
+    await seedPhoto(content, { id: 'two', title: 'Piața Romană' }, AT);
+    await page.goto(content.address(lang, 'photos', { map: false }));
+    await page.getByRole('checkbox', { name: photosText(lang, 'adminContent.photos.select', { title: 'Piața Romană' }) }).check();
+    await page.getByRole('checkbox', { name: photosText(lang, 'adminContent.photos.select', { title: 'Calea Victoriei' }) }).check();
+}
+
+test('A source set on a selection reaches every selected photo', { tag: ['@S-A09-HAPPY-BULK-SOURCE'] }, async ({ page, lang, content }) => {
+    await selectBothPhotos(page, lang, content);
+    const dialog = await openSetFields(page, lang);
+    await dialog.getByLabel(photosText(lang, 'adminContent.photos.field.sourceUrl'), { exact: true }).fill('https://arhiva.example/set');
+    await dialog.getByLabel(photosText(lang, 'adminContent.photos.field.sourceLabel'), { exact: true }).fill('Arhiva');
+    await page.getByRole('button', { name: photosText(lang, 'adminContent.photos.setFields.apply'), exact: true }).click();
+
+    for (const id of ['one', 'two']) {
+        await expect
+            .poll(async () => content.document(`photos/${id}`))
+            .toMatchObject({ sourceUrl: 'https://arhiva.example/set', sourceLabel: 'Arhiva' });
+    }
+});
+
+test(
+    'A source address that is not https, set on a selection, leaves every photo as it was and says why',
+    { tag: ['@S-A09-BAD-BULK-SOURCE-NOT-HTTPS'] },
+    async ({ page, lang, content }) => {
+        await selectBothPhotos(page, lang, content);
+        const dialog = await openSetFields(page, lang);
+        await dialog.getByLabel(photosText(lang, 'adminContent.photos.field.sourceUrl'), { exact: true }).fill('http://arhiva.example/set');
+        await page.getByRole('button', { name: photosText(lang, 'adminContent.photos.setFields.apply'), exact: true }).click();
+
+        await page.getByRole('button', { name: photosText(lang, 'adminContent.photos.bulk.seeWhy') }).click();
+        const report = page.locator('hcm-dialog.report');
+        const reason = photosText(lang, 'adminContent.photos.reason.invalid');
+        await expect(
+            report.getByText(photosText(lang, 'adminContent.photos.reason.line', { title: 'Piața Romană', reason })),
+        ).toBeVisible();
+        for (const id of ['one', 'two']) {
+            expect((await content.document(`photos/${id}`))?.['sourceUrl']).toBeUndefined();
+        }
     },
 );

@@ -99,6 +99,8 @@ export const ro = {
     'adminContent.field.yearStart': 'Anul de început',
     'adminContent.field.yearEnd': 'Anul de sfârșit',
     'adminContent.field.dateText': 'Data, așa cum e scrisă',
+    'adminContent.field.month': 'Luna',
+    'adminContent.field.day': 'Ziua',
     'adminContent.field.date': 'Data',
     'adminContent.field.author': 'Autorul',
     'adminContent.field.license': 'Licența',

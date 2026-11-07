@@ -49,6 +49,7 @@ describe('<hcm-admin-photo-editor>: states', () => {
             'Texts',
             'Date',
             'Author and rights',
+            'Source',
             'Links',
             'Place and direction',
             'Publishing',
@@ -208,7 +209,7 @@ describe('<hcm-admin-photo-editor>: fields', () => {
         type(element, '#photo-link-label-0', 'Arhiva');
         type(element, '#photo-link-url-0', 'https://b.example');
         deep(deep(element, '.link-row hcm-icon-button'), 'button').click();
-        deep(deep(deepAll(element, 'fieldset')[4] ?? element, '.actions hcm-button'), 'button').click();
+        deep(deep(deepAll(element, 'fieldset')[5] ?? element, '.actions hcm-button'), 'button').click();
 
         expect(photos.calls).toEqual([
             'edit {}',
@@ -227,7 +228,7 @@ describe('<hcm-admin-photo-editor>: fields', () => {
 
         expect(deepText(element)).toContain('At most 5 links.');
         expect(
-            (deep(deepAll(element, 'fieldset')[4] ?? element, '.actions hcm-button') as HTMLElement & { disabled: boolean }).disabled,
+            (deep(deepAll(element, 'fieldset')[5] ?? element, '.actions hcm-button') as HTMLElement & { disabled: boolean }).disabled,
         ).toBe(true);
     });
 });
@@ -242,7 +243,7 @@ describe('<hcm-admin-photo-editor>: place, direction and publishing', () => {
         type(element, '#photo-lat', '44.5');
         type(element, '#photo-lng', 'x');
         type(element, '#photo-bearing', '');
-        const actions = deepAll(deepAll(element, 'fieldset')[5] ?? element, '.actions hcm-button');
+        const actions = deepAll(deepAll(element, 'fieldset')[6] ?? element, '.actions hcm-button');
         deep(actions[0] ?? element, 'button').click();
         deep(actions[1] ?? element, 'button').click();
         const slider = deep(element, 'hcm-slider');
@@ -262,7 +263,7 @@ describe('<hcm-admin-photo-editor>: place, direction and publishing', () => {
     it('badPath_withoutAMapTheDirectionButtonsAreOff', async () => {
         const { element } = await editorOf(editor());
 
-        const actions = deepAll(deepAll(element, 'fieldset')[5] ?? element, '.actions hcm-button') as (HTMLElement & {
+        const actions = deepAll(deepAll(element, 'fieldset')[6] ?? element, '.actions hcm-button') as (HTMLElement & {
             disabled: boolean;
         })[];
         expect(actions.map((button) => button.disabled)).toEqual([true, true]);
@@ -273,7 +274,7 @@ describe('<hcm-admin-photo-editor>: place, direction and publishing', () => {
         const { element, photos } = await editorOf(editor({ picking: true }), { mapReady: true });
 
         expect(deepText(element)).toContain('Click on the map where the camera looked.');
-        deep(deep(deepAll(element, 'fieldset')[5] ?? element, '.banner hcm-button'), 'button').click();
+        deep(deep(deepAll(element, 'fieldset')[6] ?? element, '.banner hcm-button'), 'button').click();
 
         expect(photos.calls).toEqual(['cancelDirection']);
     });
@@ -296,7 +297,7 @@ describe('<hcm-admin-photo-editor>: place, direction and publishing', () => {
         expect(text).toContain('The EXIF place is outside the city, so it cannot be applied.');
         expect(text).toContain('Year from EXIF: 1936');
         expect(text).toContain('Check or confirm the place to publish it.');
-        const fieldset = deepAll(element, 'fieldset')[5] ?? element;
+        const fieldset = deepAll(element, 'fieldset')[6] ?? element;
         deep(deep(fieldset, '.banner hcm-button'), 'button').click();
         for (const button of deepAll(fieldset, 'li hcm-button')) {
             deep(button, 'button').click();
@@ -417,5 +418,101 @@ describe('<hcm-admin-photo-editor>: the image', () => {
         const { element } = await editorOf(editor(overrides));
 
         expect(deepText(element)).toContain(text);
+    });
+});
+
+describe('<hcm-admin-photo-editor>: the date at its precision, the source', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_monthAppearsWithAYearAndDayWithAMonth', async () => {
+        const none = await editorOf(editor({ value: { ...VALUE, year: undefined } }));
+        expect(deepAll(none.element, '#photo-month')).toEqual([]);
+        expect(deepAll(none.element, '#photo-day')).toEqual([]);
+
+        const year = await editorOf(editor({ value: { ...VALUE, year: 1936 } }));
+        expect(deepAll(year.element, '#photo-month')).toHaveLength(1);
+        expect(deepAll(year.element, '#photo-day')).toEqual([]);
+        expect((deep(year.element, '#photo-month') as HTMLSelectElement).options[7]?.textContent).toBe('July');
+        const month = deep(year.element, '#photo-month') as HTMLSelectElement;
+        month.value = '7';
+        month.dispatchEvent(new Event('change'));
+        expect(year.photos.calls).toEqual(['edit {"month":7}']);
+
+        const full = await editorOf(editor({ value: { ...VALUE, year: 1936, month: 7, day: 12 } }));
+        expect((deep(full.element, '#photo-month') as HTMLSelectElement).value).toBe('7');
+        expect((deep(full.element, '#photo-day') as HTMLInputElement).value).toBe('12');
+        type(full.element, '#photo-day', '13');
+        expect(full.photos.calls).toEqual(['edit {"day":13}']);
+    });
+
+    it('happyPath_clearingAPartClearsThePartsBelowIt', async () => {
+        const edits: string[][] = [];
+        const { element, photos } = await editorOf(editor({ value: { ...VALUE, year: 1936, month: 7, day: 12 } }));
+        element.intents = new Proxy(photos.intents, {
+            get: (target, name, receiver): unknown =>
+                name === 'edit'
+                    ? (patch: object): void => {
+                          edits.push(Object.keys(patch));
+                      }
+                    : (Reflect.get(target, name, receiver) as unknown),
+        });
+        await updated(element);
+
+        const month = deep(element, '#photo-month') as HTMLSelectElement;
+        month.value = '';
+        month.dispatchEvent(new Event('change'));
+        type(element, '#photo-year', '');
+
+        expect(edits).toEqual([
+            ['month', 'day'],
+            ['year', 'month', 'day'],
+        ]);
+    });
+
+    it('badPath_aRangeHidesTheMonthUnlessThereIsOneToClear', async () => {
+        const range = await editorOf(editor({ value: { ...VALUE, year: 1936, yearEnd: 1940 } }));
+        expect(deepAll(range.element, '#photo-month')).toEqual([]);
+
+        const oneYear = await editorOf(editor({ value: { ...VALUE, year: 1936, yearEnd: 1936 } }));
+        expect(deepAll(oneYear.element, '#photo-month')).toHaveLength(1);
+
+        const both = await editorOf(
+            editor({
+                value: { ...VALUE, year: 1936, yearEnd: 1940, month: 7 },
+                issues: [{ path: 'month', code: 'validation.dateRange' }],
+            }),
+        );
+        expect(deep(both.element, '#photo-month-error').textContent).toBe(
+            'A month or a day goes with one year: clear the end year or the month.',
+        );
+    });
+
+    it('badPath_anImpossibleDayIsNamedOnceLeft', async () => {
+        const { element } = await editorOf(
+            editor({
+                value: { ...VALUE, year: 1937, month: 2, day: 29 },
+                issues: [{ path: 'day', code: 'validation.dateImpossible' }],
+            }),
+        );
+
+        expect(deep(element, '#save-why').textContent).toBe('Cannot save: Day: that day does not exist in that month.');
+        const day = deep(element, '#photo-day');
+        day.dispatchEvent(new FocusEvent('focusout', { bubbles: true, composed: true }));
+        await updated(element);
+        expect(deep(element, '#photo-day-error').textContent).toBe('That day does not exist in that month.');
+    });
+
+    it('happyPath_theSourceHasItsOwnSection', async () => {
+        const { element, photos } = await editorOf(editor({ value: { ...VALUE, sourceUrl: 'https://a.example', sourceLabel: 'Arhiva' } }));
+        const section =
+            deepAll(element, 'fieldset').find((fieldset) => fieldset.querySelector('legend')?.textContent === 'Source') ?? element;
+
+        expect((deep(section, '#photo-sourceUrl') as HTMLInputElement).value).toBe('https://a.example');
+        expect(deep(section, '#photo-sourceUrl').getAttribute('maxlength')).toBe('2048');
+        expect((deep(section, '#photo-sourceLabel') as HTMLInputElement).value).toBe('Arhiva');
+        type(element, '#photo-sourceUrl', 'https://b.example');
+        type(element, '#photo-sourceLabel', 'Muzeul');
+        expect(photos.calls).toEqual(['edit {"sourceUrl":"https://b.example"}', 'edit {"sourceLabel":"Muzeul"}']);
     });
 });

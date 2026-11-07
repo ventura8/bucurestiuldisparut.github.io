@@ -3,7 +3,7 @@ import type { Locale } from '@hcm/shared';
 
 import { siteManifestData, type Json } from '../../fixtures/manifest.js';
 import { mapFacts, mapIdle, renderedFeatureIds, renderedPoints, screenPointOf, type LngLat } from '../../support/map.js';
-import { isColour, probePixel } from '../../support/site.js';
+import { isColour, probePixel, sitePath } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
 import { chooseMenuItem, engineEvents, openViewer, serveManifest, t, viewer, windowClassOf } from '../../support/viewer.js';
 
@@ -185,6 +185,68 @@ function withRightsHolder(id: string, holder: string): Json {
     }
     return manifest;
 }
+
+/** The fixture with the lone photo's own dating taken away and `fields` set. */
+function withPhotoFields(fields: Readonly<Record<string, unknown>>): Json {
+    const manifest = siteManifestData();
+    const target = (manifest['photos'] as Json[]).find((candidate) => candidate['id'] === LONE) ?? {};
+    for (const key of ['yearEnd', 'dateText']) {
+        Reflect.deleteProperty(target, key);
+    }
+    Object.assign(target, fields);
+    return manifest;
+}
+
+const ARCHIVE = { url: 'https://arhiva.example/foto/1976', label: 'Arhiva Operetei (e2e)' };
+
+test('A photo reads at the precision of its date', { tag: '@S-V07-HAPPY-PRECISE-DATE' }, async ({ page, lang }) => {
+    await serveManifest(page, withPhotoFields({ year: 1976, month: 7, day: 12 }));
+    await openViewer(page, { lang, hash: `${LONE_VIEW}&photo=${LONE}` });
+    const date = viewer(page).locator('hcm-photo-sheet .supporting');
+    await expect(date).toHaveText(lang === 'ro' ? '12 iulie 1976' : '12 July 1976');
+
+    await serveManifest(page, withPhotoFields({ year: 1976, month: 7 }));
+    await page.reload();
+    await expect(date).toHaveText(lang === 'ro' ? 'Iulie 1976' : 'July 1976');
+});
+
+test(
+    "An impossible date in a manifest is the manifest's error, never a shown date",
+    { tag: '@S-V07-BAD-IMPOSSIBLE-DATE' },
+    async ({ page, lang }) => {
+        await serveManifest(page, withPhotoFields({ year: 1977, month: 2, day: 29 }));
+        await page.goto(sitePath('bucharest', { lang }));
+
+        await expect(page.getByRole('alert')).toContainText(t(lang, 'error.manifest.invalid', { count: '1' }));
+        await expect(viewer(page).locator('canvas.mapboxgl-canvas')).toHaveCount(0);
+    },
+);
+
+test('The source is a plain link that opens in a new tab', { tag: '@S-V07-HAPPY-SOURCE-LINK' }, async ({ page, lang }) => {
+    await serveManifest(page, withPhotoFields({ source: ARCHIVE }));
+    await openViewer(page, { lang, hash: `${LONE_VIEW}&photo=${LONE}` });
+
+    const link = viewer(page).locator('hcm-photo-sheet .source').getByRole('link', { name: ARCHIVE.label });
+    await expect(link).toHaveAttribute('href', ARCHIVE.url);
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', /\bnoopener\b/);
+    await expect(viewer(page).locator('hcm-photo-sheet .source')).toContainText(t(lang, 'photo.source'));
+});
+
+test('A source that is not https makes the manifest invalid', { tag: '@S-V07-BAD-SOURCE-NOT-HTTPS' }, async ({ page, lang }) => {
+    await serveManifest(page, withPhotoFields({ source: { url: 'http://arhiva.example/foto/1976' } }));
+    await page.goto(sitePath('bucharest', { lang }));
+
+    await expect(page.getByRole('alert')).toContainText(t(lang, 'error.manifest.invalid', { count: '1' }));
+    await expect(viewer(page).locator('a[href^="http://arhiva"]')).toHaveCount(0);
+});
+
+test('A photo with no source, from an old manifest, shows no source line', { tag: '@S-V07-BAD-NO-SOURCE' }, async ({ page, lang }) => {
+    await openViewer(page, { lang, hash: `${LONE_VIEW}&photo=${LONE}` });
+
+    await expect(viewer(page).locator('hcm-photo-sheet .details')).toContainText(t(lang, 'license.permission-legacy'));
+    await expect(viewer(page).locator('hcm-photo-sheet .source')).toHaveCount(0);
+});
 
 test('The photo sheet credits the rights holder after the licence', { tag: '@S-V07-HAPPY-RIGHTS-HOLDER' }, async ({ page, lang }) => {
     await serveManifest(page, withRightsHolder(LONE, 'Arhiva Operetei (e2e)'));

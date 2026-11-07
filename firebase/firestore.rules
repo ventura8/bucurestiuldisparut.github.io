@@ -271,6 +271,22 @@ service cloud.firestore {
                 && location.lng <= bounds.east + 0.5;
         }
 
+        // A month's days in the Gregorian calendar (zod `withPhotoDate`).
+        function daysInMonth(year, month) {
+            return month == 2
+                ? ((year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) ? 29 : 28)
+                : (month in [4, 6, 9, 11] ? 30 : 31);
+        }
+
+        // zod `withPhotoDate`: a month needs a year and dates one year, a day needs a month and exists in it.
+        function validPhotoDate(data) {
+            return (!('month' in data)
+                    || (data.month is int && data.month >= 1 && data.month <= 12
+                        && 'year' in data && data.get('yearEnd', data.year) == data.year))
+                && (!('day' in data)
+                    || (data.day is int && 'month' in data && data.day >= 1 && data.day <= daysInMonth(data.year, data.month)));
+        }
+
         // The photo as an admin leaves it; image, exif, processing, processingError, duplicateOf,
         // suggested and original belong to photos.onUpload, createdAt and createdBy to the create.
         // The location is checked by the caller (against the city only when it changes).
@@ -281,6 +297,7 @@ service cloud.firestore {
                 // zod `validYearRange`: an end year needs a start year, and never comes before it.
                 && isYear(data.get('year', 1800))
                 && (!('yearEnd' in data) || (isYear(data.yearEnd) && data.year <= data.yearEnd))
+                && validPhotoDate(data)
                 && data.get('author', 'x').matches('[\\s\\S]{1,200}')
                 && data.get('rightsHolder', 'x').matches('[\\s\\S]{1,200}')
                 && data.get('sourceLabel', 'x').matches('[\\s\\S]{1,200}')
@@ -523,7 +540,7 @@ service cloud.firestore {
                 allow read: if isCityMember(city);
                 allow create: if isCityMember(city)
                     && isId(photo)
-                    && request.resource.data.keys().hasOnly(['title', 'description', 'year', 'yearEnd', 'dateText', 'author', 'license',
+                    && request.resource.data.keys().hasOnly(['title', 'description', 'year', 'yearEnd', 'month', 'day', 'dateText', 'author', 'license',
                         'rightsHolder', 'sourceUrl', 'sourceLabel', 'permissionNote', 'legacyId', 'links', 'location', 'bearing', 'fov',
                         'published', 'rightsReview', 'processing', 'createdAt', 'createdBy', 'updatedBy', 'updatedAt'])
                     && validPhoto(request.resource.data)
@@ -532,7 +549,7 @@ service cloud.firestore {
                     && request.resource.data.published == false
                     && created(request.resource.data);
                 allow update: if isCityMember(city)
-                    && changedKeys().hasOnly(['title', 'description', 'year', 'yearEnd', 'dateText', 'author', 'license', 'rightsHolder',
+                    && changedKeys().hasOnly(['title', 'description', 'year', 'yearEnd', 'month', 'day', 'dateText', 'author', 'license', 'rightsHolder',
                         'sourceUrl', 'sourceLabel', 'permissionNote', 'legacyId', 'links', 'location', 'bearing', 'fov', 'published',
                         'rightsReview', 'updatedBy', 'updatedAt'])
                     && validPhoto(request.resource.data)

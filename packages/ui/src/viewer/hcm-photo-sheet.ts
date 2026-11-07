@@ -2,7 +2,7 @@
  * `<hcm-photo-sheet>`: the detail sheet for a photo or a POI (docs/research/M1-interfaces.md §5.2; scenarios V07,
  * V24): a modal bottom sheet on compact, a modal side sheet on medium and compact height, a docked standard side
  * sheet from expanded. A photo shows its lazy WebP thumbnail (a button that opens the lightbox), its date, author,
- * licence, rights note, description and links, all rendered as text and anchors; a POI renders `<hcm-poi-detail>`.
+ * licence, rights note, source link, description and links, all rendered as text and anchors; a POI renders `<hcm-poi-detail>`.
  * A missing image shows a placeholder that keeps the photo's title as its accessible name (S-V07-BAD-IMAGE404).
  * Once the thumbnail is decoded (or failed) the sheet fires `hcm-photo-shown` (`{ ok }`), which the viewer turns into
  * the `photo_timing` field measurement (docs/ARCHITECTURE.md → *Field measurements*).
@@ -16,7 +16,7 @@ import { externalLink } from './markdown.js';
 import { resolveAssetUrl } from './services.js';
 import { closeEvent, renderSheetFrame } from './sheet-frame.js';
 import { baseStyles, detailStyles, sheetStyles } from './shared-styles.js';
-import { licenseText, localizedText, photoDateText } from './text.js';
+import { licenseText, localizedText, photoDateText, photoSourceText } from './text.js';
 
 export const HCM_PHOTO_SHEET_TAG = 'hcm-photo-sheet';
 
@@ -145,7 +145,8 @@ export class HcmPhotoSheet extends LitElement {
             <p>${licenseText(photo.license, locale)}</p>
             ${photo.rightsHolder === undefined ? nothing : html`<p>${translate(locale, 'photo.rightsHolder', { holder: photo.rightsHolder })}</p>`}
             ${photo.rightsReview === true ? html`<p class="note">${translate(locale, 'photo.rightsReview')}</p>` : nothing}
-            ${photo.description === undefined ? nothing : html`<p>${localizedText(photo.description, locale)}</p>`} ${this.#links(photo)}
+            ${this.#source(photo)} ${photo.description === undefined ? nothing : html`<p>${localizedText(photo.description, locale)}</p>`}
+            ${this.#links(photo)}
         </div>`;
     }
 
@@ -188,6 +189,13 @@ export class HcmPhotoSheet extends LitElement {
     /** The thumbnail is on screen (decoded) or failed: the viewer times the photo's opening. */
     #shown(ok: boolean): void {
         this.dispatchEvent(new CustomEvent('hcm-photo-shown', { bubbles: true, detail: { ok } }));
+    }
+
+    /** Where the photo comes from: a plain link, opened in a new tab (`externalLink`). */
+    #source({ source }: Photo): TemplateResult {
+        return source === undefined
+            ? EMPTY
+            : html`<p class="source">${translate(this.locale, 'photo.source')} ${externalLink(source.url, photoSourceText(source))}</p>`;
     }
 
     #links(photo: Photo): TemplateResult {

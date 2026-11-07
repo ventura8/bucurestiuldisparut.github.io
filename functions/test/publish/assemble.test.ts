@@ -248,3 +248,41 @@ describe('assembleManifest: the city itself', () => {
         expect(assembly.ok ? [] : assembly.issues.map((issue) => issue.path)).toEqual([path]);
     });
 });
+
+describe("assembleManifest: a photo's date and source", () => {
+    it('happyPath_aPhotosDateAndSourceReachTheManifest', () => {
+        const manifest = manifestOf(
+            assembleManifest(
+                content({
+                    photos: result([
+                        [
+                            'named',
+                            photoDoc('named', {
+                                year: 1936,
+                                month: 7,
+                                day: 12,
+                                sourceUrl: 'https://arhiva.example/1',
+                                sourceLabel: 'Arhiva',
+                            }),
+                        ],
+                        ['plain', photoDoc('plain', { year: 1936, month: 7, sourceUrl: 'https://arhiva.example/2' })],
+                    ]),
+                }),
+                TEST_CONFIG.errorEndpoint,
+            ),
+        );
+
+        expect(manifest.photos.map(({ id, month, day, source }) => ({ id, month, day, source }))).toEqual([
+            { id: 'named', month: 7, day: 12, source: { url: 'https://arhiva.example/1', label: 'Arhiva' } },
+            { id: 'plain', month: 7, source: { url: 'https://arhiva.example/2' } },
+        ]);
+    });
+
+    it('badPath_aSourceNameWithoutAnAddressStaysInTheAdmin', () => {
+        const manifest = manifestOf(
+            assembleManifest(content({ photos: result([['p1', photoDoc('p1', { sourceLabel: 'Arhiva' })]]) }), TEST_CONFIG.errorEndpoint),
+        );
+
+        expect(manifest.photos[0]?.source).toBeUndefined();
+    });
+});
