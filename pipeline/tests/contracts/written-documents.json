@@ -137,10 +137,10 @@
                         "nanoseconds": 0
                     },
                     "bytes": 1048576,
-                    "totalBytes": 1588134
+                    "totalBytes": 1595969
                 }
             },
-            "progress": 0.1651
+            "progress": 0.1643
         },
         {
             "type": "usgs-import",
@@ -186,8 +186,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -244,8 +244,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -309,8 +309,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -324,7 +324,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -381,8 +381,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -396,7 +396,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -460,8 +460,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -475,7 +475,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -546,8 +546,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -561,7 +561,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -639,8 +639,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -654,7 +654,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -681,9 +681,9 @@
                 "locate": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                    "generation": "1792000000000009",
-                    "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
-                    "bytes": 672172,
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -740,8 +740,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -755,7 +755,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -782,9 +782,9 @@
                 "locate": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                    "generation": "1792000000000009",
-                    "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
-                    "bytes": 672172,
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -848,8 +848,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -863,7 +863,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -890,9 +890,9 @@
                 "locate": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                    "generation": "1792000000000009",
-                    "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
-                    "bytes": 672172,
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -904,9 +904,9 @@
                 },
                 "reference": {
                     "status": "done",
-                    "gcsPath": "reference/bucharest/s2/f12edd4d89e1bdfb.tif",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 240258,
+                    "bytes": 587149,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -963,8 +963,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -978,7 +978,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1005,9 +1005,9 @@
                 "locate": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                    "generation": "1792000000000009",
-                    "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
-                    "bytes": 672172,
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1019,9 +1019,9 @@
                 },
                 "reference": {
                     "status": "done",
-                    "gcsPath": "reference/bucharest/s2/f12edd4d89e1bdfb.tif",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 240258,
+                    "bytes": 587149,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1085,8 +1085,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1100,7 +1100,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1127,9 +1127,9 @@
                 "locate": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                    "generation": "1792000000000009",
-                    "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
-                    "bytes": 672172,
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1141,9 +1141,9 @@
                 },
                 "reference": {
                     "status": "done",
-                    "gcsPath": "reference/bucharest/s2/f12edd4d89e1bdfb.tif",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 240258,
+                    "bytes": 587149,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1211,8 +1211,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1226,7 +1226,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1253,9 +1253,9 @@
                 "locate": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                    "generation": "1792000000000009",
-                    "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
-                    "bytes": 672172,
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1267,9 +1267,9 @@
                 },
                 "reference": {
                     "status": "done",
-                    "gcsPath": "reference/bucharest/s2/f12edd4d89e1bdfb.tif",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 240258,
+                    "bytes": 587149,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1344,8 +1344,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1359,7 +1359,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1386,9 +1386,9 @@
                 "locate": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                    "generation": "1792000000000009",
-                    "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
-                    "bytes": 672172,
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1400,9 +1400,9 @@
                 },
                 "reference": {
                     "status": "done",
-                    "gcsPath": "reference/bucharest/s2/f12edd4d89e1bdfb.tif",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 240258,
+                    "bytes": 587149,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1426,8 +1426,8 @@
                 "warp": {
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
-                    "generation": "1792000000000014",
-                    "bytes": 3345592,
+                    "generation": "1792000000000015",
+                    "bytes": 7214378,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1484,8 +1484,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1499,7 +1499,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1526,9 +1526,9 @@
                 "locate": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                    "generation": "1792000000000009",
-                    "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
-                    "bytes": 672172,
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1540,9 +1540,9 @@
                 },
                 "reference": {
                     "status": "done",
-                    "gcsPath": "reference/bucharest/s2/f12edd4d89e1bdfb.tif",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 240258,
+                    "bytes": 587149,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1566,8 +1566,8 @@
                 "warp": {
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
-                    "generation": "1792000000000014",
-                    "bytes": 3345592,
+                    "generation": "1792000000000015",
+                    "bytes": 7214378,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1631,8 +1631,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1646,7 +1646,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1673,9 +1673,9 @@
                 "locate": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                    "generation": "1792000000000009",
-                    "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
-                    "bytes": 672172,
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1687,9 +1687,9 @@
                 },
                 "reference": {
                     "status": "done",
-                    "gcsPath": "reference/bucharest/s2/f12edd4d89e1bdfb.tif",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 240258,
+                    "bytes": 587149,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1713,8 +1713,8 @@
                 "warp": {
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
-                    "generation": "1792000000000014",
-                    "bytes": 3345592,
+                    "generation": "1792000000000015",
+                    "bytes": 7214378,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1727,9 +1727,9 @@
                 "export": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
-                    "generation": "1792000000000015",
-                    "sha256": "d3012117a122541ed73b2fa6575207ff1197c72463eb9769d91268f7e86a0cd0",
-                    "bytes": 883828,
+                    "generation": "1792000000000016",
+                    "sha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
+                    "bytes": 1967378,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1786,8 +1786,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1801,7 +1801,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1828,9 +1828,9 @@
                 "locate": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                    "generation": "1792000000000009",
-                    "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
-                    "bytes": 672172,
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1842,9 +1842,9 @@
                 },
                 "reference": {
                     "status": "done",
-                    "gcsPath": "reference/bucharest/s2/f12edd4d89e1bdfb.tif",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 240258,
+                    "bytes": 587149,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1868,8 +1868,8 @@
                 "warp": {
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
-                    "generation": "1792000000000014",
-                    "bytes": 3345592,
+                    "generation": "1792000000000015",
+                    "bytes": 7214378,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1882,9 +1882,9 @@
                 "export": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
-                    "generation": "1792000000000015",
-                    "sha256": "d3012117a122541ed73b2fa6575207ff1197c72463eb9769d91268f7e86a0cd0",
-                    "bytes": 883828,
+                    "generation": "1792000000000016",
+                    "sha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
+                    "bytes": 1967378,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1948,8 +1948,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1963,7 +1963,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1990,9 +1990,9 @@
                 "locate": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                    "generation": "1792000000000009",
-                    "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
-                    "bytes": 672172,
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2004,9 +2004,9 @@
                 },
                 "reference": {
                     "status": "done",
-                    "gcsPath": "reference/bucharest/s2/f12edd4d89e1bdfb.tif",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 240258,
+                    "bytes": 587149,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2030,8 +2030,8 @@
                 "warp": {
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
-                    "generation": "1792000000000014",
-                    "bytes": 3345592,
+                    "generation": "1792000000000015",
+                    "bytes": 7214378,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2044,9 +2044,9 @@
                 "export": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
-                    "generation": "1792000000000015",
-                    "sha256": "d3012117a122541ed73b2fa6575207ff1197c72463eb9769d91268f7e86a0cd0",
-                    "bytes": 883828,
+                    "generation": "1792000000000016",
+                    "sha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
+                    "bytes": 1967378,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2107,8 +2107,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2122,7 +2122,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2149,9 +2149,9 @@
                 "locate": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                    "generation": "1792000000000009",
-                    "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
-                    "bytes": 672172,
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2163,9 +2163,9 @@
                 },
                 "reference": {
                     "status": "done",
-                    "gcsPath": "reference/bucharest/s2/f12edd4d89e1bdfb.tif",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 240258,
+                    "bytes": 587149,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2189,8 +2189,8 @@
                 "warp": {
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
-                    "generation": "1792000000000014",
-                    "bytes": 3345592,
+                    "generation": "1792000000000015",
+                    "bytes": 7214378,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2203,9 +2203,9 @@
                 "export": {
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
-                    "generation": "1792000000000015",
-                    "sha256": "d3012117a122541ed73b2fa6575207ff1197c72463eb9769d91268f7e86a0cd0",
-                    "bytes": 883828,
+                    "generation": "1792000000000016",
+                    "sha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
+                    "bytes": 1967378,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2267,8 +2267,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2282,7 +2282,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2439,7 +2439,7 @@
                     }
                 }
             },
-            "progress": 0.1652,
+            "progress": 0.1644,
             "finishedAt": {
                 "seconds": 1792000000,
                 "nanoseconds": 0
@@ -2448,7 +2448,7 @@
                 "code": "apiError.imagery.downloadIncomplete",
                 "message": "the delivery is larger than USGS announced",
                 "params": {
-                    "bytes": "1587134"
+                    "bytes": "1594969"
                 }
             }
         },
@@ -2813,8 +2813,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2828,7 +2828,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2856,8 +2856,8 @@
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
                     "generation": "1792000000000009",
-                    "sha256": "b365aac201eed949182539d7c846ea1ac0c908b6d2e9179ae11fbc21234ff9ad",
-                    "bytes": 1259225,
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2869,9 +2869,9 @@
                 },
                 "reference": {
                     "status": "done",
-                    "gcsPath": "reference/bucharest/s2/f12edd4d89e1bdfb.tif",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 233321,
+                    "bytes": 582979,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2929,8 +2929,8 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
-                    "bytes": 1588134,
+                    "sha256": "8e723b18a69a39bed6b0389fd8c97588724e17e5e642db216de110e52ef005ed",
+                    "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2944,7 +2944,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
                     "generation": "1792000000000004",
-                    "bytes": 792479,
+                    "bytes": 795640,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3143,7 +3143,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2199,
+                    "bytes": 2214,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3208,7 +3208,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2199,
+                    "bytes": 2214,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3280,7 +3280,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2199,
+                    "bytes": 2214,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3359,7 +3359,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2199,
+                    "bytes": 2214,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3445,7 +3445,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2199,
+                    "bytes": 2214,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3539,7 +3539,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2199,
+                    "bytes": 2214,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3640,7 +3640,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2199,
+                    "bytes": 2214,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3738,7 +3738,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2199,
+                    "bytes": 2214,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3959,9 +3959,9 @@
             },
             "scan": {
                 "path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                "width": 1043,
-                "height": 845,
-                "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
+                "width": 1500,
+                "height": 1100,
+                "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
                 "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan-preview.jpg",
                 "previewScale": 1.0
             },
@@ -3976,8 +3976,8 @@
                             "y": 0
                         },
                         "geo": {
-                            "lat": 44.445332294,
-                            "lng": 26.070661117
+                            "lat": 44.451894462,
+                            "lng": 26.053817813
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -3985,12 +3985,12 @@
                     {
                         "id": "c2",
                         "pixel": {
-                            "x": 1043,
+                            "x": 1500,
                             "y": 0
                         },
                         "geo": {
-                            "lat": 44.447356883,
-                            "lng": 26.126834241
+                            "lat": 44.455088062,
+                            "lng": 26.142626838
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -3998,12 +3998,12 @@
                     {
                         "id": "c3",
                         "pixel": {
-                            "x": 1043,
-                            "y": 845
+                            "x": 1500,
+                            "y": 1100
                         },
                         "geo": {
-                            "lat": 44.41467725,
-                            "lng": 26.129567537
+                            "lat": 44.408348661,
+                            "lng": 26.146556559
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -4012,14 +4012,55 @@
                         "id": "c4",
                         "pixel": {
                             "x": 0,
-                            "y": 845
+                            "y": 1100
                         },
                         "geo": {
-                            "lat": 44.412569274,
-                            "lng": 26.073188865
+                            "lat": 44.404995292,
+                            "lng": 26.057356892
                         },
                         "enabled": true,
                         "origin": "corner"
+                    }
+                ]
+            },
+            "calibration": {
+                "how": "votes",
+                "votes": {
+                    "agreed": 115,
+                    "tiles": 117
+                },
+                "coveredPct": 100.0,
+                "model": {
+                    "camera": "corners",
+                    "rotation": 0,
+                    "mirrored": false,
+                    "scale": 0.99855,
+                    "rotationDeg": -0.0163,
+                    "dxM": -248.6,
+                    "dyM": 191.4
+                },
+                "tiles": {
+                    "agreed": 121,
+                    "tried": 121
+                },
+                "crossValidatedM": 0.1,
+                "measuredPct": 59.8,
+                "outline": [
+                    {
+                        "lat": 44.449779,
+                        "lng": 26.062866
+                    },
+                    {
+                        "lat": 44.410054,
+                        "lng": 26.062866
+                    },
+                    {
+                        "lat": 44.410054,
+                        "lng": 26.137134
+                    },
+                    {
+                        "lat": 44.449779,
+                        "lng": 26.137134
                     }
                 ]
             }
@@ -4059,9 +4100,9 @@
             },
             "scan": {
                 "path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                "width": 1043,
-                "height": 845,
-                "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
+                "width": 1500,
+                "height": 1100,
+                "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
                 "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan-preview.jpg",
                 "previewScale": 1.0
             },
@@ -4076,8 +4117,8 @@
                             "y": 0
                         },
                         "geo": {
-                            "lat": 44.445332294,
-                            "lng": 26.070661117
+                            "lat": 44.451894462,
+                            "lng": 26.053817813
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -4085,12 +4126,12 @@
                     {
                         "id": "c2",
                         "pixel": {
-                            "x": 1043,
+                            "x": 1500,
                             "y": 0
                         },
                         "geo": {
-                            "lat": 44.447356883,
-                            "lng": 26.126834241
+                            "lat": 44.455088062,
+                            "lng": 26.142626838
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -4098,12 +4139,12 @@
                     {
                         "id": "c3",
                         "pixel": {
-                            "x": 1043,
-                            "y": 845
+                            "x": 1500,
+                            "y": 1100
                         },
                         "geo": {
-                            "lat": 44.41467725,
-                            "lng": 26.129567537
+                            "lat": 44.408348661,
+                            "lng": 26.146556559
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -4112,23 +4153,64 @@
                         "id": "c4",
                         "pixel": {
                             "x": 0,
-                            "y": 845
+                            "y": 1100
                         },
                         "geo": {
-                            "lat": 44.412569274,
-                            "lng": 26.073188865
+                            "lat": 44.404995292,
+                            "lng": 26.057356892
                         },
                         "enabled": true,
                         "origin": "corner"
                     }
                 ]
             },
+            "calibration": {
+                "how": "votes",
+                "votes": {
+                    "agreed": 115,
+                    "tiles": 117
+                },
+                "coveredPct": 100.0,
+                "model": {
+                    "camera": "corners",
+                    "rotation": 0,
+                    "mirrored": false,
+                    "scale": 0.99855,
+                    "rotationDeg": -0.0163,
+                    "dxM": -248.6,
+                    "dyM": 191.4
+                },
+                "tiles": {
+                    "agreed": 121,
+                    "tried": 121
+                },
+                "crossValidatedM": 0.1,
+                "measuredPct": 59.8,
+                "outline": [
+                    {
+                        "lat": 44.449779,
+                        "lng": 26.062866
+                    },
+                    {
+                        "lat": 44.410054,
+                        "lng": 26.062866
+                    },
+                    {
+                        "lat": 44.410054,
+                        "lng": 26.137134
+                    },
+                    {
+                        "lat": 44.449779,
+                        "lng": 26.137134
+                    }
+                ]
+            },
             "reference": {
                 "bounds": {
-                    "west": 26.07305,
-                    "south": 44.414602,
-                    "east": 26.12695,
-                    "north": 44.445393
+                    "west": 26.055264,
+                    "south": 44.406131,
+                    "east": 26.144736,
+                    "north": 44.453859
                 },
                 "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
                 "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
@@ -4171,9 +4253,9 @@
             },
             "scan": {
                 "path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                "width": 1043,
-                "height": 845,
-                "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
+                "width": 1500,
+                "height": 1100,
+                "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
                 "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan-preview.jpg",
                 "previewScale": 1.0
             },
@@ -4184,213 +4266,241 @@
                     {
                         "id": "a001",
                         "pixel": {
-                            "x": 981.78,
-                            "y": 642.74
+                            "x": 142.39,
+                            "y": 182.97
                         },
                         "geo": {
-                            "lat": 44.422269797,
-                            "lng": 26.125608363
+                            "lat": 44.444431963,
+                            "lng": 26.062809849
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.972,
-                        "residualM": 0.64
+                        "score": 1.0,
+                        "residualM": 0.33
                     },
                     {
                         "id": "a002",
                         "pixel": {
-                            "x": 914.36,
-                            "y": 722
+                            "x": 386.55,
+                            "y": 954.18
                         },
                         "geo": {
-                            "lat": 44.419078793,
-                            "lng": 26.122216412
+                            "lat": 44.412099781,
+                            "lng": 26.079788008
                         },
-                        "enabled": false,
+                        "enabled": true,
                         "origin": "auto",
-                        "score": 0.969,
-                        "residualM": 1.77
+                        "score": 1.0,
+                        "residualM": 0.02
                     },
                     {
                         "id": "a003",
                         "pixel": {
-                            "x": 453.31,
-                            "y": 37.31
+                            "x": 211.79,
+                            "y": 661.14
                         },
                         "geo": {
-                            "lat": 44.444639432,
-                            "lng": 26.095165906
+                            "lat": 44.424226445,
+                            "lng": 26.068469235
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.967,
-                        "residualM": 0.6
+                        "score": 1.0,
+                        "residualM": 0.17
                     },
                     {
                         "id": "a004",
                         "pixel": {
-                            "x": 435.58,
-                            "y": 109.38
+                            "x": 423.62,
+                            "y": 292.3
                         },
                         "geo": {
-                            "lat": 44.441829022,
-                            "lng": 26.094447664
+                            "lat": 44.440391419,
+                            "lng": 26.079788008
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.967,
-                        "residualM": 0.78
+                        "score": 1.0,
+                        "residualM": 0.17
                     },
                     {
                         "id": "a005",
                         "pixel": {
-                            "x": 554.3,
-                            "y": 600.52
+                            "x": 671.76,
+                            "y": 969.01
                         },
                         "geo": {
-                            "lat": 44.423068081,
-                            "lng": 26.102357958
+                            "lat": 44.412099781,
+                            "lng": 26.096766166
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.962,
-                        "residualM": 1.72
+                        "score": 1.0,
+                        "residualM": 0.11
                     },
                     {
                         "id": "a006",
                         "pixel": {
-                            "x": 127.02,
-                            "y": 721.12
+                            "x": 582.06,
+                            "y": 869.71
                         },
                         "geo": {
-                            "lat": 44.417521532,
-                            "lng": 26.079688397
+                            "lat": 44.416142282,
+                            "lng": 26.09110678
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.96,
-                        "residualM": 1.33
+                        "score": 1.0,
+                        "residualM": 0.12
                     },
                     {
                         "id": "a007",
                         "pixel": {
-                            "x": 426.98,
-                            "y": 776.5
+                            "x": 698.69,
+                            "y": 496.4
                         },
                         "geo": {
-                            "lat": 44.415969999,
-                            "lng": 26.096035271
+                            "lat": 44.432309491,
+                            "lng": 26.096766166
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.959,
-                        "residualM": 0.52
+                        "score": 1.0,
+                        "residualM": 0.08
                     },
                     {
                         "id": "a008",
                         "pixel": {
-                            "x": 472.66,
-                            "y": 510.13
+                            "x": 619.66,
+                            "y": 207.15
                         },
                         "geo": {
-                            "lat": 44.426397836,
-                            "lng": 26.097685225
+                            "lat": 44.444431963,
+                            "lng": 26.09110678
                         },
-                        "enabled": false,
+                        "enabled": true,
                         "origin": "auto",
-                        "score": 0.958,
-                        "residualM": 0.5
+                        "score": 1.0,
+                        "residualM": 0.11
                     },
                     {
                         "id": "a009",
                         "pixel": {
-                            "x": 69.65,
-                            "y": 687.61
+                            "x": 872.5,
+                            "y": 790.03
                         },
                         "geo": {
-                            "lat": 44.418708989,
-                            "lng": 26.076474573
+                            "lat": 44.420184503,
+                            "lng": 26.108084939
                         },
-                        "enabled": false,
+                        "enabled": true,
                         "origin": "auto",
-                        "score": 0.958,
-                        "residualM": 1.41
+                        "score": 1.0,
+                        "residualM": 0.13
                     },
                     {
                         "id": "a010",
                         "pixel": {
-                            "x": 130.35,
-                            "y": 649.23
+                            "x": 994.9,
+                            "y": 321.37
                         },
                         "geo": {
-                            "lat": 44.420298206,
-                            "lng": 26.079634119
+                            "lat": 44.440391419,
+                            "lng": 26.113744325
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.958,
-                        "residualM": 1.93
+                        "score": 1.0,
+                        "residualM": 0.08
                     },
                     {
                         "id": "a011",
                         "pixel": {
-                            "x": 898.24,
-                            "y": 783.97
+                            "x": 1000.42,
+                            "y": 226.43
                         },
                         "geo": {
-                            "lat": 44.416631014,
-                            "lng": 26.121555631
+                            "lat": 44.444431963,
+                            "lng": 26.113744325
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.957,
-                        "residualM": 1.19
+                        "score": 1.0,
+                        "residualM": 0.07
                     },
                     {
                         "id": "a012",
                         "pixel": {
-                            "x": 415.19,
-                            "y": 493.97
+                            "x": 1340.89,
+                            "y": 909.04
                         },
                         "geo": {
-                            "lat": 44.426900583,
-                            "lng": 26.094553508
+                            "lat": 44.416142282,
+                            "lng": 26.13638187
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.957,
-                        "residualM": 2.25
+                        "score": 1.0,
+                        "residualM": 0.28
                     }
                 ],
-                "fitRmseM": 1.07,
-                "checkpointRmseM": 1.74,
-                "checkpointCount": 25
+                "fitRmseM": 0.07,
+                "checkpointRmseM": 0.15,
+                "checkpointCount": 4,
+                "checkpointKind": "held-out"
+            },
+            "calibration": {
+                "how": "votes",
+                "votes": {
+                    "agreed": 115,
+                    "tiles": 117
+                },
+                "coveredPct": 100.0,
+                "model": {
+                    "camera": "corners",
+                    "rotation": 0,
+                    "mirrored": false,
+                    "scale": 0.99855,
+                    "rotationDeg": -0.0163,
+                    "dxM": -248.6,
+                    "dyM": 191.4
+                },
+                "tiles": {
+                    "agreed": 121,
+                    "tried": 121
+                },
+                "crossValidatedM": 0.16,
+                "measuredPct": 59.8,
+                "outline": [
+                    {
+                        "lat": 44.449779,
+                        "lng": 26.062866
+                    },
+                    {
+                        "lat": 44.410054,
+                        "lng": 26.062866
+                    },
+                    {
+                        "lat": 44.410054,
+                        "lng": 26.137134
+                    },
+                    {
+                        "lat": 44.449779,
+                        "lng": 26.137134
+                    }
+                ]
             },
             "reference": {
                 "bounds": {
-                    "west": 26.07305,
-                    "south": 44.414602,
-                    "east": 26.12695,
-                    "north": 44.445393
+                    "west": 26.055264,
+                    "south": 44.406131,
+                    "east": 26.144736,
+                    "north": 44.453859
                 },
                 "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
                 "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
                 "s2Item": "S2B_35TMK_20250803_0_L2A",
                 "s2Date": "2025-08-03"
-            },
-            "suggestions": {
-                "method": "sift",
-                "channels": ["s2", "osm"],
-                "generatedAt": {
-                    "seconds": 1792000000,
-                    "nanoseconds": 0
-                },
-                "minConfidence": 0.6,
-                "tiles": {
-                    "matched": 41,
-                    "total": 64
-                },
-                "pairs": []
             }
         },
         {
@@ -4428,9 +4538,9 @@
             },
             "scan": {
                 "path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
-                "width": 1043,
-                "height": 845,
-                "sha256": "c9913a7ef4aa3308bec037306b114ec022b5902e72aa60ca09f28bd9f3ba6723",
+                "width": 1500,
+                "height": 1100,
+                "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
                 "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan-preview.jpg",
                 "previewScale": 1.0
             },
@@ -4441,230 +4551,277 @@
                     {
                         "id": "a001",
                         "pixel": {
-                            "x": 981.78,
-                            "y": 642.74
+                            "x": 142.39,
+                            "y": 182.97
                         },
                         "geo": {
-                            "lat": 44.422269797,
-                            "lng": 26.125608363
+                            "lat": 44.444431963,
+                            "lng": 26.062809849
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.972,
-                        "residualM": 0.64
+                        "score": 1.0,
+                        "residualM": 0.33
                     },
                     {
                         "id": "a002",
                         "pixel": {
-                            "x": 914.36,
-                            "y": 722
+                            "x": 386.55,
+                            "y": 954.18
                         },
                         "geo": {
-                            "lat": 44.419078793,
-                            "lng": 26.122216412
+                            "lat": 44.412099781,
+                            "lng": 26.079788008
                         },
-                        "enabled": false,
+                        "enabled": true,
                         "origin": "auto",
-                        "score": 0.969,
-                        "residualM": 1.77
+                        "score": 1.0,
+                        "residualM": 0.02
                     },
                     {
                         "id": "a003",
                         "pixel": {
-                            "x": 453.31,
-                            "y": 37.31
+                            "x": 211.79,
+                            "y": 661.14
                         },
                         "geo": {
-                            "lat": 44.444639432,
-                            "lng": 26.095165906
+                            "lat": 44.424226445,
+                            "lng": 26.068469235
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.967,
-                        "residualM": 0.6
+                        "score": 1.0,
+                        "residualM": 0.17
                     },
                     {
                         "id": "a004",
                         "pixel": {
-                            "x": 435.58,
-                            "y": 109.38
+                            "x": 423.62,
+                            "y": 292.3
                         },
                         "geo": {
-                            "lat": 44.441829022,
-                            "lng": 26.094447664
+                            "lat": 44.440391419,
+                            "lng": 26.079788008
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.967,
-                        "residualM": 0.78
+                        "score": 1.0,
+                        "residualM": 0.17
                     },
                     {
                         "id": "a005",
                         "pixel": {
-                            "x": 554.3,
-                            "y": 600.52
+                            "x": 671.76,
+                            "y": 969.01
                         },
                         "geo": {
-                            "lat": 44.423068081,
-                            "lng": 26.102357958
+                            "lat": 44.412099781,
+                            "lng": 26.096766166
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.962,
-                        "residualM": 1.72
+                        "score": 1.0,
+                        "residualM": 0.11
                     },
                     {
                         "id": "a006",
                         "pixel": {
-                            "x": 127.02,
-                            "y": 721.12
+                            "x": 582.06,
+                            "y": 869.71
                         },
                         "geo": {
-                            "lat": 44.417521532,
-                            "lng": 26.079688397
+                            "lat": 44.416142282,
+                            "lng": 26.09110678
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.96,
-                        "residualM": 1.33
+                        "score": 1.0,
+                        "residualM": 0.12
                     },
                     {
                         "id": "a007",
                         "pixel": {
-                            "x": 426.98,
-                            "y": 776.5
+                            "x": 698.69,
+                            "y": 496.4
                         },
                         "geo": {
-                            "lat": 44.415969999,
-                            "lng": 26.096035271
+                            "lat": 44.432309491,
+                            "lng": 26.096766166
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.959,
-                        "residualM": 0.52
+                        "score": 1.0,
+                        "residualM": 0.08
                     },
                     {
                         "id": "a008",
                         "pixel": {
-                            "x": 472.66,
-                            "y": 510.13
+                            "x": 619.66,
+                            "y": 207.15
                         },
                         "geo": {
-                            "lat": 44.426397836,
-                            "lng": 26.097685225
+                            "lat": 44.444431963,
+                            "lng": 26.09110678
                         },
-                        "enabled": false,
+                        "enabled": true,
                         "origin": "auto",
-                        "score": 0.958,
-                        "residualM": 0.5
+                        "score": 1.0,
+                        "residualM": 0.11
                     },
                     {
                         "id": "a009",
                         "pixel": {
-                            "x": 69.65,
-                            "y": 687.61
+                            "x": 872.5,
+                            "y": 790.03
                         },
                         "geo": {
-                            "lat": 44.418708989,
-                            "lng": 26.076474573
+                            "lat": 44.420184503,
+                            "lng": 26.108084939
                         },
-                        "enabled": false,
+                        "enabled": true,
                         "origin": "auto",
-                        "score": 0.958,
-                        "residualM": 1.41
+                        "score": 1.0,
+                        "residualM": 0.13
                     },
                     {
                         "id": "a010",
                         "pixel": {
-                            "x": 130.35,
-                            "y": 649.23
+                            "x": 994.9,
+                            "y": 321.37
                         },
                         "geo": {
-                            "lat": 44.420298206,
-                            "lng": 26.079634119
+                            "lat": 44.440391419,
+                            "lng": 26.113744325
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.958,
-                        "residualM": 1.93
+                        "score": 1.0,
+                        "residualM": 0.08
                     },
                     {
                         "id": "a011",
                         "pixel": {
-                            "x": 898.24,
-                            "y": 783.97
+                            "x": 1000.42,
+                            "y": 226.43
                         },
                         "geo": {
-                            "lat": 44.416631014,
-                            "lng": 26.121555631
+                            "lat": 44.444431963,
+                            "lng": 26.113744325
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.957,
-                        "residualM": 1.19
+                        "score": 1.0,
+                        "residualM": 0.07
                     },
                     {
                         "id": "a012",
                         "pixel": {
-                            "x": 415.19,
-                            "y": 493.97
+                            "x": 1340.89,
+                            "y": 909.04
                         },
                         "geo": {
-                            "lat": 44.426900583,
-                            "lng": 26.094553508
+                            "lat": 44.416142282,
+                            "lng": 26.13638187
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.957,
-                        "residualM": 2.25
+                        "score": 1.0,
+                        "residualM": 0.28
                     }
                 ],
-                "fitRmseM": 1.07,
-                "checkpointRmseM": 1.74,
-                "checkpointCount": 25
+                "fitRmseM": 0.07,
+                "checkpointRmseM": 0.15,
+                "checkpointCount": 4,
+                "checkpointKind": "held-out"
+            },
+            "calibration": {
+                "how": "votes",
+                "votes": {
+                    "agreed": 115,
+                    "tiles": 117
+                },
+                "coveredPct": 100.0,
+                "model": {
+                    "camera": "corners",
+                    "rotation": 0,
+                    "mirrored": false,
+                    "scale": 0.99855,
+                    "rotationDeg": -0.0163,
+                    "dxM": -248.6,
+                    "dyM": 191.4
+                },
+                "tiles": {
+                    "agreed": 121,
+                    "tried": 121
+                },
+                "crossValidatedM": 0.16,
+                "measuredPct": 59.8,
+                "outline": [
+                    {
+                        "lat": 44.449779,
+                        "lng": 26.062866
+                    },
+                    {
+                        "lat": 44.410054,
+                        "lng": 26.062866
+                    },
+                    {
+                        "lat": 44.410054,
+                        "lng": 26.137134
+                    },
+                    {
+                        "lat": 44.449779,
+                        "lng": 26.137134
+                    }
+                ]
             },
             "reference": {
                 "bounds": {
-                    "west": 26.07305,
-                    "south": 44.414602,
-                    "east": 26.12695,
-                    "north": 44.445393
+                    "west": 26.055264,
+                    "south": 44.406131,
+                    "east": 26.144736,
+                    "north": 44.453859
                 },
                 "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
                 "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
                 "s2Item": "S2B_35TMK_20250803_0_L2A",
                 "s2Date": "2025-08-03"
-            },
-            "suggestions": {
-                "method": "sift",
-                "channels": ["s2", "osm"],
-                "generatedAt": {
-                    "seconds": 1792000000,
-                    "nanoseconds": 0
-                },
-                "minConfidence": 0.6,
-                "tiles": {
-                    "matched": 41,
-                    "total": 64
-                },
-                "pairs": []
             },
             "output": {
                 "cogPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
-                "cogBytes": 883828,
-                "cogSha256": "d3012117a122541ed73b2fa6575207ff1197c72463eb9769d91268f7e86a0cd0",
+                "cogBytes": 1967378,
+                "cogSha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
                 "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
                 "bounds": {
-                    "west": 26.070664,
-                    "south": 44.412432,
-                    "east": 26.129608,
-                    "north": 44.447231
+                    "west": 26.055107,
+                    "south": 44.406071,
+                    "east": 26.145058,
+                    "north": 44.453879
                 },
                 "minzoom": 10,
                 "maxzoom": 16,
-                "areaKm2": 16.344,
+                "areaKm2": 36.445,
                 "studioPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/studio.tif",
-                "studioBytes": 580437
+                "studioBytes": 1236916,
+                "coveragePct": 100.0,
+                "outline": [
+                    {
+                        "lat": 44.449792,
+                        "lng": 26.062849
+                    },
+                    {
+                        "lat": 44.410273,
+                        "lng": 26.062849
+                    },
+                    {
+                        "lat": 44.410273,
+                        "lng": 26.137123
+                    },
+                    {
+                        "lat": 44.449792,
+                        "lng": 26.137123
+                    }
+                ]
             }
         },
         {
@@ -4741,7 +4898,7 @@
             "error": {
                 "code": "apiError.imagery.downloadIncomplete",
                 "params": {
-                    "bytes": "1587134"
+                    "bytes": "1594969"
                 }
             }
         },
@@ -5060,7 +5217,7 @@
                 "path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
                 "width": 1500,
                 "height": 1100,
-                "sha256": "b365aac201eed949182539d7c846ea1ac0c908b6d2e9179ae11fbc21234ff9ad",
+                "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
                 "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan-preview.jpg",
                 "previewScale": 1.0
             },
@@ -5075,8 +5232,8 @@
                             "y": 0
                         },
                         "geo": {
-                            "lat": 44.4062341,
-                            "lng": 26.0632889
+                            "lat": 44.4508686,
+                            "lng": 26.0558655
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -5088,8 +5245,8 @@
                             "y": 0
                         },
                         "geo": {
-                            "lat": 44.4489064,
-                            "lng": 26.0600576
+                            "lat": 44.4540636,
+                            "lng": 26.1446788
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -5101,8 +5258,8 @@
                             "y": 1100
                         },
                         "geo": {
-                            "lat": 44.4517993,
-                            "lng": 26.1407971
+                            "lat": 44.4073195,
+                            "lng": 26.1486052
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -5114,14 +5271,18 @@
                             "y": 1100
                         },
                         "geo": {
-                            "lat": 44.4092831,
-                            "lng": 26.1444132
+                            "lat": 44.4039681,
+                            "lng": 26.0594072
                         },
                         "enabled": true,
                         "origin": "corner"
                     }
                 ],
                 "weakCorners": true
+            },
+            "calibration": {
+                "how": "none",
+                "refusal": "no-votes"
             }
         },
         {
@@ -5161,7 +5322,7 @@
                 "path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
                 "width": 1500,
                 "height": 1100,
-                "sha256": "b365aac201eed949182539d7c846ea1ac0c908b6d2e9179ae11fbc21234ff9ad",
+                "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
                 "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan-preview.jpg",
                 "previewScale": 1.0
             },
@@ -5176,8 +5337,8 @@
                             "y": 0
                         },
                         "geo": {
-                            "lat": 44.4062341,
-                            "lng": 26.0632889
+                            "lat": 44.4508686,
+                            "lng": 26.0558655
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -5189,8 +5350,8 @@
                             "y": 0
                         },
                         "geo": {
-                            "lat": 44.4489064,
-                            "lng": 26.0600576
+                            "lat": 44.4540636,
+                            "lng": 26.1446788
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -5202,8 +5363,8 @@
                             "y": 1100
                         },
                         "geo": {
-                            "lat": 44.4517993,
-                            "lng": 26.1407971
+                            "lat": 44.4073195,
+                            "lng": 26.1486052
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -5215,8 +5376,8 @@
                             "y": 1100
                         },
                         "geo": {
-                            "lat": 44.4092831,
-                            "lng": 26.1444132
+                            "lat": 44.4039681,
+                            "lng": 26.0594072
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -5224,12 +5385,16 @@
                 ],
                 "weakCorners": true
             },
+            "calibration": {
+                "how": "none",
+                "refusal": "no-votes"
+            },
             "reference": {
                 "bounds": {
-                    "west": 26.07305,
-                    "south": 44.414602,
-                    "east": 26.12695,
-                    "north": 44.445393
+                    "west": 26.055264,
+                    "south": 44.406131,
+                    "east": 26.144736,
+                    "north": 44.453859
                 },
                 "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
                 "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
@@ -5274,16 +5439,20 @@
                 "path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
                 "width": 1500,
                 "height": 1100,
-                "sha256": "b365aac201eed949182539d7c846ea1ac0c908b6d2e9179ae11fbc21234ff9ad",
+                "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
                 "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan-preview.jpg",
                 "previewScale": 1.0
             },
+            "calibration": {
+                "how": "none",
+                "refusal": "no-votes"
+            },
             "reference": {
                 "bounds": {
-                    "west": 26.07305,
-                    "south": 44.414602,
-                    "east": 26.12695,
-                    "north": 44.445393
+                    "west": 26.055264,
+                    "south": 44.406131,
+                    "east": 26.144736,
+                    "north": 44.453859
                 },
                 "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
                 "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
@@ -5293,7 +5462,7 @@
             "error": {
                 "code": "apiError.imagery.noMatch",
                 "params": {
-                    "pairs": "0"
+                    "pairs": "3"
                 }
             },
             "suggestions": {
@@ -5306,92 +5475,120 @@
                 "minConfidence": 0.6,
                 "tiles": {
                     "matched": 12,
-                    "total": 125
+                    "total": 98
                 },
                 "pairs": [
                     {
                         "id": "a001",
                         "pixel": {
-                            "x": 523.67,
-                            "y": 405.81
+                            "x": 1398.2,
+                            "y": 797.19
                         },
                         "geo": {
-                            "lat": 44.423384656,
-                            "lng": 26.087673553
+                            "lat": 44.421050654,
+                            "lng": 26.138986984
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.539
+                        "score": 0.653
                     },
                     {
                         "id": "a002",
                         "pixel": {
-                            "x": 1120.15,
-                            "y": 872.96
+                            "x": 1033.01,
+                            "y": 639.76
                         },
                         "geo": {
-                            "lat": 44.440519018,
-                            "lng": 26.121918751
+                            "lat": 44.427145449,
+                            "lng": 26.11666385
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.413
+                        "score": 0.632
                     },
                     {
                         "id": "a003",
                         "pixel": {
-                            "x": 563.07,
-                            "y": 727.08
+                            "x": 1383.77,
+                            "y": 853.91
                         },
                         "geo": {
-                            "lat": 44.425508867,
-                            "lng": 26.116978017
+                            "lat": 44.418679129,
+                            "lng": 26.138535212
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.405
+                        "score": 0.627
                     },
                     {
                         "id": "a004",
                         "pixel": {
-                            "x": 445.26,
-                            "y": 488.45
+                            "x": 655.05,
+                            "y": 620.93
                         },
                         "geo": {
-                            "lat": 44.421531172,
-                            "lng": 26.096047271
+                            "lat": 44.426952991,
+                            "lng": 26.094610209
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.401
+                        "score": 0.588
                     },
                     {
                         "id": "a005",
                         "pixel": {
-                            "x": 311.85,
-                            "y": 396.84
+                            "x": 843.65,
+                            "y": 630.33
                         },
                         "geo": {
-                            "lat": 44.417553206,
-                            "lng": 26.089130244
+                            "lat": 44.426952991,
+                            "lng": 26.105659487
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.4
+                        "score": 0.523
                     },
                     {
                         "id": "a006",
                         "pixel": {
-                            "x": 492.89,
-                            "y": 689.66
+                            "x": 535.83,
+                            "y": 658.95
                         },
                         "geo": {
-                            "lat": 44.423289444,
-                            "lng": 26.114129718
+                            "lat": 44.425157975,
+                            "lng": 26.087835084
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.387
+                        "score": 0.442
+                    },
+                    {
+                        "id": "a007",
+                        "pixel": {
+                            "x": 246.96,
+                            "y": 879.09
+                        },
+                        "geo": {
+                            "lat": 44.415083556,
+                            "lng": 26.072826064
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.43
+                    },
+                    {
+                        "id": "a008",
+                        "pixel": {
+                            "x": 1208.83,
+                            "y": 787.76
+                        },
+                        "geo": {
+                            "lat": 44.421178972,
+                            "lng": 26.128162285
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.401
                     }
                 ]
             }
@@ -5542,7 +5739,7 @@
                 "coveragePct": 100.0,
                 "checkpointRmseM": 20.0,
                 "checkpointCount": 5,
-                "maxShiftM": 14.19
+                "maxShiftM": 14.2
             }
         },
         {
@@ -5608,7 +5805,7 @@
                 "coveragePct": 100.0,
                 "checkpointRmseM": 20.0,
                 "checkpointCount": 5,
-                "maxShiftM": 14.19
+                "maxShiftM": 14.2
             },
             "output": {
                 "cogPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
@@ -5625,7 +5822,26 @@
                 "maxzoom": 15,
                 "areaKm2": 11.18,
                 "studioPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/studio.tif",
-                "studioBytes": 98756
+                "studioBytes": 98756,
+                "coveragePct": 100.0,
+                "outline": [
+                    {
+                        "lat": 44.43957,
+                        "lng": 26.077597
+                    },
+                    {
+                        "lat": 44.420393,
+                        "lng": 26.077597
+                    },
+                    {
+                        "lat": 44.420393,
+                        "lng": 26.122354
+                    },
+                    {
+                        "lat": 44.43957,
+                        "lng": 26.122354
+                    }
+                ]
             }
         },
         {

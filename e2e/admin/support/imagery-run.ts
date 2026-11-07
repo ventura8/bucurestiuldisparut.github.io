@@ -8,6 +8,7 @@ import {
     PIPELINE_STEPS,
     systemWriter,
     timestampFromDate,
+    type Calibration,
     type JobType,
     type JoinReport,
     type PipelineStep,
@@ -47,6 +48,10 @@ export interface StandinAttempt {
     readonly areaKm2?: number;
     /** The warped layer's bounds (default the scan's corners, the whole city): a frame that holds only part of it (M8). */
     readonly outputBounds?: Bounds;
+    /** M9: the share of the city the render measures (default the share its bounds hold). */
+    readonly coveragePct?: number;
+    /** M9: what `locate` measured (default nothing, as a frame that never went through it). */
+    readonly calibration?: Calibration;
     /** M8, a `layer-join`: what its report says beyond the defaults (`imagery-standin-join.ts`), and that no seam could be measured. */
     readonly join?: Partial<JoinReport>;
     readonly seamsUnmeasured?: boolean;

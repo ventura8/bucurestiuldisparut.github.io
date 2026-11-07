@@ -23,6 +23,7 @@ interface GoldenCase {
         readonly reason?: string;
         readonly fitRmseM?: number;
         readonly checkpointRmseM?: number;
+        readonly checkpointKind?: string;
         readonly checkpointCount?: number;
         readonly toleranceM?: number;
     };
@@ -101,6 +102,7 @@ describe('fitTransform: the golden cases', () => {
         expect(fitted.checkpointCount).toBe(golden.expect.checkpointCount ?? fitted.checkpointCount);
         expect(fitted.checkpointRmseM ?? 0).toBeLessThan((golden.expect.checkpointRmseM ?? fitted.checkpointRmseM ?? 0) + tolerance);
         expect(fitted.transform.kind).toBe(golden.transform);
+        expect(fitted.checkpointKind).toBe(golden.expect.checkpointKind ?? fitted.checkpointKind);
     });
 });
 
@@ -139,6 +141,7 @@ describe('fitTransform: noisy pairs', () => {
 
         expect(fitted.fitRmseM).toBeLessThan(0.01);
         expect([fitted.checkpointRmseM, fitted.checkpointCount, fitted.residuals.size]).toEqual([null, 0, 0]);
+        expect(fitted.checkpointKind).toBeNull();
     });
 });
 

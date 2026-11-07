@@ -58,7 +58,7 @@ class SceneSpec:
     seed: int = 7
     width: int = 1500
     height: int = 1100
-    resolution_m: float = 6.0
+    resolution_m: float = 6.6
     rotation_deg: float = 3.0
     flipped: bool = False
     mirrored: bool = False

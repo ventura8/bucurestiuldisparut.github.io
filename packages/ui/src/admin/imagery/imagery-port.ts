@@ -6,6 +6,8 @@
 import type {
     ApiErrorCode,
     BBox,
+    Calibration,
+    CheckpointKind,
     DatePlanRow,
     GeorefTransform,
     JobStatus,
@@ -140,7 +142,10 @@ export interface VersionViewPort {
         readonly fitRmseM: number | null;
         readonly checkpointRmseM: number | null;
         readonly checkpointCount: number | null;
+        readonly checkpointKind: CheckpointKind | null;
     } | null;
+    /** M9: how the frame was found and what proved it (`calibration-card.ts`). */
+    readonly calibration: Calibration | null;
     readonly output: {
         readonly bounds: BBox;
         readonly minzoom: number;
@@ -150,6 +155,8 @@ export interface VersionViewPort {
         readonly studioPath: string | null;
         /** The file for Mapbox, in bytes (a refusal as too large names its size). */
         readonly cogBytes: number;
+        /** M9: the share of the city the render holds, measured. */
+        readonly coveragePct: number | null;
     } | null;
     readonly estimate: number | null;
     readonly guard: {

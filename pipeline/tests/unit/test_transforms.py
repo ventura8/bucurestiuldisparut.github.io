@@ -1,5 +1,6 @@
 """The georeferencing transforms reproduce the golden cases both languages share, and recover known transforms."""
 
+import json
 import math
 
 import numpy
@@ -9,7 +10,7 @@ from hcm_pipeline.georef.transforms import Fit, FitRefusal, Gcp, fit, fit_transf
 from hypothesis import given
 from hypothesis import strategies as st
 
-from tests.contracts_loader import GeorefCase, georef_cases
+from tests.contracts_loader import CONTRACTS, GeorefCase, georef_cases
 
 OK_CASES = [case for case in georef_cases() if case.ok]
 REFUSED_CASES = [case for case in georef_cases() if not case.ok]
@@ -177,3 +178,14 @@ def test_happy_path_records_round_like_the_documents() -> None:
     }
     assert rmse([]) == 0.0
     assert rmse([3.0, 4.0]) == pytest.approx(math.sqrt(12.5))
+
+
+def test_happy_path_a_figure_says_whether_its_checks_were_held_out_or_left_one_out() -> None:
+    """Scenarios: S-P06-BAD-SEEDED-REFUSED"""
+    kinds = {
+        case.name: raw for case, raw in zip(georef_cases(), json.loads((CONTRACTS / "georef-cases.json").read_text())["cases"], strict=True)
+    }
+    for case in OK_CASES:
+        fitted = fit(case.transform, case.gcps)
+        assert isinstance(fitted, Fit)
+        assert fitted.checkpoint_kind == kinds[case.name]["expect"]["checkpointKind"]

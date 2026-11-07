@@ -232,6 +232,24 @@ describe('imagery.saveGcps', () => {
     });
 });
 
+describe('imagery.saveGcps: what its checks are (M9)', () => {
+    it('happyPath_disabledPairsAreHeldOut', async () => {
+        const world = await waitingWorld();
+
+        await save(world, { versionId: PLAN, gcps: pairs(8) });
+
+        expect((await readVersion(world, PLAN))?.georef?.checkpointKind).toBe('held-out');
+    });
+
+    it('badPath_pairsAllEnabledCheckOnlyEachOther @S-A17-BAD-LEAVE-ONE-OUT', async () => {
+        const world = await waitingWorld();
+
+        await save(world, { versionId: PLAN, gcps: pairs(8).map((gcp) => ({ ...gcp, enabled: true })) });
+
+        expect((await readVersion(world, PLAN))?.georef?.checkpointKind).toBe('leave-one-out');
+    });
+});
+
 describe('imagery.saveGcps: refusals', () => {
     it.each([
         ['a pixel beyond the scan', (gcp: Gcp): Gcp => ({ ...gcp, pixel: { x: 9000, y: 10 } })],

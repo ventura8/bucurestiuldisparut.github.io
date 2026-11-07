@@ -34,6 +34,15 @@ function renderedFields(version: LayerVersionDoc): Pick<DatePlanFrame, 'rendered
     return version.output === undefined || !isUsablePart(version) ? {} : { renderedBounds: version.output.bounds };
 }
 
+/**
+ * M9: the outline `locate` measured through the proved map (`docs/research/M9-calibration.md` §5), else the one `export` read off the
+ * render's alpha, however it was fitted: since a render's grid is the whole window, its box no longer says where the frame lies.
+ */
+function outlineFields(version: LayerVersionDoc): Pick<DatePlanFrame, 'measuredOutline'> {
+    const outline = version.calibration?.outline ?? version.output?.outline;
+    return outline === undefined ? {} : { measuredOutline: outline };
+}
+
 /** The version a scene's frame stands on: the one a join would take, else its newest (one that failed still shows). */
 function versionOfScene(scene: UsgsSceneDoc, byLayer: ReadonlyMap<string, Versions>): StoredDocument<LayerVersionDoc> | undefined {
     const versions = byLayer.get(scene.layerId ?? '') ?? [];
@@ -41,7 +50,10 @@ function versionOfScene(scene: UsgsSceneDoc, byLayer: ReadonlyMap<string, Versio
 }
 
 function frameOf(scene: UsgsSceneDoc, version: StoredDocument<LayerVersionDoc> | undefined): DatePlanFrame {
-    const imported = version === undefined ? {} : { versionId: version.id, state: version.data.state, ...renderedFields(version.data) };
+    const imported =
+        version === undefined
+            ? {}
+            : { versionId: version.id, state: version.data.state, ...renderedFields(version.data), ...outlineFields(version.data) };
     return {
         entityId: scene.entityId,
         date: scene.acquisitionDate,

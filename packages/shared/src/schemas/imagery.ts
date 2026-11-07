@@ -13,6 +13,7 @@ import { sha256Schema, stamp, timestampSchema, uidSchema } from './firestore-com
 import { JOB_MACHINES, type JobType } from './firestore-ops.js';
 import { LAYER_TILESET_ORIGINS, USGS_DATASETS } from './firestore.js';
 import { cropRingSchema, georefSchema, MAX_SCAN_PIXELS } from './georef.js';
+import { calibrationSchema, measuredOutlineSchema } from './imagery-calibration.js';
 import { joinReportSchema, joinSourceSchema, layerJoinParamsSchema } from './imagery-join.js';
 import { boundsRecordSchema, coded, idSchema, isoDateSchema, localizedPartial, plainText, yearSchema, zoomSchema } from './primitives.js';
 import { SENSORS } from './usgs-scene.js';
@@ -121,6 +122,10 @@ const outputSchema = z.strictObject({
     /** A JPEG-compressed GeoTIFF of at most `STUDIO_MAX_BYTES`, for the free Mapbox Studio upload. */
     studioPath: pathSchema.optional(),
     studioBytes: z.number().int().min(1).optional(),
+    /** M9: the share of the city's bounds the render holds, alpha over the whole city; the approval and the join's offer read it. */
+    coveragePct: z.number().min(0).max(100).optional(),
+    /** M9: the alpha's edge over the city's bounds: a USGS render's `bounds` are the whole window, so the join's plan reads this. */
+    outline: measuredOutlineSchema.optional(),
 });
 
 const estimateSchema = z.strictObject({
@@ -209,6 +214,8 @@ export const layerVersionDocSchema = z
         scan: scanSchema.optional(),
         reference: referenceSchema.optional(),
         georef: georefSchema.optional(),
+        /** M9: how `locate` found the frame and what proved it, or why nothing did (`georef` adds its own figures). */
+        calibration: calibrationSchema.optional(),
         /** M4: the matcher's pairs below the confidence, for the georeferencer's Accept (never in the fit until saved). */
         suggestions: gcpSuggestionsSchema.optional(),
         crop: cropRingSchema.optional(),

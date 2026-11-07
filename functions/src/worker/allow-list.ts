@@ -9,6 +9,7 @@ import {
     VERSION_FILES,
     isId,
     layerJoinParamsSchema,
+    passPrefixOf,
     validate,
     type JobDoc,
     type JobStatus,
@@ -38,7 +39,7 @@ export const WORKER_JOB_FIELDS: ReadonlySet<string> = new Set([
 /**
  * The layer version fields a run writes (`pipeline/src/hcm_pipeline/{documents,runner}.py` and `steps/*.py`: the scan,
  * the reference, the georeference, the suggestions, the output, the machines and the state with its error, M8: the join's
- * report; `pipeline/tests/contracts/version.*.json`).
+ * report, M9: what `locate` measured; `pipeline/tests/contracts/version.*.json`).
  */
 export const WORKER_VERSION_FIELDS: ReadonlySet<string> = new Set([
     'state',
@@ -46,6 +47,7 @@ export const WORKER_VERSION_FIELDS: ReadonlySet<string> = new Set([
     'scan',
     'reference',
     'georef',
+    'calibration',
     'join',
     'suggestions',
     'output',
@@ -75,7 +77,7 @@ export const WORKER_VERSION_STATES: ReadonlySet<LayerVersionState> = new Set<Lay
 ]);
 
 /** What a document path is to the job: one of the documents of §2.5. */
-export type DocumentTarget = 'city' | 'job' | 'version' | 'base' | 'layer' | 'scene';
+export type DocumentTarget = 'city' | 'job' | 'version' | 'base' | 'layer' | 'scene' | 'pass';
 
 /** The job a worker holds, with the ids its allow-lists name. */
 export interface JobScope {
@@ -140,9 +142,19 @@ function documentTargets({ cityId, jobId, job, versionId }: JobScope): Map<strin
     return new Map(entries.flatMap(([path, target]) => (path === undefined ? [] : [[path, target] as const])));
 }
 
+/** M9 (`docs/research/M9-calibration.md` §2): the date is the scene's, so the path is bound to the scene's mission, camera and a date. */
+const PASS_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** `path` is the last proved model of the pass of the scene this import fetches: read-only, the first place to look. */
+function isOwnPass({ cityId, job }: JobScope, path: string): boolean {
+    const prefix = passPrefixOf(sceneOf(job) ?? '');
+    const start = `${FIRESTORE_PATHS.imageryPasses(cityId)}/${prefix ?? ''}`;
+    return prefix !== undefined && path.startsWith(start) && PASS_DATE.test(path.slice(start.length));
+}
+
 /** What `path` is to the job, or undefined when it is off the allow-list. */
 export function documentTarget(scope: JobScope, path: string): DocumentTarget | undefined {
-    return documentTargets(scope).get(path);
+    return documentTargets(scope).get(path) ?? (isOwnPass(scope, path) ? 'pass' : undefined);
 }
 
 /** A log line's id: its sequence number zero-padded to six digits (`pipeline/src/hcm_pipeline/documents.py` → `log_id`). */

@@ -82,7 +82,8 @@ def test_happy_path_a_queued_import_becomes_a_version_awaiting_approval(
     assert isinstance(reference, dict)
     assert (georef["method"], georef["transform"]) == ("auto", "poly2")
     assert georef["checkpointRmseM"] < 15
-    assert georef["checkpointCount"] >= 12
+    assert georef["checkpointCount"] >= 3
+    assert georef["checkpointKind"] == "held-out"
     assert (output["minzoom"], output["maxzoom"]) == (10, 16)
     assert output["areaKm2"] > 15
     assert reference["s2Item"] == S2_ITEM

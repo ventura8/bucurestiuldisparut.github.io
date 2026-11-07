@@ -70,7 +70,8 @@ def test_happy_path_the_version_awaiting_approval_is_the_golden_one() -> None:
         "state": "awaiting_approval",
         "scan": ScanInfo.of(scan).as_record(),
         "reference": ReferenceInfo.of(reference).as_record(),
-        "georef": GeorefInfo("auto", "poly2", gcps, 6.1, 8.9, 2).as_record(),
+        "georef": GeorefInfo("auto", "poly2", gcps, 6.1, 8.9, 2, kind="held-out").as_record(),
+        "calibration": AWAITING["calibration"],
         "output": OutputInfo(
             cog_path=str(output["cogPath"]),
             cog_bytes=212_000_000,
@@ -82,6 +83,7 @@ def test_happy_path_the_version_awaiting_approval_is_the_golden_one() -> None:
             area_km2=612.5,
             studio_path=str(output["studioPath"]),
             studio_bytes=180_000_000,
+            coverage_pct=94.2,
         ).as_record(),
         **stamp(ts(AWAITING["updatedAt"])),
     }

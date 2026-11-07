@@ -39,6 +39,33 @@ describe('documents', () => {
     });
 });
 
+describe('the pass of an import (M9)', () => {
+    const job = localJob({ params: { entityId: 'D3C1203-300415F006', dataset: 'declassiii', sensor: 'KH-9-pan' } });
+    const pass = (key: string, city = CITY): string => `${FIRESTORE_PATHS.imageryPasses(city)}/${key}`;
+
+    it('happyPath_theImportReadsItsOwnPassOnADate', () => {
+        expect(documentTarget(scope(job), pass('D3C1203-300415-F-1975-08-20'))).toBe('pass');
+    });
+
+    it.each([
+        ['another mission', pass('D3C1999-300415-F-1975-08-20')],
+        ['another camera', pass('D3C1203-300415-A-1975-08-20')],
+        ['no date', pass('D3C1203-300415-F-')],
+        ['a way out of the collection', pass('D3C1203-300415-F-1975-08-20/x')],
+        ['another city', pass('D3C1203-300415-F-1975-08-20', 'other-city')],
+    ])('badPath_%sIsOffTheList', (_name, path) => {
+        expect(documentTarget(scope(job), path)).toBeUndefined();
+    });
+
+    it('badPath_aJobThatFetchesNoSceneHasNoPass', () => {
+        const regeoref = localJob({ type: 'regeoref', params: { basedOn: 'v-1' } });
+        const unreadable = localJob({ params: { entityId: 'lower-case-id', dataset: 'corona2' } });
+
+        expect(documentTarget(scope(regeoref), pass('D3C1203-300415-F-1975-08-20'))).toBeUndefined();
+        expect(documentTarget(scope(unreadable), pass('lower-case-id-1975-08-20'))).toBeUndefined();
+    });
+});
+
 describe('a join (M8)', () => {
     const parts = [
         { versionId: 'v-f039', layerId: 'layer-f039' },

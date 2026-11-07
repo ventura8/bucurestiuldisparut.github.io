@@ -3,7 +3,8 @@
 `gdalwarp` with the version's enabled GCPs in EPSG:3857 metres (`-order 1` for affine, `-order 2` for poly2, `-tps`),
 or with the upload's own georeference; the resolution of the layer's `maxzoom` (156543.03392804097 / 2^z m, the
 camera's from `SENSOR_SPECS`, else the scan's own resolution rounded to a zoom), pixels aligned on the tile grid,
-bilinear, an alpha band, and `-cutline` with `-crop_to_cutline` when the version has a crop ring.
+bilinear, an alpha band, and `-cutline` with `-crop_to_cutline` when the version has a crop ring. A USGS frame renders no further than
+the city's window (`outputBounds`, M9 §5): a wide crop rendered 1,249 km² and a 500 compute-unit estimate for one city.
 """
 
 import json
@@ -15,9 +16,10 @@ from hcm_pipeline.contract import SENSOR_SPECS, Errors
 from hcm_pipeline.documents import GeorefInfo, Version
 from hcm_pipeline.geo import ZOOM0_RESOLUTION_M, to_mercator, zoom_resolution
 from hcm_pipeline.jobs import Done, JobContext, StepFailedError, StepResult
+from hcm_pipeline.join.canvas import aligned_box
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.rasters import GTIFF_OPTIONS
-from hcm_pipeline.steps.common import gdal_step
+from hcm_pipeline.steps.common import city_window, gdal_step
 
 DEFAULT_MINZOOM: Final = 10
 MAX_UPLOAD_ZOOM: Final = 18
@@ -62,6 +64,14 @@ def cutline(version: Version, target: Path) -> dict[str, object]:
     return {"cutlineDSName": str(target), "cutlineSRS": "EPSG:4326", "cropToCutline": True}
 
 
+def clipped(ctx: JobContext, version: Version) -> dict[str, object]:
+    """`outputBounds` of a frame the city's window holds: nothing renders or bills beyond it. A crop ring decides by itself."""
+    if version.crop or version.source.get("kind") != "usgs":
+        return {}
+    box = aligned_box(city_window(ctx))
+    return {"outputBounds": (box.left, box.bottom, box.right, box.top)}
+
+
 class WarpStep:
     name = "warp"
 
@@ -94,6 +104,7 @@ class WarpStep:
             "callback": ctx.flags.gdal_progress,
             **method,
             **cutline(version, ctx.local("cutline.geojson")),
+            **clipped(ctx, version),
         }
         gdal_step(ctx, lambda: gdal.Warp(str(warped), str(source), **options).Close(), "warp the scan")
         return Done(ctx.publish(warped, ctx.work_file("warped.tif"), "image/tiff"))

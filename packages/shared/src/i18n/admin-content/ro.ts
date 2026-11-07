@@ -48,7 +48,6 @@ export const ro = {
     'adminContent.map.loading': 'Se încarcă harta…',
     'adminContent.map.unavailable': 'Harta nu este disponibilă aici încă: scrie locul în câmpuri.',
     'adminContent.map.openSetup': 'Configurează Mapbox',
-    'adminContent.map.label': 'Harta',
     'adminContent.map.zoomIn': 'Mărește harta',
     'adminContent.map.zoomOut': 'Micșorează harta',
     'adminContent.map.crosshair': 'Centrul hărții: săgețile mută harta, Adaugă în centru pune un punct aici.',

@@ -53,7 +53,7 @@ OVERPASS_PATH: Final = "/overpass/api/interpreter"
 TEST_CHUNK_BYTES: Final = 256 * 1024
 NOW: Final = 1_792_000_000.0
 OWNER_UID: Final = "uid-owner"
-CITY_HALF_M: Final = (2500.0, 2000.0)
+CITY_HALF_M: Final = (4150.0, 3100.0)
 
 
 @dataclass

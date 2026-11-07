@@ -204,6 +204,13 @@ class Fit:
     checkpoint_rmse_m: float | None
     checkpoint_count: int
 
+    @property
+    def checkpoint_kind(self) -> str | None:
+        """`held-out` for disabled pairs, `leave-one-out` when the figure comes from the enabled ones (only the first auto-approves)."""
+        if self.checkpoint_count == 0:
+            return None
+        return "held-out" if any(not gcp.enabled for gcp in self.gcps) else "leave-one-out"
+
 
 @dataclass(frozen=True)
 class _Pairs:

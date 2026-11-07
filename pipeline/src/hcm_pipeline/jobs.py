@@ -17,6 +17,7 @@ from typing import Final, Protocol
 import httpx
 
 from hcm_pipeline import paths
+from hcm_pipeline.calibrate.ports import NullProposalMatcher, ProposalMatcher
 from hcm_pipeline.config import Config
 from hcm_pipeline.documents import Version
 from hcm_pipeline.joblog import JobLog
@@ -179,6 +180,8 @@ class Services:
     clock: Callable[[], float]
     sleep: Callable[[float], None]
     resolver: Resolver
+    # A local matcher plugs in on the worker alone (docs/research/M9-calibration.md §3).
+    proposal_matcher: ProposalMatcher = field(default_factory=NullProposalMatcher)
 
 
 @dataclass

@@ -46,7 +46,6 @@ export const en: Readonly<Record<AdminContentKitKey, string>> = {
     'adminContent.map.loading': 'Loading the map…',
     'adminContent.map.unavailable': 'The map is not available here yet: type the place in the fields.',
     'adminContent.map.openSetup': 'Set up Mapbox',
-    'adminContent.map.label': 'Map',
     'adminContent.map.zoomIn': 'Zoom in',
     'adminContent.map.zoomOut': 'Zoom out',
     'adminContent.map.crosshair': 'Map centre: the arrow keys move the map, Add at centre puts a position here.',

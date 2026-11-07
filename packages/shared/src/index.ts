@@ -203,6 +203,8 @@ export {
 } from './schemas/usgs-scene.js';
 export type { RankReason, RankReasonEntry, Sensor, SensorSpec, UsgsDataset } from './schemas/usgs-scene.js';
 export {
+    AUTO_MIN_MEASURED_PCT,
+    CITY_MIN_COVERAGE_PCT,
     DEFAULT_RMSE_THRESHOLD_M,
     JOIN_MAX_PARTS,
     MAX_TARGET_YEARS,
@@ -212,6 +214,7 @@ export {
 } from './schemas/imagery-settings.js';
 export type { CityImagery, ImagerySettings } from './schemas/imagery-settings.js';
 export {
+    CHECKPOINT_KINDS,
     GCP_ORIGINS,
     GEOREF_TRANSFORMS,
     MAX_GCPS,
@@ -223,7 +226,7 @@ export {
     georefSchema,
     pixelSchema,
 } from './schemas/georef.js';
-export type { CropRing, Gcp, GcpOrigin, Georef, GeorefTransform } from './schemas/georef.js';
+export type { CheckpointKind, CropRing, Gcp, GcpOrigin, Georef, GeorefTransform } from './schemas/georef.js';
 export {
     DOWNLOAD_STEPS,
     ENDED_VERSION_STATES,
@@ -289,6 +292,7 @@ export * from './schemas/autogcp.js';
 export * from './schemas/assist.js';
 export * from './schemas/notifications.js';
 export * from './schemas/worker.js';
+export * from './schemas/imagery-calibration.js';
 export * from './schemas/imagery-join.js';
 export * from './schemas/imagery-plan.js';
 // M5 (docs/research/M5-interfaces.md): many cities in one project, the static export, engine releases on jsDelivr (every

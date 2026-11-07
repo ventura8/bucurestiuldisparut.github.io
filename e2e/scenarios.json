@@ -722,6 +722,20 @@
             "name": "The layer-join job: align and merge a date's frames",
             "milestone": "M8",
             "source": "docs/research/M8-join-interfaces.md §3, §13"
+        },
+        {
+            "id": "P06",
+            "area": "pipeline",
+            "name": "Find and prove a frame anywhere on Earth, with no landmark",
+            "milestone": "M9",
+            "source": "docs/research/M9-calibration.md (the owner, 2026-11-06)"
+        },
+        {
+            "id": "A67",
+            "area": "admin",
+            "name": "How a frame was found, and why it waits",
+            "milestone": "M9",
+            "source": "docs/research/M9-calibration.md §2, §8 (the owner, 2026-11-06)"
         }
     ],
     "scenarios": [
@@ -5071,6 +5085,39 @@
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/publish.test.ts (fn-imagery, 2026-10-23)."
         },
         {
+            "id": "S-A17-HAPPY-WHOLE-CITY",
+            "behaviour": "A17",
+            "area": "admin",
+            "path": "happy",
+            "title": "A frame covering the city, checked on points held out of the fit, publishes itself",
+            "asserts": "output.coveragePct at 90, checkpointKind held-out, three checks under the threshold -> approved by system:imagery and queued without a click",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M9 (docs/research/M9-calibration.md §11). Test: functions/test/imagery/approval-coverage.test.ts."
+        },
+        {
+            "id": "S-A17-BAD-PART-OF-CITY",
+            "behaviour": "A17",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame under the threshold holding part of the city waits, and says why",
+            "asserts": "output.coveragePct 62 (or missing) on a USGS frame under the threshold -> the version waits for Approve with the words: covers under 90 % of the city, add a frame or approve; nothing reaches Mapbox; an upload is exempt",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M9 (docs/research/M9-calibration.md §11). Test: e2e/admin/specs/imagery/calibration.spec.ts, functions/test/imagery/approval-coverage.test.ts."
+        },
+        {
+            "id": "S-A17-BAD-LEAVE-ONE-OUT",
+            "behaviour": "A17",
+            "area": "admin",
+            "path": "bad",
+            "title": "Pairs checked only against each other never publish alone",
+            "asserts": "checkpointKind leave-one-out (live F007: 124 pairs, 12 m) or none, under any threshold -> the version waits for Approve; the card says the automatic check does not cover it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M9 (docs/research/M9-calibration.md §11, §13.1). Test: functions/test/imagery/approval-coverage.test.ts, packages/ui/test/admin/imagery/calibration-card.test.ts."
+        },
+        {
             "id": "S-A18-HAPPY",
             "behaviour": "A18",
             "area": "admin",
@@ -9058,7 +9105,7 @@
             "area": "pipeline",
             "path": "happy",
             "title": "The real pipeline imports a free scene from the admin, and the viewer shows the published layer",
-            "asserts": "Import on the 1966 frame's card -> python -m hcm_pipeline run (the quality image's pipeline venv) against the emulators and the mock USGS, STAC and Overpass answering a synthetic scene -> every step done, automatic points, checkpoint RMSE under the city's 15 m -> approved by the policy and published -> the manifest lists it, the viewer paints its tiles and its opacity slider fades them",
+            "asserts": "Import on the 1966 frame's card -> python -m hcm_pipeline run (the quality image's pipeline venv) against the emulators and the mock USGS, STAC and Overpass answering a synthetic scene -> every step done, automatic points, checkpoint RMSE under the city's 15 m -> its city is too small to prove, so the matcher's fit waits and says so (S-A17-BAD-NOT-PROVED) -> one click on Approve publishes it -> the manifest lists it, the viewer paints its tiles and its opacity slider fades them",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M3 (the integrator, 2026-10-24; CR-M3-16, CR-M3-19). Test: e2e/admin/specs/imagery/pipeline.spec.ts; the scene is pipeline/tests/synthetic/scenes.py, generated into the test's folder. Per push at admin-l1440-ro only (it does not depend on the window class)."
@@ -9223,7 +9270,7 @@
             "area": "pipeline",
             "path": "bad",
             "title": "A frame that does not reach the city window fails, and a crop over the limit is never read",
-            "asserts": "a scene whose corners lie a degree from the city, or a frame 56 km from the window -> no orientation covers the window nor its surroundings: the job and the version failed with apiError.imagery.cityNotFound and no scan; a frame that does cover it but shows another place is no failure (S-P01-BAD-WEAK-GUESS-TO-POINTS); a crop with a side over MAX_SCAN_PIXELS -> processingFailed before any pixel is read",
+            "asserts": "a scene whose corners lie a degree from the city, or a frame 56 km from the window -> no orientation covers the window nor its surroundings: the job and the version failed with apiError.imagery.cityNotFound and no scan; a frame that does cover it but shows another place is no failure (S-P01-BAD-WEAK-GUESS-TO-POINTS); within_limits still refuses a crop with a side over MAX_SCAN_PIXELS (a guard no input reaches now)",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Findings 62 and 63 of docs/research/manual-test-2026-10-25.md (live test 2026-11-02; DECISIONS-for-review.md §84a, §84b). Tests: pipeline/tests/unit/test_corners.py, pipeline/tests/integration/test_written_documents.py (city-not-found)."
@@ -9234,32 +9281,32 @@
             "area": "pipeline",
             "path": "happy",
             "title": "A panoramic frame is found through its camera's forward model",
-            "asserts": "a synthetic KH-9 film made through the panoramic model (u = 2x/W - 1, theta = u × half angle, along tan(theta)/tan(half angle), across (2y/H - 1) × cos(half angle)/cos(theta)), its corners 3.3 km off -> the model round-trips within 0.001 px and takes the film's corners to the ground's, the local homography holds it within 50 m at the window's corners, the guess keeps the right orientation of four and moves by the corners' error; the corner homography cannot hold the same frame; only a sensor with a half angle gets the model",
+            "asserts": "a synthetic KH-9 film made through the panoramic model (theta linear over the exposure, along (tan(theta) - tan(a)) / (tan(b) - tan(a)), across over the bilinear width), its corners 3.3 km off -> the model round-trips within 0.001 px and takes the film's corners to the ground's, the local homography holds it within 100 m at the window's corners, the chain proves the right orientation of four; a film half as long swept half the angle, off the nadir as its ends' widths say (the 1982 frame: -8 to 53 degrees); only a sensor with a half angle gets the model",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "Lesson 361 of docs/LESSONS.md (the rehearsal on the 1972 frame D3C1202-200149F039). Tests: pipeline/tests/unit/test_panoramic.py, pipeline/tests/unit/test_frames.py."
+            "notes": "Lesson 361 of docs/LESSONS.md (the rehearsal on the 1972 frame D3C1202-200149F039), docs/research/M9-calibration.md. Tests: pipeline/tests/unit/test_panoramic.py, pipeline/tests/unit/test_frames.py."
         },
         {
             "id": "S-P01-BAD-WEAK-GUESS-TO-POINTS",
             "behaviour": "P01",
             "area": "pipeline",
             "path": "bad",
-            "title": "A guess nothing confirms goes on to the admin's points",
-            "asserts": "Sentinel-2 of another place over a frame that covers the window -> no raw gate, no ratio and z: the guess is weak, not moved; the crop holds the window with a 10 km margin under every orientation that reaches it, so the city is in it whichever is true (the real frame under 50 to 85 % cloud: 12 of 12); the delivery stays, the log says so plainly, the job goes on and georef ends at needs_gcps with apiError.imagery.noMatch, the scan recorded and no corner pairs of a guess nothing confirmed",
+            "title": "A frame nothing proves goes on to the admin's points",
+            "asserts": "Sentinel-2 and OpenStreetMap of another place over a frame that covers the window -> nothing proved; the crop holds the window with a 20 km margin under every orientation that reaches it, so the city is in it whichever is true; the delivery stays, the log says so plainly, the job goes on and georef ends at needs_gcps with apiError.imagery.noMatch, the scan recorded and no corner pairs of a frame nothing proved",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "Lesson 361 of docs/LESSONS.md. Review of 2026-11-06. Tests: pipeline/tests/unit/test_panoramic.py, pipeline/tests/unit/test_corners.py, pipeline/tests/integration/test_written_documents.py (weak-guess)."
+            "notes": "Lesson 361 of docs/LESSONS.md, docs/research/M9-calibration.md §6. Tests: pipeline/tests/unit/test_panoramic.py, pipeline/tests/unit/test_corners.py, pipeline/tests/integration/test_written_documents.py (weak-guess)."
         },
         {
             "id": "S-P01-BAD-WEAK-GUESS-TOO-WIDE",
             "behaviour": "P01",
             "area": "pipeline",
             "path": "bad",
-            "title": "A weak guess whose orientations lie too far apart fails and keeps the delivery",
-            "asserts": "the crop that would hold every orientation reaching the window has a side over MAX_SCAN_PIXELS -> it is never cut: processingFailed with the size in its message, no scan, the delivery stays",
+            "title": "A frame nothing proved whose orientations lie too far apart is cut to fit",
+            "asserts": "the crop that would hold every orientation has a side over MAX_SCAN_PIXELS -> cut around the most likely orientation (M9 §6), never a failure: the scan fits, the delivery stays, calibration.cutOrientations counts what it lost",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "Review of 2026-11-06, integrated. Lesson 361. Tests: pipeline/tests/integration/test_raw_deleted.py, pipeline/tests/unit/test_corners.py."
+            "notes": "docs/research/M9-calibration.md §6 replaces the review of 2026-11-06. Tests: pipeline/tests/integration/test_raw_deleted.py, pipeline/tests/unit/test_corners.py."
         },
         {
             "id": "S-P01-BAD-CITY-OFF-FRAME",
@@ -9564,7 +9611,7 @@
             "area": "admin",
             "path": "happy",
             "title": "The real worker claims a local job and finishes it against the emulators",
-            "asserts": "the city's choice is the computer -> Import waits for a worker (Waiting for your computer); the pipeline's worker process started with the Jobs page's command and its pairing code (no browser sign-in) -> claims the queued local import, runs every step through worker.step and signed URLs to the Storage emulator -> the version awaits approval, no Cloud Run execution or machine named, the panel shows the computer connected with its last job done; the raw delivery stays in the work folder and is deleted there after locate, and no usgs-raw/ or work/ object is ever in the bucket; one Ctrl-C then stops the worker with exit 0",
+            "asserts": "the city's choice is the computer -> Import waits for a worker (Waiting for your computer); the pipeline's worker process started with the Jobs page's command and its pairing code (no browser sign-in) -> claims the queued local import, runs every step through worker.step and signed URLs to the Storage emulator -> the version awaits approval, no Cloud Run execution or machine named, the panel shows the computer connected with its last job done; the raw delivery stays in the work folder (its synthetic city is too small to prove, and a frame nothing proved keeps it: M9 §6), and no usgs-raw/ or work/ object is ever in the bucket; one Ctrl-C then stops the worker with exit 0",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M7 (docs/research/M7-local-worker.md). Test: e2e/admin/specs/imagery/worker-run.spec.ts."
@@ -10604,6 +10651,61 @@
             "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join-dates.spec.ts, functions/test/imagery/join*.test.ts."
         },
         {
+            "id": "S-A66-HAPPY-MEASURED-OUTLINE",
+            "behaviour": "A66",
+            "area": "admin",
+            "path": "happy",
+            "title": "A frame's measured outline decides what the plan says it covers",
+            "asserts": "calibration.outline a tenth of the city where the estimate holds all of it -> the date's other frame joins the row",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M9 (docs/research/M9-calibration.md §5). Test: functions/test/imagery/join-plan.test.ts."
+        },
+        {
+            "id": "S-A67-HAPPY-CALIBRATION",
+            "behaviour": "A67",
+            "area": "admin",
+            "path": "happy",
+            "title": "A frame found with no landmark says how, what agrees, its error and the city it covers",
+            "asserts": "a proved frame -> found automatically, 712 of 946 areas agree, measured error 16.3 m, covers 96 % of the city, on the version's page in the page's language",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M9 (docs/research/M9-calibration.md §8). Test: e2e/admin/specs/imagery/calibration.spec.ts."
+        },
+        {
+            "id": "S-A67-BAD-NOT-FOUND",
+            "behaviour": "A67",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame nothing found asks for a few rough points",
+            "asserts": "calibration.how none on a version waiting for points -> not found: place a few rough points, the rest is automatic, with the way to the georeferencer",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M9 (docs/research/M9-calibration.md §8). Test: e2e/admin/specs/imagery/calibration.spec.ts."
+        },
+        {
+            "id": "S-A67-HAPPY-PASS-RECORDED",
+            "behaviour": "A67",
+            "area": "admin",
+            "path": "happy",
+            "title": "A proved frame leaves its model for the next frame of its pass",
+            "asserts": "locate ended proved -> cities/{city}/imageryPasses/{mission-camera-date} holds its model, which worker.step lets a run of the same mission and camera read and never write",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M9 (docs/research/M9-calibration.md §2). Test: functions/test/imagery/pass-calibration.test.ts."
+        },
+        {
+            "id": "S-A67-BAD-PASS-NOT-PROVED",
+            "behaviour": "A67",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame nothing proved leaves the pass as it was",
+            "asserts": "a refusal, no model, no calibration or an upload -> no pass is written",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M9 (docs/research/M9-calibration.md §2). Test: functions/test/imagery/pass-calibration.test.ts."
+        },
+        {
             "id": "S-P05-HAPPY",
             "behaviour": "P05",
             "area": "pipeline",
@@ -10664,7 +10766,7 @@
             "area": "pipeline",
             "path": "happy",
             "title": "The real pipeline joins two frames from the admin",
-            "asserts": "Join frames over the two synthetic frames -> python -m hcm_pipeline run imports both and joins them against the emulators; one seam measured and applied under 15 m, coverage at least 90 % -> the policy publishes it, the viewer paints it",
+            "asserts": "Join frames over the two synthetic frames -> python -m hcm_pipeline run imports both and joins them against the emulators; one seam measured, closed and under 15 m, coverage at least 90 % -> the policy publishes it, the viewer paints it",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join-pipeline.spec.ts."
@@ -10745,6 +10847,303 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: pipeline/tests/integration/test_join_job.py."
+        },
+        {
+            "id": "S-P05-HAPPY-ALREADY-CLOSED",
+            "behaviour": "P05",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A seam already closed counts as closed, though nothing moved",
+            "asserts": "a refused correction on a seam at 0.34 m -> applied, shift 0, so the join may publish on its own; on a seam at 12 m it stays refused",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M9 (docs/research/M9-calibration.md §15). Test: pipeline/tests/unit/test_calibrate_edges.py, e2e/admin/specs/imagery/join-pipeline.spec.ts."
+        },
+        {
+            "id": "S-P06-HAPPY-VOTES",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A frame kilometres off is found and proved with no landmark, anywhere on Earth",
+            "asserts": "a synthetic film at latitudes 44, 0.3 and 59.9, its corners 5 km off, mirrored or turned -> one warp per orientation, the tiles agree on a similarity, the proof holds: the proved map within 25 m of the truth, the checks held out before RANSAC under 15 m, calibration.how votes, the delivery deleted; real frames: the table of docs/research/M9-calibration.md §14",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §2, §4. Tests: pipeline/tests/unit/test_calibrate_votes.py, test_calibrate_proof.py, test_calibrate_pairs.py, pipeline/tests/integration/test_calibration_job.py."
+        },
+        {
+            "id": "S-P06-BAD-OFF-STRIP",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A reference of another place makes no false positive",
+            "asserts": "a film over another place, a warp with no room for a tile, too few or too narrow votes, a map kilometres off -> no proposal or a named refusal, never an exception: the crop is bounded, the delivery stays, the job waits for the points",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §2, §4, §6. Tests: pipeline/tests/unit/test_calibrate_votes.py, test_calibrate_proof.py, pipeline/tests/integration/test_calibration_job.py."
+        },
+        {
+            "id": "S-P06-BAD-LOW-TEXTURE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A film with no texture has no votes and raises nothing",
+            "asserts": "a uniform film -> no tile votes, refusal no-votes, the job goes on to the points",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §2. Test: pipeline/tests/unit/test_calibrate_votes.py."
+        },
+        {
+            "id": "S-P06-HAPPY-PASS-PRIOR",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A neighbouring frame of the same pass is the first place to look",
+            "asserts": "cities/{city}/imageryPasses/{key} holds a proved model -> it warps first with a 12 km margin, a strong result ends the search after one warp, calibration.how pass",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §2. Tests: pipeline/tests/unit/test_calibrate_prior.py, pipeline/tests/integration/test_calibration_job.py."
+        },
+        {
+            "id": "S-P06-BAD-PASS-PRIOR-WRONG",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A wrong prior falls through to the full search",
+            "asserts": "a model 85 km off, of another orientation or camera, or a record this version cannot read -> not used or refused by the votes, the full search finds the frame",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §2. Test: pipeline/tests/unit/test_calibrate_prior.py."
+        },
+        {
+            "id": "S-P06-BAD-OVER-LIMIT",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A frame nothing proved always gets a crop that fits",
+            "asserts": "orientations whose union is over MAX_SCAN_PIXELS -> the crop is cut around the most likely one, calibration.cutOrientations counts the lost ones, no failure, the delivery stays (the 1982 frame failed with 225,264 px before)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §6. Tests: pipeline/tests/unit/test_corners.py, pipeline/tests/integration/test_raw_deleted.py."
+        },
+        {
+            "id": "S-P06-HAPPY-SEEDED-POINTS",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The admin's rough points seed the tiles and are replaced",
+            "asserts": "at least three enabled manual points on a frame nothing proved -> the tiles start from their fit, a proof replaces them with automatic pairs, calibration.how points and seedPoints, the log says so",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §7. Test: pipeline/tests/integration/test_calibration_job.py."
+        },
+        {
+            "id": "S-P06-BAD-SEEDED-REFUSED",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Points the tiles refuse are fitted as saved; a set holding automatic or disabled pairs is never overwritten",
+            "asserts": "a reference that refuses the tiles, a disabled pair or an automatic pair in the set, or a retry whose stored tiles are gone and no longer prove -> method gcps as saved (checkpointKind leave-one-out), or the matcher goes on",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §7. Test: pipeline/tests/integration/test_calibration_job.py."
+        },
+        {
+            "id": "S-P06-HAPPY-WARP-CLIPPED",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A USGS frame renders nothing beyond the city window",
+            "asserts": "a usgs version -> outputBounds on the aligned window, the output bounds inside it; a crop ring or an upload keeps its own extent",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §5. Test: pipeline/tests/integration/test_calibration_job.py."
+        },
+        {
+            "id": "S-P06-BAD-CROP-COVERAGE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A crop's coverage is measured against the whole city",
+            "asserts": "a raster over half of the city -> coveragePct about 50, not the 100 the share of its own grid gives; a raster off the city -> 0; no city document, no figure",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §0, §5. Test: pipeline/tests/integration/test_calibration_job.py."
+        },
+        {
+            "id": "S-P01-HAPPY-ANTIMERIDIAN",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A frame over longitude 180 is one piece around a city on either side",
+            "asserts": "a KH-9 frame with corners at 174.5 and -174.5 and a window at Suva or at -179.5 -> it reaches the window as the same frame at longitude 0 does; a footprint across the line stays one piece; a window ends on the line, what it asks of Sentinel-2 and Overpass stays a plain box, no pair is written past 180, and the plan's and the harvest's coverage read the frame around the city",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §1. Tests: pipeline/tests/unit/test_corners.py, packages/shared/test/imagery/coverage.test.ts, packages/shared/test/imagery/join.test.ts. Synthetic: how USGS spells a crossing frame is unverified."
+        },
+        {
+            "id": "S-P01-HAPPY-TOWN-OFF-EDGE",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A town the model puts past the film's edge still gets its search",
+            "asserts": "a 10 km window 14 km beyond the model's edge (F006 lay 14 km off) -> it reaches, under the sensor's search range on the ground; under the window's own size alone it would fail with cityNotFound; 45 km beyond a 30 km range it still does (S-P01-BAD-CITY-NOT-FOUND)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §1. Test: pipeline/tests/unit/test_corners.py."
+        },
+        {
+            "id": "S-P01-HAPPY-TWO-DATES",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A window across two orbit tracks is mosaicked from two dates",
+            "asserts": "no single date covers the window, tracks on different days do together -> up to four items of any dates, each the one that adds most of it; a hole between them is still referenceUnavailable (S-P01-BAD-MOSAIC-NOT-COVERED)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §13. Test: pipeline/tests/unit/test_references.py."
+        },
+        {
+            "id": "S-P01-BAD-FOOTPRINT-HOLE",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A tile whose box holds the window but whose footprint does not is no reference",
+            "asserts": "an item with a whole bbox and a slanted footprint (Earth Search's S2A_34NFL_20240101 left 27 % of a window out) -> it does not cover the window: no reference with a hole, a mosaic or referenceUnavailable instead; an item with no geometry falls back on its box",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §13. Test: pipeline/tests/unit/test_references.py."
+        },
+        {
+            "id": "S-P06-BAD-MANY-WARPS",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A sensor with many warps still asks each enough tiles to agree",
+            "asserts": "4 orientations x 3 scales, 8 orientations x 1 scale -> every warp asks at least VOTE_WARP_MIN_TILES (180), since 60 found no real frame at all; the model's own scale goes first, so a strong proposal ends the search before the wider scales cost anything",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §2, §9. Test: pipeline/tests/unit/test_calibrate_votes.py; real frames in §14."
+        },
+        {
+            "id": "S-P06-BAD-NORTH-SOUTH-STRIP",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A strip scanned with its long side as the width keeps its true pixel",
+            "asserts": "a 22 by 200 km strip running north-south, 333,000 px wide -> the frame's pixel is its long side over the film's, about 0.83 Mercator metres, not the short edge's 0.09, so the votes' preview is not shrunk ten times too far; an east-west KH-9 strip reads what it always did",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §2. Test: pipeline/tests/unit/test_corners.py. KH-7's delivery is unverified: no KH-7 frame has run."
+        },
+        {
+            "id": "S-P06-BAD-REPEATING-PATTERN",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A map whole periods of a field lattice off is refused",
+            "asserts": "a lattice of fields around a city that repeats nothing, the map three periods (800 m ground) off -> every narrowing gate holds, the tiles of the city have no peak in the last search, and the added score maps stand higher elsewhere than on the map: refusal `rival`; the same lattice under the true map proves",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §4. Tests: pipeline/tests/unit/test_calibrate_rival.py."
+        },
+        {
+            "id": "S-P06-BAD-DISPLACED-PART",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A part of the film displaced as by a bad seam is refused",
+            "asserts": "the film's east 30 % or 20 % of the window lies 357 or 714 m (ground) from the rest -> 2 m of checkpoint error and every other gate holding, but the added score maps show a second place too clear for noise: refusal `rival`",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §4. Test: pipeline/tests/unit/test_calibrate_rival.py."
+        },
+        {
+            "id": "S-P06-BAD-FEW-CHECKS",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "One clear tile cannot decide the proof's checks",
+            "asserts": "thousands of tiles under the checks' peak, one over it -> refusal `cross-validation`: fewer than PROOF_MIN_CHECKS, so the two gates that read the checks test nothing and the delivery stays",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §4. Test: pipeline/tests/unit/test_calibrate_proof.py."
+        },
+        {
+            "id": "S-P06-BAD-FEW-PAIRS-FIGURE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A proved frame with few pairs has a figure a document can hold",
+            "asserts": "a frame clipping a corner of the window, 6 or 7 pairs -> affine and a finite crossValidatedM; with no fold to hold, no figure: never Infinity, which Firestore stores, every reader refuses and the worker's JSON cannot send",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §7. Test: pipeline/tests/unit/test_calibrate_pairs.py."
+        },
+        {
+            "id": "S-P06-HAPPY-RENDERED-OUTLINE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A render says where it shows the city, however it was fitted",
+            "asserts": "a USGS render over part of the city's window -> output.outline is the alpha's edge over the city's bounds, at most 32 vertices; a render off the city or no city document, none",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §5. Test: pipeline/tests/integration/test_calibration_job.py."
+        },
+        {
+            "id": "S-A17-BAD-NOT-PROVED",
+            "behaviour": "A17",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame the proof does not hold never publishes itself, however low its figure",
+            "asserts": "calibration how none or matcher, a refusal on it, or no record at all, under any threshold -> the version waits for Approve; the card says nothing proved it. The matcher's checks come from pairs its RANSAC filtered: held-out says little off the proof's path",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M9 (docs/research/M9-calibration.md §11). Tests: functions/test/imagery/approval-coverage.test.ts, packages/ui/test/admin/imagery/calibration-card.test.ts, e2e/admin/specs/imagery/pipeline.spec.ts, e2e/admin/specs/imagery/calibration.spec.ts."
+        },
+        {
+            "id": "S-A17-BAD-HAND-POINTS",
+            "behaviour": "A17",
+            "area": "admin",
+            "path": "bad",
+            "title": "Hand points wait for a click, whichever of them are disabled",
+            "asserts": "method gcps, three of them disabled after the residuals were read: kind held-out, RMSE 5 m -> the version waits; an upload's points the same",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M9 (docs/research/M9-calibration.md §11, §13.1). Test: functions/test/imagery/approval-coverage.test.ts."
+        },
+        {
+            "id": "S-A17-BAD-CHECKS-DROPPED",
+            "behaviour": "A17",
+            "area": "admin",
+            "path": "bad",
+            "title": "A check dropped as gross keeps a frame from publishing itself",
+            "asserts": "checksDropped 1 with a checkpoint figure under the threshold -> the version waits and the card says a check was left out: the figure cannot tell a false match from a wrong part of the map",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M9 (docs/research/M9-calibration.md §7, §11). Tests: functions/test/imagery/approval-coverage.test.ts, packages/ui/test/admin/imagery/calibration-card.test.ts, e2e/admin/specs/imagery/calibration.spec.ts."
+        },
+        {
+            "id": "S-A17-BAD-UNMEASURED-AREA",
+            "behaviour": "A17",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame whose tiles span too little of it waits",
+            "asserts": "measuredPct under AUTO_MIN_MEASURED_PCT or missing -> the version waits and the card says the rest is not measured: beyond the tiles a polynomial extrapolates and no check looks",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M9 (docs/research/M9-calibration.md §11). Tests: functions/test/imagery/approval-coverage.test.ts, packages/ui/test/admin/imagery/calibration-card.test.ts."
+        },
+        {
+            "id": "S-A66-BAD-WINDOW-BOX",
+            "behaviour": "A66",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame rendered on the whole window is planned by what it shows",
+            "asserts": "a frame fitted by points shows 40 % of the city on a grid the size of its window -> the row reads its output.outline and offers its neighbour; without an outline its box would let one frame stand for the whole city and the plan would stop",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M9 (docs/research/M9-calibration.md §5). Tests: packages/shared/test/imagery/join.test.ts, functions/test/imagery/join-plan.test.ts."
         }
     ]
 }

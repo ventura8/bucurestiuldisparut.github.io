@@ -52,6 +52,55 @@ function search(world: ImageryWorld, data: Record<string, unknown> = {}) {
 }
 
 describe('the plan of whole-city dates', () => {
+    it('happyPath_theOutlineARenderLeftStandsForAFrameNothingProved @S-A66-BAD-WINDOW-BOX', async () => {
+        const { west, south, east, north } = BOUNDS;
+        const outline = [
+            { lat: south, lng: west },
+            { lat: south, lng: west + 0.04 },
+            { lat: north, lng: west + 0.04 },
+            { lat: north, lng: west },
+        ];
+        // Fitted by hand, so no proved outline; rendered on the whole window, so its box holds the whole city.
+        const windowBox = { west: west - 0.1, south: south - 0.1, east: east + 0.1, north: north + 0.1 };
+        const output = { ...goldenOutput(), bounds: windowBox };
+        const world = await readyWorld();
+        const boxOnly = await readyWorld();
+        await seedPart(world, F039, { output: { ...output, outline }, state: 'awaiting_approval', calibration: undefined });
+        await seedPart(boxOnly, F039, { output, state: 'awaiting_approval', calibration: undefined });
+        await seedScene(world, F040, frameFields({ footprint: EAST }));
+        await seedScene(boxOnly, F040, frameFields({ footprint: EAST }));
+
+        await rewriteDatePlan(world.deps, CITY);
+        await rewriteDatePlan(boxOnly.deps, CITY);
+
+        // By its metadata ring and a box that holds everything, the two make the whole city; it really shows a tenth of it.
+        expect((await plan(boxOnly))?.rows[0]?.coveragePct).toBeGreaterThan(70);
+        expect((await plan(world))?.rows[0]?.coveragePct).toBeLessThan(62);
+    });
+
+    it('happyPath_aFramesMeasuredOutlineDecidesWhatItCovers @S-A66-HAPPY-MEASURED-OUTLINE', async () => {
+        const { west, south, north } = BOUNDS;
+        const outline = [
+            { lat: south, lng: west },
+            { lat: south, lng: west + 0.04 },
+            { lat: north, lng: west + 0.04 },
+            { lat: north, lng: west },
+        ];
+        const world = await readyWorld();
+        const estimated = await readyWorld();
+        await seedPart(world, F039, { output: undefined, state: 'processing', calibration: { how: 'votes', outline } });
+        await seedPart(estimated, F039, { output: undefined, state: 'processing' });
+        await seedScene(world, F040, frameFields({ footprint: EAST }));
+        await seedScene(estimated, F040, frameFields({ footprint: EAST }));
+
+        await rewriteDatePlan(world.deps, CITY);
+        await rewriteDatePlan(estimated.deps, CITY);
+
+        // By the estimate F039 holds the city alone: no join to offer. The proved map says a tenth of it: F040 is wanted.
+        expect((await plan(estimated))?.rows).toEqual([]);
+        expect((await plan(world))?.rows[0]?.frames.map((frame) => frame.entityId)).toEqual(expect.arrayContaining([F039, F040]));
+    });
+
     it('happyPath_twoFramesOfADateMakeARow_summerAboveWinter @S-A66-HAPPY', async () => {
         const world = await readyWorld();
         await seedCity(world, { imagery: { targetYears: [1972] } });
@@ -87,7 +136,12 @@ describe('the plan of whole-city dates', () => {
 
     it('happyPath_aFrameThatFailedStillShows_itsOutlineNotTrusted', async () => {
         const world = await readyWorld();
-        await seedPart(world, F039, { state: 'failed', output: undefined, error: { code: 'apiError.imagery.referenceUnavailable' } });
+        await seedPart(world, F039, {
+            state: 'failed',
+            output: undefined,
+            calibration: undefined,
+            error: { code: 'apiError.imagery.referenceUnavailable' },
+        });
         await seedScene(world, F040, frameFields({ footprint: EAST }));
 
         await rewriteDatePlan(world.deps, CITY);

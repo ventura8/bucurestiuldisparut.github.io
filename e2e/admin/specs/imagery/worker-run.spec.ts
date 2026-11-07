@@ -217,11 +217,12 @@ test(
             }
             expect(await emulators.objectNames('usgs-raw/')).toEqual([]);
             expect(await emulators.objectNames('work/')).toEqual([]);
-            // On the computer: the delivery was downloaded there and deleted after locate; the reference cache stays.
+            // On the computer: the delivery was downloaded there. This synthetic city is too small to prove (M9 §14), so it went through the
+            // matcher, and a frame nothing proved keeps its delivery (M9 §6); a proved one's goes (S-P06-HAPPY-VOTES).
             const fetched = String((job['steps'] as Record<string, { gcsPath?: string }>)['fetch']?.gcsPath);
             expect(fetched).toMatch(/^usgs-raw\//);
-            expect(existsSync(join(work, fetched))).toBe(false);
-            expect(filesUnder(join(work, 'usgs-raw')).filter((name) => name.endsWith('.tgz'))).toEqual([]);
+            expect((await imagery.version(versionId))?.['calibration']).toMatchObject({ how: 'none' });
+            expect(existsSync(join(work, fetched))).toBe(true);
             expect(filesUnder(join(work, 'reference')).some((name) => name.endsWith('.tif'))).toBe(true);
 
             // The worker is idle again, and the admin shows the computer connected with its last job done.

@@ -5,7 +5,7 @@
  * month offers its three ways out with their consequences: the free Mapbox Studio upload (three steps), next month, or
  * pay about $X now (asked first). At the tileset cap neither money nor a month frees a place: the card says to delete a
  * layer (with the way to Layers) or use Studio; a file Mapbox refused as too large has only the Studio way (CR-M3-47).
- * M8: a join's section says what it measured (`join/join-card.ts`).
+ * M8: a join's section says what it measured (`join/join-card.ts`), and M9 there too: why a frame under the threshold still waits.
  */
 import { availableComputeUnits, MAX_TILESETS, nextMonthStart, translateApiError, type Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';

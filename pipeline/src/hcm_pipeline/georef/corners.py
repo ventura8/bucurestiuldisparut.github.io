@@ -16,16 +16,15 @@ again over a window widened by `SEARCH_MARGIN` on every side (the frame warped o
 inside it, the guess moved by the best match's offset: metadata corners are often kilometres off).
 
 The rehearsal on the real 1972 frame D3C1202-200149F039 (lesson 361): a panoramic frame's corners give no homography, so a camera
-with a half angle starts from `georef/panoramic.py`'s local fit; the search correlates gradients over where the frame lies
-(`georef/surface.py`), and its surface's shape can accept a guess the raw gate cannot, whose true place scores 0.18. A guess
-nothing accepts is a weak guess, not a failure: nothing tells its orientations apart, so `locate` crops around every one that
-reaches the window, each with `WEAK_CROP_MARGIN_M`, and the admin places the points. `CityNotFoundError` is left for a frame whose
-exposure does not reach the window under any assignment: a panoramic camera's dark gap and the next exposure's fragment are no
-ground of this frame.
+with a half angle starts from `georef/panoramic.py`'s local fit. M9 (docs/research/M9-calibration.md): which orientation is true and
+where the frame lies is `calibrate/`'s to find and prove; here are only the orientations, the crops and what reaches the window. A frame
+nothing proves is no failure: `bounded_crop` holds the window with `UNPROVEN_MARGIN_M` under the orientations that reach it, cut to
+what a scan may hold, and the admin places the points. `CityNotFoundError` is left for a frame whose exposure does not reach the
+window under any assignment: a panoramic camera's dark gap and the next exposure's fragment are no ground of this frame.
 """
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from typing import Final
 
@@ -33,31 +32,28 @@ import cv2
 import numpy
 from numpy.typing import NDArray
 
-from hcm_pipeline.geo import FloatArray, Grid, MercatorBox, ground_scale, to_lnglat, to_mercator
+from hcm_pipeline.contract import MAX_SCAN_PIXELS
+from hcm_pipeline.geo import WORLD_HALF_M, FloatArray, Grid, MercatorBox, ground_scale, near_lng, to_lnglat, to_mercator
 from hcm_pipeline.georef.panoramic import PanoramicCamera, PanoramicModel
-from hcm_pipeline.georef.surface import Surface, search_surface
 from hcm_pipeline.georef.transforms import Gcp
-from hcm_pipeline.images import UInt8Array, enhance
+from hcm_pipeline.images import UInt8Array
 
 SCORE_RESOLUTION_M: Final = 60.0
-# A candidate whose warped frame covers less of the window than this share is not scored.
-MIN_COVERAGE: Final = 0.2
-NO_SCORE: Final = -1.0
 # A crop narrower or shorter than this many pixels misses the window.
 MIN_CROP_PX: Final = 2
-# The raw gate: the correlation at 60 m at which a guess is believed with no other evidence (the live KH-9 frame's wrong guess
-# scored 0.03, its true place 0.126 to 0.18, wrong places at most 0.098: on a real frame the surface's shape decides).
-MIN_CORRELATION: Final = 0.2
 # An assignment whose ground pixel is longer one way than the other by more than this many times the best-shaped
 # assignment's is not scored: a quarter turn of a 1:12 strip stretches its pixels about 140 times.
 MAX_ANISOTROPY: Final = 3.0
-# The search around a weak guess: the window widened by this share of its size on every side.
-SEARCH_MARGIN: Final = 0.5
-# The least share of the widened window the frame must cover for a search to be worth running.
-MIN_SEARCH_COVERAGE: Final = 0.05
-# The margin (ground metres) of a weak guess's crop on every side of the window: the first panoramic guess of the 1972 frame
-# lay 7.3 km from the truth, and a few kilometres more for a frame nobody measured.
-WEAK_CROP_MARGIN_M: Final = 10_000.0
+# Whether a frame reaches the window: over the window widened on every side by this share of its size, or by the sensor's search range
+# on the ground when that is more (a town's own size is no measure of the metadata's error), film over at least this share of the
+# window widened by `REACH_MARGIN` alone.
+REACH_MARGIN: Final = 0.5
+MIN_REACH_COVERAGE: Final = 0.05
+# The margin (ground metres) of a frame nothing proved, on every side of the window: F006 lay 14 km ground off.
+UNPROVEN_MARGIN_M: Final = 20_000.0
+# How far towards their middle corners past longitude 180 stop: just inside, since a polynomial bends; and a quad that still spans an area.
+INSIDE_WORLD_SHARE: Final = 0.99
+MIN_INSIDE_WORLD_SHARE: Final = 0.01
 LatLng = tuple[float, float]
 
 
@@ -104,26 +100,6 @@ class Assignment:
         return Assignment(self.rotation, self.mirrored, shift @ self.matrix)
 
 
-@dataclass(frozen=True)
-class Guess:
-    """The assignment kept, its correlation at 60 m, how far (metres) the search moved it (0: not searched or a weak guess),
-    the search's evidence, the share of the window the frame covers under it, whether nothing accepted it (`weak`), and then
-    every orientation that reaches the window (`reaching`, this one among them)."""
-
-    assignment: Assignment
-    score: float
-    moved_m: float = 0.0
-    surface: Surface | None = None
-    coverage: float = 0.0
-    weak: bool = False
-    reaching: tuple[Assignment, ...] = ()
-
-    @property
-    def strength(self) -> float:
-        """How far the search's peak stands over its surface (`NO_SCORE`: no search, or no place to search)."""
-        return NO_SCORE if self.surface is None else self.surface.z
-
-
 def frame_corners(width: int, height: int) -> FloatArray:
     """The frame's pixel corners: top-left, top-right, bottom-right, bottom-left."""
     return numpy.array([[0.0, 0.0], [width, 0.0], [width, height], [0.0, height]])
@@ -148,6 +124,11 @@ def anisotropy(transform: Assignment, width: int, height: int) -> float:
     mx, my = transform.to_mercator(x, y)
     along_x, along_y = math.hypot(mx[1] - mx[0], my[1] - my[0]), math.hypot(mx[2] - mx[0], my[2] - my[0])
     return max(along_x, along_y) / max(min(along_x, along_y), 1e-12)
+
+
+def around(quad: Sequence[LatLng], middle_lng: float) -> list[LatLng]:
+    """The corners on the side of `middle_lng`: a frame over longitude 180 stays one piece around the city."""
+    return [(lat, near_lng(lng, middle_lng)) for lat, lng in quad]
 
 
 def plausible(width: int, height: int, quad: Sequence[LatLng]) -> list[Assignment]:
@@ -187,49 +168,38 @@ def warp_onto(frame: Frame, transform: Assignment, grid: Grid) -> tuple[UInt8Arr
     return numpy.asarray(warped, numpy.uint8), inside
 
 
-def correlation(a: FloatArray, b: FloatArray) -> float:
-    """The normalized cross-correlation of two equal-sized samples."""
-    a, b = a - a.mean(), b - b.mean()
-    spread = float(numpy.sqrt((a * a).sum() * (b * b).sum()))
-    return float((a * b).sum() / spread) if spread > 0 else 0.0
+def _widened(grid: Grid, margin_ground_m: float) -> Grid:
+    """`grid` grown on every side by `REACH_MARGIN` of its size, or by `margin_ground_m` on the ground when that is more (whole pixels)."""
+    reach = math.ceil(margin_ground_m / ground_scale(grid.box().bounds().middle_lat) / grid.resolution)
+    columns, rows = max(1, reach, round(grid.width * REACH_MARGIN)), max(1, reach, round(grid.height * REACH_MARGIN))
+    return Grid(
+        grid.left - columns * grid.resolution,
+        grid.top + rows * grid.resolution,
+        grid.resolution,
+        grid.width + 2 * columns,
+        grid.height + 2 * rows,
+    )
 
 
-def score(frame: Frame, transform: Assignment, reference: UInt8Array, grid: Grid) -> float:
-    """How well the frame warped through `transform` matches the reference (NO_SCORE when it barely covers it)."""
-    warped, inside = warp_onto(frame, transform, grid)
-    if inside.mean() < MIN_COVERAGE:
-        return NO_SCORE
-    return correlation(enhance(warped)[inside].astype(numpy.float64), enhance(reference)[inside].astype(numpy.float64))
-
-
-def _best(guesses: Sequence[Guess]) -> Guess:
-    """The highest-scoring guess (the first of equals)."""
-    return max(enumerate(guesses), key=lambda entry: (entry[1].score, -entry[0]))[1]
-
-
-def widened(grid: Grid, margin: float) -> tuple[Grid, int, int]:
-    """`grid` grown by `margin` of its size on every side (whole pixels), and the columns and rows it grew by."""
-    columns, rows = max(1, round(grid.width * margin)), max(1, round(grid.height * margin))
-    left, top = grid.left - columns * grid.resolution, grid.top + rows * grid.resolution
-    return Grid(left, top, grid.resolution, grid.width + 2 * columns, grid.height + 2 * rows), columns, rows
-
-
-def searched(frame: Frame, transform: Assignment, reference: UInt8Array, grid: Grid, margin: float = SEARCH_MARGIN) -> Guess:
-    """`transform` moved to where the window's reference matches the frame best within `margin` of the window around
-    it, the moved guess's correlation and the search's evidence (NO_SCORE when the frame barely covers the widened window)."""
-    wide, columns, rows = widened(grid, margin)
-    warped, inside = warp_onto(frame, transform, wide)
-    found = search_surface(enhance(warped), inside, enhance(reference), grid.resolution) if inside.mean() >= MIN_SEARCH_COVERAGE else None
-    if found is None:
-        return Guess(transform, NO_SCORE)
-    dx, dy = (found.x - columns) * grid.resolution, (rows - found.y) * grid.resolution
-    moved = transform.moved(-dx, -dy)
-    return Guess(moved, score(frame, moved, reference, grid), math.hypot(dx, dy), found)
+def reaching(frame: Frame, firsts: Sequence[Assignment], grid: Grid, margin_ground_m: float) -> list[tuple[Assignment, float]]:
+    """The orientations whose film reaches the window's surroundings (`margin_ground_m`: how far off the sensor's search looks), with
+    the share of the window they cover, most first (of equals, as given). CityNotFoundError when none does."""
+    wide = _widened(grid, margin_ground_m)
+    # The share is of the window's own surroundings: a wider search must never make a small frame over a small window read as less.
+    needed = MIN_REACH_COVERAGE * (1 + 2 * REACH_MARGIN) ** 2 * grid.width * grid.height
+    found = [
+        (each, float(warp_onto(frame, each, grid)[1].mean()))
+        for each in firsts
+        if numpy.count_nonzero(warp_onto(frame, each, wide)[1]) >= needed
+    ]
+    if not found:
+        raise CityNotFoundError
+    return sorted(found, key=lambda entry: -entry[1])
 
 
 def first_guesses(frame: Frame, quad: Sequence[LatLng], window: MercatorBox, camera: PanoramicCamera | None) -> list[Assignment]:
     """The plausible assignments, each as the panoramic model fitted around the window when the camera has one."""
-    kept = plausible(frame.width, frame.height, quad)
+    kept = plausible(frame.width, frame.height, around(quad, window.middle_lng))
     return kept if camera is None else [_panoramic(candidate, frame, window, camera) for candidate in kept]
 
 
@@ -243,53 +213,6 @@ def _panoramic(candidate: Assignment, frame: Frame, window: MercatorBox, camera:
 def on_exposure(frame: Frame, camera: PanoramicCamera | None) -> Frame:
     """The frame as scored: a panoramic camera's on its exposure, whatever else the scan holds beyond it."""
     return frame if camera is None else replace(frame, exposure=(camera.image_start, camera.image_start + camera.image_width))
-
-
-def guess_corners(frame: Frame, quad: Sequence[LatLng], reference: UInt8Array, grid: Grid, camera: PanoramicCamera | None = None) -> Guess:
-    """The corner guess to crop with: the best first guess when the raw gate takes it, else the best of them searched around
-    that the raw gate or the surface's shape takes, else a `weak` guess. CityNotFoundError when no assignment reaches the
-    window, nor a search around it."""
-    film = on_exposure(frame, camera)
-    firsts = [Guess(candidate, score(film, candidate, reference, grid)) for candidate in first_guesses(film, quad, grid.box(), camera)]
-    best = _best(firsts)
-    kept = best if best.score >= MIN_CORRELATION else _search_around(film, firsts, reference, grid)
-    return replace(kept, coverage=_coverage(film, kept.assignment, grid))
-
-
-def _coverage(frame: Frame, transform: Assignment, grid: Grid) -> float:
-    """The share of `grid` the frame covers through `transform`."""
-    return float(warp_onto(frame, transform, grid)[1].mean())
-
-
-def _search_around(frame: Frame, firsts: Sequence[Guess], reference: UInt8Array, grid: Grid) -> Guess:
-    """The search's guess: the best one believed, else the weak one (`firsts`: the guesses before the search)."""
-    found = [searched(frame, first.assignment, reference, grid) for first in firsts]
-    if max(guess.score for guess in [*firsts, *found]) <= NO_SCORE:
-        raise CityNotFoundError
-    return _believed(found) or _weak(firsts, found, _coverages(frame, firsts, grid))
-
-
-def _coverages(frame: Frame, guesses: Sequence[Guess], grid: Grid) -> list[float]:
-    return [_coverage(frame, guess.assignment, grid) for guess in guesses]
-
-
-def _believed(found: Sequence[Guess]) -> Guess | None:
-    """The best searched guess the raw gate takes, else the one whose surface stands out most, if any does."""
-    raw = [guess for guess in found if guess.score >= MIN_CORRELATION]
-    return _best(raw) if raw else max(filter(_confident, found), key=lambda guess: guess.strength, default=None)
-
-
-def _confident(guess: Guess) -> bool:
-    return guess.surface is not None and guess.surface.confident
-
-
-def _weak(firsts: Sequence[Guess], found: Sequence[Guess], covered: Sequence[float]) -> Guess:
-    """The orientation that covers the window most (the search's strength, then the first score, of equals), **not moved**: a
-    move nothing believes is noise, and the corners' place is what the weak crop's margin is measured from. Which orientation is
-    true stays unknown (a z of 4 to 5 is what the surface of no city gives), so the guess names all that reach the window."""
-    index = max(range(len(firsts)), key=lambda each: (covered[each], found[each].strength, firsts[each].score))
-    reaching = tuple(first.assignment for first, moved in zip(firsts, found, strict=True) if max(first.score, moved.score) > NO_SCORE)
-    return replace(firsts[index], surface=found[index].surface, weak=True, reaching=reaching)
 
 
 @dataclass(frozen=True)
@@ -341,23 +264,70 @@ def _union(boxes: Sequence[Box]) -> Box:
     return min(box[0] for box in boxes), min(box[1] for box in boxes), max(box[2] for box in boxes), max(box[3] for box in boxes)
 
 
-def weak_crop(guess: Guess, window: MercatorBox, width: int, height: int, start: int = 0) -> Crop:
-    """The crop of a guess nothing confirmed: the window with `WEAK_CROP_MARGIN_M` on every side under every orientation that
-    reaches it, the place the admin needs to find the city in whichever is true. It may be over `MAX_SCAN_PIXELS` a side
-    (`locate.within_limits` refuses that); its GCPs lie at the corners of the kept orientation's own box, where its local fit holds."""
-    margin = WEAK_CROP_MARGIN_M / ground_scale(window.bounds().middle_lat)
+def _cut_axis(union: tuple[int, int], first: tuple[int, int], limit: int) -> tuple[int, int]:
+    """One axis of a crop: the union when it fits, else `limit` around the first box's middle, inside the union."""
+    if union[1] - union[0] <= limit:
+        return union
+    start = max(union[0], min((first[0] + first[1] - limit) // 2, union[1] - limit))
+    return start, start + limit
+
+
+def _cut(union: Box, first: Box, limit: int) -> Box:
+    across, along = (
+        _cut_axis((union[0], union[2]), (first[0], first[2]), limit),
+        _cut_axis((union[1], union[3]), (first[1], first[3]), limit),
+    )
+    return across[0], along[0], across[1], along[1]
+
+
+def _holds(outer: Box, inner: Box) -> bool:
+    return outer[0] <= inner[0] and outer[1] <= inner[1] and outer[2] >= inner[2] and outer[3] >= inner[3]
+
+
+def _clipped(box: Box, within: Box) -> Box:
+    return max(box[0], within[0]), max(box[1], within[1]), min(box[2], within[2]), min(box[3], within[3])
+
+
+def _boxes_reached(orientations: Sequence[Assignment], wide: MercatorBox, limits: tuple[int, int, int]) -> list[Box]:
+    """The orientations' boxes around `wide`; a frame none of them reaches is not the city's."""
+    boxes = [box for box in (_box_reached(each, wide, limits) for each in orientations) if box is not None]
+    if not boxes:
+        raise CityNotFoundError
+    return boxes
+
+
+def bounded_crop(
+    orientations: Sequence[Assignment], window: MercatorBox, limits: tuple[int, int, int], limit: int = MAX_SCAN_PIXELS
+) -> tuple[Crop, int]:
+    """The crop of a frame nothing proved, and how many orientations it lost: the window with `UNPROVEN_MARGIN_M` on every side under
+    each orientation that reaches it, most likely first. **It always fits**: a union over `limit` a side is cut to it around the first
+    orientation's box. Its GCPs lie at the corners of the first's box inside the crop, where its fit holds; they only start the matcher."""
+    margin = UNPROVEN_MARGIN_M / ground_scale(window.bounds().middle_lat)
     wide = MercatorBox(window.left - margin, window.bottom - margin, window.right + margin, window.top + margin)
-    limits = (width, height, start)
-    own = crop_box(guess.assignment, wide, width, height, start)
-    boxes = [box for box in (_box_reached(each, wide, limits) for each in guess.reaching) if box is not None]
-    union = _union([own, *boxes])
-    return Crop(union[0], union[1], union[2] - union[0], union[3] - union[1], _corner_gcps(guess.assignment, own, union), True)
+    boxes = _boxes_reached(orientations, wide, limits)
+    kept = _cut(_union(boxes), boxes[0], limit)
+    gcps = _corner_gcps(orientations[0], _clipped(boxes[0], kept), kept)
+    lost = sum(not _holds(kept, box) for box in boxes)
+    return Crop(kept[0], kept[1], kept[2] - kept[0], kept[3] - kept[1], gcps, True), lost
+
+
+def inside_world(corners: FloatArray, to_places: Callable[[FloatArray], FloatArray]) -> FloatArray:
+    """Corners drawn towards their middle until none lies past longitude 180 (a place past it is no `lngSchema` place): a crop's corners
+    stick out of a window that ends on the line. They only start a fit, and four points inside the crop start it as well."""
+    furthest = float(numpy.abs(to_places(corners)[:, 0]).max())
+    if furthest <= WORLD_HALF_M:
+        return corners
+    middle = corners.mean(axis=0)
+    centre = float(numpy.abs(to_places(middle.reshape(1, 2))[0, 0]))
+    share = max((WORLD_HALF_M - centre) / max(furthest - centre, 1e-9) * INSIDE_WORLD_SHARE, MIN_INSIDE_WORLD_SHARE)
+    return numpy.asarray(middle + (corners - middle) * share, numpy.float64)
 
 
 def _corner_gcps(transform: Assignment, box: Box, within: Box) -> tuple[Gcp, ...]:
     """Four GCPs at the corners of `box` (frame pixels) through `transform`, in the pixels of the crop `within`."""
     left, top, right, bottom = box
-    corners = frame_corners(right - left, bottom - top) + numpy.array([left, top])
+    start = frame_corners(right - left, bottom - top) + numpy.array([left, top])
+    corners = inside_world(start, lambda film: numpy.column_stack(transform.to_mercator(film[:, 0], film[:, 1])))
     mx, my = transform.to_mercator(corners[:, 0], corners[:, 1])
     gcps = []
     for index, (x, y, merc_x, merc_y) in enumerate(zip(corners[:, 0], corners[:, 1], mx, my, strict=True), start=1):

@@ -66,6 +66,10 @@ class Segment:
         """The whole segment shrunk to `size` (width, height) by averaging: every pixel is read (the preview's, not the matching's)."""
         return self._bytes(self._raw((0, 0, self.width, self.height), size, AVERAGED))
 
+    def averaged_window(self, x: int, y: int, width: int, height: int, size: tuple[int, int]) -> UInt8Array:
+        """The window shrunk to `size` (width, height) by averaging: a proof's read, whose film grain must not alias."""
+        return self._bytes(self._raw((x, y, width, height), size, AVERAGED))
+
     def close(self) -> None:
         self._dataset.Close()
 

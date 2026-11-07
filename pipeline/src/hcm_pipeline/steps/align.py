@@ -26,6 +26,9 @@ from hcm_pipeline.rasters import GeoTiff, write_geotiff
 from hcm_pipeline.steps.common import city_window, gdal_step
 
 MIN_PARTS: Final = 2
+# A seam this close has nothing a correction could close (a fifth of a Sentinel-2 pixel): it stays as it is and counts as closed, or the
+# best joins would wait for a click because nothing could improve them (found by S-P05-HAPPY-ADMIN once M9's maps agreed to 0.34 m).
+SEAM_ALREADY_CLOSED_M: Final = 2.0
 OWNER_STEP: Final = 1 << (COARSE_ZOOM - OWNER_ZOOM)
 
 
@@ -184,6 +187,10 @@ def _not_helped(found: dict[int, Verdict]) -> set[int]:
     return {index for index, verdict in found.items() if not verdict.helped}
 
 
+def _already_closed(before: float | None) -> bool:
+    return before is not None and before <= SEAM_ALREADY_CLOSED_M
+
+
 def _reported(run: Aligning, item: Measured, verdict: Verdict | None, applied: bool) -> JoinSeam:
     first, second = run.parts[item.seam.a].entity_id, run.parts[item.seam.b].entity_id
     samples, spare = len(item.kept), len(held_out(item.kept))
@@ -192,7 +199,7 @@ def _reported(run: Aligning, item: Measured, verdict: Verdict | None, applied: b
     before = None if verdict is None else verdict.before_m
     if not applied:
         # What the layer shows at this seam is what was there before: the correction is gone with its figure.
-        return JoinSeam(first, second, True, False, samples, spare, 0.0, before, before)
+        return JoinSeam(first, second, True, _already_closed(before), samples, spare, 0.0, before, before)
     share = run.share(item.seam)
     moved = item.model.largest_m() * max(share, 1.0 - share) * run.ground
     return JoinSeam(first, second, True, True, samples, spare, moved, before, None if verdict is None else verdict.after_m)

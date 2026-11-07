@@ -69,7 +69,8 @@
             "expect": {
                 "ok": true,
                 "fitRmseM": 0,
-                "toleranceM": 0.01
+                "toleranceM": 0.01,
+                "checkpointKind": "leave-one-out"
             }
         },
         {
@@ -171,7 +172,8 @@
             "expect": {
                 "ok": true,
                 "fitRmseM": 0,
-                "toleranceM": 0.01
+                "toleranceM": 0.01,
+                "checkpointKind": "leave-one-out"
             }
         },
         {
@@ -249,7 +251,8 @@
                 "fitRmseM": 0,
                 "checkpointRmseM": 0,
                 "checkpointCount": 1,
-                "toleranceM": 0.01
+                "toleranceM": 0.01,
+                "checkpointKind": "held-out"
             }
         },
         {

@@ -149,19 +149,32 @@ function isQuad(ring: readonly FootprintVertex[]): ring is Quad {
     return ring.length === 4;
 }
 
-/** The outline a frame's coverage uses: only the KH-9 panoramic camera's differs from the stored footprint. */
-export function coverageRing(footprint: readonly FootprintVertex[], camera: FrameCamera | undefined): readonly FootprintVertex[] {
+/** A ring's longitudes on the side of `middleLng`: a frame over longitude 180 is one piece around a city, never the world's width. */
+function aroundLng(ring: readonly FootprintVertex[], middleLng: number): FootprintVertex[] {
+    return ring.map((vertex) => ({ lat: vertex.lat, lng: vertex.lng + 360 * Math.round((middleLng - vertex.lng) / 360) }));
+}
+
+/**
+ * The outline a frame's coverage uses, around `middleLng` (the city's): only the KH-9 panoramic camera's differs from the stored
+ * footprint.
+ */
+export function coverageRing(
+    footprint: readonly FootprintVertex[],
+    camera: FrameCamera | undefined,
+    middleLng: number,
+): readonly FootprintVertex[] {
+    const plain = aroundLng(footprint, middleLng);
     if (camera?.sensor !== 'KH-9-pan') {
-        return footprint;
+        return plain;
     }
     const { corners } = camera;
-    const ring = corners === undefined ? footprint : [corners.nw, corners.ne, corners.se, corners.sw];
-    return isQuad(ring) ? panoramicRing(ring) : footprint;
+    const ring = corners === undefined ? plain : aroundLng([corners.nw, corners.ne, corners.se, corners.sw], middleLng);
+    return isQuad(ring) ? panoramicRing(ring) : plain;
 }
 
 /** The share of `bounds` that `footprint` (an open ring) of a frame of `camera` covers, 0 to 1. */
 export function footprintCoverage(footprint: readonly FootprintVertex[], bounds: BoundsRecord, camera?: FrameCamera): number {
-    const outline = coverageRing(footprint, camera);
+    const outline = coverageRing(footprint, camera, (bounds.west + bounds.east) / 2);
     const clipped = edgesOf(bounds).reduce<readonly FootprintVertex[]>((ring, edge) => clipRing(ring, edge), outline);
     const scale = Math.cos(toRadians((bounds.south + bounds.north) / 2));
     const whole = (bounds.east - bounds.west) * scale * (bounds.north - bounds.south);

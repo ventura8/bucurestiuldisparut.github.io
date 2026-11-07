@@ -1,15 +1,16 @@
 """The raw USGS delivery is deleted once the city crop exists (M7, docs/research/M7-local-worker.md §5)."""
 
+import json
 from pathlib import Path
 
 import pytest
-from hcm_pipeline.contract import Errors
 from hcm_pipeline.runner import RunOutcome
 from hcm_pipeline.steps import locate
 
+from tests.contracts_loader import record
 from tests.fakes.http import Reply
 from tests.fakes.world import CITY, ENTITY_ID, JOB_ID, LAYER_ID, OVERPASS_PATH, PipelineWorld, dig
-from tests.synthetic.scenes import render_world, write_sentinel2
+from tests.synthetic.scenes import overpass_answer, render_world, write_sentinel2
 
 RAW = f"usgs-raw/corona2/{ENTITY_ID}/{ENTITY_ID}.tgz"
 SCAN = f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/scan.tif"
@@ -105,18 +106,19 @@ def test_happy_path_a_retry_after_the_deliverys_week_with_its_segments_left_need
     assert world.job()["status"] == "awaiting_approval"
 
 
-def test_bad_path_a_weak_guess_too_wide_to_crop_fails_and_keeps_the_delivery(
+def test_bad_path_an_unproved_frame_too_wide_is_cut_to_fit_and_keeps_the_delivery(
     world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Scenarios: S-P01-BAD-WEAK-GUESS-TOO-WIDE"""
+    """Scenarios: S-P06-BAD-OVER-LIMIT, S-P01-BAD-WEAK-GUESS-TOO-WIDE"""
     world.http.serve("/s2/visual.tif", write_sentinel2(render_world(99), tmp_path / "elsewhere.tif").read_bytes())
-    monkeypatch.setattr(locate, "MAX_SCAN_PIXELS", 100)
+    world.http.route("POST", OVERPASS_PATH, lambda _request: Reply.json(json.dumps(overpass_answer(render_world(99)))))
+    monkeypatch.setattr(locate, "MAX_SCAN_PIXELS", 1000)
     world.seed_import()
 
-    assert world.run() is RunOutcome.FAILED
+    assert world.run() is RunOutcome.WAITING
 
-    assert dig(world.job(), "error", "code") == Errors.PROCESSING_FAILED
-    assert "over the 100 a scan may have" in str(dig(world.job(), "error", "message"))
+    scan = record(world.version()["scan"])
+    assert max(int(str(scan["width"])), int(str(scan["height"]))) <= 1000
     assert world.gcs.names("usgs-raw/") == [RAW]
-    assert "scan" not in world.version()
-    assert not any(line.startswith("the guess is weak") for line in world.log_lines())
+    assert any(line.startswith("not proved") for line in world.log_lines())
+    assert world.version()["state"] == "needs_gcps"

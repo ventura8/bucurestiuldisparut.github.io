@@ -12,6 +12,7 @@ import { dispatchJob } from './dispatch.js';
 import { releaseCancelled } from './end.js';
 import { noticeJobChange } from './job-notices.js';
 import { datePlanChangedBy, rewriteDatePlan } from './join-plan.js';
+import { locateEnded, recordProvedPass } from './pass-calibration.js';
 
 /**
  * `imagery.onJobWrite` (Firestore trigger on `cities/{city}/jobs/{job}`; `docs/research/M3-interfaces.md` §4.2): the
@@ -22,7 +23,8 @@ import { datePlanChangedBy, rewriteDatePlan } from './join-plan.js';
  * has what it still held released. M7 (`docs/research/M7-local-worker.md` §3, §4.2): a queued job whose place the admin
  * changed, or that got the admin's OK past the free tier, is dispatched again; a cloud run that ended is counted into
  * the month's Cloud Run use. M8 (`docs/research/M8-join-interfaces.md` §5): a frame that rendered, or a join published,
- * rewrites the plan of whole-city dates.
+ * rewrites the plan of whole-city dates. M9 (`docs/research/M9-calibration.md` §2): a `locate` that ended proved leaves its model
+ * for the next frame of its pass.
  */
 export type JobWriteDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'jobs' | 'tasks'>;
 
@@ -84,6 +86,26 @@ const ACTIONS: Readonly<Record<Acting, (deps: JobWriteDeps, cityId: string, jobI
     release: releaseCancelled,
 };
 
+interface JobWritten {
+    readonly before: JobDoc | undefined;
+    readonly after: JobDoc;
+}
+
+/** What a write leaves on record for later, each best-effort: a pass's proved model (M9), the plan of whole-city dates (M8). */
+async function recordRests(deps: JobWriteDeps, cityId: string, jobId: string, written: JobWritten): Promise<void> {
+    const { before, after } = written;
+    if (locateEnded(before, after)) {
+        await recordProvedPass(deps, cityId, jobId, after).catch((error: unknown) => {
+            deps.log.warn('pass not recorded', { cityId, jobId, error: String(error) });
+        });
+    }
+    if (datePlanChangedBy(before, after)) {
+        await rewriteDatePlan(deps, cityId).catch((error: unknown) => {
+            deps.log.warn('date plan not rewritten', { cityId, jobId, error: String(error) });
+        });
+    }
+}
+
 /** Acts on one write of a job; returns the transition it acted on. */
 export async function onJobWrite(deps: JobWriteDeps, cityId: string, jobId: string, change: JobChange): Promise<JobTransition> {
     const after = parsed(change.after);
@@ -101,11 +123,7 @@ export async function onJobWrite(deps: JobWriteDeps, cityId: string, jobId: stri
     });
     // M4 (docs/research/M4-interfaces.md §5.1, assists-notify): a failed job, a version waiting for Approve or for points.
     await noticeJobChange(deps, { cityId, jobId, job: after }, before);
-    if (datePlanChangedBy(before, after)) {
-        await rewriteDatePlan(deps, cityId).catch((error: unknown) => {
-            deps.log.warn('date plan not rewritten', { cityId, jobId, error: String(error) });
-        });
-    }
+    await recordRests(deps, cityId, jobId, { before, after });
     return transition;
 }
 

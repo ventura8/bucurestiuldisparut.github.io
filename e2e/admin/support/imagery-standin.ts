@@ -112,6 +112,9 @@ function automaticGcps(run: Run): Gcp[] {
 /** The suggestions' confidences (best first): one at the fit's confidence, three below it (M4 §2.3's "fewer" case). */
 const SUGGESTED_SCORES = [0.66, 0.58, 0.47, 0.35] as const;
 
+/** What `locate` and `georef` record of a frame the tiles proved, when a script does not say otherwise. */
+const PROVED_CALIBRATION = { how: 'votes', tiles: { agreed: 412, tried: 500 }, crossValidatedM: 11.5, measuredPct: 85 } as const;
+
 /** The landmark nearest each quarter of the scan: four places spread over it, none of the georeferencer specs' own. */
 function spreadLandmarks(run: Run): LatLng[] {
     const { width, height } = SCAN_SIZE;
@@ -217,7 +220,11 @@ const STEPS: Readonly<Record<PipelineStep, (run: Run) => Promise<StepResult>>> =
     },
     locate: async (run) => {
         const scan = await writeScan(run);
-        await run.writeVersion({ georef: { method: 'corners', transform: 'affine', gcps: cornerGcps(run) } });
+        const { calibration } = run.attempt;
+        await run.writeVersion({
+            georef: { method: 'corners', transform: 'affine', gcps: cornerGcps(run) },
+            ...(calibration === undefined ? {} : { calibration }),
+        });
         await run.stepEnded('locate', 'done', recorded(scan));
         return 'next';
     },
@@ -268,6 +275,7 @@ async function georeference(run: Run): Promise<StepResult> {
                 fitRmseM: Math.round(rmse * 7) / 10,
                 checkpointRmseM: rmse,
                 checkpointCount: disabled > 0 ? disabled : georef.gcps.length,
+                checkpointKind: disabled > 0 ? 'held-out' : 'leave-one-out',
             },
             suggestions: undefined,
         });
@@ -287,7 +295,10 @@ async function georeference(run: Run): Promise<StepResult> {
                 fitRmseM: Math.round(rmse * 7) / 10,
                 checkpointRmseM: rmse,
                 checkpointCount: 3,
+                checkpointKind: 'held-out',
             },
+            // The proof holds this fit: only then may the policy approve it (M9 §11).
+            calibration: run.attempt.calibration ?? PROVED_CALIBRATION,
         });
     }
     await run.stepEnded('georef', 'done');
@@ -311,6 +322,14 @@ function outputBounds(run: Run): Bounds {
     return isEmbedded(run) ? run.bounds : boundsOf(scanCorners(run.bounds));
 }
 
+/** The share of the city the render's box holds, as `export` measures it on the alpha (M9: `output.coveragePct`). */
+function coverageOf(run: Run, bounds: Bounds): number {
+    const width = Math.max(0, Math.min(bounds.east, run.bounds.east) - Math.max(bounds.west, run.bounds.west));
+    const height = Math.max(0, Math.min(bounds.north, run.bounds.north) - Math.max(bounds.south, run.bounds.south));
+    const share = (width * height) / ((run.bounds.east - run.bounds.west) * (run.bounds.north - run.bounds.south));
+    return Math.round(share * 1000) / 10;
+}
+
 async function outputOf(run: Run): Promise<Record<string, unknown>> {
     const path = (file: VersionFile) => RASTER_PATHS.version(run.city, run.layerId, run.versionId, file);
     const sensor = sensorOf(run);
@@ -329,6 +348,7 @@ async function outputOf(run: Run): Promise<Record<string, unknown>> {
         areaKm2: run.attempt.areaKm2 ?? Math.min(40, Math.round(areaKm2(bounds))),
         studioPath: path('studio.tif'),
         studioBytes: studio.length,
+        coveragePct: run.attempt.coveragePct ?? coverageOf(run, bounds),
     };
 }
 

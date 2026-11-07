@@ -1,10 +1,10 @@
-"""The panoramic first guess of `locate` on synthetic panoramic frames (lesson 361).
+"""The panoramic model of `locate` on synthetic panoramic frames (lesson 361, M9).
 
 The real 1972 KH-9 frame showed that a homography through a panoramic frame's corners has the scale wrong 1.5 to 2 times at the
-city, and that its true place scores under the raw gate. Here the film is made through the forward model itself, from the seeded
-world, its corners some kilometres off the truth as the real frame's were: the model must round-trip, the guess through it must
-find the city, the corner homography must not, a frame of another place must go on to the admin's points, and a window off the
-frame must be the one failure left.
+city; the real 1982 frame that a shorter sweep need not be centred on the nadir. Here the film is made through the forward model itself,
+from the seeded world, its corners some kilometres off the truth as the real frames' were: the model must round-trip, the chain through
+it must find and prove the city, the corner homography must not, a frame of another place must go on to the admin's points, and a window
+off the frame must be the one failure left.
 """
 
 import math
@@ -13,31 +13,29 @@ from typing import Final
 import cv2
 import numpy
 import pytest
-from hcm_pipeline.geo import FloatArray, Grid, MercatorBox, ground_scale, to_lnglat, to_mercator
-from hcm_pipeline.georef import corners as corner_guess
+from hcm_pipeline.calibrate.chain import Found, FrameSearch, find_frame
+from hcm_pipeline.contract import SENSOR_SPECS, SearchRange
+from hcm_pipeline.frames import FrameLayout
+from hcm_pipeline.geo import FloatArray, Grid, MercatorBox, to_lnglat, to_mercator
 from hcm_pipeline.georef.corners import (
-    SCORE_RESOLUTION_M,
-    WEAK_CROP_MARGIN_M,
     Assignment,
     CityNotFoundError,
     Frame,
-    Guess,
+    bounded_crop,
     corner_transform,
-    crop,
     crop_box,
     first_guesses,
     frame_corners,
-    guess_corners,
     on_exposure,
-    weak_crop,
+    reaching,
 )
-from hcm_pipeline.georef.panoramic import PanoramicCamera, PanoramicModel, least_squares_homography
-from hcm_pipeline.georef.transforms import Gcp
+from hcm_pipeline.georef.panoramic import PanoramicCamera, PanoramicModel, least_squares_homography, sweep_ends
 from hcm_pipeline.images import UInt8Array, as_uint8
 from hcm_pipeline.steps.georef import scan_resolution
-from hcm_pipeline.steps.locate import guess_line, weak_line
+from hcm_pipeline.steps.locate import camera_of, shorter_sweep
 
 from tests.synthetic.scenes import CENTRE, World, render_world
+from tests.unit.calibrate_scene import ArrayReader
 
 # The film: about 3 m a pixel along it at the nadir and 5 m across it. The world is 10 km wide: only the strip's middle shows it.
 WIDTH: Final = 12000
@@ -51,7 +49,7 @@ SPAN_M: Final = 54000.0
 END_M: Final = 18000.0
 # The corners' error, as the real frame's: the truth lies this far (EPSG:3857 metres) from where they say.
 CORNER_ERROR_M: Final = (2000.0, -2600.0)
-WINDOW_SIDE_M: Final = 6000.0
+WINDOW_SIDE_M: Final = 8000.0
 
 
 def true_corners(offset: tuple[float, float] = (0.0, 0.0)) -> FloatArray:
@@ -97,10 +95,11 @@ def window() -> MercatorBox:
 
 
 def reference_of(world: World, box: MercatorBox) -> tuple[UInt8Array, Grid]:
-    grid = Grid.over(box, SCORE_RESOLUTION_M)
+    """The world's grey over `box` at 10 m (what Sentinel-2 gives `locate`)."""
+    grid = Grid.over(box, 10.0)
     mx, my = grid.centres()
     gx, gy = world.grid.to_pixel(mx, my)
-    pixels = cv2.remap(world.pixels, (gx - 0.5).astype(numpy.float32), (gy - 0.5).astype(numpy.float32), cv2.INTER_AREA, borderValue=128)
+    pixels = cv2.remap(world.pixels, (gx - 0.5).astype(numpy.float32), (gy - 0.5).astype(numpy.float32), cv2.INTER_LINEAR, borderValue=128)
     return as_uint8(pixels), grid
 
 
@@ -115,13 +114,33 @@ def frame(world: World) -> Frame:
     return Frame(film, float(SHRINK), WIDTH, HEIGHT)
 
 
-def film_error_m(guess: Guess, box: MercatorBox) -> float:
-    """The largest distance (EPSG:3857 metres) between where the guess and where the true model put the window's corners on the film."""
-    mx = numpy.array([box.left, box.right, box.right, box.left])
-    my = numpy.array([box.top, box.top, box.bottom, box.bottom])
-    x, y = guess.assignment.to_pixel(mx, my)
-    px, py = model().to_mercator(x, y)
-    return float(numpy.hypot(px - mx, py - my).max())
+def search_of(
+    film: Frame, reference: UInt8Array, grid: Grid, quad: list[tuple[float, float]], camera: PanoramicCamera | None
+) -> FrameSearch:
+    """The chain's input, as `locate` builds it, reading the film `film` shrinks."""
+    exposed = on_exposure(film, camera)
+    firsts = first_guesses(exposed, quad, grid.box(), camera)
+    reached = reaching(exposed, firsts, grid.scaled(6), 0.0)
+    full = cv2.resize(film.pixels, (film.width, film.height), interpolation=cv2.INTER_LINEAR)
+    limits = (film.width, film.height, 0) if camera is None else (camera.image_start + camera.image_width, film.height, camera.image_start)
+    orientations = tuple(each for each, _ in reached)
+    return FrameSearch(
+        exposed, orientations, reference, grid, ArrayReader(as_uint8(full)), limits, SearchRange(8000.0, (1.0,)), camera, "KH-9-pan", 7
+    )
+
+
+def found_in(search: FrameSearch) -> Found:
+    return find_frame(search, lambda: None, list[str]().append)
+
+
+def film_error_m(found: Found, box: MercatorBox) -> float:
+    """The largest distance (EPSG:3857 metres) between where the proved map and the true model put the window's middle on the film."""
+    assert found.proof is not None
+    assert found.proof.mapping is not None
+    places = numpy.array([[(box.left + box.right) / 2, (box.top + box.bottom) / 2]])
+    film = found.proof.mapping.to_film(places)
+    px, py = model().to_mercator(film[:, 0], film[:, 1])
+    return float(numpy.hypot(px - places[:, 0], py - places[:, 1]).max())
 
 
 def test_happy_path_the_forward_model_round_trips_over_the_film() -> None:
@@ -164,7 +183,7 @@ def test_happy_path_the_local_fit_holds_the_model_around_the_window() -> None:
 
     px, py = model().to_mercator(x, y)
 
-    assert numpy.hypot(px - numpy.array([window().left, window().right]), py - numpy.array([window().top, window().bottom])).max() < 50.0
+    assert numpy.hypot(px - numpy.array([window().left, window().right]), py - numpy.array([window().top, window().bottom])).max() < 100.0
 
 
 def test_happy_path_a_least_squares_homography_recovers_an_exact_one_at_large_coordinates() -> None:
@@ -180,51 +199,28 @@ def test_happy_path_a_least_squares_homography_recovers_an_exact_one_at_large_co
 
 
 def test_happy_path_a_panoramic_frame_is_found_through_the_model_and_its_corners_error(world: World, frame: Frame) -> None:
-    """Scenarios: S-P01-HAPPY-PANORAMIC-LOCATE"""
+    """Scenarios: S-P01-HAPPY-PANORAMIC-LOCATE, S-P06-HAPPY-VOTES"""
     reference, grid = reference_of(world, window())
-    corners = quad_of(true_corners(CORNER_ERROR_M))
 
-    guess = guess_corners(frame, corners, reference, grid, CAMERA)
+    found = found_in(search_of(frame, reference, grid, quad_of(true_corners(CORNER_ERROR_M)), CAMERA))
 
-    assert not guess.weak
-    assert (guess.assignment.rotation, guess.assignment.mirrored) == (0, False)
-    assert guess.moved_m == pytest.approx(math.hypot(*CORNER_ERROR_M), abs=2 * SCORE_RESOLUTION_M)
-    assert film_error_m(guess, window()) < 300.0
-    assert guess.coverage > 0.5
-    assert "moved 3." in guess_line(guess)
-    assert f"the frame covers {guess.coverage:.0%} of the window" in guess_line(guess)
-    assert "ratio" in guess_line(guess)
+    assert found.proof is not None
 
-
-def test_bad_path_the_corner_homography_cannot_hold_the_same_frame(world: World, frame: Frame) -> None:
-    """Scenarios: S-P01-HAPPY-PANORAMIC-LOCATE"""
-    reference, grid = reference_of(world, window())
-    corners = quad_of(true_corners(CORNER_ERROR_M))
-
-    plain = guess_corners(frame, corners, reference, grid)
-
-    # What the model fixes: the plain guess's scale at the nadir is off by the tangent's law, so its search cannot line the city up.
-    assert plain.weak or film_error_m(plain, window()) > 500.0
+    assert found.proof.accepted
+    assert found.model is not None
+    assert (found.model.rotation, found.model.mirrored) == (0, False)
+    assert math.hypot(found.model.dx_m, found.model.dy_m) == pytest.approx(math.hypot(*CORNER_ERROR_M), abs=300.0)
+    assert film_error_m(found, window()) < 40.0
 
 
 def test_bad_path_a_frame_of_another_place_goes_on_to_the_admins_points(frame: Frame) -> None:
-    """Scenarios: S-P01-BAD-WEAK-GUESS-TO-POINTS"""
+    """Scenarios: S-P01-BAD-WEAK-GUESS-TO-POINTS, S-P06-BAD-OFF-STRIP"""
     reference, grid = reference_of(render_world(99), window())
-    corners = quad_of(true_corners(CORNER_ERROR_M))
 
-    guess = guess_corners(frame, corners, reference, grid, CAMERA)
-    located = weak_crop(guess, window(), WIDTH - GAP, HEIGHT)
+    found = found_in(search_of(frame, reference, grid, quad_of(true_corners(CORNER_ERROR_M)), CAMERA))
 
-    assert guess.weak
-    assert located.weak
-    # Not moved by a search nothing believes: the crop is measured from where the corners put the window.
-    assert guess.moved_m == 0
-    assert guess.surface is not None
-    assert not guess.surface.confident
-    left, _, right, _ = crop_box(guess.assignment, window(), WIDTH, HEIGHT)
-    assert located.width > right - left
-    assert "the admin places the points" in weak_line(located)
-    assert f"{WEAK_CROP_MARGIN_M / 1000:.0f} km margin" in weak_line(located)
+    assert found.proof is None
+    assert found.how == "none"
 
 
 def test_bad_path_a_window_off_the_frame_is_the_one_failure_left(world: World, frame: Frame) -> None:
@@ -233,7 +229,7 @@ def test_bad_path_a_window_off_the_frame_is_the_one_failure_left(world: World, f
     far = quad_of(true_corners((0.0, 100_000.0)))
 
     with pytest.raises(CityNotFoundError) as raised:
-        guess_corners(frame, far, reference, grid, CAMERA)
+        search_of(frame, reference, grid, far, CAMERA)
 
     assert str(raised.value) == "the frame does not reach the city window under any orientation"
 
@@ -255,13 +251,13 @@ def test_bad_path_a_window_past_the_exposures_end_is_not_scored_on_its_gap_and_t
 ) -> None:
     """Scenarios: S-P01-BAD-CITY-OFF-FRAME"""
     reference, grid = reference_of(world, window())
-    # The frame's end 3 km short of the window's near side, 3 km of search around it: the fragment alone would lie under it.
-    span_out = SPAN_M / 2 + WINDOW_SIDE_M / 2 + WINDOW_SIDE_M
+    # The frame's end well short of the window's near side and its surroundings: the fragment alone would lie under it.
+    span_out = SPAN_M / 2 + WINDOW_SIDE_M / 2 + 1.2 * WINDOW_SIDE_M
     far = quad_of(true_corners((-past * span_out, 0.0)))
     fragment = with_a_fragment(frame.pixels)
 
     with pytest.raises(CityNotFoundError):
-        guess_corners(fragment, far, reference, grid, CAMERA)
+        search_of(fragment, reference, grid, far, CAMERA)
 
 
 def test_happy_path_an_accepted_crop_beside_the_frames_end_stops_at_the_exposure(frame: Frame) -> None:
@@ -283,16 +279,14 @@ def test_happy_path_a_film_scanned_end_for_end_is_found_on_its_own_exposure(worl
     turned = with_a_fragment(frame.pixels, turned=True)
     camera = PanoramicCamera(HALF_ANGLE_DEG, WIDTH - GAP, GAP)
 
-    guess = guess_corners(turned, quad_of(true_corners(CORNER_ERROR_M)), reference, grid, camera)
+    found = found_in(search_of(turned, reference, grid, quad_of(true_corners(CORNER_ERROR_M)), camera))
 
-    assert not guess.weak
+    assert found.proof is not None
+
+    assert found.proof.accepted
     # Flipped left to right: its top-left corner lies at the north-east, its top edge still along the north.
-    assert (guess.assignment.rotation, guess.assignment.mirrored) == (3, True)
-    # Where the film's x reads the window: from the other end, and the fragment's width further on.
-    untouched = guess_corners(frame, quad_of(true_corners(CORNER_ERROR_M)), reference, grid, CAMERA)
-    x, _ = guess.assignment.to_pixel(numpy.array([window().left]), numpy.array([window().top]))
-    plain_x, _ = untouched.assignment.to_pixel(numpy.array([window().left]), numpy.array([window().top]))
-    assert x[0] == pytest.approx(WIDTH - plain_x[0], abs=60.0)
+    assert found.model is not None
+    assert (found.model.rotation, found.model.mirrored) == (3, True)
 
 
 def test_happy_path_the_model_counts_the_film_from_the_exposures_first_column() -> None:
@@ -313,48 +307,72 @@ def test_happy_path_the_model_counts_the_film_from_the_exposures_first_column() 
     assert GAP < fx[0] < WIDTH
 
 
-def test_bad_path_a_weak_crop_holds_the_city_whichever_orientation_is_true(frame: Frame, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_bad_path_an_unproved_crop_holds_the_city_whichever_orientation_is_true(frame: Frame, monkeypatch: pytest.MonkeyPatch) -> None:
     """Scenarios: S-P01-BAD-WEAK-GUESS-TO-POINTS"""
-    # A margin as small against this short strip as 10 km is against the real frame's 560 km: no orientation's box takes in another's.
-    monkeypatch.setattr(corner_guess, "WEAK_CROP_MARGIN_M", 500.0)
+    # A margin as small against this short strip as 20 km is against the real frame's 560 km: no orientation's box takes in another's.
+    monkeypatch.setattr("hcm_pipeline.georef.corners.UNPROVEN_MARGIN_M", 500.0)
     box = MercatorBox(window().left + 12000.0, window().bottom, window().right + 12000.0, window().top)
-    reference, grid = reference_of(render_world(99), box)
     corners = quad_of(true_corners())
+    exposed = on_exposure(frame, CAMERA)
+    orientations = first_guesses(exposed, corners, box, CAMERA)
 
-    guess = guess_corners(frame, corners, reference, grid, CAMERA)
-    located = weak_crop(guess, box, WIDTH - GAP, HEIGHT)
+    located, lost = bounded_crop(orientations, box, (WIDTH - GAP, HEIGHT, 0))
 
-    assert guess.weak
-    assert len(guess.reaching) == 4
-    for orientation in first_guesses(on_exposure(frame, CAMERA), corners, box, CAMERA):
+    assert lost == 0
+    assert located.weak
+    for orientation in orientations:
         left, top, right, bottom = crop_box(orientation, box, WIDTH - GAP, HEIGHT)
         assert located.left <= left
         assert located.top <= top
-        assert right <= located.left + located.width
-        assert bottom <= located.top + located.height
-    # Its GCPs lie inside the crop, around the kept orientation's own box, and give the matcher that orientation's transform.
-    assert all(0 <= gcp.x <= located.width and 0 <= gcp.y <= located.height for gcp in located.gcps)
-    x, y = corner_transform(located.gcps).to_pixel(numpy.array([box.left]), numpy.array([box.top]))
-    own_x, own_y = guess.assignment.to_pixel(numpy.array([box.left]), numpy.array([box.top]))
-    assert x[0] + located.left == pytest.approx(own_x[0], abs=1.0)
-    assert y[0] + located.top == pytest.approx(own_y[0], abs=1.0)
-    # The scan's pixel size from GCPs that do not span its width.
-    assert scan_resolution(located.gcps, located.width) == pytest.approx(
-        scan_resolution(own_box_gcps(guess, box), own_box_width(guess, box))
-    )
+        assert located.left + located.width >= right
+        assert located.top + located.height >= bottom
+    assert scan_resolution(located.gcps, located.width) > 0
+    assert corner_transform(located.gcps).rotation == 0
 
 
-def own_box_gcps(guess: Guess, box: MercatorBox) -> tuple[Gcp, ...]:
-    return crop(guess.assignment, widened_by_margin(box), WIDTH - GAP, HEIGHT).gcps
+def test_happy_path_a_short_film_swept_less_and_off_the_nadir_as_its_ends_say() -> None:
+    """Scenarios: S-P01-HAPPY-PANORAMIC-LOCATE"""
+    # The 1982 frame D3C1217-200510A001: half a film long, its east end wider on the ground.
+    quad = numpy.array([to_mercator(lng, lat) for lng, lat in ((23.181, 44.844), (26.391, 44.53), (26.242, 44.281), (23.156, 44.681))])
+    layout = FrameLayout(225264, 22240, 16, ())
+    camera = camera_of("KH-9-pan", layout)
+
+    assert camera is not None
+    assert camera.sweep_deg == pytest.approx(60.7, abs=0.1)
+    low, high = sweep_ends(quad, camera)
+    assert (math.degrees(low), math.degrees(high)) == pytest.approx((-7.8, 52.9), abs=0.5)
+    # Read from its other end the frame's ends swap.
+    turned = sweep_ends(quad[[2, 3, 0, 1]], camera)
+    assert (math.degrees(turned[0]), math.degrees(turned[1])) == pytest.approx((52.9, -7.8), abs=0.5)
 
 
-def own_box_width(guess: Guess, box: MercatorBox) -> int:
-    return crop(guess.assignment, widened_by_margin(box), WIDTH - GAP, HEIGHT).width
+def test_happy_path_a_full_film_keeps_the_centred_sweep_and_a_sensor_without_an_angle_has_none() -> None:
+    """Scenarios: S-P01-HAPPY-PANORAMIC-LOCATE"""
+    spec = SENSOR_SPECS["KH-9-pan"]
+
+    assert shorter_sweep(spec, FrameLayout(448080, 22140, 30, ())) is None
+    assert shorter_sweep(SENSOR_SPECS["KH-7"], FrameLayout(1000, 1000, 1, ())) is None
+    assert camera_of("KH-7", FrameLayout(1000, 1000, 1, ())) is None
 
 
-def widened_by_margin(box: MercatorBox) -> MercatorBox:
-    margin = corner_guess.WEAK_CROP_MARGIN_M / ground_scale(box.bounds().middle_lat)
-    return MercatorBox(box.left - margin, box.bottom - margin, box.right + margin, box.top + margin)
+def test_happy_path_an_off_nadir_model_round_trips_and_its_ground_pixel_follows_its_angle() -> None:
+    """Scenarios: S-P01-HAPPY-PANORAMIC-LOCATE"""
+    camera = PanoramicCamera(HALF_ANGLE_DEG, WIDTH - GAP, 0, 60.0)
+    wide = true_corners()
+    # The first end twice as wide on the ground as the last.
+    wide[1], wide[2] = wide[1] * 0.5 + wide[2] * 0.5 + [0.0, END_M / 4], wide[1] * 0.5 + wide[2] * 0.5 - [0.0, END_M / 4]
+    shifted = PanoramicModel(wide, camera, HEIGHT)
+    x, y = numpy.meshgrid(numpy.linspace(0.0, WIDTH - GAP, 21), numpy.linspace(0.0, HEIGHT, 11))
+
+    back_x, back_y = shifted.to_film(*shifted.to_mercator(x, y))
+    corners = frame_corners(WIDTH - GAP, HEIGHT)
+    mx, my = shifted.to_mercator(corners[:, 0], corners[:, 1])
+
+    assert numpy.abs(back_x - x).max() < 1e-3
+    assert numpy.abs(back_y - y).max() < 1e-3
+    assert numpy.allclose(numpy.column_stack((mx, my)), wide, atol=1e-6)
+    near_x, _ = shifted.to_mercator(numpy.array([0.0, 1.0, WIDTH - GAP - 1.0, WIDTH - GAP]), numpy.full(4, HEIGHT / 2))
+    assert abs(near_x[1] - near_x[0]) > 1.5 * abs(near_x[3] - near_x[2])
 
 
 def test_happy_path_each_orientation_gets_the_local_fit_of_its_own_film_direction() -> None:

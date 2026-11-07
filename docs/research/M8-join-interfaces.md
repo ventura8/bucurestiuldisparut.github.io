@@ -257,7 +257,7 @@ Other behaviours:
   - `maxShiftM ≤ threshold`;
   - every kept seam `measured` and applied, and at least one seam;
   - every seam `afterRmseM ≤ 15`;
-  - `coveragePct ≥ 90`.
+  - `coveragePct ≥ 90` (`CITY_MIN_COVERAGE_PCT` since M9, one bar with a frame's: `docs/research/M9-calibration.md` §11).
 - `approved` records `georef?.checkpointRmseM ?? join?.checkpointRmseM`.
 
 At F039's 51.6 m the join waits for Approve, which is correct.

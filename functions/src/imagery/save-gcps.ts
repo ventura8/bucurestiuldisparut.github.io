@@ -66,6 +66,8 @@ function refitted(request: Request): Georef {
         throw REFUSALS[fit.reason](request);
     }
     const checkpoint = fit.checkpointRmseM === null ? {} : { checkpointRmseM: fit.checkpointRmseM };
+    // M9 (docs/research/M9-calibration.md §11): the policy tells checks held out of the fit from the pairs against each other.
+    const kind = fit.checkpointKind === null ? {} : { checkpointKind: fit.checkpointKind };
     const gcps = withResiduals(request.gcps, fit.residuals);
     return {
         method: 'gcps',
@@ -74,6 +76,7 @@ function refitted(request: Request): Georef {
         fitRmseM: fit.fitRmseM,
         ...checkpoint,
         checkpointCount: fit.checkpointCount,
+        ...kind,
     };
 }
 

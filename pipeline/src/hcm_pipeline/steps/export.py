@@ -3,24 +3,29 @@
 An 8-bit COG (`COMPRESS=JPEG`, `QUALITY=85`, 512 px blocks, overviews; the alpha band becomes a mask, which JPEG
 needs), an RGBA PNG preview of at most 2048 px, and a JPEG-compressed GeoTIFF of at most `STUDIO_MAX_BYTES`
 (halved until it fits) for the free Mapbox Studio upload. The valid area in km² (the alpha's share of the
-extent, on the ground) feeds the compute-unit estimate. The version's `output` records all of it.
+extent, on the ground) feeds the compute-unit estimate; the share of the city's bounds under the alpha (`coveragePct`, M9 §5) tells a
+frame that holds part of the city from one that holds all of it. The version's `output` records all of it.
 """
 
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
 import numpy
 
+from hcm_pipeline.calibrate.reach import COVER_SIDE_CELLS, Reach, outline
 from hcm_pipeline.contract import STUDIO_MAX_BYTES
-from hcm_pipeline.documents import OutputInfo
+from hcm_pipeline.documents import OutputInfo, city_bounds
 from hcm_pipeline.geo import ZOOM0_RESOLUTION_M, Grid, ground_scale
 from hcm_pipeline.jobs import Done, JobContext, StepResult
+from hcm_pipeline.join.canvas import DatasetSource
 from hcm_pipeline.objects import sha256_of
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.rasters import fit_long_side, raster_info, read_band
 from hcm_pipeline.steps.common import gdal_step
+from hcm_pipeline.steps.merge import city_part, coverage_pct
 from hcm_pipeline.steps.warp import zooms
 
 COG_OPTIONS: Final = ("COMPRESS=JPEG", "QUALITY=85", "BLOCKSIZE=512", "OVERVIEWS=AUTO")
@@ -87,6 +92,33 @@ def valid_area_km2(warped: Warped) -> float:
     return float(numpy.count_nonzero(alpha)) * pixel_area * ground_scale(middle) ** 2 / SQUARE_METRES_PER_KM2
 
 
+def city_coverage(warped: Warped, city: Mapping[str, object] | None) -> float | None:
+    """How much of the city's bounds the layer shows, percent; None without a city document."""
+    if city is None:
+        return None
+    source = DatasetSource(warped.path)
+    share = coverage_pct(source, warped.grid, city_bounds(city).mercator())
+    source.close()
+    return share
+
+
+def rendered_outline(warped: Warped, city: Mapping[str, object] | None) -> tuple[dict[str, float], ...]:
+    """The alpha's edge over the city's bounds, however the version was fitted: since a USGS render's grid is the whole window (M9 §5), its
+    `bounds` no longer say where the frame lies, and `imagery/join.ts` plans with this. Empty when the frame shows none of the city."""
+    part = None if city is None else city_part(warped.grid, city_bounds(city).mercator())
+    if part is None:
+        return ()
+    left, top, width, height = part
+    shrink = max(width, height) / COVER_SIDE_CELLS
+    size = max(1, round(width / shrink)), max(1, round(height / shrink))
+    source = DatasetSource(warped.path)
+    mask = numpy.asarray(source.alpha_of(left, top, width, height, size) > 0, numpy.bool_)
+    source.close()
+    resolution = warped.grid.resolution * shrink
+    grid = Grid(warped.grid.left + left * warped.grid.resolution, warped.grid.top - top * warped.grid.resolution, resolution, *size)
+    return tuple(outline(Reach(mask, numpy.empty((0, 2)), grid)))
+
+
 class ExportStep:
     name = "export"
 
@@ -114,6 +146,8 @@ class ExportStep:
             area_km2=valid_area_km2(warped),
             studio_path=None if studio_info is None else studio_info.path,
             studio_bytes=None if studio_info is None else studio_info.size,
+            coverage_pct=gdal_step(ctx, lambda: city_coverage(warped, ctx.read(f"cities/{ctx.city}")), "measure the coverage"),
+            outline=gdal_step(ctx, lambda: rendered_outline(warped, ctx.read(f"cities/{ctx.city}")), "measure the outline"),
         )
         ctx.update_version({"output": output.as_record()})
         return Done(cog_info, cog_sha256)

@@ -88,10 +88,13 @@ def _corners(truth: AffineScan, width: int, height: int) -> list[dict[str, objec
     return found
 
 
-def seed_matching(world: PipelineWorld, folder: Path, degrade: Degrade = unchanged, s2: UInt8Array | None = None) -> Seeded:
-    """A USGS import whose `locate` and `reference` are done: the version holds the scan and its corner guess."""
+def seed_matching(
+    world: PipelineWorld, folder: Path, degrade: Degrade = unchanged, s2: UInt8Array | None = None, wide: bool = False
+) -> Seeded:
+    """A USGS import whose `locate` and `reference` are done: the version holds the scan and its corner guess; `wide`: a scan as wide
+    as the city's window, which tiles of a proof have room in."""
     world.seed_city()
-    truth = affine_scan(world.scene.world)
+    truth = affine_scan(world.scene.world, (1500, 1120), (6.4, 0.4, -0.3, -6.4)) if wide else affine_scan(world.scene.world)
     pixels = degrade(truth.pixels)
     height, width = pixels.shape
     local = write_geotiff(folder / "scan.tif", GeoTiff([pixels]))

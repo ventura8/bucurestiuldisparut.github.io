@@ -17,6 +17,10 @@ EARTH_RADIUS_M: Final = 6_378_137.0
 # The width of a 256 px tile at zoom 0, divided by 256: metres per pixel at zoom 0 (`156543.03392804097 / 2^z`).
 ZOOM0_RESOLUTION_M: Final = 2 * math.pi * EARTH_RADIUS_M / 256
 WINDOW_MARGIN: Final = 0.10
+# Longitude 180 in EPSG:3857 metres: a city's window stops here, and a place is never written past it (`lngSchema`).
+WORLD_HALF_M: Final = math.pi * EARTH_RADIUS_M
+FULL_TURN_DEG: Final = 360.0
+HALF_TURN_DEG: Final = 180.0
 
 FloatArray = NDArray[numpy.float64]
 
@@ -39,6 +43,11 @@ def to_mercator_arrays(lng: FloatArray, lat: FloatArray) -> tuple[FloatArray, Fl
 def to_lnglat_arrays(x: FloatArray, y: FloatArray) -> tuple[FloatArray, FloatArray]:
     """`to_lnglat` over arrays."""
     return numpy.degrees(x / EARTH_RADIUS_M), numpy.degrees(2 * numpy.arctan(numpy.exp(y / EARTH_RADIUS_M)) - numpy.pi / 2)
+
+
+def near_lng(lng: float, middle: float) -> float:
+    """`lng` a whole number of turns from where it was, on the side of `middle`: a frame over longitude 180 is one piece around a city."""
+    return lng + FULL_TURN_DEG * round((middle - lng) / FULL_TURN_DEG)
 
 
 def _required_number(record: dict[object, object], key: str) -> float:
@@ -116,14 +125,19 @@ class MercatorBox:
         return self.top - self.bottom
 
     def expanded(self, margin: float = WINDOW_MARGIN) -> MercatorBox:
-        """The box grown by `margin` of its width and height on every side (the city window: bounds ± 10 %)."""
+        """The box grown by `margin` of its width and height on every side (the city window: bounds ± 10 %), stopping at longitude 180:
+        `bboxSchema` holds no box across it, and what a window asks of Sentinel-2 and Overpass stays a plain box."""
         dx, dy = self.width * margin, self.height * margin
-        return MercatorBox(self.left - dx, self.bottom - dy, self.right + dx, self.top + dy)
+        return MercatorBox(max(self.left - dx, -WORLD_HALF_M), self.bottom - dy, min(self.right + dx, WORLD_HALF_M), self.top + dy)
 
     def bounds(self) -> Bounds:
         west, south = to_lnglat(self.left, self.bottom)
         east, north = to_lnglat(self.right, self.top)
-        return Bounds(west, south, east, north)
+        return Bounds(max(west, -HALF_TURN_DEG), south, min(east, HALF_TURN_DEG), north)
+
+    @property
+    def middle_lng(self) -> float:
+        return to_lnglat((self.left + self.right) / 2, 0.0)[0]
 
     def key(self) -> str:
         """A stable text of the box (metre precision): the reference cache's window key."""

@@ -110,6 +110,8 @@ export default defineConfig({
             output: {
                 // admin.mjs and its chunks are page scripts that nothing bundles again: minified (the engine's §17a).
                 minify: true,
+                // What a bundler reads, in chunks no bundler reads again: `/*@__PURE__*/` a hundred and twenty-five times (0.1 KB gzip; M9).
+                comments: { annotation: false },
                 // Named chunks, so the bundle budget can give each its own: without groups Rolldown splits the code the
                 // entry shares with an area into a dozen small chunks named after a module each, which a refactor renames.
                 // `admin-core`: everything the entry imports statically (admin.mjs is then a two-line stub that imports it);

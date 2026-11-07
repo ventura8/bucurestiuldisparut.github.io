@@ -55,14 +55,28 @@ def _known(figures: Sequence[float | None]) -> list[float]:
     return [figure for figure in figures if figure is not None]
 
 
-def coverage_pct(mosaic: DatasetSource, grid: Grid, city: MercatorBox) -> float:
-    """The share of the city's bounds under the mosaic's alpha, on a sample at most `COVERAGE_SAMPLE_PX` a side."""
+def city_part(grid: Grid, city: MercatorBox) -> tuple[int, int, int, int] | None:
+    """The grid's pixels (left, top, width, height) over the city's bounds; None when it holds none of them."""
     u, v = grid.to_pixel(numpy.array([city.left, city.right]), numpy.array([city.top, city.bottom]))
     x0, y0 = max(0, int(u[0])), max(0, int(v[0]))
     width, height = min(grid.width, int(u[1])) - x0, min(grid.height, int(v[1])) - y0
+    return None if width <= 0 or height <= 0 else (x0, y0, width, height)
+
+
+def coverage_pct(mosaic: DatasetSource, grid: Grid, city: MercatorBox) -> float:
+    """The share of the city's bounds under the raster's alpha, on a sample at most `COVERAGE_SAMPLE_PX` a side, over the **whole
+    city's** area: a crop's grid holds only part of it, and dividing by that part inflated its figure (M9 §0). At most 100: the
+    pixels whole cover can exceed the city's fractional span, and the schema every reader validates with stops at 100."""
+    part = city_part(grid, city)
+    if part is None:
+        return 0.0
+    x0, y0, width, height = part
     scale = min(1.0, COVERAGE_SAMPLE_PX / max(width, height, 1))
     alpha = mosaic.alpha_of(x0, y0, width, height, (max(1, round(width * scale)), max(1, round(height * scale))))
-    return float(numpy.count_nonzero(alpha)) / max(alpha.size, 1) * PERCENT
+    share = float(numpy.count_nonzero(alpha)) / max(alpha.size, 1)
+    u, v = grid.to_pixel(numpy.array([city.left, city.right]), numpy.array([city.top, city.bottom]))
+    whole = max(float(u[1] - u[0]) * float(v[1] - v[0]), 1.0)
+    return min(share * (width * height) / whole * PERCENT, PERCENT)
 
 
 def _read_plan(ctx: JobContext) -> tuple[JoinPlan, UInt8Array]:

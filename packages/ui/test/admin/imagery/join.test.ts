@@ -9,7 +9,7 @@ import { render } from 'lit';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import type { ImageryContext } from '../../../src/admin/imagery/context.js';
-import type { ImageryIntentsPort, ImageryViewState } from '../../../src/admin/imagery/imagery-port.js';
+import type { ImageryIntentsPort, ImageryViewState, VersionViewPort } from '../../../src/admin/imagery/imagery-port.js';
 import { JOIN_CARD_CHUNK, lazyJoin, type JoinCardChunk } from '../../../src/admin/imagery/join/lazy-card.js';
 import { frameName, liveJoin, liveJoinOver, versionMark } from '../../../src/admin/imagery/join/live-join.js';
 import { chunkLoader } from '../../../src/admin/imagery/orders/lazy-card.js';
@@ -248,7 +248,39 @@ describe('a date row, more', () => {
 
 describe('the offer to join a frame', () => {
     const frame = { id: F039, coverage: 0.51 };
+    const measuredOutput = (): NonNullable<VersionViewPort['output']> => {
+        const output = versionView().output;
+        if (output === null) {
+            throw new Error('the fixture has an output');
+        }
+        return output;
+    };
     const named = { loading: false, scene: scene(frame), failure: null };
+
+    it('happyPath_whatTheRenderMeasuredBeatsTheScenesEstimate_withNoSceneRead', async () => {
+        const measured = versionView({ entityId: F039, output: { ...measuredOutput(), coveragePct: 62 } });
+        const { element } = await imageryPage(
+            imageryState({
+                dates: [ROW],
+                detail: { kind: 'version', id: 'job-1966' },
+                named: { loading: false, scene: null, failure: null },
+                version: versionPage({}, measured),
+            }),
+        );
+        await updated(element);
+
+        expect(deep(element, '[data-join-offer]').textContent).toContain('62 %');
+    });
+
+    it('badPath_aFrameThatMeasuredTheWholeCityIsOfferedNothing_whateverTheEstimate', async () => {
+        const whole = versionView({ entityId: F039, output: { ...measuredOutput(), coveragePct: 96 } });
+        const { element } = await imageryPage(
+            imageryState({ dates: [ROW], detail: { kind: 'version', id: 'job-1966' }, named, version: versionPage({}, whole) }),
+        );
+        await updated(element);
+
+        expect(deepAll(element, '[data-join-offer]')).toEqual([]);
+    });
 
     it('happyPath_theFramePageOffersItsDatesOthersInShortNames', async () => {
         const three = { ...ROW, frames: [...ROW.frames, { entityId: A039, free: true }] };

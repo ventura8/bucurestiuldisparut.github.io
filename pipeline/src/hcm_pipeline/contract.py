@@ -104,6 +104,15 @@ PIPELINE_WRITER: Final = "system:pipeline"
 
 
 @dataclass(frozen=True)
+class SearchRange:
+    """How far `locate` looks for a frame around where its model puts it (the pipeline's alone, docs/research/M9-calibration.md §1):
+    ground metres, and the scales relative to the model. KH-9-pan's were measured on four real frames; **UNVERIFIED** for the others."""
+
+    margin_ground_m: float
+    scales: tuple[float, ...]
+
+
+@dataclass(frozen=True)
 class SensorSpec:
     """A camera: its dataset, label name, nominal resolution, tile zooms and Cloud Run machine (`SENSOR_SPECS`).
 
@@ -119,6 +128,8 @@ class SensorSpec:
     maxzoom: int
     machine: str
     half_angle_deg: float | None = None
+    full_aspect: float | None = None
+    search: SearchRange = SearchRange(30_000.0, (1.0,))
 
     def as_contract(self) -> dict[str, object]:
         """The camelCase record of `enums.json` (the TypeScript `SensorSpec`)."""
@@ -132,15 +143,18 @@ class SensorSpec:
         }
 
 
+_CORONA_SEARCH: Final = SearchRange(30_000.0, (0.85, 1.0, 1.15))
 # Corona is panoramic too, but **UNVERIFIED**: it keeps the corner homography until a real run measures its half angle.
 SENSOR_SPECS: Final[Mapping[str, SensorSpec]] = {
-    "KH-4": SensorSpec("corona2", "KH-4 Corona", 7.5, 10, 15, "std"),
-    "KH-4A": SensorSpec("corona2", "KH-4A Corona", 2.75, 10, 16, "std"),
-    "KH-4B": SensorSpec("corona2", "KH-4B Corona", 1.8, 10, 16, "std"),
-    "KH-7": SensorSpec("declassii", "KH-7 Gambit", 1.2, 10, 17, "std"),
-    "KH-9-mapping": SensorSpec("declassii", "KH-9 Hexagon (mapping camera)", 7.5, 10, 15, "std"),
-    # 60.5 degrees: fitted on the 1972 frame D3C1202-200149F039 (17 hand-read landmarks, 0.24 km RMS after one shift).
-    "KH-9-pan": SensorSpec("declassiii", "KH-9 Hexagon", 1, 10, 17, "xl", 60.5),
+    "KH-4": SensorSpec("corona2", "KH-4 Corona", 7.5, 10, 15, "std", search=_CORONA_SEARCH),
+    "KH-4A": SensorSpec("corona2", "KH-4A Corona", 2.75, 10, 16, "std", search=_CORONA_SEARCH),
+    "KH-4B": SensorSpec("corona2", "KH-4B Corona", 1.8, 10, 16, "std", search=_CORONA_SEARCH),
+    "KH-7": SensorSpec("declassii", "KH-7 Gambit", 1.2, 10, 17, "std", search=SearchRange(15_000.0, (0.9, 1.0, 1.1))),
+    "KH-9-mapping": SensorSpec("declassii", "KH-9 Hexagon (mapping camera)", 7.5, 10, 15, "std", search=SearchRange(15_000.0, (1.0,))),
+    # 60.5 degrees: fitted on the 1972 frame D3C1202-200149F039 (17 hand-read landmarks, 0.24 km RMS after one shift). Its full
+    # sweep's film: 19.6 to 20.5 times as long as it is high on four real frames. Scale 0.94: the model is 4 to 9 % large (F006 0.92,
+    # F007 0.92, F039 0.956).
+    "KH-9-pan": SensorSpec("declassiii", "KH-9 Hexagon", 1, 10, 17, "xl", 60.5, 20.2, SearchRange(30_000.0, (0.94,))),
 }
 
 # The share of a job's progress each pipeline step stands for (`usgs-import`'s weights add up to 1; other job

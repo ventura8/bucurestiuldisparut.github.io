@@ -4,7 +4,8 @@
  * **Try again** when a retry can, Setup's Mapbox step for a token or its scopes, **Upload another file** for an upload the
  * server refused, **Dismiss** for a failed version), the georeferencer, the approval card once it is rendered, the
  * preview's opacity on the map, the job's log as text, and **Cancel** while it runs (asked first; once Mapbox was asked
- * to publish, its processing cannot be stopped). M8: a join's frames, and a frame's offer to join its date's others.
+ * to publish, its processing cannot be stopped). M8: a join's frames, and a frame's offer to join its date's others. M9: how the
+ * frame was found, or that it was not (`calibration-card.ts`).
  */
 import type { Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';

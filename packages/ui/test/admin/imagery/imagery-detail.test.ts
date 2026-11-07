@@ -176,7 +176,10 @@ describe('<hcm-imagery-page>: a version', () => {
 
     it('badPath_overTheThresholdOrUnmeasuredTheCardWarns', async () => {
         const over = versionView({
-            georef: { method: 'auto', transform: 'affine', pairs: 6, fitRmseM: 20, checkpointRmseM: 31.5, checkpointCount: null },
+            georef: {
+                ...{ method: 'auto', transform: 'affine', pairs: 6 },
+                ...{ fitRmseM: 20, checkpointRmseM: 31.5, checkpointCount: null, checkpointKind: null },
+            },
         });
         const { element, area } = await imageryPage(imageryState({ detail: VERSION, version: versionPage({}, over) }));
         const warned = deep(element, '[data-rmse="over"]').textContent;

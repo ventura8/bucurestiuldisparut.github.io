@@ -6,6 +6,7 @@
  * absolute error, and the card says so.
  */
 import {
+    CITY_MIN_COVERAGE_PCT,
     MAX_TARGET_YEARS,
     SENSOR_SPECS,
     type DatePlanRow,
@@ -18,14 +19,12 @@ import { html, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../../shell/empty.js';
 import { contentText, noticeOf } from '../../shell/text.js';
+import { calibrationCard, calibrationWaits } from '../calibration-card.js';
 import type { ImageryContext } from '../context.js';
 import type { ImageryViewState, JobViewPort, SceneItemPort, VersionViewPort } from '../imagery-port.js';
 import { dayText, numberText, versionStateText } from '../imagery-text.js';
 import { when, withValue } from '../when.js';
 import { frameName, liveJoin, liveJoinOver } from './live-join.js';
-
-/** A frame or a join covering less than this per cent of the city is offered its date's other frames. */
-const WHOLE_CITY_PERCENT = 90;
 
 function percentText(locale: Locale, percent: number): string {
     return numberText(locale, percent, 0);
@@ -162,7 +161,7 @@ interface OfferedFrame {
 
 /** The row to offer: for a frame that leaves part of the city out and that no live join holds, when another frame of its date helps. */
 function offeredRow(view: ImageryViewState, frame: OfferedFrame): DatePlanRow | undefined {
-    const wanted = frame.coverage * 100 < WHOLE_CITY_PERCENT && liveJoinOver(view.versions.items, [frame.id]) === null;
+    const wanted = frame.coverage * 100 < CITY_MIN_COVERAGE_PCT && liveJoinOver(view.versions.items, [frame.id]) === null;
     return wanted ? rowWithFrame(view, frame.id) : undefined;
 }
 
@@ -195,11 +194,27 @@ export function sceneOffer(context: ImageryContext, scene: SceneItemPort): Templ
     return offer(context, { id: scene.id, coverage: scene.coverage });
 }
 
-/** The version's page: the offer of a USGS frame awaiting approval, once its scene is read (live F039's path). */
+/** The scene's estimate (0 to 1), once the frame's own scene is read. */
+function sceneEstimate(scene: SceneItemPort | null, entityId: string | null): number | null {
+    return scene !== null && scene.id === entityId ? scene.coverage : null;
+}
+
+/** M9: what the render measured (0 to 1), else the scene's estimate; null while neither is known. */
+function frameCoverage(context: ImageryContext, version: VersionViewPort): number | null {
+    const measured = version.output?.coveragePct ?? null;
+    return measured === null ? sceneEstimate(context.view.named.scene, version.entityId) : measured / 100;
+}
+
+/** The frame of a USGS version awaiting approval, with the share it covers (live F039's path). */
+function offeredFrame(context: ImageryContext, version: VersionViewPort): OfferedFrame | null {
+    const coverage = frameCoverage(context, version);
+    const open = version.state === 'awaiting_approval' && version.entityId !== null && coverage !== null;
+    return open ? { id: version.entityId, coverage } : null;
+}
+
+/** The version's page: the offer of a USGS frame awaiting approval. */
 function versionOffer(context: ImageryContext, version: VersionViewPort): TemplateResult {
-    const { scene } = context.view.named;
-    const read = version.state === 'awaiting_approval' && version.entityId !== null && scene?.id === version.entityId ? scene : null;
-    return withValue(read, ({ id, coverage }) => offer(context, { id, coverage }));
+    return withValue(offeredFrame(context, version), (frame) => offer(context, frame));
 }
 
 /** A frame's page: the way to the join that holds it. */
@@ -262,7 +277,7 @@ function nextFrame(
 
 /** Add {frame} and join again: a rendered join that came out short, while its date has a frame it does not hold. */
 function addFrame(context: ImageryContext, version: VersionViewPort): TemplateResult {
-    const short = version.state === 'awaiting_approval' && (version.join?.coveragePct ?? 100) < WHOLE_CITY_PERCENT;
+    const short = version.state === 'awaiting_approval' && (version.join?.coveragePct ?? 100) < CITY_MIN_COVERAGE_PCT;
     if (!short) {
         return EMPTY;
     }
@@ -289,13 +304,18 @@ function joinOfFrame(context: ImageryContext, version: VersionViewPort): string 
     return version.state === 'joined' || liveJoin(context.view.versions.items, version.partOf) ? version.partOf : null;
 }
 
-/** The version's page: a join's frames, or a frame's way to its join, or its offer to join its date's others. */
-export function versionJoin(context: ImageryContext, version: VersionViewPort, job: JobViewPort | null): TemplateResult {
+/** A join's frames, or a frame's way to its join, or its offer to join its date's others. */
+function joinOfVersion(context: ImageryContext, version: VersionViewPort, job: JobViewPort | null): TemplateResult {
     if (version.origin === 'join') {
         return joinParts(context, version, job);
     }
     const join = joinOfFrame(context, version);
     return join === null ? versionOffer(context, version) : partLink(context, join);
+}
+
+/** The version's page: how the frame was found (M9), then what it has to do with a join. */
+export function versionJoin(context: ImageryContext, version: VersionViewPort, job: JobViewPort | null): TemplateResult {
+    return html`${calibrationCard(context.locale, version)} ${joinOfVersion(context, version, job)}`;
 }
 
 /** A seam in words: what it measured before and after; a seam whose correction did not help moved nothing, and says so. */
@@ -338,7 +358,10 @@ function reportOf(locale: Locale, join: JoinReport): TemplateResult {
     </div>`;
 }
 
-/** The approval card of a rendered join: the coverage, every seam, the worst frame's own error, the largest shift, the frames left out. */
+/**
+ * The approval card: a rendered join's coverage, every seam, the worst frame's own error, the largest shift, the frames left out;
+ * M9: why a frame under the threshold still waits.
+ */
 export function joinReport(context: ImageryContext, version: VersionViewPort): TemplateResult {
-    return withValue(version.join, (join) => reportOf(context.locale, join));
+    return html`${calibrationWaits(context.locale, version)} ${withValue(version.join, (join) => reportOf(context.locale, join))}`;
 }

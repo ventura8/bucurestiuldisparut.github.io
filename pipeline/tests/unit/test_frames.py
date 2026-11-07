@@ -249,8 +249,20 @@ def test_happy_path_the_scoring_frame_shrinks_a_preview_but_never_enlarges_it(tm
     assert kept.factor == pytest.approx(8000 / 133)
     # Finer than the scoring cell by its corners, a frame is not enlarged past its preview (cv2.remap's limit, the 1972 frame's 2 m).
     assert fine.pixels.shape == (100, 800)
-    # Blurred to the scoring cell: the grain's spread falls.
-    assert float(shrunk.pixels.std()) < float(pixels.std()) / 2
+    # Averaged, no further blur: what the votes read stays sharp, and the preview itself is not touched at its own size.
+    assert fine.pixels.std() == pytest.approx(float(pixels.std()))
+
+
+def test_happy_path_a_segment_window_is_read_averaged(tmp_path: Path) -> None:
+    """Scenarios: S-P06-HAPPY-VOTES"""
+    path = tmp_path / "averaged.tif"
+    path.write_bytes(tiff(tmp_path, numpy.array([[0, 100, 200, 200], [100, 200, 200, 200]]), "averaged-src.tif"))
+    segment = Segment(path)
+
+    pixels = segment.averaged_window(0, 0, 4, 2, (2, 1))
+    segment.close()
+
+    assert pixels.tolist() == [[100, 200]]
 
 
 def test_happy_path_only_a_camera_with_a_half_angle_has_a_panoramic_model() -> None:

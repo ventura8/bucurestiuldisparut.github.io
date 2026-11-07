@@ -30,6 +30,14 @@ export const GCP_ORIGINS = ['corner', 'auto', 'manual'] as const;
 
 export type GcpOrigin = (typeof GCP_ORIGINS)[number];
 
+/**
+ * M9 (`docs/research/M9-calibration.md` §7, §11): what `checkpointRmseM` measures. `held-out`: disabled pairs the fit never saw.
+ * `leave-one-out`: the enabled pairs against each other, so a frame checked only on its own points; it never approves on its own.
+ */
+export const CHECKPOINT_KINDS = ['held-out', 'leave-one-out'] as const;
+
+export type CheckpointKind = (typeof CHECKPOINT_KINDS)[number];
+
 /** At most this many pairs per georeferencing (the automatic matcher keeps its best 200). */
 export const MAX_GCPS = 300;
 
@@ -83,6 +91,8 @@ export const georefSchema = z
         checkpointRmseM: z.number().min(0).optional(),
         /** How many checks `checkpointRmseM` comes from. */
         checkpointCount: z.number().int().min(0).max(MAX_GCPS).optional(),
+        /** M9: what those checks are; `fit.ts` and the pipeline's `transforms.py` derive it the same way. */
+        checkpointKind: z.enum(CHECKPOINT_KINDS).optional(),
         /**
          * The corner pairs come from a guess nothing confirmed: good to start the matcher and no more. The pipeline clears them
          * when the scan waits for the admin (`pipeline/src/hcm_pipeline/steps/georef.py`), so they never spoil the admin's fit.

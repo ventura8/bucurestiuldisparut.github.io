@@ -2235,3 +2235,59 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: running the real `planDate` on the spec's geometry and on F039's corners.
     - Fix and pin: a rendered frame covers its outline inside its box; rows name their `spareFrames`, which the short join offers, and the spec reads the server's own row; the 30-row cap keeps dates with work (`packages/shared/src/imagery/join.ts`).
     - **A spec that edits the server's output to reach a state is testing its edit: reach the state from what the server really writes.**
+
+370. **A figure the pipeline measured was over 100, and every reader would have refused the document.**
+    - Seen: 2026-11-06, the M9 server+admin workstream: three written documents held `coveragePct: 100.04` (`output` and `join`), past the shared schemas' 100, on a job whose frame held the whole city. `worker.step` validates every write, so a local run would have failed at `export`.
+    - Cause: M9 divided a share of whole pixels by the city's fractional span in `coverage_pct` (`pipeline/src/hcm_pipeline/steps/merge.py`), and the schemas that bound it had not landed when the goldens were regenerated, so nothing held the figure to its range.
+    - Found by: `packages/shared/test/schemas/pipeline-contract.test.ts`, the first time the written goldens met the new schema.
+    - Fix and pin: the figure stops at 100 (`test_bad_path_whole_pixels_over_a_fractional_span_stop_at_the_whole_city`).
+    - **A value's range belongs to its schema: land the schema with the writer, or the goldens prove only that the writer agrees with itself.**
+
+371. **A frame that would not align was the camera model's fault, not the imagery's.**
+    - Seen: 2026-11-06, the 1982 frame D3C1217-200510A001 refused every search: 3 of 196 tiles agreed under the full panoramic sweep.
+    - Cause: its film is half as long as a full frame's: KH-9 swept 60 degrees, not 120, and off the nadir; the model assumed a full, centred sweep.
+    - Found by: looking at the film's aspect and the widths of its ends on the ground, before touching a gate.
+    - Fix and pin: `SensorSpec.full_aspect`, `PanoramicCamera.sweep_deg`; 922 of 1,192 tiles now agree, on this one frame only (`docs/research/M9-calibration.md` §14; `pipeline/tests/unit/test_panoramic.py`).
+    - **When a search refuses a real frame, look at the frame before changing a gate.**
+
+372. **A cross-validation of RANSAC's own inliers flattered the error by half.**
+    - Seen: 2026-11-06, the M9 probes: 11 to 12 m from a 5-fold over the inliers, where tiles held out before RANSAC gave a median of 10 to 17 m and an RMSE of 15 to 33 m. Live F007 had passed the policy on leave-one-out over its own pairs.
+    - Cause: the inliers are already those a 25 m threshold kept, and pairs checked against each other share the fit they are meant to test.
+    - Found by: setting cells aside before the RANSAC (`docs/research/M9-calibration.md` §0).
+    - Fix and pin: `calibrate/pairs.py` holds out every fifth cell before fitting, `checkpointKind` says what a figure measures, and only `held-out` approves on its own (S-A17-BAD-LEAVE-ONE-OUT). Most frames will now wait for one click, and the threshold stays.
+    - **A figure that decides anything must be held out before the step that could flatter it.**
+
+373. **Better maps made the best join wait for a click.**
+    - Seen: 2026-11-07, `S-P05-HAPPY-ADMIN` on M9's maps: two frames met at 0.34 m, the correction could not improve that, so it was refused as "did not help", and the policy reads a refused seam as not closed.
+    - Cause: `applied: false` meant both "the correction made it worse" and "there was nothing to correct".
+    - Found by: the real pipeline's e2e row, not the stand-in's, which scripts its seams.
+    - Fix and pin: a refused correction on a seam at or under `SEAM_ALREADY_CLOSED_M` (2 m) reads as closed (S-P05-HAPPY-ALREADY-CLOSED); at 12 m it stays refused.
+    - **A flag that a policy reads must not stand for two different things.**
+
+374. **A map 800 m wrong passed every gate, and so did a city a third of which lay 357 m off.**
+    - Seen: 2026-11-07, review of M9, reproduced on synthetic worlds: a lattice of fields with the map three periods off (841 of 958 tiles, 14.3 m cross-validated, checkpoint 14.5 m, auto-publish); a film with its east 30 % displaced (933 of 933 tiles, 2.2 m). No real frame has shown either.
+    - Cause: `measure` narrows its search round by round, and a tile that wants to go further has no peak and leaves `tried`. Every gate then counts the survivors, so the tiles that know better are never heard.
+    - Found by: asking what a gate cannot see, not whether it passed: the wrong proposals rehearsed before were all kilometres off.
+    - Fix and pin: `calibrate/rival.py` adds the score maps of tiles searching ±1,500 m around the final map; real frames stand at 3.6 to 4.3 sigmas of noise, those two at over 37 (`test_calibrate_rival.py`, S-P06-BAD-REPEATING-PATTERN, S-P06-BAD-DISPLACED-PART).
+    - **A gate over survivors says nothing of what did not survive: look once more with the search open.**
+
+375. **A figure that left out the checks that disagreed, and a word that did not mean what the policy read.**
+    - Seen: 2026-11-07, review of M9: a frame the proof refused could publish itself through the matcher (`checkpointKind: 'held-out'`, on pairs its own RANSAC had filtered); ten hand points with three disabled after reading their residuals did too; a check over 100 m left the figure and no reader counted it.
+    - Cause: `held-out` was derived from `enabled: false` alone, whoever disabled the pair and whatever filtered it first.
+    - Found by: tracing each path that reaches `applyApprovalPolicy` rather than the one the rule was written for.
+    - Fix and pin: the policy asks for `method: 'auto'`, a proof on record, no check dropped and tiles that span the frame (S-A17-BAD-NOT-PROVED, -HAND-POINTS, -CHECKS-DROPPED, -UNMEASURED-AREA). `S-P01-HAPPY-ADMIN` now takes one click.
+    - **What a figure means depends on the path that made it: a policy reads the path too.**
+
+376. **A budget and a bar set on one sensor could not both hold on another.**
+    - Seen: 2026-11-07, review of M9: `VOTE_TILE_BUDGET // warps` gave a KH-4 or KH-7 frame 60 tiles a warp, while `VOTE_MIN_AGREE` stayed 8: on real KH-9 frames given that budget, not one warp in twelve reached it.
+    - Cause: the bar was measured at 180 tiles a warp on KH-9 alone, one scale; merging only combines proposals that already passed it.
+    - Found by: running the real frames at the budget the other sensors get, instead of reading the rates.
+    - Fix and pin: `VOTE_WARP_MIN_TILES` (S-P06-BAD-MANY-WARPS). The same review found the same shape elsewhere: `REACH_MARGIN` scaled with the window where the error is in ground metres, and `_frame_pixel_m` assumed an east-west strip.
+    - **A count that divides and a bar that does not are one constant in two places: change the sensor, and test them together.**
+
+377. **"Any place on Earth" had never left Bucharest's longitude, or its overlap of orbits.**
+    - Seen: 2026-11-07, review of M9: a frame over longitude 180 spanned the whole world in Mercator and failed `cityNotFound`; at low latitude a window across two orbit tracks had no single date, or got a reference with a 27 % hole because a tile's box held it and its footprint did not; a frame fitted with 6 or 7 pairs wrote `crossValidatedM: Infinity`, which no reader accepts.
+    - Cause: everything was rehearsed on one city; none of these can happen there often enough to be seen.
+    - Found by: the real functions on a frame at Suva, and a sweep of the live catalog at latitudes 5, 8, 14 and 44.4.
+    - Fix and pin: S-P01-HAPPY-ANTIMERIDIAN, S-P01-BAD-FOOTPRINT-HOLE, S-P01-HAPPY-TWO-DATES, S-P06-BAD-FEW-PAIRS-FIGURE. Real frames far from Bucharest are still owed (M9 §14).
+    - **A claim about the whole Earth needs a test at its edges, not a bigger table at one place.**

@@ -27,6 +27,18 @@ export const MAX_TARGET_YEARS = 20;
 export const JOIN_MAX_PARTS = 8;
 
 /**
+ * M9 (`docs/research/M9-calibration.md` §11): the share of the city a USGS frame or a join must cover to publish on its own, and
+ * under which the admin is offered the date's other frames. One bar, here because this module is a leaf.
+ */
+export const CITY_MIN_COVERAGE_PCT = 90;
+
+/**
+ * M9: a frame publishes itself only when its agreeing tiles span at least this share of what it covers of the window (real frames: see
+ * `docs/research/M9-calibration.md` §14). Beyond them a polynomial extrapolates, and no check looks there.
+ */
+export const AUTO_MIN_MEASURED_PCT = 70;
+
+/**
  * `cities/{city}.imagery`. Every field is optional in the document: an absent field takes its default
  * ({@link imagerySettingsOf}), so a city created before M3 needs no migration.
  */

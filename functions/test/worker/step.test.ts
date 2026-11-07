@@ -5,7 +5,15 @@
  * stamped `system:pipeline`, checked against the schema, compare-and-set on the update time), creates and lists its
  * log lines; a worker that does not hold the job writes nothing.
  */
-import { FIRESTORE_PATHS, LEASE_SECONDS, WORKER_DELETE_FIELD, jobLogDocSchema, type CallableResponse, type JobDoc } from '@hcm/shared';
+import {
+    FIRESTORE_PATHS,
+    LEASE_SECONDS,
+    WORKER_DELETE_FIELD,
+    imageryPassDocSchema,
+    jobLogDocSchema,
+    type CallableResponse,
+    type JobDoc,
+} from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { stepFunction } from '../../src/worker/step.js';
@@ -225,6 +233,33 @@ describe('worker.step update', () => {
 
         await expect(update(world, VERSION_PATH, { state: 'failed', error: { code: failure.code } })).resolves.toEqual({ ok: true });
         await expect(readVersion(world, JOB)).resolves.toMatchObject({ state: 'failed', machines: { download: 'std' } });
+    });
+});
+
+describe('worker.step and a pass (M9)', () => {
+    const job = { params: { entityId: 'D3C1203-300415F006', dataset: 'declassiii', sensor: 'KH-9-pan' } };
+    const path = FIRESTORE_PATHS.imageryPass(CITY, 'D3C1203-300415-F-1975-08-20');
+
+    it('happyPath_aRunReadsItsPass_noneYetIsNoFailure', async () => {
+        const world = await held(job);
+        const none = await step(world, { op: 'get', path });
+        const model = { camera: 'panoramic', rotation: 0, mirrored: false, scale: 0.94, rotationDeg: 0, dxM: 10, dyM: 20 };
+        await world.deps.documents.set(path, imageryPassDocSchema, {
+            model,
+            entityId: 'D3C1203-300415F005',
+            date: '1975-08-20',
+            updatedBy: 'system:imagery',
+            updatedAt: at(NOW),
+        });
+
+        expect(none).toEqual({ data: null, updateTime: null });
+        await expect(step(world, { op: 'get', path })).resolves.toMatchObject({ data: { model } });
+    });
+
+    it('badPath_aRunNeverWritesAPass', async () => {
+        const world = await held(job);
+
+        await expect(codeOf(update(world, path, { model: {} }))).resolves.toBe('apiError.worker.refused');
     });
 });
 

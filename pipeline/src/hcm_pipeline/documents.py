@@ -13,7 +13,7 @@ from typing import Final
 import numpy
 
 from hcm_pipeline.contract import GCP_ORIGINS, LAYER_VERSION_STATES, MAX_JOB_LOGS
-from hcm_pipeline.geo import Bounds, to_mercator_arrays
+from hcm_pipeline.geo import Bounds, near_lng, to_mercator_arrays
 from hcm_pipeline.georef.transforms import Gcp
 from hcm_pipeline.model import (
     DocumentError,
@@ -150,6 +150,8 @@ class GeorefInfo:
     checkpoint_rmse_m: float | None = None
     checkpoint_count: int | None = None
     weak_corners: bool = False
+    # `checkpointKind`: `held-out` or `leave-one-out`, which the approval policy tells apart (M9 §11).
+    kind: str | None = None
 
     @classmethod
     def of(cls, value: object) -> GeorefInfo:
@@ -166,6 +168,7 @@ class GeorefInfo:
                 "fitRmseM": _optional_metres(self.fit_rmse_m),
                 "checkpointRmseM": _optional_metres(self.checkpoint_rmse_m),
                 "checkpointCount": self.checkpoint_count,
+                "checkpointKind": self.kind,
                 "weakCorners": True if self.weak_corners else None,
             }
         )
@@ -185,6 +188,8 @@ class OutputInfo:
     area_km2: float
     studio_path: str | None = None
     studio_bytes: int | None = None
+    coverage_pct: float | None = None
+    outline: tuple[Mapping[str, float], ...] = ()
 
     def as_record(self) -> Record:
         return _without_none(
@@ -199,6 +204,8 @@ class OutputInfo:
                 "areaKm2": round(self.area_km2, 3),
                 "studioPath": self.studio_path,
                 "studioBytes": self.studio_bytes,
+                "coveragePct": None if self.coverage_pct is None else round(self.coverage_pct, 2),
+                "outline": [dict(place) for place in self.outline] or None,
             }
         )
 
@@ -283,6 +290,8 @@ class Version:
     crop: tuple[LatLng, ...] | None = None
     # The Cloud Run job each phase ran on (`download`, `process`: finding 56 of 2026-11-01).
     machines: Mapping[str, str] = field(default_factory=dict)
+    # What `locate` measured (`calibrationSchema`): `georef` adds its own figures to it.
+    calibration: Record = field(default_factory=dict)
 
     @classmethod
     def of(cls, version_id: str, record: Mapping[str, object]) -> Version:
@@ -300,6 +309,7 @@ class Version:
             georef=None if georef is None else GeorefInfo.of(georef),
             crop=_ring_of(record.get("crop")),
             machines=_machines_of(record.get("machines")),
+            calibration=optional_record(record.get("calibration")),
         )
 
 
@@ -317,15 +327,22 @@ def _quad(value: object) -> tuple[LatLng, LatLng, LatLng, LatLng] | None:
     return _corner(value, "nw"), _corner(value, "ne"), _corner(value, "se"), _corner(value, "sw")
 
 
+def _one_piece(footprint: Sequence[LatLng]) -> list[LatLng]:
+    """The ring's longitudes each on the side of the one before: a ring over longitude 180 stays one piece, not the world's width."""
+    ring = list[LatLng]()
+    for lat, lng in footprint:
+        ring.append((lat, near_lng(lng, ring[-1][1] if ring else lng)))
+    return ring
+
+
 def _extremes(footprint: Sequence[LatLng]) -> tuple[LatLng, LatLng, LatLng, LatLng]:
     """The footprint's four extreme vertices (north-west, north-east, south-east, south-west), on a normalized box."""
-    places = numpy.array(footprint, numpy.float64)
+    ring = _one_piece(footprint)
+    places = numpy.array(ring, numpy.float64)
     x, y = to_mercator_arrays(places[:, 1], places[:, 0])
     u = (x - x.min()) / max(float(numpy.ptp(x)), 1e-9)
     v = (y - y.min()) / max(float(numpy.ptp(y)), 1e-9)
-    nw, ne, se, sw = (
-        footprint[int(index)] for index in (numpy.argmin(u - v), numpy.argmax(u + v), numpy.argmax(u - v), numpy.argmin(u + v))
-    )
+    nw, ne, se, sw = (ring[int(index)] for index in (numpy.argmin(u - v), numpy.argmax(u + v), numpy.argmax(u - v), numpy.argmin(u + v)))
     return nw, ne, se, sw
 
 

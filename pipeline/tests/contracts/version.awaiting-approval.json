@@ -163,7 +163,8 @@
         ],
         "fitRmseM": 6.1,
         "checkpointRmseM": 8.9,
-        "checkpointCount": 2
+        "checkpointCount": 2,
+        "checkpointKind": "held-out"
     },
     "output": {
         "cogPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
@@ -180,7 +181,8 @@
         "maxzoom": 16,
         "areaKm2": 612.5,
         "studioPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/studio.tif",
-        "studioBytes": 180000000
+        "studioBytes": 180000000,
+        "coveragePct": 94.2
     },
     "createdBy": "uid-owner",
     "createdAt": {
@@ -191,5 +193,46 @@
     "updatedAt": {
         "seconds": 1792005400,
         "nanoseconds": 0
+    },
+    "calibration": {
+        "how": "votes",
+        "measuredPct": 88.2,
+        "model": {
+            "camera": "panoramic",
+            "rotation": 0,
+            "mirrored": false,
+            "scale": 0.946,
+            "rotationDeg": -0.17,
+            "dxM": -1765.2,
+            "dyM": 13931.4
+        },
+        "votes": {
+            "agreed": 22,
+            "tiles": 196
+        },
+        "tiles": {
+            "agreed": 712,
+            "tried": 946
+        },
+        "crossValidatedM": 13.5,
+        "coveredPct": 94.2,
+        "outline": [
+            {
+                "lat": 44.3,
+                "lng": 25.9
+            },
+            {
+                "lat": 44.3,
+                "lng": 26.3
+            },
+            {
+                "lat": 44.6,
+                "lng": 26.3
+            },
+            {
+                "lat": 44.6,
+                "lng": 25.9
+            }
+        ]
     }
 }

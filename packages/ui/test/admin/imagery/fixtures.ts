@@ -92,7 +92,16 @@ export function versionView(overrides: Partial<VersionViewPort> = {}): VersionVi
     return {
         ...{ id: 'job-1966', layerId: 'kh-4a-1966', label: { ro: 'KH-4A Corona, 12 iulie 1966', en: 'KH-4A Corona, 12 July 1966' } },
         ...{ year: 1966, date: '1966-07-12', sensor: 'KH-4A', origin: 'usgs', state: 'awaiting_approval' },
-        georef: { method: 'auto', transform: 'poly2', pairs: 24, fitRmseM: 3.1, checkpointRmseM: 7.2, checkpointCount: 24 },
+        georef: {
+            method: 'auto',
+            transform: 'poly2',
+            pairs: 24,
+            fitRmseM: 3.1,
+            checkpointRmseM: 7.2,
+            checkpointCount: 24,
+            checkpointKind: 'held-out',
+        },
+        calibration: null,
         output: {
             bounds: [
                 [25.95, 44.33],
@@ -100,6 +109,7 @@ export function versionView(overrides: Partial<VersionViewPort> = {}): VersionVi
             ],
             ...{ minzoom: 10, maxzoom: 16, areaKm2: 612.5, previewPath: 'rasters/x/preview.png', studioPath: 'rasters/x/studio.tif' },
             cogBytes: 212_000_000,
+            coveragePct: null,
         },
         ...{ estimate: 2.5, guard: null, approval: null, error: null, hasScan: true },
         ...{ entityId: 'DS1035-1057DA023', partOf: null, parts: [], join: null },

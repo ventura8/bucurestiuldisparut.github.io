@@ -646,6 +646,9 @@ service cloud.firestore {
                 allow read: if isCityMember(city);
             }
 
+            // M9 (docs/research/M9-calibration.md §2): imageryPasses/{key} has no client rule. imagery.onJobWrite writes a pass's last
+            // proved model and only the pipeline reads it, through the Admin SDK or worker.step.
+
             // USGS scenes are harvested server-side; admins triage them (candidate, rejected) and annotate
             // them, whatever state the harvest left them in. M4 (docs/research/M4-interfaces.md §1.8): an
             // order is usgs.markOrdered's, which asks USGS first, so no client writes `ordered` or `available`,

@@ -12,6 +12,8 @@ import {
     JOB_STEPS,
     jobRetryable,
     type BBox,
+    type Calibration,
+    type CheckpointKind,
     type GeorefTransform,
     type JobDoc,
     type JobStatus,
@@ -47,7 +49,10 @@ export interface VersionView {
         readonly fitRmseM: number | null;
         readonly checkpointRmseM: number | null;
         readonly checkpointCount: number | null;
+        readonly checkpointKind: CheckpointKind | null;
     } | null;
+    /** M9: how `locate` found the frame and what proved it (`docs/research/M9-calibration.md` §8). */
+    readonly calibration: Calibration | null;
     readonly output: {
         readonly bounds: BBox;
         readonly minzoom: number;
@@ -56,6 +61,7 @@ export interface VersionView {
         readonly previewPath: string;
         readonly studioPath: string | null;
         readonly cogBytes: number;
+        readonly coveragePct: number | null;
     } | null;
     readonly estimate: number | null;
     readonly guard: {
@@ -87,6 +93,7 @@ function georefOf(georef: LayerVersionDoc['georef']): VersionView['georef'] {
             fitRmseM: orNull(georef.fitRmseM),
             checkpointRmseM: orNull(georef.checkpointRmseM),
             checkpointCount: orNull(georef.checkpointCount),
+            checkpointKind: orNull(georef.checkpointKind),
         },
     };
 }
@@ -98,6 +105,7 @@ function outputOf(output: LayerVersionDoc['output']): VersionView['output'] {
     return {
         ...{ bounds: bboxFromRecord(output.bounds), minzoom: output.minzoom, maxzoom: output.maxzoom, areaKm2: output.areaKm2 },
         ...{ previewPath: output.previewPath, studioPath: orNull(output.studioPath), cogBytes: output.cogBytes },
+        coveragePct: orNull(output.coveragePct),
     };
 }
 
@@ -144,6 +152,7 @@ export function versionViewOf(doc: Stored<LayerVersionDoc>): VersionView {
     return {
         ...{ id: doc.id, layerId: version.layerId, label: version.label, year: version.year, date: orNull(version.date) },
         ...{ sensor: orNull(version.sensor), origin: version.origin, state: version.state, georef: georefOf(version.georef) },
+        calibration: orNull(version.calibration),
         ...{ output: outputOf(version.output), estimate: estimateOf(version), guard: guardOf(version.guard) },
         ...{ approval: approvalOf(version.approval), error: errorOf(version.error), hasScan: version.scan !== undefined },
         ...{ ...sourceOf(version.source), partOf: orNull(version.partOf), join: orNull(version.join) },

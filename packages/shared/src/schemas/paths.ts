@@ -128,6 +128,9 @@ export const FIRESTORE_PATHS = {
     layerVersion: (cityId: string, versionId: string) => child(cityId, 'layerVersions', versionId),
     /** M8 (`docs/research/M8-join-interfaces.md` §2): the one plan of which frames make each date's whole-city layer. */
     imageryPlan: (cityId: string) => child(cityId, 'imageryPlans', 'dates'),
+    /** M9 (`docs/research/M9-calibration.md` §2): a pass's last proved model, the first place to look for its next frame. */
+    imageryPasses: (cityId: string) => `${cityPath(cityId)}/imageryPasses`,
+    imageryPass: (cityId: string, passKey: string) => child(cityId, 'imageryPasses', passKey),
     /** The `history` subcollection of an audited document (`auditedDocumentPath`). */
     history: (document: AuditedDocument) => `${auditedDocumentPath(document)}/history`,
     historyEntry: (document: AuditedDocument, entryId: string) =>

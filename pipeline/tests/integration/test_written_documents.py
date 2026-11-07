@@ -30,10 +30,11 @@ from hcm_pipeline.model import contract_json
 
 from tests.contracts_loader import CONTRACTS, golden, record, records
 from tests.fakes.documents import MemoryStore
-from tests.fakes.world import CITY, ENTITY_ID, PipelineWorld, dig
+from tests.fakes.http import Reply
+from tests.fakes.world import CITY, ENTITY_ID, OVERPASS_PATH, PipelineWorld, dig
 from tests.integration.joining import JOB, Frame, run_join, seed_frames
 from tests.integration.matching import seed_matching, uniform
-from tests.synthetic.scenes import Scene, render_world, write_sentinel2
+from tests.synthetic.scenes import Scene, overpass_answer, render_world, write_sentinel2
 
 GOLDEN: Final = "written-documents.json"
 KINDS: Final = {"job": re.compile(r"^cities/[^/]+/jobs/[^/]+$"), "version": re.compile(r"^cities/[^/]+/layerVersions/[^/]+$")}
@@ -187,7 +188,7 @@ def no_pairs(world: PipelineWorld, tmp: Path) -> None:
 
 
 def corners_far_off(world: PipelineWorld, _tmp: Path) -> None:
-    """The scene's metadata corners 1.3 km off: the search around the window finds the city, the import goes on."""
+    """The scene's metadata corners 1.3 km off: the tile votes find the city, the import goes on."""
     world.seed_import()
     scene = f"cities/{CITY}/usgsScenes/{ENTITY_ID}"
     corners = record(world.store.documents[scene]["corners"])
@@ -198,13 +199,15 @@ def corners_far_off(world: PipelineWorld, _tmp: Path) -> None:
     poke(world, scene, {"corners": moved, "footprint": list(moved.values())})
     world.run()
     assert world.version()["state"] == "awaiting_approval"
-    assert any("by the search around the window" in line for line in world.log_lines())
+    assert any(line.startswith("tile votes") and "moved 1." in line for line in world.log_lines())
 
 
 def weak_guess(world: PipelineWorld, tmp: Path) -> None:
-    """Sentinel-2 shows another place: no guess is believed, the crop keeps a wide margin, the admin places the points on a scan
-    with no corner pairs of a guess nothing confirmed, and the delivery stays."""
-    world.http.serve("/s2/visual.tif", write_sentinel2(render_world(99), tmp / "elsewhere.tif").read_bytes())
+    """Sentinel-2 and OpenStreetMap show another place: nothing is proved, the crop keeps a margin, the admin places the points on a
+    scan with no corner pairs of a frame nothing proved, and the delivery stays."""
+    other = render_world(99)
+    world.http.serve("/s2/visual.tif", write_sentinel2(other, tmp / "elsewhere.tif").read_bytes())
+    world.http.route("POST", OVERPASS_PATH, lambda _request: Reply.json(json.dumps(overpass_answer(other))))
     world.seed_import()
     world.run()
     assert world.version()["state"] == "needs_gcps"
@@ -212,7 +215,7 @@ def weak_guess(world: PipelineWorld, tmp: Path) -> None:
     assert "scan" in world.version()
     assert "georef" not in world.version()
     assert world.gcs.names("usgs-raw/") != []
-    assert any(line.startswith("the guess is weak") for line in world.log_lines())
+    assert any(line.startswith("not proved") for line in world.log_lines())
 
 
 def city_off_frame(world: PipelineWorld, _tmp: Path) -> None:

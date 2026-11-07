@@ -18,6 +18,22 @@ function box(west: number, south: number, east: number, north: number) {
 }
 
 describe('footprintCoverage', () => {
+    it('happyPath_aFrameOverLongitude180StaysOnePieceAroundTheCity @S-P01-HAPPY-ANTIMERIDIAN', () => {
+        const over = [
+            { lat: -15, lng: 174.5 },
+            { lat: -15, lng: -174.5 },
+            { lat: -19, lng: -174.5 },
+            { lat: -19, lng: 174.5 },
+        ];
+        const suva = { west: 178.3, south: -18.2, east: 178.55, north: -18.05 };
+        const far = { west: -179.7, south: -18.2, east: -179.4, north: -18.05 };
+        const elsewhere = { west: 10, south: -18.2, east: 10.5, north: -18.05 };
+
+        expect(footprintCoverage(over, suva)).toBeCloseTo(1, 9);
+        expect(footprintCoverage(over, far)).toBeCloseTo(1, 9);
+        expect(footprintCoverage(over, elsewhere)).toBe(0);
+    });
+
     it('happyPath_aFrameOverTheWholeCityCoversAllOfIt', () => {
         expect(footprintCoverage(box(25, 43, 28, 46), BOUNDS)).toBeCloseTo(1, 9);
     });

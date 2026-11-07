@@ -6,13 +6,18 @@ about half as wide as its ends. On the 1972 KH-9 frame D3C1202-200149F039 the co
 times at the city (6.65 km RMS at 17 hand-read landmarks); this model, with the half angle 60.5 degrees and the film up to
 the exposure's dark gap as its width, fits them with 0.24 km RMS after one constant shift of about 7 km.
 
-With u = 2(x - start)/W - 1, the film position counted from the exposure's first column, and theta = u * half_angle:
+With theta running linearly over the exposure from `theta_a` at its first column to `theta_b` at its last:
 
-    along = tan(theta) / tan(half_angle)
-    across = (2y/H - 1) * cos(half_angle) / cos(theta)
+    along = (tan(theta) - tan(theta_a)) / (tan(theta_b) - tan(theta_a))
+    across = (2y/H - 1) / (cos(theta) * ((1 - along) / cos(theta_a) + along / cos(theta_b)))
 
-then bilinear on the four ground corners, `along` and `across` running from -1 to 1 between them. The rest of `locate` keeps
-one projective transform: `local_matrix` fits one around the city window from this model.
+then bilinear on the four ground corners, `along` from 0 to 1 and `across` from -1 to 1 between them. A full sweep is centred on the
+nadir (`theta_a = -half_angle`, `theta_b = half_angle`). A shorter one need not be, which the 1982 frame D3C1217-200510A001 showed:
+its film is half as long as a full frame's (the camera swept 60 degrees, not 120), and its east end is wider on the ground than its
+west end (52 degrees off the nadir against 8). Its ends' widths give that: the wider end's cosine is the narrower's over their ratio,
+so `tan(wide) = (ratio - cos(sweep)) / sin(sweep)`. Under the centred model 3 of 196 tiles agreed; under this one, 24 in the first probe,
+with the corners' place 1.7 km off. The rest of `locate` keeps one projective transform:
+`local_matrix` fits one around the city window from this model.
 """
 
 import math
@@ -31,12 +36,30 @@ NEWTON_STEPS: Final = 8
 
 @dataclass(frozen=True)
 class PanoramicCamera:
-    """What the model needs beyond the corners: the half scan angle, the exposure's width in film pixels (`W`), and the column it
-    starts at (a turned scan's fragment of the next exposure lies before it)."""
+    """What the model needs beyond the corners: the half scan angle, the exposure's width in film pixels (`W`), the column it
+    starts at (a turned scan's fragment of the next exposure lies before it), and how far a shorter sweep swung (None: the full one,
+    centred on the nadir)."""
 
     half_angle_deg: float
     image_width: int
     image_start: int = 0
+    sweep_deg: float | None = None
+
+
+def _length(a: FloatArray, b: FloatArray) -> float:
+    return float(numpy.hypot(*(a - b)))
+
+
+def sweep_ends(corners: FloatArray, camera: PanoramicCamera) -> tuple[float, float]:
+    """The scan angle (radians) at the exposure's first and last columns: a shorter sweep's from its ends' widths on the ground."""
+    half = math.radians(camera.half_angle_deg)
+    if camera.sweep_deg is None:
+        return -half, half
+    first, last = _length(corners[0], corners[3]), _length(corners[1], corners[2])
+    sweep = math.radians(camera.sweep_deg)
+    ratio = max(first, last) / max(min(first, last), 1e-9)
+    wide = min(half, math.atan2(ratio - math.cos(sweep), math.sin(sweep)))
+    return (wide, wide - sweep) if first >= last else (wide - sweep, wide)
 
 
 def least_squares_homography(source: FloatArray, target: FloatArray) -> FloatArray:
@@ -74,14 +97,20 @@ class PanoramicModel:
     height: int
 
     @property
-    def half_angle(self) -> float:
-        return math.radians(self.camera.half_angle_deg)
+    def ends(self) -> tuple[float, float]:
+        return sweep_ends(self.corners, self.camera)
+
+    def _across_width(self, along: FloatArray) -> FloatArray:
+        """The bilinear map's width at `along`, in units where a width is 1 / cos(theta)."""
+        low, high = self.ends
+        return numpy.asarray((1 - along) / math.cos(low) + along / math.cos(high), numpy.float64)
 
     def to_mercator(self, x: FloatArray, y: FloatArray) -> tuple[FloatArray, FloatArray]:
         """Film pixels to EPSG:3857 metres."""
-        theta = (2 * (x - self.camera.image_start) / self.camera.image_width - 1) * self.half_angle
-        a = (numpy.tan(theta) / math.tan(self.half_angle) + 1) / 2
-        b = ((2 * y / self.height - 1) * math.cos(self.half_angle) / numpy.cos(theta) + 1) / 2
+        low, high = self.ends
+        theta = low + (x - self.camera.image_start) / self.camera.image_width * (high - low)
+        a = (numpy.tan(theta) - math.tan(low)) / (math.tan(high) - math.tan(low))
+        b = ((2 * y / self.height - 1) / (numpy.cos(theta) * self._across_width(a)) + 1) / 2
         c = self.corners
         places = [
             c[0, axis] * (1 - a) * (1 - b) + c[1, axis] * a * (1 - b) + c[2, axis] * a * b + c[3, axis] * (1 - a) * b for axis in (0, 1)
@@ -105,9 +134,10 @@ class PanoramicModel:
     def to_film(self, mx: FloatArray, my: FloatArray) -> tuple[FloatArray, FloatArray]:
         """EPSG:3857 metres to film pixels (a place off the corners' quad falls off the film)."""
         a, b = self._on_quad(mx, my)
-        theta = numpy.arctan((2 * a - 1) * math.tan(self.half_angle))
-        x = self.camera.image_start + (theta / self.half_angle + 1) * self.camera.image_width / 2
-        y = ((2 * b - 1) * numpy.cos(theta) / math.cos(self.half_angle) + 1) * self.height / 2
+        low, high = self.ends
+        theta = numpy.arctan(math.tan(low) + a * (math.tan(high) - math.tan(low)))
+        x = self.camera.image_start + (theta - low) / (high - low) * self.camera.image_width
+        y = ((2 * b - 1) * numpy.cos(theta) * self._across_width(a) + 1) * self.height / 2
         return x, y
 
     def _span_around(self, values: FloatArray, centre: float, limits: tuple[float, float]) -> FloatArray:

@@ -11,7 +11,9 @@ import {
     awaitHarvest,
     cardImport,
     closeImportNotice,
+    detail,
     expectLayerInViewer,
+    imageryText,
     publishedLayer,
     readyImagery,
     stepRow,
@@ -36,7 +38,7 @@ test.use({ persona: 'owner', mapOwner: 'owner' });
 const SCENE = SYNTHETIC_SCENE;
 
 test(
-    'The real raster pipeline imports a free scene, the policy publishes it, and the viewer shows it',
+    'The real raster pipeline imports a free scene, one click publishes it, and the viewer shows it',
     { tag: '@S-P01-HAPPY-ADMIN' },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }, testInfo) => {
         test.setTimeout(600_000);
@@ -62,13 +64,21 @@ test(
             await expect(stepRow(page, lang, step)).toContainText(stepStateText(lang, 'done'), { timeout: FUNCTIONS_TIMEOUT_MS * 2 });
         }
 
-        // Its checkpoints agree under the city's threshold: the policy approved it, and it was published.
+        // Its checkpoints agree under the city's threshold, but the world's city is too small to prove: the matcher fitted it, and its
+        // figure publishes nothing by itself (M9 §11). The page says why, and one click sends it on.
+        await expect(detail(page).locator('[data-waits="not-proved"]')).toHaveText(
+            imageryText(lang, 'adminContent.imagery.calibration.waits.notProved'),
+            { timeout: FUNCTIONS_TIMEOUT_MS },
+        );
+        await detail(page)
+            .getByRole('button', { name: imageryText(lang, 'adminContent.imagery.approve') })
+            .click();
         const layer = await publishedLayer(imagery, versionId, PUBLISH_TIMEOUT_MS);
         const version = await imagery.version(versionId);
         const georef = (version?.['georef'] ?? {}) as { method?: string; checkpointRmseM?: number };
         expect(georef.method).toBe('auto');
         expect(Number(georef.checkpointRmseM)).toBeLessThan(DEFAULT_RMSE_THRESHOLD_M);
-        expect(version?.['approval']).toMatchObject({ auto: true, by: 'system:imagery' });
+        expect(version?.['approval']).toMatchObject({ auto: false });
         expect((await imagery.runs()).map((run) => run.outcome)).toEqual([]);
         await expectLayerInViewer(page, lang, imagery, layer, FRAME_CENTRE);
     },

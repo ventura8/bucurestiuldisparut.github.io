@@ -367,3 +367,20 @@ describe('a job lost in a step as the page reads it (findings 60 and 61 of 2026-
         );
     });
 });
+
+describe('what calibration measured, as the page reads it (M9)', () => {
+    it('happyPath_whatCalibrationMeasured_andAVersionItNeverSaw', () => {
+        const base = layerVersionDocSchema.parse(versionDoc());
+        const georef = { method: 'auto', transform: 'affine', gcps: [], checkpointKind: 'held-out' };
+        const calibration = { how: 'votes', tiles: { agreed: 712, tried: 946 }, crossValidatedM: 16.3, coveredPct: 62 };
+        const view = versionViewOf(stored(ID, { ...base, georef, calibration } as never));
+
+        expect(view.calibration).toEqual(calibration);
+        expect(view.georef?.checkpointKind).toBe('held-out');
+        expect(versionViewOf(stored(ID, { ...base, calibration: { how: 'none', refusal: 'no-votes' } } as never)).calibration).toEqual({
+            how: 'none',
+            refusal: 'no-votes',
+        });
+        expect(versionViewOf(stored(ID, { ...base, calibration: undefined })).calibration).toBeNull();
+    });
+});

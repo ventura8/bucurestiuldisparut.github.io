@@ -4,9 +4,10 @@
  * EPSG:3857 metres; a transform with fewer enabled pairs than `MIN_GCPS` is refused (`too-few`), as is a set that spans
  * no area or a singular system (`degenerate`). Residuals are ground metres: an enabled pair's is its leave-one-out
  * residual, a disabled pair's (a checkpoint) its distance from where the transform puts its pixel. `checkpointRmseM` is
- * the disabled pairs' RMSE when there are any, else the leave-one-out RMSE of the enabled ones (null when none has one).
+ * the disabled pairs' RMSE when there are any, else the leave-one-out RMSE of the enabled ones (null when none has one);
+ * `checkpointKind` says which (M9: only `held-out` approves on its own).
  */
-import { MIN_GCPS, type Gcp, type GeorefTransform } from '../schemas/georef.js';
+import { MIN_GCPS, type CheckpointKind, type Gcp, type GeorefTransform } from '../schemas/georef.js';
 import { geoToMercator, groundMetres, mercatorToGeo, type GeoPoint, type PlanePoint } from './mercator.js';
 import { evaluatePolynomial, fitPolynomial, type Correspondence, type PolynomialKind } from './polynomial.js';
 import { isDegenerateSpread } from './spread.js';
@@ -33,6 +34,7 @@ export type FitResult =
           readonly fitRmseM: number;
           readonly checkpointRmseM: number | null;
           readonly checkpointCount: number;
+          readonly checkpointKind: CheckpointKind | null;
       }
     | { readonly ok: false; readonly reason: FitRefusal };
 
@@ -115,6 +117,14 @@ function enabledResiduals(fitted: Fitted, enabled: readonly Gcp[]): [string, num
     });
 }
 
+/** What the checks are: the disabled pairs, else the enabled ones against each other (null: no checks at all). */
+function kindOf(disabled: number, count: number): CheckpointKind | null {
+    if (count === 0) {
+        return null;
+    }
+    return disabled > 0 ? 'held-out' : 'leave-one-out';
+}
+
 function measured(fitted: Fitted, kind: GeorefTransform, enabled: readonly Gcp[], checks: readonly Gcp[]): FitResult {
     const held = enabledResiduals(fitted, enabled);
     const checked = checks.map((gcp) => [gcp.id, missBy(fitted, gcp)] as [string, number]);
@@ -130,6 +140,7 @@ function measured(fitted: Fitted, kind: GeorefTransform, enabled: readonly Gcp[]
         fitRmseM: rms(enabled.map((gcp) => missBy(fitted, gcp))),
         checkpointRmseM: checkpoints.length === 0 ? null : rms(checkpoints.map(([, metres]) => metres)),
         checkpointCount: checkpoints.length,
+        checkpointKind: kindOf(checks.length, checkpoints.length),
     };
 }
 

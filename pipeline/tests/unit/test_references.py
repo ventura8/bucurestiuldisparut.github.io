@@ -8,7 +8,7 @@ import numpy
 import pytest
 from hcm_pipeline.geo import Bounds, Grid, MercatorBox, to_mercator
 from hcm_pipeline.osm import OverpassClient, draw, query, to_geojson
-from hcm_pipeline.stac import Post, ReferenceUnavailableError, StacClient, StacItem, choose, item_of, post_with_retries
+from hcm_pipeline.stac import SEARCH_LIMIT, Post, ReferenceUnavailableError, StacClient, StacItem, choose, item_of, post_with_retries
 
 from tests.fakes.http import FakeHttpServer, Reply, Request
 from tests.fakes.world import dig
@@ -48,6 +48,8 @@ def test_happy_path_the_search_asks_for_three_years_of_clear_sentinel2_and_sorts
     assert body["collections"] == ["sentinel-2-l2a"]
     assert body["datetime"] == "2023-10-15T00:00:00Z/2026-10-14T23:59:59Z"
     assert body["query"] == {"eo:cloud_cover": {"lt": 20}}
+    assert body["limit"] == SEARCH_LIMIT
+    assert SEARCH_LIMIT >= 100
     assert body["bbox"] == [26.05, 44.40, 26.15, 44.46]
 
 
@@ -124,6 +126,55 @@ def test_bad_path_only_four_items_of_a_date_count() -> None:
     strips = [StacItem(f"s{index}", "2025-01-01", index, "h", (26.05 + index * 0.02, 44, 26.07 + index * 0.02, 45)) for index in range(5)]
 
     assert choose(strips, WINDOW) == []
+
+
+SLANTED = (((26.0, 44.0), (26.09, 44.0), (26.09, 44.5), (26.0, 44.5)),)
+
+
+def test_bad_path_a_tile_with_a_whole_box_and_a_slanted_footprint_does_not_cover_the_window() -> None:
+    """Scenarios: S-P01-BAD-FOOTPRINT-HOLE"""
+    # Earth Search's S2A_34NFL_20240101 at latitude 5: its box holds the window, 27 % of the window lies outside its footprint.
+    cut = StacItem("cut", "2025-01-01", 1, "h", (26.0, 44.0, 26.2, 44.5), SLANTED)
+
+    assert not cut.covers(WINDOW)
+    assert choose([cut], WINDOW) == []
+    assert StacItem("whole", "2025-01-01", 1, "h", (26.0, 44.0, 26.2, 44.5)).covers(WINDOW)
+
+
+def test_happy_path_a_window_across_two_orbits_is_mosaicked_from_two_dates() -> None:
+    """Scenarios: S-P01-HAPPY-TWO-DATES"""
+    west = StacItem("west", "2025-01-01", 2, "h", (26.0, 44.0, 26.2, 44.5), SLANTED)
+    east_ring = (((26.08, 44.0), (26.2, 44.0), (26.2, 44.5), (26.08, 44.5)),)
+    east = StacItem("east", "2025-01-06", 3, "h", (26.0, 44.0, 26.2, 44.5), east_ring)
+    useless = StacItem("away", "2025-02-01", 1, "h", (28.0, 44.0, 28.2, 44.5))
+
+    assert choose([useless, west, east], WINDOW) == [east, west]
+
+
+def test_bad_path_several_dates_with_a_hole_between_them_are_no_reference() -> None:
+    """Scenarios: S-P01-BAD-MOSAIC-NOT-COVERED"""
+    west = StacItem("w", "2025-01-01", 2, "h", (26.0, 44.0, 26.09, 44.5))
+    east = StacItem("e", "2025-01-06", 3, "h", (26.11, 44.0, 26.2, 44.5))
+
+    assert choose([west, east], WINDOW) == []
+
+
+def test_happy_path_a_search_result_gives_its_footprints_rings() -> None:
+    """Scenarios: S-P01-BAD-FOOTPRINT-HOLE"""
+    polygon = {"type": "Polygon", "coordinates": [[[1, 2], [3, 2], [3, 4], [1, 2]]]}
+    many = {"type": "MultiPolygon", "coordinates": [[[[1, 2], [3, 2], [3, 4]]], [[[5, 6], [7, 6], [7, 8]]]]}
+
+    plain = feature("n", "2025-01-01", 0, [1, 2, 3, 4])
+
+    def rings_of(geometry: object) -> tuple[object, ...]:
+        found = item_of({**plain, "geometry": geometry})
+        assert found is not None
+        return found.rings
+
+    assert rings_of(polygon) == (((1.0, 2.0), (3.0, 2.0), (3.0, 4.0), (1.0, 2.0)),)
+    assert len(rings_of(many)) == 2
+    assert rings_of({"type": "Point", "coordinates": [1, 2]}) == ()
+    assert rings_of({"type": "Polygon", "coordinates": [["x"]]}) == ()
 
 
 def test_happy_path_overpass_returns_the_windows_lines_as_geojson(server: FakeHttpServer) -> None:

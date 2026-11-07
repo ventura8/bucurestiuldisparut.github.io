@@ -38,6 +38,53 @@ function wholeCity(date: string, overrides: Partial<DatePlanFrame> = {}): readon
 }
 
 describe('planDate: outlines and spares', () => {
+    it('happyPath_aMeasuredOutlineComesBeforeTheEstimate', () => {
+        // Its footprint holds three quarters of the city, but the proved map says it reaches only a quarter (M9 §5).
+        const measuredOutline = [
+            { lat: 0, lng: 0 },
+            { lat: 0, lng: 0.25 },
+            { lat: 1, lng: 0.25 },
+            { lat: 1, lng: 0 },
+        ];
+        const east = band('east', 0.75, 1);
+        const row = planDate([band('measured', 0, 0.75, { measuredOutline }), east], CITY);
+
+        expect(row?.coveragePct).toBeCloseTo(50, 0);
+        expect(planDate([band('estimated', 0, 0.75), east], CITY)?.coveragePct).toBe(100);
+    });
+
+    it('badPath_aFrameRenderedOnTheWholeWindowIsWhatItsOutlineSays_notWhatItsBoxHolds @S-A66-BAD-WINDOW-BOX', () => {
+        // Every USGS render's grid is the city's window (M9 §5). Fitted by hand, this one shows the west 40 %: its metadata ring holds it all.
+        const renderedBounds = { west: -0.1, south: -0.1, east: 1.1, north: 1.1 };
+        const measuredOutline = [
+            { lat: 0, lng: 0 },
+            { lat: 0, lng: 0.4 },
+            { lat: 1, lng: 0.4 },
+            { lat: 1, lng: 0 },
+        ];
+        const neighbour = band('neighbour', 0.4, 1);
+
+        const row = planDate([band('points', -1, 2, { versionId: 'v1', renderedBounds, measuredOutline }), neighbour], CITY);
+
+        expect(row?.frames.map((frame) => frame.entityId)).toEqual(['points', 'neighbour']);
+        expect(row?.coveragePct).toBeCloseTo(100, 0);
+        // With no such outline the box lets one frame stand for the whole city, and no neighbour is offered.
+        expect(planDate([band('points', -1, 2, { versionId: 'v1', renderedBounds }), neighbour], CITY)).toBeUndefined();
+    });
+
+    it('happyPath_aFrameOverLongitude180CoversACityOnEitherSide @S-P01-HAPPY-ANTIMERIDIAN', () => {
+        const suva: BoundsRecord = { west: 178.3, south: -18.2, east: 178.55, north: -18.05 };
+        const footprint = (north: number, south: number) => [
+            { lat: north, lng: 174.5 },
+            { lat: north, lng: -174.5 },
+            { lat: south, lng: -174.5 },
+            { lat: south, lng: 174.5 },
+        ];
+        const frame = (entityId: string, north: number, south: number) => ({ ...band(entityId, 0, 0), footprint: footprint(north, south) });
+
+        expect(planDate([frame('north', -15, -18.125), frame('south', -18.125, -19)], suva)?.coveragePct).toBe(100);
+    });
+
     it('happyPath_aRenderedFrameCountsWhatItsOutlineCovers_notItsWarpedBox', () => {
         // A tilted strip over the city's middle: its warped box holds the whole city, the frame holds about half of it.
         const tilted = [

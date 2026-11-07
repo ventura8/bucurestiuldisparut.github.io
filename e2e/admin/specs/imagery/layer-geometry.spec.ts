@@ -35,7 +35,7 @@ test.describe.configure({ lock: ADMIN_LOCK });
  * A published layer's geometry in its editor (behaviour A16; docs/research/M3-interfaces.md §6.4, §10.5): Crop draws the
  * area to keep with the drawing tools of the editor's map (a click per corner), and Save the crop sends it to
  * `imagery.crop`, which refuses an area off the layer and otherwise renders the layer's version again inside it as a
- * `regeoref` job (the stand-in runner of the e2e world), published by the policy like any import: the layer's bounds,
+ * `regeoref` job (the stand-in runner of the e2e world), approved (what it kept holds part of the city, M9) and published: the layer's bounds,
  * the manifest's and the viewer's tiles end at the polygon. Replace the image is the Imagery area's upload for the layer:
  * the layer keeps its tiles while the new version waits (for Approve, then for the compute-unit guard's choice), and
  * points to it once published; Georeference again saves points in the georeferencer as a `regeoref` job of the layer.
@@ -157,9 +157,15 @@ test(
             timeout: FUNCTIONS_TIMEOUT_MS,
         });
 
-        // A regeoref job renders the version again inside the polygon; the policy publishes it to the same layer.
+        // A regeoref job renders the version again inside the polygon. What it kept holds part of the city, so (M9 §11) it waits for one
+        // click, and saying why; then it publishes to the same layer.
         const cropped = await croppedVersion(imagery);
         expect(await jobTypes(imagery)).toEqual(['regeoref', 'usgs-import']);
+        await page.goto(adminPath(lang, `imagery/version/${cropped}`));
+        await expect(detail(page).locator('[data-waits="coverage"]')).toBeVisible({ timeout: PUBLISH_TIMEOUT_MS });
+        await inputBudget
+            .flow('approveVersion', 1)
+            .click(detail(page).getByRole('button', { name: imageryText(lang, 'adminContent.imagery.approve') }));
         const published = await publishedLayer(imagery, cropped, PUBLISH_TIMEOUT_MS);
         expect(published.id).toBe(layer.id);
         expectBoundsNear(await layerBounds(imagery, layer.id), KEPT);

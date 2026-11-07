@@ -24,13 +24,16 @@ model, §5 the steps, §6 the georeferencing conventions); plan: `docs/research/
 - `extract` keeps the TIFF segments of the `.tgz` (streamed) or `.zip`; `stitch` places them (template matching, coarse
   to fine, exact within 1 px), cuts the film border and records the exposure's columns when a dark gap parts it from a
   fragment of the next one, on either side (`frame.json`).
-- `locate`: the corner guess (`georef/corners.py`): the square-pixel assignments of the frame's corners to the scene's, a
-  camera with a half angle through its panoramic model (`georef/panoramic.py`) and on its exposure alone; scored against
-  Sentinel-2 at 60 m, a low score searched around by masked gradients (`georef/surface.py`), whose shape can accept it; the
-  city window (bounds ± 10 %) cropped as `scan.tif` with four corner GCPs. A guess nothing accepts is weak, no failure: the
-  crop holds every orientation that reaches the window with a 10 km margin (a side over `MAX_SCAN_PIXELS` fails and keeps the
-  delivery), its corners only start the matcher (`weakCorners`), and with too few pairs the admin places the points on a scan
-  with no corner pairs. `apiError.imagery.cityNotFound` is left for a frame that reaches the window under no orientation.
+- `locate` (`docs/research/M9-calibration.md`, `calibrate/`): the square-pixel assignments of the frame's corners to the scene's, a
+  camera with a half angle through its panoramic model (`georef/panoramic.py`), on its exposure alone, a film shorter than a full
+  sweep's swept less and off the nadir as its ends' widths say. Tiles of Sentinel-2 vote for where the frame lies (`calibrate/votes.py`,
+  a counted budget of matches, a neighbouring frame of the pass first when the city has one); each proposal must prove itself on dense
+  tiles with no landmark (`calibrate/dense.py`, `proof.py`), checked at cells set aside before RANSAC. **Proved:** only what the frame
+  reaches of the city window is cropped, the tiles go to `calibration.json` for `georef` and the delivery is deleted. **Not proved:**
+  no failure: `bounded_crop` holds the window with a 20 km margin under the orientations that reach it, cut to `MAX_SCAN_PIXELS`; the
+  delivery stays, the matcher still runs at its unchanged bar, and with too few pairs the admin places the points, which then seed the
+  same tiles. `apiError.imagery.cityNotFound` is left for a frame that reaches the window under no orientation. A local matcher plugs in
+  behind `calibrate/ports.py` on the worker alone; today's is `NullProposalMatcher`.
 - `reference`: Sentinel-2 L2A from the STAC API (`stac.py`, the `visual` COG through `/vsicurl/` after the address
   guard `urlguard.py`) and OpenStreetMap from Overpass (`osm.py`), cached under `reference/{city}/`; the
   georeferencer's `reference-s2.jpg` and `reference-osm.png`. **Never Mapbox Satellite**: `config.py` refuses a Mapbox

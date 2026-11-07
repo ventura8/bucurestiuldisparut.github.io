@@ -199,6 +199,16 @@ const ROWS: Readonly<Record<string, Row>> = {
         rows: [],
         updatedAt: past(),
     })),
+    // M9 (docs/research/M9-calibration.md §2): a pass's last proved model has no client rule at all: the pipeline alone reads it.
+    'cities/{city}/imageryPasses/{key}': {
+        ...serverOwned(FIRESTORE_PATHS.imageryPasses(CITY_ID), 'D3C1203-300415-F-1975-08-20', () => ({
+            model: { camera: 'panoramic', rotation: 0, mirrored: false, scale: 0.94, rotationDeg: 0, dxM: 1830, dyM: 13869 },
+            entityId: 'D3C1203-300415F006',
+            date: '1975-08-20',
+            ...systemStamp('imagery'),
+        })),
+        allowed: {},
+    },
     // M7 (docs/research/M7-local-worker.md §2.4, §3): the city's local workers and run choice, server-written.
     'cities/{city}/workers/{doc}': serverOwned(FIRESTORE_PATHS.workers(CITY_ID), 'w-0123456789abcdef', () => workerDoc(admin())),
     // Finding 67 of 2026-11-02: the worker pairings (a code's hash, its owner, its image) have no client rule at all.

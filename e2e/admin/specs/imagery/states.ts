@@ -50,6 +50,22 @@ export const IMAGERY_STATES = {
         title: 'Historical imagery: a version being made, its steps advancing live, Cancel',
         visit: 'specs/imagery/published.spec.ts',
     },
+    'imagery.version-calibrated': {
+        title: 'Historical imagery: a frame found with no landmark, how, how many areas agree, its error and the city it covers',
+        visit: 'specs/imagery/calibration.spec.ts',
+    },
+    'imagery.version-not-found': {
+        title: 'Historical imagery: a frame nothing found, asking for a few rough points',
+        visit: 'specs/imagery/calibration.spec.ts',
+    },
+    'imagery.version-not-proved': {
+        title: 'Historical imagery: a frame under the threshold the proof does not hold, why it waits, Approve',
+        visit: 'specs/imagery/calibration.spec.ts',
+    },
+    'imagery.version-coverage': {
+        title: 'Historical imagery: a frame under the threshold holding part of the city, why it waits, Approve',
+        visit: 'specs/imagery/calibration.spec.ts',
+    },
     'imagery.version-downloading': {
         title: 'Historical imagery: an import downloading its scene, the bytes received of the total on its step, the bar moving',
         visit: 'specs/imagery/import.spec.ts',

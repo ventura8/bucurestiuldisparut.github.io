@@ -27,6 +27,8 @@ export interface DatePlanFrame {
     readonly state?: LayerVersionState;
     /** The version's `output.bounds` when it rendered: what a crop kept. It is a box, nodata included, so never the outline alone. */
     readonly renderedBounds?: BoundsRecord;
+    /** M9: the frame's edge over the city, measured (`calibration.outline`, else the render's `output.outline`), so it comes first. */
+    readonly measuredOutline?: readonly FootprintVertex[];
 }
 
 /** A frame with the grid cells it covers. */
@@ -79,12 +81,12 @@ function cellsWhere(grid: readonly FootprintVertex[], covers: (point: FootprintV
 }
 
 /**
- * The cells a frame covers: inside the outline its coverage uses and, once it rendered, inside its output's box. The box alone
+ * The cells a frame covers: inside the outline it was measured to have, else the one its coverage estimates, and, once it rendered, inside its output's box. The box alone
  * would count nodata: a tilted strip's box can hold the whole city while the frame holds half of it. A rendered frame whose
  * outline misses its own box has a useless outline, so the box places it.
  */
-function cellsOf(frame: DatePlanFrame, grid: readonly FootprintVertex[]): ReadonlySet<number> {
-    const outline = coverageRing(frame.footprint, frame);
+function cellsOf(frame: DatePlanFrame, grid: readonly FootprintVertex[], middleLng: number): ReadonlySet<number> {
+    const outline = frame.measuredOutline ?? coverageRing(frame.footprint, frame, middleLng);
     const box = frame.renderedBounds;
     if (box === undefined) {
         return cellsWhere(grid, (point) => insideRing(point, outline));
@@ -93,8 +95,8 @@ function cellsOf(frame: DatePlanFrame, grid: readonly FootprintVertex[]): Readon
     return both.size > 0 ? both : cellsWhere(grid, (point) => insideBounds(point, box));
 }
 
-function candidateOf(frame: DatePlanFrame, grid: readonly FootprintVertex[]): Candidate {
-    return { frame, cells: cellsOf(frame, grid) };
+function candidateOf(frame: DatePlanFrame, grid: readonly FootprintVertex[], middleLng: number): Candidate {
+    return { frame, cells: cellsOf(frame, grid, middleLng) };
 }
 
 function unionOf(candidates: readonly Candidate[]): ReadonlySet<number> {
@@ -218,7 +220,7 @@ export function planDate(frames: readonly DatePlanFrame[], bounds: BoundsRecord)
         return undefined;
     }
     const grid = gridOf(bounds);
-    const candidates = frames.map((frame) => candidateOf(frame, grid));
+    const candidates = frames.map((frame) => candidateOf(frame, grid, (bounds.west + bounds.east) / 2));
     const rendered = candidates.filter(isRendered).slice(0, JOIN_MAX_PARTS);
     const rest = candidates.filter((candidate) => !isRendered(candidate));
     const obtainable = rest.filter(isObtainable);

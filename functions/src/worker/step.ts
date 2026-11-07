@@ -2,6 +2,7 @@ import '../global-options.js';
 
 import {
     cityDocSchema,
+    imageryPassDocSchema,
     jobDocSchema,
     jobLogDocSchema,
     layerDocSchema,
@@ -43,6 +44,7 @@ const SCHEMAS: Readonly<Record<DocumentTarget, Schema<unknown>>> = {
     base: layerVersionDocSchema,
     layer: layerDocSchema,
     scene: usgsSceneDocSchema,
+    pass: imageryPassDocSchema,
 };
 
 function refused(): ApiError {

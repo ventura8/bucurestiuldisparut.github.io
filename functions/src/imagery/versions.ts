@@ -188,6 +188,7 @@ function processingVersion(work: NewWork, fields: VersionFields): LayerVersionDo
         year: fields.year,
         date: fields.date,
         sensor: fields.sensor,
+        calibration: fields.calibration,
         scan: fields.scan,
         reference: fields.reference,
         georef: fields.georef,

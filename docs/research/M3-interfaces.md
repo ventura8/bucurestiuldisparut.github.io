@@ -463,7 +463,7 @@ pipeline/src/hcm_pipeline/
   m2m.py         (M0) + download-options, download-request (label), download-retrieve, download-order-remove
   stac.py        STAC search for Sentinel-2 L2A over a window (httpx); the asset's COG read through GDAL /vsicurl/
   osm.py         Overpass query → GeoJSON → a line raster (GDAL rasterize)
-  georef/        corners.py (the corner guess), panoramic.py (the panoramic forward model), surface.py (the search's masked correlation), transforms.py (affine, poly2, tps, residuals: numpy), matcher.py (OpenCV)
+  georef/        corners.py (the orientations, the crops), panoramic.py (the panoramic forward model), transforms.py (affine, poly2, tps, residuals: numpy), matcher.py (OpenCV)
   raster.py      (M0) the only GDAL import
   steps/         fetch, extract, stitch, inspect, locate, reference, georef, warp, export, register (one file each)
 ```
@@ -493,7 +493,7 @@ No new dependency (`DECISIONS-for-review.md` §46g): numpy, `opencv-python-headl
 | `extract` | streams the `.tgz` / `.zip` (`tarfile` `r\|gz`, `zipfile`), keeps only the TIFF segments (`_a` … `_d` on a Corona, `_a` … `_n` on a KH-9 panoramic frame; finding 84: more than 26 fails the job, none is dropped) | `work/{city}/{job}/segments/*.tif` | `apiError.imagery.archiveCorrupt` (unreadable, also a reader that seeks nowhere, `EINVAL`; or no TIFF inside; the delivery is deleted so a retry fetches it again); `apiError.imagery.processingFailed` when this machine's disk fails, the delivery kept |
 | `stitch` | orders the segments, finds each overlap's offset (within 1 px), finds the film border (intensity profiles), and records the exposure's columns: the dark column runs of at least 1 % of the width (`MIN_GAP_SHARE`) with at most 10 % of it beyond them (`MAX_FRAGMENT_SHARE`), a fragment of the next exposure, on either side of the film (`image_start`, `image_end`; a panoramic camera's model, scoring and crops stay between them; the layout's `width` stays) | `work/{city}/{job}/frame.json`, `frame-preview.tif` (averaged down, GDAL's `GRIORA_Average`; the coarse matching keeps its fast pick of pixels) (the addendum on finding 57 below) | `apiError.imagery.unreadableRaster` |
 | `inspect` (uploads) | opens the upload with GDAL; a geotransform or GCPs with a CRS → georeferenced (`method: 'embedded'`), else a scan; converts to 8-bit (one band, or three for colour) | the scan (`scan.tif`, `scan-preview.jpg`); for an embedded georeference the version's `georef: {method: 'embedded', transform: 'affine', gcps: []}` | `apiError.imagery.unreadableRaster` |
-| `locate` | the corner guess (§5.4): the frame's orientation among the eight rotations and mirrors, the initial transform from the corners, the city window ± 10 % cropped from the frame | `scan.tif`, `scan-preview.jpg` (long side `SCAN_PREVIEW_MAX_PX`), the version's `scan` and four `corner` GCPs | `apiError.imagery.referenceUnavailable` without a Sentinel-2 window; `apiError.imagery.cityNotFound` only when the frame does not reach the window under any orientation. A guess nothing confirms is no failure: a wider crop, and the admin's points (§5.4) |
+| `locate` | where the frame lies, proved (M9) or bounded (§5.4): the frame's orientation among the eight rotations and mirrors, the initial transform from the corners, the city window ± 10 % cropped from the frame | `scan.tif`, `scan-preview.jpg` (long side `SCAN_PREVIEW_MAX_PX`), the version's `scan` and four `corner` GCPs | `apiError.imagery.referenceUnavailable` without a Sentinel-2 window; `apiError.imagery.cityNotFound` only when the frame does not reach the window under any orientation. A guess nothing confirms is no failure: a wider crop, and the admin's points (§5.4) |
 | `reference` | the window's Sentinel-2 L2A (§5.5) and OSM features, both cached; draws the georeferencer's two reference images | `reference/{city}/...`, `reference-s2.jpg`, `reference-osm.png`, the version's `reference` | `apiError.imagery.referenceUnavailable` (no item under 20 % clouds in three years, Overpass down after three tries) |
 | `georef` | automatic GCPs (§5.6) for a `usgs-import`; for a version that already holds the admin's points, the fit and residuals only | the version's `georef` (pairs, transform, `fitRmseM`, `checkpointRmseM`, `checkpointCount`) | too few pairs (also how a weak guess of §5.4 ends) → the job `awaiting_gcps`, the version `needs_gcps` with `apiError.imagery.noMatch {pairs}` (waits, not a failure); `apiError.imagery.degenerateGcps`; `apiError.imagery.gcpOutside` |
 | `align` (`layer-join`, M8) | checks the scans and the disk, warps previews at z14, gives each z13 cell to the frame deepest inside itself, measures every seam on tiles (coarse, then fine), fits and shares a correction by each frame's error, tapered to nothing at 6 km, carried by TPS nodes, and measures again: a seam the correction did not help is refused | `work/{city}/{job}/join-plan.json`, `join-owner.tif` | `apiError.imagery.joinPartMissing`, `joinSeamTooFar`, `joinNoFrames`, `joinNoRoom` |
@@ -507,6 +507,11 @@ rewrites (no USGS call, `S-P02-HAPPY`). `layer-join` runs `align`, `merge`, `exp
 (`M8-join-interfaces.md` §3, §13); `export` and `register` are unchanged because `merge` writes the same `warped.tif`.
 
 ### 5.4 The corner guess (`locate`)
+
+**Replaced by M9** (`docs/research/M9-calibration.md`, 2026-11-06): the scoring, the search around the window (`MIN_CORRELATION`,
+`georef/surface.py`, `guess_corners`) and the weak crop are gone; `calibrate/` finds and proves the frame, and `bounded_crop` serves a frame
+nothing proved. The assignments, the panoramic model, `crop_box` and `CityNotFoundError` below still hold; a shorter sweep is new
+(`georef/panoramic.py`). The text is kept for the findings it records.
 
 - The scene's `corners` (else the footprint's four extreme vertices) give the frame's four geographic corners. The film's
   first pixel row may lie at any of them (forward or aft camera, the flight's direction), so the step scores the eight
@@ -696,9 +701,12 @@ tolerances through a change request (both sides must pass them).
 ### 7.1 The approval policy
 
 When a version reaches `awaiting_approval`, `imagery.onJobWrite` approves it automatically (`approval: {auto: true, by:
-'system:imagery', checkpointRmseM, thresholdM}`) when **all** hold: the city's `autoPublish` (default true); the
-georeference was measured (`method` is not `embedded`: an upload's own georeference waits, `S-A17-BAD-EMBEDDED-GEOREF`);
-`checkpointRmseM ≤ rmseThresholdM` (default `DEFAULT_RMSE_THRESHOLD_M`, 15 m) with `checkpointCount ≥ 3`. Otherwise the
+'system:imagery', checkpointRmseM, thresholdM}`) when **all** hold: the city's `autoPublish` (default true); an
+upload's own georeference waits (`S-A17-BAD-EMBEDDED-GEOREF`);
+`checkpointRmseM ≤ rmseThresholdM` (default `DEFAULT_RMSE_THRESHOLD_M`, 15 m) with `checkpointCount ≥ 3`; M9
+(`docs/research/M9-calibration.md` §11): `checkpointKind` is `held-out`, so pairs checked only against each other wait
+(`S-A17-BAD-LEAVE-ONE-OUT`), and a USGS frame, a re-rendered one too, has `output.coveragePct ≥ CITY_MIN_COVERAGE_PCT` (90;
+`S-A17-BAD-PART-OF-CITY`), and the fit is the proof's own (M9 §11): `method` is `auto`, `calibration.how` is `votes`, `pass`, `points` or `local-ai` with no `refusal`, no check was dropped as gross and `calibration.measuredPct ≥ AUTO_MIN_MEASURED_PCT`, so an admin's points and an upload always wait (`S-A17-BAD-NOT-PROVED`, `S-A17-BAD-HAND-POINTS`, `S-A17-BAD-CHECKS-DROPPED`, `S-A17-BAD-UNMEASURED-AREA`). A missing figure never approves. Otherwise the
 version waits for `imagery.approve` (admin; any state but `awaiting_approval` → `apiError.imagery.versionState`) or
 `imagery.reject` (the version `rejected`, the job `cancelled`, the reserved id free again, `pendingVersion` cleared).
 

@@ -1,6 +1,11 @@
 """`georef`: automatic GCPs and suggestions, or the fit of the admin's points (M3-interfaces.md §5.6, §6; M4 §2).
 
-A version still on its corner GCPs (`method: 'corners'`, a USGS import) is matched against the Sentinel-2 window and
+A frame `locate` proved (docs/research/M9-calibration.md §7) has its tiles in `calibration.json`: they become its pairs, every fifth cell
+a checkpoint set aside before RANSAC; with that file gone, the tiles are measured again on `scan.tif`. The admin's rough points of a frame
+nothing proved seed the same measuring: proved, they are replaced by tiles (`how: 'points'`); refused, they are fitted as today. A set
+holding automatic pairs is fitted as saved, so a later edit is never overwritten.
+
+A version still on its corner GCPs and not proved (`method: 'corners'`, a USGS import) is matched against the Sentinel-2 window and
 OpenStreetMap's lines (`georef/matcher.py`). With at least six confident pairs (`AUTO_GCP_MIN_CONFIDENCE`) the version gets its
 `georef` (`poly2` from 12 well-spread pairs, else `affine`; a fifth held out as checkpoints from 15) and the weaker pairs are its
 `suggestions`; with fewer, every candidate is a suggestion and the job waits for the admin's points (`awaiting_gcps`, the version
@@ -15,29 +20,50 @@ those pairs. A scan without any georeference waits for points; an upload's own g
 
 import math
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Final, NoReturn
 
+import numpy
+
+from hcm_pipeline.calibrate.dense import PROOF_SEARCH_GROUND_M, dense_grid, nothing_measured, read_film
+from hcm_pipeline.calibrate.pairs import Calibrated, ScanBox, calibrated
+from hcm_pipeline.calibrate.poly import MatrixMap, PlaceMap
+from hcm_pipeline.calibrate.proof import Proof, no_film
+from hcm_pipeline.calibrate.reach import measured_pct
+from hcm_pipeline.calibrate.rival import proved
+from hcm_pipeline.calibrate.stored import StoredTiles
 from hcm_pipeline.contract import MIN_GCPS, Errors
 from hcm_pipeline.documents import GeorefInfo, ScanInfo
-from hcm_pipeline.geo import Grid, fnv1a, to_mercator
+from hcm_pipeline.frames import Segment
+from hcm_pipeline.geo import FloatArray, Grid, fnv1a, ground_scale, to_mercator
 from hcm_pipeline.georef.autogcp import Decision, GcpSuggestions, decide
 from hcm_pipeline.georef.corners import corner_transform
 from hcm_pipeline.georef.matcher import MatchResult, References, Scan, match
-from hcm_pipeline.georef.transforms import Fit, FitRefusal, Gcp, fit
+from hcm_pipeline.georef.transforms import Fit, FitRefusal, Gcp, Transform, enabled_gcps, fit
 from hcm_pipeline.images import UInt8Array, seeded
 from hcm_pipeline.jobs import Done, JobContext, Skipped, StepFailedError, StepResult, Waiting
 from hcm_pipeline.osm import draw
 from hcm_pipeline.rasters import read_band, to_uint8
 from hcm_pipeline.steps.common import Sentinel2, city_window, gdal_step, grey_reference, osm_features
+from hcm_pipeline.steps.locate import CALIBRATION_FILE
 from hcm_pipeline.store import DELETE
 
 NEEDS_POINTS: Final = "the scan needs the admin's points (georeferencer)"
 AUTO_METHOD: Final = "auto"
+MATCHER_HOW: Final = "matcher"
+NOT_PROVED_HOW: Final = "none"
+TILES_GONE: Final = "the proof's tiles are gone: they are measured again on the scan"
+# How far the tiles search around the admin's points: as far as a proposal, further with points that hold worse (ground metres).
+SEED_MAX_SEARCH_M: Final = 2000.0
+SEED_SEARCH_RMSE_SHARE: Final = 3.0
 
 
 def recorded(fitted: Fit, method: str) -> GeorefInfo:
     """The version's `georef` for a fit."""
-    return GeorefInfo(method, fitted.transform.kind, fitted.gcps, fitted.fit_rmse_m, fitted.checkpoint_rmse_m, fitted.checkpoint_count)
+    kind = fitted.checkpoint_kind
+    return GeorefInfo(
+        method, fitted.transform.kind, fitted.gcps, fitted.fit_rmse_m, fitted.checkpoint_rmse_m, fitted.checkpoint_count, kind=kind
+    )
 
 
 def wait_for_points(ctx: JobContext, pairs: int, fields: Mapping[str, object] | None = None, code: str = Errors.NO_MATCH) -> Waiting:
@@ -133,6 +159,100 @@ def _left_by_a_weak_guess(corners: GeorefInfo) -> Mapping[str, object]:
     return {"georef": DELETE} if corners.weak_corners else {}
 
 
+def _blocked(found: Calibrated) -> dict[str, object]:
+    """The blocked figure when one was measured: too few pairs have none, and whatever `locate` measured stands."""
+    return {} if found.cross_validated_m is None else {"crossValidatedM": round(found.cross_validated_m, 2)}
+
+
+def _figures(ctx: JobContext, found: Calibrated) -> dict[str, object]:
+    """`calibration` with what the fit measured."""
+    dropped = {"checksDropped": found.checks_dropped} if found.checks_dropped else {}
+    return {**ctx.version.calibration, **_blocked(found), **dropped}
+
+
+def _matcher_took_over(ctx: JobContext) -> Mapping[str, object]:
+    """A proved frame whose tiles gave no fit, fitted by the matcher: the fit is no longer the proof's, and the record says so."""
+    calibration = {key: value for key, value in ctx.version.calibration.items() if key != "measuredPct"}
+    return {"calibration": {**calibration, "how": MATCHER_HOW}} if calibration and calibration.get("how") != NOT_PROVED_HOW else {}
+
+
+class _ScanReader:
+    """`scan.tif` as a film: an already cropped frame, one segment."""
+
+    def __init__(self, ctx: JobContext, scan: ScanInfo) -> None:
+        self._ctx, self._scan = ctx, scan
+
+    def read(self, box: tuple[int, int, int, int], factor: int) -> UInt8Array:
+        segment = Segment(self._ctx.stage(self._scan.path, "scan.tif"))
+        size = ((box[2] - box[0]) // factor, (box[3] - box[1]) // factor)
+        pixels = segment.averaged_window(box[0], box[1], size[0] * factor, size[1] * factor, size)
+        segment.close()
+        return pixels
+
+
+@dataclass(frozen=True)
+class _TransformMap:
+    """The admin's points' transform as a map for the tiles."""
+
+    transform: Transform
+
+    def to_places(self, film: FloatArray) -> FloatArray:
+        return numpy.column_stack(self.transform.to_mercator(film[:, 0], film[:, 1]))
+
+    def to_film(self, places: FloatArray) -> FloatArray:
+        return numpy.column_stack(self.transform.to_pixel(places[:, 0], places[:, 1]))
+
+
+def job_seed(ctx: JobContext) -> int:
+    """A job measures the same way twice."""
+    return int(fnv1a(ctx.job.id)[:7], 16)
+
+
+def _sentinel_of(found: References) -> UInt8Array:
+    if found.s2 is None:
+        raise StepFailedError(Errors.REFERENCE_UNAVAILABLE, "the job's reference has no Sentinel-2 window")
+    return found.s2
+
+
+def measured_on_scan(ctx: JobContext, start: PlaceMap, scan: ScanInfo, search_ground_m: float) -> Proof:
+    """The tiles of the job's reference on the scan, from `start`, and the verdict."""
+    found = references(ctx)
+    grid = found.grid
+    middle = grid.box().bounds().middle_lat
+    reference = dense_grid(_sentinel_of(found), grid, search_ground_m)
+    limits = (scan.width, scan.height, 0)
+    film = read_film(start, grid.box(), _ScanReader(ctx, scan), limits, search_ground_m / ground_scale(middle))
+    if film is None:
+        return no_film(nothing_measured())
+    return proved(start, reference, film, job_seed(ctx), ctx.checkpoint)
+
+
+def _stored(ctx: JobContext) -> StoredTiles | None:
+    """The proof's tiles `locate` left, when the work folder still holds them."""
+    path = ctx.work_file(CALIBRATION_FILE)
+    return None if ctx.services.objects.stat(path) is None else StoredTiles.read(ctx.stage(path, CALIBRATION_FILE))
+
+
+def _seedable(georef: GeorefInfo) -> bool:
+    """The admin's own rough points, all of them in the fit: what may start the tiles."""
+    enabled = enabled_gcps(georef.gcps)
+    plain = len(enabled) == len(georef.gcps) and all(gcp.origin != AUTO_METHOD for gcp in georef.gcps)
+    return georef.method == "gcps" and plain and len(enabled) >= MIN_GCPS["affine"]
+
+
+def _seed_map(ctx: JobContext, georef: GeorefInfo) -> PlaceMap | None:
+    """The map the admin's points start the tiles from; None when they may not (`_seedable`), or the job has no reference."""
+    if not _seedable(georef) or ctx.job.step("reference").gcs_path is None:
+        return None
+    fitted = fit(georef.transform, georef.gcps)
+    return _TransformMap(fitted.transform) if isinstance(fitted, Fit) else None
+
+
+def _seed_search_m(fitted: GeorefInfo) -> float:
+    rmse = fitted.checkpoint_rmse_m or 0.0
+    return max(PROOF_SEARCH_GROUND_M, min(SEED_SEARCH_RMSE_SHARE * rmse, SEED_MAX_SEARCH_M))
+
+
 class GeorefStep:
     name = "georef"
 
@@ -141,11 +261,72 @@ class GeorefStep:
         if _embedded(georef):
             return Skipped("the upload carries its own georeference")
         scan = _scan_of(ctx.version.scan)
-        if georef is None or not georef.gcps:
-            return wait_for_points(ctx, 0)
+        return wait_for_points(ctx, 0) if georef is None or not georef.gcps else self._of_gcps(ctx, georef, scan)
+
+    def _of_gcps(self, ctx: JobContext, georef: GeorefInfo, scan: ScanInfo) -> StepResult:
         if georef.method != "corners":
-            return self._fitted(ctx, fit_points(georef, scan), _left_by_a_fit(georef))
-        return self._matched(ctx, georef, match_scan(ctx, georef, scan))
+            return self._of_points(ctx, georef, scan)
+        return self._of_proof(ctx, georef, scan) or self._matched(ctx, georef, match_scan(ctx, georef, scan))
+
+    def _of_points(self, ctx: JobContext, georef: GeorefInfo, scan: ScanInfo) -> StepResult:
+        """The points fitted, or, when they may seed the tiles and those prove, replaced by them."""
+        points = fit_points(georef, scan)
+        start = _seed_map(ctx, georef)
+        if start is None:
+            return self._fitted(ctx, points, _left_by_a_fit(georef))
+        proof = gdal_step(ctx, lambda: measured_on_scan(ctx, start, scan, _seed_search_m(points)), "measure the scan")
+        if proof.accepted:
+            return self._of_seeded(ctx, georef, points, scan, proof)
+        ctx.log.info(f"the points seeded the tiles, which were not proved ({proof.refusal}): the points are fitted as saved", self.name)
+        return self._fitted(ctx, points, _left_by_a_fit(georef))
+
+    def _of_seeded(self, ctx: JobContext, georef: GeorefInfo, points: GeorefInfo, scan: ScanInfo, proof: Proof) -> StepResult:
+        order = proof.forward.order if proof.forward is not None else 2
+        middle = city_window(ctx).bounds().middle_lat
+        found = calibrated(proof.measured.rows, order, ScanBox(0, 0, scan.width, scan.height), middle, job_seed(ctx))
+        if found is None:
+            return self._fitted(ctx, points, _left_by_a_fit(georef))
+        ctx.log.info(
+            f"the {len(georef.gcps)} points seeded the tiles: {proof.inliers} of {proof.tried} agree; they replace the points", self.name
+        )
+        record = {**self._calibration(ctx, proof, found, "points"), "seedPoints": len(georef.gcps)}
+        return self._fitted(ctx, recorded(found.fitted, AUTO_METHOD), {**_left_by_a_fit(georef), "calibration": record})
+
+    def _of_proof(self, ctx: JobContext, corners: GeorefInfo, scan: ScanInfo) -> StepResult | None:
+        """A proved frame's fit: its stored tiles, else measured again on the scan; None for a frame nothing proved."""
+        if corners.weak_corners or not ctx.version.calibration:
+            return None
+        found = self._stored_fit(ctx, scan) or self._remeasured_fit(ctx, corners, scan)
+        return None if found is None else self._fitted(ctx, recorded(found.fitted, AUTO_METHOD), {"calibration": _figures(ctx, found)})
+
+    def _stored_fit(self, ctx: JobContext, scan: ScanInfo) -> Calibrated | None:
+        stored = _stored(ctx)
+        if stored is None:
+            return None
+        return calibrated(
+            stored.rows, stored.order, ScanBox(stored.left, stored.top, scan.width, scan.height), stored.middle_lat, job_seed(ctx)
+        )
+
+    def _remeasured_fit(self, ctx: JobContext, corners: GeorefInfo, scan: ScanInfo) -> Calibrated | None:
+        """The work folder is gone (a resume): the tiles again, from the proved corners."""
+        ctx.log.info(TILES_GONE, self.name)
+        start = MatrixMap(corner_transform(corners.gcps).matrix)
+        proof = gdal_step(ctx, lambda: measured_on_scan(ctx, start, scan, PROOF_SEARCH_GROUND_M), "measure the scan")
+        if proof.forward is None or not proof.accepted:
+            return None
+        middle = city_window(ctx).bounds().middle_lat
+        return calibrated(proof.measured.rows, proof.forward.order, ScanBox(0, 0, scan.width, scan.height), middle, job_seed(ctx))
+
+    def _calibration(self, ctx: JobContext, proof: Proof, found: Calibrated, how: str) -> dict[str, object]:
+        record: dict[str, object] = {
+            **ctx.version.calibration,
+            "how": how,
+            "tiles": {"agreed": proof.inliers, "tried": proof.tried},
+            "measuredPct": measured_pct(proof),
+            **_blocked(found),
+        }
+        record.pop("refusal", None)
+        return record
 
     def _matched(self, ctx: JobContext, corners: GeorefInfo, result: MatchResult) -> StepResult:
         decision = decide(result.pairs)
@@ -159,7 +340,7 @@ class GeorefStep:
         if decision.fitted is None:
             code = Errors.NO_SPREAD if decision.degenerate else Errors.NO_MATCH
             return wait_for_points(ctx, decision.confident, {**suggestions, **_left_by_a_weak_guess(corners)}, code)
-        return self._fitted(ctx, recorded(decision.fitted, AUTO_METHOD), suggestions)
+        return self._fitted(ctx, recorded(decision.fitted, AUTO_METHOD), {**suggestions, **_matcher_took_over(ctx)})
 
     def _fitted(self, ctx: JobContext, georef: GeorefInfo, fields: Mapping[str, object]) -> Done:
         ctx.update_version({"georef": georef.as_record(), **fields})
