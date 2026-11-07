@@ -26,7 +26,7 @@ export interface NavigationDeps {
 }
 
 /** M13 §8: who the shell shows pages to: a visitor, a limited role of the open city, or staff. */
-export function standingOf(state: Pick<ShellState, 'auth' | 'cities' | 'cityId'>): RouteStanding {
+function standingOf(state: Pick<ShellState, 'auth' | 'cities' | 'cityId'>): RouteStanding {
     if (state.auth === 'visitor') {
         return 'visitor';
     }

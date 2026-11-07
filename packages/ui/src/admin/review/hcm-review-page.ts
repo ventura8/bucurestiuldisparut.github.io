@@ -39,6 +39,13 @@ const styles = css`
         overflow-wrap: anywhere;
     }
 
+    /* M3's 48 px touch target on a compact window. */
+    li.card a {
+        display: inline-flex;
+        align-items: center;
+        min-block-size: 48px;
+    }
+
     img {
         max-inline-size: 160px;
         border-radius: var(--md-sys-shape-corner-small, 8px);

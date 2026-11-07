@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 import { expectStateSound } from '../../../support/state-check.js';
 import { adminVisit } from '../../../tour/states.js';
 import { PROJECT_CITY } from '../../support/content.js';
-import { ADMIN_LOCK, adminPath, expect, test } from '../../support/test.js';
+import { ADMIN_EXPECTED_CONSOLE_ERRORS, ADMIN_LOCK, adminPath, expect, test } from '../../support/test.js';
 import { PERSONAS } from '../../world.js';
 import { AT, cityText, shellText } from '../cities/world.js';
 import type { EmulatorWorld } from '../../support/emulators.js';
@@ -89,12 +89,11 @@ test.describe('a stranger', () => {
 
     test(
         'suggests where a photo with no place was taken, and the public photo stays',
-        { tag: ['@S-A93-HAPPY-PLACE', '@S-A93-BAD-NOT-PUBLIC'] },
+        { tag: '@S-A93-HAPPY-PLACE' },
         async ({ page, lang, adminWorld }) => {
             const { emulators } = adminWorld;
             await seedCity(emulators);
             await seedPhoto(emulators, 'lost', {});
-            await seedPhoto(emulators, 'hidden', { published: false });
 
             await page.goto(adminPath(lang, `contribute/${PROJECT_CITY}/lost`));
             await expect(page.getByRole('heading', { name: cityText(lang, 'adminContent.contribute.place.title') })).toBeVisible();
@@ -108,9 +107,6 @@ test.describe('a stranger', () => {
             const groups = Object.values(await emulators.collection(`cities/${PROJECT_CITY}/suggestions`));
             expect(groups).toEqual([expect.objectContaining({ photoId: 'lost', status: 'pending', count: 1 })]);
             expect((await emulators.document(`cities/${PROJECT_CITY}/photos/lost`))?.['location']).toBeUndefined();
-
-            await page.goto(adminPath(lang, `contribute/${PROJECT_CITY}/hidden`));
-            await expect(page.getByRole('alert')).toBeVisible();
         },
     );
 
@@ -127,6 +123,30 @@ test.describe('a stranger', () => {
         await page.getByRole('button', { name: cityText(lang, 'adminContent.contribute.suggest') }).click();
         await expect.poll(async () => Object.values(await emulators.collection(`cities/${PROJECT_CITY}/suggestions`)).length).toBe(1);
         expect((await emulators.document(`cities/${PROJECT_CITY}/photos/placed`))?.['year']).toBeUndefined();
+    });
+});
+
+test.describe('a photo that is not public', () => {
+    test.use({
+        persona: 'stranger',
+        mapOwner: 'owner',
+        // The refusal itself: the page says so, and the browser logs the callable's 404.
+        expectedConsoleErrors: [
+            [
+                ...ADMIN_EXPECTED_CONSOLE_ERRORS,
+                { text: /status of 404/, url: /contribute-context$/, why: 'the callable says the photo is not public' },
+            ],
+            { scope: 'test' },
+        ],
+    });
+
+    test('is not there for a stranger', { tag: '@S-A93-BAD-NOT-PUBLIC' }, async ({ page, lang, adminWorld }) => {
+        const { emulators } = adminWorld;
+        await seedCity(emulators);
+        await seedPhoto(emulators, 'hidden', { published: false });
+        await page.goto(adminPath(lang, `contribute/${PROJECT_CITY}/hidden`));
+        await expect(page.getByRole('alert')).toBeVisible();
+        await expect(page.getByRole('img')).toHaveCount(0);
     });
 });
 

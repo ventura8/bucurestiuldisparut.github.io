@@ -15,7 +15,7 @@ export interface ReviewItemPort {
     readonly credit: string | null;
 }
 
-export interface ReviewVoicePort {
+interface ReviewVoicePort {
     readonly uid: string;
     readonly reason: string | null;
     readonly sourceUrl: string | null;

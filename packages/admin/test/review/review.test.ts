@@ -265,8 +265,13 @@ describe('the review queue: its edges', () => {
     it('happyPath_leavingFreesThePictures', async () => {
         const released: string[] = [];
         const w = world();
-        const files = { url: () => Promise.resolve('blob:x'), read: () => Promise.resolve(null), release: (url: string) => released.push(url), save: () => Promise.resolve(false) };
-        const area = REVIEW_MODULE.create({ ...w.services, files: files as never });
+        const files = {
+            url: () => Promise.resolve('blob:x'),
+            read: () => Promise.resolve(null),
+            release: (url: string) => released.push(url),
+            save: () => Promise.resolve(false),
+        };
+        const area = REVIEW_MODULE.create({ ...w.services, files: files });
         w.store.put(FIRESTORE_PATHS.photo(CITY, 'p1'), PENDING_PHOTO);
         area.open([]);
         await settle();
@@ -329,7 +334,18 @@ describe('the review queue: its edges', () => {
     it('badPath_aRevertThatFindsNoEntryIsRefusedByTheServer', async () => {
         const w = world();
         w.callables.fail('history.revert', failure('invalid-argument', 'apiError.invalidRequest'));
-        const row = { id: 's', photoId: 'p9', title: { ro: 'x' }, thumb: '', kind: 'place', status: 'approved', proposal: {}, count: 1, voices: [], decidedBy: 'u' } as const;
+        const row = {
+            id: 's',
+            photoId: 'p9',
+            title: { ro: 'x' },
+            thumb: '',
+            kind: 'place',
+            status: 'approved',
+            proposal: {},
+            count: 1,
+            voices: [],
+            decidedBy: 'u',
+        } as const;
         const pending = w.area.intents.revert(row);
         await settle();
         await pending;

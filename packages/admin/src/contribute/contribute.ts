@@ -36,7 +36,7 @@ export interface ContributeState {
     readonly picking: boolean;
 }
 
-export interface ContributeWords {
+interface ContributeWords {
     readonly reason?: string | undefined;
     readonly sourceUrl?: string | undefined;
     readonly credit?: string | undefined;
@@ -157,7 +157,7 @@ class ContributeStore implements AreaStore<ContributeState, ContributeIntents> {
             const { location, bearing } = outcome.value.photo ?? {};
             this.#cell.update({ status: 'ready', context: outcome.value, proposal: defined({ location, bearing }) });
         } else {
-            this.#cell.update({ status: 'error', failure: outcome.error });
+            this.#cell.update({ status: 'error', context: null, failure: outcome.error });
         }
     }
 

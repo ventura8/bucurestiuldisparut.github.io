@@ -6,7 +6,14 @@
  * mode after the claim, and opens the step a `#/setup/<step>` address names. The entry passes what the shell does not
  * know: google-clients' Cloud port and legacy importer, `setup.createCity` (CR-M2b-1) and the city.
  */
-import type { AdminCallableName, CallableRequest, CallableResponse, Logger } from '@hcm/shared';
+import {
+    isContributorOnly,
+    type AdminCallableName,
+    type CallableRequest,
+    type CallableResponse,
+    type CityRole,
+    type Logger,
+} from '@hcm/shared';
 
 import type { GoogleScope } from '../google/scopes.js';
 import type { InstallerPort } from '../install/ports.js';
@@ -40,6 +47,7 @@ interface SetupCallables {
 interface ShellView {
     readonly auth: string;
     readonly route: { readonly id: string; readonly params: readonly string[] };
+    readonly cities?: readonly { readonly id: string; readonly role: CityRole }[];
 }
 
 /** The shell's services the Setup Assistant uses: a part of admin-shell's `ShellServices`. */
@@ -91,6 +99,11 @@ export interface SetupModule {
     /** `AdminState.setup` before `create`: nothing to show yet. */
     readonly initial: SetupState | null;
     create(shell: SetupShell): SetupModuleIntents;
+}
+
+/** M13 §1: a moderator's or an uploader's account has no Setup: nothing of it runs, and `setup.status` is not asked. */
+function limitedAccount(view: ShellView): boolean {
+    return isContributorOnly(Object.fromEntries((view.cities ?? []).map((city) => [city.id, city.role])));
 }
 
 /** The shell's failures as the codes `consentFailure` reads; a closed popup is `null` (nothing changed). */
@@ -219,7 +232,7 @@ class ShellFollower {
 
     private followMode(view: ShellView): void {
         const mode = MODES.get(view.auth);
-        if (mode === undefined || mode === this.mode) {
+        if (mode === undefined || mode === this.mode || limitedAccount(view)) {
             return;
         }
         const first = this.mode === null;

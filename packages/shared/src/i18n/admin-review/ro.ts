@@ -41,8 +41,7 @@ export const ro = {
     // [end review]
     // [section contribute] owner: roles; keys adminContent.contribute.*
     'adminContent.contribute.title': 'Contribuie la {city}',
-    'adminContent.contribute.intro':
-        'Adaugă fotografii și locuri pe hartă sau ajută la verificarea celor adăugate de alții. Fiecare cerere primește răspuns de la o persoană din oraș.',
+    'adminContent.contribute.intro': 'Adaugă fotografii și locuri sau verifică ce adaugă alții. O persoană răspunde fiecărei cereri.',
     'adminContent.contribute.role': 'Aș vrea să',
     'adminContent.contribute.role.uploader': 'Adaug fotografii și locuri (fiecare așteaptă verificarea)',
     'adminContent.contribute.role.moderator': 'Verific ce adaugă alții',
@@ -58,11 +57,9 @@ export const ro = {
     'adminContent.contribute.member': 'Ești deja membru al acestui oraș.',
     'adminContent.contribute.openAdmin': 'Deschide administrarea',
     'adminContent.contribute.place.title': 'Unde a fost făcută?',
-    'adminContent.contribute.place.intro':
-        'Pune acul unde a stat fotograful și spune, dacă poți, încotro era îndreptat aparatul. Nimic nu se schimbă pe hartă până nu aprobă cineva.',
+    'adminContent.contribute.place.intro': 'Pune acul unde a stat fotograful. Nimic nu se schimbă pe hartă până nu aprobă cineva.',
     'adminContent.contribute.correct.title': 'Propune o corectură',
-    'adminContent.contribute.correct.intro':
-        'Spune ce este greșit: data, locul sau direcția. Nimic nu se schimbă pe hartă până nu aprobă cineva.',
+    'adminContent.contribute.correct.intro': 'Spune ce este greșit: data, locul sau direcția. Nimic nu se schimbă până nu aprobă cineva.',
     'adminContent.contribute.pin': 'Pune acul aici',
     'adminContent.contribute.lat': 'Latitudine',
     'adminContent.contribute.lng': 'Longitudine',

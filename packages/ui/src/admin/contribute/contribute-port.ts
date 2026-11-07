@@ -18,7 +18,7 @@ export interface ContributeViewState {
     readonly picking: boolean;
 }
 
-export interface ContributeSuggestion {
+interface ContributeSuggestion {
     readonly reason?: string | undefined;
     readonly sourceUrl?: string | undefined;
     readonly credit?: string | undefined;

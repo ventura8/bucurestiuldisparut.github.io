@@ -1,6 +1,5 @@
-import { unplacedManifest } from '../../tour/unplaced-states.js';
+import { UNPLACED_CONTRIBUTE_URL, unplacedManifest } from '../../tour/unplaced-states.js';
 import { siteManifestData } from '../../fixtures/manifest.js';
-import { SITE_ORIGIN } from '../../fixtures/world.js';
 import { expect, test } from '../../support/test.js';
 import { callController, chooseMenuItem, menuButton, openViewer, serveManifest, t, viewer } from '../../support/viewer.js';
 
@@ -8,10 +7,10 @@ import { callController, chooseMenuItem, menuButton, openViewer, serveManifest, 
  * The public map's side of M13 (docs/research/M13-roles.md §5; behaviours V40, V41): the gallery of the photos with no place and a
  * link to the Contribute page, and nothing else: no sign-in, no Firestore, no cookie.
  */
-const CONTRIBUTE = `${SITE_ORIGIN}/contribute-page/#/contribute/bucharest`;
+const CONTRIBUTE = UNPLACED_CONTRIBUTE_URL;
 
 test.beforeEach(async ({ context }) => {
-    await context.route(`${SITE_ORIGIN}/contribute-page/**`, (route) =>
+    await context.route('https://contribute.e2e.test/**', (route) =>
         route.fulfill({ contentType: 'text/html', body: '<title>Contribute</title>' }),
     );
 });

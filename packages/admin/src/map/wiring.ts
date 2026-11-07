@@ -51,7 +51,7 @@ export async function adminTokenOf(readDoc: AdminMapSources['readDoc'], log: Log
  * M13 §8: a moderator or an uploader reads no `setup/status`: the map then wears the city's public token, which the viewer
  * uses and every role of the city may read.
  */
-async function cityTokenOf(readDoc: AdminMapSources['readDoc'], cityId: string | undefined): Promise<string | null> {
+export async function cityTokenOf(readDoc: AdminMapSources['readDoc'], cityId: string | undefined): Promise<string | null> {
     if (cityId === undefined) {
         return null;
     }

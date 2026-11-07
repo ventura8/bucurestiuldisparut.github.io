@@ -13,7 +13,7 @@ export type PhotosDeps = PhotoDeps & ReprocessDeps;
  * `reprocess`. The integrator exports them as the `photos` group (`export const photos = photosFunctions(getDeps)`).
  */
 export { contributorsFunctions, type SuggestDecideDeps } from './suggest-decide.js';
-export { reviewFunctions, type ReviewDeps } from './review-decide.js';
+export { reviewFunctions } from './review-decide.js';
 
 /** M13's `suggestions.*`: a suggestion from anyone signed in, and a reviewer's decision. */
 export function suggestionsFunctions(getDeps: () => SuggestDeps & SuggestDecideDeps & CallableDeps) {

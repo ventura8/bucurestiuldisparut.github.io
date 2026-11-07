@@ -49,7 +49,10 @@ describe('M13: the open city, told to what needs it', () => {
 
     it('happyPath_theRoleInTheOpenCity', () => {
         const base = shellOf('cluj', null, []);
-        const shell = { ...base, shell: shellStateAccess({ cityId: 'cluj', cities: [{ id: 'cluj', role: 'moderator', name: { ro: 'Cluj' } }] }) };
+        const shell = {
+            ...base,
+            shell: shellStateAccess({ cityId: 'cluj', cities: [{ id: 'cluj', role: 'moderator', name: { ro: 'Cluj' } }] }),
+        };
         expect(contentServices(shell).cityRole()).toBe('moderator');
     });
 
@@ -66,11 +69,19 @@ describe('M13: the open city, told to what needs it', () => {
             },
         };
         const services = contentServices(shellWith(maps));
-        await services.maps?.create({} as HTMLElement, { bounds: [[0, 0], [1, 1]], view: { center: [0, 0], zoom: 1, bearing: 0 }, locale: 'ro' });
+        await services.maps?.create({} as HTMLElement, {
+            bounds: [
+                [0, 0],
+                [1, 1],
+            ],
+            view: { center: [0, 0], zoom: 1, bearing: 0 },
+            locale: 'ro',
+        });
         expect(asked).toEqual([expect.objectContaining({ cityId: 'cluj' })]);
     });
 
     it('badPath_noMapWithoutAFactory', () => {
-        expect(contentServices(shellWith(null)).maps).toBeUndefined();
+        expect(contentServices(shellWith(null)).maps).toBeNull();
+        expect(contentServices(shellWith(undefined)).maps).toBeUndefined();
     });
 });

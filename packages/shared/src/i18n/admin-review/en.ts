@@ -43,8 +43,7 @@ export const en: Readonly<Record<AdminReviewKey, string>> = {
     // [end review]
     // [section contribute] owner: roles; keys adminContent.contribute.*
     'adminContent.contribute.title': 'Contribute to {city}',
-    'adminContent.contribute.intro':
-        'Add photos and places to the map, or help check what others add. A person from the city answers every request.',
+    'adminContent.contribute.intro': 'Add photos and places to the map, or help check what others add. A person answers every request.',
     'adminContent.contribute.role': 'I would like to',
     'adminContent.contribute.role.uploader': 'Add photos and places (each waits for review)',
     'adminContent.contribute.role.moderator': 'Review what others add',
@@ -60,11 +59,9 @@ export const en: Readonly<Record<AdminReviewKey, string>> = {
     'adminContent.contribute.member': 'You are already a member of this city.',
     'adminContent.contribute.openAdmin': 'Open the admin',
     'adminContent.contribute.place.title': 'Where was this taken?',
-    'adminContent.contribute.place.intro':
-        'Put the pin where the photographer stood, and say which way the camera faced if you can. Nothing changes on the map until someone approves it.',
+    'adminContent.contribute.place.intro': 'Put the pin where the photographer stood. Nothing changes until someone approves it.',
     'adminContent.contribute.correct.title': 'Suggest a correction',
-    'adminContent.contribute.correct.intro':
-        'Say what is wrong: the date, the place or the direction. Nothing changes on the map until someone approves it.',
+    'adminContent.contribute.correct.intro': 'Say what is wrong: date, place or direction. Nothing changes until someone approves it.',
     'adminContent.contribute.pin': 'Put the pin here',
     'adminContent.contribute.lat': 'Latitude',
     'adminContent.contribute.lng': 'Longitude',

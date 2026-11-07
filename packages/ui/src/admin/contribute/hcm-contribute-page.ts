@@ -36,6 +36,13 @@ const styles = css`
         block-size: 320px;
     }
 
+    /* M3's 48 px touch target on a compact window. */
+    a {
+        display: inline-flex;
+        align-items: center;
+        min-block-size: 48px;
+    }
+
     img {
         max-inline-size: 240px;
         border-radius: var(--md-sys-shape-corner-medium, 12px);

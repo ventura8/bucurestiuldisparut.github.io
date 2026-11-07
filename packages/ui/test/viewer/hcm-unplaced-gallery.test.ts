@@ -98,7 +98,10 @@ describe('<hcm-unplaced-gallery>', () => {
     it('happyPath_aManifestWithNoListHasAnEmptyGallery', () => {
         const host = document.createElement('div');
         document.body.append(host);
-        render(unplacedSheet({ locale: 'en', manifestUrl: '' }, testManifest(), { mode: 'bottom', open: false, inert: true }, () => undefined), host);
+        render(
+            unplacedSheet({ locale: 'en', manifestUrl: '' }, testManifest(), { mode: 'bottom', open: false, inert: true }, () => undefined),
+            host,
+        );
         expect(host.querySelector('.unplaced-sheet')?.hasAttribute('inert')).toBe(true);
     });
 

@@ -41,7 +41,7 @@ const directory: AdminDirectory = {
 };
 
 /** Who has had the `admin` claim set, as the fake auth saw it. */
-export function fakeAuth(): AuthAdmin & { readonly claims: Map<string, boolean> } {
+function fakeAuth(): AuthAdmin & { readonly claims: Map<string, boolean> } {
     const claims = new Map<string, boolean>();
     return {
         claims,
