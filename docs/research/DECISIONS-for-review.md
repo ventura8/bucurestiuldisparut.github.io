@@ -5885,3 +5885,10 @@ The local stack's seeded second city (`e2e/stack/seed-cities.ts`: `bacau`, its r
 - **93e A frame a live join holds may search again,** as `imagery.saveGcps` lets it take points: the join waits for its frames either way. A job on the owner's computer is not checked for its inputs, since the server cannot see them; there a run may download again if that computer's sweep removed both (M7 §5).
 - **93f The version forgets `georef`, `calibration` and `suggestions` at the click:** if the new search fails, the job fails (Retry and Dismiss apply), and the refusal it had waited with is gone from the page.
 - **93g Lessons 387, 388.**
+
+## 94. Owner's decisions of 2026-11-07: the admin's bundle budget, the savings of §86h, Mapbox's scopes
+
+- **§83b reviewed: `ADMIN_TOTAL_KB` raised from 630 to 650** (`scripts/ci/check_bundle_budget.py`). The owner's explicit decision. The total counts every lazy chunk, and it had become a hunt for bytes while the entry, what an admin waits for, stood at 367 of its 450 KB. The entry's budget and every chunk's are unchanged.
+- **§86h reviewed: both savings kept.** The stand-in for zod's JSON Schema conversion and `sourcemap: 'hidden'` stay.
+- **§83i decided: no Uploads API; tiles from the project's own public bucket.** Mapbox's documentation bills Uploads jobs in compute units with no per-job meter or cap (`docs/research/M11-mapbox-automatic.md`), so the path is not free as M7 §6 assumed. The owner chose to serve the historical layers' tiles from the project's public bucket, drawn over the Mapbox basemap: automatic after Approve. The bootstrap token the owner pasted that day carries the uploads scopes, unused.
+- **`autoPublish` stays on** by the owner's choice: a frame with at least 90 % of the city and a held-out checkpoint within the threshold publishes by itself; every other waits for Approve. The owner sees each image before approving.

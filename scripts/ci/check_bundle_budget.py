@@ -177,8 +177,9 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
 # 627.8 KB; with the worker's five callables' schemas out of the admin (`ADMIN_CALLABLES`, 0.6 KB) it is 627.2 KB. The
 # entry stays well under its own 450 KB (DECISIONS-for-review.md §83). Finding 72 (2026-11-02) added `worker-local`
 # within it, by two savings instead of a raise: zod's JSON Schema conversion out of the admin (a stand-in, 5.7 KB) and the
-# source maps' comment lines (1.1 KB): 626.6 KB (§86).
-ADMIN_TOTAL_KB = 630
+# source maps' comment lines (1.1 KB): 626.6 KB (§86). 650 since 2026-11-07, the owner's decision (§94): the total had become a
+# hunt for bytes while the entry, what an admin waits for, stayed far under its own budget.
+ADMIN_TOTAL_KB = 650
 
 # M6: the install bundle's folder in the deployed Hosting tree, and each tarball's budget in KB as served (it is gzip
 # already): the contract's ceilings (docs/research/M6-interfaces.md §1.3; DECISIONS-for-review.md §71). Since §73k
