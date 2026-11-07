@@ -58,6 +58,17 @@ async function openFromMenu(page: Page, item: string): Promise<void> {
     await page.keyboard.press('Enter');
 }
 
+/** The title of the focused row of the photo list (the button's accessible name also holds the date). */
+async function focusedRowTitle(page: Page): Promise<string> {
+    return page.evaluate(() => {
+        let active = document.activeElement;
+        while (active?.shadowRoot?.activeElement) {
+            active = active.shadowRoot.activeElement;
+        }
+        return active?.querySelector('.title')?.textContent.trim() ?? '';
+    });
+}
+
 test('The skip link leads to the timeline, the menu to the layers and the photos', { tag: '@S-V14-HAPPY' }, async ({ page, lang }) => {
     await openViewer(page, { lang });
     const menu = t(lang, 'action.menu');
@@ -75,10 +86,9 @@ test('The skip link leads to the timeline, the menu to the layers and the photos
 
     await openFromMenu(page, t(lang, 'photos.list'));
     await tabUntil(page, (info) => info.host === 'hcm-photo-list' && info.tag === 'button', 'a photo of the list');
-    const photo = await focused(page);
+    const title = await focusedRowTitle(page);
     await page.keyboard.press('Enter');
-    const title = (photo?.name ?? '').split(/\s{2,}|\n/)[0]?.trim() ?? '';
-    await expect(page.getByRole('heading', { name: title }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: title, exact: true }).first()).toBeVisible();
 });
 
 /** An extra-large screen: the Layers panel is docked in its own leading pane. */

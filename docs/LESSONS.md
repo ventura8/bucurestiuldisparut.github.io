@@ -2374,3 +2374,10 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: review, each reproduced by a scratch test before the fix.
     - Fix and pin: `MapLabelsState.pinned` with a fixture style that really defaults a label off (S-V31-*-STYLE-DEFAULT); `saveGcps` leaves the points a run (S-A16-HAPPY-POINTS-AFTER-ATTEMPTS); `JobDoc.filesOn` (S-A69-BAD-FILES-ELSEWHERE); `PicturePort.decode` takes its turn and `#browsing` asks once (S-A11-HAPPY-HUGE-THUMBNAIL, S-A11-BAD-PREVIEW-UNAVAILABLE).
     - **A value equal to its default says nothing about who chose it, and "kept there" is true only of what recorded it: store the choice and the place, do not infer them.**
+
+392. **A test read a title out of an accessible name by guessing how it was spaced.**
+    - Seen: 2026-11-07, `@S-V14-HAPPY` in `e2e/specs/viewer/keyboard.spec.ts` failed on a clean tree: the photo opened, but the test looked for a heading named "title date".
+    - Cause: the row button's accessible name joins the title and the date with one space, and the test split it on two spaces or a line break, so it found no boundary.
+    - Found by: a targeted run while the map labels were built, then reproduced on a clean export.
+    - Fix and pin: the test reads the focused row's own `.title` and asks for that heading exactly.
+    - **A name composed for a screen reader is not a data format: read the part from the element that holds it.**
