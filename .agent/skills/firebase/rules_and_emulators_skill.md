@@ -51,3 +51,9 @@ Firestore and Storage security rules, their tests, and the Firebase emulators ev
 - The user logs in to Firebase themselves (`npx -y firebase-tools@15.34.2 login` in their own terminal). Agents never run `login:ci`, create tokens or keys, or type credentials.
 - `firebase deploy` and any `firebase` / MCP action that changes a project are **ask first**, per action.
 - Firebase logs (`firebase-debug.log`, `firestore-debug.log`, `pubsub-debug.log`, `ui-debug.log`, `.firebase/`) are git-ignored.
+
+## A rule's answer is about its moment (M13, LESSONS 393 to 395)
+
+- Storage rules see the photo when the upload begins; `photos.onUpload` runs later. The trigger decides again from what it can prove then (the path's uid and the status as it stands) and a decision made meanwhile wins.
+- Every cross-field refine of a document schema needs the same check in the create and the update rule, with a row in both directions of `firebase/rules-tests/test/roles.test.ts`: a document the schema refuses makes every callable's `transaction.get` throw.
+- A callable that decides on content takes the version the person saw (`seenAt` against `updatedAt`) and compares it inside its transaction.

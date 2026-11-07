@@ -1,5 +1,14 @@
 /** The review queue's rows from its documents (M13, `docs/research/M13-roles.md` §8), pure. */
-import type { PhotoDoc, PoiDoc, RoleRequestDoc, SuggestionDoc, SuggestionProposal } from '@hcm/shared';
+import {
+    timestampToDate,
+    type ContributorDoc,
+    type Locale,
+    type PhotoDoc,
+    type PoiDoc,
+    type RoleRequestDoc,
+    type SuggestionDoc,
+    type SuggestionProposal,
+} from '@hcm/shared';
 
 import type { Stored } from '../content/services.js';
 import type { MapPhoto } from '../photos/map.js';
@@ -10,6 +19,16 @@ export interface ReviewItem {
     readonly title: { readonly ro: string; readonly en?: string | undefined };
     readonly thumbPath: string | null;
     readonly credit: string | null;
+    /** What an approval would publish besides the title and the picture. */
+    readonly description: { readonly ro: string; readonly en?: string | undefined } | null;
+    readonly links: readonly { readonly url: string; readonly label: string }[];
+    /** The document's `updatedAt` as this row read it: `review.decide` refuses an approval of anything newer. */
+    readonly seenAt: string;
+}
+
+export interface ReviewBlocked {
+    readonly uid: string;
+    readonly about: string | null;
 }
 
 export interface ReviewSuggestion {
@@ -39,14 +58,23 @@ export interface ReviewRequest {
     readonly email: string;
 }
 
+function shownOf(data: PhotoDoc | PoiDoc): Pick<ReviewItem, 'credit' | 'description' | 'links' | 'seenAt'> {
+    return {
+        credit: data.credit ?? null,
+        description: data.description ?? null,
+        links: data.links ?? [],
+        seenAt: timestampToDate(data.updatedAt).toISOString(),
+    };
+}
+
 export function photoItem(stored: Stored<PhotoDoc>): ReviewItem {
     const { data, id } = stored;
-    return { entity: 'photo', id, title: data.title, thumbPath: data.heldImage?.thumb ?? null, credit: data.credit ?? null };
+    return { entity: 'photo', id, title: data.title, thumbPath: data.heldImage?.thumb ?? null, ...shownOf(data) };
 }
 
 export function poiItem(stored: Stored<PoiDoc>): ReviewItem {
     const { data, id } = stored;
-    return { entity: 'poi', id, title: data.title, thumbPath: null, credit: data.credit ?? null };
+    return { entity: 'poi', id, title: data.title, thumbPath: null, ...shownOf(data) };
 }
 
 export function suggestionRow(stored: Stored<SuggestionDoc>): ReviewSuggestion {
@@ -80,6 +108,32 @@ export function requestRow(stored: Stored<RoleRequestDoc>): ReviewRequest {
         name: data.displayName ?? '',
         email: data.email ?? '',
     };
+}
+
+export function blockedRow(stored: Stored<ContributorDoc>): ReviewBlocked {
+    return { uid: stored.id, about: stored.data.blockedFor ?? null };
+}
+
+function filled(value: unknown): boolean {
+    return value !== undefined && value !== '';
+}
+
+/** The reviewer's values with one more edit: an emptied field is absent, and a date text says the language it was typed in. */
+export function adjustedWith(adjusted: SuggestionProposal, patch: SuggestionProposal, locale: Locale): SuggestionProposal {
+    const typed = patch.dateText === undefined ? {} : { dateLocale: locale };
+    const merged: SuggestionProposal = { ...adjusted, ...patch, ...typed };
+    const hasText = filled(merged.dateText);
+    return Object.fromEntries(Object.entries(merged).filter(([key, value]) => filled(value) && (key !== 'dateLocale' || hasText)));
+}
+
+/** Adjusted to nothing new is the proposal itself: the record says what happened. */
+export function decisionOf<D extends 'approve' | 'adjust' | 'reject'>(
+    asked: D,
+    adjusted: SuggestionProposal | null,
+    row: ReviewSuggestion | undefined,
+): D | 'approve' {
+    const same = row !== undefined && JSON.stringify(adjusted ?? {}) === JSON.stringify(row.proposal);
+    return asked === 'adjust' && same ? 'approve' : asked;
 }
 
 /** What the photo says now, in a proposal's words. */

@@ -16,7 +16,8 @@ import { externalLink } from './markdown.js';
 import { resolveAssetUrl } from './services.js';
 import { closeEvent, renderSheetFrame } from './sheet-frame.js';
 import { baseStyles, detailStyles, sheetStyles } from './shared-styles.js';
-import { licenseText, localizedText, photoDateText } from './text.js';
+import { photoRights } from './photo-rights.js';
+import { localizedText, photoDateText } from './text.js';
 
 export const HCM_PHOTO_SHEET_TAG = 'hcm-photo-sheet';
 
@@ -145,18 +146,10 @@ export class HcmPhotoSheet extends LitElement {
         return html`<div class="details">
             ${this.#image(photo)}
             <p class="supporting">${photoDateText(photo, locale)}</p>
-            ${photo.author === undefined ? nothing : html`<p>${translate(locale, 'photo.author', { author: photo.author })}</p>`}
-            <p>${licenseText(photo.license, locale)}</p>
-            ${photo.rightsHolder === undefined ? nothing : html`<p>${translate(locale, 'photo.rightsHolder', { holder: photo.rightsHolder })}</p>`}
-            ${photo.rightsReview === true ? html`<p class="note">${translate(locale, 'photo.rightsReview')}</p>` : nothing}
-            ${this.#credit(photo)} ${photo.description === undefined ? nothing : html`<p>${localizedText(photo.description, locale)}</p>`}
-            ${this.#links(photo)} ${this.#suggestion(photo)}
+            ${photoRights(photo, locale)}
+            ${photo.description === undefined ? nothing : html`<p>${localizedText(photo.description, locale)}</p>`} ${this.#links(photo)}
+            ${this.#suggestion(photo)}
         </div>`;
-    }
-
-    /** M13: the name its contributor asked to be credited under. */
-    #credit(photo: Photo): TemplateResult {
-        return photo.credit === undefined ? EMPTY : html`<p>${translate(this.locale, 'photo.credit', { name: photo.credit })}</p>`;
     }
 
     /** M13 §4: contesting the photo is a page of its own, which signs in; the map holds only the link. */

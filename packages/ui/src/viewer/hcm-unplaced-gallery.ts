@@ -8,6 +8,7 @@ import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 
 import { externalLink } from './markdown.js';
+import { photoRights } from './photo-rights.js';
 import { resolveAssetUrl } from './services.js';
 import { baseStyles, detailStyles } from './shared-styles.js';
 import { localizedText, photoDateText } from './text.js';
@@ -90,6 +91,7 @@ export class HcmUnplacedGallery extends LitElement {
             <img src=${src} alt=${title} loading="lazy" decoding="async" />
             <span>${title}</span>
             <span class="date">${photoDateText(photo, this.locale)}</span>
+            ${photoRights(photo, this.locale)}
             ${this.contributeUrl === null ? nothing : externalLink(`${this.contributeUrl}/${photo.id}`, translate(this.locale, 'unplaced.suggest'))}
         </li>`;
     }

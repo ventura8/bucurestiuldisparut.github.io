@@ -152,6 +152,9 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # about 20 %, rounded up; the total stays under ADMIN_TOTAL_KB.
     "review": 5,
     "contribute": 5,
+    # The value fields both of those share (M13 §4; the group `proposal-fields`), out of `editor-shared` (13.2 KB with them), which no
+    # editor needs them from: 0.5 KB measured on 2026-11-07, rounded up (DECISIONS-for-review.md §95h).
+    "proposal-fields": 1,
     "city-budget": 2,
     # Step (g)'s Create the measurement reports (`packages/admin/src/google/analytics-reports.ts`: the GA4 property found
     # from the measurement id and the field measurements' custom definitions), fetched on its button's click only: 0.8 KB

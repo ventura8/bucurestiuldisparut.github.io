@@ -9,7 +9,11 @@ import { LiveDoc, type LiveDocDeps } from '../content/doc.js';
 import { LiveList, type ListState } from '../content/list.js';
 import { photoChoiceOf, type PhotoChoice } from './places.js';
 
-type PhotosParts = Pick<LiveDocDeps<PhotoDoc>, 'store' | 'clock' | 'denied'> & { readonly cityId: string };
+type PhotosParts = Pick<LiveDocDeps<PhotoDoc>, 'store' | 'clock' | 'denied'> & {
+    readonly cityId: string;
+    /** M13 §1: an uploader's uid: the rules read the query, so theirs must ask for their own photos and no others. */
+    readonly ownerOnly: () => string | null;
+};
 
 /** What changed: the picker's list, or the linked photos. */
 export interface PhotosPatch {
@@ -29,9 +33,9 @@ export class PlacePhotos {
     constructor(parts: PhotosParts, changed: (patch: PhotosPatch) => void) {
         this.#parts = parts;
         this.#changed = changed;
-        const { cityId, ...live } = parts;
+        const { cityId, store, clock, denied } = parts;
         this.#list = new LiveList({
-            ...live,
+            ...{ store, clock, denied },
             collection: FIRESTORE_PATHS.photos(cityId),
             schema: photoDocSchema,
             map: photoChoiceOf,
@@ -45,7 +49,8 @@ export class PlacePhotos {
     load(): void {
         this.#listed = true;
         if (!this.#list.active) {
-            this.#list.show({ orderBy: [['updatedAt', 'desc']] });
+            const owner = this.#parts.ownerOnly();
+            this.#list.show({ ...(owner === null ? {} : { where: [['createdBy', '==', owner]] }), orderBy: [['updatedAt', 'desc']] });
         }
     }
 
@@ -81,9 +86,9 @@ export class PlacePhotos {
     }
 
     #read(id: string): void {
-        const { cityId, ...live } = this.#parts;
+        const { cityId, store, clock, denied } = this.#parts;
         const read = new LiveDoc<PhotoDoc>({
-            ...live,
+            ...{ store, clock, denied },
             schema: photoDocSchema,
             changed: (state) => {
                 if (state.doc !== null) {

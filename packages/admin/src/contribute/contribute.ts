@@ -11,6 +11,7 @@ import {
     type CallableRequest,
     type ContributeContextResponse,
     type LngLat,
+    type Locale,
     type MapView,
     type SuggestionProposal,
 } from '@hcm/shared';
@@ -75,6 +76,26 @@ function defined<T extends object>(value: T): T {
 
 function trimmed(text: string | undefined): string | undefined {
     return text?.trim();
+}
+
+function currentOfPhoto(photo: ContributeContextResponse['photo'], locale: Locale): Readonly<Record<string, unknown>> {
+    return photo === null ? {} : { ...photo, dateText: photo.dateText?.[locale] };
+}
+
+/**
+ * What the form says that the photo does not (M13 §4): the form starts from the photo's place, and a date correction must not carry
+ * it, or approving it would move a photo back. An end year names its start; a date text says the language it was typed in.
+ */
+export function changedFrom(photo: ContributeContextResponse['photo'], proposal: SuggestionProposal, locale: Locale): SuggestionProposal {
+    const current = currentOfPhoto(photo, locale);
+    const kept = Object.entries(proposal).filter(([key, value]) => JSON.stringify(current[key]) !== JSON.stringify(value));
+    const changed: SuggestionProposal = Object.fromEntries(kept);
+    const start = proposal.year ?? current['year'];
+    return defined({
+        ...changed,
+        ...(changed.yearEnd === undefined ? {} : { year: start as number | undefined }),
+        ...(changed.dateText === undefined ? {} : { dateLocale: locale }),
+    });
 }
 
 /** A placed photo is corrected; a photo with no place gets one. */
@@ -239,12 +260,18 @@ class ContributeStore implements AreaStore<ContributeState, ContributeIntents> {
     #submission(words: ContributeWords): CallableRequest<'suggestions.submit'> {
         const { context, proposal } = this.#cell.state;
         const clean = defined({ reason: trimmed(words.reason), sourceUrl: trimmed(words.sourceUrl), credit: trimmed(words.credit) });
-        return { cityId: this.#cityId, photoId: this.#photoId ?? '', kind: kindOf(context), proposal, ...clean };
+        const changed = changedFrom(context?.photo ?? null, proposal, this.#services.locale());
+        return { cityId: this.#cityId, photoId: this.#photoId ?? '', kind: kindOf(context), proposal: changed, ...clean };
     }
 
     async #suggest(words: ContributeWords): Promise<Outcome<{ readonly remainingToday: number }>> {
-        this.#cell.update({ busy: true, problem: null });
         const request = this.#submission(words);
+        if (Object.keys(request.proposal).length === 0) {
+            const problem: NoticeInput = { key: 'apiError.suggestion.noChange' };
+            this.#cell.update({ problem, thanks: null });
+            return { ok: false, error: problem };
+        }
+        this.#cell.update({ busy: true, problem: null });
         const outcome = await outcomeOf(() => this.#services.callables.call('suggestions.submit', request));
         this.#cell.update({
             busy: false,

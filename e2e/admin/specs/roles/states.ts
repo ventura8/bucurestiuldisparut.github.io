@@ -16,6 +16,10 @@ export const ROLES_STATES = {
     },
     'roles.review': { title: 'The review queue: contributions, suggestions, requests', visit: 'specs/roles/roles.spec.ts' },
     'roles.review-compare': { title: 'The review queue: the photo now and as proposed, on the map', visit: 'specs/roles/roles.spec.ts' },
+    'roles.review-adjust': { title: 'The review queue: adjusting every value by hand', visit: 'specs/roles/roles.spec.ts' },
+    'roles.review-block-question': { title: 'The review queue: blocking an account asks first', visit: 'specs/roles/roles.spec.ts' },
+    'roles.review-blocked': { title: 'The review queue: blocked accounts, and the way back', visit: 'specs/roles/roles.spec.ts' },
+    'roles.contribute-ask-more': { title: 'The Contribute page: a member who may ask for more', visit: 'specs/roles/roles.spec.ts' },
     'roles.moderator-nav': {
         title: "A moderator's navigation, and a page their role does not include",
         visit: 'specs/roles/roles.spec.ts',

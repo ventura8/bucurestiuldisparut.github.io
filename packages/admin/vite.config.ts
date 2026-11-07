@@ -41,6 +41,12 @@ const ADMIN_MAP_MODULES =
 const EDITOR_TEXT_MODULES = /packages[\\/]ui[\\/]src[\\/]admin[\\/]editing[\\/](?:field-names|issue-text)\.ts$/;
 
 /**
+ * The value fields of a proposal, which the Contribute page and the Review page's adjust share (M13 §4): their own chunk, kept out
+ * of `editor-shared`, which none of the editors would then have to load them with.
+ */
+const PROPOSAL_FIELD_MODULES = /packages[\\/]ui[\\/]src[\\/]admin[\\/]contribute[\\/]proposal-fields/;
+
+/**
  * The starter place categories (`packages/shared/src/overlays/starter-categories.ts`, `packages/admin/src/pois/starter.ts`,
  * `packages/ui/src/admin/settings/starter-actions.ts`), which the place editor and Settings → Place categories share since
  * finding 41 of 2026-11-01: their own chunk, kept out of `editor-shared` and the settings chunk (DECISIONS-for-review.md §78d).
@@ -155,6 +161,7 @@ export default defineConfig({
                             priority: 2,
                         },
                         { name: 'starter-categories', test: STARTER_MODULES, priority: 2 },
+                        { name: 'proposal-fields', test: PROPOSAL_FIELD_MODULES, priority: 2 },
                         { name: 'admin-core', tags: ['$initial'], priority: 3 },
                         { name: 'admin-map', test: ADMIN_MAP_MODULES, priority: 2 },
                         { name: 'editor-shared', minShareCount: 2, priority: 1 },

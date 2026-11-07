@@ -12228,11 +12228,11 @@
             "behaviour": "A93",
             "area": "admin",
             "path": "happy",
-            "title": "An approved change comes off in one click through the history",
-            "asserts": "the entry history.onPhotoWrite kept restores the photo; the page finds it and calls history.revert",
+            "title": "An approved change comes off in one click: that decision and no other",
+            "asserts": "suggestions.decide with revert takes off the fields that decision wrote, leaves later edits and other decisions, and the row leaves the list",
             "tier": "functions",
             "status": "exists",
-            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: functions/test/history/moderator.test.ts, packages/admin/test/review/review.test.ts."
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: functions/test/photos/suggest.test.ts, functions/test/history/moderator.test.ts, packages/admin/test/review/review.test.ts."
         },
         {
             "id": "S-A93-BAD-DAILY-LIMIT",
@@ -12321,6 +12321,182 @@
             "tier": "rules",
             "status": "exists",
             "notes": "Milestone M13 (docs/research/M13-roles.md). Test: firebase/rules-tests/test/roles.test.ts."
+        },
+        {
+            "id": "S-A90-BAD-LATE-UPLOAD",
+            "behaviour": "A90",
+            "area": "admin",
+            "path": "bad",
+            "title": "An uploader's late upload never replaces an approved picture",
+            "asserts": "the path's uid is no reviewer and the photo is decided: the image and the public bucket stay, the replacement records apiError.review.alreadyDecided, a decision made while it ran wins",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: functions/test/photos/review-hold.test.ts."
+        },
+        {
+            "id": "S-A90-BAD-REFUSED-NO-ADDRESS",
+            "behaviour": "A90",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refused photo never gets a public address, whoever uploads",
+            "asserts": "no image, no held picture, nothing in the public bucket; processing failed with apiError.review.alreadyDecided",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: functions/test/photos/review-hold.test.ts."
+        },
+        {
+            "id": "S-A90-BAD-CHANGED-SINCE",
+            "behaviour": "A90",
+            "area": "admin",
+            "path": "bad",
+            "title": "An approval is of what the reviewer saw",
+            "asserts": "a photo or place changed since the card read it answers apiError.review.changed, stays pending and nothing moves; the card shows the description and links an approval would publish",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: functions/test/photos/review-decide.test.ts, packages/admin/test/review/review.test.ts."
+        },
+        {
+            "id": "S-A90-HAPPY-UPLOADER-PICKER",
+            "behaviour": "A90",
+            "area": "admin",
+            "path": "happy",
+            "title": "An uploader's place picker lists their own photos",
+            "asserts": "the picker asks createdBy == uid, the query the rules allow",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/admin/specs/roles/roles.spec.ts, packages/admin/test/pois/pois.test.ts."
+        },
+        {
+            "id": "S-A90-BAD-NO-UNDO",
+            "behaviour": "A90",
+            "area": "admin",
+            "path": "bad",
+            "title": "An uploader's delete offers no Undo they could not use",
+            "asserts": "the notice names the deletion with no action, for a photo and for a place",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/admin/specs/roles/roles.spec.ts, packages/admin/test/photos/store.test.ts, packages/admin/test/pois/pois.test.ts."
+        },
+        {
+            "id": "S-A92-HAPPY-ASK-AGAIN",
+            "behaviour": "A92",
+            "area": "admin",
+            "path": "happy",
+            "title": "A removed member may ask again, an uploader may ask for more",
+            "asserts": "an approved request with no role answers no request, the page shows the form, an uploader is offered moderator only",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/admin/specs/roles/roles.spec.ts, functions/test/admin/contribute.test.ts, packages/ui/test/admin/contribute/contribute-page.test.ts."
+        },
+        {
+            "id": "S-A93-BAD-NOT-PUBLIC-CITY",
+            "behaviour": "A93",
+            "area": "admin",
+            "path": "bad",
+            "title": "A city not public yet takes no suggestions from strangers",
+            "asserts": "answers apiError.notFound whatever the ids, as contribute.context does; nothing is written; its own people still may",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: functions/test/photos/suggest.test.ts."
+        },
+        {
+            "id": "S-A93-HAPPY-ONLY-CHANGED",
+            "behaviour": "A93",
+            "area": "admin",
+            "path": "happy",
+            "title": "A suggestion carries only what it changes",
+            "asserts": "the form and the server keep what differs from the photo, so a date correction leaves a move made since alone and groups as one",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: functions/test/photos/suggest.test.ts, packages/admin/test/contribute/contribute.test.ts."
+        },
+        {
+            "id": "S-A93-HAPPY-YEAR-RANGE",
+            "behaviour": "A93",
+            "area": "admin",
+            "path": "happy",
+            "title": "A year past the stored range replaces the range",
+            "asserts": "year 1950 on 1920 to 1930 approves as 1950 with no end; a new end keeps its start",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: functions/test/photos/suggest.test.ts."
+        },
+        {
+            "id": "S-A93-BAD-DOES-NOT-FIT",
+            "behaviour": "A93",
+            "area": "admin",
+            "path": "bad",
+            "title": "A value that does not fit the photo is explained",
+            "asserts": "an adjusted direction on a photo with no place answers apiError.suggestion.invalid, not an internal error",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: functions/test/photos/suggest.test.ts."
+        },
+        {
+            "id": "S-A93-HAPPY-DATE-LANGUAGE",
+            "behaviour": "A93",
+            "area": "admin",
+            "path": "happy",
+            "title": "An approved date reads right in both languages",
+            "asserts": "a date text keeps the other language and lands in the one it was typed in; an approved year replaces the old date text the public would still read",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: functions/test/photos/suggest.test.ts, packages/admin/test/contribute/contribute.test.ts."
+        },
+        {
+            "id": "S-A93-BAD-REVERT-STALE",
+            "behaviour": "A93",
+            "area": "admin",
+            "path": "bad",
+            "title": "Revert never overwrites what someone changed since",
+            "asserts": "a field the decision wrote and someone changed since answers apiError.suggestion.notRevertable and nothing moves",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: functions/test/photos/suggest.test.ts, packages/admin/test/review/review.test.ts."
+        },
+        {
+            "id": "S-A93-HAPPY-ADJUST-FIELDS",
+            "behaviour": "A93",
+            "area": "admin",
+            "path": "happy",
+            "title": "Every value can be adjusted by hand, from the keyboard",
+            "asserts": "latitude, longitude, direction, years and date text on the Review page; adjusted to nothing new is recorded as approved",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/admin/specs/roles/roles.spec.ts, packages/admin/test/review/review.test.ts, packages/ui/test/admin/review/review-page.test.ts."
+        },
+        {
+            "id": "S-A93-HAPPY-UNBLOCK",
+            "behaviour": "A93",
+            "area": "admin",
+            "path": "happy",
+            "title": "Blocking asks first, and a blocked account can be let back",
+            "asserts": "a question before contributors.setBlocked; Blocked accounts lists them with what they wrote; the row says so and offers the way back",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/admin/specs/roles/roles.spec.ts, functions/test/photos/suggest.test.ts, packages/admin/test/review/review.test.ts, packages/ui/test/admin/review/review-page.test.ts."
+        },
+        {
+            "id": "S-A94-BAD-AIMED-UNPLACED",
+            "behaviour": "A94",
+            "area": "admin",
+            "path": "bad",
+            "title": "No client update aims a photo with no place",
+            "asserts": "a direction or field of view added to an unplaced photo is denied for every role; placing and aiming together is allowed",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: firebase/rules-tests/test/roles.test.ts."
+        },
+        {
+            "id": "S-V40-HAPPY-RIGHTS",
+            "behaviour": "V40",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The gallery and a place's sheet show who made it and under which licence",
+            "asserts": "author, licence, rights holder and credit in the gallery, the credit in a place's sheet, no empty line for what is absent",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/specs/viewer/unplaced.spec.ts, packages/ui/test/viewer/hcm-unplaced-gallery.test.ts, packages/ui/test/viewer/hcm-poi-detail.test.ts."
         }
     ]
 }

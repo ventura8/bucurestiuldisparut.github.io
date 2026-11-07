@@ -9,6 +9,7 @@ import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 import { cssProperties } from '../components/css-properties.js';
 import { EMPTY } from './empty.js';
 import { externalLink, renderMarkdown } from './markdown.js';
+import { creditLine } from './photo-rights.js';
 import { resolveAssetUrl } from './services.js';
 import { baseStyles, detailStyles } from './shared-styles.js';
 import { localizedText, poiYearsText } from './text.js';
@@ -117,7 +118,7 @@ export class HcmPoiDetail extends LitElement {
                     ? nothing
                     : html`<div class="description">${renderMarkdown(localizedText(poi.description, this.locale))}</div>`
             }
-            ${this.#links(poi)} ${this.#photos(poi)}
+            ${creditLine(poi.credit, this.locale)} ${this.#links(poi)} ${this.#photos(poi)}
         </div>`;
     }
 

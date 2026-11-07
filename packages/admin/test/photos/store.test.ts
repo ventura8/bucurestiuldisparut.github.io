@@ -379,6 +379,17 @@ describe('the photos area: intents and the map lifecycle', () => {
 });
 
 describe('the photos area: delete and Undo', () => {
+    it('badPath_anUploadersDeleteOffersNoUndoTheyCouldNotUse @S-A90-BAD-NO-UNDO', async () => {
+        const { world, store } = area(photosWorld({ cityRole: () => 'uploader' }));
+        seedPhoto(world, 'p1');
+        store.open(['p1']);
+        store.intents.requestDelete();
+        await store.intents.confirmDelete();
+        const notice = world.notices.at(-1);
+        expect(notice?.key).toBe('adminContent.photos.deleted');
+        expect(notice?.action).toBeUndefined();
+    });
+
     it('happyPath_theOpenPhotoIsDeletedAndUndoBringsItBack', async () => {
         const { world, store } = area();
         seedPhoto(world, 'p1');

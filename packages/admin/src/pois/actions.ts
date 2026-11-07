@@ -16,7 +16,7 @@ import { DeleteUndo, UNDO_WAIT_MS } from './undo.js';
 /** `localStorage`: the category a new place starts in (§5.6). */
 export const LAST_CATEGORY_KEY = 'hcm:admin:lastCategory';
 
-export type ActionServices = Pick<ContentServices, 'cityId' | 'store' | 'callables' | 'clock' | 'local' | 'notify' | 'denied'>;
+export type ActionServices = Pick<ContentServices, 'cityId' | 'store' | 'callables' | 'clock' | 'local' | 'notify' | 'cityRole' | 'denied'>;
 
 export class PlaceActions {
     readonly #services: ActionServices;
@@ -88,6 +88,11 @@ export class PlaceActions {
 
     #offerUndo(id: string): void {
         this.dispose();
+        // M13 §1: bringing a place back reads its history, which an uploader may not.
+        if (this.#services.cityRole() === 'uploader') {
+            this.#services.notify({ key: 'adminContent.pois.deleted' });
+            return;
+        }
         const { cityId, store, callables, clock } = this.#services;
         const undo = new DeleteUndo(id, { cityId, store, callables, clock });
         this.#undo = undo;

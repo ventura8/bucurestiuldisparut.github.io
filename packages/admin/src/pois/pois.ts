@@ -92,7 +92,8 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
                 this.#categoryArrived();
             },
         );
-        this.#photos = new PlacePhotos({ ...this.#liveParts(), cityId: services.cityId }, (patch) => {
+        const ownerOnly = () => ownerOnlyOf(services);
+        this.#photos = new PlacePhotos({ ...this.#liveParts(), cityId: services.cityId, ownerOnly }, (patch) => {
             this.#cell.update(patch);
         });
         this.#city = new LiveDoc({

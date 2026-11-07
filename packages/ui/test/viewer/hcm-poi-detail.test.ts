@@ -38,6 +38,11 @@ describe('<hcm-poi-detail>', () => {
         document.body.replaceChildren();
     });
 
+    it('happyPath_aPlaceShowsItsCredit @S-V40-HAPPY-RIGHTS', async () => {
+        const element = await detail({ poi: { ...poi('casa-uranus'), credit: 'Maria' }, category: category('cladiri') });
+        expect(shadowText(element)).toContain('Maria');
+    });
+
     it('happyPath_categoryYearsDescriptionLinksAndPhotos', async () => {
         const element = await detail({ poi: poi('casa-uranus'), category: category('cladiri') });
 

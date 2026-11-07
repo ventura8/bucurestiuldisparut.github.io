@@ -39,6 +39,30 @@ describe('<hcm-unplaced-gallery>', () => {
         document.body.replaceChildren();
     });
 
+    it('happyPath_authorLicenceAndCreditShow @S-V40-HAPPY-RIGHTS', async () => {
+        await mountElement<HcmUnplacedGallery>(HCM_UNPLACED_GALLERY_TAG, {
+            photos: [{ ...unplaced(), license: 'CC-BY-4.0', author: 'Ion', rightsHolder: 'Arhiva', credit: 'Maria' }],
+            manifestUrl: TEST_MANIFEST_URL,
+            contributeUrl: null,
+            locale: 'en',
+        });
+        for (const words of ['Ion', 'CC BY 4.0', 'Arhiva', 'Maria']) {
+            await expect.element(page.getByText(words, { exact: false })).toBeVisible();
+        }
+    });
+
+    it('badPath_noAuthorOrCreditLeavesNoEmptyLine @S-V40-HAPPY-RIGHTS', async () => {
+        const gone = new Set(['author', 'rightsHolder', 'rightsReview', 'credit']);
+        const bare = Object.fromEntries(Object.entries(unplaced()).filter(([key]) => !gone.has(key))) as unknown as UnplacedPhoto;
+        const element = await mountElement<HcmUnplacedGallery>(HCM_UNPLACED_GALLERY_TAG, {
+            photos: [bare],
+            manifestUrl: TEST_MANIFEST_URL,
+            contributeUrl: null,
+            locale: 'en',
+        });
+        expect(shadowQueryAll(element, 'li p')).toHaveLength(1);
+    });
+
     it('happyPath_aPhotoLinksToItsSuggestionPage @S-V40-HAPPY-GALLERY', async () => {
         const element = await mountElement<HcmUnplacedGallery>(HCM_UNPLACED_GALLERY_TAG, {
             photos: [unplaced()],

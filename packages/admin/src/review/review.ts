@@ -6,34 +6,28 @@
 import {
     FIRESTORE_PATHS,
     cityDocSchema,
-    historyEntryDocSchema,
     photoDocSchema,
-    poiDocSchema,
-    roleRequestDocSchema,
-    suggestionDocSchema,
     bboxFromRecord,
     bboxCenter,
     type CallableRequest,
     type CallableResponse,
-    type Schema,
     type BBox,
     type SuggestionProposal,
 } from '@hcm/shared';
 
 import { outcomeOf, type Outcome } from '../app/services.js';
 import type { AreaModule, AreaStore } from '../content/areas.js';
-import { LOADING_LIST, LiveList, type ListState } from '../content/list.js';
-import { readOnce } from '../content/read-once.js';
-import type { ContentQuery, ContentServices, Stored } from '../content/services.js';
+import { LOADING_LIST, type ListState } from '../content/list.js';
+import type { ContentServices } from '../content/services.js';
 import { PhotoMapSession, type MapStatus } from '../photos/map.js';
 import { Store } from '../state/store.js';
+import { reviewLists, type ReviewLists } from './lists.js';
 import {
+    adjustedWith,
+    decisionOf,
     currentMarker,
     currentOf,
-    photoItem,
-    poiItem,
-    requestRow,
-    suggestionRow,
+    type ReviewBlocked,
     type ReviewItem,
     type ReviewRequest,
     type ReviewSuggestion,
@@ -45,6 +39,9 @@ export interface ReviewState {
     readonly suggestions: ListState<ReviewSuggestion>;
     readonly decided: ListState<ReviewSuggestion>;
     readonly requests: ListState<ReviewRequest> | null;
+    readonly blocked: ListState<ReviewBlocked>;
+    /** The account the reviewer asked to block, until they confirm or cancel. */
+    readonly confirmBlock: { readonly uid: string; readonly about: string | null } | null;
     readonly pictures: Readonly<Record<string, string>>;
     readonly selected: string | null;
     readonly current: SuggestionProposal | null;
@@ -58,25 +55,20 @@ export interface ReviewIntents {
     decideItem(item: ReviewItem, decision: 'approve' | 'refuse', note: string): Promise<Outcome<unknown>>;
     select(suggestionId: string): void;
     startAdjusting(): void;
+    /** The reviewer's own value of a field; an emptied one is absent. */
+    editAdjusted(patch: SuggestionProposal): void;
     decideSuggestion(id: string, decision: 'approve' | 'adjust' | 'reject', note: string): Promise<Outcome<unknown>>;
-    block(uid: string): Promise<Outcome<unknown>>;
+    askBlock(uid: string, about: string | null): void;
+    cancelBlock(): void;
+    confirmBlock(): Promise<void>;
+    unblock(uid: string): Promise<Outcome<unknown>>;
     revert(suggestion: ReviewSuggestion): Promise<Outcome<unknown>>;
     decideRequest(uid: string, decision: 'approve' | 'refuse', note: string): Promise<Outcome<unknown>>;
     attachMap(container: HTMLElement): void;
     zoomBy(delta: number): void;
 }
 
-const NEWEST: NonNullable<ContentQuery['orderBy']> = [['updatedAt', 'desc']];
-const PENDING: ContentQuery = { where: [['reviewStatus', '==', 'pending']], orderBy: NEWEST };
-const OPEN: ContentQuery = { where: [['status', '==', 'pending']], orderBy: NEWEST };
-const APPLIED: ContentQuery = { where: [['status', 'in', ['approved', 'adjusted']]], orderBy: NEWEST, limit: 10 };
 const ZOOM = 14;
-
-interface ReviewLists {
-    show(): void;
-    stop(): void;
-    retry(): void;
-}
 
 class ReviewStore implements AreaStore<ReviewState, ReviewIntents> {
     readonly #services: ContentServices;
@@ -98,6 +90,8 @@ class ReviewStore implements AreaStore<ReviewState, ReviewIntents> {
                 suggestions: LOADING_LIST,
                 decided: LOADING_LIST,
                 requests: services.cityRole() === 'owner' ? LOADING_LIST : null,
+                blocked: LOADING_LIST,
+                confirmBlock: null,
                 pictures: {},
                 selected: null,
                 current: null,
@@ -107,7 +101,12 @@ class ReviewStore implements AreaStore<ReviewState, ReviewIntents> {
             },
             services.log,
         );
-        this.#lists = this.#makeLists();
+        this.#lists = reviewLists(services, services.cityRole() === 'owner', (patch) => {
+            this.#cell.update(patch);
+            if (patch.photos !== undefined) {
+                void this.#readPictures(patch.photos.items);
+            }
+        });
         this.intents = this.#makeIntents();
     }
 
@@ -123,9 +122,23 @@ class ReviewStore implements AreaStore<ReviewState, ReviewIntents> {
             startAdjusting: () => {
                 this.#startAdjusting();
             },
+            editAdjusted: (patch) => {
+                this.#editAdjusted(patch);
+            },
             decideSuggestion: (id, decision, note) => this.#decideSuggestion(id, decision, note),
-            block: (uid) =>
-                this.#call('contributors.setBlocked', { cityId: this.#services.cityId, uid, blocked: true }, 'adminContent.review.blocked'),
+            askBlock: (uid, about) => {
+                this.#cell.update({ confirmBlock: { uid, about } });
+            },
+            cancelBlock: () => {
+                this.#cell.update({ confirmBlock: null });
+            },
+            confirmBlock: () => this.#block(),
+            unblock: (uid) =>
+                this.#call(
+                    'contributors.setBlocked',
+                    { cityId: this.#services.cityId, uid, blocked: false },
+                    'adminContent.review.unblocked',
+                ),
             revert: (suggestion) => this.#revert(suggestion),
             decideRequest: (uid, decision, note) => this.#decideRequest(uid, decision, note),
             attachMap: (container) => {
@@ -134,58 +147,6 @@ class ReviewStore implements AreaStore<ReviewState, ReviewIntents> {
             },
             zoomBy: (delta) => {
                 this.#map?.zoomBy(delta);
-            },
-        };
-    }
-
-    #list<Doc, Item>(
-        collection: string,
-        schema: Schema<Doc>,
-        map: (doc: Stored<Doc>) => Item,
-        changed: (list: ListState<Item>) => void,
-    ): LiveList<Doc, Item> {
-        const { store, clock, denied } = this.#services;
-        return new LiveList({ store, clock, denied, schema, map, collection, changed });
-    }
-
-    #makeLists(): ReviewLists {
-        const city = this.#services.cityId;
-        const photos = this.#list(FIRESTORE_PATHS.photos(city), photoDocSchema, photoItem, (list) => {
-            this.#cell.update({ photos: list });
-            void this.#readPictures(list.items);
-        });
-        const places = this.#list(FIRESTORE_PATHS.pois(city), poiDocSchema, poiItem, (list) => {
-            this.#cell.update({ places: list });
-        });
-        const open = this.#list(FIRESTORE_PATHS.suggestions(city), suggestionDocSchema, suggestionRow, (list) => {
-            this.#cell.update({ suggestions: list });
-        });
-        const decided = this.#list(FIRESTORE_PATHS.suggestions(city), suggestionDocSchema, suggestionRow, (list) => {
-            this.#cell.update({ decided: list });
-        });
-        const requests =
-            this.#cell.state.requests === null
-                ? null
-                : this.#list(FIRESTORE_PATHS.roleRequests(city), roleRequestDocSchema, requestRow, (list) => {
-                      this.#cell.update({ requests: list });
-                  });
-        return {
-            show: () => {
-                photos.show(PENDING);
-                places.show(PENDING);
-                open.show(OPEN);
-                decided.show(APPLIED);
-                requests?.show(OPEN);
-            },
-            stop: () => {
-                for (const list of [photos, places, open, decided, requests]) {
-                    list?.stop();
-                }
-            },
-            retry: () => {
-                for (const list of [photos, places, open, decided, requests]) {
-                    list?.retry();
-                }
             },
         };
     }
@@ -252,7 +213,7 @@ class ReviewStore implements AreaStore<ReviewState, ReviewIntents> {
     async #call<N extends 'review.decide' | 'suggestions.decide' | 'contributors.setBlocked' | 'contribute.decide'>(
         name: N,
         request: CallableRequest<N>,
-        done: 'adminContent.review.done' | 'adminContent.review.blocked',
+        done: 'adminContent.review.done' | 'adminContent.review.blocked' | 'adminContent.review.unblocked' | 'adminContent.review.reverted',
     ): Promise<Outcome<CallableResponse<N>>> {
         this.#cell.update({ busy: true });
         const outcome = await outcomeOf(() => this.#services.callables.call(name, request));
@@ -262,7 +223,8 @@ class ReviewStore implements AreaStore<ReviewState, ReviewIntents> {
     }
 
     #decideItem(item: ReviewItem, decision: 'approve' | 'refuse', note: string): Promise<Outcome<unknown>> {
-        const request = { cityId: this.#services.cityId, entity: item.entity, id: item.id, decision, ...this.#noted(note) };
+        const seen = decision === 'approve' ? { seenAt: item.seenAt } : {};
+        const request = { cityId: this.#services.cityId, entity: item.entity, id: item.id, decision, ...seen, ...this.#noted(note) };
         return this.#call('review.decide', request, 'adminContent.review.done');
     }
 
@@ -278,36 +240,37 @@ class ReviewStore implements AreaStore<ReviewState, ReviewIntents> {
         );
     }
 
-    #decideSuggestion(id: string, decision: 'approve' | 'adjust' | 'reject', note: string): Promise<Outcome<unknown>> {
-        const adjusted = decision === 'adjust' ? (this.#cell.state.adjusted ?? {}) : null;
+    #decideSuggestion(id: string, asked: 'approve' | 'adjust' | 'reject', note: string): Promise<Outcome<unknown>> {
+        const { adjusted, suggestions } = this.#cell.state;
+        const decision = decisionOf(
+            asked,
+            adjusted,
+            suggestions.items.find((item) => item.id === id),
+        );
         const request = {
             cityId: this.#services.cityId,
             suggestionId: id,
             decision,
-            ...(adjusted === null ? {} : { adjusted }),
+            ...(decision === 'adjust' ? { adjusted: adjusted ?? {} } : {}),
             ...this.#noted(note),
         };
         return this.#call('suggestions.decide', request, 'adminContent.review.done');
     }
 
-    /** The photo's last change by its reviewer, undone with the existing history: the entry the trigger kept is the way back. */
-    async #revert(suggestion: ReviewSuggestion): Promise<Outcome<unknown>> {
-        const audited = { entity: 'photo', cityId: this.#services.cityId, entityId: suggestion.photoId } as const;
-        const answer = await readOnce(this.#services, FIRESTORE_PATHS.history(audited), historyEntryDocSchema, {
-            orderBy: NEWEST,
-            limit: 5,
-        });
-        const entry = answer.page?.docs.find((stored) => stored.data.action === 'update' && stored.data.updatedBy === suggestion.decidedBy);
-        const outcome = await outcomeOf(() =>
-            this.#services.callables.call('history.revert', {
-                cityId: audited.cityId,
-                entity: 'photo',
-                entityId: audited.entityId,
-                entryId: entry?.id ?? '',
-            }),
-        );
-        this.#services.notify(outcome.ok ? { key: 'adminContent.review.reverted' } : outcome.error);
-        return outcome;
+    async #block(): Promise<void> {
+        const asked = this.#cell.state.confirmBlock;
+        this.#cell.update({ confirmBlock: null });
+        if (asked !== null) {
+            const about = asked.about === null ? {} : { about: asked.about };
+            const request = { cityId: this.#services.cityId, uid: asked.uid, blocked: true, ...about };
+            await this.#call('contributors.setBlocked', request, 'adminContent.review.blocked');
+        }
+    }
+
+    /** That decision taken off and no other; the server refuses when someone changed the same fields since. */
+    #revert(suggestion: ReviewSuggestion): Promise<Outcome<unknown>> {
+        const request = { cityId: this.#services.cityId, suggestionId: suggestion.id, decision: 'revert' } as const;
+        return this.#call('suggestions.decide', request, 'adminContent.review.reverted');
     }
 
     #selectedRow(): ReviewSuggestion | undefined {
@@ -341,11 +304,22 @@ class ReviewStore implements AreaStore<ReviewState, ReviewIntents> {
     }
 
     #proposedPlace(): NonNullable<SuggestionProposal['location']> | null {
-        return this.#selectedRow()?.proposal.location ?? null;
+        return this.#cell.state.adjusted?.location ?? this.#selectedRow()?.proposal.location ?? null;
     }
 
     #startAdjusting(): void {
         this.#cell.update({ adjusted: this.#selectedRow()?.proposal ?? {} });
+    }
+
+    #adjustedNow(): SuggestionProposal {
+        return this.#cell.state.adjusted ?? this.#selectedRow()?.proposal ?? {};
+    }
+
+    #editAdjusted(patch: SuggestionProposal): void {
+        this.#cell.update({ adjusted: adjustedWith(this.#adjustedNow(), patch, this.#services.locale()) });
+        if (patch.location !== undefined) {
+            void this.#map?.editPin(patch.location);
+        }
     }
 
     /** One map per page visit, once the city and the box are both there. */
@@ -380,8 +354,7 @@ class ReviewStore implements AreaStore<ReviewState, ReviewIntents> {
 
     /** The pin moved: the reviewer is adjusting. */
     #moved(location: NonNullable<SuggestionProposal['location']>): void {
-        const adjusted = this.#cell.state.adjusted ?? this.#selectedRow()?.proposal ?? {};
-        this.#cell.update({ adjusted: { ...adjusted, location } });
+        this.#cell.update({ adjusted: { ...this.#adjustedNow(), location } });
     }
 }
 

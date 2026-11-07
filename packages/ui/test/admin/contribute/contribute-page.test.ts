@@ -81,8 +81,7 @@ describe('<hcm-contribute-page>', () => {
     it.each([
         ['blocked', { blocked: true }, 'can no longer contribute'],
         ['pending', { request: { role: 'uploader', status: 'pending' } }, 'waiting for an answer'],
-        ['approved', { request: { role: 'uploader', status: 'approved' } }, 'was approved'],
-        ['a member', { role: 'uploader' }, 'already a member'],
+        ['a moderator', { role: 'moderator' }, 'already a member'],
     ] as const)('badPath_%s_seesNoForm', async (_name, change, text) => {
         const { host } = await page(state({ context: { ...CONTEXT, ...change } }));
         expect(deepText(host)).toContain(text);
@@ -103,6 +102,29 @@ describe('<hcm-contribute-page>', () => {
         const refused = { role: 'moderator', status: 'refused', retryAt: '2020-01-01T00:00:00.000Z' } as const;
         const { host } = await page(state({ context: { ...CONTEXT, request: refused } }));
         expect(deepAll(host, 'form')).toHaveLength(1);
+    });
+
+    it('happyPath_aRemovedMemberIsNotToldTheyAreApproved @S-A92-HAPPY-ASK-AGAIN', async () => {
+        const context = { ...CONTEXT, request: { role: 'uploader', status: 'approved' } } as const;
+        const { host } = await page(state({ context }));
+        expect(deepText(host)).not.toContain('approved');
+        expect(deep(host, 'form')).toBeDefined();
+    });
+
+    it('happyPath_anUploaderMayAskForMore @S-A92-HAPPY-ASK-AGAIN', async () => {
+        const context = { ...CONTEXT, role: 'uploader', request: { role: 'uploader', status: 'approved' } } as const;
+        const { host } = await page(state({ context }));
+        expect(deepText(host)).toContain('You are already a member');
+        expect(deepAll(host, 'option').map((option) => (option as HTMLOptionElement).value)).toEqual(['moderator']);
+    });
+
+    it('badPath_aModeratorHasNothingMoreToAskAndAnUploaderWaits', async () => {
+        const moderator = await page(state({ context: { ...CONTEXT, role: 'moderator' } }));
+        expect(deepAll(moderator.host, 'form')).toEqual([]);
+        const waiting = { ...CONTEXT, role: 'uploader', request: { role: 'moderator', status: 'pending' } } as const;
+        const uploader = await page(state({ context: waiting }));
+        expect(deepAll(uploader.host, 'form')).toEqual([]);
+        expect(deepText(uploader.host)).toContain('waiting');
     });
 
     it('badPath_aPageThatCannotBeReadOffersTryAgain', async () => {

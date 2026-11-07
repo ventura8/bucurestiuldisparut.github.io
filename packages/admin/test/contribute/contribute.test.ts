@@ -2,7 +2,7 @@
 import type { ContributeContextResponse } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
-import { CONTRIBUTE_MODULE } from '../../src/contribute/contribute.js';
+import { CONTRIBUTE_MODULE, changedFrom } from '../../src/contribute/contribute.js';
 import { failure } from '../app/fakes.js';
 import { CITY, contentWorld } from '../content/world.js';
 import { CONTAINER, FakeMaps, settle } from '../photos/world.js';
@@ -22,9 +22,9 @@ const CONTEXT: ContributeContextResponse = {
 
 const PHOTO = { id: 'p1', title: { ro: 'Unde?' }, thumb: 'https://example.org/t.webp' };
 
-function world(context: ContributeContextResponse = CONTEXT) {
+function world(context: ContributeContextResponse = CONTEXT, locale: 'ro' | 'en' = 'ro') {
     const maps = new FakeMaps();
-    const made = contentWorld({ maps: maps as never });
+    const made = contentWorld({ maps: maps as never, locale: () => locale });
     made.callables.answer('contribute.context', () => context);
     return { ...made, maps, area: CONTRIBUTE_MODULE.create(made.services) };
 }
@@ -112,6 +112,7 @@ describe('the Contribute page: a suggestion', () => {
         w.callables.fail('suggestions.submit', failure('resource-exhausted', 'apiError.suggestion.dailyLimit', { max: '20' }));
         w.area.open([CITY, 'p1']);
         await settle();
+        w.area.intents.edit({ location: { lat: 44.44, lng: 26.1 } });
         await w.area.intents.suggest({});
         expect(w.area.state).toMatchObject({ problem: { key: 'apiError.suggestion.dailyLimit' }, thanks: null });
     });
@@ -147,5 +148,67 @@ describe('the Contribute page: a suggestion', () => {
         expect(area.state.map).toBe('unavailable');
         area.intents.placeAtCentre();
         expect(area.state.proposal).toEqual({});
+    });
+});
+
+describe('the Contribute page: only what changed is sent', () => {
+    const placed = {
+        ...CONTEXT,
+        photo: { ...PHOTO, location: { lat: 44.43, lng: 26.09 }, bearing: 90, year: 1920, dateText: { ro: 'Iulie', en: 'July' } },
+    };
+
+    async function open(locale: 'ro' | 'en' = 'ro') {
+        const w = world(placed, locale);
+        w.callables.answer('suggestions.submit', () => ({ received: true, remainingToday: 3 }));
+        w.area.open([CITY, 'p1']);
+        await settle();
+        return w;
+    }
+
+    const sent = (w: Awaited<ReturnType<typeof open>>) => w.callables.calls.find((call) => call.name === 'suggestions.submit')?.request;
+
+    it('happyPath_aContestedYearCarriesNoPlace @S-A93-HAPPY-ONLY-CHANGED', async () => {
+        const w = await open();
+        w.area.intents.edit({ year: 1950 });
+        await w.area.intents.suggest({ reason: 'Pe verso.' });
+        expect(sent(w)).toMatchObject({ proposal: { year: 1950 } });
+        expect(Object.keys((sent(w) as { proposal: object }).proposal)).toEqual(['year']);
+    });
+
+    it('happyPath_aNewEndNamesItsStart', async () => {
+        const w = await open();
+        w.area.intents.edit({ yearEnd: 1925 });
+        await w.area.intents.suggest({ reason: 'x' });
+        expect((sent(w) as { proposal: object }).proposal).toEqual({ year: 1920, yearEnd: 1925 });
+    });
+
+    it('happyPath_aDateTextSaysItsLanguage @S-A93-HAPPY-DATE-LANGUAGE', async () => {
+        const w = await open('en');
+        w.area.intents.edit({ dateText: 'Summer' });
+        await w.area.intents.suggest({ reason: 'x' });
+        expect((sent(w) as { proposal: object }).proposal).toEqual({ dateText: 'Summer', dateLocale: 'en' });
+    });
+
+    it('badPath_nothingChangedIsToldWithoutACall @S-A93-HAPPY-ONLY-CHANGED', async () => {
+        const w = await open();
+        w.area.intents.edit({ dateText: 'Iulie' });
+        await w.area.intents.suggest({ reason: 'x' });
+        expect(sent(w)).toBeUndefined();
+        expect(w.area.state.problem).toEqual({ key: 'apiError.suggestion.noChange' });
+    });
+});
+
+describe('changedFrom', () => {
+    it('happyPath_aPhotoWithNothingYetKeepsEverythingTyped', () => {
+        expect(changedFrom(null, { location: { lat: 1, lng: 2 }, dateText: 'Vara' }, 'ro')).toEqual({
+            location: { lat: 1, lng: 2 },
+            dateText: 'Vara',
+            dateLocale: 'ro',
+        });
+    });
+
+    it('happyPath_anEndWithItsOwnStartAndAPhotoWithNoDateText', () => {
+        expect(changedFrom({ ...PHOTO, year: 1920 }, { year: 1921, yearEnd: 1925 }, 'en')).toEqual({ year: 1921, yearEnd: 1925 });
+        expect(changedFrom({ ...PHOTO }, { yearEnd: 1925 }, 'en')).toEqual({ yearEnd: 1925 });
     });
 });

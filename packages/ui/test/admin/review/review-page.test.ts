@@ -20,8 +20,26 @@ function list<Item>(items: readonly Item[]) {
     return { status: 'ready', items, hasMore: false, reconnecting: false, failure: null } as const;
 }
 
-const ITEM: ReviewItemPort = { entity: 'photo', id: 'p1', title: { ro: 'Poză', en: 'Picture' }, thumbPath: 'held/t.webp', credit: 'Maria' };
-const POI: ReviewItemPort = { entity: 'poi', id: 'l1', title: { ro: 'Loc' }, thumbPath: null, credit: null };
+const ITEM: ReviewItemPort = {
+    entity: 'photo',
+    id: 'p1',
+    title: { ro: 'Poză', en: 'Picture' },
+    thumbPath: 'held/t.webp',
+    credit: 'Maria',
+    description: { ro: 'Text', en: 'What it says' },
+    links: [{ url: 'https://example.org/l', label: 'Where it came from' }],
+    seenAt: '2026-10-12T08:00:00.000Z',
+};
+const POI: ReviewItemPort = {
+    entity: 'poi',
+    id: 'l1',
+    title: { ro: 'Loc' },
+    thumbPath: null,
+    credit: null,
+    description: null,
+    links: [],
+    seenAt: '2026-10-12T08:00:00.000Z',
+};
 const SUGGESTION: ReviewSuggestionPort = {
     id: 's1',
     photoId: 'p1',
@@ -53,6 +71,8 @@ function state(overrides: Partial<ReviewViewState> = {}): ReviewViewState {
         suggestions: list([SUGGESTION]),
         decided: list([{ ...SUGGESTION, id: 's2', status: 'approved', decidedBy: 'u', proposal: { year: 1950 } }]),
         requests: list([REQUEST]),
+        blocked: list([]),
+        confirmBlock: null,
         pictures: { 'held/t.webp': PIXEL },
         selected: null,
         current: null,
@@ -113,7 +133,7 @@ describe('<hcm-review-page>', () => {
         const { host } = await page(state());
         expect(deepText(host)).toContain('<b>Se vede</b> biserica.');
         expect(deepAll(host, 'b')).toEqual([]);
-        expect(deepAll(host, 'a[rel="noopener noreferrer nofollow ugc"]')).toHaveLength(1);
+        expect(deepAll(host, 'a[rel="noopener noreferrer nofollow ugc"]')).toHaveLength(2);
     });
 
     it('happyPath_decidingAnItem', async () => {
@@ -157,11 +177,66 @@ describe('<hcm-review-page>', () => {
         const none = await page(state({ selected: 's1', current: null, map: 'unavailable' }));
         expect(deepText(none.host)).toContain('Now: no place yet');
     });
+});
+
+describe('<hcm-review-page>: more', () => {
+    beforeAll(() => {
+        defineAll();
+    });
+
+    afterEach(() => {
+        cleanup();
+    });
+
+    it('happyPath_theCardShowsWhatAnApprovalPublishes', async () => {
+        const { host } = await page(state());
+        const text = deepText(host);
+        expect(text).toContain('What it says');
+        expect(deepAll(host, 'li.card a').map((a) => a.getAttribute('href'))).toContain('https://example.org/l');
+    });
+
+    it('happyPath_adjustingOffersEveryValue @S-A93-HAPPY-ADJUST-FIELDS', async () => {
+        const { host, area } = await page(state({ selected: 's1', adjusted: { year: 1950 }, current: {} }));
+        const type = (id: string, value: string): void => {
+            const input = deep(host, `#${id}`) as HTMLInputElement;
+            input.value = value;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        expect((deep(host, '#year') as HTMLInputElement).value).toBe('1950');
+        type('lat', '44.45');
+        type('lng', '26.15');
+        type('bearing', '80');
+        type('yearEnd', '1960');
+        type('dateText', 'Vara');
+        const edits = area.named('editAdjusted').join('\n');
+        for (const edit of ['"bearing":80', '"yearEnd":1960', '"dateText":"Vara"', '"location":{"lat":44.45,"lng":0}']) {
+            expect(edits).toContain(edit);
+        }
+        expect(await axeViolations(host)).toEqual([]);
+    });
+
+    it('happyPath_blockAsksFirstAndABlockedAccountSaysSo @S-A93-HAPPY-UNBLOCK', async () => {
+        const blocked = list([{ uid: 'a', about: 'Reclame.' }]);
+        const { host, area } = await page(state({ blocked, confirmBlock: { uid: 'b', about: null } }));
+        const dialog = deep(host, 'hcm-confirm-dialog');
+        expect(dialog.hasAttribute('open')).toBe(true);
+        dialog.dispatchEvent(new CustomEvent('hcm-confirm'));
+        dialog.dispatchEvent(new CustomEvent('hcm-cancel'));
+        expect(area.named('confirmBlock')).toHaveLength(1);
+        expect(area.named('cancelBlock')).toHaveLength(1);
+        press(host, '<b>Se vede</b> biserica.', 'Let this account back');
+        expect(area.named('unblock').at(-1)).toContain('"a"');
+        expect(deepText(host)).toContain('Reclame.');
+        press(host, 'Reclame.', 'Let this account back');
+        expect(area.named('unblock')).toHaveLength(2);
+        press(host, 'suggested this', 'Block this account');
+        expect(area.calls.at(-1)).toContain('askBlock "b"');
+    });
 
     it('happyPath_blockAndRevertAndARequest @S-A93-BAD-BLOCKED', async () => {
         const { host, area } = await page(state());
         press(host, 'suggested this', 'Block');
-        expect(area.calls.at(-1)).toBe('block "a"');
+        expect(area.calls.at(-1)).toContain('askBlock "a"');
         press(host, '1950', 'Revert');
         expect(area.calls.at(-1)).toContain('revert');
         press(host, 'Ana (ana@e.test)', 'Approve');

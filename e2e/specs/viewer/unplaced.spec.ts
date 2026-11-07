@@ -15,18 +15,23 @@ test.beforeEach(async ({ context }) => {
     );
 });
 
-test('A photo with no place waits in the gallery and links to its suggestion page', { tag: '@S-V40-HAPPY-GALLERY' }, async ({ page }) => {
-    await serveManifest(page, unplacedManifest());
-    await openViewer(page, { lang: 'en' });
-    await chooseMenuItem(page, 'en', t('en', 'unplaced.title'));
-    const gallery = viewer(page).locator('hcm-unplaced-gallery');
-    await expect(gallery.getByRole('list', { name: t('en', 'unplaced.title') }).getByRole('listitem')).toHaveCount(1);
-    const [photo] = unplacedManifest()['unplaced'] as readonly { readonly id: string }[];
-    await expect(gallery.getByRole('link', { name: t('en', 'unplaced.suggest') })).toHaveAttribute(
-        'href',
-        `${CONTRIBUTE}/${String(photo?.id)}`,
-    );
-});
+test(
+    'A photo with no place waits in the gallery, says whose it is and links to its suggestion page',
+    { tag: ['@S-V40-HAPPY-GALLERY', '@S-V40-HAPPY-RIGHTS'] },
+    async ({ page }) => {
+        await serveManifest(page, unplacedManifest());
+        await openViewer(page, { lang: 'en' });
+        await chooseMenuItem(page, 'en', t('en', 'unplaced.title'));
+        const gallery = viewer(page).locator('hcm-unplaced-gallery');
+        await expect(gallery.getByRole('list', { name: t('en', 'unplaced.title') }).getByRole('listitem')).toHaveCount(1);
+        const [photo] = unplacedManifest()['unplaced'] as readonly { readonly id: string; readonly license: string }[];
+        await expect(gallery.getByText(t('en', `license.${String(photo?.license)}` as never))).toBeVisible();
+        await expect(gallery.getByRole('link', { name: t('en', 'unplaced.suggest') })).toHaveAttribute(
+            'href',
+            `${CONTRIBUTE}/${String(photo?.id)}`,
+        );
+    },
+);
 
 test(
     'A manifest from before it shows neither the gallery nor the link',

@@ -223,6 +223,87 @@ test.describe('a moderator', () => {
     );
 });
 
+test.describe('a moderator with a suggestion to adjust', () => {
+    test.use({ persona: 'admin', mapOwner: 'owner', admins: ['admin'] });
+
+    test(
+        'types the values by hand, and blocks an account only after a question',
+        { tag: ['@S-A93-HAPPY-ADJUST-FIELDS', '@S-A93-HAPPY-UNBLOCK', '@S-A93-HAPPY-ADJUST'] },
+        async ({ page, lang, adminWorld }) => {
+            const { emulators, accounts } = adminWorld;
+            await seedCity(emulators);
+            await setRole(emulators, accounts.admin.uid, 'moderator');
+            await seedPhoto(emulators, 'placed', { location: { lat: 44.43, lng: 26.09 }, bearing: 90 });
+            await emulators.setDocument(`cities/${PROJECT_CITY}/suggestions/group2`, {
+                photoId: 'placed',
+                photoTitle: { ro: 'Calea Victoriei', en: 'Victory Avenue' },
+                photoThumb: PIXEL,
+                kind: 'correction',
+                proposal: { year: 1950 },
+                status: 'pending',
+                count: 1,
+                accounts: ['spammer'],
+                voices: [{ uid: 'spammer', reason: 'Cumpără aici.', at: AT }],
+                createdAt: AT,
+                ...STAMP,
+            });
+
+            await page.goto(adminPath(lang, 'review'));
+            const card = page.locator('li.card').filter({ hasText: 'Cumpără aici.' });
+            await card.getByRole('button', { name: cityText(lang, 'adminContent.review.block') }).click();
+            await expect(page.getByRole('dialog', { name: cityText(lang, 'adminContent.review.blockTitle') })).toBeVisible();
+            const question = page.locator('hcm-confirm-dialog');
+            await expectStateSound(page, adminVisit('roles.review-block-question', lang));
+            await question.getByRole('button', { name: cityText(lang, 'adminContent.common.cancel'), exact: true }).click();
+            expect(await emulators.document(`cities/${PROJECT_CITY}/contributors/spammer`)).toBeUndefined();
+
+            await card.getByRole('button', { name: cityText(lang, 'adminContent.review.block') }).click();
+            await question.getByRole('button', { name: cityText(lang, 'adminContent.review.block'), exact: true }).click();
+            await expect.poll(() => emulators.document(`cities/${PROJECT_CITY}/contributors/spammer`)).toMatchObject({ blocked: true });
+            await expect(page.getByText(cityText(lang, 'adminContent.review.isBlocked')).first()).toBeVisible();
+            await expectStateSound(page, adminVisit('roles.review-blocked', lang));
+            const blocked = page.getByRole('region', { name: cityText(lang, 'adminContent.review.blockedList') });
+            await blocked.getByRole('button', { name: cityText(lang, 'adminContent.review.unblock') }).click();
+            await expect
+                .poll(async () => (await emulators.document(`cities/${PROJECT_CITY}/contributors/spammer`))?.['blocked'])
+                .toBeUndefined();
+
+            await card.getByRole('button', { name: cityText(lang, 'adminContent.review.compare') }).click();
+            await card.getByRole('button', { name: cityText(lang, 'adminContent.review.adjust') }).click();
+            await page.getByLabel(cityText(lang, 'adminContent.contribute.bearing')).fill('120');
+            await page.getByLabel(cityText(lang, 'adminContent.contribute.bearing')).blur();
+            await expect(card.getByText('120°')).toBeVisible();
+            await expectStateSound(page, adminVisit('roles.review-adjust', lang));
+            await card.getByRole('button', { name: cityText(lang, 'adminContent.review.apply') }).click();
+            await expect
+                .poll(() => emulators.document(`cities/${PROJECT_CITY}/photos/placed`))
+                .toMatchObject({ year: 1950, bearing: 120, location: { lat: 44.43, lng: 26.09 } });
+        },
+    );
+});
+
+test.describe('someone whose role changed', () => {
+    test.use({ persona: 'admin', mapOwner: 'owner', admins: ['admin'] });
+
+    test('an uploader may ask for more', { tag: '@S-A92-HAPPY-ASK-AGAIN' }, async ({ page, lang, adminWorld }) => {
+        const { emulators, accounts } = adminWorld;
+        await seedCity(emulators);
+        await setRole(emulators, accounts.admin.uid, 'uploader');
+        await emulators.setDocument(`cities/${PROJECT_CITY}/roleRequests/${accounts.admin.uid}`, {
+            role: 'uploader',
+            reason: 'Am fotografii.',
+            status: 'approved',
+            createdAt: AT,
+            ...STAMP,
+        });
+        await page.goto(adminPath(lang, `contribute/${PROJECT_CITY}`));
+        await expect(page.getByText(cityText(lang, 'adminContent.contribute.askMore'))).toBeVisible();
+        await expect(page.getByRole('option')).toHaveCount(1);
+        await expect(reason(page, lang)).toBeVisible();
+        await expectStateSound(page, adminVisit('roles.contribute-ask-more', lang));
+    });
+});
+
 test.describe('an uploader', () => {
     test.use({ persona: 'admin', mapOwner: 'owner', admins: ['admin'] });
 
@@ -252,8 +333,72 @@ test.describe('an uploader', () => {
     );
 });
 
+test.describe('an uploader adding to a place of their own', () => {
+    test.use({ persona: 'admin', mapOwner: 'owner', admins: ['admin'] });
+
+    test(
+        'picks among their own photos, and a delete offers no Undo they could not use',
+        { tag: ['@S-A90-HAPPY-UPLOADER-PICKER', '@S-A90-BAD-NO-UNDO'] },
+        async ({ page, lang, adminWorld }) => {
+            const { emulators, accounts } = adminWorld;
+            const uid = accounts.admin.uid;
+            await seedCity(emulators);
+            await setRole(emulators, uid, 'uploader');
+            const mine = { published: false, reviewStatus: 'pending', title: { ro: 'A mea', en: 'Mine' }, createdBy: uid };
+            await seedPhoto(emulators, 'mine', mine);
+            await seedPhoto(emulators, 'theirs', { title: { ro: 'A altcuiva', en: 'Someone elses' } });
+            await emulators.setDocument(`cities/${PROJECT_CITY}/pois/own`, {
+                category: 'c',
+                geometry: { type: 'Point', point: { lat: 44.4, lng: 26.1 } },
+                title: { ro: 'Locul meu', en: 'My place' },
+                links: [],
+                published: false,
+                reviewStatus: 'pending',
+                createdBy: uid,
+                ...STAMP,
+            });
+
+            await page.goto(adminPath(lang, 'pois/own'));
+            await page.getByRole('button', { name: cityText(lang, 'adminContent.pois.field.choosePhotos') }).click();
+            const picker = page.locator('hcm-dialog.photo-picker');
+            await expect(picker.getByText(/Mine|A mea/)).toBeVisible();
+            await expect(picker.getByText(/elses|altcuiva/)).toHaveCount(0);
+            await picker
+                .getByRole('button', { name: cityText(lang, 'adminContent.pois.photoPicker.done') })
+                .last()
+                .click();
+
+            await page.goto(adminPath(lang, 'photos/mine'));
+            await page.getByRole('button', { name: cityText(lang, 'adminContent.photos.editor.delete') }).click();
+            await page
+                .locator('hcm-confirm-dialog')
+                .getByRole('button', { name: cityText(lang, 'adminContent.photos.delete.confirm'), exact: true })
+                .click();
+            await expect.poll(() => emulators.document(`cities/${PROJECT_CITY}/photos/mine`)).toBeUndefined();
+            const deleted = (name: string) => page.getByText(cityText(lang, 'adminContent.photos.deleted', { title: name }));
+            await expect(deleted('A mea').or(deleted('Mine')).first()).toBeAttached();
+            await expect(page.getByRole('button', { name: cityText(lang, 'adminContent.photos.undoAction') })).toHaveCount(0);
+        },
+    );
+});
+
 test.describe('the sign-in', () => {
     test.use({ persona: 'stranger', mapOwner: 'owner' });
+
+    test('someone removed from the city may ask again', { tag: '@S-A92-HAPPY-ASK-AGAIN' }, async ({ page, lang, adminWorld }) => {
+        const { emulators, accounts } = adminWorld;
+        await seedCity(emulators);
+        await emulators.setDocument(`cities/${PROJECT_CITY}/roleRequests/${accounts.stranger.uid}`, {
+            role: 'uploader',
+            reason: 'Am fotografii.',
+            status: 'approved',
+            createdAt: AT,
+            ...STAMP,
+        });
+        await page.goto(adminPath(lang, `contribute/${PROJECT_CITY}`));
+        await expect(reason(page, lang)).toBeVisible();
+        await expect(page.getByRole('option')).toHaveCount(2);
+    });
 
     test('the persona is who the account menu says', { tag: '@S-A92-HAPPY-VISITOR-STAYS' }, async ({ page, lang, adminWorld }) => {
         await seedCity(adminWorld.emulators);

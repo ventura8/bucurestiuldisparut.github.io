@@ -4,7 +4,14 @@
  * camera faced, with the photo editor's map, and contesting a placed photo's date, place or direction. Text only: nothing a
  * person types is ever rendered as HTML.
  */
-import type { ContributeContextResponse, ContributePhoto, Locale, RequestableRole, SuggestionProposal } from '@hcm/shared';
+import {
+    REQUESTABLE_ROLES,
+    type ContributeContextResponse,
+    type ContributePhoto,
+    type Locale,
+    type RequestableRole,
+    type SuggestionProposal,
+} from '@hcm/shared';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
 import type { AdminRouteIdPort } from '../admin-port.js';
@@ -17,6 +24,7 @@ import { defineHcmAdminMap } from '../map/hcm-admin-map.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText, noticeOf } from '../shell/text.js';
 import type { ContributeIntentsPort, ContributeViewState } from './contribute-port.js';
+import { bearingField, coordinateField, dateFields } from './proposal-fields.js';
 
 export const HCM_CONTRIBUTE_PAGE_TAG = 'hcm-contribute-page';
 
@@ -59,12 +67,6 @@ function fieldOf(form: HTMLFormElement, name: string): string {
     return typeof value === 'string' ? value : '';
 }
 
-/** A whole number a field holds, or undefined. */
-function numberIn(typed: string): number | undefined {
-    const value = Number(typed);
-    return typed.trim() === '' || !Number.isFinite(value) ? undefined : value;
-}
-
 function textField(
     id: string,
     label: string,
@@ -94,18 +96,17 @@ function submitButton(label: string, busy: boolean): TemplateResult {
 const PLACE_TEXTS = { title: 'adminContent.contribute.place.title', intro: 'adminContent.contribute.place.intro' } as const;
 const CORRECTION_TEXTS = { title: 'adminContent.contribute.correct.title', intro: 'adminContent.contribute.correct.intro' } as const;
 
-/** What an account with a standing is told instead of the form, or null. */
-function standingMessage(
-    context: ContributeContextResponse,
-): 'adminContent.contribute.pending' | 'adminContent.contribute.approved' | 'adminContent.contribute.member' | null {
-    if (context.role !== null) {
-        return 'adminContent.contribute.member';
+/** What this account may still ask for: an uploader may ask for more, and whoever reviews has nothing to ask. */
+function askableRoles(context: ContributeContextResponse): readonly RequestableRole[] {
+    if (context.role === null) {
+        return REQUESTABLE_ROLES;
     }
-    const status = context.request?.status;
-    if (status === 'pending') {
-        return 'adminContent.contribute.pending';
-    }
-    return status === 'approved' ? 'adminContent.contribute.approved' : null;
+    return context.role === 'uploader' ? ['moderator'] : [];
+}
+
+function roleOption(locale: Locale, role: RequestableRole): TemplateResult {
+    const key = `adminContent.contribute.role.${role}` as const;
+    return html`<option value=${role}>${contentText(locale, key)}</option>`;
 }
 
 class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsPort> {
@@ -154,43 +155,64 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
         const name = locale === 'en' ? (context.city.name.en ?? context.city.name.ro) : context.city.name.ro;
         return html`<h2>${contentText(locale, 'adminContent.contribute.title', { city: name })}</h2>
             <p>${contentText(locale, 'adminContent.contribute.intro')}</p>
-            ${this.#standing(locale, context) ?? this.#requestForm(locale, view)}`;
+            ${this.#standing(locale, view, context)}`;
     }
 
-    /** Why there is no form, as a message, or null: a blocked account, a member, an open or refused request. */
-    #standing(locale: Locale, context: ContributeContextResponse): TemplateResult | null {
+    /** What the account stands as, and the form when it may ask: a request answered earlier decides nothing once the role is gone. */
+    #standing(locale: Locale, view: ContributeViewState, context: ContributeContextResponse): TemplateResult {
+        const roles = askableRoles(context);
         if (context.blocked) {
             return html`<p class="alert" role="alert">${contentText(locale, 'adminContent.contribute.blocked')}</p>`;
         }
-        const message = standingMessage(context);
-        if (message !== null) {
-            return this.#told(locale, message);
+        if (roles.length === 0) {
+            return this.#member(locale);
         }
-        return context.request?.status === 'refused' ? this.#refused(locale, context.request) : null;
+        return this.#request(locale, view, context, roles);
     }
 
-    #told(locale: Locale, message: NonNullable<ReturnType<typeof standingMessage>>): TemplateResult {
-        const link = html`<p><a href="#/photos">${contentText(locale, 'adminContent.contribute.openAdmin')}</a></p>`;
-        return html`<p role="status">${contentText(locale, message)}</p>
-            ${message === 'adminContent.contribute.pending' ? nothing : link}`;
+    #request(
+        locale: Locale,
+        view: ContributeViewState,
+        context: ContributeContextResponse,
+        roles: readonly RequestableRole[],
+    ): TemplateResult {
+        const form = this.#requestForm(locale, view, roles);
+        const asked = context.request;
+        if (asked === null || asked.status === 'approved') {
+            return context.role === null ? form : this.#askMore(locale, form);
+        }
+        return asked.status === 'pending'
+            ? html`<p role="status">${contentText(locale, 'adminContent.contribute.pending')}</p>`
+            : this.#refused(locale, asked, form);
     }
 
-    #refused(locale: Locale, request: NonNullable<ContributeContextResponse['request']>): TemplateResult {
+    #askMore(locale: Locale, form: TemplateResult): TemplateResult {
+        return html`${this.#member(locale)}
+            <p>${contentText(locale, 'adminContent.contribute.askMore')}</p>
+            ${form}`;
+    }
+
+    #member(locale: Locale): TemplateResult {
+        return html`<p role="status">${contentText(locale, 'adminContent.contribute.member')}</p>
+            <p><a href="#/photos">${contentText(locale, 'adminContent.contribute.openAdmin')}</a></p>`;
+    }
+
+    #refused(locale: Locale, request: NonNullable<ContributeContextResponse['request']>, form: TemplateResult): TemplateResult {
         return html`<p class="alert" role="alert">${contentText(locale, 'adminContent.contribute.refused')}</p>
             ${request.note === undefined ? nothing : html`<p>${contentText(locale, 'adminContent.contribute.refusedNote', { note: request.note })}</p>`}
-            ${this.#askAgain(locale, request)}`;
+            ${this.#askAgain(locale, request, form)}`;
     }
 
     /** The date a refused account may ask again, or the form once it has passed. */
-    #askAgain(locale: Locale, request: NonNullable<ContributeContextResponse['request']>): TemplateResult {
+    #askAgain(locale: Locale, request: NonNullable<ContributeContextResponse['request']>, form: TemplateResult): TemplateResult {
         const retryAt = request.retryAt ?? '';
         if (Date.parse(retryAt) > Date.now()) {
             return html`<p>${contentText(locale, 'adminContent.contribute.retry', { date: retryAt.slice(0, 10) })}</p>`;
         }
-        return this.view === null ? EMPTY : this.#requestForm(locale, this.view);
+        return form;
     }
 
-    #requestForm(locale: Locale, view: ContributeViewState): TemplateResult {
+    #requestForm(locale: Locale, view: ContributeViewState, roles: readonly RequestableRole[]): TemplateResult {
         const submit = (event: SubmitEvent): void => {
             event.preventDefault();
             const form = event.currentTarget as HTMLFormElement;
@@ -200,8 +222,7 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
             <div class="field">
                 <label for="role">${contentText(locale, 'adminContent.contribute.role')}</label>
                 <select id="role" name="role">
-                    <option value="uploader">${contentText(locale, 'adminContent.contribute.role.uploader')}</option>
-                    <option value="moderator">${contentText(locale, 'adminContent.contribute.role.moderator')}</option>
+                    ${roles.map((role) => roleOption(locale, role))}
                 </select>
             </div>
             ${textField('reason', contentText(locale, 'adminContent.contribute.reason'), { required: true, long: true })}
@@ -224,7 +245,7 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
             <img src=${photo.thumb} alt=${title} />
             ${this.#mapBox(locale, view)}
             <form @submit=${this.#sendSuggestion}>
-                ${this.#placeFields(locale, view)} ${placed ? this.#dateFields(locale) : EMPTY}
+                ${this.#placeFields(locale, view)} ${placed ? dateFields(locale, view.proposal, this.#edit) : EMPTY}
                 ${textField('why', contentText(locale, 'adminContent.contribute.why'), { required: placed, long: true })}
                 ${textField('source', contentText(locale, 'adminContent.contribute.sourceUrl'), { type: 'url' })}
                 ${textField('credit', contentText(locale, 'adminContent.contribute.credit'))} ${this.#problem(locale, view)}
@@ -257,9 +278,6 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
 
     #placeFields(locale: Locale, view: ContributeViewState): TemplateResult {
         const { location, bearing } = view.proposal;
-        const editBearing = (event: Event): void => {
-            this.intents?.edit({ bearing: numberIn((event.currentTarget as HTMLInputElement).value) });
-        };
         return html`<div class="actions">
                 <hcm-button variant="tonal" icon="place" @click=${() => this.intents?.placeAtCentre()}
                     >${contentText(locale, 'adminContent.contribute.pin')}</hcm-button
@@ -273,67 +291,13 @@ class HcmContributePage extends AreaPage<ContributeViewState, ContributeIntentsP
                 >
             </div>
             ${view.picking ? html`<p role="status">${contentText(locale, 'adminContent.contribute.picking')}</p>` : nothing}
-            ${this.#coordinate(locale, 'lat', location)} ${this.#coordinate(locale, 'lng', location)}
-            <div class="field">
-                <label for="bearing">${contentText(locale, 'adminContent.contribute.bearing')}</label>
-                <input
-                    id="bearing"
-                    name="bearing"
-                    type="number"
-                    step="any"
-                    min="0"
-                    max="360"
-                    .value=${String(bearing ?? '')}
-                    @change=${editBearing}
-                />
-            </div>`;
+            ${coordinateField(locale, 'lat', location, this.#edit)} ${coordinateField(locale, 'lng', location, this.#edit)}
+            ${bearingField(locale, bearing, this.#edit)}`;
     }
 
-    /** Latitude or longitude: the keyboard's way to place the pin. */
-    #coordinate(locale: Locale, axis: 'lat' | 'lng', location: SuggestionProposal['location']): TemplateResult {
-        const limit = axis === 'lat' ? 90 : 180;
-        const change = (event: Event): void => {
-            const value = numberIn((event.currentTarget as HTMLInputElement).value);
-            if (value !== undefined) {
-                this.intents?.edit({ location: { lat: 0, lng: 0, ...location, [axis]: value } });
-            }
-        };
-        return html`<div class="field">
-            <label for=${axis}>${contentText(locale, `adminContent.contribute.${axis}`)}</label>
-            <input
-                id=${axis}
-                name=${axis}
-                type="number"
-                step="any"
-                min=${-limit}
-                max=${limit}
-                .value=${String(location?.[axis] ?? '')}
-                @change=${change}
-            />
-        </div>`;
-    }
-
-    /** A placed photo's date may be contested too. */
-    #dateFields(locale: Locale): TemplateResult {
-        const year = (key: 'year' | 'yearEnd') => (event: Event) => {
-            this.intents?.edit({ [key]: numberIn((event.currentTarget as HTMLInputElement).value) });
-        };
-        const dateText = (event: Event): void => {
-            this.intents?.edit({ dateText: (event.currentTarget as HTMLInputElement).value });
-        };
-        return html`<div class="field">
-                <label for="year">${contentText(locale, 'adminContent.contribute.year')}</label>
-                <input id="year" name="year" type="number" min="1800" max="2100" @change=${year('year')} />
-            </div>
-            <div class="field">
-                <label for="yearEnd">${contentText(locale, 'adminContent.contribute.yearEnd')}</label>
-                <input id="yearEnd" name="yearEnd" type="number" min="1800" max="2100" @change=${year('yearEnd')} />
-            </div>
-            <div class="field">
-                <label for="dateText">${contentText(locale, 'adminContent.contribute.dateText')}</label>
-                <input id="dateText" name="dateText" @change=${dateText} />
-            </div>`;
-    }
+    readonly #edit = (patch: SuggestionProposal): void => {
+        this.intents?.edit(patch);
+    };
 }
 
 /** Registers `<hcm-contribute-page>` and what it renders; idempotent per registry. */
