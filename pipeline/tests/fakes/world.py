@@ -51,6 +51,8 @@ GOOD_SIGNATURE: Final = "sig-ok-7d1f"
 FRESH_SIGNATURE: Final = "sig-fresh-c0a2"
 S2_ITEM: Final = "S2B_35TMK_20250803_0_L2A"
 STAC_PATH: Final = "/stac"
+# The Copernicus DEM tiles' root (M15, *Terrain*): nothing is served there unless a test serves a tile.
+DEM_PATH: Final = "/dem"
 OVERPASS_PATH: Final = "/overpass/api/interpreter"
 TEST_CHUNK_BYTES: Final = 256 * 1024
 NOW: Final = 1_792_000_000.0
@@ -140,6 +142,7 @@ class PipelineWorld:
             "USGS_M2M_BASE_URL": self.m2m.base_url,
             "HCM_STAC_URL": self.http.url(STAC_PATH),
             "HCM_OVERPASS_URL": self.http.url(OVERPASS_PATH),
+            "HCM_DEM_URL": self.http.url(DEM_PATH),
             "CLOUD_RUN_EXECUTION": EXECUTION,
             "CLOUD_RUN_TASK_ATTEMPT": "0",
             **overrides,

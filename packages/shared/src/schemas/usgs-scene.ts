@@ -62,6 +62,13 @@ export const SENSOR_SPECS: Readonly<Record<Sensor, SensorSpec>> = {
 /** The attribution every USGS layer carries (public domain; the credit is courtesy). */
 export const USGS_ATTRIBUTION = 'USGS EROS, declassified imagery (public domain)';
 
+/**
+ * What a layer fitted over the surface model adds (M15, *Terrain*): the Copernicus DEM GLO-30 licence's notice, as the pipeline's
+ * `surface.py` `DEM_NOTICE` words it.
+ */
+export const DEM_ATTRIBUTION =
+    'Copernicus DEM GLO-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved';
+
 /** Where a browse image stands: not copied yet, copied into our bucket, or the copy failed (shown as "preview unavailable"). */
 export const BROWSE_STATES = ['none', 'copied', 'failed'] as const;
 

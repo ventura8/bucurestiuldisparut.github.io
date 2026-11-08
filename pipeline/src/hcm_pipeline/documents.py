@@ -15,6 +15,7 @@ import numpy
 from hcm_pipeline.contract import GCP_ORIGINS, LAYER_VERSION_STATES, MAX_JOB_LOGS
 from hcm_pipeline.geo import Bounds, near_lng, to_mercator_arrays
 from hcm_pipeline.georef.lattice import LATTICE_MODELS, Lattice, LatticeNode
+from hcm_pipeline.georef.rpc import Rpc
 from hcm_pipeline.georef.transforms import Gcp
 from hcm_pipeline.model import (
     DocumentError,
@@ -156,6 +157,33 @@ def lattice_of(value: object) -> Lattice | None:
     return Lattice(member_of(record, "model", tuple(sorted(LATTICE_MODELS))), tuple(_lattice_node(node) for node in nodes))
 
 
+@dataclass(frozen=True)
+class TerrainInfo:
+    """`georef.terrain` (M15, *Terrain*): the frame was fitted over the surface model; the warp renders it through `rpc` with that model.
+    `relief_m`, what the terrain moved beyond a second-order fit (ground metres RMS); the source is GLO-30, whose notice the layer
+    carries."""
+
+    rpc: Rpc
+    relief_m: float
+
+    def as_record(self) -> Record:
+        return {"source": "glo30", "reliefM": metres(self.relief_m), "rpc": self.rpc.as_record()}
+
+
+def terrain_of(value: object) -> TerrainInfo | None:
+    """`georef.terrain`: None when absent; a malformed one is refused, never half read."""
+    if value is None:
+        return None
+    record = record_of(value, "terrain")
+    relief = record.get("reliefM")
+    if not isinstance(relief, int | float) or isinstance(relief, bool):
+        raise DocumentError("terrain.reliefM must be a number")
+    try:
+        return TerrainInfo(Rpc.of(record.get("rpc")), float(relief))
+    except ValueError as error:
+        raise DocumentError(str(error)) from error
+
+
 def _optional_metres(value: float | None) -> float | None:
     return None if value is None else metres(value)
 
@@ -176,13 +204,16 @@ class GeorefInfo:
     kind: str | None = None
     # M15 §1: the nodes a warp renders when the pairs cannot rebuild the map (the panoramic camera); None: the pairs' own fit.
     lattice: Lattice | None = None
+    # M15, *Terrain*: a frame fitted over the surface model renders through its RPC; None: flat.
+    terrain: TerrainInfo | None = None
 
     @classmethod
     def of(cls, value: object) -> GeorefInfo:
         record = record_of(value, "georef")
         method, transform = member_of(record, "method", GEOREF_METHODS), require_transform(text_of(record, "transform"))
-        lattice = lattice_of(record.get("lattice"))
-        return cls(method, transform, _gcps_of(record.get("gcps")), weak_corners=record.get("weakCorners") is True, lattice=lattice)
+        lattice, terrain = lattice_of(record.get("lattice")), terrain_of(record.get("terrain"))
+        gcps, weak = _gcps_of(record.get("gcps")), record.get("weakCorners") is True
+        return cls(method, transform, gcps, weak_corners=weak, lattice=lattice, terrain=terrain)
 
     def as_record(self) -> Record:
         return _without_none(
@@ -196,6 +227,7 @@ class GeorefInfo:
                 "checkpointKind": self.kind,
                 "weakCorners": True if self.weak_corners else None,
                 "lattice": None if self.lattice is None else self.lattice.as_record(),
+                "terrain": None if self.terrain is None else self.terrain.as_record(),
             }
         )
 

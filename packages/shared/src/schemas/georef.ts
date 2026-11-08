@@ -68,6 +68,34 @@ const latticeSchema = z.strictObject({
     nodes: z.array(z.strictObject({ pixel: pixelSchema, geo: latLngSchema })).length(LATTICE_NODES),
 });
 
+/** The twenty RPC00B coefficients of one rational polynomial (`pipeline/src/hcm_pipeline/georef/rpc.py`). */
+const rpcCoefficientsSchema = z.array(z.number()).length(20);
+
+const rpcAxesSchema = z.strictObject({
+    line: z.number(),
+    samp: z.number(),
+    lat: z.number(),
+    lng: z.number(),
+    height: z.number(),
+});
+
+/**
+ * M15, *Terrain*: a KH-9 panoramic frame fitted over the city's surface model (Copernicus DEM GLO-30, whose notice its layer carries).
+ * The warp renders it through `rpc` with that model; `reliefM`, what the terrain moved beyond what a second-order polynomial absorbs, ground metres RMS.
+ */
+const terrainSchema = z.strictObject({
+    source: z.literal('glo30'),
+    reliefM: z.number().min(0),
+    rpc: z.strictObject({
+        offset: rpcAxesSchema,
+        scale: rpcAxesSchema,
+        lineNum: rpcCoefficientsSchema,
+        lineDen: rpcCoefficientsSchema,
+        sampNum: rpcCoefficientsSchema,
+        sampDen: rpcCoefficientsSchema,
+    }),
+});
+
 /** One ground control point. */
 export const gcpSchema = z.strictObject({
     /** Stable across edits (`g1`, `g2`, ... or the matcher's `a017`): the residual table's row and the markers' label. */
@@ -118,6 +146,8 @@ export const georefSchema = z
         weakCorners: z.boolean().optional(),
         /** M15 §1: the nodes the warp renders a map through when its pairs cannot rebuild it; absent, the pairs' own fit renders. */
         lattice: latticeSchema.optional(),
+        /** M15, *Terrain*: rendered through its RPC over the surface model; absent, flat. Saving points drops it with the lattice. */
+        terrain: terrainSchema.optional(),
     })
     .refine(
         (georef) => georef.method === 'embedded' || enabledGcps(georef.gcps) >= MIN_GCPS[georef.transform],

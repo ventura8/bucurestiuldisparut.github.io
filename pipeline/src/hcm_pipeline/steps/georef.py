@@ -34,7 +34,7 @@ from hcm_pipeline.calibrate.reach import measured_pct
 from hcm_pipeline.calibrate.rival import proved
 from hcm_pipeline.calibrate.stored import StoredTiles
 from hcm_pipeline.contract import MIN_GCPS, Errors
-from hcm_pipeline.documents import GeorefInfo, ScanInfo
+from hcm_pipeline.documents import GeorefInfo, ScanInfo, TerrainInfo
 from hcm_pipeline.frames import Segment
 from hcm_pipeline.geo import FloatArray, Grid, fnv1a, ground_scale, to_mercator
 from hcm_pipeline.georef.autogcp import Decision, GcpSuggestions, decide
@@ -49,6 +49,7 @@ from hcm_pipeline.rasters import read_band, to_uint8
 from hcm_pipeline.steps.aligning import Joining, joined_to_held
 from hcm_pipeline.steps.common import Sentinel2, city_window, gdal_step, grey_reference, osm_features
 from hcm_pipeline.steps.locate import CALIBRATION_FILE
+from hcm_pipeline.steps.relief import city_heights, terrain_summary
 from hcm_pipeline.store import DELETE
 
 NEEDS_POINTS: Final = "the scan needs the admin's points (georeferencer)"
@@ -64,8 +65,9 @@ SEED_MAX_SEARCH_M: Final = 2000.0
 SEED_SEARCH_RMSE_SHARE: Final = 3.0
 
 
-def recorded(fitted: Fit, method: str, lattice: Lattice | None = None) -> GeorefInfo:
-    """The version's `georef` for a fit; `lattice`, the nodes of a map its pairs cannot rebuild (M15 §1)."""
+def recorded(fitted: Fit, method: str, lattice: Lattice | None = None, terrain: TerrainInfo | None = None) -> GeorefInfo:
+    """The version's `georef` for a fit; `lattice`, the nodes of a map its pairs cannot rebuild (M15 §1); `terrain`, the RPC a map over
+    terrain renders through (M15, *Terrain*)."""
     kind = fitted.checkpoint_kind
     return GeorefInfo(
         method,
@@ -76,7 +78,14 @@ def recorded(fitted: Fit, method: str, lattice: Lattice | None = None) -> Georef
         fitted.checkpoint_count,
         kind=kind,
         lattice=lattice,
+        terrain=terrain,
     )
+
+
+def automatic(found: Calibrated) -> GeorefInfo:
+    """A proved frame's `georef`: its fit, its lattice and, over terrain, its RPC."""
+    terrain = None if found.terrain is None else TerrainInfo(found.terrain.rpc, found.terrain.relief_m)
+    return recorded(found.fitted, AUTO_METHOD, found.lattice, terrain)
 
 
 def wait_for_points(ctx: JobContext, pairs: int, fields: Mapping[str, object] | None = None, code: str = Errors.NO_MATCH) -> Waiting:
@@ -320,9 +329,10 @@ class GeorefStep:
         found = self._first_fit(ctx, corners, scan)
         if found is None:
             return None
-        joining = Joining(found[0], scan, recorded(found[1].fitted, AUTO_METHOD, found[1].lattice), job_seed(ctx))
+        joining = Joining(found[0], scan, automatic(found[1]), job_seed(ctx))
         fitted = joined_to_held(ctx, joining, found[1])
-        return self._fitted(ctx, recorded(fitted.fitted, AUTO_METHOD, fitted.lattice), {"calibration": _figures(ctx, fitted)})
+        ctx.log.info(terrain_summary(fitted, found[0]), self.name)
+        return self._fitted(ctx, automatic(fitted), {"calibration": _figures(ctx, fitted)})
 
     def _first_fit(self, ctx: JobContext, corners: GeorefInfo, scan: ScanInfo) -> tuple[Proved, Calibrated] | None:
         """The proved frame's tiles and its fit alone; None when it has none or they do not fit."""
@@ -335,7 +345,7 @@ class GeorefStep:
         if stored is None:
             return None
         box = ScanBox(stored.left, stored.top, scan.width, scan.height, stored.rad_per_px)
-        return Proved(stored.rows, stored.order, box, stored.middle_lat)
+        return Proved(stored.rows, stored.order, box, stored.middle_lat, None if box.rad_per_px is None else city_heights(ctx))
 
     def _remeasured_tiles(self, ctx: JobContext, corners: GeorefInfo, scan: ScanInfo) -> Proved | None:
         """The work folder is gone (a resume): the tiles again, from the proved corners."""

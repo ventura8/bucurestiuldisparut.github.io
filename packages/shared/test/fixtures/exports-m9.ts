@@ -17,4 +17,6 @@ export const M9_EXPORTS = [
     'ALIGNMENT_STATUSES',
     'alignedWith',
     'calibrationAlignmentSchema',
+    // M15, *Terrain*: the notice a layer fitted over the Copernicus DEM carries.
+    'DEM_ATTRIBUTION',
 ] as const;

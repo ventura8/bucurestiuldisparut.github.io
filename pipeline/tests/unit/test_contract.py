@@ -101,7 +101,7 @@ def test_happy_path_a_jobs_scratch_prefix_ends_with_a_slash() -> None:
     ("builder", "args"),
     [
         (paths.version, ("bucharest", "layer", "v1", "secrets.json")),
-        (paths.reference, ("bucharest", "dem", "0f3c9a2e")),
+        (paths.reference, ("bucharest", "srtm", "0f3c9a2e")),
         (paths.browse, ("declass1", "E1")),
     ],
 )

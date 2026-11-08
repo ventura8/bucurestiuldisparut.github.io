@@ -45,6 +45,11 @@
             "builder": "reference",
             "args": ["bucharest", "osm", "0f3c9a2e"],
             "path": "reference/bucharest/osm/0f3c9a2e.geojson"
+        },
+        {
+            "builder": "reference",
+            "args": ["bucharest", "dem", "0f3c9a2e"],
+            "path": "reference/bucharest/dem/0f3c9a2e.tif"
         }
     ],
     "refused": [

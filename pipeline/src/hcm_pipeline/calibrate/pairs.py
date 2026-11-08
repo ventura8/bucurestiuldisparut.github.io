@@ -26,6 +26,7 @@ from hcm_pipeline.calibrate.dense import PROOF_RANSAC_M
 from hcm_pipeline.calibrate.joint import PlaceFn, Verdict
 from hcm_pipeline.calibrate.poly import Mask, Poly, fit_poly, ground_errors, rmse_m, robust_fit
 from hcm_pipeline.calibrate.proof import CHECK_FOLDS, CHECK_GROSS_M, PAIR_CELL_GROUND_M, cells_of, strongest_checks
+from hcm_pipeline.calibrate.terrain import TerrainFit
 from hcm_pipeline.calibrate.together import PANORAMIC_MODEL
 from hcm_pipeline.contract import MIN_GCPS
 from hcm_pipeline.geo import FloatArray, ground_scale, to_lnglat_arrays, to_mercator
@@ -176,7 +177,7 @@ def _gcps(rows: FloatArray, offset: tuple[int, int], enabled: bool, first: int) 
 @dataclass(frozen=True)
 class Calibrated:
     """The frame's automatic georeference: the fit, its pairs and checks, the blocked figure and what was dropped; `lattice`, the nodes
-    of a map the pairs cannot rebuild (a panoramic camera's), else None."""
+    of a map the pairs cannot rebuild (a panoramic camera's), else None; `terrain`, what renders a map over terrain (`joining.py`)."""
 
     fitted: Fit
     cross_validated_m: float | None
@@ -185,6 +186,7 @@ class Calibrated:
     alignment: tuple[Verdict, ...] = ()
     # `calibration.alignment` as the step records it (each partner's year added): `steps/georef.py`.
     alignment_record: Mapping[str, object] | None = None
+    terrain: TerrainFit | None = None
 
 
 @dataclass(frozen=True)
@@ -252,11 +254,13 @@ def _residual_rmse(gcps: tuple[Gcp, ...], enabled: bool) -> float | None:
 
 @dataclass(frozen=True)
 class Mapped:
-    """A map the pairs cannot rebuild: film pixels to places, its lattice's model and its blocked figure."""
+    """A map the pairs cannot rebuild: film pixels to places, its lattice's model and its blocked figure; `flat`, the map its lattice
+    samples when it is not `to_places` (a frame over terrain: the flat map its RPC takes to the ground)."""
 
     to_places: PlaceFn
     model: str
     figure: float | None
+    flat: PlaceFn | None = None
 
 
 def _panoramic(chosen: Chosen, scan: ScanBox, camera: PanoramicMap, middle_lat: float) -> Calibrated | None:
@@ -275,7 +279,7 @@ def mapped_calibration(chosen: Chosen, scan: ScanBox, mapped: Mapped, middle_lat
     gcps = _map_residuals(sample.gcps, mapped.to_places, offset)
     checks = len(chosen.checks)
     fitted = Fit(sample.transform, gcps, _residual_rmse(gcps, True) or 0.0, _residual_rmse(gcps, False), checks)
-    lattice = Lattice(mapped.model, sampled(_in_scan(mapped.to_places, offset), scan.width, scan.height))
+    lattice = Lattice(mapped.model, sampled(_in_scan(mapped.flat or mapped.to_places, offset), scan.width, scan.height))
     return Calibrated(fitted, mapped.figure, chosen.dropped, lattice)
 
 

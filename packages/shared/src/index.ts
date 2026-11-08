@@ -192,6 +192,7 @@ export type {
 } from './schemas/firestore-ops.js';
 export {
     BROWSE_STATES,
+    DEM_ATTRIBUTION,
     RANKING_VERSION,
     RANKING_WEIGHTS,
     RANK_REASONS,

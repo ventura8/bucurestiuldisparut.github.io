@@ -11647,6 +11647,39 @@
             "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Tests: pipeline/tests/integration/test_joint_job.py."
         },
         {
+            "id": "S-P06-HAPPY-TERRAIN",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A KH-9 panoramic frame over relief is fitted over the city's surface model and renders through an RPC",
+            "asserts": "a proved KH-9 pan frame whose camera holds, over the city's Copernicus DEM GLO-30 (fetched for the city window from the public tiles, warped to 30 m, averaged over 900 m, cached as reference/{city}/dem/{key}.tif) showing 1 m or more of relief beyond a second-order fit -> its tiles and ties fitted on the places its film shows them (height times the camera's view tan, from the nadir), its map back to the ground through the heights, alone or joined; georef.terrain {source glo30, reliefM, rpc} with an RPC00B that holds the map within 0.5 px over the scan and every height; the lattice is the flat map; the warp renders through -rpc with RPC_DEM (100 m of ground shown 50 m east lands 50 m west of the flat render), the surface cached once; the log says so; the layer's attribution adds the DEM's notice",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 terrain (docs/research/M15-calibration-accuracy.md, Terrain). Tests: pipeline/tests/unit/test_calibrate_terrain.py, pipeline/tests/unit/test_georef_rpc.py, pipeline/tests/integration/test_terrain_job.py, packages/shared/test/schemas/imagery.test.ts, functions/test/imagery/finalize.test.ts."
+        },
+        {
+            "id": "S-P06-BAD-TERRAIN-NEGLIGIBLE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A flat city, a frame seen near nadir, or a frame without a camera is fitted flat, exactly as before",
+            "asserts": "relief under 1 m beyond a second-order fit (a level surface, a gentle rise), no panoramic camera, or a camera that does not hold -> no georef.terrain and the very georeference the frame gets with no surface model; a map no rational cubic holds gives no RPC; a malformed RPC record is refused; the log says the frame was fitted flat and why",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 terrain (docs/research/M15-calibration-accuracy.md, Terrain). Tests: pipeline/tests/unit/test_calibrate_terrain.py, pipeline/tests/unit/test_georef_rpc.py, pipeline/tests/integration/test_terrain_job.py, packages/shared/test/schemas/imagery.test.ts, functions/test/imagery/finalize.test.ts."
+        },
+        {
+            "id": "S-P06-BAD-TERRAIN-UNAVAILABLE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Without the surface model a frame is fitted and rendered flat, with a warning",
+            "asserts": "no GLO-30 tile readable over the city, a window under 2 x 2 cells, an address the guard refuses (a real one under the emulators, a non-public one) -> no surface, a warning in the job log, the frame fitted flat; a frame stored with georef.terrain whose surface model is gone renders through its lattice, flat, and the log says so; a terrain record of another source or with too few coefficients is refused by the schema",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 terrain (docs/research/M15-calibration-accuracy.md, Terrain). Tests: pipeline/tests/unit/test_calibrate_terrain.py, pipeline/tests/unit/test_georef_rpc.py, pipeline/tests/integration/test_terrain_job.py, packages/shared/test/schemas/imagery.test.ts, functions/test/imagery/finalize.test.ts."
+        },
+        {
             "id": "S-A17-BAD-NOT-PROVED",
             "behaviour": "A17",
             "area": "admin",

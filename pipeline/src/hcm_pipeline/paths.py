@@ -17,7 +17,9 @@ UID: Final = re.compile(r"[A-Za-z0-9_-]{1,128}")
 DELIVERY_FILE: Final = re.compile(r"\w[\w.-]{0,99}")
 WORK_FILE: Final = re.compile(r"[A-Za-z0-9_-][A-Za-z0-9_.-]{0,99}(?:/[A-Za-z0-9_-][A-Za-z0-9_.-]{0,99})?")
 REFERENCE_KEY: Final = re.compile(r"[a-f0-9]{8,64}")
-REFERENCE_KINDS: Final = ("s2", "osm")
+REFERENCE_KINDS: Final = ("s2", "osm", "dem")
+# The reference kinds kept as GeoTIFF; OSM is GeoJSON.
+RASTER_REFERENCE_KINDS: Final = frozenset({"s2", "dem"})
 
 
 class PathError(ValueError):
@@ -69,6 +71,6 @@ def version(city_id: str, layer_id: str, version_id: str, file: str) -> str:
 
 
 def reference(city_id: str, kind: str, key: str) -> str:
-    """`reference/{city}/{s2|osm}/{key}.{tif|geojson}`: the reference cache by window key."""
-    extension = "tif" if _member(kind, REFERENCE_KINDS) == "s2" else "geojson"
+    """`reference/{city}/{s2|osm|dem}/{key}.{tif|geojson}`: the reference cache by window key."""
+    extension = "tif" if _member(kind, REFERENCE_KINDS) in RASTER_REFERENCE_KINDS else "geojson"
     return f"reference/{_segment(city_id, CITY_ID)}/{kind}/{_segment(key, REFERENCE_KEY)}.{extension}"
