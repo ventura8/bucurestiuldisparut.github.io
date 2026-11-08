@@ -362,23 +362,32 @@ export interface MyLocationDrawn {
     readonly dot: LngLat | null;
     /** Whether the accuracy circle (or the heading cone) is drawn. */
     readonly area: boolean;
+    /** The geometry type of each feature the dot layer draws: one Point, never a dot at each vertex of the circle. */
+    readonly dots: readonly string[];
+    /** The area layer's type ('fill': the circle is a translucent fill, not dots). */
+    readonly areaType: string | null;
 }
 
 /** Runs in the page: on each live map (a removed one throws and is skipped), the dot and the circle it draws. */
 function myLocationInPage(): MyLocationDrawn[] {
     interface QueryMap {
-        getLayer(id: string): unknown;
+        getLayer(id: string): { type: string } | undefined;
         queryRenderedFeatures(options: { layers: string[] }): { geometry?: { type: string; coordinates?: unknown } }[];
     }
     const drawn = (map: QueryMap): MyLocationDrawn | null => {
         try {
             if (map.getLayer('hcm-my-location-dot') === undefined) {
-                return { dot: null, area: false };
+                return { dot: null, area: false, dots: [], areaType: null };
             }
-            const [dot] = map.queryRenderedFeatures({ layers: ['hcm-my-location-dot'] });
-            const coordinates = dot?.geometry?.coordinates as [number, number] | undefined;
+            const dots = map.queryRenderedFeatures({ layers: ['hcm-my-location-dot'] });
+            const coordinates = dots[0]?.geometry?.coordinates as [number, number] | undefined;
             const area = map.queryRenderedFeatures({ layers: ['hcm-my-location-area'] }).length > 0;
-            return { dot: coordinates === undefined ? null : [coordinates[0], coordinates[1]], area };
+            return {
+                dot: coordinates === undefined ? null : [coordinates[0], coordinates[1]],
+                area,
+                dots: dots.map((feature) => feature.geometry?.type ?? ''),
+                areaType: map.getLayer('hcm-my-location-area')?.type ?? null,
+            };
         } catch {
             return null;
         }

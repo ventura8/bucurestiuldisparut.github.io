@@ -18,8 +18,9 @@ export interface MyLocationFix {
 }
 
 export const MY_LOCATION_SOURCE = 'hcm-my-location';
-/** The accuracy circle and the heading cone (one fill layer, each feature with its own opacity). */
+/** The accuracy circle and the heading cone (one fill layer, each feature with its own opacity; a fill draws no Point). */
 export const MY_LOCATION_AREA_LAYER = 'hcm-my-location-area';
+/** The dot: filtered to the Point, or the circle layer would draw a dot at each vertex of the circle and the cone. */
 export const MY_LOCATION_DOT_LAYER = 'hcm-my-location-dot';
 
 const BLUE = '#1a73e8';
@@ -73,6 +74,8 @@ function addMyLocation(map: MapboxMap, data: unknown): void {
         ...common,
         id: MY_LOCATION_DOT_LAYER,
         type: 'circle',
+        // A circle layer draws a circle at every vertex of a polygon in its source: the dot keeps to the Point alone.
+        filter: ['==', ['geometry-type'], 'Point'],
         paint: {
             'circle-radius': 7,
             'circle-color': BLUE,

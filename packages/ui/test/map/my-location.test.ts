@@ -92,6 +92,19 @@ describe('setMyLocation on the viewer map', () => {
         expect(port.mapLoadCount).toBe(1);
     });
 
+    it('badPath_theDotLayerDrawsThePointOnlyNotACircleAtEveryVertexOfTheAccuracyCircleOrTheCone', async () => {
+        // The owner, 2026-11-08: "a lot of blue dots around the centre one". A circle layer draws a circle at every vertex of
+        // a polygon in its source, so the dot layer must keep to the Point; the circle and the cone are fills only.
+        const { gl, port } = await mounted();
+        port.setMyLocation({ ...FIX, heading: 90 });
+
+        const filter = gl.map.layers.get(MY_LOCATION_DOT_LAYER)?.['filter'];
+        expect(filter).toEqual(['==', ['geometry-type'], 'Point']);
+        const drawnAsDots = featuresOf(gl.map.getSource(MY_LOCATION_SOURCE)?.data).filter((feature) => feature.geometry.type === 'Point');
+        expect(drawnAsDots).toHaveLength(1);
+        expect(gl.map.layers.get(MY_LOCATION_AREA_LAYER)).toMatchObject({ type: 'fill' });
+    });
+
     it('happyPath_nullEmptiesTheSource', async () => {
         const { gl, port } = await mounted();
         port.setMyLocation(FIX);
