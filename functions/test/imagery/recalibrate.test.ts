@@ -88,7 +88,7 @@ async function rendered(found: ImageryWorld, id: string, recalibration: Recalibr
 }
 
 describe('imagery.recalibrate', () => {
-    it('happyPath_refineOnAPublishedLayerStartsANewVersionThatHoldsTheLayer @S-A80-HAPPY-REFINE', async () => {
+    it('happyPath_refineOnAPublishedLayerStartsANewVersionThatHoldsTheLayer @S-A89-HAPPY-REFINE', async () => {
         const found = await world();
 
         const response = await recalibrate(found, {});
@@ -105,14 +105,14 @@ describe('imagery.recalibrate', () => {
         expect(await readLayer(found, LAYER)).toMatchObject({ currentVersion: CURRENT, pendingVersion: response.jobId });
     });
 
-    it('badPath_aSecondRecalibrationWhileOneRunsIsBusy @S-A80-BAD-BUSY', async () => {
+    it('badPath_aSecondRecalibrationWhileOneRunsIsBusy @S-A89-BAD-BUSY', async () => {
         const found = await world();
         await recalibrate(found, {});
 
         expect(await codeOf(recalibrate(found, {}))).toBe('apiError.layers.busy');
     });
 
-    it('happyPath_roughPointsTravelWithTheNewVersion @S-A81-HAPPY-POINTS', async () => {
+    it('happyPath_roughPointsTravelWithTheNewVersion @S-A89-HAPPY-POINTS', async () => {
         const found = await world();
 
         const response = await recalibrate(found, { route: 'points', points: ROUGH });
@@ -128,7 +128,7 @@ describe('imagery.recalibrate', () => {
         ],
         ['points without their route', { points: ROUGH }, 'apiError.invalidRequest'],
         ['the points route without points', { route: 'points' }, 'apiError.invalidRequest'],
-    ])('badPath_refusedBeforeAnythingIsWritten_%s @S-A81-BAD-REFUSED', async (_case, data, code) => {
+    ])('badPath_refusedBeforeAnythingIsWritten_%s @S-A89-BAD-POINTS-REFUSED', async (_case, data, code) => {
         const found = await world();
 
         expect(await codeOf(recalibrate(found, data))).toBe(code);
@@ -141,13 +141,13 @@ describe('imagery.recalibrate', () => {
         ['a version without its scan', { scan: undefined }, 'apiError.imagery.noScan'],
     ];
 
-    it.each(refused)('badPath_%sIsNotRecalibrated @S-A84-BAD-JOIN', async (_case, version, code) => {
+    it.each(refused)('badPath_%sIsNotRecalibrated @S-A89-BAD-JOIN', async (_case, version, code) => {
         const found = await world('published', version);
 
         expect(await codeOf(recalibrate(found, {}))).toBe(code);
     });
 
-    it('badPath_aVersionNoLongerWaitingIsRefused @S-A84-BAD-JOIN', async () => {
+    it('badPath_aVersionNoLongerWaitingIsRefused @S-A89-BAD-JOIN', async () => {
         const found = await world('published', {
             state: 'superseded',
             own: { path: 'tiles/x.pmtiles', url: 'https://x.test/a', bytes: 1, publishedAt: at(NOW) },
@@ -158,7 +158,7 @@ describe('imagery.recalibrate', () => {
 });
 
 describe('a version waiting for approval, recalibrated', () => {
-    it('happyPath_itStaysUntilTheNewOneIsRenderedAndIsThenReplaced @S-A83-HAPPY-REPLACES-WAITING', async () => {
+    it('happyPath_itStaysUntilTheNewOneIsRenderedAndIsThenReplaced @S-A89-HAPPY-REPLACES-WAITING', async () => {
         const found = await world('awaiting_approval');
 
         const { jobId } = await recalibrate(found, {});
@@ -181,7 +181,7 @@ describe('a version waiting for approval, recalibrated', () => {
         expect((await readVersion(found, jobId))?.state).toBe('awaiting_approval');
     });
 
-    it('badPath_aRefineThatDeclinesLeavesItWaitingWithTheLayer @S-A83-BAD-DECLINE-KEEPS-WAITING', async () => {
+    it('badPath_aRefineThatDeclinesLeavesItWaitingWithTheLayer @S-A89-BAD-DECLINE-KEEPS-WAITING', async () => {
         const found = await world('awaiting_approval');
         const { jobId } = await recalibrate(found, {});
         const before = await required(readJob(found, jobId));
@@ -199,7 +199,7 @@ describe('a version waiting for approval, recalibrated', () => {
         expect((await readLayer(found, LAYER))?.pendingVersion).toBe(CURRENT);
     });
 
-    it('badPath_aCurrentVersionApprovedMeanwhileIsLeftAsItIs @S-A83-BAD-DECLINE-KEEPS-WAITING', async () => {
+    it('badPath_aCurrentVersionApprovedMeanwhileIsLeftAsItIs @S-A89-BAD-DECLINE-KEEPS-WAITING', async () => {
         const found = await world('awaiting_approval');
         const { jobId } = await recalibrate(found, {});
         await seedVersion(found, CURRENT, { ...(await required(readVersion(found, CURRENT))), state: 'published', mapbox: MAPBOX });
@@ -212,7 +212,7 @@ describe('a version waiting for approval, recalibrated', () => {
         expect((await readLayer(found, LAYER))?.pendingVersion).toBe(jobId);
     });
 
-    it('badPath_aRefineOfAPublishedLayerThatDeclinesReleasesTheLayer @S-A80-BAD-NOT-IMPROVED', async () => {
+    it('badPath_aRefineOfAPublishedLayerThatDeclinesReleasesTheLayer @S-A89-BAD-NOT-IMPROVED', async () => {
         const found = await world();
         const { jobId } = await recalibrate(found, {});
         const before = await required(readJob(found, jobId));
@@ -251,7 +251,7 @@ describe('Approve of a recalibration', () => {
         return approveFunction(() => found.deps).run(adminCall({ cityId: CITY, versionId, ...data }));
     }
 
-    it('happyPath_aBetterFitIsApprovedInOneClickButNeverPublishesItself @S-A82-HAPPY-APPROVE-BETTER', async () => {
+    it('happyPath_aBetterFitIsApprovedInOneClickButNeverPublishesItself @S-A89-HAPPY-APPROVE-BETTER', async () => {
         const { found, jobId } = await recalibrated({ route: 'auto', before: { rmseM: 18, checks: 20 }, after: { rmseM: 12, checks: 20 } });
 
         expect((await readVersion(found, jobId))?.state).toBe('awaiting_approval');
@@ -261,7 +261,7 @@ describe('Approve of a recalibration', () => {
     it.each([
         ['worse', { route: 'manual', before: { rmseM: 12, checks: 5 }, after: { rmseM: 12.5, checks: 5 } }],
         ['not compared', { route: 'manual' }],
-    ] as const)('badPath_aFitThatIs_%s_needsTheOwnersChoice @S-A82-BAD-WORSE-NEEDS-CHOICE', async (_case, recalibration) => {
+    ] as const)('badPath_aFitThatIs_%s_needsTheOwnersChoice @S-A89-BAD-WORSE-NEEDS-CHOICE', async (_case, recalibration) => {
         const { found, jobId } = await recalibrated(recalibration);
 
         expect(await codeOf(approve(found, jobId))).toBe('apiError.imagery.notBetter');

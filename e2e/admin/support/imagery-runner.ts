@@ -33,6 +33,8 @@ export interface ImageryScript {
     readonly join?: readonly StandinAttempt[];
     /** M8: the attempts of one frame's import, by its entity id, in place of `attempts`. */
     readonly entities?: Readonly<Record<string, readonly StandinAttempt[]>>;
+    /** M16: the attempts of a `regeoref` job (a recalibration, new points), in place of `attempts`. */
+    readonly regeoref?: readonly StandinAttempt[];
 }
 
 /** One run as the runner played it (`GET /__imagery/runs?city=`). */
@@ -84,7 +86,8 @@ async function dispatched(city: string, jobId: string, execution: PipelineExecut
 function scriptedAttempts(script: ImageryScript | undefined, job: Readonly<Record<string, unknown>>): readonly StandinAttempt[] {
     const entityId = (job['params'] as { entityId?: string } | undefined)?.entityId ?? '';
     const own = job['type'] === 'layer-join' ? script?.join : script?.entities?.[entityId];
-    return own ?? script?.attempts ?? [];
+    const regeoref = job['type'] === 'regeoref' ? script?.regeoref : undefined;
+    return regeoref ?? own ?? script?.attempts ?? [];
 }
 
 export class ImageryRunner implements CloudRunRunner {

@@ -36,7 +36,7 @@ def exact() -> Fit:
 
 @pytest.mark.parametrize(("after", "better"), [(10.0 - RECALIBRATE_MIN_GAIN_M, True), (9.5, False), (12.0, False)])
 def test_happy_path_better_means_by_the_gain_on_the_same_checks(after: float, better: bool) -> None:
-    """Scenarios: S-P07-HAPPY-REFINE, S-P07-BAD-NOT-IMPROVED"""
+    """Scenarios: S-P19-HAPPY-REFINE, S-P19-BAD-NOT-IMPROVED"""
     figures = Compared(Figure(10.0, 5), Figure(after, 5))
 
     assert figures.better is better
@@ -45,7 +45,7 @@ def test_happy_path_better_means_by_the_gain_on_the_same_checks(after: float, be
 
 
 def test_bad_path_too_few_disabled_pairs_compare_nothing() -> None:
-    """Scenarios: S-P07-HAPPY-MANUAL-FIGURES"""
+    """Scenarios: S-P19-HAPPY-MANUAL-FIGURES"""
     few = GeorefInfo("gcps", "affine", (*gcps()[:5], *(gcp for gcp in gcps(enabled=False)[5:])), 0.0, 0.0, 2)
 
     assert compared(exact(), few) is None
@@ -55,7 +55,7 @@ def test_bad_path_too_few_disabled_pairs_compare_nothing() -> None:
 
 
 def test_happy_path_one_rough_point_moves_the_whole_start() -> None:
-    """Scenarios: S-P07-HAPPY-POINTS"""
+    """Scenarios: S-P19-HAPPY-POINTS"""
     point = RoughPoint(500.0, 400.0, 44.4 - 400 * 1e-5, 26.1 + 500 * 1e-5 + 0.001)
 
     start = bent_start(exact(), [point])
@@ -65,7 +65,7 @@ def test_happy_path_one_rough_point_moves_the_whole_start() -> None:
 
 
 def test_bad_path_rough_points_in_a_line_and_no_pairs_refuse() -> None:
-    """Scenarios: S-P07-BAD-REFUSED"""
+    """Scenarios: S-P19-BAD-REFUSED"""
     line = [RoughPoint(float(index), float(index), 44.4, 26.1 + index * 1e-5) for index in range(3)]
 
     with pytest.raises(StepFailedError) as raised:
@@ -75,7 +75,7 @@ def test_bad_path_rough_points_in_a_line_and_no_pairs_refuse() -> None:
 
 
 def test_happy_path_refine_searches_as_far_as_the_current_figure_allows() -> None:
-    """Scenarios: S-P07-HAPPY-REFINE"""
+    """Scenarios: S-P19-HAPPY-REFINE"""
     current = exact()
 
     assert search_m(current, current.transform, []) == PROOF_SEARCH_GROUND_M
@@ -84,13 +84,13 @@ def test_happy_path_refine_searches_as_far_as_the_current_figure_allows() -> Non
 
 
 def test_bad_path_a_malformed_rough_point_is_a_document_error() -> None:
-    """Scenarios: S-P07-BAD-REFUSED"""
+    """Scenarios: S-P19-BAD-REFUSED"""
     with pytest.raises(DocumentError):
         RoughPoint.of({"pixel": {"x": 1}, "geo": {"lat": 44.4, "lng": 26.1}})
 
 
 def test_happy_path_a_version_reads_its_recalibration() -> None:
-    """Scenarios: S-P07-HAPPY-REFINE"""
+    """Scenarios: S-P19-HAPPY-REFINE"""
     record = {"layerId": "l1", "origin": "regeoref", "state": "processing", "recalibration": {"route": "auto"}}
 
     assert Version.of("v1", record).recalibration == {"route": "auto"}

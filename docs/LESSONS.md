@@ -2641,3 +2641,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the live region gets the message `ANNOUNCE_DELAY_MS` after the snackbar shows (lesson 20's fix), so a page slow to reach the assertion sees both; the other projects asserted before the announcement.
     - Found by: the targeted Playwright run of the four tracks' specs. Fix: the assertion takes the text that is not in a live region (`:not([aria-live])`), as `smoke.spec.ts` already does.
     - **A snackbar's message is asserted without its live region; the live region is asserted on its own when the announcement is the point.**
+442. **A helper shared by a lazy chunk and the chunk it loads made Rolldown emit a runtime chunk with no budget.**
+    - Seen: 2026-11-08, track/recal's build: `rolldown-runtime-<hash>.js` (0.2 KB) appeared beside `recalibrate-card`, and the budget gate failed on a chunk without a row.
+    - Cause: `recalibratable.ts` was imported statically by both `lazy-recalibrate.ts` (in `approval-map`) and `recalibrate-card.ts` (its own chunk), so the second chunk imported from the first and Rolldown hoisted its namespace helper into a chunk of its own.
+    - Found by: the bundle budget. Fix: the loader decides and passes the answer (`recalibrateCard(..., offered)`); the lazy chunk imports nothing from the chunk that loads it.
+    - **A lazy chunk imports nothing from the chunk that loads it: the loader passes what it decided.**

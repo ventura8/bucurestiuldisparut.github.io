@@ -189,6 +189,9 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # fetches: 1.3 KB measured then. The total stays within its 650 KB and no row rose.
     "approval-map": 5,
     "mapbox-choices": 2,
+    # M16 (docs/research/M16-recalibrate.md §7): a version's Calibrate again block and a recalibration's figures, fetched only on a page that
+    # offers it or shows them: 0.9 KB measured on 2026-11-08 plus about 20 %, rounded up. No row rose.
+    "recalibrate-card": 2,
 }
 # The entry and every chunk together. 620 until M7 (2026-11-02), 630 since: the total counts every lazy chunk, also those
 # loaded only on use, and M7's `worker` chunk (5.5 KB, loaded only by the Jobs page, the pipeline card and a version page)

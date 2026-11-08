@@ -1,5 +1,5 @@
 /**
- * What the georeferencer sends: Save's request, and M16 (`docs/research/M16-recalibrate.md` §0, §3; S-A81-*): Snap my points. On a published version or one waiting for approval, the points
+ * What the georeferencer sends: Save's request, and M16 (`docs/research/M16-recalibrate.md` §0, §3; S-A89-*): Snap my points. On a published version or one waiting for approval, the points
  * the admin placed since the page opened (new manual pairs) are sent as rough points; the pipeline bends the current fit to them and the
  * dense matching snaps them and spreads tiles around them, in a new version.
  */

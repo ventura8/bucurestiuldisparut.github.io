@@ -244,7 +244,7 @@ describe('worker.step and a refine that declines (M16)', () => {
         params: { before: '17.2', after: '17.0' },
     };
 
-    it('happyPath_aRefineWithNothingBetterEndsCancelledWithItsReason @S-A80-BAD-NOT-IMPROVED', async () => {
+    it('happyPath_aRefineWithNothingBetterEndsCancelledWithItsReason @S-A89-BAD-NOT-IMPROVED', async () => {
         const world = await held({ type: 'regeoref', params: { basedOn: 'v-current' } });
 
         await expect(
@@ -256,7 +256,7 @@ describe('worker.step and a refine that declines (M16)', () => {
         await expect(readJob(world, JOB)).resolves.toMatchObject({ status: 'cancelled', error: { code: declined.code } });
     });
 
-    it('badPath_noOtherRunEndsCancelledUnasked @S-A80-BAD-NOT-IMPROVED', async () => {
+    it('badPath_noOtherRunEndsCancelledUnasked @S-A89-BAD-NOT-IMPROVED', async () => {
         const importing = await held();
         const failed = await held({ type: 'regeoref', params: { basedOn: 'v-current' } });
         const failure = { code: 'apiError.internal', message: 'x' };

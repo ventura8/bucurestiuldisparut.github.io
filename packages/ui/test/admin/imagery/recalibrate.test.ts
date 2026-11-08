@@ -45,7 +45,7 @@ describe('<hcm-imagery-page>: calibrate again', () => {
     });
     afterEach(cleanup);
 
-    it('happyPath_aWaitingVersionOffersRefineAndRoughPointsAndRefineOpensTheNewVersion @S-A80-HAPPY-REFINE', async () => {
+    it('happyPath_aWaitingVersionOffersRefineAndRoughPointsAndRefineOpensTheNewVersion @S-A89-HAPPY-REFINE', async () => {
         const { element, area, app } = await shown(versionView());
         const block = deep(element, 'section.recalibrate');
 
@@ -63,13 +63,13 @@ describe('<hcm-imagery-page>: calibrate again', () => {
         ['a join', versionView({ origin: 'join', hasScan: false, georef: null })],
         ['an upload on its own georeference', versionView({ georef: { ...(versionView().georef as never), method: 'embedded' } })],
         ['a failed version', versionView({ state: 'failed' })],
-    ])('badPath_%sIsNotOfferedIt @S-A84-BAD-JOIN', async (_case, version) => {
+    ])('badPath_%sIsNotOfferedIt @S-A89-BAD-JOIN', async (_case, version) => {
         const { element } = await shown(version);
 
         expect(deepAll(element, 'section.recalibrate')).toEqual([]);
     });
 
-    it('happyPath_aRecalibrationShowsBothFitsOnTheSameChecksAndSwapsTheMap @S-A82-HAPPY-APPROVE-BETTER', async () => {
+    it('happyPath_aRecalibrationShowsBothFitsOnTheSameChecksAndSwapsTheMap @S-A89-HAPPY-APPROVE-BETTER', async () => {
         const current = versionView({ id: 'job-current', state: 'published' });
         const { element, area } = await shown(versionView({ recalibration: BETTER, basedOn: 'job-current' }), current);
 
@@ -86,7 +86,7 @@ describe('<hcm-imagery-page>: calibrate again', () => {
         ['worse', WORSE, 'Not better than the current one'],
         ['unmeasured', { route: 'manual' }, 'Not measured on the same checks'],
     ] as const)(
-        'badPath_aFitThatIs_%s_isApprovedOnlyByTheOwnersChoice @S-A82-BAD-WORSE-NEEDS-CHOICE',
+        'badPath_aFitThatIs_%s_isApprovedOnlyByTheOwnersChoice @S-A89-BAD-WORSE-NEEDS-CHOICE',
         async (verdict, recalibration, words) => {
             const { element, area } = await shown(versionView({ recalibration, basedOn: 'job-current' }));
 
@@ -101,7 +101,7 @@ describe('<hcm-imagery-page>: calibrate again', () => {
         },
     );
 
-    it('happyPath_theRoughPointsRouteSaysWhatItFoundAroundThem @S-A81-HAPPY-POINTS', async () => {
+    it('happyPath_theRoughPointsRouteSaysWhatItFoundAroundThem @S-A89-HAPPY-POINTS', async () => {
         const recalibration = { route: 'points' as const, ...BETTER, proposed: 14 };
         const { element } = await shown(versionView({ recalibration, basedOn: 'job-current' }));
 
@@ -114,7 +114,7 @@ describe('<hcm-georef-page>: Snap my points', () => {
     beforeAll(defineImagery);
     afterEach(cleanup);
 
-    it('happyPath_aPublishedVersionWithNewPointsSnapsThem @S-A81-HAPPY-POINTS', async () => {
+    it('happyPath_aPublishedVersionWithNewPointsSnapsThem @S-A89-HAPPY-POINTS', async () => {
         const { element, area } = await georefPage(georefState({ dirty: true, version: georefVersion({ state: 'published' }) }));
 
         click(button(element, 'Snap my points'));
@@ -122,7 +122,7 @@ describe('<hcm-georef-page>: Snap my points', () => {
         expect(area.named('snap')).toEqual(['snap']);
     });
 
-    it('badPath_aVersionWaitingForPointsSavesThemInstead @S-A81-BAD-REFUSED', async () => {
+    it('badPath_aVersionWaitingForPointsSavesThemInstead @S-A89-BAD-POINTS-REFUSED', async () => {
         const { element } = await georefPage(georefState({ dirty: true }));
 
         expect(deepAll(element, 'hcm-button').some((found) => found.textContent.trim() === 'Snap my points')).toBe(false);

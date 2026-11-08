@@ -1,5 +1,5 @@
 /**
- * M16 (`docs/research/M16-recalibrate.md` §7; S-A80-*, S-A81-*, S-A82-*): what a version's page says of calibrating it again. On a published
+ * M16 (`docs/research/M16-recalibrate.md` §7; S-A89-*): what a version's page says of calibrating it again. On a published
  * version or one waiting for approval: **Refine automatically** (a new version from the same scan, which the page then opens) and **Place
  * rough points** (the georeferencer, where Snap my points sends them). On a recalibration: the current fit and the new one on the same checks,
  * or that they were not compared, the pairs found around the admin's points, and **Show the current one**, which swaps the page's one map
@@ -13,7 +13,6 @@ import type { ImageryContext } from '../context.js';
 import type { VersionPagePort, VersionViewPort } from '../imagery-port.js';
 import { numberText } from '../imagery-text.js';
 import { when } from '../when.js';
-import { recalibratable } from './recalibratable.js';
 
 function figures(context: ImageryContext, recalibration: Recalibration): TemplateResult {
     const { locale } = context;
@@ -82,8 +81,14 @@ function offer(context: ImageryContext, page: VersionPagePort, version: VersionV
     </section>`;
 }
 
-export function recalibrateCard(context: ImageryContext, page: VersionPagePort, version: VersionViewPort): TemplateResult {
+/** `offered`: the version may be calibrated again (`lazy-recalibrate.ts`). */
+export function recalibrateCard(
+    context: ImageryContext,
+    page: VersionPagePort,
+    version: VersionViewPort,
+    offered: boolean,
+): TemplateResult {
     const { recalibration } = version;
     const shown = recalibration === null ? html`` : report(context, page, recalibration);
-    return html`${shown} ${when(recalibratable(version), () => offer(context, page, version))}`;
+    return html`${shown} ${when(offered, () => offer(context, page, version))}`;
 }

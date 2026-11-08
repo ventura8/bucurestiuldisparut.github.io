@@ -90,6 +90,19 @@ export const IMAGERY_STATES = {
         title: 'Historical imagery: a version awaiting approval, its own tiles on the map, what it holds of the city, its cost in words, Actual pixels',
         visit: 'specs/imagery/own-tiles.spec.ts',
     },
+    // M16 (docs/research/M16-recalibrate.md §7)
+    'imagery.version-recalibrate': {
+        title: 'Historical imagery: a version awaiting approval offering Calibrate again: Refine automatically and Place rough points',
+        visit: 'specs/imagery/recalibrate.spec.ts',
+    },
+    'imagery.version-recalibrated': {
+        title: 'Historical imagery: a recalibration, the current fit and the new one on the same checks, Show the current one, Approve',
+        visit: 'specs/imagery/recalibrate.spec.ts',
+    },
+    'imagery.version-refine-declined': {
+        title: 'Historical imagery: a refine that found nothing better, both figures in words, the current version left as it was',
+        visit: 'specs/imagery/recalibrate.spec.ts',
+    },
     'imagery.version-tiles-failed': {
         title: 'Historical imagery: a version whose full detail could not be read, why, Try again, its small picture on the map',
         visit: 'specs/imagery/own-tiles.spec.ts',

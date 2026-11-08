@@ -62,7 +62,7 @@ def figure(world: PipelineWorld, which: str) -> float:
 
 
 def test_happy_path_refine_renders_a_better_fit_and_records_both_on_the_same_checks(world: PipelineWorld, tmp_path: Path) -> None:
-    """Scenarios: S-P07-HAPPY-REFINE"""
+    """Scenarios: S-P19-HAPPY-REFINE"""
     seed_recalibration(world, tmp_path, {"route": "auto"}, (60.0, -45.0))
 
     assert world.run() is RunOutcome.DONE
@@ -82,7 +82,7 @@ def test_happy_path_refine_renders_a_better_fit_and_records_both_on_the_same_che
 
 
 def test_bad_path_refine_with_nothing_better_declines_and_renders_nothing(world: PipelineWorld, tmp_path: Path) -> None:
-    """Scenarios: S-P07-BAD-NOT-IMPROVED"""
+    """Scenarios: S-P19-BAD-NOT-IMPROVED"""
     seed_recalibration(world, tmp_path, {"route": "auto"}, (0.0, 0.0))
 
     assert world.run() is RunOutcome.CANCELLED
@@ -101,7 +101,7 @@ def test_bad_path_refine_with_nothing_better_declines_and_renders_nothing(world:
 
 
 def test_bad_path_refine_whose_tiles_are_not_proved_declines(world: PipelineWorld, tmp_path: Path) -> None:
-    """Scenarios: S-P07-BAD-REFUSED"""
+    """Scenarios: S-P19-BAD-REFUSED"""
     other = render_world(99)
     world.http.serve("/s2/visual.tif", write_sentinel2(other, tmp_path / "elsewhere.tif").read_bytes())
     world.http.route("POST", OVERPASS_PATH, lambda _request: Reply.json(json.dumps(overpass_answer(other))))
@@ -124,7 +124,7 @@ def rough_points(seeded: Seeded) -> list[dict[str, object]]:
 
 
 def test_happy_path_rough_points_bend_the_start_and_the_tiles_snap_around_them(world: PipelineWorld, tmp_path: Path) -> None:
-    """Scenarios: S-P07-HAPPY-POINTS"""
+    """Scenarios: S-P19-HAPPY-POINTS"""
     seed_recalibration(world, tmp_path, {"route": "points"}, (900.0, 700.0), points=True)
 
     assert world.run() is RunOutcome.DONE
@@ -138,7 +138,7 @@ def test_happy_path_rough_points_bend_the_start_and_the_tiles_snap_around_them(w
 
 
 def test_bad_path_points_whose_tiles_are_not_proved_decline(world: PipelineWorld, tmp_path: Path) -> None:
-    """Scenarios: S-P07-BAD-REFUSED"""
+    """Scenarios: S-P19-BAD-REFUSED"""
     other = render_world(99)
     world.http.serve("/s2/visual.tif", write_sentinel2(other, tmp_path / "elsewhere.tif").read_bytes())
     seed_recalibration(world, tmp_path, {"route": "points"}, (900.0, 700.0), points=True)
@@ -160,7 +160,7 @@ def manual_pairs(seeded: Seeded, disabled: int) -> list[dict[str, object]]:
 def test_happy_path_a_manual_recalibration_is_fitted_as_saved_with_both_fits_on_its_disabled_pairs(
     world: PipelineWorld, tmp_path: Path, disabled: int, compared: bool
 ) -> None:
-    """Scenarios: S-P07-HAPPY-MANUAL-FIGURES"""
+    """Scenarios: S-P19-HAPPY-MANUAL-FIGURES"""
     seeded = seed_recalibration(world, tmp_path, {"route": "manual"}, (50.0, 0.0))
     georef = {"method": "gcps", "transform": "affine", "gcps": manual_pairs(seeded, disabled)}
     world.store.update(world.version_path(), {"georef": georef})
@@ -178,7 +178,7 @@ def test_happy_path_a_manual_recalibration_is_fitted_as_saved_with_both_fits_on_
 
 
 def test_bad_path_a_refine_without_a_scan_fails(world: PipelineWorld, tmp_path: Path) -> None:
-    """Scenarios: S-P07-BAD-REFUSED"""
+    """Scenarios: S-P19-BAD-REFUSED"""
     seed_recalibration(world, tmp_path, {"route": "auto"}, (60.0, -45.0))
     version = world.version()
     version.pop("scan")

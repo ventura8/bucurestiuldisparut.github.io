@@ -17,7 +17,7 @@ import { requireCity, requireVersion } from './records.js';
 import { startRegeoref, type RegeorefDeps } from './regeoref.js';
 
 /**
- * `imagery.recalibrate` (a city's editor; `docs/research/M16-recalibrate.md`; S-A80-*, S-A81-*, S-A84-*): a published version, or one
+ * `imagery.recalibrate` (a city's editor; `docs/research/M16-recalibrate.md`; S-A89-*): a published version, or one
  * waiting for approval, calibrated again from its scan. **Refine automatically** (`auto`) reruns the proof and the dense matching from the
  * current fit and renders only a better one; **Snap my points** (`points`) starts from the admin's rough points. Either is a new `regeoref`
  * version of the same layer that waits for Approve. A base waiting for approval stays until the new version is rendered (`replaces`, §5). A

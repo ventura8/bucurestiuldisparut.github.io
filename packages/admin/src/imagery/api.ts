@@ -6,33 +6,35 @@
  * `apiError.*` code and parameters, which the pages translate.
  */
 import {
-    imageryApproveRequestSchema,
     imageryApproveResponseSchema,
-    imageryBrowseRequestSchema,
     imageryBrowseResponseSchema,
-    imageryChooseRequestSchema,
     imageryChooseResponseSchema,
-    imageryCropRequestSchema,
     imageryCropResponseSchema,
-    imageryImportRequestSchema,
     imageryImportResponseSchema,
-    imageryJoinRequestSchema,
     imageryJoinResponseSchema,
     imageryPreviewUrlResponseSchema,
-    imageryProbeRequestSchema,
     imageryProbeResponseSchema,
-    imageryRecalibrateRequestSchema,
     imageryRecalibrateResponseSchema,
     imageryRejectResponseSchema,
-    imageryResumeGuardRequestSchema,
     imageryResumeGuardResponseSchema,
-    imageryRetryRequestSchema,
     imageryRetryResponseSchema,
-    imagerySaveGcpsRequestSchema,
     imagerySaveGcpsResponseSchema,
-    imagerySearchRequestSchema,
     imagerySearchResponseSchema,
     imageryStudioDoneResponseSchema,
+} from '@hcm/shared';
+import type {
+    imageryApproveRequestSchema,
+    imageryBrowseRequestSchema,
+    imageryChooseRequestSchema,
+    imageryCropRequestSchema,
+    imageryImportRequestSchema,
+    imageryJoinRequestSchema,
+    imageryProbeRequestSchema,
+    imageryRecalibrateRequestSchema,
+    imageryResumeGuardRequestSchema,
+    imageryRetryRequestSchema,
+    imagerySaveGcpsRequestSchema,
+    imagerySearchRequestSchema,
     imageryVersionRequestSchema,
 } from '@hcm/shared';
 import type { z } from 'zod';
@@ -40,29 +42,52 @@ import type { z } from 'zod';
 import { CallableFailure, type CallablesPort, type CallOptions } from '../firebase/ports.js';
 import type { NoticeInput } from '../state/state.js';
 
-/** Each imagery callable's request and response schemas. */
-const IMAGERY_CALLS = {
-    'imagery.search': { request: imagerySearchRequestSchema, response: imagerySearchResponseSchema },
-    'imagery.browse': { request: imageryBrowseRequestSchema, response: imageryBrowseResponseSchema },
-    'imagery.import': { request: imageryImportRequestSchema, response: imageryImportResponseSchema },
-    'imagery.join': { request: imageryJoinRequestSchema, response: imageryJoinResponseSchema },
-    'imagery.approve': { request: imageryApproveRequestSchema, response: imageryApproveResponseSchema },
-    'imagery.reject': { request: imageryVersionRequestSchema, response: imageryRejectResponseSchema },
-    'imagery.choose': { request: imageryChooseRequestSchema, response: imageryChooseResponseSchema },
-    'imagery.studioDone': { request: imageryVersionRequestSchema, response: imageryStudioDoneResponseSchema },
-    'imagery.saveGcps': { request: imagerySaveGcpsRequestSchema, response: imagerySaveGcpsResponseSchema },
-    'imagery.crop': { request: imageryCropRequestSchema, response: imageryCropResponseSchema },
-    'imagery.retry': { request: imageryRetryRequestSchema, response: imageryRetryResponseSchema },
-    'imagery.locateAgain': { request: imageryVersionRequestSchema, response: imageryRetryResponseSchema },
-    'imagery.recalibrate': { request: imageryRecalibrateRequestSchema, response: imageryRecalibrateResponseSchema },
-    'imagery.previewUrl': { request: imageryVersionRequestSchema, response: imageryPreviewUrlResponseSchema },
-    'imagery.probeTiles': { request: imageryProbeRequestSchema, response: imageryProbeResponseSchema },
-    'imagery.resumeGuard': { request: imageryResumeGuardRequestSchema, response: imageryResumeGuardResponseSchema },
+/** Each imagery callable's response schema, which checks its answer. */
+const IMAGERY_RESPONSES = {
+    'imagery.search': imagerySearchResponseSchema,
+    'imagery.browse': imageryBrowseResponseSchema,
+    'imagery.import': imageryImportResponseSchema,
+    'imagery.join': imageryJoinResponseSchema,
+    'imagery.approve': imageryApproveResponseSchema,
+    'imagery.reject': imageryRejectResponseSchema,
+    'imagery.choose': imageryChooseResponseSchema,
+    'imagery.studioDone': imageryStudioDoneResponseSchema,
+    'imagery.saveGcps': imagerySaveGcpsResponseSchema,
+    'imagery.crop': imageryCropResponseSchema,
+    'imagery.retry': imageryRetryResponseSchema,
+    'imagery.locateAgain': imageryRetryResponseSchema,
+    'imagery.recalibrate': imageryRecalibrateResponseSchema,
+    'imagery.previewUrl': imageryPreviewUrlResponseSchema,
+    'imagery.probeTiles': imageryProbeResponseSchema,
+    'imagery.resumeGuard': imageryResumeGuardResponseSchema,
 } as const;
 
-export type ImageryCallName = keyof typeof IMAGERY_CALLS;
-export type ImageryRequest<N extends ImageryCallName> = z.input<(typeof IMAGERY_CALLS)[N]['request']>;
-export type ImageryResponse<N extends ImageryCallName> = z.output<(typeof IMAGERY_CALLS)[N]['response']>;
+/**
+ * Each callable's request schema, as a type only: the server validates requests, so the admin's chunks carry no request schema (M16: the
+ * bytes `editor-shared` needed for `imagery.recalibrate`).
+ */
+interface ImageryRequests {
+    'imagery.search': typeof imagerySearchRequestSchema;
+    'imagery.browse': typeof imageryBrowseRequestSchema;
+    'imagery.import': typeof imageryImportRequestSchema;
+    'imagery.join': typeof imageryJoinRequestSchema;
+    'imagery.approve': typeof imageryApproveRequestSchema;
+    'imagery.reject': typeof imageryVersionRequestSchema;
+    'imagery.choose': typeof imageryChooseRequestSchema;
+    'imagery.studioDone': typeof imageryVersionRequestSchema;
+    'imagery.saveGcps': typeof imagerySaveGcpsRequestSchema;
+    'imagery.crop': typeof imageryCropRequestSchema;
+    'imagery.retry': typeof imageryRetryRequestSchema;
+    'imagery.locateAgain': typeof imageryVersionRequestSchema;
+    'imagery.recalibrate': typeof imageryRecalibrateRequestSchema;
+    'imagery.previewUrl': typeof imageryVersionRequestSchema;
+    'imagery.probeTiles': typeof imageryProbeRequestSchema;
+    'imagery.resumeGuard': typeof imageryResumeGuardRequestSchema;
+}
+
+export type ImageryCallName = keyof typeof IMAGERY_RESPONSES;
+export type ImageryRequest<N extends ImageryCallName> = z.input<ImageryRequests[N]>;
+export type ImageryResponse<N extends ImageryCallName> = z.output<(typeof IMAGERY_RESPONSES)[N]>;
 
 /** The shell's `call` without the registry's names (CR-M3-3 adds the imagery rows). */
 type AnyCall = (name: string, request: unknown, options: CallOptions) => Promise<unknown>;
@@ -83,7 +108,7 @@ export async function callImagery<N extends ImageryCallName>(
     } catch (error) {
         throw error instanceof CallableFailure ? error : INTERNAL();
     }
-    const parsed = IMAGERY_CALLS[name].response.safeParse(answer);
+    const parsed = IMAGERY_RESPONSES[name].safeParse(answer);
     if (!parsed.success) {
         throw INTERNAL();
     }

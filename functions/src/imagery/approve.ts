@@ -54,7 +54,7 @@ function rejectable(job: JobDoc, version: LayerVersionDoc | undefined): boolean 
 }
 
 /**
- * M16 (`docs/research/M16-recalibrate.md` §4; S-A82-*): a recalibration not shown to be better than the current one replaces it only by the
+ * M16 (`docs/research/M16-recalibrate.md` §4; S-A89-*): a recalibration not shown to be better than the current one replaces it only by the
  * owner's choice (`acceptWorse`), which the page asks for in words.
  */
 function refuseUnchosenWorse(version: LayerVersionDoc, request: ApproveRequest): void {

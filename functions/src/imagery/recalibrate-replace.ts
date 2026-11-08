@@ -1,5 +1,5 @@
 /**
- * M16 (`docs/research/M16-recalibrate.md` §5; S-A83-*): a refine of a version waiting for approval leaves that version, and the layer's
+ * M16 (`docs/research/M16-recalibrate.md` §5; S-A89-*): a refine of a version waiting for approval leaves that version, and the layer's
  * pending mark, where they are while it runs, because it may decline. Once the new version is rendered, the approval policy's transaction
  * calls this: the version it `replaces`, still waiting with its job, ends cancelled, and the layer shows the new one as pending. A version
  * approved or rejected meanwhile is left as it is.

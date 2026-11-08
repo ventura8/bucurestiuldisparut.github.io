@@ -30,7 +30,7 @@ import { deleteObjects, DocumentGone, readDocument, updateDocument } from './ima
  * What a run of one attempt does (the spec's script, imagery-runner.ts); `suggestions` (M4, docs/research/M4-interfaces.md
  * §2.6): the matcher found too few confident pairs and suggests four, the version waits for points.
  */
-type StandinOutcome = 'under' | 'over' | 'no-match' | 'suggestions' | 'embedded' | 'scan' | 'maintenance' | 'fail' | 'oom';
+type StandinOutcome = 'under' | 'over' | 'no-match' | 'suggestions' | 'embedded' | 'scan' | 'maintenance' | 'fail' | 'oom' | 'declined';
 
 export interface StandinAttempt {
     readonly outcome: StandinOutcome;
@@ -55,6 +55,8 @@ export interface StandinAttempt {
     readonly noTiles?: boolean;
     /** M9: what `locate` measured (default nothing, as a frame that never went through it). */
     readonly calibration?: Calibration;
+    /** M16, a recalibration: the current fit's figure on the new fit's checks (default 28.4 m); `declined` ends it with nothing better. */
+    readonly beforeM?: number;
     /** M8, a `layer-join`: what its report says beyond the defaults (`imagery-standin-join.ts`), and that no seam could be measured. */
     readonly join?: Partial<JoinReport>;
     readonly seamsUnmeasured?: boolean;
@@ -352,6 +354,18 @@ export class Run {
         });
         await this.writeVersion({ state: 'failed', error: { code, ...(params === undefined ? {} : { params }) } });
         await this.log('error', `${step} failed: ${code}`, step);
+    }
+
+    /** M16: a refine with nothing better ends cancelled with its reason, the version too, and renders nothing (`runner.py` `_decline`). */
+    async decline(step: PipelineStep, code: string, params: Readonly<Record<string, string>>): Promise<void> {
+        await this.writeJob({
+            status: 'cancelled',
+            error: { code, message: `${step} declined (e2e stand-in)`, params },
+            finishedAt: now(),
+            lease: undefined,
+        });
+        await this.writeVersion({ state: 'cancelled', error: { code, params } });
+        await this.log('info', `declined, nothing rendered: ${code}`, step);
     }
 
     /** USGS answered its maintenance page: the job waits and the tick resumes it (§4.6). */

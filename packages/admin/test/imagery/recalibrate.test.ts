@@ -35,7 +35,7 @@ function page() {
 }
 
 describe('the version page: recalibrating', () => {
-    it('happyPath_refineStartsANewVersionAndApproveCarriesTheOwnersChoice @S-A80-HAPPY-REFINE', async () => {
+    it('happyPath_refineStartsANewVersionAndApproveCarriesTheOwnersChoice @S-A89-HAPPY-REFINE', async () => {
         const { version, store, callables, notices } = page();
         store.docs.set(VERSIONS(CURRENT), versionDoc());
         answer(callables, 'imagery.recalibrate', () => ({ jobId: NEW, versionId: NEW }));
@@ -53,7 +53,7 @@ describe('the version page: recalibrating', () => {
         ]);
     });
 
-    it('badPath_aRefusedRefineStaysOnTheCard @S-A80-BAD-BUSY', async () => {
+    it('badPath_aRefusedRefineStaysOnTheCard @S-A89-BAD-BUSY', async () => {
         const { version, store, callables, state } = page();
         store.docs.set(VERSIONS(CURRENT), versionDoc());
         callables.answer(
@@ -93,7 +93,7 @@ describe('the version page: recalibrating', () => {
     });
 });
 
-describe('the map of a recalibration @S-A82-HAPPY-APPROVE-BETTER', () => {
+describe('the map of a recalibration @S-A89-HAPPY-APPROVE-BETTER', () => {
     async function opened() {
         const { handle, native } = await mapboxHandle(null);
         const world = imageryWorld({ maps: factoryOf([{ ok: true, map: handle }]) });
@@ -136,7 +136,7 @@ describe('Snap my points', () => {
         ...{ enabled, origin },
     });
 
-    it('happyPath_theNewManualPointsAreTheRoughPoints @S-A81-HAPPY-POINTS', async () => {
+    it('happyPath_theNewManualPointsAreTheRoughPoints @S-A89-HAPPY-POINTS', async () => {
         const world = imageryWorld();
         answer(world.callables, 'imagery.recalibrate', () => ({ jobId: NEW, versionId: NEW }));
         const points = roughPointsOf(
@@ -151,7 +151,7 @@ describe('Snap my points', () => {
         expect(callsOf(world.callables, 'imagery.recalibrate')).toEqual([{ cityId: CITY, versionId: CURRENT, route: 'points', points }]);
     });
 
-    it('badPath_noNewPointsOrTooManyAreRefusedInWords @S-A81-BAD-REFUSED', async () => {
+    it('badPath_noNewPointsOrTooManyAreRefusedInWords @S-A89-BAD-POINTS-REFUSED', async () => {
         const world = imageryWorld();
         callables(world);
         const many = Array.from({ length: 13 }, (_, index) => pair(`g${String(index)}`));
