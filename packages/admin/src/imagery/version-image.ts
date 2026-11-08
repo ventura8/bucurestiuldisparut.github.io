@@ -35,13 +35,19 @@ export interface VersionImageDeps {
     readonly changed: (image: VersionImageState) => void;
 }
 
-function versionOf(page: VersionPageState | null): VersionView | null {
-    return page?.version.doc?.data ?? null;
+/** The version the map shows: the open one, or (M16) the current one a recalibration would replace, when the owner asked for it. */
+function shownOf(page: VersionPageState): VersionView | null {
+    return page.showing === 'current' && page.current !== null ? page.current : (page.version.doc?.data ?? null);
 }
 
 /** A rejected version's tiles are gone (`S-A72-HAPPY-REJECTED`), so only its small picture is left to ask for. */
 function tilesOf(version: VersionView): Output['tiles'] {
     return version.state === 'rejected' ? null : (version.output?.tiles ?? null);
+}
+
+/** M16: a published version is drawn from its public archive (its private one went when it was published). */
+function publicOf(version: VersionView): string | null {
+    return version.state === 'published' ? version.publicUrl : null;
 }
 
 export class VersionImage {
@@ -50,7 +56,7 @@ export class VersionImage {
     #shown = '';
     /** Bumped by every asking: a slower answer about an older version is dropped. */
     #asked = 0;
-    #open: { readonly id: string; readonly output: Output } | null = null;
+    #open: { readonly id: string; readonly output: Output; readonly publicUrl: string | null } | null = null;
     /**
      * When the address on the map runs out, by this page's clock (the hour counted from its answer: a clock set wrong on this computer moves
      * nothing); infinite while an address is on its way, when a failing tile is the old address's.
@@ -63,20 +69,21 @@ export class VersionImage {
 
     /** The open version changed: draws it the first time its output is known, and again if its file changes. */
     follow(page: VersionPageState | null): void {
-        const version = versionOf(page);
-        if (page !== null && version?.output) {
-            this.#draw(page.id, version, version.output);
+        const version = page === null ? null : shownOf(page);
+        if (version?.output) {
+            this.#draw(version, version.output);
         }
     }
 
-    #draw(id: string, version: VersionView, output: Output): void {
+    #draw(version: VersionView, output: Output): void {
+        const { id } = version;
         const tiles = tilesOf(version);
         const shown = `${id}@${tiles?.path ?? output.previewPath}`;
         if (shown === this.#shown) {
             return;
         }
         this.#shown = shown;
-        this.#open = { id, output };
+        this.#open = { id, output, publicUrl: publicOf(version) };
         this.#deps.map().fitBox(output.bounds);
         if (tiles === null) {
             this.#until = Number.POSITIVE_INFINITY;
@@ -126,12 +133,11 @@ export class VersionImage {
         const asked = this.#asked;
         this.#until = Number.POSITIVE_INFINITY;
         this.#deps.changed({ status: 'loading' });
-        const { callables, cityId, clock } = this.#deps.services;
         try {
-            const answer = await callImagery(callables, 'imagery.previewUrl', { cityId, versionId: open.id });
+            const address = await this.#addressOf(open);
             if (asked === this.#asked) {
-                this.#until = clock.now() + IMAGERY_PREVIEW_URL_SECONDS * 1000;
-                this.#deps.map().showVersion(open.output, answer.url, this.#deps.opacity());
+                this.#until = address.until;
+                this.#deps.map().showVersion(open.output, address.url, this.#deps.opacity());
                 this.#deps.changed({ status: 'ready' });
             }
         } catch (error) {
@@ -139,6 +145,16 @@ export class VersionImage {
                 this.#fall(refusalOf(error));
             }
         }
+    }
+
+    /** Where the archive is read, and until when: an hour of the private one, or (M16) a published version's public one, for good. */
+    async #addressOf(open: { readonly id: string; readonly publicUrl: string | null }): Promise<{ url: string; until: number }> {
+        if (open.publicUrl !== null) {
+            return { url: open.publicUrl, until: Number.MAX_VALUE };
+        }
+        const { callables, cityId, clock } = this.#deps.services;
+        const answer = await callImagery(callables, 'imagery.previewUrl', { cityId, versionId: open.id });
+        return { url: answer.url, until: clock.now() + IMAGERY_PREVIEW_URL_SECONDS * 1000 };
     }
 
     #fall(notice: NoticeInput): void {

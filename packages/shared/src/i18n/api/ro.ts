@@ -92,10 +92,12 @@ export const ro = {
     'apiError.imagery.sourceTooLarge': 'Fișierul pentru Mapbox are {megabytes} MB, peste limita acceptată.',
     'apiError.imagery.tilesMissing': 'Imaginea nu are încă dale pentru hartă. Se fac singure; încearcă din nou peste câteva minute.',
     'apiError.imagery.tilesGone': 'Dalele acestei imagini nu mai există și nu se fac din nou. Imaginea mică rămâne.',
-    'apiError.imagery.notImproved': 'Nicio potrivire mai bună: {after} m față de {before} m acum, pe aceleași verificări. Rămâne cea actuală.',
+    'apiError.imagery.notImproved':
+        'Nicio potrivire mai bună: {after} m față de {before} m acum, pe aceleași verificări. Rămâne cea actuală.',
     'apiError.imagery.refineRefused': 'Zonele imaginii nu s-au potrivit destul cu harta. Rămâne potrivirea actuală.',
     'apiError.imagery.notBetter': 'Noua potrivire nu s-a dovedit mai bună. Confirmă ca să o înlocuiești totuși pe cea actuală.',
-    'apiError.imagery.joinRecalibrate': 'Un strat unit se rafinează cadru cu cadru: deschide fiecare cadru, rafinează-l, apoi unește-le din nou.',
+    'apiError.imagery.joinRecalibrate':
+        'Un strat unit se rafinează cadru cu cadru: deschide fiecare cadru, rafinează-l, apoi unește-le din nou.',
     'apiError.imagery.tilesNotFound': 'Sursa nu are dale la această adresă (404).',
     'apiError.imagery.tilesNotImage': 'Adresa nu răspunde cu o imagine.',
     'apiError.imagery.tilesUnreachable': 'Serverul de dale nu răspunde.',

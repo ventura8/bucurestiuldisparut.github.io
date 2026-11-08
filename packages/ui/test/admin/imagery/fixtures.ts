@@ -120,6 +120,7 @@ export function versionView(overrides: Partial<VersionViewPort> = {}): VersionVi
         },
         ...{ estimate: 2.5, guard: null, approval: null, error: null, hasScan: true },
         ...{ entityId: 'DS1035-1057DA023', partOf: null, parts: [], join: null },
+        ...{ basedOn: null, recalibration: null, publicUrl: null },
         ...overrides,
     };
 }
@@ -150,7 +151,7 @@ export function versionPage(
         job: { status: 'ready', doc: job === null ? null : doc(job, 'job-1966'), reconnecting: false, failure: null },
         logs: ready([{ seq: 1, level: 'info', step: 'register', message: 'rendered <b>ok</b>', at: '2026-10-20T09:00:00.000Z' }]),
         usage: { computeUnits: 4, computeUnitBudget: 20, overageComputeUnits: 0, reservations: {} },
-        ...{ acting: null, refusal: null, downloaded: false },
+        ...{ acting: null, refusal: null, downloaded: false, current: null, showing: 'new' as const },
         ...overrides,
     };
 }

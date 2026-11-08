@@ -40,20 +40,38 @@ async function cancelWaiting(transaction: DocumentTransaction, cityId: string, r
     }
     const cancelled: JobDoc = { ...omit(job, ['waitReason']), status: 'cancelled', finishedAt: stamp.updatedAt, ...stamp };
     await transaction.set(FIRESTORE_PATHS.job(cityId, replaced.id), jobDocSchema, cancelled);
-    await transaction.set(FIRESTORE_PATHS.layerVersion(cityId, replaced.id), layerVersionDocSchema, { ...version, state: 'cancelled', ...stamp });
+    await transaction.set(FIRESTORE_PATHS.layerVersion(cityId, replaced.id), layerVersionDocSchema, {
+        ...version,
+        state: 'cancelled',
+        ...stamp,
+    });
 }
 
-/** The layer, when it exists and no other version is on its way to it, shows `version` as pending. */
-async function markPending(transaction: DocumentTransaction, cityId: string, replaced: Replaced, version: LayerVersionDoc, stamp: Stamp): Promise<void> {
-    const { layer } = replaced;
+/** The layer, when it exists and no other version is on its way to it, shows the new version as pending. */
+async function markPending(
+    transaction: DocumentTransaction,
+    cityId: string,
+    replaced: Replaced & { readonly next: LayerVersionDoc },
+    stamp: Stamp,
+): Promise<void> {
+    const { layer, next } = replaced;
     const free = layer?.pendingVersion === undefined || layer.pendingVersion === replaced.id;
     if (layer !== undefined && free) {
-        await transaction.set(FIRESTORE_PATHS.layer(cityId, version.layerId), layerDocSchema, { ...layer, pendingVersion: version.jobId, ...stamp });
+        await transaction.set(FIRESTORE_PATHS.layer(cityId, next.layerId), layerDocSchema, {
+            ...layer,
+            pendingVersion: next.jobId,
+            ...stamp,
+        });
     }
 }
 
 /** Replaces the version `version.recalibration.replaces` names, if any; every read comes before the first write. */
-export async function replaceWaitingBase(transaction: DocumentTransaction, cityId: string, version: LayerVersionDoc, now: Date): Promise<void> {
+export async function replaceWaitingBase(
+    transaction: DocumentTransaction,
+    cityId: string,
+    version: LayerVersionDoc,
+    now: Date,
+): Promise<void> {
     const id = version.recalibration?.replaces;
     if (id === undefined) {
         return;
@@ -61,5 +79,5 @@ export async function replaceWaitingBase(transaction: DocumentTransaction, cityI
     const replaced = await readReplaced(transaction, cityId, id, version.layerId);
     const stamp = stampOf(IMAGERY_WRITER, now);
     await cancelWaiting(transaction, cityId, replaced, stamp);
-    await markPending(transaction, cityId, replaced, version, stamp);
+    await markPending(transaction, cityId, { ...replaced, next: version }, stamp);
 }

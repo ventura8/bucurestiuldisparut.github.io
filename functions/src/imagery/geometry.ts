@@ -24,7 +24,11 @@ function inside(gcp: Pick<Gcp, 'pixel' | 'geo'>, scan: { readonly width: number;
 }
 
 /** True when every pair lies on the scan and in the city. */
-export function gcpsInside(gcps: readonly Pick<Gcp, 'pixel' | 'geo'>[], scan: { readonly width: number; readonly height: number }, bounds: BoundsRecord): boolean {
+export function gcpsInside(
+    gcps: readonly Pick<Gcp, 'pixel' | 'geo'>[],
+    scan: { readonly width: number; readonly height: number },
+    bounds: BoundsRecord,
+): boolean {
     return gcps.every((gcp) => inside(gcp, scan, bounds));
 }
 

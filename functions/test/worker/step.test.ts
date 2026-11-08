@@ -238,12 +238,18 @@ describe('worker.step update', () => {
 });
 
 describe('worker.step and a refine that declines (M16)', () => {
-    const declined = { code: 'apiError.imagery.notImproved', message: '17.0 m against the current 17.2 m', params: { before: '17.2', after: '17.0' } };
+    const declined = {
+        code: 'apiError.imagery.notImproved',
+        message: '17.0 m against the current 17.2 m',
+        params: { before: '17.2', after: '17.0' },
+    };
 
     it('happyPath_aRefineWithNothingBetterEndsCancelledWithItsReason @S-A80-BAD-NOT-IMPROVED', async () => {
         const world = await held({ type: 'regeoref', params: { basedOn: 'v-current' } });
 
-        await expect(update(world, JOB_PATH, { status: 'cancelled', finishedAt: at(NOW), error: declined, lease: DELETE })).resolves.toEqual({
+        await expect(
+            update(world, JOB_PATH, { status: 'cancelled', finishedAt: at(NOW), error: declined, lease: DELETE }),
+        ).resolves.toEqual({
             ok: true,
         });
         await expect(update(world, VERSION_PATH, { state: 'cancelled', error: { code: declined.code } })).resolves.toEqual({ ok: true });

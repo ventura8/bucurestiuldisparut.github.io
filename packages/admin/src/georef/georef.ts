@@ -22,7 +22,7 @@ import {
 import type { AreaModule, AreaStore } from '../content/areas.js';
 import { LiveDoc, type DocState } from '../content/doc.js';
 import type { ContentServices } from '../content/services.js';
-import { callImagery, refusalOf, type ImageryRequest } from '../imagery/api.js';
+import { callImagery, refusalOf } from '../imagery/api.js';
 import { NO_FILES } from '../imagery/files.js';
 import { frameOf, type CityFrame } from '../layers/map-session.js';
 import { Store } from '../state/store.js';
@@ -32,7 +32,6 @@ import { GeorefPictures } from './georef-pictures.js';
 import {
     moveGeo,
     movePixel,
-    pairsToSave,
     roundPixel,
     samePairs,
     togglePair,
@@ -42,6 +41,7 @@ import {
     type PixelPosition,
 } from './pairs.js';
 import { georefVersionOf, INITIAL_GEOREF, type GeorefIntents, type GeorefState, type GeorefVersion, type ReferenceKind } from './state.js';
+import { roughPointsOf, saveRequestOf, snapped } from './snap.js';
 import { Suggestions } from './suggestions.js';
 
 /** The intents that edit the pairs. */
@@ -60,10 +60,6 @@ function baseOf(doc: LayerVersionDoc): { readonly pairs: readonly Gcp[]; readonl
 }
 
 /** The version's crop for Save, when it has one. */
-function cropOf(version: GeorefVersion): { readonly crop?: NonNullable<GeorefVersion['crop']> } {
-    return version.crop === null ? {} : { crop: version.crop };
-}
-
 /** The reference's box as the map's frame. */
 function referenceFrame(version: GeorefVersion | null): CityFrame | null {
     const bounds = version?.reference?.bounds ?? null;
@@ -255,6 +251,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
                 this.#cell.update({ pane });
             },
             save: () => this.#save(),
+            snap: () => this.#snap(),
             discard: () => {
                 this.#refit(this.#base.pairs, this.#base.transform);
             },
@@ -435,7 +432,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     }
 
     async #save(): Promise<boolean> {
-        const request = this.#saveRequest();
+        const request = saveRequestOf(this.#services.cityId, this.#cell.state);
         if (request === null) {
             return false;
         }
@@ -452,13 +449,15 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         }
     }
 
-    /** What Save sends, when the version takes points, nothing is being saved and the fit is possible; else null. */
-    #saveRequest(): ImageryRequest<'imagery.saveGcps'> | null {
-        const { version, pairs, transform, saving, fit } = this.#cell.state;
-        if (version === null || !version.editable || saving || fit.refusal !== null) {
-            return null;
+    /** M16: Snap my points (`snap.ts`); the page then opens the version they make. */
+    async #snap(): Promise<boolean> {
+        this.#cell.update({ saving: true, refusal: null });
+        const outcome = await snapped(this.#services, this.#cell.state.version, roughPointsOf(this.#cell.state.pairs, this.#base.pairs));
+        if (outcome.saved !== null) {
+            this.#refit(this.#base.pairs, this.#base.transform);
         }
-        return { cityId: this.#services.cityId, versionId: version.id, transform, gcps: pairsToSave(pairs), ...cropOf(version) };
+        this.#cell.update({ saving: false, ...outcome });
+        return outcome.saved !== null;
     }
 }
 

@@ -24,6 +24,7 @@ import {
     type LayerVersionDoc,
     type LayerVersionState,
     type PublishChoice,
+    type Recalibration,
     type Sensor,
     type UsageCounters,
     type VersionTiles,
@@ -87,6 +88,15 @@ export interface VersionView {
     readonly partOf: string | null;
     readonly parts: readonly JoinPart[];
     readonly join: JoinReport | null;
+    /** M16: the version it recalibrates, how and with what figures, and its own public archive (a published one). */
+    readonly basedOn: string | null;
+    readonly recalibration: Recalibration | null;
+    readonly publicUrl: string | null;
+}
+
+/** M16: the public archive a published version is drawn from (none once its grace ended and it was removed). */
+function publicUrlOf(own: LayerVersionDoc['own']): string | null {
+    return own === undefined || own.removedAt !== undefined ? null : own.url;
 }
 
 function georefOf(georef: LayerVersionDoc['georef']): VersionView['georef'] {
@@ -173,6 +183,7 @@ export function versionViewOf(doc: Stored<LayerVersionDoc>): VersionView {
         ...{ output: outputOf(version), estimate: estimateOf(version), guard: guardOf(version.guard) },
         ...{ approval: approvalOf(version.approval), error: errorOf(version.error), hasScan: version.scan !== undefined },
         ...{ ...sourceOf(version.source), partOf: orNull(version.partOf), join: orNull(version.join) },
+        ...{ basedOn: orNull(version.basedOn), recalibration: orNull(version.recalibration), publicUrl: publicUrlOf(version.own) },
     };
 }
 

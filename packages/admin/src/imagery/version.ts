@@ -25,11 +25,11 @@ import { LiveDoc, LOADING_DOC, type DocState } from '../content/doc.js';
 import { isoOf, LiveList, LOADING_LIST, type ListState } from '../content/list.js';
 import type { ContentServices, Stored } from '../content/services.js';
 import type { NoticeInput } from '../state/state.js';
-import { callImagery, refusalOf, type ImageryCallName, type ImageryRequest } from './api.js';
+import { callImagery, refusalOf, type ImageryCallName, type ImageryRequest, type ImageryResponse } from './api.js';
 import type { FilePort } from './files.js';
 import { jobViewOf, versionViewOf, type JobView, type VersionView } from './version-view.js';
 
-export type VersionAction = 'approve' | 'reject' | 'choose' | 'studioDone' | 'download' | 'retry' | 'locate' | 'cancel';
+export type VersionAction = 'approve' | 'reject' | 'choose' | 'studioDone' | 'download' | 'retry' | 'locate' | 'cancel' | 'recalibrate';
 
 export interface JobLogLine {
     readonly seq: number;
@@ -51,6 +51,9 @@ export interface VersionPageState {
     readonly refusal: NoticeInput | null;
     /** The Studio file was saved (the next step is Mapbox Studio). */
     readonly downloaded: boolean;
+    /** M16 (`docs/research/M16-recalibrate.md` §7): the version a recalibration would replace, and which of the two the map shows. */
+    readonly current: VersionView | null;
+    readonly showing: 'new' | 'current';
 }
 
 const LOG_LINES = 500;
@@ -90,12 +93,20 @@ function studioFileOf(cityId: string, version: VersionView): StudioFile | null {
     return path === null ? null : { path, name: `${tilesetName(cityId, version.layerId)}.tif` };
 }
 
+/** M16: the version a recalibration was based on (none for any other version). */
+function currentIdOf(version: VersionView | undefined): string | null {
+    return version === undefined || version.recalibration === null ? null : version.basedOn;
+}
+
 function usageOf(state: DocState<UsageDoc>): UsageView | null {
     return state.doc === null ? null : usageViewOf(state.doc.data);
 }
 
 function emptyVersionPage(id: string): VersionPageState {
-    return { id, version: LOADING_DOC, job: LOADING_DOC, logs: LOADING_LIST, usage: null, acting: null, refusal: null, downloaded: false };
+    return {
+        ...{ id, version: LOADING_DOC, job: LOADING_DOC, logs: LOADING_LIST, usage: null, acting: null, refusal: null, downloaded: false },
+        ...{ current: null, showing: 'new' as const },
+    };
 }
 
 export class VersionPage {
@@ -106,6 +117,9 @@ export class VersionPage {
     readonly #job: LiveDoc<JobDoc>;
     readonly #usage: LiveDoc<UsageDoc>;
     readonly #logs: LiveList<JobLogDoc, JobLogLine>;
+    /** M16: the version a recalibration was based on, read while the page shows the recalibration. */
+    readonly #current: LiveDoc<LayerVersionDoc>;
+    #currentId: string | null = null;
     #state: VersionPageState | null = null;
 
     constructor(services: ContentServices, files: FilePort, changed: (state: VersionPageState | null) => void) {
@@ -122,6 +136,7 @@ export class VersionPage {
         this.#version = new LiveDoc({ store, clock, denied, schema: layerVersionDocSchema, changed: update });
         this.#job = new LiveDoc({ store, clock, denied, schema: jobDocSchema, changed: update });
         this.#usage = new LiveDoc({ store, clock, denied, schema: usageDocSchema, changed: update });
+        this.#current = new LiveDoc({ store, clock, denied, schema: layerVersionDocSchema, changed: update });
         this.#logs = new LiveList({
             ...{ store, clock, denied, collection: '', schema: jobLogDocSchema, map: logLineOf, pageSize: LOG_LINES },
             changed: update,
@@ -154,6 +169,8 @@ export class VersionPage {
         this.#job.stop();
         this.#usage.stop();
         this.#logs.stop();
+        this.#current.stop();
+        this.#currentId = null;
         this.#set(null);
     }
 
@@ -165,10 +182,27 @@ export class VersionPage {
         }
     }
 
-    approve(): Promise<boolean> {
-        return this.#act('approve', 'imagery.approve', (id) => ({ cityId: this.#services.cityId, versionId: id }), {
+    /** M16: `acceptWorse` is the owner's choice of a recalibration not shown better (the page asks first). */
+    approve(acceptWorse = false): Promise<boolean> {
+        const choice = acceptWorse ? { acceptWorse: true as const } : {};
+        return this.#act('approve', 'imagery.approve', (id) => ({ cityId: this.#services.cityId, versionId: id, ...choice }), {
             key: 'adminContent.imagery.notice.approved',
         });
+    }
+
+    /** M16: Refine automatically; the new version's id, or null when refused (the refusal stays on the card). */
+    async recalibrate(): Promise<string | null> {
+        const request = (id: string) => ({ cityId: this.#services.cityId, versionId: id, route: 'auto' as const });
+        const answer = await this.#call('recalibrate', 'imagery.recalibrate', request, { key: 'adminContent.imagery.recalibrate.started' });
+        return answer?.versionId ?? null;
+    }
+
+    /** M16: the map shows the current version instead of the new one, or back. */
+    toggleCurrent(): void {
+        const state = this.#state;
+        if (state?.current !== null && state !== null) {
+            this.#set({ ...state, showing: state.showing === 'new' ? 'current' : 'new' });
+        }
     }
 
     /** Rejects a waiting version, or dismisses a failed one (the same call: CR-M3-47). */
@@ -254,18 +288,27 @@ export class VersionPage {
         request: (id: string) => ImageryRequest<N>,
         done: NoticeInput,
     ): Promise<boolean> {
+        return (await this.#call(action, name, request, done)) !== null;
+    }
+
+    async #call<N extends ImageryCallName>(
+        action: VersionAction,
+        name: N,
+        request: (id: string) => ImageryRequest<N>,
+        done: NoticeInput,
+    ): Promise<ImageryResponse<N> | null> {
         const id = this.#state?.id;
         if (id === undefined || !this.#start(action)) {
-            return false;
+            return null;
         }
         try {
-            await callImagery(this.#services.callables, name, request(id));
+            const answer = await callImagery(this.#services.callables, name, request(id));
             this.#finish(null);
             this.#services.notify(done);
-            return true;
+            return answer;
         } catch (error) {
             this.#finish(refusalOf(error));
-            return false;
+            return null;
         }
     }
 
@@ -291,13 +334,31 @@ export class VersionPage {
         if (state === null) {
             return;
         }
+        const version = mapped(this.#version.state, versionViewOf);
+        this.#followCurrent(version.doc?.data);
+        const current = this.#currentView();
         this.#set({
             ...state,
-            version: mapped(this.#version.state, versionViewOf),
+            version,
             job: mapped(this.#job.state, jobViewOf),
             logs: this.#logs.list,
             usage: usageOf(this.#usage.state),
+            current,
+            showing: current === null ? 'new' : state.showing,
         });
+    }
+
+    /** M16: a recalibration's current version is read beside it, once its id is known. */
+    #followCurrent(version: VersionView | undefined): void {
+        const id = currentIdOf(version);
+        if (id !== null && id !== this.#currentId) {
+            this.#currentId = id;
+            this.#current.show(FIRESTORE_PATHS.layerVersion(this.#services.cityId, id));
+        }
+    }
+
+    #currentView(): VersionView | null {
+        return this.#currentId === null ? null : (mapped(this.#current.state, versionViewOf).doc?.data ?? null);
     }
 
     #set(state: VersionPageState | null): void {

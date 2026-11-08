@@ -68,8 +68,20 @@ async function imageryRecalibrate(deps: RecalibrateDeps, caller: VerifiedCaller,
         throw new ApiError('apiError.imagery.gcpOutside');
     }
     const recalibration = recalibrationOf(request, version);
-    const started = await startRegeoref(deps, { cityId: request.cityId, base: version, origin: 'regeoref', georef, by: caller.uid, recalibration });
-    deps.log.info('layer version recalibrating', { uid: caller.uid, cityId: request.cityId, versionId: request.versionId, route: request.route });
+    const started = await startRegeoref(deps, {
+        cityId: request.cityId,
+        base: version,
+        origin: 'regeoref',
+        georef,
+        by: caller.uid,
+        recalibration,
+    });
+    deps.log.info('layer version recalibrating', {
+        uid: caller.uid,
+        cityId: request.cityId,
+        versionId: request.versionId,
+        route: request.route,
+    });
     return started;
 }
 

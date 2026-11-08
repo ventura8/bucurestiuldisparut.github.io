@@ -6,6 +6,7 @@
  * `apiError.*` code and parameters, which the pages translate.
  */
 import {
+    imageryApproveRequestSchema,
     imageryApproveResponseSchema,
     imageryBrowseRequestSchema,
     imageryBrowseResponseSchema,
@@ -20,6 +21,8 @@ import {
     imageryPreviewUrlResponseSchema,
     imageryProbeRequestSchema,
     imageryProbeResponseSchema,
+    imageryRecalibrateRequestSchema,
+    imageryRecalibrateResponseSchema,
     imageryRejectResponseSchema,
     imageryResumeGuardRequestSchema,
     imageryResumeGuardResponseSchema,
@@ -43,7 +46,7 @@ const IMAGERY_CALLS = {
     'imagery.browse': { request: imageryBrowseRequestSchema, response: imageryBrowseResponseSchema },
     'imagery.import': { request: imageryImportRequestSchema, response: imageryImportResponseSchema },
     'imagery.join': { request: imageryJoinRequestSchema, response: imageryJoinResponseSchema },
-    'imagery.approve': { request: imageryVersionRequestSchema, response: imageryApproveResponseSchema },
+    'imagery.approve': { request: imageryApproveRequestSchema, response: imageryApproveResponseSchema },
     'imagery.reject': { request: imageryVersionRequestSchema, response: imageryRejectResponseSchema },
     'imagery.choose': { request: imageryChooseRequestSchema, response: imageryChooseResponseSchema },
     'imagery.studioDone': { request: imageryVersionRequestSchema, response: imageryStudioDoneResponseSchema },
@@ -51,6 +54,7 @@ const IMAGERY_CALLS = {
     'imagery.crop': { request: imageryCropRequestSchema, response: imageryCropResponseSchema },
     'imagery.retry': { request: imageryRetryRequestSchema, response: imageryRetryResponseSchema },
     'imagery.locateAgain': { request: imageryVersionRequestSchema, response: imageryRetryResponseSchema },
+    'imagery.recalibrate': { request: imageryRecalibrateRequestSchema, response: imageryRecalibrateResponseSchema },
     'imagery.previewUrl': { request: imageryVersionRequestSchema, response: imageryPreviewUrlResponseSchema },
     'imagery.probeTiles': { request: imageryProbeRequestSchema, response: imageryProbeResponseSchema },
     'imagery.resumeGuard': { request: imageryResumeGuardRequestSchema, response: imageryResumeGuardResponseSchema },

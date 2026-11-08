@@ -142,6 +142,8 @@ export interface GeorefIntents {
     setPane(pane: 'scan' | 'map'): void;
     /** `imagery.saveGcps`: true when the job was queued (the page opens the version). */
     save(): Promise<boolean>;
+    /** M16: Snap my points (`snap.ts`). */
+    snap(): Promise<boolean>;
     discard(): void;
     attachMap(container: HTMLElement): void;
     zoomBy(delta: number): void;

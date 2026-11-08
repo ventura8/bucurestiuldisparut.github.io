@@ -51,7 +51,10 @@ function job(overrides: Partial<JobDoc> = {}): JobDoc {
 
 const WAITING = { status: 'awaiting_approval', waitReason: 'approval' } as const;
 
-async function world(state: 'published' | 'awaiting_approval' = 'published', version: Partial<LayerVersionDoc> = {}): Promise<ImageryWorld> {
+async function world(
+    state: 'published' | 'awaiting_approval' = 'published',
+    version: Partial<LayerVersionDoc> = {},
+): Promise<ImageryWorld> {
     const found = await readyWorld();
     const published = state === 'published' ? { mapbox: MAPBOX } : {};
     await seedVersion(found, CURRENT, renderedVersion({ state, ...published, ...version }));
@@ -64,16 +67,24 @@ function recalibrate(found: ImageryWorld, data: Record<string, unknown>) {
     return recalibrateFunction(() => found.deps).run(adminCall({ cityId: CITY, versionId: CURRENT, route: 'auto', ...data }));
 }
 
+async function required<T>(read: Promise<T | undefined>): Promise<T> {
+    const found = await read;
+    if (found === undefined) {
+        throw new Error('not found');
+    }
+    return found;
+}
+
 function codeOf(promise: Promise<unknown>): Promise<unknown> {
     return failureOf(promise).then((failure) => (failure.details as { code?: unknown } | undefined)?.code);
 }
 
 /** The new version, rendered and waiting with its job, as the pipeline leaves it. */
 async function rendered(found: ImageryWorld, id: string, recalibration: Recalibration): Promise<void> {
-    const version = await readVersion(found, id);
+    const version = await required(readVersion(found, id));
     await seedVersion(found, id, renderedVersion({ ...version, layerId: LAYER, jobId: id, state: 'awaiting_approval', recalibration }));
-    const started = await readJob(found, id);
-    await seedJob(found, id, { ...(started as JobDoc), ...WAITING });
+    const started = await required(readJob(found, id));
+    await seedJob(found, id, { ...started, ...WAITING });
 }
 
 describe('imagery.recalibrate', () => {
@@ -110,7 +121,11 @@ describe('imagery.recalibrate', () => {
     });
 
     it.each([
-        ['a point off the scan', { route: 'points', points: [{ ...ROUGH[0], pixel: { x: 199_999, y: 10 } }] }, 'apiError.imagery.gcpOutside'],
+        [
+            'a point off the scan',
+            { route: 'points', points: [{ ...ROUGH[0], pixel: { x: 199_999, y: 10 } }] },
+            'apiError.imagery.gcpOutside',
+        ],
         ['points without their route', { points: ROUGH }, 'apiError.invalidRequest'],
         ['the points route without points', { route: 'points' }, 'apiError.invalidRequest'],
     ])('badPath_refusedBeforeAnythingIsWritten_%s @S-A81-BAD-REFUSED', async (_case, data, code) => {
@@ -133,7 +148,10 @@ describe('imagery.recalibrate', () => {
     });
 
     it('badPath_aVersionNoLongerWaitingIsRefused @S-A84-BAD-JOIN', async () => {
-        const found = await world('published', { state: 'superseded', own: { path: 'tiles/x.pmtiles', url: 'https://x.test/a', bytes: 1, publishedAt: at(NOW) } });
+        const found = await world('published', {
+            state: 'superseded',
+            own: { path: 'tiles/x.pmtiles', url: 'https://x.test/a', bytes: 1, publishedAt: at(NOW) },
+        });
 
         expect(await codeOf(recalibrate(found, {}))).toBe('apiError.imagery.versionState');
     });
@@ -149,7 +167,12 @@ describe('a version waiting for approval, recalibrated', () => {
         expect((await readVersion(found, jobId))?.recalibration).toEqual({ route: 'auto', replaces: CURRENT });
         expect((await readLayer(found, LAYER))?.pendingVersion).toBe(CURRENT);
 
-        await rendered(found, jobId, { route: 'auto', replaces: CURRENT, before: { rmseM: 18, checks: 20 }, after: { rmseM: 12, checks: 20 } });
+        await rendered(found, jobId, {
+            route: 'auto',
+            replaces: CURRENT,
+            before: { rmseM: 18, checks: 20 },
+            after: { rmseM: 12, checks: 20 },
+        });
         expect(await applyApprovalPolicy(found.deps, CITY, jobId)).toBe(false);
 
         expect((await readVersion(found, CURRENT))?.state).toBe('cancelled');
@@ -161,8 +184,13 @@ describe('a version waiting for approval, recalibrated', () => {
     it('badPath_aRefineThatDeclinesLeavesItWaitingWithTheLayer @S-A83-BAD-DECLINE-KEEPS-WAITING', async () => {
         const found = await world('awaiting_approval');
         const { jobId } = await recalibrate(found, {});
-        const before = await readJob(found, jobId);
-        const after = { ...(before as JobDoc), status: 'cancelled', finishedAt: at(NOW), error: { code: 'apiError.imagery.notImproved', message: 'x' } } as const;
+        const before = await required(readJob(found, jobId));
+        const after = {
+            ...before,
+            status: 'cancelled',
+            finishedAt: at(NOW),
+            error: { code: 'apiError.imagery.notImproved', message: 'x' },
+        } as const;
         await seedJob(found, jobId, after);
 
         expect(await onJobWrite(found.deps, CITY, jobId, { before, after })).toBe('release');
@@ -174,7 +202,7 @@ describe('a version waiting for approval, recalibrated', () => {
     it('badPath_aCurrentVersionApprovedMeanwhileIsLeftAsItIs @S-A83-BAD-DECLINE-KEEPS-WAITING', async () => {
         const found = await world('awaiting_approval');
         const { jobId } = await recalibrate(found, {});
-        await seedVersion(found, CURRENT, { ...(await readVersion(found, CURRENT)), state: 'published', mapbox: MAPBOX } as LayerVersionDoc);
+        await seedVersion(found, CURRENT, { ...(await required(readVersion(found, CURRENT))), state: 'published', mapbox: MAPBOX });
         await seedLayer(found, LAYER, { currentVersion: CURRENT });
         await rendered(found, jobId, { route: 'auto', replaces: CURRENT });
 
@@ -187,10 +215,19 @@ describe('a version waiting for approval, recalibrated', () => {
     it('badPath_aRefineOfAPublishedLayerThatDeclinesReleasesTheLayer @S-A80-BAD-NOT-IMPROVED', async () => {
         const found = await world();
         const { jobId } = await recalibrate(found, {});
-        const before = await readJob(found, jobId);
-        const after = { ...(before as JobDoc), status: 'cancelled', finishedAt: at(NOW), error: { code: 'apiError.imagery.notImproved', message: 'x' } } as const;
+        const before = await required(readJob(found, jobId));
+        const after = {
+            ...before,
+            status: 'cancelled',
+            finishedAt: at(NOW),
+            error: { code: 'apiError.imagery.notImproved', message: 'x' },
+        } as const;
         await seedJob(found, jobId, after);
-        await seedVersion(found, jobId, { ...(await readVersion(found, jobId)), state: 'cancelled', error: { code: 'apiError.imagery.notImproved' } } as LayerVersionDoc);
+        await seedVersion(found, jobId, {
+            ...(await required(readVersion(found, jobId))),
+            state: 'cancelled',
+            error: { code: 'apiError.imagery.notImproved' },
+        });
 
         await onJobWrite(found.deps, CITY, jobId, { before, after });
 
