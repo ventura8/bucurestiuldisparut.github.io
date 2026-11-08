@@ -6,9 +6,10 @@ import ts from 'typescript';
  * leaves a template literal's text as written: the stylesheets' indentation and comments were about 77 KB of the admin
  * bundle (2026-10-18), and the line breaks and indentation left after that about 6 KB gzip (M8, 2026-11-06).
  *
- * `css`: outside quoted strings, comments go, runs of whitespace become one space, and the whitespace around `{`, `}`, `;`
- * and `,` and after `:` goes; a quoted string and an escaped character are kept as they are. A whitespace at a
- * template's interpolation (`${...}`) stays, as the value there is not known.
+ * `css`: outside quoted strings, comments go, runs of whitespace become one space, and the whitespace around `{`, `}`, `;`,
+ * `,`, `>`, `/` and `!` and after `:` goes, and so does the `;` before a block's `}`; a quoted string and an escaped
+ * character are kept as they are. A whitespace at a template's interpolation (`${...}`) stays, as the value there is not
+ * known.
  *
  * `html`: a run of whitespace with a line break becomes one space, which reads the same in a text and between attributes,
  * and goes before a `>` (the end of a tag Prettier broke over two lines). A template with a `<pre>` or a `<textarea>`, whose
@@ -19,8 +20,12 @@ import ts from 'typescript';
  * backtick, where they are whitespace between tokens that had a valid program without them, so no semicolon is inserted.
  */
 
-/** Characters around which whitespace has no meaning in a stylesheet. */
-const TIGHT = new Set(['{', '}', ';', ',']);
+/**
+ * Characters around which whitespace has no meaning in a stylesheet: a block's and a declaration's edges, a list's comma,
+ * the child combinator (`a > b`, and a media range's `>=`), the slash of a shorthand or a colour's alpha (`1 / 2`,
+ * `rgb(0 0 0 / 30%)`) and `!important`. Not `+`, `-` or `~`: `calc()` needs the spaces around its `+` and `-`.
+ */
+const TIGHT = new Set(['{', '}', ';', ',', '>', '/', '!']);
 
 /** Whitespace and comments, from where the expression is set to look (`lastIndex`). */
 const BLANK = /(?:\s|\/\*[\s\S]*?(?:\*\/|$))+/y;
@@ -85,9 +90,25 @@ function pieceAt(raw: string, at: number): Piece {
     return { blank: blank !== '', text: blank === '' ? char : blank, escape: false };
 }
 
+/**
+ * Whether the piece at `at` is the `;` of a block's last declaration (only whitespace or comments before the block's `}`
+ * in this part), which can go; not after a colon (`--x:;`, an empty custom property, keeps it).
+ */
+function isLastSemicolon(raw: string, at: number, last: string): boolean {
+    return raw.charAt(at) === ';' && last !== ':' && raw.charAt(at + 1 + blankAt(raw, at + 1).length) === '}';
+}
+
 /** What a blank piece becomes: one space where whitespace means something, else nothing. */
 function blankText(before: string, after: string, edge: Edge): string {
     return droppable(before, after, edge) ? '' : ' ';
+}
+
+/** What the piece at `at` writes, after `last` (the character written before it): see `minified`. */
+function pieceText(raw: string, at: number, piece: Piece, context: { readonly last: string; readonly edge: Edge }): string {
+    if (isLastSemicolon(raw, at, context.last)) {
+        return '';
+    }
+    return piece.blank ? blankText(context.last, raw.charAt(at + piece.text.length), context.edge) : piece.text;
 }
 
 /**
@@ -105,7 +126,7 @@ function minified(raw: string, edge: Edge): string {
     let last = '';
     for (let at = 0; at < raw.length;) {
         const piece = pieceAt(raw, at);
-        out += piece.blank ? blankText(last, raw.charAt(at + piece.text.length), edge) : piece.text;
+        out += pieceText(raw, at, piece, { last, edge });
         last = piece.escape ? '\\' : (out.at(-1) ?? '');
         at += piece.text.length;
     }

@@ -6,6 +6,7 @@
  */
 import {
     clamp,
+    encodeHash,
     findOverlay,
     withOverlayOpacity,
     withOverlayVisibility,
@@ -32,6 +33,7 @@ import {
     sheetAfterClosing,
     withStory,
     withYear,
+    type MyLocationState,
     type SheetName,
     type ThemeMode,
     type ViewerState,
@@ -63,7 +65,10 @@ export interface ViewerActions {
     openSheet(sheet: SheetName): void;
     /** Records the map's view (the `moveend` path); the camera does not move. */
     setView(view: MapView): void;
-    /** Moves the camera to `view` (animated unless reduced motion) and records it: "show my location" (CR-17). */
+    /**
+     * Moves the camera to `view` (animated unless reduced motion) and records it: "show my location" (CR-17). The URL hash
+     * keeps the view it had until the camera moves elsewhere: the view is the visitor's position.
+     */
     flyTo(view: MapView): void;
     /** The visitor shared the page (Web Share or the clipboard): the `share` analytics event (CR-17). */
     logShare(): void;
@@ -90,6 +95,8 @@ export interface ViewerActions {
     setMapLabels(labels: Partial<MapLabels>): void;
     /** Turns the single-key shortcuts on or off (V36), and remembers it for the city. */
     setShortcuts(enabled: boolean): void;
+    /** "Show my location" (V10): the visitor's position for the maps' blue dot, kept in memory only (never in the hash). */
+    setMyLocation(myLocation: MyLocationState): void;
 }
 
 export interface ViewerStore extends ViewerActions {
@@ -108,6 +115,8 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
     readonly #unsubscribe: Unsubscribe[] = [];
     #state: ViewerState;
     #destroyed = false;
+    /** Show my location's flight is under way: its own `moveend` keeps the hash's view wherever the flight ended. */
+    #flying = false;
 
     constructor(deps: ViewerDeps) {
         this.deps = deps;
@@ -284,13 +293,22 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
     }
 
     setView(view: MapView): void {
-        this.set({ ...this.#state, view });
+        const state = this.#state;
+        // The hash's held view stays while the camera is where Show my location brought it: the flight's own `moveend`
+        // (a pane opened mid-flight ends it off the position, half the width the map lost: Mapbox keeps the start's
+        // centre point), then the same view at the hash's precision (a resize); it goes once the visitor moved it.
+        const held = this.#flying || encodeHash({ view }) === encodeHash({ view: state.view });
+        this.#flying = false;
+        this.set({ ...state, view, hashView: held ? state.hashView : undefined });
         this.hash.schedule();
     }
 
+    /** The camera goes to the visitor's position: the hash keeps the view it had until the camera moves again. */
     flyTo(view: MapView): void {
+        const state = this.#state;
+        this.set({ ...state, view, hashView: state.hashView ?? state.view });
+        this.#flying = true;
         this.#boot.flyMap(view);
-        this.setView(view);
     }
 
     logShare(): void {
@@ -378,6 +396,10 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
     setShortcuts(enabled: boolean): void {
         this.set({ ...this.#state, shortcuts: enabled });
         this.preferences.set(this.#state.manifest?.city.id ?? this.deps.config.cityId, 'shortcuts', enabled ? null : 'off');
+    }
+
+    setMyLocation(myLocation: MyLocationState): void {
+        this.set({ ...this.#state, myLocation });
     }
 
     destroy(): void {

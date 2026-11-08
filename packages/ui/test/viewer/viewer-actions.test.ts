@@ -1,12 +1,9 @@
-import type { LngLat } from '@hcm/shared';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ViewerServices } from '../../src/viewer/services.js';
 import {
-    LOCATE_ZOOM,
     closeSheet,
     defaultCompareLayer,
-    locateViewer,
     menuAction,
     selectPhoto,
     shareTitle,
@@ -14,14 +11,19 @@ import {
     syncLocale,
     toggleCompare,
 } from '../../src/viewer/viewer-actions.js';
-import { FakeStore, idleState, readyState } from './fake-store.js';
+import { FakeStore, readyState } from './fake-store.js';
 import { testManifest } from './fixtures.js';
 
 function services(change: Partial<ViewerServices> = {}): ViewerServices {
     return {
         share: null,
         copyText: () => Promise.resolve(),
-        locate: () => Promise.resolve([26.1, 44.43] as LngLat),
+        watchPosition: (onFix) => {
+            queueMicrotask(() => {
+                onFix({ center: [26.1, 44.43], accuracy: 20, heading: null });
+            });
+            return () => undefined;
+        },
         pageUrl: () => 'https://example.org/#14/44.43/26.1',
         matchMedia: (query) => window.matchMedia(query),
         openPage: () => undefined,
@@ -129,41 +131,6 @@ describe('shareViewer', () => {
     });
 });
 
-describe('locateViewer', () => {
-    it('happyPath_theCameraMovesToTheVisitor', async () => {
-        const store = new FakeStore(readyState());
-        await locateViewer(store, services());
-
-        expect(store.callsOf('showToast')).toEqual([['geolocate.locating', undefined]]);
-        expect(store.getState().toast).toBeNull();
-        expect(store.getState().view).toEqual({ center: [26.1, 44.43], zoom: LOCATE_ZOOM, bearing: 0 });
-        expect(store.callsOf('flyTo')).toHaveLength(1);
-        expect(store.callsOf('setView')).toEqual([]);
-    });
-
-    it('happyPath_aCloserCameraKeepsItsZoom', async () => {
-        const store = new FakeStore(readyState(testManifest(), { view: { center: [26, 44.4], zoom: 18, bearing: 30 } }));
-        await locateViewer(store, services());
-
-        expect(store.getState().view).toEqual({ center: [26.1, 44.43], zoom: 18, bearing: 30 });
-    });
-
-    it('badPath_outsideTheCitySaysSo', async () => {
-        const store = new FakeStore(readyState());
-        await locateViewer(store, services({ locate: () => Promise.resolve([2.35, 48.85] as LngLat) }));
-
-        expect(store.getState().toast).toEqual({ key: 'error.geolocate.outside' });
-        expect(store.callsOf('flyTo')).toEqual([]);
-    });
-
-    it('badPath_beforeTheManifestThereIsNoCity', async () => {
-        const store = new FakeStore(idleState());
-        await locateViewer(store, services());
-
-        expect(store.getState().toast).toEqual({ key: 'error.geolocate.unavailable' });
-    });
-});
-
 describe('menuAction', () => {
     it('happyPath_sheetsOpenFromTheMenu', () => {
         const store = new FakeStore(readyState());
@@ -182,7 +149,15 @@ describe('menuAction', () => {
         await vi.waitFor(() => {
             expect(store.callsOf('flyTo')).toHaveLength(1);
         });
-        expect(store.callsOf('showToast').map((args) => args[0])).toEqual(['geolocate.locating', 'share.copied']);
+        await vi.waitFor(() => {
+            expect(store.callsOf('showToast')).toHaveLength(3);
+        });
+        expect(
+            store
+                .callsOf('showToast')
+                .map((args) => String(args[0]))
+                .sort((a, b) => a.localeCompare(b)),
+        ).toEqual(['geolocate.locating', 'geolocate.shown', 'share.copied']);
     });
 });
 

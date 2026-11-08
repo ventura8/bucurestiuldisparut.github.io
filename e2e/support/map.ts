@@ -355,3 +355,39 @@ export async function styleFacts(
     }
     return facts;
 }
+
+/** What one live map draws of the visitor's position ("Show my location", V10). */
+export interface MyLocationDrawn {
+    /** Where the blue dot is drawn; null without one. */
+    readonly dot: LngLat | null;
+    /** Whether the accuracy circle (or the heading cone) is drawn. */
+    readonly area: boolean;
+}
+
+/** Runs in the page: on each live map (a removed one throws and is skipped), the dot and the circle it draws. */
+function myLocationInPage(): MyLocationDrawn[] {
+    interface QueryMap {
+        getLayer(id: string): unknown;
+        queryRenderedFeatures(options: { layers: string[] }): { geometry?: { type: string; coordinates?: unknown } }[];
+    }
+    const drawn = (map: QueryMap): MyLocationDrawn | null => {
+        try {
+            if (map.getLayer('hcm-my-location-dot') === undefined) {
+                return { dot: null, area: false };
+            }
+            const [dot] = map.queryRenderedFeatures({ layers: ['hcm-my-location-dot'] });
+            const coordinates = dot?.geometry?.coordinates as [number, number] | undefined;
+            const area = map.queryRenderedFeatures({ layers: ['hcm-my-location-area'] }).length > 0;
+            return { dot: coordinates === undefined ? null : [coordinates[0], coordinates[1]], area };
+        } catch {
+            return null;
+        }
+    };
+    const maps = (window as unknown as { __hcmE2e?: { maps: QueryMap[] } }).__hcmE2e?.maps ?? [];
+    return maps.map(drawn).filter((entry): entry is MyLocationDrawn => entry !== null);
+}
+
+/** The visitor's position as each live map draws it, oldest map first (the viewer's map, then compare's). */
+export async function myLocationDrawn(page: Page): Promise<MyLocationDrawn[]> {
+    return page.evaluate(myLocationInPage);
+}

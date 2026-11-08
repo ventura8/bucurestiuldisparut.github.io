@@ -145,7 +145,7 @@ The navigation holds Home, Setup, Photos, Places, Layers, Historical imagery, Jo
 
 ### Home
 
-What the city holds and what waits for you (photos whose rights are to be checked, unpublished photos, running or failed jobs), each a link to its page, one chip per Setup area and the public map's state. Once Setup is complete the admin opens here (`docs/research/DECISIONS-for-review.md` §41c). **Not on the public map** lists every published item the public map left out, with what to correct and a link to its editor.
+What the city holds and what waits for you (photos whose rights are to be checked, unpublished photos, running or failed jobs), each a link to its page, one chip per Setup area and the public map's state. **What needs you**, first, lists only what waits for a person now, each a link to where it is done: images to approve, role requests, suggestions, and the photos, places and stories an uploader sent that wait in **Review** (an uploader is never shown or asked these counts). While a count is being read its item shows an ellipsis, and a count that could not be read shows a dash: the list never says *Nothing needs you now* while it does not know. Once Setup is complete the admin opens here (`docs/research/DECISIONS-for-review.md` §41c). **Not on the public map** lists every published item the public map left out, with what to correct and a link to its editor.
 
 ### Photos
 

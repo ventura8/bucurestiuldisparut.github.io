@@ -12,7 +12,10 @@ function seeded() {
     const docs: [string, Record<string, unknown>][] = [
         [`${FIRESTORE_PATHS.photos(CITY)}/p1`, { rightsReview: true, published: false }],
         [`${FIRESTORE_PATHS.photos(CITY)}/p2`, { rightsReview: false, published: true }],
+        [`${FIRESTORE_PATHS.photos(CITY)}/p3`, { rightsReview: false, published: false, reviewStatus: 'pending' }],
         [`${FIRESTORE_PATHS.pois(CITY)}/x`, { published: true }],
+        [`${FIRESTORE_PATHS.pois(CITY)}/y`, { published: false, reviewStatus: 'pending' }],
+        [`${FIRESTORE_PATHS.pois(CITY)}/z`, { published: false, reviewStatus: 'pending' }],
         [`${FIRESTORE_PATHS.jobs(CITY)}/j1`, { status: 'running' }],
         [`${FIRESTORE_PATHS.jobs(CITY)}/j2`, { status: 'failed' }],
         [
@@ -57,12 +60,12 @@ describe('the dashboard', () => {
         await settled();
 
         expect(home.state.counts).toEqual({
-            photos: 2,
-            pois: 1,
+            photos: 3,
+            pois: 3,
             categories: 0,
             layers: 0,
             rightsReviews: 1,
-            unpublishedPhotos: 1,
+            unpublishedPhotos: 2,
             activeJobs: 1,
             failedJobs: 1,
             versionsToApprove: 0,
@@ -70,6 +73,8 @@ describe('the dashboard', () => {
             roleRequests: 0,
             suggestionsToReview: 0,
             storiesToReview: 0,
+            photosToReview: 1,
+            placesToReview: 2,
         });
         expect(home.state.health.chips.map((chip) => [chip.area, chip.state])).toEqual([
             ['billing', 'ok'],
@@ -103,7 +108,7 @@ describe('the dashboard', () => {
             error: 'apiError.internal',
             ...STAMP,
         });
-        store.docs.set(`${FIRESTORE_PATHS.photos(CITY)}/p3`, { rightsReview: true });
+        store.docs.set(`${FIRESTORE_PATHS.photos(CITY)}/p4`, { rightsReview: true });
         await home.intents.refresh();
 
         expect(home.state.publicMap.doc?.data).toEqual({
@@ -112,7 +117,7 @@ describe('the dashboard', () => {
             skipped: [],
             error: { key: 'apiError.internal' },
         });
-        expect(home.state.counts?.photos).toBe(3);
+        expect(home.state.counts?.photos).toBe(4);
     });
 
     it('badPath_failedCountsAreDashesAndAllFailedIsAnError', async () => {
@@ -195,8 +200,10 @@ describe('the dashboard: what the role may count', () => {
 
         expect([moderator.state.counts?.roleRequests, moderator.state.counts?.suggestionsToReview]).toEqual([0, 0]);
         expect([uploader.state.counts?.roleRequests, uploader.state.counts?.suggestionsToReview]).toEqual([0, 0]);
-        // The merge of M17 with M18: an uploader is not asked every waiting story (the rules read only their own).
+        // The merge of M17 with M18: an uploader is not asked every waiting story, photo or place (the rules read only their own).
         expect(uploader.state.counts?.storiesToReview).toBe(0);
+        expect([uploader.state.counts?.photosToReview, uploader.state.counts?.placesToReview]).toEqual([0, 0]);
+        expect([moderator.state.counts?.photosToReview, moderator.state.counts?.placesToReview]).toEqual([1, 2]);
         expect([unknown.state.counts?.roleRequests, unknown.state.counts?.failedJobs]).toEqual([null, null]);
         expect(moderator.state.counts?.failedJobs).toBeNull();
     });

@@ -12,6 +12,8 @@ export interface FabMenuItem {
     /** Already localized. */
     readonly label: string;
     readonly icon: string;
+    /** An item that is on or off (`menuitemcheckbox` with `aria-checked`, a 3 px ring while on); absent: an action. */
+    readonly checked?: boolean;
 }
 
 const MOVE_KEYS: Readonly<Record<string, number>> = { ArrowDown: 1, ArrowUp: -1 };
@@ -98,6 +100,11 @@ export class HcmFabMenu extends LitElement {
                 transition: border-radius var(--md-sys-motion-spring-fast-spatial-duration) var(--md-sys-motion-spring-fast-spatial-easing);
             }
 
+            /* A switch that is on wears a ring in its text colour (ButtonText under forced colours, as its edge). */
+            .item[aria-checked='true'] {
+                border: 3px solid;
+            }
+
             :host([open]) .fab {
                 border-radius: var(--md-sys-shape-corner-full);
                 background: var(--md-sys-color-primary);
@@ -161,7 +168,8 @@ export class HcmFabMenu extends LitElement {
                 (item) =>
                     html`<button
                         class="item interactive title-medium"
-                        role="menuitem"
+                        role=${item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
+                        aria-checked=${item.checked === undefined ? nothing : String(item.checked)}
                         tabindex="-1"
                         @click=${() => {
                             this.choose(item.value);
@@ -174,7 +182,7 @@ export class HcmFabMenu extends LitElement {
     }
 
     private menuItems(): HTMLElement[] {
-        return [...this.renderRoot.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+        return [...this.renderRoot.querySelectorAll<HTMLElement>('[role^="menuitem"]')];
     }
 
     private fab(): HTMLElement | null {

@@ -229,6 +229,20 @@ Single keys, listed by the help panel (`?`, or About's button): `.` and `,` late
 - **A screen reader in browse mode keeps these letters for itself**: nothing reaches the page and nothing of its keys is overridden. Nobody using a screen reader has tested this yet.
 - **A gamepad of the standard mapping** works through the browser's Gamepad API, in the lazy chunk `gamepad-<hash>.js`, fetched only once a pad connects: left stick pans, right stick and triggers zoom, D-pad up and down move a visible focus, left and right the year, A opens, B closes, Y Layers, LB and RB photos, Start the menu, Back the panel. Any other mapping is refused with a toast. The loop stops while the tab is hidden. A page embedding the viewer in a cross-origin frame must allow `gamepad` for it to work. **Only a fake pad has tested this; no real hardware was available.**
 
+## Show my location
+
+Status (2026-11-08): the owner's request ("when the user clicks show my location, we must show it with a blue dot"); scenario rows V10, `e2e/specs/viewer/geolocate.spec.ts`, the tour's state `my-location`. Additive within v1: no property, event or method for a page to set.
+
+The menu's **Show my location** is a switch (`menuitemcheckbox`, `aria-checked`, a 3 px ring in its text colour while on, ButtonText under forced colours).
+
+- **On**, the browser watches the visitor's position (`watchPosition`, high accuracy). The first position inside the city's `bounds` moves the camera there (zoom 16 at least; a jump under reduced motion, as every camera move) and a polite status says how accurate it is ("Your location: ±25 m"). Every position is drawn as a **blue dot with a white ring**, a translucent **accuracy circle** as wide as the browser's accuracy and, where the device gives a heading (moving, with GPS), a **cone** pointing that way; later positions move the dot, never the camera. Nothing pulses or moves by itself.
+- **Off**: the menu again, a position outside the city (the toast says so, as before), a refused permission (its toast), the page hidden (`visibilitychange`), the viewer removed or destroyed. A position late or lost while one is shown keeps the last one; before the first one it says the location is unavailable.
+- **Both maps**: while comparing, the second map draws the same dot (no new map load).
+- **Privacy**: the position lives in the page's memory only. It is never written to the stored preferences or telemetry, and no request carries it (`S-V10-BAD-PAGE-HIDDEN`, `S-V19-BAD-HASH-NEVER-SENT`). The camera's view after the first move is the position itself, so the URL hash, and every link shared from it, keeps the view it had until the visitor moves the camera; a hash they type or follow wins (`S-V10-BAD-POSITION-NOT-IN-LINK`; the state's `hashView`, kept by `flyTo` and `setView` in `packages/engine/src/core/store.ts`). After the visitor moves the camera the hash follows it, as before.
+- **Our own layer, not Mapbox's `GeolocateControl`**: a GeoJSON source and two layers (`hcm-my-location-area`, a fill; `hcm-my-location-dot`, a circle) in the `top` slot of every map, on the global `mapboxgl`. The control would cost no bundle bytes either, but it brings its own button, camera moves, errors and a pulsing marker, and one watch per map in compare; our layer keeps our menu, toasts and bounds check, and adds about 1 KB gzip to the engine (the IIFE measured 124,996 of its 125,000 bytes, the ES module 97.2 of 100 KB). The canvas is not repainted by forced colours: the white ring keeps the dot apart from any basemap.
+
+Code: `packages/ui/src/viewer/my-location.ts` (the switch and the watch), `packages/ui/src/map/my-location.ts` (the layer, `ViewerMapPort.setMyLocation`), `MapSync` in `packages/engine/src/core/map-sync.ts` (the state's `myLocation` on every map).
+
 ## City Manifest v1
 
 The only data the viewer reads: a static JSON file (from the public bucket, or inline in `config.js`). Schema: `manifestSchema` in `packages/shared/src/schemas/manifest.ts`; the Bucharest seed is `seed/bucharest/manifest.static.json`. Every object is strict: an unknown key is an error (which also blocks prototype-pollution keys).

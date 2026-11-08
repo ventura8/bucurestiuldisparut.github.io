@@ -80,10 +80,15 @@ export function menuButton(page: Page, lang: Locale): Locator {
     return page.getByRole('button', { name: t(lang, 'action.menu'), exact: true });
 }
 
+/** The open FAB menu's item named `label`: an action, or a switch such as Show my location (`menuitemcheckbox`). */
+function menuItemNamed(page: Page, label: string): Locator {
+    return page.getByRole('menuitem', { name: label, exact: true }).or(page.getByRole('menuitemcheckbox', { name: label, exact: true }));
+}
+
 /** Opens the FAB menu and picks the item named `label`. */
 export async function chooseMenuItem(page: Page, lang: Locale, label: string): Promise<void> {
     await menuButton(page, lang).click();
-    await page.getByRole('menuitem', { name: label, exact: true }).click();
+    await menuItemNamed(page, label).click();
 }
 
 /** Keeps a toast open while a check looks at it: the pointer rests on it, as a visitor's would (M3 pauses the timeout). */

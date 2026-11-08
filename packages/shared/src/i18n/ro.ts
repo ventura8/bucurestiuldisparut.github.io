@@ -7,7 +7,6 @@
  * the rest one family per viewer feature. Keep one entry per line (scripts/ci/check_i18n.py).
  */
 export const ro = {
-    'app.title': 'București dispărut',
     'hello.greeting': 'Salut, {name}!',
     'validation.required': 'Lipsește un câmp obligatoriu.',
     'validation.type': 'Valoarea are un tip greșit.',
@@ -178,6 +177,7 @@ export const ro = {
     'consent.granted': 'Statistici anonime: permise',
     'consent.denied': 'Statistici anonime: refuzate',
     'geolocate.locating': 'Se caută locația…',
+    'geolocate.shown': 'Locația ta: ±{meters} m',
 } as const;
 
 export type MessageKey = keyof typeof ro;

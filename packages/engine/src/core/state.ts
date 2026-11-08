@@ -16,6 +16,7 @@ import {
     type Story,
 } from '@hcm/shared';
 import type { WindowClass } from '@hcm/ui';
+import type { MyLocationFix } from '@hcm/ui/map';
 
 import type { ConsentState } from '../telemetry/telemetry-port.js';
 import { mapLabelsOf, NO_MAP_LABELS, type MapLabelsState } from './map-labels.js';
@@ -49,6 +50,12 @@ export interface CompareView {
     readonly position: number;
 }
 
+/**
+ * "Show my location" (V10): off (null), on and waiting for the first position, or the latest position, drawn as a blue dot
+ * on every map of the view. Only in memory: never in the hash, the stored preferences or telemetry.
+ */
+export type MyLocationState = MyLocationFix | 'waiting' | null;
+
 /** How compare shows: a second map behind a divider from 600 px wide, a toggle on the one map below. */
 export type CompareMode = 'swipe' | 'toggle';
 
@@ -59,6 +66,11 @@ export interface ViewerState {
     readonly manifest: Manifest | null;
     readonly webgl: boolean;
     readonly view: MapView;
+    /**
+     * The view the URL hash carries instead of `view` while the camera sits where Show my location brought it (that view
+     * is the visitor's position, so the address keeps the one it had); absent: the hash follows the camera.
+     */
+    readonly hashView?: MapView | undefined;
     /** The timeline stop; null is "today" (no historical layer). */
     readonly year: number | null;
     /**
@@ -85,6 +97,7 @@ export interface ViewerState {
     readonly shortcuts: boolean;
     /** `prefers-color-scheme: dark`, which the basemap's light follows under the `system` theme (`map-light.ts`). */
     readonly systemDark: boolean;
+    readonly myLocation: MyLocationState;
 }
 
 const NO_VIEW: MapView = { center: [0, 0], zoom: 0, bearing: 0 };
@@ -113,6 +126,7 @@ export function initialState(locale: Locale, theme: ThemeMode, consent: ConsentS
         mapLabels: NO_MAP_LABELS,
         shortcuts: true,
         systemDark: false,
+        myLocation: null,
     };
 }
 

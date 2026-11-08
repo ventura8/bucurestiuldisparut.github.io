@@ -251,6 +251,9 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
     const { state, manifest } = ready;
     // Without a map the consent card is in the fallback's column (`noWebgl`).
     const consent = state.webgl && consentAsked(state, manifest);
+    const items = menuActions({ webgl: state.webgl, layersDocked: view.layout.layersDocked, manifest }).map((action) =>
+        menuItem(action, view.locale, state.myLocation !== null),
+    );
     return html`${timelineArea(view, ready, handlers)} ${nearYearChip(view, ready, handlers)}
         <div class="dock menu">
             <hcm-fab-menu
@@ -258,7 +261,7 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
                 icon="menu"
                 .label=${translate(view.locale, 'action.menu')}
                 .closeLabel=${translate(view.locale, 'action.close')}
-                .items=${menuActions({ webgl: ready.state.webgl, layersDocked: view.layout.layersDocked, manifest: ready.manifest }).map((action) => menuItem(action, view.locale))}
+                .items=${items}
                 @hcm-select=${handlers.onMenuSelect}
             ></hcm-fab-menu>
         </div>

@@ -42,8 +42,8 @@ describe('resolveLocale', () => {
 
 describe('translate', () => {
     it('happyPath_returnsTheCatalogueText', () => {
-        expect(translate('ro', 'app.title')).toBe('București dispărut');
-        expect(translate('en', 'app.title')).toBe('Vanished Bucharest');
+        expect(translate('ro', 'layers.title')).toBe('Straturi');
+        expect(translate('en', 'layers.title')).toBe('Layers');
     });
 
     it('happyPath_fillsPlaceholders', () => {

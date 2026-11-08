@@ -6,7 +6,7 @@
  * that is assignable to `ViewerStorePort`, which `packages/engine/src/mount.ts` checks at compile time. The viewer
  * renders `getState()` and calls the actions; it never touches the map or the URL hash itself.
  */
-import type { Locale, Manifest, MapView, MessageKey, Overlay } from '@hcm/shared';
+import type { LngLat, Locale, Manifest, MapView, MessageKey, Overlay } from '@hcm/shared';
 import type { MapLabelKind, MapLabels } from '@hcm/shared/map-labels';
 
 import type { ThemeMode } from '../theme/apply.js';
@@ -32,6 +32,16 @@ export interface ViewerToast {
     readonly key: MessageKey;
     readonly params?: MessageParams;
 }
+
+/** One position the browser gave (`MyLocationFix` of `@hcm/ui/map`): metres of accuracy, a heading or null. */
+export interface MyLocationFix {
+    readonly center: LngLat;
+    readonly accuracy: number;
+    readonly heading: number | null;
+}
+
+/** "Show my location" (V10): off, on and waiting for the first position, or the latest position (memory only). */
+export type MyLocationState = MyLocationFix | 'waiting' | null;
 
 export interface ViewerState {
     readonly status: ViewerStatus;
@@ -71,6 +81,7 @@ export interface ViewerState {
         readonly defaults: MapLabels;
         readonly available: readonly MapLabelKind[] | null;
     };
+    readonly myLocation: MyLocationState;
 }
 
 /** The store actions the viewer elements call (a subset of the engine's `ViewerActions`). */
@@ -91,7 +102,7 @@ export interface ViewerStorePort {
     setLightbox(open: boolean): void;
     openSheet(sheet: SheetName): void;
     setView(view: MapView): void;
-    /** Moves the camera (and records the view): "show my location". */
+    /** Moves the camera (and records the view): "show my location"; the URL hash keeps the view it had until the camera moves. */
     flyTo(view: MapView): void;
     /** Logs the `share` analytics event after the page was shared or its link copied. */
     logShare(): void;
@@ -108,6 +119,8 @@ export interface ViewerStorePort {
     setMapLabels(labels: Partial<MapLabels>): void;
     /** Turns the single-key shortcuts on or off, and remembers it for the city. */
     setShortcuts(enabled: boolean): void;
+    /** The visitor's position for the maps' blue dot (`my-location.ts` keeps it up to date). */
+    setMyLocation(myLocation: MyLocationState): void;
 }
 
 /** How `ready` settles (docs/ENGINE_API.md → JavaScript API). */

@@ -20,7 +20,9 @@ export type HomeCountPort =
     | 'versionsNeedingPoints'
     | 'roleRequests'
     | 'suggestionsToReview'
-    | 'storiesToReview';
+    | 'storiesToReview'
+    | 'photosToReview'
+    | 'placesToReview';
 
 type SetupAreaPort = 'billing' | 'provision' | 'mapbox' | 'usgs' | 'analytics' | 'crash';
 

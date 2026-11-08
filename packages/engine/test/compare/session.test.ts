@@ -555,3 +555,40 @@ describe('a session on its own', () => {
         expect(compare.ui.updates).toHaveLength(1);
     });
 });
+
+describe('swipe compare session: the visitor position (V10)', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('happyPath_theVisitorsPositionIsADotOnBothSides', async () => {
+        const { store, map, compare } = await comparing();
+        const fix = { center: [26.1, 44.43] as const, accuracy: 15, heading: null };
+        store.openCompare(null);
+        await settle();
+        const second = compare.maps[0];
+
+        store.setMyLocation(fix);
+
+        expect(map.callsOf('setMyLocation').at(-1)).toEqual([fix]);
+        expect(second?.callsOf('setMyLocation').at(-1)).toEqual([fix]);
+    });
+
+    it('badPath_aSecondMapMadeWhileTheDotIsShownDrawsItAndTurningItOffClearsBoth', async () => {
+        const { store, map, compare } = await comparing();
+        const fix = { center: [26.1, 44.43] as const, accuracy: 15, heading: 90 };
+        store.setMyLocation(fix);
+        store.openCompare(null);
+        await settle();
+        const second = compare.maps[0];
+
+        expect(second?.callsOf('setMyLocation')).toEqual([[fix]]);
+        store.setMyLocation(null);
+        expect(map.callsOf('setMyLocation').at(-1)).toEqual([null]);
+        expect(second?.callsOf('setMyLocation').at(-1)).toEqual([null]);
+    });
+});

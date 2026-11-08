@@ -105,7 +105,7 @@ function withHashMapLabels(state: ViewerState, labels: DecodedHash['labels']): V
 
 /** `hash` applied to `state`: the view, the visible layers (and their year), the opacities, compare, the labels, the photo, the language. */
 export function applyDecodedHash(state: ViewerState, hash: DecodedHash): AppliedHash {
-    const withView = hash.view === undefined ? state : { ...state, view: hash.view };
+    const withView = hash.view === undefined ? state : { ...state, view: hash.view, hashView: undefined };
     const withLayers = withHashMapLabels(withHashCompare(withHashLayers(withView, hash.layers), hash.compare), hash.labels);
     const overlays = withHashOpacity(withLayers.overlays, hash);
     const withLang = hash.lang === undefined ? withLayers : { ...withLayers, locale: hash.lang };
@@ -128,7 +128,7 @@ function hashLayers(overlays: readonly Overlay[]): Pick<HashState, 'layers'> {
 export function hashStateOf(state: ViewerState, defaultLocale: Locale): HashState {
     const overlayOpacity = hashOverlayOpacity(state.overlays);
     return {
-        view: state.view,
+        view: hashViewOf(state),
         ...hashLayers(state.overlays),
         ...(overlayOpacity === undefined ? {} : { overlayOpacity }),
         ...(state.compare === null ? {} : { compare: { layer: state.compare.layerId, position: state.compare.position } }),
@@ -137,6 +137,11 @@ export function hashStateOf(state: ViewerState, defaultLocale: Locale): HashStat
         ...storyOf(state),
         ...(state.locale === defaultLocale ? {} : { lang: state.locale }),
     };
+}
+
+/** The view the hash carries: the one it kept while the camera is at the visitor's position (`store.flyTo`), else the camera's. */
+function hashViewOf(state: ViewerState): ViewerState['view'] {
+    return state.hashView ?? state.view;
 }
 
 /** M17: `story=` while a story is open. */

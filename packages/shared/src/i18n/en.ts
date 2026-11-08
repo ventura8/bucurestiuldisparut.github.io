@@ -2,7 +2,6 @@ import type { Messages } from './ro.js';
 
 /** English catalogue: same keys as the Romanian one (a missing or extra key is a type error). */
 export const en: Messages = {
-    'app.title': 'Vanished Bucharest',
     'hello.greeting': 'Hello, {name}!',
     'validation.required': 'A required field is missing.',
     'validation.type': 'The value has the wrong type.',
@@ -173,4 +172,5 @@ export const en: Messages = {
     'consent.granted': 'Anonymous statistics: allowed',
     'consent.denied': 'Anonymous statistics: declined',
     'geolocate.locating': 'Finding your location…',
+    'geolocate.shown': 'Your location: ±{meters} m',
 };

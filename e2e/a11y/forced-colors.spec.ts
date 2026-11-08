@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
 
+import { SITE_ORIGIN } from '../fixtures/world.js';
 import { assertLayoutSound } from '../support/layout.js';
+import { mapIdle, myLocationDrawn, pixelsOfColour, screenPointOf } from '../support/map.js';
 import { expect, test } from '../support/test.js';
 import { chooseMenuItem, menuButton, openLayers, openViewer, t, viewer } from '../support/viewer.js';
 
@@ -134,5 +136,29 @@ test(
                 .getByRole('heading', { name: t(lang, 'about.privacy') }),
         ).toBeVisible();
         await expectReadable(page, axe, 'about');
+    },
+);
+
+// V10 with forced colours: the map's canvas keeps its own colours, so the blue dot with its white ring still shows, and the
+// menu's switch says it is on with a 3 px ring in the system's text colour.
+test(
+    'With forced colours the blue dot still shows and Show my location reads as on',
+    { tag: '@S-V14-BAD-FORCED-COLORS' },
+    async ({ page, lang, axe }) => {
+        await page.context().grantPermissions(['geolocation'], { origin: SITE_ORIGIN });
+        await page.context().setGeolocation({ latitude: 44.4301, longitude: 26.1003, accuracy: 25 });
+        await openViewer(page, { lang });
+
+        await chooseMenuItem(page, lang, t(lang, 'action.locate'));
+
+        await expect.poll(async () => (await myLocationDrawn(page))[0]?.dot ?? null).not.toBeNull();
+        await mapIdle(page);
+        const dot = await screenPointOf(page, [26.1003, 44.4301]);
+        expect(await pixelsOfColour(page, dot, [26, 115, 232], 4), 'the blue dot').toBeGreaterThan(20);
+        await menuButton(page, lang).click();
+        const locate = page.getByRole('menuitemcheckbox', { name: t(lang, 'action.locate'), exact: true });
+        await expect(locate).toHaveAttribute('aria-checked', 'true');
+        expect(await locate.evaluate((element) => getComputedStyle(element).borderTopWidth)).toBe('3px');
+        await expectReadable(page, axe, 'my location on');
     },
 );

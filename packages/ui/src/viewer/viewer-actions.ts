@@ -1,17 +1,15 @@
 /**
  * What the viewer's controls do to the store: closing a sheet, opening a photo, the FAB menu's actions (sheets, share,
- * locate) and the language. Plain functions over `ViewerStorePort` and `ViewerServices`, so each is tested without
+ * Show my location, `my-location.ts`) and the language. Plain functions over `ViewerStorePort` and `ViewerServices`, so each is tested without
  * the element.
  */
-import type { Layer, Locale, Manifest, MapView } from '@hcm/shared';
+import type { Layer, Locale, Manifest } from '@hcm/shared';
 
 import { layoutFor } from './layout.js';
-import { locateVisitor, shareMessage, sharePage, type ViewerServices } from './services.js';
+import { toggleMyLocation } from './my-location.js';
+import { shareMessage, sharePage, type ViewerServices } from './services.js';
 import type { ViewerState, ViewerStorePort } from './store-port.js';
 import { localizedText } from './text.js';
-
-/** The camera zooms in at least this far on the visitor's position. */
-export const LOCATE_ZOOM = 16;
 
 /** The FAB menu's actions (`language` switches to the other language). */
 const MENU_ACTIONS = ['layers', 'photos', 'unplaced', 'stories', 'locate', 'share', 'contribute', 'about', 'language'] as const;
@@ -82,19 +80,6 @@ export async function shareViewer(store: ViewerStorePort, services: ViewerServic
     }
 }
 
-/** Moves the camera to the visitor when they are inside the city; otherwise says why it cannot. */
-export async function locateViewer(store: ViewerStorePort, services: ViewerServices): Promise<void> {
-    store.showToast('geolocate.locating');
-    const result = await locateVisitor(services, store.getState().manifest?.city.bounds ?? null);
-    if (!result.ok) {
-        store.showToast(result.code);
-        return;
-    }
-    store.dismissToast();
-    const view: MapView = store.getState().view;
-    store.flyTo({ ...view, center: result.center, zoom: Math.max(view.zoom, LOCATE_ZOOM) });
-}
-
 /** The newest of `layers`, or null without any. */
 function newestLayer(layers: readonly Pick<Layer, 'id' | 'year'>[]): string | null {
     const [newest] = [...layers].sort((a, b) => b.year - a.year);
@@ -151,7 +136,7 @@ export function menuAction(store: ViewerStorePort, services: ViewerServices, act
             void shareViewer(store, services);
         },
         locate: () => {
-            void locateViewer(store, services);
+            toggleMyLocation(store, services);
         },
         language: () => {
             store.setLocale(otherLocale(store.getState().locale));

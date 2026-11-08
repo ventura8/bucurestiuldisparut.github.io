@@ -2837,3 +2837,28 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the merge's targeted run; the track's own runs were warm and the trigger won the race.
     - Fix and pin: the happy test waits for the trigger's entry before it ends (`legacy-additions.spec.ts`), as the bad test already waited for its own.
     - **A test that writes through a trigger waits for the trigger's write before it ends; a late write outlives the next test's reset and becomes that test's state.**
+476. **The blue dot took the engine's IIFE 17 bytes over its 125 KB budget on the first build.**
+    - Seen: 2026-11-08, track/improve2: the IIFE measured 125,017 bytes gzip with the my-location layer, the watch, the menu switch and two strings (124,019 before).
+    - Found by: measuring the engine on the NUC before writing the tests, as the task asked (the `bundle-budget` gate would have said it at the `build` stage).
+    - Then the `build` stage failed it again at 125,086: the gate measures with Python's gzip, about 90 bytes more than the `gzip -9` command the first measurement used.
+    - Fix: no budget raised; the store's equality check, a paint property the flat dot did not need, one CSS rule for the switch's on state in both colour modes and short announcements brought it to 124,996 (DECISIONS-for-review.md §113a).
+    - **Measure the engine's gzip size right after the first working version of a viewer feature, before tests and docs, and with the gate's own measure (`gzip.compress(data, 9)` in Python), not the `gzip` command: a full budget changes the design, not the last commit.**
+477. **Two rows left `planned` as unreachable were reachable by holding the network.**
+    - Seen: 2026-11-08, track/improve2: S-A61-BAD-UPLOAD-HOLDS-RELOAD ("no upload it can hold open across a deploy") and S-A40-BAD-COUNT-UNREAD-SHOWN ("cannot make one count fail").
+    - Found by: reading what the admin sends: an upload is one request to the Storage emulator, a Home count one `runAggregationQuery` request to the Firestore emulator; Playwright's route holds either (never answered) or fails it, at the network, an external boundary.
+    - Two traps on the way: `page.unroute` let the held requests go before the test could fail them (`Route is already handled`), so one handler with a mode holds, answers or drops; and a request dropped in a test's last line logs its console error after the test's own check, so the test polls `takeMatching` for it.
+    - **Before marking a row unreachable, list the requests the behaviour makes: a held or failed request is usually the missing state. Switch one route handler's mode instead of unrouting held requests.**
+478. **A store test counted a hash write that load had scheduled, not the action under test.**
+    - Seen: 2026-11-08, track/improve2: `happyPath_theVisitorsPositionReachesTheMapAndNothingElse` found one hash written after `setMyLocation` under fake timers; the write was the boot's view, scheduled before the snapshot.
+    - Fix: run the pending timers before taking the "before" counts (`store.test.ts`).
+    - **Under fake timers, flush what the setup scheduled before snapshotting the counts an assertion compares against.**
+479. **A privacy test searched for the wrong coordinates: the camera's view after Show my location is the position.**
+    - Seen: 2026-11-08, track/improve2 review: S-V10-BAD-PAGE-HIDDEN looked for the second position (MOVED) in requests and storage, which the camera never visits; the first one went into the URL hash (`#16/44.4301/26.1003`) and every shared link. `store-located-view.test.ts` failed first on the hash.
+    - Fix: `store.flyTo` holds the hash's view until the visitor moves the camera (DECISIONS-for-review.md §113f); S-V10-BAD-POSITION-NOT-IN-LINK checks the address and the copied link for the first position.
+    - **A "kept nowhere" test searches every place a value can reach (the address and what Share sends included) for each value the feature handled, the one the camera went to first.**
+480. **Opening Layers while Show my location was still flying put the visitor's position in the address.**
+    - Seen: 2026-11-08, the targeted Playwright run after the merge of track/improve2: S-V19-BAD-HASH-NEVER-SENT at `fn-l1440-ro` found `#16/44.4301/26.09809&layers=…` in the hash (1 run in 4 to 5; the position was 44.4301/26.1003).
+    - Cause: Mapbox's `flyTo` ends at the centre point it started from; the Layers pane narrowed the map mid-flight, so the flight ended half the lost width west of the position, and its own `moveend` reported a view other than the one flown to, which `store.setView` read as the visitor moving the camera and dropped the hash's held view (DECISIONS-for-review.md §114b).
+    - Found by: the merge's targeted run; the track's runs had opened the pane after the flight ended, where a resize keeps the centre and the view still matched.
+    - Fix and pin: the store holds the hash's view through the flight's own `moveend` wherever it ends, then while the view stays the same (`store-located-view.test.ts`, *a pane opened mid-flight*; S-V19-BAD-HASH-NEVER-SENT).
+    - **A rule that reads "the visitor moved the camera" from where the camera ended up is wrong whenever anything else can move it; mark the move your own code started, and let only the next one count as the visitor's.**

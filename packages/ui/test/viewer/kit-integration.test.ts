@@ -104,7 +104,7 @@ describe('<hcm-map-viewer> with the real kit', () => {
         const toast = element.shadowRoot?.querySelector('hcm-snackbar')?.shadowRoot?.querySelector('.snackbar');
         expect(toast?.getBoundingClientRect().top).toBeGreaterThanOrEqual(frame.top);
         await page.getByRole('button', { name: 'Meniu' }).click();
-        const items = [...(element.shadowRoot?.querySelector('hcm-fab-menu')?.shadowRoot?.querySelectorAll('[role="menuitem"]') ?? [])];
+        const items = [...(element.shadowRoot?.querySelector('hcm-fab-menu')?.shadowRoot?.querySelectorAll('[role^="menuitem"]') ?? [])];
         expect(items.length).toBeGreaterThan(4);
         for (const item of items) {
             expect(item.getBoundingClientRect().top).toBeGreaterThanOrEqual(frame.top);
@@ -192,7 +192,7 @@ describe("<hcm-map-viewer> floating controls with the real kit (the user's repor
         await expect.element(page.getByRole('menu', { name: 'Meniu' })).toBeVisible();
 
         const frame = element.getBoundingClientRect();
-        const items = [...(element.shadowRoot?.querySelector('hcm-fab-menu')?.shadowRoot?.querySelectorAll('[role="menuitem"]') ?? [])];
+        const items = [...(element.shadowRoot?.querySelector('hcm-fab-menu')?.shadowRoot?.querySelectorAll('[role^="menuitem"]') ?? [])];
         expect(items).toHaveLength(6);
         for (const item of items) {
             expect(item.getBoundingClientRect().top).toBeGreaterThanOrEqual(frame.top);
@@ -232,7 +232,7 @@ describe("<hcm-map-viewer> floating controls with the real kit (the user's repor
         expect(menu.left).toBeLessThan(x);
         expect(element.shadowRoot?.elementFromPoint(x, y)?.localName).toBe('hcm-timeline');
         // The visual audit at 768 px: the last item, wider than the FAB, lay over the timeline's thumb; it ends above it.
-        const items = [...(partOf(element, 'hcm-fab-menu').shadowRoot?.querySelectorAll('[role="menuitem"]') ?? [])];
+        const items = [...(partOf(element, 'hcm-fab-menu').shadowRoot?.querySelectorAll('[role^="menuitem"]') ?? [])];
         const lowest = Math.max(...items.map((item) => item.getBoundingClientRect().bottom));
         expect(items.length).toBeGreaterThan(0);
         expect(timeline.top - lowest).toBeGreaterThanOrEqual(TARGET_GAP_PX);

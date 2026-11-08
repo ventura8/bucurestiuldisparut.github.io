@@ -1512,8 +1512,8 @@
             "behaviour": "V10",
             "area": "viewer",
             "path": "happy",
-            "title": "Granted geolocation inside the city moves the camera",
-            "asserts": "permission granted, in bounds -> camera moves",
+            "title": "Granted geolocation inside the city moves the camera and shows a blue dot",
+            "asserts": "permission granted, in bounds, Show my location -> camera moves (zoom 16 at least), a blue dot with its accuracy circle at the position (pixels and rendered features), a polite status says the accuracy in metres, the menu item is a menuitemcheckbox with aria-checked true",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1."
@@ -1524,7 +1524,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "Denied geolocation shows a message",
-            "asserts": "permission denied -> message",
+            "asserts": "permission denied -> message, the camera stays, no dot, the menu item aria-checked false",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1."
@@ -1535,10 +1535,54 @@
             "area": "viewer",
             "path": "bad",
             "title": "A location outside the city shows a message",
-            "asserts": "out of city bounds -> message",
+            "asserts": "out of city bounds -> message, the camera stays, no dot",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V10-HAPPY-DOT-FOLLOWS",
+            "behaviour": "V10",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The blue dot follows the visitor and Show my location again turns it off",
+            "asserts": "Show my location on, the browser gives a new position -> the dot moves there, the camera stays; Show my location again -> no dot, aria-checked false",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08 (track/improve2): the visitor's position as a blue dot, kept up to date while on (watchPosition). Tests: e2e/specs/viewer/geolocate.spec.ts, packages/ui/test/viewer/my-location.test.ts, packages/ui/test/map/my-location.test.ts."
+        },
+        {
+            "id": "S-V10-BAD-PAGE-HIDDEN",
+            "behaviour": "V10",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A hidden page stops watching the position and keeps it nowhere",
+            "asserts": "Show my location on, the dot moved once, the page hidden (visibilitychange) -> the dot goes, a later position draws nothing, aria-checked false; the moved position is in no request and not in localStorage or sessionStorage",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08 (track/improve2). Leaving the page (the element removed, the controller destroyed) stops it too: packages/ui/test/viewer/hcm-map-viewer-layout.test.ts. Tests: e2e/specs/viewer/geolocate.spec.ts."
+        },
+        {
+            "id": "S-V10-BAD-POSITION-NOT-IN-LINK",
+            "behaviour": "V10",
+            "area": "viewer",
+            "path": "bad",
+            "title": "The address and a shared link never carry the visitor's position",
+            "asserts": "a page opened at a city view, Show my location brings the camera to the position, the hash is written again (street names off) -> its view is still the city view; Share copies a link whose view is the city view; neither the address nor the link holds the position's latitude or longitude",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Review of track/improve2, 2026-11-08: the camera's view after Show my location is the position, so the hash keeps the view it had until the visitor moves the camera (a hash they type wins). Tests: e2e/specs/viewer/geolocate.spec.ts, packages/engine/test/core/store-located-view.test.ts."
+        },
+        {
+            "id": "S-V10-HAPPY-COMPARE-BOTH-SIDES",
+            "behaviour": "V10",
+            "area": "viewer",
+            "path": "happy",
+            "title": "While comparing, both maps show the blue dot",
+            "asserts": "a wide window comparing (two maps), Show my location -> each map draws the dot at the position; still two maps made, none removed",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08 (track/improve2). Tests: e2e/specs/viewer/geolocate.spec.ts, packages/engine/test/compare/session.test.ts."
         },
         {
             "id": "S-V11-HAPPY",
@@ -1678,7 +1722,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "Forced colours stay readable",
-            "asserts": "forced-colors active -> every text has 4.5:1 against the colours actually painted, every kit control keeps an edge, axe (WCAG 2.2 AA without the author-colour rules) passes on the map, the Layers panel, the menu and About; the generic layout checker passes in every one of these states",
+            "asserts": "forced-colors active -> every text has 4.5:1 against the colours actually painted, every kit control keeps an edge, axe (WCAG 2.2 AA without the author-colour rules) passes on the map, the Layers panel, the menu and About; the generic layout checker passes in every one of these states; Show my location on -> the blue dot still shows on the canvas and the switch reads as on (aria-checked true, a 3 px ring)",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1."
@@ -1689,7 +1733,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "Reduced motion disables fly animations",
-            "asserts": "reduced motion -> show my location jumps to the visitor (at most 2 move events, no fly animation); the loading skeleton does not shimmer; the generic layout checker passes after the jump",
+            "asserts": "reduced motion -> show my location jumps to the visitor (at most 2 move events, no fly animation) and draws the blue dot, which never pulses; the loading skeleton does not shimmer; the generic layout checker passes after the jump",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1."
@@ -2030,7 +2074,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "After My location the position in the hash never reaches Google, and nothing goes to Performance Monitoring",
-            "asserts": "after Accept and My location (the hash holds the visitor's position) every GA4 hit carries the page's origin and path only, no request carries the position, and no request reaches Performance Monitoring (firebaselogging)",
+            "asserts": "after Accept and My location (the camera at the visitor's position, the hash still the view it had: S-V10-BAD-POSITION-NOT-IN-LINK) every GA4 hit carries the page's origin and path only, no request and not the hash carries the position, and no request reaches Performance Monitoring (firebaselogging)",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o). docs/research/DECISIONS-for-review.md §18a: Performance Monitoring is out of the public viewer."
@@ -14363,8 +14407,8 @@
             "title": "An upload still being sent holds the self-reload back",
             "asserts": "a GeoTIFF being sent or checked on Imagery, or photos of the upload queue being sent, the tab hidden, Hosting then serves a newer admin -> no reload, the Reload banner instead; the unsaved guard asks nothing about the upload",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Review of M18 item 1 (2026-11-08). Tested by packages/admin/test/app/mount.test.ts, content/registry.test.ts, imagery/imagery.test.ts and photos/store.test.ts only: the e2e world has no upload it can hold open across a deploy yet."
+            "status": "exists",
+            "notes": "Review of M18 item 1 (2026-11-08); the e2e test came with track/improve2 (2026-11-08): the upload is held open at the network (the Storage emulator's request never answered), the photos' queue only (an Imagery GeoTIFF is held by the same `content.busy()`, unit-tested). Tests: e2e/admin/specs/photos/upload-holds-reload.spec.ts, packages/admin/test/app/mount.test.ts, content/registry.test.ts, imagery/imagery.test.ts and photos/store.test.ts."
         },
         {
             "id": "S-A40-BAD-COUNT-UNREAD-SHOWN",
@@ -14374,8 +14418,8 @@
             "title": "What needs you never says nothing while a count is unknown",
             "asserts": "the counts still being read -> each item with an ellipsis; a count that failed (every count refused on a flaky connection) -> its item with a dash; never Nothing needs you now. then",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Review of M18 item 7 (2026-11-08). Tested by packages/ui/test/admin/ops/crashes-home.test.ts and packages/admin/test/home/home.test.ts only: the e2e world cannot make one count fail."
+            "status": "exists",
+            "notes": "Review of M18 item 7 (2026-11-08); the e2e test came with track/improve2 (2026-11-08): the counts are the emulator's runAggregationQuery requests, held and failed at the network (the failed jobs' alone, then every one). Tests: e2e/admin/specs/ops/ops.spec.ts, packages/ui/test/admin/ops/crashes-home.test.ts, packages/admin/test/home/home.test.ts."
         },
         {
             "id": "S-A40-HAPPY-STORIES-TO-REVIEW",
@@ -14387,6 +14431,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The merge of track/stories (M17, the review queue's stories) with track/improve (M18 item 7), 2026-11-08. Tests: e2e/admin/specs/ops/ops.spec.ts, packages/ui/test/admin/ops/crashes-home.test.ts."
+        },
+        {
+            "id": "S-A40-HAPPY-PHOTOS-PLACES-TO-REVIEW",
+            "behaviour": "A40",
+            "area": "admin",
+            "path": "happy",
+            "title": "What needs you counts the photos and places waiting in the review queue, each a link to it",
+            "asserts": "a photo and a place with reviewStatus pending (another place without) -> Home's What needs you lists 1 Photos to review and 1 Places to review, each a link to #/review, which lists the place",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §104c, done with track/improve2 (2026-11-08). Tests: e2e/admin/specs/ops/ops.spec.ts, packages/admin/test/home/home.test.ts, packages/ui/test/admin/ops/crashes-home.test.ts."
+        },
+        {
+            "id": "S-A40-BAD-UPLOADER-NO-PHOTO-PLACE-COUNT",
+            "behaviour": "A40",
+            "area": "admin",
+            "path": "bad",
+            "title": "An uploader is never shown or asked the count of every waiting photo or place",
+            "asserts": "the city role uploader with a photo and a place of someone else waiting -> the address of Home opens Photos: no Photos to review, no Places to review, and no count request about reviewStatus leaves the page; the store does not ask photosToReview or placesToReview for the role (the rules let an uploader read only their own)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §104c, done with track/improve2 (2026-11-08). Tests: e2e/admin/specs/ops/ops.spec.ts, packages/admin/test/home/home.test.ts."
         },
         {
             "id": "S-A40-BAD-UPLOADER-NO-STORY-COUNT",

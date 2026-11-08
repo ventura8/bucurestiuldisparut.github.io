@@ -2,6 +2,7 @@ import type { BrowserContext, Page } from '@playwright/test';
 
 import { E2E_MEASUREMENT_ID, E2E_TILESET_LAYER, SITE_ORIGIN } from '../../fixtures/world.js';
 import { analyticsCalls, analyticsManifest, gaEvents } from '../../support/ga4.js';
+import { mapFacts } from '../../support/map.js';
 import { expect, test } from '../../support/test.js';
 import { chooseMenuItem, openLayers, openViewer, serveManifest, t, viewer, visibilitySwitch } from '../../support/viewer.js';
 
@@ -114,10 +115,12 @@ test(
         await expect.poll(async () => (await gaEvents(mockApis)).map((event) => event.name)).toContain('page_view');
 
         await chooseMenuItem(page, lang, t(lang, 'action.locate'));
-        // The map flies to the visitor, and the viewer writes their position into the address.
-        await expect.poll(() => page.evaluate(() => location.hash)).toMatch(/44\.430\d*\/26\.100/);
+        // The map flies to the visitor; the address keeps the view it had (S-V10-BAD-POSITION-NOT-IN-LINK).
+        await expect.poll(async () => (await mapFacts(page)).center[1]).toBeCloseTo(44.4301, 4);
         await toggleLayer(page, lang);
         await expect.poll(async () => (await gaEvents(mockApis)).map((event) => event.name)).toContain('layer_toggle');
+        await expect.poll(() => page.evaluate(() => location.hash)).toContain('layers=');
+        expect(await page.evaluate(() => location.hash)).not.toMatch(/44\.430|26\.100/);
 
         const calls = await analyticsCalls(mockApis);
         expect(calls.filter((call) => PERFORMANCE_HOSTS.includes(call.host))).toEqual([]);
