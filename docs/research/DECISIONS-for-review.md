@@ -6106,3 +6106,7 @@ The owner confirmed that the GitHub account `bucurestiuldisparut` is theirs and 
 ## 117. The merge of track/stalefix into the main branch (2026-11-08) — APPLIED, no budget raised
 
 - **117a The merge.** `track/stalefix` (§115: the legacy bundle read fresh, a recorded build at work never shown as running; §116: honest install cards, a failed read that never settles a build at work, the running time from the build's start) merged into `feat/engine-rewrite` after track/improve2 (§114). Its §113 and §114 became §115 and §116, and its lessons 476–481 became 481–486, every reference followed (`docs/LESSONS.md`, `docs/ARCHITECTURE.md`, `docs/research/M6-interfaces.md`, `.agent/skills/web/admin_setup_assistant_skill.md`, the firebase skill and its mirror); `e2e/scenarios.json` keeps both sides' rows and `docs/E2E_SCENARIOS.md` was regenerated in the image.
+
+## 118. The merge of track/tilespeed into the main branch (2026-11-08) — APPLIED, no budget raised
+
+- **118a The merge.** `track/tilespeed` (d21cba1, from f2f917b: each PMTiles range read at its own address, `?range=`, so Chrome's cache lock no longer runs an archive's tiles one after another; a signed address reads with `cache: 'no-store'` instead) merged into `feat/engine-rewrite` after track/stalefix (§117). It was never merged before. Its lesson 442 became 487; nothing referenced it by number.

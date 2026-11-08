@@ -168,6 +168,22 @@ async function headOf(data: ArrayBuffer): Promise<Head> {
     return { leavesAt: offsetAt(view, 40), tilesAt: offsetAt(view, 56), gzipped, root };
 }
 
+/** A signed address (the admin's private preview): its query is part of its signature, so nothing may be added to it. */
+const SIGNED = /[?&](?:X-Goog-Signature|Signature)=/;
+
+/**
+ * The request for one byte range. Chrome lets only one cacheable request of an address run at a time (its cache lock), so
+ * ranges of one archive at the same address wait in a queue: 16 tiles took 6.2 s instead of 0.8 s on the live map
+ * (2026-11-08). Each range therefore gets its own address, which the browser still caches; a signed address cannot take
+ * another parameter and skips the cache instead.
+ */
+export function rangeRequest(address: string, range: string): { readonly url: string; readonly init: RequestInit } {
+    if (SIGNED.test(address)) {
+        return { url: address, init: { cache: 'no-store' } };
+    }
+    return { url: `${address}${address.includes('?') ? '&' : '?'}range=${range}`, init: {} };
+}
+
 export class PmtilesReader {
     readonly #url: string;
     readonly #leaves = new Map<number, Promise<readonly Entry[]>>();
@@ -220,8 +236,10 @@ export class PmtilesReader {
     }
 
     async #read(offset: number, length: number, signal?: AbortSignal): Promise<ArrayBuffer> {
-        const headers = { Range: `bytes=${String(offset)}-${String(offset + length - 1)}` };
-        const response = await fetch(this.#url, signal === undefined ? { headers } : { headers, signal });
+        const range = `${String(offset)}-${String(offset + length - 1)}`;
+        const { url, init } = rangeRequest(this.#url, range);
+        const headers = { Range: `bytes=${range}` };
+        const response = await fetch(url, { ...init, headers, ...(signal === undefined ? {} : { signal }) });
         if (response.status !== PARTIAL_CONTENT) {
             // The whole file may be on its way: nothing of it is read.
             await response.body?.cancel();

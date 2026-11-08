@@ -2898,3 +2898,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the review, following one failed poll through every reader of the state; the unit fixtures never failed a read while a build ran, nor first saw one partway through a step.
     - Fix and pin: a failed read keeps a target at work at work, with the error (`#fail`; `#shown` over a record at work); the server settles only on a look that saw it neither running, nor clicked, nor `unavailable` (`settled`); `workStartOnBrowser` takes Google's `startTime`, never before the tab last saw the build queued nor after now less `elapsedOnGoogle` (`install-flow.test.ts`, `install.test.ts`, `model.test.ts`, `install-recorded.test.ts`; S-A55-BAD-UPDATE-DURING-BUILD with a failed read mid-build, S-A55-BAD-RECORDED-BUILD-NOT-RUNNING).
     - **An error state is not an outcome: a read that failed says nothing of the thing read, so keep what was last known and let only a real answer settle a wait. And a lower bound is not an estimate.**
+487. **The browser queued every tile of an archive behind the one before it.**
+    - Seen: 2026-11-08, the first own-tiles layer on the live map: 30 tiles of one PMTiles archive finished half a second apart, the last after 10 s, though each read took 0.3 to 0.5 s.
+    - Cause: Chrome lets one cacheable request of an address run at a time (its HTTP cache lock), whatever the Range; every tile read used the archive's one address.
+    - Found by: the owner's eyes on the live map, then a measure in the page: 16 reads in 6.2 s at one address, 0.86 s with no cache, 0.78 s with an address per range.
+    - Fix and pin: `rangeRequest` gives each range its own address (`?range=`), still cached; a signed address, whose query is signed, skips the cache instead. Tests in `pmtiles-source.test.ts`.
+    - **Measure parallel reads on the real browser and host: a fake fetch cannot show a browser's own queue.**
