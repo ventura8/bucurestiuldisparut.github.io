@@ -120,10 +120,24 @@ export function photoDoc(cityId: string, photoId: string, creator: string): Data
             sha256: SHA,
         },
         replacement: { error: 'apiError.photo.duplicate', at: past(), duplicateOf: 'p-original' },
+        heldImage: {
+            web: `review-held/${cityId}/${photoId}/w.webp`,
+            thumb: `review-held/${cityId}/${photoId}/t.webp`,
+            sha256: SHA,
+            w: 2048,
+            h: 1536,
+        },
+        ...reviewedFields(creator),
+        credit: 'Ion Mureșan',
         createdAt: past(),
         createdBy: creator,
         ...systemStamp('photos'),
     };
+}
+
+/** M13: what a decided item carries, server-owned but for the credit. */
+function reviewedFields(reviewer: string): Data {
+    return { reviewStatus: 'approved', reviewNote: 'Bună.', reviewedBy: reviewer, reviewedAt: past() };
 }
 
 function photoText(): Data {
@@ -155,6 +169,7 @@ export function newPhoto(uid: string): Data {
         fov: 180,
         published: false,
         rightsReview: true,
+        credit: 'Ion Mureșan',
         processing: 'pending',
         createdAt: serverTime(),
         createdBy: uid,
@@ -211,6 +226,8 @@ export function poiDoc(creator: string): Data {
         ...poiText(),
         geometry: { type: 'Polygon', rings: [{ points: closedRing(5) }] },
         published: true,
+        ...reviewedFields(creator),
+        credit: 'Ion Mureșan',
         createdAt: past(),
         createdBy: creator,
         updatedBy: creator,
@@ -223,6 +240,7 @@ export function newPoi(uid: string): Data {
         ...poiText(),
         geometry: { type: 'Point', point: { lat: 44.4355, lng: 26.1003 } },
         published: false,
+        credit: 'Ion Mureșan',
         createdAt: serverTime(),
         createdBy: uid,
         ...stampedBy(uid),
@@ -626,6 +644,7 @@ export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
         fov: 1,
         published: true,
         rightsReview: true,
+        credit: 'Maria Popescu',
     },
     layer: {
         label: { ro: 'București, 1966' },
@@ -649,6 +668,7 @@ export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
         links: links(5),
         photoIds: Array.from({ length: 20 }, (_, index) => `p${String(index)}`),
         published: false,
+        credit: 'Maria Popescu',
     },
     poiCategory: { label: { ro: 'Biserici', en: 'Churches' }, icon: 'mosque', color: '#aa00ff', defaultOpacity: 0, order: -1 },
     job: { cancelRequested: true },

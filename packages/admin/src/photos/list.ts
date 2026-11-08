@@ -17,6 +17,8 @@ export interface PhotoListDeps {
     readonly cityId: string;
     /** The photos whose place is still to be checked (`PhotoMemory.checkPlace`). */
     readonly checkPlace: () => ReadonlySet<string>;
+    /** M13: an uploader's uid: the rules let them read their own photos only. */
+    readonly ownerOnly?: () => string | null;
     readonly changed: (state: PhotosListState) => void;
     /** A refused read: the shell asks who this is again. */
     readonly denied: () => void;
@@ -59,7 +61,7 @@ export class PhotoList {
     /** The page shows: listen (once). */
     open(): void {
         if (!this.#live.active) {
-            this.#live.show(photoQuery(this.#state.filter));
+            this.#live.show(photoQuery(this.#state.filter, this.#deps.ownerOnly?.() ?? null));
         }
     }
 
@@ -71,7 +73,7 @@ export class PhotoList {
     setFilter(filter: PhotoFilter): void {
         if (filter !== this.#state.filter) {
             this.#set({ filter, selection: [] });
-            this.#live.show(photoQuery(filter));
+            this.#live.show(photoQuery(filter, this.#deps.ownerOnly?.() ?? null));
         }
     }
 

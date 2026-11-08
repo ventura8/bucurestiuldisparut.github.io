@@ -63,6 +63,7 @@ export const ro = {
     'adminContent.pois.field.noPhotos': 'Nicio fotografie legată de loc.',
     'adminContent.pois.field.removePhoto': 'Scoate fotografia „{title}”',
     'adminContent.pois.field.published': 'Publicat pe harta publică',
+    'adminContent.pois.review.note': 'Apare pe harta publică după ce un moderator îl aprobă.',
     'adminContent.pois.field.publishedHint': 'Un loc nou se publică la salvare.',
     'adminContent.pois.field.geometryMissing': 'Desenează locul pe hartă sau adaugă puncte în listă.',
     'adminContent.pois.state.saved': 'Salvat',

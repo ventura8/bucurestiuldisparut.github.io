@@ -355,3 +355,48 @@ describe('callableOptions', () => {
         });
     });
 });
+
+describe('M13: the roles and the accesses (docs/research/M13-roles.md §1)', () => {
+    const verified = (access: 'cityEditor' | 'cityReviewer' | 'cityOwner', role: 'owner' | 'editor' | 'moderator' | 'uploader') => {
+        const caller = { uid: 'u-admin', token: { email_verified: true, admin: true, firebase: { sign_in_provider: 'google.com' } } };
+        return requireAccess(access, caller, fakeAdmins(['u-admin'], { projectRole: 'admin', cities: { bucharest: role } }));
+    };
+
+    it.each([
+        ['cityEditor', 'editor'],
+        ['cityReviewer', 'moderator'],
+        ['cityReviewer', 'editor'],
+    ] as const)('happyPath_%s_admitsA_%s', async (access, role) => {
+        const caller = await verified(access, role);
+        expect(() => {
+            requireCityRole(access, caller, { cityId: 'bucharest' });
+        }).not.toThrow();
+    });
+
+    it.each([
+        ['cityEditor', 'moderator', 'apiError.city.notEditor'],
+        ['cityEditor', 'uploader', 'apiError.city.notEditor'],
+        ['cityReviewer', 'uploader', 'apiError.city.notReviewer'],
+        ['cityOwner', 'moderator', 'apiError.city.notOwner'],
+        ['cityOwner', 'editor', 'apiError.city.notOwner'],
+    ] as const)('badPath_%s_refusesA_%s', async (access, role, code) => {
+        const caller = await verified(access, role);
+        expect(() => {
+            requireCityRole(access, caller, { cityId: 'bucharest' });
+        }).toThrow(expect.objectContaining({ code }));
+    });
+
+    it.each(['moderator', 'uploader'] as const)('badPath_a_%s_reachesNoProjectStateButMayRegisterADevice', async (role) => {
+        const caller = { uid: 'u-admin', token: { email_verified: true, admin: true, firebase: { sign_in_provider: 'google.com' } } };
+        const admins = fakeAdmins(['u-admin'], { projectRole: 'admin', cities: { bucharest: role } });
+        await expect(requireAccess('admin', caller, admins)).rejects.toMatchObject({ code: 'apiError.notAdmin' });
+        await expect(requireAccess('member', caller, admins)).resolves.toMatchObject({ uid: 'u-admin' });
+    });
+
+    it('happyPath_anAccountWithNoCityKeepsWhatItHad', async () => {
+        const caller = { uid: 'u-admin', token: { email_verified: true, admin: true, firebase: { sign_in_provider: 'google.com' } } };
+        await expect(requireAccess('admin', caller, fakeAdmins(['u-admin'], { projectRole: 'admin', cities: {} }))).resolves.toMatchObject({
+            uid: 'u-admin',
+        });
+    });
+});

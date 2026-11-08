@@ -31,7 +31,11 @@ export interface PhotoChoice {
 }
 
 /** The list's query: newest first, one indexed filter (a category, else Unpublished). */
-export function poisQuery(filter: PoisFilter): ContentQuery {
+export function poisQuery(filter: PoisFilter, ownerOnly: string | null = null): ContentQuery {
+    // M13 §1: an uploader reads their own places only, and the rules read the query: it must ask for exactly those.
+    if (ownerOnly !== null) {
+        return { where: [['createdBy', '==', ownerOnly]], orderBy: [['updatedAt', 'desc']] };
+    }
     if (filter.category !== null) {
         return { where: [['category', '==', filter.category]], orderBy: [['updatedAt', 'desc']] };
     }

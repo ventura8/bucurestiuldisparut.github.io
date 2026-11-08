@@ -107,7 +107,7 @@ async function buildFrom(deps: BuildDeps, cityId: string): Promise<BuildResult> 
         await deps.blobs.delete('public', STORAGE_PATHS.manifest(cityId));
         return { kind: 'unpublished' };
     }
-    const assembly = assembleManifest(await readContent(deps, cityId, city), deps.config.errorEndpoint);
+    const assembly = assembleManifest(await readContent(deps, cityId, city), deps.config.errorEndpoint, { adminUrl: deps.config.adminUrl });
     if (!assembly.ok) {
         return cityRefused(deps, cityId, assembly.issues, assembly.skipped);
     }

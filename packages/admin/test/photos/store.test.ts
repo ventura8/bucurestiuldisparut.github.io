@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { PHOTOS_MODULE } from '../../src/photos/module.js';
 import { LAST_PIN_KEY, STICKY_KEY } from '../../src/photos/session.js';
 import { cityPlace, DEFAULT_CITY_ZOOM, type PhotosStore } from '../../src/photos/store.js';
-import { at, CITY, CONTAINER, file, photoPath, photosWorld, seedCity, seedPhoto, settle, type PhotosWorld } from './world.js';
+import { at, CITY, CONTAINER, file, photoDoc, photoPath, photosWorld, seedCity, seedPhoto, settle, type PhotosWorld } from './world.js';
 
 function area(world: PhotosWorld = photosWorld()): { world: PhotosWorld; store: PhotosStore } {
     seedCity(world);
@@ -379,6 +379,17 @@ describe('the photos area: intents and the map lifecycle', () => {
 });
 
 describe('the photos area: delete and Undo', () => {
+    it('badPath_anUploadersDeleteOffersNoUndoTheyCouldNotUse @S-A90-BAD-NO-UNDO', async () => {
+        const { world, store } = area(photosWorld({ cityRole: () => 'uploader' }));
+        seedPhoto(world, 'p1');
+        store.open(['p1']);
+        store.intents.requestDelete();
+        await store.intents.confirmDelete();
+        const notice = world.notices.at(-1);
+        expect(notice?.key).toBe('adminContent.photos.deleted');
+        expect(notice?.action).toBeUndefined();
+    });
+
     it('happyPath_theOpenPhotoIsDeletedAndUndoBringsItBack', async () => {
         const { world, store } = area();
         seedPhoto(world, 'p1');
@@ -450,5 +461,35 @@ describe('the photos area: delete and Undo', () => {
 
         expect(world.store.docs.has(photoPath('a'))).toBe(false);
         expect(world.notices.at(-1)).toMatchObject({ key: 'adminContent.photos.bulk.delete', params: { done: '2', skipped: '0' } });
+    });
+});
+
+describe('the photos area: M13', () => {
+    it('happyPath_anUploaderListsTheirOwnAndAnEditorEveryones @S-A90-BAD-OTHERS-HIDDEN', async () => {
+        const uploader = photosWorld({ cityRole: () => 'uploader' });
+        seedCity(uploader);
+        uploader.store.put(FIRESTORE_PATHS.photo(CITY, 'mine'), photoDoc({ createdBy: 'admin-uid' }));
+        uploader.store.put(FIRESTORE_PATHS.photo(CITY, 'theirs'), photoDoc({ createdBy: 'someone' }));
+        const area = PHOTOS_MODULE.create(uploader.services);
+        area.open([]);
+        await settle();
+        expect(area.state.role).toBe('uploader');
+        expect(area.state.list.rows.map((row) => row.id)).toEqual(['mine']);
+    });
+
+    it('happyPath_aPhotoWithNoPlaceGetsAPinAtTheMapsCentre @S-V40-HAPPY-MANIFEST', async () => {
+        const world = photosWorld();
+        seedCity(world);
+        const lost = Object.entries(photoDoc()).filter(([key]) => key !== 'location' && key !== 'bearing' && key !== 'fov');
+        world.store.put(FIRESTORE_PATHS.photo(CITY, 'lost'), Object.fromEntries(lost));
+        const area = PHOTOS_MODULE.create(world.services);
+        area.open(['lost']);
+        await settle();
+        area.intents.attachMap(CONTAINER, () => undefined);
+        await settle();
+        expect(area.state.editor?.value?.location).toBeUndefined();
+        area.intents.placeAtCentre();
+        await settle();
+        expect(area.state.editor?.value?.location).toEqual({ lat: 44.43, lng: 26.1 });
     });
 });

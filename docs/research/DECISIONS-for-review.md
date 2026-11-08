@@ -5917,3 +5917,17 @@ Applied: code, tests and documentation; no gate relaxed, no budget raised, no do
 - **96g The picture's own edge before the proof's.** `output.outline` (the alpha's edge) shades the map when it exists, else `calibration.outline`: what is shaded is what this picture misses.
 - **96h Local stack.** The emulator's signer needs an owner's header no browser sends, so the image cannot show on `npm run dev:stack` (docs/SETUP.md); changing the stand-in for a manual run was not worth a second signer. The e2e tier answers that address from the object.
 - **96i Lessons 396, 397, 398.**
+
+## 97. Roles and review (2026-11-07) — APPLIED (the owner's decisions: code, tests and documentation on `track/roles`; no gate relaxed, no budget raised, no download, no deploy)
+
+- **97a The contract** is `docs/research/M13-roles.md`.
+- **97b Two new chunk rows**: `review` (4.1 KB measured) and `contribute` (3.5 KB), each plus about 20 %, in `ADMIN_CHUNK_BUDGETS`; the admin's total 642.8 KB of 650, the entry 372.1 of 450, the engine 95.4 of 100 and its IIFE 121.7 of 125: none raised.
+- **97c `admin` access narrowed.** It now leaves out an account whose every role is `moderator` or `uploader`; `notify.*` moved to a new `member` access. An account with no city at all keeps what it had.
+- **97d The Contribute page is a route of the admin**, not a page of its own: it reuses sign-in, the catalogues and the Mapbox loader at the cost of one chunk. A signed-in account of no role gets the new auth state `visitor` there instead of being signed out.
+- **97e No `minVersion`.** No release is tagged, so the manifest's additions join the v1 baseline, as `photosOverlay` did.
+- **97f For review: a pending photo's duplicate check.** `photos.onUpload` still refuses a repeat of another photo of the city and names it in `duplicateOf`, so an uploader can learn that a file they hold is already in the city and its id. Nothing else of that photo is readable to them.
+- **97g For review: no daily limit on an uploader's uploads.** Rules cannot count; an uploader is a person an owner approved, and an owner can revoke them. Say if a cap is wanted.
+- **97h One more chunk row**: `proposal-fields` (0.5 KB measured, budget 1 KB): the Contribute page and the Review page's adjust share the value fields, which took `editor-shared` to 13.2 KB against its 13. No budget raised.
+- **97i Findings of the M13 review, applied**: `photos.onUpload` decides from the path's uid and the status when it runs; `review.decide` binds an approval to `seenAt`; a suggestion keeps only what changes and its decision records its own way back, so `suggestions.decide` takes `revert` and the Review page no longer guesses a history entry (`history.revert` stays for the rest). `docs/research/M13-roles.md` §§2, 4, 9.
+- **97j For review: an approved date text and the other language.** A correction typed in Romanian keeps the English text as it stood, as asked, so the two can disagree until someone edits the other. Say if an approved date text should drop the other language instead.
+- **97k For review: Revert refuses when the same fields changed since**, rather than restoring the fields nobody touched. It says so and points at the photo's History.

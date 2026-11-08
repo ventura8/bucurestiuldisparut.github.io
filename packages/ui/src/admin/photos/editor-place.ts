@@ -135,19 +135,34 @@ function suggestions(input: PlaceInput): TemplateResult {
         </ul>`;
 }
 
+/** M13 §5: a photo with no place says so, and one click gives it a pin to drag. */
+function noPlace(input: PlaceInput): TemplateResult {
+    const { locale, intents } = input;
+    return html`<p class="note">${photoText(locale, 'adminContent.photos.place.none')}</p>
+        <div class="actions">
+            <hcm-button variant="tonal" icon="place" ?disabled=${input.readOnly} @click=${() => intents?.placeAtCentre()}
+                >${photoText(locale, 'adminContent.photos.place.set')}</hcm-button
+            >
+        </div>`;
+}
+
 function placeFields(input: PlaceInput): TemplateResult {
     const { locale, value, issues, intents, left } = input;
+    const { location } = value;
+    if (location === undefined) {
+        return noPlace(input);
+    }
     const error = fieldIssue(locale, issues, 'location');
     const set = (axis: 'lat' | 'lng', typed: string): void => {
         const number = numberOf(typed);
-        intents?.edit({ location: { ...value.location, [axis]: number ?? Number.NaN } });
+        intents?.edit({ location: { ...location, [axis]: number ?? Number.NaN } });
     };
     return html`<div class="pair">
         ${numberField(
             {
                 id: 'photo-lat',
                 label: photoText(locale, 'adminContent.photos.field.lat'),
-                value: String(value.location.lat),
+                value: String(location.lat),
                 error,
                 min: -90,
                 max: 90,
@@ -163,7 +178,7 @@ function placeFields(input: PlaceInput): TemplateResult {
             {
                 id: 'photo-lng',
                 label: photoText(locale, 'adminContent.photos.field.lng'),
-                value: String(value.location.lng),
+                value: String(location.lng),
                 error,
                 min: -180,
                 max: 180,
@@ -202,7 +217,7 @@ function direction(input: PlaceInput): TemplateResult {
 }
 
 export function placeSection(input: PlaceInput): TemplateResult {
-    const { locale, editor, value, issues, intents } = input;
+    const { locale, editor, value, intents } = input;
     const fov = value.fov ?? DEFAULT_FOV;
     const fovText = photoText(locale, 'adminContent.photos.field.fovValue', { value: String(fov) });
     return html`<fieldset>
@@ -224,8 +239,13 @@ export function placeSection(input: PlaceInput): TemplateResult {
                   </div>`
                 : nothing
         }
-        ${suggestions(input)}
-        ${numberField(
+        ${suggestions(input)} ${value.location === undefined ? nothing : aimFields(input, fov, fovText)}
+    </fieldset>`;
+}
+
+function aimFields(input: PlaceInput, fov: number, fovText: string): TemplateResult {
+    const { locale, value, issues, intents } = input;
+    return html`${numberField(
             {
                 id: 'photo-bearing',
                 label: photoText(locale, 'adminContent.photos.field.bearing'),
@@ -257,6 +277,5 @@ export function placeSection(input: PlaceInput): TemplateResult {
                 }}
             ></hcm-slider>
             <span class="note" aria-hidden="true">${fovText}</span>
-        </div>
-    </fieldset>`;
+        </div>`;
 }

@@ -105,6 +105,13 @@ export const FIRESTORE_COMMIT_RETRIED: ExpectedConsoleError = {
     why: "Firestore's SDK runs a transaction again after its commit was refused (a document changed since its read) or re-answered",
 };
 
+/** What every admin test expects in the console. */
+export const ADMIN_EXPECTED_CONSOLE_ERRORS: readonly ExpectedConsoleError[] = [
+    PROBE_REFUSED,
+    GOOGLE_RESOURCE_ABSENT,
+    FIRESTORE_COMMIT_RETRIED,
+];
+
 /**
  * WebKit only: Playwright's WebKit instrumentation (`web-inspector://bootstrap.js`) sets inline styles on the page, which
  * the admin's CSP refuses (`style-src` has no `'unsafe-inline'`); the admin's own styles are constructed style sheets,
@@ -182,7 +189,7 @@ export const test = base.extend<AdminFixtures>({
     mapOwner: [null, { option: true }],
     invited: [[], { option: true }],
     admins: [[], { option: true }],
-    expectedConsoleErrors: [[PROBE_REFUSED, GOOGLE_RESOURCE_ABSENT, FIRESTORE_COMMIT_RETRIED], { scope: 'test' }],
+    expectedConsoleErrors: [ADMIN_EXPECTED_CONSOLE_ERRORS, { scope: 'test' }],
     adminWorld: [
         async ({ mockApiRequest, mapOwner, invited, admins }, use, testInfo) => {
             const holder = testIdOf(testInfo);

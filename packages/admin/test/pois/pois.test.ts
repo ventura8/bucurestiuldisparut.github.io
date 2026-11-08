@@ -347,6 +347,15 @@ describe('places: deleting', () => {
         world.clock.advance(10_000);
     });
 
+    it('badPath_anUploadersDeleteOffersNoUndoTheyCouldNotUse @S-A90-BAD-NO-UNDO', async () => {
+        const world = seededWorld({ cityRole: () => 'uploader' });
+        const store = opened(world, ['stavropoleos']);
+        await store.intents.remove();
+        const notice = world.notices.at(-1);
+        expect(notice?.key).toBe('adminContent.pois.deleted');
+        expect(notice?.action).toBeUndefined();
+    });
+
     it('badPath_aDeleteTheStoreRefusesSaysWhyAndAnUnavailableUndoToo', async () => {
         const world = seededWorld();
         const store = opened(world, ['stavropoleos']);
@@ -513,6 +522,23 @@ describe('places: importing and the photos', () => {
             { id: 'p1', title: { ro: 'Lipscani' }, year: 1930, thumb: 'https://example.org/t.webp' },
         ]);
         expect(world.store.listeners(FIRESTORE_PATHS.photos(CITY))).toBe(1);
+    });
+
+    it('happyPath_anUploadersPickerAsksForTheirOwnPhotos @S-A90-HAPPY-UPLOADER-PICKER', () => {
+        const world = seededWorld({ cityRole: () => 'uploader' });
+        const photo = (createdBy: string, title: string) => ({
+            title: { ro: title },
+            published: false,
+            processing: 'pending',
+            license: 'PD',
+            createdBy,
+            ...world.store.stamp(),
+        });
+        world.store.put(FIRESTORE_PATHS.photo(CITY, 'mine'), photo('admin-uid', 'A mea'));
+        world.store.put(FIRESTORE_PATHS.photo(CITY, 'theirs'), photo('someone', 'A altcuiva'));
+        const store = opened(world);
+        store.intents.loadPhotos();
+        expect(store.state.photos?.items.map((item) => item.id)).toEqual(['mine']);
     });
 
     it('happyPath_thePickerReadsThePhotosPastItsFirstPage @S-A32-HAPPY-PHOTO-PICKER-PAGES', () => {

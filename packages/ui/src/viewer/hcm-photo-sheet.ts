@@ -16,7 +16,8 @@ import { externalLink } from './markdown.js';
 import { resolveAssetUrl } from './services.js';
 import { closeEvent, renderSheetFrame } from './sheet-frame.js';
 import { baseStyles, detailStyles, sheetStyles } from './shared-styles.js';
-import { licenseText, localizedText, photoDateText, photoSourceText } from './text.js';
+import { photoRights } from './photo-rights.js';
+import { localizedText, photoDateText, photoSourceText } from './text.js';
 
 export const HCM_PHOTO_SHEET_TAG = 'hcm-photo-sheet';
 
@@ -30,6 +31,7 @@ export class HcmPhotoSheet extends LitElement {
         mode: { type: String },
         open: { type: Boolean },
         manifestUrl: { type: String, attribute: 'manifest-url' },
+        contributeUrl: { attribute: false },
         imageFailed: { state: true },
     };
 
@@ -79,6 +81,8 @@ export class HcmPhotoSheet extends LitElement {
     /** Every manifest photo (a POI's linked thumbnails are looked up here). */
     declare photos: readonly Photo[];
     declare locale: Locale;
+    /** M13: the city's Contribute page (`manifest.contributeUrl`): a photo's "Suggest a correction" opens it on the photo. */
+    declare contributeUrl: string | null;
     declare mode: SheetMode;
     declare open: boolean;
     declare manifestUrl: string;
@@ -94,6 +98,7 @@ export class HcmPhotoSheet extends LitElement {
         this.mode = 'bottom';
         this.open = false;
         this.manifestUrl = '';
+        this.contributeUrl = null;
         this.imageFailed = false;
     }
 
@@ -141,13 +146,19 @@ export class HcmPhotoSheet extends LitElement {
         return html`<div class="details">
             ${this.#image(photo)}
             <p class="supporting">${photoDateText(photo, locale)}</p>
-            ${photo.author === undefined ? nothing : html`<p>${translate(locale, 'photo.author', { author: photo.author })}</p>`}
-            <p>${licenseText(photo.license, locale)}</p>
-            ${photo.rightsHolder === undefined ? nothing : html`<p>${translate(locale, 'photo.rightsHolder', { holder: photo.rightsHolder })}</p>`}
-            ${photo.rightsReview === true ? html`<p class="note">${translate(locale, 'photo.rightsReview')}</p>` : nothing}
-            ${this.#source(photo)} ${photo.description === undefined ? nothing : html`<p>${localizedText(photo.description, locale)}</p>`}
-            ${this.#links(photo)}
+            ${photoRights(photo, locale)} ${this.#source(photo)}
+            ${photo.description === undefined ? nothing : html`<p>${localizedText(photo.description, locale)}</p>`} ${this.#links(photo)}
+            ${this.#suggestion(photo)}
         </div>`;
+    }
+
+    /** M13 §4: contesting the photo is a page of its own, which signs in; the map holds only the link. */
+    #suggestion(photo: Photo): TemplateResult {
+        if (this.contributeUrl === null) {
+            return EMPTY;
+        }
+        const url = `${this.contributeUrl}/${photo.id}`;
+        return html`<p>${externalLink(url, translate(this.locale, 'photo.suggest'))}</p>`;
     }
 
     #image(photo: Photo): TemplateResult {

@@ -8,7 +8,7 @@
  * it either way. A `permission-denied` (the admin was removed) asks the server again who this is, as the city's theme does.
  * A city of the `e2e` build's own (`?city=`) is not watched: its first screen is Setup, whatever another spec left there.
  */
-import { FIRESTORE_PATHS, SERVICE_STATES, setupDone, type ServiceState, type SetupDoneInput } from '@hcm/shared';
+import { FIRESTORE_PATHS, SERVICE_STATES, isContributorOnly, setupDone, type ServiceState, type SetupDoneInput } from '@hcm/shared';
 
 import type { DocumentData, DocumentsPort } from '../firebase/ports.js';
 import type { ShellState, ShellStateAccess } from '../state/state.js';
@@ -82,6 +82,12 @@ export interface SetupReadinessDeps {
     readonly watch: boolean;
 }
 
+/** M13 §1: a moderator's or an uploader's account reads no `setup/status`; their pages do not need it. */
+function wantsSetupStatus(state: ShellState): boolean {
+    const limited = isContributorOnly(Object.fromEntries(state.cities.map((city) => [city.id, city.role])));
+    return state.auth === 'admin' && state.mode === 'normal' && !limited;
+}
+
 export class SetupReadiness {
     readonly #deps: SetupReadinessDeps;
     #stop: Unsubscribe | null = null;
@@ -92,7 +98,7 @@ export class SetupReadiness {
 
     /** Watches `setup/status` while an admin is signed in with the server (normal mode), and stops otherwise. */
     stateChanged(state: ShellState): void {
-        const watching = this.#deps.watch && state.auth === 'admin' && state.mode === 'normal';
+        const watching = this.#deps.watch && wantsSetupStatus(state);
         if (watching === (this.#stop !== null)) {
             return;
         }

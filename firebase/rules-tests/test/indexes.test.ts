@@ -18,6 +18,8 @@ import {
     photoDocSchema,
     poiCategoryDocSchema,
     poiDocSchema,
+    roleRequestDocSchema,
+    suggestionDocSchema,
     usgsSceneDocSchema,
 } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
@@ -53,6 +55,8 @@ const SCHEMAS: Readonly<Record<string, { readonly shape: object }>> = {
     photos: photoDocSchema,
     layers: layerDocSchema,
     pois: poiDocSchema,
+    suggestions: suggestionDocSchema,
+    roleRequests: roleRequestDocSchema,
     poiCategories: poiCategoryDocSchema,
     jobs: jobDocSchema,
     logs: jobLogDocSchema,

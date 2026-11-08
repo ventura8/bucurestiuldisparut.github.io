@@ -204,9 +204,13 @@ export class HcmAdminPhotoEditor extends LitElement {
                 >${photoText(locale, 'adminContent.photos.editor.history')}</hcm-button
             >
             ${editor.touched ? discard : nothing}
-            <hcm-button variant="text" icon="delete" ?disabled=${this.readOnly} @click=${() => this.intents?.requestDelete()}
-                >${photoText(locale, 'adminContent.photos.editor.delete')}</hcm-button
-            >
+            ${
+                editor.role === 'moderator'
+                    ? nothing
+                    : html`<hcm-button variant="text" icon="delete" ?disabled=${this.readOnly} @click=${() => this.intents?.requestDelete()}
+                          >${photoText(locale, 'adminContent.photos.editor.delete')}</hcm-button
+                      >`
+            }
         </div>`;
     }
 

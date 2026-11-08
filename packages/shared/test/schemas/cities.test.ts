@@ -1,4 +1,5 @@
 /** Many cities in one project (M5; docs/research/M5-interfaces.md §1): roles, ids, bounds, start views, budgets, links. */
+import { isContributorOnly, isReviewRole, isStaffRole, strongerRole } from '../../src/schemas/city-roles.js';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -277,5 +278,38 @@ describe('the documents that hold memberships and limits (CR-M5-4)', () => {
 
     it('happyPath_theTickMigratesMembershipsAfterTheAccountsSteps', () => {
         expect(OPS_STEPS.indexOf('memberships')).toBeGreaterThan(OPS_STEPS.indexOf('users'));
+    });
+});
+
+describe('M13: the roles (docs/research/M13-roles.md §1)', () => {
+    it('happyPath_eachRoleCoversTheOnesBelowIt', () => {
+        expect(hasCityRole({ c: 'moderator' }, 'c', 'uploader')).toBe(true);
+        expect(hasCityRole({ c: 'moderator' }, 'c', 'moderator')).toBe(true);
+        expect(hasCityRole({ c: 'moderator' }, 'c', 'editor')).toBe(false);
+        expect(hasCityRole({ c: 'uploader' }, 'c', 'moderator')).toBe(false);
+    });
+
+    it('happyPath_theStrongerRoleWins', () => {
+        expect(strongerRole('owner', 'uploader')).toBe('owner');
+        expect(strongerRole('uploader', 'moderator')).toBe('moderator');
+        expect(strongerRole(null, 'uploader')).toBe('uploader');
+    });
+
+    it('badPath_anAccountWithCitiesAndNoneAsStaffIsContributorOnly', () => {
+        expect(isContributorOnly({ a: 'uploader', b: 'moderator' })).toBe(true);
+        expect(isContributorOnly({ a: 'uploader', b: 'editor' })).toBe(false);
+        expect(isContributorOnly({})).toBe(false);
+        expect(isContributorOnly(undefined)).toBe(false);
+    });
+
+    it.each([
+        ['owner', true, true],
+        ['editor', true, true],
+        ['moderator', false, true],
+        ['uploader', false, false],
+        [null, false, false],
+    ] as const)('%s is staff %s, reviewer %s', (role, staff, reviewer) => {
+        expect(isStaffRole(role)).toBe(staff);
+        expect(isReviewRole(role)).toBe(reviewer);
     });
 });

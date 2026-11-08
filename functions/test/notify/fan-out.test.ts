@@ -324,3 +324,25 @@ describe('the trigger', () => {
         expect(deps.recording.records.at(-1)).toMatchObject({ level: 'error', message: 'notification event refused' });
     });
 });
+
+describe('notify.onEvent: the audience of each kind (M13)', () => {
+    it('happyPath_eachKindReachesItsAudience @S-A90-HAPPY-NOTIFIED', async () => {
+        const deps = await world();
+        await seedAdmin(deps, 'u-moderator', { cities: { 'assist-city': 'moderator' } });
+        await seedAdmin(deps, 'u-uploader', { cities: { 'assist-city': 'uploader' } });
+        const told = async (kind: 'review.waiting' | 'role.requested' | 'job.failed' | 'budget.paused', cityId?: string) => {
+            const id = `${kind}~x`;
+            const event = notificationEvent(
+                { kind, parts: ['x'], link: '#/review', ...(cityId === undefined ? {} : { cityId }) },
+                'ops',
+                new Date(NOW),
+            );
+            await fanOut(deps, id, event);
+            return Promise.all(['u-moderator', 'u-uploader'].map(async (uid) => (await item(deps, uid, id)) !== undefined));
+        };
+        await expect(told('review.waiting', 'assist-city')).resolves.toEqual([true, false]);
+        await expect(told('role.requested', 'assist-city')).resolves.toEqual([false, false]);
+        await expect(told('job.failed', 'assist-city')).resolves.toEqual([false, false]);
+        await expect(told('budget.paused')).resolves.toEqual([false, false]);
+    });
+});

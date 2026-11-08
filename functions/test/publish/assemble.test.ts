@@ -5,6 +5,7 @@
 import { validateManifest, type CityDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
+import { omit } from '../../src/api/objects.js';
 import type { InvalidDocument, QueryResult } from '../../src/ports/documents.js';
 import { assembleManifest, type Assembly, type CityContent } from '../../src/publish/assemble.js';
 import { TEST_CONFIG } from './fakes.js';
@@ -284,5 +285,85 @@ describe("assembleManifest: a photo's date and source", () => {
         );
 
         expect(manifest.photos[0]?.source).toBeUndefined();
+    });
+});
+
+describe('assembleManifest: M13 (docs/research/M13-roles.md §§2, 5)', () => {
+    const unplaced = () => photoDoc('lost', { location: undefined, bearing: undefined, credit: 'Maria' });
+
+    it('happyPath_aPhotoWithNoPlaceJoinsTheUnplacedListAndNotTheMap @S-V40-HAPPY-MANIFEST', () => {
+        const assembly = assembleManifest(
+            content({
+                photos: result([
+                    ['p1', photoDoc('p1')],
+                    ['lost', unplaced()],
+                ]),
+            }),
+            TEST_CONFIG.errorEndpoint,
+        );
+        const manifest = manifestOf(assembly);
+        expect(manifest.photos.map((photo) => photo.id)).toEqual(['p1']);
+        expect(manifest.unplaced?.map((photo) => [photo.id, photo.credit])).toEqual([['lost', 'Maria']]);
+        expect(assembly.ok && assembly.counts.unplaced).toBe(1);
+    });
+
+    it('badPath_aPlacedPhotoStillNeedsItsPlace @S-V40-BAD-PLACED-NEEDS-LOCATION', () => {
+        const manifest = manifestOf(assembleManifest(content(), TEST_CONFIG.errorEndpoint));
+        const withoutPlace = manifest.photos.map((photo) => omit(photo, ['location', 'bearing']));
+        expect(validateManifest({ ...manifest, photos: withoutPlace }).ok).toBe(false);
+    });
+
+    it('happyPath_noUnplacedPhotosLeaveTheManifestAsItWas', () => {
+        const manifest = manifestOf(assembleManifest(content(), TEST_CONFIG.errorEndpoint));
+        const published: object = JSON.parse(JSON.stringify(manifest)) as object;
+        expect(Object.keys(published)).not.toContain('unplaced');
+        expect(Object.keys(published)).not.toContain('contributeUrl');
+    });
+
+    it('happyPath_theContributeLinkNamesTheCity', () => {
+        const manifest = manifestOf(
+            assembleManifest(content(), TEST_CONFIG.errorEndpoint, { adminUrl: 'https://demo-hcm.web.app/admin/' }),
+        );
+        expect(manifest.contributeUrl).toBe(`https://demo-hcm.web.app/admin/#/contribute/${CITY_ID}`);
+    });
+
+    it.each(['pending', 'refused'] as const)(
+        'badPath_a_%s_itemNeverReachesThePublicWhateverItsPublishedSays @S-A90-BAD-NOT-PUBLIC-BEFORE',
+        (reviewStatus) => {
+            const manifest = manifestOf(
+                assembleManifest(
+                    content({
+                        photos: result([
+                            ['p1', photoDoc('p1')],
+                            ['held', photoDoc('held', { reviewStatus })],
+                            ['heldLost', photoDoc('heldLost', { reviewStatus, location: undefined, bearing: undefined })],
+                        ]),
+                        pois: result([['held', poiDoc({ reviewStatus })]]),
+                    }),
+                    TEST_CONFIG.errorEndpoint,
+                ),
+            );
+            expect(manifest.photos.map((photo) => photo.id)).toEqual(['p1']);
+            expect(manifest.unplaced).toBeUndefined();
+            expect(manifest.pois).toEqual([]);
+        },
+    );
+
+    it('happyPath_anApprovedItemIsPublic', () => {
+        const manifest = manifestOf(
+            assembleManifest(
+                content({ photos: result([['p1', photoDoc('p1', { reviewStatus: 'approved' })]]) }),
+                TEST_CONFIG.errorEndpoint,
+            ),
+        );
+        expect(manifest.photos.map((photo) => photo.id)).toEqual(['p1']);
+    });
+
+    it('badPath_aRefusedUnplacedPhotoIsReportedLikeAnyOther', () => {
+        const assembly = assembleManifest(
+            content({ photos: result([['lost', photoDoc('lost', { location: undefined, bearing: undefined, license: 'unknown' })]]) }),
+            TEST_CONFIG.errorEndpoint,
+        );
+        expect(assembly.skipped.map((item) => [item.entity, item.id])).toEqual([['photo', 'lost']]);
     });
 });

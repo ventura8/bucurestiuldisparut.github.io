@@ -17,6 +17,7 @@ import {
     localizedPartial,
     MAX_LINKS,
     opacitySchema,
+    plainText,
     validYearSpan,
     yearSchema,
 } from './primitives.js';
@@ -97,6 +98,8 @@ export const poiSchema = z
         links: z.array(linkSchema).max(MAX_LINKS),
         /** Manifest photo ids shown in the POI's detail sheet. */
         photoIds: z.array(idSchema).max(MAX_POI_PHOTOS).optional(),
+        /** M13: the name its contributor asked to be credited under. */
+        credit: plainText(100).optional(),
     })
     .refine(validYearSpan, coded('validation.yearRange', ['yearEnd']));
 

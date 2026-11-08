@@ -52,7 +52,7 @@ export function shellLayout(size: Pick<WindowSize, 'widthClass' | 'heightClass'>
     return size.heightClass === 'compact' ? { nav: 'rail', topBar: false } : { nav: NAV_BY_WIDTH[size.widthClass], topBar: true };
 }
 
-type Screen = 'loading' | 'signIn' | 'claim' | 'join' | 'blocked' | 'shell';
+type Screen = 'loading' | 'signIn' | 'claim' | 'join' | 'blocked' | 'visitor' | 'shell';
 
 const SCREENS: Readonly<Record<AdminAuthStatePort, Screen>> = {
     starting: 'loading',
@@ -68,6 +68,7 @@ const SCREENS: Readonly<Record<AdminAuthStatePort, Screen>> = {
     backendDown: 'blocked',
     bootstrap: 'shell',
     admin: 'shell',
+    visitor: 'visitor',
 };
 
 /** What the loading indicator says the admin waits for (anything else: "Loading"). */
@@ -173,8 +174,11 @@ export class HcmAdminShell extends LitElement {
             return html`<main class="screen">${this.#loading(shellText(DEFAULT_LOCALE, 'adminShell.loading'))}</main>`;
         }
         const screen = SCREENS[state.auth];
-        return screen === 'shell'
-            ? this.#frame(state)
+        if (screen === 'shell') {
+            return this.#frame(state);
+        }
+        return screen === 'visitor'
+            ? this.#visitor(state)
             : html`<main class="screen">${this.#panel(screen, state)} ${this.#snackbar(state)}</main>`;
     }
 
@@ -233,9 +237,25 @@ export class HcmAdminShell extends LitElement {
             </div>`;
     }
 
-    #panel(screen: Exclude<Screen, 'shell'>, state: AdminStatePort): TemplateResult {
+    /** M13 §3: the Contribute page of an account of no role: the page and the account menu, no navigation. */
+    #visitor(state: AdminStatePort): TemplateResult {
+        return html`<div class="frame" data-nav="none">
+            <div class="column">
+                <header class="top-bar">
+                    <h1>${pageName(state)}</h1>
+                    <hcm-account-menu .app=${this.app} .state=${state}></hcm-account-menu>
+                </header>
+                <main class="content">
+                    <div class="scroller"><hcm-page-outlet .app=${this.app} .state=${state}></hcm-page-outlet></div>
+                    ${this.#snackbar(state)}
+                </main>
+            </div>
+        </div>`;
+    }
+
+    #panel(screen: Exclude<Screen, 'shell' | 'visitor'>, state: AdminStatePort): TemplateResult {
         const app = this.app;
-        const panels: Readonly<Record<Exclude<Screen, 'shell'>, () => TemplateResult>> = {
+        const panels: Readonly<Record<Exclude<Screen, 'shell' | 'visitor'>, () => TemplateResult>> = {
             loading: () => this.#loading(loadingText(state)),
             signIn: () => html`<hcm-sign-in .app=${app} .state=${state}></hcm-sign-in>`,
             claim: () => html`<hcm-claim-panel .app=${app} .state=${state}></hcm-claim-panel>`,

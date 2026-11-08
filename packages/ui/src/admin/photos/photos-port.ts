@@ -5,7 +5,7 @@
  * store satisfies `PhotosAreaPort`. The elements render the state and call the intents; they never touch Firestore,
  * Storage or the map's library themselves.
  */
-import type { AdminContentKey, ApiErrorCode, FirestoreLicense, ValidationIssue } from '@hcm/shared';
+import type { AdminContentKey, ApiErrorCode, CityRole, FirestoreLicense, ReviewStatus, ValidationIssue } from '@hcm/shared';
 
 import type { AssistActionsPort, AssistViewPort } from '../assist/assist-port.js';
 
@@ -31,6 +31,9 @@ interface PhotoSearchPort {
 }
 
 export interface PhotoRowPort {
+    /** M13: where it stands in the review queue, and what the reviewer said. */
+    readonly reviewStatus: ReviewStatus | null;
+    readonly reviewNote: string | null;
     readonly id: string;
     readonly title: { readonly ro: string; readonly en?: string | undefined };
     readonly year: number | null;
@@ -96,11 +99,13 @@ export interface PhotoValuePort extends StickyPort {
     readonly license: FirestoreLicense;
     readonly permissionNote?: string | undefined;
     readonly links?: readonly { readonly url: string; readonly label: string }[] | undefined;
-    readonly location: { readonly lat: number; readonly lng: number };
+    /** M13: absent while the photo waits for a place. */
+    readonly location?: { readonly lat: number; readonly lng: number } | undefined;
     readonly bearing?: number | undefined;
     readonly fov?: number | undefined;
     readonly published: boolean;
     readonly rightsReview?: boolean | undefined;
+    readonly credit?: string | undefined;
 }
 
 type PhotoFieldPort = keyof PhotoValuePort;
@@ -125,6 +130,8 @@ export interface ReplacePort {
 }
 
 export interface PhotoEditorPort {
+    /** M13: the admin's role in the city: an uploader publishes nothing, a moderator deletes nothing. */
+    readonly role: CityRole | null;
     readonly id: string;
     readonly status: 'loading' | 'ready' | 'notFound' | 'gone' | 'error';
     readonly reconnecting: boolean;
@@ -167,6 +174,8 @@ export interface PhotosViewState {
     readonly busy: boolean;
     /** M4 (CR-M4-4): the open photo's title suggestions and translation drafts. */
     readonly assist: AssistViewPort;
+    /** M13: the admin's role in the city. */
+    readonly role: CityRole | null;
 }
 
 /** A chosen file, as the page hands it to the area (a `File`). */
@@ -209,6 +218,8 @@ export interface PhotosIntentsPort extends AssistActionsPort {
     setDirection(): Promise<void>;
     cancelDirection(): void;
     pointAtCentre(): void;
+    /** M13 §5: gives a photo with no place a pin at the map's centre. */
+    placeAtCentre(): void;
     replaceImage(file: PhotoFilePort): void;
     cancelReplace(): void;
     dismissReplace(): void;

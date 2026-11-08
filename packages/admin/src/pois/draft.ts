@@ -15,7 +15,16 @@ import { FIRESTORE_PATHS, poiDocSchema, validate, type PoiDoc, type ValidationCo
 import { checkGeometry, type DrawLimits, type DrawRefusal } from '@hcm/ui/map/draw';
 
 import type { ContentStore, Stored, WriteOutcome } from '../content/services.js';
-import { docFieldsOf, patched, POI_EDITABLE, valueOf, type PoiEditable, type PoiPatch, type PoiValue } from './model.js';
+import {
+    docFieldsOf,
+    patched,
+    POI_EDITABLE,
+    UPLOADER_POI_FIELDS,
+    valueOf,
+    type PoiEditable,
+    type PoiPatch,
+    type PoiValue,
+} from './model.js';
 
 /** What the checks beyond the schema read: the drawing limits and the city's categories (null while not read yet). */
 export interface PoiContext {
@@ -51,6 +60,8 @@ export interface PoiDraftDeps {
     readonly changed: (state: PoiDraftState) => void;
     /** True while the admin's access is removed (§35e, `DECISIONS-for-review.md` §42d): `edit` changes nothing. */
     readonly locked?: () => boolean;
+    /** M13 §2: the admin is an uploader: their new places wait for review. */
+    readonly reviewed?: () => boolean;
 }
 
 /** A stand-in stamp: the schema checks the document as stored, and the store stamps the real write. */
@@ -235,7 +246,8 @@ export class PoiDraft {
         const path = FIRESTORE_PATHS.poi(this.#deps.cityId, state.id);
         const fields = docFieldsOf(state.value);
         if (state.base === null) {
-            return this.#deps.store.create(path, fields, { withCreator: true });
+            const created = this.#deps.reviewed?.() === true ? { ...fields, ...UPLOADER_POI_FIELDS } : fields;
+            return this.#deps.store.create(path, created, { withCreator: true });
         }
         // A cleared optional field travels as `undefined`: the store deletes it (CR-M2c-16 of M2c-interfaces §13).
         const changed = Object.fromEntries(state.dirty.map((field) => [field, fields[field]]));

@@ -6,7 +6,7 @@
  * assignable to `AdminAppPort`, which `packages/admin/test/app/admin-port.test.ts` checks at compile time. The elements
  * render `state` and call the intents; they never touch Firebase, Google or the address themselves.
  */
-import type { Locale, ThemeTokens } from '@hcm/shared';
+import type { CityRole, Locale, ThemeTokens } from '@hcm/shared';
 
 import type { ThemeMode } from '../theme/apply.js';
 import type { ContentPort } from './content-port.js';
@@ -26,7 +26,8 @@ export type AdminAuthStatePort =
     | 'claiming'
     | 'joinPending'
     | 'notAdmin'
-    | 'admin';
+    | 'admin'
+    | 'visitor';
 
 export type AdminRouteIdPort =
     | 'home'
@@ -42,7 +43,9 @@ export type AdminRouteIdPort =
     | 'history'
     | 'crashes'
     | 'georef'
-    | 'cities';
+    | 'cities'
+    | 'review'
+    | 'contribute';
 
 export interface AdminRoutePort {
     readonly id: AdminRouteIdPort;
@@ -65,7 +68,7 @@ export interface AdminNoticePort extends AdminNoticeInputPort {
 /** M5 (`docs/research/M5-interfaces.md` §1.5): one of the signed-in admin's cities. */
 export interface AdminCityPort {
     readonly id: string;
-    readonly role: 'owner' | 'editor';
+    readonly role: CityRole;
     readonly name: { readonly ro: string; readonly en?: string | undefined };
 }
 

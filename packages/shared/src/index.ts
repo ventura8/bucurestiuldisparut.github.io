@@ -44,7 +44,10 @@ export {
     manifestSchema,
     photoSchema,
     themeSchema,
+    unplacedPhotoSchema,
 } from './schemas/manifest.js';
+export * from './schemas/review.js';
+export { REVIEW_ROLES, STAFF_ROLES, isContributorOnly, isReviewRole, isStaffRole, strongerRole } from './schemas/city-roles.js';
 export { PHOTO_LOCATION_SLACK_DEG } from './schemas/manifest-rules.js';
 export {
     GEOMETRY_TYPES,
@@ -81,6 +84,7 @@ export type {
     License,
     Manifest,
     Photo,
+    UnplacedPhoto,
     PhotoImage,
     PhotoLink,
     Theme,

@@ -56,6 +56,8 @@ describe('photoRow', () => {
             duplicateOf: null,
             rightsReview: true,
             checkPlace: false,
+            reviewStatus: null,
+            reviewNote: null,
             block: null,
         });
     });
@@ -105,5 +107,17 @@ describe('searchRows', () => {
     it('happyPath_foldingAndNullable', () => {
         expect(folded(' Știrbei Vodă ')).toBe('stirbei voda');
         expect([nullable(undefined), nullable(0)]).toEqual([null, 0]);
+    });
+});
+
+describe('M13: an uploader', () => {
+    it('happyPath_readsTheirOwnPhotosWhateverTheFilter', () => {
+        expect(photoQuery('published', 'u-1').where).toEqual([['createdBy', '==', 'u-1']]);
+        expect(photoQuery('published').where).toEqual([['published', '==', true]]);
+    });
+
+    it('happyPath_aRowSaysWhereItStandsInTheQueue', () => {
+        const row = photoRow(stored('p1', { reviewStatus: 'refused', reviewNote: 'Nu e din oraș.' }), false);
+        expect([row.reviewStatus, row.reviewNote]).toEqual(['refused', 'Nu e din oraș.']);
     });
 });

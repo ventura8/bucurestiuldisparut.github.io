@@ -144,5 +144,10 @@ export const en: AdminShellMessages = {
     'adminShell.city.new': 'New city',
     'adminShell.city.role.owner': 'Owner',
     'adminShell.city.role.editor': 'Editor',
+    'adminShell.nav.review': 'Review',
+    'adminShell.nav.contribute': 'Contribute',
+    'adminShell.route.notAllowed': 'Your role does not include that page.',
+    'adminShell.city.role.moderator': 'Moderator',
+    'adminShell.city.role.uploader': 'Contributor',
     'adminShell.city.notMember': 'You do not administer the city {cityId}; {city} was opened instead.',
 };

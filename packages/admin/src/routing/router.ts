@@ -16,6 +16,9 @@ import {
     DEFAULT_ADMIN_ROUTE,
     parseAdminRoute,
     SET_UP_ADMIN_ROUTE,
+    firstAllowedRoute,
+    routeAllowed,
+    type RouteStanding,
     type AdminRoute,
     type AdminRouteId,
 } from './routes.js';
@@ -29,6 +32,8 @@ export interface RouteContext {
     readonly hasPage: (id: AdminRouteId) => boolean;
     /** Setup's required steps are done (`setup/status`, `../app/setup-readiness.ts`); unknown counts as not. */
     readonly setupReady?: boolean;
+    /** M13: who is asking; absent: staff. */
+    readonly standing?: RouteStanding;
 }
 
 export interface ResolvedRoute {
@@ -49,6 +54,10 @@ function setUp(context: RouteContext): boolean {
 
 /** The first screen: the dashboard once Setup is complete (and its page exists), else Setup. */
 function firstRoute(context: RouteContext): AdminRoute {
+    const standing = context.standing ?? 'staff';
+    if (standing !== 'staff') {
+        return firstAllowedRoute(standing);
+    }
     return setUp(context) && context.hasPage(SET_UP_ADMIN_ROUTE.id) ? SET_UP_ADMIN_ROUTE : DEFAULT_ADMIN_ROUTE;
 }
 
@@ -63,13 +72,33 @@ function refusal(route: AdminRoute, context: RouteContext): AdminShellKey | null
     return context.hasPage(route.id) ? null : 'adminShell.route.notFound';
 }
 
+/** A refused address opens Setup, or (M13) the first page of a limited standing, which never opens Setup. */
+function routeOfRefusal(context: RouteContext): AdminRoute {
+    return (context.standing ?? 'staff') === 'staff' ? DEFAULT_ADMIN_ROUTE : firstRoute(context);
+}
+
+/** The address opens, or says why not. */
+function openOrRefused(route: AdminRoute, context: RouteContext): ResolvedRoute {
+    const notice = refusal(route, context);
+    return notice === null ? { route, notice: null } : { route: routeOfRefusal(context), notice };
+}
+
+/** An existing address the standing may not open (M13 §8): its first page, saying why; else null. */
+function limited(route: AdminRoute | null, context: RouteContext): ResolvedRoute | null {
+    const refused = route !== null && !routeAllowed(route.id, context.standing ?? 'staff');
+    return refused ? { route: firstRoute(context), notice: 'adminShell.route.notAllowed' } : null;
+}
+
 export function resolveAdminRoute(hash: string, context: RouteContext): ResolvedRoute {
     if (isBlankAddress(hash)) {
         return { route: firstRoute(context), notice: null };
     }
     const route = parseAdminRoute(hash);
-    const notice = route === null ? 'adminShell.route.notFound' : refusal(route, context);
-    return notice === null && route !== null ? { route, notice: null } : { route: DEFAULT_ADMIN_ROUTE, notice };
+    const notAllowed = limited(route, context);
+    if (notAllowed !== null) {
+        return notAllowed;
+    }
+    return route === null ? { route: routeOfRefusal(context), notice: 'adminShell.route.notFound' } : openOrRefused(route, context);
 }
 
 /**
@@ -79,7 +108,11 @@ export function resolveAdminRoute(hash: string, context: RouteContext): Resolved
  * compact bar in Setup's place, and Setup under More (§34i). The georeferencer is no destination (M3, `inNavigation: false`).
  */
 export function navigationDestinations(context: RouteContext): readonly AdminDestination[] {
-    const ids = context.mode === 'normal' ? ADMIN_ROUTES.filter((id) => id === 'setup' || navigable(id, context)) : ['setup' as const];
+    const standing = context.standing ?? 'staff';
+    const ids =
+        context.mode === 'normal'
+            ? ADMIN_ROUTES.filter((id) => (id === 'setup' || navigable(id, context)) && routeAllowed(id, standing))
+            : ['setup' as const];
     const done = setUp(context);
     return ids.map((id) => destinationOf(id, done));
 }

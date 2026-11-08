@@ -30,6 +30,10 @@ export const NOTIFICATION_KINDS = [
     'job.needsOk',
     // Finding 68 of 2026-11-02: a job waited for the computer WORKER_WAIT_MINUTES and no computer came.
     'job.noWorker',
+    // M13 (docs/research/M13-roles.md §7): an uploader's item, a public suggestion, a role request wait for an answer.
+    'review.waiting',
+    'suggestion.waiting',
+    'role.requested',
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -59,7 +63,20 @@ export const NOTIFICATION_SPECS: Readonly<Record<NotificationKind, NotificationS
     'crash.spike': { severity: 'warning', push: true },
     'job.needsOk': { severity: 'warning', push: true },
     'job.noWorker': { severity: 'warning', push: true },
+    'review.waiting': { severity: 'info', push: true },
+    'suggestion.waiting': { severity: 'info', push: false },
+    'role.requested': { severity: 'info', push: true },
 };
+
+/** M13 §7: who hears of each kind. Every kind before M13 is about the project or its imagery: its staff. */
+export type NotificationAudience = 'staff' | 'reviewers' | 'owners';
+
+export function notificationAudience(kind: NotificationKind): NotificationAudience {
+    if (kind === 'role.requested') {
+        return 'owners';
+    }
+    return kind === 'review.waiting' || kind === 'suggestion.waiting' ? 'reviewers' : 'staff';
+}
 
 /** The kinds pushed when an admin turns push on and changes nothing else. */
 export const DEFAULT_PUSH_KINDS: readonly NotificationKind[] = NOTIFICATION_KINDS.filter((kind) => NOTIFICATION_SPECS[kind].push);

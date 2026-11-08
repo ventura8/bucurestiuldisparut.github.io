@@ -163,7 +163,8 @@ export const viewerStyles = [
          * its body scrolls. As a block it grew with the list past the pane, which hides its overflow, so the photos
          * below the fold were out of reach (the tour, from expanded up).
          */
-        .photos-sheet {
+        .photos-sheet,
+        .unplaced-sheet {
             display: contents;
         }
 

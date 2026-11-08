@@ -1,4 +1,4 @@
-import { createLogger, type CallableName } from '@hcm/shared';
+import { type CityRole, createLogger, type CallableName } from '@hcm/shared';
 import { createRecordingSink } from '@hcm/test-support';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -10,6 +10,7 @@ import { FakeClock, FakeSession, FakeVisibility, access, createHarness, flush, s
 interface View {
     readonly auth: string;
     readonly route: { readonly id: string; readonly params: readonly string[] };
+    readonly cities?: readonly { readonly id: string; readonly role: CityRole }[];
 }
 
 function fakeShell() {
@@ -105,6 +106,15 @@ describe('createSetupModule', () => {
 
         expect(call).toHaveBeenCalledWith('setup.status', {});
         expect(latest()?.mode).toBe('normal');
+    });
+
+    it('badPath_aModeratorsAccountRunsNoSetup @S-A91-BAD-NOT-ALLOWED', async () => {
+        const { shell, call, move } = fakeShell();
+        createSetupModule(options()).create(shell);
+        move({ auth: 'admin', cities: [{ id: 'bucharest', role: 'moderator' }] });
+        await flush();
+
+        expect(call).not.toHaveBeenCalledWith('setup.status', {});
     });
 
     it('happyPath_anAdminSessionStartsInNormalModeAtTheAddressedStep', async () => {

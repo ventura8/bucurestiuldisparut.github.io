@@ -8,7 +8,7 @@
  * the starter categories in one click or a link to add one (finding 35 of 2026-11-01). Native inputs, styled by the
  * editing kit.
  */
-import { MAX_LINKS, STARTER_POI_CATEGORIES, type AdminContentKey, type Locale, type ValidationIssue } from '@hcm/shared';
+import { MAX_LINKS, STARTER_POI_CATEGORIES, type AdminContentKey, type CityRole, type Locale, type ValidationIssue } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import { renderMarkdown } from '../../viewer/markdown.js';
@@ -26,6 +26,8 @@ export interface FieldContext {
     readonly left: FieldsLeft;
     /** A revoked admin's editor: the fields are read-only, nothing that writes is on (`DECISIONS-for-review.md` §42d). */
     readonly readOnly: boolean;
+    /** M13: the admin's role in the city. */
+    readonly role?: CityRole | null;
 }
 
 type Language = 'ro' | 'en';
@@ -351,6 +353,10 @@ export function photoFields(context: FieldContext, photos: readonly PhotoChoiceP
 }
 
 export function publishedField(context: FieldContext): TemplateResult {
+    // M13 §2: an uploader's place is published by its review, and never from here.
+    if (context.role === 'uploader') {
+        return html`<p class="note">${poiText(context.locale, 'adminContent.pois.review.note')}</p>`;
+    }
     const label = poiText(context.locale, 'adminContent.pois.field.published');
     return html`<div class="actions">
             <hcm-switch

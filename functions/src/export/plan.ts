@@ -16,6 +16,7 @@ import {
     type PhotoVariant,
 } from '@hcm/shared';
 
+import { omit } from '../api/objects.js';
 import type { BucketRole } from '../ports/blob-store.js';
 import type { KitFile } from '../ports/export-kit.js';
 import { exportReadme, rightsDocument } from './documents.js';
@@ -95,7 +96,13 @@ function photoFiles(photo: Photo, prefix: string): PhotoFiles {
  * its crash endpoint stay the project's: an export sends nothing anywhere). The viewer token stays (README: replace it).
  */
 function exportedManifest(manifest: Manifest, photos: readonly Photo[], layers: readonly Layer[]): Manifest {
-    return { ...manifest, city: { ...manifest.city, analytics: {} }, photos: [...photos], layers: [...layers] };
+    // M13 §5: an export has no backend to contribute to, and its gallery of unplaced photos would have nowhere to send anyone.
+    return {
+        ...omit(manifest, ['contributeUrl', 'unplaced']),
+        city: { ...manifest.city, analytics: {} },
+        photos: [...photos],
+        layers: [...layers],
+    };
 }
 
 interface LayerFiles {

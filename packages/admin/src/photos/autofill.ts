@@ -59,7 +59,7 @@ function sameLocation(a: { readonly lat: number; readonly lng: number }, b: { re
 
 function locationSuggestion(photo: PhotoDoc, suggested: Suggested, bounds: BBox): Suggestion[] {
     const location = suggested.location;
-    if (location === undefined || sameLocation(location, photo.location)) {
+    if (location === undefined || (photo.location !== undefined && sameLocation(location, photo.location))) {
         return [];
     }
     return [{ field: 'location', text: `${String(location.lat)}, ${String(location.lng)}`, outside: !insideCity(location, bounds) }];

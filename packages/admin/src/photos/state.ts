@@ -3,7 +3,7 @@
  * replaced on every change. It never enters the shell's `AdminState`: the photos page subscribes to its area alone.
  * `@hcm/ui/admin`'s `PhotosViewState` (`packages/ui/src/admin/photos/photos-port.ts`) mirrors it structurally.
  */
-import type { ApiErrorCode, PhotoDoc, ValidationIssue } from '@hcm/shared';
+import type { ApiErrorCode, CityRole, PhotoDoc, ValidationIssue } from '@hcm/shared';
 
 import { NO_ASSIST, type AssistState } from '../assist/assist.js';
 import type { LoadStatus } from '../content/list.js';
@@ -35,6 +35,8 @@ export interface PhotosListState {
 }
 
 export interface PhotoEditorState {
+    /** M13: the admin's role in the city: an uploader publishes nothing, a moderator deletes nothing. */
+    readonly role: CityRole | null;
     readonly id: string;
     /** `notFound`: no such photo; `gone`: deleted while open (the draft stays on screen, Save is off); `error`: the read stopped. */
     readonly status: 'loading' | 'ready' | 'notFound' | 'gone' | 'error';
@@ -81,6 +83,8 @@ export interface PhotosState {
     readonly busy: boolean;
     /** M4 (CR-M4-4): the open photo's title suggestions and translation drafts. */
     readonly assist: AssistState;
+    /** M13: the admin's role in the city. */
+    readonly role: CityRole | null;
 }
 
 export const INITIAL_LIST: PhotosListState = {
@@ -95,7 +99,7 @@ export const INITIAL_LIST: PhotosListState = {
     selection: [],
 };
 
-export function initialPhotosState(sticky: StickyFields): PhotosState {
+export function initialPhotosState(sticky: StickyFields, role: CityRole | null = null): PhotosState {
     return {
         list: INITIAL_LIST,
         uploads: [],
@@ -106,5 +110,6 @@ export function initialPhotosState(sticky: StickyFields): PhotosState {
         report: null,
         busy: false,
         assist: NO_ASSIST,
+        role,
     };
 }

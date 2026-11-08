@@ -58,7 +58,7 @@ describe('navigationDestinations', () => {
     it('happyPath_normalModeListsSetupAndEveryBuiltPageHistoryIncluded', () => {
         expect(navigationDestinations(NORMAL).map((destination) => destination.id)).toEqual(['setup', 'photos', 'admins', 'history']);
         expect(navigationDestinations({ mode: 'normal', hasPage: () => true }).map((destination) => destination.id)).toEqual(
-            ADMIN_ROUTES.filter((id) => id !== 'georef' && id !== 'cities'),
+            ADMIN_ROUTES.filter((id) => id !== 'georef' && id !== 'cities' && id !== 'contribute'),
         );
         expect(destinationOf('home')).toEqual({ id: 'home', icon: 'home', compact: false });
     });
@@ -116,5 +116,58 @@ describe('PageRegistry', () => {
 
         await expect(pages.load('photos')).rejects.toThrow('Failed to fetch dynamically imported module');
         await expect(pages.load('photos')).resolves.toBe('hcm-photos-page');
+    });
+});
+
+describe('M13: who opens which route (docs/research/M13-roles.md §8)', () => {
+    const everything = { mode: 'normal', hasPage: () => true, setupReady: true } as const;
+
+    it('happyPath_aModeratorSeesPhotosPlacesReviewAndNotifications @S-A91-HAPPY-NAV', () => {
+        const destinations = navigationDestinations({ ...everything, standing: 'moderator' }).map((item) => item.id);
+        expect(destinations).toEqual(['photos', 'pois', 'inbox', 'review']);
+    });
+
+    it('happyPath_anUploaderSeesNoReview', () => {
+        const destinations = navigationDestinations({ ...everything, standing: 'uploader' }).map((item) => item.id);
+        expect(destinations).toEqual(['photos', 'pois', 'inbox']);
+    });
+
+    it.each(['setup', 'settings', 'imagery', 'admins', 'jobs', 'layers', 'history', 'crashes', 'home', 'cities'])(
+        'badPath_aModeratorIsKeptFrom_%s @S-A91-BAD-NOT-ALLOWED',
+        (route) => {
+            expect(resolveAdminRoute(`#/${route}`, { ...everything, standing: 'moderator' })).toEqual({
+                route: { id: 'photos', params: [] },
+                notice: 'adminShell.route.notAllowed',
+            });
+        },
+    );
+
+    it('badPath_anUploaderIsKeptFromReview', () => {
+        expect(resolveAdminRoute('#/review', { ...everything, standing: 'uploader' }).notice).toBe('adminShell.route.notAllowed');
+    });
+
+    it('happyPath_aLimitedAccountsFirstScreenIsPhotos', () => {
+        expect(resolveAdminRoute('', { ...everything, standing: 'uploader' })).toEqual({
+            route: { id: 'photos', params: [] },
+            notice: null,
+        });
+    });
+
+    it('happyPath_aVisitorOpensTheContributePageAndNothingElse', () => {
+        const visitor = { ...everything, standing: 'visitor' } as const;
+        expect(resolveAdminRoute('#/contribute/bucharest/p1', visitor)).toEqual({
+            route: { id: 'contribute', params: ['bucharest', 'p1'] },
+            notice: null,
+        });
+        expect(resolveAdminRoute('#/photos', visitor).route.id).toBe('contribute');
+        expect(navigationDestinations(visitor)).toEqual([]);
+    });
+
+    it('badPath_aRefusedAddressOfALimitedAccountNeverOpensSetup', () => {
+        expect(resolveAdminRoute('#/nosuch', { ...everything, standing: 'uploader' }).route.id).toBe('photos');
+    });
+
+    it('happyPath_staffOpenEverything', () => {
+        expect(resolveAdminRoute('#/review', everything).route.id).toBe('review');
     });
 });

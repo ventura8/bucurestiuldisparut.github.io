@@ -52,6 +52,7 @@ export function contentWorld(overrides: Partial<ContentServices> = {}): ContentW
         log: testLog().log,
         user: () => ({ uid: 'admin-uid', name: 'Ana' }),
         locale: () => 'ro',
+        cityRole: () => 'owner',
         notify: (notice) => {
             notices.push(notice);
         },

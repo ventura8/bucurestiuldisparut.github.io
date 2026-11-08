@@ -1,4 +1,4 @@
-import { cityRoleOf, cityRolesSchema } from '@hcm/shared';
+import { cityRoleOf, cityRolesSchema, isContributorOnly } from '@hcm/shared';
 import type { DocumentData, Firestore } from 'firebase-admin/firestore';
 
 import type { AdminDirectory, AdminMembership } from '../ports/admin-directory.js';
@@ -11,7 +11,11 @@ import type { SetupRecords } from '../ports/setup-records.js';
 function membershipOf(data: DocumentData): AdminMembership {
     const parsed = cityRolesSchema.safeParse(data['cities']);
     const cities = parsed.success ? parsed.data : undefined;
-    return { projectRole: data['role'] === 'owner' ? 'owner' : 'admin', roleIn: (cityId) => cityRoleOf(cities, cityId) };
+    return {
+        projectRole: data['role'] === 'owner' ? 'owner' : 'admin',
+        contributorOnly: isContributorOnly(cities),
+        roleIn: (cityId) => cityRoleOf(cities, cityId),
+    };
 }
 
 /** admins/{uid} through the Admin SDK (which bypasses the security rules: the guard is the check). */

@@ -8,7 +8,7 @@
  * `ContentServices` too, each declared by its owner inside its own marked section below and built inside the same
  * section of `../app/content-wiring.ts`; a workstream never edits another's section (§11.2).
  */
-import type { Locale, Logger, Schema, ThemeTokens, ValidationIssue } from '@hcm/shared';
+import type { CityRole, Locale, Logger, Schema, ThemeTokens, ValidationIssue } from '@hcm/shared';
 import type { ThemeTokenSet } from '@hcm/ui/dynamic-color';
 
 import type { Clock, KeyValueStore, Unsubscribe } from '../app/ports.js';
@@ -141,6 +141,8 @@ export interface ContentServices {
     /** The signed-in admin (null only after sign-out, when no area is open). */
     readonly user: () => ContentUser | null;
     readonly locale: () => Locale;
+    /** M13: the signed-in admin's role in the open city, or null (`docs/research/M13-roles.md` §1). */
+    readonly cityRole: () => CityRole | null;
     /** The shell's snackbar. */
     readonly notify: (notice: ContentNotice) => void;
     /** A Firestore read or write was refused (`permission-denied`): the shell asks `admin.session` again (M2b §1.5). */
@@ -200,11 +202,17 @@ type CoreServiceKey =
     | 'log'
     | 'user'
     | 'locale'
+    | 'cityRole'
     | 'notify'
     | 'denied'
     | 'people'
     | 'readOnly'
     | 'previewTheme';
+
+/** M13 §1: an uploader's uid: the rules let them read their own items only, so their lists must ask for exactly those. */
+export function ownerOnlyOf(services: Pick<ContentServices, 'cityRole' | 'user'>): string | null {
+    return services.cityRole() === 'uploader' ? (services.user()?.uid ?? null) : null;
+}
 
 /** What the entry builds for the areas besides the shell's members (`../app/content-wiring.ts`). */
 export type AreaServiceParts = Omit<ContentServices, CoreServiceKey>;

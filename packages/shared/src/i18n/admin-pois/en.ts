@@ -61,6 +61,7 @@ export const en: Readonly<Record<AdminPoisKey, string>> = {
     'adminContent.pois.field.noPhotos': 'No photo linked to the place.',
     'adminContent.pois.field.removePhoto': 'Remove the photo "{title}"',
     'adminContent.pois.field.published': 'Published on the public map',
+    'adminContent.pois.review.note': 'It appears on the public map once a moderator approves it.',
     'adminContent.pois.field.publishedHint': 'A new place is published when saved.',
     'adminContent.pois.field.geometryMissing': 'Draw the place on the map or add positions in the list.',
     'adminContent.pois.state.saved': 'Saved',

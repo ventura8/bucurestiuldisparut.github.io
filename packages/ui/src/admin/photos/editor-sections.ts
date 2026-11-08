@@ -158,9 +158,9 @@ export function datesSection(input: SectionInput): TemplateResult {
     </fieldset>`;
 }
 
-type CreditField = 'author' | 'rightsHolder' | 'sourceLabel' | 'sourceUrl' | 'permissionNote';
+type CreditField = 'author' | 'rightsHolder' | 'sourceLabel' | 'sourceUrl' | 'permissionNote' | 'credit';
 
-const CREDIT_MAX: Partial<Record<CreditField, number>> = { sourceUrl: 2048, permissionNote: 2000 };
+const CREDIT_MAX: Partial<Record<CreditField, number>> = { sourceUrl: 2048, permissionNote: 2000, credit: 100 };
 
 /** The source's name says what it does at the field, where a screen reader hears it. */
 function creditHint(locale: SectionInput['locale'], field: CreditField): { readonly hint?: string } {
@@ -204,7 +204,7 @@ export function creditsSection(input: SectionInput): TemplateResult {
                 edit({ license: chosen as FirestoreLicense });
             },
         )}
-        ${creditField(input, 'rightsHolder')} ${creditField(input, 'permissionNote')}
+        ${creditField(input, 'rightsHolder')} ${creditField(input, 'permissionNote')} ${creditField(input, 'credit')}
     </fieldset>`;
 }
 
@@ -296,6 +296,13 @@ export function linksSection(input: SectionInput): TemplateResult {
 
 export function publishingSection(input: SectionInput, editor: PhotoEditorPort): TemplateResult {
     const { locale, value, edit } = input;
+    // M13 §2: an uploader's photo is published by its review, and never from here.
+    if (editor.role === 'uploader') {
+        return html`<fieldset>
+            <legend>${photoText(locale, 'adminContent.photos.section.publishing')}</legend>
+            <p class="note">${photoText(locale, 'adminContent.photos.review.note')}</p>
+        </fieldset>`;
+    }
     const blocked = editor.block !== null && !value.published;
     return html`<fieldset>
         <legend>${photoText(locale, 'adminContent.photos.section.publishing')}</legend>

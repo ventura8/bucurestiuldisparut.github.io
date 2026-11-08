@@ -177,7 +177,7 @@ describe('create', () => {
         expect(await create(changes)).toBe('deny');
     });
 
-    it.each(['title', 'location', 'license', 'published', 'processing'])('badPath_requiredFieldsCannotBeLeftOut_%s', async (field) => {
+    it.each(['title', 'license', 'published', 'processing'])('badPath_requiredFieldsCannotBeLeftOut_%s', async (field) => {
         const photo = withChanges(minimal(), { [field]: deleted() });
 
         expect(await verdict(world.db('admin').doc(nextPath()).set(photo))).toBe('deny');

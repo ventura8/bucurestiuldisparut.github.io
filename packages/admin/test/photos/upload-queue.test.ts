@@ -41,6 +41,16 @@ function processed(world: PhotosWorld, photoId: string, extra: Record<string, un
 }
 
 describe('UploadQueue: a batch', () => {
+    it('happyPath_anUploadersPhotoWaitsForReviewWithNoPlace @S-A90-HAPPY-OWN', async () => {
+        const world = photosWorld({ cityRole: () => 'uploader' });
+        const { queue } = queueWorld({ world });
+        queue.add([file('Calea Victoriei.jpg')]);
+        await settle();
+        const created = world.store.docs.get(photoPath('new-1'));
+        expect(created).toMatchObject({ reviewStatus: 'pending', published: false, createdBy: 'admin-uid' });
+        expect(created).not.toHaveProperty('location');
+    });
+
     it('happyPath_eachFileGetsItsPhotoWithTheStickyFieldsAndTheLastPin', async () => {
         const { world, memory, queue } = queueWorld();
         memory.rememberSticky({ author: 'Ion', license: 'CC-BY-4.0' });

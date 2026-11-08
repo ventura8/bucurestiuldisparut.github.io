@@ -122,12 +122,15 @@ export class PhotoActions {
             return false;
         }
         memory.markCheckPlace(photoId, false);
-        services.notify({
-            key: 'adminContent.photos.deleted',
-            params: { title: title ?? photoId },
-            action: { key: 'adminContent.photos.undoAction', run: () => void this.#undo(photoId) },
-        });
+        services.notify({ key: 'adminContent.photos.deleted', params: { title: title ?? photoId }, ...this.#undoOffer(photoId) });
         return true;
+    }
+
+    /** M13 §1: bringing a photo back reads its history, which an uploader may not. */
+    #undoOffer(photoId: string) {
+        return this.#context.services.cityRole() === 'uploader'
+            ? {}
+            : { action: { key: 'adminContent.photos.undoAction', run: () => void this.#undo(photoId) } as const };
     }
 
     async #deleteMany(ids: readonly string[]): Promise<boolean> {

@@ -161,7 +161,7 @@ export class HcmCityMenu extends LitElement {
     #choice(state: AdminStatePort, city: AdminCityPort): TemplateResult {
         const locale = state.locale;
         const current = city.id === state.cityId;
-        const role = shellText(locale, city.role === 'owner' ? 'adminShell.city.role.owner' : 'adminShell.city.role.editor');
+        const role = shellText(locale, `adminShell.city.role.${city.role}`);
         const choose = (): void => {
             this.open = false;
             this.#closeAccountMenu();

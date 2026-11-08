@@ -1,5 +1,8 @@
 /** M9 (`docs/research/M9-calibration.md`): the public API of calibration, for `index.test.ts`. */
+import { M13_EXPORTS } from './exports-m13.js';
+
 export const M9_EXPORTS = [
+    ...M13_EXPORTS,
     'CALIBRATION_HOWS',
     'CALIBRATION_OUTLINE_MAX',
     'CALIBRATION_REFUSALS',

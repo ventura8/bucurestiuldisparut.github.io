@@ -9,11 +9,11 @@ import { html, type TemplateResult } from 'lit';
 import type { AdminCityPort, AdminStatePort } from '../admin-port.js';
 import { shellText } from '../shell/text.js';
 
-const CITY_ROLE_OPTIONS: readonly CityRole[] = ['editor', 'owner'];
+const CITY_ROLE_OPTIONS: readonly CityRole[] = ['uploader', 'moderator', 'editor', 'owner'];
 
 /** A role as the page names it. */
 export function roleText(locale: Locale, role: CityRole): string {
-    return shellText(locale, role === 'owner' ? 'adminShell.city.role.owner' : 'adminShell.city.role.editor');
+    return shellText(locale, `adminShell.city.role.${role}`);
 }
 
 /** What an admin's row says besides their name: the role in the city, the project's owner, you. */
@@ -62,8 +62,7 @@ export interface RoleFieldContext {
 /** A role field: its label, and Editor and Owner. */
 export function roleField(context: RoleFieldContext): TemplateResult {
     const changed = (event: Event): void => {
-        const value = (event.currentTarget as HTMLSelectElement).value;
-        context.change?.(value === 'owner' ? 'owner' : 'editor');
+        context.change?.((event.currentTarget as HTMLSelectElement).value as CityRole);
     };
     return html`<div class="field">
         <label for=${context.id}>${context.label}</label>

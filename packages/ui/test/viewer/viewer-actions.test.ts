@@ -24,6 +24,7 @@ function services(change: Partial<ViewerServices> = {}): ViewerServices {
         locate: () => Promise.resolve([26.1, 44.43] as LngLat),
         pageUrl: () => 'https://example.org/#14/44.43/26.1',
         matchMedia: (query) => window.matchMedia(query),
+        openPage: () => undefined,
         ...change,
     };
 }

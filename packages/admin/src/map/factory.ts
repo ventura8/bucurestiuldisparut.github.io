@@ -28,6 +28,10 @@ export interface AdminMapOptions {
     readonly locale: Locale;
     /** M5 (`docs/research/M5-interfaces.md` §1.6): the New city map zooms out further; 9 by default. */
     readonly minZoom?: number;
+    /** M13: the city whose public token serves an account that cannot read Setup's (`docs/research/M13-roles.md` §8). */
+    readonly cityId?: string;
+    /** M13: a token the page already has (the Contribute page's visitor reads no Firestore). */
+    readonly token?: string;
 }
 
 export interface AdminMapHandle {
@@ -50,8 +54,8 @@ export interface AdminMapFactory {
 export interface AdminMapDeps {
     /** The page's `mapboxgl`, loaded on the first map (`loadMapboxGl` of `@hcm/ui/map`). */
     readonly gl: () => Promise<MapboxGl>;
-    /** `setup/status.mapbox.adminToken`, or null before Setup minted it. */
-    readonly token: () => Promise<string | null>;
+    /** `setup/status.mapbox.adminToken`, or null before Setup minted it; M13: else the public token of `cityId`. */
+    readonly token: (cityId?: string) => Promise<string | null>;
     /** Terra Draw's constructors, loaded on first use; null: the click-only tools. */
     readonly terraDraw: (() => Promise<TerraDrawModules>) | null;
     readonly reducedMotion: () => boolean;
@@ -164,8 +168,12 @@ class Factory implements AdminMapFactory {
         this.#deps = deps;
     }
 
+    #tokenFor(options: AdminMapOptions): Promise<string | null> {
+        return options.token === undefined ? this.#deps.token(options.cityId) : Promise.resolve(options.token);
+    }
+
     async create(container: HTMLElement, options: AdminMapOptions): Promise<AdminMapResult> {
-        const token = await this.#deps.token();
+        const token = await this.#tokenFor(options);
         if (token === null) {
             return { ok: false, reason: 'no-token' };
         }

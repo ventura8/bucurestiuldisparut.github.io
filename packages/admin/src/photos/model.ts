@@ -20,8 +20,10 @@ const WHERE: Readonly<Record<PhotoFilter, NonNullable<ContentQuery['where']>>> =
 };
 
 /** The query of a filter, newest change first (the page size and More are the live list's). */
-export function photoQuery(filter: PhotoFilter): ContentQuery {
-    return { where: WHERE[filter], orderBy: [['updatedAt', 'desc']] };
+export function photoQuery(filter: PhotoFilter, ownerOnly: string | null = null): ContentQuery {
+    // M13 §1: an uploader reads their own photos only, and the rules read the query: it must ask for exactly those.
+    const where = ownerOnly === null ? WHERE[filter] : [['createdBy', '==', ownerOnly] as const];
+    return { where, orderBy: [['updatedAt', 'desc']] };
 }
 
 /** Why a photo cannot be published now (the rules' publish gate, §6.5, plus a place still to check, §6.2). */
@@ -61,6 +63,9 @@ export interface PhotoRow {
     readonly rightsReview: boolean;
     /** Left at the fallback pin: the place is to be checked before it is published (§6.2). */
     readonly checkPlace: boolean;
+    /** M13: where it stands in the review queue, and what the reviewer said. */
+    readonly reviewStatus: NonNullable<PhotoDoc['reviewStatus']> | null;
+    readonly reviewNote: string | null;
     readonly block: PublishBlock | null;
 }
 
@@ -80,6 +85,8 @@ export function photoRow(stored: Stored<PhotoDoc>, checkPlace: boolean): PhotoRo
         duplicateOf: nullable(photo.duplicateOf),
         rightsReview: photo.rightsReview === true,
         checkPlace,
+        reviewStatus: photo.reviewStatus ?? null,
+        reviewNote: nullable(photo.reviewNote),
         block: publishBlock(photo, checkPlace),
     };
 }

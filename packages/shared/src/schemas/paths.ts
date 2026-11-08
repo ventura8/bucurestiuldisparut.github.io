@@ -126,6 +126,13 @@ export const FIRESTORE_PATHS = {
     /** M3: the layer versions (drafts on their way to a layer; `docs/research/M3-interfaces.md` §4.4). */
     layerVersions: (cityId: string) => `${cityPath(cityId)}/layerVersions`,
     layerVersion: (cityId: string, versionId: string) => child(cityId, 'layerVersions', versionId),
+    /** M13 (`docs/research/M13-roles.md` §6): role requests (by account), suggestion groups, each account's count and block. */
+    roleRequests: (cityId: string) => `${cityPath(cityId)}/roleRequests`,
+    roleRequest: (cityId: string, uid: string) => `${cityPath(cityId)}/roleRequests/${uid}`,
+    suggestions: (cityId: string) => `${cityPath(cityId)}/suggestions`,
+    suggestion: (cityId: string, groupId: string) => child(cityId, 'suggestions', groupId),
+    contributors: (cityId: string) => `${cityPath(cityId)}/contributors`,
+    contributor: (cityId: string, uid: string) => `${cityPath(cityId)}/contributors/${uid}`,
     /** M8 (`docs/research/M8-join-interfaces.md` §2): the one plan of which frames make each date's whole-city layer. */
     imageryPlan: (cityId: string) => child(cityId, 'imageryPlans', 'dates'),
     /** M9 (`docs/research/M9-calibration.md` §2): a pass's last proved model, the first place to look for its next frame. */
@@ -228,6 +235,9 @@ export const STORAGE_PATHS = {
         ['tiles', citySegment(cityId), idSegment(layerId), `${idSegment(versionId)}.pmtiles`].join('/'),
     /** M12: public, every published archive of a layer (a deleted layer's are emptied together). */
     layerTilesPrefix: (cityId: string, layerId: string) => `tiles/${citySegment(cityId)}/${idSegment(layerId)}/`,
+    /** private (M13 §2): a pending photo's derivative, until `review.decide` moves or deletes it. */
+    reviewHeld: (cityId: string, photoId: string, sha256: string, variant: PhotoVariant) =>
+        ['review-held', citySegment(cityId), idSegment(photoId), `${shaSegment(sha256)}-${variant}.webp`].join('/'),
     /** public, `Cache-Control: public, max-age=60`. */
     manifest: (cityId: string) => `cities/${citySegment(cityId)}/manifest.json`,
     /** private, written by `export.build` (M5 §5), deleted by the bucket's lifecycle after `EXPORT_LIMITS.ttlDays`. */

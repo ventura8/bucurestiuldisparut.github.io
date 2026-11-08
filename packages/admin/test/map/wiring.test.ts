@@ -3,7 +3,7 @@ import { createRecordingSink } from '@hcm/test-support';
 import { FakeMapboxGl } from '@hcm/test-support/fake-map';
 import { describe, expect, it } from 'vitest';
 
-import { adminMapFactoryOf, adminTokenOf, type AdminMapScope } from '../../src/map/wiring.js';
+import { adminMapFactoryOf, adminTokenOf, cityTokenOf, type AdminMapScope } from '../../src/map/wiring.js';
 
 function log(): { readonly log: ReturnType<typeof createLogger>; readonly warnings: () => readonly string[] } {
     const sink = createRecordingSink();
@@ -130,5 +130,40 @@ describe('the admin map wiring', () => {
         });
 
         expect(result).toEqual({ ok: false, reason: 'no-token' });
+    });
+});
+
+describe('M13: a role that cannot read Setup (docs/research/M13-roles.md §8)', () => {
+    const denied = (path: string): Promise<Readonly<Record<string, unknown>> | null> => {
+        if (path === FIRESTORE_PATHS.setupStatus) {
+            return Promise.reject(new Error('permission-denied'));
+        }
+        return Promise.resolve(path === FIRESTORE_PATHS.city('cluj') ? { mapbox: { publicToken: 'pk.city-token' } } : null);
+    };
+    const created = (readDoc: typeof denied, cityId?: string) => {
+        const factory = adminMapFactoryOf({ scope: scope(null), readDoc, terraDraw: null, log: log().log });
+        const options = {
+            bounds: [
+                [25, 44],
+                [27, 45],
+            ],
+            view: { center: [26, 44.5], zoom: 12, bearing: 0 },
+            locale: 'ro',
+        } as const;
+        return factory.create({} as HTMLElement, { ...options, ...(cityId === undefined ? {} : { cityId }) });
+    };
+
+    it('happyPath_theCitysPublicTokenServes', async () => {
+        await expect(cityTokenOf(denied, 'cluj')).resolves.toBe('pk.city-token');
+    });
+
+    it('badPath_noCityNoToken', async () => {
+        await expect(created(denied)).resolves.toEqual({ ok: false, reason: 'no-token' });
+        await expect(cityTokenOf(denied, undefined)).resolves.toBeNull();
+    });
+
+    it('badPath_aCityWithNoTokenOrARefusedRead', async () => {
+        await expect(created(denied, 'bucharest')).resolves.toEqual({ ok: false, reason: 'no-token' });
+        await expect(created(() => Promise.reject(new Error('denied')), 'cluj')).resolves.toEqual({ ok: false, reason: 'no-token' });
     });
 });

@@ -64,9 +64,11 @@ const BOUNDS_COLOR = '#6750a4';
 /** How many photos and places the map draws at most (more than a city of this kind holds). */
 const MAP_ITEMS = 1000;
 
-function mapPhotoOf(doc: Stored<PhotoDoc>): MapPhoto {
+function mapPhotoOf(doc: Stored<PhotoDoc>): MapPhoto[] {
     const { title, year, location, bearing, fov } = doc.data;
-    return { id: doc.id, title: title.ro, year: year ?? null, location, bearing: bearing ?? null, fov: fov ?? null };
+    return location === undefined
+        ? []
+        : [{ id: doc.id, title: title.ro, year: year ?? null, location, bearing: bearing ?? null, fov: fov ?? null }];
 }
 
 /** A place on its category's overlay, its title in the admin's language. */
@@ -110,7 +112,7 @@ export class SettingsMap {
     readonly #deps: SettingsMapDeps;
     readonly #area: AreaMap;
     readonly #layers: LiveList<LayerDoc, RasterLayerSpec>;
-    readonly #photos: LiveList<PhotoDoc, MapPhoto>;
+    readonly #photos: LiveList<PhotoDoc, MapPhoto[]>;
     readonly #places: LiveList<PoiDoc, PoiItem>;
     readonly #categories: LiveList<PoiCategoryDoc, CategoryItem>;
     #state: SettingsMapState = NO_SETTINGS_MAP;
@@ -255,7 +257,7 @@ export class SettingsMap {
         const locale = this.#deps.services.locale();
         this.#area.showContent({
             layers: this.#layers.list.items,
-            photos: photoFeatures(this.#photos.list.items),
+            photos: photoFeatures(this.#photos.list.items.flat()),
             photosOpacity: photosOpacityOf(this.#city),
             categories: this.#categories.list.items.map((category) =>
                 overlayOf(

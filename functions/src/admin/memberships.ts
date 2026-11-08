@@ -11,6 +11,7 @@ import {
     cityRoleOf,
     inviteDocSchema,
     inviteIdFor,
+    strongerRole,
     type AdminDoc,
     type CityRole,
     type CityRoles,
@@ -24,15 +25,11 @@ import { callerStamp, isBefore } from './records.js';
 
 export type InvitedCitiesDeps = Pick<Ports, 'documents' | 'clock'>;
 
-function stronger(a: CityRole | undefined, b: CityRole): CityRole {
-    return a === 'owner' ? 'owner' : b;
-}
-
 /** `current` with every city of `added`, each at the stronger of its two roles. */
 export function mergedRoles(current: CityRoles | undefined, added: CityRoles): Record<string, CityRole> {
     const merged: Record<string, CityRole> = { ...current };
     for (const [cityId, role] of Object.entries(added)) {
-        merged[cityId] = stronger(merged[cityId], role);
+        merged[cityId] = strongerRole(merged[cityId], role);
     }
     return merged;
 }

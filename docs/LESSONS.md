@@ -2500,3 +2500,33 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: review.
     - Fix and pin: `hint` and `sharedHint` (`aria-describedby`, `toHaveAccessibleDescription` in S-A09-HAPPY-DATE-PRECISION); `adminContent.photos.reason.sourceUrl` from the issue's path.
     - **A test of "says why" must fail on a reason that would fit any field.**
+
+415. **A status read when the trigger ran decided what a rule allowed when the upload began.**
+    - Seen: 2026-11-07, security review of M13. An uploader's upload that finished after approval went public and replaced an approved picture, and a photo refused before processing got a public address, because `photos.onUpload` asked only "is it pending now?".
+    - Cause: the Storage rule and the trigger look at the same status at two different moments, and nothing tied them together; `refused` also read as "not held".
+    - Found by: review, each reproduced with a probe against `processPhotoUpload`.
+    - Fix and pin: the trigger decides from who uploaded (the path's uid, a reviewer now) and the status as it stands, and a decision made while it runs wins (S-A90-BAD-LATE-UPLOAD, S-A90-BAD-REFUSED-NO-ADDRESS).
+    - **A gate checked at the start of a slow step must be checked again at its end: a rule's answer is about the moment it ran.**
+416. **An approval named the item and not the version the reviewer read.**
+    - Seen: 2026-11-07, security review. The uploader could rewrite the text or the file up to the click, and the click published whatever stood then; the card showed only the title and the thumbnail.
+    - Cause: the callable took an id and read the current document, and the card did not show what it published.
+    - Found by: review.
+    - Fix and pin: `review.decide` sends `seenAt`, compared inside the transaction, and the card shows the description and links (S-A90-BAD-CHANGED-SINCE).
+    - **A decision about content must name the version it read, and the screen must show what the decision publishes.**
+417. **A create rule's check was missing from the update rule of the same document.**
+    - Seen: 2026-11-07, review. `aimedOnlyIfPlaced` was on the schema and the create rule, so an update wrote a document the server's schema refused, and every callable's `transaction.get` then threw on it.
+    - Found by: an emulator probe of the direction the matrix did not test.
+    - Fix and pin: the update rule asks the same, in both directions of the matrix (S-A94-BAD-AIMED-UNPLACED).
+    - **Each cross-field refine of a schema needs its rule on create and on update, or a client can make a document the server cannot read.**
+418. **A proposal checked alone, then merged onto a photo, and a revert that guessed its entry.**
+    - Seen: 2026-11-07, review. A valid correction could never be approved (a year past the stored range failed the merged schema as an internal error), a date-only contest carried the form's seeded place and moved a photo back, an approved date text dropped the English one, and one-click Revert picked the reviewer's newest history entry, so it could undo a title edit or the wrong suggestion.
+    - Cause: three things reasoned about a proposal away from the document it lands on, and Revert inferred which write it meant instead of recording it.
+    - Found by: review, with probes.
+    - Fix and pin: `functions/src/photos/suggest-apply.ts` keeps what changes, merges a date as a whole and records `undo` on the decision; `revert` restores exactly those fields while they still stand (S-A93-HAPPY-ONLY-CHANGED, S-A93-HAPPY-YEAR-RANGE, S-A93-HAPPY-DATE-LANGUAGE, S-A93-HAPPY-REVERT, S-A93-BAD-REVERT-STALE).
+    - **Validate a change against what it lands on, and let an undo carry its own record: the newest entry by the same person is a guess.**
+419. **Screens that could only be refused, and a block with no way back.**
+    - Seen: 2026-11-07, review. An uploader's photo picker asked for every photo, their Undo read a history they may not read, a removed member was told they were approved, the gallery dropped the licence CC BY asks for, a suggestion on a city not public yet was accepted while the Contribute page said not found, and Block had no question, no list and no opposite.
+    - Cause: each path was built from the happy role, and the rules matrix proved the data, not the offer on screen.
+    - Found by: review.
+    - Fix and pin: S-A90-HAPPY-UPLOADER-PICKER, S-A90-BAD-NO-UNDO, S-A92-HAPPY-ASK-AGAIN, S-V40-HAPPY-RIGHTS, S-A93-BAD-NOT-PUBLIC-CITY, S-A93-HAPPY-UNBLOCK.
+    - **For each role, walk what the screen offers against what the rules allow, and give every lasting action a way back that a person can find.**

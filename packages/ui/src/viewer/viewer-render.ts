@@ -8,11 +8,10 @@
  * the element's handlers; none keeps state. The map container is the one static `<div class="map">`: Lit never
  * re-creates it, so the Mapbox canvas that the engine mounts into it survives every render.
  */
-import { translate, type Locale, type Manifest, type MessageKey, type Photo, type Poi, type PoiCategory } from '@hcm/shared';
+import { translate, type Locale, type Manifest, type Photo, type Poi, type PoiCategory } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 import { keyed } from 'lit/directives/keyed.js';
 
-import type { FabMenuItem } from '../components/fab-menu.js';
 import type { AttributionPart } from './attribution.js';
 import { EMPTY } from './empty.js';
 import type { MapLabelDetail } from './hcm-layer-panel.js';
@@ -20,7 +19,8 @@ import { DOCKED_OPEN, type Placement, type SheetMode, type ViewerLayout } from '
 import { renderSheetFrame } from './sheet-frame.js';
 import type { ViewerError, ViewerState } from './store-port.js';
 import { photosNearYear, type TimelineStop } from './timeline-model.js';
-import { otherLocale, type MenuAction } from './viewer-actions.js';
+import { menuActions, menuItem } from './viewer-menu.js';
+import { unplacedSheet } from './viewer-unplaced.js';
 import { legalMirror, modalOpen, renderLegalBar, type LegalMirror } from './viewer-legal.js';
 
 /** What one render needs, derived from the store state by the element. */
@@ -80,11 +80,11 @@ function readyOf(view: ViewerView): Ready | null {
     return state?.status === 'ready' && state.manifest !== null ? { state, manifest: state.manifest } : null;
 }
 
-type DockedSheet = 'layers' | 'photo' | 'poi' | 'photos';
+type DockedSheet = 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced';
 
 /** About is always a dialog; the layers panel has its own pane when it is always docked. */
 function isDockable(sheet: ViewerState['sheet'], layersDocked: boolean): sheet is DockedSheet {
-    return sheet === 'photo' || sheet === 'poi' || sheet === 'photos' || (sheet === 'layers' && !layersDocked);
+    return ['photo', 'poi', 'photos', 'unplaced'].includes(sheet) || (sheet === 'layers' && !layersDocked);
 }
 
 /** The sheet that shows in the docked trailing pane, if any. */
@@ -232,37 +232,6 @@ function noWebgl(view: ViewerView, manifest: Manifest, handlers: ViewerHandlers)
     </div>`;
 }
 
-/** The actions the FAB menu offers: no layers when the panel is docked, no map actions without WebGL, no list without photos. */
-function menuActions(view: ViewerView, ready: Ready): readonly MenuAction[] {
-    const map = ready.state.webgl;
-    const candidates: readonly (readonly [MenuAction, boolean])[] = [
-        ['layers', map && !view.layout.layersDocked],
-        ['photos', ready.manifest.photos.length > 0],
-        ['locate', map],
-        ['share', true],
-        ['language', true],
-        ['about', true],
-    ];
-    return candidates.filter(([, shown]) => shown).map(([action]) => action);
-}
-
-const MENU_ENTRIES: Readonly<Record<Exclude<MenuAction, 'language'>, { readonly icon: string; readonly label: MessageKey }>> = {
-    layers: { icon: 'layers', label: 'layers.title' },
-    photos: { icon: 'photo_library', label: 'photos.list' },
-    locate: { icon: 'my_location', label: 'action.locate' },
-    share: { icon: 'share', label: 'action.share' },
-    about: { icon: 'info', label: 'about.title' },
-};
-
-/** One FAB menu item; the language item is named after the language it switches to (`English`, `Română`). */
-function menuItem(action: MenuAction, locale: Locale): FabMenuItem {
-    if (action === 'language') {
-        return { value: action, icon: 'translate', label: translate(locale, `language.${otherLocale(locale)}`) };
-    }
-    const entry = MENU_ENTRIES[action];
-    return { value: action, icon: entry.icon, label: translate(locale, entry.label) };
-}
-
 function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): TemplateResult {
     const { state, manifest } = ready;
     const analytics = manifest.city.analytics.measurementId !== undefined;
@@ -273,7 +242,7 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
                 icon="menu"
                 .label=${translate(view.locale, 'action.menu')}
                 .closeLabel=${translate(view.locale, 'action.close')}
-                .items=${menuActions(view, ready).map((action) => menuItem(action, view.locale))}
+                .items=${menuActions({ webgl: ready.state.webgl, layersDocked: view.layout.layersDocked, manifest: ready.manifest }).map((action) => menuItem(action, view.locale))}
                 @hcm-select=${handlers.onMenuSelect}
             ></hcm-fab-menu>
         </div>
@@ -391,6 +360,7 @@ function photoSheet(view: ViewerView, ready: Ready, placement: Placement, handle
         .mode=${placement.mode}
         .open=${placement.open}
         .manifestUrl=${view.manifestUrl}
+        .contributeUrl=${ready.manifest.contributeUrl ?? null}
         ?inert=${placement.inert === true}
         @hcm-close=${handlers.onSheetClose}
         @hcm-photo-select=${handlers.onPhotoSelect}
@@ -425,6 +395,7 @@ function trailingPane(view: ViewerView, ready: Ready | null, handlers: ViewerHan
     const content = {
         layers: () => layerPanel(view, ready, DOCKED_OPEN, handlers),
         photos: () => photosSheet(view, ready, DOCKED_OPEN, handlers),
+        unplaced: () => unplacedSheet(view, ready.manifest, DOCKED_OPEN, handlers.onSheetClose),
         photo: () => photoSheet(view, ready, DOCKED_OPEN, handlers),
         poi: () => photoSheet(view, ready, DOCKED_OPEN, handlers),
     }[sheet];
@@ -471,5 +442,6 @@ function modalSheets(view: ViewerView, ready: Ready, mode: SheetMode, handlers: 
     const { sheet, lightbox: inert } = ready.state;
     return html`${layerPanel(view, ready, { mode, open: sheet === 'layers', inert }, handlers)}
     ${photoSheet(view, ready, { mode, open: sheet === 'photo' || sheet === 'poi', inert }, handlers)}
-    ${photosSheet(view, ready, { mode, open: sheet === 'photos', inert }, handlers)}`;
+    ${photosSheet(view, ready, { mode, open: sheet === 'photos', inert }, handlers)}
+    ${unplacedSheet(view, ready.manifest, { mode, open: sheet === 'unplaced', inert }, handlers.onSheetClose)}`;
 }
