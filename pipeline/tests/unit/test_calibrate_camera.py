@@ -103,7 +103,6 @@ def test_bad_path_a_camera_that_holds_fewer_tiles_than_the_polynomial_is_not_use
     assert found.lattice is None
 
 
-
 def mirrored_rows(seed: int) -> tuple[FloatArray, FloatArray, Frame]:
     """Tiles over the crop of a camera at a scan angle of 0.45 rad with 6 m of noise: a set (seed 0) on which the camera mirrored about
     the nadir holds one tile more than the true one, through a second-order term of about 5 km."""

@@ -1,3 +1,4 @@
+import type { Gcp, Georef } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { fitOf, ownFitOf, shownFit } from '../../src/georef/fit-view.js';
@@ -36,18 +37,25 @@ describe('the fit as the georeferencer shows it', () => {
 });
 
 describe("the version's own figures and map, M15", () => {
-    const stored = { method: 'auto', transform: 'affine', gcps: [{ ...GRID[0], residualM: 1.5 }, ...GRID.slice(1)] } as const;
+    const first: Gcp = { ...pair('g1', 0, 0), residualM: 1.5 };
+    const stored: Georef = { method: 'auto', transform: 'affine', gcps: [first, ...GRID.slice(1)] };
 
     it('happyPath_storedFiguresDefaultToNoChecksAndAMapWithoutALatticeIsThePairsOwn', () => {
         const own = ownFitOf({ ...stored, fitRmseM: 2 });
 
-        expect(own).toEqual({ figures: { fitRmseM: 2, checkpointRmseM: null, checkpointCount: 0, residuals: { g1: 1.5 } }, transform: null });
+        expect(own).toEqual({
+            figures: { fitRmseM: 2, checkpointRmseM: null, checkpointCount: 0, residuals: { g1: 1.5 } },
+            transform: null,
+        });
         const shown = shownFit(fitOf('affine', GRID, 100), own, false, 100);
         expect([shown.view.fitRmseM, shown.view.residuals, shown.transform?.kind]).toEqual([2, { g1: 1.5 }, 'affine']);
     });
 
     it('badPath_noFiguresNoLatticeOrANodeSetThatSpansNothingIsNoOwnMap', () => {
-        const flat = { model: 'panoramic', nodes: GRID.map((gcp) => ({ pixel: { x: 5, y: 5 }, geo: gcp.geo })) } as const;
+        const flat: NonNullable<Georef['lattice']> = {
+            model: 'panoramic',
+            nodes: GRID.map((gcp) => ({ pixel: { x: 5, y: 5 }, geo: gcp.geo })),
+        };
         const refused = fitOf('poly2', GRID, 15);
 
         expect([ownFitOf(undefined), ownFitOf(stored)]).toEqual([null, null]);

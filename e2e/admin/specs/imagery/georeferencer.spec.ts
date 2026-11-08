@@ -251,7 +251,10 @@ test(
     { tag: ['@S-A16-HAPPY-VERSION-FIGURES', '@S-A16-BAD-EDIT-REFITS'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
         test.setTimeout(240_000);
-        const imagery = await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, adminWorld.accounts.owner.uid);
+        const imagery = await readyImagery(
+            { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
+            adminWorld.accounts.owner.uid,
+        );
         // A KH-9 pan frame mapped by its camera (M15): the version stores the camera's figures and residuals, and its lattice.
         await imagery.script({ attempts: [{ outcome: 'over', lattice: true }] });
         const versionId = await importFromList(page, lang, 'DS1035-1057DA023');

@@ -6,9 +6,10 @@ angle at the tiles' middle, the pitch, the drift along and across the track per 
 goes to EPSG:3857 by a linear map plus a second-order polynomial of the film (the angles alone get stuck: M15 §2), solved by least
 squares for any angles (variable projection); the angles by Levenberg-Marquardt from eleven starting scan angles, the best of each sign
 and the next best followed while the tiles it keeps narrow from 80 to 25 m. Two cameras mirrored about the nadir hold the same tiles
-to a tile, one of them through a second-order term tens of times larger that keeps bending beyond the tiles; of the cameras within 1 %
-of the most tiles the one with the smallest second-order term is kept, not the one a tile or a hundredth of a metre ahead (M15, review). Every
-gated tile counts, not a cell's strongest: a map from about 100 pairs lies 3 to 5 m from the one all tiles hold (M15's error budget). Ground metres throughout, at each tile's own latitude.
+within a tile or two, one through a second-order term tens of times larger that keeps bending beyond the tiles; of the cameras within
+1 % of the most tiles the one with the smallest second-order term is kept (M15, review). Every gated tile counts, not a cell's
+strongest: a map from about 100 pairs lies 3 to 5 m from the one all tiles hold (M15's error budget). Ground metres throughout, at
+each tile's own latitude.
 
 The prior holds each angle near nothing in units of a 20 m tile: pitch 0.25 rad (KH-9's cameras converge about 10 degrees), the
 drifts 0.2 a radian, the skew 0.1; the scan angle is free. Fitted on 1,000 tiles in about 0.2 s.
@@ -193,10 +194,11 @@ def _scored(frame: Frame, tiles: _Tiles, angles: FloatArray, keep: Mask) -> Pano
 def _starts(frame: Frame, tiles: _Tiles) -> list[FloatArray]:
     """The starts followed: the best of each sign of the scan angle, so both mirror cameras are tried, then the next best."""
     starts = [numpy.array([math.radians(degrees), 0.0, 0.0, 0.0, 0.0]) for degrees in START_DEG]
-    ranked = sorted(starts, key=lambda start: float(numpy.mean(_residuals(frame, tiles, start, False) ** 2)))
-    sides = [next(start for start in ranked if start[0] < 0), next(start for start in ranked if start[0] >= 0)]
-    rest = [start for start in ranked if not any(start is side for side in sides)]
-    return sides + rest[: FOLLOWED - len(sides)]
+    scans = numpy.array([start[0] for start in starts])
+    order = numpy.argsort([float(numpy.mean(_residuals(frame, tiles, start, False) ** 2)) for start in starts], kind="stable")
+    sides = numpy.array([order[scans[order] < 0][0], order[scans[order] >= 0][0]])
+    chosen = numpy.concatenate((sides, order[~numpy.isin(order, sides)]))[:FOLLOWED]
+    return [starts[index] for index in chosen.tolist()]
 
 
 def plainest(fits: list[PanoramicMap]) -> PanoramicMap:

@@ -88,7 +88,8 @@ describe('the georeferencer shows the version as published', () => {
 
         expect(shown).toMatchObject({ fitRmseM: 6.1, checkpointRmseM: 8.9, checkpointCount: 2, overThreshold: true, refitted: false });
         expect(shown.residuals).toEqual({ g1: 5.1, g2: 6.8, g3: 7.2, g4: 4.4, g5: 3.9, g6: 8, g7: 9.6, g8: 8.1 });
-        expect([edited.fitRmseM === 6.1, edited.checkpointCount, edited.refitted]).toEqual([false, 1, true]);
+        expect(edited.fitRmseM).not.toBeCloseTo(6.1, 2);
+        expect([edited.checkpointCount, edited.refitted]).toEqual([1, true]);
         expect(georef.state.fit).toEqual(shown);
     });
 
@@ -115,7 +116,8 @@ describe('the georeferencer shows the version as published', () => {
         const shown = world.georef.state.fit;
         world.georef.intents.toggle('g7');
 
-        expect([shown.fitRmseM === 6.1, shown.checkpointCount, shown.refitted]).toEqual([false, 2, false]);
+        expect(shown.fitRmseM).not.toBeCloseTo(6.1, 2);
+        expect([shown.checkpointCount, shown.refitted]).toEqual([2, false]);
         expect(world.georef.state.fit.refitted).toBe(false);
     });
 });
