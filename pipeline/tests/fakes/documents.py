@@ -4,7 +4,8 @@
 `DELETE` like Firestore, and records every write (path, fields) in `writes`. `FakeFirestoreClient` mimics the few
 `google.cloud.firestore` calls `FirestoreStore` makes (document get, update with a last-update-time precondition,
 create, collection listing), so the adapter's conversions and retries are tested without an emulator;
-`contend` makes the next N preconditioned updates fail as if another writer got there first.
+`contend` makes the next N preconditioned updates fail as if another writer got there first; `faults` makes a read of a
+document or a listing of a collection raise, as Firestore does when its call times out or the service is unavailable.
 """
 
 import copy
@@ -22,6 +23,7 @@ from hcm_pipeline.store import DELETE, Change
 NOT_FOUND: Callable[[str], Exception] = google_errors.NotFound
 CONTENDED: Callable[[str], Exception] = google_errors.FailedPrecondition
 ALREADY_EXISTS: Callable[[str], Exception] = google_errors.AlreadyExists
+DEADLINE_EXCEEDED: Callable[[str], Exception] = google_errors.DeadlineExceeded
 
 
 def _apply(document: dict[str, object], dotted: str, value: object) -> None:
@@ -108,6 +110,12 @@ class FakeFirestoreClient:
     versions: dict[str, int] = field(default_factory=dict)
     contend: int = 0
     deleted_marker: object = field(default_factory=object)
+    faults: dict[str, Exception] = field(default_factory=dict)
+
+    def fault(self, path: str) -> None:
+        """The error a read of `path` raises, when one was set."""
+        if path in self.faults:
+            raise self.faults[path]
 
     def document(self, path: str, /) -> FakeReference:
         return FakeReference(self, path)
@@ -126,6 +134,7 @@ class FakeReference:
     path: str
 
     def get(self) -> FakeSnapshot:
+        self.client.fault(self.path)
         return FakeSnapshot(self.client.documents.get(self.path), self.client.versions.get(self.path))
 
     def _contended(self, option: Any) -> bool:
@@ -162,6 +171,7 @@ class FakeCollection:
     path: str
 
     def list_documents(self) -> Iterable[FakeName]:
+        self.client.fault(self.path)
         prefix = self.path + "/"
         return [
             FakeName(path[len(prefix) :]) for path in self.client.documents if path.startswith(prefix) and "/" not in path[len(prefix) :]

@@ -5,9 +5,10 @@ frames an admin accepted (`approved`, `publishing` or `published`) that a proof 
 and that kept that file (`held_frames`); renders its own first map the same way; measures film ties against each
 (`calibrate/ties.py`), one partner's image at a time; and fits again with them held still (`calibrate/joining.py`). A partner's layer is
 never rendered again here: that is the admin's choice. A partner that cannot be looked up, staged, read or measured (a refusal of the
-server, a store failure, a file GDAL cannot read) is left out with one job-log line naming it, and the frame is fitted with the others or
-alone; a lost lease or a disconnected computer still stops the run. Nothing here runs for a frame placed only by the admin's points,
-and such a frame is never a partner: every frame keeps its own tiles, so no position travels along a chain of frames.
+server, a store failure or a network that fails, a file GDAL cannot read) is left out with one job-log line naming it, and the frame is
+fitted with the others or alone; a lost lease or a disconnected computer still stops the run. Nothing here runs for a frame placed only
+by the admin's points, and such a frame is never a partner: every frame keeps its own tiles, so no position travels along a chain of
+frames.
 """
 
 import math
@@ -33,7 +34,7 @@ from hcm_pipeline.raster import gdal
 from hcm_pipeline.rasters import GTIFF_OPTIONS, driver_of
 from hcm_pipeline.steps.common import city_window, gdal_step
 from hcm_pipeline.steps.warp import Attached, attached
-from hcm_pipeline.store import SkipsInvalid
+from hcm_pipeline.store import DocumentStoreError, SkipsInvalid
 from hcm_pipeline.worker.api import WorkerApiError
 
 ALIGN_FILE: Final = "align.tif"
@@ -41,8 +42,9 @@ HELD_STATES: Final = frozenset({"approved", "publishing", "published"})
 PROVED_HOWS: Final = frozenset({"votes", "pass", "points", "matcher", "local-ai"})
 MAX_PARTNERS: Final = ALIGNMENT_MAX_PARTNERS
 FULL: Final = 255
-# What one partner's look-up, download, read or measure may raise (`WorkerApiError`, `ObjectStoreError`, GDAL's and `RasterError` are
-# `RuntimeError`s; `PathError` an id off the path pattern): that partner alone is left out. `RunStoppedError` is none of them.
+# What one partner's look-up, download, read or measure may raise (`WorkerApiError`, `ObjectStoreError`, `DocumentStoreError`, GDAL's and
+# `RasterError` are `RuntimeError`s; `PathError` an id off the path pattern): that partner alone is left out. Both object stores raise
+# httpx's errors as `ObjectStoreError` and Firestore's as `DocumentStoreError` (the review of a6750294). `RunStoppedError` is none.
 PARTNER_FAILURES: Final = (RuntimeError, PathError)
 
 
@@ -118,10 +120,11 @@ def _held(ctx: JobContext, version_id: str, record: Record | None, bounds: Bound
 
 
 def _listed(ctx: JobContext, collection: str) -> list[str]:
-    """The city's version ids; none when the server lists none to this run (a local worker on a server without the joint solve)."""
+    """The city's version ids; none when the server lists none to this run (a local worker on a server without the joint solve) or
+    Firestore cannot answer (Cloud Run)."""
     try:
         return ctx.services.store.list_ids(collection)
-    except WorkerApiError as error:
+    except (WorkerApiError, DocumentStoreError) as error:
         ctx.log.warn(f"the other frames could not be read ({error}): the frame is fitted alone", "georef")
         return []
 

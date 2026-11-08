@@ -141,3 +141,31 @@ def test_bad_path_a_session_start_without_an_address_is_refused() -> None:
 
         with pytest.raises(ObjectStoreError, match="no session address"):
             store.start_resumable("x.tif", 1, "image/tiff")
+
+
+def cut_short(request: httpx.Request) -> Iterator[bytes]:
+    """A body whose connection is reset after its first block."""
+    yield b"II*\x00 the first block"
+    raise httpx.ReadError("connection reset by peer", request=request)
+
+
+def flaky(request: httpx.Request) -> httpx.Response:
+    """Cloud Storage behind a network that fails: a look-up that cannot connect, a download cut after its first block."""
+    if "alt" not in request.url.params:
+        raise httpx.ConnectError("connection refused", request=request)
+    return httpx.Response(200, content=cut_short(request))
+
+
+def test_bad_path_a_look_up_or_a_download_the_network_cuts_is_an_object_store_error_and_leaves_no_partial_file(tmp_path: Path) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE
+    The review of a6750294: httpx's own errors escaped the port, so a caller that catches `ObjectStoreError` failed the whole job."""
+    local = tmp_path / "align.tif"
+    with httpx.Client(transport=httpx.MockTransport(flaky)) as client:
+        store = GcsObjectStore(client, BUCKET, EmulatorTokens(), "http://storage.test")
+
+        with pytest.raises(ObjectStoreError, match=r"^Cloud Storage stat: ConnectError$"):
+            store.stat("rasters/x/align.tif")
+        with pytest.raises(ObjectStoreError, match=r"^Cloud Storage download: ReadError$"):
+            store.download_file("rasters/x/align.tif", local)
+
+    assert not local.exists()

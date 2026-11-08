@@ -5,7 +5,8 @@ paths, `DELETE` to remove one), create one only when it is missing, list a colle
 `transact`: read, decide and write as one optimistic transaction (the write carries the read's update time as a
 precondition and is tried again when another writer got there first). `FirestoreStore` implements it with
 `google-cloud-firestore` (which honours `FIRESTORE_EMULATOR_HOST` on its own); the tests use an in-memory store
-and a fake client (`tests/fakes/documents.py`). Timestamps are `model.Timestamp` on this side of the port.
+and a fake client (`tests/fakes/documents.py`). Timestamps are `model.Timestamp` on this side of the port. A read or a
+listing Firestore cannot answer (a timeout, the service unavailable) is a `DocumentStoreError`, the port's own error.
 """
 
 import calendar
@@ -38,6 +39,10 @@ Change = Callable[[Record | None], Mapping[str, object] | None]
 
 class StoreContentionError(RuntimeError):
     """A transaction lost to other writers on every attempt."""
+
+
+class DocumentStoreError(RuntimeError):
+    """A Firestore read or listing failed: its path and the error's kind, never the server's details."""
 
 
 class DocumentStore(Protocol):
@@ -141,7 +146,10 @@ class FirestoreStore:
         return converted if isinstance(converted, dict) else {}
 
     def get(self, path: str) -> Record | None:
-        return _record(self._client.document(path).get())
+        try:
+            return _record(self._client.document(path).get())
+        except google_errors.GoogleAPIError as error:
+            raise DocumentStoreError(f"Firestore read of {path}: {type(error).__name__}") from error
 
     def update(self, path: str, fields: Mapping[str, object]) -> None:
         self._client.document(path).update(self._converted(fields))
@@ -154,7 +162,10 @@ class FirestoreStore:
         return True
 
     def list_ids(self, collection: str) -> list[str]:
-        return [document.id for document in self._client.collection(collection).list_documents()]
+        try:
+            return [document.id for document in self._client.collection(collection).list_documents()]
+        except google_errors.GoogleAPIError as error:
+            raise DocumentStoreError(f"Firestore list of {collection}: {type(error).__name__}") from error
 
     def transact(self, path: str, change: Change) -> Mapping[str, object] | None:
         for _ in range(TRANSACTION_ATTEMPTS):

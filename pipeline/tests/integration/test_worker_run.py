@@ -14,6 +14,7 @@ from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
 from types import SimpleNamespace
 
+import httpx
 import pytest
 from hcm_pipeline.calibrate import chain
 from hcm_pipeline.contract import Errors
@@ -351,5 +352,40 @@ def test_bad_path_a_partner_the_server_left_out_or_cannot_be_measured_never_fail
     assert "1 of the city's frames could not be read and were left out" in lines
     assert "the accepted frame v-corrupt could not be measured: fitted without it" in lines
     assert {"op": "get", "path": world.version_path("v-invalid")} not in step_requests(api)
+    assert "alignment" not in record(world.version()["calibration"])
+    assert api.ended()[-1]["outcome"] == "done"
+
+
+def test_bad_path_a_partner_whose_download_the_network_cuts_midway_is_left_out_and_the_import_awaits_approval(
+    world: PipelineWorld, api: FakeWorkerApi, tmp_path: Path, built: list[Worker], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE
+    The review of a6750294: httpx's `ReadError` from a signed download escaped `PARTNER_FAILURES` and failed the import as `internal`,
+    naming no frame; the connection reset after the partner's first block now leaves that partner out by name."""
+    local_import(world)
+    accepted = {"state": "published", "output": {"bounds": city_bounds()}, "calibration": {"how": "votes"}, "georef": {"method": "auto"}}
+    world.store.seed(world.version_path("v-cut"), {**world.version(), **accepted, "jobId": "v-cut", "year": 1966})
+    api.objects[f"rasters/{CITY}/{LAYER_ID}/v-cut/align.tif"] = StoredObject(b"II*\x00 the partner's image", next(api.generations))
+    read = httpx.Response.iter_bytes
+    cut: list[str] = []
+
+    def reset(response: httpx.Response, chunk_size: int | None = None) -> Iterator[bytes]:
+        blocks = read(response, chunk_size)
+        if "/v-cut/align.tif" not in response.request.url.path:
+            yield from blocks
+            return
+        yield next(blocks)
+        cut.append(response.request.url.path)
+        raise httpx.ReadError("connection reset by peer", request=response.request)
+
+    monkeypatch.setattr(httpx.Response, "iter_bytes", reset)
+    worker = signed_in_worker(world, api, tmp_path / "work", built)
+
+    assert worker.loop.run_once() is Pass.RAN
+
+    job = world.job()
+    assert (job["status"], job["waitReason"]) == ("awaiting_approval", "approval")
+    assert cut == [f"/signed/rasters/{CITY}/{LAYER_ID}/v-cut/align.tif"]
+    assert "the accepted frame v-cut could not be measured: fitted without it" in world.log_lines()
     assert "alignment" not in record(world.version()["calibration"])
     assert api.ended()[-1]["outcome"] == "done"

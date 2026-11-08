@@ -1,8 +1,10 @@
 """Which accepted frames a proved frame is held to, at their edges (M15-calibration-accuracy.md, *Joint solve*)."""
 
+from collections.abc import Iterator
 from dataclasses import replace
 from pathlib import Path
 
+import httpx
 import numpy
 import pytest
 from hcm_pipeline.calibrate.joint import DISAGREES, FEW, USED, Verdict
@@ -13,7 +15,7 @@ from hcm_pipeline.joblog import JobLog
 from hcm_pipeline.jobs import JobContext, LeaseLostError, RunFlags
 from hcm_pipeline.log import get_logger
 from hcm_pipeline.model import Job
-from hcm_pipeline.objects import ObjectInfo, ObjectStoreError
+from hcm_pipeline.objects import GcsObjectStore, ObjectInfo, ObjectStore, ObjectStoreError
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.steps.aligning import (
     Held,
@@ -27,9 +29,11 @@ from hcm_pipeline.steps.aligning import (
     write_align,
 )
 from hcm_pipeline.steps.warp import Attached
+from hcm_pipeline.store import DocumentStore, FirestoreStore
+from hcm_pipeline.tokens import EmulatorTokens
 from hcm_pipeline.worker.api import RevokedError, WorkerApiError
 
-from tests.fakes.documents import MemoryStore
+from tests.fakes.documents import DEADLINE_EXCEEDED, FakeFirestoreClient, MemoryStore
 from tests.fakes.world import CITY, JOB_ID, LAYER_ID, PipelineWorld, city_bounds
 
 BOUNDS = city_bounds()
@@ -260,6 +264,90 @@ def test_bad_path_the_frames_the_server_left_out_of_its_list_are_counted_in_the_
 
     assert [held.version_id for held in held_frames(ctx, Bounds.of(BOUNDS))] == ["v-1972"]
     assert [line for line in world.log_lines() if "of the city's frames" in line] == said
+
+
+def with_services(
+    world: PipelineWorld, tmp_path: Path, store: DocumentStore | None = None, objects: ObjectStore | None = None
+) -> JobContext:
+    """The import's context over other ports (Cloud Run's Firestore adapter, Cloud Storage over a network that fails)."""
+    plain = context(world, tmp_path)
+    services = replace(plain.services, store=store or plain.services.store, objects=objects or plain.services.objects)
+    return JobContext(plain.config, services, plain.job, plain.version, tmp_path, RunFlags(), plain.log)
+
+
+def firestore_over(world: PipelineWorld, faults: dict[str, Exception]) -> FirestoreStore:
+    client = FakeFirestoreClient(documents=world.store.documents, faults=faults)
+    return FirestoreStore(client, client.write_option, client.deleted_marker)
+
+
+def test_bad_path_a_partner_firestore_cannot_read_on_cloud_run_is_left_out_and_the_frame_joins_the_others(
+    world: PipelineWorld, tmp_path: Path
+) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE
+    The review of a6750294: a `DeadlineExceeded` of one partner's read escaped `PARTNER_FAILURES` and failed the import as `internal`."""
+    slow = {world.version_path("v-1966"): DEADLINE_EXCEEDED("Deadline of 60.0s exceeded")}
+    ctx = with_services(world, tmp_path, store=firestore_over(world, slow))
+    frame(world, "v-1972", 1972)
+    frame(world, "v-1966", 1966)
+
+    assert [held.version_id for held in held_frames(ctx, Bounds.of(BOUNDS))] == ["v-1972"]
+    assert [line for line in world.log_lines() if "v-1966" in line] == ["1 other frames could not be read (v-1966): fitted without them"]
+
+
+def test_bad_path_a_list_firestore_cannot_answer_on_cloud_run_fits_the_frame_alone(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE"""
+    slow = {f"cities/{CITY}/layerVersions": DEADLINE_EXCEEDED("Deadline of 60.0s exceeded")}
+    ctx = with_services(world, tmp_path, store=firestore_over(world, slow))
+    frame(world, "v-1972", 1972)
+
+    assert held_frames(ctx, Bounds.of(BOUNDS)) == []
+    said = [line for line in world.log_lines() if "other frames" in line]
+    failure = f"Firestore list of cities/{CITY}/layerVersions: DeadlineExceeded"
+    assert said == [f"the other frames could not be read ({failure}): the frame is fitted alone"]
+
+
+class Flaky:
+    """Cloud Storage behind a network that fails: `unreachable`'s look-up cannot connect, and every download is cut after its first
+    block."""
+
+    def __init__(self, unreachable: str) -> None:
+        self.unreachable = unreachable
+
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        if "alt" in request.url.params:
+            return httpx.Response(200, content=self._cut(request))
+        if self.unreachable in str(request.url):
+            raise httpx.ConnectError("connection refused", request=request)
+        return httpx.Response(200, json={"name": "align.tif", "size": "8", "generation": "1"})
+
+    @staticmethod
+    def _cut(request: httpx.Request) -> Iterator[bytes]:
+        yield b"II*\x00"
+        raise httpx.ReadError("connection reset by peer", request=request)
+
+
+def test_bad_path_a_partner_the_network_cannot_reach_or_cuts_midway_is_left_out_by_name_and_its_file_unstaged(
+    world: PipelineWorld, tmp_path: Path
+) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE
+    The review of a6750294: httpx's `ConnectError` of a look-up and `ReadError` of a download escaped `PARTNER_FAILURES`, failing the
+    import as `internal` and leaving the bytes read so far in the scratch."""
+    with httpx.Client(transport=httpx.MockTransport(Flaky("v-1966"))) as client:
+        objects = GcsObjectStore(client, world.config.private_bucket, EmulatorTokens(), "http://storage.test")
+        ctx = with_services(world, tmp_path, objects=objects)
+        frame(world, "v-1972", 1972)
+        frame(world, "v-1966", 1966)
+
+        held = held_frames(ctx, Bounds.of(BOUNDS))
+        assert [frame.version_id for frame in held] == ["v-1972"]
+        assert held_ties(ctx, ours_over(), held) == []
+
+    lines = world.log_lines()
+    assert [line for line in lines if "v-1966" in line] == ["the accepted frame v-1966 could not be found: fitted without it"]
+    assert [line for line in lines if "v-1972" in line] == ["the accepted frame v-1972 could not be measured: fitted without it"]
+    assert not any("storage.test" in line for line in lines)
+    assert ctx.staged == {}
+    assert not (tmp_path / "align-v-1972.tif").exists()
 
 
 def test_happy_path_the_record_and_the_log_line_name_every_partner() -> None:
