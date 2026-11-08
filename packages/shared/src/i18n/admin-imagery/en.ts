@@ -176,8 +176,7 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.view.tilesFailed': "The image's full detail could not be read. The map shows a small picture instead.",
     // M16 (docs/research/M16-recalibrate.md §7)
     'adminContent.imagery.recalibrate.title': 'Calibrate again',
-    'adminContent.imagery.recalibrate.hint':
-        'A new version is made from the same scan and shown beside this one; it replaces it only once you approve it.',
+    'adminContent.imagery.recalibrate.hint': 'A new version from the same scan, beside this one; it replaces it once you approve it.',
     'adminContent.imagery.recalibrate.refine': 'Refine automatically',
     'adminContent.imagery.recalibrate.points': 'Place rough points',
     'adminContent.imagery.recalibrate.started': 'Refining: the new version is on its way.',
@@ -188,12 +187,8 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.recalibrate.showCurrent': 'Show the current one',
     'adminContent.imagery.recalibrate.showNew': 'Show the new one',
     'adminContent.imagery.confirm.approveWorse': 'Replace it with a fit not shown better?',
-    'adminContent.imagery.confirm.approveWorseBody':
-        'On the same checks the new fit is not better than the current one, or was not measured. The current one is replaced only if you choose it.',
+    'adminContent.imagery.confirm.approveWorseBody': 'Not better on the same checks, or not measured: replace only if you choose.',
     'adminContent.imagery.confirm.approveWorseConfirm': 'Replace anyway',
-    'adminContent.georef.snap': 'Snap my points',
-    'adminContent.georef.snapNone': 'Place one to twelve new points where the image looks off, then snap them.',
-    'adminContent.georef.snapped': 'Your points are being snapped: a new version is on its way.',
     'adminContent.imagery.studio.download': '1. Download the file',
     'adminContent.imagery.studio.open': '2. Open Mapbox Studio and upload it as a tileset',
     'adminContent.imagery.studio.done': '3. I uploaded it',
@@ -297,6 +292,9 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.georef.addPairs': 'Add pairs',
     'adminContent.georef.addAtCentres': 'Add at the centres',
     'adminContent.georef.save': 'Save and georeference',
+    'adminContent.georef.snap': 'Snap my points',
+    'adminContent.georef.snapNone': 'Place one to twelve new points where the image looks off, then snap them.',
+    'adminContent.georef.snapped': 'Your points are being snapped: a new version is on its way.',
     'adminContent.georef.saving': 'Saving…',
     'adminContent.georef.savedResumed': 'The points were saved: the processing goes on.',
     'adminContent.georef.savedNew': 'The points were saved: a new version is processed, and the layer keeps its tiles until then.',

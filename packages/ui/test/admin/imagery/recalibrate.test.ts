@@ -49,7 +49,7 @@ describe('<hcm-imagery-page>: calibrate again', () => {
         const { element, area, app } = await shown(versionView());
         const block = deep(element, 'section.recalibrate');
 
-        expect(block.textContent).toContain('shown beside this one');
+        expect(block.textContent).toContain('beside this one');
         expect(deep(block, 'a').getAttribute('href')).toBe('#/georef/job-1966');
         click(button(element, 'Refine automatically'));
         await updated(element);
@@ -100,6 +100,26 @@ describe('<hcm-imagery-page>: calibrate again', () => {
             expect(calls(area)).toEqual(['approve true']);
         },
     );
+
+    it('badPath_aRefusedRefineStaysOnThePageAndTheMapShowsTheCurrentOneUntilSwappedBack @S-A89-BAD-BUSY', async () => {
+        const current = versionView({ id: 'job-current', state: 'published' });
+        const page = versionPage({ current, showing: 'current' }, versionView({ recalibration: BETTER, basedOn: 'job-current' }));
+        const mounted = await imageryPage(
+            imageryState({ detail: VERSION, version: page }),
+            { params: ['version', 'job-1966'] },
+            {
+                recalibrate: Promise.resolve(null),
+            },
+        );
+        await updated(mounted.element);
+
+        click(button(mounted.element, 'Show the new one'));
+        click(button(mounted.element, 'Refine automatically'));
+        await updated(mounted.element);
+
+        expect(calls(mounted.area)).toEqual(['toggleCurrent', 'recalibrate']);
+        expect(mounted.app.named('navigate')).toEqual([]);
+    });
 
     it('happyPath_theRoughPointsRouteSaysWhatItFoundAroundThem @S-A89-HAPPY-POINTS', async () => {
         const recalibration = { route: 'points' as const, ...BETTER, proposed: 14 };

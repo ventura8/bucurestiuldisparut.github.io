@@ -92,12 +92,6 @@ export const ro = {
     'apiError.imagery.sourceTooLarge': 'Fișierul pentru Mapbox are {megabytes} MB, peste limita acceptată.',
     'apiError.imagery.tilesMissing': 'Imaginea nu are încă dale pentru hartă. Se fac singure; încearcă din nou peste câteva minute.',
     'apiError.imagery.tilesGone': 'Dalele acestei imagini nu mai există și nu se fac din nou. Imaginea mică rămâne.',
-    'apiError.imagery.notImproved':
-        'Nicio potrivire mai bună: {after} m față de {before} m acum, pe aceleași verificări. Rămâne cea actuală.',
-    'apiError.imagery.refineRefused': 'Zonele imaginii nu s-au potrivit destul cu harta. Rămâne potrivirea actuală.',
-    'apiError.imagery.notBetter': 'Noua potrivire nu s-a dovedit mai bună. Confirmă ca să o înlocuiești totuși pe cea actuală.',
-    'apiError.imagery.joinRecalibrate':
-        'Un strat unit se rafinează cadru cu cadru: deschide fiecare cadru, rafinează-l, apoi unește-le din nou.',
     'apiError.imagery.tilesNotFound': 'Sursa nu are dale la această adresă (404).',
     'apiError.imagery.tilesNotImage': 'Adresa nu răspunde cu o imagine.',
     'apiError.imagery.tilesUnreachable': 'Serverul de dale nu răspunde.',
@@ -116,6 +110,10 @@ export const ro = {
     'apiError.imagery.joinSeamTooFar': 'Cadrele {a} și {b} sunt prea departe pentru a fi unite; corectează punctele unuia.',
     'apiError.imagery.joinNoFrames': 'Mai puțin de două cadre adaugă ceva la oraș.',
     'apiError.imagery.joinNoRoom': 'Nu este destul spațiu pe disc pentru această unire; eliberează spațiu și reia.',
+    'apiError.imagery.notImproved': 'Nimic mai bun: {after} m față de {before} m acum, pe aceleași verificări. Rămâne cea actuală.',
+    'apiError.imagery.refineRefused': 'Zonele imaginii nu s-au potrivit destul cu harta. Rămâne potrivirea actuală.',
+    'apiError.imagery.notBetter': 'Noua potrivire nu s-a dovedit mai bună. Confirmă ca să o înlocuiești totuși pe cea actuală.',
+    'apiError.imagery.joinRecalibrate': 'Un strat unit se rafinează cadru cu cadru, apoi cadrele se unesc din nou.',
     'apiError.worker.notHolder': 'Sarcina nu mai este a acestui calculator.',
     'apiError.worker.refused': 'Calculatorul a cerut ceva de care sarcina lui nu are nevoie.',
     'apiError.worker.pairCode': 'Acest cod de asociere nu mai este valabil: copiază din nou comanda din administrare.',
