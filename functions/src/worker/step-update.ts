@@ -129,6 +129,20 @@ function outputAllowed(scope: JobScope, current: LayerVersionDoc, merged: LayerV
     return !isSideJob(scope.job.type) || isDeepStrictEqual(besidesTiles(current.output), besidesTiles(merged.output));
 }
 
+/** M16: what the server wrote of a recalibration (how it was asked for, the version it replaces, the rough points); undefined for none. */
+function serverRecalibration(version: LayerVersionDoc): readonly unknown[] | undefined {
+    const recalibration = version.recalibration;
+    return recalibration === undefined ? undefined : [recalibration.route, recalibration.replaces, recalibration.points];
+}
+
+/**
+ * M16 (`docs/research/M16-recalibrate.md` §1): a run adds what it measured to its version's `recalibration` (`before`, `after`, `tiles`,
+ * `proposed`) and never writes the server's part: a `replaces` it named would cancel another version once this one is rendered.
+ */
+function recalibrationAllowed(current: LayerVersionDoc, merged: LayerVersionDoc): boolean {
+    return isDeepStrictEqual(serverRecalibration(current), serverRecalibration(merged));
+}
+
 function versionWritable(scope: JobScope): Writable<LayerVersionDoc> {
     const { job } = scope;
     return {
@@ -136,6 +150,7 @@ function versionWritable(scope: JobScope): Writable<LayerVersionDoc> {
         fields: WORKER_VERSION_FIELDS,
         allowed: (current, merged) =>
             outputAllowed(scope, current, merged) &&
+            recalibrationAllowed(current, merged) &&
             (IN_RUN.has(job.status) ? versionStateAllowed(job, current, merged) : endsWithJob(job, current, merged)),
         ends: (current, merged) => merged.state !== current.state && ENDINGS.has(merged.state),
     };

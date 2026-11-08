@@ -2,17 +2,14 @@
  * M16 (`functions/src/imagery/{recalibrate,recalibrate-replace,approval,approve}.ts`, `docs/research/M16-recalibrate.md`): Refine and Snap my
  * points start a `regeoref` version from a published layer or one waiting for approval; a version waiting is replaced only once the new one
  * is rendered, and a refine that declines leaves it as it was; a recalibration never publishes itself, and Approve of one not shown better
- * needs the owner's choice. A join is refined frame by frame.
+ * needs the owner's choice. A join is not calibrated again yet.
  */
-import { type JobDoc, type LayerVersionDoc, type Recalibration } from '@hcm/shared';
+import { type LayerVersionDoc, type Recalibration } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { applyApprovalPolicy } from '../../src/imagery/approval.js';
-import { approveFunction } from '../../src/imagery/approve.js';
 import { onJobWrite } from '../../src/imagery/on-job-write.js';
-import { recalibrateFunction } from '../../src/imagery/recalibrate.js';
-import { failureOf } from '../admin/world.js';
-import { adminCall } from '../publish/fakes.js';
+import { CURRENT, LAYER, MAPBOX, approve, codeOf, recalibrate, rendered, required, world } from './recalibrate-world.js';
 import {
     CITY,
     NOW,
@@ -21,71 +18,13 @@ import {
     readJob,
     readLayer,
     readVersion,
-    readyWorld,
-    renderedVersion,
     seedJob,
     seedLayer,
     seedVersion,
     type ImageryWorld,
 } from './world.js';
 
-const CURRENT = 'job-1966-0712';
-const LAYER = 'kh-4a-corona-1966';
-const MAPBOX = { tilesetId: 'e2e-mapbox.hcm-bucharest-kh-4a-corona-1966', origin: 'mts' } as const;
 const ROUGH = [{ pixel: { x: 5000, y: 4000 }, geo: { lat: 44.43, lng: 26.1 } }];
-
-function job(overrides: Partial<JobDoc> = {}): JobDoc {
-    return {
-        type: 'usgs-import',
-        status: 'succeeded',
-        params: { entityId: 'DS1035-1057DA023', dataset: 'corona2', sensor: 'KH-4A' },
-        createdBy: 'u-admin',
-        createdAt: at(NOW),
-        layerId: LAYER,
-        versionId: CURRENT,
-        updatedBy: 'system:pipeline',
-        updatedAt: at(NOW),
-        ...overrides,
-    };
-}
-
-const WAITING = { status: 'awaiting_approval', waitReason: 'approval' } as const;
-
-async function world(
-    state: 'published' | 'awaiting_approval' = 'published',
-    version: Partial<LayerVersionDoc> = {},
-): Promise<ImageryWorld> {
-    const found = await readyWorld();
-    const published = state === 'published' ? { mapbox: MAPBOX } : {};
-    await seedVersion(found, CURRENT, renderedVersion({ state, ...published, ...version }));
-    await seedJob(found, CURRENT, job(state === 'published' ? {} : WAITING));
-    await seedLayer(found, LAYER, state === 'published' ? { currentVersion: CURRENT } : { pendingVersion: CURRENT });
-    return found;
-}
-
-function recalibrate(found: ImageryWorld, data: Record<string, unknown>) {
-    return recalibrateFunction(() => found.deps).run(adminCall({ cityId: CITY, versionId: CURRENT, route: 'auto', ...data }));
-}
-
-async function required<T>(read: Promise<T | undefined>): Promise<T> {
-    const found = await read;
-    if (found === undefined) {
-        throw new Error('not found');
-    }
-    return found;
-}
-
-function codeOf(promise: Promise<unknown>): Promise<unknown> {
-    return failureOf(promise).then((failure) => (failure.details as { code?: unknown } | undefined)?.code);
-}
-
-/** The new version, rendered and waiting with its job, as the pipeline leaves it. */
-async function rendered(found: ImageryWorld, id: string, recalibration: Recalibration): Promise<void> {
-    const version = await required(readVersion(found, id));
-    await seedVersion(found, id, renderedVersion({ ...version, layerId: LAYER, jobId: id, state: 'awaiting_approval', recalibration }));
-    const started = await required(readJob(found, id));
-    await seedJob(found, id, { ...started, ...WAITING });
-}
 
 describe('imagery.recalibrate', () => {
     it('happyPath_refineOnAPublishedLayerStartsANewVersionThatHoldsTheLayer @S-A89-HAPPY-REFINE', async () => {
@@ -244,11 +183,6 @@ describe('Approve of a recalibration', () => {
         await rendered(found, jobId, recalibration);
         await applyApprovalPolicy(found.deps, CITY, jobId);
         return { found, jobId };
-    }
-
-    function approve(found: ImageryWorld, versionId: string, acceptWorse?: true) {
-        const data = acceptWorse === undefined ? {} : { acceptWorse };
-        return approveFunction(() => found.deps).run(adminCall({ cityId: CITY, versionId, ...data }));
     }
 
     it('happyPath_aBetterFitIsApprovedInOneClickButNeverPublishesItself @S-A89-HAPPY-APPROVE-BETTER', async () => {

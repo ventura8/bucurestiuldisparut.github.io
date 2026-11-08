@@ -21,7 +21,8 @@ import { startRegeoref, type RegeorefDeps } from './regeoref.js';
  * waiting for approval, calibrated again from its scan. **Refine automatically** (`auto`) reruns the proof and the dense matching from the
  * current fit and renders only a better one; **Snap my points** (`points`) starts from the admin's rough points. Either is a new `regeoref`
  * version of the same layer that waits for Approve. A base waiting for approval stays until the new version is rendered (`replaces`, §5). A
- * join has no scan: it is refined frame by frame (`apiError.imagery.joinRecalibrate`, §6).
+ * join has no scan and cannot be calibrated again yet (`apiError.imagery.joinRecalibrate` says so; the re-join of §6 is not built, and its
+ * frames, `joined` or held by a waiting join, are refused too).
  */
 export type RecalibrateDeps = RegeorefDeps;
 

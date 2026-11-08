@@ -200,6 +200,7 @@
         "apiError.imagery.processingFailed",
         "apiError.imagery.referenceUnavailable",
         "apiError.imagery.refineRefused",
+        "apiError.imagery.refineUnmeasured",
         "apiError.imagery.tooFewGcps",
         "apiError.imagery.unreadableRaster",
         "apiError.internal",

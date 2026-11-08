@@ -6,7 +6,7 @@ from hcm_pipeline.calibrate.dense import PROOF_SEARCH_GROUND_M
 from hcm_pipeline.contract import RECALIBRATE_MIN_GAIN_M, Errors
 from hcm_pipeline.documents import GeorefInfo, Version
 from hcm_pipeline.georef.transforms import Fit, Gcp, fit
-from hcm_pipeline.jobs import StepFailedError
+from hcm_pipeline.jobs import DeclinedError, StepFailedError
 from hcm_pipeline.model import DocumentError
 from hcm_pipeline.steps.recalibrate import (
     Compared,
@@ -17,6 +17,7 @@ from hcm_pipeline.steps.recalibrate import (
     figures_record,
     figures_text,
     refitted,
+    require_better,
     search_m,
 )
 
@@ -52,6 +53,20 @@ def test_bad_path_too_few_disabled_pairs_compare_nothing() -> None:
     assert compared(None, few) is None
     assert figures_record(None) == {}
     assert figures_text(None).startswith("not compared")
+
+
+@pytest.mark.parametrize(
+    ("figures", "code"),
+    [(None, Errors.REFINE_UNMEASURED), (Compared(Figure(10.0, 5), Figure(9.5, 5)), Errors.NOT_IMPROVED)],
+)
+def test_bad_path_a_refine_declines_with_its_own_reason(figures: Compared | None, code: str) -> None:
+    """Scenarios: S-P19-BAD-NOT-IMPROVED
+
+    Too few checks to compare is its own reason: the tiles agreed, only the comparison was impossible (not `refineRefused`)."""
+    with pytest.raises(DeclinedError) as raised:
+        require_better(figures)
+
+    assert raised.value.code == code
 
 
 def test_happy_path_one_rough_point_moves_the_whole_start() -> None:

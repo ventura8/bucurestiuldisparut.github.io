@@ -177,14 +177,16 @@ async function policyIn(transaction: DocumentTransaction, cityId: string, jobId:
     if (awaiting === undefined) {
         return false;
     }
+    // M16 (docs/research/M16-recalibrate.md §4, §5): a refine of a version waiting for approval replaces it now that it is rendered, and a
+    // recalibration keeps its figures only when they measure against the layer's published version.
+    const recorded = await replaceWaitingBase(transaction, cityId, awaiting.version, now);
     const estimated: Rendered = {
-        ...awaiting.version,
+        ...recorded,
+        output: awaiting.version.output,
         estimate: estimateOf(awaiting.version.output, now),
         ...stampOf(IMAGERY_WRITER, now),
     };
     const auto = !awaiting.held && autoApproves(estimated, awaiting.settings);
-    // M16 (docs/research/M16-recalibrate.md §5): a refine of a version waiting for approval replaces it now that it is rendered.
-    await replaceWaitingBase(transaction, cityId, awaiting.version, now);
     await transaction.set(
         awaiting.path,
         layerVersionDocSchema,

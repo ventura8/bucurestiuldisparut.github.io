@@ -30,7 +30,12 @@ export const RECALIBRATE_MIN_CHECKS = 3;
  * A refine that renders nothing ends **declined** with one of these: its job and version `cancelled` with the error, so the layer is released
  * and nothing else changes (`pipeline/src/hcm_pipeline/jobs.py` `Declined`; `worker.step` accepts that ending on a `regeoref` job).
  */
-export const RECALIBRATE_DECLINED_CODES = ['apiError.imagery.notImproved', 'apiError.imagery.refineRefused'] as const;
+export const RECALIBRATE_DECLINED_CODES = [
+    'apiError.imagery.notImproved',
+    'apiError.imagery.refineRefused',
+    // Too few held-out checks to compare the two fits: the tiles agreed, only the comparison was impossible.
+    'apiError.imagery.refineUnmeasured',
+] as const;
 
 /** True for a decline's error code. */
 export function isDeclinedCode(code: string | undefined): boolean {

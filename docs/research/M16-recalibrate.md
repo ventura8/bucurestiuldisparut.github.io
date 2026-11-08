@@ -34,7 +34,7 @@ recalibration: z.strictObject({
 }).optional()
 ```
 
-The server writes `route`, `replaces` and `points`; the pipeline adds `before`, `after`, `tiles` and `proposed` (`WORKER_VERSION_FIELDS` gains `recalibration`). `basedOn` (already on every `regeoref` version) names the current version. Job parameters do not change: a recalibration is a `regeoref` job whose version carries `recalibration`.
+The server writes `route`, `replaces` and `points`; the pipeline adds `before`, `after`, `tiles` and `proposed` (`WORKER_VERSION_FIELDS` gains `recalibration`, and `worker.step` refuses a write that changes the server's part or adds a `recalibration` to a version that had none: `step-update.ts` `recalibrationAllowed`). `basedOn` (already on every `regeoref` version) names the current version. Job parameters do not change: a recalibration is a `regeoref` job whose version carries `recalibration`.
 
 `recalibrationVerdict(recalibration)` in `@hcm/shared` is the one reading of the figures, used by the approval and the page: `better` when both figures exist and `after.rmseM <= before.rmseM - RECALIBRATE_MIN_GAIN_M` (1 m: a checkpoint figure of a dozen checks moves that far with the seed alone, M9 §14), `worse` when both exist and it is not better, `unmeasured` otherwise. The pipeline's twin (`steps/recalibrate.py`, `Compared.better`) reads the same constant from `contract.py`, held equal by `enums.json`.
 
@@ -55,20 +55,20 @@ The checks are dense tiles read from the match, never from either fit (M9 §7: `
 - **The start.** `auto`: the current fit. `points`: the current pairs farther than `POINT_REACH_GROUND_M` (1,500 m) from every rough point, plus the rough points, fitted with the current transform (affine when fewer than six pairs are left).
 - **The search.** `max(PROOF_SEARCH_GROUND_M, min(3 x the current checkpoint figure, 2000))` for `auto`, as M9's seeded points; for `points`, at least twice the largest distance between where the current fit puts a rough point and where the admin put it, within 2,000 m.
 - **The proof.** `measured_on_scan` and `calibrated` unchanged (M9 §4, §7): every gate holds, the last look included; checkpoints set aside before RANSAC.
-- **Endings.** The proof refused: the job ends **declined** with `apiError.imagery.refineRefused` (both routes). `auto` not `better`: declined with `apiError.imagery.notImproved {before, after}`. Declined is a new outcome (`jobs.Declined`): the job and its version end `cancelled` with that error, so the dispatcher releases the layer (`releaseCancelled`) and nothing else changes. `worker.step` accepts a run's `cancelled` without `cancelRequested` only with one of these two codes, on a `regeoref` job.
+- **Endings.** The proof refused: the job ends **declined** with `apiError.imagery.refineRefused` (both routes). `auto` with fewer than `RECALIBRATE_MIN_CHECKS` held-out checks to compare: declined with `apiError.imagery.refineUnmeasured` (the tiles agreed; only the comparison was impossible). `auto` not `better`: declined with `apiError.imagery.notImproved {before, after}`. Declined is a new outcome (`jobs.Declined`): the job and its version end `cancelled` with that error, so the dispatcher releases the layer (`releaseCancelled`) and nothing else changes. `worker.step` accepts a run's `cancelled` without `cancelRequested` only with one of these codes (`RECALIBRATE_DECLINED_CODES`), on a `regeoref` job.
 - **`proposed`**: the new pairs within `POINT_REACH_GROUND_M` of a rough point.
 - **Log**: `refined: 812 of 1,004 tiles agree; 14.1 m against the current 17.6 m on the same 21 checks` / `declined: 16.9 m against the current 17.2 m on the same 21 checks, not 1 m better`.
 
 ## 4. The approval
 
 - **The policy** (`functions/src/imagery/approval.ts`): a version with `recalibration` never publishes itself. The owner asked to see it beside the current one first.
-- **Approve** (`imagery.approve`, request `{cityId, versionId, acceptWorse?: true}`): a version whose verdict is not `better` (worse, or unmeasured) is refused with `apiError.imagery.notBetter` unless `acceptWorse` is true. The page asks first ("The new fit is not shown to be better. Replace the current one anyway?"), so the owner chooses it in words. Reject works as for any version.
+- **Approve** (`imagery.approve`, request `{cityId, versionId, acceptWorse?: true}`): a version whose verdict is not `better` (worse, or unmeasured) is refused with `apiError.imagery.notBetter` unless `acceptWorse` is true. The figures compare the new fit with its `basedOn`, so they count only when that is the layer's published version (or the layer has none yet; `againstCurrent`, read in Approve's transaction). The policy drops them otherwise, so the page reads `unmeasured` and asks: a refine of a version that was itself waiting (a Save, say) never launders a fit that would have needed the owner's choice. The page asks first ("The new fit is not shown to be better. Replace the current one anyway?"), so the owner chooses it in words. Reject works as for any version.
 - **Publish** is unchanged: the new version supersedes the current one (M12 §5), whose public archive stays for its grace.
 
 ## 5. Concurrency and the version waiting for approval
 
 - A published current version: the new version holds the layer's `pendingVersion` from the start (as `regeoref` does); a second recalibration is `apiError.layers.busy` until it ends.
-- A current version **waiting for approval**: the georeferencer's Save replaces it at once, as today. Refine and Snap do **not**: they may decline, and a declined refine must leave the waiting version where it was. So the new version records `replaces: <current>`, the current keeps `pendingVersion`, and when the new one reaches `awaiting_approval` the policy's transaction cancels the current version and its job and moves `pendingVersion` to the new one (`recalibrate-replace.ts`). A current version approved or rejected meanwhile is left as it is. A second Refine or Snap on the same waiting version while one runs is `apiError.layers.busy`.
+- A current version **waiting for approval**: the georeferencer's Save replaces it at once, as today. Refine and Snap do **not**: they may decline, and a declined refine must leave the waiting version where it was. So the new version records `replaces: <current>`, the current keeps `pendingVersion`, and when the new one reaches `awaiting_approval` the policy's transaction cancels the current version and its job and moves `pendingVersion` to the new one (`recalibrate-replace.ts`). The replaced version is only the new one's own `basedOn`, on the same layer. A current version approved or rejected meanwhile is left as it is; one approved and still publishing leaves the mark to the new version, as a publish clears only its own mark (`finalize.ts`). A second Refine or Snap, or a Save, on the same waiting version while one runs is `apiError.layers.busy`, decided in the start's transaction: the waiting version records the refine started from it (`refining`, its job read there; a stale one, the refine ended, is ignored), since the layer's mark stays on it and cannot serialize two starts.
 
 ## 6. Joined layers (M8)
 
@@ -78,7 +78,7 @@ A join has no scan and no `georef` (M8 cut: it cannot be georeferenced). **Refin
 2. A new `layer-join` job over those versions is born waiting for its frames (`waitReason: 'parts'`, as `imagery.join` makes it), on the join's layer, with `recalibration {route: 'auto', before}` where `before` is the current join's `checkpointRmseM` and checks.
 3. The join's `checkpointRmseM` is its `after`; the approval reads the verdict as above. The frames stay `partOf` the new join; the old join's frames stay as they were until it is superseded.
 
-**As built:** step 1's frame refines and step 2's waiting join are **not built**; `imagery.recalibrate` on a join answers `apiError.imagery.joinRecalibrate` ("Recalibrate each frame, then join them again"), and the page offers Refine on each frame's own page, where it already works. Reason: M8's `writeJoin` takes scenes, not versions, and a re-join from versions is a second entry into M8's plan that the join track owns.
+**As built:** step 1's frame refines and step 2's waiting join are **not built**, and nothing else improves a joined layer today: `imagery.recalibrate` on a join answers `apiError.imagery.joinRecalibrate`, which says only that a joined layer cannot be calibrated again yet. Its frames are no way round it: a published join's frames are `joined` (refused with `versionState`, and the page offers nothing), a waiting join's are held (`joinPartHeld`). (Until 2026-11-08 the message told the owner to refine each frame and join them again, which no path allowed.) Reason: M8's `writeJoin` takes scenes, not versions, and a re-join from versions is a second entry into M8's plan that the join track owns.
 
 ## 7. The page
 
@@ -108,10 +108,18 @@ Real frames: no recalibration ran on a real scan here, so `RECALIBRATE_MIN_GAIN_
 Every route of §0 is in, with the server, the pipeline, the admin and the stand-in; no cloud project, Mapbox or Chrome was touched.
 
 - **Rows:** behaviour `A89` (admin) and `P19` (pipeline), not the numbers of §8 (A80 to A84 and P07 were taken or likely to be taken by other tracks): `S-A89-*` and `S-P19-*` in `e2e/scenarios.json`. Tour states `imagery.version-recalibrate`, `imagery.version-recalibrated`, `imagery.version-refine-declined` (`e2e/admin/specs/imagery/recalibrate.spec.ts`).
-- **Not built:** the re-join of §6 (a join answers `joinRecalibrate`); the base page's line about the last refine that declined (the new version's page says it, and the Refine button opens that page).
+- **Not built:** the re-join of §6 (a join answers `joinRecalibrate`, which promises nothing); the base page's line about the last refine that declined (the new version's page says it, and the Refine button opens that page).
 - **The start of Snap** bends the current fit with every rough point's correction weighed by the inverse square of its distance, plus the points themselves, rather than dropping the current pairs near them: one point moves the whole map, several bend it as far as the transform can (§9).
 - **Search for Snap** is at least twice the furthest the bent start misses a rough point by (a rough point is rough), within 2,000 m.
 - **The ruler's checks** for Refine and Snap are `calibrated`'s held-out cells; for the manual route, the admin's disabled pairs (at least 3). A figure is written with two decimals; the decline's parameters with one.
 - **Budgets:** a new lazy chunk `recalibrate-card` (0.8 KB, row 2 KB); `approval-map` 3.9 of 5, `imagery` 16.7 of 18, `georef` 16.7 of 17, `editor-shared` 12.9 of 13, the admin 645.4 of 650. `editor-shared` paid for the new callable with a real saving: the admin's `imagery/api.ts` carries no request schema any more (the server validates every request; the types stay).
 - **A published version's page** now draws its public archive (its private one went at publish), so the current version is seen at full detail beside a recalibration; before, such a page showed the small picture.
 - **Counts:** the registry has 91 functions (`imagery-recalibrate`).
+
+## 12. Review fixes (2026-11-08)
+
+- **Figures against the published version** (§4): the policy drops `before`/`after` of a recalibration not `basedOn` the layer's published version, and Approve checks the same in its transaction. Tests: `functions/test/imagery/recalibrate-guards.test.ts`.
+- **The worker's part of `recalibration`** (§1) and **`replaces` only the own base on the same layer** (§5): `step-update.ts`, `recalibrate-replace.ts`; tests in `functions/test/worker/step.test.ts` and `recalibrate-guards.test.ts`.
+- **A publish clears only its own pending mark** (§5): `finalize.ts`; `functions/test/imagery/publish.test.ts`.
+- **Two starts on one waiting version** (§5): `refining` on the waiting version, read in the start's transaction (`regeoref.ts`).
+- **The join's message** (§6) no longer advises a route that does not exist; **`refineUnmeasured`** (§3) names a refine with too few checks to compare.

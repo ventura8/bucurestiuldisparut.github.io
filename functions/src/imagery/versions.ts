@@ -194,6 +194,7 @@ function processingVersion(work: NewWork, fields: VersionFields): LayerVersionDo
         georef: fields.georef,
         partOf: fields.partOf,
         recalibration: fields.recalibration,
+        refining: undefined,
         join: undefined,
         suggestions: undefined,
         crop: fields.crop,

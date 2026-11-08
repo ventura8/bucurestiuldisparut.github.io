@@ -237,6 +237,8 @@ class Errors:
     # M16: a refine that renders nothing ends declined with one of these (`jobs.DeclinedError`).
     NOT_IMPROVED: Final = "apiError.imagery.notImproved"
     REFINE_REFUSED: Final = "apiError.imagery.refineRefused"
+    # Too few held-out checks to compare the two fits: the tiles agreed, only the comparison was impossible.
+    REFINE_UNMEASURED: Final = "apiError.imagery.refineUnmeasured"
 
 
 def pipeline_steps_of(job_type: str) -> tuple[str, ...]:

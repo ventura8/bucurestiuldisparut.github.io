@@ -11,7 +11,8 @@ with the route `auto` (Refine automatically) or `points` (Snap my points) is mea
 - **The ruler** (§2): the current fit and the new one are measured on **the same checks**, the new version's disabled pairs, in ground
   metres (`transforms.residuals_m`). A manual version (the georeferencer's Save) is compared the same way when it holds at least
   `RECALIBRATE_MIN_CHECKS` disabled pairs.
-- **Endings.** The proof refused: declined (`refineRefused`). `auto` not better by `RECALIBRATE_MIN_GAIN_M`: declined (`notImproved`).
+- **Endings.** The proof refused: declined (`refineRefused`). `auto` with too few held-out checks to compare: declined
+  (`refineUnmeasured`, not `refineRefused`: the tiles agreed). `auto` not better by `RECALIBRATE_MIN_GAIN_M`: declined (`notImproved`).
   Declined is `DeclinedError`: the job and its version end cancelled with the reason, nothing rendered.
 
 To reconcile with track/accuracy (§9): `current_fit` refits the current pairs with their recorded transform; a camera model or a rendered
@@ -232,7 +233,7 @@ def proved_pairs(ctx: JobContext, proof: Proof, scan: ScanInfo) -> Calibrated:
 def require_better(figures: Compared | None) -> None:
     """Refine renders only a better fit: too few checks to tell, or not better, and it declines."""
     if figures is None:
-        raise DeclinedError(Errors.REFINE_REFUSED, "too few checks to compare the two fits: the current fit stays")
+        raise DeclinedError(Errors.REFINE_UNMEASURED, "too few checks to compare the two fits: the current fit stays")
     if not figures.better:
         params = {"before": f"{figures.before.rmse_m:.1f}", "after": f"{figures.after.rmse_m:.1f}"}
         raise DeclinedError(Errors.NOT_IMPROVED, f"{figures.text()}: not better, the current fit stays", params)

@@ -277,6 +277,11 @@ export const layerVersionDocSchema = z
         partOf: idSchema.optional(),
         /** M16: a recalibration of the version it is `basedOn`, with the two fits measured on the same checks. */
         recalibration: recalibrationSchema.optional(),
+        /**
+         * M16 (§5): the Refine or Snap started from this version while it waits for approval. A second start, or a Save, finds that job
+         * unfinished in its transaction and is `apiError.layers.busy`; a stale one (the refine ended) is ignored.
+         */
+        refining: idSchema.optional(),
         /** M8: what the join measured; a join version has no `scan` and no `georef` (`georefSchema` means one scan's pixels). */
         join: joinReportSchema.optional(),
         createdBy: uidSchema,

@@ -10,6 +10,7 @@
  * own job (`save-gcps.ts`), which is what the join waits for.
  */
 import {
+    FINISHED_JOB_STATUSES,
     FIRESTORE_PATHS,
     jobDocSchema,
     layerDocSchema,
@@ -17,6 +18,7 @@ import {
     type CropRing,
     type Georef,
     type JobDoc,
+    type JobStatus,
     type LayerDoc,
     type LayerVersionDoc,
     type Recalibration,
@@ -30,6 +32,8 @@ import { refuseHeldPart } from './join-parts.js';
 import { refuseBusyLayer, refuseNewRasterJob } from './limits.js';
 import { pickDefined, stampOf, type Stamp } from './records.js';
 import { createWork, jobIdFor, type NewWork } from './versions.js';
+
+const FINISHED: ReadonlySet<JobStatus> = new Set(FINISHED_JOB_STATUSES);
 
 export type RegeorefDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 
@@ -95,15 +99,45 @@ async function markPending(
     }
 }
 
+interface AwaitingBase {
+    readonly job: JobDoc;
+    readonly version: LayerVersionDoc;
+}
+
+/**
+ * M16 (§5): a Refine or Snap already started from the waiting base, its job unfinished, holds it (`refining`, written in the same
+ * transaction that starts one): a second start or a Save is `apiError.layers.busy`. The query before (`refuseBusyLayer`) can race; this
+ * read cannot, as the layer's pending mark stays on the base while a refine runs.
+ */
+async function refuseRefining(transaction: DocumentTransaction, cityId: string, version: LayerVersionDoc): Promise<void> {
+    if (version.refining === undefined) {
+        return;
+    }
+    const job = await transaction.get(FIRESTORE_PATHS.job(cityId, version.refining), jobDocSchema);
+    if (job !== undefined && !FINISHED.has(job.status)) {
+        throw new ApiError('apiError.layers.busy');
+    }
+}
+
 /** The base's job, read again: still waiting for approval with its version, or the save is refused. */
-async function awaitingBase(transaction: DocumentTransaction, regeoref: Regeoref): Promise<JobDoc> {
+async function awaitingBase(transaction: DocumentTransaction, regeoref: Regeoref): Promise<AwaitingBase> {
     const { cityId, base } = regeoref;
     const job = await transaction.get(FIRESTORE_PATHS.job(cityId, base.jobId), jobDocSchema);
     const version = await transaction.get(FIRESTORE_PATHS.layerVersion(cityId, base.jobId), layerVersionDocSchema);
     if (job?.status !== 'awaiting_approval' || version?.state !== 'awaiting_approval') {
         throw new ApiError('apiError.imagery.versionState');
     }
-    return job;
+    await refuseRefining(transaction, cityId, version);
+    return { job, version };
+}
+
+/** M16: the waiting base records the refine that will replace it once rendered, so a second start in a race is refused. */
+async function markRefining(transaction: DocumentTransaction, regeoref: Regeoref, awaiting: AwaitingBase, work: NewWork): Promise<void> {
+    await transaction.set(FIRESTORE_PATHS.layerVersion(regeoref.cityId, regeoref.base.jobId), layerVersionDocSchema, {
+        ...awaiting.version,
+        refining: work.jobId,
+        ...stampOf(work.createdBy, work.now),
+    });
 }
 
 /** The layer, read again: no other version may be on its way to it. */
@@ -115,17 +149,29 @@ async function freeLayer(transaction: DocumentTransaction, regeoref: Regeoref): 
     return layer;
 }
 
+/** A waiting base: a refine marks it and leaves it with the layer's mark (§5), any other rendition replaces it at once. */
+async function settleAwaitingBase(
+    transaction: DocumentTransaction,
+    regeoref: Regeoref,
+    awaiting: AwaitingBase,
+    work: NewWork,
+): Promise<boolean> {
+    if (regeoref.recalibration?.replaces !== undefined) {
+        await markRefining(transaction, regeoref, awaiting, work);
+        return false;
+    }
+    await replaceBase(transaction, regeoref, awaiting.job, stampOf(work.createdBy, work.now));
+    return true;
+}
+
 async function regeorefIn(transaction: DocumentTransaction, regeoref: Regeoref, work: NewWork): Promise<void> {
     const awaiting = regeoref.base.state === 'awaiting_approval' ? await awaitingBase(transaction, regeoref) : undefined;
     const layer = await freeLayer(transaction, regeoref);
     await createWork(transaction, work, fieldsOf(regeoref));
-    if (regeoref.recalibration?.replaces !== undefined) {
-        return;
+    const takesLayer = awaiting === undefined || (await settleAwaitingBase(transaction, regeoref, awaiting, work));
+    if (takesLayer) {
+        await markPending(transaction, regeoref, layer, work);
     }
-    if (awaiting !== undefined) {
-        await replaceBase(transaction, regeoref, awaiting, stampOf(work.createdBy, work.now));
-    }
-    await markPending(transaction, regeoref, layer, work);
 }
 
 /** Starts the new rendition after the creator's checks; its job id is also its version id. */

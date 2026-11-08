@@ -169,6 +169,7 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     // its version cancelled, nothing else changed); Approve of a recalibration not shown better asks for the owner's choice; a join refines frame by frame.
     'apiError.imagery.notImproved': spec('failed-precondition'),
     'apiError.imagery.refineRefused': spec('failed-precondition'),
+    'apiError.imagery.refineUnmeasured': spec('failed-precondition'),
     'apiError.imagery.notBetter': spec('failed-precondition'),
     'apiError.imagery.joinRecalibrate': spec('failed-precondition'),
     'apiError.worker.notHolder': spec('failed-precondition'),

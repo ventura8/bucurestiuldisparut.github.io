@@ -48,7 +48,8 @@ export const WORKER_VERSION_FIELDS: ReadonlySet<string> = new Set([
     'reference',
     'georef',
     'calibration',
-    // M16: what a recalibration measured (the current fit and the new one on the same checks).
+    // M16: what a recalibration measured (the current fit and the new one on the same checks); its route, `replaces` and points stay the
+    // server's (`step-update.ts` `recalibrationAllowed`).
     'recalibration',
     'join',
     'suggestions',
