@@ -2641,3 +2641,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the live region gets the message `ANNOUNCE_DELAY_MS` after the snackbar shows (lesson 20's fix), so a page slow to reach the assertion sees both; the other projects asserted before the announcement.
     - Found by: the targeted Playwright run of the four tracks' specs. Fix: the assertion takes the text that is not in a live region (`:not([aria-live])`), as `smoke.spec.ts` already does.
     - **A snackbar's message is asserted without its live region; the live region is asserted on its own when the announcement is the point.**
+
+442. **A new catalogue key took a name the join card already used, and long texts split their entries.**
+    - Seen: 2026-11-08, the improvements track (`docs/research/M18-improvements.md`): `adminContent.imagery.join.waiting` was added for Join when it ends while the join card already had it ("Waiting for its frames"); and four new texts over 140 columns were wrapped by Prettier onto a second line, which the admin catalogues' section scan does not read as an entry (1471 keys of 1472).
+    - Cause: a key chosen without a search of the catalogue; texts written as sentences, not to the line's width.
+    - Found by: `tsc` and the i18n gate (the duplicate), `packages/shared/test/i18n-admin.test.ts` (the count). Fix: `join.waitingFree`; every text shortened to one line in both languages.
+    - **Search the catalogue for a key before adding it, and keep each entry, key and text, within 140 columns.**

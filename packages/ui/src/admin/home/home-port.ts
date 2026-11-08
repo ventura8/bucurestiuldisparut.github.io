@@ -17,7 +17,9 @@ export type HomeCountPort =
     | 'activeJobs'
     | 'failedJobs'
     | 'versionsToApprove'
-    | 'versionsNeedingPoints';
+    | 'versionsNeedingPoints'
+    | 'roleRequests'
+    | 'suggestionsToReview';
 
 type SetupAreaPort = 'billing' | 'provision' | 'mapbox' | 'usgs' | 'analytics' | 'crash';
 

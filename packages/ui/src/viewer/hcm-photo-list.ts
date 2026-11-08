@@ -15,6 +15,9 @@ import { localizedText, photoCountText, photoDateText } from './text.js';
 
 export const HCM_PHOTO_LIST_TAG = 'hcm-photo-list';
 
+/** The rows whose thumbnails load at once. */
+const EAGER_ROWS = 12;
+
 export class HcmPhotoList extends LitElement {
     static override readonly properties = {
         photos: { attribute: false },
@@ -98,19 +101,23 @@ export class HcmPhotoList extends LitElement {
                 ${repeat(
                     this.photos,
                     (photo) => photo.id,
-                    (photo) => this.#item(photo),
+                    (photo, index) => this.#item(photo, index),
                 )}
             </ul>`;
     }
 
-    #item(photo: Photo): TemplateResult {
+    /**
+     * M18 item 8: the first rows load at once (`EAGER_ROWS`): without a map this list is the whole page, and lazy thumbnails
+     * in its scrolling box were seen still empty on the public map; the rows below load as they near the screen.
+     */
+    #item(photo: Photo, index: number): TemplateResult {
         const select = (): void => {
             this.dispatchEvent(photoSelectEvent(photo.id));
         };
         const src = resolveAssetUrl(photo.image.thumb, this.manifestUrl, document.baseURI) ?? '';
         return html`<li>
             <button type="button" @click=${select}>
-                <img src=${src} alt="" loading="lazy" decoding="async" />
+                <img src=${src} alt="" loading=${index < EAGER_ROWS ? 'eager' : 'lazy'} decoding="async" />
                 <span class="title">${localizedText(photo.title, this.locale)}</span>
                 <span class="date">${photoDateText(photo, this.locale)}</span>
             </button>

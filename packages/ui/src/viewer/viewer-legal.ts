@@ -44,8 +44,10 @@ export function renderLegalBar(parts: readonly AttributionPart[], locale: Locale
 export function renderConsentBanner(
     locale: Locale,
     onConsent: (event: CustomEvent<{ readonly decision: 'granted' | 'denied' }>) => void,
+    docked = true,
 ): TemplateResult {
-    return html`<div class="dock consent">
+    // M18 item 8: without a map the card flows in the photo list's column, under the error card, instead of covering it.
+    return html`<div class=${docked ? 'dock consent' : 'consent'}>
         <hcm-consent-banner
             data-layout-check="consent"
             .headline=${translate(locale, 'consent.title')}

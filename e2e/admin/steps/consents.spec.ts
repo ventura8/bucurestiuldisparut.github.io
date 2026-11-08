@@ -1,5 +1,7 @@
 import type { Page, Request } from '@playwright/test';
 
+import { translateAdminContent } from '@hcm/shared';
+
 import { GOOGLE_SCOPES } from '../../../packages/admin/src/google/scopes.js';
 import { apiText, setupText, shellText } from '../support/i18n.js';
 import { SetupPage } from '../support/setup-page.js';
@@ -208,6 +210,45 @@ test.describe('the owner signed in on a map nobody claimed yet', () => {
             expect(await adminWorld.emulators.document(`admins/${adminWorld.accounts.owner.uid}`)).toBeUndefined();
             expect((await adminWorld.emulators.account(adminWorld.accounts.owner.uid)).claims).not.toHaveProperty('admin');
             expect(consoleErrors.takeMatching(/status of 409|status of 400/).length).toBeGreaterThan(0);
+        },
+    );
+});
+
+// M18 item 2 (docs/research/M18-improvements.md): its own block, as the owner's (the describe above is at its line limit).
+test.describe('the owner of a claimed map, a blocked window', () => {
+    test.use({ persona: 'owner', mapOwner: 'owner' });
+
+    test.beforeEach(async ({ adminWorld }) => {
+        await seedClaimedCity(adminWorld.emulators, adminWorld.accounts.owner.uid);
+    });
+
+    test(
+        'A Google window the browser blocked is said plainly, and Try again opens it from its own click',
+        { tag: ['@S-A27-HAPPY-BLOCKED-TRY-AGAIN', '@S-A27-BAD-POPUP-BLOCKED'] },
+        async ({ page, lang, consent, setupBudget }) => {
+            const link = await linkBilling(page, lang);
+            // The browser blocks the next window: `window.open` answers null once, as a blocker does.
+            await page.evaluate(() => {
+                const open = window.open.bind(window);
+                window.open = () => {
+                    window.open = open;
+                    return null;
+                };
+            });
+            const inputs = setupBudget.inputs('billing', 2);
+            await inputs.click(link);
+
+            const snackbar = page.locator('hcm-snackbar');
+            await expect(snackbar).toContainText(shellText(lang, 'adminShell.oauth.popupBlocked'));
+            expect(await consent.requests()).toEqual([]);
+            const tryAgain = snackbar.getByRole('button', { name: translateAdminContent(lang, 'adminContent.common.retry') });
+            const popup = await consent.opened(page, () => inputs.click(tryAgain));
+            await popup.allow(setupBudget.consents('billing'));
+            await expect(snackbar).toContainText(shellText(lang, 'adminShell.oauth.retryGranted'));
+
+            // The step's button goes on with the token the retry got: no other window.
+            await inputs.click(link);
+            await expect.poll(async () => (await consent.requests()).length).toBe(1);
         },
     );
 });

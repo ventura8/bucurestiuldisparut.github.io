@@ -12,7 +12,7 @@ import type { ShellState, ShellStateAccess } from '../state/state.js';
 import { CityTheme } from './city-theme.js';
 import { watchComputer, type ComputerWatchDeps, type JobsStores, type ShellStates } from './local-watch.js';
 import type { KeyValueStore } from './ports.js';
-import type { ReleaseWatch } from './release-watch.js';
+import { followReleases, type ReleaseFollowDeps } from './release-reload.js';
 import { SetupReadiness } from './setup-readiness.js';
 
 export interface ShellWatchSources {
@@ -24,8 +24,15 @@ export interface ShellWatchSources {
     readonly content?: { readonly cityId: string | null } | undefined;
     /** The editors' Firestore, for the badge's query; null without the editors. */
     readonly store: ContentStore | null;
-    /** Finding 29 of 2026-10-31: a newer admin served (the shell's Reload banner); none: nothing is watched. */
-    readonly releases?: Pick<ReleaseWatch, 'onNewer' | 'stop'> | undefined;
+    /**
+     * Finding 29 of 2026-10-31: a newer admin served; M18 item 1: the tab reloads by itself when it is safe, else the shell's
+     * Reload banner (`./release-reload.ts`); none: nothing is watched.
+     */
+    readonly releases?: ReleaseFollowDeps['releases'];
+    readonly visibility: ReleaseFollowDeps['visibility'];
+    readonly clock: ReleaseFollowDeps['clock'];
+    readonly location: ReleaseFollowDeps['location'];
+    readonly unsaved: ReleaseFollowDeps['unsaved'];
     /** Finding 72: the shell's state, the areas' stores, the pages and the log, for this computer's worker. */
     readonly states: ShellStates;
     readonly stores: JobsStores;
@@ -50,7 +57,7 @@ export function shellWatches(sources: ShellWatchSources, shell: ShellStateAccess
         watch: ownCity === null,
     });
     const badge = new InboxBadge({ store: sources.store, shell, denied });
-    const releases = followReleases(sources.releases, shell);
+    const releases = followReleases(sources, shell);
     const computer = watchComputer(sources, sources.states, sources.stores);
     return {
         stateChanged: (state) => {
@@ -65,19 +72,5 @@ export function shellWatches(sources: ShellWatchSources, shell: ShellStateAccess
             releases();
             computer();
         },
-    };
-}
-
-/** Finding 29 of 2026-10-31: a newer admin served puts the shell's Reload banner up; the returned call ends the watch. */
-function followReleases(releases: ShellWatchSources['releases'], shell: ShellStateAccess): () => void {
-    if (releases === undefined) {
-        return () => undefined;
-    }
-    const stop = releases.onNewer((newRelease) => {
-        shell.update({ newRelease });
-    });
-    return () => {
-        stop();
-        releases.stop();
     };
 }

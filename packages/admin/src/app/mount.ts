@@ -26,6 +26,7 @@ import { FieldWatch, measuredStore } from './field.js';
 import { chooseCity, cityRefresher, switchTo, type CityChoiceDeps } from './current-city.js';
 import { Navigation } from './navigation.js';
 import { rememberedSetupReady } from './setup-readiness.js';
+import { consentWithRetry } from './consent-retry.js';
 import { shellWatches, type ShellWatchSources } from './shell-watches.js';
 import { destinationOf, RETURN_TO_KEY } from '../routing/router.js';
 import type { Clock, HashLocation, KeyValueStore, PageVisibility, Unsubscribe } from './ports.js';
@@ -202,13 +203,8 @@ function servicesFor<Setup>(deps: AdminDeps<Setup, unknown>, parts: Parts<Setup>
         ...{ config: deps.config, runtime: deps.runtime, project: deps.project, fetch: deps.fetch, clock: deps.clock },
         ...{ session: deps.session, visibility: deps.visibility, log: deps.log, firebase: parts.firebase },
         google: {
-            request: async (scope) => {
-                const outcome = await parts.google.request(scope);
-                if (!outcome.granted) {
-                    notify(outcome.notice);
-                }
-                return outcome;
-            },
+            // M18 item 2: a blocked window's notice carries a Try again whose own click opens it.
+            request: consentWithRetry((scope) => parts.google.request(scope), notify),
             live: (scope, minRemainingMs) => parts.google.live(scope, minRemainingMs),
             drop: () => {
                 parts.google.drop();
@@ -394,7 +390,8 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
         ...{ shell, location: deps.location, session: deps.session, pages: deps.pages },
         ...{ track, unsaved, switchCity: openCity },
     });
-    const watches = shellWatches({ ...deps, store: deps.content?.store ?? null, states: store, stores: content.stores }, shell, denied);
+    const sources = { ...deps, store: deps.content?.store ?? null, states: store, stores: content.stores, unsaved };
+    const watches = shellWatches(sources, shell, denied);
     const stopWatching = store.subscribe((state) => {
         watches.stateChanged(state);
         navigation.stateChanged(state);

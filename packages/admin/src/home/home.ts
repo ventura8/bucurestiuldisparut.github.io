@@ -33,6 +33,9 @@ const HOME_COUNTS = [
     ...['photos', 'pois', 'categories', 'layers', 'rightsReviews', 'unpublishedPhotos', 'activeJobs', 'failedJobs'],
     // M3 (admin-imagery): the layer versions waiting for an admin, an approval or georeferencing points.
     ...['versionsToApprove', 'versionsNeedingPoints'],
+    // M18 item 7 (docs/research/M18-improvements.md): What needs you, with M13's role requests and suggestions (a count the
+    // admin may not read, an owner's role requests for another admin, is a dash and never listed).
+    ...['roleRequests', 'suggestionsToReview'],
 ] as const;
 
 type HomeCount = (typeof HOME_COUNTS)[number];
@@ -49,6 +52,8 @@ const COUNT_QUERIES: Readonly<Record<HomeCount, { readonly collection: (cityId: 
     failedJobs: { collection: FIRESTORE_PATHS.jobs, query: { where: [['status', '==', 'failed']] } },
     versionsToApprove: { collection: FIRESTORE_PATHS.layerVersions, query: { where: [['state', '==', 'awaiting_approval']] } },
     versionsNeedingPoints: { collection: FIRESTORE_PATHS.layerVersions, query: { where: [['state', '==', 'needs_gcps']] } },
+    roleRequests: { collection: FIRESTORE_PATHS.roleRequests, query: { where: [['status', '==', 'pending']] } },
+    suggestionsToReview: { collection: FIRESTORE_PATHS.suggestions, query: { where: [['status', '==', 'pending']] } },
 };
 
 /** One integration's chip: its Setup area, its state (`missing` until it was ever checked) and why. */

@@ -305,6 +305,8 @@ export function jobDoc(creator: string, status = 'running'): Data {
         // Finding 68 of 2026-11-02: imagery.tick's mark of a local job no computer came for.
         workerOverdueAt: past(),
         filesOn: 'cloud',
+        // M18 item 3: the pipeline image a parked frame was searched with (imagery.tick's relocate part).
+        searchedWith: `sha256:${'ab'.repeat(32)}`,
         ...systemStamp('pipeline'),
     };
 }

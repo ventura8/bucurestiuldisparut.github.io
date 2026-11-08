@@ -375,7 +375,7 @@ describe('the import of a delivery', () => {
         const world = await readyWorld();
         for (let index = 0; index < JOBS_PER_DAY; index += 1) {
             await seedJob(world, `job-${String(index)}`, {
-                type: 'regeoref',
+                type: 'usgs-import',
                 status: 'succeeded',
                 params: {},
                 createdBy: 'u-admin',

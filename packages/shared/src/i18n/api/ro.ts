@@ -106,6 +106,7 @@ export const ro = {
     'apiError.imagery.joinTwoPublished': 'Două dintre aceste cadre sunt deja publicate; șterge mai întâi unul dintre straturi.',
     'apiError.imagery.joinPartGone': 'Cadrul {frame} s-a încheiat; importă-l sau reia-l, apoi unește din nou.',
     'apiError.imagery.joinPartHeld': 'Cadrul {frame} este în curs de unire; respinge sau anulează mai întâi unirea.',
+    'apiError.imagery.joinLayerBusy': 'Stratul unui cadru e ocupat cu procesarea sau publicarea. Alege Unește când se termină.',
     'apiError.imagery.joinPartMissing': 'Scanarea cadrului {frame} nu mai este stocată.',
     'apiError.imagery.joinSeamTooFar': 'Cadrele {a} și {b} sunt prea departe pentru a fi unite; corectează punctele unuia.',
     'apiError.imagery.joinNoFrames': 'Mai puțin de două cadre adaugă ceva la oraș.',

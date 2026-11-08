@@ -137,7 +137,7 @@ describe('a failed version page offers what cures it', () => {
             error: { notice: { key: 'apiError.imagery.mtsRefused' }, message: 'x' },
         });
 
-        click(button(element, 'Dismiss'));
+        click(button(element, 'Delete'));
         await confirm(element);
 
         expect(calls(area)).toEqual(['reject']);

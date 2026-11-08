@@ -157,10 +157,27 @@ function retryButton(shown: Shown): TemplateResult {
     return action(shown, { offered, icon: 'replay', label: 'adminContent.common.retry' }, () => context.intents?.retryJob());
 }
 
-/** A USGS frame waiting for points searches for its place again (`imagery.locateAgain`): a newer pipeline may now find it. */
+/** M18 item 3: the job failed while cutting the frame out or placing it (the server's `CROP_STEPS`). */
+function failedCrop(job: JobViewPort): boolean {
+    return (
+        job.status === 'failed' && job.steps.some((step) => step.status === 'failed' && (step.name === 'stitch' || step.name === 'locate'))
+    );
+}
+
+/**
+ * A USGS frame waiting for points searches for its place again (`imagery.locateAgain`): a newer pipeline may now find it.
+ * M18 item 3: a frame whose crop failed is offered the same, before a new import.
+ */
+function locatable(version: VersionViewPort, job: JobViewPort): boolean {
+    if (version.origin !== 'usgs') {
+        return false;
+    }
+    return version.state === 'needs_gcps' ? job.status === 'awaiting_gcps' : version.state === 'failed' && failedCrop(job);
+}
+
 function locateButton(shown: Shown): TemplateResult {
     const { version, job, context } = shown;
-    const offered = version?.origin === 'usgs' && version.state === 'needs_gcps' && job?.status === 'awaiting_gcps';
+    const offered = version !== null && job !== null && locatable(version, job);
     return action(shown, { offered, icon: 'replay', label: 'adminContent.imagery.locateAgain' }, () => context.intents?.locateAgain());
 }
 
@@ -275,7 +292,9 @@ function cancel(shown: Shown): TemplateResult {
     if (!stoppable(job) || heldByJoin(shown)) {
         return html``;
     }
-    const label = job.cancelRequested ? 'adminContent.jobs.stopping' : 'adminContent.jobs.cancel';
+    // M18 item 5: a frame waiting for its points is deleted as at every other stage (`drop`: Delete this image?).
+    const waiting = job.status === 'awaiting_gcps';
+    const label = waiting ? 'adminContent.imagery.reject' : 'adminContent.jobs.cancel';
     const off = cancelOff(shown, job);
     return html`<div class="actions">
         <hcm-button
@@ -283,9 +302,9 @@ function cancel(shown: Shown): TemplateResult {
             icon="cancel"
             ?disabled=${off}
             @click=${() => {
-                context.ask('cancel');
+                context.ask(waiting ? 'drop' : 'cancel');
             }}
-            >${contentText(context.locale, label)}</hcm-button
+            >${contentText(context.locale, job.cancelRequested ? 'adminContent.jobs.stopping' : label)}</hcm-button
         >
     </div>`;
 }

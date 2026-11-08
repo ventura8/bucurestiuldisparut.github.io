@@ -212,6 +212,27 @@ test(
     },
 );
 
+// M18 item 7 (docs/research/M18-improvements.md): What needs you, each item a link to where it is done.
+test(
+    'Home says what needs you, each a link to where it is done, and says when nothing does',
+    { tag: ['@S-A40-HAPPY-NEEDS-YOU', '@S-A40-BAD-NOTHING-NEEDS-YOU'] },
+    async ({ page, lang, adminWorld }) => {
+        const city = projectCity(adminWorld.emulators, adminWorld.accounts.owner.uid);
+        await seedCity(city, AT);
+        await page.goto(adminPath(lang, 'home'));
+        const needs = page.getByRole('region', { name: shellText(lang, 'adminShell.home.needsYou') });
+        await expect(needs).toContainText(shellText(lang, 'adminShell.home.needsNothing'));
+
+        await seedJob(city, 'scan-stuck', { type: 'usgs-import', status: 'failed', createdBy: city.uid }, AT);
+        await page.getByRole('button', { name: shellText(lang, 'adminShell.home.refresh') }).click();
+        const stuck = needs.getByRole('link', { name: new RegExp(`1\\s+${shellText(lang, 'adminShell.home.count.failedJobs')}`) });
+        await expect(stuck).toBeVisible();
+        await expectStateSound(page, adminVisit('home.dashboard', lang));
+        await stuck.click();
+        await expect(page).toHaveURL(/#\/jobs$/);
+    },
+);
+
 /** The navigation (a bar on a phone, a rail on a wider window). */
 function navigation(page: Page, lang: 'ro' | 'en') {
     return page.getByRole('navigation', { name: shellText(lang, 'adminShell.nav.label') });

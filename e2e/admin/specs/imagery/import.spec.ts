@@ -194,7 +194,7 @@ test(
 
 test(
     'A failure no retry cures offers no Try again, and the failed version is dismissed',
-    { tag: ['@S-A12-BAD-NOT-RETRYABLE', '@S-A12-BAD-FAILED-DISMISSED', '@S-A12-HAPPY-DISMISS-IMPORT-AGAIN'] },
+    { tag: ['@S-A12-BAD-NOT-RETRYABLE', '@S-A12-BAD-FAILED-DISMISSED', '@S-A12-HAPPY-DISMISS-IMPORT-AGAIN', '@S-A33-HAPPY-ONE-DELETE'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
         const imagery = await readyImagery(
             { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
@@ -214,6 +214,9 @@ test(
             .click();
         const question = page.locator('hcm-dialog[open]');
         await expect(question).toContainText(imageryText(lang, 'adminContent.imagery.confirm.dismissBody'));
+        // M18 item 5: the same Delete and the same question as at every other stage (waiting, at the guard, published).
+        await expect(question).toContainText(imageryText(lang, 'adminContent.imagery.confirm.reject'));
+        expect(imageryText(lang, 'adminContent.imagery.dismiss')).toBe(imageryText(lang, 'adminContent.imagery.reject'));
         await expectStateSound(page, adminVisit('imagery.version-dismiss', lang));
         await question.getByRole('button', { name: imageryText(lang, 'adminContent.imagery.dismiss') }).click();
         await expect(versionState(page, lang, 'adminContent.imagery.version.rejected')).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });

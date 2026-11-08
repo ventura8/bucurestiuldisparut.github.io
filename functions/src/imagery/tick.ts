@@ -16,6 +16,7 @@ import { sweepOwnTiles } from './own-tiles-sweep.js';
 import { monthlyHarvest, publishDeferred, runDeletions, sweepEnded } from './tick-maintenance.js';
 import { offerCloud } from './tick-worker.js';
 import { releaseScenes } from './release-scene.js';
+import { relocateParked } from './relocate.js';
 
 /**
  * `imagery.tick` (every 5 minutes, one instance; `docs/research/M3-interfaces.md` §4.6): the raster work's clock. For
@@ -39,6 +40,8 @@ const PARTS: readonly (readonly [name: string, part: Part, whileRed: boolean])[]
     ['lost', recoverLost, true],
     // Finding 68 (docs/research/M7-local-worker.md §3.1): a local job no computer came for offers the cloud, once.
     ['noWorker', offerCloud, false],
+    // M18 item 3 (docs/research/M18-improvements.md): a frame parked for points under an older pipeline searches again, free.
+    ['relocate', (deps, cityId) => relocateParked(deps, cityId), false],
     ['cancel', cancelAsked, true],
     ['approval', pendingApprovals, false],
     ['mapbox', pollStale, false],

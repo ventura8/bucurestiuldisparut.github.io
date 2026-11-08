@@ -45,6 +45,18 @@ describe('<hcm-photo-list>', () => {
         await expect.element(page.getByRole('status')).toHaveTextContent('3 photos');
     });
 
+    // M18 item 8: without a map this list is the page; its first rows load their thumbnails at once, the rest lazily.
+    it('happyPath_theFirstRowsLoadTheirThumbnailsAtOnceAndTheRestLazily', async () => {
+        const photos = Array.from({ length: 5 }, () => MANIFEST.photos)
+            .flat()
+            .map((photo, index) => ({ ...photo, id: `photo-${String(index)}` }));
+        const element = await mountElement<HcmPhotoList>(HCM_PHOTO_LIST_TAG, { photos, manifestUrl: TEST_MANIFEST_URL });
+
+        const loading = shadowQueryAll(element, 'img').map((image) => image.getAttribute('loading'));
+        expect(loading.slice(0, 12).every((value) => value === 'eager')).toBe(true);
+        expect(loading.slice(12).every((value) => value === 'lazy')).toBe(true);
+    });
+
     it('badPath_noPhotosShowsAZeroCount', async () => {
         const element = await mountElement<HcmPhotoList>(HCM_PHOTO_LIST_TAG, { photos: [] });
 

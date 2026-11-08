@@ -5,7 +5,7 @@
  * same layer, which keeps its tiles until the new one is published. Points off the scan or out of the city, a collinear
  * set, a crop that misses the layer or crosses itself are refused before anything is written.
  */
-import { FIRESTORE_PATHS, JOB_MAX_ATTEMPTS, type Gcp, type JobDoc } from '@hcm/shared';
+import { FIRESTORE_PATHS, JOBS_PER_DAY, JOB_MAX_ATTEMPTS, type Gcp, type JobDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { cropFunction } from '../../src/imagery/crop.js';
@@ -400,6 +400,20 @@ describe('imagery.crop', () => {
 
         expect(await failureOf(crop(world, ring))).toMatchObject({ details: { code } });
         expect(world.deps.documents.paths(FIRESTORE_PATHS.jobs(CITY))).toHaveLength(1);
+    });
+
+    // M18 item 3: a crop re-renders a scan already here, so a day whose imports are used up still crops.
+    it('happyPath_aCropRunsAfterTheDaysImportsAreUsedUp @S-A12-HAPPY-RERUNS-FREE', async () => {
+        const world = await publishedWorld();
+        for (let index = 0; index < JOBS_PER_DAY; index += 1) {
+            await seedJob(
+                world,
+                `today-${String(index)}`,
+                job({ type: 'usgs-import', status: 'succeeded', layerId: `l-${String(index)}` }),
+            );
+        }
+
+        await expect(crop(world)).resolves.toMatchObject({ jobId: expect.stringMatching(/^cr-/) as unknown });
     });
 
     it('badPath_aLinkedLayerHasNoScanToCrop', async () => {

@@ -197,13 +197,12 @@ describe('imagery.locateAgain refuses', () => {
         expect(await failureOf(locateAgain(world))).toMatchObject({ details: { code: 'apiError.imagery.locateInputsGone' } });
     });
 
-    it('badPath_attemptsUsedUpAreRefusedWithTheirCount @S-A69-BAD-ATTEMPTS', async () => {
+    // M18 item 3: Locate again is free, as the admin's points: one run of its own, whatever the runs before used.
+    it('happyPath_attemptsUsedUpStillGiveTheSearchOneRunOfItsOwn @S-A69-BAD-ATTEMPTS', async () => {
         const world = await parkedWorld({ attempt: JOB_MAX_ATTEMPTS });
         store(world, SEGMENT);
 
-        expect(await failureOf(locateAgain(world))).toMatchObject({
-            details: { code: 'apiError.imagery.attemptsExhausted', params: { attempts: String(JOB_MAX_ATTEMPTS) } },
-        });
+        await expect(locateAgain(world)).resolves.toEqual({ status: 'queued', attempt: JOB_MAX_ATTEMPTS - 1 });
     });
 
     it.each(['cloud', 'local'] as const)(
@@ -255,7 +254,7 @@ describe('imagery.locateAgain refuses', () => {
         expect(await failureOf(locateAgain(world, 'nope'))).toMatchObject({ details: { code: 'apiError.imagery.versionState' } });
     });
 
-    it('badPath_attemptsUsedUpMeanwhileAreRefusedInTheTransaction', async () => {
+    it('happyPath_attemptsUsedUpMeanwhileStillGiveOneRun', async () => {
         const world = await parkedWorld();
         store(world, SEGMENT);
         const stat = world.deps.blobs.stat.bind(world.deps.blobs);
@@ -264,6 +263,39 @@ describe('imagery.locateAgain refuses', () => {
             return stat(bucket, path);
         };
 
-        expect(await failureOf(locateAgain(world))).toMatchObject({ details: { code: 'apiError.imagery.attemptsExhausted' } });
+        await expect(locateAgain(world)).resolves.toMatchObject({ attempt: JOB_MAX_ATTEMPTS - 1 });
+    });
+});
+
+// M18 item 3 (docs/research/M18-improvements.md): a frame whose crop failed searches again before anyone imports it anew.
+describe('imagery.locateAgain: a failed crop', () => {
+    const failedAt = (step: 'stitch' | 'locate' | 'georef'): Partial<JobDoc> => ({
+        status: 'failed',
+        error: { code: 'apiError.internal', message: 'the crop failed' },
+        steps: { ...parked().steps, [step]: { status: 'failed' } },
+    });
+
+    it.each(['stitch', 'locate'] as const)(
+        'happyPath_aCropThatFailedAt_%s_searchesAgainFromStitch @S-A69-HAPPY-FAILED-CROP',
+        async (step) => {
+            const world = await parkedWorld(failedAt(step), { state: 'failed' });
+            store(world, SEGMENT);
+
+            await expect(locateAgain(world)).resolves.toMatchObject({ status: 'queued' });
+
+            expect(await readJob(world, JOB)).toMatchObject({
+                status: 'queued',
+                steps: { stitch: { status: 'pending' }, locate: { status: 'pending' } },
+            });
+            expect(await readVersion(world, JOB)).toMatchObject({ state: 'processing' });
+        },
+    );
+
+    it('badPath_aFailureAfterTheCropIsRetrysNotLocateAgains @S-A69-BAD-FAILED-LATER', async () => {
+        const world = await parkedWorld(failedAt('georef'), { state: 'failed' });
+        store(world, SEGMENT);
+
+        expect(await failureOf(locateAgain(world))).toMatchObject({ details: { code: 'apiError.imagery.versionState' } });
+        expect((await readJob(world, JOB))?.status).toBe('failed');
     });
 });

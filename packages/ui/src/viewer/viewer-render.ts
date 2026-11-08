@@ -223,10 +223,16 @@ function errorLayer(error: ViewerError, locale: Locale, handlers: ViewerHandlers
     </div>`;
 }
 
+/** The consent card is asked while analytics is set up and the visitor has not answered yet. */
+function consentAsked(state: ViewerState | null, manifest: Manifest): boolean {
+    return manifest.city.analytics.measurementId !== undefined && state?.consent === 'unknown';
+}
+
 function noWebgl(view: ViewerView, manifest: Manifest, handlers: ViewerHandlers): TemplateResult {
     return html`<div class="status">
         <div class="fallback">
             <hcm-error-card .error=${{ code: 'error.webgl', retryable: false }} .locale=${view.locale}></hcm-error-card>
+            ${consentAsked(view.state, manifest) ? renderConsentBanner(view.locale, handlers.onConsent, false) : nothing}
             <hcm-photo-list
                 .photos=${manifest.photos}
                 .locale=${view.locale}
@@ -239,7 +245,8 @@ function noWebgl(view: ViewerView, manifest: Manifest, handlers: ViewerHandlers)
 
 function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): TemplateResult {
     const { state, manifest } = ready;
-    const analytics = manifest.city.analytics.measurementId !== undefined;
+    // Without a map the consent card is in the fallback's column (`noWebgl`).
+    const consent = state.webgl && consentAsked(state, manifest);
     return html`${timelineArea(view, ready, handlers)} ${nearYearChip(view, ready, handlers)}
         <div class="dock menu">
             <hcm-fab-menu
@@ -251,8 +258,7 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
                 @hcm-select=${handlers.onMenuSelect}
             ></hcm-fab-menu>
         </div>
-        ${analytics && state.consent === 'unknown' ? renderConsentBanner(view.locale, handlers.onConsent) : nothing}
-        ${toast(view, state, handlers)}`;
+        ${consent ? renderConsentBanner(view.locale, handlers.onConsent) : nothing} ${toast(view, state, handlers)}`;
 }
 
 function timeline(view: ViewerView, state: ViewerState, handlers: ViewerHandlers): TemplateResult {

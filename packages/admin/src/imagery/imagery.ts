@@ -156,6 +156,7 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
     destroy(): void {
         this.close();
         this.#uploader.reset();
+        this.#join.stop();
     }
 
     #intents(): ImageryIntents {

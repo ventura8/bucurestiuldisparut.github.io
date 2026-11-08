@@ -245,6 +245,14 @@ export const jobDocSchema = z.strictObject({
      * seen (its page offers Run in Google Cloud instead; an inbox item `job.noWorker` was left once).
      */
     workerOverdueAt: timestampSchema.optional(),
+    /**
+     * M18 item 3 (`docs/research/M18-improvements.md`): the pipeline image (`sha256:…`) a frame parked for points was searched
+     * with, as `imagery.tick` first saw it; once another image is installed the tick asks Locate again by itself, once.
+     */
+    searchedWith: z
+        .string()
+        .regex(/^sha256:[0-9a-f]{64}$/)
+        .optional(),
     ...stamp,
 });
 

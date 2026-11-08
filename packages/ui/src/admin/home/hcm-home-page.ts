@@ -5,7 +5,8 @@
  * from `setup/status`), and the public map's state (live, from `manifests/{city}`) with **Not on the public map**: every
  * document the last build left out, its first issue and a link to its editor (`docs/research/M2c-interfaces.md` §5.4,
  * S-A38-BAD-SKIPPED-SHOWN). A count that could not be read shows a dash; Refresh counts again. M6 (setup-ux): first,
- * what Setup left open (`./reminders.ts`): USGS later or waiting for its approval, a likely free trial ending soon.
+ * what Setup left open (`./reminders.ts`): USGS later or waiting for its approval, a likely free trial ending soon. M18
+ * item 7: then What needs you (`NEEDS`).
  */
 import { translate, type Locale } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
@@ -40,10 +41,20 @@ const WAITING: readonly Tile[] = [
     { count: 'rightsReviews', href: '#/photos' },
     { count: 'unpublishedPhotos', href: '#/photos' },
     { count: 'activeJobs', href: '#/jobs' },
-    { count: 'failedJobs', href: '#/jobs' },
-    // M3 (admin-imagery): the layer versions to approve and the scans waiting for points, on the Imagery page.
-    { count: 'versionsToApprove', href: '#/imagery' },
+    // M3 (admin-imagery): the scans waiting for points, on the Imagery page. M18: the failed jobs and the layer versions to
+    // approve are in What needs you (`NEEDS`), shown only while there are some.
     { count: 'versionsNeedingPoints', href: '#/imagery' },
+];
+
+/**
+ * M18 item 7 (`docs/research/M18-improvements.md`): What needs you, first: only what waits for a person now, each a link to
+ * where it is done (images to approve, role requests to accept, suggestions to review, jobs that stopped).
+ */
+const NEEDS: readonly Tile[] = [
+    { count: 'versionsToApprove', href: '#/imagery' },
+    { count: 'roleRequests', href: '#/review' },
+    { count: 'suggestionsToReview', href: '#/review' },
+    { count: 'failedJobs', href: '#/jobs' },
 ];
 
 const TONES: Readonly<Record<HealthChipPort['state'], 'good' | 'wait' | 'error' | 'none'>> = {
@@ -161,6 +172,7 @@ export class HcmHomePage extends AreaPage<HomeViewState, HomeIntentsPort> {
                     >${shellText(locale, 'adminShell.home.refresh')}</hcm-button
                 >
             </div>
+            ${this.#tiles(locale, view, 'adminShell.home.needsYou', needs(view))}
             ${this.#tiles(locale, view, 'adminShell.home.holdings', HOLDINGS)}
             ${this.#tiles(locale, view, 'adminShell.home.waiting', WAITING)} ${this.#health(locale, view)} ${this.#publicMap(locale, view)}
         </div>`;
@@ -169,14 +181,18 @@ export class HcmHomePage extends AreaPage<HomeViewState, HomeIntentsPort> {
     #tiles(
         locale: Locale,
         view: HomeViewState,
-        heading: 'adminShell.home.holdings' | 'adminShell.home.waiting',
+        heading: 'adminShell.home.holdings' | 'adminShell.home.waiting' | 'adminShell.home.needsYou',
         tiles: readonly Tile[],
     ): TemplateResult {
         return html`<section aria-labelledby=${heading}>
             <h2 id=${heading}>${shellText(locale, heading)}</h2>
-            <ul class="tiles">
-                ${tiles.map((tile) => this.#tile(locale, view, tile, heading === 'adminShell.home.waiting'))}
-            </ul>
+            ${
+                tiles.length === 0
+                    ? html`<p>${shellText(locale, 'adminShell.home.needsNothing')}</p>`
+                    : html`<ul class="tiles">
+                          ${tiles.map((tile) => this.#tile(locale, view, tile, heading !== 'adminShell.home.holdings'))}
+                      </ul>`
+            }
         </section>`;
     }
 
@@ -238,6 +254,11 @@ const PUBLIC_MAP: Readonly<
 };
 
 /** The public map once read (null: never built), or undefined while reading. */
+/** What needs a person now: the counts above zero (a dash or a count still loading is not listed). */
+function needs(view: HomeViewState): readonly Tile[] {
+    return NEEDS.filter((tile) => (view.counts?.[tile.count] ?? 0) > 0);
+}
+
 function publicMapOf(state: HomeViewState['publicMap']): PublicMapPort | null | undefined {
     if (state.status !== 'ready') {
         return undefined;

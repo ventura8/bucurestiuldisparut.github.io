@@ -40,6 +40,15 @@ describe('<hcm-layers-page> list', () => {
         expect(await axeViolations(element)).toEqual([]);
     });
 
+    // M18 item 6 (docs/research/M18-improvements.md): the viewer's Places are the place categories, edited in Settings.
+    it('happyPath_theHeadPointsToThePlaceCategories', async () => {
+        const { element } = await page('layers', area());
+
+        const link = deep(element, '.places a');
+        expect(link.getAttribute('href')).toBe('#/settings/categories');
+        expect(link.textContent).toBe('Place categories');
+    });
+
     it('happyPath_equalOrdersFallBackToTheNewestYearThenTheId', async () => {
         const items = [layerItem({ id: 'b' }), layerItem({ id: 'a' }), layerItem({ id: 'c', year: 1970 })];
         const { element } = await page('layers', area(layersState({ list: ready(items) })));

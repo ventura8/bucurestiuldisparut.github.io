@@ -18,6 +18,7 @@ export const en: Readonly<Record<AdminWorkerKey, string>> = {
     'adminWorker.ai.gpu': 'Local AI: graphics card {name}.',
     'adminWorker.ai.cpu': 'Local AI: processor only, slower.',
     'adminWorker.ai.unavailable': 'Local AI unavailable: {why}',
+    'adminWorker.ai.oldStarter': 'Local AI is off: an old starter file. Use this computer below and open the new file once: free local AI.',
     'adminWorker.ai.why.old-starter': 'use this computer again.',
     'adminWorker.ai.why.arm64': 'processor not supported.',
     'adminWorker.ai.why.disk': 'Docker needs 30 GB free.',

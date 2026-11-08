@@ -102,6 +102,7 @@ export const en: ApiMessages = {
     'apiError.imagery.joinTwoPublished': 'Two of these frames are already published; delete one layer first.',
     'apiError.imagery.joinPartGone': 'Frame {frame} ended; import or retry it, then join again.',
     'apiError.imagery.joinPartHeld': 'Frame {frame} is being joined; reject or cancel the join first.',
+    'apiError.imagery.joinLayerBusy': 'A frame’s layer is busy processing or publishing; a join would change it. Choose Join when it ends.',
     'apiError.imagery.joinPartMissing': 'The scan of frame {frame} is no longer stored.',
     'apiError.imagery.joinSeamTooFar': 'Frames {a} and {b} are too far apart to join; fix the points of one.',
     'apiError.imagery.joinNoFrames': 'Fewer than two frames add anything to the city.',

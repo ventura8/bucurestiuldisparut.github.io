@@ -80,6 +80,44 @@ describe('<hcm-home-page>', () => {
     beforeAll(defineAll);
     afterEach(cleanup);
 
+    // M18 item 7 (docs/research/M18-improvements.md): What needs you, each a link to where it is done.
+    it('happyPath_whatNeedsYouListsWhatWaitsForAPersonWithItsLink', async () => {
+        const counts = {
+            ...homeState().counts,
+            versionsToApprove: 1,
+            roleRequests: 2,
+            suggestionsToReview: 3,
+            failedJobs: 4,
+        } as HomeViewState['counts'];
+        const { element } = await page(
+            'home',
+            new FakeArea<HomeViewState, HomeIntentsPort>(homeState({ counts }), { refresh: Promise.resolve() }),
+        );
+
+        const needs = deepAll(element, 'section[aria-labelledby="adminShell.home.needsYou"] a.tile').map((tile) => [
+            tile.getAttribute('href'),
+            tile.textContent.replace(/\s+/g, ' ').trim(),
+        ]);
+        expect(needs).toEqual([
+            ['#/imagery', '1 Historical images to approve'],
+            ['#/review', '2 Role requests to accept'],
+            ['#/review', '3 Suggestions to review'],
+            ['#/jobs', '4 Failed jobs'],
+        ]);
+    });
+
+    it('badPath_nothingWaitingSaysSo_andACountNotReadIsNotListed', async () => {
+        const counts = { ...homeState().counts, versionsToApprove: 0, roleRequests: null } as HomeViewState['counts'];
+        const { element } = await page(
+            'home',
+            new FakeArea<HomeViewState, HomeIntentsPort>(homeState({ counts }), { refresh: Promise.resolve() }),
+        );
+
+        expect(deepAll(element, 'section[aria-labelledby="adminShell.home.needsYou"] a')).toHaveLength(0);
+        expect(deepText(element)).toContain('Nothing needs you now.');
+        expect((await axeViolations(element)).join('\n')).toBe('');
+    });
+
     it('happyPath_theCountsWhatWaitsTheServicesAndThePublicMap', async () => {
         const home = new FakeArea<HomeViewState, HomeIntentsPort>(homeState(), { refresh: Promise.resolve() });
         const { element } = await page('home', home);
@@ -90,6 +128,8 @@ describe('<hcm-home-page>', () => {
             tile.hasAttribute('data-attention'),
         ]);
         expect(tiles).toEqual([
+            // M18 item 7: What needs you lists what waits for a person now (a dash is not listed).
+            ['#/imagery', '2 Historical images to approve', true],
             ['#/photos', '45 Photos', false],
             ['#/pois', '3 Places', false],
             ['#/settings/categories', '2 Place categories', false],
@@ -97,8 +137,6 @@ describe('<hcm-home-page>', () => {
             ['#/photos', '4 Photos to check for rights', true],
             ['#/photos', '0 Unpublished photos', false],
             ['#/jobs', '1 Jobs running', true],
-            ['#/jobs', '— Failed jobs', false],
-            ['#/imagery', '2 Historical images to approve', true],
             ['#/imagery', '0 Scans waiting for georeferencing points', false],
         ]);
         expect(deepAll(element, 'li.tag').map((chip) => [chip.dataset['tone'], chip.textContent.trim()])).toEqual([

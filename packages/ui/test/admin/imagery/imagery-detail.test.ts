@@ -176,7 +176,7 @@ describe('<hcm-imagery-page>: a version', () => {
     it('happyPath_rejectAndCancelAskFirst', async () => {
         const { element, area } = await imageryPage(imageryState({ detail: VERSION, version: versionPage() }));
 
-        click(button(element, 'Reject'));
+        click(button(element, 'Delete'));
         await confirm(element);
         click(button(element, 'Cancel'));
         await updated(element);
@@ -364,6 +364,34 @@ describe('<hcm-imagery-page>: a job and an upload', () => {
         expect((await axeViolations(element)).join('\n')).toBe('');
     });
 
+    // M18 item 3: a frame whose crop failed is offered Locate again before a new import; a later failure is not.
+    function failedAt(step: string) {
+        const failed = jobView({
+            status: 'failed',
+            finished: true,
+            retryable: false,
+            steps: [{ name: step, status: 'failed', transfer: null }],
+        });
+        return imageryState({
+            detail: VERSION,
+            version: versionPage({}, versionView({ state: 'failed', origin: 'usgs', output: null }), failed),
+        });
+    }
+
+    it.each(['locate', 'stitch'])('happyPath_aCropThatFailedAt_%s_offersLocateAgain @S-A69-HAPPY-FAILED-CROP', async (step) => {
+        const { element, area } = await imageryPage(failedAt(step));
+
+        click(button(element, 'Locate again'));
+
+        expect(calls(area)).toEqual(['locateAgain']);
+    });
+
+    it('badPath_aFailureAfterTheCropOffersNoLocateAgain @S-A69-BAD-FAILED-LATER', async () => {
+        const { element } = await imageryPage(failedAt('georef'));
+
+        expect(deepAll(element, 'hcm-button').some((found) => found.textContent.includes('Locate again'))).toBe(false);
+    });
+
     it.each([
         ['an upload', versionView({ state: 'needs_gcps', origin: 'upload', output: null }), 'awaiting_gcps'],
         ['a version not waiting', versionView({ state: 'processing', origin: 'usgs', output: null }), 'awaiting_gcps'],
@@ -499,6 +527,26 @@ describe('<hcm-imagery-page>: an upload and its version', () => {
         expect(app.named('navigate')).toEqual(['navigate {"id":"imagery","params":["version","up1"]}']);
         expect(versionItem().id).toBe('job-1966');
     });
+    // M18 item 5 (docs/research/M18-improvements.md): one Delete and one question for an image at every stage.
+    it('happyPath_aFrameWaitingForPointsIsDeletedWithTheSameWordsAsEveryStage @S-A33-HAPPY-ONE-DELETE', async () => {
+        const waiting = jobView({ status: 'awaiting_gcps', waitReason: 'gcps', finished: false });
+        const { element, area } = await imageryPage(
+            imageryState({
+                detail: VERSION,
+                version: versionPage({}, versionView({ state: 'needs_gcps', origin: 'usgs', output: null }), waiting),
+            }),
+        );
+
+        click(button(element, 'Delete'));
+        await updated(element);
+        const dialog = deep(element, 'hcm-confirm-dialog') as HTMLElement & { headline: string; confirmLabel: string };
+        expect([dialog.headline, dialog.confirmLabel]).toEqual(['Delete this image?', 'Delete']);
+        await confirm(element);
+
+        expect(calls(area)).toEqual(['cancelJob']);
+        expect(deepAll(element, 'hcm-button').some((found) => found.textContent.includes('Cancel job'))).toBe(false);
+    });
+
     it('happyPath_cancellingAJobAsksFirstAndTheBackAndTheZoomPassOn', async () => {
         const { element, area, app } = await imageryPage(imageryState({ detail: VERSION, version: versionPage() }), { width: 400 });
         const dialog = deep(element, 'hcm-confirm-dialog') as HTMLElement & { open: boolean };
