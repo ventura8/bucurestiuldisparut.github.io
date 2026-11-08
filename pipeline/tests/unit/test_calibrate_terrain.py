@@ -125,7 +125,7 @@ def test_happy_path_a_frame_over_a_hill_is_fitted_on_flat_places_and_lands_on_th
     assert float(numpy.sqrt(numpy.mean(numpy.sum((pixels - scan) ** 2, axis=1)))) * 1.3 < 3.0
 
 
-def test_happy_path_the_lattice_of_a_frame_over_terrain_is_its_flat_map() -> None:
+def test_happy_path_the_lattice_of_a_frame_over_terrain_lies_on_the_map_its_rpc_renders() -> None:
     """Scenarios: S-P06-HAPPY-TERRAIN"""
     heights = hill()
     rows, truth = rows_over(heights)
@@ -134,10 +134,55 @@ def test_happy_path_the_lattice_of_a_frame_over_terrain_is_its_flat_map() -> Non
 
     assert found is not None
     assert found.lattice is not None
+    assert found.terrain is not None
     nodes = found.lattice.nodes
-    film = numpy.array([[node.x + SCAN.left, node.y + SCAN.top] for node in nodes])
-    shown = numpy.column_stack(to_mercator_arrays(numpy.array([node.lng for node in nodes]), numpy.array([node.lat for node in nodes])))
-    assert float(numpy.median(ground_m(shown, truth.flat(film)))) < 4.0
+    lng, lat = numpy.array([node.lng for node in nodes]), numpy.array([node.lat for node in nodes])
+    shown = numpy.column_stack(to_mercator_arrays(lng, lat))
+    pixels = numpy.array([[node.x, node.y] for node in nodes])
+    # Each node is where the layer puts its pixel: the RPC over the heights there reads that pixel back (1.3 m a pixel); the flat map's
+    # nodes lay up to the hill's parallax away.
+    back = found.terrain.rpc.to_pixel(lng, lat, heights.at(shown))
+    assert float(numpy.abs(back - pixels).max()) * 1.3 < 1.0
+    film = pixels + numpy.array([SCAN.left, SCAN.top])
+    assert float(numpy.median(ground_m(shown, truth.ground(film, heights)))) < 4.0
+
+
+def test_happy_path_a_frame_over_terrain_carries_the_heights_under_its_scan() -> None:
+    """Scenarios: S-P06-HAPPY-TERRAIN"""
+    heights = hill()
+    rows, _ = rows_over(heights)
+
+    found = joined_calibration(Proved(rows, 2, SCAN, MIDDLE_LAT, heights), 7)
+
+    assert found is not None
+    assert found.terrain is not None
+    under = found.terrain.heights
+    assert under.values.size < heights.values.size
+    # Wherever the scan shows ground they read what the city's surface reads.
+    lattice = found.lattice
+    assert lattice is not None
+    places = numpy.column_stack(
+        to_mercator_arrays(numpy.array([n.lng for n in lattice.nodes]), numpy.array([n.lat for n in lattice.nodes]))
+    )
+    assert numpy.allclose(under.at(places), heights.at(places), rtol=0.0, atol=1e-6)
+    record = automatic(found).as_record()["terrain"]
+    assert isinstance(record, dict)
+    assert record["heights"]["columns"] == under.values.shape[1]
+
+
+def test_happy_path_the_cells_under_some_places_read_as_the_whole_grid_there() -> None:
+    """Scenarios: S-P06-HAPPY-TERRAIN"""
+    heights = hill()
+    places = numpy.array([[CENTRE[0] - 2000.0, CENTRE[1] + 1500.0], [CENTRE[0] + 3100.0, CENTRE[1] - 900.0]])
+
+    under = heights.covering(places)
+
+    inside = places[0] + numpy.random.default_rng(1).uniform(0.0, 1.0, (200, 2)) * (places[1] - places[0])
+    assert numpy.allclose(under.at(inside), heights.at(inside), rtol=0.0, atol=1e-6)
+    assert under.values.shape == (26, 53)
+    corner = heights.covering(numpy.array([[-1e9, 1e9]]))
+    assert corner.values.shape == (2, 2)
+    assert (corner.left, corner.top) == (heights.left, heights.top)
 
 
 def test_bad_path_a_flat_city_is_fitted_exactly_as_without_a_surface() -> None:
@@ -214,7 +259,23 @@ def test_happy_path_the_job_log_says_whether_a_frame_was_fitted_over_terrain() -
     assert "negligible" in terrain_summary(flat, over)
 
 
-@pytest.mark.parametrize("shown", [0.5, 0.0])
+def test_bad_path_a_frame_whose_tiles_show_no_parallax_is_not_corrected() -> None:
+    """Scenarios: S-P06-BAD-TERRAIN-NEGLIGIBLE"""
+    heights = hill()
+    rows, _ = rows_over(heights, shown=0.0)
+    camera = fit_panoramic(rows[:, :2], rows[:, 2:4], RAD_PER_PX)
+    assert camera is not None
+
+    # Scaled to nothing, the relief it would correct is none: no terrain, no credit, no RPC render.
+    assert terrain_of(camera, rows[:, :2], rows[:, 2:4], heights) is None
+    found = joined_calibration(Proved(rows, 2, SCAN, MIDDLE_LAT, heights), 7)
+    flat = joined_calibration(Proved(rows, 2, SCAN, MIDDLE_LAT), 7)
+    assert found is not None
+    assert flat is not None
+    assert automatic(found).as_record() == automatic(flat).as_record()
+
+
+@pytest.mark.parametrize("shown", [0.5])
 def test_bad_path_a_frame_whose_tiles_show_less_parallax_than_its_camera_predicts_is_corrected_by_that_much(shown: float) -> None:
     """Scenarios: S-P06-BAD-TERRAIN-NEGLIGIBLE"""
     heights = hill()

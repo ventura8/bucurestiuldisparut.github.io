@@ -2,10 +2,13 @@
 *Terrain*).
 
 GLO-30's public tiles (AWS open data, bucket `copernicus-dem-30m`, anonymous https; free licence, its notice `DEM_NOTICE` goes with
-every layer corrected with it: `functions/src/imagery/finalize.ts`) are one degree each, named by their south-west corner; a tile that
-does not exist (open sea) or cannot be read is ground at 0 m. The window's tiles are warped to EPSG:3857 at 30 ground metres a cell, at
-most `MAX_CELLS` a side (a larger window, coarser cells), averaged over a 900 m square: the area a tile of the proof measures, and a
-scale at which today's buildings and trees, which the 1970s city lacked, weigh little. Float32, deflated: 3.1 MB for Bucharest.
+every layer corrected with it: `functions/src/imagery/finalize.ts`) are one degree each, named by their south-west corner. Every tile the
+window touches must be read: a tile that cannot be (gone, refused, broken) gives no surface, and the frame is fitted flat, never over
+heights of 0 m where the tile was (a frame lost its whole correction so, with no word). The tiles are warped to EPSG:3857 at 30 ground
+metres a cell, at most `MAX_CELLS` a side (a larger window, coarser cells), averaged over a 900 m square (the area a tile of the proof
+measures, a scale at which today's buildings and trees, which the 1970s city lacked, weigh little), then read at the centres of cells
+of `SURFACE_CELL_GROUND_M` to the decimetre: the heights every reader of a frame's map takes, the fit, the warp's `RPC_DEM`, a join and the
+georeferencer, which stores carry with the frame (`georef.terrain.heights`). Float32, deflated.
 """
 
 import math
@@ -19,12 +22,16 @@ from numpy.typing import NDArray
 
 from hcm_pipeline.calibrate.terrain import Heights
 from hcm_pipeline.geo import Bounds, Grid, MercatorBox, ground_scale
+from hcm_pipeline.georef.heights import to_decimetres
 from hcm_pipeline.raster import gdal, osr
 from hcm_pipeline.rasters import GTIFF_OPTIONS, driver_of
 
 DEM_SOURCE: Final = "glo30"
 DEM_CELL_GROUND_M: Final = 30.0
 SMOOTH_GROUND_M: Final = 900.0
+# The cells the surface is read on: the map within 0.34 m RMS of the 30 m surface's on A001, 0.11 m at 150 m (M15, *Terrain*); a frame
+# carries the cells under its scan in its record (Bucharest's window: 102 x 98 of them).
+SURFACE_CELL_GROUND_M: Final = 300.0
 MAX_CELLS: Final = 4096
 MIN_CELLS: Final = 2
 DEM_NOTICE: Final = (
@@ -54,15 +61,22 @@ def surface_grid(window: MercatorBox) -> Grid:
     return Grid.over(window, resolution)
 
 
-def _readable(sources: Sequence[str]) -> list[str]:
-    found = []
+def unreadable(sources: Sequence[str]) -> list[str]:
+    """The tiles that cannot be opened."""
+    missing = []
     for source in sources:
         try:
             gdal.Open(source).Close()
         except RuntimeError:
-            continue
-        found.append(source)
-    return found
+            missing.append(source)
+    return missing
+
+
+def stored_grid(window: MercatorBox) -> Grid:
+    """The cells the surface is read on: `SURFACE_CELL_GROUND_M`, or the working grid's when it is coarser."""
+    middle = window.bounds().middle_lat
+    resolution = max(SURFACE_CELL_GROUND_M / ground_scale(middle), surface_grid(window).resolution)
+    return Grid.over(window, resolution)
 
 
 def _smoothed(values: NDArray[numpy.float32], grid: Grid, middle_lat: float) -> NDArray[numpy.float32]:
@@ -70,26 +84,24 @@ def _smoothed(values: NDArray[numpy.float32], grid: Grid, middle_lat: float) -> 
     return numpy.asarray(cv2.blur(values, (cells, cells), borderType=cv2.BORDER_REFLECT), numpy.float32)
 
 
-def _write(local: Path, grid: Grid, values: NDArray[numpy.float32]) -> None:
-    dataset = driver_of("GTiff").Create(str(local), grid.width, grid.height, 1, gdal.GDT_Float32, list(GTIFF_OPTIONS))
-    dataset.SetGeoTransform(grid.geotransform())
+def write_heights(local: Path, heights: Heights) -> Path:
+    """`heights` as a GeoTIFF (EPSG:3857, float32): what `RPC_DEM` reads."""
+    rows, cols = heights.values.shape
+    dataset = driver_of("GTiff").Create(str(local), cols, rows, 1, gdal.GDT_Float32, list(GTIFF_OPTIONS))
+    dataset.SetGeoTransform((heights.left, heights.resolution, 0.0, heights.top, 0.0, -heights.resolution))
     reference = osr.SpatialReference()
     reference.ImportFromEPSG(3857)
     dataset.SetProjection(reference.ExportToWkt())
-    dataset.GetRasterBand(1).WriteArray(values)
+    dataset.GetRasterBand(1).WriteArray(heights.values)
     dataset.Close()
+    return local
 
 
-def write_surface(sources: Sequence[str], window: MercatorBox, local: Path) -> Heights | None:
-    """The window's smoothed surface written to `local` (EPSG:3857, float32), and its heights; None when no tile can be read or the
-    window holds under 2 x 2 cells."""
-    grid, readable = surface_grid(window), _readable(sources)
-    if not readable or min(grid.width, grid.height) < MIN_CELLS:
-        return None
+def _warped(sources: Sequence[str], grid: Grid) -> NDArray[numpy.float32]:
     box = grid.box()
     warped = gdal.Warp(
         "",
-        readable,
+        list(sources),
         format="MEM",
         dstSRS="EPSG:3857",
         outputBounds=(box.left, box.bottom, box.right, box.top),
@@ -100,9 +112,21 @@ def write_surface(sources: Sequence[str], window: MercatorBox, local: Path) -> H
     )
     values = numpy.asarray(warped.GetRasterBand(1).ReadAsArray(), numpy.float32)
     warped.Close()
-    smooth = _smoothed(values, grid, window.bounds().middle_lat)
-    _write(local, grid, smooth)
-    return Heights(grid.left, grid.top, grid.resolution, smooth)
+    return values
+
+
+def write_surface(sources: Sequence[str], window: MercatorBox, local: Path) -> Heights | None:
+    """The window's surface (module docstring) written to `local`, and its heights; None when a tile cannot be read or the window holds
+    under 2 x 2 cells."""
+    grid, stored = surface_grid(window), stored_grid(window)
+    if min(stored.width, stored.height) < MIN_CELLS or unreadable(sources):
+        return None
+    smooth = _smoothed(_warped(sources, grid), grid, window.bounds().middle_lat)
+    x, y = stored.centres()
+    read = Heights(grid.left, grid.top, grid.resolution, smooth).at(numpy.column_stack((x.ravel(), y.ravel())))
+    heights = Heights(stored.left, stored.top, stored.resolution, to_decimetres(read).reshape(stored.height, stored.width))
+    write_heights(local, heights)
+    return heights
 
 
 def heights_of(local: Path) -> Heights:

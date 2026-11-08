@@ -84,7 +84,7 @@ def recorded(fitted: Fit, method: str, lattice: Lattice | None = None, terrain: 
 
 def automatic(found: Calibrated) -> GeorefInfo:
     """A proved frame's `georef`: its fit, its lattice and, over terrain, its RPC."""
-    terrain = None if found.terrain is None else TerrainInfo(found.terrain.rpc, found.terrain.relief_m)
+    terrain = None if found.terrain is None else TerrainInfo(found.terrain.rpc, found.terrain.relief_m, found.terrain.heights)
     return recorded(found.fitted, AUTO_METHOD, found.lattice, terrain)
 
 

@@ -5,14 +5,16 @@
  * the checkpoint error is over the city's threshold (a warning naming both; Save stays allowed).
  *
  * M15: while the pairs are the version's own, the page shows what the version page shows, the pipeline's figures and residuals,
- * and previews the map that is published: a camera's `georef.lattice` through its nodes (`-tps`, as the warp renders it), else
- * the pairs' own fit. Once they change, every figure and the preview are a refit through the pairs, and the page says so.
+ * and previews the map that is published: a frame over terrain through its RPC over the heights it carries (`terrainTransform`, as
+ * the warp's `RPC_DEM`), a camera's `georef.lattice` through its nodes (`-tps`, as the warp renders it), else the pairs' own fit.
+ * Once they change, every figure and the preview are a refit through the pairs, and the page says so.
  */
 import {
     enabledGcps,
     fitTransform,
     GEOREF_TRANSFORMS,
     MIN_GCPS,
+    terrainTransform,
     type FittedTransform,
     type Gcp,
     type Georef,
@@ -81,7 +83,7 @@ function isOver(checkpointRmseM: number | null, thresholdM: number): boolean {
 
 type OwnFigures = Pick<FitView, 'fitRmseM' | 'checkpointRmseM' | 'checkpointCount' | 'residuals'>;
 
-/** The version's own map: its figures and residuals as stored, and the lattice it publishes (null: its pairs' own fit). */
+/** The version's own map: its figures and residuals as stored, and the map it publishes (null: its pairs' own fit). */
 export interface OwnFit {
     readonly figures: OwnFigures;
     readonly transform: FittedTransform | null;
@@ -89,9 +91,15 @@ export interface OwnFit {
 
 /** The map a lattice's nodes describe, as the warp renders it: a thin-plate spline through them. */
 function latticeOf(lattice: NonNullable<Georef['lattice']>): FittedTransform | null {
-    const nodes = lattice.nodes.map((node, index): Gcp => ({ id: `n${String(index)}`, ...node, enabled: true, origin: 'auto' }));
+    const nodes = lattice.nodes.map((node, index): Gcp => ({ id: String(index), ...node, enabled: true, origin: 'auto' }));
     const result = fitTransform('tps', nodes);
     return result.ok ? result.transform : null;
+}
+
+/** The map the version publishes: over terrain its RPC over its heights (from its lattice's map), else its lattice's; null: its pairs'. */
+function publishedOf({ lattice, terrain }: Georef): FittedTransform | null {
+    const nodes = lattice === undefined ? null : latticeOf(lattice);
+    return terrain === undefined || nodes === null ? nodes : terrainTransform(terrain, nodes);
 }
 
 function residualsOf(gcps: readonly Gcp[]): Record<string, number> {
@@ -108,7 +116,7 @@ export function ownFitOf(georef: Georef | undefined): OwnFit | null {
     if (georef === undefined || (georef.fitRmseM === undefined && georef.lattice === undefined)) {
         return null;
     }
-    return { figures: figuresOf(georef), transform: georef.lattice === undefined ? null : latticeOf(georef.lattice) };
+    return { figures: figuresOf(georef), transform: publishedOf(georef) };
 }
 
 /** The version's own figures and map while its pairs are unedited; else the refit, marked as one when the version had its own. */

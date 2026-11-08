@@ -30,7 +30,7 @@ from hcm_pipeline.model import Record
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.rasters import GTIFF_OPTIONS, driver_of
 from hcm_pipeline.steps.common import city_window, gdal_step
-from hcm_pipeline.steps.warp import gcp_source
+from hcm_pipeline.steps.warp import Attached, attached
 from hcm_pipeline.worker.api import WorkerApiError
 
 ALIGN_FILE: Final = "align.tif"
@@ -124,12 +124,11 @@ def _grey(dataset: gdal.Dataset) -> numpy.ndarray:
     return numpy.asarray(numpy.where(bands[-1] >= FULL / 2, grey, 0), numpy.uint8)
 
 
-def rendered(source: Path, window: MercatorBox, middle_lat: float, through_points: bool) -> AlignImage:
-    """A georeferenced raster at `ALIGN_GROUND_M` over the window: a scan through its points (`gcp_source`, a thin-plate spline), or a
-    warped layer as it is."""
+def rendered(source: Path, window: MercatorBox, middle_lat: float, method: Mapping[str, object]) -> AlignImage:
+    """A georeferenced raster at `ALIGN_GROUND_M` over the window: a scan through its map (`method`: `attached`'s), or a warped layer as
+    it is (none)."""
     cell = align_cell(middle_lat)
     box = window_box(window, cell)
-    method = {"tps": True} if through_points else {}
     options = {"dstSRS": "EPSG:3857", "xRes": cell, "yRes": cell, "resampleAlg": "average", "dstAlpha": True, **method}
     dataset = gdal.Warp("", str(source), format="MEM", outputBounds=(box.left, box.bottom, box.right, box.top), **options)
     image = AlignImage(_grey(dataset), box.left, box.top, cell)
@@ -161,7 +160,7 @@ def publish_align(ctx: JobContext, warped: Path) -> None:
     if not keeps_align(ctx.version):
         return
     window = city_window(ctx)
-    image = gdal_step(ctx, lambda: rendered(warped, window, window.bounds().middle_lat, False), "render the frame for later ties")
+    image = gdal_step(ctx, lambda: rendered(warped, window, window.bounds().middle_lat, {}), "render the frame for later ties")
     target = gdal_step(ctx, lambda: write_align(image, ctx.local(ALIGN_FILE)), "write the frame for later ties")
     ctx.publish(target, ctx.version_file(ALIGN_FILE), "image/tiff")
 
@@ -176,12 +175,12 @@ def read_onto(path: Path, like: AlignImage) -> AlignImage:
     return AlignImage(grey, like.left, like.top, like.cell)
 
 
-def to_film(source: Path, offset: tuple[int, int]) -> Callable[[FloatArray], FloatArray]:
-    """Film pixels of EPSG:3857 places through the scan's own thin-plate transform: what its rendered image shows there."""
+def to_film(mine: Attached, offset: tuple[int, int]) -> Callable[[FloatArray], FloatArray]:
+    """Film pixels of EPSG:3857 places through the scan's own map (`attached`): what its rendered image shows there."""
 
     def film(places: FloatArray) -> FloatArray:
-        dataset = gdal.Open(str(source))
-        transformer = gdal.Transformer(dataset, None, ["METHOD=GCP_TPS", "DST_SRS=EPSG:3857"])
+        dataset = gdal.Open(str(mine.source))
+        transformer = gdal.Transformer(dataset, None, [*mine.options, "DST_SRS=EPSG:3857"])
         found, _ = transformer.TransformPoints(1, [(float(x), float(y)) for x, y in places])
         dataset.Close()
         return numpy.array(found, numpy.float64)[:, :2] + numpy.array(offset, numpy.float64)
@@ -191,17 +190,17 @@ def to_film(source: Path, offset: tuple[int, int]) -> Callable[[FloatArray], Flo
 
 @dataclass(frozen=True)
 class Ours:
-    """The joining frame: its scan with its first fit's points attached, its offset in the film, its image on the align grid."""
+    """The joining frame: its scan with its first fit's map attached, its offset in the film, its image on the align grid."""
 
-    source: Path
+    attached: Attached
     offset: tuple[int, int]
     image: AlignImage
 
 
 def ours(ctx: JobContext, georef: GeorefInfo, scan: ScanInfo, offset: tuple[int, int], window: MercatorBox) -> Ours:
-    """The frame's first fit rendered as its layer would be, at `ALIGN_GROUND_M`."""
-    source = gcp_source(ctx.stage(scan.path, "scan.tif"), georef, ctx.local("align-gcps.vrt"))
-    return Ours(source, offset, rendered(source, window, window.bounds().middle_lat, True))
+    """The frame's first fit rendered as its layer would be, at `ALIGN_GROUND_M`: over terrain through its RPC, as the warp."""
+    found = attached(ctx.stage(scan.path, "scan.tif"), georef, lambda name: ctx.local(f"align-{name}"))
+    return Ours(found, offset, rendered(found.source, window, window.bounds().middle_lat, found.method))
 
 
 def partner_ties(ctx: JobContext, mine: Ours, held: Held) -> PartnerTies:
@@ -209,7 +208,7 @@ def partner_ties(ctx: JobContext, mine: Ours, held: Held) -> PartnerTies:
     theirs = read_onto(ctx.stage(held.path, f"align-{held.version_id}.tif"), mine.image)
     ctx.unstage(held.path)
     found = matched(mine.image, theirs, ALIGN_GROUND_M)
-    return tied(held.version_id, found, mine.image, to_film(mine.source, mine.offset), ALIGN_GROUND_M)
+    return tied(held.version_id, found, mine.image, to_film(mine.attached, mine.offset), ALIGN_GROUND_M)
 
 
 def bounds_of(georef: GeorefInfo) -> Bounds:

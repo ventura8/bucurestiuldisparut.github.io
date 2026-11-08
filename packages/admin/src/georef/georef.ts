@@ -9,6 +9,7 @@
 import {
     bboxCenter,
     cityDocSchema,
+    clamp,
     FIRESTORE_PATHS,
     imagerySettingsOf,
     isId,
@@ -430,7 +431,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     }
 
     #setOpacity(percent: number): void {
-        const previewOpacity = Math.min(100, Math.max(0, Math.round(percent))) / 100;
+        const previewOpacity = clamp(Math.round(percent), 0, 100) / 100;
         this.#cell.update({ previewOpacity });
         this.#pictures.setOpacity(previewOpacity);
     }

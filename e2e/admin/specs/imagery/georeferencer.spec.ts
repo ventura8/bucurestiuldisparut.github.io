@@ -293,3 +293,55 @@ test(
         await expect(refitted).toHaveCount(0);
     },
 );
+
+/** Runs in the page: the corners of the georeferencer's warped preview (`[longitude, latitude]`), none while it is not drawn. */
+function warpedCornersInPage(): [number, number][] {
+    interface StyleMap {
+        getStyle(): { sources: Record<string, { coordinates?: [number, number][] }> };
+    }
+    const map = (window as unknown as { __hcmE2e?: { maps: StyleMap[] } }).__hcmE2e?.maps.at(-1);
+    try {
+        return map?.getStyle().sources['hcm-picture-warped']?.coordinates ?? [];
+    } catch {
+        return [];
+    }
+}
+
+interface LatticeNode {
+    readonly geo: { readonly lat: number; readonly lng: number };
+}
+
+test(
+    'A frame fitted over terrain previews the map its layer shows, over its heights, beside its figures',
+    { tag: ['@S-A16-HAPPY-TERRAIN-PREVIEW'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        test.setTimeout(240_000);
+        const imagery = await readyImagery(
+            { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
+            adminWorld.accounts.owner.uid,
+        );
+        // A KH-9 pan frame over ground 100 m up that its film shows 50 pixels east (M15, *Terrain*): its lattice is the scan's own
+        // map, its RPC that map moved by the parallax.
+        await imagery.script({ attempts: [{ outcome: 'over', lattice: true, terrain: true }] });
+        const versionId = await importFromList(page, lang, 'DS1035-1057DA023');
+        await expect(versionState(page, lang, 'adminContent.imagery.version.awaitingApproval')).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        const stored = (await imagery.version(versionId))?.['georef'] as {
+            fitRmseM: number;
+            terrain?: unknown;
+            lattice: { nodes: LatticeNode[] };
+        };
+        expect(stored.terrain).toBeDefined();
+        await detail(page)
+            .getByRole('link', { name: imageryText(lang, 'adminContent.imagery.openGeoref') })
+            .click();
+        await georeferencerReady(page, lang);
+
+        // The figures the version stored, and the preview drawn in the box of the map its layer shows (its lattice: the scan's own
+        // map moved 50 pixels by the parallax); its quads read the scan through the RPC over the heights (georef-published.test.ts).
+        await expect(errorsLine(page)).toContainText(georefText(lang, 'adminContent.georef.fit', { rmse: metres(lang, stored.fitRmseM) }));
+        const west = Math.min(...stored.lattice.nodes.map((node) => node.geo.lng));
+        await expect.poll(async () => Math.min(...(await page.evaluate(warpedCornersInPage)).map(([lng]) => lng))).toBeCloseTo(west, 4);
+    },
+);

@@ -6,11 +6,12 @@
  * rejects it. A version the matching left waiting says how many reliable pairs it found. Accepting only edits the
  * page's pairs: Save writes them. Text only: labels and numbers are never markup.
  */
-import type { Locale } from '@hcm/shared';
+import { clamp, type Locale } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 
 import { cssProperties } from '../../components/css-properties.js';
+import { numberText } from '../imagery/imagery-text.js';
 import { when, withValue } from '../imagery/when.js';
 import { contentText } from '../shell/text.js';
 import type { SuggestionRowPort, SuggestionsViewPort } from './suggestions-port.js';
@@ -35,10 +36,6 @@ const KEYS_ID = 'suggestion-keys';
 /** What a key does on a suggestion's name. */
 const KEYS: Readonly<Record<string, SuggestionDecision | undefined>> = { Enter: 'accept', Delete: 'reject', Backspace: 'reject' };
 
-function number(locale: Locale, value: number, digits: number): string {
-    return new Intl.NumberFormat(locale, { maximumFractionDigits: digits }).format(value);
-}
-
 function confidence(locale: Locale, row: SuggestionRowPort): string {
     const level = contentText(locale, `adminContent.georef.suggestions.level.${row.level}`);
     const percent = String(Math.round((row.pair.score ?? 0) * 100));
@@ -49,7 +46,7 @@ function offset(locale: Locale, row: SuggestionRowPort): string {
     const metres = row.offsetM;
     return metres === null
         ? contentText(locale, 'adminContent.georef.suggestions.noResidual')
-        : contentText(locale, 'adminContent.georef.suggestions.residual', { metres: number(locale, metres, 1) });
+        : contentText(locale, 'adminContent.georef.suggestions.residual', { metres: numberText(locale, metres, 1) });
 }
 
 function keyed(panel: SuggestionsPanel, id: string, index: number): (event: KeyboardEvent) => void {
@@ -78,7 +75,7 @@ function decideButton(panel: SuggestionsPanel, row: SuggestionRowPort, index: nu
 function row(panel: SuggestionsPanel, item: SuggestionRowPort, index: number): TemplateResult {
     const { locale, view } = panel;
     const selected = item.pair.id === view.selected;
-    const fraction = String(Math.min(1, Math.max(0, item.pair.score ?? 0)));
+    const fraction = String(clamp(item.pair.score ?? 0, 0, 1));
     return html`<li ?data-selected=${selected} data-suggestion=${item.pair.id} data-level=${item.level}>
         <button
             class="suggestion"

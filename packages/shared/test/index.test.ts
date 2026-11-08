@@ -456,6 +456,8 @@ const EXPORTS = {
         'previewMesh',
         'scanBounds',
         'triangleTransform',
+        // M15, *Terrain*: the map of a frame fitted over the Copernicus DEM, as its layer shows it.
+        'terrainTransform',
     ],
     /** M4 (docs/research/M4-interfaces.md): orders, automatic GCP suggestions, assists, notifications. */
     m4: [

@@ -254,13 +254,12 @@ def _residual_rmse(gcps: tuple[Gcp, ...], enabled: bool) -> float | None:
 
 @dataclass(frozen=True)
 class Mapped:
-    """A map the pairs cannot rebuild: film pixels to places, its lattice's model and its blocked figure; `flat`, the map its lattice
-    samples when it is not `to_places` (a frame over terrain: the flat map its RPC takes to the ground)."""
+    """A map the pairs cannot rebuild: film pixels to places, its lattice's model and its blocked figure. Over terrain `to_places` is
+    the map on the ground, what the layer shows: the lattice samples it, as it does every other map."""
 
     to_places: PlaceFn
     model: str
     figure: float | None
-    flat: PlaceFn | None = None
 
 
 def _panoramic(chosen: Chosen, scan: ScanBox, camera: PanoramicMap, middle_lat: float) -> Calibrated | None:
@@ -279,7 +278,7 @@ def mapped_calibration(chosen: Chosen, scan: ScanBox, mapped: Mapped, middle_lat
     gcps = _map_residuals(sample.gcps, mapped.to_places, offset)
     checks = len(chosen.checks)
     fitted = Fit(sample.transform, gcps, _residual_rmse(gcps, True) or 0.0, _residual_rmse(gcps, False), checks)
-    lattice = Lattice(mapped.model, sampled(_in_scan(mapped.flat or mapped.to_places, offset), scan.width, scan.height))
+    lattice = Lattice(mapped.model, sampled(_in_scan(mapped.to_places, offset), scan.width, scan.height))
     return Calibrated(fitted, mapped.figure, chosen.dropped, lattice)
 
 

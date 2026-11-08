@@ -98,14 +98,15 @@ describe('georeferencing as stored', () => {
         expect(result.ok ? [] : result.issues).toContainEqual({ path, code });
     });
 
-    /** M15, *Terrain*: the RPC a frame over terrain renders through. */
-    function terrain(coefficients = 20): unknown {
+    /** M15, *Terrain*: the RPC a frame over terrain is read through, and the heights under its scan (3 x 2 cells). */
+    function terrain(coefficients = 20, valuesDm = 'AAAAAAAAAAAAAAAA'): unknown {
         const axes = { line: 400, samp: 600, lat: 44.43, lng: 26.1, height: 90 };
         const set = Array.from({ length: coefficients }, (_, index) => (index === 0 ? 1 : 0));
         return {
             source: 'glo30',
             reliefM: 6.45,
             rpc: { offset: axes, scale: axes, lineNum: set, lineDen: set, sampNum: set, sampDen: set },
+            heights: { left: 2.9e6, top: 5.5e6, cell: 420, columns: 3, rows: 2, baseDm: 512, valuesDm },
         };
     }
 
@@ -118,6 +119,8 @@ describe('georeferencing as stored', () => {
     it.each([
         ['nineteen coefficients a set', terrain(19), 'terrain.rpc.lineNum', 'validation.tooSmall'],
         ['another surface model', { ...(terrain() as object), source: 'srtm' }, 'terrain.source', 'validation.value'],
+        ['heights short of their cells', terrain(20, 'AAAA'), 'terrain.heights.valuesDm', 'validation.format'],
+        ['no heights', { ...(terrain() as object), heights: undefined }, 'terrain.heights', 'validation.required'],
     ])('badPath_aTerrainWith_%s @S-P06-BAD-TERRAIN-UNAVAILABLE', (_name, value, path, code) => {
         const result = validate(georefSchema, { method: 'auto', transform: 'affine', gcps, terrain: value });
 

@@ -4,11 +4,21 @@ from pathlib import Path
 
 import numpy
 import pytest
+from hcm_pipeline.calibrate.terrain import Heights
 from hcm_pipeline.geo import Bounds, FloatArray, MercatorBox, to_lnglat_arrays, to_mercator
+from hcm_pipeline.georef.heights import heights_of_record, heights_record, to_decimetres
 from hcm_pipeline.georef.rpc import TERMS, Rpc, fit_rpc
 from hcm_pipeline.raster import gdal, osr
 from hcm_pipeline.rasters import driver_of
-from hcm_pipeline.surface import MAX_CELLS, heights_of, surface_grid, tile_name, tile_names, write_surface
+from hcm_pipeline.surface import (
+    MAX_CELLS,
+    SURFACE_CELL_GROUND_M,
+    heights_of,
+    surface_grid,
+    tile_name,
+    tile_names,
+    write_surface,
+)
 
 ORIGIN = numpy.array(to_mercator(26.1, 44.43))
 SIZE = (2000, 1500)
@@ -121,12 +131,12 @@ def glo30_tile(path: Path, lat: int, lng: int, height: float) -> Path:
     return path
 
 
-def test_happy_path_a_surface_is_warped_smoothed_and_read_back(tmp_path: Path) -> None:
+def test_happy_path_a_surface_is_warped_smoothed_and_read_on_its_cells(tmp_path: Path) -> None:
     """Scenarios: S-P06-HAPPY-TERRAIN"""
     tile = glo30_tile(tmp_path / "tile.tif", 44, 26, 80.0)
     window = Bounds(26.2, 44.3, 26.8, 44.6).mercator()
 
-    heights = write_surface([str(tile), str(tmp_path / "missing.tif")], window, tmp_path / "surface.tif")
+    heights = write_surface([str(tile)], window, tmp_path / "surface.tif")
 
     assert heights is not None
     again = heights_of(tmp_path / "surface.tif")
@@ -138,17 +148,72 @@ def test_happy_path_a_surface_is_warped_smoothed_and_read_back(tmp_path: Path) -
     assert float(heights.at(middle)[0]) == pytest.approx(280.0, abs=0.5)
     assert float(heights.at(away)[0]) == pytest.approx(80.0, abs=0.5)
     assert 100.0 < float(heights.at(edge)[0]) < 260.0
-    assert heights.resolution * 0.714 == pytest.approx(30.0, rel=0.01)
+    assert heights.resolution * 0.714 == pytest.approx(SURFACE_CELL_GROUND_M, rel=0.01)
+    # Held to the decimetre, as a record gives them back.
+    assert numpy.array_equal(heights.values, to_decimetres(heights.values.astype(numpy.float64)))
+
+
+def test_bad_path_a_tile_that_cannot_be_read_gives_no_surface_rather_than_ground_at_0_m(tmp_path: Path) -> None:
+    """Scenarios: S-P06-BAD-TERRAIN-UNAVAILABLE"""
+    east = glo30_tile(tmp_path / "east.tif", 44, 26, 80.0)
+    window = Bounds(25.8, 44.3, 26.4, 44.6).mercator()
+
+    # Half the window lies on a tile that cannot be read: its heights would read 0 m and undo the frame's correction.
+    assert write_surface([str(east), str(tmp_path / "west.tif")], window, tmp_path / "surface.tif") is None
+    assert not (tmp_path / "surface.tif").exists()
+    assert write_surface([str(east), str(glo30_tile(tmp_path / "west.tif", 44, 25, 80.0))], window, tmp_path / "surface.tif") is not None
 
 
 def test_bad_path_no_readable_tile_or_a_window_too_small_gives_no_surface(tmp_path: Path) -> None:
     """Scenarios: S-P06-BAD-TERRAIN-UNAVAILABLE"""
     window = Bounds(26.2, 44.3, 26.8, 44.6).mercator()
     tile = glo30_tile(tmp_path / "tile.tif", 44, 26, 80.0)
-    tiny = MercatorBox(window.left, window.bottom, window.left + 20.0, window.bottom + 20.0)
+    tiny = MercatorBox(window.left, window.bottom, window.left + 300.0, window.bottom + 300.0)
 
     assert write_surface([str(tmp_path / "missing.tif")], window, tmp_path / "a.tif") is None
     assert write_surface([str(tile)], tiny, tmp_path / "b.tif") is None
+
+
+def test_happy_path_heights_round_trip_their_record_to_the_decimetre() -> None:
+    """Scenarios: S-P06-HAPPY-TERRAIN"""
+    values = to_decimetres(numpy.array([[51.26, 126.04, 88.0], [-3.2, 4000.05, 77.77]]))
+    heights = Heights(2.9e6, 5.5e6, 420.5, values)
+
+    record = heights_record(heights)
+    again = heights_of_record(record)
+
+    assert (record["columns"], record["rows"], record["baseDm"]) == (3, 2, -32)
+    assert numpy.array_equal(again.values, heights.values)
+    assert (again.left, again.top, again.resolution) == (heights.left, heights.top, heights.resolution)
+    assert len(str(record["valuesDm"])) == 16
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"valuesDm": "!!"},
+        {"valuesDm": "AAAA"},
+        {"columns": 1},
+        {"rows": True},
+        {"cell": 0},
+        {"baseDm": 1.5},
+        {"left": "west"},
+    ],
+)
+def test_bad_path_a_malformed_heights_record_is_refused(change: dict[str, object]) -> None:
+    """Scenarios: S-P06-BAD-TERRAIN-UNAVAILABLE"""
+    record = {**heights_record(Heights(0.0, 10.0, 5.0, numpy.zeros((2, 2), numpy.float32))), **change}
+
+    with pytest.raises(ValueError, match="heights"):
+        heights_of_record(record)
+    with pytest.raises(ValueError, match="heights"):
+        heights_of_record("heights")
+
+
+def test_bad_path_heights_spanning_more_than_a_record_holds_are_refused() -> None:
+    """Scenarios: S-P06-BAD-TERRAIN-UNAVAILABLE"""
+    with pytest.raises(ValueError, match="span"):
+        heights_record(Heights(0.0, 10.0, 5.0, numpy.array([[0.0, 7000.0], [0.0, 0.0]], numpy.float32)))
 
 
 def test_happy_path_a_wide_window_takes_coarser_cells() -> None:

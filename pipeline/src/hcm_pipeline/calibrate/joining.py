@@ -6,12 +6,14 @@ when it holds nearly the tiles the polynomial's RANSAC kept, else a polynomial r
 the georeference is then the joined map's, as a lattice. With none, the frame is fitted alone and each partner is recorded as too few.
 
 A KH-9 panoramic frame over relief its camera shows (`terrain.py`, `Proved.heights`) is fitted the same way on its rows' flat places, with
-or without partners: its map goes back to the ground through the heights, its lattice is the flat map, and the warp renders it through an
-RPC with the surface model (`georef/rpc.py`). A camera that does not hold leaves the frame flat, as before.
+or without partners: its map goes back to the ground through the heights, and everything that renders or shows it reads it through an RPC
+(`georef/rpc.py`) over the heights under its scan, which it carries (`TerrainFit`); its lattice samples that map on the ground, never the
+flat one (8 to 15 m from the layer on the real frames). A camera that does not hold leaves the frame flat, as before.
 """
 
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
+from typing import Final
 
 import numpy
 
@@ -44,6 +46,8 @@ from hcm_pipeline.geo import FloatArray, ground_scale, to_lnglat_arrays
 from hcm_pipeline.georef.rpc import fit_rpc
 
 Found = tuple[Chosen, Ransac]
+# Points a side of the scan its footprint is read on: the heights a warp or a preview needs lie under them (`_under_scan`).
+SCAN_SIDE: Final = 33
 
 
 @dataclass(frozen=True)
@@ -145,11 +149,10 @@ def _figure(joint: _Joint, chosen: Chosen, partners: Sequence[PartnerTies], midd
 
 
 def _calibrated(joint: _Joint, found: Found, proved: Proved, partners: Sequence[PartnerTies]) -> Calibrated | None:
-    """The georeference of a joined map, as a lattice (the flat map's, over terrain), its verdicts recorded."""
+    """The georeference of a joined map, as a lattice, its verdicts recorded."""
     chosen, ransac = found
     to_places = joint.result.to_places
-    flat = to_places.flat if isinstance(to_places, OnGround) else None
-    mapped = Mapped(to_places, joint.model, _figure(joint, chosen, partners, proved.middle_lat), flat)
+    mapped = Mapped(to_places, joint.model, _figure(joint, chosen, partners, proved.middle_lat))
     fitted = mapped_calibration(chosen.checked_by(mapped.to_places, ransac.candidates), proved.scan, mapped, proved.middle_lat)
     if fitted is None:
         return None
@@ -164,17 +167,25 @@ def _on_ground(fitted: Calibrated, to_places: PlaceFn, proved: Proved, chosen: C
     return None if rendered is None else replace(fitted, terrain=rendered)
 
 
+def _under_scan(to_places: OnGround, scan: ScanBox) -> Heights:
+    """The heights under the scan: the cells around its map on the ground, its edges included."""
+    x, y = numpy.meshgrid(numpy.linspace(0.0, scan.width, SCAN_SIDE), numpy.linspace(0.0, scan.height, SCAN_SIDE))
+    film = numpy.column_stack((x.ravel() + scan.left, y.ravel() + scan.top))
+    return to_places.terrain.heights.covering(to_places(film))
+
+
 def _rendered(to_places: OnGround, proved: Proved, chosen: Chosen) -> TerrainFit | None:
-    """The RPC a warp renders a map over terrain through, over the scan and every height of the surface model."""
-    offset, values = numpy.array([proved.scan.left, proved.scan.top], numpy.float64), to_places.terrain.heights.values
+    """The RPC a map over terrain is read through, over the scan and every height under it."""
+    offset, heights = numpy.array([proved.scan.left, proved.scan.top], numpy.float64), _under_scan(to_places, proved.scan)
 
     def ground_at(film: FloatArray, height_m: float) -> tuple[FloatArray, FloatArray]:
         places = to_places.terrain.ground(to_places.flat(film + offset), height_m)
         return to_lnglat_arrays(places[:, 0], places[:, 1])
 
-    rpc = fit_rpc(ground_at, (proved.scan.width, proved.scan.height), (float(values.min()), float(values.max())))
+    span = (float(heights.values.min()), float(heights.values.max()))
+    rpc = fit_rpc(ground_at, (proved.scan.width, proved.scan.height), span)
     relief = to_places.terrain.relief_m(chosen.training[:, :2], chosen.training[:, 2:4])
-    return None if rpc is None else TerrainFit(rpc, relief)
+    return None if rpc is None else TerrainFit(rpc, relief, heights)
 
 
 def _together(found: Found, proved: Proved, partners: Sequence[PartnerTies], terrain: Terrain | None = None) -> Calibrated | None:

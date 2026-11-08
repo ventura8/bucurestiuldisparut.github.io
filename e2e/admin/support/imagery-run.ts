@@ -54,6 +54,8 @@ export interface StandinAttempt {
     readonly calibration?: Calibration;
     /** M15: the automatic georef carries a panoramic camera's lattice (17 x 17 nodes of the scan's own map), as a KH-9 pan frame's. */
     readonly lattice?: boolean;
+    /** M15, *Terrain*: with `lattice`, the frame was fitted over level ground 100 m up that its film shows `TERRAIN_PARALLAX_PX` east a metre. */
+    readonly terrain?: boolean;
     /** M8, a `layer-join`: what its report says beyond the defaults (`imagery-standin-join.ts`), and that no seam could be measured. */
     readonly join?: Partial<JoinReport>;
     readonly seamsUnmeasured?: boolean;

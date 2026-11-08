@@ -7,7 +7,7 @@
 import { GEOREF_TRANSFORMS, type GeorefTransform, type Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
-import { pluralOf } from '../imagery/imagery-text.js';
+import { numberText, pluralOf } from '../imagery/imagery-text.js';
 import { when, withValue } from '../imagery/when.js';
 import { contentText, noticeOf } from '../shell/text.js';
 import type { GeorefIntentsPort, GeorefViewState } from './georef-port.js';
@@ -27,10 +27,6 @@ export interface GeorefContext {
     readonly addAtCentres: () => void;
 }
 
-function metres(locale: Locale, value: number): string {
-    return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(value);
-}
-
 function refusal(context: GeorefContext, reason: 'too-few' | 'degenerate'): TemplateResult {
     const { locale, view } = context;
     const missing = view.fit.missing[view.transform];
@@ -45,7 +41,7 @@ function checks(locale: Locale, fit: GeorefViewState['fit']): string {
     const rmse = fit.checkpointRmseM;
     return rmse === null
         ? contentText(locale, 'adminContent.georef.noChecks')
-        : contentText(locale, 'adminContent.georef.checkpoint', { rmse: metres(locale, rmse), count: String(fit.checkpointCount) });
+        : contentText(locale, 'adminContent.georef.checkpoint', { rmse: numberText(locale, rmse), count: String(fit.checkpointCount) });
 }
 
 function rmseWarning(context: GeorefContext): TemplateResult {
@@ -57,7 +53,7 @@ function rmseWarning(context: GeorefContext): TemplateResult {
             html`<p class="alert" role="alert" data-state="rmse-over">
                 <hcm-icon name="info"></hcm-icon
                 ><span
-                    >${contentText(locale, 'adminContent.georef.rmseOver', { rmse: metres(locale, value), threshold: metres(locale, view.thresholdM) })}</span
+                    >${contentText(locale, 'adminContent.georef.rmseOver', { rmse: numberText(locale, value), threshold: numberText(locale, view.thresholdM) })}</span
                 >
             </p>`,
     );
@@ -81,7 +77,7 @@ export function summary(context: GeorefContext): TemplateResult {
         return refusal(context, fit.refusal);
     }
     return html`<p class="summary" role="status">
-            <span>${contentText(locale, 'adminContent.georef.fit', { rmse: metres(locale, Number(fit.fitRmseM)) })}</span>
+            <span>${contentText(locale, 'adminContent.georef.fit', { rmse: numberText(locale, Number(fit.fitRmseM)) })}</span>
             <span>${checks(locale, fit)}</span>
         </p>
         ${refitNote(locale, fit)} ${rmseWarning(context)}`;

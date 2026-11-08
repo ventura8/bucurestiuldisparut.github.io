@@ -3,8 +3,12 @@ import { RASTER_PATHS, SENSOR_SPECS, type Gcp, type PipelineStep, type Sensor, t
 import {
     areaKm2,
     boundsOf,
+    centre,
     landmarks,
+    ROTATION,
     scanCorners,
+    TERRAIN_HEIGHT_M,
+    TERRAIN_PARALLAX_PX,
     scanPixelOf,
     scanToGeo,
     SCAN_PREVIEW_SCALE,
@@ -113,7 +117,7 @@ function automaticGcps(run: Run): Gcp[] {
 /** Nodes a side of a camera's lattice (`georef/lattice.py`: 17 x 17). */
 const LATTICE_SIDE = 17;
 
-/** M15: a panoramic camera's lattice when the script asks for one: the scan's own map on 17 x 17 nodes, as the pipeline stores it. */
+/** M15: a panoramic camera's lattice when the script asks for one: the map its layer shows on 17 x 17 nodes, as the pipeline stores it. */
 function latticeOf(run: Run): { readonly lattice?: Record<string, unknown> } {
     if (run.attempt.lattice !== true) {
         return {};
@@ -121,10 +125,48 @@ function latticeOf(run: Run): { readonly lattice?: Record<string, unknown> } {
     const nodes = Array.from({ length: LATTICE_SIDE * LATTICE_SIDE }, (_node, index) => {
         const step = { x: SCAN_SIZE.width / (LATTICE_SIDE - 1), y: SCAN_SIZE.height / (LATTICE_SIDE - 1) };
         const pixel = { x: (index % LATTICE_SIDE) * step.x, y: Math.floor(index / LATTICE_SIDE) * step.y };
-        const geo = scanToGeo(pixel, run.bounds);
+        // Over terrain the lattice samples the map the layer shows: each pixel's place moved by the parallax (`terrainOf`).
+        const shown = run.attempt.terrain === true ? TERRAIN_HEIGHT_M * TERRAIN_PARALLAX_PX : 0;
+        const geo = scanToGeo({ x: pixel.x - shown, y: pixel.y }, run.bounds);
         return { pixel, geo: { lat: round(geo.lat), lng: round(geo.lng) } };
     });
     return { lattice: { model: 'panoramic', nodes } };
+}
+
+/** Twenty RPC00B terms, the first four set (constant, longitude, latitude, height). */
+function rpcTerms(first: readonly number[]): number[] {
+    return [...first, ...Array.from({ length: 20 - first.length }, () => 0)];
+}
+
+/**
+ * M15, *Terrain*: a frame fitted over terrain, as the pipeline stores it: an RPC00B that is the scan's own map (`scanPixelOf`) with
+ * every metre of height shown `TERRAIN_PARALLAX_PX` further east, and level heights of 100 m (2 x 2 cells of 1,000 decimetres) over
+ * the city and far around it.
+ */
+function terrainOf(run: Run): { readonly terrain?: Record<string, unknown> } {
+    if (run.attempt.terrain !== true || run.attempt.lattice !== true) {
+        return {};
+    }
+    const middle = centre(run.bounds);
+    const [cos, sin] = [Math.cos(ROTATION), Math.sin(ROTATION)];
+    const offset = { line: SCAN_SIZE.height / 2 - 0.5, samp: SCAN_SIZE.width / 2 - 0.5, lat: middle.lat, lng: middle.lng, height: 0 };
+    const scale = {
+        line: SCAN_SIZE.height,
+        samp: SCAN_SIZE.width,
+        lat: run.bounds.north - run.bounds.south,
+        lng: run.bounds.east - run.bounds.west,
+        height: 1,
+    };
+    const rpc = {
+        offset,
+        scale,
+        lineNum: rpcTerms([0, -sin, -cos]),
+        lineDen: rpcTerms([1]),
+        sampNum: rpcTerms([0, cos, -sin, TERRAIN_PARALLAX_PX / SCAN_SIZE.width]),
+        sampDen: rpcTerms([1]),
+    };
+    const heights = { left: -2e7, top: 2e7, cell: 2e7, columns: 2, rows: 2, baseDm: TERRAIN_HEIGHT_M * 10, valuesDm: 'AAAAAAAAAAA=' };
+    return { terrain: { source: 'glo30', reliefM: 4.2, rpc, heights } };
 }
 
 /** The suggestions' confidences (best first): one at the fit's confidence, three below it (M4 §2.3's "fewer" case). */
@@ -317,6 +359,7 @@ async function georeference(run: Run): Promise<StepResult> {
                 checkpointCount: 3,
                 checkpointKind: 'held-out',
                 ...latticeOf(run),
+                ...terrainOf(run),
             },
             // The proof holds this fit: only then may the policy approve it (M9 §11).
             calibration: run.attempt.calibration ?? PROVED_CALIBRATION,

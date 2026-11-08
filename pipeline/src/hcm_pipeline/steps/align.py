@@ -21,7 +21,7 @@ from hcm_pipeline.join.measure import TOO_FAR_M, Measured, SeamModel, Shift, coa
 from hcm_pipeline.join.plan import OWNER_FILE, PLAN_FILE, JoinPlan, Part, PlannedPart, PlannedSeam, read_parts
 from hcm_pipeline.join.room import needed_to_align, require_room, scan_sizes, window_px
 from hcm_pipeline.join.seams import Ownership, Sample, Seam, assign, find_seams
-from hcm_pipeline.join.warping import Warper, base_transform, node_reverse
+from hcm_pipeline.join.warping import Warper, node_reverse, part_size, part_transform
 from hcm_pipeline.rasters import GeoTiff, write_geotiff
 from hcm_pipeline.steps.common import city_window, gdal_step
 
@@ -95,7 +95,7 @@ class Aligning:
     def nodes(self, bases: Sequence[BaseTransform], measured: Sequence[Measured], applied: set[int]) -> list[tuple[Node, ...]]:
         fields = self.fields(measured, applied)
         return [
-            nodes_for(base, (part.scan.width, part.scan.height), field) for base, part, field in zip(bases, self.parts, fields, strict=True)
+            nodes_for(base, part_size(part, self.warper.box), field) for base, part, field in zip(bases, self.parts, fields, strict=True)
         ]
 
     def rewarped(self, nodes: Sequence[tuple[Node, ...]]) -> list[Raster]:
@@ -234,8 +234,8 @@ class AlignStep:
         return Done(ctx.publish(plan.write(ctx.local(PLAN_FILE)), ctx.work_file(PLAN_FILE), "application/json"))
 
 
-def _base_of(part: Part) -> BaseTransform:
-    return base_transform(part.georef, (part.scan.width, part.scan.height))
+def _base_of(part: Part, box: MercatorBox) -> BaseTransform:
+    return part_transform(part, box)
 
 
 def _names(parts: Sequence[Part], indexes: Sequence[int]) -> tuple[str, ...]:
@@ -255,21 +255,22 @@ def _picked[T](items: list[T], ownership: Ownership) -> list[T]:
 
 
 def _largest_move(run: Aligning, nodes: Sequence[tuple[Node, ...]]) -> float:
-    return max(_part_move(part, part_nodes, run.ground) for part, part_nodes in zip(run.parts, nodes, strict=True))
+    box = run.warper.box
+    return max(_part_move(part, part_nodes, run.ground, box) for part, part_nodes in zip(run.parts, nodes, strict=True))
 
 
-def _part_move(part: Part, nodes: tuple[Node, ...], ground: float) -> float:
+def _part_move(part: Part, nodes: tuple[Node, ...], ground: float, box: MercatorBox) -> float:
     """The part's real move; with no nodes it keeps its own transform."""
     if not nodes:
         return 0.0
-    size = (part.scan.width, part.scan.height)
-    return largest_move_m(_base_of(part), nodes, node_reverse(nodes, size), size, ground)
+    size = part_size(part, box)
+    return largest_move_m(_base_of(part, box), nodes, node_reverse(nodes, size), size, ground)
 
 
 def _aligned(run: Aligning, box: MercatorBox, seams: Sequence[Seam], omitted: tuple[str, ...]) -> JoinPlan:
     """The seams measured and settled, as a plan."""
     measured = run.measure(seams)
-    settled = settle(run, [_base_of(part) for part in run.parts], measured)
+    settled = settle(run, [_base_of(part, box) for part in run.parts], measured)
     return _plan_of(run, box, measured, settled, omitted)
 
 

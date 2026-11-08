@@ -79,10 +79,33 @@ const rpcAxesSchema = z.strictObject({
     height: z.number(),
 });
 
+/** The most cells a side of a frame's heights: a city window's surface at 300 ground metres a cell (`surface.py`). */
+const MAX_HEIGHT_CELLS = 1024;
+
+/**
+ * The surface's cells under a frame's scan (`pipeline/src/hcm_pipeline/georef/heights.py`): an EPSG:3857 grid from its north-west
+ * corner, `cell` metres a side, and each cell's decimetres above `baseDm`, row by row from the north, as little-endian uint16 in
+ * base64 (two bytes a cell).
+ */
+const heightsSchema = z
+    .strictObject({
+        left: z.number(),
+        top: z.number(),
+        cell: z.number().positive(),
+        columns: z.number().int().min(2).max(MAX_HEIGHT_CELLS),
+        rows: z.number().int().min(2).max(MAX_HEIGHT_CELLS),
+        baseDm: z.number().int(),
+        valuesDm: z.string(),
+    })
+    .refine(
+        (heights) => heights.valuesDm.length === 4 * Math.ceil((2 * heights.columns * heights.rows) / 3),
+        coded('validation.format', ['valuesDm']),
+    );
+
 /**
  * M15, *Terrain*: a KH-9 panoramic frame fitted over the city's surface model (Copernicus DEM GLO-30, whose notice its layer carries).
- * The warp renders it through `rpc` with that model; `reliefM`, what the terrain moved beyond what a second-order polynomial
- * absorbs, ground metres RMS.
+ * Whatever renders or shows it, the warp, a join and the georeferencer's preview, reads its map through `rpc` over `heights`;
+ * `reliefM`, what the terrain moved beyond what a second-order polynomial absorbs, ground metres RMS.
  */
 const terrainSchema = z.strictObject({
     source: z.literal('glo30'),
@@ -95,6 +118,7 @@ const terrainSchema = z.strictObject({
         sampNum: rpcCoefficientsSchema,
         sampDen: rpcCoefficientsSchema,
     }),
+    heights: heightsSchema,
 });
 
 /** One ground control point. */

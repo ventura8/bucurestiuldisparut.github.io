@@ -1,11 +1,24 @@
 // The georeferencer shows the version's own map (M15 review, 2026-11-08): the figures and residuals the version page shows, the
 // preview of the map that is published (a camera's lattice included), and, once the pairs change, that the result is a refit.
-import { FIRESTORE_PATHS, fitTransform, geoToMercator, mercatorToGeo, scanBounds, type Gcp, type GeorefTransform } from '@hcm/shared';
+import {
+    FIRESTORE_PATHS,
+    fitTransform,
+    geoToMercator,
+    mercatorToGeo,
+    scanBounds,
+    terrainTransform,
+    type BBox,
+    type FittedTransform,
+    type Gcp,
+    type Georef,
+    type GeorefTransform,
+} from '@hcm/shared';
 import type { FakeMapboxMap } from '@hcm/test-support/fake-map';
 import { FakeMapDraw } from '@hcm/test-support/fake-map-draw';
 import { describe, expect, it } from 'vitest';
 
 import { WARP_DELAY_MS } from '../../src/georef/georef-pictures.js';
+import { warpTriangles } from '../../src/georef/warp.js';
 import { GEOREF_MODULE } from '../../src/georef/georef.js';
 import type { FakeClock } from '../app/fakes.js';
 import { settle } from '../app/fakes.js';
@@ -43,13 +56,43 @@ function lattice(gcps: readonly Gcp[]) {
     return { model: 'panoramic', nodes };
 }
 
-async function setup(withLattice: boolean) {
+/** Ground 100 m up everywhere (2 x 2 cells at 1,000 decimetres), as `georef.terrain.heights` holds it. */
+const LEVEL_100_M = { left: 2.8e6, top: 5.6e6, cell: 2e5, columns: 2, rows: 2, baseDm: 1000, valuesDm: 'AAAAAAAAAAA=' };
+/** Scan pixels east a metre of height: the terrain's parallax in this stand-in. */
+const PIXELS_A_METRE = 1;
+
+/** A frame over terrain: an RPC that is the pairs' affine map, its places shown further east the higher they are. */
+function terrain(gcps: readonly Gcp[]): NonNullable<Georef['terrain']> {
+    const affine = fitTransform('affine', gcps);
+    if (!affine.ok) {
+        throw new Error(affine.reason);
+    }
+    const middle = gcps[0]?.geo ?? { lat: 0, lng: 0 };
+    const at = (dLng: number, dLat: number) => affine.transform.toPixel({ lat: middle.lat + dLat, lng: middle.lng + dLng });
+    const [here, east, north] = [at(0, 0), at(1e-3, 0), at(0, 1e-3)];
+    const row = (axis: 'x' | 'y', parallax: number) => [
+        here[axis],
+        (east[axis] - here[axis]) * 1e3,
+        (north[axis] - here[axis]) * 1e3,
+        parallax,
+        ...Array.from({ length: 16 }, () => 0),
+    ];
+    const den = [1, ...Array.from({ length: 19 }, () => 0)];
+    const axes = { line: -0.5, samp: -0.5, lat: middle.lat, lng: middle.lng, height: 0 };
+    const unit = { line: 1, samp: 1, lat: 1, lng: 1, height: 1 };
+    const rpc = { offset: axes, scale: unit, lineNum: row('y', 0), lineDen: den, sampNum: row('x', PIXELS_A_METRE), sampDen: den };
+    return { source: 'glo30', reliefM: 4, rpc, heights: LEVEL_100_M };
+}
+
+async function setup(withLattice: boolean, overTerrain = false) {
     const { handle, native } = await mapboxHandle(new FakeMapDraw());
     const world = imageryWorld({ maps: factoryOf([{ ok: true, map: handle }]) });
     const doc = golden('version.awaiting-approval.json');
     const georef = goldenGeoref();
+    const withTerrain = overTerrain ? { terrain: terrain(georef.gcps) } : {};
     world.store.docs.set(FIRESTORE_PATHS.city(CITY), cityDoc({ imagery: { rmseThresholdM: 5 } }));
-    world.store.docs.set(VERSIONS(RENDERED), withLattice ? { ...doc, georef: { ...georef, lattice: lattice(georef.gcps) } } : doc);
+    const own = withLattice ? { ...doc, georef: { ...georef, lattice: lattice(georef.gcps), ...withTerrain } } : doc;
+    world.store.docs.set(VERSIONS(RENDERED), own);
     world.files.put(PREVIEW);
     const store = GEOREF_MODULE.create(world.services);
     return { ...world, map: native, georef: store, clock: world.services.clock as FakeClock };
@@ -67,8 +110,8 @@ function refitWest(east: number): number {
     return mercatorToGeo({ x: geoToMercator({ lat: 44.45, lng: west }).x + east, y: 0 }).lng;
 }
 
-async function opened(withLattice: boolean) {
-    const world = await setup(withLattice);
+async function opened(withLattice: boolean, overTerrain = false) {
+    const world = await setup(withLattice, overTerrain);
     world.georef.open([RENDERED]);
     world.georef.intents.attachMap(host());
     await settle();
@@ -104,6 +147,29 @@ describe('the georeferencer shows the version as published', () => {
         expect(shown).toBeCloseTo(refitWest(CAMERA_EAST_M), 4);
         expect(edited).not.toBeCloseTo(refitWest(CAMERA_EAST_M), 3);
         expect(georef.state.fit.refitted).toBe(true);
+    });
+
+    it('happyPath_aVersionOverTerrainPreviewsItsRpcOverItsHeights', async () => {
+        const { georef, pictures, map } = await opened(true, true);
+        const drawn = pictures.drawn.at(-1);
+        const corners = (map.sources.get('hcm-picture-warped') as { coordinates?: [number, number][] } | undefined)?.coordinates ?? [];
+        const [lngs, lats] = [corners.map((corner) => corner[0]), corners.map((corner) => corner[1])];
+        const bounds: BBox = [
+            [Math.min(...lngs), Math.min(...lats)],
+            [Math.max(...lngs), Math.max(...lats)],
+        ];
+        const frame = { bounds, width: drawn?.target.width ?? 0, height: drawn?.target.height ?? 0 };
+        /** The quads read the scan through `toPixel` alone; the box they are drawn in is the page's own. */
+        const nowhere: FittedTransform = { kind: 'tps', toGeo: () => ({ lat: 0, lng: 0 }), toPixel: () => ({ x: 0, y: 0 }) };
+        const through = (over: NonNullable<Georef['terrain']>) =>
+            warpTriangles(terrainTransform(over, nowhere), frame, SCAN, drawn?.source ?? { canvas: {}, width: 0, height: 0 });
+        const over = terrain(goldenGeoref().gcps);
+
+        // Each quad of the preview reads the scan where the layer does (100 m of ground shown 100 pixels east); read at sea level
+        // instead, every quad would read elsewhere.
+        expect(drawn?.triangles).toEqual(through(over));
+        expect(drawn?.triangles).not.toEqual(through({ ...over, heights: { ...over.heights, baseDm: 0 } }));
+        expect(georef.state.fit).toMatchObject({ fitRmseM: 6.1, checkpointRmseM: 8.9, refitted: false });
     });
 
     it('badPath_aVersionWithoutFiguresOfItsOwnShowsTheRefitAndNoRefitNotice', async () => {

@@ -1,5 +1,7 @@
-"""A frame fitted over terrain renders through its RPC with the city's surface model (M15-calibration-accuracy.md, *Terrain*)."""
+"""A frame fitted over terrain renders through its RPC over the heights it carries; the city's surface model is fetched, cached and
+refused whole (M15-calibration-accuracy.md, *Terrain*)."""
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Final
 
@@ -7,16 +9,22 @@ import cv2
 import numpy
 import pytest
 from hcm_pipeline import paths
+from hcm_pipeline.calibrate.terrain import Heights
 from hcm_pipeline.config import Config
-from hcm_pipeline.documents import TerrainInfo
-from hcm_pipeline.geo import Bounds, FloatArray, MercatorBox, fnv1a, ground_scale, to_lnglat_arrays
+from hcm_pipeline.documents import TerrainInfo, Version
+from hcm_pipeline.geo import Bounds, FloatArray, MercatorBox, ground_scale, to_lnglat_arrays
 from hcm_pipeline.georef.rpc import fit_rpc
+from hcm_pipeline.joblog import JobLog
+from hcm_pipeline.jobs import JobContext, RunFlags
+from hcm_pipeline.log import get_logger
+from hcm_pipeline.model import DocumentError, Job
 from hcm_pipeline.raster import gdal, osr
 from hcm_pipeline.rasters import driver_of
 from hcm_pipeline.runner import RunOutcome
-from hcm_pipeline.surface import DEM_SOURCE, tile_names
+from hcm_pipeline.steps.relief import city_heights, surface_key
+from hcm_pipeline.surface import tile_names
 
-from tests.fakes.world import CITY, DEM_PATH, PipelineWorld, city_bounds
+from tests.fakes.world import CITY, DEM_PATH, JOB_ID, PipelineWorld, city_bounds
 from tests.integration.test_regeoref_job import BASE, JOB, SPREAD, manual_gcps, seed_regeoref
 from tests.synthetic.scenes import CENTRE, AffineScan, affine_scan
 
@@ -46,8 +54,16 @@ def serve_surface(world: PipelineWorld, tmp_path: Path, height_m: float = HEIGHT
         world.http.serve(f"{DEM_PATH}/{name}", local.read_bytes())
 
 
-def terrain_record(scan: AffineScan) -> dict[str, object]:
-    """The scan's exact map over terrain: its affine map, a place at height h shown h * 0.5 further east."""
+def level_heights(height_m: float = HEIGHT_M) -> Heights:
+    """Level ground over the city's window, on 400 m cells."""
+    box = window()
+    cell = 400.0
+    shape = (int(box.height // cell) + 2, int(box.width // cell) + 2)
+    return Heights(box.left - cell, box.top + cell, cell, numpy.full(shape, height_m, numpy.float32))
+
+
+def terrain_record(scan: AffineScan, heights: Heights | None = None) -> dict[str, object]:
+    """The scan's exact map over terrain: its affine map, a place at height h shown h * 0.5 further east; and its heights."""
     scale = ground_scale(CENTRE[1])
 
     def ground_at(film: FloatArray, height_m: float) -> tuple[FloatArray, FloatArray]:
@@ -59,7 +75,7 @@ def terrain_record(scan: AffineScan) -> dict[str, object]:
     height, width = scan.pixels.shape
     rpc = fit_rpc(ground_at, (width, height), (0.0, 200.0))
     assert rpc is not None
-    return TerrainInfo(rpc, 12.0).as_record()
+    return TerrainInfo(rpc, 12.0, level_heights() if heights is None else heights).as_record()
 
 
 def warped(world: PipelineWorld, tmp_path: Path, name: str) -> Path:
@@ -87,37 +103,69 @@ def warp_only(world: PipelineWorld, **config: str) -> RunOutcome:
     return world.runner(Config(**{**world.config.__dict__, "job_id": JOB, **config})).run("warp")
 
 
-def test_happy_path_a_frame_over_terrain_renders_through_its_rpc_and_the_surface_model(world: PipelineWorld, tmp_path: Path) -> None:
+def test_happy_path_a_frame_over_terrain_renders_through_its_rpc_and_the_heights_it_carries(world: PipelineWorld, tmp_path: Path) -> None:
     """Scenarios: S-P06-HAPPY-TERRAIN"""
     scan = seed_regeoref(world, tmp_path, manual_gcps(affine_scan(world.scene.world), SPREAD))
     assert warp_only(world) is RunOutcome.DONE
     flat = warped(world, tmp_path, "flat.tif")
-    serve_surface(world, tmp_path)
     world.store.update(world.version_path(JOB), {"georef.terrain": terrain_record(scan)})
 
+    # No surface served or cached: the record's own heights are what the warp reads.
     assert warp_only(world) is RunOutcome.DONE
 
     # 100 m of ground shown 50 m east: the layer puts each feature 50 m west of the flat render.
     assert east_shift_m(warped(world, tmp_path, "terrain.tif"), flat) == pytest.approx(-HEIGHT_M * PARALLAX_EAST, abs=3.0)
-    cached = paths.reference(CITY, "dem", fnv1a(f"{window().key()}|{DEM_SOURCE}"))
-    assert cached in world.gcs.names("reference/")
+    assert world.http.paths("GET") == []
+    assert world.gcs.names("reference/") == []
+    assert "surface model" not in " ".join(world.log_lines(JOB))
+
+
+def test_bad_path_a_frame_whose_heights_record_is_malformed_is_refused(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P06-BAD-TERRAIN-UNAVAILABLE"""
+    scan = seed_regeoref(world, tmp_path, manual_gcps(affine_scan(world.scene.world), SPREAD))
+    record = terrain_record(scan)
+    heights = record["heights"]
+    assert isinstance(heights, dict)
+    record["heights"] = {**heights, "valuesDm": "AAAA"}
+    world.store.update(world.version_path(JOB), {"georef.terrain": record})
+
+    stored = world.store.get(world.version_path(JOB))
+    assert stored is not None
+    with pytest.raises(DocumentError, match="heights"):
+        Version.of(JOB, stored)
+
+
+def context(world: PipelineWorld, workdir: Path) -> JobContext:
+    log = JobLog(world.store, f"{world.job_path()}/logs", world.clock, get_logger("test"))
+    job, version = Job.of(JOB_ID, world.job()), Version.of(JOB_ID, world.version())
+    return JobContext(world.config, world.services(), job, version, workdir, RunFlags(), log)
+
+
+def test_happy_path_the_city_surface_is_fetched_once_and_cached_by_window_source_and_cell(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P06-HAPPY-TERRAIN"""
+    world.seed_import()
+    serve_surface(world, tmp_path)
+
+    heights = city_heights(context(world, tmp_path / "a"))
     fetched = len(world.http.paths("GET"))
-    assert warp_only(world) is RunOutcome.DONE
+    again = city_heights(context(world, tmp_path / "b"))
+
+    assert heights is not None
+    assert again is not None
+    assert numpy.array_equal(again.values, heights.values)
+    assert float(heights.values.min()) == pytest.approx(HEIGHT_M)
+    assert paths.reference(CITY, "dem", surface_key(window())) in world.gcs.names("reference/")
     assert len(world.http.paths("GET")) == fetched
 
 
-def test_bad_path_without_the_surface_model_the_frame_renders_flat_and_says_so(world: PipelineWorld, tmp_path: Path) -> None:
+def test_bad_path_without_every_tile_the_city_has_no_surface_and_nothing_is_cached(world: PipelineWorld, tmp_path: Path) -> None:
     """Scenarios: S-P06-BAD-TERRAIN-UNAVAILABLE"""
-    scan = seed_regeoref(world, tmp_path, manual_gcps(affine_scan(world.scene.world), SPREAD))
-    assert warp_only(world) is RunOutcome.DONE
-    flat = warped(world, tmp_path, "flat.tif")
-    world.store.update(world.version_path(JOB), {"georef.terrain": terrain_record(scan)})
+    world.seed_import()
 
-    assert warp_only(world) is RunOutcome.DONE
-
-    assert abs(east_shift_m(warped(world, tmp_path, "unread.tif"), flat)) < 1.0
-    logs = " ".join(world.log_lines(JOB))
-    assert "no Copernicus DEM tile could be read" in logs
-    assert "the surface model is gone" in logs
-    assert warp_only(world, dem_url="https://copernicus-dem-30m.s3.eu-central-1.amazonaws.com") is RunOutcome.DONE
-    assert "no surface model (" in " ".join(world.log_lines(JOB))
+    assert city_heights(context(world, tmp_path / "a")) is None
+    assert world.gcs.names("reference/") == []
+    assert "a Copernicus DEM tile over the city could not be read" in " ".join(world.log_lines(JOB_ID))
+    refused = replace(world.config, dem_url="https://copernicus-dem-30m.s3.eu-central-1.amazonaws.com")
+    ctx = context(world, tmp_path / "b")
+    assert city_heights(replace(ctx, config=refused)) is None
+    assert "no surface model (" in " ".join(world.log_lines(JOB_ID))

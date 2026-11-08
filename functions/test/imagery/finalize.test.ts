@@ -144,7 +144,8 @@ describe('finalizeVersion', () => {
         const axes = { line: 400, samp: 600, lat: 44.43, lng: 26.1, height: 90 };
         const set = Array.from({ length: 20 }, (_, index) => (index === 0 ? 1 : 0));
         const rpc = { offset: axes, scale: axes, lineNum: set, lineDen: set, sampNum: set, sampDen: set };
-        const georef = { ...goldenGeoref(), terrain: { source: 'glo30' as const, reliefM: 6.45, rpc } };
+        const heights = { left: 2.9e6, top: 5.5e6, cell: 420, columns: 2, rows: 2, baseDm: 512, valuesDm: 'AAAAAAAAAAA=' };
+        const georef = { ...goldenGeoref(), terrain: { source: 'glo30' as const, reliefM: 6.45, rpc, heights } };
 
         const { world } = await finish(uploaded({ source: undefined, origin: 'regeoref', georef }));
 

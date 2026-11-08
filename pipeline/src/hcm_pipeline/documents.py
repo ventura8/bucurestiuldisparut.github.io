@@ -12,8 +12,10 @@ from typing import Final
 
 import numpy
 
+from hcm_pipeline.calibrate.terrain import Heights
 from hcm_pipeline.contract import GCP_ORIGINS, LAYER_VERSION_STATES, MAX_JOB_LOGS
 from hcm_pipeline.geo import Bounds, near_lng, to_mercator_arrays
+from hcm_pipeline.georef.heights import heights_of_record, heights_record
 from hcm_pipeline.georef.lattice import LATTICE_MODELS, Lattice, LatticeNode
 from hcm_pipeline.georef.rpc import Rpc
 from hcm_pipeline.georef.transforms import Gcp
@@ -159,15 +161,17 @@ def lattice_of(value: object) -> Lattice | None:
 
 @dataclass(frozen=True)
 class TerrainInfo:
-    """`georef.terrain` (M15, *Terrain*): the frame was fitted over the surface model; the warp renders it through `rpc` with that model.
-    `relief_m`, what the terrain moved beyond a second-order fit (ground metres RMS); the source is GLO-30, whose notice the layer
-    carries."""
+    """`georef.terrain` (M15, *Terrain*): the frame was fitted over the surface model; whatever renders or shows it reads its map through
+    `rpc` over `heights`, the cells under its scan (`georef/heights.py`). `relief_m`, what the terrain moved beyond a second-order fit
+    (ground metres RMS); the source is GLO-30, whose notice the layer carries."""
 
     rpc: Rpc
     relief_m: float
+    heights: Heights
 
     def as_record(self) -> Record:
-        return {"source": "glo30", "reliefM": metres(self.relief_m), "rpc": self.rpc.as_record()}
+        rpc, heights = self.rpc.as_record(), heights_record(self.heights)
+        return {"source": "glo30", "reliefM": metres(self.relief_m), "rpc": rpc, "heights": heights}
 
 
 def terrain_of(value: object) -> TerrainInfo | None:
@@ -179,7 +183,7 @@ def terrain_of(value: object) -> TerrainInfo | None:
     if not isinstance(relief, int | float) or isinstance(relief, bool):
         raise DocumentError("terrain.reliefM must be a number")
     try:
-        return TerrainInfo(Rpc.of(record.get("rpc")), float(relief))
+        return TerrainInfo(Rpc.of(record.get("rpc")), float(relief), heights_of_record(record.get("heights")))
     except ValueError as error:
         raise DocumentError(str(error)) from error
 

@@ -6,13 +6,16 @@ polynomial, 8.5 to 13 m RMS off the fit on real frames: docs/research/M15-calibr
 its stored `georef.lattice`. GCPs in EPSG:3857 metres; the resolution of the layer's `maxzoom` (156543.03392804097 / 2^z m, the
 camera's from `SENSOR_SPECS`, else the scan's own resolution rounded to a zoom), pixels aligned on the tile grid,
 bilinear, an alpha band, and `-cutline` with `-crop_to_cutline` when the version has a crop ring. A frame fitted over terrain
-(`georef.terrain`, M15) renders through its RPC with the city's surface model (`-rpc -to RPC_DEM`): each place straight to the scan at its
-height; without the surface model it renders through its lattice, flat, with a warning. A USGS frame renders no further than
-the city's window (`outputBounds`, M9 §5): a wide crop rendered 1,249 km² and a 500 compute-unit estimate for one city.
+(`georef.terrain`, M15) renders through its RPC over the heights it carries (`-rpc -to RPC_DEM`, `attached`): each place straight to the
+scan at its height. The same `attached` is what a join (`join/warping.py`) and the next frame's ties (`steps/aligning.py`) read a frame
+through, so all of them show the one map the layer shows. A USGS frame renders no further than the city's window (`outputBounds`, M9 §5):
+a wide crop rendered 1,249 km² and a 500 compute-unit estimate for one city.
 """
 
 import json
 import math
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
@@ -26,7 +29,7 @@ from hcm_pipeline.join.canvas import aligned_box
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.rasters import GTIFF_OPTIONS
 from hcm_pipeline.steps.common import city_window, gdal_step
-from hcm_pipeline.steps.relief import FLAT, city_surface
+from hcm_pipeline.surface import write_heights
 
 DEFAULT_MINZOOM: Final = 10
 MAX_UPLOAD_ZOOM: Final = 18
@@ -34,6 +37,7 @@ WARP_MEMORY_MB: Final = 2048
 FLAT_GROUND: Final = 0.0
 # GDAL's RPC transformer over the surface model: its heights as they are (no geoid shift), read bilinearly.
 RPC_OPTIONS: Final = ("RPC_DEM_APPLY_VDATUM_SHIFT=FALSE", "RPC_DEMINTERPOLATION=bilinear")
+TPS_OPTIONS: Final = ("METHOD=GCP_TPS",)
 # EPSG:3857 x, y, the scan's column and row.
 Point = tuple[float, float, float, float]
 
@@ -78,6 +82,25 @@ def rpc_source(scan: Path, terrain: TerrainInfo, target: Path) -> Path:
 def rpc_method(surface: Path) -> dict[str, object]:
     """`gdalwarp -rpc -to RPC_DEM=surface`."""
     return {"rpc": True, "transformerOptions": [f"RPC_DEM={surface}", *RPC_OPTIONS]}
+
+
+@dataclass(frozen=True)
+class Attached:
+    """A scan with the map it is read through: what GDAL warps, the warp's options, and its transformer's (pixel to place and back)."""
+
+    source: Path
+    method: dict[str, object]
+    options: tuple[str, ...]
+
+
+def attached(scan: Path, georef: GeorefInfo, local: Callable[[str], Path]) -> Attached:
+    """The scan with its map (`local` names the files it needs): over terrain, its RPC over the heights it carries; else the points its
+    map renders through, a thin-plate spline."""
+    terrain = georef.terrain
+    if terrain is None:
+        return Attached(gcp_source(scan, georef, local("scan-gcps.vrt")), warp_method(georef), TPS_OPTIONS)
+    dem = write_heights(local("terrain-dem.tif"), terrain.heights)
+    return Attached(rpc_source(scan, terrain, local("scan-rpc.vrt")), rpc_method(dem), ("METHOD=RPC", f"RPC_DEM={dem}", *RPC_OPTIONS))
 
 
 def warp_method(georef: GeorefInfo) -> dict[str, object]:
@@ -149,16 +172,8 @@ class WarpStep:
         return Done(ctx.publish(warped, ctx.work_file("warped.tif"), "image/tiff"))
 
     def _source(self, ctx: JobContext, scan: Path, georef: GeorefInfo) -> tuple[Path, dict[str, object]]:
-        """What GDAL warps, and how: the upload as it is, a map over terrain through its RPC, else the points of its map."""
+        """What GDAL warps, and how: the upload as it is, else the scan with its map (`attached`)."""
         if georef.method == "embedded":
             return scan, warp_method(georef)
-        terrain = georef.terrain
-        surface = None if terrain is None else city_surface(ctx)
-        if terrain is not None and surface is not None:
-            return gdal_step(ctx, lambda: rpc_source(scan, terrain, ctx.local("scan-rpc.vrt")), "attach the RPC"), rpc_method(surface.local)
-        return self._points(ctx, scan, georef)
-
-    def _points(self, ctx: JobContext, scan: Path, georef: GeorefInfo) -> tuple[Path, dict[str, object]]:
-        if georef.terrain is not None:
-            ctx.log.warn(f"the surface model is gone: {FLAT}", self.name)
-        return gdal_step(ctx, lambda: gcp_source(scan, georef, ctx.local("scan-gcps.vrt")), "attach the GCPs"), warp_method(georef)
+        found = gdal_step(ctx, lambda: attached(scan, georef, ctx.local), "attach the map")
+        return found.source, found.method

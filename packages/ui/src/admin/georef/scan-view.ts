@@ -3,6 +3,7 @@
  * "fit" up to 8× and panned, and the conversions between the pane's CSS pixels, the preview's pixels and the
  * full-resolution scan's (`pixel × previewScale` is the preview's: §6.1). Pure, so the element only draws and listens.
  */
+import { clamp } from '@hcm/shared';
 
 export interface Point {
     readonly x: number;
@@ -35,7 +36,7 @@ export function fitView(pane: Size, image: Size): ScanView {
 
 /** The view zoomed by `factor` about the pane point `at`, within fit … fit × `MAX_ZOOM`. */
 export function zoomView(view: ScanView, factor: number, at: Point, fit: ScanView): ScanView {
-    const scale = Math.min(Math.max(view.scale * factor, fit.scale), fit.scale * MAX_ZOOM);
+    const scale = clamp(view.scale * factor, fit.scale, fit.scale * MAX_ZOOM);
     const kept = scale / view.scale;
     return { scale, offset: { x: at.x - (at.x - view.offset.x) * kept, y: at.y - (at.y - view.offset.y) * kept } };
 }
