@@ -63,10 +63,10 @@ describe('<hcm-imagery-page>: buying a scan', () => {
         expect(card.textContent).toContain('Must be ordered from USGS');
         expect(card.textContent).toContain('Cost: 35 USD (1 × 30 USD a frame + 5 USD an order), paid to USGS directly');
         expect(deepAll(card, '.guide li').map((step) => step.textContent.trim())).toEqual([
-            'Add the scene to the EarthExplorer basket (the basket icon beside it in the search results).',
-            'Open Item Basket and choose On-Demand.',
-            'Choose 7 µm (recommended), then Start Order.',
-            'USGS then asks for payment by card or by phone.',
+            'Sign in on the page that opens (Login, top right).',
+            'At the bottom of the page, click Order.',
+            'On the order page keep On-Demand, choose 7 Micron, then click Submit Product Selections.',
+            "Fill in USGS's form and pay 35 USD on pay.gov; keep the confirmation number.",
         ]);
         const link = deep(card, 'a.ee-link');
         expect([link.getAttribute('href'), link.getAttribute('target'), link.getAttribute('rel')]).toEqual([

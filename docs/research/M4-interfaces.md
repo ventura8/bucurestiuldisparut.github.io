@@ -75,7 +75,8 @@ removal of the compare plugin loader, `docs/ENGINE_API.md`'s compare section, an
 ```text
 Imagery → a scene that must be ordered (chip "Must be ordered", Free only off)
    └─ its order card: 35 USD = 30 a frame + 5 an order, paid to USGS; the guide; "Order in EarthExplorer" (new tab)
-        └─ (the admin, in EarthExplorer: basket → Item Basket → On-Demand → 7 µm → Start Order; USGS asks for payment)
+        └─ (the admin, on the scene's EarthExplorer page: Login → Order → On-Demand, 7 Micron → Submit Product Selections
+            → USGS's form → pay.gov, 35 USD → an order confirmation number)
         └─ "I ordered it" (1 click) ─► usgs.markOrdered ─► order {state: ordered, nextCheckAt: +24 h}
              └─ imagery.tick, step "orders" (every 5 min; each order asked once a day, Check now any time)
                   ├─ USGS lists the download ─► delivered ─► the M3 import (job usgs-import + version, one transaction)
@@ -184,8 +185,14 @@ tick at once never import twice: the version's id is the job's, created with `cr
   verified sample (`{datasetId: '5e839febdccb64b3', entityId: 'DS009013039DV181'}`) and a body check to
   `scripts/ci/check_contracts.py` (`PIPELINE_STAGE=contract`, `contract.yml`: 2xx and the page names the entity id), a
   stricter probe of the pre-approved kind. The admin's link is built from the same template.
-- **Buy flow guide** (texts of the order card): basket icon → Item Basket → On-Demand → 7 µm (recommended) → Start Order;
-  USGS's Business Partner Office then asks for payment by card or phone; unpaid requests are deleted after two weeks;
+- **Buy flow guide** (texts of the order card; verified by the owner's first order, D3C1216-100235F038, 2026-11-08): on
+  the scene's page (`/scene/metadata/full/{datasetId}/{entityId}/`, which has no search results and no basket icon) sign
+  in (Login, top right), then **Order** at the page's bottom; the order page
+  (`/order/index/?list=order-process-ee-<n>&orderType=order`, a Scene List with the order type On-Demand Order, the scene
+  under its dataset, e.g. Declass 3, with the product `DECLASS 3 IMAGERY ON-DEMAND ($30)` and a Micron Option of 7 or
+  14 Micron): keep On-Demand, choose **7 Micron**, then **Submit Product Selections**; USGS's form, then payment by card
+  on pay.gov, 35 USD (30 + 5), which ends with an EarthExplorer order confirmation number (`P…`). The Item Basket path
+  (basket icon in search results → Item Basket → On-Demand → Start Order) is the search page's, not the scene page's; unpaid requests are deleted after two weeks;
   turnaround three to four weeks after payment; support `custserv@usgs.gov`, 1-800-252-4547. Claude never pays, never
   types card data, and opens EarthExplorer for the user only with their consent (`AGENTS.md`).
 - **Not built** (UNVERIFIED, `design-review-onboarding.md` §0.4): detecting the order or its payment through M2M
@@ -706,7 +713,8 @@ length-limited by their schemas and rendered with Lit or `textContent`, never as
 | Fact | Proof (ask first; local or the real project, never in CI) |
 | --- | --- |
 | The declassii and declassiii EarthExplorer dataset ids | the first real harvest's `dataset-search`; the deep link opened once in the user's browser with consent |
-| USGS deletes an unpaid order after two weeks; turnaround three to four weeks | USGS's help pages (2026-10-11); the first real order |
+| USGS deletes an unpaid order after two weeks; turnaround three to four weeks | USGS's help pages (2026-10-11); the first real order (placed and paid 2026-11-08: the delivery date proves the turnaround) |
+| ~~Where the order control sits on the scene's page~~ | proved 2026-11-08 by the owner's first order: Login, then Order at the page's bottom, no basket (the *Buy flow guide*, §1) |
 | `tram-order-search` / `tram-order-status` could detect an order or its payment | the first real order, with the download role |
 | `gemini-2.5-flash-lite` is still served in `us-central1`, and its price | the setup self-test's `ai` check (`countTokens`, free) after Provision; the first month's invoice line |
 | `roles/firebasecloudmessaging.admin` is the narrowest role for HTTP v1 sends | the first `notify.sendTest` after Provision |
@@ -762,7 +770,9 @@ workstreams wrote them; where they differ, this addendum is the contract.
   (a frame scanned meanwhile, whose card goes with the order) is also the snackbar's (`OrderActions.markOrdered`), and a
   refused mark moves the keyboard to the scene's heading (`ImageryContext.focusDetail`); times are in the admin's own time
   zone. Step one of the EarthExplorer guide no longer names a basket on the scene's
-  page (UNVERIFIED: where the control is).
+  page (UNVERIFIED: where the control is). Verified on 2026-11-08 by the owner's first order: the scene's page has
+  Login and an Order button, no basket; the guide's four steps are now Login, Order, 7 Micron with Submit Product
+  Selections, and USGS's form with 35 USD on pay.gov (the *Buy flow guide* above).
 - §2.3, §2.5 (suggestions): `Decision.degenerate` of the pipeline: enough confident pairs that give no fit wait with
   `apiError.imagery.noSpread {pairs}`; the panel's view has `noSpread` (`adminContent.georef.suggestions.noSpread`); each
   pending row has `offsetM`, its distance from the page's live fit (`distanceFromFit` of `@hcm/shared`), and the

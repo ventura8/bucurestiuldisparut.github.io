@@ -23,14 +23,15 @@ import { when, withValue } from '../when.js';
 export const EARTH_EXPLORER_HOME = 'https://earthexplorer.usgs.gov/';
 
 /**
- * The steps of an on-demand order in EarthExplorer (`design-review-onboarding.md` §0.6 verified the scene's page; where
- * the basket control sits is UNVERIFIED until the first real order, `M4-interfaces.md` §10, so step one names it loosely).
+ * The steps of an on-demand order from the scene's EarthExplorer page, as the owner ordered D3C1216-100235F038 on
+ * 2026-11-08 (`M4-interfaces.md` §10): Login, Order at the page's bottom, the Scene List's 7 Micron and Submit Product
+ * Selections, then USGS's form and pay.gov. The scene page has no basket: the Item Basket path is for search results.
  */
 const GUIDE = [
-    'adminContent.orders.guide.basket',
-    'adminContent.orders.guide.itemBasket',
-    'adminContent.orders.guide.resolution',
-    'adminContent.orders.guide.payment',
+    'adminContent.orders.guide.signIn',
+    'adminContent.orders.guide.order',
+    'adminContent.orders.guide.selections',
+    'adminContent.orders.guide.pay',
 ] as const;
 
 /**
