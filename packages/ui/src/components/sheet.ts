@@ -325,7 +325,8 @@ export class HcmSheet extends LitElement {
         </button>`;
     }
 
-    private sheet(): HTMLElement | null {
+    /** The sheet's own surface, what covers the map (the viewer's Locate keeps a photo's place beside it). */
+    sheet(): HTMLElement | null {
         return this.renderRoot.querySelector<HTMLElement>('.sheet');
     }
 

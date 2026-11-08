@@ -11,13 +11,14 @@ import {
     withOverlayOpacity,
     withOverlayVisibility,
     type DecodedHash,
+    type LngLat,
     type Locale,
     type MapView,
     type MessageKey,
 } from '@hcm/shared';
 import type { MapLabels } from '@hcm/shared/map-labels';
 import { isCompactHeight, windowClassFor } from '@hcm/ui';
-import { Listeners, type Unsubscribe } from '@hcm/ui/map';
+import { CONE_MIN_ZOOM, Listeners, type CameraOffset, type Unsubscribe } from '@hcm/ui/map';
 
 import type { Measurement } from '../telemetry/telemetry-port.js';
 import { Boot, type BootHost } from './boot.js';
@@ -55,6 +56,13 @@ export interface ViewerActions {
     /** Live: the map follows on the next animation frame; `final` (slider released) also writes the hash. */
     setOverlayOpacity(overlayId: string, opacity: number, final?: boolean): void;
     openPhoto(photoId: string | null): void;
+    /**
+     * The photo sheet's Locate: the camera flies to the photo's place (a jump under reduced motion), zoomed in at least as far
+     * as its view cone shows and no further than the city allows, the place `offset` px from the map's centre (beside the
+     * sheet); a ring marks it until the camera moves again or a photo opens or closes. The URL hash follows the camera as
+     * always. An unknown id, or no map, moves nothing.
+     */
+    locatePhoto(photoId: string, offset: CameraOffset): void;
     /** The open photo's thumbnail was decoded (`ok`) or failed (§76: `photo_timing`). */
     photoShown(ok: boolean): void;
     /** Opens the POI's details in the detail sheet (`sheet: 'poi'`); null closes; an unknown id is ignored. */
@@ -117,6 +125,8 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
     #destroyed = false;
     /** Show my location's flight is under way: its own `moveend` keeps the hash's view wherever the flight ended. */
     #flying = false;
+    /** Locate's ring: 2 while its flight is under way (that flight's own `moveend` keeps it), 1 while it shows, 0 without. */
+    #ring = 0;
 
     constructor(deps: ViewerDeps) {
         this.deps = deps;
@@ -228,6 +238,7 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
 
     openPhoto(photoId: string | null): void {
         const state = this.#state;
+        this.#unmark();
         if (photoId === null) {
             this.set({ ...state, selectedPhotoId: null, lightbox: false, sheet: sheetAfterClosing(state.sheet, 'photo') });
         } else if (state.manifest?.photos.some((photo) => photo.id === photoId) !== true) {
@@ -239,6 +250,25 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
             this.deps.telemetry.logEvent({ name: 'photo_open', photoId });
         }
         this.hash.schedule();
+    }
+
+    locatePhoto(photoId: string, offset: CameraOffset): void {
+        const { manifest, view } = this.#state;
+        const photo = manifest?.photos.find((candidate) => candidate.id === photoId);
+        if (manifest !== null && photo !== undefined) {
+            const center: LngLat = [photo.location.lng, photo.location.lat];
+            this.#ring = 2;
+            this.deps.map.markPhoto(center);
+            this.#boot.flyMap({ center, zoom: Math.min(Math.max(view.zoom, CONE_MIN_ZOOM), manifest.city.maxZoom) }, { offset });
+        }
+    }
+
+    /** Takes Locate's ring away, if it shows. */
+    #unmark(): void {
+        if (this.#ring > 0) {
+            this.#ring = 0;
+            this.deps.map.markPhoto(null);
+        }
     }
 
     /** A field measurement for telemetry (§76; a telemetry without `measure` takes none). */
@@ -299,6 +329,11 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         // centre point), then the same view at the hash's precision (a resize); it goes once the visitor moved it.
         const held = this.#flying || encodeHash({ view }) === encodeHash({ view: state.view });
         this.#flying = false;
+        if (this.#ring === 2) {
+            this.#ring = 1;
+        } else {
+            this.#unmark();
+        }
         this.set({ ...state, view, hashView: held ? state.hashView : undefined });
         this.hash.schedule();
     }

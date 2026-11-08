@@ -541,3 +541,27 @@ describe('Mapbox adapter: events and lifecycle', () => {
         expect(map.callsOf('setConfigProperty')).toEqual([]);
     });
 });
+
+describe('Mapbox adapter: a camera move with an offset (Show on map, V51)', () => {
+    it('happyPath_anOffsetFliesThePlaceBesideTheCentreAndJumpsThereUnderReducedMotion', async () => {
+        const animated = await mounted();
+        const reduced = await mounted({ ...OPTIONS, reducedMotion: true });
+
+        animated.port.flyTo({ center: [26.1, 44.43], zoom: 17 }, { offset: [0, -150] });
+        reduced.port.flyTo({ center: [26.1, 44.43], zoom: 17 }, { offset: [-180, 0] });
+
+        expect(animated.map.callsOf('flyTo')).toEqual([[{ center: [26.1, 44.43], zoom: 17, offset: [0, -150] }]]);
+        // jumpTo takes no offset: the jump is an easeTo of no duration.
+        expect(reduced.map.callsOf('jumpTo')).toEqual([]);
+        expect(reduced.map.callsOf('easeTo')).toEqual([[{ center: [26.1, 44.43], zoom: 17, offset: [-180, 0], duration: 0 }]]);
+    });
+
+    it('badPath_noOffsetNoOffsetKey', async () => {
+        const animated = await mounted();
+
+        animated.port.flyTo({ zoom: 15 }, {});
+
+        expect(animated.map.callsOf('flyTo')).toEqual([[{ zoom: 15 }]]);
+        expect(Object.hasOwn(animated.map.callsOf('flyTo')[0]?.[0] ?? {}, 'offset')).toBe(false);
+    });
+});

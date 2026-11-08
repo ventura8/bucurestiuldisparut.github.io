@@ -120,6 +120,7 @@ export const ro = {
     'photo.suggest': 'Propune o corectură',
     'photo.credit': 'Adăugată de {name}',
     'photo.openLightbox': 'Deschide fotografia mărită',
+    'photo.locate': 'Arată pe hartă',
     'poi.category': 'Categoria: {category}',
     'poi.year': 'Anul {year}',
     'poi.years': 'Între {yearStart} și {yearEnd}',

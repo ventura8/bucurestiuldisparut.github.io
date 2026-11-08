@@ -7,6 +7,7 @@ describe('the map entries', () => {
     it('happyPath_mapExportsThePortsAdapterAndHelpers', () => {
         expect(new Set(Object.keys(map))).toEqual(
             new Set([
+                'CONE_MIN_ZOOM',
                 'EventListeners',
                 'Listeners',
                 'MAPBOX_GL_CSS_URL',

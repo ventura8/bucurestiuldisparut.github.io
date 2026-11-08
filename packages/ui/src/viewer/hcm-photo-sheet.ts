@@ -3,13 +3,16 @@
  * V24): a modal bottom sheet on compact, a modal side sheet on medium and compact height, a docked standard side
  * sheet from expanded. A photo shows its lazy WebP thumbnail (a button that opens the lightbox), its date, author,
  * licence, rights note, source link, description and links, all rendered as text and anchors; a POI renders `<hcm-poi-detail>`.
- * A missing image shows a placeholder that keeps the photo's title as its accessible name (S-V07-BAD-IMAGE404).
+ * A missing image shows a placeholder that keeps the photo's title as its accessible name (S-V07-BAD-IMAGE404). Below the
+ * image, while there is a map (`canLocate`), "Show on map" fires `hcm-photo-locate` (`{ photoId, offset }`): the viewer
+ * brings the camera to the photo's place, `offset` px from the map's centre so that a modal sheet does not cover it (V51).
  * Once the thumbnail is decoded (or failed) the sheet fires `hcm-photo-shown` (`{ ok }`), which the viewer turns into
  * the `photo_timing` field measurement (docs/ARCHITECTURE.md → *Field measurements*).
  */
 import { DEFAULT_LOCALE, translate, type Locale, type Photo, type Poi, type PoiCategory, type Story } from '@hcm/shared';
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 
+import type { CameraOffset } from '../map/mapbox-types.js';
 import { EMPTY } from './empty.js';
 import type { SheetMode } from './layout.js';
 import { relatedStories } from './hcm-stories.js';
@@ -21,6 +24,17 @@ import { photoRights } from './photo-rights.js';
 import { localizedText, photoDateText, photoSourceText } from './text.js';
 
 export const HCM_PHOTO_SHEET_TAG = 'hcm-photo-sheet';
+
+/**
+ * Where Locate puts the photo's place, in px from the map's centre: halfway up what a modal bottom sheet leaves, halfway along
+ * what a side sheet leaves on its leading side; a docked sheet has its own pane (no sheet surface here) and leaves the map whole.
+ */
+export function locateOffset(mode: SheetMode, sheet: DOMRect | undefined): CameraOffset {
+    if (sheet === undefined) {
+        return [0, 0];
+    }
+    return mode === 'bottom' ? [0, -sheet.height / 2] : [-sheet.width / 2, 0];
+}
 
 export class HcmPhotoSheet extends LitElement {
     static override readonly properties = {
@@ -34,6 +48,7 @@ export class HcmPhotoSheet extends LitElement {
         manifestUrl: { type: String, attribute: 'manifest-url' },
         contributeUrl: { attribute: false },
         stories: { attribute: false },
+        canLocate: { attribute: false },
         imageFailed: { state: true },
     };
 
@@ -87,6 +102,8 @@ export class HcmPhotoSheet extends LitElement {
     declare contributeUrl: string | null;
     /** M17: the city's stories; those naming the photo or the place are listed. */
     declare stories: readonly Story[];
+    /** There is a map to show the photo on (none without WebGL: the photo list's sheet has no Locate). */
+    declare canLocate: boolean;
     declare mode: SheetMode;
     declare open: boolean;
     declare manifestUrl: string;
@@ -104,6 +121,7 @@ export class HcmPhotoSheet extends LitElement {
         this.manifestUrl = '';
         this.contributeUrl = null;
         this.stories = [];
+        this.canLocate = false;
         this.imageFailed = false;
     }
 
@@ -150,12 +168,26 @@ export class HcmPhotoSheet extends LitElement {
     #photoDetails(photo: Photo): TemplateResult {
         const locale = this.locale;
         return html`<div class="details">
-            ${this.#image(photo)}
+            ${this.#image(photo)} ${this.#locate(photo)}
             <p class="supporting">${photoDateText(photo, locale)}</p>
             ${photoRights(photo, locale)} ${this.#source(photo)}
             ${photo.description === undefined ? nothing : html`<p>${localizedText(photo.description, locale)}</p>`} ${this.#links(photo)}
             ${this.#suggestion(photo)} ${relatedStories(this.stories, 'photoIds', photo.id, this.locale)}
         </div>`;
+    }
+
+    /** "Show on map": the offset keeps the photo's place in the middle of what a modal sheet leaves of the map. */
+    #locate(photo: Photo): TemplateResult {
+        if (!this.canLocate) {
+            return EMPTY;
+        }
+        const onLocate = (): void => {
+            const offset = locateOffset(this.mode, this.renderRoot.querySelector('hcm-sheet')?.sheet()?.getBoundingClientRect());
+            this.dispatchEvent(new CustomEvent('hcm-photo-locate', { bubbles: true, detail: { photoId: photo.id, offset } }));
+        };
+        return html`<p>
+            <hcm-button variant="tonal" icon="location_on" @click=${onLocate}>${translate(this.locale, 'photo.locate')}</hcm-button>
+        </p>`;
     }
 
     /** M13 §4: contesting the photo is a page of its own, which signs in; the map holds only the link. */

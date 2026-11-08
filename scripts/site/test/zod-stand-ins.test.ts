@@ -1,21 +1,24 @@
-/** The admin's and the engine's resolution of zod's JSON Schema conversion and messages (DECISIONS-for-review.md §86, §93, §100a). */
+/**
+ * The admin's and the engine's resolution of zod's JSON Schema conversion and messages (DECISIONS-for-review.md §86, §93, §100a,
+ * §115a); a build may also name only the conversion's stand-in.
+ */
 import { describe, expect, it } from 'vitest';
 
 import { zodStandIn, zodStandInsPlugin } from '../src/zod-stand-ins.js';
 
 const CLASSIC = '/repo/node_modules/zod/v4/classic/schemas.js';
-const ENGINE = { jsonSchema: '/stand-ins/json-schema.ts' } as const;
+const JSON_ONLY = { jsonSchema: '/stand-ins/json-schema.ts' } as const;
 const ADMIN = { jsonSchema: '/stand-ins/json-schema.ts', messages: '/stand-ins/no-messages.ts' } as const;
 
 describe('zodStandIn', () => {
     it('happyPath_theClassicSchemasConversionResolvesToTheStandInForBothBuilds', () => {
-        expect(zodStandIn('../core/json-schema-processors.js', CLASSIC, ENGINE)).toBe('/stand-ins/json-schema.ts');
+        expect(zodStandIn('../core/json-schema-processors.js', CLASSIC, JSON_ONLY)).toBe('/stand-ins/json-schema.ts');
         expect(zodStandIn('../core/to-json-schema.js', CLASSIC, ADMIN)).toBe('/stand-ins/json-schema.ts');
     });
 
     it('happyPath_onlyABuildThatNamesAMessagesStandInLeavesOutZodsMessages', () => {
         expect(zodStandIn('../locales/en.js', CLASSIC, ADMIN)).toBe('/stand-ins/no-messages.ts');
-        expect(zodStandIn('../locales/en.js', CLASSIC, ENGINE)).toBeNull();
+        expect(zodStandIn('../locales/en.js', CLASSIC, JSON_ONLY)).toBeNull();
     });
 
     it('badPath_anyOtherImportOrImporterKeepsZodsOwn', () => {
@@ -26,7 +29,7 @@ describe('zodStandIn', () => {
     });
 
     it('happyPath_thePluginResolvesBeforeTheBundler', () => {
-        const plugin = zodStandInsPlugin(ENGINE);
+        const plugin = zodStandInsPlugin(JSON_ONLY);
         const resolve = plugin.resolveId as (source: string, importer: string | undefined) => string | null;
 
         expect(plugin.enforce).toBe('pre');

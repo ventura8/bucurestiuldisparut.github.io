@@ -141,6 +141,25 @@ describe('<hcm-map-viewer>: boot', () => {
         expect(store.callsOf('photoShown')).toEqual([[false]]);
     });
 
+    it('happyPath_showOnMapReachesTheStoreWithThePhotoAndItsOffset', async () => {
+        const { element, store } = await mountViewer(readyState(testManifest(), { selectedPhotoId: 'uranus-1984', sheet: 'photo' }));
+
+        expect((part({ element, store }, 'hcm-photo-sheet') as HTMLElement & { canLocate: boolean }).canLocate).toBe(true);
+        part({ element, store }, 'hcm-photo-sheet').dispatchEvent(
+            new CustomEvent('hcm-photo-locate', { bubbles: true, detail: { photoId: 'uranus-1984', offset: [0, -120] } }),
+        );
+
+        expect(store.callsOf('locatePhoto')).toEqual([['uranus-1984', [0, -120]]]);
+    });
+
+    it('badPath_withoutWebglThePhotoSheetCannotLocate', async () => {
+        const { element, store } = await mountViewer(
+            readyState(testManifest(), { webgl: false, selectedPhotoId: 'uranus-1984', sheet: 'photo' }),
+        );
+
+        expect((part({ element, store }, 'hcm-photo-sheet') as HTMLElement & { canLocate: boolean }).canLocate).toBe(false);
+    });
+
     it('happyPath_aDeclarativeElementAsksTheEngineToBootIt', () => {
         const boot = vi.fn();
         setViewerBootstrap(boot);

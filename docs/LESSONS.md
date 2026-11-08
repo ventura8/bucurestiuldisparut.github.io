@@ -2862,3 +2862,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the merge's targeted run; the track's runs had opened the pane after the flight ended, where a resize keeps the centre and the view still matched.
     - Fix and pin: the store holds the hash's view through the flight's own `moveend` wherever it ends, then while the view stays the same (`store-located-view.test.ts`, *a pane opened mid-flight*; S-V19-BAD-HASH-NEVER-SENT).
     - **A rule that reads "the visitor moved the camera" from where the camera ended up is wrong whenever anything else can move it; mark the move your own code started, and let only the next one count as the visitor's.**
+481. **The engine carried zod's English messages, which it never shows, while its IIFE was 53 bytes under budget.**
+    - Seen: 2026-11-08, track/locate: the photo sheet's Show on map needed about 440 bytes gzip in an IIFE at 124,947 of 125,000.
+    - Found by: weighing the IIFE by source file from its source map (`zod/v4/locales/en.js`, 2.7 KB minified) and reading where an issue's text goes: the viewer shows its `validation.*` code, never zod's sentence (`packages/shared/src/schemas/validation.ts`). §100a had kept the messages in the engine, §93 had taken them out of the admin for the same reason.
+    - Fix: the engine's build resolves them to the admin's empty stand-in too (`packages/engine/vite.config.ts`, DECISIONS-for-review.md §115a): 1,010 bytes; no budget raised, no feature cut.
+    - **A stand-in one build makes for a reason that holds in the other build belongs in both; when a budget is full, weigh the bundle by source file before cutting the feature.**

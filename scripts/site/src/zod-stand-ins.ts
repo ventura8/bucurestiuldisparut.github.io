@@ -5,8 +5,8 @@ import type { Plugin } from 'vite';
  * derived getters (`minLength`, `maxValue`, `isInt`, `format`), none of which the admin or the engine calls: those two imports
  * resolve to a stand-in that refuses (`packages/admin/src/vendor/zod-json-schema-unsupported.ts`, DECISIONS-for-review.md
  * §86 for the admin, §100a for the engine), and the real modules are no longer reachable. zod's classic schemas also install
- * its English messages, which the admin never shows (an issue reaches a page as its `validation.*` code): the admin's build
- * resolves them to a stand-in with no messages (`zod-locale-none.ts`, §93); the engine keeps them. Every other importer
+ * its English messages, which neither app shows (an issue reaches a page as its `validation.*` code): both builds resolve
+ * them to a stand-in with no messages (`zod-locale-none.ts`; §93 for the admin, §115a for the engine). Every other importer
  * keeps zod's own modules.
  */
 const ZOD_CLASSIC_SCHEMAS = /[\\/]zod[\\/]v4[\\/]classic[\\/]schemas\.js$/;

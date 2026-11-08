@@ -447,10 +447,10 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
     MAP_LABEL_JOURNEY,
     PHOTO_SOURCE_JOURNEY,
     {
-        title: 'A photo at every height, its lightbox, and the photo list',
+        title: 'A photo at every height, shown on the map, its lightbox, and the photo list',
         id: 'photo',
         boot: ({ page, lang }) => openViewer(page, { lang, hash: `18/44.42955/26.09560&photo=${PHOTO}` }),
-        states: ['photo', 'photo-peek', 'photo-full', 'lightbox', 'photo-list'],
+        states: ['photo', 'photo-located', 'photo-peek', 'photo-full', 'lightbox', 'photo-list'],
     },
     {
         title: 'A point of interest at every height, and About from top to end',

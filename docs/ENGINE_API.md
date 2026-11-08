@@ -243,6 +243,22 @@ The menu's **Show my location** is a switch (`menuitemcheckbox`, `aria-checked`,
 
 Code: `packages/ui/src/viewer/my-location.ts` (the switch and the watch), `packages/ui/src/map/my-location.ts` (the layer, `ViewerMapPort.setMyLocation`), `MapSync` in `packages/engine/src/core/map-sync.ts` (the state's `myLocation` on every map).
 
+## Show on map
+
+Status (2026-11-08): the owner's request ("we want for photos detail panel to be a locate image button"); scenario rows V51, `e2e/specs/viewer/locate-photo.spec.ts`, the tour's state `photo-located`. Additive within v1: no property, event or method for a page to set.
+
+A photo's details have a tonal **Show on map** button ("Arată pe hartă", the `location_on` icon) under the image.
+
+- **The camera** goes to the photo's place, zoomed in at least to 17, where its view cone shows, and never beyond the city's `maxZoom` (a camera already closer stays that close); Mapbox keeps it inside the city's `bounds`. It flies, and jumps under reduced motion, as every camera move.
+- **Beside the sheet**: the sheet stays open and the place ends in the middle of what it leaves of the map, half the bottom sheet's height above the centre on a phone, half the side sheet's width to its left on a medium window (Mapbox's `offset`; a jump is an `easeTo` of no duration, since `jumpTo` takes none). From expanded up the sheet is a pane beside the map and the place is its centre. The map's padding is never changed.
+- **A ring** in the cone's colour marks the place (our GeoJSON source and circle layer `hcm-photo-mark`, `top` slot) until the camera moves again or a photo opens or closes; it does not pulse or fade by itself, so nothing on the map moves on its own.
+- **The URL hash follows the camera** as after any move: this is the photo's place, not the visitor's (compare *Show my location*). The photo stays in the hash.
+- **No button** where it could not work: without a map (no WebGL, the photo list's sheet) and for a photo with no place (those are in the gallery of unplaced photos, which has no detail sheet). A point of interest's details have none either.
+- **Keyboard, screen reader, gamepad**: a real button with its visible name; nothing extra is announced (camera moves are not announced anywhere in the viewer). The gamepad reaches it as any focusable control: D-pad to it, A to press it.
+- **No JavaScript API**: `openPhoto` stays what it is; the place's offset depends on the sheet the viewer renders, so a page that wants the camera at a photo moves it with the hash.
+
+Code: `HcmPhotoSheet` and `locateOffset` (`packages/ui/src/viewer/hcm-photo-sheet.ts`, the event `hcm-photo-locate` inside the viewer), `locatePhoto` in `packages/engine/src/core/store.ts`, `MapPort.flyTo`'s `offset` (`packages/ui/src/map/camera.ts`) and `ViewerMapPort.markPhoto` (`packages/ui/src/map/my-location.ts`). The bytes: the engine's IIFE was 53 bytes under its 125,000; zod's English messages, which the engine never shows (an issue reaches the visitor as its `validation.*` code), now resolve to the admin's empty stand-in in the engine's build too, 1,010 bytes gzip; with the button the IIFE measures 124,374 bytes.
+
 ## City Manifest v1
 
 The only data the viewer reads: a static JSON file (from the public bucket, or inline in `config.js`). Schema: `manifestSchema` in `packages/shared/src/schemas/manifest.ts`; the Bucharest seed is `seed/bucharest/manifest.static.json`. Every object is strict: an unknown key is an error (which also blocks prototype-pollution keys).

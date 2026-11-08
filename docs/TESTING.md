@@ -249,7 +249,7 @@ Sanctioned stackings (`SANCTIONED_STACKINGS`, minimal): the **open FAB menu** ma
 | --- | --- |
 | Home, the keyboard, the menu and its toasts | the first Tab (skip link), home, the menu open (Esc), share's "link copied" toast, location refused, the other language |
 | A historical year, the timeline and the Layers panel | the year with its chip, the photos near the year (Esc), the timeline moved by the keyboard, Layers, Layers at peek and full height, an overlay's opacity lowered and announced (Esc) |
-| A photo at every height, its lightbox, and the photo list | the photo sheet at half, peek and full height, the lightbox (Esc), the photo list (Esc) |
+| A photo at every height, shown on the map, its lightbox, and the photo list | the photo sheet at half, peek and full height, the photo's place brought beside the sheet and ringed by Show on map (V51, `e2e/tour/my-location-states.ts`), the lightbox (Esc), the photo list (Esc) |
 | A point of interest at every height, and About from top to end | the POI sheet at half, peek and full height, About, About scrolled to its end (Esc) |
 | Bucharest today | no layers yet (the timeline note) and the consent banner |
 | A toast | the unknown photo's toast, announced |

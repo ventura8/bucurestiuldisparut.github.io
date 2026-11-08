@@ -6,7 +6,7 @@
  * step is a field measurement for telemetry (`telemetry.measure`, docs/ARCHITECTURE.md → *Field measurements*).
  */
 import { decodeHash, resolveLocale, type DecodedHash, type Locale, type Manifest, type MapView, type MessageKey } from '@hcm/shared';
-import type { MapEventMap, Unsubscribe } from '@hcm/ui/map';
+import type { FlyOptions, MapEventMap, Unsubscribe } from '@hcm/ui/map';
 
 import { loadManifest } from '../config/load.js';
 import type { Measurement, TelemetryContext } from '../telemetry/telemetry-port.js';
@@ -323,9 +323,9 @@ export class Boot {
     }
 
     /** Flies a mounted map to `view` (the port jumps instead under reduced motion); before the map, nothing moves. */
-    flyMap(view: MapView): void {
+    flyMap(view: Partial<MapView>, options?: FlyOptions): void {
         if (this.#sync !== null) {
-            this.#host.deps.map.flyTo(view);
+            this.#host.deps.map.flyTo(view, options);
         }
     }
 

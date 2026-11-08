@@ -75,3 +75,14 @@ test(
             .toBe(true);
     },
 );
+
+test('Without a map a photo opened from the list has no Show on map', { tag: '@S-V51-BAD-NO-MAP' }, async ({ page, lang }) => {
+    await page.goto(sitePath('bucharest', { lang }));
+    await waitForEngineEvent(page, 'hcm-ready');
+
+    await viewer(page).locator('.fallback hcm-photo-list').getByRole('button').filter({ hasText: 'Ștrandul Operetă' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Ștrandul Operetă' })).toBeVisible();
+    await expect(viewer(page).getByRole('button', { name: t(lang, 'photo.openLightbox') })).toBeVisible();
+    await expect(viewer(page).getByRole('button', { name: t(lang, 'photo.locate'), exact: true })).toHaveCount(0);
+});

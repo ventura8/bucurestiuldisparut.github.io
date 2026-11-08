@@ -115,6 +115,7 @@ export const en: Messages = {
     'photo.suggest': 'Suggest a correction',
     'photo.credit': 'Added by {name}',
     'photo.openLightbox': 'Open the full-size photo',
+    'photo.locate': 'Show on map',
     'poi.category': 'Category: {category}',
     'poi.year': 'In {year}',
     'poi.years': 'From {yearStart} to {yearEnd}',
