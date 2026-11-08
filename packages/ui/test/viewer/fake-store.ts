@@ -37,6 +37,7 @@ export function idleState(): ViewerState {
         overlays: [],
         selectedPhotoId: null,
         selectedPoiId: null,
+        selectedStoryId: null,
         lightbox: false,
         sheet: 'none',
         windowClass: 'compact',
@@ -136,6 +137,11 @@ export class FakeStore implements ViewerStorePort {
 
     photoShown(ok: boolean): void {
         this.#record('photoShown', ok);
+    }
+
+    openStory(storyId: string | null): void {
+        this.#record('openStory', storyId);
+        this.set({ selectedStoryId: storyId, sheet: 'stories' });
     }
 
     openPoi(poiId: string | null): void {

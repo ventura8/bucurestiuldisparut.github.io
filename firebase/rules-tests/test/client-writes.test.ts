@@ -15,6 +15,7 @@ import {
     photoDocSchema,
     poiCategoryDocSchema,
     poiDocSchema,
+    storyDocSchema,
     usgsSceneDocSchema,
     type ClientCollection,
 } from '@hcm/shared';
@@ -37,6 +38,7 @@ import {
     poiDoc,
     usgsSceneDoc,
 } from './support/documents.js';
+import { newStory, storyDoc } from './support/stories.js';
 import { createWorld, deleted, stampedBy, verdict, type Data, type Verdict, type World } from './support/world.js';
 
 /** What the tests need of a zod object schema. */
@@ -79,6 +81,12 @@ const COLLECTIONS: Readonly<Record<ClientCollection, Collection>> = {
         path: (id) => FIRESTORE_PATHS.poiCategory(CITY_ID, id),
         complete: poiCategoryDoc,
         create: newPoiCategory,
+    },
+    story: {
+        schema: storyDocSchema,
+        path: (id) => FIRESTORE_PATHS.story(CITY_ID, id),
+        complete: () => storyDoc(admin()),
+        create: newStory,
     },
     job: { schema: jobDocSchema, path: (id) => FIRESTORE_PATHS.job(CITY_ID, id), complete: () => jobDoc(admin()), create: newJob },
     usgsScene: { schema: usgsSceneDocSchema, path: (id) => FIRESTORE_PATHS.usgsScene(CITY_ID, id), complete: () => usgsSceneDoc() },

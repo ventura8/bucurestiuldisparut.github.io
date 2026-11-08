@@ -44,6 +44,18 @@ function inputHandlers(on: On): Pick<ViewerHandlers, 'onMapLabel' | 'onShortcuts
     };
 }
 
+/** M17: a story to open (null: their list), and a place a story names. */
+function storyHandlers(on: On): Pick<ViewerHandlers, 'onStorySelect' | 'onPoiSelect'> {
+    return {
+        onStorySelect: on((store, event) => {
+            store.openStory(event.detail.storyId);
+        }),
+        onPoiSelect: on((store, event) => {
+            store.openPoi(event.detail.poiId);
+        }),
+    };
+}
+
 export function createHandlers(host: HandlerHost): ViewerHandlers {
     const on = actingOn(host);
     return {
@@ -92,6 +104,7 @@ export function createHandlers(host: HandlerHost): ViewerHandlers {
             store.dismissToast();
         }),
         ...inputHandlers(on),
+        ...storyHandlers(on),
         onSkip: () => {
             host.focusTimeline();
         },

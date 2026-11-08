@@ -170,7 +170,7 @@ interface HistoricCityMapController {
 ## URL hash v1
 
 ```text
-#<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&cmp=<id>][&sw=<0..100>][&labels=streets,pois][&photo=<id>][&lang=ro|en]
+#<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&cmp=<id>][&sw=<0..100>][&labels=streets,pois][&photo=<id>][&story=<id>][&lang=ro|en]
 ```
 
 | Part | Rule when read |
@@ -183,6 +183,7 @@ interface HistoricCityMapController {
 | `sw` | M4: the divider in percent of the map's width, clamped to `[0, 100]`; 50 when absent, ignored without `cmp`; on a compact window 0 shows the compared side and anything else the main one. Either of `cmp` and `sw` may come first. |
 | `labels` | The basemap's labels that are drawn: `streets`, `pois`, comma-separated, in any order; `labels=` (empty) means none. Absent is the city's default, and the encoder omits a default, so a link from before this parameter opens as it did. An unknown word is ignored (`labels=streets,transit` is `streets`), and a value with nothing but unknown words is ignored as a whole. A kind the city's basemap does not have is dropped and the next write omits it ([Map labels](#map-labels)). |
 | `photo` | The open photo; an id that is not in the manifest shows a toast (scenario V09). |
+| `story` | M17: the open story, in its sheet, with the timeline at the stop nearest its first year; an id that is not in the manifest shows a toast (`error.unknownStory`, scenario V50) and opens nothing. The viewer writes it while a story is open, so Share copies a story's own link. |
 | `lang` | `ro` or `en`; anything else is ignored. |
 
 Unknown parameters are ignored, a repeated one keeps its last valid value, and a hash longer than 2,048 characters is ignored as a whole. Ids are only ever looked up in a `Map`, never used in a selector. The legacy hash of the 2015–2022 site, `#zoom/lat/lng/rotation/!a3!p2`, still opens the same view: its `!…` layer codes are ignored and the viewer rewrites the hash in the v1 form. Codec: `encodeHash` and `decodeHash` in `packages/shared/src/url/hash.ts`.
@@ -330,6 +331,22 @@ At most 50 categories.
 
 At most 5,000 POIs. The timeline shows a POI at a year its span covers (an absent bound is open); "today" shows every POI (`poiInYear`). POI details open in the same sheet as photos, labels show from zoom 16. Lines and area outlines are drawn in the category colour over a white casing (wider strokes as the zoom grows, the area filled at 35 %), so they stay legible on a satellite basemap; the casing fades with the category's opacity like the rest (`packages/ui/src/map/pois.ts`, 2026-11-01).
 
+### `stories[]` (optional)
+
+M17 ([research/M17-stories.md](research/M17-stories.md) §4): a city's stories, absent when there are none. The menu offers Stories when the list is not empty; a photo's and a place's sheet list the stories that name them.
+
+| Field | Type | Rule |
+| --- | --- | --- |
+| `id` | string | unique; the `#story=` id |
+| `title` | `{ro, en?}` | at most 200 characters |
+| `body` | `{ro, en?}` | at most 10,000 characters per language, the story format: the Markdown subset of the city's texts (paragraphs, `**bold**`, `_italic_`, https links) plus a paragraph that is exactly `![caption](photo:<id>)`, a figure of one of the city's photos. Any other image is text; a figure whose photo the manifest does not list is left out; an `http:` or `javascript:` link is refused |
+| `yearStart?`, `yearEnd?` | integer | 1800 to 2100, never inverted |
+| `photoIds?` | string[] | at most 20 ids of `photos[]` or `unplaced[]`; the first is the story's cover in the list |
+| `poiIds?` | string[] | at most 20 ids of `pois[]` |
+| `credit?` | string | the contributor's credit name, at most 100 characters |
+
+At most 1,000 stories. Nothing in a story is rendered as HTML: the engine parses the text into paragraphs and figures (`parseStory` of `@hcm/shared`) and renders them with its own templates.
+
 ### Overlays
 
 The viewer's Layers panel lists one **overlay** per historical layer, one for the photos (markers and view cones, id `photos`) and one per POI category, each with a switch and a 0–100 % slider that updates the map live. Layer ids, `photos` and category ids are one namespace (a clash is `validation.duplicateId`), because the URL hash's `op=` names overlays by id. Order: historical layers by year (the higher `order` first within a year), the photos, then the categories in manifest order.
@@ -363,6 +380,7 @@ A fetch that returns 404 shows `error.manifest.notFound`, a network failure `err
 - **The URL hash** keeps v1's grammar for the whole 1.x line; new parameters are additive and old readers ignore them. The legacy hash stays readable.
 - **Additions before 1.0.0 (M4, 2026-10-24)**: the hash's `cmp=` and `sw=`, the controller's `openCompare`, `setComparePosition` and `closeCompare`, and the event `hcm-compare-change` are part of the v1 baseline too; the manifest does not change.
 - **Additions before 1.0.0** (the owner's requests, 2026-11-07, [research/photo-date-source.md](research/photo-date-source.md)): a photo's `month`, `day` and `source`. Optional: a manifest without them stays valid and reads as before; every 1.x engine reads them, so they need no `minVersion`. A viewer from before them refuses such a manifest, so Hosting goes before the functions in a deploy ([research/photo-date-source.md](research/photo-date-source.md) §3).
+- **Additions before 1.0.0 (M17, 2026-11-08)**: `stories[]` and the hash's `story=` ([research/M17-stories.md](research/M17-stories.md) §4). Optional: a manifest without them stays valid; every 1.x engine reads them, so they need no `minVersion`.
 - **Additions before 1.0.0 (M13, 2026-11-07)**: `unplaced[]`, `contributeUrl` and the optional `credit` of a photo and a place (`docs/research/M13-roles.md` §5). A photo in `photos[]` still needs its `location`; a manifest from before them stays valid. The map gains only a link: no sign-in, no Firestore, no cookie.
 - **Additions before 1.0.0** (PLAN Addendum 3, 2026-10-12): `photosOverlay`, `poiCategories[]`, `pois[]`, the overlay namespace rule and the `op=` overlay ids. They are part of the v1 baseline that every 1.x engine reads, so a manifest that uses them needs no `minVersion`. A Material Symbols name outside the bundled set falls back to the default pin instead of failing validation, so new icons never need a new manifest generation.
 

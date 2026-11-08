@@ -85,11 +85,11 @@ export const roleRequestDecideRequestSchema = z.strictObject({
 });
 export const roleRequestDecideResponseSchema = z.strictObject({ status: z.enum(['approved', 'refused']) });
 
-/** `review.decide`: a reviewer approves or refuses an uploader's photo or place. */
+/** `review.decide`: a reviewer approves or refuses an uploader's photo, place or (M17) story. */
 export const reviewDecideRequestSchema = z
     .strictObject({
         cityId: cityIdSchema,
-        entity: z.enum(['photo', 'poi']),
+        entity: z.enum(['photo', 'poi', 'story']),
         id: idSchema,
         decision: z.enum(['approve', 'refuse']),
         /** The item's `updatedAt` as the reviewer read it: an approval is of what they saw, anything newer answers `review.changed`. */

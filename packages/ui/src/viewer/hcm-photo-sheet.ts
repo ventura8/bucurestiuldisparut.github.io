@@ -7,11 +7,12 @@
  * Once the thumbnail is decoded (or failed) the sheet fires `hcm-photo-shown` (`{ ok }`), which the viewer turns into
  * the `photo_timing` field measurement (docs/ARCHITECTURE.md → *Field measurements*).
  */
-import { DEFAULT_LOCALE, translate, type Locale, type Photo, type Poi, type PoiCategory } from '@hcm/shared';
+import { DEFAULT_LOCALE, translate, type Locale, type Photo, type Poi, type PoiCategory, type Story } from '@hcm/shared';
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 
 import { EMPTY } from './empty.js';
 import type { SheetMode } from './layout.js';
+import { relatedStories } from './hcm-stories.js';
 import { externalLink } from './markdown.js';
 import { resolveAssetUrl } from './services.js';
 import { closeEvent, renderSheetFrame } from './sheet-frame.js';
@@ -32,6 +33,7 @@ export class HcmPhotoSheet extends LitElement {
         open: { type: Boolean },
         manifestUrl: { type: String, attribute: 'manifest-url' },
         contributeUrl: { attribute: false },
+        stories: { attribute: false },
         imageFailed: { state: true },
     };
 
@@ -83,6 +85,8 @@ export class HcmPhotoSheet extends LitElement {
     declare locale: Locale;
     /** M13: the city's Contribute page (`manifest.contributeUrl`): a photo's "Suggest a correction" opens it on the photo. */
     declare contributeUrl: string | null;
+    /** M17: the city's stories; those naming the photo or the place are listed. */
+    declare stories: readonly Story[];
     declare mode: SheetMode;
     declare open: boolean;
     declare manifestUrl: string;
@@ -99,6 +103,7 @@ export class HcmPhotoSheet extends LitElement {
         this.open = false;
         this.manifestUrl = '';
         this.contributeUrl = null;
+        this.stories = [];
         this.imageFailed = false;
     }
 
@@ -131,12 +136,13 @@ export class HcmPhotoSheet extends LitElement {
     #content(): TemplateResult {
         if (this.poi !== null) {
             return html`<hcm-poi-detail
-                .poi=${this.poi}
-                .category=${this.category}
-                .photos=${this.photos}
-                .locale=${this.locale}
-                .manifestUrl=${this.manifestUrl}
-            ></hcm-poi-detail>`;
+                    .poi=${this.poi}
+                    .category=${this.category}
+                    .photos=${this.photos}
+                    .locale=${this.locale}
+                    .manifestUrl=${this.manifestUrl}
+                ></hcm-poi-detail>
+                <div class="details">${relatedStories(this.stories, 'poiIds', this.poi.id, this.locale)}</div>`;
         }
         return this.photo === null ? EMPTY : this.#photoDetails(this.photo);
     }
@@ -148,7 +154,7 @@ export class HcmPhotoSheet extends LitElement {
             <p class="supporting">${photoDateText(photo, locale)}</p>
             ${photoRights(photo, locale)} ${this.#source(photo)}
             ${photo.description === undefined ? nothing : html`<p>${localizedText(photo.description, locale)}</p>`} ${this.#links(photo)}
-            ${this.#suggestion(photo)}
+            ${this.#suggestion(photo)} ${relatedStories(this.stories, 'photoIds', photo.id, this.locale)}
         </div>`;
     }
 

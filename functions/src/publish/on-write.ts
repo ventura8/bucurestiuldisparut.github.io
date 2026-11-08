@@ -7,7 +7,7 @@ import { needsManifestBuild, type RawDocument } from './fields.js';
 import { requestManifestBuild, type RequestDeps } from './request.js';
 
 /**
- * `publish.on{City,Layer,Photo,Poi,PoiCategory}Write`, the pure handler: requests a manifest build when the write can
+ * `publish.on{City,Layer,Photo,Poi,PoiCategory,Story}Write`, the pure handler: requests a manifest build when the write can
  * change the manifest (`needsManifestBuild`). Returns whether it did.
  */
 export async function onContentWrite(
@@ -38,7 +38,7 @@ function handler(getDeps: () => RequestDeps, entity: HistoryEntity) {
     };
 }
 
-/** The five Firestore triggers, on the default database, under their registry names (`publish-onPhotoWrite`, ...). */
+/** The six Firestore triggers, on the default database, under their registry names (`publish-onPhotoWrite`, ...). */
 export function onWriteFunctions(getDeps: () => RequestDeps) {
     return {
         onCityWrite: onDocumentWritten(
@@ -60,6 +60,10 @@ export function onWriteFunctions(getDeps: () => RequestDeps) {
         onPoiCategoryWrite: onDocumentWritten(
             { ...OPTIONS, ...runAs('publish.onPoiCategoryWrite'), document: BACKGROUND_FUNCTIONS['publish.onPoiCategoryWrite'].source },
             handler(getDeps, 'poiCategory'),
+        ),
+        onStoryWrite: onDocumentWritten(
+            { ...OPTIONS, ...runAs('publish.onStoryWrite'), document: BACKGROUND_FUNCTIONS['publish.onStoryWrite'].source },
+            handler(getDeps, 'story'),
         ),
     };
 }

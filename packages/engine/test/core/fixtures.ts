@@ -2,7 +2,7 @@
  * Typed City Manifest v1 fixtures for the engine-core tests: every builder returns a fresh, schema-valid manifest
  * (checked with `validateManifest`, so a fixture that drifts from the contract fails loudly instead of testing nothing).
  */
-import { validateManifest, type Layer, type Manifest, type Photo, type Poi, type PoiCategory } from '@hcm/shared';
+import { validateManifest, type Layer, type Manifest, type Photo, type Poi, type PoiCategory, type Story } from '@hcm/shared';
 
 const TOKENS = { '--md-sys-color-primary': '#875329', '--md-sys-color-on-primary': '#ffffff' };
 
@@ -74,7 +74,19 @@ export interface ManifestParts {
     readonly pois?: readonly Poi[];
     readonly analytics?: Manifest['city']['analytics'];
     readonly photosOpacity?: number;
+    /** M17: the city's stories (none by default). */
+    readonly stories?: Manifest['stories'];
 }
+
+/** M17: a story about a photo and a place, from 1966. */
+export const STORY: Story = {
+    id: 'teatrul',
+    title: { ro: 'Teatrul', en: 'The theatre' },
+    body: { ro: 'A ars în **1944**.' },
+    yearStart: 1966,
+    photoIds: ['mihai-voda-1978'],
+    poiIds: ['strada'],
+};
 
 /** A valid manifest of Bucharest: two layers (1966, 1980), three photos, two POI categories with three POIs. */
 export function manifest(parts: ManifestParts = {}): Manifest {
@@ -137,6 +149,7 @@ export function manifest(parts: ManifestParts = {}): Manifest {
             }),
             { ...omit(poi(), 'yearStart', 'yearEnd'), id: 'eveniment', title: { ro: 'Eveniment', en: 'Event' } },
         ],
+        ...(parts.stories === undefined ? {} : { stories: parts.stories }),
     };
     const result = validateManifest(JSON.parse(JSON.stringify(input)));
     if (!result.ok) {

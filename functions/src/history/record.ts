@@ -205,7 +205,12 @@ function changeOf(event: WriteEvent): DocumentChange {
 }
 
 export type HistoryTrigger =
-    'history.onCityWrite' | 'history.onLayerWrite' | 'history.onPhotoWrite' | 'history.onPoiWrite' | 'history.onPoiCategoryWrite';
+    | 'history.onCityWrite'
+    | 'history.onLayerWrite'
+    | 'history.onPhotoWrite'
+    | 'history.onPoiWrite'
+    | 'history.onPoiCategoryWrite'
+    | 'history.onStoryWrite';
 
 /** The `onDocumentWrittenWithAuthContext` trigger `name` of the registry (`BACKGROUND_FUNCTIONS[name].source`). */
 export function historyTrigger(name: HistoryTrigger, getDeps: () => RecordDeps) {

@@ -13,6 +13,7 @@ import { defineHcmPhotoList, HCM_PHOTO_LIST_TAG } from './hcm-photo-list.js';
 import { defineHcmPhotoSheet, HCM_PHOTO_SHEET_TAG } from './hcm-photo-sheet.js';
 import { defineHcmUnplacedGallery, HCM_UNPLACED_GALLERY_TAG } from './hcm-unplaced-gallery.js';
 import { defineHcmPoiDetail, HCM_POI_DETAIL_TAG } from './hcm-poi-detail.js';
+import { defineHcmStories, HCM_STORIES_TAG } from './hcm-stories.js';
 import { defineHcmTimeline, HCM_TIMELINE_TAG } from './hcm-timeline.js';
 
 /** Every tag the viewer defines (the kit's tags are listed by the kit). */
@@ -24,6 +25,7 @@ export const VIEWER_TAGS = [
     HCM_POI_DETAIL_TAG,
     HCM_PHOTO_LIST_TAG,
     HCM_UNPLACED_GALLERY_TAG,
+    HCM_STORIES_TAG,
     HCM_LIGHTBOX_TAG,
     HCM_ABOUT_DIALOG_TAG,
     HCM_ERROR_CARD_TAG,
@@ -38,6 +40,7 @@ const DEFINERS: readonly ((registry: CustomElementRegistry) => void)[] = [
     defineHcmPoiDetail,
     defineHcmPhotoList,
     defineHcmUnplacedGallery,
+    defineHcmStories,
     defineHcmLightbox,
     defineHcmAboutDialog,
     defineHcmErrorCard,

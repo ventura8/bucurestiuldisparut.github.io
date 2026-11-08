@@ -21,6 +21,7 @@ import { renderSheetFrame } from './sheet-frame.js';
 import type { ViewerError, ViewerState } from './store-port.js';
 import { photosNearYear, type TimelineStop } from './timeline-model.js';
 import { menuActions, menuItem } from './viewer-menu.js';
+import { storiesSheet } from './viewer-stories.js';
 import { unplacedSheet } from './viewer-unplaced.js';
 import { legalMirror, modalOpen, renderConsentBanner, renderLegalBar, type LegalMirror } from './viewer-legal.js';
 
@@ -52,6 +53,9 @@ export interface ViewerHandlers {
     readonly onOverlayOpacity: (event: CustomEvent<OverlayOpacityDetail>) => void;
     readonly onSheetClose: (event: Event) => void;
     readonly onPhotoSelect: (event: CustomEvent<{ readonly photoId: string }>) => void;
+    /** M17: a story to open (null: their list), and a place a story names. */
+    readonly onStorySelect: (event: CustomEvent<{ readonly storyId: string | null }>) => void;
+    readonly onPoiSelect: (event: CustomEvent<{ readonly poiId: string }>) => void;
     readonly onLightboxOpen: (event: Event) => void;
     /** The photo sheet's thumbnail was decoded (or failed): the `photo_timing` field measurement. */
     readonly onPhotoShown: (event: CustomEvent<{ readonly ok: boolean }>) => void;
@@ -85,11 +89,11 @@ function readyOf(view: ViewerView): Ready | null {
     return state?.status === 'ready' && state.manifest !== null ? { state, manifest: state.manifest } : null;
 }
 
-type DockedSheet = 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced';
+type DockedSheet = 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'stories';
 
 /** About is always a dialog; the layers panel has its own pane when it is always docked. */
 function isDockable(sheet: ViewerState['sheet'], layersDocked: boolean): sheet is DockedSheet {
-    return ['photo', 'poi', 'photos', 'unplaced'].includes(sheet) || (sheet === 'layers' && !layersDocked);
+    return ['photo', 'poi', 'photos', 'unplaced', 'stories'].includes(sheet) || (sheet === 'layers' && !layersDocked);
 }
 
 /** The sheet that shows in the docked trailing pane, if any. */
@@ -354,9 +358,11 @@ function photoSheet(view: ViewerView, ready: Ready, placement: Placement, handle
         .open=${placement.open}
         .manifestUrl=${view.manifestUrl}
         .contributeUrl=${ready.manifest.contributeUrl ?? null}
+        .stories=${ready.manifest.stories ?? []}
         ?inert=${placement.inert === true}
         @hcm-close=${handlers.onSheetClose}
         @hcm-photo-select=${handlers.onPhotoSelect}
+        @hcm-story-select=${handlers.onStorySelect}
         @hcm-lightbox-open=${handlers.onLightboxOpen}
         @hcm-photo-shown=${handlers.onPhotoShown}
     ></hcm-photo-sheet>`;
@@ -391,6 +397,7 @@ function trailingPane(view: ViewerView, ready: Ready | null, handlers: ViewerHan
         unplaced: () => unplacedSheet(view, ready.manifest, DOCKED_OPEN, handlers.onSheetClose),
         photo: () => photoSheet(view, ready, DOCKED_OPEN, handlers),
         poi: () => photoSheet(view, ready, DOCKED_OPEN, handlers),
+        stories: () => storiesSheet({ ...view, storyId: ready.state.selectedStoryId }, ready.manifest, DOCKED_OPEN, handlers),
     }[sheet];
     return html`<div class="pane trailing">${content()}</div>`;
 }
@@ -440,5 +447,6 @@ function modalSheets(view: ViewerView, ready: Ready, mode: SheetMode, handlers: 
     return html`${layerPanel(view, ready, { mode, open: sheet === 'layers', inert }, handlers)}
     ${photoSheet(view, ready, { mode, open: sheet === 'photo' || sheet === 'poi', inert }, handlers)}
     ${photosSheet(view, ready, { mode, open: sheet === 'photos', inert }, handlers)}
-    ${unplacedSheet(view, ready.manifest, { mode, open: sheet === 'unplaced', inert }, handlers.onSheetClose)}`;
+    ${unplacedSheet(view, ready.manifest, { mode, open: sheet === 'unplaced', inert }, handlers.onSheetClose)}
+    ${storiesSheet({ ...view, storyId: ready.state.selectedStoryId }, ready.manifest, { mode, open: sheet === 'stories', inert }, handlers)}`;
 }

@@ -124,12 +124,12 @@ describe('M13: who opens which route (docs/research/M13-roles.md §8)', () => {
 
     it('happyPath_aModeratorSeesPhotosPlacesReviewAndNotifications @S-A91-HAPPY-NAV', () => {
         const destinations = navigationDestinations({ ...everything, standing: 'moderator' }).map((item) => item.id);
-        expect(destinations).toEqual(['photos', 'pois', 'inbox', 'review']);
+        expect(destinations).toEqual(['photos', 'pois', 'stories', 'inbox', 'review']);
     });
 
     it('happyPath_anUploaderSeesNoReview', () => {
         const destinations = navigationDestinations({ ...everything, standing: 'uploader' }).map((item) => item.id);
-        expect(destinations).toEqual(['photos', 'pois', 'inbox']);
+        expect(destinations).toEqual(['photos', 'pois', 'stories', 'inbox']);
     });
 
     it.each(['setup', 'settings', 'imagery', 'admins', 'jobs', 'layers', 'history', 'crashes', 'home', 'cities'])(

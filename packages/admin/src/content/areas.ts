@@ -35,6 +35,8 @@ export const CONTENT_AREAS = [
     /** M13 (`docs/research/M13-roles.md` §8): the review queue and the Contribute page. */
     'review',
     'contribute',
+    /** M17 (`docs/research/M17-stories.md` §6): the city's stories. */
+    'stories',
 ] as const;
 
 export type ContentArea = (typeof CONTENT_AREAS)[number];

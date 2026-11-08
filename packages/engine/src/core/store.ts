@@ -6,7 +6,6 @@
  */
 import {
     clamp,
-    DEFAULT_COMPARE_POSITION,
     findOverlay,
     withOverlayOpacity,
     withOverlayVisibility,
@@ -26,7 +25,17 @@ import type { MountedMap } from './compare-port.js';
 import type { ViewerDeps } from './deps.js';
 import { withRequestedLabels } from './map-labels.js';
 import { Preferences } from './preferences.js';
-import { isCompareLayer, withYear, type SheetName, type ThemeMode, type ViewerState } from './state.js';
+import {
+    comparePosition,
+    hasPoi,
+    isCompareLayer,
+    sheetAfterClosing,
+    withStory,
+    withYear,
+    type SheetName,
+    type ThemeMode,
+    type ViewerState,
+} from './state.js';
 import { encodeViewerHash, HashWriter } from './url-sync.js';
 
 export type { ViewerDeps, ViewerLocation } from './deps.js';
@@ -48,6 +57,8 @@ export interface ViewerActions {
     photoShown(ok: boolean): void;
     /** Opens the POI's details in the detail sheet (`sheet: 'poi'`); null closes; an unknown id is ignored. */
     openPoi(poiId: string | null): void;
+    /** M17: the `stories` sheet with that story (null: their list), the timeline at its year; an unknown id says so. */
+    openStory(storyId: string | null): void;
     setLightbox(open: boolean): void;
     openSheet(sheet: SheetName): void;
     /** Records the map's view (the `moveend` path); the camera does not move. */
@@ -85,19 +96,6 @@ export interface ViewerStore extends ViewerActions {
     getState(): ViewerState;
     subscribe(listener: (state: ViewerState, previous: ViewerState) => void): Unsubscribe;
     destroy(): void;
-}
-
-function hasPoi(state: ViewerState, poiId: string): boolean {
-    return (state.manifest?.pois ?? []).some((poi) => poi.id === poiId);
-}
-
-function sheetAfterClosing(sheet: SheetName, closed: SheetName): SheetName {
-    return sheet === closed ? 'none' : sheet;
-}
-
-/** Where compare's divider settles: `position` (clamped), else where it was, else the middle. */
-function comparePosition(state: ViewerState, position: number | undefined): number {
-    return clamp(position ?? state.compare?.position ?? DEFAULT_COMPARE_POSITION, 0, 1);
 }
 
 class Store implements ViewerStore, BootHost, CompareDriverHost {
@@ -255,6 +253,16 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         }
         this.set({ ...state, selectedPoiId: poiId, selectedPhotoId: null, lightbox: false, sheet: 'poi' });
         this.deps.telemetry.logEvent({ name: 'poi_open', poiId });
+        this.hash.schedule();
+    }
+
+    openStory(storyId: string | null): void {
+        const next = withStory(this.#state, storyId);
+        if (next === null) {
+            this.showToast('error.unknownStory');
+            return;
+        }
+        this.set(next);
         this.hash.schedule();
     }
 

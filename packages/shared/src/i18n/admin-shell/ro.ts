@@ -148,6 +148,7 @@ export const ro = {
     'adminShell.city.role.owner': 'Proprietar',
     'adminShell.city.role.editor': 'Editor',
     'adminShell.nav.review': 'Verificare',
+    'adminShell.nav.stories': 'Povești',
     'adminShell.nav.contribute': 'Contribuie',
     'adminShell.route.notAllowed': 'Rolul tău nu include acea pagină.',
     'adminShell.city.role.moderator': 'Moderator',

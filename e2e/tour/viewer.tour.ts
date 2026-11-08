@@ -97,6 +97,14 @@ test(
 );
 
 test(
+    'Stories: the list and one story',
+    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V50-HAPPY-PHONE'] },
+    async ({ page, context, lang }) => {
+        await expectJourneySound({ page, context, lang }, journey('stories'));
+    },
+);
+
+test(
     'Bucharest today: no layers yet and the consent banner',
     { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE'] },
     async ({ page, context, lang }) => {

@@ -6,6 +6,7 @@ import {
     type PhotoDoc,
     type PoiDoc,
     type RoleRequestDoc,
+    type StoryDoc,
     type SuggestionDoc,
     type SuggestionProposal,
 } from '@hcm/shared';
@@ -14,7 +15,7 @@ import type { Stored } from '../content/services.js';
 import type { MapPhoto } from '../photos/map.js';
 
 export interface ReviewItem {
-    readonly entity: 'photo' | 'poi';
+    readonly entity: 'photo' | 'poi' | 'story';
     readonly id: string;
     readonly title: { readonly ro: string; readonly en?: string | undefined };
     readonly thumbPath: string | null;
@@ -58,7 +59,9 @@ export interface ReviewRequest {
     readonly email: string;
 }
 
-function shownOf(data: PhotoDoc | PoiDoc): Pick<ReviewItem, 'credit' | 'description' | 'links' | 'seenAt'> {
+function shownOf(
+    data: Pick<PhotoDoc, 'credit' | 'description' | 'links' | 'updatedAt'>,
+): Pick<ReviewItem, 'credit' | 'description' | 'links' | 'seenAt'> {
     return {
         credit: data.credit ?? null,
         description: data.description ?? null,
@@ -75,6 +78,12 @@ export function photoItem(stored: Stored<PhotoDoc>): ReviewItem {
 export function poiItem(stored: Stored<PoiDoc>): ReviewItem {
     const { data, id } = stored;
     return { entity: 'poi', id, title: data.title, thumbPath: null, ...shownOf(data) };
+}
+
+/** M17: an uploader's story; what an approval publishes is its title and its text. */
+export function storyItem(stored: Stored<StoryDoc>): ReviewItem {
+    const { data, id } = stored;
+    return { ...shownOf({ ...data, description: data.body }), entity: 'story', id, title: data.title, thumbPath: null };
 }
 
 export function suggestionRow(stored: Stored<SuggestionDoc>): ReviewSuggestion {

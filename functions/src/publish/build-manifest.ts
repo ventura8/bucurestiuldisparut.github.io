@@ -19,6 +19,7 @@ import {
     poiCategoryDocSchema,
     poiDocSchema,
     publicObjectUrl,
+    storyDocSchema,
     systemWriter,
     timestampFromDate,
     validate,
@@ -64,13 +65,14 @@ export type BuildOutcome = BuildResult['kind'];
 const PUBLISHED_ONLY = { where: [['published', '==', true]] } as const;
 
 async function readContent(deps: BuildDeps, cityId: string, city: CityDoc): Promise<CityContent> {
-    const [layers, photos, poiCategories, pois] = await Promise.all([
+    const [layers, photos, poiCategories, pois, stories] = await Promise.all([
         deps.documents.query(FIRESTORE_PATHS.layers(cityId), layerDocSchema, PUBLISHED_ONLY),
         deps.documents.query(FIRESTORE_PATHS.photos(cityId), photoDocSchema, PUBLISHED_ONLY),
         deps.documents.query(FIRESTORE_PATHS.poiCategories(cityId), poiCategoryDocSchema),
         deps.documents.query(FIRESTORE_PATHS.pois(cityId), poiDocSchema, PUBLISHED_ONLY),
+        deps.documents.query(FIRESTORE_PATHS.stories(cityId), storyDocSchema, PUBLISHED_ONLY),
     ]);
-    return { cityId, city, layers, photos, poiCategories, pois };
+    return { cityId, city, layers, photos, poiCategories, pois, stories };
 }
 
 /** A manifest the city itself keeps from publishing: no public token yet (Connect Mapbox), or another city issue. */

@@ -13,6 +13,8 @@ export const ADMIN_ROUTES = [
     'setup',
     'photos',
     'pois',
+    /** M17 (`docs/research/M17-stories.md` §6): the city's stories, after Places. */
+    'stories',
     'layers',
     'imagery',
     'jobs',
@@ -61,6 +63,7 @@ export const ADMIN_ROUTE_SPECS: Readonly<Record<AdminRouteId, AdminRouteSpec>> =
     setup: { icon: 'checklist', needsBackend: false, inCompactBar: true, inCompactBarOnceSetUp: false, scope: 'project' },
     photos: { icon: 'photo_library', needsBackend: true, inCompactBar: true, inCompactBarOnceSetUp: true, scope: 'city' },
     pois: { icon: 'place', needsBackend: true, inCompactBar: true, inCompactBarOnceSetUp: true, scope: 'city' },
+    stories: { icon: 'museum', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false, scope: 'city' },
     layers: { icon: 'layers', needsBackend: true, inCompactBar: true, inCompactBarOnceSetUp: true, scope: 'city' },
     /** M3's Imagery area: after Layers in the rail, under More on the compact bar (`docs/research/M3-interfaces.md` §10.1). */
     imagery: { icon: 'satellite_alt', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false, scope: 'city' },
@@ -105,8 +108,8 @@ export const ADMIN_ROUTE_SPECS: Readonly<Record<AdminRouteId, AdminRouteSpec>> =
  * data anyway; this keeps a moderator or an uploader away from screens that could only fail. Staff open every route.
  */
 const LIMITED_ROUTES: Readonly<Record<'uploader' | 'moderator' | 'visitor', readonly AdminRouteId[]>> = {
-    uploader: ['photos', 'pois', 'inbox', 'contribute'],
-    moderator: ['photos', 'pois', 'review', 'inbox', 'contribute'],
+    uploader: ['photos', 'pois', 'stories', 'inbox', 'contribute'],
+    moderator: ['photos', 'pois', 'stories', 'review', 'inbox', 'contribute'],
     visitor: ['contribute'],
 };
 

@@ -36,6 +36,8 @@ import {
 export interface ReviewState {
     readonly photos: ListState<ReviewItem>;
     readonly places: ListState<ReviewItem>;
+    /** M17: the uploaders' stories waiting. */
+    readonly stories: ListState<ReviewItem>;
     readonly suggestions: ListState<ReviewSuggestion>;
     readonly decided: ListState<ReviewSuggestion>;
     readonly requests: ListState<ReviewRequest> | null;
@@ -87,6 +89,7 @@ class ReviewStore implements AreaStore<ReviewState, ReviewIntents> {
             {
                 photos: LOADING_LIST,
                 places: LOADING_LIST,
+                stories: LOADING_LIST,
                 suggestions: LOADING_LIST,
                 decided: LOADING_LIST,
                 requests: services.cityRole() === 'owner' ? LOADING_LIST : null,

@@ -2,7 +2,7 @@
  * URL-hash codec v1 of the public viewer (docs/ENGINE_API.md → URL hash).
  *
  *     #<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&cmp=<id>][&sw=<0..100>]
- *         [&labels=streets,pois][&photo=<id>][&lang=ro|en]
+ *         [&labels=streets,pois][&photo=<id>][&story=<id>][&lang=ro|en]
  *
  * Decoding is defensive: the hash is visitor input. Numbers must be plain decimals, every range is
  * clamped, ids must match `ID_PATTERN` (anything else is dropped, never put into a selector), unknown
@@ -11,7 +11,7 @@
  * overlay ids, the decoder also drops the entries of unknown overlays. `cmp=` opens swipe compare (M4, scenario V06) with
  * the layer the second side shows (empty: today, no historical layer) and `sw=` places its divider in percent of the
  * map's width; `sw=` without `cmp=` is ignored, and either may come first. `labels=` names the basemap's labels that are
- * drawn (empty: none); an unknown word is ignored, and a value with nothing but unknown words is ignored as a whole. The legacy
+ * drawn (empty: none); `story=` opens a story (M17, `docs/research/M17-stories.md` §5); an unknown word is ignored, and a value with nothing but unknown words is ignored as a whole. The legacy
  * hash of the 2015–2022 site, `#zoom/lat/lng/rotation/!a3!p2`, decodes to its map view; its layer
  * codes (`!…`) are ignored and `legacy` tells the viewer to rewrite the hash in the v1 form.
  */
@@ -61,6 +61,8 @@ export interface HashState {
     /** The basemap's labels that are drawn; absent means the city's default. */
     readonly labels?: MapLabels;
     readonly photo?: string;
+    /** M17: the open story. */
+    readonly story?: string;
     readonly lang?: Locale;
 }
 
@@ -134,6 +136,7 @@ const ENCODERS: readonly Encoder[] = [
     (state) => (state.compare === undefined ? null : encodeCompare(state.compare)),
     (state) => (state.labels === undefined ? null : encodeLabels(state.labels)),
     (state) => (state.photo !== undefined && isId(state.photo) ? `photo=${state.photo}` : null),
+    (state) => (state.story !== undefined && isId(state.story) ? `story=${state.story}` : null),
     (state) => (state.lang === undefined ? null : `lang=${state.lang}`),
 ];
 
@@ -253,6 +256,7 @@ const PARAM_DECODERS: ReadonlyMap<string, ParamDecoder> = new Map<string, ParamD
     ['sw', decodeComparePosition],
     ['labels', decodeLabels],
     ['photo', (value) => (isId(value) ? { photo: value } : {})],
+    ['story', (value) => (isId(value) ? { story: value } : {})],
     ['lang', decodeLang],
 ]);
 

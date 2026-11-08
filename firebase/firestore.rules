@@ -442,6 +442,25 @@ service cloud.firestore {
                 && stamped(data);
         }
 
+        // ---- Stories (CLIENT_WRITES.story; M17, docs/research/M17-stories.md §1) ----------
+        //
+        // The body's https links and its photo figures are checked by zod (`storyDocSchema`) and the builder, as a place's
+        // Markdown; here its size.
+        function validStory(data) {
+            return titled(data.title, '[\\s\\S]{1,200}')
+                && localized(data.get('body', {'ro': 'x'}), upTo10000())
+                && isYear(data.get('yearStart', 1800))
+                && isYear(data.get('yearEnd', 2100))
+                && data.get('yearStart', 1800) <= data.get('yearEnd', 2100)
+                && data.get('photoIds', []) is list
+                && data.get('photoIds', []).size() <= 20
+                && data.get('poiIds', []) is list
+                && data.get('poiIds', []).size() <= 20
+                && data.get('credit', 'x').matches('[\\s\\S]{1,100}')
+                && data.published is bool
+                && stamped(data);
+        }
+
         // ---- Matches -----------------------------------------------------------------------
 
         // Default deny: nothing is readable or writable unless a rule below allows it.
@@ -653,6 +672,34 @@ service cloud.firestore {
                     && changedKeys().hasOnly(['category', 'geometry', 'title', 'description', 'yearStart', 'yearEnd', 'links', 'photoIds',
                         'published', 'credit', 'updatedBy', 'updatedAt'])
                     && validPoi(request.resource.data);
+                allow delete: if isCityMember(city)
+                    || (isCityUploader(city) && ownItem(resource.data) && resource.data.get('reviewStatus', '') in ['pending', 'refused']);
+
+                match /history/{entry} {
+                    allow read: if isCityReviewer(city);
+                }
+            }
+
+            // M17 (docs/research/M17-stories.md §2): stories, as places: staff write them, an uploader's own wait for review.
+            match /stories/{story} {
+                // An uploader's New story reads the id it is about to create (the admin's create is a transaction): a story
+                // that does not exist yet says nothing, so that read is theirs too.
+                allow read: if isCityReviewer(city) || (isCityUploader(city) && (resource == null || ownItem(resource.data)));
+                allow create: if (isCityMember(city) ? !('reviewStatus' in request.resource.data)
+                        : (isCityUploader(city) && request.resource.data.get('reviewStatus', '') == 'pending'))
+                    && isId(story)
+                    && request.resource.data.keys().hasOnly(['title', 'body', 'yearStart', 'yearEnd', 'photoIds', 'poiIds', 'published',
+                        'credit', 'reviewStatus', 'createdAt', 'createdBy', 'updatedBy', 'updatedAt'])
+                    && validStory(request.resource.data)
+                    && (isCityMember(city) || request.resource.data.published == false)
+                    && created(request.resource.data);
+                allow update: if (isCityReviewer(city)
+                        ? publishedStaysTheServers()
+                        : (isCityUploader(city) && ownItem(resource.data) && resource.data.get('reviewStatus', '') == 'pending'
+                            && !('published' in changedKeys())))
+                    && changedKeys().hasOnly(['title', 'body', 'yearStart', 'yearEnd', 'photoIds', 'poiIds', 'published', 'credit',
+                        'updatedBy', 'updatedAt'])
+                    && validStory(request.resource.data);
                 allow delete: if isCityMember(city)
                     || (isCityUploader(city) && ownItem(resource.data) && resource.data.get('reviewStatus', '') in ['pending', 'refused']);
 

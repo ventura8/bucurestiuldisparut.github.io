@@ -17,6 +17,8 @@ import { ro as poisRo, type AdminPoisKey } from '../admin-pois/ro.js';
 import { en as reviewEn } from '../admin-review/en.js';
 import { ro as reviewRo, type AdminReviewKey } from '../admin-review/ro.js';
 import { en as settingsEn } from '../admin-settings/en.js';
+import { en as storiesEn } from '../admin-stories/en.js';
+import { ro as storiesRo, type AdminStoriesKey } from '../admin-stories/ro.js';
 import { ro as settingsRo, type AdminSettingsKey } from '../admin-settings/ro.js';
 import { catalogueTranslator } from '../catalogue.js';
 import { en as kitEn } from './en.js';
@@ -34,7 +36,8 @@ export type AdminContentKey =
     | AdminNotifyKey
     | AdminCitiesKey
     | AdminExportKey
-    | AdminReviewKey;
+    | AdminReviewKey
+    | AdminStoriesKey;
 
 export type AdminContentMessages = Readonly<Record<AdminContentKey, string>>;
 
@@ -58,6 +61,7 @@ export const ADMIN_CONTENT_CATALOGUES: Readonly<Record<'ro' | 'en', AdminContent
         ...citiesRo,
         ...exportRo,
         ...reviewRo,
+        ...storiesRo,
     },
     en: {
         ...kitEn,
@@ -71,6 +75,7 @@ export const ADMIN_CONTENT_CATALOGUES: Readonly<Record<'ro' | 'en', AdminContent
         ...citiesEn,
         ...exportEn,
         ...reviewEn,
+        ...storiesEn,
     },
 };
 

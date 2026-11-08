@@ -259,6 +259,7 @@ const EDITORS: Readonly<Record<SkippedDocumentPort['entity'], (id: string) => st
     poi: (id) => `#/pois/${id}`,
     layer: (id) => `#/layers/${id}`,
     poiCategory: (id) => `#/settings/categories/${id}`,
+    story: (id) => `#/stories/${id}`,
 };
 
 /** The field a path names (`title.ro`, `links[0].url`: its first segment). */

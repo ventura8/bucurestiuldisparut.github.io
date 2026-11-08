@@ -25,6 +25,7 @@ function content(overrides: Partial<Omit<CityContent, 'city'>> & { readonly city
         ]),
         poiCategories: result([['churches', categoryDoc()]]),
         pois: result([['enei', poiDoc({ photoIds: ['p1', 'gone'] })]]),
+        stories: result([]),
         ...overrides,
         city: cityDoc(overrides.city),
     };

@@ -169,7 +169,7 @@ export const GUARD_REASONS = ['budget', 'manual'] as const;
 export const OPS_STEPS = ['guard', 'jobs', 'mts', 'manifests', 'health', 'tokens', 'invites', 'users', 'memberships', 'exports'] as const;
 export const MANIFEST_BUILD_STATES = ['idle', 'queued', 'building', 'failed'] as const;
 /** Entities a manifest build may skip (an invalid document is skipped and flagged, never fails the manifest). */
-export const MANIFEST_ENTITIES = ['layer', 'photo', 'poi', 'poiCategory'] as const;
+export const MANIFEST_ENTITIES = ['layer', 'photo', 'poi', 'poiCategory', 'story'] as const;
 
 const stepNameSchema = z.string().regex(/^[a-z][a-z0-9-]{0,39}$/);
 
@@ -549,6 +549,8 @@ export const manifestStateDocSchema = z.strictObject({
             unplaced: z.number().int().min(0).optional(),
             pois: z.number().int().min(0),
             poiCategories: z.number().int().min(0),
+            /** M17: the stories listed; absent from a build before it. */
+            stories: z.number().int().min(0).optional(),
         })
         .optional(),
     skipped: z.array(skippedDocumentSchema).max(100).optional(),

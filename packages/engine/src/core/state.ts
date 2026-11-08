@@ -3,6 +3,8 @@
  * returns the same object when nothing changed, so the store skips a render and the map is never touched for nothing.
  */
 import {
+    clamp,
+    DEFAULT_COMPARE_POSITION,
     findOverlay,
     overlaysFromManifest,
     withOverlayVisibility,
@@ -11,6 +13,7 @@ import {
     type MapView,
     type MessageKey,
     type Overlay,
+    type Story,
 } from '@hcm/shared';
 import type { WindowClass } from '@hcm/ui';
 
@@ -20,7 +23,8 @@ import { layerIdsOfYear, snapYear, timelineYears, yearOfLayers } from './timelin
 
 export type ViewerStatus = 'idle' | 'loading' | 'ready' | 'error';
 export type ThemeMode = 'system' | 'light' | 'dark';
-export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'about' | 'help';
+/** M17: `stories` shows the list, or the story `selectedStoryId` names. */
+export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'stories' | 'about' | 'help';
 
 export const THEME_MODES: readonly ThemeMode[] = ['system', 'light', 'dark'];
 
@@ -64,6 +68,8 @@ export interface ViewerState {
     readonly overlays: readonly Overlay[];
     readonly selectedPhotoId: string | null;
     readonly selectedPoiId: string | null;
+    /** M17: the story the `stories` sheet shows; null shows their list. */
+    readonly selectedStoryId: string | null;
     readonly lightbox: boolean;
     readonly sheet: SheetName;
     readonly windowClass: WindowClass;
@@ -95,6 +101,7 @@ export function initialState(locale: Locale, theme: ThemeMode, consent: ConsentS
         overlays: [],
         selectedPhotoId: null,
         selectedPoiId: null,
+        selectedStoryId: null,
         lightbox: false,
         sheet: 'none',
         windowClass: 'compact',
@@ -126,6 +133,7 @@ export function withManifest(state: ViewerState, manifest: Manifest): ViewerStat
         year: yearOfLayers(manifest.layers, visible),
         selectedPhotoId: null,
         selectedPoiId: null,
+        selectedStoryId: null,
         lightbox: false,
         sheet: 'none',
         compare: null,
@@ -146,6 +154,30 @@ export function withYear(state: ViewerState, year: number | null): ViewerState {
     const stop = snapYear(year, timelineYears(layers));
     const overlays = withVisibleLayers(state.overlays, layerIdsOfYear(layers, stop));
     return stop === state.year && overlays === state.overlays ? state : { ...state, year: stop, overlays };
+}
+
+/**
+ * M17 §5: the story `storyId` open (null: their list), the timeline at the stop nearest the story's first year; null when the
+ * manifest has no such story.
+ */
+export function withStory(state: ViewerState, storyId: string | null): ViewerState | null {
+    const story = storyId === null ? null : storyOf(state.manifest, storyId);
+    if (story === undefined) {
+        return null;
+    }
+    const open: ViewerState = {
+        ...state,
+        sheet: 'stories',
+        selectedStoryId: storyId,
+        selectedPhotoId: null,
+        selectedPoiId: null,
+        lightbox: false,
+    };
+    return story?.yearStart === undefined ? open : withYear(open, story.yearStart);
+}
+
+function storyOf(manifest: Manifest | null, storyId: string): Story | undefined {
+    return (manifest?.stories ?? []).find((candidate) => candidate.id === storyId);
 }
 
 /** The overlay's label in the current language (`id` when the overlay is unknown). */
@@ -178,4 +210,17 @@ export function displayedOverlays(state: Pick<ViewerState, 'overlays' | 'compare
         return state.overlays;
     }
     return comparedOverlays(state.overlays, compare.layerId);
+}
+
+export function hasPoi(state: ViewerState, poiId: string): boolean {
+    return (state.manifest?.pois ?? []).some((poi) => poi.id === poiId);
+}
+
+export function sheetAfterClosing(sheet: SheetName, closed: SheetName): SheetName {
+    return sheet === closed ? 'none' : sheet;
+}
+
+/** Where compare's divider settles: `position` (clamped), else where it was, else the middle. */
+export function comparePosition(state: ViewerState, position: number | undefined): number {
+    return clamp(position ?? state.compare?.position ?? DEFAULT_COMPARE_POSITION, 0, 1);
 }

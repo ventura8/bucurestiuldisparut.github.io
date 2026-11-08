@@ -9,6 +9,7 @@ import { NOTIFY_STATES } from '../admin/specs/notify/states.js';
 import { SETTINGS_STARTER_STATES } from '../admin/specs/settings/states.js';
 import { SETUP_UX_STATES } from '../admin/specs/shell/setup-ux-states.js';
 import { START_STATES } from '../admin/specs/start/states.js';
+import { STORIES_STATES } from '../admin/specs/stories/states.js';
 import { WORKER_STATES } from '../admin/specs/imagery/worker-states.js';
 
 /**
@@ -38,6 +39,9 @@ export const ADMIN_SECTION_STATES = {
     ...CITIES_STATES,
     ...ROLES_STATES,
     // [end cities]
+    // [section stories] owner: stories (docs/research/M17-stories.md §6)
+    ...STORIES_STATES,
+    // [end stories]
     // [section export] owner: export (Settings → Export the city: docs/research/M5-interfaces.md §5.6)
     ...EXPORT_STATES,
     // [end export]

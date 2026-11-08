@@ -5,6 +5,7 @@ import { IMAGERY_STATES } from '../admin/specs/imagery/states.js';
 import { ADMIN_SECTION_STATES } from './admin-sections.js';
 import { COMPARE_STATES, openComparing } from './compare-states.js';
 import { UNPLACED_JOURNEY, unplacedStates } from './unplaced-states.js';
+import { STORY_JOURNEY, storyStates } from './story-states.js';
 import { INPUT_JOURNEY, INPUT_STATES } from './input-states.js';
 import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
 import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
@@ -188,6 +189,7 @@ const VIEWER_STATES = {
         },
     },
     ...unplacedStates(sheetEscape),
+    ...storyStates(sheetEscape),
     'near-year-photos': {
         title: 'The photos near the year, from the chip',
         enter: async ({ page, lang }) => {
@@ -472,6 +474,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
         states: ['consent'],
     },
     UNPLACED_JOURNEY,
+    STORY_JOURNEY,
     {
         title: 'A toast',
         id: 'toast',

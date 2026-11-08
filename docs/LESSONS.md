@@ -2641,3 +2641,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the live region gets the message `ANNOUNCE_DELAY_MS` after the snackbar shows (lesson 20's fix), so a page slow to reach the assertion sees both; the other projects asserted before the announcement.
     - Found by: the targeted Playwright run of the four tracks' specs. Fix: the assertion takes the text that is not in a live region (`:not([aria-live])`), as `smoke.spec.ts` already does.
     - **A snackbar's message is asserted without its live region; the live region is asserted on its own when the announcement is the point.**
+
+442. **A new lazy area that imports the editing kit can push `editor-shared` over its budget without adding a line to it.**
+    - Seen: 2026-11-08, `track/stories`: `editor-shared` at 13,001 bytes of 13,000 after the stories area joined; none of its modules had changed.
+    - Cause: the shared chunk's export list and minified names change with every new importer, and a chunk at its limit has no room for that.
+    - Found by: the `bundle-budget` gate on the NUC. Fix: a module only two areas share (`packages/ui/src/viewer/markdown.ts`) moved to the `editor-texts` group, which had room (DECISIONS §101b).
+    - **Measure every chunk after adding an area, also the shared ones its imports touch; move a small shared module to a group with room rather than raise a row.**
+
+443. **An uploader's create through the admin reads the new id first, and the M13 read rule denies a document that does not exist.**
+    - Seen: 2026-11-08, `track/stories`, `S-A100-BAD-UPLOADER-WAITS`: New story as an uploader answered 403 on `batchGet`; nothing was created.
+    - Cause: `ContentStore.create` is a transaction that reads the path before it sets it, and `ownItem(resource.data)` errors on a missing document, which denies the read.
+    - Found by: the admin e2e spec on the emulators (the rules matrix seeded every document it read). Fix: the stories rule lets an uploader read an id with no document (`resource == null`), with its row in `firebase/rules-tests/test/stories.test.ts`.
+    - **For review: places and photos have the same read rule, so an uploader's own create through the admin likely fails the same way; their rules want the same `resource == null` clause and an e2e create as an uploader.**

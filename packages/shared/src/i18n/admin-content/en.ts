@@ -122,6 +122,8 @@ export const en: Readonly<Record<AdminContentKitKey, string>> = {
     'adminContent.field.category': 'Category',
     'adminContent.field.geometry': 'Shape on the map',
     'adminContent.field.photoIds': 'Linked photos',
+    'adminContent.field.body': 'Text',
+    'adminContent.field.poiIds': 'Linked places',
     'adminContent.field.icon': 'Icon',
     'adminContent.field.color': 'Colour',
     'adminContent.field.defaultOpacity': 'Default opacity',

@@ -98,10 +98,25 @@ function photoFiles(photo: Photo, prefix: string): PhotoFiles {
 function exportedManifest(manifest: Manifest, photos: readonly Photo[], layers: readonly Layer[]): Manifest {
     // M13 §5: an export has no backend to contribute to, and its gallery of unplaced photos would have nowhere to send anyone.
     return {
-        ...omit(manifest, ['contributeUrl', 'unplaced']),
+        ...omit(manifest, ['contributeUrl', 'unplaced', 'stories']),
         city: { ...manifest.city, analytics: {} },
         photos: [...photos],
         layers: [...layers],
+        ...exportedStories(manifest.stories, photos),
+    };
+}
+
+/** M17 §4: the stories travel; a story's link to a photo the export leaves out (an unplaced one) goes. */
+function exportedStories(stories: Manifest['stories'], photos: readonly Photo[]): Pick<Manifest, 'stories'> {
+    if (stories === undefined) {
+        return {};
+    }
+    const carried = new Set(photos.map((photo) => photo.id));
+    return {
+        stories: stories.map((story) => {
+            const photoIds = story.photoIds?.filter((id) => carried.has(id));
+            return { ...omit(story, ['photoIds']), ...(photoIds === undefined || photoIds.length === 0 ? {} : { photoIds }) };
+        }),
     };
 }
 

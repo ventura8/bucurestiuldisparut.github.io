@@ -25,6 +25,7 @@ import type { LayersIntentsPort, LayersViewState } from './layers/layers-port.js
 import type { PhotosIntentsPort, PhotosViewState } from './photos/photos-port.js';
 import type { PoisIntentsPort, PoisViewState } from './pois/pois-port.js';
 import type { SettingsIntentsPort, SettingsViewState } from './settings/settings-port.js';
+import type { StoriesIntentsPort, StoriesViewState } from './stories/stories-port.js';
 
 export type { AreaPort, DocStatePort, ListStatePort, LoadStatusPort, StoredPort, StoreFailurePort } from './area-port.js';
 
@@ -59,6 +60,9 @@ export interface ContentPort {
     readonly review: AreaPort<ReviewViewState, ReviewIntentsPort> | null;
     readonly contribute: AreaPort<ContributeViewState, ContributeIntentsPort> | null;
     // [end review]
+    // [section stories] owner: stories (docs/research/M17-stories.md §6)
+    readonly stories: AreaPort<StoriesViewState, StoriesIntentsPort> | null;
+    // [end stories]
     // [section cities] owner: multi-city (docs/research/M5-interfaces.md §1.6)
     readonly cities: AreaPort<NewCityViewState, NewCityIntentsPort> | null;
     // [end cities]

@@ -70,6 +70,7 @@ export { HCM_POI_EDITOR_TAG, HcmPoiEditor } from './pois/hcm-poi-editor.js';
 export { HCM_POI_LIST_TAG, HcmPoiList } from './pois/hcm-poi-list.js';
 export { definePoisElements } from './pois/define.js';
 export type { PoisAreaPort, PoisIntentsPort, PoisViewState } from './pois/pois-port.js';
+export type { StoriesIntentsPort, StoriesViewState } from './stories/stories-port.js';
 export { HCM_ADMIN_MAP_TAG, HcmAdminMap } from './map/hcm-admin-map.js';
 export { HCM_DRAW_TOOLBAR_TAG, HcmDrawToolbar } from './map/hcm-draw-toolbar.js';
 export { HCM_VERTEX_LIST_TAG, HcmVertexList } from './map/hcm-vertex-list.js';

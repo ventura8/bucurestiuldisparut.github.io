@@ -42,6 +42,13 @@ const ADMIN_MAP_MODULES =
 const EDITOR_TEXT_MODULES = /packages[\\/]ui[\\/]src[\\/]admin[\\/]editing[\\/](?:field-names|issue-text)\.ts$/;
 
 /**
+ * The Markdown subset's renderer (`packages/ui/src/viewer/markdown.ts`), which the settings' texts and the place editor's preview
+ * share: in `editor-texts`, which has room, so `editor-shared` stays within its 13 KB with M17's stories area beside it
+ * (`docs/research/M17-stories.md` §6).
+ */
+const MARKDOWN_MODULES = /packages[\\/]ui[\\/]src[\\/]viewer[\\/]markdown\.ts$/;
+
+/**
  * The value fields of a proposal, which the Contribute page and the Review page's adjust share (M13 §4): their own chunk, kept out
  * of `editor-shared`, which none of the editors would then have to load them with.
  */
@@ -134,7 +141,8 @@ export default defineConfig({
                         { name: 'assist', test: ASSIST_MODULES, priority: 2 },
                         {
                             name: 'editor-texts',
-                            test: (id: string) => EDITOR_TEXT_MODULES.test(id) || IMAGERY_SHARED_MODULES.test(id),
+                            test: (id: string) =>
+                                EDITOR_TEXT_MODULES.test(id) || IMAGERY_SHARED_MODULES.test(id) || MARKDOWN_MODULES.test(id),
                             priority: 2,
                         },
                         { name: 'starter-categories', test: STARTER_MODULES, priority: 2 },

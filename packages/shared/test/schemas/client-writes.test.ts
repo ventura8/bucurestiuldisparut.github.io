@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import { CLIENT_WRITES, type ClientCollection } from '../../src/schemas/client-writes.js';
 import { jobDocSchema, usgsSceneDocSchema } from '../../src/schemas/firestore-ops.js';
-import { cityDocSchema, layerDocSchema, photoDocSchema, poiCategoryDocSchema, poiDocSchema } from '../../src/schemas/firestore.js';
+import {
+    cityDocSchema,
+    layerDocSchema,
+    photoDocSchema,
+    poiCategoryDocSchema,
+    poiDocSchema,
+    storyDocSchema,
+} from '../../src/schemas/firestore.js';
 import { inboxItemDocSchema, notifySettingsDocSchema } from '../../src/schemas/notifications.js';
 
 const SHAPES: Readonly<Record<ClientCollection, readonly string[]>> = {
@@ -11,6 +18,7 @@ const SHAPES: Readonly<Record<ClientCollection, readonly string[]>> = {
     layer: Object.keys(layerDocSchema.shape),
     poi: Object.keys(poiDocSchema.shape),
     poiCategory: Object.keys(poiCategoryDocSchema.shape),
+    story: Object.keys(storyDocSchema.shape),
     job: Object.keys(jobDocSchema.shape),
     usgsScene: Object.keys(usgsSceneDocSchema.shape),
     inboxItem: Object.keys(inboxItemDocSchema.shape),

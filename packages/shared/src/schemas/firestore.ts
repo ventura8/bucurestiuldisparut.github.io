@@ -27,6 +27,7 @@ import {
 } from './manifest.js';
 import { iconNameSchema, MAX_POI_PHOTOS, photosOverlaySchema } from './poi.js';
 import { heldImageSchema, reviewFields } from './review.js';
+import { localizedStorySchema, storyFields } from './story.js';
 import {
     assetUrlSchema,
     bearingSchema,
@@ -66,7 +67,8 @@ export const GEOREF_METHODS = ['corners', 'gcps', 'auto', 'embedded'] as const;
  */
 export const LAYER_TILESET_ORIGINS = ['mts', 'studio', 'linked', 'uploads'] as const;
 /** The audited, admin-editable documents (PLAN Addendum 3): each keeps a `history` subcollection. */
-export const HISTORY_ENTITIES = ['city', 'layer', 'photo', 'poi', 'poiCategory'] as const;
+/** M17 (`docs/research/M17-stories.md` §2): `story` joins them. */
+export const HISTORY_ENTITIES = ['city', 'layer', 'photo', 'poi', 'poiCategory', 'story'] as const;
 export const HISTORY_ACTIONS = ['create', 'update', 'delete', 'revert'] as const;
 /** What an admin may upload as a photo (`firebase/storage.rules`); the server sniffs the bytes, never trusts this. */
 export const PHOTO_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/tiff', 'image/heic', 'image/heif'] as const;
@@ -307,6 +309,22 @@ export const poiDocSchema = z
     })
     .refine(validYearSpan, coded('validation.yearRange', ['yearEnd']));
 
+/**
+ * M17 (`docs/research/M17-stories.md` §1): `cities/{city}/stories/{story}`. The body may wait while a draft; a published
+ * story without one is not listed (the builder skips it, the editor says so).
+ */
+export const storyDocSchema = z
+    .strictObject({
+        ...storyFields,
+        body: localizedStorySchema.optional(),
+        published: z.boolean(),
+        ...reviewFields,
+        createdAt: timestampSchema.optional(),
+        createdBy: uidSchema.optional(),
+        ...stamp,
+    })
+    .refine(validYearSpan, coded('validation.yearRange', ['yearEnd']));
+
 /** A document as it was, keyed by field (validated again with its entity's schema before a revert writes it). */
 const snapshotSchema = z
     .record(z.string().min(1).max(64), z.unknown())
@@ -347,6 +365,7 @@ export type PhotoDoc = z.infer<typeof photoDocSchema>;
 export type LayerDoc = z.infer<typeof layerDocSchema>;
 export type PoiCategoryDoc = z.infer<typeof poiCategoryDocSchema>;
 export type PoiDoc = z.infer<typeof poiDocSchema>;
+export type StoryDoc = z.infer<typeof storyDocSchema>;
 export type HistoryEntryDoc = z.infer<typeof historyEntryDocSchema>;
 export type HistoryEntity = (typeof HISTORY_ENTITIES)[number];
 export type HistoryAction = (typeof HISTORY_ACTIONS)[number];

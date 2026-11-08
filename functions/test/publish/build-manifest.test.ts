@@ -72,7 +72,7 @@ describe('buildManifest: published', () => {
             url: publicUrl(MANIFEST),
             sha256: createHash('sha256').update(json).digest('hex'),
             bytes: deps.blobs.object('public', MANIFEST)?.bytes.length,
-            counts: { layers: 1, photos: 2, unplaced: 0, pois: 1, poiCategories: 1 },
+            counts: { layers: 1, photos: 2, unplaced: 0, pois: 1, poiCategories: 1, stories: 0 },
             updatedBy: 'system:publish',
             updatedAt: timestampFromDate(new Date(NOW)),
         });

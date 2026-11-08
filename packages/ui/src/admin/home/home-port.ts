@@ -31,7 +31,7 @@ export interface HealthChipPort {
 
 /** A document the public map left out: what it is, its id, its first issue (a validation code at a path). */
 export interface SkippedDocumentPort {
-    readonly entity: 'layer' | 'photo' | 'poi' | 'poiCategory';
+    readonly entity: 'layer' | 'photo' | 'poi' | 'poiCategory' | 'story';
     readonly id: string;
     readonly code: ValidationCode;
     readonly path: string;

@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 129 | 1169 | 460 | 709 | 1167 | 2 | 283 |
+| 131 | 1188 | 469 | 719 | 1186 | 2 | 288 |
 
 ## Viewer
 
@@ -202,6 +202,12 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V41-HAPPY-LINK` | V41 | happy | Contribute opens a page of its own | the menu's item opens contributeUrl in a new tab with nothing passed on | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
 | `S-V41-BAD-NO-BACKEND` | V41 | bad | A manifest without the link offers no Contribute | the menu has no Contribute | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts`<br>`functions/test/export/plan-community.test.ts` |
 | `S-V41-BAD-NO-SIGN-IN` | V41 | bad | The map signs nothing in, reads no Firestore and sets no cookie | with the link on the page: no cookie in the context, no request to Firestore, Identity Toolkit, Secure Token or Firebase | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
+| `S-V50-HAPPY-LINK` | V50 | happy | A story opens from its own link and from the photo it is about | #story=<id> opens the sheet in Romanian with its https link; the photo's sheet lists the story and opens it | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
+| `S-V50-HAPPY-OPEN` | V50 | happy | A story from the menu reads with its figure, credit, places and photos | the list, the story sheet with bold text, the figure of the city's photo and its caption, the credit, story= in the address, the figure opening the photo | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
+| `S-V50-HAPPY-PHONE` | V50 | happy | The list and one story pass the layout and accessibility checks on every window class | expectStateSound on the stories and story states, phone included | e2e-viewer | exists | `e2e/tour/viewer.tour.ts` |
+| `S-V50-BAD-MARKUP-IS-TEXT` | V50 | bad | Markup in a story is text, and a figure of a photo the map does not list is left out | <b>…</b> shows as text with no b element; one figure, not two | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
+| `S-V50-BAD-OLD-MANIFEST` | V50 | bad | A manifest without stories has no Stories in its menu | the menu has About and no Stories item | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
+| `S-V50-BAD-UNKNOWN` | V50 | bad | A link to a story that does not exist shows a toast and opens nothing | error.unknownStory in the status region, no story heading | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
 
 ## Admin
 
@@ -344,6 +350,19 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-A10-BAD-NOTHING-TO-PUBLISH` | A10 | bad | A change the manifest does not carry requests no build | a write to an unpublished document, or of the stamp and suggestions only -> no manifests/{city} change and no task | functions | exists | `functions/test/publish/fields.test.ts`<br>`functions/test/publish/on-write.test.ts` |
 | `S-A10-BAD-UNPUBLISH` | A10 | bad | Unpublishing hides the photo in the viewer | Unpublish on a published photo -> published false -> the next manifest lacks it and the viewer no longer shows it; its public files stay until the sweep | e2e-admin | exists | `e2e/admin/specs/photos/publish.spec.ts` |
 | `S-A10-BAD-WRITE-DURING-BUILD` | A10 | bad | A change during a build queues the next build | requestedVersion moves on while a build runs -> the build records the version it started from and queues another build task | functions | exists | `functions/test/publish/build-manifest.test.ts` |
+| `S-A100-HAPPY-EDIT` | A100 | happy | An owner writes a story, publishes it and finds its versions | New story opens the editor; the text, the year and Published save to Firestore; Versions opens #/history/story/<id> | e2e-admin | exists | `e2e/admin/specs/stories/stories.spec.ts` |
+| `S-A100-HAPPY-EXPORT` | A100 | happy | The static export carries the stories | city.json lists the story with its photo | functions | exists | `functions/test/publish/stories.test.ts` |
+| `S-A100-HAPPY-MANIFEST` | A100 | happy | A published story reaches the manifest with its text and links | stories[] with title, body, years, photoIds, poiIds, credit; counts.stories | functions | exists | `functions/test/publish/stories.test.ts` |
+| `S-A100-HAPPY-REVERT` | A100 | happy | A moderator brings a story's earlier text back with history.revert | restoredFields [body], the earlier body stored | functions | exists | `functions/test/history/stories.test.ts` |
+| `S-A100-HAPPY-REVIEW` | A100 | happy | A moderator approves an uploader's story through review.decide | published true, reviewStatus approved, reviewedBy the moderator | functions | exists | `functions/test/history/stories.test.ts` |
+| `S-A100-HAPPY-RULES` | A100 | happy | The rules let each role do what M17 §2 says with stories | the allow cells of the stories matrix for every actor | rules | exists | `firebase/rules-tests/test/stories.test.ts` |
+| `S-A100-BAD-EXPORT` | A100 | bad | A story's link to a photo the export leaves out goes, and city.json stays valid | no photoIds on the story, validateManifest ok | functions | exists | `functions/test/publish/stories.test.ts` |
+| `S-A100-BAD-HTTP-LINK` | A100 | bad | An http link in a story is refused at the text | the text field is aria-invalid and Save is off | e2e-admin | exists | `e2e/admin/specs/stories/stories.spec.ts` |
+| `S-A100-BAD-MANIFEST` | A100 | bad | A draft, waiting, refused or textless story stays out of the manifest | no stories key in the published JSON | functions | exists | `functions/test/publish/stories.test.ts` |
+| `S-A100-BAD-REVERT` | A100 | bad | An uploader reverts nothing | an apiError refusal, the text unchanged | functions | exists | `functions/test/history/stories.test.ts` |
+| `S-A100-BAD-REVIEW` | A100 | bad | An approval of a story changed since the reviewer read it is refused | apiError.review.changed, the story still pending | functions | exists | `functions/test/history/stories.test.ts` |
+| `S-A100-BAD-RULES` | A100 | bad | The rules refuse everything else: strangers, other cities, publishing a waiting story, bad values | the deny cells of the matrix and the value checks | rules | exists | `firebase/rules-tests/test/stories.test.ts` |
+| `S-A100-BAD-UPLOADER-WAITS` | A100 | bad | An uploader's story waits for review and cannot be published by them | the waiting note, no Published switch, reviewStatus pending and published false in Firestore | e2e-admin | exists | `e2e/admin/specs/stories/stories.spec.ts` |
 | `S-A11-HAPPY` | A11 | happy | Ranked scenes with footprints and browse previews | Search -> ranked scenes (free first, then by score) with the city's boundary on the admin map and the open scene's footprint alone and browse previews (copies in our bucket read with the Storage SDK, never a USGS address from the browser); for Bucharest the 1966, 1976, 1977, 1978 and 1980 frames rank on top | e2e-admin | exists | `e2e/admin/specs/imagery/search.spec.ts` |
 | `S-A11-HAPPY-BROWSE-RETRY-ROUTED` | A11 | happy | Try again on the browse image reaches a scene only the address names | a scene Free only hides, its browse image failed, the host back -> Try again -> the image shows | e2e-admin | exists | `e2e/admin/specs/imagery/search.spec.ts` |
 | `S-A11-HAPPY-CAMERA-FROM-ID` | A11 | happy | A frame's id names its camera when the metadata does not | DS09065A089MC039 -> KH-5 Argon at 140 m, not KH-4A; DS11xx KH-4B, DS10xx KH-4A, DS9xxx KH-4, DZB...H KH-7, DZB...L KH-9 mapping; metadata saying ARGON too | functions | exists | `functions/test/imagery/scene-record.test.ts` |

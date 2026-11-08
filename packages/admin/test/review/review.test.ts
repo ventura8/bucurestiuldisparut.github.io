@@ -434,3 +434,24 @@ describe('the review queue: its edges', () => {
         expect(w.area.state.map).toBe('ready');
     });
 });
+
+describe('the review queue: stories (M17 §2)', () => {
+    it('happyPath_anUploadersStoryWaitsWithItsTextAndIsDecided', async () => {
+        const w = world('moderator');
+        w.store.put(FIRESTORE_PATHS.story(CITY, 'st1'), {
+            title: { ro: 'Teatrul' },
+            body: { ro: 'A ars în 1944.' },
+            published: false,
+            reviewStatus: 'pending',
+            credit: 'Maria',
+            ...STAMP,
+        });
+        w.callables.answer('review.decide', () => ({ status: 'approved' }));
+        w.area.open([]);
+        await settle();
+        const [story] = w.area.state.stories.items;
+        expect(story).toMatchObject({ entity: 'story', id: 'st1', description: { ro: 'A ars în 1944.' }, credit: 'Maria', links: [] });
+        await w.area.intents.decideItem(story as never, 'approve', '');
+        expect(w.callables.calls.at(-1)?.request).toMatchObject({ entity: 'story', id: 'st1', decision: 'approve' });
+    });
+});
