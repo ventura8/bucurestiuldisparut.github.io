@@ -4,9 +4,10 @@ Each operation asks the server for one V4 signed URL of the object (15 minutes, 
 the object's metadata when it exists: `stat` reads that metadata; `upload_file` keeps an identical object (same MD5),
 else sends the file, streamed, with the method and headers the server gave (`PUT` on Cloud Storage; the emulators'
 stand-in may answer another), and takes the generation from `x-goog-generation` or the answer's JSON; `download_file`
-and `open_read` stream a GET. Listing, deleting and resumable sessions are refused: no step needs them for these
-objects (the delivery and the scratch are local, `local_store.py`). Every signed address passes the address guard of
-the client the worker builds (https and public, or this machine's under `--emulators`) and is never logged.
+and `open_read` stream a GET (a download the network fails is an `ObjectStoreError` and leaves no partial file).
+Listing, deleting and resumable sessions are refused: no step needs them for these objects (the delivery and the
+scratch are local, `local_store.py`). Every signed address passes the address guard of the client the worker builds
+(https and public, or this machine's under `--emulators`) and is never logged.
 """
 
 import io
@@ -18,7 +19,7 @@ from typing import IO, Final, NoReturn
 
 import httpx
 
-from hcm_pipeline.objects import READ_BYTES, ObjectInfo, ObjectStoreError, StreamReader, md5_of
+from hcm_pipeline.objects import READ_BYTES, ObjectInfo, ObjectStoreError, StreamReader, md5_of, transported
 from hcm_pipeline.worker.api import URLS, WorkerApi
 from hcm_pipeline.worker.documents import JobIds
 
@@ -132,7 +133,7 @@ class SignedObjectStore:
 
     def download_file(self, path: str, local: Path) -> ObjectInfo:
         signed = self._readable(path)
-        with self._http.stream("GET", signed.url, headers=dict(signed.headers)) as response:
+        with transported("the signed download", local), self._http.stream("GET", signed.url, headers=dict(signed.headers)) as response:
             _checked(response, "download")
             with local.open("wb") as file:
                 for block in response.iter_bytes(READ_BYTES):

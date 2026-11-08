@@ -6,7 +6,8 @@ downloads to a local file, streamed reads, listing, deletes, and resumable uploa
 (the USGS delivery streams through one; its session address and offset are the fetch checkpoint). `GcsObjectStore`
 speaks the JSON API over httpx with the job's own token, or to the Storage emulator (`STORAGE_EMULATOR_HOST`,
 loopback). A session address works as a credential for that one upload: it is kept in the private bucket's
-`work/` checkpoint and never logged.
+`work/` checkpoint and never logged. A look-up or a download the network fails (no connection, a timeout, a read cut
+short) is an `ObjectStoreError` naming the error's kind (`transported`), and a download it cut short leaves no partial file.
 """
 
 import base64
@@ -65,6 +66,18 @@ class ObjectStore(Protocol):
     def resumable_offset(self, session: str, size: int) -> int | ObjectInfo: ...
 
     def write_chunk(self, session: str, offset: int, data: bytes, size: int) -> int | ObjectInfo: ...
+
+
+@contextmanager
+def transported(what: str, partial: Path | None = None) -> Iterator[None]:
+    """httpx's own errors as an `ObjectStoreError` naming their kind, never the address (a signed URL's query is a credential), so
+    a caller catches the port's error alone; a download they cut short (`partial`) leaves no file behind."""
+    try:
+        yield
+    except httpx.HTTPError as error:
+        if partial is not None:
+            partial.unlink(missing_ok=True)
+        raise ObjectStoreError(f"{what}: {type(error).__name__}") from error
 
 
 class PreconditionFailedError(ObjectStoreError):
@@ -144,7 +157,8 @@ class GcsObjectStore:
         return response
 
     def stat(self, path: str) -> ObjectInfo | None:
-        response = self._http.get(self._object_url(path), headers=self._auth())
+        with transported("Cloud Storage stat"):
+            response = self._http.get(self._object_url(path), headers=self._auth())
         if response.status_code == HTTPStatus.NOT_FOUND:
             return None
         return _info(self._checked(response, "stat").json())
@@ -166,7 +180,10 @@ class GcsObjectStore:
             self._checked(response, "delete")
 
     def download_file(self, path: str, local: Path) -> ObjectInfo:
-        with self._http.stream("GET", self._object_url(path), params={"alt": "media"}, headers=self._auth()) as response:
+        with (
+            transported("Cloud Storage download", local),
+            self._http.stream("GET", self._object_url(path), params={"alt": "media"}, headers=self._auth()) as response,
+        ):
             self._checked(response, "download")
             with local.open("wb") as file:
                 for block in response.iter_bytes(READ_BYTES):

@@ -102,6 +102,8 @@ export const workerStepResponseSchema = z.strictObject({
     ok: z.boolean().optional(),
     created: z.boolean().optional(),
     ids: z.array(idSchema).max(1000).optional(),
+    /** A list of the city's versions (M15): how many it left out because they fail their schema (an older server sends none). */
+    skipped: z.number().int().min(0).max(1000).optional(),
 });
 
 /** `worker.urls`: signed URLs of the job's objects, or one M2M call made with the server's USGS key. */

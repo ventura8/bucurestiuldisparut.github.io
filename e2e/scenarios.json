@@ -10645,6 +10645,17 @@
             "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Test: functions/test/worker/allow-list.test.ts, functions/test/worker/step.test.ts."
         },
         {
+            "id": "S-A62-BAD-HELD-UNREADABLE",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version of the city that fails its schema is no partner, and the run goes on",
+            "asserts": "worker.step list of cities/{city}/layerVersions -> only the ids that pass layerVersionDocSchema, with skipped = how many it left out; get of a failing one -> {data: null, updateTime: null}, never apiError.internal; a warning names its path and fields, '(document)' for an issue of the whole document; the job's own version that fails still fails",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live 2026-11-08: one older version made a same-date frame's georef fail with apiError.internal (docs/LESSONS.md). Test: functions/test/worker/step.test.ts."
+        },
+        {
             "id": "S-A63-HAPPY-METER",
             "behaviour": "A63",
             "area": "admin",
@@ -12051,6 +12062,17 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Tests: pipeline/tests/integration/test_joint_job.py."
+        },
+        {
+            "id": "S-P06-BAD-JOINT-UNREADABLE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A partner that cannot be read, found, staged or measured is left out: the frame is fitted with the others or alone",
+            "asserts": "worker.step get of another version -> apiError.internal, or a list's skipped -> 'N of the city's frames could not be read and were left out'; a Firestore timeout of a partner's read or of the list on Cloud Run; a partner's align.tif look-up (worker.urls refusal, store failure, a connection refused, id off the path pattern) or its download (a connection reset midway leaves no partial file), GDAL read or measure failing -> one warning naming that frame, no URL; the import still reaches awaiting_approval, joined to the other partners or without calibration.alignment; a lost lease or a revoked computer still stops the run",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-08: a same-date frame failed in georef on another version's read; the review of 0421875 found the same for a partner's file, the review of a6750294 for httpx's and Firestore's own errors (docs/LESSONS.md). Tests: pipeline/tests/unit/test_steps_aligning.py, pipeline/tests/unit/test_worker_documents.py, pipeline/tests/unit/test_objects.py, pipeline/tests/unit/test_worker_objects.py, pipeline/tests/unit/test_store.py, pipeline/tests/integration/test_worker_run.py, pipeline/tests/integration/test_joint_job.py."
         },
         {
             "id": "S-P06-HAPPY-TERRAIN",
