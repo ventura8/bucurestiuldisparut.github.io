@@ -47,18 +47,15 @@ export function attributionText(attribution: string): string {
  */
 export function rasterSource(spec: RasterLayerSpec): Readonly<Record<string, unknown>> {
     const { source } = spec;
-    if (source.type === 'pmtiles') {
-        return pmtilesSource(overlaySourceId(spec.id), source.url, { ...spec, attribution: attributionText(spec.attribution) });
-    }
-    const bounds = spec.bounds === undefined ? {} : { bounds: [...spec.bounds[0], ...spec.bounds[1]] };
-    return {
-        type: 'raster',
-        ...tiles(source),
+    const fields = {
         minzoom: spec.minzoom,
         maxzoom: spec.maxzoom,
         attribution: attributionText(spec.attribution),
-        ...bounds,
+        ...(spec.bounds === undefined ? {} : { bounds: [...spec.bounds[0], ...spec.bounds[1]] }),
     };
+    return source.type === 'pmtiles'
+        ? pmtilesSource(overlaySourceId(spec.id), source.url, fields)
+        : { type: 'raster', ...tiles(source), ...fields };
 }
 
 function rasterMapLayer(spec: RasterLayerSpec): MapLayerEntry {

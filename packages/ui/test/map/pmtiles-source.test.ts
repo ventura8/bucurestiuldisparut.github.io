@@ -290,11 +290,9 @@ describe('the source Mapbox GL takes', () => {
         expect(requests).toHaveLength(reads);
     });
 
-    it('happyPath_itsBoundsAreFlatAndOptional', () => {
-        const bounds = [
-            [25.9, 44.3],
-            [26.3, 44.6],
-        ] as const;
+    it('happyPath_itsBoundsAreOptionalAndPassAsRasterSourceFlattensThem', () => {
+        // rasters.ts flattens a layer's bounds for every raster source (layers.test.ts); the archive's source keeps them as given.
+        const bounds = [25.9, 44.3, 26.3, 44.6];
 
         expect(pmtilesSource('a', URL_OF_ARCHIVE, { ...spec, bounds })['bounds']).toEqual([25.9, 44.3, 26.3, 44.6]);
         expect(pmtilesSource('a', URL_OF_ARCHIVE, spec)).not.toHaveProperty('bounds');
