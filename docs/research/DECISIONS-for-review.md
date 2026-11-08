@@ -6007,4 +6007,3 @@ Three merges into `feat/engine-rewrite`, one merge commit each (`track/improve`,
 ## 105. The owner's decision of 2026-11-08: the admin's total budget is 700 KB
 
 - **`ADMIN_TOTAL_KB` raised from 650 to 700** (`scripts/ci/check_bundle_budget.py`), the owner's explicit choice among 660, 700 and a refactor. The merge of stories, recalibration and the improvements measured 653.8 KB; the searches of §104f found no saving worth its risk (0.8 KB at best). The entry (381 of 450 KB) and every chunk keep their own budgets.
-
