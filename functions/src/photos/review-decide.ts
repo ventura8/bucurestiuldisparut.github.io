@@ -17,6 +17,7 @@ import {
     type PhotoDoc,
     type PhotoVariant,
     type Schema,
+    type StoryDoc,
     type TimestampLike,
 } from '@hcm/shared';
 
@@ -146,15 +147,35 @@ interface Decidable {
     readonly updatedAt: TimestampLike;
 }
 
+/** Where a place or a story lives, and (a story) what an approval asks of it first. */
+interface TextTarget<Doc> {
+    readonly path: string;
+    readonly schema: Schema<Doc>;
+    readonly requireApprovable?: (item: Doc) => void;
+}
+
+/**
+ * A story is approved with its text (M17 §2): the builder lists none without it, and an approved story is no longer the
+ * uploader's to write, so an empty one would stay invisible and locked. Refusing it stays open.
+ */
+function requireStoryText(story: StoryDoc): void {
+    if (story.body === undefined) {
+        throw new ApiError('apiError.review.storyEmpty');
+    }
+}
+
 /** A place or a story: the verdict and `published` in one transaction. */
 async function decideText<Doc extends Decidable>(
     deps: ReviewDeps,
     caller: VerifiedCaller,
     data: Request,
-    at: { readonly path: string; readonly schema: Schema<Doc> },
+    at: TextTarget<Doc>,
 ): Promise<void> {
     await deps.documents.transaction(async (transaction) => {
         const item = pendingItem(await transaction.get(at.path, at.schema), data);
+        if (data.decision === 'approve') {
+            at.requireApprovable?.(item);
+        }
         await transaction.set(at.path, at.schema, {
             ...item,
             published: data.decision === 'approve',
@@ -169,7 +190,11 @@ function decideItem(deps: ReviewDeps, caller: VerifiedCaller, data: Request): Pr
     }
     return data.entity === 'poi'
         ? decideText(deps, caller, data, { path: FIRESTORE_PATHS.poi(data.cityId, data.id), schema: poiDocSchema })
-        : decideText(deps, caller, data, { path: FIRESTORE_PATHS.story(data.cityId, data.id), schema: storyDocSchema });
+        : decideText(deps, caller, data, {
+              path: FIRESTORE_PATHS.story(data.cityId, data.id),
+              schema: storyDocSchema,
+              requireApprovable: requireStoryText,
+          });
 }
 
 /**

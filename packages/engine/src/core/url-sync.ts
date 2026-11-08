@@ -48,13 +48,20 @@ export function unknownToast(applied: AppliedHash): 'error.unknownPhoto' | 'erro
     return applied.unknownStory === undefined ? null : 'error.unknownStory';
 }
 
-/** M17: `story=` opens the story, at its year; an id the manifest does not have opens nothing. */
-function withHashStory(applied: AppliedHash, story: string | undefined): AppliedHash {
-    if (story === undefined) {
+/**
+ * M17: `story=` opens the story, at its year; an id the manifest does not have opens nothing. A link that also carries
+ * `layers=` is the sender's view (they moved the timeline with the story open), so its layers and their year stay.
+ */
+function withHashStory(applied: AppliedHash, hash: DecodedHash): AppliedHash {
+    if (hash.story === undefined) {
         return applied;
     }
-    const state = withStory(applied.state, story);
-    return state === null ? { ...applied, unknownStory: story } : { ...applied, state };
+    const state = withStory(applied.state, hash.story);
+    if (state === null) {
+        return { ...applied, unknownStory: hash.story };
+    }
+    const kept = hash.layers === undefined ? state : { ...state, year: applied.state.year, overlays: applied.state.overlays };
+    return { ...applied, state: kept };
 }
 
 function withHashLayers(state: ViewerState, layers: readonly string[] | undefined): ViewerState {
@@ -102,7 +109,7 @@ export function applyDecodedHash(state: ViewerState, hash: DecodedHash): Applied
     const withLayers = withHashMapLabels(withHashCompare(withHashLayers(withView, hash.layers), hash.compare), hash.labels);
     const overlays = withHashOpacity(withLayers.overlays, hash);
     const withLang = hash.lang === undefined ? withLayers : { ...withLayers, locale: hash.lang };
-    return withHashStory(withHashPhoto(overlays === withLang.overlays ? withLang : { ...withLang, overlays }, hash.photo), hash.story);
+    return withHashStory(withHashPhoto(overlays === withLang.overlays ? withLang : { ...withLang, overlays }, hash.photo), hash);
 }
 
 function sameIds(a: readonly string[], b: readonly string[]): boolean {

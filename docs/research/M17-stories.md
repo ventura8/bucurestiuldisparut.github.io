@@ -39,7 +39,8 @@ The rules copy the place's (`firebase/firestore.rules`, `match /stories/{story}`
 | `stories/*/history` read | no | no | yes | yes | yes | no |
 
 - `review.decide` takes `entity: 'story'`: approve publishes it, refuse keeps it private; `seenAt` binds the approval to what the
-  reviewer read, as for a place.
+  reviewer read, as for a place. A story without its text answers `apiError.review.storyEmpty` to an approval (the builder would
+  list nothing, and the approved story would no longer be the uploader's to write); refusing it stays open.
 - `history.revert` takes `entity: 'story'`, and a moderator may revert one (photo, place, story).
 - The audit triggers `history.onStoryWrite` and the publish trigger `publish.onStoryWrite` join the families.
 
@@ -84,7 +85,8 @@ body, yearStart?, yearEnd?, photoIds?, poiIds?, credit?}`, the texts `{ro, en?}`
   a click opens that photo), the linked places and photos as buttons that open them, and the contributor's credit. On a phone
   it is the same bottom sheet as a photo's, resizable, with the text at the body size and a line length the sheet sets.
 - **The timeline**: opening a story with a year moves the timeline to the stop nearest its first year, so the map shows the
-  city as the story tells it; closing the story leaves the timeline where it is.
+  city as the story tells it; closing the story leaves the timeline where it is. A link that carries both `story=` and `layers=`
+  (the visitor moved the timeline with the story open, then shared) opens the story with the link's own layers and their year.
 - An unknown id in the hash shows `error.unknownStory` and opens nothing.
 
 ## 6. The admin
@@ -93,6 +95,10 @@ body, yearStart?, yearEnd?, photoIds?, poiIds?, credit?}`, the texts `{ro, en?}`
   editor: title and text in both languages, the years, the linked photos and places (chips, added from the city's photos and
   places by title), Published (staff), Save with the conflict banner, Discard, Delete with a confirmation, and Versions
   (`#/history/story/<id>`, where Revert restores a version).
+- The editor follows the city role as the rules do: a moderator gets no New story and no Delete (the rules refuse both); an
+  uploader deletes only their own waiting or refused story; Versions shows to staff only, since `#/history` is not a route of
+  a moderator or an uploader (`LIMITED_ROUTES`). A moderator's revert of a story stays `history.revert` (S-A100-HAPPY-REVERT)
+  until the history route opens to moderators for their entities.
 - New story asks for the Romanian title and creates the document unpublished (pending for an uploader), then opens it.
 - An uploader sees and edits only their own stories while they wait; a moderator sees all; the navigation shows Stories to both.
 - The review queue lists waiting stories with the photos and places, and Approve or Refuse as for a place.
@@ -108,13 +114,16 @@ body, yearStart?, yearEnd?, photoIds?, poiIds?, credit?}`, the texts `{ro, en?}`
 | A `javascript:` or `http:` link | Kept as text and refused by the schema (`validation.markdownLink`) |
 | An uploader publishes their story | `published == false` on create, `published` not in their update list, `review.decide` is the door |
 | An uploader swaps the text just before approval | `seenAt` (`apiError.review.changed`) |
+| A moderator approves a story saved with its title only | `apiError.review.storyEmpty`; the story stays pending and the uploader's |
 | A pending story reaches the public | The builder drops `pending` and `refused` whatever `published` says |
 | A huge story | 10 000 characters per language in the schema and the rules; 1000 stories per manifest |
 
 ## 8. Scenarios
 
-Viewer V50 (menu, list, story, figures, timeline, link; bad: an unknown id, markup stays text, a figure of a photo not listed);
-admin A100 (create, edit, publish, history and revert; bad: an http link refused, an uploader's story waits and cannot publish);
+Viewer V50 (menu, list, story, figures, timeline, link; bad: an unknown id, markup stays text, a figure of a photo not listed, a
+link's own layers kept over the story's year);
+admin A100 (create, edit, publish, history and revert; bad: an http link refused, an uploader's story waits and cannot publish, a
+story without text is not approved, a moderator gets no New story, Delete or Versions);
 `functions` and `rules` rows for the builder, `review.decide`, `history.revert`, the export and the rules. The rows are in `e2e/scenarios.json`.
 
 ## 9. Left for later
@@ -145,7 +154,7 @@ Built on `track/stories` (2026-11-08), as designed above, with these details:
   document that does not exist; the stories rule lets an uploader read an id with no document (`resource == null`), which says
   nothing (`docs/LESSONS.md` 443; the same gap likely stands for an uploader's own place or photo created in the admin).
 - **Notifications.** `review.waiting` comes for free: `history.onStoryWrite` runs the same `tellReviewers` as every audited entity.
-- **Budgets** (measured on the NUC, gzip level 9): the `stories` chunk 4.3 KB (row 5 KB, new), `review` 5.0 of 5, the admin's total
+- **Budgets** (measured on the NUC, gzip level 9): the `stories` chunk 4.4 KB after the review of 2026-11-08 (row 5 KB, new), `review` 5.0 of 5, the admin's total
   647.9 of 650, the entry 379.2 of 450, `engine.mjs` 96.3 of 100, `engine.iife.js` 124.0 of 125. No row rose. `editor-shared` reached
   13,001 bytes of 13,000 once the new area imported the kit it shares; `packages/ui/src/viewer/markdown.ts` moved to the
   `editor-texts` group (`packages/admin/vite.config.ts`), which brings it to 12.8 (DECISIONS §101).

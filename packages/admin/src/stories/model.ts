@@ -2,7 +2,7 @@
  * The stories area's state and its pure parts (M17, `docs/research/M17-stories.md` §6): a list row of a story, a pick of the
  * photo and place pickers, the list's query, a new story's first fields and the editor's checks beyond the schema.
  */
-import type { PhotoDoc, PoiDoc, StoryDoc, ValidationIssue } from '@hcm/shared';
+import type { CityRole, PhotoDoc, PoiDoc, StoryDoc, ValidationIssue } from '@hcm/shared';
 
 import type { DocState } from '../content/doc.js';
 import type { ListState } from '../content/list.js';
@@ -45,6 +45,8 @@ export interface StoriesState {
     readonly picks: { readonly photos: readonly StoryPick[]; readonly places: readonly StoryPick[] } | null;
     /** A moderator, an editor or an owner: Published shows (an uploader's story waits for review instead). */
     readonly reviewer: boolean;
+    /** The city role (null for staff without one): what New story, Delete and Versions show for (the rules' matrix, M17 §6). */
+    readonly role: CityRole | null;
     readonly busy: boolean;
 }
 

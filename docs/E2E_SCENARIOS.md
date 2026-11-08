@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 131 | 1188 | 469 | 719 | 1186 | 2 | 288 |
+| 131 | 1192 | 470 | 722 | 1190 | 2 | 288 |
 
 ## Viewer
 
@@ -205,8 +205,10 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V50-HAPPY-LINK` | V50 | happy | A story opens from its own link and from the photo it is about | #story=<id> opens the sheet in Romanian with its https link; the photo's sheet lists the story and opens it | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
 | `S-V50-HAPPY-OPEN` | V50 | happy | A story from the menu reads with its figure, credit, places and photos | the list, the story sheet with bold text, the figure of the city's photo and its caption, the credit, story= in the address, the figure opening the photo | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
 | `S-V50-HAPPY-PHONE` | V50 | happy | The list and one story pass the layout and accessibility checks on every window class | expectStateSound on the stories and story states, phone included | e2e-viewer | exists | `e2e/tour/viewer.tour.ts` |
+| `S-V50-HAPPY-TIMELINE` | V50 | happy | Opening a story moves the timeline to its year | the timeline reads today, then 1966 once the 1966 story opens from the menu; layers= names the 1966 layer | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
 | `S-V50-BAD-MARKUP-IS-TEXT` | V50 | bad | Markup in a story is text, and a figure of a photo the map does not list is left out | <b>…</b> shows as text with no b element; one figure, not two | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
 | `S-V50-BAD-OLD-MANIFEST` | V50 | bad | A manifest without stories has no Stories in its menu | the menu has About and no Stories item | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
+| `S-V50-BAD-TIMELINE-LINK-LAYERS` | V50 | bad | A story's link with its own layers keeps them instead of the story's year | #layers=<1980>&story=<1966 story> opens the story with the timeline at 1980, layers= and story= unchanged | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
 | `S-V50-BAD-UNKNOWN` | V50 | bad | A link to a story that does not exist shows a toast and opens nothing | error.unknownStory in the status region, no story heading | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
 
 ## Admin
@@ -361,6 +363,8 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-A100-BAD-MANIFEST` | A100 | bad | A draft, waiting, refused or textless story stays out of the manifest | no stories key in the published JSON | functions | exists | `functions/test/publish/stories.test.ts` |
 | `S-A100-BAD-REVERT` | A100 | bad | An uploader reverts nothing | an apiError refusal, the text unchanged | functions | exists | `functions/test/history/stories.test.ts` |
 | `S-A100-BAD-REVIEW` | A100 | bad | An approval of a story changed since the reviewer read it is refused | apiError.review.changed, the story still pending | functions | exists | `functions/test/history/stories.test.ts` |
+| `S-A100-BAD-REVIEW-EMPTY` | A100 | bad | A story with no text is not approved | apiError.review.storyEmpty, the story still pending and unpublished; refusing it still works | functions | exists | `functions/test/history/stories.test.ts` |
+| `S-A100-BAD-ROLE-ACTIONS` | A100 | bad | The stories editor offers a moderator only what the rules allow | Published shows; no New story, no Delete, no Versions (an uploader deletes only a waiting story: the page's unit test) | e2e-admin | exists | `e2e/admin/specs/stories/stories.spec.ts` |
 | `S-A100-BAD-RULES` | A100 | bad | The rules refuse everything else: strangers, other cities, publishing a waiting story, bad values | the deny cells of the matrix and the value checks | rules | exists | `firebase/rules-tests/test/stories.test.ts` |
 | `S-A100-BAD-UPLOADER-WAITS` | A100 | bad | An uploader's story waits for review and cannot be published by them | the waiting note, no Published switch, reviewStatus pending and published false in Firestore | e2e-admin | exists | `e2e/admin/specs/stories/stories.spec.ts` |
 | `S-A11-HAPPY` | A11 | happy | Ranked scenes with footprints and browse previews | Search -> ranked scenes (free first, then by score) with the city's boundary on the admin map and the open scene's footprint alone and browse previews (copies in our bucket read with the Storage SDK, never a USGS address from the browser); for Bucharest the 1966, 1976, 1977, 1978 and 1980 frames rank on top | e2e-admin | exists | `e2e/admin/specs/imagery/search.spec.ts` |

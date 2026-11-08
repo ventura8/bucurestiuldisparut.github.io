@@ -3,7 +3,8 @@
  * and detail layout. The list has New story (a Romanian title) and every story with its years and its state (Unpublished,
  * Waiting for review, Refused); the detail edits one: both titles and texts (the story format's help under them), the years,
  * the linked photos and places (picked by title), Published for a reviewer, Save and Discard with the conflict banner, Delete
- * after a confirmation, and the link to its versions, where Revert is. Text only: every value is bound as a property or text.
+ * after a confirmation, and the link to its versions, where Revert is; New story, Delete and Versions follow the city role as the
+ * rules do (M17 §6). Text only: every value is bound as a property or text.
  */
 import type { Locale, StoryDoc } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
@@ -16,7 +17,7 @@ import { loadingTemplate } from '../editing/states.js';
 import { conflictBanner, field, issueAt, saveBar, saveStateOf } from '../layers/form-parts.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText as t } from '../shell/text.js';
-import { inLocale, stateText, textSpecs } from './stories-fields.js';
+import { canCreateStory, canDeleteStory, inLocale, seesVersions, stateText, textSpecs } from './stories-fields.js';
 import type { StoriesIntentsPort, StoriesViewState, StoryItemPort, StoryPickPort } from './stories-port.js';
 
 export const HCM_STORIES_PAGE_TAG = 'hcm-stories-page';
@@ -109,6 +110,9 @@ class HcmStoriesPage extends AreaPage<StoriesViewState, StoriesIntentsPort> {
     }
 
     #create(locale: Locale, view: StoriesViewState): TemplateResult {
+        if (!canCreateStory(view.role)) {
+            return EMPTY;
+        }
         const create = async (): Promise<void> => {
             const id = await this.intents?.create(this.newTitle);
             if (typeof id === 'string') {
@@ -340,18 +344,21 @@ class HcmStoriesPage extends AreaPage<StoriesViewState, StoriesIntentsPort> {
                 this.go([]);
             }
         };
-        return html`<div class="actions">
-                <a href=${['#', 'history', 'story', open.id].join('/')}>${t(locale, 'adminContent.stories.versions')}</a>
-                <hcm-button
-                    variant="text"
-                    icon="delete"
-                    ?disabled=${this.readOnly || view.busy || open.draft.base === null}
-                    @click=${() => {
-                        this.confirming = true;
-                    }}
-                    >${t(locale, 'adminContent.stories.delete')}</hcm-button
-                >
-            </div>
+        const versions = seesVersions(view.role)
+            ? html`<a href=${['#', 'history', 'story', open.id].join('/')}>${t(locale, 'adminContent.stories.versions')}</a>`
+            : EMPTY;
+        const deleting = canDeleteStory(view.role, value)
+            ? html`<hcm-button
+                  variant="text"
+                  icon="delete"
+                  ?disabled=${this.readOnly || view.busy || open.draft.base === null}
+                  @click=${() => {
+                      this.confirming = true;
+                  }}
+                  >${t(locale, 'adminContent.stories.delete')}</hcm-button
+              >`
+            : EMPTY;
+        return html`<div class="actions">${versions} ${deleting}</div>
             <hcm-confirm-dialog
                 destructive
                 .open=${this.confirming}

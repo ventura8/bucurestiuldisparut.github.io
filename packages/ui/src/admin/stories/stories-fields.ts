@@ -1,5 +1,5 @@
 /** The stories editor's pure parts (M17, `docs/research/M17-stories.md` §6): its texts, its fields, a row's state. */
-import type { AdminContentKey, Locale, StoryDoc } from '@hcm/shared';
+import type { AdminContentKey, CityRole, Locale, StoryDoc } from '@hcm/shared';
 
 import { contentText as t } from '../shell/text.js';
 import type { StoryItemPort } from './stories-port.js';
@@ -85,4 +85,22 @@ export function textSpecs(locale: Locale, value: StoryDoc, edit: (patch: Partial
         { id: 'body-en', key: 'adminContent.stories.bodyEn', value: texts.en, onInput: body('en'), multiline: true },
         ...yearSpecs(value, edit),
     ];
+}
+
+/** M13's matrix for stories (`firestore.rules`): a moderator creates none; staff, an editor and an uploader do. */
+export function canCreateStory(role: CityRole | null): boolean {
+    return role !== 'moderator';
+}
+
+/** A moderator deletes no story; an uploader only their own while it waits or was refused (they see no other). */
+export function canDeleteStory(role: CityRole | null, story: StoryDoc): boolean {
+    if (role === 'uploader') {
+        return story.reviewStatus === 'pending' || story.reviewStatus === 'refused';
+    }
+    return role !== 'moderator';
+}
+
+/** Versions opens `#/history`, a route of staff only (`LIMITED_ROUTES`). */
+export function seesVersions(role: CityRole | null): boolean {
+    return role !== 'moderator' && role !== 'uploader';
 }

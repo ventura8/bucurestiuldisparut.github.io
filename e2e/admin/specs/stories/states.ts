@@ -15,4 +15,8 @@ export const STORIES_STATES = {
         title: "An uploader's story: waiting for a moderator, no Published switch",
         visit: 'specs/stories/stories.spec.ts',
     },
+    'stories.moderator': {
+        title: "A moderator's story editor: Published, and no New story, Delete or Versions",
+        visit: 'specs/stories/stories.spec.ts',
+    },
 } as const;

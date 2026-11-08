@@ -47,6 +47,19 @@ describe('review.decide: a story', () => {
         expect(await refusal(decide(world, { seenAt: '2026-01-01T00:00:00.000Z' }))).toBe('apiError.review.changed');
         expect(await stored(world)).toMatchObject({ published: false, reviewStatus: 'pending' });
     });
+
+    it('badPath_aStoryWithNoTextIsNotApproved @S-A100-BAD-REVIEW-EMPTY', async () => {
+        const world = await communityWorld();
+        await seed(world, { published: false, reviewStatus: 'pending', body: undefined });
+        expect(await refusal(decide(world, {}))).toBe('apiError.review.storyEmpty');
+        expect(await stored(world)).toMatchObject({ published: false, reviewStatus: 'pending' });
+    });
+
+    it('happyPath_aStoryWithNoTextCanStillBeRefused', async () => {
+        const world = await communityWorld();
+        await seed(world, { published: false, reviewStatus: 'pending', body: undefined });
+        await expect(decide(world, { decision: 'refuse' })).resolves.toEqual({ status: 'refused' });
+    });
 });
 
 describe('history.revert: a story', () => {

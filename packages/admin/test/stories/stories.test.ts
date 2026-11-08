@@ -146,6 +146,7 @@ describe('the stories area: refusals', () => {
         w.area.open([]);
         await settle();
         expect(w.area.state.reviewer).toBe(false);
+        expect(w.area.state.role).toBe('uploader');
         expect(await w.area.intents.create('A mea')).toBe('new-1');
         expect(w.store.docs.get(FIRESTORE_PATHS.story(CITY, 'new-1'))).toMatchObject({ reviewStatus: 'pending', published: false });
         expect(w.notices.at(-1)).toEqual({ key: 'adminContent.stories.createdPending' });

@@ -57,6 +57,7 @@ function state(overrides: Partial<StoriesViewState> = {}): StoriesViewState {
             places: [{ id: 'enei', title: { ro: 'Enei' } }],
         },
         reviewer: true,
+        role: 'owner',
         busy: false,
         ...overrides,
     };
@@ -268,6 +269,27 @@ describe('<hcm-stories-page>: its edges', () => {
         const { host } = await page(state({ open: { id: 's1', doc: state().open?.doc as never, draft: draft(refused) } }));
         expect(deepText(host)).toContain('gone');
         expect(deepAll(host, 'hcm-switch')).toHaveLength(0);
+    });
+
+    it('badPath_aModeratorGetsNoNewStoryNoDeleteAndNoVersions @S-A100-BAD-ROLE-ACTIONS', async () => {
+        const { host } = await page(state({ role: 'moderator' }));
+        expect(deepAll(host, '#story-new')).toHaveLength(0);
+        expect(deepAll(host, 'hcm-button[icon="delete"]')).toHaveLength(0);
+        expect(deepAll(host, 'a[href="#/history/story/s1"]')).toHaveLength(0);
+        expect(deepAll(host, 'hcm-switch')).toHaveLength(1);
+    });
+
+    it('badPath_anUploaderDeletesOnlyAWaitingStoryAndHasNoVersions', async () => {
+        const approved = await page(state({ role: 'uploader', reviewer: false }));
+        expect(deepAll(approved.host, 'hcm-button[icon="delete"]')).toHaveLength(0);
+        expect(deepAll(approved.host, 'a[href="#/history/story/s1"]')).toHaveLength(0);
+        expect(deep(approved.host, '#story-new')).toBeTruthy();
+        cleanup();
+        const pending: StoryDoc = { ...STORY, published: false, reviewStatus: 'pending' };
+        const waiting = await page(
+            state({ role: 'uploader', reviewer: false, open: { id: 's1', doc: state().open?.doc as never, draft: draft(pending) } }),
+        );
+        expect(button(waiting.host, 'Delete the story').disabled).toBe(false);
     });
 
     it('happyPath_moreAndBackToTheList', async () => {

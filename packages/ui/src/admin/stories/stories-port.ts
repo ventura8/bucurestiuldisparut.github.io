@@ -2,7 +2,7 @@
  * What `<hcm-stories-page>` reads of the stories area's store (M17, `docs/research/M17-stories.md` §6), mirrored structurally
  * from `packages/admin/src/stories/model.ts` as every area's port is (`../content-port.ts`).
  */
-import type { StoryDoc } from '@hcm/shared';
+import type { CityRole, StoryDoc } from '@hcm/shared';
 
 import type { DocStatePort, ListStatePort } from '../area-port.js';
 import type { DraftStatePort, WriteOutcomePort } from '../layers/layers-port.js';
@@ -35,6 +35,8 @@ export interface StoriesViewState {
     } | null;
     readonly picks: { readonly photos: readonly StoryPickPort[]; readonly places: readonly StoryPickPort[] } | null;
     readonly reviewer: boolean;
+    /** The city role (null: staff without one); New story, Delete and Versions follow it as the rules do. */
+    readonly role: CityRole | null;
     readonly busy: boolean;
 }
 

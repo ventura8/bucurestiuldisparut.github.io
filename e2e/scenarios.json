@@ -13988,6 +13988,50 @@
             "tier": "rules",
             "status": "exists",
             "notes": "Test: firebase/rules-tests/test/stories.test.ts."
+        },
+        {
+            "id": "S-V50-HAPPY-TIMELINE",
+            "behaviour": "V50",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Opening a story moves the timeline to its year",
+            "asserts": "the timeline reads today, then 1966 once the 1966 story opens from the menu; layers= names the 1966 layer",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The review of 2026-11-08. Test: e2e/specs/viewer/stories.spec.ts."
+        },
+        {
+            "id": "S-V50-BAD-TIMELINE-LINK-LAYERS",
+            "behaviour": "V50",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A story's link with its own layers keeps them instead of the story's year",
+            "asserts": "#layers=<1980>&story=<1966 story> opens the story with the timeline at 1980, layers= and story= unchanged",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The review of 2026-11-08. Test: e2e/specs/viewer/stories.spec.ts; the hash rule also in packages/engine/test/core/stories.test.ts."
+        },
+        {
+            "id": "S-A100-BAD-REVIEW-EMPTY",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "bad",
+            "title": "A story with no text is not approved",
+            "asserts": "apiError.review.storyEmpty, the story still pending and unpublished; refusing it still works",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The review of 2026-11-08. Test: functions/test/history/stories.test.ts."
+        },
+        {
+            "id": "S-A100-BAD-ROLE-ACTIONS",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "bad",
+            "title": "The stories editor offers a moderator only what the rules allow",
+            "asserts": "Published shows; no New story, no Delete, no Versions (an uploader deletes only a waiting story: the page's unit test)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-08. Tests: e2e/admin/specs/stories/stories.spec.ts, packages/ui/test/admin/stories/stories-page.test.ts."
         }
     ]
 }

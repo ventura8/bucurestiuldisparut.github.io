@@ -89,3 +89,30 @@ test.describe('an uploader', () => {
         },
     );
 });
+
+test.describe('a moderator', () => {
+    test.use({ persona: 'admin', mapOwner: 'owner', admins: ['admin'] });
+
+    test(
+        'reviews a story but gets no New story, no Delete and no Versions',
+        { tag: '@S-A100-BAD-ROLE-ACTIONS' },
+        async ({ page, lang, adminWorld }) => {
+            const { emulators, accounts } = adminWorld;
+            await seedCity(emulators);
+            await emulators.setDocument(`cities/${PROJECT_CITY}/stories/teatrul`, {
+                title: { ro: 'Teatrul Național' },
+                body: { ro: 'Clădirea a ars în 1944.' },
+                published: true,
+                ...STAMP,
+            });
+            await emulators.updateFields(`admins/${accounts.admin.uid}`, { cities: { [PROJECT_CITY]: 'moderator' } }, ['cities']);
+            await page.goto(adminPath(lang, 'stories/teatrul'));
+            await expect(page.getByRole('heading', { name: 'Teatrul Național' })).toBeVisible();
+            await expect(page.getByRole('switch', { name: cityText(lang, 'adminContent.stories.published') })).toBeVisible();
+            await expect(page.getByLabel(cityText(lang, 'adminContent.stories.newTitle'))).toHaveCount(0);
+            await expect(page.getByRole('button', { name: cityText(lang, 'adminContent.stories.delete') })).toHaveCount(0);
+            await expect(page.getByRole('link', { name: cityText(lang, 'adminContent.stories.versions') })).toHaveCount(0);
+            await expectStateSound(page, adminVisit('stories.moderator', lang));
+        },
+    );
+});

@@ -40,7 +40,7 @@ import {
 type DoneKey =
     'adminContent.stories.created' | 'adminContent.stories.createdPending' | 'adminContent.stories.deleted' | 'adminContent.stories.saved';
 
-const INITIAL: StoriesState = { list: LOADING_LIST, open: null, picks: null, reviewer: false, busy: false };
+const INITIAL: StoriesState = { list: LOADING_LIST, open: null, picks: null, reviewer: false, role: null, busy: false };
 
 class StoriesStore implements AreaStore<StoriesState, StoriesIntents> {
     readonly #services: ContentServices;
@@ -88,7 +88,8 @@ class StoriesStore implements AreaStore<StoriesState, StoriesIntents> {
         if (!this.#list.active) {
             this.#list.show(storiesQuery(ownerOnlyOf(this.#services)));
         }
-        this.#cell.update({ reviewer: this.#services.cityRole() !== 'uploader' });
+        const role = this.#services.cityRole();
+        this.#cell.update({ reviewer: role !== 'uploader', role });
         this.#select(params[0] ?? null);
     }
 

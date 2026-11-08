@@ -27,6 +27,16 @@ describe('stories in the viewer state @S-V50-HAPPY-OPEN', () => {
         expect(applied.state).toMatchObject({ sheet: 'stories', selectedStoryId: 'teatrul' });
         expect(unknownToast(applied)).toBeNull();
     });
+
+    it('happyPath_aLinkWithItsOwnLayersKeepsThemWithTheStoryOpen @S-V50-BAD-TIMELINE-LINK-LAYERS', () => {
+        const applied = applyDecodedHash(ready, decodeHash('#layers=kh9-1980&story=teatrul', hashLimits(city)));
+        expect(applied.state).toMatchObject({ sheet: 'stories', selectedStoryId: 'teatrul', year: 1980 });
+        const visible = applied.state.overlays
+            .filter((overlay) => overlay.kind === 'raster' && overlay.visible)
+            .map((overlay) => overlay.id);
+        expect(visible).toEqual(['kh9-1980']);
+        expect(encodeViewerHash(applied.state, 'ro')).toContain('layers=kh9-1980');
+    });
 });
 
 describe('stories in the viewer state: refusals @S-V50-BAD-UNKNOWN', () => {
