@@ -4,8 +4,9 @@ import math
 from dataclasses import replace
 
 import numpy
+from hcm_pipeline.calibrate import pairs
 from hcm_pipeline.calibrate.camera import MIN_PANORAMIC_TILES, Frame, fit_panoramic, plainest
-from hcm_pipeline.calibrate.pairs import ScanBox, calibrated
+from hcm_pipeline.calibrate.pairs import ScanBox, calibrated, panoramic_figure
 from hcm_pipeline.calibrate.poly import fit_poly, ground_errors
 from hcm_pipeline.geo import FloatArray
 from hcm_pipeline.georef.lattice import LATTICE_SIDE
@@ -145,3 +146,22 @@ def test_bad_path_a_camera_that_holds_clearly_more_tiles_wins_however_much_it_be
 
     assert plainest([camera, bent]) is bent
     assert plainest([camera, equal]) is camera
+
+
+def test_bad_path_too_few_tiles_for_any_fold_s_camera_give_no_blocked_figure() -> None:
+    """Scenarios: S-P06-BAD-PANORAMIC-FALLS-BACK"""
+    rows = panoramic_rows(900)
+
+    assert panoramic_figure(rows[: MIN_PANORAMIC_TILES - 1], rows[:200], RAD_PER_PX, 3000.0) is None
+
+
+def test_bad_path_pairs_on_one_line_give_the_camera_no_georeference() -> None:
+    """Scenarios: S-P06-BAD-PANORAMIC-FALLS-BACK"""
+    rows = panoramic_rows(900)
+    camera = fit_panoramic(rows[:, :2], rows[:, 2:4], RAD_PER_PX)
+    assert camera is not None
+    line = numpy.column_stack((numpy.linspace(2000, 40000, 8), numpy.linspace(1000, 22000, 8)))
+    on_line = numpy.column_stack((line, camera.to_places(line), numpy.full(8, 0.5), numpy.full(8, 0.1)))
+    chosen = pairs.Chosen(on_line, on_line[:0], 0, rows, len(rows))
+
+    assert pairs._panoramic(chosen, SCAN, camera, MIDDLE_LAT) is None
