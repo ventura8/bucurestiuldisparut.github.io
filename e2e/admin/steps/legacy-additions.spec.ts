@@ -139,7 +139,7 @@ test(
             .toContainEqual(expect.objectContaining({ action: 'delete' }));
         await expect
             .poll(() => ownersEntries(emulators, unpublished ?? '', owner), { timeout: 60_000 })
-            .toContainEqual(expect.objectContaining({ previous: expect.objectContaining({ published: true }) as unknown }));
+            .toContainEqual(expect.objectContaining({ previous: expect.objectContaining({ published: true }) }));
         const kept = await legacyPhotos(emulators);
 
         // The tab opened before the import still offers it: its run finds nothing to do.
