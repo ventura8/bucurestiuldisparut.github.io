@@ -93,6 +93,14 @@ async function snackbar(page: Page, lang: 'ro' | 'en', key: Parameters<typeof im
     return notice;
 }
 
+/** The four steps of the order card's guide, as the owner did them on EarthExplorer's scene page (2026-11-08). */
+const ORDER_GUIDE = [
+    'adminContent.orders.guide.signIn',
+    'adminContent.orders.guide.order',
+    'adminContent.orders.guide.selections',
+    'adminContent.orders.guide.pay',
+] as const;
+
 /** Closes the snackbar `key`: the states that follow are about the card, and its timer could end mid-check. */
 async function closeSnackbar(page: Page, lang: 'ro' | 'en', key: Parameters<typeof imageryText>[1]): Promise<void> {
     const notice = await snackbar(page, lang, key);
@@ -115,6 +123,7 @@ test(
         // The card: the state, the cost (paid to USGS), the guide, the scene's own EarthExplorer page in a new tab.
         await expect(orderCard(page)).toContainText(imageryText(lang, 'adminContent.orders.state.needsOrder'));
         await expect(orderCard(page)).toContainText(imageryText(lang, 'adminContent.orders.estimate', { usd: '35', frames: '1' }));
+        await expect(orderCard(page).locator('.guide li')).toHaveText(ORDER_GUIDE.map((step) => imageryText(lang, step)));
         const earthExplorer = orderCard(page).getByRole('link', { name: new RegExp(`^${imageryText(lang, 'adminContent.orders.open')}`) });
         await expect(earthExplorer).toHaveAttribute('href', EE_PAGE);
         await expect(earthExplorer).toHaveAttribute('target', '_blank');

@@ -135,7 +135,7 @@ the exact pages; nothing is done without you.
    admin (Hosting, with its push service worker `firebase-messaging-sw.js`), and the pipeline's image with the new
    matcher (`pipeline/Dockerfile`, target `runtime`).
 3. __The first real scan purchase__ (yours, never Claude's): in EarthExplorer, 30 USD a frame plus 5 USD an order, paid
-   by card or by phone to USGS. Then __I ordered it__ in the admin; delivery takes three to four weeks after payment, and
+   by card on pay.gov (done 2026-11-08 for D3C1216-100235F038: Login, Order, 7 Micron, Submit Product Selections, pay.gov). Then __I ordered it__ in the admin; delivery takes three to four weeks after payment, and
    the watch imports it by itself. It also proves what the contract marks UNVERIFIED (§10): the Declass 2 and 3
    EarthExplorer dataset ids, the order lifecycle, whether M2M's order endpoints could spare the click (§52g).
 4. __The public site reads the bucket__ (§55e, ask first): one `ci.yml` line and the repository variable

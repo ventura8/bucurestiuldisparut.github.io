@@ -118,7 +118,7 @@ export function orderEstimateUsd(frames: number): number {
 }
 
 /**
- * The scene's page in EarthExplorer, where the admin adds it to the basket and starts the on-demand order (the verified
+ * The scene's page in EarthExplorer, where the admin signs in and clicks Order for the on-demand order (the verified
  * pattern `https://earthexplorer.usgs.gov/scene/metadata/full/{datasetId}/{entityId}/`), or undefined when the dataset's
  * EarthExplorer id is not known yet or either id is malformed (the screen then names the entity id to search for).
  */
