@@ -27,7 +27,7 @@ export const SHORTCUT_ROWS: readonly (readonly [readonly string[], MessageKey])[
     [['?'], 'input.help'],
 ];
 
-const TYPING = 'input,textarea,select,[contenteditable],[role=textbox],[role=searchbox],[role=combobox],[role=menuitem]';
+const TYPING = 'input,textarea,select,[contenteditable],[role=textbox],[role=searchbox],[role=combobox],[role^=menuitem]';
 
 function isModified(event: KeyboardEvent): boolean {
     return event.ctrlKey || event.altKey || event.metaKey || event.isComposing || event.defaultPrevented;

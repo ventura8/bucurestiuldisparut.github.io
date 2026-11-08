@@ -87,6 +87,8 @@ describe('<hcm-home-page>', () => {
             versionsToApprove: 1,
             roleRequests: 2,
             suggestionsToReview: 3,
+            photosToReview: 6,
+            placesToReview: 7,
             storiesToReview: 5,
             failedJobs: 4,
         } as HomeViewState['counts'];
@@ -103,6 +105,8 @@ describe('<hcm-home-page>', () => {
             ['#/imagery', '1 Historical images to approve'],
             ['#/review', '2 Role requests to accept'],
             ['#/review', '3 Suggestions to review'],
+            ['#/review', '6 Photos to review'],
+            ['#/review', '7 Places to review'],
             ['#/review', '5 Stories to review'],
             ['#/jobs', '4 Failed jobs'],
         ]);
@@ -217,6 +221,8 @@ describe('<hcm-home-page>: What needs you while a count is unknown', () => {
             '… Historical images to approve',
             '… Role requests to accept',
             '… Suggestions to review',
+            '… Photos to review',
+            '… Places to review',
             '… Stories to review',
             '… Failed jobs',
         ]);

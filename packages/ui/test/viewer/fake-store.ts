@@ -4,7 +4,7 @@
  * The engine's real store is tested in `packages/engine`; this one only has to be faithful enough to drive the UI.
  */
 import { isCompactHeight, windowClassFor } from '../../src/theme/tokens.js';
-import type { SheetName, ThemeMode, ViewerState, ViewerStorePort } from '../../src/viewer/store-port.js';
+import type { MyLocationState, SheetName, ThemeMode, ViewerState, ViewerStorePort } from '../../src/viewer/store-port.js';
 import {
     overlaysFromManifest,
     withOverlayOpacity,
@@ -52,6 +52,7 @@ export function idleState(): ViewerState {
             defaults: { streets: true, pois: true },
             available: null,
         },
+        myLocation: null,
     };
 }
 
@@ -172,6 +173,11 @@ export class FakeStore implements ViewerStorePort {
     setShortcuts(enabled: boolean): void {
         this.#record('setShortcuts', enabled);
         this.set({ shortcuts: enabled });
+    }
+
+    setMyLocation(myLocation: MyLocationState): void {
+        this.#record('setMyLocation', myLocation);
+        this.set({ myLocation });
     }
 
     logShare(): void {

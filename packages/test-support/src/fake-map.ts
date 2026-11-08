@@ -19,6 +19,7 @@ import type {
     Unsubscribe,
     VectorOverlaySpec,
 } from '../../ui/src/map/map-port.js';
+import type { MyLocationFix } from '../../ui/src/map/my-location.js';
 import type { ViewerMapPort } from '../../ui/src/map/viewer-map.js';
 import type {
     MapboxCameraOptions,
@@ -210,6 +211,10 @@ export class FakeMap implements ViewerMapPort {
     setBasemapFlag(name: string, value: boolean): void {
         this.#record('setBasemapFlag', name, value);
         this.#flags.set(name, value);
+    }
+
+    setMyLocation(fix: MyLocationFix | null): void {
+        this.#record('setMyLocation', fix);
     }
 
     resize(): void {

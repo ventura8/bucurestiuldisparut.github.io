@@ -266,6 +266,35 @@ describe('viewer store: view, window, theme, consent', () => {
         expect(store.getState().view).toEqual({ center: [26.11, 44.44], zoom: 16, bearing: 0 });
     });
 
+    it('happyPath_theVisitorsPositionReachesTheMapAndNothingElse', async () => {
+        const { store, map, location, telemetry, storage } = await loaded();
+        vi.advanceTimersByTime(HASH_WRITE_DELAY_MS);
+        const written = location.written.length;
+        const events = telemetry.events.length;
+        const drawn = map.callsOf('setMyLocation').length;
+        const fix = { center: [26.1, 44.43] as const, accuracy: 15, heading: null };
+
+        store.setMyLocation('waiting');
+        store.setMyLocation(fix);
+        vi.advanceTimersByTime(HASH_WRITE_DELAY_MS);
+
+        expect(store.getState().myLocation).toEqual(fix);
+        expect(map.callsOf('setMyLocation').slice(drawn)).toEqual([[null], [fix]]);
+        expect(location.written).toHaveLength(written);
+        expect(telemetry.events).toHaveLength(events);
+        expect([...storage.values()].join(' ')).not.toContain('44.43');
+    });
+
+    it('badPath_aPositionBeforeTheMapOnlyStaysInTheState', () => {
+        const { store, map } = harness();
+
+        store.setMyLocation({ center: [26.1, 44.43], accuracy: 15, heading: 10 });
+        store.setMyLocation(null);
+
+        expect(store.getState().myLocation).toBeNull();
+        expect(map.callsOf('setMyLocation')).toEqual([]);
+    });
+
     it('happyPath_aShareIsLoggedAsTheShareEvent', async () => {
         const { store, telemetry } = await loaded();
 

@@ -21,6 +21,7 @@ import { OverlayChangeTracker, overlayEvents, viewerEvents, type PublicEvent } f
 import type { HcmTimeline } from './hcm-timeline.js';
 import { commandAllowed, runInputCommand, type InputCommand } from './input-commands.js';
 import { layoutFor, type ViewerLayout } from './layout.js';
+import { stopMyLocation } from './my-location.js';
 import { browserServices, type ViewerServices } from './services.js';
 import type { Unsubscribe, ViewerController, ViewerError, ViewerState, ViewerStorePort } from './store-port.js';
 import { timelineStops, type TimelineStop } from './timeline-model.js';
@@ -113,6 +114,13 @@ export class HcmMapViewer extends LitElement {
         this.#onResize(entries);
     });
 
+    /** A hidden page stops Show my location: no position is watched while nobody looks at the map. */
+    readonly #onVisibility = (): void => {
+        if (this.ownerDocument.visibilityState === 'hidden') {
+            this.#stopMyLocation();
+        }
+    };
+
     readonly #onKey = (event: KeyboardEvent): void => {
         const command = this.viewState?.shortcuts === true ? shortcutOf(event) : null;
         if (command !== null && isViewerKey(this, event)) {
@@ -200,8 +208,9 @@ export class HcmMapViewer extends LitElement {
         this.#subscribe();
     }
 
-    /** Disconnects the store; the element shows its loading state again. */
+    /** Disconnects the store (Show my location stops); the element shows its loading state again. */
     detach(): void {
+        this.#stopMyLocation();
         this.#unsubscribe();
         this.#unsubscribe = () => undefined;
         this.#store = null;
@@ -213,6 +222,7 @@ export class HcmMapViewer extends LitElement {
         super.connectedCallback();
         this.#resizeObserver.observe(this);
         this.ownerDocument.addEventListener('keydown', this.#onKey);
+        this.ownerDocument.addEventListener('visibilitychange', this.#onVisibility);
         this.#applyTheme(this.viewState);
         this.#subscribe();
         this.#watchAttribution();
@@ -224,6 +234,8 @@ export class HcmMapViewer extends LitElement {
     override disconnectedCallback(): void {
         this.#resizeObserver.disconnect();
         this.ownerDocument.removeEventListener('keydown', this.#onKey);
+        this.ownerDocument.removeEventListener('visibilitychange', this.#onVisibility);
+        this.#stopMyLocation();
         this.#unsubscribe();
         this.#unsubscribe = () => undefined;
         this.#stopAttribution();
@@ -267,6 +279,12 @@ export class HcmMapViewer extends LitElement {
             this.#stopAttribution = watchAttribution(container, (parts) => {
                 this.attribution = parts;
             });
+        }
+    }
+
+    #stopMyLocation(): void {
+        if (this.#store !== null) {
+            stopMyLocation(this.#store);
         }
     }
 

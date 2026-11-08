@@ -6,14 +6,20 @@
  * also reaches Mapbox's own labels and the basemap's (`setLocale`). The overlays drawn are `displayedOverlays`: on a
  * compact window, swipe compare's toggle may show the compared side's historical layer instead (M4, V06). The basemap's
  * own labels follow the visitor's choice on either map (`map-labels.ts`, V31), its light the theme (`map-light.ts`, V38).
+ * The visitor's position, once known, is a blue dot on either map (V10).
  */
 import { findOverlay, PHOTOS_OVERLAY_ID, rasterAdjustmentPaint, type Manifest, type Overlay } from '@hcm/shared';
-import type { ViewerMapPort } from '@hcm/ui/map';
+import type { MyLocationFix, ViewerMapPort } from '@hcm/ui/map';
 
 import { drawMapLabels } from './map-labels.js';
 import { drawMapLight, mapLight } from './map-light.js';
 import { photoFeatures, poiSpecs, rasterSpec } from './map-specs.js';
-import { displayedOverlays, type ViewerState } from './state.js';
+import { displayedOverlays, type MyLocationState, type ViewerState } from './state.js';
+
+/** The position to draw: none while off or waiting for the first one. */
+function fixOf(state: MyLocationState): MyLocationFix | null {
+    return typeof state === 'object' ? state : null;
+}
 
 export class MapSync {
     readonly #map: ViewerMapPort;
@@ -44,6 +50,7 @@ export class MapSync {
         this.#features(manifest, state);
         drawMapLabels(this.#map, state.mapLabels.shown);
         drawMapLight(this.#map, mapLight(state));
+        this.#map.setMyLocation(fixOf(state.myLocation));
     }
 
     /** Applies the difference between `previous` and `next` (same manifest). */
@@ -58,6 +65,9 @@ export class MapSync {
             drawMapLabels(this.#map, next.mapLabels.shown);
         }
         this.#light(previous, next);
+        if (next.myLocation !== previous.myLocation) {
+            this.#map.setMyLocation(fixOf(next.myLocation));
+        }
     }
 
     #light(previous: ViewerState, next: ViewerState): void {

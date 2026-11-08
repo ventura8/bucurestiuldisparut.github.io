@@ -2,7 +2,6 @@
  * Mounts `<hcm-map-viewer>` against a `FakeStore`, with the kit doubles and fake browser services, at a chosen box
  * size (the window class comes from the element's own ResizeObserver, as in production).
  */
-import type { LngLat } from '@hcm/shared';
 import { vi } from 'vitest';
 
 import type { WindowClass } from '../../src/theme/tokens.js';
@@ -28,7 +27,12 @@ export function fakeServices(change: Partial<ViewerServices> = {}): ViewerServic
     return {
         share: null,
         copyText: () => Promise.resolve(),
-        locate: () => Promise.resolve([26.1, 44.43] as LngLat),
+        watchPosition: (onFix) => {
+            queueMicrotask(() => {
+                onFix({ center: [26.1, 44.43], accuracy: 20, heading: null });
+            });
+            return () => undefined;
+        },
         pageUrl: () => 'https://example.org/#14/44.43/26.1',
         matchMedia: (query) => window.matchMedia(query),
         openPage: () => undefined,

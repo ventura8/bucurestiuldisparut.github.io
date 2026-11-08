@@ -143,7 +143,7 @@ Navigarea are Acasă, Configurare, Fotografii, Locuri, Straturi, Imagini istoric
 
 ### Acasă
 
-Ce conține orașul și ce te așteaptă (fotografii cu drepturi de verificat, fotografii nepublicate, procesări în lucru sau eșuate), fiecare cu link spre pagina lui, câte un indicator pentru fiecare zonă a Configurării și starea hărții publice. După ce configurarea e gata, aplicația se deschide aici (`docs/research/DECISIONS-for-review.md` §41c). **Nu sunt pe harta publică** enumeră fiecare element publicat pe care harta publică l-a lăsat deoparte, cu ce e de corectat și un link spre editorul lui.
+Ce conține orașul și ce te așteaptă (fotografii cu drepturi de verificat, fotografii nepublicate, procesări în lucru sau eșuate), fiecare cu link spre pagina lui, câte un indicator pentru fiecare zonă a Configurării și starea hărții publice. **Ce are nevoie de tine**, primul, enumeră doar ce așteaptă acum o persoană, fiecare cu link spre locul unde se rezolvă: imagini de aprobat, cereri de rol, sugestii, precum și fotografiile, locurile și poveștile trimise de un contribuitor care așteaptă în **Verificare** (unui contribuitor nu i se arată și nu i se cer aceste numere). Cât timp un număr se citește, elementul lui arată trei puncte, iar un număr care nu a putut fi citit arată o linie: lista nu spune niciodată *Nimic nu are nevoie de tine acum.* cât timp nu știe. După ce configurarea e gata, aplicația se deschide aici (`docs/research/DECISIONS-for-review.md` §41c). **Nu sunt pe harta publică** enumeră fiecare element publicat pe care harta publică l-a lăsat deoparte, cu ce e de corectat și un link spre editorul lui.
 
 ### Fotografii
 

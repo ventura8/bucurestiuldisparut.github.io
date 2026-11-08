@@ -7,6 +7,7 @@ import type { AdapterEnv } from './env.js';
 import type { MapPort } from './map-port.js';
 import { createMapboxPort, nativeMap } from './mapbox-adapter.js';
 import type { MapboxGl, MapboxMap } from './mapbox-types.js';
+import { drawMyLocation, type MyLocationFix } from './my-location.js';
 
 const IMPORT_ID = 'basemap';
 
@@ -22,6 +23,8 @@ export interface ViewerMapPort extends MapPort {
     getBasemapOption(name: string): string | null;
     /** Sets one live, with no new map load. Write only what `getBasemapOption` found. */
     setBasemapOption(name: string, value: string): void;
+    /** The visitor's position as a blue dot (`my-location.ts`), null removes it; nothing before `mount` has resolved. */
+    setMyLocation(fix: MyLocationFix | null): void;
 }
 
 /** Mapbox answers null, or throws, for a style without the import or the property. */
@@ -54,5 +57,11 @@ export function createViewerMapPort(gl: MapboxGl, env?: AdapterEnv): ViewerMapPo
         setBasemapFlag: write,
         getBasemapOption: (name: string) => readOption(nativeMap(port), name),
         setBasemapOption: write,
+        setMyLocation: (fix: MyLocationFix | null) => {
+            const map = nativeMap(port);
+            if (map !== null) {
+                drawMyLocation(map, fix);
+            }
+        },
     });
 }

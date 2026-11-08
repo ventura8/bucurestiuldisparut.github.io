@@ -1,25 +1,12 @@
-import type { BBox, LngLat } from '@hcm/shared';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-    browserServices,
-    locateVisitor,
-    resolveAssetUrl,
-    shareMessage,
-    sharePage,
-    type ViewerServices,
-} from '../../src/viewer/services.js';
-
-const BOUNDS: BBox = [
-    [25.93, 44.33],
-    [26.25, 44.55],
-];
+import { browserServices, isDenied, resolveAssetUrl, shareMessage, sharePage, type ViewerServices } from '../../src/viewer/services.js';
 
 function services(change: Partial<ViewerServices> = {}): ViewerServices {
     return {
         share: null,
         copyText: () => Promise.resolve(),
-        locate: () => Promise.resolve([26.1, 44.43] as LngLat),
+        watchPosition: () => () => undefined,
         pageUrl: () => 'https://example.org/map/#14/44.43/26.1',
         matchMedia: (query) => window.matchMedia(query),
         openPage: () => undefined,
@@ -27,8 +14,27 @@ function services(change: Partial<ViewerServices> = {}): ViewerServices {
     };
 }
 
-interface FakeGeolocation {
-    readonly getCurrentPosition: (success: PositionCallback, failure: PositionErrorCallback) => void;
+/** A browser's geolocation that answers each watch at once with `answer`, and records the watches cleared. */
+class FakeGeolocation {
+    readonly cleared: number[] = [];
+    readonly #answer: (success: PositionCallback, failure: PositionErrorCallback) => void;
+
+    constructor(answer: (success: PositionCallback, failure: PositionErrorCallback) => void) {
+        this.#answer = answer;
+    }
+
+    watchPosition(success: PositionCallback, failure: PositionErrorCallback): number {
+        this.#answer(success, failure);
+        return 7;
+    }
+
+    clearWatch(id: number): void {
+        this.cleared.push(id);
+    }
+}
+
+function position(coords: Partial<GeolocationCoordinates>): GeolocationPosition {
+    return { coords: { longitude: 26.1, latitude: 44.43, accuracy: 12, heading: null, ...coords } } as GeolocationPosition;
 }
 
 function fakeWindow(navigator: Record<string, unknown>): Window {
@@ -43,19 +49,28 @@ describe('browserServices', () => {
     it('happyPath_usesTheWindowsShareClipboardAndGeolocation', async () => {
         const share = vi.fn(() => Promise.resolve());
         const writeText = vi.fn(() => Promise.resolve());
-        const geolocation: FakeGeolocation = {
-            getCurrentPosition: (success) => {
-                success({ coords: { longitude: 26.1, latitude: 44.43 } } as GeolocationPosition);
-            },
-        };
+        const geolocation = new FakeGeolocation((success) => {
+            success(position({ heading: 90 }));
+            success(position({ heading: Number.NaN, accuracy: 30 }));
+        });
         const real = browserServices(fakeWindow({ share, clipboard: { writeText }, geolocation }));
+        const fixes: unknown[] = [];
 
         await real.share?.({ title: 'Hartă', url: 'https://example.org/' });
         await real.copyText('https://example.org/');
 
         expect(share).toHaveBeenCalledWith({ title: 'Hartă', url: 'https://example.org/' });
         expect(writeText).toHaveBeenCalledWith('https://example.org/');
-        await expect(real.locate()).resolves.toEqual([26.1, 44.43]);
+        const stop = real.watchPosition(
+            (fix) => fixes.push(fix),
+            () => undefined,
+        );
+        stop();
+        expect(fixes).toEqual([
+            { center: [26.1, 44.43], accuracy: 12, heading: 90 },
+            { center: [26.1, 44.43], accuracy: 30, heading: null },
+        ]);
+        expect(geolocation.cleared).toEqual([7]);
         expect(real.pageUrl()).toBe('https://example.org/city/#15/44.4/26.1');
         expect(real.matchMedia('(min-width: 1px)').matches).toBe(true);
     });
@@ -64,16 +79,25 @@ describe('browserServices', () => {
         const real = browserServices(fakeWindow({ clipboard: { writeText: () => Promise.resolve() } }));
 
         expect(real.share).toBeNull();
-        await expect(real.locate()).rejects.toThrow('geolocation unavailable');
+        const onError = vi.fn();
+        real.watchPosition(() => undefined, onError)();
+        expect(onError).not.toHaveBeenCalled();
+        await vi.waitFor(() => {
+            expect(onError).toHaveBeenCalledWith(expect.any(Error));
+        });
     });
 
-    it('badPath_deniedGeolocationRejectsWithItsCode', async () => {
-        const geolocation: FakeGeolocation = {
-            getCurrentPosition: (_success, failure) => {
-                failure({ code: 1 } as GeolocationPositionError);
-            },
-        };
-        await expect(browserServices(fakeWindow({ geolocation })).locate()).rejects.toEqual({ code: 1 });
+    it('badPath_deniedGeolocationFailsWithItsCode', () => {
+        const geolocation = new FakeGeolocation((_success, failure) => {
+            failure({ code: 1 } as GeolocationPositionError);
+        });
+        const errors: unknown[] = [];
+        browserServices(fakeWindow({ geolocation })).watchPosition(
+            () => undefined,
+            (error) => errors.push(error),
+        );
+        expect(errors).toEqual([{ code: 1 }]);
+        expect(errors.map(isDenied)).toEqual([true]);
     });
 });
 
@@ -123,37 +147,13 @@ describe('shareMessage', () => {
     });
 });
 
-describe('locateVisitor', () => {
-    it('happyPath_insideTheCityGivesThePosition', async () => {
-        await expect(locateVisitor(services(), BOUNDS)).resolves.toEqual({ ok: true, center: [26.1, 44.43] });
+describe('isDenied', () => {
+    it('happyPath_aRefusalHasCodeOne', () => {
+        expect(isDenied({ code: 1 })).toBe(true);
     });
 
-    it('badPath_outsideTheCity', async () => {
-        const locate = () => Promise.resolve([2.35, 48.85] as LngLat);
-
-        await expect(locateVisitor(services({ locate }), BOUNDS)).resolves.toEqual({ ok: false, code: 'error.geolocate.outside' });
-    });
-
-    it('badPath_permissionDenied', async () => {
-        const locate = () => Promise.reject(Object.assign(new Error('denied'), { code: 1 }));
-
-        await expect(locateVisitor(services({ locate }), BOUNDS)).resolves.toEqual({ ok: false, code: 'error.geolocate.denied' });
-    });
-
-    it('badPath_positionUnavailable', async () => {
-        await expect(
-            locateVisitor(services({ locate: () => Promise.reject(Object.assign(new Error('unavailable'), { code: 2 })) }), BOUNDS),
-        ).resolves.toEqual({
-            ok: false,
-            code: 'error.geolocate.unavailable',
-        });
-        await expect(locateVisitor(services({ locate: () => Promise.reject(new Error('x')) }), BOUNDS)).resolves.toMatchObject({
-            ok: false,
-        });
-    });
-
-    it('badPath_noCityYet', async () => {
-        await expect(locateVisitor(services(), null)).resolves.toEqual({ ok: false, code: 'error.geolocate.unavailable' });
+    it('badPath_otherErrorsAreNoRefusal', () => {
+        expect([{ code: 2 }, new Error('x'), null, 'denied'].map(isDenied)).toEqual([false, false, false, false]);
     });
 });
 

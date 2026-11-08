@@ -177,3 +177,38 @@ describe('<hcm-fab-menu>', () => {
         expect(element.open).toBe(false);
     });
 });
+
+describe('<hcm-fab-menu>: an item that is on or off', () => {
+    afterEach(cleanup);
+
+    it('happyPath_anItemThatIsOnOrOffIsACheckboxItemTheArrowsReach', async () => {
+        const element = await menu();
+        element.items = [...ITEMS, { value: 'locate', label: 'Arată-mi locația', icon: 'my_location', checked: true }];
+        shadowPart(element, '.fab').click();
+        await element.updateComplete;
+        const list = shadowPart(element, '[role="menu"]');
+
+        const locate = page.getByRole('menuitemcheckbox', { name: 'Arată-mi locația' });
+        await expect.element(locate).toHaveAttribute('aria-checked', 'true');
+        press(list, 'End');
+        expect(focusedText()).toBe('Arată-mi locația');
+        expect(shadowPart(element, '[role="menuitem"]').hasAttribute('aria-checked')).toBe(false);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_anOffItemSaysSoAndLooksLikeTheOthers', async () => {
+        const element = await menu();
+        element.items = [{ value: 'locate', label: 'Arată-mi locația', icon: 'my_location', checked: false }, ...ITEMS];
+        shadowPart(element, '.fab').click();
+        await element.updateComplete;
+
+        const off = shadowPart(element, '[role="menuitemcheckbox"]');
+        const action = shadowPart(element, '[role="menuitem"]');
+        expect(off.getAttribute('aria-checked')).toBe('false');
+        expect(getComputedStyle(off).borderTopWidth).toBe(getComputedStyle(action).borderTopWidth);
+        element.items = [{ value: 'locate', label: 'Arată-mi locația', icon: 'my_location', checked: true }, ...ITEMS];
+        await element.updateComplete;
+        expect(getComputedStyle(off).borderTopWidth).toBe('3px');
+        expect(getComputedStyle(action).borderTopWidth).toBe('0px');
+    });
+});

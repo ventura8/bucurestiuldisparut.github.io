@@ -38,11 +38,15 @@ const MENU_ENTRIES: Readonly<Record<Exclude<MenuAction, 'language'>, { readonly 
     about: { icon: 'info', label: 'about.title' },
 };
 
-/** One FAB menu item; the language item is named after the language it switches to (`English`, `Română`). */
-export function menuItem(action: MenuAction, locale: Locale): FabMenuItem {
+/**
+ * One FAB menu item; the language item is named after the language it switches to (`English`, `Română`), and Show my
+ * location is a switch, checked while `locating` (V10).
+ */
+export function menuItem(action: MenuAction, locale: Locale, locating = false): FabMenuItem {
     if (action === 'language') {
         return { value: action, icon: 'translate', label: translate(locale, `language.${otherLocale(locale)}`) };
     }
     const entry = MENU_ENTRIES[action];
-    return { value: action, icon: entry.icon, label: translate(locale, entry.label) };
+    const item = { value: action, icon: entry.icon, label: translate(locale, entry.label) };
+    return action === 'locate' ? { ...item, checked: locating } : item;
 }

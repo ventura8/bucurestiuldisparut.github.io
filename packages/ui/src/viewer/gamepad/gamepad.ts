@@ -295,8 +295,10 @@ class Session implements GamepadSession {
 
     /** Through the tabbable, non-inert controls; inside the open menu, its own arrow keys. */
     #moveFocus(step: number): void {
-        const active = this.#active();
-        if (active?.getAttribute('role') === 'menuitem') {
+        // Nothing focused counts as the body: on no item of the menu, and first of no list.
+        const active = this.#active() ?? this.#deps.win.document.body;
+        // An item of the open menu: an action (`menuitem`) or a switch (`menuitemcheckbox`).
+        if (String(active.getAttribute('role')).startsWith('menuitem')) {
             active.dispatchEvent(new KeyboardEvent('keydown', { key: step > 0 ? 'ArrowDown' : 'ArrowUp', bubbles: true, composed: true }));
         } else {
             const list = tabbableElements(this.#deps.surface.renderRoot as ShadowRoot).filter((element) => !isInert(element));

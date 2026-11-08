@@ -178,6 +178,7 @@ export const ro = {
     'consent.granted': 'Statistici anonime: permise',
     'consent.denied': 'Statistici anonime: refuzate',
     'geolocate.locating': 'Se caută locația…',
+    'geolocate.shown': 'Locația ta: ±{meters} m',
 } as const;
 
 export type MessageKey = keyof typeof ro;

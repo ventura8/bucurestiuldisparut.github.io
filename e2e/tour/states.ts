@@ -8,6 +8,7 @@ import { UNPLACED_JOURNEY, unplacedStates } from './unplaced-states.js';
 import { STORY_JOURNEY, storyStates } from './story-states.js';
 import { INPUT_JOURNEY, INPUT_STATES } from './input-states.js';
 import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
+import { MY_LOCATION_STATES } from './my-location-states.js';
 import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
 import { hasBottomSheets, toDetent } from './sheets.js';
 import { OPS_STATES } from '../admin/specs/ops/states.js';
@@ -118,6 +119,7 @@ const POI = 'fixture-cladire';
 /** Every state of the viewer the tour visits, by id. */
 const VIEWER_STATES = {
     ...INPUT_STATES,
+    ...MY_LOCATION_STATES,
     'skip-link': {
         title: 'The first Tab: the skip link shows over the map with a focus ring',
         enter: async ({ page, lang }) => {
@@ -425,7 +427,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
             await expectFrame(tour, true);
             await expectMapboxControls(tour);
         },
-        states: ['skip-link', 'home', 'menu-open', 'share-toast', 'locate-toast', 'language'],
+        states: ['skip-link', 'home', 'menu-open', 'share-toast', 'locate-toast', 'my-location', 'language'],
     },
     {
         title: 'A historical year, the timeline and the Layers panel',

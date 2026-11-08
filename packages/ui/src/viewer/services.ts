@@ -3,17 +3,23 @@
  * the page address and media queries. `<hcm-map-viewer>` takes them as one injectable `services` object, so tests
  * drive every outcome (granted, denied, outside the city, no Web Share API) without a real browser permission.
  *
- * The visitor's position never leaves the page: it moves the camera and is neither stored nor logged.
+ * The visitor's position never leaves the page: it moves the camera once, draws the blue dot, and is neither stored nor
+ * logged.
  */
-import { bboxContains, type BBox, type LngLat, type MessageKey } from '@hcm/shared';
+import type { MessageKey } from '@hcm/shared';
+
+import type { MyLocationFix } from './store-port.js';
 
 export interface ViewerServices {
     /** The Web Share API, when the browser has it. */
     readonly share: ((data: { readonly title: string; readonly url: string }) => Promise<void>) | null;
     /** Writes text to the clipboard. */
     readonly copyText: (text: string) => Promise<void>;
-    /** The visitor's position; rejects with an object whose `code` is 1 when permission was denied. */
-    readonly locate: () => Promise<LngLat>;
+    /**
+     * Watches the visitor's position: `onFix` with each one, `onError` with what failed (an object whose `code` is 1 when
+     * permission was denied); the returned call stops watching.
+     */
+    readonly watchPosition: (onFix: (fix: MyLocationFix) => void, onError: (error: unknown) => void) => () => void;
     /** The page address to share (the URL hash carries the viewer state). */
     readonly pageUrl: () => string;
     readonly matchMedia: (query: string) => MediaQueryList;
@@ -21,23 +27,36 @@ export interface ViewerServices {
     readonly openPage: (url: string) => void;
 }
 
-/** How long the browser may look for a position, and how old a cached one may be. */
-const POSITION_OPTIONS: PositionOptions = { enableHighAccuracy: false, timeout: 15_000, maximumAge: 60_000 };
+/** How long the browser may look for a position, and how old a cached one may be; the dot wants the device's best. */
+const POSITION_OPTIONS: PositionOptions = { enableHighAccuracy: true, timeout: 15_000, maximumAge: 10_000 };
 
-function locateWith(geolocation: Geolocation | undefined): Promise<LngLat> {
-    return new Promise((resolve, reject) => {
-        if (geolocation === undefined) {
-            reject(new Error('geolocation unavailable'));
-            return;
-        }
-        geolocation.getCurrentPosition(
-            (position) => {
-                resolve([position.coords.longitude, position.coords.latitude]);
-            },
-            reject,
-            POSITION_OPTIONS,
-        );
-    });
+/** The device's direction of travel; none standing still (NaN) or without one (null). */
+function headingOf(coords: GeolocationCoordinates): number | null {
+    const heading = coords.heading;
+    return Number.isFinite(heading) ? heading : null;
+}
+
+function watchWith(
+    geolocation: Geolocation | undefined,
+    onFix: (fix: MyLocationFix) => void,
+    onError: (error: unknown) => void,
+): () => void {
+    if (geolocation === undefined) {
+        queueMicrotask(() => {
+            onError(new Error());
+        });
+        return () => undefined;
+    }
+    const id = geolocation.watchPosition(
+        ({ coords }) => {
+            onFix({ center: [coords.longitude, coords.latitude], accuracy: coords.accuracy, heading: headingOf(coords) });
+        },
+        onError,
+        POSITION_OPTIONS,
+    );
+    return () => {
+        geolocation.clearWatch(id);
+    };
 }
 
 /** The real browser services of `win`. */
@@ -47,7 +66,7 @@ export function browserServices(win: Window): ViewerServices {
     return {
         share,
         copyText: (text) => win.navigator.clipboard.writeText(text),
-        locate: () => locateWith(navigator.geolocation),
+        watchPosition: (onFix, onError) => watchWith(navigator.geolocation, onFix, onError),
         pageUrl: () => win.location.href,
         matchMedia: (query) => win.matchMedia(query),
         openPage: (url) => {
@@ -96,23 +115,9 @@ export function shareMessage(outcome: ShareOutcome): MessageKey | null {
     return outcome === 'failed' ? 'share.failed' : null;
 }
 
-export type LocateOutcome = { readonly ok: true; readonly center: LngLat } | { readonly ok: false; readonly code: MessageKey };
-
-function isDenied(error: unknown): boolean {
+/** Whether a position error is the visitor's refusal (`PERMISSION_DENIED`). */
+export function isDenied(error: unknown): boolean {
     return typeof error === 'object' && error !== null && (error as { readonly code?: unknown }).code === 1;
-}
-
-/** The visitor's position when it lies inside `bounds`; otherwise why the camera cannot go there (no bounds: no city yet). */
-export async function locateVisitor(services: ViewerServices, bounds: BBox | null): Promise<LocateOutcome> {
-    if (bounds === null) {
-        return { ok: false, code: 'error.geolocate.unavailable' };
-    }
-    try {
-        const center = await services.locate();
-        return bboxContains(bounds, center) ? { ok: true, center } : { ok: false, code: 'error.geolocate.outside' };
-    } catch (error: unknown) {
-        return { ok: false, code: isDenied(error) ? 'error.geolocate.denied' : 'error.geolocate.unavailable' };
-    }
 }
 
 /**

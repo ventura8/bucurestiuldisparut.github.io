@@ -32,6 +32,7 @@ import {
     sheetAfterClosing,
     withStory,
     withYear,
+    type MyLocationState,
     type SheetName,
     type ThemeMode,
     type ViewerState,
@@ -90,6 +91,8 @@ export interface ViewerActions {
     setMapLabels(labels: Partial<MapLabels>): void;
     /** Turns the single-key shortcuts on or off (V36), and remembers it for the city. */
     setShortcuts(enabled: boolean): void;
+    /** "Show my location" (V10): the visitor's position for the maps' blue dot, kept in memory only (never in the hash). */
+    setMyLocation(myLocation: MyLocationState): void;
 }
 
 export interface ViewerStore extends ViewerActions {
@@ -378,6 +381,10 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
     setShortcuts(enabled: boolean): void {
         this.set({ ...this.#state, shortcuts: enabled });
         this.preferences.set(this.#state.manifest?.city.id ?? this.deps.config.cityId, 'shortcuts', enabled ? null : 'off');
+    }
+
+    setMyLocation(myLocation: MyLocationState): void {
+        this.set({ ...this.#state, myLocation });
     }
 
     destroy(): void {

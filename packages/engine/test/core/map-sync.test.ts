@@ -28,6 +28,7 @@ describe('MapSync', () => {
             'setPhotosData',
             'addVectorOverlay',
             'addVectorOverlay',
+            'setMyLocation',
         ]);
         const [spec, slot] = map.callsOf('addRasterLayer')[0] as [RasterLayerSpec, string];
         expect(spec).toMatchObject({ id: 'kh4-1966', visible: false, opacity: 0.9 });
@@ -38,6 +39,22 @@ describe('MapSync', () => {
         const [poi, poiSlot] = map.callsOf('addVectorOverlay')[0] as [VectorOverlaySpec, string];
         expect(poi.id).toBe('cladiri');
         expect(poiSlot).toBe('top');
+    });
+
+    it('happyPath_theVisitorsPositionIsDrawnOnceKnownAndRemovedWhenOff', () => {
+        const map = new FakeMap();
+        const sync = new MapSync(map, undefined);
+        const fix = { center: [26.1, 44.43] as const, accuracy: 15, heading: 30 };
+        const waiting = { ...loaded, myLocation: 'waiting' as const };
+        const shown = { ...loaded, myLocation: fix };
+
+        sync.update(loaded, waiting);
+        sync.update(waiting, shown);
+        sync.update(shown, shown);
+        sync.update(shown, loaded);
+        new MapSync(map, undefined).render(shown);
+
+        expect(map.callsOf('setMyLocation')).toEqual([[null], [fix], [null], [fix]]);
     });
 
     it('badPath_nothingIsDrawnWithoutAManifest', () => {

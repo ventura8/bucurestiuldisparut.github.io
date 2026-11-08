@@ -38,6 +38,7 @@ export type {
 export { createMapboxPort, nativeMap } from './mapbox-adapter.js';
 export { createViewerMapPort } from './viewer-map.js';
 export type { ViewerMapPort } from './viewer-map.js';
+export type { MyLocationFix } from './my-location.js';
 export { MAPBOX_GL_CSS_URL, MAPBOX_GL_SCRIPT_URL, MAPBOX_GL_VERSION, MAPBOX_INTEGRITY_ATTRIBUTE, loadMapboxGl } from './mapbox-loader.js';
 export type { MapboxLoaderScope } from './mapbox-loader.js';
 export type { FrameScheduler } from './overlay-registry.js';

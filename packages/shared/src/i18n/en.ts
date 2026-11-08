@@ -173,4 +173,5 @@ export const en: Messages = {
     'consent.granted': 'Anonymous statistics: allowed',
     'consent.denied': 'Anonymous statistics: declined',
     'geolocate.locating': 'Finding your location…',
+    'geolocate.shown': 'Your location: ±{meters} m',
 };

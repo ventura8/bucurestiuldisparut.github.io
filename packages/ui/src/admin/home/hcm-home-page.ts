@@ -48,13 +48,17 @@ const WAITING: readonly Tile[] = [
 
 /**
  * M18 item 7 (`docs/research/M18-improvements.md`): What needs you, first: only what waits for a person now, each a link to
- * where it is done (images to approve, role requests to accept, suggestions to review, jobs that stopped).
+ * where it is done (images to approve, role requests to accept, suggestions, photos, places and stories to review, jobs that
+ * stopped).
  */
 const NEEDS: readonly Tile[] = [
     { count: 'versionsToApprove', href: '#/imagery' },
     { count: 'roleRequests', href: '#/review' },
     { count: 'suggestionsToReview', href: '#/review' },
-    // The merge of M17 (stories) with M18: an uploader's story waits in the same review queue.
+    // The merge of M17 (stories) with M18: an uploader's story waits in the same review queue, as their photos and places
+    // do (DECISIONS-for-review.md §104c).
+    { count: 'photosToReview', href: '#/review' },
+    { count: 'placesToReview', href: '#/review' },
     { count: 'storiesToReview', href: '#/review' },
     { count: 'failedJobs', href: '#/jobs' },
 ];

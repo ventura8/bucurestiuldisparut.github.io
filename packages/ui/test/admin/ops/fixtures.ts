@@ -188,6 +188,8 @@ export function homeState(overrides: Partial<HomeViewState> = {}): HomeViewState
             roleRequests: 0,
             suggestionsToReview: 0,
             storiesToReview: 0,
+            photosToReview: 0,
+            placesToReview: 0,
         },
         health: {
             status: 'ready',

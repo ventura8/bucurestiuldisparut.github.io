@@ -2717,3 +2717,18 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: M16 drew a published version from its public archive, but `VersionImage` redrew only when the version or its file changed (`<version>@<file>`); a version published while open kept the signed address of the private archive, which `publish-own.ts` deletes once published, so the next tile the map wanted was a 404.
     - Fix and pin: the drawn key holds the public address too, so the page moves to the public archive as the published state arrives (`version-image.test.ts`, *a version published while its page is open*).
     - **A cache key holds everything the drawing reads: when a state change moves where the data lives, the key must change with it.**
+456. **The blue dot took the engine's IIFE 17 bytes over its 125 KB budget on the first build.**
+    - Seen: 2026-11-08, track/improve2: the IIFE measured 125,017 bytes gzip with the my-location layer, the watch, the menu switch and two strings (124,019 before).
+    - Found by: measuring the engine on the NUC before writing the tests, as the task asked (the `bundle-budget` gate would have said it at the `build` stage).
+    - Then the `build` stage failed it again at 125,086: the gate measures with Python's gzip, about 90 bytes more than the `gzip -9` command the first measurement used.
+    - Fix: no budget raised; the store's equality check, a paint property the flat dot did not need, one CSS rule for the switch's on state in both colour modes and short announcements brought it to 124,996 (DECISIONS-for-review.md §106a).
+    - **Measure the engine's gzip size right after the first working version of a viewer feature, before tests and docs, and with the gate's own measure (`gzip.compress(data, 9)` in Python), not the `gzip` command: a full budget changes the design, not the last commit.**
+457. **Two rows left `planned` as unreachable were reachable by holding the network.**
+    - Seen: 2026-11-08, track/improve2: S-A61-BAD-UPLOAD-HOLDS-RELOAD ("no upload it can hold open across a deploy") and S-A40-BAD-COUNT-UNREAD-SHOWN ("cannot make one count fail").
+    - Found by: reading what the admin sends: an upload is one request to the Storage emulator, a Home count one `runAggregationQuery` request to the Firestore emulator; Playwright's route holds either (never answered) or fails it, at the network, an external boundary.
+    - Two traps on the way: `page.unroute` let the held requests go before the test could fail them (`Route is already handled`), so one handler with a mode holds, answers or drops; and a request dropped in a test's last line logs its console error after the test's own check, so the test polls `takeMatching` for it.
+    - **Before marking a row unreachable, list the requests the behaviour makes: a held or failed request is usually the missing state. Switch one route handler's mode instead of unrouting held requests.**
+458. **A store test counted a hash write that load had scheduled, not the action under test.**
+    - Seen: 2026-11-08, track/improve2: `happyPath_theVisitorsPositionReachesTheMapAndNothingElse` found one hash written after `setMyLocation` under fake timers; the write was the boot's view, scheduled before the snapshot.
+    - Fix: run the pending timers before taking the "before" counts (`store.test.ts`).
+    - **Under fake timers, flush what the setup scheduled before snapshotting the counts an assertion compares against.**

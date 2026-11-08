@@ -33,6 +33,7 @@ The local stack (`e2e/stack/`) reuses the mock APIs, the admin and site servers 
 5. Format the JSON with Prettier in the image (`npx prettier --write e2e/scenarios.json`), regenerate `docs/E2E_SCENARIOS.md` with `check_e2e_matrix.py write`, then run the `static` stage.
 6. With parallel agents (the M2c editors: `docs/research/M2c-interfaces.md` §11.2), edit only the rows of your own behaviours, add a new row right after your behaviour's last one, and add a new screen's states to your area's marked section of `ADMIN_STATES` in `e2e/tour/states.ts`.
 7. A bug the scenario found goes into `docs/LESSONS.md` with the row id.
+8. Before leaving a row `planned` as unreachable, list the requests the behaviour makes: an upload held open (never answered) or a Firestore count failed at the network (`page.route` on the emulator's request) is often the missing state. Hold, answer and fail through one handler whose mode the test switches; `page.unroute` lets held requests go (`docs/LESSONS.md` 457).
 
 ## Fixtures every e2e test gets
 
