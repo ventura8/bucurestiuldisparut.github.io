@@ -294,3 +294,24 @@ def test_bad_path_a_worker_under_an_old_starter_goes_to_points_and_says_so(
 
     assert record(world.version()["calibration"])["how"] == "none"
     assert any("local AI unavailable (old-starter)" in line for line in world.log_lines())
+
+
+def test_bad_path_an_older_version_the_server_cannot_read_never_fails_the_import(
+    world: PipelineWorld, api: FakeWorkerApi, tmp_path: Path, built: list[Worker]
+) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE
+    Live 2026-11-08: a same-date frame failed in georef on another version's read."""
+    local_import(world)
+    broken = world.version_path("v-older")
+    world.store.seed(broken, {**world.version(), "jobId": "v-older", "state": "published"})
+    api.unreadable.add(broken)
+    worker = signed_in_worker(world, api, tmp_path / "work", built)
+
+    assert worker.loop.run_once() is Pass.RAN
+
+    job = world.job()
+    assert (job["status"], job["waitReason"]) == ("awaiting_approval", "approval")
+    assert {"op": "get", "path": broken} in step_requests(api)
+    assert any(line.startswith("1 other frames could not be read") and "v-older" in line for line in world.log_lines())
+    assert "alignment" not in record(world.version()["calibration"])
+    assert api.ended()[-1]["outcome"] == "done"

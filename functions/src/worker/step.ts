@@ -19,7 +19,8 @@ import type { VerifiedCaller } from '../api/access.js';
 import { ApiError } from '../api/api-error.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
 import { guardIsRed, versionIdOf } from '../imagery/records.js';
-import { UpstreamError } from '../ports/errors.js';
+import { InvalidDocumentError, UpstreamError } from '../ports/errors.js';
+import type { DocumentTransaction, VersionedDocument } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { documentTarget, isCityVersions, isJobLog, logLineOf, type DocumentTarget, type JobScope } from './allow-list.js';
 import { storable, toWire } from './fields.js';
@@ -62,6 +63,28 @@ async function heldScope(deps: StepDeps, call: WorkerCall, jobId: string): Promi
     return { cityId: call.cityId, jobId, job, versionId: versionIdOf(jobId, job) };
 }
 
+/** What the log says of a stored version that fails its schema: where, and the fields (never their values). */
+function skipped(deps: StepDeps, path: string, issues: InvalidDocumentError['issues']): void {
+    const fields = [...new Set(issues.map((issue) => issue.path.split(/[.[]/u)[0] ?? ''))];
+    deps.log.warn('worker skipped an invalid version', { path, fields, codes: [...new Set(issues.map((issue) => issue.code))] });
+}
+
+/**
+ * Another version of the city (`held`, M15): one that fails its schema (written past it by an earlier pipeline) is no partner, so it
+ * reads as missing; the frame being joined is fitted with the others. Its own job's documents still fail loudly.
+ */
+async function heldRead(deps: StepDeps, transaction: DocumentTransaction, path: string): Promise<VersionedDocument<unknown> | undefined> {
+    try {
+        return await transaction.getVersioned(path, layerVersionDocSchema);
+    } catch (error) {
+        if (error instanceof InvalidDocumentError) {
+            skipped(deps, path, error.issues);
+            return undefined;
+        }
+        throw error;
+    }
+}
+
 /** `get {path}`: one document of the allow-list with its update time (both null when it does not exist). */
 async function getDocument(deps: StepDeps, call: WorkerCall, jobId: string, path: string): Promise<Response> {
     return deps.documents.transaction(async (transaction) => {
@@ -70,18 +93,30 @@ async function getDocument(deps: StepDeps, call: WorkerCall, jobId: string, path
         if (target === undefined) {
             throw refused();
         }
-        const read = await transaction.getVersioned(path, SCHEMAS[target]);
+        const read = target === 'held' ? await heldRead(deps, transaction, path) : await transaction.getVersioned(path, SCHEMAS[target]);
         return read === undefined
             ? { data: null, updateTime: null }
             : { data: toWire(read.data) as Record<string, unknown>, updateTime: read.updateTime };
     });
 }
 
+function sortedIds(lines: readonly { readonly id: string }[]): Response {
+    return { ids: lines.map((line) => line.id).sort((a, b) => a.localeCompare(b)) };
+}
+
 /** The ids of a collection's documents, in order. */
 async function idsOf(deps: StepDeps, collection: string, schema: Schema<unknown>): Promise<Response> {
     const found = await deps.documents.query(collection, schema);
-    const ids = [...found.documents, ...found.invalid].map((line) => line.id).sort((a, b) => a.localeCompare(b));
-    return { ids };
+    return sortedIds([...found.documents, ...found.invalid]);
+}
+
+/** The ids of the city's versions that pass their schema, in order: one that fails it is never a partner (M15). */
+async function versionIds(deps: StepDeps, collection: string): Promise<Response> {
+    const found = await deps.documents.query(collection, layerVersionDocSchema);
+    for (const line of found.invalid) {
+        skipped(deps, line.path, line.issues);
+    }
+    return sortedIds(found.documents);
 }
 
 /**
@@ -94,7 +129,7 @@ async function listIds(deps: StepDeps, call: WorkerCall, jobId: string, collecti
         return idsOf(deps, collection, jobLogDocSchema);
     }
     if (isCityVersions(scope, collection)) {
-        return idsOf(deps, collection, layerVersionDocSchema);
+        return versionIds(deps, collection);
     }
     throw refused();
 }

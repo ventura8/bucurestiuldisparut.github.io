@@ -104,10 +104,26 @@ def _listed(ctx: JobContext, collection: str) -> list[str]:
         return []
 
 
+def _read_or_none(ctx: JobContext, path: str, unread: list[str], version_id: str) -> tuple[str, Record | None] | None:
+    try:
+        return version_id, ctx.read(path)
+    except WorkerApiError:
+        unread.append(version_id)
+        return None
+
+
+def _readable(ctx: JobContext, collection: str) -> list[tuple[str, Record | None]]:
+    """Each listed version with its record; one the server cannot read (it failed its schema there: 2026-11-08) is no partner."""
+    unread: list[str] = []
+    found = [_read_or_none(ctx, f"{collection}/{version_id}", unread, version_id) for version_id in _listed(ctx, collection)]
+    if unread:
+        ctx.log.warn(f"{len(unread)} other frames could not be read ({', '.join(unread)}): fitted without them", "georef")
+    return [pair for pair in found if pair is not None]
+
+
 def held_frames(ctx: JobContext, bounds: Bounds) -> list[Held]:
     """The city's accepted, proved frames over `bounds` that kept their `align.tif`, newest first, at most `MAX_PARTNERS`."""
-    collection = f"cities/{ctx.city}/layerVersions"
-    found = [_held(ctx, version_id, ctx.read(f"{collection}/{version_id}"), bounds) for version_id in _listed(ctx, collection)]
+    found = [_held(ctx, version_id, record, bounds) for version_id, record in _readable(ctx, f"cities/{ctx.city}/layerVersions")]
     return sorted((frame for frame in found if frame is not None), key=lambda frame: -(frame.year or 0))[:MAX_PARTNERS]
 
 

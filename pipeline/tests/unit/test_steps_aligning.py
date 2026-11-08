@@ -107,6 +107,31 @@ def test_bad_path_a_server_that_lists_no_versions_to_the_run_leaves_the_frame_al
     assert any(line.startswith("the other frames could not be read") for line in world.log_lines())
 
 
+def test_bad_path_a_version_the_server_cannot_read_is_no_partner_and_the_frame_goes_on(
+    world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE
+    The live join of 2026-11-08: one older version failed its schema on the server, and the read answered apiError.internal."""
+    ctx = context(world, tmp_path)
+    frame(world, "v-1972", 1972)
+    frame(world, "v-1966", 1966)
+    frame(world, "v-1968", 1968)
+    read = ctx.services.store.get
+
+    def broken(path: str) -> object:
+        if path.endswith(("/v-1966", "/v-1968")):
+            raise WorkerApiError("apiError.internal", "the server could not read it")
+        return read(path)
+
+    monkeypatch.setattr(ctx.services.store, "get", broken)
+
+    assert [held.version_id for held in held_frames(ctx, Bounds.of(BOUNDS))] == ["v-1972"]
+    warned = [line for line in world.log_lines() if line.startswith("2 other frames could not be read")]
+    assert len(warned) == 1
+    assert "v-1966" in warned[0]
+    assert "v-1968" in warned[0]
+
+
 def test_happy_path_the_record_and_the_log_line_name_every_partner() -> None:
     """Scenarios: S-P06-HAPPY-JOINT-HELD-STILL, S-P06-BAD-JOINT-PARTNER-DISAGREES"""
     verdicts = [Verdict("v-1972", 1420, 1643, USED, 1.36), Verdict("v-1966", 78, 124, FEW), Verdict("v-x", 900, 1500, DISAGREES, 9.2)]

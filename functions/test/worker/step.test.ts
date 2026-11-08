@@ -148,6 +148,28 @@ describe('worker.step get and list', () => {
         expect(await codeOf(update(world, path, { state: 'failed' }))).toBe('apiError.worker.refused');
     });
 
+    it('badPath_aCityVersionThatFailsItsSchemaIsNeitherListedNorReadAndTheRunGoesOn @S-A62-BAD-HELD-UNREADABLE', async () => {
+        const world = await held();
+        await seedVersion(world, 'v-1972', processingVersion({ layerId: 'l-1972', jobId: 'v-1972' }));
+        // A version written straight to Firestore past the schema (a Cloud Run run writes without it): what failed the live join.
+        const broken = FIRESTORE_PATHS.layerVersion(CITY, 'v-1966');
+        world.deps.documents.seed(broken, { ...processingVersion({ layerId: 'l-1966', jobId: 'v-1966' }), year: 'nineteen sixty-six' });
+
+        await expect(step(world, { op: 'list', collection: FIRESTORE_PATHS.layerVersions(CITY) })).resolves.toEqual({
+            ids: [JOB, 'v-1972'].sort((a, b) => a.localeCompare(b)),
+        });
+        await expect(step(world, { op: 'get', path: broken })).resolves.toEqual({ data: null, updateTime: null });
+        const warned = world.deps.recording.records.filter((record) => record.message === 'worker skipped an invalid version');
+        expect(warned.map((record) => record.data)).toContainEqual(expect.objectContaining({ path: broken, fields: ['year'] }));
+    });
+
+    it('badPath_theJobsOwnVersionThatFailsItsSchemaIsStillAnError', async () => {
+        const world = await held();
+        world.deps.documents.seed(VERSION_PATH, { ...processingVersion(), year: 'nineteen sixty-six' });
+
+        await expect(codeOf(step(world, { op: 'get', path: VERSION_PATH }))).resolves.toBe('apiError.internal');
+    });
+
     it.each([
         ['another job', FIRESTORE_PATHS.job(CITY, 'j-other')],
         ['another city', FIRESTORE_PATHS.city('bacau')],

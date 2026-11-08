@@ -10561,6 +10561,17 @@
             "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Test: functions/test/worker/allow-list.test.ts, functions/test/worker/step.test.ts."
         },
         {
+            "id": "S-A62-BAD-HELD-UNREADABLE",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version of the city that fails its schema is no partner, and the run goes on",
+            "asserts": "worker.step list of cities/{city}/layerVersions -> only the ids that pass layerVersionDocSchema; get of a failing one -> {data: null, updateTime: null}, never apiError.internal; a warning names its path and fields; the job's own version that fails still fails",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live 2026-11-08: one older version made a same-date frame's georef fail with apiError.internal (docs/LESSONS.md). Test: functions/test/worker/step.test.ts."
+        },
+        {
             "id": "S-A63-HAPPY-METER",
             "behaviour": "A63",
             "area": "admin",
@@ -11967,6 +11978,17 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Tests: pipeline/tests/integration/test_joint_job.py."
+        },
+        {
+            "id": "S-P06-BAD-JOINT-UNREADABLE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A version the server cannot read is no partner: the frame is fitted without it",
+            "asserts": "worker.step get of another version -> apiError.internal; the import still reaches awaiting_approval, without calibration.alignment; one warning names the versions not read",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-08: a same-date frame failed in georef on another version's read (docs/LESSONS.md). Tests: pipeline/tests/unit/test_steps_aligning.py, pipeline/tests/integration/test_worker_run.py."
         },
         {
             "id": "S-P06-HAPPY-TERRAIN",

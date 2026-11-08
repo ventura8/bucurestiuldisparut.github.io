@@ -175,7 +175,11 @@ Documents (`worker.step`), for the claimed job `J` of city `C` with its version 
 
 The versions of the city are read-only to every job (target `held`, `functions/src/worker/allow-list.ts`): a run never writes a
 version but its own, and nothing of another city (`S-A62-HAPPY-HELD-FRAMES`, `S-A62-BAD-HELD-FRAMES-WRITE`). They hold what the
-owner's admin pages already show, to the owner's own computer; DECISIONS-for-review.md §107.
+owner's admin pages already show, to the owner's own computer; DECISIONS-for-review.md §107. The list holds only the versions that pass
+`layerVersionDocSchema`, and a `get` of a version that fails it answers `{data: null, updateTime: null}`, logged as *worker skipped an
+invalid version* with its path, fields and codes (never values): a stored version an earlier writer left past the schema is no partner
+and never fails the run (lesson 481, `S-A62-BAD-HELD-UNREADABLE`). Every other target of the list still fails loudly on an invalid
+document; the log lines' list is unchanged.
 
 Each write is merged into the current document and the result validated with the shared schema before it is stored
 (`jobDocSchema`, `layerVersionDocSchema`, `jobLogDocSchema`); `updatedBy` is `system:pipeline`, as the Cloud Run run

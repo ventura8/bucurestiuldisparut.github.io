@@ -126,6 +126,8 @@ class FakeWorkerApi:
     referers: list[str] = field(default_factory=list)
     refreshes: int = 0
     versions: dict[str, int] = field(default_factory=dict)
+    # Documents the server cannot read (one that fails its schema answered `apiError.internal` before 2026-11-08).
+    unreadable: set[str] = field(default_factory=set)
     generations: itertools.count[int] = field(default_factory=lambda: itertools.count(1_793_000_000_000_001))
 
     @property
@@ -270,6 +272,8 @@ class FakeWorkerApi:
         return operations[str(request["op"])](self._allowed(data, str(request.get("path") or request.get("collection"))), request)
 
     def _get(self, path: str, _request: dict[str, object]) -> dict[str, object]:
+        if path in self.unreadable:
+            raise RefusedError("apiError.internal", HTTPStatus.INTERNAL_SERVER_ERROR, "INTERNAL")
         return {"data": self.store.get(path), "updateTime": f"{self.versions.get(path, 0)}.000000000"}
 
     def _update(self, path: str, request: dict[str, object]) -> dict[str, object]:
