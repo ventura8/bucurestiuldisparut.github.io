@@ -5,7 +5,7 @@ import { IMAGERY_STATES } from '../admin/specs/imagery/states.js';
 import { ADMIN_SECTION_STATES } from './admin-sections.js';
 import { COMPARE_STATES, openComparing } from './compare-states.js';
 import { UNPLACED_JOURNEY, unplacedStates } from './unplaced-states.js';
-import { bootInputJourney, INPUT_STATES } from './input-states.js';
+import { INPUT_JOURNEY, INPUT_STATES } from './input-states.js';
 import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
 import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
 import { hasBottomSheets, toDetent } from './sheets.js';
@@ -454,12 +454,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
         boot: ({ page, lang }) => openViewer(page, { lang, hash: '16/44.42680/26.08720' }),
         states: ['poi', 'poi-peek', 'poi-full', 'about', 'about-end'],
     },
-    {
-        title: 'The shortcuts, their help panel and a refused gamepad',
-        id: 'input',
-        boot: bootInputJourney,
-        states: ['keyboard-help', 'input-toast', 'gamepad-refused'],
-    },
+    INPUT_JOURNEY,
     {
         title: 'Swipe compare: the divider at 50 % and at both edges, from the keyboard; the toggle of a compact window; the chooser',
         id: 'compare',
@@ -596,6 +591,9 @@ function visitOf(state: ViewerState, tour: TourContext): StateVisit {
     };
 }
 
+/** The photos section's visits (tour/admin-photos.tour.ts). */
+const PHOTOS_TOUR = 'tour/admin-photos.tour.ts';
+
 /** The admin's states: each is visited by the spec named, which calls `expectStateSound` with the id `admin.<key>`. */
 const ADMIN_STATES = {
     'sign-in': { title: 'Signed out: the sign-in panel and its consent note (start-up mode)', visit: 'journey.spec.ts, step 1' },
@@ -638,31 +636,22 @@ const ADMIN_STATES = {
     },
     // [end common]
     // [section photos] owner: photos
-    'photos.empty': { title: 'Photos: none yet, with Add photos and the drop zone', visit: 'tour/admin-photos.tour.ts' },
-    'photos.upload-refused': { title: 'Photos: a file refused before upload, with its reason', visit: 'tour/admin-photos.tour.ts' },
+    'photos.empty': { title: 'Photos: none yet, with Add photos and the drop zone', visit: PHOTOS_TOUR },
+    'photos.upload-refused': { title: 'Photos: a file refused before upload, with its reason', visit: PHOTOS_TOUR },
     'photos.list': {
         title: 'Photos: the list with its filters, search and rows (processing, refused, rights to check)',
-        visit: 'tour/admin-photos.tour.ts',
+        visit: PHOTOS_TOUR,
     },
-    'photos.bulk': { title: 'Photos: four selected, the bulk actions', visit: 'tour/admin-photos.tour.ts' },
-    'photos.bulk-more': { title: "Photos: the selection's other actions (a dialog)", visit: 'tour/admin-photos.tour.ts' },
-    'photos.report': {
-        title: 'Photos: the photos a bulk Publish skipped, each with its reason (a dialog)',
-        visit: 'tour/admin-photos.tour.ts',
-    },
-    'photos.editor': {
-        title: "Photos: a photo's editor (beside the list from 840 px, full screen on a phone)",
-        visit: 'tour/admin-photos.tour.ts',
-    },
-    'photos.set-fields': { title: 'Photos: author, source and licence for the selection (a dialog)', visit: 'tour/admin-photos.tour.ts' },
-    'photos.editor-invalid': {
-        title: 'Photos: the editor with a field to correct, Save off and its reason',
-        visit: 'tour/admin-photos.tour.ts',
-    },
-    'photos.editor-date': { title: 'Photos: a date to the day, Month and Day shown, and Source', visit: 'tour/admin-photos.tour.ts' },
-    'photos.editor-impossible-date': { title: 'Photos: a day that month does not have, Save off', visit: 'tour/admin-photos.tour.ts' },
-    'photos.delete-confirm': { title: 'Photos: the delete confirmation (a dialog)', visit: 'tour/admin-photos.tour.ts' },
-    'photos.deleted-undo': { title: 'Photos: the photo deleted, the snackbar offering Undo', visit: 'tour/admin-photos.tour.ts' },
+    'photos.bulk': { title: 'Photos: four selected, the bulk actions', visit: PHOTOS_TOUR },
+    'photos.bulk-more': { title: "Photos: the selection's other actions (a dialog)", visit: PHOTOS_TOUR },
+    'photos.report': { title: 'Photos: the photos a bulk Publish skipped, each with its reason (a dialog)', visit: PHOTOS_TOUR },
+    'photos.editor': { title: "Photos: a photo's editor (beside the list from 840 px, full screen on a phone)", visit: PHOTOS_TOUR },
+    'photos.set-fields': { title: 'Photos: author, source and licence for the selection (a dialog)', visit: PHOTOS_TOUR },
+    'photos.editor-invalid': { title: 'Photos: the editor with a field to correct, Save off and its reason', visit: PHOTOS_TOUR },
+    'photos.editor-date': { title: 'Photos: a date to the day, Month and Day shown, and Source', visit: PHOTOS_TOUR },
+    'photos.editor-impossible-date': { title: 'Photos: a day that month does not have, Save off', visit: PHOTOS_TOUR },
+    'photos.delete-confirm': { title: 'Photos: the delete confirmation (a dialog)', visit: PHOTOS_TOUR },
+    'photos.deleted-undo': { title: 'Photos: the photo deleted, the snackbar offering Undo', visit: PHOTOS_TOUR },
     // [end photos]
     // [section pois] owner: pois
     ...POIS_STATES,

@@ -2620,3 +2620,18 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
 438. **In the quality image a git worktree's `.git` points outside the mount, so `scripts/ci/e2e_build.py` exits 1 there.**
     - Seen: 2026-11-07, on the track's worktree: its stamp asks git for the inputs. `npm run build:site:e2e` is the build itself and works.
     - Fix and pin: run the build directly in a worktree.
+
+439. **A saving made in one bundle was missing from the other that ships the same library, and a namespace import kept a library whole.**
+    - Seen: 2026-11-08, merging four tracks: the engine's IIFE at 127.8 of 125 KB, `engine.mjs` at 100.2 of 100 and the admin at 654.6 of 650.
+    - Cause: zod's JSON Schema conversion (lesson 352) was stood in for the admin only, so the engine still carried it; and `loadTerraDraw` took
+      `import('terra-draw')` as a namespace inside `Promise.all`, so the bundler kept every mode of Terra Draw, though the admin builds five.
+    - Found by: the bundle budget, then the bytes of each source map's modules.
+    - Fix and pin: `scripts/site/src/zod-stand-ins.ts` serves both builds (`scripts/site/test/zod-stand-ins.test.ts`): the IIFE 122.1, `engine.mjs` 94.6;
+      each dynamic import destructured where it is awaited: the `terra-draw` chunk 35.7 KB instead of 47.7, the admin 642.6 (DECISIONS-for-review.md §100).
+    - **A saving on a shared dependency is applied to every bundle that ships it; a dynamic import read as a namespace keeps all of a library.**
+
+440. **Two tracks reached the merge with gates their own trees failed.**
+    - Seen: 2026-11-08, after merging photos, roles, input and the start page: Prettier, ESLint, knip, a pytest, the shared API test and per-file coverage failed in files the merge left exactly as the start track had them, and coverage in two files of the roles track.
+    - Cause: not in the tracks' records (lesson 438: the start track's worktree could not run its e2e build). These gates read the files the merge left unchanged, so the tracks' own full runs would have failed them too.
+    - Found by: `static` and `tests` on the merged tree (DECISIONS-for-review.md §100f). Fix: each finding fixed in its file; no gate relaxed.
+    - **A track is merged after its own `static` and `tests` are green, not only the specs it touched.**

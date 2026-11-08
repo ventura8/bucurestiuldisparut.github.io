@@ -169,6 +169,15 @@ describe('the start site', () => {
             await runStartCli(['--public-tree', OPTIONS.publicTree, '--app', OPTIONS.appDir, '--functions', OPTIONS.functionsDir], context),
         ).toBe(EXIT_OK);
     });
+
+    it('badPath_anErrorThatIsNoBuildErrorIsThrownOn', async () => {
+        const { files } = world();
+        const { log } = recordingLogger();
+        const broken = new Error('steps unreadable');
+        const steps = (): Promise<never> => Promise.reject(broken);
+        const args = ['--public-tree', OPTIONS.publicTree, '--app', OPTIONS.appDir, '--functions', OPTIONS.functionsDir];
+        await expect(runStartCli(args, { files, log, env: ENV, steps })).rejects.toBe(broken);
+    });
 });
 
 describe('the root of a map made from the start page', () => {

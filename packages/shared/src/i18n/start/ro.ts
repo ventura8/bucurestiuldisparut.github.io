@@ -82,7 +82,7 @@ export const ro = {
     'start.failure.quota': 'Contul tău a ajuns la limita de proiecte a lui Google. Cere mai multe sau alege un proiect pe care îl ai.',
     'start.failure.quotaLink': 'Cere mai multe proiecte',
     'start.failure.taken': 'Id-ul {projectId} este luat: id-urile sunt unice în tot Google. Am pus unul liber în câmp.',
-    'start.failure.refused': 'Google nu a acceptat numele proiectului, care vine din numele orașului, sau id-ul lui. Schimbă-le aici și încearcă din nou.',
+    'start.failure.refused': 'Google nu a acceptat numele proiectului (din numele orașului) sau id-ul. Schimbă-le aici și reîncearcă.',
     'start.failure.permission': 'Contul tău nu poate face asta în {projectId}: îți trebuie rolul de proprietar. Alege alt proiect.',
     'start.failure.file': 'Un fișier al aplicației nu este cel așteptat ({path}). Reîncarcă pagina și încearcă din nou.',
     'start.failure.release': 'Pagina nu a putut citi lista fișierelor. Reîncarcă pagina și încearcă din nou.',

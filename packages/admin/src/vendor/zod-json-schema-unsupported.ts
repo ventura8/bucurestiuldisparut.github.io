@@ -1,16 +1,17 @@
 /**
  * The admin's stand-in for zod's JSON Schema conversion (`zod/v4/core/json-schema-processors.js` and
- * `to-json-schema.js`), which `packages/admin/vite.config.ts` resolves zod's classic schemas' two imports of them to
- * (`docs/research/DECISIONS-for-review.md` §86, after §65k's `re2js`). Every zod schema carries a `toJSONSchema()`
- * method, Standard Schema's `jsonSchema` and the derived getters (`minLength`, `maxValue`, `isInt`, `format`), whose
- * code is only reached when they are called: the admin validates with its schemas and never converts one to JSON Schema
- * nor reads those getters. The real modules were 18 KB of the admin's first script. Each stand-in throws when called, so
+ * `to-json-schema.js`), which the admin's and the engine's builds resolve zod's classic schemas' two imports of them to
+ * (`scripts/site/src/zod-stand-ins.ts`; `docs/research/DECISIONS-for-review.md` §86, after §65k's `re2js`, and §100).
+ * Every zod schema carries a `toJSONSchema()` method, Standard Schema's `jsonSchema` and the derived getters (`minLength`,
+ * `maxValue`, `isInt`, `format`), whose code is only reached when they are called: the admin and the engine validate with
+ * their schemas and never convert one to JSON Schema nor read those getters. The real modules were 18 KB of the admin's
+ * first script and about 6 KB gzip of the engine's builds. Each stand-in throws when called, so
  * a future use fails loudly in the unit and e2e tests (the e2e admin is built with this stand-in) rather than quietly.
  */
 
-/** Every stand-in: refuses, naming what the admin does not do. */
+/** Every stand-in: refuses, naming what the admin and the engine do not do. */
 function unsupported(): never {
-    throw new Error('the admin does not convert zod schemas to JSON Schema (DECISIONS-for-review.md §86)');
+    throw new Error('the admin and the engine do not convert zod schemas to JSON Schema (DECISIONS-for-review.md §86, §100)');
 }
 
 /** `createToJSONSchemaMethod` and `createStandardJSONSchemaMethod` make a method; the method refuses when called. */

@@ -43,18 +43,20 @@ def test_happy_path_small_bundles_pass(tmp_path: Path, caplog: pytest.LogCapture
     assert bundles.main(["--root", str(tmp_path)]) == 0
     lines = caplog.messages[0].splitlines()
     assert lines[0] == "[bundle-budget] OK:"
-    assert lines[1:3] == [
+    # The rows by path: the start page's module (M14) sorts before the engine's two builds.
+    assert lines[1:4] == [
+        "  dist/start-app/start.mjs: 0.1 KB gzip (budget 72 KB)",
         "  packages/engine/dist/engine.iife.js: 0.1 KB gzip (budget 125 KB)",
         "  packages/engine/dist/engine.mjs: 0.1 KB gzip (budget 100 KB)",
     ]
     # The entry counts what it imports statically, transitively; the lazy chunks each against their own budget.
-    assert lines[3].startswith(f"  {ADMIN}/admin.mjs with 2 static chunk(s): 0.")
-    assert lines[3].endswith(" KB gzip (budget 450 KB)")
-    assert lines[4].startswith(f"  {ADMIN}/photos-Zz9_8Yy7.js: 0.")
-    assert lines[4].endswith("(budget 25 KB)")
-    assert lines[5].endswith("(budget 58 KB)")
-    assert lines[6].startswith(f"  {ADMIN} in all: 0.")
-    assert lines[6].endswith(f"(budget {bundles.ADMIN_TOTAL_KB} KB)")
+    assert lines[4].startswith(f"  {ADMIN}/admin.mjs with 2 static chunk(s): 0.")
+    assert lines[4].endswith(" KB gzip (budget 450 KB)")
+    assert lines[5].startswith(f"  {ADMIN}/photos-Zz9_8Yy7.js: 0.")
+    assert lines[5].endswith("(budget 25 KB)")
+    assert lines[6].endswith("(budget 58 KB)")
+    assert lines[7].startswith(f"  {ADMIN} in all: 0.")
+    assert lines[7].endswith(f"(budget {bundles.ADMIN_TOTAL_KB} KB)")
 
 
 def test_bad_path_oversized_and_missing_bundles_fail(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
@@ -143,9 +145,9 @@ def test_happy_path_the_engines_lazy_chunks_have_their_own_budgets(tmp_path: Pat
 
     assert bundles.main(["--root", str(tmp_path)]) == 0
     lines = caplog.messages[0].splitlines()
-    assert lines[3].startswith("  packages/engine/dist/compare-D8pm_j3P.js: 0.")
-    assert lines[3].endswith("(budget 5 KB)")
-    assert lines[4].endswith("(budget 16 KB)")
+    assert lines[4].startswith("  packages/engine/dist/compare-D8pm_j3P.js: 0.")
+    assert lines[4].endswith("(budget 5 KB)")
+    assert lines[5].endswith("(budget 16 KB)")
 
 
 def test_bad_path_an_engine_chunk_without_a_budget_or_over_it_fails(tmp_path: Path) -> None:

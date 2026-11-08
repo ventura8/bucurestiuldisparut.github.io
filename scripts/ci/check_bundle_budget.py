@@ -124,7 +124,8 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # settings page's map made the places' and photos' map modules shared (DECISIONS-for-review.md §42a).
     "admin-map": 9,
     # Terra Draw and its Mapbox GL adapter (the group `terra-draw`), on the first drawing tools: 47.4 KB with 1.37.0 on
-    # 2026-10-18, 47.7 KB with 1.38.0 on 2026-10-24 (DECISIONS-for-review.md §53a), so the budget stays.
+    # 2026-10-18, 47.7 KB with 1.38.0 on 2026-10-24 (DECISIONS-for-review.md §53a), so the budget stays; 35.7 KB on
+    # 2026-11-08 with only the modes the admin builds (§100b).
     "terra-draw": 58,
     # @material/material-color-utilities (`@hcm/ui/dynamic-color`), for the city's theme.
     "dynamic-color": 24,

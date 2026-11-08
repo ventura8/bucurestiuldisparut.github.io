@@ -1,7 +1,10 @@
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig } from 'vite';
 
 import { cssLiteralsPlugin } from '../../scripts/site/src/css-literals.js';
 import { thirdPartyNoticesPlugin } from '../../scripts/site/src/notices.js';
+import { zodStandInsPlugin } from '../../scripts/site/src/zod-stand-ins.js';
 import { FONT_FILES } from '../ui/src/fonts/font-files.js';
 
 /**
@@ -16,9 +19,13 @@ import { FONT_FILES } from '../ui/src/fonts/font-files.js';
  * - The CSS of the Lit `css` templates is minified by `cssLiteralsPlugin` (scripts/site/src/css-literals.ts), as the admin's
  *   has been since DECISIONS-for-review.md §36: the bundler's minifier leaves a template literal's comments and indentation,
  *   about 6 KB gzip of the engine; with it the IIFE carries the consented field chunk (web-vitals, §76) within its budget.
+ * - zod's JSON Schema conversion, which the engine never calls, resolves to the admin's stand-in that refuses
+ *   (scripts/site/src/zod-stand-ins.ts; DECISIONS-for-review.md §100): about 6 KB gzip of both builds. zod's English
+ *   messages stay.
  */
 export default defineConfig({
     plugins: [
+        zodStandInsPlugin({ jsonSchema: fileURLToPath(new URL('../admin/src/vendor/zod-json-schema-unsupported.ts', import.meta.url)) }),
         cssLiteralsPlugin(),
         thirdPartyNoticesPlugin({
             product: 'the Historic City Map engine (engine.mjs, engine.iife.js, their chunks and fonts)',

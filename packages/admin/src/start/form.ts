@@ -59,7 +59,7 @@ export function suggestProjectId(cityId: string): string {
 const NOT_IN_A_PROJECT_NAME = new RegExp(`[^${PROJECT_NAME_CHARACTERS}]+`, 'g');
 
 /** The project's display name for a city's: Google's characters only (`Sf. Gheorghe` is `Sf Gheorghe`), within its length. */
-export function projectDisplayName(name: string): string {
+function projectDisplayName(name: string): string {
     const clean = name.normalize('NFD').replace(/\p{M}/gu, '').replace(NOT_IN_A_PROJECT_NAME, ' ').replace(/ {2,}/g, ' ');
     return clean.trim().slice(0, DISPLAY_NAME_MAX).trim();
 }

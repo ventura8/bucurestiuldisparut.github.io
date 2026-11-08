@@ -31,7 +31,7 @@ describe("the zod JSON Schema stand-in", () => {
     it('badPath_aConversionOrAGetterIsRefusedWithWhy', () => {
         const method = standIn.createToJSONSchemaMethod();
 
-        expect(() => method()).toThrow('the admin does not convert zod schemas to JSON Schema');
+        expect(() => method()).toThrow('the admin and the engine do not convert zod schemas to JSON Schema');
         expect(() => standIn.createStandardJSONSchemaMethod()()).toThrow('JSON Schema');
         expect(() => standIn.aggregateChecks()).toThrow('JSON Schema');
         expect(() => standIn.stringProcessor()).toThrow('JSON Schema');

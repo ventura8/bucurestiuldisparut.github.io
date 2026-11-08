@@ -476,11 +476,8 @@ function contentRegistry<Setup>(
     const services = contentServices({
         ...shellParts,
         content: { ...content, store },
-        cities: deps.project.cities,
-        firstCity: deps.project.firstCity,
-        clock: deps.clock,
-        local: deps.local,
-        log: deps.log,
+        ...{ cities: deps.project.cities, firstCity: deps.project.firstCity },
+        ...{ clock: deps.clock, local: deps.local, log: deps.log },
     });
     return new ContentRegistry(content.modules, () => services);
 }

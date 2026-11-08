@@ -99,8 +99,8 @@ describe('<hcm-unplaced-gallery>', () => {
 
     it('badPath_aThumbnailThatCannotBeResolvedShowsNoAddress', async () => {
         const photo = { ...unplaced(), image: { ...unplaced().image, thumb: 'relative/t.webp' } };
-        const element = await mountElement<HcmUnplacedGallery>(HCM_UNPLACED_GALLERY_TAG, { photos: [photo], manifestUrl: 'not a url' });
-        expect(shadowQueryAll(element, 'img')).toHaveLength(1);
+        const element = await mountElement<HcmUnplacedGallery>(HCM_UNPLACED_GALLERY_TAG, { photos: [photo], manifestUrl: 'https://[' });
+        expect(shadowQueryAll(element, 'img').map((image) => image.getAttribute('src'))).toEqual(['']);
     });
 
     it('happyPath_theDockedSheetCloses', () => {

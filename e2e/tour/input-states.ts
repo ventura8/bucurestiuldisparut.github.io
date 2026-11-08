@@ -16,7 +16,7 @@ export interface InputTour {
     readonly lang: Locale;
 }
 
-export async function bootInputJourney({ page, lang }: InputTour): Promise<void> {
+async function bootInputJourney({ page, lang }: InputTour): Promise<void> {
     await installFakePads(page);
     await openViewer(page, { lang, hash: '15/44.42700/26.08530' });
 }
@@ -47,4 +47,12 @@ export const INPUT_STATES = {
         },
         announcements: (lang: Locale) => [t(lang, 'gamepad.refused')],
     },
+} as const;
+
+/** The journey of these states in e2e/tour/states.ts. */
+export const INPUT_JOURNEY = {
+    title: 'The shortcuts, their help panel and a refused gamepad',
+    id: 'input',
+    boot: bootInputJourney,
+    states: ['keyboard-help', 'input-toast', 'gamepad-refused'],
 } as const;

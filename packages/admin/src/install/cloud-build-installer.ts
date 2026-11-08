@@ -159,16 +159,22 @@ class CloudBuildInstaller implements InstallerPort {
         return { ...installed, build, blocker };
     }
 
-    async submit(target: InstallTarget, access: InstallAccess): Promise<CloudBuild> {
+    /** The bundle a build of `target` installs: refused while a newer admin is out, or for a pipeline the bundle has none of. */
+    async #bundleFor(target: InstallTarget): Promise<InstallBundle> {
         const newer = await this.#deps.newerAdmin();
         if (newer !== null) {
             throw new InstallBundleError('apiError.install.adminOutdated', { release: newer });
         }
         const bundle = await this.#deps.bundle();
-        const { manifest } = bundle;
-        if (target === 'pipeline' && manifest.tools.docker === null) {
+        if (target === 'pipeline' && bundle.manifest.tools.docker === null) {
             throw new InstallBundleError('apiError.install.notAvailable');
         }
+        return bundle;
+    }
+
+    async submit(target: InstallTarget, access: InstallAccess): Promise<CloudBuild> {
+        const bundle = await this.#bundleFor(target);
+        const { manifest } = bundle;
         const definition = buildDefinition(target, {
             projectId: this.#deps.projectId,
             region: this.#deps.region,

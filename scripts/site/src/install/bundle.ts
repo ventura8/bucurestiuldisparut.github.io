@@ -248,7 +248,7 @@ function hostingEntries(files: SiteFileSystem, options: InstallBundleOptions, sh
  * The list of what a site build adopts (M14 §6). A list, not a search: the admin's own script holds the token as the text it looks
  * for, and replacing that would change a file the tree promises as it is, and stop the next publish from finding the token.
  */
-export const GENERIC_TEMPLATES_FILE = 'templates.json';
+const GENERIC_TEMPLATES_FILE = 'templates.json';
 
 /** `firebase.json` naming no project: the token where the repository's id was (M14 §6). */
 function tokenised(config: Uint8Array, projectId: string): Uint8Array {

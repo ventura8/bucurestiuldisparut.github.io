@@ -18,7 +18,7 @@ function only(items: readonly ProvisionItemResult[], ...ids: readonly string[]):
 describe('a project of the owner own (CR-M5-7)', () => {
     it('happyPath_noGithubMeansNoDeployerAndNoPool', async () => {
         const world = provisionWorld();
-        const { github: _github, ...own } = PROJECT;
+        const own = Object.fromEntries(Object.entries(PROJECT).filter(([key]) => key !== 'github')) as Omit<typeof PROJECT, 'github'>;
         const report = await applyProvision(planProvision(null, ['apis', 'service-accounts', 'workload-identity', 'iam']), {
             ...world.deps,
             project: own,

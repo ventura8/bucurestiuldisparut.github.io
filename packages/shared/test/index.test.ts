@@ -62,8 +62,6 @@ const EXPORTS = {
         'toHttpsUrl',
         'linkTargets',
         'markdownToPlainText',
-        'formatPhotoDate',
-        'monthNames',
         'parseMarkdown',
         'redactText',
     ],

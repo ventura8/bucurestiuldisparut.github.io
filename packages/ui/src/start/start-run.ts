@@ -10,7 +10,7 @@ import type { StartText } from './start-intro.js';
 
 const STEPS = ['project', 'firebase', 'webApp', 'site', 'files', 'release'] as const;
 
-export type StepId = (typeof STEPS)[number];
+type StepId = (typeof STEPS)[number];
 
 export interface RunFailure {
     readonly key: StartKey;

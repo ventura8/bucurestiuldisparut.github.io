@@ -487,12 +487,12 @@ export function createTerraDrawPort(modules: TerraDrawModules): MapDrawPort {
  * (`packages/ui/test/map/draw/terra-draw-real.test.ts`).
  */
 export async function loadTerraDraw(): Promise<TerraDrawModules> {
-    const [draw, adapter] = await Promise.all([import('terra-draw'), import('terra-draw-mapbox-gl-adapter')]);
-    const modules = {
-        ...{ TerraDraw: draw.TerraDraw, TerraDrawRenderMode: draw.TerraDrawRenderMode, TerraDrawSelectMode: draw.TerraDrawSelectMode },
-        ...{ TerraDrawPointMode: draw.TerraDrawPointMode, TerraDrawLineStringMode: draw.TerraDrawLineStringMode },
-        ...{ TerraDrawPolygonMode: draw.TerraDrawPolygonMode, TerraDrawRectangleMode: draw.TerraDrawRectangleMode },
-        TerraDrawMapboxGLAdapter: adapter.TerraDrawMapboxGLAdapter,
-    };
+    // Each import destructured where it is awaited, so the bundler keeps only the modes named here: Terra Draw's other
+    // modes (circle, freehand, sector, sensor, angled rectangle) left the chunk (DECISIONS-for-review.md §100b).
+    const { TerraDraw, TerraDrawRenderMode, TerraDrawSelectMode, TerraDrawPointMode } = await import('terra-draw');
+    const { TerraDrawLineStringMode, TerraDrawPolygonMode, TerraDrawRectangleMode } = await import('terra-draw');
+    const { TerraDrawMapboxGLAdapter } = await import('terra-draw-mapbox-gl-adapter');
+    const modes = { TerraDrawRenderMode, TerraDrawSelectMode, TerraDrawPointMode, TerraDrawLineStringMode, TerraDrawPolygonMode };
+    const modules = { TerraDraw, ...modes, TerraDrawRectangleMode, TerraDrawMapboxGLAdapter };
     return modules as unknown as TerraDrawModules;
 }

@@ -81,7 +81,7 @@ export const en: Readonly<Record<StartKey, string>> = {
     'start.failure.quota': "Your account reached Google's project limit. Ask for more, or choose a project you already have.",
     'start.failure.quotaLink': 'Ask for more projects',
     'start.failure.taken': 'The id {projectId} is taken: ids are unique across Google. A free one is in the field.',
-    'start.failure.refused': "Google did not accept the project's name, which comes from the city's name, or its id. Change them here and try again.",
+    'start.failure.refused': "Google did not accept the project's name (from the city's name) or its id. Change them here and try again.",
     'start.failure.permission': 'Your account cannot do this in {projectId}: it needs the owner role. Choose another project.',
     'start.failure.file': "One of the app's files is not the expected one ({path}). Reload the page and try again.",
     'start.failure.release': 'The page could not read the list of files. Reload the page and try again.',

@@ -1,8 +1,10 @@
 /** M9 (`docs/research/M9-calibration.md`): the public API of calibration, for `index.test.ts`. */
 import { M13_EXPORTS } from './exports-m13.js';
+import { M14_EXPORTS } from './exports-m14.js';
 
 export const M9_EXPORTS = [
     ...M13_EXPORTS,
+    ...M14_EXPORTS,
     'CALIBRATION_HOWS',
     'CALIBRATION_OUTLINE_MAX',
     'CALIBRATION_REFUSALS',
@@ -23,4 +25,7 @@ export const M9_EXPORTS = [
     'isSideJob',
     'layerTilesParamsSchema',
     'versionTilesSchema',
+    // A photo's date to the day (docs/research/photo-date-source.md).
+    'formatPhotoDate',
+    'monthNames',
 ] as const;

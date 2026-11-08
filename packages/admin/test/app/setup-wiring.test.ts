@@ -84,6 +84,22 @@ describe('setupOptionsFor', () => {
         expect(setupOptionsFor(wiring(SEED_CITY, { ...PROJECT, cities: [] }).deps).cityId).toBe('bucharest');
     });
 
+    it('happyPath_aProjectOfTheOwnersOwnHasNoBundledCityNorOldPhotos', async () => {
+        const rest = Object.fromEntries(Object.entries(PROJECT).filter(([key]) => key !== 'github')) as Omit<ProjectConfig, 'github'>;
+        const bounds = { west: 26.8, south: 46.5, east: 27, north: 46.6 };
+        const own: ProjectConfig = { ...rest, firstCity: { id: 'bacau', name: { ro: 'Bacău' }, bounds } };
+        const w = wiring(SEED_CITY, own);
+        const options = setupOptionsFor(w.deps);
+
+        await expect(options.createCity()).resolves.toEqual({ created: false });
+        await expect(options.importer.detect()).resolves.toEqual({ done: 0, total: 0, failed: [] });
+        await expect(options.importer.run(() => undefined)).resolves.toEqual({ done: 0, total: 0, failed: [] });
+        expect(options.github).toBe(false);
+        expect(options.cityBBox).toEqual([26.8, 46.5, 27, 46.6]);
+        expect(w.callables.calls).toEqual([]);
+        expect(w.fetcher.calls).toEqual([]);
+    });
+
     it('happyPath_theModuleStartsWithNoStateUntilTheShellCreatesIt', () => {
         expect(setupModuleFor(wiring().deps).initial).toBeNull();
     });

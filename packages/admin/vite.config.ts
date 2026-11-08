@@ -1,9 +1,10 @@
 import { fileURLToPath } from 'node:url';
 
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig } from 'vite';
 
 import { cssLiteralsPlugin } from '../../scripts/site/src/css-literals.js';
 import { thirdPartyNoticesPlugin } from '../../scripts/site/src/notices.js';
+import { zodStandInsPlugin } from '../../scripts/site/src/zod-stand-ins.js';
 import { FONT_FILES } from '../ui/src/fonts/font-files.js';
 
 /**
@@ -70,37 +71,13 @@ const ASSIST_MODULES = /packages[\\/](?:admin[\\/]src|ui[\\/]src[\\/]admin)[\\/]
 const RE2JS_STAND_IN = fileURLToPath(new URL('src/vendor/re2js-unsupported.ts', import.meta.url));
 
 /**
- * zod's classic schemas import its JSON Schema conversion for `toJSONSchema()`, Standard Schema's `jsonSchema` and the
- * derived getters (`minLength`, `maxValue`, `isInt`, `format`), none of which the admin calls: those two imports resolve
- * to a stand-in that refuses (`src/vendor/zod-json-schema-unsupported.ts`, DECISIONS-for-review.md §86), and the real
- * modules (18 KB of `admin-core`) are no longer reachable. Every other importer keeps zod's own.
+ * zod's JSON Schema conversion and its English messages, which the admin never uses, resolve to stand-ins
+ * (`scripts/site/src/zod-stand-ins.ts`; DECISIONS-for-review.md §86, §93).
  */
-const ZOD_JSON_SCHEMA_STAND_IN = fileURLToPath(new URL('src/vendor/zod-json-schema-unsupported.ts', import.meta.url));
-const ZOD_CLASSIC_SCHEMAS = /[\\/]zod[\\/]v4[\\/]classic[\\/]schemas\.js$/;
-const ZOD_JSON_SCHEMA_IMPORTS: ReadonlySet<string> = new Set(['../core/json-schema-processors.js', '../core/to-json-schema.js']);
-/**
- * zod's classic schemas also install its English messages (1.1 KB gzip of `admin-core`), which the admin never shows: an issue
- * reaches a page as its `validation.*` code (`toValidationIssues`), so this import resolves to a stand-in with no messages, and
- * an uncoded issue reads zod's own "Invalid input" in a log (DECISIONS-for-review.md §93).
- */
-const ZOD_LOCALE_STAND_IN = fileURLToPath(new URL('src/vendor/zod-locale-none.ts', import.meta.url));
-const ZOD_LOCALE_IMPORT = '../locales/en.js';
-
-function zodJsonSchemaStandIn(): Plugin {
-    return {
-        name: 'hcm-zod-json-schema-stand-in',
-        enforce: 'pre',
-        resolveId(source, importer) {
-            if (importer === undefined || !ZOD_CLASSIC_SCHEMAS.test(importer)) {
-                return null;
-            }
-            if (source === ZOD_LOCALE_IMPORT) {
-                return ZOD_LOCALE_STAND_IN;
-            }
-            return ZOD_JSON_SCHEMA_IMPORTS.has(source) ? ZOD_JSON_SCHEMA_STAND_IN : null;
-        },
-    };
-}
+const ZOD_STAND_INS = {
+    jsonSchema: fileURLToPath(new URL('src/vendor/zod-json-schema-unsupported.ts', import.meta.url)),
+    messages: fileURLToPath(new URL('src/vendor/zod-locale-none.ts', import.meta.url)),
+};
 
 export default defineConfig({
     // M6 (docs/research/M6-interfaces.md §2.3): Hosting serves the admin under /admin/ (the public map is at the root);
@@ -108,7 +85,7 @@ export default defineConfig({
     base: '/admin/',
     resolve: { alias: [{ find: /^re2js$/, replacement: RE2JS_STAND_IN }] },
     plugins: [
-        zodJsonSchemaStandIn(),
+        zodStandInsPlugin(ZOD_STAND_INS),
         cssLiteralsPlugin(),
         thirdPartyNoticesPlugin({
             product: 'the Historic City Map admin (admin.mjs, its chunks and fonts)',

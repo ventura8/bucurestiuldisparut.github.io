@@ -145,6 +145,40 @@ describe('<hcm-photos-page>: the list', () => {
     });
 });
 
+describe('<hcm-photos-page>: the list by role (M13)', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_aRowInTheQueueSaysWhereItStandsWithTheReviewersNote', async () => {
+        const rows = [
+            row({ reviewStatus: 'pending', published: false }),
+            row({ id: 'p2', reviewStatus: 'refused', reviewNote: 'Not Bucharest', published: false }),
+        ];
+        const { element } = await photosPage(area(photosState({ list: { ...photosState().list, rows } })));
+
+        const chips = deepAll(element, '.tag').map((chip) => [chip.getAttribute('data-tone'), chip.textContent.trim()]);
+        expect(chips).toContainEqual(['wait', 'Waiting for review']);
+        expect(chips).toContainEqual(['error', 'Refused: Not Bucharest']);
+        expect(chips.map(([, text]) => text)).not.toContain('Unpublished');
+    });
+
+    it('badPath_anUploaderIsOfferedNoPublishingAndAModeratorNoDelete', async () => {
+        const selection = { ...photosState().list, selection: ['p1'] };
+        const uploader = await photosPage(area(photosState({ role: 'uploader', list: selection })));
+        const uploaderBar = deep(uploader.element, '.bulk-bar');
+        expect(deepAll(uploaderBar, 'hcm-button.publish')).toEqual([]);
+        expect(deepAll(uploaderBar, '[data-action="confirmRights"]')).toEqual([]);
+        expect(deepAll(uploaderBar, '[data-action="delete"]')).toHaveLength(1);
+        cleanup();
+
+        const moderator = await photosPage(area(photosState({ role: 'moderator', list: selection })));
+        const moderatorBar = deep(moderator.element, '.bulk-bar');
+        expect(deepAll(moderatorBar, 'hcm-button.publish')).toHaveLength(1);
+        expect(deepAll(moderatorBar, '[data-action="confirmRights"]')).toHaveLength(1);
+        expect(deepAll(moderatorBar, '[data-action="delete"]')).toEqual([]);
+    });
+});
+
 describe('<hcm-photos-page>: the list states', () => {
     beforeAll(defineAll);
     afterEach(cleanup);
