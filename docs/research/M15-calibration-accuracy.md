@@ -106,3 +106,43 @@ Ground metres, RMS over pairs. Each frame, RMS of its own pairs, 3.2 km then 8 k
 - **Sources:** nothing downloaded. The Sentinel-2 window already on the NUC (Copernicus Sentinel data, free, full and open, with attribution); no Mapbox Satellite, no `fostulbucuresti` resource.
 
 **Not built in this round:** step 3 (orientation matcher: it changes `measure` and the proof's gate, so every frame's proof must run again and the gate be set on a wrong-place null; -0.44 m on every tile); step 4 (frames adjusted together: it reissues published versions, the owner's decision); step 5 (rigid stitch: 6.02 to 5.98 m overall, it changes `stitch` and every film coordinate after it); the admin's figures of *What the admin should see* (the film ruler is not in the product).
+
+## Review of 2026-11-08: the georeferencer and the edges
+
+**The georeferencer showed a map that is not published.** It refitted a version's stored pairs with a polynomial on load, so a KH-9 pan version (its camera fitted on every tile, published through `georef.lattice`) showed other errors, residuals and warnings than its version page, and a preview of the pairs' polynomial. Built: while the pairs and the transform are the version's, the page shows the figures and residuals the version stored and previews the lattice through a thin-plate spline, as the warp renders it (`packages/admin/src/georef/fit-view.ts` `ownFitOf`, `shownFit`); once they change, every figure and the preview are the refit, and a note says Save replaces the version's map with it (`adminContent.georef.refitted`). A version with no figures of its own (corner guesses) shows the refit with no note. Rows `S-A16-HAPPY-VERSION-FIGURES`, `S-A16-BAD-EDIT-REFITS`; state `georef.refitted`; `docs/LESSONS.md` 398.
+
+**A001 at its edges.** The ruler's edge readings fit each frame on the middle 70 % of its tiles along one axis (900 m margin) and read the outer 15 % each side against the other frames' whole maps. On the film ruler A001's rows beyond its tiles read 15.5 m today and 19.2 m as built. Measured, through the product's functions on the folds of `tools/acc-transforms.py` (`tools/m15c-edge.py`, `m15d-try.py` on the NUC; outputs `out/m15c/`, `out/m15d/`):
+
+| Variant (film ruler) | 3.2 km held, pairs | 8 km held, pairs | Edges along the rows, A001 | Edges along the scan, mean of 11 frames |
+| --- | --- | --- | --- | --- |
+| As built | 8.14 | 12.65 | 19.2 | 10.9 |
+| Second-order term carried on its tangent beyond the tiles' box | 8.13 | **21.51** | 18.9 | **29.7** |
+| The same along the rows only | 8.14 | not run | 18.9 | 10.9 (rows: F003 7.4 to 22.2, A038 9.3 to 23.1) |
+| No v² term | 8.12 | not run | **24.0** | 10.8 |
+| **Plainest of two mirrored cameras (built)** | **8.13** | **12.50** | 19.2 | 11.0 |
+
+- **Falling back to a lower order where no tile is loses.** The tangent fallback cuts curvature that is real on most frames (along the scan F006 13.3 to 51.1 m, F003 6.9 to 65.8 m). The frame's own poly2 read on the same strips (stored `prodfit`) is better than the camera only on A001 and F007 along the rows (13.7 against 19.2, 15.0 against 15.9), level on F006 (19.6 against 19.7), and worse on every other frame along the rows and on every frame along the scan (F040 rows 28.9 against 16.8, F003 12.4 against 7.4). Neither was built.
+- **What was wrong instead: a coin toss between mirrored cameras.** Each KH-9 pan frame has two cameras mirrored about the nadir that hold the same tiles within a tile or two (A001, on the tiles not held for checks: 700 and 698); one needs a second-order term of 0.3 to 1.2 km, the other 4.3 to 8.7 km, and the product kept whichever held a tile more or came out a hundredth of a metre closer. On every tile it had kept the bent one for A001 (8.7 km), F022 (7.4 km) and F049 (4.3 km). The two agree within 0.1 to 0.7 m RMS at the lattice's nodes over the tiles and part by 5.6 m RMS (23.1 m at worst) beyond them on A001, 4.6 (11.8) on F022, 2.0 (6.1) on F049. Built: both signs of the scan angle are followed, and of the cameras within 1 % of the most tiles the one with the smallest second-order term is kept (`calibrate/camera.py` `plainest`); a camera holding clearly more tiles still wins. Synthetic: the bent mirror (899 tiles against 898) read 4.1 m RMS beyond the tiles, the plainest 1.8 m. Rows `S-P06-HAPPY-CAMERA-PLAINEST-MIRROR`, `S-P06-BAD-CAMERA-PLAINEST-ONLY-AMONG-EQUALS`; `docs/LESSONS.md` 399.
+- **On the ruler it is neutral, not a gain.** Against as built: 3.2 km gain −0.02 to +0.06 m (95 %, frames resampled), 33 pairs better and 18 worse; 8 km −0.04 to +0.34 m, 41 better and 10 worse; against today 52 of 52 better at both sizes. **A001's edge is not fixed**: 19.2 m along the rows, as built. The cause is not established: on those strips A001's own poly2 reads 13.7 m as fitted and 15.5 m as GDAL rendered it before M15, the evidence's poly2 of ~100 pairs 17.4 m and the camera variants 18.8 to 24.0 m; A001 is the frame with the strongest relief term (slope near 1 at tan 1.14, `acc-open-refs.md`), which no model here holds.
+
+Each frame, today (before M15) / as built / now: own pairs on 3.2 km blocks; on 8 km blocks; film edges along the rows; along the scan (metres):
+
+| Frame | 3.2 km | 8 km | Edge, rows | Edge, scan |
+| --- | --- | --- | --- | --- |
+| **A001** | 14.60 / 9.39 / 9.37 | 22.38 / 12.53 / 12.35 | 15.5 / 19.2 / 19.2 | 16.1 / 13.4 / 13.4 |
+| **F006** | 15.65 / 9.52 / 9.50 | 29.89 / 15.52 / 15.26 | 19.8 / 19.7 / 19.7 | 21.1 / 13.3 / 11.9 |
+| F007 | 14.24 / 7.82 / 7.81 | 25.47 / 10.80 / 10.60 | 17.1 / 15.9 / 16.0 | 27.2 / 12.3 / 12.6 |
+| F040 | 20.32 / 9.21 / 9.14 | 31.63 / 16.15 / 16.05 | 30.7 / 16.8 / 16.8 | 33.2 / 16.2 / 16.2 |
+| F003 | 12.00 / 6.73 / 6.74 | 22.02 / 10.70 / 10.81 | 11.9 / 7.4 / 7.5 | 12.0 / 6.9 / 6.7 |
+| F022 | 12.06 / 8.22 / 8.22 | 21.58 / 12.65 / 12.27 | 12.0 / 11.3 / 11.3 | 14.2 / 10.1 / 10.2 |
+| A015 | 12.54 / 7.89 / 7.88 | 19.29 / 11.86 / 11.61 | 10.6 / 8.9 / 8.8 | 15.6 / 10.5 / 11.7 |
+| A038 | 15.67 / 6.95 / 6.90 | 28.56 / 11.29 / 11.11 | 13.9 / 9.3 / 9.3 | 21.1 / 8.0 / 8.5 |
+| F049 | 12.61 / 6.82 / 6.82 | 21.06 / 10.14 / 9.92 | 13.2 / 7.3 / 7.3 | 19.5 / 9.4 / 9.4 |
+| KH-7 | 18.38 / 9.58 / 9.62 | 36.28 / 15.98 / 16.04 | 33.6 / 15.6 / 15.6 | 18.2 / 12.9 / 13.0 |
+| KH-9 mapping | 10.82 / 6.97 / 6.95 | 18.30 / 10.46 / 10.30 | 13.7 / 11.8 / 11.8 | 9.4 / 6.9 / 6.9 |
+
+KH-7 and KH-9 mapping keep their polynomial; they move only through their partners. **F006 over Pitești** has no film ruler; Sentinel-2 at its edges (rows, scan) reads 19.8 / 25.6 today, 20.0 / 27.5 as built and 20.0 / 27.7 now, its held-out Sentinel-2 figure 17.6, 17.2, 17.2: its camera is the same one (scan angle −0.611 rad, second-order term 689 m).
+
+**The saved figures move a little** (`checkpointRmseM`, on every tile, as built to now): A001 18.75 to 18.86, F022 18.72 to 18.33, F049 9.24 to 9.37, F006 19.10 to 19.19 (a camera near the nadir, 0.06 to 0.00 rad); the others are unchanged to 0.01 m; `crossValidatedM` moves by 0.15 m at most (F040 13.31 to 13.16). Cost unchanged: three starts followed, as before.
+
+**Not run:** a whole job through the runner on a real frame; the second city has still no film ruler.

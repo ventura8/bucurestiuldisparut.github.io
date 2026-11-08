@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { fitOf } from '../../src/georef/fit-view.js';
+import { fitOf, ownFitOf, shownFit } from '../../src/georef/fit-view.js';
 import { pair } from './fixtures.js';
 
 const GRID = [pair('g1', 0, 0), pair('g2', 1000, 0), pair('g3', 1000, 800), pair('g4', 0, 800), pair('g5', 500, 400, 40)];
@@ -32,5 +32,26 @@ describe('the fit as the georeferencer shows it', () => {
         const fitted = fitOf('affine', GRID.slice(0, 3), 1);
 
         expect(fitted.view).toMatchObject({ refusal: null, checkpointRmseM: null, checkpointCount: 0, overThreshold: false });
+    });
+});
+
+describe("the version's own figures and map, M15", () => {
+    const stored = { method: 'auto', transform: 'affine', gcps: [{ ...GRID[0], residualM: 1.5 }, ...GRID.slice(1)] } as const;
+
+    it('happyPath_storedFiguresDefaultToNoChecksAndAMapWithoutALatticeIsThePairsOwn', () => {
+        const own = ownFitOf({ ...stored, fitRmseM: 2 });
+
+        expect(own).toEqual({ figures: { fitRmseM: 2, checkpointRmseM: null, checkpointCount: 0, residuals: { g1: 1.5 } }, transform: null });
+        const shown = shownFit(fitOf('affine', GRID, 100), own, false, 100);
+        expect([shown.view.fitRmseM, shown.view.residuals, shown.transform?.kind]).toEqual([2, { g1: 1.5 }, 'affine']);
+    });
+
+    it('badPath_noFiguresNoLatticeOrANodeSetThatSpansNothingIsNoOwnMap', () => {
+        const flat = { model: 'panoramic', nodes: GRID.map((gcp) => ({ pixel: { x: 5, y: 5 }, geo: gcp.geo })) } as const;
+        const refused = fitOf('poly2', GRID, 15);
+
+        expect([ownFitOf(undefined), ownFitOf(stored)]).toEqual([null, null]);
+        expect(ownFitOf({ ...stored, lattice: flat })?.transform).toBeNull();
+        expect(shownFit(refused, ownFitOf({ ...stored, fitRmseM: 2 }), true, 15)).toBe(refused);
     });
 });

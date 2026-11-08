@@ -167,6 +167,10 @@ export const IMAGERY_STATES = {
         title: 'Georeferencer: pairs in a line refused, Save off',
         visit: 'specs/imagery/georeferencer.spec.ts',
     },
+    'georef.refitted': {
+        title: "Georeferencer: a fitted version's pairs edited, the figures said to be a refit",
+        visit: 'specs/imagery/georeferencer.spec.ts',
+    },
     'layers.link-probed': {
         title: 'Layers, Link a layer: Check asked one tile, which answered',
         visit: 'specs/imagery/link-probe.spec.ts',

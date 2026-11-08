@@ -1,6 +1,6 @@
 /**
- * The georeferencer's controls (`docs/research/M3-interfaces.md` §10.4): the fit's errors (or why there is no fit) and
- * the warning over the city's threshold, the transform as native radios (one without enough pairs disabled with the
+ * The georeferencer's controls (`docs/research/M3-interfaces.md` §10.4): the fit's errors (or why there is no fit), that
+ * they are a refit of edited pairs (M15), and the warning over the city's threshold, the transform as native radios (one without enough pairs disabled with the
  * count missing), the tools (Add pairs, Add at the centres, Save, Discard) with the half pair's hint, and the warped
  * preview's switch and opacity.
  */
@@ -63,6 +63,17 @@ function rmseWarning(context: GeorefContext): TemplateResult {
     );
 }
 
+/** M15: the pairs were edited, so every figure and the preview are a refit that Save makes the version's map. */
+function refitNote(locale: Locale, fit: GeorefViewState['fit']): TemplateResult {
+    return when(
+        fit.refitted,
+        () =>
+            html`<p class="note" role="status" data-state="refitted">
+                <hcm-icon name="info"></hcm-icon><span>${contentText(locale, 'adminContent.georef.refitted')}</span>
+            </p>`,
+    );
+}
+
 export function summary(context: GeorefContext): TemplateResult {
     const { locale, view } = context;
     const fit = view.fit;
@@ -73,7 +84,7 @@ export function summary(context: GeorefContext): TemplateResult {
             <span>${contentText(locale, 'adminContent.georef.fit', { rmse: metres(locale, Number(fit.fitRmseM)) })}</span>
             <span>${checks(locale, fit)}</span>
         </p>
-        ${rmseWarning(context)}`;
+        ${refitNote(locale, fit)} ${rmseWarning(context)}`;
 }
 
 function transformOption(context: GeorefContext, kind: GeorefTransform): TemplateResult {

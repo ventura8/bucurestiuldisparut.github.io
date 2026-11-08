@@ -246,6 +246,7 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.georef.tooFew.few': 'Add {missing} more pairs for this transform.',
     'adminContent.georef.tooFew.other': 'Add {missing} more pairs for this transform.',
     'adminContent.georef.rmseOver': "The error at the checkpoints ({rmse} m) is over the city's threshold ({threshold} m).",
+    'adminContent.georef.refitted': 'Edited: the errors and the preview are a new fit through these pairs; saving replaces this version’s map with it.',
     'adminContent.georef.notFound': 'No such version',
     'adminContent.georef.backToImagery': 'Back to historical imagery',
     'adminContent.georef.notEditable': 'This version takes no points now: you can only look at them.',

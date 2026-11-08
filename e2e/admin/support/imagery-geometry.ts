@@ -40,7 +40,7 @@ function centre(bounds: Bounds): LatLng {
 }
 
 /** A full-resolution scan pixel → its place on the ground (the transform the automatic pairs recover). */
-function scanToGeo(pixel: Pixel, bounds: Bounds = E2E_CITY_BOUNDS): LatLng {
+export function scanToGeo(pixel: Pixel, bounds: Bounds = E2E_CITY_BOUNDS): LatLng {
     const du = pixel.x / SCAN_SIZE.width - 0.5;
     const dv = pixel.y / SCAN_SIZE.height - 0.5;
     const middle = centre(bounds);

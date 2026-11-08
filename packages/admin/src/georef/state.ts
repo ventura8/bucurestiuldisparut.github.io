@@ -101,7 +101,7 @@ export interface GeorefState {
 
 const EMPTY_FIT: FitView = {
     ...{ refusal: 'too-few', fitRmseM: null, checkpointRmseM: null, checkpointCount: 0, residuals: {} },
-    ...{ missing: { affine: 3, poly2: 6, tps: 10 }, overThreshold: false },
+    ...{ missing: { affine: 3, poly2: 6, tps: 10 }, overThreshold: false, refitted: false },
 };
 
 export const INITIAL_GEOREF: GeorefState = {

@@ -115,6 +115,17 @@ describe('<hcm-georef-page>', () => {
         expect(deep(element, '[data-state="rmse-over"]').textContent).toContain("(31 m) is over the city's threshold (15 m)");
         expect(await axeViolations(element)).toEqual([]);
     });
+
+    it('happyPath_editedPairsSayTheFiguresAreARefitThatSavingMakesTheMap', async () => {
+        const { element, area } = await georefPage(georefState());
+        const unedited = deepAll(element, '[data-state="refitted"]').length;
+        area.set({ fit: { ...georefState().fit, refitted: true }, dirty: true });
+        await updated(element);
+
+        expect(unedited).toBe(0);
+        expect(deep(element, '[data-state="refitted"]').textContent).toContain('a new fit through these pairs');
+        expect(await axeViolations(element)).toEqual([]);
+    });
 });
 
 describe('<hcm-georef-page>: pairs, saving and states', () => {

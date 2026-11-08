@@ -5289,6 +5289,28 @@
             "notes": "docs/research/M15-calibration-accuracy.md §1. Test: functions/test/imagery/save-gcps.test.ts."
         },
         {
+            "id": "S-A16-HAPPY-VERSION-FIGURES",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "The georeferencer opens a fitted version on its own figures and the map it publishes",
+            "asserts": "a version whose georef stores its figures, residuals and a panoramic lattice (the stand-in's camera) -> unedited, the errors line shows the stored fit and checkpoint errors the version page shows, not a refit of its pairs, and no refit note; the preview is the lattice's map (a thin-plate spline through its nodes, as the warp renders it)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M15 review (docs/research/M15-calibration-accuracy.md, As built). Test: e2e/admin/specs/imagery/georeferencer.spec.ts; the preview drawn through the lattice, not the pairs' polynomial, and the stored residuals: packages/admin/test/georef/georef-published.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-EDIT-REFITS",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "Edited pairs of a fitted version are said to be a refit that saving makes the version's map",
+            "asserts": "a pair of that version left out of the fit -> every figure and the preview are a refit through the pairs and a note says saving replaces the version's map with it; Discard brings back the version's own figures and takes the note away; a version without figures of its own (corner guesses) shows the refit with no note",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M15 review. Tests: e2e/admin/specs/imagery/georeferencer.spec.ts (state georef.refitted), packages/admin/test/georef/georef-published.test.ts."
+        },
+        {
             "id": "S-A16-HAPPY-POINTS-AFTER-ATTEMPTS",
             "behaviour": "A16",
             "area": "admin",
@@ -11436,6 +11458,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "docs/research/M15-calibration-accuracy.md §2. Tests: pipeline/tests/unit/test_calibrate_camera.py, pipeline/tests/unit/test_render_lattice.py, pipeline/tests/integration/test_calibration_job.py."
+        },
+        {
+            "id": "S-P06-HAPPY-CAMERA-PLAINEST-MIRROR",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Of two mirrored KH-9 cameras that hold the same tiles, the one with the smaller second-order term maps the frame",
+            "asserts": "tiles of a camera at a scan angle of 0.45 rad on which the camera mirrored about the nadir holds one tile more (899 against 898) through a second-order term of about 5 km -> the camera kept has the true sign of the scan angle and a second-order term under 1 km, and beyond the tiles (film columns 41,000 to 47,000) it reads under 3 m RMS (1.8 m; the mirrored one 4.1 m); both signs of the scan angle are always followed",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 review (docs/research/M15-calibration-accuracy.md, Review of 2026-11-08). Test: pipeline/tests/unit/test_calibrate_camera.py. On real frames the mirrored camera had been published for A001, F022 and F049 (second-order terms of 8.7, 7.4 and 4.3 km against 0.3, 0.3 and 1.2 km)."
+        },
+        {
+            "id": "S-P06-BAD-CAMERA-PLAINEST-ONLY-AMONG-EQUALS",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A camera that holds clearly more tiles is kept however much it bends",
+            "asserts": "two cameras, one holding 20 tiles more of about 900 through a second-order term forty times larger -> that one is kept; holding 5 more (within 1 %) -> the plainer one",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 review. Test: pipeline/tests/unit/test_calibrate_camera.py."
         },
         {
             "id": "S-A17-BAD-NOT-PROVED",

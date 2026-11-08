@@ -3,7 +3,8 @@
  * when the automatic matching found too few pairs, and the way to re-georeference a layer. The scan beside the reference
  * map, pairs made of a click on each (or both crosshairs from the keyboard), moved, deleted or kept as checkpoints, the
  * transform and its residuals refitted on every change with the shared mathematics, the live warped preview, and Save,
- * which queues the job (`imagery.saveGcps`). Unsaved pairs are guarded like any draft.
+ * which queues the job (`imagery.saveGcps`). Unsaved pairs are guarded like any draft. Unedited, the version's own figures and
+ * the map it publishes show instead (M15: a camera's lattice is no refit of its pairs, `fit-view.ts`).
  */
 import {
     bboxCenter,
@@ -26,7 +27,7 @@ import { callImagery, refusalOf, type ImageryRequest } from '../imagery/api.js';
 import { NO_FILES } from '../imagery/files.js';
 import { frameOf, type CityFrame } from '../layers/map-session.js';
 import { Store } from '../state/store.js';
-import { fitOf } from './fit-view.js';
+import { fitOf, ownFitOf, shownFit, type OwnFit } from './fit-view.js';
 import { GeorefMap } from './georef-map.js';
 import { GeorefPictures } from './georef-pictures.js';
 import {
@@ -81,6 +82,8 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     /** The version's own pairs and transform: what Discard returns to and the unsaved guard compares with. */
     #base: { readonly pairs: readonly Gcp[]; readonly transform: GeorefTransform } = { pairs: [], transform: 'affine' };
     #transform: FittedTransform | null = null;
+    /** The version's own figures and published map (M15), shown while its pairs are unedited. */
+    #own: OwnFit | null = null;
     #cityFrame: CityFrame | null = null;
     readonly intents: GeorefIntents;
 
@@ -164,6 +167,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         this.#suggestions.reset();
         this.#base = { pairs: [], transform: 'affine' };
         this.#transform = null;
+        this.#own = null;
         this.#cell.update({ ...INITIAL_GEOREF, thresholdM: this.#cell.state.thresholdM });
     }
 
@@ -280,6 +284,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     /** A new snapshot of the version: its pairs become the base (an edit in progress is kept). */
     #loaded(doc: LayerVersionDoc, version: GeorefVersion): void {
         this.#base = baseOf(doc);
+        this.#own = ownFitOf(doc.georef);
         this.#suggestions.load(doc);
         this.#frame();
         this.#pictures.load(version, this.#cell.state.reference);
@@ -391,10 +396,11 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         }
     }
 
-    /** The pairs and the transform as edited: fitted again, the map and the preview follow. */
+    /** The pairs and the transform as edited: fitted again (the version's own map while unedited), the map and the preview follow. */
     #refit(pairs: readonly Gcp[], transform: GeorefTransform): void {
-        const fitted = fitOf(transform, pairs, this.#cell.state.thresholdM);
         const dirty = transform !== this.#base.transform || !samePairs(pairs, this.#base.pairs);
+        const { thresholdM } = this.#cell.state;
+        const fitted = shownFit(fitOf(transform, pairs, thresholdM), this.#own, dirty, thresholdM);
         this.#transform = fitted.transform;
         this.#cell.update({ pairs, transform, fit: fitted.view, dirty, refusal: null });
         this.#map.showPairs(pairs, this.#cell.state.selected);
@@ -443,6 +449,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         try {
             const answer = await callImagery(this.#services.callables, 'imagery.saveGcps', request);
             this.#base = { pairs: this.#cell.state.pairs, transform: request.transform };
+            this.#own = null;
             this.#cell.update({ saving: false, dirty: false, saved: answer.versionId });
             this.#services.notify({ key: answer.resumed ? 'adminContent.georef.savedResumed' : 'adminContent.georef.savedNew' });
             return true;

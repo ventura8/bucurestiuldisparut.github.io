@@ -6,6 +6,7 @@ import {
     landmarks,
     scanCorners,
     scanPixelOf,
+    scanToGeo,
     SCAN_PREVIEW_SCALE,
     SCAN_SIZE,
     type Bounds,
@@ -107,6 +108,23 @@ function automaticGcps(run: Run): Gcp[] {
             residualM: Math.round(rmse * (0.7 + (index % 4) * 0.15) * 10) / 10,
         };
     });
+}
+
+/** Nodes a side of a camera's lattice (`georef/lattice.py`: 17 x 17). */
+const LATTICE_SIDE = 17;
+
+/** M15: a panoramic camera's lattice when the script asks for one: the scan's own map on 17 x 17 nodes, as the pipeline stores it. */
+function latticeOf(run: Run): { readonly lattice?: Record<string, unknown> } {
+    if (run.attempt.lattice !== true) {
+        return {};
+    }
+    const nodes = Array.from({ length: LATTICE_SIDE * LATTICE_SIDE }, (_node, index) => {
+        const step = { x: SCAN_SIZE.width / (LATTICE_SIDE - 1), y: SCAN_SIZE.height / (LATTICE_SIDE - 1) };
+        const pixel = { x: (index % LATTICE_SIDE) * step.x, y: Math.floor(index / LATTICE_SIDE) * step.y };
+        const geo = scanToGeo(pixel, run.bounds);
+        return { pixel, geo: { lat: round(geo.lat), lng: round(geo.lng) } };
+    });
+    return { lattice: { model: 'panoramic', nodes } };
 }
 
 /** The suggestions' confidences (best first): one at the fit's confidence, three below it (M4 §2.3's "fewer" case). */
@@ -296,6 +314,7 @@ async function georeference(run: Run): Promise<StepResult> {
                 checkpointRmseM: rmse,
                 checkpointCount: 3,
                 checkpointKind: 'held-out',
+                ...latticeOf(run),
             },
             // The proof holds this fit: only then may the policy approve it (M9 §11).
             calibration: run.attempt.calibration ?? PROVED_CALIBRATION,

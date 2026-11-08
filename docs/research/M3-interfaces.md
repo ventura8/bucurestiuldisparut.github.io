@@ -965,6 +965,12 @@ until fn-imagery wires them (done: `Omit<Ports, 'jobs' | 'tilesets' | 'scenes' |
   warped into a canvas used as the map's image source on the output bounds, with an opacity slider.
 - **RMSE**: fit and checkpoint RMSE; over the city's threshold, a warning naming both (`adminContent.georef.rmseOver`,
   `S-A16-BAD-RMSE-OVER-THRESHOLD`); Save stays allowed.
+- **The version's own map** (M15 review, `packages/admin/src/georef/fit-view.ts`): while the pairs and the transform are the
+  version's, the figures and residuals are the ones it stored, the ones the version page shows, and the preview is the map it
+  publishes: a stored `georef.lattice` through its nodes (a thin-plate spline, as the warp renders it), else the pairs' own fit. Once
+  they change, every figure and the preview are the refit and a note says Save replaces the version's map with it
+  (`adminContent.georef.refitted`; `S-A16-HAPPY-VERSION-FIGURES`, `S-A16-BAD-EDIT-REFITS`). A version with no figures of its own
+  (corner guesses) shows the refit with no note.
 - **Save** queues the job (§4.1) and returns to the version page; the unsaved guard of M2c protects unsaved pairs.
 
 ### 10.5 The layer editor's additions

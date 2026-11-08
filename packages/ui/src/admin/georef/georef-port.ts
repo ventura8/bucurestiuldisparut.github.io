@@ -47,6 +47,7 @@ interface FitViewPort {
     readonly residuals: Readonly<Record<string, number>>;
     readonly missing: Readonly<Record<GeorefTransform, number>>;
     readonly overThreshold: boolean;
+    readonly refitted: boolean;
 }
 
 type ScanImagePort = { readonly status: 'none' | 'loading' | 'failed' } | { readonly status: 'ready'; readonly url: string };

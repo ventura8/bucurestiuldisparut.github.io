@@ -52,6 +52,8 @@ export interface StandinAttempt {
     readonly coveragePct?: number;
     /** M9: what `locate` measured (default nothing, as a frame that never went through it). */
     readonly calibration?: Calibration;
+    /** M15: the automatic georef carries a panoramic camera's lattice (17 x 17 nodes of the scan's own map), as a KH-9 pan frame's. */
+    readonly lattice?: boolean;
     /** M8, a `layer-join`: what its report says beyond the defaults (`imagery-standin-join.ts`), and that no seam could be measured. */
     readonly join?: Partial<JoinReport>;
     readonly seamsUnmeasured?: boolean;

@@ -4,9 +4,11 @@ A slit sweeps across the track, so a film column is a scan angle (`rad_per_px` a
 a film row an angle along the track. A ray through the film meets a flat plane under the camera; five angles shape it: the scan
 angle at the tiles' middle, the pitch, the drift along and across the track per radian swept, and the slit's skew. Inside, the plane
 goes to EPSG:3857 by a linear map plus a second-order polynomial of the film (the angles alone get stuck: M15 §2), solved by least
-squares for any angles (variable projection); the angles by Levenberg-Marquardt from eleven starting scan angles, the best three
-followed while the tiles it keeps narrow from 80 to 25 m. Every gated tile counts, not a cell's strongest: a map from about 100
-pairs lies 3 to 5 m from the one all tiles hold (M15's error budget). Ground metres throughout, at each tile's own latitude.
+squares for any angles (variable projection); the angles by Levenberg-Marquardt from eleven starting scan angles, the best of each sign
+and the next best followed while the tiles it keeps narrow from 80 to 25 m. Two cameras mirrored about the nadir hold the same tiles
+to a tile, one of them through a second-order term tens of times larger that keeps bending beyond the tiles; of the cameras within 1 %
+of the most tiles the one with the smallest second-order term is kept, not the one a tile or a hundredth of a metre ahead (M15, review). Every
+gated tile counts, not a cell's strongest: a map from about 100 pairs lies 3 to 5 m from the one all tiles hold (M15's error budget). Ground metres throughout, at each tile's own latitude.
 
 The prior holds each angle near nothing in units of a 20 m tile: pitch 0.25 rad (KH-9's cameras converge about 10 degrees), the
 drifts 0.2 a radian, the skew 0.1; the scan angle is free. Fitted on 1,000 tiles in about 0.2 s.
@@ -27,6 +29,9 @@ NARROWING_M: Final = (80.0, 60.0, 40.0, 25.0, 25.0)
 KEPT_M: Final = 25.0
 START_DEG: Final = tuple(range(-60, 61, 12))
 FOLLOWED: Final = 3
+# Two cameras mirrored about the nadir hold the same tiles within a tile or two (A001: 700 and 698); the one that needs a second-order
+# term of 8.7 km where the other needs 0.3 km parts from it by up to 23 m beyond the tiles. Within 1 % of the most, the plainest is kept.
+NEAR_KEPT_SHARE: Final = 0.99
 STEPS: Final = numpy.array([1e-3, 1e-3, 1e-3, 1e-3, 1e-4])
 ITERATIONS: Final = 6
 TRIES: Final = 5
@@ -170,25 +175,42 @@ class PanoramicMap:
         design = _design(self.frame, film, self.angles, (self.ray_mean, self.ray_spread))
         return numpy.asarray(design @ self.coefficients, numpy.float64)
 
+    @property
+    def curvature_m(self) -> float:
+        """The second-order term's size: EPSG:3857 metres at one spread from the tiles' middle."""
+        return float(numpy.linalg.norm(self.coefficients[3:]))
 
-def _scored(frame: Frame, tiles: _Tiles, angles: FloatArray, keep: Mask) -> tuple[tuple[int, float], PanoramicMap]:
+
+def _scored(frame: Frame, tiles: _Tiles, angles: FloatArray, keep: Mask) -> PanoramicMap:
     mean, spread = _ray_scale(frame, tiles.film, angles)
     design = _design(frame, tiles.film, angles, (mean, spread))
     coefficients = numpy.linalg.lstsq(design[keep], tiles.places[keep], rcond=None)[0]
     errors = numpy.hypot(*(design @ coefficients - tiles.places).T) * tiles.scale
-    near = errors[errors < KEPT_M]
-    score = (-near.size, float(numpy.mean(near**2)) if near.size else math.inf)
-    return score, PanoramicMap(frame, angles, mean, spread, numpy.asarray(coefficients, numpy.float64), near.size)
+    kept = int(numpy.count_nonzero(errors < KEPT_M))
+    return PanoramicMap(frame, angles, mean, spread, numpy.asarray(coefficients, numpy.float64), kept)
+
+
+def _starts(frame: Frame, tiles: _Tiles) -> list[FloatArray]:
+    """The starts followed: the best of each sign of the scan angle, so both mirror cameras are tried, then the next best."""
+    starts = [numpy.array([math.radians(degrees), 0.0, 0.0, 0.0, 0.0]) for degrees in START_DEG]
+    ranked = sorted(starts, key=lambda start: float(numpy.mean(_residuals(frame, tiles, start, False) ** 2)))
+    sides = [next(start for start in ranked if start[0] < 0), next(start for start in ranked if start[0] >= 0)]
+    rest = [start for start in ranked if not any(start is side for side in sides)]
+    return sides + rest[: FOLLOWED - len(sides)]
+
+
+def plainest(fits: list[PanoramicMap]) -> PanoramicMap:
+    """Of the cameras that hold within 1 % of the most tiles, the one whose second-order term is smallest (module docstring)."""
+    most = max(fit.kept for fit in fits)
+    near = [fit for fit in fits if fit.kept >= NEAR_KEPT_SHARE * most]
+    return min(near, key=lambda fit: fit.curvature_m)
 
 
 def fit_panoramic(film: FloatArray, places: FloatArray, rad_per_px: float) -> PanoramicMap | None:
-    """The panoramic map most tiles hold; None with too few tiles. Deterministic: the starts are fixed."""
+    """The plainest panoramic map that holds nearly the most tiles; None with too few tiles. Deterministic: the starts are fixed."""
     if len(film) < MIN_PANORAMIC_TILES:
         return None
     frame = Frame.of(film, rad_per_px)
     _, lat = to_lnglat_arrays(places[:, 0], places[:, 1])
     tiles = _Tiles(film, places, ground_scale_of(lat))
-    starts = [numpy.array([math.radians(degrees), 0.0, 0.0, 0.0, 0.0]) for degrees in START_DEG]
-    ranked = sorted(starts, key=lambda start: float(numpy.mean(_residuals(frame, tiles, start, False) ** 2)))
-    fits = [_scored(frame, tiles, *_followed(frame, tiles, start)) for start in ranked[:FOLLOWED]]
-    return min(fits, key=lambda found: found[0])[1]
+    return plainest([_scored(frame, tiles, *_followed(frame, tiles, start)) for start in _starts(frame, tiles)])

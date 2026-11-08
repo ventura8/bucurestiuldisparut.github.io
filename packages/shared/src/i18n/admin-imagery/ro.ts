@@ -248,6 +248,7 @@ export const ro = {
     'adminContent.georef.tooFew.few': 'Adaugă încă {missing} perechi pentru această transformare.',
     'adminContent.georef.tooFew.other': 'Adaugă încă {missing} de perechi pentru această transformare.',
     'adminContent.georef.rmseOver': 'Eroarea la punctele de control ({rmse} m) depășește pragul orașului ({threshold} m).',
+    'adminContent.georef.refitted': 'Modificat: erorile și previzualizarea sunt o potrivire nouă prin aceste perechi; la salvare, ea înlocuiește harta acestei versiuni.',
     'adminContent.georef.notFound': 'Versiunea nu există',
     'adminContent.georef.backToImagery': 'Înapoi la imaginile istorice',
     'adminContent.georef.notEditable': 'Această versiune nu primește puncte acum: le poți doar vedea.',
