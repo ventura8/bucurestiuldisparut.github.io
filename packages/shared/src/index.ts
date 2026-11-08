@@ -6,10 +6,8 @@ export type { Translator } from './i18n/catalogue.js';
 export { translateAdminShell } from './i18n/admin-shell/index.js';
 export { translateStart, type StartKey } from './i18n/start/index.js';
 export type { AdminShellKey, AdminShellMessages } from './i18n/admin-shell/index.js';
-export { translateAdminSetup } from './i18n/admin-setup/index.js';
-export type { AdminSetupKey, AdminSetupMessages } from './i18n/admin-setup/index.js';
-export { translateAdminContent } from './i18n/admin-content/index.js';
-export type { AdminContentKey, AdminContentMessages } from './i18n/admin-content/index.js';
+export { translateAdminSetup, type AdminSetupKey, type AdminSetupMessages } from './i18n/admin-setup/index.js';
+export { translateAdminContent, type AdminContentKey, type AdminContentMessages } from './i18n/admin-content/index.js';
 export { REDACTED, consoleSink, createLogger, redact } from './log.js';
 export type { LogData, LogLevel, LogRecord, LogSink, Logger, LoggerOptions } from './log.js';
 

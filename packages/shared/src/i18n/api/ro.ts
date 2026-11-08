@@ -113,8 +113,7 @@ export const ro = {
     'apiError.imagery.joinNoRoom': 'Nu este destul spațiu pe disc pentru această unire; eliberează spațiu și reia.',
     'apiError.imagery.notImproved': 'Nimic mai bun: {after} m față de {before} m acum, pe aceleași verificări. Rămâne cea actuală.',
     'apiError.imagery.refineRefused': 'Zonele imaginii nu s-au potrivit destul cu harta. Rămâne potrivirea actuală.',
-    'apiError.imagery.refineUnmeasured':
-        'Prea puține verificări pentru a compara noua potrivire cu cea actuală. Rămâne potrivirea actuală.',
+    'apiError.imagery.refineUnmeasured': 'Prea puține verificări pentru a compara potrivirea nouă cu cea actuală. Rămâne cea actuală.',
     'apiError.imagery.notBetter': 'Noua potrivire nu s-a dovedit mai bună. Confirmă ca să o înlocuiești totuși pe cea actuală.',
     'apiError.imagery.joinRecalibrate': 'Un strat unit nu poate fi încă recalibrat: nu are o scanare proprie. Rămâne cel actual.',
     'apiError.worker.notHolder': 'Sarcina nu mai este a acestui calculator.',

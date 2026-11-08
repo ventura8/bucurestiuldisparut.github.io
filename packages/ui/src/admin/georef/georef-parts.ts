@@ -140,7 +140,7 @@ function snapButton(context: GeorefContext): TemplateResult {
     const shown = SNAP_STATES.has(stateOf(view));
     const off = context.locked || !view.dirty || view.saving;
     return shown
-        ? html`<hcm-button variant="tonal" icon="auto_fix_high" ?disabled=${off} @click=${() => void intents?.snap()}
+        ? html`<hcm-button variant="tonal" icon="tune" ?disabled=${off} @click=${() => void intents?.snap()}
               >${contentText(context.locale, 'adminContent.georef.snap')}</hcm-button
           >`
         : html``;
