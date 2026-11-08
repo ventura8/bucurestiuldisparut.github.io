@@ -1,11 +1,11 @@
 /**
- * The visitor's stored choices (language, theme, analytics consent) under `hcm:<cityId>:<name>`, so two cities on one
+ * The visitor's stored choices (language, theme, analytics consent, the single-key shortcuts) under `hcm:<cityId>:<name>`, so two cities on one
  * origin keep their own. Storage may be missing or throw (private browsing, blocked cookies, a full quota): every
  * access is guarded, a failure reads as "nothing stored" and a lost write is only logged.
  */
 import type { Logger } from '@hcm/shared';
 
-export type PreferenceName = 'lang' | 'theme' | 'consent';
+export type PreferenceName = 'lang' | 'theme' | 'consent' | 'shortcuts';
 
 export type PreferenceStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 

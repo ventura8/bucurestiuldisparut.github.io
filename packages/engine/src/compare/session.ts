@@ -14,6 +14,7 @@ import type { MapEventMap, Unsubscribe, ViewerMapPort } from '@hcm/ui/map';
 import type { CompareUi } from '@hcm/ui/viewer/compare';
 
 import type { CompareSession, CompareSessionDeps } from '../core/compare-port.js';
+import { mapLight } from '../core/map-light.js';
 import { mapOptions } from '../core/map-specs.js';
 import { MapSync } from '../core/map-sync.js';
 import { comparedOverlays, compareModeOf, overlayName, type ViewerState } from '../core/state.js';
@@ -134,7 +135,13 @@ class Session implements CompareSession {
             const { mainMap, reducedMotion } = this.#deps;
             await map.mount(
                 container,
-                mapOptions(state.manifest, { view: mainMap.getView(), locale, reducedMotion, labels: mapLabels.shown }),
+                mapOptions(state.manifest, {
+                    view: mainMap.getView(),
+                    locale,
+                    reducedMotion,
+                    labels: mapLabels.shown,
+                    light: mapLight(state),
+                }),
             );
         } catch (error: unknown) {
             this.#failed(map, error);

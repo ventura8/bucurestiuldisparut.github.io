@@ -1,5 +1,5 @@
 import type { MapView } from '@hcm/shared';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { bootDeclared, bootDeclaredIn, mount, readyOutcome, VIEWER_TAG } from '../src/mount.js';
 import { settle } from './core/support.js';
@@ -234,6 +234,29 @@ describe('the controller', () => {
         await expect(failed.ready).resolves.toMatchObject({ ok: false });
         controller.destroy();
         controller.setMapLabels({ pois: true });
+    });
+});
+
+describe('the gamepad watcher', () => {
+    it('happyPath_itWatchesThisViewersMapAndStopsWithIt', () => {
+        const world = testEnvironment();
+        const stop = vi.fn();
+        const watchGamepads = vi.fn(() => stop);
+
+        const controller = mount(new FakeContainer().element, config(), { ...world.env, watchGamepads });
+
+        expect(watchGamepads).toHaveBeenCalledWith(world.viewer, world.map);
+        controller.destroy();
+        expect(stop).toHaveBeenCalledOnce();
+    });
+
+    it('edge_withAColorSchemeTheStoreIsGivenIt', () => {
+        const world = testEnvironment();
+        const colorScheme = { dark: () => true, subscribe: () => () => undefined };
+
+        mount(new FakeContainer().element, config(), { ...world.env, colorScheme });
+
+        expect(world.stores[0]?.getState().systemDark).toBe(true);
     });
 });
 

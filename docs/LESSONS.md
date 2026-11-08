@@ -2530,3 +2530,53 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: review.
     - Fix and pin: S-A90-HAPPY-UPLOADER-PICKER, S-A90-BAD-NO-UNDO, S-A92-HAPPY-ASK-AGAIN, S-V40-HAPPY-RIGHTS, S-A93-BAD-NOT-PUBLIC-CITY, S-A93-HAPPY-UNBLOCK.
     - **For each role, walk what the screen offers against what the rules allow, and give every lasting action a way back that a person can find.**
+
+420. **A button pressed on a pad's first frame looked like a missing feature.**
+    - Seen: 2026-11-07, `@S-V37-HAPPY-BUTTONS` failed on one project only: Start opened no menu.
+    - Cause: the gamepad's loop counts what is held on its first frame as already held, so a press from before the page saw the pad fires nothing. The test pressed right after the toast, which shows before that frame.
+    - Found by: the same spec on a second project, on a loaded machine.
+    - Fix and pin: the spec waits a frame after the toast (`connectedPad`); the behaviour stays, and `edge_aButtonHeldBeforeTheLoopFiresNothing` pins it.
+    - **A loop that starts by sampling has a frame in which nothing can happen: wait for it, never sleep.**
+421. **Text checked through the native `<dialog>` found nothing.**
+    - Seen: 2026-11-07, `getByRole('dialog').getByRole('switch')` and `toContainText` on About and the help panel failed with the content on screen.
+    - Cause: the kit's `<dialog>` is in the shadow root of `<hcm-dialog>` and the content is slotted, so it is no DOM descendant of the dialog.
+    - Found by: the first run of `e2e/specs/viewer/input.spec.ts`.
+    - Fix and pin: the spec reads the host, `hcm-about-dialog`.
+    - **Slotted content is a child of the host: look for it there.**
+422. **The Layers key closed the photo it was meant to sit beside.**
+    - Seen: 2026-11-07, review of the input branch: on an extra-large window `l` and Y called `openSheet('layers')`, which clears the selection, though the panel is always on screen there.
+    - Also seen: the focus never reached the docked panel at all. `tabbableElements(host)` reads the host's light children, and the unit test's assertion accepted `document.body`.
+    - Found by: reading the code; the unit test even asserted `sheet === 'layers'` and started with no photo open. The second defect by the new e2e row's first run.
+    - Fix and pin: the command does nothing to the store where the panel is docked, and the focus goes into the panel's shadow root (`badPath_onAnExtraLargeWindowItKeepsThePhotoThatIsOpen`, `happyPath_onAnExtraLargeWindowItGoesToTheDockedPanel`, `S-V36-BAD-DOCKED-KEEPS-PHOTO`).
+    - **Test a command from the state it can destroy, not from the empty one.**
+423. **`click()` opened a menu under a modal, through `inert`.**
+    - Seen: 2026-11-07, review: the pad's Start clicked the FAB behind the lightbox or the help panel, then B closed that hidden menu and nothing visible happened.
+    - Found by: reading the code, then `HTMLElement.click()` on an inert element in the image's Chromium.
+    - Fix and pin: Start asks `isInert` first, and an open menu takes no command (`badPath_startUnderAModalLeavesTheMenuClosedAndBClosesTheModal`, `S-V37-BAD-START-UNDER-MODAL`).
+    - **`inert` stops the user, not a script: code that clicks for the user asks first.**
+424. **A statement told visitors to write to people it could not name.**
+    - Seen: 2026-11-07, review: "write to the people named above" in About, with no address, and nobody named on a city with no credits.
+    - Found by: reading the sentence on the bare city; its test checked another paragraph.
+    - Fix and pin: a link to the engine's issue tracker, on every city (`badPath_aCityWithNoCreditsStillHasAWayToReportAProblem`, `S-V39-BAD-BARE-CITY`).
+    - **A way to report must work with an empty manifest: follow the instruction as the visitor would.**
+425. **The night basemap dimmed the owner's colours, and no test could see it.**
+    - Seen: 2026-11-07, review: following the theme made `night` the default on a dark page, and fill, line and circle layers default to an emissive strength of 0, so POIs and cones went dark beside bright icons.
+    - Found by: reading mapbox-gl's style spec; the e2e world draws no Standard lighting. Not seen on a real map.
+    - Fix and pin: `*-emissive-strength: 1` on those layers (`happyPath_sevenLayersInTheCategoryColourWithAWhiteCasingUnderLinesAndOutlines`, `S-V38-HAPPY` reads it from the mounted map).
+    - **Changing a default widens who meets its old edge cases: look again at what the old default hid.**
+426. **A scenario's title promised buttons its test never pressed.**
+    - Seen: 2026-11-07, review: `S-V37-HAPPY-BUTTONS` named Layers and photos, while Y, LB, RB, A, the left trigger and the right stick were declared and unused; only unit tests with a fake surface drove them.
+    - Found by: searching the spec for each constant.
+    - Fix and pin: the spec presses them all through the mounted viewer; `S-V37-HAPPY-ACTIVATE` is new.
+    - **An unused constant in a spec is a claim nobody tests: every name in a row's title gets an assertion.**
+427. **The pad's focus ring lived in only one of the paths that move the focus.**
+    - Seen: 2026-11-07, review: after a mouse click, Y and Start focused a control with no ring, because only the D-pad drew it and Chromium's `:focus-visible` stays off then.
+    - Found by: reading the doc against the code; the spec's helper asks `:focus-visible`, so it could not have measured this.
+    - Fix and pin: from the pad's first press each frame rings what has the focus (`happyPath_aFocusACommandMovedGetsTheRingToo`, `S-V37-HAPPY-RING`).
+    - **Attach a guarantee to the state it describes, not to one code path that reaches it.**
+428. **A chunk at its budget failed on nothing but a hash.**
+    - Seen: 2026-11-07, the IIFE stood at exactly 125,000 bytes and the Imagery chunk at 17,999 before these fixes; the Imagery chunk then read 18,001 after a change to a catalogue it does not hold.
+    - Cause: a chunk's import lines name its neighbours' content hashes, and those hash letters compress differently, by a few bytes each build. A shared helper for one repeated string also cost more than the repeats (31 bytes more): gzip already had them.
+    - Found by: `check_bundle_budget.py` after each try, measured in bytes, not in the report's rounded KB.
+    - Fix and pin: shorter texts and less code in the entry, and a declaration order in `imagery-styles.ts` that repeats its neighbour's run; no budget moved.
+    - **At a budget's edge, measure each idea in gzip bytes before believing it, and leave a margin wider than the hash noise.**

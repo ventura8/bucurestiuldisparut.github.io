@@ -29,6 +29,21 @@ function actingOn(host: HandlerHost): On {
     };
 }
 
+/** The Layers panel's Map labels, the help panel's switch, and About's button to the panel. */
+function inputHandlers(on: On): Pick<ViewerHandlers, 'onMapLabel' | 'onShortcuts' | 'onHelpOpen'> {
+    return {
+        onMapLabel: on((store, event) => {
+            store.setMapLabels({ [event.detail.kind]: event.detail.visible });
+        }),
+        onShortcuts: on((store, event) => {
+            store.setShortcuts(event.detail.enabled);
+        }),
+        onHelpOpen: on((store) => {
+            store.openSheet('help');
+        }),
+    };
+}
+
 export function createHandlers(host: HandlerHost): ViewerHandlers {
     const on = actingOn(host);
     return {
@@ -73,12 +88,10 @@ export function createHandlers(host: HandlerHost): ViewerHandlers {
             void store.retry();
         }),
         onCompareToggle: on(toggleCompare),
-        onMapLabel: on((store, event) => {
-            store.setMapLabels({ [event.detail.kind]: event.detail.visible });
-        }),
         onToastDismiss: on((store) => {
             store.dismissToast();
         }),
+        ...inputHandlers(on),
         onSkip: () => {
             host.focusTimeline();
         },

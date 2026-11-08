@@ -3,6 +3,7 @@ import type { EngineConfig } from '@hcm/shared';
 import { FakeMap, type FakeMapOptions } from '@hcm/test-support/fake-map';
 import { vi } from 'vitest';
 
+import type { ColorSchemeSource } from '../../src/core/deps.js';
 import { createViewerStore, type ViewerStore } from '../../src/core/store.js';
 import type { FakeCompare } from '../compare/support.js';
 import { FakeTelemetry, jsonResponse, memoryStorage, recordingLog, settle, type MemoryStorage, type RecordingLog } from './support.js';
@@ -64,6 +65,10 @@ export interface HarnessOptions {
     readonly href?: string | null;
     /** Swipe compare's chunk (M4); without it the store keeps compare in its state only. */
     readonly compare?: FakeCompare;
+    /** `prefers-color-scheme` of the page; without it `system` counts as light. */
+    readonly colorScheme?: ColorSchemeSource;
+    /** The storage of an earlier harness (the visitor comes back). */
+    readonly storage?: MemoryStorage;
 }
 
 export interface Harness {
@@ -80,7 +85,7 @@ export interface Harness {
 export function harness(options: HarnessOptions = {}): Harness {
     const map = new FakeMap(options.map);
     const telemetry = new FakeTelemetry();
-    const storage = memoryStorage(options.stored);
+    const storage = options.storage ?? memoryStorage(options.stored);
     const href = options.href === null ? undefined : (options.href ?? 'https://site.example.org/bucuresti/');
     const location = fakeLocation(options.hash ?? '', options.search ?? '', href);
     const body = options.manifest ?? defaultManifest();
@@ -101,6 +106,7 @@ export function harness(options: HarnessOptions = {}): Harness {
         mapContainer: () => container,
         ...(options.reducedMotion === undefined ? {} : { reducedMotion: () => options.reducedMotion === true }),
         ...(options.compare === undefined ? {} : { compare: options.compare.deps }),
+        ...(options.colorScheme === undefined ? {} : { colorScheme: options.colorScheme }),
     });
     return { store, map, telemetry, storage, location, fetch, log, container };
 }

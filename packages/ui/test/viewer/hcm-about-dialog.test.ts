@@ -1,3 +1,4 @@
+import { translate } from '@hcm/shared';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 
@@ -88,7 +89,7 @@ describe('<hcm-about-dialog>', () => {
     it('badPath_deniedUnknownOrNoAnalyticsShowNoWithdrawButton', async () => {
         const denied = await about({ analytics: true, consent: 'denied' });
         expect(shadowText(denied)).toContain('Statistici anonime: refuzate');
-        expect(denied.shadowRoot?.querySelector('hcm-button')).toBeNull();
+        expect(shadowText(denied)).not.toContain('Retrage');
 
         const unknown = await about({ analytics: true, consent: 'unknown' });
         expect(shadowText(unknown)).not.toContain('Statistici anonime');
@@ -126,5 +127,78 @@ describe('<hcm-about-dialog>', () => {
 
         expect(element.shadowRoot?.querySelector('.details')).toBeNull();
         expect(customElements.get(HCM_ABOUT_DIALOG_TAG)).toBe(HcmAboutDialog);
+    });
+});
+
+describe('<hcm-about-dialog>: the statement and the help panel', () => {
+    beforeAll(() => {
+        defineKitDoubles();
+        defineHcmAboutDialog();
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('badPath_aCityWithNoCreditsStillHasAWayToReportAProblem', async () => {
+        const element = await about({ city: { ...CITY, credits: [] } });
+
+        const label = translate(element.locale, 'about.a11yReport');
+        const link = shadowQueryAll(element, 'a').find((anchor) => anchor.textContent === label) as HTMLAnchorElement | undefined;
+
+        expect(link?.href).toBe('https://github.com/ventura8/bucurestiuldisparut.github.io/issues');
+    });
+
+    it('happyPath_theStatementSaysWhatWorksWhatIsMissingAndHowToReport', async () => {
+        const text = shadowText(await about());
+        expect(text).toContain('Accesibilitate');
+        expect(text).toContain('Lipsesc: o alternativă text');
+        expect(text).toContain('Raportați o problemă pe GitHub');
+
+        expect(shadowText(await about({ locale: 'en' }))).toContain('Report problems');
+    });
+
+    it('happyPath_aboutOpensTheHelpPanelWhichListsTheKeysAndThePad', async () => {
+        const element = await about();
+        const events = recordEvents(element, 'hcm-help-open');
+        const buttons = shadowQueryAll(element, 'hcm-button');
+        buttons.at(-1)?.click();
+        expect(events.map((event) => event.type)).toEqual(['hcm-help-open']);
+
+        element.help = true;
+        await element.updateComplete;
+
+        await expect.element(page.getByRole('dialog', { name: 'Tastatură și gamepad' })).toBeVisible();
+        expect(shadowText(element)).toContain('Anul următor și anterior');
+        expect(shadowText(element)).toContain('Gamepad standard');
+        expect(shadowText(element)).not.toContain('Accesibilitate');
+        expect([...(element.shadowRoot?.querySelectorAll('kbd') ?? [])].map((kbd) => kbd.textContent)).toEqual([
+            '.',
+            ',',
+            'o',
+            'i',
+            'n',
+            'p',
+            'l',
+            '?',
+        ]);
+    });
+
+    it('happyPath_theHelpPanelsSwitchSaysItsChoice', async () => {
+        const element = await about({ help: true });
+        const events = recordEvents(element, 'hcm-shortcuts-change');
+
+        fireKitEvent(shadowQuery(element, 'hcm-switch'), 'hcm-change', { checked: false });
+
+        expect(events.map((event) => (event as CustomEvent<unknown>).detail)).toEqual([{ enabled: false }]);
+    });
+
+    it('edge_openingHelpInAClosedDialogMovesNoFocus', async () => {
+        const element = await about({ open: false });
+
+        element.help = true;
+        await element.updateComplete;
+
+        expect(element.help).toBe(true);
     });
 });

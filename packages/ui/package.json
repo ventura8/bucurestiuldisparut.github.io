@@ -39,6 +39,10 @@
             "types": "./src/map/draw/index.ts",
             "default": "./src/map/draw/index.ts"
         },
+        "./viewer/gamepad": {
+            "types": "./src/viewer/gamepad/gamepad.ts",
+            "default": "./src/viewer/gamepad/gamepad.ts"
+        },
         "./viewer/compare": {
             "types": "./src/viewer/compare/index.ts",
             "default": "./src/viewer/compare/index.ts"

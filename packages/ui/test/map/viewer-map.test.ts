@@ -32,6 +32,32 @@ describe('the viewer map port', () => {
         expect(port.mapLoadCount).toBe(1);
     });
 
+    it('happyPath_readsAndWritesATextOption', async () => {
+        const gl = new FakeMapboxGl();
+        const port = createViewerMapPort(gl, fakeAdapterEnv());
+        const mounting = port.mount({} as HTMLElement, { ...OPTIONS, config: { lightPreset: 'day' } });
+        gl.map.fire('load');
+        await mounting;
+
+        expect(port.getBasemapOption('lightPreset')).toBe('day');
+        port.setBasemapOption('lightPreset', 'night');
+
+        expect(gl.map.callsOf('setConfigProperty')).toContainEqual(['basemap', 'lightPreset', 'night']);
+        expect(port.getBasemapOption('lightPreset')).toBe('night');
+        expect(port.getBasemapFlag('lightPreset')).toBeNull();
+        expect(port.mapLoadCount).toBe(1);
+    });
+
+    it('badPath_aFlagIsNoOption', async () => {
+        const gl = new FakeMapboxGl();
+        const port = createViewerMapPort(gl, fakeAdapterEnv());
+        const mounting = port.mount({} as HTMLElement, OPTIONS);
+        gl.map.fire('load');
+        await mounting;
+
+        expect(port.getBasemapOption('showRoadLabels')).toBeNull();
+    });
+
     it('badPath_withoutAMapItReadsNullAndWritesNothing', () => {
         const port = createViewerMapPort(new FakeMapboxGl(), fakeAdapterEnv());
 

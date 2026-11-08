@@ -5,12 +5,13 @@
  * whenever an overlay changes (the adapter coalesces opacity to one paint per animation frame); a language switch
  * also reaches Mapbox's own labels and the basemap's (`setLocale`). The overlays drawn are `displayedOverlays`: on a
  * compact window, swipe compare's toggle may show the compared side's historical layer instead (M4, V06). The basemap's
- * own labels follow the visitor's choice on either map (`map-labels.ts`, V31).
+ * own labels follow the visitor's choice on either map (`map-labels.ts`, V31), its light the theme (`map-light.ts`, V38).
  */
 import { findOverlay, PHOTOS_OVERLAY_ID, rasterAdjustmentPaint, type Manifest, type Overlay } from '@hcm/shared';
 import type { ViewerMapPort } from '@hcm/ui/map';
 
 import { drawMapLabels } from './map-labels.js';
+import { drawMapLight, mapLight } from './map-light.js';
 import { photoFeatures, poiSpecs, rasterSpec } from './map-specs.js';
 import { displayedOverlays, type ViewerState } from './state.js';
 
@@ -42,6 +43,7 @@ export class MapSync {
         }
         this.#features(manifest, state);
         drawMapLabels(this.#map, state.mapLabels.shown);
+        drawMapLight(this.#map, mapLight(state));
     }
 
     /** Applies the difference between `previous` and `next` (same manifest). */
@@ -54,6 +56,14 @@ export class MapSync {
         this.#yearAndLanguage(previous, next, manifest);
         if (next.mapLabels.shown !== previous.mapLabels.shown) {
             drawMapLabels(this.#map, next.mapLabels.shown);
+        }
+        this.#light(previous, next);
+    }
+
+    #light(previous: ViewerState, next: ViewerState): void {
+        const light = mapLight(next);
+        if (light !== mapLight(previous)) {
+            drawMapLight(this.#map, light);
         }
     }
 

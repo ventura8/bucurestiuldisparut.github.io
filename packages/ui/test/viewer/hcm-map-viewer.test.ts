@@ -306,3 +306,84 @@ describe('<hcm-map-viewer>: store wiring', () => {
         expect(element.shadowRoot?.querySelector('.timeline-note')).toBeNull();
     });
 });
+
+describe('the keyboard and the gamepad on <hcm-map-viewer>', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    function press(target: EventTarget, key: string): KeyboardEvent {
+        const event = new KeyboardEvent('keydown', { key, bubbles: true, composed: true, cancelable: true });
+        target.dispatchEvent(event);
+        return event;
+    }
+
+    it('happyPath_aShortcutFromThePageBodyActsAndIsTaken', async () => {
+        const { store } = await mountViewer(readyState());
+
+        const event = press(document.body, '?');
+
+        expect(store.getState().sheet).toBe('help');
+        expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('badPath_shortcutsTurnedOffLeaveTheKeyAlone', async () => {
+        const { store } = await mountViewer(readyState(testManifest(), { shortcuts: false }));
+
+        const event = press(document.body, 'l');
+
+        expect(store.getState().sheet).toBe('none');
+        expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('badPath_anotherKeyIsLeftAlone', async () => {
+        const { store } = await mountViewer(readyState());
+
+        expect(press(document.body, 'x').defaultPrevented).toBe(false);
+        expect(store.getState().sheet).toBe('none');
+    });
+
+    it('badPath_gone_noListenerRemains', async () => {
+        const { store, element } = await mountViewer(readyState());
+
+        element.remove();
+        press(document.body, 'l');
+
+        expect(store.getState().sheet).toBe('none');
+    });
+
+    it('badPath_aCommandTheStateRefusesDoesNothing', async () => {
+        const { store, element } = await mountViewer(readyState(testManifest(), { lightbox: true }));
+
+        element.runInput('layers');
+
+        expect(store.getState().sheet).toBe('none');
+    });
+
+    it('happyPath_aToastAndWhetherTheMapIsCovered', async () => {
+        const { store, element } = await mountViewer(readyState());
+
+        element.toast('gamepad.ready');
+        expect(store.getState().toast).toEqual({ key: 'gamepad.ready' });
+        expect(element.mapCovered()).toBe(false);
+
+        store.set({ sheet: 'about' });
+        expect(element.mapCovered()).toBe(true);
+        store.set({ sheet: 'none', webgl: false });
+        expect(element.mapCovered()).toBe(true);
+        store.set({ status: 'loading' });
+        expect(element.mapCovered()).toBe(true);
+        element.detach();
+        expect(element.mapCovered()).toBe(true);
+    });
+
+    it('happyPath_theHandlersOfTheHelpPanelReachTheStore', async () => {
+        const mounted = await mountViewer(readyState(testManifest(), { sheet: 'about' }));
+        const about = part(mounted, 'hcm-about-dialog');
+
+        fireKitEvent(about, 'hcm-help-open');
+        expect(mounted.store.getState().sheet).toBe('help');
+        fireKitEvent(about, 'hcm-shortcuts-change', { enabled: false });
+        expect(mounted.store.getState().shortcuts).toBe(false);
+    });
+});

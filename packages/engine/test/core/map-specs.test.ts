@@ -18,7 +18,7 @@ import { category, layer, manifest, omit, photo, poi } from './fixtures.js';
 const ALL_LABELS = { streets: true, pois: true };
 
 function moment(city: Manifest, labels: MapLabels): MapMoment {
-    return { view: cityView(city), locale: 'ro', reducedMotion: false, labels };
+    return { view: cityView(city), locale: 'ro', reducedMotion: false, labels, light: 'day' };
 }
 
 describe('map specs', () => {
@@ -173,6 +173,7 @@ describe('map specs: photos, POIs, options', () => {
                 locale: 'en',
                 reducedMotion: true,
                 labels: ALL_LABELS,
+                light: 'day',
             }),
         ).toEqual({
             style: 'mapbox://styles/mapbox/standard-satellite',

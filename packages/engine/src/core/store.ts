@@ -77,6 +77,8 @@ export interface ViewerActions {
     closeCompare(): void;
     /** The basemap's own labels, on every map, live: a kind this basemap does not have, or no map yet, is ignored (V31). */
     setMapLabels(labels: Partial<MapLabels>): void;
+    /** Turns the single-key shortcuts on or off (V36), and remembers it for the city. */
+    setShortcuts(enabled: boolean): void;
 }
 
 export interface ViewerStore extends ViewerActions {
@@ -124,6 +126,12 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
                 this.set({ ...this.#state, consent });
             }),
         );
+        const onScheme = deps.colorScheme?.subscribe((systemDark) => {
+            this.set({ ...this.#state, systemDark });
+        });
+        if (onScheme !== undefined) {
+            this.#unsubscribe.push(onScheme);
+        }
         const onHash = deps.location.subscribe?.(() => {
             this.#boot.applyLocationHash();
         });
@@ -357,6 +365,11 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
             this.set({ ...this.#state, mapLabels });
             this.hash.schedule();
         }
+    }
+
+    setShortcuts(enabled: boolean): void {
+        this.set({ ...this.#state, shortcuts: enabled });
+        this.preferences.set(this.#state.manifest?.city.id ?? this.deps.config.cityId, 'shortcuts', enabled ? null : 'off');
     }
 
     destroy(): void {

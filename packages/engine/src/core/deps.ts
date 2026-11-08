@@ -21,6 +21,12 @@ export interface ViewerLocation {
     subscribe?(listener: () => void): Unsubscribe;
 }
 
+/** `prefers-color-scheme: dark` of the page, which the basemap's light follows under the `system` theme. */
+export interface ColorSchemeSource {
+    dark(): boolean;
+    subscribe(listener: (dark: boolean) => void): Unsubscribe;
+}
+
 export interface ViewerDeps {
     readonly config: EngineConfig;
     /** `fetch` for the manifest (tests pass a fake); the store applies a 15 s timeout. */
@@ -43,4 +49,6 @@ export interface ViewerDeps {
      * without it compare still lives in the state and the hash, but nothing is drawn (the node tests of the store).
      */
     readonly compare?: CompareDeps;
+    /** Without it the `system` theme counts as light (the node tests of the store). */
+    readonly colorScheme?: ColorSchemeSource;
 }
