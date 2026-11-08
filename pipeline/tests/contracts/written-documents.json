@@ -186,7 +186,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -244,7 +244,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -309,7 +309,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -381,7 +381,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -460,7 +460,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -546,7 +546,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -639,7 +639,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -740,7 +740,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -848,7 +848,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -906,7 +906,7 @@
                     "status": "done",
                     "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 587149,
+                    "bytes": 588056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -963,7 +963,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1021,7 +1021,7 @@
                     "status": "done",
                     "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 587149,
+                    "bytes": 588056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1085,7 +1085,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1143,7 +1143,7 @@
                     "status": "done",
                     "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 587149,
+                    "bytes": 588056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1211,7 +1211,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1269,7 +1269,7 @@
                     "status": "done",
                     "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 587149,
+                    "bytes": 588056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1344,7 +1344,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1402,7 +1402,7 @@
                     "status": "done",
                     "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 587149,
+                    "bytes": 588056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1427,7 +1427,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
                     "generation": "1792000000000015",
-                    "bytes": 7214378,
+                    "bytes": 7212963,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1484,7 +1484,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1542,7 +1542,7 @@
                     "status": "done",
                     "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 587149,
+                    "bytes": 588056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1567,7 +1567,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
                     "generation": "1792000000000015",
-                    "bytes": 7214378,
+                    "bytes": 7212963,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1631,7 +1631,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1689,7 +1689,7 @@
                     "status": "done",
                     "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 587149,
+                    "bytes": 588056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1714,7 +1714,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
                     "generation": "1792000000000015",
-                    "bytes": 7214378,
+                    "bytes": 7212963,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1728,8 +1728,8 @@
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
                     "generation": "1792000000000016",
-                    "sha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
-                    "bytes": 1967378,
+                    "sha256": "f96249c709d99f7c9f12068f7a06cd2e2f9bfbc51a3bdd9623a7ca153d33213a",
+                    "bytes": 1966800,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1786,7 +1786,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1844,7 +1844,7 @@
                     "status": "done",
                     "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 587149,
+                    "bytes": 588056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1869,7 +1869,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
                     "generation": "1792000000000015",
-                    "bytes": 7214378,
+                    "bytes": 7212963,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1883,8 +1883,8 @@
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
                     "generation": "1792000000000016",
-                    "sha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
-                    "bytes": 1967378,
+                    "sha256": "f96249c709d99f7c9f12068f7a06cd2e2f9bfbc51a3bdd9623a7ca153d33213a",
+                    "bytes": 1966800,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1948,7 +1948,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -2006,7 +2006,7 @@
                     "status": "done",
                     "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 587149,
+                    "bytes": 588056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2031,7 +2031,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
                     "generation": "1792000000000015",
-                    "bytes": 7214378,
+                    "bytes": 7212963,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2045,8 +2045,8 @@
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
                     "generation": "1792000000000016",
-                    "sha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
-                    "bytes": 1967378,
+                    "sha256": "f96249c709d99f7c9f12068f7a06cd2e2f9bfbc51a3bdd9623a7ca153d33213a",
+                    "bytes": 1966800,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2107,7 +2107,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -2165,7 +2165,7 @@
                     "status": "done",
                     "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 587149,
+                    "bytes": 588056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2190,7 +2190,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
                     "generation": "1792000000000015",
-                    "bytes": 7214378,
+                    "bytes": 7212963,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2204,8 +2204,8 @@
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
                     "generation": "1792000000000016",
-                    "sha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
-                    "bytes": 1967378,
+                    "sha256": "f96249c709d99f7c9f12068f7a06cd2e2f9bfbc51a3bdd9623a7ca153d33213a",
+                    "bytes": 1966800,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2267,7 +2267,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -2813,7 +2813,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -2871,7 +2871,7 @@
                     "status": "done",
                     "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
                     "generation": "1792000000000008",
-                    "bytes": 582979,
+                    "bytes": 583886,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2929,7 +2929,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "da585aee832e308b96d44d10e52c0824b373d8189f9c1666472600e4b3ebebd4",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -3143,7 +3143,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2214,
+                    "bytes": 2208,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3208,7 +3208,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2214,
+                    "bytes": 2208,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3280,7 +3280,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2214,
+                    "bytes": 2208,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3294,7 +3294,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/warped.tif",
                     "generation": "1792000000000005",
-                    "bytes": 532044,
+                    "bytes": 532056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3359,7 +3359,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2214,
+                    "bytes": 2208,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3373,7 +3373,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/warped.tif",
                     "generation": "1792000000000005",
-                    "bytes": 532044,
+                    "bytes": 532056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3445,7 +3445,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2214,
+                    "bytes": 2208,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3459,7 +3459,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/warped.tif",
                     "generation": "1792000000000005",
-                    "bytes": 532044,
+                    "bytes": 532056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3473,8 +3473,8 @@
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
                     "generation": "1792000000000006",
-                    "sha256": "36c329cc2e4ffaaa98ac4c116f73db4fe62178d939e752be2bfdbc81092ae799",
-                    "bytes": 209279,
+                    "sha256": "0c7ece4cd15d069d53ae6ad2f5a7b0b95f8e51aee2dd8afa06f86b77a1383bee",
+                    "bytes": 209345,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3539,7 +3539,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2214,
+                    "bytes": 2208,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3553,7 +3553,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/warped.tif",
                     "generation": "1792000000000005",
-                    "bytes": 532044,
+                    "bytes": 532056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3567,8 +3567,8 @@
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
                     "generation": "1792000000000006",
-                    "sha256": "36c329cc2e4ffaaa98ac4c116f73db4fe62178d939e752be2bfdbc81092ae799",
-                    "bytes": 209279,
+                    "sha256": "0c7ece4cd15d069d53ae6ad2f5a7b0b95f8e51aee2dd8afa06f86b77a1383bee",
+                    "bytes": 209345,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3640,7 +3640,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2214,
+                    "bytes": 2208,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3654,7 +3654,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/warped.tif",
                     "generation": "1792000000000005",
-                    "bytes": 532044,
+                    "bytes": 532056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3668,8 +3668,8 @@
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
                     "generation": "1792000000000006",
-                    "sha256": "36c329cc2e4ffaaa98ac4c116f73db4fe62178d939e752be2bfdbc81092ae799",
-                    "bytes": 209279,
+                    "sha256": "0c7ece4cd15d069d53ae6ad2f5a7b0b95f8e51aee2dd8afa06f86b77a1383bee",
+                    "bytes": 209345,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3738,7 +3738,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
                     "generation": "1792000000000004",
-                    "bytes": 2214,
+                    "bytes": 2208,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3752,7 +3752,7 @@
                     "status": "done",
                     "gcsPath": "work/bucharest/job-join-1972/warped.tif",
                     "generation": "1792000000000005",
-                    "bytes": 532044,
+                    "bytes": 532056,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3766,8 +3766,8 @@
                     "status": "done",
                     "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
                     "generation": "1792000000000006",
-                    "sha256": "36c329cc2e4ffaaa98ac4c116f73db4fe62178d939e752be2bfdbc81092ae799",
-                    "bytes": 209279,
+                    "sha256": "0c7ece4cd15d069d53ae6ad2f5a7b0b95f8e51aee2dd8afa06f86b77a1383bee",
+                    "bytes": 209345,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3976,8 +3976,8 @@
                             "y": 0
                         },
                         "geo": {
-                            "lat": 44.451894462,
-                            "lng": 26.053817812
+                            "lat": 44.451894461,
+                            "lng": 26.053817813
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -3990,7 +3990,7 @@
                         },
                         "geo": {
                             "lat": 44.455088062,
-                            "lng": 26.142626838
+                            "lng": 26.142626839
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -4117,8 +4117,8 @@
                             "y": 0
                         },
                         "geo": {
-                            "lat": 44.451894462,
-                            "lng": 26.053817812
+                            "lat": 44.451894461,
+                            "lng": 26.053817813
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -4131,7 +4131,7 @@
                         },
                         "geo": {
                             "lat": 44.455088062,
-                            "lng": 26.142626838
+                            "lng": 26.142626839
                         },
                         "enabled": true,
                         "origin": "corner"
@@ -4215,7 +4215,20 @@
                 "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
                 "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
                 "s2Item": "S2B_35TMK_20250803_0_L2A",
-                "s2Date": "2025-08-03"
+                "s2Date": "2025-08-03",
+                "s2Check": {
+                    "status": "unchecked",
+                    "boundM": 7.5,
+                    "chosen": 0,
+                    "scenes": [
+                        {
+                            "items": ["S2B_35TMK_20250803_0_L2A"],
+                            "date": "2025-08-03",
+                            "cloud": 3.2,
+                            "kept": true
+                        }
+                    ]
+                }
             }
         },
         {
@@ -4500,7 +4513,20 @@
                 "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
                 "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
                 "s2Item": "S2B_35TMK_20250803_0_L2A",
-                "s2Date": "2025-08-03"
+                "s2Date": "2025-08-03",
+                "s2Check": {
+                    "status": "unchecked",
+                    "boundM": 7.5,
+                    "chosen": 0,
+                    "scenes": [
+                        {
+                            "items": ["S2B_35TMK_20250803_0_L2A"],
+                            "date": "2025-08-03",
+                            "cloud": 3.2,
+                            "kept": true
+                        }
+                    ]
+                }
             }
         },
         {
@@ -4785,12 +4811,25 @@
                 "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
                 "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
                 "s2Item": "S2B_35TMK_20250803_0_L2A",
-                "s2Date": "2025-08-03"
+                "s2Date": "2025-08-03",
+                "s2Check": {
+                    "status": "unchecked",
+                    "boundM": 7.5,
+                    "chosen": 0,
+                    "scenes": [
+                        {
+                            "items": ["S2B_35TMK_20250803_0_L2A"],
+                            "date": "2025-08-03",
+                            "cloud": 3.2,
+                            "kept": true
+                        }
+                    ]
+                }
             },
             "output": {
                 "cogPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
-                "cogBytes": 1967378,
-                "cogSha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
+                "cogBytes": 1966800,
+                "cogSha256": "f96249c709d99f7c9f12068f7a06cd2e2f9bfbc51a3bdd9623a7ca153d33213a",
                 "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
                 "bounds": {
                     "west": 26.055107,
@@ -4802,7 +4841,7 @@
                 "maxzoom": 16,
                 "areaKm2": 36.445,
                 "studioPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/studio.tif",
-                "studioBytes": 1236916,
+                "studioBytes": 1236785,
                 "coveragePct": 100.0,
                 "outline": [
                     {
@@ -5399,7 +5438,20 @@
                 "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
                 "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
                 "s2Item": "S2B_35TMK_20250803_0_L2A",
-                "s2Date": "2025-08-03"
+                "s2Date": "2025-08-03",
+                "s2Check": {
+                    "status": "unchecked",
+                    "boundM": 7.5,
+                    "chosen": 0,
+                    "scenes": [
+                        {
+                            "items": ["S2B_35TMK_20250803_0_L2A"],
+                            "date": "2025-08-03",
+                            "cloud": 3.2,
+                            "kept": true
+                        }
+                    ]
+                }
             }
         },
         {
@@ -5457,7 +5509,20 @@
                 "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
                 "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
                 "s2Item": "S2B_35TMK_20250803_0_L2A",
-                "s2Date": "2025-08-03"
+                "s2Date": "2025-08-03",
+                "s2Check": {
+                    "status": "unchecked",
+                    "boundM": 7.5,
+                    "chosen": 0,
+                    "scenes": [
+                        {
+                            "items": ["S2B_35TMK_20250803_0_L2A"],
+                            "date": "2025-08-03",
+                            "cloud": 3.2,
+                            "kept": true
+                        }
+                    ]
+                }
             },
             "error": {
                 "code": "apiError.imagery.noMatch",
@@ -5865,7 +5930,20 @@
                 "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
                 "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
                 "s2Item": "S2B_35TMK_20250803_0_L2A",
-                "s2Date": "2025-08-03"
+                "s2Date": "2025-08-03",
+                "s2Check": {
+                    "status": "unchecked",
+                    "boundM": 7.5,
+                    "chosen": 0,
+                    "scenes": [
+                        {
+                            "items": ["S2B_35TMK_20250803_0_L2A"],
+                            "date": "2025-08-03",
+                            "cloud": 3.2,
+                            "kept": true
+                        }
+                    ]
+                }
             }
         },
         {
@@ -5916,128 +5994,8 @@
                     {
                         "id": "a001",
                         "pixel": {
-                            "x": 732.17,
-                            "y": 766.39
-                        },
-                        "geo": {
-                            "lat": 44.420880724,
-                            "lng": 26.09966045
-                        },
-                        "enabled": true,
-                        "origin": "auto",
-                        "score": 0.97,
-                        "residualM": 0.44
-                    },
-                    {
-                        "id": "a002",
-                        "pixel": {
-                            "x": 906.7,
-                            "y": 637.6
-                        },
-                        "geo": {
-                            "lat": 44.426754917,
-                            "lng": 26.109578355
-                        },
-                        "enabled": true,
-                        "origin": "auto",
-                        "score": 0.951,
-                        "residualM": 1.12
-                    },
-                    {
-                        "id": "a003",
-                        "pixel": {
-                            "x": 687.34,
-                            "y": 648.23
-                        },
-                        "geo": {
-                            "lat": 44.425829051,
-                            "lng": 26.096595585
-                        },
-                        "enabled": false,
-                        "origin": "auto",
-                        "score": 0.95,
-                        "residualM": 0.93
-                    },
-                    {
-                        "id": "a004",
-                        "pixel": {
-                            "x": 1055.02,
-                            "y": 419.78
-                        },
-                        "geo": {
-                            "lat": 44.436332963,
-                            "lng": 26.117642209
-                        },
-                        "enabled": true,
-                        "origin": "auto",
-                        "score": 0.946,
-                        "residualM": 2.08
-                    },
-                    {
-                        "id": "a005",
-                        "pixel": {
-                            "x": 734.2,
-                            "y": 489.32
-                        },
-                        "geo": {
-                            "lat": 44.432687001,
-                            "lng": 26.098846217
-                        },
-                        "enabled": true,
-                        "origin": "auto",
-                        "score": 0.946,
-                        "residualM": 0.52
-                    },
-                    {
-                        "id": "a006",
-                        "pixel": {
-                            "x": 821.8,
-                            "y": 681.82
-                        },
-                        "geo": {
-                            "lat": 44.424707563,
-                            "lng": 26.104673991
-                        },
-                        "enabled": true,
-                        "origin": "auto",
-                        "score": 0.946,
-                        "residualM": 3.3
-                    },
-                    {
-                        "id": "a007",
-                        "pixel": {
-                            "x": 687.34,
-                            "y": 648.23
-                        },
-                        "geo": {
-                            "lat": 44.425829051,
-                            "lng": 26.096595585
-                        },
-                        "enabled": true,
-                        "origin": "auto",
-                        "score": 0.944,
-                        "residualM": 0.96
-                    },
-                    {
-                        "id": "a008",
-                        "pixel": {
-                            "x": 597.02,
-                            "y": 745.21
-                        },
-                        "geo": {
-                            "lat": 44.421492253,
-                            "lng": 26.091569465
-                        },
-                        "enabled": false,
-                        "origin": "auto",
-                        "score": 0.943,
-                        "residualM": 0.37
-                    },
-                    {
-                        "id": "a009",
-                        "pixel": {
-                            "x": 492.73,
-                            "y": 298.19
+                            "x": 492.74,
+                            "y": 298.16
                         },
                         "geo": {
                             "lat": 44.440298681,
@@ -6045,57 +6003,177 @@
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.942,
-                        "residualM": 0.55
+                        "score": 0.948,
+                        "residualM": 1.09
                     },
                     {
-                        "id": "a010",
+                        "id": "a002",
                         "pixel": {
-                            "x": 751.34,
-                            "y": 624.11
+                            "x": 586.86,
+                            "y": 552.05
                         },
                         "geo": {
-                            "lat": 44.426974438,
-                            "lng": 26.100323176
+                            "lat": 44.429690608,
+                            "lng": 26.090334751
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.948,
+                        "residualM": 1.81
+                    },
+                    {
+                        "id": "a003",
+                        "pixel": {
+                            "x": 706.3,
+                            "y": 635.47
+                        },
+                        "geo": {
+                            "lat": 44.42640691,
+                            "lng": 26.097690094
+                        },
+                        "enabled": false,
+                        "origin": "auto",
+                        "score": 0.948,
+                        "residualM": 0.57
+                    },
+                    {
+                        "id": "a004",
+                        "pixel": {
+                            "x": 687.02,
+                            "y": 647.87
+                        },
+                        "geo": {
+                            "lat": 44.425829051,
+                            "lng": 26.096595585
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.947,
+                        "residualM": 1.5
+                    },
+                    {
+                        "id": "a005",
+                        "pixel": {
+                            "x": 1026.68,
+                            "y": 411.42
+                        },
+                        "geo": {
+                            "lat": 44.436630818,
+                            "lng": 26.115939468
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.945,
+                        "residualM": 0.67
+                    },
+                    {
+                        "id": "a006",
+                        "pixel": {
+                            "x": 522.27,
+                            "y": 309.82
+                        },
+                        "geo": {
+                            "lat": 44.439860157,
+                            "lng": 26.085684168
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.944,
+                        "residualM": 0.71
+                    },
+                    {
+                        "id": "a007",
+                        "pixel": {
+                            "x": 592.35,
+                            "y": 730.12
+                        },
+                        "geo": {
+                            "lat": 44.422112488,
+                            "lng": 26.091275697
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.942,
+                        "residualM": 3.3
+                    },
+                    {
+                        "id": "a008",
+                        "pixel": {
+                            "x": 906.6,
+                            "y": 637.33
+                        },
+                        "geo": {
+                            "lat": 44.426754917,
+                            "lng": 26.109578355
                         },
                         "enabled": true,
                         "origin": "auto",
                         "score": 0.941,
-                        "residualM": 1.67
+                        "residualM": 1.12
+                    },
+                    {
+                        "id": "a009",
+                        "pixel": {
+                            "x": 1054.87,
+                            "y": 420
+                        },
+                        "geo": {
+                            "lat": 44.436332963,
+                            "lng": 26.117642209
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.941,
+                        "residualM": 1.18
+                    },
+                    {
+                        "id": "a010",
+                        "pixel": {
+                            "x": 661.04,
+                            "y": 610.24
+                        },
+                        "geo": {
+                            "lat": 44.427407041,
+                            "lng": 26.094853515
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.936,
+                        "residualM": 5.55
                     },
                     {
                         "id": "a011",
                         "pixel": {
-                            "x": 1059.55,
-                            "y": 430.23
+                            "x": 612.02,
+                            "y": 546.92
                         },
                         "geo": {
-                            "lat": 44.435887329,
-                            "lng": 26.117960082
+                            "lat": 44.429963453,
+                            "lng": 26.091794387
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.94,
-                        "residualM": 1.64
+                        "score": 0.935,
+                        "residualM": 1.06
                     },
                     {
                         "id": "a012",
                         "pixel": {
-                            "x": 614.14,
-                            "y": 772.01
+                            "x": 530.43,
+                            "y": 711.98
                         },
                         "geo": {
-                            "lat": 44.420376568,
-                            "lng": 26.092690277
+                            "lat": 44.422752977,
+                            "lng": 26.087492145
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.94,
-                        "residualM": 1.42
+                        "score": 0.934,
+                        "residualM": 1.74
                     }
                 ],
-                "fitRmseM": 1.71,
-                "checkpointRmseM": 1.28,
+                "fitRmseM": 1.88,
+                "checkpointRmseM": 1.56,
                 "checkpointCount": 25,
                 "checkpointKind": "held-out"
             },
@@ -6121,7 +6199,20 @@
                 "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
                 "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
                 "s2Item": "S2B_35TMK_20250803_0_L2A",
-                "s2Date": "2025-08-03"
+                "s2Date": "2025-08-03",
+                "s2Check": {
+                    "status": "unchecked",
+                    "boundM": 7.5,
+                    "chosen": 0,
+                    "scenes": [
+                        {
+                            "items": ["S2B_35TMK_20250803_0_L2A"],
+                            "date": "2025-08-03",
+                            "cloud": 3.2,
+                            "kept": true
+                        }
+                    ]
+                }
             },
             "suggestions": {
                 "method": "sift",
@@ -6132,7 +6223,7 @@
                 },
                 "minConfidence": 0.6,
                 "tiles": {
-                    "matched": 39,
+                    "matched": 38,
                     "total": 64
                 },
                 "pairs": []
@@ -6186,128 +6277,8 @@
                     {
                         "id": "a001",
                         "pixel": {
-                            "x": 732.17,
-                            "y": 766.39
-                        },
-                        "geo": {
-                            "lat": 44.420880724,
-                            "lng": 26.09966045
-                        },
-                        "enabled": true,
-                        "origin": "auto",
-                        "score": 0.97,
-                        "residualM": 0.44
-                    },
-                    {
-                        "id": "a002",
-                        "pixel": {
-                            "x": 906.7,
-                            "y": 637.6
-                        },
-                        "geo": {
-                            "lat": 44.426754917,
-                            "lng": 26.109578355
-                        },
-                        "enabled": true,
-                        "origin": "auto",
-                        "score": 0.951,
-                        "residualM": 1.12
-                    },
-                    {
-                        "id": "a003",
-                        "pixel": {
-                            "x": 687.34,
-                            "y": 648.23
-                        },
-                        "geo": {
-                            "lat": 44.425829051,
-                            "lng": 26.096595585
-                        },
-                        "enabled": false,
-                        "origin": "auto",
-                        "score": 0.95,
-                        "residualM": 0.93
-                    },
-                    {
-                        "id": "a004",
-                        "pixel": {
-                            "x": 1055.02,
-                            "y": 419.78
-                        },
-                        "geo": {
-                            "lat": 44.436332963,
-                            "lng": 26.117642209
-                        },
-                        "enabled": true,
-                        "origin": "auto",
-                        "score": 0.946,
-                        "residualM": 2.08
-                    },
-                    {
-                        "id": "a005",
-                        "pixel": {
-                            "x": 734.2,
-                            "y": 489.32
-                        },
-                        "geo": {
-                            "lat": 44.432687001,
-                            "lng": 26.098846217
-                        },
-                        "enabled": true,
-                        "origin": "auto",
-                        "score": 0.946,
-                        "residualM": 0.52
-                    },
-                    {
-                        "id": "a006",
-                        "pixel": {
-                            "x": 821.8,
-                            "y": 681.82
-                        },
-                        "geo": {
-                            "lat": 44.424707563,
-                            "lng": 26.104673991
-                        },
-                        "enabled": true,
-                        "origin": "auto",
-                        "score": 0.946,
-                        "residualM": 3.3
-                    },
-                    {
-                        "id": "a007",
-                        "pixel": {
-                            "x": 687.34,
-                            "y": 648.23
-                        },
-                        "geo": {
-                            "lat": 44.425829051,
-                            "lng": 26.096595585
-                        },
-                        "enabled": true,
-                        "origin": "auto",
-                        "score": 0.944,
-                        "residualM": 0.96
-                    },
-                    {
-                        "id": "a008",
-                        "pixel": {
-                            "x": 597.02,
-                            "y": 745.21
-                        },
-                        "geo": {
-                            "lat": 44.421492253,
-                            "lng": 26.091569465
-                        },
-                        "enabled": false,
-                        "origin": "auto",
-                        "score": 0.943,
-                        "residualM": 0.37
-                    },
-                    {
-                        "id": "a009",
-                        "pixel": {
-                            "x": 492.73,
-                            "y": 298.19
+                            "x": 492.74,
+                            "y": 298.16
                         },
                         "geo": {
                             "lat": 44.440298681,
@@ -6315,57 +6286,177 @@
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.942,
-                        "residualM": 0.55
+                        "score": 0.948,
+                        "residualM": 1.09
                     },
                     {
-                        "id": "a010",
+                        "id": "a002",
                         "pixel": {
-                            "x": 751.34,
-                            "y": 624.11
+                            "x": 586.86,
+                            "y": 552.05
                         },
                         "geo": {
-                            "lat": 44.426974438,
-                            "lng": 26.100323176
+                            "lat": 44.429690608,
+                            "lng": 26.090334751
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.948,
+                        "residualM": 1.81
+                    },
+                    {
+                        "id": "a003",
+                        "pixel": {
+                            "x": 706.3,
+                            "y": 635.47
+                        },
+                        "geo": {
+                            "lat": 44.42640691,
+                            "lng": 26.097690094
+                        },
+                        "enabled": false,
+                        "origin": "auto",
+                        "score": 0.948,
+                        "residualM": 0.57
+                    },
+                    {
+                        "id": "a004",
+                        "pixel": {
+                            "x": 687.02,
+                            "y": 647.87
+                        },
+                        "geo": {
+                            "lat": 44.425829051,
+                            "lng": 26.096595585
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.947,
+                        "residualM": 1.5
+                    },
+                    {
+                        "id": "a005",
+                        "pixel": {
+                            "x": 1026.68,
+                            "y": 411.42
+                        },
+                        "geo": {
+                            "lat": 44.436630818,
+                            "lng": 26.115939468
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.945,
+                        "residualM": 0.67
+                    },
+                    {
+                        "id": "a006",
+                        "pixel": {
+                            "x": 522.27,
+                            "y": 309.82
+                        },
+                        "geo": {
+                            "lat": 44.439860157,
+                            "lng": 26.085684168
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.944,
+                        "residualM": 0.71
+                    },
+                    {
+                        "id": "a007",
+                        "pixel": {
+                            "x": 592.35,
+                            "y": 730.12
+                        },
+                        "geo": {
+                            "lat": 44.422112488,
+                            "lng": 26.091275697
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.942,
+                        "residualM": 3.3
+                    },
+                    {
+                        "id": "a008",
+                        "pixel": {
+                            "x": 906.6,
+                            "y": 637.33
+                        },
+                        "geo": {
+                            "lat": 44.426754917,
+                            "lng": 26.109578355
                         },
                         "enabled": true,
                         "origin": "auto",
                         "score": 0.941,
-                        "residualM": 1.67
+                        "residualM": 1.12
+                    },
+                    {
+                        "id": "a009",
+                        "pixel": {
+                            "x": 1054.87,
+                            "y": 420
+                        },
+                        "geo": {
+                            "lat": 44.436332963,
+                            "lng": 26.117642209
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.941,
+                        "residualM": 1.18
+                    },
+                    {
+                        "id": "a010",
+                        "pixel": {
+                            "x": 661.04,
+                            "y": 610.24
+                        },
+                        "geo": {
+                            "lat": 44.427407041,
+                            "lng": 26.094853515
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.936,
+                        "residualM": 5.55
                     },
                     {
                         "id": "a011",
                         "pixel": {
-                            "x": 1059.55,
-                            "y": 430.23
+                            "x": 612.02,
+                            "y": 546.92
                         },
                         "geo": {
-                            "lat": 44.435887329,
-                            "lng": 26.117960082
+                            "lat": 44.429963453,
+                            "lng": 26.091794387
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.94,
-                        "residualM": 1.64
+                        "score": 0.935,
+                        "residualM": 1.06
                     },
                     {
                         "id": "a012",
                         "pixel": {
-                            "x": 614.14,
-                            "y": 772.01
+                            "x": 530.43,
+                            "y": 711.98
                         },
                         "geo": {
-                            "lat": 44.420376568,
-                            "lng": 26.092690277
+                            "lat": 44.422752977,
+                            "lng": 26.087492145
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.94,
-                        "residualM": 1.42
+                        "score": 0.934,
+                        "residualM": 1.74
                     }
                 ],
-                "fitRmseM": 1.71,
-                "checkpointRmseM": 1.28,
+                "fitRmseM": 1.88,
+                "checkpointRmseM": 1.56,
                 "checkpointCount": 25,
                 "checkpointKind": "held-out"
             },
@@ -6391,7 +6482,20 @@
                 "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
                 "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
                 "s2Item": "S2B_35TMK_20250803_0_L2A",
-                "s2Date": "2025-08-03"
+                "s2Date": "2025-08-03",
+                "s2Check": {
+                    "status": "unchecked",
+                    "boundM": 7.5,
+                    "chosen": 0,
+                    "scenes": [
+                        {
+                            "items": ["S2B_35TMK_20250803_0_L2A"],
+                            "date": "2025-08-03",
+                            "cloud": 3.2,
+                            "kept": true
+                        }
+                    ]
+                }
             },
             "suggestions": {
                 "method": "sift",
@@ -6402,15 +6506,15 @@
                 },
                 "minConfidence": 0.6,
                 "tiles": {
-                    "matched": 39,
+                    "matched": 38,
                     "total": 64
                 },
                 "pairs": []
             },
             "output": {
                 "cogPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
-                "cogBytes": 408200,
-                "cogSha256": "733a1df070124661f44c7936b1d52df53428fac9deaff2d41b6c9f0474781ddd",
+                "cogBytes": 408340,
+                "cogSha256": "c7fc56d2334a5a4f73e4b479f28dd489d47301e292ad0d7bf9549b3e5a47b66a",
                 "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
                 "bounds": {
                     "west": 26.080856,
@@ -6422,7 +6526,7 @@
                 "maxzoom": 16,
                 "areaKm2": 7.358,
                 "studioPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/studio.tif",
-                "studioBytes": 252481,
+                "studioBytes": 252554,
                 "coveragePct": 99.96,
                 "outline": [
                     {
@@ -6623,8 +6727,8 @@
             },
             "output": {
                 "cogPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
-                "cogBytes": 209279,
-                "cogSha256": "36c329cc2e4ffaaa98ac4c116f73db4fe62178d939e752be2bfdbc81092ae799",
+                "cogBytes": 209345,
+                "cogSha256": "0c7ece4cd15d069d53ae6ad2f5a7b0b95f8e51aee2dd8afa06f86b77a1383bee",
                 "previewPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/preview.png",
                 "bounds": {
                     "west": 26.07296,
@@ -6636,7 +6740,7 @@
                 "maxzoom": 15,
                 "areaKm2": 11.18,
                 "studioPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/studio.tif",
-                "studioBytes": 98756,
+                "studioBytes": 98758,
                 "coveragePct": 100.0,
                 "outline": [
                     {
@@ -6725,9 +6829,9 @@
             }
         },
         {
-            "seq": 0,
-            "level": "info",
-            "message": "the job was cancelled; its scratch files are deleted",
+            "seq": 7,
+            "level": "warn",
+            "message": "the Sentinel-2 reference S2B_35TMK_20250803_0_L2A is unchecked: 1 clear dates, too few agree",
             "updatedBy": "system:pipeline",
             "updatedAt": {
                 "seconds": 1792000000,

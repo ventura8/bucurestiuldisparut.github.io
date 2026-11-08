@@ -166,6 +166,7 @@
     "MAX_GCPS": 300,
     "MAX_SCAN_PIXELS": 200000,
     "JOIN_MAX_PARTS": 8,
+    "S2_CHECK_STATUSES": ["agreed", "unchecked", "disputed"],
     "PIPELINE_ERROR_CODES": [
         "apiError.imagery.archiveCorrupt",
         "apiError.imagery.cityNotFound",

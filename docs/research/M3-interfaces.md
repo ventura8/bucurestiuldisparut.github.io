@@ -583,6 +583,12 @@ nothing proved. The assignments, the panoramic model, `crop_box` and `CityNotFou
   (else up to four of one date, mosaicked); its `visual` asset (an 8-bit true-colour COG) read through
   `/vsicurl/` for the window only, warped to EPSG:3857 at 10 m, cached as `reference/{city}/s2/{key}.tif` (the key: FNV-1a of
   the window and the item id; a mosaic that does not cover the window together is no reference, 2026-11-06). Attribution in the georeferencer: "Contains modified Copernicus Sentinel data {year}".
+  **M15 reference guard** (2026-11-08, `agreement.py`, [M15](M15-calibration-accuracy.md#the-reference-guard-2026-11-08)): the
+  least cloudy set is no longer taken alone. Up to 5 covering sets 30 days apart are read over the window's middle (at most
+  10 km, ground metres on a local transverse Mercator), placed against the median of the others, and one more than 7.5 m
+  off is rejected (the median taken again without it); the reference is the least cloudy set that agrees. The version's
+  `reference.s2Check` records every set, its offset and the verdict (`agreed`, `unchecked` under 3 read, `disputed`); the
+  cache key holds every candidate and the cached window carries the verdict.
 - **OSM** (`osm.py`): one Overpass query (`HCM_OVERPASS_URL`, default `https://overpass-api.de/api/interpreter`,
   **UNVERIFIED** policy limits) for the window's highways down to residential, railways, waterways and water areas,
   cached as GeoJSON (`reference/{city}/osm/{key}.geojson`), rasterized at 10 m for matching and drawn for the

@@ -8,7 +8,8 @@ equator, and adjacent tracks fly on different days). None when nothing does, whi
 `apiError.imagery.referenceUnavailable`: a reference with a hole matches nothing there, and `locate` would call it the wrong
 city. "Covers" reads the item's **footprint**, not its box: a tile cut by a slanted swath edge has a whole box and 27 % of a
 window missing from it. Its `visual` asset (an 8-bit true-colour COG) is read through GDAL's
-`/vsicurl/` for the window only, after the address guard (`urlguard.py`). Never Mapbox Satellite, a Mapbox raster
+`/vsicurl/` for the window only, after the address guard (`urlguard.py`). `choose` makes one candidate; the reference guard
+(`agreement.py`) makes up to five and keeps the least cloudy that agrees with the others. Never Mapbox Satellite, a Mapbox raster
 tileset or a resource of the old site's account: `config.py` refuses a Mapbox host as the STAC root, and the guard
 refuses one as an asset.
 """

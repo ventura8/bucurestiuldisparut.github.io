@@ -97,6 +97,34 @@ const scanSchema = z.strictObject({
     previewScale: z.number().positive().max(1),
 });
 
+/**
+ * The reference guard's verdicts (M15, pipeline `agreement.py`): `agreed`, enough clear dates placed for a vote and the chosen
+ * one within the bound of their consensus; `unchecked`, too few to outvote one another (the least cloudy was taken);
+ * `disputed`, every placed date sits beyond the bound.
+ */
+export const S2_CHECK_STATUSES = ['agreed', 'unchecked', 'disputed'] as const;
+
+/** One clear set the guard compared: its items (a date's mosaic, or dates across an orbit seam), its offset from the consensus. */
+const s2CheckSceneSchema = z.strictObject({
+    items: z.array(z.string().max(200)).min(1).max(4),
+    date: isoDateSchema,
+    cloud: z.number().min(0).max(100),
+    /** Ground metres east and north of the consensus; absent when the set could not be read or measured. */
+    eastM: z.number().optional(),
+    northM: z.number().optional(),
+    kept: z.boolean(),
+});
+
+/** Which clear sets the guard compared, the bound it rejected beyond, and the one the reference was taken from (`chosen`). */
+const s2CheckSchema = z
+    .strictObject({
+        status: z.enum(S2_CHECK_STATUSES),
+        boundM: z.number().positive(),
+        chosen: z.number().int().min(0),
+        scenes: z.array(s2CheckSceneSchema).min(1).max(5),
+    })
+    .refine((check) => check.chosen < check.scenes.length, { message: 'chosen names no scene', path: ['chosen'] });
+
 /** The reference rasters the pipeline fetched for the window (OSM data drawn as lines, Sentinel-2 L2A true colour). */
 const referenceSchema = z.strictObject({
     bounds: boundsRecordSchema,
@@ -105,6 +133,7 @@ const referenceSchema = z.strictObject({
     /** The STAC item the Sentinel-2 window came from, and its date. */
     s2Item: z.string().max(200).optional(),
     s2Date: isoDateSchema.optional(),
+    s2Check: s2CheckSchema.optional(),
 });
 
 /** What the render produced: the 8-bit COG Mapbox gets, the preview the admin sees, the Studio-sized GeoTIFF. */

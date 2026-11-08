@@ -150,6 +150,39 @@ describe('layer versions', () => {
         expect(validate(layerVersionDocSchema, doc)).toEqual({ ok: false, issues: [{ path: 'state', code: 'validation.required' }] });
     });
 
+    const scene = (item: string, northM: number, kept: boolean) => ({
+        items: [item],
+        date: '2026-08-17',
+        cloud: 0,
+        eastM: 0,
+        northM,
+        kept,
+    });
+    const reference = (s2Check: object) => ({
+        ...version,
+        reference: { bounds: output.bounds, s2Item: 'S2C_35TMK_20260817_0_L2A', s2Check },
+    });
+    const shifted = {
+        status: 'agreed',
+        boundM: 7.5,
+        chosen: 1,
+        scenes: [scene('a', -11.2, false), scene('b', 0.8, true), scene('c', 2.6, true)],
+    };
+
+    it('happyPath_theReferenceRecordsWhichSceneTheGuardChoseAndItsOffset @S-P06-HAPPY-REFERENCE-AGREEMENT', () => {
+        expect(validate(layerVersionDocSchema, reference(shifted)).ok).toBe(true);
+        const lone = { status: 'unchecked', boundM: 7.5, chosen: 0, scenes: [{ items: ['a'], date: '2026-08-17', cloud: 3, kept: true }] };
+        expect(validate(layerVersionDocSchema, reference(lone)).ok).toBe(true);
+    });
+
+    it.each([
+        ['a chosen scene it does not list', { ...shifted, chosen: 3 }],
+        ['an unknown verdict', { ...shifted, status: 'probably' }],
+        ['no scene at all', { ...shifted, chosen: 0, scenes: [] }],
+    ])('badPath_aGuardRecordWith%sIsRefused @S-P06-BAD-REFERENCE-SHIFTED-DATE', (_name, check) => {
+        expect(validate(layerVersionDocSchema, reference(check)).ok).toBe(false);
+    });
+
     it('badPath_anErrorThatIsNotAnApiCodeIsRefused', () => {
         expect(validate(layerVersionDocSchema, { ...version, state: 'failed', error: { code: 'it broke' } }).ok).toBe(false);
     });

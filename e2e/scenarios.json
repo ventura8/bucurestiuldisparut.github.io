@@ -11482,6 +11482,61 @@
             "notes": "M15 review. Test: pipeline/tests/unit/test_calibrate_camera.py."
         },
         {
+            "id": "S-P06-HAPPY-REFERENCE-AGREEMENT",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The Sentinel-2 reference is the least cloudy clear date that agrees with the others",
+            "asserts": "five clear dates of one texture placed within 2 m of each other -> status agreed, the least cloudy kept as the reference, each date's offset from the median read within 0.5 m; candidates are covering sets at least 30 days apart, least cloudy first; the version's reference records s2Check (status, boundM, chosen, every set's items, date, cloud, eastM, northM, kept) and the shared schema accepts it",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 reference guard (docs/research/M15-calibration-accuracy.md, The reference guard). Tests: pipeline/tests/unit/test_agreement.py, packages/shared/test/schemas/imagery.test.ts. On real scenes (2026-11-08) Bucharest keeps S2C_35TMK_20260817, the scene its frames were calibrated on."
+        },
+        {
+            "id": "S-P06-BAD-REFERENCE-SHIFTED-DATE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A Sentinel-2 date that sits 12 m off the others is rejected, even when it is the least cloudy",
+            "asserts": "the least cloudy date 12 m south of four others -> rejected (offset read within 0.9 m), the next date that agrees is the reference, a warning names both; two shifted dates of five (-12.7 and -9.9 m) -> both rejected once the consensus is centred again; a whole import whose least cloudy date is moved 12 m south -> the job succeeds on the world's own date, s2Check chosen 2 with kept [false, false, true, true], one warning (locate measured, reference read the verdict from the cached window); a record naming a scene it does not list, an unknown status or no scene is refused by the shared schema",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 reference guard (docs/research/M15-calibration-accuracy.md, The reference guard). Tests: pipeline/tests/unit/test_agreement.py, pipeline/tests/integration/test_import_job.py, packages/shared/test/schemas/imagery.test.ts. Real proof: 2024-10-26 rejected at 11.5 m over Bucharest and 11.2 m over Pitesti."
+        },
+        {
+            "id": "S-P06-HAPPY-REFERENCE-ANY-LATITUDE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The guard reads ground metres at any latitude, in any UTM zone, and on a set mosaicked across zones",
+            "asserts": "one texture written in EPSG:32633 at 78 N, EPSG:32719 at 55 S, and as two halves in EPSG:32717 and 32718 across the equator's zone seam, the first set moved 3 m east and 10 m south -> rejected, its offset read within 1 m; a window narrower than 10 km reads a smaller patch",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 reference guard (docs/research/M15-calibration-accuracy.md, The reference guard). Test: pipeline/tests/unit/test_agreement.py. Real runs: Gothenburg across zones 32 and 33, Tromso, Longyearbyen, Quito, Ushuaia."
+        },
+        {
+            "id": "S-P06-BAD-REFERENCE-TOO-FEW",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Too few clear dates to outvote one another are taken unchecked; dates that all disagree are disputed",
+            "asserts": "one date -> unchecked, taken, nothing read; two read -> unchecked, the least cloudy readable one taken, offsets of plus and minus half their difference; three read 20 m from each other -> disputed, the least cloudy readable one taken, offsets against all of them; both warn in the job log; a window cached before the guard, or whose stored verdict is not JSON or names no set (true is no index), is measured again and replaced",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 reference guard (docs/research/M15-calibration-accuracy.md, The reference guard). Tests: pipeline/tests/unit/test_agreement.py, pipeline/tests/integration/test_import_job.py; the import of S-P01-HAPPY records unchecked (its catalogue holds one date)."
+        },
+        {
+            "id": "S-P06-BAD-REFERENCE-UNREADABLE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A clear date that cannot be read does not vote and is never the reference",
+            "asserts": "a least cloudy item whose address the guard refuses (s3://) -> a warning, no offset, kept false, the job goes on; a set compared with no member has no place; tiles without data, texture or a clear peak measure nothing; a missing file raises for the caller to skip",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 reference guard (docs/research/M15-calibration-accuracy.md, The reference guard). Tests: pipeline/tests/unit/test_agreement.py, pipeline/tests/integration/test_import_job.py. Real case: Gothenburg's least cloudy item S2B_32VPK_20241204 has an s3:// asset; before the guard it would have failed the reference."
+        },
+        {
             "id": "S-A17-BAD-NOT-PROVED",
             "behaviour": "A17",
             "area": "admin",

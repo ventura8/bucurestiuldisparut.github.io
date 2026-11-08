@@ -96,6 +96,8 @@ MAX_SCAN_PIXELS: Final = 200_000
 MAX_JOB_LOGS: Final = 500
 # At most this many frames of one date join into one layer (`JOIN_MAX_PARTS`, docs/research/M8-join-interfaces.md §2).
 JOIN_MAX_PARTS: Final = 8
+# The reference guard's verdicts (`S2_CHECK_STATUSES`, `agreement.py`): enough clear dates agree, too few to outvote, all disagree.
+S2_CHECK_STATUSES: Final = ("agreed", "unchecked", "disputed")
 # How a job waits for the USGS download to be prepared, and how long a SIGTERM'd job waits before it runs again.
 USGS_PREPARING_MINUTES: Final = 10
 REQUEUE_SECONDS: Final = 60

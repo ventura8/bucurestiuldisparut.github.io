@@ -49,6 +49,7 @@ import {
     LAYER_VERSION_STATES,
     layerVersionDocSchema,
     PIPELINE_STEPS,
+    S2_CHECK_STATUSES,
     SCAN_PREVIEW_MAX_PX,
 } from '../../src/schemas/imagery.js';
 import { SENSOR_SPECS } from '../../src/schemas/usgs-scene.js';
@@ -127,6 +128,7 @@ describe('the pipeline contract', () => {
             MAX_GCPS,
             MAX_SCAN_PIXELS,
             JOIN_MAX_PARTS,
+            S2_CHECK_STATUSES,
         });
     });
 

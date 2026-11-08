@@ -146,3 +146,45 @@ KH-7 and KH-9 mapping keep their polynomial; they move only through their partne
 **The saved figures move a little** (`checkpointRmseM`, on every tile, as built to now): A001 18.75 to 18.86, F022 18.72 to 18.33, F049 9.24 to 9.37, F006 19.10 to 19.19 (a camera near the nadir, 0.06 to 0.00 rad); the others are unchanged to 0.01 m; `crossValidatedM` moves by 0.15 m at most (F040 13.31 to 13.16). Cost unchanged: three starts followed, as before.
 
 **Not run:** a whole job through the runner on a real frame; the second city has still no film ruler.
+
+## The reference guard (2026-11-08)
+
+**Why.** Three dates of tile 35TMK (2024-10-21, 2024-10-26, 2025-01-19, baseline 05.11) sit rigidly 9.8 to 13.0 m south of the others (`~/hcm-calib/out/acc-open-refs.md` on the NUC, finding 1), and every frame's bias follows the reference: 9.8 to 11.7 m north against them. `stac.py` took the least cloudy item over three years, and in today's cloud order over Bucharest 2024-10-26 is second and 2024-10-21 third: a cloud value a little different would have moved the whole city with no warning. The film ruler cannot see this (an error all frames share).
+
+**What it does** (`pipeline/src/hcm_pipeline/agreement.py`, called by `steps/common.py` `sentinel2` for every window `locate` and `reference` read):
+
+- **Candidates:** up to 5 sets that cover the window, chosen as before (`stac.choose`: one item, a date's mosaic of up to 4, or dates across an orbit seam), least cloudy first, each at least 30 days from the others, so one bad period counts once (2024-10-21 and 2024-10-26 are one vote).
+- **Reading:** each set over the same patch, at most 10 by 10 km in the window's middle, at 10 m on a transverse Mercator centred there: ground metres east and north at any latitude, across UTM zones, tiles and mosaics. A set whose address is refused or that GDAL cannot read does not vote (a warning).
+- **Measuring:** every pair's rigid offset is the median of its 900 m tiles (the gradient filter the calibration uses, ±50 m search, peak 0.3, at least 12 tiles).
+- **Consensus:** each set against the median of the others; a set more than **7.5 m** off is rejected and the median is taken again without it, until none leaves. Two shifted dates of five pull a plain median by 2 to 3 m, enough to keep a third at 8.7 m; centred again, both go.
+- **Choice:** the least cloudy set that agrees, when a majority of at least 3 read sets agrees (`agreed`). Under 3 read: the least cloudy readable one, `unchecked`. No majority: the same, `disputed`. Both warn in the job's log, and so does a rejected least cloudy date.
+- **Record:** `version.reference.s2Check` (`status`, `boundM`, `chosen`, and for each set its items, date, cloud, offset `eastM` / `northM` from the consensus, `kept`), with `s2Item` and `s2Date` as before. The verdict is stored in the cached window's metadata (`HCM_S2_CHECK`), and the cache is keyed by every candidate, so `locate` measures once and `reference` reads it.
+- **The bound:** 79 scenes of 35TMK at baseline 05.xx against their median: the clean ones sit at most 6.2 m off (P99 6.0 m), the three shifted dates 8.7, 11.1 and 11.8 m. 7.5 m is between them.
+- **Cost:** each candidate reads one patch. Measured on Earth Search: 8 to 50 MB and 5 to 11 s for 4 or 5 sets per window, once per window and candidate list (the cache), against the city's own window read as before.
+
+**Proof on real scenes** (the product's `candidates`, `read_patch`, `readings` and `decide` on public Earth Search, `~/hcm-calib/tools/guard/run_guard.py`, `replay.py`; results `~/hcm-calib/out/guard/run1.json` on the NUC). Offsets are ground metres from the consensus, east / north:
+
+| Window | Candidates (today's search) | Rejected | Reference kept |
+| --- | --- | --- | --- |
+| Bucharest | 5; 2024-10-26 second by cloud | 2024-10-26 at −0.4 / −11.5 | S2C_35TMK_20260817 (−0.4 / +0.4), the scene the frames were calibrated on |
+| Pitești | 5 | 2024-10-26 at +0.5 / −11.2 | S2C_35TLK_20260817 (−0.4 / +1.9), the frame's calibration scene (pixels identical) |
+| Gothenburg, across zones 32 and 33 | 5 | the least cloudy, S2B_32VPK_20241204: its asset is an `s3://` address the guard refuses (before the guard this failed the reference) | S2B_33VUE_20240521 |
+| Tromsø, 69.7° N | 5, two UTM zones | none (largest 2.8 m) | the least cloudy |
+| Longyearbyen, 78.2° N | 5 | 2024-03-21, unmeasured (snow) | the least cloudy (+0.6 / +4.1) |
+| Quito, on the equator | 4 (5 items under 20 % clouds in three years) | none (largest 0.8 m) | the least cloudy |
+| Ushuaia, 54.8° S | 5 | 2024-07-24 (winter) at +11.6 / −1.5 | the least cloudy (+5.6 / −2.1) |
+
+Forced sets, the shifted dates placed on purpose:
+
+| Set over | Verdict |
+| --- | --- |
+| Bucharest, 2024-10-26 least cloudy, four sound dates | rejected at −11.3 m north; 2026-08-17 kept |
+| Bucharest, 2024-10-21 and 2025-01-19 among five | both rejected (−12.7 and −9.8 m); 2026-08-17 kept. A plain median would have kept 2025-01-19 (6.8 m) |
+| Pitești, 2024-10-26 least cloudy, three sound dates | rejected at −9.3 m; 2026-08-17 kept |
+| Bucharest, all three shifted dates among five | **the shifted majority wins**: 2026-08-17 rejected at +11.9 m. A vote of 5 survives 2 bad sets, not 3; the 30-day spacing makes 2024-10-21 and 2024-10-26 one candidate, so these three dates can never be 3 of 5 |
+
+**The ruler, before and after.** The guard keeps, for both cities, the very scene every frame was calibrated on (Bucharest: correlation 0.99996 with S2C_35TMK_20260817, Pitești: identical pixels with S2C_35TLK_20260817), so every frame's input, fit and film-ruler figure are unchanged by construction: the per-frame table of *Review of 2026-11-08* stands as it is (A001 9.37 / 12.35, F006 9.50 / 15.26, F007 7.81 / 10.60, F040 9.14 / 16.05, F003 6.74 / 10.81, F022 8.22 / 12.27, A015 7.88 / 11.61, A038 6.90 / 11.11, F049 6.82 / 9.92, KH-7 9.62 / 16.04, KH-9 mapping 6.95 / 10.30 m, 3.2 / 8 km blocks; F006 over Pitești 17.2 m held out against Sentinel-2). The ruler was not run again. What the guard buys is invisible to it: the 9.8 to 11.7 m shift every frame would have taken against a shifted date.
+
+**Synthetic proof** (`pipeline/tests/unit/test_agreement.py`, `tests/integration/test_import_job.py`): one texture placed off by known metres reads back within 0.5 m around Bucharest, within 1 m in EPSG:32633 at 78° N, EPSG:32719 at 55° S and as a mosaic of EPSG:32717 and 32718 across the equator's zone seam; a whole import whose least cloudy date is moved 12 m south takes the world's own date and records the check. Rows `S-P06-HAPPY-REFERENCE-AGREEMENT`, `S-P06-BAD-REFERENCE-SHIFTED-DATE`, `S-P06-HAPPY-REFERENCE-ANY-LATITUDE`, `S-P06-BAD-REFERENCE-TOO-FEW`, `S-P06-BAD-REFERENCE-UNREADABLE`.
+
+**Limits.** The guard sees a date that disagrees with others, not an error all of them share (Sentinel-2's absolute error, about 4.6 m RMS by the published figure). A window across the antimeridian is not handled, as before. The admin does not show `s2Check` yet: the record and the job log carry it (the imagery chunk has no bytes to spare). The cause of the shifted dates is still not established.

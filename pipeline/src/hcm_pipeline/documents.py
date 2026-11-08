@@ -88,6 +88,8 @@ class ReferenceInfo:
     s2_path: str | None = None
     s2_item: str | None = None
     s2_date: str | None = None
+    # The reference guard's verdict (`agreement.py`): every clear set it compared, its offset and whether it was kept.
+    s2_check: Record | None = None
 
     @classmethod
     def of(cls, value: object) -> ReferenceInfo:
@@ -98,6 +100,7 @@ class ReferenceInfo:
             optional_text(record, "s2Path"),
             optional_text(record, "s2Item"),
             optional_text(record, "s2Date"),
+            optional_record(record.get("s2Check")) or None,
         )
 
     def as_record(self) -> Record:
@@ -108,6 +111,7 @@ class ReferenceInfo:
                 "s2Path": self.s2_path,
                 "s2Item": self.s2_item,
                 "s2Date": self.s2_date,
+                "s2Check": self.s2_check,
             }
         )
 
