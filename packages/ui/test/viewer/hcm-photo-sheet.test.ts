@@ -4,7 +4,7 @@ import { page } from 'vitest/browser';
 
 import { HCM_PHOTO_SHEET_TAG, HcmPhotoSheet, defineHcmPhotoSheet } from '../../src/viewer/hcm-photo-sheet.js';
 import { defineHcmPoiDetail } from '../../src/viewer/hcm-poi-detail.js';
-import { defineKitDoubles, mountElement, recordEvents, shadowQuery, shadowText } from './doubles.js';
+import { defineKitDoubles, mountElement, recordEvents, shadowQuery, shadowQueryAll, shadowText } from './doubles.js';
 import { TEST_MANIFEST_URL, testManifest } from './fixtures.js';
 
 const MANIFEST = testManifest();
@@ -158,5 +158,47 @@ describe('<hcm-photo-sheet>', () => {
         defineHcmPhotoSheet();
 
         expect(customElements.get(HCM_PHOTO_SHEET_TAG)).toBe(HcmPhotoSheet);
+    });
+});
+
+describe('<hcm-photo-sheet>: the source', () => {
+    beforeAll(() => {
+        defineKitDoubles();
+        defineHcmPoiDetail();
+        defineHcmPhotoSheet();
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_theSourceIsAPlainLinkToANewTab', async () => {
+        const source = { url: 'https://arhiva.example/foto/1', label: 'Arhiva' };
+        const element = await sheet({ photo: { ...photo('mihai-voda-1978'), source } });
+
+        expect(shadowQuery(element, '.source').textContent.replace(/\s+/g, ' ').trim()).toBe('Sursa: Arhiva');
+        const link = page.getByRole('link', { name: 'Arhiva' });
+        await expect.element(link).toHaveAttribute('href', source.url);
+        await expect.element(link).toHaveAttribute('target', '_blank');
+        await expect.element(link).toHaveAttribute('rel', 'noopener noreferrer nofollow ugc');
+    });
+
+    it('happyPath_aSourceWithoutANameShowsItsHost', async () => {
+        await sheet({ photo: { ...photo('mihai-voda-1978'), source: { url: 'https://arhiva.example/foto/1' } } });
+
+        await expect.element(page.getByRole('link', { name: 'arhiva.example' })).toBeVisible();
+    });
+
+    it('badPath_noSourceNoLine', async () => {
+        const element = await sheet({ photo: photo('mihai-voda-1978') });
+
+        expect(shadowQueryAll(element, '.source')).toEqual([]);
+    });
+
+    it('badPath_aSourceThatIsNotHttpsIsNoLink', async () => {
+        const element = await sheet({ photo: { ...photo('mihai-voda-1978'), source: { url: 'javascript:alert(1)', label: 'Arhiva' } } });
+
+        expect(shadowQuery(element, '.source').textContent).toContain('Arhiva');
+        expect(shadowQueryAll(element, '.source a')).toEqual([]);
     });
 });

@@ -340,3 +340,29 @@ describe('the draft helpers', () => {
         expect(draftIssues(base, { ...valueOf(base.data), location: { lat: 10, lng: 10 } }, null)).toEqual([]);
     });
 });
+
+describe('PhotoDraft: a date at its precision', () => {
+    it.each([
+        ['a day that month does not have', { year: 1937, month: 2, day: 29 }, 'day', 'validation.dateImpossible'],
+        ['a month beside a range', { year: 1936, yearEnd: 1940, month: 7 }, 'month', 'validation.dateRange'],
+        ['a month without a year', { month: 7 }, 'month', 'validation.datePart'],
+    ])('badPath_%s_isNamedAndWritesNothing', async (_name, patch, path, code) => {
+        const { world, draft } = draftWorld();
+        draft.rebase(stored());
+        draft.edit(patch);
+
+        expect(draft.state.issues).toContainEqual({ path, code });
+        await expect(draft.save()).resolves.toMatchObject({ ok: false, reason: 'invalid' });
+        expect(world.store.writes).toEqual([]);
+    });
+
+    it('happyPath_aDateAtItsPrecisionSaves', async () => {
+        const { world, draft } = draftWorld();
+        seedPhoto(world, 'p1');
+        draft.rebase(stored());
+        draft.edit({ year: 1936, month: 2, day: 29 });
+
+        expect(draft.state.issues).toEqual([]);
+        await expect(draft.save()).resolves.toMatchObject({ ok: true });
+    });
+});

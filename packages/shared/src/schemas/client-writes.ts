@@ -36,6 +36,8 @@ const PHOTO_EDITABLE = [
     'description',
     'year',
     'yearEnd',
+    'month',
+    'day',
     'dateText',
     'author',
     'license',

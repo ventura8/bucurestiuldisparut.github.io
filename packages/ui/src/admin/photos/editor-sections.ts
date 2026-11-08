@@ -1,6 +1,6 @@
 /**
  * The photo editor's sections (`docs/research/M2c-interfaces.md` §6.3): the texts in Romanian and English (English
- * optional, the visitor then reads Romanian), the date, author and rights, links (at most five, https only) and
+ * optional, the visitor then reads Romanian), the date, author and rights, the source, links (at most five, https only) and
  * publishing (Published, with why it cannot be switched on yet, and Rights to check). Each change is a patch of the
  * draft; nothing is written until Save.
  */
@@ -11,6 +11,7 @@ import type { AssistActionsPort, AssistViewPort } from '../assist/assist-port.js
 import { draftAssist, titleAssist } from '../assist/assist-parts.js';
 import type { FieldsLeft } from '../editing/number-fields.js';
 import { EMPTY } from '../shell/empty.js';
+import { dateParts, yearPatch } from './editor-date.js';
 import { areaField, numberField, numberOf, selectField, textField, textOf } from './editor-fields.js';
 import { LICENSE_ORDER, blockText, fieldIssue, licenseText, partId, photoText } from './photo-text.js';
 import type { LocalizedPort, PhotoEditorPort, PhotoPatchPort, PhotoValuePort } from './photos-port.js';
@@ -66,8 +67,9 @@ function localizedPair(
     input: SectionInput,
     field: 'description' | 'dateText',
     keys: { ro: 'descriptionRo' | 'dateTextRo'; en: 'descriptionEn' | 'dateTextEn' },
-    max: number,
+    limits: { readonly max: number; readonly sharedHint?: string },
 ): TemplateResult {
+    const { max, sharedHint } = limits;
     const { locale, value, issues, edit } = input;
     const text = value[field];
     const make = (language: 'ro' | 'en', key: 'descriptionRo' | 'dateTextRo' | 'descriptionEn' | 'dateTextEn'): TemplateResult => {
@@ -78,6 +80,7 @@ function localizedPair(
             error: fieldIssue(locale, issues, `${field}.${language}`),
             maxlength: max,
             readOnly: input.readOnly,
+            ...(sharedHint === undefined ? {} : { sharedHint }),
         };
         const changed = (typed: string): void => {
             edit({ [field]: withLanguage(text, language, typed) });
@@ -86,6 +89,9 @@ function localizedPair(
     };
     return html`${make('ro', keys.ro)} ${make('en', keys.en)} ${pairDraft(input, field, text)}`;
 }
+
+/** The one note above both "date as written" fields, which each name it. */
+const DATE_TEXT_HINT = partId('photo-dateText', 'hint');
 
 export function textsSection(input: SectionInput): TemplateResult {
     const { locale, value, issues, edit } = input;
@@ -119,7 +125,8 @@ export function textsSection(input: SectionInput): TemplateResult {
                 edit({ title: en === undefined ? { ro: title.ro } : { ro: title.ro, en } });
             },
         )}
-        ${pairDraft(input, 'title', title)} ${localizedPair(input, 'description', { ro: 'descriptionRo', en: 'descriptionEn' }, 5000)}
+        ${pairDraft(input, 'title', title)}
+        ${localizedPair(input, 'description', { ro: 'descriptionRo', en: 'descriptionEn' }, { max: 5000 })}
     </fieldset>`;
 }
 
@@ -138,22 +145,31 @@ export function datesSection(input: SectionInput): TemplateResult {
                 readOnly: input.readOnly,
             },
             (typed) => {
-                edit({ [field]: numberOf(typed) });
+                edit(field === 'year' ? yearPatch(typed) : { yearEnd: numberOf(typed) });
             },
             input.left,
         );
     return html`<fieldset>
         <legend>${photoText(locale, 'adminContent.photos.section.dates')}</legend>
         <div class="pair">${year('year', 'year')} ${year('yearEnd', 'yearEnd')}</div>
-        ${localizedPair(input, 'dateText', { ro: 'dateTextRo', en: 'dateTextEn' }, 100)}
+        ${dateParts(input)}
+        <p class="note" id=${DATE_TEXT_HINT}>${photoText(locale, 'adminContent.photos.field.dateTextHint')}</p>
+        ${localizedPair(input, 'dateText', { ro: 'dateTextRo', en: 'dateTextEn' }, { max: 100, sharedHint: DATE_TEXT_HINT })}
     </fieldset>`;
 }
 
 type CreditField = 'author' | 'rightsHolder' | 'sourceLabel' | 'sourceUrl' | 'permissionNote';
 
+const CREDIT_MAX: Partial<Record<CreditField, number>> = { sourceUrl: 2048, permissionNote: 2000 };
+
+/** The source's name says what it does at the field, where a screen reader hears it. */
+function creditHint(locale: SectionInput['locale'], field: CreditField): { readonly hint?: string } {
+    return field === 'sourceLabel' ? { hint: photoText(locale, 'adminContent.photos.field.sourceLabelHint') } : {};
+}
+
 function creditField(input: SectionInput, field: CreditField, type: 'text' | 'url' = 'text'): TemplateResult {
     const { locale, value, issues, edit } = input;
-    const max = field === 'permissionNote' ? 2000 : 200;
+    const max = CREDIT_MAX[field] ?? 200;
     const options = {
         id: `photo-${field}`,
         label: photoText(locale, `adminContent.photos.field.${field}`),
@@ -161,6 +177,7 @@ function creditField(input: SectionInput, field: CreditField, type: 'text' | 'ur
         error: fieldIssue(locale, issues, field),
         maxlength: max,
         readOnly: input.readOnly,
+        ...creditHint(locale, field),
     };
     const changed = (typed: string): void => {
         edit({ [field]: textOf(typed) });
@@ -187,8 +204,16 @@ export function creditsSection(input: SectionInput): TemplateResult {
                 edit({ license: chosen as FirestoreLicense });
             },
         )}
-        ${creditField(input, 'rightsHolder')} ${creditField(input, 'sourceLabel')} ${creditField(input, 'sourceUrl', 'url')}
-        ${creditField(input, 'permissionNote')}
+        ${creditField(input, 'rightsHolder')} ${creditField(input, 'permissionNote')}
+    </fieldset>`;
+}
+
+/** Where the photo comes from: the link a visitor follows (`docs/research/photo-date-source.md` §2). */
+export function sourceSection(input: SectionInput): TemplateResult {
+    const { locale } = input;
+    return html`<fieldset>
+        <legend>${photoText(locale, 'adminContent.photos.section.source')}</legend>
+        ${creditField(input, 'sourceUrl', 'url')} ${creditField(input, 'sourceLabel')}
     </fieldset>`;
 }
 

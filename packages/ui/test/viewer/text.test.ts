@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { licenseText, localizedText, photoCountText, photoDateText, poiYearsText } from '../../src/viewer/text.js';
+import { licenseText, localizedText, photoCountText, photoDateText, photoSourceText, poiYearsText } from '../../src/viewer/text.js';
 
 describe('localizedText', () => {
     it('happyPath_picksTheLocaleText', () => {
@@ -13,9 +13,31 @@ describe('localizedText', () => {
     });
 });
 
+describe('photoSourceText', () => {
+    it('happyPath_itsNameElseItsHost', () => {
+        expect(photoSourceText({ url: 'https://arhiva.example/a?b=c', label: 'Arhiva' })).toBe('Arhiva');
+        expect(photoSourceText({ url: 'https://arhiva.example/a?b=c' })).toBe('arhiva.example');
+    });
+
+    it('badPath_anAddressThatIsNotHttpsStaysAsWritten', () => {
+        expect(photoSourceText({ url: 'not an address' })).toBe('not an address');
+    });
+});
+
 describe('photoDateText', () => {
     it('happyPath_prefersTheSourcesOwnDating', () => {
         expect(photoDateText({ year: 1936, dateText: { ro: 'Iulie 1936', en: 'July 1936' } }, 'en')).toBe('July 1936');
+    });
+
+    it('happyPath_showsTheDateAtItsPrecision', () => {
+        expect(photoDateText({ year: 1936, month: 7 }, 'en')).toBe('July 1936');
+        expect(photoDateText({ year: 1936, month: 7 }, 'ro')).toBe('Iulie 1936');
+        expect(photoDateText({ year: 1936, month: 7, day: 12 }, 'en')).toBe('12 July 1936');
+        expect(photoDateText({ year: 1936, month: 7, day: 12 }, 'ro')).toBe('12 iulie 1936');
+    });
+
+    it('happyPath_theSourcesOwnDatingStaysFirst', () => {
+        expect(photoDateText({ year: 1936, month: 7, dateText: { ro: 'Vara lui 1936' } }, 'ro')).toBe('Vara lui 1936');
     });
 
     it('happyPath_showsOneYearOrARange', () => {

@@ -13,6 +13,10 @@ describe('needsManifestBuild', () => {
         ['creating a published photo', undefined, published],
         ['changing a carried field of a published photo', published, { ...published, title: { ro: 'Alt titlu', en: 'Title' } }],
         ['the processing finishing', { ...published, processing: 'pending' }, published],
+        ['a month set', { ...published, year: 1936 }, { ...published, year: 1936, month: 7 }],
+        ['a day set', { ...published, year: 1936, month: 7 }, { ...published, year: 1936, month: 7, day: 12 }],
+        ['a source address set', published, { ...published, sourceUrl: 'https://arhiva.example/1' }],
+        ['a source name changed', { ...published, sourceLabel: 'Arhiva' }, { ...published, sourceLabel: 'Muzeul' }],
     ])('happyPath_%s', (_name, before, after) => {
         expect(needsManifestBuild('photo', before, after)).toBe(true);
     });

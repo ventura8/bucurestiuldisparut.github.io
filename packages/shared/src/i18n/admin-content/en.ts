@@ -97,6 +97,8 @@ export const en: Readonly<Record<AdminContentKitKey, string>> = {
     'adminContent.field.yearStart': 'Start year',
     'adminContent.field.yearEnd': 'End year',
     'adminContent.field.dateText': 'Date as written',
+    'adminContent.field.month': 'Month',
+    'adminContent.field.day': 'Day',
     'adminContent.field.date': 'Date',
     'adminContent.field.author': 'Author',
     'adminContent.field.license': 'Licence',

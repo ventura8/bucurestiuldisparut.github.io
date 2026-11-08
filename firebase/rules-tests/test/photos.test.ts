@@ -22,6 +22,9 @@ import {
 
 const CITY_ID = 'rules-photos';
 
+/** The fixture is dated to the day; a row about the years drops the month and the day, or the date's own rule would refuse it first. */
+const YEARS_ONLY = { month: deleted(), day: deleted() };
+
 let world: World;
 let sequence = 0;
 
@@ -88,10 +91,15 @@ describe('create', () => {
         ['the corners of the city plus half a degree', { location: { lat: CITY_BOUNDS.south - 0.5, lng: CITY_BOUNDS.west - 0.5 } }],
         ['a year without an end year', { yearEnd: deleted() }],
         ['the same start and end year', { year: 1900, yearEnd: 1900 }],
-        ['the oldest and newest years', { year: 1800, yearEnd: 2100 }],
+        ['the oldest and newest years', { ...YEARS_ONLY, year: 1800, yearEnd: 2100 }],
         ['no links', { links: [] }],
         ['a dating text in Romanian only', { dateText: { ro: 'Iarna 1940' } }],
         ['a source URL with a path, query and fragment', { sourceUrl: 'https://example.org/a/b?c=d#e' }],
+        ['a year and a month', { year: 1936, yearEnd: deleted(), month: 7, day: deleted() }],
+        ['a year, a month and a day', { year: 1936, yearEnd: deleted(), month: 7, day: 12 }],
+        ['a month within a range of one year', { year: 1936, yearEnd: 1936, month: 12, day: 31 }],
+        ['29 February of a leap year', { year: 1936, yearEnd: deleted(), month: 2, day: 29 }],
+        ['29 February of a century divisible by 400', { year: 2000, yearEnd: deleted(), month: 2, day: 29 }],
     ])('happyPath_adminCreatesAPhotoWith_%s', async (_label, changes) => {
         expect(await create(changes)).toBe('allow');
     });
@@ -111,11 +119,25 @@ describe('create', () => {
         ['an English description over 5000 characters', { description: { ro: 'Vedere.', en: 'x'.repeat(5001) } }],
         ['a dating text over 100 characters', { dateText: { ro: 'x'.repeat(101) } }],
         ['a dating text without Romanian', { dateText: { en: 'July 1936' } }],
-        ['a year before 1800', { year: 1799, yearEnd: 1800 }],
-        ['a fractional year', { year: 1935.5 }],
-        ['an end year before the year', { year: 1935, yearEnd: 1930 }],
-        ['an end year after 2100', { yearEnd: 2101 }],
-        ['an end year without a year', { year: deleted() }],
+        ['a year before 1800', { ...YEARS_ONLY, year: 1799, yearEnd: 1800 }],
+        ['a fractional year', { ...YEARS_ONLY, year: 1935.5 }],
+        ['an end year before the year', { ...YEARS_ONLY, year: 1935, yearEnd: 1930 }],
+        ['an end year after 2100', { ...YEARS_ONLY, yearEnd: 2101 }],
+        ['an end year without a year', { ...YEARS_ONLY, year: deleted() }],
+        ['a month without a year', { year: deleted(), yearEnd: deleted(), month: 7 }],
+        ['a month with a range of years', { year: 1936, yearEnd: 1940, month: 7 }],
+        ['month 0', { yearEnd: deleted(), month: 0 }],
+        ['month 13', { yearEnd: deleted(), month: 13 }],
+        ['a fractional month', { yearEnd: deleted(), month: 1.5 }],
+        ['a month as text', { yearEnd: deleted(), month: '7' }],
+        ['a day without a month', { yearEnd: deleted(), month: deleted(), day: 12 }],
+        ['day 0', { yearEnd: deleted(), month: 7, day: 0 }],
+        ['a fractional day', { yearEnd: deleted(), month: 7, day: 1.5 }],
+        ['31 April', { year: 1936, yearEnd: deleted(), month: 4, day: 31 }],
+        ['32 July', { year: 1936, yearEnd: deleted(), month: 7, day: 32 }],
+        ['29 February of a common year', { year: 1937, yearEnd: deleted(), month: 2, day: 29 }],
+        ['29 February of a century not divisible by 400', { year: 1900, yearEnd: deleted(), month: 2, day: 29 }],
+        ['30 February of a leap year', { year: 1936, yearEnd: deleted(), month: 2, day: 30 }],
         ['a location north of the city', { location: { lat: CITY_BOUNDS.north + 0.51, lng: 26.1 } }],
         ['a location south of the city', { location: { lat: CITY_BOUNDS.south - 0.51, lng: 26.1 } }],
         ['a location east of the city', { location: { lat: 44.43, lng: CITY_BOUNDS.east + 0.51 } }],
@@ -212,6 +234,12 @@ describe('update', () => {
         ['a title without Romanian', { title: { en: 'Victory Avenue' } }],
         ['a removed title', { title: deleted() }],
         ['a location outside the city', { location: { lat: 47.16, lng: 27.58 } }],
+        ['a year before 1800', { ...YEARS_ONLY, year: 1799 }],
+        ['an end year before the year', { ...YEARS_ONLY, year: 1935, yearEnd: 1930 }],
+        ['an end year after 2100', { ...YEARS_ONLY, yearEnd: 2101 }],
+        ['a month with a range of years', { yearEnd: 1940 }],
+        ['a removed month that leaves its day', { month: deleted() }],
+        ['31 April', { yearEnd: deleted(), month: 4, day: 31 }],
     ])('badPath_editsAreValidatedLikeCreates_%s', async (_label, changes) => {
         expect(await update(processed(), changes)).toBe('deny');
     });

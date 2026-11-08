@@ -50,6 +50,7 @@ import {
     yearSchema,
     zoomSchema,
 } from './primitives.js';
+import { daySchema, monthSchema, withPhotoDate } from './photo-date.js';
 
 /** The photo licences Firestore accepts: the published ones plus `unknown`, which cannot be published. */
 export const FIRESTORE_LICENSES = [...LICENSES, 'unknown'] as const;
@@ -168,12 +169,15 @@ const photoReplacementSchema = z.strictObject({
  * `original` and `replacement` are owned by `photos.onUpload`; `createdAt` and `createdBy` are set once by the client
  * that creates it.
  */
-export const photoDocSchema = z
+const photoDocObjectSchema = z
     .strictObject({
         title: localizedPartial(200),
         description: localizedPartial(5000).optional(),
         year: yearSchema.optional(),
         yearEnd: yearSchema.optional(),
+        /** The date's precision beyond the year (`docs/research/photo-date-source.md`). */
+        month: monthSchema.optional(),
+        day: daySchema.optional(),
         /** The legacy dating as written (`Iulie 1936`), shown when present (CR-1). */
         dateText: localizedPartial(100).optional(),
         author: plainText(200).optional(),
@@ -204,6 +208,8 @@ export const photoDocSchema = z
         ...stamp,
     })
     .refine(validYearRange, coded('validation.yearRange', ['yearEnd']));
+
+export const photoDocSchema = withPhotoDate(photoDocObjectSchema);
 
 /**
  * `cities/{city}/layers/{layer}`: a layer that has tiles. Created by `layers.link` or, in M3, by the publish of its first

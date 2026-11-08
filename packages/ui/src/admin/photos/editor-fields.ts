@@ -6,6 +6,7 @@
  * once it has been left (`../editing/number-fields.ts`, `DECISIONS-for-review.md` §35d).
  */
 import { html, nothing, type TemplateResult } from 'lit';
+import { live } from 'lit/directives/live.js';
 
 import { numberValue, type FieldsLeft } from '../editing/number-fields.js';
 
@@ -18,12 +19,15 @@ export interface FieldInput {
     /** The field's problem, as text (null: none). */
     readonly error: string | null;
     readonly hint?: string;
+    /** The id of a note outside the field that describes it too (one note above a pair of fields). */
+    readonly sharedHint?: string;
     /** A revoked admin's editor (`DECISIONS-for-review.md` §42d): the value can be read and copied, not changed. */
     readonly readOnly?: boolean;
 }
 
 function describedBy(input: FieldInput): string | typeof nothing {
     const ids = [
+        input.sharedHint ?? null,
         input.hint === undefined ? null : partId(input.id, 'hint'),
         input.error === null ? null : partId(input.id, 'error'),
     ].filter((id): id is string => id !== null);
@@ -111,7 +115,11 @@ export function numberField(
     </div>`;
 }
 
-/** A choice among values, each with its label. */
+/**
+ * A choice among values, each with its label. The selection is a live property, never the `selected` attribute: an option
+ * the admin has picked is dirty and ignores its attribute, so Discard, Take theirs or a remote change left the old choice
+ * on screen (the draft said March, the field May).
+ */
 export function selectField(
     input: FieldInput & { readonly options: readonly { readonly value: string; readonly label: string }[] },
     changed: (value: string) => void,
@@ -127,7 +135,7 @@ export function selectField(
                 changed((event.currentTarget as HTMLSelectElement).value);
             }}
         >
-            ${input.options.map((option) => html`<option value=${option.value} ?selected=${option.value === input.value}>${option.label}</option>`)}
+            ${input.options.map((option) => html`<option value=${option.value} .selected=${live(option.value === input.value)}>${option.label}</option>`)}
         </select>
         ${notes(input)}
     </div>`;

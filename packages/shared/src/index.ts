@@ -23,6 +23,7 @@ export type { BBox, BoundsRecord } from './geo/bbox.js';
 export { DEFAULT_COMPARE_POSITION, DEFAULT_HASH_LIMITS, MAX_HASH_LENGTH, MAX_OVERLAY_ENTRIES, decodeHash, encodeHash } from './url/hash.js';
 export type { CompareState, DecodedHash, HashLimits, HashState, MapView } from './url/hash.js';
 
+export { formatPhotoDate, monthNames } from './text/photo-date.js';
 export { MAX_URL_LENGTH, isCspOrigin, isHostOf, isHttpsUrl, isRelativeUrl, toHttpsUrl } from './text/urls.js';
 export { linkTargets, markdownToPlainText, parseMarkdown } from './text/markdown.js';
 export { redactText } from './text/redact.js';

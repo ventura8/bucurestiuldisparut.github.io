@@ -1,3 +1,4 @@
+import { translate } from '@hcm/shared';
 import type { Page } from '@playwright/test';
 
 import { recordLiveRegions } from '../support/live-regions.js';
@@ -151,6 +152,23 @@ test(
         await page.getByRole('textbox', { name: photosText(lang, 'adminContent.photos.field.sourceUrl') }).fill('http://arhiva.example');
         await expect(page.getByRole('button', { name: photosText(lang, 'adminContent.photos.editor.save'), exact: true })).toBeDisabled();
         await expectStateSound(page, adminVisit('photos.editor-invalid', lang));
+        await page.getByRole('button', { name: photosText(lang, 'adminContent.photos.editor.discard') }).click();
+
+        // A date to the day and a source: Month and Day appear one after the other.
+        const editing = page.locator('hcm-admin-photo-editor');
+        await editing.getByLabel(photosText(lang, 'adminContent.photos.field.year'), { exact: true }).fill('1936');
+        await editing.getByLabel(photosText(lang, 'adminContent.photos.field.month'), { exact: true }).selectOption('2');
+        const day = editing.getByLabel(photosText(lang, 'adminContent.photos.field.day'), { exact: true });
+        await day.fill('12');
+        await page.getByRole('textbox', { name: photosText(lang, 'adminContent.photos.field.sourceUrl') }).fill('https://arhiva.example/1');
+        await expectStateSound(page, adminVisit('photos.editor-date', lang));
+
+        // A day that month does not have is named at its field, and Save stays off.
+        await day.fill('30');
+        await day.press('Tab');
+        await expect(editing.getByText(translate(lang, 'validation.dateImpossible'), { exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: photosText(lang, 'adminContent.photos.editor.save'), exact: true })).toBeDisabled();
+        await expectStateSound(page, adminVisit('photos.editor-impossible-date', lang));
         await page.getByRole('button', { name: photosText(lang, 'adminContent.photos.editor.discard') }).click();
 
         // Delete asks first; once deleted, the snackbar offers Undo.

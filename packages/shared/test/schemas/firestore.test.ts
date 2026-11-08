@@ -203,6 +203,14 @@ describe('Firestore documents: bad paths', () => {
             'validation.format',
         ],
         ['an end year before the year', photoDocSchema, { ...docs.photo, year: 1981, yearEnd: 1980 }, 'yearEnd', 'validation.yearRange'],
+        [
+            'a day that month does not have',
+            photoDocSchema,
+            { ...docs.photo, year: 1937, yearEnd: 1937, month: 2, day: 29 },
+            'day',
+            'validation.dateImpossible',
+        ],
+        ['a month beside a range', photoDocSchema, { ...docs.photo, year: 1936, yearEnd: 1940, month: 7 }, 'month', 'validation.dateRange'],
         ['an unknown layer status', layerDocSchema, { ...docs.layer, status: 'live' }, 'status', 'validation.value'],
         [
             'an unknown georeferencing method',

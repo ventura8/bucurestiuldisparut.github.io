@@ -21,8 +21,8 @@ export type BulkAction =
 
 type BulkKind = BulkAction['kind'];
 
-/** Why a photo was left alone: its publish gate, a value the schema refuses, or the batch's refusal. */
-type SkipReason = PublishBlock | 'invalid' | WriteFailure;
+/** Why a photo was left alone: its publish gate, the source address, another value the schema refuses, or the batch's refusal. */
+type SkipReason = PublishBlock | 'sourceUrl' | 'invalid' | WriteFailure;
 
 interface BulkSkip {
     readonly id: string;
@@ -41,7 +41,10 @@ type Plan = { readonly write: BatchWrite | null } | { readonly skip: SkipReason 
 
 function update(path: string, photo: Stored<PhotoDoc>, fields: Readonly<Record<string, unknown>>): Plan {
     const result = validate(photoDocSchema, { ...photo.data, ...fields });
-    return result.ok ? { write: { kind: 'update', path, fields } } : { skip: 'invalid' };
+    if (result.ok) {
+        return { write: { kind: 'update', path, fields } };
+    }
+    return { skip: result.issues.some((issue) => issue.path === 'sourceUrl') ? 'sourceUrl' : 'invalid' };
 }
 
 function publishPlan(path: string, photo: Stored<PhotoDoc>, checkPlace: boolean): Plan {
