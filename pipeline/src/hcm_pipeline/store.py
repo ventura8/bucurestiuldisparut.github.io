@@ -11,7 +11,7 @@ and a fake client (`tests/fakes/documents.py`). Timestamps are `model.Timestamp`
 import calendar
 from collections.abc import Callable, Iterable, Mapping
 from datetime import UTC, datetime
-from typing import Any, Final, Protocol
+from typing import Any, Final, Protocol, runtime_checkable
 
 from google.api_core import exceptions as google_errors
 
@@ -50,6 +50,14 @@ class DocumentStore(Protocol):
     def transact(self, path: str, change: Change) -> Mapping[str, object] | None: ...
 
     def list_ids(self, collection: str) -> list[str]: ...
+
+
+@runtime_checkable
+class SkipsInvalid(Protocol):
+    """A store whose list leaves out the documents that fail their schema and counts them: the server's `worker.step` (2026-11-08).
+    `skipped` is how many the last list of a collection left out (0 before one, or from a server that counts none)."""
+
+    def skipped(self, collection: str) -> int: ...
 
 
 # --- the google-cloud-firestore adapter ------------------------------------------------------------------

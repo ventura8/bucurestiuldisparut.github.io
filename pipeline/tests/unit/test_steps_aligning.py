@@ -1,5 +1,6 @@
 """Which accepted frames a proved frame is held to, at their edges (M15-calibration-accuracy.md, *Joint solve*)."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import numpy
@@ -9,21 +10,26 @@ from hcm_pipeline.calibrate.ties import AlignImage
 from hcm_pipeline.documents import Version
 from hcm_pipeline.geo import Bounds, MercatorBox
 from hcm_pipeline.joblog import JobLog
-from hcm_pipeline.jobs import JobContext, RunFlags
+from hcm_pipeline.jobs import JobContext, LeaseLostError, RunFlags
 from hcm_pipeline.log import get_logger
 from hcm_pipeline.model import Job
+from hcm_pipeline.objects import ObjectInfo, ObjectStoreError
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.steps.aligning import (
     Held,
+    Ours,
     alignment_record,
     held_frames,
+    held_ties,
     joined_summary,
     read_onto,
     window_box,
     write_align,
 )
-from hcm_pipeline.worker.api import WorkerApiError
+from hcm_pipeline.steps.warp import Attached
+from hcm_pipeline.worker.api import RevokedError, WorkerApiError
 
+from tests.fakes.documents import MemoryStore
 from tests.fakes.world import CITY, JOB_ID, LAYER_ID, PipelineWorld, city_bounds
 
 BOUNDS = city_bounds()
@@ -130,6 +136,130 @@ def test_bad_path_a_version_the_server_cannot_read_is_no_partner_and_the_frame_g
     assert len(warned) == 1
     assert "v-1966" in warned[0]
     assert "v-1968" in warned[0]
+
+
+def test_bad_path_a_partner_whose_image_cannot_be_looked_up_is_left_out_with_one_line_naming_it(
+    world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE
+    A local worker looks a partner's `align.tif` up through worker.urls: a refusal, a store failure or an id off the path pattern."""
+    ctx = context(world, tmp_path)
+    frame(world, "v-1972", 1972)
+    frame(world, "v-1966", 1966)
+    frame(world, "v-1968", 1968)
+    frame(world, "v-1970", 1970, layerId="not a layer")
+    stat = ctx.services.objects.stat
+    failures = {
+        "v-1966": WorkerApiError("apiError.unavailable", "https://signed.example/x?X-Goog-Signature=s"),
+        "v-1968": ObjectStoreError("HTTP 500"),
+    }
+
+    def failing(path: str) -> ObjectInfo | None:
+        for version_id, error in failures.items():
+            if f"/{version_id}/" in path:
+                raise error
+        return stat(path)
+
+    monkeypatch.setattr(ctx.services.objects, "stat", failing)
+
+    assert [held.version_id for held in held_frames(ctx, Bounds.of(BOUNDS))] == ["v-1972"]
+    lines = world.log_lines()
+    for version_id in ("v-1966", "v-1968", "v-1970"):
+        assert [line for line in lines if version_id in line] == [f"the accepted frame {version_id} could not be found: fitted without it"]
+    assert not any("signed.example" in line or "not a layer" in line for line in lines)
+
+
+def test_bad_path_a_lost_lease_or_a_revoked_computer_while_looking_up_a_partner_still_stops_the_run(
+    world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE"""
+    ctx = context(world, tmp_path)
+    frame(world, "v-1972", 1972)
+    for error in (LeaseLostError("another execution"), RevokedError("disconnected")):
+
+        def stopped(_path: str, error: Exception = error) -> ObjectInfo | None:
+            raise error
+
+        monkeypatch.setattr(ctx.services.objects, "stat", stopped)
+        with pytest.raises(type(error)):
+            held_frames(ctx, Bounds.of(BOUNDS))
+
+
+def ours_over() -> Ours:
+    """The joining frame's image over the city (its scan's map is never read: the partner fails first)."""
+    box = Bounds.of(BOUNDS).mercator()
+    return Ours(Attached(Path("never-read.tif"), {}, ()), (0, 0), AlignImage(numpy.zeros((8, 8), numpy.uint8), box.left, box.top, 5.0))
+
+
+def test_bad_path_a_partner_whose_image_cannot_be_staged_or_read_is_left_out_and_the_frame_fits_alone(
+    world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE
+    Deleted between its look-up and its download, refused by worker.urls, or a file GDAL cannot read: never a failed import."""
+    ctx = context(world, tmp_path)
+    frame(world, "v-1972", 1972)
+    frame(world, "v-1966", 1966)
+    frame(world, "v-1968", 1968)
+    held = held_frames(ctx, Bounds.of(BOUNDS))
+    world.gcs.objects.pop(f"rasters/{CITY}/{LAYER_ID}/v-1966/align.tif")
+    download = ctx.services.objects.download_file
+
+    def refused(path: str, local: Path) -> ObjectInfo:
+        if "/v-1968/" in path:
+            raise WorkerApiError("apiError.worker.refused", "off the allow-list")
+        return download(path, local)
+
+    monkeypatch.setattr(ctx.services.objects, "download_file", refused)
+
+    assert held_ties(ctx, ours_over(), held) == []
+    lines = world.log_lines()
+    for version_id in ("v-1972", "v-1966", "v-1968"):
+        said = [line for line in lines if version_id in line]
+        assert said == [f"the accepted frame {version_id} could not be measured: fitted without it"]
+    assert ctx.staged == {}
+
+
+def test_bad_path_a_lost_lease_while_staging_a_partner_still_stops_the_run(
+    world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE"""
+    ctx = context(world, tmp_path)
+    frame(world, "v-1972", 1972)
+    held = held_frames(ctx, Bounds.of(BOUNDS))
+
+    def revoked(_path: str, _local: Path) -> ObjectInfo:
+        raise RevokedError("disconnected")
+
+    monkeypatch.setattr(ctx.services.objects, "download_file", revoked)
+
+    with pytest.raises(RevokedError):
+        held_ties(ctx, ours_over(), held)
+
+
+class Counting(MemoryStore):
+    """The world's documents, with a list that says it left `count` versions out, as the server's `worker.step` does since 2026-11-08."""
+
+    def __init__(self, store: MemoryStore, count: int) -> None:
+        super().__init__()
+        self.documents = store.documents
+        self.count = count
+
+    def skipped(self, collection: str) -> int:
+        return self.count if collection.endswith("/layerVersions") else 0
+
+
+@pytest.mark.parametrize(("skipped", "said"), [(2, ["2 of the city's frames could not be read and were left out"]), (0, [])])
+def test_bad_path_the_frames_the_server_left_out_of_its_list_are_counted_in_the_job_log(
+    world: PipelineWorld, tmp_path: Path, skipped: int, said: list[str]
+) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE"""
+    plain = context(world, tmp_path)
+    frame(world, "v-1972", 1972)
+    services = replace(plain.services, store=Counting(world.store, skipped))
+    ctx = JobContext(plain.config, services, plain.job, plain.version, tmp_path, RunFlags(), plain.log)
+
+    assert [held.version_id for held in held_frames(ctx, Bounds.of(BOUNDS))] == ["v-1972"]
+    assert [line for line in world.log_lines() if "of the city's frames" in line] == said
 
 
 def test_happy_path_the_record_and_the_log_line_name_every_partner() -> None:

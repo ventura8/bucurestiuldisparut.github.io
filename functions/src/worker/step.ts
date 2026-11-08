@@ -63,9 +63,17 @@ async function heldScope(deps: StepDeps, call: WorkerCall, jobId: string): Promi
     return { cityId: call.cityId, jobId, job, versionId: versionIdOf(jobId, job) };
 }
 
+/** The field the log names for an issue of the whole document (a path of ''), never an empty one. */
+const WHOLE_DOCUMENT = '(document)';
+
+/** The top field an issue is about, or `WHOLE_DOCUMENT` for the document itself. */
+function fieldOf(path: string): string {
+    return path === '' ? WHOLE_DOCUMENT : (path.split(/[.[]/u)[0] ?? path);
+}
+
 /** What the log says of a stored version that fails its schema: where, and the fields (never their values). */
 function skipped(deps: StepDeps, path: string, issues: InvalidDocumentError['issues']): void {
-    const fields = [...new Set(issues.map((issue) => issue.path.split(/[.[]/u)[0] ?? ''))];
+    const fields = [...new Set(issues.map((issue) => fieldOf(issue.path)))];
     deps.log.warn('worker skipped an invalid version', { path, fields, codes: [...new Set(issues.map((issue) => issue.code))] });
 }
 
@@ -110,13 +118,16 @@ async function idsOf(deps: StepDeps, collection: string, schema: Schema<unknown>
     return sortedIds([...found.documents, ...found.invalid]);
 }
 
-/** The ids of the city's versions that pass their schema, in order: one that fails it is never a partner (M15). */
+/**
+ * The ids of the city's versions that pass their schema, in order: one that fails it is never a partner (M15). `skipped` counts those
+ * left out, so the pipeline says so in the owner's job log (the server log names them).
+ */
 async function versionIds(deps: StepDeps, collection: string): Promise<Response> {
     const found = await deps.documents.query(collection, layerVersionDocSchema);
     for (const line of found.invalid) {
         skipped(deps, line.path, line.issues);
     }
-    return sortedIds(found.documents);
+    return { ...sortedIds(found.documents), skipped: found.invalid.length };
 }
 
 /**

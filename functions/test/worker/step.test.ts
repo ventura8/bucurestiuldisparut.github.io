@@ -143,6 +143,7 @@ describe('worker.step get and list', () => {
 
         await expect(step(world, { op: 'list', collection: FIRESTORE_PATHS.layerVersions(CITY) })).resolves.toEqual({
             ids: [JOB, 'v-1972'].sort((a, b) => a.localeCompare(b)),
+            skipped: 0,
         });
         await expect(step(world, { op: 'get', path })).resolves.toMatchObject({ data: { layerId: 'l-1972' } });
         expect(await codeOf(update(world, path, { state: 'failed' }))).toBe('apiError.worker.refused');
@@ -157,10 +158,24 @@ describe('worker.step get and list', () => {
 
         await expect(step(world, { op: 'list', collection: FIRESTORE_PATHS.layerVersions(CITY) })).resolves.toEqual({
             ids: [JOB, 'v-1972'].sort((a, b) => a.localeCompare(b)),
+            skipped: 1,
         });
         await expect(step(world, { op: 'get', path: broken })).resolves.toEqual({ data: null, updateTime: null });
         const warned = world.deps.recording.records.filter((record) => record.message === 'worker skipped an invalid version');
         expect(warned.map((record) => record.data)).toContainEqual(expect.objectContaining({ path: broken, fields: ['year'] }));
+    });
+
+    it('badPath_aWholeDocumentIssueIsLoggedAsTheDocumentNeverAnEmptyField @S-A62-BAD-HELD-UNREADABLE', async () => {
+        const world = await held();
+        const broken = FIRESTORE_PATHS.layerVersion(CITY, 'v-1966');
+        world.deps.documents.seed(broken, 'not a version');
+
+        await expect(step(world, { op: 'list', collection: FIRESTORE_PATHS.layerVersions(CITY) })).resolves.toEqual({
+            ids: [JOB],
+            skipped: 1,
+        });
+        const warned = world.deps.recording.records.filter((record) => record.message === 'worker skipped an invalid version');
+        expect(warned.map((record) => record.data)).toEqual([expect.objectContaining({ path: broken, fields: ['(document)'] })]);
     });
 
     it('badPath_theJobsOwnVersionThatFailsItsSchemaIsStillAnError', async () => {

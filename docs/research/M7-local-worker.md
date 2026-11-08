@@ -149,7 +149,7 @@ credential, and each callable is narrowed to what one job needs (§10).
 | --- | --- | --- | --- |
 | `worker.hello` | `{cityId, workerId, version}` | sets `cities/{city}/workers/{workerId}` (`uid`, `version`, `startedAt` once, `lastSeenAt`, `state: 'idle'`) | `{pollSeconds, heartbeatSeconds}` |
 | `worker.claim` | `{cityId, workerId}` | refreshes `lastSeenAt`; in one transaction, the oldest `queued` job of the city with `runOn: 'local'`, due, not cancelled, a pipeline type, attempts left → `starting`, `attempt + 1`, `dispatchAt`, `lease {owner: 'worker:<id>', until: now + LEASE_SECONDS}`, `worker {id, uid, claimedAt}`, `machine` removed, `waitReason` removed; the worker doc `busy` with `jobId` | `{job: {jobId} \| null}` |
-| `worker.step` | `{cityId, workerId, jobId, op}` with `op` one of `get {path}`, `update {path, fields, ifUpdateTime?}`, `create {path, data}`, `list {collection}` | the document operation, on the allow-list of §2.5 only, while the caller's worker holds the job (`job.worker.id == workerId`, `job.worker.uid == uid`, and no other owner's live lease) | `get`: `{data, updateTime}`; `update`: `{ok}` (`ok: false` when `ifUpdateTime` no longer matches); `create`: `{created}`; `list`: `{ids}` |
+| `worker.step` | `{cityId, workerId, jobId, op}` with `op` one of `get {path}`, `update {path, fields, ifUpdateTime?}`, `create {path, data}`, `list {collection}` | the document operation, on the allow-list of §2.5 only, while the caller's worker holds the job (`job.worker.id == workerId`, `job.worker.uid == uid`, and no other owner's live lease) | `get`: `{data, updateTime}`; `update`: `{ok}` (`ok: false` when `ifUpdateTime` no longer matches); `create`: `{created}`; `list`: `{ids}`, and for the city's versions also `skipped` (how many failed their schema and were left out; an older server sends none) |
 | `worker.urls` | `{cityId, workerId, jobId, request}`: `{kind: 'objects', objects: [{path, method: 'GET' \| 'PUT', contentType?}]}` (at most 20) or `{kind: 'usgs', endpoint, payload}` | objects: each path on the allow-list of §2.5 → a V4 signed URL valid `WORKER_URL_SECONDS` (900 s), a PUT bound to its content type, with the object's metadata when it exists; usgs: the M2M call with the server's key, its payload checked (§2.5) | `{objects: [{path, url, method, headers, expiresAt, exists, size?, generation?, md5?}]}` or `{usgs: <M2M data>}` |
 | `worker.end` | `{cityId, workerId, jobId, outcome: 'done' \| 'failed', error?: {code, message}}` | the worker doc `idle` with `lastJob`; `failed` on a job the worker still holds unfinished → the job and its version `failed` (`error.code` an `apiError.*` code, else `apiError.imagery.processingFailed`) | `{status}` |
 
@@ -177,8 +177,10 @@ The versions of the city are read-only to every job (target `held`, `functions/s
 version but its own, and nothing of another city (`S-A62-HAPPY-HELD-FRAMES`, `S-A62-BAD-HELD-FRAMES-WRITE`). They hold what the
 owner's admin pages already show, to the owner's own computer; DECISIONS-for-review.md §107. The list holds only the versions that pass
 `layerVersionDocSchema`, and a `get` of a version that fails it answers `{data: null, updateTime: null}`, logged as *worker skipped an
-invalid version* with its path, fields and codes (never values): a stored version an earlier writer left past the schema is no partner
-and never fails the run (lesson 481, `S-A62-BAD-HELD-UNREADABLE`). Every other target of the list still fails loudly on an invalid
+invalid version* with its path, fields (`(document)` for an issue of the whole document) and codes (never values): a stored version an
+earlier writer left past the schema is no partner and never fails the run (lesson 481, `S-A62-BAD-HELD-UNREADABLE`). The list's
+`skipped` counts the versions it left out, and the pipeline writes *N of the city's frames could not be read and were left out* to the
+owner's job log (lesson 482); a pipeline before it ignores the field, and one after it reads none from an older server as 0. Every other target of the list still fails loudly on an invalid
 document; the log lines' list is unchanged.
 
 Each write is merged into the current document and the result validated with the shared schema before it is stored

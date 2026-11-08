@@ -128,6 +128,8 @@ class FakeWorkerApi:
     versions: dict[str, int] = field(default_factory=dict)
     # Documents the server cannot read (one that fails its schema answered `apiError.internal` before 2026-11-08).
     unreadable: set[str] = field(default_factory=set)
+    # Documents that fail their schema: since 2026-11-08 a list leaves them out and counts them (`skipped`).
+    invalid: set[str] = field(default_factory=set)
     generations: itertools.count[int] = field(default_factory=lambda: itertools.count(1_793_000_000_000_001))
 
     @property
@@ -292,7 +294,9 @@ class FakeWorkerApi:
         return {"created": self.store.create(path, document)}
 
     def _list(self, path: str, _request: dict[str, object]) -> dict[str, object]:
-        return {"ids": self.store.list_ids(path)}
+        ids = self.store.list_ids(path)
+        kept = [found for found in ids if f"{path}/{found}" not in self.invalid]
+        return {"ids": kept, **({"skipped": len(ids) - len(kept)} if path.endswith("/layerVersions") else {})}
 
     def _urls(self, data: dict[str, object]) -> dict[str, object]:
         request = data["request"]
