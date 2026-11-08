@@ -15,30 +15,13 @@
 // manifest is invalid or the images exceed the budget, 2 usage.
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { mkdir, rm } from 'node:fs/promises';
-import { registerHooks } from 'node:module';
 import { join } from 'node:path';
 import process from 'node:process';
 import { parseArgs } from 'node:util';
 
 import sharp from 'sharp';
 
-// Run the TypeScript sources directly (Node strips the types): their relative imports say `.js`
-// (bundler style) and the colour library's ESM files omit extensions, so a failed relative resolve is
-// retried with `.ts`, then with `.js` appended.
-registerHooks({
-    resolve(specifier, context, nextResolve) {
-        try {
-            return nextResolve(specifier, context);
-        } catch (error) {
-            if (!specifier.startsWith('.')) {
-                throw error;
-            }
-            return nextResolve(specifier.endsWith('.js') ? `${specifier.slice(0, -3)}.ts` : `${specifier}.js`, context);
-        }
-    },
-});
-
-const shared = await import('../../packages/shared/src/index.ts');
+const { shared } = await import('./sources.mjs');
 const { themeFromSeed } = await import('../../packages/ui/src/theme/dynamic-color.ts');
 
 const log = shared.createLogger('migrate-legacy');

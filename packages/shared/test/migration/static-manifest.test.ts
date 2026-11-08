@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { MigratedPhoto } from '../../src/migration/legacy-photos.js';
-import { buildStaticManifest, photoAuthorsCredit } from '../../src/migration/static-manifest.js';
+import { buildStaticManifest, creditsNamingAuthors, photoAuthorsCredit } from '../../src/migration/static-manifest.js';
 import type { Theme } from '../../src/schemas/manifest.js';
 import { tokens, validCity } from '../fixtures/manifest.js';
 
@@ -50,6 +50,43 @@ describe('photoAuthorsCredit', () => {
 
     it('badPath_noAuthorsNoCredit', () => {
         expect(photoAuthorsCredit([{}, { author: undefined }])).toBeNull();
+    });
+});
+
+describe('creditsNamingAuthors', () => {
+    const migratedLine = { label: { ro: 'Fotografii: Dan Perry, Dan Vartanian', en: 'Photos: Dan Perry, Dan Vartanian' } };
+    const osm = { label: { ro: 'Date © OSM', en: 'Data © OSM' }, url: 'https://www.openstreetmap.org/copyright' };
+    const photos = [{ author: 'Dan Vartanian' }, { author: 'Studiourile Buftea' }, {}, { author: 'Dan Perry' }];
+
+    it('happyPath_theMigratedLineListsTheNewAuthorToo', () => {
+        expect(creditsNamingAuthors([migratedLine, osm], photos)).toEqual([
+            {
+                label: {
+                    ro: 'Fotografii: Dan Perry, Dan Vartanian, Studiourile Buftea',
+                    en: 'Photos: Dan Perry, Dan Vartanian, Studiourile Buftea',
+                },
+            },
+            osm,
+        ]);
+    });
+
+    it('happyPath_everyAuthorNamedLeavesTheCreditsAsTheyAre', () => {
+        const credits = [{ label: { ro: 'Mulțumiri lui Dan Perry, Dan Vartanian și Studiourile Buftea', en: 'Thanks' } }];
+
+        expect(creditsNamingAuthors(credits, photos)).toEqual(credits);
+    });
+
+    it('badPath_anEditedLineStaysAndTheMissingAuthorsGetALineOfTheirOwn', () => {
+        const edited = { label: { ro: 'Fotografii: Dan Perry, Dan Vartanian (colecția Perry)', en: 'Photos: Dan Perry, Dan Vartanian' } };
+        const linked = { ...migratedLine, url: 'https://example.org/authors' };
+
+        expect(creditsNamingAuthors([edited, osm], photos)).toEqual([
+            edited,
+            osm,
+            { label: { ro: 'Fotografii: Studiourile Buftea', en: 'Photos: Studiourile Buftea' } },
+        ]);
+        expect(creditsNamingAuthors([linked], photos)[1]?.label.ro).toBe('Fotografii: Studiourile Buftea');
+        expect(creditsNamingAuthors([], [{ author: 'Ana' }])).toEqual([{ label: { ro: 'Fotografii: Ana', en: 'Photos: Ana' } }]);
     });
 });
 

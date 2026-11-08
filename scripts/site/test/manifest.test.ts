@@ -17,7 +17,7 @@ describe('prepareManifest', () => {
         const [photo] = manifest.photos;
         expect(photo?.image.web).toBe(`media/${String(photo?.id)}/web.webp`);
         expect(photo?.image.thumb).toBe(`media/${String(photo?.id)}/thumb.webp`);
-        expect(media[0]).toEqual({ from: `${String(photo?.id)}/web.webp`, to: `media/${String(photo?.id)}/web.webp` });
+        expect(media[0]).toEqual({ photoId: photo?.id, from: `${String(photo?.id)}/web.webp`, to: `media/${String(photo?.id)}/web.webp` });
     });
 
     it('happyPath_theStarterKitKeepsItsMediaPaths', () => {

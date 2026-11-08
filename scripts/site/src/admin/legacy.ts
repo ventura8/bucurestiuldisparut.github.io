@@ -1,11 +1,15 @@
 import {
+    applyLegacyCorrections,
     cityImagerySchema,
+    creditsNamingAuthors,
     KNOWN_HTTPS_HOSTS,
+    legacyCorrectionsSchema,
     migrateLegacyPhotos,
     validate,
     validateManifest,
     type City,
     type CityImagery,
+    type LegacyCorrections,
     type MigratedPhoto,
 } from '@hcm/shared';
 
@@ -21,7 +25,10 @@ import type { SiteFileSystem } from '../files.js';
  *                                         (the fields `setup.createCity` takes, CR-M2b-1), plus the imagery settings of
  *                                         scripts/seed/bucharest.city.json: the manifest is the viewer's, it holds none (M8)
  * legacy/bucharest/photos.json            migrateLegacyPhotos(photos.legacy.geojson): [{sourceFile, legacyId?, photo}], the
- *                                         seed's records first, then each addition's (SEED_ADDITIONS)
+ *                                         seed's records first, then each addition's (SEED_ADDITIONS), each corrected by
+ *                                         the additions' corrections.json (the old site's later place and direction)
+ * legacy/bucharest/corrections.json       those corrections, keyed by photo id: the import applies them to the photos a
+ *                                         project already has, where the owner never changed the place or direction
  * legacy/bucharest/originals/<sourceFile> each original a record names, once (the import uploads them; photos.onUpload
  *                                         makes the public derivatives, so nothing is upscaled)
  * ```
@@ -29,7 +36,8 @@ import type { SiteFileSystem } from '../files.js';
  * The additions (`docs/research/M5-interfaces.md` → *The 2023 additions*) are the photos the old site gained after the
  * legacy seed was taken, kept in their own folder because `seed/bucharest/` stays as migrated: their ids keep clear of
  * the seed's (`migrateLegacyPhotos`' reserved ids, as `migrate-legacy.mjs --joins` gives them), so the import of a
- * project that already has the 45 adds only the new ones.
+ * project that already has the 45 adds only the new ones. The city's credits name every photo's author, the additions'
+ * too (`creditsNamingAuthors`).
  *
  * Hosting serves the files; the admin fetches them only during an import.
  */
@@ -113,6 +121,19 @@ interface SeedPhotos {
     readonly warnings: number;
 }
 
+/** Every folder's `corrections.json`, merged (a folder without one has none). */
+function correctionsOf(files: SiteFileSystem, dirs: readonly string[]): LegacyCorrections {
+    const merged: Record<string, LegacyCorrections[string]> = {};
+    for (const path of dirs.map((dir) => `${dir}/corrections.json`).filter((candidate) => files.isFile(candidate))) {
+        const result = validate(legacyCorrectionsSchema, readJson(files, path));
+        if (!result.ok) {
+            throw new SiteBuildError(`${path}: invalid corrections\n${issuesText(result.issues)}`);
+        }
+        Object.assign(merged, result.value);
+    }
+    return merged;
+}
+
 /** Migrates each folder in order; a folder's ids keep clear of the folders before it. */
 function migrateSeeds(files: SiteFileSystem, dirs: readonly string[]): SeedPhotos[] {
     const seeds: SeedPhotos[] = [];
@@ -155,14 +176,26 @@ export function planLegacyBundle(
     seedDir = DEFAULT_SEED_DIR,
     additions: readonly string[] = seedDir === DEFAULT_SEED_DIR ? SEED_ADDITIONS : [],
 ): LegacyBundle {
-    const city = legacyCity(files, seedDir);
+    const seedCity = legacyCity(files, seedDir);
     const seeds = migrateSeeds(files, [seedDir, ...additions]);
-    const photos = seeds.flatMap((seed) => seed.photos);
+    const corrections = correctionsOf(files, additions);
+    const photos = applyLegacyCorrections(
+        seeds.flatMap((seed) => seed.photos),
+        corrections,
+    );
+    const city = {
+        ...seedCity,
+        credits: creditsNamingAuthors(
+            seedCity.credits,
+            photos.map((record) => record.photo),
+        ),
+    };
     const copies = originals(files, seeds);
     return {
         files: [
             { to: `${LEGACY_FOLDER}/city.json`, content: `${JSON.stringify(city)}\n` },
             { to: `${LEGACY_FOLDER}/photos.json`, content: `${JSON.stringify(photos)}\n` },
+            { to: `${LEGACY_FOLDER}/corrections.json`, content: `${JSON.stringify(corrections)}\n` },
             ...copies,
         ],
         photos: photos.length,

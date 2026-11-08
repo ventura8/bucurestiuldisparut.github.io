@@ -41,7 +41,8 @@ describe('buildAdminSite', () => {
             originals: 56,
             warnings: 1,
             fonts: 3,
-            files: 66,
+            // The legacy bundle's corrections.json (the old site's later directions) included.
+            files: 67,
         });
         const integrity = subresourceIntegrity(files.readBytes('node_modules/mapbox-gl/dist/mapbox-gl.js'));
         expect(files.readText(`${OUT}/index.html`)).toBe(renderAdminPage(undefined, { mapboxGlIntegrity: integrity }));

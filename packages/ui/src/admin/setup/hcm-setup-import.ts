@@ -18,8 +18,19 @@ const HCM_SETUP_IMPORT_TAG = 'hcm-setup-import';
 
 type ImportSlice = SetupViewState['legacyImport'];
 
+/** Every photo of the bundle is on the map. */
 function isComplete(imported: ImportSlice): boolean {
     return imported.total > 0 && imported.done >= imported.total;
+}
+
+/** Photos on the map that get the old site's direction on the next click (`docs/research/M5-interfaces.md` → *Directions from the old site*). */
+function directions(imported: ImportSlice): number {
+    return imported.directions ?? 0;
+}
+
+/** Nothing is left to do: every photo on the map, with its direction and its author's credit. */
+function isDone(imported: ImportSlice): boolean {
+    return isComplete(imported) && directions(imported) === 0 && imported.credits !== true;
 }
 
 /**
@@ -52,7 +63,7 @@ export class HcmSetupImport extends SetupBody {
         const imported = state.legacyImport;
         return html`<div class="body">
             ${
-                isComplete(imported)
+                isDone(imported)
                     ? html`<p class="success">${this.t('adminSetup.import.done', { count: String(imported.total) })}</p>`
                     : this.renderAction(state)
             }
@@ -62,7 +73,7 @@ export class HcmSetupImport extends SetupBody {
 
     private renderAction(state: SetupViewState): TemplateResult {
         const { total, running } = state.legacyImport;
-        return html`${this.renderMissing(state.legacyImport)}
+        return html`${this.renderMissing(state.legacyImport)} ${this.renderFixes(state.legacyImport)}
             <div class="actions">
                 <hcm-button
                     variant="filled"
@@ -78,12 +89,38 @@ export class HcmSetupImport extends SetupBody {
             </div>`;
     }
 
-    /** "Import the photos (45)" the first time; "Import the missing photos (12)" once some are on the map. */
+    /**
+     * "Import the photos (45)" the first time; "Import the missing photos (12)" once some are on the map; with every photo
+     * on it, "Add the old site's directions (1)", or the credits' new authors. One click does all that is left.
+     */
     private actionLabel(imported: ImportSlice): string {
         const toImport = missing(imported);
-        return toImport > 0
-            ? this.t('adminSetup.import.actionMissing', { count: String(toImport) })
-            : this.t('adminSetup.import.action', { count: String(imported.total) });
+        if (toImport > 0) {
+            return this.t('adminSetup.import.actionMissing', { count: String(toImport) });
+        }
+        if (!isComplete(imported)) {
+            return this.t('adminSetup.import.action', { count: String(imported.total) });
+        }
+        return directions(imported) > 0
+            ? this.t('adminSetup.import.actionDirections', { count: String(directions(imported)) })
+            : this.t('adminSetup.import.actionCredits');
+    }
+
+    /** How many directions the click adds, and the credits' new authors (not while the import runs). */
+    private renderFixes(imported: ImportSlice): TemplateResult {
+        if (imported.running) {
+            return EMPTY;
+        }
+        const count = directions(imported);
+        const notes = [
+            ...(count > 0 ? [this.t('adminSetup.import.directions', { count: String(count) })] : []),
+            ...(imported.credits === true ? [this.t('adminSetup.import.credits')] : []),
+        ];
+        return html`${notes.map((note) => this.renderNote(note))}`;
+    }
+
+    private renderNote(text: string): TemplateResult {
+        return html`<p class="note">${text}</p>`;
     }
 
     /** What the missing photos are, and that the photos already on the map stay as they are (not while the import runs). */

@@ -12,7 +12,7 @@ import { SiteBuildError, issuesText } from './errors.js';
  * { "lang": "ro", "title": "București dispărut", "description": "…", "themeColor": "#8B5E3C",
  *   "noscript": { "ro": "…", "en": "…" },
  *   "manifest": "seed/bucharest/manifest.static.json", "legacyCityId": "bucuresti", "media": "seed/bucharest/derived",
- *   "publicManifest": true, "pagesPath": "" }
+ *   "additions": ["seed/bucharest-2023"], "publicManifest": true, "pagesPath": "" }
  * ```
  *
  * M5 (`docs/research/M5-interfaces.md` §1.10): a city added after Bucharest (`npm run site:add`) has no seed manifest:
@@ -54,6 +54,12 @@ const siteSpecSchema = z
         /** Where the photo derivatives live, as `<photo id>/<file>` (the migration's `derived/` folder); with a seed manifest. */
         media: repositoryPath.optional(),
         /**
+         * Seed folders whose photos join the seed manifest's (`additions.ts`): the old site's 2023 additions, migrated on
+         * their own because `seed/bucharest/` stays as migrated. Each holds `manifest.static.json`, `derived/` and, when the
+         * old site changed photos already migrated, `corrections.json`.
+         */
+        additions: z.array(repositoryPath).max(10).optional(),
+        /**
          * The page reads the manifest the admin publishes to the project's public bucket when the build names it
          * (`HCM_PUBLIC_BUCKET`), and bundles `manifest` only without one (`public-manifest.ts`, DECISIONS-for-review.md §51e).
          */
@@ -67,7 +73,9 @@ const siteSpecSchema = z
         path: ['manifest'],
     })
     // A seed manifest's photos are copied from `media`.
-    .refine((spec) => spec.manifest === undefined || spec.media !== undefined, { message: 'validation.required', path: ['media'] });
+    .refine((spec) => spec.manifest === undefined || spec.media !== undefined, { message: 'validation.required', path: ['media'] })
+    // Additions join a seed manifest.
+    .refine((spec) => spec.additions === undefined || spec.manifest !== undefined, { message: 'validation.required', path: ['manifest'] });
 
 export type SiteSpec = z.infer<typeof siteSpecSchema>;
 

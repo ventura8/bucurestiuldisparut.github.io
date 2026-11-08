@@ -93,6 +93,10 @@ export interface LegacyImportProgress {
     readonly done: number;
     readonly total: number;
     readonly failed: readonly LegacyImportFailure[];
+    /** Photos already on the map that get the old site's direction (`legacy-fixes.ts`); none when absent. */
+    readonly directions?: number;
+    /** The city's credits do not name every bundled photo's author yet (`legacy-fixes.ts`). */
+    readonly credits?: boolean;
 }
 
 export interface LegacyImport {

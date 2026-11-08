@@ -6521,7 +6521,7 @@
             "asserts": "the bundle grew after an import -> the card says how many photos the map does not have yet and that the ones on it stay as they are, with Import the missing photos (n) -> one click uploads only the new originals and publishes them; the photos already imported are not written; a second run adds nothing",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The old site's 2023 additions (docs/research/M5-interfaces.md, The 2023 additions; seed/bucharest-2023/). Test: e2e/admin/steps/legacy.spec.ts (the bundle served as it was before and after the additions)."
+            "notes": "The old site's 2023 additions (docs/research/M5-interfaces.md, The 2023 additions; seed/bucharest-2023/). Test: e2e/admin/steps/legacy-additions.spec.ts (the bundle served as it was before and after the additions)."
         },
         {
             "id": "S-A28-BAD-OWNER-EDITS-KEPT",
@@ -6532,7 +6532,29 @@
             "asserts": "the owner retitled one imported photo and unpublished another, and the server removed a third -> a later import (from a tab opened before) uploads only the photo the server removed: the title stays, the unpublished photo stays unpublished; a photo a person deleted is never created again (unit tests: the emulator stamps every delete with one fake account)",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The old site's 2023 additions (docs/research/M5-interfaces.md, The 2023 additions): the import reads each photo's history (kept after a delete) to tell an owner's delete or unpublish from an import that stopped. Test: e2e/admin/steps/legacy.spec.ts."
+            "notes": "The old site's 2023 additions (docs/research/M5-interfaces.md, The 2023 additions): the import reads each photo's history (kept after a delete) to tell an owner's delete or unpublish from an import that stopped. Test: e2e/admin/steps/legacy-additions.spec.ts."
+        },
+        {
+            "id": "S-A28-HAPPY-DIRECTIONS",
+            "behaviour": "A28",
+            "area": "admin",
+            "path": "happy",
+            "title": "A map whose photo has no direction gets the old site's in one click, and the credits name the new author",
+            "asserts": "Parc Ferdinand imported as first migrated (no direction) -> the card says how many directions the old site adds and that the credits lack an author, with Add the old site's directions (1) -> one click, no upload: the photo has the old site's point, bearing 219.1 and field of view 50, another photo's direction is unchanged, the city's credits name Studiourile Buftea; the step is done",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Directions from the old site (docs/research/M5-interfaces.md; seed/bucharest-2023/corrections.json, legacy/bucharest/corrections.json in the admin bundle). Test: e2e/admin/steps/legacy-additions.spec.ts."
+        },
+        {
+            "id": "S-A28-BAD-OWNER-DIRECTION-KEPT",
+            "behaviour": "A28",
+            "area": "admin",
+            "path": "bad",
+            "title": "The owner's own direction and place are never overwritten by the old site's",
+            "asserts": "a tab offers the direction, then the owner aims and moves the photo (a person's change in its history) -> the click leaves the owner's point, bearing and field of view as they are and the step is done; a tab opened afterwards offers no direction",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Directions from the old site (docs/research/M5-interfaces.md): a correction applies only to a photo whose direction is still the migration's and that no person aimed; its point moves only while no person moved it (unit tests: packages/admin/test/import/legacy-fixes.test.ts). Test: e2e/admin/steps/legacy-additions.spec.ts."
         },
         {
             "id": "S-A29-HAPPY",

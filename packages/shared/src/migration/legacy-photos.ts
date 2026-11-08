@@ -3,10 +3,13 @@
  * Polygons sharing a `photo` URL) to manifest photos, as pure functions (PLAN → M1; the CLI is
  * `scripts/seed/migrate-legacy.mjs`).
  *
- * - Every Point is a photo. A Polygon is that photo's view cone: it is linked to the Point with the
- *   identical `photo` URL whose position is nearest to one of its vertices (one file can be shown
+ * - Every Point is a photo. A Polygon is that photo's view cone: it is linked to the Point of the same
+ *   original file ({@link legacyPhotoKey}: the URL's decoded file name, whatever its host, its `%20`s
+ *   or its Unicode form) whose position is nearest to one of its vertices (one file can be shown
  *   from two places; each place stays its own photo), and bearing and field of view are measured
- *   from the cone (apex = the photo point).
+ *   from the cone (apex = the photo point). Matching the URLs as written would leave a cone whose
+ *   URL is spelled differently without its point, a second photo without a direction beside it
+ *   (`docs/LESSONS.md`, 2026-11-08).
  * - A Polygon without any Point is a photo too, placed at the cone's apex.
  * - Ids are the slug of the file name, with `-2`, `-3` on collisions, in feature order (stable).
  * - Titles are Romanian; `source`/`description` HTML becomes plain text plus https links;
@@ -73,6 +76,7 @@ const legacyCollectionSchema = z.object({ type: z.literal('FeatureCollection'), 
 
 /** A feature that will become a photo; `cone` is filled in when a Polygon is linked to it. */
 interface Seed {
+    readonly key: string;
     readonly index: number;
     readonly legacyId: string | undefined;
     readonly properties: LegacyProperties;
@@ -85,6 +89,8 @@ interface Located {
     readonly index: number;
     readonly feature: LegacyFeature;
     readonly fileName: string;
+    /** {@link legacyPhotoKey} of the feature's `photo`. */
+    readonly key: string;
 }
 
 /** A file name without a directory part and not hidden: what can safely be joined to `photos/`. */
@@ -106,6 +112,14 @@ export function legacyFileName(photoUrl: string): string | null {
     return SAFE_FILE_NAME.test(name) ? name : null;
 }
 
+/**
+ * What tells two features that show the same original: the decoded file name in Unicode NFC (`parcul%20ferdinand.jpg`
+ * on one host and `parcul ferdinand.jpg` on another are one file; `ţ` and `t` with a combining cedilla are one letter).
+ */
+export function legacyPhotoKey(fileName: string): string {
+    return fileName.normalize('NFC');
+}
+
 function locate(item: unknown, index: number, warnings: MigrationWarning[]): Located[] {
     const parsed = legacyFeatureSchema.safeParse(item);
     if (!parsed.success) {
@@ -117,11 +131,12 @@ function locate(item: unknown, index: number, warnings: MigrationWarning[]): Loc
         warnings.push({ feature: index, message: `skipped: unusable photo file name in ${parsed.data.properties.photo}` });
         return [];
     }
-    return [{ index, feature: parsed.data, fileName }];
+    return [{ index, feature: parsed.data, fileName, key: legacyPhotoKey(fileName) }];
 }
 
 function seedOf(located: Located, location: LngLat, cone: MeasuredCone | null): Seed {
     return {
+        key: located.key,
         index: located.index,
         legacyId: located.feature.id,
         properties: located.feature.properties,
@@ -172,10 +187,10 @@ function nearestSeed(candidates: readonly Seed[], vertices: readonly LngLat[]): 
     return best;
 }
 
-/** Links a cone to the photo point with the same `photo` URL nearest to it, or returns the orphan photo it becomes. */
+/** Links a cone to the photo point of the same original nearest to it, or returns the orphan photo it becomes. */
 function attachCone(seeds: readonly Seed[], located: Located, vertices: readonly LngLat[], warnings: MigrationWarning[]): Seed[] {
     const target = nearestSeed(
-        seeds.filter((seed) => seed.properties.photo === located.feature.properties.photo),
+        seeds.filter((seed) => seed.key === located.key),
         vertices,
     );
     if (target === undefined) {

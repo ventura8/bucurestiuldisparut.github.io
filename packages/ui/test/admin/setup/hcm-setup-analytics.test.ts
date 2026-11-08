@@ -267,6 +267,35 @@ describe('<hcm-setup-import>', () => {
         expect(shadowPart(element, 'hcm-button').hasAttribute('disabled')).toBe(true);
     });
 
+    it('happyPath_aMapWithEveryPhotoIsOfferedTheOldSitesDirectionsInOneClick', async () => {
+        // Parc Ferdinand: the old site later gave it a cone (docs/research/M5-interfaces.md → Directions from the old site).
+        const { port, element } = await legacy(
+            { legacyImport: { done: 57, total: 57, failed: [], running: false, directions: 1, credits: true } },
+            'en',
+        );
+
+        expect([...element.renderRoot.querySelectorAll('.body > .note')].map((note) => note.textContent)).toEqual([
+            'Directions the old site adds to photos without one: 1. Those you set or moved stay as they are.',
+            "The credits do not name every author of the old site's photos yet.",
+        ]);
+        expect(element.renderRoot.querySelector('.success')).toBeNull();
+        await page.getByRole('button', { name: "Add the old site's directions (1)" }).click();
+
+        expect(port.calls).toEqual([['importLegacy']]);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_onlyTheCreditsLeftAreOfferedAndNothingShowsWhileItRuns', async () => {
+        const { element } = await legacy({ legacyImport: { done: 57, total: 57, failed: [], running: false, credits: true } });
+
+        expect(shadowPart(element, 'hcm-button').textContent).toBe('Adaugă noii autori la mulțumiri');
+        expect(shadowPart(element, '.body > .note').textContent).toBe(
+            'Mulțumirile nu îi numesc încă pe toți autorii fotografiilor vechiului site.',
+        );
+        const running = await legacy({ legacyImport: { done: 57, total: 57, failed: [], running: true, directions: 1 } });
+        expect(running.element.renderRoot.querySelector('.body > p.note:not([role])')).toBeNull();
+    });
+
     it('badPath_nothingDetectedYetDisablesTheButton', async () => {
         const { element } = await legacy({ legacyImport: { done: 0, total: 0, failed: [], running: false } });
 

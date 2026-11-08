@@ -1,5 +1,6 @@
 import type { EngineConfig } from '@hcm/shared';
 
+import { joinAdditions } from './additions.js';
 import { readConfigJs } from './config-js.js';
 import { contentSecurityPolicy, type ExtraSources } from './csp.js';
 import { SiteBuildError } from './errors.js';
@@ -173,13 +174,17 @@ function manifestLabel(spec: SiteSpec): string {
     return spec.manifest ?? 'the manifest the build was given';
 }
 
-/** The bundled manifest and its photos; none for a page that reads the public bucket. */
-function dataFiles(bundled: boolean, prepared: PreparedManifest, spec: SiteSpec, files: SiteFileSystem): PlannedFile[] {
+/** The bundled manifest and its photos (each from its folder: `media`, or an addition's); none for a page that reads the public bucket. */
+function dataFiles(bundled: boolean, prepared: PreparedManifest, source: SourceManifest, files: SiteFileSystem): PlannedFile[] {
     if (!bundled) {
         return [];
     }
     const photos = prepared.media.map((copy) => ({
-        from: requireFile(files, `${spec.media ?? ''}/${copy.from}`, `a photo derivative of ${manifestLabel(spec)} (site.json → media)`),
+        from: requireFile(
+            files,
+            `${source.mediaOf.get(copy.photoId) ?? source.spec.media ?? ''}/${copy.from}`,
+            `a photo derivative of ${manifestLabel(source.spec)} (site.json → media, additions)`,
+        ),
         to: `data/${copy.to}`,
     }));
     return [{ to: 'data/manifest.json', content: `${JSON.stringify(prepared.manifest)}\n` }, ...photos];
@@ -223,10 +228,10 @@ interface Plan {
 }
 
 /** A site with a manifest: bundled as `data/`, or read from the public bucket with the manifest shaping the CSP (§51e). */
-function manifestPlan(options: SiteBuildOptions, inputs: SiteInputs, source: unknown, files: SiteFileSystem): Plan {
+function manifestPlan(options: SiteBuildOptions, inputs: SiteInputs, source: SourceManifest, files: SiteFileSystem): Plan {
     const { spec, config } = inputs;
     const prepared = prepareManifest(
-        withSiteCity(source, cityRename(spec.legacyCityId, config.cityId)),
+        withSiteCity(source.manifest, cityRename(spec.legacyCityId, config.cityId)),
         options.token,
         manifestLabel(spec),
     );
@@ -237,7 +242,7 @@ function manifestPlan(options: SiteBuildOptions, inputs: SiteInputs, source: unk
     const csp = contentSecurityPolicy(withConnect(manifestOrigins(manifest, served.config), served.connect));
     const planned = [
         ...pageFiles(options, { spec, csp, configSource: served.source }, files),
-        ...dataFiles(bundled, prepared, spec, files),
+        ...dataFiles(bundled, prepared, source, files),
         ...engineFiles(files, options.engineDir ?? DEFAULT_ENGINE_DIR),
     ];
     return { files: planned, cityId: manifest.city.id, photos: bundled ? manifest.photos.length : 0 };
@@ -263,12 +268,25 @@ function bucketPlan(options: SiteBuildOptions, inputs: SiteInputs, files: SiteFi
     return { files: planned, cityId: remote.config.cityId ?? '', photos: 0 };
 }
 
-/** The manifest the site bundles or shapes its CSP from: the build's (the e2e fixture), the seed one, or none. */
-function sourceManifest(options: SiteBuildOptions, spec: SiteSpec, files: SiteFileSystem): unknown {
+/** The manifest a site bundles, with the folder of each photo an addition brought (`additions.ts`). */
+interface SourceManifest {
+    readonly spec: SiteSpec;
+    readonly manifest: unknown;
+    readonly mediaOf: ReadonlyMap<string, string>;
+}
+
+/**
+ * The manifest the site bundles or shapes its CSP from: the build's (the e2e fixture, as it is), the seed one joined by
+ * its additions, or none.
+ */
+function sourceManifest(options: SiteBuildOptions, spec: SiteSpec, files: SiteFileSystem): SourceManifest | undefined {
     if (options.manifest !== undefined) {
-        return options.manifest;
+        return { spec, manifest: options.manifest, mediaOf: new Map() };
     }
-    return spec.manifest === undefined ? undefined : readJson(files, spec.manifest);
+    if (spec.manifest === undefined) {
+        return undefined;
+    }
+    return { spec, ...joinAdditions(readJson(files, spec.manifest), spec.media ?? '', spec.additions ?? [], files) };
 }
 
 function plan(options: SiteBuildOptions, files: SiteFileSystem): Plan {

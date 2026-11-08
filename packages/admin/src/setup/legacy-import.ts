@@ -16,15 +16,25 @@ import type { StepPatch } from './state.js';
 export interface LegacyImportFlow {
     /** What is already imported (normal mode, no write). */
     detect(): Promise<void>;
-    /** "Import the 45 photos": one click. */
+    /** "Import the 45 photos": one click; it also adds the old site's directions and the additions' authors (`legacy-fixes.ts`). */
     run(): Promise<void>;
+}
+
+/** The old site's directions or the additions' authors still to add to a map that has the photos (`legacy-fixes.ts`). */
+function hasFixes(progress: LegacyImportProgress): boolean {
+    return (progress.directions ?? 0) > 0 || progress.credits === true;
+}
+
+/** Every photo on the map, with its direction and its author's credit. */
+function allDone(progress: LegacyImportProgress): boolean {
+    return progress.total > 0 && progress.done >= progress.total && !hasFixes(progress);
 }
 
 function importHealth(progress: LegacyImportProgress, checkedAt: string): StepPatch {
     if (progress.failed.length > 0) {
         return { state: 'invalid', detail: setupMessage('adminSetup.import.failed', { count: String(progress.failed.length) }), checkedAt };
     }
-    if (progress.total > 0 && progress.done >= progress.total) {
+    if (allDone(progress)) {
         return { state: 'ok', detail: null, checkedAt };
     }
     return { state: progress.done > 0 ? 'pending' : 'missing', detail: null, checkedAt };
@@ -76,9 +86,10 @@ class LegacyImport implements LegacyImportFlow {
         const { done, total, failed } = progress;
         const complete = total > 0 && done >= total && failed.length === 0;
         const siteTransferMegabytes = complete ? SITE_PUBLISH_TRANSFER_TRIMMED_MB : SITE_PUBLISH_TRANSFER_MB;
+        const fixes = { directions: progress.directions ?? 0, credits: progress.credits === true };
         this.ctx.update((state) => ({
             ...state,
-            legacyImport: { done, total, failed, running },
+            legacyImport: { done, total, failed, running, ...fixes },
             install: { ...state.install, siteTransferMegabytes },
         }));
         this.ctx.patchStep('legacyImport', { ...importHealth(progress, this.ctx.nowIso()), busy: running });

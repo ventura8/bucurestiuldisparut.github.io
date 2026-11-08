@@ -68,6 +68,18 @@ describe('planLegacyBundle', () => {
         expect(citySchema.safeParse({ ...manifestCity, mapbox: { publicToken: 'pk.e2e-fake-token' }, analytics: {} }).success).toBe(true);
         expect(photos.every((record) => photoSchema.safeParse({ ...record.photo, image: IMAGE }).success)).toBe(true);
         expect(bundle.files.filter((file) => 'from' in file).map((file) => file.to)).toContain(`${LEGACY_FOLDER}/originals/Ferdinand.png`);
+        // The old site later moved Parc Ferdinand and gave it a cone: a new project imports it so, an existing one is corrected.
+        expect(photos.find((record) => record.photo.id === 'parcul-ferdinand-1930')?.photo).toMatchObject({
+            location: { lat: 44.448183, lng: 26.139431 },
+            bearing: 219.1,
+            fov: 50,
+        });
+        const corrections = JSON.parse(generated(bundle.files, `${LEGACY_FOLDER}/corrections.json`)) as Record<string, unknown>;
+        expect(corrections).toEqual(readRepositoryJson('seed/bucharest-2023/corrections.json'));
+        expect(Object.keys(corrections)).toEqual(['parcul-ferdinand-1930']);
+        // The credits name the additions' author too.
+        const credits = city['credits'] as { label: { ro: string; en: string } }[];
+        expect(credits[0]?.label.ro).toMatch(/^Fotografii: Dan Perry, .*Studiourile Buftea$/);
     });
 
     it('happyPath_theViewerTokenAndTheAnalyticsIdsNeverTravel', () => {
@@ -163,6 +175,15 @@ describe('planLegacyBundle', () => {
         expect(() => bundledPhotos(files, ['seed/y'])).toThrow(
             new SiteBuildError('seed/y/photos/A.jpg: seed/x/photos/A.jpg has the same name, and the bundle has one originals folder'),
         );
+    });
+
+    it('badPath_invalidCorrectionsStopTheBuildAndNoneAreAnEmptyFile', () => {
+        const files = syntheticSeed([point('A.jpg', 26.08)], ['A.jpg']);
+        syntheticSeed([point('C.jpg', 26.09)], ['C.jpg'], files, 'seed/y');
+
+        expect(generated(planLegacyBundle(files, 'seed/x', ['seed/y']).files, `${LEGACY_FOLDER}/corrections.json`)).toBe('{}\n');
+        files.write('seed/y/corrections.json', JSON.stringify({ a: { bearing: 10 } }));
+        expect(() => bundledPhotos(files, ['seed/y'])).toThrow(/^seed\/y\/corrections\.json: invalid corrections\n/);
     });
 
     it('badPath_anInvalidManifestStopsTheBuild', () => {

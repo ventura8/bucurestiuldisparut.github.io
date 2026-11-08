@@ -194,6 +194,10 @@ export interface SetupViewState {
         readonly total: number;
         readonly failed: readonly { readonly id: string; readonly detail: ApiErrorCode }[];
         readonly running: boolean;
+        /** Photos on the map that get the old site's direction on the next click; none when absent. */
+        readonly directions?: number;
+        /** The city's credits do not name every old photo's author yet: the next click adds them. */
+        readonly credits?: boolean;
     };
     /** The last self-test's checks (Check again in normal mode), each with its state and a failure's reason. */
     readonly selfTest: {

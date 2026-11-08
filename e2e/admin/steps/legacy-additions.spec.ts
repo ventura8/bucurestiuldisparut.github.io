@@ -14,6 +14,11 @@ test.describe.configure({ lock: ADMIN_LOCK });
  * from the 45 photos of `seed/bucharest/` to 57 with the 12 of `seed/bucharest-2023/`. A map that has the first photos
  * is offered the missing ones in one click and gets only them; no run undoes what the owner did to an imported photo
  * (the import reads each photo's history, which outlives a delete).
+ *
+ * Directions from the old site (docs/research/M5-interfaces.md → Directions from the old site): the old site later moved
+ * Parc Ferdinand and gave it a cone (`seed/bucharest-2023/corrections.json`). A map that has the photo as first migrated
+ * (no direction) gets the old site's in one click, and the credits name the additions' author; the owner's own direction
+ * or place is never overwritten.
  */
 
 test.use({ persona: 'owner', mapOwner: 'owner' });
@@ -160,3 +165,120 @@ test(
 async function ownersEntries(emulators: EmulatorWorld, photo: string, uid: string): Promise<Record<string, unknown>[]> {
     return Object.values(await emulators.collection(`${photo}/history`)).filter((entry) => entry['updatedBy'] === uid);
 }
+
+/** Parc Ferdinand as the first migration left it, and the old site's later point and cone (corrections.json). */
+const PARC = 'parcul-ferdinand-1930';
+const MIGRATED = { lat: 44.448214, lng: 26.139544 };
+const LATER = { lat: 44.448183, lng: 26.139431 };
+
+/** Parc Ferdinand and Strada Grădinarilor (Studiourile Buftea), as a map that imported them holds them. */
+function parcAndBuftea(records: readonly BundleRecord[]): readonly BundleRecord[] {
+    return records.filter((record) => [PARC, 'strada-gradinarilor'].includes(record.photo.id));
+}
+
+/** The two photos imported, processed and published; Parc Ferdinand where the first migration put it, without a direction. */
+async function seedImported(emulators: EmulatorWorld, owner: string): Promise<void> {
+    const imported = {
+        license: 'permission-legacy',
+        rightsReview: true,
+        processing: 'done',
+        published: true,
+        links: [],
+        createdBy: owner,
+        createdAt: new Date(),
+        updatedBy: owner,
+        updatedAt: new Date(),
+    };
+    const image = (id: string): Record<string, unknown> => ({
+        web: `https://storage.e2e.test/${id}/web.webp`,
+        thumb: `https://storage.e2e.test/${id}/thumb.webp`,
+        sha256: 'a'.repeat(64),
+        w: 1,
+        h: 1,
+    });
+    await emulators.setDocument(`cities/bucharest/photos/${PARC}`, {
+        ...imported,
+        title: { ro: 'Parcul Ferdinand' },
+        legacyId: 'ci9l6usag007xkkm5f377j291',
+        location: MIGRATED,
+        image: image(PARC),
+    });
+    await emulators.setDocument('cities/bucharest/photos/strada-gradinarilor', {
+        ...imported,
+        title: { ro: 'Strada Grădinarilor' },
+        author: 'Studiourile Buftea',
+        legacyId: 'ci9l6usag007xkkm5f377j176',
+        location: { lat: 44.414593, lng: 26.126315 },
+        bearing: 90,
+        fov: 50,
+        image: image('strada-gradinarilor'),
+    });
+}
+
+test(
+    "A map whose photo has no direction gets the old site's in one click, and the credits name the new author",
+    { tag: ['@S-A28-HAPPY-DIRECTIONS'] },
+    async ({ page, lang, adminWorld }) => {
+        const { emulators } = adminWorld;
+        await seedImported(emulators, adminWorld.accounts.owner.uid);
+        await serveBundle(page, parcAndBuftea);
+        const uploads = countUploads(page);
+
+        const { card } = await importCard(page, lang, 2);
+        await expect(card.getByText(setupText(lang, 'adminSetup.import.directions', { count: '1' }))).toBeVisible();
+        await expect(card.getByText(setupText(lang, 'adminSetup.import.credits'))).toBeVisible();
+        await card
+            .getByRole('button', { name: setupText(lang, 'adminSetup.import.actionDirections', { count: '1' }), exact: true })
+            .click();
+        await imported(page, lang, 2);
+
+        expect(uploads()).toBe(0);
+        expect(await emulators.document(`cities/bucharest/photos/${PARC}`)).toMatchObject({ location: LATER, bearing: 219.1, fov: 50 });
+        expect(await emulators.document('cities/bucharest/photos/strada-gradinarilor')).toMatchObject({ bearing: 90, fov: 50 });
+        expect(await emulators.document('cities/bucharest')).toMatchObject({
+            credits: [{ label: { ro: 'Fotografii: Studiourile Buftea', en: 'Photos: Studiourile Buftea' } }],
+        });
+    },
+);
+
+test(
+    "The owner's own direction and place are never overwritten by the old site's",
+    { tag: ['@S-A28-BAD-OWNER-DIRECTION-KEPT'] },
+    async ({ page, lang, adminWorld }) => {
+        const { emulators } = adminWorld;
+        const owner = adminWorld.accounts.owner.uid;
+        await seedImported(emulators, owner);
+        await serveBundle(page, parcAndBuftea);
+        // A tab opened before the owner's change still offers the direction.
+        const { card } = await importCard(page, lang, 2);
+        const offer = card.getByRole('button', {
+            name: setupText(lang, 'adminSetup.import.actionDirections', { count: '1' }),
+            exact: true,
+        });
+        await expect(offer).toBeVisible();
+
+        // The owner aims and moves the photo in the admin (the history trigger records the person's change).
+        const own = { location: { lat: 44.4483, lng: 26.1396 }, bearing: 10, fov: 30 };
+        const path = `cities/bucharest/photos/${PARC}`;
+        await emulators.updateFields(path, { ...own, updatedBy: owner, updatedAt: new Date() }, [
+            'location',
+            'bearing',
+            'fov',
+            'updatedBy',
+            'updatedAt',
+        ]);
+        await expect
+            .poll(() => ownersEntries(emulators, path, owner), { timeout: 60_000 })
+            .toContainEqual(expect.objectContaining({ changedFields: expect.arrayContaining(['bearing']) }));
+        await offer.click();
+        await imported(page, lang, 2);
+
+        expect(await emulators.document(path)).toMatchObject(own);
+        // A tab opened now has no direction to add.
+        const fresh = await page.context().newPage();
+        await serveBundle(fresh, parcAndBuftea);
+        const { card: done } = await importCard(fresh, lang, 2);
+        await expect(done.getByText(setupText(lang, 'adminSetup.import.done', { count: '2' }))).toBeVisible();
+        await expect(done.getByText(setupText(lang, 'adminSetup.import.directions', { count: '1' }))).toBeHidden();
+    },
+);
