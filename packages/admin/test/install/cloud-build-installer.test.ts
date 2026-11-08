@@ -311,7 +311,7 @@ describe('submit', () => {
     });
 
     it('happyPath_aSiteBuildLeavesTheLegacyOriginalsOutOnceTheImportIsComplete_badPath_beforeItOrWithoutThemNot', async () => {
-        // §73k: the originals travel in legacy.tgz; a publish after step (h) moves a few MB instead of 52.
+        // §73k: the originals travel in legacy.tgz; a publish after step (h) moves a few MB instead of 60.
         const world = await installWorld();
         const legacy = { name: 'legacy.tgz', bytes: 45_000_000, sha256: 'e'.repeat(64) };
         world.manifest = installManifest({ files: { ...(installManifest()['files'] as object), legacy } });

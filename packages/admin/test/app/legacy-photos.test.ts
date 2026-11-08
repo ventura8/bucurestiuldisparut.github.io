@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { legacyPhotoStore, legacyReprocess, photoStateOf } from '../../src/app/legacy-photos.js';
+import {
+    cityCreditsOf,
+    legacyFixStore,
+    legacyPhotoStore,
+    legacyReprocess,
+    photoHistoryOf,
+    photoPlaceOf,
+    photoStateOf,
+    placeHistoryOf,
+} from '../../src/app/legacy-photos.js';
 import type { LegacyPhotoFields } from '../../src/import/bundle.js';
 import { FakeCallables, FakeDocuments } from './fakes.js';
 
@@ -58,6 +67,91 @@ describe('legacyPhotoStore', () => {
 
         await expect(s.subject.findByLegacyId('bucharest', 'legacy-1')).resolves.toBe('older');
         expect(s.documents.data.get('cities/bucharest/photos/x')).toMatchObject({ updatedBy: '', createdBy: '' });
+    });
+});
+
+describe('history (the 2023 additions)', () => {
+    it('happyPath_readsThePhotosHistoryEntriesAndSeesAPublishedPreviousVersion', async () => {
+        const s = store();
+        const query = vi.spyOn(s.documents, 'query').mockResolvedValue([
+            { id: 'e1', data: { action: 'create', previous: null, updatedBy: 'owner-uid' } },
+            { id: 'e2', data: { action: 'update', previous: { published: true }, updatedBy: 'owner-uid' } },
+            { id: 'e3', data: { action: 'delete', previous: { published: false }, updatedBy: 'owner-uid' } },
+        ]);
+
+        await expect(s.subject.history('bucharest', 'la-leu')).resolves.toEqual({ deleted: true, everPublished: true });
+        expect(query).toHaveBeenCalledWith('cities/bucharest/photos/la-leu/history', []);
+    });
+
+    it('badPath_theServersWritesAndNeverPublishedVersionsSayNoPersonDeletedOrUnpublishedIt', () => {
+        expect(photoHistoryOf([])).toEqual({ deleted: false, everPublished: false });
+        expect(
+            photoHistoryOf([
+                { data: { action: 'create', previous: null, updatedBy: 'owner-uid' } },
+                { data: { action: 'update', previous: { published: false }, updatedBy: 'owner-uid' } },
+                { data: { action: 'update', previous: 'odd', updatedBy: 'owner-uid' } },
+                // A delete by the server (a function, or the e2e world's reset) is not a person's.
+                { data: { action: 'delete', previous: { published: true }, updatedBy: 'system:unknown' } },
+                { data: { action: 'delete', previous: { published: true }, updatedBy: 'fn-photos@demo-hcm.iam.gserviceaccount.com' } },
+                { data: { action: 'delete', previous: { published: true } } },
+                { data: { action: 'delete', updatedBy: '' } },
+            ]),
+        ).toEqual({ deleted: false, everPublished: false });
+    });
+});
+
+describe("legacyFixStore (the old site's directions)", () => {
+    const credit = { label: { ro: 'Fotografii: Dan Perry', en: 'Photos: Dan Perry' } };
+
+    it('happyPath_readsAPlaceItsHistoryAndTheCreditsAndWritesThemStamped', async () => {
+        const documents = new FakeDocuments();
+        const subject = legacyFixStore({ documents }, () => 'owner-uid');
+        documents.data.set('cities/bucharest/photos/parc', { location: { lat: 44.4, lng: 26.1 }, published: true });
+        documents.data.set('cities/bucharest', { credits: [credit] });
+        const query = vi
+            .spyOn(documents, 'query')
+            .mockResolvedValue([{ id: 'e1', data: { action: 'update', changedFields: ['fov'], updatedBy: 'owner-uid' } }]);
+
+        await expect(subject.place('bucharest', 'parc')).resolves.toEqual({ location: { lat: 44.4, lng: 26.1 } });
+        await expect(subject.place('bucharest', 'gone')).resolves.toBeNull();
+        await expect(subject.history('bucharest', 'parc')).resolves.toEqual({ placed: false, aimed: true });
+        await expect(subject.credits('bucharest')).resolves.toEqual([credit]);
+        const set = vi.spyOn(documents, 'set');
+        await subject.aim('bucharest', 'parc', { bearing: 219.1, fov: 50, location: { lat: 44.5, lng: 26.2 } });
+        await subject.saveCredits('bucharest', [credit, credit]);
+
+        expect(query).toHaveBeenCalledWith('cities/bucharest/photos/parc/history', []);
+        const stamp = { updatedBy: 'owner-uid', updatedAt: { sentinel: 'serverTimestamp' } };
+        // Merged: the rest of the photo and of the city stays as it is.
+        expect(set.mock.calls).toEqual([
+            ['cities/bucharest/photos/parc', { bearing: 219.1, fov: 50, location: { lat: 44.5, lng: 26.2 }, ...stamp }, { merge: true }],
+            ['cities/bucharest', { credits: [credit, credit], ...stamp }, { merge: true }],
+        ]);
+    });
+
+    it('badPath_aMalformedPlaceIsAbsentAndOnlyAPersonsChangeOfAPlaceCounts', () => {
+        expect(photoPlaceOf({ location: { lat: 'x' }, bearing: 90, fov: 'wide' })).toEqual({ bearing: 90 });
+        expect(photoPlaceOf({ fov: 40 })).toEqual({ fov: 40 });
+        expect(photoPlaceOf(null)).toBeNull();
+        expect(
+            placeHistoryOf([
+                // The import's own create, the server's write and an entry without its fields say nothing.
+                { data: { action: 'create', changedFields: ['location', 'bearing'], updatedBy: 'owner-uid' } },
+                { data: { action: 'update', changedFields: ['location'], updatedBy: 'system:unknown' } },
+                { data: { action: 'update', updatedBy: 'owner-uid' } },
+                { data: { action: 'update', changedFields: ['title'], updatedBy: 'owner-uid' } },
+            ]),
+        ).toEqual({ placed: false, aimed: false });
+        expect(placeHistoryOf([{ data: { action: 'update', changedFields: ['location'], updatedBy: 'owner-uid' } }])).toEqual({
+            placed: true,
+            aimed: false,
+        });
+    });
+
+    it('badPath_noCityOrCreditsItDoesNotUnderstandAreLeftAlone', () => {
+        expect(cityCreditsOf(null)).toBeNull();
+        expect(cityCreditsOf({ credits: [{ label: 'odd' }] })).toBeNull();
+        expect(cityCreditsOf({})).toEqual([]);
     });
 });
 

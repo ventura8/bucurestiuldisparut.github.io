@@ -146,10 +146,10 @@ test('Setup, the legacy import ended: the snackbar says how many photos are on t
     const setup = new SetupPage(page, lang);
     await page.goto(adminPath(lang, 'setup/legacyImport'));
     const card = await setup.show('legacyImport');
-    await card.getByRole('button', { name: setupText(lang, 'adminSetup.import.action', { count: '45' }) }).click();
+    await card.getByRole('button', { name: setupText(lang, 'adminSetup.import.action', { count: '57' }) }).click();
 
     const snackbar = page.locator('hcm-snackbar').locator('.snackbar');
-    await expect(snackbar).toContainText(setupText(lang, 'adminSetup.import.someOnMap', { done: '0', total: '45' }), {
+    await expect(snackbar).toContainText(setupText(lang, 'adminSetup.import.someOnMap', { done: '0', total: '57' }), {
         timeout: 180_000,
     });
     // The pointer rests on it, which holds it open (its timer waits while it is pointed at) for the checkers.

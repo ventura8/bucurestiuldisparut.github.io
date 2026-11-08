@@ -189,6 +189,10 @@ export interface LegacyImportProgress {
     readonly done: number;
     readonly total: number;
     readonly failed: readonly LegacyImportFailure[];
+    /** Photos already on the map that get the old site's direction; none when absent. */
+    readonly directions?: number;
+    /** The city's credits do not name every old photo's author yet. */
+    readonly credits?: boolean;
 }
 
 /** The legacy Bucharest import (google-clients, §3.3 h): idempotent by document id and `legacyId`. */

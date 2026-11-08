@@ -105,6 +105,35 @@ describe('migrateLegacyPhotos: photos and cones', () => {
         expect(migration.photos.map((photo) => photo.photo.id)).toEqual(['b', 'a', 'c']);
     });
 
+    it('happyPath_aConeFindsItsPointWhateverTheUrlsSpellingOrHost', () => {
+        // The old site wrote one photo's URL with spaces, %20 or on another host, and in two Unicode forms (ţ, t + U+0327).
+        const spelled = (url: string, feature: Record<string, unknown>): Record<string, unknown> => ({
+            ...feature,
+            properties: { ...(feature['properties'] as Record<string, unknown>), photo: url },
+        });
+        const migration = migrate([
+            spelled('https://one.example/photos/parcul ferdinand 1930.jpg', point('x.jpg', UNIRII)),
+            spelled('https://two.example/photos/parcul%20ferdinand%201930.jpg', cone('x.jpg', UNIRII, 251.4, 54)),
+            spelled(`${BASE}Piaţa.jpg`, point('x.jpg', IZVOR)),
+            spelled(`${BASE}Piaţa.jpg`, cone('x.jpg', IZVOR, 12, 40)),
+        ]);
+
+        expect(migration.photos.map((photo) => [photo.photo.id, photo.photo.bearing, photo.photo.fov])).toEqual([
+            ['parcul-ferdinand-1930', 251.4, 54],
+            ['piata', 12, 40],
+        ]);
+        expect(migration.warnings).toEqual([]);
+    });
+
+    it('badPath_aConeOfAnotherFileStaysItsOwnPhoto', () => {
+        const migration = migrate([point('Coltul strada Fonteriei.jpg', IZVOR), cone('Fonteriei.jpg', IZVOR, 164.3, 45)]);
+
+        expect(migration.photos.map((photo) => [photo.photo.id, photo.photo.bearing ?? null])).toEqual([
+            ['coltul-strada-fonteriei', null],
+            ['fonteriei', 164.3],
+        ]);
+    });
+
     it('badPath_aSecondConeForThePhotoIsIgnored', () => {
         const migration = migrate([point('x.jpg', UNIRII), cone('x.jpg', UNIRII, 10, 40), cone('x.jpg', UNIRII, 200, 40)]);
 
@@ -137,6 +166,26 @@ describe('migrateLegacyPhotos: photos and cones', () => {
 
         expect(migration.photos).toEqual([]);
         expect(migration.warnings).toEqual([{ feature: 0, message: 'skipped: a cone without a photo point and without a usable shape' }]);
+    });
+});
+
+describe('migrateLegacyPhotos: photos joining an earlier migration', () => {
+    it('happyPath_theNewIdsKeepClearOfTheReservedOnesAndStayStable', () => {
+        const features = [
+            point('Gara Obor.jpg', UNIRII, {}, 'legacy-new'),
+            cone('Gara Obor.jpg', UNIRII, 90, 50),
+            point('La leu.jpeg', IZVOR),
+        ];
+        const reserved = ['gara-obor'];
+
+        const joined = migrateLegacyPhotos({ type: 'FeatureCollection', features }, undefined, reserved);
+
+        expect(joined.photos.map((photo) => [photo.photo.id, photo.legacyId ?? null, photo.photo.bearing ?? null])).toEqual([
+            ['gara-obor-2', 'legacy-new', 90],
+            ['la-leu', null, null],
+        ]);
+        expect(migrateLegacyPhotos({ type: 'FeatureCollection', features }, undefined, reserved)).toEqual(joined);
+        expect(migrate(features).photos[0]?.photo.id).toBe('gara-obor');
     });
 });
 

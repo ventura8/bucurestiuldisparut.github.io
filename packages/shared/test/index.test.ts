@@ -8,6 +8,7 @@ import { M6_SETUP_UX_EXPORTS } from './fixtures/exports-m6-setup-ux.js';
 import { M7_EXPORTS } from './fixtures/exports-m7.js';
 import { M8_EXPORTS } from './fixtures/exports-m8.js';
 import { M9_EXPORTS } from './fixtures/exports-m9.js';
+import { MIGRATION_EXPORTS } from './fixtures/exports-migration.js';
 
 /** The public API, by module: a removed or renamed export breaks the engine, the admin and the functions. */
 const EXPORTS = {
@@ -581,27 +582,7 @@ const EXPORTS = {
     /** M8 (docs/research/M8-join-interfaces.md §2): one date's frames joined into one layer, the plan of the dates. */
     m8: M8_EXPORTS,
     m9: M9_EXPORTS,
-    migration: [
-        'KNOWN_HTTPS_HOSTS',
-        'decodeEntities',
-        'legacyHtmlToText',
-        'tokenizeHtml',
-        'legacyFileName',
-        'migrateLegacyPhotos',
-        'MAX_ID_LENGTH',
-        'createIdAllocator',
-        'fileStem',
-        'isCameraName',
-        'slugify',
-        'truncateSlug',
-        'uniqueIds',
-        'buildStaticManifest',
-        'photoAuthorsCredit',
-        'MAX_YEAR',
-        'MIN_YEAR',
-        'parseLegacyYear',
-        'yearIn',
-    ],
+    migration: MIGRATION_EXPORTS,
 };
 
 describe('@hcm/shared public API', () => {

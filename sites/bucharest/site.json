@@ -10,6 +10,7 @@
     "manifest": "seed/bucharest/manifest.static.json",
     "legacyCityId": "bucuresti",
     "media": "seed/bucharest/derived",
+    "additions": ["seed/bucharest-2023"],
     "publicManifest": true,
     "pagesPath": ""
 }

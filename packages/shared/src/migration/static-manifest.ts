@@ -17,16 +17,52 @@ export interface StaticManifestInput {
     readonly images: ReadonlyMap<string, PhotoImage>;
 }
 
+/** One credit line naming `authors` (at least one), alphabetically in Romanian order, each once. */
+function authorsLine(authors: readonly string[]): Credit {
+    const names = [...new Set(authors)].toSorted((a, b) => a.localeCompare(b, 'ro')).join(', ');
+    return { label: { ro: `${translate('ro', 'photos.title')}: ${names}`, en: `${translate('en', 'photos.title')}: ${names}` } };
+}
+
+/** The photos' authors, without the photos that have none. */
+function authorsIn(photos: readonly { readonly author?: string | undefined }[]): string[] {
+    return photos.flatMap((photo) => (photo.author === undefined ? [] : [photo.author]));
+}
+
 /** One credit naming every photo author, alphabetically in Romanian order; null when there is none. */
 export function photoAuthorsCredit(photos: readonly { readonly author?: string | undefined }[]): Credit | null {
-    const authors = [...new Set(photos.flatMap((photo) => (photo.author === undefined ? [] : [photo.author])))].toSorted((a, b) =>
-        a.localeCompare(b, 'ro'),
-    );
-    if (authors.length === 0) {
+    const authors = authorsIn(photos);
+    return authors.length === 0 ? null : authorsLine(authors);
+}
+
+/** The names a line `authorsLine` wrote lists, while it is untouched; null for any other credit. */
+function authorsOf(credit: Credit): readonly string[] | null {
+    const prefix = `${translate('ro', 'photos.title')}: `;
+    if (!credit.label.ro.startsWith(prefix)) {
         return null;
     }
-    const names = authors.join(', ');
-    return { label: { ro: `${translate('ro', 'photos.title')}: ${names}`, en: `${translate('en', 'photos.title')}: ${names}` } };
+    const listed = credit.label.ro.slice(prefix.length).split(', ');
+    return JSON.stringify(authorsLine(listed)) === JSON.stringify(credit) ? listed : null;
+}
+
+function named(credits: readonly Credit[], author: string): boolean {
+    return credits.some((credit) => credit.label.ro.includes(author) || credit.label.en.includes(author));
+}
+
+/**
+ * `credits` naming every author of `photos` (the old site's 2023 additions brought a new one, `docs/research/M5-interfaces.md`
+ * → *The 2023 additions*): unchanged when each is named already; else the authors line the migration wrote, while it is
+ * untouched, lists them all; else (that line edited or removed) a line for the authors no credit names is added last.
+ */
+export function creditsNamingAuthors(credits: readonly Credit[], photos: readonly { readonly author?: string | undefined }[]): Credit[] {
+    const missing = authorsIn(photos).filter((author) => !named(credits, author));
+    if (missing.length === 0) {
+        return [...credits];
+    }
+    const line = credits.findIndex((credit) => authorsOf(credit) !== null);
+    if (line < 0) {
+        return [...credits, authorsLine(missing)];
+    }
+    return credits.map((credit, index) => (index === line ? authorsLine([...(authorsOf(credit) ?? []), ...missing]) : credit));
 }
 
 /** The manifest for `input`, validated (a failure lists the localized issues). */

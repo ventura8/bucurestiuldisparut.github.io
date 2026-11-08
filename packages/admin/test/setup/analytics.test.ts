@@ -295,7 +295,7 @@ describe('legacy import', () => {
         await flow.run();
 
         expect(seen).toEqual([20]);
-        expect(ctx.state().legacyImport).toEqual({ done: 45, total: 45, failed: [], running: false });
+        expect(ctx.state().legacyImport).toEqual({ done: 45, total: 45, failed: [], running: false, directions: 0, credits: false });
         expect(ctx.state().steps.legacyImport).toMatchObject({ state: 'ok', busy: false, used: { inputs: 1, consents: 0 } });
     });
 
@@ -314,6 +314,24 @@ describe('legacy import', () => {
             state: 'invalid',
             detail: { key: 'adminSetup.import.failed', params: { count: '1' } },
         });
+    });
+
+    it('badPath_aMapWithEveryPhotoButADirectionOrAnAuthorToAddIsPending', async () => {
+        const harness = createHarness();
+        const ctx = createSetupContext(harness.deps, createSetupStore(initialSetupState(harness.host, 'normal')));
+        const flow = createLegacyImportFlow(ctx);
+        harness.importer.detect.mockResolvedValueOnce({ done: 57, total: 57, failed: [], directions: 1, credits: true });
+        harness.importer.detect.mockResolvedValueOnce({ done: 57, total: 57, failed: [], credits: true });
+        harness.importer.run.mockResolvedValue({ done: 57, total: 57, failed: [], directions: 0, credits: false });
+
+        await flow.detect();
+        expect(ctx.state().legacyImport).toMatchObject({ directions: 1, credits: true });
+        expect(ctx.state().steps.legacyImport.state).toBe('pending');
+        await flow.detect();
+        expect(ctx.state().steps.legacyImport.state).toBe('pending');
+        await flow.run();
+
+        expect(ctx.state().steps.legacyImport.state).toBe('ok');
     });
 
     it('badPath_anImportThatStopsIsShownAndCanBeRunAgain', async () => {

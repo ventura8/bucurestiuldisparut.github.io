@@ -311,7 +311,7 @@ describe('<hcm-setup-site>: Publish the map', () => {
 
         expect(shadowPart(element, '.body').textContent).toContain("The map's address: https://demo-hcm.web.app/");
         // Finding 4 of the M6 security review: what one publish moves out of Hosting's free daily transfer.
-        expect(shadowPart(element, '.cost').textContent).toContain('Each publish also moves about 52 MB of Hosting’s free daily transfer.');
+        expect(shadowPart(element, '.cost').textContent).toContain('Each publish also moves about 60 MB of Hosting’s free daily transfer.');
         expect(shadowPart(element, '.body').textContent).toContain('Tip: import the old photos first');
         await page.getByRole('button', { name: 'Publish the map' }).click();
         expect(port.calls).toEqual([['install', 'site']]);

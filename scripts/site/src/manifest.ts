@@ -15,6 +15,8 @@ import { SiteBuildError, issuesText } from './errors.js';
 
 /** One photo derivative to copy: `from` is relative to the site's media folder, `to` to the site's `data/` folder. */
 interface MediaCopy {
+    /** The photo it belongs to (its folder may be an addition's, `additions.ts`). */
+    readonly photoId: string;
     readonly from: string;
     readonly to: string;
 }
@@ -36,7 +38,7 @@ function moveImage(photoId: string, url: string, media: MediaCopy[]): string {
         return url;
     }
     const target = `${MEDIA_FOLDER}/${photoId}/${fileName(url)}`;
-    media.push({ from: `${photoId}/${fileName(url)}`, to: target });
+    media.push({ photoId, from: `${photoId}/${fileName(url)}`, to: target });
     return target;
 }
 

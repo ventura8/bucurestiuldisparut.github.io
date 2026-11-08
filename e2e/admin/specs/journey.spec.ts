@@ -56,9 +56,9 @@ test.describe.configure({ lock: ADMIN_LOCK });
  * 5. Mapbox: a demo account is refused, the owner adds a card on Mapbox's page and pastes the token again;
  * 6. USGS: Do it later (the owner has no USGS account yet), so Setup goes on;
  * 7. analytics: detected once Google Analytics is linked to the project; the GA4 stream setting; the crash reports;
- * 8. the legacy import: one click, 45 photos through the photo pipeline, published and in the city's manifest;
+ * 8. the legacy import: one click, 57 photos (the 45 and the 2023 additions) through the photo pipeline, published and in the manifest;
  * 9. the imagery pipeline the server's click installed, then Publish the map: one click, the viewer at the Hosting
- *    root shows the 45 photos the server published, the admin stays at `/admin/`, and Setup is done with USGS later;
+ *    root shows the 57 photos the server published, the admin stays at `/admin/`, and Setup is done with USGS later;
  * 10. USGS after all: the paste box opens before the token page, with the countdown; the M2M role waits for USGS's
  *     approval, which the server's six-hourly check (`ops.tick`) finds, and Home's reminder goes.
  *
@@ -364,24 +364,24 @@ async function enableAnalytics({
     );
 }
 
-/** 8. The legacy import: one click, 45 photos processed by photos.onUpload, published, then in the manifest. */
+/** 8. The legacy import: one click, the 57 photos of the old site processed by photos.onUpload, published, then in the manifest. */
 async function importLegacyPhotos({ page, lang, setup, setupBudget, emulators }: Journey): Promise<void> {
     const legacy = await setup.show('legacyImport');
-    const importButton = legacy.getByRole('button', { name: setupText(lang, 'adminSetup.import.action', { count: '45' }) });
+    const importButton = legacy.getByRole('button', { name: setupText(lang, 'adminSetup.import.action', { count: '57' }) });
     await setupBudget.inputs('legacyImport').click(importButton);
     await expect(setup.card('legacyImport')).not.toHaveAttribute('data-state', /missing|pending/, { timeout: 180_000 });
     // A photo the import could not finish is listed on the card with its reason: none may be.
     await expect(page.locator('hcm-setup-step[data-step="legacyImport"] [data-photo]')).toHaveText([]);
     await setup.expectState('legacyImport', 'ok');
-    await expect((await setup.show('legacyImport')).getByText(setupText(lang, 'adminSetup.import.done', { count: '45' }))).toBeVisible();
+    await expect((await setup.show('legacyImport')).getByText(setupText(lang, 'adminSetup.import.done', { count: '57' }))).toBeVisible();
     await checkpoint(page, lang, '10-import-done', 'import-done');
     const photos = Object.values(await emulators.collection('cities/bucharest/photos'));
     expect(
         photos.filter((photo) => photo['published'] === true && photo['processing'] === 'done' && photo['rightsReview'] === true),
-    ).toHaveLength(45);
+    ).toHaveLength(57);
     await expect
         .poll(async () => (await emulators.document('manifests/bucharest'))?.['counts'], { timeout: 120_000 })
-        .toMatchObject({ photos: 45 });
+        .toMatchObject({ photos: 57 });
 }
 
 /** 9a. The imagery pipeline: installed by the server's click, with no input of its own. */
@@ -427,13 +427,13 @@ async function publishTheMap({ page, lang, setup, consent, setupBudget, upstream
     expect(new URL(page.url()).pathname).toMatch(/^\/admin\//);
 }
 
-/** 9c. The public map at the Hosting root boots the city with the 45 photos the server published, on one map. */
+/** 9c. The public map at the Hosting root boots the city with the 57 photos the server published, on one map. */
 async function viewTheMapAtTheRoot({ page, lang, emulators }: Journey): Promise<void> {
     const viewer = await page.context().newPage();
     await servePublishedMap(viewer, emulators, E2E_CITY_ID);
     await viewer.goto(hostingUrl('/', { lang }));
     await waitForEngineEvent(viewer, 'hcm-ready');
-    expect(await engineEvents(viewer, 'hcm-ready')).toEqual([expect.objectContaining({ cityId: E2E_CITY_ID, photos: 45 })]);
+    expect(await engineEvents(viewer, 'hcm-ready')).toEqual([expect.objectContaining({ cityId: E2E_CITY_ID, photos: 57 })]);
     await viewer.close();
 }
 
@@ -470,7 +470,7 @@ test(
         ],
     },
     async ({ page, lang, consent, inputBudget, setupBudget, upstream, serverDeployment, consoleErrors, adminWorld }) => {
-        // Ten steps, four polls, three builds, 45 photos through photos.onUpload on the emulators, and both generic
+        // Ten steps, four polls, three builds, 57 photos through photos.onUpload on the emulators, and both generic
         // checkers at a dozen states (about 6 minutes beside the viewer tiers on a loaded laptop, 2026-10-17).
         test.setTimeout(900_000);
         const setup = new SetupPage(page, lang);

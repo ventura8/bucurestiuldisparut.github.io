@@ -52,7 +52,10 @@ describe('buildSite (the committed sites)', () => {
         );
 
         const seed = readRepositoryJson('seed/bucharest/manifest.static.json');
-        const photoCount = (seed['photos'] as unknown[]).length;
+        // The old site's 2023 additions join the 45 (site.json → additions): 57 photos.
+        const additions = readRepositoryJson('seed/bucharest-2023/manifest.static.json');
+        const photoCount = (seed['photos'] as unknown[]).length + (additions['photos'] as unknown[]).length;
+        expect(photoCount).toBe(57);
         expect(report).toEqual({
             outDir: 'dist/site/bucharest',
             cityId: 'bucharest',
@@ -75,6 +78,19 @@ describe('buildSite (the committed sites)', () => {
         expect(dist.readBytes(`dist/site/bucharest/data/${String(photo?.image.web)}`)).toEqual(
             readFileSync(join(ROOT, 'seed/bucharest/derived', String(photo?.id), 'web.webp')),
         );
+        const photos = served.ok ? served.value.photos : [];
+        const added = photos.find((one) => one.id === 'strada-gradinarilor');
+        expect(dist.readBytes(`dist/site/bucharest/data/${String(added?.image.thumb)}`)).toEqual(
+            readFileSync(join(ROOT, 'seed/bucharest-2023/derived/strada-gradinarilor/thumb.webp')),
+        );
+        // The old site later moved Parc Ferdinand and gave it a cone (seed/bucharest-2023/corrections.json).
+        expect(photos.find((one) => one.id === 'parcul-ferdinand-1930')).toMatchObject({
+            location: { lat: 44.448183, lng: 26.139431 },
+            bearing: 219.1,
+            fov: 50,
+        });
+        expect(served.ok && served.value.city.credits[0]?.label.ro).toContain('Studiourile Buftea');
+        expect(served.ok && served.value.city.credits[0]?.label.ro).toContain('Dan Perry');
     });
 
     it('happyPath_pinsTheIntegrityOfThePinnedMapboxRelease', () => {

@@ -1,10 +1,15 @@
 import {
+    applyLegacyCorrections,
     cityImagerySchema,
+    creditsNamingAuthors,
+    KNOWN_HTTPS_HOSTS,
+    legacyCorrectionsSchema,
     migrateLegacyPhotos,
     validate,
     validateManifest,
     type City,
     type CityImagery,
+    type LegacyCorrections,
     type MigratedPhoto,
 } from '@hcm/shared';
 
@@ -19,10 +24,20 @@ import type { SiteFileSystem } from '../files.js';
  * legacy/bucharest/city.json              the seed manifest's city, without its Mapbox token and analytics ids
  *                                         (the fields `setup.createCity` takes, CR-M2b-1), plus the imagery settings of
  *                                         scripts/seed/bucharest.city.json: the manifest is the viewer's, it holds none (M8)
- * legacy/bucharest/photos.json            migrateLegacyPhotos(photos.legacy.geojson): [{sourceFile, legacyId?, photo}]
+ * legacy/bucharest/photos.json            migrateLegacyPhotos(photos.legacy.geojson): [{sourceFile, legacyId?, photo}], the
+ *                                         seed's records first, then each addition's (SEED_ADDITIONS), each corrected by
+ *                                         the additions' corrections.json (the old site's later place and direction)
+ * legacy/bucharest/corrections.json       those corrections, keyed by photo id: the import applies them to the photos a
+ *                                         project already has, where the owner never changed the place or direction
  * legacy/bucharest/originals/<sourceFile> each original a record names, once (the import uploads them; photos.onUpload
  *                                         makes the public derivatives, so nothing is upscaled)
  * ```
+ *
+ * The additions (`docs/research/M5-interfaces.md` → *The 2023 additions*) are the photos the old site gained after the
+ * legacy seed was taken, kept in their own folder because `seed/bucharest/` stays as migrated: their ids keep clear of
+ * the seed's (`migrateLegacyPhotos`' reserved ids, as `migrate-legacy.mjs --joins` gives them), so the import of a
+ * project that already has the 45 adds only the new ones. The city's credits name every photo's author, the additions'
+ * too (`creditsNamingAuthors`).
  *
  * Hosting serves the files; the admin fetches them only during an import.
  */
@@ -32,6 +47,9 @@ export const LEGACY_FOLDER = 'legacy/bucharest';
 
 /** The seed it is made from. */
 export const DEFAULT_SEED_DIR = 'seed/bucharest';
+
+/** The seed folders whose photos join the default seed's, in order: the old site's 2023 additions. */
+const SEED_ADDITIONS: readonly string[] = ['seed/bucharest-2023'];
 
 /** The city file the seed manifest was made from: the only place that holds the city's target years. */
 export const CITY_SEED_FILE = 'scripts/seed/bucharest.city.json';
@@ -96,33 +114,92 @@ function legacyCity(files: SiteFileSystem, seedDir: string): BundledCity {
     return { ...cityFields(result.value.city), ...seedImagery(files) };
 }
 
-function originals(files: SiteFileSystem, seedDir: string, photos: readonly MigratedPhoto[]): AdminFile[] {
-    const names = [...new Set(photos.map((record) => record.sourceFile))];
-    return names.map((name) => {
-        const from = `${seedDir}/photos/${name}`;
-        if (!files.isFile(from)) {
-            throw new SiteBuildError(`${from} is missing: a legacy photo record names it`);
-        }
-        return { from, to: `${LEGACY_FOLDER}/originals/${name}` };
-    });
+/** One seed folder's migrated records. */
+interface SeedPhotos {
+    readonly dir: string;
+    readonly photos: readonly MigratedPhoto[];
+    readonly warnings: number;
 }
 
-/** The bundle's files, read and validated from `seedDir`; throws SiteBuildError when an input is missing or invalid. */
-export function planLegacyBundle(files: SiteFileSystem, seedDir = DEFAULT_SEED_DIR): LegacyBundle {
-    const city = legacyCity(files, seedDir);
-    const migration = migrateLegacyPhotos(readJson(files, `${seedDir}/photos.legacy.geojson`));
-    if (migration.photos.length === 0) {
-        throw new SiteBuildError(`${seedDir}/photos.legacy.geojson holds no photo`);
+/** Every folder's `corrections.json`, merged (a folder without one has none). */
+function correctionsOf(files: SiteFileSystem, dirs: readonly string[]): LegacyCorrections {
+    const merged: Record<string, LegacyCorrections[string]> = {};
+    for (const path of dirs.map((dir) => `${dir}/corrections.json`).filter((candidate) => files.isFile(candidate))) {
+        const result = validate(legacyCorrectionsSchema, readJson(files, path));
+        if (!result.ok) {
+            throw new SiteBuildError(`${path}: invalid corrections\n${issuesText(result.issues)}`);
+        }
+        Object.assign(merged, result.value);
     }
-    const copies = originals(files, seedDir, migration.photos);
+    return merged;
+}
+
+/** Migrates each folder in order; a folder's ids keep clear of the folders before it. */
+function migrateSeeds(files: SiteFileSystem, dirs: readonly string[]): SeedPhotos[] {
+    const seeds: SeedPhotos[] = [];
+    for (const dir of dirs) {
+        const reserved = seeds.flatMap((seed) => seed.photos.map((record) => record.photo.id));
+        const migration = migrateLegacyPhotos(readJson(files, `${dir}/photos.legacy.geojson`), KNOWN_HTTPS_HOSTS, reserved);
+        if (migration.photos.length === 0) {
+            throw new SiteBuildError(`${dir}/photos.legacy.geojson holds no photo`);
+        }
+        seeds.push({ dir, photos: migration.photos, warnings: migration.warnings.length });
+    }
+    return seeds;
+}
+
+/** Each original the records name, once; two folders may not bring two files of one name (one `originals/` folder). */
+function originals(files: SiteFileSystem, seeds: readonly SeedPhotos[]): AdminFile[] {
+    const copied = new Map<string, string>();
+    return seeds.flatMap(({ dir, photos }) =>
+        [...new Set(photos.map((record) => record.sourceFile))].map((name) => {
+            const from = `${dir}/photos/${name}`;
+            if (!files.isFile(from)) {
+                throw new SiteBuildError(`${from} is missing: a legacy photo record names it`);
+            }
+            const earlier = copied.get(name);
+            if (earlier !== undefined) {
+                throw new SiteBuildError(`${from}: ${earlier} has the same name, and the bundle has one originals folder`);
+            }
+            copied.set(name, from);
+            return { from, to: `${LEGACY_FOLDER}/originals/${name}` };
+        }),
+    );
+}
+
+/**
+ * The bundle's files, read and validated from `seedDir` and its `additions` (SEED_ADDITIONS for the default seed, none
+ * for another); throws SiteBuildError when an input is missing or invalid.
+ */
+export function planLegacyBundle(
+    files: SiteFileSystem,
+    seedDir = DEFAULT_SEED_DIR,
+    additions: readonly string[] = seedDir === DEFAULT_SEED_DIR ? SEED_ADDITIONS : [],
+): LegacyBundle {
+    const seedCity = legacyCity(files, seedDir);
+    const seeds = migrateSeeds(files, [seedDir, ...additions]);
+    const corrections = correctionsOf(files, additions);
+    const photos = applyLegacyCorrections(
+        seeds.flatMap((seed) => seed.photos),
+        corrections,
+    );
+    const city = {
+        ...seedCity,
+        credits: creditsNamingAuthors(
+            seedCity.credits,
+            photos.map((record) => record.photo),
+        ),
+    };
+    const copies = originals(files, seeds);
     return {
         files: [
             { to: `${LEGACY_FOLDER}/city.json`, content: `${JSON.stringify(city)}\n` },
-            { to: `${LEGACY_FOLDER}/photos.json`, content: `${JSON.stringify(migration.photos)}\n` },
+            { to: `${LEGACY_FOLDER}/photos.json`, content: `${JSON.stringify(photos)}\n` },
+            { to: `${LEGACY_FOLDER}/corrections.json`, content: `${JSON.stringify(corrections)}\n` },
             ...copies,
         ],
-        photos: migration.photos.length,
+        photos: photos.length,
         originals: copies.length,
-        warnings: migration.warnings.length,
+        warnings: seeds.reduce((sum, seed) => sum + seed.warnings, 0),
     };
 }

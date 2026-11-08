@@ -12,13 +12,14 @@ import { legacyCityFields, type LegacyCityFields } from '../import/city.js';
 import { bundleOnce, loadInstallBundle, sha256Hex, type InstallBundle } from '../install/bundle.js';
 import { createCloudBuildInstaller } from '../install/cloud-build-installer.js';
 import type { InstallerPort } from '../install/ports.js';
+import { withLegacyFixes } from '../import/legacy-fixes.js';
 import { createLegacyImport } from '../import/legacy-import.js';
 import type { ProjectConfig } from '../provision/project-config.js';
 import { createSetupCloud } from '../provision/setup-cloud.js';
 import { createSetupModule, type SetupModule, type SetupModuleOptions } from '../setup/module.js';
 import type { SetupLegacyImport } from '../setup/ports.js';
 import type { FirebaseWebConfig } from './config.js';
-import { legacyPhotoStore, legacyReprocess } from './legacy-photos.js';
+import { legacyFixStore, legacyPhotoStore, legacyReprocess } from './legacy-photos.js';
 import type { Clock } from './ports.js';
 
 /** The city of this repository, when a project names none (its schema requires one). */
@@ -153,20 +154,25 @@ export function setupOptionsFor(deps: SetupWiringDeps): SetupModuleOptions {
         web: { projectId: config.projectId, appId: config.appId, apiKey: config.apiKey },
     });
     const store = legacyPhotoStore(firebase, uid);
+    const fixes = { fetch: deps.fetch, store: legacyFixStore(firebase, uid), cityId, baseUrl: deps.baseUrl, log: log.child('import') };
     const importer = ownProject
         ? NO_LEGACY_IMPORT
-        : createLegacyImport({
-              fetch: deps.fetch,
-              store,
-              cityId,
-              baseUrl: deps.baseUrl,
-              uid,
-              nonce: deps.nonce,
-              sleep,
-              log: log.child('import'),
-              // M6 (finding 17, server-bugs): a photo whose upload event never arrived is processed again once.
-              reprocess: legacyReprocess(firebase),
-          });
+        : // The old site's directions and the additions' authors, on a map that has the photos (legacy-fixes.ts).
+          withLegacyFixes(
+              createLegacyImport({
+                  fetch: deps.fetch,
+                  store,
+                  cityId,
+                  baseUrl: deps.baseUrl,
+                  uid,
+                  nonce: deps.nonce,
+                  sleep,
+                  log: log.child('import'),
+                  // M6 (finding 17, server-bugs): a photo whose upload event never arrived is processed again once.
+                  reprocess: legacyReprocess(firebase),
+              }),
+              fixes,
+          );
     // M14: a project of the owner's own has no bundled city: its first city comes from New city (M14 §8).
     const createCity = async (): Promise<{ readonly created: boolean }> =>
         ownProject ? { created: false } : firebase.callables.call('setup.createCity', { cityId, city: await bundledCity(deps, cityId) });

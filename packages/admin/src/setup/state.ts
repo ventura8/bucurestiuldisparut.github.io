@@ -193,6 +193,10 @@ interface ImportSlice {
     readonly total: number;
     readonly failed: readonly LegacyImportFailure[];
     readonly running: boolean;
+    /** Photos on the map the old site's direction is still to be added to (`../import/legacy-fixes.ts`); none when absent. */
+    readonly directions?: number;
+    /** The city's credits do not name every old photo's author yet. */
+    readonly credits?: boolean;
 }
 
 export interface SetupState {

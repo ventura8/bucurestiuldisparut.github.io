@@ -37,11 +37,12 @@ describe('buildAdminSite', () => {
             outDir: OUT,
             projectId: 'bucurestiul-disparut',
             release: expect.stringMatching(/^\d+\.\d+\.\d+(?:\+[0-9a-f]{7})?$/) as unknown,
-            photos: 45,
-            originals: 44,
+            photos: 57,
+            originals: 56,
             warnings: 1,
             fonts: 3,
-            files: 54,
+            // The legacy bundle's corrections.json (the old site's later directions) included.
+            files: 67,
         });
         const integrity = subresourceIntegrity(files.readBytes('node_modules/mapbox-gl/dist/mapbox-gl.js'));
         expect(files.readText(`${OUT}/index.html`)).toBe(renderAdminPage(undefined, { mapboxGlIntegrity: integrity }));
@@ -166,7 +167,7 @@ describe('runAdminCli', () => {
         expect(runAdminCli(['--out', OUT], { files, log, env: { GITHUB_SHA: 'c0ffee'.repeat(6) + 'c0ff' } })).toBe(EXIT_OK);
 
         expect(records.map((record) => `${record.level} ${record.message} ${String(record.data?.['photos'])}`)).toEqual([
-            'info admin site built 45',
+            'info admin site built 57',
         ]);
         expect(records[0]?.data?.['release']).toMatch(/\+c0ffeec$/);
     });

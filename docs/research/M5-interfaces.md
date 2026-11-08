@@ -783,7 +783,7 @@ Mapbox token in `city.json` is the public, URL-restricted one; an `sk.` token is
 
 | Fact | Proof (ask first; local or the real project, never in CI) |
 | --- | --- |
-| jsDelivr serves files of this repository at a tag: the release skill records its limits as 150 MB a package and 20 MB a file, and the tree is about 76 MB (59 MB of it `seed/`), the largest file under 5 MB | the user opens `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@legacy-2022/README.md` (an existing tag) once; if refused, the fallback is a small releases repository or the npm route, each a decision (§58) |
+| jsDelivr serves files of this repository at a tag: the release skill records its limits as 150 MB a package and 20 MB a file, and the tree is about 84 MB (67 MB of it `seed/` since the 2023 additions, §12), the largest file under 5 MB | the user opens `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@legacy-2022/README.md` (an existing tag) once; if refused, the fallback is a small releases repository or the npm route, each a decision (§58) |
 | jsDelivr's `@1` resolves the newest `v1.x.y` tag of a GitHub repository | the first release, opening the `@1` address |
 | The engine build is byte-reproducible on CI and on the NUC | the `release-cdn` gate's first run in `release.yml` |
 | A rules `get()` inside a collection-group list condition on `resource.data.cityId` | the rules tests on the emulator (S-A51-BAD-HISTORY-QUERY); the fallback is §1.4's per-city index |
@@ -799,6 +799,57 @@ Mapbox token in `city.json` is the public, URL-restricted one; an `sk.` token is
 - The template repository (§3.5), the npm publish (§4.6), the jsDelivr probe (§10).
 - Deploys of the functions, rules, indexes and the admin with M5 in them, and Provision again (the export's lifecycle
   rule and signing permission).
+
+## 12. The 2023 additions (the old site's later photos)
+
+The legacy seed `seed/bucharest/` (45 photos) was taken from a copy of the old site, `ventura8/bucurestiuldisparut.github.io`, that missed what the owner's account `bucurestiuldisparut` added to `bucurestiuldisparut/bucurestiuldisparut.github.io` after its fork (2022-12-27 to 2023-07-29; the owner confirmed the account and asked for the import on 2026-11-08). That account added 23 photo files; 11 of them were already in the copy (Ferdinand, Gara Obor, the three Realitatea Ilustrată pages, the three Obor pages of July 1936, Parcul Ferdinand, ut3, Căminului), so **12 photos with 12 viewpoints (24 features: a point and a cone each)** were missing. None of the 12 files is in `fostulbucuresti/fostulbucuresti.github.io`'s tree or history, by name or by content (checked against every blob of its history); nothing else of that repository is used.
+
+- **The data** (`seed/bucharest-2023/`, the shape of `seed/bucharest/`): `photos.legacy.geojson` holds the 24 features exactly as the live `geojson/photos.json` has them, `photos/` the 12 originals as the repository serves them, except `mosilor_70.png`, re-encoded from 16-bit to 8-bit RGB, lossless otherwise (16.4 MB to 4.6 MB: the old photos' originals travel in `legacy.tgz`, whose budget, 60000 KB, the 16-bit file would have broken; the derivatives are 8-bit anyway). `derived/` and `manifest.static.json` come from `node scripts/seed/migrate-legacy.mjs --city-dir seed/bucharest-2023 --joins seed/bucharest`: the same rules as the 45 (titles in Romanian, years from the data, `permission-legacy` with `rightsReview: true`, links from the legacy HTML, bearing and field of view from the cones, `web.webp` 2048 px and `thumb.webp` 400 px without metadata), and ids that keep clear of the 45's (`--joins`: `migrateLegacyPhotos`' reserved ids; none collided). `seed/bucharest/` is unchanged; the static site joins the 12 after the 45 (`sites/bucharest/site.json` → `additions`, `scripts/site/src/additions.ts`: 57 photos, each served from its own folder's `derived/`, Parc Ferdinand corrected, the credits naming every author) and the live map gets them through the import.
+- **The bundle** (`scripts/site/src/admin/legacy.ts`): `legacy/bucharest/photos.json` holds the 45, then the 12 (`SEED_ADDITIONS`), 56 originals; two folders may not bring two files of one name.
+- **The import** (Setup step h, `packages/admin/src/import/legacy-import.ts`): idempotent by document id and `legacyId` as before, so a map with the 45 sees *The map does not have 12 of the old site's photos yet* and **Import the missing photos (12)**, one click, which creates, uploads and publishes only the 12 (S-A28-HAPPY-ADDITIONS). It never undoes the owner's work (S-A28-BAD-OWNER-EDITS-KEPT): an existing document is never written but to publish a photo whose own import stopped before its publish; a photo whose document is gone and whose `history` (the triggers keep it after a delete) has a delete stamped with a person's uid was deleted by a person and is not created again; a processed photo that is unpublished though an entry stamped with a person's uid has a published `previous` was unpublished by a person and stays so. Entries the server stamps (`system:<authType>`, or a service account's e-mail: a function's delete, the emulator's admin that the e2e world's reset uses) never count, so a photo the server removed is imported again. Both count as done, so the card then says all the photos are on the map although the owner removed some.
+- **Doubtful, for the owner** (each photo is in the rights-review queue): no author on 11 of the 12 (only *Strada Gradinarilor*, Studiourile Buftea); no source link on any; *Piata Obor* 1956 twice from the same point; *La Leu* and *Monetaria de la Sosea* share one legacy id on the old site (both imported, as for Bateriilor and Ferdinand). The old site also moved the point of *Parc Ferdinand* (`parcul-ferdinand-1930`, about 10 m) and gave it a cone; that photo is one of the 45, so `seed/bucharest/` keeps it as migrated and a correction carries the old site's (*Directions from the old site* below).
+- **Costs**: about 7.4 MB more of originals in `legacy.tgz` and in a publish before the import is complete (`SITE_PUBLISH_TRANSFER_MB` 52 to 60); 1.9 MB of derivatives in `seed/bucharest-2023/derived/`.
+
+### Directions from the old site
+
+The owner (2026-11-08): *import the direction of every photo from the old site; some of ours have none, for example
+`parcul-ferdinand-1930`*. Every photo of the 57 was compared with the old site's live `geojson/photos.json`
+(`node scripts/seed/legacy-corrections.mjs --later <that file>`, which migrates it with `migrateLegacyPhotos`, so bearing
+and field of view are measured from its cones exactly as the first migration measured the others, and matches each of our
+photos to the old site's point of the same original nearest to it):
+
+- **Corrected (1)**: `parcul-ferdinand-1930`: the old site moved its point (26.139544, 44.448214 to 26.139431, 44.448183)
+  and gave it a cone on 2022-12-27 (the owner's commit *added Obor photos*), after the copy `seed/bucharest/` came from:
+  bearing 219.1°, field of view 50°.
+- **Already had the old site's direction (46)**: the other 34 of the 45 with a cone and all 12 additions.
+- **No cone on the old site (10)**: `intrarea-in-fabrica-luceafarul-nufarul`, `caminului-sistematizare-1960`, `ut3`,
+  `gara-obor`, `realitatea-ilustrata-1934-6-1`, `realitatea-ilustrata-1935-11-1`, `realitatea-ilustrata-1935-11-2`,
+  `obor-29-iulie-1936`, `obor-29-iulie-1936-2`, `obor-29-iulie-1936-3`: the old site has a point and no direction for them;
+  the owner can aim them in the photo editor.
+
+Why the first migration missed it: not its matching (every cone of `seed/bucharest/` found its point), but its source, a
+copy taken before the old site gave Parc Ferdinand a cone; and the 2023 additions were chosen by file name, so a photo
+already in the seed was never compared again. The matching was fragile all the same: a cone was linked to the point whose
+`photo` URL was *identical*, and the old site wrote one photo's URL on two hosts, with spaces or `%20`, so a cone spelled
+otherwise would have become a second photo without its point's direction. Cones now find their point by the decoded file
+name in Unicode NFC (`legacyPhotoKey`, `legacy-photos.test.ts`), and the corrections are derived by comparing every photo,
+not only the missing ones (`deriveLegacyCorrections`, `corrections.test.ts`).
+
+- **The data**: `seed/bucharest-2023/corrections.json`, keyed by photo id: the old site's `location`, `bearing` and `fov`,
+  the values the migration gave (`migrated`) and the old site's URL (`source`). `seed/bucharest/` is unchanged.
+- **The bundle and the static site** apply a correction to a photo that still holds its migrated values
+  (`correctedPhoto`): a new project imports Parc Ferdinand with its direction, and the static site shows it so. The bundle
+  also ships `legacy/bucharest/corrections.json`, and its `city.json` credits name every author of the 57
+  (`creditsNamingAuthors`: the migrated authors line, untouched, gains Studiourile Buftea).
+- **The import** (Setup step h, `packages/admin/src/import/legacy-fixes.ts`) on a map that has the photos: the card says
+  *Directions the old site adds to photos without one: 1* and the button reads **Add the old site's directions (1)**; one
+  click writes them (S-A28-HAPPY-DIRECTIONS). A correction is applied only to a photo whose direction is still the
+  migration's (none, or exactly the migrated one) and whose history has no person's change of `bearing` or `fov`; its point
+  moves only while it is still the migrated one and no person moved it; the owner's direction and place are never
+  overwritten (S-A28-BAD-OWNER-DIRECTION-KEPT). The same click adds the authors the city's credits do not name yet: the
+  migrated authors line, while untouched, lists them all; an edited one stays and a line of the missing authors is added
+  last. Applied once, a photo holds the old site's values and the credits name every author, so a rerun finds nothing to
+  do; the step is done only when nothing is left.
 
 ## Change requests
 

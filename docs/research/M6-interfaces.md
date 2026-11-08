@@ -381,7 +381,7 @@ measured minutes replace them in the same task):
 | --- | --- | --- |
 | server | about 15 for the installer's build, plus about 1 per function for Google's own image builds of each function (69 functions), so about 85 | the functions' images in `gcf-artifacts`, kept 1 day by the cleanup policy |
 | pipeline | about 20 (the GDAL image) | its image in `hcm`, about 1.5 GB (Artifact Registry: 0.5 GB free, then about 0.10 USD per GB a month) |
-| site | about 5 | Hosting storage of 10 kept releases, within Hosting's free 10 GB; each publish downloads `hosting.tgz` and the manifest from the admin's own Hosting, about 52 MB of Hosting's free 360 MB a day (`SITE_PUBLISH_TRANSFER_MB`; most of it the old photos' originals under `/admin/legacy/`, `DECISIONS-for-review.md` §73k) |
+| site | about 5 | Hosting storage of 10 kept releases, within Hosting's free 10 GB; each publish downloads `hosting.tgz` and the manifest from the admin's own Hosting, about 60 MB of Hosting's free 360 MB a day (52 before the 2023 additions) (`SITE_PUBLISH_TRANSFER_MB`; most of it the old photos' originals under `/admin/legacy/`, `DECISIONS-for-review.md` §73k) |
 
 Each install card has one cost line (the M6 review, finding 10: the frame leaves an available install step's cost to the
 card): the step's own cost, then "Uses about {minutes} build minutes; Google Cloud gives {free} free each month"

@@ -4,6 +4,10 @@
 // photos.legacy.geojson and photos/, and (re)writes only derived/ and manifest.static.json.
 //
 //     node scripts/seed/migrate-legacy.mjs [--city-dir seed/bucharest] [--city scripts/seed/bucharest.city.json] [--budget-mb 15]
+//     node scripts/seed/migrate-legacy.mjs --city-dir seed/bucharest-2023 --joins seed/bucharest
+//
+// `--joins <dir>`: the photos of --city-dir join an earlier migration of the same city (the 2023 additions of the old
+// site join the first 45, `docs/research/M5-interfaces.md` → *The 2023 additions*): no new id takes one of its ids.
 //
 // Run it with Node 24 in the quality image (docs/research/M1-interfaces.md → Legacy migration).
 // derived/<id>/web.webp has at most 2048 px on its long edge, thumb.webp 400 px, both without metadata
@@ -11,30 +15,13 @@
 // manifest is invalid or the images exceed the budget, 2 usage.
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { mkdir, rm } from 'node:fs/promises';
-import { registerHooks } from 'node:module';
 import { join } from 'node:path';
 import process from 'node:process';
 import { parseArgs } from 'node:util';
 
 import sharp from 'sharp';
 
-// Run the TypeScript sources directly (Node strips the types): their relative imports say `.js`
-// (bundler style) and the colour library's ESM files omit extensions, so a failed relative resolve is
-// retried with `.ts`, then with `.js` appended.
-registerHooks({
-    resolve(specifier, context, nextResolve) {
-        try {
-            return nextResolve(specifier, context);
-        } catch (error) {
-            if (!specifier.startsWith('.')) {
-                throw error;
-            }
-            return nextResolve(specifier.endsWith('.js') ? `${specifier.slice(0, -3)}.ts` : `${specifier}.js`, context);
-        }
-    },
-});
-
-const shared = await import('../../packages/shared/src/index.ts');
+const { shared } = await import('./sources.mjs');
 const { themeFromSeed } = await import('../../packages/ui/src/theme/dynamic-color.ts');
 
 const log = shared.createLogger('migrate-legacy');
@@ -44,9 +31,14 @@ const THUMB_EDGE = 400;
 const DERIVED = 'derived';
 
 function usage(reason) {
-    log.error('usage: migrate-legacy.mjs [--city-dir <dir>] [--city <city.json>] [--budget-mb <n>]', { reason });
+    log.error('usage: migrate-legacy.mjs [--city-dir <dir>] [--city <city.json>] [--budget-mb <n>] [--joins <dir>]', { reason });
     process.exitCode = 2;
     return null;
+}
+
+/** No `--joins`, or a folder that holds the legacy data of the migration it names. */
+function joinsUsable(joins) {
+    return joins === undefined || isFile(join(joins, 'photos.legacy.geojson'));
 }
 
 function readOptions(argv) {
@@ -57,13 +49,17 @@ function readOptions(argv) {
                 'city-dir': { type: 'string', default: 'seed/bucharest' },
                 city: { type: 'string', default: 'scripts/seed/bucharest.city.json' },
                 'budget-mb': { type: 'string', default: '15' },
+                joins: { type: 'string' },
             },
             strict: true,
         });
         const budget = Number(values['budget-mb']);
-        return Number.isFinite(budget) && budget > 0
-            ? { cityDir: values['city-dir'], cityFile: values.city, budgetBytes: budget * 1_000_000 }
-            : usage(`--budget-mb must be a positive number, got ${values['budget-mb']}`);
+        if (!(Number.isFinite(budget) && budget > 0)) {
+            return usage(`--budget-mb must be a positive number, got ${values['budget-mb']}`);
+        }
+        return joinsUsable(values.joins)
+            ? { cityDir: values['city-dir'], cityFile: values.city, budgetBytes: budget * 1_000_000, joins: values.joins }
+            : usage(`--joins names no folder with photos.legacy.geojson: ${String(values.joins)}`);
     } catch (error) {
         return usage(String(error));
     }
@@ -125,8 +121,14 @@ function reportIssues(issues) {
     }
 }
 
+/** The ids of the migration `joins` names (none without it): the new photos keep clear of them. */
+function reservedIds(joins) {
+    return joins === undefined ? [] : shared.migrateLegacyPhotos(readJson(join(joins, 'photos.legacy.geojson'))).photos.map(({ photo }) => photo.id);
+}
+
 async function main(options) {
-    const migration = shared.migrateLegacyPhotos(readJson(join(options.cityDir, 'photos.legacy.geojson')));
+    const legacy = readJson(join(options.cityDir, 'photos.legacy.geojson'));
+    const migration = shared.migrateLegacyPhotos(legacy, shared.KNOWN_HTTPS_HOSTS, reservedIds(options.joins));
     for (const warning of migration.warnings) {
         log.warn(warning.message, { feature: warning.feature });
     }
