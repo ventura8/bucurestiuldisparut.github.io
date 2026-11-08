@@ -56,10 +56,7 @@ describe('the version page: recalibrating', () => {
     it('badPath_aRefusedRefineStaysOnTheCard @S-A89-BAD-BUSY', async () => {
         const { version, store, callables, state } = page();
         store.docs.set(VERSIONS(CURRENT), versionDoc());
-        callables.answer(
-            'imagery.recalibrate' as never,
-            (() => Promise.reject(failure('failed-precondition', 'apiError.layers.busy'))) as never,
-        );
+        callables.answer('imagery.recalibrate' as never, () => Promise.reject(failure('failed-precondition', 'apiError.layers.busy')));
         version.show(CURRENT);
 
         await expect(version.recalibrate()).resolves.toBeNull();
@@ -172,9 +169,8 @@ describe('Snap my points', () => {
     });
 
     function callables(world: ReturnType<typeof imageryWorld>): void {
-        world.callables.answer(
-            'imagery.recalibrate' as never,
-            (() => Promise.reject(failure('invalid-argument', 'apiError.imagery.gcpOutside'))) as never,
+        world.callables.answer('imagery.recalibrate' as never, () =>
+            Promise.reject(failure('invalid-argument', 'apiError.imagery.gcpOutside')),
         );
     }
 });

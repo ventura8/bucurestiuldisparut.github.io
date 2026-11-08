@@ -27,6 +27,11 @@ const VERSION = { kind: 'version' as const, id: 'job-1966' };
 const BETTER: VersionViewPort['recalibration'] = { route: 'auto', before: { rmseM: 17.6, checks: 21 }, after: { rmseM: 14.1, checks: 21 } };
 const WORSE: VersionViewPort['recalibration'] = { route: 'manual', before: { rmseM: 12, checks: 5 }, after: { rmseM: 12.4, checks: 5 } };
 
+const EMBEDDED: VersionViewPort['georef'] = {
+    ...{ method: 'embedded', transform: 'affine', pairs: 0, fitRmseM: null },
+    ...{ checkpointRmseM: null, checkpointCount: null, checkpointKind: null },
+};
+
 function calls(area: FakeArea<ImageryViewState, ImageryIntentsPort>): readonly string[] {
     return area.calls.filter((call) => !call.startsWith('open [') && !call.startsWith('attachMap') && call !== 'close');
 }
@@ -61,7 +66,7 @@ describe('<hcm-imagery-page>: calibrate again', () => {
 
     it.each([
         ['a join', versionView({ origin: 'join', hasScan: false, georef: null })],
-        ['an upload on its own georeference', versionView({ georef: { ...(versionView().georef as never), method: 'embedded' } })],
+        ['an upload on its own georeference', versionView({ georef: EMBEDDED })],
         ['a failed version', versionView({ state: 'failed' })],
     ])('badPath_%sIsNotOfferedIt @S-A89-BAD-JOIN', async (_case, version) => {
         const { element } = await shown(version);
@@ -122,7 +127,7 @@ describe('<hcm-imagery-page>: calibrate again', () => {
     });
 
     it('happyPath_theRoughPointsRouteSaysWhatItFoundAroundThem @S-A89-HAPPY-POINTS', async () => {
-        const recalibration = { route: 'points' as const, ...BETTER, proposed: 14 };
+        const recalibration = { ...BETTER, route: 'points' as const, proposed: 14 };
         const { element } = await shown(versionView({ recalibration, basedOn: 'job-current' }));
 
         expect(deepText(element)).toContain('14 pairs found around your points');

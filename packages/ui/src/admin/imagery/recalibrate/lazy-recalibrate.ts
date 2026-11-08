@@ -20,7 +20,7 @@ export const RECALIBRATE_CHUNK: ChunkLoader<RecalibrateChunk> = chunkLoader(asyn
 const FROM: ReadonlySet<VersionViewPort['state']> = new Set(['published', 'awaiting_approval']);
 
 /** Published or waiting, with a scan and a fit of pairs; a join (no scan) is refined frame by frame (the server's check: `recalibrate.ts`). */
-export function recalibratable(version: VersionViewPort): boolean {
+function recalibratable(version: VersionViewPort): boolean {
     const pairs = version.georef !== null && version.georef.method !== 'embedded';
     return FROM.has(version.state) && version.hasScan && pairs;
 }
