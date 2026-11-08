@@ -2449,4 +2449,3 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the exploration harness, before any product code (`tools/m15f-explore.py` on the NUC: the map against its own lattice render at the tiles).
     - Fix and pin: the map renders through an RPC with the surface model, which GDAL evaluates per place at its height, and which holds it within 0.002 m (`georef/rpc.py`, `steps/warp.py`; `S-P06-HAPPY-TERRAIN`, `test_terrain_job.py`).
     - **Before storing a map as samples, render the samples and compare them with the map at the scale of its finest term; a term finer than the samples needs a representation the renderer evaluates itself.**
-

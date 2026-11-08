@@ -313,4 +313,3 @@ Each frame, RMS of its own pairs (3.2 km / 8 km blocks), joined → terrain; cor
 - **F003's OSM reading worsens 0.7 m**, inside that ruler's per-frame noise but not explained.
 - **A join of several frames (M8) renders its parts flat**: `join/warping.py` warps each part through its lattice.
 - **Not run**: a whole job through the runner on a real KH-9 frame (the product's fit ran on the real tiles and its RPC through GDAL's transformer, and a real warp of the scan through it: *Cost*); the surface fetched from the public bucket by the product (the harness built it from the same tiles fetched for the open references); Pitești on a film ruler (one frame).
-
