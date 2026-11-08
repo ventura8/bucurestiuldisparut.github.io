@@ -6529,7 +6529,7 @@
             "area": "admin",
             "path": "bad",
             "title": "Importing again never undoes what the owner did to an imported photo",
-            "asserts": "the owner retitled one imported photo, deleted another and unpublished a third -> a later import (from a tab opened before) creates nothing, uploads nothing, publishes nothing: the title stays, the deleted photo stays deleted, the unpublished one stays unpublished",
+            "asserts": "the owner retitled one imported photo and unpublished another, and the server removed a third -> a later import (from a tab opened before) uploads only the photo the server removed: the title stays, the unpublished photo stays unpublished; a photo a person deleted is never created again (unit tests: the emulator stamps every delete with one fake account)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The old site's 2023 additions (docs/research/M5-interfaces.md, The 2023 additions): the import reads each photo's history (kept after a delete) to tell an owner's delete or unpublish from an import that stopped. Test: e2e/admin/steps/legacy.spec.ts."

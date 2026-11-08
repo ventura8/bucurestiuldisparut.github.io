@@ -103,8 +103,14 @@ test(
     },
 );
 
+/*
+ * The Firestore emulator stamps every delete's event with one fake account (`fake-auth-id@gmail.com`), whoever deleted,
+ * so a person's delete cannot be told from the server's here: that the import never brings back a photo a person
+ * deleted is pinned by the unit tests (`legacy-import.test.ts`, `legacy-photos.test.ts`); here a photo the server removed
+ * is imported again, as it must be.
+ */
 test(
-    'Importing again never undoes what the owner did: a new title stays, a deleted photo stays deleted, an unpublished one unpublished',
+    'Importing again never undoes what the owner did: a new title stays, an unpublished photo stays unpublished',
     { tag: ['@S-A28-BAD-OWNER-EDITS-KEPT'] },
     async ({ page, lang, adminWorld }) => {
         test.setTimeout(420_000);
@@ -119,7 +125,7 @@ test(
         const later = await importCard(stale, lang, 5);
         await first.action.click();
         await imported(page, lang, 5);
-        const [retitled, deleted, unpublished] = records.map((record) => `cities/bucharest/photos/${record.photo.id}`);
+        const [retitled, removed, unpublished] = records.map((record) => `cities/bucharest/photos/${record.photo.id}`);
         const { emulators } = adminWorld;
         const owner = adminWorld.accounts.owner.uid;
         await emulators.updateFields(retitled ?? '', { title: { ro: 'Titlul proprietarului' }, updatedBy: owner, updatedAt: new Date() }, [
@@ -132,31 +138,25 @@ test(
             'updatedBy',
             'updatedAt',
         ]);
-        // A fresh token, which carries the claims the rules ask for (the fixture's was minted before them).
-        await emulators.deleteDocumentAs(deleted ?? '', await emulators.signIn('owner'));
-        // The history triggers record the owner's delete and unpublish (the import reads them; the server's own are not a person's).
-        await expect
-            .poll(() => ownersEntries(emulators, deleted ?? '', owner), { timeout: 60_000 })
-            .toContainEqual(expect.objectContaining({ action: 'delete' }));
+        await emulators.deleteDocument(removed ?? '');
+        // The history trigger records the owner's unpublish (the import reads it).
         await expect
             .poll(() => ownersEntries(emulators, unpublished ?? '', owner), { timeout: 60_000 })
             .toContainEqual(expect.objectContaining({ previous: expect.objectContaining({ published: true }) }));
-        const kept = await legacyPhotos(emulators);
 
-        // The tab opened before the import still offers it: its run finds nothing to do.
+        // The tab opened before the import still offers it: its run uploads only the photo the server removed.
         const uploads = countUploads(stale);
         await later.action.click();
         await imported(stale, lang, 5);
 
-        expect(uploads()).toBe(0);
-        expect(await legacyPhotos(emulators)).toEqual(kept);
-        expect(await emulators.document(deleted ?? '')).toBeUndefined();
+        expect(uploads()).toBe(1);
+        expect(await emulators.document(removed ?? '')).toMatchObject({ published: true, processing: 'done' });
         expect(await emulators.document(unpublished ?? '')).toMatchObject({ published: false });
         expect(await emulators.document(retitled ?? '')).toMatchObject({ title: { ro: 'Titlul proprietarului' }, published: true });
     },
 );
 
-/** The history entries of a photo that `uid` wrote (its delete, its edits). */
+/** The history entries of a photo that `uid` wrote (its edits). */
 async function ownersEntries(emulators: EmulatorWorld, photo: string, uid: string): Promise<Record<string, unknown>[]> {
     return Object.values(await emulators.collection(`${photo}/history`)).filter((entry) => entry['updatedBy'] === uid);
 }
