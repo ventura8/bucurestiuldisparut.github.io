@@ -195,7 +195,10 @@ test.describe('a moderator', () => {
             });
 
             await page.goto(REVIEW_ROUTE(lang, 'settings'));
-            await expect(page.getByText(shellText(lang, 'adminShell.route.notAllowed'))).toBeVisible();
+            // The snackbar's message, not its live region, which repeats the text a moment after it shows (a strict-mode
+            // violation once the announcement lands before the assertion, as it did at the tablet on a loaded machine).
+            const notAllowed = page.getByText(shellText(lang, 'adminShell.route.notAllowed')).and(page.locator(':not([aria-live])'));
+            await expect(notAllowed).toBeVisible();
             await expect(page).toHaveURL(/#\/photos$/);
             await expectStateSound(page, adminVisit('roles.moderator-nav', lang));
 

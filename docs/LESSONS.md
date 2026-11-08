@@ -2635,3 +2635,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: not in the tracks' records (lesson 438: the start track's worktree could not run its e2e build). These gates read the files the merge left unchanged, so the tracks' own full runs would have failed them too.
     - Found by: `static` and `tests` on the merged tree (DECISIONS-for-review.md §100f). Fix: each finding fixed in its file; no gate relaxed.
     - **A track is merged after its own `static` and `tests` are green, not only the specs it touched.**
+
+441. **A snackbar's text asserted with `getByText` failed in strict mode once its live region caught up.**
+    - Seen: 2026-11-08, the merged tracks' specs on the NUC (627 of 628 passed): `roles.spec.ts`'s moderator test at `admin-m768-ro` found "Rolul tău nu include acea pagină." twice, in the snackbar and in its polite live region.
+    - Cause: the live region gets the message `ANNOUNCE_DELAY_MS` after the snackbar shows (lesson 20's fix), so a page slow to reach the assertion sees both; the other projects asserted before the announcement.
+    - Found by: the targeted Playwright run of the four tracks' specs. Fix: the assertion takes the text that is not in a live region (`:not([aria-live])`), as `smoke.spec.ts` already does.
+    - **A snackbar's message is asserted without its live region; the live region is asserted on its own when the announcement is the point.**
