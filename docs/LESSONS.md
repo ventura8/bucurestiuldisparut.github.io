@@ -2641,3 +2641,10 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the live region gets the message `ANNOUNCE_DELAY_MS` after the snackbar shows (lesson 20's fix), so a page slow to reach the assertion sees both; the other projects asserted before the announcement.
     - Found by: the targeted Playwright run of the four tracks' specs. Fix: the assertion takes the text that is not in a live region (`:not([aria-live])`), as `smoke.spec.ts` already does.
     - **A snackbar's message is asserted without its live region; the live region is asserted on its own when the announcement is the point.**
+
+442. **The browser queued every tile of an archive behind the one before it.**
+    - Seen: 2026-11-08, the first own-tiles layer on the live map: 30 tiles of one PMTiles archive finished half a second apart, the last after 10 s, though each read took 0.3 to 0.5 s.
+    - Cause: Chrome lets one cacheable request of an address run at a time (its HTTP cache lock), whatever the Range; every tile read used the archive's one address.
+    - Found by: the owner's eyes on the live map, then a measure in the page: 16 reads in 6.2 s at one address, 0.86 s with no cache, 0.78 s with an address per range.
+    - Fix and pin: `rangeRequest` gives each range its own address (`?range=`), still cached; a signed address, whose query is signed, skips the cache instead. Tests in `pmtiles-source.test.ts`.
+    - **Measure parallel reads on the real browser and host: a fake fetch cannot show a browser's own queue.**

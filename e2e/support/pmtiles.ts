@@ -93,9 +93,21 @@ export async function fulfilRange(route: Route, archive: Uint8Array, reads: Arch
     });
 }
 
+/**
+ * The archive at `url`, whatever its query: the reader gives each range its own address (`?range=`) so the browser runs
+ * them together, so an exact address would match only a read with no query.
+ */
+export function archiveAt(url: string | RegExp): (address: URL) => boolean {
+    if (typeof url !== 'string') {
+        return (address: URL) => url.test(address.href);
+    }
+    const wanted = new URL(url);
+    return (address: URL) => address.origin === wanted.origin && address.pathname === wanted.pathname;
+}
+
 /** The page reads `url`'s archive; the reads it made are recorded. */
 export async function serveArchive(page: Page, url: string | RegExp, archive: Uint8Array): Promise<ArchiveReads> {
     const reads: ArchiveReads = { ranges: [] };
-    await page.route(url, (route) => fulfilRange(route, archive, reads));
+    await page.route(archiveAt(url), (route) => fulfilRange(route, archive, reads));
     return reads;
 }

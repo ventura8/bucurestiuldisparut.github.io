@@ -3,7 +3,7 @@ import type { Locale } from '@hcm/shared';
 import { siteManifestData, type Json } from '../../fixtures/manifest.js';
 import { BASEMAP_BACKGROUND, E2E_TILE_HOST, type Rgb } from '../../fixtures/world.js';
 import { expectColourAt, mapFraction } from '../../support/map.js';
-import { serveArchive, solidArchive } from '../../support/pmtiles.js';
+import { archiveAt, serveArchive, solidArchive } from '../../support/pmtiles.js';
 import { sitePath } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
 import { openViewer, serveManifest, t, viewer, waitForEngineEvent } from '../../support/viewer.js';
@@ -91,7 +91,7 @@ test(
     async ({ page, lang }) => {
         const body = await archive();
         let reads = 0;
-        await page.route(ARCHIVE_URL, async (route) => {
+        await page.route(archiveAt(ARCHIVE_URL), async (route) => {
             reads += 1;
             await route.fulfill({
                 status: 200,

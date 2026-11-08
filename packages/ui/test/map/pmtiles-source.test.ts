@@ -2,7 +2,15 @@ import { archiveTileId, pmtilesArchive, rangeResponse, type ArchiveTile } from '
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import golden from '../../../../pipeline/tests/contracts/pmtiles-archive.json';
-import { entryFor, parseDirectory, PmtilesReader, PmtilesRefusal, pmtilesSource, tileIdOf } from '../../src/map/pmtiles-source.js';
+import {
+    entryFor,
+    parseDirectory,
+    PmtilesReader,
+    PmtilesRefusal,
+    pmtilesSource,
+    rangeRequest,
+    tileIdOf,
+} from '../../src/map/pmtiles-source.js';
 
 /** A 1×1 lossless WebP with alpha, made once by a browser: the real format, decoded for real. */
 const WEBP_1X1 = Uint8Array.from(atob('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAEAdQiirUo4CBiOh/AAA='), (char) => char.charCodeAt(0));
@@ -283,5 +291,25 @@ describe('the source Mapbox GL takes', () => {
         await expect(source.loadTile({ z: 3, x: 1, y: 2 }, { signal: new AbortController().signal })).rejects.toBeInstanceOf(
             PmtilesRefusal,
         );
+    });
+});
+
+describe('a range request', () => {
+    it('happyPath_aPublicArchiveGetsOneAddressPerRangeSoTheBrowserRunsThemTogether', () => {
+        const first = rangeRequest('https://storage.googleapis.com/b/c/layer.pmtiles', '0-16383');
+        const second = rangeRequest('https://storage.googleapis.com/b/c/layer.pmtiles', '16384-20000');
+
+        expect(first.url).toBe('https://storage.googleapis.com/b/c/layer.pmtiles?range=0-16383');
+        expect(second.url).not.toBe(first.url);
+        expect(first.init.cache).toBeUndefined();
+        expect(rangeRequest('https://example.org/a.pmtiles?v=2', '5-9').url).toBe('https://example.org/a.pmtiles?v=2&range=5-9');
+    });
+
+    it('badPath_aSignedAddressIsNeverChangedAndSkipsTheCacheInstead', () => {
+        const signed = 'https://storage.googleapis.com/b/t.pmtiles?X-Goog-Algorithm=GOOG4&X-Goog-Signature=abc';
+        const request = rangeRequest(signed, '0-9');
+
+        expect(request.url).toBe(signed);
+        expect(request.init.cache).toBe('no-store');
     });
 });
