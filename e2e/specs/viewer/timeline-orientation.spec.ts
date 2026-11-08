@@ -94,17 +94,45 @@ test(
     },
 );
 
-/** The owner's twelve stops: the fixture's two layers and nine more years drawn by the 1980 layer's tiles. */
-function ownersManifest(): Record<string, unknown> {
+/** Whether `box` holds the point. */
+function holds(box: Box, point: { readonly x: number; readonly y: number }): boolean {
+    return box.x <= point.x && point.x <= box.x + box.width && box.y <= point.y && point.y <= box.y + box.height;
+}
+
+test(
+    "On a narrow short phone the chip ends at the gutter, off the map's centre and clear of the open menu",
+    { tag: '@S-V04-BAD-NARROW-SHORT-CHIP' },
+    async ({ page, lang }) => {
+        // The review at 568 x 320: the chip sat on the map's centre point and the open three-column menu covered it.
+        await page.setViewportSize({ width: 568, height: 320 });
+        await openViewer(page, { lang, hash: OBOR_VIEW });
+        await expect(slider(page, lang)).toHaveAttribute('aria-orientation', 'horizontal');
+        await slider(page, lang).focus();
+        await slider(page, lang).press('Home');
+
+        const timeline = await boxOf(page, 'hcm-timeline');
+        const chip = await boxOf(page, '.dock.chip hcm-button');
+        expect(Math.abs(chip.x + chip.width - (timeline.x + timeline.width)), "on the card's trailing edge").toBeLessThanOrEqual(1);
+        expect(Math.abs(568 - 16 - (chip.x + chip.width)), 'the card and the chip end at the gutter').toBeLessThanOrEqual(1);
+        expect(holds(chip, { x: 284, y: 160 }), "the chip on the map's centre").toBe(false);
+
+        await expectOpenMenuClear(page, lang);
+    },
+);
+
+/** `years` as stops: the fixture's two layers and the other years drawn by the 1980 layer's tiles. */
+function manifestOf(years: readonly number[]): Record<string, unknown> {
     const manifest = siteManifestData();
     const served = manifest['layers'] as Record<string, unknown>[];
     const xyz = served.find((layer) => layer['id'] === E2E_XYZ_LAYER.id) ?? {};
-    const extra = OWNERS_YEARS.filter((year) => !served.some((layer) => layer['year'] === year)).map((year) => ({
-        ...xyz,
-        id: `e2e-${String(year)}`,
-        year,
-        label: { ro: `Strat ${String(year)} (e2e)`, en: `Layer ${String(year)} (e2e)` },
-    }));
+    const extra = years
+        .filter((year) => !served.some((layer) => layer['year'] === year))
+        .map((year) => ({
+            ...xyz,
+            id: `e2e-${String(year)}`,
+            year,
+            label: { ro: `Strat ${String(year)} (e2e)`, en: `Layer ${String(year)} (e2e)` },
+        }));
     const layers = [...served, ...extra].map((layer, order) => ({ ...layer, order: order + 1 }));
     return { ...manifest, layers };
 }
@@ -138,7 +166,7 @@ test(
     async ({ page, lang }) => {
         // The springs off: each box is measured where the pill lands.
         await page.emulateMedia({ reducedMotion: 'reduce' });
-        await serveManifest(page, ownersManifest());
+        await serveManifest(page, manifestOf(OWNERS_YEARS));
         for (const size of [
             { width: 320, height: 568 },
             { width: 375, height: 812 },
@@ -154,6 +182,64 @@ test(
                 await expect(viewer(page).locator('hcm-timeline .thumb-label')).toHaveText(year);
                 expect(await coveredLabels(page), `${String(size.width)}x${String(size.height)} at ${year}`).toEqual([]);
                 await thumb.press('ArrowUp');
+            }
+        }
+    },
+);
+
+/** In the page: whether the selected stop is inside the timeline's card, and the labels that meet another one. */
+async function scrolledView(page: Page): Promise<{ inView: boolean; crowded: string[]; scrolls: boolean }> {
+    return viewer(page)
+        .locator('hcm-timeline')
+        .evaluate((element) => {
+            const meets = (a: DOMRect, b: DOMRect) =>
+                a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+            const view = element.getBoundingClientRect();
+            const thumb = element.shadowRoot?.querySelector('.thumb')?.getBoundingClientRect() ?? view;
+            const labels = [...(element.shadowRoot?.querySelectorAll('.stop:not(.selected) .label') ?? [])].map((label) => ({
+                text: label.textContent,
+                box: label.getBoundingClientRect(),
+            }));
+            const crowded = labels.filter(
+                ({ box }, at) => meets(box, thumb) || labels.some((other, otherAt) => otherAt !== at && meets(box, other.box)),
+            );
+            return {
+                inView: thumb.left >= view.left && thumb.right <= view.right && thumb.top >= view.top && thumb.bottom <= view.bottom,
+                crowded: crowded.map(({ text }) => text),
+                scrolls: element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight,
+            };
+        });
+}
+
+test(
+    'With more years than the card holds the timeline scrolls, its labels legible and the selected year in view',
+    { tag: '@S-V04-BAD-MANY-YEARS-SCROLL' },
+    async ({ page, lang }) => {
+        // The review, 2026-11-08: twenty-two stops squeezed 17 px apart, the pill over its neighbours, the labels one row.
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await serveManifest(page, manifestOf(Array.from({ length: 21 }, (_, at) => 1964 + at)));
+        for (const size of [
+            { width: 320, height: 568 },
+            { width: 568, height: 320 },
+            { width: 768, height: 1024 },
+        ]) {
+            await page.setViewportSize(size);
+            await openViewer(page, { lang, hash: OBOR_VIEW });
+            const thumb = slider(page, lang);
+            await expect(thumb).toHaveAttribute('aria-valuemax', '21');
+            await thumb.focus();
+            for (const [key, index] of [
+                ['Home', '0'],
+                ['End', '21'],
+                ['Home', '0'],
+            ] as const) {
+                await thumb.press(key);
+                await expect(thumb).toHaveAttribute('aria-valuenow', index);
+                const where = `${String(size.width)}x${String(size.height)} after ${key}`;
+                await expect.poll(async () => (await scrolledView(page)).inView, `${where}: the thumb in view`).toBe(true);
+                const view = await scrolledView(page);
+                expect(view.scrolls, `${where}: the card scrolls`).toBe(true);
+                expect(view.crowded, `${where}: crowded labels`).toEqual([]);
             }
         }
     },

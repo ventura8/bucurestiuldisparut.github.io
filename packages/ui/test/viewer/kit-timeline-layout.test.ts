@@ -176,6 +176,7 @@ describe('<hcm-map-viewer> the photos-near-the-year chip on the vertical timelin
         { width: 375, height: 812 },
         { width: 320, height: 568 },
         { width: 915, height: 412 },
+        { width: 568, height: 320 },
     ])('badPath_at $width x $height: theOpenMenuCoversNeitherTheChipNorTheTimeline', async (size) => {
         // The owner's 375 px phone: the last item, Despre, covered the end of the chip.
         const { element } = await viewerAt(size, 1977);
@@ -224,5 +225,23 @@ describe('<hcm-map-viewer> the photos-near-the-year chip on the vertical timelin
         timeline = boxOf(element, 'hcm-timeline');
         chip = boxOf(element, '.dock.chip hcm-button');
         expect(Math.abs(chip.left - timeline.left)).toBeLessThanOrEqual(1);
+    });
+
+    it.each(['ltr', 'rtl'] as const)('badPath_onANarrowShortPhone_%s_theChipLeavesTheMapsCentreFree', async (dir) => {
+        // The review at 568 x 320: the chip, 8 px above the card's trailing end, sat on the map's centre point.
+        const { element } = await viewerAt({ width: 568, height: 320 }, 1977);
+        element.dir = dir;
+        await element.updateComplete;
+        const frame = element.getBoundingClientRect();
+        const timeline = boxOf(element, 'hcm-timeline');
+        const chip = boxOf(element, '.dock.chip hcm-button');
+        const centre = { x: frame.left + frame.width / 2, y: frame.top + frame.height / 2 };
+
+        const trailing =
+            dir === 'ltr' ? [chip.right, timeline.right, frame.right - chip.right] : [chip.left, timeline.left, chip.left - frame.left];
+        expect(Math.abs((trailing[0] ?? 0) - (trailing[1] ?? 0)), "on the card's trailing edge").toBeLessThanOrEqual(1);
+        expect(Math.abs((trailing[2] ?? 0) - GUTTER_PX), 'the card and the chip end at the gutter').toBeLessThanOrEqual(1);
+        const onCentre = chip.left <= centre.x && centre.x <= chip.right && chip.top <= centre.y && centre.y <= chip.bottom;
+        expect(onCentre, 'the chip on the centre').toBe(false);
     });
 });

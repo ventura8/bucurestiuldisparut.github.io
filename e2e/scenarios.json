@@ -1255,6 +1255,28 @@
             "notes": "The owner's phone, 2026-11-08: the pill '1980' covered 1979 and 1982. Lying, the labels are a row below the pill; standing, the years are the ruler in the pill's lane. packages/ui/src/viewer/timeline-styles.ts."
         },
         {
+            "id": "S-V04-BAD-NARROW-SHORT-CHIP",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "On a narrow short phone the chip ends at the gutter, off the map's centre and clear of the open menu",
+            "asserts": "at 568x320 the lying card and the chip end 16 px from the trailing edge, the chip on the card's trailing edge and off the map's centre point; the open three-column menu's items end above the chip's row and cover neither the chip nor the timeline",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The review of track/yearchip, 2026-11-08: at 568x320 the chip sat on the map's centre and 'Distribuie' and 'Despre' covered it. packages/ui/src/viewer/viewer-styles.ts; unit tests in packages/ui/test/viewer/kit-timeline-layout.test.ts."
+        },
+        {
+            "id": "S-V04-BAD-MANY-YEARS-SCROLL",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "With more years than the card holds the timeline scrolls, its labels legible and the selected year in view",
+            "asserts": "with twenty-two stops (1964 … 1984, today) at 320x568, 568x320 and 768x1024 the card scrolls; after Home, End and Home the thumb is inside the card and no label meets the pill or another label",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The review of track/yearchip, 2026-11-08: twenty-two stops squeezed 17 px apart. The stops keep 30 px apart and the selected one snaps into view when no drag is on. packages/ui/src/viewer/timeline-styles.ts, hcm-timeline.ts; unit tests in packages/ui/test/viewer/hcm-timeline.test.ts."
+        },
+        {
             "id": "S-V04-HAPPY-NO-LAYERS-NOTE",
             "behaviour": "V04",
             "area": "viewer",

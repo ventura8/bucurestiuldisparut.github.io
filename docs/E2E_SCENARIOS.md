@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 133 | 1283 | 512 | 771 | 1281 | 2 | 312 |
+| 133 | 1285 | 512 | 773 | 1283 | 2 | 312 |
 
 ## Viewer
 
@@ -44,6 +44,8 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V04-HAPPY-VERTICAL-ON-PHONE` | V04 | happy | On a phone held upright the timeline stands on the leading edge with the chip under it | at 375x812 the slider is aria-orientation vertical, the card stands 16 px from the leading edge; Up selects the later year and Down the earlier; the chip docks 8 px under the card's foot on its leading edge, the menu button keeps the bottom trailing corner below it; the open menu covers neither the chip nor the timeline | e2e-viewer | exists | `e2e/specs/viewer/timeline-orientation.spec.ts` |
 | `S-V04-BAD-CHIP-NEVER-ALONE` | V04 | bad | The chip never floats alone | no chip at today or at a year with no photo within 10 years; at a year with photos the chip is on the timeline's edge and the open menu leaves it uncovered at every size | e2e-viewer | exists | `e2e/specs/viewer/timeline.spec.ts` |
 | `S-V04-BAD-HORIZONTAL-WHEN-SHORT` | V04 | bad | A short window lays the timeline at the foot of the map | at 915x412 the slider is aria-orientation horizontal and wider than tall; Right selects the later year and Left the earlier; the chip sits 8 px above the card on its trailing edge; the open two-column menu on the leading edge covers neither the chip nor the timeline | e2e-viewer | exists | `e2e/specs/viewer/timeline-orientation.spec.ts` |
+| `S-V04-BAD-MANY-YEARS-SCROLL` | V04 | bad | With more years than the card holds the timeline scrolls, its labels legible and the selected year in view | with twenty-two stops (1964 … 1984, today) at 320x568, 568x320 and 768x1024 the card scrolls; after Home, End and Home the thumb is inside the card and no label meets the pill or another label | e2e-viewer | exists | `e2e/specs/viewer/timeline-orientation.spec.ts` |
+| `S-V04-BAD-NARROW-SHORT-CHIP` | V04 | bad | On a narrow short phone the chip ends at the gutter, off the map's centre and clear of the open menu | at 568x320 the lying card and the chip end 16 px from the trailing edge, the chip on the card's trailing edge and off the map's centre point; the open three-column menu's items end above the chip's row and cover neither the chip nor the timeline | e2e-viewer | exists | `e2e/specs/viewer/timeline-orientation.spec.ts` |
 | `S-V04-BAD-NO-LAYERS-NOTE-LAYOUT` | V04 | bad | The no-layers note never covers the menu button or the Mapbox logo | at 320 px and on a compact-height landscape phone the note wraps or shrinks; the menu button, the Mapbox logo and the attribution stay fully visible and clickable | e2e-viewer | exists | `e2e/specs/viewer/timeline.spec.ts` |
 | `S-V04-BAD-PILL-HIDES-NO-LABEL` | V04 | bad | The selected year's pill hides no other year's label | with the owner's twelve stops (1966 … 1984, today) at 320x568, 375x812 and 915x412, at every selected stop no other stop's label box meets the pill's box | e2e-viewer | exists | `e2e/specs/viewer/timeline-orientation.spec.ts` |
 | `S-V04-BAD-YEAR-WITHOUT-LAYER` | V04 | bad | A year without a layer is disabled or snaps to the nearest | year without a layer -> stop disabled or snaps to the nearest year | e2e-viewer | exists | `e2e/specs/viewer/timeline.spec.ts` |

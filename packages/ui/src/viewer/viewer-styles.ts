@@ -388,19 +388,29 @@ export const viewerStyles = [
          * A landscape phone is too short for the whole menu: below the top gutter its items continue in a second
          * column (the tour found items off screen). The menu is docked on the leading edge, so the FAB and the items
          * line up there: aligned to the end, the wider two-column menu pushed the FAB 300 px away from where it was
-         * tapped (UX review). The chip takes the card's trailing edge, clear of that menu.
+         * tapped (UX review). Its items end above the chip's row (40 px and 8 more, 56 px with the gap to the card), kept
+         * free when no chip shows so the menu does not move: at 568 x 320 the menu needs three columns, which reach the
+         * trailing edge (the review found "Distribuie" and "Despre" over the chip).
          */
         .frame[data-compact-height] .dock.menu {
             inset-inline: var(--hcm-gutter) auto;
 
             --hcm-fab-menu-align: flex-start;
-            --hcm-fab-menu-max-block-size: calc(
-                100cqb - var(--hcm-map-chrome) - var(--hcm-timeline-block) - var(--hcm-dock-gap) - var(--hcm-gutter)
-            );
+            --hcm-fab-menu-gap: calc(var(--hcm-timeline-block) - var(--hcm-fab-size) + 56px);
+            --hcm-fab-menu-max-block-size: calc(100cqb - var(--hcm-map-chrome) - var(--hcm-timeline-block) - 56px - var(--hcm-gutter));
+        }
+
+        /*
+         * The menu button is on the leading side only, so the lying card takes the trailing column too, and the chip its
+         * trailing edge: 50 % - 356 px is where the centred 640 px card ends (the review at 568 x 320: 72 px in, the chip
+         * sat on the map's centre point; it now ends at the gutter, with 9 px to spare in Romanian).
+         */
+        .frame[data-compact-height] .dock.timeline {
+            inset-inline-end: var(--hcm-gutter);
         }
 
         .frame[data-compact-height] .dock.chip {
-            inset-inline: auto max(var(--hcm-gutter) + 72px, 50% - 320px);
+            inset-inline: auto max(var(--hcm-gutter), 50% - 356px);
         }
 
         /* Upright, the items begin above the chip's row (the owner's phone: the last item covered the chip's end). */

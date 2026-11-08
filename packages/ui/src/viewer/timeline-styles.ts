@@ -34,6 +34,15 @@ export const timelineStyles = [
             box-shadow: 0 4px 12px color-mix(in srgb, var(--md-sys-color-shadow, CanvasText) 30%, transparent);
             touch-action: none;
             user-select: none;
+
+            /*
+             * More years than the card holds scroll (the review, 2026-11-08: twenty-two stops 17 px apart, the pill over
+             * its neighbours): the stops keep 30 px apart, half the pill and half a label standing, a label and a gap
+             * lying, and the selected one snaps into view unless a drag is on (it would run under the finger).
+             */
+            overflow: auto;
+            scroll-snap-type: both mandatory;
+            scrollbar-width: none;
         }
 
         :host(:dir(rtl)) {
@@ -48,18 +57,24 @@ export const timelineStyles = [
         .track {
             position: relative;
             block-size: 48px;
+            min-inline-size: calc(var(--hcm-gaps) * 30px);
             cursor: pointer;
         }
 
+        .selected {
+            scroll-snap-align: center;
+        }
+
+        /* No margin, padding or marker: the stops are placed on the track, the list only holds them. */
         .stops {
-            margin: 0;
-            padding: 0;
-            list-style: none;
+            all: unset;
         }
 
         :host([orientation='vertical']) .track {
             inline-size: 52px;
+            min-inline-size: 0;
             block-size: 100%;
+            min-block-size: calc(var(--hcm-gaps) * 30px);
         }
 
         .rail,
@@ -152,11 +167,8 @@ export const timelineStyles = [
             color: var(--md-sys-color-on-primary, HighlightText);
             font-weight: 600;
             cursor: grab;
-            transition:
-                inset-inline-start 350ms var(--hcm-timeline-spring),
-                inset-block-end 350ms var(--hcm-timeline-spring),
-                border-radius 350ms var(--hcm-timeline-spring),
-                transform 350ms var(--hcm-timeline-spring);
+            transition: 350ms var(--hcm-timeline-spring);
+            transition-property: inset-inline-start, inset-block-end, border-radius, transform;
         }
 
         :host([orientation='vertical']) .thumb {
@@ -165,6 +177,11 @@ export const timelineStyles = [
             min-inline-size: 100%;
             padding: 0;
             transform: translateY(50%);
+        }
+
+        /* A drag does not snap: the selected stop would run away under the finger. */
+        :host([dragging]) {
+            scroll-snap-type: none;
         }
 
         :host([dragging]) .thumb {

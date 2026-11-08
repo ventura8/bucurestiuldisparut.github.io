@@ -5,7 +5,8 @@
  * The thumb morphs from a pill into a rounded square while it is dragged (an expressive spring curve), with no
  * motion under `prefers-reduced-motion: reduce`. Standing on the leading edge of a phone held upright, lying at the bottom
  * of the map everywhere else; Left and Right follow the thumb on screen (a later year is to the left, right to left).
- * A new stop fires `hcm-year-change` (`{year}`, null for today).
+ * More years than the card holds scroll: the track is at least 30 px per gap (`--hcm-gaps`) and the selected stop snaps
+ * into view, except while a drag is on (`timeline-styles.ts`). A new stop fires `hcm-year-change` (`{year}`, null for today).
  */
 import { DEFAULT_LOCALE, translate, type Locale } from '@hcm/shared';
 import { LitElement, html, type TemplateResult } from 'lit';
@@ -92,7 +93,11 @@ export class HcmTimeline extends LitElement {
     override render(): TemplateResult {
         const index = stopIndex(this.stops, this.value);
         const position = { '--hcm-position': percentText(this.#percent(index)) };
-        return html`<div class="track" @pointerdown=${this.#onPointerDown}>
+        return html`<div
+            class="track"
+            ${cssProperties({ '--hcm-gaps': String(this.stops.length - 1) })}
+            @pointerdown=${this.#onPointerDown}
+        >
             <div class="rail"></div>
             <div class="active" ${cssProperties(position)}></div>
             <ol class="stops" aria-hidden="true">
