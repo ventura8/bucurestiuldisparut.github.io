@@ -151,6 +151,8 @@ async function save(deps: SaveGcpsDeps, caller: VerifiedCaller, request: Request
         georef,
         ...crop,
         by: caller.uid,
+        // M16: every pair editable, the manual route; the pipeline measures both fits on its disabled pairs.
+        recalibration: { route: 'manual' },
     });
     return { ...started, resumed: false };
 }

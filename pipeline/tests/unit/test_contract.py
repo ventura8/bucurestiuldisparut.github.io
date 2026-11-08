@@ -44,6 +44,8 @@ def test_happy_path_the_constants_equal_the_shared_copy() -> None:
         "MAX_GCPS": contract.MAX_GCPS,
         "MAX_SCAN_PIXELS": contract.MAX_SCAN_PIXELS,
         "JOIN_MAX_PARTS": contract.JOIN_MAX_PARTS,
+        "RECALIBRATE_MIN_GAIN_M": contract.RECALIBRATE_MIN_GAIN_M,
+        "RECALIBRATE_MIN_CHECKS": contract.RECALIBRATE_MIN_CHECKS,
         # Every code a step fails or waits with: the shared test holds each to a code the admin can read (finding 62).
         "PIPELINE_ERROR_CODES": sorted(value for name, value in vars(contract.Errors).items() if name.isupper()),
     }

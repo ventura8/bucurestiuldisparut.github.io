@@ -237,6 +237,29 @@ describe('worker.step update', () => {
     });
 });
 
+describe('worker.step and a refine that declines (M16)', () => {
+    const declined = { code: 'apiError.imagery.notImproved', message: '17.0 m against the current 17.2 m', params: { before: '17.2', after: '17.0' } };
+
+    it('happyPath_aRefineWithNothingBetterEndsCancelledWithItsReason @S-A80-BAD-NOT-IMPROVED', async () => {
+        const world = await held({ type: 'regeoref', params: { basedOn: 'v-current' } });
+
+        await expect(update(world, JOB_PATH, { status: 'cancelled', finishedAt: at(NOW), error: declined, lease: DELETE })).resolves.toEqual({
+            ok: true,
+        });
+        await expect(update(world, VERSION_PATH, { state: 'cancelled', error: { code: declined.code } })).resolves.toEqual({ ok: true });
+        await expect(readJob(world, JOB)).resolves.toMatchObject({ status: 'cancelled', error: { code: declined.code } });
+    });
+
+    it('badPath_noOtherRunEndsCancelledUnasked @S-A80-BAD-NOT-IMPROVED', async () => {
+        const importing = await held();
+        const failed = await held({ type: 'regeoref', params: { basedOn: 'v-current' } });
+        const failure = { code: 'apiError.internal', message: 'x' };
+
+        expect(await codeOf(update(importing, JOB_PATH, { status: 'cancelled', error: declined }))).toBe('apiError.worker.refused');
+        expect(await codeOf(update(failed, JOB_PATH, { status: 'cancelled', error: failure }))).toBe('apiError.worker.refused');
+    });
+});
+
 describe('worker.step and a pass (M9)', () => {
     const job = { params: { entityId: 'D3C1203-300415F006', dataset: 'declassiii', sensor: 'KH-9-pan' } };
     const path = FIRESTORE_PATHS.imageryPass(CITY, 'D3C1203-300415-F-1975-08-20');

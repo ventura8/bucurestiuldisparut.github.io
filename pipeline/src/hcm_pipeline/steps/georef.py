@@ -195,7 +195,7 @@ class _ScanReader:
 
 
 @dataclass(frozen=True)
-class _TransformMap:
+class TransformMap:
     """The admin's points' transform as a map for the tiles."""
 
     transform: Transform
@@ -218,9 +218,9 @@ def _sentinel_of(found: References) -> UInt8Array:
     return found.s2
 
 
-def measured_on_scan(ctx: JobContext, start: PlaceMap, scan: ScanInfo, search_ground_m: float) -> Proof:
-    """The tiles of the job's reference on the scan, from `start`, and the verdict."""
-    found = references(ctx)
+def measured_on_scan(ctx: JobContext, start: PlaceMap, scan: ScanInfo, search_ground_m: float, given: References | None = None) -> Proof:
+    """The tiles of the job's reference on the scan, from `start`, and the verdict (M16's refine has no `reference` step: `given`)."""
+    found = given or references(ctx)
     grid = found.grid
     middle = grid.box().bounds().middle_lat
     reference = dense_grid(_sentinel_of(found), grid, search_ground_m)
@@ -249,7 +249,7 @@ def _seed_map(ctx: JobContext, georef: GeorefInfo) -> PlaceMap | None:
     if not _seedable(georef) or ctx.job.step("reference").gcs_path is None:
         return None
     fitted = fit(georef.transform, georef.gcps)
-    return _TransformMap(fitted.transform) if isinstance(fitted, Fit) else None
+    return TransformMap(fitted.transform) if isinstance(fitted, Fit) else None
 
 
 def _seed_search_m(fitted: GeorefInfo) -> float:

@@ -11,6 +11,7 @@ How a run ends:
 | a step waits | `waiting_usgs` with `retryAt`, or `awaiting_gcps`; the step `pending` | 0 |
 | a step fails | `failed` with `error {code, message, params}`; the version `failed` | 1 |
 | an invalid job | `failed` with `apiError.invalidRequest` (a retry cannot help) | 1 |
+| a step declines (M16: a refine with nothing better, `DeclinedError`) | `cancelled` with its `error`; the version `cancelled` with it | 0 |
 | `cancelRequested` (heartbeat, a checkpoint, or SIGTERM after it) | `cancelled`; the version `cancelled`; its `work/` objects deleted | 0 |
 | SIGTERM (or SIGINT: a local worker's Ctrl-C), no cancel | `queued` with `retryAt` + 1 minute; the step `pending` | 0 |
 | the download phase done on the small `fetch` job | `queued`, lease released: dispatched again on `std` or `xl` | 0 |
@@ -46,6 +47,7 @@ from hcm_pipeline.documents import Version
 from hcm_pipeline.joblog import JobLog, scrub
 from hcm_pipeline.jobs import (
     CancelledRunError,
+    DeclinedError,
     Done,
     JobContext,
     LeaseLostError,
@@ -172,7 +174,7 @@ class JobRunner:
         except RunStoppedError as stop:
             return self._stopped(ctx, stop)
         except StepFailedError as error:
-            return self._fail_job(ctx, error)
+            return self._failed(ctx, error)
         except Exception as error:  # a crash still ends the job with a code, never a silent lapse
             LOG.exception("job %s crashed in %s", ctx.job.id, ctx.step or "start")
             return self._fail_job(ctx, StepFailedError(Errors.INTERNAL, f"{type(error).__name__}: {error}"))
@@ -307,6 +309,19 @@ class JobRunner:
             self._services.store.update(ctx.version_path(), {"state": "cancelled", **stamp(now)})
         _delete_work(ctx)
         self._log.info("the job was cancelled; its scratch files are deleted", ctx.step or None)
+        return RunOutcome.CANCELLED
+
+    def _failed(self, ctx: JobContext, error: StepFailedError) -> RunOutcome:
+        return self._decline(ctx, error) if isinstance(error, DeclinedError) else self._fail_job(ctx, error)
+
+    def _decline(self, ctx: JobContext, declined: StepFailedError) -> RunOutcome:
+        """M16: the job and its version end `cancelled` with the step's reason; nothing was rendered, so its work files go."""
+        now = self._now()
+        step = {f"steps.{ctx.step}": {**self._current(ctx.step).as_record(), "status": "skipped"}} if ctx.step else {}
+        self._final({"status": "cancelled", "finishedAt": now, "error": _job_error(declined), **step})
+        self._services.store.update(ctx.version_path(), {"state": "cancelled", "error": _version_error(declined), **stamp(now)})
+        _delete_work(ctx)
+        self._log.info(f"declined, nothing rendered: {declined}", ctx.step or None)
         return RunOutcome.CANCELLED
 
     def _fail_version_of(self, record: Record, error: StepFailedError) -> None:

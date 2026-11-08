@@ -48,6 +48,8 @@ export const WORKER_VERSION_FIELDS: ReadonlySet<string> = new Set([
     'reference',
     'georef',
     'calibration',
+    // M16: what a recalibration measured (the current fit and the new one on the same checks).
+    'recalibration',
     'join',
     'suggestions',
     'output',

@@ -12,6 +12,7 @@ import { isDeepStrictEqual } from 'node:util';
 import {
     ENDED_VERSION_STATES,
     LEASE_SECONDS,
+    isDeclinedCode,
     isOwnTiles,
     isSideJob,
     jobDocSchema,
@@ -69,11 +70,20 @@ function sideJobDone(current: JobDoc, merged: JobDoc): boolean {
     return merged.status === 'succeeded' && isSideJob(current.type);
 }
 
+/** M16 (`docs/research/M16-recalibrate.md` §3): a refine that renders nothing ends cancelled on its own, with its reason. */
+function declined(current: JobDoc, merged: JobDoc): boolean {
+    return current.type === 'regeoref' && isDeclinedCode(merged.error?.code);
+}
+
+function cancelAllowed(current: JobDoc, merged: JobDoc): boolean {
+    return merged.status !== 'cancelled' || current.cancelRequested === true || declined(current, merged);
+}
+
 function jobStatusAllowed(current: JobDoc, merged: JobDoc): boolean {
     if (merged.status === current.status || sideJobDone(current, merged)) {
         return true;
     }
-    return WORKER_JOB_STATUSES.has(merged.status) && (merged.status !== 'cancelled' || current.cancelRequested === true);
+    return WORKER_JOB_STATUSES.has(merged.status) && cancelAllowed(current, merged);
 }
 
 function ownLease(merged: JobDoc, call: WorkerCall): boolean {

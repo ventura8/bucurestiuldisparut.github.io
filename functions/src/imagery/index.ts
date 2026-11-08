@@ -18,6 +18,7 @@ import { publishFunction } from './publish.js';
 import { resumeGuardFunction } from './resume-guard.js';
 import { locateAgainFunction } from './locate-again.js';
 import { previewUrlFunction } from './preview-url.js';
+import { recalibrateFunction } from './recalibrate.js';
 import { retryFunction } from './retry.js';
 import { runOnFunction } from './run-on.js';
 import { saveGcpsFunction } from './save-gcps.js';
@@ -43,6 +44,7 @@ export function imageryFunctions(getDeps: () => ImageryFamilyDeps, bucket?: stri
         retry: retryFunction(getDeps),
         locateAgain: locateAgainFunction(getDeps),
         previewUrl: previewUrlFunction(getDeps),
+        recalibrate: recalibrateFunction(getDeps),
         runOn: runOnFunction(getDeps),
         probeTiles: probeTilesFunction(getDeps),
         resumeGuard: resumeGuardFunction(getDeps),

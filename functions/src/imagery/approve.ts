@@ -5,6 +5,7 @@ import {
     FIRESTORE_PATHS,
     jobDocSchema,
     layerVersionDocSchema,
+    recalibrationVerdict,
     type CallableRequest,
     type CallableResponse,
     type JobDoc,
@@ -38,7 +39,8 @@ import { deleteWorkFiles } from './work-files.js';
  * (a local worker's stay in its work folder until its sweep: `work-files.ts`). M8: a frame a live join holds refuses both
  * (`refuseHeldPart`).
  */
-type VersionRequest = CallableRequest<'imagery.approve'>;
+type VersionRequest = CallableRequest<'imagery.reject'>;
+type ApproveRequest = CallableRequest<'imagery.approve'>;
 
 type RejectDeps = ApprovalDeps & Pick<Ports, 'blobs'>;
 
@@ -51,8 +53,19 @@ function rejectable(job: JobDoc, version: LayerVersionDoc | undefined): boolean 
     return job.status !== 'mts_processing' && version !== undefined && REJECTABLE.has(version.state);
 }
 
+/**
+ * M16 (`docs/research/M16-recalibrate.md` §4; S-A82-*): a recalibration not shown to be better than the current one replaces it only by the
+ * owner's choice (`acceptWorse`), which the page asks for in words.
+ */
+function refuseUnchosenWorse(version: LayerVersionDoc, request: ApproveRequest): void {
+    const shownBetter = version.recalibration === undefined || recalibrationVerdict(version.recalibration) === 'better';
+    if (!shownBetter && request.acceptWorse !== true) {
+        throw new ApiError('apiError.imagery.notBetter');
+    }
+}
+
 /** The version is approved now, its estimate recorded; any other state is `apiError.imagery.versionState`. */
-async function approveVersion(deps: ApprovalDeps, caller: VerifiedCaller, request: VersionRequest): Promise<LayerVersionDoc> {
+async function approveVersion(deps: ApprovalDeps, caller: VerifiedCaller, request: ApproveRequest): Promise<LayerVersionDoc> {
     const path = FIRESTORE_PATHS.layerVersion(request.cityId, request.versionId);
     const now = deps.clock.now();
     return deps.documents.transaction(async (transaction) => {
@@ -64,6 +77,7 @@ async function approveVersion(deps: ApprovalDeps, caller: VerifiedCaller, reques
             throw new ApiError('apiError.imagery.versionState');
         }
         await refuseHeldPart(transaction, request.cityId, version);
+        refuseUnchosenWorse(version, request);
         const result = approved({ ...version, estimate: version.estimate ?? estimateOf(version.output, now) }, caller.uid, now);
         await transaction.set(path, layerVersionDocSchema, result);
         return result;
@@ -73,7 +87,7 @@ async function approveVersion(deps: ApprovalDeps, caller: VerifiedCaller, reques
 async function imageryApprove(
     deps: ApprovalDeps,
     caller: VerifiedCaller,
-    request: VersionRequest,
+    request: ApproveRequest,
 ): Promise<CallableResponse<'imagery.approve'>> {
     const version = await approveVersion(deps, caller, request);
     await queuePublish(deps, request.cityId, version.jobId, 'approved');

@@ -27,11 +27,11 @@ from hcm_pipeline.steps.align import AlignStep
 from hcm_pipeline.steps.export import ExportStep
 from hcm_pipeline.steps.extract import ExtractStep
 from hcm_pipeline.steps.fetch import FetchStep
-from hcm_pipeline.steps.georef import GeorefStep
 from hcm_pipeline.steps.inspect import InspectStep
 from hcm_pipeline.steps.locate import LocateStep
 from hcm_pipeline.steps.merge import MergeStep
 from hcm_pipeline.steps.pyramid import PyramidStep
+from hcm_pipeline.steps.recalibrate import RecalibratedGeorefStep
 from hcm_pipeline.steps.reference import ReferenceStep
 from hcm_pipeline.steps.register import RegisterStep
 from hcm_pipeline.steps.stitch import StitchStep
@@ -53,7 +53,7 @@ def default_steps() -> Mapping[str, JobStep]:
         InspectStep(),
         LocateStep(),
         ReferenceStep(),
-        GeorefStep(),
+        RecalibratedGeorefStep(),
         AlignStep(),
         MergeStep(),
         WarpStep(),

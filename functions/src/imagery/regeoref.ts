@@ -19,6 +19,7 @@ import {
     type JobDoc,
     type LayerDoc,
     type LayerVersionDoc,
+    type Recalibration,
 } from '@hcm/shared';
 
 import { ApiError } from '../api/api-error.js';
@@ -40,6 +41,11 @@ export interface Regeoref {
     readonly georef: Georef;
     readonly crop?: CropRing;
     readonly by: string;
+    /**
+     * M16 (`docs/research/M16-recalibrate.md` §5): a recalibration. With `replaces`, a base waiting for approval stays, with the layer's
+     * pending mark, until this version is rendered (the approval policy replaces it then): a refine that declines leaves it as it was.
+     */
+    readonly recalibration?: Recalibration;
 }
 
 type Fields = Parameters<typeof createWork>[2];
@@ -56,6 +62,7 @@ function fieldsOf(regeoref: Regeoref): Fields {
         ...pickDefined(base, ['source', 'date', 'sensor', 'scan', 'reference', 'partOf']),
         georef: regeoref.georef,
         ...(crop === undefined ? {} : { crop }),
+        ...(regeoref.recalibration === undefined ? {} : { recalibration: regeoref.recalibration }),
     };
 }
 
@@ -112,6 +119,9 @@ async function regeorefIn(transaction: DocumentTransaction, regeoref: Regeoref, 
     const awaiting = regeoref.base.state === 'awaiting_approval' ? await awaitingBase(transaction, regeoref) : undefined;
     const layer = await freeLayer(transaction, regeoref);
     await createWork(transaction, work, fieldsOf(regeoref));
+    if (regeoref.recalibration?.replaces !== undefined) {
+        return;
+    }
     if (awaiting !== undefined) {
         await replaceBase(transaction, regeoref, awaiting, stampOf(work.createdBy, work.now));
     }

@@ -293,6 +293,8 @@ class Version:
     machines: Mapping[str, str] = field(default_factory=dict)
     # What `locate` measured (`calibrationSchema`): `georef` adds its own figures to it.
     calibration: Record = field(default_factory=dict)
+    # M16: a recalibration's route, rough points and figures (`recalibrationSchema`): `georef` measures and adds to it.
+    recalibration: Record = field(default_factory=dict)
 
     @classmethod
     def of(cls, version_id: str, record: Mapping[str, object]) -> Version:
@@ -311,6 +313,7 @@ class Version:
             crop=_ring_of(record.get("crop")),
             machines=_machines_of(record.get("machines")),
             calibration=optional_record(record.get("calibration")),
+            recalibration=optional_record(record.get("recalibration")),
         )
 
 
