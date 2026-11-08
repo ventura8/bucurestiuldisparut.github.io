@@ -174,7 +174,7 @@ describe('<hcm-imagery-page>: why only a small picture', () => {
         expect(await noteOf('published', false)).toContain('No full detail will be made');
         expect(await noteOf('superseded', false)).toContain('No full detail will be made');
         expect(await noteOf('approved', true)).toContain('No full detail will be made');
-        expect(await noteOf('rejected', false)).toContain('deleted when it was rejected');
+        expect(await noteOf('rejected', false)).toContain('went when it was deleted');
     });
 
     it('badPath_tilesGoneForGoodSayWhyWithNoTryAgain @S-A74-BAD-REFUSED', async () => {

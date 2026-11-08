@@ -161,6 +161,8 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.joinTwoPublished': spec('failed-precondition'),
     'apiError.imagery.joinPartGone': spec('failed-precondition'),
     'apiError.imagery.joinPartHeld': spec('failed-precondition'),
+    // M18 item 4: a join whose published frame's layer is busy; the admin offers to join once it is free.
+    'apiError.imagery.joinLayerBusy': spec('failed-precondition'),
     'apiError.imagery.joinPartMissing': spec('failed-precondition'),
     'apiError.imagery.joinSeamTooFar': spec('failed-precondition'),
     'apiError.imagery.joinNoFrames': spec('failed-precondition'),

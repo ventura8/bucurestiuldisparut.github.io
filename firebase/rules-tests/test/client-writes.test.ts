@@ -80,7 +80,13 @@ const COLLECTIONS: Readonly<Record<ClientCollection, Collection>> = {
         complete: poiCategoryDoc,
         create: newPoiCategory,
     },
-    job: { schema: jobDocSchema, path: (id) => FIRESTORE_PATHS.job(CITY_ID, id), complete: () => jobDoc(admin()), create: newJob },
+    // A frame parked for points: both client writes of a job (a cancellation, the georeferencer's mark) are allowed on it.
+    job: {
+        schema: jobDocSchema,
+        path: (id) => FIRESTORE_PATHS.job(CITY_ID, id),
+        complete: () => jobDoc(admin(), 'awaiting_gcps'),
+        create: newJob,
+    },
     usgsScene: { schema: usgsSceneDocSchema, path: (id) => FIRESTORE_PATHS.usgsScene(CITY_ID, id), complete: () => usgsSceneDoc() },
     // M4: an admin's own inbox and push settings (docs/research/M4-interfaces.md §5.6).
     inboxItem: {

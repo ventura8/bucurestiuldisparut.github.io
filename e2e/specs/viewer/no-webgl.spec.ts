@@ -1,7 +1,8 @@
+import { analyticsManifest } from '../../support/ga4.js';
 import { readInstrumentation } from '../../support/instrumentation.js';
 import { sitePath } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
-import { t, viewer, waitForEngineEvent } from '../../support/viewer.js';
+import { serveManifest, t, viewer, waitForEngineEvent } from '../../support/viewer.js';
 
 /**
  * Without WebGL (behaviour V02, bad path; project `nogl`, Chromium with `--disable-3d-apis`): no map is created and
@@ -42,5 +43,35 @@ test(
         await expect(viewer(page).locator('canvas.mapboxgl-canvas')).toHaveCount(0);
         expect((await readInstrumentation(page)).mapsCreated).toBe(0);
         expect(await mockApis.mapLoadEvents()).toBe(0);
+    },
+);
+
+// M18 item 8 (docs/research/M18-improvements.md): on the public map's no-WebGL list the thumbnails show, and the consent card
+// sits in the list's column under the error card instead of covering it.
+test(
+    'Without WebGL the thumbnails show and the consent card does not cover the error card',
+    { tag: ['@S-V02-HAPPY-NO-WEBGL-THUMBS', '@S-V02-BAD-NO-WEBGL-CONSENT'] },
+    async ({ page, lang }) => {
+        await serveManifest(page, analyticsManifest());
+        await page.goto(sitePath('bucharest', { lang }));
+        await waitForEngineEvent(page, 'hcm-ready');
+
+        const fallback = viewer(page).locator('.fallback');
+        const card = fallback.locator('hcm-error-card');
+        const consent = fallback.locator('hcm-consent-banner');
+        await expect(card).toBeVisible();
+        await expect(consent.getByRole('heading', { name: t(lang, 'consent.title') })).toBeVisible();
+        await expect(viewer(page).locator('.dock.consent')).toHaveCount(0);
+        const [cardBox, consentBox] = await Promise.all([card.boundingBox(), consent.boundingBox()]);
+        expect((cardBox?.y ?? 0) + (cardBox?.height ?? 0), 'the consent card starts below the error card').toBeLessThanOrEqual(
+            consentBox?.y ?? 0,
+        );
+
+        const first = fallback.locator('hcm-photo-list').getByRole('button').first().locator('img');
+        await expect
+            .poll(() => first.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0), {
+                message: 'the first thumbnail is drawn',
+            })
+            .toBe(true);
     },
 );

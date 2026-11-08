@@ -134,6 +134,29 @@ describe('cancel a job', () => {
     });
 });
 
+// Review of M18 item 3: an editor placing points on a parked frame marks its job, so imagery.tick leaves it waiting.
+describe('mark a parked frame as getting points', () => {
+    async function mark(status: string, changes: Data = { placingPoints: true }, stamp = true): Promise<Verdict> {
+        const unmarked = Object.fromEntries(Object.entries(jobDoc(world.uid('admin'), status)).filter(([key]) => key !== 'placingPoints'));
+        const path = await seeded(FIRESTORE_PATHS.job(CITY_ID, nextId()), unmarked);
+        const update = stamp ? { ...stampedBy(world.uid('admin')), ...changes } : changes;
+        return verdict(world.db('admin').doc(path).update(update));
+    }
+
+    it('happyPath_anEditorMarksAFrameWaitingForPoints', async () => {
+        expect(await mark('awaiting_gcps')).toBe('allow');
+    });
+
+    it.each([
+        ['a job not waiting for points', 'running', { placingPoints: true }, true],
+        ['a mark withdrawn', 'awaiting_gcps', { placingPoints: false }, true],
+        ['another field with it', 'awaiting_gcps', { placingPoints: true, searchedWith: `sha256:${'cd'.repeat(32)}` }, true],
+        ['an unstamped mark', 'awaiting_gcps', { placingPoints: true }, false],
+    ] as const)('badPath_noMarkFor_%s', async (_label, status, changes, stamp) => {
+        expect(await mark(status, changes, stamp)).toBe('deny');
+    });
+});
+
 describe('triage a USGS scene', () => {
     it.each(TRIAGE)('happyPath_adminMarksASceneAs_%s', async (status) => {
         expect(await triage({ status, note: 'Comandat pe 2026-10-11.' })).toBe('allow');

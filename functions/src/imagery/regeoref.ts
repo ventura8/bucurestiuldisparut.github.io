@@ -7,7 +7,8 @@
  * again (CR-M3-47): a base the guard sent to Mapbox meanwhile, or a layer another version took, refuses the save
  * (`apiError.imagery.versionState`, `apiError.layers.busy`) instead of cancelling what is already under way. M8: a frame a
  * live join holds gets no new rendition (`apiError.imagery.joinPartHeld`); points on a frame waiting for them continue its
- * own job (`save-gcps.ts`), which is what the join waits for.
+ * own job (`save-gcps.ts`), which is what the join waits for. M18 item 3: it is a re-run, never counted against the day's import
+ * limit; only the budget guard is asked.
  */
 import {
     FIRESTORE_PATHS,
@@ -26,7 +27,7 @@ import { omit } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { refuseHeldPart } from './join-parts.js';
-import { refuseBusyLayer, refuseNewRasterJob } from './limits.js';
+import { refuseBusyLayer, refuseWhileGuardRed } from './limits.js';
 import { pickDefined, stampOf, type Stamp } from './records.js';
 import { createWork, jobIdFor, type NewWork } from './versions.js';
 
@@ -123,7 +124,8 @@ export async function startRegeoref(deps: RegeorefDeps, regeoref: Regeoref): Pro
     const now = deps.clock.now();
     const { cityId, base } = regeoref;
     await refuseHeldPart(deps.documents, cityId, base);
-    await refuseNewRasterJob(deps.documents, now, cityId);
+    // M18 item 3: a re-run of a scan already here is not an import, so the day's limit is not asked.
+    await refuseWhileGuardRed(deps.documents);
     await refuseBusyLayer(deps.documents, cityId, base.layerId, base.state === 'awaiting_approval' ? base.jobId : undefined);
     const jobId = jobIdFor(regeoref.origin === 'crop' ? 'cr' : 'rg', now, base.layerId);
     const work: NewWork = {

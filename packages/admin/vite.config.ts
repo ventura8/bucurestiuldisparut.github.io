@@ -61,6 +61,12 @@ const STARTER_MODULES =
  */
 const IMAGERY_SHARED_MODULES = /packages[\\/]shared[\\/]src[\\/](?:schemas[\\/]imagery-plan|imagery[\\/]labels|migration[\\/]year)\.ts$/;
 
+/**
+ * M18 (DECISIONS-for-review.md §101f): the words of a scene's refusal, which the Imagery area and the order card share, in
+ * the `editor-texts` chunk too, so `editor-shared` stays within its 13 KB.
+ */
+const IMAGERY_UI_SHARED_MODULES = /packages[\\/]ui[\\/]src[\\/]admin[\\/]imagery[\\/]scene-refusal\.ts$/;
+
 /** M4: the editors' assists, their state and intents (`packages/admin/src/assist/`) and their slots (`packages/ui/src/admin/assist/`). */
 const ASSIST_MODULES = /packages[\\/](?:admin[\\/]src|ui[\\/]src[\\/]admin)[\\/]assist[\\/]/;
 
@@ -134,7 +140,10 @@ export default defineConfig({
                         { name: 'assist', test: ASSIST_MODULES, priority: 2 },
                         {
                             name: 'editor-texts',
-                            test: (id: string) => EDITOR_TEXT_MODULES.test(id) || IMAGERY_SHARED_MODULES.test(id),
+                            test: (id: string) =>
+                                [EDITOR_TEXT_MODULES, IMAGERY_SHARED_MODULES, IMAGERY_UI_SHARED_MODULES].some((modules) =>
+                                    modules.test(id),
+                                ),
                             priority: 2,
                         },
                         { name: 'starter-categories', test: STARTER_MODULES, priority: 2 },

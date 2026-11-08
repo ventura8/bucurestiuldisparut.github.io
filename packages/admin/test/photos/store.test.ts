@@ -113,8 +113,11 @@ describe('the photos area: list and bulk', () => {
         const { world, store } = area();
         store.open([]);
 
+        const before = store.busy();
         store.intents.upload([file('a.jpg'), file('b.pdf')]);
         await settle();
+        // Review of M18 item 1: a photo still being sent holds the self-reload back.
+        expect([before, store.busy()]).toEqual([false, true]);
         store.intents.cancelUpload(1);
         store.intents.retryUpload(1);
         store.intents.dismissUpload(2);
@@ -122,7 +125,7 @@ describe('the photos area: list and bulk', () => {
         await settle();
 
         expect(world.uploads.started).toHaveLength(1);
-        expect(store.state.uploads).toEqual([]);
+        expect([store.state.uploads, store.busy()]).toEqual([[], false]);
     });
 });
 

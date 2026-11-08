@@ -5,7 +5,7 @@
  * on the page's map once one is attached (`attachPreview`); nothing is written before Save.
  */
 import type { Locale } from '@hcm/shared';
-import { html, type TemplateResult } from 'lit';
+import { css, html, type TemplateResult } from 'lit';
 
 import { MAPBOX_GL_CSS_URL } from '../../map/mapbox-loader.js';
 import type { AdminRouteIdPort } from '../admin-port.js';
@@ -28,7 +28,18 @@ export const HCM_LAYERS_PAGE_TAG = 'hcm-layers-page';
 export class HcmLayersPage extends AreaPage<LayersViewState, LayersIntentsPort> {
     static override readonly properties = { ...AreaPage.properties, announcement: { state: true }, mapCss: { attribute: false } };
 
-    static override readonly styles = [...layersStyles, ...assistStyles];
+    /** M18 item 6: the link to the place categories is a 48 px target in its sentence (the Layers page's own: not shared). */
+    static override readonly styles = [
+        ...layersStyles,
+        ...assistStyles,
+        css`
+            .places a {
+                display: inline-flex;
+                align-items: center;
+                min-block-size: 48px;
+            }
+        `,
+    ];
 
     protected readonly route: AdminRouteIdPort = 'layers';
     /** The last settled change, said in the page's polite region. */
@@ -77,11 +88,16 @@ export class HcmLayersPage extends AreaPage<LayersViewState, LayersIntentsPort> 
             ${announcer(this.announcement)}`;
     }
 
+    /** M18 item 6: the head points to the place categories, which are the viewer's Places group (edited in Settings). */
     #list(locale: Locale, view: LayersViewState): TemplateResult {
         const intents = this.intents;
         return html`<div class="list-head">
                 <h2>${contentText(locale, 'adminContent.layers.title')}</h2>
                 <p class="note">${contentText(locale, 'adminContent.layers.dragHint')}</p>
+                <p class="note places">
+                    ${contentText(locale, 'adminContent.layers.placesNote')}
+                    <a href="#/settings/categories">${contentText(locale, 'adminContent.layers.placesLink')}</a>
+                </p>
                 <div class="actions">
                     <hcm-button variant="tonal" icon="link" ?disabled=${this.readOnly} @click=${() => intents?.openLink()}
                         >${contentText(locale, 'adminContent.layers.link')}</hcm-button

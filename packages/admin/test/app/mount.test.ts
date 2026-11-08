@@ -5,94 +5,19 @@ import { createUpstreamFakes, GOOGLE_TOKENS } from '@hcm/test-support/fakes';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ADMINS_MODULE } from '../../src/admins/admins.js';
-import { mount, SERVER_SEEN_KEY, serverMemory, THEME_KEY, type AdminDeps, type TelemetryView } from '../../src/app/mount.js';
+import { mount, SERVER_SEEN_KEY, serverMemory, THEME_KEY, type TelemetryView } from '../../src/app/mount.js';
 import type { AreaModule } from '../../src/content/areas.js';
 import type { ContentDeps } from '../../src/content/registry.js';
 import type { ContentServices } from '../../src/content/services.js';
 import { JOBS_MODULE } from '../../src/jobs/jobs.js';
-import { NO_SETUP, type SetupModuleSpec, type ShellServices } from '../../src/app/services.js';
-import { AdminTelemetry, CONSENT_KEY } from '../../src/app/telemetry.js';
+import { NO_SETUP } from '../../src/app/services.js';
+import { CONSENT_KEY } from '../../src/app/telemetry.js';
 import { GoogleAuthError } from '../../src/auth/google-auth.js';
-import type { AnalyticsPort } from '../../src/firebase/analytics.js';
 import { GOOGLE_SCOPES } from '../../src/google/scopes.js';
-import { PageRegistry } from '../../src/routing/pages.js';
 import { LANGUAGE_KEY } from '../../src/state/locale.js';
-import {
-    access,
-    deployed,
-    E2E_WEB_CONFIG,
-    failure,
-    FakeAuth,
-    FakeCallables,
-    FakeClock,
-    FakeDocuments,
-    FakeGoogle,
-    FakeLocation,
-    FakeVisibility,
-    MemoryStore,
-    NO_STORAGE,
-    OWNER,
-    SESSION,
-    settle,
-    testLog,
-    undeployed,
-} from './fakes.js';
+import { access, deployed, failure, MemoryStore, OWNER, SESSION, settle, undeployed } from './fakes.js';
+import { mountWorld as world } from './mount-world.js';
 import { asContentStore, NO_AREA_SERVICES, nth } from '../content/world.js';
-
-interface Counter {
-    readonly count: number;
-}
-
-function world(options: { readonly search?: string; readonly hash?: string } = {}) {
-    const auth = new FakeAuth();
-    const callables = new FakeCallables();
-    const documents = new FakeDocuments();
-    const google = new FakeGoogle(auth);
-    const local = new MemoryStore();
-    const session = new MemoryStore();
-    const location = new FakeLocation(options.hash ?? '', options.search ?? '');
-    const analytics: AnalyticsPort = { setConsent: vi.fn(), log: vi.fn(), field: vi.fn() };
-    const pages = new PageRegistry();
-    pages.register('admins', () => Promise.resolve('hcm-admins-page'));
-    const { log, recording } = testLog();
-    let services: ShellServices<Counter> | null = null;
-    const setup: SetupModuleSpec<Counter, { bump(): void }> = {
-        initial: { count: 0 },
-        create: (shell) => {
-            services = shell;
-            return {
-                bump: () => {
-                    shell.setSetup({ count: shell.getState().setup.count + 1 });
-                },
-            };
-        },
-    };
-    const deps: AdminDeps<Counter, { bump(): void }> = {
-        config: { ...E2E_WEB_CONFIG, measurementId: 'G-E2E0000000' },
-        runtime: { release: 'e2e' },
-        project: { projectId: 'demo-hcm', cities: ['bucharest'] },
-        firebase: { auth, callables, documents, storage: NO_STORAGE },
-        google,
-        fetch: () => Promise.reject(new Error('no network in this test')),
-        clock: new FakeClock(),
-        session,
-        local,
-        location,
-        log,
-        visibility: new FakeVisibility(),
-        languages: ['de-DE'],
-        pages,
-        telemetry: () => new AdminTelemetry({ local, analytics, errors: { report: vi.fn() }, clearCookies: vi.fn(), log }),
-        setup,
-    };
-    const services$ = (): ShellServices<Counter> => {
-        if (services === null) {
-            throw new Error('the setup module was not created');
-        }
-        return services;
-    };
-    return { auth, callables, documents, google, local, session, location, analytics, recording, deps, services: services$ };
-}
 
 describe('mount', () => {
     it('happyPath_anAdminReachesTheShellInTheCitysColours', async () => {

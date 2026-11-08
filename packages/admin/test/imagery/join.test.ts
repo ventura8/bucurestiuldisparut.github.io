@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ImageryFeeds, type FeedsPatch } from '../../src/imagery/feeds.js';
 import { IMAGERY_MODULE } from '../../src/imagery/imagery.js';
-import { IDLE_JOIN, JoinActions, type JoinActionsState } from '../../src/imagery/join.js';
+import { IDLE_JOIN, JOIN_WAIT_MS, JOIN_WAIT_TRIES, JoinActions, type JoinActionsState } from '../../src/imagery/join.js';
 import { approvalFigures, versionViewOf } from '../../src/imagery/version-view.js';
 import { versionItemOf } from '../../src/imagery/model.js';
 import { failure, settle } from '../app/fakes.js';
@@ -61,6 +61,77 @@ describe('Join frames', () => {
         answer(callables, 'imagery.join', () => ANSWER);
         await expect(imagery.intents.joinFrames(['F039', 'F040'])).resolves.toBe('job-join');
         expect(imagery.state.joinRefusal).toBeNull();
+    });
+
+    // M18 item 4 (docs/research/M18-improvements.md): a frame's layer still busy is said plainly, with Join when it ends.
+    it('happyPath_aBusyLayerOffersJoinWhenItEnds_whichJoinsByItselfOnceTheLayerIsFree @S-A65-HAPPY-JOIN-WHEN-FREE', async () => {
+        const { services, callables, clock, notices } = seeded();
+        const imagery = IMAGERY_MODULE.create(services);
+        callables.fail('imagery.join', failure('failed-precondition', 'apiError.imagery.joinLayerBusy'));
+
+        await expect(imagery.intents.joinFrames(['F039', 'F040'])).resolves.toBeNull();
+        expect(imagery.state.joinRefusal).toEqual({ id: 'F039', notice: { key: 'apiError.imagery.joinLayerBusy' } });
+        const offer = notices.at(-1);
+        expect(offer).toMatchObject({ key: 'apiError.imagery.joinLayerBusy', action: { key: 'adminContent.imagery.join.whenFree' } });
+
+        offer?.action?.run();
+        expect(imagery.state.joinRefusal?.notice).toEqual({ key: 'adminContent.imagery.join.waitingFree' });
+        clock.advance(JOIN_WAIT_MS);
+        await settle();
+        expect(callsOf(callables, 'imagery.join')).toHaveLength(2);
+        expect(imagery.state.joinRefusal?.notice).toEqual({ key: 'adminContent.imagery.join.waitingFree' });
+
+        answer(callables, 'imagery.join', () => ANSWER);
+        clock.advance(JOIN_WAIT_MS);
+        await settle();
+        expect(callsOf(callables, 'imagery.join')).toHaveLength(3);
+        expect(imagery.state.joinRefusal).toBeNull();
+        expect(notices.at(-1)).toEqual({ key: 'adminContent.imagery.join.started' });
+        clock.advance(JOIN_WAIT_MS);
+        await settle();
+        expect(callsOf(callables, 'imagery.join')).toHaveLength(3);
+    });
+
+    it('badPath_aWaitingJoinRefusedOtherwiseSaysWhyAndStops_andTheAreaEndingStopsIt @S-A65-BAD-JOIN-LAYER-BUSY', async () => {
+        const { services, callables, clock, notices } = seeded();
+        const imagery = IMAGERY_MODULE.create(services);
+        callables.fail('imagery.join', failure('failed-precondition', 'apiError.imagery.joinLayerBusy'));
+        await imagery.intents.joinFrames(['F039', 'F040']);
+        notices.at(-1)?.action?.run();
+
+        callables.fail('imagery.join', failure('failed-precondition', 'apiError.imagery.joinPartGone', { frame: 'F040' }));
+        clock.advance(JOIN_WAIT_MS);
+        await settle();
+        expect(imagery.state.joinRefusal).toEqual({
+            id: 'F039',
+            notice: { key: 'apiError.imagery.joinPartGone', params: { frame: 'F040' } },
+        });
+        expect(notices.at(-1)).toEqual({ key: 'apiError.imagery.joinPartGone', params: { frame: 'F040' } });
+
+        callables.fail('imagery.join', failure('failed-precondition', 'apiError.imagery.joinLayerBusy'));
+        await imagery.intents.joinFrames(['F039', 'F040']);
+        notices.at(-1)?.action?.run();
+        imagery.destroy();
+        clock.advance(JOIN_WAIT_MS);
+        await settle();
+        expect(callsOf(callables, 'imagery.join')).toHaveLength(3);
+    });
+
+    it('badPath_aLayerStillBusyAfterEveryTryIsSaidAgain', async () => {
+        const { services, callables, clock, notices } = seeded();
+        const actions = new JoinActions(services, () => undefined);
+        callables.fail('imagery.join', failure('failed-precondition', 'apiError.imagery.joinLayerBusy'));
+        await actions.join(['F039']);
+        notices.at(-1)?.action?.run();
+
+        for (let index = 0; index < JOIN_WAIT_TRIES; index += 1) {
+            callables.fail('imagery.join', failure('failed-precondition', 'apiError.imagery.joinLayerBusy'));
+            clock.advance(JOIN_WAIT_MS);
+            await settle();
+        }
+
+        expect(callsOf(callables, 'imagery.join')).toHaveLength(JOIN_WAIT_TRIES + 1);
+        expect(notices.at(-1)).toEqual({ key: 'apiError.imagery.joinLayerBusy' });
     });
 
     it('badPath_anAnswerThatFailsItsSchemaIsInternalAndNoFramesRunNothing', async () => {

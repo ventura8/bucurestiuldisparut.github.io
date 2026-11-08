@@ -2641,3 +2641,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the live region gets the message `ANNOUNCE_DELAY_MS` after the snackbar shows (lesson 20's fix), so a page slow to reach the assertion sees both; the other projects asserted before the announcement.
     - Found by: the targeted Playwright run of the four tracks' specs. Fix: the assertion takes the text that is not in a live region (`:not([aria-live])`), as `smoke.spec.ts` already does.
     - **A snackbar's message is asserted without its live region; the live region is asserted on its own when the announcement is the point.**
+
+442. **A new catalogue key took a name the join card already used, and long texts split their entries.**
+    - Seen: 2026-11-08, the improvements track (`docs/research/M18-improvements.md`): `adminContent.imagery.join.waiting` was added for Join when it ends while the join card already had it ("Waiting for its frames"); and four new texts over 140 columns were wrapped by Prettier onto a second line, which the admin catalogues' section scan does not read as an entry (1471 keys of 1472).
+    - Cause: a key chosen without a search of the catalogue; texts written as sentences, not to the line's width.
+    - Found by: `tsc` and the i18n gate (the duplicate), `packages/shared/test/i18n-admin.test.ts` (the count). Fix: `join.waitingFree`; every text shortened to one line in both languages.
+    - **Search the catalogue for a key before adding it, and keep each entry, key and text, within 140 columns.**
+
+443. **The M18 improvements' review (2026-11-08) found six gaps that their tests passed.**
+    - Seen: 2026-11-08, a review of `b09468a` on `track/improve`.
+    - Cause: each test checked what the change was meant to do and no state around it. The self-reload asked only the unsaved guard, which reports edits, not uploads in flight. What needs you read a missing count as zero. The tick's Locate again did not check whether an editor was placing points on the frame, and it compared digests from two sources that can disagree (the Cloud Run job and the `setup/status` record). A failed crop's Locate again reset its attempts each time. The waiting frame's Delete cancelled the job, so the version read Cancelled, and its scenario row named stages no test covered.
+    - Found by: the review. Fix: the stores' `busy()` (an upload) holds the reload; unknown counts keep their tile with a dash or an ellipsis, and a count the role may not read is not asked; the georeferencer's `placingPoints` mark holds the tick for two hours; only the job's image counts; a failed crop counts its runs; the waiting frame's Delete is `imagery.reject`, and the guard offers Delete too. Each fix has a test that failed before it.
+    - **An automatic action (a reload, a re-run) checks every kind of work under way, not only the one guard that already exists. Null means unknown, never zero. A comparison uses one source of truth. A free re-run is capped when it brings no new input. A scenario row names only what a test asserts.**

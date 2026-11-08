@@ -18,6 +18,7 @@ export const ro = {
     'adminWorker.ai.gpu': 'AI local: placa grafică {name}.',
     'adminWorker.ai.cpu': 'AI local: doar procesorul, mai lent.',
     'adminWorker.ai.unavailable': 'AI local indisponibil: {why}',
+    'adminWorker.ai.oldStarter': 'AI-ul local e oprit: fișier de pornire vechi. Folosește acest calculator, deschide o dată fișierul nou.',
     'adminWorker.ai.why.old-starter': 'folosește din nou acest calculator.',
     'adminWorker.ai.why.arm64': 'procesor nesuportat.',
     'adminWorker.ai.why.disk': 'Docker are nevoie de 30 GB liberi.',

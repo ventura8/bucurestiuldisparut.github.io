@@ -30,7 +30,7 @@ test.describe('A newer admin served while the tab is open', () => {
     test.use({ persona: 'owner', mapOwner: 'owner' });
 
     test(
-        'Coming back to the tab after a redeploy shows A new version of the admin is ready; Reload opens it, still signed in',
+        'A redeploy seen while the owner works shows A new version of the admin is ready; Reload opens it, still signed in',
         { tag: ['@S-A61-HAPPY'] },
         async ({ page, lang, adminWorld }) => {
             await seedClaimedCity(adminWorld.emulators, adminWorld.accounts.owner.uid);
@@ -42,10 +42,9 @@ test.describe('A newer admin served while the tab is open', () => {
             await setup.visit('mapbox');
             await expect(newAdminBanner(page)).toHaveCount(0);
 
+            // M18 item 1: seen while the owner works on the visible tab (the five-minute look), it is the banner, not a reload.
             await redeployAdmin(page, NEWER);
-            await setTabVisibility(page, 'hidden');
-            await page.clock.fastForward(2 * 60_000);
-            await setTabVisibility(page, 'visible');
+            await page.clock.fastForward(5 * 60_000);
 
             const banner = newAdminBanner(page);
             await expect(banner).toContainText(shellText(lang, 'adminShell.update.ready'));
@@ -61,6 +60,36 @@ test.describe('A newer admin served while the tab is open', () => {
 
             await banner.getByRole('button', { name: shellText(lang, 'adminShell.update.reload') }).click();
             await expect(setup.open('mapbox')).toBeVisible({ timeout: 30_000 });
+            await expect(page.getByRole('button', { name: shellText(lang, 'adminShell.auth.signIn') })).toHaveCount(0);
+            await expect(newAdminBanner(page)).toHaveCount(0);
+        },
+    );
+
+    // M18 item 1 (docs/research/M18-improvements.md): coming back after a deploy, nothing unsaved, the tab reloads by itself.
+    test(
+        'Coming back to the tab after a redeploy reloads it by itself, still signed in and without the banner',
+        { tag: ['@S-A61-HAPPY-SELF-RELOAD'] },
+        async ({ page, lang, adminWorld }) => {
+            await seedClaimedCity(adminWorld.emulators, adminWorld.accounts.owner.uid);
+            await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid);
+            await serveInstallBundle(page);
+            await page.clock.install();
+            await page.clock.resume();
+            const setup = new SetupPage(page, lang);
+            await setup.visit('mapbox');
+            await page.evaluate(() => {
+                Object.assign(window, { hcmBeforeDeploy: true });
+            });
+
+            await redeployAdmin(page, NEWER);
+            await setTabVisibility(page, 'hidden');
+            await page.clock.fastForward(2 * 60_000);
+            const reloaded = page.waitForEvent('load');
+            await setTabVisibility(page, 'visible');
+            await reloaded;
+
+            await expect(setup.open('mapbox')).toBeVisible({ timeout: 30_000 });
+            expect(await page.evaluate(() => 'hcmBeforeDeploy' in window)).toBe(false);
             await expect(page.getByRole('button', { name: shellText(lang, 'adminShell.auth.signIn') })).toHaveCount(0);
             await expect(newAdminBanner(page)).toHaveCount(0);
         },

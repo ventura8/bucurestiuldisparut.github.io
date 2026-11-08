@@ -117,7 +117,7 @@ async function readFreeLayer(
 ): Promise<LayerDoc | undefined> {
     const layer = plan.joinsLayer ? await transaction.get(FIRESTORE_PATHS.layer(plan.cityId, plan.layerId), layerDocSchema) : undefined;
     if (layer?.pendingVersion !== undefined && !replaced.has(layer.pendingVersion)) {
-        throw new ApiError('apiError.layers.busy');
+        throw new ApiError('apiError.imagery.joinLayerBusy');
     }
     return layer;
 }

@@ -39,6 +39,11 @@ export const WORKER_STATES = {
         title: 'Jobs: your computer connected, its local AI unavailable, and why',
         visit: 'specs/imagery/worker.spec.ts',
     },
+    // M18 item 9 (docs/research/M18-improvements.md): an old starter file, the one action and what it unlocks.
+    'worker.panel-ai-old-starter': {
+        title: 'Jobs: your computer connected with an old starter file: Use this computer once to turn its local AI on',
+        visit: 'specs/imagery/worker.spec.ts',
+    },
     'worker.panel-outdated': {
         title: 'Jobs: your computer runs an older imagery pipeline: run the command again to update it',
         visit: 'specs/imagery/worker.spec.ts',

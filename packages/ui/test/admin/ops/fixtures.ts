@@ -185,6 +185,8 @@ export function homeState(overrides: Partial<HomeViewState> = {}): HomeViewState
             failedJobs: null,
             versionsToApprove: 2,
             versionsNeedingPoints: 0,
+            roleRequests: 0,
+            suggestionsToReview: 0,
         },
         health: {
             status: 'ready',

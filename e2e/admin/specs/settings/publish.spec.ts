@@ -305,3 +305,18 @@ test(
         await expect(opacitySlider(page, lang, 'Corona 1968').first()).toBeVisible();
     },
 );
+
+// M18 item 6 (docs/research/M18-improvements.md): the public map's Places are the place categories; the Layers page says so.
+test(
+    'The Layers page points to the place categories, which are the Places of the public map',
+    { tag: ['@S-A39-HAPPY-FROM-LAYERS'] },
+    async ({ page, lang, content }) => {
+        await page.goto(content.address(lang, 'layers', { map: false }));
+        const pointer = page.getByRole('link', { name: text(lang, 'adminContent.layers.placesLink'), exact: true });
+        await expect(pointer).toHaveAttribute('href', '#/settings/categories');
+        await expect(page.getByText(text(lang, 'adminContent.layers.placesNote'))).toBeVisible();
+
+        await pointer.click();
+        await expect(page.getByRole('button', { name: text(lang, 'adminContent.settings.addCategory') })).toBeVisible();
+    },
+);

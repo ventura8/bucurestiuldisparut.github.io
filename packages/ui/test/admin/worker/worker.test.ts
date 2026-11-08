@@ -365,7 +365,19 @@ describe('<hcm-worker-panel>: the local AI (docs/research/M10-local-ai.md)', () 
         expect(deep(element, `[data-ai="${ai.state}"]`).textContent).toBe(t('en', key));
     });
 
-    it.each(['old-starter', 'arm64', 'disk', 'pull', 'tampered', 'unreachable', 'no-answer', 'garbage'] as const)(
+    // M18 item 9 (docs/research/M18-improvements.md): an old starter file is what to do and what it unlocks, as an alert.
+    it('badPath_anOldStarterFileSaysTheOneActionAndWhatItUnlocks @S-A68-BAD-OLD-STARTER', async () => {
+        const ai = { state: 'unavailable', why: 'old-starter' } as const;
+        const element = await panel(new FakeHost(view({ connected: true, worker: seen({ ai }) })));
+
+        const said = deep(element, '[data-ai="old-starter"]');
+        expect(said.className).toBe('alert');
+        expect(said.textContent).toBe(t('en', 'adminWorker.ai.oldStarter'));
+        expect(said.textContent).toContain('Use this computer');
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it.each(['arm64', 'disk', 'pull', 'tampered', 'unreachable', 'no-answer', 'garbage'] as const)(
         'badPath_unavailableBecause_%s_saysWhy @S-A68-BAD-AI-UNAVAILABLE',
         async (why) => {
             const ai = { state: 'unavailable', why } as const;

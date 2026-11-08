@@ -102,6 +102,11 @@ export class RasterUploader {
         return this.#state;
     }
 
+    /** The file is being sent or checked: a reload would end it (M18 item 1's self-reload waits). */
+    get busy(): boolean {
+        return this.#state.phase === 'uploading' || this.#state.phase === 'checking';
+    }
+
     /**
      * A file was chosen (or dropped): checked, then uploaded at once when its name says its year, or when it replaces a
      * layer's image (the layer keeps its own year, so nothing is asked).

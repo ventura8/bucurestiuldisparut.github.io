@@ -12,9 +12,9 @@ import {
     JOBS_PER_DAY,
     cityDocSchema,
     jobDocSchema,
-    runsOnPipeline,
     timestampFromDate,
     type JobStatus,
+    type JobType,
 } from '@hcm/shared';
 
 import { ApiError } from '../api/api-error.js';
@@ -22,6 +22,12 @@ import type { DocumentStore } from '../ports/documents.js';
 import { guardIsRed } from './records.js';
 
 const FINISHED: ReadonlySet<JobStatus> = new Set(FINISHED_JOB_STATUSES);
+/**
+ * M18 item 3 (`docs/research/M18-improvements.md`): the jobs that count against the day's limit are the ones that bring
+ * new imagery in (a scene, an upload, a join). A re-run of what is already here (new points, a crop, Locate again) never
+ * counts, whatever it costs: the cap guards the downloads and the new layers, and the budget guard still stops any start.
+ */
+const COUNTED: ReadonlySet<JobType> = new Set<JobType>(['usgs-import', 'geotiff-import', 'layer-join']);
 
 /** The first instant of `now`'s day, UTC. */
 function dayStart(now: Date): Date {
@@ -34,13 +40,13 @@ export async function cityIds(documents: DocumentStore): Promise<string[]> {
     return [...cities.documents, ...cities.invalid].map((city) => city.id);
 }
 
-/** The raster jobs created since the start of today (UTC), per city. */
+/** The imports created since the start of today (UTC), per city. */
 async function rasterJobsToday(documents: DocumentStore, now: Date): Promise<ReadonlyMap<string, number>> {
     const since = timestampFromDate(dayStart(now));
     const counts = await Promise.all(
         (await cityIds(documents)).map(async (cityId) => {
             const jobs = await documents.query(FIRESTORE_PATHS.jobs(cityId), jobDocSchema, { where: [['createdAt', '>=', since]] });
-            return [cityId, jobs.documents.filter((job) => runsOnPipeline(job.data.type)).length] as const;
+            return [cityId, jobs.documents.filter((job) => COUNTED.has(job.data.type)).length] as const;
         }),
     );
     return new Map(counts);
@@ -49,6 +55,13 @@ async function rasterJobsToday(documents: DocumentStore, now: Date): Promise<Rea
 /** M5: the city's own daily share (`cities/{city}.limits.rasterJobsPerDay`), or none for a city without limits. */
 async function cityDailyJobs(documents: DocumentStore, cityId: string): Promise<number | undefined> {
     return (await documents.get(FIRESTORE_PATHS.city(cityId), cityDocSchema))?.limits?.rasterJobsPerDay;
+}
+
+/** `apiError.guardPaused` while the budget guard is red: a re-run asks only this (M18 item 3). */
+export async function refuseWhileGuardRed(documents: DocumentStore): Promise<void> {
+    if (await guardIsRed(documents)) {
+        throw new ApiError('apiError.guardPaused');
+    }
 }
 
 /**
@@ -64,9 +77,7 @@ export function refuseNewRasterJob(documents: DocumentStore, now: Date, cityId: 
  * the join itself): all of them must fit today, so a set is never half created.
  */
 export async function refuseRasterJobs(documents: DocumentStore, now: Date, cityId: string, count: number): Promise<void> {
-    if (await guardIsRed(documents)) {
-        throw new ApiError('apiError.guardPaused');
-    }
+    await refuseWhileGuardRed(documents);
     const today = await rasterJobsToday(documents, now);
     refuseAtLimit(
         [...today.values()].reduce((sum, jobs) => sum + jobs, count - 1),

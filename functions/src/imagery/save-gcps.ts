@@ -123,7 +123,7 @@ async function resumeIn(transaction: DocumentTransaction, resume: Resume): Promi
     });
     const steps = { ...job.steps, georef: { status: 'pending' as const } };
     await transaction.set(jobPath, jobDocSchema, {
-        ...omit(job, ['waitReason', 'error']),
+        ...omit(job, ['waitReason', 'error', 'placingPoints']),
         ...attemptForPoints(job),
         status: 'queued',
         steps,

@@ -114,9 +114,17 @@ export class HcmWorkerPanel extends WorkerElement {
             ${this.#job(view, worker)} ${this.#ai(view, worker)} ${this.#outdated(view, worker)} ${this.#disconnect(view, worker)}`;
     }
 
-    /** M10: whether a frame the votes miss can ask the AI on this computer, on which device, or why not. */
+    /**
+     * M10: whether a frame the votes miss can ask the AI on this computer, on which device, or why not. M18 item 9: a starter
+     * file older than the local AI is said as what to do and what it unlocks; the one action is Use this computer below.
+     */
     #ai(view: WorkerViewPort, { ai }: WorkerSeenPort): TemplateResult {
-        return view.connected && ai !== null ? html`<p class="note" data-ai=${ai.state}>${this.#aiWords(ai)}</p>` : html``;
+        if (!view.connected || ai === null) {
+            return html``;
+        }
+        return ai.why === 'old-starter'
+            ? html`<p class="alert" data-ai="old-starter">${this.t('adminWorker.ai.oldStarter')}</p>`
+            : html`<p class="note" data-ai=${ai.state}>${this.#aiWords(ai)}</p>`;
     }
 
     #aiWords({ state, why, ...on }: WorkerAi): string {

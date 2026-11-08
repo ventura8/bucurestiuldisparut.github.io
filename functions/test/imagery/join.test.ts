@@ -322,9 +322,9 @@ describe('imagery.join: refused before anything is created', () => {
         await seedFree(world, F039, F040, F041);
         for (let index = 0; index < JOBS_PER_DAY - 3; index += 1) {
             await world.deps.documents.set(FIRESTORE_PATHS.job(CITY, `j-${String(index)}`), jobDocSchema, {
-                type: 'regeoref',
+                type: 'usgs-import',
                 status: 'succeeded',
-                params: { basedOn: 'b' },
+                params: { entityId: `e-${String(index)}` },
                 createdBy: 'u-admin',
                 createdAt: at(NOW),
                 updatedBy: 'u-admin',
@@ -479,13 +479,13 @@ describe('imagery.join: frames that cannot be taken', () => {
         expect(await codeOf(join(world, [F039, F040]))).toMatchObject({ code: 'apiError.imagery.joinTwoPublished' });
     });
 
-    it('badPath_aFrameOnItsWayToAPublishWaitsForItsLayer', async () => {
+    it('badPath_aFrameOnItsWayToAPublishWaitsForItsLayer @S-A65-BAD-JOIN-LAYER-BUSY', async () => {
         const world = await readyWorld();
         const approval = { auto: true, by: 'system:imagery', at: at(NOW) };
         await seedPart(world, F039, { state: 'publishing', approval }, { status: 'mts_processing' });
         await seedPart(world, F040);
 
-        expect(await codeOf(join(world, [F039, F040]))).toMatchObject({ code: 'apiError.layers.busy' });
+        expect(await codeOf(join(world, [F039, F040]))).toMatchObject({ code: 'apiError.imagery.joinLayerBusy' });
     });
 
     it('badPath_aNewRenditionOnThePublishedLayerKeepsItBusy', async () => {
@@ -494,7 +494,7 @@ describe('imagery.join: frames that cannot be taken', () => {
         await seedLayer(world, f039.layerId, { pendingVersion: 'v-f039' });
         await seedPart(world, F040);
 
-        expect(await codeOf(join(world, [F039, F040]))).toMatchObject({ code: 'apiError.layers.busy' });
+        expect(await codeOf(join(world, [F039, F040]))).toMatchObject({ code: 'apiError.imagery.joinLayerBusy' });
     });
 });
 
@@ -552,6 +552,6 @@ describe('imagery.join: the transaction reads again', () => {
         await seedPart(world, F040);
         changedBefore(world, () => seedLayer(world, f039.layerId, { currentVersion: f039.versionId, pendingVersion: 'rg-1' }));
 
-        expect(await codeOf(join(world, [F039, F040]))).toMatchObject({ code: 'apiError.layers.busy' });
+        expect(await codeOf(join(world, [F039, F040]))).toMatchObject({ code: 'apiError.imagery.joinLayerBusy' });
     });
 });

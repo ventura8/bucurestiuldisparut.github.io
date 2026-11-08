@@ -116,11 +116,17 @@ function publishedFrame(frames: readonly Frame[]): StoredDocument<LayerVersionDo
     return onLayers[0];
 }
 
-/** A busy layer refuses, the join its frame already belongs to aside: "add a frame" replaces that one (`join-write.ts`). */
+/**
+ * A busy layer refuses, the join its frame already belongs to aside: "add a frame" replaces that one (`join-write.ts`). M18
+ * item 4: with its own words (`apiError.imagery.joinLayerBusy`), which the admin answers with Join when it ends.
+ */
 async function requireFreeLayer(deps: JoinDeps, cityId: string, published: StoredDocument<LayerVersionDoc> | undefined): Promise<void> {
-    if (published !== undefined) {
-        await refuseBusyLayer(deps.documents, cityId, published.data.layerId, published.data.partOf);
+    if (published === undefined) {
+        return;
     }
+    await refuseBusyLayer(deps.documents, cityId, published.data.layerId, published.data.partOf).catch((error: unknown) => {
+        throw error instanceof ApiError && error.code === 'apiError.layers.busy' ? new ApiError('apiError.imagery.joinLayerBusy') : error;
+    });
 }
 
 /** What the plan is made of. */

@@ -59,6 +59,13 @@ const QUESTIONS = {
         confirm: 'adminContent.imagery.confirm.payConfirm',
     },
     cancel: { headline: 'adminContent.jobs.cancelConfirm', body: 'adminContent.jobs.cancelBody', confirm: 'adminContent.jobs.cancel' },
+    // M18 item 5: a frame waiting for its points is deleted with the same words as at every other stage, by `imagery.reject`
+    // as well (its job is cancelled and the version reads Deleted, never Cancelled).
+    drop: {
+        headline: 'adminContent.imagery.confirm.reject',
+        body: 'adminContent.imagery.confirm.dismissBody',
+        confirm: 'adminContent.imagery.reject',
+    },
 } as const;
 
 class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
@@ -272,6 +279,7 @@ function answers(intents: ImageryIntentsPort | null): Readonly<Record<ImageryQue
         dismiss: () => void intents?.reject(),
         pay: () => void intents?.choose('pay' satisfies PublishChoice),
         cancel: () => void intents?.cancelJob(),
+        drop: () => void intents?.reject(),
         resume: () => void intents?.resumeGuard(),
     };
 }

@@ -321,7 +321,7 @@ test(
 
 test(
     'A connected computer says what its local AI runs on, or why it cannot',
-    { tag: ['@S-A68-HAPPY-DEVICE-SHOWN', '@S-A68-BAD-AI-UNAVAILABLE'] },
+    { tag: ['@S-A68-HAPPY-DEVICE-SHOWN', '@S-A68-BAD-AI-UNAVAILABLE', '@S-A68-BAD-OLD-STARTER'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
         const owner = adminWorld.accounts.owner.uid;
         const imagery = await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, owner);
@@ -343,6 +343,13 @@ test(
             { timeout: FUNCTIONS_TIMEOUT_MS },
         );
         await expectStateSound(page, adminVisit('worker.panel-ai-unavailable', lang));
+
+        // M18 item 9: an old starter file says the one action (Use this computer, on the same panel) and what it unlocks.
+        await imagery.cityWorld.emulators.updateFields(workerPath, { ai: { state: 'unavailable', why: 'old-starter' } }, ['ai']);
+        await expect(panel(page).locator('[data-ai="old-starter"]')).toHaveText(text(lang, 'adminWorker.ai.oldStarter'), {
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expectStateSound(page, adminVisit('worker.panel-ai-old-starter', lang));
     },
 );
 

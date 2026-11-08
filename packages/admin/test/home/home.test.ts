@@ -67,6 +67,8 @@ describe('the dashboard', () => {
             failedJobs: 1,
             versionsToApprove: 0,
             versionsNeedingPoints: 0,
+            roleRequests: 0,
+            suggestionsToReview: 0,
         });
         expect(home.state.health.chips.map((chip) => [chip.area, chip.state])).toEqual([
             ['billing', 'ok'],
@@ -127,6 +129,8 @@ describe('the dashboard', () => {
             FIRESTORE_PATHS.poiCategories(CITY),
             FIRESTORE_PATHS.jobs(CITY),
             FIRESTORE_PATHS.layerVersions(CITY),
+            FIRESTORE_PATHS.roleRequests(CITY),
+            FIRESTORE_PATHS.suggestions(CITY),
         ]) {
             store.counts.set(path, null);
         }
@@ -170,5 +174,26 @@ describe('the dashboard', () => {
             skipped: [],
             error: null,
         });
+    });
+});
+
+describe('the dashboard: what the role may count', () => {
+    // Review of M18 item 7: a count the role may not read is not asked (no dash for it); a refused count stays a dash.
+    it('badPath_aCountTheRoleMayNotReadIsNotAsked_andARefusedOneStaysUnknown', async () => {
+        const { services, store } = seeded();
+        store.counts.set(FIRESTORE_PATHS.jobs(CITY), null);
+        const moderator = HOME_MODULE.create({ ...services, cityRole: () => 'moderator' });
+        const uploader = HOME_MODULE.create({ ...services, cityRole: () => 'uploader' });
+        const unknown = HOME_MODULE.create({ ...services, cityRole: () => null });
+        store.counts.set(FIRESTORE_PATHS.roleRequests(CITY), null);
+        for (const home of [moderator, uploader, unknown]) {
+            home.open([]);
+        }
+        await settled();
+
+        expect([moderator.state.counts?.roleRequests, moderator.state.counts?.suggestionsToReview]).toEqual([0, 0]);
+        expect([uploader.state.counts?.roleRequests, uploader.state.counts?.suggestionsToReview]).toEqual([0, 0]);
+        expect([unknown.state.counts?.roleRequests, unknown.state.counts?.failedJobs]).toEqual([null, null]);
+        expect(moderator.state.counts?.failedJobs).toBeNull();
     });
 });

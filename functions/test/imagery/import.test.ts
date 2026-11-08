@@ -214,9 +214,9 @@ describe('imagery.import: the limits', () => {
         const world = await scannedWorld();
         for (let index = 0; index < JOBS_PER_DAY; index += 1) {
             await world.deps.documents.set(FIRESTORE_PATHS.job(CITY, `today-${String(index)}`), jobDocSchema, {
-                type: 'regeoref',
+                type: 'usgs-import',
                 status: 'succeeded',
-                params: { basedOn: 'v0' },
+                params: { entityId: `scene-${String(index)}` },
                 createdBy: 'u-admin',
                 createdAt: timestampFromDate(new Date('2026-10-23T01:00:00.000Z')),
                 updatedBy: 'u-admin',
@@ -230,6 +230,24 @@ describe('imagery.import: the limits', () => {
             code: 'resource-exhausted',
             details: { code: 'apiError.imagery.dailyLimit', params: { limit: '10' } },
         });
+    });
+
+    // M18 item 3 (docs/research/M18-improvements.md): new points, a crop or Locate again re-run what is here: never counted.
+    it('happyPath_reRunsOfTodayDoNotCountAgainstTheDailyImportLimit @S-A12-HAPPY-RERUNS-FREE', async () => {
+        const world = await scannedWorld();
+        for (let index = 0; index < JOBS_PER_DAY; index += 1) {
+            await world.deps.documents.set(FIRESTORE_PATHS.job(CITY, `rerun-${String(index)}`), jobDocSchema, {
+                type: index % 2 === 0 ? 'regeoref' : 'layer-tiles',
+                status: 'succeeded',
+                params: { basedOn: 'v0' },
+                createdBy: 'u-admin',
+                createdAt: timestampFromDate(new Date(NOW)),
+                updatedBy: 'u-admin',
+                updatedAt: at(NOW),
+            });
+        }
+
+        await expect(importScene(world)).resolves.toMatchObject({ jobId: JOB_ID });
     });
 
     it('happyPath_yesterdaysJobsAndLayerDeletionsDoNotCount @S-A12-BAD-DAILY-LIMIT', async () => {
@@ -310,9 +328,9 @@ describe('imagery.import: the city’s share', () => {
         });
         await world.deps.documents.set(FIRESTORE_PATHS.city('other-city'), cityDocSchema, { ...city, id: 'other-city' });
         const job = {
-            type: 'regeoref' as const,
+            type: 'usgs-import' as const,
             status: 'succeeded' as const,
-            params: { basedOn: 'v0' },
+            params: { entityId: 'scene-x' },
             createdBy: 'u-admin',
             createdAt: timestampFromDate(new Date('2026-10-23T01:00:00.000Z')),
             updatedBy: 'u-admin',

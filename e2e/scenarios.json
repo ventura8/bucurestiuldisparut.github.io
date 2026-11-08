@@ -9492,11 +9492,11 @@
             "behaviour": "A61",
             "area": "admin",
             "path": "happy",
-            "title": "Coming back to the tab after a redeploy shows A new version of the admin is ready; Reload opens it, still signed in",
-            "asserts": "the owner signed in on Setup, Hosting then serves a newer admin release (runtime.json) -> the tab hidden and shown again -> a polite status banner above the page says A new version of the admin is ready with Reload, the page under it still works -> Reload -> Setup opens again without a sign-in and without the banner",
+            "title": "A redeploy seen while the owner works shows A new version of the admin is ready; Reload opens it, still signed in",
+            "asserts": "the owner signed in on Setup, Hosting then serves a newer admin release (runtime.json) -> the five-minute look while the tab is visible -> a polite status banner above the page says A new version of the admin is ready with Reload, the page under it still works -> Reload -> Setup opens again without a sign-in and without the banner",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Finding 29 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31). Tests: e2e/admin/steps/install/stale-admin.spec.ts, packages/admin/test/app/release-watch.test.ts (every five minutes while visible, at most once a minute on a return, nothing once found or without a release), mount.test.ts, packages/ui/test/admin/shell/shell.test.ts; tour state admin.shell.new-release."
+            "notes": "Finding 29 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31). Tests: e2e/admin/steps/install/stale-admin.spec.ts, packages/admin/test/app/release-watch.test.ts (every five minutes while visible, at most once a minute on a return, nothing once found or without a release), mount.test.ts, packages/ui/test/admin/shell/shell.test.ts; tour state admin.shell.new-release. M18 item 1: a return to the tab reloads by itself instead (S-A61-HAPPY-SELF-RELOAD); an unsaved edit keeps the banner (packages/admin/test/app/release-reload.test.ts)."
         },
         {
             "id": "S-A61-BAD-INSTALL-REFUSED",
@@ -11912,11 +11912,11 @@
             "behaviour": "A69",
             "area": "admin",
             "path": "bad",
-            "title": "Attempts used up are refused with their count",
-            "asserts": "at JOB_MAX_ATTEMPTS: apiError.imagery.attemptsExhausted, nothing moves; a red budget guard: apiError.guardPaused",
+            "title": "Attempts used up do not stop Locate again on a parked frame: the search gets one run of its own",
+            "asserts": "a frame parked for points at JOB_MAX_ATTEMPTS: queued with attempt JOB_MAX_ATTEMPTS - 1 (one more start, as the admin's points get), also when used up during the check; a red budget guard: apiError.guardPaused; a failed crop counts its runs instead (S-A69-BAD-FAILED-CROP-ATTEMPTS)",
             "tier": "functions",
             "status": "exists",
-            "notes": "The owner's live use, 2026-11-07. Tests: functions/test/imagery/locate-again.test.ts."
+            "notes": "The owner's live use, 2026-11-07. Tests: functions/test/imagery/locate-again.test.ts. M18 item 3: Locate again is free."
         },
         {
             "id": "S-A69-BAD-NOT-WAITING",
@@ -13765,6 +13765,248 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A61-HAPPY-SELF-RELOAD",
+            "behaviour": "A61",
+            "area": "admin",
+            "path": "happy",
+            "title": "Coming back to the tab after a redeploy reloads it by itself, still signed in and without the banner",
+            "asserts": "the owner signed in on Setup, the tab hidden, Hosting then serves a newer admin release -> the tab shown again -> the page reloads by itself (nothing unsaved), Setup opens again without a sign-in and without the banner, so Update the map compares with the new release",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 1, the owner 2026-11-08). Tests: e2e/admin/steps/install/stale-admin.spec.ts, packages/admin/test/app/release-reload.test.ts (a hidden tab, a return within 10 s, an unsaved edit keeps the banner)."
+        },
+        {
+            "id": "S-A27-HAPPY-BLOCKED-TRY-AGAIN",
+            "behaviour": "A27",
+            "area": "admin",
+            "path": "happy",
+            "title": "A blocked Google window is offered Try again, whose own click opens it",
+            "asserts": "the browser blocks the window of a step -> the snackbar says so in plain words with Try again -> its click opens Google (a real click) -> Allow -> Google answered, press the step again; the step goes on with no other window",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 2, the owner 2026-11-08). Tests: e2e/admin/steps/consents.spec.ts, packages/admin/test/app/consent-retry.test.ts."
+        },
+        {
+            "id": "S-A27-BAD-POPUP-BLOCKED",
+            "behaviour": "A27",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Google window the browser blocked is said plainly and asks Google nothing",
+            "asserts": "window.open answers null -> adminShell.oauth.popupBlocked (press again, else allow pop-ups from the address bar's icon); no consent request reached Google; a retry blocked again offers Try again again",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 2, the owner 2026-11-08). Tests: e2e/admin/steps/consents.spec.ts, packages/admin/test/app/consent-retry.test.ts."
+        },
+        {
+            "id": "S-A69-HAPPY-AUTO-RELOCATE",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "happy",
+            "title": "A frame parked under an older pipeline image searches again by itself, free",
+            "asserts": "imagery.tick with a parked frame searched with another image than the installed one -> queued from stitch, one run of its own, the log says Locate again by itself; a frame first seen remembers the image and does not run; at most RELOCATE_PER_TICK a city a tick",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 3, the owner 2026-11-08). Test: functions/test/imagery/relocate.test.ts."
+        },
+        {
+            "id": "S-A69-BAD-AUTO-RELOCATE-REFUSED",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "bad",
+            "title": "A parked frame that cannot search again is logged once and not asked again",
+            "asserts": "its segments and delivery gone -> a warning in the log, the frame keeps waiting with the installed image remembered, so no later tick asks again; no installed image known -> nothing moves",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 3, the owner 2026-11-08). Test: functions/test/imagery/relocate.test.ts."
+        },
+        {
+            "id": "S-A69-HAPPY-FAILED-CROP",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "happy",
+            "title": "A frame whose crop failed offers Locate again before a new import",
+            "asserts": "a USGS version failed at stitch or locate -> Locate again on its page -> the job goes back to queued from stitch, the version processing; no import, no download, not counted against the day",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 3, the owner 2026-11-08). Tests: functions/test/imagery/locate-again.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
+            "id": "S-A69-BAD-FAILED-LATER",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "bad",
+            "title": "A failure after the crop is Try again's, not Locate again's",
+            "asserts": "a version failed at georef -> no Locate again on its page; imagery.locateAgain refuses with apiError.imagery.versionState and nothing moves",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 3, the owner 2026-11-08). Tests: functions/test/imagery/locate-again.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
+            "id": "S-A12-HAPPY-RERUNS-FREE",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "Re-runs never count against the day's import limit",
+            "asserts": "today's limit filled with new points, crops and tile jobs -> an import still starts; the day's imports used up -> a crop still starts",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 3, the owner 2026-11-08). Tests: functions/test/imagery/import.test.ts, functions/test/imagery/save-gcps.test.ts."
+        },
+        {
+            "id": "S-A65-BAD-JOIN-LAYER-BUSY",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "A join whose frame's layer is busy says why in plain words",
+            "asserts": "a frame on its way to a publish, or a new rendition on its layer -> apiError.imagery.joinLayerBusy (the layer is processed or published now; Join when it ends), nothing created",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 4, the owner 2026-11-08). Tests: functions/test/imagery/join.test.ts, packages/admin/test/imagery/join.test.ts."
+        },
+        {
+            "id": "S-A65-HAPPY-JOIN-WHEN-FREE",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "happy",
+            "title": "Join when it ends starts the join by itself once the layer is free",
+            "asserts": "the busy refusal in the snackbar with Join when it ends -> waiting, said beside Join frames -> every minute imagery.join again while the admin is open -> once free the join starts and the snackbar says so; another refusal ends the wait and is said",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "M18 (docs/research/M18-improvements.md item 4, the owner 2026-11-08). Today: packages/admin/test/imagery/join.test.ts only (the e2e world has no seed for a frame published on a busy layer yet)."
+        },
+        {
+            "id": "S-A33-HAPPY-ONE-DELETE",
+            "behaviour": "A33",
+            "area": "admin",
+            "path": "happy",
+            "title": "An image is deleted with one word and one question at every stage",
+            "asserts": "waiting for points, waiting for approval, approved but stopped at the guard, failed -> the button says Delete and the dialog Delete this image? with Delete, each by imagery.reject, so the version then reads Deleted (never Cancelled); published (Layers) -> Delete this image? (its name)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 5, the owner 2026-11-08); review of 2026-11-08: the waiting frame was cancelled (Cancelled) and the guard offered no Delete. Tests: e2e/admin/specs/imagery/import.spec.ts (failed), packages/ui/test/admin/imagery/imagery-detail.test.ts (waiting for points, approval, guard), packages/ui/test/admin/layers/layers-page.test.ts (published)."
+        },
+        {
+            "id": "S-A39-HAPPY-FROM-LAYERS",
+            "behaviour": "A39",
+            "area": "admin",
+            "path": "happy",
+            "title": "The Layers page points to the place categories",
+            "asserts": "#/layers -> a note that the public map's Places are the place categories, with a link to Settings → Place categories, which opens with Add category",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 6, the owner 2026-11-08). The viewer's three groups (Historical layers, Places, Map labels) were already in place (S-V24-BAD-NO-POIS, map-labels.spec.ts). Tests: e2e/admin/specs/settings/publish.spec.ts, packages/ui/test/admin/layers/layers-page.test.ts."
+        },
+        {
+            "id": "S-A40-HAPPY-NEEDS-YOU",
+            "behaviour": "A40",
+            "area": "admin",
+            "path": "happy",
+            "title": "Home says what needs you, each a link to where it is done",
+            "asserts": "a failed job -> What needs you lists 1 Failed jobs, a link to Jobs; images to approve, role requests and suggestions likewise (Imagery, Review)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 7, the owner 2026-11-08). Tests: e2e/admin/specs/ops/ops.spec.ts, packages/ui/test/admin/ops/crashes-home.test.ts."
+        },
+        {
+            "id": "S-A40-BAD-NOTHING-NEEDS-YOU",
+            "behaviour": "A40",
+            "area": "admin",
+            "path": "bad",
+            "title": "Nothing waiting is said, and a count the admin's role may not read is not listed",
+            "asserts": "no failed job, nothing to approve -> Nothing needs you now.; role requests for an editor or a moderator (the rules let only the owner read them) are not asked, a zero, not listed",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 7, the owner 2026-11-08). Tests: e2e/admin/specs/ops/ops.spec.ts, packages/ui/test/admin/ops/crashes-home.test.ts."
+        },
+        {
+            "id": "S-V02-HAPPY-NO-WEBGL-THUMBS",
+            "behaviour": "V02",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Without WebGL the photo list shows its thumbnails",
+            "asserts": "--disable-3d-apis -> the first rows' thumbnails are drawn (loaded at once, the rest as they near the screen)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 8, the owner 2026-11-08). Test: e2e/specs/viewer/no-webgl.spec.ts."
+        },
+        {
+            "id": "S-V02-BAD-NO-WEBGL-CONSENT",
+            "behaviour": "V02",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Without WebGL the consent card does not cover the error card",
+            "asserts": "a city with analytics, no answer yet, no WebGL -> the consent card sits in the list's column below the error card, no docked card over it",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 8, the owner 2026-11-08). Test: e2e/specs/viewer/no-webgl.spec.ts."
+        },
+        {
+            "id": "S-A68-BAD-OLD-STARTER",
+            "behaviour": "A68",
+            "area": "admin",
+            "path": "bad",
+            "title": "An old starter file says the one action and what it unlocks",
+            "asserts": "the worker reports old-starter -> an alert: Local AI is off, Use this computer below and open the new file once; hard frames are then placed by its own AI, free",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 9, the owner 2026-11-08). Tests: e2e/admin/specs/imagery/worker.spec.ts, packages/ui/test/admin/worker/worker.test.ts; tour state worker.panel-ai-old-starter."
+        },
+        {
+            "id": "S-A61-BAD-UPLOAD-HOLDS-RELOAD",
+            "behaviour": "A61",
+            "area": "admin",
+            "path": "bad",
+            "title": "An upload still being sent holds the self-reload back",
+            "asserts": "a GeoTIFF being sent or checked on Imagery, or photos of the upload queue being sent, the tab hidden, Hosting then serves a newer admin -> no reload, the Reload banner instead; the unsaved guard asks nothing about the upload",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Review of M18 item 1 (2026-11-08). Tested by packages/admin/test/app/mount.test.ts, content/registry.test.ts, imagery/imagery.test.ts and photos/store.test.ts only: the e2e world has no upload it can hold open across a deploy yet."
+        },
+        {
+            "id": "S-A40-BAD-COUNT-UNREAD-SHOWN",
+            "behaviour": "A40",
+            "area": "admin",
+            "path": "bad",
+            "title": "What needs you never says nothing while a count is unknown",
+            "asserts": "the counts still being read -> each item with an ellipsis; a count that failed (every count refused on a flaky connection) -> its item with a dash; never Nothing needs you now. then",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Review of M18 item 7 (2026-11-08). Tested by packages/ui/test/admin/ops/crashes-home.test.ts and packages/admin/test/home/home.test.ts only: the e2e world cannot make one count fail."
+        },
+        {
+            "id": "S-A69-BAD-AUTO-RELOCATE-PLACING",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame an editor is placing points on is not sent searching again",
+            "asserts": "the georeferencer's mark on the parked frame's job (placingPoints, at the first edit and every half hour) within PLACING_POINTS_HOLD_MS -> imagery.tick leaves it waiting, so Save still takes the points; an older mark -> searched again, the mark cleared; Save clears it too; only a parked frame's job takes the mark (rules)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Review of M18 item 3 (2026-11-08). Tests: functions/test/imagery/relocate.test.ts, save-gcps.test.ts, firebase/rules-tests/test/jobs.test.ts, packages/admin/test/georef/georef.test.ts."
+        },
+        {
+            "id": "S-A69-BAD-AUTO-RELOCATE-RECORD",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "bad",
+            "title": "Only the image the pipeline job runs sends parked frames searching again",
+            "asserts": "the Cloud Run job not readable, setup/status naming another image -> nothing moves and nothing is remembered, so a switch between the two sources never re-runs every parked frame",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Review of M18 item 3 (2026-11-08). Test: functions/test/imagery/relocate.test.ts."
+        },
+        {
+            "id": "S-A69-BAD-FAILED-CROP-ATTEMPTS",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "bad",
+            "title": "A crop that fails each time stops at the attempts' limit",
+            "asserts": "a failed crop at JOB_MAX_ATTEMPTS -> Locate again is not offered and imagery.locateAgain refuses with apiError.imagery.attemptsExhausted, the job stays failed; with a run left it is queued and the run counts",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Review of M18 item 3 (2026-11-08). Tests: functions/test/imagery/locate-again.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
         }
     ]
 }

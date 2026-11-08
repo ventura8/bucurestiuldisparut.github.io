@@ -47,6 +47,11 @@ export class ContentRegistry {
         return [...this.#created.values()].some((store) => store.hasUnsavedChanges());
     }
 
+    /** Whether any area runs work that a reload would end (an upload still being sent). */
+    busy(): boolean {
+        return [...this.#created.values()].some((store) => store.busy?.() === true);
+    }
+
     /** Sign-out: every store detaches and forgets its drafts; the next page visit creates it again. */
     destroyAll(): void {
         for (const store of this.#created.values()) {

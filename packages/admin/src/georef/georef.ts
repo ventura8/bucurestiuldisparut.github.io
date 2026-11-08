@@ -29,6 +29,7 @@ import { Store } from '../state/store.js';
 import { fitOf } from './fit-view.js';
 import { GeorefMap } from './georef-map.js';
 import { GeorefPictures } from './georef-pictures.js';
+import { PlacingMark } from './placing.js';
 import {
     moveGeo,
     movePixel,
@@ -78,6 +79,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     readonly #map: GeorefMap;
     readonly #pictures: GeorefPictures;
     readonly #suggestions = new Suggestions();
+    readonly #placing: PlacingMark;
     /** The version's own pairs and transform: what Discard returns to and the unsaved guard compares with. */
     #base: { readonly pairs: readonly Gcp[]; readonly transform: GeorefTransform } = { pairs: [], transform: 'affine' };
     #transform: FittedTransform | null = null;
@@ -86,6 +88,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
 
     constructor(services: ContentServices) {
         this.#services = services;
+        this.#placing = new PlacingMark(services);
         this.#cell = new Store<GeorefState>(INITIAL_GEOREF, services.log);
         const { store, clock } = services;
         const denied = (): void => {
@@ -162,6 +165,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         this.#map.detach();
         this.#pictures.clear();
         this.#suggestions.reset();
+        this.#placing.reset();
         this.#base = { pairs: [], transform: 'affine' };
         this.#transform = null;
         this.#cell.update({ ...INITIAL_GEOREF, thresholdM: this.#cell.state.thresholdM });
@@ -388,6 +392,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     #edit(pairs: readonly Gcp[]): void {
         if (!this.#services.readOnly()) {
             this.#refit(pairs, this.#cell.state.transform);
+            this.#placing.edited(this.#doc.state.doc?.data ?? null);
         }
     }
 
