@@ -141,7 +141,7 @@ export const en: AdminSetupMessages = {
     'adminSetup.crashes.enableApi': 'Enable with Google',
     'adminSetup.import.action': 'Import the photos ({count})',
     'adminSetup.import.actionMissing': 'Import the missing photos ({count})',
-    'adminSetup.import.missing': "Your map does not have {count} of the old site's photos yet. The photos already on it stay as they are.",
+    'adminSetup.import.missing': "The map does not have {count} of the old site's photos yet. Those already on it stay as they are.",
     'adminSetup.import.progress': 'Photos imported: {done} of {total}',
     'adminSetup.import.done': 'All the photos are on the map ({count}).',
     'adminSetup.import.failed': 'Photos not processed: {count}. The reason is shown next to each.',

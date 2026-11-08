@@ -41,7 +41,7 @@ export const LEGACY_FOLDER = 'legacy/bucharest';
 export const DEFAULT_SEED_DIR = 'seed/bucharest';
 
 /** The seed folders whose photos join the default seed's, in order: the old site's 2023 additions. */
-export const SEED_ADDITIONS: readonly string[] = ['seed/bucharest-2023'];
+const SEED_ADDITIONS: readonly string[] = ['seed/bucharest-2023'];
 
 /** The city file the seed manifest was made from: the only place that holds the city's target years. */
 export const CITY_SEED_FILE = 'scripts/seed/bucharest.city.json';

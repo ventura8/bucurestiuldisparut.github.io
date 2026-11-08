@@ -145,8 +145,7 @@ export const ro = {
     'adminSetup.crashes.enableApi': 'Activează cu Google',
     'adminSetup.import.action': 'Importă fotografiile ({count})',
     'adminSetup.import.actionMissing': 'Importă fotografiile care lipsesc ({count})',
-    'adminSetup.import.missing':
-        'Harta ta nu are încă {count} dintre fotografiile vechiului site. Fotografiile care sunt deja pe ea rămân cum sunt.',
+    'adminSetup.import.missing': 'Harta nu are încă {count} dintre fotografiile vechiului site. Cele deja pe hartă rămân cum sunt.',
     'adminSetup.import.progress': 'Fotografii importate: {done} din {total}',
     'adminSetup.import.done': 'Toate fotografiile sunt pe hartă ({count}).',
     'adminSetup.import.failed': 'Fotografii neprocesate: {count}. Motivul apare lângă fiecare.',

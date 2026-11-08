@@ -251,7 +251,7 @@ describe('<hcm-setup-import>', () => {
         const { port, element } = await legacy({ legacyImport: { done: 45, total: 57, failed: [], running: false } }, 'en');
 
         expect(shadowPart(element, '.body > .note').textContent).toBe(
-            "Your map does not have 12 of the old site's photos yet. The photos already on it stay as they are.",
+            "The map does not have 12 of the old site's photos yet. Those already on it stay as they are.",
         );
         await page.getByRole('button', { name: 'Import the missing photos (12)' }).click();
 
