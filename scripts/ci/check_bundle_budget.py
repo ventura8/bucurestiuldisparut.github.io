@@ -205,7 +205,10 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
 # within it, by two savings instead of a raise: zod's JSON Schema conversion out of the admin (a stand-in, 5.7 KB) and the
 # source maps' comment lines (1.1 KB): 626.6 KB (§86). 650 since 2026-11-07, the owner's decision (§94): the total had become a
 # hunt for bytes while the entry, what an admin waits for, stayed far under its own budget.
-ADMIN_TOTAL_KB = 650
+# 700 since 2026-11-08, the owner's decision (§105): the merge of stories, recalibration and the improvements reached
+# 653.8 KB with no saving left that was worth its risk, and the 16 languages come next; the entry's 450 KB still caps what
+# an admin waits for.
+ADMIN_TOTAL_KB = 700
 
 # M6: the install bundle's folder in the deployed Hosting tree, and each tarball's budget in KB as served (it is gzip
 # already): the contract's ceilings (docs/research/M6-interfaces.md §1.3; DECISIONS-for-review.md §71). Since §73k
