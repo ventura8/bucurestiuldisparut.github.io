@@ -1200,6 +1200,28 @@
             "notes": "Milestone M1. engine-ui CR-20: packages/ui/src/viewer/viewer-render.ts; the window is PHOTO_YEAR_WINDOW of @hcm/shared."
         },
         {
+            "id": "S-V04-HAPPY-CHIP-ON-TIMELINE",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The photos-near-the-year chip sits on the timeline at every layout",
+            "asserts": "at a year with photos near it the chip 'Fotografii din jurul anului …' shares the timeline card's leading edge (8 px above it from 600 px up, a row above the menu button on a phone), with the Layers pane docked too; at 915x412 it sits 8 px before the vertical timeline with the bottoms aligned",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08: the chip looked like it was floating. packages/ui/src/viewer/viewer-styles.ts (.dock.chip); unit tests in packages/ui/test/viewer/kit-integration.test.ts."
+        },
+        {
+            "id": "S-V04-BAD-CHIP-NEVER-ALONE",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "The chip never floats alone",
+            "asserts": "no chip at today or at a year with no photo within 10 years; at a year with photos the chip is on the timeline's edge and, from 600 px up, the open menu leaves it uncovered",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08. packages/ui/src/viewer/viewer-styles.ts (.dock.chip)."
+        },
+        {
             "id": "S-V04-HAPPY-NO-LAYERS-NOTE",
             "behaviour": "V04",
             "area": "viewer",

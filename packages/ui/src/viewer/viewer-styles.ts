@@ -312,7 +312,7 @@ export const viewerStyles = [
 
         /*
          * Compact: one row above the menu button, which has the row above the timeline (the tour found them
-         * overlapping at 320 px).
+         * overlapping at 320 px), on the timeline's leading edge.
          */
         .dock.chip {
             inset-inline-start: var(--hcm-gutter);
@@ -357,8 +357,13 @@ export const viewerStyles = [
                 inset-block-end: calc(var(--hcm-map-chrome) + env(safe-area-inset-bottom, 0px));
             }
 
+            /*
+             * On the timeline card's leading edge, 8 px above it (the owner's screenshot of 2026-11-08: 72 px in from the
+             * map's edge it was aligned to nothing beside the centred card). The card is centred, at most 640 px wide and
+             * never nearer the edge than gutter + 72 px; 50 % is half the map pane, the containing block of both.
+             */
             .dock.chip {
-                inset-inline-start: calc(var(--hcm-gutter) + 72px);
+                inset-inline-start: max(var(--hcm-gutter) + 72px, 50% - 320px);
                 inset-block-end: calc(
                     var(--hcm-map-chrome) + var(--hcm-timeline-block) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px)
                 );
@@ -401,9 +406,10 @@ export const viewerStyles = [
             );
         }
 
+        /* A landscape phone: beside the vertical timeline, the bottoms aligned, clear of the menu on the leading edge. */
         .frame[data-compact-height] .dock.chip {
-            inset-inline-start: calc(var(--hcm-gutter) + 72px);
-            inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-dock-gap));
+            inset-inline: auto calc(var(--hcm-gutter) + var(--hcm-timeline-inline) + var(--hcm-dock-gap));
+            inset-block-end: var(--hcm-map-chrome);
         }
 
         /*

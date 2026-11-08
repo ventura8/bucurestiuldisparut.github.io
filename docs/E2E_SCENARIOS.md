@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 133 | 1278 | 510 | 768 | 1276 | 2 | 311 |
+| 133 | 1280 | 511 | 769 | 1278 | 2 | 311 |
 
 ## Viewer
 
@@ -38,8 +38,10 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V03-BAD-STYLE-WITHOUT-CONFIG` | V03 | bad | A basemap style without the basemap import is never reconfigured | toggling a layer on a style without the basemap import leaves its configuration alone and logs no console error | e2e-viewer | exists | `e2e/specs/viewer/layers.spec.ts` |
 | `S-V03-BAD-TILE404` | V03 | bad | A tileset whose tiles fail names the layer in a toast and the map keeps working | tiles answering 503 (an outage) -> a toast names the layer; another layer still draws (pixel probe). A 404 tile means no imagery there to Mapbox GL and is never reported | e2e-viewer | exists | `e2e/specs/viewer/layers.spec.ts` |
 | `S-V04-HAPPY` | V04 | happy | Selecting a year shows its layer and filters photos | year selection shows the layer; photo year filter in sync | e2e-viewer | exists | `e2e/specs/viewer/timeline.spec.ts` |
+| `S-V04-HAPPY-CHIP-ON-TIMELINE` | V04 | happy | The photos-near-the-year chip sits on the timeline at every layout | at a year with photos near it the chip 'Fotografii din jurul anului …' shares the timeline card's leading edge (8 px above it from 600 px up, a row above the menu button on a phone), with the Layers pane docked too; at 915x412 it sits 8 px before the vertical timeline with the bottoms aligned | e2e-viewer | exists | `e2e/specs/viewer/timeline.spec.ts` |
 | `S-V04-HAPPY-NO-LAYERS-NOTE` | V04 | happy | A city without historical layers says they are coming instead of showing a timeline | no timeline slider; the note 'Straturile istorice vin în curând' (EN 'Historical layers coming soon') is visible above the map chrome, clear of the menu button | e2e-viewer | exists | `e2e/specs/viewer/timeline.spec.ts` |
 | `S-V04-HAPPY-PHOTOS-NEAR-YEAR` | V04 | happy | Photos near the selected year are one tap away | at a stop with photos within 10 years the chip 'Fotografii din jurul anului …' shows and opens the list of those photos; at 'today' no chip shows | e2e-viewer | exists | `e2e/specs/viewer/timeline.spec.ts` |
+| `S-V04-BAD-CHIP-NEVER-ALONE` | V04 | bad | The chip never floats alone | no chip at today or at a year with no photo within 10 years; at a year with photos the chip is on the timeline's edge and, from 600 px up, the open menu leaves it uncovered | e2e-viewer | exists | `e2e/specs/viewer/timeline.spec.ts` |
 | `S-V04-BAD-NO-LAYERS-NOTE-LAYOUT` | V04 | bad | The no-layers note never covers the menu button or the Mapbox logo | at 320 px and on a compact-height landscape phone the note wraps or shrinks; the menu button, the Mapbox logo and the attribution stay fully visible and clickable | e2e-viewer | exists | `e2e/specs/viewer/timeline.spec.ts` |
 | `S-V04-BAD-YEAR-WITHOUT-LAYER` | V04 | bad | A year without a layer is disabled or snaps to the nearest | year without a layer -> stop disabled or snaps to the nearest year | e2e-viewer | exists | `e2e/specs/viewer/timeline.spec.ts` |
 | `S-V05-HAPPY` | V05 | happy | Opacity slider changes the layer opacity | opacity 0 versus 1 by pixel probe; slider ARIA value | e2e-viewer | exists | `e2e/specs/viewer/layers.spec.ts` |

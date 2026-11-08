@@ -12,7 +12,7 @@ import type { HcmMapViewer } from '../../src/viewer/hcm-map-viewer.js';
 import { deepFocus, ringContrast } from '../helpers.js';
 import { FakeStore, idleState, readyState } from './fake-store.js';
 import { testManifest } from './fixtures.js';
-import { fakeServices, setBox, COMPACT, LANDSCAPE_PHONE, MEDIUM, type Box } from './viewer-harness.js';
+import { fakeServices, setBox, COMPACT, EXTRA_LARGE, LANDSCAPE_PHONE, MEDIUM, type Box } from './viewer-harness.js';
 
 /**
  * What floating controls keep free at the foot of the map: Mapbox's collapsed attribution (24 px, 10 px from the edge)
@@ -20,6 +20,8 @@ import { fakeServices, setBox, COMPACT, LANDSCAPE_PHONE, MEDIUM, type Box } from
  */
 const MAPBOX_STRIP_PX = 10 + 24 + 8;
 const TARGET_GAP_PX = 8;
+/** A large window: the photos sheet docked on the trailing side leaves a map wider than the timeline's 640 px. */
+const LARGE: Box = { width: 1280, height: 900 };
 
 async function viewer(store: FakeStore): Promise<HcmMapViewer> {
     const element = document.createElement('hcm-map-viewer');
@@ -252,6 +254,76 @@ describe("<hcm-map-viewer> floating controls with the real kit (the user's repor
         expect(timeline.left - dock.right).toBeGreaterThanOrEqual(TARGET_GAP_PX);
         expect(toast.left - dock.left).toBeGreaterThan(4);
         expect(element.shadowRoot?.elementFromPoint(dock.left + 2, toast.top + toast.height / 2)?.closest('.dock')).toBeNull();
+    });
+});
+
+describe("<hcm-map-viewer> the photos-near-the-year chip on the timeline (the owner's report of 2026-11-08)", () => {
+    beforeAll(async () => {
+        defineUiKit();
+        defineViewerElements();
+        await page.viewport(1280, 900);
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_onAWideMapTheChipSharesTheTimelinesLeadingEdgeInBothDirections', async () => {
+        // The owner's screenshot (2026-11-08): with a pane docked the chip sat 72 px in from the map's edge, aligned to
+        // nothing, while the centred timeline began 300 px further in.
+        const store = new FakeStore(readyState(undefined, { year: 1977, sheet: 'photos' }));
+        const element = await viewer(store);
+        await resize(element, store, LARGE, 'large');
+        let timeline = boxOf(element, 'hcm-timeline');
+        let chip = boxOf(element, '.dock.chip hcm-button');
+        expect(Math.abs(chip.left - timeline.left)).toBeLessThanOrEqual(1);
+        expect(timeline.top - chip.bottom).toBeGreaterThanOrEqual(TARGET_GAP_PX);
+
+        await resize(element, store, EXTRA_LARGE, 'extra-large');
+        element.dir = 'rtl';
+        await element.updateComplete;
+        timeline = boxOf(element, 'hcm-timeline');
+        chip = boxOf(element, '.dock.chip hcm-button');
+        expect(Math.abs(chip.right - timeline.right)).toBeLessThanOrEqual(1);
+    });
+
+    it('badPath_onATabletTheOpenMenuNeverCoversTheChip', async () => {
+        // A centred chip would sit under the open menu's items, which end 8 px above the timeline on the trailing side.
+        const store = new FakeStore(readyState(undefined, { year: 1977 }));
+        const element = await viewer(store);
+        await resize(element, store, MEDIUM, 'medium');
+        await page.getByRole('button', { name: 'Meniu' }).click();
+        await expect.element(page.getByRole('menu', { name: 'Meniu' })).toBeVisible();
+
+        const chip = boxOf(element, '.dock.chip hcm-button');
+        const timeline = boxOf(element, 'hcm-timeline');
+        const items = [...(partOf(element, 'hcm-fab-menu').shadowRoot?.querySelectorAll('[role^="menuitem"]') ?? [])];
+        expect(items.length).toBeGreaterThan(0);
+        expect(Math.abs(chip.left - timeline.left)).toBeLessThanOrEqual(1);
+        for (const item of items) {
+            const box = item.getBoundingClientRect();
+            expect(box.left >= chip.right || box.right <= chip.left || box.top >= chip.bottom || box.bottom <= chip.top).toBe(true);
+        }
+    });
+
+    it('happyPath_onAShortPhoneTheChipDocksBesideTheVerticalTimeline', async () => {
+        // Held sideways the chip sat beside the menu button on the leading edge, far from the timeline on the trailing one.
+        const store = new FakeStore({ ...readyState(undefined, { year: 1977 }), compactHeight: true });
+        const element = await viewer(store);
+        setBox(element, LANDSCAPE_PHONE);
+        await element.updateComplete;
+        const timeline = boxOf(element, 'hcm-timeline');
+        let chip = boxOf(element, '.dock.chip hcm-button');
+        expect(Math.abs(chip.bottom - timeline.bottom)).toBeLessThanOrEqual(1);
+        expect(timeline.left - chip.right).toBeGreaterThanOrEqual(TARGET_GAP_PX);
+        expect(timeline.left - chip.right).toBeLessThanOrEqual(TARGET_GAP_PX + 1);
+
+        element.dir = 'rtl';
+        await element.updateComplete;
+        chip = boxOf(element, '.dock.chip hcm-button');
+        const mirrored = boxOf(element, 'hcm-timeline');
+        expect(chip.left - mirrored.right).toBeGreaterThanOrEqual(TARGET_GAP_PX);
+        expect(chip.left - mirrored.right).toBeLessThanOrEqual(TARGET_GAP_PX + 1);
     });
 });
 
