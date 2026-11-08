@@ -2916,6 +2916,28 @@
             "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/specs/viewer/own-tiles.spec.ts."
         },
         {
+            "id": "S-V32-HAPPY-PARTIAL-FRAME",
+            "behaviour": "V32",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A layer whose frame covers part of the view shows the frame there and the basemap beside it",
+            "asserts": "an archive with tiles only north-west of the city, a view across its northern edge -> the archive's colour 40 px inside the edge, the basemap 40 px outside it",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "the owner's screenshot of 2026-11-08 (1980's frame: square pictures of other places south of its edge, a black band along it); docs/LESSONS.md. Test: e2e/specs/viewer/partial-frame.spec.ts."
+        },
+        {
+            "id": "S-V32-BAD-STALE-HOLE",
+            "behaviour": "V32",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Past a frame, after a walk across it, the map shows the basemap and never an earlier tile of the layer",
+            "asserts": "eighteen views inside the frame at z15 and z16 (more tiles than Mapbox GL's cache keeps), then a view past it -> the basemap at four probes, no colour of the archive; the source answers a hole with one transparent 256 px picture, never null, and asks no read for it",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "the owner's screenshot of 2026-11-08 (1980's frame: square pictures of other places south of its edge, a black band along it); docs/LESSONS.md. Tests: e2e/specs/viewer/partial-frame.spec.ts, packages/ui/test/map/pmtiles-source.test.ts."
+        },
+        {
             "id": "S-A00-HAPPY",
             "behaviour": "A00",
             "area": "admin",
@@ -13001,6 +13023,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M12 (docs/research/M12-own-tiles.md). Test: pipeline/tests/integration/test_pyramid_job.py."
+        },
+        {
+            "id": "S-P08-HAPPY-RIM-CUT",
+            "behaviour": "P08",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A frame's dark film rim is cut from its tiles' alpha and the picture inside it kept",
+            "asserts": "a warped frame or its COG with an 8 px black rim under an opaque alpha along a skewed edge -> the view's alpha 0 on the rim, 255 just past it and on a black building deep inside; the archive's tiles show no opaque black rim; the preview stays at most 8192 px on its long side",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "the owner's screenshot of 2026-11-08 (1980's frame: square pictures of other places south of its edge, a black band along it); docs/LESSONS.md. Test: pipeline/tests/integration/test_pyramid_rim.py."
+        },
+        {
+            "id": "S-P08-BAD-RIM-LIMITS",
+            "behaviour": "P08",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Dark detail that is not the rim keeps its alpha",
+            "asserts": "a dark street running from the edge into the frame -> cut only within 250 Mercator metres of the edge, kept past it; a frame without a rim -> no mask written and its alpha byte for byte as it was",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "the owner's screenshot of 2026-11-08 (1980's frame: square pictures of other places south of its edge, a black band along it); docs/LESSONS.md. Test: pipeline/tests/integration/test_pyramid_rim.py."
         },
         {
             "id": "S-V07-HAPPY-PRECISE-DATE",

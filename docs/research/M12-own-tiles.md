@@ -59,6 +59,7 @@ Default: own tiles. One setting, **Publish through Mapbox** in Settings → Imag
 
 - `rasters.ts` turns `pmtiles` into `new PmtilesSource(spec)`; `xyz` and `mapbox` unchanged. Zooms and bounds come from `output`; Mapbox overzooms to the city's `maxZoom`.
 - Bucket CORS already allows `*` and `Range`. Never Firestore, no Firebase SDK, no HTML from data.
+- **A hole is a transparent picture, never `null`** (addendum 2026-11-08, `docs/LESSONS.md` 481): Mapbox GL 3.34.1 draws a `null` tile with a recycled texture of an earlier tile, which showed other places' pictures beside a partial frame. The source answers a tile the archive leaves out with one shared, transparent 256 px `ImageData`, and still asks nothing for it.
 - **Export and kit:** `plan.ts` carries the archive (not the COG) where `rasterExportable` allows, relative `tiles/<layer>.pmtiles`; otherwise the public URL. **A kit city without a bucket:** a file beside the page, on a host with `Range`; GitHub Pages is unverified.
 
 ## Cost, in the owner's words
@@ -168,3 +169,11 @@ Six findings of a review of the code above, each confirmed by reading it and pin
 - **An expired hour read as a broken image.** A tile failing after the address's hour (counted from its answer by the page's clock) asks `imagery.previewUrl` again on its own, once; a tile failing within its hour still says so, with Try again. `S-A74-BAD-HOUR-OVER`.
 
 **Still not verified:** a real Cloud Storage `delete` racing a `copy`, and a V4 address expiring in a real browser (the e2e moves only the page's clock and refuses one read).
+
+## Addendum 2026-11-08: a partial frame's holes and its dark rim
+
+The owner's screenshot of the live 1980 layer showed two faults beside a frame that covers half the city (DECISIONS-for-review.md §115).
+
+- **Holes drew earlier tiles** (lesson 481): fixed in the viewer (*The viewer* above); every layer with holes inside its bounds is fixed by the engine deploy alone.
+- **The dark rim** (lesson 482): `rgba_view` now reads the layer through `tiles/rim.py`, which cuts from the alpha the dark pixels (grey 24 or less) that the transparent outside reaches through dark pixels only, at most 250 Mercator metres in, plus one preview pixel for the fade. The cut is found on a preview at most 8192 px on its long side and drawn bilinear by a VRT `min` pixel function over the source's alpha (or the COG's mask), so no full-size mask is written; a frame with no rim keeps its alpha untouched. The thumbnail is made from the same view. The stitch crop is unchanged, so saved points stay where they are.
+- **Archives already published** keep their band until the layer is rendered again (Calibrate again, or the georeferencer's Save, then Approve: re-runs, not imports). No re-tile of a published version is built (§115c).
