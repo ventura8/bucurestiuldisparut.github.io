@@ -39,6 +39,8 @@ export const ro = {
     'adminSetup.install.state.newerInstalled': 'Mai nou decât această administrare',
     'adminSetup.install.state.failed': 'Oprit',
     'adminSetup.install.state.unavailable': 'Indisponibil acum',
+    'adminSetup.install.state.checking': 'Se verifică instalarea…',
+    'adminSetup.install.lastSeenRunning': 'Văzută ultima dată în lucru pe {date}; Verifică din nou arată unde a ajuns.',
     'adminSetup.install.step.fetch': 'Descarcă și verifică fișierele de instalare',
     'adminSetup.install.step.tools': 'Pregătește uneltele Firebase',
     'adminSetup.install.step.packages': 'Instalează pachetele serverului',

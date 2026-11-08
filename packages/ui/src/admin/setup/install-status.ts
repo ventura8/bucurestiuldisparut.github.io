@@ -234,12 +234,32 @@ function installRunning(view: InstallTargetViewPort): boolean {
     return RUNNING.has(view.state);
 }
 
+/**
+ * A build a record says is at work and no look has confirmed yet (the live finding of 2026-11-08): it may have ended
+ * since, so the card says it is checking, with when it was last seen, instead of "Installing" and steps all "next".
+ */
+function unconfirmed(view: InstallTargetViewPort): boolean {
+    return view.recorded === true && installRunning(view);
+}
+
 /** The card's own button may install now: an installable state, no blocker, no click in progress. */
 export function mayInstall(view: InstallTargetViewPort): boolean {
     return INSTALLABLE_STATES.has(view.state) && view.blocker === null && !view.busy;
 }
 
+/** The neutral line of a recorded build at work, until the card's look says where it is now. */
+function checkingLine(input: InstallStatusInput, view: InstallTargetViewPort): TemplateResult {
+    const seen = view.checkedAt === null ? '' : formatDateTime(input.locale, view.checkedAt);
+    return html`<p class="install-state" data-state="checking" role="status">
+            <hcm-icon name="schedule"></hcm-icon>${label(input, 'adminSetup.install.state.checking')}
+        </p>
+        <p class="note">${label(input, 'adminSetup.install.lastSeenRunning', { date: seen })}</p>`;
+}
+
 function stateLine(input: InstallStatusInput, view: InstallTargetViewPort): TemplateResult {
+    if (unconfirmed(view)) {
+        return checkingLine(input, view);
+    }
     return html`<p class="install-state" data-state=${view.state} role="status">
         <hcm-icon name=${STATE_ICONS[view.state]}></hcm-icon>${label(input, `adminSetup.install.state.${view.state}`)}
     </p>`;
@@ -295,7 +315,7 @@ function retryLine(input: InstallStatusInput, view: InstallTargetViewPort): Temp
 }
 
 function running(input: InstallStatusInput, view: InstallTargetViewPort): TemplateResult {
-    if (!installRunning(view)) {
+    if (!installRunning(view) || unconfirmed(view)) {
         return EMPTY;
     }
     return html`${stepsList(input, view)}${runningFor(input, view)}${retryLine(input, view)}`;
@@ -399,9 +419,12 @@ function provisionDueLine(input: InstallStatusInput): TemplateResult {
     return html`<p class="note" data-provision-due>${label(input, 'adminSetup.install.provisionDue', { items })}</p>`;
 }
 
-/** A build of any target is queued or at work, or a click on one is on its way (Update the map's click starts them all). */
+/**
+ * A build of any target is queued or at work, or a click on one is on its way (Update the map's click starts them all);
+ * a build only a record says is at work does not count (it may have ended: the live finding of 2026-11-08).
+ */
 function building(slice: InstallSliceView): boolean {
-    return [slice.server, slice.pipeline, slice.site].some((target) => installRunning(target) || target.busy);
+    return [slice.server, slice.pipeline, slice.site].some((target) => (installRunning(target) && !unconfirmed(target)) || target.busy);
 }
 
 /**

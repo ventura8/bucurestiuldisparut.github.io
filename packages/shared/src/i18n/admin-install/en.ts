@@ -34,6 +34,8 @@ export const en: AdminInstallMessages = {
     'adminSetup.install.state.newerInstalled': 'Newer than this admin',
     'adminSetup.install.state.failed': 'Stopped',
     'adminSetup.install.state.unavailable': 'Unavailable now',
+    'adminSetup.install.state.checking': 'Checking the installation…',
+    'adminSetup.install.lastSeenRunning': 'Last seen at work on {date}; Check again shows where it is now.',
     'adminSetup.install.step.fetch': 'Download and check the install files',
     'adminSetup.install.step.tools': 'Prepare the Firebase tools',
     'adminSetup.install.step.packages': "Install the server's packages",

@@ -101,6 +101,12 @@ export interface InstallTargetView {
     /** ISO 8601 of the last observation. */
     readonly checkedAt: string | null;
     /**
+     * The view is a record's (`setup/status.install` or the bootstrap record), not this session's look at Cloud Build:
+     * the live finding of 2026-11-08, a build recorded at work was shown "Installing" with every step "next" until the
+     * first look said "An update is ready", so a card shows a recorded build at work as being checked, not as running.
+     */
+    readonly recorded: boolean;
+    /**
      * M7 (`docs/research/M7-local-worker.md` §1.1): the pipeline image's digest, which the local worker's command names:
      * finding 74 of 2026-11-03, the one the job `raster-pipeline` runs (`InstalledInfo.image`), else the one its build's
      * log named (the `image` event), else the one shown before for the same release; null until one is known.
@@ -131,6 +137,7 @@ export function initialTargetView(target: InstallTarget): InstallTargetView {
         busy: false,
         error: null,
         checkedAt: null,
+        recorded: false,
         image: null,
     };
 }

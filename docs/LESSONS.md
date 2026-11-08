@@ -2837,3 +2837,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the merge's targeted run; the track's own runs were warm and the trigger won the race.
     - Fix and pin: the happy test waits for the trigger's entry before it ends (`legacy-additions.spec.ts`), as the bad test already waited for its own.
     - **A test that writes through a trigger waits for the trigger's write before it ends; a late write outlives the next test's reset and becomes that test's state.**
+476. **After the release that grew the legacy bundle to 57 photos, Setup's step h said "All the photos are on the map (45)".**
+    - Seen: 2026-11-08, live, after deploying 1.0.0+567a5d6: step h was done with 45 and its first run imported against the 45; only a refetch past the browser's cache showed the 12 additions.
+    - Cause: Hosting answered `/admin/legacy/**` with `public, max-age=86400` (CR-M2b-5, chosen for the 46 MB of originals), a rule after the `no-cache` one for JSON, so `photos.json`, `corrections.json` and `city.json` were cached a day under names a release never changes; the owner's browser kept the release before's bundle.
+    - Found by: the owner, live; every tier ran on a cold browser, and the header test pinned the day as right.
+    - Fix and pin: the admin reads every bundle file with `cache: 'no-cache'` (`bundleJson`, `BUNDLE_READ`), which also refuses a copy cached under the old header, and Hosting answers `/admin/legacy/*/*.json` `no-cache` (the originals keep a day): `bundle-fresh.test.ts`, `admin-hosting.test.ts`, S-A28-HAPPY-BUNDLE-FRESH, S-A28-BAD-STALE-BUNDLE-REFUSED (the e2e Hosting tree's file rewritten between two reads of one browser).
+    - **A file a release changes under the same name is never cached past a revalidation: cache by content-addressed name, or revalidate; and the reader asks for revalidation too, since a header fixes only the copies cached after it.**
+477. **Right after Setup opened, steps d and d3 said "Installing" with every step "next", then "An update is ready".**
+    - Seen: 2026-11-08, live, after deploying 1.0.0+567a5d6: a visitor could think an install was running and wait.
+    - Cause: `setup/status.install` kept the server's and the pipeline's builds as `working` from the owner's last visit; the cards show a record until their first look, and showed a recorded build at work as running, with steps that only a look fills in.
+    - Found by: the owner, live; the e2e seeded records only in settled states.
+    - Fix and pin: a view from a record carries `recorded`; a recorded build at work shows "Checking the installation…" and when it was last seen, no steps, and does not hold back another card's Update the map (`install-records.test.ts`, `install-recorded.test.ts`; S-A55-HAPPY-RECORDED-BUILD-CHECKED, S-A55-BAD-RECORDED-BUILD-NOT-RUNNING; tour state `setup.install-checking`).
+    - **A record of something in motion is a past observation, not a state: show it as last seen and as being checked, never as running now.**

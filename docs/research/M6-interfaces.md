@@ -454,7 +454,7 @@ as today; `--hosting dist/hosting` adds the generic city page, `/admin/` (the ad
 | headers | `**` | `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` (`geolocation=(self)`): **no** Content-Security-Policy |
 | none (meta) | the viewer's pages | their own `<meta http-equiv="Content-Security-Policy">` (`scripts/site/src/csp.ts`, the M1 and M5 policy, the public bucket's host added when the build names it), exactly as on Pages |
 | headers | `/admin/install/**` | `Cache-Control: public, max-age=31536000, immutable`, `manifest.json` `no-cache` |
-| headers | the HTML, script, style and JSON files (today's rule) | `Cache-Control: no-cache` (as today); `/admin/legacy/**` `public, max-age=86400` |
+| headers | the HTML, script, style and JSON files (today's rule) | `Cache-Control: no-cache` (as today); `/admin/legacy/**` `public, max-age=86400`, its JSON `/admin/legacy/*/*.json` `no-cache` (DECISIONS-for-review.md §113a) |
 
 - **No path gets two Content-Security-Policy headers** (Hosting may send every matching rule's headers): the viewer's
   policy is its page's meta tag, the admin's the header of `/admin/**` only. A unit test resolves `firebase.json` over

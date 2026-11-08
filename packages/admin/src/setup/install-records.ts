@@ -97,6 +97,7 @@ function fromRecord(view: InstallTargetView, record: InstallRecord, bundle: Bund
         installedReleaseTime: record.releaseTime ?? null,
         buildId: record.buildId ?? null,
         checkedAt: record.checkedAt,
+        recorded: true,
         error: recordedError(record),
         image: record.image ?? view.image,
     };

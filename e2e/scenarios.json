@@ -6612,6 +6612,28 @@
             "notes": "Directions from the old site (docs/research/M5-interfaces.md): a correction applies only to a photo whose direction is still the migration's and that no person aimed; its point moves only while no person moved it (unit tests: packages/admin/test/import/legacy-fixes.test.ts). Test: e2e/admin/steps/legacy-additions.spec.ts."
         },
         {
+            "id": "S-A28-HAPPY-BUNDLE-FRESH",
+            "behaviour": "A28",
+            "area": "admin",
+            "path": "happy",
+            "title": "A tab opened after a release counts the new bundle's photos",
+            "asserts": "the bundle had 3 photos and a tab of the browser read it -> the release grows it to 5 -> a new tab of the same browser offers Import the photos (5); Hosting answers photos.json with Cache-Control no-cache",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live finding of 2026-11-08 after deploying 1.0.0+567a5d6: Hosting gave the bundle a day's max-age, so the owner's browser kept the 45-record photos.json after the release grew it to 57 (DECISIONS-for-review.md, the 2026-11-08 entry; docs/LESSONS.md). Test: e2e/admin/steps/legacy-fresh.spec.ts (the e2e Hosting tree's photos.json rewritten between two reads, no route); units: packages/admin/test/import/bundle-fresh.test.ts, scripts/site/test/admin-hosting.test.ts."
+        },
+        {
+            "id": "S-A28-BAD-STALE-BUNDLE-REFUSED",
+            "behaviour": "A28",
+            "area": "admin",
+            "path": "bad",
+            "title": "The browser's copy of an earlier bundle is never counted",
+            "asserts": "a tab read the 3-photo bundle (its browser holds the copy) -> the release grows it to 5 and Setup opens again in the same tab -> the card offers Import the photos (5), never the cached 3; the admin reads every bundle file with cache no-cache, so a copy cached under the old day-long header is refused too",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live finding of 2026-11-08 after deploying 1.0.0+567a5d6: Hosting gave the bundle a day's max-age, so the owner's browser kept the 45-record photos.json after the release grew it to 57 (DECISIONS-for-review.md, the 2026-11-08 entry; docs/LESSONS.md). Test: e2e/admin/steps/legacy-fresh.spec.ts (the e2e Hosting tree's photos.json rewritten between two reads, no route); units: packages/admin/test/import/bundle-fresh.test.ts, scripts/site/test/admin-hosting.test.ts."
+        },
+        {
             "id": "S-A29-HAPPY",
             "behaviour": "A29",
             "area": "admin",
@@ -9239,6 +9261,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 40; DECISIONS-for-review.md §78b). Tests: e2e/admin/steps/install/update.spec.ts, e2e/admin/specs/install/states.spec.ts (setup.install-nothing-to-do); units: packages/ui/test/admin/setup/hcm-setup-page.test.ts, install-cards.test.ts."
+        },
+        {
+            "id": "S-A55-HAPPY-RECORDED-BUILD-CHECKED",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "happy",
+            "title": "A build recorded at work is shown as being checked until the look says where it is",
+            "asserts": "setup/status records the server's and the pipeline's builds at work, which ended since -> card d says Checking the installation and when the build was last seen, with no steps and never Installing -> Check again (Google's consent) shows An update is ready with Update the map",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live finding of 2026-11-08 after deploying 1.0.0+567a5d6: steps d and d3 said Installing with every step next until Cloud Build's answer said An update is ready (DECISIONS-for-review.md, the 2026-11-08 entry; docs/LESSONS.md). Test: e2e/admin/steps/install/checking.spec.ts (setup.install-checking); units: packages/admin/test/setup/install-records.test.ts, packages/ui/test/admin/setup/install-recorded.test.ts."
+        },
+        {
+            "id": "S-A55-BAD-RECORDED-BUILD-NOT-RUNNING",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without a look, a build recorded at work never reads as running",
+            "asserts": "the same records, no live token -> cards d and d3 keep Checking the installation with when it was last seen, no steps, never Installing, two minutes later too; nothing is submitted",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live finding of 2026-11-08 after deploying 1.0.0+567a5d6: steps d and d3 said Installing with every step next until Cloud Build's answer said An update is ready (DECISIONS-for-review.md, the 2026-11-08 entry; docs/LESSONS.md). Test: e2e/admin/steps/install/checking.spec.ts (setup.install-checking); units: packages/admin/test/setup/install-records.test.ts, packages/ui/test/admin/setup/install-recorded.test.ts."
         },
         {
             "id": "S-A55-HAPPY-UPDATE-WITH-PROVISION",

@@ -241,6 +241,11 @@ export interface InstallTargetViewPort {
     readonly busy: boolean;
     readonly error: SetupMessage | null;
     readonly checkedAt: string | null;
+    /**
+     * The view is a record's, not a look at Cloud Build in this session (the live finding of 2026-11-08): a recorded build
+     * at work is shown as being checked, with when it was last seen, never as running with its steps.
+     */
+    readonly recorded?: boolean;
 }
 
 export interface InstallSliceView {

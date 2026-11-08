@@ -92,3 +92,17 @@ export function uploadType(sourceFile: string): { readonly extension: string; re
 export function bundleUrl(baseUrl: string, cityId: string, file: string): string {
     return new URL(`legacy/${cityId}/${file}`, baseUrl).toString();
 }
+
+/**
+ * How a bundle file's JSON is read: past the copy the browser holds (`no-cache`: asked of Hosting again, a 304 when it
+ * did not change). The live finding of 2026-11-08: Hosting answered `legacy/<city>/photos.json` with a day's
+ * `max-age`, so after a release grew the bundle from 45 to 57 records the owner's browser kept the 45 for a day and step
+ * (h) said every photo was on the map. A copy cached under the old header is refused too, which a header alone cannot do.
+ */
+export const BUNDLE_READ: RequestInit = { cache: 'no-cache' };
+
+/** A bundle file's JSON as Hosting has it now, or undefined when Hosting does not serve it. */
+export async function bundleJson(fetcher: typeof fetch, baseUrl: string, cityId: string, file: string): Promise<unknown> {
+    const response = await fetcher(bundleUrl(baseUrl, cityId, file), BUNDLE_READ);
+    return response.ok ? ((await response.json()) as unknown) : undefined;
+}
