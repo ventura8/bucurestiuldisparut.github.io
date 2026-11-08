@@ -913,6 +913,13 @@
             "source": "the owner's decision of 2026-11-08: stories; docs/research/M17-stories.md §5"
         },
         {
+            "id": "V45",
+            "area": "viewer",
+            "name": "Zoom in and Zoom out buttons on the map, soft-disabled at the city zoom limits",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-08: add zoom in and out buttons to the map"
+        },
+        {
             "id": "A100",
             "area": "admin",
             "name": "Stories in the admin: written, published, reviewed and reverted like photos and places",
@@ -14728,6 +14735,61 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The review of 2026-11-08. Test: e2e/specs/viewer/stories.spec.ts; the hash rule also in packages/engine/test/core/stories.test.ts."
+        },
+        {
+            "id": "S-V45-HAPPY-ZOOM-BUTTONS",
+            "behaviour": "V45",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Zoom in and Zoom out move the map one level each, by pointer and by keyboard",
+            "asserts": "a click on Zoom in -> the address zoom 14.5 -> 15.5; Enter on the focused Zoom out -> 14.5, again -> 13.5, the focus kept on the button",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08 (DECISIONS-for-review.md §115). Test: e2e/specs/viewer/zoom.spec.ts, packages/ui/test/viewer/viewer-zoom.test.ts, packages/engine/test/core/store-zoom.test.ts."
+        },
+        {
+            "id": "S-V45-HAPPY-COMPARE",
+            "behaviour": "V45",
+            "area": "viewer",
+            "path": "happy",
+            "title": "In swipe compare the one pair zooms both maps",
+            "asserts": "Zoom in during compare -> every live map ends at zoom 16, at rest on one camera; the address says 16",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08 (DECISIONS-for-review.md §115). Test: e2e/specs/viewer/zoom.spec.ts."
+        },
+        {
+            "id": "S-V45-HAPPY-TOUR",
+            "behaviour": "V45",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The buttons pass the layout and accessibility checks on every window class",
+            "asserts": "expectStateSound on the zoom journey (Zoom in soft-disabled and focused at the maximum, Zoom out focused one level out) and on every other map state, which shows the buttons too",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08 (DECISIONS-for-review.md §115). Test: e2e/tour/viewer.tour.ts (e2e/tour/zoom-states.ts)."
+        },
+        {
+            "id": "S-V45-BAD-ZOOM-AT-LIMIT",
+            "behaviour": "V45",
+            "area": "viewer",
+            "path": "bad",
+            "title": "At the city zoom limits the button says it is disabled, keeps the focus and changes nothing",
+            "asserts": "#20/...: Zoom in aria-disabled=true, a click and Enter leave the address and the camera at 20 with the focus on the button; #10/...: the same for Zoom out",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08 (DECISIONS-for-review.md §115). Test: e2e/specs/viewer/zoom.spec.ts, packages/ui/test/viewer/viewer-zoom.test.ts, packages/engine/test/core/store-zoom.test.ts, packages/ui/test/components/icon-button.test.ts."
+        },
+        {
+            "id": "S-V45-BAD-NO-WEBGL",
+            "behaviour": "V45",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Without WebGL there is no map and no zoom buttons",
+            "asserts": "webgl false -> no zoom group in the viewer",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08 (DECISIONS-for-review.md §115). Test: e2e/specs/viewer/no-webgl.spec.ts, packages/ui/test/viewer/viewer-zoom.test.ts."
         },
         {
             "id": "S-A100-BAD-REVIEW-EMPTY",

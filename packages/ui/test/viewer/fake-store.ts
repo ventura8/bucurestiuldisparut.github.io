@@ -170,6 +170,10 @@ export class FakeStore implements ViewerStorePort {
         this.set({ view });
     }
 
+    zoomBy(step: number): void {
+        this.#record('zoomBy', step);
+    }
+
     setShortcuts(enabled: boolean): void {
         this.#record('setShortcuts', enabled);
         this.set({ shortcuts: enabled });

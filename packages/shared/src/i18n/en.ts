@@ -63,6 +63,8 @@ export const en: Messages = {
     'viewer.loading': 'Loading the map…',
     'viewer.mapLabel': 'Historical map: {city}',
     'viewer.skipToTimeline': 'Skip to the timeline',
+    'viewer.zoomIn': 'Zoom in',
+    'viewer.zoomOut': 'Zoom out',
     'timeline.label': 'Timeline',
     'timeline.year': 'Year {year}',
     'timeline.present': 'Today',

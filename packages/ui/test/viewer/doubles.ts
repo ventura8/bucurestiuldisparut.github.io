@@ -78,18 +78,25 @@ class ButtonDouble extends LitElement {
 }
 
 class IconButtonDouble extends LitElement {
-    static override readonly properties = { icon: {}, label: {}, disabled: { type: Boolean } };
+    static override readonly properties = {
+        icon: {},
+        label: {},
+        disabled: { type: Boolean },
+        softDisabled: { type: Boolean, attribute: 'soft-disabled' },
+    };
     declare label: string;
     declare disabled: boolean;
+    declare softDisabled: boolean;
 
     constructor() {
         super();
         this.label = '';
         this.disabled = false;
+        this.softDisabled = false;
     }
 
     override render(): TemplateResult {
-        return html`<button aria-label=${this.label} ?disabled=${this.disabled}></button>`;
+        return html`<button aria-label=${this.label} ?disabled=${this.disabled} aria-disabled=${String(this.softDisabled)}></button>`;
     }
 }
 

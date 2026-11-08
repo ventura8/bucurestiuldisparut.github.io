@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 133 | 1278 | 510 | 768 | 1276 | 2 | 311 |
+| 134 | 1283 | 513 | 770 | 1281 | 2 | 312 |
 
 ## Viewer
 
@@ -208,6 +208,11 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V41-HAPPY-LINK` | V41 | happy | Contribute opens a page of its own | the menu's item opens contributeUrl in a new tab with nothing passed on | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
 | `S-V41-BAD-NO-BACKEND` | V41 | bad | A manifest without the link offers no Contribute | the menu has no Contribute | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts`<br>`functions/test/export/plan-community.test.ts` |
 | `S-V41-BAD-NO-SIGN-IN` | V41 | bad | The map signs nothing in, reads no Firestore and sets no cookie | with the link on the page: no cookie in the context, no request to Firestore, Identity Toolkit, Secure Token or Firebase | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
+| `S-V45-HAPPY-COMPARE` | V45 | happy | In swipe compare the one pair zooms both maps | Zoom in during compare -> every live map ends at zoom 16, at rest on one camera; the address says 16 | e2e-viewer | exists | `e2e/specs/viewer/zoom.spec.ts` |
+| `S-V45-HAPPY-TOUR` | V45 | happy | The buttons pass the layout and accessibility checks on every window class | expectStateSound on the zoom journey (Zoom in soft-disabled and focused at the maximum, Zoom out focused one level out) and on every other map state, which shows the buttons too | e2e-viewer | exists | `e2e/tour/viewer.tour.ts` |
+| `S-V45-HAPPY-ZOOM-BUTTONS` | V45 | happy | Zoom in and Zoom out move the map one level each, by pointer and by keyboard | a click on Zoom in -> the address zoom 14.5 -> 15.5; Enter on the focused Zoom out -> 14.5, again -> 13.5, the focus kept on the button | e2e-viewer | exists | `e2e/specs/viewer/zoom.spec.ts` |
+| `S-V45-BAD-NO-WEBGL` | V45 | bad | Without WebGL there is no map and no zoom buttons | webgl false -> no zoom group in the viewer | e2e-viewer | exists | `e2e/specs/viewer/no-webgl.spec.ts` |
+| `S-V45-BAD-ZOOM-AT-LIMIT` | V45 | bad | At the city zoom limits the button says it is disabled, keeps the focus and changes nothing | #20/...: Zoom in aria-disabled=true, a click and Enter leave the address and the camera at 20 with the focus on the button; #10/...: the same for Zoom out | e2e-viewer | exists | `e2e/specs/viewer/zoom.spec.ts` |
 | `S-V50-HAPPY-LINK` | V50 | happy | A story opens from its own link and from the photo it is about | #story=<id> opens the sheet in Romanian with its https link; the photo's sheet lists the story and opens it | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
 | `S-V50-HAPPY-OPEN` | V50 | happy | A story from the menu reads with its figure, credit, places and photos | the list, the story sheet with bold text, the figure of the city's photo and its caption, the credit, story= in the address, the figure opening the photo | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
 | `S-V50-HAPPY-PHONE` | V50 | happy | The list and one story pass the layout and accessibility checks on every window class | expectStateSound on the stories and story states, phone included | e2e-viewer | exists | `e2e/tour/viewer.tour.ts` |

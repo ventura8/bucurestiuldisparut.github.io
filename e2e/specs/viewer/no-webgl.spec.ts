@@ -11,7 +11,7 @@ import { serveManifest, t, viewer, waitForEngineEvent } from '../../support/view
 
 test(
     'Without WebGL a card explains it and the photo list still opens every photo',
-    { tag: ['@S-V02-BAD-NO-WEBGL', '@S-V01-BAD-PLAIN-WORDS'] },
+    { tag: ['@S-V02-BAD-NO-WEBGL', '@S-V01-BAD-PLAIN-WORDS', '@S-V45-BAD-NO-WEBGL'] },
     async ({ page, lang, mockApis }) => {
         await page.goto(sitePath('bucharest', { lang }));
         await waitForEngineEvent(page, 'hcm-ready');
@@ -20,6 +20,8 @@ test(
         await expect(page.getByRole('alert')).toContainText(t(lang, 'error.webgl'));
         // Plain words for a visitor: no "WebGL" (the M1 UX review), the card says what still works.
         await expect(page.getByRole('alert')).not.toContainText(/webgl/i);
+        // No map, nothing to zoom (V45): the zoom buttons are not there.
+        await expect(page.getByRole('button', { name: t(lang, 'viewer.zoomIn'), exact: true })).toHaveCount(0);
         const list = viewer(page).locator('.fallback hcm-photo-list');
         await expect(list.getByRole('status')).toHaveText(t(lang, 'photos.count.other', { count: '45' }));
         const photos = list.getByRole('list', { name: t(lang, 'photos.list') }).getByRole('button');

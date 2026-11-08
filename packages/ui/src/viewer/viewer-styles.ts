@@ -281,17 +281,21 @@ export const viewerStyles = [
             pointer-events: none;
         }
 
-        .note {
+        .note,
+        .dock.zoom {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            min-block-size: 40px;
             box-sizing: border-box;
-            padding: 8px 16px 8px 12px;
             border-radius: var(--md-sys-shape-corner-full, 9999px);
             background: var(--md-sys-color-surface-container-high, Canvas);
             color: var(--md-sys-color-on-surface-variant, CanvasText);
             box-shadow: var(--md-sys-elevation-level2, 0 2px 6px rgb(0 0 0 / 30%));
+        }
+
+        .note {
+            min-block-size: 40px;
+            padding: 8px 16px 8px 12px;
             font-size: var(--md-sys-typescale-label-large-size, 0.875rem);
             line-height: 1.4;
             pointer-events: auto;
@@ -308,6 +312,25 @@ export const viewerStyles = [
 
         .frame:not([data-timeline]) .dock.menu {
             inset-block-end: calc(var(--hcm-map-chrome) + env(safe-area-inset-bottom, 0px));
+        }
+
+        /*
+         * The zoom buttons (V45): a vertical group (4 px around two 40 px buttons: 48 px targets) centred over the FAB on
+         * the trailing edge, 8 px above it. Compact: above the row of the "photos near this year" chip, which can be as
+         * wide as the map.
+         */
+        .dock.zoom {
+            inset-inline-end: calc(var(--hcm-gutter) + 4px);
+            inset-block-end: calc(
+                var(--hcm-map-chrome) + var(--hcm-timeline-block) + var(--hcm-fab-size) + 48px + 3 * var(--hcm-dock-gap) +
+                    env(safe-area-inset-bottom, 0px)
+            );
+            flex-direction: column;
+            padding: 4px;
+        }
+
+        .frame:not([data-timeline]) .dock.zoom {
+            inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-fab-size) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px));
         }
 
         /*
@@ -357,6 +380,10 @@ export const viewerStyles = [
                 inset-block-end: calc(var(--hcm-map-chrome) + env(safe-area-inset-bottom, 0px));
             }
 
+            .dock.zoom {
+                inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-fab-size) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px));
+            }
+
             .dock.chip {
                 inset-inline-start: calc(var(--hcm-gutter) + 72px);
                 inset-block-end: calc(
@@ -401,6 +428,19 @@ export const viewerStyles = [
             );
         }
 
+        /*
+         * A phone held landscape: the handle of swipe compare's divider crosses the middle of the map, so the buttons are a
+         * row at the foot, before the vertical timeline (the FAB and the chip are on the leading side).
+         */
+        .frame[data-compact-height] .dock.zoom {
+            flex-direction: row;
+            inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-dock-gap));
+        }
+
+        .frame[data-compact-height][data-timeline] .dock.zoom {
+            inset-inline-end: calc(var(--hcm-gutter) + var(--hcm-timeline-inline) + var(--hcm-dock-gap));
+        }
+
         .frame[data-compact-height] .dock.chip {
             inset-inline-start: calc(var(--hcm-gutter) + 72px);
             inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-dock-gap));
@@ -413,6 +453,11 @@ export const viewerStyles = [
         .frame[data-compact-height][data-timeline] .dock.toast,
         .frame[data-compact-height][data-timeline] .dock.consent {
             inset-inline-end: calc(var(--hcm-gutter) + var(--hcm-timeline-inline) + var(--hcm-dock-gap));
+        }
+
+        /* The open menu grows over the group: the group steps aside until it closes (the tour's overlap check). */
+        .dock.menu:has(> [open]) + .dock.zoom {
+            visibility: hidden;
         }
 
         @media (prefers-reduced-motion: reduce) {

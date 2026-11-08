@@ -68,6 +68,8 @@ export const ro = {
     'viewer.loading': 'Se încarcă harta…',
     'viewer.mapLabel': 'Hartă istorică: {city}',
     'viewer.skipToTimeline': 'Sari la cronologie',
+    'viewer.zoomIn': 'Mărește harta',
+    'viewer.zoomOut': 'Micșorează harta',
     'timeline.label': 'Cronologie',
     'timeline.year': 'Anul {year}',
     'timeline.present': 'Azi',

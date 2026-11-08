@@ -243,6 +243,20 @@ The menu's **Show my location** is a switch (`menuitemcheckbox`, `aria-checked`,
 
 Code: `packages/ui/src/viewer/my-location.ts` (the switch and the watch), `packages/ui/src/map/my-location.ts` (the layer, `ViewerMapPort.setMyLocation`), `MapSync` in `packages/engine/src/core/map-sync.ts` (the state's `myLocation` on every map).
 
+## Zoom buttons
+
+Status (2026-11-08): the owner's request ("add zoom in and out buttons to the map"); scenario rows V45, `e2e/specs/viewer/zoom.spec.ts`, the tour's journey `zoom`. Additive within v1: no property, event or method for a page to set.
+
+**Zoom in** and **Zoom out** ("Mărește harta", "Micșorează harta", as in the admin's map) are two 48 px icon buttons in one rounded group over the map, with their names as tooltips.
+
+- **Where**: on the map's trailing edge (the left in a right-to-left page), centred over the menu button and 8 px above it; on a phone, above the row of the "photos from around" chip, which can be as wide as the map; on a phone held landscape, a row at the foot of the map before the vertical timeline, clear of swipe compare's divider handle. They keep the bottom 42 px free for the Mapbox logo and attribution like every floating control, and the tour checks them against the menu, the timeline, the chip, the sheets and the legal line at every window size. While the menu is open, which grows over them, they are hidden.
+- **What**: one zoom level from the camera's current zoom, animated as the map's own moves (a jump under reduced motion); the URL hash follows when the camera stops. Without WebGL there is no map and no buttons.
+- **At the city's limits** (`city.maxZoom`; for Zoom out the higher of `city.minZoom` and the zoom at which `city.bounds` just cover the map, where Mapbox stops because it keeps the view inside the bounds: for Bucharest about 10.8 on a phone and 11.6 at 1440 px) the button is **soft-disabled**: dimmed and `aria-disabled="true"`, but it keeps the focus and its place in the Tab order (a disabled button would drop the focus of a visitor pressing Enter), and a press changes nothing. The gamepad's zoom, the wheel, a pinch or a typed hash that reach a limit disable it too.
+- **Compare**: the second map follows the first, so the one pair zooms both.
+- **Our own buttons, not Mapbox's `NavigationControl`**: the control costs no bundle bytes (`mapbox-gl` is external) but brings 29 px targets, a compass and its own look and texts; ours use the kit's icon button (`soft-disabled` is new there), the city's theme and both languages. They cost about 650 bytes gzip of the IIFE, paid by a smaller baseline theme (`packages/ui/src/theme/baseline.ts`, about 630 bytes, the same tokens; the IIFE measures 124,966 of its 125,000 bytes): DECISIONS-for-review.md §115.
+
+Code: `packages/ui/src/viewer/viewer-zoom.ts` (the group), `zoomBy` in `packages/engine/src/core/store.ts` (one level within the range), `packages/ui/src/components/icon-button.ts` (`softDisabled`).
+
 ## City Manifest v1
 
 The only data the viewer reads: a static JSON file (from the public bucket, or inline in `config.js`). Schema: `manifestSchema` in `packages/shared/src/schemas/manifest.ts`; the Bucharest seed is `seed/bucharest/manifest.static.json`. Every object is strict: an unknown key is an error (which also blocks prototype-pollution keys).
