@@ -7,7 +7,7 @@ from pathlib import Path
 
 import cv2
 import numpy
-from hcm_pipeline.contract import Errors
+from hcm_pipeline.contract import VERSION_FILES, Errors
 from hcm_pipeline.geo import to_lnglat
 from hcm_pipeline.model import Timestamp
 from hcm_pipeline.raster import gdal
@@ -91,8 +91,7 @@ def test_happy_path_a_queued_import_becomes_a_version_awaiting_approval(
     assert dig(reference, "s2Check", "status") == "unchecked"
     assert alignment_shift_m(world, world.scene, tmp_path) < 10
     assert world.gcs.names(f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/") == [
-        f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/{name}"
-        for name in ("align.tif", "cog.tif", "preview.png", "reference-osm.png", "reference-s2.jpg", "scan-preview.jpg", "scan.tif", "studio.tif")
+        f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/{name}" for name in sorted(VERSION_FILES)
     ]
     assert world.gcs.names(WORK) == []
     # The delivery was fetched whole, then deleted once the city crop existed (M7 §5: S-P01-HAPPY-RAW-DELETED).

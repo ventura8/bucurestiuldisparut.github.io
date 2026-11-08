@@ -84,7 +84,16 @@ USGS_DATASETS: Final = ("corona2", "declassii", "declassiii")
 GEOREF_TRANSFORMS: Final = ("affine", "poly2", "tps")
 MIN_GCPS: Final[Mapping[str, int]] = {"affine": 3, "poly2": 6, "tps": 10}
 GCP_ORIGINS: Final = ("corner", "auto", "manual")
-VERSION_FILES: Final = ("scan.tif", "scan-preview.jpg", "reference-osm.png", "reference-s2.jpg", "cog.tif", "preview.png", "studio.tif", "align.tif")
+VERSION_FILES: Final = (
+    "scan.tif",
+    "scan-preview.jpg",
+    "reference-osm.png",
+    "reference-s2.jpg",
+    "cog.tif",
+    "preview.png",
+    "studio.tif",
+    "align.tif",
+)
 LEASE_SECONDS: Final = 600
 HEARTBEAT_SECONDS: Final = 60
 USGS_BACKOFF_MINUTES: Final = (30, 60, 120, 240, 480, 720)

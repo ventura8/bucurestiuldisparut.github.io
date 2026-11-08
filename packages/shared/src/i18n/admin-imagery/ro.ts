@@ -153,8 +153,8 @@ export const ro = {
     'adminContent.imagery.calibration.error': 'Eroare măsurată {metres} m',
     'adminContent.imagery.calibration.notFound': 'Negăsită: pune câteva puncte aproximative, restul e automat',
     // M15 (docs/research/M15-calibration-accuracy.md, *Joint solve*)
-    'adminContent.imagery.calibration.aligned':
-        'Potrivită cu fotografiile tale din {years} în {ties} puncte comune; ele rămân pe loc. Potrivirea lor cu aceasta e alegerea ta',
+    'adminContent.imagery.calibration.aligned': 'Potrivită cu fotografiile tale din {years} în {ties} puncte comune',
+    'adminContent.imagery.calibration.stayed': 'Acele fotografii rămân pe loc; potrivirea lor cu aceasta e alegerea ta',
     'adminContent.imagery.calibration.leftOut': 'Nepotrivită cu {years}: străzile lor erau la peste 6 m de celelalte',
     'adminContent.imagery.calibration.waits.notProved': 'Neverificată complet: compar-o cu harta',
     'adminContent.imagery.calibration.waits.coverage': 'Acoperă sub 90 % din oraș: adaugă un cadru sau aprobă',

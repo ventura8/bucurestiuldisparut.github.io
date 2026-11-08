@@ -1,4 +1,4 @@
-import type { Calibration } from '@hcm/shared';
+import type { Calibration, CalibrationAlignment } from '@hcm/shared';
 
 import { expectStateSound } from '../../../support/state-check.js';
 import { adminVisit } from '../../../tour/states.js';
@@ -61,14 +61,14 @@ test(
         test.setTimeout(420_000);
         const fixtures = { emulators: adminWorld.emulators, api: mockApiRequest, upstream };
         const imagery = await readyImagery(fixtures, adminWorld.accounts.owner.uid);
-        const alignment = {
+        const alignment: CalibrationAlignment = {
             partners: [
                 { versionId: 'v-1972', year: 1972, ties: 1420, tried: 1643, status: 'used', offsetM: 1.4 },
                 { versionId: 'v-1977', year: 1977, ties: 810, tried: 1961, status: 'used', offsetM: 0.2 },
                 { versionId: 'v-1966', year: 1966, ties: 78, tried: 124, status: 'few' },
                 { versionId: 'v-1978', year: 1978, ties: 900, tried: 1500, status: 'disagrees', offsetM: 9.24 },
             ],
-        } as const;
+        };
         await imagery.script({ attempts: [{ outcome: 'over', calibration: { ...PROVED, alignment }, coveragePct: 96 }] });
 
         await importFromList(page, lang, SCENE);
@@ -77,7 +77,10 @@ test(
             timeout: FUNCTIONS_TIMEOUT_MS,
         });
         const block = detail(page).locator('[data-calibration="votes"]');
-        await expect(block).toContainText(imageryText(lang, 'adminContent.imagery.calibration.aligned', { years: '1972, 1977', ties: '2230' }));
+        await expect(block).toContainText(
+            imageryText(lang, 'adminContent.imagery.calibration.aligned', { years: '1972, 1977', ties: '2230' }),
+        );
+        await expect(block).toContainText(imageryText(lang, 'adminContent.imagery.calibration.stayed'));
         await expect(block).toContainText(imageryText(lang, 'adminContent.imagery.calibration.leftOut', { years: '1978' }));
         await expect(block).not.toContainText('1966');
         await expectStateSound(page, adminVisit('imagery.version-aligned', lang));

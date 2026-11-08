@@ -99,7 +99,16 @@
         "tps": 10
     },
     "GCP_ORIGINS": ["corner", "auto", "manual"],
-    "VERSION_FILES": ["scan.tif", "scan-preview.jpg", "reference-osm.png", "reference-s2.jpg", "cog.tif", "preview.png", "studio.tif", "align.tif"],
+    "VERSION_FILES": [
+        "scan.tif",
+        "scan-preview.jpg",
+        "reference-osm.png",
+        "reference-s2.jpg",
+        "cog.tif",
+        "preview.png",
+        "studio.tif",
+        "align.tif"
+    ],
     "LEASE_SECONDS": 600,
     "HEARTBEAT_SECONDS": 60,
     "USGS_BACKOFF_MINUTES": [30, 60, 120, 240, 480, 720],

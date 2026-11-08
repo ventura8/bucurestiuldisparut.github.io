@@ -33,7 +33,16 @@ from tests.fakes.worker_api import PROJECT, FakeWorkerApi
 from tests.fakes.world import CITY, ENTITY_ID, JOB_ID, LAYER_ID, OVERPASS_PATH, STAC_PATH, FakeClock, PipelineWorld, dig, small_city
 
 STEPS = ("fetch", "extract", "stitch", "locate", "reference", "georef", "warp", "export", "register")
-VERSION_FILES = ("align.tif", "cog.tif", "preview.png", "reference-osm.png", "reference-s2.jpg", "scan-preview.jpg", "scan.tif", "studio.tif")
+VERSION_FILES = (
+    "align.tif",
+    "cog.tif",
+    "preview.png",
+    "reference-osm.png",
+    "reference-s2.jpg",
+    "scan-preview.jpg",
+    "scan.tif",
+    "studio.tif",
+)
 RAW = f"usgs-raw/corona2/{ENTITY_ID}/{ENTITY_ID}.tgz"
 
 

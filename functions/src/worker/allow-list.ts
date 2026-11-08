@@ -234,10 +234,11 @@ function isInputScan(scope: ObjectScope, path: string): boolean {
 }
 
 /** M15: the 5 m image of a frame of the city (`rasters/C/L/V/align.tif`), which a frame being joined measures its film ties on. */
+const ALIGN_IMAGE = /^rasters\/([^/]+)\/([^/]+)\/([^/]+)\/align\.tif$/;
+
 function isCityAlignImage({ cityId }: ObjectScope, path: string): boolean {
-    const parts = path.split('/');
-    const [root, city, layer, version, file] = parts;
-    return parts.length === 5 && root === 'rasters' && city === cityId && isId(layer) && isId(version) && file === 'align.tif';
+    const [, city, layer, version] = ALIGN_IMAGE.exec(path) ?? [];
+    return city === cityId && isId(layer) && isId(version);
 }
 
 /** True when the run may read `path`: a file of its version, one of its inputs, or a frame's image of its city (M15). */

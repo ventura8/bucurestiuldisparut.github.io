@@ -151,8 +151,8 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.calibration.error': 'Measured error {metres} m',
     'adminContent.imagery.calibration.notFound': 'Not found: place a few rough points, the rest is automatic',
     // M15 (docs/research/M15-calibration-accuracy.md, *Joint solve*)
-    'adminContent.imagery.calibration.aligned':
-        'Lined up with your photos of {years} at {ties} shared points; they stay where they are. Lining them up with this one is your choice',
+    'adminContent.imagery.calibration.aligned': 'Lined up with your photos of {years} at {ties} shared points',
+    'adminContent.imagery.calibration.stayed': 'Those photos stay where they are; lining them up with this one is your choice',
     'adminContent.imagery.calibration.leftOut': 'Not lined up with {years}: their streets sat over 6 m from the others',
     'adminContent.imagery.calibration.waits.notProved': 'Not fully checked: compare it with the map',
     'adminContent.imagery.calibration.waits.coverage': 'Covers under 90 % of the city: add a frame or approve',

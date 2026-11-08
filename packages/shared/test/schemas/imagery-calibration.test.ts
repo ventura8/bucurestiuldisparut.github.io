@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
     alignedWith,
     ALIGNMENT_MAX_PARTNERS,
+    type CalibrationAlignment,
     CALIBRATION_OUTLINE_MAX,
     calibrationSchema,
     imageryPassDocSchema,
@@ -54,14 +55,25 @@ describe('calibrationSchema', () => {
         ['too short an outline', { how: 'votes', outline: [{ lat: 1, lng: 1 }] }],
         ['too long an outline', { how: 'votes', outline: Array.from({ length: CALIBRATION_OUTLINE_MAX + 1 }, () => ({ lat: 1, lng: 1 })) }],
         ['an alignment with no partner', { how: 'votes', alignment: { partners: [] } }],
-        ['a partner of an unknown status', { how: 'votes', alignment: { partners: [{ versionId: 'v', ties: 1, tried: 2, status: 'maybe' }] } }],
-        ['a negative offset', { how: 'votes', alignment: { partners: [{ versionId: 'v', ties: 1, tried: 2, status: 'used', offsetM: -1 }] } }],
+        [
+            'a partner of an unknown status',
+            { how: 'votes', alignment: { partners: [{ versionId: 'v', ties: 1, tried: 2, status: 'maybe' }] } },
+        ],
+        [
+            'a negative offset',
+            { how: 'votes', alignment: { partners: [{ versionId: 'v', ties: 1, tried: 2, status: 'used', offsetM: -1 }] } },
+        ],
         [
             'more partners than are held',
             {
                 how: 'votes',
                 alignment: {
-                    partners: Array.from({ length: ALIGNMENT_MAX_PARTNERS + 1 }, (_, at) => ({ versionId: `v${String(at)}`, ties: 1, tried: 2, status: 'few' })),
+                    partners: Array.from({ length: ALIGNMENT_MAX_PARTNERS + 1 }, (_, at) => ({
+                        versionId: `v${String(at)}`,
+                        ties: 1,
+                        tried: 2,
+                        status: 'few',
+                    })),
                 },
             },
         ],
@@ -72,15 +84,18 @@ describe('calibrationSchema', () => {
 
 describe('alignedWith (M15)', () => {
     it('happyPath_thePartnersHeldStillAndThoseLeftOut_eachWithTheirYearsAndTies', () => {
-        const partners = [
-            { versionId: 'v-1972', year: 1972, ties: 1420, tried: 1643, status: 'used' },
-            { versionId: 'v-1977', year: 1977, ties: 810, tried: 1961, status: 'used' },
-            { versionId: 'v-1966', year: 1966, ties: 78, tried: 124, status: 'few' },
-            { versionId: 'v-1978', ties: 900, tried: 1500, status: 'disagrees' },
-        ] as const;
+        const alignment: CalibrationAlignment = {
+            partners: [
+                { versionId: 'v-1972', year: 1972, ties: 1420, tried: 1643, status: 'used' },
+                { versionId: 'v-1977', year: 1977, ties: 810, tried: 1961, status: 'used' },
+                { versionId: 'v-1966', year: 1966, ties: 78, tried: 124, status: 'few' },
+                { versionId: 'v-1978', ties: 900, tried: 1500, status: 'disagrees' },
+            ],
+        };
 
-        expect(alignedWith({ partners })).toEqual([
+        expect(alignedWith(alignment)).toEqual([
             ['aligned', { years: '1972, 1977', ties: '2230' }],
+            ['stayed', { years: '1972, 1977', ties: '2230' }],
             ['leftOut', { years: '', ties: '900' }],
         ]);
     });

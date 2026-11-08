@@ -94,18 +94,24 @@ export type CalibrationAlignment = z.infer<typeof calibrationAlignmentSchema>;
 /** The partners of one status in words' parameters: their years, and their ties together. */
 export type AlignedWith = Readonly<Record<'years' | 'ties', string>>;
 
-/** What the version page says of an alignment (M15, `calibration-card.ts`): its line's name and parameters. */
+/** What the version page says of an alignment (M15, `calibration-card.ts`): the lines of each status, by name. */
 const ALIGNED_LINES = [
-    ['used', 'aligned'],
-    ['disagrees', 'leftOut'],
+    ['used', ['aligned', 'stayed']],
+    ['disagrees', ['leftOut']],
 ] as const;
 
+/** A line the version page says of an alignment. */
+export type AlignedLine = 'aligned' | 'stayed' | 'leftOut';
+
 /** The version page's lines of an alignment: the partners held still, those left out; a status nobody has, and `few`, say nothing. */
-export function alignedWith(alignment: CalibrationAlignment | undefined): readonly (readonly ['aligned' | 'leftOut', AlignedWith])[] {
-    return ALIGNED_LINES.flatMap(([status, line]) => {
+export function alignedWith(alignment: CalibrationAlignment | undefined): readonly (readonly [AlignedLine, AlignedWith])[] {
+    return ALIGNED_LINES.flatMap(([status, lines]) => {
         const some = alignment?.partners.filter((partner) => partner.status === status) ?? [];
-        const ties = String(some.reduce((sum, partner) => sum + partner.ties, 0));
-        return some.length > 0 ? [[line, { years: some.map(({ year }) => year ?? '').join(', '), ties }] as const] : [];
+        const params = {
+            years: some.map(({ year }) => year ?? '').join(', '),
+            ties: String(some.reduce((sum, partner) => sum + partner.ties, 0)),
+        };
+        return some.length > 0 ? lines.map((line) => [line, params] as const) : [];
     });
 }
 
