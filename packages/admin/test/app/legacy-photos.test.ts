@@ -83,6 +83,7 @@ describe('history (the 2023 additions)', () => {
                 { data: { action: 'update', previous: 'odd', updatedBy: 'owner-uid' } },
                 // A delete by the server (a function, or the e2e world's reset) is not a person's.
                 { data: { action: 'delete', previous: { published: true }, updatedBy: 'system:unknown' } },
+                { data: { action: 'delete', previous: { published: true }, updatedBy: 'fn-photos@demo-hcm.iam.gserviceaccount.com' } },
                 { data: { action: 'delete', previous: { published: true } } },
                 { data: { action: 'delete', updatedBy: '' } },
             ]),

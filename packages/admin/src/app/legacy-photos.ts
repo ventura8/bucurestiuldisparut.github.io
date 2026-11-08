@@ -36,10 +36,14 @@ function wasPublished(entry: DocumentData): boolean {
     return typeof previous === 'object' && previous !== null && (previous as DocumentData)['published'] === true;
 }
 
-/** An entry a person's write left: its stamp names an account, not the server (`system:<authType>`). */
+/**
+ * An entry a person's write left: its stamp is a Firebase Auth uid. Not the server's: a delete without an account is
+ * `system:<authType>`, and one by a service account (a function in production, the emulator's admin, which the e2e
+ * world's reset is) carries that account's e-mail.
+ */
 function byPerson(entry: DocumentData): boolean {
     const writer = entry['updatedBy'];
-    return typeof writer === 'string' && writer !== '' && !writer.startsWith('system:');
+    return typeof writer === 'string' && writer !== '' && !writer.startsWith('system:') && !writer.includes('@');
 }
 
 /** What a photo's history entries say a person did (`PhotoHistory`): a delete, and a change of a published version. */

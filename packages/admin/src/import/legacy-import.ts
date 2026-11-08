@@ -32,8 +32,8 @@ export interface PhotoState {
 
 /**
  * What a photo's `history` subcollection (written by the history triggers, kept after a delete) says a person did to it:
- * only entries stamped by an account count, never the server's (`system:…`, as the e2e world's reset and a function's own
- * delete are stamped).
+ * only entries stamped with a person's uid count, never the server's (`system:…`, or a service account's e-mail, as a
+ * function's own delete and the e2e world's reset are stamped).
  */
 export interface PhotoHistory {
     /** A person deleted the photo (a `delete` entry). */

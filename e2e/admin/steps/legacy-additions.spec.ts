@@ -132,7 +132,8 @@ test(
             'updatedBy',
             'updatedAt',
         ]);
-        await emulators.deleteDocumentAs(deleted ?? '', adminWorld.accounts.owner);
+        // A fresh token, which carries the claims the rules ask for (the fixture's was minted before them).
+        await emulators.deleteDocumentAs(deleted ?? '', await emulators.signIn('owner'));
         // The history triggers record the owner's delete and unpublish (the import reads them; the server's own are not a person's).
         await expect
             .poll(() => ownersEntries(emulators, deleted ?? '', owner), { timeout: 60_000 })
