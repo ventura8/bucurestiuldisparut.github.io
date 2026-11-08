@@ -167,6 +167,7 @@ export const ro = {
     'theme.system': 'Automată',
     'theme.light': 'Luminoasă',
     'theme.dark': 'Întunecată',
+    'settings.title': 'Setări',
     'language.label': 'Limbă',
     'language.ro': 'Română',
     'language.en': 'English',

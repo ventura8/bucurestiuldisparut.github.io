@@ -77,8 +77,8 @@ describe('<hcm-map-viewer>: layout per window class', () => {
     it('happyPath_extraLargeKeepsTheLayersPanelDocked', async () => {
         const mounted = await mountViewer(readyState(), EXTRA_LARGE);
 
-        const leading = part(mounted, '.pane.leading hcm-layer-panel') as Sheet & { closable: boolean };
-        expect([leading.mode, leading.closable]).toEqual(['docked', false]);
+        const leading = part(mounted, '.pane.leading hcm-layer-panel') as Sheet & { minimizable: boolean };
+        expect([leading.mode, leading.minimizable]).toEqual(['docked', true]);
         expect(part(mounted, '.frame').dataset['panes']).toBe('leading');
         const items = (part(mounted, 'hcm-fab-menu') as HTMLElement & { items: readonly { value: string }[] }).items;
         expect(items.map((item) => item.value)).not.toContain('layers');
@@ -300,7 +300,10 @@ describe('<hcm-map-viewer>: details, lightbox and menu', () => {
         chooseFromMenu(mounted, 'about');
         await mounted.element.updateComplete;
         await expect.element(page.getByRole('dialog', { name: 'Despre' })).toBeVisible();
-        chooseFromMenu(mounted, 'language');
+        chooseFromMenu(mounted, 'settings');
+        await mounted.element.updateComplete;
+        await expect.element(page.getByRole('dialog', { name: 'Setări' })).toBeVisible();
+        await page.getByRole('radio', { name: 'English' }).click();
 
         expect(mounted.store.getState().locale).toBe('en');
         expect(mounted.element.getAttribute('lang')).toBe('en');
@@ -315,19 +318,22 @@ describe('<hcm-map-viewer>: details, lightbox and menu', () => {
         expect(mounted.store.calls).toHaveLength(before);
     });
 
-    it('happyPath_aboutChangesPreferencesAndWithdrawsConsent', async () => {
-        const mounted = await mountViewer(readyState(testManifest(), { consent: 'granted', sheet: 'about' }), MEDIUM);
+    it('happyPath_settingsChangePreferencesAndAboutWithdrawsConsent', async () => {
+        const mounted = await mountViewer(readyState(testManifest(), { consent: 'granted', sheet: 'settings' }), MEDIUM);
         const about = part(mounted, 'hcm-about-dialog');
 
         await page.getByRole('radio', { name: 'Întunecată' }).click();
         await page.getByRole('radio', { name: 'English' }).click();
+        mounted.store.openSheet('about');
+        await mounted.element.updateComplete;
+        expect(shadowQueryAll(about, 'hcm-segmented-button')).toEqual([]);
         fireKitEvent(about, 'hcm-consent', { decision: 'denied' });
         fireKitEvent(shadowQuery(about, 'hcm-dialog'), 'hcm-close', { returnValue: '' });
 
         expect(mounted.store.callsOf('setTheme')).toEqual([['dark']]);
         expect(mounted.store.callsOf('setLocale')).toEqual([['en']]);
         expect(mounted.store.callsOf('setConsent')).toEqual([['denied']]);
-        expect(mounted.store.callsOf('openSheet')).toEqual([['none']]);
+        expect(mounted.store.callsOf('openSheet')).toEqual([['about'], ['none']]);
         expect(shadowQueryAll(mounted.element, 'hcm-about-dialog')).toHaveLength(1);
     });
 });

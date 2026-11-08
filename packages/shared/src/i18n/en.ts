@@ -162,6 +162,7 @@ export const en: Messages = {
     'theme.system': 'System',
     'theme.light': 'Light',
     'theme.dark': 'Dark',
+    'settings.title': 'Settings',
     'language.label': 'Language',
     'language.ro': 'Română',
     'language.en': 'English',

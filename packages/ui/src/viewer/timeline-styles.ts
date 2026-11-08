@@ -24,9 +24,9 @@ export const timelineStyles = [
             box-sizing: border-box;
             padding-block: 8px 28px;
             padding-inline: 44px;
-            border-radius: var(--md-sys-shape-corner-extra-large, 28px);
-            background: var(--md-sys-color-surface-container, Canvas);
-            box-shadow: 0 4px 12px color-mix(in srgb, var(--md-sys-color-shadow, CanvasText) 30%, transparent);
+            border-radius: var(--md-sys-shape-corner-extra-large);
+            background: var(--md-sys-color-surface-container);
+            box-shadow: 0 4px 12px color-mix(in srgb, var(--md-sys-color-shadow) 30%, transparent);
             touch-action: none;
             user-select: none;
         }
@@ -61,13 +61,13 @@ export const timelineStyles = [
             inset-block-start: 22px;
             block-size: 4px;
             border-radius: 2px;
-            background: var(--md-sys-color-secondary-container, GrayText);
+            background: var(--md-sys-color-secondary-container);
         }
 
         .active {
             inset-inline-end: auto;
             inline-size: var(--hcm-position);
-            background: var(--md-sys-color-primary, Highlight);
+            background: var(--md-sys-color-primary);
             transition: inline-size 350ms var(--hcm-timeline-spring);
         }
 
@@ -94,8 +94,8 @@ export const timelineStyles = [
             flex-direction: column;
             align-items: center;
             gap: 10px;
-            font-size: var(--md-sys-typescale-label-small-size, 0.6875rem);
-            color: var(--md-sys-color-on-surface-variant, GrayText);
+            font-size: var(--md-sys-typescale-label-small-size);
+            color: var(--md-sys-color-on-surface-variant);
             white-space: nowrap;
         }
 
@@ -110,7 +110,7 @@ export const timelineStyles = [
             inline-size: 8px;
             block-size: 8px;
             border-radius: 50%;
-            background: var(--md-sys-color-on-secondary-container, GrayText);
+            background: var(--md-sys-color-on-secondary-container);
         }
 
         .stop.selected .label {
@@ -128,9 +128,9 @@ export const timelineStyles = [
             min-inline-size: 64px;
             block-size: 40px;
             padding-inline: 12px;
-            border-radius: var(--md-sys-shape-corner-full, 9999px);
-            background: var(--md-sys-color-primary, Highlight);
-            color: var(--md-sys-color-on-primary, HighlightText);
+            border-radius: var(--md-sys-shape-corner-full);
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
             font-weight: 600;
             cursor: grab;
             transition:
@@ -147,7 +147,7 @@ export const timelineStyles = [
         }
 
         :host([dragging]) .thumb {
-            border-radius: var(--md-sys-shape-corner-medium, 12px);
+            border-radius: var(--md-sys-shape-corner-medium);
             transform: translateX(-50%) scale(1.12);
             cursor: grabbing;
         }

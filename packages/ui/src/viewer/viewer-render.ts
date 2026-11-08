@@ -16,7 +16,7 @@ import type { CameraOffset } from '../map/mapbox-types.js';
 import type { AttributionPart } from './attribution.js';
 import { EMPTY } from './empty.js';
 import type { MapLabelDetail } from './hcm-layer-panel.js';
-import { isDialogSheet } from './input-commands.js';
+import { dialogMode, isDialogSheet } from './input-commands.js';
 import { DOCKED_OPEN, type Placement, type SheetMode, type ViewerLayout } from './layout.js';
 import { renderSheetFrame } from './sheet-frame.js';
 import type { ViewerError, ViewerState } from './store-port.js';
@@ -194,7 +194,7 @@ function skipLink(view: ViewerView, ready: Ready | null, handlers: ViewerHandler
 
 function leadingPane(view: ViewerView, ready: Ready | null, handlers: ViewerHandlers): TemplateResult {
     return ready !== null && view.layout.layersDocked
-        ? html`<div class="pane leading">${layerPanel(view, ready, { ...DOCKED_OPEN, closable: false }, handlers)}</div>`
+        ? html`<div class="pane leading">${layerPanel(view, ready, { ...DOCKED_OPEN, minimizable: true }, handlers)}</div>`
         : EMPTY;
 }
 
@@ -328,7 +328,7 @@ function layerPanel(view: ViewerView, ready: Ready, placement: Placement, handle
         .locale=${view.locale}
         .mode=${placement.mode}
         .open=${placement.open}
-        .closable=${placement.closable !== false}
+        .minimizable=${placement.minimizable === true}
         .canCompare=${ready.state.webgl && ready.manifest.layers.length > 0}
         .comparing=${ready.state.compare !== null}
         .labels=${ready.state.webgl ? ready.state.mapLabels : null}
@@ -429,7 +429,7 @@ function overlays(view: ViewerView, ready: Ready, legal: LegalMirror, handlers: 
     return html`${modal}
         <hcm-about-dialog
             .open=${isDialogSheet(state.sheet)}
-            .help=${state.sheet === 'help'}
+            .mode=${dialogMode(state.sheet)}
             .shortcuts=${state.shortcuts}
             .city=${manifest.city}
             .locale=${view.locale}

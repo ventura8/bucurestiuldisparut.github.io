@@ -1,12 +1,12 @@
 /**
- * `<hcm-about-dialog>`: About, credits and the privacy notice of the city (scenario V13), the language and theme
- * choices (V11, V12), the engine version and the analytics consent with its withdrawal (V19), in the ui-kit's
- * `<hcm-dialog>` (full screen on compact). The About and privacy texts are the Markdown subset walked into DOM nodes;
+ * `<hcm-about-dialog>`: About, credits and the privacy notice of the city (scenario V13), the engine version and the
+ * analytics consent with its withdrawal (V19), in the ui-kit's `<hcm-dialog>` (full screen on compact). The About and privacy texts are the Markdown subset walked into DOM nodes;
  * empty credits hide their section (S-V13-BAD-EMPTY-CREDITS). The dialog sits in the browser's top layer, over the
  * map's own logo and attribution, so its foot shows them (`<hcm-map-attribution>`, V18) whenever the map is there.
  *
- * Its second mode is the help panel of the keyboard and the gamepad (`help`, docs/research/viewer-input.md §2). About also
- * holds the accessibility statement (§5).
+ * Its `mode` picks what it shows: About (`about`, with the accessibility statement of docs/research/viewer-input.md §5),
+ * the help panel of the keyboard and the gamepad (`help`, §2), or Settings (`settings`, the menu's Setări): the language
+ * and theme choices (V11, V12), which the owner wanted out of About (2026-11-08).
  *
  * Events (viewer-internal): `hcm-locale-change` (`{locale}`), `hcm-theme-change` (`{theme}`), `hcm-consent`
  * (`{decision: 'denied'}`, the kit banner's event) when the visitor withdraws consent, `hcm-help-open` and
@@ -30,6 +30,11 @@ const REPORT_URL = 'https://github.com/ventura8/bucurestiuldisparut.github.io/is
 
 const THEMES: readonly ThemeMode[] = ['system', 'light', 'dark'];
 
+/** What the dialog shows: About, the help panel or Settings (`dialogMode` of the open sheet). */
+export type AboutMode = 'about' | 'help' | 'settings';
+
+const HEADLINES = { about: 'about.title', help: 'input.help', settings: 'settings.title' } as const;
+
 /** A credit line: a link when the credit names a page. */
 function creditText(credit: Credit, locale: Locale): TemplateResult | string {
     return credit.url === undefined ? credit.label[locale] : externalLink(credit.url, credit.label[locale]);
@@ -50,7 +55,7 @@ function changedValue(event: Event): string {
 export class HcmAboutDialog extends LitElement {
     static override readonly properties = {
         open: { type: Boolean },
-        help: { type: Boolean },
+        mode: { type: String },
         shortcuts: { type: Boolean },
         city: { attribute: false },
         locale: { type: String },
@@ -76,8 +81,8 @@ export class HcmAboutDialog extends LitElement {
             }
 
             .engine {
-                font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
-                color: var(--md-sys-color-on-surface-variant, GrayText);
+                font-size: var(--md-sys-typescale-body-small-size);
+                color: var(--md-sys-color-on-surface-variant);
             }
 
             hcm-map-attribution {
@@ -95,8 +100,7 @@ export class HcmAboutDialog extends LitElement {
     ];
 
     declare open: boolean;
-    /** The dialog shows the help panel instead of About. */
-    declare help: boolean;
+    declare mode: AboutMode;
     /** The single-key shortcuts are on (the help panel's switch). */
     declare shortcuts: boolean;
     declare city: City | null;
@@ -115,7 +119,7 @@ export class HcmAboutDialog extends LitElement {
     constructor() {
         super();
         this.open = false;
-        this.help = false;
+        this.mode = 'about';
         this.shortcuts = true;
         this.city = null;
         this.locale = DEFAULT_LOCALE;
@@ -132,7 +136,7 @@ export class HcmAboutDialog extends LitElement {
         const locale = this.locale;
         return html`<hcm-dialog
             .open=${this.open}
-            .headline=${translate(locale, this.help ? 'input.help' : 'about.title')}
+            .headline=${translate(locale, HEADLINES[this.mode])}
             .closeLabel=${translate(locale, 'action.close')}
             ?fullscreen=${this.fullscreen}
         >
@@ -142,13 +146,16 @@ export class HcmAboutDialog extends LitElement {
 
     /** About's button to the help panel removes the focused button: the focus goes on to the dialog's first control. */
     protected override updated(changed: PropertyValues<this>): void {
-        if (changed.get('help') === false && this.open) {
+        if (changed.get('mode') === 'about' && this.open) {
             tabbableElements(this.renderRoot as ShadowRoot)[0]?.focus();
         }
     }
 
     #body(): TemplateResult {
-        if (this.help) {
+        if (this.mode === 'settings') {
+            return this.#preferences();
+        }
+        if (this.mode === 'help') {
             return renderShortcutsHelp(this.locale, this.shortcuts, (event) => {
                 event.stopPropagation();
                 this.#emit('hcm-shortcuts-change', { enabled: event.detail.checked });
@@ -175,7 +182,7 @@ export class HcmAboutDialog extends LitElement {
                 <h3>${city.name[locale]}</h3>
                 ${renderMarkdown(city.about[locale])}
             </section>
-            ${this.#credits(city.credits)} ${this.#preferences()} ${this.#inputAndAccessibility()}
+            ${this.#credits(city.credits)} ${this.#inputAndAccessibility()}
             <section>
                 <h3>${translate(locale, 'about.privacy')}</h3>
                 ${renderMarkdown(city.privacy[locale])} ${this.#consent()}

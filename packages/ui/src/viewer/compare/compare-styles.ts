@@ -49,8 +49,8 @@ export const compareStyles = css`
         inset-block: 0 var(--hcm-map-chrome, 42px);
         inset-inline-start: clamp(0px, calc(var(--hcm-compare-at, 50%) - 2px), calc(100% - 4px));
         inline-size: 4px;
-        background: var(--md-sys-color-surface-container-lowest, Canvas);
-        box-shadow: 0 0 0 1px var(--md-sys-color-outline, GrayText);
+        background: var(--md-sys-color-surface-container-lowest);
+        box-shadow: 0 0 0 1px var(--md-sys-color-outline);
     }
 
     /*
@@ -67,11 +67,11 @@ export const compareStyles = css`
         box-sizing: border-box;
         inline-size: 48px;
         block-size: 48px;
-        border: 1px solid var(--md-sys-color-outline, GrayText);
-        border-radius: var(--md-sys-shape-corner-full, 9999px);
-        background: var(--md-sys-color-primary-container, Canvas);
-        color: var(--md-sys-color-on-primary-container, CanvasText);
-        box-shadow: var(--md-sys-elevation-level3, 0 4px 8px rgb(0 0 0 / 30%));
+        border: 1px solid var(--md-sys-color-outline);
+        border-radius: var(--md-sys-shape-corner-full);
+        background: var(--md-sys-color-primary-container);
+        color: var(--md-sys-color-on-primary-container);
+        box-shadow: var(--md-sys-elevation-level3);
         cursor: ew-resize;
         pointer-events: auto;
         touch-action: none;
@@ -92,10 +92,10 @@ export const compareStyles = css`
         min-block-size: 56px;
         margin-inline: auto;
         padding: 4px 4px 4px 16px;
-        border-radius: var(--md-sys-shape-corner-extra-large, 28px);
-        background: var(--md-sys-color-surface-container, Canvas);
-        color: var(--md-sys-color-on-surface, CanvasText);
-        box-shadow: var(--md-sys-elevation-level2, 0 2px 6px rgb(0 0 0 / 30%));
+        border-radius: var(--md-sys-shape-corner-extra-large);
+        background: var(--md-sys-color-surface-container);
+        color: var(--md-sys-color-on-surface);
+        box-shadow: var(--md-sys-elevation-level2);
         pointer-events: auto;
     }
 
@@ -114,9 +114,9 @@ export const compareStyles = css`
     }
 
     .side {
-        font-size: var(--md-sys-typescale-label-large-size, 0.875rem);
-        font-weight: var(--md-sys-typescale-label-large-weight, 500);
-        line-height: var(--md-sys-typescale-label-large-line-height, 1.25rem);
+        font-size: var(--md-sys-typescale-label-large-size);
+        font-weight: var(--md-sys-typescale-label-large-weight);
+        line-height: var(--md-sys-typescale-label-large-line-height);
         overflow-wrap: anywhere;
     }
 
@@ -132,12 +132,12 @@ export const compareStyles = css`
         min-block-size: 48px;
         max-inline-size: 100%;
         padding-inline: 12px;
-        border: 1px solid var(--md-sys-color-outline, GrayText);
-        border-radius: var(--md-sys-shape-corner-small, 8px);
-        background: var(--md-sys-color-surface-container-highest, Canvas);
-        color: var(--md-sys-color-on-surface, CanvasText);
+        border: 1px solid var(--md-sys-color-outline);
+        border-radius: var(--md-sys-shape-corner-small);
+        background: var(--md-sys-color-surface-container-highest);
+        color: var(--md-sys-color-on-surface);
         font: inherit;
-        font-size: var(--md-sys-typescale-body-large-size, 1rem);
+        font-size: var(--md-sys-typescale-body-large-size);
     }
 
     .credit {
@@ -145,9 +145,9 @@ export const compareStyles = css`
         margin: 0;
         padding-block-end: 8px;
         padding-inline-end: 16px;
-        color: var(--md-sys-color-on-surface-variant, CanvasText);
-        font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
-        line-height: var(--md-sys-typescale-body-small-line-height, 1rem);
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: var(--md-sys-typescale-body-small-size);
+        line-height: var(--md-sys-typescale-body-small-line-height);
     }
 
     :host([mode='toggle']) .credit {

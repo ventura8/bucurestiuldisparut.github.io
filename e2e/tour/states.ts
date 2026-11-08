@@ -10,6 +10,7 @@ import { INPUT_JOURNEY, INPUT_STATES } from './input-states.js';
 import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
 import { MY_LOCATION_STATES } from './my-location-states.js';
 import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
+import { SETTINGS_STATES } from './settings-states.js';
 import { hasBottomSheets, toDetent } from './sheets.js';
 import { OPS_STATES } from '../admin/specs/ops/states.js';
 import { POIS_STATES } from '../admin/specs/pois/states.js';
@@ -24,7 +25,6 @@ import {
     BUCHAREST_MANIFEST,
     callController,
     chooseMenuItem,
-    dismissToast,
     holdToast,
     menuButton,
     openLayers,
@@ -68,7 +68,7 @@ interface ViewerState {
     readonly announcements?: (lang: Locale) => readonly string[];
     /** Esc closes the state's popup (the focus goes back to the control of this name); only where it is a popup. */
     readonly escape?: (tour: TourContext) => { readonly opener: string | null } | null;
-    /** The language the page shows (the language item of the menu switches to the other one). */
+    /** The language the page shows (the language chosen in Settings switches to the other one). */
     readonly shows?: (lang: Locale) => Locale;
 }
 
@@ -120,6 +120,7 @@ const POI = 'fixture-cladire';
 const VIEWER_STATES = {
     ...INPUT_STATES,
     ...MY_LOCATION_STATES,
+    ...SETTINGS_STATES,
     'skip-link': {
         title: 'The first Tab: the skip link shows over the map with a focus ring',
         enter: async ({ page, lang }) => {
@@ -159,18 +160,6 @@ const VIEWER_STATES = {
             await holdToast(page, t(lang, 'error.geolocate.denied'));
         },
         announcements: (lang) => [t(lang, 'error.geolocate.denied')],
-    },
-    language: {
-        title: 'The menu switched the language: the whole viewer in the other language',
-        enter: async ({ page, lang }) => {
-            const other = lang === 'ro' ? 'en' : 'ro';
-            // The previous state's toast is closed first: re-worded in the other language, its timer starts again and it
-            // went mid-check on a slow machine (the Tab round then never reached its Close).
-            await dismissToast(page, lang);
-            await chooseMenuItem(page, lang, t(lang, `language.${other}`));
-            await expect(menuButton(page, other)).toBeVisible();
-        },
-        shows: (lang) => (lang === 'ro' ? 'en' : 'ro'),
     },
     year: {
         title: 'A historical year: its layer, the photos-near-this-year chip',
@@ -287,7 +276,7 @@ const VIEWER_STATES = {
         },
     },
     'about-end': {
-        title: 'About scrolled to its end: privacy, the theme, the credits and the map attribution',
+        title: 'About scrolled to its end: the accessibility statement, privacy and the map attribution',
         enter: async ({ page }) => {
             await scrollToEnd(viewer(page).locator('hcm-about-dialog'));
         },
@@ -427,7 +416,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
             await expectFrame(tour, true);
             await expectMapboxControls(tour);
         },
-        states: ['skip-link', 'home', 'menu-open', 'share-toast', 'locate-toast', 'my-location', 'language'],
+        states: ['skip-link', 'home', 'menu-open', 'share-toast', 'locate-toast', 'my-location', 'settings', 'language'],
     },
     {
         title: 'A historical year, the timeline and the Layers panel',
@@ -442,6 +431,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
             'layers-peek',
             'layers-full',
             'layers-opacity',
+            'layers-minimized',
         ],
     },
     MAP_LABEL_JOURNEY,

@@ -40,28 +40,6 @@ describe('renderSheetFrame', () => {
         expect(onClose).toHaveBeenCalledTimes(1);
     });
 
-    it('badPath_aPaneThatAlwaysStaysHasNoCloseButton', () => {
-        const host = document.createElement('div');
-        render(
-            renderSheetFrame(
-                {
-                    mode: 'docked',
-                    open: true,
-                    label: 'Straturi',
-                    closeLabel: 'Închide',
-                    handleLabel: 'Redimensionează',
-                    onClose: vi.fn(),
-                    closable: false,
-                },
-                html``,
-            ),
-            host,
-        );
-
-        expect(host.querySelector('section')).not.toBeNull();
-        expect(host.querySelector('hcm-icon-button')).toBeNull();
-    });
-
     it('badPath_aClosedDockedSheetRendersNothing', () => {
         const host = frame('docked', false);
 

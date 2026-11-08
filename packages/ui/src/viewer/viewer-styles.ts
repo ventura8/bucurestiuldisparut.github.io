@@ -168,6 +168,11 @@ export const viewerStyles = [
             display: contents;
         }
 
+        /* The minimized Layers pane (extra-large) is a rail: the map takes the rest (its ResizeObserver resizes Mapbox). */
+        .frame:has(> .pane.leading > [minimized]) {
+            --hcm-pane-leading: 88px;
+        }
+
         .pane.leading .docked {
             border-inline: 0 1px solid var(--md-sys-color-outline-variant, GrayText);
         }

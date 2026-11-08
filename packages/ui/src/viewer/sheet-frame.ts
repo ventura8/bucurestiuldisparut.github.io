@@ -17,12 +17,10 @@ export interface SheetFrameOptions {
     /** The accessible name of the bottom sheet's drag handle (`sheet.resize`). */
     readonly handleLabel: string;
     readonly onClose: () => void;
-    /** False for a pane that is always there (the extra-large layers panel): no close button. */
-    readonly closable?: boolean;
 }
 
 export function renderSheetFrame(options: SheetFrameOptions, content: unknown): TemplateResult {
-    const { mode, open, label, closeLabel, handleLabel, onClose, closable = true } = options;
+    const { mode, open, label, closeLabel, handleLabel, onClose } = options;
     if (mode !== 'docked') {
         return html`<hcm-sheet modal .open=${open} .label=${label} .variant=${mode} .closeLabel=${closeLabel} .handleLabel=${handleLabel}>
             <h2 slot="header" class="sheet-title">${label}</h2>
@@ -35,7 +33,7 @@ export function renderSheetFrame(options: SheetFrameOptions, content: unknown): 
     return html`<section class="docked" aria-label=${label}>
         <header>
             <h2 class="sheet-title">${label}</h2>
-            ${closable ? html`<hcm-icon-button icon="close" .label=${closeLabel} @click=${onClose}></hcm-icon-button>` : EMPTY}
+            <hcm-icon-button icon="close" .label=${closeLabel} @click=${onClose}></hcm-icon-button>
         </header>
         <div class="body">${content}</div>
     </section>`;

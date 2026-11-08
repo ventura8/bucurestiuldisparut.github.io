@@ -52,9 +52,9 @@ export class HcmPoiDetail extends LitElement {
                 place-items: center;
                 inline-size: 32px;
                 block-size: 32px;
-                border-radius: var(--md-sys-shape-corner-full, 50%);
-                background: var(--hcm-poi-color, var(--md-sys-color-primary, Highlight));
-                color: var(--md-sys-color-on-primary, Canvas);
+                border-radius: var(--md-sys-shape-corner-full);
+                background: var(--hcm-poi-color, var(--md-sys-color-primary));
+                color: var(--md-sys-color-on-primary);
             }
 
             .thumbs {
@@ -74,9 +74,9 @@ export class HcmPoiDetail extends LitElement {
                 min-block-size: 48px;
                 padding: 0;
                 border: 0;
-                border-radius: var(--md-sys-shape-corner-medium, 12px);
+                border-radius: var(--md-sys-shape-corner-medium);
                 overflow: hidden;
-                background: var(--md-sys-color-surface-container-highest, Canvas);
+                background: var(--md-sys-color-surface-container-highest);
                 cursor: pointer;
             }
 

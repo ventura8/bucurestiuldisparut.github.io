@@ -26,7 +26,7 @@ import { layerIdsOfYear, snapYear, timelineYears, yearOfLayers } from './timelin
 export type ViewerStatus = 'idle' | 'loading' | 'ready' | 'error';
 export type ThemeMode = 'system' | 'light' | 'dark';
 /** M17: `stories` shows the list, or the story `selectedStoryId` names. */
-export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'stories' | 'about' | 'help';
+export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'stories' | 'about' | 'help' | 'settings';
 
 export const THEME_MODES: readonly ThemeMode[] = ['system', 'light', 'dark'];
 

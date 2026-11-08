@@ -9,11 +9,18 @@
  * the visitor compares: it fires `hcm-compare-toggle`, which the viewer turns into the store's compare action. Below the
  * list, the Map labels group (V31) has a switch per label the city's basemap really has (none: no group, a custom style
  * has nothing to switch), each firing `hcm-map-label`; its note tells them from the city's own Places above.
+ *
+ * The extra-large pane that is always there is `minimizable` (the owner, 2026-11-08): its close button turns it into a
+ * rail on the same edge whose one button ("Straturi", `aria-expanded="false"`) brings it back. The state is the panel's
+ * own (`minimized`, reflected for the viewer's grid), for the session only; the switches and sliders are the store's, so
+ * minimizing loses none of them. The focus follows: to the rail's button, then back to the panel's close button.
  */
 import { DEFAULT_LOCALE, overlayLabel, poiIcon, translate, type Locale, type Manifest, type Overlay } from '@hcm/shared';
 import { translateMapLabels, type MapLabelKind, type MapLabels, type MapLabelsKey } from '@hcm/shared/map-labels';
-import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
+import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 
+import { tabbableElements } from '../components/focus.js';
+import { stateLayer } from '../components/styles.js';
 import { EMPTY } from './empty.js';
 import type { OverlayListGroup, OverlayListItem } from '../components/overlay-list.js';
 import type { SheetMode } from './layout.js';
@@ -83,7 +90,8 @@ export class HcmLayerPanel extends LitElement {
         locale: { type: String },
         mode: { type: String },
         open: { type: Boolean },
-        closable: { type: Boolean },
+        minimizable: { type: Boolean },
+        minimized: { type: Boolean, reflect: true },
         canCompare: { type: Boolean, attribute: 'can-compare' },
         comparing: { type: Boolean },
         labels: { attribute: false },
@@ -92,9 +100,30 @@ export class HcmLayerPanel extends LitElement {
     static override readonly styles = [
         baseStyles,
         sheetStyles,
+        stateLayer,
         css`
             :host {
                 display: contents;
+            }
+
+            .rail {
+                align-items: center;
+                padding-block: 12px;
+            }
+
+            .rail button {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                min-inline-size: 56px;
+                padding: 8px;
+                border: 0;
+                border-radius: var(--md-sys-shape-corner-large);
+                background: var(--md-sys-color-secondary-container);
+                color: var(--md-sys-color-on-secondary-container);
+                font: inherit;
+                font-size: var(--md-sys-typescale-label-medium-size);
             }
 
             .content {
@@ -108,28 +137,27 @@ export class HcmLayerPanel extends LitElement {
                 align-items: center;
                 gap: 12px;
                 padding: 12px 16px;
-                border-radius: var(--md-sys-shape-corner-medium, 12px);
-                background: var(--md-sys-color-surface-container-high, Canvas);
-                color: var(--md-sys-color-on-surface-variant, CanvasText);
-                font-size: var(--md-sys-typescale-body-medium-size, 0.875rem);
-                line-height: var(--md-sys-typescale-body-medium-line-height, 1.25rem);
+                border-radius: var(--md-sys-shape-corner-medium);
+                background: var(--md-sys-color-surface-container-high);
+                color: var(--md-sys-color-on-surface-variant);
+                font-size: var(--md-sys-typescale-body-medium-size);
+                line-height: var(--md-sys-typescale-body-medium-line-height);
             }
 
             .attribution {
-                font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
-                color: var(--md-sys-color-on-surface-variant, GrayText);
+                font-size: var(--md-sys-typescale-body-small-size);
+                color: var(--md-sys-color-on-surface-variant);
             }
 
             .compare {
                 align-self: flex-start;
             }
 
+            /* The size and weight are baseStyles' h3 (title small). */
             .labels h3 {
-                margin: 0 0 4px;
-                color: var(--md-sys-color-primary, CanvasText);
-                font-size: var(--md-sys-typescale-title-small-size, 0.875rem);
-                font-weight: var(--md-sys-typescale-title-small-weight, 500);
-                line-height: var(--md-sys-typescale-title-small-line-height, 1.25rem);
+                margin-block-end: 4px;
+                color: var(--md-sys-color-primary);
+                line-height: var(--md-sys-typescale-title-small-line-height);
             }
 
             .labels ul {
@@ -150,9 +178,9 @@ export class HcmLayerPanel extends LitElement {
 
             .labels p {
                 margin: 4px 0 0;
-                color: var(--md-sys-color-on-surface-variant, CanvasText);
-                font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
-                line-height: var(--md-sys-typescale-body-small-line-height, 1rem);
+                color: var(--md-sys-color-on-surface-variant);
+                font-size: var(--md-sys-typescale-body-small-size);
+                line-height: var(--md-sys-typescale-body-small-line-height);
             }
         `,
     ];
@@ -162,8 +190,10 @@ export class HcmLayerPanel extends LitElement {
     declare locale: Locale;
     declare mode: SheetMode;
     declare open: boolean;
-    /** False when the panel is always docked (extra-large): it has no close button. */
-    declare closable: boolean;
+    /** The pane is always docked (extra-large): its close button minimizes it to a rail. */
+    declare minimizable: boolean;
+    /** The minimizable pane shows as its rail. */
+    declare minimized: boolean;
     /** The city has historical layers and the map is drawn: the Compare button shows (M4). */
     declare canCompare: boolean;
     /** The visitor compares: the button closes compare. */
@@ -178,7 +208,8 @@ export class HcmLayerPanel extends LitElement {
         this.locale = DEFAULT_LOCALE;
         this.mode = 'bottom';
         this.open = false;
-        this.closable = true;
+        this.minimizable = false;
+        this.minimized = false;
         this.canCompare = false;
         this.comparing = false;
         this.labels = null;
@@ -188,11 +219,38 @@ export class HcmLayerPanel extends LitElement {
         const label = translate(this.locale, 'layers.title');
         const closeLabel = translate(this.locale, 'action.close');
         const handleLabel = translate(this.locale, 'sheet.resize');
+        if (this.minimizable && this.minimized) {
+            return this.#rail(label);
+        }
         const onClose = (): void => {
-            this.dispatchEvent(closeEvent());
+            if (this.minimizable) {
+                this.minimized = true;
+            } else {
+                this.dispatchEvent(closeEvent());
+            }
         };
-        const frame = { mode: this.mode, open: this.open, label, closeLabel, handleLabel, onClose, closable: this.closable };
-        return renderSheetFrame(frame, this.#content());
+        return renderSheetFrame({ mode: this.mode, open: this.open, label, closeLabel, handleLabel, onClose }, this.#content());
+    }
+
+    /**
+     * Minimizing or restoring moves the focus to the rail's button or the panel's close button: it is never lost. The
+     * close button renders its own button after this update, hence the wait.
+     */
+    protected override updated(changed: PropertyValues<this>): void {
+        if (changed.get('minimized') !== undefined) {
+            void this.updateComplete.then(() => tabbableElements(this.renderRoot as ShadowRoot)[0]?.focus());
+        }
+    }
+
+    #rail(label: string): TemplateResult {
+        const onRestore = (): void => {
+            this.minimized = false;
+        };
+        return html`<section class="docked rail" aria-label=${label}>
+            <button type="button" class="interactive" aria-expanded="false" @click=${onRestore}>
+                <hcm-icon name="layers"></hcm-icon>${label}
+            </button>
+        </section>`;
     }
 
     #content(): TemplateResult {
