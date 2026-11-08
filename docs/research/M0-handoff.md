@@ -177,7 +177,8 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "
 - Lit: **no decorators** (ESLint bans the `Decorator` node). Declare reactive properties with
   `static override readonly properties = {...}`, `declare name: string;` fields and defaults in the
   constructor (required with `useDefineForClassFields: true`). Register with an idempotent
-  `define…()` function. Custom element prefix `hcm-`. `hcm-hello` is the scaffolding sample.
+  `define…()` function. Custom element prefix `hcm-`. (`hcm-hello`, the scaffolding sample, was removed
+  with its placeholder catalogue key; `hcm-chip` is a small example.)
 - Logging: product TS logs only through `createLogger(scope, { sink, minLevel })` from
   `@hcm/shared` (`no-console` everywhere except `packages/shared/src/log.ts`). Data keys that look
   like secrets (`token`, `secret`, `password`, `authorization`, `signature`, `apiKey`) are redacted.

@@ -57,7 +57,7 @@ Tot asistentul cere cel mult unsprezece clicuri sau câmpuri și patru permisiun
 - Dacă administrarea însăși a fost actualizată cât timp fila era deschisă, un banner deasupra paginii spune „O versiune nouă a administrării este gata” cu **Reîncarcă** (rămâi conectat); până la reîncărcare, o instalare nu pornește și îți cere reîncărcarea.
 - O instalare oprită spune la ce pas, arată ultimele rânduri ale jurnalului (fără secrete) și un link spre compilare în consola Google Cloud; **Încearcă din nou** pornește o singură instalare nouă, și pentru o actualizare oprită după ce configurarea e gata. Un server mai nou decât această administrare nu este înlocuit niciodată, nici când îi lipsește o funcție: cardul îți cere să reîncarci pagina.
 - Cardul devine verde singur când toate funcțiile sunt instalate și răspund. Când această administrare e mai nouă decât ce este instalat, sau serverul e doar parțial (unul de dinaintea acestei versiuni), cardurile și Acasă spun „O actualizare este gata”, cu **Actualizează harta**: un clic actualizează serverul, apoi fluxul de imagini și harta publică. Configurarea rămâne gata cât rulează o actualizare, iar preluarea hărții (d2) nu se mai cere. Orice versiune nouă a administrării e o actualizare față de una mai veche, chiar când numărul versiunii e același (1.0.0 și 1.0.0): aplicația ordonează versiunile după momentul codului din care au fost construite și nu înlocuiește niciodată un server construit mai târziu decât ea cu o administrare mai veche (spune că serverul e mai nou și îți cere să reîncarci pagina). Nota lui Google despre accesul cerut apare doar lângă un buton care are nevoie de el (Instalează, Publică, Încearcă din nou, Actualizează harta, Continuă); un card fără nimic de făcut nu o arată.
-- **Opțional: instalează din GitHub Actions** (restrâns): variabilele depozitului, fiecare cu buton de copiere, pentru un proprietar care vrea ca fiecare versiune să fie instalată de GitHub.
+- **Pentru dezvoltatori: instalare din GitHub Actions** (restrâns): variabilele depozitului, fiecare cu buton de copiere, pentru un proprietar care vrea ca fiecare versiune să fie instalată de GitHub.
 
 ### d3. Fluxul de imagini istorice (opțional)
 
@@ -118,7 +118,7 @@ Tot asistentul cere cel mult unsprezece clicuri sau câmpuri și patru permisiun
 | „Contul de facturare are deja numărul maxim de proiecte. …” | limita Google de proiecte pe cont de facturare | alege alt cont sau cere mai multe de la Google |
 | „Niciun cont nou de facturare în 30 de minute. …” | contul nu a fost încă creat | creează-l, apoi **Verifică din nou** |
 | „Politica … a organizației blochează acest element.” | o regulă a organizației tale Google | ghidul acelei reguli; schimbarea ei e decizia ta |
-| „Contul serverului nu are rolul … în proiect.” | lipsește un rol contului care a făcut apelul | acordă rolul numit, apoi **Reia ce nu a reușit** sau **Verifică din nou** |
+| „Contului serverului îi lipsește o permisiune în proiect: reia „Pregătește proiectul”.” | lipsește un rol contului care a făcut apelul | la **Pregătirea proiectului Google Cloud**, **Reia ce nu a reușit** sau **Verifică din nou** |
 | „Funcția … nu s-a instalat. Reia instalarea.” | o funcție nu s-a instalat | **Încearcă din nou** pe cardul serverului |
 | „Serverul nu s-a instalat nici după două ore. …” | instalarea nu a rulat | **Instalează serverul** (sau GitHub Actions, dacă l-ai pornit), apoi **Verifică din nou** |
 | „Oprit la pasul: …” cu ultimele rânduri ale jurnalului | o instalare (serverul, fluxul sau harta) s-a oprit | citește rândurile jurnalului; **Încearcă din nou** (un clic); linkul spre consolă arată toată compilarea |
@@ -236,7 +236,7 @@ Cadrele de satelit declasificate ale USGS (Corona, Gambit, Hexagon; 1960–1984)
 - **Până când USGS îți aprobă descărcările** (24–48 de ore lucrătoare după cererea M2M): rezultatele apar, Importă este oprit, iar pagina spune de ce, cu drumul spre pasul USGS din Configurare. Un token refuzat de USGS duce la același pas.
 - **În lucru (n)** numără tot ce listează fila, pe viu: importurile care rulează, versiunile care așteaptă după tine și comenzile deschise.
 - Limite: 10 importuri pe zi și 2 în lucru deodată, pe proiect.
-- **Oprită de protecția bugetului**: când costul Google Cloud al lunii ajunge la buget, importurile, reîncercările, salvările georeferențiatorului, decupările și publicările se opresc (harta publică niciodată). **Imagini istorice** și **Procesări** spun asta, cu costul și bugetul, iar **Reia procesarea** (cu întrebare) le pornește din nou pentru restul lunii; alerta lunii viitoare le oprește iar.
+- **Oprit: s-a atins bugetul lunar**: când costul Google Cloud al lunii ajunge la buget, importurile, reîncercările, salvările georeferențiatorului, decupările și publicările se opresc (harta publică niciodată). **Imagini istorice** și **Procesări** spun asta, cu costul și bugetul, iar **Reia procesarea** (cu întrebare) le pornește din nou pentru restul lunii; alerta lunii viitoare le oprește iar.
 
 ### Un strat pentru tot orașul din cadrele unei zile (M8)
 
@@ -334,7 +334,7 @@ Mesajul afișat, cauza și ce trebuie făcut, pentru fiecare ecran.
 | „Mapbox a refuzat tokenul: …” / „Tokenului îi lipsesc permisiunile: …” | tokenul secret Mapbox s-a schimbat | **Deschide pasul Mapbox din Configurare** și lipește un token cu permisiunile numite |
 | „Nu încape în bugetul Mapbox al lunii: alege cum continuăm” | publicarea costă mai multe unități de calcul decât au rămas | încărcarea gratuită prin Studio, luna viitoare sau plata |
 | „Fișierul nu este un GeoTIFF. Încarcă un fișier .tif.” | fișierul ales este alt fel de imagine | îl exporți întâi ca GeoTIFF |
-| „Sursa nu are dale la această adresă (404).” / „Adresa nu răspunde cu o imagine.” / „Serverul de dale nu răspunde.” | **Verifică** pe adresa unor dale în **Leagă un strat** | corectezi adresa (trebuie să conțină `{z}`, `{x}`, `{y}`) sau încerci mai târziu |
+| „Sursa nu are dale la această adresă.” / „Adresa nu răspunde cu o imagine.” / „Serverul de dale nu răspunde.” | **Verifică** pe adresa unor dale în **Leagă un strat** | corectezi adresa (trebuie să conțină `{z}`, `{x}`, `{y}`) sau încerci mai târziu |
 
 ### Unirea cadrelor (din M8)
 
@@ -371,12 +371,12 @@ Mesajul afișat, cauza și ce trebuie făcut, pentru fiecare ecran.
 
 | Mesaj | Cauză | Ce faci |
 | --- | --- | --- |
-| „Nu administrezi orașul X; s-a deschis Y.” | un link spre un oraș pe care contul tău nu-l administrează | cere o invitație proprietarului acelui oraș |
+| „Nu administrezi orașul cerut; s-a deschis Y.” | un link spre un oraș pe care contul tău nu-l administrează | cere o invitație proprietarului acelui oraș |
 | „Contul tău nu administrează niciun oraș încă. …” | proprietarul ultimului tău oraș ți-a retras accesul | cere o invitație proprietarului unui oraș |
 | „Identificatorul X este deja folosit de alt oraș. Alege altul, de exemplu X-2.” | alt oraș are acest identificator | păstrează sugestia sau scrie alt identificator |
 | „Zona este prea mică: …” / „Zona este prea mare: …” | dreptunghiul are sub 0,01° sau peste 2° pe o latură | trage din nou dreptunghiul |
 | „Proiectul are deja 20 orașe, cât permite.” | limita proiectului | nimic: un proiect ține cel mult 20 de orașe |
-| „Doar proprietarii orașului X pot face asta.” / „Doar proprietarul proiectului poate face asta.” | un editor care invită, exportă sau schimbă roluri; un proprietar de oraș care schimbă bugete sau creează un oraș | cere-i proprietarului orașului sau al proiectului |
+| „Doar proprietarii acestui oraș pot face asta.” / „Doar proprietarul proiectului poate face asta.” | un editor care invită, exportă sau schimbă roluri; un proprietar de oraș care schimbă bugete sau creează un oraș | cere-i proprietarului orașului sau al proiectului |
 | „Orașul trebuie să rămână cu cel puțin un proprietar.” | ultimul proprietar făcut editor | fă întâi alt administrator proprietar |
 | „Unități de calcul necesare publicării: N; orașul mai are M luna aceasta.” | partea orașului din unitățile de calcul Mapbox | încărcarea gratuită prin Studio, luna viitoare, sau cere-i proprietarului proiectului să mărească bugetul orașului |
 | „Un export al orașului este deja în lucru. …” | se pregătește alt export | așteaptă-l, apoi descarcă-l |
@@ -393,7 +393,7 @@ Mesajul afișat, cauza și ce trebuie făcut, pentru fiecare ecran.
 | **Niciun calculator conectat** | lucrătorul nu rulează sau nu a fost văzut de trei minute | **Folosește acest calculator** și deschide din nou fișierul (repornește serviciul) |
 | **Așteaptă calculatorul tău** | sarcina e aleasă pentru calculatorul tău și niciun lucrător nu a luat-o | pornește lucrătorul sau **Rulează în Google Cloud** |
 | „Calculatorul tău nu a preluat-o în 15 de minute.” | niciun calculator nu a fost văzut cât a așteptat sarcina (o notificare o spune și ea) | **Rulează în schimb în Google Cloud** sau pornește lucrătorul |
-| „Calculatorul are un pipeline vechi: nicio procesare până se actualizează” | pipeline-ul de imagini a fost actualizat | nimic, dacă l-ai pregătit cu fișierul (se actualizează în câteva minute); cu comanda din Avansat, copiaz-o din nou și rulează-o |
+| „Calculatorul are o versiune veche a procesării: nicio procesare până se actualizează” | fluxul de imagini a fost actualizat | nimic, dacă l-ai pregătit cu fișierul (se actualizează în câteva minute); cu comanda din Avansat, copiaz-o din nou și rulează-o |
 | „Fișierul nu a putut fi pregătit: încearcă din nou.” | administrarea nu a putut citi șablonul fișierului de pe site | încearcă din nou; dacă se repetă, reîncarcă administrarea (site-ul se poate actualiza tocmai atunci) |
 | „Serverul hărții nu dă încă fișierul" în loc de **Folosește acest calculator** | serverul hărții e mai vechi decât administrarea | **Actualizează harta** din Configurare, apoi deschide din nou **Procesări** |
 | Ai apăsat **Folosește acest calculator**, dar nu e niciun fișier în Descărcări | browserul l-a pus deoparte ca fișier de confirmat | deschide descărcările browserului (Ctrl+J) și alege **Păstrează** |
@@ -420,7 +420,7 @@ Când pagina orașului nu poate afișa harta, arată un card cu unul dintre mesa
 | --- | --- | --- |
 | „Harta nu a fost găsită. Încearcă din nou mai târziu.” | pagina nu a găsit `manifest.json` la adresa din `config.js` | publici orașul (Setări → **Publicare**) și harta (Configurare i) sau corectezi `manifestUrl` în `config.js` |
 | „Datele hărții sunt nevalide (probleme găsite: N).”, urmat de `câmp: regulă` | manifestul încalcă o regulă din City Manifest v1; cardul numește primul câmp și regula | corectezi acel câmp (în aplicația de administrare din M2; pe un site făcut din kitul de pornire, în `data/manifest.json`) |
-| „Lipsește config.js” / „config.js este nevalid: …” | pagina nu are `window.HistoricCityMapConfig` sau un câmp din el este necunoscut ori greșit | compari `config.js` cu cel din kitul de pornire (`starter-kit/README.md`) |
+| „Harta nu este configurată: lipsește config.js.” / „config.js este nevalid: …” | pagina nu are `window.HistoricCityMapConfig` sau un câmp din el este necunoscut ori greșit | compari `config.js` cu cel din kitul de pornire (`starter-kit/README.md`) |
 | „cityId din config.js (…) nu corespunde hărții (…).” | `config.js` arată spre manifestul altui oraș | faci `cityId` și orașul din manifest să fie același; site-ul București numește orașul proiectului `bucharest`, ca orice manifest construit de server (`bucuresti` al vechiului seed e redenumit de construirea site-ului, `docs/research/DECISIONS-for-review.md` §35b) |
 | „Această hartă are nevoie de o versiune mai nouă a paginii (X). Reîncarcă pagina mai târziu.” | manifestul cere un motor mai nou decât cel încărcat de pagină | încarci versiunea de motor din mesaj |
 | „Browserul tău nu poate afișa harta interactivă. Lista fotografiilor rămâne disponibilă.” | browserul vizitatorului nu are WebGL | nimic: vizitatorul primește în continuare lista fotografiilor |

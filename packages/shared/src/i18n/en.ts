@@ -2,7 +2,6 @@ import type { Messages } from './ro.js';
 
 /** English catalogue: same keys as the Romanian one (a missing or extra key is a type error). */
 export const en: Messages = {
-    'hello.greeting': 'Hello, {name}!',
     'validation.required': 'A required field is missing.',
     'validation.type': 'The value has the wrong type.',
     'validation.tooSmall': 'The value is too small or too short.',
@@ -36,7 +35,7 @@ export const en: Messages = {
     'error.manifest.invalid': 'The map data is invalid (problems found: {count}).',
     'error.manifest.version': 'This version of the map data is not supported.',
     'error.manifest.engineTooOld': 'This map needs a newer version of this page ({version}). Please reload the page later.',
-    'error.config.missing': 'config.js is missing: define window.HistoricCityMapConfig (see the starter kit documentation).',
+    'error.config.missing': 'The map is not set up: config.js is missing.',
     'error.config.invalid': 'config.js is invalid: {detail}',
     'error.config.cityMismatch': 'The cityId in config.js ({cityId}) does not match the map ({manifestCityId}).',
     'error.config.container': 'The map element “{selector}” does not exist on the page.',
@@ -142,7 +141,7 @@ export const en: Messages = {
     'about.engine': 'Engine: Historic City Map {version}',
     'about.accessibility': 'Accessibility',
     'about.a11yWorks': 'Works: keyboard focus, any window, light, dark, high contrast, reduced motion.',
-    'about.a11yMissing': 'Missing: a text alternative for the map; a test with screen readers.',
+    'about.a11yMissing': 'Not yet: a text description of the map.',
     'about.a11yReport': 'Report problems on GitHub',
     'input.help': 'Keyboard and gamepad',
     'input.toggle': 'One-key shortcuts',
@@ -152,7 +151,7 @@ export const en: Messages = {
     'input.photo': 'Next and previous photo',
     'input.noLayer': 'No layer on show',
     'input.noPhoto': 'No photos here',
-    'input.padTitle': 'Standard gamepad (tried only simulated)',
+    'input.padTitle': 'Standard gamepad',
     'input.padActs': 'A: open. B: close. Y: Layers. LB, RB: photos. Start: menu. Back: help.',
     'input.padMove': 'Left stick: move. Right stick, triggers: zoom.',
     'input.padFocus': 'D-pad: focus up, down; year left, right.',

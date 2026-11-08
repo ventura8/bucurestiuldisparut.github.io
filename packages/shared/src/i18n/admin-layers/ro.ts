@@ -95,9 +95,9 @@ export const ro = {
     'adminContent.layers.linking': 'Se leagă…',
     'adminContent.layers.check': 'Verifică',
     'adminContent.layers.checking': 'Se cere o dală…',
-    'adminContent.layers.tilesAnswer': 'Dalele răspund ({type}).',
+    'adminContent.layers.tilesAnswer': 'Dalele răspund.',
     'adminContent.layers.linked': 'Stratul „{name}” a fost legat. Verifică-l pe hartă, apoi publică-l.',
-    'adminContent.layers.cspNote': 'Dalele de la {origins} apar public după ce site-ul orașului permite aceste adrese.',
+    'adminContent.layers.cspNote': 'Dalele de la {origins} nu apar încă pe harta publică: site-ul orașului trebuie să le permită.',
     // [end layers]
 } as const;
 

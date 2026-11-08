@@ -294,8 +294,8 @@ describe('<hcm-admin-photo-editor>: place, direction and publishing', () => {
         );
 
         const text = deepText(element);
-        expect(text).toContain('The EXIF place is outside the city, so it cannot be applied.');
-        expect(text).toContain('Year from EXIF: 1936');
+        expect(text).toContain("The photo file's place is outside the city, so it cannot be applied.");
+        expect(text).toContain('Year from the photo file: 1936');
         expect(text).toContain('Check or confirm the place to publish it.');
         const fieldset = deepAll(element, 'fieldset')[6] ?? element;
         deep(deep(fieldset, '.banner hcm-button'), 'button').click();

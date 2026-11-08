@@ -17,7 +17,7 @@ export const ro = {
     'adminContent.common.server': 'server',
     'adminContent.common.someone': 'alt administrator',
     'adminContent.common.denied': 'Accesul a fost refuzat. Verifică dacă mai ești administrator.',
-    'adminContent.common.loadFailed': 'Nu s-a putut citi ({code}). Încearcă din nou.',
+    'adminContent.common.loadFailed': 'Nu s-a putut citi. Încearcă din nou.',
     'adminContent.common.reconnecting': 'Se reconectează…',
     'adminContent.common.loading': 'Se încarcă…',
     'adminContent.common.retry': 'Încearcă din nou',

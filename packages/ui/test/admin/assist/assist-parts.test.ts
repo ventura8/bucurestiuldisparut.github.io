@@ -115,7 +115,7 @@ describe('the draft slot', () => {
             }),
         );
         expect(deepText(deep(drafted, '[data-draft-note]'))).toBe(
-            'Draft proposed by gemini-3.5-flash-lite: check it before you save. The draft was shortened to fit the field.',
+            'Automatic draft: check it before you save. The draft was shortened to fit the field.',
         );
         expect(deepAll(drafted, '.actions')).toHaveLength(0);
         expect(await axeViolations(drafted)).toEqual([]);

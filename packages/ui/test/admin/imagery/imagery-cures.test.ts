@@ -67,7 +67,7 @@ describe('the budget guard on the Imagery page', () => {
 
         area.set({ guard: { paused: true, costAmount: null, budgetAmount: null, currency: null }, resuming: true });
         await updated(element);
-        expect(deep(element, '[data-state="guard-paused"]').textContent).toContain('Processing is paused by the budget guard.');
+        expect(deep(element, '[data-state="guard-paused"]').textContent).toContain('Processing is paused: the monthly budget was reached.');
         expect((button(element, 'Resume processing') as HTMLElement & { disabled: boolean }).disabled).toBe(true);
     });
 

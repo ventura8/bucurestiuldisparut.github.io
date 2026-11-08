@@ -69,9 +69,7 @@ describe('<hcm-imagery-page>: what calibration measured', () => {
     ] as const)('happyPath_%sSaysTheAiProposedOn_%j @S-A68-HAPPY-DEVICE-SHOWN', async (how, proposer, device) => {
         const { element } = await page(versionView({ calibration: { how, proposer } }));
 
-        expect(deep(element, '[data-how]').textContent).toBe(
-            `Proposed by the AI on your computer (${device}), proved by the map's own check`,
-        );
+        expect(deep(element, '[data-how]').textContent).toBe(`Proposed by the AI on your computer (${device}), then checked`);
     });
 
     it('badPath_aMatchersCountIsNeverShownAsTilesThatAgree @S-P07-BAD-FALSE-PROPOSAL', async () => {
@@ -181,20 +179,20 @@ describe('<hcm-imagery-page>: why a frame under the threshold waits', () => {
     it('badPath_itWasCheckedOnlyOnItsOwnPoints', async () => {
         const { element } = await page(versionView({ georef: kind('leave-one-out'), output: output(96) }));
 
-        expect(deep(element, '[data-waits="not-proved"]').textContent.trim()).toBe('Not fully checked: compare it with the map');
+        expect(deep(element, '[data-waits="not-proved"]').textContent.trim()).toBe('Check the fit on the map before approving');
         expect(deepAll(element, '[data-waits="coverage"]')).toEqual([]);
     });
 
     it.each([
-        ['nothing proved it', { how: 'none', refusal: 'gross' }, 'not-proved', 'Not fully checked: compare it with the map'],
-        ['the matcher fitted it', { how: 'matcher' }, 'not-proved', 'Not fully checked: compare it with the map'],
+        ['nothing proved it', { how: 'none', refusal: 'gross' }, 'not-proved', 'Check the fit on the map before approving'],
+        ['the matcher fitted it', { how: 'matcher' }, 'not-proved', 'Check the fit on the map before approving'],
         [
             'a check went as gross',
             { how: 'votes', checksDropped: 2, measuredPct: 85 },
             'not-proved',
-            'Not fully checked: compare it with the map',
+            'Check the fit on the map before approving',
         ],
-        ['its tiles span too little', { how: 'votes', measuredPct: 53 }, 'not-proved', 'Not fully checked: compare it with the map'],
+        ['its tiles span too little', { how: 'votes', measuredPct: 53 }, 'not-proved', 'Check the fit on the map before approving'],
     ] as const)('badPath_%s', async (_case, calibration, name, text) => {
         const { element } = await page(versionView({ georef: kind('held-out'), output: output(96), calibration }));
 

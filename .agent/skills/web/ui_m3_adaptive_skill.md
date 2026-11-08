@@ -4,7 +4,7 @@ The component kit `@hcm/ui` (`packages/ui`), shared by the engine and the admin:
 
 ## Lit without decorators
 
-Decorators are banned by ESLint (their helpers show up as uncovered branches, and Vite 8's transform support is unclear). The pattern, as in `hcm-hello`:
+Decorators are banned by ESLint (their helpers show up as uncovered branches, and Vite 8's transform support is unclear). The pattern, as in `hcm-chip`:
 
 ```ts
 export const HCM_EXAMPLE_TAG = 'hcm-example';

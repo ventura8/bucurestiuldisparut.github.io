@@ -15,7 +15,6 @@ const KIT_EXPORTS = [
     'HCM_DIALOG_TAG',
     'HCM_FAB_MENU_TAG',
     'HCM_FAB_TAG',
-    'HCM_HELLO_TAG',
     'HCM_ICON_BUTTON_TAG',
     'HCM_ICON_TAG',
     'HCM_LIST_ITEM_TAG',
@@ -37,7 +36,6 @@ const KIT_EXPORTS = [
     'HcmDialog',
     'HcmFab',
     'HcmFabMenu',
-    'HcmHello',
     'HcmIcon',
     'HcmIconButton',
     'HcmList',
@@ -81,7 +79,6 @@ const KIT_EXPORTS = [
     'defineHcmDialog',
     'defineHcmFab',
     'defineHcmFabMenu',
-    'defineHcmHello',
     'defineHcmIcon',
     'defineHcmIconButton',
     'defineHcmList',
@@ -141,7 +138,7 @@ describe('defineUiKit', () => {
                 defined.set(tag, element);
             },
         } as unknown as CustomElementRegistry;
-        const tags = KIT_EXPORTS.filter((name) => name.endsWith('_TAG') && name !== 'HCM_HELLO_TAG').map(
+        const tags = KIT_EXPORTS.filter((name) => name.endsWith('_TAG')).map(
             (name) => (ui as unknown as Record<string, string>)[name] ?? '',
         );
 

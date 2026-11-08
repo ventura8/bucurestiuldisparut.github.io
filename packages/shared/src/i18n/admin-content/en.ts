@@ -15,7 +15,7 @@ export const en: Readonly<Record<AdminContentKitKey, string>> = {
     'adminContent.common.server': 'the server',
     'adminContent.common.someone': 'another admin',
     'adminContent.common.denied': 'Access was refused. Check that you are still an admin.',
-    'adminContent.common.loadFailed': 'This could not be read ({code}). Try again.',
+    'adminContent.common.loadFailed': 'This could not be read. Try again.',
     'adminContent.common.reconnecting': 'Reconnecting…',
     'adminContent.common.loading': 'Loading…',
     'adminContent.common.retry': 'Try again',

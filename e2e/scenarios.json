@@ -2510,7 +2510,7 @@
             "area": "starter-kit",
             "path": "bad",
             "title": "A changed engine file is refused, never run",
-            "asserts": "the mock CDN serves engine.iife.js with one byte changed -> the browser blocks it (the console's integrity error, claimed), no map, and the page keeps its bilingual note that the map engine could not load, naming the README's check; the note first says only that the map is loading, its troubleshooting delayed 4 s by the engine's stylesheet (revealed from outside in the test)",
+            "asserts": "the mock CDN serves engine.iife.js with one byte changed -> the browser blocks it (the console's integrity error, claimed), no map, and the page keeps its bilingual note that the map could not load, asking to reload the page (the README's check only in an HTML comment); the note first says only that the map is loading, its troubleshooting delayed 4 s by the engine's stylesheet (revealed from outside in the test)",
             "tier": "e2e-starter-kit",
             "status": "exists",
             "notes": "Milestone M5 (docs/research/M5-interfaces.md §3.2, §3.6; owner: kit-cli). Test: e2e/specs/starter-kit/template.spec.ts. The note's layout and accessibility: the tour state kit.loading-note (e2e/tour/kit-states.ts, every tour project)."
@@ -4292,7 +4292,7 @@
             "area": "admin",
             "path": "happy",
             "title": "An English draft of the Romanian title fills the field until Save",
-            "asserts": "English draft (offered while only Romanian has text) -> the English field holds the fake model's text and the note Draft proposed by gemini-3.5-flash-lite: check it before you save, and no button offers to replace it; the manifest unchanged until Save; after Save the viewer shows the English title (input budget translateDraft: 2)",
+            "asserts": "English draft (offered while only Romanian has text) -> the English field holds the fake model's text and the note Automatic draft: check it before you save (no model id), and no button offers to replace it; the manifest unchanged until Save; after Save the viewer shows the English title (input budget translateDraft: 2)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M4 (docs/research/M4-interfaces.md §4.3; owner: assists-notify). In e2e/admin/specs/assists/drafts.spec.ts (state assist.draft)."
@@ -5381,7 +5381,7 @@
             "area": "admin",
             "path": "happy",
             "title": "A source is probed server-side before it is linked",
-            "asserts": "Check in the Link a layer dialog -> imagery.probeTiles asks one tile -> 'Tiles answer' with its type; Link links it",
+            "asserts": "Check in the Link a layer dialog -> imagery.probeTiles asks one tile -> 'The tiles answer' (no MIME type); Link links it",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/link-probe.spec.ts. Check in the dialog (CR-M3-35 g), against the e2e tile host through the Functions emulator (CR-M3-14). The preview of a Mapbox tileset in the dialog is not built: the layer's editor previews it once linked (S-A15-HAPPY)."
@@ -10683,7 +10683,7 @@
             "area": "admin",
             "path": "happy",
             "title": "The Jobs page and the pipeline card show this month's Cloud Run use",
-            "asserts": "usage/cloudrun of the month -> both show the vCPU-seconds and GiB-seconds of the 180,000 and 360,000 free, labelled as an estimate",
+            "asserts": "usage/cloudrun of the month -> both show the processor seconds and the memory GiB-seconds of the 180,000 and 360,000 free, labelled as an estimate",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M7 (docs/research/M7-local-worker.md). Test: e2e/admin/specs/imagery/worker.spec.ts."
@@ -12201,7 +12201,7 @@
             "area": "pipeline",
             "path": "happy",
             "title": "With no graphics card the processor runs, said in plain words; a silent processor run is impossible",
-            "asserts": "--gpus all and CDI both fail the probe -> the starter logs NO GRAPHICS CARD and runs HCM_AI_DEVICE=cpu with the reason; the proposer records `fallback: no-gpu`; the processor looks at the first two orientations, on half the threads; HCM_AI_DEVICE=gpu that finds no card exits 77 (76 under 2 GB) and is probed again, and HCM_AI_DEVICE=cpu with no reason is refused",
+            "asserts": "--gpus all and CDI both fail the probe -> the starter says no usable graphics card, using the processor, and runs HCM_AI_DEVICE=cpu with the reason; the proposer records `fallback: no-gpu`; the processor looks at the first two orientations, on half the threads; HCM_AI_DEVICE=gpu that finds no card exits 77 (76 under 2 GB) and is probed again, and HCM_AI_DEVICE=cpu with no reason is refused",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_matcher_serve.py, test_matcher_torch.py, test_local_matcher.py, functions/test/worker/starter-sidecar.test.ts. PowerShell: starter-windows.test.ts."
@@ -12234,7 +12234,7 @@
             "area": "pipeline",
             "path": "bad",
             "title": "A file that does not match its pin never runs",
-            "asserts": "a fetched file with another hash is deleted, fetched once more, then the matcher stands aside with `tampered`; weights are hashed again at load and read with weights_only, and each run hashes the placed ones first, placing them again when altered; refused at load, the panel says `tampered`, not a bad answer, and no further request is asked; only allowed hosts are reached, every redirect hop through the address guard; an archive cannot name where its file lands; `superpoint.py` never leaves the LightGlue tarball; the starter refuses any image but pytorch/pytorch by digest",
+            "asserts": "a fetched file with another hash is deleted, fetched once more, then the matcher stands aside with `tampered`; weights are hashed again at load and read with weights_only, and each run hashes the placed ones first, placing them again when altered; refused at load, the panel says `tampered`, not a bad answer, and no further request is asked; only allowed hosts are reached, every redirect hop through the address guard; an archive cannot name where its file lands; `superpoint.py` never leaves the LightGlue tarball; the starter refuses any image but pytorch/pytorch by digest (saying it refused an unexpected program image)",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_ai_files.py, test_matcher_torch.py, test_local_matcher.py, functions/test/worker/starter-sidecar.test.ts."
@@ -14434,7 +14434,7 @@
             "area": "admin",
             "path": "happy",
             "title": "A frame parked under an older pipeline image searches again by itself, free",
-            "asserts": "imagery.tick with a parked frame searched with another image than the installed one -> queued from stitch, one run of its own, the log says Locate again by itself; a frame first seen remembers the image and does not run; at most RELOCATE_PER_TICK a city a tick",
+            "asserts": "imagery.tick with a parked frame searched with another image than the installed one -> queued from stitch, one run of its own, the log says Searched again after an update; a frame first seen remembers the image and does not run; at most RELOCATE_PER_TICK a city a tick",
             "tier": "functions",
             "status": "exists",
             "notes": "M18 (docs/research/M18-improvements.md item 3, the owner 2026-11-08). Test: functions/test/imagery/relocate.test.ts."

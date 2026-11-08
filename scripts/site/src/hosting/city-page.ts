@@ -83,8 +83,7 @@ function configSource(bucket: string): string {
     const { before, after } = manifestAddressParts(bucket);
     const args = [before, after, CITY_PAGE_FOLDER].map((value) => JSON.stringify(value)).join(', ');
     return [
-        '// Historic City Map: the generic city page of the Hosting site (docs/research/M6-interfaces.md §2.4),',
-        '// from scripts/site/src/hosting/city-page.ts.',
+        "// Historic City Map: the city page's configuration.",
         "'use strict';",
         `(${configureCityPage.toString()})(window, ${args});`,
         '',

@@ -26,7 +26,7 @@ export type RelocateDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'blobs' |
 /** How many frames of one city one tick sends searching again (each is a pipeline run). */
 export const RELOCATE_PER_TICK = 3;
 
-const MESSAGE = 'Locate again by itself: the pipeline was updated, so the search runs again; free, no new import, no new download.';
+const MESSAGE = 'Searched again after an update: free, no new import, no new download.';
 
 /** Remembers the image the frame was searched with, while it still waits for points. */
 async function remember(deps: RelocateDeps, cityId: string, jobId: string, digest: string): Promise<void> {

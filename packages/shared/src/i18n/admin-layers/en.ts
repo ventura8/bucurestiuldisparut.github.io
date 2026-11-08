@@ -93,8 +93,8 @@ export const en: Readonly<Record<AdminLayersKey, string>> = {
     'adminContent.layers.linking': 'Linking…',
     'adminContent.layers.check': 'Check',
     'adminContent.layers.checking': 'Asking for one tile…',
-    'adminContent.layers.tilesAnswer': 'Tiles answer ({type}).',
+    'adminContent.layers.tilesAnswer': 'The tiles answer.',
     'adminContent.layers.linked': 'The layer “{name}” is linked. Check it on the map, then publish it.',
-    'adminContent.layers.cspNote': 'Tiles from {origins} show publicly once the city site allows these addresses.',
+    'adminContent.layers.cspNote': 'Tiles from {origins} do not show on the public map yet: the city site has to allow these addresses.',
     // [end layers]
 };

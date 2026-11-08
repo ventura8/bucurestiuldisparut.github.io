@@ -43,20 +43,15 @@
     <body class="hcm-fullpage">
         <main>
             <h1 class="hcm-visually-hidden">Orașul meu</h1>
+            <!-- If the late note shows, the engine was refused: check its version and integrity above (README.md). -->
             <hcm-map-viewer manifest-url="city.json" lang="ro">
                 <p class="hcm-note" lang="ro">
                     Harta se încarcă.
-                    <span class="hcm-note-late"
-                        >Dacă acest mesaj rămâne pe ecran, motorul hărții nu s-a putut încărca: verifică versiunea și integritatea din
-                        index.html (pașii din README.md).</span
-                    >
+                    <span class="hcm-note-late">Dacă mesajul rămâne, harta nu s-a putut încărca. Reîncarcă pagina.</span>
                 </p>
                 <p class="hcm-note" lang="en">
                     The map is loading.
-                    <span class="hcm-note-late"
-                        >If this message stays on screen, the map engine could not load: check the version and the integrity in index.html
-                        (the steps in README.md).</span
-                    >
+                    <span class="hcm-note-late">If this stays, the map could not load. Reload the page.</span>
                 </p>
             </hcm-map-viewer>
             <noscript>
