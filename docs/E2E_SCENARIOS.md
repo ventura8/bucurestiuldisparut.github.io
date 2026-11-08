@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 134 | 1293 | 516 | 777 | 1291 | 2 | 315 |
+| 134 | 1294 | 516 | 778 | 1292 | 2 | 315 |
 
 ## Viewer
 
@@ -35,9 +35,10 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V03-HAPPY` | V03 | happy | Toggling a layer shows and hides it with its attribution | layer on/off verified by pixel probe; attribution shown | e2e-viewer | exists | `e2e/specs/viewer/layers.spec.ts` |
 | `S-V03-HAPPY-3D-OFF` | V03 | happy | A visible historical layer turns the basemap's 3D buildings off | the Standard style's show3dObjects configuration is false while a historical layer is visible and true again once it is hidden | e2e-viewer | exists | `e2e/specs/viewer/layers.spec.ts` |
 | `S-V03-HAPPY-COMPACT-CLOSE` | V03 | happy | On a phone the Layers sheet's close is its minimize: opened again it keeps its values | 412 px: a lowered opacity, the sheet closed and opened again from the menu -> the same opacity and switch | e2e-viewer | exists | `e2e/specs/viewer/layers-minimize.spec.ts` |
-| `S-V03-HAPPY-MINIMIZE` | V03 | happy | The always-docked Layers pane minimizes to a rail and comes back | 1920 px: the pane's Close minimizes it to an 88 px rail whose button (Straturi, aria-expanded false) takes the focus; the map and Mapbox's canvas grow by 272 px; Enter on the rail restores the pane with the focus on its Close | e2e-viewer | exists | `e2e/specs/viewer/layers-minimize.spec.ts` |
+| `S-V03-HAPPY-MINIMIZE` | V03 | happy | The always-docked Layers pane minimizes to a rail and comes back | 1920 px: the pane's collapse button (Restrânge straturile / Collapse layers, aria-expanded true, no Close) minimizes it to an 88 px rail whose button (Straturi, aria-expanded false) takes the focus; the map and Mapbox's canvas grow by 272 px; Enter on the rail restores the pane with the focus on its collapse button | e2e-viewer | exists | `e2e/specs/viewer/layers-minimize.spec.ts` |
 | `S-V03-BAD-ATTRIBUTION-MARKUP-IS-TEXT` | V03 | bad | Markup in a layer's attribution is shown as text, never rendered | a layer whose attribution holds an https anchor tag, an ampersand and a bold tag -> the map's attribution control and the Layers panel show the characters as text; no link or element is created from them | e2e-viewer | exists | `e2e/specs/viewer/layers.spec.ts` |
 | `S-V03-BAD-MINIMIZE-KEEPS-VALUES` | V03 | bad | Minimizing the Layers pane loses nothing and touches neither the hash nor the photo beside it | a lowered opacity and a switched-on layer are the same after minimize and restore; the URL hash is unchanged; the photo open in the trailing pane stays open | e2e-viewer | exists | `e2e/specs/viewer/layers-minimize.spec.ts` |
+| `S-V03-BAD-MINIMIZE-SURVIVES-RESIZE` | V03 | bad | The minimized Layers pane stays minimized when the window leaves the extra-large layout and comes back | 1920 px, minimized; at 1280 px there is no leading pane; back at 1920 px the re-created pane is still the 88 px rail (aria-expanded false), its collapse button absent, the URL hash unchanged | e2e-viewer | exists | `e2e/specs/viewer/layers-minimize.spec.ts` |
 | `S-V03-BAD-STYLE-WITHOUT-CONFIG` | V03 | bad | A basemap style without the basemap import is never reconfigured | toggling a layer on a style without the basemap import leaves its configuration alone and logs no console error | e2e-viewer | exists | `e2e/specs/viewer/layers.spec.ts` |
 | `S-V03-BAD-TILE404` | V03 | bad | A tileset whose tiles fail names the layer in a toast and the map keeps working | tiles answering 503 (an outage) -> a toast names the layer; another layer still draws (pixel probe). A 404 tile means no imagery there to Mapbox GL and is never reported | e2e-viewer | exists | `e2e/specs/viewer/layers.spec.ts` |
 | `S-V04-HAPPY` | V04 | happy | Selecting a year shows its layer and filters photos | year selection shows the layer; photo year filter in sync | e2e-viewer | exists | `e2e/specs/viewer/timeline.spec.ts` |

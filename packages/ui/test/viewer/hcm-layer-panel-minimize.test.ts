@@ -1,7 +1,8 @@
 /**
  * The extra-large Layers pane minimizes to a rail on the same edge and comes back (the owner, 2026-11-08): the close
- * button minimizes instead of closing, the rail's one button restores, the focus follows both ways, and the switches and
- * sliders, which are the store's, come back as they were.
+ * button minimizes instead of closing, and says so (its name, `aria-expanded`), the rail's one button restores, each tells
+ * the viewer (`hcm-layers-minimize`, kept in the store), the focus follows both ways, and the switches and sliders, which
+ * are the store's, come back as they were.
  */
 import { overlaysFromManifest, withOverlayVisibility } from '@hcm/shared';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
@@ -45,13 +46,17 @@ describe('<hcm-layer-panel>: minimize to a rail', () => {
     it('happyPath_closeMinimizesToARailWhoseButtonRestoresThePane', async () => {
         const element = await pane();
         const events = recordEvents(element, 'hcm-close');
+        const minimized = recordEvents(element, 'hcm-layers-minimize');
+        const collapse = page.getByRole('button', { name: 'Restrânge straturile' });
+        await expect.element(collapse).toHaveAttribute('aria-expanded', 'true');
 
-        await page.getByRole('button', { name: 'Închide' }).click();
+        await collapse.click();
         await element.updateComplete;
 
         expect(element.minimized).toBe(true);
         expect(element.hasAttribute('minimized')).toBe(true);
         expect(events).toEqual([]);
+        expect(minimized.map((event) => event.detail)).toEqual([{ minimized: true }]);
         expect(element.shadowRoot?.querySelector('hcm-overlay-list')).toBeNull();
         const rail = page.getByRole('button', { name: 'Straturi' });
         await expect.element(rail).toHaveAttribute('aria-expanded', 'false');
@@ -62,12 +67,16 @@ describe('<hcm-layer-panel>: minimize to a rail', () => {
 
         expect(element.minimized).toBe(false);
         expect(element.hasAttribute('minimized')).toBe(false);
+        expect(minimized.map((event) => event.detail)).toEqual([{ minimized: true }, { minimized: false }]);
         await expect.element(page.getByRole('heading', { name: 'Straturi' })).toBeVisible();
-        expect(deepActiveElement()?.getAttribute('aria-label')).toBe('Închide');
+        expect(deepActiveElement()?.getAttribute('aria-label')).toBe('Restrânge straturile');
     });
 
-    it('happyPath_theRailSpeaksEnglish', async () => {
-        await pane({ locale: 'en', minimized: true });
+    it('happyPath_theRailAndItsCollapseSpeakEnglish', async () => {
+        const element = await pane({ locale: 'en' });
+        await expect.element(page.getByRole('button', { name: 'Collapse layers' })).toHaveAttribute('aria-expanded', 'true');
+
+        element.minimized = true;
 
         await expect.element(page.getByRole('region', { name: 'Layers' })).toBeVisible();
         await expect.element(page.getByRole('button', { name: 'Layers' })).toHaveAttribute('aria-expanded', 'false');
@@ -90,10 +99,14 @@ describe('<hcm-layer-panel>: minimize to a rail', () => {
     it('badPath_aPaneThatIsNotMinimizableClosesAsBefore', async () => {
         const element = await pane({ minimizable: false, minimized: true });
         const events = recordEvents(element, 'hcm-close');
+        const minimized = recordEvents(element, 'hcm-layers-minimize');
+        const close = page.getByRole('button', { name: 'Închide' });
+        await expect.element(close).not.toHaveAttribute('aria-expanded');
 
-        await page.getByRole('button', { name: 'Închide' }).click();
+        await close.click();
 
         expect(events).toHaveLength(1);
+        expect(minimized).toEqual([]);
         expect(element.shadowRoot?.querySelector('hcm-overlay-list')).not.toBeNull();
     });
 });

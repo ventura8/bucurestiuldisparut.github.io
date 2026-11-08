@@ -3,10 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { closeEvent, renderSheetFrame } from '../../src/viewer/sheet-frame.js';
 
-function frame(mode: 'bottom' | 'side' | 'docked', open: boolean, onClose = vi.fn()): HTMLElement {
+function frame(mode: 'bottom' | 'side' | 'docked', open: boolean, onClose = vi.fn(), minimize?: boolean): HTMLElement {
     const host = document.createElement('div');
     document.body.append(host);
-    const options = { mode, open, label: 'Straturi', closeLabel: 'Închide', handleLabel: 'Redimensionează panoul', onClose };
+    const options = { mode, open, label: 'Straturi', closeLabel: 'Închide', handleLabel: 'Redimensionează panoul', onClose, minimize };
     render(renderSheetFrame(options, html`<p>conținut</p>`), host);
     return host;
 }
@@ -38,6 +38,22 @@ describe('renderSheetFrame', () => {
         host.querySelector('hcm-icon-button')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
         expect(onClose).toHaveBeenCalledTimes(1);
+        const close = host.querySelector('hcm-icon-button') as (HTMLElement & { expanded?: boolean }) | null;
+        expect([close?.getAttribute('icon'), close?.expanded]).toEqual(['close', undefined]);
+    });
+
+    it('happyPath_aDockedSheetThatMinimizesSaysItIsExpanded', () => {
+        const host = frame('docked', true, vi.fn(), true);
+
+        const close = host.querySelector('hcm-icon-button') as (HTMLElement & { expanded?: boolean }) | null;
+        expect([close?.getAttribute('icon'), close?.expanded]).toEqual(['chevron_left', true]);
+    });
+
+    it('badPath_aDockedSheetThatDoesNotMinimizeSaysNothingOfExpanded', () => {
+        const host = frame('docked', true, vi.fn(), false);
+
+        const close = host.querySelector('hcm-icon-button') as (HTMLElement & { expanded?: boolean }) | null;
+        expect([close?.getAttribute('icon'), close?.expanded]).toEqual(['close', undefined]);
     });
 
     it('badPath_aClosedDockedSheetRendersNothing', () => {

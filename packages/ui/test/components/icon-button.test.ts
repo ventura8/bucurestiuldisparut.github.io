@@ -21,6 +21,18 @@ describe('<hcm-icon-button>', () => {
         expect(clicks).toHaveLength(1);
         expect(changes).toEqual([]);
         expect(shadowPart(button, 'button').hasAttribute('aria-pressed')).toBe(false);
+        expect(shadowPart(button, 'button').hasAttribute('aria-expanded')).toBe(false);
+        expect(await axeViolations(button)).toEqual([]);
+    });
+
+    it('happyPath_expandedSaysWhatTheButtonCollapses', async () => {
+        const button = await fixture<HcmIconButton>(html`<hcm-icon-button icon="chevron_left" label="Collapse layers"></hcm-icon-button>`);
+        button.expanded = true;
+        await button.updateComplete;
+
+        await expect.element(page.getByRole('button', { name: 'Collapse layers' })).toHaveAttribute('aria-expanded', 'true');
+        button.expanded = false;
+        await expect.element(page.getByRole('button', { name: 'Collapse layers' })).toHaveAttribute('aria-expanded', 'false');
         expect(await axeViolations(button)).toEqual([]);
     });
 

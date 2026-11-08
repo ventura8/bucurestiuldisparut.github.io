@@ -29,11 +29,14 @@ function actingOn(host: HandlerHost): On {
     };
 }
 
-/** The Layers panel's Map labels, the help panel's switch, and About's button to the panel. */
-function inputHandlers(on: On): Pick<ViewerHandlers, 'onMapLabel' | 'onShortcuts' | 'onHelpOpen'> {
+/** The Layers panel's Map labels and its rail, the help panel's switch, and About's button to the panel. */
+function inputHandlers(on: On): Pick<ViewerHandlers, 'onMapLabel' | 'onLayersMinimize' | 'onShortcuts' | 'onHelpOpen'> {
     return {
         onMapLabel: on((store, event) => {
             store.setMapLabels({ [event.detail.kind]: event.detail.visible });
+        }),
+        onLayersMinimize: on((store, event) => {
+            store.setLayersHidden(event.detail.minimized);
         }),
         onShortcuts: on((store, event) => {
             store.setShortcuts(event.detail.enabled);

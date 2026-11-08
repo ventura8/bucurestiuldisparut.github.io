@@ -73,6 +73,7 @@ export const ro = {
     'timeline.present': 'Azi',
     'timeline.empty': 'Straturile istorice vin în curând',
     'layers.title': 'Straturi',
+    'layers.minimize': 'Restrânge straturile',
     'layers.toggle': 'Afișează {name}',
     'layers.opacity': 'Opacitate: {name}',
     'layers.opacityValue': '{percent} %',

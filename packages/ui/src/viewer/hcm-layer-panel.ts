@@ -10,9 +10,11 @@
  * list, the Map labels group (V31) has a switch per label the city's basemap really has (none: no group, a custom style
  * has nothing to switch), each firing `hcm-map-label`; its note tells them from the city's own Places above.
  *
- * The extra-large pane that is always there is `minimizable` (the owner, 2026-11-08): its close button turns it into a
- * rail on the same edge whose one button ("Straturi", `aria-expanded="false"`) brings it back. The state is the panel's
- * own (`minimized`, reflected for the viewer's grid), for the session only; the switches and sliders are the store's, so
+ * The extra-large pane that is always there is `minimizable` (the owner, 2026-11-08): its close button ("Restrânge
+ * straturile", a chevron, `aria-expanded="true"`) turns it into a rail on the same edge whose one button ("Straturi",
+ * `aria-expanded="false"`) brings it back. Each fires `hcm-layers-minimize` (`{minimized}`): the viewer keeps it in the
+ * store (`layersHidden`, for the session only) and binds `minimized` (reflected for the viewer's grid) to it, so the pane
+ * re-created when the window comes back to extra-large is still minimized. The switches and sliders are the store's, so
  * minimizing loses none of them. The focus follows: to the rail's button, then back to the panel's close button.
  */
 import { DEFAULT_LOCALE, overlayLabel, poiIcon, translate, type Locale, type Manifest, type Overlay } from '@hcm/shared';
@@ -116,7 +118,6 @@ export class HcmLayerPanel extends LitElement {
                 flex-direction: column;
                 align-items: center;
                 gap: 4px;
-                min-inline-size: 56px;
                 padding: 8px;
                 border: 0;
                 border-radius: var(--md-sys-shape-corner-large);
@@ -217,19 +218,20 @@ export class HcmLayerPanel extends LitElement {
 
     override render(): TemplateResult {
         const label = translate(this.locale, 'layers.title');
-        const closeLabel = translate(this.locale, 'action.close');
+        const minimize = this.minimizable;
+        const closeLabel = translate(this.locale, minimize ? 'layers.minimize' : 'action.close');
         const handleLabel = translate(this.locale, 'sheet.resize');
-        if (this.minimizable && this.minimized) {
+        if (minimize && this.minimized) {
             return this.#rail(label);
         }
         const onClose = (): void => {
-            if (this.minimizable) {
-                this.minimized = true;
+            if (minimize) {
+                this.#minimize(true);
             } else {
                 this.dispatchEvent(closeEvent());
             }
         };
-        return renderSheetFrame({ mode: this.mode, open: this.open, label, closeLabel, handleLabel, onClose }, this.#content());
+        return renderSheetFrame({ mode: this.mode, open: this.open, label, closeLabel, handleLabel, onClose, minimize }, this.#content());
     }
 
     /**
@@ -242,9 +244,15 @@ export class HcmLayerPanel extends LitElement {
         }
     }
 
+    /** Minimizes or restores at once, and tells the viewer, which keeps it in the store. */
+    #minimize(minimized: boolean): void {
+        this.minimized = minimized;
+        this.dispatchEvent(new CustomEvent('hcm-layers-minimize', { bubbles: true, detail: { minimized } }));
+    }
+
     #rail(label: string): TemplateResult {
         const onRestore = (): void => {
-            this.minimized = false;
+            this.#minimize(false);
         };
         return html`<section class="docked rail" aria-label=${label}>
             <button type="button" class="interactive" aria-expanded="false" @click=${onRestore}>

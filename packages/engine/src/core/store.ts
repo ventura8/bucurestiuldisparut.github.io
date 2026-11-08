@@ -75,6 +75,8 @@ export interface ViewerActions {
     openStory(storyId: string | null): void;
     setLightbox(open: boolean): void;
     openSheet(sheet: SheetName): void;
+    /** Minimizes the extra-large Layers pane to its rail (true) or restores it: for the session, not in the hash (V03). */
+    setLayersHidden(hidden: boolean): void;
     /** Records the map's view (the `moveend` path); the camera does not move. */
     setView(view: MapView): void;
     /**
@@ -337,6 +339,10 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         const keepPoi = sheet === 'poi' ? state.selectedPoiId : null;
         this.set({ ...state, sheet, selectedPhotoId: keepPhoto, selectedPoiId: keepPoi, lightbox: false });
         this.hash.schedule();
+    }
+
+    setLayersHidden(layersHidden: boolean): void {
+        this.set({ ...this.#state, layersHidden });
     }
 
     setView(view: MapView): void {

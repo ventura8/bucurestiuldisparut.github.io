@@ -40,6 +40,7 @@ export function idleState(): ViewerState {
         selectedStoryId: null,
         lightbox: false,
         sheet: 'none',
+        layersHidden: false,
         windowClass: 'compact',
         compactHeight: false,
         theme: 'system',
@@ -162,6 +163,11 @@ export class FakeStore implements ViewerStorePort {
     openSheet(sheet: SheetName): void {
         this.#record('openSheet', sheet);
         this.set({ sheet });
+    }
+
+    setLayersHidden(hidden: boolean): void {
+        this.#record('setLayersHidden', hidden);
+        this.set({ layersHidden: hidden });
     }
 
     setView(view: MapView): void {

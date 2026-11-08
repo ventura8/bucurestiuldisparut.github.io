@@ -12,7 +12,7 @@ export type IconButtonVariant = 'standard' | 'filled' | 'tonal' | 'outlined';
  * An M3 icon button (40 px in a 48 px target). `label` is the accessible name and is required. With `toggle` it is a
  * toggle button (`aria-pressed`): a click flips `selected` (the icon fills, the shape squares off) and fires
  * `hcm-change` with `{selected}`. Fires the native `click` either way. `variant` gives map controls a container so
- * they stay visible on any map.
+ * they stay visible on any map. `expanded`, when set, is its `aria-expanded`: a button that collapses what it heads.
  */
 export class HcmIconButton extends LitElement {
     static override readonly shadowRootOptions: ShadowRootInit = { ...LitElement.shadowRootOptions, delegatesFocus: true };
@@ -23,6 +23,7 @@ export class HcmIconButton extends LitElement {
         toggle: { type: Boolean },
         selected: { type: Boolean, reflect: true },
         disabled: { type: Boolean, reflect: true },
+        expanded: { attribute: false },
         variant: { type: String, reflect: true },
     };
 
@@ -94,6 +95,7 @@ export class HcmIconButton extends LitElement {
     declare toggle: boolean;
     declare selected: boolean;
     declare disabled: boolean;
+    declare expanded: boolean | undefined;
     declare variant: IconButtonVariant;
 
     constructor() {
@@ -112,6 +114,7 @@ export class HcmIconButton extends LitElement {
             part="button"
             aria-label=${this.label}
             aria-pressed=${this.toggle ? String(this.selected) : nothing}
+            aria-expanded=${this.expanded ?? nothing}
             ?disabled=${this.disabled}
             @click=${this.onClick}
         >

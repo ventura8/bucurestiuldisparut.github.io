@@ -1,14 +1,19 @@
 /**
  * The viewer's styles name the M3 tokens without a fallback (`shared-styles.ts`): `<hcm-map-viewer>` applies the theme
- * before its first render. This proves every `--md-sys-*` and `--md-ref-*` name a viewer source uses is one the theme
- * sets, so none is ever left without a value (a typo or a token the theme lacks would draw nothing).
+ * before its first render, the viewer's baseline under any city theme (`viewer-baseline.ts`). This proves every
+ * `--md-sys-*` and `--md-ref-*` name a viewer, kit or map source uses is one that theme sets, so none is ever left
+ * without a value (a typo, or a token the viewer's cut of the baseline lacks, would draw nothing).
  */
 import { describe, expect, it } from 'vitest';
 
-import { BASELINE_THEME } from '../../src/theme/baseline.js';
 import { themeRules } from '../../src/theme/apply.js';
+import { VIEWER_BASELINE } from '../../src/viewer/viewer-baseline.js';
 
-const SOURCES = import.meta.glob<string>('../../src/viewer/**/*.ts', { query: '?raw', import: 'default', eager: true });
+const SOURCES = import.meta.glob<string>(['../../src/viewer/**/*.ts', '../../src/components/**/*.ts', '../../src/map/**/*.ts'], {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+});
 
 /** Every `--md-sys-*` / `--md-ref-*` name a source reads with `var(...)`. */
 function usedTokens(): ReadonlySet<string> {
@@ -21,7 +26,7 @@ function usedTokens(): ReadonlySet<string> {
 describe('the viewer and the theme tokens', () => {
     it('happyPath_everyTokenTheViewerNamesIsSetByTheTheme', () => {
         for (const mode of ['light', 'dark'] as const) {
-            const set = new Set(Object.keys(themeRules(BASELINE_THEME, mode, false)[0]?.declarations ?? {}));
+            const set = new Set(Object.keys(themeRules(VIEWER_BASELINE, mode, false)[0]?.declarations ?? {}));
             const missing = [...usedTokens()].filter((name) => !set.has(name));
 
             expect(missing).toEqual([]);

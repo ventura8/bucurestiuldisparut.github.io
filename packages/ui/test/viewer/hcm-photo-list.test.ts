@@ -1,7 +1,9 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 
+import { applyTheme } from '../../src/theme/apply.js';
 import { HCM_PHOTO_LIST_TAG, HcmPhotoList, defineHcmPhotoList } from '../../src/viewer/hcm-photo-list.js';
+import { VIEWER_BASELINE } from '../../src/viewer/viewer-baseline.js';
 import { mountElement, recordEvents, shadowQuery, shadowQueryAll } from './doubles.js';
 import { TEST_MANIFEST_URL, testManifest } from './fixtures.js';
 
@@ -86,9 +88,10 @@ describe('<hcm-photo-list>', () => {
     });
 
     it('badPath_theDateNeverFallsBackToTheSmallBodyStyle', async () => {
-        // The M1 UX review found the dates in body-small (12 px): a theme's body-small never reaches them now, and
-        // without any theme token the date is still 14 px (0.875rem).
+        // The M1 UX review found the dates in body-small (12 px): a theme's body-small never reaches them now. The viewer
+        // always sets every token (theme-tokens.test.ts), so the theme here is the viewer's baseline.
         const element = await mountElement<HcmPhotoList>(HCM_PHOTO_LIST_TAG, { photos: MANIFEST.photos.slice(0, 1) });
+        applyTheme(element, VIEWER_BASELINE, 'light', false);
         element.style.setProperty('--md-sys-typescale-body-small-size', '11px');
 
         expect(getComputedStyle(shadowQuery(element, '.date')).fontSize).toBe('14px');

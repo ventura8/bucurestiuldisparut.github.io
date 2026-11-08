@@ -78,6 +78,8 @@ export interface ViewerHandlers {
     readonly onCompareToggle: (event: Event) => void;
     /** The Layers panel's Map labels switches (V31). */
     readonly onMapLabel: (event: CustomEvent<MapLabelDetail>) => void;
+    /** The extra-large Layers pane minimized to its rail, or restored (V03). */
+    readonly onLayersMinimize: (event: CustomEvent<{ readonly minimized: boolean }>) => void;
     readonly onToastDismiss: (event: Event) => void;
     /** The help panel's switch of the single-key shortcuts. */
     readonly onShortcuts: (event: CustomEvent<{ readonly enabled: boolean }>) => void;
@@ -329,6 +331,7 @@ function layerPanel(view: ViewerView, ready: Ready, placement: Placement, handle
         .mode=${placement.mode}
         .open=${placement.open}
         .minimizable=${placement.minimizable === true}
+        .minimized=${ready.state.layersHidden}
         .canCompare=${ready.state.webgl && ready.manifest.layers.length > 0}
         .comparing=${ready.state.compare !== null}
         .labels=${ready.state.webgl ? ready.state.mapLabels : null}
@@ -338,6 +341,7 @@ function layerPanel(view: ViewerView, ready: Ready, placement: Placement, handle
         @hcm-overlay-opacity=${handlers.onOverlayOpacity}
         @hcm-compare-toggle=${handlers.onCompareToggle}
         @hcm-map-label=${handlers.onMapLabel}
+        @hcm-layers-minimize=${handlers.onLayersMinimize}
     ></hcm-layer-panel>`;
 }
 

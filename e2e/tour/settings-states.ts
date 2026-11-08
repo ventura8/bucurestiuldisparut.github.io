@@ -54,7 +54,9 @@ export const SETTINGS_STATES = {
         title: 'The always-docked Layers pane minimized to its rail: the map takes the rest',
         enter: async ({ page, lang }: SettingsTour) => {
             const pane = viewer(page).locator('.pane.leading');
-            await pane.getByRole('button', { name: t(lang, 'action.close'), exact: true }).click();
+            const collapse = pane.getByRole('button', { name: t(lang, 'layers.minimize'), exact: true });
+            await expect(collapse).toHaveAttribute('aria-expanded', 'true');
+            await collapse.click();
             const rail = pane.getByRole('button', { name: t(lang, 'layers.title'), exact: true });
             await expect(rail).toBeFocused();
             await expect(rail).toHaveAttribute('aria-expanded', 'false');

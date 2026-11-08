@@ -80,9 +80,9 @@ export class HcmAboutDialog extends LitElement {
                 max-inline-size: 60ch;
             }
 
+            /* Its colour is detailStyles' .supporting. */
             .engine {
                 font-size: var(--md-sys-typescale-body-small-size);
-                color: var(--md-sys-color-on-surface-variant);
             }
 
             hcm-map-attribution {
@@ -187,7 +187,7 @@ export class HcmAboutDialog extends LitElement {
                 <h3>${translate(locale, 'about.privacy')}</h3>
                 ${renderMarkdown(city.privacy[locale])} ${this.#consent()}
             </section>
-            <p class="engine">${translate(locale, 'about.engine', { version: this.engineVersion })}</p>
+            <p class="supporting engine">${translate(locale, 'about.engine', { version: this.engineVersion })}</p>
         </div>`;
     }
 

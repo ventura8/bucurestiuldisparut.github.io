@@ -17,9 +17,11 @@ import {
 
 /**
  * Minimizing the Layers panel (behaviour V03; the owner, 2026-11-08: "viewer should be able to minimize the layers
- * panel"). On an extra-large window the pane is always docked: its close button minimizes it to a rail on the same edge
- * whose one button brings it back, the map takes the space, and nothing the visitor set is lost. Everywhere else the
- * panel is a sheet or a pane its close button already closes; opened again, it shows the same values.
+ * panel"). On an extra-large window the pane is always docked: its close button ("Restrânge straturile", expanded)
+ * minimizes it to a rail on the same edge whose one button (collapsed) brings it back, the map takes the space, and
+ * nothing the visitor set is lost. The rail lasts for the session, also when the window leaves the extra-large layout
+ * and comes back. Everywhere else the panel is a sheet or a pane its close button already closes; opened again, it
+ * shows the same values.
  */
 
 const LAYER_LABEL = 'Corona 1966 (e2e)';
@@ -37,11 +39,11 @@ function width(page: Page, selector: string): Promise<number> {
         .evaluate((element) => element.getBoundingClientRect().width);
 }
 
-/** The leading pane's close, its rail button, and the rail button's name. */
+/** The leading pane's collapse button and its rail's button. */
 function railOf(page: Page, lang: Locale): { close: ReturnType<Page['getByRole']>; rail: ReturnType<Page['getByRole']> } {
     const pane = viewer(page).locator('.pane.leading');
     return {
-        close: pane.getByRole('button', { name: t(lang, 'action.close'), exact: true }),
+        close: pane.getByRole('button', { name: t(lang, 'layers.minimize'), exact: true }),
         rail: pane.getByRole('button', { name: t(lang, 'layers.title'), exact: true }),
     };
 }
@@ -53,6 +55,12 @@ test(
         await boot(page, { width: 1920, height: 1080 }, lang, '15/44.42700/26.08530&layers=e2e-1966');
         const map = await width(page, '.map-pane');
         const { close, rail } = railOf(page, lang);
+        await expect(close).toHaveAttribute('aria-expanded', 'true');
+        await expect(
+            viewer(page)
+                .locator('.pane.leading')
+                .getByRole('button', { name: t(lang, 'action.close'), exact: true }),
+        ).toHaveCount(0);
 
         await close.click();
         await expect(rail).toBeFocused();
@@ -115,5 +123,26 @@ test(
 
         await expect(slider).toHaveAttribute('aria-valuenow', value ?? '');
         await expect(visibilitySwitch(page, lang, LAYER_LABEL)).toBeChecked();
+    },
+);
+
+test(
+    'The minimized pane stays minimized when the window leaves the extra-large layout and comes back',
+    { tag: '@S-V03-BAD-MINIMIZE-SURVIVES-RESIZE' },
+    async ({ page, lang }) => {
+        await boot(page, { width: 1920, height: 1080 }, lang, '15/44.42700/26.08530&layers=e2e-1966');
+        const { close, rail } = railOf(page, lang);
+        await close.click();
+        await expect(rail).toBeVisible();
+        const hash = await currentHash(page);
+
+        await page.setViewportSize({ width: 1280, height: 800 });
+        await expect(viewer(page).locator('.pane.leading')).toHaveCount(0);
+        await page.setViewportSize({ width: 1920, height: 1080 });
+
+        await expect(rail).toHaveAttribute('aria-expanded', 'false');
+        expect(await width(page, '.pane.leading')).toBe(88);
+        await expect(close).toHaveCount(0);
+        expect(await currentHash(page)).toBe(hash);
     },
 );

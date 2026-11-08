@@ -3,7 +3,7 @@
  * documented properties and events only: the viewer is tested against the kit's contract, not its looks. Each double
  * is defined only when the tag is still free, so a test that loads the real kit uses the real element.
  */
-import { LitElement, html, type TemplateResult } from 'lit';
+import { LitElement, html, nothing, type TemplateResult } from 'lit';
 
 function fire(target: HTMLElement, type: string, detail: unknown = null): void {
     target.dispatchEvent(new CustomEvent(type, { bubbles: true, composed: true, detail }));
@@ -83,9 +83,10 @@ class ButtonDouble extends LitElement {
 }
 
 class IconButtonDouble extends LitElement {
-    static override readonly properties = { icon: {}, label: {}, disabled: { type: Boolean } };
+    static override readonly properties = { icon: {}, label: {}, disabled: { type: Boolean }, expanded: { attribute: false } };
     declare label: string;
     declare disabled: boolean;
+    declare expanded: boolean | undefined;
 
     constructor() {
         super();
@@ -94,7 +95,7 @@ class IconButtonDouble extends LitElement {
     }
 
     override render(): TemplateResult {
-        return html`<button aria-label=${this.label} ?disabled=${this.disabled}></button>`;
+        return html`<button aria-label=${this.label} aria-expanded=${this.expanded ?? nothing} ?disabled=${this.disabled}></button>`;
     }
 }
 

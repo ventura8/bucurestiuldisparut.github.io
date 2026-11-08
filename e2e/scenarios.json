@@ -1179,7 +1179,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "The always-docked Layers pane minimizes to a rail and comes back",
-            "asserts": "1920 px: the pane's Close minimizes it to an 88 px rail whose button (Straturi, aria-expanded false) takes the focus; the map and Mapbox's canvas grow by 272 px; Enter on the rail restores the pane with the focus on its Close",
+            "asserts": "1920 px: the pane's collapse button (Restrânge straturile / Collapse layers, aria-expanded true, no Close) minimizes it to an 88 px rail whose button (Straturi, aria-expanded false) takes the focus; the map and Mapbox's canvas grow by 272 px; Enter on the rail restores the pane with the focus on its collapse button",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-08 (track/settings): \"viewer should be able to minimize the layers panel\". Tests: e2e/specs/viewer/layers-minimize.spec.ts, packages/ui/test/viewer/hcm-layer-panel-minimize.test.ts, the tour's state layers-minimized."
@@ -1193,7 +1193,18 @@
             "asserts": "a lowered opacity and a switched-on layer are the same after minimize and restore; the URL hash is unchanged; the photo open in the trailing pane stays open",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-08 (track/settings): the minimized state is the panel's for the session, never the store's or the hash's. Tests: e2e/specs/viewer/layers-minimize.spec.ts, packages/ui/test/viewer/hcm-map-viewer-minimize.test.ts."
+            "notes": "The owner, 2026-11-08 (track/settings): the minimized state is the store's (layersHidden) for the session, never the hash's. Tests: e2e/specs/viewer/layers-minimize.spec.ts, packages/ui/test/viewer/hcm-map-viewer-minimize.test.ts."
+        },
+        {
+            "id": "S-V03-BAD-MINIMIZE-SURVIVES-RESIZE",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "bad",
+            "title": "The minimized Layers pane stays minimized when the window leaves the extra-large layout and comes back",
+            "asserts": "1920 px, minimized; at 1280 px there is no leading pane; back at 1920 px the re-created pane is still the 88 px rail (aria-expanded false), its collapse button absent, the URL hash unchanged",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The review of track/settings (2026-11-09): the state lived in the panel element, which the layout re-creates, so it was lost. It is the store's now (layersHidden, setLayersHidden). Tests: e2e/specs/viewer/layers-minimize.spec.ts, packages/ui/test/viewer/hcm-map-viewer-minimize.test.ts, packages/engine/test/core/store-layers-hidden.test.ts."
         },
         {
             "id": "S-V03-HAPPY-COMPACT-CLOSE",

@@ -68,6 +68,7 @@ export const en: Messages = {
     'timeline.present': 'Today',
     'timeline.empty': 'Historical layers coming soon',
     'layers.title': 'Layers',
+    'layers.minimize': 'Collapse layers',
     'layers.toggle': 'Show {name}',
     'layers.opacity': 'Opacity: {name}',
     'layers.opacityValue': '{percent}%',
