@@ -14,7 +14,8 @@ export type IconButtonVariant = 'standard' | 'filled' | 'tonal' | 'outlined';
  * `hcm-change` with `{selected}`. Fires the native `click` either way. `variant` gives map controls a container so
  * they stay visible on any map. `softDisabled` (`soft-disabled`) looks disabled and says so (`aria-disabled`) but keeps
  * the focus and its place in the Tab order: the map's zoom buttons at the end of the zoom range, where a disabled button
- * would drop the focus of a visitor pressing Enter. Its clicks still fire; the owner ignores them.
+ * would drop the focus of a visitor pressing Enter. Its clicks still fire; the owner ignores them (the map's zoom
+ * buttons drop their listener). It shows no hover or pressed layer and turns GrayText in forced colours.
  */
 export class HcmIconButton extends LitElement {
     static override readonly shadowRootOptions: ShadowRootInit = { ...LitElement.shadowRootOptions, delegatesFocus: true };
@@ -83,11 +84,22 @@ export class HcmIconButton extends LitElement {
             :host([soft-disabled]) button {
                 background: none;
                 color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+                cursor: default;
+            }
+
+            /* What a native disabled button gets from the state layer: no hover or pressed layer. */
+            :host([soft-disabled]) button::before {
+                opacity: 0;
             }
 
             @media (forced-colors: active) {
                 :host([selected]) button {
                     border: 2px solid Highlight;
+                }
+
+                /* Forced colours drop the color-mix dimming; GrayText is what the browser gives a disabled button. */
+                :host([soft-disabled]) button {
+                    color: GrayText;
                 }
             }
         `,

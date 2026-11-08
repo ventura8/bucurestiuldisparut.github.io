@@ -1,7 +1,7 @@
 import type { Locale } from '@hcm/shared';
 import type { Locator, Page } from '@playwright/test';
 
-import { bothAtRest, cameras, compareBar } from '../../support/compare.js';
+import { bothAtRest, cameras, compareBar, countedMoves, countMoves } from '../../support/compare.js';
 import { mapIdle } from '../../support/map.js';
 import { expect, test } from '../../support/test.js';
 import { currentHash, openViewer, t, waitForEngineEvent } from '../../support/viewer.js';
@@ -99,18 +99,28 @@ test(
         expect(await hashZoom(page)).toBe(20);
         expect((await cameras(page))[0]?.zoom).toBe(20);
 
+        // In forced colours the soft-disabled button turns GrayText as a disabled one does, unlike its enabled neighbour.
+        await page.emulateMedia({ forcedColors: 'active' });
+        const colour = (button: Locator): Promise<string> => button.evaluate((control) => getComputedStyle(control).color);
+        expect(await colour(zoomIn(page, lang))).not.toBe(await colour(zoomOut(page, lang)));
+        await page.emulateMedia({ forcedColors: 'none' });
+
         // Zoom out's limit: the city's minZoom (10), or higher where the bounds already just cover the map, which is where
         // Mapbox stops (about 10.8 on a phone, 11.6 at 1440 px): a hash at 10 opens there.
         await openViewer(page, { lang, hash: `10/${CENTRE}` });
         await expect(zoomOut(page, lang)).toHaveAttribute('aria-disabled', 'true');
         await expect(zoomIn(page, lang)).not.toHaveAttribute('aria-disabled', 'true');
         await mapIdle(page);
-        const floor = await hashZoom(page);
+        // The press changes nothing at all: no flight Mapbox clamps back (it moved the map and rewrote the address).
+        const floor = await currentHash(page);
+        const camera = await cameras(page);
+        await countMoves(page);
         await pointerClick(page, zoomOut(page, lang));
         await page.keyboard.press('Enter');
         await mapIdle(page);
         await expect(zoomOut(page, lang)).toBeFocused();
-        expect(await hashZoom(page)).toBe(floor);
-        expect((await cameras(page))[0]?.zoom).toBeCloseTo(floor, 2);
+        expect(await countedMoves(page)).toBe(0);
+        expect(await currentHash(page)).toBe(floor);
+        expect(await cameras(page)).toEqual(camera);
     },
 );

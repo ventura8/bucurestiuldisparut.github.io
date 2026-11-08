@@ -52,7 +52,10 @@ describe('<hcm-map-viewer>: the zoom buttons', () => {
     it('badPath_atTheCityMaximumZoomInSaysItIsDisabled', async () => {
         const mounted = await atZoom(20);
 
+        await userEvent.click(page.getByRole('button', { name: 'Mărește harta' }), { force: true });
+
         expect([ariaDisabled(mounted, 0), ariaDisabled(mounted, 1)]).toEqual(['true', 'false']);
+        expect(mounted.store.callsOf('zoomBy')).toEqual([]);
     });
 
     it('badPath_atTheCityMinimumZoomOutSaysItIsDisabled', async () => {
@@ -145,6 +148,17 @@ describe('<hcm-map-viewer>: Zoom out at the bounds', () => {
         const mounted = await settledAt(10.64);
 
         expect([ariaDisabled(mounted, 0), ariaDisabled(mounted, 1)]).toEqual(['false', 'true']);
+    });
+
+    // Mapbox would clamp the flight back, but only after moving the map and rewriting the address: a press at the limit
+    // never reaches the store (the store knows only the city's minZoom, not the map's box).
+    it('badPath_aPressAtTheBoundsNeverReachesTheStore', async () => {
+        const mounted = await settledAt(10.64);
+
+        await userEvent.click(page.getByRole('button', { name: 'Micșorează harta' }), { force: true });
+        await userEvent.click(page.getByRole('button', { name: 'Mărește harta' }));
+
+        expect(mounted.store.callsOf('zoomBy')).toEqual([[1]]);
     });
 
     it('happyPath_aLittleAboveItZoomOutStaysEnabled', async () => {

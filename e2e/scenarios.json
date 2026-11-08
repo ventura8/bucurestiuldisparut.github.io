@@ -14775,7 +14775,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "At the city zoom limits the button says it is disabled, keeps the focus and changes nothing",
-            "asserts": "#20/...: Zoom in aria-disabled=true, a click and Enter leave the address and the camera at 20 with the focus on the button; #10/...: the same for Zoom out",
+            "asserts": "#20/...: Zoom in aria-disabled=true, a click and Enter leave the address and the camera at 20 with the focus on the button, and in forced colours its colour differs from the enabled Zoom out's; #10/...: a click and Enter on the soft-disabled Zoom out fire no map move and leave the whole address and the camera unchanged",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-08 (DECISIONS-for-review.md §115). Test: e2e/specs/viewer/zoom.spec.ts, packages/ui/test/viewer/viewer-zoom.test.ts, packages/engine/test/core/store-zoom.test.ts, packages/ui/test/components/icon-button.test.ts."

@@ -68,6 +68,28 @@ describe('<hcm-icon-button>', () => {
         expect(await axeViolations(button)).toEqual([]);
     });
 
+    // Forced colours override the color-mix dimming: the soft-disabled button turns GrayText as a disabled one does.
+    it('badPath_inForcedColoursASoftDisabledButtonIsGrayText', async () => {
+        const button = await fixture<HcmIconButton>(html`<hcm-icon-button soft-disabled icon="add" label="Zoom in"></hcm-icon-button>`);
+
+        const rules = (button.shadowRoot?.adoptedStyleSheets ?? []).flatMap((sheet) => [...sheet.cssRules]);
+        const forced = rules.filter((rule) => rule instanceof CSSMediaRule && rule.conditionText.includes('forced-colors: active'));
+        const inner = forced.flatMap((rule) => [...(rule as CSSMediaRule).cssRules]) as CSSStyleRule[];
+
+        expect(inner.find((rule) => rule.selectorText.includes('soft-disabled'))?.style.color).toBe('graytext');
+    });
+
+    it('badPath_aSoftDisabledButtonShowsNoHoverLayer', async () => {
+        const button = await fixture<HcmIconButton>(html`<hcm-icon-button soft-disabled icon="add" label="Zoom in"></hcm-icon-button>`);
+        const control = shadowPart(button, 'button');
+
+        await userEvent.hover(page.getByRole('button', { name: 'Zoom in' }));
+        await Promise.all(control.getAnimations({ subtree: true }).map((animation) => animation.finished));
+
+        expect(getComputedStyle(control, '::before').opacity).toBe('0');
+        expect(getComputedStyle(control).cursor).toBe('default');
+    });
+
     it('happyPath_softDisabledOffHasNoAriaDisabled', async () => {
         const button = await fixture<HcmIconButton>(html`<hcm-icon-button icon="add" label="Zoom in"></hcm-icon-button>`);
 

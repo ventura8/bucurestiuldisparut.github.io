@@ -8,16 +8,20 @@
  * the view inside `maxBounds`, so on most screens it stops there first (Bucharest: about 10.8 on a phone, 11.6 at 1440 px).
  */
 import { translate, type BBox, type Locale, type Manifest, type MapView } from '@hcm/shared';
-import { html, type TemplateResult } from 'lit';
+import { html, nothing, type TemplateResult } from 'lit';
 
-/** One button: its name is also its tooltip; at the limit it is soft-disabled. */
+/**
+ * One button: its name is also its tooltip; at the limit it is soft-disabled and its press never reaches the store (Zoom
+ * out's limit comes from the map's box, which the store does not know: Mapbox would clamp the flight back, but only after
+ * moving the map and rewriting the address).
+ */
 function zoomButton(label: string, icon: string, atLimit: boolean, onClick: () => void): TemplateResult {
     return html`<hcm-icon-button
         icon=${icon}
         .label=${label}
         title=${label}
         ?soft-disabled=${atLimit}
-        @click=${onClick}
+        @click=${atLimit ? nothing : onClick}
     ></hcm-icon-button>`;
 }
 
