@@ -14019,8 +14019,8 @@
             "behaviour": "A40",
             "area": "admin",
             "path": "bad",
-            "title": "An uploader's Home does not ask the count of every waiting story",
-            "asserts": "the city role uploader -> storiesToReview is not asked (the rules let an uploader read only their own stories, so the count would be refused and read as a dash): 0, nothing listed; owners, editors and moderators are asked",
+            "title": "An uploader is never shown or asked the count of every waiting story",
+            "asserts": "the city role uploader with a story of someone else waiting -> the address of Home opens Photos (an uploader has no Home): no What needs you, no Stories to review; the store does not ask storiesToReview for the role (the rules let an uploader read only their own stories, so the count would be refused and read as a dash)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The merge of track/stories with track/improve, 2026-11-08. Tests: e2e/admin/specs/ops/ops.spec.ts, packages/admin/test/home/home.test.ts."

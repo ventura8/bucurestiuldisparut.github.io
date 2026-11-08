@@ -127,9 +127,10 @@ test.describe('signed in as an admin who is not the owner', () => {
         await expect(page.getByRole('button', { name: contentText(lang, 'adminContent.admins.remove') })).toHaveCount(0);
     });
 
-    // The merge of M17 with M18 item 7: an uploader reads only their own stories, so Home never asks every waiting one.
+    // The merge of M17 with M18 item 7: an uploader reads only their own stories, and has no Home, so the count of every
+    // waiting story is never shown to or asked for them (the store does not ask it for the role either: home.test.ts).
     test(
-        "Home's What needs you leaves an uploader the stories to review",
+        "An uploader's address of Home opens Photos, with no What needs you and no stories to review",
         { tag: ['@S-A40-BAD-UPLOADER-NO-STORY-COUNT'] },
         async ({ page, lang, adminWorld }) => {
             const { emulators, accounts } = adminWorld;
@@ -143,12 +144,11 @@ test.describe('signed in as an admin who is not the owner', () => {
             });
             await emulators.updateFields(`admins/${accounts.admin.uid}`, { cities: { [PROJECT_CITY]: 'uploader' } }, ['cities']);
             await page.goto(adminPath(lang, 'home'));
-            const needs = page.getByRole('region', { name: shellText(lang, 'adminShell.home.needsYou') });
-            await expect(needs).toBeVisible();
-            await expect(needs).not.toContainText(shellText(lang, 'adminShell.home.counting'));
 
+            await expect(page.getByRole('heading', { level: 1, name: shellText(lang, 'adminShell.nav.photos') })).toBeVisible();
+            await expect(page.getByRole('region', { name: shellText(lang, 'adminShell.home.needsYou') })).toHaveCount(0);
             const label = shellText(lang, 'adminShell.home.count.storiesToReview');
-            await expect(needs.getByRole('link', { name: new RegExp(label) })).toHaveCount(0);
+            await expect(page.getByRole('link', { name: new RegExp(label) })).toHaveCount(0);
         },
     );
 });

@@ -216,6 +216,8 @@ export function homeState(overrides: Partial<HomeViewState> = {}): HomeViewState
                     skipped: [
                         { entity: 'layer', id: 'corona-1968', code: 'validation.required', path: 'attribution' },
                         { entity: 'poiCategory', id: 'piete', code: 'validation.value', path: '' },
+                        // M17: a story left out links to its editor too.
+                        { entity: 'story', id: 'teatrul', code: 'validation.required', path: 'body' },
                     ],
                     error: null,
                 },

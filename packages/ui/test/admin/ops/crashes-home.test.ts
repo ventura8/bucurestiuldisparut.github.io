@@ -151,13 +151,14 @@ describe('<hcm-home-page>', () => {
             ['error', 'Crash reports: not answering'],
         ]);
         expect(deepText(element)).toContain('The public map is up to date');
-        expect(deepText(element)).toContain('Items not on the public map: 2');
+        expect(deepText(element)).toContain('Items not on the public map: 3');
         // Not on the public map: each document with its first issue, a link to its editor (S-A38-BAD-SKIPPED-SHOWN).
         expect(
             deepAll(element, 'ul.skipped li').map((item) => [item.querySelector('a')?.getAttribute('href'), item.textContent.trim()]),
         ).toEqual([
             ['#/layers/corona-1968', expect.stringMatching(/^Layer corona-1968 · Attribution: /)],
             ['#/settings/categories/piete', expect.stringMatching(/^Category piete · /)],
+            ['#/stories/teatrul', expect.stringMatching(/teatrul · /)],
         ]);
         deep(element, '.pane > .actions hcm-button').click();
         expect(home.named('refresh')).toEqual(['refresh']);
