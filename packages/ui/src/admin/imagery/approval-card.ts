@@ -57,14 +57,19 @@ function pairsText(locale: Locale, version: VersionViewPort): TemplateResult {
     );
 }
 
-/** Delete this image? (`imagery.reject`): waiting for approval, and (M18 item 5) approved but stopped at the guard. */
-function deleteButton(context: ImageryContext, page: VersionPagePort): TemplateResult {
+/**
+ * Delete this image? (`imagery.reject`): waiting for approval, and (M18 item 5) approved but stopped at the guard. A recalibration of a
+ * published version (M16) asks about the new fit: the published one stays. One of a waiting version asks as any image does, since that
+ * version was cancelled once the new one was rendered.
+ */
+function deleteButton(context: ImageryContext, page: VersionPagePort, version: VersionViewPort): TemplateResult {
+    const question = version.recalibration !== null && page.current?.state === 'published' ? 'rejectRecalibration' : 'reject';
     return html`<hcm-button
         variant="outlined"
         icon="close"
         ?disabled=${busy(context, page)}
         @click=${() => {
-            context.ask('reject');
+            context.ask(question);
         }}
         >${contentText(context.locale, 'adminContent.imagery.reject')}</hcm-button
     >`;
@@ -92,7 +97,7 @@ function decision(context: ImageryContext, page: VersionPagePort, version: Versi
             }}
             >${contentText(locale, 'adminContent.imagery.approve')}</hcm-button
         >
-        ${deleteButton(context, page)}
+        ${deleteButton(context, page, version)}
     </div>`;
 }
 
@@ -131,7 +136,7 @@ export function approvalCard(context: ImageryContext, page: VersionPagePort, ver
             guard === null
                 ? decision(context, page, version)
                 : html`${lazyMapboxChoices(context, (chunk) => chunk.guarded(context, page, guard, version))}
-                      <div class="actions">${deleteButton(context, page)}</div>`
+                      <div class="actions">${deleteButton(context, page, version)}</div>`
         }
     </section>`;
 }

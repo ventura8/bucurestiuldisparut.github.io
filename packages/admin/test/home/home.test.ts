@@ -69,6 +69,7 @@ describe('the dashboard', () => {
             versionsNeedingPoints: 0,
             roleRequests: 0,
             suggestionsToReview: 0,
+            storiesToReview: 0,
         });
         expect(home.state.health.chips.map((chip) => [chip.area, chip.state])).toEqual([
             ['billing', 'ok'],
@@ -179,7 +180,7 @@ describe('the dashboard', () => {
 
 describe('the dashboard: what the role may count', () => {
     // Review of M18 item 7: a count the role may not read is not asked (no dash for it); a refused count stays a dash.
-    it('badPath_aCountTheRoleMayNotReadIsNotAsked_andARefusedOneStaysUnknown', async () => {
+    it('badPath_aCountTheRoleMayNotReadIsNotAsked_andARefusedOneStaysUnknown @S-A40-BAD-UPLOADER-NO-STORY-COUNT', async () => {
         const { services, store } = seeded();
         store.counts.set(FIRESTORE_PATHS.jobs(CITY), null);
         const moderator = HOME_MODULE.create({ ...services, cityRole: () => 'moderator' });
@@ -193,6 +194,8 @@ describe('the dashboard: what the role may count', () => {
 
         expect([moderator.state.counts?.roleRequests, moderator.state.counts?.suggestionsToReview]).toEqual([0, 0]);
         expect([uploader.state.counts?.roleRequests, uploader.state.counts?.suggestionsToReview]).toEqual([0, 0]);
+        // The merge of M17 with M18: an uploader is not asked every waiting story (the rules read only their own).
+        expect(uploader.state.counts?.storiesToReview).toBe(0);
         expect([unknown.state.counts?.roleRequests, unknown.state.counts?.failedJobs]).toEqual([null, null]);
         expect(moderator.state.counts?.failedJobs).toBeNull();
     });

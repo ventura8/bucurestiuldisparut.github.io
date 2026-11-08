@@ -37,6 +37,8 @@ const HOME_COUNTS = [
     // M18 item 7 (docs/research/M18-improvements.md): What needs you, with M13's role requests and suggestions (a count the
     // admin's role may not read, `READERS`, is not asked: nothing there for them, a zero; a count that failed is a dash, listed).
     ...['roleRequests', 'suggestionsToReview'],
+    // The merge of M17 with M18 item 7: an uploader's story waiting in the review queue needs a reviewer too.
+    'storiesToReview',
 ] as const;
 
 type HomeCount = (typeof HOME_COUNTS)[number];
@@ -55,12 +57,15 @@ const COUNT_QUERIES: Readonly<Record<HomeCount, { readonly collection: (cityId: 
     versionsNeedingPoints: { collection: FIRESTORE_PATHS.layerVersions, query: { where: [['state', '==', 'needs_gcps']] } },
     roleRequests: { collection: FIRESTORE_PATHS.roleRequests, query: { where: [['status', '==', 'pending']] } },
     suggestionsToReview: { collection: FIRESTORE_PATHS.suggestions, query: { where: [['status', '==', 'pending']] } },
+    storiesToReview: { collection: FIRESTORE_PATHS.stories, query: { where: [['reviewStatus', '==', 'pending']] } },
 };
 
 /** The counts the rules let only some roles read (`firestore.rules`: `isCityOwner`, `isCityReviewer`). */
 const READERS: Partial<Record<HomeCount, readonly CityRole[]>> = {
     roleRequests: ['owner'],
     suggestionsToReview: ['owner', 'editor', 'moderator'],
+    // An uploader reads only their own stories (`firestore.rules`), so a count of every waiting one would be refused.
+    storiesToReview: ['owner', 'editor', 'moderator'],
 };
 
 /** Whether `role` may read the count (a role not known yet asks; the rules answer). */

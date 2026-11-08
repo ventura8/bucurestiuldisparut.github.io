@@ -4,12 +4,24 @@
  * own waiting base on its layer; two starts on one waiting version are refused in the transaction; a join says honestly that it cannot be
  * calibrated again yet.
  */
-import { translateApiError, type Recalibration } from '@hcm/shared';
+import { JOBS_PER_DAY, translateApiError, type Recalibration } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { applyApprovalPolicy } from '../../src/imagery/approval.js';
 import { CURRENT, LAYER, WAITING, approve, codeOf, job, recalibrate, rendered, required, world } from './recalibrate-world.js';
-import { NOW, at, readJob, readLayer, readVersion, renderedVersion, seedJob, seedLayer, seedVersion, type ImageryWorld } from './world.js';
+import {
+    NOW,
+    at,
+    readJob,
+    readLayer,
+    readVersion,
+    renderedVersion,
+    seedGuard,
+    seedJob,
+    seedLayer,
+    seedVersion,
+    type ImageryWorld,
+} from './world.js';
 
 const SAVED = 'rg-saved-points';
 const BETTER: Pick<Recalibration, 'before' | 'after'> = { before: { rmseM: 15, checks: 6 }, after: { rmseM: 12, checks: 6 } };
@@ -151,5 +163,29 @@ describe('a joined layer', () => {
         const found = await world('published', { state: 'joined' });
 
         expect(await codeOf(recalibrate(found, {}))).toBe('apiError.imagery.versionState');
+    });
+});
+
+// The merge of M16 with M18 item 3: a recalibration renders a scan already here (a `regeoref`), so it is a re-run: never the day's
+// import limit, and stopped only while the budget guard is red.
+describe("a recalibration and the day's limit", () => {
+    it('happyPath_aRefineStartsAfterTheDaysImportsAreUsedUp @S-A89-HAPPY-FREE-OF-DAY-LIMIT', async () => {
+        const found = await world();
+        for (let index = 0; index < JOBS_PER_DAY; index += 1) {
+            const id = `today-${String(index)}`;
+            await seedJob(found, id, job({ layerId: `other-${String(index)}`, versionId: id }));
+        }
+
+        const { jobId } = await recalibrate(found, {});
+
+        expect(await readJob(found, jobId)).toMatchObject({ type: 'regeoref', status: 'queued' });
+    });
+
+    it('badPath_aRefineWhileTheBudgetGuardIsRedIsRefusedAndNothingIsWritten @S-A89-BAD-GUARD-RED', async () => {
+        const found = await world();
+        await seedGuard(found, 'red');
+
+        expect(await codeOf(recalibrate(found, {}))).toBe('apiError.guardPaused');
+        expect((await readLayer(found, LAYER))?.pendingVersion).toBeUndefined();
     });
 });

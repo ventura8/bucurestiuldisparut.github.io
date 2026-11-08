@@ -124,6 +124,7 @@ export const ro = {
     'adminShell.home.count.versionsNeedingPoints': 'Scanări care așteaptă puncte de georeferențiere',
     'adminShell.home.count.roleRequests': 'Cereri de rol de acceptat',
     'adminShell.home.count.suggestionsToReview': 'Sugestii de verificat',
+    'adminShell.home.count.storiesToReview': 'Povești de verificat',
     'adminShell.home.services': 'Servicii',
     'adminShell.home.openSetup': 'Deschide configurarea',
     'adminShell.home.area.billing': 'Facturare',

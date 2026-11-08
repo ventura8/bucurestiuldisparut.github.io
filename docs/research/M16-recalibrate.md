@@ -123,3 +123,9 @@ Every route of §0 is in, with the server, the pipeline, the admin and the stand
 - **A publish clears only its own pending mark** (§5): `finalize.ts`; `functions/test/imagery/publish.test.ts`.
 - **Two starts on one waiting version** (§5): `refining` on the waiting version, read in the start's transaction (`regeoref.ts`).
 - **The join's message** (§6) no longer advises a route that does not exist; **`refineUnmeasured`** (§3) names a refine with too few checks to compare.
+
+## 13. At the merge with the improvements (2026-11-08)
+
+- A recalibration is a `regeoref`, so it never counts against the day's import limit (M18 item 3); only a red budget guard stops it (`recalibrate-guards.test.ts`; S-A89-HAPPY-FREE-OF-DAY-LIMIT, S-A89-BAD-GUARD-RED).
+- Delete keeps the improvements' one word; on a recalibration of a published version the question and the notice say that only the new fit goes and the published version stays; of a waiting version, the question is any image's (S-A89-HAPPY-DELETE-NEW-FIT, S-A89-BAD-DELETE-WAITING-BASE; DECISIONS §104a).
+- Refine automatically and Snap my points show `tune` (the icon subset has no `auto_fix_high`).

@@ -194,6 +194,10 @@ export const ro = {
     'adminContent.imagery.confirm.approveWorse': 'O înlocuiești cu o potrivire care nu s-a dovedit mai bună?',
     'adminContent.imagery.confirm.approveWorseBody': 'Nu e mai bună pe aceleași verificări sau nu a fost măsurată.',
     'adminContent.imagery.confirm.approveWorseConfirm': 'Înlocuiește totuși',
+    // The merge of M16 and M18: Delete on a recalibration of a published version.
+    'adminContent.imagery.confirm.rejectRecalibration': 'Ștergi această potrivire nouă?',
+    'adminContent.imagery.confirm.rejectRecalibrationBody': 'Pleacă doar potrivirea nouă; versiunea publicată rămâne pe hartă.',
+    'adminContent.imagery.notice.rejectedRecalibration': 'Potrivirea nouă a fost ștearsă; versiunea publicată rămâne.',
     'adminContent.imagery.studio.download': '1. Descarcă fișierul',
     'adminContent.imagery.studio.open': '2. Deschide Mapbox Studio și încarcă-l ca set de dale',
     'adminContent.imagery.studio.done': '3. L-am încărcat',

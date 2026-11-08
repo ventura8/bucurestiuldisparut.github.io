@@ -160,3 +160,7 @@ Built on `track/stories` (2026-11-08), as designed above, with these details:
   `editor-texts` group (`packages/admin/vite.config.ts`), which brings it to 12.8 (DECISIONS §102).
 - **Left for later.** A story's AI translation draft; a picker for figures (the text names a photo by its id, which the photo's
   address in the admin shows); more languages; the Contribute page's "write a story" for someone without a role.
+
+## 11. At the merge with the improvements (2026-11-08)
+
+Home's *What needs you* (M18 item 7) lists the stories waiting in the review queue, *Stories to review*, a link to `#/review`; an uploader is not asked that count (S-A40-HAPPY-STORIES-TO-REVIEW, S-A40-BAD-UPLOADER-NO-STORY-COUNT; DECISIONS §104c).

@@ -81,12 +81,13 @@ describe('<hcm-home-page>', () => {
     afterEach(cleanup);
 
     // M18 item 7 (docs/research/M18-improvements.md): What needs you, each a link to where it is done.
-    it('happyPath_whatNeedsYouListsWhatWaitsForAPersonWithItsLink', async () => {
+    it('happyPath_whatNeedsYouListsWhatWaitsForAPersonWithItsLink @S-A40-HAPPY-STORIES-TO-REVIEW', async () => {
         const counts = {
             ...homeState().counts,
             versionsToApprove: 1,
             roleRequests: 2,
             suggestionsToReview: 3,
+            storiesToReview: 5,
             failedJobs: 4,
         } as HomeViewState['counts'];
         const { element } = await page(
@@ -102,6 +103,7 @@ describe('<hcm-home-page>', () => {
             ['#/imagery', '1 Historical images to approve'],
             ['#/review', '2 Role requests to accept'],
             ['#/review', '3 Suggestions to review'],
+            ['#/review', '5 Stories to review'],
             ['#/jobs', '4 Failed jobs'],
         ]);
     });

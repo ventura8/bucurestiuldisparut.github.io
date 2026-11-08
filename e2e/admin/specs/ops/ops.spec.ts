@@ -126,6 +126,31 @@ test.describe('signed in as an admin who is not the owner', () => {
         await expect(page.getByText(contentText(lang, 'adminContent.admins.selfNote'))).toBeVisible();
         await expect(page.getByRole('button', { name: contentText(lang, 'adminContent.admins.remove') })).toHaveCount(0);
     });
+
+    // The merge of M17 with M18 item 7: an uploader reads only their own stories, so Home never asks every waiting one.
+    test(
+        "Home's What needs you leaves an uploader the stories to review",
+        { tag: ['@S-A40-BAD-UPLOADER-NO-STORY-COUNT'] },
+        async ({ page, lang, adminWorld }) => {
+            const { emulators, accounts } = adminWorld;
+            await seedCity(projectCity(emulators, accounts.owner.uid), AT);
+            await emulators.setDocument(`cities/${PROJECT_CITY}/stories/teatrul`, {
+                title: { ro: 'Teatrul Național' },
+                published: false,
+                reviewStatus: 'pending',
+                updatedBy: accounts.owner.uid,
+                updatedAt: AT,
+            });
+            await emulators.updateFields(`admins/${accounts.admin.uid}`, { cities: { [PROJECT_CITY]: 'uploader' } }, ['cities']);
+            await page.goto(adminPath(lang, 'home'));
+            const needs = page.getByRole('region', { name: shellText(lang, 'adminShell.home.needsYou') });
+            await expect(needs).toBeVisible();
+            await expect(needs).not.toContainText(shellText(lang, 'adminShell.home.counting'));
+
+            const label = shellText(lang, 'adminShell.home.count.storiesToReview');
+            await expect(needs.getByRole('link', { name: new RegExp(label) })).toHaveCount(0);
+        },
+    );
 });
 
 test(
@@ -215,7 +240,7 @@ test(
 // M18 item 7 (docs/research/M18-improvements.md): What needs you, each item a link to where it is done.
 test(
     'Home says what needs you, each a link to where it is done, and says when nothing does',
-    { tag: ['@S-A40-HAPPY-NEEDS-YOU', '@S-A40-BAD-NOTHING-NEEDS-YOU'] },
+    { tag: ['@S-A40-HAPPY-NEEDS-YOU', '@S-A40-BAD-NOTHING-NEEDS-YOU', '@S-A40-HAPPY-STORIES-TO-REVIEW'] },
     async ({ page, lang, adminWorld }) => {
         const city = projectCity(adminWorld.emulators, adminWorld.accounts.owner.uid);
         await seedCity(city, AT);
@@ -227,6 +252,17 @@ test(
         await page.getByRole('button', { name: shellText(lang, 'adminShell.home.refresh') }).click();
         const stuck = needs.getByRole('link', { name: new RegExp(`1\\s+${shellText(lang, 'adminShell.home.count.failedJobs')}`) });
         await expect(stuck).toBeVisible();
+        // The merge of M17 with M18: an uploader's story waiting in the review queue is listed too, a link to the queue.
+        await adminWorld.emulators.setDocument(`cities/${PROJECT_CITY}/stories/teatrul`, {
+            title: { ro: 'Teatrul Național' },
+            published: false,
+            reviewStatus: 'pending',
+            updatedBy: city.uid,
+            updatedAt: AT,
+        });
+        await page.getByRole('button', { name: shellText(lang, 'adminShell.home.refresh') }).click();
+        const story = needs.getByRole('link', { name: new RegExp(`1\\s+${shellText(lang, 'adminShell.home.count.storiesToReview')}`) });
+        await expect(story).toHaveAttribute('href', '#/review');
         await expectStateSound(page, adminVisit('home.dashboard', lang));
         await stuck.click();
         await expect(page).toHaveURL(/#\/jobs$/);

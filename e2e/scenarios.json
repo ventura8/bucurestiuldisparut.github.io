@@ -13891,7 +13891,7 @@
             "asserts": "a frame on its way to a publish, or a new rendition on its layer -> apiError.imagery.joinLayerBusy (the layer is processed or published now; Join when it ends), nothing created",
             "tier": "functions",
             "status": "exists",
-            "notes": "M18 (docs/research/M18-improvements.md item 4, the owner 2026-11-08). Tests: functions/test/imagery/join.test.ts, packages/admin/test/imagery/join.test.ts."
+            "notes": "M18 (docs/research/M18-improvements.md item 4, the owner 2026-11-08). Tests: functions/test/imagery/join.test.ts, packages/admin/test/imagery/join.test.ts, e2e/admin/specs/imagery/join-wait.spec.ts (the refusal in words beside Join frames, through the Functions emulator)."
         },
         {
             "id": "S-A65-HAPPY-JOIN-WHEN-FREE",
@@ -13901,8 +13901,8 @@
             "title": "Join when it ends starts the join by itself once the layer is free",
             "asserts": "the busy refusal in the snackbar with Join when it ends -> waiting, said beside Join frames -> every minute imagery.join again while the admin is open -> once free the join starts and the snackbar says so; another refusal ends the wait and is said",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "M18 (docs/research/M18-improvements.md item 4, the owner 2026-11-08). Today: packages/admin/test/imagery/join.test.ts only (the e2e world has no seed for a frame published on a busy layer yet)."
+            "status": "exists",
+            "notes": "M18 (docs/research/M18-improvements.md item 4, the owner 2026-11-08). Tests: e2e/admin/specs/imagery/join-wait.spec.ts (a frame published on its own layer, a job still running on that layer seeded in the emulators, the page's clock moved on a minute at a time; built at the merge of 2026-11-08), packages/admin/test/imagery/join.test.ts."
         },
         {
             "id": "S-A33-HAPPY-ONE-DELETE",
@@ -14002,6 +14002,28 @@
             "tier": "e2e-admin",
             "status": "planned",
             "notes": "Review of M18 item 7 (2026-11-08). Tested by packages/ui/test/admin/ops/crashes-home.test.ts and packages/admin/test/home/home.test.ts only: the e2e world cannot make one count fail."
+        },
+        {
+            "id": "S-A40-HAPPY-STORIES-TO-REVIEW",
+            "behaviour": "A40",
+            "area": "admin",
+            "path": "happy",
+            "title": "What needs you lists the stories waiting in the review queue, a link to it",
+            "asserts": "an uploader's story with reviewStatus pending -> Refresh on Home -> What needs you lists 1 Stories to review, a link to #/review, beside the suggestions to review",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The merge of track/stories (M17, the review queue's stories) with track/improve (M18 item 7), 2026-11-08. Tests: e2e/admin/specs/ops/ops.spec.ts, packages/ui/test/admin/ops/crashes-home.test.ts."
+        },
+        {
+            "id": "S-A40-BAD-UPLOADER-NO-STORY-COUNT",
+            "behaviour": "A40",
+            "area": "admin",
+            "path": "bad",
+            "title": "An uploader's Home does not ask the count of every waiting story",
+            "asserts": "the city role uploader -> storiesToReview is not asked (the rules let an uploader read only their own stories, so the count would be refused and read as a dash): 0, nothing listed; owners, editors and moderators are asked",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The merge of track/stories with track/improve, 2026-11-08. Tests: e2e/admin/specs/ops/ops.spec.ts, packages/admin/test/home/home.test.ts."
         },
         {
             "id": "S-A69-BAD-AUTO-RELOCATE-PLACING",
@@ -14398,6 +14420,50 @@
             "tier": "functions",
             "status": "exists",
             "notes": "M16 (docs/research/M16-recalibrate.md). Tests: functions/test/imagery/recalibrate.test.ts."
+        },
+        {
+            "id": "S-A89-HAPPY-DELETE-NEW-FIT",
+            "behaviour": "A89",
+            "area": "admin",
+            "path": "happy",
+            "title": "Delete on a recalibration of a published layer asks about the new fit, and the published version stays",
+            "asserts": "a recalibration whose current version is published -> Delete (the one word of M18 item 5) -> Delete this new fit? Only the new fit goes; the published version stays on the map. -> imagery.reject of the new version only -> the notice The new fit was deleted; the published version stays.",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The merge of track/recal (M16) with track/improve (M18 item 5), 2026-11-08. Tests: e2e/admin/specs/imagery/recalibrate.spec.ts, packages/ui/test/admin/imagery/recalibrate.test.ts, packages/admin/test/imagery/recalibrate.test.ts."
+        },
+        {
+            "id": "S-A89-BAD-DELETE-WAITING-BASE",
+            "behaviour": "A89",
+            "area": "admin",
+            "path": "bad",
+            "title": "A recalibration of a version that was waiting is deleted as any image, since its base was replaced",
+            "asserts": "a recalibration whose base was waiting for approval (cancelled once the new one rendered) -> Delete -> Delete this image? with Delete, imagery.reject, the notice The image was deleted.; never a promise that a published version stays",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The merge of track/recal (M16) with track/improve (M18 item 5), 2026-11-08. Tests: e2e/admin/specs/imagery/recalibrate.spec.ts (the refine of a waiting version), packages/ui/test/admin/imagery/recalibrate.test.ts, packages/admin/test/imagery/recalibrate.test.ts."
+        },
+        {
+            "id": "S-A89-HAPPY-FREE-OF-DAY-LIMIT",
+            "behaviour": "A89",
+            "area": "admin",
+            "path": "happy",
+            "title": "Calibrate again is a re-run: it starts after the day's imports are used up",
+            "asserts": "JOBS_PER_DAY imports already created today -> Refine automatically on a published layer -> a regeoref job queued; a recalibration never counts against the day's limit (it brings no new imagery in)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The merge of track/recal (M16) with track/improve (M18 item 3: only usgs-import, geotiff-import and layer-join count), 2026-11-08. Test: functions/test/imagery/recalibrate-guards.test.ts."
+        },
+        {
+            "id": "S-A89-BAD-GUARD-RED",
+            "behaviour": "A89",
+            "area": "admin",
+            "path": "bad",
+            "title": "Calibrate again is refused while the budget guard is red",
+            "asserts": "the budget guard red -> imagery.recalibrate answers apiError.guardPaused; no new version, the layer holds no pending version",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The merge of track/recal with track/improve, 2026-11-08. Test: functions/test/imagery/recalibrate-guards.test.ts."
         },
         {
             "id": "S-P19-HAPPY-REFINE",

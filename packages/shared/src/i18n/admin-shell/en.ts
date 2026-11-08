@@ -121,6 +121,7 @@ export const en: AdminShellMessages = {
     'adminShell.home.count.versionsNeedingPoints': 'Scans waiting for georeferencing points',
     'adminShell.home.count.roleRequests': 'Role requests to accept',
     'adminShell.home.count.suggestionsToReview': 'Suggestions to review',
+    'adminShell.home.count.storiesToReview': 'Stories to review',
     'adminShell.home.services': 'Services',
     'adminShell.home.openSetup': 'Open Setup',
     'adminShell.home.area.billing': 'Billing',

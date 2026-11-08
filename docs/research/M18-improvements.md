@@ -69,8 +69,9 @@ snackbar; chosen, it says it waits and asks `imagery.join` again every `JOIN_WAI
 at most `JOIN_WAIT_TRIES` (two hours). Once the layer is free the join starts by itself and the snackbar says so; any
 other refusal ends the wait and is said. The area's end stops the wait.
 
-**Rows.** S-A65-BAD-JOIN-LAYER-BUSY; S-A65-HAPPY-JOIN-WHEN-FREE is `planned` (tested by
-`packages/admin/test/imagery/join.test.ts` only: the e2e world has no seed yet for a frame published on a busy layer).
+**Rows.** S-A65-BAD-JOIN-LAYER-BUSY, S-A65-HAPPY-JOIN-WHEN-FREE (`e2e/admin/specs/imagery/join-wait.spec.ts`, built at
+the merge of 2026-11-08: a frame published as its own layer, a job still running on that layer seeded in the emulators,
+the page's clock moved on a minute at a time; and `packages/admin/test/imagery/join.test.ts`).
 
 ## 5. One Delete for an image at every stage
 
@@ -82,6 +83,9 @@ so the version read *Cancelled*), and an image stopped at the guard is offered D
 none).
 
 **Rows.** S-A33-HAPPY-ONE-DELETE.
+
+**At the merge with recal (2026-11-08).** A recalibration of a published version keeps the word Delete, but its question
+says only the new fit goes and the published version stays (S-A89-HAPPY-DELETE-NEW-FIT, S-A89-BAD-DELETE-WAITING-BASE).
 
 ## 6. The viewer's Layers groups and the admin's pointer to Place categories
 
@@ -103,6 +107,9 @@ requests for anyone but the owner, suggestions for an uploader) is not asked: no
 nothing to do. The counts are Firestore aggregations, one read per thousand.
 
 **Rows.** S-A40-HAPPY-NEEDS-YOU, S-A40-BAD-NOTHING-NEEDS-YOU, S-A40-BAD-COUNT-UNREAD-SHOWN (`planned`: unit tests only).
+
+**At the merge with stories (2026-11-08).** What needs you also lists *Stories to review* (M17's stories waiting in the
+review queue), not asked for an uploader: S-A40-HAPPY-STORIES-TO-REVIEW, S-A40-BAD-UPLOADER-NO-STORY-COUNT.
 
 ## 8. The public map without WebGL
 

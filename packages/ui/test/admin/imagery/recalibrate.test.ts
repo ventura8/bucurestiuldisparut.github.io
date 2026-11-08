@@ -126,6 +126,34 @@ describe('<hcm-imagery-page>: calibrate again', () => {
         expect(mounted.app.named('navigate')).toEqual([]);
     });
 
+    /** Delete on a recalibration, then the dialog's words and the call. */
+    async function deleted(current: VersionViewPort) {
+        const { element, area } = await shown(versionView({ recalibration: BETTER, basedOn: 'job-current' }), current);
+        click(button(element, 'Delete'));
+        await updated(element);
+        const dialog = deep(element, 'hcm-confirm-dialog') as HTMLElement & { headline: string; body: string; confirmLabel: string };
+        const words = [dialog.headline, dialog.body, dialog.confirmLabel];
+        click(deep(dialog, '.confirm'));
+        await updated(element);
+        return { words, calls: calls(area) };
+    }
+
+    // The merge of M16 with M18 item 5: the one Delete, and a question that says what goes and what stays.
+    it('happyPath_deleteOnARecalibrationOfAPublishedVersionAsksAboutTheNewFitOnly @S-A89-HAPPY-DELETE-NEW-FIT', async () => {
+        const { words, calls: made } = await deleted(versionView({ id: 'job-current', state: 'published' }));
+
+        expect(words).toEqual(['Delete this new fit?', 'Only the new fit goes; the published version stays on the map.', 'Delete']);
+        expect(made).toEqual(['reject']);
+    });
+
+    it('badPath_aRecalibrationOfAWaitingVersionIsDeletedAsAnyImageItsBaseWasReplaced @S-A89-BAD-DELETE-WAITING-BASE', async () => {
+        const { words, calls: made } = await deleted(versionView({ id: 'job-current', state: 'cancelled' }));
+
+        expect(words[0]).toBe('Delete this image?');
+        expect(words[2]).toBe('Delete');
+        expect(made).toEqual(['reject']);
+    });
+
     it('happyPath_theRoughPointsRouteSaysWhatItFoundAroundThem @S-A89-HAPPY-POINTS', async () => {
         const recalibration = { ...BETTER, route: 'points' as const, proposed: 14 };
         const { element } = await shown(versionView({ recalibration, basedOn: 'job-current' }));

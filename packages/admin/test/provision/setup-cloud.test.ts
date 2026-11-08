@@ -127,7 +127,7 @@ describe('createSetupCloud', () => {
         // the events probe; M7: the local worker's 5 and imagery.runOn; finding 67: worker.pair, pairCode and revoke;
         // finding 72: worker.image; finding 73: worker.starter; imagery.locateAgain; M12: imagery.previewUrl;
         // M13: the roles' and review's 7; M16: imagery.recalibrate; M17: the stories' 2); the fake deploys a third of them.
-        expect(partial).toEqual({ ready: 30, total: 93, failed: [] });
+        expect(partial).toEqual({ ready: 31, total: 93, failed: [] });
         expect(failed).toEqual({ ready: 92, total: 93, failed: ['admin-session'] });
         expect(deployed).toEqual({ ready: 93, total: 93, failed: [] });
     });

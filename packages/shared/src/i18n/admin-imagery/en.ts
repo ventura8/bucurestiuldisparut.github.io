@@ -192,6 +192,10 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.confirm.approveWorse': 'Replace it with a fit not shown better?',
     'adminContent.imagery.confirm.approveWorseBody': 'Not better on the same checks, or not measured: replace only if you choose.',
     'adminContent.imagery.confirm.approveWorseConfirm': 'Replace anyway',
+    // The merge of M16 and M18: Delete on a recalibration of a published version.
+    'adminContent.imagery.confirm.rejectRecalibration': 'Delete this new fit?',
+    'adminContent.imagery.confirm.rejectRecalibrationBody': 'Only the new fit goes; the published version stays on the map.',
+    'adminContent.imagery.notice.rejectedRecalibration': 'The new fit was deleted; the published version stays.',
     'adminContent.imagery.studio.download': '1. Download the file',
     'adminContent.imagery.studio.open': '2. Open Mapbox Studio and upload it as a tileset',
     'adminContent.imagery.studio.done': '3. I uploaded it',

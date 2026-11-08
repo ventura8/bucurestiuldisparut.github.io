@@ -72,6 +72,13 @@ const QUESTIONS = {
         body: 'adminContent.imagery.confirm.approveWorseBody',
         confirm: 'adminContent.imagery.confirm.approveWorseConfirm',
     },
+    // The merge of M16 and M18: a recalibration of a published layer is deleted with the same Delete, but the question says what
+    // goes (the new fit) and what stays (the published version), not "this image".
+    rejectRecalibration: {
+        headline: 'adminContent.imagery.confirm.rejectRecalibration',
+        body: 'adminContent.imagery.confirm.rejectRecalibrationBody',
+        confirm: 'adminContent.imagery.reject',
+    },
 } as const;
 
 class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
@@ -286,6 +293,7 @@ function answers(intents: ImageryIntentsPort | null): Readonly<Record<ImageryQue
         pay: () => void intents?.choose('pay' satisfies PublishChoice),
         cancel: () => void intents?.cancelJob(),
         drop: () => void intents?.reject(),
+        rejectRecalibration: () => void intents?.reject(),
         resume: () => void intents?.resumeGuard(),
         approveWorse: () => void intents?.approve(true),
     };

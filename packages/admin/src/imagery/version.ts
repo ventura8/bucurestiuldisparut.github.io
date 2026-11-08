@@ -14,6 +14,7 @@ import {
     tilesetName,
     usageDocSchema,
     usageMonth,
+    type AdminContentKey,
     type JobDoc,
     type JobLogDoc,
     type LayerVersionDoc,
@@ -207,10 +208,19 @@ export class VersionPage {
 
     /** Rejects a waiting version, or dismisses a failed one (the same call: CR-M3-47). */
     reject(): Promise<boolean> {
-        const failed = this.#state?.version.doc?.data.state === 'failed';
-        return this.#act('reject', 'imagery.reject', (id) => ({ cityId: this.#services.cityId, versionId: id }), {
-            key: failed ? 'adminContent.imagery.notice.dismissed' : 'adminContent.imagery.notice.rejected',
-        });
+        const notice = { key: this.#rejectNotice() };
+        return this.#act('reject', 'imagery.reject', (id) => ({ cityId: this.#services.cityId, versionId: id }), notice);
+    }
+
+    /** M16 with M18: a recalibration of a published version leaves that one on the map, and the notice says so. */
+    #rejectNotice(): AdminContentKey {
+        const version = this.#state?.version.doc?.data;
+        if (version?.state === 'failed') {
+            return 'adminContent.imagery.notice.dismissed';
+        }
+        const current = version?.recalibration === null ? null : this.#state?.current;
+        const ofPublished = current?.state === 'published';
+        return ofPublished ? 'adminContent.imagery.notice.rejectedRecalibration' : 'adminContent.imagery.notice.rejected';
     }
 
     choose(choice: PublishChoice): Promise<boolean> {

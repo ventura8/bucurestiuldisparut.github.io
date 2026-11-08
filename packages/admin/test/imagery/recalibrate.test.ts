@@ -78,6 +78,27 @@ describe('the version page: recalibrating', () => {
         expect(state()?.showing).toBe('new');
     });
 
+    // The merge of M16 with M18 item 5: deleting a recalibration says the published version stays; of a waiting one, as any image.
+    it.each([
+        ['published', 'adminContent.imagery.notice.rejectedRecalibration'],
+        ['cancelled', 'adminContent.imagery.notice.rejected'],
+    ] as const)(
+        'happyPath_deleteOfARecalibrationOn_%s @S-A89-HAPPY-DELETE-NEW-FIT @S-A89-BAD-DELETE-WAITING-BASE',
+        async (base, notice) => {
+            const { version, store, callables, notices } = page();
+            store.docs.set(VERSIONS(CURRENT), versionDoc(base === 'published' ? { state: base, own: OWN } : { state: base }));
+            store.docs.set(VERSIONS(NEW), versionDoc({ jobId: NEW, origin: 'regeoref', basedOn: CURRENT, recalibration: RECALIBRATED }));
+            answer(callables, 'imagery.reject', () => ({ state: 'rejected' }));
+            version.show(NEW);
+            await settle();
+
+            await expect(version.reject()).resolves.toBe(true);
+
+            expect(callsOf(callables, 'imagery.reject')).toEqual([{ cityId: CITY, versionId: NEW }]);
+            expect(notices.map((shown) => shown.key)).toEqual([notice]);
+        },
+    );
+
     it('badPath_anyOtherVersionHasNoCurrentToSwapTo', () => {
         const { version, store, state } = page();
         store.docs.set(VERSIONS(CURRENT), versionDoc({ basedOn: 'job-older' }));

@@ -44,6 +44,10 @@ export const JOIN_STATES = {
         title: "Historical imagery: Join frames refused by today's limit, why, beside the button; nothing was created",
         visit: 'specs/imagery/join.spec.ts',
     },
+    'imagery.join-waiting-free': {
+        title: 'Historical imagery: Join frames refused for a busy layer, then waiting for it to end, said beside the button',
+        visit: 'specs/imagery/join-wait.spec.ts',
+    },
     'imagery.join-failed': {
         title: 'Historical imagery: a join whose frames lie too far apart failed, why, each frame linking the georeferencer',
         visit: 'specs/imagery/join.spec.ts',

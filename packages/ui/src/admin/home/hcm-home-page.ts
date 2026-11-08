@@ -54,6 +54,8 @@ const NEEDS: readonly Tile[] = [
     { count: 'versionsToApprove', href: '#/imagery' },
     { count: 'roleRequests', href: '#/review' },
     { count: 'suggestionsToReview', href: '#/review' },
+    // The merge of M17 (stories) with M18: an uploader's story waits in the same review queue.
+    { count: 'storiesToReview', href: '#/review' },
     { count: 'failedJobs', href: '#/jobs' },
 ];
 

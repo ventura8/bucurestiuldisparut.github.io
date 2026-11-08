@@ -2707,3 +2707,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: code review; the tests checked the codes, not what the words promise.
     - Fix and pin: the join's words promise no route; a new code `refineUnmeasured` (`recalibrate-guards.test.ts`, `test_recalibrate.py`).
     - **An error's words are a contract too: each refusal says the true reason, and advice names only a path a test walks.**
+454. **Two tracks reached the merge with gates their own trees failed again, and a count's arithmetic moved with the registry.**
+    - Seen: 2026-11-08, the merge of track/improve, track/stories and track/recal: recal's two buttons used `auto_fix_high`, a glyph the icon subset does not hold (the `fonts` gate), and its Romanian `apiError.imagery.refineUnmeasured` took two lines (the `i18n` gate); the merged registry of 93 functions made the fake's "a third of them deployed" 31, not 30; `packages/shared/src/index.ts` crossed 400 lines with the three tracks' exports.
+    - Cause: the track ran its own `tests` and `build` but not its `static` stage after its last strings; the deployment test hard-coded a third of the count it was written for.
+    - Found by: the `static` and `tests` stages on the NUC after the merges. Fix: `tune` (bundled), one-line Romanian, the expected third recomputed, two export pairs joined.
+    - **A track runs `static` after its last edit, strings included; a test that derives a number from a registry's size states the derivation, so the next merge recomputes it instead of guessing.**
