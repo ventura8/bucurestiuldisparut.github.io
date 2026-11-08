@@ -245,7 +245,12 @@ export {
     layerVersionDocSchema,
     regeorefParamsSchema,
     republishParamsSchema,
+    isSideJob,
+    layerTilesParamsSchema,
     runsOnPipeline,
+    SIDE_JOB_TYPES,
+    versionTilesSchema,
+    type VersionTiles,
     usgsImportParamsSchema,
 } from './schemas/imagery.js';
 export type {
@@ -282,9 +287,10 @@ export {
     RASTER_UPLOAD_MAX_BYTES,
     REFERENCE_KINDS,
     VERSION_FILES,
+    isOwnTiles,
     parseRasterUploadPath,
 } from './schemas/imagery-paths.js';
-export type { RasterUpload, ReferenceKind, VersionFile } from './schemas/imagery-paths.js';
+export type { RasterUpload, ReferenceKind, VersionFile, VersionTilesPaths } from './schemas/imagery-paths.js';
 // M4 (docs/research/M4-interfaces.md): buying a scan, automatic GCP suggestions, the assists, notifications (every export
 // of these modules is public; `test/index.test.ts` lists them).
 export * from './schemas/usgs-order.js';

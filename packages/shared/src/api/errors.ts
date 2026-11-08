@@ -144,6 +144,8 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.studioNotFound': spec('not-found'),
     'apiError.imagery.mtsRefused': spec('failed-precondition'),
     'apiError.imagery.sourceTooLarge': spec('failed-precondition'),
+    'apiError.imagery.tilesMissing': spec('failed-precondition'),
+    'apiError.imagery.tilesGone': spec('failed-precondition'),
     'apiError.imagery.tilesNotFound': spec('not-found'),
     'apiError.imagery.tilesNotImage': spec('invalid-argument'),
     'apiError.imagery.tilesUnreachable': spec('unavailable'),

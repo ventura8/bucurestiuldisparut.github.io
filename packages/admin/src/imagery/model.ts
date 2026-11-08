@@ -150,6 +150,8 @@ export interface VersionItem {
     readonly partOf: string | null;
     /** M8: the USGS frames it is made of: a frame's own, a join's all, none for an upload. */
     readonly entityIds: readonly string[];
+    /** M12: the small picture Work's waiting row shows (null: none yet). */
+    readonly thumbPath: string | null;
 }
 
 /** The USGS frames a version's source names. */
@@ -180,6 +182,7 @@ export function versionItemOf(doc: Stored<LayerVersionDoc>): VersionItem {
         checkpointRmseM: orNull(version.georef?.checkpointRmseM),
         partOf: orNull(version.partOf),
         entityIds: entityIdsOf(version.source),
+        thumbPath: orNull(version.output?.tiles?.thumbPath),
     };
 }
 

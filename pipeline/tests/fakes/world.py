@@ -237,7 +237,18 @@ class PipelineWorld:
         return found
 
     def seed_city(self) -> None:
-        city = {"name": {"ro": "București", "en": "Bucharest"}, "bounds": city_bounds(), "published": True, **stamp_of(NOW - 9000)}
+        """A city on Mapbox's path, the COG and the Studio file written; `seed_own_city` is the default since M12."""
+        self.seed_own_city(publish_through_mapbox=True)
+
+    def seed_own_city(self, publish_through_mapbox: bool = False) -> None:
+        imagery = {"publishThroughMapbox": True} if publish_through_mapbox else {}
+        city = {
+            "name": {"ro": "București", "en": "Bucharest"},
+            "bounds": city_bounds(),
+            "published": True,
+            "imagery": imagery,
+            **stamp_of(NOW - 9000),
+        }
         self.store.seed(f"cities/{CITY}", city)
 
     def seed_scene(self) -> None:

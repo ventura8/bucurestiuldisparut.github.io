@@ -50,6 +50,28 @@ function autoPublishRow(context: SectionContext, city: CityDoc): TemplateResult 
     </div>`;
 }
 
+/** M12 (`docs/research/M12-own-tiles.md`): off, the default: a layer's tiles come from the city's own public bucket. */
+function mapboxPathRow(context: SectionContext, city: CityDoc): TemplateResult {
+    const { locale } = context;
+    const label = contentText(locale, 'adminContent.imagery.settings.throughMapbox');
+    return html`<div class="switch-row">
+            <span aria-hidden="true">${label}</span>
+            <hcm-switch
+                .checked=${imagerySettingsOf(city.imagery).publishThroughMapbox}
+                ?disabled=${context.readOnly}
+                label=${label}
+                @hcm-change=${(event: Event) => {
+                    edit(context, city.imagery, { publishThroughMapbox: (event as CustomEvent<{ checked: boolean }>).detail.checked });
+                }}
+            ></hcm-switch>
+        </div>
+        <p class="note">
+            ${contentText(locale, 'adminContent.imagery.settings.throughMapboxOff')}
+            ${contentText(locale, 'adminContent.imagery.settings.throughMapboxOn')}
+            ${contentText(locale, 'adminContent.imagery.settings.throughMapboxStays')}
+        </p>`;
+}
+
 function thresholdField(context: SectionContext, city: CityDoc, issues: readonly ValidationIssue[]): TemplateResult {
     const { locale } = context;
     const range = { min: String(RMSE_THRESHOLD_RANGE.min), max: String(RMSE_THRESHOLD_RANGE.max) };
@@ -146,7 +168,7 @@ export function imagerySection(context: SectionContext): TemplateResult {
         <p class="note">${contentText(locale, 'adminContent.imagery.settings.note')}</p>
         <section class="group">
             <h3>${contentText(locale, 'adminContent.imagery.settings.publishing')}</h3>
-            ${autoPublishRow(context, city)} ${thresholdField(context, city, issues)}
+            ${autoPublishRow(context, city)} ${thresholdField(context, city, issues)} ${mapboxPathRow(context, city)}
         </section>
         ${yearsGroup(context, city, issues)}`;
 }

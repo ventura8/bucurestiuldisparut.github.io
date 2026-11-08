@@ -227,6 +227,13 @@
             "source": "docs/ENGINE_API.md -> Map labels; the owner's request of 2026-11-07"
         },
         {
+            "id": "V32",
+            "area": "viewer",
+            "name": "A layer's tiles from the project's own bucket",
+            "milestone": "M12",
+            "source": "the owner, 2026-11-07: \"i want to see the satelite images i aprove!!! build this into our app!!!\"; docs/research/M12-own-tiles.md"
+        },
+        {
             "id": "A00",
             "area": "admin",
             "name": "Admin e2e harness",
@@ -764,6 +771,55 @@
             "name": "Locate again a frame waiting for points",
             "milestone": "M9",
             "source": "the owner's live use, 2026-11-07: a frame parked under an older pipeline could only be cancelled and imported again"
+        },
+        {
+            "id": "A70",
+            "area": "admin",
+            "name": "Publishing from the project's own bucket after Approve or the policy",
+            "milestone": "M12",
+            "source": "the owner, 2026-11-07: \"i want to see the satelite images i aprove!!! build this into our app!!!\"; docs/research/M12-own-tiles.md"
+        },
+        {
+            "id": "A71",
+            "area": "admin",
+            "name": "What waited or has no tiles finds its way to own tiles",
+            "milestone": "M12",
+            "source": "the owner, 2026-11-07: \"i want to see the satelite images i aprove!!! build this into our app!!!\"; docs/research/M12-own-tiles.md"
+        },
+        {
+            "id": "A72",
+            "area": "admin",
+            "name": "What own tiles leave behind goes",
+            "milestone": "M12",
+            "source": "the owner, 2026-11-07: \"i want to see the satelite images i aprove!!! build this into our app!!!\"; docs/research/M12-own-tiles.md"
+        },
+        {
+            "id": "A73",
+            "area": "admin",
+            "name": "What publishing a layer costs, in the owner's words, and the setting that keeps Mapbox",
+            "milestone": "M12",
+            "source": "the owner, 2026-11-07: \"i want to see the satelite images i aprove!!! build this into our app!!!\"; docs/research/M12-own-tiles.md"
+        },
+        {
+            "id": "A74",
+            "area": "admin",
+            "name": "The owner sees exactly what they approve",
+            "milestone": "M12",
+            "source": "the owner, 2026-11-07: \"i want to see the satelite images i aprove!!! build this into our app!!!\"; docs/research/M12-own-tiles.md"
+        },
+        {
+            "id": "A75",
+            "area": "admin",
+            "name": "Work's waiting rows show their pictures",
+            "milestone": "M12",
+            "source": "the owner, 2026-11-07: \"i want to see the satelite images i aprove!!! build this into our app!!!\"; docs/research/M12-own-tiles.md"
+        },
+        {
+            "id": "P08",
+            "area": "pipeline",
+            "name": "A layer version's own tiles from the pipeline",
+            "milestone": "M12",
+            "source": "the owner, 2026-11-07: \"i want to see the satelite images i aprove!!! build this into our app!!!\"; docs/research/M12-own-tiles.md"
         }
     ],
     "scenarios": [
@@ -2669,6 +2725,39 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Code review of 2026-11-07. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts."
+        },
+        {
+            "id": "S-V32-HAPPY-OWN-TILES",
+            "behaviour": "V32",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A layer in the project's own bucket shows its tiles over the basemap, read by range",
+            "asserts": "a pmtiles source -> the archive's colour on the map, its attribution, every read a Range, no Mapbox tileset or provider script asked for",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/specs/viewer/own-tiles.spec.ts."
+        },
+        {
+            "id": "S-V32-HAPPY-HOLE",
+            "behaviour": "V32",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A tile the archive leaves out is no request and no error",
+            "asserts": "a view past the archive's tiles -> only the first read, the basemap, no toast",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/specs/viewer/own-tiles.spec.ts."
+        },
+        {
+            "id": "S-V32-BAD-NO-RANGE",
+            "behaviour": "V32",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A server that ignores Range fails the layer once and the map keeps working",
+            "asserts": "200 with the whole file -> the layer named in a toast, the basemap still drawn, one read only",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/specs/viewer/own-tiles.spec.ts."
         },
         {
             "id": "S-A00-HAPPY",
@@ -11755,6 +11844,633 @@
             "tier": "functions",
             "status": "exists",
             "notes": "The owner's live use, 2026-11-07. Tests: functions/test/imagery/locate-again.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
+            "id": "S-A70-HAPPY-PUBLISH",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "happy",
+            "title": "An approved version goes to the public bucket and its layer points at it",
+            "asserts": "approved, archive in the private bucket -> the copy immutable in the public bucket, the layer's source pmtiles at its address, the version published with own, the job succeeded with Mapbox's steps skipped, no call at Mapbox and no usage counted",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-HAPPY-STORED-ONCE",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "happy",
+            "title": "Published, the version's tiles are stored once",
+            "asserts": "a publish -> the archive in the public bucket, the private archive deleted, the picture kept for Work",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md); the review of 2026-11-08 (docs/LESSONS.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-HAPPY-AUTO",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "happy",
+            "title": "The policy's own approval publishes with no click",
+            "asserts": "a frame over 90 percent of the city with held-out checks within the threshold -> approval.auto, the publish queued, the layer on its own tiles",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-HAPPY-OVER-MAPBOX",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "happy",
+            "title": "A new version replaces a layer's tileset and keeps its record for the deletion",
+            "asserts": "a layer at Mapbox, a new version -> the source is the archive, the layer's mapbox record stays, nothing asked of Mapbox",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-HAPPY-NO-COG",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "happy",
+            "title": "A version with no COG publishes its own tiles whatever the city chose",
+            "asserts": "publishThroughMapbox on, a version rendered without a COG -> published with own, nothing asked of Mapbox",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-HAPPY-PREVIEW",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner gets an hour of the image before any approval",
+            "asserts": "imagery.previewUrl on a version awaiting approval -> a signed address of the private archive, its size, one hour",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-HAPPY-PREVIEW-PUBLISHED",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "happy",
+            "title": "A published version is seen from its public copy",
+            "asserts": "imagery.previewUrl on a published version -> an hour's address of the public archive, its size",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md); the review of 2026-11-08 (docs/LESSONS.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-HAPPY-EXPORT",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "happy",
+            "title": "An exportable layer on its own tiles carries its archive in the static export",
+            "asserts": "a USGS layer on pmtiles, scans asked for -> tiles/layer.pmtiles in the zip, a relative address in city.json, no COG",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/export/build.test.ts."
+        },
+        {
+            "id": "S-A70-BAD-CITY-CHOSE-MAPBOX",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "A city that chose Mapbox stays on its guard",
+            "asserts": "publishThroughMapbox on, a version with a COG -> nothing copied, the Mapbox path runs",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-BAD-AT-MAPBOX",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "A publish Mapbox already works on stays there",
+            "asserts": "job mts_processing -> nothing copied to the public bucket",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-BAD-GUARD-RED",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "A red budget guard holds it and nothing is copied",
+            "asserts": "guard red -> no copy, the job waits with reason guard, the version approved",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-BAD-NO-TILES",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "No tiles yet leaves it approved for the sweep",
+            "asserts": "approved without output.tiles -> no copy, no Mapbox call, the version approved",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-BAD-ARCHIVE-GONE",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "The archive gone fails with its reason",
+            "asserts": "the private object missing -> job and version failed with apiError.imagery.tilesGone (nothing makes it again), no copy",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-BAD-REJECTED-MEANWHILE",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "A rejection during the copy wins and its copy is taken back",
+            "asserts": "rejected between the copy and the publish -> no public object, no layer, the version rejected",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-BAD-ATTEMPTS",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "A publish that keeps failing ends its attempts and takes an earlier copy back",
+            "asserts": "publishAttempts at the limit, a public copy an earlier attempt left -> failed with attemptsExhausted, no copy, the public object deleted",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-BAD-REDELIVERED",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "A task delivered again after the end does nothing",
+            "asserts": "a second start after published -> one copy, the job unchanged",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-BAD-COPY-FAILS",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "A copy that fails is retried by the queue",
+            "asserts": "the copy throws -> the task rethrows, the version stays approved, one attempt counted",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-BAD-FINALIZE-THROWS",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "A publish that stops after its copy takes the copy back",
+            "asserts": "the finalize throws after the copy -> the task rethrows, no public object, the version approved; a Reject then leaves nothing public",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md); the review of 2026-11-08 (docs/LESSONS.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-BAD-LEFT-COPY",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Reject or a dismissal deletes a copy a dead publish left",
+            "asserts": "a public copy and no own record, then Reject (waiting) or dismissal (failed) -> the public object and the private tiles deleted, the version rejected",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md); the review of 2026-11-08 (docs/LESSONS.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-BAD-FOREIGN-TILES",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "Tiles recorded outside the version's folder are never copied, signed or deleted",
+            "asserts": "output.tiles naming another city's objects -> previewUrl tilesGone, the publish failed with tilesGone and nothing copied, Reject deletes only the version's own files",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md); the review of 2026-11-08 (docs/LESSONS.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-BAD-PREVIEW-NO-TILES",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "No tiles yet, or tiles gone, each answer their own reason",
+            "asserts": "imagery.previewUrl with no output.tiles -> apiError.imagery.tilesMissing (they are on their way); its object gone -> apiError.imagery.tilesGone (they never come back)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles.test.ts."
+        },
+        {
+            "id": "S-A70-BAD-EXPORT-RIGHTS",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "An uploaded layer on its own tiles keeps its public address in the export",
+            "asserts": "a layer whose scan may not travel -> no archive in the zip, its address unchanged",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/export/build.test.ts."
+        },
+        {
+            "id": "S-A71-HAPPY-WAITED-AT-GUARD",
+            "behaviour": "A71",
+            "area": "admin",
+            "path": "happy",
+            "title": "What waited at Mapbox's guard publishes on its recorded approval",
+            "asserts": "approved with a verdict and a studio, defer or pay choice, with tiles -> verdict and choice cleared, the publish queued, the layer on its own tiles, its approval kept",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles-sweep.test.ts."
+        },
+        {
+            "id": "S-A71-HAPPY-TILES-JOB",
+            "behaviour": "A71",
+            "area": "admin",
+            "path": "happy",
+            "title": "A version with no tiles gets its job from its COG, one at a time, approved first",
+            "asserts": "two rendered versions without tiles -> a layer-tiles job for the approved one; the other's after it ended",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles-sweep.test.ts."
+        },
+        {
+            "id": "S-A71-BAD-NOT-APPROVED",
+            "behaviour": "A71",
+            "area": "admin",
+            "path": "bad",
+            "title": "Only awaiting approval gets its picture and never publishes",
+            "asserts": "awaiting approval with tiles -> nothing queued, the state unchanged",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles-sweep.test.ts."
+        },
+        {
+            "id": "S-A71-BAD-HELD-BY-JOIN",
+            "behaviour": "A71",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame a live join holds gets a picture and never publishes",
+            "asserts": "partOf a live join -> nothing queued for publish, a tiles job for its picture",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles-sweep.test.ts."
+        },
+        {
+            "id": "S-A71-BAD-CITY-CHOSE-MAPBOX",
+            "behaviour": "A71",
+            "area": "admin",
+            "path": "bad",
+            "title": "A city that chose Mapbox is left alone",
+            "asserts": "publishThroughMapbox on -> nothing queued, no tiles job",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles-sweep.test.ts."
+        },
+        {
+            "id": "S-A71-BAD-JUST-APPROVED",
+            "behaviour": "A71",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version just approved waits for its own task",
+            "asserts": "approved this minute -> the sweep queues nothing",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles-sweep.test.ts."
+        },
+        {
+            "id": "S-A71-BAD-FAILED-JOB",
+            "behaviour": "A71",
+            "area": "admin",
+            "path": "bad",
+            "title": "A failed tiles job is not made again; its Retry is the owner's",
+            "asserts": "a failed layer-tiles job -> the sweep leaves it; Retry queues it while the version takes tiles, and refuses after it ended",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles-sweep.test.ts, functions/test/imagery/retry.test.ts."
+        },
+        {
+            "id": "S-A71-BAD-NO-COG",
+            "behaviour": "A71",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version with neither tiles nor a COG is not asked",
+            "asserts": "no cogPath, no tiles -> no job",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles-sweep.test.ts."
+        },
+        {
+            "id": "S-A71-BAD-GUARD-RED",
+            "behaviour": "A71",
+            "area": "admin",
+            "path": "bad",
+            "title": "A red budget guard stops the sweep",
+            "asserts": "guard red -> nothing queued, no job",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles-sweep.test.ts."
+        },
+        {
+            "id": "S-A72-HAPPY-SUPERSEDED",
+            "behaviour": "A72",
+            "area": "admin",
+            "path": "happy",
+            "title": "A superseded archive goes after its grace",
+            "asserts": "past LAYER_DELETE_GRACE_DAYS, its layer showing another -> the public object deleted, own.removedAt set",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles-sweep.test.ts."
+        },
+        {
+            "id": "S-A72-HAPPY-REJECTED",
+            "behaviour": "A72",
+            "area": "admin",
+            "path": "happy",
+            "title": "A rejected version's tiles go at once",
+            "asserts": "Reject -> tiles.pmtiles and thumb.webp deleted from the private bucket by their fixed names in the version's folder",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles-sweep.test.ts."
+        },
+        {
+            "id": "S-A72-HAPPY-LAYER-DELETED",
+            "behaviour": "A72",
+            "area": "admin",
+            "path": "happy",
+            "title": "A deleted layer's public archives go with it",
+            "asserts": "layer-delete past its grace -> tiles/city/layer/ empty, another layer's kept",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles-sweep.test.ts."
+        },
+        {
+            "id": "S-A72-HAPPY-RESTORE",
+            "behaviour": "A72",
+            "area": "admin",
+            "path": "happy",
+            "title": "A deleted layer comes back while its archive is there",
+            "asserts": "a history entry naming an archive that exists, or a tileset -> the restore goes on",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/history/restore.test.ts."
+        },
+        {
+            "id": "S-A72-BAD-IN-GRACE",
+            "behaviour": "A72",
+            "area": "admin",
+            "path": "bad",
+            "title": "Within its grace an archive stays",
+            "asserts": "an hour after it was superseded -> the object still there",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles-sweep.test.ts."
+        },
+        {
+            "id": "S-A72-BAD-SHOWN-AGAIN",
+            "behaviour": "A72",
+            "area": "admin",
+            "path": "bad",
+            "title": "A layer that points at it again keeps it",
+            "asserts": "the layer's source names the archive -> not deleted, no removedAt",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/imagery/own-tiles-sweep.test.ts."
+        },
+        {
+            "id": "S-A72-BAD-RESTORE-GONE",
+            "behaviour": "A72",
+            "area": "admin",
+            "path": "bad",
+            "title": "A restore whose archive is gone refuses",
+            "asserts": "a history entry naming a deleted archive -> apiError.history.layerGone",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: functions/test/history/restore.test.ts."
+        },
+        {
+            "id": "S-A73-HAPPY-OWN-COST",
+            "behaviour": "A73",
+            "area": "admin",
+            "path": "happy",
+            "title": "A city on its own bucket reads what publishing costs in the owner's words",
+            "asserts": "a version awaiting approval -> the archive's megabytes moved into the public bucket, nothing charged by Mapbox, the storage in cents a month, the traffic billed after Google's free allowance, that nothing stops the site and the alarm only pauses processing; no compute units, Studio steps or choices",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/admin/specs/imagery/own-tiles.spec.ts."
+        },
+        {
+            "id": "S-A73-HAPPY-SETTING",
+            "behaviour": "A73",
+            "area": "admin",
+            "path": "happy",
+            "title": "Settings' Publish through Mapbox is saved with the rest of the city's imagery settings",
+            "asserts": "the switch off by default -> on and Save -> publishThroughMapbox true on the city, autoPublish as it was",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/admin/specs/imagery/own-tiles.spec.ts."
+        },
+        {
+            "id": "S-A73-BAD-CITY-ON-MAPBOX",
+            "behaviour": "A73",
+            "area": "admin",
+            "path": "bad",
+            "title": "A city that keeps Mapbox still sees its compute units, and no bucket cost",
+            "asserts": "publishThroughMapbox on -> the approval card names Mapbox compute units, no cost in the bucket's words",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/admin/specs/imagery/own-tiles.spec.ts."
+        },
+        {
+            "id": "S-A74-HAPPY-SEES-IMAGE",
+            "behaviour": "A74",
+            "area": "admin",
+            "path": "happy",
+            "title": "Before approving, the owner sees the version's own tiles at full detail on the page's one map",
+            "asserts": "a version awaiting approval -> imagery.previewUrl signed, the real Mapbox GL JS reads its private archive by range, the tiles' colour on the map, and Approve publishes it with no call at Mapbox",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/admin/specs/imagery/own-tiles.spec.ts."
+        },
+        {
+            "id": "S-A74-HAPPY-ACTUAL-PIXELS",
+            "behaviour": "A74",
+            "area": "admin",
+            "path": "happy",
+            "title": "Actual pixels goes to 1:1, and past it the picture's pixels stay square",
+            "asserts": "Actual pixels -> the map at maxzoom minus one; raster-resampling steps from linear to nearest there",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/admin/specs/imagery/own-tiles.spec.ts."
+        },
+        {
+            "id": "S-A74-HAPPY-COVERAGE",
+            "behaviour": "A74",
+            "area": "admin",
+            "path": "happy",
+            "title": "The page says how much of the city the image holds",
+            "asserts": "coveragePct 57 and a measured edge -> the words beside the map, what it misses shaded",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/admin/specs/imagery/own-tiles.spec.ts."
+        },
+        {
+            "id": "S-A74-BAD-TILE-FAILS",
+            "behaviour": "A74",
+            "area": "admin",
+            "path": "bad",
+            "title": "A bucket that refuses the tiles says so, and Try again brings them",
+            "asserts": "403 on the signed address -> the alert, the small picture on the map, nothing asking again; Try again signs anew and Actual pixels returns",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/admin/specs/imagery/own-tiles.spec.ts."
+        },
+        {
+            "id": "S-A74-BAD-HOUR-OVER",
+            "behaviour": "A74",
+            "area": "admin",
+            "path": "bad",
+            "title": "An hour on, a failing tile brings a new address on its own",
+            "asserts": "the page's clock past the address's hour, the bucket refusing the next read -> imagery.previewUrl asked again on its own, the tiles back, no alert; within the hour a refusal says so",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md); the review of 2026-11-08 (docs/LESSONS.md). Test: e2e/admin/specs/imagery/own-tiles.spec.ts."
+        },
+        {
+            "id": "S-A74-BAD-REFUSED",
+            "behaviour": "A74",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version whose tiles are gone says so, and offers no Try again",
+            "asserts": "the private archive deleted -> imagery.previewUrl refuses with tilesGone, its words (nothing makes them again) on the page, no Try again, the small picture",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/admin/specs/imagery/own-tiles.spec.ts."
+        },
+        {
+            "id": "S-A74-BAD-NO-TILES-YET",
+            "behaviour": "A74",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version with no tiles yet shows its small picture and says so",
+            "asserts": "no output.tiles -> no previewUrl call, the small picture, the note, no size named",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/admin/specs/imagery/own-tiles.spec.ts."
+        },
+        {
+            "id": "S-A74-BAD-NEVER-COMING",
+            "behaviour": "A74",
+            "area": "admin",
+            "path": "bad",
+            "title": "A small picture says when no full detail will come",
+            "asserts": "a rejected version -> its tiles were deleted; an ended one, or one in a city on Mapbox -> none will be made; only a waiting one says they come, and where their Retry is",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md); the review of 2026-11-08 (docs/LESSONS.md). Test: e2e/admin/specs/imagery/own-tiles.spec.ts."
+        },
+        {
+            "id": "S-A75-HAPPY-THUMBS",
+            "behaviour": "A75",
+            "area": "admin",
+            "path": "happy",
+            "title": "Work's waiting row shows the version's small picture, with no map",
+            "asserts": "a version awaiting approval -> its row's image decoded from thumb.webp",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/admin/specs/imagery/own-tiles.spec.ts."
+        },
+        {
+            "id": "S-A75-BAD-NO-THUMB",
+            "behaviour": "A75",
+            "area": "admin",
+            "path": "bad",
+            "title": "A row with no picture keeps its text and an icon",
+            "asserts": "a version with no tiles -> the row's icon, its title and state still there",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/admin/specs/imagery/own-tiles.spec.ts."
+        },
+        {
+            "id": "S-P08-HAPPY-FROM-WARP",
+            "behaviour": "P08",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An import ends with its own tiles and no COG",
+            "asserts": "a city on the default path -> tiles.pmtiles and thumb.webp beside the preview, output.tiles with size, count and SHA-256, a real archive whose tiles read back as WebP with alpha, no cog.tif, awaiting approval",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: pipeline/tests/integration/test_pyramid_job.py."
+        },
+        {
+            "id": "S-P08-HAPPY-THROUGH-MAPBOX",
+            "behaviour": "P08",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A city that chose Mapbox gets its COG and Studio file too",
+            "asserts": "publishThroughMapbox on -> cog.tif, studio.tif and tiles.pmtiles, as before plus the tiles",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: pipeline/tests/integration/test_pyramid_job.py."
+        },
+        {
+            "id": "S-P08-HAPPY-OLD-VERSION",
+            "behaviour": "P08",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A layer-tiles job makes an old version's tiles from its COG and ends succeeded",
+            "asserts": "an approved version with cog.tif and no tiles -> output.tiles added, the state still approved, the job succeeded and no approval asked",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: pipeline/tests/integration/test_pyramid_job.py, functions/test/worker/step.test.ts."
+        },
+        {
+            "id": "S-P08-BAD-FAILS-ALONE",
+            "behaviour": "P08",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A tiles job that fails or stops leaves its version where it stands",
+            "asserts": "no COG to read, a cancel, an invalid job -> the job failed or cancelled, the version still approved",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: pipeline/tests/integration/test_pyramid_job.py, functions/test/imagery/own-tiles-sweep.test.ts, functions/test/worker/step.test.ts."
+        },
+        {
+            "id": "S-P08-BAD-FOREIGN-TILES",
+            "behaviour": "P08",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A run's tiles lie in its version's folder, and a tiles job changes only its tiles",
+            "asserts": "worker.step writing output.tiles outside rasters/C/L/V/, or a layer-tiles job changing another output field -> apiError.worker.refused, the output unchanged",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md); the review of 2026-11-08 (docs/LESSONS.md). Test: functions/test/worker/step.test.ts."
+        },
+        {
+            "id": "S-P08-BAD-NOTHING-VISIBLE",
+            "behaviour": "P08",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A raster with nothing visible fails with its reason",
+            "asserts": "an alpha that is all zero -> processingFailed, never an empty archive",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M12 (docs/research/M12-own-tiles.md). Test: pipeline/tests/integration/test_pyramid_job.py."
         }
     ]
 }

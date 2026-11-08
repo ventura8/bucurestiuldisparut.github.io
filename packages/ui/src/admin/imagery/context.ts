@@ -28,6 +28,8 @@ export interface ImageryContext {
      * own control may go with it (I ordered it on a frame scanned meanwhile: the card goes with the order).
      */
     readonly focusDetail: () => void;
+    /** M12: brings the page's one map into view (a phone's approval card lies below it). */
+    readonly showMap: () => void;
     /** M7: the admin app, which hands a version's `<hcm-run-place>` its feed (absent: no place shown). */
     readonly app?: WorkerHostPort | null;
 }

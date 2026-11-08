@@ -176,11 +176,12 @@ class GeorefInfo:
 
 @dataclass(frozen=True)
 class OutputInfo:
-    """`version.output`: the COG Mapbox gets, the admin's preview and the Studio-sized file."""
+    """`version.output`: the admin's preview; the COG Mapbox gets and the Studio-sized file only for a city that publishes through Mapbox
+    (M12). `steps/pyramid.py` adds the version's own tiles after it."""
 
-    cog_path: str
-    cog_bytes: int
-    cog_sha256: str
+    cog_path: str | None
+    cog_bytes: int | None
+    cog_sha256: str | None
     preview_path: str
     bounds: Bounds
     minzoom: int

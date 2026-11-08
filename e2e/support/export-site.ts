@@ -98,6 +98,7 @@ async function exportArchive(madeAt: Date, analytics: boolean): Promise<{ readon
         manifest,
         publicPrefix: PUBLIC_PREFIX,
         rasters: [],
+        archives: [],
         kitPage: await readFile(join(KIT, 'index.html'), 'utf8'),
         kitReadme: await readFile(join(KIT, 'README.md'), 'utf8'),
         engine: await engineFiles(),

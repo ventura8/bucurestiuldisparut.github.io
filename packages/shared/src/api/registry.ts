@@ -73,6 +73,7 @@ import {
     imagerySaveGcpsResponseSchema,
     imagerySearchRequestSchema,
     imagerySearchResponseSchema,
+    imageryPreviewUrlResponseSchema,
     imageryStudioDoneResponseSchema,
     imageryVersionRequestSchema,
 } from './imagery.js';
@@ -270,6 +271,8 @@ export const ADMIN_CALLABLES = {
     'imagery.retry': cityEditor('fn-imagery', imageryRetryRequestSchema, imageryRetryResponseSchema),
     // A frame waiting for points searches again (`functions/src/imagery/locate-again.ts`): what the version page already sends, what Retry answers.
     'imagery.locateAgain': cityEditor('fn-imagery', imageryVersionRequestSchema, imageryRetryResponseSchema),
+    // M12 (docs/research/M12-own-tiles.md): the private archive, signed for an hour, so an image is seen before it is approved.
+    'imagery.previewUrl': cityEditor('fn-imagery', imageryVersionRequestSchema, imageryPreviewUrlResponseSchema),
     'imagery.probeTiles': cityEditor('fn-imagery', imageryProbeRequestSchema, imageryProbeResponseSchema),
     // M5: the budget guard is the project's (docs/research/M5-interfaces.md §1.3).
     'imagery.resumeGuard': projectOwner('fn-imagery', imageryResumeGuardRequestSchema, imageryResumeGuardResponseSchema, 'consume'),

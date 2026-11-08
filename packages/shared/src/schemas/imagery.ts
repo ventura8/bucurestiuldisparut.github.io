@@ -15,7 +15,17 @@ import { LAYER_TILESET_ORIGINS, USGS_DATASETS } from './firestore.js';
 import { cropRingSchema, georefSchema, MAX_SCAN_PIXELS } from './georef.js';
 import { calibrationSchema, measuredOutlineSchema } from './imagery-calibration.js';
 import { joinReportSchema, joinSourceSchema, layerJoinParamsSchema } from './imagery-join.js';
-import { boundsRecordSchema, coded, idSchema, isoDateSchema, localizedPartial, plainText, yearSchema, zoomSchema } from './primitives.js';
+import {
+    boundsRecordSchema,
+    coded,
+    httpsUrlSchema,
+    idSchema,
+    isoDateSchema,
+    localizedPartial,
+    plainText,
+    yearSchema,
+    zoomSchema,
+} from './primitives.js';
 import { SENSORS } from './usgs-scene.js';
 
 /**
@@ -107,11 +117,29 @@ const referenceSchema = z.strictObject({
     s2Date: isoDateSchema.optional(),
 });
 
-/** What the render produced: the 8-bit COG Mapbox gets, the preview the admin sees, the Studio-sized GeoTIFF. */
+/**
+ * M12 (`docs/research/M12-own-tiles.md`): the version's own tiles in the private bucket: one PMTiles archive (256 px WebP with alpha),
+ * and the small picture the Work list shows.
+ */
+export const versionTilesSchema = z.strictObject({
+    path: pathSchema,
+    bytes: z.number().int().min(1),
+    count: z.number().int().min(1),
+    sha256: sha256Schema,
+    thumbPath: pathSchema,
+});
+
+export type VersionTiles = z.infer<typeof versionTilesSchema>;
+
+/**
+ * What the render produced: the 8-bit COG Mapbox gets (M12: only for a city that publishes through Mapbox, and every version made
+ * before M12), the preview the admin sees, the Studio-sized GeoTIFF, the version's own tiles.
+ */
 const outputSchema = z.strictObject({
-    cogPath: pathSchema,
-    cogBytes: z.number().int().min(1),
-    cogSha256: sha256Schema,
+    cogPath: pathSchema.optional(),
+    cogBytes: z.number().int().min(1).optional(),
+    cogSha256: sha256Schema.optional(),
+    tiles: versionTilesSchema.optional(),
     /** An EPSG:3857 PNG of the warped layer and its bounds: the admin map's image source before any tiles exist. */
     previewPath: pathSchema,
     bounds: boundsRecordSchema,
@@ -174,24 +202,39 @@ const mapboxSchema = z.strictObject({
     via: z.enum(PUBLISH_PATHS).optional(),
 });
 
+/**
+ * M12: where a version published without Mapbox lies: the object in the public bucket and its address. `removedAt`: a superseded
+ * version's object was deleted after its grace (`imagery.tick`), so nothing may point at it again.
+ */
+const ownTilesSchema = z.strictObject({
+    path: pathSchema,
+    url: httpsUrlSchema,
+    bytes: z.number().int().min(1),
+    publishedAt: timestampSchema,
+    removedAt: timestampSchema.optional(),
+});
+
 /** The fields a version must carry in each state (beyond the always-required ones). */
-const REQUIRED_BY_STATE: Readonly<Record<LayerVersionState, readonly ('scan' | 'georef' | 'output' | 'approval' | 'mapbox' | 'error')[]>> =
-    {
-        processing: [],
-        needs_gcps: ['scan'],
-        awaiting_approval: ['output'],
-        approved: ['output', 'approval'],
-        publishing: ['output', 'approval'],
-        published: ['output', 'mapbox'],
-        rejected: [],
-        superseded: ['output', 'mapbox'],
-        failed: ['error'],
-        cancelled: [],
-        joined: ['output'],
-    };
+const REQUIRED_BY_STATE: Readonly<Record<LayerVersionState, readonly ('scan' | 'georef' | 'output' | 'approval' | 'error')[]>> = {
+    processing: [],
+    needs_gcps: ['scan'],
+    awaiting_approval: ['output'],
+    approved: ['output', 'approval'],
+    publishing: ['output', 'approval'],
+    published: ['output'],
+    rejected: [],
+    superseded: ['output'],
+    failed: ['error'],
+    cancelled: [],
+    joined: ['output'],
+};
+
+/** The states whose tiles exist somewhere: at Mapbox (`mapbox`), or in the public bucket (M12: `own`). */
+const TILES_STATES: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>(['published', 'superseded']);
 
 function hasStateFields(version: { readonly state: LayerVersionState } & Partial<Record<string, unknown>>): boolean {
-    return REQUIRED_BY_STATE[version.state].every((field) => version[field] !== undefined);
+    const tilesKnown = !TILES_STATES.has(version.state) || version['mapbox'] !== undefined || version['own'] !== undefined;
+    return tilesKnown && REQUIRED_BY_STATE[version.state].every((field) => version[field] !== undefined);
 }
 
 /** `cities/{city}/layerVersions/{version}`: written by the imagery callables, the pipeline and the publisher only. */
@@ -224,6 +267,8 @@ export const layerVersionDocSchema = z
         guard: guardSchema.optional(),
         approval: approvalSchema.optional(),
         mapbox: mapboxSchema.optional(),
+        /** M12: published from the project's own bucket, no Mapbox involved. */
+        own: ownTilesSchema.optional(),
         /** Finding 56: the Cloud Run job each phase of its making ran on (`download`: fetch and extract; `process`: the rest). */
         machines: z.strictObject({ download: z.enum(JOB_MACHINES).optional(), process: z.enum(JOB_MACHINES).optional() }).optional(),
         error: z.strictObject({ code: apiErrorCodeSchema, params: apiErrorParamsSchema.optional() }).optional(),
@@ -255,6 +300,9 @@ export const regeorefParamsSchema = z.strictObject({ basedOn: idSchema });
 /** `republish`: an approved version to publish again (after a Mapbox failure, or a deferral). */
 export const republishParamsSchema = z.strictObject({ versionId: idSchema });
 
+/** M12: `layer-tiles`: the version, rendered before M12 and so without tiles, to make them for from its COG. */
+export const layerTilesParamsSchema = z.strictObject({ versionId: idSchema });
+
 /** The `params` schema of each job type: the dispatcher and the pipeline refuse a job whose params fail it. */
 export const JOB_PARAMS_SCHEMAS: Readonly<Record<JobType, z.ZodType>> = {
     'usgs-import': usgsImportParamsSchema,
@@ -263,6 +311,7 @@ export const JOB_PARAMS_SCHEMAS: Readonly<Record<JobType, z.ZodType>> = {
     republish: republishParamsSchema,
     'layer-delete': layerDeleteParamsSchema,
     'layer-join': layerJoinParamsSchema,
+    'layer-tiles': layerTilesParamsSchema,
 };
 
 /** The steps the raster pipeline runs (`pipeline/src/hcm_pipeline/steps/<step>.py`), in this order when a type has them. */
@@ -278,6 +327,8 @@ export const PIPELINE_STEPS = [
     'merge',
     'warp',
     'export',
+    // M12: the version's own tiles (a publish step is already called `tiles`: MTS at work).
+    'pyramid',
     'register',
 ] as const;
 
@@ -296,14 +347,35 @@ export type JobStep = PipelineStep | PublishStep | 'delete';
 
 /** Each job type's steps in order: the keys of the job's `steps`, which the Jobs page lists. */
 export const JOB_STEPS: Readonly<Record<JobType, readonly JobStep[]>> = {
-    'usgs-import': ['fetch', 'extract', 'stitch', 'locate', 'reference', 'georef', 'warp', 'export', 'register', ...PUBLISH_STEPS],
-    'geotiff-import': ['inspect', 'reference', 'georef', 'warp', 'export', 'register', ...PUBLISH_STEPS],
-    regeoref: ['georef', 'warp', 'export', 'register', ...PUBLISH_STEPS],
+    'usgs-import': [
+        'fetch',
+        'extract',
+        'stitch',
+        'locate',
+        'reference',
+        'georef',
+        'warp',
+        'export',
+        'pyramid',
+        'register',
+        ...PUBLISH_STEPS,
+    ],
+    'geotiff-import': ['inspect', 'reference', 'georef', 'warp', 'export', 'pyramid', 'register', ...PUBLISH_STEPS],
+    regeoref: ['georef', 'warp', 'export', 'pyramid', 'register', ...PUBLISH_STEPS],
     republish: [...PUBLISH_STEPS],
     'layer-delete': ['delete'],
     // M8: `merge` writes the same `warped.tif` a `warp` does, so `export` and `register` run unchanged.
-    'layer-join': ['align', 'merge', 'export', 'register', ...PUBLISH_STEPS],
+    'layer-join': ['align', 'merge', 'export', 'pyramid', 'register', ...PUBLISH_STEPS],
+    // M12: tiles for a version rendered before them; the version keeps its state, whatever this job does.
+    'layer-tiles': ['pyramid'],
 };
+
+/** M12: the job types that work beside a version and never decide its state: their failure or cancellation leaves it where it stands. */
+export const SIDE_JOB_TYPES: readonly JobType[] = ['layer-tiles'];
+
+export function isSideJob(type: JobType): boolean {
+    return SIDE_JOB_TYPES.includes(type);
+}
 
 /** True for the job types the Cloud Run pipeline runs (the others run in functions). */
 export function runsOnPipeline(type: JobType): boolean {

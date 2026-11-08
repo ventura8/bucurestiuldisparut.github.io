@@ -1,7 +1,8 @@
 /**
  * The Imagery area's work (`docs/research/M3-interfaces.md` §10.2): the unfinished versions, live, those that wait for
  * the admin (points, an approval, a compute-unit choice, a failure to retry) apart from those in progress, each with its
- * job's progress or wait in words. M4: the scans bought and not imported yet come first (`orders/order-list.ts`).
+ * job's progress or wait in words. M4: the scans bought and not imported yet come first (`orders/order-list.ts`). M12: a waiting row
+ * shows the version's small picture, so the owner knows it at a glance, with no map.
  */
 import { html, type TemplateResult } from 'lit';
 
@@ -19,15 +20,26 @@ function waitsForYou(version: VersionItemPort, versions: readonly VersionItemPor
     return version.needsYou && (version.state === 'needs_gcps' || !liveJoin(versions, version.partOf));
 }
 
+/** The row's small picture, once made (decorative: the row's text names the version). */
+function thumb(context: ImageryContext, version: VersionItemPort): TemplateResult {
+    const url = context.view.thumbs[version.id];
+    return url === undefined
+        ? html`<span class="thumb" aria-hidden="true"><hcm-icon name="satellite_alt"></hcm-icon></span>`
+        : html`<img class="thumb" src=${url} alt="" />`;
+}
+
 function versionRow(context: ImageryContext, version: VersionItemPort): TemplateResult {
     const { locale, view } = context;
     const selected = view.detail?.kind === 'version' && view.detail.id === version.id;
     // A join and its frames share a label and a year: this tells them apart.
     const mark = versionMark(locale, version.origin, version.entityIds[0]);
     return html`<li data-version=${version.id} data-state=${version.state}>
-        <a class="row" href=${context.href(['version', version.id])} aria-current=${current(selected)}>
-            <span class="row-title">${labelText(version.label, locale)} · ${version.year}${mark === null ? '' : ` · ${mark}`}</span>
-            <span class="row-detail">${versionDetail(locale, version, view.jobs[version.id])}</span>
+        <a class="row scene" href=${context.href(['version', version.id])} aria-current=${current(selected)}>
+            ${thumb(context, version)}
+            <span>
+                <span class="row-title">${labelText(version.label, locale)} · ${version.year}${mark === null ? '' : ` · ${mark}`}</span>
+                <span class="row-detail">${versionDetail(locale, version, view.jobs[version.id])}</span>
+            </span>
         </a>
     </li>`;
 }

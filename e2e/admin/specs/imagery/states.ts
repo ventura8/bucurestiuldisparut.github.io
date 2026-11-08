@@ -86,6 +86,30 @@ export const IMAGERY_STATES = {
         title: 'Historical imagery: a version over the threshold, both errors, the compute units and Approve',
         visit: 'specs/imagery/published.spec.ts',
     },
+    'imagery.version-own-tiles': {
+        title: 'Historical imagery: a version awaiting approval, its own tiles on the map, what it holds of the city, its cost in words, Actual pixels',
+        visit: 'specs/imagery/own-tiles.spec.ts',
+    },
+    'imagery.version-tiles-failed': {
+        title: 'Historical imagery: a version whose full detail could not be read, why, Try again, its small picture on the map',
+        visit: 'specs/imagery/own-tiles.spec.ts',
+    },
+    'imagery.version-tiles-gone': {
+        title: 'Historical imagery: a version whose tiles are gone for good, why, no Try again, its small picture on the map',
+        visit: 'specs/imagery/own-tiles.spec.ts',
+    },
+    'imagery.version-tiles-never': {
+        title: 'Historical imagery: a rejected version, its small picture on the map and why no full detail will come',
+        visit: 'specs/imagery/own-tiles.spec.ts',
+    },
+    'imagery.version-tiles-small': {
+        title: 'Historical imagery: a version with no tiles yet, its small picture on the map and why',
+        visit: 'specs/imagery/own-tiles.spec.ts',
+    },
+    'imagery.work-thumbs': {
+        title: "Historical imagery: Work's waiting row with the version's small picture",
+        visit: 'specs/imagery/own-tiles.spec.ts',
+    },
     'imagery.version-published': {
         title: 'Historical imagery: a version the policy approved and published',
         visit: 'specs/imagery/published.spec.ts',

@@ -106,6 +106,19 @@ export const imageryChooseResponseSchema = z.strictObject({
     studioPath: z.string().max(300).optional(),
 });
 
+/** M12: how long `imagery.previewUrl`'s address works: long enough to look at an image before approving it. */
+export const IMAGERY_PREVIEW_URL_SECONDS = 3600;
+
+/**
+ * M12 (`imagery.previewUrl`, a city's editor; `docs/research/M12-own-tiles.md`): a signed address of the version's private archive, so
+ * the admin sees it at full zoom before approving it. The address is a credential for its hour: never logged, never stored.
+ */
+export const imageryPreviewUrlResponseSchema = z.strictObject({
+    url: z.string().min(1).max(4096),
+    expiresAt: isoTimeSchema,
+    bytes: z.number().int().min(1),
+});
+
 /** `imagery.studioDone` (admin): find the tileset the admin uploaded in Studio and point the layer at it. */
 export const imageryStudioDoneResponseSchema = z.strictObject({ tilesetId: z.string().max(100), layerId: idSchema });
 

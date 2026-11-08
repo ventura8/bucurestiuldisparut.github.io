@@ -15,7 +15,7 @@ from hcm_pipeline.runner import JobRunner, RunOutcome, RunSettings, sigterm_rais
 from tests.fakes.world import CITY, NOW, PipelineWorld, dig
 
 JOB = "job-regeoref-9"
-STEPS = ("georef", "warp", "export", "register")
+STEPS = ("georef", "warp", "export", "pyramid", "register")
 
 
 @dataclass
@@ -64,8 +64,8 @@ def test_happy_path_every_step_runs_once_and_is_recorded(world: PipelineWorld) -
 
     job = world.job(JOB)
     assert outcome is RunOutcome.DONE
-    assert statuses(world) == {"georef": "skipped", "warp": "done", "export": "done", "register": "done"}
-    assert [step.runs for step in steps.values()] == [1, 1, 1, 1]
+    assert statuses(world) == {"georef": "skipped", "warp": "done", "export": "done", "pyramid": "done", "register": "done"}
+    assert [step.runs for step in steps.values()] == [1, 1, 1, 1, 1]
     assert dig(job, "steps", "warp") == {"status": "done", "startedAt": Timestamp.at(NOW), "finishedAt": Timestamp.at(NOW)}
     assert "step georef skipped: nothing to fit" in world.log_lines(JOB)
 
@@ -102,7 +102,7 @@ def test_happy_path_one_step_on_its_own_leaves_the_job_queued(world: PipelineWor
     outcome = runner(world, seed(world), steps).run("warp")
 
     assert outcome is RunOutcome.DONE
-    assert [step.runs for step in steps.values()] == [0, 1, 0, 0]
+    assert [step.runs for step in steps.values()] == [0, 1, 0, 0, 0]
     assert world.job(JOB)["status"] == "queued"
 
 
@@ -307,7 +307,7 @@ def _parked_import(world: PipelineWorld, steps: dict[str, object]) -> tuple[Conf
         world.version_path(JOB),
         {"layerId": "layer-1", "jobId": JOB, "origin": "usgs", "state": "processing", "label": {"ro": "x"}, "year": 1966},
     )
-    names = ("fetch", "extract", "stitch", "locate", "reference", "georef", "warp", "export", "register")
+    names = ("fetch", "extract", "stitch", "locate", "reference", "georef", "warp", "export", "pyramid", "register")
     return Config(**{**world.config.__dict__, "job_id": JOB}), {name: Scripted(name) for name in names}
 
 
@@ -333,6 +333,7 @@ def test_happy_path_locate_again_keeps_the_segments_and_joins_them_again(world: 
         "georef",
         "warp",
         "export",
+        "pyramid",
         "register",
     ]
 

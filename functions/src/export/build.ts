@@ -95,28 +95,42 @@ async function rasterOf(deps: ExportBuildDeps, cityId: string, layerId: string):
         return [];
     }
     const version = await deps.documents.get(FIRESTORE_PATHS.layerVersion(cityId, versionId), layerVersionDocSchema);
-    return version?.output === undefined ? [] : [{ layerId, path: version.output.cogPath }];
+    return version?.output?.cogPath === undefined ? [] : [{ layerId, path: version.output.cogPath }];
 }
 
-async function rastersOf(deps: ExportBuildDeps, cityId: string, manifest: Manifest, asked: boolean): Promise<ExportRaster[]> {
+/** What travels when the scans are asked for: a Mapbox layer's COG, or (M12) the archive a layer of its own is served from. */
+interface Travelling {
+    readonly rasters: readonly ExportRaster[];
+    readonly archives: readonly string[];
+}
+
+async function archiveOf(deps: ExportBuildDeps, cityId: string, layerId: string): Promise<string[]> {
+    return (await exportableVersion(deps, cityId, layerId)) === undefined ? [] : [layerId];
+}
+
+async function travellingOf(deps: ExportBuildDeps, cityId: string, manifest: Manifest, asked: boolean): Promise<Travelling> {
     if (!asked) {
-        return [];
+        return { rasters: [], archives: [] };
     }
-    const found = await Promise.all(manifest.layers.map((layer) => rasterOf(deps, cityId, layer.id)));
-    return found.flat();
+    const own = (layer: Manifest['layers'][number]) => layer.source.type === 'pmtiles';
+    const [rasters, archives] = await Promise.all([
+        Promise.all(manifest.layers.filter((layer) => !own(layer)).map((layer) => rasterOf(deps, cityId, layer.id))),
+        Promise.all(manifest.layers.filter(own).map((layer) => archiveOf(deps, cityId, layer.id))),
+    ]);
+    return { rasters: rasters.flat(), archives: archives.flat() };
 }
 
 async function prepare(deps: ExportBuildDeps, task: ExportTask, record: CityExportDoc): Promise<ExportPlan> {
     const manifest = await publishedManifest(deps, task.cityId);
-    const [rasters, texts, engine] = await Promise.all([
-        rastersOf(deps, task.cityId, manifest, record.rasters),
+    const [travelling, texts, engine] = await Promise.all([
+        travellingOf(deps, task.cityId, manifest, record.rasters),
         deps.kit.texts(),
         deps.kit.engineFiles(),
     ]);
     return planExport({
         manifest,
         publicPrefix: publicObjectUrl(deps.config.buckets.public, ''),
-        rasters,
+        ...travelling,
         kitPage: texts.page,
         kitReadme: texts.readme,
         engine,

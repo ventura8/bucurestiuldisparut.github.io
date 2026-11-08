@@ -11,6 +11,8 @@ import { guardIsRed } from './records.js';
 import { watchOrders } from './orders/watch.js';
 import { ensureDatePlan } from './join-plan.js';
 import { cancelAsked, dispatchDue, pendingApprovals, pollStale, recoverLost } from './tick-jobs.js';
+import { cleanOwnTiles } from './own-tiles-clean.js';
+import { sweepOwnTiles } from './own-tiles-sweep.js';
 import { monthlyHarvest, publishDeferred, runDeletions, sweepEnded } from './tick-maintenance.js';
 import { offerCloud } from './tick-worker.js';
 import { releaseScenes } from './release-scene.js';
@@ -41,6 +43,9 @@ const PARTS: readonly (readonly [name: string, part: Part, whileRed: boolean])[]
     ['approval', pendingApprovals, false],
     ['mapbox', pollStale, false],
     ['deferred', publishDeferred, false],
+    // M12 (docs/research/M12-own-tiles.md): one version a tick to its own tiles; a superseded archive past its grace goes.
+    ['ownTiles', sweepOwnTiles, false],
+    ['ownTilesClean', cleanOwnTiles, false],
     ['deletions', runDeletions, false],
     ['sweep', sweepEnded, false],
     ['harvest', monthlyHarvest, false],

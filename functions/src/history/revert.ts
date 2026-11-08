@@ -27,7 +27,7 @@ import { defineCallable, type CallableDeps } from '../api/callable.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { changedKeys, type Fields } from './diff.js';
-import { cancelLayerDeletes, reprocessIfSwept, waitingLayerDeletes, type RestoreDeps } from './restore.js';
+import { cancelLayerDeletes, reprocessIfSwept, requireLayerTiles, waitingLayerDeletes, type RestoreDeps } from './restore.js';
 
 export type RevertDeps = Pick<Ports, 'documents' | 'clock' | 'log'> & RestoreDeps;
 
@@ -136,6 +136,9 @@ async function historyRevert(
     const audited: AuditedDocument = { entity: data.entity, cityId: data.cityId, entityId: data.entityId };
     const deleted = await isDeleted(deps, audited);
     const cancel = deleted ? await waitingLayerDeletes(deps, audited) : [];
+    if (deleted) {
+        await requireLayerTiles(deps, audited, data.entryId);
+    }
     const revert: Revert = { audited, entryId: data.entryId, caller, now: deps.clock.now(), cancel };
     const restoredFields = await deps.documents.transaction((transaction) => restore(transaction, revert));
     if (deleted) {

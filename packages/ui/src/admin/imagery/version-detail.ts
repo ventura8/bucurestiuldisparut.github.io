@@ -5,7 +5,8 @@
  * server refused, **Dismiss** for a failed version), **Locate again** for a frame waiting for points, the georeferencer, the approval card once it is rendered, the
  * preview's opacity on the map, the job's log as text, and **Cancel** while it runs (asked first; once Mapbox was asked
  * to publish, its processing cannot be stopped). M8: a join's frames, and a frame's offer to join its date's others. M9: how the
- * frame was found, or that it was not (`calibration-card.ts`).
+ * frame was found, or that it was not (`calibration-card.ts`). M12: what the map shows of it, its share of the city, Actual pixels and See
+ * the image (`image-view.ts`).
  */
 import type { AdminContentKey, Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
@@ -13,8 +14,9 @@ import { html, type TemplateResult } from 'lit';
 import { errorTemplate, formatWhen, loadingTemplate, reconnectingStatus } from '../editing/states.js';
 import { stepNameText, stepStateText } from '../jobs/job-text.js';
 import { contentText, noticeOf } from '../shell/text.js';
-import { approvalCard } from './approval-card.js';
+import { approvalCard, guardStop } from './approval-card.js';
 import type { ImageryContext } from './context.js';
+import { imageView as imageControls } from './image-view.js';
 import type { AdminNoticeInputPort } from '../notice-port.js';
 import type { JobLogLinePort, JobViewPort, VersionPagePort, VersionViewPort } from './imagery-port.js';
 import { labelText, numberText, versionStateText, waitText, wordedWait } from './imagery-text.js';
@@ -235,6 +237,11 @@ function opacity({ context, version }: Shown): TemplateResult {
     );
 }
 
+/** M12: what the page says of the picture on the map, once the version has one (`image-view.ts`). */
+function imageView({ context, version }: Shown): TemplateResult {
+    return withValue(version, (known) => withValue(known.output, (output) => imageControls(context, output, known.state)));
+}
+
 function line(locale: Locale, entry: JobLogLinePort): TemplateResult {
     const step = entry.step === null ? '' : `${stepNameText(locale, entry.step)}: `;
     return html`<li class="note" data-seq=${entry.seq}>${formatWhen(locale, entry.at)} · ${step}${entry.message}</li>`;
@@ -295,9 +302,8 @@ function refusal({ context, page }: Shown): TemplateResult {
  * The card waits for a decision: a rendered version before Approve, or an approved one (by the admin or by the policy)
  * whose publish the compute-unit guard stopped, which waits for one of its three choices (CR-M3-33).
  */
-function awaitsDecision(version: VersionViewPort): boolean {
-    const stopped = version.guard !== null && version.guard.verdict !== 'within';
-    return version.state === 'awaiting_approval' || (version.state === 'approved' && stopped);
+function awaitsDecision(context: ImageryContext, version: VersionViewPort): boolean {
+    return version.state === 'awaiting_approval' || (version.state === 'approved' && guardStop(context, version) !== null);
 }
 
 /**
@@ -314,7 +320,7 @@ function runPlace({ context, job }: Shown): TemplateResult {
 /** The approval card while it waits, the layer's link once published. */
 function outcome(shown: Shown): TemplateResult {
     const { context, page, version } = shown;
-    if (version !== null && awaitsDecision(version)) {
+    if (version !== null && awaitsDecision(context, version)) {
         return approvalCard(context, page, version);
     }
     return withValue(
@@ -361,8 +367,8 @@ function body(shown: Shown): TemplateResult {
             ${dismissButton(shown)}
         </div>
         ${runPlace(shown)} ${refusal(shown)}
-        ${withValue(version, (known) => lazyJoin(context, known, (chunk) => chunk.versionJoin(context, known, job)))} ${outcome(shown)}
-        ${opacity(shown)} ${steps(locale, job)}
+        ${withValue(version, (known) => lazyJoin(context, known, (chunk) => chunk.versionJoin(context, known, job)))} ${imageView(shown)}
+        ${outcome(shown)} ${opacity(shown)} ${steps(locale, job)}
         <h3>${contentText(locale, 'adminContent.jobs.log')}</h3>
         ${logs(locale, page.logs.items)} ${cancel(shown)}
     </div>`;

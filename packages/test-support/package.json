@@ -31,6 +31,10 @@
             "types": "./src/api-fixtures/index.ts",
             "default": "./src/api-fixtures/index.ts"
         },
+        "./pmtiles": {
+            "types": "./src/pmtiles.ts",
+            "default": "./src/pmtiles.ts"
+        },
         "./fakes": {
             "types": "./src/fakes/index.ts",
             "default": "./src/fakes/index.ts"

@@ -15,7 +15,7 @@ export type MapSlot = 'bottom' | 'middle' | 'top';
 export interface RasterLayerSpec {
     /** The manifest layer id; the adapter derives its own ids from it (`hcm-raster-<id>`, `hcm-source-<id>`). */
     readonly id: string;
-    /** `mapbox` becomes `mapbox://<tilesetId>`; `xyz` a raster source with `tiles` and `tileSize`; `pmtiles` a raster source on its URL. */
+    /** `mapbox` becomes `mapbox://<tilesetId>`; `xyz` a raster source with `tiles` and `tileSize`; `pmtiles` a custom source reading its archive (`pmtiles-source.ts`). */
     readonly source: LayerSource;
     readonly minzoom: number;
     readonly maxzoom: number;
@@ -29,6 +29,8 @@ export interface RasterLayerSpec {
     readonly order: number;
     /** Added to the attribution control while the layer is visible. */
     readonly attribution: string;
+    /** M12: from this zoom on the picture's pixels are drawn square (the admin's look at what it approves); smooth when absent. */
+    readonly sharpFrom?: number;
 }
 
 /** Properties of a photo point; titles are already in the current locale. */

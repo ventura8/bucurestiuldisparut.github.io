@@ -6,6 +6,7 @@ import {
     JOB_STEPS,
     NOT_RETRYABLE_CODES,
     PUBLISH_MAX_ATTEMPTS,
+    isSideJob,
     jobDocSchema,
     layerVersionDocSchema,
     type CallableRequest,
@@ -51,7 +52,7 @@ const NOT_RETRYABLE: ReadonlySet<string> = new Set(NOT_RETRYABLE_CODES);
 
 /** A version that was approved failed while publishing: the retry is the publisher's. */
 function failedAtPublish(job: JobDoc, version: LayerVersionDoc | undefined): boolean {
-    return job.type === 'republish' || version?.approval !== undefined;
+    return !isSideJob(job.type) && (job.type === 'republish' || version?.approval !== undefined);
 }
 
 /** The attempts a retry would add to: the publish starts after approval, the executions before. */
@@ -76,13 +77,16 @@ function curable(job: JobDoc): boolean {
  */
 const REVIVABLE: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>(['failed', 'processing', 'approved', 'publishing']);
 
-function revivable(version: LayerVersionDoc | undefined): version is LayerVersionDoc {
-    return version !== undefined && REVIVABLE.has(version.state);
+/** M12: a side job's version is not its to revive: it runs again while the version still takes its tiles. */
+const SIDE_JOB_VERSIONS: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>(['awaiting_approval', 'approved']);
+
+function revivable(job: JobDoc, version: LayerVersionDoc | undefined): version is LayerVersionDoc {
+    return version !== undefined && (isSideJob(job.type) ? SIDE_JOB_VERSIONS : REVIVABLE).has(version.state);
 }
 
 /** A failed raster job, made with its version (a refused upload has none), whose failure a retry may cure. */
 function retryable(job: JobDoc, version: LayerVersionDoc | undefined): version is LayerVersionDoc {
-    return job.status === 'failed' && job.type !== 'layer-delete' && revivable(version) && curable(job);
+    return job.status === 'failed' && job.type !== 'layer-delete' && revivable(job, version) && curable(job);
 }
 
 /** A failed raster job with its version, whose failure a retry may cure. */
@@ -183,7 +187,7 @@ async function retryIn(transaction: DocumentTransaction, request: Request, stamp
     }
     const versionPath = FIRESTORE_PATHS.layerVersion(request.cityId, versionIdOf(request.jobId, job));
     const version = await transaction.get(versionPath, layerVersionDocSchema);
-    if (!revivable(version)) {
+    if (!revivable(job, version)) {
         throw new ApiError('apiError.imagery.versionState');
     }
     const atPublish = failedAtPublish(job, version);

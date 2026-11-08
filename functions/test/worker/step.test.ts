@@ -22,6 +22,7 @@ import { goldenGeoref, goldenOutput, readJob, readVersion, seedGuard, seedJob, s
 import {
     CITY,
     ENTITY,
+    FOLDER,
     JOB,
     NOW,
     OTHER,
@@ -260,6 +261,64 @@ describe('worker.step and a pass (M9)', () => {
         const world = await held(job);
 
         await expect(codeOf(update(world, path, { model: {} }))).resolves.toBe('apiError.worker.refused');
+    });
+});
+
+describe('worker.step and a side job (M12)', () => {
+    const TILES = { path: `${FOLDER}/tiles.pmtiles`, bytes: 7, count: 1, sha256: 'd'.repeat(64), thumbPath: `${FOLDER}/thumb.webp` };
+    const OTHER_CITY = 'rasters/bacau/l-other/v-other';
+    const SIDE = { type: 'layer-tiles', params: { versionId: JOB }, versionId: JOB } as const;
+    const APPROVED = { state: 'approved', output: goldenOutput(), approval: { auto: false, by: 'u-admin', at: minutes(-9) } } as const;
+
+    it('happyPath_itAddsTilesToAnApprovedVersionAndEndsSucceeded @S-P08-HAPPY-OLD-VERSION', async () => {
+        const world = await held(SIDE, APPROVED);
+
+        await expect(update(world, VERSION_PATH, { 'output.tiles': TILES })).resolves.toEqual({ ok: true });
+        await expect(update(world, JOB_PATH, { status: 'succeeded', finishedAt: minutes(0), lease: DELETE })).resolves.toEqual({
+            ok: true,
+        });
+
+        expect(await readVersion(world, JOB)).toMatchObject({ state: 'approved', output: { tiles: TILES } });
+        expect(await readJob(world, JOB)).toMatchObject({ status: 'succeeded' });
+    });
+
+    it('badPath_itNeverMovesItsVersionsState @S-P08-BAD-FAILS-ALONE', async () => {
+        const world = await held(SIDE, APPROVED);
+
+        const failure = await failureOf(update(world, VERSION_PATH, { state: 'failed', error: { code: 'apiError.internal' } }));
+
+        expect(failure.details).toMatchObject({ code: 'apiError.worker.refused' });
+        expect(await readVersion(world, JOB)).toMatchObject({ state: 'approved' });
+    });
+
+    it('badPath_tilesOutsideItsVersionsFolderOrAnyOtherOutputAreRefused @S-P08-BAD-FOREIGN-TILES', async () => {
+        const world = await held(SIDE, APPROVED);
+        const foreign = [
+            { 'output.tiles': { ...TILES, path: `${OTHER_CITY}/tiles.pmtiles` } },
+            { 'output.tiles': { ...TILES, thumbPath: `${OTHER_CITY}/thumb.webp` } },
+            { 'output.tiles': TILES, 'output.previewPath': `${OTHER_CITY}/preview.png` },
+        ];
+
+        for (const fields of foreign) {
+            expect(await codeOf(update(world, VERSION_PATH, fields))).toBe('apiError.worker.refused');
+        }
+        expect((await readVersion(world, JOB))?.output).toEqual(goldenOutput());
+    });
+});
+
+describe('worker.step and the tiles of its own run (M12)', () => {
+    it('badPath_aRunsTilesLieInItsVersionsFolder @S-P08-BAD-FOREIGN-TILES', async () => {
+        const world = await held({}, { output: goldenOutput() });
+        const tiles = { path: 'rasters/bacau/l-other/v-other/tiles.pmtiles', bytes: 7, count: 1, sha256: 'd'.repeat(64) };
+
+        expect(await codeOf(update(world, VERSION_PATH, { 'output.tiles': { ...tiles, thumbPath: `${FOLDER}/thumb.webp` } }))).toBe(
+            'apiError.worker.refused',
+        );
+        await expect(
+            update(world, VERSION_PATH, {
+                'output.tiles': { ...tiles, path: `${FOLDER}/tiles.pmtiles`, thumbPath: `${FOLDER}/thumb.webp` },
+            }),
+        ).resolves.toEqual({ ok: true });
     });
 });
 

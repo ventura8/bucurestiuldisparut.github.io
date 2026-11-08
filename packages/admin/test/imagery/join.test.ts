@@ -87,7 +87,7 @@ describe('Join frames', () => {
             return ANSWER;
         });
         const search = (): Promise<void> => Promise.resolve();
-        const settings = { autoPublish: true, rmseThresholdM: 15, targetYears: [] };
+        const settings = { autoPublish: true, rmseThresholdM: 15, targetYears: [], publishThroughMapbox: false };
 
         const first = actions.join(['F039', 'F040']);
         await expect(actions.join(['F039', 'F040'])).resolves.toBeNull();
@@ -123,6 +123,7 @@ describe('Add {year} to target years', () => {
             autoPublish: true,
             rmseThresholdM: 9,
             targetYears: [1966, 1972, 1978],
+            publishThroughMapbox: false,
         });
         expect(callsOf(callables, 'imagery.search')).toEqual([{ cityId: CITY }]);
         expect(imagery.state.addingYear).toBeNull();
@@ -147,7 +148,7 @@ describe('Add {year} to target years', () => {
         const actions = new JoinActions(world.services, () => undefined);
         world.store.outcomes.push({ ok: false, reason: 'denied' });
 
-        const settings = { autoPublish: true, rmseThresholdM: 15, targetYears: [] };
+        const settings = { autoPublish: true, rmseThresholdM: 15, targetYears: [], publishThroughMapbox: false };
         await expect(actions.addYear(1972, { settings, version: null, search: () => Promise.resolve() })).resolves.toBe(false);
 
         expect(world.denials.count).toBe(1);

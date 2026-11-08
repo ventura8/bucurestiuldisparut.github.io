@@ -35,6 +35,21 @@ describe('admin catalogues', () => {
         expect(wrong).toEqual([]);
     });
 
+    it.each(['ro', 'en'] as const)('badPath_no %s step name contains another, so a step row is found by its name alone', (locale) => {
+        // A job's steps list `<name> <state>`; "Pregătirea dalelor" inside "Pregătirea dalelor pentru hartă" made the e2e's
+        // row lookup see two rows, and the owner two steps that read alike (docs/LESSONS.md 403).
+        const catalogue: Readonly<Record<string, string>> = ADMIN_CONTENT_CATALOGUES[locale];
+        const names = Object.entries(catalogue)
+            .filter(([key]) => key.startsWith('adminContent.jobs.stepName.'))
+            .map(([, text]) => text);
+        const inside = names.flatMap((name) =>
+            names.filter((other) => other !== name && other.includes(name)).map((other) => `${name} | ${other}`),
+        );
+
+        expect(names.length).toBeGreaterThan(20);
+        expect(inside).toEqual([]);
+    });
+
     it('happyPath_theShellExplainsTheGoogleConsentInBothLanguages', () => {
         expect(translateAdminShell('ro', 'adminShell.auth.notOwner', { projectId: 'demo-hcm' })).toBe(
             'Doar proprietarul proiectului Google Cloud demo-hcm poate configura harta.',

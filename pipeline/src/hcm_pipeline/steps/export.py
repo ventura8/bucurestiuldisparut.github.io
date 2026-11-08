@@ -1,4 +1,5 @@
-"""`export`: the COG Mapbox gets, the admin's preview and the Studio file (docs/research/M3-interfaces.md §5.3).
+"""`export`: the admin's preview, and for a city that publishes through Mapbox the COG and the Studio file (docs/research/M3-interfaces.md
+§5.3; docs/research/M12-own-tiles.md: every other city's tiles come from `pyramid`, so it pays for no 300 MB file nothing reads).
 
 An 8-bit COG (`COMPRESS=JPEG`, `QUALITY=85`, 512 px blocks, overviews; the alpha band becomes a mask, which JPEG
 needs), an RGBA PNG preview of at most 2048 px, and a JPEG-compressed GeoTIFF of at most `STUDIO_MAX_BYTES`
@@ -21,7 +22,7 @@ from hcm_pipeline.documents import OutputInfo, city_bounds
 from hcm_pipeline.geo import ZOOM0_RESOLUTION_M, Grid, ground_scale
 from hcm_pipeline.jobs import Done, JobContext, StepResult
 from hcm_pipeline.join.canvas import DatasetSource
-from hcm_pipeline.objects import sha256_of
+from hcm_pipeline.objects import ObjectInfo, sha256_of
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.rasters import fit_long_side, raster_info, read_band
 from hcm_pipeline.steps.common import gdal_step
@@ -119,35 +120,62 @@ def rendered_outline(warped: Warped, city: Mapping[str, object] | None) -> tuple
     return tuple(outline(Reach(mask, numpy.empty((0, 2)), grid)))
 
 
+def _path_of(info: ObjectInfo | None) -> str | None:
+    return None if info is None else info.path
+
+
+def _size_of(info: ObjectInfo | None) -> int | None:
+    return None if info is None else info.size
+
+
+@dataclass(frozen=True)
+class MapboxFiles:
+    """What only Mapbox's path reads: the COG and its digest, and the Studio file when one fits; none of them on the default path."""
+
+    cog: ObjectInfo | None = None
+    cog_sha256: str | None = None
+    studio: ObjectInfo | None = None
+
+
+def publishes_through_mapbox(city: Mapping[str, object] | None) -> bool:
+    """The city's `imagery.publishThroughMapbox` (`cityImagerySchema`): off by default."""
+    imagery = (city or {}).get("imagery")
+    return isinstance(imagery, dict) and imagery.get("publishThroughMapbox") is True
+
+
 class ExportStep:
     name = "export"
 
     def __init__(self, studio_max_bytes: int = STUDIO_MAX_BYTES) -> None:
         self._studio_max_bytes = studio_max_bytes
 
+    def _mapbox_files(self, ctx: JobContext, warped: Warped) -> MapboxFiles:
+        cog = gdal_step(ctx, lambda: write_cog(warped, ctx.local("cog.tif")), "write the COG")
+        studio = gdal_step(ctx, lambda: write_studio(warped, ctx.local("studio.tif"), self._studio_max_bytes), "write the Studio file")
+        sha256 = sha256_of(cog)
+        cog_info = ctx.publish(cog, ctx.version_file("cog.tif"), "image/tiff")
+        return MapboxFiles(cog_info, sha256, None if studio is None else ctx.publish(studio, ctx.version_file("studio.tif"), "image/tiff"))
+
     def run(self, ctx: JobContext) -> StepResult:
         warped = gdal_step(ctx, lambda: Warped.of(ctx.stage(ctx.work_file("warped.tif"), "warped.tif")), "read the warped layer")
-        cog = gdal_step(ctx, lambda: write_cog(warped, ctx.local("cog.tif")), "write the COG")
+        city = ctx.read(f"cities/{ctx.city}")
+        mapbox = self._mapbox_files(ctx, warped) if publishes_through_mapbox(city) else MapboxFiles()
         preview = gdal_step(ctx, lambda: write_preview(warped, ctx.local("preview.png")), "write the preview")
-        studio = gdal_step(ctx, lambda: write_studio(warped, ctx.local("studio.tif"), self._studio_max_bytes), "write the Studio file")
-        cog_sha256 = sha256_of(cog)
-        cog_info = ctx.publish(cog, ctx.version_file("cog.tif"), "image/tiff")
-        preview_path = ctx.publish(preview, ctx.version_file("preview.png"), "image/png").path
-        studio_info = None if studio is None else ctx.publish(studio, ctx.version_file("studio.tif"), "image/tiff")
+        preview_info = ctx.publish(preview, ctx.version_file("preview.png"), "image/png")
         minzoom, maxzoom = zooms(ctx.version, warped.zoom)
         output = OutputInfo(
-            cog_path=cog_info.path,
-            cog_bytes=cog_info.size,
-            cog_sha256=cog_sha256,
-            preview_path=preview_path,
+            cog_path=_path_of(mapbox.cog),
+            cog_bytes=_size_of(mapbox.cog),
+            cog_sha256=mapbox.cog_sha256,
+            preview_path=preview_info.path,
             bounds=warped.grid.box().bounds(),
             minzoom=minzoom,
             maxzoom=maxzoom,
             area_km2=valid_area_km2(warped),
-            studio_path=None if studio_info is None else studio_info.path,
-            studio_bytes=None if studio_info is None else studio_info.size,
-            coverage_pct=gdal_step(ctx, lambda: city_coverage(warped, ctx.read(f"cities/{ctx.city}")), "measure the coverage"),
-            outline=gdal_step(ctx, lambda: rendered_outline(warped, ctx.read(f"cities/{ctx.city}")), "measure the outline"),
+            studio_path=_path_of(mapbox.studio),
+            studio_bytes=_size_of(mapbox.studio),
+            coverage_pct=gdal_step(ctx, lambda: city_coverage(warped, city), "measure the coverage"),
+            outline=gdal_step(ctx, lambda: rendered_outline(warped, city), "measure the outline"),
         )
         ctx.update_version({"output": output.as_record()})
-        return Done(cog_info, cog_sha256)
+        return Done(mapbox.cog or preview_info, mapbox.cog_sha256)

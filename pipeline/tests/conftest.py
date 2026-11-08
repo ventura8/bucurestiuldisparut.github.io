@@ -6,12 +6,16 @@
 - `fake_m2m`: a fake USGS M2M server on 127.0.0.1:<random port> (tests/fakes/usgs_m2m.py).
 - Hypothesis runs the `ci` profile: derandomized, 25 examples, no example database (a run is
   reproducible and writes nothing into the repository), no per-example deadline.
+- `signals_restored`: a test that leaves SIGTERM's or SIGINT's handler changed fails, and the handler is put back. A leaked
+  handler outlives the test: the matcher's `os._exit(0)` at SIGTERM once ended the whole pytest run with exit 0 at the
+  runner's signal test, so every result after it, failures included, went unreported (docs/LESSONS.md).
 - GDAL and OpenCV run on one thread with a fixed seed (docs/research/M3-interfaces.md §5.6: determinism).
 - `synthetic_scene`: one synthetic USGS scene per session (tests/synthetic/scenes.py); `world`: the pipeline's
   loopback world around it (tests/fakes/world.py), fresh for each test.
 """
 
 import io
+import signal
 from collections.abc import Iterator
 
 import pytest
@@ -39,6 +43,16 @@ def log_stream() -> io.StringIO:
     stream = io.StringIO()
     configure(stream)
     return stream
+
+
+@pytest.fixture(autouse=True)
+def signals_restored() -> Iterator[None]:
+    before = {number: signal.getsignal(number) for number in (signal.SIGTERM, signal.SIGINT)}
+    yield
+    leaked = [number.name for number, handler in before.items() if signal.getsignal(number) is not handler]
+    for number, handler in before.items():
+        signal.signal(number, handler)
+    assert not leaked, f"the test left these signal handlers changed: {leaked}"
 
 
 @pytest.fixture

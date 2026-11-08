@@ -74,6 +74,7 @@ export const ro = {
     'adminContent.layers.deleteBody': 'Dispare de pe harta publică în aproximativ un minut. Îl poți restaura din Istoric.',
     'adminContent.layers.deleteTiles': 'Setul lui de dale Mapbox se șterge după {days} zile, dacă nu îl restaurezi.',
     'adminContent.layers.deleteBodyLinked': 'Setul de dale legat rămâne în contul Mapbox.',
+    'adminContent.layers.deleteOwnTiles': 'Dalele lui din bucketul tău public se șterg după {days} zile, dacă nu îl restaurezi.',
     'adminContent.layers.keep': 'Păstrează stratul',
     'adminContent.layers.deleting': 'Se șterge…',
     'adminContent.layers.deleted': 'Stratul „{name}” a fost șters. Dalele lui se șterg pe {date}, dacă nu îl restaurezi din Istoric.',

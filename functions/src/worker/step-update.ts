@@ -5,11 +5,15 @@
  * pipeline's `transact`: a mismatch answers `ok: false` and writes nothing); the fields are merged as Firestore's
  * `update` does, stamped `system:pipeline` at the server's time, and the merged document must pass its schema; then the
  * job's status, the version's state and the lease must be ones a run sets. While the budget guard is red only a write
- * that ends the run is stored.
+ * that ends the run is stored. M12: tiles it records lie in its version's own folder, and a side job changes only its version's tiles.
  */
+import { isDeepStrictEqual } from 'node:util';
+
 import {
     ENDED_VERSION_STATES,
     LEASE_SECONDS,
+    isOwnTiles,
+    isSideJob,
     jobDocSchema,
     layerVersionDocSchema,
     validate,
@@ -20,6 +24,7 @@ import {
 } from '@hcm/shared';
 
 import { ApiError } from '../api/api-error.js';
+import { omit } from '../api/objects.js';
 import { versionIdOf } from '../imagery/records.js';
 import type { DocumentStore, DocumentTransaction, VersionedDocument } from '../ports/documents.js';
 import {
@@ -59,8 +64,13 @@ interface Writable<T> {
     readonly ends: (current: T, merged: T) => boolean;
 }
 
+/** M12: a side job ends on its own: no approval follows it. */
+function sideJobDone(current: JobDoc, merged: JobDoc): boolean {
+    return merged.status === 'succeeded' && isSideJob(current.type);
+}
+
 function jobStatusAllowed(current: JobDoc, merged: JobDoc): boolean {
-    if (merged.status === current.status) {
+    if (merged.status === current.status || sideJobDone(current, merged)) {
         return true;
     }
     return WORKER_JOB_STATUSES.has(merged.status) && (merged.status !== 'cancelled' || current.cancelRequested === true);
@@ -86,15 +96,37 @@ function endsWithJob(job: JobDoc, current: LayerVersionDoc, merged: LayerVersion
     return ending && (!ENDED.has(current.state) || current.state === merged.state);
 }
 
-function versionStateAllowed(current: LayerVersionDoc, merged: LayerVersionDoc): boolean {
-    return !ENDED.has(current.state) && (merged.state === current.state || WORKER_VERSION_STATES.has(merged.state));
+/** M12: a side job may add to its version (`output.tiles`) and never moves its state, approved or waiting. */
+function versionStateAllowed(job: JobDoc, current: LayerVersionDoc, merged: LayerVersionDoc): boolean {
+    const moves = WORKER_VERSION_STATES.has(merged.state) && !isSideJob(job.type);
+    return !ENDED.has(current.state) && (merged.state === current.state || moves);
 }
 
-function versionWritable(job: JobDoc): Writable<LayerVersionDoc> {
+/** A version's output with its tiles left out: what a side job must leave as it was. */
+function besidesTiles(output: LayerVersionDoc['output']): object {
+    return output === undefined ? {} : omit(output, ['tiles']);
+}
+
+/**
+ * M12: tiles a run records are its version's own files (`isOwnTiles`: the server later copies, signs and deletes that path), and a side job
+ * changes nothing of its version's output but its tiles (the bounds, COG and preview the owner approved stay theirs).
+ */
+function outputAllowed(scope: JobScope, current: LayerVersionDoc, merged: LayerVersionDoc): boolean {
+    const tiles = merged.output?.tiles;
+    if (tiles !== undefined && !isOwnTiles(scope.cityId, merged.layerId, scope.versionId, tiles)) {
+        return false;
+    }
+    return !isSideJob(scope.job.type) || isDeepStrictEqual(besidesTiles(current.output), besidesTiles(merged.output));
+}
+
+function versionWritable(scope: JobScope): Writable<LayerVersionDoc> {
+    const { job } = scope;
     return {
         schema: layerVersionDocSchema,
         fields: WORKER_VERSION_FIELDS,
-        allowed: (current, merged) => (IN_RUN.has(job.status) ? versionStateAllowed(current, merged) : endsWithJob(job, current, merged)),
+        allowed: (current, merged) =>
+            outputAllowed(scope, current, merged) &&
+            (IN_RUN.has(job.status) ? versionStateAllowed(job, current, merged) : endsWithJob(job, current, merged)),
         ends: (current, merged) => merged.state !== current.state && ENDINGS.has(merged.state),
     };
 }
@@ -195,7 +227,7 @@ export async function updateDocument(
         if (target === 'version') {
             return writeChecked(
                 context,
-                { transaction, path: request.path, writable: versionWritable(job), changes },
+                { transaction, path: request.path, writable: versionWritable(scope), changes },
                 request.ifUpdateTime,
             );
         }

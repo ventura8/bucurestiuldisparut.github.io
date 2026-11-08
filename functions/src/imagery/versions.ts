@@ -201,6 +201,7 @@ function processingVersion(work: NewWork, fields: VersionFields): LayerVersionDo
         guard: undefined,
         approval: undefined,
         mapbox: undefined,
+        own: undefined,
         machines: undefined,
         error: undefined,
     });

@@ -102,6 +102,8 @@ bash scripts/dev/dev-stack.sh check      # the stack's own check (below)
 bash scripts/dev/dev-stack.sh stop       # stop it from another terminal
 ```
 
+**A version's own tiles on the local stack** (M12): the emulator's signer names the Storage emulator, which refuses a browser without the owner's header, so `imagery.previewUrl`'s address fails there and a version's page says **The image's full detail could not be read**, its small picture on the map. That is the signer's stand-in and not the feature; the e2e tier answers that address from the object (`e2e/admin/specs/imagery/own-tiles.spec.ts`).
+
 The first start builds the e2e sites and the admin's e2e bundle (a few minutes; later starts skip the build when no input changed, `scripts/ci/e2e_build.py`), starts the emulators (a minute or two), seeds the world and prints the addresses. Always open them with `127.0.0.1`, never `localhost` (the functions' CORS and the consent stand-in name exactly these origins):
 
 | What | Address |

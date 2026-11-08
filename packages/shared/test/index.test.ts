@@ -390,6 +390,7 @@ const EXPORTS = {
         'RASTER_UPLOAD_MAX_BYTES',
         'REFERENCE_KINDS',
         'VERSION_FILES',
+        'isOwnTiles',
         'parseRasterUploadPath',
         'BROWSE_MAX_BYTES',
         'BROWSE_PREFETCH',

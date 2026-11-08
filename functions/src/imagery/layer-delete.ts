@@ -5,7 +5,7 @@
  * reserved during the grace: CR-M3-47) the job waits for it to end, since the tileset id is the layer's; otherwise the
  * tileset and its source are deleted at Mapbox (a missing one is fine; a tileset of another account is never touched),
  * the files of the deleted layer's own versions (those made before the deletion; M8: and of the frames a join of the layer
- * made `joined`) go, and the job succeeds, which frees the scenes the layer was imported from (`release-scene.ts`: nothing can bring the layer back now, so it can be imported again).
+ * made `joined`; M12: and its archives in the public bucket) go, and the job succeeds, which frees the scenes the layer was imported from (`release-scene.ts`: nothing can bring the layer back now, so it can be imported again).
  * A failure is tried again on the next tick, at most `JOB_MAX_ATTEMPTS` times.
  */
 import {
@@ -31,6 +31,7 @@ import { omit } from '../api/objects.js';
 import type { StoredDocument } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { rewriteDatePlan } from './join-plan.js';
+import { deletePublicTiles } from './own-tiles-clean.js';
 import { IMAGERY_WRITER, appendJobLog, requireMapboxUser, requireTilesToken, stampOf, withStep } from './records.js';
 import { releaseLayerScenes } from './release-scene.js';
 
@@ -167,7 +168,7 @@ export async function runLayerDelete(deps: LayerDeleteDeps, cityId: string, jobI
     }
     try {
         await deleteTileset(deps, cityId, params);
-        const files = await deleteFiles(deps, cityId, job, versions);
+        const files = (await deleteFiles(deps, cityId, job, versions)) + (await deletePublicTiles(deps, cityId, params.layerId));
         await finish(deps, path, job, 'succeeded');
         await appendJobLog(deps, cityId, jobId, { level: 'info', step: 'delete', message: `Tileset and ${String(files)} files deleted.` });
     } catch (error) {

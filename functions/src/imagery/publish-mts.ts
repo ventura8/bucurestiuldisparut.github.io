@@ -30,7 +30,8 @@ import { IMAGERY_WRITER, appendJobLog, requireMapboxUser, requireTilesToken, sta
 
 export type MtsDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'secrets' | 'setup' | 'tilesets' | 'reader' | 'tasks'>;
 
-type Output = NonNullable<LayerVersionDoc['output']>;
+/** M12: a version reaches here only with its COG: without one, `publish-own.ts` takes it whatever the city chose. */
+type Output = NonNullable<LayerVersionDoc['output']> & { readonly cogPath: string; readonly cogBytes: number; readonly cogSha256: string };
 type PublishingVersion = LayerVersionDoc & { readonly output: Output };
 
 /** The job and its version while Mapbox works on them. */
@@ -51,7 +52,7 @@ const LOST_JOB_SLACK_MS = 60_000;
 const LISTED_JOBS = 10;
 
 function isPublishing(version: LayerVersionDoc | undefined): version is PublishingVersion {
-    return version?.state === 'publishing' && version.output !== undefined;
+    return version?.state === 'publishing' && version.output?.cogPath !== undefined;
 }
 
 /** The job and its version while both are at Mapbox. */

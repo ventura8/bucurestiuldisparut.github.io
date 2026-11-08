@@ -94,9 +94,26 @@ describe('raster layers', () => {
             attribution: 'USGS EROS',
             bounds: [25.9, 44.3, 26.2, 44.5],
         });
-        expect(rasterSource({ ...RASTER, source: { type: 'pmtiles', url: 'https://t.example.org/kh4.pmtiles' } })).toMatchObject({
-            url: 'https://t.example.org/kh4.pmtiles',
+        // M12: never a bare URL, which would make Mapbox GL fetch a provider script from its own host.
+        const custom = rasterSource({
+            ...RASTER,
+            source: { type: 'pmtiles', url: 'https://t.example.org/kh4.pmtiles' },
+            bounds: [
+                [25.9, 44.3],
+                [26.2, 44.5],
+            ],
         });
+        expect(custom).toMatchObject({
+            id: 'hcm-source-kh4-1966',
+            type: 'custom',
+            dataType: 'raster',
+            tileSize: 256,
+            minzoom: 10,
+            maxzoom: 17,
+            attribution: 'USGS EROS',
+            bounds: [25.9, 44.3, 26.2, 44.5],
+        });
+        expect(custom).not.toHaveProperty('url');
     });
 
     it('badPath_markupInTheAttributionReachesMapboxAsEscapedText', () => {

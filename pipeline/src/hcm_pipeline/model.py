@@ -303,12 +303,25 @@ def _optional_bounded(record: Mapping[str, object], key: str, limit: int) -> str
     return _bounded_text(record, key, limit) if key in record else None
 
 
-JobParams = UsgsImportParams | GeotiffImportParams | RegeorefParams | JoinParams
+@dataclass(frozen=True)
+class LayerTilesParams:
+    """A `layer-tiles` job: the version it makes tiles for (M12)."""
+
+    version_id: str
+
+    @classmethod
+    def of(cls, params: Mapping[str, object]) -> LayerTilesParams:
+        _strict(params, frozenset({"versionId"}))
+        return cls(id_of(params, "versionId"))
+
+
+JobParams = UsgsImportParams | GeotiffImportParams | RegeorefParams | JoinParams | LayerTilesParams
 _PARAMS: Final[Mapping[str, Callable[[Mapping[str, object]], JobParams]]] = {
     "usgs-import": UsgsImportParams.of,
     "geotiff-import": GeotiffImportParams.of,
     "regeoref": RegeorefParams.of,
     "layer-join": JoinParams.of,
+    "layer-tiles": LayerTilesParams.of,
 }
 
 

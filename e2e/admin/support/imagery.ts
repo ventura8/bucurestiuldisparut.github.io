@@ -155,6 +155,8 @@ export class ImageryWorld {
         await emulators.setDocument('ops/guard', { state: 'green', updatedBy: 'system:ops', updatedAt: at });
         const imagery = {
             autoPublish: true,
+            // The specs of this world drive Mapbox's path behind its mock; M12's own tiles seed the default.
+            publishThroughMapbox: true,
             rmseThresholdM: DEFAULT_RMSE_THRESHOLD_M,
             targetYears: [...BUCHAREST_TARGET_YEARS],
             ...settings,

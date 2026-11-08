@@ -2381,3 +2381,94 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: a targeted run while the map labels were built, then reproduced on a clean export.
     - Fix and pin: the test reads the focused row's own `.title` and asks for that heading exactly.
     - **A name composed for a screen reader is not a data format: read the part from the element that holds it.**
+
+393. **A new pipeline step named like a publish step.**
+    - Cause: the M12 design called its step `tiles`, the name `PUBLISH_STEPS` already gives MTS at work. `job.steps` is one map, so the pipeline's record and the publisher's would have overwritten each other, and `pipeline_steps_of` would have listed the step for every job.
+    - Found by: reading `JOB_STEPS` before writing the step. Fix and pin: the step is `pyramid` (`pipeline/tests/contracts/enums.json`, S-P08-HAPPY-FROM-WARP).
+    - **A step's name is a key in a map two writers share: look it up in both lists first.**
+
+394. **A tile with no alpha band is not a tile without alpha.**
+    - Cause: a test asked every WebP tile for four bands; GDAL's WebP writer leaves the alpha out of a tile with nothing transparent in it, so a tile in the middle of a frame reads as three. It shows opaque, which is right.
+    - Found by: S-P08-HAPPY-FROM-WARP. Fix and pin: the test checks the size there, and the tile with transparent pixels in S-P08-HAPPY-OLD-VERSION.
+    - **Assert what a tile shows, not how its encoder chose to store it.**
+
+395. **A helper script in a scratchpad several agents share ran in another agent's worktree.**
+    - Cause: the session's scratchpad is shared by parallel subagents. A short `q.sh` that held `cd <repo>` was overwritten by another agent's `q.sh`, so `prettier --write`, `tsc -b` and Vitest ran in `hcm-wt/roles`, and the errors there looked like this tree's.
+    - Found by: `tsc -b --verbose` naming the other worktree. Fix: a folder of the task's own under the scratchpad, read back before use. Prettier reformats only; no content of that worktree was otherwise written, but its author should know.
+    - **Before trusting a script in a shared scratchpad, make its name yours; an impossible error may be someone else's tree.**
+
+396. **A step the admin has no word for shows its code.**
+    - Cause: `pyramid` joined `JOB_STEPS` without a name in `STEP_NAMES`; `stepNameText` falls back to the raw name, on purpose, so nothing failed and a version's page said "pyramid".
+    - Found by: reading the page while building M12's view. Fix: `adminContent.jobs.stepName.pyramid` in both languages.
+    - **A new step needs its name in the same task: the fallback is for steps from the future, and hides one from today.**
+
+397. **A preview paler than what it previews.**
+    - Cause: the version's map started at 80 %, from when it showed a rough picture over the basemap; a published layer starts at 100 %. A colour probe at the page's first opacity found the blend.
+    - Found by: S-A74-HAPPY-SEES-IMAGE. Fix: 100 %, and the probe expects the tiles' own colour.
+    - **"What you approve" includes how it is shown: compare the preview's defaults with the published layer's.**
+
+398. **A translated label is no regular expression.**
+    - Cause: a spec built its Work tab's name with `new RegExp(text with '\\d+')`; the label holds parentheses, so the pattern named nothing and the test waited out its whole timeout, which then stopped the rest of the run.
+    - Found by: `@S-A75-HAPPY-THUMBS`. Fix: the label with its known count, as `import.spec.ts` does.
+    - **Match a catalogue's text with the catalogue's text, not a pattern built from it.**
+
+399. **A test's archive served whole by the local stack.**
+    - Cause: the stack's site and forward read an object of the Storage emulator without the request's `Range`, so every read of a layer's own archive came back as the whole file (200). The viewer's reader refuses that, as it must, and the published layer failed on the stack with its toast; the e2e tiers serve archives through their own routes, so no test saw it.
+    - Found by: the end-to-end rehearsal of 2026-11-07 (a real KH-9 frame, `docs/research/M12-own-tiles.md` → *Rehearsal*). Fix and pin: `e2e/stack/servers.ts` passes `Range` along; `dev-stack.sh check` reads the published archive's first bytes and wants a 206.
+    - **A dev server in front of storage is part of the format: forward the headers the format is built on.**
+
+400. **A button below the map moved the map out of sight.**
+    - Cause: Actual pixels sits under the version's map in the detail column; at 1440×900 the owner scrolls to it, so the map zoomed above the fold and nothing seemed to happen. See the image already scrolled to the map; Actual pixels did not.
+    - Found by: the rehearsal's screenshots, taken after each click. Fix and pin: Actual pixels brings the map into view first (`image-view.ts`, `approval-map.test.ts`, the own-tiles spec's `toBeInViewport`).
+    - **Screenshot the viewport after a click, not the element: a change off screen is no change to the owner.**
+
+401. **A layer on its own tiles was called linked, and told its tileset stayed at Mapbox.**
+    - Cause: "linked" was read as "no `mapbox` block"; an M12 layer has none, as its tiles are in the project's bucket. The list tagged it Linked and the delete dialog said the linked tileset stays in the Mapbox account, while the job deletes its archives.
+    - Found by: the rehearsal's layer delete. Fix and pin: linked needs no `mapbox` and no `currentVersion`; an own-tiles layer's dialog says its tiles in the public bucket go after the grace (`model.test.ts`, `layers-page.test.ts`).
+    - **When a new kind of thing loses a field, check every place that read the field's absence as a meaning.**
+
+402. **pytest ended halfway with exit 0, so the `tests` stage hid three failures.**
+    - Cause: `test_matcher_serve.py`'s refusal test called the real `main()`, which installs the sidecar's SIGTERM handler, `os._exit(0)`, and never put it back. Later, the runner's signal test raised SIGTERM; `sigterm_raises` chains to the handler it replaced, so pytest left at once with exit 0. The gate read "passed", the XML coverage report was never written, and the three join and worker tests that M12's default path had broken were reported only as an `F` in the log.
+    - Found by: the per-file coverage gate, which named the new pipeline files as missing from a stale `pipeline.xml`. Fix and pin: the test patches `signal.signal`; `pipeline/tests/conftest.py`'s autouse `signals_restored` fails any test that leaves SIGTERM's or SIGINT's handler changed and puts it back.
+    - **A test that installs a process-wide handler restores it; a run whose output stops mid-file did not pass, whatever its exit code says.**
+
+403. **Two job steps read alike in Romanian, and the real pipeline's spec found two rows.**
+    - Cause: M12's `pyramid` step was named "Pregătirea dalelor pentru hartă", which contains `export`'s "Pregătirea dalelor"; `stepRow` (`e2e/admin/specs/imagery/world.ts`) filters the steps by their name, so it matched both and strict mode failed `S-P01-HAPPY-ADMIN`. English already said "Making the map tiles".
+    - Found by: the targeted Playwright run of the imagery specs at `admin-l1440-ro`. Fix and pin: the Romanian is "Realizarea dalelor hărții"; `packages/shared/test/i18n-admin.test.ts` fails when one step name contains another, in either language.
+    - **A new label beside old ones is checked against them, not only translated: a name that contains another confuses the owner and every lookup by text.**
+
+404. **The test of a version whose tiles are gone failed one run in two with a 403 in the console.**
+    - Cause: `S-A74-BAD-REFUSED` deleted the private archive while the version's open map was still reading it by range, then reloaded. A read the deletion overtook got the Storage emulator's 403 before the reload, and the console check caught it; the owner's case (the archive gone before the page opens) never sees it.
+    - Found by: the targeted rerun of `own-tiles.spec.ts` with `--repeat-each 3` at `admin-c360-ro` and `admin-m768-ro` (3 of 6). Fix and pin: the spec leaves the page (`about:blank`) before deleting and opens the same address after.
+    - Then, on compact windows, the test's end waited 120 s for an `imagery-search` its navigation had cut off: the page's `SceneWriters` never heard a finish for it. Its message now lists the calls still open, and `SceneWriters.settledOn(page)` lets a test that leaves or reloads its page wait for them first (8 of 8 after).
+    - **Take a resource away from a page only when the page is not using it, and let its calls answer before navigating, unless the race is the behaviour under test.**
+
+405. **A publish that stopped after its copy left an unpublished image public.**
+    - Cause: `publish-own.ts` took its public copy back only when `finalizeVersion` returned false. A finalize that threw, or a run killed after the copy, left `tiles/C/L/V.pmtiles` world-readable; Reject and the dismissal of a failed version deleted only private files, and a first version has no layer whose deletion would empty the folder.
+    - Found by: the review of M12 of 2026-11-08 (read, not run). Fix and pin: the copy is taken back when the publish stops (attempts out, finalize threw) unless the version is published with it; `deleteVersionTiles` deletes the public copy of a version never published on Reject and dismissal (`S-A70-BAD-FINALIZE-THROWS`, `S-A70-BAD-LEFT-COPY`, `S-A70-BAD-ATTEMPTS`, `functions/test/imagery/own-tiles.test.ts`).
+    - **A step that makes something public is undone on every way out, a throw included, and whatever ends the record also ends what the record never got to name.**
+
+406. **A path a worker wrote was trusted by the server that copies, signs and deletes it.**
+    - Cause: `worker.step` let a run write any `output.tiles.path` (`pathSchema` is any string); `worker.urls` checked folders, but `publishOwn`, `imagery.previewUrl` and the rejection's clean-up acted on the stored path, so a worker of one city could publish, preview or delete another's private object.
+    - Found by: the review of M12 of 2026-11-08. Fix and pin: `isOwnTiles` (shared) holds tiles to the version's own `tiles.pmtiles` and `thumb.webp`; `worker.step` refuses any other path and a side job's change to the rest of the output; the consumers answer `tilesGone` and the clean-up deletes the fixed names (`S-A70-BAD-FOREIGN-TILES`, `S-P08-BAD-FOREIGN-TILES`).
+    - **An allow-list on signing is bypassed by any document that names an object: check the name again where it is used, or derive it.**
+
+407. **The cost card counted one copy of a layer stored twice.**
+    - Cause: publishing was a `copy`, and nothing deleted a published version's private archive, so every live layer stored about 179 MB twice while the card and the free tier's count said once.
+    - Found by: the review of M12 of 2026-11-08. Fix and pin: publishing deletes the private archive (the thumbnail stays), `imagery.previewUrl` signs a published version's public copy, and the card says publishing *moves* the tiles (`S-A70-HAPPY-STORED-ONCE`, `S-A70-HAPPY-PREVIEW-PUBLISHED`).
+    - **A number shown about money is checked against every place the bytes are, not the one the design drew.**
+
+408. **"Try again in a few minutes" for tiles that were gone for good.**
+    - Cause: `imagery.previewUrl` gave one refusal, `tilesMissing` ("made on their own"), for tiles not made yet and for tiles a sweep had deleted, and its alert always offered Try again. `S-A74-BAD-REFUSED` checked only that the key's words showed.
+    - Found by: the review of M12 of 2026-11-08. Fix and pin: `apiError.imagery.tilesGone` for recorded tiles that are gone, with no Try again (`S-A70-BAD-PREVIEW-NO-TILES`, `S-A74-BAD-REFUSED`).
+    - **One refusal per cause the owner can act on differently; a test of a refusal checks its words fit the cause, not only that they show.**
+
+409. **"Being made on its own" for detail nothing would make.**
+    - Cause: the page showed one note for every version without tiles, rejected ones forced in, though the sweep makes tiles only for waiting versions of a city on its own bucket, and a failed tiles job waits for a Retry the version's page does not show.
+    - Found by: the review of M12 of 2026-11-08. Fix and pin: `smallKey` (`image-view.ts`) says on their way (and that the Jobs page has the Retry), never coming, or deleted, from the version's state and the city's setting (`S-A74-BAD-NEVER-COMING`).
+    - **A promise on screen names the process that keeps it; where that process never runs, the promise goes.**
+
+410. **An address's hour running out read as a broken image.**
+    - Cause: every tile failure showed `tilesFailed`, though the address is signed for an hour and its comment named expiry as the usual cause; the page never read when its hour ended.
+    - Found by: the review of M12 of 2026-11-08. Fix and pin: `VersionImage` counts the hour from the answer by the page's clock and, past it, asks for a new address on its own, once; within it a failure still says so (`S-A74-BAD-HOUR-OVER`: the admin's unit test and the own-tiles spec, which moves only the page's clock).
+    - **A credential with a lifetime is renewed by what holds it; an error the code expects is not shown as one it does not.**

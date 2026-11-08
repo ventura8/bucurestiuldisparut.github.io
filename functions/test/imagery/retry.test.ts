@@ -448,3 +448,26 @@ describe('imagery.retry of a join (M8)', () => {
         },
     );
 });
+
+describe('imagery.retry of a side job (M12)', () => {
+    const SIDE = { type: 'layer-tiles', params: { versionId: JOB }, steps: { pyramid: { status: 'failed' } } } as const;
+
+    it('happyPath_itRunsAgainAndItsVersionStaysApproved @S-A71-BAD-FAILED-JOB', async () => {
+        const world = await readyWorld();
+        await seedJob(world, 'tiles-1', failed(SIDE));
+        await seedVersion(world, JOB, renderedVersion({ state: 'approved', approval: { auto: false, by: 'u-admin', at: at(NOW) } }));
+
+        await expect(retry(world, 'tiles-1')).resolves.toMatchObject({ status: 'queued' });
+
+        expect(await readVersion(world, JOB)).toMatchObject({ state: 'approved' });
+        expect(world.deps.tasks.queued).toEqual([]);
+    });
+
+    it('badPath_notOnceItsVersionEnded @S-A71-BAD-FAILED-JOB', async () => {
+        const world = await readyWorld();
+        await seedJob(world, 'tiles-1', failed(SIDE));
+        await seedVersion(world, JOB, renderedVersion({ state: 'rejected' }));
+
+        expect((await failureOf(retry(world, 'tiles-1'))).details).toMatchObject({ code: 'apiError.imagery.versionState' });
+    });
+});

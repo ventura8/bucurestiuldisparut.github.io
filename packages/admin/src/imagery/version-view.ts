@@ -20,11 +20,13 @@ import {
     type JobWaitReason,
     type JoinPart,
     type JoinReport,
+    type LngLat,
     type LayerVersionDoc,
     type LayerVersionState,
     type PublishChoice,
     type Sensor,
     type UsageCounters,
+    type VersionTiles,
 } from '@hcm/shared';
 
 import { isoOf } from '../content/list.js';
@@ -62,6 +64,10 @@ export interface VersionView {
         readonly studioPath: string | null;
         readonly cogBytes: number;
         readonly coveragePct: number | null;
+        /** M12: the version's own tiles (null: none yet); its size is what publishing puts in the public bucket. */
+        readonly tiles: { readonly path: string; readonly bytes: number } | null;
+        /** The image's measured edge over the city (null: not measured): the map shades what it misses. */
+        readonly outline: readonly LngLat[] | null;
     } | null;
     readonly estimate: number | null;
     readonly guard: {
@@ -98,14 +104,25 @@ function georefOf(georef: LayerVersionDoc['georef']): VersionView['georef'] {
     };
 }
 
-function outputOf(output: LayerVersionDoc['output']): VersionView['output'] {
+function tilesOf(tiles: VersionTiles | undefined): NonNullable<VersionView['output']>['tiles'] {
+    return tiles === undefined ? null : { path: tiles.path, bytes: tiles.bytes };
+}
+
+/** The edge `export` read off the picture's alpha, else the one `locate` measured through the proved map. */
+function outlineOf(version: LayerVersionDoc): readonly LngLat[] | null {
+    const outline = version.output?.outline ?? version.calibration?.outline;
+    return outline === undefined ? null : outline.map((place): LngLat => [place.lng, place.lat]);
+}
+
+function outputOf(version: LayerVersionDoc): VersionView['output'] {
+    const { output } = version;
     if (output === undefined) {
         return null;
     }
     return {
         ...{ bounds: bboxFromRecord(output.bounds), minzoom: output.minzoom, maxzoom: output.maxzoom, areaKm2: output.areaKm2 },
-        ...{ previewPath: output.previewPath, studioPath: orNull(output.studioPath), cogBytes: output.cogBytes },
-        coveragePct: orNull(output.coveragePct),
+        ...{ previewPath: output.previewPath, studioPath: orNull(output.studioPath), cogBytes: output.cogBytes ?? 0 },
+        ...{ coveragePct: orNull(output.coveragePct), tiles: tilesOf(output.tiles), outline: outlineOf(version) },
     };
 }
 
@@ -153,7 +170,7 @@ export function versionViewOf(doc: Stored<LayerVersionDoc>): VersionView {
         ...{ id: doc.id, layerId: version.layerId, label: version.label, year: version.year, date: orNull(version.date) },
         ...{ sensor: orNull(version.sensor), origin: version.origin, state: version.state, georef: georefOf(version.georef) },
         calibration: orNull(version.calibration),
-        ...{ output: outputOf(version.output), estimate: estimateOf(version), guard: guardOf(version.guard) },
+        ...{ output: outputOf(version), estimate: estimateOf(version), guard: guardOf(version.guard) },
         ...{ approval: approvalOf(version.approval), error: errorOf(version.error), hasScan: version.scan !== undefined },
         ...{ ...sourceOf(version.source), partOf: orNull(version.partOf), join: orNull(version.join) },
     };

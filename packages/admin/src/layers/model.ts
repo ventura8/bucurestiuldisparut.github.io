@@ -19,7 +19,10 @@ export interface LayerItem {
     readonly opacity: number;
     readonly defaultVisible: boolean;
     readonly sourceType: LayerSource['type'];
-    /** Linked by an admin (no tileset of the raster pipeline): deleting it leaves the tileset in the Mapbox account. */
+    /**
+     * Linked by an admin (nothing the raster pipeline made): deleting it leaves the tileset in the Mapbox account. A layer on its own tiles
+     * (M12) has no `mapbox` block but has its version: it is the pipeline's, never linked (the rehearsal of 2026-11-07).
+     */
     readonly linked: boolean;
     /** The version read (`updatedAt`): a reorder is refused when another admin changed the layer meanwhile. */
     readonly version: string;
@@ -33,7 +36,7 @@ export function layerItemOf(doc: Stored<LayerDoc>): LayerItem {
             opacity: layer.opacity,
             defaultVisible: layer.defaultVisible,
             sourceType: layer.source.type,
-            linked: layer.mapbox === undefined,
+            linked: layer.mapbox === undefined && layer.currentVersion === undefined,
         },
         version: doc.version,
     };

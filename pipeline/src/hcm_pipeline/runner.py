@@ -7,6 +7,7 @@ How a run ends:
 | Ending | The job | Exit |
 | --- | --- | --- |
 | every step done | `awaiting_approval` (`waitReason: 'approval'`), lease released | 0 |
+| every step done of a side job (`SIDE_JOB_TYPES`: M12's `layer-tiles`) | `succeeded`, lease released | 0 |
 | a step waits | `waiting_usgs` with `retryAt`, or `awaiting_gcps`; the step `pending` | 0 |
 | a step fails | `failed` with `error {code, message, params}`; the version `failed` | 1 |
 | an invalid job | `failed` with `apiError.invalidRequest` (a retry cannot help) | 1 |
@@ -14,6 +15,8 @@ How a run ends:
 | SIGTERM (or SIGINT: a local worker's Ctrl-C), no cancel | `queued` with `retryAt` + 1 minute; the step `pending` | 0 |
 | the download phase done on the small `fetch` job | `queued`, lease released: dispatched again on `std` or `xl` | 0 |
 | another live owner holds the lease, or the job is not runnable | untouched | 0 |
+
+A side job works beside its version and never decides its state: its failure or its cancellation leaves the version where it stands.
 
 Local scratch files live in a temporary folder removed whatever the ending. A step whose recorded output is gone runs
 again, except what only feeds `locate` once `locate` is finished: `fetch` (`locate` deletes the delivery:
@@ -38,7 +41,7 @@ from typing import Final, Protocol
 
 from hcm_pipeline import paths
 from hcm_pipeline.config import Config
-from hcm_pipeline.contract import DOWNLOAD_STEPS, REQUEUE_SECONDS, Errors, pipeline_steps_of, step_weights
+from hcm_pipeline.contract import DOWNLOAD_STEPS, REQUEUE_SECONDS, SIDE_JOB_TYPES, Errors, pipeline_steps_of, step_weights
 from hcm_pipeline.documents import Version
 from hcm_pipeline.joblog import JobLog, scrub
 from hcm_pipeline.jobs import (
@@ -271,6 +274,10 @@ class JobRunner:
         return RunOutcome.WAITING
 
     def _finish(self, ctx: JobContext) -> RunOutcome:
+        if ctx.job.type in SIDE_JOB_TYPES:
+            self._final({"status": "succeeded", "finishedAt": self._now(), "progress": 1.0})
+            self._log.info("the job is done; its version stays where it was", ctx.step or None)
+            return RunOutcome.DONE
         self._final({"status": "awaiting_approval", "waitReason": "approval", "progress": 1.0})
         self._log.info("the layer version awaits approval", ctx.step or None)
         return RunOutcome.DONE
@@ -296,7 +303,8 @@ class JobRunner:
     def _cancel(self, ctx: JobContext) -> RunOutcome:
         now = self._now()
         self._final({"status": "cancelled", "finishedAt": now})
-        self._services.store.update(ctx.version_path(), {"state": "cancelled", **stamp(now)})
+        if ctx.job.type not in SIDE_JOB_TYPES:
+            self._services.store.update(ctx.version_path(), {"state": "cancelled", **stamp(now)})
         _delete_work(ctx)
         self._log.info("the job was cancelled; its scratch files are deleted", ctx.step or None)
         return RunOutcome.CANCELLED
@@ -304,15 +312,20 @@ class JobRunner:
     def _fail_version_of(self, record: Record, error: StepFailedError) -> None:
         """An invalid job's version, when it names one that exists: failed with it, so a Retry or a Dismiss finds it failed."""
         path = f"cities/{self._config.city_id}/layerVersions/{record.get('versionId')}"
-        if isinstance(record.get("versionId"), str) and self._services.store.get(path) is not None:
+        owned = record.get("type") not in SIDE_JOB_TYPES and isinstance(record.get("versionId"), str)
+        if owned and self._services.store.get(path) is not None:
             self._services.store.update(path, {"state": "failed", "error": _version_error(error), **stamp(self._now())})
+
+    def _fail_version(self, ctx: JobContext | None, error: StepFailedError, now: Timestamp) -> None:
+        """The job's version fails with it, unless the job only works beside it."""
+        if ctx is not None and ctx.job.type not in SIDE_JOB_TYPES:
+            self._services.store.update(ctx.version_path(), {"state": "failed", "error": _version_error(error), **stamp(now)})
 
     def _fail_job(self, ctx: JobContext | None, error: StepFailedError) -> RunOutcome:
         now = self._now()
         failed = {f"steps.{ctx.step}": {**self._current(ctx.step).as_record(), "status": "failed"}} if ctx and ctx.step else {}
         self._final({"status": "failed", "finishedAt": now, "error": _job_error(error), **failed})
-        if ctx is not None:
-            self._services.store.update(ctx.version_path(), {"state": "failed", "error": _version_error(error), **stamp(now)})
+        self._fail_version(ctx, error, now)
         self._log.error(f"{error.code}: {error}", ctx.step if ctx else None)
         return RunOutcome.FAILED
 

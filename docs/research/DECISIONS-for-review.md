@@ -5892,3 +5892,28 @@ The local stack's seeded second city (`e2e/stack/seed-cities.ts`: `bacau`, its r
 - **§86h reviewed: both savings kept.** The stand-in for zod's JSON Schema conversion and `sourcemap: 'hidden'` stay.
 - **§83i decided: no Uploads API; tiles from the project's own public bucket.** Mapbox's documentation bills Uploads jobs in compute units with no per-job meter or cap (`docs/research/M11-mapbox-automatic.md`), so the path is not free as M7 §6 assumed. The owner chose to serve the historical layers' tiles from the project's public bucket, drawn over the Mapbox basemap: automatic after Approve. The bootstrap token the owner pasted that day carries the uploads scopes, unused.
 - **`autoPublish` stays on** by the owner's choice: a frame with at least 90 % of the city and a held-out checkpoint within the threshold publishes by itself; every other waits for Approve. The owner sees each image before approving.
+
+## 95. M12's pipeline and server: what was decided while building them (2026-11-07)
+
+- **95a The step is `pyramid`.** The design said `tiles`; `PUBLISH_STEPS` already has one, in the same `job.steps` map, and the two would have overwritten each other's record.
+- **95b A version on its own tiles records `own`, never a fake `mapbox`.** `published` and `superseded` need one of the two. A tileset an earlier version left stays on the layer's `mapbox`, so the 24-tileset count and the layer's deletion still see it: no new version deletes it. To review: such a tileset hosts on at Mapbox until its layer goes.
+- **95c `layer-tiles` is a side job.** Its failure, cancel or invalid params never fail its version, because that version may be approved and waiting; the worker's `step` refuses it any state change. `succeeded` joins what a worker may write for this type only.
+- **95d A failed tiles job is not made again by the tick,** so a frame that always fails costs one run, not one every five minutes; its Retry is the owner's. The cost: such a version waits until someone looks.
+- **95e No COG or Studio file on the default path,** as designed: about 300 MB less per frame. A version without a COG always publishes its own tiles, even after the city turns Mapbox on.
+- **95f The `imagery.tick` parts `ownTiles` and `ownTilesClean` stop while the budget guard is red,** like every other part that starts work; a superseded archive just stays longer.
+- **95g One sweep step per city per tick,** where the design says one version a tick: the part runs per city, as every tick part does.
+- **95h Lessons 393, 394, 395.**
+
+## 96. M12's viewer and approval view: what was decided while building them (2026-11-07)
+
+Applied: code, tests and documentation; no gate relaxed, no budget raised, no download, no deploy, no cloud touched; `seed/bucharest/` unchanged; no `fostulbucuresti` resource. Two new rows in the bundle budget, by the same rule as §91.
+
+- **96a Two new chunks, no row raised.** `imagery` was at 18.0 of 18. `approval-map` (5 KB, 3.5 measured) is a version's whole page, more than the design's view alone, because the view alone would not have made room: `imagery` is at 16.2 now. `mapbox-choices` (2 KB, 1.3 measured) is what only a version going through Mapbox fetches. Refused, the alternative is the entry, as the design says. **To review: the two rows.**
+- **96b A version's map starts at 100 %.** It started at 80 %, and a published layer starts at 100 % (`functions/src/imagery/finalize.ts`): the owner would have approved a paler image than visitors see.
+- **96c Swipe compare was not built.** The design calls it last and optional: a second map is one more billed load and the slider already compares over the basemap. Nothing in the view depends on it.
+- **96d Statistics does not exist.** The design says Statistics sums the published bytes; the admin has no such page. The approval card says each version's size. **To decide:** a total of what the bucket holds, and where.
+- **96e See the image is a scroll, on every window.** The design says the map gives way on compact windows; it does not: `imagery-styles.ts` keeps it above the detail, 240 px at least, at full width. So the button brings the map back from the card below it, with no new load.
+- **96f A failing tile takes the layer off the map.** One failed tile means the address ran out or the bucket refuses, and the next tiles would too: the small picture stands in, the page says so, and Try again signs a new address. There is no timer for the hour: a page left open longer than that only fails when it next needs a tile.
+- **96g The picture's own edge before the proof's.** `output.outline` (the alpha's edge) shades the map when it exists, else `calibration.outline`: what is shaded is what this picture misses.
+- **96h Local stack.** The emulator's signer needs an owner's header no browser sends, so the image cannot show on `npm run dev:stack` (docs/SETUP.md); changing the stand-in for a manual run was not worth a second signer. The e2e tier answers that address from the object.
+- **96i Lessons 396, 397, 398.**

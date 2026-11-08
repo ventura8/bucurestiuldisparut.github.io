@@ -27,6 +27,21 @@ describe('<hcm-settings-page> imagery', () => {
     beforeAll(defineAll);
     afterEach(cleanup);
 
+    it('happyPath_publishThroughMapboxIsOffByDefaultAndItsSaveKeepsTheRest', async () => {
+        const settings = area(imageryState(BUCHAREST));
+        const { element } = await page('settings', settings, { params: ['imagery'] });
+        const [, through] = deepAll(element, 'hcm-switch') as [HTMLElement, HTMLElement & { checked: boolean }];
+
+        const off = through.checked;
+        through.dispatchEvent(new CustomEvent('hcm-change', { detail: { checked: true } }));
+
+        expect(off).toBe(false);
+        expect(calls(settings)).toEqual([
+            'editCity {"imagery":{"autoPublish":true,"rmseThresholdM":15,"targetYears":[1966,1980],"publishThroughMapbox":true}}',
+        ]);
+        expect(deepText(element)).toContain('Mapbox charges nothing');
+    });
+
     it('happyPath_autoPublishTheThresholdAndTheTargetYears', async () => {
         const settings = area(imageryState(BUCHAREST));
         const { element } = await page('settings', settings, { params: ['imagery'] });

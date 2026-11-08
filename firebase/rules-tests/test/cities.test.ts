@@ -67,6 +67,7 @@ describe('update', () => {
         ['imagery settings with every default', { imagery: {} }],
         ['imagery settings at their limits', { imagery: { autoPublish: false, rmseThresholdM: 200, targetYears: yearsOf(20) } }],
         ['a threshold of one metre and a fraction', { imagery: { rmseThresholdM: 1.5 } }],
+        ['the choice of Mapbox for the tiles (M12)', { imagery: { publishThroughMapbox: true } }],
         ['no imagery settings', { imagery: deleted() }],
     ])('happyPath_adminSaves_%s', async (_label, changes) => {
         expect(await edit(changes)).toBe('allow');
@@ -129,6 +130,7 @@ describe('update', () => {
         ['imagery settings that are not a map', { imagery: 'auto' }],
         ['an imagery setting the schema does not know', { imagery: { autoPublish: true, publishAll: true } }],
         ['an auto-publish flag that is not a boolean', { imagery: { autoPublish: 'yes' } }],
+        ['a choice of Mapbox that is not a boolean', { imagery: { publishThroughMapbox: 'yes' } }],
         ['a threshold under one metre', { imagery: { rmseThresholdM: 0.5 } }],
         ['a threshold over 200 metres', { imagery: { rmseThresholdM: 201 } }],
         ['a threshold that is text', { imagery: { rmseThresholdM: '15' } }],

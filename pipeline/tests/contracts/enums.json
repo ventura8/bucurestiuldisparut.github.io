@@ -40,6 +40,7 @@
         "merge",
         "warp",
         "export",
+        "pyramid",
         "register"
     ],
     "DOWNLOAD_STEPS": ["fetch", "extract"],
@@ -54,6 +55,7 @@
             "georef",
             "warp",
             "export",
+            "pyramid",
             "register",
             "guard",
             "upload",
@@ -67,6 +69,7 @@
             "georef",
             "warp",
             "export",
+            "pyramid",
             "register",
             "guard",
             "upload",
@@ -74,10 +77,11 @@
             "tiles",
             "finalize"
         ],
-        "regeoref": ["georef", "warp", "export", "register", "guard", "upload", "publish", "tiles", "finalize"],
+        "regeoref": ["georef", "warp", "export", "pyramid", "register", "guard", "upload", "publish", "tiles", "finalize"],
         "republish": ["guard", "upload", "publish", "tiles", "finalize"],
         "layer-delete": ["delete"],
-        "layer-join": ["align", "merge", "export", "register", "guard", "upload", "publish", "tiles", "finalize"]
+        "layer-join": ["align", "merge", "export", "pyramid", "register", "guard", "upload", "publish", "tiles", "finalize"],
+        "layer-tiles": ["pyramid"]
     },
     "LAYER_VERSION_STATES": [
         "processing",
@@ -99,7 +103,17 @@
         "tps": 10
     },
     "GCP_ORIGINS": ["corner", "auto", "manual"],
-    "VERSION_FILES": ["scan.tif", "scan-preview.jpg", "reference-osm.png", "reference-s2.jpg", "cog.tif", "preview.png", "studio.tif"],
+    "VERSION_FILES": [
+        "scan.tif",
+        "scan-preview.jpg",
+        "reference-osm.png",
+        "reference-s2.jpg",
+        "cog.tif",
+        "preview.png",
+        "studio.tif",
+        "tiles.pmtiles",
+        "thumb.webp"
+    ],
     "LEASE_SECONDS": 600,
     "HEARTBEAT_SECONDS": 60,
     "USGS_BACKOFF_MINUTES": [30, 60, 120, 240, 480, 720],

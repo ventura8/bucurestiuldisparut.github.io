@@ -8,10 +8,12 @@ import {
     JOB_STEPS,
     PIPELINE_STEPS,
     PUBLISH_STEPS,
+    isSideJob,
     layerVersionDocSchema,
     runsOnPipeline,
 } from '../../src/schemas/imagery.js';
 import { JOB_TYPES } from '../../src/schemas/firestore-ops.js';
+import { STORAGE_PATHS } from '../../src/schemas/paths.js';
 import { SENSOR_SPECS, SENSORS } from '../../src/schemas/usgs-scene.js';
 import { validate } from '../../src/schemas/validation.js';
 
@@ -80,11 +82,17 @@ describe('georeferencing as stored', () => {
 
 describe('city imagery settings', () => {
     it('happyPath_absentSettingsTakeTheirDefaults', () => {
-        expect(imagerySettingsOf(undefined)).toEqual({ autoPublish: true, rmseThresholdM: DEFAULT_RMSE_THRESHOLD_M, targetYears: [] });
-        expect(imagerySettingsOf({ autoPublish: false, rmseThresholdM: 8, targetYears: [1966] })).toEqual({
+        expect(imagerySettingsOf(undefined)).toEqual({
+            autoPublish: true,
+            rmseThresholdM: DEFAULT_RMSE_THRESHOLD_M,
+            targetYears: [],
+            publishThroughMapbox: false,
+        });
+        expect(imagerySettingsOf({ autoPublish: false, rmseThresholdM: 8, targetYears: [1966], publishThroughMapbox: true })).toEqual({
             autoPublish: false,
             rmseThresholdM: 8,
             targetYears: [1966],
+            publishThroughMapbox: true,
         });
     });
 
@@ -172,5 +180,59 @@ describe('sensors', () => {
         ]);
         expect(SENSOR_SPECS['KH-9-pan']).toMatchObject({ maxzoom: 17, machine: 'xl' });
         expect(SENSORS.every((sensor) => SENSOR_SPECS[sensor].minzoom < SENSOR_SPECS[sensor].maxzoom)).toBe(true);
+    });
+});
+
+describe('a version on its own tiles (M12)', () => {
+    const OWN = {
+        path: 'tiles/c/l/v.pmtiles',
+        url: 'https://storage.googleapis.com/p-public/tiles/c/l/v.pmtiles',
+        bytes: 7,
+        publishedAt: now,
+    };
+    const TILES = {
+        path: 'rasters/c/l/v/tiles.pmtiles',
+        bytes: 7,
+        count: 1,
+        sha256: 'd'.repeat(64),
+        thumbPath: 'rasters/c/l/v/thumb.webp',
+    };
+    const outputOnly = { previewPath: output.previewPath, bounds: output.bounds, minzoom: 10, maxzoom: 16, areaKm2: 600 };
+
+    it('happyPath_aPublishedVersionNeedsMapboxOrItsOwnTiles', () => {
+        const base = { ...version, state: 'published', output };
+        expect(layerVersionDocSchema.safeParse({ ...base, own: OWN }).success).toBe(true);
+        expect(layerVersionDocSchema.safeParse({ ...base, state: 'superseded', own: { ...OWN, removedAt: now } }).success).toBe(true);
+    });
+
+    it('badPath_aPublishedVersionWithNeitherIsRefused', () => {
+        expect(layerVersionDocSchema.safeParse({ ...version, state: 'published', output }).success).toBe(false);
+    });
+
+    it('happyPath_anOutputMayHaveTilesAndNoCog', () => {
+        const own = { ...version, state: 'awaiting_approval', output: { ...outputOnly, tiles: TILES } };
+        expect(layerVersionDocSchema.safeParse(own).success).toBe(true);
+    });
+
+    it('badPath_tilesWithoutTheirCountAreRefused', () => {
+        const partial = { path: TILES.path, bytes: TILES.bytes, sha256: TILES.sha256, thumbPath: TILES.thumbPath };
+        expect(
+            layerVersionDocSchema.safeParse({ ...version, state: 'awaiting_approval', output: { ...output, tiles: partial } }).success,
+        ).toBe(false);
+    });
+
+    it('happyPath_theJobThatMakesThemIsASideJobOfOneStep', () => {
+        expect(JOB_STEPS['layer-tiles']).toEqual(['pyramid']);
+        expect(isSideJob('layer-tiles')).toBe(true);
+        expect(isSideJob('usgs-import')).toBe(false);
+        expect(runsOnPipeline('layer-tiles')).toBe(true);
+        expect(JOB_PARAMS_SCHEMAS['layer-tiles'].safeParse({ versionId: 'v1' }).success).toBe(true);
+        expect(JOB_PARAMS_SCHEMAS['layer-tiles'].safeParse({ versionId: 'v1', more: 1 }).success).toBe(false);
+    });
+
+    it('happyPath_thePublicArchivesPathsAreSpelledOnce', () => {
+        expect(STORAGE_PATHS.layerTiles('bucharest', 'l1', 'v1')).toBe('tiles/bucharest/l1/v1.pmtiles');
+        expect(STORAGE_PATHS.layerTilesPrefix('bucharest', 'l1')).toBe('tiles/bucharest/l1/');
+        expect(() => STORAGE_PATHS.layerTiles('bucharest', '../l', 'v1')).toThrow(RangeError);
     });
 });

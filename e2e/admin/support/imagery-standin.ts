@@ -1,5 +1,7 @@
 import { RASTER_PATHS, SENSOR_SPECS, type Gcp, type PipelineStep, type Sensor, type VersionFile } from '@hcm/shared';
 
+import type { Rgb } from '../../fixtures/world.js';
+import { solidArchive, solidWebp } from '../../support/pmtiles.js';
 import {
     areaKm2,
     boundsOf,
@@ -176,6 +178,31 @@ async function writeWarped(run: Run, step: 'warp' | 'merge'): Promise<StepResult
     return 'next';
 }
 
+/** What a stand-in's tiles look like on the map: a real archive of one known colour (`e2e/support/pmtiles.ts`). */
+export const STANDIN_TILE_COLOUR: Rgb = [40, 160, 90];
+
+function zoomsOf(run: Run): { readonly minzoom: number; readonly maxzoom: number } {
+    const sensor = sensorOf(run);
+    return sensor === undefined ? { minzoom: 10, maxzoom: 17 } : SENSOR_SPECS[sensor];
+}
+
+/** The version's archive, the same each time it is asked for: real PMTiles, real WebP, over the render's own box. */
+function standinArchive(run: Run): Promise<Buffer> {
+    const { west, south, east, north } = outputBounds(run);
+    return solidArchive({ colour: STANDIN_TILE_COLOUR, bounds: [west, south, east, north], ...zoomsOf(run) });
+}
+
+/** `attempt.noTiles`: a version made before M12, which waits for the sweep; `outputOf` records what is here. */
+async function writeTiles(run: Run): Promise<void> {
+    if (run.attempt.noTiles === true) {
+        await run.stepEnded('pyramid', 'skipped');
+        return;
+    }
+    const archive = await store(run, 'tiles.pmtiles', await standinArchive(run), 'application/vnd.pmtiles');
+    await store(run, 'thumb.webp', await solidWebp(STANDIN_TILE_COLOUR), 'image/webp');
+    await run.stepEnded('pyramid', 'done', recorded(archive));
+}
+
 const STEPS: Readonly<Record<PipelineStep, (run: Run) => Promise<StepResult>>> = {
     fetch: async (run) => {
         if (run.attempt.outcome === 'maintenance') {
@@ -247,6 +274,10 @@ const STEPS: Readonly<Record<PipelineStep, (run: Run) => Promise<StepResult>>> =
         await store(run, 'preview.png', await warpedPreviewPng(outputBounds(run)), 'image/png');
         await store(run, 'studio.tif', await smallTiff(160), 'image/tiff');
         await run.stepEnded('export', 'done', recorded(cog));
+        return 'next';
+    },
+    pyramid: async (run) => {
+        await writeTiles(run);
         return 'next';
     },
     register: async (run) => {
@@ -349,6 +380,18 @@ async function outputOf(run: Run): Promise<Record<string, unknown>> {
         studioPath: path('studio.tif'),
         studioBytes: studio.length,
         coveragePct: run.attempt.coveragePct ?? coverageOf(run, bounds),
+        ...(run.attempt.outline === undefined ? {} : { outline: run.attempt.outline }),
+        ...(run.attempt.noTiles === true
+            ? {}
+            : {
+                  tiles: {
+                      path: path('tiles.pmtiles'),
+                      bytes: (await standinArchive(run)).length,
+                      count: 1,
+                      sha256: '0'.repeat(64),
+                      thumbPath: path('thumb.webp'),
+                  },
+              }),
     };
 }
 

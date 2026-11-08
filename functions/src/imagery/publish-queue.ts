@@ -17,6 +17,7 @@ export type PublishReason =
     | 'republish'
     | `deferred-${string}`
     | `retry-${string}`
+    | `own-${string}`
     | `poll-${string}`
     | `stale-${string}`
     | `resumed-${string}`;

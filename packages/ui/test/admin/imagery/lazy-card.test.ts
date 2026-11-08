@@ -54,6 +54,7 @@ function contextOf(refresh: () => void): ImageryContext {
         ask: () => undefined,
         refresh,
         focusDetail: () => undefined,
+        showMap: () => undefined,
     };
 }
 

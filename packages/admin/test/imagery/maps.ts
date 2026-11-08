@@ -5,7 +5,7 @@ import { FakeMapboxGl, type FakeMapboxMap } from '@hcm/test-support/fake-map';
 import type { FakeMapDraw } from '@hcm/test-support/fake-map-draw';
 
 import { createAdminMapFactory, type AdminMapFactory, type AdminMapHandle, type AdminMapResult } from '../../src/map/factory.js';
-import { fakeEnv } from '../map/support.js';
+import { fakeEnv, type FakeFrames } from '../map/support.js';
 
 export interface MapboxHandle {
     readonly handle: AdminMapHandle;
@@ -13,14 +13,14 @@ export interface MapboxHandle {
 }
 
 /** A mounted admin map over the fake `mapboxgl`; `draw` replaces its drawing tools. */
-export async function mapboxHandle(draw: FakeMapDraw | null = null): Promise<MapboxHandle> {
+export async function mapboxHandle(draw: FakeMapDraw | null = null, frames?: FakeFrames): Promise<MapboxHandle> {
     const gl = new FakeMapboxGl();
     const factory = createAdminMapFactory({
         gl: () => Promise.resolve(gl),
         token: () => Promise.resolve('pk.admin'),
         terraDraw: null,
         reducedMotion: () => true,
-        env: fakeEnv(),
+        env: fakeEnv(frames),
         log: createLogger('imagery-map-test'),
     });
     const creating = factory.create({} as HTMLElement, {

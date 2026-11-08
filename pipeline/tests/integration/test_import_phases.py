@@ -5,7 +5,7 @@ from hcm_pipeline.runner import RunOutcome
 from tests.fakes.world import ENTITY_ID, PipelineWorld, dig
 
 DOWNLOAD = ("fetch", "extract")
-PROCESS = ("stitch", "locate", "reference", "georef", "warp", "export", "register")
+PROCESS = ("stitch", "locate", "reference", "georef", "warp", "export", "pyramid", "register")
 
 
 def statuses(world: PipelineWorld) -> dict[str, str]:

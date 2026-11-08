@@ -10,11 +10,13 @@ import {
     jobDocSchema,
     layerDocSchema,
     photoDocSchema,
+    publicObjectUrl,
     timestampFromDate,
     type AuditedDocument,
 } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
+import { requireLayerTiles } from '../../src/history/restore.js';
 import { revertFunction } from '../../src/history/revert.js';
 import { layerDeleteFunction } from '../../src/layers/delete.js';
 import { failureOf } from '../admin/world.js';
@@ -168,5 +170,39 @@ describe('history.revert of a deleted photo', () => {
 
         expect((await deps.documents.get(FIRESTORE_PATHS.photo(PHOTO_CITY, 'p2'), photoDocSchema))?.processing).toBe('pending');
         expect(deps.blobs.paths('private', 'uploads/')).toEqual([]);
+    });
+});
+
+describe('a deleted layer on its own tiles (M12)', () => {
+    const LAYER = 'own-layer';
+    const audited: AuditedDocument = { entity: 'layer', cityId: LAYER_CITY, entityId: LAYER };
+    const PATH = STORAGE_PATHS.layerTiles(LAYER_CITY, LAYER, 'v1');
+
+    async function entryNaming(deps: ContentDeps): Promise<void> {
+        const url = publicObjectUrl(deps.config.buckets.public, PATH);
+        await deletionEntry(deps, audited, { source: { type: 'pmtiles', url } });
+    }
+
+    it('badPath_anEntryWhoseArchiveIsGoneRefuses @S-A72-BAD-RESTORE-GONE', async () => {
+        const deps = contentDeps(NOW);
+        await entryNaming(deps);
+
+        await expect(requireLayerTiles(deps, audited, ENTRY)).rejects.toMatchObject({ code: 'apiError.history.layerGone' });
+    });
+
+    it('happyPath_itsArchiveThereItComesBack @S-A72-HAPPY-RESTORE', async () => {
+        const deps = contentDeps(NOW);
+        await entryNaming(deps);
+        deps.blobs.put('public', PATH, new Uint8Array(7));
+
+        await expect(requireLayerTiles(deps, audited, ENTRY)).resolves.toBeUndefined();
+    });
+
+    it('happyPath_aPhotoOrALayerOnMapboxIsNotAsked @S-A72-HAPPY-RESTORE', async () => {
+        const deps = contentDeps(NOW);
+        await deletionEntry(deps, audited, { source: { type: 'mapbox', tilesetId: 'u.t' } });
+
+        await expect(requireLayerTiles(deps, audited, ENTRY)).resolves.toBeUndefined();
+        await expect(requireLayerTiles(deps, { ...audited, entity: 'photo' }, ENTRY)).resolves.toBeUndefined();
     });
 });

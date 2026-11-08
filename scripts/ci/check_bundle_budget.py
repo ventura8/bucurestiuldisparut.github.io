@@ -170,6 +170,12 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # the `css` and `html` templates went (6.4 KB, `scripts/site/src/css-literals.ts`).
     "join-card": 3,
     "upload-panel": 2,
+    # M12 (docs/research/M12-own-tiles.md, DECISIONS-for-review.md §96): a version's whole page, out of the Imagery chunk, which was at
+    # 18.0 of 18 and is at 16.2 with the own tiles' map and Work's pictures in it: 3.5 KB measured on 2026-11-07 plus about 20 %, rounded
+    # up. Mapbox's compute units, Studio steps and choices (`mapbox-choices.ts`), which a city on its own bucket, the default, never
+    # fetches: 1.3 KB measured then. The total stays within its 650 KB and no row rose.
+    "approval-map": 5,
+    "mapbox-choices": 2,
 }
 # The entry and every chunk together. 620 until M7 (2026-11-02), 630 since: the total counts every lazy chunk, also those
 # loaded only on use, and M7's `worker` chunk (5.5 KB, loaded only by the Jobs page, the pipeline card and a version page)

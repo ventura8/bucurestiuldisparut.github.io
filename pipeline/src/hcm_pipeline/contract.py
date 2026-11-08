@@ -51,6 +51,8 @@ PIPELINE_STEPS: Final = (
     "merge",
     "warp",
     "export",
+    # M12: the version's own tiles (`PUBLISH_STEPS` has a `tiles` already: MTS at work).
+    "pyramid",
     "register",
 )
 # An import's download phase, which the small `fetch` job runs before the job is queued again for its processing on
@@ -59,14 +61,18 @@ DOWNLOAD_STEPS: Final = ("fetch", "extract")
 JOB_MACHINES: Final = ("fetch", "std", "xl")
 PUBLISH_STEPS: Final = ("guard", "upload", "publish", "tiles", "finalize")
 JOB_STEPS: Final[Mapping[str, tuple[str, ...]]] = {
-    "usgs-import": ("fetch", "extract", "stitch", "locate", "reference", "georef", "warp", "export", "register", *PUBLISH_STEPS),
-    "geotiff-import": ("inspect", "reference", "georef", "warp", "export", "register", *PUBLISH_STEPS),
-    "regeoref": ("georef", "warp", "export", "register", *PUBLISH_STEPS),
+    "usgs-import": ("fetch", "extract", "stitch", "locate", "reference", "georef", "warp", "export", "pyramid", "register", *PUBLISH_STEPS),
+    "geotiff-import": ("inspect", "reference", "georef", "warp", "export", "pyramid", "register", *PUBLISH_STEPS),
+    "regeoref": ("georef", "warp", "export", "pyramid", "register", *PUBLISH_STEPS),
     "republish": PUBLISH_STEPS,
     "layer-delete": ("delete",),
     # `merge` writes the same `warped.tif` a `warp` does, so `export` and `register` run unchanged (M8).
-    "layer-join": ("align", "merge", "export", "register", *PUBLISH_STEPS),
+    "layer-join": ("align", "merge", "export", "pyramid", "register", *PUBLISH_STEPS),
+    # M12: tiles for a version rendered before them; the version keeps its state, whatever this job does.
+    "layer-tiles": ("pyramid",),
 }
+# The job types that work beside a version and never decide its state (`SIDE_JOB_TYPES`).
+SIDE_JOB_TYPES: Final = frozenset({"layer-tiles"})
 LAYER_VERSION_STATES: Final = (
     "processing",
     "needs_gcps",
@@ -84,7 +90,17 @@ USGS_DATASETS: Final = ("corona2", "declassii", "declassiii")
 GEOREF_TRANSFORMS: Final = ("affine", "poly2", "tps")
 MIN_GCPS: Final[Mapping[str, int]] = {"affine": 3, "poly2": 6, "tps": 10}
 GCP_ORIGINS: Final = ("corner", "auto", "manual")
-VERSION_FILES: Final = ("scan.tif", "scan-preview.jpg", "reference-osm.png", "reference-s2.jpg", "cog.tif", "preview.png", "studio.tif")
+VERSION_FILES: Final = (
+    "scan.tif",
+    "scan-preview.jpg",
+    "reference-osm.png",
+    "reference-s2.jpg",
+    "cog.tif",
+    "preview.png",
+    "studio.tif",
+    "tiles.pmtiles",
+    "thumb.webp",
+)
 LEASE_SECONDS: Final = 600
 HEARTBEAT_SECONDS: Final = 60
 USGS_BACKOFF_MINUTES: Final = (30, 60, 120, 240, 480, 720)
@@ -179,7 +195,8 @@ STEP_WEIGHTS: Final[Mapping[str, float]] = {
     "align": 0.15,
     "merge": 0.25,
     "warp": 0.15,
-    "export": 0.10,
+    "export": 0.05,
+    "pyramid": 0.05,
     "register": 0.05,
 }
 

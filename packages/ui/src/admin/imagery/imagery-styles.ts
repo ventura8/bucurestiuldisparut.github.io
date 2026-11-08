@@ -1,7 +1,7 @@
 /**
  * The Imagery area's styles (`docs/research/M3-interfaces.md` §10.2): the editing kit's rows, chips, facts and fields,
  * plus the scenes' thumbnails, the filters, the upload's drop zone, the steps of a job, the approval card and the map's
- * box, which keeps its place above the detail (one map per page visit) and gives way to the text on compact windows.
+ * box, which keeps its place above the detail (one map per page visit), at least 240 px, also on compact windows.
  */
 import { css } from 'lit';
 
@@ -133,6 +133,17 @@ export const imageryStyles = [
 
         .steps li[data-state='running'] {
             font-weight: var(--md-sys-typescale-title-small-weight, 500);
+        }
+
+        .image-view {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 16px;
+        }
+
+        .image-view > p {
+            flex: 1 1 100%;
         }
 
         .choices {

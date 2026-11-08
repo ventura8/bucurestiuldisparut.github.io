@@ -57,6 +57,7 @@ def test_happy_path_a_georeferenced_upload_is_warped_with_its_own_georeference(w
         "georef": "skipped",
         "warp": "done",
         "export": "done",
+        "pyramid": "done",
         "register": "done",
     }
     assert version["state"] == "awaiting_approval"

@@ -229,8 +229,9 @@ service cloud.firestore {
         // M3 imagery settings (`cityImagerySchema`, CR-M3-2): auto-publish, its RMSE threshold in metres (1-200) and
         // the target years; every field optional.
         function validImagery(imagery) {
-            return imagery.keys().hasOnly(['autoPublish', 'rmseThresholdM', 'targetYears'])
+            return imagery.keys().hasOnly(['autoPublish', 'rmseThresholdM', 'targetYears', 'publishThroughMapbox'])
                 && imagery.get('autoPublish', true) is bool
+                && imagery.get('publishThroughMapbox', false) is bool
                 && imagery.get('rmseThresholdM', 15) is number
                 && imagery.get('rmseThresholdM', 15) >= 1
                 && imagery.get('rmseThresholdM', 15) <= 200

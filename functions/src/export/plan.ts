@@ -7,8 +7,10 @@ import {
     EXPORT_LAYOUT,
     exportPhotoPath,
     exportRasterPath,
+    exportTilesPath,
     restrictedPhotoIds,
     type CityExportDoc,
+    type Layer,
     type Manifest,
     type Photo,
     type PhotoVariant,
@@ -43,6 +45,8 @@ export interface PlanInput {
     readonly publicPrefix: string;
     /** The scans asked for and allowed (empty without `rasters`). */
     readonly rasters: readonly ExportRaster[];
+    /** M12: the layers among them served from the public bucket: their archive travels instead of a COG, none else's address changes. */
+    readonly archives: readonly string[];
     /** The starter kit's `index.html` as committed (`exportPage` fills it for the city). */
     readonly kitPage: string;
     /** The kit's README, which the export's preface goes before. */
@@ -90,8 +94,26 @@ function photoFiles(photo: Photo, prefix: string): PhotoFiles {
  * The export's `city.json`: the photos' files beside it, and no analytics at all (the project's GA4 and Firebase ids and
  * its crash endpoint stay the project's: an export sends nothing anywhere). The viewer token stays (README: replace it).
  */
-function exportedManifest(manifest: Manifest, photos: readonly Photo[]): Manifest {
-    return { ...manifest, city: { ...manifest.city, analytics: {} }, photos: [...photos] };
+function exportedManifest(manifest: Manifest, photos: readonly Photo[], layers: readonly Layer[]): Manifest {
+    return { ...manifest, city: { ...manifest.city, analytics: {} }, photos: [...photos], layers: [...layers] };
+}
+
+interface LayerFiles {
+    readonly layer: Layer;
+    readonly entries: readonly PlannedEntry[];
+}
+
+/** M12: a layer whose archive may travel: the file beside the page, its address relative; any other keeps its public address. */
+function layerFiles(layer: Layer, input: PlanInput): LayerFiles {
+    const path = layer.source.type === 'pmtiles' ? publicPath(layer.source.url, input.publicPrefix) : undefined;
+    if (path === undefined || !input.archives.includes(layer.id)) {
+        return { layer, entries: [] };
+    }
+    const name = exportTilesPath(layer.id);
+    return {
+        layer: { ...layer, source: { type: 'pmtiles', url: name } },
+        entries: [{ name, source: { kind: 'object', bucket: 'public', path } }],
+    };
 }
 
 function text(name: string, value: string): PlannedEntry {
@@ -101,13 +123,20 @@ function text(name: string, value: string): PlannedEntry {
 /** Every file of the export, the city's `city.json` among them, and what the export's record counts. */
 export function planExport(input: PlanInput): ExportPlan {
     const photos = input.manifest.photos.map((photo) => photoFiles(photo, input.publicPrefix));
+    const layers = input.manifest.layers.map((layer) => layerFiles(layer, input));
     const manifest = exportedManifest(
         input.manifest,
         photos.map((files) => files.photo),
+        layers.map((files) => files.layer),
     );
     const restricted = new Set(restrictedPhotoIds(input.manifest.photos));
     const rights = input.manifest.photos.filter((photo) => restricted.has(photo.id));
-    const readme = exportReadme({ manifest, rasters: input.rasters.length, kitReadme: input.kitReadme, madeAt: input.madeAt });
+    const readme = exportReadme({
+        manifest,
+        rasters: input.rasters.length + input.archives.length,
+        kitReadme: input.kitReadme,
+        madeAt: input.madeAt,
+    });
     const entries: PlannedEntry[] = [
         text(EXPORT_LAYOUT.page, exportPage(input.kitPage, manifest)),
         text(EXPORT_LAYOUT.manifest, `${JSON.stringify(manifest, null, 2)}\n`),
@@ -115,6 +144,7 @@ export function planExport(input: PlanInput): ExportPlan {
         text(EXPORT_LAYOUT.rights, rightsDocument(manifest.city.name, rights)),
         ...input.engine.map((file) => ({ name: `${EXPORT_LAYOUT.engineFolder}/${file.path}`, source: { kind: 'kit', file } }) as const),
         ...photos.flatMap((files) => files.entries),
+        ...layers.flatMap((files) => files.entries),
         ...input.rasters.map((raster) => ({
             name: exportRasterPath(raster.layerId),
             source: { kind: 'object', bucket: 'private', path: raster.path } as const,
@@ -126,7 +156,7 @@ export function planExport(input: PlanInput): ExportPlan {
             photos: manifest.photos.length,
             restrictedPhotos: rights.length,
             layers: manifest.layers.length,
-            rasters: input.rasters.length,
+            rasters: input.rasters.length + input.archives.length,
             pois: manifest.pois?.length ?? 0,
         },
     };

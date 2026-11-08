@@ -29,7 +29,7 @@ from tests.fakes.world import (
 )
 from tests.synthetic.scenes import Scene
 
-STEPS = ("fetch", "extract", "stitch", "locate", "reference", "georef", "warp", "export", "register")
+STEPS = ("fetch", "extract", "stitch", "locate", "reference", "georef", "warp", "export", "pyramid", "register")
 RAW = f"usgs-raw/corona2/{ENTITY_ID}/{ENTITY_ID}.tgz"
 WORK = f"work/{CITY}/{JOB_ID}/"
 
@@ -90,7 +90,17 @@ def test_happy_path_a_queued_import_becomes_a_version_awaiting_approval(
     assert alignment_shift_m(world, world.scene, tmp_path) < 10
     assert world.gcs.names(f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/") == [
         f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/{name}"
-        for name in ("cog.tif", "preview.png", "reference-osm.png", "reference-s2.jpg", "scan-preview.jpg", "scan.tif", "studio.tif")
+        for name in (
+            "cog.tif",
+            "preview.png",
+            "reference-osm.png",
+            "reference-s2.jpg",
+            "scan-preview.jpg",
+            "scan.tif",
+            "studio.tif",
+            "thumb.webp",
+            "tiles.pmtiles",
+        )
     ]
     assert world.gcs.names(WORK) == []
     # The delivery was fetched whole, then deleted once the city crop existed (M7 §5: S-P01-HAPPY-RAW-DELETED).

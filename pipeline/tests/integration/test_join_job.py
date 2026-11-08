@@ -264,7 +264,9 @@ def test_happy_path_a_retry_does_not_measure_again(world: PipelineWorld, ground:
     assert world.log_lines(JOB).count("step align started") == 1
     assert world.gcs.objects.get(f"{WORK}/join-plan.json") is None
     assert world.gcs.names(f"{WORK}/") == []
-    assert f"{JOIN_FILE}/cog.tif" in world.gcs.objects
+    # M12: a city on the default path gets the join's own tiles, and no COG.
+    assert f"{JOIN_FILE}/tiles.pmtiles" in world.gcs.objects
+    assert f"{JOIN_FILE}/cog.tif" not in world.gcs.objects
 
 
 def test_bad_path_frames_that_never_meet_render_with_no_seam(world: PipelineWorld, ground: World, tmp_path: Path) -> None:
@@ -435,7 +437,8 @@ def test_happy_path_a_join_runs_on_the_local_worker_within_its_allow_lists(
     puts = {path for method, path in api.signed if method != "GET"}
     assert scans <= gets
     assert all(path.startswith(f"{JOIN_FILE}/") for path in puts | (gets - scans))
-    assert {f"{JOIN_FILE}/{name}" for name in ("cog.tif", "preview.png")} <= puts
+    assert {f"{JOIN_FILE}/{name}" for name in ("preview.png", "thumb.webp", "tiles.pmtiles")} <= puts
+    assert f"{JOIN_FILE}/cog.tif" not in puts
     # The documents it read beyond its own are the parts': what the allow-list maps to the read-only `base` target.
     read = _documents(api, "get")
     parts = {world.version_path(WEST.version_id), world.version_path(EAST.version_id)}

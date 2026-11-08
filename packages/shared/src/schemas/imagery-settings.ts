@@ -52,6 +52,11 @@ export const cityImagerySchema = z.strictObject({
         .max(MAX_TARGET_YEARS)
         .refine((years) => new Set(years).size === years.length, coded('validation.duplicateId'))
         .optional(),
+    /**
+     * M12 (`docs/research/M12-own-tiles.md`): true keeps Mapbox's publishing path for this city; false or absent (the default) serves
+     * the tiles from the project's own public bucket, with no Mapbox compute units, tileset or token.
+     */
+    publishThroughMapbox: z.boolean().optional(),
 });
 
 export type CityImagery = z.infer<typeof cityImagerySchema>;
@@ -61,14 +66,27 @@ export interface ImagerySettings {
     readonly autoPublish: boolean;
     readonly rmseThresholdM: number;
     readonly targetYears: readonly number[];
+    readonly publishThroughMapbox: boolean;
 }
 
-/** A city's settings with the defaults filled in (`autoPublish` true, {@link DEFAULT_RMSE_THRESHOLD_M}, no target years). */
+/** What a city that set nothing gets: auto-publish, the default threshold, no target years, tiles from its own bucket. */
+const DEFAULT_SETTINGS: ImagerySettings = {
+    autoPublish: true,
+    rmseThresholdM: DEFAULT_RMSE_THRESHOLD_M,
+    targetYears: [],
+    publishThroughMapbox: false,
+};
+
+function setting<K extends keyof ImagerySettings>(imagery: CityImagery | undefined, key: K): ImagerySettings[K] {
+    return (imagery?.[key] as ImagerySettings[K] | undefined) ?? DEFAULT_SETTINGS[key];
+}
+
+/** A city's settings with the defaults filled in. */
 export function imagerySettingsOf(imagery: CityImagery | undefined): ImagerySettings {
-    const set: CityImagery = imagery ?? {};
     return {
-        autoPublish: set.autoPublish ?? true,
-        rmseThresholdM: set.rmseThresholdM ?? DEFAULT_RMSE_THRESHOLD_M,
-        targetYears: set.targetYears ?? [],
+        autoPublish: setting(imagery, 'autoPublish'),
+        rmseThresholdM: setting(imagery, 'rmseThresholdM'),
+        targetYears: setting(imagery, 'targetYears'),
+        publishThroughMapbox: setting(imagery, 'publishThroughMapbox'),
     };
 }

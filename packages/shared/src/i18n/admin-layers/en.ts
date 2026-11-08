@@ -72,6 +72,7 @@ export const en: Readonly<Record<AdminLayersKey, string>> = {
     'adminContent.layers.deleteBody': 'It leaves the public map within about a minute. You can restore it from History.',
     'adminContent.layers.deleteTiles': 'Its Mapbox tileset is deleted after {days} days unless you restore it.',
     'adminContent.layers.deleteBodyLinked': 'The linked tileset stays in the Mapbox account.',
+    'adminContent.layers.deleteOwnTiles': 'Its tiles in your public bucket are deleted after {days} days unless you restore it.',
     'adminContent.layers.keep': 'Keep the layer',
     'adminContent.layers.deleting': 'Deleting…',
     'adminContent.layers.deleted': 'The layer “{name}” is deleted. Its tiles are deleted on {date} unless you restore it from History.',

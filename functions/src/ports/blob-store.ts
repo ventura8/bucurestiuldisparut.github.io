@@ -10,6 +10,11 @@ export interface BlobMetadata {
     readonly md5Hash?: string;
 }
 
+/** M12: what a copied object carries that its source does not (its source is private and short-lived in the browser's eyes). */
+interface CopyOptions {
+    readonly cacheControl?: string;
+}
+
 export interface WriteOptions {
     readonly contentType: string;
     readonly cacheControl?: string;
@@ -34,6 +39,7 @@ export interface BlobStore {
     copy(
         from: { readonly bucket: BucketRole; readonly path: string },
         to: { readonly bucket: BucketRole; readonly path: string },
+        options?: CopyOptions,
     ): Promise<void>;
     /** Deleting a missing object is not an error. */
     delete(bucket: BucketRole, path: string): Promise<void>;

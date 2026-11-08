@@ -5,7 +5,10 @@
  * the compute units counted and the reservation released for MTS, one more Studio upload for the free path, the
  * megabytes and one more publish of Mapbox's Uploads API for its free path (M7, `docs/research/M7-local-worker.md` §6: no
  * compute units). The version records the path (`mapbox.via`). The manifest is rebuilt by `publish.onLayerWrite`. M8: a
- * join also ends the frames it is made of (`finalize-join.ts`).
+ * join also ends the frames it is made of (`finalize-join.ts`). M12 (`docs/research/M12-own-tiles.md`): tiles from the project's own
+ * bucket: the layer's source is the archive, Mapbox's counters do not move, a tileset an earlier version left at Mapbox stays on record
+ * for the layer's deletion, and the job's Mapbox steps are marked skipped. Such a publish still needs its version `approved`: a
+ * rejection during the copy wins.
  */
 import {
     FIRESTORE_PATHS,
@@ -37,16 +40,29 @@ import { IMAGERY_WRITER, stampOf, withStep, type Stamp } from './records.js';
 
 export type FinalizeDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 
-export interface Finish {
+interface FinishedVersion {
     readonly cityId: string;
     readonly jobId: string;
     readonly versionId: string;
+}
+
+interface MapboxFinish extends FinishedVersion {
     readonly origin: 'mts' | 'studio' | 'uploads';
     readonly tilesetId: string;
     readonly sourceId?: string;
     /** km² processed per precision, as the MTS job reported it (the estimate's calibration). */
     readonly precisions?: Readonly<Record<MtsPrecision, number>>;
 }
+
+/** M12: the archive copied to the public bucket. */
+interface OwnFinish extends FinishedVersion {
+    readonly origin: 'own';
+    readonly path: string;
+    readonly url: string;
+    readonly bytes: number;
+}
+
+export type Finish = MapboxFinish | OwnFinish;
 
 type Output = NonNullable<LayerVersionDoc['output']>;
 type Provenance = NonNullable<LayerDoc['provenance']>;
@@ -110,7 +126,7 @@ function provenanceOf(version: LayerVersionDoc, before: LayerDoc | undefined): P
     return { ...kept, ...usgsProvenance(version), ...georef };
 }
 
-function mapboxOf(finish: Finish, output: Output): NonNullable<LayerDoc['mapbox']> {
+function mapboxOf(finish: MapboxFinish, output: Output): NonNullable<LayerDoc['mapbox']> {
     return compact<NonNullable<LayerDoc['mapbox']>>({
         tilesetId: finish.tilesetId,
         sourceId: finish.sourceId,
@@ -153,16 +169,23 @@ function newLayer(version: LayerVersionDoc, order: number, stamp: Stamp): Omit<L
     });
 }
 
+/** Where the layer's tiles now are; a publish of its own keeps `mapbox` as the layer had it (a tileset there is deleted with the layer). */
+function sourceOf(finish: Finish, output: Output): Pick<LayerDoc, 'source' | 'mapbox'> | Pick<LayerDoc, 'source'> {
+    if (finish.origin === 'own') {
+        return { source: { type: 'pmtiles', url: finish.url } };
+    }
+    return { source: { type: 'mapbox', tilesetId: finish.tilesetId }, mapbox: mapboxOf(finish, output) };
+}
+
 /** The layer as the new tiles leave it: a new one from the version, or the existing one with its presentation kept. */
 function layerAfter(held: Held, finish: Finish, order: number, stamp: Stamp): LayerDoc {
     const { version, layer } = held;
     const tiles = {
-        source: { type: 'mapbox' as const, tilesetId: finish.tilesetId },
+        ...sourceOf(finish, version.output),
         minzoom: version.output.minzoom,
         maxzoom: version.output.maxzoom,
         bounds: version.output.bounds,
         provenance: provenanceOf(version, layer),
-        mapbox: mapboxOf(finish, version.output),
         currentVersion: finish.versionId,
         status: 'ready' as const,
         ...stamp,
@@ -172,6 +195,10 @@ function layerAfter(held: Held, finish: Finish, order: number, stamp: Stamp): La
 }
 
 function publishedVersion(held: Held, finish: Finish, stamp: Stamp): LayerVersionDoc {
+    if (finish.origin === 'own') {
+        const own = { path: finish.path, url: finish.url, bytes: finish.bytes, publishedAt: stamp.updatedAt };
+        return { ...held.version, state: 'published', own, ...stamp };
+    }
     const mapbox = compact<NonNullable<LayerVersionDoc['mapbox']>>({
         tilesetId: finish.tilesetId,
         sourceId: finish.sourceId,
@@ -189,8 +216,16 @@ function tilesDone(job: JobDoc, stamp: Stamp): JobDoc {
     return job.steps?.['tiles']?.status === 'running' ? withStep(job, 'tiles', 'done', stamp.updatedAt) : job;
 }
 
-function succeededJob(held: Held, stamp: Stamp): JobDoc {
-    const job = withStep(tilesDone(held.job, stamp), 'finalize', 'done', stamp.updatedAt);
+/** M12: what a publish of its own never does at Mapbox shows as skipped on the job's page. */
+const MAPBOX_STEPS = ['guard', 'upload', 'publish', 'tiles'] as const;
+
+function withoutMapbox(job: JobDoc, stamp: Stamp): JobDoc {
+    return MAPBOX_STEPS.reduce((marked, step) => withStep(marked, step, 'skipped', stamp.updatedAt), job);
+}
+
+function succeededJob(held: Held, finish: Finish, stamp: Stamp): JobDoc {
+    const walked = finish.origin === 'own' ? withoutMapbox(held.job, stamp) : tilesDone(held.job, stamp);
+    const job = withStep(walked, 'finalize', 'done', stamp.updatedAt);
     return { ...omit(job, ['waitReason', 'error', 'lease']), status: 'succeeded', finishedAt: stamp.updatedAt, progress: 1, ...stamp };
 }
 
@@ -199,13 +234,13 @@ function studioUsage(usage: UsageDoc, stamp: Stamp): UsageDoc {
 }
 
 /** MTS counts the estimate (the measured units once the calibration is verified), one publish and the bytes uploaded. */
-function mtsUsage(usage: UsageDoc, held: Held, finish: Finish, stamp: Stamp): UsageDoc {
+function mtsUsage(usage: UsageDoc, held: Held, finish: MapboxFinish, stamp: Stamp): UsageDoc {
     const reservations = Object.fromEntries(Object.entries(usage.reservations ?? {}).filter(([id]) => id !== finish.versionId));
     const units = held.version.estimate?.computeUnits ?? 0;
     const counted = {
         computeUnits: usage.computeUnits + units,
         publishes: usage.publishes + 1,
-        uploadedMb: usage.uploadedMb + held.version.output.cogBytes / 1e6,
+        uploadedMb: usage.uploadedMb + (held.version.output.cogBytes ?? 0) / 1e6,
     };
     return { ...usage, ...counted, reservations, ...stamp };
 }
@@ -221,13 +256,15 @@ function uploadsUsage(usage: UsageDoc, held: Held, stamp: Stamp): UsageDoc {
     };
 }
 
-const USAGE_BY_ORIGIN: Readonly<Record<Finish['origin'], (usage: UsageDoc, held: Held, finish: Finish, stamp: Stamp) => UsageDoc>> = {
+const USAGE_BY_ORIGIN: Readonly<
+    Record<MapboxFinish['origin'], (usage: UsageDoc, held: Held, finish: MapboxFinish, stamp: Stamp) => UsageDoc>
+> = {
     mts: mtsUsage,
     studio: (usage, _held, _finish, stamp) => studioUsage(usage, stamp),
     uploads: (usage, held, _finish, stamp) => uploadsUsage(usage, held, stamp),
 };
 
-function usageAfter(held: Held, finish: Finish, stamp: Stamp): UsageDoc {
+function usageAfter(held: Held, finish: MapboxFinish, stamp: Stamp): UsageDoc {
     const usage = held.usage ?? {
         month: held.usageMonth,
         computeUnits: 0,
@@ -249,11 +286,23 @@ function hasOutput(version: LayerVersionDoc | undefined): version is Held['versi
     return version?.output !== undefined;
 }
 
+/** A rendered version; M12: a publish of its own has no state of its own to hold the version, so a rejection during its copy ends it here. */
+function publishable(finish: Finish, version: LayerVersionDoc | undefined): version is Held['version'] {
+    return hasOutput(version) && (finish.origin !== 'own' || version.state === 'approved');
+}
+
+/** Mapbox's month counter moves for Mapbox's paths alone. */
+function usageWrite(held: Held, finish: Finish, stamp: Stamp): Apply | undefined {
+    return finish.origin === 'own'
+        ? undefined
+        : setting(FIRESTORE_PATHS.usage(held.usageMonth), usageDocSchema, usageAfter(held, finish, stamp));
+}
+
 /** Every document the step touches, read first; undefined when the job or its rendered version is gone. */
 async function readHeld(transaction: DocumentTransaction, finish: Finish, now: Date): Promise<Held | undefined> {
     const job = await transaction.get(FIRESTORE_PATHS.job(finish.cityId, finish.jobId), jobDocSchema);
     const version = await transaction.get(FIRESTORE_PATHS.layerVersion(finish.cityId, finish.versionId), layerVersionDocSchema);
-    if (job === undefined || !hasOutput(version)) {
+    if (job === undefined || !publishable(finish, version)) {
         return undefined;
     }
     const layer = await transaction.get(FIRESTORE_PATHS.layer(finish.cityId, version.layerId), layerDocSchema);
@@ -306,8 +355,8 @@ export async function finalizeVersion(deps: FinalizeDeps, finish: Finish): Promi
                 layerVersionDocSchema,
                 publishedVersion(held, finish, stamp),
             ),
-            setting(FIRESTORE_PATHS.job(finish.cityId, finish.jobId), jobDocSchema, succeededJob(held, stamp)),
-            setting(FIRESTORE_PATHS.usage(held.usageMonth), usageDocSchema, usageAfter(held, finish, stamp)),
+            setting(FIRESTORE_PATHS.job(finish.cityId, finish.jobId), jobDocSchema, succeededJob(held, finish, stamp)),
+            usageWrite(held, finish, stamp),
         ];
         for (const write of writes) {
             await write?.(transaction);

@@ -25,10 +25,12 @@ import { orderStyles } from './orders/order-styles.js';
 import { sceneDetail } from './scene-detail.js';
 import { findView } from './scene-list.js';
 import { chunkLoader, chunkTemplate } from './orders/lazy-card.js';
-import { versionDetail } from './version-detail.js';
+import { APPROVAL_MAP_CHUNK } from './lazy-version.js';
 import { workView } from './work-list.js';
 
 export const HCM_IMAGERY_PAGE_TAG = 'hcm-imagery-page';
+
+const HCM_ADMIN_MAP_SELECTOR = 'hcm-admin-map';
 
 const TABS: readonly ImageryTabPort[] = ['find', 'work', 'upload'];
 
@@ -143,6 +145,9 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
             focusDetail: () => {
                 void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement>('[data-detail-heading]')?.focus());
             },
+            showMap: () => {
+                this.renderRoot.querySelector(HCM_ADMIN_MAP_SELECTOR)?.scrollIntoView();
+            },
         };
     }
 
@@ -225,7 +230,7 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
             const scenes = [...view.scenes.items, ...view.orders.items, ...(view.named.scene === null ? [] : [view.named.scene])];
             return sceneDetail(context, scenes.find((scene) => scene.id === detail.id) ?? null);
         }
-        return versionDetail(context, view.version);
+        return chunkTemplate(context, APPROVAL_MAP_CHUNK, ({ versionDetail }) => versionDetail(context, view.version));
     }
 
     #dialog(context: ImageryContext): TemplateResult {

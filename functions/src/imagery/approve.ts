@@ -21,6 +21,7 @@ import type { Ports } from '../ports/index.js';
 import { approved, estimateOf, queuePublish, type ApprovalDeps } from './approval.js';
 import { endWork } from './end.js';
 import { refuseHeldPart } from './join-parts.js';
+import { deleteVersionTiles } from './own-tiles-clean.js';
 import { releaseScene } from './release-scene.js';
 import { requireVersion, stampOf, type Stamp } from './records.js';
 import { deleteWorkFiles } from './work-files.js';
@@ -32,7 +33,8 @@ import { deleteWorkFiles } from './work-files.js';
  * job and the version are checked again in the transaction that ends them, so a rejection never ends a publish the guard
  * has meanwhile sent to Mapbox (CR-M3-47). A version that failed is dismissed the same way: it becomes `rejected` and
  * leaves the Imagery area's "Waiting for you" (its job stays failed, marked `cancelRequested` so no page offers Retry), and its
- * scene can be imported again (finding 85). A version ended either way can never run again: its scratch files in the bucket go
+ * scene can be imported again (finding 85). A version ended either way can never run again: its scratch files in the bucket go, and M12: its
+ * tiles, private and any public copy a publish left (`deleteVersionTiles`)
  * (a local worker's stay in its work folder until its sweep: `work-files.ts`). M8: a frame a live join holds refuses both
  * (`refuseHeldPart`).
  */
@@ -120,6 +122,7 @@ async function dismissFailed(deps: RejectDeps, caller: VerifiedCaller, request: 
         await releaseScene(deps, request.cityId, version.source.entityId, version.layerId);
     }
     await deleteWorkFiles(deps, request.cityId, version.jobId);
+    await deleteVersionTiles(deps, request.cityId, request.versionId, version);
 }
 
 /** A waiting version: it and its job end, checked again in the transaction; its scratch files go. */
@@ -130,6 +133,7 @@ async function rejectWaiting(deps: RejectDeps, caller: VerifiedCaller, request: 
         throw new ApiError('apiError.imagery.versionState');
     }
     await deleteWorkFiles(deps, request.cityId, version.jobId);
+    await deleteVersionTiles(deps, request.cityId, request.versionId, version);
 }
 
 async function imageryReject(

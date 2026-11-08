@@ -90,6 +90,8 @@ export const ro = {
     'apiError.imagery.studioNotFound': 'Nu găsim setul de dale încărcat în Mapbox Studio. Verifică numele fișierului și încearcă din nou.',
     'apiError.imagery.mtsRefused': 'Mapbox a refuzat procesarea stratului.',
     'apiError.imagery.sourceTooLarge': 'Fișierul pentru Mapbox are {megabytes} MB, peste limita acceptată.',
+    'apiError.imagery.tilesMissing': 'Imaginea nu are încă dale pentru hartă. Se fac singure; încearcă din nou peste câteva minute.',
+    'apiError.imagery.tilesGone': 'Dalele acestei imagini nu mai există și nu se fac din nou. Imaginea mică rămâne.',
     'apiError.imagery.tilesNotFound': 'Sursa nu are dale la această adresă (404).',
     'apiError.imagery.tilesNotImage': 'Adresa nu răspunde cu o imagine.',
     'apiError.imagery.tilesUnreachable': 'Serverul de dale nu răspunde.',

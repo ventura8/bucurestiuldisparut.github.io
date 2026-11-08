@@ -24,6 +24,7 @@ import { endWork } from './end.js';
 import { finalizeVersion } from './finalize.js';
 import { runGuard, type GuardStep } from './publish-guard.js';
 import { loadPublishing, pollDelay, publishTileset, uploadAndPublish, type MtsDeps, type Publishing } from './publish-mts.js';
+import { publishOwn, publishesOwn, type OwnDeps } from './publish-own.js';
 import { enqueuePublish } from './publish-queue.js';
 import { tooLargeForMts } from './publish-studio.js';
 import { pollUpload, publishThroughUploads, usesUploads, type UploadsDeps, type UploadsOutcome } from './publish-uploads.js';
@@ -39,9 +40,10 @@ import { IMAGERY_WRITER, appendJobLog, guardIsRed, stampOf, versionIdOf } from '
  * the layer's tiles unchanged. A file Mapbox refuses as too large goes back to the admin with the free Studio upload; a
  * transient failure (5xx, rate limit) is retried by Cloud Tasks. M7 (`docs/research/M7-local-worker.md` §6): when the
  * guard chose the free Uploads API path, the attempt and the polls go through it (`publish-uploads.ts`); when that path
- * falls back, the publish starts again at once, through the guard and MTS.
+ * falls back, the publish starts again at once, through the guard and MTS. M12 (`docs/research/M12-own-tiles.md`): by default a start goes
+ * no further than the budget guard: the version's tiles are copied to the project's public bucket (`publish-own.ts`) and Mapbox is never asked.
  */
-export type PublishDeps = MtsDeps & UploadsDeps;
+export type PublishDeps = MtsDeps & UploadsDeps & OwnDeps;
 
 /** Errors of a failed MTS job that say Mapbox itself failed (worth one more publish). */
 const INTERNAL = /internal/i;
@@ -97,12 +99,8 @@ async function pausedByGuard(deps: PublishDeps, task: PublishTask, job: JobDoc):
     deps.log.info('publish paused by the budget guard', { cityId: task.cityId, jobId: task.jobId });
 }
 
-/** The budget guard first (nothing reaches Mapbox while it is red), then the compute-unit guard. */
-async function guardStep(deps: PublishDeps, task: PublishTask, started: Started): Promise<GuardStep> {
-    if (await guardIsRed(deps.documents)) {
-        await pausedByGuard(deps, task, started.job);
-        return 'wait';
-    }
+/** The compute-unit guard, past the budget guard. */
+function guardStep(deps: PublishDeps, task: PublishTask, started: Started): Promise<GuardStep> {
     return runGuard(deps, task.cityId, task.jobId, { id: started.versionId, layerId: started.version.layerId });
 }
 
@@ -250,6 +248,20 @@ async function startPublish(deps: PublishDeps, task: PublishTask): Promise<void>
     }
     if (started.job.status === 'mts_processing' && started.job.mapboxJobId !== undefined) {
         await pollMts(deps, { ...task, phase: 'poll' });
+        return;
+    }
+    await afterBudgetGuard(deps, task, started);
+}
+
+/** While the budget guard is red nothing is published at all; then the project's own bucket, or Mapbox's guard and one attempt. */
+async function afterBudgetGuard(deps: PublishDeps, task: PublishTask, started: Started): Promise<void> {
+    if (await guardIsRed(deps.documents)) {
+        await pausedByGuard(deps, task, started.job);
+        return;
+    }
+    const start = { cityId: task.cityId, jobId: task.jobId, ...started };
+    if (await publishesOwn(deps, start)) {
+        await publishOwn(deps, start);
         return;
     }
     if ((await guardStep(deps, task, started)) === 'publish') {

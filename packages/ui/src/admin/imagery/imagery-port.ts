@@ -94,6 +94,8 @@ export interface VersionItemPort {
     readonly checkpointRmseM: number | null;
     readonly partOf: string | null;
     readonly entityIds: readonly string[];
+    /** M12: the small picture of a waiting row. */
+    readonly thumbPath: string | null;
 }
 
 export interface JobProgressPort {
@@ -157,6 +159,10 @@ export interface VersionViewPort {
         readonly cogBytes: number;
         /** M9: the share of the city the render holds, measured. */
         readonly coveragePct: number | null;
+        /** M12: the version's own tiles (null: none yet); `bytes` is what publishing puts in the public bucket. */
+        readonly tiles: { readonly path: string; readonly bytes: number } | null;
+        /** M12: the image's measured edge over the city (the map shades what it misses). */
+        readonly outline: readonly LngLat[] | null;
     } | null;
     readonly estimate: number | null;
     readonly guard: {
@@ -231,10 +237,20 @@ export interface VersionPagePort {
     readonly downloaded: boolean;
 }
 
+/** M12: `small`: only the small picture exists; `loading`: on its way; `ready`: its tiles are on the map; `failed`: why not. */
+type VersionImagePort =
+    { readonly status: 'none' | 'small' | 'loading' | 'ready' } | { readonly status: 'failed'; readonly notice: AdminNoticeInputPort };
+
 export interface ImageryViewState {
     readonly tab: ImageryTabPort;
     readonly usgs: ServiceState | null;
-    readonly settings: { readonly autoPublish: boolean; readonly rmseThresholdM: number; readonly targetYears: readonly number[] };
+    readonly settings: {
+        readonly autoPublish: boolean;
+        readonly rmseThresholdM: number;
+        readonly targetYears: readonly number[];
+        /** M12: on, this city keeps Mapbox's publishing path; off (the default), its own public bucket. */
+        readonly publishThroughMapbox: boolean;
+    };
     readonly search: SearchStatePort;
     readonly filters: SceneFiltersPort;
     readonly scenes: ListStatePort<SceneItemPort>;
@@ -266,6 +282,9 @@ export interface ImageryViewState {
     readonly joining: string | null;
     readonly joinRefusal: { readonly id: string; readonly notice: AdminNoticeInputPort } | null;
     readonly addingYear: number | null;
+    /** M12: how far the open version's picture has come, and Work's small pictures by version id. */
+    readonly image: VersionImagePort;
+    readonly thumbs: Readonly<Record<string, string>>;
 }
 
 /** A chosen file (a `File`). */
@@ -298,6 +317,9 @@ export interface ImageryIntentsPort {
     cancelUpload(): void;
     resetUpload(): void;
     setPreviewOpacity(percent: number): void;
+    /** M12: the open version at one tile pixel on one screen pixel; its tiles asked for again. */
+    actualPixels(): void;
+    retryImage(): void;
     attachMap(container: HTMLElement): void;
     zoomBy(delta: number): void;
     /** M4: "I ordered it", "Check now", "Take the mark back". */

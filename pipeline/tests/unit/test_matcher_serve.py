@@ -137,8 +137,9 @@ def test_bad_path_told_to_use_a_graphics_card_it_has_not_got_it_exits_77_and_nev
 
 
 @pytest.mark.parametrize("environment", [{}, {"HCM_AI_DEVICE": "cpu"}, {"HCM_AI_DEVICE": "tpu", "HCM_AI_WHY": "no-gpu"}])
-def test_bad_path_a_processor_run_nobody_explained_is_refused(environment: dict[str, str]) -> None:
+def test_bad_path_a_processor_run_nobody_explained_is_refused(environment: dict[str, str], monkeypatch: pytest.MonkeyPatch) -> None:
     """Scenarios: S-P07-HAPPY-CPU-FALLBACK"""
+    monkeypatch.setattr("hcm_pipeline.matcher.serve.signal.signal", lambda _number, _handler: None)
     assert settings_from(environment) is None
     assert main(environment) == USAGE
 

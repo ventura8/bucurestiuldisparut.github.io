@@ -13,9 +13,13 @@
 import {
     FIRESTORE_PATHS,
     STORAGE_PATHS,
+    historyEntryDocSchema,
     jobDocSchema,
+    layerDocSchema,
     photoDocSchema,
+    publicObjectUrl,
     timestampFromDate,
+    validate,
     type AuditedDocument,
     type JobDoc,
     type PhotoDoc,
@@ -27,7 +31,7 @@ import { omit } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 
-export type RestoreDeps = Pick<Ports, 'documents' | 'blobs' | 'clock' | 'log'>;
+export type RestoreDeps = Pick<Ports, 'documents' | 'blobs' | 'clock' | 'log' | 'config'>;
 
 const FINISHED: ReadonlySet<JobDoc['status']> = new Set(['succeeded', 'failed', 'cancelled']);
 
@@ -49,6 +53,40 @@ export async function waitingLayerDeletes(deps: Pick<RestoreDeps, 'documents'>, 
         throw new ApiError('apiError.history.layerGone');
     }
     return jobs.documents.filter((job) => !FINISHED.has(job.data.status)).map((job) => job.path);
+}
+
+/**
+ * M12: a deleted layer never comes back pointing at an archive that is gone. An entry older than its last publish names a version since
+ * superseded, whose archive goes after its grace (`imagery/own-tiles-clean.ts`). Only a deleted layer takes its `source` from the entry
+ * (the field is the server's): a revert of a layer that exists keeps the tiles it shows.
+ */
+export async function requireLayerTiles(
+    deps: Pick<RestoreDeps, 'documents' | 'blobs' | 'config'>,
+    audited: AuditedDocument,
+    entryId: string,
+): Promise<void> {
+    const path = audited.entity === 'layer' ? await archiveOfEntry(deps, audited, entryId) : undefined;
+    if (path !== undefined && (await deps.blobs.stat('public', path)) === undefined) {
+        throw new ApiError('apiError.history.layerGone');
+    }
+}
+
+/** The address of the archive a kept `source` names, if it names one. */
+function archiveUrl(kept: unknown): string {
+    const source = validate(layerDocSchema.shape.source, kept);
+    return source.ok && source.value.type === 'pmtiles' ? source.value.url : '';
+}
+
+/** The public object the entry's kept `source` names, if it names one. */
+async function archiveOfEntry(
+    deps: Pick<RestoreDeps, 'documents' | 'config'>,
+    audited: AuditedDocument,
+    entryId: string,
+): Promise<string | undefined> {
+    const entry = await deps.documents.get(FIRESTORE_PATHS.historyEntry(audited, entryId), historyEntryDocSchema);
+    const url = archiveUrl(entry?.previous?.['source']);
+    const prefix = publicObjectUrl(deps.config.buckets.public, '');
+    return url.startsWith(prefix) ? url.slice(prefix.length) : undefined;
 }
 
 /** Inside the revert's transaction, after its reads: each waiting job of the restored layer ends `cancelled`. */

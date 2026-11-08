@@ -15,6 +15,7 @@ const TYPES: Readonly<Record<string, AdminContentKey>> = {
     republish: 'adminContent.jobs.type.republish',
     'layer-delete': 'adminContent.jobs.type.layerDelete',
     'layer-join': 'adminContent.jobs.type.layerJoin',
+    'layer-tiles': 'adminContent.jobs.type.layerTiles',
 };
 
 const STATUSES: Readonly<Record<JobStatusPort, AdminContentKey>> = {
@@ -47,6 +48,7 @@ const STEP_NAMES: Readonly<Record<string, AdminContentKey>> = {
     georef: 'adminContent.jobs.stepName.georef',
     warp: 'adminContent.jobs.stepName.warp',
     export: 'adminContent.jobs.stepName.export',
+    pyramid: 'adminContent.jobs.stepName.pyramid',
     publish: 'adminContent.jobs.stepName.publish',
     delete: 'adminContent.jobs.stepName.delete',
     // M8 (docs/research/M8-join-interfaces.md §3): a join's own steps.

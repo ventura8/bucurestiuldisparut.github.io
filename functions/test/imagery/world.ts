@@ -99,6 +99,15 @@ export function imageryWorld(now = NOW, records: Readonly<Record<string, readonl
         reader: reader.reader,
         jobs: jobs.jobs,
         setup,
+        signer: {
+            signedDownload: (_bucket, download) => Promise.resolve(`https://signed.example/${download.path}`),
+            signedObject: (_bucket, request) =>
+                Promise.resolve({
+                    url: `https://signed.example/${request.path}?X-Goog-Signature=fake`,
+                    method: request.method,
+                    headers: {},
+                }),
+        },
     };
     return { deps, secrets, usgs, scenes, remote, tilesets, uploads, reader, jobs };
 }
@@ -114,7 +123,8 @@ export async function seedCity(world: ImageryWorld, overrides: Partial<CityDoc> 
         name: { ro: 'București' },
         bounds: BOUNDS,
         mapbox: { user: MAPBOX_USER },
-        imagery: { targetYears: [1966, 1976, 1977, 1978, 1980] },
+        // A city on Mapbox's path: most of this suite is that path; M12's own tiles have their own suites, on the default.
+        imagery: { targetYears: [1966, 1976, 1977, 1978, 1980], publishThroughMapbox: true },
         published: true,
         updatedBy: 'system:setup',
         updatedAt: T0,

@@ -24,6 +24,7 @@ import { IDLE_ORDERS, type OrderActionsState } from './orders/actions.js';
 import { IDLE_SEARCH, type SearchState } from './search.js';
 import { IDLE_UPLOAD, type ChosenFile, type UploadState } from './upload.js';
 import type { VersionPageState } from './version.js';
+import { NO_IMAGE, type VersionImageState } from './version-image.js';
 
 /** The list pane's three views: Find (the scenes), Work (in progress and waiting for you), Upload. */
 type ImageryTab = 'find' | 'work' | 'upload';
@@ -65,7 +66,7 @@ export interface ImageryState extends OrderActionsState, JoinActionsState {
     readonly importRefusal: { readonly id: string; readonly notice: NoticeInput } | null;
     readonly upload: UploadState;
     readonly map: MapStatus;
-    /** The version preview's opacity on the map, 0 to 1. */
+    /** The version's opacity on the map, 0 to 1: 1 at first, as its layer starts once published (`functions/src/imagery/finalize.ts`). */
     readonly previewOpacity: number;
     /** `#/imagery/replace/<layerId>` (the layer editor's Replace image): the upload replaces that layer's image. */
     readonly replaceLayer: string | null;
@@ -75,14 +76,18 @@ export interface ImageryState extends OrderActionsState, JoinActionsState {
     readonly resuming: boolean;
     /** M8: the server's plan of each date's whole-city layer, best first. */
     readonly dates: readonly DatePlanRow[];
+    /** M12: how far the open version's picture has come. */
+    readonly image: VersionImageState;
+    /** M12: Work's small pictures by version id, as `blob:` addresses. */
+    readonly thumbs: Readonly<Record<string, string>>;
 }
 
 export const INITIAL_IMAGERY: ImageryState = {
     ...{ tab: 'find', usgs: null, settings: imagerySettingsOf(undefined), search: IDLE_SEARCH, filters: DEFAULT_FILTERS },
     ...{ scenes: LOADING_LIST, visible: [], browse: {}, versions: LOADING_LIST, jobs: {}, detail: null, version: null },
-    ...{ importing: null, importRefusal: null, upload: IDLE_UPLOAD, map: 'none', previewOpacity: 0.8 },
+    ...{ importing: null, importRefusal: null, upload: IDLE_UPLOAD, map: 'none', previewOpacity: 1 },
     ...{ replaceLayer: null, guard: null, resuming: false, orders: LOADING_LIST, named: NO_NAMED_SCENE, ...IDLE_ORDERS },
-    ...{ dates: [], ...IDLE_JOIN },
+    ...{ dates: [], ...IDLE_JOIN, image: NO_IMAGE, thumbs: {} },
 };
 
 export interface ImageryIntents {
@@ -118,6 +123,10 @@ export interface ImageryIntents {
     resetUpload(): void;
     /** The preview's opacity slider, in percent. */
     setPreviewOpacity(percent: number): void;
+    /** M12: the open version at one tile pixel on one screen pixel. */
+    actualPixels(): void;
+    /** M12: asks for the open version's tiles again. */
+    retryImage(): void;
     attachMap(container: HTMLElement): void;
     zoomBy(delta: number): void;
     /** M4: "I ordered it" (`usgs.markOrdered`); true once recorded. */

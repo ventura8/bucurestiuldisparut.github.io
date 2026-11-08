@@ -30,9 +30,10 @@ export { USGS_SCENE_STATUSES, usgsSceneDocSchema, type UsgsSceneDoc } from './us
 export const CLIENT_JOB_TYPES = ['usgs-import', 'geotiff-import', 'regeoref', 'republish'] as const;
 /**
  * Every job type: the client's, `layer-delete`, which only `layers.delete` queues (CR-M2c-3), and `layer-join`, which only
- * `imagery.join` queues (M8, `docs/research/M8-join-interfaces.md` §2).
+ * `imagery.join` queues (M8, `docs/research/M8-join-interfaces.md` §2), and `layer-tiles`, which only `imagery.tick` queues: a version
+ * rendered before M12 gets its tiles from its COG (`docs/research/M12-own-tiles.md`).
  */
-export const JOB_TYPES = [...CLIENT_JOB_TYPES, 'layer-delete', 'layer-join'] as const;
+export const JOB_TYPES = [...CLIENT_JOB_TYPES, 'layer-delete', 'layer-join', 'layer-tiles'] as const;
 /** The job state machine of security review §4.1. */
 export const JOB_STATUSES = [
     'queued',

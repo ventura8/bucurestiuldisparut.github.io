@@ -56,6 +56,7 @@ const DEFAULT_OUTCOMES: Readonly<Record<JobType, StandinAttempt['outcome']>> = {
     republish: 'under',
     'layer-delete': 'under',
     'layer-join': 'under',
+    'layer-tiles': 'under',
 };
 
 /** How long a run waits for the dispatcher to record its execution (a container starts in about that time). */

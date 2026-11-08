@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { FIRESTORE_PATHS } from '../../src/schemas/paths.js';
 import { EXPORT_LIMITS } from '../../src/schemas/city-export.js';
-import { parseRasterUploadPath, PRIVATE_BUCKET_LIFECYCLE, RASTER_PATHS, VERSION_FILES } from '../../src/schemas/imagery-paths.js';
+import {
+    isOwnTiles,
+    parseRasterUploadPath,
+    PRIVATE_BUCKET_LIFECYCLE,
+    RASTER_PATHS,
+    VERSION_FILES,
+} from '../../src/schemas/imagery-paths.js';
 
 describe('raster paths', () => {
     it('happyPath_everyBuilderSpellsItsPrefix', () => {
@@ -65,5 +71,22 @@ describe('raster paths', () => {
         'uploads/rasters/bucharest/uid 1/up1/Qx7mP2rT9w.tif',
     ])('badPath_%s is not a raster upload', (path) => {
         expect(parseRasterUploadPath(path)).toBeUndefined();
+    });
+});
+
+describe("a version's own tiles (M12)", () => {
+    const own = { path: 'rasters/a/l/v/tiles.pmtiles', thumbPath: 'rasters/a/l/v/thumb.webp' };
+
+    it('happyPath_theArchiveAndPictureInTheVersionsOwnFolder', () => {
+        expect(isOwnTiles('a', 'l', 'v', own)).toBe(true);
+    });
+
+    it.each([
+        { ...own, path: 'rasters/b/l2/v2/tiles.pmtiles' },
+        { ...own, thumbPath: 'rasters/b/l2/v2/thumb.webp' },
+        { ...own, path: 'rasters/a/l/v/cog.tif' },
+        { ...own, path: 'rasters/a/l/v/../v2/tiles.pmtiles' },
+    ])('badPath_another folder or file is not its own: %o', (tiles) => {
+        expect(isOwnTiles('a', 'l', 'v', tiles)).toBe(false);
     });
 });

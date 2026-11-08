@@ -60,7 +60,7 @@ def test_happy_path_each_pipeline_job_type_weighs_its_steps_to_one(job_type: str
 def test_happy_path_a_join_runs_its_own_steps_with_the_contract_shares() -> None:
     weights = contract.step_weights("layer-join")
 
-    assert contract.pipeline_steps_of("layer-join") == ("align", "merge", "export", "register")
+    assert contract.pipeline_steps_of("layer-join") == ("align", "merge", "export", "pyramid", "register")
     # align 0.15, merge 0.25, export 0.10, register 0.05 of 0.55.
     assert weights["merge"] == pytest.approx(0.25 / 0.55)
     assert weights["align"] == pytest.approx(0.15 / 0.55)

@@ -142,6 +142,24 @@ async function viewer(page: Page): Promise<void> {
     await page.locator('canvas.mapboxgl-canvas').first().waitFor({ timeout: TIMEOUT_MS });
 }
 
+/**
+ * M12: a layer on its own tiles is one archive the viewer reads by range. The site's storage route answered every read with the whole
+ * file (200), which the viewer's reader refuses, so the layer failed on the stack (the rehearsal of 2026-11-07, docs/LESSONS.md).
+ */
+async function ownTiles(): Promise<void> {
+    const manifestUrl = `${SITE_ORIGIN}/${E2E_CITY_ID}/data/manifest.json`;
+    const manifest = (await (await fetch(manifestUrl)).json()) as { layers: { id: string; source: { type: string; url?: string } }[] };
+    const layer = manifest.layers.find((candidate) => candidate.source.type === 'pmtiles');
+    if (layer?.source.url === undefined) {
+        throw new Error('the published manifest has no layer on its own tiles');
+    }
+    const read = await fetch(new URL(layer.source.url, manifestUrl), { headers: { range: 'bytes=0-6' } });
+    const magic = await read.text();
+    if (read.status !== 206 || magic !== 'PMTiles') {
+        throw new Error(`the archive of ${layer.id} was not read by range: ${String(read.status)}, ${String(magic.length)} bytes`);
+    }
+}
+
 const STEPS: readonly Step[] = [
     { name: 'the owner signs in with the consent stand-in and lands on the dashboard', run: signIn },
     { name: 'Photos lists the seeded photos', run: photos },
@@ -152,6 +170,7 @@ const STEPS: readonly Step[] = [
     { name: 'the second city opens from its address, and its page is on the site', run: secondCity },
     { name: 'a file the page saves itself stays on the machine', run: savedFile },
     { name: "the viewer shows the emulators' published manifest", run: viewer },
+    { name: "a layer's own tiles are read by range from the site", run: ownTiles },
 ];
 
 async function check(): Promise<boolean> {

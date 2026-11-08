@@ -10,6 +10,7 @@ import {
     exportFileName,
     exportPhotoPath,
     exportRasterPath,
+    exportTilesPath,
     OPEN_EXPORT_STATES,
     rasterExportable,
     RESTRICTED_LICENSES,
@@ -28,7 +29,17 @@ describe('the export layout', () => {
             'photos/strand-1976/thumb.webp',
             'rasters/kh4a-1966.tif',
         ]);
-        expect(Object.values(EXPORT_LAYOUT)).toEqual(['index.html', 'city.json', 'README.md', 'RIGHTS.md', 'engine', 'photos', 'rasters']);
+        expect(exportTilesPath('kh4a-1966')).toBe('tiles/kh4a-1966.pmtiles');
+        expect(Object.values(EXPORT_LAYOUT)).toEqual([
+            'index.html',
+            'city.json',
+            'README.md',
+            'RIGHTS.md',
+            'engine',
+            'photos',
+            'rasters',
+            'tiles',
+        ]);
     });
 
     it.each([

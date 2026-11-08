@@ -17,6 +17,7 @@ import { probeTilesFunction } from './probe.js';
 import { publishFunction } from './publish.js';
 import { resumeGuardFunction } from './resume-guard.js';
 import { locateAgainFunction } from './locate-again.js';
+import { previewUrlFunction } from './preview-url.js';
 import { retryFunction } from './retry.js';
 import { runOnFunction } from './run-on.js';
 import { saveGcpsFunction } from './save-gcps.js';
@@ -25,7 +26,7 @@ import { chooseFunction, studioDoneFunction } from './studio.js';
 import { tickFunction, type TickDeps } from './tick.js';
 
 /** Every port the family uses (the union of its functions' own `Pick<Ports, …>`). */
-export type ImageryFamilyDeps = CallableDeps & TickDeps & Pick<Ports, 'reader' | 'uploads'>;
+export type ImageryFamilyDeps = CallableDeps & TickDeps & Pick<Ports, 'reader' | 'uploads' | 'signer' | 'config'>;
 
 export function imageryFunctions(getDeps: () => ImageryFamilyDeps, bucket?: string) {
     return {
@@ -41,6 +42,7 @@ export function imageryFunctions(getDeps: () => ImageryFamilyDeps, bucket?: stri
         join: joinFunction(getDeps),
         retry: retryFunction(getDeps),
         locateAgain: locateAgainFunction(getDeps),
+        previewUrl: previewUrlFunction(getDeps),
         runOn: runOnFunction(getDeps),
         probeTiles: probeTilesFunction(getDeps),
         resumeGuard: resumeGuardFunction(getDeps),

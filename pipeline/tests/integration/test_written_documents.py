@@ -36,6 +36,7 @@ from tests.fakes.sidecar import TrueProposer, truth_matrix
 from tests.fakes.world import CITY, ENTITY_ID, OVERPASS_PATH, PipelineWorld, dig, small_city
 from tests.integration.joining import JOB, Frame, run_join, seed_frames
 from tests.integration.matching import seed_matching, uniform
+from tests.integration.tiling import run_tiles_job, seed_old_version
 from tests.synthetic.scenes import Scene, overpass_answer, render_world, write_sentinel2
 
 GOLDEN: Final = "written-documents.json"
@@ -265,8 +266,30 @@ def join_too_far(world: PipelineWorld, tmp: Path) -> None:
     assert dig(world.job(JOB), "error", "code") == Errors.JOIN_SEAM_TOO_FAR
 
 
+def own_tiles_import(world: PipelineWorld, _tmp: Path) -> None:
+    """M12: the default path: tiles and a preview, no COG."""
+    world.seed_import()
+    world.seed_own_city()
+    world.run()
+
+
+def tiles_job(world: PipelineWorld, tmp: Path) -> None:
+    """M12: a version rendered before it gets its tiles and keeps its state."""
+    seed_old_version(world, tmp)
+    run_tiles_job(world)
+
+
+def tiles_job_fails(world: PipelineWorld, tmp: Path) -> None:
+    """M12: nothing to make them from: the job fails alone."""
+    seed_old_version(world, tmp, with_cog=False)
+    run_tiles_job(world)
+
+
 PATHS: Final[dict[str, Callable[[PipelineWorld, Path], None]]] = {
     "whole-import": whole_import,
+    "own-tiles-import": own_tiles_import,
+    "tiles-job": tiles_job,
+    "tiles-job-fails": tiles_job_fails,
     "two-phases": two_phases,
     "usgs-preparing": usgs_preparing,
     "not-scanned": not_scanned,
@@ -311,7 +334,7 @@ def nearest_difference(written_shape: Shape, known: set[Shape]) -> list[str]:
 def test_happy_path_each_path_writes_only_documents_of_a_known_shape(name: str, recorded: dict[str, Recorded]) -> None:
     """Scenarios: S-P01-HAPPY-WRITTEN-CONTRACT, S-P01-BAD-WRITTEN-PARAMS, S-P01-HAPPY-KH9-STRIP, S-P01-BAD-CITY-NOT-FOUND
     Scenarios: S-P01-BAD-WEAK-GUESS-TO-POINTS, S-P01-BAD-CITY-OFF-FRAME, S-P05-HAPPY, S-P05-BAD-TOO-FAR
-    Scenarios: S-P07-HAPPY-SMALL-WINDOW"""
+    Scenarios: S-P07-HAPPY-SMALL-WINDOW, S-P08-HAPPY-FROM-WARP, S-P08-HAPPY-OLD-VERSION, S-P08-BAD-FAILS-ALONE"""
     known = known_shapes()
 
     unknown = [

@@ -251,6 +251,27 @@ describe('<hcm-layers-page> editor', () => {
     });
 });
 
+describe('<hcm-layers-page> deleting a layer on its own tiles (M12)', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_aLayerOnItsOwnTilesSaysItsArchivesGoNotThatATilesetStays', async () => {
+        const own = layerDoc({
+            mapbox: undefined,
+            source: { type: 'pmtiles', url: 'https://storage.googleapis.com/b/tiles/c/corona/v.pmtiles' },
+            currentVersion: 'v',
+        });
+        const layers = area(
+            layersState({ editor: editorOf(own), deletion: { phase: 'confirm', id: 'corona', label: 'Corona', graceDays: 7 } }),
+        );
+        const { element } = await page('layers', layers, { params: ['corona'] });
+
+        const body = (deep(element, 'hcm-confirm-dialog') as HTMLElement & { body: string }).body;
+        expect(body).toContain('Its tiles in your public bucket are deleted after 7 days unless you restore it.');
+        expect(body).not.toContain('Mapbox');
+    });
+});
+
 describe('<hcm-layers-page> editor: dates and extra-large pages', () => {
     beforeAll(defineAll);
     afterEach(cleanup);

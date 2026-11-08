@@ -107,10 +107,14 @@ async function answerOf(response: Response): Promise<Answer> {
     return { status: response.status, headers: keptHeaders(response.headers), body: Buffer.from(await response.arrayBuffer()) };
 }
 
-/** An object of the Storage emulator, read past the rules (404 when it does not exist). */
-async function storageObject(bucket: string, path: string): Promise<Answer> {
+/**
+ * An object of the Storage emulator, read past the rules (404 when it does not exist). The request's `Range` goes along, as Cloud
+ * Storage honours it: a layer's own tiles are one archive read by range (`docs/research/M12-own-tiles.md`), and without it every tile
+ * fetched the whole archive, which the viewer's reader refuses (the layer failed on the stack: docs/LESSONS.md).
+ */
+async function storageObject(bucket: string, path: string, range?: string): Promise<Answer> {
     const url = `${emulatorOrigin('storage')}/v0/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(path)}?alt=media`;
-    return answerOf(await fetch(url, { headers: EMULATOR_ADMIN }));
+    return answerOf(await fetch(url, { headers: range === undefined ? EMULATOR_ADMIN : { ...EMULATOR_ADMIN, range } }));
 }
 
 /** `storage.googleapis.com/<bucket>/<path>` of one of the emulators' buckets, or null. */
@@ -160,7 +164,7 @@ async function forwarded(request: IncomingMessage, target: Target): Promise<Answ
     }
     const object = emulatorObjectOf(url);
     if (object !== null && (request.method === 'GET' || request.method === 'HEAD')) {
-        return storageObject(object.bucket, object.path);
+        return storageObject(object.bucket, object.path, request.headers.range);
     }
     if (mockedHostKind(url.hostname) !== null || isUpstreamHost(url.hostname)) {
         return toMockApis(request, url);
@@ -247,7 +251,9 @@ function storageRoute(request: IncomingMessage, rest: string): Promise<Answer> |
         return undefined;
     }
     const [bucket = '', ...path] = rest.slice(prefix.length).split('/');
-    return BUCKETS.includes(bucket) ? storageObject(bucket, decodeURIComponent(path.join('/'))) : Promise.resolve(text(404, 'Not found'));
+    return BUCKETS.includes(bucket)
+        ? storageObject(bucket, decodeURIComponent(path.join('/')), request.headers.range)
+        : Promise.resolve(text(404, 'Not found'));
 }
 
 /**

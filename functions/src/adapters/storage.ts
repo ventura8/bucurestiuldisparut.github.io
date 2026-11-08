@@ -101,9 +101,12 @@ export function createStorageBlobStore(storage: Storage, buckets: RuntimeConfig[
         },
         read: (bucket, path) => guarded(async () => new Uint8Array((await file(bucket, path).download())[0])),
         write: (bucket, path, bytes, options) => guarded(() => file(bucket, path).save(Buffer.from(bytes), saveOptions(options))),
-        copy: (from, to) =>
+        copy: (from, to, options) =>
             guarded(async () => {
-                await file(from.bucket, from.path).copy(file(to.bucket, to.path));
+                await file(from.bucket, from.path).copy(
+                    file(to.bucket, to.path),
+                    options?.cacheControl === undefined ? {} : { cacheControl: options.cacheControl },
+                );
             }),
         delete: (bucket, path) =>
             guarded(async () => {

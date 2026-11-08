@@ -12,4 +12,12 @@ export const M9_EXPORTS = [
     'imageryPassDocSchema',
     'passKeyOf',
     'passPrefixOf',
+    // M12 (docs/research/M12-own-tiles.md): the own tiles' contracts.
+    'IMAGERY_PREVIEW_URL_SECONDS',
+    'SIDE_JOB_TYPES',
+    'exportTilesPath',
+    'imageryPreviewUrlResponseSchema',
+    'isSideJob',
+    'layerTilesParamsSchema',
+    'versionTilesSchema',
 ] as const;

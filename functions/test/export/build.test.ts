@@ -6,7 +6,7 @@
  */
 import { createHash } from 'node:crypto';
 
-import { EXPORT_LIMITS, STORAGE_PATHS, timestampFromDate, validateManifest } from '@hcm/shared';
+import { EXPORT_LIMITS, STORAGE_PATHS, timestampFromDate, validateManifest, type Manifest } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { buildExport, buildExportFunction, measured, type Written } from '../../src/export/build.js';
@@ -25,6 +25,7 @@ import {
     type ExportWorld,
 } from './world.js';
 import { unzip, zipTexts } from './unzip.js';
+import { publicUrl } from '../publish/fakes.js';
 
 const EXPORT = 'x-20261102-1';
 const TASK = { cityId: CITY, exportId: EXPORT };
@@ -37,6 +38,13 @@ async function queuedWorld(rasters = false): Promise<ExportWorld> {
     await seedLayers(world);
     await seedExport(world, EXPORT, { rasters });
     return world;
+}
+
+/** M12: the published manifest with one layer served from the public bucket. */
+function publishLayerSource(world: ExportWorld, layerId: string, source: Manifest['layers'][number]['source']): void {
+    const manifest = publishedManifest();
+    const layers = manifest.layers.map((layer) => (layer.id === layerId ? { ...layer, source } : layer));
+    world.blobs.put('public', STORAGE_PATHS.manifest(CITY), new TextEncoder().encode(JSON.stringify({ ...manifest, layers })));
 }
 
 function zipOf(world: ExportWorld): Buffer {
@@ -293,5 +301,41 @@ describe('measured', () => {
             code: 'apiError.export.tooLarge',
             params: { size: '10', max: String(EXPORT_LIMITS.maxBytes) },
         });
+    });
+});
+
+describe('export.build and a layer on its own tiles (M12)', () => {
+    it('happyPath_aUsgsLayerOnItsOwnTilesCarriesItsArchive_addressRelative @S-A70-HAPPY-EXPORT', async () => {
+        const world = await queuedWorld(true);
+        const path = STORAGE_PATHS.layerTiles(CITY, 'corona-1966', 'v1');
+        const source = { type: 'pmtiles' as const, url: publicUrl(path) };
+        publishLayerSource(world, 'corona-1966', source);
+        world.blobs.put('public', path, new TextEncoder().encode('archive'));
+
+        await buildExport(world, TASK);
+
+        const files = zipTexts(zipOf(world));
+        expect(files['tiles/corona-1966.pmtiles']).toBe('archive');
+        expect(Object.keys(files).some((name) => name.startsWith('rasters/'))).toBe(false);
+        const city = JSON.parse(String(files['city.json'])) as Manifest;
+        expect(city.layers.find((layer) => layer.id === 'corona-1966')?.source).toEqual({
+            type: 'pmtiles',
+            url: 'tiles/corona-1966.pmtiles',
+        });
+        expect((await readExport(world, EXPORT))?.counts).toMatchObject({ rasters: 1 });
+    });
+
+    it('badPath_anUploadedLayerOnItsOwnTilesKeepsItsPublicAddress @S-A70-BAD-EXPORT-RIGHTS', async () => {
+        const world = await queuedWorld(true);
+        const path = STORAGE_PATHS.layerTiles(CITY, 'plan-1911', 'v1');
+        const source = { type: 'pmtiles' as const, url: publicUrl(path) };
+        publishLayerSource(world, 'plan-1911', source);
+
+        await buildExport(world, TASK);
+
+        const files = zipTexts(zipOf(world));
+        expect(Object.keys(files).some((name) => name.startsWith('tiles/'))).toBe(false);
+        const city = JSON.parse(String(files['city.json'])) as Manifest;
+        expect(city.layers.find((layer) => layer.id === 'plan-1911')?.source).toEqual(source);
     });
 });

@@ -8,7 +8,15 @@
  * does not stop: ending it would free its scene under a join that goes on with its pixels. The request is withdrawn and its log
  * says why (`apiError.imagery.joinPartHeld`: reject or cancel the join first).
  */
-import { FINISHED_JOB_STATUSES, FIRESTORE_PATHS, jobDocSchema, layerVersionDocSchema, type JobDoc, type JobStatus } from '@hcm/shared';
+import {
+    FINISHED_JOB_STATUSES,
+    FIRESTORE_PATHS,
+    isSideJob,
+    jobDocSchema,
+    layerVersionDocSchema,
+    type JobDoc,
+    type JobStatus,
+} from '@hcm/shared';
 
 import { omit } from '../api/objects.js';
 import type { Ports } from '../ports/index.js';
@@ -45,6 +53,10 @@ function unfinished(job: JobDoc | undefined): job is JobDoc {
 
 /** True while a live join holds the job's version. */
 async function heldByAJoin(deps: CancelDeps, cityId: string, jobId: string, job: JobDoc): Promise<boolean> {
+    // M12: a side job's ending leaves its version where it stands, so a join has nothing to fear from it.
+    if (isSideJob(job.type)) {
+        return false;
+    }
     const version = await deps.documents.get(FIRESTORE_PATHS.layerVersion(cityId, versionIdOf(jobId, job)), layerVersionDocSchema);
     return version !== undefined && (await liveJoinOf(deps.documents, cityId, version)) !== undefined;
 }

@@ -11,6 +11,7 @@ import {
     ENDED_VERSION_STATES,
     FINISHED_JOB_STATUSES,
     FIRESTORE_PATHS,
+    isSideJob,
     jobDocSchema,
     layerDocSchema,
     layerVersionDocSchema,
@@ -126,7 +127,10 @@ async function siblingHolds(transaction: DocumentTransaction, subject: Subject, 
 /** Every other document `job` holds, read first (a Firestore transaction reads before it writes). */
 async function readRest(transaction: DocumentTransaction, subject: Subject, job: JobDoc): Promise<Held> {
     const { cityId, jobId } = subject;
-    const version = await transaction.get(FIRESTORE_PATHS.layerVersion(cityId, versionIdOf(jobId, job)), layerVersionDocSchema);
+    // M12: a side job works beside its version: its ending holds nothing of the version's.
+    const version = isSideJob(job.type)
+        ? undefined
+        : await transaction.get(FIRESTORE_PATHS.layerVersion(cityId, versionIdOf(jobId, job)), layerVersionDocSchema);
     const places = placesOf(subject, job, version);
     const read = <T>(path: string | undefined, schema: Schema<T>) => (path === undefined ? undefined : transaction.get(path, schema));
     const layer = await read(places.layer, layerDocSchema);

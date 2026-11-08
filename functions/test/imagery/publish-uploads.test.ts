@@ -73,7 +73,7 @@ async function publishWorld(options: { readonly scoped?: boolean; readonly versi
     const version = options.version ?? approved();
     await seedJob(world, JOB, options.job ?? awaitingJob());
     await seedVersion(world, JOB, version);
-    world.deps.blobs.put('private', goldenOutput().cogPath, COG, { contentType: 'image/tiff' });
+    world.deps.blobs.put('private', String(goldenOutput().cogPath), COG, { contentType: 'image/tiff' });
     world.deps.blobs.put('private', String(goldenOutput().studioPath), STUDIO, { contentType: 'image/tiff' });
     if (options.scoped !== false) {
         world.uploads.grantScopes();

@@ -100,6 +100,8 @@ Pitfalls the M2c editor specs met (`docs/LESSONS.md` 71–80):
 - On the one-pane layouts (c360, m768) a journey goes Back (Close on a phone) to the list before the next item, or navigates by address.
 - `npx playwright test <path> --project <name>`: the path first, since `--project` takes every following word.
 
+M12's archives (`e2e/support/pmtiles.ts`): real PMTiles of real lossless WebP, one known colour, generated per test and read by the real Mapbox GL JS from a page route that answers `Range`; the imagery stand-in writes one as `tiles.pmtiles` and `e2e/admin/specs/imagery/own-tiles.spec.ts` answers `imagery.previewUrl`'s signed address from that object (the Storage emulator refuses a browser without the owner's header). A world seeded by `ImageryWorld.ready` is on Mapbox's path unless a spec passes `publishThroughMapbox: false`.
+
 Pitfalls the M3 imagery specs met (`docs/LESSONS.md` 150–165; CR-M3-36):
 
 - The Storage SDK retries a network failure for minutes: a test of a failed read answers `route.fulfill({ status: 403 })`, which it gives up on at once (`rows.spec.ts`, `S-A11-BAD-PREVIEW-UNAVAILABLE`).
@@ -131,6 +133,7 @@ Pitfalls the M5 kit specs met (V27, V29; `docs/research/DECISIONS-for-review.md`
 - A fake command-line tool a spec writes into a temporary folder is an extensionless script; under the repository's `"type": "module"` Node runs it as an ES module, so a CommonJS fake crashes and the CLI reports the tool as failed with no output of its own: `FakeTools` writes `{ "type": "commonjs" }` beside the fakes.
 - `page.route` with a glob does not match an address with a query (`/kit/?lang=en`): route by a predicate on `url.pathname`.
 - `page.route` reaches only the requests that start after it: to drop a connection already open (Firestore's listen long poll), take the context offline too (`page.context().setOffline(true)`) until the page says so, then online with the route still cutting (`S-A18-BAD-STREAM-DROP`, `docs/LESSONS.md` 236).
+- A test that deletes what an open page reads (an archive its map reads by range, a photo) leaves the page first (`about:blank`) and opens the same address after: a read the deletion overtook logs the emulator's 403 and fails the console check; before leaving, `await SceneWriters.settledOn(page)`, or the fixture's end waits on a call the navigation cut off (`docs/LESSONS.md` 404).
 - A prompt the CLI asks several times (its `y/N`) is answered by count (`CliRun.answer`): the spec waits until the prompt was asked once more than it was answered, never writes the answers ahead.
 
 Pitfalls the M1 specs met:

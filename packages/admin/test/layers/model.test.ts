@@ -20,6 +20,21 @@ describe('the layer list', () => {
         expect([item('corona', 1).linked, linked.linked, linked.sourceType]).toEqual([false, true, 'mapbox']);
     });
 
+    it('badPath_aLayerOnItsOwnTilesIsNeverLinked', () => {
+        const own = layerItemOf({
+            id: 'kh9',
+            path: LAYER_PATH('kh9'),
+            data: layerDoc({
+                mapbox: undefined,
+                source: { type: 'pmtiles', url: 'https://storage.googleapis.com/b/tiles/c/kh9/v.pmtiles' },
+                currentVersion: 'v',
+            }),
+            version: 'v',
+            pending: false,
+        });
+        expect([own.linked, own.sourceType]).toEqual([false, 'pmtiles']);
+    });
+
     it('happyPath_topFirstByOrderThenYearThenId', () => {
         const items = [item('a', 1, 1970), item('b', 3), item('c', 1, 1980), item('d', 1, 1980)];
         expect(topFirst(items).map((layer) => layer.id)).toEqual(['b', 'c', 'd', 'a']);

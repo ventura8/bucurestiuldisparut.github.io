@@ -53,6 +53,8 @@ export const EXPORT_LAYOUT = {
     engineFolder: 'engine',
     photosFolder: 'photos',
     rastersFolder: 'rasters',
+    /** M12: a layer's own tiles travel as they are served. */
+    tilesFolder: 'tiles',
 } as const;
 
 function exportId(value: string): string {
@@ -70,6 +72,11 @@ export function exportPhotoPath(photoId: string, variant: PhotoVariant): string 
 /** `rasters/<layer>.tif`: where a layer's Cloud-Optimized GeoTIFF goes when its rights allow it. */
 export function exportRasterPath(layerId: string): string {
     return `${EXPORT_LAYOUT.rastersFolder}/${exportId(layerId)}.tif`;
+}
+
+/** M12: `tiles/<layer>.pmtiles`: a layer's own archive when its rights allow it; the export's `city.json` names it relatively. */
+export function exportTilesPath(layerId: string): string {
+    return `${EXPORT_LAYOUT.tilesFolder}/${exportId(layerId)}.pmtiles`;
 }
 
 /** The name the download carries: `<city>-<YYYY-MM-DD>.zip` (the UTC day the export was made). */

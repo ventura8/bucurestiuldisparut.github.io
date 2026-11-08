@@ -16,15 +16,15 @@ import { ImageryFeeds, type FeedsPatch } from './feeds.js';
 import { resumeGuard } from './guard.js';
 import { JoinActions } from './join.js';
 import { NO_FILES } from './files.js';
-import { BROWSE_PICTURE, ImageryMap, PREVIEW_PICTURE, sceneCorners } from './imagery-map.js';
+import { BROWSE_PICTURE, ImageryMap, sceneCorners } from './imagery-map.js';
 import { sceneNamed, visibleScenes, type SceneFilters, type SceneItem } from './model.js';
-import { cornersOfBox } from './overlay.js';
 import { OrderActions } from './orders/actions.js';
 import { HarvestSearch } from './search.js';
 import { INITIAL_IMAGERY, type ImageryDetail, type ImageryIntents, type ImageryState } from './state.js';
 import { RasterUploader } from './upload.js';
 import { VersionPage, type VersionPageState } from './version.js';
-import type { VersionView } from './version-view.js';
+import { VersionImage } from './version-image.js';
+import { VersionThumbs } from './version-thumbs.js';
 
 /** The routed item's id when it is a `kind`, else null. */
 function routedId(detail: ImageryDetail | null, kind: ImageryDetail['kind']): string | null {
@@ -52,15 +52,6 @@ function sameDetail(a: ImageryDetail | null, b: ImageryDetail | null): boolean {
     return a === b || (a !== null && b !== null && a.kind === b.kind && a.id === b.id);
 }
 
-/** The preview a version's page shows on the map (`<version>@<path>`), when its output exists. */
-function previewOf(version: VersionPageState | null): { readonly key: string; readonly output: NonNullable<VersionView['output']> } | null {
-    if (version === null) {
-        return null;
-    }
-    const output = version.version.doc?.data.output ?? null;
-    return output === null ? null : { key: `${version.id}@${output.previewPath}`, output };
-}
-
 /** The USGS scene the open version came from. */
 function entityOf(version: VersionPageState | null): string | null {
     return version?.version.doc?.data.entityId ?? null;
@@ -77,9 +68,9 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
     readonly #map: ImageryMap;
     readonly #orders: OrderActions;
     readonly #join: JoinActions;
+    readonly #image: VersionImage;
+    readonly #thumbs: VersionThumbs;
     #newest: string | null | undefined = undefined;
-    /** The preview on the map now (`<version>@<path>`), '' for none. */
-    #previewShown = '';
     /** The scene whose browse image is on its way: every feed's write asks again, and each asking read and decoded it whole. */
     #browsing: string | null = null;
     readonly intents: ImageryIntents;
@@ -107,6 +98,21 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
             ...{ maps: services.maps ?? null, locale: services.locale, files, pictures: services.pictures ?? null },
             status: (map) => {
                 this.#cell.update({ map });
+            },
+            tilesFailed: () => {
+                this.#image.tilesFailed();
+            },
+        });
+        this.#image = new VersionImage({
+            ...{ services, map: () => this.#map, opacity: () => this.#cell.state.previewOpacity },
+            changed: (image) => {
+                this.#cell.update({ image });
+            },
+        });
+        this.#thumbs = new VersionThumbs({
+            ...{ files, pictures: services.pictures ?? null },
+            changed: (thumbs) => {
+                this.#cell.update({ thumbs });
             },
         });
         this.#orders = new OrderActions(services, (orders) => {
@@ -139,6 +145,7 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
         this.#feeds.stop();
         this.#select(null);
         this.#browse.clear();
+        this.#thumbs.clear();
         this.#map.detach();
     }
 
@@ -211,6 +218,8 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
         | 'locateAgain'
         | 'cancelJob'
         | 'setPreviewOpacity'
+        | 'actualPixels'
+        | 'retryImage'
         | 'attachMap'
         | 'zoomBy'
     > {
@@ -225,6 +234,12 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
             ...{ locateAgain: () => version.locateAgain(), cancelJob: () => version.cancel() },
             setPreviewOpacity: (percent) => {
                 this.#setOpacity(percent);
+            },
+            actualPixels: () => {
+                this.#actualPixels();
+            },
+            retryImage: () => {
+                this.#image.retry();
             },
             attachMap: (container) => {
                 this.#map.attach(container);
@@ -266,6 +281,7 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
             this.#scenesChanged();
         }
         this.#search.known(this.#cell.state.usgs, this.#newest);
+        this.#thumbs.show(this.#cell.state.versions.items);
     }
 
     /** The city's frame (its boundary on the map) and its theme's colours, when the city was read. */
@@ -306,7 +322,7 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
         }
         this.#cell.update({ detail, importRefusal: null });
         this.#map.clearPictures();
-        this.#previewShown = '';
+        this.#image.clear();
         this.#browsing = null;
         this.#feeds.showScene(routedId(detail, 'scene'));
         this.#version.show(routedId(detail, 'version'));
@@ -375,12 +391,13 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
     #versionChanged(version: VersionPageState | null): void {
         this.#cell.update({ version });
         this.#readFrame(entityOf(version));
-        const preview = previewOf(version);
-        if (preview !== null && preview.key !== this.#previewShown) {
-            const { output } = preview;
-            this.#previewShown = preview.key;
-            this.#map.fitBox(output.bounds);
-            void this.#map.showPicture(PREVIEW_PICTURE, output.previewPath, cornersOfBox(output.bounds), this.#cell.state.previewOpacity);
+        this.#image.follow(version);
+    }
+
+    #actualPixels(): void {
+        const output = this.#cell.state.version?.version.doc?.data.output ?? null;
+        if (output !== null) {
+            this.#map.actualPixels(output.maxzoom);
         }
     }
 
@@ -394,7 +411,7 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
     #setOpacity(percent: number): void {
         const previewOpacity = Math.min(100, Math.max(0, Math.round(percent))) / 100;
         this.#cell.update({ previewOpacity });
-        this.#map.overlays.setOpacity(PREVIEW_PICTURE, previewOpacity);
+        this.#map.setVersionOpacity(previewOpacity);
     }
 
     #retry(): void {

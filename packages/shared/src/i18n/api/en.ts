@@ -86,6 +86,8 @@ export const en: ApiMessages = {
     'apiError.imagery.studioNotFound': 'The tileset uploaded in Mapbox Studio was not found. Check the file name and try again.',
     'apiError.imagery.mtsRefused': 'Mapbox refused to process the layer.',
     'apiError.imagery.sourceTooLarge': 'The file for Mapbox is {megabytes} MB, over the accepted limit.',
+    'apiError.imagery.tilesMissing': 'This image has no map tiles yet. They are made on their own; try again in a few minutes.',
+    'apiError.imagery.tilesGone': "This image's map tiles are gone and are not made again. Its small picture stays.",
     'apiError.imagery.tilesNotFound': 'The source has no tiles at this address (404).',
     'apiError.imagery.tilesNotImage': 'The address does not answer with an image.',
     'apiError.imagery.tilesUnreachable': 'The tile server is not responding.',

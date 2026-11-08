@@ -2,8 +2,8 @@
  * Where the raster work lives in the private bucket (`docs/research/M3-interfaces.md` §4.6): uploads, USGS deliveries,
  * browse copies, a job's scratch files, each layer version's files and the reference cache, with the lifecycle that
  * cleans them. The raster pipeline spells the same paths (`hcm_pipeline.paths`), held equal by
- * `pipeline/tests/contracts/paths.json`. Nothing here is public: tiles live at Mapbox, previews are read by admins
- * through the Storage SDK.
+ * `pipeline/tests/contracts/paths.json`. Nothing here is public: a published version's tiles are copied to the public bucket
+ * (M12: `STORAGE_PATHS.layerTiles`) or live at Mapbox, previews are read by admins through the Storage SDK or a signed address.
  */
 import { USGS_DATASETS } from './firestore.js';
 import { CITY_ID_PATTERN } from './paths.js';
@@ -33,6 +33,9 @@ export const VERSION_FILES = [
     'cog.tif',
     'preview.png',
     'studio.tif',
+    // M12 (docs/research/M12-own-tiles.md): the version's own tiles, private until it publishes, and the Work list's picture.
+    'tiles.pmtiles',
+    'thumb.webp',
 ] as const;
 
 export type VersionFile = (typeof VERSION_FILES)[number];
@@ -79,6 +82,21 @@ export const RASTER_PATHS = {
     reference: (cityId: string, kind: ReferenceKind, key: string) =>
         `reference/${city(cityId)}/${kind}/${segment(key, matching(REFERENCE_KEY))}.${kind === 's2' ? 'tif' : 'geojson'}`,
 } as const;
+
+/** Where a version's own tiles lie: the archive and the picture, each a path a document records. */
+export interface VersionTilesPaths {
+    readonly path: string;
+    readonly thumbPath: string;
+}
+
+/**
+ * M12: true when a version's recorded tiles are its own files, in its own folder under their fixed names. A path a document holds is
+ * written by a worker, so the server copies, signs or deletes only these (a path into another city's or version's folder grants nothing).
+ */
+export function isOwnTiles(cityId: string, layerId: string, versionId: string, tiles: VersionTilesPaths): boolean {
+    const file = (name: VersionFile): string => ['rasters', cityId, layerId, versionId, name].join('/');
+    return tiles.path === file('tiles.pmtiles') && tiles.thumbPath === file('thumb.webp');
+}
 
 /**
  * The private bucket's lifecycle (the provisioner's `bucket-lifecycle` item applies it): age in days after which an

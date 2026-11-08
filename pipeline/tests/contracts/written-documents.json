@@ -186,7 +186,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -244,7 +244,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -309,7 +309,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -381,7 +381,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -460,7 +460,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -546,7 +546,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -639,7 +639,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -740,7 +740,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -848,7 +848,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -963,7 +963,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1085,7 +1085,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1211,7 +1211,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1344,7 +1344,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1484,7 +1484,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1631,7 +1631,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1730,6 +1730,338 @@
                     "generation": "1792000000000016",
                     "sha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
                     "bytes": 1967378,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.9
+        },
+        {
+            "type": "usgs-import",
+            "status": "running",
+            "params": {
+                "entityId": "DS1035-1057DA023",
+                "dataset": "corona2",
+                "sensor": "KH-4A"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4a-corona-1966",
+            "versionId": "job-1966-0712",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "pyramid",
+            "steps": {
+                "fetch": {
+                    "status": "done",
+                    "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
+                    "generation": "1792000000000002",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
+                    "bytes": 1595969,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "extract": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
+                    "generation": "1792000000000004",
+                    "bytes": 795640,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "stitch": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/frame.json",
+                    "generation": "1792000000000007",
+                    "bytes": 300,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "locate": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "reference": {
+                    "status": "done",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
+                    "generation": "1792000000000008",
+                    "bytes": 587149,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "georef": {
+                    "status": "done",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "warp": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
+                    "generation": "1792000000000015",
+                    "bytes": 7214378,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "export": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
+                    "generation": "1792000000000016",
+                    "sha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
+                    "bytes": 1967378,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "pyramid": {
+                    "status": "running",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.9
+        },
+        {
+            "type": "usgs-import",
+            "status": "running",
+            "params": {
+                "entityId": "DS1035-1057DA023",
+                "dataset": "corona2",
+                "sensor": "KH-4A"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4a-corona-1966",
+            "versionId": "job-1966-0712",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "pyramid",
+            "steps": {
+                "fetch": {
+                    "status": "done",
+                    "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
+                    "generation": "1792000000000002",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
+                    "bytes": 1595969,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "extract": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
+                    "generation": "1792000000000004",
+                    "bytes": 795640,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "stitch": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/frame.json",
+                    "generation": "1792000000000007",
+                    "bytes": 300,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "locate": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "reference": {
+                    "status": "done",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
+                    "generation": "1792000000000008",
+                    "bytes": 587149,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "georef": {
+                    "status": "done",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "warp": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
+                    "generation": "1792000000000015",
+                    "bytes": 7214378,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "export": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
+                    "generation": "1792000000000016",
+                    "sha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
+                    "bytes": 1967378,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "pyramid": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/tiles.pmtiles",
+                    "generation": "1792000000000019",
+                    "sha256": "09b36f59cc1781cfc8e1b3a565a7980f6a393fb827c11d200c320821e7bc00d7",
+                    "bytes": 615658,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1786,7 +2118,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1885,6 +2217,21 @@
                     "generation": "1792000000000016",
                     "sha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
                     "bytes": 1967378,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "pyramid": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/tiles.pmtiles",
+                    "generation": "1792000000000019",
+                    "sha256": "09b36f59cc1781cfc8e1b3a565a7980f6a393fb827c11d200c320821e7bc00d7",
+                    "bytes": 615658,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -1948,7 +2295,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -2047,6 +2394,21 @@
                     "generation": "1792000000000016",
                     "sha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
                     "bytes": 1967378,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "pyramid": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/tiles.pmtiles",
+                    "generation": "1792000000000019",
+                    "sha256": "09b36f59cc1781cfc8e1b3a565a7980f6a393fb827c11d200c320821e7bc00d7",
+                    "bytes": 615658,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -2107,7 +2469,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -2215,6 +2577,21 @@
                         "nanoseconds": 0
                     }
                 },
+                "pyramid": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/tiles.pmtiles",
+                    "generation": "1792000000000019",
+                    "sha256": "09b36f59cc1781cfc8e1b3a565a7980f6a393fb827c11d200c320821e7bc00d7",
+                    "bytes": 615658,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
                 "register": {
                     "status": "done",
                     "startedAt": {
@@ -2229,6 +2606,1289 @@
             },
             "progress": 1.0,
             "waitReason": "approval"
+        },
+        {
+            "type": "usgs-import",
+            "status": "running",
+            "params": {
+                "entityId": "DS1035-1057DA023",
+                "dataset": "corona2",
+                "sensor": "KH-4A"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4a-corona-1966",
+            "versionId": "job-1966-0712",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "export",
+            "steps": {
+                "fetch": {
+                    "status": "done",
+                    "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
+                    "generation": "1792000000000002",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
+                    "bytes": 1595969,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "extract": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
+                    "generation": "1792000000000004",
+                    "bytes": 795640,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "stitch": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/frame.json",
+                    "generation": "1792000000000007",
+                    "bytes": 300,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "locate": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "reference": {
+                    "status": "done",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
+                    "generation": "1792000000000008",
+                    "bytes": 587149,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "georef": {
+                    "status": "done",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "warp": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
+                    "generation": "1792000000000015",
+                    "bytes": 7214378,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "export": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
+                    "generation": "1792000000000016",
+                    "bytes": 2241631,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.9
+        },
+        {
+            "type": "usgs-import",
+            "status": "running",
+            "params": {
+                "entityId": "DS1035-1057DA023",
+                "dataset": "corona2",
+                "sensor": "KH-4A"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4a-corona-1966",
+            "versionId": "job-1966-0712",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "pyramid",
+            "steps": {
+                "fetch": {
+                    "status": "done",
+                    "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
+                    "generation": "1792000000000002",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
+                    "bytes": 1595969,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "extract": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
+                    "generation": "1792000000000004",
+                    "bytes": 795640,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "stitch": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/frame.json",
+                    "generation": "1792000000000007",
+                    "bytes": 300,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "locate": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "reference": {
+                    "status": "done",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
+                    "generation": "1792000000000008",
+                    "bytes": 587149,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "georef": {
+                    "status": "done",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "warp": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
+                    "generation": "1792000000000015",
+                    "bytes": 7214378,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "export": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
+                    "generation": "1792000000000016",
+                    "bytes": 2241631,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "pyramid": {
+                    "status": "running",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.9
+        },
+        {
+            "type": "usgs-import",
+            "status": "running",
+            "params": {
+                "entityId": "DS1035-1057DA023",
+                "dataset": "corona2",
+                "sensor": "KH-4A"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4a-corona-1966",
+            "versionId": "job-1966-0712",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "pyramid",
+            "steps": {
+                "fetch": {
+                    "status": "done",
+                    "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
+                    "generation": "1792000000000002",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
+                    "bytes": 1595969,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "extract": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
+                    "generation": "1792000000000004",
+                    "bytes": 795640,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "stitch": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/frame.json",
+                    "generation": "1792000000000007",
+                    "bytes": 300,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "locate": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "reference": {
+                    "status": "done",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
+                    "generation": "1792000000000008",
+                    "bytes": 587149,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "georef": {
+                    "status": "done",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "warp": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
+                    "generation": "1792000000000015",
+                    "bytes": 7214378,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "export": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
+                    "generation": "1792000000000016",
+                    "bytes": 2241631,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "pyramid": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/tiles.pmtiles",
+                    "generation": "1792000000000017",
+                    "sha256": "09b36f59cc1781cfc8e1b3a565a7980f6a393fb827c11d200c320821e7bc00d7",
+                    "bytes": 615658,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.95
+        },
+        {
+            "type": "usgs-import",
+            "status": "running",
+            "params": {
+                "entityId": "DS1035-1057DA023",
+                "dataset": "corona2",
+                "sensor": "KH-4A"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4a-corona-1966",
+            "versionId": "job-1966-0712",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "register",
+            "steps": {
+                "fetch": {
+                    "status": "done",
+                    "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
+                    "generation": "1792000000000002",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
+                    "bytes": 1595969,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "extract": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
+                    "generation": "1792000000000004",
+                    "bytes": 795640,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "stitch": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/frame.json",
+                    "generation": "1792000000000007",
+                    "bytes": 300,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "locate": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "reference": {
+                    "status": "done",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
+                    "generation": "1792000000000008",
+                    "bytes": 587149,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "georef": {
+                    "status": "done",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "warp": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
+                    "generation": "1792000000000015",
+                    "bytes": 7214378,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "export": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
+                    "generation": "1792000000000016",
+                    "bytes": 2241631,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "pyramid": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/tiles.pmtiles",
+                    "generation": "1792000000000017",
+                    "sha256": "09b36f59cc1781cfc8e1b3a565a7980f6a393fb827c11d200c320821e7bc00d7",
+                    "bytes": 615658,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "register": {
+                    "status": "running",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.95
+        },
+        {
+            "type": "usgs-import",
+            "status": "running",
+            "params": {
+                "entityId": "DS1035-1057DA023",
+                "dataset": "corona2",
+                "sensor": "KH-4A"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4a-corona-1966",
+            "versionId": "job-1966-0712",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "register",
+            "steps": {
+                "fetch": {
+                    "status": "done",
+                    "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
+                    "generation": "1792000000000002",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
+                    "bytes": 1595969,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "extract": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
+                    "generation": "1792000000000004",
+                    "bytes": 795640,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "stitch": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/frame.json",
+                    "generation": "1792000000000007",
+                    "bytes": 300,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "locate": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "reference": {
+                    "status": "done",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
+                    "generation": "1792000000000008",
+                    "bytes": 587149,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "georef": {
+                    "status": "done",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "warp": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
+                    "generation": "1792000000000015",
+                    "bytes": 7214378,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "export": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
+                    "generation": "1792000000000016",
+                    "bytes": 2241631,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "pyramid": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/tiles.pmtiles",
+                    "generation": "1792000000000017",
+                    "sha256": "09b36f59cc1781cfc8e1b3a565a7980f6a393fb827c11d200c320821e7bc00d7",
+                    "bytes": 615658,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "register": {
+                    "status": "done",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 1.0
+        },
+        {
+            "type": "usgs-import",
+            "status": "awaiting_approval",
+            "params": {
+                "entityId": "DS1035-1057DA023",
+                "dataset": "corona2",
+                "sensor": "KH-4A"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4a-corona-1966",
+            "versionId": "job-1966-0712",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "register",
+            "steps": {
+                "fetch": {
+                    "status": "done",
+                    "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
+                    "generation": "1792000000000002",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
+                    "bytes": 1595969,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "extract": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/segments/a.tif",
+                    "generation": "1792000000000004",
+                    "bytes": 795640,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "stitch": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/frame.json",
+                    "generation": "1792000000000007",
+                    "bytes": 300,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "locate": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
+                    "generation": "1792000000000010",
+                    "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                    "bytes": 1267007,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "reference": {
+                    "status": "done",
+                    "gcsPath": "reference/bucharest/s2/86a6d65d098edcd2.tif",
+                    "generation": "1792000000000008",
+                    "bytes": 587149,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "georef": {
+                    "status": "done",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "warp": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-1966-0712/warped.tif",
+                    "generation": "1792000000000015",
+                    "bytes": 7214378,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "export": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
+                    "generation": "1792000000000016",
+                    "bytes": 2241631,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "pyramid": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/tiles.pmtiles",
+                    "generation": "1792000000000017",
+                    "sha256": "09b36f59cc1781cfc8e1b3a565a7980f6a393fb827c11d200c320821e7bc00d7",
+                    "bytes": 615658,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "register": {
+                    "status": "done",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 1.0,
+            "waitReason": "approval"
+        },
+        {
+            "type": "layer-tiles",
+            "status": "starting",
+            "params": {
+                "versionId": "job-1966-0712"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4a-corona-1966",
+            "versionId": "job-1966-0712",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:imagery",
+            "updatedAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            }
+        },
+        {
+            "type": "layer-tiles",
+            "status": "running",
+            "params": {
+                "versionId": "job-1966-0712"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4a-corona-1966",
+            "versionId": "job-1966-0712",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            }
+        },
+        {
+            "type": "layer-tiles",
+            "status": "running",
+            "params": {
+                "versionId": "job-1966-0712"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4a-corona-1966",
+            "versionId": "job-1966-0712",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "pyramid",
+            "steps": {
+                "pyramid": {
+                    "status": "running",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.0
+        },
+        {
+            "type": "layer-tiles",
+            "status": "running",
+            "params": {
+                "versionId": "job-1966-0712"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4a-corona-1966",
+            "versionId": "job-1966-0712",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "pyramid",
+            "steps": {
+                "pyramid": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/tiles.pmtiles",
+                    "generation": "1792000000000002",
+                    "sha256": "aee4b44e6591ab81e47a1429f4f3d9bb4c15c1b27dbbd812ccceb36e6de46445",
+                    "bytes": 11356,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 1.0
+        },
+        {
+            "type": "layer-tiles",
+            "status": "succeeded",
+            "params": {
+                "versionId": "job-1966-0712"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4a-corona-1966",
+            "versionId": "job-1966-0712",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "pyramid",
+            "steps": {
+                "pyramid": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/tiles.pmtiles",
+                    "generation": "1792000000000002",
+                    "sha256": "aee4b44e6591ab81e47a1429f4f3d9bb4c15c1b27dbbd812ccceb36e6de46445",
+                    "bytes": 11356,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 1.0,
+            "finishedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            }
+        },
+        {
+            "type": "layer-tiles",
+            "status": "failed",
+            "params": {
+                "versionId": "job-1966-0712"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4a-corona-1966",
+            "versionId": "job-1966-0712",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "pyramid",
+            "steps": {
+                "pyramid": {
+                    "status": "failed",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.0,
+            "finishedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "error": {
+                "code": "apiError.imagery.processingFailed",
+                "message": "the version has neither tiles nor a COG to make them from"
+            }
         },
         {
             "type": "usgs-import",
@@ -2267,7 +3927,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -2813,7 +4473,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -2929,7 +4589,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "f06e47e342f4b84ad51b03a878c4bda1b022ce9a2addedcad473cc99d49c300c",
+                    "sha256": "c653380cb404175ccc0641109ac8b534d345bccfc1f732ed1b39f679e0da5537",
                     "bytes": 1595969,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -3471,10 +5131,217 @@
                 },
                 "export": {
                     "status": "done",
-                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
+                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/preview.png",
                     "generation": "1792000000000006",
-                    "sha256": "36c329cc2e4ffaaa98ac4c116f73db4fe62178d939e752be2bfdbc81092ae799",
-                    "bytes": 209279,
+                    "bytes": 501931,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.8182
+        },
+        {
+            "type": "layer-join",
+            "status": "running",
+            "params": {
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east"
+                    }
+                ],
+                "sensor": "KH-4"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4-corona-1972",
+            "versionId": "job-join-1972",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "pyramid",
+            "steps": {
+                "align": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
+                    "generation": "1792000000000004",
+                    "bytes": 2214,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "merge": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/warped.tif",
+                    "generation": "1792000000000005",
+                    "bytes": 532044,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "export": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/preview.png",
+                    "generation": "1792000000000006",
+                    "bytes": 501931,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "pyramid": {
+                    "status": "running",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.8182
+        },
+        {
+            "type": "layer-join",
+            "status": "running",
+            "params": {
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east"
+                    }
+                ],
+                "sensor": "KH-4"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4-corona-1972",
+            "versionId": "job-join-1972",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "pyramid",
+            "steps": {
+                "align": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
+                    "generation": "1792000000000004",
+                    "bytes": 2214,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "merge": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/warped.tif",
+                    "generation": "1792000000000005",
+                    "bytes": 532044,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "export": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/preview.png",
+                    "generation": "1792000000000006",
+                    "bytes": 501931,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "pyramid": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/tiles.pmtiles",
+                    "generation": "1792000000000007",
+                    "sha256": "fcf32bd3325d9dde40a35f4853fa5e2e5b3a8c70d572f9f99e61f90f308afb32",
+                    "bytes": 71064,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3565,10 +5432,24 @@
                 },
                 "export": {
                     "status": "done",
-                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
+                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/preview.png",
                     "generation": "1792000000000006",
-                    "sha256": "36c329cc2e4ffaaa98ac4c116f73db4fe62178d939e752be2bfdbc81092ae799",
-                    "bytes": 209279,
+                    "bytes": 501931,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "pyramid": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/tiles.pmtiles",
+                    "generation": "1792000000000007",
+                    "sha256": "fcf32bd3325d9dde40a35f4853fa5e2e5b3a8c70d572f9f99e61f90f308afb32",
+                    "bytes": 71064,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3666,10 +5547,24 @@
                 },
                 "export": {
                     "status": "done",
-                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
+                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/preview.png",
                     "generation": "1792000000000006",
-                    "sha256": "36c329cc2e4ffaaa98ac4c116f73db4fe62178d939e752be2bfdbc81092ae799",
-                    "bytes": 209279,
+                    "bytes": 501931,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "pyramid": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/tiles.pmtiles",
+                    "generation": "1792000000000007",
+                    "sha256": "fcf32bd3325d9dde40a35f4853fa5e2e5b3a8c70d572f9f99e61f90f308afb32",
+                    "bytes": 71064,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -3764,10 +5659,24 @@
                 },
                 "export": {
                     "status": "done",
-                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
+                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/preview.png",
                     "generation": "1792000000000006",
-                    "sha256": "36c329cc2e4ffaaa98ac4c116f73db4fe62178d939e752be2bfdbc81092ae799",
-                    "bytes": 209279,
+                    "bytes": 501931,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "pyramid": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/tiles.pmtiles",
+                    "generation": "1792000000000007",
+                    "sha256": "fcf32bd3325d9dde40a35f4853fa5e2e5b3a8c70d572f9f99e61f90f308afb32",
+                    "bytes": 71064,
                     "startedAt": {
                         "seconds": 1792000000,
                         "nanoseconds": 0
@@ -4822,6 +6731,1115 @@
                         "lng": 26.137123
                     }
                 ]
+            }
+        },
+        {
+            "layerId": "kh-4a-corona-1966",
+            "jobId": "job-1966-0712",
+            "origin": "usgs",
+            "state": "processing",
+            "source": {
+                "kind": "usgs",
+                "entityId": "DS1035-1057DA023",
+                "dataset": "corona2",
+                "sensor": "KH-4A",
+                "acquisitionDate": "1966-07-12"
+            },
+            "label": {
+                "ro": "KH-4A Corona, 12 iulie 1966",
+                "en": "KH-4A Corona, 12 July 1966"
+            },
+            "year": 1966,
+            "date": "1966-07-12",
+            "sensor": "KH-4A",
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "machines": {
+                "download": "std",
+                "process": "std"
+            },
+            "scan": {
+                "path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
+                "width": 1500,
+                "height": 1100,
+                "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan-preview.jpg",
+                "previewScale": 1.0
+            },
+            "georef": {
+                "method": "auto",
+                "transform": "poly2",
+                "gcps": [
+                    {
+                        "id": "a001",
+                        "pixel": {
+                            "x": 142.39,
+                            "y": 182.97
+                        },
+                        "geo": {
+                            "lat": 44.444431963,
+                            "lng": 26.062809849
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.33
+                    },
+                    {
+                        "id": "a002",
+                        "pixel": {
+                            "x": 386.55,
+                            "y": 954.18
+                        },
+                        "geo": {
+                            "lat": 44.412099781,
+                            "lng": 26.079788008
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.02
+                    },
+                    {
+                        "id": "a003",
+                        "pixel": {
+                            "x": 211.79,
+                            "y": 661.14
+                        },
+                        "geo": {
+                            "lat": 44.424226445,
+                            "lng": 26.068469235
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.17
+                    },
+                    {
+                        "id": "a004",
+                        "pixel": {
+                            "x": 423.62,
+                            "y": 292.3
+                        },
+                        "geo": {
+                            "lat": 44.440391419,
+                            "lng": 26.079788008
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.17
+                    },
+                    {
+                        "id": "a005",
+                        "pixel": {
+                            "x": 671.76,
+                            "y": 969.01
+                        },
+                        "geo": {
+                            "lat": 44.412099781,
+                            "lng": 26.096766166
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.11
+                    },
+                    {
+                        "id": "a006",
+                        "pixel": {
+                            "x": 582.06,
+                            "y": 869.71
+                        },
+                        "geo": {
+                            "lat": 44.416142282,
+                            "lng": 26.09110678
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.12
+                    },
+                    {
+                        "id": "a007",
+                        "pixel": {
+                            "x": 698.69,
+                            "y": 496.4
+                        },
+                        "geo": {
+                            "lat": 44.432309491,
+                            "lng": 26.096766166
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.08
+                    },
+                    {
+                        "id": "a008",
+                        "pixel": {
+                            "x": 619.66,
+                            "y": 207.15
+                        },
+                        "geo": {
+                            "lat": 44.444431963,
+                            "lng": 26.09110678
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.11
+                    },
+                    {
+                        "id": "a009",
+                        "pixel": {
+                            "x": 872.5,
+                            "y": 790.03
+                        },
+                        "geo": {
+                            "lat": 44.420184503,
+                            "lng": 26.108084939
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.13
+                    },
+                    {
+                        "id": "a010",
+                        "pixel": {
+                            "x": 994.9,
+                            "y": 321.37
+                        },
+                        "geo": {
+                            "lat": 44.440391419,
+                            "lng": 26.113744325
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.08
+                    },
+                    {
+                        "id": "a011",
+                        "pixel": {
+                            "x": 1000.42,
+                            "y": 226.43
+                        },
+                        "geo": {
+                            "lat": 44.444431963,
+                            "lng": 26.113744325
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.07
+                    },
+                    {
+                        "id": "a012",
+                        "pixel": {
+                            "x": 1340.89,
+                            "y": 909.04
+                        },
+                        "geo": {
+                            "lat": 44.416142282,
+                            "lng": 26.13638187
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.28
+                    }
+                ],
+                "fitRmseM": 0.07,
+                "checkpointRmseM": 0.15,
+                "checkpointCount": 4,
+                "checkpointKind": "held-out"
+            },
+            "calibration": {
+                "how": "votes",
+                "votes": {
+                    "agreed": 115,
+                    "tiles": 117
+                },
+                "coveredPct": 100.0,
+                "model": {
+                    "camera": "corners",
+                    "rotation": 0,
+                    "mirrored": false,
+                    "scale": 0.99855,
+                    "rotationDeg": -0.0163,
+                    "dxM": -248.6,
+                    "dyM": 191.4
+                },
+                "tiles": {
+                    "agreed": 121,
+                    "tried": 121
+                },
+                "crossValidatedM": 0.16,
+                "measuredPct": 59.8,
+                "outline": [
+                    {
+                        "lat": 44.449779,
+                        "lng": 26.062866
+                    },
+                    {
+                        "lat": 44.410054,
+                        "lng": 26.062866
+                    },
+                    {
+                        "lat": 44.410054,
+                        "lng": 26.137134
+                    },
+                    {
+                        "lat": 44.449779,
+                        "lng": 26.137134
+                    }
+                ]
+            },
+            "reference": {
+                "bounds": {
+                    "west": 26.055264,
+                    "south": 44.406131,
+                    "east": 26.144736,
+                    "north": 44.453859
+                },
+                "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
+                "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
+                "s2Item": "S2B_35TMK_20250803_0_L2A",
+                "s2Date": "2025-08-03"
+            },
+            "output": {
+                "cogPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
+                "cogBytes": 1967378,
+                "cogSha256": "4f88104bd7c395b288a1a11cbafe419a44cc816549e963ea7af8073b37ffcb16",
+                "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
+                "bounds": {
+                    "west": 26.055107,
+                    "south": 44.406071,
+                    "east": 26.145058,
+                    "north": 44.453879
+                },
+                "minzoom": 10,
+                "maxzoom": 16,
+                "areaKm2": 36.445,
+                "studioPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/studio.tif",
+                "studioBytes": 1236916,
+                "coveragePct": 100.0,
+                "outline": [
+                    {
+                        "lat": 44.449792,
+                        "lng": 26.062849
+                    },
+                    {
+                        "lat": 44.410273,
+                        "lng": 26.062849
+                    },
+                    {
+                        "lat": 44.410273,
+                        "lng": 26.137123
+                    },
+                    {
+                        "lat": 44.449792,
+                        "lng": 26.137123
+                    }
+                ],
+                "tiles": {
+                    "path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/tiles.pmtiles",
+                    "bytes": 615658,
+                    "count": 314,
+                    "sha256": "09b36f59cc1781cfc8e1b3a565a7980f6a393fb827c11d200c320821e7bc00d7",
+                    "thumbPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/thumb.webp"
+                }
+            }
+        },
+        {
+            "layerId": "kh-4a-corona-1966",
+            "jobId": "job-1966-0712",
+            "origin": "usgs",
+            "state": "processing",
+            "source": {
+                "kind": "usgs",
+                "entityId": "DS1035-1057DA023",
+                "dataset": "corona2",
+                "sensor": "KH-4A",
+                "acquisitionDate": "1966-07-12"
+            },
+            "label": {
+                "ro": "KH-4A Corona, 12 iulie 1966",
+                "en": "KH-4A Corona, 12 July 1966"
+            },
+            "year": 1966,
+            "date": "1966-07-12",
+            "sensor": "KH-4A",
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "machines": {
+                "download": "std",
+                "process": "std"
+            },
+            "scan": {
+                "path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
+                "width": 1500,
+                "height": 1100,
+                "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan-preview.jpg",
+                "previewScale": 1.0
+            },
+            "georef": {
+                "method": "auto",
+                "transform": "poly2",
+                "gcps": [
+                    {
+                        "id": "a001",
+                        "pixel": {
+                            "x": 142.39,
+                            "y": 182.97
+                        },
+                        "geo": {
+                            "lat": 44.444431963,
+                            "lng": 26.062809849
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.33
+                    },
+                    {
+                        "id": "a002",
+                        "pixel": {
+                            "x": 386.55,
+                            "y": 954.18
+                        },
+                        "geo": {
+                            "lat": 44.412099781,
+                            "lng": 26.079788008
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.02
+                    },
+                    {
+                        "id": "a003",
+                        "pixel": {
+                            "x": 211.79,
+                            "y": 661.14
+                        },
+                        "geo": {
+                            "lat": 44.424226445,
+                            "lng": 26.068469235
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.17
+                    },
+                    {
+                        "id": "a004",
+                        "pixel": {
+                            "x": 423.62,
+                            "y": 292.3
+                        },
+                        "geo": {
+                            "lat": 44.440391419,
+                            "lng": 26.079788008
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.17
+                    },
+                    {
+                        "id": "a005",
+                        "pixel": {
+                            "x": 671.76,
+                            "y": 969.01
+                        },
+                        "geo": {
+                            "lat": 44.412099781,
+                            "lng": 26.096766166
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.11
+                    },
+                    {
+                        "id": "a006",
+                        "pixel": {
+                            "x": 582.06,
+                            "y": 869.71
+                        },
+                        "geo": {
+                            "lat": 44.416142282,
+                            "lng": 26.09110678
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.12
+                    },
+                    {
+                        "id": "a007",
+                        "pixel": {
+                            "x": 698.69,
+                            "y": 496.4
+                        },
+                        "geo": {
+                            "lat": 44.432309491,
+                            "lng": 26.096766166
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.08
+                    },
+                    {
+                        "id": "a008",
+                        "pixel": {
+                            "x": 619.66,
+                            "y": 207.15
+                        },
+                        "geo": {
+                            "lat": 44.444431963,
+                            "lng": 26.09110678
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.11
+                    },
+                    {
+                        "id": "a009",
+                        "pixel": {
+                            "x": 872.5,
+                            "y": 790.03
+                        },
+                        "geo": {
+                            "lat": 44.420184503,
+                            "lng": 26.108084939
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.13
+                    },
+                    {
+                        "id": "a010",
+                        "pixel": {
+                            "x": 994.9,
+                            "y": 321.37
+                        },
+                        "geo": {
+                            "lat": 44.440391419,
+                            "lng": 26.113744325
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.08
+                    },
+                    {
+                        "id": "a011",
+                        "pixel": {
+                            "x": 1000.42,
+                            "y": 226.43
+                        },
+                        "geo": {
+                            "lat": 44.444431963,
+                            "lng": 26.113744325
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.07
+                    },
+                    {
+                        "id": "a012",
+                        "pixel": {
+                            "x": 1340.89,
+                            "y": 909.04
+                        },
+                        "geo": {
+                            "lat": 44.416142282,
+                            "lng": 26.13638187
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.28
+                    }
+                ],
+                "fitRmseM": 0.07,
+                "checkpointRmseM": 0.15,
+                "checkpointCount": 4,
+                "checkpointKind": "held-out"
+            },
+            "calibration": {
+                "how": "votes",
+                "votes": {
+                    "agreed": 115,
+                    "tiles": 117
+                },
+                "coveredPct": 100.0,
+                "model": {
+                    "camera": "corners",
+                    "rotation": 0,
+                    "mirrored": false,
+                    "scale": 0.99855,
+                    "rotationDeg": -0.0163,
+                    "dxM": -248.6,
+                    "dyM": 191.4
+                },
+                "tiles": {
+                    "agreed": 121,
+                    "tried": 121
+                },
+                "crossValidatedM": 0.16,
+                "measuredPct": 59.8,
+                "outline": [
+                    {
+                        "lat": 44.449779,
+                        "lng": 26.062866
+                    },
+                    {
+                        "lat": 44.410054,
+                        "lng": 26.062866
+                    },
+                    {
+                        "lat": 44.410054,
+                        "lng": 26.137134
+                    },
+                    {
+                        "lat": 44.449779,
+                        "lng": 26.137134
+                    }
+                ]
+            },
+            "reference": {
+                "bounds": {
+                    "west": 26.055264,
+                    "south": 44.406131,
+                    "east": 26.144736,
+                    "north": 44.453859
+                },
+                "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
+                "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
+                "s2Item": "S2B_35TMK_20250803_0_L2A",
+                "s2Date": "2025-08-03"
+            },
+            "output": {
+                "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
+                "bounds": {
+                    "west": 26.055107,
+                    "south": 44.406071,
+                    "east": 26.145058,
+                    "north": 44.453879
+                },
+                "minzoom": 10,
+                "maxzoom": 16,
+                "areaKm2": 36.445,
+                "coveragePct": 100.0,
+                "outline": [
+                    {
+                        "lat": 44.449792,
+                        "lng": 26.062849
+                    },
+                    {
+                        "lat": 44.410273,
+                        "lng": 26.062849
+                    },
+                    {
+                        "lat": 44.410273,
+                        "lng": 26.137123
+                    },
+                    {
+                        "lat": 44.449792,
+                        "lng": 26.137123
+                    }
+                ]
+            }
+        },
+        {
+            "layerId": "kh-4a-corona-1966",
+            "jobId": "job-1966-0712",
+            "origin": "usgs",
+            "state": "processing",
+            "source": {
+                "kind": "usgs",
+                "entityId": "DS1035-1057DA023",
+                "dataset": "corona2",
+                "sensor": "KH-4A",
+                "acquisitionDate": "1966-07-12"
+            },
+            "label": {
+                "ro": "KH-4A Corona, 12 iulie 1966",
+                "en": "KH-4A Corona, 12 July 1966"
+            },
+            "year": 1966,
+            "date": "1966-07-12",
+            "sensor": "KH-4A",
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "machines": {
+                "download": "std",
+                "process": "std"
+            },
+            "scan": {
+                "path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
+                "width": 1500,
+                "height": 1100,
+                "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan-preview.jpg",
+                "previewScale": 1.0
+            },
+            "georef": {
+                "method": "auto",
+                "transform": "poly2",
+                "gcps": [
+                    {
+                        "id": "a001",
+                        "pixel": {
+                            "x": 142.39,
+                            "y": 182.97
+                        },
+                        "geo": {
+                            "lat": 44.444431963,
+                            "lng": 26.062809849
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.33
+                    },
+                    {
+                        "id": "a002",
+                        "pixel": {
+                            "x": 386.55,
+                            "y": 954.18
+                        },
+                        "geo": {
+                            "lat": 44.412099781,
+                            "lng": 26.079788008
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.02
+                    },
+                    {
+                        "id": "a003",
+                        "pixel": {
+                            "x": 211.79,
+                            "y": 661.14
+                        },
+                        "geo": {
+                            "lat": 44.424226445,
+                            "lng": 26.068469235
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.17
+                    },
+                    {
+                        "id": "a004",
+                        "pixel": {
+                            "x": 423.62,
+                            "y": 292.3
+                        },
+                        "geo": {
+                            "lat": 44.440391419,
+                            "lng": 26.079788008
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.17
+                    },
+                    {
+                        "id": "a005",
+                        "pixel": {
+                            "x": 671.76,
+                            "y": 969.01
+                        },
+                        "geo": {
+                            "lat": 44.412099781,
+                            "lng": 26.096766166
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.11
+                    },
+                    {
+                        "id": "a006",
+                        "pixel": {
+                            "x": 582.06,
+                            "y": 869.71
+                        },
+                        "geo": {
+                            "lat": 44.416142282,
+                            "lng": 26.09110678
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.12
+                    },
+                    {
+                        "id": "a007",
+                        "pixel": {
+                            "x": 698.69,
+                            "y": 496.4
+                        },
+                        "geo": {
+                            "lat": 44.432309491,
+                            "lng": 26.096766166
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.08
+                    },
+                    {
+                        "id": "a008",
+                        "pixel": {
+                            "x": 619.66,
+                            "y": 207.15
+                        },
+                        "geo": {
+                            "lat": 44.444431963,
+                            "lng": 26.09110678
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.11
+                    },
+                    {
+                        "id": "a009",
+                        "pixel": {
+                            "x": 872.5,
+                            "y": 790.03
+                        },
+                        "geo": {
+                            "lat": 44.420184503,
+                            "lng": 26.108084939
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.13
+                    },
+                    {
+                        "id": "a010",
+                        "pixel": {
+                            "x": 994.9,
+                            "y": 321.37
+                        },
+                        "geo": {
+                            "lat": 44.440391419,
+                            "lng": 26.113744325
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.08
+                    },
+                    {
+                        "id": "a011",
+                        "pixel": {
+                            "x": 1000.42,
+                            "y": 226.43
+                        },
+                        "geo": {
+                            "lat": 44.444431963,
+                            "lng": 26.113744325
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.07
+                    },
+                    {
+                        "id": "a012",
+                        "pixel": {
+                            "x": 1340.89,
+                            "y": 909.04
+                        },
+                        "geo": {
+                            "lat": 44.416142282,
+                            "lng": 26.13638187
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 1.0,
+                        "residualM": 0.28
+                    }
+                ],
+                "fitRmseM": 0.07,
+                "checkpointRmseM": 0.15,
+                "checkpointCount": 4,
+                "checkpointKind": "held-out"
+            },
+            "calibration": {
+                "how": "votes",
+                "votes": {
+                    "agreed": 115,
+                    "tiles": 117
+                },
+                "coveredPct": 100.0,
+                "model": {
+                    "camera": "corners",
+                    "rotation": 0,
+                    "mirrored": false,
+                    "scale": 0.99855,
+                    "rotationDeg": -0.0163,
+                    "dxM": -248.6,
+                    "dyM": 191.4
+                },
+                "tiles": {
+                    "agreed": 121,
+                    "tried": 121
+                },
+                "crossValidatedM": 0.16,
+                "measuredPct": 59.8,
+                "outline": [
+                    {
+                        "lat": 44.449779,
+                        "lng": 26.062866
+                    },
+                    {
+                        "lat": 44.410054,
+                        "lng": 26.062866
+                    },
+                    {
+                        "lat": 44.410054,
+                        "lng": 26.137134
+                    },
+                    {
+                        "lat": 44.449779,
+                        "lng": 26.137134
+                    }
+                ]
+            },
+            "reference": {
+                "bounds": {
+                    "west": 26.055264,
+                    "south": 44.406131,
+                    "east": 26.144736,
+                    "north": 44.453859
+                },
+                "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
+                "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
+                "s2Item": "S2B_35TMK_20250803_0_L2A",
+                "s2Date": "2025-08-03"
+            },
+            "output": {
+                "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
+                "bounds": {
+                    "west": 26.055107,
+                    "south": 44.406071,
+                    "east": 26.145058,
+                    "north": 44.453879
+                },
+                "minzoom": 10,
+                "maxzoom": 16,
+                "areaKm2": 36.445,
+                "coveragePct": 100.0,
+                "outline": [
+                    {
+                        "lat": 44.449792,
+                        "lng": 26.062849
+                    },
+                    {
+                        "lat": 44.410273,
+                        "lng": 26.062849
+                    },
+                    {
+                        "lat": 44.410273,
+                        "lng": 26.137123
+                    },
+                    {
+                        "lat": 44.449792,
+                        "lng": 26.137123
+                    }
+                ],
+                "tiles": {
+                    "path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/tiles.pmtiles",
+                    "bytes": 615658,
+                    "count": 314,
+                    "sha256": "09b36f59cc1781cfc8e1b3a565a7980f6a393fb827c11d200c320821e7bc00d7",
+                    "thumbPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/thumb.webp"
+                }
+            }
+        },
+        {
+            "layerId": "kh-4a-corona-1966",
+            "jobId": "job-1966-0712",
+            "origin": "usgs",
+            "state": "approved",
+            "label": {
+                "ro": "Cadrul"
+            },
+            "year": 1983,
+            "output": {
+                "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
+                "bounds": {
+                    "west": 26.099997,
+                    "south": 44.393193,
+                    "east": 26.151495,
+                    "north": 44.42998
+                },
+                "minzoom": 12,
+                "maxzoom": 14,
+                "areaKm2": 1.0,
+                "cogPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
+                "cogBytes": 1,
+                "cogSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "approval": {
+                "auto": false,
+                "by": "uid-owner",
+                "at": {
+                    "seconds": 1791999901,
+                    "nanoseconds": 0
+                }
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999901,
+                "nanoseconds": 0
+            },
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "machines": {
+                "process": "std"
+            }
+        },
+        {
+            "layerId": "kh-4a-corona-1966",
+            "jobId": "job-1966-0712",
+            "origin": "usgs",
+            "state": "approved",
+            "label": {
+                "ro": "Cadrul"
+            },
+            "year": 1983,
+            "output": {
+                "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
+                "bounds": {
+                    "west": 26.099997,
+                    "south": 44.393193,
+                    "east": 26.151495,
+                    "north": 44.42998
+                },
+                "minzoom": 12,
+                "maxzoom": 14,
+                "areaKm2": 1.0,
+                "cogPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
+                "cogBytes": 1,
+                "cogSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "tiles": {
+                    "path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/tiles.pmtiles",
+                    "bytes": 11356,
+                    "count": 10,
+                    "sha256": "aee4b44e6591ab81e47a1429f4f3d9bb4c15c1b27dbbd812ccceb36e6de46445",
+                    "thumbPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/thumb.webp"
+                }
+            },
+            "approval": {
+                "auto": false,
+                "by": "uid-owner",
+                "at": {
+                    "seconds": 1791999901,
+                    "nanoseconds": 0
+                }
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999901,
+                "nanoseconds": 0
+            },
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "machines": {
+                "process": "std"
+            }
+        },
+        {
+            "layerId": "kh-4a-corona-1966",
+            "jobId": "job-1966-0712",
+            "origin": "usgs",
+            "state": "approved",
+            "label": {
+                "ro": "Cadrul"
+            },
+            "year": 1983,
+            "output": {
+                "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
+                "bounds": {
+                    "west": 26.099997,
+                    "south": 44.393193,
+                    "east": 26.151495,
+                    "north": 44.42998
+                },
+                "minzoom": 12,
+                "maxzoom": 14,
+                "areaKm2": 1.0
+            },
+            "approval": {
+                "auto": false,
+                "by": "uid-owner",
+                "at": {
+                    "seconds": 1791999901,
+                    "nanoseconds": 0
+                }
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999901,
+                "nanoseconds": 0
+            },
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "machines": {
+                "process": "std"
             }
         },
         {
@@ -6445,6 +9463,319 @@
             }
         },
         {
+            "layerId": "kh-4a-corona-1966",
+            "jobId": "job-1966-0712",
+            "origin": "usgs",
+            "state": "processing",
+            "source": {
+                "kind": "usgs",
+                "entityId": "DS1035-1057DA023",
+                "dataset": "corona2",
+                "sensor": "KH-4A",
+                "acquisitionDate": "1966-07-12"
+            },
+            "label": {
+                "ro": "KH-4A Corona, 12 iulie 1966",
+                "en": "KH-4A Corona, 12 July 1966"
+            },
+            "year": 1966,
+            "date": "1966-07-12",
+            "sensor": "KH-4A",
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "machines": {
+                "download": "std",
+                "process": "std"
+            },
+            "scan": {
+                "path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan.tif",
+                "width": 1500,
+                "height": 1100,
+                "sha256": "ebe6ff1944f9c662884e04cd5c0610bfbdbf01702a8c2fcb4918e4004f3cecd7",
+                "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan-preview.jpg",
+                "previewScale": 1.0
+            },
+            "georef": {
+                "method": "auto",
+                "transform": "poly2",
+                "gcps": [
+                    {
+                        "id": "a001",
+                        "pixel": {
+                            "x": 732.17,
+                            "y": 766.39
+                        },
+                        "geo": {
+                            "lat": 44.420880724,
+                            "lng": 26.09966045
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.97,
+                        "residualM": 0.44
+                    },
+                    {
+                        "id": "a002",
+                        "pixel": {
+                            "x": 906.7,
+                            "y": 637.6
+                        },
+                        "geo": {
+                            "lat": 44.426754917,
+                            "lng": 26.109578355
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.951,
+                        "residualM": 1.12
+                    },
+                    {
+                        "id": "a003",
+                        "pixel": {
+                            "x": 687.34,
+                            "y": 648.23
+                        },
+                        "geo": {
+                            "lat": 44.425829051,
+                            "lng": 26.096595585
+                        },
+                        "enabled": false,
+                        "origin": "auto",
+                        "score": 0.95,
+                        "residualM": 0.93
+                    },
+                    {
+                        "id": "a004",
+                        "pixel": {
+                            "x": 1055.02,
+                            "y": 419.78
+                        },
+                        "geo": {
+                            "lat": 44.436332963,
+                            "lng": 26.117642209
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.946,
+                        "residualM": 2.08
+                    },
+                    {
+                        "id": "a005",
+                        "pixel": {
+                            "x": 734.2,
+                            "y": 489.32
+                        },
+                        "geo": {
+                            "lat": 44.432687001,
+                            "lng": 26.098846217
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.946,
+                        "residualM": 0.52
+                    },
+                    {
+                        "id": "a006",
+                        "pixel": {
+                            "x": 821.8,
+                            "y": 681.82
+                        },
+                        "geo": {
+                            "lat": 44.424707563,
+                            "lng": 26.104673991
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.946,
+                        "residualM": 3.3
+                    },
+                    {
+                        "id": "a007",
+                        "pixel": {
+                            "x": 687.34,
+                            "y": 648.23
+                        },
+                        "geo": {
+                            "lat": 44.425829051,
+                            "lng": 26.096595585
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.944,
+                        "residualM": 0.96
+                    },
+                    {
+                        "id": "a008",
+                        "pixel": {
+                            "x": 597.02,
+                            "y": 745.21
+                        },
+                        "geo": {
+                            "lat": 44.421492253,
+                            "lng": 26.091569465
+                        },
+                        "enabled": false,
+                        "origin": "auto",
+                        "score": 0.943,
+                        "residualM": 0.37
+                    },
+                    {
+                        "id": "a009",
+                        "pixel": {
+                            "x": 492.73,
+                            "y": 298.19
+                        },
+                        "geo": {
+                            "lat": 44.440298681,
+                            "lng": 26.083904312
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.942,
+                        "residualM": 0.55
+                    },
+                    {
+                        "id": "a010",
+                        "pixel": {
+                            "x": 751.34,
+                            "y": 624.11
+                        },
+                        "geo": {
+                            "lat": 44.426974438,
+                            "lng": 26.100323176
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.941,
+                        "residualM": 1.67
+                    },
+                    {
+                        "id": "a011",
+                        "pixel": {
+                            "x": 1059.55,
+                            "y": 430.23
+                        },
+                        "geo": {
+                            "lat": 44.435887329,
+                            "lng": 26.117960082
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.94,
+                        "residualM": 1.64
+                    },
+                    {
+                        "id": "a012",
+                        "pixel": {
+                            "x": 614.14,
+                            "y": 772.01
+                        },
+                        "geo": {
+                            "lat": 44.420376568,
+                            "lng": 26.092690277
+                        },
+                        "enabled": true,
+                        "origin": "auto",
+                        "score": 0.94,
+                        "residualM": 1.42
+                    }
+                ],
+                "fitRmseM": 1.71,
+                "checkpointRmseM": 1.28,
+                "checkpointCount": 25,
+                "checkpointKind": "held-out"
+            },
+            "calibration": {
+                "how": "none",
+                "refusal": "small",
+                "votes": {
+                    "agreed": 35,
+                    "tiles": 35
+                },
+                "tiles": {
+                    "agreed": 117,
+                    "tried": 117
+                }
+            },
+            "reference": {
+                "bounds": {
+                    "west": 26.081135,
+                    "south": 44.419221,
+                    "east": 26.118865,
+                    "north": 44.440776
+                },
+                "osmPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-osm.png",
+                "s2Path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/reference-s2.jpg",
+                "s2Item": "S2B_35TMK_20250803_0_L2A",
+                "s2Date": "2025-08-03"
+            },
+            "suggestions": {
+                "method": "sift",
+                "channels": ["s2", "osm"],
+                "generatedAt": {
+                    "seconds": 1792000000,
+                    "nanoseconds": 0
+                },
+                "minConfidence": 0.6,
+                "tiles": {
+                    "matched": 39,
+                    "total": 64
+                },
+                "pairs": []
+            },
+            "output": {
+                "cogPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/cog.tif",
+                "cogBytes": 408200,
+                "cogSha256": "733a1df070124661f44c7936b1d52df53428fac9deaff2d41b6c9f0474781ddd",
+                "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png",
+                "bounds": {
+                    "west": 26.080856,
+                    "south": 44.419069,
+                    "east": 26.118965,
+                    "north": 44.440889
+                },
+                "minzoom": 10,
+                "maxzoom": 16,
+                "areaKm2": 7.358,
+                "studioPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/studio.tif",
+                "studioBytes": 252481,
+                "coveragePct": 99.96,
+                "outline": [
+                    {
+                        "lat": 44.438945,
+                        "lng": 26.084329
+                    },
+                    {
+                        "lat": 44.421057,
+                        "lng": 26.084329
+                    },
+                    {
+                        "lat": 44.421057,
+                        "lng": 26.115642
+                    },
+                    {
+                        "lat": 44.438945,
+                        "lng": 26.115642
+                    }
+                ],
+                "tiles": {
+                    "path": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/tiles.pmtiles",
+                    "bytes": 130276,
+                    "count": 77,
+                    "sha256": "8a69c5a2ea907267e0297e0d7c520fc395d6de7a4adc441db79bb5409ce56626",
+                    "thumbPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/thumb.webp"
+                }
+            }
+        },
+        {
             "layerId": "kh-4-corona-1972",
             "jobId": "job-join-1972",
             "origin": "join",
@@ -6622,9 +9953,6 @@
                 "maxShiftM": 14.2
             },
             "output": {
-                "cogPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
-                "cogBytes": 209279,
-                "cogSha256": "36c329cc2e4ffaaa98ac4c116f73db4fe62178d939e752be2bfdbc81092ae799",
                 "previewPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/preview.png",
                 "bounds": {
                     "west": 26.07296,
@@ -6635,8 +9963,6 @@
                 "minzoom": 10,
                 "maxzoom": 15,
                 "areaKm2": 11.18,
-                "studioPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/studio.tif",
-                "studioBytes": 98756,
                 "coveragePct": 100.0,
                 "outline": [
                     {
@@ -6656,6 +9982,110 @@
                         "lng": 26.122354
                     }
                 ]
+            }
+        },
+        {
+            "layerId": "kh-4-corona-1972",
+            "jobId": "job-join-1972",
+            "origin": "join",
+            "state": "processing",
+            "source": {
+                "kind": "join",
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west",
+                        "entityId": "D3C1202-west",
+                        "dataset": "corona2",
+                        "sensor": "KH-4",
+                        "acquisitionDate": "1972-08-08"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east",
+                        "entityId": "D3C1202-east",
+                        "dataset": "corona2",
+                        "sensor": "KH-4",
+                        "acquisitionDate": "1972-08-08"
+                    }
+                ]
+            },
+            "label": {
+                "ro": "KH-4 Corona, 8 august 1972"
+            },
+            "year": 1972,
+            "date": "1972-08-08",
+            "sensor": "KH-4",
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "machines": {
+                "process": "std"
+            },
+            "join": {
+                "seams": [
+                    {
+                        "a": "D3C1202-west",
+                        "b": "D3C1202-east",
+                        "measured": true,
+                        "applied": true,
+                        "samples": 9,
+                        "heldOut": 0,
+                        "beforeRmseM": 28.26,
+                        "afterRmseM": 0.42,
+                        "maxShiftM": 14.22
+                    }
+                ],
+                "omitted": [],
+                "coveragePct": 100.0,
+                "checkpointRmseM": 20.0,
+                "checkpointCount": 5,
+                "maxShiftM": 14.2
+            },
+            "output": {
+                "previewPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/preview.png",
+                "bounds": {
+                    "west": 26.07296,
+                    "south": 44.418333,
+                    "east": 26.127205,
+                    "north": 44.441624
+                },
+                "minzoom": 10,
+                "maxzoom": 15,
+                "areaKm2": 11.18,
+                "coveragePct": 100.0,
+                "outline": [
+                    {
+                        "lat": 44.43957,
+                        "lng": 26.077597
+                    },
+                    {
+                        "lat": 44.420393,
+                        "lng": 26.077597
+                    },
+                    {
+                        "lat": 44.420393,
+                        "lng": 26.122354
+                    },
+                    {
+                        "lat": 44.43957,
+                        "lng": 26.122354
+                    }
+                ],
+                "tiles": {
+                    "path": "rasters/bucharest/kh-4-corona-1972/job-join-1972/tiles.pmtiles",
+                    "bytes": 71064,
+                    "count": 34,
+                    "sha256": "fcf32bd3325d9dde40a35f4853fa5e2e5b3a8c70d572f9f99e61f90f308afb32",
+                    "thumbPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/thumb.webp"
+                }
             }
         },
         {

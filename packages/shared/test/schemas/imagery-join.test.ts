@@ -133,7 +133,7 @@ describe('the layer-join job', () => {
     it('happyPath_onlyTheCallableQueuesIt_itsStepsReuseExportAndRegister', () => {
         expect(JOB_TYPES).toContain('layer-join');
         expect(CLIENT_JOB_TYPES as readonly string[]).not.toContain('layer-join');
-        expect(JOB_STEPS['layer-join'].slice(0, 4)).toEqual(['align', 'merge', 'export', 'register']);
+        expect(JOB_STEPS['layer-join'].slice(0, 5)).toEqual(['align', 'merge', 'export', 'pyramid', 'register']);
         expect(PIPELINE_STEPS.indexOf('merge')).toBeLessThan(PIPELINE_STEPS.indexOf('warp'));
         expect(JOB_WAIT_REASONS).toContain('parts');
     });

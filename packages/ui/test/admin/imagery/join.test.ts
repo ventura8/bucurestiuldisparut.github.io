@@ -101,7 +101,10 @@ afterEach(cleanup);
 describe("Find's whole-city dates", () => {
     it('happyPath_aRowSaysItsFiguresAndOneClickJoinsAndOpensTheJoin', async () => {
         const { element, area, app } = await imageryPage(
-            imageryState({ dates: [ROW], settings: { autoPublish: true, rmseThresholdM: 15, targetYears: [1972] } }),
+            imageryState({
+                dates: [ROW],
+                settings: { autoPublish: true, rmseThresholdM: 15, targetYears: [1972], publishThroughMapbox: true },
+            }),
         );
         const row = deep(element, '[data-join-dates] [data-date="1972-08-08"]');
 
@@ -155,7 +158,7 @@ describe("Find's whole-city dates", () => {
         const years = Array.from({ length: 20 }, (_year, index) => 1950 + index);
         const refused = {
             dates: [ROW],
-            settings: { autoPublish: true, rmseThresholdM: 15, targetYears: years },
+            settings: { autoPublish: true, rmseThresholdM: 15, targetYears: years, publishThroughMapbox: true },
             joinRefusal: { id: F039, notice: { key: 'apiError.imagery.joinMixedFrames' as const } },
         };
         const { element, app } = await imageryPage(imageryState(refused), {}, { joinFrames: Promise.resolve(null) });
@@ -634,6 +637,7 @@ describe('the chunk', () => {
         ask: () => undefined,
         refresh,
         focusDetail: () => undefined,
+        showMap: () => undefined,
     });
     const shown = (template: ReturnType<typeof lazyJoin>): string => {
         const box = document.createElement('div');

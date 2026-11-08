@@ -16,7 +16,7 @@ import {
 } from '@hcm/shared';
 import type { PipelineExecution } from '@hcm/test-support/fakes';
 
-import { E2E_CITY_BOUNDS, type Bounds } from './imagery-geometry.js';
+import { E2E_CITY_BOUNDS, type Bounds, type LatLng } from './imagery-geometry.js';
 import { deleteObjects, DocumentGone, readDocument, updateDocument } from './imagery-store.js';
 
 /**
@@ -50,6 +50,9 @@ export interface StandinAttempt {
     readonly outputBounds?: Bounds;
     /** M9: the share of the city the render measures (default the share its bounds hold). */
     readonly coveragePct?: number;
+    /** M12: the render's measured edge over the city, and a version with no tiles yet (as one made before M12, until the sweep). */
+    readonly outline?: readonly LatLng[];
+    readonly noTiles?: boolean;
     /** M9: what `locate` measured (default nothing, as a frame that never went through it). */
     readonly calibration?: Calibration;
     /** M8, a `layer-join`: what its report says beyond the defaults (`imagery-standin-join.ts`), and that no seam could be measured. */

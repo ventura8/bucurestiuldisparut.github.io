@@ -19,6 +19,8 @@ import type {
 import { UPLOAD_PANEL_CHUNK } from '../../../src/admin/imagery/hcm-imagery-page.js';
 import { JOIN_CARD_CHUNK } from '../../../src/admin/imagery/join/lazy-card.js';
 import { ORDER_CARD_CHUNK } from '../../../src/admin/imagery/orders/lazy-card.js';
+import { MAPBOX_CHOICES_CHUNK } from '../../../src/admin/imagery/lazy-approval.js';
+import { APPROVAL_MAP_CHUNK } from '../../../src/admin/imagery/lazy-version.js';
 import { FakeArea } from '../editing/fake-area.js';
 import { adminState, deep, deepAll, defineAll, FakeAdminApp, mount, updated } from '../shell/fake-app.js';
 
@@ -34,6 +36,8 @@ export async function defineImagery(): Promise<void> {
     await ORDER_CARD_CHUNK.load();
     await JOIN_CARD_CHUNK.load();
     await UPLOAD_PANEL_CHUNK.load();
+    await APPROVAL_MAP_CHUNK.load();
+    await MAPBOX_CHOICES_CHUNK.load();
 }
 
 export function scene(overrides: Partial<SceneItemPort> = {}): SceneItemPort {
@@ -83,6 +87,7 @@ export function versionItem(overrides: Partial<VersionItemPort> = {}): VersionIt
             checkpointRmseM: 7.2,
             partOf: null,
             entityIds: [],
+            thumbPath: null,
         },
         ...overrides,
     };
@@ -110,6 +115,8 @@ export function versionView(overrides: Partial<VersionViewPort> = {}): VersionVi
             ...{ minzoom: 10, maxzoom: 16, areaKm2: 612.5, previewPath: 'rasters/x/preview.png', studioPath: 'rasters/x/studio.tif' },
             cogBytes: 212_000_000,
             coveragePct: null,
+            tiles: null,
+            outline: null,
         },
         ...{ estimate: 2.5, guard: null, approval: null, error: null, hasScan: true },
         ...{ entityId: 'DS1035-1057DA023', partOf: null, parts: [], join: null },
@@ -161,7 +168,11 @@ export function imageryState(overrides: Partial<ImageryViewState> = {}): Imagery
         }),
     ];
     return {
-        ...{ tab: 'find', usgs: 'ok', settings: { autoPublish: true, rmseThresholdM: 15, targetYears: [1966] } },
+        ...{
+            tab: 'find',
+            usgs: 'ok',
+            settings: { autoPublish: true, rmseThresholdM: 15, targetYears: [1966], publishThroughMapbox: true },
+        },
         search: { phase: 'idle', found: null, added: null, failedDatasets: [], error: null },
         filters: { freeOnly: true, datasets: [], fromYear: null, toYear: null, hideRejected: true },
         ...{ scenes: ready(scenes), visible: scenes, browse: { 'DS1035-1057DA023': { status: 'ready', url: blankImage() } } },
@@ -191,7 +202,7 @@ export function imageryState(overrides: Partial<ImageryViewState> = {}): Imagery
         },
         ...{ map: 'none', previewOpacity: 0.8, replaceLayer: null },
         ...{ orders: ready([]), ordering: null, orderRefusal: null },
-        ...{ dates: [], joining: null, joinRefusal: null, addingYear: null },
+        ...{ dates: [], joining: null, joinRefusal: null, addingYear: null, image: { status: 'none' }, thumbs: {} },
         ...overrides,
     };
 }

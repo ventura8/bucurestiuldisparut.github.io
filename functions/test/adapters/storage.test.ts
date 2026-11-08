@@ -92,6 +92,23 @@ describe('createStorageBlobStore', () => {
         await expect(blobs.list('public', 'listing/nothing-here/')).resolves.toEqual([]);
     });
 
+    it('happyPath_aCopyCarriesTheCacheControlItIsGiven @S-A70-HAPPY-PUBLISH', async () => {
+        const archive = new TextEncoder().encode('PMTiles');
+        await blobs.write('private', 'rasters/m12/tiles.pmtiles', archive, { contentType: 'application/vnd.pmtiles' });
+
+        const immutable = 'public, max-age=31536000, immutable';
+        await blobs.copy(
+            { bucket: 'private', path: 'rasters/m12/tiles.pmtiles' },
+            { bucket: 'public', path: 'tiles/m12/v.pmtiles' },
+            { cacheControl: immutable },
+        );
+
+        const [metadata] = await getStorage(app).bucket(BUCKETS.public).file('tiles/m12/v.pmtiles').getMetadata();
+        expect(metadata.cacheControl).toBe(immutable);
+        expect(metadata.contentType).toBe('application/vnd.pmtiles');
+        await expect(blobs.read('public', 'tiles/m12/v.pmtiles')).resolves.toEqual(archive);
+    });
+
     it('badPath_aMissingObjectIsNotFound', async () => {
         await expect(blobs.read('public', 'missing/object.webp')).rejects.toMatchObject({ failure: 'notFound', status: 404 });
         await expect(blobs.copy({ bucket: 'public', path: 'missing/a' }, { bucket: 'public', path: 'missing/b' })).rejects.toMatchObject({

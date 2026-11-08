@@ -105,10 +105,16 @@ function createMemoryBlobStore(): MemoryBlobStore {
                 }
                 put(bucket, path, bytes, options);
             }),
-        copy: (from, to) =>
+        copy: (from, to, options) =>
             Promise.resolve().then(() => {
-                recorder.enter('copy', [from, to]);
-                objects.set(key(to.bucket, to.path), found(from.bucket, from.path));
+                recorder.enter('copy', [from, to, options]);
+                const source = found(from.bucket, from.path);
+                objects.set(
+                    key(to.bucket, to.path),
+                    options?.cacheControl === undefined
+                        ? source
+                        : { ...source, options: { ...source.options, cacheControl: options.cacheControl } },
+                );
             }),
         delete: (bucket, path) =>
             Promise.resolve().then(() => {

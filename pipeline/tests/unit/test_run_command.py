@@ -104,7 +104,7 @@ def test_happy_path_cloud_run_uses_secret_manager_and_default_credentials() -> N
     assert isinstance(_tokens(config), GoogleTokens)
     assert _storage_url(config) == GCS_BASE_URL
     assert set(default_steps()) == set(PIPELINE_STEPS)
-    assert {"align", "merge", "warp", "export", "register"} <= set(default_steps())
+    assert {"align", "merge", "warp", "export", "pyramid", "register"} <= set(default_steps())
     assert http().follow_redirects is False
 
 

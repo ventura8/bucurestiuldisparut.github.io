@@ -259,10 +259,21 @@ function adjustmentsGroup(context: EditorContext, layer: LayerDoc): TemplateResu
     </section>`;
 }
 
-function deleteBody(locale: Locale, linked: boolean): string {
-    const lasting = linked
-        ? contentText(locale, 'adminContent.layers.deleteBodyLinked')
-        : contentText(locale, 'adminContent.layers.deleteTiles', { days: String(LAYER_DELETE_GRACE_DAYS) });
+/**
+ * What deleting leaves behind: a linked layer's tileset stays at Mapbox; the pipeline's tiles go after the grace, its own archives in the
+ * public bucket (M12) or its Mapbox tileset. An own-tiles layer has no `mapbox` block, and was told its tileset stayed (2026-11-07).
+ */
+function lastingKey(
+    layer: LayerDoc,
+): 'adminContent.layers.deleteBodyLinked' | 'adminContent.layers.deleteOwnTiles' | 'adminContent.layers.deleteTiles' {
+    if (layer.mapbox === undefined && layer.currentVersion === undefined) {
+        return 'adminContent.layers.deleteBodyLinked';
+    }
+    return layer.source.type === 'pmtiles' ? 'adminContent.layers.deleteOwnTiles' : 'adminContent.layers.deleteTiles';
+}
+
+function deleteBody(locale: Locale, layer: LayerDoc): string {
+    const lasting = contentText(locale, lastingKey(layer), { days: String(LAYER_DELETE_GRACE_DAYS) });
     return `${contentText(locale, 'adminContent.layers.deleteBody')} ${lasting}`;
 }
 
@@ -284,7 +295,7 @@ function deleteControls(context: EditorContext, layer: LayerDoc, deletion: Layer
             destructive
             .open=${deletion.phase === 'confirm'}
             .headline=${contentText(locale, 'adminContent.layers.deleteConfirm', { name })}
-            .body=${deleteBody(locale, layer.mapbox === undefined)}
+            .body=${deleteBody(locale, layer)}
             .confirmLabel=${contentText(locale, 'adminContent.layers.delete')}
             .cancelLabel=${contentText(locale, 'adminContent.layers.keep')}
             @hcm-confirm=${() => {

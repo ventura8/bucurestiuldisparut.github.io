@@ -223,6 +223,11 @@ export const STORAGE_PATHS = {
     /** public, immutable: content-hashed by the first 8 hex digits of the original's SHA-256. */
     photoDerivative: (cityId: string, photoId: string, sha256: string, variant: PhotoVariant) =>
         ['photos', citySegment(cityId), idSegment(photoId), shaSegment(sha256).slice(0, 8), `${variant}.webp`].join('/'),
+    /** M12: public, immutable: the tiles of one published layer version. */
+    layerTiles: (cityId: string, layerId: string, versionId: string) =>
+        ['tiles', citySegment(cityId), idSegment(layerId), `${idSegment(versionId)}.pmtiles`].join('/'),
+    /** M12: public, every published archive of a layer (a deleted layer's are emptied together). */
+    layerTilesPrefix: (cityId: string, layerId: string) => `tiles/${citySegment(cityId)}/${idSegment(layerId)}/`,
     /** public, `Cache-Control: public, max-age=60`. */
     manifest: (cityId: string) => `cities/${citySegment(cityId)}/manifest.json`,
     /** private, written by `export.build` (M5 §5), deleted by the bucket's lifecycle after `EXPORT_LIMITS.ttlDays`. */
