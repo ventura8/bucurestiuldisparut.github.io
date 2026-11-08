@@ -249,12 +249,19 @@ describe('<hcm-photo-sheet>: Show on map (V51)', () => {
     });
 
     it('happyPath_aSideSheetSendsThePlaceHalfwayAlongWhatItLeaves', () => {
-        expect(locateOffset('side', new DOMRect(408, 0, 360, 900))).toEqual([-180, 0]);
-        expect(locateOffset('bottom', new DOMRect(0, 400, 360, 300))).toEqual([0, -150]);
+        const map = new DOMRect(0, 0, 768, 900);
+        expect(locateOffset('side', new DOMRect(408, 0, 360, 900), map)).toEqual([-180, 0]);
+        expect(locateOffset('bottom', new DOMRect(0, 400, 360, 300), new DOMRect(0, 0, 360, 700))).toEqual([0, -150]);
+    });
+
+    it('badPath_aSideSheetOnTheLeftOfARightToLeftPageSendsThePlaceToItsRight', () => {
+        expect(locateOffset('side', new DOMRect(0, 0, 360, 900), new DOMRect(0, 0, 768, 900))).toEqual([180, 0]);
+        expect(locateOffset('side', new DOMRect(100, 0, 360, 412), new DOMRect(100, 0, 915, 412))).toEqual([180, 0]);
     });
 
     it('badPath_noSheetSurfaceLeavesThePlaceInTheMiddle', () => {
-        expect(locateOffset('docked', undefined)).toEqual([0, 0]);
-        expect(locateOffset('bottom', undefined)).toEqual([0, 0]);
+        expect(locateOffset('docked', undefined, undefined)).toEqual([0, 0]);
+        expect(locateOffset('bottom', undefined, new DOMRect(0, 0, 360, 700))).toEqual([0, 0]);
+        expect(locateOffset('bottom', new DOMRect(0, 400, 360, 300), undefined)).toEqual([0, 0]);
     });
 });

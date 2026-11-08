@@ -26,14 +26,19 @@ import { localizedText, photoDateText, photoSourceText } from './text.js';
 export const HCM_PHOTO_SHEET_TAG = 'hcm-photo-sheet';
 
 /**
- * Where Locate puts the photo's place, in px from the map's centre: halfway up what a modal bottom sheet leaves, halfway along
- * what a side sheet leaves on its leading side; a docked sheet has its own pane (no sheet surface here) and leaves the map whole.
+ * Where Show on map puts the photo's place, in px from the centre of `map` (the box the sheet covers): the middle of what a
+ * modal sheet's surface leaves, above a bottom sheet, beside a side sheet on whichever side it is (a right-to-left page puts
+ * it on the left); a docked sheet has its own pane (no sheet surface here) and leaves the map whole.
  */
-export function locateOffset(mode: SheetMode, sheet: DOMRect | undefined): CameraOffset {
-    if (sheet === undefined) {
+export function locateOffset(mode: SheetMode, sheet: DOMRect | undefined, map: DOMRect | undefined): CameraOffset {
+    if (sheet === undefined || map === undefined) {
         return [0, 0];
     }
-    return mode === 'bottom' ? [0, -sheet.height / 2] : [-sheet.width / 2, 0];
+    if (mode === 'bottom') {
+        return [0, (sheet.top - map.bottom) / 2];
+    }
+    const onTheRight = sheet.left + sheet.right >= map.left + map.right;
+    return [onTheRight ? (sheet.left - map.right) / 2 : (sheet.right - map.left) / 2, 0];
 }
 
 export class HcmPhotoSheet extends LitElement {
@@ -182,7 +187,8 @@ export class HcmPhotoSheet extends LitElement {
             return EMPTY;
         }
         const onLocate = (): void => {
-            const offset = locateOffset(this.mode, this.renderRoot.querySelector('hcm-sheet')?.sheet()?.getBoundingClientRect());
+            const frame = this.renderRoot.querySelector('hcm-sheet');
+            const offset = locateOffset(this.mode, frame?.sheet()?.getBoundingClientRect(), frame?.getBoundingClientRect());
             this.dispatchEvent(new CustomEvent('hcm-photo-locate', { bubbles: true, detail: { photoId: photo.id, offset } }));
         };
         return html`<p>

@@ -52,6 +52,8 @@ export interface MapboxCameraOptions {
     readonly offset?: CameraOffset;
     /** `easeTo` only: 0 jumps (`jumpTo` takes no offset). */
     readonly duration?: number;
+    /** Animates even under `prefers-reduced-motion` (the caller already read the preference). */
+    readonly essential?: boolean;
 }
 
 /** Screen pixels, x right and y down. */

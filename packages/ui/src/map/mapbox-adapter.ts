@@ -339,7 +339,8 @@ class MapboxPort implements MapPort {
     flyTo(view: Partial<MapView>, options?: FlyOptions): void {
         const session = this.#session;
         if (session !== null) {
-            moveCamera(session.map, view, animates(options, session.options.reducedMotion), options?.offset);
+            const animate = animates(options, session.options.reducedMotion);
+            moveCamera(session.map, view, { animate, essential: options?.animate === true, offset: options?.offset });
         }
     }
 

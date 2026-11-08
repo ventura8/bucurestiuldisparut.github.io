@@ -14748,6 +14748,17 @@
             "notes": "Test: e2e/specs/viewer/locate-photo.spec.ts; the zoom range, the ring's life and the offset also in packages/engine/test/core/store-locate.test.ts and packages/ui/test/viewer/hcm-photo-sheet.test.ts."
         },
         {
+            "id": "S-V51-BAD-INTERRUPTED",
+            "behaviour": "V51",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A second Show on map during the flight still rings the place where the camera lands",
+            "asserts": "a photo opened with the view 3 km away; Show on map, then again while the camera still flies (Mapbox stops the first flight, firing its moveend at once) -> once the camera has arrived, one ring around the place and the place outside the sheet's surface",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/locate-photo.spec.ts; the jump under reduced motion switched on after load and the ring on both sides of swipe compare in packages/engine/test/core/store-locate.test.ts and packages/engine/test/compare/session.test.ts, a right-to-left page's side sheet in packages/ui/test/viewer/hcm-photo-sheet.test.ts."
+        },
+        {
             "id": "S-V51-BAD-UNPLACED",
             "behaviour": "V51",
             "area": "viewer",

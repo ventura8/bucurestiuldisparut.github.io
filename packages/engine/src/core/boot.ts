@@ -322,11 +322,18 @@ export class Boot {
         }
     }
 
-    /** Flies a mounted map to `view` (the port jumps instead under reduced motion); before the map, nothing moves. */
-    flyMap(view: Partial<MapView>, options?: FlyOptions): void {
-        if (this.#sync !== null) {
-            this.#host.deps.map.flyTo(view, options);
+    /**
+     * Flies a mounted map to `view`, or jumps under reduced motion, read now: a visitor may switch it after the map loaded,
+     * and Mapbox, which reads it on every move, would otherwise jump without the offset. True when it flew; before the map
+     * nothing moves.
+     */
+    flyMap(view: Partial<MapView>, options?: FlyOptions): boolean {
+        if (this.#sync === null) {
+            return false;
         }
+        const animate = this.#host.deps.reducedMotion?.() !== true;
+        this.#host.deps.map.flyTo(view, { ...options, animate });
+        return animate;
     }
 
     #closeMap(): void {

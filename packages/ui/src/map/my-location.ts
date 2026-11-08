@@ -4,7 +4,8 @@
  * layers on the global `mapboxgl` (nothing bundled), drawn on every map of the view (swipe compare's second map too) above
  * the photos in the `top` slot. They are in no overlay's registry, so a click passes through them. The canvas is not
  * repainted by forced colours: the white ring keeps the dot apart from any basemap, and nothing on it moves by itself.
- * The photo sheet's Locate draws its ring around a photo's place the same way (`drawPhotoMark`), in the photos' cone colour.
+ * The photo sheet's Show on map draws its ring around a photo's place the same way (`drawPhotoMark`), in the photos' cone
+ * colour, on every map of the view too (the state's `photoMark`, drawn by the engine's `MapSync`).
  */
 import { conePolygon, destinationPoint, type LngLat } from '@hcm/shared';
 

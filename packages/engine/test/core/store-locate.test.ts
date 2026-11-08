@@ -1,15 +1,32 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { FakeMap } from '@hcm/test-support/fake-map';
+
 import { HASH_WRITE_DELAY_MS } from '../../src/core/url-sync.js';
 import { harness, loaded } from './harness.js';
 import { manifest } from './fixtures.js';
 
 /**
- * The photo sheet's Locate (V44): the camera goes to the photo's place, zoomed in as far as its view cone shows (but within
+ * The photo sheet's Show on map (V51): the camera goes to the photo's place, zoomed in as far as its view cone shows (but within
  * the city's zoom range), with the place beside the sheet; a ring marks it until the camera moves again or a photo opens
  * or closes. Unlike Show my location this is the photo's place, not the visitor's: the address follows the camera.
  */
 const PLACE = [26.091611, 44.431722] as const;
+
+/**
+ * Mapbox GL 3.34.1's camera, as the store meets it: `flyTo` and `easeTo` first stop the move under way, which fires that
+ * move's `moveend` at once, and a jump (no animation) fires its own `moveend` before the call returns.
+ */
+function asMapboxMoves(map: FakeMap): void {
+    const fly = map.flyTo.bind(map);
+    map.flyTo = (view, options) => {
+        map.emit('moveend', map.view);
+        fly(view, options);
+        if (options?.animate === false) {
+            map.emit('moveend', map.view);
+        }
+    };
+}
 
 describe('Locate a photo', () => {
     beforeEach(() => {
@@ -26,7 +43,10 @@ describe('Locate a photo', () => {
 
         store.locatePhoto('mihai-voda-1978', [0, -150]);
 
-        expect(map.callsOf('flyTo').at(-1)).toEqual([{ center: PLACE, zoom: 17 }, { offset: [0, -150] }]);
+        expect(map.callsOf('flyTo').at(-1)).toEqual([
+            { center: PLACE, zoom: 17 },
+            { offset: [0, -150], animate: true },
+        ]);
         expect(map.callsOf('markPhoto')).toEqual([[PLACE]]);
         expect(store.getState().sheet).toBe('photo');
         map.emit('moveend', { center: [26.0916, 44.4307], zoom: 17, bearing: 0 });
@@ -91,6 +111,46 @@ describe('Locate a photo', () => {
         store.locatePhoto('mihai-voda-1978', [0, 0]);
 
         expect(map.callsOf('flyTo')).toEqual([]);
+        expect(map.callsOf('markPhoto')).toEqual([]);
+    });
+
+    it('badPath_aSecondShowOnMapDuringTheFlightKeepsTheRingWhereTheFlightLands', async () => {
+        const { store, map } = await loaded();
+        asMapboxMoves(map);
+
+        store.locatePhoto('mihai-voda-1978', [0, 0]);
+        store.locatePhoto('mihai-voda-1978', [0, 0]);
+        map.emit('moveend', { center: [...PLACE], zoom: 17, bearing: 0 });
+
+        expect(store.getState().photoMark).toEqual(PLACE);
+        expect(map.callsOf('markPhoto').at(-1)).toEqual([PLACE]);
+        map.emit('moveend', { center: [26.12, 44.44], zoom: 15, bearing: 0 });
+        expect(map.callsOf('markPhoto').at(-1)).toEqual([null]);
+    });
+
+    it('badPath_reducedMotionTurnedOnAfterTheMapLoadedJumpsBesideTheSheetAndKeepsTheRing', async () => {
+        const motion = { reducedMotion: false };
+        const { store, map } = await loaded(motion);
+        asMapboxMoves(map);
+        motion.reducedMotion = true;
+
+        store.locatePhoto('mihai-voda-1978', [0, -150]);
+
+        expect(map.callsOf('flyTo').at(-1)).toEqual([
+            { center: PLACE, zoom: 17 },
+            { offset: [0, -150], animate: false },
+        ]);
+        expect(map.callsOf('markPhoto').at(-1)).toEqual([PLACE]);
+        map.emit('moveend', { center: [26.12, 44.44], zoom: 15, bearing: 0 });
+        expect(map.callsOf('markPhoto').at(-1)).toEqual([null]);
+    });
+
+    it('badPath_noMountedMapNoRing', async () => {
+        const { store, map } = await loaded({ container: null });
+
+        store.locatePhoto('mihai-voda-1978', [0, 0]);
+
+        expect(store.getState().photoMark).toBeNull();
         expect(map.callsOf('markPhoto')).toEqual([]);
     });
 });

@@ -18,7 +18,7 @@ import {
 } from '@hcm/shared';
 import type { MapLabels } from '@hcm/shared/map-labels';
 import { isCompactHeight, windowClassFor } from '@hcm/ui';
-import { CONE_MIN_ZOOM, Listeners, type CameraOffset, type Unsubscribe } from '@hcm/ui/map';
+import { Listeners, type CameraOffset, type Unsubscribe } from '@hcm/ui/map';
 
 import type { Measurement } from '../telemetry/telemetry-port.js';
 import { Boot, type BootHost } from './boot.js';
@@ -31,6 +31,7 @@ import {
     comparePosition,
     hasPoi,
     isCompareLayer,
+    locateTarget,
     sheetAfterClosing,
     withStory,
     withYear,
@@ -40,6 +41,9 @@ import {
     type ViewerState,
 } from './state.js';
 import { encodeViewerHash, HashWriter } from './url-sync.js';
+
+/** `#ring` while Show on map starts the camera. */
+const LOCATING = -1;
 
 export type { ViewerDeps, ViewerLocation } from './deps.js';
 export { PHOTO_YEAR_WINDOW } from './timeline.js';
@@ -125,7 +129,10 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
     #destroyed = false;
     /** Show my location's flight is under way: its own `moveend` keeps the hash's view wherever the flight ended. */
     #flying = false;
-    /** Locate's ring: 2 while its flight is under way (that flight's own `moveend` keeps it), 1 while it shows, 0 without. */
+    /**
+     * Show on map's ring: 2 while its flight is under way (that flight's own `moveend` keeps it), 1 while it shows, 0 without;
+     * `LOCATING` while the camera starts, when Mapbox's `moveend`s are the stopped move's and a jump's own (they keep it).
+     */
     #ring = 0;
 
     constructor(deps: ViewerDeps) {
@@ -237,8 +244,8 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
     }
 
     openPhoto(photoId: string | null): void {
-        const state = this.#state;
         this.#unmark();
+        const state = this.#state;
         if (photoId === null) {
             this.set({ ...state, selectedPhotoId: null, lightbox: false, sheet: sheetAfterClosing(state.sheet, 'photo') });
         } else if (state.manifest?.photos.some((photo) => photo.id === photoId) !== true) {
@@ -253,22 +260,32 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
     }
 
     locatePhoto(photoId: string, offset: CameraOffset): void {
-        const { manifest, view } = this.#state;
-        const photo = manifest?.photos.find((candidate) => candidate.id === photoId);
-        if (manifest !== null && photo !== undefined) {
-            const center: LngLat = [photo.location.lng, photo.location.lat];
-            this.#ring = 2;
-            this.deps.map.markPhoto(center);
-            this.#boot.flyMap({ center, zoom: Math.min(Math.max(view.zoom, CONE_MIN_ZOOM), manifest.city.maxZoom) }, { offset });
+        const target = this.#boot.mountedMap() === null ? null : locateTarget(this.#state, photoId);
+        if (target !== null) {
+            // Mapbox stops the move under way first, firing its `moveend` at once, and a jump fires its own before returning.
+            this.#ring = LOCATING;
+            this.#ring = this.#boot.flyMap(target, { offset }) ? 2 : 1;
+            this.set({ ...this.#state, photoMark: target.center });
         }
     }
 
-    /** Takes Locate's ring away, if it shows. */
+    /** Takes Show on map's ring away, if it shows. */
     #unmark(): void {
-        if (this.#ring > 0) {
-            this.#ring = 0;
-            this.deps.map.markPhoto(null);
+        this.#ring = 0;
+        if (this.#state.photoMark !== null) {
+            this.set({ ...this.#state, photoMark: null });
         }
+    }
+
+    /** The ring after a camera move: kept by the flight's own `moveend` (and while the camera starts), gone after the next. */
+    #markAfterMove(mark: LngLat | null): LngLat | null {
+        if (this.#ring === 2) {
+            this.#ring = 1;
+        } else if (this.#ring === 1) {
+            this.#ring = 0;
+            return null;
+        }
+        return mark;
     }
 
     /** A field measurement for telemetry (§76; a telemetry without `measure` takes none). */
@@ -329,12 +346,8 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         // centre point), then the same view at the hash's precision (a resize); it goes once the visitor moved it.
         const held = this.#flying || encodeHash({ view }) === encodeHash({ view: state.view });
         this.#flying = false;
-        if (this.#ring === 2) {
-            this.#ring = 1;
-        } else {
-            this.#unmark();
-        }
-        this.set({ ...state, view, hashView: held ? state.hashView : undefined });
+        const photoMark = this.#markAfterMove(state.photoMark);
+        this.set({ ...state, view, photoMark, hashView: held ? state.hashView : undefined });
         this.hash.schedule();
     }
 

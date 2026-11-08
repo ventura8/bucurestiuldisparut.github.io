@@ -88,6 +88,26 @@ test(
     },
 );
 
+test(
+    'A second Show on map during the flight still rings the place where the camera lands',
+    { tag: '@S-V51-BAD-INTERRUPTED' },
+    async ({ page, lang }) => {
+        const place = placeOf(LONE);
+        await openViewer(page, { lang, hash: `${FAR_VIEW}&photo=${LONE}` });
+        const locate = viewer(page).getByRole('button', { name: t(lang, 'photo.locate'), exact: true });
+
+        await locate.click();
+        expect((await mapFacts(page)).moving, 'the first flight is under way').toBe(true);
+        // Mapbox stops that flight first, firing its moveend at once: the ring must outlive it and the new flight's own.
+        await locate.click();
+
+        await expect.poll(async () => (await mapFacts(page)).moving, { message: 'the flight ends' }).toBe(false);
+        await mapIdle(page);
+        await expect.poll(async () => (await renderedPoints(page, 'hcm-photo-mark')).length, { message: 'a ring marks it' }).toBe(1);
+        expect(await seen(page, place), 'the place is in the part of the map the sheet leaves').toBe(true);
+    },
+);
+
 test('A photo with no place has no Show on map in its gallery', { tag: '@S-V51-BAD-UNPLACED' }, async ({ page }) => {
     await serveManifest(page, unplacedManifest());
     await openViewer(page, { lang: 'en' });

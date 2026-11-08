@@ -57,6 +57,20 @@ describe('MapSync', () => {
         expect(map.callsOf('setMyLocation')).toEqual([[null], [fix], [null], [fix]]);
     });
 
+    it('happyPath_showOnMapsRingFollowsTheStateOnEveryMap', () => {
+        const map = new FakeMap();
+        const sync = new MapSync(map, undefined);
+        const ringed = { ...loaded, photoMark: [26.1, 44.43] as const };
+
+        sync.update(loaded, ringed);
+        sync.update(ringed, ringed);
+        sync.update(ringed, loaded);
+        new MapSync(map, undefined).render(ringed);
+        new MapSync(map, undefined).render(loaded);
+
+        expect(map.callsOf('markPhoto')).toEqual([[[26.1, 44.43]], [null], [[26.1, 44.43]]]);
+    });
+
     it('badPath_nothingIsDrawnWithoutAManifest', () => {
         const map = new FakeMap();
 

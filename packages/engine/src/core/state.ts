@@ -8,6 +8,7 @@ import {
     findOverlay,
     overlaysFromManifest,
     withOverlayVisibility,
+    type LngLat,
     type Locale,
     type Manifest,
     type MapView,
@@ -16,7 +17,7 @@ import {
     type Story,
 } from '@hcm/shared';
 import type { WindowClass } from '@hcm/ui';
-import type { MyLocationFix } from '@hcm/ui/map';
+import { CONE_MIN_ZOOM, type MyLocationFix } from '@hcm/ui/map';
 
 import type { ConsentState } from '../telemetry/telemetry-port.js';
 import { mapLabelsOf, NO_MAP_LABELS, type MapLabelsState } from './map-labels.js';
@@ -98,6 +99,8 @@ export interface ViewerState {
     /** `prefers-color-scheme: dark`, which the basemap's light follows under the `system` theme (`map-light.ts`). */
     readonly systemDark: boolean;
     readonly myLocation: MyLocationState;
+    /** Show on map's ring around a photo's place (V51), on every map of the view; null without one. */
+    readonly photoMark: LngLat | null;
 }
 
 const NO_VIEW: MapView = { center: [0, 0], zoom: 0, bearing: 0 };
@@ -127,12 +130,26 @@ export function initialState(locale: Locale, theme: ThemeMode, consent: ConsentS
         shortcuts: true,
         systemDark: false,
         myLocation: null,
+        photoMark: null,
     };
 }
 
 /** The city's own view: its centre and zoom, north up. */
 export function cityView(manifest: Manifest): MapView {
     return { center: manifest.city.center, zoom: manifest.city.zoom, bearing: 0 };
+}
+
+/**
+ * Where Show on map takes the camera (V51): the photo's place, zoomed in at least as far as its view cone shows and never
+ * beyond the city's `maxZoom`; null for an unknown photo or before the manifest.
+ */
+export function locateTarget(state: ViewerState, photoId: string): { readonly center: LngLat; readonly zoom: number } | null {
+    const { manifest, view } = state;
+    const photo = manifest?.photos.find((candidate) => candidate.id === photoId);
+    if (manifest === null || photo === undefined) {
+        return null;
+    }
+    return { center: [photo.location.lng, photo.location.lat], zoom: Math.min(Math.max(view.zoom, CONE_MIN_ZOOM), manifest.city.maxZoom) };
 }
 
 /** A freshly loaded manifest: overlays at their defaults, the city view, the stop of the default-visible layers. */

@@ -340,7 +340,7 @@ describe('Mapbox adapter: selection and camera', () => {
 
         animated.port.flyTo({ zoom: 16 });
         animated.port.flyTo({ bearing: 90 }, { animate: false });
-        reduced.port.flyTo({ zoom: 16 }, { animate: true });
+        reduced.port.flyTo({ zoom: 16 });
 
         expect(animated.map.callsOf('flyTo')).toEqual([[{ zoom: 16 }]]);
         expect(animated.map.callsOf('jumpTo')).toEqual([[{ bearing: 90 }]]);
@@ -554,6 +554,18 @@ describe('Mapbox adapter: a camera move with an offset (Show on map, V51)', () =
         // jumpTo takes no offset: the jump is an easeTo of no duration.
         expect(reduced.map.callsOf('jumpTo')).toEqual([]);
         expect(reduced.map.callsOf('easeTo')).toEqual([[{ center: [26.1, 44.43], zoom: 17, offset: [-180, 0], duration: 0 }]]);
+    });
+
+    it('badPath_anExplicitAnimateWinsOverTheMountsReducedMotionAndMapboxsOwn', async () => {
+        const reduced = await mounted({ ...OPTIONS, reducedMotion: true });
+        const animated = await mounted();
+
+        // The engine reads the visitor's preference when the camera moves; Mapbox would otherwise jump and drop the offset.
+        reduced.port.flyTo({ center: [26.1, 44.43], zoom: 17 }, { offset: [0, -150], animate: true });
+        animated.port.flyTo({ center: [26.1, 44.43], zoom: 17 }, { offset: [0, -150], animate: false });
+
+        expect(reduced.map.callsOf('flyTo')).toEqual([[{ center: [26.1, 44.43], zoom: 17, offset: [0, -150], essential: true }]]);
+        expect(animated.map.callsOf('easeTo')).toEqual([[{ center: [26.1, 44.43], zoom: 17, offset: [0, -150], duration: 0 }]]);
     });
 
     it('badPath_noOffsetNoOffsetKey', async () => {

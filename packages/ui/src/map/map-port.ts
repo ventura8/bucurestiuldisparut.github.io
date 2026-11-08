@@ -102,7 +102,7 @@ export interface MapOptions {
     readonly maxZoom: number;
     readonly maxBounds?: BBox;
     readonly locale: Locale;
-    /** True with `prefers-reduced-motion: reduce`: flyTo jumps instead of animating. */
+    /** True with `prefers-reduced-motion: reduce` at mount: a flyTo without `animate` jumps instead of animating. */
     readonly reducedMotion: boolean;
 }
 
@@ -172,8 +172,9 @@ export interface MapPort {
     /** A click (or tap) on the map that hit no photo marker or POI, as a position: the admin's selection and picks. */
     onMapClick(handler: (position: LngLat) => void): Unsubscribe;
     /**
-     * Moves the camera; animated unless `reducedMotion` or `animate: false`. `offset`: the target ends that many px from the
-     * map's centre (x right, y down), not under it (the viewer's Locate beside a sheet).
+     * Moves the camera; `animate` decides (true animates even under reduced motion: the caller read the preference), without
+     * it the move animates unless `reducedMotion`. `offset`: the target ends that many px from the map's centre (x right,
+     * y down), not under it (the viewer's Show on map beside a sheet).
      */
     flyTo(view: Partial<MapView>, options?: FlyOptions): void;
     /** Fits the camera to a box (the city, an edited geometry); animated unless `reducedMotion` or `animate: false`. */
