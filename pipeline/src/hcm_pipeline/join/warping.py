@@ -1,10 +1,15 @@
-"""A part through GDAL: its scan staged, its points or its nodes attached, warped clipped to the window (M8-join-interfaces.md §3).
+"""A part through GDAL: its scan staged, its map or its nodes attached, warped clipped to the window (M8-join-interfaces.md §3).
 
-Warps stay memory-bounded (`WARP_MEMORY_MB`) and stop with the run (`gdal_progress`). A scan is staged only while it is warped,
-or while a seam it lies on is measured: on Cloud Run the scratch folder is memory.
+A part shows what its layer shows: its scan read through its own map (`steps/warp.py` `attached`): a thin-plate spline through its
+points, or, over terrain (M15), its RPC over the heights it carries. A part's nodes carry a seam's field: for a part through points they
+pair scan pixels with places; a part over terrain is first read through its RPC onto the level's grid, and its nodes pair that grid's
+pixels (`ground_grid`, at `FINE_ZOOM`, moved to each level's grid: `regridded`) with places, so the spline between them carries the
+smooth field alone and never the relief, which no spread of nodes holds (A001: 11 m RMS through 17 x 17). Warps stay memory-bounded
+(`WARP_MEMORY_MB`) and stop with the run (`gdal_progress`). A scan is staged only while it is warped, or while a seam it lies on is
+measured: on Cloud Run the scratch folder is memory.
 """
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
@@ -23,17 +28,13 @@ from hcm_pipeline.join.room import out_of_room
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.rasters import GTIFF_OPTIONS, WEB_MERCATOR, driver_of, srs_wkt
 from hcm_pipeline.steps.common import gdal_step
-from hcm_pipeline.steps.warp import WARP_MEMORY_MB, cutline, gcp_source, warp_method
+from hcm_pipeline.steps.warp import WARP_MEMORY_MB, attached, cutline, rendered_points
 
 FLAT_GROUND: Final = 0.0
 DST_SRS: Final = "DST_SRS=EPSG:3857"
 FORWARD: Final = 0
 REVERSE: Final = 1
-TRANSFORMER_METHODS: Final = {
-    "affine": ("METHOD=GCP_POLYNOMIAL", "MAX_GCP_ORDER=1"),
-    "poly2": ("METHOD=GCP_POLYNOMIAL", "MAX_GCP_ORDER=2"),
-    "tps": ("METHOD=GCP_TPS",),
-}
+TPS_METHOD: Final = ("METHOD=GCP_TPS",)
 
 
 def node_source(scan: Path, nodes: Sequence[Node], target: Path) -> Path:
@@ -60,10 +61,55 @@ def _transformer(gcps: Sequence[gdal.GCP], size: tuple[int, int], method: Sequen
 
 
 def base_transform(georef: GeorefInfo, size: tuple[int, int]) -> BaseTransform:
-    """GDAL's own transforms of the part's enabled points, pixel to EPSG:3857 and back: the very ones a warp through them uses."""
-    gcps = [gdal.GCP(*to_mercator(gcp.lng, gcp.lat), FLAT_GROUND, gcp.x, gcp.y) for gcp in georef.gcps if gcp.enabled]
-    transformer = _transformer(gcps, size, TRANSFORMER_METHODS[georef.transform])
+    """GDAL's own transforms of the points the part renders through (`rendered_points`), pixel to EPSG:3857 and back: the very ones
+    a warp through them uses."""
+    gcps = [gdal.GCP(x, y, FLAT_GROUND, column, row) for x, y, column, row in rendered_points(georef, size)]
+    transformer = _transformer(gcps, size, TPS_METHOD)
     return BaseTransform(_mapping(transformer, FORWARD), _mapping(transformer, REVERSE), _anchors(georef))
+
+
+def ground_grid(part: Part, box: MercatorBox) -> Grid | None:
+    """The grid a part over terrain is read on and its nodes are placed on (module docstring); None for a part through points."""
+    return None if part.georef.terrain is None else level_grid(box, FINE_ZOOM)
+
+
+def _grid_mapping(grid: Grid, to_pixel: bool) -> Mapping:
+    def apply(a: FloatArray, b: FloatArray) -> tuple[FloatArray, FloatArray, numpy.typing.NDArray[numpy.bool_]]:
+        x, y = grid.to_pixel(a, b) if to_pixel else grid.to_mercator(a, b)
+        return x, y, numpy.ones(len(a), numpy.bool_)
+
+    return apply
+
+
+def part_transform(part: Part, box: MercatorBox) -> BaseTransform:
+    """The part's own transform in its nodes' pixels: its points' (`base_transform`), or over terrain its ground grid's."""
+    grid = ground_grid(part, box)
+    if grid is None:
+        return base_transform(part.georef, (part.scan.width, part.scan.height))
+    return BaseTransform(_grid_mapping(grid, False), _grid_mapping(grid, True))
+
+
+def part_size(part: Part, box: MercatorBox) -> tuple[int, int]:
+    """The size of the pixels the part's nodes are placed on."""
+    grid = ground_grid(part, box)
+    return (part.scan.width, part.scan.height) if grid is None else (grid.width, grid.height)
+
+
+def on_ground(scan: Path, georef: GeorefInfo, grid: Grid, local: Callable[[str], Path]) -> Path:
+    """The scan read through its map onto `grid` (a warped VRT: only what is read is warped)."""
+    found = attached(scan, georef, local)
+    box, target = grid.box(), local(f"ground-{grid.resolution:.4f}.vrt")
+    bounds = (box.left, box.bottom, box.right, box.top)
+    options = {"format": "VRT", "dstSRS": "EPSG:3857", "outputBounds": bounds, "width": grid.width, "height": grid.height}
+    gdal.Warp(str(target), str(found.source), resampleAlg="bilinear", dstAlpha=True, **options, **found.method).Close()
+    return target
+
+
+def regridded(nodes: Sequence[Node], reference: Grid, grid: Grid) -> tuple[Node, ...]:
+    """Nodes placed on `reference`'s pixels moved to `grid`'s, the places unchanged."""
+    values = numpy.array(nodes, numpy.float64).reshape(-1, 4)
+    column, row = grid.to_pixel(*reference.to_mercator(values[:, 0], values[:, 1]))
+    return tuple(zip(column.tolist(), row.tolist(), values[:, 2].tolist(), values[:, 3].tolist(), strict=True))
 
 
 def _anchors(georef: GeorefInfo) -> tuple[tuple[float, float], ...]:
@@ -76,7 +122,7 @@ def _anchors(georef: GeorefInfo) -> tuple[tuple[float, float], ...]:
 def node_reverse(nodes: Sequence[Node], size: tuple[int, int]) -> Mapping:
     """What a warp through the nodes runs on: a place to the pixel it reads there."""
     gcps = [gdal.GCP(x, y, FLAT_GROUND, u, v) for u, v, x, y in nodes]
-    return _mapping(_transformer(gcps, size, TRANSFORMER_METHODS["tps"]), REVERSE)
+    return _mapping(_transformer(gcps, size, TPS_METHOD), REVERSE)
 
 
 @dataclass
@@ -113,18 +159,28 @@ class Warper:
     def release(self, part: Part) -> None:
         self.ctx.unstage(part.scan.path)
 
-    def attached(self, part: Part, nodes: Sequence[Node] = ()) -> tuple[Path, dict[str, object]]:
-        """The staged scan as a VRT with its nodes (a thin-plate warp) or its own points (its own transform)."""
+    def attached(self, part: Part, grid: Grid, nodes: Sequence[Node] = ()) -> tuple[Path, dict[str, object]]:
+        """The staged scan as a VRT with its own map, or with its nodes (a thin-plate warp); a part over terrain with nodes is read
+        onto `grid` first, its nodes moved to that grid."""
         scan = self._scan(part)
-        target = self.ctx.local(f"{part.version.id}-{'nodes' if nodes else 'gcps'}.vrt")
-        if nodes:
-            return gdal_step(self.ctx, lambda: node_source(scan, nodes, target), "attach the nodes"), {"tps": True}
-        return gdal_step(self.ctx, lambda: gcp_source(scan, part.georef, target), "attach the GCPs"), warp_method(part.georef)
+
+        def local(name: str) -> Path:
+            return self.ctx.local(f"{part.version.id}-{name}")
+
+        reference = ground_grid(part, self.box)
+        if not nodes:
+            found = gdal_step(self.ctx, lambda: attached(scan, part.georef, local), "attach the map")
+            return found.source, found.method
+        if reference is None:
+            return gdal_step(self.ctx, lambda: node_source(scan, nodes, local("nodes.vrt")), "attach the nodes"), {"tps": True}
+        ground = gdal_step(self.ctx, lambda: on_ground(scan, part.georef, grid, local), "read the frame over its terrain")
+        moved = regridded(nodes, reference, grid)
+        return gdal_step(self.ctx, lambda: node_source(ground, moved, local("nodes.vrt")), "attach the nodes"), {"tps": True}
 
     def preview(self, part: Part, nodes: Sequence[Node] = ()) -> Raster:
         """The part on the coarse level, in memory; its scan is released."""
         grid = level_grid(self.box, COARSE_ZOOM)
-        source, method = self.attached(part, nodes)
+        source, method = self.attached(part, grid, nodes)
         options = {**self._options(part, grid, method), "format": "MEM", "callback": self.ctx.flags.gdal_progress}
 
         def work() -> Raster:
@@ -140,7 +196,7 @@ class Warper:
     def fine(self, part: Part) -> DatasetSource:
         """The part on the fine level as a warped VRT: only the tiles read are warped."""
         grid = level_grid(self.box, FINE_ZOOM)
-        source, method = self.attached(part)
+        source, method = self.attached(part, grid)
         target = self.ctx.local(f"{part.version.id}-fine.vrt")
         options = {**self._options(part, grid, method), "format": "VRT"}
         gdal_step(self.ctx, lambda: gdal.Warp(str(target), str(source), **options).Close(), "prepare a frame's fine level")
@@ -148,7 +204,7 @@ class Warper:
 
     def rendered(self, part: Part, nodes: Sequence[Node], grid: Grid) -> Path:
         """The part on `grid` as a local file; its scan is released."""
-        source, method = self.attached(part, nodes)
+        source, method = self.attached(part, grid, nodes)
         target = self.ctx.local(f"{part.version.id}-warped.tif")
         options = {
             **self._options(part, grid, method),

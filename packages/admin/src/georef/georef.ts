@@ -3,11 +3,13 @@
  * when the automatic matching found too few pairs, and the way to re-georeference a layer. The scan beside the reference
  * map, pairs made of a click on each (or both crosshairs from the keyboard), moved, deleted or kept as checkpoints, the
  * transform and its residuals refitted on every change with the shared mathematics, the live warped preview, and Save,
- * which queues the job (`imagery.saveGcps`). Unsaved pairs are guarded like any draft.
+ * which queues the job (`imagery.saveGcps`). Unsaved pairs are guarded like any draft. Unedited, the version's own figures and
+ * the map it publishes show instead (M15: a camera's lattice is no refit of its pairs, `fit-view.ts`). The map of a lattice or terrain
+ * and Snap my points come from a chunk fetched on their first need (`extras.ts`).
  */
 import {
-    bboxCenter,
     cityDocSchema,
+    clamp,
     FIRESTORE_PATHS,
     imagerySettingsOf,
     isId,
@@ -26,10 +28,12 @@ import { callImagery, refusalOf } from '../imagery/api.js';
 import { NO_FILES } from '../imagery/files.js';
 import { frameOf, type CityFrame } from '../layers/map-session.js';
 import { Store } from '../state/store.js';
-import { fitOf } from './fit-view.js';
-import { GeorefMap } from './georef-map.js';
+import { loadGeorefExtras, publishedOf, snapOf, type ExtrasLoader } from './extras.js';
+import { baseOf, fitOf, ownFitOf, shownFit, type OwnFit } from './fit-view.js';
+import { GeorefMap, referenceFrame } from './georef-map.js';
 import { GeorefPictures } from './georef-pictures.js';
 import { PlacingMark } from './placing.js';
+import { saveRequestOf } from './save-request.js';
 import {
     moveGeo,
     movePixel,
@@ -42,7 +46,6 @@ import {
     type PixelPosition,
 } from './pairs.js';
 import { georefVersionOf, INITIAL_GEOREF, type GeorefIntents, type GeorefState, type GeorefVersion, type ReferenceKind } from './state.js';
-import { roughPointsOf, saveRequestOf, snapped } from './snap.js';
 import { Suggestions } from './suggestions.js';
 
 /** The intents that edit the pairs. */
@@ -54,19 +57,6 @@ type SuggestionIntent = 'acceptSuggestion' | 'acceptAllSuggestions' | 'rejectSug
 /** No scan read yet: a pixel is only rounded. */
 const UNBOUNDED = { width: Number.MAX_SAFE_INTEGER, height: Number.MAX_SAFE_INTEGER } as const;
 
-/** The version's own pairs and transform (none yet: affine, no pairs). */
-function baseOf(doc: LayerVersionDoc): { readonly pairs: readonly Gcp[]; readonly transform: GeorefTransform } {
-    const georef = doc.georef;
-    return georef === undefined ? { pairs: [], transform: 'affine' } : { pairs: georef.gcps, transform: georef.transform };
-}
-
-/** The version's crop for Save, when it has one. */
-/** The reference's box as the map's frame. */
-function referenceFrame(version: GeorefVersion | null): CityFrame | null {
-    const bounds = version?.reference?.bounds ?? null;
-    return bounds === null ? null : { bounds, view: { center: bboxCenter(bounds), zoom: 13, bearing: 0 } };
-}
-
 class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     readonly #services: ContentServices;
     readonly #cell: Store<GeorefState>;
@@ -76,20 +66,21 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     readonly #pictures: GeorefPictures;
     readonly #suggestions = new Suggestions();
     readonly #placing: PlacingMark;
+    readonly #extras: ExtrasLoader;
     /** The version's own pairs and transform: what Discard returns to and the unsaved guard compares with. */
     #base: { readonly pairs: readonly Gcp[]; readonly transform: GeorefTransform } = { pairs: [], transform: 'affine' };
     #transform: FittedTransform | null = null;
+    /** The version's own figures and published map (M15), shown while its pairs are unedited. */
+    #own: OwnFit | null = null;
     #cityFrame: CityFrame | null = null;
     readonly intents: GeorefIntents;
 
-    constructor(services: ContentServices) {
+    constructor(services: ContentServices, extras: ExtrasLoader) {
         this.#services = services;
         this.#placing = new PlacingMark(services);
+        this.#extras = extras;
         this.#cell = new Store<GeorefState>(INITIAL_GEOREF, services.log);
-        const { store, clock } = services;
-        const denied = (): void => {
-            services.denied();
-        };
+        const { store, clock, denied } = services;
         this.#doc = new LiveDoc({
             store,
             clock,
@@ -112,6 +103,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
             ...{ maps: services.maps ?? null, locale: services.locale, log: services.log },
             status: (map) => {
                 this.#cell.update({ map });
+                this.#pictures.mapStatus(map);
             },
             clicked: (geo) => {
                 this.#pickMap(geo);
@@ -129,7 +121,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
                 this.#cell.update({ scan });
             },
         });
-        this.intents = this.#intents();
+        this.intents = { ...this.#pairIntents(), ...this.#suggestionIntents(), ...this.#pageIntents() };
     }
 
     get state(): GeorefState {
@@ -164,6 +156,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         this.#placing.reset();
         this.#base = { pairs: [], transform: 'affine' };
         this.#transform = null;
+        this.#own = null;
         this.#cell.update({ ...INITIAL_GEOREF, thresholdM: this.#cell.state.thresholdM });
     }
 
@@ -173,10 +166,6 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
 
     destroy(): void {
         this.close();
-    }
-
-    #intents(): GeorefIntents {
-        return { ...this.#pairIntents(), ...this.#suggestionIntents(), ...this.#pageIntents() };
     }
 
     /** The matcher's suggestions: accepted into the pairs (unsaved until Save), rejected for this visit, selected. */
@@ -281,6 +270,8 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     /** A new snapshot of the version: its pairs become the base (an edit in progress is kept). */
     #loaded(doc: LayerVersionDoc, version: GeorefVersion): void {
         this.#base = baseOf(doc);
+        this.#own = ownFitOf(doc.georef);
+        void this.#published(this.#own);
         this.#suggestions.load(doc);
         this.#frame();
         this.#pictures.load(version, this.#cell.state.reference);
@@ -289,6 +280,15 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
             this.#showSuggestions();
         } else {
             this.#refit(this.#base.pairs, this.#base.transform);
+        }
+    }
+
+    /** M15: the map a lattice or terrain publishes, once the chunk is in (`extras.ts`), unless another snapshot or Save replaced it. */
+    async #published(own: OwnFit | null): Promise<void> {
+        const shown = await publishedOf(this.#services, this.#extras, own);
+        if (shown !== own && this.#own === own) {
+            this.#own = shown;
+            this.#refit(this.#cell.state.pairs, this.#cell.state.transform);
         }
     }
 
@@ -393,10 +393,11 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         }
     }
 
-    /** The pairs and the transform as edited: fitted again, the map and the preview follow. */
+    /** The pairs and the transform as edited: fitted again (the version's own map while unedited), the map and the preview follow. */
     #refit(pairs: readonly Gcp[], transform: GeorefTransform): void {
-        const fitted = fitOf(transform, pairs, this.#cell.state.thresholdM);
         const dirty = transform !== this.#base.transform || !samePairs(pairs, this.#base.pairs);
+        const { thresholdM } = this.#cell.state;
+        const fitted = shownFit(fitOf(transform, pairs, thresholdM), this.#own, dirty, thresholdM);
         this.#transform = fitted.transform;
         this.#cell.update({ pairs, transform, fit: fitted.view, dirty, refusal: null });
         this.#map.showPairs(pairs, this.#cell.state.selected);
@@ -426,7 +427,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     }
 
     #setOpacity(percent: number): void {
-        const previewOpacity = Math.min(100, Math.max(0, Math.round(percent))) / 100;
+        const previewOpacity = clamp(Math.round(percent), 0, 100) / 100;
         this.#cell.update({ previewOpacity });
         this.#pictures.setOpacity(previewOpacity);
     }
@@ -445,6 +446,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         try {
             const answer = await callImagery(this.#services.callables, 'imagery.saveGcps', request);
             this.#base = { pairs: this.#cell.state.pairs, transform: request.transform };
+            this.#own = null;
             this.#cell.update({ saving: false, dirty: false, saved: answer.versionId });
             this.#services.notify({ key: answer.resumed ? 'adminContent.georef.savedResumed' : 'adminContent.georef.savedNew' });
             return true;
@@ -454,10 +456,10 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         }
     }
 
-    /** M16: Snap my points (`snap.ts`); the page then opens the version they make. */
+    /** M16: Snap my points (`snap.ts`, in the chunk `extras.ts` fetches); the page then opens the version they make. */
     async #snap(): Promise<boolean> {
         this.#cell.update({ saving: true, refusal: null });
-        const outcome = await snapped(this.#services, this.#cell.state.version, roughPointsOf(this.#cell.state.pairs, this.#base.pairs));
+        const outcome = await snapOf(this.#services, this.#extras, { ...this.#cell.state, base: this.#base.pairs });
         if (outcome.saved !== null) {
             this.#refit(this.#base.pairs, this.#base.transform);
         }
@@ -466,7 +468,9 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     }
 }
 
-export const GEOREF_MODULE: AreaModule<GeorefState, GeorefIntents> = {
-    area: 'georef',
-    create: (services) => new GeorefStore(services),
-};
+/** The area; `extras` replaces the lazy chunk's fetch (the tests' failed fetch). */
+export function georefModule(extras: ExtrasLoader = loadGeorefExtras): AreaModule<GeorefState, GeorefIntents> {
+    return { area: 'georef', create: (services) => new GeorefStore(services, extras) };
+}
+
+export const GEOREF_MODULE = georefModule();

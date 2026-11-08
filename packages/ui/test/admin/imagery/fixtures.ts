@@ -274,7 +274,7 @@ export function georefState(overrides: Partial<GeorefViewState> = {}): GeorefVie
                 checkpointCount: 1,
                 residuals: { g1: 1.2, g2: 3.4, g3: 0.8, g4: 6.4 },
             },
-            ...{ missing: { affine: 0, poly2: 3, tps: 7 }, overThreshold: false },
+            ...{ missing: { affine: 0, poly2: 3, tps: 7 }, overThreshold: false, refitted: false },
         },
         ...{
             thresholdM: 15,

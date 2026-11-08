@@ -124,6 +124,8 @@ Accepted when **all** hold; `refusal` names the first that fails:
 - RANSAC on the other cells; each cell's strongest inlier is a pair: `origin: 'auto'`, `score = max(AUTO_GCP_MIN_CONFIDENCE, min(1, 2 x peak))`, no suggestions.
 - `affine` or `poly2` by blocked 5-fold; `poly2` needs `MIN_POLY2_PAIRS` and `TRANSFORM_MIN_GAIN_M = 2`. `tps` is never automatic; poly3 is cut (about 1 m, three twins to change). `crossValidatedM` is that blocked figure, steadier than one split; with no fold to hold there is no figure, never `Infinity`, and a fold needs more pairs than its own order's minimum (6 or 7 pairs read infinite, and every reader of the document would have refused it).
 
+**Since M15 (`M15-calibration-accuracy.md`, *As built*):** a KH-9 pan frame is mapped by its camera, fitted on every gated tile of the cells not held, and carried to the warp as `georef.lattice`; every fit renders through `-tps`, so the published layer is the fitted map. The pairs and checks above are unchanged; their residuals and figures are the camera's.
+
 **Admin's points seed the same step.** `method: 'gcps'`, at least `MIN_GCPS.affine` enabled, none `auto`, none disabled: their fit starts `dense` on `scan.tif`, search `max(600, min(3 x checkpoint RMSE, 2000))`. Proved: `method: 'auto'`, `how: 'points'`, `seedPoints`, the rough points replaced, and the log says so. Refused: `fit_points` as today. A set holding `auto` pairs is fitted as saved, so a later edit is never overwritten.
 
 **Schemas** (`packages/shared`, twins in `documents.py`):
@@ -352,6 +354,196 @@ Every checkpoint figure above was recomputed from `pairs.json` alone (`m15-verif
 - **KH-7 covers 49 % of the city, mapping 100 % at 7.5 m.** Neither publishes itself unless every rule of §11 holds: KH-7 under 90 %; mapping's checkpoint 15.8 m misses 15 m by 0.8.
 - **A same-pass prior loses the shear:** `MeasuredModel` is a similarity, so a KH-7 neighbour's prior will likely refuse and fall through to the full search, costing time, not truth. Not run.
 - **Harness, not a job:** `LocateStep`, `georef`'s `matcher`, `warp`, `export` were not run on these frames, F039 was not rerun (its corners were not at hand), and the seconds shared the NUC three at a time. One harness slip: `f007-pit` collided on a container name and was rerun alone.
+
+### The measuring stick (2026-11-07)
+
+**Run:** `tools/acc-ruler.py` on the NUC, a copy with its outputs in `reports/calib/accuracy/` (not tracked), `pipeline/src` unchanged; each map is the product's own, refitted from `out/m15/*/pairs.json`. Nothing in the product changed.
+
+**The rulers.** None was seen by a fit:
+
+- **Film against film.** Every pair of the 11 Bucharest frames through its own map onto one 5 m ground grid, 900 m tiles, the proof's peak and margin: 52 pairs of 55 hold 100 tiles or more. Sentinel-2 is in neither image. Its blind spot: **an error every frame shares, an absolute shift above all, does not show.**
+- **The same pass.** F006 with F007, the only such pair: 33 km² of overlap, too narrow for 900 m tiles, so 450 m (305 tiles, median peak 0.94, none gross). Nearly no noise, the sharpest ruler here, on one strip at the edge of both crops.
+- **Blocked hold-outs on Sentinel-2.** Blocks of 3.2 km over 5 folds and 5 seeds, no training tile within 900 m of a held one, every gated tile scored before any RANSAC, only a 100 m line, its share given. `measure`'s earlier rounds still saw the held tiles.
+- **The film against itself.** Each overlap of two segments, no map or reference.
+- **Checked:** a known field (20 m + 10 m shift, 15 m wave) came back within 0.69 m against the frame itself and 1.46 m against another film; a frame against itself read 0.007 m.
+
+**Not run:** a second Sentinel-2 scene (scene-to-scene misregistration is therefore **not measured here**; the code read a synthetic 3-cell shift as 21.42 m, true 21.42), OSM rails and bridges, a DEM, WorldCover. None is on the machines and each is a download: ask first. Published for Sentinel-2: below 8 m CE95 absolute and below 5 m CE95 multi-temporal for Collection-1 (Enache et al., IGARSS 2023); the scene behind `s2-bucharest.tif` is not recorded, so which baseline it has is not known.
+
+| Frame | Saved checkpoint, blocked | S2 held out, RMSE (median), over 100 m | Film ruler (68 % of pairs resampled) | Coherent, tile noise | Same with a cubic | S2 tile noise | Shared at a place | Map vs all tiles | Cubic's size | Largest at a seam | tan off-nadir |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| F006 | 19.5, 11.5 | 27.2 (14.2), 2.9 % | 9.1 (7.8-10.3) | 8.0, 4.2 | 4.9 | 12.1 | 11.6 | 3.7 | 5.4 | 2.8 | 0.0 |
+| F007 | 14.2, 13.7 | 27.7 (16.4), 5.7 % | 4.2 (2.4-5.3) | 2.5, 3.3 | 4.5 | 14.0 | 12.9 | 2.1 | 8.4 | 7.5 | 0.0 |
+| F040 | 19.0, 13.9 | 29.9 (18.5), 6.5 % | 11.4 (10.5-12.2) | 10.8, 3.8 | 5.8 | 14.3 | 14.9 | 2.9 | 8.1 | 1.1 | 0.1 |
+| A001 | 21.3, 14.0 | 24.7 (15.5), 4.9 % | 8.0 (7.1-8.8) | 6.4, 4.7 | 6.6 | 12.5 | 12.7 | 3.5 | 7.3 | none in crop | 1.1 |
+| F003 | 16.8, 14.7 | 25.2 (14.9), 2.6 % | 6.6 (5.5-7.7) | 6.3, 2.3 | 3.0 | 10.9 | 12.1 | 2.5 | 10.8 | 6.1 | 0.5 |
+| F022 | 22.1, 13.4 | 23.1 (14.5), 2.6 % | 7.4 (6.4-8.1) | 6.5, 3.6 | 5.1 | 10.6 | 11.6 | 3.3 | 9.7 | 2.9 | 0.6 |
+| A015 | 16.9, 14.0 | 25.6 (16.3), 3.3 % | 5.9 (4.4-6.9) | 4.8, 3.4 | 4.2 | 11.8 | 12.2 | 3.2 | 9.8 | 12.7 | 0.6 |
+| A038 | 12.0, 14.0 | 19.5 (13.0), 2.1 % | 7.5 (6.1-8.8) | 7.0, 2.7 | 3.0 | 10.3 | 11.4 | 4.5 | 8.0 | 4.8 | 0.0 |
+| F049 | 13.8, 12.8 | 25.0 (15.2), 2.9 % | 5.8 (4.3-6.9) | 5.4, 2.3 | 2.8 | 11.3 | 13.9 | 3.0 | 10.2 | 10.8 | 0.2 |
+| KH-7 | 15.2, 12.7 | 24.7 (13.0), 5.1 % | 9.6 (8.9-10.3) | 8.4, 4.6 | 5.9 | 12.8 | 9.6 | 2.6 | 3.2 | unmeasured, outside crop | n/a |
+| KH-9 mapping | 15.8, 11.3 | 19.3 (9.3), 2.5 % | 6.4 (5.3-7.6) | 6.0, 2.4 | 2.8 | 10.7 | 10.5 | 2.9 | 1.0 | outside crop | n/a |
+| F006, Pitești | 15.4, 12.9 | 19.6 (12.5), 1.7 % | no other frame | | | | | | | | 0.5 |
+
+All in ground metres. The film column splits each pair's squared RMS between its two frames (three-cornered hat): it assumes frames err independently, **and the panoramic frames do not**, so it flatters them and blames the mapping frame for their shared error. Read the pairs against the mapping frame for that.
+
+**What the error is made of:**
+
+- **The saved figures flatter, and the Sentinel-2 ruler overstates.** Every gated tile held out reads 19 to 30 m against saved 11 to 15 m (blocked) and 12 to 22 m (checkpoint), whose tiles are the strongest. The same maps agree with each other film to film at a median pair RMS of 10.5 m, 5.9 to 17.6 m by pair. Most of the 19 to 30 m is not the map: a tile against Sentinel-2 carries 10 to 14 m of its own noise and film against film about 2 to 5 m.
+- **Sentinel-2's tile residual does measure the map.** Against film-film offsets at the same places the slope is 1.00 at the median of 51 pairs (0.56 to 1.30), correlation 0.27 to 0.84.
+- **The largest term in the map is a camera misfit: poly2 cannot hold a panoramic frame.** The fields are smooth and low in noise (`pairs/f003_k9m.png`, `frames/*-scan.png`): along the scan a cubic-shaped curve to 20 m and more at the crop's ends, across it flat; radially, outward at 5 to 10 km and inward by 10 to 20 m at 15 to 20 km. It follows the film, not the place: about each frame's own centre it is stronger, the mapping frame shows none (cubic's size 1.0 m), KH-7 little (3.2), KH-9 pan 5 to 11. The pairs against the mapping frame read 8.7 to 11.9 m.
+- **Stitch: real, local, and small on the whole.** Eight seams lie inside a crop. Their mean offset is 0.4 to 4.7 m, but the segments are also turned: up to 1 px per 1,000 px, so up to 12.7 m (A015) and 10.8 m (F049) at one end of a seam. No linear residual over 0.34 px. Translation is all `stitch` corrects. **The mapping frame's own seam, outside this crop, is 52 m off and turned 0.27 degrees**, and KH-7's overlap of 300 px is too narrow to measure. The residual step across a seam (at most 13 m, standard error 3 to 7) cannot see this: the direct ruler is what counts.
+- **Estimation:** the map from about 100 pairs lies 2.1 to 4.5 m from the same order fitted on every tile.
+- **Terrain: bounded, not measured.** No DEM here. 1 m of height moves a tile by the tan column; A001 at tan 1.14 reads 7.5 m to the mapping frame with the cubic against 4.2 to 5.6 m for the other panoramic frames, so at most about 5.6 m of its error, about 5 m of height, can be relief.
+- **Shared at a place: 9.6 to 14.9 m** of a tile's residual repeats across frames, mostly uncorrelated from place to place (short lags 11 m, long 13 m): the reference's texture, or what changed since all the films. The residual images put the large ones on field edges and new suburbs. Without a second scene, these two cannot be told apart.
+
+**A candidate read on the ruler, no product change.** Each frame refitted on its Sentinel-2 tiles alone, narrowing to 25 m; the film ruler then reads the shift each map adds (first order; a real warp through the cubic of F003 with F022 reads 6.35 m, this 6.34 m):
+
+| Over the 52 pairs, RMS | Product | poly2, all tiles | poly3, all tiles | poly4, all tiles |
+| --- | --- | --- | --- | --- |
+| Pairs | 10.8 | 10.3 | **6.5** | 7.3 |
+| F006 with F007, the same pass | 13.1 | 13.2 | **3.4** | 9.2 |
+
+The cubic improved all 52 pairs; panoramic against the mapping frame 8.7-11.9 to 4.2-7.5 m. Its Sentinel-2 hold-out moves far less (F007 27.7 to 26.2 m; on strong tiles 18.2 to 14.3 m), because 20 m of noise covers it: **"poly3 is cut, about 1 m" (§7, §13) was read through that noise.** poly4 gives way on the same pass: at a strip's edge it extrapolates. This is one reading, 11 frames, one city, on film the crop shares with another frame; corners no second frame reaches are unmeasured, and none of it has been through `prove`, `pairs` or a whole job. The cut is the owner's decision (§13): it is not reversed here.
+
+### Reference variants, what could be read without a download (2026-11-07)
+
+**Not run:** the variants themselves. A median of scenes, a season's scene, OSM fused into the fit and a DEM each need a download, downloads are ask-first, and no yes reached this phase; a second scene, an OSM extract and a DEM are on neither machine (the five `ref-*.tif` and `s2-bucharest.tif` windows do not overlap). `tools/acc-references.py fetch` refuses without the owner's yes and `variants` is a stub. So **no reference variant has a before and after here**. What follows bounds what they could buy, on real frames, with synthetic noise or other frames standing in. Nothing in the product changed. **Run:** `tools/acc-references-noise.py`, `acc-references-simex.py`, `acc-references.py` on the NUC, `--cpus=4`, while other experiments held the machine (load 25 to 55 on 16 cores), so the seconds are rough.
+
+| Frame | Film ruler: product | poly3, all tiles | poly3, place cleaned | poly3, reference noised 0.25 sd | Tiles, as is / noised | S2 held out: poly2 | poly3 | poly3, place cleaned |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| F006 | 9.1 | 4.9 | 4.7 | 5.5 | 500 / 260 | 27.0 | 27.4 | 25.9 |
+| F007 | 4.2 | 4.5 | 4.5 | 4.9 | 939 / 528 | 27.3 | 26.2 | 25.8 |
+| F040 | 11.4 | 5.8 | 5.4 | 8.6 | 578 / 306 | 29.2 | 27.2 | 26.2 |
+| A001 | 8.0 | 6.6 | 6.6 | 6.4 | 1,199 / 664 | 24.5 | 23.5 | 23.2 |
+| F003 | 6.6 | 3.0 | 2.9 | 3.5 | 1,359 / 836 | 24.7 | 19.8 | 19.6 |
+| F022 | 7.4 | 5.1 | 5.2 | 5.5 | 1,362 / 806 | 23.2 | 18.3 | 18.1 |
+| A015 | 5.9 | 4.2 | 4.3 | 4.8 | 1,416 / 831 | 25.6 | 21.6 | 21.4 |
+| A038 | 7.5 | 3.0 | 2.6 | 3.9 | 1,329 / 836 | 19.8 | 16.4 | 16.4 |
+| F049 | 5.8 | 2.8 | 2.6 | 3.3 | 1,121 / 672 | 25.2 | 21.5 | 21.2 |
+| KH-7 | 9.6 | 5.9 | 5.9 | 7.3 | 705 / 374 | 24.3 | 25.4 | 24.7 |
+| KH-9 mapping | 6.4 | 2.8 | 2.6 | 3.4 | 1,225 / 544 | 19.2 | 19.5 | 19.4 |
+
+Ground metres. Film columns split pairs' squared RMS (three-cornered hat, as above: it flatters the panoramic frames); S2 held out is 3.2 km blocks, 900 m buffer, 5 seeds, every gated tile, scored on raw Sentinel-2 before any RANSAC, to the 100 m line. The poly3 column is the same reading as the table above, and the control reproduced `deep.json` exactly.
+
+- **Reference error local to a place barely moves the map.** "Place cleaned" takes each tile's reference error from at least 3 other frames' residuals there, never a frame's pair partner (77 % of tiles at the median, 37 % at worst): the 52 pairs go 6.51 to 6.38 m RMS, 38 better, the same pass stays 3.45 m. S2 held out moves 0 to 1.5 m. It stands in for the best a reference could do about S2 texture and change together, and it cannot run on a city's first frame.
+- **Tile noise from the reference is a small part of what the film ruler reads.** Adding more of each frame's own residuals and extrapolating to none (SIMEX, 12 draws): 6.51 m goes to about 6.25 m on a straight line (68 % of pairs resampled: 6.0 to 6.5). The curve is concave under the 25 m narrowing, so the first step's slope gives about 5.4 m: read it as 5.4 to 6.25 m. So the rest, 5 m and more on a pair, is the films' own tile noise and what a cubic does not hold, and no reference fixes that. First try by dropped blocks failed and is not used: intercept zero, and one seed read 16 m. **poly3 can run away when coverage has holes.**
+- **But a worse image costs tiles, and tiles matter.** Noise correlated at about 30 m through the product's own `measure`: at 0.25 of the image's standard deviation the gate keeps 44 to 63 % of the tiles and the pairs go 6.46 to 7.67 m, F040 5.7 to 8.6 m, the same pass 3.24 to 9.95 m. At 0.5 it keeps 8 to 18 %: 29.5 m. poly2 holds up better there (10.24, 10.78, 16.03 m). The steep part is the leverage of a cubic on few tiles. So the likely gain of a cleaner reference is **more tiles on weak frames and a safer cubic, not a lower figure on strong ones**. That the noise goes in does not say a median takes it out: only real scenes can.
+- **What this ruler cannot say:** a median's main claim is on absolute position, a scene's registration, and every frame shares that. Published Collection-1 figures (below 8 m CE95 absolute, below 5 m multi-temporal, see *The measuring stick*) are about 4.6 and 2.9 m RMS for a circular normal, worked out here, not measured; a median can reduce the second and not the first, which all scenes share with the Global Reference Image.
+- **Poly3 on the blind ruler again:** F003, F022, A015, A038 and F049 gain 3.4 to 4.9 m held out against Sentinel-2, F007, F040, A001 1 to 2 m, F006 loses 0.4 m (its median gains), **KH-7 and KH-9 mapping lose 1.1 and 0.3 m**. So a cubic per camera, not everywhere. It stays the owner's decision (§13).
+
+**Checks:** a rematch through `measure` from the product's map, unnoised, gives the same tiles within 2 % (KH-9 mapping 1,225 against 1,233, A001 1,199 against 1,180) and 6.46 m against 6.51 m. Known answers: five scenes' shifts found within 0.03 cells; OSM's channel through the ruler's match -17.9, -10.4 m (true -17.5, -10.5); the terrain step removes a synthetic relief exactly, first full-sweep frame. These test code, not sources: **OSM's channel, the median and the DEM have never seen real data.**
+
+**Cost, 4 CPU, machine shared, no network:** a rematch 7 to 30 s a frame (the film's read 1 to 6 s, `measure` 6 to 25 s), 1.5 to 2.3 GB, on a reference it already holds; a median of five whole 4,275 x 4,116 scenes 11.3 s, 2.0 GB (synthetic content); a refit under a second, 0.16 GB.
+
+**Any city on Earth, metadata only** (STAC search, HEAD of a DEM tile, Overpass counts; no pixels read; 40 km window, the last 3 years, under 20 % cloud, items per December, March, June, September quarter):
+
+| City | S2 items by quarter | Single item's box covers, any quarter | COP-DEM tile, MB | OSM ways, rail / major road |
+| --- | --- | --- | --- | --- |
+| Bucharest | 49, 47, 178, 87 | yes | 44 | 1,289 / 7,225 |
+| Lagos | 14, 0, 0, 4 | yes, 2 quarters empty | 28 | 124 / 2,096 |
+| Manaus | 5, 6, 53, 21 | yes | 45 | 0 / 1,298 |
+| La Paz | 26, 104, 283, 120 | no, mosaic | 33 | 55 / 3,817 |
+| Almaty | 61, 104, 113, 123 | no, mosaic | 39 | 838 / 3,531 |
+| Jakarta | 4, 37, 122, 32 | no, mosaic | 46 | 1,349 / 12,935 |
+| Reykjavik | 21, 43, 26, 44 | yes | 21 | 0 / 2,139 |
+| Ushuaia | 3, 14, 12, 7 | yes | 28 | 0 / 367 |
+| Kinshasa | 3, 8, 29, 13 | yes | 43 | 84 / 990 |
+| Longyearbyen | 0, 247, 278, 35 | no, mosaic | 11 | 0 / 0 |
+
+- **Median of scenes: possible as a default,** with whatever dates a window has, 2 to 5, from the mosaics the product already builds; the number of scenes is the city's. Sentinel-2 systematically covers land from 56 S to 82.8 N. Free, full and open with attribution. **Below two usable scenes it must fall back to one.**
+- **Season closest to the frame: a preference, not a rule.** Lagos has no scene under 20 % cloud in 2 quarters of 4 in three years. And the frames' dates are not on these machines, so the season's effect has no reading here; F040, the winter frame, reads worst on the product's film and held-out figures, n = 1. `s2-bucharest.tif` is most likely `S2C_35TMK_20260817_0_L2A` (August, baseline 05.12): `fetchref.py`'s query, run again, picks it, not proved from its pixels.
+- **OSM as a second channel: optional, gated per window.** Rail is absent from four windows of ten, and Longyearbyen has no major road; quality is not read by any count. Licence ODbL: public use must credit OpenStreetMap. Whether a published table of tiles measured against OSM would be a Derivative Database has **no source here**: keep such rows internal until the owner has asked.
+- **Copernicus DEM: possible for any city, and where it matters is not here.** GLO-30's licence is worldwide and free, requires its notice (`produced using Copernicus WorldDEM-30 ...`), and must be accepted: **that is the owner's consent.** The AWS copy lists a small set of unreleased tiles; two catalogues disagree on whether Armenia and Azerbaijan remain among them, and GLO-90 is the worldwide fallback. Bucharest bounds it at 5.6 m on A001. La Paz's relief, at the arithmetic of hundreds of metres times tan 0.5, would be tens to hundreds of metres, which no polynomial can hold: **a poly fit there may not prove at all, not measured.** A short film's scan angle needs its corners; KH-7 and mapping have no such model in the ruler.
+- **WorldCover:** global, 10 m, CC BY 4.0, 2021: it could name stable land cover where the shared term sits. Not fetched.
+
+**Sources:** [Sentinel-2 coverage](https://sentiwiki.copernicus.eu/web/s2-mission), [Copernicus Sentinel licence](https://ads.atmosphere.copernicus.eu/licences/ec-sentinel), [COP-DEM GLO-30 licence](https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/DEM/resources/license/License-COPDEM-30.pdf), [its AWS copy](https://registry.opendata.aws/copernicus-dem/), [OSM attribution guideline](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines), [WorldCover](https://developers.google.com/earth-engine/datasets/catalog/ESA_WorldCover_v200), [Collection-1](https://elib.dlr.de/197794/1/Collection1_IGARSS2023.pdf).
+
+### Frames together, a rigid stitch, and the join (2026-11-07)
+
+**Run:** `tools/acc-joins.py`, `acc-joins-bundle.py`, `acc-joins-stack.py`, `acc-joins-align.py`, `acc-joins-export.py`, `acc-joins-cost.py`, `acc-joins-report.py` on the NUC, copies and outputs in `reports/calib/accuracy/joins/` (not tracked). The 11 Bucharest frames are the same as in *The measuring stick*. They come from three cameras (KH-9 pan from eight missions, KH-7 1966, KH-9 mapping 1978) and include the August 1972 pair F006 and F007. Nothing in the product changed. `align` was run as the product's own functions and GDAL warps, with a stub for the job only.
+
+**The ruler, held out:** 3.2 km blocks, 5 folds and 5 seeds, the same blocks over Sentinel-2 tiles and film ties, and no training tile of either kind within 900 m of a held one. Scoring is up to the 100 m line, before any RANSAC. A tie weighs 9 against a Sentinel-2 tile (12 m against 4 m), and both kinds narrow to 25 m. Both were fixed before any reading. The weights 1, 3 and 27 move the film ruler by 0.02 m at most, but not the Sentinel-2 figure: it reads 22.03, 22.06 and 23.74 m.
+
+| Over the 52 pairs, blocked (seeds' range) | Film ruler | Same pass, never fitted | S2 held out, RMSE over frames (median) |
+| --- | --- | --- | --- |
+| The product's recipe, refitted per fold, poly2 | 14.90 (14.5-15.6) | 23.98 | 24.94 (14.8) |
+| Each frame alone, all S2 tiles, poly2 / poly3 | 14.62 / 9.80 (8.3-11.8) | 22.42 / 17.09 | 24.83 / 22.66 (14.8 / 11.7) |
+| All frames together, poly2 / poly3 | 9.13 / **6.02** (5.9-6.2) | 5.14 / **4.69** | 25.37 / 22.28 (15.1 / 11.2) |
+| Together, poly3, segments rigid | 5.98 | 3.95 | 22.26 (11.2) |
+
+- **Together beats any one frame on the film ruler:** poly3 together is better than poly3 alone on all 52 pairs. With every tile and only the scored pair's ties left out (not blocked), pairs read 6.51 m alone and 5.61 m together, and the same pass 3.46 and 3.24 m. **Against the reference it barely moves:** 22.66 to 22.28 m RMSE, a median of 11.7 to 11.2. KH-9 mapping reads 19.5 to 19.8 and A038 16.4 to 16.9, so the absolute place is not shown to improve.
+- **Per frame, film ruler, blocked (recipe, alone poly3, together poly3):** F006 16.0, 12.2, 6.9; F007 12.0, 8.6, 5.8; F040 21.6, 13.1, 5.8; A001 13.1, 10.4, 7.4; F003 13.7, 7.9, 5.0; F022 13.9, 9.2, 6.8; A015 14.2, 9.0, 6.0; A038 14.8, 8.7, 5.1; F049 12.6, 7.9, 5.0; KH-7 17.1, 12.1, 6.7; KH-9 mapping 12.9, 7.8, 5.2. Real warps of one seed's five folds read the first-order figures again, within 0.05 m: 11.86 for alone, 6.23 together, 6.17 rigid.
+- **Two frames get most of it.** For a pair adjusted alone, as a join would be, poly3 reads 10.02 to 6.27 m on itself and 8.76 to 8.11 m against frames that took no part (50 of 52 pairs better). S2 reads 21.87 to 21.61 m (43 better). In poly2 the pair reads 14.66 to 9.36 m on itself, but only 39 of 52 pairs improve against others, and the pair's S2 gets worse (24.32 to 24.55). Random groups of 2, 3, 5, 8 and 11 frames read 5.8, 5.9, 5.5, 5.9 and 5.9 m inside the group.
+- **A frame with no Sentinel-2 tile of its own,** placed only through its ties, reads its own S2 tiles within 0.7 m of the frame fitted on them, or better: F006 25.7 against 26.6, KH-7 24.2 against 25.7. Other frames' S2 tiles at the same places share the reference's noise, but a cubic averages it.
+- **Where no tile measured:** 99.5 to 100 % of each frame's part of the window lies within 1 km of a tile or a tie. In the rest the cubic together lies 6 to 23 m (RMS) from the product's map.
+
+**A stack of dates** is the mean of the frames' matching filter, with the frames warped through the cubic together. Against one other film it halves the tile noise: 2.1 to 5.0 m against 3.9 to 5.7 m, with peaks 0.47 to 0.69 against 0.37 to 0.50. Against Sentinel-2 it hardly helps: missions 1213 to 1216 read 10.4 m against 11.8 to 12.7 m for its frames, and all frames 12.6 m. The early group, whose frames barely overlap, reads 18.7 m. More tiles pass (1,845 against 325 to 1,061). **Most of a tile's noise against Sentinel-2 is on the reference's side, or in what changed since, and a stack of films cannot remove it.**
+
+**Stitch: the segments are turned, not only shifted.** On all 72 measured seams, each overlap is a rigid motion within 0.43 px (half the tiles train, the other half score). `stitch`'s translation leaves 6.05 px, and the turns are 0.48 mrad at the median and 4.8 at most. On the eight seams inside a crop, a rigid join takes the overlap from 0.6-6.7 m to 0.13-0.46 m, and its worst tile from 12.7 m (A015) to 0.94 m. **On the map the gain is small:** within 3 km of a seam, real warps of the cubic together read F049 5.14 to 4.69 m, F003 5.72 to 5.54, F007 6.89 to 6.54, A015 10.93 to 10.75, A038 3.82 to 3.66, F040 4.29 to 4.20. F006 reads 8.51 to 8.68 and F022 11.68 to 11.80. Over all pairs it is 6.02 to 5.98, and the same pass 4.69 to 3.95 (3.24 to 2.81 with every tile). It costs 0.6 s and 0.7 GB a seam on 4 CPU.
+
+**What `warp` and `align` read is not the fitted map.** Both hand GDAL the points with `-order 2`, and GDAL fits its own place-to-pixel polynomial, separate from the fit's pixel-to-place one. Under the crop, that reverse lies from the fit by 0.0 to 0.6 m on F006, F007 and the mapping frame. It lies 8.5 to 13.2 m RMS (27 to 53 m at most) on F003, F022, A001, A015 and KH-7. A real warp of F003 at its maxzoom, through the saved points, reads 10.0 m against its own fit (2,991 tiles). Over the 52 pairs the warps through GDAL's reverse read 10.88 m against 10.82 m through the fit: 25 pairs better, 27 worse, by up to 5.7 m. **So every figure so far is of the fit, not of the published layer, and the two differ by about 10 m on half the frames.** Exported fits:
+
+| Through GDAL, reverse against the fit, cubic together, RMS over frames (worst) | 12 x 12 points | 17 x 17 (289: `MAX_GCPS` is 300) | 25 x 25 |
+| --- | --- | --- | --- |
+| `-order 2`, today's | 9.47 (69 m) | | 9.18 (76 m) |
+| `-order 3` | 0.95 (6.1 m) | 0.92 (6.9 m) | 0.90 (7.5 m) |
+| `tps` | 1.42 (18.7 m) | 0.58 (10.1 m) | 0.22 (5.8 m) |
+
+A real warp of F003, the cubic together, at 1.19 m, outputs bounded to the window, 4 CPU on a shared machine, against the map it should show: `tps` 17 x 17 0.39 m in 170 s, 25 x 25 0.13 m in 314 s, 40 x 40 0.11 m in 552 s. `-order 3` gives 0.80 m in 55 s, and the saved points with `-order 2` 10.0 m in 57 to 71 s, all at 4.4 to 5.1 GB. In the fold warps, the cubic together through 25 x 25 `tps` reads 6.23 m, the same as its exact inverse. Poly2 together through a 25 x 25 lattice and `-order 2` reads 16.33 m against 9.08 m exact.
+
+**The join (`align`, real), the four that have two parts.** The seam is read three ways: `align`'s own figure, the ruler's 450 m tile (as the same pass's) or 900 m tile within 1.5 km of the seam, and each part against the nine frames that took no part, within 6 km. "Third party" figures are unseen only for the product's points and the pair-only fits: frames-together fits saw those frames' ties.
+
+| Join | Variant | `align` samples, own before / after | Gap, 900 m tile (450 m) before / after | Third party, each part, before / after | s, 4 CPU |
+| --- | --- | --- | --- | --- | --- |
+| F006 + F007, Aug 1972 | product | 27, 8.7 / 1.3, moved 14.2 m | 450 m: 12.6 / 3.2 | 10.6 / 10.8, 9.9 / 9.2 | 17-27 |
+| | pair, poly3 as 25 x 25 `tps` | 26, 4.1 / 2.5, moved 2.1 m | 450 m: 3.4 / 2.5 | 8.7 / 8.7, 8.2 / 8.2 | 55-66 |
+| F003 + F022, two dates | product | 3, not measured | 8.6 | 8.7, 9.6 | 11 |
+| | ruler's ties fed to `align`'s model | 236, held tiles 7.8 / 5.9 | 8.6 / 7.1 | 8.6 / 8.5, 9.5 / 9.3 | 12 |
+| | pair, poly2 / poly3 | not measured | 12.1 / 6.5 | 9.8, 15.6 / 8.4, 9.6 | 10 / 78-86 |
+| F040 + F049, winter and 1214 | product | 5, not measured | 6.8 | 11.8, 9.0 | 9-13 |
+| | ruler's ties | 198, held 6.3 / 3.4 | 6.8 / 4.0 | 11.7 / 11.1, 9.0 / 9.1 | 16 |
+| | pair, poly2 / poly3 | not measured | 5.3 / 3.4 | 9.7, 9.2 / 8.2, 7.9 | 12 / 64-66 |
+| F007 + KH-7, 1966 | product | 2, not measured | 14.3 | 8.7, 13.5 | 9 |
+| | ruler's ties | 163, held 12.5 / 11.2 | 14.3 / 14.8 | 8.7 / 9.0, 13.5 / 13.3 | 17 |
+| | pair, poly2 / poly3 | not measured | 14.9 / 4.2 | 8.8, 15.1 / 7.4, 8.1 | 13 / 62-64 |
+
+Every run peaked at 1.4 to 2.0 GB.
+
+- **`align`'s seam correction works only within one pass.** Across dates and cameras, its 450 m tile at peak 0.5 finds 1 to 5 of about 25 samples, and the seam stays as it was: 6.8 to 14.3 m on the 900 m tile. On the same pass it closes what it sees (8.7 to 1.3 m) and leaves the parts where they were on the ground: 10.6 to 10.8 and 9.9 to 9.2 m against the other frames.
+- **The ruler's ties fed to the same model measure every seam,** with 163 to 236 samples. Held tiles read 7.8 to 5.9, 6.3 to 3.4 and 12.5 to 11.2 m, and the 900 m gap 8.6 to 7.1 and 6.8 to 4.0 m, but 14.3 to 14.8 m on KH-7. Third parties stay within 0.6 m, so this closes a seam and places nothing.
+- **The pair fitted together in poly3 closes more and places better:** gaps 6.5, 3.4 and 4.2 m with nothing for `align` left to move (2.1 m on the same pass), and third parties better by 0 to 5.4 m (KH-7 13.5 to 8.1). **In poly2 it is worse than the product** on two joins of three: F022 9.6 to 15.6, KH-7 13.5 to 15.1.
+- **KH-9 mapping with any KH-9 pan frame is not a join:** the mapping frame is deeper everywhere, so `align` leaves the panoramic frame out. A frames-together fit is the only way they share anything.
+- **Not run:** a whole job (`georef` writing points, `warp`, `merge`). The 625 `tps` points here are over `MAX_GCPS` (300): the 289-point lattice was read through GDAL, but `align` did not run on it. Nor was any other city run. The ties are the ruler's own, measured through the product's map, and a frames-together fit has not been through `prove`.
+
+**Cost, 4 CPU, NUC shared:** two frames warped and read on the film ruler take 6.3 s and 1.3 GB. All 52 pairs from warps already made take 48 s. The solve takes 0.05 s for 2 frames and 0.55 s for 11. A rigid seam takes 0.6 s, and all 13 of F006's 2.8 s, 0.7 GB.
+
+### Matching variants on the ruler (2026-11-08)
+
+**Run:** `tools/acc-matching.py` (rows), `acc-matching-score.py` (rulers), `acc-matching-batch.py` on the NUC, copies and every score in `reports/calib/accuracy/matching/` (not tracked); `pipeline/src` unchanged. The 11 Bucharest frames (KH-9 pan of seven dates, KH-7, KH-9 mapping) through their product maps onto the reference's 10 m lattice; every variant matched every tile there, before any gate, and **each variant's gate was set on a wrong-place null (tiles 2.1 km off) to the product gate's own false-accept share, 1.4 %**: the product's 0.2 peak would let 32 % of null tiles through at 450 m tiles and 0.1 % at 1,350 m. Readers: the product's pairs (`choose`, poly2, about 100 pairs), the same with poly3, and poly3 on every gated tile. The judge is the film ruler (52 pairs, first-order, checked by real warps on 4 pairs within 0.16 m), with a leave-one-frame-out standard error; beside it Sentinel-2 tiles of the base matcher held out in blocks (fixed for every variant), the variant's **own** blocked figure, tile noise read film against film ((r_a - r_b) - d, which cancels the reference and the maps) and what frames share at a place. Control: the saved rows read 10.81 / 6.51 m, the ruler's own 10.8 / 6.5.
+
+| Variant | Tiles | Pairs, poly2 | Pairs, poly3 | All tiles, poly3 (52 pairs better) | Same pass | S2 held out | Own figure | Tile noise | Shared | 4 CPU, f003 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Product matcher | 11,639 | 11.14 | 8.58 | 6.45 | 3.4 | 21.7 | 21.7 | 12.0 | 12.3 | 4.8 s |
+| **Orientation (double angle, structure tensor)** | 19,860 | 9.97 (-1.17 +- 0.95) | 7.06 (-1.52 +- 0.51) | **6.01 (-0.44 +- 0.17, 46)** | 3.5 | 21.4 | 12.3 | 7.4 | 6.3 | 5.0 s |
+| the same on a 7 m lattice | 21,292 | 10.00 | 6.72 | 5.87 (-0.58 +- 0.19, 50) | 2.7 | 21.3 | 11.0 | 7.0 | 5.4 | |
+| the same, 1,350 m tiles | 24,995 | 10.35 | 6.66 (-1.92 +- 0.64) | 5.93 (-0.52, 49) | 3.7 | 21.5 | 8.3 | 6.1 | 4.4 | 5.8 s |
+| Change mask from the other half's films | 16,847 | 10.51 | 7.97 | 6.12 (-0.33 +- 0.12, 45) | 3.5 | 21.4 | 16.3 | 9.6 | 8.8 | 7.5 s |
+| Phase correlation, raw grey | 11,039 | 10.51 | 6.88 (-1.70 +- 0.64) | 6.19 (-0.26 +- 0.18) | 3.3 | 21.3 | 14.3 | 8.8 | 5.6 | 3.6 s |
+| 1,350 m tiles | 17,018 | 10.94 | 7.61 (-0.97 +- 0.39) | 6.42 | 6.4 | 21.6 | 16.8 | 10.6 | 8.9 | 4.7 s |
+| Median of five scenes | 12,262 | 11.77 | 9.37 | 6.76 (+0.31) | 4.5 | 22.0 | 19.9 | 11.7 | 11.4 | 4.4 s |
+| Mutual information (search 100 m) | 6,257 | 11.31 | 10.14 | 7.12 (+0.67) | 6.6 | 21.8 | 21.0 | 12.2 | 9.3 | 30.7 s |
+| 450 m tiles | 19,346 | 11.81 | 10.13 | 6.95 (+0.50) | 5.8 | 21.5 | 29.9 | 16.1 | 18.3 | |
+| Strong tiles only (peak 0.3) | 5,532 | 12.20 | 9.84 | 8.01 (+1.57) | 5.3 | 21.7 | 14.6 | 6.6 | 8.8 | |
+
+Ground metres, RMS over pairs; brackets: change against the product matcher, its leave-one-frame-out error, pairs better. Per frame, poly3 on all tiles, product matcher to orientation: F006 6.7 to 6.6, F007 6.4 to 5.8, F040 7.1 to 6.1, A001 7.9 to 7.5, F003 5.6 to 5.0, F022 6.9 to 6.5, A015 6.3 to 6.1, A038 5.5 to 5.2, F049 5.5 to 5.0, KH-7 7.2 to 6.7, KH-9 mapping 5.5 to 5.1; through the product's poly2 pairs F040 14.6 to 10.2, A038 11.6 to 9.1, KH-7 12.4 to 12.2.
+
+- **Only orientation lowers the true error everywhere, and less than its own figure says.** It wins in both halves of the frames and on every sensor (pan pairs -0.47, KH-7 -0.44, KH-9 mapping -0.35 m), and real warps agree (F040 with KH-9 mapping 5.32 to 4.89 m). Its own blocked figure falls 9.4 m, the ruler 0.4 m (1.5 m with about 100 pairs): **the tile is twice as good, the map a little, because a map already averages thousands of tiles.** What remains is the camera and the shared world, not the match.
+- **Much of the shared "place" term was the matcher's:** 12.3 to 6.3 m with orientation, which ignores which side of an edge is bright. Read on survivors, so a bound, not a split.
+- **Lowers the fit figure, not the error:** larger tiles alone (1,800 m own 13.9, ruler +0.26), strong tiles only, weights by peak (+0.11 to +1.55), tiles chosen by land cover or texture. **Neither:** sub-cell methods (|change| 0.1 m or less; on a known shift no method is biased over 0.06 m except a cubic upsample, 0.2 to 0.4 m), an upsampled reference with the same blur, the start from the cubic.
+- **Worse on the ruler:** mutual information, phase correlation on the filter, raw, high-passed or locally normalised grey, any shadow filter (closing +0.55, opening +0.26, log +0.16), masking vegetation (+2.88) or WorldCover cropland (+0.59) or trees (+1.44), a median of five scenes (+0.31, its same pass 4.5), a single other date (-0.11 to +0.36, none clear). The change mask helps a little (-0.33, only pairs inside a half, so no frame judged its own mask) and adds nothing to orientation (5.97).
+- **Not a finding:** the coarse-to-fine matcher read 42 to 100 m on the same pass: an implementation fault, excluded. About 70 variants were read; orientation's 2.6 standard errors is replicated across halves and sensors, the spread among its own tweaks is not.
+- **Cost, 4 CPU, f003 / KH-7 / KH-9 mapping, one round:** product 4.8 / 2.2 / 5.3 s, orientation 5.0 / 3.4 / 6.4 s, main process 1.2 to 2.0 GB (workers not captured); the change mask needs the other frames warped (+3 to 5 s); mutual information 31 / 20 / 43 s; a 5 m lattice 18 / 9 / 22 s and 2.9 to 5.0 GB.
+- **Sources:** scenes and ESA WorldCover 2021 were already in `~/hcm-calib/ref` (provenance with sha256 in `ref/provenance.json`); this phase downloaded nothing. Copernicus Sentinel data: free, full and open, with attribution. WorldCover: CC BY 4.0, "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium" ([data access](https://esa-worldcover.org/en/data-access); Zanaga et al. 2022, doi 10.5281/zenodo.7254221). No Mapbox Satellite, no `fostulbucuresti` resource.
 
 ## 15. Server and admin, as built (2026-11-06)
 

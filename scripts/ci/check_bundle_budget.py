@@ -103,7 +103,10 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # 2026-10-23), the georeferencer (14.0 KB) and the layer editor's Crop (`layer-geometry`, 1.9 KB), each the measurement
     # plus about 20 %, under the contract's ceilings of 30, 30 and 8 KB.
     "imagery": 18,
-    "georef": 17,
+    # The georeferencer: 17 until 2026-11-08, 18 since, the owner's decision (DECISIONS-for-review.md §110): M15's terrain map and the
+    # merge of the accuracy track into M16 measure 17,160 bytes gzip with Snap my points and the published maps already moved to the
+    # lazy `georef-extras` chunk.
+    "georef": 18,
     "layer-geometry": 3,
     # M4's order card (`packages/ui/src/admin/imagery/orders/lazy-card.ts`), fetched the first time a scene that must be
     # bought opens, so the Imagery area stays within its budget with the buy flow: 1.7 KB measured on 2026-10-24 plus about
@@ -196,6 +199,10 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # M16 (docs/research/M16-recalibrate.md §7): a version's Calibrate again block and a recalibration's figures, fetched only on a page
     # that offers or shows them: 0.8 KB measured on 2026-11-08 plus about 20 %, rounded up. No row rose.
     "recalibrate-card": 2,
+    # The georeferencer's lazy chunk (`packages/admin/src/georef/georef-extras.ts`, fetched by `extras.ts`): the map a camera's lattice
+    # or a frame over terrain publishes (M15) and Snap my points (M16), out of the `georef` chunk (18 KB since §110): 1.0 KB measured
+    # on 2026-11-08 plus about 20 %, rounded up (DECISIONS-for-review.md §110).
+    "georef-extras": 2,
 }
 # The entry and every chunk together. 620 until M7 (2026-11-02), 630 since: the total counts every lazy chunk, also those
 # loaded only on use, and M7's `worker` chunk (5.5 KB, loaded only by the Jobs page, the pipeline card and a version page)

@@ -32,4 +32,12 @@ export const M9_EXPORTS = [
     // A photo's date to the day (docs/research/photo-date-source.md).
     'formatPhotoDate',
     'monthNames',
+    // M15 (`docs/research/M15-calibration-accuracy.md`, *Joint solve*): the frames a fit was joined to.
+    'ALIGNMENT_MAX_PARTNERS',
+    'ALIGNMENT_STATUSES',
+    'alignedWith',
+    'calibrationAlignmentSchema',
+    // M15, *Terrain*: the notice a layer fitted over the Copernicus DEM carries, and its map as the layer shows it.
+    'DEM_ATTRIBUTION',
+    'terrainTransform',
 ] as const;

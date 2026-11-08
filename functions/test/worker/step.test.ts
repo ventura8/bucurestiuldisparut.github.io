@@ -136,9 +136,22 @@ describe('worker.step get and list', () => {
         await expect(step(world, { op: 'list', collection: LOGS })).resolves.toEqual({ ids: ['000000', '000001'] });
     });
 
+    it('happyPath_aFrameBeingJoinedListsAndReadsTheCitysVersionsButWritesNone @S-A62-HAPPY-HELD-FRAMES', async () => {
+        const world = await held();
+        await seedVersion(world, 'v-1972', processingVersion({ layerId: 'l-1972', jobId: 'v-1972' }));
+        const path = FIRESTORE_PATHS.layerVersion(CITY, 'v-1972');
+
+        await expect(step(world, { op: 'list', collection: FIRESTORE_PATHS.layerVersions(CITY) })).resolves.toEqual({
+            ids: [JOB, 'v-1972'].sort((a, b) => a.localeCompare(b)),
+        });
+        await expect(step(world, { op: 'get', path })).resolves.toMatchObject({ data: { layerId: 'l-1972' } });
+        expect(await codeOf(update(world, path, { state: 'failed' }))).toBe('apiError.worker.refused');
+    });
+
     it.each([
         ['another job', FIRESTORE_PATHS.job(CITY, 'j-other')],
         ['another city', FIRESTORE_PATHS.city('bacau')],
+        ["another city's versions", FIRESTORE_PATHS.layerVersions('bacau')],
         ['the setup', FIRESTORE_PATHS.setupStatus],
     ])('badPath_%sIsOffTheAllowList @S-A62-BAD-NOT-HOLDER', async (_name, path) => {
         const world = await held();

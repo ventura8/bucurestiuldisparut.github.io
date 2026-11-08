@@ -240,3 +240,146 @@ test('Pairs in a line are refused', { tag: '@S-A16-BAD-DEGENERATE' }, async ({ p
     await expect(page.getByRole('button', { name: georefText(lang, 'adminContent.georef.save') })).toBeDisabled();
     await expectStateSound(page, adminVisit('georef.degenerate', lang));
 });
+
+/** A figure as the georeferencer writes it (one decimal at most). */
+function metres(lang: 'ro' | 'en', value: number): string {
+    return new Intl.NumberFormat(lang, { maximumFractionDigits: 1 }).format(value);
+}
+
+test(
+    "A fitted version opens on its own figures; edited pairs are said to be a refit that saving makes the version's map",
+    { tag: ['@S-A16-HAPPY-VERSION-FIGURES', '@S-A16-BAD-EDIT-REFITS'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        test.setTimeout(240_000);
+        const imagery = await readyImagery(
+            { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
+            adminWorld.accounts.owner.uid,
+        );
+        // A KH-9 pan frame mapped by its camera (M15): the version stores the camera's figures and residuals, and its lattice.
+        await imagery.script({ attempts: [{ outcome: 'over', lattice: true }] });
+        const versionId = await importFromList(page, lang, 'DS1035-1057DA023');
+        await expect(versionState(page, lang, 'adminContent.imagery.version.awaitingApproval')).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        const stored = (await imagery.version(versionId))?.['georef'] as {
+            fitRmseM: number;
+            checkpointRmseM: number;
+            checkpointCount: number;
+            lattice?: { nodes: unknown[] };
+        };
+        expect(stored.lattice?.nodes).toHaveLength(289);
+        await detail(page)
+            .getByRole('link', { name: imageryText(lang, 'adminContent.imagery.openGeoref') })
+            .click();
+        await georeferencerReady(page, lang);
+
+        // Unedited: the figures the version page shows, not a refit of the pairs.
+        const fit = georefText(lang, 'adminContent.georef.fit', { rmse: metres(lang, stored.fitRmseM) });
+        const checks = { rmse: metres(lang, stored.checkpointRmseM), count: String(stored.checkpointCount) };
+        const refitted = page.getByText(georefText(lang, 'adminContent.georef.refitted'));
+        await expect(errorsLine(page)).toContainText(fit);
+        await expect(errorsLine(page)).toContainText(georefText(lang, 'adminContent.georef.checkpoint', checks));
+        await expect(refitted).toHaveCount(0);
+
+        // A pair left out of the fit: every figure is a refit through the pairs, and the page says so (S-A16-BAD-EDIT-REFITS).
+        await pairRows(page, lang).first().getByRole('checkbox').uncheck();
+        await expect(refitted).toBeVisible();
+        await expect(errorsLine(page)).not.toContainText(fit);
+        await expectStateSound(page, adminVisit('georef.refitted', lang));
+
+        // Discard: the version's own figures again.
+        await page.getByRole('button', { name: georefText(lang, 'adminContent.common.discard') }).click();
+        await expect(errorsLine(page)).toContainText(fit);
+        await expect(refitted).toHaveCount(0);
+    },
+);
+
+test(
+    "The georeferencer's lazy chunk that cannot be fetched is said in words, and the page keeps working",
+    { tag: ['@S-A16-BAD-TERRAIN-CHUNK', '@S-A89-BAD-SNAP-CHUNK'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream, consoleErrors }) => {
+        test.setTimeout(240_000);
+        const imagery = await readyImagery(
+            { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
+            adminWorld.accounts.owner.uid,
+        );
+        await imagery.script({ attempts: [{ outcome: 'over', lattice: true, terrain: true }] });
+        // The map a lattice or terrain publishes and Snap my points are the chunk `georef-extras` (DECISIONS-for-review.md §110):
+        // offline, or a deploy replaced it, its fetch fails.
+        await page.route('**/georef-extras-*.js', (route) => route.abort('internetdisconnected'));
+        const versionId = await importFromList(page, lang, 'DS1035-1057DA023');
+        await expect(versionState(page, lang, 'adminContent.imagery.version.awaitingApproval')).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        const stored = (await imagery.version(versionId))?.['georef'] as { fitRmseM: number };
+        await detail(page)
+            .getByRole('link', { name: imageryText(lang, 'adminContent.imagery.openGeoref') })
+            .click();
+
+        // The snackbar says the version's map did not load; its figures still show and the preview is the pairs' fit.
+        await expect(page.getByText(georefText(lang, 'adminContent.georef.mapUnavailable'))).toBeVisible();
+        await georeferencerReady(page, lang);
+        await expect(errorsLine(page)).toContainText(georefText(lang, 'adminContent.georef.fit', { rmse: metres(lang, stored.fitRmseM) }));
+        await expect.poll(async () => (await page.evaluate(warpedCornersInPage)).length).toBe(4);
+
+        // Snap my points: nothing is sent, the page says why and stays where it is (S-A89-BAD-SNAP-CHUNK).
+        await addPair(page, lang, landmark(0));
+        await page.getByRole('button', { name: georefText(lang, 'adminContent.georef.snap') }).click();
+        await expect(page.getByText(georefText(lang, 'adminContent.georef.snapUnavailable'))).toBeVisible();
+        await expect(page).toHaveURL(new RegExp(`#/georef/${versionId}$`));
+        // Chromium logs each aborted fetch of the chunk.
+        expect(consoleErrors.takeMatching(/georef-extras-/).length).toBeGreaterThan(0);
+    },
+);
+
+/** Runs in the page: the corners of the georeferencer's warped preview (`[longitude, latitude]`), none while it is not drawn. */
+function warpedCornersInPage(): [number, number][] {
+    interface StyleMap {
+        getStyle(): { sources: Record<string, { coordinates?: [number, number][] }> };
+    }
+    const map = (window as unknown as { __hcmE2e?: { maps: StyleMap[] } }).__hcmE2e?.maps.at(-1);
+    try {
+        return map?.getStyle().sources['hcm-picture-warped']?.coordinates ?? [];
+    } catch {
+        return [];
+    }
+}
+
+interface LatticeNode {
+    readonly geo: { readonly lat: number; readonly lng: number };
+}
+
+test(
+    'A frame fitted over terrain previews the map its layer shows, over its heights, beside its figures',
+    { tag: ['@S-A16-HAPPY-TERRAIN-PREVIEW'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        test.setTimeout(240_000);
+        const imagery = await readyImagery(
+            { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
+            adminWorld.accounts.owner.uid,
+        );
+        // A KH-9 pan frame over ground 100 m up that its film shows 50 pixels east (M15, *Terrain*): its lattice is the scan's own
+        // map, its RPC that map moved by the parallax.
+        await imagery.script({ attempts: [{ outcome: 'over', lattice: true, terrain: true }] });
+        const versionId = await importFromList(page, lang, 'DS1035-1057DA023');
+        await expect(versionState(page, lang, 'adminContent.imagery.version.awaitingApproval')).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        const stored = (await imagery.version(versionId))?.['georef'] as {
+            fitRmseM: number;
+            terrain?: unknown;
+            lattice: { nodes: LatticeNode[] };
+        };
+        expect(stored.terrain).toBeDefined();
+        await detail(page)
+            .getByRole('link', { name: imageryText(lang, 'adminContent.imagery.openGeoref') })
+            .click();
+        await georeferencerReady(page, lang);
+
+        // The figures the version stored, and the preview drawn in the box of the map its layer shows (its lattice: the scan's own
+        // map moved 50 pixels by the parallax); its quads read the scan through the RPC over the heights (georef-published.test.ts).
+        await expect(errorsLine(page)).toContainText(georefText(lang, 'adminContent.georef.fit', { rmse: metres(lang, stored.fitRmseM) }));
+        const west = Math.min(...stored.lattice.nodes.map((node) => node.geo.lng));
+        await expect.poll(async () => Math.min(...(await page.evaluate(warpedCornersInPage)).map(([lng]) => lng))).toBeCloseTo(west, 4);
+    },
+);

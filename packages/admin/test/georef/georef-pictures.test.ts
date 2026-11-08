@@ -129,6 +129,35 @@ describe('the georeferencer pictures', () => {
         expect(missing.scans.at(-1)).toEqual({ status: 'failed' });
     });
 
+    it('happyPath_picturesDecodedBeforeTheMapGoOnItOnceItIsReady', async () => {
+        const { handle, native } = await mapboxHandle();
+        let ready = false;
+        const overlays = new PictureOverlays(() => (ready ? handle.port : null));
+        const files = new FakeFiles();
+        const clock = new FakeClock();
+        const shown = new GeorefPictures({ files, pictures: new FakePictures(), clock, overlays, scan: () => undefined });
+        for (const path of [SCAN.previewPath, REFERENCE.osmPath]) {
+            files.put(path);
+        }
+        shown.load(version(), null);
+        shown.warp(fitted(), SCAN, 0.7);
+        clock.advance(WARP_DELAY_MS);
+        await settle();
+        expect([overlays.has(REFERENCE_PICTURE), overlays.has(WARPED_PICTURE)]).toEqual([false, false]);
+
+        shown.mapStatus('loading');
+        ready = true;
+        shown.mapStatus('ready');
+        await settle();
+
+        expect([overlays.has(REFERENCE_PICTURE), overlays.has(WARPED_PICTURE)]).toEqual([true, true]);
+        expect(native.sources.get('hcm-picture-warped')).toBeDefined();
+        shown.load(version({ id: 'v4', reference: null }), null);
+        shown.clear();
+        shown.mapStatus('ready');
+        expect(overlays.has(WARPED_PICTURE)).toBe(false);
+    });
+
     it('happyPath_clearingReleasesTheScanAndDropsALateOne', async () => {
         const { shown, files, clock, scans } = await setup();
         shown.load(version(), null);

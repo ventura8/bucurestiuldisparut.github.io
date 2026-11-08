@@ -50,6 +50,77 @@ export const pixelSchema = z.strictObject({
     y: z.number().min(0).max(MAX_SCAN_PIXELS),
 });
 
+/**
+ * The maps a pipeline fit stores as a lattice, which its pairs cannot rebuild: a KH-9 panoramic camera fitted on every tile (M15 §2),
+ * and a polynomial on every tile and film tie of a frame joined to the city's frames held still (M15, *Joint solve*).
+ */
+const LATTICE_MODELS = ['panoramic', 'polynomial'] as const;
+
+/** 17 x 17 nodes, as the pipeline samples them (`georef/lattice.py`): within 0.4 m of the map on a 40,000-pixel KH-9 crop. */
+const LATTICE_NODES = 289;
+
+/**
+ * M15 (`docs/research/M15-calibration-accuracy.md` §1): the fitted map sampled on a lattice over the scan, what the warp renders with
+ * a thin-plate spline. Nodes are not measurements: no editor, residual or checkpoint reads them, and saving points drops them.
+ */
+const latticeSchema = z.strictObject({
+    model: z.enum(LATTICE_MODELS),
+    nodes: z.array(z.strictObject({ pixel: pixelSchema, geo: latLngSchema })).length(LATTICE_NODES),
+});
+
+/** The twenty RPC00B coefficients of one rational polynomial (`pipeline/src/hcm_pipeline/georef/rpc.py`). */
+const rpcCoefficientsSchema = z.array(z.number()).length(20);
+
+const rpcAxesSchema = z.strictObject({
+    line: z.number(),
+    samp: z.number(),
+    lat: z.number(),
+    lng: z.number(),
+    height: z.number(),
+});
+
+/** The most cells a side of a frame's heights: a city window's surface at 300 ground metres a cell (`surface.py`). */
+const MAX_HEIGHT_CELLS = 1024;
+
+/**
+ * The surface's cells under a frame's scan (`pipeline/src/hcm_pipeline/georef/heights.py`): an EPSG:3857 grid from its north-west
+ * corner, `cell` metres a side, and each cell's decimetres above `baseDm`, row by row from the north, as little-endian uint16 in
+ * base64 (two bytes a cell).
+ */
+const heightsSchema = z
+    .strictObject({
+        left: z.number(),
+        top: z.number(),
+        cell: z.number().positive(),
+        columns: z.number().int().min(2).max(MAX_HEIGHT_CELLS),
+        rows: z.number().int().min(2).max(MAX_HEIGHT_CELLS),
+        baseDm: z.number().int(),
+        valuesDm: z.string(),
+    })
+    .refine(
+        (heights) => heights.valuesDm.length === 4 * Math.ceil((2 * heights.columns * heights.rows) / 3),
+        coded('validation.format', ['valuesDm']),
+    );
+
+/**
+ * M15, *Terrain*: a KH-9 panoramic frame fitted over the city's surface model (Copernicus DEM GLO-30, whose notice its layer carries).
+ * Whatever renders or shows it, the warp, a join and the georeferencer's preview, reads its map through `rpc` over `heights`;
+ * `reliefM`, what the terrain moved beyond what a second-order polynomial absorbs, ground metres RMS.
+ */
+const terrainSchema = z.strictObject({
+    source: z.literal('glo30'),
+    reliefM: z.number().min(0),
+    rpc: z.strictObject({
+        offset: rpcAxesSchema,
+        scale: rpcAxesSchema,
+        lineNum: rpcCoefficientsSchema,
+        lineDen: rpcCoefficientsSchema,
+        sampNum: rpcCoefficientsSchema,
+        sampDen: rpcCoefficientsSchema,
+    }),
+    heights: heightsSchema,
+});
+
 /** One ground control point. */
 export const gcpSchema = z.strictObject({
     /** Stable across edits (`g1`, `g2`, ... or the matcher's `a017`): the residual table's row and the markers' label. */
@@ -98,6 +169,10 @@ export const georefSchema = z
          * when the scan waits for the admin (`pipeline/src/hcm_pipeline/steps/georef.py`), so they never spoil the admin's fit.
          */
         weakCorners: z.boolean().optional(),
+        /** M15 §1: the nodes the warp renders a map through when its pairs cannot rebuild it; absent, the pairs' own fit renders. */
+        lattice: latticeSchema.optional(),
+        /** M15, *Terrain*: rendered through its RPC over the surface model; absent, flat. Saving points drops it with the lattice. */
+        terrain: terrainSchema.optional(),
     })
     .refine(
         (georef) => georef.method === 'embedded' || enabledGcps(georef.gcps) >= MIN_GCPS[georef.transform],

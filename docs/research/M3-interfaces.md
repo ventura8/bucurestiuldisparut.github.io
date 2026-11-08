@@ -212,8 +212,8 @@ Everything lives in the private bucket; tiles live at Mapbox; nothing of M3 is w
 | USGS delivery | `usgs-raw/{dataset}/{entityId}/{file}` (shared by every city) | 30 days (USGS is the archive; paid scans move to ARCHIVE in M4) |
 | browse copy | `usgs-browse/{dataset}/{entityId}.jpg` | kept |
 | a job's scratch | `work/{city}/{job}/{name}` (one or two segments: `segments/a.tif`, `frame.tif`, `fetch.checkpoint.json`, `warped.tif`) | 14 days; deleted on success and on cancel |
-| a version's files | `rasters/{city}/{layer}/{version}/{scan.tif, scan-preview.jpg, reference-osm.png, reference-s2.jpg, cog.tif, preview.png, studio.tif}` | kept while the version is current or pending; `imagery.tick` deletes those of versions rejected, cancelled, failed or superseded more than 30 days ago |
-| reference cache | `reference/{city}/s2/{key}.tif`, `reference/{city}/osm/{key}.geojson` | 90 days |
+| a version's files | `rasters/{city}/{layer}/{version}/{scan.tif, scan-preview.jpg, reference-osm.png, reference-s2.jpg, cog.tif, preview.png, studio.tif, align.tif}` (`align.tif`: a proved frame at 5 ground metres, M15 *Joint solve*) | kept while the version is current or pending; `imagery.tick` deletes those of versions rejected, cancelled, failed or superseded more than 30 days ago |
+| reference cache | `reference/{city}/s2/{key}.tif`, `reference/{city}/osm/{key}.geojson`, `reference/{city}/dem/{key}.tif` (M15 *Terrain*: the window's Copernicus DEM GLO-30, 30 m, averaged over 900 m) | 90 days |
 
 The pipeline spells the same paths (`hcm_pipeline.paths`), held equal by `pipeline/tests/contracts/paths.json` (done). The
 provisioner's `bucket-lifecycle` item applies `PRIVATE_BUCKET_LIFECYCLE` (CR-M3-6).
@@ -514,11 +514,11 @@ No new dependency (`DECISIONS-for-review.md` §46g): numpy, `opencv-python-headl
 | `inspect` (uploads) | opens the upload with GDAL; a geotransform or GCPs with a CRS → georeferenced (`method: 'embedded'`), else a scan; converts to 8-bit (one band, or three for colour) | the scan (`scan.tif`, `scan-preview.jpg`); for an embedded georeference the version's `georef: {method: 'embedded', transform: 'affine', gcps: []}` | `apiError.imagery.unreadableRaster` |
 | `locate` | where the frame lies, proved (M9) or bounded (§5.4): the frame's orientation among the eight rotations and mirrors, the initial transform from the corners, the city window ± 10 % cropped from the frame | `scan.tif`, `scan-preview.jpg` (long side `SCAN_PREVIEW_MAX_PX`), the version's `scan` and four `corner` GCPs | `apiError.imagery.referenceUnavailable` without a Sentinel-2 window; `apiError.imagery.cityNotFound` only when the frame does not reach the window under any orientation. A guess nothing confirms is no failure: a wider crop, and the admin's points (§5.4) |
 | `reference` | the window's Sentinel-2 L2A (§5.5) and OSM features, both cached; draws the georeferencer's two reference images | `reference/{city}/...`, `reference-s2.jpg`, `reference-osm.png`, the version's `reference` | `apiError.imagery.referenceUnavailable` (no item under 20 % clouds in three years, Overpass down after three tries) |
-| `georef` | automatic GCPs (§5.6) for a `usgs-import`; for a version that already holds the admin's points, the fit and residuals only | the version's `georef` (pairs, transform, `fitRmseM`, `checkpointRmseM`, `checkpointCount`) | too few pairs (also how a weak guess of §5.4 ends) → the job `awaiting_gcps`, the version `needs_gcps` with `apiError.imagery.noMatch {pairs}` (waits, not a failure); `apiError.imagery.degenerateGcps`; `apiError.imagery.gcpOutside` |
+| `georef` | automatic GCPs (§5.6) for a `usgs-import`; a proved frame is then fitted again with the city's accepted proved frames over it held still (M15 *Joint solve*, `steps/aligning.py`: film ties against each one's `align.tif`); a KH-9 pan frame over relief its camera shows is fitted over the city's surface model (M15 *Terrain*, `calibrate/terrain.py`, `steps/relief.py`) and stores `georef.terrain`, an RPC and the heights under its scan, which every reader of its map goes through (the warp, a join's part, the next frame's ties, the georeferencer's preview); for a version that already holds the admin's points, the fit and residuals only | the version's `georef` (pairs, transform, `fitRmseM`, `checkpointRmseM`, `checkpointCount`, the lattice), `calibration.alignment` | too few pairs (also how a weak guess of §5.4 ends) → the job `awaiting_gcps`, the version `needs_gcps` with `apiError.imagery.noMatch {pairs}` (waits, not a failure); `apiError.imagery.degenerateGcps`; `apiError.imagery.gcpOutside` |
 | `align` (`layer-join`, M8) | checks the scans and the disk, warps previews at z14, gives each z13 cell to the frame deepest inside itself, measures every seam on tiles (coarse, then fine), fits and shares a correction by each frame's error, tapered to nothing at 6 km, carried by TPS nodes, and measures again: a seam the correction did not help is refused | `work/{city}/{job}/join-plan.json`, `join-owner.tif` | `apiError.imagery.joinPartMissing`, `joinSeamTooFar`, `joinNoFrames`, `joinNoRoom` |
 | `merge` (`layer-join`, M8) | warps each used frame once from `scan.tif`, evens the tone along the seams, composes 4096 px blocks with normalised weights | `work/{city}/{job}/warped.tif`, the version's `join` | `apiError.imagery.processingFailed` |
-| `warp` | `gdalwarp` with the GCPs in EPSG:3857 metres (`-order 1`, `-order 2` or `-tps`), `-t_srs EPSG:3857`, the resolution of `maxzoom` (156543.03392804097 / 2^z m) on the tile grid, `-r bilinear`, an alpha band, `-cutline` (a GeoJSON of the closed ring) with `-crop_to_cutline` when the version has a crop | `work/{city}/{job}/warped.tif` | `apiError.imagery.unreadableRaster` |
-| `export` | an 8-bit COG (`-of COG -co COMPRESS=JPEG -co QUALITY=85 -co BLOCKSIZE=512 -co OVERVIEWS=AUTO`), an RGBA preview PNG of at most 2048 px, a JPEG-compressed GeoTIFF of at most `STUDIO_MAX_BYTES` (halved until it fits) for the Studio path, the valid area in km² | `cog.tif`, `preview.png`, `studio.tif` | |
+| `warp` | `gdalwarp -tps` with points in EPSG:3857 metres (M15 §1, as built: a thin-plate spline's own GCPs; an affine or poly2 fit sampled on 17 x 17 nodes over the scan, as `-order 1` and `-order 2` rendered GDAL's own reverse polynomial; a stored `georef.lattice` as stored), `-t_srs EPSG:3857`, the resolution of `maxzoom` (156543.03392804097 / 2^z m) on the tile grid, `-r bilinear`, an alpha band, `-cutline` (a GeoJSON of the closed ring) with `-crop_to_cutline` when the version has a crop | `work/{city}/{job}/warped.tif` | `apiError.imagery.unreadableRaster` |
+| `export` | an 8-bit COG (`-of COG -co COMPRESS=JPEG -co QUALITY=85 -co BLOCKSIZE=512 -co OVERVIEWS=AUTO`), an RGBA preview PNG of at most 2048 px, a JPEG-compressed GeoTIFF of at most `STUDIO_MAX_BYTES` (halved until it fits) for the Studio path, the valid area in km²; a proved frame's grey at 5 ground metres on the city's align grid (M15) | `cog.tif`, `preview.png`, `studio.tif`, `align.tif` | |
 | `register` | writes the version's `output` and `state: 'awaiting_approval'`, the job `awaiting_approval` (`waitReason: 'approval'`), releases the lease, deletes the job's `work/` objects | the version, the job | |
 
 `regeoref` runs `georef` (fit only), `warp`, `export`, `register` on the base version's `scan.tif`, which it reads but never
@@ -583,6 +583,12 @@ nothing proved. The assignments, the panoramic model, `crop_box` and `CityNotFou
   (else up to four of one date, mosaicked); its `visual` asset (an 8-bit true-colour COG) read through
   `/vsicurl/` for the window only, warped to EPSG:3857 at 10 m, cached as `reference/{city}/s2/{key}.tif` (the key: FNV-1a of
   the window and the item id; a mosaic that does not cover the window together is no reference, 2026-11-06). Attribution in the georeferencer: "Contains modified Copernicus Sentinel data {year}".
+  **M15 reference guard** (2026-11-08, `agreement.py`, [M15](M15-calibration-accuracy.md#the-reference-guard-2026-11-08)): the
+  least cloudy set is no longer taken alone. Up to 5 covering sets 30 days apart are read over the window's middle (at most
+  10 km, ground metres on a local transverse Mercator), placed against the median of the others, and one more than 7.5 m
+  off is rejected (the median taken again without it); the reference is the least cloudy set that agrees. The version's
+  `reference.s2Check` records every set, its offset and the verdict (`agreed`, `unchecked` under 3 read, `disputed`); the
+  cache key holds every candidate and the cached window carries the verdict.
 - **OSM** (`osm.py`): one Overpass query (`HCM_OVERPASS_URL`, default `https://overpass-api.de/api/interpreter`,
   **UNVERIFIED** policy limits) for the window's highways down to residential, railways, waterways and water areas,
   cached as GeoJSON (`reference/{city}/osm/{key}.geojson`), rasterized at 10 m for matching and drawn for the
@@ -616,6 +622,7 @@ Determinism in tests: `GDAL_NUM_THREADS=1`, `cv2.setNumThreads(1)`, `cv2.setRNGS
 | --- | --- |
 | `JOB_ID`, `CITY_ID`, `GOOGLE_CLOUD_PROJECT`, `HCM_PRIVATE_BUCKET`, `HCM_PUBLIC_BUCKET`, `USGS_M2M_BASE_URL`, `CLOUD_RUN_EXECUTION`, `CLOUD_RUN_TASK_ATTEMPT` | M0, unchanged |
 | `HCM_STAC_URL`, `HCM_OVERPASS_URL` | the references (https; http only on loopback for the test servers) |
+| `HCM_DEM_URL` | M15 *Terrain*: the Copernicus DEM GLO-30 tiles' root (default `https://copernicus-dem-30m.s3.eu-central-1.amazonaws.com`); not sealed under the emulators, where the address guard refuses a real one and the frame is fitted flat |
 | `FIRESTORE_EMULATOR_HOST`, `STORAGE_EMULATOR_HOST` | the e2e pipeline tier only; refused unless loopback |
 
 - Secrets: `usgs-username` and `usgs-app-token` are read at run time from Secret Manager over REST
@@ -965,6 +972,12 @@ until fn-imagery wires them (done: `Omit<Ports, 'jobs' | 'tilesets' | 'scenes' |
   warped into a canvas used as the map's image source on the output bounds, with an opacity slider.
 - **RMSE**: fit and checkpoint RMSE; over the city's threshold, a warning naming both (`adminContent.georef.rmseOver`,
   `S-A16-BAD-RMSE-OVER-THRESHOLD`); Save stays allowed.
+- **The version's own map** (M15 review, `packages/admin/src/georef/fit-view.ts`): while the pairs and the transform are the
+  version's, the figures and residuals are the ones it stored, the ones the version page shows, and the preview is the map it
+  publishes: a stored `georef.lattice` through its nodes (a thin-plate spline, as the warp renders it), else the pairs' own fit. Once
+  they change, every figure and the preview are the refit and a note says Save replaces the version's map with it
+  (`adminContent.georef.refitted`; `S-A16-HAPPY-VERSION-FIGURES`, `S-A16-BAD-EDIT-REFITS`). A version with no figures of its own
+  (corner guesses) shows the refit with no note.
 - **Save** queues the job (§4.1) and returns to the version page; the unsaved guard of M2c protects unsaved pairs.
 
 ### 10.5 The layer editor's additions

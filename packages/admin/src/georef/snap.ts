@@ -1,15 +1,14 @@
 /**
- * What the georeferencer sends: Save's request, and M16 (`docs/research/M16-recalibrate.md` §0, §3; S-A89-*): Snap my points. On a published version or one waiting for approval, the points
+ * M16 (`docs/research/M16-recalibrate.md` §0, §3; S-A89-*): Snap my points. On a published version or one waiting for approval, the points
  * the admin placed since the page opened (new manual pairs) are sent as rough points; the pipeline bends the current fit to them and the
- * dense matching snaps them and spreads tiles around them, in a new version.
+ * dense matching snaps them and spreads tiles around them, in a new version. Part of the georeferencer's lazy chunk (`extras.ts`), fetched
+ * the first time Snap is pressed; Save's request is `save-request.ts`.
  */
 import { RECALIBRATE_MAX_POINTS, type Gcp, type RoughPoint } from '@hcm/shared';
 
 import type { ContentServices } from '../content/services.js';
-import { callImagery, refusalOf, type ImageryRequest } from '../imagery/api.js';
+import { callImagery, refusalOf } from '../imagery/api.js';
 import type { NoticeInput } from '../state/state.js';
-import { pairsToSave } from './pairs.js';
-import type { GeorefState, GeorefVersion } from './state.js';
 
 /** The new manual pairs, as rough points; null for none, or more than the server takes. */
 export function roughPointsOf(pairs: readonly Gcp[], base: readonly Gcp[]): RoughPoint[] | null {
@@ -43,17 +42,4 @@ export async function snapped(
     } catch (error) {
         return { saved: null, refusal: refusalOf(error) };
     }
-}
-
-function cropOf(version: GeorefVersion): { readonly crop?: NonNullable<GeorefVersion['crop']> } {
-    return version.crop === null ? {} : { crop: version.crop };
-}
-
-/** What Save sends, when the version takes points, nothing is being saved and the fit is possible; else null. */
-export function saveRequestOf(cityId: string, state: GeorefState): ImageryRequest<'imagery.saveGcps'> | null {
-    const { version, pairs, transform, saving, fit } = state;
-    if (version === null || !version.editable || saving || fit.refusal !== null) {
-        return null;
-    }
-    return { cityId, versionId: version.id, transform, gcps: pairsToSave(pairs), ...cropOf(version) };
 }

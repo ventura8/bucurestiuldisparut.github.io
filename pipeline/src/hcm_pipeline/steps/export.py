@@ -25,6 +25,7 @@ from hcm_pipeline.join.canvas import DatasetSource
 from hcm_pipeline.objects import ObjectInfo, sha256_of
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.rasters import fit_long_side, raster_info, read_band
+from hcm_pipeline.steps.aligning import publish_align
 from hcm_pipeline.steps.common import gdal_step
 from hcm_pipeline.steps.merge import city_part, coverage_pct
 from hcm_pipeline.steps.warp import zooms
@@ -162,6 +163,7 @@ class ExportStep:
         mapbox = self._mapbox_files(ctx, warped) if publishes_through_mapbox(city) else MapboxFiles()
         preview = gdal_step(ctx, lambda: write_preview(warped, ctx.local("preview.png")), "write the preview")
         preview_info = ctx.publish(preview, ctx.version_file("preview.png"), "image/png")
+        publish_align(ctx, ctx.stage(ctx.work_file("warped.tif"), "warped.tif"))
         minzoom, maxzoom = zooms(ctx.version, warped.zoom)
         output = OutputInfo(
             cog_path=_path_of(mapbox.cog),

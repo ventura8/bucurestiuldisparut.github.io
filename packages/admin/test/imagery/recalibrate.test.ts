@@ -5,7 +5,8 @@
 import { FIRESTORE_PATHS, type Gcp } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
-import { roughPointsOf, saveRequestOf, snapped } from '../../src/georef/snap.js';
+import { saveRequestOf } from '../../src/georef/save-request.js';
+import { roughPointsOf, snapped } from '../../src/georef/snap.js';
 import { INITIAL_GEOREF } from '../../src/georef/state.js';
 import { IMAGERY_MODULE } from '../../src/imagery/imagery.js';
 import { TILES_LAYER } from '../../src/imagery/imagery-map.js';

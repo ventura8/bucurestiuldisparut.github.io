@@ -39,6 +39,7 @@ import {
     MIN_GCPS,
     type GeorefTransform,
 } from '../../src/schemas/georef.js';
+import { ALIGNMENT_MAX_PARTNERS, ALIGNMENT_STATUSES } from '../../src/schemas/imagery-calibration.js';
 import { RASTER_PATHS, VERSION_FILES } from '../../src/schemas/imagery-paths.js';
 import { STUDIO_MAX_BYTES } from '../../src/schemas/imagery-publish.js';
 import { RECALIBRATE_MIN_CHECKS, RECALIBRATE_MIN_GAIN_M } from '../../src/schemas/imagery-recalibration.js';
@@ -50,6 +51,7 @@ import {
     LAYER_VERSION_STATES,
     layerVersionDocSchema,
     PIPELINE_STEPS,
+    S2_CHECK_STATUSES,
     SCAN_PREVIEW_MAX_PX,
 } from '../../src/schemas/imagery.js';
 import { SENSOR_SPECS } from '../../src/schemas/usgs-scene.js';
@@ -130,6 +132,9 @@ describe('the pipeline contract', () => {
             JOIN_MAX_PARTS,
             RECALIBRATE_MIN_GAIN_M,
             RECALIBRATE_MIN_CHECKS,
+            S2_CHECK_STATUSES,
+            ALIGNMENT_STATUSES,
+            ALIGNMENT_MAX_PARTNERS,
         });
     });
 

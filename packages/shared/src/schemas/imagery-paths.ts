@@ -36,12 +36,14 @@ export const VERSION_FILES = [
     // M12 (docs/research/M12-own-tiles.md): the version's own tiles, private until it publishes, and the Work list's picture.
     'tiles.pmtiles',
     'thumb.webp',
+    /** M15: a proved frame at 5 m on the ground, what a later frame's film ties are measured against (`steps/aligning.py`). */
+    'align.tif',
 ] as const;
 
 export type VersionFile = (typeof VERSION_FILES)[number];
 
 /** The reference rasters the pipeline caches per city and window. */
-export const REFERENCE_KINDS = ['s2', 'osm'] as const;
+export const REFERENCE_KINDS = ['s2', 'osm', 'dem'] as const;
 
 export type ReferenceKind = (typeof REFERENCE_KINDS)[number];
 
@@ -78,9 +80,9 @@ export const RASTER_PATHS = {
     /** One of a layer version's files (kept while the version is current or pending; ended versions are swept). */
     version: (cityId: string, layerId: string, versionId: string, file: VersionFile) =>
         ['rasters', city(cityId), id(layerId), id(versionId), file].join('/'),
-    /** The reference cache: a Sentinel-2 window (GeoTIFF) or OSM features (GeoJSON) by window key (lifecycle: 90 days). */
+    /** The reference cache: a Sentinel-2 window or a surface model (GeoTIFF), or OSM features (GeoJSON), by window key (lifecycle: 90 days). */
     reference: (cityId: string, kind: ReferenceKind, key: string) =>
-        `reference/${city(cityId)}/${kind}/${segment(key, matching(REFERENCE_KEY))}.${kind === 's2' ? 'tif' : 'geojson'}`,
+        `reference/${city(cityId)}/${kind}/${segment(key, matching(REFERENCE_KEY))}.${kind === 'osm' ? 'geojson' : 'tif'}`,
 } as const;
 
 /** Where a version's own tiles lie: the archive and the picture, each a path a document records. */

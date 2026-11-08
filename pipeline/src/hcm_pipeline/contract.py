@@ -100,6 +100,7 @@ VERSION_FILES: Final = (
     "studio.tif",
     "tiles.pmtiles",
     "thumb.webp",
+    "align.tif",
 )
 LEASE_SECONDS: Final = 600
 HEARTBEAT_SECONDS: Final = 60
@@ -116,6 +117,11 @@ JOIN_MAX_PARTS: Final = 8
 # manual one compares on at least this many disabled pairs (`imagery-recalibration.ts`).
 RECALIBRATE_MIN_GAIN_M: Final = 1
 RECALIBRATE_MIN_CHECKS: Final = 3
+# The reference guard's verdicts (`S2_CHECK_STATUSES`, `agreement.py`): enough clear dates agree, too few to outvote, all disagree.
+S2_CHECK_STATUSES: Final = ("agreed", "unchecked", "disputed")
+# What became of a frame held still in a joint fit (`ALIGNMENT_STATUSES`, `calibrate/joint.py`), and at most how many are held.
+ALIGNMENT_STATUSES: Final = ("used", "few", "disagrees")
+ALIGNMENT_MAX_PARTNERS: Final = 12
 # How a job waits for the USGS download to be prepared, and how long a SIGTERM'd job waits before it runs again.
 USGS_PREPARING_MINUTES: Final = 10
 REQUEUE_SECONDS: Final = 60

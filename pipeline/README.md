@@ -71,7 +71,9 @@ model, §5 the steps, §6 the georeferencing conventions); plan: `docs/research/
 ## Configuration
 
 `JOB_ID`, `CITY_ID`, `GOOGLE_CLOUD_PROJECT`, `HCM_PRIVATE_BUCKET`, `HCM_PUBLIC_BUCKET`, `USGS_M2M_BASE_URL` (optional),
-`HCM_STAC_URL` (default Earth Search), `HCM_OVERPASS_URL` (default overpass-api.de), `CLOUD_RUN_EXECUTION` and
+`HCM_STAC_URL` (default Earth Search), `HCM_OVERPASS_URL` (default overpass-api.de), `HCM_DEM_URL` (default the Copernicus
+DEM GLO-30 tiles on AWS open data, M15 *Terrain*; not sealed under the emulators: a real address is refused there and the frame is
+fitted flat), `CLOUD_RUN_EXECUTION` and
 `CLOUD_RUN_TASK_ATTEMPT` (the lease owner). The e2e pipeline tier adds `FIRESTORE_EMULATOR_HOST` and
 `STORAGE_EMULATOR_HOST` (loopback only) and `HCM_E2E_USGS_TOKEN` (a scenario test value); `GDAL_NUM_THREADS`, when
 set, replaces the default `ALL_CPUS`. The USGS credentials (`usgs-username`, `usgs-app-token`) are read from Secret Manager at

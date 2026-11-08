@@ -33,8 +33,10 @@ from tests.fakes.worker_api import PROJECT, FakeWorkerApi
 from tests.fakes.world import CITY, ENTITY_ID, JOB_ID, LAYER_ID, OVERPASS_PATH, STAC_PATH, FakeClock, PipelineWorld, dig, small_city
 
 STEPS = ("fetch", "extract", "stitch", "locate", "reference", "georef", "warp", "export", "pyramid", "register")
-# A city on Mapbox's path (the world's `seed_city`): the COG and the Studio file, and since M12 the archive and its thumbnail.
+# A city on Mapbox's path (the world's `seed_city`): the COG and the Studio file, since M12 the archive and its thumbnail, and since
+# M15 the proved frame later frames tie to.
 VERSION_FILES = (
+    "align.tif",
     "cog.tif",
     "preview.png",
     "reference-osm.png",

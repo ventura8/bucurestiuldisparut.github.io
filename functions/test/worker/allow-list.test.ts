@@ -22,19 +22,22 @@ describe('documents', () => {
         expect(documentTarget(scope(job), FIRESTORE_PATHS.job(CITY, JOB))).toBe('job');
     });
 
+    // A version of the city is still `held` (read-only, M15) for any job: never the run's `base`.
     it.each([
         [
             'an import whose scene is no id',
             localJob({ params: { entityId: '../other', dataset: 'corona2' } }),
             FIRESTORE_PATHS.usgsScenes(CITY),
+            undefined,
         ],
         [
             'a re-georeference whose base is no id',
             localJob({ type: 'regeoref', params: { basedOn: 42 } }),
             FIRESTORE_PATHS.layerVersions(CITY),
+            'held',
         ],
-    ])('badPath_%sNamesNoExtraDocument', (_name, job, collection) => {
-        expect([`${collection}/42`, `${collection}/other`].map((path) => documentTarget(scope(job), path))).toEqual([undefined, undefined]);
+    ])('badPath_%sNamesNoExtraDocument', (_name, job, collection, readOnly) => {
+        expect([`${collection}/42`, `${collection}/other`].map((path) => documentTarget(scope(job), path))).toEqual([readOnly, readOnly]);
         expect(documentTarget(scope(job), FIRESTORE_PATHS.city(CITY))).toBe('city');
     });
 });
@@ -100,7 +103,7 @@ describe('a join (M8)', () => {
     it('badPath_nothingElseOfAFrameIsReadOrWritten', () => {
         expect(mayRead(scope(join), `rasters/${CITY}/layer-f039/v-f039/cog.tif`)).toBe(false);
         expect(mayWrite(scope(join), `rasters/${CITY}/layer-f039/v-f039/scan.tif`)).toBe(false);
-        expect(documentTarget(scope(join), FIRESTORE_PATHS.layerVersion(CITY, 'v-other'))).toBeUndefined();
+        expect(documentTarget(scope(join), FIRESTORE_PATHS.layerVersion(CITY, 'v-other'))).toBe('held');
     });
 
     it.each([
@@ -110,8 +113,40 @@ describe('a join (M8)', () => {
         ],
         ['a job of another type', localJob({ params: { parts, sensor: 'KH-9-pan' } })],
     ])('badPath_%sNameNoFrame', (_name, job) => {
-        expect(documentTarget(scope(job), FIRESTORE_PATHS.layerVersion(CITY, 'v-f039'))).toBeUndefined();
+        expect(documentTarget(scope(job), FIRESTORE_PATHS.layerVersion(CITY, 'v-f039'))).toBe('held');
         expect(mayRead(scope(job), `rasters/${CITY}/layer-f039/v-f039/scan.tif`)).toBe(false);
+    });
+});
+
+describe('the frames a frame is joined to (M15)', () => {
+    const job = localJob();
+
+    it('happyPath_everyVersionOfTheCityIsReadOnly_andItsFiveMetreImage @S-A62-HAPPY-HELD-FRAMES', () => {
+        expect(documentTarget(scope(job), FIRESTORE_PATHS.layerVersion(CITY, 'v-1972'))).toBe('held');
+        expect(documentTarget(scope(job), FIRESTORE_PATHS.layerVersion(CITY, JOB))).toBe('version');
+        expect(mayRead(scope(job), `rasters/${CITY}/layer-1972/v-1972/align.tif`)).toBe(true);
+    });
+
+    it.each([
+        ['another city', FIRESTORE_PATHS.layerVersion('bacau', 'v-1972')],
+        ['a way out of the collection', `${FIRESTORE_PATHS.layerVersions(CITY)}/v-1972/logs`],
+        ['no id', `${FIRESTORE_PATHS.layerVersions(CITY)}/../x`],
+    ])('badPath_aVersionOf%sIsOffTheList', (_name, path) => {
+        expect(documentTarget(scope(job), path)).toBeUndefined();
+    });
+
+    it.each([
+        ['another city', 'rasters/bacau/layer-1972/v-1972/align.tif'],
+        ['another file of a frame', `rasters/${CITY}/layer-1972/v-1972/scan.tif`],
+        ['a way out of the city', `rasters/${CITY}/../x/v-1972/align.tif`],
+        ['a deeper path', `rasters/${CITY}/layer-1972/v-1972/x/align.tif`],
+    ])('badPath_theImageOf%sIsNotRead @S-A62-BAD-HELD-FRAMES-WRITE', (_name, path) => {
+        expect(mayRead(scope(job), path)).toBe(false);
+    });
+
+    it('badPath_anotherFramesImageIsNeverWritten @S-A62-BAD-HELD-FRAMES-WRITE', () => {
+        expect(mayWrite(scope(job), `rasters/${CITY}/layer-1972/v-1972/align.tif`)).toBe(false);
+        expect(mayWrite(scope(job), `${FOLDER}/align.tif`)).toBe(true);
     });
 });
 

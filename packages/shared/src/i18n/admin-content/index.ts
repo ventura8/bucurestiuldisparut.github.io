@@ -8,6 +8,8 @@ import { en as layersEn } from '../admin-layers/en.js';
 import { ro as layersRo, type AdminLayersKey } from '../admin-layers/ro.js';
 import { en as notifyEn } from '../admin-notify/en.js';
 import { ro as notifyRo, type AdminNotifyKey } from '../admin-notify/ro.js';
+import { en as ordersEn } from '../admin-orders/en.js';
+import { ro as ordersRo, type AdminOrdersKey } from '../admin-orders/ro.js';
 import { en as opsEn } from '../admin-ops/en.js';
 import { ro as opsRo, type AdminOpsKey } from '../admin-ops/ro.js';
 import { en as photosEn } from '../admin-photos/en.js';
@@ -33,6 +35,7 @@ export type AdminContentKey =
     | AdminSettingsKey
     | AdminOpsKey
     | AdminImageryKey
+    | AdminOrdersKey
     | AdminNotifyKey
     | AdminCitiesKey
     | AdminExportKey
@@ -57,6 +60,7 @@ export const ADMIN_CONTENT_CATALOGUES: Readonly<Record<'ro' | 'en', AdminContent
         ...settingsRo,
         ...opsRo,
         ...imageryRo,
+        ...ordersRo,
         ...notifyRo,
         ...citiesRo,
         ...exportRo,
@@ -71,6 +75,7 @@ export const ADMIN_CONTENT_CATALOGUES: Readonly<Record<'ro' | 'en', AdminContent
         ...settingsEn,
         ...opsEn,
         ...imageryEn,
+        ...ordersEn,
         ...notifyEn,
         ...citiesEn,
         ...exportEn,

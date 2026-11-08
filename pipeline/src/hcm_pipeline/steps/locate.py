@@ -18,6 +18,7 @@ from typing import Final
 
 import numpy
 
+from hcm_pipeline.calibrate.camera import PANORAMIC_MAP_SENSORS
 from hcm_pipeline.calibrate.chain import Found, FrameSearch, find_frame
 from hcm_pipeline.calibrate.dense import Box
 from hcm_pipeline.calibrate.poly import PlaceMap
@@ -101,6 +102,18 @@ def camera_of(sensor: str, layout: FrameLayout) -> PanoramicCamera | None:
     spec = SENSOR_SPECS[sensor]
     half_angle = spec.half_angle_deg
     return None if half_angle is None else PanoramicCamera(half_angle, layout.image_width, layout.image_start, shorter_sweep(spec, layout))
+
+
+def rad_per_px(sensor: str, layout: FrameLayout) -> float | None:
+    """Radians a film column of a camera `georef` fits a panoramic map for (M15 §2): its sweep over the exposure, a shorter film's at the
+    full film's rate; None for any other camera."""
+    spec = SENSOR_SPECS[sensor]
+    half, aspect = spec.half_angle_deg, spec.full_aspect
+    if sensor not in PANORAMIC_MAP_SENSORS or half is None or aspect is None:
+        return None
+    full = aspect * layout.height
+    span = full if shorter_sweep(spec, layout) is not None else min(layout.image_width, full)
+    return math.radians(2 * half) / max(span, 1.0)
 
 
 def film_limits(camera: PanoramicCamera | None, layout: FrameLayout) -> tuple[int, int, int]:
@@ -263,7 +276,8 @@ class LocateStep:
             raise CityNotFoundError
         located = Crop(box[0], box[1], box[2] - box[0], box[3] - box[1], proved_gcps(mapping, box))
         pixels = gdal_step(ctx, lambda: crop_pixels(ctx, layout, within_limits(located)), "crop the frame")
-        stored = StoredTiles(proved.proof.measured.rows, proved.order, box[0], box[1], window.bounds().middle_lat)
+        camera = rad_per_px(search.sensor, layout)
+        stored = StoredTiles(proved.proof.measured.rows, proved.order, box[0], box[1], window.bounds().middle_lat, camera)
         ctx.publish(stored.write(ctx.local(CALIBRATION_FILE)), ctx.work_file(CALIBRATION_FILE), "application/json")
         scan = publish_scan(ctx, write_geotiff(ctx.local("scan.tif"), GeoTiff([pixels])), pixels)
         record = _calibration(ctx, found, mapping, limits)

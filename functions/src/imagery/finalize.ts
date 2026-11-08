@@ -11,6 +11,7 @@
  * rejection during the copy wins.
  */
 import {
+    DEM_ATTRIBUTION,
     FIRESTORE_PATHS,
     MAPBOX_FREE_COMPUTE_UNITS,
     SENSOR_SPECS,
@@ -88,9 +89,10 @@ function kindOf(version: LayerVersionDoc): LayerDoc['kind'] {
     return MAP_WORDS.test(nameOf(version)) ? 'map' : 'aerial';
 }
 
-/** USGS's courtesy credit, or an upload's own name until the admin writes one. */
+/** USGS's courtesy credit, or an upload's own name until the admin writes one; a frame fitted over terrain adds the DEM's notice (M15). */
 function attributionOf(version: LayerVersionDoc): string {
-    return version.source?.kind === 'upload' ? nameOf(version).slice(0, 500) : USGS_ATTRIBUTION;
+    const own = version.source?.kind === 'upload' ? nameOf(version).slice(0, 500) : USGS_ATTRIBUTION;
+    return version.georef?.terrain === undefined ? own : `${own}; ${DEM_ATTRIBUTION}`.slice(0, 500);
 }
 
 function georefProvenance(georef: Georef): NonNullable<Provenance['georef']> {

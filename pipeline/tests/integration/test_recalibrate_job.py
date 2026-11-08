@@ -10,13 +10,15 @@ from typing import Final
 
 import pytest
 from hcm_pipeline.contract import Errors
-from hcm_pipeline.geo import ground_scale, to_lnglat
+from hcm_pipeline.geo import FloatArray, ground_scale, to_lnglat, to_lnglat_arrays
+from hcm_pipeline.georef.lattice import Lattice, sampled
 from hcm_pipeline.runner import RunOutcome
 
 from tests.contracts_loader import record, records
 from tests.fakes.http import Reply
 from tests.fakes.world import CITY, JOB_ID, LAYER_ID, OVERPASS_PATH, PipelineWorld, dig
 from tests.integration.matching import Seeded, seed_matching
+from tests.integration.test_terrain_job import terrain_record
 from tests.synthetic.scenes import CENTRE, AffineScan, overpass_answer, render_world, write_sentinel2
 
 BASE: Final = "v-current"
@@ -98,6 +100,48 @@ def test_bad_path_refine_with_nothing_better_declines_and_renders_nothing(world:
     assert world.gcs.names(f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/cog") == []
     assert world.version(BASE)["state"] == "published"
     assert any(line.startswith("declined, nothing rendered:") for line in world.log_lines())
+
+
+def true_lattice(seeded: Seeded) -> dict[str, object]:
+    """A panoramic camera's stored nodes that lie on the scan's exact map (M15 §1), whatever its pairs say."""
+    height, width = seeded.pixels.shape
+    a, b, c, d = seeded.truth.matrix
+    east, north = seeded.truth.origin
+
+    def to_place(x: FloatArray, y: FloatArray) -> tuple[FloatArray, FloatArray]:
+        return to_lnglat_arrays(east + a * x + b * y, north + c * x + d * y)
+
+    return Lattice("panoramic", sampled(to_place, width, height)).as_record()
+
+
+def test_bad_path_a_current_camera_on_the_truth_is_measured_as_it_renders_and_nothing_beats_it(
+    world: PipelineWorld, tmp_path: Path
+) -> None:
+    """Scenarios: S-P19-BAD-CURRENT-AS-RENDERED"""
+    seeded = seed_recalibration(world, tmp_path, {"route": "auto"}, (60.0, -45.0))
+    current = world.version(BASE)
+    world.store.update(world.version_path(BASE), {"georef": {**record(current["georef"]), "lattice": true_lattice(seeded)}})
+
+    assert world.run() is RunOutcome.CANCELLED
+
+    # Its pairs lie 75 m off, but its layer shows the camera's nodes on the truth: that is what Refine must beat, and cannot.
+    assert dig(world.job(), "error", "code") == Errors.NOT_IMPROVED
+    assert float(str(record(dig(world.job(), "error", "params"))["before"])) < 5
+    assert world.version(BASE)["state"] == "published"
+
+
+def test_happy_path_a_current_map_over_terrain_is_measured_as_it_renders(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P19-HAPPY-CURRENT-AS-RENDERED"""
+    seeded = seed_recalibration(world, tmp_path, {"route": "auto"}, (0.0, 0.0))
+    current = world.version(BASE)
+    # Its pairs are exact, but its layer renders through an RPC that puts 100 m of level ground 50 m off: what the public sees.
+    world.store.update(world.version_path(BASE), {"georef": {**record(current["georef"]), "terrain": terrain_record(seeded.truth)}})
+
+    assert world.run() is RunOutcome.DONE
+
+    assert world.version()["state"] == "awaiting_approval"
+    assert figure(world, "before") > 30
+    assert figure(world, "after") < 15
 
 
 def test_bad_path_refine_whose_tiles_are_not_proved_declines(world: PipelineWorld, tmp_path: Path) -> None:

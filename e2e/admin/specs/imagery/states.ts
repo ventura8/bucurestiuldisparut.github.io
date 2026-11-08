@@ -58,6 +58,10 @@ export const IMAGERY_STATES = {
         title: 'Historical imagery: a frame found with no landmark, how, how many areas agree, its error and the city it covers',
         visit: 'specs/imagery/calibration.spec.ts',
     },
+    'imagery.version-aligned': {
+        title: 'Historical imagery: a frame lined up with earlier photos held still, the years, the shared points, and one left out',
+        visit: 'specs/imagery/calibration.spec.ts',
+    },
     'imagery.version-local-ai': {
         title: 'Historical imagery: a frame the AI on your computer proposed and the proof held, on which graphics card',
         visit: 'specs/imagery/calibration.spec.ts',
@@ -202,6 +206,10 @@ export const IMAGERY_STATES = {
     },
     'georef.degenerate': {
         title: 'Georeferencer: pairs in a line refused, Save off',
+        visit: 'specs/imagery/georeferencer.spec.ts',
+    },
+    'georef.refitted': {
+        title: "Georeferencer: a fitted version's pairs edited, the figures said to be a refit",
         visit: 'specs/imagery/georeferencer.spec.ts',
     },
     'layers.link-probed': {

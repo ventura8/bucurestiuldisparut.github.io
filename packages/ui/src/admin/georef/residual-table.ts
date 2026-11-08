@@ -9,6 +9,7 @@
 import type { Gcp, Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
+import { numberText } from '../imagery/imagery-text.js';
 import { when } from '../imagery/when.js';
 import { contentText } from '../shell/text.js';
 
@@ -36,10 +37,6 @@ function sorted(table: ResidualTable): readonly (readonly [Gcp, string])[] {
     }
     const residual = (pair: Gcp): number => table.residuals[pair.id] ?? -1;
     return numbered.toSorted(([a], [b]) => residual(b) - residual(a));
-}
-
-function number(locale: Locale, value: number, digits: number): string {
-    return new Intl.NumberFormat(locale, { maximumFractionDigits: digits }).format(value);
 }
 
 /** How the table is sorted by a column: pairs ascending, residuals largest first. */
@@ -96,9 +93,9 @@ function row(table: ResidualTable, pair: Gcp, label: string): TemplateResult {
                 <span class="visually-hidden">${name} ${contentText(locale, 'adminContent.georef.use')}</span>
             </label>
         </td>
-        <td class="position">${number(locale, pair.pixel.x, 1)}, ${number(locale, pair.pixel.y, 1)}</td>
-        <td class="position">${number(locale, pair.geo.lat, 6)}, ${number(locale, pair.geo.lng, 6)}</td>
-        <td data-residual>${residual === undefined ? '–' : `${number(locale, residual, 1)} m`}</td>
+        <td class="position">${numberText(locale, pair.pixel.x, 1)}, ${numberText(locale, pair.pixel.y, 1)}</td>
+        <td class="position">${numberText(locale, pair.geo.lat, 6)}, ${numberText(locale, pair.geo.lng, 6)}</td>
+        <td data-residual>${residual === undefined ? '–' : `${numberText(locale, residual, 1)} m`}</td>
         <td>
             <hcm-icon-button
                 icon="delete"

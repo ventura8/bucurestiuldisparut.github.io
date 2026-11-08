@@ -10,6 +10,7 @@ from hcm_pipeline.jobs import DeclinedError, StepFailedError
 from hcm_pipeline.model import DocumentError
 from hcm_pipeline.steps.recalibrate import (
     Compared,
+    Current,
     Figure,
     RoughPoint,
     bent_start,
@@ -19,6 +20,7 @@ from hcm_pipeline.steps.recalibrate import (
     refitted,
     require_better,
     search_m,
+    start_of,
 )
 
 PIXELS = [(0.0, 0.0), (1000.0, 0.0), (1000.0, 800.0), (0.0, 800.0), (500.0, 400.0), (250.0, 600.0), (750.0, 200.0)]
@@ -49,7 +51,7 @@ def test_bad_path_too_few_disabled_pairs_compare_nothing() -> None:
     """Scenarios: S-P19-HAPPY-MANUAL-FIGURES"""
     few = GeorefInfo("gcps", "affine", (*gcps()[:5], *(gcp for gcp in gcps(enabled=False)[5:])), 0.0, 0.0, 2)
 
-    assert compared(exact(), few) is None
+    assert compared(Current.polynomial(exact()), few) is None
     assert compared(None, few) is None
     assert figures_record(None) == {}
     assert figures_text(None).startswith("not compared")
@@ -73,7 +75,7 @@ def test_happy_path_one_rough_point_moves_the_whole_start() -> None:
     """Scenarios: S-P19-HAPPY-POINTS"""
     point = RoughPoint(500.0, 400.0, 44.4 - 400 * 1e-5, 26.1 + 500 * 1e-5 + 0.001)
 
-    start = bent_start(exact(), [point])
+    start = bent_start(Current.polynomial(exact()), [point])
 
     lng, _ = start.to_lnglat(numpy.array([0.0]), numpy.array([0.0]))
     assert float(lng[0]) == pytest.approx(26.101, abs=1e-6)
@@ -84,16 +86,16 @@ def test_bad_path_rough_points_in_a_line_and_no_pairs_refuse() -> None:
     line = [RoughPoint(float(index), float(index), 44.4, 26.1 + index * 1e-5) for index in range(3)]
 
     with pytest.raises(StepFailedError) as raised:
-        bent_start(Fit(exact().transform, (), 0.0, None, 0), line)
+        bent_start(Current.polynomial(Fit(exact().transform, (), 0.0, None, 0)), line)
 
     assert raised.value.code == Errors.DEGENERATE_GCPS
 
 
 def test_happy_path_refine_searches_as_far_as_the_current_figure_allows() -> None:
     """Scenarios: S-P19-HAPPY-REFINE"""
-    current = exact()
+    current = Current.polynomial(exact())
 
-    assert search_m(current, current.transform, []) == PROOF_SEARCH_GROUND_M
+    assert search_m(current, start_of(current, []), []) == PROOF_SEARCH_GROUND_M
     assert refitted(None) is None
     assert refitted(GeorefInfo("gcps", "affine", ())) is None
 

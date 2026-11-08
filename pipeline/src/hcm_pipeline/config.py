@@ -12,6 +12,7 @@ document id is validated here, so a malformed id cannot escape its prefix.
 | `HCM_PRIVATE_BUCKET`, `HCM_PUBLIC_BUCKET` | Cloud Storage buckets (rasters and USGS files; public previews) |
 | `USGS_M2M_BASE_URL` | optional; the M2M API root (https, or http on loopback for the test server) |
 | `HCM_STAC_URL`, `HCM_OVERPASS_URL` | optional; the Sentinel-2 STAC API and the Overpass API (never a Mapbox host) |
+| `HCM_DEM_URL` | optional; the Copernicus DEM GLO-30 tiles' root (`surface.py`); under the emulators only a loopback one is read |
 | `FIRESTORE_EMULATOR_HOST`, `STORAGE_EMULATOR_HOST` | the e2e tier only: the emulators on loopback; then every service root too |
 | `HCM_E2E_USGS_TOKEN` | with the emulators only: the scenario's USGS test token (`e2e-ok` by default) |
 | `CLOUD_RUN_EXECUTION`, `CLOUD_RUN_TASK_ATTEMPT` | set by Cloud Run; together they name the job lease owner |
@@ -31,6 +32,7 @@ ENV_PUBLIC_BUCKET: Final = "HCM_PUBLIC_BUCKET"
 ENV_M2M_BASE_URL: Final = "USGS_M2M_BASE_URL"
 ENV_STAC_URL: Final = "HCM_STAC_URL"
 ENV_OVERPASS_URL: Final = "HCM_OVERPASS_URL"
+ENV_DEM_URL: Final = "HCM_DEM_URL"
 ENV_FIRESTORE_EMULATOR: Final = "FIRESTORE_EMULATOR_HOST"
 ENV_STORAGE_EMULATOR: Final = "STORAGE_EMULATOR_HOST"
 ENV_E2E_USGS_SCENARIO: Final = "HCM_E2E_USGS_TOKEN"
@@ -42,6 +44,9 @@ DEFAULT_M2M_BASE_URL: Final = "https://m2m.cr.usgs.gov/api/api/json/stable/"
 # for availability and limits until the first real `reference` step (docs/research/M3-interfaces.md §14).
 DEFAULT_STAC_URL: Final = "https://earth-search.aws.element84.com/v1"
 DEFAULT_OVERPASS_URL: Final = "https://overpass-api.de/api/interpreter"
+# Copernicus DEM GLO-30 on AWS open data (anonymous https; M15, *Terrain*). Not sealed under the emulators: a real address is refused
+# there by the address guard and the frame is fitted flat.
+DEFAULT_DEM_URL: Final = "https://copernicus-dem-30m.s3.eu-central-1.amazonaws.com"
 LOCAL_EXECUTION: Final = "local"
 LOOPBACK_HOSTS: Final = frozenset({"127.0.0.1", "localhost", "::1"})
 # The scenario test values the emulated USGS token may take (docs/research/design-review-testability.md §3.1).
@@ -89,6 +94,7 @@ class Config:
     task_attempt: int
     stac_url: str = DEFAULT_STAC_URL
     overpass_url: str = DEFAULT_OVERPASS_URL
+    dem_url: str = DEFAULT_DEM_URL
     firestore_emulator: str | None = None
     storage_emulator: str | None = None
     e2e_usgs_scenario: str = DEFAULT_E2E_USGS_SCENARIO
@@ -172,8 +178,12 @@ def _required_problems(env: Mapping[str, str]) -> list[str | None]:
     return [_required_problem(env, name, pattern, expected) for name, pattern, expected in _REQUIRED]
 
 
+def _dem_url(env: Mapping[str, str]) -> str:
+    return (env.get(ENV_DEM_URL) or DEFAULT_DEM_URL).rstrip("/")
+
+
 def _url_problems(env: Mapping[str, str]) -> list[str | None]:
-    return [url_problem(name, url) for name, url in _service_urls(env).items()]
+    return [url_problem(name, url) for name, url in {**_service_urls(env), ENV_DEM_URL: _dem_url(env)}.items()]
 
 
 def _emulator_problems(env: Mapping[str, str]) -> list[str | None]:
@@ -214,6 +224,7 @@ def load_config(env: Mapping[str, str]) -> Config:
         task_attempt=int(env.get(ENV_TASK_ATTEMPT, "0")),
         stac_url=urls[ENV_STAC_URL],
         overpass_url=urls[ENV_OVERPASS_URL],
+        dem_url=_dem_url(env),
         firestore_emulator=env.get(ENV_FIRESTORE_EMULATOR),
         storage_emulator=env.get(ENV_STORAGE_EMULATOR),
         e2e_usgs_scenario=env.get(ENV_E2E_USGS_SCENARIO, DEFAULT_E2E_USGS_SCENARIO),

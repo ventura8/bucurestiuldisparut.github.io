@@ -20,12 +20,13 @@ from typing import Final, Self
 import httpx
 from hcm_pipeline.calibrate.ports import NullProposalMatcher, ProposalMatcher
 from hcm_pipeline.config import Config, load_config
-from hcm_pipeline.geo import MercatorBox, to_lnglat, to_mercator
+from hcm_pipeline.geo import MercatorBox, ground_scale, to_lnglat, to_mercator
 from hcm_pipeline.jobs import Services
 from hcm_pipeline.m2m import M2MClient, http_client
 from hcm_pipeline.model import Timestamp
 from hcm_pipeline.objects import GcsObjectStore
 from hcm_pipeline.osm import OverpassClient
+from hcm_pipeline.raster import gdal
 from hcm_pipeline.runner import JobRunner, RunOutcome, RunSettings
 from hcm_pipeline.secrets import EmulatorSecrets, SecretSource, usgs_credentials
 from hcm_pipeline.services import default_steps
@@ -50,6 +51,8 @@ GOOD_SIGNATURE: Final = "sig-ok-7d1f"
 FRESH_SIGNATURE: Final = "sig-fresh-c0a2"
 S2_ITEM: Final = "S2B_35TMK_20250803_0_L2A"
 STAC_PATH: Final = "/stac"
+# The Copernicus DEM tiles' root (M15, *Terrain*): nothing is served there unless a test serves a tile.
+DEM_PATH: Final = "/dem"
 OVERPASS_PATH: Final = "/overpass/api/interpreter"
 TEST_CHUNK_BYTES: Final = 256 * 1024
 NOW: Final = 1_792_000_000.0
@@ -110,6 +113,8 @@ class PipelineWorld:
     delivered: bytes | None = None
     secrets: SecretSource | None = None
     stac_href: str | None = None
+    # Further catalogue items ahead of the world's own (the reference guard, M15): `(id, date, cloud, href)`, over the same box.
+    stac_extra: list[tuple[str, str, float, str]] = field(default_factory=list)
     # How far around the world's centre the catalogue's item reaches (None: the world's own edges).
     stac_reach_m: float | None = None
     # A test's local matcher (`Services.proposal_matcher`); Cloud Run's Null otherwise.
@@ -137,6 +142,7 @@ class PipelineWorld:
             "USGS_M2M_BASE_URL": self.m2m.base_url,
             "HCM_STAC_URL": self.http.url(STAC_PATH),
             "HCM_OVERPASS_URL": self.http.url(OVERPASS_PATH),
+            "HCM_DEM_URL": self.http.url(DEM_PATH),
             "CLOUD_RUN_EXECUTION": EXECUTION,
             "CLOUD_RUN_TASK_ATTEMPT": "0",
             **overrides,
@@ -170,15 +176,28 @@ class PipelineWorld:
         return Reply(reply.status, reply.body, reply.content_type, {**reply.headers, **headers})
 
     def _stac(self, _request: Request) -> Reply:
-        west, south, east, north = self._stac_box()
-        item = {
+        own = (S2_ITEM, "2025-08-03", 3.2, self.stac_href or self.http.url("/s2/visual.tif"))
+        features = [self._feature(*item) for item in (*self.stac_extra, own)]
+        return Reply.json(json.dumps({"type": "FeatureCollection", "features": features if self.stac_items else []}))
+
+    def _feature(self, item_id: str, date: str, cloud: float, href: str) -> dict[str, object]:
+        return {
             "type": "Feature",
-            "id": S2_ITEM,
-            "bbox": [west, south, east, north],
-            "properties": {"datetime": "2025-08-03T09:20:31Z", "eo:cloud_cover": 3.2},
-            "assets": {"visual": {"href": self.stac_href or self.http.url("/s2/visual.tif"), "type": "image/tiff; application=geotiff"}},
+            "id": item_id,
+            "bbox": list(self._stac_box()),
+            "properties": {"datetime": f"{date}T09:20:31Z", "eo:cloud_cover": cloud},
+            "assets": {"visual": {"href": href, "type": "image/tiff; application=geotiff"}},
         }
-        return Reply.json(json.dumps({"type": "FeatureCollection", "features": [item] if self.stac_items else []}))
+
+    def serve_sentinel2_moved(self, name: str, north_m: float) -> str:
+        """The world's Sentinel-2 moved `north_m` ground metres north, served at `/s2/{name}.tif`: its address."""
+        path = self.scene.sentinel2.with_name(f"sentinel2-{name}.tif")
+        moved = gdal.Translate(str(path), str(self.scene.sentinel2), format="GTiff")
+        left, size, skew, top, turn, height = moved.GetGeoTransform()
+        moved.SetGeoTransform((left, size, skew, top + north_m / ground_scale(CENTRE[1]), turn, height))
+        moved.Close()
+        self.http.serve(f"/s2/{name}.tif", path.read_bytes())
+        return self.http.url(f"/s2/{name}.tif")
 
     def _stac_box(self) -> tuple[float, float, float, float]:
         grid = self.scene.world.grid

@@ -64,7 +64,7 @@ languages, the URL hash's `cmp=` and `sw=` (`packages/shared/src/url/hash.ts`), 
 `fn-assist-notify`, the system writers `assist` and `notify`, the three M4 ports (`functions/src/ports/{geocoder,
 translator,push-sender}.ts`, left out of `Deps` until wired) and the `assist-geocode` queue's payload, the golden
 `pipeline/tests/contracts/autogcp.json` and `version.needs-gcps.suggestions.json` with their TypeScript check, the
-catalogue skeletons (`packages/shared/src/i18n/admin-notify/`, the `orders` section of `admin-imagery`), the M4
+catalogue skeletons (`packages/shared/src/i18n/admin-notify/`, the `orders` section of `admin-imagery`, its own folder `admin-orders/` since DECISIONS-for-review.md §110), the M4
 input budgets (`packages/admin/src/content/budgets.ts`), the tour inventory's M4 sections, the scenario rows (§7), the
 removal of the compare plugin loader, `docs/ENGINE_API.md`'s compare section, and the decisions log.
 

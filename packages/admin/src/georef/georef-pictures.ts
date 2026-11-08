@@ -9,6 +9,7 @@ import type { BBox, FittedTransform } from '@hcm/shared';
 import type { Clock } from '../app/ports.js';
 import type { FilePort, Picture, PicturePort } from '../imagery/files.js';
 import { cornersOfBox, type PictureOverlays } from '../imagery/overlay.js';
+import type { MapStatus } from '../layers/map-session.js';
 import type { GeorefVersion, ReferenceKind, ScanImage } from './state.js';
 import { warpFrame, warpTriangles } from './warp.js';
 
@@ -80,6 +81,7 @@ export class GeorefPictures {
     #scanPicture: Decoded | null = null;
     #target: Picture | null = null;
     #reference: ReferenceKind | null = null;
+    #choice: ReferenceChoice | null = null;
     #timer: unknown = null;
     #next: WarpInput | null = null;
     /** Bumped by `clear`: a decode that ends after it is dropped. */
@@ -103,6 +105,7 @@ export class GeorefPictures {
         const kind = choice?.kind ?? null;
         if (kind !== this.#reference) {
             this.#reference = kind;
+            this.#choice = choice;
             this.#deps.overlays.remove(REFERENCE_PICTURE);
             void this.#showReference(choice);
         }
@@ -116,6 +119,17 @@ export class GeorefPictures {
                 this.#timer = null;
                 this.#render();
             }, WARP_DELAY_MS);
+        }
+    }
+
+    /**
+     * The map's status: once it is ready, the reference and the preview decoded before it, which had no map to go on then,
+     * go on it now (`docs/LESSONS.md` 471).
+     */
+    mapStatus(status: MapStatus): void {
+        if (status === 'ready') {
+            void this.#showReference(this.#choice);
+            this.#render();
         }
     }
 
@@ -137,6 +151,7 @@ export class GeorefPictures {
         this.#target = null;
         this.#versionId = null;
         this.#reference = null;
+        this.#choice = null;
         this.#next = null;
         this.#deps.scan({ status: 'none' });
     }

@@ -46,6 +46,9 @@ def test_happy_path_the_constants_equal_the_shared_copy() -> None:
         "JOIN_MAX_PARTS": contract.JOIN_MAX_PARTS,
         "RECALIBRATE_MIN_GAIN_M": contract.RECALIBRATE_MIN_GAIN_M,
         "RECALIBRATE_MIN_CHECKS": contract.RECALIBRATE_MIN_CHECKS,
+        "S2_CHECK_STATUSES": list(contract.S2_CHECK_STATUSES),
+        "ALIGNMENT_STATUSES": list(contract.ALIGNMENT_STATUSES),
+        "ALIGNMENT_MAX_PARTNERS": contract.ALIGNMENT_MAX_PARTNERS,
         # Every code a step fails or waits with: the shared test holds each to a code the admin can read (finding 62).
         "PIPELINE_ERROR_CODES": sorted(value for name, value in vars(contract.Errors).items() if name.isupper()),
     }
@@ -100,7 +103,7 @@ def test_happy_path_a_jobs_scratch_prefix_ends_with_a_slash() -> None:
     ("builder", "args"),
     [
         (paths.version, ("bucharest", "layer", "v1", "secrets.json")),
-        (paths.reference, ("bucharest", "dem", "0f3c9a2e")),
+        (paths.reference, ("bucharest", "srtm", "0f3c9a2e")),
         (paths.browse, ("declass1", "E1")),
     ],
 )

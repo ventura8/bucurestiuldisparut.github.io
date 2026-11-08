@@ -5,6 +5,7 @@
  * `select`, still (`static`) while pairs are being added, when a click on the map is the place of the next pair.
  */
 import {
+    bboxCenter,
     bboxExpand,
     MAX_GEOMETRY_VERTICES,
     MAX_POLYGON_RINGS,
@@ -22,6 +23,7 @@ import { PictureOverlays } from '../imagery/overlay.js';
 import type { CityFrame, MapStatus } from '../layers/map-session.js';
 import type { AdminMapFactory, AdminMapHandle, AdminMapResult } from '../map/factory.js';
 import type { GeoPosition } from './pairs.js';
+import type { GeorefVersion } from './state.js';
 import type { SuggestionRow } from './suggestions.js';
 
 /** The pairs' colour on the map. */
@@ -30,6 +32,12 @@ export const PAIR_COLOR = '#d81b60';
 /** The matcher's suggestions on the map (M4 §2.5): flags in their own colour, labelled `a1`, `a2`, … from zoom 16. */
 export const SUGGESTION_COLOR = '#8a5a00';
 export const SUGGESTIONS_OVERLAY_ID = 'georef-suggestions';
+
+/** The reference's box as the map's frame. */
+export function referenceFrame(version: GeorefVersion | null): CityFrame | null {
+    const bounds = version?.reference?.bounds ?? null;
+    return bounds === null ? null : { bounds, view: { center: bboxCenter(bounds), zoom: 13, bearing: 0 } };
+}
 
 export interface GeorefMapDeps {
     readonly maps: AdminMapFactory | null;

@@ -5,8 +5,11 @@ from pathlib import Path
 
 import numpy
 import pytest
+from hcm_pipeline.calibrate import pairs
 from hcm_pipeline.calibrate.pairs import ScanBox, blocked_figure, calibrated, choose, transform_of
+from hcm_pipeline.calibrate.proof import PAIR_CELL_GROUND_M
 from hcm_pipeline.calibrate.stored import StoredTiles
+from hcm_pipeline.geo import ground_scale
 from hcm_pipeline.georef.autogcp import AUTO_GCP_MIN_CONFIDENCE
 from hcm_pipeline.georef.matcher import MAX_AUTO_GCPS
 
@@ -116,3 +119,13 @@ def test_bad_path_a_proved_frame_with_few_pairs_has_a_figure_a_document_can_hold
 def test_bad_path_no_fold_to_hold_is_no_figure_never_an_infinite_one() -> None:
     """Scenarios: S-P06-BAD-FEW-PAIRS-FIGURE"""
     assert transform_of(_regular_tiles(2), MIDDLE_LAT) == ("affine", None)
+
+
+def test_bad_path_tiles_spread_wider_than_every_doubling_keep_the_largest_cell() -> None:
+    """Scenarios: S-P06-HAPPY-VOTES"""
+    first = PAIR_CELL_GROUND_M / ground_scale(MIDDLE_LAT)
+    largest = first * 2**pairs.PAIR_CELL_DOUBLINGS
+    x, y = numpy.meshgrid(numpy.arange(15) * 2 * largest, numpy.arange(15) * 2 * largest)
+    rows = numpy.column_stack((x.ravel(), y.ravel(), x.ravel(), y.ravel()))
+
+    assert pairs._cell_size(rows, MIDDLE_LAT) == pytest.approx(largest)

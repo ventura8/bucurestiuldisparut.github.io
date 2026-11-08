@@ -119,6 +119,29 @@ def robust_fit(film: FloatArray, places: FloatArray, order: int, threshold_m: fl
     return Poly(order, centre, spread, coefficients), keep
 
 
+# What a fit on every tile keeps, narrowing (the camera's: `camera.py`).
+NARROWING_M: Final = (80.0, 60.0, 40.0, 25.0, 25.0)
+
+
+def _weighted(design: FloatArray, places: FloatArray, root: FloatArray) -> FloatArray:
+    return numpy.asarray(numpy.linalg.lstsq(design * root[:, None], places * root[:, None], rcond=None)[0], numpy.float64)
+
+
+def fit_narrowed(order: int, film: FloatArray, places: FloatArray, weights: FloatArray) -> Poly | None:
+    """The polynomial of `order` by weighted least squares on every row, the rows it keeps narrowing from 80 to 25 ground metres;
+    None with too few rows."""
+    if len(film) <= 2 * TERMS[order]:
+        return None
+    centre, spread = _frame_of(film)
+    design, root = _basis(film, centre, spread, order), numpy.sqrt(weights)
+    _, lat = to_lnglat_arrays(places[:, 0], places[:, 1])
+    pairs, keep = _Pairs(design, places, ground_scale_of(lat)), numpy.ones(len(film), numpy.bool_)
+    for reach in NARROWING_M:
+        within = pairs.errors_m(_weighted(design[keep], places[keep], root[keep])) < reach
+        keep = within if numpy.count_nonzero(within) > 2 * TERMS[order] else keep
+    return Poly(order, centre, spread, _weighted(design[keep], places[keep], root[keep]))
+
+
 class PlaceMap(Protocol):
     """Film pixels to EPSG:3857 metres, and back, around a city's window."""
 

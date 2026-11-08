@@ -75,6 +75,60 @@ describe('georeferencing as stored', () => {
         expect(result.ok ? [] : result.issues).toContainEqual({ path, code });
     });
 
+    /** M15 §1: a panoramic camera's map, sampled for the warp. */
+    function lattice(count: number, model = 'panoramic'): unknown {
+        const nodes = Array.from({ length: count }, (_, index) => ({
+            pixel: { x: index * 10, y: 0 },
+            geo: { lat: 44.4, lng: 26 + index * 0.001 },
+        }));
+        return { model, nodes };
+    }
+
+    it('happyPath_aPanoramicMapCarriesTheLatticeTheWarpRendersThrough @S-P06-HAPPY-PANORAMIC-CAMERA', () => {
+        const georef = { method: 'auto', transform: 'affine', gcps, lattice: lattice(289) };
+
+        expect(validate(georefSchema, georef).ok).toBe(true);
+    });
+
+    it.each([
+        ['a model no pipeline writes', lattice(9, 'poly3'), 'lattice.model', 'validation.value'],
+        ['more nodes than the 17 x 17 the pipeline samples', lattice(290), 'lattice.nodes', 'validation.tooBig'],
+        ['fewer nodes than the 17 x 17 the pipeline samples', lattice(288), 'lattice.nodes', 'validation.tooSmall'],
+    ])('badPath_aLatticeWith_%s @S-P06-BAD-RENDERED-OWN-POINTS', (_name, value, path, code) => {
+        const result = validate(georefSchema, { method: 'auto', transform: 'affine', gcps, lattice: value });
+
+        expect(result.ok ? [] : result.issues).toContainEqual({ path, code });
+    });
+
+    /** M15, *Terrain*: the RPC a frame over terrain is read through, and the heights under its scan (3 x 2 cells). */
+    function terrain(coefficients = 20, valuesDm = 'AAAAAAAAAAAAAAAA'): unknown {
+        const axes = { line: 400, samp: 600, lat: 44.43, lng: 26.1, height: 90 };
+        const set = Array.from({ length: coefficients }, (_, index) => (index === 0 ? 1 : 0));
+        return {
+            source: 'glo30',
+            reliefM: 6.45,
+            rpc: { offset: axes, scale: axes, lineNum: set, lineDen: set, sampNum: set, sampDen: set },
+            heights: { left: 2.9e6, top: 5.5e6, cell: 420, columns: 3, rows: 2, baseDm: 512, valuesDm },
+        };
+    }
+
+    it('happyPath_aFrameOverTerrainCarriesItsRpc @S-P06-HAPPY-TERRAIN', () => {
+        const georef = { method: 'auto', transform: 'affine', gcps, lattice: lattice(289), terrain: terrain() };
+
+        expect(validate(georefSchema, georef).ok).toBe(true);
+    });
+
+    it.each([
+        ['nineteen coefficients a set', terrain(19), 'terrain.rpc.lineNum', 'validation.tooSmall'],
+        ['another surface model', { ...(terrain() as object), source: 'srtm' }, 'terrain.source', 'validation.value'],
+        ['heights short of their cells', terrain(20, 'AAAA'), 'terrain.heights.valuesDm', 'validation.format'],
+        ['no heights', { ...(terrain() as object), heights: undefined }, 'terrain.heights', 'validation.required'],
+    ])('badPath_aTerrainWith_%s @S-P06-BAD-TERRAIN-UNAVAILABLE', (_name, value, path, code) => {
+        const result = validate(georefSchema, { method: 'auto', transform: 'affine', gcps, terrain: value });
+
+        expect(result.ok ? [] : result.issues).toContainEqual({ path, code });
+    });
+
     it('badPath_aPairWithAnUnknownOriginIsRefused', () => {
         expect(gcpSchema.safeParse({ ...pair('g1', 0), origin: 'guess' }).success).toBe(false);
     });
@@ -131,6 +185,39 @@ describe('layer versions', () => {
         ['failed without a reason', { ...version, state: 'failed' }],
     ])('badPath_%s', (_name, doc) => {
         expect(validate(layerVersionDocSchema, doc)).toEqual({ ok: false, issues: [{ path: 'state', code: 'validation.required' }] });
+    });
+
+    const scene = (item: string, northM: number, kept: boolean) => ({
+        items: [item],
+        date: '2026-08-17',
+        cloud: 0,
+        eastM: 0,
+        northM,
+        kept,
+    });
+    const reference = (s2Check: object) => ({
+        ...version,
+        reference: { bounds: output.bounds, s2Item: 'S2C_35TMK_20260817_0_L2A', s2Check },
+    });
+    const shifted = {
+        status: 'agreed',
+        boundM: 7.5,
+        chosen: 1,
+        scenes: [scene('a', -11.2, false), scene('b', 0.8, true), scene('c', 2.6, true)],
+    };
+
+    it('happyPath_theReferenceRecordsWhichSceneTheGuardChoseAndItsOffset @S-P06-HAPPY-REFERENCE-AGREEMENT', () => {
+        expect(validate(layerVersionDocSchema, reference(shifted)).ok).toBe(true);
+        const lone = { status: 'unchecked', boundM: 7.5, chosen: 0, scenes: [{ items: ['a'], date: '2026-08-17', cloud: 3, kept: true }] };
+        expect(validate(layerVersionDocSchema, reference(lone)).ok).toBe(true);
+    });
+
+    it.each([
+        ['a chosen scene it does not list', { ...shifted, chosen: 3 }],
+        ['an unknown verdict', { ...shifted, status: 'probably' }],
+        ['no scene at all', { ...shifted, chosen: 0, scenes: [] }],
+    ])('badPath_aGuardRecordWith%sIsRefused @S-P06-BAD-REFERENCE-SHIFTED-DATE', (_name, check) => {
+        expect(validate(layerVersionDocSchema, reference(check)).ok).toBe(false);
     });
 
     it('badPath_anErrorThatIsNotAnApiCodeIsRefused', () => {

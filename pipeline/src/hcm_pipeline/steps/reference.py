@@ -2,7 +2,8 @@
 
 Both are cached (`reference/{city}/...`); this step draws the georeferencer's two images, `reference-s2.jpg` (true
 colour) and `reference-osm.png` (the lines on transparency), on the window's 10 m grid, and records the version's
-`reference` (the window's bounds, the two images, the item and its date). An upload with its own georeference
+`reference` (the window's bounds, the two images, the item and its date, and `s2Check`: the reference guard's verdict over
+the clear dates it compared, `agreement.py`). An upload with its own georeference
 needs none (`skipped`). Attributions: "Contains modified Copernicus Sentinel data {year}" and "© OpenStreetMap
 contributors (ODbL)". Never Mapbox Satellite.
 """
@@ -51,6 +52,6 @@ class ReferenceStep:
         s2_path = ctx.publish(s2_image, ctx.version_file("reference-s2.jpg"), "image/jpeg").path
         osm_path = ctx.publish(osm_image, ctx.version_file("reference-osm.png"), "image/png").path
         item = source.items[0]
-        reference = ReferenceInfo(window.bounds(), osm_path, s2_path, item.id, item.date)
+        reference = ReferenceInfo(window.bounds(), osm_path, s2_path, item.id, item.date, source.check)
         ctx.update_version({"reference": reference.as_record()})
         return Done(source.info)

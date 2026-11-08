@@ -93,8 +93,7 @@ export type {
     ThemeScheme,
     ThemeTokens,
 } from './schemas/manifest.js';
-export { DEFAULT_CONTAINER_SELECTOR, engineConfigSchema } from './schemas/config.js';
-export type { EngineConfig } from './schemas/config.js';
+export { DEFAULT_CONTAINER_SELECTOR, engineConfigSchema, type EngineConfig } from './schemas/config.js';
 export { SYSTEM_WRITERS, systemWriter, timestampFromDate, timestampSchema, timestampToDate } from './schemas/firestore-common.js';
 export type { SystemWriter, TimestampLike } from './schemas/firestore-common.js';
 export {
@@ -200,6 +199,7 @@ export type {
 } from './schemas/firestore-ops.js';
 export {
     BROWSE_STATES,
+    DEM_ATTRIBUTION,
     RANKING_VERSION,
     RANKING_WEIGHTS,
     RANK_REASONS,
@@ -323,8 +323,7 @@ export * from './kit/csp.js';
 export * from './kit/page.js';
 export * from './imagery/index.js';
 export * from './georef/index.js';
-export { CLIENT_WRITES } from './schemas/client-writes.js';
-export type { ClientCollection, ClientWrites } from './schemas/client-writes.js';
+export { CLIENT_WRITES, type ClientCollection, type ClientWrites } from './schemas/client-writes.js';
 export {
     CITY_ID_PATTERN,
     FIRESTORE_PATHS,

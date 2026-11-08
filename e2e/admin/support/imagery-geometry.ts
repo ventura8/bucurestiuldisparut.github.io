@@ -32,15 +32,19 @@ export const E2E_CITY_BOUNDS: Bounds = { west: 25.9, south: 44.3, east: 26.3, no
 export const SCAN_SIZE = { width: 1600, height: 1200 } as const;
 export const SCAN_PREVIEW_SCALE = 0.5;
 
-/** The scan's rotation against north, in radians (the film is never square to the map). */
-const ROTATION = (2 * Math.PI) / 180;
+/** M15, *Terrain*: scan pixels east a metre of height that the stand-in's frame over terrain shows, over ground 100 m up. */
+export const TERRAIN_PARALLAX_PX = 0.5;
+export const TERRAIN_HEIGHT_M = 100;
 
-function centre(bounds: Bounds): LatLng {
+/** The scan's rotation against north, in radians (the film is never square to the map). */
+export const ROTATION = (2 * Math.PI) / 180;
+
+export function centre(bounds: Bounds): LatLng {
     return { lat: (bounds.south + bounds.north) / 2, lng: (bounds.west + bounds.east) / 2 };
 }
 
 /** A full-resolution scan pixel → its place on the ground (the transform the automatic pairs recover). */
-function scanToGeo(pixel: Pixel, bounds: Bounds = E2E_CITY_BOUNDS): LatLng {
+export function scanToGeo(pixel: Pixel, bounds: Bounds = E2E_CITY_BOUNDS): LatLng {
     const du = pixel.x / SCAN_SIZE.width - 0.5;
     const dv = pixel.y / SCAN_SIZE.height - 0.5;
     const middle = centre(bounds);

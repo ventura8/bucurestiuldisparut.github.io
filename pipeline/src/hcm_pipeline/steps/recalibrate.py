@@ -3,20 +3,23 @@
 A recalibration is a `regeoref` version carrying `recalibration`. `RecalibratedGeorefStep` is the `georef` step for every job: a version
 with the route `auto` (Refine automatically) or `points` (Snap my points) is measured again here, the rest goes to `GeorefStep` unchanged.
 
-- **The start.** `auto`: the current fit (refitted from the current version's pairs). `points`: the current pairs moved by the rough
-  points' corrections (the nearest point weighs most, so one point moves the whole map and several bend it), plus the points themselves,
-  fitted with the current transform.
+- **The current map** is the one its layer shows (M15, *one map for every reader*: `steps/warp.py`): a thin-plate spline through the
+  points it renders (its own, a polynomial sampled on 17 x 17 nodes, or a panoramic camera's stored lattice), or over terrain its RPC over
+  the heights it carries, each through GDAL's own transformer (`rendered_map`). Its pairs and figures are refitted from its record.
+- **The start.** `auto`: the current pairs' fit (a seed; an RPC does not reach the window's corners). `points`: the current pairs
+  moved by the rough points' corrections measured against the current map (the nearest point weighs most, so one point moves the whole
+  map and several bend it), plus the points themselves, fitted with the current pairs' transform.
 - **The references.** A `regeoref` job has no `reference` step: the city window's cached Sentinel-2 and OpenStreetMap lines are read here.
 - **The proof** and the pairs are M9's own (`measured_on_scan`, `calibrated`), every gate unchanged.
-- **The ruler** (§2): the current fit and the new one are measured on **the same checks**, the new version's disabled pairs, in ground
-  metres (`transforms.residuals_m`). A manual version (the georeferencer's Save) is compared the same way when it holds at least
-  `RECALIBRATE_MIN_CHECKS` disabled pairs.
+- **The ruler** (§2): the current map and the new fit are measured on **the same checks**, the new version's disabled pairs, in ground
+  metres (`figure_on`; the new fit's is its `checkpointRmseM`, the figure its version page reports). A manual version (the
+  georeferencer's Save) is compared the same way when it holds at least `RECALIBRATE_MIN_CHECKS` disabled pairs.
 - **Endings.** The proof refused: declined (`refineRefused`). `auto` with too few held-out checks to compare: declined
   (`refineUnmeasured`, not `refineRefused`: the tiles agreed). `auto` not better by `RECALIBRATE_MIN_GAIN_M`: declined (`notImproved`).
   Declined is `DeclinedError`: the job and its version end cancelled with the reason, nothing rendered.
-
-To reconcile with track/accuracy (§9): `current_fit` refits the current pairs with their recorded transform; a camera model or a rendered
-lattice must be built here instead, and `figure_on` is the one place the ruler lives.
+- **The new fit** is a polynomial of the proof's pairs, as any re-measured proof (M15 §2): a regeoref job has neither the film's offset
+  nor `calibration.json`, which the panoramic camera and the terrain fit need. It renders through its 17 x 17 nodes like any polynomial.
+  A camera version is therefore refined only when the polynomial beats its camera on the same checks (M16 §14).
 """
 
 import math
@@ -28,14 +31,17 @@ import numpy
 
 from hcm_pipeline.calibrate.dense import PROOF_SEARCH_GROUND_M
 from hcm_pipeline.calibrate.pairs import Calibrated, ScanBox, calibrated
+from hcm_pipeline.calibrate.poly import PlaceMap
 from hcm_pipeline.calibrate.proof import Proof
 from hcm_pipeline.contract import MIN_GCPS, RECALIBRATE_MIN_CHECKS, RECALIBRATE_MIN_GAIN_M, Errors
 from hcm_pipeline.documents import GeorefInfo, ScanInfo, Version
-from hcm_pipeline.geo import to_lnglat, to_mercator
+from hcm_pipeline.geo import FloatArray, to_lnglat, to_mercator
 from hcm_pipeline.georef.matcher import References
-from hcm_pipeline.georef.transforms import Fit, Gcp, Transform, enabled_gcps, fit, fit_transform, residuals_m, rmse
+from hcm_pipeline.georef.transforms import Fit, Gcp, Transform, enabled_gcps, fit, fit_transform, rmse
 from hcm_pipeline.jobs import DeclinedError, Done, JobContext, StepFailedError, StepResult
 from hcm_pipeline.model import number_of, record_of
+from hcm_pipeline.raster import gdal
+from hcm_pipeline.rasters import WEB_MERCATOR, driver_of, srs_wkt
 from hcm_pipeline.steps.common import city_window, gdal_step, grey_reference, sentinel2
 from hcm_pipeline.steps.georef import (
     AUTO_METHOD,
@@ -49,13 +55,66 @@ from hcm_pipeline.steps.georef import (
     recorded,
     references,
 )
+from hcm_pipeline.steps.warp import FLAT_GROUND, RPC_OPTIONS, TPS_OPTIONS, rendered_points
 from hcm_pipeline.store import DELETE
+from hcm_pipeline.surface import write_heights
 
 # The new pairs this close to a rough point are what Snap proposes there (ground metres).
 POINT_REACH_GROUND_M: Final = 1500.0
 # How far the tiles search around a start the rough points bent: at least twice the furthest the start misses a point by.
 POINT_SEARCH_SHARE: Final = 2.0
 STARTED_ROUTES: Final = frozenset({"auto", "points"})
+DST_SRS: Final = "DST_SRS=EPSG:3857"
+TO_PLACES: Final = 0
+TO_FILM: Final = 1
+
+
+@dataclass(frozen=True)
+class GdalMap:
+    """A map through GDAL's own transformer, the one a warp runs on; a place it cannot reach is NaN. It keeps its band-less dataset."""
+
+    dataset: gdal.Dataset
+    transformer: gdal.Transformer
+
+    def _through(self, to_source: int, points: FloatArray) -> FloatArray:
+        found, good = self.transformer.TransformPoints(to_source, numpy.asarray(points, numpy.float64).tolist())
+        values = numpy.array(found, numpy.float64).reshape(-1, 3)[:, :2]
+        values[~numpy.array(good, numpy.bool_)] = numpy.nan
+        return values
+
+    def to_places(self, film: FloatArray) -> FloatArray:
+        return self._through(TO_PLACES, film)
+
+    def to_film(self, places: FloatArray) -> FloatArray:
+        return self._through(TO_FILM, places)
+
+
+def rendered_map(ctx: JobContext, georef: GeorefInfo, scan: ScanInfo) -> GdalMap:
+    """The map a version's layer shows (`steps/warp.py` `attached`): over terrain its RPC over the heights it carries, else a thin-plate
+    spline through the points it renders. It reads no pixel, so no scan is fetched for it."""
+    dataset = driver_of("MEM").Create("", scan.width, scan.height, 0)
+    terrain = georef.terrain
+    if terrain is None:
+        points = rendered_points(georef, (scan.width, scan.height))
+        dataset.SetGCPs([gdal.GCP(x, y, FLAT_GROUND, column, row) for x, y, column, row in points], srs_wkt(WEB_MERCATOR))
+        return GdalMap(dataset, gdal.Transformer(dataset, None, [*TPS_OPTIONS, DST_SRS]))
+    for key, value in terrain.rpc.metadata().items():
+        dataset.SetMetadataItem(key, value, "RPC")
+    dem = write_heights(ctx.local("current-dem.tif"), terrain.heights)
+    return GdalMap(dataset, gdal.Transformer(dataset, None, ["METHOD=RPC", f"RPC_DEM={dem}", *RPC_OPTIONS, DST_SRS]))
+
+
+@dataclass(frozen=True)
+class Current:
+    """The current version: its pairs' fit (pairs, kind, figure) and the map its layer shows (`rendered_map`)."""
+
+    fit: Fit
+    rendered: PlaceMap
+
+    @classmethod
+    def polynomial(cls, fitted: Fit) -> Current:
+        """A fit that renders as itself."""
+        return cls(fitted, TransformMap(fitted.transform))
 
 
 @dataclass(frozen=True)
@@ -88,9 +147,18 @@ class Compared:
         return f"{self.after.rmse_m:.1f} m against the current {self.before.rmse_m:.1f} m on the same {self.after.checks} checks"
 
 
-def figure_on(transform: Transform, checks: Sequence[Gcp]) -> Figure:
-    """A transform's error on `checks`, the product's ruler: ground metres between each place and where the transform puts its pixel."""
-    return Figure(rmse(residuals_m(transform, checks).tolist()), len(checks))
+def misses_m(rendered: PlaceMap, checks: Sequence[Gcp]) -> FloatArray:
+    """Ground metres between each check's place and where the map puts its pixel (`transforms.residuals_m`, for any map)."""
+    film = numpy.array([(gcp.x, gcp.y) for gcp in checks], numpy.float64).reshape(-1, 2)
+    places = numpy.array([to_mercator(gcp.lng, gcp.lat) for gcp in checks], numpy.float64).reshape(-1, 2)
+    found = rendered.to_places(film)
+    latitudes = numpy.radians(numpy.array([gcp.lat for gcp in checks], numpy.float64))
+    return numpy.hypot(found[:, 0] - places[:, 0], found[:, 1] - places[:, 1]) * numpy.cos(latitudes)
+
+
+def figure_on(rendered: PlaceMap, checks: Sequence[Gcp]) -> Figure:
+    """A map's error on `checks`, the product's ruler: ground metres between each place and where the map puts its pixel."""
+    return Figure(rmse(misses_m(rendered, checks).tolist()), len(checks))
 
 
 def held_out(georef: GeorefInfo) -> list[Gcp]:
@@ -98,12 +166,12 @@ def held_out(georef: GeorefInfo) -> list[Gcp]:
     return [gcp for gcp in georef.gcps if not gcp.enabled]
 
 
-def compared(current: Fit | None, georef: GeorefInfo) -> Compared | None:
-    """Both fits on the new fit's held-out pairs, when there are enough of them; None otherwise."""
+def compared(current: Current | None, georef: GeorefInfo) -> Compared | None:
+    """The current map and the new fit on the new fit's held-out pairs, when there are enough of them; None otherwise."""
     checks = held_out(georef)
     if current is None or len(checks) < RECALIBRATE_MIN_CHECKS:
         return None
-    return Compared(figure_on(current.transform, checks), Figure(georef.checkpoint_rmse_m or 0.0, len(checks)))
+    return Compared(figure_on(current.rendered, checks), Figure(georef.checkpoint_rmse_m or 0.0, len(checks)))
 
 
 def figures_record(figures: Compared | None) -> dict[str, object]:
@@ -120,11 +188,22 @@ def refitted(georef: GeorefInfo | None) -> Fit | None:
     return fitted if isinstance(fitted, Fit) else None
 
 
-def current_fit(ctx: JobContext) -> Fit | None:
-    """The current version's fit (`basedOn`), refitted from its pairs; None when it has none."""
+def current_of(ctx: JobContext, georef: GeorefInfo | None, scan: ScanInfo | None) -> Current | None:
+    """A version's pairs refitted and the map its layer shows (a polynomial's own without its scan's size); None without pairs."""
+    fitted = refitted(georef)
+    if fitted is None or georef is None:
+        return None
+    return Current.polynomial(fitted) if scan is None else Current(fitted, rendered_map(ctx, georef, scan))
+
+
+def current_fit(ctx: JobContext) -> Current | None:
+    """The current version (`basedOn`): its pairs refitted and the map its layer shows; None when it has no pairs."""
     based_on = ctx.version.based_on
     record = None if based_on is None else ctx.services.store.get(f"cities/{ctx.city}/layerVersions/{based_on}")
-    return None if record is None or based_on is None else refitted(Version.of(based_on, record).georef)
+    if record is None or based_on is None:
+        return None
+    current = Version.of(based_on, record)
+    return current_of(ctx, current.georef, current.scan or ctx.version.scan)
 
 
 @dataclass(frozen=True)
@@ -161,13 +240,13 @@ def points_of(ctx: JobContext) -> list[RoughPoint]:
     return [RoughPoint.of(point) for point in raw] if isinstance(raw, list) else []
 
 
-def offsets(current: Fit, points: Sequence[RoughPoint]) -> list[tuple[float, float, float, float]]:
-    """Each rough point's place in Mercator and how far the current fit is from it there: `(x, y, dx, dy)`."""
+def offsets(current: Current, points: Sequence[RoughPoint]) -> list[tuple[float, float, float, float]]:
+    """Each rough point's place in Mercator and how far the current map is from it there: `(x, y, dx, dy)`."""
     found = []
     for point in points:
-        fx, fy = current.transform.to_mercator(numpy.array([point.x]), numpy.array([point.y]))
+        shown = current.rendered.to_places(numpy.array([(point.x, point.y)], numpy.float64))
         x, y = to_mercator(point.lng, point.lat)
-        found.append((x, y, x - float(fx[0]), y - float(fy[0])))
+        found.append((x, y, x - float(shown[0, 0]), y - float(shown[0, 1])))
     return found
 
 
@@ -182,30 +261,31 @@ def moved(gcp: Gcp, shifts: Sequence[tuple[float, float, float, float]]) -> Gcp:
     return replace(gcp, lat=lat, lng=lng)
 
 
-def bent_start(current: Fit, points: Sequence[RoughPoint]) -> Transform:
-    """The current fit bent to the rough points: every current pair moved by their corrections, nearest weighing most, and the points
-    themselves, fitted with the current transform (affine when too few)."""
+def bent_start(current: Current, points: Sequence[RoughPoint]) -> Transform:
+    """The current map bent to the rough points: every current pair moved by their corrections, nearest weighing most, and the points
+    themselves, fitted with the current pairs' transform (affine when too few)."""
     shifts = offsets(current, points)
-    pairs = [moved(gcp, shifts) for gcp in enabled_gcps(current.gcps)] + [point.as_gcp(index) for index, point in enumerate(points)]
-    kind = current.transform.kind if len(pairs) >= MIN_GCPS[current.transform.kind] else "affine"
+    pairs = [moved(gcp, shifts) for gcp in enabled_gcps(current.fit.gcps)] + [point.as_gcp(index) for index, point in enumerate(points)]
+    kind = current.fit.transform.kind if len(pairs) >= MIN_GCPS[current.fit.transform.kind] else "affine"
     bent = fit_transform(kind, pairs)
     if bent is None:
         raise StepFailedError(Errors.DEGENERATE_GCPS, "the rough points and the pairs around them are collinear or coincident")
     return bent
 
 
-def start_of(current: Fit, points: Sequence[RoughPoint]) -> Transform:
-    """Where the tiles start: the current fit, or the current fit bent to the rough points."""
-    return bent_start(current, points) if points else current.transform
+def start_of(current: Current, points: Sequence[RoughPoint]) -> PlaceMap:
+    """Where the tiles start: the current pairs' fit, or the current map bent to the rough points. A start is a seed the tiles search
+    around, and it must reach past the scan to the window's corners, which an RPC over the heights under the scan does not."""
+    return TransformMap(bent_start(current, points) if points else current.fit.transform)
 
 
-def search_m(current: Fit, start: Transform, points: Sequence[RoughPoint]) -> float:
+def search_m(current: Current, start: PlaceMap, points: Sequence[RoughPoint]) -> float:
     """How far the tiles search: as M9's seeded points for Refine; from bent points, at least twice the furthest the start misses one by,
     as the admin reads them roughly."""
     if points:
-        missed = max(float(residuals_m(start, [point.as_gcp(index)])[0]) for index, point in enumerate(points))
+        missed = float(numpy.max(misses_m(start, [point.as_gcp(index) for index, point in enumerate(points)])))
         return max(PROOF_SEARCH_GROUND_M, min(POINT_SEARCH_SHARE * missed, SEED_MAX_SEARCH_M))
-    rmse_m = current.checkpoint_rmse_m or 0.0
+    rmse_m = current.fit.checkpoint_rmse_m or 0.0
     return max(PROOF_SEARCH_GROUND_M, min(SEED_SEARCH_RMSE_SHARE * rmse_m, SEED_MAX_SEARCH_M))
 
 
@@ -255,13 +335,14 @@ class RecalibratedGeorefStep(GeorefStep):
         return self._refine(ctx) if route_of(ctx) in STARTED_ROUTES else super().run(ctx)
 
     def _refine(self, ctx: JobContext) -> Done:
-        scan, current = ctx.version.scan, current_fit(ctx) or refitted(ctx.version.georef)
+        scan = ctx.version.scan
+        current = current_fit(ctx) or current_of(ctx, ctx.version.georef, scan)
         if scan is None or current is None:
             raise StepFailedError(Errors.NO_SCAN, "the version has no scan or no fit to refine")
         points = points_of(ctx)
         start, given = start_of(current, points), window_references(ctx)
         reach = search_m(current, start, points)
-        proof = gdal_step(ctx, lambda: measured_on_scan(ctx, TransformMap(start), scan, reach, given), "measure the scan")
+        proof = gdal_step(ctx, lambda: measured_on_scan(ctx, start, scan, reach, given), "measure the scan")
         georef = recorded(proved_pairs(ctx, proof, scan).fitted, AUTO_METHOD)
         figures = compared(current, georef)
         ctx.log.info(f"refined: {proof.inliers} of {proof.tried} tiles agree; {figures_text(figures)}", self.name)

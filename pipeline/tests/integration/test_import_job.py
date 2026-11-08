@@ -7,7 +7,7 @@ from pathlib import Path
 
 import cv2
 import numpy
-from hcm_pipeline.contract import Errors
+from hcm_pipeline.contract import VERSION_FILES, Errors
 from hcm_pipeline.geo import to_lnglat
 from hcm_pipeline.model import Timestamp
 from hcm_pipeline.raster import gdal
@@ -87,20 +87,11 @@ def test_happy_path_a_queued_import_becomes_a_version_awaiting_approval(
     assert (output["minzoom"], output["maxzoom"]) == (10, 16)
     assert output["areaKm2"] > 15
     assert reference["s2Item"] == S2_ITEM
+    # One clear date is all the catalogue holds: taken, and recorded as unchecked.
+    assert dig(reference, "s2Check", "status") == "unchecked"
     assert alignment_shift_m(world, world.scene, tmp_path) < 10
     assert world.gcs.names(f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/") == [
-        f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/{name}"
-        for name in (
-            "cog.tif",
-            "preview.png",
-            "reference-osm.png",
-            "reference-s2.jpg",
-            "scan-preview.jpg",
-            "scan.tif",
-            "studio.tif",
-            "thumb.webp",
-            "tiles.pmtiles",
-        )
+        f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/{name}" for name in sorted(VERSION_FILES)
     ]
     assert world.gcs.names(WORK) == []
     # The delivery was fetched whole, then deleted once the city crop existed (M7 §5: S-P01-HAPPY-RAW-DELETED).
@@ -173,6 +164,48 @@ def test_bad_path_sentinel2_items_that_leave_a_hole_in_the_window_fail_at_locate
     assert outcome is RunOutcome.FAILED
     assert dig(world.job(), "error", "code") == Errors.REFERENCE_UNAVAILABLE
     assert step_statuses(world)["locate"] == "failed"
+
+
+def test_bad_path_a_least_cloudy_date_twelve_metres_south_is_rejected_and_the_version_records_the_check(world: PipelineWorld) -> None:
+    """Scenarios: S-P06-BAD-REFERENCE-SHIFTED-DATE, S-P06-BAD-REFERENCE-UNREADABLE"""
+    world.stac_extra = [
+        ("unreadable", "2025-01-02", 0.5, "s3://sentinel-s2-l2a/tiles/35/T/MK/TCI.jp2"),
+        ("shifted", "2025-03-01", 1.0, world.serve_sentinel2_moved("shifted", -12.0)),
+        ("twin", "2025-05-01", 5.0, world.serve_sentinel2_moved("twin", 0.0)),
+    ]
+    world.seed_import()
+
+    outcome = world.run()
+
+    reference = world.version()["reference"]
+    scenes = dig(reference, "s2Check", "scenes")
+    assert outcome is RunOutcome.DONE
+    assert dig(reference, "s2Item") == S2_ITEM
+    assert (dig(reference, "s2Check", "status"), dig(reference, "s2Check", "chosen")) == ("agreed", 2)
+    assert isinstance(scenes, list)
+    assert [scene["kept"] for scene in scenes] == [False, False, True, True]
+    assert "northM" not in scenes[0]
+    assert abs(scenes[1]["northM"] + 12.0) < 1.5
+    assert abs(scenes[2]["northM"]) < 1.0
+    lines = world.log_lines()
+    # `locate` measured the dates once; `reference` read the verdict the cached window carries.
+    assert sum("sits" in line and "off the other dates" in line for line in lines) == 1
+    assert any("unreadable could not be read for the reference check" in line for line in lines)
+
+
+def test_bad_path_a_window_cached_before_the_guard_is_measured_again(world: PipelineWorld) -> None:
+    """Scenarios: S-P06-BAD-REFERENCE-TOO-FEW"""
+    world.seed_import()
+    runner = world.runner()
+    for step in ("fetch", "extract", "stitch", "locate"):
+        assert runner.run(step) is RunOutcome.DONE
+    [cached] = world.gcs.names(f"reference/{CITY}/s2/")
+    world.gcs.put(cached, world.scene.sentinel2.read_bytes())
+
+    assert world.runner().run("reference") is RunOutcome.DONE
+
+    assert dig(world.version(), "reference", "s2Check", "status") == "unchecked"
+    assert world.gcs.objects[cached].data != world.scene.sentinel2.read_bytes()
 
 
 def test_bad_path_overpass_down_fails_at_reference_with_reference_unavailable(world: PipelineWorld) -> None:

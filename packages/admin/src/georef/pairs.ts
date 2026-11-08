@@ -5,7 +5,7 @@
  * deleted or disabled (kept as a checkpoint). New pairs are `manual` and named `g<n>`; a moved automatic pair becomes
  * `manual` too (its score no longer describes it). Pure: the store keeps the list, the fit reads it.
  */
-import { MAX_GCPS, type Gcp } from '@hcm/shared';
+import { clamp, MAX_GCPS, type Gcp } from '@hcm/shared';
 
 export interface PixelPosition {
     readonly x: number;
@@ -22,7 +22,7 @@ export type HalfPair = { readonly pixel: PixelPosition } | { readonly geo: GeoPo
 
 /** Scan pixels are kept to a hundredth, places to seven decimals (about 1 cm, as the drawing tools round). */
 export function roundPixel(pixel: PixelPosition, width: number, height: number): PixelPosition {
-    const keep = (value: number, max: number): number => Math.round(Math.min(Math.max(value, 0), max) * 100) / 100;
+    const keep = (value: number, max: number): number => Math.round(clamp(value, 0, max) * 100) / 100;
     return { x: keep(pixel.x, width), y: keep(pixel.y, height) };
 }
 

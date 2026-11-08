@@ -112,7 +112,8 @@
         "preview.png",
         "studio.tif",
         "tiles.pmtiles",
-        "thumb.webp"
+        "thumb.webp",
+        "align.tif"
     ],
     "LEASE_SECONDS": 600,
     "HEARTBEAT_SECONDS": 60,
@@ -182,6 +183,9 @@
     "JOIN_MAX_PARTS": 8,
     "RECALIBRATE_MIN_GAIN_M": 1,
     "RECALIBRATE_MIN_CHECKS": 3,
+    "S2_CHECK_STATUSES": ["agreed", "unchecked", "disputed"],
+    "ALIGNMENT_STATUSES": ["used", "few", "disagrees"],
+    "ALIGNMENT_MAX_PARTNERS": 12,
     "PIPELINE_ERROR_CODES": [
         "apiError.imagery.archiveCorrupt",
         "apiError.imagery.cityNotFound",

@@ -5479,6 +5479,61 @@
             "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
         },
         {
+            "id": "S-A16-BAD-POINTS-DROP-LATTICE",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "The admin's points replace a camera map they cannot rebuild",
+            "asserts": "saving points over a version whose georef carries a panoramic lattice -> the new version's georef is the points' fit (method gcps) with no lattice, so the warp renders what the georeferencer showed",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M15-calibration-accuracy.md §1. Test: functions/test/imagery/save-gcps.test.ts."
+        },
+        {
+            "id": "S-A16-HAPPY-VERSION-FIGURES",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "The georeferencer opens a fitted version on its own figures and the map it publishes",
+            "asserts": "a version whose georef stores its figures, residuals and a panoramic lattice (the stand-in's camera) -> unedited, the errors line shows the stored fit and checkpoint errors the version page shows, not a refit of its pairs, and no refit note; the preview is the lattice's map (a thin-plate spline through its nodes, as the warp renders it)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M15 review (docs/research/M15-calibration-accuracy.md, As built). Test: e2e/admin/specs/imagery/georeferencer.spec.ts; the preview drawn through the lattice, not the pairs' polynomial, and the stored residuals: packages/admin/test/georef/georef-published.test.ts."
+        },
+        {
+            "id": "S-A16-HAPPY-TERRAIN-PREVIEW",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "The georeferencer previews a frame fitted over terrain as its layer shows it",
+            "asserts": "a version whose georef carries terrain (its RPC and the heights under its scan) and the lattice of the map its layer shows -> unedited, the errors line shows the stored figures, the preview is drawn in the box of that map (the stand-in's frame over ground 100 m up, shown 50 pixels east) and each of its quads reads the scan through the RPC over those heights, as the warp's RPC_DEM does, not through the lattice; the map gives GDAL's pixel of each place within 0.01 m (the contract pipeline/tests/contracts/terrain-map.json)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M15 terrain review (docs/research/M15-calibration-accuracy.md, Terrain). Tests: e2e/admin/specs/imagery/georeferencer.spec.ts; the map against GDAL's: pipeline/tests/unit/test_terrain_map_contract.py, packages/shared/test/georef/terrain.test.ts; the page previews it: packages/admin/test/georef/georef-published.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-TERRAIN-CHUNK",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame over terrain whose lazy chunk cannot be fetched says so and keeps the page working",
+            "asserts": "the georeferencer's chunk (georef-extras: the map a lattice or terrain publishes, and Snap my points) fails to load -> the snackbar says adminContent.georef.mapUnavailable in plain words (ro and en); the stored figures still show, the preview is the pairs' fit, the page stays ready",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §110 (the chunk split for the georef budget). Tests: e2e/admin/specs/imagery/georeferencer.spec.ts; the units: packages/admin/test/georef/georef-published.test.ts, packages/admin/test/georef/extras.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-EDIT-REFITS",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "Edited pairs of a fitted version are said to be a refit that saving makes the version's map",
+            "asserts": "a pair of that version left out of the fit -> every figure and the preview are a refit through the pairs and a note says saving replaces the version's map with it; Discard brings back the version's own figures and takes the note away; a version without figures of its own (corner guesses) shows the refit with no note",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M15 review. Tests: e2e/admin/specs/imagery/georeferencer.spec.ts (state georef.refitted), packages/admin/test/georef/georef-published.test.ts."
+        },
+        {
             "id": "S-A16-HAPPY-POINTS-AFTER-ATTEMPTS",
             "behaviour": "A16",
             "area": "admin",
@@ -10396,6 +10451,28 @@
             "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/imagery/worker.spec.ts; packages/admin/test/worker/local.test.ts."
         },
         {
+            "id": "S-A62-HAPPY-HELD-FRAMES",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A local run being joined reads its city's versions and their 5 m images",
+            "asserts": "worker.step list of cities/{city}/layerVersions -> their ids; get of any version of the city -> its document (target held); worker.urls signs GET of rasters/{city}/{layer}/{version}/align.tif",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Test: functions/test/worker/step.test.ts, functions/test/worker/allow-list.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-HELD-FRAMES-WRITE",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A local run never writes another frame, nor reads another city's",
+            "asserts": "update of another version of the city -> apiError.worker.refused; align.tif of another version is never signed for PUT; another city's versions, another file of a frame, a way out of the city or a deeper path -> off the list",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Test: functions/test/worker/allow-list.test.ts, functions/test/worker/step.test.ts."
+        },
+        {
             "id": "S-A63-HAPPY-METER",
             "behaviour": "A63",
             "area": "admin",
@@ -11155,6 +11232,28 @@
             "notes": "M9 (docs/research/M9-calibration.md §2). Test: functions/test/imagery/pass-calibration.test.ts."
         },
         {
+            "id": "S-A67-HAPPY-ALIGNED",
+            "behaviour": "A67",
+            "area": "admin",
+            "path": "happy",
+            "title": "A frame lined up with earlier photos says which, and that they stayed where they are",
+            "asserts": "calibration.alignment with two used partners (1972, 1977; 1,420 and 810 ties) and one with too few -> on the version page: lined up with your photos of 1972, 1977 at 2230 shared points; they stay where they are, and lining them up with this one is your choice; the one with too few says nothing; in the page language",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Test: e2e/admin/specs/imagery/calibration.spec.ts; packages/ui/test/admin/imagery/calibration-card.test.ts."
+        },
+        {
+            "id": "S-A67-BAD-ALIGNED-LEFT-OUT",
+            "behaviour": "A67",
+            "area": "admin",
+            "path": "bad",
+            "title": "A photo whose streets sat off is named and was not used",
+            "asserts": "a partner disagreeing at 9.24 m (1978) -> not lined up with 1978: its streets sat 9.2 m from the others",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Test: e2e/admin/specs/imagery/calibration.spec.ts; packages/ui/test/admin/imagery/calibration-card.test.ts."
+        },
+        {
             "id": "S-P05-HAPPY",
             "behaviour": "P05",
             "area": "pipeline",
@@ -11175,6 +11274,17 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M8 (docs/research/M8-join-interfaces.md §17). Test: pipeline/tests/integration/test_join_warp_parity.py."
+        },
+        {
+            "id": "S-P05-HAPPY-TERRAIN-PART",
+            "behaviour": "P05",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A join's part fitted over terrain shows what its layer shows",
+            "asserts": "a part whose georef carries terrain, seen off nadir over a 90 m hill, warped by the join with a real coded scan -> without nodes, the very pixels its layer's warp reads (within a metre: the same RPC over the same heights); with the nodes of a seam, read first through its RPC onto the level's grid and its nodes placed there, so past the taper it still shows its layer within a metre (P95), where a spline through scan pixels lay 43 m RMS from it",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 terrain review (docs/research/M15-calibration-accuracy.md, Terrain), M8 (docs/research/M8-join-interfaces.md §3). Test: pipeline/tests/integration/test_terrain_readers.py."
         },
         {
             "id": "S-P05-HAPPY-THREE",
@@ -11582,6 +11692,226 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "docs/research/M9-calibration.md §5. Test: pipeline/tests/integration/test_calibration_job.py."
+        },
+        {
+            "id": "S-P06-HAPPY-RENDERED-FIT",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The published layer shows the map the fit holds, not GDAL's own reverse polynomial",
+            "asserts": "an affine or poly2 georef -> the warp renders with -tps through 17 x 17 nodes sampled on the fit over the scan, within 1 px of the fit where -order 2 is 5 px and more off; a stored lattice is rendered as stored",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M15-calibration-accuracy.md §1. Test: pipeline/tests/unit/test_render_lattice.py."
+        },
+        {
+            "id": "S-P06-BAD-RENDERED-OWN-POINTS",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A thin-plate spline, a degenerate set or an upload renders through its own points; a malformed lattice is refused",
+            "asserts": "a tps georef or a collinear set -> its enabled points; an embedded georef -> no transform; a lattice of an unknown model, without nodes, with a node missing a coordinate, other than the 17 x 17 (289) nodes the pipeline samples -> DocumentError in the pipeline and a validation issue in georefSchema",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M15-calibration-accuracy.md §1. Tests: pipeline/tests/unit/test_render_lattice.py, packages/shared/test/schemas/imagery.test.ts."
+        },
+        {
+            "id": "S-P06-HAPPY-PANORAMIC-CAMERA",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A KH-9 panoramic frame is mapped by its camera, fitted on every tile, and rendered through a stored lattice",
+            "asserts": "tiles of a panoramic camera -> the camera within 4 m where poly2 is twice as far off; calibrated() with the film's radians a column -> held-out checks and the blocked figure from the camera and lower than poly2's, residuals on every pair, georef.lattice of 289 panoramic nodes over the scan; locate stores radPerPx for KH-9 pan only; the lattice round-trips the document",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M15-calibration-accuracy.md §2. Tests: pipeline/tests/unit/test_calibrate_camera.py, pipeline/tests/unit/test_render_lattice.py, packages/shared/test/schemas/imagery.test.ts."
+        },
+        {
+            "id": "S-P06-BAD-PANORAMIC-FALLS-BACK",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A camera that cannot hold the frame is not used, and a retry keeps the camera's map",
+            "asserts": "under 60 tiles -> no camera; a wrong rate whose camera holds under 90 % of the tiles RANSAC kept -> poly2 with no lattice; KH-7, KH-9 mapping or a calibration.json without radPerPx -> poly2; a georef retry over a stored lattice -> the georef unchanged and 'kept: the panoramic map ...'",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M15-calibration-accuracy.md §2. Tests: pipeline/tests/unit/test_calibrate_camera.py, pipeline/tests/unit/test_render_lattice.py, pipeline/tests/integration/test_calibration_job.py."
+        },
+        {
+            "id": "S-P06-HAPPY-CAMERA-PLAINEST-MIRROR",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Of two mirrored KH-9 cameras that hold the same tiles, the one with the smaller second-order term maps the frame",
+            "asserts": "tiles of a camera at a scan angle of 0.45 rad on which the camera mirrored about the nadir holds one tile more (899 against 898) through a second-order term of about 5 km -> the camera kept has the true sign of the scan angle and a second-order term under 1 km, and beyond the tiles (film columns 41,000 to 47,000) it reads under 3 m RMS (1.8 m; the mirrored one 4.1 m); both signs of the scan angle are always followed",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 review (docs/research/M15-calibration-accuracy.md, Review of 2026-11-08). Test: pipeline/tests/unit/test_calibrate_camera.py. On real frames the mirrored camera had been published for A001, F022 and F049 (second-order terms of 8.7, 7.4 and 4.3 km against 0.3, 0.3 and 1.2 km)."
+        },
+        {
+            "id": "S-P06-BAD-CAMERA-PLAINEST-ONLY-AMONG-EQUALS",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A camera that holds clearly more tiles is kept however much it bends",
+            "asserts": "two cameras, one holding 20 tiles more of about 900 through a second-order term forty times larger -> that one is kept; holding 5 more (within 1 %) -> the plainer one",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 review. Test: pipeline/tests/unit/test_calibrate_camera.py."
+        },
+        {
+            "id": "S-P06-HAPPY-REFERENCE-AGREEMENT",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The Sentinel-2 reference is the least cloudy clear date that agrees with the others",
+            "asserts": "five clear dates of one texture placed within 2 m of each other -> status agreed, the least cloudy kept as the reference, each date's offset from the median read within 0.5 m; candidates are covering sets at least 30 days apart, least cloudy first; the version's reference records s2Check (status, boundM, chosen, every set's items, date, cloud, eastM, northM, kept) and the shared schema accepts it",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 reference guard (docs/research/M15-calibration-accuracy.md, The reference guard). Tests: pipeline/tests/unit/test_agreement.py, packages/shared/test/schemas/imagery.test.ts. On real scenes (2026-11-08) Bucharest keeps S2C_35TMK_20260817, the scene its frames were calibrated on."
+        },
+        {
+            "id": "S-P06-BAD-REFERENCE-SHIFTED-DATE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A Sentinel-2 date that sits 12 m off the others is rejected, even when it is the least cloudy",
+            "asserts": "the least cloudy date 12 m south of four others -> rejected (offset read within 0.9 m), the next date that agrees is the reference, a warning names both; two shifted dates of five (-12.7 and -9.9 m) -> both rejected once the consensus is centred again; a whole import whose least cloudy date is moved 12 m south -> the job succeeds on the world's own date, s2Check chosen 2 with kept [false, false, true, true], one warning (locate measured, reference read the verdict from the cached window); a record naming a scene it does not list, an unknown status or no scene is refused by the shared schema",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 reference guard (docs/research/M15-calibration-accuracy.md, The reference guard). Tests: pipeline/tests/unit/test_agreement.py, pipeline/tests/integration/test_import_job.py, packages/shared/test/schemas/imagery.test.ts. Real proof: 2024-10-26 rejected at 11.5 m over Bucharest and 11.2 m over Pitesti."
+        },
+        {
+            "id": "S-P06-HAPPY-REFERENCE-ANY-LATITUDE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The guard reads ground metres at any latitude, in any UTM zone, and on a set mosaicked across zones",
+            "asserts": "one texture written in EPSG:32633 at 78 N, EPSG:32719 at 55 S, and as two halves in EPSG:32717 and 32718 across the equator's zone seam, the first set moved 3 m east and 10 m south -> rejected, its offset read within 1 m; a window narrower than 10 km reads a smaller patch",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 reference guard (docs/research/M15-calibration-accuracy.md, The reference guard). Test: pipeline/tests/unit/test_agreement.py. Real runs: Gothenburg across zones 32 and 33, Tromso, Longyearbyen, Quito, Ushuaia."
+        },
+        {
+            "id": "S-P06-BAD-REFERENCE-TOO-FEW",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Too few clear dates to outvote one another are taken unchecked; dates that all disagree are disputed",
+            "asserts": "one date -> unchecked, taken, nothing read; two read -> unchecked, the least cloudy readable one taken, offsets of plus and minus half their difference; three read 20 m from each other -> disputed, the least cloudy readable one taken, offsets against all of them; both warn in the job log; a window cached before the guard, or whose stored verdict is not JSON or names no set (true is no index), is measured again and replaced",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 reference guard (docs/research/M15-calibration-accuracy.md, The reference guard). Tests: pipeline/tests/unit/test_agreement.py, pipeline/tests/integration/test_import_job.py; the import of S-P01-HAPPY records unchecked (its catalogue holds one date)."
+        },
+        {
+            "id": "S-P06-BAD-REFERENCE-UNREADABLE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A clear date that cannot be read does not vote and is never the reference",
+            "asserts": "a least cloudy item whose address the guard refuses (s3://) -> a warning, no offset, kept false, the job goes on; a set compared with no member has no place; tiles without data, texture or a clear peak measure nothing; a missing file raises for the caller to skip",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 reference guard (docs/research/M15-calibration-accuracy.md, The reference guard). Tests: pipeline/tests/unit/test_agreement.py, pipeline/tests/integration/test_import_job.py. Real case: Gothenburg's least cloudy item S2B_32VPK_20241204 has an s3:// asset; before the guard it would have failed the reference."
+        },
+        {
+            "id": "S-P06-HAPPY-JOINT-HELD-STILL",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A proved frame is fitted again with the accepted frames it overlaps held still",
+            "asserts": "a proved frame and accepted (approved, publishing, published) proved frames over it that kept align.tif -> its own first fit rendered at 5 m on the city's align grid, each held frame's tiles (900 m, every 450 m) found in it within 150 m, a tie per tile (the held frame's place, our film pixel through our warp's own transform), the frame fitted again on its own tiles and the ties (9 times the weight; its camera, else a polynomial); the held frames' layers are not rendered again; calibration.alignment records every partner (versionId, year, ties, tried, status, offsetM) and the log says how many were held and how many ties; every proved frame's export keeps align.tif (grey, 0 no data, deflated, 5 ground metres)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Tests: pipeline/tests/unit/test_calibrate_joint.py, pipeline/tests/unit/test_calibrate_ties.py, pipeline/tests/integration/test_joint_job.py."
+        },
+        {
+            "id": "S-P06-HAPPY-JOINT-THIN-FRAME",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A frame with Sentinel-2 tiles on part of its film is carried by its ties on the rest",
+            "asserts": "a frame whose own tiles cover half its film and whose ties cover the other half -> held out on that other half the joined map is within 5 m (synthetic), under half the error of the frame alone",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Tests: pipeline/tests/unit/test_calibrate_joint.py."
+        },
+        {
+            "id": "S-P06-HAPPY-JOINT-RESTRICTED",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A joined polynomial holds to the film's measured box",
+            "asserts": "a frame without a camera joined through a cubic on every tile and tie -> inside the rows' film box the map is the cubic; beyond it, the cubic's value at the box's nearest point plus how the second-order fit of the same rows grows from there; the lattice's model is polynomial",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Tests: pipeline/tests/unit/test_calibrate_joint.py."
+        },
+        {
+            "id": "S-P06-BAD-JOINT-PARTNER-DISAGREES",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A frame published wrong is left out and named, and pulls nothing",
+            "asserts": "three partners, one 20 m off -> its ties sit about 20 m from the map of the frame and the other two (over 6 m), it is left out (status disagrees, offsetM), the furthest alone first and the rest measured again, so the two good ones stay used and the map holds within 3 m",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Tests: pipeline/tests/unit/test_calibrate_joint.py."
+        },
+        {
+            "id": "S-P06-BAD-JOINT-FEW-TIES",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An overlap too small or too poor to count holds nothing still",
+            "asserts": "under 100 ties, or under a quarter of the tiles tried holding, or a frame of another place (one tile of 16 or none), or ties outside the scan or in a checkpoint cell -> status few, nothing joined, the frame keeps its own fit; a model that cannot fit joins nothing; on the 4 by 3 km test city the frame is fitted alone and the record and the log say few",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Tests: pipeline/tests/unit/test_calibrate_joint.py, pipeline/tests/unit/test_calibrate_ties.py, pipeline/tests/integration/test_joint_job.py."
+        },
+        {
+            "id": "S-P06-BAD-JOINT-NOT-ACCEPTED",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A frame the admin has not accepted is never held still",
+            "asserts": "an overlapping proved frame still awaiting approval -> no partner, no calibration.alignment, no log line",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Tests: pipeline/tests/integration/test_joint_job.py."
+        },
+        {
+            "id": "S-P06-HAPPY-TERRAIN",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A KH-9 panoramic frame over relief is fitted over the city's surface model and renders through an RPC",
+            "asserts": "a proved KH-9 pan frame whose camera holds, over the city's Copernicus DEM GLO-30 (fetched for the city window from the public tiles, warped to 30 m, averaged over 900 m, read on 300 m cells to the decimetre, cached as reference/{city}/dem/{key}.tif) showing 1 m or more of relief beyond a second-order fit once scaled by what its tiles show -> its tiles and ties fitted on the places its film shows them (height times the camera's view tan, from the nadir), its map back to the ground through the heights, alone or joined; georef.terrain {source glo30, reliefM, rpc, heights} with an RPC00B that holds the map within 0.5 px over the scan and every height, and the cells under its scan; the lattice samples that map on the ground (each node read back through the RPC within a metre); the warp renders through -rpc with RPC_DEM over the record's own heights, no surface fetched (100 m of ground shown 50 m east lands 50 m west of the flat render); the next frame is tied through the same map; the surface cached once; the log says so; the layer's attribution adds the DEM's notice",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 terrain (docs/research/M15-calibration-accuracy.md, Terrain; its review of 2026-11-08). Tests: pipeline/tests/unit/test_calibrate_terrain.py, pipeline/tests/unit/test_georef_rpc.py, pipeline/tests/integration/test_terrain_job.py, pipeline/tests/integration/test_terrain_readers.py, packages/shared/test/schemas/imagery.test.ts, functions/test/imagery/finalize.test.ts."
+        },
+        {
+            "id": "S-P06-BAD-TERRAIN-NEGLIGIBLE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A flat city, a frame seen near nadir, a frame whose tiles show no parallax, or a frame without a camera is fitted flat, exactly as before",
+            "asserts": "relief under 1 m beyond a second-order fit (a level surface, a gentle rise), or under 1 m once scaled by what the frame's own tiles show (tiles that show none of it), no panoramic camera, or a camera that does not hold -> no georef.terrain, no DEM credit, no RPC render, and the very georeference the frame gets with no surface model; a map no rational cubic holds gives no RPC; a malformed RPC record is refused; the log says the frame was fitted flat and why",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 terrain (docs/research/M15-calibration-accuracy.md, Terrain; its review of 2026-11-08). Tests: pipeline/tests/unit/test_calibrate_terrain.py, pipeline/tests/unit/test_georef_rpc.py, pipeline/tests/integration/test_terrain_job.py, packages/shared/test/schemas/imagery.test.ts, functions/test/imagery/finalize.test.ts."
+        },
+        {
+            "id": "S-P06-BAD-TERRAIN-UNAVAILABLE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Without the whole surface model a frame is fitted flat, with a warning; a malformed terrain record is refused",
+            "asserts": "a GLO-30 tile over the window that cannot be read (never ground at 0 m in its place), no tile at all, a window under 2 x 2 cells, an address the guard refuses (a real one under the emulators, a non-public one) -> no surface, nothing cached, a warning in the job log, the frame fitted flat; heights whose values do not fill their cells, that span more than a uint16 holds, or that are missing, a terrain record of another source or with too few coefficients -> refused by the pipeline and the schema",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 terrain (docs/research/M15-calibration-accuracy.md, Terrain; its review of 2026-11-08). Tests: pipeline/tests/unit/test_georef_rpc.py, pipeline/tests/integration/test_terrain_job.py, packages/shared/test/schemas/imagery.test.ts, packages/shared/test/georef/terrain.test.ts."
         },
         {
             "id": "S-A17-BAD-NOT-PROVED",
@@ -14367,6 +14697,17 @@
             "notes": "M16 (docs/research/M16-recalibrate.md). Tests: functions/test/imagery/recalibrate.test.ts."
         },
         {
+            "id": "S-A89-BAD-SNAP-CHUNK",
+            "behaviour": "A89",
+            "area": "admin",
+            "path": "bad",
+            "title": "Snap my points whose lazy chunk cannot be fetched sends nothing and says why",
+            "asserts": "the georeferencer's chunk fails to load on Snap -> no imagery.recalibrate call, the page's refusal is adminContent.georef.snapUnavailable in plain words (ro and en), saving ends; the next press fetches it again",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §110. Tests: e2e/admin/specs/imagery/georeferencer.spec.ts; the units: packages/admin/test/georef/georef-published.test.ts, packages/admin/test/georef/extras.test.ts."
+        },
+        {
             "id": "S-A89-HAPPY-APPROVE-BETTER",
             "behaviour": "A89",
             "area": "admin",
@@ -14519,6 +14860,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M16 (docs/research/M16-recalibrate.md). Tests: pipeline/tests/integration/test_recalibrate_job.py, pipeline/tests/unit/test_recalibrate.py."
+        },
+        {
+            "id": "S-P19-HAPPY-CURRENT-AS-RENDERED",
+            "behaviour": "P19",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Refine measures the current version as its layer renders it, over terrain through its RPC",
+            "asserts": "the current pairs exact but its layer rendered through an RPC that puts 100 m of level ground 50 m off -> before over 30 m on the held-out checks, after under 15 m, the version awaits approval",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "The merge of track/accuracy (M15) with M16, 2026-11-08 (docs/research/M16-recalibrate.md §14). Test: pipeline/tests/integration/test_recalibrate_job.py."
+        },
+        {
+            "id": "S-P19-BAD-CURRENT-AS-RENDERED",
+            "behaviour": "P19",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A current camera's map on the truth is what Refine must beat, not the polynomial of its pairs",
+            "asserts": "the current pairs 75 m off but its stored panoramic lattice on the exact map -> before under 5 m, the refine declines with apiError.imagery.notImproved, the current version stays published",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "The merge of track/accuracy (M15) with M16, 2026-11-08 (docs/research/M16-recalibrate.md §14). Test: pipeline/tests/integration/test_recalibrate_job.py."
         }
     ]
 }

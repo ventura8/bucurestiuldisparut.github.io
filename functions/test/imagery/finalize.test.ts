@@ -3,11 +3,24 @@
  * version creates its layer with the kind, attribution and provenance its source says (a USGS frame, an uploaded plan or
  * photograph, a rendition without a source of its own), and nothing happens when the job or its render is gone.
  */
-import type { JobDoc, LayerVersionDoc } from '@hcm/shared';
+import { DEM_ATTRIBUTION, USGS_ATTRIBUTION, type JobDoc, type LayerVersionDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { finalizeVersion } from '../../src/imagery/finalize.js';
-import { CITY, MAPBOX_USER, NOW, at, readLayer, readUsage, readyWorld, renderedVersion, seedJob, seedLayer, seedVersion } from './world.js';
+import {
+    CITY,
+    MAPBOX_USER,
+    NOW,
+    at,
+    goldenGeoref,
+    readLayer,
+    readUsage,
+    readyWorld,
+    renderedVersion,
+    seedJob,
+    seedLayer,
+    seedVersion,
+} from './world.js';
 
 const JOB = 'up-plan1911';
 const LAYER = 'planul-bucurestilor-1911';
@@ -125,6 +138,18 @@ describe('finalizeVersion', () => {
             kind: 'map',
             attribution: 'USGS EROS, declassified imagery (public domain)',
         });
+    });
+
+    it('happyPath_aFrameFittedOverTerrainCreditsTheSurfaceModel @S-P06-HAPPY-TERRAIN', async () => {
+        const axes = { line: 400, samp: 600, lat: 44.43, lng: 26.1, height: 90 };
+        const set = Array.from({ length: 20 }, (_, index) => (index === 0 ? 1 : 0));
+        const rpc = { offset: axes, scale: axes, lineNum: set, lineDen: set, sampNum: set, sampDen: set };
+        const heights = { left: 2.9e6, top: 5.5e6, cell: 420, columns: 2, rows: 2, baseDm: 512, valuesDm: 'AAAAAAAAAAA=' };
+        const georef = { ...goldenGeoref(), terrain: { source: 'glo30' as const, reliefM: 6.45, rpc, heights } };
+
+        const { world } = await finish(uploaded({ source: undefined, origin: 'regeoref', georef }));
+
+        expect((await readLayer(world, LAYER))?.attribution).toBe(`${USGS_ATTRIBUTION}; ${DEM_ATTRIBUTION}`);
     });
 
     it('badPath_nothingIsFinalizedWhenTheJobOrItsRenderIsGone', async () => {
