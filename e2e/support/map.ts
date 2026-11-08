@@ -288,6 +288,20 @@ export async function mapLabelFlags(page: Page): Promise<readonly { readonly str
     return page.evaluate(mapLabelFlagsInPage);
 }
 
+/** Runs in the page: what Standard's transit stations property reads on each live map (null: the style has no such property). */
+function mapTransitFlagsInPage(): unknown[] {
+    interface ConfigMap {
+        getConfigProperty(importId: string, name: string): unknown;
+    }
+    const maps = (window as unknown as { __hcmE2e?: { maps: ConfigMap[] } }).__hcmE2e?.maps ?? [];
+    return maps.map((map) => map.getConfigProperty('basemap', 'showTransitLabels'));
+}
+
+/** Each live map's transit stations (tram, metro), which follow the points of interest switch, as Mapbox GL reports them (V31). */
+export async function mapTransitFlags(page: Page): Promise<readonly unknown[]> {
+    return page.evaluate(mapTransitFlagsInPage);
+}
+
 export interface RenderedPoint {
     /** The photo or POI id; null for a cluster. */
     readonly id: string | null;

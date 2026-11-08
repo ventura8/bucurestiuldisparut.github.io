@@ -1,11 +1,19 @@
 /**
  * The visitor's choice of the basemap's own labels (docs/ENGINE_API.md → Map labels): street names and points of interest,
- * Mapbox Standard's `showRoadLabels` and `showPointOfInterestLabels`. Pure transitions over `MapLabelsState`; each returns
- * the same object when nothing changed. What the basemap can do is read from the mounted map, never guessed from its style
- * URL: a custom style without these properties offers no switch, drops what a link asked for and is never written to.
+ * Mapbox Standard's `showRoadLabels` and `showPointOfInterestLabels`, with its transit stations (`showTransitLabels`). Pure
+ * transitions over `MapLabelsState`; each returns the same object when nothing changed. What the basemap can do is read
+ * from the mounted map, never guessed from its style URL: a custom style without these properties offers no switch, drops what a link asked for and is never written to.
  */
-import type { Manifest } from '@hcm/shared';
-import { basemapLabels, MAP_LABEL_CONFIG, MAP_LABEL_KINDS, type MapLabelKind, type MapLabels } from '@hcm/shared/map-labels';
+import type { Basemap, Manifest } from '@hcm/shared';
+import {
+    basemapLabels,
+    MAP_LABEL_CONFIG,
+    MAP_LABEL_KINDS,
+    TRANSIT_LABELS,
+    transitLabels,
+    type MapLabelKind,
+    type MapLabels,
+} from '@hcm/shared/map-labels';
 import type { ViewerMapPort } from '@hcm/ui/map';
 
 export interface MapLabelsState {
@@ -108,13 +116,27 @@ export function readMapLabels(map: Pick<ViewerMapPort, 'getBasemapFlag'>): MapLa
     return { streets: map.getBasemapFlag(MAP_LABEL_CONFIG.streets), pois: map.getBasemapFlag(MAP_LABEL_CONFIG.pois) };
 }
 
-/** Writes `labels` to a mounted map, live: only what its basemap has and what differs (a write re-evaluates the style). */
-export function drawMapLabels(map: Pick<ViewerMapPort, 'getBasemapFlag' | 'setBasemapFlag'>, labels: MapLabels): void {
-    for (const kind of MAP_LABEL_KINDS) {
-        const current = map.getBasemapFlag(MAP_LABEL_CONFIG[kind]);
-        if (current !== null && current !== labels[kind]) {
-            map.setBasemapFlag(MAP_LABEL_CONFIG[kind], labels[kind]);
-        }
+/** Writes one property where the basemap has it and it differs (a write re-evaluates the style); what the map read, null: not there. */
+function drawFlag(map: Pick<ViewerMapPort, 'getBasemapFlag' | 'setBasemapFlag'>, name: string, value: boolean): boolean | null {
+    const current = map.getBasemapFlag(name);
+    if (current !== null && current !== value) {
+        map.setBasemapFlag(name, value);
+    }
+    return current;
+}
+
+/**
+ * Writes `labels` to a mounted map, live: only what its basemap has and what differs. Transit stations follow the points of
+ * interest (`transitLabels`, with the city's `config`), on a basemap that has both, so the switch hides tram and metro stops too.
+ */
+export function drawMapLabels(
+    map: Pick<ViewerMapPort, 'getBasemapFlag' | 'setBasemapFlag'>,
+    labels: MapLabels,
+    config?: Basemap['config'],
+): void {
+    drawFlag(map, MAP_LABEL_CONFIG.streets, labels.streets);
+    if (drawFlag(map, MAP_LABEL_CONFIG.pois, labels.pois) !== null) {
+        drawFlag(map, TRANSIT_LABELS, transitLabels(config, labels.pois));
     }
 }
 
