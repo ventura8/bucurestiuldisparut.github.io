@@ -688,7 +688,8 @@ the whole journey and S-A30-BAD-TOKEN-EXPIRED the allowance.
 - Human, in Google's or the provider's pages: the billing account and its card, Google's consents, the Mapbox account,
   card and secret token, the USGS account, M2M request and token, enabling Google Analytics (its terms).
 - Outside the app, once: the project's creation and the first deploy of the admin (D1, start-up variant), with the
-  user's yes (PLAN Addendum 1). For a self-hosted owner, `create-historic-city self-host` step 6 is that deploy (its
+  user's yes (PLAN Addendum 1); since M14 a new owner's first deploy comes from the start page instead
+  (`docs/research/M14-start-your-map.md`), with a bundle that names no project. For a self-hosted owner, `create-historic-city self-host` step 6 is that deploy (its
   step 8, the server's deploy, becomes the admin's Install the server once M6 lands; kit-cli's README follows, through
   the integrator).
 

@@ -23,7 +23,7 @@ async function isLinked(session: Session): Promise<boolean> {
 
 /** The command that resumes at the server's deploy. */
 export function deployCommand(session: Session): string {
-    return `${NPX_COMMAND} deploy ${session.project.dir} --project ${session.project.id} --experimental`;
+    return `${NPX_COMMAND} deploy ${session.project.dir} --project ${session.project.id}`;
 }
 
 /** Checks again, every `BILLING_POLL_SECONDS`, for at most `--billing-wait` minutes (`gcloud` only: an answer is final). */

@@ -25,11 +25,6 @@ export interface Options {
     readonly billingWait: number;
     readonly yes: boolean;
     readonly dryRun: boolean;
-    /**
-     * `self-host` and `deploy` run only with it until the admin's Setup runs in a project of the owner's own (CR-M5-7):
-     * without it they refuse before running anything (a dry run needs none: it runs nothing).
-     */
-    readonly experimental: boolean;
     readonly lang: 'ro' | 'en' | undefined;
 }
 
@@ -53,6 +48,7 @@ const OPTIONS = {
     'billing-wait': { type: 'string' },
     yes: { type: 'boolean', short: 'y' },
     'dry-run': { type: 'boolean' },
+    // Accepted and ignored: v1.0.0's notes name it; since CR-M5-7 nothing needs it.
     experimental: { type: 'boolean' },
     lang: { type: 'string' },
     help: { type: 'boolean', short: 'h' },
@@ -122,7 +118,6 @@ export function parseOptions(argv: readonly string[]): Options {
         billingWait: minutes(values['billing-wait']),
         yes: values.yes === true,
         dryRun: values['dry-run'] === true,
-        experimental: values.experimental === true,
         lang: language(values.lang),
     };
 }

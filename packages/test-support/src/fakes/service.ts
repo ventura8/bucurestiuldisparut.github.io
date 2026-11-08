@@ -44,6 +44,8 @@ export const UPSTREAM_SERVICES = [
     /** M6 installer: the install builds and their log lines (`docs/research/M6-interfaces.md` §1.10). */
     'cloud-build',
     'logging',
+    /** M14: the start page's project creation and Hosting's REST deploy (`docs/research/M14-start-your-map.md`). */
+    'firebase-hosting',
 ] as const;
 
 export type UpstreamServiceName = (typeof UPSTREAM_SERVICES)[number];

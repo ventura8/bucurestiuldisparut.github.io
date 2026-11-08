@@ -18,6 +18,7 @@ import {
     type CallableResponse,
     type CitiesCreateRequest,
     type CityBounds,
+    type StartFirstCity,
 } from '@hcm/shared';
 
 import { outcomeOf } from '../app/services.js';
@@ -117,6 +118,9 @@ class NewCityStore implements AreaStore<NewCityState, NewCityIntents> {
     readonly intents: NewCityIntents;
     /** The pending `cities.locate` of the name being typed. */
     #locating: unknown = null;
+    #prefilled = false;
+    /** The form holds only what the start page was told: nothing of the admin's own to lose. */
+    #untouched = false;
 
     constructor(services: ContentServices) {
         this.#services = services;
@@ -127,23 +131,29 @@ class NewCityStore implements AreaStore<NewCityState, NewCityIntents> {
                 this.#cell.update({ map });
             },
             moved: (bounds) => {
+                this.#touched();
                 this.#area(bounds, false);
             },
         });
         this.intents = {
             setNameRo: (name) => {
+                this.#touched();
                 this.#name(name);
             },
             setNameEn: (nameEn) => {
+                this.#touched();
                 this.#cell.update({ nameEn, error: null });
             },
             setId: (cityId) => {
+                this.#touched();
                 this.#id(cityId.trim().toLowerCase());
             },
             setArea: (bounds) => {
+                this.#touched();
                 this.#area(bounds, true);
             },
             dragArea: (from, to, size) => {
+                this.#touched();
                 this.#area(this.#map.boundsOf(from, to, size), true);
             },
             zoomBy: (delta) => {
@@ -173,6 +183,39 @@ class NewCityStore implements AreaStore<NewCityState, NewCityIntents> {
 
     open(): void {
         // The form keeps what was typed until the page goes; nothing is read before the map host shows.
+        this.#fromStartPage();
+    }
+
+    /**
+     * M14 (`docs/research/M14-start-your-map.md` §8): what the start page was told fills an empty form, once, while that city
+     * does not exist. `project.json` keeps `firstCity` for ever, so whether it does is the session's roster, not the file's.
+     */
+    #fromStartPage(): void {
+        const city = this.#services.firstCity;
+        if (city === undefined || !this.#mayFill() || this.#services.adminCityIds().includes(city.id)) {
+            return;
+        }
+        this.#prefilled = true;
+        this.#untouched = true;
+        this.#fill(city);
+    }
+
+    #mayFill(): boolean {
+        const { nameRo, created } = this.#cell.state;
+        return !this.#prefilled && nameRo === '' && created === null;
+    }
+
+    #touched(): void {
+        this.#untouched = false;
+    }
+
+    #fill(city: StartFirstCity): void {
+        this.#cell.update({ nameRo: city.name.ro, nameEn: city.name.en ?? '', cityId: city.id, idEdited: true });
+        if (city.bounds === undefined) {
+            this.#name(city.name.ro);
+        } else {
+            this.#area(city.bounds, true);
+        }
     }
 
     close(): void {
@@ -182,7 +225,7 @@ class NewCityStore implements AreaStore<NewCityState, NewCityIntents> {
 
     hasUnsavedChanges(): boolean {
         const state = this.#cell.state;
-        return state.created === null && (state.nameRo.trim() !== '' || state.bounds !== null);
+        return !this.#untouched && state.created === null && (state.nameRo.trim() !== '' || state.bounds !== null);
     }
 
     destroy(): void {

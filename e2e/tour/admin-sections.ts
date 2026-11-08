@@ -8,6 +8,7 @@ import { INSTALL_STATES } from '../admin/specs/install/states.js';
 import { NOTIFY_STATES } from '../admin/specs/notify/states.js';
 import { SETTINGS_STARTER_STATES } from '../admin/specs/settings/states.js';
 import { SETUP_UX_STATES } from '../admin/specs/shell/setup-ux-states.js';
+import { START_STATES } from '../admin/specs/start/states.js';
 import { WORKER_STATES } from '../admin/specs/imagery/worker-states.js';
 
 /**
@@ -16,6 +17,8 @@ import { WORKER_STATES } from '../admin/specs/imagery/worker-states.js';
  * every workstream: one marked section each; a workstream adds its spread (and its import) inside its own section only.
  */
 export const ADMIN_SECTION_STATES = {
+    // M14 (docs/research/M14-start-your-map.md §11): ids 'start.<state>', the public start page.
+    ...START_STATES,
     // M4 (docs/research/M4-interfaces.md §7.3): ids 'orders.<state>', 'georef.<state>' (the suggestions), 'notify.<state>'
     // and 'assist.<state>'; each workstream appends inside its own section as each state's journey lands (a spread from a
     // file of its own once a section grows, as the imagery section did).

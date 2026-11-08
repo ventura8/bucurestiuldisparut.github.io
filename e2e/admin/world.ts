@@ -29,6 +29,12 @@ export const ADMIN_URL = `${ADMIN_ORIGIN}${ADMIN_PATH}`;
 export const ADMIN_DIST_DIR = 'packages/admin/dist';
 /** The e2e Hosting tree (`npm run build:site:e2e`), the public variant and the start-up one (`scripts/site/src/hosting/`). */
 export const E2E_HOSTING_DIR = 'dist/e2e-hosting';
+/** M14: the start site (`docs/research/M14-start-your-map.md` §5), which the admin server serves at `/start/`. */
+export const E2E_START_DIR = 'dist/e2e-start';
+/** The start site's OAuth client id in the e2e world: a generated value that names the scenario, no real client. */
+export const E2E_START_CLIENT_ID = 'e2e-start-client.apps.googleusercontent.com';
+/** Where a test puts what it released on the fake Hosting; the admin server serves it to a browser with the cookie. */
+export const E2E_RELEASED_DIR = 'dist/e2e-released';
 export const E2E_HOSTING_START_UP_DIR = 'dist/e2e-hosting-start-up';
 /**
  * The GitHub Pages redirect tree (`npm run build:site -- --pages-redirect`, M6 §2.7) below the site server's root

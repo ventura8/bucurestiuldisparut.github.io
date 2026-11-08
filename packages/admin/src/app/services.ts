@@ -4,7 +4,14 @@
  * Assistant is plugged into `mount` as a `SetupModuleSpec`: its initial state lives in `AdminState.setup`, its intents in
  * `AdminIntents.setup`.
  */
-import { apiErrorFromFailure, type AdminCallableName, type CallableRequest, type CallableResponse, type Logger } from '@hcm/shared';
+import {
+    apiErrorFromFailure,
+    type AdminCallableName,
+    type CallableRequest,
+    type CallableResponse,
+    type Logger,
+    type StartFirstCity,
+} from '@hcm/shared';
 
 import type { GoogleAccess } from '../auth/google-auth.js';
 import type { GoogleOutcome } from '../auth/google-service.js';
@@ -20,6 +27,8 @@ export interface AdminProject {
     readonly projectId: string;
     /** The cities this project serves; the first is the one the admin edits. */
     readonly cities: readonly string[];
+    /** M14: what the start page was told of the first city; New city opens with it filled in. */
+    readonly firstCity?: StartFirstCity | undefined;
 }
 
 /** A call's result for a screen: the value, or the message to show. */

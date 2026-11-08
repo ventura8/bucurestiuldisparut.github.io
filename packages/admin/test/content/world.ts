@@ -44,6 +44,7 @@ export function contentWorld(overrides: Partial<ContentServices> = {}): ContentW
     const services: ContentServices = {
         ...NO_AREA_SERVICES,
         cityId: CITY,
+        adminCityIds: () => [],
         store: asContentStore(store),
         callables,
         theme: () => ({ light: {}, dark: {}, highContrastLight: {}, highContrastDark: {} }),

@@ -4,6 +4,7 @@ export type { Locale, MessageKey, Messages } from './i18n/index.js';
 export type { Translator } from './i18n/catalogue.js';
 // The admin's own texts (docs/research/M2b-interfaces.md §1.6): separate catalogues the viewer never imports.
 export { translateAdminShell } from './i18n/admin-shell/index.js';
+export { translateStart, type StartKey } from './i18n/start/index.js';
 export type { AdminShellKey, AdminShellMessages } from './i18n/admin-shell/index.js';
 export { translateAdminSetup } from './i18n/admin-setup/index.js';
 export type { AdminSetupKey, AdminSetupMessages } from './i18n/admin-setup/index.js';
@@ -313,6 +314,7 @@ export * from './schemas/city-export.js';
 export * from './schemas/engine-release.js';
 // M6 installer (docs/research/M6-interfaces.md §1): the install bundle, the build log's events, each target's state.
 export * from './schemas/install.js';
+export * from './schemas/start-release.js';
 // M5 kit-cli (§3.2): the one CSP table of every engine page, and the starter kit's page (`fillKitPage`).
 export * from './kit/csp.js';
 export * from './kit/page.js';

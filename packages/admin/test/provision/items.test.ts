@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { applyProvision, doctorProvision, planProvision, type ProvisionItemResult } from '../../src/provision/provisioner.js';
 import { must, PROJECT, provisionWorld, writes } from './world.js';
 
+const GITHUB = must(PROJECT.github);
+
 /**
  * The items' own cases (docs/research/M2b-interfaces.md §3.4, §3.4.2): organisation policies (S-A04-BAD-ORG-POLICY), a
  * bucket name another project owns, the legacy role refused under uniform access, a deleted Workload Identity pool, a
@@ -12,6 +14,24 @@ import { must, PROJECT, provisionWorld, writes } from './world.js';
 function only(items: readonly ProvisionItemResult[], ...ids: readonly string[]): ProvisionItemResult[] {
     return items.filter((item) => ids.includes(item.id));
 }
+
+describe('a project of the owner own (CR-M5-7)', () => {
+    it('happyPath_noGithubMeansNoDeployerAndNoPool', async () => {
+        const world = provisionWorld();
+        const { github: _github, ...own } = PROJECT;
+        const report = await applyProvision(planProvision(null, ['apis', 'service-accounts', 'workload-identity', 'iam']), {
+            ...world.deps,
+            project: own,
+        });
+
+        expect(report.items.find((item) => item.id === 'workload-identity')).toMatchObject({ state: 'ok' });
+        const iam = JSON.stringify(world.fakes.snapshot()['iam']);
+        expect(iam).toContain('hcm-installer');
+        expect(iam).not.toContain('gh-deployer');
+        expect(iam).not.toContain('site-master');
+        expect(world.fakes.callsTo('iam.workloadIdentityPools')).toHaveLength(0);
+    });
+});
 
 describe('organisation policies', () => {
     it('happyPath_aProjectOutsideAnyOrganisationHasNothingEnforced', async () => {
@@ -161,7 +181,7 @@ describe('workload identity', () => {
     it('happyPath_aProviderWithAnOldConditionIsPatchedAndTheNewRepositoryBound', async () => {
         const world = provisionWorld();
         await applyProvision(planProvision(null, ['apis', 'service-accounts', 'workload-identity']), world.deps);
-        const moved = { ...PROJECT, github: { ...PROJECT.github, repoId: 3000003 } };
+        const moved = { ...PROJECT, github: { ...GITHUB, repoId: 3000003 } };
 
         const report = await applyProvision(planProvision(null, ['workload-identity']), { ...world.deps, project: moved });
 
@@ -390,7 +410,7 @@ describe('the less travelled paths', () => {
         const world = provisionWorld();
         await applyProvision(planProvision(null, ['apis', 'service-accounts', 'workload-identity']), world.deps);
         world.fakes.state.iam.projects.get('demo-hcm')?.deleted.add('github/site-master');
-        const moved = { ...PROJECT, github: { ...PROJECT.github, branch: 'main' } };
+        const moved = { ...PROJECT, github: { ...GITHUB, branch: 'main' } };
 
         const report = await applyProvision(planProvision(null, ['workload-identity']), { ...world.deps, project: moved });
 

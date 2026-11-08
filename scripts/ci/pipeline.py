@@ -227,6 +227,9 @@ GATES: dict[str, Gate] = {
         # deterministic, then each tarball within its budget (DECISIONS-for-review.md §71)
         Gate("install-build", INSTALL_BUNDLE, needs=("hosting-build",)),
         Gate("install-budget", ("python3", "scripts/ci/check_bundle_budget.py", "--install"), needs=("install-build",)),
+        # The start site (M14, docs/research/M14-start-your-map.md): the page and a release that names no project, from the
+        # same public tree and functions: refuses a tree it cannot make generic
+        Gate("start-build", (*NPM_RUN, "build:start"), needs=("hosting-build",)),
         # release: the tag agrees with every version (workspace dependencies and ENGINE_VERSION included), the released
         # engine's release.json, the kit's pinned folder, both release-notes files and the description's pinned addresses
         Gate("release-check", ("python3", "scripts/ci/check_release.py")),
@@ -234,8 +237,10 @@ GATES: dict[str, Gate] = {
         # the check also writes the pinned addresses and their integrity, which release.yml shows in its job summary
         Gate("release-cdn", (*NPM_RUN, "release:cdn", "--", "--check", "--summary", RELEASE_ADDRESSES), needs=("vite-build",)),
         # create-historic-city's self-host bundle (dist/self-host/) from that production build: the vite build of the CLI
-        # empties its dist/, and the admin's e2e build writes the same folder, which the bundle refuses (docs/LESSONS.md 247)
-        Gate("self-host-bundle", SELF_HOST_BUNDLE, needs=("vite-build",)),
+        # empties its dist/, and the admin's e2e build writes the same folder, which the bundle refuses (docs/LESSONS.md 247).
+        # Its hosting folder is the start site's release tree: without its install bundle and city page a self-hosted
+        # project could not publish its map (M14)
+        Gate("self-host-bundle", SELF_HOST_BUNDLE, needs=("vite-build", "start-build")),
         # create-historic-city's package from that build, its self-host bundle in it, for the publish (M5-interfaces §4.6)
         Gate("release-pack", ("bash", "-c", RELEASE_PACK), needs=("vite-build", "self-host-bundle")),
         # contract (weekly, network): Setup Assistant deep links and third-party API shapes
@@ -312,7 +317,7 @@ STAGES: dict[str, tuple[str, ...]] = {
     # The rest of the tour matrix (e2e/projects.ts, tier `tour-matrix`): every scenario row already ran in `e2e`; these
     # projects repeat the tour at the other viewport, theme and language combinations before a push to master or a tag.
     "tour-matrix": ("e2e-matrix", "e2e-build", "playwright-tour-matrix"),
-    "build": ("vite-build", "bundle-budget", "notices", "site-build", "hosting-build", "install-build", "install-budget"),
+    "build": ("vite-build", "bundle-budget", "notices", "site-build", "hosting-build", "install-build", "install-budget", "start-build"),
     # Needs the reports of `tests` (`all` runs it last). A stage left empty would FAIL:
     # it must never report green for work that does not exist yet.
     "sonar": ("sonar",),
@@ -325,6 +330,8 @@ STAGES: dict[str, tuple[str, ...]] = {
         "release-cdn",
         "bundle-budget",
         "notices",
+        "hosting-build",
+        "start-build",
         "self-host-bundle",
         "release-pack",
     ),

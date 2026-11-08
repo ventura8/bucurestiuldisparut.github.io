@@ -29,8 +29,8 @@ const SIGNED_IN = ok('Logged in as owner@example.org\n');
 const TOKENS = listing([
     { user: { email: 'owner@example.org' }, tokens: { refresh_token: 'refresh-test-value', access_token: 'access-test-value' } },
 ]);
-const resumeSelfHost = (dir = 'cluj'): string => `${NPX_COMMAND} self-host ${dir} --project ${PROJECT} --experimental`;
-const resumeDeploy = (dir = 'cluj'): string => `${NPX_COMMAND} deploy ${dir} --project ${PROJECT} --experimental`;
+const resumeSelfHost = (dir = 'cluj'): string => `${NPX_COMMAND} self-host ${dir} --project ${PROJECT}`;
+const resumeDeploy = (dir = 'cluj'): string => `${NPX_COMMAND} deploy ${dir} --project ${PROJECT}`;
 
 /** A new account: nothing signed in, no project, no app or site, billing linked after the owner's Enter. */
 function newAccount(changes: Readonly<Record<string, readonly Answer[]>> = {}, missing: readonly string[] = []): FakeRunner {
@@ -70,7 +70,7 @@ describe('self-host', () => {
         const runner = newAccount();
         const { ports, terminal, opener, cwd } = await withCity(runner, EVERY_YES);
 
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], ports)).toBe(0);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], ports)).toBe(0);
 
         const server = join(cwd, 'cluj/server');
         expect(runner.calls.filter((call) => call.mode === 'interactive')).toEqual([
@@ -101,6 +101,10 @@ describe('self-host', () => {
             viewerOrigins: [`https://${PROJECT}.web.app`],
         });
         expect(JSON.parse(read(join(server, 'hosting/admin/runtime.json')))).toEqual({ release: '1.0.0+abc1234' });
+        // Publish the map needs these on the site: Setup's bundle, and the city page with this project in it.
+        expect(existsSync(join(server, 'hosting/admin/install/1-0-0-abc1234/manifest.json'))).toBe(true);
+        expect(read(join(server, 'hosting/city/index.html'))).toBe(`connect-src https://us-central1-${PROJECT}.cloudfunctions.net\n`);
+        expect(read(join(server, 'hosting/city/config.js'))).toBe(`${PROJECT}-public\n`);
         expect(read(join(server, `functions/.env.${PROJECT}`))).toBe(
             `HCM_VIEWER_ORIGINS=https://${PROJECT}.web.app\nHCM_APP_CHECK=monitor\n`,
         );
@@ -110,7 +114,6 @@ describe('self-host', () => {
         expect(runner.lines('capture')).toContain('firebase login:list');
         expect(runner.lines()).not.toContain('firebase login:list --json');
         expect(runner.outputs.join('\n')).not.toContain('test-value');
-        expect(terminal.lines[0]).toBe(ro('cli.selfHost.experimental'));
     });
 
     it('happyPath_whatExistsIsNeverCreatedTwice', async () => {
@@ -125,7 +128,7 @@ describe('self-host', () => {
         });
         const { ports, terminal } = await withCity(runner, ['y', 'y', '', 'y', 'y', '', 'y', 'y']);
 
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], ports)).toBe(0);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], ports)).toBe(0);
 
         expect(runner.lines('interactive')).toEqual([
             `firebase deploy --only hosting --project ${PROJECT}`,
@@ -168,24 +171,14 @@ describe('self-host', () => {
 });
 
 describe('self-host: not yet available (CR-M5-7)', () => {
-    it('badPath_withoutExperimentalSelfHostAndDeployRunNothing', async () => {
-        // docs/LESSONS.md 239: step 7 (Setup) cannot run in an owner's project yet, so step 8 would deploy nothing that works.
-        for (const argv of [
-            ['self-host', 'cluj', '--project', PROJECT],
-            ['deploy', 'cluj', '--project', PROJECT],
-        ]) {
-            const runner = newAccount();
-            const { ports, terminal, opener, cwd } = await withCity(runner, EVERY_YES);
-            runner.calls.splice(0);
+    it('happyPath_theOldFlagIsAcceptedAndChangesNothing', async () => {
+        // v1.0.0's notes name --experimental; CR-M5-7 needs no flag, and an old command line keeps working.
+        const runner = newAccount();
+        const { ports, terminal } = await withCity(runner, []);
 
-            expect(await runCli(argv, ports)).toBe(1);
+        expect(await runCli(['deploy', 'cluj', '--project', PROJECT, '--dry-run', '--experimental'], ports)).toBe(0);
 
-            expect(terminal.lines).toEqual([ro('cli.selfHost.unavailable'), ro('cli.selfHost.tryAnyway')]);
-            expect(terminal.questions).toEqual([]);
-            expect(runner.calls).toEqual([]);
-            expect(opener.opened).toEqual([]);
-            expect(existsSync(join(cwd, 'cluj/server'))).toBe(false);
-        }
+        expect(terminal.lines.at(-1)).toBe(ro('cli.dryRun.nothing'));
     });
 
     it('happyPath_aDryRunNeedsNoFlag', async () => {
@@ -194,7 +187,6 @@ describe('self-host: not yet available (CR-M5-7)', () => {
 
         expect(await runCli(['deploy', 'cluj', '--project', PROJECT, '--dry-run'], ports)).toBe(0);
 
-        expect(terminal.lines).not.toContain(ro('cli.selfHost.unavailable'));
         expect(terminal.lines.at(-1)).toBe(ro('cli.dryRun.nothing'));
     });
 });
@@ -204,7 +196,7 @@ describe('self-host: stopping', () => {
         const runner = newAccount();
         const { ports, terminal } = await withCity(runner, ['y', 'n']);
 
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], ports)).toBe(0);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], ports)).toBe(0);
 
         expect(runner.lines('interactive')).toEqual(['firebase login']);
         expect(terminal.lines.slice(-9)).toEqual([
@@ -220,7 +212,7 @@ describe('self-host: stopping', () => {
         const runner = newAccount({}, ['firebase']);
         const { ports, terminal, opener } = await withCity(runner, EVERY_YES);
 
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], ports)).toBe(1);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], ports)).toBe(1);
 
         expect(runner.lines()).toEqual(['firebase --version']);
         expect(opener.opened).toEqual([]);
@@ -231,7 +223,7 @@ describe('self-host: stopping', () => {
         const runner = newAccount({ [`gcloud billing projects describe ${PROJECT} --format=json`]: [billing(false)] });
         const { ports, terminal, clock } = await withCity(runner, EVERY_YES);
 
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT, '--billing-wait', '1'], ports)).toBe(1);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT, '--billing-wait', '1'], ports)).toBe(1);
 
         expect(runner.lines('interactive')).not.toContain(
             `firebase deploy --only functions,firestore,storage,hosting --project ${PROJECT}`,
@@ -249,7 +241,7 @@ describe('self-host: stopping', () => {
         const runner = newAccount({}, ['gcloud']);
         const { ports, terminal } = await withCity(runner, ['y', 'y', 'y', 'y', '', 'y', 'y', '', 'y', 'n', '', 'n']);
 
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], ports)).toBe(1);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], ports)).toBe(1);
 
         expect(terminal.lines).toContain(ro('cli.tools.noGcloud'));
         expect(terminal.questions.filter((question) => question === ro('cli.ask.billing', { project: PROJECT }))).toHaveLength(2);
@@ -263,7 +255,7 @@ describe('self-host: failures', () => {
         const runner = newAccount({ [create]: [{ code: 2, stdout: '' }, ok()] });
         const { ports, opener, terminal } = await withCity(runner, ['y', 'y', 'y', '', 'n']);
 
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], ports)).toBe(0);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], ports)).toBe(0);
 
         expect(runner.lines('interactive').filter((line) => line === create)).toHaveLength(2);
         expect(opener.opened).toEqual(['https://console.firebase.google.com/']);
@@ -282,7 +274,7 @@ describe('self-host: failures', () => {
         const runner = newAccount({ [create]: [{ code: 1, stdout: '' }] });
         const { ports, opener, terminal } = await withCity(runner, ['y', 'y', 'n']);
 
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], ports)).toBe(1);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], ports)).toBe(1);
 
         expect(runner.lines('interactive')).toEqual(['firebase login', create]);
         expect(opener.opened).toEqual([]);
@@ -299,7 +291,7 @@ describe('self-host: failures', () => {
         const runner = newAccount({ [`firebase deploy --only hosting --project ${PROJECT}`]: [{ code: 7, stdout: '' }] });
         const { ports, terminal } = await withCity(runner, EVERY_YES);
 
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], ports)).toBe(1);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], ports)).toBe(1);
 
         expect(terminal.lines.slice(-2)).toEqual([
             ro('cli.step.failed', { command: `firebase deploy --only hosting --project ${PROJECT}`, code: 7 }),
@@ -310,17 +302,17 @@ describe('self-host: failures', () => {
     it('badPath_listingsThatFailOrToolsThatVanishStopTheRun', async () => {
         const failing = newAccount({ 'firebase login:list': [{ code: 1, stdout: '' }] });
         const first = await withCity(failing, EVERY_YES);
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], first.ports)).toBe(1);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], first.ports)).toBe(1);
         expect(first.terminal.lines).toContain(ro('cli.step.failed', { command: 'firebase login:list', code: 1 }));
 
         const vanished = newAccount({ 'firebase login:list': [null] });
         const second = await withCity(vanished, EVERY_YES);
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], second.ports)).toBe(1);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], second.ports)).toBe(1);
         expect(second.terminal.lines).toContain(ro('cli.step.missing', { command: 'firebase' }));
 
         const gone = newAccount({ 'firebase login': [null] });
         const third = await withCity(gone, EVERY_YES);
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], third.ports)).toBe(1);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], third.ports)).toBe(1);
         expect(third.terminal.lines).toContain(ro('cli.step.missing', { command: 'firebase' }));
     });
 });
@@ -330,7 +322,7 @@ describe('self-host: what the run cannot use', () => {
         const runner = newAccount({ 'firebase projects:list --json': [listing([{ projectId: PROJECT }])] });
         const { ports, terminal, cwd } = await withCity(runner, ['y', 'y', 'y', '', 'y']);
 
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], ports)).toBe(1);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], ports)).toBe(1);
 
         expect(terminal.lines).toContain(ro('cli.project.noNumber', { project: PROJECT }));
         expect(existsSync(join(cwd, 'cluj/server'))).toBe(false);
@@ -342,7 +334,7 @@ describe('self-host: what the run cannot use', () => {
         used.push(packageDir);
         const { ports, terminal, cwd } = await withCity(runner, EVERY_YES, packageDir);
 
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], ports)).toBe(1);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], ports)).toBe(1);
 
         expect(terminal.lines).toContain(ro('cli.admin.noBundle', { command: NPX_COMMAND }));
         expect(existsSync(join(cwd, 'cluj/server'))).toBe(false);
@@ -369,15 +361,9 @@ describe('self-host: what the run cannot use', () => {
 
     it('badPath_whatTheRunCannotUseIsRefused', async () => {
         const cases: readonly (readonly [readonly string[], string])[] = [
-            [
-                ['--experimental', 'self-host', 'nowhere', '--project', PROJECT],
-                ro('cli.admin.noKit', { dir: 'nowhere', command: NPX_COMMAND }),
-            ],
-            [
-                ['--experimental', 'self-host', 'cluj', '--project', 'Not_A_Project'],
-                ro('cli.project.invalid', { project: 'Not_A_Project' }),
-            ],
-            [['--experimental', 'self-host', 'cluj'], ro('cli.project.invalid', { project: '' })],
+            [['self-host', 'nowhere', '--project', PROJECT], ro('cli.admin.noKit', { dir: 'nowhere', command: NPX_COMMAND })],
+            [['self-host', 'cluj', '--project', 'Not_A_Project'], ro('cli.project.invalid', { project: 'Not_A_Project' })],
+            [['self-host', 'cluj'], ro('cli.project.invalid', { project: '' })],
             [
                 ['self-host', 'cluj', '--project', PROJECT, '--viewer-origin', HTTP_ORIGIN, '--experimental'],
                 ro('cli.origin.invalid', { origin: HTTP_ORIGIN }),
@@ -409,7 +395,7 @@ describe('self-host: what the run cannot use', () => {
         const text = readFileSync(city, 'utf8').replace('"version": 1', '"version": 2');
         writeFileSync(city, text);
 
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], ports)).toBe(1);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], ports)).toBe(1);
         expect(terminal.lines.at(-1)).toMatch(/^city\.json: version /);
     });
 });
@@ -419,7 +405,7 @@ describe('self-host details', () => {
         const runner = newAccount();
         const { ports, terminal } = await withCity(runner, []);
 
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], ports)).toBe(0);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], ports)).toBe(0);
         expect(terminal.lines).toContain(ro('cli.step.declined'));
         expect(runner.lines('interactive')).toEqual([]);
     });
@@ -434,7 +420,7 @@ describe('self-host details', () => {
             const { ports, cwd } = await withCity(runner, ['y', 'y', 'y', 'y', '', 'y', 'n']);
             writeFileSync(join(cwd, 'cluj/.gitignore'), before);
 
-            expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], ports)).toBe(0);
+            expect(await runCli(['self-host', 'cluj', '--project', PROJECT], ports)).toBe(0);
             expect(read(join(cwd, 'cluj/.gitignore'))).toBe(after);
         }
     });
@@ -446,7 +432,7 @@ describe('self-host details', () => {
         writeFileSync(join(bundle, 'bundle.json'), '{}');
         const { ports, cwd } = await withCity(newAccount(), ['y', 'y', 'y', 'y', '', 'y', 'n']);
 
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT, '--bundle', bundle], ports)).toBe(0);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT, '--bundle', bundle], ports)).toBe(0);
         expect(JSON.parse(read(join(cwd, 'cluj/server/hosting/admin/runtime.json')))).toEqual({ release: '0.0.0', startUp: true });
     });
 
@@ -457,9 +443,7 @@ describe('self-host details', () => {
         writeFileSync(join(bundle, 'bundle.json'), '{');
         const { ports } = await withCity(newAccount(), ['y', 'y', 'y', 'y', '', 'y']);
 
-        await expect(runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT, '--bundle', bundle], ports)).rejects.toThrow(
-            SyntaxError,
-        );
+        await expect(runCli(['self-host', 'cluj', '--project', PROJECT, '--bundle', bundle], ports)).rejects.toThrow(SyntaxError);
     });
 });
 
@@ -467,10 +451,10 @@ describe('deploy', () => {
     it('happyPath_resumesWithTheServerOfTheEarlierProject', async () => {
         const runner = newAccount();
         const { ports, terminal } = await withCity(runner, [...EVERY_YES.slice(0, 8), 'n', 'y', '', 'y']);
-        expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT], ports)).toBe(0);
+        expect(await runCli(['self-host', 'cluj', '--project', PROJECT], ports)).toBe(0);
         runner.calls.splice(0);
 
-        expect(await runCli(['--experimental', 'deploy', 'cluj'], ports)).toBe(0);
+        expect(await runCli(['deploy', 'cluj'], ports)).toBe(0);
 
         expect(runner.lines('interactive')).toEqual([`firebase deploy --only functions,firestore,storage,hosting --project ${PROJECT}`]);
         expect(terminal.lines.at(-1)).toBe(ro('cli.selfHost.done', { url: `https://${PROJECT}.web.app/admin/` }));
@@ -483,7 +467,7 @@ describe('deploy', () => {
         });
         const { ports, cwd } = await withCity(runner, ['y', 'y']);
 
-        expect(await runCli(['--experimental', 'deploy', 'cluj', '--project', PROJECT], ports)).toBe(0);
+        expect(await runCli(['deploy', 'cluj', '--project', PROJECT], ports)).toBe(0);
 
         expect(JSON.parse(read(join(cwd, 'cluj/server/hosting/admin/runtime.json')))).toEqual({ release: '1.0.0+abc1234' });
     });
@@ -493,7 +477,7 @@ describe('deploy', () => {
         const { cwd } = await withCity(runner, []);
         const inside = fakes({ runner, cwd: join(cwd, 'cluj'), answers: ['n'] });
 
-        expect(await runCli(['--experimental', 'deploy', '--project', PROJECT], inside.ports)).toBe(0);
+        expect(await runCli(['deploy', '--project', PROJECT], inside.ports)).toBe(0);
         expect(inside.terminal.lines.at(-1)).toBe(ro('cli.step.resume', { command: resumeDeploy('.') }));
     });
 
@@ -503,7 +487,7 @@ describe('deploy', () => {
         mkdirSync(join(cwd, 'cluj/server'));
         writeFileSync(join(cwd, 'cluj/server/.firebaserc'), '{ "projects": {} }');
 
-        expect(await runCli(['--experimental', 'deploy', 'cluj'], ports)).toBe(1);
+        expect(await runCli(['deploy', 'cluj'], ports)).toBe(1);
         expect(terminal.questions).toEqual([ro('cli.ask.project')]);
     });
 
@@ -511,7 +495,7 @@ describe('deploy', () => {
         const runner = newAccount();
         const { ports, terminal } = await withCity(runner, ['n']);
 
-        expect(await runCli(['--experimental', 'deploy', 'cluj', '--project', PROJECT], ports)).toBe(0);
+        expect(await runCli(['deploy', 'cluj', '--project', PROJECT], ports)).toBe(0);
 
         expect(terminal.lines.at(-1)).toBe(ro('cli.step.resume', { command: resumeDeploy() }));
     });

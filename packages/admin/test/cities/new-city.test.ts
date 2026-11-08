@@ -7,7 +7,7 @@ import { DEFAULT_NEW_CITY_LIMITS, FIRESTORE_PATHS, NEW_CITY_SEEDS } from '@hcm/s
 import { FakeMapDraw } from '@hcm/test-support/fake-map-draw';
 import { describe, expect, it } from 'vitest';
 
-import { canCreate, CITIES_MODULE, LOCATE_AFTER_MS } from '../../src/cities/new-city.js';
+import { canCreate, CITIES_MODULE, LOCATE_AFTER_MS, type NewCityIntents } from '../../src/cities/new-city.js';
 import type { AdminMapFactory, AdminMapHandle, AdminMapOptions } from '../../src/map/factory.js';
 import { failure, settle } from '../app/fakes.js';
 import { CITY, contentWorld } from '../content/world.js';
@@ -140,6 +140,79 @@ describe('the New city flow', () => {
         expect(canCreate(w.area.state)).toBe(false);
         await expect(w.area.intents.create()).resolves.toBe(false);
         expect(w.callables.named('cities.create')).toBe(0);
+    });
+});
+
+describe('the New city flow, after the start page', () => {
+    it('happyPath_whatTheStartPageWasToldFillsTheFormOnce', () => {
+        const { area, services } = world();
+        (services as { firstCity?: unknown }).firstCity = {
+            id: 'bacau',
+            name: { ro: 'Bacău', en: 'Bacau' },
+            bounds: { west: 26.85, south: 46.5, east: 26.98, north: 46.62 },
+        };
+        area.open([]);
+        expect(area.state).toMatchObject({ nameRo: 'Bacău', nameEn: 'Bacau', cityId: 'bacau', bounds: { west: 26.85 } });
+        area.intents.startOver();
+        area.open([]);
+        expect(area.state.nameRo).toBe('');
+    });
+
+    const FIRST = { id: 'bacau', name: { ro: 'Bacău' }, bounds: { west: 26.85, south: 46.5, east: 26.98, north: 46.62 } };
+
+    it('badPath_aFirstCityThatExistsIsNotOfferedAgain', async () => {
+        const { area, services, callables, clock } = world();
+        Object.assign(services, { firstCity: { id: 'bacau', name: { ro: 'Bacău' } }, adminCityIds: () => ['bacau'] });
+        area.open([]);
+        expect(area.state).toMatchObject({ nameRo: '', cityId: '' });
+        expect(area.hasUnsavedChanges()).toBe(false);
+        clock.advance(LOCATE_AFTER_MS);
+        await settle();
+        expect(callables.named('cities.locate')).toBe(0);
+    });
+
+    it('happyPath_aFilledFormNobodyTouchedHasNothingToLose', () => {
+        const { area, services } = world();
+        Object.assign(services, { firstCity: FIRST });
+        area.open([]);
+        expect(area.state.nameRo).toBe('Bacău');
+        expect(area.hasUnsavedChanges()).toBe(false);
+        area.intents.setNameEn('Bacau');
+        expect(area.hasUnsavedChanges()).toBe(true);
+    });
+
+    it.each([
+        [
+            'the name',
+            (intents: NewCityIntents) => {
+                intents.setNameRo('Altul');
+            },
+        ],
+        [
+            'the id',
+            (intents: NewCityIntents) => {
+                intents.setId('altul');
+            },
+        ],
+        [
+            'the rectangle',
+            (intents: NewCityIntents) => {
+                intents.setArea({ west: 23.5, south: 46.72, east: 23.7, north: 46.82 });
+            },
+        ],
+    ])('happyPath_theOwnersChangeOf_%s_isTheirs', (_what, change) => {
+        const { area, services } = world();
+        Object.assign(services, { firstCity: FIRST });
+        area.open([]);
+        change(area.intents);
+        expect(area.hasUnsavedChanges()).toBe(true);
+    });
+
+    it('happyPath_withoutARectangleTheNameLooksForIt', () => {
+        const { area, services } = world();
+        (services as { firstCity?: unknown }).firstCity = { id: 'bacau', name: { ro: 'Bacău' } };
+        area.open([]);
+        expect(area.state).toMatchObject({ nameRo: 'Bacău', nameEn: '', cityId: 'bacau', bounds: null });
     });
 });
 

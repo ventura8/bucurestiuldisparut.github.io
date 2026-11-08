@@ -27,6 +27,7 @@ import {
     deployedName,
     DOCKER_BUILDER_IMAGE,
     FIREBASE_TOOLS_VERSION,
+    GENERIC_INSTALL_PROJECT,
     HTTP_ENDPOINTS,
     INSTALL_BUNDLE_FILES,
     INSTALL_ESTIMATES,
@@ -34,6 +35,7 @@ import {
     INSTALL_FORMAT,
     INSTALL_MANIFEST_FILE,
     LEGACY_BUNDLE_FILE,
+    START_PROJECT_TOKEN,
     installManifestSchema,
     installReleaseSlug,
     type InstallManifest,
@@ -88,6 +90,14 @@ export interface InstallBundleOptions {
     readonly env: BuildEnvironment;
     /** Reads the build commit's time (default: git); the manifest's `releaseTime` when `SOURCE_DATE_EPOCH` says none. */
     readonly commitTime?: CommitClock;
+    /**
+     * M14 (`docs/research/M14-start-your-map.md` §6): a bundle for a project nobody knows yet: `manifest.projectId` names
+     * none, no tarball has a `.firebaserc` (every build passes `--project`), and the functions' `.env.<project>` becomes a
+     * `.env` of the release and `HCM_APP_CHECK` only; `hosting.tgz`'s `firebase.json` holds the token.
+     */
+    readonly generic?: boolean;
+    /** With `generic`: the public tree's files that hold the token, which `hosting.tgz` lists in `templates.json` for `fetch`. */
+    readonly templates?: readonly string[];
 }
 
 export interface InstallBundleReport {
@@ -155,7 +165,7 @@ function firebaseConfig(files: SiteFileSystem, keep: readonly string[]): Uint8Ar
 }
 
 /** What every tarball that runs `firebase-tools` or a step carries. */
-function sharedEntries(files: SiteFileSystem, projectId: string, steps: StepFiles, tools: boolean): TarEntry[] {
+function sharedEntries(files: SiteFileSystem, projectId: string | null, steps: StepFiles, tools: boolean): TarEntry[] {
     const step = [...steps].map(([path, content]) => ({ path, content }));
     if (!tools) {
         return step;
@@ -168,7 +178,7 @@ function sharedEntries(files: SiteFileSystem, projectId: string, steps: StepFile
     const nested = (path: string): boolean => path.split('/').includes('node_modules');
     return [
         ...step,
-        { path: '.firebaserc', content: json({ projects: { default: projectId } }) },
+        ...(projectId === null ? [] : [{ path: '.firebaserc', content: json({ projects: { default: projectId } }) }]),
         { path: 'tools/package.json', content: encoder.encode(folder.packageJson) },
         { path: 'tools/package-lock.json', content: encoder.encode(folder.packageLock) },
         ...folder.vendored.flatMap((dir) => folderEntries(files, dir, `tools/${dir}/`, nested)),
@@ -181,11 +191,27 @@ function serverEntries(files: SiteFileSystem, options: InstallBundleOptions, sha
             `the install bundle needs the functions' build in ${options.functionsDir} (npm run build --workspace @hcm/functions)`,
         );
     }
+    const functions = serverFiles(files, options.functionsDir);
     return [
-        ...serverFiles(files, options.functionsDir),
+        ...(options.generic === true ? genericFunctions(functions) : functions),
         { path: 'firebase.json', content: firebaseConfig(files, ['firestore', 'storage', 'functions']) },
         ...RULE_FILES.map((path) => fileEntry(files, path)),
         ...shared,
+    ];
+}
+
+/** The keys of `.env.<project>` that fit any project: the release, and how App Check runs. */
+const GENERIC_ENV = /^HCM_(?:RELEASE|RELEASE_TIME|APP_CHECK)=/;
+const PROJECT_ENV = /^functions\/dist\/\.env\.[^/]+$/;
+
+/** The functions without any project's `.env.<project>`: one `.env` of what fits every project (M14 §6). */
+function genericFunctions(entries: readonly TarEntry[]): TarEntry[] {
+    const [first] = entries.filter((entry) => PROJECT_ENV.test(entry.path));
+    const lines = first === undefined ? [] : new TextDecoder().decode(first.content).split('\n');
+    const env = lines.filter((line) => GENERIC_ENV.test(line));
+    return [
+        ...entries.filter((entry) => !PROJECT_ENV.test(entry.path)),
+        { path: 'functions/dist/.env', content: encoder.encode(`${env.join('\n')}\n`) },
     ];
 }
 
@@ -201,16 +227,32 @@ function pipelineEntries(files: SiteFileSystem, steps: readonly TarEntry[]): Tar
 /** The old photos' originals in the public tree (`admin/legacy/<city>/originals/…`), which travel in `legacy.tgz` (§73k). */
 const LEGACY_ORIGINAL = /^admin\/legacy\/[^/]+\/originals\//;
 
-function hostingEntries(files: SiteFileSystem, options: InstallBundleOptions, shared: readonly TarEntry[]): TarEntry[] {
+function hostingEntries(files: SiteFileSystem, options: InstallBundleOptions, shared: readonly TarEntry[], projectId: string): TarEntry[] {
     if (!files.isFile(`${options.publicTree}/index.html`)) {
         throw new SiteBuildError(`the install bundle needs the public Hosting tree in ${options.publicTree} (npm run build:hosting)`);
     }
     const elsewhere = (path: string): boolean => path.startsWith(`admin/${INSTALL_FOLDER}/`) || LEGACY_ORIGINAL.test(path);
     return [
         ...folderEntries(files, options.publicTree, 'public/', elsewhere),
-        { path: 'firebase.json', content: firebaseConfig(files, ['hosting']) },
+        ...(options.generic === true ? [{ path: GENERIC_TEMPLATES_FILE, content: json(options.templates ?? []) }] : []),
+        {
+            path: 'firebase.json',
+            content:
+                options.generic === true ? tokenised(firebaseConfig(files, ['hosting']), projectId) : firebaseConfig(files, ['hosting']),
+        },
         ...shared,
     ];
+}
+
+/**
+ * The list of what a site build adopts (M14 §6). A list, not a search: the admin's own script holds the token as the text it looks
+ * for, and replacing that would change a file the tree promises as it is, and stop the next publish from finding the token.
+ */
+export const GENERIC_TEMPLATES_FILE = 'templates.json';
+
+/** `firebase.json` naming no project: the token where the repository's id was (M14 §6). */
+function tokenised(config: Uint8Array, projectId: string): Uint8Array {
+    return encoder.encode(new TextDecoder().decode(config).replaceAll(projectId, START_PROJECT_TOKEN));
 }
 
 /** The legacy originals at their place in the public tree, or nothing for a tree without them. */
@@ -287,16 +329,17 @@ export function buildInstallBundle(options: InstallBundleOptions, files: SiteFil
     const release = adminRelease(files, options.env);
     const projectId = projectIdOf(files);
     const mtime = entryTime(options.env);
-    const stepEntries = sharedEntries(files, projectId, steps, false);
-    const withTools = sharedEntries(files, projectId, steps, true);
+    const named = options.generic === true ? null : projectId;
+    const stepEntries = sharedEntries(files, named, steps, false);
+    const withTools = sharedEntries(files, named, steps, true);
     const tarballs: Record<InstallTarget, Uint8Array> = {
         server: tgz(serverEntries(files, options, withTools), mtime),
         pipeline: tgz(pipelineEntries(files, stepEntries), mtime),
-        site: tgz(hostingEntries(files, options, withTools), mtime),
+        site: tgz(hostingEntries(files, options, withTools, projectId), mtime),
     };
     const legacy = legacyTarball(files, options, mtime);
     const stamp = { release, releaseTime: releaseTime(files, options.env, options.commitTime) };
-    const manifest = manifestOf(stamp, projectId, tarballs, legacy);
+    const manifest = manifestOf(stamp, options.generic === true ? GENERIC_INSTALL_PROJECT : projectId, tarballs, legacy);
     const written = bundleFolderFiles(tarballs, legacy, manifest);
     for (const out of options.out) {
         const folder = `${out}/admin/${INSTALL_FOLDER}/${manifest.slug}`;

@@ -52,6 +52,7 @@ PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh    # engine and admin bun
 - [Testing](docs/TESTING.md)
 - [Manual test plan and the local stack](docs/MANUAL_TEST_PLAN.md)
 - [Developer setup](docs/SETUP.md)
+- [Start your own map](docs/research/M14-start-your-map.md): the public start page, what it does from a browser, and what only a real run proves
 - [Self-hosting a city (RO/EN)](docs/SELF_HOST.md): the starter kit and `create-historic-city`
 - [Admin guide (RO)](docs/ADMIN_GUIDE.ro.md) · [Admin guide (EN)](docs/ADMIN_GUIDE.en.md)
 - [Lessons](docs/LESSONS.md)

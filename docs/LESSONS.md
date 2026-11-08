@@ -2580,3 +2580,43 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: `check_bundle_budget.py` after each try, measured in bytes, not in the report's rounded KB.
     - Fix and pin: shorter texts and less code in the entry, and a declaration order in `imagery-styles.ts` that repeats its neighbour's run; no budget moved.
     - **At a budget's edge, measure each idea in gzip bytes before believing it, and leave a margin wider than the hash noise.**
+
+429. **A list of what to show is not the list of what exists: the start page's own project dropped a step from `state.order`, and a rebuild over `order` lost its record.**
+    - Seen: 2026-11-07, `@S-A76-HAPPY-LIVE`: Setup hid the old photos' step for a project of the owner's own, and the next status answer rebuilt `steps` from `order`, so a reader of `steps.legacyImport` threw.
+    - Found by: the journey from the start page to a live map, on the bytes the page released.
+    - Fix and pin: the rebuild walks every step (`SETUP_STEPS`); `order` only says what shows.
+430. **Wait for what a scenario finishes before finishing it: `cloud-build.finish` before the build exists finishes nothing.**
+    - Seen: 2026-11-07, `@S-A76-HAPPY-LIVE`: the build was queued after the scenario ran, so the card waited for ever and the claim never came.
+    - Fix and pin: the spec polls `submittedBuilds` first, as the Setup journey does.
+431. **`isGoogleFailure(error)` with no kinds is always false: naming kinds is what it checks.**
+    - Seen: 2026-11-07, on the start page: every refusal read as an unknown failure until `instanceof GoogleApiError` replaced it.
+    - Fix and pin: `packages/admin/test/start/failure.test.ts`.
+432. **A fake that answers what the code hopes for hides the bug it was written to catch: Google says 403, not 404, for a project you cannot see.**
+    - Seen: 2026-11-07, review of the start page: `ensureProject` created only after a 404, the fake's fresh world answered 404, and every S-A76 row passed while a real new owner would be told to accept the terms for ever.
+    - Cause: the read's absent answer came from an assumption, and the fake was written from the same assumption. AIP-193 says 403 "regardless of whether or not it exists".
+    - Found by: review, reading Google's rule against the fake.
+    - Fix and pin: for a new project a 403 reads as not yet this account's and the create decides (`packages/admin/test/start/deploy.test.ts`); the fake answers 403 and refuses a display name outside Google's characters.
+    - **When a fake models an error path, write it from the provider's documented rule, not from what the client expects.**
+433. **A list of files to fill in beside a tree that marks them drifts: the site build replaced the token in two files, and the tree held it in more.**
+    - Seen: 2026-11-07, `hosting.tgz`: `public/city/index.html` kept `__HCM_PROJECT_ID__` in its policy after Publish the map, and a stub tarball with exactly the two listed files kept the test green.
+    - The first fix, replacing the token wherever it appears, was wrong too: the real self-host build showed the admin's own chunk holds the token, as the text `fetch` looks for, and rewriting it would break the next publish.
+    - Fix and pin: the generic `hosting.tgz` lists the tree's own marks in `templates.json`, `fetch` reads that, and `@S-A76-HAPPY-ROOT` runs it over the real bundle.
+    - **Test an adoption on the real artefact: a stub holds what the code already handles. Run the real build once before trusting a search over it.**
+434. **Removing a flag says the road is open; only following the road proves it.**
+    - Seen: 2026-11-07, `self-host` lost `--experimental` (CR-M5-7), but its bundle had neither the install bundle nor the city page, so Setup's Install and Publish the map said "reload the admin" for ever.
+    - Fix and pin: the bundle's `hosting/` is the start site's release tree (`packages/create-historic-city/test/bundle.test.ts`, `@S-V29-HAPPY-SELF-HOST`).
+    - **A step that deploys something must be followed to who reads it next.**
+435. **A resume that repeats the first click must ask what changed since: a tab left open released the start-up tree over a published map.**
+    - Seen: 2026-11-07, review: the plan stayed in the tab until Done, and an expired token at Check again went back through the whole deploy, which looked at everything but the live release.
+    - Fix and pin: the plan is marked `released`, and the deploy reads the live channel first (`@S-A76-BAD-RELEASE-AGAIN`).
+    - **"Idempotent" needs a look at the one step that overwrites.**
+436. **A scenario row is a claim: "byte for byte" over a comparison of paths, and a sentence a mechanical edit left half deleted, both read as green.**
+    - Seen: 2026-11-07, review of S-A76-HAPPY, S-A76-HAPPY-LIVE and S-V29-HAPPY-SELF-HOST.
+    - Fix and pin: the spec compares every byte and digest with the manifest (`expectManifestReleased`); the rows now say what is run and what is not.
+    - **Read the row beside its test after an edit to either.**
+437. **`page.goto` to the address already open with only a hash does not load the page, so state that a load should reset stays.**
+    - Seen: 2026-11-07, `@S-A76-BAD-NEW-CITY-AGAIN` looked for an empty form on the done screen.
+    - Fix and pin: `page.reload()`.
+438. **In the quality image a git worktree's `.git` points outside the mount, so `scripts/ci/e2e_build.py` exits 1 there.**
+    - Seen: 2026-11-07, on the track's worktree: its stamp asks git for the inputs. `npm run build:site:e2e` is the build itself and works.
+    - Fix and pin: run the build directly in a worktree.

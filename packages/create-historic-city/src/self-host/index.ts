@@ -5,9 +5,8 @@
  * writes and opens nothing. A "no" stops with the steps left (exit status 0); a failed step stops with its reason and
  * the command that resumes (exit status 1).
  *
- * Until CR-M5-7 the admin's Setup cannot run in a project of the owner's own (its `project.json` has no GitHub
- * settings), and the server's deploy needs the service accounts Setup's Provision creates: both commands refuse unless
- * `--experimental` says the owner knows (a dry run runs nothing and needs no flag; `docs/LESSONS.md` 239).
+ * Since CR-M5-7 the admin's Setup runs in a project of the owner's own: its `project.json` has no GitHub settings, so
+ * Provision leaves GitHub's deployer out, and the server's deploy finds the service accounts Provision made.
  */
 import { resolve } from 'node:path';
 
@@ -126,9 +125,7 @@ async function attempt(session: Session, step: Step): Promise<StepOutcome | 'fai
 
 function resumeCommand(session: Session, step: Step): string {
     const { dir, id } = session.project;
-    return RESUMES_WITH_DEPLOY.includes(step.id)
-        ? deployCommand(session)
-        : `${NPX_COMMAND} self-host ${dir} --project ${id} --experimental`;
+    return RESUMES_WITH_DEPLOY.includes(step.id) ? deployCommand(session) : `${NPX_COMMAND} self-host ${dir} --project ${id}`;
 }
 
 /** Stops at `left[0]`: after a "no", the steps left are listed; either way, the command that resumes. */
@@ -153,21 +150,7 @@ async function outcomeOf(session: Session, step: Step): Promise<StepOutcome | 'f
     return attempt(session, step);
 }
 
-/** Refuses a real run without `--experimental`; with it, says what does not work yet before anything runs. */
-function experimental(context: Context): void {
-    const { options } = context;
-    if (options.dryRun) {
-        return;
-    }
-    if (!options.experimental) {
-        context.ports.terminal.say(context.t('cli.selfHost.unavailable'));
-        throw refusal(context, 'cli.selfHost.tryAnyway');
-    }
-    context.ports.terminal.say(context.t('cli.selfHost.experimental'));
-}
-
 async function runSteps(context: Context, steps: readonly Step[]): Promise<number> {
-    experimental(context);
     const session: Session = { context, project: await hostedProject(context), gcloud: false };
     for (const [index, step] of steps.entries()) {
         introduce(session, step);

@@ -20,6 +20,16 @@ function done(state: SetupState, ...ids: SetupStepId[]): SetupState {
     return ids.reduce((current, id) => withStep(current, id, { state: 'ok' }), state);
 }
 
+describe('initialSetupState of a project of the owner own (CR-M5-7, M14)', () => {
+    it('happyPath_noGithubVariablesAndNoOldPhotosToImport', () => {
+        const state = initialSetupState({ ...createHarness().host, github: false }, 'bootstrap');
+        expect(state.deploy.variables).toEqual([]);
+        expect(state.order).not.toContain('legacyImport');
+        expect(state.total).toBe(state.order.length);
+        expect(state.steps.legacyImport).toBeDefined();
+    });
+});
+
 describe('initialSetupState', () => {
     it('happyPath_everyStepStartsToDoWithItsLinksAndBudget', () => {
         const state = initialSetupState(createHarness().host, 'bootstrap');

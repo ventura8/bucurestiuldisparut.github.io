@@ -152,6 +152,8 @@ function authorize(standIn: StandIn, request: ControlRequest): MockResponse {
         scopes: record.scopes,
         accounts,
         selected: loginHint === '' ? PERSONAS.owner.email : loginHint,
+        redirect: request.query.get('redirect_uri') ?? '',
+        state: request.query.get('state') ?? '',
     });
     return { status: 200, type: 'text/html; charset=utf-8', body: page };
 }

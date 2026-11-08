@@ -5941,3 +5941,12 @@ Applied: code, tests and documentation; no gate relaxed, no budget raised, no do
 - **98e Single-key shortcuts have a switch** (WCAG 2.1.4), stored in localStorage like language and theme, no cookie. No claim of conformance is made anywhere.
 - **98f Not done: a real gamepad.** None was available; every gamepad test uses a fake `navigator.getGamepads`. `docs/MANUAL_TEST_PLAN.md` C4b asks a person to try one. Two viewers on one page would both follow the pad.
 - **98g Lessons 420, 421.**
+
+## 99. Start your own map from a browser (2026-11-07) — APPLIED on the track's branch (the owner's request; contract `docs/research/M14-start-your-map.md`)
+
+- **99a CR-M5-7 finished.** `github` optional, the provisioner and Setup without it, `self-host` and `deploy` without `--experimental` (still accepted). `S-V29-BAD-NOT-AVAILABLE` became `S-V29-BAD-NO-BUNDLE`: the refusal it tested is gone.
+- **99b The same tab, no Google script, no client secret.** The OAuth 2.0 flow for browser apps, not the code flow with PKCE, which needs a secret at Google's token endpoint for a web client. Reasons and risks: the contract §2.
+- **99c The page's own Hosting site, its release files on the same origin.** Not jsDelivr (GitHub packages over 50 MB) and not GitHub Releases (no CORS, third-party reports). The contract §5, §6.
+- **99d Pre-approved kind, logged.** A new gate `start-build` and a new row `dist/start-app/start.mjs` of `check_bundle_budget.py` (69.0 KB measured, 72): stricter. `tsconfig.tools.json` and `scripts/site/tsconfig.json` name the new entry and config: keeps the tools working. The admin's total and every existing budget are unchanged.
+- **99e For the owner to decide (ask first, nothing was done).** Create the OAuth client and set `HCM_START_OAUTH_CLIENT_ID`; create the Hosting site `start-historic-city` and deploy `dist/start/`; submit verification. The first real run from a clean Google account proves §9 of the contract, the upload host's CORS above all.
+- **99f New shared surface.** `GENERIC_INSTALL_PROJECT`: an admin accepts a bundle made for no project; a site build of one adopts the project in its `fetch` step. Bucharest's own bundle is unchanged, byte for byte.

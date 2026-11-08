@@ -897,6 +897,13 @@
             "name": "The security rules of the roles, in both directions, for every role and path",
             "milestone": "M13",
             "source": "docs/research/M13-roles.md §1 (the owner's decisions of 2026-11-07)"
+        },
+        {
+            "id": "A76",
+            "area": "admin",
+            "name": "Start your own map from a browser",
+            "milestone": "M14",
+            "source": "the owner, 2026-11-07: a setup page for someone starting from scratch; docs/research/M14-start-your-map.md"
         }
     ],
     "scenarios": [
@@ -2501,7 +2508,7 @@
             "area": "starter-kit",
             "path": "happy",
             "title": "The self-host steps run the owner's own CLIs, one consent each",
-            "asserts": "with fake firebase and gcloud first on PATH and a fake xdg-open: each step asks y/N first; firebase login, projects:create, the billing page opened, billing polled until linked, the admin deployed to Hosting and its Setup opened; no credential is ever asked for or printed With --experimental only (CR-M5-7), whose warning comes first; the sign-in is probed with firebase login:list as plain text, never --json (whose answer holds the account's tokens), and no token reaches the output.",
+            "asserts": "with fake firebase and gcloud first on PATH and a fake xdg-open: each step asks y/N first; firebase login, projects:create, the billing page opened, billing polled until linked, the admin deployed to Hosting and its Setup opened; no credential is ever asked for or printed; server/hosting holds Setup's install bundle and the city page with this project in it; the sign-in is probed with firebase login:list as plain text, never --json (whose answer holds the account's tokens), and no token reaches the output.",
             "tier": "e2e-starter-kit",
             "status": "exists",
             "notes": "Milestone M5 (docs/research/M5-interfaces.md §4.4; owner: kit-cli). Test: e2e/specs/starter-kit/create-city.spec.ts."
@@ -2562,15 +2569,15 @@
             "notes": "Milestone M5 (docs/research/M5-interfaces.md §4.4; owner: kit-cli). Test: e2e/specs/starter-kit/create-city.spec.ts."
         },
         {
-            "id": "S-V29-BAD-NOT-AVAILABLE",
+            "id": "S-V29-BAD-NO-BUNDLE",
             "behaviour": "V29",
             "area": "starter-kit",
             "path": "bad",
-            "title": "Self-hosting is not available yet without --experimental",
-            "asserts": "self-host and deploy without --experimental -> exit 1 with cli.selfHost.unavailable; no tool runs, no page opens, no server folder is written (a dry run needs no flag)",
+            "title": "Self-hosting names what is missing when the package carries no bundle",
+            "asserts": "self-host with no bundle -> step 6 stops with cli.admin.noBundle (exit 1), no server folder is written; the refusal without --experimental is gone with CR-M5-7",
             "tier": "e2e-starter-kit",
             "status": "exists",
-            "notes": "Milestone M5, the reviews' fixes (docs/research/DECISIONS-for-review.md §65; owner: the fixer). The UX review's finding 1 (docs/LESSONS.md 239). Test: e2e/specs/starter-kit/create-city.spec.ts."
+            "notes": "Milestone M5, the reviews' fixes (docs/research/DECISIONS-for-review.md §65; owner: the fixer). The UX review's finding 1 (docs/LESSONS.md 239). Test: e2e/specs/starter-kit/create-city.spec.ts. Since CR-M5-7 (docs/research/M14-start-your-map.md) nothing refuses without the flag."
         },
         {
             "id": "S-V29-BAD-PROJECT-TAKEN",
@@ -13560,6 +13567,204 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-A76-HAPPY",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "happy",
+            "title": "A new owner starts a map from nothing, in a browser",
+            "asserts": "the page explains what you get, the cost and the accounts; consent in the same tab, the fragment cleared at once; the city and project form; the project, Firebase, the web app, the site, the files and the release against the fake Google, the project's read answering 403 as Google does; the console step detected, the admin's address shown before it; each released file equals the tree's, whose SHA-256 the manifest names, with the project where it holds the token; the tree names no project and holds no Bucharest data, and project.json no GitHub; the released admin boots from those bytes",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-HAPPY-LIVE",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "happy",
+            "title": "From the start page to a live map of Fostul Bacău, on the bytes that were released",
+            "asserts": "the released admin (no GitHub) runs Setup: Prepare the project without gh-deployer or the Workload Identity pool, Install the server from the released bundle, the claim; New city opens filled in, created in one click; published in the city's settings, the map boots at /fostul-bacau/ through the released generic city page; then again on the files Publish the map's fetch step makes of the generic bundle (its Firebase deploy runs only on real Google)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07, on the emulators and fakes. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-HAPPY-RESUME",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "happy",
+            "title": "A reload in the middle resumes from the plan, after one more consent",
+            "asserts": "the plan survives in the tab, the token does not; Continue with Google resumes and nothing is made twice",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-HAPPY-EXISTING",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "happy",
+            "title": "A project the owner has already is used, not made",
+            "asserts": "picking a project creates no project and adds no Firebase",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-BAD-DENIED",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "Refusing Google's consent changes nothing",
+            "asserts": "the first screen says so, the button stays",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-BAD-TERMS",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "Firebase's terms stop the run with their link, and Try again continues",
+            "asserts": "addFirebase refused -> the failed step, the console link, Try again; the project is not created twice",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-BAD-ID-TAKEN",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "A taken project id is refused, with a free one offered",
+            "asserts": "the read answers 403 for a taken id as for a free one; a 409 from projects.create -> the form, the reason and a free id in the field",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-BAD-QUOTA",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "The project limit says so, with the way to ask for more",
+            "asserts": "a 429 from projects.create -> the form, the reason and the link",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-BAD-FORM",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "The form says what it cannot take, and Create waits",
+            "asserts": "a rectangle too large and an invalid project id are said at their fields; the button is off",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-BAD-UPLOAD",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "A browser that cannot reach Hosting's upload host is told, with the terminal road",
+            "asserts": "an upload that never leaves -> the files step failed, the host and the command; nothing is released; Try again completes",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-BAD-CLOSED",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "Before its OAuth client exists the page explains and offers the terminal, with no button",
+            "asserts": "a configuration with no client id -> the explanation, the terminal command, no sign-in button",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request, 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-HAPPY-PLAN-WORDS",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "happy",
+            "title": "A city name with punctuation and a decimal comma still make a plan",
+            "asserts": "a name holding what Google refuses in a display name is cleaned for the project, whose create takes it (the fake checks Google's characters); 26,85 is 26.85",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-HAPPY-ANNOUNCED",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "happy",
+            "title": "The long run is said to a screen reader",
+            "asserts": "each new screen takes focus at its heading; the step under way is in one polite status line, not each file of the count",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-HAPPY-ROOT",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "happy",
+            "title": "After Publish the map the root goes to the first city",
+            "asserts": "the real fetch step over the real generic bundle leaves the token only in the admin's script, which looks for it; the city page's policy names the project; the published root opens /fostul-bacau/, which boots",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-BAD-PROJECT-REFUSED",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "A project Google refuses goes back to the form, which says so",
+            "asserts": "a 400 from projects.create -> the form and the reason, not the terms and no Try again of the same plan",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-BAD-RELEASE-AGAIN",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "After the release nothing releases again: not a reload, a new consent or another tab",
+            "asserts": "a reload opens the provider step with the address; Check again after a consent reads the provider only; a new tab asking the same new project leaves the live site; releases.create ran once",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-BAD-PROVIDER-UNREADABLE",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "A provider that cannot be read is said so, and the admin's address is still there",
+            "asserts": "a read refused -> its own words, not 'not on yet', and the link to the live admin",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A76-BAD-NEW-CITY-AGAIN",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "New city does not offer a first city that already exists",
+            "asserts": "project.json still names it; once the session lists it the form opens empty",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
         }
     ]
 }

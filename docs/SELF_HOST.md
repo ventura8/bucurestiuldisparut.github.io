@@ -1,5 +1,7 @@
 # Găzduirea proprie a unui oraș / Self-hosting a city
 
+Fără terminal: [pagina de pornire](research/M14-start-your-map.md) face aceiași pași din browser. Without a terminal: the [start page](research/M14-start-your-map.md) does the same steps from a browser.
+
 `create-historic-city` pornește harta istorică a unui oraș nou: trusa de pornire în trei fișiere și, dacă vrei aplicația de administrare în propriul tău proiect Firebase, pașii ghidați până la ea. Contractul este [research/M5-interfaces.md](research/M5-interfaces.md) §3–§4; pagina, `city.json` și motorul sunt descrise în [ENGINE_API.md](ENGINE_API.md).
 
 `create-historic-city` starts a new city's historical map: the starter kit in three files and, if you want the admin app in a Firebase project of your own, the guided steps up to it. The contract is [research/M5-interfaces.md](research/M5-interfaces.md) §3–§4; the page, `city.json` and the engine are described in [ENGINE_API.md](ENGINE_API.md).
@@ -11,7 +13,7 @@
 | Drum | Comandă | Ce obții |
 | --- | --- | --- |
 | Doar harta (static) | `npx create-historic-city@1.0.0 orasul-meu` | `index.html`, `city.json`, `README.md` într-un folder nou: harta pe GitHub Pages sau pe orice găzduire statică, fără Firebase. Editezi `city.json` de mână (README-ul trusei spune cum). |
-| Harta cu administrarea (în lucru) | după prima comandă, `npx create-historic-city@1.0.0 self-host orasul-meu --project <id> --experimental` | Același folder (`self-host` îl cere: întâi creezi orașul), plus un proiect Firebase al tău cu aplicația de administrare, pe `https://<id>.web.app/`. Nu este gata încă: vezi limitarea de mai jos. |
+| Harta cu administrarea | după prima comandă, `npx create-historic-city@1.0.0 self-host orasul-meu --project <id>` | Același folder (`self-host` îl cere: întâi creezi orașul), plus un proiect Firebase al tău cu aplicația de administrare, pe `https://<id>.web.app/`. |
 
 `npm create historic-city@1.0.0 orasul-meu` este același lucru ca prima comandă. Comenzile numesc versiunea exactă: `@1` ar rula orice versiune poartă numele în ziua în care citești.
 
@@ -42,7 +44,7 @@ Fiecare pas spune ce face, de ce și cât costă, apoi întreabă `y/N`; `--yes`
 | 8 | Serverul | verifică plata (`gcloud billing projects describe`), apoi `firebase deploy --only functions,firestore,storage,hosting` | legarea plății, dacă nu ai făcut-o | Blaze; bugetul oprește imaginile, nu site-ul |
 | 9 | Restul Setup | deschide adminul din nou | Mapbox, USGS, statisticile, primul tău oraș (Oraș nou) | după cum alegi |
 
-> Limitare cunoscută (v1.0.0): Asistentul de configurare al adminului citește din `project.json` și setările de publicare din GitHub pe care le are proiectul acestui depozit; fișierul scris de `self-host` nu le are, așa că Setup (pasul 7) nu rulează încă într-un proiect al tău (CR-M5-7, `docs/research/DECISIONS-for-review.md` §63f). Fără Provision din Setup nu există conturile de serviciu sub care rulează funcțiile, așa că nici serverul (pasul 8) nu se poate publica, iar planul Blaze ar rămâne fără bugetul de 5 USD. De aceea `self-host` și `deploy` refuză fără `--experimental` (nu rulează nimic); cu el, oprește-te după pasul 6. `--dry-run` merge oricând.
+Un proiect al tău nu are GitHub Actions: Provision din Setup nu face `gh-deployer` și nici Workload Identity (CR-M5-7, gata din M14), iar cardul de instalare nu arată variabilele GitHub. `--experimental`, din comenzile vechi, este acceptat și nu schimbă nimic.
 
 Un „nu” oprește comanda la acel pas și îți arată pașii rămași (cod de ieșire 0). Un pas eșuat îți arată motivul și comanda cu care continui (cod 1). Folderul `server/` ține fișierele de publicare și este trecut în `.gitignore`: nu face parte din site.
 
@@ -58,7 +60,7 @@ Un „nu” oprește comanda la acel pas și îți arată pașii rămași (cod d
 
 ### Mai târziu
 
-- `npx create-historic-city@1.0.0 deploy <folder> --project <id> --experimental`: doar serverul (pașii 1, 8 și 9), după ce ai legat plata (în lucru, ca `self-host`);
+- `npx create-historic-city@1.0.0 deploy <folder> --project <id>`: doar serverul (pașii 1, 8 și 9), după ce ai legat plata;
 - `npx create-historic-city@1.0.0 doctor <folder>`: Node, uneltele, `city.json` (valid, cu tokenul tău) și versiunea motorului din `index.html`;
 - `npx create-historic-city@1.0.0 theme <folder> --seed '#1b6c4a'`: culorile hărții dintr-o singură culoare (cele patru scheme din `city.json`, pe care le citește harta, și culoarea paginii);
 - `npx create-historic-city@<versiune> upgrade <folder>`: rescrie doar blocul motorului din `index.html` la versiunea acelui CLI; politica de securitate a paginii își păstrează sursele pe care le-ai adăugat.
@@ -74,7 +76,7 @@ Nu cere, nu scrie și nu afișează parole, tokenuri secrete sau date de plată;
 | Road | Command | What you get |
 | --- | --- | --- |
 | The map only (static) | `npx create-historic-city@1.0.0 my-city` | `index.html`, `city.json`, `README.md` in a new folder: the map on GitHub Pages or any static host, no Firebase. You edit `city.json` by hand (the kit's README says how). |
-| The map with the admin (in progress) | after the first command, `npx create-historic-city@1.0.0 self-host my-city --project <id> --experimental` | The same folder (`self-host` needs it: create the city first), plus a Firebase project of your own with the admin app, at `https://<id>.web.app/`. Not ready yet: see the limitation below. |
+| The map with the admin | after the first command, `npx create-historic-city@1.0.0 self-host my-city --project <id>` | The same folder (`self-host` needs it: create the city first), plus a Firebase project of your own with the admin app, at `https://<id>.web.app/`. |
 
 `npm create historic-city@1.0.0 my-city` is the same as the first command. The commands name the exact release: `@1` would run whatever release carries the name on the day you read this.
 
@@ -105,7 +107,7 @@ Each step says what it does, why and what it costs, then asks `y/N`; `--yes` nev
 | 8 | The server | checks billing (`gcloud billing projects describe`), then `firebase deploy --only functions,firestore,storage,hosting` | linking billing, if you have not | Blaze; the budget pauses the imagery, never the site |
 | 9 | The rest of Setup | opens the admin again | Mapbox, USGS, analytics, your first city (New city) | as you choose |
 
-> Known limitation (v1.0.0): the admin's Setup Assistant reads from `project.json` the GitHub deploy settings this repository's own project has; the file `self-host` writes has none, so Setup (step 7) cannot run in a project of your own yet (CR-M5-7, `docs/research/DECISIONS-for-review.md` §63f). Without Setup's Provision the service accounts the functions run as do not exist, so the server (step 8) cannot be deployed either, and the Blaze plan would be left without its 5 USD budget. That is why `self-host` and `deploy` refuse without `--experimental` (nothing runs); with it, stop after step 6. `--dry-run` works any time.
+A project of your own has no GitHub Actions: Setup's Provision makes no `gh-deployer` and no Workload Identity (CR-M5-7, done since M14), and the install card shows no GitHub variables. `--experimental`, from old command lines, is accepted and changes nothing.
 
 A "no" stops the command at that step and lists the steps left (exit status 0). A failed step shows its reason and the command to continue with (exit status 1). The `server/` folder holds the deploy files and goes into `.gitignore`: it is no part of the site.
 
@@ -121,7 +123,7 @@ A "no" stops the command at that step and lists the steps left (exit status 0). 
 
 ### Later
 
-- `npx create-historic-city@1.0.0 deploy <folder> --project <id> --experimental`: the server alone (steps 1, 8 and 9), once billing is linked (in progress, like `self-host`);
+- `npx create-historic-city@1.0.0 deploy <folder> --project <id>`: the server alone (steps 1, 8 and 9), once billing is linked;
 - `npx create-historic-city@1.0.0 doctor <folder>`: Node, the tools, `city.json` (valid, with your token) and the engine release in `index.html`;
 - `npx create-historic-city@1.0.0 theme <folder> --seed '#1b6c4a'`: the map's colours from one colour (the four schemes of `city.json`, which the map reads, and the page's colour);
 - `npx create-historic-city@<version> upgrade <folder>`: rewrites only the engine block of `index.html` at that CLI's release; the page's security policy keeps the sources you added.

@@ -5,14 +5,17 @@
  * ```text
  * server/.firebaserc                 the project
  * server/firebase.json               the bundle's firebase.template.json for this project (its Hosting site and CSP)
- * server/hosting/admin/              the admin's Hosting build, with project.json (CR-M5-7: no GitHub) and runtime.json
- *                                    (M6: the admin under `/admin/` of the project's Hosting folder `server/hosting/`)
+ * server/hosting/                    the start site's release tree for this project: the map's generic city page, and the admin
+ *                                    under `admin/` (M6) with Setup's install bundle, project.json (CR-M5-7: no GitHub) and
+ *                                    runtime.json
  * server/functions/                  the functions' deploy artifact, with .env.<project> (public values only)
  * server/rules/                      the Firestore and Storage rules and indexes
  * ```
  *
  * `.gitignore` gains `server/`: the folder is no part of the city's public site.
  */
+import { START_PROJECT_TOKEN } from '@hcm/shared';
+
 import { refusal } from '../context.js';
 import { NPX_COMMAND } from '../version.js';
 import { SERVER_FOLDER, type Session } from './session.js';
@@ -45,6 +48,21 @@ function bundleRelease(session: Session): string {
     return typeof parsed.release === 'string' ? parsed.release : '0.0.0';
 }
 
+/** The files of `hosting/` that hold the release's token (`bundle.json`'s `templates`). */
+function bundleTemplates(session: Session): readonly string[] {
+    const parsed = JSON.parse(session.project.files.readBundled(bundlePath(session, BUNDLE.release))) as { readonly templates?: unknown };
+    return Array.isArray(parsed.templates) ? parsed.templates.map(String) : [];
+}
+
+/** The hosting tree names no project until here (M14 §6): the city page's policy and bucket, the admin's page. */
+function fillTemplates(session: Session): void {
+    const { files, id } = session.project;
+    for (const path of bundleTemplates(session)) {
+        const target = `${SERVER_FOLDER}/hosting/${path}`;
+        files.write(target, files.read(target).replaceAll(START_PROJECT_TOKEN, id));
+    }
+}
+
 /** The admin's `runtime.json`: start-up mode until the server is deployed (`scripts/site/src/admin/runtime.ts`). */
 export function writeRuntime(session: Session, startUp: boolean): void {
     const release = bundleRelease(session);
@@ -70,6 +88,7 @@ export function writeServerFiles(session: Session, projectNumber: string, startU
     for (const folder of BUNDLE.folders) {
         files.copyFolder(bundlePath(session, folder), `${SERVER_FOLDER}/${folder}`);
     }
+    fillTemplates(session);
     const firebase = files.readBundled(bundlePath(session, BUNDLE.firebaseTemplate)).replaceAll(PROJECT_TOKEN, project.id);
     files.write(`${SERVER_FOLDER}/firebase.json`, firebase);
     files.write(`${SERVER_FOLDER}/.firebaserc`, json({ projects: { default: project.id } }));

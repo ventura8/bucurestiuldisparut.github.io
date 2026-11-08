@@ -238,3 +238,23 @@ export const HOSTING_STYLESHEET_SOURCE = [
     '}',
     '',
 ].join('\n');
+
+/** M14: the script of {@link renderFirstCityPage}, at the Hosting site's root. */
+export const FIRST_CITY_FILE = 'first-city.js';
+
+/**
+ * The root of a map made from the start page, once it is published (`docs/research/M14-start-your-map.md` §6): no committed
+ * city sits at the root, so it sends the visitor to the project's first city, which the project's own file names; the
+ * links stay for a browser without JavaScript. Elements and text only.
+ */
+export function renderFirstCityPage(): string {
+    return renderStaticPage({
+        title: 'Hartă istorică',
+        description: 'Fotografii vechi și straturi istorice ale orașului, așezate pe harta de azi.',
+        csp: staticPagePolicy(true).replace("default-src 'none'", "default-src 'none'; connect-src 'self'"),
+        stylesheet: `/${HOSTING_STYLESHEET_FILE}`,
+        script: `/${FIRST_CITY_FILE}`,
+        ro: { heading: 'Hartă istorică', paragraphs: ['Harta se deschide.'], links: [{ href: ADMIN_PATH, text: 'Administrarea hărții' }] },
+        en: { heading: 'Historical map', paragraphs: ['The map is opening.'], links: [{ href: ADMIN_PATH, text: "The map's admin" }] },
+    });
+}

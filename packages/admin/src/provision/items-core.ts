@@ -3,7 +3,7 @@ import { deployedName, MANIFEST_QUEUE } from '@hcm/shared';
 import { isGoogleFailure } from '../google/failure.js';
 import { deploymentStatus } from '../google/functions.js';
 import { eachInTurn, lacking, ok, refused, waiting, type OrgFindings, type ProvisionContext, type ProvisionItemSpec } from './item.js';
-import { SERVICE_ACCOUNT_IDS, SERVICE_ACCOUNTS } from './project-config.js';
+import { serviceAccountIdsOf, SERVICE_ACCOUNTS } from './project-config.js';
 import { REQUIRED_APIS, SECRET_IDS } from './resources.js';
 
 /**
@@ -72,7 +72,7 @@ const serviceAccounts: ProvisionItemSpec = {
     after: ['apis'],
     observe: async ({ clients, project }) => {
         const existing = new Set(await clients.iam.listServiceAccounts(project.projectId));
-        const missing = SERVICE_ACCOUNT_IDS.filter((account) => !existing.has(account));
+        const missing = serviceAccountIdsOf(project).filter((account) => !existing.has(account));
         return lacking(missing, () =>
             eachInTurn(missing, (account) => clients.iam.createServiceAccount(project.projectId, account, SERVICE_ACCOUNTS[account])),
         );

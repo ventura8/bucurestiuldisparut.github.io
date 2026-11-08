@@ -255,7 +255,8 @@ function projectBindings(project: ProjectConfig, agents: ServiceAgents): PolicyB
             ...grants(names.member('fn-admin'), [...FN_ADMIN_PROJECT_ROLES, customRoleName(project.projectId, VERTEX_DRAFTS_ROLE_ID)]),
             ...grants(names.member('fn-events'), FN_EVENTS_PROJECT_ROLES),
             ...grants(names.member('job-raster'), ['roles/datastore.user']),
-            ...grants(names.member('gh-deployer'), DEPLOYER_PROJECT_ROLES),
+            // CR-M5-7: GitHub Actions only for a project that names a repository.
+            ...(project.github === undefined ? [] : grants(names.member('gh-deployer'), DEPLOYER_PROJECT_ROLES)),
             ...grants(names.member(INSTALLER_ACCOUNT), [...INSTALLER_PROJECT_ROLES, customRoleName(project.projectId, INSTALLER_ROLE_ID)]),
             ...grants(`serviceAccount:${agents.firebaseStorage}`, ['roles/firebaserules.firestoreServiceAgent']),
             ...grants(`serviceAccount:${agents.cloudStorage}`, ['roles/pubsub.publisher']),
@@ -323,7 +324,8 @@ function secretBindings(project: ProjectConfig): PolicyBindings[] {
 function serviceAccountBindings(project: ProjectConfig): PolicyBindings[] {
     const names = projectNames(project);
     const user = (member: string): WantedBinding => ({ role: 'roles/iam.serviceAccountUser', member });
-    const deployers = [user(names.member('gh-deployer')), user(names.member(INSTALLER_ACCOUNT))];
+    const installer = user(names.member(INSTALLER_ACCOUNT));
+    const deployers = project.github === undefined ? [installer] : [user(names.member('gh-deployer')), installer];
     // M5 (CR-M5-8): `export.download` signs its address as `fn-admin` itself (IAM signBlob), which needs this role on itself.
     const signer: WantedBinding = { role: 'roles/iam.serviceAccountTokenCreator', member: names.member('fn-admin') };
     return [

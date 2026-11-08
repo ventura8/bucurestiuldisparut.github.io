@@ -8,7 +8,7 @@
  * `ContentServices` too, each declared by its owner inside its own marked section below and built inside the same
  * section of `../app/content-wiring.ts`; a workstream never edits another's section (§11.2).
  */
-import type { CityRole, Locale, Logger, Schema, ThemeTokens, ValidationIssue } from '@hcm/shared';
+import type { CityRole, Locale, Logger, Schema, StartFirstCity, ThemeTokens, ValidationIssue } from '@hcm/shared';
 import type { ThemeTokenSet } from '@hcm/ui/dynamic-color';
 
 import type { Clock, KeyValueStore, Unsubscribe } from '../app/ports.js';
@@ -129,6 +129,10 @@ interface ContentUser {
 export interface ContentServices {
     /** `project.cities[0]`; the `e2e` build may override it with `?city=` (CR-M2c-7). */
     readonly cityId: string;
+    /** M14: the start page's city, which New city opens with (`docs/research/M14-start-your-map.md` §8). */
+    readonly firstCity?: StartFirstCity | undefined;
+    /** The cities the session named for this admin: those that exist, unlike `project.json`'s list. */
+    readonly adminCityIds: () => readonly string[];
     readonly store: ContentStore;
     /** The shell's guarded callables (a revoked admin's `apiError.notAdmin` makes the shell ask who this is again). */
     readonly callables: CallablesPort;
@@ -194,6 +198,7 @@ export interface ContentServices {
 /** The members every area gets from the shell; the rest are the areas' own (`AreaServiceParts`). */
 type CoreServiceKey =
     | 'cityId'
+    | 'adminCityIds'
     | 'store'
     | 'callables'
     | 'theme'

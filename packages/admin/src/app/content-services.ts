@@ -14,6 +14,8 @@ import type { ShellStateAccess } from '../state/state.js';
 import type { Clock, KeyValueStore } from './ports.js';
 
 export interface ContentShell {
+    /** M14: the start page's city, which New city opens with. */
+    readonly firstCity?: ContentServices['firstCity'];
     readonly content: ContentDeps;
     /** `infra/project.json`'s cities: the first is edited before the shell knows the admin's own (M5). */
     readonly cities: readonly string[];
@@ -77,6 +79,8 @@ export function contentServices(parts: ContentShell): ContentServices {
         get cityId() {
             return cityId();
         },
+        firstCity: parts.firstCity,
+        adminCityIds: () => shell.get().cities.map((city) => city.id),
         store: writesRefusedWhen(content.store, () => shell.get().revoked),
         ...{ theme: content.theme, callables: parts.callables },
         ...{ clock: parts.clock, local: parts.local, log: parts.log, denied: parts.denied },

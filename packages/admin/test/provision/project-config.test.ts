@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { parseProjectConfig, projectNames, SERVICE_ACCOUNT_IDS } from '../../src/provision/project-config.js';
+import { parseProjectConfig, serviceAccountIdsOf, projectNames, SERVICE_ACCOUNT_IDS } from '../../src/provision/project-config.js';
 import { buildAccountBindings, REQUIRED_APIS, repositoryBindings, roleTable, SECRET_IDS } from '../../src/provision/resources.js';
 import { PROJECT } from './world.js';
 
@@ -16,7 +16,22 @@ describe('parseProjectConfig', () => {
 
         expect(config).toMatchObject({ projectId: 'bucurestiul-disparut', projectNumber: '804854330662', region: 'us-central1' });
         expect(config?.github).toMatchObject({ owner: 'ventura8', branch: 'master', environment: 'deploy' });
-        expect(config?.github.ownerId).toBeGreaterThan(0);
+        expect(config?.github?.ownerId).toBeGreaterThan(0);
+    });
+
+    it('happyPath_aProjectOfTheOwnersOwnHasNoGithubAndAFirstCity', () => {
+        // CR-M5-7: what `create-historic-city self-host` and the start page write.
+        const config = parseProjectConfig({
+            projectId: 'fostul-bacau',
+            projectNumber: '123456789012',
+            region: 'us-central1',
+            cities: ['bacau'],
+            viewerOrigins: ['https://fostul-bacau.web.app'],
+            firstCity: { id: 'bacau', name: { ro: 'Bacău' } },
+        });
+        expect(config?.github).toBeUndefined();
+        expect(config?.firstCity?.id).toBe('bacau');
+        expect(serviceAccountIdsOf({ github: undefined })).not.toContain('gh-deployer');
     });
 
     it('badPath_unsetGithubIdsOrAnHttpOriginAreRefused', () => {

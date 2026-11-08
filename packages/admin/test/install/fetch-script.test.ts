@@ -92,6 +92,24 @@ function envOf(found: Bundle, changes: Readonly<Record<string, string>> = {}): R
     };
 }
 
+/** A site tarball of a bundle made for no project (M14 §6): the token in `firebase.json` and the city page's `config.js`. */
+function genericSite(): { readonly bytes: Buffer } {
+    const source = mkdtempSync(join(work, 'generic-'));
+    mkdirSync(join(source, 'public/city'), { recursive: true });
+    writeFileSync(join(source, 'firebase.json'), '{"hosting":{"site":"__HCM_PROJECT_ID__"}}');
+    writeFileSync(join(source, 'public/city/config.js'), 'bucket("__HCM_PROJECT_ID__-public")');
+    // M14 finding: the city page's own policy names the project too, and the admin's; a file with no token stays byte for byte.
+    writeFileSync(join(source, 'public/city/index.html'), 'connect-src https://us-central1-__HCM_PROJECT_ID__.cloudfunctions.net');
+    mkdirSync(join(source, 'public/admin'), { recursive: true });
+    writeFileSync(join(source, 'public/admin/index.html'), 'https://__HCM_PROJECT_ID__.web.app https://__HCM_PROJECT_ID__.firebaseapp.com');
+    // The admin's own script holds the token as the text it looks for: not a template, and it must stay so for the next publish.
+    writeFileSync(join(source, 'public/admin/admin-core.js'), "replaceAll('__HCM_PROJECT_ID__', project)");
+    writeFileSync(join(source, 'templates.json'), JSON.stringify(['city/config.js', 'city/index.html', 'admin/index.html']));
+    const out = join(work, 'generic.tgz');
+    execFileSync(TAR, ['-czf', out, '-C', source, 'firebase.json', 'templates.json', 'public']);
+    return { bytes: readFileSync(out) };
+}
+
 beforeEach(async () => {
     work = mkdtempSync(join(tmpdir(), 'hcm-fetch-'));
     served = new Map();
@@ -219,5 +237,51 @@ describe('the fetch step', () => {
 
         expect(result.code).toBe(1);
         expect(result.stderr).toContain('manifest.json: HTTP 404');
+    });
+});
+
+describe('a site build of a bundle made for no project (M14)', () => {
+    function servedGeneric(): Record<string, string> {
+        const site = genericSite().bytes;
+        const entry = { name: 'hosting.tgz', bytes: site.length, sha256: sha(site) };
+        const manifest = Buffer.from(JSON.stringify({ release: RELEASE, releaseTime: 1_761_955_200, files: { site: entry } }));
+        served.set('manifest.json', manifest);
+        served.set('hosting.tgz', site);
+        return {
+            HCM_BUNDLE_URL: `${origin}/admin/install/1-0-0-abc1234/`,
+            HCM_MANIFEST_SHA256: sha(manifest),
+            HCM_FILE_SHA256: entry.sha256,
+            HCM_RELEASE: RELEASE,
+            HCM_RELEASE_TIME: '1761955200',
+            HCM_FILES: 'site',
+            HCM_OUT: join(work, 'site'),
+            HCM_ADOPT_PROJECT: 'fostul-bacau',
+            HCM_ADOPT_FROM: `${origin}/admin/project.json`,
+        };
+    }
+
+    it('happyPath_theProjectJoinsTheTreeAndItsFileComesFromTheLiveSite', async () => {
+        const env = servedGeneric();
+        served.set('project.json', Buffer.from('{"projectId":"fostul-bacau"}'));
+
+        expect((await run(env)).code).toBe(0);
+
+        expect(readFileSync(join(work, 'site/firebase.json'), 'utf8')).toContain('"site":"fostul-bacau"');
+        expect(readFileSync(join(work, 'site/public/city/config.js'), 'utf8')).toBe('bucket("fostul-bacau-public")');
+        expect(readFileSync(join(work, 'site/public/admin/project.json'), 'utf8')).toBe('{"projectId":"fostul-bacau"}');
+        expect(readFileSync(join(work, 'site/public/city/index.html'), 'utf8')).toBe(
+            'connect-src https://us-central1-fostul-bacau.cloudfunctions.net',
+        );
+        expect(readFileSync(join(work, 'site/public/admin/index.html'), 'utf8')).toBe(
+            'https://fostul-bacau.web.app https://fostul-bacau.firebaseapp.com',
+        );
+        expect(readFileSync(join(work, 'site/public/admin/admin-core.js'), 'utf8')).toBe("replaceAll('__HCM_PROJECT_ID__', project)");
+    });
+
+    it('badPath_aProjectFileTheLiveSiteDoesNotServeStopsTheBuild', async () => {
+        const { code, stderr } = await run(servedGeneric());
+
+        expect(code).toBe(1);
+        expect(stderr).toContain('project.json: HTTP 404');
     });
 });

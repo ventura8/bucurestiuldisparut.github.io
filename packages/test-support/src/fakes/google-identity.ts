@@ -1,5 +1,6 @@
 import { FIXTURE_VALUES, fixtureBody, fixtureResponse } from '../api-fixtures/index.js';
 import { authenticated, bearerToken, googleError, googleFailure, type GoogleApi, type GoogleProjects } from './google-common.js';
+import type { StartWorldState } from './google-hosting.js';
 import { bodyField, jsonResponse, route, type Route } from './routes.js';
 import type { ServiceFake } from './service.js';
 
@@ -207,7 +208,12 @@ function heldPermissions(access: ProjectAccess, asked: unknown): string[] {
 }
 
 /** The fake Resource Manager (v1 and v3 paths). */
-export function createResourceManagerFake(identity: IdentityState, state: ResourceManagerState, projects: GoogleProjects): ServiceFake {
+export function createResourceManagerFake(
+    identity: IdentityState,
+    state: ResourceManagerState,
+    projects: GoogleProjects,
+    start: Pick<StartWorldState, 'fresh' | 'projects'>,
+): ServiceFake {
     let etags = 0;
     const policyOf = (projectSegment: string): Policy => {
         const project = projects.resolve(projectSegment);
@@ -283,6 +289,11 @@ export function createResourceManagerFake(identity: IdentityState, state: Resour
                 'resource-manager.getProject',
                 auth((_request, params) => {
                     const project = projects.resolve(String(params['project']));
+                    // M14: in the start page's fresh world a project exists once it was made (google-hosting.ts). What the
+                    // caller cannot see answers 403 whether it exists or not (AIP-193), never a 404 that says the id is free.
+                    if (start.fresh && !start.projects.has(project.id)) {
+                        return googleError('google/error.permission-denied', RESOURCE_MANAGER);
+                    }
                     const values = { projectId: project.id, projectNumber: project.number };
                     return state.parent === undefined
                         ? fixtureResponse('resource-manager/project.get.no-organization', { values })

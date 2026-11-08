@@ -81,6 +81,7 @@ export interface SetupModuleOptions {
     readonly createCity: () => Promise<{ readonly created: boolean }>;
     /** The city the admin edits (`infra/project.json`'s first) and its bounding box for the USGS access request. */
     readonly cityId: string;
+    readonly github: boolean;
     readonly cityBBox: SetupHost['cityBBox'];
     // [section install] owner: installer (M6, docs/research/M6-interfaces.md §1.10)
     /** The Cloud Build installer (`createCloudBuildInstaller`), the admin's release and the public map's address. */
@@ -158,6 +159,7 @@ export function setupDepsOf(shell: SetupShell, options: SetupModuleOptions): Set
             projectNumber: messagingSenderId,
             authDomain,
             cityId: options.cityId,
+            github: options.github,
             cityBBox: options.cityBBox,
             serverDeployed: () => shell.serverReady(),
             release: options.release,

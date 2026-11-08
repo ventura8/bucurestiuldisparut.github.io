@@ -38,6 +38,8 @@ OUTPUTS = (
     "dist/e2e-site",
     "dist/e2e-hosting",
     "dist/e2e-hosting-start-up",
+    "dist/e2e-start",
+    "dist/start-app",
     "packages/engine/dist",
     "packages/create-historic-city/dist",
     "functions/dist",

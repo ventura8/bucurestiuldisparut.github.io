@@ -127,10 +127,13 @@ export function packageFolder(options: { readonly bundle?: boolean } = {}): stri
 export function writeBundle(dir: string): void {
     for (const [path, content] of Object.entries({
         'hosting/admin/index.html': '<!doctype html>\n',
+        'hosting/admin/install/1-0-0-abc1234/manifest.json': '{ "projectId": "any-project" }\n',
+        'hosting/city/index.html': 'connect-src https://us-central1-__HCM_PROJECT_ID__.cloudfunctions.net\n',
+        'hosting/city/config.js': '__HCM_PROJECT_ID__-public\n',
         'functions/index.js': 'export {};\n',
         'rules/firestore.rules': "rules_version = '2';\n",
         'firebase.template.json': '{ "hosting": { "site": "__PROJECT_ID__", "public": "hosting" } }\n',
-        'bundle.json': '{ "release": "1.0.0+abc1234" }\n',
+        'bundle.json': '{ "release": "1.0.0+abc1234", "templates": ["city/index.html", "city/config.js"] }\n',
     })) {
         mkdirSync(join(dir, path, '..'), { recursive: true });
         writeFileSync(join(dir, path), content);

@@ -1,12 +1,13 @@
-import { httpsOriginSchema } from '@hcm/shared';
+import { httpsOriginSchema, startFirstCitySchema } from '@hcm/shared';
 import { z } from 'zod';
 
 import { serviceAccountEmail } from '../google/iam.js';
 
 /**
  * `infra/project.json` (`docs/research/M2b-interfaces.md` §3.7): the committed, public facts of the Google Cloud project
- * the admin provisions (ids, region, the cities, the viewer's origins, and the GitHub repository whose `master` deploys
- * through Workload Identity Federation). Bundled into the admin build; the provisioner refuses to run when its
+ * the admin provisions (ids, region, the cities, the viewer's origins, and, only for a project that deploys from GitHub
+ * Actions, the repository whose `master` deploys through Workload Identity Federation: CR-M5-7, a project deployed from the
+ * owner's browser or terminal has none). Bundled into the admin build; the provisioner refuses to run when its
  * `projectId` is not the web configuration's. The numeric GitHub ids are what `gh api users/<owner> --jq .id` and
  * `gh api repos/<owner>/<repo> --jq .id` print.
  */
@@ -22,14 +23,18 @@ const projectConfigSchema = z.strictObject({
         .min(1)
         .max(20),
     viewerOrigins: z.array(httpsOriginSchema).min(1).max(10),
-    github: z.strictObject({
-        owner: z.string().regex(/^[A-Za-z0-9-]{1,39}$/),
-        ownerId: z.number().int().positive(),
-        repo: z.string().regex(/^[\w.-]{1,100}$/),
-        repoId: z.number().int().positive(),
-        branch: z.string().regex(/^[\w./-]{1,100}$/),
-        environment: z.string().regex(/^[\w-]{1,100}$/),
-    }),
+    github: z
+        .strictObject({
+            owner: z.string().regex(/^[A-Za-z0-9-]{1,39}$/),
+            ownerId: z.number().int().positive(),
+            repo: z.string().regex(/^[\w.-]{1,100}$/),
+            repoId: z.number().int().positive(),
+            branch: z.string().regex(/^[\w./-]{1,100}$/),
+            environment: z.string().regex(/^[\w-]{1,100}$/),
+        })
+        .optional(),
+    /** M14 (`docs/research/M14-start-your-map.md` §8): what the start page was told; New city opens with it filled in. */
+    firstCity: startFirstCitySchema.optional(),
 });
 
 export type ProjectConfig = z.infer<typeof projectConfigSchema>;
@@ -54,6 +59,14 @@ export const SERVICE_ACCOUNTS = {
 export type ServiceAccountId = keyof typeof SERVICE_ACCOUNTS;
 
 export const SERVICE_ACCOUNT_IDS = Object.keys(SERVICE_ACCOUNTS) as readonly ServiceAccountId[];
+
+/** The account only a project deploying from GitHub Actions has (CR-M5-7). */
+const GITHUB_ACCOUNT: ServiceAccountId = 'gh-deployer';
+
+/** The service accounts `project` needs: all, but `gh-deployer` only with its GitHub repository (CR-M5-7). */
+export function serviceAccountIdsOf(project: Pick<ProjectConfig, 'github'>): readonly ServiceAccountId[] {
+    return project.github === undefined ? SERVICE_ACCOUNT_IDS.filter((account) => account !== GITHUB_ACCOUNT) : SERVICE_ACCOUNT_IDS;
+}
 
 /** The names every item derives from the configuration. */
 export interface ProjectNames {

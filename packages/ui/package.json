@@ -27,6 +27,10 @@
             "types": "./src/admin/areas/*.ts",
             "default": "./src/admin/areas/*.ts"
         },
+        "./start": {
+            "types": "./src/start/hcm-start-page.ts",
+            "default": "./src/start/hcm-start-page.ts"
+        },
         "./dynamic-color": {
             "types": "./src/theme/dynamic-color.ts",
             "default": "./src/theme/dynamic-color.ts"
