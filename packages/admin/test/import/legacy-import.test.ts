@@ -316,6 +316,58 @@ describe('detect', () => {
     });
 });
 
+describe('the 2023 additions (docs/research/M5-interfaces.md)', () => {
+    const ADDED = [
+        ...RECORDS,
+        { sourceFile: 'la leu.jpeg', legacyId: 'legacy-shared-2023', photo: photo('la-leu') },
+        { sourceFile: 'monetaria de la sosea.jpg', legacyId: 'legacy-shared-2023', photo: photo('monetaria-de-la-sosea') },
+    ];
+
+    function sorted(ids: readonly string[]): string[] {
+        return ids.toSorted((left, right) => left.localeCompare(right));
+    }
+
+    it('happyPath_aProjectThatHasTheFirstPhotosGetsOnlyTheNewOnesAndASecondRunAddsNothing @S-A28-HAPPY-ADDITIONS', async () => {
+        const first = importWorld();
+        await createLegacyImport(first.deps()).run(() => undefined);
+        const world = importWorld(ADDED);
+        for (const [id, state] of first.store.docs) {
+            world.store.docs.set(id, state);
+        }
+
+        const before = await createLegacyImport(world.deps()).detect();
+        const result = await createLegacyImport(world.deps()).run(() => undefined);
+        const again = await createLegacyImport(world.deps()).run(() => undefined);
+
+        expect(before).toEqual({ done: 3, total: 5, failed: [] });
+        expect(result).toEqual({ done: 5, total: 5, failed: [] });
+        expect(again).toEqual(result);
+        // Two new photos sharing one legacy id are both created, each once; the first three are not written.
+        expect(sorted(world.store.created)).toEqual(['la-leu', 'monetaria-de-la-sosea']);
+        expect(sorted(world.store.uploads.map((upload) => upload.originalName))).toEqual(['la leu.jpeg', 'monetaria de la sosea.jpg']);
+        expect(sorted(world.store.published)).toEqual(['la-leu', 'monetaria-de-la-sosea']);
+    });
+
+    it('badPath_aPhotoTheOwnerDeletedOrUnpublishedIsNeverCreatedOrPublishedAgain @S-A28-BAD-OWNER-EDITS-KEPT', async () => {
+        const world = importWorld(ADDED);
+        await createLegacyImport(world.deps()).run(() => undefined);
+        world.store.deleteByHand('ferdinand');
+        world.store.unpublishByHand('bateriilor');
+        world.store.created.length = 0;
+        world.store.published.length = 0;
+
+        const detected = await createLegacyImport(world.deps()).detect();
+        const result = await createLegacyImport(world.deps()).run(() => undefined);
+
+        expect(detected).toEqual({ done: 5, total: 5, failed: [] });
+        expect(result).toEqual({ done: 5, total: 5, failed: [] });
+        expect(world.store.created).toEqual([]);
+        expect(world.store.published).toEqual([]);
+        expect(world.store.docs.has('ferdinand')).toBe(false);
+        expect(world.store.docs.get('bateriilor')).toMatchObject({ published: false });
+    });
+});
+
 describe('run when an upload event never reaches the server (M6, finding 17)', () => {
     /** Each photo's uploads in turn: the first event is lost, then `then` decides (lost again, or processed). */
     function lostFirst(then: 'done' | 'never'): (photoId: string) => 'done' | 'never' {

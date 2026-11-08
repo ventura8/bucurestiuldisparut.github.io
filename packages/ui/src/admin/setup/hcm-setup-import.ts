@@ -22,6 +22,14 @@ function isComplete(imported: ImportSlice): boolean {
     return imported.total > 0 && imported.done >= imported.total;
 }
 
+/**
+ * Photos of the bundle that are not imported yet while some are: a stopped import, or the old site's 2023 additions on a
+ * map that has the first 45 (`docs/research/M5-interfaces.md` → *The 2023 additions*). Zero before the first import.
+ */
+function missing(imported: ImportSlice): number {
+    return imported.done > 0 ? imported.total - imported.done : 0;
+}
+
 /** The bar shows while the import runs and while a partial import waits to be finished. */
 function showsProgress(imported: ImportSlice): boolean {
     return imported.running || (imported.done > 0 && !isComplete(imported));
@@ -54,19 +62,37 @@ export class HcmSetupImport extends SetupBody {
 
     private renderAction(state: SetupViewState): TemplateResult {
         const { total, running } = state.legacyImport;
-        return html`<div class="actions">
-            <hcm-button
-                variant="filled"
-                icon="upload"
-                ?disabled=${running || total === 0 || this.step(state, 'legacyImport').busy}
-                @click=${() => {
-                    this.act((intents) => {
-                        intents.importLegacy();
-                    });
-                }}
-                >${this.t('adminSetup.import.action', { count: String(total) })}</hcm-button
-            >
-        </div>`;
+        return html`${this.renderMissing(state.legacyImport)}
+            <div class="actions">
+                <hcm-button
+                    variant="filled"
+                    icon="upload"
+                    ?disabled=${running || total === 0 || this.step(state, 'legacyImport').busy}
+                    @click=${() => {
+                        this.act((intents) => {
+                            intents.importLegacy();
+                        });
+                    }}
+                    >${this.actionLabel(state.legacyImport)}</hcm-button
+                >
+            </div>`;
+    }
+
+    /** "Import the photos (45)" the first time; "Import the missing photos (12)" once some are on the map. */
+    private actionLabel(imported: ImportSlice): string {
+        const toImport = missing(imported);
+        return toImport > 0
+            ? this.t('adminSetup.import.actionMissing', { count: String(toImport) })
+            : this.t('adminSetup.import.action', { count: String(imported.total) });
+    }
+
+    /** What the missing photos are, and that the photos already on the map stay as they are (not while the import runs). */
+    private renderMissing(imported: ImportSlice): TemplateResult {
+        const toImport = missing(imported);
+        if (toImport === 0 || imported.running) {
+            return EMPTY;
+        }
+        return html`<p class="note">${this.t('adminSetup.import.missing', { count: String(toImport) })}</p>`;
     }
 
     private renderProgress(imported: ImportSlice): TemplateResult {

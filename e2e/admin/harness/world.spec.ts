@@ -54,7 +54,7 @@ test(
         expect(await (await request.get('/__/firebase/init.json')).json()).toEqual(ADMIN_WEB_CONFIG);
         expect(await (await request.get(`${ADMIN_PATH}runtime.json`)).json()).toEqual(ADMIN_RUNTIME);
         expect(await (await request.get(`${ADMIN_PATH}project.json`)).json()).toEqual(ADMIN_PROJECT);
-        expect(await (await request.get(`${ADMIN_PATH}${LEGACY_FOLDER}/photos.json`)).json()).toHaveLength(45);
+        expect(await (await request.get(`${ADMIN_PATH}${LEGACY_FOLDER}/photos.json`)).json()).toHaveLength(57);
         const original = await request.get(`${ADMIN_PATH}${LEGACY_FOLDER}/originals/Ferdinand.png`);
         expect(original.headers()['content-type']).toBe('image/png');
         expect(original.headers()['cache-control']).toBe('public, max-age=86400');

@@ -390,7 +390,7 @@ the scope, the area and the input budget of each step; `nextSetupStep(done)` is 
 | (e) `mapbox` | normal | `setup.status` `mapbox` | paste the secret token, Save: `setup.saveMapbox` | account, card, token creation on Mapbox's pages | 2, 0 | `setup/status.mapbox`, `cities/{city}.mapbox` |
 | (f) `usgs` | normal | `setup.status` `usgs` | username, open the token page (countdown), paste: `setup.saveUsgs` | ERS account, M2M request, token creation on USGS's pages | 3, 0 | `setup/status.usgs` |
 | (g) `analytics` | normal | `setup.analyticsConfig`; the stream setting; `telemetry.listGroups` | turn off history page views; crash e-mails switch | enabling Google Analytics and its terms on Google's page | 1, 1 | `setup/status.analytics`, the city, the stream |
-| (h) `legacyImport` | normal | the photo documents by id and `legacyId` | Import the 45 photos | nothing | 1, 0 | `cities/bucharest/photos/*` |
+| (h) `legacyImport` | normal | the photo documents by id and `legacyId` (and, since M5 §12, each photo's `history`) | Import the photos (57), or Import the missing photos (n) | nothing | 1, 0 | `cities/bucharest/photos/*` |
 
 #### (a) Sign-in and ownership
 

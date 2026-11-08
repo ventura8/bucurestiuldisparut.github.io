@@ -39,7 +39,7 @@ export function installSliceView(changes: InstallChanges = {}): InstallSliceView
         address: 'https://demo-hcm.web.app/',
         freeMinutes: 2500,
         estimates: { server: 85, pipeline: 20, site: 5 },
-        siteTransferMegabytes: 52,
+        siteTransferMegabytes: 60,
         server: installTargetView('server', server),
         pipeline: installTargetView('pipeline', pipeline),
         site: installTargetView('site', site),

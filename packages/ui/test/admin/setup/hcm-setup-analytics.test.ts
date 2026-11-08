@@ -246,6 +246,27 @@ describe('<hcm-setup-import>', () => {
         expect(element.renderRoot.querySelector('hcm-progress')).not.toBeNull();
     });
 
+    it('happyPath_aMapWithTheFirst45IsOfferedTheMissing12InOneClick', async () => {
+        // The old site's 2023 additions (docs/research/M5-interfaces.md): the bundle has 57, the map 45.
+        const { port, element } = await legacy({ legacyImport: { done: 45, total: 57, failed: [], running: false } }, 'en');
+
+        expect(shadowPart(element, '.body > .note').textContent).toBe(
+            "Your map does not have 12 of the old site's photos yet. The photos already on it stay as they are.",
+        );
+        await page.getByRole('button', { name: 'Import the missing photos (12)' }).click();
+
+        expect(port.calls).toEqual([['importLegacy']]);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_whileTheMissingPhotosAreImportedTheNoteGivesWayToTheProgress', async () => {
+        const { element } = await legacy({ legacyImport: { done: 50, total: 57, failed: [], running: true } });
+
+        expect(element.renderRoot.querySelector('.body > p.note:not([role])')).toBeNull();
+        expect(shadowPart(element, 'hcm-button').textContent).toBe('Importă fotografiile care lipsesc (7)');
+        expect(shadowPart(element, 'hcm-button').hasAttribute('disabled')).toBe(true);
+    });
+
     it('badPath_nothingDetectedYetDisablesTheButton', async () => {
         const { element } = await legacy({ legacyImport: { done: 0, total: 0, failed: [], running: false } });
 

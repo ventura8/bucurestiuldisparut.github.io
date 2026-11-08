@@ -140,6 +140,26 @@ describe('migrateLegacyPhotos: photos and cones', () => {
     });
 });
 
+describe('migrateLegacyPhotos: photos joining an earlier migration', () => {
+    it('happyPath_theNewIdsKeepClearOfTheReservedOnesAndStayStable', () => {
+        const features = [
+            point('Gara Obor.jpg', UNIRII, {}, 'legacy-new'),
+            cone('Gara Obor.jpg', UNIRII, 90, 50),
+            point('La leu.jpeg', IZVOR),
+        ];
+        const reserved = ['gara-obor'];
+
+        const joined = migrateLegacyPhotos({ type: 'FeatureCollection', features }, undefined, reserved);
+
+        expect(joined.photos.map((photo) => [photo.photo.id, photo.legacyId ?? null, photo.photo.bearing ?? null])).toEqual([
+            ['gara-obor-2', 'legacy-new', 90],
+            ['la-leu', null, null],
+        ]);
+        expect(migrateLegacyPhotos({ type: 'FeatureCollection', features }, undefined, reserved)).toEqual(joined);
+        expect(migrate(features).photos[0]?.photo.id).toBe('gara-obor');
+    });
+});
+
 describe('migrateLegacyPhotos: texts, links and dates', () => {
     it('happyPath_htmlBecomesTextAndLinks', () => {
         const migration = migrate([

@@ -1,12 +1,13 @@
 import type { ApiErrorCode, PhotoContentType } from '@hcm/shared';
 
 import type { LegacyPhotoFields } from '../../src/import/bundle.js';
-import type { LegacyPhotoStore, PhotoState } from '../../src/import/legacy-import.js';
+import type { LegacyPhotoStore, PhotoHistory, PhotoState } from '../../src/import/legacy-import.js';
 
 /**
  * An in-memory Firestore and Storage for the legacy import's tests: documents by id, uploads recorded, and a simulated
  * `photos.onUpload` that processes an upload (or refuses it) and notifies the document's watchers, as `onSnapshot`
- * does: once at once with the current document, then on every change.
+ * does: once at once with the current document, then on every change. Each photo's history is kept as the history
+ * triggers keep it: recorded on create, published once its document is, and kept after a delete.
  */
 
 interface StoredPhoto extends PhotoState {
@@ -31,6 +32,11 @@ export interface MemoryStore extends LegacyPhotoStore {
     reprocess(photoId: string): void;
     /** Watchers still listening. */
     watchers(): number;
+    /** Each photo's history, by id (kept after a delete, as the subcollection is). */
+    readonly past: Map<string, PhotoHistory>;
+    /** What an owner does in the admin: unpublish or delete a photo (its history stays). */
+    unpublishByHand(photoId: string): void;
+    deleteByHand(photoId: string): void;
 }
 
 export interface MemoryStoreOptions {
@@ -50,6 +56,11 @@ export function createMemoryStore(options: MemoryStoreOptions = {}): MemoryStore
     const uploads: Upload[] = [];
     const published: string[] = [];
     const reprocessed: string[] = [];
+    const past = new Map<string, PhotoHistory>();
+    const remember = (photoId: string, published: boolean): void => {
+        const before = past.get(photoId);
+        past.set(photoId, { recorded: true, everPublished: (before?.everPublished ?? false) || published });
+    };
     const notify = (photoId: string): void => {
         listeners.get(photoId)?.forEach((listener) => {
             listener(docs.get(photoId) ?? null);
@@ -79,6 +90,19 @@ export function createMemoryStore(options: MemoryStoreOptions = {}): MemoryStore
         uploads,
         published,
         reprocessed,
+        past,
+        unpublishByHand: (photoId) => {
+            const current = docs.get(photoId);
+            if (current !== undefined) {
+                remember(photoId, current.published);
+                docs.set(photoId, { ...current, published: false });
+            }
+        },
+        deleteByHand: (photoId) => {
+            remember(photoId, docs.get(photoId)?.published ?? false);
+            docs.delete(photoId);
+        },
+        history: (_cityId, photoId) => Promise.resolve(past.get(photoId) ?? { recorded: false, everPublished: false }),
         reprocess: (photoId) => {
             reprocessed.push(photoId);
             process(photoId);
@@ -88,6 +112,7 @@ export function createMemoryStore(options: MemoryStoreOptions = {}): MemoryStore
         findByLegacyId: (_cityId, legacyId) => Promise.resolve([...docs].find(([, doc]) => doc.legacyId === legacyId)?.[0] ?? null),
         create: (_cityId, photoId, fields: LegacyPhotoFields) => {
             created.push(photoId);
+            remember(photoId, false);
             docs.set(photoId, {
                 processing: 'pending',
                 hasImage: false,

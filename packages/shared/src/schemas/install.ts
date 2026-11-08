@@ -124,10 +124,11 @@ export const INSTALL_ESTIMATES: Readonly<Record<InstallTarget, { readonly buildM
  * What one Publish the map moves out of Firebase Hosting, in MB (§1.9; finding 4 of the M6 security review): the site
  * build downloads the bundle's tarballs (`hosting.tgz`, `server.tgz`, `pipeline.tgz`) and its manifest from the admin's
  * own Hosting, whose free tier is 360 MB a day, and while the legacy import is not complete also `legacy.tgz`, the old
- * photos' originals (§73k). Measured on 2026-11-01: about 7 MB without the originals, 52 MB with them. UNVERIFIED like
- * the minutes: the bundle budget (`scripts/ci/check_bundle_budget.py`) caps each tarball.
+ * photos' originals (§73k). Measured on 2026-11-01: about 7 MB without the originals, 52 MB with them; since 2026-11-08 the
+ * originals of the old site's 2023 additions add about 7.4 MB (`seed/bucharest-2023/`, `docs/research/M5-interfaces.md`),
+ * so 60. UNVERIFIED like the minutes: the bundle budget (`scripts/ci/check_bundle_budget.py`) caps each tarball.
  */
-export const SITE_PUBLISH_TRANSFER_MB = 52;
+export const SITE_PUBLISH_TRANSFER_MB = 60;
 /** The same once the legacy import is complete: the build leaves `legacy.tgz` out (§73k). */
 export const SITE_PUBLISH_TRANSFER_TRIMMED_MB = 7;
 

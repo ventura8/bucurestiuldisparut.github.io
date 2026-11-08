@@ -126,6 +126,42 @@ describe('scripts/seed/migrate-legacy.mjs', () => {
         TIMEOUT,
     );
 
+    it(
+        'happyPath_photosJoiningAnEarlierMigrationTakeNoneOfItsIds',
+        () => {
+            writeFixture();
+            const earlier = mkdtempSync(join(tmpdir(), 'hcm-migrate-earlier-'));
+            try {
+                const first = [feature('small.png', { type: 'Point', coordinates: [26.1, 44.43] })];
+                writeFileSync(join(earlier, 'photos.legacy.geojson'), JSON.stringify({ type: 'FeatureCollection', features: first }));
+
+                const result = run('--joins', earlier);
+
+                expect(result.status).toBe(0);
+                const manifest = parseManifestJson(readFileSync(join(cityDir, 'manifest.static.json'), 'utf8'));
+                expect(manifest.ok && manifest.value.photos.map((photo) => photo.id)).toEqual(['wide-1930', 'small-2']);
+                expect(existsSync(join(cityDir, 'derived/small-2/web.webp'))).toBe(true);
+            } finally {
+                rmSync(earlier, { recursive: true, force: true });
+            }
+        },
+        TIMEOUT,
+    );
+
+    it(
+        'badPath_joiningAFolderWithoutLegacyDataWritesNothing',
+        () => {
+            writeFixture();
+
+            const result = run('--joins', join(cityDir, 'nowhere'));
+
+            expect(result.status).toBe(2);
+            expect(result.stderr).toContain('--joins names no folder with photos.legacy.geojson');
+            expect(existsSync(join(cityDir, 'manifest.static.json'))).toBe(false);
+        },
+        TIMEOUT,
+    );
+
     it.each([[['--budget-mb', 'lots']], [['--budget-mb', '-1']], [['--unknown']]])(
         'badPath_usage_%j',
         (args) => {

@@ -1,0 +1,164 @@
+import type { Page, Route } from '@playwright/test';
+
+import type { EmulatorWorld } from '../support/emulators.js';
+import { setupText } from '../support/i18n.js';
+import { FIRST_PHOTOS, countUploads, importCard, imported, legacyPhotos } from '../support/legacy-import.js';
+import { seedClaimedCity, seedSetupStatus } from '../support/steps.js';
+import { ADMIN_LOCK, expect, test } from '../support/test.js';
+
+// One admin test at a time (the emulators are one Firebase project): see ADMIN_LOCK.
+test.describe.configure({ lock: ADMIN_LOCK });
+
+/**
+ * The old site's 2023 additions (docs/research/M5-interfaces.md → The 2023 additions; behaviour A28): the bundle grew
+ * from the 45 photos of `seed/bucharest/` to 57 with the 12 of `seed/bucharest-2023/`. A map that has the first photos
+ * is offered the missing ones in one click and gets only them; no run undoes what the owner did to an imported photo
+ * (the import reads each photo's history, which outlives a delete).
+ */
+
+test.use({ persona: 'owner', mapOwner: 'owner' });
+
+test.beforeEach(async ({ adminWorld }) => {
+    await seedClaimedCity(adminWorld.emulators, adminWorld.accounts.owner.uid);
+    await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid);
+});
+
+/** A record of the bundle's `photos.json` (`migrateLegacyPhotos`), as far as these tests read it. */
+interface BundleRecord {
+    readonly sourceFile: string;
+    readonly photo: { readonly id: string };
+}
+
+/**
+ * Serves the page the bundle's `photos.json` cut by `take` (the real file, fetched from the admin's server): the bundle as
+ * it was before the 2023 additions, then as it is, with a few photos of each so the emulators process them in seconds.
+ */
+async function serveBundle(page: Page, take: (records: readonly BundleRecord[]) => readonly BundleRecord[]): Promise<void> {
+    await page.route('**/legacy/bucharest/photos.json', async (route: Route) => {
+        const response = await route.fetch();
+        await route.fulfill({ response, json: take((await response.json()) as BundleRecord[]) });
+    });
+}
+
+/** Three of the first photos, and with `added` two of the 2023 additions after them. */
+function firstAnd(added: boolean): (records: readonly BundleRecord[]) => readonly BundleRecord[] {
+    return (records) => [...records.slice(0, 3), ...(added ? records.slice(FIRST_PHOTOS, FIRST_PHOTOS + 2) : [])];
+}
+
+/** The photo documents of `ids`, as the emulators hold them (undefined for a deleted one). */
+async function photoDocs(emulators: EmulatorWorld, ids: readonly string[]): Promise<Record<string, unknown>[]> {
+    const photos = await emulators.collection('cities/bucharest/photos');
+    return ids.map((id) => photos[id] ?? { id, gone: true });
+}
+
+test(
+    "A map that has the first photos is offered the old site's additions, imports only them, and a second run adds nothing",
+    { tag: ['@S-A28-HAPPY-ADDITIONS'] },
+    async ({ page, lang, adminWorld }) => {
+        test.setTimeout(420_000);
+        let records: readonly BundleRecord[] = [];
+        await serveBundle(page, (all) => {
+            records = all;
+            return firstAnd(false)(all);
+        });
+        const first = await importCard(page, lang, 3);
+        await first.action.click();
+        await imported(page, lang, 3);
+        const firstIds = records.slice(0, 3).map((record) => record.photo.id);
+        const before = await photoDocs(adminWorld.emulators, firstIds);
+
+        // The bundle now has the additions: the card says what the map lacks, and that the photos on it stay as they are.
+        const later = await page.context().newPage();
+        await serveBundle(later, firstAnd(true));
+        const uploads = countUploads(later);
+        const { card } = await importCard(later, lang, 5);
+        await expect(card.getByText(setupText(lang, 'adminSetup.import.missing', { count: '2' }))).toBeVisible();
+        await card.getByRole('button', { name: setupText(lang, 'adminSetup.import.actionMissing', { count: '2' }), exact: true }).click();
+        await imported(later, lang, 5);
+
+        expect(uploads()).toBe(2);
+        expect(await photoDocs(adminWorld.emulators, firstIds)).toEqual(before);
+        const addedIds = records.slice(FIRST_PHOTOS, FIRST_PHOTOS + 2).map((record) => record.photo.id);
+        expect(await photoDocs(adminWorld.emulators, addedIds)).toEqual(
+            addedIds.map(
+                () =>
+                    expect.objectContaining({
+                        published: true,
+                        processing: 'done',
+                        rightsReview: true,
+                        license: 'permission-legacy',
+                    }) as unknown,
+            ),
+        );
+        const photos = await legacyPhotos(adminWorld.emulators);
+        expect(photos).toHaveLength(5);
+
+        // Opened again, the card has nothing left to import (a run from a tab opened before: S-A28-BAD-OWNER-EDITS-KEPT).
+        await later.close();
+        const again = await page.context().newPage();
+        await serveBundle(again, firstAnd(true));
+        const { card: done } = await importCard(again, lang, 5);
+        await expect(done.getByText(setupText(lang, 'adminSetup.import.done', { count: '5' }))).toBeVisible();
+        expect(await legacyPhotos(adminWorld.emulators)).toEqual(photos);
+    },
+);
+
+test(
+    'Importing again never undoes what the owner did: a new title stays, a deleted photo stays deleted, an unpublished one unpublished',
+    { tag: ['@S-A28-BAD-OWNER-EDITS-KEPT'] },
+    async ({ page, lang, adminWorld }) => {
+        test.setTimeout(420_000);
+        let records: readonly BundleRecord[] = [];
+        await serveBundle(page, (all) => {
+            records = firstAnd(true)(all);
+            return records;
+        });
+        const stale = await page.context().newPage();
+        await serveBundle(stale, firstAnd(true));
+        const first = await importCard(page, lang, 5);
+        const later = await importCard(stale, lang, 5);
+        await first.action.click();
+        await imported(page, lang, 5);
+        const [retitled, deleted, unpublished] = records.map((record) => `cities/bucharest/photos/${record.photo.id}`);
+        const { emulators } = adminWorld;
+        const owner = adminWorld.accounts.owner.uid;
+        await emulators.updateFields(retitled ?? '', { title: { ro: 'Titlul proprietarului' }, updatedBy: owner, updatedAt: new Date() }, [
+            'title',
+            'updatedBy',
+            'updatedAt',
+        ]);
+        await emulators.updateFields(unpublished ?? '', { published: false, updatedBy: owner, updatedAt: new Date() }, [
+            'published',
+            'updatedBy',
+            'updatedAt',
+        ]);
+        await emulators.deleteDocument(deleted ?? '');
+        // The history triggers record the delete and the unpublish (the import reads them).
+        await expect
+            .poll(async () => Object.values(await emulators.collection(`${deleted ?? ''}/history`)).map((entry) => entry['action']), {
+                timeout: 60_000,
+            })
+            .toContain('delete');
+        await expect
+            .poll(
+                async () =>
+                    Object.values(await emulators.collection(`${unpublished ?? ''}/history`)).some(
+                        (entry) => (entry['previous'] as Record<string, unknown> | null)?.['published'] === true,
+                    ),
+                { timeout: 60_000 },
+            )
+            .toBe(true);
+        const kept = await legacyPhotos(emulators);
+
+        // The tab opened before the import still offers it: its run finds nothing to do.
+        const uploads = countUploads(stale);
+        await later.action.click();
+        await imported(stale, lang, 5);
+
+        expect(uploads()).toBe(0);
+        expect(await legacyPhotos(emulators)).toEqual(kept);
+        expect(await emulators.document(deleted ?? '')).toBeUndefined();
+        expect(await emulators.document(unpublished ?? '')).toMatchObject({ published: false });
+        expect(await emulators.document(retitled ?? '')).toMatchObject({ title: { ro: 'Titlul proprietarului' }, published: true });
+    },
+);

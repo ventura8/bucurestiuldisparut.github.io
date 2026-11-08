@@ -2,10 +2,10 @@ import type { Locator, Page, Request, Route } from '@playwright/test';
 
 import { STUCK_PHOTO_MS } from '../../../packages/admin/src/import/legacy-import.js';
 import { apiText, setupText } from '../support/i18n.js';
+import { LEGACY_PHOTOS, countUploads, importCard, imported, legacyPhotos } from '../support/legacy-import.js';
 import { SetupPage } from '../support/setup-page.js';
 import { seedClaimedCity, seedSetupStatus } from '../support/steps.js';
 import { ADMIN_LOCK, expect, test } from '../support/test.js';
-import type { EmulatorWorld } from '../support/emulators.js';
 import { emulatorOrigin } from '../world.js';
 
 // One admin test at a time (the emulators are one Firebase project): see ADMIN_LOCK.
@@ -16,58 +16,16 @@ test.describe.configure({ lock: ADMIN_LOCK });
  * creates a photo document per bundled record and uploads its original through the normal path, `photos.onUpload`
  * processes it in the Functions emulator, and the photo is published. It is idempotent by document id and `legacyId`:
  * a second run writes nothing, a closed tab resumes with the photos that have no image, and a photo that fails
- * processing is listed with its reason while the others are imported.
+ * processing is listed with its reason while the others are imported. The old site's 2023 additions and the owner's
+ * edits: legacy-additions.spec.ts.
  */
 
 test.use({ persona: 'owner', mapOwner: 'owner' });
-
-/** The bundle's records (`seed/bucharest`, migrated as is). */
-const LEGACY_PHOTOS = 45;
 
 test.beforeEach(async ({ adminWorld }) => {
     await seedClaimedCity(adminWorld.emulators, adminWorld.accounts.owner.uid);
     await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid);
 });
-
-async function importCard(page: Page, lang: 'ro' | 'en'): Promise<{ readonly card: Locator; readonly action: Locator }> {
-    const setup = new SetupPage(page, lang);
-    await setup.visit('mapbox');
-    const card = await setup.show('legacyImport');
-    return {
-        card,
-        action: card.getByRole('button', { name: setupText(lang, 'adminSetup.import.action', { count: String(LEGACY_PHOTOS) }) }),
-    };
-}
-
-/** The legacy photos of the city: by id, whether `photos.onUpload` gave each an image and whether it is published. */
-async function legacyPhotos(
-    emulators: EmulatorWorld,
-): Promise<{ readonly id: string; readonly image: boolean; readonly published: boolean }[]> {
-    const photos = await emulators.collection('cities/bucharest/photos');
-    return Object.entries(photos)
-        .filter(([, photo]) => photo['legacyId'] !== undefined)
-        .map(([id, photo]) => ({ id, image: photo['image'] !== undefined, published: photo['published'] === true }));
-}
-
-/** Waits until the import is done (the card, opened again: Setup closes it when the last step is done) and says so. */
-async function imported(page: Page, lang: 'ro' | 'en'): Promise<void> {
-    const setup = new SetupPage(page, lang);
-    await setup.expectState('legacyImport', 'ok', 300_000);
-    await expect(
-        (await setup.show('legacyImport')).getByText(setupText(lang, 'adminSetup.import.done', { count: String(LEGACY_PHOTOS) })),
-    ).toBeVisible();
-}
-
-/** Counts the page's uploads of originals to the Storage emulator. */
-function countUploads(page: Page): () => number {
-    let uploads = 0;
-    page.on('request', (request: Request) => {
-        if (request.method() === 'POST' && /\/v0\/b\/[^/]+\/o\?.*name=uploads/.test(request.url())) {
-            uploads += 1;
-        }
-    });
-    return () => uploads;
-}
 
 test(
     'Importing again, from a tab opened before the first import ended, creates no document and uploads nothing',

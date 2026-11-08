@@ -7,7 +7,7 @@
 import { FIRESTORE_PATHS, isApiErrorCode } from '@hcm/shared';
 
 import type { DocumentData, FirebasePorts } from '../firebase/ports.js';
-import type { LegacyPhotoStore, PhotoState } from '../import/legacy-import.js';
+import type { LegacyPhotoStore, PhotoHistory, PhotoState } from '../import/legacy-import.js';
 
 const PROCESSING: ReadonlySet<string> = new Set(['pending', 'done', 'failed']);
 
@@ -29,6 +29,16 @@ export function photoStateOf(data: DocumentData | null): PhotoState | null {
         published: data['published'] === true,
         ...(isApiErrorCode(error) ? { processingError: error } : {}),
     };
+}
+
+function wasPublished(entry: DocumentData): boolean {
+    const previous = entry['previous'];
+    return typeof previous === 'object' && previous !== null && (previous as DocumentData)['published'] === true;
+}
+
+/** What a photo's history entries say (`PhotoHistory`): any entry at all, and one whose previous version was published. */
+export function photoHistoryOf(entries: readonly { readonly data: DocumentData }[]): PhotoHistory {
+    return { recorded: entries.length > 0, everPublished: entries.some((entry) => wasPublished(entry.data)) };
 }
 
 export function legacyPhotoStore(firebase: Pick<FirebasePorts, 'documents' | 'storage'>, uid: () => string | null): LegacyPhotoStore {
@@ -58,6 +68,8 @@ export function legacyPhotoStore(firebase: Pick<FirebasePorts, 'documents' | 'st
             ),
         publish: (cityId, photoId) =>
             documents.set(FIRESTORE_PATHS.photo(cityId, photoId), { published: true, ...stamp() }, { merge: true }),
+        history: async (cityId, photoId) =>
+            photoHistoryOf(await documents.query(FIRESTORE_PATHS.history({ entity: 'photo', cityId, entityId: photoId }), [])),
     };
 }
 

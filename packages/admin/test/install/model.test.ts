@@ -269,7 +269,7 @@ describe('the build helpers', () => {
             release: RELEASE,
             freeMinutes: 2500,
             estimates: { server: 85, pipeline: 20, site: 5 },
-            siteTransferMegabytes: 52,
+            siteTransferMegabytes: 60,
         });
         expect(slice.server).toEqual(initialTargetView('server'));
         expect(slice.pipelineOff).toBeNull();

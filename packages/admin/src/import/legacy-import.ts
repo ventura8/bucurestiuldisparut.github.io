@@ -13,6 +13,12 @@ import { bundleUrl, isLegacyRecord, legacyRecord, uploadType, type LegacyPhotoFi
  * leaves its photo `pending`. After {@link STUCK_PHOTO_MS} the photo is sent to `photos.reprocess` once, which uploads it
  * again (a new event); still `pending` as long again, it is listed as not received (`apiError.photo.notReceived`, which
  * names the role) and the import goes on with the others: no photo waits ten minutes any more.
+ *
+ * The 2023 additions (`docs/research/M5-interfaces.md` → *The 2023 additions*): the bundle grew from 45 to 57 records, so a
+ * project that imported the 45 imports again to add the 12. That run must leave the 45 as their owner left them: a photo
+ * whose document is gone but whose history is there was deleted by someone and is never created again, and a processed
+ * photo that is unpublished although its history shows it published was unpublished by someone and is never published
+ * again. Both count as done. Only a photo without a history (an import that stopped before its publish) is resumed.
  */
 
 /** What the import reads of a photo document. */
@@ -22,6 +28,14 @@ export interface PhotoState {
     readonly hasImage: boolean;
     readonly published: boolean;
     readonly processingError?: ApiErrorCode;
+}
+
+/** What a photo's `history` subcollection (written by the history triggers, kept after a delete) says of it. */
+export interface PhotoHistory {
+    /** The photo had a document once: an entry exists. */
+    readonly recorded: boolean;
+    /** A version of it was published (an entry's `previous` has `published: true`). */
+    readonly everPublished: boolean;
 }
 
 /** The Firestore and Storage operations of the import (admin-shell's adapters, `packages/admin/src/firebase/`). */
@@ -37,6 +51,8 @@ export interface LegacyPhotoStore {
     watch(cityId: string, photoId: string, listener: (state: PhotoState | null) => void): () => void;
     /** `published: true` with the caller's stamp. */
     publish(cityId: string, photoId: string): Promise<void>;
+    /** The photo's history, read only. */
+    history(cityId: string, photoId: string): Promise<PhotoHistory>;
 }
 
 export interface LegacyImportDeps {
@@ -221,9 +237,31 @@ class Importer implements LegacyImport {
     async #detectOne(record: LegacyRecord): Promise<Outcome> {
         const state = await this.#deps.store.read(this.#deps.cityId, record.id);
         if (state === null) {
-            return settledAs(record.id, (await this.#importedElsewhere(record)) ? 'done' : 'open');
+            return settledAs(record.id, (await this.#imported(record)) ? 'done' : 'open');
+        }
+        return this.#detectExisting(record, state);
+    }
+
+    /** A processed photo still unpublished is open, unless someone unpublished it; any other document says it itself. */
+    async #detectExisting(record: LegacyRecord, state: PhotoState): Promise<Outcome> {
+        if (processed(state) && !state.published) {
+            return settledAs(record.id, (await this.#unpublishedByHand(record)) ? 'done' : 'open');
         }
         return outcomeOf(record.id, state);
+    }
+
+    /** A record without a document was imported: under another id, or deleted by someone since. */
+    async #imported(record: LegacyRecord): Promise<boolean> {
+        return (await this.#importedElsewhere(record)) || (await this.#history(record)).recorded;
+    }
+
+    /** A processed, unpublished photo that was published once: someone unpublished it, and the import leaves it so. */
+    async #unpublishedByHand(record: LegacyRecord): Promise<boolean> {
+        return (await this.#history(record)).everPublished;
+    }
+
+    #history(record: LegacyRecord): Promise<PhotoHistory> {
+        return this.#deps.store.history(this.#deps.cityId, record.id);
     }
 
     async #importedElsewhere(record: LegacyRecord): Promise<boolean> {
@@ -239,11 +277,14 @@ class Importer implements LegacyImport {
         if (state === null) {
             return this.#importNew(record, uid);
         }
-        return processed(state) ? this.#publish(record, state) : this.#uploadAndFinish(record, uid);
+        if (!processed(state)) {
+            return this.#uploadAndFinish(record, uid);
+        }
+        return !state.published && (await this.#unpublishedByHand(record)) ? settledAs(record.id, 'done') : this.#publish(record, state);
     }
 
     async #importNew(record: LegacyRecord, uid: string): Promise<Outcome> {
-        if (await this.#importedElsewhere(record)) {
+        if (await this.#imported(record)) {
             return settledAs(record.id, 'done');
         }
         await this.#deps.store.create(this.#deps.cityId, record.id, record.fields);

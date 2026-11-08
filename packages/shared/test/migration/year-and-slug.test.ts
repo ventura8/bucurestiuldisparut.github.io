@@ -87,6 +87,13 @@ describe('slugs and ids', () => {
 
         expect([first('x'), first('x'), second('x')]).toEqual(['x', 'x-2', 'x']);
     });
+
+    it('badPath_aReservedIdIsNeverHandedOut', () => {
+        // The ids of an earlier migration the new photos join (seed/bucharest-2023 after seed/bucharest).
+        const next = createIdAllocator(['gara-obor', 'x', 'x-2']);
+
+        expect([next('gara-obor'), next('x'), next('la-leu')]).toEqual(['gara-obor-2', 'x-3', 'la-leu']);
+    });
 });
 
 describe('isCameraName', () => {

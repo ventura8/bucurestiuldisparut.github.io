@@ -41,10 +41,11 @@ export function truncateSlug(slug: string, max: number): string {
 
 /**
  * An id allocator: each call returns the base itself (or `photo` when it is empty) cut to
- * `MAX_ID_LENGTH`, or, when that id was already handed out, the same with `-2`, `-3`, ...
+ * `MAX_ID_LENGTH`, or, when that id was already handed out (or is `reserved`: the ids of an
+ * earlier migration the new photos join), the same with `-2`, `-3`, ...
  */
-export function createIdAllocator(): (base: string) => string {
-    const used = new Set<string>();
+export function createIdAllocator(reserved: Iterable<string> = []): (base: string) => string {
+    const used = new Set<string>(reserved);
     return (base) => {
         const root = truncateSlug(base === '' ? 'photo' : base, MAX_ID_LENGTH);
         let id = root;

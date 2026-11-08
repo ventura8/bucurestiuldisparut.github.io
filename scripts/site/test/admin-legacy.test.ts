@@ -28,26 +28,38 @@ function point(photo: string, lng: number, id?: string): Record<string, unknown>
 }
 
 /** A seed folder in a temporary root: the real Bucharest manifest, `features` as the legacy GeoJSON, `photos` as files. */
-function syntheticSeed(features: readonly unknown[], photos: readonly string[]): SiteFileSystem {
-    const files = nodeFileSystem(temporaryDir());
-    files.write('seed/x/manifest.static.json', JSON.stringify(readRepositoryJson('seed/bucharest/manifest.static.json')));
-    files.write('seed/x/photos.legacy.geojson', JSON.stringify({ type: 'FeatureCollection', features }));
+function syntheticSeed(
+    features: readonly unknown[],
+    photos: readonly string[],
+    files = nodeFileSystem(temporaryDir()),
+    dir = 'seed/x',
+): SiteFileSystem {
+    files.write(`${dir}/manifest.static.json`, JSON.stringify(readRepositoryJson('seed/bucharest/manifest.static.json')));
+    files.write(`${dir}/photos.legacy.geojson`, JSON.stringify({ type: 'FeatureCollection', features }));
     for (const name of photos) {
-        files.write(`seed/x/photos/${name}`, name);
+        files.write(`${dir}/photos/${name}`, name);
     }
     return files;
 }
 
+function bundledPhotos(files: SiteFileSystem, additions: readonly string[]): MigratedPhoto[] {
+    return JSON.parse(generated(planLegacyBundle(files, 'seed/x', additions).files, `${LEGACY_FOLDER}/photos.json`)) as MigratedPhoto[];
+}
+
 describe('planLegacyBundle', () => {
-    it('happyPath_theCommittedSeedGivesTheCityThe45PhotosAndTheirOriginals', () => {
+    it('happyPath_theCommittedSeedGivesTheCityThe45PhotosThe12AdditionsAndTheirOriginals', () => {
         const bundle = planLegacyBundle(nodeFileSystem(ROOT));
         const city = JSON.parse(generated(bundle.files, `${LEGACY_FOLDER}/city.json`)) as Record<string, unknown>;
         const photos = JSON.parse(generated(bundle.files, `${LEGACY_FOLDER}/photos.json`)) as MigratedPhoto[];
+        const first = readRepositoryJson('seed/bucharest/manifest.static.json') as { photos: { id: string }[] };
+        const added = readRepositoryJson('seed/bucharest-2023/manifest.static.json') as { photos: { id: string }[] };
 
-        expect(bundle.photos).toBe(45);
-        expect(photos).toHaveLength(45);
+        expect(bundle.photos).toBe(57);
+        // The 45 first, as migrated, then the 2023 additions with the ids their own manifest gave them.
+        expect(photos.map((record) => record.photo.id)).toEqual([...first.photos, ...added.photos].map((photo) => photo.id));
+        expect(new Set(photos.map((record) => record.photo.id)).size).toBe(57);
         // Two photos show the same original from two places: one copy each.
-        expect(bundle.originals).toBe(44);
+        expect(bundle.originals).toBe(56);
         expect(bundle.warnings).toBe(1);
         expect(city['id']).toBe('bucuresti');
         // The city file's settings, which the viewer's manifest never holds.
@@ -123,6 +135,34 @@ describe('planLegacyBundle', () => {
         expect(() => planLegacyBundle(broken, 'seed/x')).toThrow(/^seed\/x\/photos\.legacy\.geojson: not JSON/);
 
         expect(() => planLegacyBundle(broken, 'seed/missing')).toThrow(/^seed\/missing\/manifest\.static\.json is missing/);
+    });
+
+    it('happyPath_anAdditionsIdsKeepClearOfTheSeedsAndItsRecordsComeAfterThem', () => {
+        const files = syntheticSeed([point('A.jpg', 26.08, 'legacy-a')], ['A.jpg']);
+        syntheticSeed([point('a.png', 26.1, 'legacy-b'), point('C.jpg', 26.09)], ['a.png', 'C.jpg'], files, 'seed/y');
+
+        const photos = bundledPhotos(files, ['seed/y']);
+
+        // `a.png` slugs to the seed's `a`: it becomes `a-2`, and a rerun gives the same ids.
+        expect(photos.map((record) => [record.photo.id, record.sourceFile, record.legacyId ?? null])).toEqual([
+            ['a', 'A.jpg', 'legacy-a'],
+            ['a-2', 'a.png', 'legacy-b'],
+            ['c', 'C.jpg', null],
+        ]);
+        expect(bundledPhotos(files, ['seed/y'])).toEqual(photos);
+        expect(bundledPhotos(files, [])).toHaveLength(1);
+    });
+
+    it('badPath_anAdditionThatIsMissingEmptyOrNamesAnOriginalTwiceStopsTheBuild', () => {
+        const files = syntheticSeed([point('A.jpg', 26.08)], ['A.jpg']);
+
+        expect(() => bundledPhotos(files, ['seed/y'])).toThrow(/^seed\/y\/photos\.legacy\.geojson is missing/);
+        syntheticSeed([], [], files, 'seed/y');
+        expect(() => bundledPhotos(files, ['seed/y'])).toThrow(new SiteBuildError('seed/y/photos.legacy.geojson holds no photo'));
+        syntheticSeed([point('A.jpg', 26.1)], ['A.jpg'], files, 'seed/y');
+        expect(() => bundledPhotos(files, ['seed/y'])).toThrow(
+            new SiteBuildError('seed/y/photos/A.jpg: seed/x/photos/A.jpg has the same name, and the bundle has one originals folder'),
+        );
     });
 
     it('badPath_anInvalidManifestStopsTheBuild', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { legacyPhotoStore, legacyReprocess, photoStateOf } from '../../src/app/legacy-photos.js';
+import { legacyPhotoStore, legacyReprocess, photoHistoryOf, photoStateOf } from '../../src/app/legacy-photos.js';
 import type { LegacyPhotoFields } from '../../src/import/bundle.js';
 import { FakeCallables, FakeDocuments } from './fakes.js';
 
@@ -58,6 +58,31 @@ describe('legacyPhotoStore', () => {
 
         await expect(s.subject.findByLegacyId('bucharest', 'legacy-1')).resolves.toBe('older');
         expect(s.documents.data.get('cities/bucharest/photos/x')).toMatchObject({ updatedBy: '', createdBy: '' });
+    });
+});
+
+describe('history (the 2023 additions)', () => {
+    it('happyPath_readsThePhotosHistoryEntriesAndSeesAPublishedPreviousVersion', async () => {
+        const s = store();
+        const query = vi.spyOn(s.documents, 'query').mockResolvedValue([
+            { id: 'e1', data: { action: 'create', previous: null } },
+            { id: 'e2', data: { action: 'update', previous: { published: true } } },
+        ]);
+
+        await expect(s.subject.history('bucharest', 'la-leu')).resolves.toEqual({ recorded: true, everPublished: true });
+        expect(query).toHaveBeenCalledWith('cities/bucharest/photos/la-leu/history', []);
+    });
+
+    it('badPath_noEntryOrNeverPublishedVersionsSayNothingWasPublished', () => {
+        expect(photoHistoryOf([])).toEqual({ recorded: false, everPublished: false });
+        expect(
+            photoHistoryOf([
+                { data: { previous: null } },
+                { data: { previous: { published: false } } },
+                { data: { previous: 'odd' } },
+                { data: {} },
+            ]),
+        ).toEqual({ recorded: true, everPublished: false });
     });
 });
 

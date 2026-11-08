@@ -6429,8 +6429,8 @@
             "behaviour": "A28",
             "area": "admin",
             "path": "happy",
-            "title": "One click imports the 45 legacy photos through the photo pipeline",
-            "asserts": "Import the 45 photos (one click) -> 45 photo documents with their legacyId, each original uploaded and processed by photos.onUpload, published once processed with rightsReview kept -> the manifest lists them; input budget 1",
+            "title": "One click imports the 57 legacy photos through the photo pipeline",
+            "asserts": "Import the photos (57) (one click) -> 57 photo documents (the 45 of the legacy seed and the old site's 12 additions of 2023) with their legacyId, each original uploaded and processed by photos.onUpload, published once processed with rightsReview kept -> the manifest lists them; input budget 1",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
@@ -6441,7 +6441,7 @@
             "area": "admin",
             "path": "bad",
             "title": "Importing again creates nothing new",
-            "asserts": "a second import -> no new document, no new upload; the city still has 45 legacy photos",
+            "asserts": "a second import -> no new document, no new upload; the city still has 57 legacy photos",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
@@ -6463,7 +6463,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A photo that fails processing is listed and the rest are imported",
-            "asserts": "one original fails processing -> listed with its apiError.photo reason; the other 44 are imported and published",
+            "asserts": "one original fails processing -> listed with its apiError.photo reason; the other 56 are imported and published",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
@@ -6496,7 +6496,7 @@
             "area": "admin",
             "path": "happy",
             "title": "The end of the import is said in a snackbar",
-            "asserts": "the last photo published -> a snackbar All 45 photos are on the map, announced, while Setup moves to the next step",
+            "asserts": "the last photo published -> a snackbar All 57 photos are on the map, announced, while Setup moves to the next step",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 19 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/legacy.spec.ts (setup-ux)."
@@ -6507,10 +6507,32 @@
             "area": "admin",
             "path": "bad",
             "title": "An import that ends with failures says how many and where",
-            "asserts": "a photo failed processing -> a snackbar 44 of 45 photos are on the map with Open, which opens the import card with its list",
+            "asserts": "a photo failed processing -> a snackbar 56 of 57 photos are on the map with Open, which opens the import card with its list",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 19 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/legacy.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A28-HAPPY-ADDITIONS",
+            "behaviour": "A28",
+            "area": "admin",
+            "path": "happy",
+            "title": "A map that has the first legacy photos is offered the old site's later additions in one click",
+            "asserts": "the bundle grew after an import -> the card says how many photos the map does not have yet and that the ones on it stay as they are, with Import the missing photos (n) -> one click uploads only the new originals and publishes them; the photos already imported are not written; a second run adds nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The old site's 2023 additions (docs/research/M5-interfaces.md, The 2023 additions; seed/bucharest-2023/). Test: e2e/admin/steps/legacy.spec.ts (the bundle served as it was before and after the additions)."
+        },
+        {
+            "id": "S-A28-BAD-OWNER-EDITS-KEPT",
+            "behaviour": "A28",
+            "area": "admin",
+            "path": "bad",
+            "title": "Importing again never undoes what the owner did to an imported photo",
+            "asserts": "the owner retitled one imported photo, deleted another and unpublished a third -> a later import (from a tab opened before) creates nothing, uploads nothing, publishes nothing: the title stays, the deleted photo stays deleted, the unpublished one stays unpublished",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The old site's 2023 additions (docs/research/M5-interfaces.md, The 2023 additions): the import reads each photo's history (kept after a delete) to tell an owner's delete or unpublish from an import that stopped. Test: e2e/admin/steps/legacy.spec.ts."
         },
         {
             "id": "S-A29-HAPPY",
@@ -9279,7 +9301,7 @@
             "area": "admin",
             "path": "bad",
             "title": "Before the legacy import is complete a publish keeps the originals",
-            "asserts": "no old photo imported -> the site card's cost line says about 52 MB a publish -> Publish the map's build fetches legacy.tgz too and unpacks it into the site (HCM_UNPACK=legacy), so the import can still read them",
+            "asserts": "no old photo imported -> the site card's cost line says about 60 MB a publish -> Publish the map's build fetches legacy.tgz too and unpacks it into the site (HCM_UNPACK=legacy), so the import can still read them",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "DECISIONS-for-review.md §73k. Test: e2e/admin/specs/journey.spec.ts (the publish hours after Prepare the project)."

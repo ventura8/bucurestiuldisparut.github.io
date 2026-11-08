@@ -245,8 +245,15 @@ function readCollection(input: unknown, warnings: MigrationWarning[]): Located[]
     return collection.data.features.flatMap((item, index) => locate(item, index, warnings));
 }
 
-/** Migrates a legacy FeatureCollection; never throws (problems become warnings). */
-export function migrateLegacyPhotos(input: unknown, upgradeHosts: readonly string[] = KNOWN_HTTPS_HOSTS): LegacyMigration {
+/**
+ * Migrates a legacy FeatureCollection; never throws (problems become warnings). `reservedIds` are the ids of photos
+ * already migrated (the first 45 of `seed/bucharest/` when `seed/bucharest-2023/` joins them): no new photo takes one.
+ */
+export function migrateLegacyPhotos(
+    input: unknown,
+    upgradeHosts: readonly string[] = KNOWN_HTTPS_HOSTS,
+    reservedIds: Iterable<string> = [],
+): LegacyMigration {
     const warnings: MigrationWarning[] = [];
     const located = readCollection(input, warnings);
     const seeds: Seed[] = [];
@@ -260,7 +267,7 @@ export function migrateLegacyPhotos(input: unknown, upgradeHosts: readonly strin
         item.feature.geometry.type === 'Polygon' ? attachCone(seeds, item, item.feature.geometry.coordinates[0], warnings) : [],
     );
     const ordered = [...seeds, ...orphans].toSorted((a, b) => a.index - b.index);
-    const nextId = createIdAllocator();
+    const nextId = createIdAllocator(reservedIds);
     const photos = ordered.map((seed) => toMigrated(seed, nextId(slugify(fileStem(seed.fileName))), upgradeHosts, warnings));
     return { photos, cones: ordered.filter((seed) => seed.cone !== null).length, warnings };
 }

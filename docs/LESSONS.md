@@ -2712,3 +2712,14 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the track ran its own `tests` and `build` but not its `static` stage after its last strings; the deployment test hard-coded a third of the count it was written for.
     - Found by: the `static` and `tests` stages on the NUC after the merges. Fix: `tune` (bundled), one-line Romanian, the expected third recomputed, two export pairs joined.
     - **A track runs `static` after its last edit, strings included; a test that derives a number from a registry's size states the derivation, so the next merge recomputes it instead of guessing.**
+455. **The live map lacked twelve old photos the old site shows (Ansamblu Gara de Nord, Strada Gradinarilor, …).**
+    - Seen: 2026-11-08, by the owner on the live map: `https://bucurestiuldisparut.github.io/photos/ansamblul-gara-de-nord-in-constructie.JPG` and `strada gradinarilor.jpeg` were on the old site, not on the new map.
+    - Cause: `seed/bucharest/` was taken from a copy of the old site (`ventura8/bucurestiuldisparut.github.io`) that had 11 of the 23 photo files the owner's account added after its fork (2022-12-27 to 2023-07-29), not from the live site.
+    - Found by: the owner; no tier compared the seed with its live source, and every test pinned the 45 as the whole truth.
+    - Fix and pin: the 12 in `seed/bucharest-2023/` (`docs/research/M5-interfaces.md` §12), bundled after the 45; Setup's import offers the missing ones in one click (S-A28-HAPPY-ADDITIONS).
+    - **A migration names the live source it was taken from and is diffed against it, file by file and feature by feature, before it is called complete.**
+456. **Importing the old photos again would have brought back a photo the owner deleted and republished one they unpublished.**
+    - Seen: 2026-11-08, designing the import of the 2023 additions into a project that already had the 45: the import created any record without a document and published any processed, unpublished photo, which was right only for its own interrupted run.
+    - Found by: review of what a second import does to an owner's edits; the tests only ever ran the import on photos nobody had touched.
+    - Fix and pin: the import reads each photo's `history` (kept after a delete): a delete or an unpublish by someone counts as done and is never undone (`legacy-import.test.ts`; S-A28-BAD-OWNER-EDITS-KEPT).
+    - **An idempotent import must be idempotent against the owner's later edits too, not only against itself: it tells "never done" from "undone on purpose" by a record that outlives the document.**
