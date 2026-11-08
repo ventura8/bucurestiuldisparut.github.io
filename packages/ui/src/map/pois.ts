@@ -35,7 +35,8 @@ interface PoiLayerKind {
     readonly style: (spec: VectorOverlaySpec) => PoiStyle;
 }
 
-function geometryIs(...types: readonly string[]): unknown {
+/** A filter keeping the features of these geometry types (the POI layers, Show my location's dot). */
+export function geometryIs(...types: readonly string[]): unknown {
     return ['in', ['geometry-type'], ['literal', types]];
 }
 

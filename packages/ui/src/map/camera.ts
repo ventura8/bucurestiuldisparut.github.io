@@ -7,7 +7,7 @@
  */
 import type { BBox, MapView } from '@hcm/shared';
 
-import type { CameraOffset, MapboxMap } from './mapbox-types.js';
+import type { CameraOffset, MapboxCameraOptions, MapboxMap } from './mapbox-types.js';
 
 /** Whether a camera move animates: the caller's word, else the mount's reduced-motion preference. */
 export function animates(options: { readonly animate?: boolean } | undefined, reducedMotion: boolean): boolean {
@@ -22,7 +22,7 @@ export interface CameraMove {
 }
 
 export function moveCamera(map: MapboxMap, view: Partial<MapView>, { animate, essential, offset }: CameraMove): void {
-    const camera = offset === undefined ? { ...view } : { ...view, offset };
+    const camera: MapboxCameraOptions = offset === undefined ? view : { ...view, offset };
     if (animate) {
         map.flyTo(essential ? { ...camera, essential } : camera);
     } else if (offset === undefined) {

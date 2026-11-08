@@ -101,7 +101,7 @@ describe('setMyLocation on the viewer map', () => {
         port.setMyLocation({ ...FIX, heading: 90 });
 
         const filter = gl.map.layers.get(MY_LOCATION_DOT_LAYER)?.['filter'];
-        expect(filter).toEqual(['==', ['geometry-type'], 'Point']);
+        expect(filter).toEqual(['in', ['geometry-type'], ['literal', ['Point']]]);
         const drawnAsDots = featuresOf(gl.map.getSource(MY_LOCATION_SOURCE)?.data).filter((feature) => feature.geometry.type === 'Point');
         expect(drawnAsDots).toHaveLength(1);
         expect(gl.map.layers.get(MY_LOCATION_AREA_LAYER)).toMatchObject({ type: 'fill' });

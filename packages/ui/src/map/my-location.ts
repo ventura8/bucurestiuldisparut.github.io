@@ -10,6 +10,7 @@
 import { conePolygon, destinationPoint, type LngLat } from '@hcm/shared';
 
 import type { MapboxMap } from './mapbox-types.js';
+import { geometryIs } from './pois.js';
 
 /** One position the browser gave: where, how sure (metres, the radius of 95 % confidence) and which way it moves. */
 export interface MyLocationFix {
@@ -92,7 +93,7 @@ export function drawMyLocation(map: MapboxMap, fix: MyLocationFix | null): void 
             id: MY_LOCATION_DOT_LAYER,
             type: 'circle',
             // A circle layer draws a circle at every vertex of a polygon in its source: the dot keeps to the Point alone.
-            filter: ['==', ['geometry-type'], 'Point'],
+            filter: geometryIs('Point'),
             paint: {
                 'circle-radius': 7,
                 'circle-color': BLUE,
