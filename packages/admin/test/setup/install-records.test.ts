@@ -195,3 +195,27 @@ describe('withRecordedInstall: a record read against this admin (finding 39 of 2
         expect(applied.install.site.state).toBe('installed');
     });
 });
+
+describe('withRecordedInstall: a recorded build is not shown as running before a look (live finding of 2026-11-08)', () => {
+    it('happyPath_aRecordedBuildAtWorkIsMarkedRecordedUntilTheCardLooks', () => {
+        const recorded = {
+            server: { state: 'working', release: '1.0.0+9e2e6b5', buildId: '0e2e0b1d-0001', checkedAt: NOW },
+            pipeline: { state: 'queued', checkedAt: NOW },
+        } as const;
+
+        const applied = withRecordedInstall(state('normal'), recorded);
+
+        expect(applied.install.server).toMatchObject({ state: 'working', recorded: true, startedAt: null });
+        expect(applied.install.pipeline).toMatchObject({ state: 'queued', recorded: true });
+        expect(applied.install.site.recorded).toBe(false);
+    });
+
+    it('badPath_aViewNoRecordGaveIsNeverMarkedRecorded', () => {
+        expect(initialTargetView('server').recorded).toBe(false);
+        expect(view({ state: 'working', checkedAt: NOW }).recorded).toBe(false);
+        const fresh = { ...state('normal') };
+        const seen = { ...fresh, install: { ...fresh.install, server: view({ state: 'working', checkedAt: LATER }) } };
+        // A record older than what the card saw changes nothing: the card's own look stays as it is.
+        expect(withRecordedInstall(seen, { server: { state: 'working', checkedAt: EARLIER } }).install.server.recorded).toBe(false);
+    });
+});

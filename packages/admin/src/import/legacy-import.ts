@@ -1,6 +1,6 @@
 import { STORAGE_PATHS, type ApiErrorCode, type Logger, type PhotoContentType } from '@hcm/shared';
 
-import { bundleUrl, isLegacyRecord, legacyRecord, uploadType, type LegacyPhotoFields, type LegacyRecord } from './bundle.js';
+import { bundleJson, bundleUrl, isLegacyRecord, legacyRecord, uploadType, type LegacyPhotoFields, type LegacyRecord } from './bundle.js';
 
 /**
  * The legacy Bucharest import (`docs/research/M2b-interfaces.md` §3.3 h): one click creates a photo document per bundled
@@ -221,8 +221,7 @@ class Importer implements LegacyImport {
     }
 
     async #records(): Promise<readonly unknown[]> {
-        const response = await this.#deps.fetch(bundleUrl(this.#deps.baseUrl, this.#deps.cityId, 'photos.json'));
-        const body: unknown = response.ok ? await response.json() : undefined;
+        const body = await bundleJson(this.#deps.fetch, this.#deps.baseUrl, this.#deps.cityId, 'photos.json');
         if (!Array.isArray(body)) {
             throw new Error(`the legacy bundle of ${this.#deps.cityId} is unavailable`);
         }

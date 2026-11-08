@@ -4,6 +4,8 @@ import type { CloudBuild } from '../../src/google/cloud-build.js';
 import {
     buildSlug,
     deriveInstallState,
+    elapsedOnGoogle,
+    workStartOnBrowser,
     endedByGoogle,
     failedStepOf,
     fixedInProvision,
@@ -274,5 +276,47 @@ describe('the build helpers', () => {
         expect(slice.server).toEqual(initialTargetView('server'));
         expect(slice.pipelineOff).toBeNull();
         expect(slice.pipeline.steps.map((step) => step.id)).toEqual(['fetch', 'build', 'push', 'jobs']);
+    });
+});
+
+describe("a build's time at work on Google's own clock (the live finding of 2026-11-08)", () => {
+    const START = '2026-11-08T10:00:00.000Z';
+
+    it('happyPath_theLatestStepTimeAfterTheStartIsHowLongItHasWorkedAtLeast', () => {
+        const steps = [
+            { id: 'fetch', status: 'SUCCESS' as const, startTime: START, endTime: '2026-11-08T10:01:00.000Z' },
+            { id: 'tools', status: 'WORKING' as const, startTime: '2026-11-08T10:04:30.000Z' },
+        ];
+        expect(elapsedOnGoogle(build({ startTime: START, steps }))).toBe(270_000);
+    });
+
+    it('badPath_aBuildNotStarted_withoutStepTimes_orWithTimesBeforeItsStartHasWorkedNoTime', () => {
+        expect(elapsedOnGoogle(build({ status: 'QUEUED', createTime: START }))).toBe(0);
+        expect(elapsedOnGoogle(build({ startTime: START }))).toBe(0);
+        const early = [{ id: 'fetch', status: 'WORKING' as const, startTime: '2026-11-08T09:00:00.000Z' }];
+        expect(elapsedOnGoogle(build({ startTime: START, steps: early }))).toBe(0);
+        expect(elapsedOnGoogle(build({ startTime: 'not a time', steps: early }))).toBe(0);
+    });
+});
+
+describe("where the browser's clock puts a build's start (the review of the running-time line)", () => {
+    const START = Date.parse('2026-11-08T10:00:00.000Z');
+    const at = (ms: number): string => new Date(START + ms).toISOString();
+    /** A build at work whose one long step started 40 s in. */
+    const longStep = build({ startTime: at(0), steps: [{ id: 'deploy', status: 'WORKING', startTime: at(40_000) }] });
+
+    it('happyPath_aBuildFirstSeenPartwayThroughALongStepCountsFromItsStart_notFromItsLastStepTime', () => {
+        // Seen 9 min in: the old line said "Running for 0 min." (now less the 40 s of its step times).
+        expect(workStartOnBrowser(longStep, START + 540_000)).toBe(START);
+    });
+
+    it('badPath_aClockAheadOfGooglesNeverCountsFromBeforeTheTabSawTheBuildQueued', () => {
+        // The browser 3 min ahead: Google's start reads 3 min before the click that submitted the build.
+        expect(workStartOnBrowser(longStep, START + 300_000, START + 180_000)).toBe(START + 180_000);
+    });
+
+    it('badPath_aClockBehindGooglesOrAStartThatIsNoTimeCountsFromWhatItHasWorkedAtLeast', () => {
+        expect(workStartOnBrowser(longStep, START - 60_000)).toBe(START - 100_000);
+        expect(workStartOnBrowser({ ...longStep, startTime: 'not a time' }, START + 60_000)).toBe(START + 60_000);
     });
 });

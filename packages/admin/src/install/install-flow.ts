@@ -36,6 +36,7 @@ import {
     pushedImage,
     pendingRetry,
     stepsOf,
+    workStartOnBrowser,
     type InstallTargetView,
 } from './model.js';
 import type { InstallAccess, InstallerPort, ServerProgress, TargetObservation } from './ports.js';
@@ -192,6 +193,9 @@ function retryFields(summary: LogSummary, state: InstallState): Pick<InstallTarg
     return { retryReason: retry.reason, retryAt: retryTime(summary.retryLineAt, retry.waitSeconds) };
 }
 
+/** What a view takes from the build it follows. */
+type BuildField = 'buildId' | 'consoleUrl' | 'startedAt' | 'finishedAt' | 'runningSince' | 'steps';
+
 class TargetFlow implements InstallFlow {
     readonly #deps: InstallFlowDeps;
     readonly #slug: string;
@@ -203,6 +207,14 @@ class TargetFlow implements InstallFlow {
     /** Builds Google ended that were submitted again: once since the last click (a second such ending stays failed). */
     readonly #resubmitted = new Set<string>();
     #resubmitAllowed = true;
+    /**
+     * Where the browser's clock puts the start of each build seen at work (ms), set by the look that first saw it work
+     * (`workStartOnBrowser`: the live finding of 2026-11-08, Google's creation time against the browser's clock said
+     * "Running for 3 min." the moment Update the map was clicked).
+     */
+    readonly #workingSince = new Map<string, number>();
+    /** When this tab last saw each build queued, on the browser's clock (ms): the build started work after it. */
+    readonly #queuedAt = new Map<string, number>();
 
     constructor(deps: InstallFlowDeps) {
         this.#deps = deps;
@@ -309,7 +321,7 @@ class TargetFlow implements InstallFlow {
 
     #fail(error: unknown): void {
         if (error instanceof InstallBundleError) {
-            this.#set({ error: error.notice() });
+            this.#set({ error: error.notice(), looking: false });
             return;
         }
         const failure = googleFailure(error);
@@ -317,10 +329,15 @@ class TargetFlow implements InstallFlow {
         if (failure.expired) {
             this.#deps.expired();
         }
-        this.#set({ error: failure.message, ...(failure.state === 'unavailable' ? { state: 'unavailable' as const } : {}) });
+        // A failed read says nothing of a build at work: as `unavailable` it no longer counted as running, so Provision's
+        // record and the site went in before the server's build settled, and Update the map came back (the review of the
+        // stale fixes, finding 71's race).
+        const unavailable = failure.state === 'unavailable' && !isRunning(this.#view.state);
+        this.#set({ error: failure.message, looking: false, ...(unavailable ? { state: 'unavailable' as const } : {}) });
     }
 
     async #look(access: InstallAccess): Promise<void> {
+        this.#set({ looking: true });
         const observation = await this.#deps.installer.observe(this.#deps.target, access);
         this.#lastLook = this.#deps.clock.now();
         const summary = await this.#summary(observation.build, access);
@@ -348,18 +365,36 @@ class TargetFlow implements InstallFlow {
             ...retryFields(summary, state),
             blocker: observation.blocker,
             error: null,
+            looking: false,
             checkedAt: new Date(this.#deps.clock.now()).toISOString(),
             image: imageOf(observation, summary, this.#view, release.installedRelease),
         };
     }
 
-    #buildFields(build: CloudBuild | null): Pick<InstallTargetView, 'buildId' | 'consoleUrl' | 'startedAt' | 'finishedAt' | 'steps'> {
+    #buildFields(build: CloudBuild | null): Pick<InstallTargetView, BuildField> {
         const steps = stepsOf(this.#deps.target, build);
         if (build === null) {
-            return { buildId: null, consoleUrl: null, startedAt: null, finishedAt: null, steps };
+            return { buildId: null, consoleUrl: null, startedAt: null, finishedAt: null, runningSince: null, steps };
         }
-        const times = { startedAt: build.createTime ?? null, finishedAt: build.finishTime ?? null };
+        const times = {
+            startedAt: build.createTime ?? null,
+            finishedAt: build.finishTime ?? null,
+            runningSince: this.#runningSince(build),
+        };
         return { buildId: build.id, consoleUrl: this.#deps.installer.consoleUrl(build.id), ...times, steps };
+    }
+
+    /** When a build at work started, on the browser's clock (ISO 8601); null while it is queued or once it ended. */
+    #runningSince(build: CloudBuild): string | null {
+        if (build.status === 'QUEUED') {
+            this.#queuedAt.set(build.id, this.#deps.clock.now());
+        }
+        if (build.status !== 'WORKING' || build.startTime === undefined) {
+            return null;
+        }
+        const since = this.#workingSince.get(build.id) ?? workStartOnBrowser(build, this.#deps.clock.now(), this.#queuedAt.get(build.id));
+        this.#workingSince.set(build.id, since);
+        return new Date(since).toISOString();
     }
 
     /** The log's summary for `build`: read while a server build works (its retries) and once a build stopped. */

@@ -266,7 +266,13 @@ describe('hostingHeaders: one policy per page', () => {
             'no-cache',
             'no-cache',
         ]);
-        expect(cache('/admin/legacy/bucharest/photos.json')).toBe('public, max-age=86400');
+        // The live finding of 2026-11-08: the bundle's JSON is read again on every visit (a new release may grow it); the
+        // originals, which never change under their name, keep a day.
+        expect(cache('/admin/legacy/bucharest/photos.json')).toBe('no-cache');
+        expect(cache('/admin/legacy/bucharest/corrections.json')).toBe('no-cache');
+        expect(cache('/admin/legacy/bucharest/city.json')).toBe('no-cache');
+        expect(cache('/admin/legacy/bucharest/originals/Arionoaia%201980.jpg')).toBe('public, max-age=86400');
+        expect(cache('/admin/legacy/bucharest/originals/a.json')).toBe('public, max-age=86400');
         expect(cache('/admin/install/1-0-0-abc1234/server.tgz')).toBe('public, max-age=31536000, immutable');
         expect(cache('/admin/install/1-0-0-abc1234/manifest.json')).toBe('no-cache');
         expect(cache('/engine/fonts/a.woff2')).toBeUndefined();

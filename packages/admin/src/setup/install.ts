@@ -70,6 +70,14 @@ const PIPELINE_NOT_AVAILABLE = 'apiError.install.notAvailable';
 const UNRECORDED: ReadonlySet<InstallState> = new Set<InstallState>(['unavailable']);
 
 /**
+ * A target a look saw settled: neither running, nor clicked, nor `unavailable` (a read Google could not answer says
+ * nothing of the build: the review of the stale fixes, one failed read let Provision's record go to the old server).
+ */
+function settled(view: InstallTargetView): boolean {
+    return view.checkedAt !== null && !isRunning(view.state) && !UNRECORDED.has(view.state) && !view.busy;
+}
+
+/**
  * Finding 28 of 2026-10-31: a server build stopped at a permission Prepare the project grants (firebase-tools' actAs check
  * on the App Engine default account): step c's `iam` item is not done after all, so Retry what failed (offered on the
  * server's card) runs that item only. The step's own chip is left as it is: steps (d) onwards wait for (c), and the server
@@ -264,14 +272,19 @@ class Cards implements InstallCards {
     /**
      * Finding 59 of 2026-11-02: a flow that has not looked at Google yet (an update clicked right after Setup opened, or
      * from Home's tile) reports its first view, "Not installed", with the click's `busy`; the card keeps what it showed
-     * (the recorded target) and takes only the click's `busy`, `error` and `blocker` until the first look.
+     * (the recorded target) and takes only the click's `busy`, `error`, `blocker` and whether a look runs until the first
+     * look. A look Google could not answer shows `unavailable` with its error (the review of 6858f8a: the recorded
+     * view won, and a recorded build at work stayed "Checking the installation…" after the read had failed), except over a
+     * build recorded at work, which may still run (the review of the stale fixes: as `unavailable` it no longer held back
+     * Update the map).
      */
     #shown(view: InstallTargetView): InstallTargetView {
-        if (view.checkedAt !== null) {
+        const known = this.#ctx.state().install[view.target];
+        if (view.checkedAt !== null || known.checkedAt === null) {
             return view;
         }
-        const known = this.#ctx.state().install[view.target];
-        return known.checkedAt === null ? view : { ...known, busy: view.busy, error: view.error, blocker: view.blocker };
+        const failed = view.state === 'unavailable' && !isRunning(known.state) ? { state: view.state } : {};
+        return { ...known, busy: view.busy, error: view.error, blocker: view.blocker, looking: view.looking, ...failed };
     }
 
     /**
@@ -295,9 +308,12 @@ class Cards implements InstallCards {
             });
     }
 
-    /** An admin session records an observed target whose state (or image, finding 74) changed, but never a passing outage. */
+    /**
+     * An admin session records an observed target whose state (or image, finding 74) changed, but never a passing outage
+     * nor a view that is itself a record's (it says nothing new).
+     */
     #records(view: InstallTargetView): boolean {
-        const changed = view.checkedAt !== null && this.#recorded.get(view.target) !== recordKey(view);
+        const changed = view.checkedAt !== null && !view.recorded && this.#recorded.get(view.target) !== recordKey(view);
         return this.#ctx.state().mode === 'normal' && changed && !UNRECORDED.has(view.state);
     }
 
@@ -312,12 +328,12 @@ class Cards implements InstallCards {
 
     /** Update the map waits for the server, whose build has settled. */
     #siteDue(view: InstallTargetView): boolean {
-        return this.#siteAfterServer && !isRunning(view.state) && !view.busy;
+        return this.#siteAfterServer && settled(view);
     }
 
-    /** Finding 71: the server's build, which Provision's record waits for, has settled (any state but a running one). */
+    /** Finding 71: the server's build, which Provision's record waits for, has settled (see `settled`). */
     #settledServer(view: InstallTargetView): void {
-        if (this.#serverSettled !== null && view.checkedAt !== null && !isRunning(view.state) && !view.busy) {
+        if (this.#serverSettled !== null && settled(view)) {
             this.#serverSettled();
             this.#serverSettled = null;
         }

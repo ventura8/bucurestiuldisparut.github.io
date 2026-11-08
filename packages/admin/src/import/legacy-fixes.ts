@@ -1,6 +1,6 @@
 import { creditsNamingAuthors, legacyCorrectionsSchema, type Credit, type LegacyCorrection, type Logger } from '@hcm/shared';
 
-import { bundleUrl } from './bundle.js';
+import { bundleJson } from './bundle.js';
 import type { LegacyImport, LegacyImportProgress } from './legacy-import.js';
 
 /**
@@ -200,9 +200,8 @@ class LegacyFixes implements LegacyImport {
         });
     }
 
-    async #bundled(file: string): Promise<unknown> {
-        const response = await this.#deps.fetch(bundleUrl(this.#deps.baseUrl, this.#deps.cityId, file));
-        return response.ok ? ((await response.json()) as unknown) : undefined;
+    #bundled(file: string): Promise<unknown> {
+        return bundleJson(this.#deps.fetch, this.#deps.baseUrl, this.#deps.cityId, file);
     }
 }
 

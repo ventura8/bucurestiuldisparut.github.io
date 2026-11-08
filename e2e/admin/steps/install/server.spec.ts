@@ -488,3 +488,63 @@ test.describe('the owner, back after a Provision from before M6', () => {
         },
     );
 });
+
+/** "Running for {minutes} min." with any of `minutes`, in the page's language. */
+function runningFor(lang: 'ro' | 'en', minutes: string): RegExp {
+    const [before = '', after = ''] = setupText(lang, 'adminSetup.install.runningFor', { minutes: '\u0000' }).split('\u0000');
+    const escape = (part: string): string => part.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`^${escape(before)}(?:${minutes})${escape(after)}$`);
+}
+
+/**
+ * How long a build has been at work (the live finding of 2026-11-08): right after Update the map, step d said "Waiting
+ * for Google Cloud Build" and "Running for 3 min." at once, Google's creation time set against the browser's clock. The
+ * card counts on the browser's clock from the look that saw the build start work, and says nothing while it is queued.
+ */
+test.describe('Install the server: how long the build has been at work', () => {
+    test(
+        'A build at work counts its minutes from the look that saw it start',
+        { tag: ['@S-A55-HAPPY-RUNNING-TIME'] },
+        async ({ page, lang, consent, inputBudget, setupBudget, upstream, serverDeployment }) => {
+            await serverDeployment.hide();
+            const { deploy } = await preparedProject({
+                ...{ page, lang, consent, setupBudget, upstream, signInBudget: inputBudget.flow('signIn', 1) },
+                signInConsent: inputBudget.flow('signInConsent', 1),
+            });
+            await setupBudget.inputs('deploy').click(installButton(deploy, lang));
+            await expect.poll(async () => (await serverBuilds(upstream)).length).toBe(1);
+            await upstream.scenario('cloud-build.start', 'browser');
+            await nextLook(page, deploy.getByText(runningFor(lang, '0')));
+
+            await page.clock.fastForward(170_000);
+            await nextLook(page, deploy.getByText(runningFor(lang, '3|4')));
+            await expect(installState(deploy)).toContainText(setupText(lang, 'adminSetup.install.state.working'));
+            serverDeployment.claimErrors();
+        },
+    );
+
+    test(
+        "A queued build names no time, and one at work never counts Google's clock against the browser's",
+        { tag: ['@S-A55-BAD-RUNNING-TIME-QUEUED'] },
+        async ({ page, lang, consent, inputBudget, setupBudget, upstream, serverDeployment }) => {
+            await serverDeployment.hide();
+            const { deploy } = await preparedProject({
+                ...{ page, lang, consent, setupBudget, upstream, signInBudget: inputBudget.flow('signIn', 1) },
+                signInConsent: inputBudget.flow('signInConsent', 1),
+            });
+            // The browser's clock three minutes ahead of Google's (the fake Cloud Build's is the host's).
+            await page.clock.fastForward(180_000);
+            await setupBudget.inputs('deploy').click(installButton(deploy, lang));
+            await expect.poll(async () => (await serverBuilds(upstream)).length).toBe(1);
+            await page.clock.fastForward(10_000);
+            await page.clock.fastForward(10_000);
+            await expect(installState(deploy)).toContainText(setupText(lang, 'adminSetup.install.state.queued'));
+            await expect(deploy.getByText(runningFor(lang, '\\d+'))).toHaveCount(0);
+
+            await upstream.scenario('cloud-build.start', 'browser');
+            await nextLook(page, installState(deploy).filter({ hasText: setupText(lang, 'adminSetup.install.state.working') }));
+            await expect(deploy.getByText(runningFor(lang, '0'))).toBeVisible();
+            serverDeployment.claimErrors();
+        },
+    );
+});

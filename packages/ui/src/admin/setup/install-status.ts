@@ -234,12 +234,47 @@ function installRunning(view: InstallTargetViewPort): boolean {
     return RUNNING.has(view.state);
 }
 
+/**
+ * A build a record says is at work and no look has confirmed yet (the live finding of 2026-11-08): it may have ended
+ * since, so the card says when it was last seen (and that it is checking, while a look runs) instead of "Installing" and
+ * steps all "next".
+ */
+function unconfirmed(view: InstallTargetViewPort): boolean {
+    return view.recorded === true && installRunning(view);
+}
+
 /** The card's own button may install now: an installable state, no blocker, no click in progress. */
 export function mayInstall(view: InstallTargetViewPort): boolean {
     return INSTALLABLE_STATES.has(view.state) && view.blocker === null && !view.busy;
 }
 
+/** When a recorded build was last seen at work, as the page formats it. */
+function lastSeen(input: InstallStatusInput, view: InstallTargetViewPort): string {
+    return view.checkedAt === null ? '' : formatDateTime(input.locale, view.checkedAt);
+}
+
+/**
+ * A recorded build at work, until a look says where it is now: "Checking the installation…" only while a look runs (the
+ * review of 6858f8a: with no Google token nothing looks, and the card said it was checking for good); otherwise when it
+ * was last seen and Check again.
+ */
+function recordedLine(input: InstallStatusInput, view: InstallTargetViewPort): TemplateResult {
+    const date = lastSeen(input, view);
+    if (view.looking !== true) {
+        return html`<p class="install-state" data-state="lastSeen" role="status">
+            <hcm-icon name="schedule"></hcm-icon>${label(input, 'adminSetup.install.lastSeenCheckAgain', { date })}
+        </p>`;
+    }
+    return html`<p class="install-state" data-state="checking" role="status">
+            <hcm-icon name="schedule"></hcm-icon>${label(input, 'adminSetup.install.state.checking')}
+        </p>
+        <p class="note">${label(input, 'adminSetup.install.lastSeenRunning', { date })}</p>`;
+}
+
 function stateLine(input: InstallStatusInput, view: InstallTargetViewPort): TemplateResult {
+    if (unconfirmed(view)) {
+        return recordedLine(input, view);
+    }
     return html`<p class="install-state" data-state=${view.state} role="status">
         <hcm-icon name=${STATE_ICONS[view.state]}></hcm-icon>${label(input, `adminSetup.install.state.${view.state}`)}
     </p>`;
@@ -278,8 +313,13 @@ function minutesBetween(from: string | null, to: string | null): number | null {
     return Number.isNaN(minutes) ? null : Math.max(0, minutes);
 }
 
+/**
+ * How long the build has been at work, on the browser's clock from when it started work (`runningSince`): nothing while
+ * it is queued (the live finding of 2026-11-08: Google's creation time against the browser's clock said "Running for 3
+ * min." the moment Update the map was clicked).
+ */
 function runningFor(input: InstallStatusInput, view: InstallTargetViewPort): TemplateResult {
-    const minutes = minutesBetween(view.startedAt, view.checkedAt);
+    const minutes = minutesBetween(view.runningSince ?? null, view.checkedAt);
     return minutes === null
         ? EMPTY
         : html`<p class="note">${label(input, 'adminSetup.install.runningFor', { minutes: String(minutes) })}</p>`;
@@ -295,7 +335,7 @@ function retryLine(input: InstallStatusInput, view: InstallTargetViewPort): Temp
 }
 
 function running(input: InstallStatusInput, view: InstallTargetViewPort): TemplateResult {
-    if (!installRunning(view)) {
+    if (!installRunning(view) || unconfirmed(view)) {
         return EMPTY;
     }
     return html`${stepsList(input, view)}${runningFor(input, view)}${retryLine(input, view)}`;
@@ -399,7 +439,11 @@ function provisionDueLine(input: InstallStatusInput): TemplateResult {
     return html`<p class="note" data-provision-due>${label(input, 'adminSetup.install.provisionDue', { items })}</p>`;
 }
 
-/** A build of any target is queued or at work, or a click on one is on its way (Update the map's click starts them all). */
+/**
+ * A build of any target is queued or at work, or a click on one is on its way (Update the map's click starts them all).
+ * A build only a record says is at work counts too, until a look settles it (the review of 6858f8a: Update the map beside
+ * it skipped that target, so Provision's record could go in before the server's build settled, the race of finding 71).
+ */
 function building(slice: InstallSliceView): boolean {
     return [slice.server, slice.pipeline, slice.site].some((target) => installRunning(target) || target.busy);
 }

@@ -34,6 +34,10 @@ import { failed, listen, SITE_TYPES } from './server.js';
  * 127.0.0.1 like the admin, so Chromium's Local Network Access lets it reach the emulators as the admin does (a document a
  * route fulfils has no address space and is refused the loopback); `/__old-push-sw.js` is a push worker at the site's root,
  * as an admin before M6 registered it there (S-A58-BAD-OLD-SERVICE-WORKER).
+ *
+ * e2e only: a browser that carries the cookie `hcm-e2e-cache=day` (`E2E_CACHE_COOKIE`) is served `/admin/legacy/**` with
+ * the header Hosting gave it before the live finding of 2026-11-08, a day's `max-age` (`OLD_LEGACY_CACHE`), so a test can
+ * put the release before's bundle in the browser's HTTP cache as the owner's browser held it (S-A28-BAD-STALE-BUNDLE-REFUSED).
  */
 
 export interface AdminServerOptions {
@@ -182,6 +186,18 @@ async function answer(options: AdminServerOptions, request: IncomingMessage, tar
 /** Hosting's own default for a file without a `Cache-Control` rule. */
 const DEFAULT_CACHE_CONTROL = 'max-age=3600';
 
+/** The cookie that serves the legacy bundle with Hosting's header before 2026-11-08, and that header. */
+export const E2E_CACHE_COOKIE = 'hcm-e2e-cache';
+export const OLD_LEGACY_CACHE = 'public, max-age=86400';
+const LEGACY_PREFIX = '/admin/legacy/';
+
+/** The old header of the legacy bundle, for a browser with the cookie; nothing otherwise. */
+function oldCache(request: IncomingMessage, path: string): Readonly<Record<string, string>> {
+    const cookies = (request.headers.cookie ?? '').split(';').map((pair) => pair.trim());
+    const old = path.startsWith(LEGACY_PREFIX) && cookies.includes(`${E2E_CACHE_COOKIE}=day`);
+    return old ? { 'Cache-Control': OLD_LEGACY_CACHE } : {};
+}
+
 async function handle(options: AdminServerOptions, request: IncomingMessage, response: ServerResponse): Promise<void> {
     const target = targetOf(request);
     const { result, answer: hosted } = await answer(options, request, target);
@@ -190,6 +206,7 @@ async function handle(options: AdminServerOptions, request: IncomingMessage, res
     response.writeHead(result.status, {
         'Cache-Control': DEFAULT_CACHE_CONTROL,
         ...e2eHeaders(headers, options.connect),
+        ...oldCache(request, path),
         ...result.headers,
         ...(result.type === undefined ? {} : { 'Content-Type': result.type }),
     });

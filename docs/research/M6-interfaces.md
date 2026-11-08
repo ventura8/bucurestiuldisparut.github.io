@@ -311,7 +311,7 @@ The state of a target, `InstallState` (`packages/shared/src/schemas/install.ts`,
 | State | When | The card shows |
 | --- | --- | --- |
 | `notInstalled` | nothing installed, no build | the target's why and cost, its button |
-| `queued`, `working` | a build of the target is `QUEUED` or `WORKING` | the steps in order, the current one named; the server's `{ready} of {total}` once (finding 7); the time it has run |
+| `queued`, `working` | a build of the target is `QUEUED` or `WORKING` | the steps in order, the current one named; the server's `{ready} of {total}` once (finding 7); once at work, the time it has run, on the browser's clock from the look that saw it start (`runningSince`; never Google's `createTime` against the browser's clock: DECISIONS-for-review.md §116d); recorded and not yet looked at: when it was last seen and Check again, "Checking the installation…" only while a look runs, and no Update the map beside it (§116a, §116b); a read that fails keeps it at work with the error, and settles none of Update the map's waits (§116e) |
 | `retrying` | the build's last `HCM_INSTALL` line is a retry | "Google is still preparing {what}; trying again at {time}" (finding 12) |
 | `installed` | installed release equals the bundle's | the release and when |
 | `updateAvailable` | installed release older than the bundle's (`compareRelease`: the version first, then a different commit counts as older) | Update |
@@ -454,7 +454,7 @@ as today; `--hosting dist/hosting` adds the generic city page, `/admin/` (the ad
 | headers | `**` | `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` (`geolocation=(self)`): **no** Content-Security-Policy |
 | none (meta) | the viewer's pages | their own `<meta http-equiv="Content-Security-Policy">` (`scripts/site/src/csp.ts`, the M1 and M5 policy, the public bucket's host added when the build names it), exactly as on Pages |
 | headers | `/admin/install/**` | `Cache-Control: public, max-age=31536000, immutable`, `manifest.json` `no-cache` |
-| headers | the HTML, script, style and JSON files (today's rule) | `Cache-Control: no-cache` (as today); `/admin/legacy/**` `public, max-age=86400` |
+| headers | the HTML, script, style and JSON files (today's rule) | `Cache-Control: no-cache` (as today); `/admin/legacy/**` `public, max-age=86400`, its JSON `/admin/legacy/*/*.json` `no-cache` (DECISIONS-for-review.md §115a) |
 
 - **No path gets two Content-Security-Policy headers** (Hosting may send every matching rule's headers): the viewer's
   policy is its page's meta tag, the admin's the header of `/admin/**` only. A unit test resolves `firebase.json` over

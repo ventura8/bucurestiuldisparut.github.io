@@ -85,7 +85,7 @@ describe('<hcm-setup-deploy>: Install the server', () => {
             state: 'working',
             buildId: 'b-1',
             steps: RUNNING_STEPS,
-            startedAt: '2026-10-25T10:00:00.000Z',
+            runningSince: '2026-10-25T10:00:00.000Z',
             checkedAt: '2026-10-25T10:07:30.000Z',
         } as const;
         const { element } = await card('deploy', { server }, { steps: { deploy: { state: 'pending' } } });

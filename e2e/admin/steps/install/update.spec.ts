@@ -329,6 +329,18 @@ test(
         await expectStateSound(page, adminVisit('setup.install-update-building', lang));
         // The items ran with the click's token, but their version waits for the server this update installs.
         expect((await adminWorld.emulators.document('setup/status'))?.['provision']).not.toHaveProperty('setVersion');
+        // A read of Cloud Build that fails meanwhile says nothing of the build (the review of the stale fixes: as "Unavailable
+        // now" it settled the server, so the items' version went to the old one, and Update the map came back).
+        await upstream.fail('cloud-build', 'unavailable', 'browser');
+        await page.clock.fastForward(10_000);
+        await expect(deploy.locator('.install [role="alert"]')).toContainText(apiText(lang, 'apiError.unavailable'));
+        await expect(installState(deploy)).toHaveAttribute('data-state', /^(queued|working|retrying)$/);
+        await expect(update).toHaveCount(0);
+        expect((await adminWorld.emulators.document('setup/status'))?.['provision']).not.toHaveProperty('setVersion');
+        await upstream.fail('cloud-build', null, 'browser');
+        expect(consoleErrors.takeMatching(/503.*cloudbuild\.googleapis\.com/).length).toBeGreaterThan(0);
+        await page.clock.fastForward(20_000);
+        await expect(deploy.locator('.install [role="alert"]')).not.toContainText(apiText(lang, 'apiError.unavailable'));
 
         await upstream.scenario('cloud-build.finish', 'browser');
         await page.clock.fastForward(10_000);
