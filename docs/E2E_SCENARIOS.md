@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 134 | 1289 | 514 | 775 | 1287 | 2 | 314 |
+| 134 | 1293 | 516 | 777 | 1291 | 2 | 315 |
 
 ## Viewer
 
@@ -206,7 +206,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V40-BAD-OLD-MANIFEST` | V40 | bad | A manifest with no such photos shows no gallery | the menu has no Where was this taken? | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
 | `S-V40-BAD-PLACED-NEEDS-LOCATION` | V40 | bad | A placed photo still needs its location | a photos[] entry with no location, or an unplaced one with a location, or one in both lists: refused | e2e-viewer | exists | `functions/test/publish/assemble.test.ts` |
 | `S-V41-HAPPY-CORRECTION-LINK` | V41 | happy | A photo's sheet offers a correction and says its credit | Suggest a correction links to the page on that photo; Added by the credit | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
-| `S-V41-HAPPY-LINK` | V41 | happy | Contribute opens a page of its own | the menu's item opens contributeUrl in a new tab with nothing passed on | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
+| `S-V41-HAPPY-LINK` | V41 | happy | Contribute opens a page of its own | the menu's item opens contributeUrl in a new tab with nothing passed on but the map's language and the city's name in it (?lang, name: the signed-out welcome's words) | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
 | `S-V41-BAD-NO-BACKEND` | V41 | bad | A manifest without the link offers no Contribute | the menu has no Contribute | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts`<br>`functions/test/export/plan-community.test.ts` |
 | `S-V41-BAD-NO-SIGN-IN` | V41 | bad | The map signs nothing in, reads no Firestore and sets no cookie | with the link on the page: no cookie in the context, no request to Firestore, Identity Toolkit, Secure Token or Firebase | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
 | `S-V50-HAPPY-LINK` | V50 | happy | A story opens from its own link and from the photo it is about | #story=<id> opens the sheet in Romanian with its https link; the photo's sheet lists the story and opens it | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
@@ -1093,9 +1093,13 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-A92-HAPPY-CONTEXT` | A92 | happy | The page reads the city and a public photo through the callable | a stranger reads no Firestore: name, bounds, standing, the photo's public fields | functions | exists | `functions/test/admin/contribute.test.ts` |
 | `S-A92-HAPPY-REQUEST` | A92 | happy | A stranger stays signed in on the Contribute page and asks for a role | no sign-out, no admin document, the request written with their address, the page says it waits | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts`<br>`functions/test/admin/contribute.test.ts` |
 | `S-A92-HAPPY-VISITOR-STAYS` | A92 | happy | A reload keeps the visitor's page | the form is there again | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts` |
+| `S-A92-HAPPY-WELCOME` | A92 | happy | A visitor from the map is welcomed as a contributor, in the map's language | signed out at #/contribute/<city>: the city's name, what contributing means, Google needed only to send, 'Sign in with Google to contribute', the tab says Contribute; Back to the map opens the city's map (the Hosting root for the first city, /<city>/ for another) | e2e-admin | exists | `e2e/admin/specs/roles/welcome.spec.ts` |
+| `S-A92-HAPPY-WELCOME-SIGN-IN` | A92 | happy | Signing in from the welcome lands an account of no role on the Contribute page | the stranger's page is the Contribute page's form, no navigation, no admin document | e2e-admin | exists | `e2e/admin/specs/roles/welcome.spec.ts` |
+| `S-A92-BAD-ADMIN-ROUTE` | A92 | bad | An admin address signed out still shows the admin's sign-in | #/photos signed out: 'Map administration', the admin's intro and button, no Back to the map; start-up mode has no welcome; a name from the link is text, cleaned and cut at 80 characters | e2e-admin | exists | `e2e/admin/specs/roles/welcome.spec.ts` |
 | `S-A92-BAD-ALREADY-PENDING` | A92 | bad | One open request per account | a second: apiError.contribute.alreadyPending | functions | exists | `functions/test/admin/contribute.test.ts` |
 | `S-A92-BAD-BLOCKED` | A92 | bad | A blocked account may not ask | apiError.contribute.blocked | functions | exists | `functions/test/admin/contribute.test.ts` |
 | `S-A92-BAD-DECIDED-TWICE` | A92 | bad | A request is answered once | apiError.contribute.alreadyDecided | functions | exists | `functions/test/admin/contribute.test.ts` |
+| `S-A92-BAD-NO-ADMIN-SIGN-IN` | A92 | bad | The Contribute page never shows the admin's sign-in | no 'Map administration', no 'the Google account that administers the map', no plain 'Sign in with Google' on #/contribute/<city>; a closed popup is still said | e2e-admin | exists | `e2e/admin/specs/roles/welcome.spec.ts` |
 | `S-A92-BAD-NOT-OWNER` | A92 | bad | Only the city's owners answer | an editor, a moderator or an uploader: apiError.city.notOwner; nothing written | functions | exists | `functions/test/admin/contribute.test.ts` |
 | `S-A92-BAD-NOT-PUBLIC` | A92 | bad | A photo that is not public is not there | unpublished, pending, refused, no picture: apiError.notFound | functions | exists | `functions/test/admin/contribute.test.ts` |
 | `S-A92-BAD-REFUSED-TOLD` | A92 | bad | A refused person is told, and waits to ask again | the page says refused with the note and the date; a new ask before it: apiError.contribute.retryLater | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts`<br>`functions/test/admin/contribute.test.ts` |

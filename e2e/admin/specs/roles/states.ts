@@ -1,8 +1,12 @@
 /**
  * M13's states of the tour inventory (docs/research/M13-roles.md §8; `ADMIN_STATES` of e2e/tour/states.ts spreads them), ids
- * `roles.<state>`, each reached by e2e/admin/specs/roles/roles.spec.ts at the admin tier's projects.
+ * `roles.<state>`, each reached by e2e/admin/specs/roles/roles.spec.ts (the welcome: welcome.spec.ts) at the admin tier's projects.
  */
 export const ROLES_STATES = {
+    'roles.contribute-welcome': {
+        title: "The Contribute page signed out: a contributor's welcome, never the admin's sign-in",
+        visit: 'specs/roles/welcome.spec.ts',
+    },
     'roles.contribute-request': { title: 'The Contribute page: asking for a role', visit: 'specs/roles/roles.spec.ts' },
     'roles.contribute-pending': { title: 'The Contribute page: the request waits', visit: 'specs/roles/roles.spec.ts' },
     'roles.contribute-refused': {

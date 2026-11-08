@@ -79,6 +79,19 @@ A refused upload answers `apiError.review.alreadyDecided` through the usual reco
 `#/contribute/<city>` is a page of the admin app, reached by the small Contribute link of the public map (`manifest.contributeUrl`,
 §5). The map gains only that link: no sign-in code, no Firestore, no cookie.
 
+- **The welcome** (the owner, 2026-11-08: a visitor was shown the admin's "Map administration" sign-in): signed out, the page's
+  address shows a contributor's welcome in place of the admin's sign-in (`packages/admin/src/app/welcome.ts`, `<hcm-sign-in>`
+  with `state.welcome`): the city's name, what contributing means (send photos and stories, suggest a photo's place or
+  direction, become an uploader or a moderator once an admin approves), that Google is needed only to send something,
+  **Sign in with Google to contribute** and **Back to the map**; the tab says Contribute. The map menu's link carries what
+  the admin cannot read before sign-in (the rules let only members read `cities/{city}`): `?lang=` (the map's language)
+  and `name` (the city's name in it, shown as text, at most 80 characters). A photo's link (its sheet, the gallery)
+  carries neither, to keep the engine within its budget: the welcome then speaks the language the visitor chose on that
+  city's map (`hcm:<city>:lang`, the same origin), else the admin's own choice, else Romanian, and names no city.
+  **Back to the map** opens the city's map on the admin's own Hosting (M6 §2.4: the project's first city at `/`, any
+  other at `/<city>/`). After sign-in an account of no role is a visitor and stays on the page (`contributing`), never on
+  an admin screen; start-up mode (no server yet) keeps the admin's sign-in.
+
 - `contribute.context` (`signedIn`): the city's public name and view, the caller's role and request, whether they are blocked, and
   with a `photoId` the published photo's public fields. A photo that is not public answers `apiError.notFound`.
 - `contribute.request` (`signedIn`): `{cityId, role: 'uploader' | 'moderator', reason, credit?}` writes
@@ -194,6 +207,7 @@ account with no city at all, as before), so a moderator is not told about imager
 - A suggestion group keeps the photo's title and thumbnail from when it began (`photoTitle`, `photoThumb`), so the queue lists without reading each photo.
 - A moderator or an uploader reads no `setup/status`, so the admin's map wears the city's public token (`cityTokenOf`), and the Contribute page passes the token `contribute.context` answered.
 - The Contribute link is an item of the map's menu; a photo's sheet and the gallery hold a plain link to the page on that photo.
+  The menu's carries the map's language and the city's name, for the signed-out welcome (§3).
 - The gallery shows the same author, licence, rights holder and credit lines as a photo's sheet, and a place's sheet its credit.
 - An uploader's place picker asks for their own photos, and their delete offers no Undo: bringing an item back reads its history.
 - Left for a later change, none of it a way around the rules:

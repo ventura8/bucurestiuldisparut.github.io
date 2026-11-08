@@ -162,6 +162,17 @@ export const ro = {
     'adminShell.city.role.moderator': 'Moderator',
     'adminShell.city.role.uploader': 'Contribuitor',
     'adminShell.city.notMember': 'Nu administrezi orașul {cityId}; s-a deschis {city}.',
+    // The Contribute page's welcome while signed out (M13 §3: a visitor is never shown the admin's sign-in).
+    'adminShell.welcome.title': 'Contribuie la harta {city}',
+    'adminShell.welcome.titleNoCity': 'Contribuie la hartă',
+    'adminShell.welcome.intro': 'Oricine poate ajuta harta să crească. Poți:',
+    'adminShell.welcome.send': 'să trimiți fotografii și povești din oraș;',
+    'adminShell.welcome.suggest': 'să propui locul în care a fost făcută o fotografie sau direcția în care privește;',
+    'adminShell.welcome.role': 'să devii contribuitor sau moderator, după ce un administrator aprobă cererea.',
+    'adminShell.welcome.signInNote': 'Contul Google îți trebuie doar ca să trimiți ceva; harta se vede fără cont.',
+    'adminShell.welcome.signIn': 'Conectează-te cu Google ca să contribui',
+    'adminShell.welcome.back': 'Înapoi la hartă',
+    'adminShell.welcome.tabTitle': 'Contribuie',
 } as const;
 
 export type AdminShellKey = keyof typeof ro;

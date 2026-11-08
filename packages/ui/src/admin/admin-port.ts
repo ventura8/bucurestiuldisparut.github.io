@@ -73,6 +73,13 @@ export interface AdminCityPort {
     readonly name: { readonly ro: string; readonly en?: string | undefined };
 }
 
+/** M13 §3: what the map's link said of the city a visitor came to contribute to, and the way back to that map. */
+export interface AdminWelcomePort {
+    readonly cityId: string | null;
+    readonly cityName: string | null;
+    readonly mapUrl: string;
+}
+
 export interface AdminStatePort {
     readonly auth: AdminAuthStatePort;
     readonly mode: 'bootstrap' | 'normal' | null;
@@ -108,6 +115,8 @@ export interface AdminStatePort {
     readonly projectOwner?: boolean;
     readonly projectId: string;
     readonly authDomain: string;
+    /** M13 §3: the Contribute page's welcome while its address is open (signed out it replaces the admin's sign-in). */
+    readonly welcome?: AdminWelcomePort | null;
     /** The Setup Assistant's state (setup-ui's `SetupViewState`), null before its controller exists or without one. */
     readonly setup: SetupViewState | null;
 }

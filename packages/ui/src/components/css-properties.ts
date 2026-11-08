@@ -20,7 +20,7 @@ class CssPropertiesDirective extends Directive {
     constructor(partInfo: PartInfo) {
         super(partInfo);
         if (partInfo.type !== PartType.ELEMENT) {
-            throw new Error('cssProperties must be bound to an element, not to an attribute or a child');
+            throw new Error('cssProperties binds an element only');
         }
     }
 

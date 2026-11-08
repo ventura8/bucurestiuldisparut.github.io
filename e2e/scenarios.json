@@ -13268,7 +13268,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "Contribute opens a page of its own",
-            "asserts": "the menu's item opens contributeUrl in a new tab with nothing passed on",
+            "asserts": "the menu's item opens contributeUrl in a new tab with nothing passed on but the map's language and the city's name in it (?lang, name: the signed-out welcome's words)",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/specs/viewer/unplaced.spec.ts, packages/ui/test/viewer/hcm-unplaced-gallery.test.ts."
@@ -13481,6 +13481,50 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Milestone M13 (docs/research/M13-roles.md). Test: functions/test/admin/contribute.test.ts."
+        },
+        {
+            "id": "S-A92-HAPPY-WELCOME",
+            "behaviour": "A92",
+            "area": "admin",
+            "path": "happy",
+            "title": "A visitor from the map is welcomed as a contributor, in the map's language",
+            "asserts": "signed out at #/contribute/<city>: the city's name, what contributing means, Google needed only to send, 'Sign in with Google to contribute', the tab says Contribute; Back to the map opens the city's map (the Hosting root for the first city, /<city>/ for another)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/admin/specs/roles/welcome.spec.ts, packages/ui/test/admin/auth/contribute-welcome.test.ts, packages/admin/test/app/welcome.test.ts."
+        },
+        {
+            "id": "S-A92-HAPPY-WELCOME-SIGN-IN",
+            "behaviour": "A92",
+            "area": "admin",
+            "path": "happy",
+            "title": "Signing in from the welcome lands an account of no role on the Contribute page",
+            "asserts": "the stranger's page is the Contribute page's form, no navigation, no admin document",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/admin/specs/roles/welcome.spec.ts, packages/admin/test/auth/controller.test.ts."
+        },
+        {
+            "id": "S-A92-BAD-NO-ADMIN-SIGN-IN",
+            "behaviour": "A92",
+            "area": "admin",
+            "path": "bad",
+            "title": "The Contribute page never shows the admin's sign-in",
+            "asserts": "no 'Map administration', no 'the Google account that administers the map', no plain 'Sign in with Google' on #/contribute/<city>; a closed popup is still said",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/admin/specs/roles/welcome.spec.ts, packages/ui/test/admin/auth/contribute-welcome.test.ts."
+        },
+        {
+            "id": "S-A92-BAD-ADMIN-ROUTE",
+            "behaviour": "A92",
+            "area": "admin",
+            "path": "bad",
+            "title": "An admin address signed out still shows the admin's sign-in",
+            "asserts": "#/photos signed out: 'Map administration', the admin's intro and button, no Back to the map; start-up mode has no welcome; a name from the link is text, cleaned and cut at 80 characters",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/admin/specs/roles/welcome.spec.ts, packages/ui/test/admin/auth/contribute-welcome.test.ts, packages/admin/test/app/welcome.test.ts."
         },
         {
             "id": "S-A92-BAD-REFUSED-TOLD",

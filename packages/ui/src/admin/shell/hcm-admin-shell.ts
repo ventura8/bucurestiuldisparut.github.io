@@ -21,6 +21,7 @@ import { applyTheme, type ThemeMode } from '../../theme/apply.js';
 import { BASELINE_THEME } from '../../theme/baseline.js';
 import type { WindowClass } from '../../theme/tokens.js';
 import type { AdminAppPort, AdminAuthStatePort, AdminRouteIdPort, AdminStatePort } from '../admin-port.js';
+import { welcomeName } from '../auth/hcm-sign-in.js';
 import type { PageChrome } from '../editing/hcm-list-detail.js';
 import { EMPTY } from './empty.js';
 import type { HcmAccountMenu } from './hcm-account-menu.js';
@@ -150,7 +151,9 @@ export class HcmAdminShell extends LitElement {
             this.#applyTheme(state);
             // The page's language and its tab's title follow the admin's (the static page is Romanian).
             this.ownerDocument.documentElement.lang = state.locale;
-            this.ownerDocument.title = `${shellText(state.locale, 'adminShell.appName')}${cityTitle(state)}`;
+            const welcome = welcomeName(state, SCREENS[state.auth] === 'shell');
+            this.ownerDocument.title =
+                welcome === null ? `${shellText(state.locale, 'adminShell.appName')}${cityTitle(state)}` : `${welcome.app}${welcome.city}`;
         }
         this.#keepAccountFocus();
     }
@@ -229,12 +232,20 @@ export class HcmAdminShell extends LitElement {
 
     /** The loading screen; its page heading is the app's name, for screen readers (M6: the tour's `shell.loading`). */
     #loading(text: string): TemplateResult {
-        const locale = this.state?.locale ?? DEFAULT_LOCALE;
-        return html`<h1 class="visually-hidden">${shellText(locale, 'adminShell.appName')}</h1>
+        return html`<h1 class="visually-hidden">${this.#appName()}</h1>
             <div class="loading" role="status">
                 <hcm-loading-indicator .label=${text}></hcm-loading-indicator>
                 <p>${text}</p>
             </div>`;
+    }
+
+    /** The app's name before the shell shows: Contribute on the Contribute page's address (M13 §3), else the administration. */
+    #appName(): string {
+        const state = this.state;
+        if (state === null) {
+            return shellText(DEFAULT_LOCALE, 'adminShell.appName');
+        }
+        return welcomeName(state, false)?.app ?? shellText(state.locale, 'adminShell.appName');
     }
 
     /** M13 §3: the Contribute page of an account of no role: the page and the account menu, no navigation. */
