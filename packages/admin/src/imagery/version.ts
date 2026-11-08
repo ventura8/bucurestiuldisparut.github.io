@@ -110,6 +110,25 @@ function emptyVersionPage(id: string): VersionPageState {
     };
 }
 
+/** A recalibration whose current version is published (deleting it leaves that one on the map). */
+function recalibratesPublished(version: VersionView | undefined, current: VersionView | null): boolean {
+    if (version === undefined || version.recalibration === null) {
+        return false;
+    }
+    return current?.state === 'published';
+}
+
+/** The notice of a Delete: a failed version's, a recalibration of a published one's, or any image's. */
+function rejectNoticeOf(state: VersionPageState): AdminContentKey {
+    const version = state.version.doc?.data;
+    if (version?.state === 'failed') {
+        return 'adminContent.imagery.notice.dismissed';
+    }
+    return recalibratesPublished(version, state.current)
+        ? 'adminContent.imagery.notice.rejectedRecalibration'
+        : 'adminContent.imagery.notice.rejected';
+}
+
 export class VersionPage {
     readonly #services: ContentServices;
     readonly #files: FilePort;
@@ -214,13 +233,8 @@ export class VersionPage {
 
     /** M16 with M18: a recalibration of a published version leaves that one on the map, and the notice says so. */
     #rejectNotice(): AdminContentKey {
-        const version = this.#state?.version.doc?.data;
-        if (version?.state === 'failed') {
-            return 'adminContent.imagery.notice.dismissed';
-        }
-        const current = version?.recalibration === null ? null : this.#state?.current;
-        const ofPublished = current?.state === 'published';
-        return ofPublished ? 'adminContent.imagery.notice.rejectedRecalibration' : 'adminContent.imagery.notice.rejected';
+        const state = this.#state;
+        return state === null ? 'adminContent.imagery.notice.rejected' : rejectNoticeOf(state);
     }
 
     choose(choice: PublishChoice): Promise<boolean> {

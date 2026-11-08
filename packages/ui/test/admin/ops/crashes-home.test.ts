@@ -216,6 +216,7 @@ describe('<hcm-home-page>: What needs you while a count is unknown', () => {
             '… Historical images to approve',
             '… Role requests to accept',
             '… Suggestions to review',
+            '… Stories to review',
             '… Failed jobs',
         ]);
         expect(deepText(loading.element)).not.toContain('Nothing needs you now.');

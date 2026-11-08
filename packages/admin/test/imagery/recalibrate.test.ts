@@ -99,6 +99,14 @@ describe('the version page: recalibrating', () => {
         },
     );
 
+    it('badPath_deleteBeforeAnyVersionIsShownCallsNothing', async () => {
+        const { version, callables } = page();
+
+        await expect(version.reject()).resolves.toBe(false);
+
+        expect(callsOf(callables, 'imagery.reject')).toEqual([]);
+    });
+
     it('badPath_anyOtherVersionHasNoCurrentToSwapTo', () => {
         const { version, store, state } = page();
         store.docs.set(VERSIONS(CURRENT), versionDoc({ basedOn: 'job-older' }));

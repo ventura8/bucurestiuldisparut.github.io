@@ -132,6 +132,7 @@ describe('the dashboard', () => {
             FIRESTORE_PATHS.layerVersions(CITY),
             FIRESTORE_PATHS.roleRequests(CITY),
             FIRESTORE_PATHS.suggestions(CITY),
+            FIRESTORE_PATHS.stories(CITY),
         ]) {
             store.counts.set(path, null);
         }
