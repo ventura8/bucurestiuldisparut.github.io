@@ -103,12 +103,16 @@ def _figure(joint: _Joint, chosen: Chosen, partners: Sequence[PartnerTies], midd
     return blocked_figure_of(joint.fit, _tiles(chosen).plus(used), chosen.pairs, 2 * PAIR_CELL_GROUND_M / ground_scale(middle_lat))
 
 
-def _together(found: Found, proved: Proved, partners: Sequence[PartnerTies]) -> Calibrated | None:
-    """The frame joined to its partners, as a lattice of the joined map, its verdicts recorded."""
+def _calibrated(joint: _Joint, found: Found, proved: Proved, partners: Sequence[PartnerTies]) -> Calibrated | None:
+    """The georeference of a joined map, as a lattice, its verdicts recorded."""
     chosen, ransac = found
-    joint = _joint(chosen, proved.scan, partners)
-    if joint is None:
-        return None
     mapped = Mapped(joint.result.to_places, joint.model, _figure(joint, chosen, partners, proved.middle_lat))
     fitted = mapped_calibration(chosen.checked_by(mapped.to_places, ransac.candidates), proved.scan, mapped, proved.middle_lat)
     return None if fitted is None else replace(fitted, alignment=joint.result.verdicts)
+
+
+def _together(found: Found, proved: Proved, partners: Sequence[PartnerTies]) -> Calibrated | None:
+    """The frame joined to its partners. A partner that counts brings a hundred ties or more, and one always stays (a partner's offset
+    from a map that cannot be fitted is unknown, and it is kept), so the joined map fits; None only if the model itself refuses."""
+    joint = _joint(found[0], proved.scan, partners)
+    return None if joint is None else _calibrated(joint, found, proved, partners)

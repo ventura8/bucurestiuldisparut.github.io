@@ -75,6 +75,18 @@ def test_bad_path_a_frame_that_cannot_be_held_is_passed_over(world: PipelineWorl
     assert held_frames(ctx, Bounds.of(BOUNDS)) == []
 
 
+def test_bad_path_a_version_gone_between_the_list_and_its_read_is_passed_over(
+    world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P06-BAD-JOINT-NOT-ACCEPTED"""
+    ctx = context(world, tmp_path)
+    frame(world, "v-1972", 1972)
+    listed = ctx.services.store.list_ids
+    monkeypatch.setattr(ctx.services.store, "list_ids", lambda collection: [*listed(collection), "v-gone"])
+
+    assert [held.version_id for held in held_frames(ctx, Bounds.of(BOUNDS))] == ["v-1972"]
+
+
 def test_bad_path_a_server_that_lists_no_versions_to_the_run_leaves_the_frame_alone(
     world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
