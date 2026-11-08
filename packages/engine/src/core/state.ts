@@ -66,6 +66,11 @@ export interface ViewerState {
     readonly manifest: Manifest | null;
     readonly webgl: boolean;
     readonly view: MapView;
+    /**
+     * The view the URL hash carries instead of `view` while the camera sits where Show my location brought it (that view
+     * is the visitor's position, so the address keeps the one it had); absent: the hash follows the camera.
+     */
+    readonly hashView?: MapView | undefined;
     /** The timeline stop; null is "today" (no historical layer). */
     readonly year: number | null;
     /**

@@ -102,7 +102,7 @@ export interface ViewerStorePort {
     setLightbox(open: boolean): void;
     openSheet(sheet: SheetName): void;
     setView(view: MapView): void;
-    /** Moves the camera (and records the view): "show my location". */
+    /** Moves the camera (and records the view): "show my location"; the URL hash keeps the view it had until the camera moves. */
     flyTo(view: MapView): void;
     /** Logs the `share` analytics event after the page was shared or its link copied. */
     logShare(): void;

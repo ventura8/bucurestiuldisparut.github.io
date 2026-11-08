@@ -1563,6 +1563,17 @@
             "notes": "The owner, 2026-11-08 (track/improve2). Leaving the page (the element removed, the controller destroyed) stops it too: packages/ui/test/viewer/hcm-map-viewer-layout.test.ts. Tests: e2e/specs/viewer/geolocate.spec.ts."
         },
         {
+            "id": "S-V10-BAD-POSITION-NOT-IN-LINK",
+            "behaviour": "V10",
+            "area": "viewer",
+            "path": "bad",
+            "title": "The address and a shared link never carry the visitor's position",
+            "asserts": "a page opened at a city view, Show my location brings the camera to the position, the hash is written again (street names off) -> its view is still the city view; Share copies a link whose view is the city view; neither the address nor the link holds the position's latitude or longitude",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Review of track/improve2, 2026-11-08: the camera's view after Show my location is the position, so the hash keeps the view it had until the visitor moves the camera (a hash they type wins). Tests: e2e/specs/viewer/geolocate.spec.ts, packages/engine/test/core/store-located-view.test.ts."
+        },
+        {
             "id": "S-V10-HAPPY-COMPARE-BOTH-SIDES",
             "behaviour": "V10",
             "area": "viewer",
@@ -2063,7 +2074,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "After My location the position in the hash never reaches Google, and nothing goes to Performance Monitoring",
-            "asserts": "after Accept and My location (the hash holds the visitor's position) every GA4 hit carries the page's origin and path only, no request carries the position, and no request reaches Performance Monitoring (firebaselogging)",
+            "asserts": "after Accept and My location (the camera at the visitor's position, the hash still the view it had: S-V10-BAD-POSITION-NOT-IN-LINK) every GA4 hit carries the page's origin and path only, no request and not the hash carries the position, and no request reaches Performance Monitoring (firebaselogging)",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o). docs/research/DECISIONS-for-review.md §18a: Performance Monitoring is out of the public viewer."

@@ -2732,3 +2732,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-08, track/improve2: `happyPath_theVisitorsPositionReachesTheMapAndNothingElse` found one hash written after `setMyLocation` under fake timers; the write was the boot's view, scheduled before the snapshot.
     - Fix: run the pending timers before taking the "before" counts (`store.test.ts`).
     - **Under fake timers, flush what the setup scheduled before snapshotting the counts an assertion compares against.**
+459. **A privacy test searched for the wrong coordinates: the camera's view after Show my location is the position.**
+    - Seen: 2026-11-08, track/improve2 review: S-V10-BAD-PAGE-HIDDEN looked for the second position (MOVED) in requests and storage, which the camera never visits; the first one went into the URL hash (`#16/44.4301/26.1003`) and every shared link. `store-located-view.test.ts` failed first on the hash.
+    - Fix: `store.flyTo` holds the hash's view until the visitor moves the camera (DECISIONS-for-review.md §106f); S-V10-BAD-POSITION-NOT-IN-LINK checks the address and the copied link for the first position.
+    - **A "kept nowhere" test searches every place a value can reach (the address and what Share sends included) for each value the feature handled, the one the camera went to first.**

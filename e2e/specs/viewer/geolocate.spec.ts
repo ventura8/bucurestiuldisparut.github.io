@@ -4,7 +4,17 @@ import { SITE_ORIGIN } from '../../fixtures/world.js';
 import { expectMapCounts } from '../../support/compare.js';
 import { mapFacts, mapIdle, myLocationDrawn, pixelsOfColour, screenPointOf, type LngLat } from '../../support/map.js';
 import { expect, test } from '../../support/test.js';
-import { chooseMenuItem, menuButton, openLayers, openViewer, t, viewer } from '../../support/viewer.js';
+import {
+    callController,
+    chooseMenuItem,
+    currentHash,
+    hashParam,
+    menuButton,
+    openLayers,
+    openViewer,
+    t,
+    viewer,
+} from '../../support/viewer.js';
 
 /**
  * "Show my location" (behaviour V10): a switch in the menu. On, the browser's position moves the camera there when it
@@ -12,7 +22,7 @@ import { chooseMenuItem, menuButton, openLayers, openViewer, t, viewer } from '.
  * dot follows each new position; off (the menu again, or the page hidden) the dot goes. A refused permission or a
  * position outside the city says so in a toast and leaves the camera where it was. The position comes from the browser
  * context (Playwright's geolocation, which has no heading: the cone is unit-tested), never from a network service, and is
- * kept nowhere: not in the page's storage, not in a request.
+ * kept nowhere: not in the page's storage, not in a request, not in the address or a link shared from it.
  */
 
 interface Position {
@@ -23,6 +33,8 @@ interface Position {
 
 const INSIDE: Position = { latitude: 44.4301, longitude: 26.1003, accuracy: 25 };
 const MOVED: Position = { latitude: 44.4312, longitude: 26.1021, accuracy: 18 };
+/** The view the page opens with before the visitor asks for their position. */
+const CITY_VIEW = '14.5/44.42704/26.0853';
 /** Cluj-Napoca: far outside Bucharest's bounds. */
 const OUTSIDE: Position = { latitude: 46.7712, longitude: 23.6236, accuracy: 25 };
 /** The dot's colour (`packages/ui/src/map/my-location.ts`). */
@@ -142,6 +154,36 @@ test(
         );
         expect(stored).not.toContain(String(MOVED.latitude));
         expect(requests.filter((line) => line.includes(String(MOVED.latitude)) || line.includes(String(MOVED.longitude)))).toEqual([]);
+    },
+);
+
+test(
+    'The address and a shared link keep the view they had: the position is not in them',
+    { tag: '@S-V10-BAD-POSITION-NOT-IN-LINK' },
+    async ({ page, context, lang }) => {
+        await context.grantPermissions(['geolocation', 'clipboard-read', 'clipboard-write'], { origin: SITE_ORIGIN });
+        await context.setGeolocation(INSIDE);
+        await page.addInitScript(() => {
+            Reflect.deleteProperty(Navigator.prototype, 'share');
+        });
+        await openViewer(page, { lang, hash: CITY_VIEW });
+
+        await chooseMenuItem(page, lang, t(lang, 'action.locate'));
+        await expectDotAt(page, INSIDE);
+        await expect.poll(async () => (await mapFacts(page)).center[1]).toBeCloseTo(INSIDE.latitude, 4);
+        await expect.poll(async () => (await mapFacts(page)).moving).toBe(false);
+        // A change the hash carries (the street names off) makes the viewer write it with the view it holds now.
+        await callController(page, 'setMapLabels', { streets: false });
+        await expect.poll(() => hashParam(page, 'labels'), { message: 'the hash is written again' }).not.toBeNull();
+
+        expect((await currentHash(page)).split('&')[0], 'the address keeps the view it had').toBe(CITY_VIEW);
+        await chooseMenuItem(page, lang, t(lang, 'action.share'));
+        await expect(page.getByRole('status').filter({ hasText: t(lang, 'share.copied') })).toBeVisible();
+        const copied = await page.evaluate(() => navigator.clipboard.readText());
+        expect(new URL(copied).hash.split('&')[0]).toBe(`#${CITY_VIEW}`);
+        for (const coordinate of [INSIDE.latitude, INSIDE.longitude]) {
+            expect(`${page.url()} ${copied}`, 'the position is in no link').not.toContain(String(coordinate));
+        }
     },
 );
 

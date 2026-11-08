@@ -3,7 +3,8 @@
  * moves the camera there (a jump under reduced motion, as every camera move) and says how accurate it is, and every one
  * moves the blue dot the store draws on each map of the view. It ends when the visitor turns it off, when a position
  * falls outside the city, when the permission is refused, and when the viewer leaves the page or the page is hidden
- * (`<hcm-map-viewer>` calls `stopMyLocation`). The position stays in the page's memory: no hash, storage or telemetry.
+ * (`<hcm-map-viewer>` calls `stopMyLocation`). The position stays in the page's memory: no storage or telemetry, and the
+ * URL hash (so a shared link) keeps the view it had until the visitor moves the camera away from it (`store.flyTo`).
  */
 import { bboxContains, type BBox, type MessageKey } from '@hcm/shared';
 

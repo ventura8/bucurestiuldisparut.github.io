@@ -10,7 +10,7 @@ describe('minifyCss', () => {
     it('happyPath_indentationCommentsLineBreaksAndTheSpaceAroundPunctuationGo', () => {
         const raw = '\n    :host {\n        display: block; /* the box */\n        font: 400 1rem/1.5 a, b;\n    }\n';
 
-        expect(minifyCss(raw)).toBe(':host{display:block;font:400 1rem/1.5 a,b;}');
+        expect(minifyCss(raw)).toBe(':host{display:block;font:400 1rem/1.5 a,b}');
     });
 
     it('happyPath_aLineBreakThatMeansASpaceBecomesOne', () => {
@@ -20,8 +20,25 @@ describe('minifyCss', () => {
     it('happyPath_aSelectorsDescendantSpaceAndAValuesSpacesStay', () => {
         expect(minifyCss(':host  :focus-visible { margin: calc(100% - 8px)  0 }')).toBe(':host :focus-visible{margin:calc(100% - 8px) 0}');
         expect(minifyCss('@media (min-width: 600px) and (forced-colors: active) { a { color: red !important; } }')).toBe(
-            '@media (min-width:600px) and (forced-colors:active){a{color:red !important;}}',
+            '@media (min-width:600px) and (forced-colors:active){a{color:red!important}}',
         );
+    });
+
+    it('happyPath_theSpaceAroundAChildCombinatorASlashAndImportantGoes', () => {
+        expect(minifyCss('.a > * { grid-area: 1 / 1 / 2 / 2; box-shadow: 0 1px rgb(0 0 0 / 30%) !important }')).toBe(
+            '.a>*{grid-area:1/1/2/2;box-shadow:0 1px rgb(0 0 0/30%)!important}',
+        );
+        expect(minifyCss('@container v (width >= 600px) { a { b: c } }')).toBe('@container v (width>= 600px){a{b:c}}');
+    });
+
+    it('badPath_aSemicolonBeforeAnotherDeclarationAnEmptyValueOrAnInterpolationStays', () => {
+        expect(minifyCss('a { --x: ; b: c ; /* last */ }')).toBe('a{--x:;b:c}');
+        expect(minifyCss('a { b: c; ', { start: true, end: false })).toBe('a{b:c;');
+        expect(minifyCss("a { content: ';}' }")).toBe("a{content:';}'}");
+    });
+
+    it('badPath_theSpacesAroundCalcsPlusAndMinusStay', () => {
+        expect(minifyCss('a { inline-size: calc(100% - 2 * 8px + 4px) ; }')).toBe('a{inline-size:calc(100% - 2 * 8px + 4px)}');
     });
 
     it('badPath_stringsEscapesAndAQuoteInACommentAreKept', () => {
@@ -71,7 +88,7 @@ describe('minifyCssLiterals', () => {
                 "import { css } from 'lit';",
                 'const ring = css`:focus-visible{outline:3px solid ${',
                 '',
-                'unsafeCSS(colour)};}`',
+                'unsafeCSS(colour)}}`',
                 '',
                 ';',
                 'const plain = css`a{color:red}`;',
@@ -83,7 +100,7 @@ describe('minifyCssLiterals', () => {
     it('happyPath_aTemplateWithSeveralInterpolationsKeepsTheSpaceAtEach', () => {
         const code = 'const a = css`${host} .b { margin: ${x}  ${y}; }`;';
 
-        expect(minifyCssLiterals(code, 'a.ts')).toBe('const a = css`${host} .b{margin:${x} ${y};}`;');
+        expect(minifyCssLiterals(code, 'a.ts')).toBe('const a = css`${host} .b{margin:${x} ${y}}`;');
     });
 
     it('happyPath_anHtmlTemplateAndTheOneInsideItKeepEveryLineOfTheModule', () => {
