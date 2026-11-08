@@ -6,7 +6,7 @@
  */
 import { createHash } from 'node:crypto';
 
-import { EXPORT_LIMITS, STORAGE_PATHS, timestampFromDate, validateManifest, type Manifest } from '@hcm/shared';
+import { DEFAULT_FAVICON_DATA_URL, EXPORT_LIMITS, STORAGE_PATHS, timestampFromDate, validateManifest, type Manifest } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { buildExport, buildExportFunction, measured, type Written } from '../../src/export/build.js';
@@ -176,7 +176,24 @@ describe('export.build', () => {
         await buildExport(world, TASK);
 
         expect(Object.keys(zipTexts(zipOf(world))).some((name) => name.includes('unlicensed'))).toBe(false);
-        expect(world.blobs.recorder.argsOf('read').map((args) => args[1])).toEqual([STORAGE_PATHS.manifest(CITY)]);
+        // Besides the manifest, only the city's tab icon is read (none here: the page keeps the kit's default).
+        expect(world.blobs.recorder.argsOf('read').map((args) => args[1])).toEqual([
+            STORAGE_PATHS.manifest(CITY),
+            STORAGE_PATHS.cityIcon(CITY, 32),
+        ]);
+        expect(zipTexts(zipOf(world))['index.html']).toContain(`href="${DEFAULT_FAVICON_DATA_URL}"`);
+    });
+
+    it('happyPath_theCitysOwnTabIconIsInlinedInThePage', async () => {
+        const world = await queuedWorld();
+        const icon = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
+        world.blobs.put('public', STORAGE_PATHS.cityIcon(CITY, 32), icon);
+
+        await buildExport(world, TASK);
+
+        const page = zipTexts(zipOf(world))['index.html'] ?? '';
+        expect(page).toContain(`href="data:image/png;base64,${Buffer.from(icon).toString('base64')}"`);
+        expect(page).not.toContain(DEFAULT_FAVICON_DATA_URL);
     });
 });
 

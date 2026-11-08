@@ -34,8 +34,9 @@ import { onTaskDispatched } from 'firebase-functions/tasks';
 import { UpstreamError } from '../ports/errors.js';
 import type { Ports } from '../ports/index.js';
 import { assembleManifest, type CityContent, type SkippedDocument } from './assemble.js';
+import { ensureCityIcon } from './icon.js';
 
-export type BuildDeps = Pick<Ports, 'log' | 'clock' | 'config' | 'documents' | 'blobs' | 'tasks'>;
+export type BuildDeps = Pick<Ports, 'log' | 'clock' | 'config' | 'documents' | 'blobs' | 'tasks' | 'images'>;
 
 /** At most this many skipped documents are listed on `manifests/{city}` (the schema's limit). */
 const MAX_LISTED_SKIPS = 100;
@@ -221,10 +222,13 @@ async function finishBuild(deps: BuildDeps, cityId: string, startedFrom: number,
 /**
  * `publish.buildManifest` (`docs/research/M2-interfaces.md` §3.5): one serialized build of the city's manifest from
  * every published document (M2 builds in full; the incremental build waits for a city past 500 documents). A request
- * that arrived while it ran queues the next build (its own task normally does; this catches a lost one).
+ * that arrived while it ran queues the next build (its own task normally does; this catches a lost one). The city's
+ * default tab icon is kept first (`./icon.ts`).
  */
 export async function buildManifest(deps: BuildDeps, task: BuildManifestTask): Promise<BuildOutcome> {
     const startedFrom = await startBuild(deps, task);
+    // The city's default tab icon, before the manifest (its failure is logged, never the build's).
+    await ensureCityIcon(deps, task.cityId);
     const result = await buildFrom(deps, task.cityId).catch((error: unknown) => failed(deps, task.cityId, error));
     const requestedVersion = await finishBuild(deps, task.cityId, startedFrom, result);
     if (result.kind === 'failed' && result.retry !== undefined) {

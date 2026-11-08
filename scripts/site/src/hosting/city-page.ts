@@ -42,6 +42,40 @@ export function configureCityPage(scope: CityConfigScope, before: string, after:
     scope.HistoricCityMapConfig = { cityId, manifestUrl: `${before}${cityId}${after}` };
 }
 
+/** What the icon script uses of the page's `window`: its configuration, its document and `Image`. */
+export interface CityIconScope {
+    readonly HistoricCityMapConfig?: unknown;
+    readonly document: {
+        querySelector(selector: string): { href: string } | null;
+        createElement(tag: 'link'): { rel: string; href: string };
+        readonly head: { append(node: { rel: string; href: string }): void };
+    };
+    readonly Image: new () => { onload: (() => void) | null; src: string };
+}
+
+/**
+ * The city's own tab icon (`docs/ENGINE_API.md` → *The page's tab icon*): once its 32 px icon has loaded from the public
+ * bucket (`before + id + /icon-32.png`, the files `cities.setIcon` writes), the tab shows it and a phone's home screen
+ * gets the 180 px one; a city without an icon keeps the page's default. Self-contained, like `configureCityPage`, after
+ * which it runs; it builds elements, never HTML.
+ */
+export function showCityIcon(scope: CityIconScope, before: string): void {
+    const config = scope.HistoricCityMapConfig as { readonly cityId?: unknown } | undefined;
+    const folder = `${before}${typeof config?.cityId === 'string' ? config.cityId : ''}/`;
+    const probe = new scope.Image();
+    probe.onload = () => {
+        const link = scope.document.querySelector('link[rel="icon"]');
+        if (link !== null) {
+            link.href = `${folder}icon-32.png`;
+        }
+        const touch = scope.document.createElement('link');
+        touch.rel = 'apple-touch-icon';
+        touch.href = `${folder}icon-180.png`;
+        scope.document.head.append(touch);
+    };
+    probe.src = `${folder}icon-32.png`;
+}
+
 /** The page's spec: generic, since it serves every city made in the admin (each manifest names its city). */
 function cityPageSpec(themeColor: string): SiteSpec {
     return {
@@ -87,6 +121,7 @@ function configSource(bucket: string): string {
         '// from scripts/site/src/hosting/city-page.ts.',
         "'use strict';",
         `(${configureCityPage.toString()})(window, ${args});`,
+        `(${showCityIcon.toString()})(window, ${JSON.stringify(before)});`,
         '',
     ].join('\n');
 }

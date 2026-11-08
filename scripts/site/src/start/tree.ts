@@ -20,6 +20,7 @@ import type { SiteFileSystem } from '../files.js';
 import { ADMIN_REDIRECT_FILE, ADMIN_REDIRECT_SOURCE } from '../hosting/admin-redirect.js';
 import { FIRST_CITY_FILE, renderFirstCityPage, renderStartUpPage } from '../hosting/static-pages.js';
 import { element, renderDocument } from '../html.js';
+import { iconLinks } from '../icons.js';
 
 /**
  * The start site (`docs/research/M14-start-your-map.md` §5, §6; `npm run build:start`), into `outDir` below `dist/`:
@@ -160,7 +161,7 @@ export function renderStartPage(): string {
         element('meta', { name: 'description', content: 'Pornește-ți propria hartă istorică. Start your own historical map.' }),
         element('meta', { name: 'color-scheme', content: 'light dark' }),
         element('title', {}, ['Pornește-ți harta / Start your map']),
-        element('link', { rel: 'icon', href: 'data:,' }),
+        ...iconLinks(),
         element('script', { type: 'module', src: './start.mjs' }),
     ]);
     const noscript = element('noscript', {}, [

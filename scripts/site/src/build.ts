@@ -9,6 +9,7 @@ import { prepareManifest, type PreparedManifest } from './manifest.js';
 import { bucketOrigins, manifestOrigins } from './origins.js';
 import { isOutputDir } from './output-dir.js';
 import { ADMIN_REDIRECT_FILE, ADMIN_REDIRECT_SOURCE } from './hosting/admin-redirect.js';
+import { bucketIcons, DEFAULT_PAGE_ICONS, type PageIcons } from './icons.js';
 import { ENGINE_FOLDER, ENGINE_MODULE_FILE, ENGINE_STYLESHEET_FILE, RELATIVE_ASSETS, renderSitePage, type PageAssets } from './page.js';
 import { publicManifest } from './public-manifest.js';
 import { parseSiteSpec, type SiteSpec } from './site-spec.js';
@@ -195,6 +196,8 @@ interface PageParts {
     readonly spec: SiteSpec;
     readonly csp: string;
     readonly configSource: string;
+    /** The city's icon in the public bucket for a page that reads it, else the inlined default (`icons.ts`). */
+    readonly icons: PageIcons;
 }
 
 /** The root of the Hosting site's first script and its file (M6, §2.7); nothing for any other site. */
@@ -212,7 +215,13 @@ function redirectPlan(options: SiteBuildOptions): { readonly assets: PageAssets;
 function pageFiles(options: SiteBuildOptions, parts: PageParts, files: SiteFileSystem): PlannedFile[] {
     const integrityOf = integrity(files, options.mapboxGlDir ?? DEFAULT_MAPBOX_GL_DIR);
     const redirect = redirectPlan(options);
-    const page = renderSitePage({ spec: parts.spec, csp: parts.csp, mapboxGlIntegrity: integrityOf, assets: redirect.assets });
+    const page = renderSitePage({
+        spec: parts.spec,
+        csp: parts.csp,
+        mapboxGlIntegrity: integrityOf,
+        assets: redirect.assets,
+        icons: parts.icons,
+    });
     return [
         { to: 'index.html', content: page },
         { to: 'config.js', content: parts.configSource },
@@ -240,8 +249,9 @@ function manifestPlan(options: SiteBuildOptions, inputs: SiteInputs, source: Sou
     const served = servedConfig(options, spec, { source: inputs.configSource, config }, files);
     const bundled = served.config === config;
     const csp = contentSecurityPolicy(withConnect(manifestOrigins(manifest, served.config), served.connect));
+    const icons = bundled || options.publicBucket === undefined ? DEFAULT_PAGE_ICONS : bucketIcons(options.publicBucket, manifest.city.id);
     const planned = [
-        ...pageFiles(options, { spec, csp, configSource: served.source }, files),
+        ...pageFiles(options, { spec, csp, configSource: served.source, icons }, files),
         ...dataFiles(bundled, prepared, source, files),
         ...engineFiles(files, options.engineDir ?? DEFAULT_ENGINE_DIR),
     ];
@@ -262,7 +272,16 @@ function bucketPlan(options: SiteBuildOptions, inputs: SiteInputs, files: SiteFi
     const remote = publicManifest(options.publicBucket, inputs.config, options.siteDir, files);
     const csp = contentSecurityPolicy(bucketOrigins(remote.config, remote.connect));
     const planned = [
-        ...pageFiles(options, { spec: inputs.spec, csp, configSource: remote.configSource }, files),
+        ...pageFiles(
+            options,
+            {
+                spec: inputs.spec,
+                csp,
+                configSource: remote.configSource,
+                icons: bucketIcons(options.publicBucket, remote.config.cityId ?? ''),
+            },
+            files,
+        ),
         ...engineFiles(files, options.engineDir ?? DEFAULT_ENGINE_DIR),
     ];
     return { files: planned, cityId: remote.config.cityId ?? '', photos: 0 };

@@ -1,4 +1,5 @@
 import { element, renderDocument, type HtmlElement, type HtmlNode } from '../html.js';
+import { iconLinks } from '../icons.js';
 import { ADMIN_PATH, ADMIN_REDIRECT_FILE } from './admin-redirect.js';
 
 /**
@@ -62,7 +63,7 @@ function head(page: StaticPage): HtmlElement {
         element('meta', { name: 'color-scheme', content: 'light dark' }),
         element('meta', { name: 'theme-color', content: THEME_COLOR }),
         element('title', {}, [page.title]),
-        element('link', { rel: 'icon', href: 'data:,' }),
+        ...iconLinks(),
         ...(page.script === undefined ? [] : [element('script', { src: page.script })]),
         element('link', { rel: 'stylesheet', href: page.stylesheet }),
     ]);

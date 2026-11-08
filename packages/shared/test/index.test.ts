@@ -583,6 +583,17 @@ const EXPORTS = {
     m8: M8_EXPORTS,
     m9: M9_EXPORTS,
     migration: MIGRATION_EXPORTS,
+    /** The browser tab icon (docs/research/M2-interfaces.md → The city's tab icon): the default, its limits, the callable. */
+    tabIcon: [
+        'CITY_ICON_LIMITS',
+        'CITY_ICON_SIZES',
+        'DEFAULT_FAVICON_DATA_URL',
+        'DEFAULT_ICON_COLOR',
+        'MAP_GLYPH_PATH',
+        'cityIconRequestSchema',
+        'cityIconResponseSchema',
+        'mapIconSvg',
+    ],
 };
 
 describe('@hcm/shared public API', () => {

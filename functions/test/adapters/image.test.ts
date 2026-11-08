@@ -3,13 +3,13 @@
  * inspection (a 240-megapixel header is measured, not decoded), HEIC reported but not decoded, and WebP derivatives
  * that are oriented, resized without enlargement and carry no metadata.
  */
-import { PHOTO_LIMITS } from '@hcm/shared';
+import { PHOTO_LIMITS, mapIconSvg } from '@hcm/shared';
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 
 import { createSharpImageProcessor, sniffPhotoType } from '../../src/adapters/image.js';
 import { UpstreamError } from '../../src/ports/errors.js';
-import { PDF, SVG, encoded, isoMedia, jpeg, pngHeaderOnly, rotatedJpeg, truncatedJpeg } from '../photos/images.js';
+import { PDF, SVG, animatedWebp, encoded, isoMedia, jpeg, pngHeaderOnly, rotatedJpeg, truncatedJpeg } from '../photos/images.js';
 
 const images = createSharpImageProcessor();
 
@@ -104,5 +104,43 @@ describe('webp', () => {
         ['a truncated header', truncatedJpeg],
     ])('badPath_%s_isInvalid', async (_name, make) => {
         await expect(images.webp(await make(), { longEdge: 400, quality: 72 })).rejects.toMatchObject({ failure: 'invalid' });
+    });
+});
+
+describe('iconPng', () => {
+    it('happyPath_anUploadIsFittedInsideEachSquareNeverCropped', async () => {
+        const source = { upload: await encoded('webp', 300, 240) };
+        const pngs = await Promise.all([32, 180].map((size) => images.iconPng(source, size)));
+        const [small, large] = await Promise.all(pngs.map((png) => sharp(png).metadata()));
+
+        expect([small?.format, small?.width, small?.height, small?.hasAlpha]).toEqual(['png', 32, 32, true]);
+        expect([large?.width, large?.height]).toEqual([180, 180]);
+        expect(large?.exif).toBeUndefined();
+        // The top row is padding (the image is wider than tall): transparent.
+        const { data } = await sharp(pngs[1]).raw().toBuffer({ resolveWithObject: true });
+        expect(data[3]).toBe(0);
+    });
+
+    it('happyPath_ourOwnSvgIsDrawn', async () => {
+        const png = await images.iconPng({ ownSvg: mapIconSvg('#336699') }, 512);
+        const { data, info } = await sharp(png).raw().toBuffer({ resolveWithObject: true });
+        const centreLeft = (256 * info.width + 64) * info.channels;
+
+        expect([info.width, info.height]).toEqual([512, 512]);
+        expect(Array.from(data.subarray(centreLeft, centreLeft + 3))).toEqual([0x33, 0x66, 0x99]);
+    });
+
+    it('badPath_unreadableBytesAreInvalid', async () => {
+        await expect(images.iconPng({ upload: pngHeaderOnly(64, 64) }, 32)).rejects.toMatchObject({ failure: 'invalid' });
+    });
+});
+
+describe('inspect: frames', () => {
+    it('happyPath_anAnimatedWebpCountsItsFrames', async () => {
+        await expect(images.inspect(await animatedWebp(200))).resolves.toMatchObject({ contentType: 'image/webp', frames: 2 });
+    });
+
+    it('happyPath_aStillImageHasNoFrameCount', async () => {
+        await expect(images.inspect(await encoded('png'))).resolves.not.toHaveProperty('frames');
     });
 });

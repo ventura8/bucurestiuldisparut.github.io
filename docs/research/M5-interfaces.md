@@ -583,6 +583,11 @@ one-time code.
 Layout constants and helpers (done): `EXPORT_LAYOUT`, `exportPhotoPath`, `exportRasterPath`, `exportFileName`,
 `rasterExportable`, `restrictedPhotoIds`.
 
+The tab icon (2026-11-08; `M2-interfaces.md` → *The city's tab icon*): `index.html` carries the city's own 32 px icon
+inlined as a `data:` address (`fillKitPage`'s optional `icon`, read from the public bucket's `cities/<city>/icon-32.png`),
+or keeps the kit's default (the Layers panel's map glyph) when the city has none; the zip gains no file. The kit's
+template inlines the default the same way, so `create-historic-city`, the release's pins and the export copy no image.
+
 ### 5.2 Rights
 
 - USGS frames are in the public domain: their scans may travel. An uploaded GeoTIFF or a linked tileset says nothing of

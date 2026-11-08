@@ -28,6 +28,7 @@ import { Store } from '../state/store.js';
 import { viewFields } from './area.js';
 import { canAdd, categoryItemOf, inOrder, type CategoryItem } from './categories.js';
 import { CategoryArea } from './category-area.js';
+import { IconSection, NO_ICON_SECTION, type IconSectionState } from './icon.js';
 import { CITY_SECTIONS, CitySections, NO_CITY_SECTION, type CitySection } from './city-sections.js';
 import { NO_OVERLAY_DEFAULTS, OverlayDefaults } from './overlay-defaults.js';
 import { photosOpacityOf } from './overlays.js';
@@ -54,6 +55,7 @@ const INITIAL: SettingsState = {
     map: NO_SETTINGS_MAP,
     export: NO_EXPORT_SECTION,
     budget: NO_BUDGET_SECTION,
+    icon: NO_ICON_SECTION,
 };
 
 function isCitySection(section: SettingsRoute['section']): section is CitySection {
@@ -81,6 +83,11 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
     };
     readonly #budgetChanged = (budget: BudgetSectionState): void => {
         this.#cell.update({ budget });
+    };
+    /** The tab icon's card: an upload or a reset on its way, and a refusal. */
+    readonly #icon: IconSection;
+    readonly #iconChanged = (icon: IconSectionState): void => {
+        this.#cell.update({ icon });
     };
     #open = false;
     readonly intents: SettingsIntents;
@@ -128,9 +135,11 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
         this.#categoryArea = this.#newCategoryArea(services);
         this.#export = new ExportSection(services, this.#exportChanged);
         this.#budget = new BudgetSection(services, this.#budgetChanged);
+        this.#icon = new IconSection(services, this.#iconChanged);
         this.intents = {
             ...this.#export.intents,
             ...this.#budget.intents,
+            ...this.#icon.intents,
             ...this.#cityIntents(),
             ...this.#creditIntents(),
             ...this.#categoryArea.intents,
@@ -320,6 +329,9 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
     #route(route: SettingsRoute): void {
         this.#routeExport(route.section === 'export');
         this.#routeBudget(route.section === 'budget');
+        if (route.section !== 'icon') {
+            this.#icon.close();
+        }
         this.#cell.update({ section: route.section });
         this.#sections.open(isCitySection(route.section) ? route.section : null);
         if (route.section !== 'overlays') {

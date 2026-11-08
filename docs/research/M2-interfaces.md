@@ -610,3 +610,31 @@ answered by `M3-interfaces.md` §2.3 (who writes which field in which status) an
 publisher) becomes the `MapboxTilesets` port of `functions/src/ports/mapbox-tilesets.ts` (CR-M3-4: fn-setup's
 `MapboxTilesetsApi` moves into its adapter). The `CloudRunJobs` port gained `get` and run options; `Deps` leaves out the
 five M3 ports until fn-imagery wires them.
+
+## The city's tab icon (2026-11-08)
+
+The owner (2026-11-08): the Layers panel's map icon is the default browser tab icon of the app, and the admin can change
+it. Behaviours V52 (the public page) and A101 (Settings → Browser tab icon); the page's side is
+[ENGINE_API.md](../ENGINE_API.md) → *The page's tab icon*; the choices are `DECISIONS-for-review.md` §123.
+
+- **`cities.setIcon`** (`cityEditor`, `fn-cities`, App Check enforced; `functions/src/cities/set-icon.ts`; schemas
+  `packages/shared/src/api/city-icon.ts`): `{kind: 'upload', cityId, image}` (standard base64 of the file, at
+  most `CITY_ICON_LIMITS.maxBase64Chars`) or `{kind: 'reset', cityId}` → `{source, url, sha256}`. The bytes are checked before
+  anything is written: their type from the magic numbers (`ImageProcessor.inspect`; PNG or WebP only, so an SVG, a
+  JPEG, a PDF or a renamed file is `apiError.cityIcon.badType`), at most 1 MB (`tooBig {max}`), both sides at least 192 px
+  (`tooSmall {min}`) and at most 4096 px (`tooLarge {max}`), sides within 1.25 of each other (`notSquare`), one frame
+  (`animated`), readable (`invalid`). A `reset` draws the default: `mapIconSvg(theme.seedColor)` of `@hcm/shared`, our own
+  SVG text, never a user's. A missing city is `apiError.notFound`.
+- **The files**: `ImageProcessor.iconPng(source, size)` fits the source inside a square (transparent padding, never
+  cropped, no metadata, `limitInputPixels`), and `STORAGE_PATHS.cityIcon(city, size)` (`cities/<city>/icon-<size>.png`,
+  sizes `CITY_ICON_SIZES`: 32, 180, 512) in the **public** bucket, `Cache-Control: public, max-age=300`, overwritten in
+  place: the pages link these fixed names (`functions/src/api/city-icon.ts`).
+- **The record**: `cities/{city}.icon` (`cityDocSchema`): `source` (`default` | `custom`), the default's `seedColor`,
+  `url` (the 180 px file, the admin's preview), `sha256` (the source's: the upload's bytes or the default's SVG), its own stamp. Server-owned: it is not in
+  `CLIENT_WRITES.city.update`, so the rules refuse it to every client (S-A101-BAD-CLIENT-WRITE); not in
+  `MANIFEST_FIELDS`, so writing it requests no build; an icon-only write is not listed in the city's history
+  (`UNLISTED_FIELDS` of `functions/src/history/record.ts`), and a revert keeps the current icon (server-owned).
+- **The default, kept by the build**: `publish.buildManifest` first runs `ensureCityIcon` (`functions/src/publish/icon.ts`):
+  a city without an icon, or whose default wears an old seed colour, gets the default drawn; an upload is left alone (and
+  an upload made while the default was drawn wins). A failure is logged and never fails the manifest. A new city's first
+  write requests a build, so every city has its icon before visitors can see it.

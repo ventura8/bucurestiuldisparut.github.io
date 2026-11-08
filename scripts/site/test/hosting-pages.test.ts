@@ -7,13 +7,20 @@
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 
-import { CITY_ID_PATTERN } from '@hcm/shared';
+import { CITY_ID_PATTERN, DEFAULT_FAVICON_DATA_URL } from '@hcm/shared';
 import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { nodeFileSystem } from '../src/files.js';
 import { ADMIN_PATH, ADMIN_REDIRECT_SOURCE, forwardOldAdminAddress, type RedirectScope } from '../src/hosting/admin-redirect.js';
-import { CITY_PATH_REGEX, configureCityPage, planCityPage, type CityConfigScope } from '../src/hosting/city-page.js';
+import {
+    CITY_PATH_REGEX,
+    configureCityPage,
+    planCityPage,
+    showCityIcon,
+    type CityConfigScope,
+    type CityIconScope,
+} from '../src/hosting/city-page.js';
 import {
     PAGES_REDIRECT_FILE,
     PAGES_REDIRECT_SOURCE,
@@ -178,6 +185,64 @@ describe('the generic city page', () => {
         expect(scope.HistoricCityMapConfig).toEqual({ cityId, manifestUrl: `${before}${cityId}/manifest.json` });
     });
 
+    /** A page whose icon probe loads (the city has an icon) or never does (none: a 404). */
+    function iconPage(
+        loads: boolean,
+    ): CityIconScope & { readonly icon: { href: string }; readonly appended: { rel: string; href: string }[] } {
+        const icon = { href: 'data:image/png;base64,default' };
+        const appended: { rel: string; href: string }[] = [];
+        class Probe {
+            onload: (() => void) | null = null;
+            set src(_value: string) {
+                if (loads) {
+                    this.onload?.();
+                }
+            }
+        }
+        return {
+            icon,
+            appended,
+            HistoricCityMapConfig: { cityId: 'bacau', manifestUrl: `${before}bacau/manifest.json` },
+            Image: Probe,
+            document: {
+                querySelector: (selector) => (selector === 'link[rel="icon"]' ? icon : null),
+                createElement: () => ({ rel: '', href: '' }),
+                head: {
+                    append: (node) => {
+                        appended.push(node);
+                    },
+                },
+            },
+        };
+    }
+
+    it('happyPath_theCitysOwnIconReplacesTheDefaultOnceItLoads @S-V52-HAPPY', () => {
+        const page = iconPage(true);
+
+        showCityIcon(page, before);
+
+        expect(page.icon.href).toBe(`${before}bacau/icon-32.png`);
+        expect(page.appended).toEqual([{ rel: 'apple-touch-icon', href: `${before}bacau/icon-180.png` }]);
+    });
+
+    it('badPath_aCityWithoutAnIconKeepsTheDefault @S-V52-BAD-MISSING', () => {
+        const page = iconPage(false);
+
+        showCityIcon(page, before);
+
+        expect(page.icon.href).toBe('data:image/png;base64,default');
+        expect(page.appended).toEqual([]);
+    });
+
+    it('badPath_aPageWithoutAnIconLinkOrConfigurationStillGetsTheHomeScreenIcon', () => {
+        const page = { ...iconPage(true), HistoricCityMapConfig: undefined };
+        const bare = { ...page, document: { ...page.document, querySelector: () => null } };
+
+        showCityIcon(bare, before);
+
+        expect(page.appended).toEqual([{ rel: 'apple-touch-icon', href: `${before}/icon-180.png` }]);
+    });
+
     it('happyPath_itChecksTheSharedCityIdPatternAndHostingRewritesExactlyThoseIds', () => {
         expect(configureCityPage.toString()).toContain(CITY_ID_PATTERN.source);
         expect(CITY_PATH_REGEX).toBe(`^/${CITY_ID_PATTERN.source.slice(1, -1)}/?$`);
@@ -202,6 +267,8 @@ describe('the generic city page', () => {
         expect(planned.page.content).toContain('<title>Hartă istorică</title>');
         expect(planned.config.to).toBe('city/config.js');
         expect(planned.config.content).toContain(`(window, "${before}", "/manifest.json", "city");`);
+        expect(planned.config.content).toContain(`(window, "${before}");`);
+        expect(planned.page.content).toContain(`<link rel="icon" type="image/png" sizes="32x32" href="${DEFAULT_FAVICON_DATA_URL}">`);
     });
 
     it('badPath_aBucketNameThatIsNoBucketsFailsTheBuild', () => {

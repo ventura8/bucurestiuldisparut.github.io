@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { parseManifestJson } from '@hcm/shared';
+import { DEFAULT_FAVICON_DATA_URL, parseManifestJson } from '@hcm/shared';
 
 import { buildSite, type SiteBuildOptions } from '../src/build.js';
 import { readConfigJs } from '../src/config-js.js';
@@ -278,6 +278,10 @@ describe('buildSite (the manifest the admin publishes, DECISIONS-for-review.md Â
             /connect-src [^;]*https:\/\/storage\.googleapis\.com[^;]*https:\/\/us-central1-bucurestiul-disparut\.cloudfunctions\.net/,
         );
         expect(html).toMatch(/img-src [^;]*https:\/\/storage\.googleapis\.com/);
+        // The tab icon is the city's own in the bucket (S-V52-HAPPY): an icon an editor uploads shows without a deploy.
+        const icons = `https://storage.googleapis.com/${BUCKET}/cities/bucharest/`;
+        expect(html).toContain(`<link rel="icon" type="image/png" sizes="32x32" href="${icons}icon-32.png">`);
+        expect(html).toContain(`<link rel="apple-touch-icon" href="${icons}icon-180.png">`);
     });
 
     it('badPath_withoutABucketOrWithoutTheSitesConsentTheSnapshotIsBundled', () => {
@@ -290,6 +294,10 @@ describe('buildSite (the manifest the admin publishes, DECISIONS-for-review.md Â
         for (const { files } of [plain, optedIn]) {
             expect(readConfigJs(files.readText('dist/site/starter-kit/config.js')).manifestUrl).toBe('./data/manifest.json');
             expect(files.isFile('dist/site/starter-kit/data/manifest.json')).toBe(true);
+            // Without the bucket the page inlines the default tab icon: the Layers panel's map glyph.
+            const html = files.readText('dist/site/starter-kit/index.html');
+            expect(html).toContain(`<link rel="icon" type="image/png" sizes="32x32" href="${DEFAULT_FAVICON_DATA_URL}">`);
+            expect(html).not.toContain('apple-touch-icon');
         }
     });
 

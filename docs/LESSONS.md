@@ -2929,3 +2929,21 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: each track measured its own IIFE against the main branch it started from; tilespeed's range addresses (about 107 bytes) were measured on f2f917b, before locate and onedot spent the room zod's messages had freed.
     - Found by: the `build` stage on the NUC after the four merges. Fix: trims with no behaviour change (DECISIONS-for-review.md §122): the range request carries its own `Range` header, the signed-address test is `address.includes('Signature=')`, the camera passes an offset-free view as is, and the dot's filter reuses `geometryIs` from `pois.ts`; 124,971 bytes.
     - **A track near a budget measures again on the branch it merges into; the integrator measures after every merge, not only after the last.**
+
+493. **A new server-owned field the complete rules fixture lacks makes its "never removed" row pass for nothing.**
+    - Seen: 2026-11-08, track/favicon: `client-writes.test.ts` found that a client could "remove" `cities/{city}.icon`, the tab icon's record; removing a field the seeded city did not have changes nothing, so the rule allowed it.
+    - Cause: the field was added to `cityDocSchema` and the server, but not to `firebase/rules-tests/test/support/documents.ts`'s complete city, which every server-owned row seeds.
+    - Found by: the `tests` stage (`documents.test.ts` compares the fixture's keys with the schema's, `client-writes.test.ts` the removal). Fix: the fixture carries `icon`; the rule was right all along.
+    - **A field added to a document schema joins the rules' complete fixture in the same change, server-owned or not.**
+
+494. **A request limit equal to the size limit's base64 hides the size message behind "invalid request".**
+    - Seen: 2026-11-08, track/favicon: a 1,000,003-byte PNG sent to `cities.setIcon` came back `apiError.invalidRequest`, not `apiError.cityIcon.tooBig`, because its base64 was longer than the schema's `maxBase64Chars`.
+    - Cause: the schema's cap (base64 of exactly 1 MB) refuses everything above it before the handler measures the bytes.
+    - Found by: `functions/test/cities/set-icon.test.ts`. Fix: the admin checks the size in the browser first (`browserProblem`), so an editor always reads the size message; the server's cap stays as the request's own limit.
+    - **When a schema caps a payload that the handler also measures, the client says the plain reason before sending.**
+
+495. **A card added to an area chunk at its budget pushes the chunk over it.**
+    - Seen: 2026-11-08, track/favicon: Settings → Browser tab icon took the `settings` chunk to 20.6 KB of its 20 KB.
+    - Cause: the settings chunk had about 0.5 KB left, and a card's view, its CSS and its file checks weigh more.
+    - Found by: the `build` stage's `bundle-budget` on the NUC. Fix: the card is a chunk of its own fetched when its section first opens (`lazy-icon.ts`), the file checks went with it, its CSS went (the page's own classes do), and the new chunk got its row (DECISIONS-for-review.md §123l); no budget raised.
+    - **A new Settings card starts as a lazy chunk when the settings chunk is within 1 KB of its budget; measure before the review, not after.**

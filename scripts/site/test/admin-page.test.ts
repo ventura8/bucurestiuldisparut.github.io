@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { DEFAULT_FAVICON_DATA_URL } from '@hcm/shared';
+
 import {
     ADMIN_PAGE,
     ADMIN_SCRIPT_FILE,
@@ -29,7 +31,7 @@ describe('renderAdminPage', () => {
         const html = renderAdminPage();
 
         expect([...html.matchAll(/<(?:script|link) [^>]*>/g)].map(([tag]) => tag)).toEqual([
-            '<link rel="icon" href="data:,">',
+            `<link rel="icon" type="image/png" sizes="32x32" href="${DEFAULT_FAVICON_DATA_URL}">`,
             `<link rel="stylesheet" href="${ADMIN_STYLESHEET_FILE}">`,
             `<script type="module" src="${ADMIN_SCRIPT_FILE}">`,
         ]);

@@ -1,3 +1,4 @@
+import { DEFAULT_FAVICON_DATA_URL } from '@hcm/shared';
 import type { BrowserContext, Page, Route } from '@playwright/test';
 
 import { ADMIN_ORIGIN } from '../admin/world.js';
@@ -47,9 +48,13 @@ async function publishedManifest(route: Route, source: BucketCity): Promise<void
     });
 }
 
+/** The tab icon the build draws for every published city (the default), as a PNG's bytes. */
+const CITY_ICON_PNG = Buffer.from(DEFAULT_FAVICON_DATA_URL.slice(DEFAULT_FAVICON_DATA_URL.indexOf(',') + 1), 'base64');
+
 /**
  * Answers the public bucket's folder of `source.city` as the admin's publish leaves it: the manifest and, relative to it,
- * the photos. Returns the addresses asked, in order.
+ * the photos, and the city's tab icon (behaviour V52: the generic city page fetches it to show it). Returns the addresses
+ * asked, in order, the icon's left out.
  */
 export async function serveBucketCity(page: Page, source: BucketCity): Promise<string[]> {
     const folder = bucketFolder(source.city);
@@ -63,6 +68,7 @@ export async function serveBucketCity(page: Page, source: BucketCity): Promise<s
         }
         await route.fulfill({ response: await route.fetch({ url: `${SITE_ORIGIN}/${source.site}/data/${url.slice(folder.length)}` }) });
     });
+    await page.route(`${folder}icon-*.png`, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: CITY_ICON_PNG }));
     return asked;
 }
 

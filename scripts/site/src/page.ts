@@ -1,4 +1,5 @@
 import { element, renderDocument, type HtmlElement } from './html.js';
+import { iconLinks, type PageIcons } from './icons.js';
 import type { SiteSpec } from './site-spec.js';
 
 /**
@@ -59,6 +60,8 @@ export interface PageInputs {
     readonly mapboxGlIntegrity: { readonly script: string; readonly stylesheet: string };
     /** Where the page's files are; `RELATIVE_ASSETS` by default. */
     readonly assets?: PageAssets;
+    /** The tab icon: the city's in the public bucket, or the inlined default (`icons.ts`). */
+    readonly icons?: PageIcons;
 }
 
 function crossOrigin(integrity: string): Readonly<Record<string, string>> {
@@ -84,7 +87,7 @@ function head(inputs: PageInputs): HtmlElement {
         element('meta', { name: 'color-scheme', content: 'light dark' }),
         element('meta', { name: 'theme-color', content: spec.themeColor }),
         element('title', {}, [spec.title]),
-        element('link', { rel: 'icon', href: 'data:,' }),
+        ...iconLinks(inputs.icons),
         ...redirectScript(assets),
         element('link', { rel: 'stylesheet', href: MAPBOX_GL_STYLESHEET, ...crossOrigin(mapboxGlIntegrity.stylesheet) }),
         element('link', { rel: 'stylesheet', href: `${assets.engineFolder}${ENGINE_STYLESHEET_FILE}` }),

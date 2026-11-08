@@ -252,4 +252,38 @@ describe('history.onCityWrite', () => {
             [CITY, 'city', 'create'],
         ]);
     });
+
+    it('happyPath_aWriteOfTheTabIconAloneIsNotListed', async () => {
+        const world = emulators.newWorld();
+        const path = FIRESTORE_PATHS.city(CITY);
+        const city = { name: { ro: 'Oraș' }, published: false, updatedBy: 'u-editor', updatedAt: T1 };
+        await world.db.doc(path).set(city);
+        const before = await world.db.doc(path).get();
+        const icon = {
+            source: 'custom',
+            url: 'https://storage.googleapis.com/demo-hcm-public/cities/x/icon-180.png',
+            sha256: 'a'.repeat(64),
+        };
+        await world.db.doc(path).set({ ...city, icon: { ...icon, updatedBy: 'u-editor', updatedAt: T2 } });
+        const after = await world.db.doc(path).get();
+
+        await expect(
+            historyTrigger('history.onCityWrite', () => world).run({ ...writeEvent(path, before, after), params: { city: CITY } }),
+        ).resolves.toBe('skipped');
+    });
+
+    it('badPath_anIconWrittenWithAnotherFieldIsStillListed', async () => {
+        const world = emulators.newWorld();
+        const path = FIRESTORE_PATHS.city(CITY);
+        await world.db.doc(path).set({ name: { ro: 'Oraș' }, published: false, updatedBy: 'u-editor', updatedAt: T1 });
+        const before = await world.db.doc(path).get();
+        await world.db
+            .doc(path)
+            .set({ name: { ro: 'Alt oraș' }, icon: { source: 'default' }, published: false, updatedBy: 'u-editor', updatedAt: T2 });
+        const after = await world.db.doc(path).get();
+
+        await expect(
+            historyTrigger('history.onCityWrite', () => world).run({ ...writeEvent(path, before, after), params: { city: CITY } }),
+        ).resolves.toBe('recorded');
+    });
 });

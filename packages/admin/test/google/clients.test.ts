@@ -207,8 +207,9 @@ describe('the deployment', () => {
         // 67 of 2026-11-02: `worker.pair` (the worker's) and `worker.pairCode`, `worker.revoke` (the admin's); finding 72:
         // `worker.image` (the starter file's supervisor's); finding 73: `worker.starter` (the starter file, HTTPS); `imagery.locateAgain`.
         // M12: `imagery.previewUrl` (a signed hour of a version's private archive). M13: the roles' and review's 7.
-        // M16: `imagery.recalibrate`. M17: the stories' `history.onStoryWrite` and `publish.onStoryWrite`.
-        expect(expected).toHaveLength(93);
+        // M16: `imagery.recalibrate`. M17: the stories' `history.onStoryWrite` and `publish.onStoryWrite`. The tab icon's
+        // `cities.setIcon`.
+        expect(expected).toHaveLength(94);
         expect(expected).toEqual(
             expect.arrayContaining([
                 'worker-hello',
@@ -222,7 +223,7 @@ describe('the deployment', () => {
                 'worker-starter',
             ]),
         );
-        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 93, total: 93, failed: [] });
+        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 94, total: 94, failed: [] });
     });
 
     it('badPath_someMissingIsPendingAndOneFailedIsInvalid', () => {

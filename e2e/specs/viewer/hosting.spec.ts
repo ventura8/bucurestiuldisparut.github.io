@@ -1,3 +1,4 @@
+import { DEFAULT_FAVICON_DATA_URL } from '@hcm/shared';
 import type { Page, Request } from '@playwright/test';
 
 import { ADMIN_ORIGIN, ADMIN_URL, PAGES_REDIRECT_FOLDER } from '../../admin/world.js';
@@ -68,6 +69,41 @@ test(
     },
 );
 
+/** The page's tab icon and home-screen icon addresses (null when the page has none). */
+async function iconLinks(page: Page): Promise<{ readonly icon: string | null; readonly touch: string | null }> {
+    return page.evaluate(() => ({
+        icon: document.querySelector('link[rel="icon"]')?.getAttribute('href') ?? null,
+        touch: document.querySelector('link[rel="apple-touch-icon"]')?.getAttribute('href') ?? null,
+    }));
+}
+
+test(
+    "Every city's tab shows its own icon from the public bucket: the root's links, the generic page's once it loads",
+    { tag: '@S-V52-HAPPY' },
+    async ({ page, lang }) => {
+        await serveBucketCity(page, { city: E2E_CITY_ID, site: 'bucharest' });
+        await serveBucketCity(page, { city: ADMIN_MADE_CITY, site: SECOND_CITY });
+
+        await page.goto(hostingUrl('/', { lang }));
+        await waitForEngineEvent(page, 'hcm-ready');
+
+        expect(await iconLinks(page)).toEqual({
+            icon: `${bucketFolder(E2E_CITY_ID)}icon-32.png`,
+            touch: `${bucketFolder(E2E_CITY_ID)}icon-180.png`,
+        });
+
+        await page.goto(hostingUrl(`/${ADMIN_MADE_CITY}/`, { lang }));
+        await waitForEngineEvent(page, 'hcm-ready');
+
+        await expect
+            .poll(() => iconLinks(page))
+            .toEqual({
+                icon: `${bucketFolder(ADMIN_MADE_CITY)}icon-32.png`,
+                touch: `${bucketFolder(ADMIN_MADE_CITY)}icon-180.png`,
+            });
+    },
+);
+
 test(
     'A 2015-2022 link through the Pages redirect page opens the same view on Hosting',
     { tag: '@S-V30-HAPPY-OLD-PAGES-LINK' },
@@ -131,7 +167,7 @@ test('Before Publish the map the root says the map is being set up', { tag: '@S-
 
 test(
     'A city that is not published, or a path that is no city, is said plainly',
-    { tag: '@S-V30-BAD-UNKNOWN-CITY' },
+    { tag: ['@S-V30-BAD-UNKNOWN-CITY', '@S-V52-BAD-MISSING'] },
     async ({ page, lang, consoleErrors, instrumentation }) => {
         const asked = await bucketWithout(page, UNPUBLISHED_CITY);
 
@@ -139,8 +175,13 @@ test(
 
         await expect(page.getByRole('alert')).toContainText(t(lang, 'error.manifest.notFound'));
         expect((await instrumentation.read(page)).mapsCreated).toBe(0);
-        expect(asked).toEqual([`${bucketFolder(UNPUBLISHED_CITY)}manifest.json`]);
-        expect(consoleErrors.take()).toEqual([expect.stringContaining('404')]);
+        // The page also looked for the city's tab icon (V52): none, so the default stays.
+        expect([...asked].sort((a, b) => a.localeCompare(b))).toEqual([
+            `${bucketFolder(UNPUBLISHED_CITY)}icon-32.png`,
+            `${bucketFolder(UNPUBLISHED_CITY)}manifest.json`,
+        ]);
+        expect(await iconLinks(page)).toEqual({ icon: DEFAULT_FAVICON_DATA_URL, touch: null });
+        expect(consoleErrors.take()).toEqual([expect.stringContaining('404'), expect.stringContaining('404')]);
 
         const answer = await page.goto(hostingUrl('/Not_A_City/'));
 

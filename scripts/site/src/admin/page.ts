@@ -1,4 +1,5 @@
 import { element, renderDocument, type HtmlElement } from '../html.js';
+import { iconLinks } from '../icons.js';
 
 /**
  * The admin's `index.html` (docs/research/M2b-interfaces.md §4, admin-e2e), generated like the city pages instead of
@@ -60,7 +61,8 @@ function head(spec: AdminPageSpec): HtmlElement {
         element('meta', { name: 'color-scheme', content: 'light dark' }),
         element('meta', { name: 'theme-color', content: spec.themeColor }),
         element('title', {}, [spec.title]),
-        element('link', { rel: 'icon', href: 'data:,' }),
+        // The admin's own tab keeps the default: it serves many cities (docs/research/DECISIONS-for-review.md).
+        ...iconLinks(),
         element('link', { rel: 'stylesheet', href: ADMIN_STYLESHEET_FILE }),
         element('script', { type: 'module', src: ADMIN_SCRIPT_FILE }),
     ]);
