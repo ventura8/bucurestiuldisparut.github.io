@@ -57,6 +57,8 @@ const FIELDS = [
     'category',
     'geometry',
     'photoIds',
+    'body',
+    'poiIds',
     'icon',
     'color',
     'defaultOpacity',

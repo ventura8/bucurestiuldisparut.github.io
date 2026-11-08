@@ -904,6 +904,20 @@
             "name": "Start your own map from a browser",
             "milestone": "M14",
             "source": "the owner, 2026-11-07: a setup page for someone starting from scratch; docs/research/M14-start-your-map.md"
+        },
+        {
+            "id": "V50",
+            "area": "viewer",
+            "name": "Stories on the public map: the menu, a photo or place, their own link, read on a phone",
+            "milestone": "M17",
+            "source": "the owner's decision of 2026-11-08: stories; docs/research/M17-stories.md §5"
+        },
+        {
+            "id": "A100",
+            "area": "admin",
+            "name": "Stories in the admin: written, published, reviewed and reverted like photos and places",
+            "milestone": "M17",
+            "source": "the owner's decision of 2026-11-08: stories; docs/research/M17-stories.md §§1, 2, 4, 6"
         }
     ],
     "scenarios": [
@@ -14007,6 +14021,259 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Review of M18 item 3 (2026-11-08). Tests: functions/test/imagery/locate-again.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
+            "id": "S-V50-HAPPY-OPEN",
+            "behaviour": "V50",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A story from the menu reads with its figure, credit, places and photos",
+            "asserts": "the list, the story sheet with bold text, the figure of the city's photo and its caption, the credit, story= in the address, the figure opening the photo",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/stories.spec.ts."
+        },
+        {
+            "id": "S-V50-HAPPY-LINK",
+            "behaviour": "V50",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A story opens from its own link and from the photo it is about",
+            "asserts": "#story=<id> opens the sheet in Romanian with its https link; the photo's sheet lists the story and opens it",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/stories.spec.ts."
+        },
+        {
+            "id": "S-V50-HAPPY-PHONE",
+            "behaviour": "V50",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The list and one story pass the layout and accessibility checks on every window class",
+            "asserts": "expectStateSound on the stories and story states, phone included",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/tour/viewer.tour.ts (e2e/tour/story-states.ts)."
+        },
+        {
+            "id": "S-V50-BAD-UNKNOWN",
+            "behaviour": "V50",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A link to a story that does not exist shows a toast and opens nothing",
+            "asserts": "error.unknownStory in the status region, no story heading",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/stories.spec.ts."
+        },
+        {
+            "id": "S-V50-BAD-MARKUP-IS-TEXT",
+            "behaviour": "V50",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Markup in a story is text, and a figure of a photo the map does not list is left out",
+            "asserts": "<b>…</b> shows as text with no b element; one figure, not two",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/stories.spec.ts."
+        },
+        {
+            "id": "S-V50-BAD-OLD-MANIFEST",
+            "behaviour": "V50",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A manifest without stories has no Stories in its menu",
+            "asserts": "the menu has About and no Stories item",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/stories.spec.ts."
+        },
+        {
+            "id": "S-A100-HAPPY-EDIT",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "happy",
+            "title": "An owner writes a story, publishes it and finds its versions",
+            "asserts": "New story opens the editor; the text, the year and Published save to Firestore; Versions opens #/history/story/<id>",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/stories/stories.spec.ts."
+        },
+        {
+            "id": "S-A100-BAD-HTTP-LINK",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "bad",
+            "title": "An http link in a story is refused at the text",
+            "asserts": "the text field is aria-invalid and Save is off",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/stories/stories.spec.ts."
+        },
+        {
+            "id": "S-A100-BAD-UPLOADER-WAITS",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "bad",
+            "title": "An uploader's story waits for review and cannot be published by them",
+            "asserts": "the waiting note, no Published switch, reviewStatus pending and published false in Firestore",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/stories/stories.spec.ts."
+        },
+        {
+            "id": "S-A100-HAPPY-MANIFEST",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "happy",
+            "title": "A published story reaches the manifest with its text and links",
+            "asserts": "stories[] with title, body, years, photoIds, poiIds, credit; counts.stories",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Test: functions/test/publish/stories.test.ts."
+        },
+        {
+            "id": "S-A100-BAD-MANIFEST",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "bad",
+            "title": "A draft, waiting, refused or textless story stays out of the manifest",
+            "asserts": "no stories key in the published JSON",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Test: functions/test/publish/stories.test.ts."
+        },
+        {
+            "id": "S-A100-HAPPY-EXPORT",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "happy",
+            "title": "The static export carries the stories",
+            "asserts": "city.json lists the story with its photo",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Test: functions/test/publish/stories.test.ts."
+        },
+        {
+            "id": "S-A100-BAD-EXPORT",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "bad",
+            "title": "A story's link to a photo the export leaves out goes, and city.json stays valid",
+            "asserts": "no photoIds on the story, validateManifest ok",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Test: functions/test/publish/stories.test.ts."
+        },
+        {
+            "id": "S-A100-HAPPY-REVIEW",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "happy",
+            "title": "A moderator approves an uploader's story through review.decide",
+            "asserts": "published true, reviewStatus approved, reviewedBy the moderator",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Test: functions/test/history/stories.test.ts."
+        },
+        {
+            "id": "S-A100-BAD-REVIEW",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "bad",
+            "title": "An approval of a story changed since the reviewer read it is refused",
+            "asserts": "apiError.review.changed, the story still pending",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Test: functions/test/history/stories.test.ts."
+        },
+        {
+            "id": "S-A100-HAPPY-REVERT",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "happy",
+            "title": "A moderator brings a story's earlier text back with history.revert",
+            "asserts": "restoredFields [body], the earlier body stored",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Test: functions/test/history/stories.test.ts."
+        },
+        {
+            "id": "S-A100-BAD-REVERT",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "bad",
+            "title": "An uploader reverts nothing",
+            "asserts": "an apiError refusal, the text unchanged",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Test: functions/test/history/stories.test.ts."
+        },
+        {
+            "id": "S-A100-HAPPY-RULES",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "happy",
+            "title": "The rules let each role do what M17 §2 says with stories",
+            "asserts": "the allow cells of the stories matrix for every actor",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "Test: firebase/rules-tests/test/stories.test.ts."
+        },
+        {
+            "id": "S-A100-BAD-RULES",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "bad",
+            "title": "The rules refuse everything else: strangers, other cities, publishing a waiting story, bad values",
+            "asserts": "the deny cells of the matrix and the value checks",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "Test: firebase/rules-tests/test/stories.test.ts."
+        },
+        {
+            "id": "S-V50-HAPPY-TIMELINE",
+            "behaviour": "V50",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Opening a story moves the timeline to its year",
+            "asserts": "the timeline reads today, then 1966 once the 1966 story opens from the menu; layers= names the 1966 layer",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The review of 2026-11-08. Test: e2e/specs/viewer/stories.spec.ts."
+        },
+        {
+            "id": "S-V50-BAD-TIMELINE-LINK-LAYERS",
+            "behaviour": "V50",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A story's link with its own layers keeps them instead of the story's year",
+            "asserts": "#layers=<1980>&story=<1966 story> opens the story with the timeline at 1980, layers= and story= unchanged",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The review of 2026-11-08. Test: e2e/specs/viewer/stories.spec.ts; the hash rule also in packages/engine/test/core/stories.test.ts."
+        },
+        {
+            "id": "S-A100-BAD-REVIEW-EMPTY",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "bad",
+            "title": "A story with no text is not approved",
+            "asserts": "apiError.review.storyEmpty, the story still pending and unpublished; refusing it still works",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The review of 2026-11-08. Test: functions/test/history/stories.test.ts."
+        },
+        {
+            "id": "S-A100-BAD-ROLE-ACTIONS",
+            "behaviour": "A100",
+            "area": "admin",
+            "path": "bad",
+            "title": "The stories editor offers a moderator only what the rules allow",
+            "asserts": "Published shows; no New story, no Delete, no Versions (an uploader deletes only a waiting story: the page's unit test)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-08. Tests: e2e/admin/specs/stories/stories.spec.ts, packages/ui/test/admin/stories/stories-page.test.ts."
         }
     ]
 }

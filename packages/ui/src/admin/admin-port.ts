@@ -34,6 +34,7 @@ export type AdminRouteIdPort =
     | 'setup'
     | 'photos'
     | 'pois'
+    | 'stories'
     | 'layers'
     | 'imagery'
     | 'jobs'

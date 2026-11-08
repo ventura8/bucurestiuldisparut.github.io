@@ -86,6 +86,9 @@ const POI_EDITABLE = [
     ...STAMP,
 ] as const;
 
+/** M17 (`docs/research/M17-stories.md` §1). */
+const STORY_EDITABLE = ['title', 'body', 'yearStart', 'yearEnd', 'photoIds', 'poiIds', 'credit', 'published', ...STAMP] as const;
+
 const POI_CATEGORY_EDITABLE = ['label', 'icon', 'color', 'defaultOpacity', 'order', ...STAMP] as const;
 
 export interface ClientWrites {
@@ -105,6 +108,8 @@ export const CLIENT_WRITES = {
     layer: { create: [], update: LAYER_EDITABLE },
     poi: { create: [...POI_EDITABLE, 'createdAt', 'createdBy'], update: POI_EDITABLE },
     poiCategory: { create: [...POI_CATEGORY_EDITABLE, 'createdAt'], update: POI_CATEGORY_EDITABLE },
+    /** M17: as a place, an uploader's create carries `reviewStatus: 'pending'`. */
+    story: { create: [...STORY_EDITABLE, 'createdAt', 'createdBy'], update: STORY_EDITABLE },
     /**
      * Jobs are created by the callables and triggers that check their parameters, the budget guard, the daily cap and
      * their version in one transaction (`docs/research/M3-interfaces.md` §2.8, CR-M3-2); admins only ask one to stop, or mark a

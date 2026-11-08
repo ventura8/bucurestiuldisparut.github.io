@@ -5,7 +5,7 @@
 import type { AdminNoticeInputPort } from '../notice-port.js';
 import type { DocStatePort, ListStatePort } from '../area-port.js';
 
-export type HistoryEntityPort = 'city' | 'layer' | 'photo' | 'poi' | 'poiCategory';
+export type HistoryEntityPort = 'city' | 'layer' | 'photo' | 'poi' | 'poiCategory' | 'story';
 export type HistoryActionPort = 'create' | 'update' | 'delete' | 'revert';
 export type HistoryActionFilterPort = 'all' | HistoryActionPort;
 

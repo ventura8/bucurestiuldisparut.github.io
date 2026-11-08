@@ -9,7 +9,7 @@ import { formatWhen, whoText } from '../editing/states.js';
 import { contentText } from '../shell/text.js';
 import type { HistoryActionFilterPort, HistoryActionPort, HistoryEntityPort, HistoryItemPort } from './history-port.js';
 
-export const ENTITY_FILTERS: readonly (HistoryEntityPort | 'all')[] = ['all', 'photo', 'poi', 'poiCategory', 'layer', 'city'];
+export const ENTITY_FILTERS: readonly (HistoryEntityPort | 'all')[] = ['all', 'photo', 'poi', 'story', 'poiCategory', 'layer', 'city'];
 
 export const ACTION_FILTERS: readonly HistoryActionFilterPort[] = ['all', 'update', 'create', 'delete', 'revert'];
 
@@ -20,6 +20,7 @@ const ENTITIES: Readonly<Record<HistoryEntityPort | 'all', AdminContentKey>> = {
     photo: 'adminContent.history.entity.photo',
     poi: 'adminContent.history.entity.poi',
     poiCategory: 'adminContent.history.entity.poiCategory',
+    story: 'adminContent.history.entity.story',
 };
 
 const ONE_ENTITY: Readonly<Record<HistoryEntityPort, AdminContentKey>> = {
@@ -28,6 +29,7 @@ const ONE_ENTITY: Readonly<Record<HistoryEntityPort, AdminContentKey>> = {
     photo: 'adminContent.history.one.photo',
     poi: 'adminContent.history.one.poi',
     poiCategory: 'adminContent.history.one.poiCategory',
+    story: 'adminContent.history.one.story',
 };
 
 const ACTIONS: Readonly<Record<HistoryActionFilterPort, AdminContentKey>> = {

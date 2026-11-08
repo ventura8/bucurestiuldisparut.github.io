@@ -15,7 +15,7 @@ import type { WindowClass } from '../theme/tokens.js';
 export type { ThemeMode } from '../theme/apply.js';
 
 export type ViewerStatus = 'idle' | 'loading' | 'ready' | 'error';
-export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'about' | 'help';
+export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'stories' | 'about' | 'help';
 export type ConsentState = 'unknown' | 'granted' | 'denied';
 export type Unsubscribe = () => void;
 
@@ -46,6 +46,8 @@ export interface ViewerState {
     readonly overlays: readonly Overlay[];
     readonly selectedPhotoId: string | null;
     readonly selectedPoiId: string | null;
+    /** M17: the story the `stories` sheet shows; null shows their list. */
+    readonly selectedStoryId: string | null;
     readonly lightbox: boolean;
     readonly sheet: SheetName;
     readonly windowClass: WindowClass;
@@ -84,6 +86,8 @@ export interface ViewerStorePort {
     /** The open photo's thumbnail was decoded (`ok`) or failed: ends the `photo_timing` field measurement. */
     photoShown?(ok: boolean): void;
     openPoi(poiId: string | null): void;
+    /** M17: opens a story (null: the list of stories); an unknown id shows `error.unknownStory`. */
+    openStory(storyId: string | null): void;
     setLightbox(open: boolean): void;
     openSheet(sheet: SheetName): void;
     setView(view: MapView): void;

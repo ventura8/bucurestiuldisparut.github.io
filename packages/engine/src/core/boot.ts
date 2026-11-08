@@ -18,7 +18,7 @@ import { MapSync } from './map-sync.js';
 import type { ViewerDeps } from './deps.js';
 import type { Preferences } from './preferences.js';
 import { initialState, overlayName, THEME_MODES, withManifest, type ThemeMode, type ViewerError, type ViewerState } from './state.js';
-import { applyDecodedHash, hashLimits, type HashWriter } from './url-sync.js';
+import { applyDecodedHash, hashLimits, unknownToast, type AppliedHash, type HashWriter } from './url-sync.js';
 
 /** What the boot sequence needs from the store. */
 export interface BootHost {
@@ -135,9 +135,7 @@ export class Boot {
         const applied = applyDecodedHash(withManifest(host.getState(), manifest), hash);
         host.set(this.#withCityPreferences(applied.state, manifest.city.id));
         this.#telemetryContext(host.getState());
-        if (applied.unknownPhoto !== null) {
-            host.showToast('error.unknownPhoto');
-        }
+        this.#toastUnknown(applied);
         if (hash.legacy) {
             host.hash.flush();
         }
@@ -300,15 +298,21 @@ export class Boot {
         }
     }
 
-    /** `ViewerActions.applyHash`: the state, then the map's view, then the toast of an unknown photo. */
+    /** A hash's unknown photo or (M17) story says so. */
+    #toastUnknown(applied: AppliedHash): void {
+        const toast = unknownToast(applied);
+        if (toast !== null) {
+            this.#host.showToast(toast);
+        }
+    }
+
+    /** `ViewerActions.applyHash`: the state, then the map's view, then the toast of an unknown photo or story. */
     applyHash(hash: DecodedHash): void {
         const host = this.#host;
         const applied = applyDecodedHash(host.getState(), hash);
         host.set(applied.state);
         this.moveMap(hash.view);
-        if (applied.unknownPhoto !== null) {
-            host.showToast('error.unknownPhoto');
-        }
+        this.#toastUnknown(applied);
     }
 
     /** Moves a mounted map to a view from the hash, without animation. */

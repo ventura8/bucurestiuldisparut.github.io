@@ -2653,3 +2653,32 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: each test checked what the change was meant to do and no state around it. The self-reload asked only the unsaved guard, which reports edits, not uploads in flight. What needs you read a missing count as zero. The tick's Locate again did not check whether an editor was placing points on the frame, and it compared digests from two sources that can disagree (the Cloud Run job and the `setup/status` record). A failed crop's Locate again reset its attempts each time. The waiting frame's Delete cancelled the job, so the version read Cancelled, and its scenario row named stages no test covered.
     - Found by: the review. Fix: the stores' `busy()` (an upload) holds the reload; unknown counts keep their tile with a dash or an ellipsis, and a count the role may not read is not asked; the georeferencer's `placingPoints` mark holds the tick for two hours; only the job's image counts; a failed crop counts its runs; the waiting frame's Delete is `imagery.reject`, and the guard offers Delete too. Each fix has a test that failed before it.
     - **An automatic action (a reload, a re-run) checks every kind of work under way, not only the one guard that already exists. Null means unknown, never zero. A comparison uses one source of truth. A free re-run is capped when it brings no new input. A scenario row names only what a test asserts.**
+444. **A new lazy area that imports the editing kit can push `editor-shared` over its budget without adding a line to it.**
+    - Seen: 2026-11-08, `track/stories`: `editor-shared` at 13,001 bytes of 13,000 after the stories area joined; none of its modules had changed.
+    - Cause: the shared chunk's export list and minified names change with every new importer, and a chunk at its limit has no room for that.
+    - Found by: the `bundle-budget` gate on the NUC. Fix: a module only two areas share (`packages/ui/src/viewer/markdown.ts`) moved to the `editor-texts` group, which had room (DECISIONS §102b).
+    - **Measure every chunk after adding an area, also the shared ones its imports touch; move a small shared module to a group with room rather than raise a row.**
+
+445. **An uploader's create through the admin reads the new id first, and the M13 read rule denies a document that does not exist.**
+    - Seen: 2026-11-08, `track/stories`, `S-A100-BAD-UPLOADER-WAITS`: New story as an uploader answered 403 on `batchGet`; nothing was created.
+    - Cause: `ContentStore.create` is a transaction that reads the path before it sets it, and `ownItem(resource.data)` errors on a missing document, which denies the read.
+    - Found by: the admin e2e spec on the emulators (the rules matrix seeded every document it read). Fix: the stories rule lets an uploader read an id with no document (`resource == null`), with its row in `firebase/rules-tests/test/stories.test.ts`.
+    - **For review: places and photos have the same read rule, so an uploader's own create through the admin likely fails the same way; their rules want the same `resource == null` clause and an e2e create as an uploader.**
+
+446. **A review door that checks only `pending` and `seenAt` approves a story with no text.**
+    - Seen: 2026-11-08, the review of `track/stories`: New story writes the title alone with `reviewStatus: 'pending'`, so a moderator could approve it at once; the builder never lists a story without a body, and an approved story is no longer the uploader's to write or delete.
+    - Cause: `decideText` treated a story as a place, and `storyIssues` guards only the editor's own Published switch, not `review.decide`.
+    - Found by: review. Fix: an approval of a story without `body` answers `apiError.review.storyEmpty` and nothing moves; refusing it stays open (S-A100-BAD-REVIEW-EMPTY).
+    - **Every check the editor makes before publishing is made again at the review door, which publishes too.**
+
+447. **The stories editor offered every role New story, Delete and Versions; the rules and the routes refused them.**
+    - Seen: 2026-11-08, the review of `track/stories`: a moderator's New story and Delete were denied by the rules, and Versions led moderators and uploaders to `#/history`, a route `LIMITED_ROUTES` does not open for them.
+    - Cause: the page read only `reviewer`, not the city role, while the photos and places pages hide or disable by role.
+    - Found by: review. Fix: the area carries `role`; the page hides New story and Delete for a moderator, Delete for an uploader's approved story, and Versions for both (S-A100-BAD-ROLE-ACTIONS). A moderator's story revert from the UI waits for `#/history` to open to moderators.
+    - **A control a role's rules or routes refuse is not shown to that role: derive each from the same matrix, and test it per role.**
+
+448. **A hash applied in steps let `story=` overwrite the `layers=` before it.**
+    - Seen: 2026-11-08, the review of `track/stories`: a story shared after the visitor moved the timeline reopened at the story's year, not the shared layers.
+    - Cause: `withHashStory` ran after `withHashLayers` and called `withStory`, which moves the timeline (`withYear`).
+    - Found by: review. Fix: with `layers=` in the hash, the story opens with the link's layers and their year (S-V50-BAD-TIMELINE-LINK-LAYERS, also in Playwright); opening a story moving the timeline now has its own e2e row (S-V50-HAPPY-TIMELINE).
+    - **A link reproduces the sender's view: when two hash keys set the same state, the explicit one wins, and a test decodes a link with both.**

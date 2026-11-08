@@ -124,6 +124,8 @@ export const ro = {
     'adminContent.field.category': 'Categoria',
     'adminContent.field.geometry': 'Forma pe hartă',
     'adminContent.field.photoIds': 'Fotografiile legate',
+    'adminContent.field.body': 'Textul',
+    'adminContent.field.poiIds': 'Locurile legate',
     'adminContent.field.icon': 'Pictograma',
     'adminContent.field.color': 'Culoarea',
     'adminContent.field.defaultOpacity': 'Opacitatea la pornire',

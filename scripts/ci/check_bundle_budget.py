@@ -188,6 +188,10 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # up. Mapbox's compute units, Studio steps and choices (`mapbox-choices.ts`), which a city on its own bucket, the default, never
     # fetches: 1.3 KB measured then. The total stays within its 650 KB and no row rose.
     "approval-map": 5,
+    # M17 (docs/research/M17-stories.md §6): the stories area (`packages/admin/src/pages/stories.ts`: the store, `<hcm-stories-page>`),
+    # fetched when its route first opens; its texts are the admin's catalogues in the entry. 4.3 KB measured on 2026-11-08 plus about 20 %,
+    # rounded up; the total stays within its 650 KB (DECISIONS-for-review.md §102a).
+    "stories": 5,
     "mapbox-choices": 2,
 }
 # The entry and every chunk together. 620 until M7 (2026-11-02), 630 since: the total counts every lazy chunk, also those

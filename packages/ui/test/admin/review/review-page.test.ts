@@ -68,6 +68,7 @@ function state(overrides: Partial<ReviewViewState> = {}): ReviewViewState {
     return {
         photos: list([ITEM]),
         places: list([POI]),
+        stories: list([{ ...POI, entity: 'story', id: 'st1', title: { ro: 'Teatrul' } }]),
         suggestions: list([SUGGESTION]),
         decided: list([{ ...SUGGESTION, id: 's2', status: 'approved', decidedBy: 'u', proposal: { year: 1950 } }]),
         requests: list([REQUEST]),
@@ -127,6 +128,9 @@ describe('<hcm-review-page>', () => {
             expect(text).toContain(expected);
         }
         expect(await axeViolations(host)).toEqual([]);
+        // M17: an uploader's story waits beside the photos and places, and opens in its own editor.
+        expect(text).toContain('Teatrul');
+        expect(deepAll(host, 'li.card a').map((a) => a.getAttribute('href'))).toContain('#/stories/st1');
     });
 
     it('happyPath_whatAStrangerTypedIsText @S-A93-BAD-MARKUP-IS-TEXT', async () => {

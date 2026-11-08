@@ -70,6 +70,7 @@ describe('publish-rebuildManifest', () => {
             'onPhotoWrite',
             'onPoiCategoryWrite',
             'onPoiWrite',
+            'onStoryWrite',
             'rebuildManifest',
         ]);
     });

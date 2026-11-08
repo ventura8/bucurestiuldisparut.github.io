@@ -98,6 +98,9 @@ function nameIn(locale: Locale, title: { readonly ro: string; readonly en?: stri
     return locale === 'en' ? (title.en ?? title.ro) : title.ro;
 }
 
+/** Where each kind of item is edited. */
+const ITEM_ROUTES = { photo: 'photos', poi: 'pois', story: 'stories' } as const;
+
 class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
     static override readonly fillsPage: boolean = false;
 
@@ -118,7 +121,7 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
         return html`<div class="pane">
             <h2>${contentText(locale, 'adminContent.review.title')}</h2>
             ${reconnectingStatus(locale, view.suggestions.reconnecting)}
-            ${this.#section(locale, 'adminContent.review.uploads', [...view.photos.items, ...view.places.items], (item) => this.#item(locale, view, item))}
+            ${this.#section(locale, 'adminContent.review.uploads', [...view.photos.items, ...view.places.items, ...view.stories.items], (item) => this.#item(locale, view, item))}
             ${this.#section(locale, 'adminContent.review.suggestions', view.suggestions.items, (row) => this.#suggestion(locale, view, row))}
             ${this.#map(locale, view)}
             ${this.#section(locale, 'adminContent.review.decided', view.decided.items, (row) => this.#decided(locale, row))}
@@ -175,9 +178,7 @@ class HcmReviewPage extends AreaPage<ReviewViewState, ReviewIntentsPort> {
         return html`<li class="card">
             <strong>${contentText(locale, `adminContent.review.entity.${item.entity}`)}: ${title}</strong>
             ${this.#picture(locale, view, item)} ${this.#published(locale, item)}
-            <a href=${item.entity === 'photo' ? `#/photos/${item.id}` : `#/pois/${item.id}`}
-                >${contentText(locale, 'adminContent.review.open')}</a
-            >
+            <a href=${`#/${ITEM_ROUTES[item.entity]}/${item.id}`}>${contentText(locale, 'adminContent.review.open')}</a>
             ${this.#note(key, locale)}
             <div class="actions">
                 ${this.#button(contentText(locale, 'adminContent.review.approve'), 'check', () => void this.intents?.decideItem(item, 'approve', this.#noteOf(key)))}

@@ -8,6 +8,7 @@ import {
     photoDocSchema,
     poiDocSchema,
     publicObjectUrl,
+    storyDocSchema,
     timestampFromDate,
     timestampToDate,
     type CallableRequest,
@@ -15,7 +16,8 @@ import {
     type HeldImage,
     type PhotoDoc,
     type PhotoVariant,
-    type PoiDoc,
+    type Schema,
+    type StoryDoc,
     type TimestampLike,
 } from '@hcm/shared';
 
@@ -134,17 +136,65 @@ async function refusePhoto(deps: ReviewDeps, caller: VerifiedCaller, data: Reque
     await forgetHeld(deps, photo?.heldImage);
 }
 
-async function decidePoi(deps: ReviewDeps, caller: VerifiedCaller, data: Request): Promise<void> {
-    const path = FIRESTORE_PATHS.poi(data.cityId, data.id);
+function decidePhoto(deps: ReviewDeps, caller: VerifiedCaller, data: Request): Promise<void> {
+    return data.decision === 'approve' ? approvePhoto(deps, caller, data) : refusePhoto(deps, caller, data);
+}
+
+/** What a place and (M17) a story are to a decision: a document with nothing to move, only its verdict and `published`. */
+interface Decidable {
+    readonly published: boolean;
+    readonly reviewStatus?: string | undefined;
+    readonly updatedAt: TimestampLike;
+}
+
+/** Where a place or a story lives, and (a story) what an approval asks of it first. */
+interface TextTarget<Doc> {
+    readonly path: string;
+    readonly schema: Schema<Doc>;
+    readonly requireApprovable?: (item: Doc) => void;
+}
+
+/**
+ * A story is approved with its text (M17 §2): the builder lists none without it, and an approved story is no longer the
+ * uploader's to write, so an empty one would stay invisible and locked. Refusing it stays open.
+ */
+function requireStoryText(story: StoryDoc): void {
+    if (story.body === undefined) {
+        throw new ApiError('apiError.review.storyEmpty');
+    }
+}
+
+/** A place or a story: the verdict and `published` in one transaction. */
+async function decideText<Doc extends Decidable>(
+    deps: ReviewDeps,
+    caller: VerifiedCaller,
+    data: Request,
+    at: TextTarget<Doc>,
+): Promise<void> {
     await deps.documents.transaction(async (transaction) => {
-        const poi = pendingItem(await transaction.get(path, poiDocSchema), data);
-        const decided: PoiDoc = { ...poi, published: data.decision === 'approve', ...verdict(data, caller, deps.clock.now()) };
-        await transaction.set(path, poiDocSchema, decided);
+        const item = pendingItem(await transaction.get(at.path, at.schema), data);
+        if (data.decision === 'approve') {
+            at.requireApprovable?.(item);
+        }
+        await transaction.set(at.path, at.schema, {
+            ...item,
+            published: data.decision === 'approve',
+            ...verdict(data, caller, deps.clock.now()),
+        });
     });
 }
 
-function decidePhoto(deps: ReviewDeps, caller: VerifiedCaller, data: Request): Promise<void> {
-    return data.decision === 'approve' ? approvePhoto(deps, caller, data) : refusePhoto(deps, caller, data);
+function decideItem(deps: ReviewDeps, caller: VerifiedCaller, data: Request): Promise<void> {
+    if (data.entity === 'photo') {
+        return decidePhoto(deps, caller, data);
+    }
+    return data.entity === 'poi'
+        ? decideText(deps, caller, data, { path: FIRESTORE_PATHS.poi(data.cityId, data.id), schema: poiDocSchema })
+        : decideText(deps, caller, data, {
+              path: FIRESTORE_PATHS.story(data.cityId, data.id),
+              schema: storyDocSchema,
+              requireApprovable: requireStoryText,
+          });
 }
 
 /**
@@ -153,7 +203,7 @@ function decidePhoto(deps: ReviewDeps, caller: VerifiedCaller, data: Request): P
  * triggers rebuild the manifest; the note goes to the uploader.
  */
 async function reviewDecide(deps: ReviewDeps, caller: VerifiedCaller, data: Request): Promise<CallableResponse<'review.decide'>> {
-    await (data.entity === 'photo' ? decidePhoto(deps, caller, data) : decidePoi(deps, caller, data));
+    await decideItem(deps, caller, data);
     deps.log.info('review decided', { by: caller.uid, cityId: data.cityId, entity: data.entity, id: data.id, decision: data.decision });
     return { status: data.decision === 'approve' ? 'approved' : 'refused' };
 }

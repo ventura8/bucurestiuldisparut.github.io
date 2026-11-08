@@ -19,6 +19,7 @@ import {
     type PhotoDoc,
     type PoiCategoryDoc,
     type PoiDoc,
+    type StoryDoc,
     type ValidationIssue,
 } from '@hcm/shared';
 
@@ -36,6 +37,8 @@ export interface CityContent {
     readonly photos: QueryResult<PhotoDoc>;
     readonly poiCategories: QueryResult<PoiCategoryDoc>;
     readonly pois: QueryResult<PoiDoc>;
+    /** M17: the city's published stories. */
+    readonly stories: QueryResult<StoryDoc>;
 }
 
 /** How many of each the manifest lists (`manifests/{city}.counts`). */
@@ -57,7 +60,7 @@ const DEFAULT_BASEMAP = { style: 'mapbox://styles/mapbox/standard' } as const;
 const MAX_PASSES = 4;
 const MAX_SKIPPED_PATH = 200;
 
-type ListKey = 'layers' | 'photos' | 'unplaced' | 'poiCategories' | 'pois';
+type ListKey = 'layers' | 'photos' | 'unplaced' | 'poiCategories' | 'pois' | 'stories';
 
 const ENTITY_OF: Readonly<Record<ListKey, ManifestEntity>> = {
     layers: 'layer',
@@ -65,14 +68,24 @@ const ENTITY_OF: Readonly<Record<ListKey, ManifestEntity>> = {
     unplaced: 'photo',
     poiCategories: 'poiCategory',
     pois: 'poi',
+    stories: 'story',
 };
 
-const LIST_KEYS: readonly ListKey[] = ['layers', 'photos', 'unplaced', 'poiCategories', 'pois'];
+const LIST_KEYS: readonly ListKey[] = ['layers', 'photos', 'unplaced', 'poiCategories', 'pois', 'stories'];
 
-/** One listed document: its id and its manifest entry (a POI's photos are the ones the manifest still lists). */
+/** What the manifest still lists, which an entry's references are filtered to. */
+interface Listed {
+    /** The photos on the map: a POI's photos are these. */
+    readonly placed: ReadonlySet<string>;
+    /** M17: every listed photo, placed or not, and every listed place: a story's links are these. */
+    readonly photos: ReadonlySet<string>;
+    readonly pois: ReadonlySet<string>;
+}
+
+/** One listed document: its id and its manifest entry (its references are the ones the manifest still lists). */
 interface Item {
     readonly id: string;
-    readonly entry: (photoIds: ReadonlySet<string>) => unknown;
+    readonly entry: (listed: Listed) => unknown;
 }
 
 type Lists = Readonly<Record<ListKey, readonly Item[]>>;
@@ -178,9 +191,14 @@ function poiCategoryEntry(category: PoiCategoryDoc, id: string): unknown {
     return { id, label: both(category.label), icon: category.icon, color: category.color, defaultOpacity: category.defaultOpacity };
 }
 
+/** The ids of `ids` that are in `known`; none at all is absent. */
+function stillListed(ids: readonly string[] | undefined, known: ReadonlySet<string>): readonly string[] | undefined {
+    const kept = ids?.filter((id) => known.has(id));
+    return kept?.length === 0 ? undefined : kept;
+}
+
 /** A POI names only photos the manifest lists: an unpublished photo leaves the POI, never the POI the manifest. */
-function poiEntry(poi: PoiDoc, id: string, photoIds: ReadonlySet<string>): unknown {
-    const photos = poi.photoIds?.filter((photoId) => photoIds.has(photoId));
+function poiEntry(poi: PoiDoc, id: string, listed: Listed): unknown {
     return {
         id,
         category: poi.category,
@@ -190,9 +208,28 @@ function poiEntry(poi: PoiDoc, id: string, photoIds: ReadonlySet<string>): unkno
         yearStart: poi.yearStart,
         yearEnd: poi.yearEnd,
         links: poi.links ?? [],
-        photoIds: photos?.length === 0 ? undefined : photos,
+        photoIds: stillListed(poi.photoIds, listed.placed),
         credit: poi.credit,
     };
+}
+
+/** M17 §4: a story names only photos and places the manifest lists, as a POI does. */
+function storyEntry(story: StoryDoc & { readonly body: NonNullable<StoryDoc['body']> }, id: string, listed: Listed): unknown {
+    return {
+        id,
+        title: story.title,
+        body: story.body,
+        yearStart: story.yearStart,
+        yearEnd: story.yearEnd,
+        photoIds: stillListed(story.photoIds, listed.photos),
+        poiIds: stillListed(story.poiIds, listed.pois),
+        credit: story.credit,
+    };
+}
+
+/** A story is listed published, cleared by review and with a text. */
+function hasBody(story: StoryDoc): story is StoryDoc & { readonly body: NonNullable<StoryDoc['body']> } {
+    return story.published && isReviewCleared(story) && story.body !== undefined;
 }
 
 const byId = (a: { readonly id: string }, b: { readonly id: string }): number => a.id.localeCompare(b.id);
@@ -230,13 +267,22 @@ function listsOf(content: CityContent): Lists {
         pois: content.pois.documents
             .filter(({ data }) => data.published && isReviewCleared(data))
             .toSorted(byId)
-            .map(({ id, data }) => ({ id, entry: (photoIds: ReadonlySet<string>) => poiEntry(data, id, photoIds) })),
+            .map(({ id, data }) => ({ id, entry: (listed: Listed) => poiEntry(data, id, listed) })),
+        stories: content.stories.documents
+            .flatMap(({ id, data }) => (hasBody(data) ? [{ id, data }] : []))
+            .toSorted(byId)
+            .map(({ id, data }) => ({ id, entry: (listed: Listed) => storyEntry(data, id, listed) })),
     };
 }
 
 function draft(content: CityContent, city: unknown, lists: Lists, links: ManifestLinks): unknown {
-    const photoIds = new Set(lists.photos.map((item) => item.id));
-    const entries = (key: ListKey) => lists[key].map((item) => item.entry(photoIds));
+    const ids = (key: ListKey) => lists[key].map((item) => item.id);
+    const listed: Listed = {
+        placed: new Set(ids('photos')),
+        photos: new Set([...ids('photos'), ...ids('unplaced')]),
+        pois: new Set(ids('pois')),
+    };
+    const entries = (key: ListKey) => lists[key].map((item) => item.entry(listed));
     return {
         version: MANIFEST_VERSION,
         city,
@@ -248,6 +294,8 @@ function draft(content: CityContent, city: unknown, lists: Lists, links: Manifes
         photosOverlay: content.city.photosOverlay,
         poiCategories: entries('poiCategories'),
         pois: entries('pois'),
+        // M17 §4: absent when empty, as `unplaced`.
+        stories: lists.stories.length === 0 ? undefined : entries('stories'),
     };
 }
 
@@ -288,6 +336,7 @@ function drop(lists: Lists, located: readonly Located[]): { readonly lists: List
             unplaced: keep('unplaced'),
             poiCategories: keep('poiCategories'),
             pois: keep('pois'),
+            stories: keep('stories'),
         },
         skipped,
     };
@@ -308,6 +357,7 @@ function settle(
             unplaced: lists.unplaced.length,
             poiCategories: lists.poiCategories.length,
             pois: lists.pois.length,
+            stories: lists.stories.length,
         };
         return { ok: true, manifest: result.value, counts, skipped: state.skipped };
     }
@@ -340,6 +390,7 @@ export function assembleManifest(content: CityContent, errorEndpoint: string, li
         ...refused('photo', content.photos.invalid),
         ...refused('poiCategory', content.poiCategories.invalid),
         ...refused('poi', content.pois.invalid),
+        ...refused('story', content.stories.invalid),
     ];
     return settle(content, cityEntry(content, errorEndpoint), listsOf(content), { passes: MAX_PASSES, skipped, links });
 }

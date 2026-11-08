@@ -37,6 +37,7 @@ export const en: Readonly<Record<AdminReviewKey, string>> = {
     'adminContent.review.asks': 'Asks to be: {role}',
     'adminContent.review.entity.photo': 'Photo',
     'adminContent.review.entity.poi': 'Place',
+    'adminContent.review.entity.story': 'Story',
     'adminContent.review.picture': 'The picture of {title}',
     'adminContent.review.status.pending': 'Waiting for review',
     'adminContent.review.status.refused': 'Refused',

@@ -120,6 +120,7 @@ const PAGE_TAGS: Readonly<Record<Exclude<AdminRouteId, 'setup'>, string>> = {
     cities: 'hcm-new-city-page',
     review: 'hcm-review-page',
     contribute: 'hcm-contribute-page',
+    stories: 'hcm-stories-page',
 };
 
 afterEach(() => {

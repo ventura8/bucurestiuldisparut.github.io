@@ -54,6 +54,7 @@ const COLLECTION_OF: Readonly<Record<Exclude<HistoryEntity, 'city'>, string>> = 
     photo: 'photos',
     poi: 'pois',
     poiCategory: 'poiCategories',
+    story: 'stories',
 };
 
 /** One audited document (PLAN Addendum 3): what a history entry and `history.revert` name. */
@@ -116,6 +117,9 @@ export const FIRESTORE_PATHS = {
     layer: (cityId: string, layerId: string) => child(cityId, 'layers', layerId),
     pois: (cityId: string) => `${cityPath(cityId)}/pois`,
     poi: (cityId: string, poiId: string) => child(cityId, 'pois', poiId),
+    /** M17 (`docs/research/M17-stories.md` §1): the city's stories. */
+    stories: (cityId: string) => `${cityPath(cityId)}/stories`,
+    story: (cityId: string, storyId: string) => child(cityId, 'stories', storyId),
     poiCategories: (cityId: string) => `${cityPath(cityId)}/poiCategories`,
     poiCategory: (cityId: string, categoryId: string) => child(cityId, 'poiCategories', categoryId),
     jobs: (cityId: string) => `${cityPath(cityId)}/jobs`,

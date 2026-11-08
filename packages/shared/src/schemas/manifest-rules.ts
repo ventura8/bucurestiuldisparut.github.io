@@ -35,9 +35,12 @@ export interface CheckedManifest {
               readonly photoIds?: readonly string[] | undefined;
           })[]
         | undefined;
+    readonly stories?:
+        | readonly (Identified & { readonly photoIds?: readonly string[] | undefined; readonly poiIds?: readonly string[] | undefined })[]
+        | undefined;
 }
 
-type ListKey = 'layers' | 'photos' | 'unplaced' | 'poiCategories' | 'pois';
+type ListKey = 'layers' | 'photos' | 'unplaced' | 'poiCategories' | 'pois' | 'stories';
 
 function duplicates(key: ListKey, items: readonly Identified[]): RuleIssue[] {
     const seen = new Set<string>();
@@ -92,6 +95,18 @@ function poiReferences(manifest: CheckedManifest): RuleIssue[] {
     ]);
 }
 
+/** M17 §4: a story's photos (placed or not) and places must exist in the same manifest; its figures are not checked. */
+function storyReferences(manifest: CheckedManifest): RuleIssue[] {
+    const photos = new Set([...manifest.photos, ...(manifest.unplaced ?? [])].map((photo) => photo.id));
+    const pois = new Set((manifest.pois ?? []).map((poi) => poi.id));
+    const missing = (index: number, key: 'photoIds' | 'poiIds', known: ReadonlySet<string>, ids: readonly string[] = []) =>
+        ids.flatMap((id, at) => (known.has(id) ? [] : [{ path: ['stories', index, key, at], code: 'validation.reference' } as const]));
+    return (manifest.stories ?? []).flatMap((story, index) => [
+        ...missing(index, 'photoIds', photos, story.photoIds),
+        ...missing(index, 'poiIds', pois, story.poiIds),
+    ]);
+}
+
 function unplacedClashes(manifest: CheckedManifest): RuleIssue[] {
     const placed = new Set(manifest.photos.map((photo) => photo.id));
     return [
@@ -115,5 +130,7 @@ export function manifestRuleIssues(manifest: CheckedManifest): RuleIssue[] {
         ...photoPlaces(manifest),
         ...poiPlaces(manifest),
         ...poiReferences(manifest),
+        ...duplicates('stories', manifest.stories ?? []),
+        ...storyReferences(manifest),
     ];
 }

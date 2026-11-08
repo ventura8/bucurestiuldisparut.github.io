@@ -29,6 +29,7 @@ export { MAX_URL_LENGTH, isCspOrigin, isHostOf, isHttpsUrl, isRelativeUrl, toHtt
 export { linkTargets, markdownToPlainText, parseMarkdown } from './text/markdown.js';
 export { redactText } from './text/redact.js';
 export type { InlineNode, MarkdownDocument, MarkdownParagraph } from './text/markdown.js';
+export { parseStory, storyFigureIds, type StoryBlock, type StoryFigure } from './text/story.js';
 
 export { ID_PATTERN, MAX_LINKS, MAX_TOKENS, PHOTOS_OVERLAY_ID, TOKEN_NAME_PATTERN, isId } from './schemas/primitives.js';
 export type { ValidationCode } from './schemas/primitives.js';
@@ -73,6 +74,8 @@ export {
     poiSchema,
 } from './schemas/poi.js';
 export type { PhotosOverlay, Poi, PoiCategory, PoiIcon } from './schemas/poi.js';
+export { storyDocSchema, type StoryDoc } from './schemas/firestore.js';
+export { MAX_STORIES, MAX_STORY_LINKS, MAX_STORY_TEXT, storySchema, type Story } from './schemas/story.js';
 export type {
     Basemap,
     City,

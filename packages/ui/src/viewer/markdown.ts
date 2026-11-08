@@ -29,7 +29,8 @@ function renderNode(node: InlineNode): TemplateResult {
     return node.type === 'strong' ? html`<strong>${children}</strong>` : html`<em>${children}</em>`;
 }
 
-function renderParagraph(paragraph: MarkdownParagraph): TemplateResult {
+/** One `<p>` of inline nodes (M17: a story's paragraph). */
+export function renderParagraph(paragraph: MarkdownParagraph): TemplateResult {
     return html`<p>${paragraph.children.map(renderNode)}</p>`;
 }
 

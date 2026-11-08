@@ -12,6 +12,7 @@ import {
     photoDocSchema,
     poiCategoryDocSchema,
     poiDocSchema,
+    storyDocSchema,
     timestampFromDate,
     validate,
     type AuditedDocument,
@@ -39,6 +40,7 @@ const SCHEMAS: Readonly<Record<HistoryEntity, Schema<Fields>>> = {
     photo: photoDocSchema,
     poi: poiDocSchema,
     poiCategory: poiCategoryDocSchema,
+    story: storyDocSchema,
 };
 
 const STAMP_FIELDS: ReadonlySet<string> = new Set(['updatedBy', 'updatedAt']);
@@ -122,10 +124,13 @@ async function isDeleted(deps: RevertDeps, audited: AuditedDocument): Promise<bo
     return (await deps.documents.get(auditedDocumentPath(audited), SCHEMAS[audited.entity])) === undefined;
 }
 
-/** M13 §1: a moderator reverts a photo or a place, and never a city's settings, a layer or a category. */
+/** The entities a moderator may revert (M13 §1; M17 §2 adds the story). */
+const REVIEWED_ENTITIES: ReadonlySet<HistoryEntity> = new Set(['photo', 'poi', 'story']);
+
+/** M13 §1: a moderator reverts a photo, a place or a story, and never a city's settings, a layer or a category. */
 function requireEntityRight(caller: VerifiedCaller, data: CallableRequest<'history.revert'>): void {
     const staff = isStaffRole(caller.membership?.roleIn(data.cityId));
-    if (!staff && data.entity !== 'photo' && data.entity !== 'poi') {
+    if (!staff && !REVIEWED_ENTITIES.has(data.entity)) {
         throw new ApiError('apiError.city.notEditor', { cityId: data.cityId });
     }
 }

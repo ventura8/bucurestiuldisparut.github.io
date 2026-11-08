@@ -19,7 +19,7 @@ import {
 } from '@hcm/shared';
 
 import { hashMapLabels, withHashLabels } from './map-labels.js';
-import { isCompareLayer, withVisibleLayers, type CompareView, type ViewerState } from './state.js';
+import { isCompareLayer, withStory, withVisibleLayers, type CompareView, type ViewerState } from './state.js';
 import { yearOfLayers } from './timeline.js';
 
 /** How long the hash waits for the map to settle before it is written. */
@@ -36,6 +36,32 @@ export interface AppliedHash {
     readonly state: ViewerState;
     /** A `photo=` id the manifest does not have (the viewer shows `error.unknownPhoto`). */
     readonly unknownPhoto: string | null;
+    /** M17: a `story=` id the manifest does not have (`error.unknownStory`). */
+    readonly unknownStory?: string;
+}
+
+/** The toast a hash's unknown photo or story asks for, or null. */
+export function unknownToast(applied: AppliedHash): 'error.unknownPhoto' | 'error.unknownStory' | null {
+    if (applied.unknownPhoto !== null) {
+        return 'error.unknownPhoto';
+    }
+    return applied.unknownStory === undefined ? null : 'error.unknownStory';
+}
+
+/**
+ * M17: `story=` opens the story, at its year; an id the manifest does not have opens nothing. A link that also carries
+ * `layers=` is the sender's view (they moved the timeline with the story open), so its layers and their year stay.
+ */
+function withHashStory(applied: AppliedHash, hash: DecodedHash): AppliedHash {
+    if (hash.story === undefined) {
+        return applied;
+    }
+    const state = withStory(applied.state, hash.story);
+    if (state === null) {
+        return { ...applied, unknownStory: hash.story };
+    }
+    const kept = hash.layers === undefined ? state : { ...state, year: applied.state.year, overlays: applied.state.overlays };
+    return { ...applied, state: kept };
 }
 
 function withHashLayers(state: ViewerState, layers: readonly string[] | undefined): ViewerState {
@@ -83,7 +109,7 @@ export function applyDecodedHash(state: ViewerState, hash: DecodedHash): Applied
     const withLayers = withHashMapLabels(withHashCompare(withHashLayers(withView, hash.layers), hash.compare), hash.labels);
     const overlays = withHashOpacity(withLayers.overlays, hash);
     const withLang = hash.lang === undefined ? withLayers : { ...withLayers, locale: hash.lang };
-    return withHashPhoto(overlays === withLang.overlays ? withLang : { ...withLang, overlays }, hash.photo);
+    return withHashStory(withHashPhoto(overlays === withLang.overlays ? withLang : { ...withLang, overlays }, hash.photo), hash);
 }
 
 function sameIds(a: readonly string[], b: readonly string[]): boolean {
@@ -108,8 +134,14 @@ export function hashStateOf(state: ViewerState, defaultLocale: Locale): HashStat
         ...(state.compare === null ? {} : { compare: { layer: state.compare.layerId, position: state.compare.position } }),
         ...hashMapLabels(state.mapLabels),
         ...(state.selectedPhotoId === null ? {} : { photo: state.selectedPhotoId }),
+        ...storyOf(state),
         ...(state.locale === defaultLocale ? {} : { lang: state.locale }),
     };
+}
+
+/** M17: `story=` while a story is open. */
+function storyOf(state: ViewerState): Pick<HashState, 'story'> {
+    return state.sheet === 'stories' && state.selectedStoryId !== null ? { story: state.selectedStoryId } : {};
 }
 
 export interface HashLocation {

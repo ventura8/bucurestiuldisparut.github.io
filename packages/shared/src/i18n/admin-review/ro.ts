@@ -35,6 +35,7 @@ export const ro = {
     'adminContent.review.asks': 'Cere să fie: {role}',
     'adminContent.review.entity.photo': 'Fotografie',
     'adminContent.review.entity.poi': 'Loc',
+    'adminContent.review.entity.story': 'Poveste',
     'adminContent.review.picture': 'Imaginea pentru {title}',
     'adminContent.review.status.pending': 'Așteaptă verificarea',
     'adminContent.review.status.refused': 'Refuzată',

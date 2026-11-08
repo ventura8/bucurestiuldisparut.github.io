@@ -15,6 +15,7 @@ import {
     type PhotoDoc,
     type PoiCategoryDoc,
     type PoiDoc,
+    type StoryDoc,
 } from '@hcm/shared';
 
 import type { ContentDeps } from './fakes.js';
@@ -91,6 +92,20 @@ export function poiDoc(overrides: Partial<PoiDoc> = {}): PoiDoc {
         category: 'churches',
         geometry: { type: 'Point', point: { lat: 44.43, lng: 26.1 } },
         title: { ro: 'Biserica Enei' },
+        published: true,
+        ...stamp,
+        ...overrides,
+    };
+}
+
+/** M17: a published story about the photo `p1` and the place `enei`, with a figure of `p2`. */
+export function storyDoc(overrides: Partial<StoryDoc> = {}): StoryDoc {
+    return {
+        title: { ro: 'Biserica Enei', en: 'Enei Church' },
+        body: { ro: 'Demolată în **1977**.\n\n![Altarul](photo:p2)' },
+        yearStart: 1977,
+        photoIds: ['p1'],
+        poiIds: ['enei'],
         published: true,
         ...stamp,
         ...overrides,

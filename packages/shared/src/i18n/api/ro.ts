@@ -144,6 +144,7 @@ export const ro = {
     'apiError.review.notReady': 'Fotografia este încă în lucru. Încearcă din nou peste puțin timp.',
     'apiError.review.licenseUnknown': 'Alege o licență pentru această fotografie înainte de a o aproba.',
     'apiError.review.changed': 'Elementul s-a schimbat cât timp îl citeai. Verifică-l din nou, apoi decide.',
+    'apiError.review.storyEmpty': 'Povestea nu are încă text. Aprob-o după ce autorul ei o scrie sau refuz-o.',
     'apiError.suggestion.dailyLimit': 'Ai atins limita de azi, {max} sugestii. Încearcă din nou mâine.',
     'apiError.suggestion.wrongKind': 'Fotografia s-a schimbat de când ai deschis-o. Reîncarcă pagina.',
     'apiError.suggestion.outsideCity': 'Acest loc este în afara hărții orașului.',

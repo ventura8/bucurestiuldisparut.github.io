@@ -103,6 +103,7 @@ describe('the publish triggers', () => {
             ['onPhotoWrite', 'photos'],
             ['onPoiWrite', 'pois'],
             ['onPoiCategoryWrite', 'poiCategories'],
+            ['onStoryWrite', 'stories'],
         ] as const) {
             const path = `${cityPath}/${collection}/doc-1`;
             await triggers[name].run(
@@ -111,7 +112,7 @@ describe('the publish triggers', () => {
         }
 
         expect(await deps.documents.get(FIRESTORE_PATHS.manifestState(CITY_ID), manifestStateDocSchema)).toMatchObject({
-            requestedVersion: 5,
+            requestedVersion: 6,
         });
         expect(deps.tasks.queued).toHaveLength(1);
     });
@@ -138,6 +139,7 @@ describe('the publish triggers', () => {
                 ['onPhotoWrite', { document: 'cities/{city}/photos/{id}' }],
                 ['onPoiWrite', { document: 'cities/{city}/pois/{id}' }],
                 ['onPoiCategoryWrite', { document: 'cities/{city}/poiCategories/{id}' }],
+                ['onStoryWrite', { document: 'cities/{city}/stories/{id}' }],
             ],
         );
     });

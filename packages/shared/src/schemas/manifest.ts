@@ -38,6 +38,7 @@ import {
     zoomSchema,
 } from './primitives.js';
 import { daySchema, monthSchema, withPhotoDate } from './photo-date.js';
+import { MAX_STORIES, storySchema } from './story.js';
 
 /** The `version` every v1 manifest carries; a different value is refused before validation. */
 export const MANIFEST_VERSION = 1;
@@ -245,6 +246,8 @@ export const manifestSchema = z
         photosOverlay: photosOverlaySchema.optional(),
         poiCategories: z.array(poiCategorySchema).max(MAX_POI_CATEGORIES).optional(),
         pois: z.array(poiSchema).max(MAX_POIS).optional(),
+        /** M17 (`docs/research/M17-stories.md` §4): the city's stories; absent when there are none. */
+        stories: z.array(storySchema).max(MAX_STORIES).optional(),
     })
     .superRefine((manifest, context) => {
         for (const issue of manifestRuleIssues(manifest)) {

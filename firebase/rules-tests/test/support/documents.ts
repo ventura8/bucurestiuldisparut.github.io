@@ -11,6 +11,7 @@
  */
 import { CLIENT_WRITES, STORAGE_PATHS, publicObjectUrl, type ClientCollection, type PhotoVariant } from '@hcm/shared';
 
+import { STORY_EDITS } from './stories.js';
 import { later, past, serverTime, stampedBy, systemStamp, type Data } from './world.js';
 
 /** The bounds every test city gets: photo locations must fall within them (±0.5°). */
@@ -675,6 +676,7 @@ export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
         credit: 'Maria Popescu',
     },
     poiCategory: { label: { ro: 'Biserici', en: 'Churches' }, icon: 'mosque', color: '#aa00ff', defaultOpacity: 0, order: -1 },
+    story: STORY_EDITS,
     job: { cancelRequested: true, placingPoints: true },
     usgsScene: { status: 'rejected', note: 'Nori peste oraș.' },
     inboxItem: { read: true, readAt: serverTime() },

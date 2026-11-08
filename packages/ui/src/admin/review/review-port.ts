@@ -7,7 +7,7 @@ import type { MapStatusPort } from '../pois/pois-port.js';
 
 /** A photo or a place an uploader added. */
 export interface ReviewItemPort {
-    readonly entity: 'photo' | 'poi';
+    readonly entity: 'photo' | 'poi' | 'story';
     readonly id: string;
     readonly title: { readonly ro: string; readonly en?: string | undefined };
     /** The private path of a held picture, read with the admin's credentials. */
@@ -56,6 +56,7 @@ export interface ReviewRequestPort {
 export interface ReviewViewState {
     readonly photos: ListStatePort<ReviewItemPort>;
     readonly places: ListStatePort<ReviewItemPort>;
+    readonly stories: ListStatePort<ReviewItemPort>;
     readonly suggestions: ListStatePort<ReviewSuggestionPort>;
     readonly decided: ListStatePort<ReviewSuggestionPort>;
     readonly requests: ListStatePort<ReviewRequestPort> | null;

@@ -16,6 +16,7 @@ const MODULE_TYPED: Assignable<
     AreaModule<PhotosState, PhotosIntents>['area'],
     | 'review'
     | 'contribute'
+    | 'stories'
     | 'photos'
     | 'pois'
     | 'layers'

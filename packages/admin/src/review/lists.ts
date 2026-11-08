@@ -5,6 +5,7 @@ import {
     photoDocSchema,
     poiDocSchema,
     roleRequestDocSchema,
+    storyDocSchema,
     suggestionDocSchema,
     type Schema,
 } from '@hcm/shared';
@@ -16,6 +17,7 @@ import {
     photoItem,
     poiItem,
     requestRow,
+    storyItem,
     suggestionRow,
     type ReviewBlocked,
     type ReviewItem,
@@ -33,6 +35,7 @@ const BLOCKED: ContentQuery = { where: [['blocked', '==', true]] };
 export interface ReviewListsPatch {
     readonly photos?: ListState<ReviewItem>;
     readonly places?: ListState<ReviewItem>;
+    readonly stories?: ListState<ReviewItem>;
     readonly suggestions?: ListState<ReviewSuggestion>;
     readonly decided?: ListState<ReviewSuggestion>;
     readonly blocked?: ListState<ReviewBlocked>;
@@ -82,9 +85,18 @@ function contentLists(services: ListServices, changed: (patch: ReviewListsPatch)
             changed({ places: list });
         },
     });
+    const stories = liveList(services, {
+        collection: FIRESTORE_PATHS.stories(city),
+        schema: storyDocSchema,
+        map: storyItem,
+        changed: (list) => {
+            changed({ stories: list });
+        },
+    });
     return [
         [photos, PENDING],
         [places, PENDING],
+        [stories, PENDING],
     ];
 }
 

@@ -1,5 +1,5 @@
 /**
- * The `history.*` functions (fn-admin, `docs/research/M2-interfaces.md` §2.2, §3.2): the five audit triggers and the
+ * The `history.*` functions (fn-admin, `docs/research/M2-interfaces.md` §2.2, §3.2): the six audit triggers and the
  * `history.revert` callable. The integrator's `functions/src/index.ts` exports `history = historyFunctions(getDeps)`,
  * which deploys `history-onCityWrite`, ..., `history-revert`.
  */
@@ -16,6 +16,7 @@ export function historyFunctions(getDeps: () => HistoryFamilyDeps) {
         onPhotoWrite: historyTrigger('history.onPhotoWrite', getDeps),
         onPoiWrite: historyTrigger('history.onPoiWrite', getDeps),
         onPoiCategoryWrite: historyTrigger('history.onPoiCategoryWrite', getDeps),
+        onStoryWrite: historyTrigger('history.onStoryWrite', getDeps),
         revert: revertFunction(getDeps),
     };
 }

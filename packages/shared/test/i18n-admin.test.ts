@@ -88,6 +88,7 @@ const CONTENT_FOLDERS = {
     'admin-imagery': ['imagery', 'georef', 'orders'],
     'admin-notify': ['notify', 'assist'],
     'admin-review': ['review', 'contribute'],
+    'admin-stories': ['stories'],
     'admin-cities': ['cities', 'budgets'],
     'admin-export': ['export'],
 } as const;
