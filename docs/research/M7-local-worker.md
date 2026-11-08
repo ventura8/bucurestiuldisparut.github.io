@@ -185,7 +185,8 @@ Objects (`worker.urls`): GET `rasters/C/L/V/*`, `rasters/C/L/<basedOn>/scan.tif`
 `rasters/C/<part.layerId>/<part.versionId>/scan.tif` (`layer-join`, M8), the job's `params.uploadPath` (`geotiff-import`), and
 `rasters/C/<any layer>/<any version>/align.tif` (M15: each proved frame's image at 5 m, which a later frame's film ties are
 measured on); PUT `rasters/C/L/V/<VERSION_FILES>` only. Nothing else: the delivery, the scratch
-and the reference cache stay on the computer, so no signed URL ever names them.
+and the reference cache (since M15 *Terrain* also the city's Copernicus DEM surface, which the worker reads from the public tiles itself,
+like Sentinel-2's) stay on the computer, so no signed URL ever names them.
 
 USGS (`worker.urls`, `kind: 'usgs'`): `download-options` with `datasetName == params.dataset` and `entityIds ==
 [params.entityId]`; `download-request` with one download of `params.entityId` and `label == 'hcm-<J>'`;

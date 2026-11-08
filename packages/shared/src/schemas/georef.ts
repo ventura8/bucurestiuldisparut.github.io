@@ -81,7 +81,8 @@ const rpcAxesSchema = z.strictObject({
 
 /**
  * M15, *Terrain*: a KH-9 panoramic frame fitted over the city's surface model (Copernicus DEM GLO-30, whose notice its layer carries).
- * The warp renders it through `rpc` with that model; `reliefM`, what the terrain moved beyond what a second-order polynomial absorbs, ground metres RMS.
+ * The warp renders it through `rpc` with that model; `reliefM`, what the terrain moved beyond what a second-order polynomial
+ * absorbs, ground metres RMS.
  */
 const terrainSchema = z.strictObject({
     source: z.literal('glo30'),

@@ -2443,3 +2443,10 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: `test_bad_path_a_partner_published_wrong_is_left_out_and_named` (`pipeline/tests/unit/test_calibrate_joint.py`), written before the code was trusted.
     - Fix and pin: `calibrate/joint.py` `_trimmed`: the furthest partner beyond `DISAGREE_M` is left out alone, and the rest are measured again until none is (`S-P06-BAD-JOINT-PARTNER-DISAGREES`; the integration test moves a real accepted frame's image 20 m and reads it back at 20 m, left out).
     - **A leave-one-out check is itself contaminated by the other outliers it keeps: remove the worst one at a time and measure again, as the reference guard re-centres its median (401).**
+403. **A map sampled on the warp's lattice lost more terrain than it corrected.**
+    - Seen: 2026-11-08, M15 *Terrain*: A001's map over the Copernicus DEM, sampled on 17 x 17 nodes and rendered through `-tps` as every other lattice is, lay 11.3 m RMS from the map itself (Pitești 18.3 m), where leaving the relief uncorrected cost 6.4 m after a second-order fit.
+    - Cause: the relief is a field of 900 m features; nodes 1.2 to 1.5 km apart sample it sparsely and the thin-plate spline between them invents what lies between (33 x 33: 3.6 m, 49 x 49: 2.0 m).
+    - Found by: the exploration harness, before any product code (`tools/m15f-explore.py` on the NUC: the map against its own lattice render at the tiles).
+    - Fix and pin: the map renders through an RPC with the surface model, which GDAL evaluates per place at its height, and which holds it within 0.002 m (`georef/rpc.py`, `steps/warp.py`; `S-P06-HAPPY-TERRAIN`, `test_terrain_job.py`).
+    - **Before storing a map as samples, render the samples and compare them with the map at the scale of its finest term; a term finer than the samples needs a representation the renderer evaluates itself.**
+

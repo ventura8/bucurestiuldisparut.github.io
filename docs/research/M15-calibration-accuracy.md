@@ -1,6 +1,6 @@
 # M15: calibration accuracy, what to build
 
-The owner, 2026-11-08: improve the calibration error; the joint solve, *Joint solve* at the end. Evidence: [M9 §14](M9-calibration.md#14-rehearsal-on-real-frames-2026-11-06) and `reports/calib/accuracy/` (git-ignored), on 11 Bucharest frames (KH-9 pan from 8 missions, KH-7, KH-9 mapping) plus F006 over Pitești. No product code changed.
+The owner, 2026-11-08: improve the calibration error; the joint solve, *Joint solve*; terrain, *Terrain* at the end. Evidence: [M9 §14](M9-calibration.md#14-rehearsal-on-real-frames-2026-11-06) and `reports/calib/accuracy/` (git-ignored), on 11 Bucharest frames (KH-9 pan from 8 missions, KH-7, KH-9 mapping) plus F006 over Pitești. No product code changed.
 
 **The ruler.** Sentinel-2 cannot judge a 5 m map: its tile noise against film is 10 to 14 m. The judge is the **film ruler**: 52 pairs of frames compared with each other, ground metres, held out twice (3.2 km blocks, 900 m buffer, unseen by both fits; repeated on 8 km blocks). Self-checks: a frame against itself reads 0.007 m; an injected field returns within 1.5 m. Blind spot: an error all frames share, above all an absolute shift. "Per frame" splits a pair's error between its frames (three-cornered hat).
 
@@ -13,7 +13,7 @@ The owner, 2026-11-08: improve the calibration error; the joint solve, *Joint so
 | Too few points in the fit | 3 to 5 m | camp on ~100 pairs 11.1, on every tile 7.7 |
 | Film tile noise | 2 to 5 m a tile | averaged over thousands of tiles |
 | Seams | 0.4 to 4.7 m, 12.7 m worst tile | segments are turned; `stitch` only shifts |
-| Terrain (Bucharest) | at most 5.6 m | bounded on A001; no DEM |
+| Terrain | 6.2 m on A001, 7.8 m over Pitești after poly2 | measured with Copernicus DEM (`acc-open-refs.md`); built (*Terrain*, below) |
 | Sentinel-2 absolute | about 4.6 m RMS | my arithmetic from under 8 m CE95, not measured |
 
 Double held out, 52 pairs: **15.7 m RMS** fitted, **14.4 m** as GDAL renders it; per frame 3.2 to 12.3 m (median 7.0).
@@ -51,7 +51,7 @@ Steps 2 to 4 were read alone; together they are unmeasured. Each lands only if t
 
 ## Waiting on the owner
 
-- **Downloads**: a second Sentinel-2 scene (~44 MB, [Copernicus, free with attribution](https://ads.atmosphere.copernicus.eu/licences/ec-sentinel)), an OSM extract ([ODbL](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines)), Copernicus DEM ([GLO-30 licence](https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/DEM/resources/license/License-COPDEM-30.pdf), to be accepted). They measure absolute position and terrain, small here, tens of metres in a hilly city.
+- **Downloads**: a second Sentinel-2 scene (~44 MB, [Copernicus, free with attribution](https://ads.atmosphere.copernicus.eu/licences/ec-sentinel)), an OSM extract ([ODbL](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines)), Copernicus DEM ([GLO-30 licence](https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Data/DEM/resources/license/License-COPDEM-30.pdf); recorded in `~/hcm-calib/ref/LICENCES.md` on the NUC and used since *Terrain*). They measure absolute position and terrain, small here, tens of metres in a hilly city.
 - **M9 §13's cut on poly3** rested on the noisy Sentinel-2 reading; camp supersedes it.
 - **Auto-publish** reads the saved checkpoint figure (12 to 22 m), which flatters: blocked, the same frames read 19 to 30 m. Move the threshold to the blocked figure.
 
@@ -254,3 +254,63 @@ F006 and F007 were imported first and are never joined themselves (F007's only e
 - **The camera is not restricted**; F049's far scan half reads worse joined (16.0 → 38.1 m) when that half has neither tiles nor ties. A frame with partners on all sides, the usual case in a city, does not meet it.
 - **Absolute position** is neither lost nor proved better at full coverage (OSM above); F049's bias grows 1.2 m.
 - **Not run:** a whole job through the runner on a real frame (the product's matcher and fit ran on the real scans, through the harness); the edge-strip ruler of the review (the partial ruler, half a frame, replaces it); a second city with two frames (Pitești has one); the measured-area outline on the admin's map.
+
+## Terrain (2026-11-08): a frame seen off nadir, over the surface model
+
+**Why.** A feature h metres above the frame's reference height shows on the film where flat ground h tan(view) further from the nadir would show. The open references (`~/hcm-calib/out/acc-open-refs.md` on the NUC, finding 3) found the frames' residuals following Copernicus DEM relief with a slope near 1 where the view is off nadir (A001 0.97 ± 0.13, F003 1.04, A015 1.17, F006 over Pitești 1.11 ± 0.06), leaving 6.2 m on A001 and 7.8 m over Pitești after poly2 (48.8 m at worst).
+
+**What it does** (`calibrate/terrain.py`, `surface.py`, `steps/relief.py`, `georef/rpc.py`; `joining.py`, `steps/georef.py`, `steps/warp.py`):
+
+- **The surface** (`surface.py`, `steps/relief.py`): Copernicus DEM GLO-30, the public tiles on AWS open data (`HCM_DEM_URL`, default the bucket's eu-central-1 address, anonymous https through the address guard), every one-degree tile the city window touches, warped to EPSG:3857 at 30 ground metres a cell (at most 4,096 a side: a larger window takes coarser cells), averaged over a 900 m square (the area a tile measures; today's buildings and trees weigh little at that scale), float32, deflated (3.1 MB for Bucharest's window, 2.1 MB for Pitești's), cached as `reference/{city}/dem/{key}.tif` (90 days, like the other references). A missing tile (open sea) is ground at 0 m. Without any tile, or with the address refused (a real one under the emulators), the frame is fitted and rendered flat with a warning.
+- **The parallax** (`parallax_at`): from the KH-9 pan camera fitted flat, each film pixel's ray on the plane under the camera at a height of 1, from the nadir, through the camera's linear map to EPSG:3857, over that map's scale: the view's tan as a direction away from the nadir. Over a city it is fitted as an affine field of the place (`Terrain.tan`). Against the open references' figures the camera reads A001 1.19 (pixel ratio 1.14, free fit 1.11), A015 0.75 (0.65, 0.77), F003 0.67 (0.50, 0.68), F022 0.64 (0.59, 0.49), F049 0.35 (0.21, 0.40), F006 over Pitești 0.73 (scan angle 0.50, free fit 0.61).
+- **What the tiles show** (`_shown`): the camera's tan runs high where its scan angle is loosely held, and the surface model holds today's buildings; so the tan is scaled by the slope of the flat camera's residuals on the predicted displacement, both less a cubic in the film (tiles within 100 m), clipped to [0, 1]: A001 0.93, F003 0.93, A015 1.0, F022 0.85, F049 0.73, Pitești 0.63.
+- **Who is corrected**: a KH-9 pan frame whose camera holds (as `alone` asks) and whose relief after a second-order fit is 1 m or more (`RELIEF_MIN_M`). In Bucharest: A001 (6.0 m after scaling), A015 (4.0), F003 (3.6), F022 (2.9), F049 (1.4); not F006, F007, F040, A038 (0.25 to 0.98 m), nor KH-7 or KH-9 mapping (no camera). Pitești's F006: 6.7 m. Any other frame, and a flat city, is fitted exactly as before (the very same georeference: `S-P06-BAD-TERRAIN-NEGLIGIBLE`).
+- **The fit**: the frame's model (its camera, alone or joined to the frames held still) is fitted on its tiles' and ties' places moved where its film shows them (`Terrain.flat`), and maps a film pixel back to the ground through the heights (`Terrain.ground`, a fixed point, `OnGround`); its pairs, checks and blocked figure are read against that map. The lattice is the flat map (what the georeferencer previews; it never renders this frame).
+- **The render** (`georef/rpc.py`, `steps/warp.py`): a 17 x 17 lattice cannot hold a 900 m relief field (A001: 11.3 m RMS from the map through `-tps`, worse than no correction; 33 x 33 3.6 m, 49 x 49 2.0 m; Pitești 18.3, 6.8, 3.7). GDAL renders such a map natively: rational polynomial coefficients (RPC00B) from longitude, latitude and height to the scan, with the surface model (`gdalwarp -rpc -to RPC_DEM=... RPC_DEM_APPLY_VDATUM_SHIFT=FALSE`). They are fitted on the map on a 25 x 25 grid at five heights and hold it within 0.002 m on the real frames (A001, F003, Pitești; refused over 0.5 px); GDAL reads RPC pixels at their centres, so the fit takes half a pixel off. Stored as `georef.terrain` {`source` `glo30`, `reliefM`, `rpc`}; the warp stages the surface again from the cache, and renders through the lattice, flat, with a warning when it is gone.
+- **Credit**: a layer fitted over terrain carries GLO-30's notice after USGS's (`DEM_ATTRIBUTION`, `finalize.ts`).
+
+**Proof on the ruler** (`tools/m15f-terrain.py` on the NUC, the product's own `joined_calibration` with `Proved.heights`, each corrected layer read through GDAL's own RPC transformer with `RPC_DEM` and inverted by Newton, as a warp shows it; the world of *Joint solve*, frames joining in import order, held blocks out of every tile and tie; outputs `~/hcm-calib/out/m15f/`). "Joined" is the build before this section, reproduced exactly (6.50 / 9.19).
+
+| Film ruler, 52 pairs, double held out | Joined | **Terrain** | Gain, 95 % (frames resampled) | Pairs better |
+| --- | --- | --- | --- | --- |
+| 3.2 km blocks (median pair) | 6.50 (6.07) | **5.93 (5.17)** | −0.08 to +1.35 m | 36 of 52 |
+| 8 km blocks (median pair) | 9.19 (8.18) | **8.23 (6.52)** | +0.28 to +2.02 m | 45 of 52 |
+| Every tile, in sample | 5.76 | 5.17 | | |
+| Sentinel-2 tiles held out, mean of 11 frames (3.2 / 8 km) | 21.6 / 22.4 | 21.4 / 22.0 | | |
+
+Each frame, RMS of its own pairs (3.2 km / 8 km blocks), joined → terrain; corrected frames in bold:
+
+| Frame | 3.2 km | 8 km |
+| --- | --- | --- |
+| **A001** | 7.99 → 6.60 | 10.15 → 7.92 |
+| **F003** | 5.46 → 4.89 | 8.12 → 6.95 |
+| **A015** | 6.53 → 5.79 | 9.04 → 8.07 |
+| **F022** | 6.94 → 5.38 | 9.35 → 7.37 |
+| **F049** | 5.12 → 4.69 | 7.51 → 6.41 |
+| F006 | 8.84 → 8.72 | 13.67 → 13.19 |
+| F007 | 6.22 → 5.47 | 7.82 → 6.77 |
+| F040 | 6.01 → 5.50 | 8.27 → 7.50 |
+| A038 | 5.52 → 5.36 | 8.12 → 7.58 |
+| KH-7 | **7.00 → 7.25** | 11.02 → 10.96 |
+| KH-9 mapping | 5.49 → 5.20 | 7.48 → 6.78 |
+
+**F006 over Pitești** (no second frame: Sentinel-2 held out on the same blocks, five seeds, tiles within 100 m): 17.19 → **13.91 m** on 3.2 km blocks (median 10.40 → 7.56), 20.87 → **15.01 m** on 8 km (12.93 → 8.84). The geometry alone, unscaled, read 14.43 and 16.91.
+
+**Variants read on the same ruler** (so the one kept is chosen on it): the geometry alone 5.98 / 8.46 m (gain −0.15 to +1.32, −0.13 to +2.02); the surface averaged over 450 m 6.12 / 8.62; every KH-9 pan frame corrected, the near-flat ones too (no threshold), 5.98 at 3.2 km, the same as with it: correcting a frame with little relief does it no harm. The scaled tan was kept: best on both rulers and over Pitești, and it only ever shrinks the geometry.
+
+**Absolute position, OSM rails** (never in any fit; `osm2` reading as in *Joint solve*): pooled over 1,173 rails 12.04 → 11.99 m, the mean square +1.25 m² (95 %: −2.4 to +4.8): **no loss and no proved gain**. Per frame, RMS joined → terrain: A001 11.76 → 11.30 (scatter after the bias 11.17 → 10.54, bias 3.17 → 3.96), F003 10.77 → **11.49** (scatter 10.71 → 10.69, bias 4.08 → 5.44), A015 14.86 → 14.99 (13.71 → 13.31, 7.11 → 8.69), F049 13.69 → 13.43, F022 12.59 → 12.57; the others within 0.1 m. The scatter falls on A001, A015 and F049, and each corrected frame's bias moves 0.2 to 1.6 m, inside the 3.1 m per-frame noise this ruler carries north (*acc-open-refs* §2). Pitești has 7 rail readings, too few.
+
+**A flat city.** By construction a frame under 1 m of relief, without a camera, or without the surface gets the georeference it got before (`test_bad_path_a_flat_city_is_fitted_exactly_as_without_a_surface`: the records are equal); in Bucharest six frames of eleven are such frames, and their own pair figures did not get worse except KH-7's at 3.2 km (below).
+
+**Cost** (`tools/m15f-cost.py`, the real scans, one process, 4 CPUs, 16 GB): the fit over terrain 0.9 to 1.2 s (flat 0.8 to 1.2 s). A real warp of the whole scan at zoom 17 over the Bucharest reference box through the RPC and the surface: A001 429 s against 152 s through the lattice, F003 333 s against 217 s, the same peak (5.8 to 6.0 GB) and the same size (0.74 to 0.76 GB); within a standard Cloud Run task and the worker. GDAL's own transformers of those two warps put the scan's pixels 6.2 m RMS apart on A001 (P95 11.7 m, 25.3 m at most) and 3.7 m on F003: the correction as rendered, the size of the relief each corrects (6.0 and 3.6 m). The cached surface: 3.1 MB for Bucharest, 2.1 MB for Pitești (the harness built them with the product's `write_surface` from the open references' copies of the tiles; the bytes the product reads from the public bucket were not measured).
+
+**Proof in tests.** Synthetic: a panoramic frame over an 80 m hill is fitted within its noise where the flat fit is not, and its RPC with the surface puts each true place on its film pixel within 3 m; the camera reads the parallax its geometry gives within 0.05; a frame whose tiles show half or none of the predicted parallax is corrected by that much; a level surface, a 1 m rise, no camera or a failed camera leave the frame flat, the records equal; flat and ground undo each other; an RPC holds a map over heights, round-trips its record and GDAL reads it with a surface as the fit does; a map no rational cubic holds gives none; GLO-30 tiles are named by their south-west corner, warped, averaged and read back (`test_calibrate_terrain.py`, `test_georef_rpc.py`). Whole steps (`test_terrain_job.py`): a version with `georef.terrain` warps through its RPC and the surface served on the test server, 100 m of ground shown 50 m east landing 50 m west of the flat render, the surface cached once; with no tile, or an address refused, it renders flat and the log says why. Shared schema and the layer's credit (`imagery.test.ts`, `finalize.test.ts`). Rows `S-P06-HAPPY-TERRAIN`, `S-P06-BAD-TERRAIN-NEGLIGIBLE`, `S-P06-BAD-TERRAIN-UNAVAILABLE`; DECISIONS §97; lesson 403.
+
+**Limits and not done.**
+
+- **KH-7 reads worse on its pairs at 3.2 km** (7.00 → 7.25; 8 km 11.02 → 10.96): it is not corrected (no camera model; its roll is unknown), and its pairs with corrected frames lost an error they shared (A015-KH-7 5.60 → 6.76, F003-KH-7 6.02 → 6.87, F049-KH-7 6.24 → 6.84). The open references' free fit reads KH-7's own tan at 0.43 ± 0.13 east, far from near nadir. Correcting it needs its pointing; KH-9 mapping (vertical) likewise keeps its polynomial.
+- **The gain at 3.2 km is not proved** (95 % from −0.08 m); at 8 km and over Pitești it is.
+- **F003's OSM reading worsens 0.7 m**, inside that ruler's per-frame noise but not explained.
+- **A join of several frames (M8) renders its parts flat**: `join/warping.py` warps each part through its lattice.
+- **Not run**: a whole job through the runner on a real KH-9 frame (the product's fit ran on the real tiles and its RPC through GDAL's transformer, and a real warp of the scan through it: *Cost*); the surface fetched from the public bucket by the product (the harness built it from the same tiles fetched for the open references); Pitești on a film ruler (one frame).
+

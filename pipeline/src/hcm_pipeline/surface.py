@@ -5,7 +5,7 @@ GLO-30's public tiles (AWS open data, bucket `copernicus-dem-30m`, anonymous htt
 every layer corrected with it: `functions/src/imagery/finalize.ts`) are one degree each, named by their south-west corner; a tile that
 does not exist (open sea) or cannot be read is ground at 0 m. The window's tiles are warped to EPSG:3857 at 30 ground metres a cell, at
 most `MAX_CELLS` a side (a larger window, coarser cells), averaged over a 900 m square: the area a tile of the proof measures, and a
-scale at which today's buildings and trees, which the 1970s city lacked, weigh little. Float32, about 4 MB for a 30 km window.
+scale at which today's buildings and trees, which the 1970s city lacked, weigh little. Float32, deflated: 3.1 MB for Bucharest.
 """
 
 import math
