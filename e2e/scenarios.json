@@ -2934,6 +2934,28 @@
             "notes": "M12 (docs/research/M12-own-tiles.md). Test: e2e/specs/viewer/own-tiles.spec.ts."
         },
         {
+            "id": "S-V32-HAPPY-PARTIAL-FRAME",
+            "behaviour": "V32",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A layer whose frame covers part of the view shows the frame there and the basemap beside it",
+            "asserts": "an archive with tiles only north-west of the city, a view across its northern edge -> the archive's colour 40 px inside the edge, the basemap 40 px outside it",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "the owner's screenshot of 2026-11-08 (1980's frame: square pictures of other places south of its edge, a black band along it); docs/LESSONS.md. Test: e2e/specs/viewer/partial-frame.spec.ts."
+        },
+        {
+            "id": "S-V32-BAD-STALE-HOLE",
+            "behaviour": "V32",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Past a frame, after a walk across it, the map shows the basemap and never an earlier tile of the layer",
+            "asserts": "eighteen views inside the frame at z15 and z16 (more tiles than Mapbox GL's cache keeps), then a view past it -> the basemap at four probes, no colour of the archive; the source answers a hole with one transparent 256 px picture, never null, and asks no read for it",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "the owner's screenshot of 2026-11-08 (1980's frame: square pictures of other places south of its edge, a black band along it); docs/LESSONS.md. Tests: e2e/specs/viewer/partial-frame.spec.ts, packages/ui/test/map/pmtiles-source.test.ts."
+        },
+        {
             "id": "S-A00-HAPPY",
             "behaviour": "A00",
             "area": "admin",
@@ -13107,6 +13129,61 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M12 (docs/research/M12-own-tiles.md). Test: pipeline/tests/integration/test_pyramid_job.py."
+        },
+        {
+            "id": "S-P08-HAPPY-RIM-CUT",
+            "behaviour": "P08",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A frame's dark film rim is cut from its tiles' alpha and the picture inside it kept",
+            "asserts": "a warped frame or its COG with an 8 px black rim under an opaque alpha along a skewed edge -> the view's alpha 0 on the rim, 255 just past it and on a black building deep inside; the archive's tiles show no opaque black rim; the preview stays at most 8192 px on its long side",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "the owner's screenshot of 2026-11-08 (1980's frame: square pictures of other places south of its edge, a black band along it); docs/LESSONS.md. Test: pipeline/tests/integration/test_pyramid_rim.py."
+        },
+        {
+            "id": "S-P08-HAPPY-RIM-FADE",
+            "behaviour": "P08",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A rim that fades in is cut to the end of its fade, and the view keeps its overviews",
+            "asserts": "a frame whose black rim fades in over 100 ground metres -> no kept pixel near the edge under 60 % of the scene's grey; the live 1980 tile 13/4689/2965's crop -> the frame ends on a median grey of at least 72 (the black-only cut: 63), never deeper than the reach; the view over a COG -> the COG's overviews on all four bands, its alpha cut there too, and a 320 px thumbnail",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "a review of 2358145 (the fade left as a dark grey band, the VRT pixel function hiding every overview); docs/LESSONS.md 499. Test: pipeline/tests/integration/test_pyramid_rim.py."
+        },
+        {
+            "id": "S-P08-BAD-RIM-LIMITS",
+            "behaviour": "P08",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Dark detail that is not the rim keeps its alpha",
+            "asserts": "a dark street running from the edge into the frame -> cut only within 150 ground metres of the edge, kept past it; a dark river behind a bright bank just past a rim's fade -> kept, though within the reach; a frame all within the reach -> measured on its own median; a frame without a rim -> no mask written and its alpha byte for byte as it was",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "the owner's screenshot of 2026-11-08 (1980's frame: square pictures of other places south of its edge, a black band along it); docs/LESSONS.md. Test: pipeline/tests/integration/test_pyramid_rim.py."
+        },
+        {
+            "id": "S-P08-HAPPY-RIM-ANGLES",
+            "behaviour": "P08",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A rim's fade is cut to its end across an edge at any angle, never past 150 ground metres",
+            "asserts": "previews at 5 m a pixel with an edge at 0, 18 and 45 degrees, a 20 m black core and a fade of 50, 100, 150 or 200 m -> no kept pixel within 150 m darker than 65 % of the scene, no cut pixel past 150 m and one pixel; the band's distance is the straight-line depth below the edge at every angle (side steps: 41 % more across 45 degrees)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "a review of c5766ba (across a 45 degree edge the band ended about 106 m in and a 200 m fade kept grey 54); docs/LESSONS.md 500. Test: pipeline/tests/integration/test_rim_profile.py."
+        },
+        {
+            "id": "S-P08-BAD-RIM-DARK-PATCH",
+            "behaviour": "P08",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Flat dark ground that touches the rim is the picture's, not the fade's",
+            "asserts": "a flat patch at grey 30, 50 or 70 (scene 120) 60 m deep against the black core at 0, 18 and 45 degrees -> cut at most two preview pixels past the core, the core still cut; the same patch with grain of 12 grey -> at most six; a lake on a frame's rim through the whole view -> its alpha 255 past its first pixels, the rim's black at 0",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "a review of c5766ba (dark ground touching the core cut the whole band, measured 155 m); docs/LESSONS.md 500. Test: pipeline/tests/integration/test_rim_profile.py."
         },
         {
             "id": "S-V07-HAPPY-PRECISE-DATE",

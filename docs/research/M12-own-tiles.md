@@ -59,6 +59,7 @@ Default: own tiles. One setting, **Publish through Mapbox** in Settings → Imag
 
 - `rasters.ts` turns `pmtiles` into `new PmtilesSource(spec)`; `xyz` and `mapbox` unchanged. Zooms and bounds come from `output`; Mapbox overzooms to the city's `maxZoom`.
 - Bucket CORS already allows `*` and `Range`. Never Firestore, no Firebase SDK, no HTML from data.
+- **A hole is a transparent picture, never `null`** (addendum 2026-11-08, `docs/LESSONS.md` 496): Mapbox GL 3.34.1 draws a `null` tile with a recycled texture of an earlier tile, which showed other places' pictures beside a partial frame. The source answers a tile the archive leaves out with one shared, transparent 256 px `ImageData`, and still asks nothing for it.
 - **Export and kit:** `plan.ts` carries the archive (not the COG) where `rasterExportable` allows, relative `tiles/<layer>.pmtiles`; otherwise the public URL. **A kit city without a bucket:** a file beside the page, on a host with `Range`; GitHub Pages is unverified.
 
 ## Cost, in the owner's words
@@ -168,3 +169,11 @@ Six findings of a review of the code above, each confirmed by reading it and pin
 - **An expired hour read as a broken image.** A tile failing after the address's hour (counted from its answer by the page's clock) asks `imagery.previewUrl` again on its own, once; a tile failing within its hour still says so, with Try again. `S-A74-BAD-HOUR-OVER`.
 
 **Still not verified:** a real Cloud Storage `delete` racing a `copy`, and a V4 address expiring in a real browser (the e2e moves only the page's clock and refuses one read).
+
+## Addendum 2026-11-08: a partial frame's holes and its dark rim
+
+The owner's screenshot of the live 1980 layer showed two faults beside a frame that covers half the city (DECISIONS-for-review.md §124).
+
+- **Holes drew earlier tiles** (lesson 496): fixed in the viewer (*The viewer* above); every layer with holes inside its bounds is fixed by the engine deploy alone.
+- **The dark rim** (lessons 497, 499): `rgba_view` reads the layer through `tiles/rim.py`, which cuts a band measured from the alpha's edge in two passes on a preview at most 8192 px on its long side. The core is the film's black (grey 24 or less) that the transparent outside reaches through black pixels only; from the core the cut grows through the fade, a ramp that rises outward: a pixel joins while it is darker than 65 % of the scene's own median (the frame deeper than the band) and the dark pixels' profile still rises there, read on shells of equal distance from the edge over a 7 px window (lesson 500), and the fade's last dark pixel before the scene is taken too; neither pass goes more than 150 ground metres from the alpha's edge as a straight-line distance (a Euclidean distance transform, so the band is as deep across a 45 degree edge as across a straight one; the 1980 frame's black and fade: about 100), and one preview pixel more is taken. A frame with no black at its edge keeps its alpha untouched; dark water, a park or a shadow that touches the core is flat, not rising, and loses at most two preview pixels past the core (a grainy one, a few more), not the band. The keep-mask is drawn bilinear over the source's alpha (or the COG's mask) by a `min` pixel function **once**, into `rgba-alpha.tif` (tiled, DEFLATE, with the source's own overview levels), and the view's alpha is a plain source of it: a derived band hides every overview, so the first version (2358145) made the thumbnail and every coarse read go through full resolution. The view keeps the COG's overviews, and the thumbnail averages from the closest one. The stitch crop is unchanged, so saved points stay where they are.
+- **Archives already published** keep their band until the layer is rendered again (Calibrate again, or the georeferencer's Save, then Approve: re-runs, not imports). No re-tile of a published version is built (§124c).
