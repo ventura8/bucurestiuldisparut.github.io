@@ -76,7 +76,9 @@ function offer(context: ImageryContext, page: VersionPagePort, version: VersionV
             <hcm-button variant="tonal" icon="auto_fix_high" ?disabled=${off} @click=${() => void refine(context)}
                 >${contentText(locale, 'adminContent.imagery.recalibrate.refine')}</hcm-button
             >
-            <a href=${['#/georef', version.id].join('/')}>${contentText(locale, 'adminContent.imagery.recalibrate.points')}</a>
+            <a class="external" href=${['#/georef', version.id].join('/')}
+                >${contentText(locale, 'adminContent.imagery.recalibrate.points')}</a
+            >
         </div>
     </section>`;
 }

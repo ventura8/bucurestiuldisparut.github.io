@@ -13,7 +13,7 @@ test.describe.configure({ lock: ADMIN_LOCK });
  * shows both fits on the same checks and replaces the waiting one only once it is rendered. A refine with nothing better ends with its
  * reason in words and leaves the waiting version as it was. Approve of a fit not shown better asks first (the unit tiers).
  */
-test.use({ persona: 'owner' });
+test.use({ persona: 'owner', mapOwner: 'owner' });
 
 const SCENE = 'DS1035-1057DA023';
 
