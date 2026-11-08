@@ -5,8 +5,9 @@
  * follows its camera, so the visitor drags, zooms and clicks either side alike, and Mapbox's logo and attribution of the
  * viewer's map (z-index 2 in mapbox-gl.css) stay on top of both sides at every divider position (the second map's own are
  * hidden: one logo and one attribution, Mapbox terms). The bar and the handle keep clear of the viewer's floating controls
- * through the custom properties the viewer defines (`--hcm-gutter`, `--hcm-map-chrome`, `--hcm-timeline-inline`,
- * `--hcm-dock-gap`), which reach this shadow root by inheritance; they sit below the viewer's docks (z-index 10 and up).
+ * through the custom properties the viewer defines (`--hcm-gutter`, `--hcm-map-chrome`, `--hcm-timeline-block`,
+ * `--hcm-dock-gap`, and `--hcm-top-start` where the timeline stands on the leading edge), which reach this shadow root by
+ * inheritance; they sit below the viewer's docks (z-index 10 and up).
  */
 import { css } from 'lit';
 
@@ -20,11 +21,6 @@ export const compareStyles = css`
         inset: 0;
         display: block;
         pointer-events: none;
-    }
-
-    /* A phone held landscape: the timeline stands on the trailing edge, from the top gutter down to the legal strip. */
-    :host([compact-height]) {
-        --hcm-compare-end: calc(var(--hcm-gutter, 16px) + var(--hcm-timeline-inline, 112px) + var(--hcm-dock-gap, 8px) + 48px);
     }
 
     .second {
@@ -54,13 +50,15 @@ export const compareStyles = css`
     }
 
     /*
-     * Below the middle of the map: its centre stays the map's (a tap there is a tap on the map), and the handle clears the
-     * bottom controls on a phone held landscape (412 px: the handle ends 20 px above the menu button).
+     * Above the middle of the map, ending 16 px before it: its centre stays the map's (a tap there is a tap on the map),
+     * and the handle keeps clear of what lies at the map's foot. Below the middle it touched the timeline lying there on
+     * a phone held landscape (412 px), lifted out of its way it reached the centre or the chip, and 32 px above the
+     * middle the bar, two rows tall under the tour's text spacing, reached it (the tour).
      */
     .handle {
         position: absolute;
         z-index: 3;
-        inset-block-start: calc(50% + 32px);
+        inset-block-start: calc(50% - 64px);
         inset-inline-start: clamp(var(--hcm-compare-start), calc(var(--hcm-compare-at, 50%) - 24px), calc(100% - var(--hcm-compare-end)));
         display: grid;
         place-items: center;
@@ -81,7 +79,7 @@ export const compareStyles = css`
         position: absolute;
         z-index: 4;
         inset-block-start: calc(var(--hcm-gutter, 16px) + env(safe-area-inset-top, 0px));
-        inset-inline: var(--hcm-gutter, 16px);
+        inset-inline: var(--hcm-top-start, var(--hcm-gutter, 16px)) var(--hcm-gutter, 16px);
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -97,10 +95,6 @@ export const compareStyles = css`
         color: var(--md-sys-color-on-surface, CanvasText);
         box-shadow: var(--md-sys-elevation-level2, 0 2px 6px rgb(0 0 0 / 30%));
         pointer-events: auto;
-    }
-
-    :host([compact-height]) .bar {
-        inset-inline-end: calc(var(--hcm-gutter, 16px) + var(--hcm-timeline-inline, 112px) + var(--hcm-dock-gap, 8px));
     }
 
     /* A compact window: the bar spans the map between the gutters, the toggle on its own row above the chooser. */

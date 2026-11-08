@@ -28,7 +28,6 @@ const PROPS: CompareUiProps = {
         { layerId: null, label: 'Today' },
     ],
     credit: '',
-    compactHeight: false,
 };
 
 interface Heard {
@@ -49,10 +48,13 @@ function listen(): { events: CompareUiEvents; heard: Heard } {
     return { events, heard };
 }
 
-/** A compare surface over a 1000 × 600 box. */
-async function surface(props: Partial<CompareUiProps> = {}): Promise<{ element: HcmCompare; heard: Heard }> {
+/** A compare surface over a 1000 × 600 box, or `size` with the viewer's custom properties in `style`. */
+async function surface(
+    props: Partial<CompareUiProps> = {},
+    size = 'width: 1000px; height: 600px;',
+): Promise<{ element: HcmCompare; heard: Heard }> {
     const box = document.createElement('div');
-    box.style.cssText = 'position: relative; width: 1000px; height: 600px;';
+    box.style.cssText = `position: relative; ${size}`;
     document.body.append(box);
     const { events, heard } = listen();
     const element = await mountElement<HcmCompare>(HCM_COMPARE_TAG, { props: { ...PROPS, ...props }, events });
@@ -142,7 +144,7 @@ describe('<hcm-compare>', () => {
     });
 
     it('happyPath_aCompactWindowTogglesTheOneMapBetweenTheSides', async () => {
-        const { element, heard } = await surface({ mode: 'toggle', position: 1, layerId: 'kh9-1977', compactHeight: true });
+        const { element, heard } = await surface({ mode: 'toggle', position: 1, layerId: 'kh9-1977' });
         const toggle = shadowQuery(element, 'hcm-segmented-button') as HTMLElement & { value: string; label: string };
 
         fireKitEvent(toggle, 'hcm-change', { value: 'compared' });
@@ -153,8 +155,23 @@ describe('<hcm-compare>', () => {
         expect(shadowQueryAll(element, '.handle')).toEqual([]);
         // The container stays for a parked second map, unseen; the toggle mounts no map into it.
         expect(getComputedStyle(shadowQuery(element, '.second')).visibility).toBe('hidden');
-        expect(element.hasAttribute('compact-height')).toBe(true);
         await expect(element.mapContainer()).resolves.toBeNull();
+    });
+
+    it('badPath_theBarBeginsAfterAStandingTimelineAndTheHandleEndsAboveALyingOne', async () => {
+        // The owner, 2026-11-08: upright phones stand the timeline on the leading edge, short windows lay it at the foot.
+        const upright = await surface({ mode: 'toggle' }, 'width: 375px; height: 700px; --hcm-top-start: 96px;');
+        const bar = shadowQuery(upright.element, '.bar').getBoundingClientRect();
+        expect(bar.left - upright.element.getBoundingClientRect().left).toBeGreaterThanOrEqual(96);
+        document.body.replaceChildren();
+
+        const short = await surface({ mode: 'swipe' }, 'width: 915px; height: 412px;');
+        const handle = shadowQuery(short.element, '.handle').getBoundingClientRect();
+        const box = short.element.getBoundingClientRect();
+        expect(box.bottom - handle.bottom).toBeGreaterThanOrEqual(42 + 84 + 8 + 40 + 8);
+        // The map's centre stays the map's: a tap there is a tap on the map (the tour samples it).
+        expect(box.top + box.height / 2 - handle.bottom).toBeGreaterThanOrEqual(8);
+        expect(handle.top - box.top).toBeGreaterThanOrEqual(16 + 56 + 8);
     });
 
     it('badPath_theToggleOnTheComparedSideAndASideWithoutAChoice', async () => {

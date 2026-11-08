@@ -2,8 +2,10 @@
  * Styles of `<hcm-timeline>`. The thumb is the hero moment: a pill that morphs into a rounded square and grows while
  * it is dragged, on the M3 Expressive "fast spatial" spring converted for the web (cubic-bezier(0.42, 1.67, 0.21,
  * 0.9), 350 ms); `prefers-reduced-motion: reduce` turns every transition off. The horizontal timeline is exactly 84 px
- * tall (8 + 48 + 28) and the vertical one 112 px wide (8 + 48 + 56): the viewer stacks its FAB and chip above it with
- * those numbers (`--hcm-timeline-block`, `--hcm-timeline-inline`). The list of stops has no margin of its own: the
+ * tall (8 + 48 + 28) and the vertical one 68 px wide (8 + 52 + 8): the viewer docks its FAB and chip with those numbers
+ * (`--hcm-timeline-block`, `--hcm-top-start`). The pill never hides another year's label (the owner's phone,
+ * 2026-11-08: "1980" over 1979 and 1982): lying, the labels are a row below it; standing, the years are the ruler in
+ * the pill's lane, whose stops the phone's height spaces wider than the pill. The list of stops has no margin of its own: the
  * browser's 1em of an `ol` collapsed through the track, made the timeline 100 px tall with a 16 px page font and more
  * with a larger one, and left no room for the open FAB menu above it on a 568 px phone.
  */
@@ -20,6 +22,9 @@ export const timelineStyles = [
         :host {
             --hcm-timeline-spring: cubic-bezier(0.42, 1.67, 0.21, 0.9);
 
+            /* What centres a stop or the thumb on its place: right to left, inline-start is the right edge. */
+            --hcm-x: -50%;
+
             display: block;
             box-sizing: border-box;
             padding-block: 8px 28px;
@@ -31,10 +36,13 @@ export const timelineStyles = [
             user-select: none;
         }
 
+        :host(:dir(rtl)) {
+            --hcm-x: 50%;
+        }
+
         :host([orientation='vertical']) {
             block-size: 100%;
-            padding-block: 32px;
-            padding-inline: 8px 56px;
+            padding: 24px 8px;
         }
 
         .track {
@@ -50,7 +58,7 @@ export const timelineStyles = [
         }
 
         :host([orientation='vertical']) .track {
-            inline-size: 48px;
+            inline-size: 52px;
             block-size: 100%;
         }
 
@@ -74,7 +82,7 @@ export const timelineStyles = [
         :host([orientation='vertical']) .rail,
         :host([orientation='vertical']) .active {
             inset-block: 0;
-            inset-inline-start: 22px;
+            inset-inline-start: 24px;
             inline-size: 4px;
             block-size: auto;
         }
@@ -89,21 +97,23 @@ export const timelineStyles = [
             position: absolute;
             inset-inline-start: var(--hcm-stop);
             inset-block-start: 20px;
-            transform: translateX(-50%);
+            transform: translateX(var(--hcm-x));
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 10px;
+
+            /* The label's row begins below the pill (4 to 44 px), not beside it. */
+            gap: 20px;
             font-size: var(--md-sys-typescale-label-small-size, 0.6875rem);
             color: var(--md-sys-color-on-surface-variant, GrayText);
             white-space: nowrap;
         }
 
+        /* Standing, a year is its own mark on the rail, which its label's ground interrupts. */
         :host([orientation='vertical']) .stop {
-            inset-inline-start: 20px;
+            inset-inline: 0;
             inset-block: auto var(--hcm-stop);
             transform: translateY(50%);
-            flex-direction: row;
         }
 
         .tick {
@@ -117,11 +127,20 @@ export const timelineStyles = [
             visibility: hidden;
         }
 
+        :host([orientation='vertical']) .tick {
+            display: none;
+        }
+
+        :host([orientation='vertical']) .label {
+            padding-block: 2px;
+            background: var(--md-sys-color-surface-container, Canvas);
+        }
+
         .thumb {
             position: absolute;
             inset-inline-start: var(--hcm-position);
             inset-block-start: 4px;
-            transform: translateX(-50%);
+            transform: translateX(var(--hcm-x));
             display: grid;
             place-items: center;
             box-sizing: border-box;
@@ -141,14 +160,16 @@ export const timelineStyles = [
         }
 
         :host([orientation='vertical']) .thumb {
-            inset-inline-start: 4px;
+            inset-inline-start: 0;
             inset-block: auto var(--hcm-position);
+            min-inline-size: 100%;
+            padding: 0;
             transform: translateY(50%);
         }
 
         :host([dragging]) .thumb {
             border-radius: var(--md-sys-shape-corner-medium, 12px);
-            transform: translateX(-50%) scale(1.12);
+            transform: translateX(var(--hcm-x)) scale(1.12);
             cursor: grabbing;
         }
 

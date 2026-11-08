@@ -161,12 +161,51 @@ describe('<hcm-timeline>', () => {
     });
 });
 
+describe('<hcm-timeline> right to left', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_rightToLeftTheHorizontalArrowsFollowTheThumb', async () => {
+        // In Arabic or Hebrew the value grows to the left: Left moves the thumb left, to a later year.
+        const element = await timeline({ value: 1966 });
+        element.dir = 'rtl';
+        const events = recordEvents(element, 'hcm-year-change');
+
+        press(element, 'ArrowLeft');
+        press(element, 'ArrowRight');
+        press(element, 'ArrowUp');
+
+        expect(events.map((event) => event.detail)).toEqual([{ year: 1977 }, { year: 1966 }, { year: 1977 }]);
+    });
+
+    it('badPath_rightToLeftTheThumbAndAPressLandOnTheirStop', async () => {
+        // The review shots at 768 px, right to left: the thumb and the stops sat a whole width beside their place.
+        const element = await timeline({ value: 1977 });
+        element.dir = 'rtl';
+        await element.updateComplete;
+        const thumb = shadowQuery(element, '.thumb');
+        thumb.style.transition = 'none';
+        const tick = shadowQueryAll(element, '.stop .tick')[1]?.getBoundingClientRect();
+        const box = thumb.getBoundingClientRect();
+        expect(Math.abs((tick?.left ?? 0) + (tick?.width ?? 0) / 2 - (box.left + box.width / 2))).toBeLessThanOrEqual(1);
+
+        const events = recordEvents(element, 'hcm-year-change');
+        const track = shadowQuery(element, '.track');
+        const rect = track.getBoundingClientRect();
+        pointer(track, 'pointerdown', rect.left + 1, rect.top + 10);
+        pointer(window, 'pointerup', rect.left + 1, rect.top + 10);
+        expect(events.map((event) => event.detail)).toEqual([{ year: null }]);
+    });
+});
+
 describe('trackRatio', () => {
     it('happyPath_horizontalAndVerticalShares', () => {
         const rect = new DOMRect(100, 200, 200, 100);
 
         expect(trackRatio(rect, { clientX: 150, clientY: 0 }, false)).toBe(0.25);
         expect(trackRatio(rect, { clientX: 0, clientY: 225 }, true)).toBe(0.75);
+        expect(trackRatio(rect, { clientX: 150, clientY: 0 }, false, true)).toBe(0.75);
     });
 
     it('badPath_outsideOrEmptyTracksClamp', () => {

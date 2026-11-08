@@ -91,12 +91,13 @@ describe('<hcm-map-viewer>: layout per window class', () => {
         expect(part(mounted, '.frame').dataset['panes']).toBe('leading');
     });
 
-    it('badPath_landscapePhonesGetAVerticalTimelineAndSideSheets', async () => {
+    it('badPath_landscapePhonesGetAHorizontalTimelineAndSideSheets', async () => {
         const mounted = await mountViewer(readyState(), LANDSCAPE_PHONE);
 
         expect(mounted.store.getState().compactHeight).toBe(true);
         expect(part(mounted, '.frame').hasAttribute('data-compact-height')).toBe(true);
-        await expect.element(page.getByRole('slider')).toHaveAttribute('aria-orientation', 'vertical');
+        await expect.element(page.getByRole('slider')).toHaveAttribute('aria-orientation', 'horizontal');
+        expect(part(mounted, '.frame').dataset['timeline']).toBe('horizontal');
         chooseFromMenu(mounted, 'about');
         await mounted.element.updateComplete;
         expect(part(mounted, 'hcm-about-dialog').hasAttribute('fullscreen')).toBe(true);

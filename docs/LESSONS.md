@@ -2868,3 +2868,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the owner; the tour's overlap, occlusion and gap checkers pass a control that touches nothing, and the unit tests only asserted the 8 px gaps.
     - Fix and pin: the chip takes the card's leading edge, `max(var(--hcm-gutter) + 72px, 50% - 320px)` (50 % of the same containing block), and docks beside the vertical card on a landscape phone (`kit-integration.test.ts`, S-V04-HAPPY-CHIP-ON-TIMELINE, S-V04-BAD-CHIP-NEVER-ALONE). CSS only: 17 bytes of the engine's gzip.
     - **A control that belongs to another must be tested for alignment to it (a shared edge), not only for the gaps around it: the layout checkers find overlaps, never a control aligned to nothing.**
+482. **The selected year's pill hid its neighbours' labels, and no checker could tell.**
+    - Seen: 2026-11-08, the owner's phone at about 360 px with twelve stops: the pill "1980" covered 1979 and 1982.
+    - Cause: the 64 × 40 px pill sat over the rail from 4 to 44 px and the labels began at 38 px, 33 px apart: any neighbour nearer than half the pill plus half a label lay under it. The hidden label of the selected stop made it look deliberate.
+    - Found by: the owner; the tour's occlusion check samples a text's centre against other *chrome*, and the pill and the labels are one element's shadow parts.
+    - Fix and pin: lying, the labels are a row below the pill (20 px under the ticks); standing (phones held upright, the owner's other request that day), the years are the ruler in the pill's own lane, which the phone's height spaces wider than the pill (`kit-timeline-layout.test.ts` and S-V04-BAD-PILL-HIDES-NO-LABEL measure every label against the pill at every selected year, at 320 × 568, 375 × 812 and 915 × 412).
+    - **A thumb that carries its value must be measured against the labels of the same control at every value: the layout checkers look between controls, never inside one.**
+483. **Right to left, the timeline's stops and thumb sat a whole width beside their places.**
+    - Seen: 2026-11-08, the review shots at 768 px with `dir="rtl"`: the 1966 tick 24 px inside the rail's end, the thumb beyond it.
+    - Cause: `inset-inline-start: X%` with `transform: translateX(-50%)` centres only left to right: right to left the start is the right edge, and moving the box left by half its width moves it away from its place, not onto it. The pointer's share of the track was measured from the left edge too.
+    - Found by: the review shots, then a unit test that compares the thumb's centre with its tick's; the tour runs no right-to-left locale.
+    - Fix and pin: `--hcm-x` is -50 %, or 50 % under `:host(:dir(rtl))`, in every centring transform; `trackRatio` measures from the right edge right to left, and Left and Right step the way they point (`hcm-timeline.test.ts`, *rightToLeft…*).
+    - **A transform is physical: wherever a box is placed with a logical inset and centred with a translate, the translate must flip with the direction.**

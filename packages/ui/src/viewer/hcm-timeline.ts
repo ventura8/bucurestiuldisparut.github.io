@@ -3,8 +3,9 @@
  * "today"; any position snaps to a stop. One `role="slider"` thumb carries the keyboard and screen-reader path
  * (arrows, Page Up/Down, Home, End; `aria-valuetext` is the localized year); the track takes pointer drags and taps.
  * The thumb morphs from a pill into a rounded square while it is dragged (an expressive spring curve), with no
- * motion under `prefers-reduced-motion: reduce`. Horizontal at the bottom of the map, vertical on the trailing edge
- * of a landscape phone. A new stop fires `hcm-year-change` (`{year}`, null for today).
+ * motion under `prefers-reduced-motion: reduce`. Standing on the leading edge of a phone held upright, lying at the bottom
+ * of the map everywhere else; Left and Right follow the thumb on screen (a later year is to the left, right to left).
+ * A new stop fires `hcm-year-change` (`{year}`, null for today).
  */
 import { DEFAULT_LOCALE, translate, type Locale } from '@hcm/shared';
 import { LitElement, html, type TemplateResult } from 'lit';
@@ -18,30 +19,34 @@ export const HCM_TIMELINE_TAG = 'hcm-timeline';
 
 export type TimelineOrientation = 'horizontal' | 'vertical';
 
-interface KeyContext {
-    readonly index: number;
-    readonly last: number;
-}
-
-/** Where each key moves the thumb (the value grows towards "today": right, or up when vertical). */
-const KEY_TARGETS: Readonly<Record<string, (context: KeyContext) => number>> = {
-    ArrowRight: ({ index }) => index + 1,
-    ArrowUp: ({ index }) => index + 1,
-    PageUp: ({ index }) => index + 1,
-    ArrowLeft: ({ index }) => index - 1,
-    ArrowDown: ({ index }) => index - 1,
-    PageDown: ({ index }) => index - 1,
-    Home: () => 0,
-    End: ({ last }) => last,
+/**
+ * How many stops each key moves the thumb towards "today" (up, and right, or left right to left: Left and Right turn
+ * with the direction); Home and End go to either end (the selection clamps).
+ */
+const KEY_STEPS: Readonly<Record<string, number>> = {
+    ArrowRight: 1,
+    ArrowUp: 1,
+    PageUp: 1,
+    ArrowLeft: -1,
+    ArrowDown: -1,
+    PageDown: -1,
+    Home: -Infinity,
+    End: Infinity,
 };
 
 function percentText(percent: number): string {
     return `${String(percent)}%`;
 }
 
-/** The share of the track (0..1) under a pointer; vertical tracks grow upwards. */
-export function trackRatio(rect: DOMRect, point: { readonly clientX: number; readonly clientY: number }, vertical: boolean): number {
-    const ratio = vertical ? (rect.bottom - point.clientY) / rect.height : (point.clientX - rect.left) / rect.width;
+/** The share of the track (0..1) under a pointer; vertical tracks grow upwards, horizontal ones leftwards right to left. */
+export function trackRatio(
+    rect: DOMRect,
+    point: { readonly clientX: number; readonly clientY: number },
+    vertical: boolean,
+    rtl = false,
+): number {
+    const across = rtl ? rect.right - point.clientX : point.clientX - rect.left;
+    const ratio = vertical ? (rect.bottom - point.clientY) / rect.height : across / rect.width;
     return Number.isFinite(ratio) ? Math.min(1, Math.max(0, ratio)) : 0;
 }
 
@@ -132,12 +137,13 @@ export class HcmTimeline extends LitElement {
     }
 
     readonly #onKeyDown = (event: KeyboardEvent): void => {
-        const target = KEY_TARGETS[event.key];
-        if (target === undefined) {
+        const step = KEY_STEPS[event.key];
+        if (step === undefined) {
             return;
         }
         event.preventDefault();
-        this.#select(target({ index: stopIndex(this.stops, this.value), last: this.stops.length - 1 }));
+        const turned = /^Arrow[LR]/.test(event.key) && this.#rtl();
+        this.#select(stopIndex(this.stops, this.value) + (turned ? -step : step));
     };
 
     /** A press on the track selects the stop under it; the drag continues on the window until release. */
@@ -174,8 +180,12 @@ export class HcmTimeline extends LitElement {
     }
 
     #selectAt(track: HTMLElement, event: PointerEvent): void {
-        const ratio = trackRatio(track.getBoundingClientRect(), event, this.orientation === 'vertical');
+        const ratio = trackRatio(track.getBoundingClientRect(), event, this.orientation === 'vertical', this.#rtl());
         this.#select(Math.round(ratio * (this.stops.length - 1)));
+    }
+
+    #rtl(): boolean {
+        return this.matches(':dir(rtl)');
     }
 
     #select(index: number): void {

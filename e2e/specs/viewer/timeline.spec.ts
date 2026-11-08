@@ -84,11 +84,12 @@ test('A year without a layer snaps to the nearest stop', { tag: '@S-V04-BAD-YEAR
     await expect(slider).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: '1980' }));
     await expect.poll(() => hashParam(page, 'layers')).toBe(E2E_XYZ_LAYER.id);
 
-    // A tap between two stops on the track lands on the nearer one.
+    // A tap between two stops on the track lands on the nearer one (a fifth of the way from 1966: up a phone's standing one).
     const track = viewer(page).locator('hcm-timeline .track');
-    const box = await track.boundingBox();
-    expect(box).not.toBeNull();
-    await page.mouse.click((box?.x ?? 0) + (box?.width ?? 0) * 0.2, (box?.y ?? 0) + (box?.height ?? 0) / 2);
+    const box = (await track.boundingBox()) ?? EMPTY_BOX;
+    expect(box.width).toBeGreaterThan(0);
+    const standing = box.height > box.width;
+    await page.mouse.click(box.x + box.width * (standing ? 0.5 : 0.2), box.y + box.height * (standing ? 0.8 : 0.5));
     await expect(slider).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: '1966' }));
     await expect(slider).toHaveAttribute('aria-valuemax', '2');
 });
@@ -140,21 +141,23 @@ interface Box {
 const EMPTY_BOX: Box = { x: 0, y: 0, width: 0, height: 0 };
 
 /**
- * The chip is part of the timeline (the owner, 2026-11-08: "it looks like it is floating around"): on the card's leading
- * edge, 8 px above it from 600 px up and a row above the menu button on a phone; held sideways, beside the vertical card
- * with the bottoms aligned.
+ * The chip is part of the timeline (the owner, 2026-11-08: "it looks like it is floating around"): on a phone held
+ * upright 8 px under the standing card's foot, its leading edges aligned; elsewhere 8 px above the lying card, on its
+ * leading edge, or its trailing one on a short window, whose menu opens on the leading side.
  */
 async function expectChipOnTheTimeline(page: Page): Promise<void> {
     const { chip, timeline } = await chipAndTimeline(page);
-    const width = page.viewportSize()?.width ?? 0;
     if (timeline.height > timeline.width) {
-        expect(Math.abs(chip.y + chip.height - (timeline.y + timeline.height)), 'bottoms aligned').toBeLessThanOrEqual(1);
-        expect(Math.abs(timeline.x - (chip.x + chip.width) - 8), '8 px before the vertical timeline').toBeLessThanOrEqual(1);
+        expect(Math.abs(chip.x - timeline.x), "on the standing timeline's leading edge").toBeLessThanOrEqual(1);
+        expect(Math.abs(chip.y - (timeline.y + timeline.height) - 8), '8 px under its foot').toBeLessThanOrEqual(1);
         return;
     }
-    expect(Math.abs(chip.x - timeline.x), "on the timeline's leading edge").toBeLessThanOrEqual(1);
-    const gap = width < 600 ? 8 + 56 + 8 : 8;
-    expect(Math.abs(timeline.y - (chip.y + chip.height) - gap), 'right above the timeline').toBeLessThanOrEqual(1);
+    if ((page.viewportSize()?.height ?? 0) < 480) {
+        expect(Math.abs(chip.x + chip.width - (timeline.x + timeline.width)), "on the timeline's trailing edge").toBeLessThanOrEqual(1);
+    } else {
+        expect(Math.abs(chip.x - timeline.x), "on the timeline's leading edge").toBeLessThanOrEqual(1);
+    }
+    expect(Math.abs(timeline.y - (chip.y + chip.height) - 8), 'right above the timeline').toBeLessThanOrEqual(1);
 }
 
 /** The owner's screenshot: with a pane docked the map is narrower and the card centred in what is left. */
@@ -164,11 +167,11 @@ async function openLayersWhereDocked(page: Page, lang: 'ro' | 'en'): Promise<voi
     }
 }
 
-/** From 600 px the menu opens beside the timeline, its items ending 8 px above it on the trailing side: the chip stays uncovered. */
+/**
+ * The open menu leaves the chip uncovered: from 600 px its items end 8 px above the lying timeline; on a phone held upright
+ * they begin above the chip's row (the owner's phone: the last item covered the chip's end).
+ */
 async function expectOpenMenuLeavesTheChip(page: Page, lang: 'ro' | 'en'): Promise<void> {
-    if ((page.viewportSize()?.width ?? 0) < 600) {
-        return;
-    }
     await menuButton(page, lang).click();
     await expect(page.getByRole('menu', { name: t(lang, 'action.menu') })).toBeVisible();
     await expect(isOnTop(viewer(page).locator('.dock.chip hcm-button'))).resolves.toBe(true);
@@ -186,8 +189,13 @@ test(
         await expectChipOnTheTimeline(page);
 
         await page.setViewportSize({ width: 915, height: 412 });
-        await expect(viewer(page).locator('hcm-timeline')).toHaveAttribute('orientation', 'vertical');
-        await expectChipOnTheTimeline(page);
+        // The viewer measures its own box: wait for the short window's layout before measuring the chip.
+        await expect(viewer(page).locator('.frame')).toHaveAttribute('data-compact-height', '');
+        await expect(viewer(page).locator('hcm-timeline')).toHaveAttribute('orientation', 'horizontal');
+        // A docked Layers pane becomes a modal side sheet there: the map pane widens while the sheet slides in.
+        await expect(async () => {
+            await expectChipOnTheTimeline(page);
+        }).toPass();
     },
 );
 
@@ -215,8 +223,8 @@ test(
 
         await slider.press('Home');
         await expect(chip).toHaveCount(1);
-        await expectOpenMenuLeavesTheChip(page, lang);
         await expectChipOnTheTimeline(page);
+        await expectOpenMenuLeavesTheChip(page, lang);
     },
 );
 

@@ -8,7 +8,7 @@ import { chooseMenuItem, menuButton, openLayers, t, viewer, visibilitySwitch, wa
 
 /**
  * Responsive layout (behaviour V15) and the legal controls on compact (V18): a landscape phone collapses the controls
- * into the menu and turns the timeline upright; the compact bottom sheet has three heights and closes when dragged
+ * into the menu and keeps the timeline lying at the foot of the map (too short to stand); the compact bottom sheet has three heights and closes when dragged
  * away; long Romanian labels never scroll the full-screen About sideways; the collapsed Mapbox attribution stays
  * reachable, and a sheet at full height ends above the legal bar that carries the logo and the credits meanwhile. Each
  * test sets its own viewport, so every functional project runs it at that size. The layout of every screen at all 11
@@ -31,14 +31,14 @@ const FLOATING = [
 ];
 
 test(
-    'A landscape phone collapses the controls into the menu and stands the timeline up',
+    'A landscape phone collapses the controls into the menu and lays the timeline down',
     { tag: '@S-V15-BAD-COMPACT-LANDSCAPE' },
     async ({ page, lang }) => {
         await boot(page, { width: 915, height: 412 }, lang, '15/44.42700/26.08530&layers=e2e-1966');
 
         await expect(page.getByRole('slider', { name: t(lang, 'timeline.label'), exact: true })).toHaveAttribute(
             'aria-orientation',
-            'vertical',
+            'horizontal',
         );
         for (const name of [t(lang, 'layers.title'), t(lang, 'action.share'), t(lang, 'about.title')]) {
             await expect(page.getByRole('button', { name, exact: true })).toHaveCount(0);

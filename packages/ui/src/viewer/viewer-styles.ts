@@ -35,9 +35,8 @@ export const viewerStyles = [
             /* M3: 8 dp between touch targets. */
             --hcm-dock-gap: 8px;
 
-            /* The horizontal timeline's height and the vertical one's width (hcm-timeline: 8 + 48 + 28, 8 + 48 + 56 px). */
+            /* The horizontal timeline's height (hcm-timeline: 8 + 48 + 28 px; standing, it is 8 + 52 + 8 px wide). */
             --hcm-timeline-block: 84px;
-            --hcm-timeline-inline: 112px;
             --hcm-fab-size: 56px;
             --hcm-pane-leading: 360px;
             --hcm-pane-trailing: 360px;
@@ -186,7 +185,7 @@ export const viewerStyles = [
         .skip {
             position: absolute;
             inset-block-start: 8px;
-            inset-inline-start: 8px;
+            inset-inline-start: var(--hcm-top-start, 8px);
             z-index: 40;
             min-block-size: 48px;
             padding-inline: 16px;
@@ -267,9 +266,26 @@ export const viewerStyles = [
             pointer-events: none;
         }
 
+        /*
+         * Lying (from 600 px, and on a short window of any width) the timeline is centred at the foot of the map, at most
+         * 640 px wide, with a column free on either side for the menu button.
+         */
         .dock.timeline {
-            inset-inline: var(--hcm-gutter);
+            inset-inline: calc(var(--hcm-gutter) + 72px);
             inset-block-end: calc(var(--hcm-map-chrome) + env(safe-area-inset-bottom, 0px));
+            max-inline-size: 640px;
+            margin-inline: auto;
+        }
+
+        /*
+         * Standing (a phone held upright, the owner's request of 2026-11-08) on the leading edge, from the top gutter
+         * down to the chip's row: the chip docks 8 px under its foot, a row above the menu button, which keeps the bottom
+         * trailing corner; the open menu grows on the trailing side, clear of the 68 px card.
+         */
+        .frame[data-timeline='vertical'] .dock.timeline {
+            inset-inline: var(--hcm-gutter) auto;
+            inset-block: var(--hcm-gutter)
+                calc(var(--hcm-map-chrome) + var(--hcm-fab-size) + 40px + 2 * var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px));
         }
 
         /* No layers yet: a small note where the timeline will be, clear of the FAB menu on the trailing side. */
@@ -300,37 +316,46 @@ export const viewerStyles = [
         .dock.menu {
             /* Above the consent banner and the snackbar: the open menu grows upwards over them (kit-integration test). */
             z-index: 26;
-            inset-inline-end: var(--hcm-gutter);
+
+            /* Beside a standing timeline the dock ends 8 px from it, and an item too wide wraps (text spacing at 320 px). */
+            inset-inline: var(--hcm-top-start, auto) var(--hcm-gutter);
+            text-align: end;
+            inset-block-end: calc(var(--hcm-map-chrome) + env(safe-area-inset-bottom, 0px));
+        }
+
+        /*
+         * Beside the lying timeline, which is taller than the FAB, the open menu's items end 8 px above it (the visual
+         * audit found the last item over the timeline's thumb at 768 px).
+         */
+        .frame[data-timeline='horizontal'] .dock.menu {
+            --hcm-fab-menu-gap: calc(var(--hcm-timeline-block) - var(--hcm-fab-size) + var(--hcm-dock-gap));
+        }
+
+        /*
+         * On the lying card's leading edge, 8 px above it (the owner's screenshot of 2026-11-08: 72 px in from the map's
+         * edge it was aligned to nothing beside the centred card); 50 % is half the map pane, the containing block of both.
+         */
+        .dock.chip {
+            inset-inline-start: max(var(--hcm-gutter) + 72px, 50% - 320px);
             inset-block-end: calc(
                 var(--hcm-map-chrome) + var(--hcm-timeline-block) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px)
             );
         }
 
-        .frame:not([data-timeline]) .dock.menu {
-            inset-block-end: calc(var(--hcm-map-chrome) + env(safe-area-inset-bottom, 0px));
-        }
-
-        /*
-         * Compact: one row above the menu button, which has the row above the timeline (the tour found them
-         * overlapping at 320 px), on the timeline's leading edge.
-         */
-        .dock.chip {
+        .frame[data-timeline='vertical'] .dock.chip {
             inset-inline-start: var(--hcm-gutter);
-            inset-block-end: calc(
-                var(--hcm-map-chrome) + var(--hcm-timeline-block) + var(--hcm-dock-gap) + var(--hcm-fab-size) + var(--hcm-dock-gap) +
-                    env(safe-area-inset-bottom, 0px)
-            );
+            inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-fab-size) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px));
         }
 
         .dock.consent {
-            inset-inline: var(--hcm-gutter);
+            inset-inline: var(--hcm-top-start, var(--hcm-gutter)) var(--hcm-gutter);
             inset-block-start: var(--hcm-gutter);
             max-inline-size: 480px;
             z-index: 20;
         }
 
         .dock.toast {
-            inset-inline: var(--hcm-gutter);
+            inset-inline: var(--hcm-top-start, var(--hcm-gutter)) var(--hcm-gutter);
             inset-block-start: var(--hcm-gutter);
             display: grid;
             justify-items: center;
@@ -345,80 +370,42 @@ export const viewerStyles = [
             position: static;
         }
 
+        /*
+         * The top docks, compare's bar, the skip link and the menu's dock begin 8 px after the standing timeline, 68 px wide
+         * (the tour found the toast's dock, then the focused skip link, over the thumb of a vertical timeline).
+         */
+        .frame[data-timeline='vertical'] {
+            --hcm-top-start: calc(var(--hcm-gutter) + 76px);
+        }
+
         @container hcm-viewer (width >= 600px) {
-            .dock.timeline {
-                inset-inline: calc(var(--hcm-gutter) + 72px);
-                max-inline-size: 640px;
-                margin-inline: auto;
-            }
-
-            .dock.menu,
-            .frame:not([data-timeline]) .dock.menu {
-                inset-block-end: calc(var(--hcm-map-chrome) + env(safe-area-inset-bottom, 0px));
-            }
-
-            /*
-             * On the timeline card's leading edge, 8 px above it (the owner's screenshot of 2026-11-08: 72 px in from the
-             * map's edge it was aligned to nothing beside the centred card). The card is centred, at most 640 px wide and
-             * never nearer the edge than gutter + 72 px; 50 % is half the map pane, the containing block of both.
-             */
-            .dock.chip {
-                inset-inline-start: max(var(--hcm-gutter) + 72px, 50% - 320px);
-                inset-block-end: calc(
-                    var(--hcm-map-chrome) + var(--hcm-timeline-block) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px)
-                );
-            }
-
             .dock.timeline-note {
                 justify-content: center;
             }
-
-            /*
-             * The FAB sits beside the timeline, which is taller: the open menu's items, wider than the FAB, end 8 px above
-             * the timeline instead of above the FAB (the visual audit found the last item over the timeline's thumb at
-             * 768 px).
-             */
-            .frame[data-timeline]:not([data-compact-height]) .dock.menu {
-                --hcm-fab-menu-gap: calc(var(--hcm-timeline-block) - var(--hcm-fab-size) + var(--hcm-dock-gap));
-            }
-        }
-
-        .frame[data-compact-height] .dock.timeline {
-            inset-block: var(--hcm-gutter) var(--hcm-map-chrome);
-            inset-inline: auto var(--hcm-gutter);
-            max-inline-size: none;
-            margin-inline: 0;
         }
 
         /*
          * A landscape phone is too short for the whole menu: below the top gutter its items continue in a second
          * column (the tour found items off screen). The menu is docked on the leading edge, so the FAB and the items
          * line up there: aligned to the end, the wider two-column menu pushed the FAB 300 px away from where it was
-         * tapped (UX review).
+         * tapped (UX review). The chip takes the card's trailing edge, clear of that menu.
          */
         .frame[data-compact-height] .dock.menu {
             inset-inline: var(--hcm-gutter) auto;
-            inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-dock-gap));
 
             --hcm-fab-menu-align: flex-start;
             --hcm-fab-menu-max-block-size: calc(
-                100cqb - var(--hcm-map-chrome) - var(--hcm-dock-gap) - var(--hcm-fab-size) - 8px - var(--hcm-gutter)
+                100cqb - var(--hcm-map-chrome) - var(--hcm-timeline-block) - var(--hcm-dock-gap) - var(--hcm-gutter)
             );
         }
 
-        /* A landscape phone: beside the vertical timeline, the bottoms aligned, clear of the menu on the leading edge. */
         .frame[data-compact-height] .dock.chip {
-            inset-inline: auto calc(var(--hcm-gutter) + var(--hcm-timeline-inline) + var(--hcm-dock-gap));
-            inset-block-end: var(--hcm-map-chrome);
+            inset-inline: auto max(var(--hcm-gutter) + 72px, 50% - 320px);
         }
 
-        /*
-         * The top docks end before the vertical timeline on the trailing edge: on a short phone the centred toast and the
-         * consent banner reached over it (the tour found the toast's dock over its thumb).
-         */
-        .frame[data-compact-height][data-timeline] .dock.toast,
-        .frame[data-compact-height][data-timeline] .dock.consent {
-            inset-inline-end: calc(var(--hcm-gutter) + var(--hcm-timeline-inline) + var(--hcm-dock-gap));
+        /* Upright, the items begin above the chip's row (the owner's phone: the last item covered the chip's end). */
+        .frame[data-timeline='vertical'] .dock.chip ~ .dock.menu {
+            --hcm-fab-menu-gap: calc(40px + 2 * var(--hcm-dock-gap));
         }
 
         @media (prefers-reduced-motion: reduce) {

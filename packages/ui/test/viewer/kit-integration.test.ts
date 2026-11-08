@@ -171,17 +171,18 @@ describe("<hcm-map-viewer> floating controls with the real kit (the user's repor
 
     it('badPath_onAPhoneTheChipTheFabAndTheTimelineKeepApartAndClearOfMapbox', async () => {
         // The tour: on phones the menu button sat on the timeline's top edge (0 px) and the timeline 2 px from Mapbox's
-        // collapsed attribution.
+        // collapsed attribution. Upright the timeline stands on the leading edge, the chip under it, the FAB a row lower.
         const element = await viewer(new FakeStore(readyState(undefined, { year: 1977 })));
         const frame = element.getBoundingClientRect();
         const timeline = boxOf(element, 'hcm-timeline');
         const fab = boxOf(element, 'hcm-fab-menu', '.fab');
         const chip = boxOf(element, '.dock.chip hcm-button');
 
-        expect(timeline.height).toBe(84);
-        expect(frame.bottom - timeline.bottom).toBeGreaterThanOrEqual(MAPBOX_STRIP_PX);
-        expect(timeline.top - fab.bottom).toBeGreaterThanOrEqual(TARGET_GAP_PX);
+        expect(timeline.width).toBe(68);
+        expect(frame.bottom - fab.bottom).toBeGreaterThanOrEqual(MAPBOX_STRIP_PX);
+        expect(chip.top - timeline.bottom).toBeGreaterThanOrEqual(TARGET_GAP_PX);
         expect(fab.top - chip.bottom).toBeGreaterThanOrEqual(TARGET_GAP_PX);
+        expect(fab.left - timeline.right).toBeGreaterThanOrEqual(TARGET_GAP_PX);
     });
 
     it('badPath_onTheSmallestPhoneTheOpenMenuStaysOnScreen', async () => {
@@ -240,20 +241,18 @@ describe("<hcm-map-viewer> floating controls with the real kit (the user's repor
         expect(timeline.top - lowest).toBeGreaterThanOrEqual(TARGET_GAP_PX);
     });
 
-    it('badPath_onAShortPhoneTheToastEndsBeforeTheVerticalTimelineAndLetsTapsThrough', async () => {
-        // The tour on a phone held sideways: the toasts' dock lay over the vertical timeline's thumb.
-        const store = new FakeStore({ ...readyState(), compactHeight: true, consent: 'granted' });
+    it('badPath_onAnUprightPhoneTheToastBeginsAfterTheVerticalTimeline', async () => {
+        // The tour on a phone held sideways (then the vertical one): the toasts' dock lay over the vertical timeline's thumb.
+        const store = new FakeStore({ ...readyState(), consent: 'granted' });
         const element = await viewer(store);
-        setBox(element, LANDSCAPE_PHONE);
         store.showToast('share.copied');
         await element.updateComplete;
 
         const dock = boxOf(element, '.dock.toast');
-        const toast = boxOf(element, 'hcm-snackbar', '.snackbar');
         const timeline = boxOf(element, 'hcm-timeline');
-        expect(timeline.left - dock.right).toBeGreaterThanOrEqual(TARGET_GAP_PX);
-        expect(toast.left - dock.left).toBeGreaterThan(4);
-        expect(element.shadowRoot?.elementFromPoint(dock.left + 2, toast.top + toast.height / 2)?.closest('.dock')).toBeNull();
+        expect(dock.left - timeline.right).toBeGreaterThanOrEqual(TARGET_GAP_PX);
+        const centre = { x: timeline.left + timeline.width / 2, y: timeline.top + 40 };
+        expect(element.shadowRoot?.elementFromPoint(centre.x, centre.y)?.localName).toBe('hcm-timeline');
     });
 });
 
@@ -304,26 +303,6 @@ describe("<hcm-map-viewer> the photos-near-the-year chip on the timeline (the ow
             const box = item.getBoundingClientRect();
             expect(box.left >= chip.right || box.right <= chip.left || box.top >= chip.bottom || box.bottom <= chip.top).toBe(true);
         }
-    });
-
-    it('happyPath_onAShortPhoneTheChipDocksBesideTheVerticalTimeline', async () => {
-        // Held sideways the chip sat beside the menu button on the leading edge, far from the timeline on the trailing one.
-        const store = new FakeStore({ ...readyState(undefined, { year: 1977 }), compactHeight: true });
-        const element = await viewer(store);
-        setBox(element, LANDSCAPE_PHONE);
-        await element.updateComplete;
-        const timeline = boxOf(element, 'hcm-timeline');
-        let chip = boxOf(element, '.dock.chip hcm-button');
-        expect(Math.abs(chip.bottom - timeline.bottom)).toBeLessThanOrEqual(1);
-        expect(timeline.left - chip.right).toBeGreaterThanOrEqual(TARGET_GAP_PX);
-        expect(timeline.left - chip.right).toBeLessThanOrEqual(TARGET_GAP_PX + 1);
-
-        element.dir = 'rtl';
-        await element.updateComplete;
-        chip = boxOf(element, '.dock.chip hcm-button');
-        const mirrored = boxOf(element, 'hcm-timeline');
-        expect(chip.left - mirrored.right).toBeGreaterThanOrEqual(TARGET_GAP_PX);
-        expect(chip.left - mirrored.right).toBeLessThanOrEqual(TARGET_GAP_PX + 1);
     });
 });
 
