@@ -13058,6 +13058,28 @@
             "notes": "the owner's screenshot of 2026-11-08 (1980's frame: square pictures of other places south of its edge, a black band along it); docs/LESSONS.md. Test: pipeline/tests/integration/test_pyramid_rim.py."
         },
         {
+            "id": "S-P08-HAPPY-RIM-ANGLES",
+            "behaviour": "P08",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A rim's fade is cut to its end across an edge at any angle, never past 150 ground metres",
+            "asserts": "previews at 5 m a pixel with an edge at 0, 18 and 45 degrees, a 20 m black core and a fade of 50, 100, 150 or 200 m -> no kept pixel within 150 m darker than 65 % of the scene, no cut pixel past 150 m and one pixel; the band's distance is the straight-line depth below the edge at every angle (side steps: 41 % more across 45 degrees)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "a review of c5766ba (across a 45 degree edge the band ended about 106 m in and a 200 m fade kept grey 54); docs/LESSONS.md 485. Test: pipeline/tests/integration/test_rim_profile.py."
+        },
+        {
+            "id": "S-P08-BAD-RIM-DARK-PATCH",
+            "behaviour": "P08",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Flat dark ground that touches the rim is the picture's, not the fade's",
+            "asserts": "a flat patch at grey 30, 50 or 70 (scene 120) 60 m deep against the black core at 0, 18 and 45 degrees -> cut at most two preview pixels past the core, the core still cut; the same patch with grain of 12 grey -> at most six; a lake on a frame's rim through the whole view -> its alpha 255 past its first pixels, the rim's black at 0",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "a review of c5766ba (dark ground touching the core cut the whole band, measured 155 m); docs/LESSONS.md 485. Test: pipeline/tests/integration/test_rim_profile.py."
+        },
+        {
             "id": "S-V07-HAPPY-PRECISE-DATE",
             "behaviour": "V07",
             "area": "viewer",

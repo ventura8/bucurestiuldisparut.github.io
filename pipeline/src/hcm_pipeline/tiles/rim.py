@@ -4,14 +4,16 @@ The scan's border crop (`steps/stitch.py`) keeps a few rows of the film's dark e
 alpha marks the whole footprint as image: an opaque dark band along a frame's edge on the map (the owner's screenshot of 2026-11-08,
 1980's frame: 3 to 5 z13 rows at grey 0 to 3 under alpha 255, then 3 to 6 more fading in at grey 29 to 70). The crop stays as it is,
 since moving it would shift the scan's pixels under the saved points; the tiles take an alpha without the rim instead, a band measured
-from the alpha's edge in two passes. The film's black (grey `RIM_DARK_LEVEL` or less) that the transparent outside reaches through
-black pixels only is the rim's core; from the core the cut grows through the fade, every pixel darker than `RIM_FADE_SHARE` of the
-scene's own level (the median of the frame deeper than the band), and stops at the first one that reaches it. Neither pass goes more
-than `RIM_MAX_GROUND_M` from the alpha's edge, and one preview pixel past the cut is taken for the last of the fade. So a frame with no
-black at its edge keeps its alpha untouched, and dark water or shadow inside it is never reached unless it touches the rim, and then no
-deeper than the band. The cut is found on a preview at most `RIM_PREVIEW_MAX_PX` on its long side (about 5 m a pixel for a KH-9
-frame), drawn bilinear at full size and written once as a tiled alpha with the source's own overview levels (`trimmed_alpha`), so the
-view keeps the COG's overviews and nothing reads the full-size frame through a pixel function more than once.
+in two passes from the alpha's edge, as a straight-line distance (`edge_distance`), so the band is as deep across a 45 degree edge as
+across a straight one. The film's black (grey `RIM_DARK_LEVEL` or less) that the transparent outside reaches through black pixels
+only is the rim's core. From the core the cut grows through the fade, a ramp that rises outward: a pixel joins while it is darker than
+`RIM_FADE_SHARE` of the scene's own level (the median of the frame deeper than the band) and the profile still rises there (`rising`),
+so a flat dark patch (a lake, a park, a shadow) that touches the core loses a pixel or two, not the band. The fade's last dark pixel
+before the scene is taken too, and one preview pixel past the cut for the bilinear edge. Neither pass goes more than
+`RIM_MAX_GROUND_M` from the alpha's edge. So a frame with no black at its edge keeps its alpha untouched. The cut is found on a preview
+at most `RIM_PREVIEW_MAX_PX` on its long side (about 5 m a pixel for a KH-9 frame), drawn bilinear at full size and written once as a
+tiled alpha with the source's own overview levels (`trimmed_alpha`), so the view keeps the COG's overviews and nothing reads the
+full-size frame through a pixel function more than once.
 """
 
 import html
@@ -35,12 +37,19 @@ RIM_DARK_LEVEL: Final = 24
 RIM_FADE_SHARE: Final = 0.65
 #: The deepest a rim is cut, in ground metres from the alpha's edge (1980's rim and fade: about 100).
 RIM_MAX_GROUND_M: Final = 150.0
+#: The fade's profile rises more than this much grey a preview pixel outward (a 200 m fade on a 5 m preview: 3); a flat patch's, 0.
+RIM_RISE: Final = 1.5
 RIM_PREVIEW_MAX_PX: Final = 8192
 #: An alpha at or above this shows (the preview averages the alpha's edge).
 OPAQUE: Final = 128
 KEEP: Final = 255
-#: A step of the cut moves to a side neighbour only, so `n` steps never go farther than `n` pixels from where they started.
+#: A step of the cut moves to a side neighbour only.
 _STEP: Final = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
+#: The profile is read over this many pixels on each side of a pixel, along the edge and across it, which averages the scene's grain.
+_WINDOW_PX: Final = 3
+_OFFSETS: Final = tuple((dy, dx) for dy in range(-_WINDOW_PX, _WINDOW_PX + 1) for dx in range(-_WINDOW_PX, _WINDOW_PX + 1))
+#: The shells a profile is read in, as distances from the edge less the pixel's own: two pixels nearer, one nearer, its own, one farther.
+_SHELLS: Final = ((-2.5, -1.5), (-1.5, -0.5), (-0.5, 0.5), (0.5, 1.5))
 _TRIMMED_OPTIONS: Final = ("TILED=YES", "COMPRESS=DEFLATE", "NUM_THREADS=ALL_CPUS")
 
 
@@ -51,6 +60,22 @@ class Rim:
     path: Path
     width: int
     height: int
+
+
+@dataclass(frozen=True)
+class Shells:
+    """The shells' mean grey (one row per shell) around the pixels at `rows, columns`, and how many pixels each mean holds."""
+
+    rows: NDArray[numpy.intp]
+    columns: NDArray[numpy.intp]
+    means: NDArray[numpy.float32]
+    counts: NDArray[numpy.float32]
+
+    def paint(self, shape: tuple[int, ...], chosen: NDArray[numpy.bool_]) -> NDArray[numpy.bool_]:
+        """A full-size mask, true at the pixels whose `chosen` is."""
+        mask = numpy.zeros(shape, bool)
+        mask[self.rows[chosen], self.columns[chosen]] = True
+        return mask
 
 
 def preview_factor(width: int, height: int) -> int:
@@ -83,17 +108,65 @@ def scene_level(grey: UInt8Array, inside: NDArray[numpy.bool_]) -> float:
     return float(numpy.median(grey[inside])) if inside.any() else 0.0
 
 
+def edge_distance(outside: NDArray[numpy.bool_]) -> NDArray[numpy.float32]:
+    """Each pixel's straight-line distance, in pixels, to the nearest transparent one (0 outside), the same across any edge's angle."""
+    return numpy.asarray(cv2.distanceTransform((~outside).astype(numpy.uint8), cv2.DIST_L2, cv2.DIST_MASK_PRECISE), numpy.float32)
+
+
+def shell_means(grey: UInt8Array, distance: NDArray[numpy.float32], counted: NDArray[numpy.bool_], at: NDArray[numpy.bool_]) -> Shells:
+    """For each pixel `at`, the mean grey of the `counted` pixels in each of `_SHELLS` within `_WINDOW_PX`, and how many there were."""
+    height, width = grey.shape
+    rows, columns = numpy.nonzero(at)
+    own = distance[rows, columns]
+    sums = numpy.zeros((len(_SHELLS), rows.size), numpy.float32)
+    counts = numpy.zeros((len(_SHELLS), rows.size), numpy.float32)
+    for dy, dx in _OFFSETS:
+        near_rows, near_columns = numpy.clip(rows + dy, 0, height - 1), numpy.clip(columns + dx, 0, width - 1)
+        inside = (near_rows == rows + dy) & (near_columns == columns + dx) & counted[near_rows, near_columns]
+        step = distance[near_rows, near_columns] - own
+        for index, (low, high) in enumerate(_SHELLS):
+            chosen = inside & (step > low) & (step <= high)
+            sums[index] += numpy.where(chosen, grey[near_rows, near_columns], 0)
+            counts[index] += chosen
+    return Shells(rows, columns, (sums / numpy.maximum(counts, 1)).astype(numpy.float32), counts)
+
+
+def rising(grey: UInt8Array, distance: NDArray[numpy.float32], dark: NDArray[numpy.bool_]) -> NDArray[numpy.bool_]:
+    """The `dark` pixels where the dark pixels' profile still rises outward: their shell is brighter than the one two pixels nearer, and
+    than the one next to it, or the one farther is brighter than theirs (a grain's dip inside a fade); a flat patch rises nowhere."""
+    shells = shell_means(grey, distance, dark, dark)
+    two_nearer, nearer, own, farther = shells.means
+    climbs = (own - nearer > RIM_RISE) | ((farther - own > RIM_RISE) & (shells.counts[3] > 0))
+    return shells.paint(dark.shape, (own - two_nearer > 2 * RIM_RISE) & climbs)
+
+
+def fade_end(
+    grey: UInt8Array, distance: NDArray[numpy.float32], opaque: NDArray[numpy.bool_], at: NDArray[numpy.bool_], level: float
+) -> NDArray[numpy.bool_]:
+    """The pixels `at` whose next shell outward is the scene's (at least the fade's limit `level`): the fade's last dark pixel."""
+    shells = shell_means(grey, distance, opaque, at)
+    return shells.paint(at.shape, (shells.means[3] >= level) & (shells.counts[3] > 0))
+
+
 def rim_cut(grey: UInt8Array, alpha: UInt8Array, reach: int) -> NDArray[numpy.bool_]:
-    """The opaque pixels to cut: the black core the outside reaches, the fade grown from it, no deeper than `reach`, and one pixel more."""
+    """The opaque pixels to cut: the black core the outside reaches, the rising fade grown from it and its last dark pixel, all within
+    `reach` of the alpha's edge, and one pixel more."""
     outside = alpha < OPAQUE
-    band = as_uint8(cv2.dilate(outside.astype(numpy.uint8), _STEP, iterations=reach)).astype(bool)
-    deep = ~band
-    level = scene_level(grey, deep if deep.any() else ~outside)
-    core = _grow(outside, band & (grey <= RIM_DARK_LEVEL), reach)
+    distance = edge_distance(outside)
+    band = ~outside & (distance <= reach)
+    deep = ~outside & ~band
+    limit = max(RIM_DARK_LEVEL, RIM_FADE_SHARE * scene_level(grey, deep if deep.any() else ~outside))
+    core = _grow(outside, band & (grey <= RIM_DARK_LEVEL), 2 * reach)
     if numpy.array_equal(core, outside):
         return numpy.zeros_like(outside)
-    fade = _grow(core, band & (grey < max(RIM_DARK_LEVEL, RIM_FADE_SHARE * level)), reach)
-    return cv2.dilate((fade & ~outside).astype(numpy.uint8), _STEP).astype(bool) & ~outside
+    dark = band & (grey < limit)
+    fade = _grow(core, rising(grey, distance, dark), 2 * reach) & ~outside
+    fade |= fade_end(grey, distance, ~outside, dark & ~fade & _dilated(fade), limit)
+    return _dilated(fade) & ~outside & (distance <= reach + 1)
+
+
+def _dilated(mask: NDArray[numpy.bool_]) -> NDArray[numpy.bool_]:
+    return numpy.asarray(cv2.dilate(mask.astype(numpy.uint8), _STEP), bool)
 
 
 def reach_px(dataset: gdal.Dataset, preview_width: int) -> int:
