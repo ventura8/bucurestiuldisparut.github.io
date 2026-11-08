@@ -264,6 +264,8 @@ const STEPS: Readonly<Record<PipelineStep, (run: Run) => Promise<StepResult>>> =
         const cog = await store(run, 'cog.tif', await smallTiff(150), 'image/tiff');
         await store(run, 'preview.png', await warpedPreviewPng(outputBounds(run)), 'image/png');
         await store(run, 'studio.tif', await smallTiff(160), 'image/tiff');
+        // M15: the frame at 5 m a later frame's film ties are measured against (`steps/aligning.py`).
+        await store(run, 'align.tif', await smallTiff(170), 'image/tiff');
         await run.stepEnded('export', 'done', recorded(cog));
         return 'next';
     },

@@ -39,6 +39,7 @@ import {
     MIN_GCPS,
     type GeorefTransform,
 } from '../../src/schemas/georef.js';
+import { ALIGNMENT_MAX_PARTNERS, ALIGNMENT_STATUSES } from '../../src/schemas/imagery-calibration.js';
 import { RASTER_PATHS, VERSION_FILES } from '../../src/schemas/imagery-paths.js';
 import { STUDIO_MAX_BYTES } from '../../src/schemas/imagery-publish.js';
 import { JOIN_MAX_PARTS } from '../../src/schemas/imagery-settings.js';
@@ -129,6 +130,8 @@ describe('the pipeline contract', () => {
             MAX_SCAN_PIXELS,
             JOIN_MAX_PARTS,
             S2_CHECK_STATUSES,
+            ALIGNMENT_STATUSES,
+            ALIGNMENT_MAX_PARTNERS,
         });
     });
 

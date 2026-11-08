@@ -17,7 +17,7 @@ from hcm_pipeline.geo import FloatArray, to_mercator
 
 # 289 nodes, under `MAX_GCPS` (300): within 0.4 m of the map on a 40,000-pixel KH-9 crop.
 LATTICE_SIDE: Final = 17
-LATTICE_MODELS: Final = frozenset({"panoramic"})
+LATTICE_MODELS: Final = frozenset({"panoramic", "polynomial"})
 GEO_DIGITS: Final = 9
 PIXEL_DIGITS: Final = 2
 

@@ -55,6 +55,36 @@ test(
 );
 
 test(
+    'A frame lined up with earlier photos names them, and the one whose streets sat off',
+    { tag: ['@S-A67-HAPPY-ALIGNED', '@S-A67-BAD-ALIGNED-LEFT-OUT'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        test.setTimeout(420_000);
+        const fixtures = { emulators: adminWorld.emulators, api: mockApiRequest, upstream };
+        const imagery = await readyImagery(fixtures, adminWorld.accounts.owner.uid);
+        const alignment = {
+            partners: [
+                { versionId: 'v-1972', year: 1972, ties: 1420, tried: 1643, status: 'used', offsetM: 1.4 },
+                { versionId: 'v-1977', year: 1977, ties: 810, tried: 1961, status: 'used', offsetM: 0.2 },
+                { versionId: 'v-1966', year: 1966, ties: 78, tried: 124, status: 'few' },
+                { versionId: 'v-1978', year: 1978, ties: 900, tried: 1500, status: 'disagrees', offsetM: 9.24 },
+            ],
+        } as const;
+        await imagery.script({ attempts: [{ outcome: 'over', calibration: { ...PROVED, alignment }, coveragePct: 96 }] });
+
+        await importFromList(page, lang, SCENE);
+
+        await expect(versionState(page, lang, 'adminContent.imagery.version.awaitingApproval')).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        const block = detail(page).locator('[data-calibration="votes"]');
+        await expect(block).toContainText(imageryText(lang, 'adminContent.imagery.calibration.aligned', { years: '1972, 1977', ties: '2230' }));
+        await expect(block).toContainText(imageryText(lang, 'adminContent.imagery.calibration.leftOut', { years: '1978' }));
+        await expect(block).not.toContainText('1966');
+        await expectStateSound(page, adminVisit('imagery.version-aligned', lang));
+    },
+);
+
+test(
     'A frame the local AI proposed says on which graphics card, and that the proof held it',
     { tag: '@S-A68-HAPPY-DEVICE-SHOWN' },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {

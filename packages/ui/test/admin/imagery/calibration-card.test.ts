@@ -93,6 +93,42 @@ describe('<hcm-imagery-page>: what calibration measured', () => {
         expect(deep(element, '[data-calibration="votes"]').textContent).toContain('Covers 94 % of the city');
     });
 
+    describe('a frame lined up with earlier ones (M15)', () => {
+        const alignment = {
+            partners: [
+                { versionId: 'v-1972', year: 1972, ties: 1420, tried: 1643, status: 'used', offsetM: 1.4 },
+                { versionId: 'v-1977', year: 1977, ties: 810, tried: 1961, status: 'used', offsetM: 0.2 },
+                { versionId: 'v-1966', year: 1966, ties: 78, tried: 124, status: 'few' },
+                { versionId: 'v-1978', year: 1978, ties: 900, tried: 1500, status: 'disagrees', offsetM: 9.24 },
+            ],
+        } as const;
+
+        it('happyPath_itSaysWhichPhotosHeldItAndThatTheyStayed @S-A67-HAPPY-ALIGNED', async () => {
+            const { element } = await page(versionView({ calibration: { ...PROVED, alignment } }));
+            const block = deep(element, '[data-calibration="votes"]');
+
+            expect(block.textContent).toContain(
+                'Lined up with your photos of 1972, 1977 at 2230 shared points; they stay where they are. Lining them up with this one is your choice',
+            );
+            expect(block.textContent).not.toContain('1966');
+            await expect(axeViolations(block)).resolves.toEqual([]);
+        });
+
+        it('badPath_aPhotoWhoseStreetsSatOffIsNamedAndNotUsed @S-A67-BAD-ALIGNED-LEFT-OUT', async () => {
+            const { element } = await page(versionView({ calibration: { ...PROVED, alignment } }), 'ro');
+
+            expect(deepText(element)).toContain('Nepotrivită cu 1978: străzile lor erau la peste 6 m de celelalte');
+            expect(deepText(element)).toContain('Potrivită cu fotografiile tale din 1972, 1977 în 2230 puncte comune');
+        });
+
+        it('badPath_onlyTooFewSharedPointsSaysNothing', async () => {
+            const few = { partners: [alignment.partners[2]] };
+            const { element } = await page(versionView({ calibration: { ...PROVED, alignment: few } }));
+
+            expect(deep(element, '[data-calibration="votes"]').textContent).not.toContain('Lined up');
+        });
+    });
+
     it('happyPath_inRomanian', async () => {
         const { element } = await page(versionView({ calibration: PROVED }), 'ro');
 

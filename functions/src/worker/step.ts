@@ -21,7 +21,7 @@ import { defineCallable, type CallableDeps } from '../api/callable.js';
 import { guardIsRed, versionIdOf } from '../imagery/records.js';
 import { UpstreamError } from '../ports/errors.js';
 import type { Ports } from '../ports/index.js';
-import { documentTarget, isJobLog, logLineOf, type DocumentTarget, type JobScope } from './allow-list.js';
+import { documentTarget, isCityVersions, isJobLog, logLineOf, type DocumentTarget, type JobScope } from './allow-list.js';
 import { storable, toWire } from './fields.js';
 import { PIPELINE_WRITER, at, requireHeld, type WorkerCall } from './holder.js';
 import { paired } from './pairing.js';
@@ -45,6 +45,7 @@ const SCHEMAS: Readonly<Record<DocumentTarget, Schema<unknown>>> = {
     layer: layerDocSchema,
     scene: usgsSceneDocSchema,
     pass: imageryPassDocSchema,
+    held: layerVersionDocSchema,
 };
 
 function refused(): ApiError {
@@ -76,14 +77,26 @@ async function getDocument(deps: StepDeps, call: WorkerCall, jobId: string, path
     });
 }
 
-/** `list {collection}`: the ids of the job's log lines (the pipeline counts them to number the next one). */
-async function listIds(deps: StepDeps, call: WorkerCall, jobId: string, collection: string): Promise<Response> {
-    if (!isJobLog(await heldScope(deps, call, jobId), collection)) {
-        throw refused();
-    }
-    const found = await deps.documents.query(collection, jobLogDocSchema);
+/** The ids of a collection's documents, in order. */
+async function idsOf(deps: StepDeps, collection: string, schema: Schema<unknown>): Promise<Response> {
+    const found = await deps.documents.query(collection, schema);
     const ids = [...found.documents, ...found.invalid].map((line) => line.id).sort((a, b) => a.localeCompare(b));
     return { ids };
+}
+
+/**
+ * `list {collection}`: the ids of the job's log lines (the pipeline counts them to number the next one), or of its city's versions (M15:
+ * a frame being joined looks for the accepted frames it may be held to).
+ */
+async function listIds(deps: StepDeps, call: WorkerCall, jobId: string, collection: string): Promise<Response> {
+    const scope = await heldScope(deps, call, jobId);
+    if (isJobLog(scope, collection)) {
+        return idsOf(deps, collection, jobLogDocSchema);
+    }
+    if (isCityVersions(scope, collection)) {
+        return idsOf(deps, collection, layerVersionDocSchema);
+    }
+    throw refused();
 }
 
 /** The sequence number of a log line the job may still write: its id's, under the cap, the same in its data. */

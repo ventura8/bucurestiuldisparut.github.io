@@ -10228,6 +10228,28 @@
             "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/imagery/worker.spec.ts; packages/admin/test/worker/local.test.ts."
         },
         {
+            "id": "S-A62-HAPPY-HELD-FRAMES",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A local run being joined reads its city's versions and their 5 m images",
+            "asserts": "worker.step list of cities/{city}/layerVersions -> their ids; get of any version of the city -> its document (target held); worker.urls signs GET of rasters/{city}/{layer}/{version}/align.tif",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Test: functions/test/worker/step.test.ts, functions/test/worker/allow-list.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-HELD-FRAMES-WRITE",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A local run never writes another frame, nor reads another city's",
+            "asserts": "update of another version of the city -> apiError.worker.refused; align.tif of another version is never signed for PUT; another city's versions, another file of a frame, a way out of the city or a deeper path -> off the list",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Test: functions/test/worker/allow-list.test.ts, functions/test/worker/step.test.ts."
+        },
+        {
             "id": "S-A63-HAPPY-METER",
             "behaviour": "A63",
             "area": "admin",
@@ -10987,6 +11009,28 @@
             "notes": "M9 (docs/research/M9-calibration.md §2). Test: functions/test/imagery/pass-calibration.test.ts."
         },
         {
+            "id": "S-A67-HAPPY-ALIGNED",
+            "behaviour": "A67",
+            "area": "admin",
+            "path": "happy",
+            "title": "A frame lined up with earlier photos says which, and that they stayed where they are",
+            "asserts": "calibration.alignment with two used partners (1972, 1977; 1,420 and 810 ties) and one with too few -> on the version page: lined up with your photos of 1972, 1977 at 2230 shared points; they stay where they are, and lining them up with this one is your choice; the one with too few says nothing; in the page language",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Test: e2e/admin/specs/imagery/calibration.spec.ts; packages/ui/test/admin/imagery/calibration-card.test.ts."
+        },
+        {
+            "id": "S-A67-BAD-ALIGNED-LEFT-OUT",
+            "behaviour": "A67",
+            "area": "admin",
+            "path": "bad",
+            "title": "A photo whose streets sat off is named and was not used",
+            "asserts": "a partner disagreeing at 9.24 m (1978) -> not lined up with 1978: its streets sat 9.2 m from the others",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Test: e2e/admin/specs/imagery/calibration.spec.ts; packages/ui/test/admin/imagery/calibration-card.test.ts."
+        },
+        {
             "id": "S-P05-HAPPY",
             "behaviour": "P05",
             "area": "pipeline",
@@ -11535,6 +11579,72 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M15 reference guard (docs/research/M15-calibration-accuracy.md, The reference guard). Tests: pipeline/tests/unit/test_agreement.py, pipeline/tests/integration/test_import_job.py. Real case: Gothenburg's least cloudy item S2B_32VPK_20241204 has an s3:// asset; before the guard it would have failed the reference."
+        },
+        {
+            "id": "S-P06-HAPPY-JOINT-HELD-STILL",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A proved frame is fitted again with the accepted frames it overlaps held still",
+            "asserts": "a proved frame and accepted (approved, publishing, published) proved frames over it that kept align.tif -> its own first fit rendered at 5 m on the city's align grid, each held frame's tiles (900 m, every 450 m) found in it within 150 m, a tie per tile (the held frame's place, our film pixel through our warp's own transform), the frame fitted again on its own tiles and the ties (9 times the weight; its camera, else a polynomial); the held frames' layers are not rendered again; calibration.alignment records every partner (versionId, year, ties, tried, status, offsetM) and the log says how many were held and how many ties; every proved frame's export keeps align.tif (grey, 0 no data, deflated, 5 ground metres)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Tests: pipeline/tests/unit/test_calibrate_joint.py, pipeline/tests/unit/test_calibrate_ties.py, pipeline/tests/integration/test_joint_job.py."
+        },
+        {
+            "id": "S-P06-HAPPY-JOINT-THIN-FRAME",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A frame with Sentinel-2 tiles on part of its film is carried by its ties on the rest",
+            "asserts": "a frame whose own tiles cover half its film and whose ties cover the other half -> held out on that other half the joined map is within 5 m (synthetic), under half the error of the frame alone",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Tests: pipeline/tests/unit/test_calibrate_joint.py."
+        },
+        {
+            "id": "S-P06-HAPPY-JOINT-RESTRICTED",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A joined polynomial holds to the film's measured box",
+            "asserts": "a frame without a camera joined through a cubic on every tile and tie -> inside the rows' film box the map is the cubic; beyond it, the cubic's value at the box's nearest point plus how the second-order fit of the same rows grows from there; the lattice's model is polynomial",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Tests: pipeline/tests/unit/test_calibrate_joint.py."
+        },
+        {
+            "id": "S-P06-BAD-JOINT-PARTNER-DISAGREES",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A frame published wrong is left out and named, and pulls nothing",
+            "asserts": "three partners, one 20 m off -> its ties sit about 20 m from the map of the frame and the other two (over 6 m), it is left out (status disagrees, offsetM), the furthest alone first and the rest measured again, so the two good ones stay used and the map holds within 3 m",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Tests: pipeline/tests/unit/test_calibrate_joint.py."
+        },
+        {
+            "id": "S-P06-BAD-JOINT-FEW-TIES",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An overlap too small or too poor to count holds nothing still",
+            "asserts": "under 100 ties, or under a quarter of the tiles tried holding, or a frame of another place (one tile of 16 or none), or ties outside the scan or in a checkpoint cell -> status few, nothing joined, the frame keeps its own fit; a model that cannot fit joins nothing; on the 4 by 3 km test city the frame is fitted alone and the record and the log say few",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Tests: pipeline/tests/unit/test_calibrate_joint.py, pipeline/tests/unit/test_calibrate_ties.py, pipeline/tests/integration/test_joint_job.py."
+        },
+        {
+            "id": "S-P06-BAD-JOINT-NOT-ACCEPTED",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A frame the admin has not accepted is never held still",
+            "asserts": "an overlapping proved frame still awaiting approval -> no partner, no calibration.alignment, no log line",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M15 joint solve (docs/research/M15-calibration-accuracy.md, Joint solve). Tests: pipeline/tests/integration/test_joint_job.py."
         },
         {
             "id": "S-A17-BAD-NOT-PROVED",

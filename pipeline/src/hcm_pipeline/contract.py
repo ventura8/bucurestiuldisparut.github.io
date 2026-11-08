@@ -84,7 +84,7 @@ USGS_DATASETS: Final = ("corona2", "declassii", "declassiii")
 GEOREF_TRANSFORMS: Final = ("affine", "poly2", "tps")
 MIN_GCPS: Final[Mapping[str, int]] = {"affine": 3, "poly2": 6, "tps": 10}
 GCP_ORIGINS: Final = ("corner", "auto", "manual")
-VERSION_FILES: Final = ("scan.tif", "scan-preview.jpg", "reference-osm.png", "reference-s2.jpg", "cog.tif", "preview.png", "studio.tif")
+VERSION_FILES: Final = ("scan.tif", "scan-preview.jpg", "reference-osm.png", "reference-s2.jpg", "cog.tif", "preview.png", "studio.tif", "align.tif")
 LEASE_SECONDS: Final = 600
 HEARTBEAT_SECONDS: Final = 60
 USGS_BACKOFF_MINUTES: Final = (30, 60, 120, 240, 480, 720)
@@ -98,6 +98,9 @@ MAX_JOB_LOGS: Final = 500
 JOIN_MAX_PARTS: Final = 8
 # The reference guard's verdicts (`S2_CHECK_STATUSES`, `agreement.py`): enough clear dates agree, too few to outvote, all disagree.
 S2_CHECK_STATUSES: Final = ("agreed", "unchecked", "disputed")
+# What became of a frame held still in a joint fit (`ALIGNMENT_STATUSES`, `calibrate/joint.py`), and at most how many are held.
+ALIGNMENT_STATUSES: Final = ("used", "few", "disagrees")
+ALIGNMENT_MAX_PARTNERS: Final = 12
 # How a job waits for the USGS download to be prepared, and how long a SIGTERM'd job waits before it runs again.
 USGS_PREPARING_MINUTES: Final = 10
 REQUEUE_SECONDS: Final = 60

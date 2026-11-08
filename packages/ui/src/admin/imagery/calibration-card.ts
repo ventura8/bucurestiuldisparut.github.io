@@ -5,6 +5,7 @@
  * under the threshold still waits.
  */
 import {
+    alignedWith,
     AUTO_MIN_MEASURED_PCT,
     CITY_MIN_COVERAGE_PCT,
     type AdminContentKey,
@@ -36,7 +37,7 @@ function howText(locale: Locale, { how, proposer }: Calibration & { readonly how
 }
 
 /** Each figure the block has, in words: `georef`'s matcher, having fitted a frame, leaves it none of the proof's (`georef.py`). */
-function facts(locale: Locale, { tiles, crossValidatedM }: Calibration, covered: number | undefined): readonly string[] {
+function facts(locale: Locale, { tiles, crossValidatedM, alignment }: Calibration, covered: number | undefined): readonly string[] {
     return [
         ...(tiles === undefined
             ? []
@@ -52,6 +53,8 @@ function facts(locale: Locale, { tiles, crossValidatedM }: Calibration, covered:
         ...(covered === undefined
             ? []
             : [contentText(locale, 'adminContent.imagery.join.coverageMeasured', { percent: numberText(locale, covered, 0) })]),
+        // M15: the photos it was lined up with, held still, and those whose streets sat off; too few shared points go unsaid.
+        ...alignedWith(alignment).map(([line, params]) => contentText(locale, `adminContent.imagery.calibration.${line}`, params)),
     ];
 }
 

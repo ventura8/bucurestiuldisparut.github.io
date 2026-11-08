@@ -92,7 +92,7 @@ def test_happy_path_a_queued_import_becomes_a_version_awaiting_approval(
     assert alignment_shift_m(world, world.scene, tmp_path) < 10
     assert world.gcs.names(f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/") == [
         f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/{name}"
-        for name in ("cog.tif", "preview.png", "reference-osm.png", "reference-s2.jpg", "scan-preview.jpg", "scan.tif", "studio.tif")
+        for name in ("align.tif", "cog.tif", "preview.png", "reference-osm.png", "reference-s2.jpg", "scan-preview.jpg", "scan.tif", "studio.tif")
     ]
     assert world.gcs.names(WORK) == []
     # The delivery was fetched whole, then deleted once the city crop existed (M7 §5: S-P01-HAPPY-RAW-DELETED).

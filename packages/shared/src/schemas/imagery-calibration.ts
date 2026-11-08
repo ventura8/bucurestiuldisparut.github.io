@@ -61,6 +61,54 @@ export const calibrationProposerSchema = z.strictObject({
     fallback: z.enum(['no-gpu', 'out-of-memory']).optional(),
 });
 
+/**
+ * M15 (*Joint solve*, pipeline `calibrate/joint.py`): what became of a frame accepted earlier that overlaps this one: `used`, its film
+ * ties held it still in the fit; `few`, too few of its tiles held to count; `disagrees`, its ties sat `offsetM` from the rest, so it
+ * was left out.
+ */
+export const ALIGNMENT_STATUSES = ['used', 'few', 'disagrees'] as const;
+
+export type AlignmentStatus = (typeof ALIGNMENT_STATUSES)[number];
+
+/** At most this many frames are held still for one frame (`MAX_PARTNERS`, pipeline `steps/aligning.py`). */
+export const ALIGNMENT_MAX_PARTNERS = 12;
+
+const alignmentPartnerSchema = z.strictObject({
+    versionId: idSchema,
+    year: z.number().int().optional(),
+    /** The ties measured, and the tiles tried. */
+    ties: count,
+    tried: count,
+    status: z.enum(ALIGNMENT_STATUSES),
+    /** Ground metres between its ties and the map of the frame's own tiles and its other partners. */
+    offsetM: metres.optional(),
+});
+
+/** The frames a fit was joined to, each held still: none of them moved. */
+export const calibrationAlignmentSchema = z.strictObject({
+    partners: z.array(alignmentPartnerSchema).min(1).max(ALIGNMENT_MAX_PARTNERS),
+});
+
+export type CalibrationAlignment = z.infer<typeof calibrationAlignmentSchema>;
+
+/** The partners of one status in words' parameters: their years, and their ties together. */
+export type AlignedWith = Readonly<Record<'years' | 'ties', string>>;
+
+/** What the version page says of an alignment (M15, `calibration-card.ts`): its line's name and parameters. */
+const ALIGNED_LINES = [
+    ['used', 'aligned'],
+    ['disagrees', 'leftOut'],
+] as const;
+
+/** The version page's lines of an alignment: the partners held still, those left out; a status nobody has, and `few`, say nothing. */
+export function alignedWith(alignment: CalibrationAlignment | undefined): readonly (readonly ['aligned' | 'leftOut', AlignedWith])[] {
+    return ALIGNED_LINES.flatMap(([status, line]) => {
+        const some = alignment?.partners.filter((partner) => partner.status === status) ?? [];
+        const ties = String(some.reduce((sum, partner) => sum + partner.ties, 0));
+        return some.length > 0 ? [[line, { years: some.map(({ year }) => year ?? '').join(', '), ties }] as const] : [];
+    });
+}
+
 export const calibrationSchema = z.strictObject({
     how: z.enum(CALIBRATION_HOWS),
     model: calibrationModelSchema.optional(),
@@ -83,6 +131,7 @@ export const calibrationSchema = z.strictObject({
     /** Orientations the bounded crop lost to `MAX_SCAN_PIXELS`. */
     cutOrientations: count.optional(),
     refusal: z.enum(CALIBRATION_REFUSALS).optional(),
+    alignment: calibrationAlignmentSchema.optional(),
 });
 
 export type Calibration = z.infer<typeof calibrationSchema>;

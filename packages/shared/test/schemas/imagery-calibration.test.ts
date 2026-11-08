@@ -5,6 +5,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    alignedWith,
+    ALIGNMENT_MAX_PARTNERS,
     CALIBRATION_OUTLINE_MAX,
     calibrationSchema,
     imageryPassDocSchema,
@@ -31,6 +33,16 @@ describe('calibrationSchema', () => {
         expect(calibrationSchema.safeParse({ how: 'points', seedPoints: 4, checksDropped: 2 }).success).toBe(true);
     });
 
+    it('happyPath_aFrameJoinedToFramesHeldStill', () => {
+        const partners = [
+            { versionId: 'v-1972', year: 1972, ties: 1420, tried: 1643, status: 'used', offsetM: 1.36 },
+            { versionId: 'v-1966', ties: 78, tried: 124, status: 'few' },
+            { versionId: 'v-1978', year: 1978, ties: 900, tried: 1500, status: 'disagrees', offsetM: 9.24 },
+        ];
+
+        expect(calibrationSchema.safeParse({ how: 'votes', alignment: { partners } }).success).toBe(true);
+    });
+
     it.each([
         ['an unknown way', { how: 'guess' }],
         ['an unknown refusal', { how: 'none', refusal: 'tired' }],
@@ -41,8 +53,41 @@ describe('calibrationSchema', () => {
         ['a model of another camera', { how: 'votes', model: { ...MODEL, camera: 'drone' } }],
         ['too short an outline', { how: 'votes', outline: [{ lat: 1, lng: 1 }] }],
         ['too long an outline', { how: 'votes', outline: Array.from({ length: CALIBRATION_OUTLINE_MAX + 1 }, () => ({ lat: 1, lng: 1 })) }],
+        ['an alignment with no partner', { how: 'votes', alignment: { partners: [] } }],
+        ['a partner of an unknown status', { how: 'votes', alignment: { partners: [{ versionId: 'v', ties: 1, tried: 2, status: 'maybe' }] } }],
+        ['a negative offset', { how: 'votes', alignment: { partners: [{ versionId: 'v', ties: 1, tried: 2, status: 'used', offsetM: -1 }] } }],
+        [
+            'more partners than are held',
+            {
+                how: 'votes',
+                alignment: {
+                    partners: Array.from({ length: ALIGNMENT_MAX_PARTNERS + 1 }, (_, at) => ({ versionId: `v${String(at)}`, ties: 1, tried: 2, status: 'few' })),
+                },
+            },
+        ],
     ])('badPath_%sIsRefused', (_name, value) => {
         expect(calibrationSchema.safeParse(value).success).toBe(false);
+    });
+});
+
+describe('alignedWith (M15)', () => {
+    it('happyPath_thePartnersHeldStillAndThoseLeftOut_eachWithTheirYearsAndTies', () => {
+        const partners = [
+            { versionId: 'v-1972', year: 1972, ties: 1420, tried: 1643, status: 'used' },
+            { versionId: 'v-1977', year: 1977, ties: 810, tried: 1961, status: 'used' },
+            { versionId: 'v-1966', year: 1966, ties: 78, tried: 124, status: 'few' },
+            { versionId: 'v-1978', ties: 900, tried: 1500, status: 'disagrees' },
+        ] as const;
+
+        expect(alignedWith({ partners })).toEqual([
+            ['aligned', { years: '1972, 1977', ties: '2230' }],
+            ['leftOut', { years: '', ties: '900' }],
+        ]);
+    });
+
+    it('badPath_noAlignmentOrOnlyFewSharedPointsSaysNothing', () => {
+        expect(alignedWith(undefined)).toEqual([]);
+        expect(alignedWith({ partners: [{ versionId: 'v', ties: 3, tried: 40, status: 'few' }] })).toEqual([]);
     });
 });
 

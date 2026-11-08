@@ -26,6 +26,7 @@ from typing import Final, NoReturn
 import numpy
 
 from hcm_pipeline.calibrate.dense import PROOF_SEARCH_GROUND_M, dense_grid, nothing_measured, read_film
+from hcm_pipeline.calibrate.joining import Proved, joined_calibration
 from hcm_pipeline.calibrate.pairs import Calibrated, ScanBox, calibrated
 from hcm_pipeline.calibrate.poly import MatrixMap, PlaceMap
 from hcm_pipeline.calibrate.proof import Proof, no_film
@@ -45,6 +46,7 @@ from hcm_pipeline.images import UInt8Array, seeded
 from hcm_pipeline.jobs import Done, JobContext, Skipped, StepFailedError, StepResult, Waiting
 from hcm_pipeline.osm import draw
 from hcm_pipeline.rasters import read_band, to_uint8
+from hcm_pipeline.steps.aligning import Joining, joined_to_held
 from hcm_pipeline.steps.common import Sentinel2, city_window, gdal_step, grey_reference, osm_features
 from hcm_pipeline.steps.locate import CALIBRATION_FILE
 from hcm_pipeline.store import DELETE
@@ -55,6 +57,7 @@ MATCHER_HOW: Final = "matcher"
 # What `locate` recorded of the proof, gone once the matcher fits the frame.
 PROOF_FIGURES: Final = frozenset({"measuredPct", "crossValidatedM", "tiles"})
 NOT_PROVED_HOW: Final = "none"
+ALIGNMENT: Final = "alignment"
 TILES_GONE: Final = "the proof's tiles are gone, or too few lie in the crop: they are measured again on the scan"
 # How far the tiles search around the admin's points: as far as a proposal, further with points that hold worse (ground metres).
 SEED_MAX_SEARCH_M: Final = 2000.0
@@ -175,9 +178,11 @@ def _blocked(found: Calibrated) -> dict[str, object]:
 
 
 def _figures(ctx: JobContext, found: Calibrated) -> dict[str, object]:
-    """`calibration` with what the fit measured."""
+    """`calibration` with what the fit measured; `alignment`, the frames it was joined to, set or removed each time."""
     dropped = {"checksDropped": found.checks_dropped} if found.checks_dropped else {}
-    return {**ctx.version.calibration, **_blocked(found), **dropped}
+    calibration = {key: value for key, value in ctx.version.calibration.items() if key != ALIGNMENT}
+    aligned = {ALIGNMENT: found.alignment_record} if found.alignment_record else {}
+    return {**calibration, **_blocked(found), **dropped, **aligned}
 
 
 def _matcher_took_over(ctx: JobContext) -> Mapping[str, object]:
@@ -308,22 +313,31 @@ class GeorefStep:
         return self._fitted(ctx, recorded(found.fitted, AUTO_METHOD), {**_left_by_a_fit(georef), "calibration": record})
 
     def _of_proof(self, ctx: JobContext, corners: GeorefInfo, scan: ScanInfo) -> StepResult | None:
-        """A proved frame's fit: its stored tiles, else measured again on the scan; None for a frame nothing proved."""
+        """A proved frame's fit: its stored tiles, else measured again on the scan, joined to the frames already accepted; None for a
+        frame nothing proved."""
         if corners.weak_corners or not ctx.version.calibration:
             return None
-        found = self._stored_fit(ctx, scan) or self._remeasured_fit(ctx, corners, scan)
+        found = self._first_fit(ctx, corners, scan)
         if found is None:
             return None
-        return self._fitted(ctx, recorded(found.fitted, AUTO_METHOD, found.lattice), {"calibration": _figures(ctx, found)})
+        joining = Joining(found[0], scan, recorded(found[1].fitted, AUTO_METHOD, found[1].lattice), job_seed(ctx))
+        fitted = joined_to_held(ctx, joining, found[1])
+        return self._fitted(ctx, recorded(fitted.fitted, AUTO_METHOD, fitted.lattice), {"calibration": _figures(ctx, fitted)})
 
-    def _stored_fit(self, ctx: JobContext, scan: ScanInfo) -> Calibrated | None:
+    def _first_fit(self, ctx: JobContext, corners: GeorefInfo, scan: ScanInfo) -> tuple[Proved, Calibrated] | None:
+        """The proved frame's tiles and its fit alone; None when it has none or they do not fit."""
+        proved = self._stored_tiles(ctx, scan) or self._remeasured_tiles(ctx, corners, scan)
+        found = None if proved is None else joined_calibration(proved, job_seed(ctx))
+        return None if proved is None or found is None else (proved, found)
+
+    def _stored_tiles(self, ctx: JobContext, scan: ScanInfo) -> Proved | None:
         stored = _stored(ctx)
         if stored is None:
             return None
         box = ScanBox(stored.left, stored.top, scan.width, scan.height, stored.rad_per_px)
-        return calibrated(stored.rows, stored.order, box, stored.middle_lat, job_seed(ctx))
+        return Proved(stored.rows, stored.order, box, stored.middle_lat)
 
-    def _remeasured_fit(self, ctx: JobContext, corners: GeorefInfo, scan: ScanInfo) -> Calibrated | None:
+    def _remeasured_tiles(self, ctx: JobContext, corners: GeorefInfo, scan: ScanInfo) -> Proved | None:
         """The work folder is gone (a resume): the tiles again, from the proved corners."""
         ctx.log.info(TILES_GONE, self.name)
         start = MatrixMap(corner_transform(corners.gcps).matrix)
@@ -331,7 +345,7 @@ class GeorefStep:
         if proof.forward is None or not proof.accepted:
             return None
         middle = city_window(ctx).bounds().middle_lat
-        return calibrated(proof.measured.rows, proof.forward.order, ScanBox(0, 0, scan.width, scan.height), middle, job_seed(ctx))
+        return Proved(proof.measured.rows, proof.forward.order, ScanBox(0, 0, scan.width, scan.height), middle)
 
     def _calibration(self, ctx: JobContext, proof: Proof, found: Calibrated, how: str) -> dict[str, object]:
         record: dict[str, object] = {

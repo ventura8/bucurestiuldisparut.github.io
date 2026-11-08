@@ -33,6 +33,8 @@ export const VERSION_FILES = [
     'cog.tif',
     'preview.png',
     'studio.tif',
+    /** M15: a proved frame at 5 m on the ground, what a later frame's film ties are measured against (`steps/aligning.py`). */
+    'align.tif',
 ] as const;
 
 export type VersionFile = (typeof VERSION_FILES)[number];

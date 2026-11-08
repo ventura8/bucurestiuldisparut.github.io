@@ -24,6 +24,7 @@ from hcm_pipeline.join.canvas import DatasetSource
 from hcm_pipeline.objects import sha256_of
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.rasters import fit_long_side, raster_info, read_band
+from hcm_pipeline.steps.aligning import publish_align
 from hcm_pipeline.steps.common import gdal_step
 from hcm_pipeline.steps.merge import city_part, coverage_pct
 from hcm_pipeline.steps.warp import zooms
@@ -134,6 +135,7 @@ class ExportStep:
         cog_info = ctx.publish(cog, ctx.version_file("cog.tif"), "image/tiff")
         preview_path = ctx.publish(preview, ctx.version_file("preview.png"), "image/png").path
         studio_info = None if studio is None else ctx.publish(studio, ctx.version_file("studio.tif"), "image/tiff")
+        publish_align(ctx, ctx.stage(ctx.work_file("warped.tif"), "warped.tif"))
         minzoom, maxzoom = zooms(ctx.version, warped.zoom)
         output = OutputInfo(
             cog_path=cog_info.path,

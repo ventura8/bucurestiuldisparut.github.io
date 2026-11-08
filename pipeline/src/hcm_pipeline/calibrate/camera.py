@@ -89,20 +89,28 @@ def _ray_scale(frame: Frame, film: FloatArray, angles: FloatArray) -> tuple[Floa
 
 @dataclass(frozen=True)
 class _Tiles:
-    """What a fit reads: film pixels, EPSG:3857 places, each one's ground scale."""
+    """What a fit reads: film pixels, EPSG:3857 places, each one's ground scale and the square root of its weight (a film tie of a
+    frame held still counts more than a Sentinel-2 tile: `joint.py`)."""
 
     film: FloatArray
     places: FloatArray
     scale: FloatArray
+    root_weight: FloatArray
 
     def kept(self, keep: Mask) -> _Tiles:
-        return _Tiles(self.film[keep], self.places[keep], self.scale[keep])
+        return _Tiles(self.film[keep], self.places[keep], self.scale[keep], self.root_weight[keep])
+
+
+def _solved(design: FloatArray, tiles: _Tiles) -> FloatArray:
+    """The linear part by weighted least squares."""
+    weight = tiles.root_weight[:, None]
+    return numpy.asarray(numpy.linalg.lstsq(design * weight, tiles.places * weight, rcond=None)[0], numpy.float64)
 
 
 def _residuals(frame: Frame, tiles: _Tiles, angles: FloatArray, prior: bool) -> FloatArray:
     design = _design(frame, tiles.film, angles)
-    coefficients = numpy.linalg.lstsq(design, tiles.places, rcond=None)[0]
-    misfit = ((design @ coefficients - tiles.places) * tiles.scale[:, None]).ravel()
+    coefficients = _solved(design, tiles)
+    misfit = ((design @ coefficients - tiles.places) * (tiles.scale * tiles.root_weight)[:, None]).ravel()
     return numpy.concatenate((misfit, PRIOR_TILE_M * angles / PRIOR_SIGMA)) if prior else misfit
 
 
@@ -147,7 +155,7 @@ def _refined(frame: Frame, tiles: _Tiles, angles: FloatArray) -> FloatArray:
 
 def _errors_m(frame: Frame, tiles: _Tiles, keep: Mask, angles: FloatArray) -> FloatArray:
     design = _design(frame, tiles.film, angles)
-    coefficients = numpy.linalg.lstsq(design[keep], tiles.places[keep], rcond=None)[0]
+    coefficients = _solved(design[keep], tiles.kept(keep))
     return numpy.asarray(numpy.hypot(*(design @ coefficients - tiles.places).T) * tiles.scale, numpy.float64)
 
 
@@ -185,10 +193,10 @@ class PanoramicMap:
 def _scored(frame: Frame, tiles: _Tiles, angles: FloatArray, keep: Mask) -> PanoramicMap:
     mean, spread = _ray_scale(frame, tiles.film, angles)
     design = _design(frame, tiles.film, angles, (mean, spread))
-    coefficients = numpy.linalg.lstsq(design[keep], tiles.places[keep], rcond=None)[0]
+    coefficients = _solved(design[keep], tiles.kept(keep))
     errors = numpy.hypot(*(design @ coefficients - tiles.places).T) * tiles.scale
     kept = int(numpy.count_nonzero(errors < KEPT_M))
-    return PanoramicMap(frame, angles, mean, spread, numpy.asarray(coefficients, numpy.float64), kept)
+    return PanoramicMap(frame, angles, mean, spread, coefficients, kept)
 
 
 def _starts(frame: Frame, tiles: _Tiles) -> list[FloatArray]:
@@ -208,11 +216,13 @@ def plainest(fits: list[PanoramicMap]) -> PanoramicMap:
     return min(near, key=lambda fit: fit.curvature_m)
 
 
-def fit_panoramic(film: FloatArray, places: FloatArray, rad_per_px: float) -> PanoramicMap | None:
-    """The plainest panoramic map that holds nearly the most tiles; None with too few tiles. Deterministic: the starts are fixed."""
+def fit_panoramic(film: FloatArray, places: FloatArray, rad_per_px: float, weights: FloatArray | None = None) -> PanoramicMap | None:
+    """The plainest panoramic map that holds nearly the most tiles; None with too few tiles. Deterministic: the starts are fixed.
+    `weights`, each row's (none: all 1)."""
     if len(film) < MIN_PANORAMIC_TILES:
         return None
     frame = Frame.of(film, rad_per_px)
     _, lat = to_lnglat_arrays(places[:, 0], places[:, 1])
-    tiles = _Tiles(film, places, ground_scale_of(lat))
+    root = numpy.ones(len(film)) if weights is None else numpy.sqrt(weights)
+    tiles = _Tiles(film, places, ground_scale_of(lat), root)
     return plainest([_scored(frame, tiles, *_followed(frame, tiles, start)) for start in _starts(frame, tiles)])

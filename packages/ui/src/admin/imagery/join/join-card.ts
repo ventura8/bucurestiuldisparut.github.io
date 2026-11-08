@@ -189,9 +189,9 @@ function offer(context: ImageryContext, frame: OfferedFrame): TemplateResult {
     return withValue(offeredRow(context.view, frame), (row) => offerCard(context, row, frame));
 }
 
-/** The scene's page: the offer beside Import. */
+/** The scene's page: the offer beside Import (a scene is an offered frame: its id and its coverage). */
 export function sceneOffer(context: ImageryContext, scene: SceneItemPort): TemplateResult {
-    return offer(context, { id: scene.id, coverage: scene.coverage });
+    return offer(context, scene);
 }
 
 /** The scene's estimate (0 to 1), once the frame's own scene is read. */
@@ -250,7 +250,7 @@ function partRow(
 ): TemplateResult {
     const { locale } = context;
     const state = partState(context, part, join);
-    const href = needsGeoref(state, job) ? ['#/georef', part.versionId].join('/') : context.href(['version', part.versionId]);
+    const href = needsGeoref(state, job) ? `#/georef/${part.versionId}` : context.href(['version', part.versionId]);
     return html`<li data-part=${part.entityId} data-state=${state ?? ''}>
         <a class="row" href=${href}>
             <span class="row-title">${frameName(part.entityId)}</span>

@@ -171,13 +171,20 @@ Documents (`worker.step`), for the claimed job `J` of city `C` with its version 
 | `cities/C/layers/L` | yes | | | |
 | `cities/C/usgsScenes/<params.entityId>` (`usgs-import`) | yes | | | |
 | `cities/C/imageryPasses/<mission>-<camera>-<date>` of `params.entityId` (`usgs-import`, M9: `docs/research/M9-calibration.md` §2) | yes | | | |
+| `cities/C/layerVersions` and every `cities/C/layerVersions/<id>` (M15 *Joint solve*: the frames a proved frame is joined to, `steps/aligning.py`) | yes | | | yes (the collection's ids) |
+
+The versions of the city are read-only to every job (target `held`, `functions/src/worker/allow-list.ts`): a run never writes a
+version but its own, and nothing of another city (`S-A62-HAPPY-HELD-FRAMES`, `S-A62-BAD-HELD-FRAMES-WRITE`). They hold what the
+owner's admin pages already show, to the owner's own computer; DECISIONS-for-review.md §96.
 
 Each write is merged into the current document and the result validated with the shared schema before it is stored
 (`jobDocSchema`, `layerVersionDocSchema`, `jobLogDocSchema`); `updatedBy` is `system:pipeline`, as the Cloud Run run
 writes. A finished job (`succeeded`, `failed`, `cancelled`) takes no more writes but its log lines.
 
 Objects (`worker.urls`): GET `rasters/C/L/V/*`, `rasters/C/L/<basedOn>/scan.tif` (`regeoref`), each
-`rasters/C/<part.layerId>/<part.versionId>/scan.tif` (`layer-join`, M8), the job's `params.uploadPath` (`geotiff-import`); PUT `rasters/C/L/V/<VERSION_FILES>` only. Nothing else: the delivery, the scratch
+`rasters/C/<part.layerId>/<part.versionId>/scan.tif` (`layer-join`, M8), the job's `params.uploadPath` (`geotiff-import`), and
+`rasters/C/<any layer>/<any version>/align.tif` (M15: each proved frame's image at 5 m, which a later frame's film ties are
+measured on); PUT `rasters/C/L/V/<VERSION_FILES>` only. Nothing else: the delivery, the scratch
 and the reference cache stay on the computer, so no signed URL ever names them.
 
 USGS (`worker.urls`, `kind: 'usgs'`): `download-options` with `datasetName == params.dataset` and `entityIds ==

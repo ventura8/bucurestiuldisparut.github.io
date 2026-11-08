@@ -99,7 +99,7 @@
         "tps": 10
     },
     "GCP_ORIGINS": ["corner", "auto", "manual"],
-    "VERSION_FILES": ["scan.tif", "scan-preview.jpg", "reference-osm.png", "reference-s2.jpg", "cog.tif", "preview.png", "studio.tif"],
+    "VERSION_FILES": ["scan.tif", "scan-preview.jpg", "reference-osm.png", "reference-s2.jpg", "cog.tif", "preview.png", "studio.tif", "align.tif"],
     "LEASE_SECONDS": 600,
     "HEARTBEAT_SECONDS": 60,
     "USGS_BACKOFF_MINUTES": [30, 60, 120, 240, 480, 720],
@@ -167,6 +167,8 @@
     "MAX_SCAN_PIXELS": 200000,
     "JOIN_MAX_PARTS": 8,
     "S2_CHECK_STATUSES": ["agreed", "unchecked", "disputed"],
+    "ALIGNMENT_STATUSES": ["used", "few", "disagrees"],
+    "ALIGNMENT_MAX_PARTNERS": 12,
     "PIPELINE_ERROR_CODES": [
         "apiError.imagery.archiveCorrupt",
         "apiError.imagery.cityNotFound",

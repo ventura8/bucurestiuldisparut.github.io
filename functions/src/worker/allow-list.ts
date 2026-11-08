@@ -76,8 +76,8 @@ export const WORKER_VERSION_STATES: ReadonlySet<LayerVersionState> = new Set<Lay
     'cancelled',
 ]);
 
-/** What a document path is to the job: one of the documents of §2.5. */
-export type DocumentTarget = 'city' | 'job' | 'version' | 'base' | 'layer' | 'scene' | 'pass';
+/** What a document path is to the job: one of the documents of §2.5 (`held`: another version of its city, read-only, M15). */
+export type DocumentTarget = 'city' | 'job' | 'version' | 'base' | 'layer' | 'scene' | 'pass' | 'held';
 
 /** The job a worker holds, with the ids its allow-lists name. */
 export interface JobScope {
@@ -152,9 +152,25 @@ function isOwnPass({ cityId, job }: JobScope, path: string): boolean {
     return prefix !== undefined && path.startsWith(start) && PASS_DATE.test(path.slice(start.length));
 }
 
+/**
+ * M15 (`docs/research/M15-calibration-accuracy.md`, *Joint solve*): another version of the job's city, which a frame being joined
+ * reads to find the accepted frames it may be held to. Read-only: `step-update.ts` writes `job` and `version` alone.
+ */
+function isCityVersion({ cityId }: JobScope, path: string): boolean {
+    const prefix = `${FIRESTORE_PATHS.layerVersions(cityId)}/`;
+    return path.startsWith(prefix) && isId(path.slice(prefix.length));
+}
+
+function readOnlyTarget(scope: JobScope, path: string): DocumentTarget | undefined {
+    if (isOwnPass(scope, path)) {
+        return 'pass';
+    }
+    return isCityVersion(scope, path) ? 'held' : undefined;
+}
+
 /** What `path` is to the job, or undefined when it is off the allow-list. */
 export function documentTarget(scope: JobScope, path: string): DocumentTarget | undefined {
-    return documentTargets(scope).get(path) ?? (isOwnPass(scope, path) ? 'pass' : undefined);
+    return documentTargets(scope).get(path) ?? readOnlyTarget(scope, path);
 }
 
 /** A log line's id: its sequence number zero-padded to six digits (`pipeline/src/hcm_pipeline/documents.py` → `log_id`). */
@@ -170,6 +186,11 @@ export function logLineOf(scope: JobScope, path: string): number | undefined {
 /** True when `collection` is the job's log. */
 export function isJobLog(scope: JobScope, collection: string): boolean {
     return collection === FIRESTORE_PATHS.jobLogs(scope.cityId, scope.jobId);
+}
+
+/** M15: true when `collection` is its city's versions, whose ids a frame being joined lists. */
+export function isCityVersions(scope: JobScope, collection: string): boolean {
+    return collection === FIRESTORE_PATHS.layerVersions(scope.cityId);
 }
 
 /** The objects of a version's run: the version's folder, its layer, and the inputs its parameters name. */
@@ -212,9 +233,16 @@ function isInputScan(scope: ObjectScope, path: string): boolean {
     return scope.inputScans.includes(path) && path.startsWith(`rasters/${scope.cityId}/`) && !path.includes('..');
 }
 
-/** True when the run may read `path`: a file of its version, or one of its inputs. */
+/** M15: the 5 m image of a frame of the city (`rasters/C/L/V/align.tif`), which a frame being joined measures its film ties on. */
+function isCityAlignImage({ cityId }: ObjectScope, path: string): boolean {
+    const parts = path.split('/');
+    const [root, city, layer, version, file] = parts;
+    return parts.length === 5 && root === 'rasters' && city === cityId && isId(layer) && isId(version) && file === 'align.tif';
+}
+
+/** True when the run may read `path`: a file of its version, one of its inputs, or a frame's image of its city (M15). */
 export function mayRead(scope: ObjectScope, path: string): boolean {
-    return inVersionFolder(scope, path) || inputsOf(scope).includes(path) || isInputScan(scope, path);
+    return inVersionFolder(scope, path) || inputsOf(scope).includes(path) || isInputScan(scope, path) || isCityAlignImage(scope, path);
 }
 
 /** True when the run may write `path`: one of its version's files (`VERSION_FILES`), nothing else. */
