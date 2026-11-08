@@ -22,7 +22,7 @@ from hcm_pipeline.objects import sha256_of
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.steps.common import gdal_step
 from hcm_pipeline.tiles.pack import ArchiveInfo, Packed, PackError, pack
-from hcm_pipeline.tiles.rim import add_trimmed_alpha, find_rim
+from hcm_pipeline.tiles.rim import add_trimmed_alpha, find_rim, trimmed_alpha
 
 TILE_SIZE_PX: Final = 256
 TILE_QUALITY: Final = 75
@@ -91,7 +91,7 @@ def rgba_view(source: Path, target: Path) -> Path:
     gdal.Translate(str(target), dataset, options=["-of", "VRT", *_band_options(dataset, None if rim else alpha)]).Close()
     dataset.Close()
     if rim is not None:
-        add_trimmed_alpha(target, source, alpha, rim)
+        add_trimmed_alpha(target, trimmed_alpha(source, alpha, rim, target.with_name(f"{target.stem}-alpha.tif")))
     return target
 
 
@@ -116,8 +116,10 @@ def write_tree(view: Path, tree: Path, rendered: Rendered, ctx: JobContext) -> P
 
 
 def write_thumb(view: Path, target: Path) -> Path:
+    """The 320 px picture, averaged from the view's closest overview rather than its full size, when it has overviews."""
+    options = [f"QUALITY={THUMB_QUALITY}"]
     gdal.Translate(
-        str(target), str(view), format="WEBP", width=THUMB_WIDTH_PX, height=0, creationOptions=[f"QUALITY={THUMB_QUALITY}"]
+        str(target), str(view), format="WEBP", width=THUMB_WIDTH_PX, height=0, resampleAlg="average", creationOptions=options
     ).Close()
     return target
 
