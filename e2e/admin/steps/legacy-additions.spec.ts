@@ -132,22 +132,14 @@ test(
             'updatedBy',
             'updatedAt',
         ]);
-        await emulators.deleteDocument(deleted ?? '');
-        // The history triggers record the delete and the unpublish (the import reads them).
+        await emulators.deleteDocumentAs(deleted ?? '', adminWorld.accounts.owner);
+        // The history triggers record the owner's delete and unpublish (the import reads them; the server's own are not a person's).
         await expect
-            .poll(async () => Object.values(await emulators.collection(`${deleted ?? ''}/history`)).map((entry) => entry['action']), {
-                timeout: 60_000,
-            })
-            .toContain('delete');
+            .poll(() => ownersEntries(emulators, deleted ?? '', owner), { timeout: 60_000 })
+            .toContainEqual(expect.objectContaining({ action: 'delete' }));
         await expect
-            .poll(
-                async () =>
-                    Object.values(await emulators.collection(`${unpublished ?? ''}/history`)).some(
-                        (entry) => (entry['previous'] as Record<string, unknown> | null)?.['published'] === true,
-                    ),
-                { timeout: 60_000 },
-            )
-            .toBe(true);
+            .poll(() => ownersEntries(emulators, unpublished ?? '', owner), { timeout: 60_000 })
+            .toContainEqual(expect.objectContaining({ previous: expect.objectContaining({ published: true }) as unknown }));
         const kept = await legacyPhotos(emulators);
 
         // The tab opened before the import still offers it: its run finds nothing to do.
@@ -162,3 +154,8 @@ test(
         expect(await emulators.document(retitled ?? '')).toMatchObject({ title: { ro: 'Titlul proprietarului' }, published: true });
     },
 );
+
+/** The history entries of a photo that `uid` wrote (its delete, its edits). */
+async function ownersEntries(emulators: EmulatorWorld, photo: string, uid: string): Promise<Record<string, unknown>[]> {
+    return Object.values(await emulators.collection(`${photo}/history`)).filter((entry) => entry['updatedBy'] === uid);
+}

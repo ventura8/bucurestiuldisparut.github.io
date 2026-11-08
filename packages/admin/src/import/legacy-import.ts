@@ -16,8 +16,8 @@ import { bundleUrl, isLegacyRecord, legacyRecord, uploadType, type LegacyPhotoFi
  *
  * The 2023 additions (`docs/research/M5-interfaces.md` → *The 2023 additions*): the bundle grew from 45 to 57 records, so a
  * project that imported the 45 imports again to add the 12. That run must leave the 45 as their owner left them: a photo
- * whose document is gone but whose history is there was deleted by someone and is never created again, and a processed
- * photo that is unpublished although its history shows it published was unpublished by someone and is never published
+ * whose document is gone and whose history has a person's delete is never created again, and a processed photo that is
+ * unpublished although a person changed a published version of it was unpublished by someone and is never published
  * again. Both count as done. Only a photo without a history (an import that stopped before its publish) is resumed.
  */
 
@@ -30,11 +30,15 @@ export interface PhotoState {
     readonly processingError?: ApiErrorCode;
 }
 
-/** What a photo's `history` subcollection (written by the history triggers, kept after a delete) says of it. */
+/**
+ * What a photo's `history` subcollection (written by the history triggers, kept after a delete) says a person did to it:
+ * only entries stamped by an account count, never the server's (`system:…`, as the e2e world's reset and a function's own
+ * delete are stamped).
+ */
 export interface PhotoHistory {
-    /** The photo had a document once: an entry exists. */
-    readonly recorded: boolean;
-    /** A version of it was published (an entry's `previous` has `published: true`). */
+    /** A person deleted the photo (a `delete` entry). */
+    readonly deleted: boolean;
+    /** A person changed a published version of it (an entry's `previous` has `published: true`). */
     readonly everPublished: boolean;
 }
 
@@ -250,9 +254,9 @@ class Importer implements LegacyImport {
         return outcomeOf(record.id, state);
     }
 
-    /** A record without a document was imported: under another id, or deleted by someone since. */
+    /** A record without a document was imported: under another id, or deleted by a person since. */
     async #imported(record: LegacyRecord): Promise<boolean> {
-        return (await this.#importedElsewhere(record)) || (await this.#history(record)).recorded;
+        return (await this.#importedElsewhere(record)) || (await this.#history(record)).deleted;
     }
 
     /** A processed, unpublished photo that was published once: someone unpublished it, and the import leaves it so. */

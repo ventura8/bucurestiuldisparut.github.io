@@ -65,24 +65,28 @@ describe('history (the 2023 additions)', () => {
     it('happyPath_readsThePhotosHistoryEntriesAndSeesAPublishedPreviousVersion', async () => {
         const s = store();
         const query = vi.spyOn(s.documents, 'query').mockResolvedValue([
-            { id: 'e1', data: { action: 'create', previous: null } },
-            { id: 'e2', data: { action: 'update', previous: { published: true } } },
+            { id: 'e1', data: { action: 'create', previous: null, updatedBy: 'owner-uid' } },
+            { id: 'e2', data: { action: 'update', previous: { published: true }, updatedBy: 'owner-uid' } },
+            { id: 'e3', data: { action: 'delete', previous: { published: false }, updatedBy: 'owner-uid' } },
         ]);
 
-        await expect(s.subject.history('bucharest', 'la-leu')).resolves.toEqual({ recorded: true, everPublished: true });
+        await expect(s.subject.history('bucharest', 'la-leu')).resolves.toEqual({ deleted: true, everPublished: true });
         expect(query).toHaveBeenCalledWith('cities/bucharest/photos/la-leu/history', []);
     });
 
-    it('badPath_noEntryOrNeverPublishedVersionsSayNothingWasPublished', () => {
-        expect(photoHistoryOf([])).toEqual({ recorded: false, everPublished: false });
+    it('badPath_theServersWritesAndNeverPublishedVersionsSayNoPersonDeletedOrUnpublishedIt', () => {
+        expect(photoHistoryOf([])).toEqual({ deleted: false, everPublished: false });
         expect(
             photoHistoryOf([
-                { data: { previous: null } },
-                { data: { previous: { published: false } } },
-                { data: { previous: 'odd' } },
-                { data: {} },
+                { data: { action: 'create', previous: null, updatedBy: 'owner-uid' } },
+                { data: { action: 'update', previous: { published: false }, updatedBy: 'owner-uid' } },
+                { data: { action: 'update', previous: 'odd', updatedBy: 'owner-uid' } },
+                // A delete by the server (a function, or the e2e world's reset) is not a person's.
+                { data: { action: 'delete', previous: { published: true }, updatedBy: 'system:unknown' } },
+                { data: { action: 'delete', previous: { published: true } } },
+                { data: { action: 'delete', updatedBy: '' } },
             ]),
-        ).toEqual({ recorded: true, everPublished: false });
+        ).toEqual({ deleted: false, everPublished: false });
     });
 });
 

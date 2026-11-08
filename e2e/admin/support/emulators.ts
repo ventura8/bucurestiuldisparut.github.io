@@ -360,6 +360,14 @@ export class EmulatorWorld {
         await ok(response, `delete of ${path}`);
     }
 
+    /** Deletes a document as `account` would from the admin, through the rules (the history trigger records its uid). */
+    async deleteDocumentAs(path: string, account: SignedInAccount): Promise<void> {
+        const response = await this.#api.delete(`${FIRESTORE_DOCUMENTS}/${path}`, {
+            headers: { authorization: `Bearer ${account.idToken}` },
+        });
+        await ok(response, `delete of ${path} as ${account.uid}`);
+    }
+
     /** A document's data, or undefined when it does not exist. */
     async document(path: string): Promise<Record<string, unknown> | undefined> {
         const response = await this.#api.get(`${FIRESTORE_DOCUMENTS}/${path}`, { headers: EMULATOR_ADMIN });

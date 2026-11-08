@@ -7,7 +7,7 @@ import type { LegacyPhotoStore, PhotoHistory, PhotoState } from '../../src/impor
  * An in-memory Firestore and Storage for the legacy import's tests: documents by id, uploads recorded, and a simulated
  * `photos.onUpload` that processes an upload (or refuses it) and notifies the document's watchers, as `onSnapshot`
  * does: once at once with the current document, then on every change. Each photo's history is kept as the history
- * triggers keep it: recorded on create, published once its document is, and kept after a delete.
+ * triggers keep it: what a person did (a delete, an unpublish), kept after a delete.
  */
 
 interface StoredPhoto extends PhotoState {
@@ -57,9 +57,8 @@ export function createMemoryStore(options: MemoryStoreOptions = {}): MemoryStore
     const published: string[] = [];
     const reprocessed: string[] = [];
     const past = new Map<string, PhotoHistory>();
-    const remember = (photoId: string, published: boolean): void => {
-        const before = past.get(photoId);
-        past.set(photoId, { recorded: true, everPublished: (before?.everPublished ?? false) || published });
+    const remember = (photoId: string, change: Partial<PhotoHistory>): void => {
+        past.set(photoId, { deleted: false, everPublished: false, ...past.get(photoId), ...change });
     };
     const notify = (photoId: string): void => {
         listeners.get(photoId)?.forEach((listener) => {
@@ -94,15 +93,15 @@ export function createMemoryStore(options: MemoryStoreOptions = {}): MemoryStore
         unpublishByHand: (photoId) => {
             const current = docs.get(photoId);
             if (current !== undefined) {
-                remember(photoId, current.published);
+                remember(photoId, { everPublished: current.published });
                 docs.set(photoId, { ...current, published: false });
             }
         },
         deleteByHand: (photoId) => {
-            remember(photoId, docs.get(photoId)?.published ?? false);
+            remember(photoId, { deleted: true });
             docs.delete(photoId);
         },
-        history: (_cityId, photoId) => Promise.resolve(past.get(photoId) ?? { recorded: false, everPublished: false }),
+        history: (_cityId, photoId) => Promise.resolve(past.get(photoId) ?? { deleted: false, everPublished: false }),
         reprocess: (photoId) => {
             reprocessed.push(photoId);
             process(photoId);
@@ -112,7 +111,6 @@ export function createMemoryStore(options: MemoryStoreOptions = {}): MemoryStore
         findByLegacyId: (_cityId, legacyId) => Promise.resolve([...docs].find(([, doc]) => doc.legacyId === legacyId)?.[0] ?? null),
         create: (_cityId, photoId, fields: LegacyPhotoFields) => {
             created.push(photoId);
-            remember(photoId, false);
             docs.set(photoId, {
                 processing: 'pending',
                 hasImage: false,

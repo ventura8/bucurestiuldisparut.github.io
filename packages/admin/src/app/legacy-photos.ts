@@ -36,9 +36,16 @@ function wasPublished(entry: DocumentData): boolean {
     return typeof previous === 'object' && previous !== null && (previous as DocumentData)['published'] === true;
 }
 
-/** What a photo's history entries say (`PhotoHistory`): any entry at all, and one whose previous version was published. */
+/** An entry a person's write left: its stamp names an account, not the server (`system:<authType>`). */
+function byPerson(entry: DocumentData): boolean {
+    const writer = entry['updatedBy'];
+    return typeof writer === 'string' && writer !== '' && !writer.startsWith('system:');
+}
+
+/** What a photo's history entries say a person did (`PhotoHistory`): a delete, and a change of a published version. */
 export function photoHistoryOf(entries: readonly { readonly data: DocumentData }[]): PhotoHistory {
-    return { recorded: entries.length > 0, everPublished: entries.some((entry) => wasPublished(entry.data)) };
+    const people = entries.map((entry) => entry.data).filter(byPerson);
+    return { deleted: people.some((entry) => entry['action'] === 'delete'), everPublished: people.some(wasPublished) };
 }
 
 export function legacyPhotoStore(firebase: Pick<FirebasePorts, 'documents' | 'storage'>, uid: () => string | null): LegacyPhotoStore {
