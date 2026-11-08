@@ -1,4 +1,4 @@
-import { createLogger, type InstallTarget } from '@hcm/shared';
+import { createLogger, installReleaseSlug, type InstallTarget } from '@hcm/shared';
 import {
     NEWER_BUILD_RELEASE,
     NEWER_BUILD_TIME,
@@ -9,11 +9,12 @@ import {
 } from '@hcm/test-support/fakes';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { CloudBuild } from '../../src/google/cloud-build.js';
 import { InstallBundleError } from '../../src/install/bundle.js';
 import { createInstallFlow, IDLE_LOOK_MS, RUNNING_LOOK_MS, type InstallFlowDeps } from '../../src/install/install-flow.js';
 import type { InstallTargetView } from '../../src/install/model.js';
 import type { InstallAccess, InstallerPort } from '../../src/install/ports.js';
-import { FakeClock, FakeVisibility, flush, googleError } from '../setup/harness.js';
+import { FakeClock, FakeVisibility, flush, googleError, START as START_MS } from '../setup/harness.js';
 import { ACCESS, installWorld, RELEASE, RELEASE_TIME, type InstallWorld } from './world.js';
 
 /**
@@ -366,6 +367,118 @@ describe('what the build says', () => {
         await clock.advance(IDLE_LOOK_MS);
         expect(install.fakes.callsTo('cloud-build.builds.create')).toHaveLength(2);
         expect(latest().state).toBe('failed');
+        flow.dispose();
+    });
+});
+
+describe('how long a build has been at work (the live finding of 2026-11-08)', () => {
+    it('happyPath_theTimeAtWorkCountsOnTheBrowsersClockFromTheLookThatSawItStart', async () => {
+        const { install, clock, flow, latest } = await world();
+        await flow.install();
+        install.fakes.scenario('cloud-build.start');
+        await clock.advance(RUNNING_LOOK_MS);
+        const since = new Date(clock.now()).toISOString();
+        expect(latest()).toMatchObject({ state: 'working', runningSince: since, checkedAt: since });
+
+        await clock.advance(18 * RUNNING_LOOK_MS);
+        expect(latest().runningSince).toBe(since);
+        expect(Date.parse(latest().checkedAt ?? '') - Date.parse(since)).toBe(180_000);
+        flow.dispose();
+    });
+
+    it('badPath_aQueuedBuildHasNoTimeAtWork_whateverGooglesClockSaysOfItsCreation', async () => {
+        // Right after Update the map, step d said "Running for 3 min." at once: Google's creation time against the
+        // browser's clock. The fake Cloud Build's clock is the host's; the flow's is days away from it.
+        const { install, clock, flow, latest } = await world();
+        await flow.install();
+        await clock.advance(RUNNING_LOOK_MS);
+
+        expect(latest()).toMatchObject({ state: 'queued', runningSince: null });
+        expect(latest().startedAt).not.toBeNull();
+        expect(install.fakes.callsTo('cloud-build.builds.create')).toHaveLength(1);
+        flow.dispose();
+    });
+
+    it('happyPath_aLookSaysItIsUnderWay_badPath_aFailedLookEndsIt', async () => {
+        const observe = vi.fn<InstallerPort['observe']>().mockRejectedValue(googleError('unavailable'));
+        const views: InstallTargetView[] = [];
+        const { flow, latest } = flowOver({
+            observe: (...args) => {
+                views.push(latest());
+                return observe(...args);
+            },
+            submit: () => Promise.reject(new Error('no submit')),
+            buildLog: () => Promise.resolve([]),
+            consoleUrl: (id) => id,
+            localBlocker: () => Promise.resolve(null),
+        });
+
+        await flow.refresh();
+
+        expect(views.map((view) => view.looking)).toEqual([true]);
+        expect(latest()).toMatchObject({ state: 'unavailable', looking: false });
+        flow.dispose();
+    });
+});
+
+/** A server build of the admin's release at work since `startTime`, one long step under way since `stepStart`. */
+function serverAtWork(startTime: string, stepStart: string): CloudBuild {
+    return {
+        id: 'b-long',
+        status: 'WORKING',
+        startTime,
+        createTime: startTime,
+        steps: [{ id: 'deploy', status: 'WORKING', startTime: stepStart }],
+        tags: ['hcm-install', 'hcm-server', `hcm-r-${installReleaseSlug(RELEASE)}`],
+        substitutions: {},
+    };
+}
+
+/** An installer whose only answer is `observe`'s. */
+function observing(observe: InstallerPort['observe']): InstallerPort {
+    return {
+        observe,
+        submit: () => Promise.reject(new Error('no submit')),
+        buildLog: () => Promise.resolve([]),
+        consoleUrl: (id) => id,
+        localBlocker: () => Promise.resolve(null),
+    };
+}
+
+describe('a build first seen at work, and a read that fails while it works (the review of the stale fixes)', () => {
+    it('happyPath_aBuildFirstSeenNineMinutesInCountsNineMinutes_notTheTimeOfItsLastStepStart', async () => {
+        // Its deploy step started 40 s in and runs 10 min: the line said "Running for 0 min." for a 9-minute build.
+        const at = (ms: number): string => new Date(START_MS + ms).toISOString();
+        const observe = vi.fn<InstallerPort['observe']>().mockResolvedValue({
+            installed: { complete: true, release: '0.9.0' },
+            build: serverAtWork(at(-540_000), at(-500_000)),
+            progress: null,
+            blocker: null,
+        });
+        const { flow, latest } = flowOver(observing(observe));
+
+        await flow.refresh();
+
+        expect(latest()).toMatchObject({ state: 'working', runningSince: at(-540_000), checkedAt: at(0) });
+        flow.dispose();
+    });
+
+    it('badPath_aReadThatFailsWhileTheBuildWorksKeepsItAtWorkWithTheError_neverUnavailable', async () => {
+        // Unavailable is no running state: Update the map came back and Provision's record went to the old server.
+        const at = (ms: number): string => new Date(START_MS + ms).toISOString();
+        const observe = vi.fn<InstallerPort['observe']>().mockResolvedValueOnce({
+            installed: { complete: true, release: '0.9.0' },
+            build: serverAtWork(at(-60_000), at(-50_000)),
+            progress: null,
+            blocker: null,
+        });
+        observe.mockRejectedValue(googleError('unavailable'));
+        const { flow, latest } = flowOver(observing(observe));
+
+        await flow.refresh();
+        await flow.refresh();
+
+        expect(latest()).toMatchObject({ state: 'working', buildId: 'b-long', looking: false, error: { key: 'apiError.unavailable' } });
         flow.dispose();
     });
 });

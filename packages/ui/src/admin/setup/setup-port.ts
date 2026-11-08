@@ -225,6 +225,11 @@ export interface InstallTargetViewPort {
     readonly consoleUrl: string | null;
     readonly startedAt: string | null;
     readonly finishedAt: string | null;
+    /**
+     * When the build started work, on the browser's clock (the live finding of 2026-11-08: Google's creation time against
+     * the browser's clock said "Running for 3 min." at once); null while it is queued. Absent: null.
+     */
+    readonly runningSince?: string | null;
     readonly steps: readonly { readonly id: InstallStepId; readonly state: 'done' | 'now' | 'waiting' | 'failed' }[];
     readonly failedStep: InstallStepId | null;
     /** A failed build's step's last lines: redacted, shown as text only. */
@@ -243,9 +248,11 @@ export interface InstallTargetViewPort {
     readonly checkedAt: string | null;
     /**
      * The view is a record's, not a look at Cloud Build in this session (the live finding of 2026-11-08): a recorded build
-     * at work is shown as being checked, with when it was last seen, never as running with its steps.
+     * at work is shown with when it was last seen, never as running with its steps.
      */
     readonly recorded?: boolean;
+    /** A look at Cloud Build is under way: a recorded build at work reads "Checking the installation…" only then. */
+    readonly looking?: boolean;
 }
 
 export interface InstallSliceView {

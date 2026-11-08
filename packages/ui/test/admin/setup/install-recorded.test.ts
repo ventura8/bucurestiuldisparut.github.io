@@ -29,14 +29,14 @@ async function card(tag: 'deploy' | 'pipeline', install: InstallChanges, locale 
 describe('a recorded build at work, before the card looks', () => {
     afterEach(cleanup);
 
-    it('happyPath_theCardSaysItIsCheckingWithNoStepsAndWhenItWasLastSeen', async () => {
-        const recorded = { state: 'working', recorded: true, checkedAt: SEEN, buildId: '0e2e0b1d-0001' } as const;
+    it('happyPath_whileALookRunsTheCardSaysItIsCheckingWithNoStepsAndWhenItWasLastSeen', async () => {
+        const recorded = { state: 'working', recorded: true, looking: true, checkedAt: SEEN, buildId: '0e2e0b1d-0001' } as const;
         const server = await card('deploy', { server: recorded });
         const pipeline = await card('pipeline', { pipeline: { ...recorded, state: 'queued' } }, 'ro');
 
         expect(shadowPart(server, '.install-state').dataset['state']).toBe('checking');
         expect(shadowPart(server, '.install-state').textContent.trim()).toBe('Checking the installation…');
-        expect(shadowPart(server, '.install').textContent).toContain('Last seen at work on');
+        expect(shadowPart(server, '.install').textContent).toContain('Last seen installing on');
         expect(shadowPart(server, '.install').textContent).not.toContain('Installing');
         expect(server.renderRoot.querySelector('.build-steps')).toBeNull();
         expect(shadowPart(pipeline, '.install-state').textContent.trim()).toBe('Se verifică instalarea…');
@@ -44,23 +44,78 @@ describe('a recorded build at work, before the card looks', () => {
         expect(await axeViolations(server)).toEqual([]);
     });
 
+    it('badPath_withNoLookUnderWayTheCardNeverSaysCheckingButWhenItWasLastSeenAndToCheckAgain', async () => {
+        // Review of 6858f8a, finding (a): with no Google token nothing looks, yet the card said "Checking…" for good.
+        const recorded = { state: 'working', recorded: true, checkedAt: SEEN, buildId: '0e2e0b1d-0001' } as const;
+        const server = await card('deploy', { server: recorded });
+        const pipeline = await card('pipeline', { pipeline: { ...recorded, state: 'queued' } }, 'ro');
+
+        expect(shadowPart(server, '.install-state').dataset['state']).toBe('lastSeen');
+        expect(shadowPart(server, '.install-state').textContent.trim()).toMatch(/^Last seen installing on .+\. Check again to see now\.$/);
+        expect(shadowPart(server, '.install').textContent).not.toContain('Checking');
+        expect(shadowPart(server, '.install').textContent).not.toContain('Installing');
+        expect(server.renderRoot.querySelector('.build-steps')).toBeNull();
+        expect(shadowPart(pipeline, '.install-state').textContent.trim()).toMatch(
+            /^Văzută ultima dată instalându-se pe .+\. Verifică din nou/,
+        );
+        expect(await axeViolations(server)).toEqual([]);
+    });
+
+    it('badPath_aRecordedBuildWhoseLookFailedStaysLastSeenWithTheError_andHoldsBackUpdateTheMap', async () => {
+        // A failed read says nothing of the build: as "Unavailable now" it no longer counted as at work, and Update the map
+        // came back beside it (the review of the stale fixes).
+        const error = { key: 'apiError.unavailable' } as const;
+        const server = { state: 'working', recorded: true, checkedAt: SEEN, error } as const;
+        const element = await card('deploy', { server, pipeline: { state: 'updateAvailable', checkedAt: SEEN } });
+
+        expect(shadowPart(element, '.install-state').dataset['state']).toBe('lastSeen');
+        expect(shadowPart(element, '.install').textContent).not.toContain('Checking');
+        expect(shadowPart(element, '.alert').textContent).not.toBe('');
+        await expect.element(page.getByRole('button', { name: 'Update the map' })).not.toBeInTheDocument();
+    });
+
     it('badPath_aBuildTheCardSawAtWorkStillShowsItsSteps_andARecordedEndedOneItsState', async () => {
-        const looked = await card('deploy', { server: { state: 'working', checkedAt: SEEN, startedAt: SEEN } });
+        const looked = await card('deploy', { server: { state: 'working', checkedAt: SEEN, runningSince: SEEN } });
         const ended = await card('pipeline', { pipeline: { state: 'installed', recorded: true, checkedAt: SEEN } });
 
         expect(shadowPart(looked, '.install-state').textContent.trim()).toBe('Installing');
         expect(looked.renderRoot.querySelector('.build-steps')).not.toBeNull();
-        expect(shadowPart(looked, '.install').textContent).not.toContain('Last seen at work');
+        expect(shadowPart(looked, '.install').textContent).not.toContain('Last seen');
         expect(shadowPart(ended, '.install-state').dataset['state']).toBe('installed');
     });
 
-    it('happyPath_aRecordedPipelineAtWorkDoesNotHoldBackTheServersUpdate_aLookedAtOneDoes', async () => {
+    it('badPath_aRecordedBuildThatMayStillRunHoldsBackUpdateTheMapUntilALookSettlesIt', async () => {
+        // Review of 6858f8a, finding (b): Update the map beside a target only recorded at work skipped that target, so
+        // Provision's record could go in before the server's build settled (the race finding 71 fixed).
         const update = { state: 'updateAvailable', checkedAt: SEEN } as const;
         await card('deploy', { server: update, pipeline: { state: 'working', recorded: true, checkedAt: SEEN } });
-        await expect.element(page.getByRole('button', { name: 'Update the map' })).toBeVisible();
+        await expect.element(page.getByRole('button', { name: 'Update the map' })).not.toBeInTheDocument();
         cleanup();
 
-        await card('deploy', { server: update, pipeline: { state: 'working', checkedAt: SEEN } });
-        await expect.element(page.getByRole('button', { name: 'Update the map' })).not.toBeInTheDocument();
+        await card('deploy', { server: update, pipeline: { state: 'installed', checkedAt: SEEN } });
+        await expect.element(page.getByRole('button', { name: 'Update the map' })).toBeVisible();
+    });
+});
+
+describe('how long a build has been at work (the live finding of 2026-11-08)', () => {
+    afterEach(cleanup);
+
+    it('badPath_aQueuedBuildNamesNoDuration_evenWhenItWasCreatedMinutesBeforeTheBrowsersLook', async () => {
+        // Right after Update the map, step d said "Waiting for Google Cloud Build" and "Running for 3 min." at once: the
+        // build's creation time on Google's clock against the browser's.
+        const server = await card('deploy', {
+            server: { state: 'queued', buildId: 'b-1', startedAt: '2026-11-08T10:00:00.000Z', checkedAt: '2026-11-08T10:03:10.000Z' },
+        });
+
+        expect(shadowPart(server, '.install-state').textContent.trim()).toBe('Waiting for Google Cloud Build');
+        expect(shadowPart(server, '.install').textContent).not.toContain('Running for');
+    });
+
+    it('happyPath_aBuildAtWorkCountsFromWhenItStartedWork', async () => {
+        const server = await card('deploy', {
+            server: { state: 'working', buildId: 'b-1', runningSince: '2026-11-08T10:00:00.000Z', checkedAt: '2026-11-08T10:03:10.000Z' },
+        });
+
+        expect(shadowPart(server, '.install').textContent).toContain('Running for 3 min.');
     });
 });

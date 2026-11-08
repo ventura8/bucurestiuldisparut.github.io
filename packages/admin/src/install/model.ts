@@ -72,9 +72,15 @@ export interface InstallTargetView {
     /** The build the card follows or last saw (null: none yet), and its page in the Google Cloud console. */
     readonly buildId: string | null;
     readonly consoleUrl: string | null;
-    /** When that build was created, and when it finished (ISO 8601). */
+    /** When that build was created, and when it finished (ISO 8601, Google's clock). */
     readonly startedAt: string | null;
     readonly finishedAt: string | null;
+    /**
+     * When the build started work, on the browser's clock (`install-flow.ts`), or null while it is queued or ended: the
+     * live finding of 2026-11-08, the card set Google's creation time against the browser's clock and said "Running for
+     * 3 min." the moment Update the map was clicked.
+     */
+    readonly runningSince: string | null;
     readonly steps: readonly StepProgress[];
     /** The step a failed build stopped at. */
     readonly failedStep: InstallStepId | null;
@@ -106,6 +112,8 @@ export interface InstallTargetView {
      * first look said "An update is ready", so a card shows a recorded build at work as being checked, not as running.
      */
     readonly recorded: boolean;
+    /** A look at Cloud Build is under way (a recorded build at work reads "Checking the installation…" only then). */
+    readonly looking: boolean;
     /**
      * M7 (`docs/research/M7-local-worker.md` §1.1): the pipeline image's digest, which the local worker's command names:
      * finding 74 of 2026-11-03, the one the job `raster-pipeline` runs (`InstalledInfo.image`), else the one its build's
@@ -125,6 +133,7 @@ export function initialTargetView(target: InstallTarget): InstallTargetView {
         consoleUrl: null,
         startedAt: null,
         finishedAt: null,
+        runningSince: null,
         steps: INSTALL_STEPS[target].map((id) => ({ id, state: 'waiting' })),
         failedStep: null,
         log: [],
@@ -138,6 +147,7 @@ export function initialTargetView(target: InstallTarget): InstallTargetView {
         error: null,
         checkedAt: null,
         recorded: false,
+        looking: false,
         image: null,
     };
 }
@@ -353,6 +363,35 @@ export function missingFunctions(events: readonly InstallLogEvent[]): readonly s
 /** Whether a build ended on Google's side (resubmitted once, §1.5). */
 export function endedByGoogle(build: CloudBuild | null): boolean {
     return build !== null && GOOGLE_ENDED.has(build.status);
+}
+
+/** An ISO 8601 time in ms, or NaN. */
+function timeOf(iso: string | undefined): number {
+    return iso === undefined ? Number.NaN : Date.parse(iso);
+}
+
+/**
+ * How long a started build has worked at least, on Google's own clock (ms): its latest step time after its start, 0
+ * without one. The browser's clock may be minutes from Google's (the live finding of 2026-11-08), so the card counts the
+ * rest on the browser's clock from the look that saw the build at work.
+ */
+export function elapsedOnGoogle(build: CloudBuild): number {
+    const start = timeOf(build.startTime);
+    const times = build.steps.flatMap((step) => [timeOf(step.startTime), timeOf(step.endTime)]).filter((time) => !Number.isNaN(time));
+    return Number.isNaN(start) ? 0 : Math.max(start, ...times) - start;
+}
+
+/**
+ * Where the browser's clock puts the start of a build at work (ms; the review of the running-time line): Google's start
+ * time, but never before the browser saw the build queued (`queuedAt`: a clock ahead of Google's, the live finding of
+ * 2026-11-08) nor after `now` less what it has worked at least on Google's own clock (a clock behind Google's, or a start
+ * that is no time). A build first seen at work, partway through a long step, counts from its start, not from its last
+ * step time. A clock ahead of Google's still adds its lead for a build this tab never saw queued.
+ */
+export function workStartOnBrowser(build: CloudBuild, now: number, queuedAt = Number.NEGATIVE_INFINITY): number {
+    const latest = now - elapsedOnGoogle(build);
+    const stated = timeOf(build.startTime);
+    return Number.isNaN(stated) ? latest : Math.min(latest, Math.max(queuedAt, stated));
 }
 
 /** Whether a build has ended, one way or another. */

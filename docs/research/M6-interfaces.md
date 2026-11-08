@@ -311,7 +311,7 @@ The state of a target, `InstallState` (`packages/shared/src/schemas/install.ts`,
 | State | When | The card shows |
 | --- | --- | --- |
 | `notInstalled` | nothing installed, no build | the target's why and cost, its button |
-| `queued`, `working` | a build of the target is `QUEUED` or `WORKING` | the steps in order, the current one named; the server's `{ready} of {total}` once (finding 7); the time it has run |
+| `queued`, `working` | a build of the target is `QUEUED` or `WORKING` | the steps in order, the current one named; the server's `{ready} of {total}` once (finding 7); once at work, the time it has run, on the browser's clock from the look that saw it start (`runningSince`; never Google's `createTime` against the browser's clock: DECISIONS-for-review.md §114d); recorded and not yet looked at: when it was last seen and Check again, "Checking the installation…" only while a look runs, and no Update the map beside it (§114a, §114b); a read that fails keeps it at work with the error, and settles none of Update the map's waits (§114e) |
 | `retrying` | the build's last `HCM_INSTALL` line is a retry | "Google is still preparing {what}; trying again at {time}" (finding 12) |
 | `installed` | installed release equals the bundle's | the release and when |
 | `updateAvailable` | installed release older than the bundle's (`compareRelease`: the version first, then a different commit counts as older) | Update |

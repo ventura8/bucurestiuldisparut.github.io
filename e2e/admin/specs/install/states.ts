@@ -78,9 +78,10 @@ export const INSTALL_STATES = {
         title: "Setup, Install the server: the update's build under way, no Update the map and no Provision line beside it",
         visit: 'steps/install/update.spec.ts',
     },
-    // The live finding of 2026-11-08: a build recorded at work, before a look, is checked, never shown running.
-    'setup.install-checking': {
-        title: 'Setup, Install the server: a build recorded at work being checked, when it was last seen, no steps',
+    // The live finding of 2026-11-08 and the review of 6858f8a: a build recorded at work, before a look, says when it was
+    // last seen and to check again, never that it runs or is being checked.
+    'setup.install-last-seen': {
+        title: 'Setup, Install the server: a build recorded at work, when it was last seen and Check again, no steps',
         visit: 'steps/install/checking.spec.ts',
     },
 } as const;

@@ -528,3 +528,114 @@ describe('records: the pipeline image (finding 74 of 2026-11-03)', () => {
         cards.dispose();
     });
 });
+
+describe('a build recorded at work (the review of 6858f8a)', () => {
+    const AT_WORK = { state: 'working' as const, recorded: true, buildId: 'b-recorded', checkedAt: '2026-11-08T09:00:00.000Z' };
+
+    function recordedServer(ctx: ReturnType<typeof setup>['ctx']): void {
+        ctx.update((state) => ({ ...state, install: { ...state.install, server: { ...state.install.server, ...AT_WORK } } }));
+    }
+
+    it('happyPath_theCardSaysItIsLookingOnlyWhileTheLookRuns_thenShowsWhatTheLookSaw', async () => {
+        const { harness, ctx, cards } = setup('normal');
+        recordedServer(ctx);
+        harness.google.grant('cloudPlatform');
+        const pending: { answer?: (observation: TargetObservation) => void } = {};
+        harness.installer.observe.mockImplementation(
+            () =>
+                new Promise<TargetObservation>((resolve) => {
+                    pending.answer = resolve;
+                }),
+        );
+        expect(ctx.state().install.server.looking).toBe(false);
+
+        cards.watch(['server']);
+        await flush();
+        expect(ctx.state().install.server).toMatchObject({ ...AT_WORK, looking: true });
+
+        pending.answer?.(observed({ installed: { complete: true, release: '0.9.0' } }));
+        await flush();
+        expect(ctx.state().install.server).toMatchObject({ state: 'updateAvailable', recorded: false, looking: false });
+        cards.dispose();
+    });
+
+    it('badPath_withoutATokenNothingLooks_andAFailedLookKeepsItRecordedAtWorkWithItsError', async () => {
+        const { harness, ctx, cards } = setup('normal');
+        recordedServer(ctx);
+
+        cards.watch(['server']);
+        await flush();
+        expect(ctx.state().install.server).toMatchObject({ ...AT_WORK, looking: false });
+
+        harness.google.grant('cloudPlatform');
+        harness.installer.observe.mockRejectedValue(googleError('unavailable'));
+        await cards.recheck('server');
+        await flush();
+        // Unavailable is no running state: Update the map came back beside a build that may still run.
+        expect(ctx.state().install.server).toMatchObject({ ...AT_WORK, looking: false, error: { key: 'apiError.unavailable' } });
+        expect(harness.backend.recordCloud).not.toHaveBeenCalled();
+        cards.dispose();
+    });
+});
+
+describe("Update the map while a read of the server's build fails (the review of the stale fixes)", () => {
+    it('badPath_aFailedReadOfTheServersBuildAtWorkNeverLetsProvisionsRecordGoIn @S-A55-BAD-UPDATE-DURING-BUILD', async () => {
+        const { harness, ctx, cards, recordable } = setup('normal');
+        const server = { phase: 'old' as 'old' | 'working' | 'blip' | 'done' };
+        harness.installer.observe.mockImplementation((target) => {
+            if (target !== 'server' || server.phase === 'old') {
+                return Promise.resolve(observed({ installed: { complete: true, release: target === 'server' ? '0.9.0' : ADMIN_RELEASE } }));
+            }
+            if (server.phase === 'blip') {
+                return Promise.reject(googleError('unavailable'));
+            }
+            const done = server.phase === 'done';
+            const installed = { complete: true, release: done ? ADMIN_RELEASE : '0.9.0' };
+            return Promise.resolve(observed({ installed, build: build('server', done ? 'SUCCESS' : 'WORKING') }));
+        });
+        harness.google.grant('cloudPlatform');
+        cards.watch(['server', 'pipeline', 'site']);
+        await flush();
+        ctx.update((state) => ({ ...state, install: { ...state.install, provisionDue: ['bucket-lifecycle'] } }));
+
+        await cards.updateMap('deploy');
+        server.phase = 'working';
+        await harness.clock.advance(10_000);
+        await flush();
+        server.phase = 'blip';
+        await harness.clock.advance(10_000);
+        await flush();
+
+        expect(ctx.state().install.server).toMatchObject({ state: 'working', error: { key: 'apiError.unavailable' } });
+        expect(recordable).toEqual([false]);
+        server.phase = 'done';
+        await harness.clock.advance(120_000);
+        await flush();
+        expect(ctx.state().install.server).toMatchObject({ state: 'installed', error: null });
+        expect(recordable).toEqual([true]);
+        cards.dispose();
+    });
+
+    it('badPath_aReadThatFailsAtTheClickSettlesNothing_theNextLookDoes', async () => {
+        const { harness, ctx, cards, recordable } = setup('normal');
+        const recorded = { state: 'updateAvailable' as const, installedRelease: '0.9.0', checkedAt: '2026-11-08T09:00:00.000Z' };
+        ctx.update((state) => ({
+            ...state,
+            install: { ...state.install, provisionDue: ['bucket-lifecycle'], server: { ...state.install.server, ...recorded } },
+        }));
+        harness.google.grant('cloudPlatform');
+        harness.installer.observe.mockRejectedValue(googleError('unavailable'));
+
+        await cards.updateMap('deploy');
+        await flush();
+
+        expect(ctx.state().install.server).toMatchObject({ state: 'unavailable', busy: false });
+        expect(harness.installer.submit).not.toHaveBeenCalled();
+        expect(recordable).toEqual([false]);
+        harness.installer.observe.mockResolvedValue(observed({ installed: { complete: true, release: '0.9.0' } }));
+        await harness.clock.advance(120_000);
+        await flush();
+        expect(recordable).toEqual([true]);
+        cards.dispose();
+    });
+});

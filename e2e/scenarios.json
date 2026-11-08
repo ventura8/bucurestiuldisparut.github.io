@@ -6627,11 +6627,11 @@
             "behaviour": "A28",
             "area": "admin",
             "path": "bad",
-            "title": "The browser's copy of an earlier bundle is never counted",
-            "asserts": "a tab read the 3-photo bundle (its browser holds the copy) -> the release grows it to 5 and Setup opens again in the same tab -> the card offers Import the photos (5), never the cached 3; the admin reads every bundle file with cache no-cache, so a copy cached under the old day-long header is refused too",
+            "title": "The bundle the browser cached under the old day-long header is never counted",
+            "asserts": "a browser with its HTTP cache on (no route) reads the 3-photo bundle while the e2e Hosting serves it with the old Cache-Control public, max-age=86400 (its test-only cookie) -> Hosting turns to no-cache and the release grows the bundle to 5 -> Setup opens again in the same tab and offers Import the photos (5), never the cached 3; the page asked nothing beyond the loopback",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Live finding of 2026-11-08 after deploying 1.0.0+567a5d6: Hosting gave the bundle a day's max-age, so the owner's browser kept the 45-record photos.json after the release grew it to 57 (DECISIONS-for-review.md, the 2026-11-08 entry; docs/LESSONS.md). Test: e2e/admin/steps/legacy-fresh.spec.ts (the e2e Hosting tree's photos.json rewritten between two reads, no route); units: packages/admin/test/import/bundle-fresh.test.ts, scripts/site/test/admin-hosting.test.ts."
+            "notes": "Live finding of 2026-11-08 after deploying 1.0.0+567a5d6: Hosting gave the bundle a day's max-age, so the owner's browser kept the 45-record photos.json after the release grew it to 57 (DECISIONS-for-review.md, the 2026-11-08 entry; docs/LESSONS.md). Test: e2e/admin/steps/legacy-fresh.spec.ts (the e2e Hosting tree's photos.json rewritten between two reads; the bad row in a browser of its own, since any route, the firewall's included, turns Chromium's cache off; the old header from e2e/mock-apis/admin-server.ts's hcm-e2e-cache cookie). The review of 6858f8a (2026-11-08): the first version passed without the admin's no-cache read; units: packages/admin/test/import/bundle-fresh.test.ts, scripts/site/test/admin-hosting.test.ts."
         },
         {
             "id": "S-A29-HAPPY",
@@ -9267,22 +9267,44 @@
             "behaviour": "A55",
             "area": "admin",
             "path": "happy",
-            "title": "A build recorded at work is shown as being checked until the look says where it is",
-            "asserts": "setup/status records the server's and the pipeline's builds at work, which ended since -> card d says Checking the installation and when the build was last seen, with no steps and never Installing -> Check again (Google's consent) shows An update is ready with Update the map",
+            "title": "A build recorded at work says when it was last seen, Checking only while a look runs",
+            "asserts": "setup/status records the server's and the pipeline's builds at work, which ended since; no Google token -> card d says Last seen installing on {date}. Check again to see now., with no steps and never Installing or Checking -> Check again (Google's consent) with Cloud Build's answer held: Checking the installation…, no steps -> the answer: An update is ready with Update the map",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Live finding of 2026-11-08 after deploying 1.0.0+567a5d6: steps d and d3 said Installing with every step next until Cloud Build's answer said An update is ready (DECISIONS-for-review.md, the 2026-11-08 entry; docs/LESSONS.md). Test: e2e/admin/steps/install/checking.spec.ts (setup.install-checking); units: packages/admin/test/setup/install-records.test.ts, packages/ui/test/admin/setup/install-recorded.test.ts."
+            "notes": "Live finding of 2026-11-08 after deploying 1.0.0+567a5d6: steps d and d3 said Installing with every step next until Cloud Build's answer said An update is ready (DECISIONS-for-review.md, the 2026-11-08 entry; docs/LESSONS.md). Test: e2e/admin/steps/install/checking.spec.ts (setup.install-last-seen); units: packages/admin/test/setup/install-records.test.ts, packages/ui/test/admin/setup/install-recorded.test.ts. The review of 6858f8a (2026-11-08): with no token nothing looked yet the card said Checking for good, and a failed read kept it; a recorded build at work hides Update the map again until a look settles it (finding 71's race)."
         },
         {
             "id": "S-A55-BAD-RECORDED-BUILD-NOT-RUNNING",
             "behaviour": "A55",
             "area": "admin",
             "path": "bad",
-            "title": "Without a look, a build recorded at work never reads as running",
-            "asserts": "the same records, no live token -> cards d and d3 keep Checking the installation with when it was last seen, no steps, never Installing, two minutes later too; nothing is submitted",
+            "title": "With nothing looking, a build recorded at work never reads as checking or running; a failed look keeps it last seen",
+            "asserts": "the same records, no live token -> cards d and d3 keep Last seen installing on {date} with Check again, never Checking or Installing, no steps, two minutes later too; nothing is submitted -> Cloud Build unavailable, Check again (Google's consent) -> card d still says Last seen installing on {date} with Google's error, never Unavailable now nor Checking, no Update the map, nothing submitted",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Live finding of 2026-11-08 after deploying 1.0.0+567a5d6: steps d and d3 said Installing with every step next until Cloud Build's answer said An update is ready (DECISIONS-for-review.md, the 2026-11-08 entry; docs/LESSONS.md). Test: e2e/admin/steps/install/checking.spec.ts (setup.install-checking); units: packages/admin/test/setup/install-records.test.ts, packages/ui/test/admin/setup/install-recorded.test.ts."
+            "notes": "Live finding of 2026-11-08 after deploying 1.0.0+567a5d6: steps d and d3 said Installing with every step next until Cloud Build's answer said An update is ready (DECISIONS-for-review.md, the 2026-11-08 entry; docs/LESSONS.md). Test: e2e/admin/steps/install/checking.spec.ts (setup.install-last-seen); units: packages/admin/test/setup/install-records.test.ts, packages/ui/test/admin/setup/install-recorded.test.ts. The review of 6858f8a (2026-11-08): with no token nothing looked yet the card said Checking for good, and a failed read kept it; a recorded build at work hides Update the map again until a look settles it (finding 71's race). The review of the stale fixes (2026-11-08): a failed read turned it Unavailable now, which is no running state, and Update the map came back beside a build that may still run."
+        },
+        {
+            "id": "S-A55-HAPPY-RUNNING-TIME",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "happy",
+            "title": "A build at work counts its minutes from the look that saw it start",
+            "asserts": "Install the server -> the build starts work -> card d says Running for 0 min. -> three minutes on the page's clock -> Running for 3 (or 4) min., Installing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live finding of 2026-11-08: right after Update the map, step d said Waiting for Google Cloud Build and Running for 3 min. at once: the build's createTime on Google's clock set against the browser's (DECISIONS-for-review.md, the 2026-11-08 entry; docs/LESSONS.md). Test: e2e/admin/steps/install/server.spec.ts; units: packages/admin/test/install/install-flow.test.ts, packages/admin/test/install/model.test.ts (elapsedOnGoogle), packages/ui/test/admin/setup/install-cards.test.ts. The review of the stale fixes (2026-11-08): a build first seen at work partway through a long step counted only to its last step time; the start is now workStartOnBrowser (packages/admin/test/install/model.test.ts, install-flow.test.ts)."
+        },
+        {
+            "id": "S-A55-BAD-RUNNING-TIME-QUEUED",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "A queued build names no time, and Google's clock is never set against the browser's",
+            "asserts": "the page's clock three minutes ahead of the fake Cloud Build's -> Install the server -> card d says Waiting for Google Cloud Build with no Running for line -> the build starts work -> Installing with Running for 0 min., never 3",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live finding of 2026-11-08: right after Update the map, step d said Waiting for Google Cloud Build and Running for 3 min. at once: the build's createTime on Google's clock set against the browser's (DECISIONS-for-review.md, the 2026-11-08 entry; docs/LESSONS.md). Test: e2e/admin/steps/install/server.spec.ts; units: packages/admin/test/install/install-flow.test.ts, packages/ui/test/admin/setup/install-cards.test.ts. The review of the stale fixes (2026-11-08): a build first seen at work partway through a long step counted only to its last step time; the start is now workStartOnBrowser (packages/admin/test/install/model.test.ts, install-flow.test.ts)."
         },
         {
             "id": "S-A55-HAPPY-UPDATE-WITH-PROVISION",
@@ -9301,10 +9323,10 @@
             "area": "admin",
             "path": "bad",
             "title": "While the update builds, the card offers no update and never says Not installed",
-            "asserts": "the update's server build queued or working -> no Update the map button and no \"The update also brings these project settings up to date\" line on the card; its state is the build's, never Not installed",
+            "asserts": "the update's server build queued or working -> no Update the map button and no \"The update also brings these project settings up to date\" line on the card; its state is the build's, never Not installed; a read of Cloud Build that fails meanwhile keeps the build at work with Google's error, offers no update and leaves setVersion unwritten until a look answers",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Findings 70 and 59 of docs/research/manual-test-2026-10-25.md (2026-11-02); DECISIONS-for-review.md §86. Test: e2e/admin/steps/install/update.spec.ts; packages/ui/test/admin/setup/install-cards.test.ts, packages/admin/test/setup/install.test.ts."
+            "notes": "Findings 70 and 59 of docs/research/manual-test-2026-10-25.md (2026-11-02); DECISIONS-for-review.md §86. Test: e2e/admin/steps/install/update.spec.ts; packages/ui/test/admin/setup/install-cards.test.ts, packages/admin/test/setup/install.test.ts. The review of the stale fixes (2026-11-08): one failed read made the card Unavailable now, which settled the server's wait, so Provision's record went to the old server mid-build; test: the same spec, packages/admin/test/setup/install.test.ts, packages/admin/test/install/install-flow.test.ts."
         },
         {
             "id": "S-A56-HAPPY",
