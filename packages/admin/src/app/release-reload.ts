@@ -22,7 +22,7 @@ export interface ReleaseFollowDeps {
     readonly visibility: PageVisibility;
     readonly clock: Pick<Clock, 'now'>;
     readonly location: Pick<HashLocation, 'reload'>;
-    /** An edit on screen that a reload would lose. */
+    /** An edit on screen, or an upload still being sent, that a reload would lose. */
     readonly unsaved: () => boolean;
     readonly log: Pick<Logger, 'info'>;
 }

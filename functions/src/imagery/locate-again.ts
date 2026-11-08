@@ -33,8 +33,9 @@ import { appendJobLog, guardIsRed, stampOf, type Stamp } from './records.js';
  * that computer's sweep removed them. A job moved after it parked left its files where it ran (`JobDoc.filesOn`), which the other
  * place cannot read: `apiError.imagery.locateFilesElsewhere` says so, and no download of up to 8.7 GB starts behind the log's back.
  * M18 item 3 (`docs/research/M18-improvements.md`): a frame whose crop failed (its job failed at `stitch` or `locate`) searches
- * again the same way, before anyone imports it anew; and Locate again is free: never the day's limit, and, like the admin's points,
- * one run of its own whatever the runs before used (`attemptForSearch`). `imagery.tick` asks it by itself for every frame parked
+ * again the same way, before anyone imports it anew; and Locate again is free: never the day's limit, and, for a frame parked for
+ * points like the admin's points, one run of its own whatever the runs before used (`attemptForSearch`). A failed crop's run counts
+ * as a retry's (review of M18: the same failure would repeat without end). `imagery.tick` asks it by itself for every frame parked
  * under an older pipeline image (`relocate.ts`).
  */
 export type LocateAgainDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'blobs'>;
@@ -61,17 +62,32 @@ function locatable(version: LayerVersionDoc, job: JobDoc): boolean {
     return found && job.cancelRequested !== true && JOB_STEPS[job.type].includes('locate');
 }
 
+/**
+ * A failed crop's search counts its run as a retry does: with the pipeline unchanged it brings no new input, so a crop that
+ * fails each time stops at `JOB_MAX_ATTEMPTS` (`apiError.imagery.attemptsExhausted`) instead of running on Cloud Run for ever.
+ */
+function requireRunsLeft(version: LayerVersionDoc, job: JobDoc): void {
+    const attempts = job.attempt ?? 0;
+    if (failedCrop(version, job) && attempts >= JOB_MAX_ATTEMPTS) {
+        throw new ApiError('apiError.imagery.attemptsExhausted', { attempts: String(attempts) });
+    }
+}
+
 /** A USGS frame waiting for the admin's points (or whose crop failed) with its job, else `apiError.imagery.versionState`. */
 function requireParked(version: LayerVersionDoc | undefined, job: JobDoc | undefined): readonly [LayerVersionDoc, JobDoc] {
     if (version === undefined || job === undefined || !locatable(version, job)) {
         throw new ApiError('apiError.imagery.versionState');
     }
+    requireRunsLeft(version, job);
     return [version, job];
 }
 
-/** The attempts the search goes on with: one run of its own, whatever the runs before it used (as the admin's points). */
-function attemptForSearch(job: JobDoc): Pick<JobDoc, 'attempt'> {
-    return (job.attempt ?? 0) >= JOB_MAX_ATTEMPTS ? { attempt: JOB_MAX_ATTEMPTS - 1 } : {};
+/**
+ * The attempts the search goes on with: a frame parked for points gets one run of its own, whatever the runs before it used (as
+ * the admin's points); a failed crop's run counts (`requireRunsLeft`).
+ */
+function attemptForSearch(version: LayerVersionDoc, job: JobDoc): Pick<JobDoc, 'attempt'> {
+    return parkedFrame(version, job) && (job.attempt ?? 0) >= JOB_MAX_ATTEMPTS ? { attempt: JOB_MAX_ATTEMPTS - 1 } : {};
 }
 
 /** The step's output is the object it recorded, as the runner's own check of a finished step asks. */
@@ -120,8 +136,8 @@ async function requeueIn(transaction: DocumentTransaction, request: Pick<Request
     );
     const left = omit(version, ['error', 'georef', 'calibration', 'suggestions']);
     await transaction.set(versionPath, layerVersionDocSchema, { ...left, state: 'processing', ...stamp });
-    const kept = omit(job, ['waitReason', 'error', 'finishedAt', 'lease', 'retryAt', 'executionName', 'searchedWith']);
-    const queued: JobDoc = { ...kept, status: 'queued', ...attemptForSearch(job), steps: fromStitch(job), ...stamp };
+    const kept = omit(job, ['waitReason', 'error', 'finishedAt', 'lease', 'retryAt', 'executionName', 'searchedWith', 'placingPoints']);
+    const queued: JobDoc = { ...kept, status: 'queued', ...attemptForSearch(version, job), steps: fromStitch(job), ...stamp };
     await transaction.set(jobPath, jobDocSchema, queued);
     return queued;
 }

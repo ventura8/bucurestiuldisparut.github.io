@@ -153,6 +153,11 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
         return false;
     }
 
+    /** A GeoTIFF still being sent or checked: a reload would end it. */
+    busy(): boolean {
+        return this.#uploader.busy;
+    }
+
     destroy(): void {
         this.close();
         this.#uploader.reset();

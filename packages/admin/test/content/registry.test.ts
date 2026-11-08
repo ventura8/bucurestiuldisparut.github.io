@@ -50,6 +50,26 @@ describe('ContentRegistry', () => {
         expect(Object.keys(registry.stores)).toContain('photos');
     });
 
+    // Review of M18 item 1: an area without `busy` runs nothing a reload would end; one that reports it holds the reload.
+    it('happyPath_busyAsksOnlyTheAreasThatRunWork', () => {
+        const { services } = contentWorld();
+        const quiet = new ContentRegistry({ jobs: probeModule({ created: 0, destroyed: 0, unsaved: false }) as never }, () => services);
+        const running = new ContentRegistry(
+            {
+                imagery: {
+                    area: 'imagery',
+                    create: () => ({ ...probeModule({ created: 0, destroyed: 0, unsaved: false }).create(services), busy: () => true }),
+                } as never,
+            },
+            () => services,
+        );
+
+        const before = [quiet.busy(), running.busy()];
+        expect([quiet.stores.jobs, running.stores.imagery]).not.toContain(null);
+
+        expect([...before, quiet.busy(), running.busy()]).toEqual([false, false, false, true]);
+    });
+
     it('badPath_anAreaWithoutAModuleHasNoStoreAndNothingIsUnsaved', () => {
         const registry = new ContentRegistry({}, () => {
             throw new Error('never asked');

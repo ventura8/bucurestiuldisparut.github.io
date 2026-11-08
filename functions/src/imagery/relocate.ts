@@ -6,8 +6,13 @@
  * written the first time a tick sees it); a frame first seen now keeps the current image and is not searched again. At most
  * `RELOCATE_PER_TICK` frames a city start in one tick, and a refusal (the inputs gone, the files on the other place) is logged
  * once and remembered, so no tick asks again for the same image.
+ *
+ * Review of M18 item 3: only the image the Cloud Run job runs counts (`InstalledImage.from === 'job'`): the record
+ * `setup/status.install.pipeline` can lag behind it, and each switch between the two would send every parked frame searching
+ * again, uncounted. While the job cannot be read nothing moves and nothing is remembered. A frame an editor is placing points on
+ * (`JobDoc.placingPoints`, within `PLACING_POINTS_HOLD_MS` of its stamp) keeps waiting: a search would refuse their Save.
  */
-import { FIRESTORE_PATHS, jobDocSchema, type JobDoc } from '@hcm/shared';
+import { FIRESTORE_PATHS, jobDocSchema, PLACING_POINTS_HOLD_MS, timestampToDate, type JobDoc } from '@hcm/shared';
 
 import { ApiError } from '../api/api-error.js';
 import type { StoredDocument } from '../ports/documents.js';
@@ -47,9 +52,19 @@ async function relocateOne(deps: RelocateDeps, cityId: string, frame: StoredDocu
     await remember(deps, cityId, frame.id, digest);
 }
 
-/** The installed image's digest, read only when some frame waits (undefined: none waits, or no image is known). */
+/**
+ * The image the pipeline job runs, read only when some frame waits (undefined: none waits, or the job cannot be read: the
+ * record's image is no ground to search again).
+ */
 async function digestFor(deps: RelocateDeps, parked: readonly StoredDocument<JobDoc>[]): Promise<string | undefined> {
-    return parked.length === 0 ? undefined : (await installedImage(deps))?.digest;
+    const image = parked.length === 0 ? undefined : await installedImage(deps);
+    return image?.from === 'job' ? image.digest : undefined;
+}
+
+/** An editor marked the frame while placing points on it, recently enough. */
+function placingPoints(frame: StoredDocument<JobDoc>, now: Date): boolean {
+    const markedAt = timestampToDate(frame.data.updatedAt).getTime();
+    return frame.data.placingPoints === true && now.getTime() - markedAt < PLACING_POINTS_HOLD_MS;
 }
 
 /** The parked frames of `cityId` searched with another image than the installed one start again; new ones are remembered. */
@@ -60,7 +75,8 @@ export async function relocateParked(deps: RelocateDeps, cityId: string): Promis
         return;
     }
     const unseen = parked.documents.filter((frame) => frame.data.searchedWith === undefined);
-    const older = parked.documents.filter((frame) => ![undefined, digest].includes(frame.data.searchedWith));
+    const now = deps.clock.now();
+    const older = parked.documents.filter((frame) => ![undefined, digest].includes(frame.data.searchedWith) && !placingPoints(frame, now));
     for (const frame of unseen) {
         await remember(deps, cityId, frame.id, digest);
     }

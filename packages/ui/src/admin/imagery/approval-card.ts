@@ -57,22 +57,26 @@ function pairsText(locale: Locale, version: VersionViewPort): TemplateResult {
     );
 }
 
+/** Delete this image? (`imagery.reject`): waiting for approval, and (M18 item 5) approved but stopped at the guard. */
+function deleteButton(context: ImageryContext, page: VersionPagePort): TemplateResult {
+    return html`<hcm-button
+        variant="outlined"
+        icon="close"
+        ?disabled=${busy(context, page)}
+        @click=${() => {
+            context.ask('reject');
+        }}
+        >${contentText(context.locale, 'adminContent.imagery.reject')}</hcm-button
+    >`;
+}
+
 function decision(context: ImageryContext, page: VersionPagePort): TemplateResult {
     const { locale, intents } = context;
-    const off = busy(context, page);
     return html`<div class="actions">
-        <hcm-button variant="filled" icon="approval" ?disabled=${off} @click=${() => void intents?.approve()}
+        <hcm-button variant="filled" icon="approval" ?disabled=${busy(context, page)} @click=${() => void intents?.approve()}
             >${contentText(locale, 'adminContent.imagery.approve')}</hcm-button
         >
-        <hcm-button
-            variant="outlined"
-            icon="close"
-            ?disabled=${off}
-            @click=${() => {
-                context.ask('reject');
-            }}
-            >${contentText(locale, 'adminContent.imagery.reject')}</hcm-button
-        >
+        ${deleteButton(context, page)}
     </div>`;
 }
 
@@ -107,6 +111,11 @@ export function approvalCard(context: ImageryContext, page: VersionPagePort, ver
         <h3 id="approval-title">${contentText(context.locale, 'adminContent.imagery.approval.title')}</h3>
         ${lazyJoin(context, version, (chunk) => chunk.joinReport(context, version))} ${rmseText(context, version)}
         ${pairsText(context.locale, version)} ${costText(context, page, version)}
-        ${guard === null ? decision(context, page) : lazyMapboxChoices(context, (chunk) => chunk.guarded(context, page, guard, version))}
+        ${
+            guard === null
+                ? decision(context, page)
+                : html`${lazyMapboxChoices(context, (chunk) => chunk.guarded(context, page, guard, version))}
+                      <div class="actions">${deleteButton(context, page)}</div>`
+        }
     </section>`;
 }

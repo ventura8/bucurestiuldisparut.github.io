@@ -176,3 +176,24 @@ describe('the dashboard', () => {
         });
     });
 });
+
+describe('the dashboard: what the role may count', () => {
+    // Review of M18 item 7: a count the role may not read is not asked (no dash for it); a refused count stays a dash.
+    it('badPath_aCountTheRoleMayNotReadIsNotAsked_andARefusedOneStaysUnknown', async () => {
+        const { services, store } = seeded();
+        store.counts.set(FIRESTORE_PATHS.jobs(CITY), null);
+        const moderator = HOME_MODULE.create({ ...services, cityRole: () => 'moderator' });
+        const uploader = HOME_MODULE.create({ ...services, cityRole: () => 'uploader' });
+        const unknown = HOME_MODULE.create({ ...services, cityRole: () => null });
+        store.counts.set(FIRESTORE_PATHS.roleRequests(CITY), null);
+        for (const home of [moderator, uploader, unknown]) {
+            home.open([]);
+        }
+        await settled();
+
+        expect([moderator.state.counts?.roleRequests, moderator.state.counts?.suggestionsToReview]).toEqual([0, 0]);
+        expect([uploader.state.counts?.roleRequests, uploader.state.counts?.suggestionsToReview]).toEqual([0, 0]);
+        expect([unknown.state.counts?.roleRequests, unknown.state.counts?.failedJobs]).toEqual([null, null]);
+        expect(moderator.state.counts?.failedJobs).toBeNull();
+    });
+});

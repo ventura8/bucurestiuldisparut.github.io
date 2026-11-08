@@ -11912,8 +11912,8 @@
             "behaviour": "A69",
             "area": "admin",
             "path": "bad",
-            "title": "Attempts used up do not stop Locate again: the search gets one run of its own",
-            "asserts": "at JOB_MAX_ATTEMPTS: queued with attempt JOB_MAX_ATTEMPTS - 1 (one more start, as the admin's points get), also when used up during the check; a red budget guard: apiError.guardPaused",
+            "title": "Attempts used up do not stop Locate again on a parked frame: the search gets one run of its own",
+            "asserts": "a frame parked for points at JOB_MAX_ATTEMPTS: queued with attempt JOB_MAX_ATTEMPTS - 1 (one more start, as the admin's points get), also when used up during the check; a red budget guard: apiError.guardPaused; a failed crop counts its runs instead (S-A69-BAD-FAILED-CROP-ATTEMPTS)",
             "tier": "functions",
             "status": "exists",
             "notes": "The owner's live use, 2026-11-07. Tests: functions/test/imagery/locate-again.test.ts. M18 item 3: Locate again is free."
@@ -13882,10 +13882,10 @@
             "area": "admin",
             "path": "happy",
             "title": "An image is deleted with one word and one question at every stage",
-            "asserts": "waiting for points, waiting for approval, approved at the guard, failed, published (Layers) -> the button says Delete and the dialog Delete this image?; the state then reads Deleted",
+            "asserts": "waiting for points, waiting for approval, approved but stopped at the guard, failed -> the button says Delete and the dialog Delete this image? with Delete, each by imagery.reject, so the version then reads Deleted (never Cancelled); published (Layers) -> Delete this image? (its name)",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "M18 (docs/research/M18-improvements.md item 5, the owner 2026-11-08). Tests: e2e/admin/specs/imagery/import.spec.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+            "notes": "M18 (docs/research/M18-improvements.md item 5, the owner 2026-11-08); review of 2026-11-08: the waiting frame was cancelled (Cancelled) and the guard offered no Delete. Tests: e2e/admin/specs/imagery/import.spec.ts (failed), packages/ui/test/admin/imagery/imagery-detail.test.ts (waiting for points, approval, guard), packages/ui/test/admin/layers/layers-page.test.ts (published)."
         },
         {
             "id": "S-A39-HAPPY-FROM-LAYERS",
@@ -13914,8 +13914,8 @@
             "behaviour": "A40",
             "area": "admin",
             "path": "bad",
-            "title": "Nothing waiting is said, and a count the admin cannot read is not listed",
-            "asserts": "no failed job, nothing to approve -> Nothing needs you now.; an owner's role requests for another admin (a refused count) are not listed",
+            "title": "Nothing waiting is said, and a count the admin's role may not read is not listed",
+            "asserts": "no failed job, nothing to approve -> Nothing needs you now.; role requests for an editor or a moderator (the rules let only the owner read them) are not asked, a zero, not listed",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M18 (docs/research/M18-improvements.md item 7, the owner 2026-11-08). Tests: e2e/admin/specs/ops/ops.spec.ts, packages/ui/test/admin/ops/crashes-home.test.ts."
@@ -13952,6 +13952,61 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M18 (docs/research/M18-improvements.md item 9, the owner 2026-11-08). Tests: e2e/admin/specs/imagery/worker.spec.ts, packages/ui/test/admin/worker/worker.test.ts; tour state worker.panel-ai-old-starter."
+        },
+        {
+            "id": "S-A61-BAD-UPLOAD-HOLDS-RELOAD",
+            "behaviour": "A61",
+            "area": "admin",
+            "path": "bad",
+            "title": "An upload still being sent holds the self-reload back",
+            "asserts": "a GeoTIFF being sent or checked on Imagery, or photos of the upload queue being sent, the tab hidden, Hosting then serves a newer admin -> no reload, the Reload banner instead; the unsaved guard asks nothing about the upload",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Review of M18 item 1 (2026-11-08). Tested by packages/admin/test/app/mount.test.ts, content/registry.test.ts, imagery/imagery.test.ts and photos/store.test.ts only: the e2e world has no upload it can hold open across a deploy yet."
+        },
+        {
+            "id": "S-A40-BAD-COUNT-UNREAD-SHOWN",
+            "behaviour": "A40",
+            "area": "admin",
+            "path": "bad",
+            "title": "What needs you never says nothing while a count is unknown",
+            "asserts": "the counts still being read -> each item with an ellipsis; a count that failed (every count refused on a flaky connection) -> its item with a dash; never Nothing needs you now. then",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Review of M18 item 7 (2026-11-08). Tested by packages/ui/test/admin/ops/crashes-home.test.ts and packages/admin/test/home/home.test.ts only: the e2e world cannot make one count fail."
+        },
+        {
+            "id": "S-A69-BAD-AUTO-RELOCATE-PLACING",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame an editor is placing points on is not sent searching again",
+            "asserts": "the georeferencer's mark on the parked frame's job (placingPoints, at the first edit and every half hour) within PLACING_POINTS_HOLD_MS -> imagery.tick leaves it waiting, so Save still takes the points; an older mark -> searched again, the mark cleared; Save clears it too; only a parked frame's job takes the mark (rules)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Review of M18 item 3 (2026-11-08). Tests: functions/test/imagery/relocate.test.ts, save-gcps.test.ts, firebase/rules-tests/test/jobs.test.ts, packages/admin/test/georef/georef.test.ts."
+        },
+        {
+            "id": "S-A69-BAD-AUTO-RELOCATE-RECORD",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "bad",
+            "title": "Only the image the pipeline job runs sends parked frames searching again",
+            "asserts": "the Cloud Run job not readable, setup/status naming another image -> nothing moves and nothing is remembered, so a switch between the two sources never re-runs every parked frame",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Review of M18 item 3 (2026-11-08). Test: functions/test/imagery/relocate.test.ts."
+        },
+        {
+            "id": "S-A69-BAD-FAILED-CROP-ATTEMPTS",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "bad",
+            "title": "A crop that fails each time stops at the attempts' limit",
+            "asserts": "a failed crop at JOB_MAX_ATTEMPTS -> Locate again is not offered and imagery.locateAgain refuses with apiError.imagery.attemptsExhausted, the job stays failed; with a run left it is queued and the run counts",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Review of M18 item 3 (2026-11-08). Tests: functions/test/imagery/locate-again.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
         }
     ]
 }

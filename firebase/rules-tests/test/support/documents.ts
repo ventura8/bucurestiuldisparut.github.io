@@ -307,6 +307,8 @@ export function jobDoc(creator: string, status = 'running'): Data {
         filesOn: 'cloud',
         // M18 item 3: the pipeline image a parked frame was searched with (imagery.tick's relocate part).
         searchedWith: `sha256:${'ab'.repeat(32)}`,
+        // Review of M18 item 3: an editor placing points on the parked frame (the georeferencer's mark).
+        placingPoints: true,
         ...systemStamp('pipeline'),
     };
 }
@@ -673,7 +675,7 @@ export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
         credit: 'Maria Popescu',
     },
     poiCategory: { label: { ro: 'Biserici', en: 'Churches' }, icon: 'mosque', color: '#aa00ff', defaultOpacity: 0, order: -1 },
-    job: { cancelRequested: true },
+    job: { cancelRequested: true, placingPoints: true },
     usgsScene: { status: 'rejected', note: 'Nori peste oraș.' },
     inboxItem: { read: true, readAt: serverTime() },
     notifySettings: { push: false, pushKinds: [] },

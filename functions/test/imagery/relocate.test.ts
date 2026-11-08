@@ -2,12 +2,12 @@
  * `imagery.tick`'s `relocate` part (`functions/src/imagery/relocate.ts`, M18 item 3 of `docs/research/M18-improvements.md`): a
  * frame parked for points under an older pipeline image searches again by itself, free, once per image.
  */
-import { JOB_MAX_ATTEMPTS, type JobDoc } from '@hcm/shared';
+import { JOB_MAX_ATTEMPTS, PLACING_POINTS_HOLD_MS, type JobDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { relocateParked, RELOCATE_PER_TICK } from '../../src/imagery/relocate.js';
 import { runImageryTick } from '../../src/imagery/tick.js';
-import { CITY, NOW, at, needsGcpsVersion, readJob, readyWorld, seedJob, seedVersion, type ImageryWorld } from './world.js';
+import { CITY, NOW, at, needsGcpsVersion, readJob, readyWorld, seedJob, seedSetup, seedVersion, type ImageryWorld } from './world.js';
 
 const OLD = `sha256:${'ae'.repeat(32)}`;
 const NEW = `sha256:${'eb'.repeat(32)}`;
@@ -38,12 +38,12 @@ function parked(job: string, overrides: Partial<JobDoc> = {}): JobDoc {
 }
 
 async function world(
-    frames: readonly (readonly [id: string, searchedWith?: string])[],
+    frames: readonly (readonly [id: string, searchedWith?: string, overrides?: Partial<JobDoc>])[],
     installed: string | null = NEW,
 ): Promise<ImageryWorld> {
     const w = await readyWorld();
-    for (const [id, searchedWith] of frames) {
-        await seedJob(w, id, parked(id, searchedWith === undefined ? {} : { searchedWith }));
+    for (const [id, searchedWith, overrides] of frames) {
+        await seedJob(w, id, parked(id, { ...(searchedWith === undefined ? {} : { searchedWith }), ...overrides }));
         await seedVersion(w, id, needsGcpsVersion({ origin: 'usgs', layerId: `layer-${id}` }));
         w.deps.blobs.put('private', SEGMENT(id), new Uint8Array([1]));
     }
@@ -108,6 +108,33 @@ describe('relocateParked', () => {
         await relocateParked(w.deps, CITY);
 
         expect(await readJob(w, 'f1')).toMatchObject({ status: 'awaiting_gcps', searchedWith: OLD });
+    });
+
+    // Review of M18 item 3: an editor placing points on the frame keeps it waiting, or their Save would be refused.
+    it('badPath_aFrameAnEditorIsPlacingPointsOnKeepsWaitingUntilTheMarkIsOld @S-A69-BAD-AUTO-RELOCATE-PLACING', async () => {
+        const old = new Date(Date.parse(NOW) - PLACING_POINTS_HOLD_MS).toISOString();
+        const w = await world([
+            ['f1', OLD, { placingPoints: true, updatedBy: 'u-admin', updatedAt: at(NOW) }],
+            ['f2', OLD, { placingPoints: true, updatedBy: 'u-admin', updatedAt: at(old) }],
+        ]);
+
+        await relocateParked(w.deps, CITY);
+
+        expect(await readJob(w, 'f1')).toMatchObject({ status: 'awaiting_gcps', searchedWith: OLD, placingPoints: true });
+        const searched = await readJob(w, 'f2');
+        expect(searched).toMatchObject({ status: 'queued' });
+        expect(searched?.placingPoints).toBeUndefined();
+    });
+
+    // Review of M18 item 3: the record setup/status can lag behind the job; only the job's image sends a frame searching.
+    it('badPath_whileOnlyTheRecordNamesAnImageNothingMovesAndNothingIsRemembered @S-A69-BAD-AUTO-RELOCATE-RECORD', async () => {
+        const w = await world([['f1', OLD], ['f2']], null);
+        await seedSetup(w, { install: { pipeline: { state: 'installed', release: '1.0.0+bf74d17', checkedAt: NOW, image: NEW } } });
+
+        await relocateParked(w.deps, CITY);
+
+        expect(await readJob(w, 'f1')).toMatchObject({ status: 'awaiting_gcps', searchedWith: OLD });
+        expect((await readJob(w, 'f2'))?.searchedWith).toBeUndefined();
     });
 
     it('happyPath_theTickRunsItAndACityWithNothingParkedReadsNoImage', async () => {

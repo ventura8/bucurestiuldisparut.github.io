@@ -1,3 +1,4 @@
+import { JOB_MAX_ATTEMPTS } from '@hcm/shared';
 import { axeViolations } from '@hcm/test-support/axe';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
@@ -365,11 +366,12 @@ describe('<hcm-imagery-page>: a job and an upload', () => {
     });
 
     // M18 item 3: a frame whose crop failed is offered Locate again before a new import; a later failure is not.
-    function failedAt(step: string) {
+    function failedAt(step: string, attempt = 1) {
         const failed = jobView({
             status: 'failed',
             finished: true,
             retryable: false,
+            attempt,
             steps: [{ name: step, status: 'failed', transfer: null }],
         });
         return imageryState({
@@ -384,6 +386,13 @@ describe('<hcm-imagery-page>: a job and an upload', () => {
         click(button(element, 'Locate again'));
 
         expect(calls(area)).toEqual(['locateAgain']);
+    });
+
+    // Review of M18 item 3: a crop that fails each time stops at the attempts' limit, as Retry does.
+    it('badPath_aCropThatFailedWithNoRunsLeftOffersNoLocateAgain', async () => {
+        const { element } = await imageryPage(failedAt('stitch', JOB_MAX_ATTEMPTS));
+
+        expect(deepAll(element, 'hcm-button').some((found) => found.textContent.includes('Locate again'))).toBe(false);
     });
 
     it('badPath_aFailureAfterTheCropOffersNoLocateAgain @S-A69-BAD-FAILED-LATER', async () => {
@@ -543,8 +552,33 @@ describe('<hcm-imagery-page>: an upload and its version', () => {
         expect([dialog.headline, dialog.confirmLabel]).toEqual(['Delete this image?', 'Delete']);
         await confirm(element);
 
-        expect(calls(area)).toEqual(['cancelJob']);
+        // Review of M18 item 5: deleted by imagery.reject as at every stage, so the version then reads Deleted, not Cancelled.
+        expect(calls(area)).toEqual(['reject']);
         expect(deepAll(element, 'hcm-button').some((found) => found.textContent.includes('Cancel job'))).toBe(false);
+    });
+
+    it('happyPath_waitingForApprovalAndStoppedAtTheGuardTheSameDeleteAndQuestion @S-A33-HAPPY-ONE-DELETE', async () => {
+        const guard = { verdict: 'over' as const, available: 0.5, overageUsd: 2, choice: null, deferUntil: null };
+        const { element, area } = await imageryPage(imageryState({ detail: VERSION, version: versionPage() }));
+        const asked = async (): Promise<readonly string[]> => {
+            click(button(element, 'Delete'));
+            await updated(element);
+            const dialog = deep(element, 'hcm-confirm-dialog') as HTMLElement & { headline: string; confirmLabel: string };
+            const words = [dialog.headline, dialog.confirmLabel];
+            await confirm(element);
+            return words;
+        };
+
+        const waiting = await asked();
+        area.set({ version: versionPage({}, versionView({ state: 'approved', guard })) });
+        await updated(element);
+        const atTheGuard = await asked();
+
+        expect([waiting, atTheGuard]).toEqual([
+            ['Delete this image?', 'Delete'],
+            ['Delete this image?', 'Delete'],
+        ]);
+        expect(calls(area)).toEqual(['reject', 'reject']);
     });
 
     it('happyPath_cancellingAJobAsksFirstAndTheBackAndTheZoomPassOn', async () => {

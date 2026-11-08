@@ -79,4 +79,6 @@ export const M7_EXPORTS: readonly string[] = [
     'WORKER_STARTER_FILE_NAMES',
     'workerStarterQuerySchema',
     'pipelineImageDigest',
+    // Review of M18 item 3: how long the georeferencer's mark holds imagery.tick's Locate again back.
+    'PLACING_POINTS_HOLD_MS',
 ];

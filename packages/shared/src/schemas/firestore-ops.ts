@@ -50,6 +50,13 @@ export const JOB_STATUSES = [
 ] as const;
 /** The statuses a job never leaves (the rules refuse a cancellation of these). */
 export const FINISHED_JOB_STATUSES = ['succeeded', 'failed', 'cancelled'] as const;
+
+/**
+ * Review of M18 item 3: an editor placing points on a parked frame marks its job (`JobDoc.placingPoints`, stamped); for this
+ * long after the mark `imagery.tick` does not send the frame searching again, which would refuse their Save. The georeferencer
+ * marks it again every quarter of it while points are placed.
+ */
+export const PLACING_POINTS_HOLD_MS = 2 * 60 * 60 * 1000;
 /**
  * Why an unfinished job is not running (`docs/research/M3-interfaces.md` §4.2): USGS preparing the download or in
  * maintenance, rate limited, the two-running-jobs cap, the budget guard, the admin's points or approval, the compute-unit
@@ -174,7 +181,7 @@ export const MANIFEST_ENTITIES = ['layer', 'photo', 'poi', 'poiCategory'] as con
 const stepNameSchema = z.string().regex(/^[a-z][a-z0-9-]{0,39}$/);
 
 /**
- * `cities/{city}/jobs/{job}`: admins may set `cancelRequested`; the callables that queue work (`layers.delete`, the M3
+ * `cities/{city}/jobs/{job}`: admins may set `cancelRequested` (and, on a parked frame, `placingPoints`); the callables that queue work (`layers.delete`, the M3
  * `imagery.*`), the dispatcher and the raster pipeline own every other field (security review §4.1: lease, heartbeat,
  * idempotent steps; `docs/research/M3-interfaces.md` §4: who writes which field in which status).
  */
@@ -253,6 +260,11 @@ export const jobDocSchema = z.strictObject({
         .string()
         .regex(/^sha256:[0-9a-f]{64}$/)
         .optional(),
+    /**
+     * Review of M18 item 3: an editor is placing points on this parked frame (the georeferencer's mark, with its `updatedAt`);
+     * within `PLACING_POINTS_HOLD_MS` of it the tick leaves the frame waiting. The only other field a client writes.
+     */
+    placingPoints: z.literal(true).optional(),
     ...stamp,
 });
 

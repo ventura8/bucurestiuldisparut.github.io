@@ -381,11 +381,11 @@ LOCAL now at `http://127.0.0.1:4310/bucharest/` (the manifest the emulators publ
 
 `docs/research/M18-improvements.md`.
 
-- [ ] **I1. A deploy, then back to the tab.** Leave the admin open on Home, deploy a newer release, switch back. Expected: the tab reloads by itself, still signed in, and Update the map shows if the map is behind. With an unsaved edit open instead: the Reload banner, no reload.
+- [ ] **I1. A deploy, then back to the tab.** Leave the admin open on Home, deploy a newer release, switch back. Expected: the tab reloads by itself, still signed in, and Update the map shows if the map is behind. With an unsaved edit open, or a GeoTIFF or photos still uploading, instead: the Reload banner, no reload.
 - [ ] **I2. A blocked Google window.** Block pop-ups for the admin, press a step that asks Google. Expected: the snackbar says the browser blocked it, with Try again; Try again opens Google.
-- [ ] **I3. Frames waiting for points after a pipeline update.** Update the imagery pipeline with frames waiting for points. Expected: within a few ticks each searches again by itself (its log says so), no import counted. A frame whose crop failed offers Locate again.
+- [ ] **I3. Frames waiting for points after a pipeline update.** Update the imagery pipeline with frames waiting for points. Expected: within a few ticks each searches again by itself (its log says so), no import counted. A frame whose crop failed offers Locate again. A frame you are placing points on keeps waiting until you save.
 - [ ] **I4. Join while a frame's layer is publishing.** Expected: the words say the layer is busy; Join when it ends starts the join once publishing ends (keep the admin open).
-- [ ] **I5. Delete at every stage.** Waiting for points, waiting for approval, at the guard, failed, published (Layers). Expected: always Delete and Delete this image?.
+- [ ] **I5. Delete at every stage.** Waiting for points, waiting for approval, at the guard, failed, published (Layers). Expected: always Delete and Delete this image?; afterwards the version reads Deleted (never Cancelled).
 - [ ] **I6.** The Layers page links Place categories. **I7.** Home lists What needs you, each a link. **I8.** The public map without WebGL (a browser with hardware acceleration off): thumbnails show; the consent card sits under the error card. **I9.** A computer set up with an older starter file: the panel says Use this computer once to turn local AI on.
 
 ## After the walk

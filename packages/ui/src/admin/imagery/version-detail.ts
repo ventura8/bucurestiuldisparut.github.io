@@ -8,7 +8,7 @@
  * frame was found, or that it was not (`calibration-card.ts`). M12: what the map shows of it, its share of the city, Actual pixels and See
  * the image (`image-view.ts`).
  */
-import type { AdminContentKey, Locale } from '@hcm/shared';
+import { JOB_MAX_ATTEMPTS, type AdminContentKey, type Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { errorTemplate, formatWhen, loadingTemplate, reconnectingStatus } from '../editing/states.js';
@@ -157,11 +157,13 @@ function retryButton(shown: Shown): TemplateResult {
     return action(shown, { offered, icon: 'replay', label: 'adminContent.common.retry' }, () => context.intents?.retryJob());
 }
 
-/** M18 item 3: the job failed while cutting the frame out or placing it (the server's `CROP_STEPS`). */
+/**
+ * M18 item 3: the job failed while cutting the frame out or placing it (the server's `CROP_STEPS`), with runs left: a crop that
+ * fails each time stops at `JOB_MAX_ATTEMPTS`, as Retry does (`imagery.locateAgain` refuses it then).
+ */
 function failedCrop(job: JobViewPort): boolean {
-    return (
-        job.status === 'failed' && job.steps.some((step) => step.status === 'failed' && (step.name === 'stitch' || step.name === 'locate'))
-    );
+    const cropStep = job.steps.some((step) => step.status === 'failed' && (step.name === 'stitch' || step.name === 'locate'));
+    return job.status === 'failed' && cropStep && job.attempt < JOB_MAX_ATTEMPTS;
 }
 
 /**

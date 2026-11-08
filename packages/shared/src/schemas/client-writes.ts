@@ -107,9 +107,10 @@ export const CLIENT_WRITES = {
     poiCategory: { create: [...POI_CATEGORY_EDITABLE, 'createdAt'], update: POI_CATEGORY_EDITABLE },
     /**
      * Jobs are created by the callables and triggers that check their parameters, the budget guard, the daily cap and
-     * their version in one transaction (`docs/research/M3-interfaces.md` §2.8, CR-M3-2); admins only ask one to stop.
+     * their version in one transaction (`docs/research/M3-interfaces.md` §2.8, CR-M3-2); admins only ask one to stop, or mark a
+     * parked frame they place points on (`placingPoints`, review of M18 item 3).
      */
-    job: { create: [], update: ['cancelRequested', ...STAMP] },
+    job: { create: [], update: ['cancelRequested', 'placingPoints', ...STAMP] },
     usgsScene: { create: [], update: ['status', 'note', ...STAMP] },
     /**
      * M4 (`docs/research/M4-interfaces.md` §5.6): `notify.onEvent` creates each admin's inbox items; the admin marks their

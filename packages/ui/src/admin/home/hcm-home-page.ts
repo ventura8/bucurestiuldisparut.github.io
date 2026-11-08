@@ -253,12 +253,18 @@ const PUBLIC_MAP: Readonly<
     failed: 'adminShell.home.map.failed',
 };
 
-/** The public map once read (null: never built), or undefined while reading. */
-/** What needs a person now: the counts above zero (a dash or a count still loading is not listed). */
+/**
+ * What needs a person now: the counts above zero, and every count still being read or that could not be read (its
+ * ellipsis or its dash), so a failure or the first open never reads as nothing to do.
+ */
 function needs(view: HomeViewState): readonly Tile[] {
-    return NEEDS.filter((tile) => (view.counts?.[tile.count] ?? 0) > 0);
+    return NEEDS.filter((tile) => {
+        const value = view.counts?.[tile.count] ?? null;
+        return value === null || value > 0;
+    });
 }
 
+/** The public map once read (null: never built), or undefined while reading. */
 function publicMapOf(state: HomeViewState['publicMap']): PublicMapPort | null | undefined {
     if (state.status !== 'ready') {
         return undefined;

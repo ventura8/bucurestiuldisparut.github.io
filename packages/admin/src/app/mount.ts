@@ -390,7 +390,9 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
         ...{ shell, location: deps.location, session: deps.session, pages: deps.pages },
         ...{ track, unsaved, switchCity: openCity },
     });
-    const sources = { ...deps, store: deps.content?.store ?? null, states: store, stores: content.stores, unsaved };
+    // M18 item 1: the self-reload also waits for an upload still being sent, which the unsaved guard does not ask about.
+    const held = (): boolean => unsaved() || content.busy();
+    const sources = { ...deps, store: deps.content?.store ?? null, states: store, stores: content.stores, unsaved: held };
     const watches = shellWatches(sources, shell, denied);
     const stopWatching = store.subscribe((state) => {
         watches.stateChanged(state);

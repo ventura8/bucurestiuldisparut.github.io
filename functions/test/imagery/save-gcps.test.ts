@@ -76,7 +76,8 @@ function save(world: ImageryWorld, data: Record<string, unknown>) {
 async function waitingWorld(): Promise<ImageryWorld> {
     const world = await readyWorld();
     await seedVersion(world, PLAN, needsGcpsVersion());
-    await seedJob(world, PLAN, job());
+    // Review of M18 item 3: the georeferencer marked the frame while its points were placed; the save clears the mark.
+    await seedJob(world, PLAN, job({ placingPoints: true }));
     return world;
 }
 
@@ -116,7 +117,7 @@ describe('imagery.saveGcps', () => {
             steps: { inspect: { status: 'done' }, georef: { status: 'pending' } },
             updatedBy: 'u-admin',
         });
-        expect(resumed?.waitReason).toBeUndefined();
+        expect([resumed?.waitReason, resumed?.placingPoints]).toEqual([undefined, undefined]);
     });
 
     it('happyPath_threeEnabledPairsFixAnAffineFitAndKeepNoResidualOfTheirOwn', async () => {

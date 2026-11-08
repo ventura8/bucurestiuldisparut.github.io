@@ -14,9 +14,12 @@ owner reloaded. The Reload banner of finding 29 said a newer admin was ready, bu
 admin the tab reloads by itself when no one is looking at it (hidden) or the owner has just come back to it (the newer
 release seen within `RETURN_WINDOW_MS`, 10 s, of the tab becoming visible, or on any later return), and only when no
 edit would be lost (`unsaved`). While the owner works on a visible tab, or with an unsaved edit, the Reload banner stays
-as before. The sign-in lives in the tab's `sessionStorage`, so the reload keeps it.
+as before. The sign-in lives in the tab's `sessionStorage`, so the reload keeps it. Review of 2026-11-08: an upload
+still being sent (a GeoTIFF on Imagery, the Photos queue: `AreaStore.busy`) holds the reload back as an edit does; the
+unsaved guard still does not ask about it.
 
-**Rows.** S-A61-HAPPY-SELF-RELOAD (new), S-A61-HAPPY (now the banner seen while working).
+**Rows.** S-A61-HAPPY-SELF-RELOAD (new), S-A61-HAPPY (now the banner seen while working), S-A61-BAD-UPLOAD-HOLDS-RELOAD
+(`planned`: unit tests only).
 
 ## 2. A blocked Google window: plain words and one real retry
 
@@ -37,18 +40,25 @@ without another window. The words now say what to do: press again, else allow po
   installed (`installedImage`, the job `raster-pipeline`'s digest) the frame searches again by itself, as **Locate
   again** does, at most `RELOCATE_PER_TICK` (3) a city a tick. A refusal (inputs gone, files on the other place) is
   logged once and remembered, so no later tick asks again for the same image. Frames parked before this change keep the
-  image of the first tick that sees them and search again at the next pipeline update.
+  image of the first tick that sees them and search again at the next pipeline update. Review of 2026-11-08: only the
+  image the job runs counts (`from === 'job'`); while the job cannot be read the record `setup/status` is no ground to
+  search again, so nothing moves. A frame an editor is placing points on keeps waiting: the georeferencer marks its job
+  `placingPoints` (`packages/admin/src/georef/placing.ts`, at the first edit and every 30 minutes; the rules let a client
+  set it on a job `awaiting_gcps` only), and the tick holds it for `PLACING_POINTS_HOLD_MS` (2 h) after the mark.
 - `imagery.locateAgain` (`functions/src/imagery/locate-again.ts`) also takes a frame whose crop failed (its job failed at
   `stitch` or `locate`), so the version page offers **Locate again** before anyone imports it anew; a failure after the
   crop stays Try again's.
-- Locate again is free: never the day's limit (it never was) and, like the admin's points, one run of its own whatever
-  the runs before used (`attemptForSearch`), where it used to refuse with `apiError.imagery.attemptsExhausted`.
+- Locate again is free: never the day's limit (it never was) and, for a frame parked for points like the admin's points,
+  one run of its own whatever the runs before used (`attemptForSearch`), where it used to refuse with
+  `apiError.imagery.attemptsExhausted`. A failed crop's runs count as Retry's (review of 2026-11-08: with the pipeline
+  unchanged the same failure would repeat without end): at `JOB_MAX_ATTEMPTS` it is refused and no longer offered.
 - The day's limit (`functions/src/imagery/limits.ts`) counts only what brings imagery in: `usgs-import`,
   `geotiff-import`, `layer-join`. New points, a crop (`regeoref`) and tiles (`layer-tiles`) never count; a re-run still
   stops while the budget guard is red (`refuseWhileGuardRed`).
 
 **Rows.** S-A69-HAPPY-AUTO-RELOCATE, S-A69-BAD-AUTO-RELOCATE-REFUSED, S-A69-HAPPY-FAILED-CROP, S-A69-BAD-FAILED-LATER,
-S-A12-HAPPY-RERUNS-FREE; S-A69-BAD-ATTEMPTS now asserts the run of its own.
+S-A12-HAPPY-RERUNS-FREE; S-A69-BAD-ATTEMPTS now asserts the run of its own; review: S-A69-BAD-AUTO-RELOCATE-PLACING,
+S-A69-BAD-AUTO-RELOCATE-RECORD, S-A69-BAD-FAILED-CROP-ATTEMPTS.
 
 ## 4. A join refused because a frame's layer is busy
 
@@ -65,9 +75,11 @@ other refusal ends the wait and is said. The area's end stops the wait.
 ## 5. One Delete for an image at every stage
 
 **What was done.** The same word and the same question everywhere: **Delete** and *Delete this image?* for a frame
-waiting for points (its job is cancelled: the question `drop` of `hcm-imagery-page.ts`), one waiting for approval or
-approved at the guard (Reject), a failed one (Dismiss) and a published one (the Layers page's delete). A deleted version
-reads *Deleted*, and the filter *Hide deleted*. Only the words and the dialog changed; each stage keeps its callable.
+waiting for points (the question `drop` of `hcm-imagery-page.ts`), one waiting for approval or approved at the guard
+(Reject), a failed one (Dismiss) and a published one (the Layers page's delete). A deleted version reads *Deleted*, and
+the filter *Hide deleted*. Review of 2026-11-08: the waiting frame's Delete is `imagery.reject` too (it cancelled the job,
+so the version read *Cancelled*), and an image stopped at the guard is offered Delete beside the three ways out (it had
+none).
 
 **Rows.** S-A33-HAPPY-ONE-DELETE.
 
@@ -85,10 +97,12 @@ Settings → Place categories (`hcm-layers-page.ts`, a 48 px target).
 
 **What was done.** Home opens with **What needs you**: the historical images to approve, the role requests to accept,
 the suggestions to review and the jobs that stopped (failed), each a link to where it is done (Imagery, Review, Jobs),
-listed only while there are some; otherwise *Nothing needs you now.* A count the admin may not read (an owner's role
-requests for another admin) is a dash and is not listed. The counts are Firestore aggregations, one read per thousand.
+listed only while there are some; otherwise *Nothing needs you now.* A count the admin's role may not read (role
+requests for anyone but the owner, suggestions for an uploader) is not asked: nothing there for them. Review of
+2026-11-08: a count not read yet (an ellipsis) or that failed (a dash) keeps its item, so a failure never reads as
+nothing to do. The counts are Firestore aggregations, one read per thousand.
 
-**Rows.** S-A40-HAPPY-NEEDS-YOU, S-A40-BAD-NOTHING-NEEDS-YOU.
+**Rows.** S-A40-HAPPY-NEEDS-YOU, S-A40-BAD-NOTHING-NEEDS-YOU, S-A40-BAD-COUNT-UNREAD-SHOWN (`planned`: unit tests only).
 
 ## 8. The public map without WebGL
 

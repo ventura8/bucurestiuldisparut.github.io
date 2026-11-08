@@ -26,10 +26,6 @@ import { dayText, numberText, versionStateText } from '../imagery-text.js';
 import { when, withValue } from '../when.js';
 import { frameName, liveJoin, liveJoinOver } from './live-join.js';
 
-function percentText(locale: Locale, percent: number): string {
-    return numberText(locale, percent, 0);
-}
-
 async function joinFrames(context: ImageryContext, entityIds: readonly string[]): Promise<void> {
     const versionId = (await context.intents?.joinFrames(entityIds)) ?? null;
     if (versionId !== null) {
@@ -49,8 +45,18 @@ function refusal(context: ImageryContext, entityIds: readonly string[]): Templat
     );
 }
 
-/** One click, and the page opens the join (`joinFrames` of `CONTENT_INPUT_BUDGETS`). */
-function joinButton(context: ImageryContext, entityIds: readonly string[], label: string, variant = 'filled'): TemplateResult {
+/** A row's chosen frames, by id. */
+function idsOf(row: DatePlanRow): string[] {
+    return row.frames.map((frame) => frame.entityId);
+}
+
+/** One click, and the page opens the join (`joinFrames` of `CONTENT_INPUT_BUDGETS`); Join frames unless told otherwise. */
+function joinButton(
+    context: ImageryContext,
+    entityIds: readonly string[],
+    label = contentText(context.locale, 'adminContent.imagery.join.button'),
+    variant = 'filled',
+): TemplateResult {
     return html`<div class="actions">
             <hcm-button
                 variant=${variant}
@@ -89,22 +95,13 @@ function rowNotes(context: ImageryContext, row: DatePlanRow): TemplateResult {
  * frames. While a join is live this is no button: one click would reject a rendered join, or be refused (a frame is added on its page).
  */
 function rowAction(context: ImageryContext, row: DatePlanRow): TemplateResult {
-    const { locale } = context;
-    const live = liveJoinOver(
-        context.view.versions.items,
-        row.frames.map((frame) => frame.entityId),
-    );
+    const ids = idsOf(row);
+    const live = liveJoinOver(context.view.versions.items, ids);
     if (live !== null) {
         return partLink(context, live);
     }
     const joined = row.frames.every((frame) => frame.state === 'joined');
-    return when(row.frames.length > 1 && !joined, () =>
-        joinButton(
-            context,
-            row.frames.map((frame) => frame.entityId),
-            contentText(locale, 'adminContent.imagery.join.button'),
-        ),
-    );
+    return when(row.frames.length > 1 && !joined, () => joinButton(context, ids));
 }
 
 /** Add {year}, while the year is not targeted and there is room: the search then ranks the date's frames with it. */
@@ -132,7 +129,7 @@ function dateRow(context: ImageryContext, row: DatePlanRow): TemplateResult {
     return html`<li class="card" data-date=${row.date} data-sensor=${row.sensor}>
         <span class="row-title">${SENSOR_SPECS[row.sensor].name} · ${dayText(locale, row.date)}</span>
         <span class="row-detail">
-            ${contentText(locale, coverage, { frames: String(frames), percent: percentText(locale, row.coveragePct) })}
+            ${contentText(locale, coverage, { frames: String(frames), percent: numberText(locale, row.coveragePct, 0) })}
         </span>
         ${rowNotes(context, row)} ${rowAction(context, row)} ${addYear(context, row)}
     </li>`;
@@ -169,18 +166,13 @@ function offerCard(context: ImageryContext, row: DatePlanRow, frame: OfferedFram
     const { locale } = context;
     const others = row.frames.filter((other) => other.entityId !== frame.id).map((other) => frameName(other.entityId));
     const text = contentText(locale, 'adminContent.imagery.join.offer', {
-        percent: percentText(locale, frame.coverage * 100),
+        percent: numberText(locale, frame.coverage * 100, 0),
         frames: others.join(', '),
-        total: percentText(locale, row.coveragePct),
+        total: numberText(locale, row.coveragePct, 0),
     });
     return html`<section class="card" data-join-offer>
         <p>${text}</p>
-        ${rowNotes(context, row)}
-        ${joinButton(
-            context,
-            row.frames.map((other) => other.entityId),
-            contentText(locale, 'adminContent.imagery.join.button'),
-        )}
+        ${rowNotes(context, row)} ${joinButton(context, idsOf(row))}
     </section>`;
 }
 
@@ -261,7 +253,7 @@ function partRow(
 
 /** A row's frames, the plan's choice first, then its spares. */
 function framesOffered(row: DatePlanRow | undefined): readonly string[] {
-    return row === undefined ? [] : [...row.frames.map((frame) => frame.entityId), ...(row.spareFrames ?? [])];
+    return row === undefined ? [] : [...idsOf(row), ...(row.spareFrames ?? [])];
 }
 
 /** The next frame of the date a short join does not hold: its request, or null. */
@@ -325,19 +317,19 @@ function seamLine(locale: Locale, seam: JoinSeam): TemplateResult {
     if (before === undefined) {
         return html`<li data-seam="unmeasured">${contentText(locale, 'adminContent.imagery.join.seamUnmeasured', names)}</li>`;
     }
+    const was = { ...names, before: numberText(locale, before) };
     if (!seam.applied) {
-        const text = contentText(locale, 'adminContent.imagery.join.seamRefused', { ...names, before: numberText(locale, before) });
-        return html`<li data-seam="not-applied">${text}</li>`;
+        return html`<li data-seam="not-applied">${contentText(locale, 'adminContent.imagery.join.seamRefused', was)}</li>`;
     }
-    const figures = { before: numberText(locale, before), after: numberText(locale, seam.afterRmseM ?? before) };
-    return html`<li data-seam="applied">${contentText(locale, 'adminContent.imagery.join.seam', { ...names, ...figures })}</li>`;
+    const figures = { ...was, after: numberText(locale, seam.afterRmseM ?? before) };
+    return html`<li data-seam="applied">${contentText(locale, 'adminContent.imagery.join.seam', figures)}</li>`;
 }
 
 function reportOf(locale: Locale, join: JoinReport): TemplateResult {
     const omitted = join.omitted.map(frameName).join(', ');
     return html`<div class="choices" data-join-report>
         <p data-coverage>
-            ${contentText(locale, 'adminContent.imagery.join.coverageMeasured', { percent: percentText(locale, join.coveragePct) })}
+            ${contentText(locale, 'adminContent.imagery.join.coverageMeasured', { percent: numberText(locale, join.coveragePct, 0) })}
         </p>
         ${
             join.seams.length === 0

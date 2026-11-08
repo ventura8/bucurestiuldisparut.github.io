@@ -255,13 +255,16 @@ describe('the Imagery area: versions, the map and uploads', () => {
 
         await imagery.intents.chooseFile({ name: 'scan.tif', size: blob.size, slice: (start, end) => blob.slice(start, end) });
         imagery.intents.setYear('1966');
+        const before = imagery.busy?.();
         imagery.intents.startUpload();
+        // Review of M18 item 1: an upload being sent holds the self-reload back, though it is no unsaved edit.
+        expect([before, imagery.busy?.(), imagery.hasUnsavedChanges()]).toEqual([false, true, false]);
         imagery.intents.cancelUpload();
         await settle();
         imagery.intents.resetUpload();
 
         expect(uploads.started).toHaveLength(1);
-        expect(imagery.state.upload.phase).toBe('idle');
+        expect([imagery.state.upload.phase, imagery.busy?.()]).toEqual(['idle', false]);
     });
 
     it('happyPath_replaceImageOpensTheUploadForItsLayerAndTheAreaAloneForgetsIt', async () => {

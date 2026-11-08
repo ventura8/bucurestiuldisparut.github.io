@@ -50,6 +50,11 @@ export interface AreaStore<State, Intents> {
     close(): void;
     /** Whether leaving now would lose an edit. */
     hasUnsavedChanges(): boolean;
+    /**
+     * Work under way that a reload would end, such as an upload still being sent (the M18 self-reload waits for it); not an
+     * edit, so the unsaved guard does not ask about it. None: nothing runs.
+     */
+    busy?(): boolean;
     /** Sign-out: detach everything and forget every draft. */
     destroy(): void;
 }

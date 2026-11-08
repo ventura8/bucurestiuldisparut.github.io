@@ -1,4 +1,4 @@
-import { FIRESTORE_PATHS } from '@hcm/shared';
+import { FIRESTORE_PATHS, PLACING_POINTS_HOLD_MS } from '@hcm/shared';
 import { FakeMap } from '@hcm/test-support/fake-map';
 import { FakeMapDraw } from '@hcm/test-support/fake-map-draw';
 import { describe, expect, it } from 'vitest';
@@ -7,7 +7,7 @@ import { GEOREF_MODULE } from '../../src/georef/georef.js';
 import { createMapPreview } from '../../src/map/preview.js';
 import { failure, settle } from '../app/fakes.js';
 import { factoryOf, host } from '../imagery/maps.js';
-import { answer, CITY, callsOf, cityDoc, golden, imageryWorld, VERSIONS } from '../imagery/world.js';
+import { answer, CITY, callsOf, cityDoc, golden, imageryWorld, JOBS, VERSIONS } from '../imagery/world.js';
 import { fakeFrames } from '../map/support.js';
 import { pair } from './fixtures.js';
 
@@ -210,6 +210,37 @@ describe('the georeferencer: the fit and saving', () => {
         ]);
         expect(georef.state.saved).toBe(UPLOAD);
         expect(notices).toEqual([{ key: 'adminContent.georef.savedResumed' }]);
+    });
+
+    // Review of M18 item 3: the frame's job is marked while points are placed, so imagery.tick leaves it waiting.
+    it('happyPath_placingPointsOnAWaitingScanMarksItsJobAtTheFirstEditAndAgainLater', () => {
+        const { georef, store, clock } = setup();
+        const corners = [pair('g1', 0, 0), pair('g2', 8000, 0), pair('g3', 8000, 6000)].map((corner) => ({ ...corner, origin: 'corner' }));
+        store.docs.set(VERSIONS(UPLOAD), {
+            ...golden('version.needs-gcps.json'),
+            georef: { method: 'corners', transform: 'affine', gcps: corners },
+        });
+        georef.open([UPLOAD]);
+        const marks = (): unknown[] => store.writes.filter((write) => write.kind === 'update' && write.path === JOBS(UPLOAD));
+
+        georef.intents.movePixel('g1', { x: 1, y: 1 });
+        georef.intents.movePixel('g1', { x: 2, y: 2 });
+        const first = marks().length;
+        clock.advance(PLACING_POINTS_HOLD_MS / 4);
+        georef.intents.movePixel('g1', { x: 3, y: 3 });
+
+        expect([first, marks().length]).toEqual([1, 2]);
+        expect(marks()[0]).toMatchObject({ fields: { placingPoints: true }, expected: null });
+    });
+
+    it('badPath_editingAVersionNotWaitingForPointsMarksNoJob', () => {
+        const { georef, store } = setup();
+        georef.open([RENDERED]);
+
+        georef.intents.movePixel(georef.state.pairs[0]?.id ?? '', { x: 10, y: 10 });
+
+        expect(georef.state.dirty).toBe(true);
+        expect(store.writes.filter((write) => write.kind === 'update')).toEqual([]);
     });
 
     it('happyPath_saveSendsThePairsTheTransformAndTheCrop', async () => {

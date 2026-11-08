@@ -106,8 +106,8 @@ describe('<hcm-home-page>', () => {
         ]);
     });
 
-    it('badPath_nothingWaitingSaysSo_andACountNotReadIsNotListed', async () => {
-        const counts = { ...homeState().counts, versionsToApprove: 0, roleRequests: null } as HomeViewState['counts'];
+    it('badPath_nothingWaitingSaysSo', async () => {
+        const counts = { ...homeState().counts, versionsToApprove: 0, failedJobs: 0 } as HomeViewState['counts'];
         const { element } = await page(
             'home',
             new FakeArea<HomeViewState, HomeIntentsPort>(homeState({ counts }), { refresh: Promise.resolve() }),
@@ -128,8 +128,9 @@ describe('<hcm-home-page>', () => {
             tile.hasAttribute('data-attention'),
         ]);
         expect(tiles).toEqual([
-            // M18 item 7: What needs you lists what waits for a person now (a dash is not listed).
+            // M18 item 7: What needs you lists what waits for a person now, and a count not read keeps its dash.
             ['#/imagery', '2 Historical images to approve', true],
+            ['#/jobs', '— Failed jobs', false],
             ['#/photos', '45 Photos', false],
             ['#/pois', '3 Places', false],
             ['#/settings/categories', '2 Place categories', false],
@@ -183,5 +184,38 @@ describe('<hcm-home-page>', () => {
         expect(publicMapText('en', { status: 'failed', builtAt: null, skipped: [], error: { key: 'apiError.internal' } })).toContain(
             'The last update of the public map failed: ',
         );
+    });
+});
+
+describe('<hcm-home-page>: What needs you while a count is unknown', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    // Review of M18 item 7: a count not read is no zero; it keeps its tile with a dash, never "Nothing needs you now.".
+    it('badPath_aCountNotReadKeepsItsTileWithADash_andTheFirstOpenSaysNothingYet', async () => {
+        const counts = { ...homeState().counts, versionsToApprove: 0, roleRequests: null } as HomeViewState['counts'];
+        const failed = await page(
+            'home',
+            new FakeArea<HomeViewState, HomeIntentsPort>(homeState({ counts, countsStatus: 'error' }), { refresh: Promise.resolve() }),
+        );
+        const needsOf = (element: HTMLElement): string[] =>
+            deepAll(element, 'section[aria-labelledby="adminShell.home.needsYou"] a.tile').map((tile) =>
+                tile.textContent.replace(/\s+/g, ' ').trim(),
+            );
+        expect(needsOf(failed.element)).toEqual(['— Role requests to accept', '— Failed jobs']);
+        expect(deepText(failed.element)).not.toContain('Nothing needs you now.');
+        cleanup();
+
+        const loading = await page(
+            'home',
+            new FakeArea<HomeViewState, HomeIntentsPort>(homeState({ countsStatus: 'loading', counts: null })),
+        );
+        expect(needsOf(loading.element)).toEqual([
+            '… Historical images to approve',
+            '… Role requests to accept',
+            '… Suggestions to review',
+            '… Failed jobs',
+        ]);
+        expect(deepText(loading.element)).not.toContain('Nothing needs you now.');
     });
 });

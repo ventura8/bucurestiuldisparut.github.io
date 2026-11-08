@@ -67,6 +67,8 @@ export interface PhotosStore {
     close(): void;
     /** Whether leaving now would lose an edit. */
     hasUnsavedChanges(): boolean;
+    /** Photos of the upload queue still being sent: a reload would end them. */
+    busy(): boolean;
     destroy(): void;
 }
 
@@ -200,6 +202,10 @@ export class PhotosArea implements PhotosStore {
 
     hasUnsavedChanges(): boolean {
         return this.#editing.hasUnsavedChanges();
+    }
+
+    busy(): boolean {
+        return this.#context.uploads.busy();
     }
 
     destroy(): void {

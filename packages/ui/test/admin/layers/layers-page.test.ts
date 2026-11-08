@@ -229,8 +229,10 @@ describe('<hcm-layers-page> editor', () => {
         deep(deep(element, '.pane > .actions'), 'hcm-button').click();
         layers.set({ deletion: { phase: 'confirm', id: 'corona', label: 'Corona 1968', graceDays: 7 } });
         await updated(element);
-        const dialog = deep(element, 'hcm-confirm-dialog') as HTMLElement & { open: boolean; body: string };
+        const dialog = deep(element, 'hcm-confirm-dialog') as HTMLElement & { open: boolean; body: string; headline: string };
         expect(dialog.open).toBe(true);
+        // M18 item 5: a published image is deleted with the same question as at every other stage.
+        expect(dialog.headline).toMatch(/^Delete this image\? \(“Corona 1968/);
         expect(dialog.body).toContain('Its Mapbox tileset is deleted after 7 days unless you restore it.');
         dialog.dispatchEvent(new CustomEvent('hcm-confirm'));
         await updated(element);

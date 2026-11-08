@@ -291,6 +291,21 @@ describe('imagery.locateAgain: a failed crop', () => {
         },
     );
 
+    // Review of M18 item 3: with the pipeline unchanged a failed crop's search brings nothing new; its runs count as a retry's.
+    it('badPath_aCropThatFailsEachTimeStopsAtTheAttemptsLimit @S-A69-BAD-FAILED-CROP-ATTEMPTS', async () => {
+        const world = await parkedWorld({ ...failedAt('stitch'), attempt: JOB_MAX_ATTEMPTS }, { state: 'failed' });
+        store(world, SEGMENT);
+
+        expect(await failureOf(locateAgain(world))).toMatchObject({
+            details: { code: 'apiError.imagery.attemptsExhausted', params: { attempts: String(JOB_MAX_ATTEMPTS) } },
+        });
+        expect((await readJob(world, JOB))?.status).toBe('failed');
+
+        const left = await parkedWorld({ ...failedAt('stitch'), attempt: JOB_MAX_ATTEMPTS - 1 }, { state: 'failed' });
+        store(left, SEGMENT);
+        await expect(locateAgain(left)).resolves.toEqual({ status: 'queued', attempt: JOB_MAX_ATTEMPTS - 1 });
+    });
+
     it('badPath_aFailureAfterTheCropIsRetrysNotLocateAgains @S-A69-BAD-FAILED-LATER', async () => {
         const world = await parkedWorld(failedAt('georef'), { state: 'failed' });
         store(world, SEGMENT);

@@ -691,6 +691,13 @@ service cloud.firestore {
                     && request.resource.data.cancelRequested == true
                     && stamped(request.resource.data)
                     && !(resource.data.status in ['succeeded', 'failed', 'cancelled']);
+                // Review of M18 item 3: an editor placing points on a frame parked for them marks its job, so imagery.tick
+                // does not send it searching again under their hands (PLACING_POINTS_HOLD_MS; the time is the stamp's).
+                allow update: if isCityMember(city)
+                    && changedKeys().hasOnly(['placingPoints', 'updatedBy', 'updatedAt'])
+                    && request.resource.data.placingPoints == true
+                    && stamped(request.resource.data)
+                    && resource.data.status == 'awaiting_gcps';
 
                 // Redacted job log lines, written by the job runner only.
                 match /logs/{line} {

@@ -12,6 +12,7 @@ import {
     manifestStateDocSchema,
     SETUP_AREAS,
     setupStatusDocSchema,
+    type CityRole,
     type ManifestStateDoc,
     type ServiceState,
     type SetupArea,
@@ -34,7 +35,7 @@ const HOME_COUNTS = [
     // M3 (admin-imagery): the layer versions waiting for an admin, an approval or georeferencing points.
     ...['versionsToApprove', 'versionsNeedingPoints'],
     // M18 item 7 (docs/research/M18-improvements.md): What needs you, with M13's role requests and suggestions (a count the
-    // admin may not read, an owner's role requests for another admin, is a dash and never listed).
+    // admin's role may not read, `READERS`, is not asked: nothing there for them, a zero; a count that failed is a dash, listed).
     ...['roleRequests', 'suggestionsToReview'],
 ] as const;
 
@@ -55,6 +56,18 @@ const COUNT_QUERIES: Readonly<Record<HomeCount, { readonly collection: (cityId: 
     roleRequests: { collection: FIRESTORE_PATHS.roleRequests, query: { where: [['status', '==', 'pending']] } },
     suggestionsToReview: { collection: FIRESTORE_PATHS.suggestions, query: { where: [['status', '==', 'pending']] } },
 };
+
+/** The counts the rules let only some roles read (`firestore.rules`: `isCityOwner`, `isCityReviewer`). */
+const READERS: Partial<Record<HomeCount, readonly CityRole[]>> = {
+    roleRequests: ['owner'],
+    suggestionsToReview: ['owner', 'editor', 'moderator'],
+};
+
+/** Whether `role` may read the count (a role not known yet asks; the rules answer). */
+function readable(name: HomeCount, role: CityRole | null): boolean {
+    const readers = READERS[name];
+    return readers === undefined || role === null || readers.includes(role);
+}
 
 /** One integration's chip: its Setup area, its state (`missing` until it was ever checked) and why. */
 export interface HealthChip {
@@ -235,11 +248,13 @@ class HomeStore implements AreaStore<HomeState, HomeIntents> {
         const run = this.#counting;
         this.#cell.update({ countsStatus: 'loading' });
         const { store, cityId } = this.#services;
+        const asked = HOME_COUNTS.filter((name) => readable(name, this.#services.cityRole()));
         const values = await Promise.all(
-            HOME_COUNTS.map((name) => store.count(COUNT_QUERIES[name].collection(cityId), COUNT_QUERIES[name].query)),
+            asked.map((name) => store.count(COUNT_QUERIES[name].collection(cityId), COUNT_QUERIES[name].query)),
         );
         if (run === this.#counting) {
-            const counts = Object.fromEntries(HOME_COUNTS.map((name, index) => [name, values[index] ?? null])) as Record<
+            const read = new Map(asked.map((name, index) => [name, values[index] ?? null]));
+            const counts = Object.fromEntries(HOME_COUNTS.map((name) => [name, read.has(name) ? (read.get(name) ?? null) : 0])) as Record<
                 HomeCount,
                 number | null
             >;
