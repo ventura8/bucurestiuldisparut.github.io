@@ -12,4 +12,9 @@ export const M9_EXPORTS = [
     'imageryPassDocSchema',
     'passKeyOf',
     'passPrefixOf',
+    // M15 (`docs/research/M15-calibration-accuracy.md`, *Joint solve*): the frames a fit was joined to.
+    'ALIGNMENT_MAX_PARTNERS',
+    'ALIGNMENT_STATUSES',
+    'alignedWith',
+    'calibrationAlignmentSchema',
 ] as const;
