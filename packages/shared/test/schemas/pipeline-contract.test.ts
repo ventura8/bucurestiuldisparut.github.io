@@ -41,6 +41,7 @@ import {
 } from '../../src/schemas/georef.js';
 import { RASTER_PATHS, VERSION_FILES } from '../../src/schemas/imagery-paths.js';
 import { STUDIO_MAX_BYTES } from '../../src/schemas/imagery-publish.js';
+import { RECALIBRATE_MIN_CHECKS, RECALIBRATE_MIN_GAIN_M } from '../../src/schemas/imagery-recalibration.js';
 import { JOIN_MAX_PARTS } from '../../src/schemas/imagery-settings.js';
 import {
     DOWNLOAD_STEPS,
@@ -127,6 +128,8 @@ describe('the pipeline contract', () => {
             MAX_GCPS,
             MAX_SCAN_PIXELS,
             JOIN_MAX_PARTS,
+            RECALIBRATE_MIN_GAIN_M,
+            RECALIBRATE_MIN_CHECKS,
         });
     });
 

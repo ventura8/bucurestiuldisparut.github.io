@@ -102,7 +102,11 @@ export interface ImageryIntents {
     /** `imagery.import` of a free scene: the new version's id (the page opens it), or null when refused. */
     importScene(id: string): Promise<string | null>;
     retryBrowse(id: string): void;
-    approve(): Promise<boolean>;
+    /** M16: `acceptWorse`: the owner chose a recalibration not shown better. */
+    approve(acceptWorse?: boolean): Promise<boolean>;
+    /** M16: Refine automatically (the new version's id, or null), and the map between the new version and the current one. */
+    recalibrate(): Promise<string | null>;
+    toggleCurrent(): void;
     reject(): Promise<boolean>;
     choose(choice: PublishChoice): Promise<boolean>;
     studioDone(): Promise<boolean>;

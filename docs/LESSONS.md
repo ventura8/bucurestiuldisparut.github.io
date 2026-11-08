@@ -2682,3 +2682,28 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `withHashStory` ran after `withHashLayers` and called `withStory`, which moves the timeline (`withYear`).
     - Found by: review. Fix: with `layers=` in the hash, the story opens with the link's layers and their year (S-V50-BAD-TIMELINE-LINK-LAYERS, also in Playwright); opening a story moving the timeline now has its own e2e row (S-V50-HAPPY-TIMELINE).
     - **A link reproduces the sender's view: when two hash keys set the same state, the explicit one wins, and a test decodes a link with both.**
+449. **A helper shared by a lazy chunk and the chunk it loads made Rolldown emit a runtime chunk with no budget.**
+    - Seen: 2026-11-08, track/recal's build: `rolldown-runtime-<hash>.js` (0.2 KB) appeared beside `recalibrate-card`, and the budget gate failed on a chunk without a row.
+    - Cause: `recalibratable.ts` was imported statically by both `lazy-recalibrate.ts` (in `approval-map`) and `recalibrate-card.ts` (its own chunk), so the second chunk imported from the first and Rolldown hoisted its namespace helper into a chunk of its own.
+    - Found by: the bundle budget. Fix: the loader decides and passes the answer (`recalibrateCard(..., offered)`); the lazy chunk imports nothing from the chunk that loads it.
+    - **A lazy chunk imports nothing from the chunk that loads it: the loader passes what it decided.**
+450. **A refine of a version that was itself waiting could have replaced a published layer with a worse fit, unasked.**
+    - Seen: 2026-11-08, review of track/recal: Approve trusted the recalibration's own verdict, measured against its `basedOn`; a Refine of a waiting Save compared with that Save, read `better`, and replaced the published version without `acceptWorse`.
+    - Found by: code review; every test refined the published version itself, where `basedOn` and the published version are one.
+    - Fix and pin: figures count only against the layer's published version (`againstCurrent`, in the policy and in Approve's transaction); `recalibrate-guards.test.ts` (S-A89-BAD-WORSE-NEEDS-CHOICE).
+    - **A comparison guards a replacement only when it is measured against the thing being replaced: check what the "before" names.**
+451. **A local worker could have cancelled another layer's waiting version through a field it was allowed to write whole.**
+    - Seen: 2026-11-08, review of track/recal: `WORKER_VERSION_FIELDS` listed `recalibration`, so a worker could write `recalibration.replaces`, which the server's policy obeyed with no check that it was the version's own base.
+    - Found by: code review; the allow-list checks top-level names only, and no test wrote a server-owned sub-field.
+    - Fix and pin: `worker.step` refuses a change to the server's part (`route`, `replaces`, `points`), and the policy replaces only the own `basedOn` on the same layer; `step.test.ts`, `recalibrate-guards.test.ts`.
+    - **A field shared by the server and the worker is split by sub-field in the allow-list, and the server never acts on a pointer the worker could write.**
+452. **A guard that moved out of a transaction let two clicks start two competing versions.**
+    - Seen: 2026-11-08, review of track/recal: Refine on a waiting version wrote no document the layer guard read, so only the busy query (outside the transaction) stood between two starts; a publish then cleared any pending mark, not only its own.
+    - Found by: code review; the tests started refines one after another, where the query sees the first.
+    - Fix and pin: the waiting version records `refining`, read in the start's transaction; a publish clears only its own mark (`recalibrate-guards.test.ts`, `publish.test.ts`; S-A89-BAD-BUSY, S-A89-BAD-DECLINE-KEEPS-WAITING).
+    - **When a write stops touching the document a guard reads, give the guard another document to read in the same transaction; a test of a race stales the query on purpose.**
+453. **Two error messages told the owner something false: a join's advice could not be followed, and "too few checks" read as "the image did not match".**
+    - Seen: 2026-11-08, review of track/recal: `joinRecalibrate` said to refine each frame (a published join's frames are `joined`, refused), and a refine with too few checks to compare ended `refineRefused`.
+    - Found by: code review; the tests checked the codes, not what the words promise.
+    - Fix and pin: the join's words promise no route; a new code `refineUnmeasured` (`recalibrate-guards.test.ts`, `test_recalibrate.py`).
+    - **An error's words are a contract too: each refusal says the true reason, and advice names only a path a test walks.**

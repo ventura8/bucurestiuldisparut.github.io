@@ -33,6 +33,7 @@ import { compact } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { enqueuePublish, type PublishReason } from './publish-queue.js';
+import { replaceWaitingBase } from './recalibrate-replace.js';
 import { IMAGERY_WRITER, stampOf, versionIdOf } from './records.js';
 
 export type ApprovalDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'tasks'>;
@@ -117,9 +118,9 @@ function evidenceWithin(version: Rendered, threshold: number): boolean {
     return version.join !== undefined && joinWithin(version.join, threshold);
 }
 
-/** True when the version may be published without anyone's click. */
+/** True when the version may be published without anyone's click. M16: a recalibration is first seen beside the current one, always. */
 function autoApproves(version: Rendered, settings: ImagerySettings): boolean {
-    return settings.autoPublish && evidenceWithin(version, settings.rmseThresholdM);
+    return settings.autoPublish && version.recalibration === undefined && evidenceWithin(version, settings.rmseThresholdM);
 }
 
 /** The checkpoint error a version answers for: its georeference's, or the worst frame's of a join. */
@@ -176,8 +177,12 @@ async function policyIn(transaction: DocumentTransaction, cityId: string, jobId:
     if (awaiting === undefined) {
         return false;
     }
+    // M16 (docs/research/M16-recalibrate.md §4, §5): a refine of a version waiting for approval replaces it now that it is rendered, and a
+    // recalibration keeps its figures only when they measure against the layer's published version.
+    const recorded = await replaceWaitingBase(transaction, cityId, awaiting.version, now);
     const estimated: Rendered = {
-        ...awaiting.version,
+        ...recorded,
+        output: awaiting.version.output,
         estimate: estimateOf(awaiting.version.output, now),
         ...stampOf(IMAGERY_WRITER, now),
     };

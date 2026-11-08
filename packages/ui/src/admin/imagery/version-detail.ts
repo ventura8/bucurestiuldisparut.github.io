@@ -6,7 +6,7 @@
  * preview's opacity on the map, the job's log as text, and **Cancel** while it runs (asked first; once Mapbox was asked
  * to publish, its processing cannot be stopped). M8: a join's frames, and a frame's offer to join its date's others. M9: how the
  * frame was found, or that it was not (`calibration-card.ts`). M12: what the map shows of it, its share of the city, Actual pixels and See
- * the image (`image-view.ts`).
+ * the image (`image-view.ts`). M16: Calibrate again, and a recalibration's figures (`recalibrate/`).
  */
 import { JOB_MAX_ATTEMPTS, type AdminContentKey, type Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
@@ -23,6 +23,7 @@ import { labelText, numberText, versionStateText, waitText, wordedWait } from '.
 import { liveJoin, versionMark } from './join/live-join.js';
 import { lazyJoin } from './join/lazy-card.js';
 import { notFoundPane } from './not-found.js';
+import { lazyRecalibrate } from './recalibrate/lazy-recalibrate.js';
 import { when, withValue } from './when.js';
 import { loadWorkerElements } from '../worker/load.js';
 
@@ -389,7 +390,7 @@ function body(shown: Shown): TemplateResult {
         </div>
         ${runPlace(shown)} ${refusal(shown)}
         ${withValue(version, (known) => lazyJoin(context, known, (chunk) => chunk.versionJoin(context, known, job)))} ${imageView(shown)}
-        ${outcome(shown)} ${opacity(shown)} ${steps(locale, job)}
+        ${withValue(version, (known) => lazyRecalibrate(context, page, known))} ${outcome(shown)} ${opacity(shown)} ${steps(locale, job)}
         <h3>${contentText(locale, 'adminContent.jobs.log')}</h3>
         ${logs(locale, page.logs.items)} ${cancel(shown)}
     </div>`;

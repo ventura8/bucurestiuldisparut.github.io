@@ -309,6 +309,7 @@ export * from './schemas/assist.js';
 export * from './schemas/notifications.js';
 export * from './schemas/worker.js';
 export * from './schemas/imagery-calibration.js';
+export * from './schemas/imagery-recalibration.js';
 export * from './schemas/imagery-join.js';
 export * from './schemas/imagery-plan.js';
 // M5 (docs/research/M5-interfaces.md): many cities in one project, the static export, engine releases on jsDelivr (every

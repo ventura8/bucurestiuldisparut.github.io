@@ -20,6 +20,7 @@ import type {
     OrderState,
     PublishChoice,
     RankReasonEntry,
+    Recalibration,
     SceneAcquisitionState,
     Sensor,
     ServiceState,
@@ -180,6 +181,10 @@ export interface VersionViewPort {
     readonly partOf: string | null;
     readonly parts: readonly JoinPart[];
     readonly join: JoinReport | null;
+    /** M16: the version it recalibrates, how and with what figures, and its own public archive (a published one). */
+    readonly basedOn: string | null;
+    readonly recalibration: Recalibration | null;
+    readonly publicUrl: string | null;
 }
 
 export interface JobViewPort {
@@ -224,7 +229,7 @@ interface UsagePort {
     readonly reservations: Readonly<Record<string, { readonly computeUnits: number }>>;
 }
 
-type VersionActionPort = 'approve' | 'reject' | 'choose' | 'studioDone' | 'download' | 'retry' | 'locate' | 'cancel';
+type VersionActionPort = 'approve' | 'reject' | 'choose' | 'studioDone' | 'download' | 'retry' | 'locate' | 'cancel' | 'recalibrate';
 
 export interface VersionPagePort {
     readonly id: string;
@@ -235,6 +240,9 @@ export interface VersionPagePort {
     readonly acting: VersionActionPort | null;
     readonly refusal: AdminNoticeInputPort | null;
     readonly downloaded: boolean;
+    /** M16: the version a recalibration would replace, and which of the two the map shows. */
+    readonly current: VersionViewPort | null;
+    readonly showing: 'new' | 'current';
 }
 
 /** M12: `small`: only the small picture exists; `loading`: on its way; `ready`: its tiles are on the map; `failed`: why not. */
@@ -302,8 +310,12 @@ export interface ImageryIntentsPort {
     retry(): void;
     importScene(id: string): Promise<string | null>;
     retryBrowse(id: string): void;
-    approve(): Promise<boolean>;
+    /** M16: `acceptWorse`: the owner chose a recalibration not shown better. */
+    approve(acceptWorse?: boolean): Promise<boolean>;
     reject(): Promise<boolean>;
+    /** M16: Refine automatically (the new version's id, or null when refused), and the map between the new version and the current one. */
+    recalibrate(): Promise<string | null>;
+    toggleCurrent(): void;
     choose(choice: PublishChoice): Promise<boolean>;
     studioDone(): Promise<boolean>;
     download(): Promise<boolean>;

@@ -48,6 +48,11 @@ class StepFailedError(Exception):
         self.params = {key: str(value) for key, value in (params or {}).items()}
 
 
+class DeclinedError(StepFailedError):
+    """M16 (docs/research/M16-recalibrate.md §3): the step chose to render nothing (a refine found no better fit, or its proof did not
+    hold). The job and its version end `cancelled` with this code, so the layer is released and the current version stays as it was."""
+
+
 class RunStoppedError(Exception):
     """The run must stop at this checkpoint."""
 

@@ -112,6 +112,10 @@ MAX_SCAN_PIXELS: Final = 200_000
 MAX_JOB_LOGS: Final = 500
 # At most this many frames of one date join into one layer (`JOIN_MAX_PARTS`, docs/research/M8-join-interfaces.md §2).
 JOIN_MAX_PARTS: Final = 8
+# M16 (docs/research/M16-recalibrate.md §1, §2): a recalibrated fit is better only by this much on the same checks (ground metres), and a
+# manual one compares on at least this many disabled pairs (`imagery-recalibration.ts`).
+RECALIBRATE_MIN_GAIN_M: Final = 1
+RECALIBRATE_MIN_CHECKS: Final = 3
 # How a job waits for the USGS download to be prepared, and how long a SIGTERM'd job waits before it runs again.
 USGS_PREPARING_MINUTES: Final = 10
 REQUEUE_SECONDS: Final = 60
@@ -230,6 +234,11 @@ class Errors:
     JOIN_SEAM_TOO_FAR: Final = "apiError.imagery.joinSeamTooFar"
     JOIN_NO_FRAMES: Final = "apiError.imagery.joinNoFrames"
     JOIN_NO_ROOM: Final = "apiError.imagery.joinNoRoom"
+    # M16: a refine that renders nothing ends declined with one of these (`jobs.DeclinedError`).
+    NOT_IMPROVED: Final = "apiError.imagery.notImproved"
+    REFINE_REFUSED: Final = "apiError.imagery.refineRefused"
+    # Too few held-out checks to compare the two fits: the tiles agreed, only the comparison was impossible.
+    REFINE_UNMEASURED: Final = "apiError.imagery.refineUnmeasured"
 
 
 def pipeline_steps_of(job_type: str) -> tuple[str, ...]:

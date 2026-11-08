@@ -16,6 +16,7 @@ import {
 import { referenceOsmPng, referenceS2Jpeg, scanPreviewJpeg, smallTiff, warpedPreviewPng } from './imagery-images.js';
 import type { Run } from './imagery-run.js';
 import { joinReportOf } from './imagery-standin-join.js';
+import { recalibrated } from './imagery-standin-recalibrate.js';
 import { uploadObject, type StoredObject } from './imagery-store.js';
 
 /**
@@ -296,6 +297,9 @@ async function georeference(run: Run): Promise<StepResult> {
         return 'next';
     }
     const rmse = checkpointRmse(run);
+    if (run.version['recalibration'] !== undefined) {
+        return recalibrated(run, rmse);
+    }
     if (hasManualPoints(run) || (run.type === 'regeoref' && run.version['georef'] !== undefined)) {
         const georef = run.version['georef'] as Record<string, unknown> & { gcps: Gcp[] };
         const disabled = georef.gcps.filter((gcp) => !gcp.enabled).length;

@@ -6,7 +6,7 @@
  * the `mapbox-choices` chunk. M8: a join's section says what it measured (`join/join-card.ts`), and M9 there too: why a frame under the
  * threshold still waits.
  */
-import type { Locale } from '@hcm/shared';
+import { recalibrationVerdict, type Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { contentText } from '../shell/text.js';
@@ -70,10 +70,26 @@ function deleteButton(context: ImageryContext, page: VersionPagePort): TemplateR
     >`;
 }
 
-function decision(context: ImageryContext, page: VersionPagePort): TemplateResult {
-    const { locale, intents } = context;
+/** M16 (`docs/research/M16-recalibrate.md` §4): a recalibration not shown better replaces the current one only by the owner's choice. */
+function approve(context: ImageryContext, version: VersionViewPort): void {
+    const { recalibration } = version;
+    if (recalibration !== null && recalibrationVerdict(recalibration) !== 'better') {
+        context.ask('approveWorse');
+        return;
+    }
+    void context.intents?.approve();
+}
+
+function decision(context: ImageryContext, page: VersionPagePort, version: VersionViewPort): TemplateResult {
+    const { locale } = context;
     return html`<div class="actions">
-        <hcm-button variant="filled" icon="approval" ?disabled=${busy(context, page)} @click=${() => void intents?.approve()}
+        <hcm-button
+            variant="filled"
+            icon="approval"
+            ?disabled=${busy(context, page)}
+            @click=${() => {
+                approve(context, version);
+            }}
             >${contentText(locale, 'adminContent.imagery.approve')}</hcm-button
         >
         ${deleteButton(context, page)}
@@ -113,7 +129,7 @@ export function approvalCard(context: ImageryContext, page: VersionPagePort, ver
         ${pairsText(context.locale, version)} ${costText(context, page, version)}
         ${
             guard === null
-                ? decision(context, page)
+                ? decision(context, page, version)
                 : html`${lazyMapboxChoices(context, (chunk) => chunk.guarded(context, page, guard, version))}
                       <div class="actions">${deleteButton(context, page)}</div>`
         }

@@ -164,6 +164,15 @@ the worker's callables, `roles/run.viewer` for `fn-admin@`; the record answers o
 `worker-local` chunk) posts a fresh one-time code to a worker that takes one. Provision's update record waits for the
 server the same update installs.
 
+**Recalibrating a published layer (M16, `docs/research/M16-recalibrate.md`).** A published version, or one waiting for approval, is
+calibrated again from its stored scan in one of three ways, each a new `regeoref` version of the same layer carrying `recalibration`:
+Refine automatically (`imagery.recalibrate`, route `auto`: the proof and the dense matching rerun from the current fit, and only a
+better fit renders), Snap my points (route `points`: the admin's rough points from the georeferencer bend the start, the tiles snap
+around them) and the georeferencer's Save (route `manual`). The pipeline measures the current fit and the new one on the same
+held-out checks (`steps/recalibrate.py`); a refine with nothing better ends `cancelled` with its reason and changes nothing. The
+version's page shows both figures and swaps its one map between the new version and the current one at full detail; a recalibration
+never publishes itself, and one not shown better replaces the current layer only by the owner's choice (`acceptWorse`).
+
 ## Security
 
 **Roles (M13, [research/M13-roles.md](research/M13-roles.md)).** A city has owners, editors, moderators and uploaders. Everything an uploader adds waits in a review queue, private until approved: their pictures stay in the private bucket, and the manifest builder drops any pending or refused document whatever its `published` says. A moderator reviews, edits or unpublishes any photo or place and reaches no settings, roles, imagery, Setup or billing. Anyone with a Google account can ask for a role or suggest a photo's place or a correction on the Contribute page, a page of the admin; the public map holds only a link to it. Where an upload goes is decided when it is processed, from who uploaded it; an approval is of the version the reviewer saw; an approved suggestion can be reverted on its own, and a blocked account let back. **Stories (M17, [research/M17-stories.md](research/M17-stories.md))** follow the same rules as places: an uploader's wait for review, a moderator edits and reverts them, and their text is a safe format the viewer renders with its own templates, its pictures the city's own photos only.

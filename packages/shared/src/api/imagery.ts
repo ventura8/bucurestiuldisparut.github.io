@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { JOB_STATUSES, type JobDoc } from '../schemas/firestore-ops.js';
 import { USGS_DATASETS } from '../schemas/firestore.js';
 import { cropRingSchema, enabledGcps, GEOREF_TRANSFORMS, gcpSchema, MAX_GCPS, MIN_GCPS } from '../schemas/georef.js';
+import { RECALIBRATE_MAX_POINTS, RECALIBRATE_STARTED, roughPointSchema } from '../schemas/imagery-recalibration.js';
 import { JOIN_MAX_PARTS } from '../schemas/imagery-settings.js';
 import { LAYER_VERSION_STATES, PUBLISH_CHOICES } from '../schemas/imagery.js';
 import { cityIdSchema } from '../schemas/paths.js';
@@ -94,6 +95,8 @@ export const imageryImportResponseSchema = z.strictObject({ jobId: idSchema, ver
 
 /** `imagery.approve` and `imagery.reject` (admin) take one version. */
 export const imageryVersionRequestSchema = z.strictObject(versionIdField);
+/** M16: Approve of a recalibration not shown to be better (`recalibrationVerdict`) needs the owner's `acceptWorse`. */
+export const imageryApproveRequestSchema = z.strictObject({ ...versionIdField, acceptWorse: z.literal(true).optional() });
 export const imageryApproveResponseSchema = z.strictObject({ state: z.enum(LAYER_VERSION_STATES), jobId: idSchema });
 export const imageryRejectResponseSchema = z.strictObject({ state: z.literal('rejected') });
 
@@ -141,6 +144,19 @@ export const imagerySaveGcpsResponseSchema = z.strictObject({
     /** True when the waiting job continued; false when a new job started. */
     resumed: z.boolean(),
 });
+
+/**
+ * M16 (`imagery.recalibrate`, `docs/research/M16-recalibrate.md`): a published version, or one waiting for approval, calibrated again from its
+ * scan: Refine automatically (`auto`), or the admin's rough points snapped by the dense matching (`points`). A new `regeoref` version.
+ */
+export const imageryRecalibrateRequestSchema = z
+    .strictObject({
+        ...versionIdField,
+        route: z.enum(RECALIBRATE_STARTED),
+        points: z.array(roughPointSchema).min(1).max(RECALIBRATE_MAX_POINTS).optional(),
+    })
+    .refine((request) => (request.route === 'points') === (request.points !== undefined), coded('validation.value', ['points']));
+export const imageryRecalibrateResponseSchema = z.strictObject({ jobId: idSchema, versionId: idSchema });
 
 /** `imagery.crop` (admin): render the layer's current version again inside a polygon (`gdalwarp -cutline`). */
 export const imageryCropRequestSchema = z.strictObject({ cityId: cityIdSchema, layerId: idSchema, ring: cropRingSchema });

@@ -918,6 +918,20 @@
             "name": "Stories in the admin: written, published, reviewed and reverted like photos and places",
             "milestone": "M17",
             "source": "the owner's decision of 2026-11-08: stories; docs/research/M17-stories.md §§1, 2, 4, 6"
+        },
+        {
+            "id": "A89",
+            "area": "admin",
+            "name": "Recalibrate a published layer: Refine automatically, Snap my points, every pair by hand, never replaced by a worse fit unchosen",
+            "milestone": "M16",
+            "source": "the owner, 2026-11-08: calibrate a satellite image even more after publishing (manual, automatic, semi-auto); docs/research/M16-recalibrate.md"
+        },
+        {
+            "id": "P19",
+            "area": "pipeline",
+            "name": "A recalibration measures the current fit and the new one on the same checks; a refine with nothing better renders nothing",
+            "milestone": "M16",
+            "source": "the owner, 2026-11-08: calibrate a satellite image even more after publishing (manual, automatic, semi-auto); docs/research/M16-recalibrate.md"
         }
     ],
     "scenarios": [
@@ -14274,6 +14288,171 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The review of 2026-11-08. Tests: e2e/admin/specs/stories/stories.spec.ts, packages/ui/test/admin/stories/stories-page.test.ts."
+        },
+        {
+            "id": "S-A89-HAPPY-REFINE",
+            "behaviour": "A89",
+            "area": "admin",
+            "path": "happy",
+            "title": "Refine automatically on a version waiting for approval opens a new version of the same layer",
+            "asserts": "Refine automatically -> imagery.recalibrate route auto, the page opens the new regeoref version, which records route auto and waits for approval",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M16 (docs/research/M16-recalibrate.md). Test: e2e/admin/specs/imagery/recalibrate.spec.ts; the units: functions/test/imagery/recalibrate.test.ts, packages/ui/test/admin/imagery/recalibrate.test.ts, packages/admin/test/imagery/recalibrate.test.ts."
+        },
+        {
+            "id": "S-A89-BAD-BUSY",
+            "behaviour": "A89",
+            "area": "admin",
+            "path": "bad",
+            "title": "A second recalibration while one runs is refused, the layer busy",
+            "asserts": "imagery.recalibrate while the layer's refine runs -> apiError.layers.busy, nothing written",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M16 (docs/research/M16-recalibrate.md). Tests: functions/test/imagery/recalibrate.test.ts."
+        },
+        {
+            "id": "S-A89-BAD-NOT-IMPROVED",
+            "behaviour": "A89",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refine with nothing better says so in words and renders nothing",
+            "asserts": "the stand-in's refine declines -> the new version cancelled with apiError.imagery.notImproved {before, after} in words; the layer released; worker.step accepts that ending only for a regeoref with a decline's code",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M16 (docs/research/M16-recalibrate.md). Test: e2e/admin/specs/imagery/recalibrate.spec.ts; the units: functions/test/imagery/recalibrate.test.ts, packages/ui/test/admin/imagery/recalibrate.test.ts, packages/admin/test/imagery/recalibrate.test.ts. Also functions/test/worker/step.test.ts."
+        },
+        {
+            "id": "S-A89-HAPPY-POINTS",
+            "behaviour": "A89",
+            "area": "admin",
+            "path": "happy",
+            "title": "Snap my points sends the points placed since the georeferencer opened as rough points",
+            "asserts": "new manual pairs on a published version -> imagery.recalibrate route points with them; the new version records them; its page says how many pairs were found around them",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M16 (docs/research/M16-recalibrate.md). Tests: functions/test/imagery/recalibrate.test.ts; packages/ui/test/admin/imagery/recalibrate.test.ts, packages/admin/test/imagery/recalibrate.test.ts."
+        },
+        {
+            "id": "S-A89-BAD-POINTS-REFUSED",
+            "behaviour": "A89",
+            "area": "admin",
+            "path": "bad",
+            "title": "Rough points off the scan, points without their route, or none are refused before anything is written",
+            "asserts": "a point off the scan -> apiError.imagery.gcpOutside; points route without points -> invalidRequest; no new point -> the georeferencer says what to place",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M16 (docs/research/M16-recalibrate.md). Tests: functions/test/imagery/recalibrate.test.ts."
+        },
+        {
+            "id": "S-A89-HAPPY-APPROVE-BETTER",
+            "behaviour": "A89",
+            "area": "admin",
+            "path": "happy",
+            "title": "A recalibration shows both fits on the same checks and a better one is approved in one click, never on its own",
+            "asserts": "before 28.4 m, after 6.2 m on the same 3 checks in words -> the policy leaves it waiting; Approve publishes it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M16 (docs/research/M16-recalibrate.md). Test: e2e/admin/specs/imagery/recalibrate.spec.ts; the units: functions/test/imagery/recalibrate.test.ts, packages/ui/test/admin/imagery/recalibrate.test.ts, packages/admin/test/imagery/recalibrate.test.ts."
+        },
+        {
+            "id": "S-A89-BAD-WORSE-NEEDS-CHOICE",
+            "behaviour": "A89",
+            "area": "admin",
+            "path": "bad",
+            "title": "A recalibration not shown better replaces the current one only by the owner's choice",
+            "asserts": "worse or unmeasured -> imagery.approve refuses apiError.imagery.notBetter without acceptWorse; the page asks first and sends it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M16 (docs/research/M16-recalibrate.md). Tests: functions/test/imagery/recalibrate.test.ts; packages/ui/test/admin/imagery/recalibrate.test.ts."
+        },
+        {
+            "id": "S-A89-HAPPY-REPLACES-WAITING",
+            "behaviour": "A89",
+            "area": "admin",
+            "path": "happy",
+            "title": "A refine of a version waiting for approval replaces it only once the new one is rendered",
+            "asserts": "Refine -> the waiting version and the layer's pending mark stay; the new version rendered -> the waiting one cancelled, the layer pending on the new one",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M16 (docs/research/M16-recalibrate.md). Test: e2e/admin/specs/imagery/recalibrate.spec.ts; the units: functions/test/imagery/recalibrate.test.ts, packages/ui/test/admin/imagery/recalibrate.test.ts, packages/admin/test/imagery/recalibrate.test.ts."
+        },
+        {
+            "id": "S-A89-BAD-DECLINE-KEEPS-WAITING",
+            "behaviour": "A89",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refine that declines leaves the version waiting for approval as it was",
+            "asserts": "the refine declines -> the waiting version still awaiting approval with the layer's pending mark; one approved meanwhile is left as it is",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M16 (docs/research/M16-recalibrate.md). Test: e2e/admin/specs/imagery/recalibrate.spec.ts; the units: functions/test/imagery/recalibrate.test.ts, packages/ui/test/admin/imagery/recalibrate.test.ts, packages/admin/test/imagery/recalibrate.test.ts."
+        },
+        {
+            "id": "S-A89-BAD-JOIN",
+            "behaviour": "A89",
+            "area": "admin",
+            "path": "bad",
+            "title": "A join, an upload on its own georeference or a version without a scan is not recalibrated",
+            "asserts": "imagery.recalibrate -> apiError.imagery.joinRecalibrate (refined frame by frame), apiError.imagery.noScan, apiError.imagery.versionState; the page offers nothing",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M16 (docs/research/M16-recalibrate.md). Tests: functions/test/imagery/recalibrate.test.ts."
+        },
+        {
+            "id": "S-P19-HAPPY-REFINE",
+            "behaviour": "P19",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Refine reruns the proof and the dense matching from the current fit and renders the better fit",
+            "asserts": "the current pairs 75 m off the truth -> the proof holds, after under 15 m and before over 40 m on the same held-out checks, the version awaits approval",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M16 (docs/research/M16-recalibrate.md). Tests: pipeline/tests/integration/test_recalibrate_job.py, pipeline/tests/unit/test_recalibrate.py."
+        },
+        {
+            "id": "S-P19-BAD-NOT-IMPROVED",
+            "behaviour": "P19",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A refine not better by a metre on the same checks declines and renders nothing",
+            "asserts": "the current fit exact -> the job and version cancelled with apiError.imagery.notImproved {before, after}, the georef step skipped, no output, the current version untouched",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M16 (docs/research/M16-recalibrate.md). Tests: pipeline/tests/integration/test_recalibrate_job.py, pipeline/tests/unit/test_recalibrate.py."
+        },
+        {
+            "id": "S-P19-HAPPY-POINTS",
+            "behaviour": "P19",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Rough points bend the start and the tiles snap around them",
+            "asserts": "the current fit 1.1 km off, three rough points 25 m off -> proved, after under 15 m, before over 700 m, pairs proposed near the points",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M16 (docs/research/M16-recalibrate.md). Tests: pipeline/tests/integration/test_recalibrate_job.py, pipeline/tests/unit/test_recalibrate.py."
+        },
+        {
+            "id": "S-P19-BAD-REFUSED",
+            "behaviour": "P19",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A refine whose tiles are not proved declines; a version without a scan fails",
+            "asserts": "a reference of another place -> apiError.imagery.refineRefused, cancelled; no scan -> apiError.imagery.noScan; points in a line -> degenerateGcps",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M16 (docs/research/M16-recalibrate.md). Tests: pipeline/tests/integration/test_recalibrate_job.py, pipeline/tests/unit/test_recalibrate.py."
+        },
+        {
+            "id": "S-P19-HAPPY-MANUAL-FIGURES",
+            "behaviour": "P19",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A manual recalibration is fitted as saved with both fits on its disabled pairs",
+            "asserts": "four disabled pairs -> before and after recorded; two -> not compared, said in the log",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M16 (docs/research/M16-recalibrate.md). Tests: pipeline/tests/integration/test_recalibrate_job.py, pipeline/tests/unit/test_recalibrate.py."
         }
     ]
 }

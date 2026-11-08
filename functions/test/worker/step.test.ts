@@ -237,6 +237,76 @@ describe('worker.step update', () => {
     });
 });
 
+describe('worker.step and a refine that declines (M16)', () => {
+    const declined = {
+        code: 'apiError.imagery.notImproved',
+        message: '17.0 m against the current 17.2 m',
+        params: { before: '17.2', after: '17.0' },
+    };
+
+    it('happyPath_aRefineWithNothingBetterEndsCancelledWithItsReason @S-A89-BAD-NOT-IMPROVED', async () => {
+        const world = await held({ type: 'regeoref', params: { basedOn: 'v-current' } });
+
+        await expect(
+            update(world, JOB_PATH, { status: 'cancelled', finishedAt: at(NOW), error: declined, lease: DELETE }),
+        ).resolves.toEqual({
+            ok: true,
+        });
+        await expect(update(world, VERSION_PATH, { state: 'cancelled', error: { code: declined.code } })).resolves.toEqual({ ok: true });
+        await expect(readJob(world, JOB)).resolves.toMatchObject({ status: 'cancelled', error: { code: declined.code } });
+    });
+
+    it('happyPath_tooFewChecksToCompareIsADeclineOfItsOwn @S-P19-BAD-NOT-IMPROVED', async () => {
+        const world = await held({ type: 'regeoref', params: { basedOn: 'v-current' } });
+        const unmeasured = { code: 'apiError.imagery.refineUnmeasured', message: 'too few checks' };
+
+        await expect(
+            update(world, JOB_PATH, { status: 'cancelled', finishedAt: at(NOW), error: unmeasured, lease: DELETE }),
+        ).resolves.toEqual({
+            ok: true,
+        });
+    });
+
+    it('badPath_noOtherRunEndsCancelledUnasked @S-A89-BAD-NOT-IMPROVED', async () => {
+        const importing = await held();
+        const failed = await held({ type: 'regeoref', params: { basedOn: 'v-current' } });
+        const failure = { code: 'apiError.internal', message: 'x' };
+
+        expect(await codeOf(update(importing, JOB_PATH, { status: 'cancelled', error: declined }))).toBe('apiError.worker.refused');
+        expect(await codeOf(update(failed, JOB_PATH, { status: 'cancelled', error: failure }))).toBe('apiError.worker.refused');
+    });
+});
+
+describe("worker.step and a recalibration's server part (M16)", () => {
+    const asked = { route: 'auto', replaces: 'v-base' } as const;
+    const measured = { before: { rmseM: 18, checks: 6 }, after: { rmseM: 12, checks: 6 }, tiles: { agreed: 40, tried: 50 } };
+
+    it('happyPath_aRefineAddsWhatItMeasured @S-A89-HAPPY-REPLACES-WAITING', async () => {
+        const world = await held({ type: 'regeoref', params: { basedOn: 'v-base' } }, { recalibration: asked });
+
+        await expect(update(world, VERSION_PATH, { recalibration: { ...asked, ...measured } })).resolves.toEqual({ ok: true });
+        await expect(readVersion(world, JOB)).resolves.toMatchObject({ recalibration: { ...asked, ...measured } });
+    });
+
+    it.each([
+        ['names another version to replace', { recalibration: { ...asked, replaces: 'v-other', ...measured } }],
+        ['changes the route', { 'recalibration.route': 'manual' }],
+        ['drops the rough points it was given', { recalibration: { route: 'points' } }],
+    ])('badPath_aRunThat_%s_isRefused @S-A89-BAD-DECLINE-KEEPS-WAITING', async (_case, fields) => {
+        const world = await held({ type: 'regeoref', params: { basedOn: 'v-base' } }, { recalibration: asked });
+
+        expect(await codeOf(update(world, VERSION_PATH, fields))).toBe('apiError.worker.refused');
+    });
+
+    it('badPath_anyOtherJobForgingARecalibrationIsRefused @S-A89-BAD-DECLINE-KEEPS-WAITING', async () => {
+        const world = await held();
+        const forged = { route: 'manual', replaces: 'v-elsewhere', before: { rmseM: 50, checks: 3 }, after: { rmseM: 1, checks: 3 } };
+
+        expect(await codeOf(update(world, VERSION_PATH, { recalibration: forged }))).toBe('apiError.worker.refused');
+        expect((await readVersion(world, JOB))?.recalibration).toBeUndefined();
+    });
+});
+
 describe('worker.step and a pass (M9)', () => {
     const job = { params: { entityId: 'D3C1203-300415F006', dataset: 'declassiii', sensor: 'KH-9-pan' } };
     const path = FIRESTORE_PATHS.imageryPass(CITY, 'D3C1203-300415-F-1975-08-20');

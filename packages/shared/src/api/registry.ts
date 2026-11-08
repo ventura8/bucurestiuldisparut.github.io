@@ -77,6 +77,9 @@ import {
     imageryPreviewUrlResponseSchema,
     imageryStudioDoneResponseSchema,
     imageryVersionRequestSchema,
+    imageryApproveRequestSchema,
+    imageryRecalibrateRequestSchema,
+    imageryRecalibrateResponseSchema,
 } from './imagery.js';
 import {
     assistSuggestTitleRequestSchema,
@@ -266,7 +269,7 @@ export const ADMIN_CALLABLES = {
     'imagery.search': cityEditor('fn-imagery', imagerySearchRequestSchema, imagerySearchResponseSchema),
     'imagery.browse': cityEditor('fn-imagery', imageryBrowseRequestSchema, imageryBrowseResponseSchema),
     'imagery.import': cityEditor('fn-imagery', imageryImportRequestSchema, imageryImportResponseSchema),
-    'imagery.approve': cityEditor('fn-imagery', imageryVersionRequestSchema, imageryApproveResponseSchema),
+    'imagery.approve': cityEditor('fn-imagery', imageryApproveRequestSchema, imageryApproveResponseSchema),
     'imagery.reject': cityEditor('fn-imagery', imageryVersionRequestSchema, imageryRejectResponseSchema),
     'imagery.choose': cityEditor('fn-imagery', imageryChooseRequestSchema, imageryChooseResponseSchema, 'consume'),
     'imagery.studioDone': cityEditor('fn-imagery', imageryVersionRequestSchema, imageryStudioDoneResponseSchema),
@@ -278,6 +281,8 @@ export const ADMIN_CALLABLES = {
     'imagery.locateAgain': cityEditor('fn-imagery', imageryVersionRequestSchema, imageryRetryResponseSchema),
     // M12 (docs/research/M12-own-tiles.md): the private archive, signed for an hour, so an image is seen before it is approved.
     'imagery.previewUrl': cityEditor('fn-imagery', imageryVersionRequestSchema, imageryPreviewUrlResponseSchema),
+    // M16 (docs/research/M16-recalibrate.md): Refine automatically, or the admin's rough points snapped, on a published layer.
+    'imagery.recalibrate': cityEditor('fn-imagery', imageryRecalibrateRequestSchema, imageryRecalibrateResponseSchema),
     'imagery.probeTiles': cityEditor('fn-imagery', imageryProbeRequestSchema, imageryProbeResponseSchema),
     // M5: the budget guard is the project's (docs/research/M5-interfaces.md §1.3).
     'imagery.resumeGuard': projectOwner('fn-imagery', imageryResumeGuardRequestSchema, imageryResumeGuardResponseSchema, 'consume'),

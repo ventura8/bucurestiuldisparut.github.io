@@ -190,8 +190,16 @@ function layerAfter(held: Held, finish: Finish, order: number, stamp: Stamp): La
         status: 'ready' as const,
         ...stamp,
     };
-    const base = layer === undefined ? newLayer(version, order, stamp) : omit(layer, ['pendingVersion']);
+    const base = layer === undefined ? newLayer(version, order, stamp) : withoutOwnMark(layer, finish.versionId);
     return { ...base, ...tiles };
+}
+
+/**
+ * The layer without this version's pending mark. M16 (`docs/research/M16-recalibrate.md` §5): another version's stays, a refine of this one
+ * that took the mark while it was approved and publishing (`recalibrate-replace.ts`), or it would wait for approval with no mark on its layer.
+ */
+function withoutOwnMark(layer: LayerDoc, versionId: string): LayerDoc {
+    return layer.pendingVersion === versionId ? omit(layer, ['pendingVersion']) : layer;
 }
 
 function publishedVersion(held: Held, finish: Finish, stamp: Stamp): LayerVersionDoc {

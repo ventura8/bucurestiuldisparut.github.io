@@ -167,6 +167,13 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.joinSeamTooFar': spec('failed-precondition'),
     'apiError.imagery.joinNoFrames': spec('failed-precondition'),
     'apiError.imagery.joinNoRoom': spec('failed-precondition'),
+    // M16 (docs/research/M16-recalibrate.md): a refine that found nothing better, or whose proof did not hold, ends with these (the job and
+    // its version cancelled, nothing else changed); Approve of a recalibration not shown better asks for the owner's choice; a join refines frame by frame.
+    'apiError.imagery.notImproved': spec('failed-precondition'),
+    'apiError.imagery.refineRefused': spec('failed-precondition'),
+    'apiError.imagery.refineUnmeasured': spec('failed-precondition'),
+    'apiError.imagery.notBetter': spec('failed-precondition'),
+    'apiError.imagery.joinRecalibrate': spec('failed-precondition'),
     'apiError.worker.notHolder': spec('failed-precondition'),
     'apiError.worker.refused': spec('permission-denied'),
     // Finding 67 of 2026-11-02: a pairing code unknown, used or expired (one answer for the three), and a disconnected computer.

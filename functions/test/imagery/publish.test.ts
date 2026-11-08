@@ -246,6 +246,18 @@ describe('a publish within the month', () => {
         expect((await readVersion(world, 'v-first'))?.state).toBe('superseded');
     });
 
+    it('badPath_anotherVersionsPendingMarkOutlivesThisPublish @S-A89-BAD-DECLINE-KEEPS-WAITING', async () => {
+        // M16 §5: a refine of this version took the mark while it was approved and publishing; it keeps it once this one is live.
+        const world = await publishWorld();
+        await seedLayer(world, LAYER, { currentVersion: 'v-first', pendingVersion: 'rg-refine' });
+        world.tilesets.outcomes.push({ stage: 'success', errors: [] });
+
+        await start(world);
+        await poll(world, 0);
+
+        expect(await readLayer(world, LAYER)).toMatchObject({ currentVersion: JOB, pendingVersion: 'rg-refine' });
+    });
+
     it('happyPath_theSameFileIsNotUploadedTwice', async () => {
         const world = await publishWorld();
         await seedLayer(world, LAYER, { mapbox: { tilesetId: TILESET, origin: 'mts', publishedSourceSha: 'c'.repeat(64) } });

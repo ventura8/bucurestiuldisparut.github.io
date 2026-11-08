@@ -216,6 +216,8 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
     #versionIntents(): Pick<
         ImageryIntents,
         | 'approve'
+        | 'recalibrate'
+        | 'toggleCurrent'
         | 'reject'
         | 'choose'
         | 'studioDone'
@@ -232,7 +234,11 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
         const version = this.#version;
         return {
             ...{
-                approve: () => version.approve(),
+                approve: (acceptWorse?: boolean) => version.approve(acceptWorse),
+                recalibrate: () => version.recalibrate(),
+                toggleCurrent: () => {
+                    version.toggleCurrent();
+                },
                 reject: () => version.reject(),
                 choose: (choice: PublishChoice) => version.choose(choice),
             },

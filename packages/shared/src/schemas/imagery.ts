@@ -15,6 +15,7 @@ import { LAYER_TILESET_ORIGINS, USGS_DATASETS } from './firestore.js';
 import { cropRingSchema, georefSchema, MAX_SCAN_PIXELS } from './georef.js';
 import { calibrationSchema, measuredOutlineSchema } from './imagery-calibration.js';
 import { joinReportSchema, joinSourceSchema, layerJoinParamsSchema } from './imagery-join.js';
+import { recalibrationSchema } from './imagery-recalibration.js';
 import {
     boundsRecordSchema,
     coded,
@@ -274,6 +275,13 @@ export const layerVersionDocSchema = z
         error: z.strictObject({ code: apiErrorCodeSchema, params: apiErrorParamsSchema.optional() }).optional(),
         /** M8: the join version that holds this frame while it is live; a stale one (the join ended) is ignored. */
         partOf: idSchema.optional(),
+        /** M16: a recalibration of the version it is `basedOn`, with the two fits measured on the same checks. */
+        recalibration: recalibrationSchema.optional(),
+        /**
+         * M16 (§5): the Refine or Snap started from this version while it waits for approval. A second start, or a Save, finds that job
+         * unfinished in its transaction and is `apiError.layers.busy`; a stale one (the refine ended) is ignored.
+         */
+        refining: idSchema.optional(),
         /** M8: what the join measured; a join version has no `scan` and no `georef` (`georefSchema` means one scan's pixels). */
         join: joinReportSchema.optional(),
         createdBy: uidSchema,

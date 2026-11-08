@@ -128,11 +128,30 @@ function saveOff(context: GeorefContext): boolean {
     return context.locked || !savable(view) || view.saving || view.fit.refusal !== null;
 }
 
+/** M16: a published version or one waiting for approval may have new points snapped (`docs/research/M16-recalibrate.md`). */
+const SNAP_STATES: ReadonlySet<string | null> = new Set(['published', 'awaiting_approval']);
+
+function stateOf(view: GeorefContext['view']): string | null {
+    return view.version?.state ?? null;
+}
+
+function snapButton(context: GeorefContext): TemplateResult {
+    const { view, intents } = context;
+    const shown = SNAP_STATES.has(stateOf(view));
+    const off = context.locked || !view.dirty || view.saving;
+    return shown
+        ? html`<hcm-button variant="tonal" icon="auto_fix_high" ?disabled=${off} @click=${() => void intents?.snap()}
+              >${contentText(context.locale, 'adminContent.georef.snap')}</hcm-button
+          >`
+        : html``;
+}
+
 function saveButtons(context: GeorefContext): TemplateResult {
     const { locale, view, intents } = context;
     return html`<hcm-button variant="filled" icon="check" ?disabled=${saveOff(context)} @click=${() => void intents?.save()}
             >${contentText(locale, view.saving ? 'adminContent.georef.saving' : 'adminContent.georef.save')}</hcm-button
         >
+        ${snapButton(context)}
         <hcm-button
             variant="text"
             ?disabled=${!view.dirty || view.saving}

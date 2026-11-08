@@ -12,6 +12,7 @@ import { isDeepStrictEqual } from 'node:util';
 import {
     ENDED_VERSION_STATES,
     LEASE_SECONDS,
+    isDeclinedCode,
     isOwnTiles,
     isSideJob,
     jobDocSchema,
@@ -69,11 +70,20 @@ function sideJobDone(current: JobDoc, merged: JobDoc): boolean {
     return merged.status === 'succeeded' && isSideJob(current.type);
 }
 
+/** M16 (`docs/research/M16-recalibrate.md` §3): a refine that renders nothing ends cancelled on its own, with its reason. */
+function declined(current: JobDoc, merged: JobDoc): boolean {
+    return current.type === 'regeoref' && isDeclinedCode(merged.error?.code);
+}
+
+function cancelAllowed(current: JobDoc, merged: JobDoc): boolean {
+    return merged.status !== 'cancelled' || current.cancelRequested === true || declined(current, merged);
+}
+
 function jobStatusAllowed(current: JobDoc, merged: JobDoc): boolean {
     if (merged.status === current.status || sideJobDone(current, merged)) {
         return true;
     }
-    return WORKER_JOB_STATUSES.has(merged.status) && (merged.status !== 'cancelled' || current.cancelRequested === true);
+    return WORKER_JOB_STATUSES.has(merged.status) && cancelAllowed(current, merged);
 }
 
 function ownLease(merged: JobDoc, call: WorkerCall): boolean {
@@ -119,6 +129,20 @@ function outputAllowed(scope: JobScope, current: LayerVersionDoc, merged: LayerV
     return !isSideJob(scope.job.type) || isDeepStrictEqual(besidesTiles(current.output), besidesTiles(merged.output));
 }
 
+/** M16: what the server wrote of a recalibration (how it was asked for, the version it replaces, the rough points); undefined for none. */
+function serverRecalibration(version: LayerVersionDoc): readonly unknown[] | undefined {
+    const recalibration = version.recalibration;
+    return recalibration === undefined ? undefined : [recalibration.route, recalibration.replaces, recalibration.points];
+}
+
+/**
+ * M16 (`docs/research/M16-recalibrate.md` §1): a run adds what it measured to its version's `recalibration` (`before`, `after`, `tiles`,
+ * `proposed`) and never writes the server's part: a `replaces` it named would cancel another version once this one is rendered.
+ */
+function recalibrationAllowed(current: LayerVersionDoc, merged: LayerVersionDoc): boolean {
+    return isDeepStrictEqual(serverRecalibration(current), serverRecalibration(merged));
+}
+
 function versionWritable(scope: JobScope): Writable<LayerVersionDoc> {
     const { job } = scope;
     return {
@@ -126,6 +150,7 @@ function versionWritable(scope: JobScope): Writable<LayerVersionDoc> {
         fields: WORKER_VERSION_FIELDS,
         allowed: (current, merged) =>
             outputAllowed(scope, current, merged) &&
+            recalibrationAllowed(current, merged) &&
             (IN_RUN.has(job.status) ? versionStateAllowed(job, current, merged) : endsWithJob(job, current, merged)),
         ends: (current, merged) => merged.state !== current.state && ENDINGS.has(merged.state),
     };

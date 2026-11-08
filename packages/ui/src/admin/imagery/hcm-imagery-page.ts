@@ -66,6 +66,12 @@ const QUESTIONS = {
         body: 'adminContent.imagery.confirm.dismissBody',
         confirm: 'adminContent.imagery.reject',
     },
+    // M16: a recalibration not shown better replaces the current one only by the owner's choice.
+    approveWorse: {
+        headline: 'adminContent.imagery.confirm.approveWorse',
+        body: 'adminContent.imagery.confirm.approveWorseBody',
+        confirm: 'adminContent.imagery.confirm.approveWorseConfirm',
+    },
 } as const;
 
 class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
@@ -281,6 +287,7 @@ function answers(intents: ImageryIntentsPort | null): Readonly<Record<ImageryQue
         cancel: () => void intents?.cancelJob(),
         drop: () => void intents?.reject(),
         resume: () => void intents?.resumeGuard(),
+        approveWorse: () => void intents?.approve(true),
     };
 }
 

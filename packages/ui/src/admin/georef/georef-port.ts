@@ -98,6 +98,8 @@ export interface GeorefIntentsPort {
     togglePreview(show: boolean): void;
     setPane(pane: 'scan' | 'map'): void;
     save(): Promise<boolean>;
+    /** M16: the points placed since the page opened, snapped into a new version of a published or waiting one. */
+    snap(): Promise<boolean>;
     discard(): void;
     attachMap(container: HTMLElement): void;
     zoomBy(delta: number): void;

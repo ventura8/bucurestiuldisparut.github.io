@@ -19,12 +19,16 @@ function withinBounds(place: Vertex, bounds: BoundsRecord, slack: number): boole
 }
 
 /** True when a pair's pixel is on the scan and its place within the city (with slack). */
-function inside(gcp: Gcp, scan: { readonly width: number; readonly height: number }, bounds: BoundsRecord): boolean {
+function inside(gcp: Pick<Gcp, 'pixel' | 'geo'>, scan: { readonly width: number; readonly height: number }, bounds: BoundsRecord): boolean {
     return gcp.pixel.x <= scan.width && gcp.pixel.y <= scan.height && withinBounds(gcp.geo, bounds, CITY_SLACK_DEG);
 }
 
 /** True when every pair lies on the scan and in the city. */
-export function gcpsInside(gcps: readonly Gcp[], scan: { readonly width: number; readonly height: number }, bounds: BoundsRecord): boolean {
+export function gcpsInside(
+    gcps: readonly Pick<Gcp, 'pixel' | 'geo'>[],
+    scan: { readonly width: number; readonly height: number },
+    bounds: BoundsRecord,
+): boolean {
     return gcps.every((gcp) => inside(gcp, scan, bounds));
 }
 
