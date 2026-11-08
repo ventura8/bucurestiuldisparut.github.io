@@ -1,0 +1,247 @@
+/**
+ * The timeline's orientation per size class and what sits on it, with the real ui-kit (the owner, 2026-11-08: "for
+ * phone or small width setup, maybe it would be wise to show the timeline vertically" and "when height is short, we
+ * should display the timeline horizontally"): a short window keeps it horizontal, a compact width stands it up on the
+ * leading edge, everything else is horizontal. The selected year's pill never hides another year's label (his phone
+ * showed "1980" over 1979 and 1982), and the photos-near-the-year chip stays on the card, uncovered by the open menu.
+ */
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { page } from 'vitest/browser';
+
+import { defineUiKit } from '../../src/components/define.js';
+import { defineViewerElements } from '../../src/viewer/define.js';
+import type { HcmMapViewer } from '../../src/viewer/hcm-map-viewer.js';
+import { FakeStore, readyState } from './fake-store.js';
+import { testManifest } from './fixtures.js';
+import { fakeServices, setBox, type Box } from './viewer-harness.js';
+
+/** The owner's city on 2026-11-08: eleven layer years and today, twelve stops. */
+const YEARS = [1966, 1967, 1972, 1976, 1977, 1978, 1979, 1980, 1982, 1983, 1984] as const;
+const MAPBOX_STRIP_PX = 10 + 24 + 8;
+const TARGET_GAP_PX = 8;
+const GUTTER_PX = 16;
+
+const SIZES: readonly (Box & { readonly orientation: 'horizontal' | 'vertical' })[] = [
+    { width: 375, height: 812, orientation: 'vertical' },
+    { width: 320, height: 568, orientation: 'vertical' },
+    { width: 915, height: 412, orientation: 'horizontal' },
+    { width: 768, height: 1024, orientation: 'horizontal' },
+    { width: 1440, height: 900, orientation: 'horizontal' },
+];
+
+function ownersManifest() {
+    return testManifest((raw) => {
+        raw['layers'] = YEARS.map((year, order) => ({
+            id: `layer-${String(year)}`,
+            year,
+            label: { ro: `Strat ${String(year)}`, en: `Layer ${String(year)}` },
+            kind: 'satellite',
+            attribution: 'USGS EROS',
+            source: { type: 'xyz', tiles: ['https://tiles.example.org/{z}/{x}/{y}.png'], tileSize: 256 },
+            minzoom: 10,
+            maxzoom: 17,
+            order,
+            defaultVisible: false,
+            opacity: 1,
+        }));
+    });
+}
+
+/** A viewer of the owner's twelve stops in `box`, settled at its size (window class and compact height). */
+async function viewerAt(box: Box, year: number | null = null): Promise<{ element: HcmMapViewer; store: FakeStore }> {
+    const store = new FakeStore(readyState(ownersManifest(), { year, consent: 'granted' }));
+    const element = document.createElement('hcm-map-viewer');
+    element.services = fakeServices();
+    setBox(element, box);
+    element.attach(store, null);
+    document.body.append(element);
+    await vi.waitFor(() => {
+        expect(store.callsOf('setWindowSize').at(-1)).toEqual([box.width, box.height]);
+    });
+    await element.updateComplete;
+    return { element, store };
+}
+
+function partOf(element: HcmMapViewer, selector: string, inner?: string): Element {
+    const host = element.shadowRoot?.querySelector(selector) ?? null;
+    const target = inner === undefined ? host : (host?.shadowRoot?.querySelector(inner) ?? null);
+    if (target === null) {
+        throw new Error(`no ${selector} ${inner ?? ''}`);
+    }
+    return target;
+}
+
+function boxOf(element: HcmMapViewer, selector: string, inner?: string): DOMRect {
+    return partOf(element, selector, inner).getBoundingClientRect();
+}
+
+function apart(a: DOMRect, b: DOMRect): boolean {
+    return a.left >= b.right - 1 || a.right <= b.left + 1 || a.top >= b.bottom - 1 || a.bottom <= b.top + 1;
+}
+
+/** The timeline's parts without their springs, so a box is measured where the thumb lands, not on its way. */
+async function stillTimeline(element: HcmMapViewer): Promise<ShadowRoot> {
+    const timeline = partOf(element, 'hcm-timeline') as HTMLElement & { updateComplete: Promise<boolean> };
+    await timeline.updateComplete;
+    const root = timeline.shadowRoot;
+    if (root === null) {
+        throw new Error('no timeline root');
+    }
+    for (const part of root.querySelectorAll<HTMLElement>('.thumb, .active, .stop')) {
+        part.style.transition = 'none';
+    }
+    return root;
+}
+
+async function menuItems(element: HcmMapViewer): Promise<DOMRect[]> {
+    await page.getByRole('button', { name: 'Meniu' }).click();
+    await expect.element(page.getByRole('menu', { name: 'Meniu' })).toBeVisible();
+    const items = [...(partOf(element, 'hcm-fab-menu').shadowRoot?.querySelectorAll('[role^="menuitem"]') ?? [])];
+    expect(items.length).toBeGreaterThan(4);
+    return items.map((item) => item.getBoundingClientRect());
+}
+
+describe('<hcm-map-viewer> the timeline per size class (the owner, 2026-11-08)', () => {
+    beforeAll(async () => {
+        defineUiKit();
+        defineViewerElements();
+        await page.viewport(1500, 1100);
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it.each(SIZES)('happyPath_at $width x $height: theTimelineIs $orientation', async (size) => {
+        const { element } = await viewerAt(size);
+        const timeline = boxOf(element, 'hcm-timeline');
+
+        await expect.element(page.getByRole('slider', { name: 'Cronologie' })).toHaveAttribute('aria-orientation', size.orientation);
+        expect(partOf(element, '.frame').getAttribute('data-timeline')).toBe(size.orientation);
+        expect(timeline.height > timeline.width).toBe(size.orientation === 'vertical');
+        expect(element.getBoundingClientRect().bottom - timeline.bottom).toBeGreaterThanOrEqual(MAPBOX_STRIP_PX);
+    });
+
+    it.each([
+        { width: 320, height: 568 },
+        { width: 375, height: 812 },
+        { width: 915, height: 412 },
+        { width: 768, height: 1024 },
+    ])('badPath_at $width x $height: theSelectedYearsPillHidesNoOtherYearsLabel', async (size) => {
+        const stops = [...YEARS, null];
+        const { element, store } = await viewerAt(size, YEARS[0]);
+        for (const [selected, year] of stops.entries()) {
+            store.set({ year });
+            await element.updateComplete;
+            const root = await stillTimeline(element);
+            const thumb = root.querySelector('.thumb')?.getBoundingClientRect();
+            const labels = [...root.querySelectorAll('.stop .label')].map((label) => label.getBoundingClientRect());
+            expect(labels).toHaveLength(stops.length);
+            const covered = labels.flatMap((label, at) => (at !== selected && thumb !== undefined && !apart(label, thumb) ? [at] : []));
+            expect(covered, `labels under the pill at ${String(year)}`).toEqual([]);
+        }
+    });
+});
+
+describe('<hcm-map-viewer> the photos-near-the-year chip on the vertical timeline (the owner, 2026-11-08)', () => {
+    beforeAll(async () => {
+        defineUiKit();
+        defineViewerElements();
+        await page.viewport(1500, 1100);
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it.each([
+        { width: 375, height: 812 },
+        { width: 320, height: 568 },
+    ])('happyPath_at $width x $height: theChipDocksAtTheCardsFootAndTheFabStaysBottomTrailing', async (size) => {
+        const { element } = await viewerAt(size, 1977);
+        const frame = element.getBoundingClientRect();
+        const timeline = boxOf(element, 'hcm-timeline');
+        const chip = boxOf(element, '.dock.chip hcm-button');
+        const fab = boxOf(element, 'hcm-fab-menu', '.fab');
+
+        expect(timeline.left - frame.left).toBeCloseTo(GUTTER_PX, 0);
+        expect(Math.abs(chip.left - timeline.left), "the card's leading edge").toBeLessThanOrEqual(1);
+        expect(Math.abs(chip.top - timeline.bottom - TARGET_GAP_PX), '8 px under the card').toBeLessThanOrEqual(1);
+        expect(fab.top - chip.bottom).toBeGreaterThanOrEqual(TARGET_GAP_PX);
+        expect(Math.abs(frame.right - fab.right - GUTTER_PX), 'the FAB on the trailing edge').toBeLessThanOrEqual(1);
+        expect(Math.abs(frame.bottom - fab.bottom - MAPBOX_STRIP_PX), 'the FAB at the bottom').toBeLessThanOrEqual(1);
+    });
+
+    it.each([
+        { width: 375, height: 812 },
+        { width: 320, height: 568 },
+        { width: 915, height: 412 },
+        { width: 568, height: 320 },
+    ])('badPath_at $width x $height: theOpenMenuCoversNeitherTheChipNorTheTimeline', async (size) => {
+        // The owner's 375 px phone: the last item, Despre, covered the end of the chip.
+        const { element } = await viewerAt(size, 1977);
+        const chip = boxOf(element, '.dock.chip hcm-button');
+        const timeline = boxOf(element, 'hcm-timeline');
+        const frame = element.getBoundingClientRect();
+
+        const items = await menuItems(element);
+        const menu = boxOf(element, 'hcm-fab-menu', '[role="menu"]');
+
+        expect(apart(menu, chip), 'the menu clear of the chip').toBe(true);
+        expect(apart(menu, timeline), 'the menu clear of the timeline').toBe(true);
+        for (const item of items) {
+            expect(item.top).toBeGreaterThanOrEqual(frame.top);
+            expect(item.left).toBeGreaterThanOrEqual(frame.left);
+            expect(item.right).toBeLessThanOrEqual(frame.right);
+        }
+    });
+
+    it('badPath_at320PxWithWiderTextSpacingTheOpenMenuWrapsBesideTheTimeline', async () => {
+        // The tour's text spacing (WCAG 1.4.12) widened the menu to 244 px at 320 px, over the standing timeline.
+        const { element } = await viewerAt({ width: 320, height: 568 }, 1977);
+        const spacing = document.createElement('style');
+        spacing.textContent = '* { letter-spacing: 0.12em !important; word-spacing: 0.16em !important; }';
+        partOf(element, 'hcm-fab-menu').shadowRoot?.append(spacing);
+        const timeline = boxOf(element, 'hcm-timeline');
+
+        const items = await menuItems(element);
+        const menu = boxOf(element, 'hcm-fab-menu', '[role="menu"]');
+
+        expect(menu.left - timeline.right).toBeGreaterThanOrEqual(TARGET_GAP_PX);
+        for (const item of items) {
+            expect(item.height).toBeGreaterThanOrEqual(56);
+        }
+    });
+
+    it('happyPath_onAShortPhoneTheChipSitsOnTheHorizontalCardsTrailingEdgeInBothDirections', async () => {
+        const { element } = await viewerAt({ width: 915, height: 412 }, 1977);
+        let timeline = boxOf(element, 'hcm-timeline');
+        let chip = boxOf(element, '.dock.chip hcm-button');
+        expect(Math.abs(chip.right - timeline.right)).toBeLessThanOrEqual(1);
+        expect(Math.abs(timeline.top - chip.bottom - TARGET_GAP_PX)).toBeLessThanOrEqual(1);
+
+        element.dir = 'rtl';
+        await element.updateComplete;
+        timeline = boxOf(element, 'hcm-timeline');
+        chip = boxOf(element, '.dock.chip hcm-button');
+        expect(Math.abs(chip.left - timeline.left)).toBeLessThanOrEqual(1);
+    });
+
+    it.each(['ltr', 'rtl'] as const)('badPath_onANarrowShortPhone_%s_theChipLeavesTheMapsCentreFree', async (dir) => {
+        // The review at 568 x 320: the chip, 8 px above the card's trailing end, sat on the map's centre point.
+        const { element } = await viewerAt({ width: 568, height: 320 }, 1977);
+        element.dir = dir;
+        await element.updateComplete;
+        const frame = element.getBoundingClientRect();
+        const timeline = boxOf(element, 'hcm-timeline');
+        const chip = boxOf(element, '.dock.chip hcm-button');
+        const centre = { x: frame.left + frame.width / 2, y: frame.top + frame.height / 2 };
+
+        const trailing =
+            dir === 'ltr' ? [chip.right, timeline.right, frame.right - chip.right] : [chip.left, timeline.left, chip.left - frame.left];
+        expect(Math.abs((trailing[0] ?? 0) - (trailing[1] ?? 0)), "on the card's trailing edge").toBeLessThanOrEqual(1);
+        expect(Math.abs((trailing[2] ?? 0) - GUTTER_PX), 'the card and the chip end at the gutter').toBeLessThanOrEqual(1);
+        const onCentre = chip.left <= centre.x && centre.x <= chip.right && chip.top <= centre.y && centre.y <= chip.bottom;
+        expect(onCentre, 'the chip on the centre').toBe(false);
+    });
+});

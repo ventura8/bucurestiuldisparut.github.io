@@ -98,7 +98,6 @@ export class HcmCompare extends LitElement {
 
     protected override updated(): void {
         const props = this.props;
-        this.toggleAttribute('compact-height', props?.compactHeight === true);
         if (props !== null) {
             this.setAttribute('mode', props.mode);
             this.style.setProperty('--hcm-compare-at', `${String(dividerPercent(this.live ?? props.position))}%`);

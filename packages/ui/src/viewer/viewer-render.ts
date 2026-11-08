@@ -153,7 +153,7 @@ export function renderViewer(view: ViewerView, handlers: ViewerHandlers): Templa
                 class="frame"
                 data-panes=${panes(view, ready)}
                 ?data-compact-height=${view.state?.compactHeight === true}
-                ?data-timeline=${hasTimeline(view, ready)}
+                data-timeline=${hasTimeline(view, ready) ? view.layout.timeline : nothing}
                 ?data-legal-mirror=${legal !== 'none'}
                 ?inert=${modalOpen(view.state, view.layout.sheetMode)}
             >

@@ -1207,6 +1207,83 @@
             "notes": "Milestone M1. engine-ui CR-20: packages/ui/src/viewer/viewer-render.ts; the window is PHOTO_YEAR_WINDOW of @hcm/shared."
         },
         {
+            "id": "S-V04-HAPPY-CHIP-ON-TIMELINE",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The photos-near-the-year chip sits on the timeline at every layout",
+            "asserts": "at a year with photos near it the chip 'Fotografii din jurul anului …' sits on the timeline card: on a phone held upright 8 px under the standing card's foot, leading edges aligned; from 600 px 8 px above the lying card on its leading edge, with the Layers pane docked too; at 915x412 8 px above the lying card on its trailing edge",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08: the chip looked like it was floating; then the vertical timeline on phones. packages/ui/src/viewer/viewer-styles.ts (.dock.chip); unit tests in packages/ui/test/viewer/kit-integration.test.ts and kit-timeline-layout.test.ts."
+        },
+        {
+            "id": "S-V04-BAD-CHIP-NEVER-ALONE",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "The chip never floats alone",
+            "asserts": "no chip at today or at a year with no photo within 10 years; at a year with photos the chip is on the timeline's edge and the open menu leaves it uncovered at every size",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08. packages/ui/src/viewer/viewer-styles.ts (.dock.chip)."
+        },
+        {
+            "id": "S-V04-HAPPY-VERTICAL-ON-PHONE",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "On a phone held upright the timeline stands on the leading edge with the chip under it",
+            "asserts": "at 375x812 the slider is aria-orientation vertical, the card stands 16 px from the leading edge; Up selects the later year and Down the earlier; the chip docks 8 px under the card's foot on its leading edge, the menu button keeps the bottom trailing corner below it; the open menu covers neither the chip nor the timeline",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08: 'for phone or small width setup, maybe it would be wise to show the timeline vertically'. packages/ui/src/viewer/layout.ts, viewer-styles.ts, timeline-styles.ts; unit tests in packages/ui/test/viewer/kit-timeline-layout.test.ts."
+        },
+        {
+            "id": "S-V04-BAD-HORIZONTAL-WHEN-SHORT",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A short window lays the timeline at the foot of the map",
+            "asserts": "at 915x412 the slider is aria-orientation horizontal and wider than tall; Right selects the later year and Left the earlier; the chip sits 8 px above the card on its trailing edge; the open two-column menu on the leading edge covers neither the chip nor the timeline",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08: 'when height is short, we should display the timeline horizontally'. packages/ui/src/viewer/layout.ts (COMPACT_HEIGHT), viewer-styles.ts."
+        },
+        {
+            "id": "S-V04-BAD-PILL-HIDES-NO-LABEL",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "The selected year's pill hides no other year's label",
+            "asserts": "with the owner's twelve stops (1966 … 1984, today) at 320x568, 375x812 and 915x412, at every selected stop no other stop's label box meets the pill's box",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's phone, 2026-11-08: the pill '1980' covered 1979 and 1982. Lying, the labels are a row below the pill; standing, the years are the ruler in the pill's lane. packages/ui/src/viewer/timeline-styles.ts."
+        },
+        {
+            "id": "S-V04-BAD-NARROW-SHORT-CHIP",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "On a narrow short phone the chip ends at the gutter, off the map's centre and clear of the open menu",
+            "asserts": "at 568x320 the lying card and the chip end 16 px from the trailing edge, the chip on the card's trailing edge and off the map's centre point; the open three-column menu's items end above the chip's row and cover neither the chip nor the timeline",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The review of track/yearchip, 2026-11-08: at 568x320 the chip sat on the map's centre and 'Distribuie' and 'Despre' covered it. packages/ui/src/viewer/viewer-styles.ts; unit tests in packages/ui/test/viewer/kit-timeline-layout.test.ts."
+        },
+        {
+            "id": "S-V04-BAD-MANY-YEARS-SCROLL",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "With more years than the card holds the timeline scrolls, its labels legible and the selected year in view",
+            "asserts": "with twenty-two stops (1964 … 1984, today) at 320x568, 568x320 and 768x1024 the card scrolls; after Home, End and Home the thumb is inside the card and no label meets the pill or another label",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The review of track/yearchip, 2026-11-08: twenty-two stops squeezed 17 px apart. The stops keep 30 px apart and the selected one snaps into view when no drag is on. packages/ui/src/viewer/timeline-styles.ts, hcm-timeline.ts; unit tests in packages/ui/test/viewer/hcm-timeline.test.ts."
+        },
+        {
             "id": "S-V04-HAPPY-NO-LAYERS-NOTE",
             "behaviour": "V04",
             "area": "viewer",
@@ -1850,7 +1927,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "Compact landscape collapses the controls into a menu",
-            "asserts": "compact landscape -> controls collapse into a menu; the open two-column menu keeps its button where it was tapped",
+            "asserts": "compact landscape -> controls collapse into a menu and the timeline lies at the foot of the map (aria-orientation horizontal); the open two-column menu keeps its button where it was tapped",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1. UX review: the FAB menu aligned to the inline end moved its button 300 px when the menu wrapped (--hcm-fab-menu-align in packages/ui/src/components/fab-menu.ts)."
