@@ -50,9 +50,14 @@ function publicOf(version: VersionView): string | null {
     return version.state === 'published' ? version.publicUrl : null;
 }
 
+/** Published while open, its private archive goes: a new public address redraws it, before a tile is read from the gone one. */
+function shownKey(id: string, file: string, publicUrl: string | null): string {
+    return `${id}@${file}@${publicUrl ?? ''}`;
+}
+
 export class VersionImage {
     readonly #deps: VersionImageDeps;
-    /** What is on the map (`<version>@<file>`), '' for nothing. */
+    /** What is on the map (`<version>@<file>@<public address>`), '' for nothing. */
     #shown = '';
     /** Bumped by every asking: a slower answer about an older version is dropped. */
     #asked = 0;
@@ -78,12 +83,13 @@ export class VersionImage {
     #draw(version: VersionView, output: Output): void {
         const { id } = version;
         const tiles = tilesOf(version);
-        const shown = `${id}@${tiles?.path ?? output.previewPath}`;
+        const publicUrl = publicOf(version);
+        const shown = shownKey(id, tiles?.path ?? output.previewPath, publicUrl);
         if (shown === this.#shown) {
             return;
         }
         this.#shown = shown;
-        this.#open = { id, output, publicUrl: publicOf(version) };
+        this.#open = { id, output, publicUrl };
         this.#deps.map().fitBox(output.bounds);
         if (tiles === null) {
             this.#until = Number.POSITIVE_INFINITY;

@@ -2712,3 +2712,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the track ran its own `tests` and `build` but not its `static` stage after its last strings; the deployment test hard-coded a third of the count it was written for.
     - Found by: the `static` and `tests` stages on the NUC after the merges. Fix: `tune` (bundled), one-line Romanian, the expected third recomputed, two export pairs joined.
     - **A track runs `static` after its last edit, strings included; a test that derives a number from a registry's size states the derivation, so the next merge recomputes it instead of guessing.**
+455. **A version's page kept reading its private archive after Approve published it, and the publish had deleted that archive.**
+    - Seen: 2026-11-08, the targeted Playwright run after the merge of the three tracks: `join-wait.spec.ts` at `admin-c360-ro` failed on a console 404 for the frame's `tiles.pmtiles`, read from the version page after Approve and before the test left it.
+    - Cause: M16 drew a published version from its public archive, but `VersionImage` redrew only when the version or its file changed (`<version>@<file>`); a version published while open kept the signed address of the private archive, which `publish-own.ts` deletes once published, so the next tile the map wanted was a 404.
+    - Fix and pin: the drawn key holds the public address too, so the page moves to the public archive as the published state arrives (`version-image.test.ts`, *a version published while its page is open*).
+    - **A cache key holds everything the drawing reads: when a state change moves where the data lives, the key must change with it.**

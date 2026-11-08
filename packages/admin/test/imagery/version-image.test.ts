@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 
 import { CallableFailure } from '../../src/firebase/ports.js';
 import { IMAGERY_MODULE } from '../../src/imagery/imagery.js';
-import { TILES_LAYER, UNCOVERED_OVERLAY } from '../../src/imagery/imagery-map.js';
+import { TILES_LAYER, UNCOVERED_OVERLAY, type ImageryMap } from '../../src/imagery/imagery-map.js';
+import type { VersionPageState } from '../../src/imagery/version.js';
+import { VersionImage } from '../../src/imagery/version-image.js';
 import { settle } from '../app/fakes.js';
 import { fakeFrames } from '../map/support.js';
 import { factoryOf, host, mapboxHandle } from './maps.js';
@@ -15,6 +17,7 @@ const PREVIEW = `${DIR}/preview.png`;
 const SOURCE = `hcm-source-${TILES_LAYER}`;
 const TILES = { path: `${DIR}/tiles.pmtiles`, bytes: 175_000_000, count: 20_270, sha256: 'a'.repeat(64), thumbPath: `${DIR}/thumb.webp` };
 const SIGNED = 'https://storage.example.org/x.pmtiles?X-Goog-Signature=secret';
+const PUBLIC_ARCHIVE = 'https://storage.example.org/public/x.pmtiles';
 
 /** An answer the test gives when it chooses. */
 function deferred<T>(): { readonly promise: Promise<T>; resolve(value: T): void } {
@@ -277,5 +280,42 @@ describe("a version's picture that cannot be its tiles", () => {
         imagery.intents.actualPixels();
 
         expect(native.callsOf('jumpTo')).toHaveLength(before);
+    });
+});
+
+describe('a version published while its page is open', () => {
+    it('badPath_publishedWhileOpenItsGonePrivateArchiveGivesWayToItsPublicOneWithNoNewAddress', async () => {
+        const world = imageryWorld();
+        answer(world.callables, 'imagery.previewUrl', () => ({ url: SIGNED, expiresAt: '2026-10-20T10:00:00.000Z', bytes: TILES.bytes }));
+        const urls: (string | null)[] = [];
+        const map = {
+            fitBox: () => undefined,
+            clearVersion: () => undefined,
+            showPicture: () => Promise.resolve(),
+            showVersion: (_output: unknown, url: string | null) => urls.push(url),
+        };
+        const image = new VersionImage({
+            services: world.services,
+            map: () => map as unknown as ImageryMap,
+            opacity: () => 1,
+            changed: () => undefined,
+        });
+        const output = { bounds: { west: 26, south: 44.3, east: 26.2, north: 44.5 }, previewPath: PREVIEW, tiles: TILES };
+        const shown = (view: Record<string, unknown>) =>
+            ({
+                showing: 'new',
+                current: null,
+                version: { doc: { data: { id: VERSION, output, publicUrl: null, ...view } } },
+            }) as unknown as VersionPageState;
+
+        image.follow(shown({ state: 'awaiting_approval' }));
+        await settle();
+        image.follow(shown({ state: 'published', publicUrl: PUBLIC_ARCHIVE }));
+        await settle();
+        image.follow(shown({ state: 'published', publicUrl: PUBLIC_ARCHIVE }));
+        await settle();
+
+        expect(urls).toEqual([SIGNED, PUBLIC_ARCHIVE]);
+        expect(callsOf(world.callables, 'imagery.previewUrl')).toHaveLength(1);
     });
 });
