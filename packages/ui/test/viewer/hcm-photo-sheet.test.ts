@@ -2,7 +2,7 @@ import type { Photo } from '@hcm/shared';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 
-import { HCM_PHOTO_SHEET_TAG, HcmPhotoSheet, defineHcmPhotoSheet } from '../../src/viewer/hcm-photo-sheet.js';
+import { HCM_PHOTO_SHEET_TAG, HcmPhotoSheet, defineHcmPhotoSheet, locateOffset } from '../../src/viewer/hcm-photo-sheet.js';
 import { defineHcmPoiDetail } from '../../src/viewer/hcm-poi-detail.js';
 import { defineKitDoubles, mountElement, recordEvents, shadowQuery, shadowQueryAll, shadowText } from './doubles.js';
 import { TEST_MANIFEST_URL, testManifest } from './fixtures.js';
@@ -200,5 +200,68 @@ describe('<hcm-photo-sheet>: the source', () => {
 
         expect(shadowQuery(element, '.source').textContent).toContain('Arhiva');
         expect(shadowQueryAll(element, '.source a')).toEqual([]);
+    });
+});
+
+describe('<hcm-photo-sheet>: Show on map (V51)', () => {
+    beforeAll(() => {
+        defineKitDoubles();
+        defineHcmPoiDetail();
+        defineHcmPhotoSheet();
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_showOnMapBesideADockedSheetAsksForThePlaceInTheMiddle', async () => {
+        const element = await sheet({ photo: photo('uranus-1984'), locale: 'en', canLocate: true });
+        const events = recordEvents(element, 'hcm-photo-locate');
+
+        await page.getByRole('button', { name: 'Show on map' }).click();
+
+        expect(events).toEqual([{ type: 'hcm-photo-locate', detail: { photoId: 'uranus-1984', offset: [0, 0] } }]);
+    });
+
+    it('happyPath_aBottomSheetSendsThePlaceHalfwayUpWhatItLeaves', async () => {
+        const element = await sheet({ photo: photo('uranus-1984'), mode: 'bottom', canLocate: true });
+        const events = recordEvents(element, 'hcm-photo-locate');
+
+        await page.getByRole('button', { name: 'Arată pe hartă' }).click();
+
+        const surface = (shadowQuery(element, 'hcm-sheet') as HTMLElement & { sheet(): HTMLElement }).sheet();
+        const height = surface.getBoundingClientRect().height;
+        expect(height).toBeGreaterThan(0);
+        expect(events).toEqual([{ type: 'hcm-photo-locate', detail: { photoId: 'uranus-1984', offset: [0, -height / 2] } }]);
+    });
+
+    it('badPath_withoutAMapThereIsNoShowOnMap', async () => {
+        const element = await sheet({ photo: photo('uranus-1984') });
+
+        expect(shadowText(element)).not.toContain('Arată pe hartă');
+    });
+
+    it('badPath_aPlaceDetailHasNoShowOnMap', async () => {
+        const poi = MANIFEST.pois?.[0];
+        const element = await sheet({ poi: poi ?? null, canLocate: true });
+
+        expect(shadowText(element)).not.toContain('Arată pe hartă');
+    });
+
+    it('happyPath_aSideSheetSendsThePlaceHalfwayAlongWhatItLeaves', () => {
+        const map = new DOMRect(0, 0, 768, 900);
+        expect(locateOffset('side', new DOMRect(408, 0, 360, 900), map)).toEqual([-180, 0]);
+        expect(locateOffset('bottom', new DOMRect(0, 400, 360, 300), new DOMRect(0, 0, 360, 700))).toEqual([0, -150]);
+    });
+
+    it('badPath_aSideSheetOnTheLeftOfARightToLeftPageSendsThePlaceToItsRight', () => {
+        expect(locateOffset('side', new DOMRect(0, 0, 360, 900), new DOMRect(0, 0, 768, 900))).toEqual([180, 0]);
+        expect(locateOffset('side', new DOMRect(100, 0, 360, 412), new DOMRect(100, 0, 915, 412))).toEqual([180, 0]);
+    });
+
+    it('badPath_noSheetSurfaceLeavesThePlaceInTheMiddle', () => {
+        expect(locateOffset('docked', undefined, undefined)).toEqual([0, 0]);
+        expect(locateOffset('bottom', undefined, new DOMRect(0, 0, 360, 700))).toEqual([0, 0]);
+        expect(locateOffset('bottom', new DOMRect(0, 400, 360, 300), undefined)).toEqual([0, 0]);
     });
 });

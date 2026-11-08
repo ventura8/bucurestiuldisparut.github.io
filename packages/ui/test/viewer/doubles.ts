@@ -35,6 +35,11 @@ class SheetDouble extends LitElement {
             <slot name="header"></slot><slot></slot><button aria-label=${this.closeLabel} @click=${close}></button>
         </div>`;
     }
+
+    /** The sheet's surface (`HcmSheet.sheet`): what covers the map. */
+    sheet(): HTMLElement | null {
+        return this.renderRoot.querySelector('div');
+    }
 }
 
 class DialogDouble extends LitElement {

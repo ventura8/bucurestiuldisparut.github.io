@@ -41,7 +41,7 @@ test(
 );
 
 test(
-    'A photo at every height, its lightbox, and the photo list',
+    'A photo at every height, shown on the map, its lightbox, and the photo list',
     { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V18-HAPPY-MODAL-STATES'] },
     async ({ page, context, lang }) => {
         await expectJourneySound({ page, context, lang }, journey('photo'));

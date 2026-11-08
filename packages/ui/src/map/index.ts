@@ -8,6 +8,7 @@
 export { EventListeners, Listeners } from './listeners.js';
 export { PHOTOS_OVERLAY_ID } from './map-port.js';
 export type {
+    FlyOptions,
     MapErrorKind,
     MapEventMap,
     MapOptions,
@@ -24,6 +25,7 @@ export type {
     VectorOverlaySpec,
 } from './map-port.js';
 export type {
+    CameraOffset,
     MapboxCameraOptions,
     MapboxEvent,
     MapboxFeature,
@@ -39,6 +41,7 @@ export { createMapboxPort, nativeMap } from './mapbox-adapter.js';
 export { createViewerMapPort } from './viewer-map.js';
 export type { ViewerMapPort } from './viewer-map.js';
 export type { MyLocationFix } from './my-location.js';
+export { CONE_MIN_ZOOM } from './photos.js';
 export { MAPBOX_GL_CSS_URL, MAPBOX_GL_SCRIPT_URL, MAPBOX_GL_VERSION, MAPBOX_INTEGRITY_ATTRIBUTE, loadMapboxGl } from './mapbox-loader.js';
 export type { MapboxLoaderScope } from './mapbox-loader.js';
 export type { FrameScheduler } from './overlay-registry.js';

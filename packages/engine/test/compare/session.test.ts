@@ -592,3 +592,40 @@ describe('swipe compare session: the visitor position (V10)', () => {
         expect(second?.callsOf('setMyLocation').at(-1)).toEqual([null]);
     });
 });
+
+describe("swipe compare session: Show on map's ring (V51)", () => {
+    const PLACE = [26.091611, 44.431722] as const;
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it('happyPath_theRingIsOnBothSidesOfTheDivider', async () => {
+        const { store, map, compare } = await comparing();
+        store.openCompare(null);
+        await settle();
+        const second = compare.maps[0];
+
+        store.locatePhoto('mihai-voda-1978', [0, 0]);
+
+        expect(map.callsOf('markPhoto').at(-1)).toEqual([PLACE]);
+        expect(second?.callsOf('markPhoto').at(-1)).toEqual([PLACE]);
+    });
+
+    it('badPath_aSecondMapMadeAfterShowOnMapDrawsTheRingAndItGoesFromBoth', async () => {
+        const { store, map, compare } = await comparing();
+        store.locatePhoto('mihai-voda-1978', [0, 0]);
+        store.openCompare(null);
+        await settle();
+        const second = compare.maps[0];
+
+        expect(second?.callsOf('markPhoto')).toEqual([[PLACE]]);
+        store.openPhoto('uranus-1936');
+        expect(map.callsOf('markPhoto').at(-1)).toEqual([null]);
+        expect(second?.callsOf('markPhoto').at(-1)).toEqual([null]);
+    });
+});

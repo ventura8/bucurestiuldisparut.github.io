@@ -48,7 +48,16 @@ export interface MapboxCameraOptions {
     readonly center?: LngLat;
     readonly zoom?: number;
     readonly bearing?: number;
+    /** Where the target ends, in px from the container's centre (the viewer's Locate, beside a sheet). */
+    readonly offset?: CameraOffset;
+    /** `easeTo` only: 0 jumps (`jumpTo` takes no offset). */
+    readonly duration?: number;
+    /** Animates even under `prefers-reduced-motion` (the caller already read the preference). */
+    readonly essential?: boolean;
 }
+
+/** Screen pixels, x right and y down. */
+export type CameraOffset = readonly [number, number];
 
 export interface MapboxMapOptions {
     readonly container: HTMLElement;

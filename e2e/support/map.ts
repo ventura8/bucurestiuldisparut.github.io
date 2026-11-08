@@ -400,3 +400,10 @@ function myLocationInPage(): MyLocationDrawn[] {
 export async function myLocationDrawn(page: Page): Promise<MyLocationDrawn[]> {
     return page.evaluate(myLocationInPage);
 }
+
+/** Waits until the viewer's map rings a photo's place (Show on map, V51) and its camera has arrived and drawn everything. */
+export async function photoMarkDrawn(page: Page): Promise<void> {
+    await expect.poll(async () => (await renderedPoints(page, 'hcm-photo-mark')).length, { message: 'a ring marks the place' }).toBe(1);
+    await expect.poll(async () => (await mapFacts(page)).moving, { message: 'the camera has arrived' }).toBe(false);
+    await mapIdle(page);
+}

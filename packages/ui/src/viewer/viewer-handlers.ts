@@ -44,6 +44,29 @@ function inputHandlers(on: On): Pick<ViewerHandlers, 'onMapLabel' | 'onShortcuts
     };
 }
 
+/** A photo to open, to show on the map (V51) or full size, and its thumbnail on screen. */
+type PhotoHandlers = Pick<ViewerHandlers, 'onPhotoSelect' | 'onPhotoLocate' | 'onLightboxOpen' | 'onPhotoShown' | 'onLightboxClose'>;
+
+function photoHandlers(on: On): PhotoHandlers {
+    return {
+        onPhotoSelect: on((store, event) => {
+            selectPhoto(store, event.detail.photoId);
+        }),
+        onPhotoLocate: on((store, event) => {
+            store.locatePhoto(event.detail.photoId, event.detail.offset);
+        }),
+        onLightboxOpen: on((store) => {
+            store.setLightbox(true);
+        }),
+        onPhotoShown: on((store, event) => {
+            store.photoShown?.(event.detail.ok);
+        }),
+        onLightboxClose: on((store) => {
+            store.setLightbox(false);
+        }),
+    };
+}
+
 /** M17: a story to open (null: their list), and a place a story names. */
 function storyHandlers(on: On): Pick<ViewerHandlers, 'onStorySelect' | 'onPoiSelect'> {
     return {
@@ -69,18 +92,7 @@ export function createHandlers(host: HandlerHost): ViewerHandlers {
             host.setOpacity(store, event.detail);
         }),
         onSheetClose: on(closeSheet),
-        onPhotoSelect: on((store, event) => {
-            selectPhoto(store, event.detail.photoId);
-        }),
-        onLightboxOpen: on((store) => {
-            store.setLightbox(true);
-        }),
-        onPhotoShown: on((store, event) => {
-            store.photoShown?.(event.detail.ok);
-        }),
-        onLightboxClose: on((store) => {
-            store.setLightbox(false);
-        }),
+        ...photoHandlers(on),
         onMenuSelect: on((store, event) => {
             const value = event.detail.value;
             if (isMenuAction(value)) {

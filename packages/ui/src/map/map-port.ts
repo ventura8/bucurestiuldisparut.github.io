@@ -6,6 +6,8 @@
  */
 import type { BBox, Geometry, LayerAdjustments, LayerSource, LngLat, Locale, MapView, RasterAdjustmentPaint } from '@hcm/shared';
 
+import type { CameraOffset } from './mapbox-types.js';
+
 /** The overlay id of the photo markers and cones (PLAN Addendum 3); defined once, in @hcm/shared. */
 export { PHOTOS_OVERLAY_ID } from '@hcm/shared';
 
@@ -100,7 +102,7 @@ export interface MapOptions {
     readonly maxZoom: number;
     readonly maxBounds?: BBox;
     readonly locale: Locale;
-    /** True with `prefers-reduced-motion: reduce`: flyTo jumps instead of animating. */
+    /** True with `prefers-reduced-motion: reduce` at mount: a flyTo without `animate` jumps instead of animating. */
     readonly reducedMotion: boolean;
 }
 
@@ -134,6 +136,12 @@ export interface MapPadding {
     readonly left: number;
 }
 
+/** How `MapPort.flyTo` moves. */
+export interface FlyOptions {
+    readonly animate?: boolean;
+    readonly offset?: CameraOffset;
+}
+
 export interface MapPort {
     /** False without WebGL (`mapboxgl.supported()`); the viewer then shows the photo list (scenario V02). */
     isWebGLSupported(): boolean;
@@ -163,8 +171,12 @@ export interface MapPort {
     onPoiClick(handler: (poiId: string) => void): Unsubscribe;
     /** A click (or tap) on the map that hit no photo marker or POI, as a position: the admin's selection and picks. */
     onMapClick(handler: (position: LngLat) => void): Unsubscribe;
-    /** Moves the camera; animated unless `reducedMotion` or `animate: false`. */
-    flyTo(view: Partial<MapView>, options?: { readonly animate?: boolean }): void;
+    /**
+     * Moves the camera; `animate` decides (true animates even under reduced motion: the caller read the preference), without
+     * it the move animates unless `reducedMotion`. `offset`: the target ends that many px from the map's centre (x right,
+     * y down), not under it (the viewer's Show on map beside a sheet).
+     */
+    flyTo(view: Partial<MapView>, options?: FlyOptions): void;
     /** Fits the camera to a box (the city, an edited geometry); animated unless `reducedMotion` or `animate: false`. */
     fitBounds(bounds: BBox, options?: { readonly padding?: number; readonly animate?: boolean }): void;
     /** Kept across a new mount; `flyTo` and `fitBounds` then centre above the padding (M2c-interfaces §3.2). */

@@ -12,6 +12,7 @@ import { translate, type Locale, type Manifest, type Photo, type Poi, type PoiCa
 import { html, nothing, type TemplateResult } from 'lit';
 import { keyed } from 'lit/directives/keyed.js';
 
+import type { CameraOffset } from '../map/mapbox-types.js';
 import type { AttributionPart } from './attribution.js';
 import { EMPTY } from './empty.js';
 import type { MapLabelDetail } from './hcm-layer-panel.js';
@@ -39,6 +40,12 @@ export interface ViewerView {
     readonly attribution: readonly AttributionPart[];
 }
 
+/** `hcm-photo-locate` of `<hcm-photo-sheet>`: the photo, and its place's offset from the map's centre (`locateOffset`). */
+interface PhotoLocateDetail {
+    readonly photoId: string;
+    readonly offset: CameraOffset;
+}
+
 /** `hcm-overlay-opacity` of `<hcm-overlay-list>`: `final` is false while dragging, true on release. */
 export interface OverlayOpacityDetail {
     readonly id: string;
@@ -53,6 +60,8 @@ export interface ViewerHandlers {
     readonly onOverlayOpacity: (event: CustomEvent<OverlayOpacityDetail>) => void;
     readonly onSheetClose: (event: Event) => void;
     readonly onPhotoSelect: (event: CustomEvent<{ readonly photoId: string }>) => void;
+    /** The photo sheet's "Show on map" (V51). */
+    readonly onPhotoLocate: (event: CustomEvent<PhotoLocateDetail>) => void;
     /** M17: a story to open (null: their list), and a place a story names. */
     readonly onStorySelect: (event: CustomEvent<{ readonly storyId: string | null }>) => void;
     readonly onPoiSelect: (event: CustomEvent<{ readonly poiId: string }>) => void;
@@ -368,8 +377,10 @@ function photoSheet(view: ViewerView, ready: Ready, placement: Placement, handle
         .manifestUrl=${view.manifestUrl}
         .contributeUrl=${ready.manifest.contributeUrl ?? null}
         .stories=${ready.manifest.stories ?? []}
+        .canLocate=${ready.state.webgl}
         ?inert=${placement.inert === true}
         @hcm-close=${handlers.onSheetClose}
+        @hcm-photo-locate=${handlers.onPhotoLocate}
         @hcm-photo-select=${handlers.onPhotoSelect}
         @hcm-story-select=${handlers.onStorySelect}
         @hcm-lightbox-open=${handlers.onLightboxOpen}

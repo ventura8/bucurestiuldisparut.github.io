@@ -136,6 +136,10 @@ export class FakeStore implements ViewerStorePort {
         this.set({ selectedPhotoId: photoId, sheet: photoId === null ? 'none' : 'photo', lightbox: false });
     }
 
+    locatePhoto(photoId: string, offset: readonly [number, number]): void {
+        this.#record('locatePhoto', photoId, offset);
+    }
+
     photoShown(ok: boolean): void {
         this.#record('photoShown', ok);
     }

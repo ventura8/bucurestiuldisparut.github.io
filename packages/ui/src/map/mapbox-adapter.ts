@@ -18,6 +18,7 @@ import { ensureIcon, PHOTO_CAMERA_ICON, PHOTO_CLUSTER_ICON, PHOTO_DIRECTION_ICON
 import { EventListeners, Listeners } from './listeners.js';
 import {
     PHOTOS_OVERLAY_ID,
+    type FlyOptions,
     type MapEventMap,
     type MapOptions,
     type MapPadding,
@@ -335,10 +336,11 @@ class MapboxPort implements MapPort {
         return this.#mapClicks.add(handler);
     }
 
-    flyTo(view: Partial<MapView>, options?: { readonly animate?: boolean }): void {
+    flyTo(view: Partial<MapView>, options?: FlyOptions): void {
         const session = this.#session;
         if (session !== null) {
-            moveCamera(session.map, view, animates(options, session.options.reducedMotion));
+            const animate = animates(options, session.options.reducedMotion);
+            moveCamera(session.map, view, { animate, essential: options?.animate === true, offset: options?.offset });
         }
     }
 

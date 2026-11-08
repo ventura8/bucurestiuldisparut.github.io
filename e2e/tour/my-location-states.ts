@@ -2,13 +2,16 @@ import type { Locale } from '@hcm/shared';
 import type { BrowserContext, Page } from '@playwright/test';
 
 import { SITE_ORIGIN } from '../fixtures/world.js';
-import { mapIdle } from '../support/map.js';
-import { chooseMenuItem, holdToast, t } from '../support/viewer.js';
+import { mapIdle, photoMarkDrawn } from '../support/map.js';
+import { chooseMenuItem, holdToast, t, viewer } from '../support/viewer.js';
 
 /**
- * Show my location's state in the tour's inventory (behaviour V10, `docs/ENGINE_API.md` → *Show my location*), visited by
- * the journey `home` of e2e/tour/states.ts after the refused permission: the browser context grants the position now, so
- * the blue dot, its accuracy circle and the toast that says the accuracy run the generic checkers at every viewport.
+ * The states of the camera's two moves to a place in the tour's inventory. Show my location (behaviour V10,
+ * `docs/ENGINE_API.md` → *Show my location*), visited by the journey `home` of e2e/tour/states.ts after the refused
+ * permission: the browser context grants the position now, so the blue dot, its accuracy circle and the toast that says the
+ * accuracy run the generic checkers at every viewport. Show on map in a photo's details (V51, *Show on map*), visited by the
+ * journey `photo` right after the photo's sheet: the photo's place beside the sheet, ringed, the sheet still open with the
+ * focus on its button.
  */
 
 export interface LocationTour {
@@ -35,5 +38,14 @@ export const MY_LOCATION_STATES = {
             await mapIdle(page);
         },
         announcements: (lang: Locale) => [shown(lang)],
+    },
+    'photo-located': {
+        title: "A photo's sheet after Show on map: its place beside the sheet, ringed",
+        enter: async ({ page, lang }: LocationTour) => {
+            await viewer(page)
+                .getByRole('button', { name: t(lang, 'photo.locate'), exact: true })
+                .click();
+            await photoMarkDrawn(page);
+        },
     },
 };

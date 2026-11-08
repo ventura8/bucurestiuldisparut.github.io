@@ -6,7 +6,7 @@
  * also reaches Mapbox's own labels and the basemap's (`setLocale`). The overlays drawn are `displayedOverlays`: on a
  * compact window, swipe compare's toggle may show the compared side's historical layer instead (M4, V06). The basemap's
  * own labels follow the visitor's choice on either map (`map-labels.ts`, V31), its light the theme (`map-light.ts`, V38).
- * The visitor's position, once known, is a blue dot on either map (V10).
+ * The visitor's position, once known, is a blue dot on either map (V10), Show on map's ring around a photo's place too (V51).
  */
 import { findOverlay, PHOTOS_OVERLAY_ID, rasterAdjustmentPaint, type Manifest, type Overlay } from '@hcm/shared';
 import type { MyLocationFix, ViewerMapPort } from '@hcm/ui/map';
@@ -51,6 +51,9 @@ export class MapSync {
         drawMapLabels(this.#map, state.mapLabels.shown);
         drawMapLight(this.#map, mapLight(state));
         this.#map.setMyLocation(fixOf(state.myLocation));
+        if (state.photoMark !== null) {
+            this.#map.markPhoto(state.photoMark);
+        }
     }
 
     /** Applies the difference between `previous` and `next` (same manifest). */
@@ -65,8 +68,16 @@ export class MapSync {
             drawMapLabels(this.#map, next.mapLabels.shown);
         }
         this.#light(previous, next);
+        this.#places(previous, next);
+    }
+
+    /** The visitor's blue dot and Show on map's ring. */
+    #places(previous: ViewerState, next: ViewerState): void {
         if (next.myLocation !== previous.myLocation) {
             this.#map.setMyLocation(fixOf(next.myLocation));
+        }
+        if (next.photoMark !== previous.photoMark) {
+            this.#map.markPhoto(next.photoMark);
         }
     }
 

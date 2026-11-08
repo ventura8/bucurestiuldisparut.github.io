@@ -913,6 +913,13 @@
             "source": "the owner's decision of 2026-11-08: stories; docs/research/M17-stories.md §5"
         },
         {
+            "id": "V51",
+            "area": "viewer",
+            "name": "Show on map: a photo's details bring its place into view",
+            "milestone": "M18",
+            "source": "the owner, 2026-11-08: a locate image button in the photo detail panel"
+        },
+        {
             "id": "A100",
             "area": "admin",
             "name": "Stories in the admin: written, published, reviewed and reverted like photos and places",
@@ -14805,6 +14812,50 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The review of 2026-11-08. Test: e2e/specs/viewer/stories.spec.ts; the hash rule also in packages/engine/test/core/stories.test.ts."
+        },
+        {
+            "id": "S-V51-HAPPY-LOCATE",
+            "behaviour": "V51",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Show on map brings a photo opened far away into the part of the map its sheet leaves",
+            "asserts": "a photo opened with the view 3 km away; Show on map -> the camera at zoom 17 or more, its place on the map and outside the sheet's surface (above a bottom sheet at c360, beside a side sheet at m768, beside the docked pane at l1440), its view cone drawn, a ring around it, the sheet still open, the hash's zoom 17 or more and photo= kept",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/locate-photo.spec.ts; the zoom range, the ring's life and the offset also in packages/engine/test/core/store-locate.test.ts and packages/ui/test/viewer/hcm-photo-sheet.test.ts."
+        },
+        {
+            "id": "S-V51-BAD-INTERRUPTED",
+            "behaviour": "V51",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A second Show on map during the flight still rings the place where the camera lands",
+            "asserts": "a photo opened with the view 3 km away; Show on map, then again while the camera still flies (Mapbox stops the first flight, firing its moveend at once) -> once the camera has arrived, one ring around the place and the place outside the sheet's surface",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/locate-photo.spec.ts; the jump under reduced motion switched on after load and the ring on both sides of swipe compare in packages/engine/test/core/store-locate.test.ts and packages/engine/test/compare/session.test.ts, a right-to-left page's side sheet in packages/ui/test/viewer/hcm-photo-sheet.test.ts."
+        },
+        {
+            "id": "S-V51-BAD-UNPLACED",
+            "behaviour": "V51",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A photo with no place has no Show on map",
+            "asserts": "the gallery of photos with no place lists one photo and no Show on map button",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/locate-photo.spec.ts."
+        },
+        {
+            "id": "S-V51-BAD-NO-MAP",
+            "behaviour": "V51",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Without a map a photo's sheet has no Show on map",
+            "asserts": "without WebGL a photo opened from the list shows its sheet with the full-size button and no Show on map",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/no-webgl.spec.ts (project nogl)."
         },
         {
             "id": "S-A100-BAD-REVIEW-EMPTY",

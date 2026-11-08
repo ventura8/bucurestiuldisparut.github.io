@@ -7,7 +7,9 @@ import {
     MY_LOCATION_AREA_LAYER,
     MY_LOCATION_DOT_LAYER,
     MY_LOCATION_SOURCE,
+    PHOTO_MARK_SOURCE,
     myLocationData,
+    pointData,
     type MyLocationFix,
 } from '../../src/map/my-location.js';
 import { createViewerMapPort } from '../../src/map/viewer-map.js';
@@ -129,5 +131,47 @@ describe('setMyLocation on the viewer map', () => {
             port.setMyLocation(FIX);
         }).not.toThrow();
         expect(port.mapLoadCount).toBe(0);
+    });
+});
+
+describe('markPhoto on the viewer map (Locate)', () => {
+    it('happyPath_aRingInTheConeColourAroundThePlaceAboveThePhotosThenMoved', async () => {
+        const { gl, port } = await mounted();
+        const before = gl.map.layerOrder.length;
+
+        port.markPhoto([26.1, 44.43]);
+        port.markPhoto([26.2, 44.44]);
+
+        expect(gl.map.layerOrder.slice(before)).toEqual([PHOTO_MARK_SOURCE]);
+        expect(gl.map.layers.get(PHOTO_MARK_SOURCE)).toMatchObject({ type: 'circle', slot: 'top', source: PHOTO_MARK_SOURCE });
+        expect(gl.map.paint.get(PHOTO_MARK_SOURCE)).toMatchObject({ 'circle-opacity': 0, 'circle-stroke-color': '#ffb74d' });
+        expect(gl.map.callsOf('addSource').filter(([id]) => id === PHOTO_MARK_SOURCE)).toHaveLength(1);
+        expect(featuresOf(gl.map.getSource(PHOTO_MARK_SOURCE)?.data)[0]?.geometry.coordinates).toEqual([26.2, 44.44]);
+    });
+
+    it('happyPath_nullTakesTheRingAway', async () => {
+        const { gl, port } = await mounted();
+        port.markPhoto([26.1, 44.43]);
+        port.markPhoto(null);
+
+        expect(featuresOf(gl.map.getSource(PHOTO_MARK_SOURCE)?.data)).toEqual([]);
+    });
+
+    it('badPath_nullFirstOrNoMapAddsNothing', async () => {
+        const { gl, port } = await mounted();
+        port.markPhoto(null);
+        const unmounted = createViewerMapPort(new FakeMapboxGl(), fakeAdapterEnv());
+
+        expect(gl.map.getSource(PHOTO_MARK_SOURCE)).toBeUndefined();
+        expect(() => {
+            unmounted.markPhoto([26.1, 44.43]);
+        }).not.toThrow();
+    });
+
+    it('happyPath_pointDataIsOnePointOrNone', () => {
+        expect(featuresOf(pointData([26.1, 44.43]))).toEqual([
+            { type: 'Feature', geometry: { type: 'Point', coordinates: [26.1, 44.43] }, properties: {} },
+        ]);
+        expect(featuresOf(pointData(null))).toEqual([]);
     });
 });

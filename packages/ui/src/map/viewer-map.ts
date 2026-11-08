@@ -1,13 +1,15 @@
 /**
  * What the public viewer's map can do beyond `MapPort`: read and write the basemap's own boolean configuration, for the
- * visitor's map labels (docs/ENGINE_API.md → Map labels). Apart from the adapter because only the viewer uses it, so the
- * admin's bundle does not carry it.
+ * visitor's map labels (docs/ENGINE_API.md → Map labels), and draw the visitor's blue dot and Locate's ring around a photo.
+ * Apart from the adapter because only the viewer uses it, so the admin's bundle does not carry it.
  */
+import type { LngLat } from '@hcm/shared';
+
 import type { AdapterEnv } from './env.js';
 import type { MapPort } from './map-port.js';
 import { createMapboxPort, nativeMap } from './mapbox-adapter.js';
 import type { MapboxGl, MapboxMap } from './mapbox-types.js';
-import { drawMyLocation, type MyLocationFix } from './my-location.js';
+import { drawMyLocation, drawPhotoMark, type MyLocationFix } from './my-location.js';
 
 const IMPORT_ID = 'basemap';
 
@@ -25,6 +27,8 @@ export interface ViewerMapPort extends MapPort {
     setBasemapOption(name: string, value: string): void;
     /** The visitor's position as a blue dot (`my-location.ts`), null removes it; nothing before `mount` has resolved. */
     setMyLocation(fix: MyLocationFix | null): void;
+    /** A ring around a photo's place (the photo sheet's Locate), null takes it away; nothing before `mount` has resolved. */
+    markPhoto(center: LngLat | null): void;
 }
 
 /** Mapbox answers null, or throws, for a style without the import or the property. */
@@ -52,16 +56,20 @@ export function createViewerMapPort(gl: MapboxGl, env?: AdapterEnv): ViewerMapPo
     const write = (name: string, value: boolean | string): void => {
         nativeMap(port)?.setConfigProperty(IMPORT_ID, name, value);
     };
+    const onMap =
+        <T>(draw: (map: MapboxMap, value: T) => void) =>
+        (value: T): void => {
+            const map = nativeMap(port);
+            if (map !== null) {
+                draw(map, value);
+            }
+        };
     return Object.assign(port, {
         getBasemapFlag: (name: string) => readFlag(nativeMap(port), name),
         setBasemapFlag: write,
         getBasemapOption: (name: string) => readOption(nativeMap(port), name),
         setBasemapOption: write,
-        setMyLocation: (fix: MyLocationFix | null) => {
-            const map = nativeMap(port);
-            if (map !== null) {
-                drawMyLocation(map, fix);
-            }
-        },
+        setMyLocation: onMap(drawMyLocation),
+        markPhoto: onMap(drawPhotoMark),
     });
 }

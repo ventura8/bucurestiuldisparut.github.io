@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 133 | 1285 | 513 | 772 | 1283 | 2 | 313 |
+| 134 | 1289 | 514 | 775 | 1287 | 2 | 314 |
 
 ## Viewer
 
@@ -217,6 +217,10 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V50-BAD-OLD-MANIFEST` | V50 | bad | A manifest without stories has no Stories in its menu | the menu has About and no Stories item | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
 | `S-V50-BAD-TIMELINE-LINK-LAYERS` | V50 | bad | A story's link with its own layers keeps them instead of the story's year | #layers=<1980>&story=<1966 story> opens the story with the timeline at 1980, layers= and story= unchanged | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
 | `S-V50-BAD-UNKNOWN` | V50 | bad | A link to a story that does not exist shows a toast and opens nothing | error.unknownStory in the status region, no story heading | e2e-viewer | exists | `e2e/specs/viewer/stories.spec.ts` |
+| `S-V51-HAPPY-LOCATE` | V51 | happy | Show on map brings a photo opened far away into the part of the map its sheet leaves | a photo opened with the view 3 km away; Show on map -> the camera at zoom 17 or more, its place on the map and outside the sheet's surface (above a bottom sheet at c360, beside a side sheet at m768, beside the docked pane at l1440), its view cone drawn, a ring around it, the sheet still open, the hash's zoom 17 or more and photo= kept | e2e-viewer | exists | `e2e/specs/viewer/locate-photo.spec.ts` |
+| `S-V51-BAD-INTERRUPTED` | V51 | bad | A second Show on map during the flight still rings the place where the camera lands | a photo opened with the view 3 km away; Show on map, then again while the camera still flies (Mapbox stops the first flight, firing its moveend at once) -> once the camera has arrived, one ring around the place and the place outside the sheet's surface | e2e-viewer | exists | `e2e/specs/viewer/locate-photo.spec.ts` |
+| `S-V51-BAD-NO-MAP` | V51 | bad | Without a map a photo's sheet has no Show on map | without WebGL a photo opened from the list shows its sheet with the full-size button and no Show on map | e2e-viewer | exists | `e2e/specs/viewer/no-webgl.spec.ts` |
+| `S-V51-BAD-UNPLACED` | V51 | bad | A photo with no place has no Show on map | the gallery of photos with no place lists one photo and no Show on map button | e2e-viewer | exists | `e2e/specs/viewer/locate-photo.spec.ts` |
 
 ## Admin
 

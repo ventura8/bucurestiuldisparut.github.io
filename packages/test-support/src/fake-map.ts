@@ -10,6 +10,7 @@
 import type { BBox, LngLat, Locale, MapView } from '@hcm/shared';
 
 import type {
+    FlyOptions,
     MapEventMap,
     MapOptions,
     MapPadding,
@@ -167,7 +168,7 @@ export class FakeMap implements ViewerMapPort {
     }
 
     /** Moves the fake's view and plays `move` with it (M4: swipe compare's camera sync follows it). */
-    flyTo(view: Partial<MapView>, options?: { readonly animate?: boolean }): void {
+    flyTo(view: Partial<MapView>, options?: FlyOptions): void {
         this.#record('flyTo', view, options);
         this.view = { ...this.view, ...view };
         this.emit('move', this.view);
@@ -215,6 +216,10 @@ export class FakeMap implements ViewerMapPort {
 
     setMyLocation(fix: MyLocationFix | null): void {
         this.#record('setMyLocation', fix);
+    }
+
+    markPhoto(center: LngLat | null): void {
+        this.#record('markPhoto', center);
     }
 
     resize(): void {

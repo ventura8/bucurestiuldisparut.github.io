@@ -9,6 +9,7 @@
 import type { LngLat, Locale, Manifest, MapView, MessageKey, Overlay } from '@hcm/shared';
 import type { MapLabelKind, MapLabels } from '@hcm/shared/map-labels';
 
+import type { CameraOffset } from '../map/mapbox-types.js';
 import type { ThemeMode } from '../theme/apply.js';
 import type { WindowClass } from '../theme/tokens.js';
 
@@ -94,6 +95,8 @@ export interface ViewerStorePort {
     toggleOverlay(overlayId: string, visible?: boolean): void;
     setOverlayOpacity(overlayId: string, opacity: number, final?: boolean): void;
     openPhoto(photoId: string | null): void;
+    /** The photo sheet's Locate: the camera goes to the photo's place, `offset` px from the map's centre (x right, y down). */
+    locatePhoto(photoId: string, offset: CameraOffset): void;
     /** The open photo's thumbnail was decoded (`ok`) or failed: ends the `photo_timing` field measurement. */
     photoShown?(ok: boolean): void;
     openPoi(poiId: string | null): void;
