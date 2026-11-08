@@ -2904,3 +2904,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the owner's eyes on the live map, then a measure in the page: 16 reads in 6.2 s at one address, 0.86 s with no cache, 0.78 s with an address per range.
     - Fix and pin: `rangeRequest` gives each range its own address (`?range=`), still cached; a signed address, whose query is signed, skips the cache instead. Tests in `pmtiles-source.test.ts`.
     - **Measure parallel reads on the real browser and host: a fake fetch cannot show a browser's own queue.**
+488. **The blue dot came with a ring of blue dots: a circle layer drew one at every vertex of the accuracy circle.**
+    - Seen: 2026-11-08, the owner on 1.0.0+d1aa25f: "a lot of blue dots around the centre one".
+    - Cause: `hcm-my-location-dot` (a `circle` layer) had no filter over a source that also holds the accuracy circle's Polygon (25 points) and the heading cone; Mapbox draws a circle layer at every vertex of a polygon. The unit tests checked the features and the layers' paint, never which features each layer draws; S-V10-HAPPY read the first rendered dot feature and the blue pixels at the centre only.
+    - Fix and pin: the dot layer's filter `['==', ['geometry-type'], 'Point']` (`packages/ui/src/map/my-location.ts`); `my-location.test.ts` (failed first on the missing filter) and S-V10-BAD-ONE-DOT-ONLY, which counts the dot layer's rendered features (one Point) and finds no solid blue at the circle's edge.
+    - **When one GeoJSON source feeds layers of different types, filter every point-like layer (`circle`, `symbol`) by geometry type, and test what each layer renders (its rendered features, a pixel where the wrong thing would be), not only the source's features.**

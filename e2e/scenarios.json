@@ -1574,6 +1574,17 @@
             "notes": "Review of track/improve2, 2026-11-08: the camera's view after Show my location is the position, so the hash keeps the view it had until the visitor moves the camera (a hash they type wins). Tests: e2e/specs/viewer/geolocate.spec.ts, packages/engine/test/core/store-located-view.test.ts."
         },
         {
+            "id": "S-V10-BAD-ONE-DOT-ONLY",
+            "behaviour": "V10",
+            "area": "viewer",
+            "path": "bad",
+            "title": "One blue dot only: no dot at each vertex of the accuracy circle",
+            "asserts": "Show my location on, three positions in turn -> the dot layer's rendered features are exactly one Point at the last position; the accuracy circle is drawn by a fill layer, and its northern edge has no solid-blue pixels while the dot has",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08 on 1.0.0+d1aa25f: \"a lot of blue dots around the centre one\". The circle layer had no filter, so Mapbox drew a dot at every vertex of the accuracy polygon (and the cone); the dot layer now keeps to the Point (track/onedot). Tests: e2e/specs/viewer/geolocate.spec.ts, packages/ui/test/map/my-location.test.ts."
+        },
+        {
             "id": "S-V10-HAPPY-COMPARE-BOTH-SIDES",
             "behaviour": "V10",
             "area": "viewer",

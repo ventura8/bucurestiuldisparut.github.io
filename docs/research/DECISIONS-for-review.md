@@ -6110,3 +6110,10 @@ The owner confirmed that the GitHub account `bucurestiuldisparut` is theirs and 
 ## 118. The merge of track/tilespeed into the main branch (2026-11-08) — APPLIED, no budget raised
 
 - **118a The merge.** `track/tilespeed` (d21cba1, from f2f917b: each PMTiles range read at its own address, `?range=`, so Chrome's cache lock no longer runs an archive's tiles one after another; a signed address reads with `cache: 'no-store'` instead) merged into `feat/engine-rewrite` after track/stalefix (§117). It was never merged before. Its lesson 442 became 487; nothing referenced it by number.
+
+## 119. One blue dot for Show my location (track/onedot, 2026-11-08) — APPLIED, no budget raised
+
+- **119a The cause** (the owner on 1.0.0+d1aa25f: "we only want a blue dot in the middle; right now we show a lot of blue dots around the centre one"). The source `hcm-my-location` holds the accuracy circle (a 25-point Polygon), the heading cone where there is one, and the Point; the `circle` layer `hcm-my-location-dot` had no filter, and Mapbox draws a circle layer at each vertex of a polygon, so a ring of 24 dots with white rings sat on the accuracy circle's edge (more on the cone's arc). Not a layer per fix: the source and layers are added once (the existing unit test).
+- **119b The fix**: the dot layer is filtered to the Point (`['==', ['geometry-type'], 'Point']`); the fill layer needs none (a fill draws no Point). Rejected: a second source for the dot (another `addSource` and `setData` per fix, more bytes for the same result). Tests: `packages/ui/test/map/my-location.test.ts` (failed first), S-V10-BAD-ONE-DOT-ONLY (lesson 481).
+- **119c Bytes**: measured on the NUC the gate's way, the IIFE 124,958 of 125,000 bytes (11 more than §114's 124,947), the ES module 97.2 of 100 KB; no budget raised. **For review**: 42 bytes of IIFE headroom remain.
+- **119d The merge.** `track/onedot` (6054f5d, from d1aa25f) merged into `feat/engine-rewrite` after track/tilespeed (§118). Its §115 became §119 and its lesson 481 became 488, every reference followed (`.agent/skills/web/engine_viewer_skill.md`).

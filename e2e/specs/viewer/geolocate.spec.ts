@@ -1,3 +1,4 @@
+import { destinationPoint } from '@hcm/shared';
 import type { Locator, Page } from '@playwright/test';
 
 import { SITE_ORIGIN } from '../../fixtures/world.js';
@@ -184,6 +185,33 @@ test(
         for (const coordinate of [INSIDE.latitude, INSIDE.longitude]) {
             expect(`${page.url()} ${copied}`, 'the position is in no link').not.toContain(String(coordinate));
         }
+    },
+);
+
+test(
+    'After several positions the map shows one blue dot only, its accuracy circle a translucent fill with no dot at its edge',
+    { tag: '@S-V10-BAD-ONE-DOT-ONLY' },
+    async ({ page, lang }) => {
+        await allowLocation(page, INSIDE);
+        await openViewer(page, { lang });
+        await chooseMenuItem(page, lang, t(lang, 'action.locate'));
+        await expectDotAt(page, INSIDE);
+        await expect.poll(async () => (await mapFacts(page)).moving).toBe(false);
+
+        for (const position of [MOVED, INSIDE]) {
+            await page.context().setGeolocation(position);
+            await expectDotAt(page, position);
+        }
+        await mapIdle(page);
+
+        const [drawn] = await myLocationDrawn(page);
+        expect(drawn?.dots, 'the dot layer draws the one position, no dot at a vertex of the circle').toEqual(['Point']);
+        expect(drawn?.area).toBe(true);
+        expect(drawn?.areaType, 'the accuracy circle is a fill').toBe('fill');
+        // The circle's northern edge: a dot drawn at that vertex (the owner's "a lot of blue dots") would paint it solid blue.
+        const edge = await screenPointOf(page, destinationPoint(lngLatOf(INSIDE), 0, INSIDE.accuracy));
+        expect(await pixelsOfColour(page, edge, BLUE, 4), 'no blue dot on the accuracy circle').toBe(0);
+        expect(await pixelsOfColour(page, await screenPointOf(page, lngLatOf(INSIDE)), BLUE, 4)).toBeGreaterThan(20);
     },
 );
 

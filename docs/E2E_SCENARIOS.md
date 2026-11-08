@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 133 | 1284 | 513 | 771 | 1282 | 2 | 313 |
+| 133 | 1285 | 513 | 772 | 1283 | 2 | 313 |
 
 ## Viewer
 
@@ -77,6 +77,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V10-HAPPY-COMPARE-BOTH-SIDES` | V10 | happy | While comparing, both maps show the blue dot | a wide window comparing (two maps), Show my location -> each map draws the dot at the position; still two maps made, none removed | e2e-viewer | exists | `e2e/specs/viewer/geolocate.spec.ts` |
 | `S-V10-HAPPY-DOT-FOLLOWS` | V10 | happy | The blue dot follows the visitor and Show my location again turns it off | Show my location on, the browser gives a new position -> the dot moves there, the camera stays; Show my location again -> no dot, aria-checked false | e2e-viewer | exists | `e2e/specs/viewer/geolocate.spec.ts` |
 | `S-V10-BAD-DENIED` | V10 | bad | Denied geolocation shows a message | permission denied -> message, the camera stays, no dot, the menu item aria-checked false | e2e-viewer | exists | `e2e/specs/viewer/geolocate.spec.ts` |
+| `S-V10-BAD-ONE-DOT-ONLY` | V10 | bad | One blue dot only: no dot at each vertex of the accuracy circle | Show my location on, three positions in turn -> the dot layer's rendered features are exactly one Point at the last position; the accuracy circle is drawn by a fill layer, and its northern edge has no solid-blue pixels while the dot has | e2e-viewer | exists | `e2e/specs/viewer/geolocate.spec.ts` |
 | `S-V10-BAD-OUT-OF-BOUNDS` | V10 | bad | A location outside the city shows a message | out of city bounds -> message, the camera stays, no dot | e2e-viewer | exists | `e2e/specs/viewer/geolocate.spec.ts` |
 | `S-V10-BAD-PAGE-HIDDEN` | V10 | bad | A hidden page stops watching the position and keeps it nowhere | Show my location on, the dot moved once, the page hidden (visibilitychange) -> the dot goes, a later position draws nothing, aria-checked false; the moved position is in no request and not in localStorage or sessionStorage | e2e-viewer | exists | `e2e/specs/viewer/geolocate.spec.ts` |
 | `S-V10-BAD-POSITION-NOT-IN-LINK` | V10 | bad | The address and a shared link never carry the visitor's position | a page opened at a city view, Show my location brings the camera to the position, the hash is written again (street names off) -> its view is still the city view; Share copies a link whose view is the city view; neither the address nor the link holds the position's latitude or longitude | e2e-viewer | exists | `e2e/specs/viewer/geolocate.spec.ts` |
