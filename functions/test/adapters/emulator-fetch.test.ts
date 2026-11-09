@@ -33,6 +33,10 @@ describe('createEmulatorFetch', () => {
             `${FAKES}/h/firebase.googleapis.com/v1beta1/projects/demo-hcm/webApps`,
         ],
         ['https://ims.cr.usgs.gov/browse/declass1/DS1105-1071DF075.jpg', `${FAKES}/h/ims.cr.usgs.gov/browse/declass1/DS1105-1071DF075.jpg`],
+        [
+            'https://landsatlook.usgs.gov/gen-browse?size=rrb&type=refl&product_id=LT05_L1TP_183029_19890712_20200916_02_T1',
+            `${FAKES}/h/landsatlook.usgs.gov/gen-browse?size=rrb&type=refl&product_id=LT05_L1TP_183029_19890712_20200916_02_T1`,
+        ],
         ['https://tiles.e2e.test/xyz/e2e-1980/12/2344/1482.png', `${FAKES}/h/tiles.e2e.test/xyz/e2e-1980/12/2344/1482.png`],
         // M4: Nominatim (the title suggestions' queue), Vertex AI and FCM (googleapis.com hosts).
         [

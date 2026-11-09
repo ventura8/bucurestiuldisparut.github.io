@@ -27,7 +27,7 @@ export interface RasterLayerSpec {
     readonly opacity: number;
     /** Applied as `rasterAdjustmentPaint(adjustments)` (all four `raster-*` values, absent ones neutral). */
     readonly adjustments?: LayerAdjustments;
-    /** Higher draws on top of lower within the slot (the manifest `order`). */
+    /** Higher draws on top of lower within the slot: the viewer passes the layer's year, so the newest is on top. */
     readonly order: number;
     /** Added to the attribution control while the layer is visible. */
     readonly attribution: string;

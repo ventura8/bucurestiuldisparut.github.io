@@ -137,8 +137,10 @@ describe('menuAction', () => {
         menuAction(store, services(), 'layers');
         menuAction(store, services(), 'photos');
         menuAction(store, services(), 'about');
+        menuAction(store, services(), 'settings');
 
-        expect(store.callsOf('openSheet')).toEqual([['layers'], ['photos'], ['about']]);
+        expect(store.callsOf('openSheet')).toEqual([['layers'], ['photos'], ['about'], ['settings']]);
+        expect(store.callsOf('setLocale')).toEqual([]);
     });
 
     it('happyPath_shareAndLocateRunInTheBackground', async () => {

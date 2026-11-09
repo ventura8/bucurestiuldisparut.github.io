@@ -21,11 +21,12 @@ from hcm_pipeline.model import DocumentError, bounds_of, number_of
 from hcm_pipeline.objects import sha256_of
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.steps.common import gdal_step
+from hcm_pipeline.tiles.encoding import ENCODINGS, TileEncoding, encoding_of, paper_transparent
 from hcm_pipeline.tiles.pack import ArchiveInfo, Packed, PackError, pack
 from hcm_pipeline.tiles.rim import add_trimmed_alpha, find_rim, trimmed_alpha
 
 TILE_SIZE_PX: Final = 256
-TILE_QUALITY: Final = 75
+ARCHIVE_JOB: Final = "archive-series"
 THUMB_WIDTH_PX: Final = 320
 THUMB_QUALITY: Final = 70
 ARCHIVE_TYPE: Final = "application/vnd.pmtiles"
@@ -83,11 +84,12 @@ def _band_options(dataset: gdal.Dataset, alpha: str | None) -> list[str]:
     return [*(option for band in bands for option in ("-b", band)), "-colorinterp", interpretation]
 
 
-def rgba_view(source: Path, target: Path) -> Path:
-    """A VRT of `source` as RGBA, which the tiler and the picture read; its alpha without the film's dark rim, if it has one."""
+def rgba_view(source: Path, target: Path, film: bool = True) -> Path:
+    """A VRT of `source` as RGBA, which the tiler and the picture read; its alpha without the film's dark rim, if it has one (M20: a
+    scanned map is no film, and its ink at the edge is no rim: `film` False keeps its alpha)."""
     dataset = gdal.Open(str(source))
     alpha = _alpha_of(dataset)
-    rim = find_rim(dataset, alpha, target.with_name(f"{target.stem}-rim.tif"))
+    rim = find_rim(dataset, alpha, target.with_name(f"{target.stem}-rim.tif")) if film else None
     gdal.Translate(str(target), dataset, options=["-of", "VRT", *_band_options(dataset, None if rim else alpha)]).Close()
     dataset.Close()
     if rim is not None:
@@ -95,19 +97,19 @@ def rgba_view(source: Path, target: Path) -> Path:
     return target
 
 
-def write_tree(view: Path, tree: Path, rendered: Rendered, ctx: JobContext) -> Path:
-    """The tile pyramid: blank tiles skipped, bilinear at the deepest zoom, averaged above it."""
+def write_tree(view: Path, tree: Path, rendered: Rendered, ctx: JobContext, encoding: TileEncoding = ENCODINGS["grey"]) -> Path:
+    """The tile pyramid: blank tiles skipped, bilinear at the deepest zoom (M20: nearest for line art), averaged above it."""
     arguments: dict[str, object] = {
         "input": str(view),
         "output": str(tree),
         "output-format": "WEBP",
-        "creation-option": [f"QUALITY={TILE_QUALITY}"],
+        "creation-option": list(encoding.options),
         "min-zoom": rendered.minzoom,
         "max-zoom": rendered.maxzoom,
         "tile-size": TILE_SIZE_PX,
         "skip-blank": True,
-        "resampling": "bilinear",
-        "overview-resampling": "average",
+        "resampling": encoding.resampling,
+        "overview-resampling": encoding.overview_resampling,
         "webviewer": "none",
         "num-threads": gdal.GetConfigOption(THREADS_OPTION) or ALL_CPUS,
     }
@@ -124,6 +126,15 @@ def write_thumb(view: Path, target: Path) -> Path:
     return target
 
 
+def series_encoding(ctx: JobContext) -> tuple[TileEncoding, bool]:
+    """M20 (docs/research/M20-import-local.md §6): an archive series' encoding and whether its paper goes transparent (line art, unless
+    the owner kept it); every other job's tiles are today's grey."""
+    if ctx.job.type != ARCHIVE_JOB:
+        return ENCODINGS["grey"], False
+    name = ctx.job.params.get("encoding")
+    return encoding_of(name), name == "lineart" and ctx.job.params.get("paperTransparent") is not False
+
+
 def _source_of(ctx: JobContext, rendered: Rendered) -> Path:
     if ctx.job.type not in SIDE_JOB_TYPES:
         return ctx.stage(ctx.work_file("warped.tif"), "warped.tif")
@@ -137,9 +148,13 @@ class PyramidStep:
 
     def run(self, ctx: JobContext) -> StepResult:
         rendered = Rendered.of(ctx.read(ctx.version_path()))
+        encoding, transparent = series_encoding(ctx)
         source = _source_of(ctx, rendered)
-        view = gdal_step(ctx, lambda: rgba_view(source, ctx.local("rgba.vrt")), "read the rendered layer")
-        tree = gdal_step(ctx, lambda: write_tree(view, ctx.local("tree"), rendered, ctx), "make the tiles")
+        if transparent:
+            source = gdal_step(ctx, lambda: paper_transparent(source, ctx.local("lineart.tif")), "make the paper transparent")
+        film = ctx.job.type != ARCHIVE_JOB
+        view = gdal_step(ctx, lambda: rgba_view(source, ctx.local("rgba.vrt"), film), "read the rendered layer")
+        tree = gdal_step(ctx, lambda: write_tree(view, ctx.local("tree"), rendered, ctx, encoding), "make the tiles")
         thumb = gdal_step(ctx, lambda: write_thumb(view, ctx.local("thumb.webp")), "make the picture")
         archive = ctx.local("tiles.pmtiles")
         packed = _packed(tree, archive, ArchiveInfo(ctx.version.layer_id, rendered.bounds, rendered.minzoom, rendered.maxzoom))

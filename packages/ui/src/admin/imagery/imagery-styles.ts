@@ -23,14 +23,16 @@ export const imageryStyles = [
 
         .row.scene {
             display: grid;
-            grid-template-columns: 64px 1fr;
+            grid-template-columns: 64px minmax(0, 1fr);
             align-items: center;
             gap: 12px;
         }
 
-        /* The title, the frame's identity and the reasons each on their own lines (finding 53). */
+        /* The title, the frame's identity and the reasons each on their own lines (finding 53); M25: a Landsat product id (40 characters,
+           no space) breaks where it must on a phone. */
         .row.scene .row-detail {
             display: block;
+            overflow-wrap: anywhere;
         }
 
         .thumb {

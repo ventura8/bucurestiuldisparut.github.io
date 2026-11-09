@@ -267,10 +267,22 @@ service cloud.firestore {
         }
 
         // M3 imagery settings (`cityImagerySchema`, CR-M3-2): auto-publish, its RMSE threshold in metres (1-200) and
-        // the target years; every field optional.
+        // the target years; every field optional. M20 (docs/research/M20-import-local.md §5): a drawn map's threshold cap
+        // in metres (15-200) and whether a map publishes on its own. M25 (docs/research/M25-landsat.md §4): whether the tick imports
+        // Landsat on its own, and the years from and to.
         function validImagery(imagery) {
-            return imagery.keys().hasOnly(['autoPublish', 'rmseThresholdM', 'targetYears', 'publishThroughMapbox'])
+            return imagery.keys().hasOnly([
+                    'autoPublish', 'rmseThresholdM', 'targetYears', 'publishThroughMapbox', 'mapThresholdMaxM', 'mapAutoPublish',
+                    'landsatAuto', 'landsatFrom', 'landsatTo'
+                ])
+                && imagery.get('landsatAuto', true) is bool
+                && isYear(imagery.get('landsatFrom', 1984))
+                && isYear(imagery.get('landsatTo', 2000))
                 && imagery.get('autoPublish', true) is bool
+                && imagery.get('mapAutoPublish', true) is bool
+                && imagery.get('mapThresholdMaxM', 60) is number
+                && imagery.get('mapThresholdMaxM', 60) >= 15
+                && imagery.get('mapThresholdMaxM', 60) <= 200
                 && imagery.get('publishThroughMapbox', false) is bool
                 && imagery.get('rmseThresholdM', 15) is number
                 && imagery.get('rmseThresholdM', 15) >= 1
@@ -780,6 +792,21 @@ service cloud.firestore {
             // M8 (docs/research/M8-join-interfaces.md §2, §5): the plan of whole-city dates, written by the imagery functions
             // only; the Imagery area's Find reads it.
             match /imageryPlans/{id} {
+                allow read: if isCityMember(city);
+            }
+
+            // M20 (docs/research/M20-import-local.md §2.4): a local archive's scan report and its sample of skipped paths, written by
+            // worker.archiveReport and imagery.archiveImport only; the Imagery area's import card and report read them. The city's sheet
+            // grids (§2.3) likewise.
+            match /archives/{archive} {
+                allow read: if isCityMember(city);
+
+                match /issues/{issue} {
+                    allow read: if isCityMember(city);
+                }
+            }
+
+            match /grids/{grid} {
                 allow read: if isCityMember(city);
             }
 

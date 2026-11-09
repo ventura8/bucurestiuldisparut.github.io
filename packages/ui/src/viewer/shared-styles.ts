@@ -1,25 +1,25 @@
 /**
  * Styles shared by the viewer elements. Colours come only from the M3 `--md-sys-color-*` tokens the city's manifest
- * carries (applied on `<hcm-map-viewer>`, inherited through every shadow root); the fallbacks are CSS system colours,
- * so an element shown before the theme is applied still has readable contrast. Shapes and type use the M3 token
- * names with plain fallbacks.
+ * carries, shapes and type from the M3 system tokens: `<hcm-map-viewer>` applies them all on connect, before its first
+ * render (the baseline theme until a manifest arrives), so the `--md-sys-*` and `--md-ref-*` names carry no fallback,
+ * as in the kit; `test/viewer/theme-tokens.test.ts` checks that every one the viewer names is set.
  */
 import { css } from 'lit';
 
 export const baseStyles = css`
     :host {
-        font-family: var(--md-ref-typeface-plain, system-ui, sans-serif);
-        color: var(--md-sys-color-on-surface, CanvasText);
+        font-family: var(--md-ref-typeface-plain);
+        color: var(--md-sys-color-on-surface);
     }
 
     /* The kit's ring (focusRing): secondary, or the colour a surface sets in --hcm-focus-ring-color. */
     :focus-visible {
-        outline: 3px solid var(--hcm-focus-ring-color, var(--md-sys-color-secondary, Highlight));
+        outline: 3px solid var(--hcm-focus-ring-color, var(--md-sys-color-secondary));
         outline-offset: 2px;
     }
 
     a {
-        color: var(--md-sys-color-primary, LinkText);
+        color: var(--md-sys-color-primary);
     }
 
     h2,
@@ -29,13 +29,13 @@ export const baseStyles = css`
     }
 
     h2 {
-        font-size: var(--md-sys-typescale-title-large-size, 1.375rem);
+        font-size: var(--md-sys-typescale-title-large-size);
         line-height: 1.3;
         font-weight: 500;
     }
 
     h3 {
-        font-size: var(--md-sys-typescale-title-small-size, 0.875rem);
+        font-size: var(--md-sys-typescale-title-small-size);
         font-weight: 500;
         letter-spacing: 0.01em;
     }
@@ -58,8 +58,8 @@ export const sheetStyles = css`
         flex-direction: column;
         block-size: 100%;
         box-sizing: border-box;
-        background: var(--md-sys-color-surface-container-low, Canvas);
-        border-inline-start: 1px solid var(--md-sys-color-outline-variant, GrayText);
+        background: var(--md-sys-color-surface-container-low);
+        border-inline-start: 1px solid var(--md-sys-color-outline-variant);
     }
 
     .docked > header {
@@ -115,13 +115,13 @@ export const detailStyles = css`
     }
 
     .supporting {
-        color: var(--md-sys-color-on-surface-variant, GrayText);
+        color: var(--md-sys-color-on-surface-variant);
     }
 
     .note {
         padding: 8px 12px;
-        border-radius: var(--md-sys-shape-corner-small, 8px);
-        background: var(--md-sys-color-secondary-container, Canvas);
-        color: var(--md-sys-color-on-secondary-container, CanvasText);
+        border-radius: var(--md-sys-shape-corner-small);
+        background: var(--md-sys-color-secondary-container);
+        color: var(--md-sys-color-on-secondary-container);
     }
 `;

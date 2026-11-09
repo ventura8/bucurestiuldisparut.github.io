@@ -27,7 +27,7 @@ import { layerIdsOfYear, snapYear, timelineYears, yearOfLayers } from './timelin
 export type ViewerStatus = 'idle' | 'loading' | 'ready' | 'error';
 export type ThemeMode = 'system' | 'light' | 'dark';
 /** M17: `stories` shows the list, or the story `selectedStoryId` names. */
-export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'stories' | 'about' | 'help';
+export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'stories' | 'about' | 'help' | 'settings';
 
 export const THEME_MODES: readonly ThemeMode[] = ['system', 'light', 'dark'];
 
@@ -86,6 +86,8 @@ export interface ViewerState {
     readonly selectedStoryId: string | null;
     readonly lightbox: boolean;
     readonly sheet: SheetName;
+    /** The extra-large Layers pane is minimized to its rail (V03): for the session, never in the hash. */
+    readonly layersHidden: boolean;
     readonly windowClass: WindowClass;
     readonly compactHeight: boolean;
     readonly theme: ThemeMode;
@@ -121,6 +123,7 @@ export function initialState(locale: ViewerLocale, theme: ThemeMode, consent: Co
         selectedStoryId: null,
         lightbox: false,
         sheet: 'none',
+        layersHidden: false,
         windowClass: 'compact',
         compactHeight: false,
         theme,
@@ -178,6 +181,15 @@ export function withVisibleLayers(overlays: readonly Overlay[], ids: ReadonlySet
     return overlays
         .filter((overlay) => overlay.kind === 'raster')
         .reduce((list, overlay) => withOverlayVisibility(list, overlay.id, ids.has(overlay.id)), overlays);
+}
+
+/**
+ * A historical layer switched on moves the timeline to its year, so that it shows (V03, the owner 2026-11-09); with several
+ * on, the last one switched on is the timeline's. Switched off, or any other overlay, leaves the timeline as it is.
+ */
+export function withLayerYear(state: ViewerState, overlay: Overlay): ViewerState {
+    const layer = overlay.visible ? state.manifest?.layers.find((candidate) => candidate.id === overlay.id) : undefined;
+    return layer === undefined ? state : { ...state, year: layer.year };
 }
 
 /** The timeline stop nearest `year`, with exactly its layers visible. */

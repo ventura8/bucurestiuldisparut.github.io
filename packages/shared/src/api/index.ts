@@ -14,6 +14,14 @@ export {
 } from './errors.js';
 export type { ApiErrorDetails, ApiErrorSpec, FunctionsErrorStatus } from './errors.js';
 export * from './community.js';
+// By name, not `export *`: the star cost the engine's IIFE bytes of module glue it never uses (DECISIONS-for-review.md §137j).
+export {
+    imageryArchiveImportRequestSchema,
+    imageryArchiveImportResponseSchema,
+    workerArchiveReportRequestSchema,
+    workerArchiveReportResponseSchema,
+} from './archive.js';
+export type { ImageryArchiveImportRequest, WorkerArchiveReportRequest } from './archive.js';
 export { emptyRequestSchema, googleAccessTokenSchema, healthViewFields, isoTimeSchema } from './common.js';
 export {
     CLAIM_OAUTH_SCOPE,

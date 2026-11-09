@@ -16,6 +16,12 @@ const DATASET_FIXTURES: Readonly<Record<string, FixtureName>> = {
     declassiii: 'usgs/scene-search.declassiii',
 };
 
+/**
+ * M25 (`docs/research/M25-landsat.md` §8): Landsat 5 TM's scenes over the city, which a search answers only once a spec asks for them
+ * (`usgs.landsatScenes`: every other spec's harvest stays the declassified one); Landsat 7 has none.
+ */
+const LANDSAT_FIXTURES: Readonly<Record<string, FixtureName>> = { landsat_tm_c2_l1: 'usgs/scene-search.landsat' };
+
 /** One `scene-search` result as M2M sends it (the fields the fake reads; the rest pass through). */
 export interface SceneResult {
     readonly entityId: string;
@@ -41,9 +47,11 @@ function resultsOf(name: FixtureName): readonly SceneResult[] {
     return (fixtureBody(name) as { data: SearchData }).data.results;
 }
 
-/** Every scene of the three datasets, in fixture order. */
+/** Every scene of the three datasets and (M25) Landsat's, in fixture order. */
 export function catalogueScenes(): readonly CatalogueScene[] {
-    return Object.entries(DATASET_FIXTURES).flatMap(([dataset, name]) => resultsOf(name).map((result) => ({ dataset, result })));
+    return Object.entries({ ...DATASET_FIXTURES, ...LANDSAT_FIXTURES }).flatMap(([dataset, name]) =>
+        resultsOf(name).map((result) => ({ dataset, result })),
+    );
 }
 
 /** The scene with `entityId`, or undefined. */
@@ -113,10 +121,16 @@ function positiveInteger(value: unknown, fallback: number): number {
     return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : fallback;
 }
 
-/** What the search may change: no scene at all, or datasets that fail (502) while the others answer. */
+/** What the search may change: no scene at all, datasets that fail (502) while the others answer, and (M25) Landsat's scenes listed. */
 export interface SceneSearchState {
     noScenes: boolean;
     readonly failingDatasets: Set<string>;
+    landsat: boolean;
+}
+
+/** The fixture of a dataset's results, Landsat's only while the state lists them. */
+function fixtureOf(dataset: string, state: SceneSearchState): FixtureName | undefined {
+    return DATASET_FIXTURES[dataset] ?? (state.landsat ? LANDSAT_FIXTURES[dataset] : undefined);
 }
 
 function stringField(body: Readonly<Record<string, unknown>>, key: string): string {
@@ -136,7 +150,7 @@ export function sceneSearch(request: Parameters<Route['answer']>[0], state: Scen
     if (state.failingDatasets.has(dataset)) {
         return fixtureResponse('usgs/error.unavailable');
     }
-    const name = DATASET_FIXTURES[dataset];
+    const name = fixtureOf(dataset, state);
     if (name === undefined || state.noScenes) {
         return fixtureResponse('usgs/scene-search.empty');
     }

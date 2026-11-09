@@ -230,7 +230,7 @@ class Session implements GamepadSession {
     #ringFocus(): void {
         const active = this.#active();
         if (this.#pressed && isControl(active, this.#deps.win.document.body)) {
-            active.style.outline = '3px solid var(--md-sys-color-secondary,Highlight)';
+            active.style.outline = '3px solid var(--md-sys-color-secondary)';
             active.addEventListener('blur', clearRing, { once: true });
         }
     }

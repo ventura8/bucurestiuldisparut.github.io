@@ -1,5 +1,5 @@
 /**
- * The viewer's languages, fetched when first shown (docs/ENGINE_API.md → Language; DECISIONS-for-review.md §128): the
+ * The viewer's languages, fetched when first shown (docs/ENGINE_API.md → Language; DECISIONS-for-review.md §141): the
  * engine bundles no catalogue, each language is `<engineBase>i18n/<locale>.json`, the folder its fonts are in. A file is
  * taken only when it names this engine's version and the language asked for and every value is a text; then it joins
  * `@hcm/shared`'s registry, which `translate` reads, for the page's life. No SRI: the file comes from the same

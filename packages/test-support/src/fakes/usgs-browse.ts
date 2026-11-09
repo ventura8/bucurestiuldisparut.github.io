@@ -58,8 +58,14 @@ function browsePaths(): ReadonlyMap<string, string> {
     );
 }
 
+/** M25: LandsatLook's browse of a product (`/gen-browse?product_id=`) → the scene's entity id. */
+function landsatProducts(): ReadonlyMap<string, string> {
+    return new Map(catalogueScenes().map(({ result }) => [result.displayId, result.entityId] as const));
+}
+
 const answerBrowse: Route['answer'] = (request) => {
-    const entityId = browsePaths().get(request.url.pathname);
+    const product = request.url.searchParams.get('product_id');
+    const entityId = product === null ? browsePaths().get(request.url.pathname) : landsatProducts().get(product);
     if (entityId === undefined) {
         return new Response('Not Found', { status: 404, headers: { 'content-type': 'text/plain' } });
     }
@@ -76,6 +82,7 @@ export function createUsgsBrowseFake(): ServiceFake {
         routes: [
             route('GET', 'https://ims.cr.usgs.gov/browse/{path*}', 'usgs-browse.browse', answerBrowse),
             route('GET', 'https://ims.cr.usgs.gov/thumbnail/{path*}', 'usgs-browse.thumbnail', answerBrowse),
+            route('GET', 'https://landsatlook.usgs.gov/gen-browse', 'usgs-browse.landsat', answerBrowse),
         ],
         failure: (mode) => (mode === 'unavailable' ? fixtureResponse('usgs/browse.unavailable') : undefined),
         scenarios: {},

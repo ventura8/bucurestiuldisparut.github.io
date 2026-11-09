@@ -30,7 +30,7 @@ export { redactText } from './text/redact.js';
 export type { InlineNode, MarkdownDocument, MarkdownParagraph } from './text/markdown.js';
 export { parseStory, storyFigureIds, type StoryBlock, type StoryFigure } from './text/story.js';
 
-export { ID_PATTERN, MAX_LINKS, MAX_TOKENS, PHOTOS_OVERLAY_ID, TOKEN_NAME_PATTERN, isId } from './schemas/primitives.js';
+export { ID_PATTERN, MAX_LINKS, MAX_TOKENS, PHOTOS_OVERLAY_ID, TOKEN_NAME_PATTERN, isId, yearSchema } from './schemas/primitives.js';
 export type { ValidationCode } from './schemas/primitives.js';
 export {
     LAYER_ADJUSTMENT_RANGES,
@@ -50,16 +50,8 @@ export {
 export * from './schemas/review.js';
 export { REVIEW_ROLES, STAFF_ROLES, isContributorOnly, isReviewRole, isStaffRole, strongerRole } from './schemas/city-roles.js';
 export { PHOTO_LOCATION_SLACK_DEG } from './schemas/manifest-rules.js';
-export {
-    GEOMETRY_TYPES,
-    MAX_GEOMETRY_VERTICES,
-    MAX_POLYGON_RINGS,
-    geometryDocSchema,
-    geometryFromDoc,
-    geometryPositions,
-    geometrySchema,
-    geometryToDoc,
-} from './schemas/geometry.js';
+export { GEOMETRY_TYPES, MAX_GEOMETRY_VERTICES, MAX_POLYGON_RINGS, geometryDocSchema, geometryFromDoc } from './schemas/geometry.js';
+export { geometryPositions, geometrySchema, geometryToDoc } from './schemas/geometry.js';
 export type { Geometry, GeometryDoc, GeometryType } from './schemas/geometry.js';
 export {
     DEFAULT_POI_ICON,
@@ -106,7 +98,6 @@ export {
     LAYER_STATUSES,
     PHOTO_CONTENT_TYPES,
     PROCESSING_STATES,
-    USGS_DATASETS,
     cityDocSchema,
     historyEntryDocSchema,
     httpsOriginSchema,
@@ -211,16 +202,15 @@ export {
     usgsBrowseUrlSchema,
 } from './schemas/usgs-scene.js';
 export type { RankReason, RankReasonEntry, Sensor, SensorSpec, UsgsDataset } from './schemas/usgs-scene.js';
-export {
-    AUTO_MIN_MEASURED_PCT,
-    CITY_MIN_COVERAGE_PCT,
-    DEFAULT_RMSE_THRESHOLD_M,
-    JOIN_MAX_PARTS,
-    MAX_TARGET_YEARS,
-    RMSE_THRESHOLD_RANGE,
-    cityImagerySchema,
-    imagerySettingsOf,
-} from './schemas/imagery-settings.js';
+export { AUTO_MIN_MEASURED_PCT, CITY_MIN_COVERAGE_PCT, DEFAULT_RMSE_THRESHOLD_M, JOIN_MAX_PARTS } from './schemas/imagery-settings.js';
+export { MAX_TARGET_YEARS, RMSE_THRESHOLD_RANGE, cityImagerySchema, imagerySettingsOf } from './schemas/imagery-settings.js';
+// M25 (docs/research/M25-landsat.md): named, never `export *` (a star re-export costs the engine bytes: docs/LESSONS.md 532).
+export { DECLASS_DATASETS, DEFAULT_LANDSAT_YEARS, ETM_SLC_OFF_DATE, LANDSAT_ATTRIBUTION } from './schemas/landsat.js';
+export { LANDSAT_AUTO_MAX_CLOUD, LANDSAT_AUTO_PER_TICK, LANDSAT_DATASETS } from './schemas/landsat.js';
+export { LANDSAT_MAX_CITY_CLOUD_PCT, LANDSAT_MAX_OFFSET_PX, landsatClear } from './schemas/landsat-verdict.js';
+export { LANDSAT_MONTHS, LANDSAT_SEARCH_MAX_CLOUD, LEAF_ON_MONTHS, USGS_DATASETS } from './schemas/landsat.js';
+export { isLandsatDataset, landsatReportSchema, landsatYearsOf } from './schemas/landsat.js';
+export type * from './schemas/landsat.js';
 export type { CityImagery, ImagerySettings } from './schemas/imagery-settings.js';
 export {
     CHECKPOINT_KINDS,
@@ -311,6 +301,17 @@ export * from './schemas/imagery-calibration.js';
 export * from './schemas/imagery-recalibration.js';
 export * from './schemas/imagery-join.js';
 export * from './schemas/imagery-plan.js';
+// M20 (docs/research/M20-import-local.md): a local archive's report, its series, rights, the map threshold. By name, not
+// `export *`: the star cost the engine's IIFE 19 bytes gzip of module glue it never uses (DECISIONS-for-review.md §137j).
+export { ARCHIVE_ACTIONS, ARCHIVE_AUTO_LIKELIHOODS, ARCHIVE_ENCODINGS, ARCHIVE_ID_PATTERN } from './schemas/imagery-archive.js';
+export { ARCHIVE_ISSUES_MAX, ARCHIVE_MAX_SERIES, ARCHIVE_MIN_YEAR, ARCHIVE_PLACE_METHODS } from './schemas/imagery-archive.js';
+export { ARCHIVE_SERIES_CLASSES, ARCHIVE_SERIES_MAX_BYTES, ARCHIVE_SKIP_REASONS } from './schemas/imagery-archive.js';
+export { DEFAULT_MAP_THRESHOLD_MAX_M, HELP_REASONS, LAYER_LICENSES, MAP_PAPER_TOLERANCE_MM } from './schemas/imagery-archive.js';
+export { MAP_THRESHOLD_MAX_RANGE, RIGHTS_LICENCES, RIGHTS_STATES, SERIES_ID_PATTERN, archiveDocSchema } from './schemas/imagery-archive.js';
+export { archiveIssueSchema, archiveReportSchema, archiveSeriesParamsSchema, archiveSeriesSchema } from './schemas/imagery-archive.js';
+export { archiveSourceSchema, creditLine, gridDocSchema, helpItemSchema, layerRightsOf } from './schemas/imagery-archive.js';
+export { layerRightsSchema, mapThresholdM, opsDailyDocSchema, rightsAllowPublish, rightsSchema } from './schemas/imagery-archive.js';
+export type * from './schemas/imagery-archive.js';
 // M5 (docs/research/M5-interfaces.md): many cities in one project, the static export, engine releases on jsDelivr (every
 // export of these modules is public; `test/index.test.ts` lists them).
 export * from './schemas/cities.js';

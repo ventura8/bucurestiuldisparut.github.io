@@ -510,7 +510,8 @@ the shipped image; its `test` target runs the same suite on the same base digest
   to `scripts.xml`; `sonar-project.properties` lists both, so `check_coverage.py` merges them (no
   `coverage combine`). Data file `reports/.coverage-pipeline`, mypy cache `reports/.cache/mypy-pipeline`.
 - **Pins** (latest stable, checked on PyPI 2026-10-11): numpy 2.5.4, opencv-python-headless
-  5.0.0.93 (abi3 wheel), httpx 0.28.1, google-cloud-firestore 2.34.1, google-cloud-storage 3.17.1;
+  5.0.0.93 (abi3 wheel), httpx 0.28.1, google-cloud-firestore 2.34.1, google-cloud-storage 3.17.1, pikepdf 10.18.0 (M20's
+  PDF pages, 2026-11-09; with Pillow 13.0.0 and lxml 6.1.3);
   dev: pytest 9.2.0, pytest-cov 7.1.0, coverage 7.17.0, respx 0.23.1, hypothesis 6.170.14 (bumped 2026-10-31); build
   backend poetry-core 2.5.0; Poetry 2.5.1. The venv's numpy shadows the image's numpy 2.3.5;
   `osgeo.gdal_array` works with it (same 2.x ABI line).

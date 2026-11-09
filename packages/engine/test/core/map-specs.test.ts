@@ -57,7 +57,7 @@ describe('map specs', () => {
             maxzoom: 17,
             visible: true,
             opacity: 0.4,
-            order: 1,
+            order: 1966,
             attribution: 'USGS EROS',
             bounds: [
                 [25.95, 44.35],
@@ -65,6 +65,15 @@ describe('map specs', () => {
             ],
             adjustments: { contrast: 0.2 },
         });
+    });
+
+    it('happyPath_layersStackByDateNewestOnTopWhateverTheirOrder', () => {
+        // The owner 2026-11-09: the map draws a higher `order` on top; the admin's `order` does not count.
+        const older = rasterSpec(layer({ id: 'old', year: 1950, order: 9 }), undefined, undefined);
+        const newer = rasterSpec(layer({ id: 'new', year: 1980, order: 1 }), undefined, undefined);
+
+        expect(newer.order).toBeGreaterThan(older.order);
+        expect([older.order, newer.order]).toEqual([1950, 1980]);
     });
 
     it('happyPath_withoutAnOverlayTheManifestDefaultsApply', () => {

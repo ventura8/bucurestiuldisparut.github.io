@@ -2,11 +2,12 @@ import type { Locale, ViewerLocale } from '@hcm/shared';
 import { expect, type Page } from '@playwright/test';
 
 import { mapIdle } from '../support/map.js';
-import { chooseLanguage, chooseMenuItem, dismissToast, languageList, menuButton, openLayers, openViewer, t, viewer } from '../support/viewer.js';
+import { chooseMenuItem, languageList, menuButton, openLayers, openViewer, t, viewer } from '../support/viewer.js';
 
 /**
- * The tour's language states (V11; docs/ENGINE_API.md → Language), from e2e/tour/states.ts: the switch from About's list,
- * and the viewer in a script of its own, Arabic right to left and Japanese, whose glyphs come from the system's fonts.
+ * The tour's language states (V11; docs/ENGINE_API.md → Language), from e2e/tour/states.ts (the switch itself is
+ * Settings' `language`, e2e/tour/settings-states.ts): the viewer in a script of its own, Arabic right to left and
+ * Japanese, whose glyphs come from the system's fonts.
  * Those two journeys open the viewer in their language whatever the project's, so every per-push tour project (a phone,
  * a laptop, …) visits them.
  */
@@ -25,18 +26,6 @@ const japanese = (): ViewerLocale => 'ja';
 const PHOTO = 'mihai-voda-1978';
 
 export const LANGUAGE_STATES = {
-    language: {
-        title: "The menu's Language opened About's list, which switched the language: the whole viewer in the other language",
-        enter: async ({ page, lang }) => {
-            const other = lang === 'ro' ? 'en' : 'ro';
-            // The previous state's toast is closed first: re-worded in the other language, its timer starts again and it
-            // went mid-check on a slow machine (the Tab round then never reached its Close).
-            await dismissToast(page, lang);
-            await chooseLanguage(page, lang, other);
-            await expect(menuButton(page, other)).toBeVisible();
-        },
-        shows: (lang) => (lang === 'ro' ? 'en' : 'ro'),
-    },
     'rtl-photo': {
         title: "Arabic: a photo's sheet right to left, its city texts in English or Romanian, named as such",
         enter: async ({ page }) => {
@@ -56,10 +45,10 @@ export const LANGUAGE_STATES = {
         shows: arabic,
     },
     'rtl-languages': {
-        title: "Arabic: About's list of the sixteen languages, each by its own name",
+        title: "Arabic: Settings' list of the sixteen languages, each by its own name",
         enter: async ({ page }) => {
-            await chooseMenuItem(page, 'ar', t('ar', 'language.label'));
-            await expect(page.getByRole('dialog', { name: t('ar', 'about.title') })).toBeVisible();
+            await chooseMenuItem(page, 'ar', t('ar', 'settings.title'));
+            await expect(page.getByRole('dialog', { name: t('ar', 'settings.title') })).toBeVisible();
             await expect(languageList(page).getByRole('radio')).toHaveCount(16);
         },
         escape: () => ({ opener: t('ar', 'action.menu') }),

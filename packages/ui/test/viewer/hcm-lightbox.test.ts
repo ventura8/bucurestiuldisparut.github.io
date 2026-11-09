@@ -1,7 +1,9 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 
+import { applyTheme } from '../../src/theme/apply.js';
 import { HCM_LIGHTBOX_TAG, HcmLightbox, defineHcmLightbox } from '../../src/viewer/hcm-lightbox.js';
+import { VIEWER_BASELINE } from '../../src/viewer/viewer-baseline.js';
 import { defineKitDoubles, mountElement, recordEvents, shadowQuery, shadowText } from './doubles.js';
 import { TEST_MANIFEST_URL, testManifest } from './fixtures.js';
 
@@ -234,6 +236,8 @@ describe('<hcm-lightbox> layout', () => {
         const element = document.createElement('hcm-lightbox');
         Object.assign(element, { photos: MANIFEST.photos, photoId: 'uranus-1984', open: true, manifestUrl: TEST_MANIFEST_URL });
         frame.append(element);
+        // The viewer sets the scrim token (theme-tokens.test.ts); the baseline's is black.
+        applyTheme(element, VIEWER_BASELINE, 'light', false);
         await element.updateComplete;
         const image = shadowQuery(element, 'img') as HTMLImageElement;
         await image.decode();

@@ -209,6 +209,27 @@ const ROWS: Readonly<Record<string, Row>> = {
         })),
         allowed: {},
     },
+    // M20 (docs/research/M20-import-local.md §2.3, §2.4): a local archive's report, its skipped sample, the city's grids, server-written.
+    'cities/{city}/archives/{archive}': serverOwned(FIRESTORE_PATHS.archives(CITY_ID), 'ar-0123456789abcdef', () => ({
+        name: 'harti.zip',
+        source: 'zip',
+        fileCount: 1,
+        bytes: 1,
+        series: [],
+        skipped: {},
+        ...systemStamp('imagery'),
+    })),
+    'cities/{city}/archives/{archive}/issues/{issue}': serverOwned(
+        FIRESTORE_PATHS.archiveIssues(CITY_ID, 'ar-0123456789abcdef'),
+        '000',
+        () => ({ path: 'x/Thumbs.db', reason: 'not-a-map' }),
+    ),
+    'cities/{city}/grids/{grid}': serverOwned(FIRESTORE_PATHS.grids(CITY_ID), 'bucharest', () => ({
+        label: 'Bucharest grid',
+        grammar: 'bucharest',
+        cellM: 500,
+        ...systemStamp('imagery'),
+    })),
     // M7 (docs/research/M7-local-worker.md §2.4, §3): the city's local workers and run choice, server-written.
     'cities/{city}/workers/{doc}': serverOwned(FIRESTORE_PATHS.workers(CITY_ID), 'w-0123456789abcdef', () => workerDoc(admin())),
     // Finding 67 of 2026-11-02: the worker pairings (a code's hash, its owner, its image) have no client rule at all.

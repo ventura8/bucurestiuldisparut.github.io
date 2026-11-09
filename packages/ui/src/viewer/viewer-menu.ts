@@ -21,7 +21,7 @@ export function menuActions({ webgl, layersDocked, manifest }: MenuContext): rea
         ['locate', webgl],
         ['share', true],
         ['contribute', manifest.contributeUrl !== undefined],
-        ['language', true],
+        ['settings', true],
         ['about', true],
     ];
     return candidates.filter(([, shown]) => shown).map(([action]) => action);
@@ -35,11 +35,11 @@ const MENU_ENTRIES: Readonly<Record<MenuAction, { readonly icon: string; readonl
     contribute: { icon: 'add_photo_alternate', label: 'contribute.link' },
     locate: { icon: 'my_location', label: 'action.locate' },
     share: { icon: 'share', label: 'action.share' },
+    settings: { icon: 'settings', label: 'settings.title' },
     about: { icon: 'info', label: 'about.title' },
-    language: { icon: 'translate', label: 'language.label' },
 };
 
-/** One FAB menu item; Show my location is a switch, checked while `locating` (V10). The language item opens About's list. */
+/** One FAB menu item; Show my location is a switch, checked while `locating` (V10). */
 export function menuItem(action: MenuAction, locale: ViewerLocale, locating = false): FabMenuItem {
     const entry = MENU_ENTRIES[action];
     const item = { value: action, icon: entry.icon, label: translate(locale, entry.label) };

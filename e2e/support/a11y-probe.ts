@@ -311,13 +311,15 @@ export function contrastKind(element: Element): ControlContrast['kind'] | null {
     return text === '' ? 'icon' : null;
 }
 
-/** The non-text contrast of every usable control that needs one (over the map's imagery it cannot be measured). */
+/**
+ * The non-text contrast of every usable control that needs one (over the map's imagery it cannot be measured). WCAG 1.4.11
+ * exempts an inactive control: a disabled one, and a soft-disabled one (`aria-disabled="true"`, focusable: the map's
+ * zoom buttons at a zoom limit, DECISIONS-for-review.md §128e).
+ */
 export function controlContrasts(): ControlContrast[] {
+    const inactive = (element: Element): boolean => element.matches(':disabled') || flatHasAttribute(element, 'aria-disabled', 'true');
     return interactiveElements()
-        .filter(
-            (element) =>
-                !flatHasAttribute(element, 'inert') && !flatHasAttribute(element, 'aria-hidden', 'true') && !element.matches(':disabled'),
-        )
+        .filter((element) => !flatHasAttribute(element, 'inert') && !flatHasAttribute(element, 'aria-hidden', 'true') && !inactive(element))
         .filter((element) => element.closest('.mapboxgl-ctrl') === null && visibleBoxOf(element) !== null)
         .flatMap((element): ControlContrast[] => {
             const kind = contrastKind(element);

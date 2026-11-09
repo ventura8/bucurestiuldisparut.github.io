@@ -11,7 +11,7 @@
 
 /** Every stand-in: refuses, naming what the admin and the engine do not do. */
 function unsupported(): never {
-    throw new Error('the admin and the engine do not convert zod schemas to JSON Schema (DECISIONS-for-review.md §86, §100)');
+    throw new Error('no JSON Schema conversion (DECISIONS-for-review.md §86, §100)');
 }
 
 /** `createToJSONSchemaMethod` and `createStandardJSONSchemaMethod` make a method; the method refuses when called. */

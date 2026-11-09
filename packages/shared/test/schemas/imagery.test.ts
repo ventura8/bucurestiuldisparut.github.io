@@ -141,12 +141,22 @@ describe('city imagery settings', () => {
             rmseThresholdM: DEFAULT_RMSE_THRESHOLD_M,
             targetYears: [],
             publishThroughMapbox: false,
+            mapThresholdMaxM: 60,
+            mapAutoPublish: true,
+            landsatAuto: true,
+            landsatFrom: 1984,
+            landsatTo: 2000,
         });
         expect(imagerySettingsOf({ autoPublish: false, rmseThresholdM: 8, targetYears: [1966], publishThroughMapbox: true })).toEqual({
             autoPublish: false,
             rmseThresholdM: 8,
             targetYears: [1966],
             publishThroughMapbox: true,
+            mapThresholdMaxM: 60,
+            mapAutoPublish: true,
+            landsatAuto: true,
+            landsatFrom: 1984,
+            landsatTo: 2000,
         });
     });
 
@@ -264,6 +274,9 @@ describe('sensors', () => {
             'declassii',
             'declassii',
             'declassiii',
+            'landsat_tm_c2_l1',
+            'landsat_tm_c2_l1',
+            'landsat_etm_c2_l1',
         ]);
         expect(SENSOR_SPECS['KH-9-pan']).toMatchObject({ maxzoom: 17, machine: 'xl' });
         expect(SENSORS.every((sensor) => SENSOR_SPECS[sensor].minzoom < SENSOR_SPECS[sensor].maxzoom)).toBe(true);

@@ -11,6 +11,7 @@ import {
     isApiErrorCode,
     JOB_STEPS,
     jobRetryable,
+    type ArchiveReport,
     type BBox,
     type Calibration,
     type CheckpointKind,
@@ -20,6 +21,7 @@ import {
     type JobWaitReason,
     type JoinPart,
     type JoinReport,
+    type LandsatReport,
     type LngLat,
     type LayerVersionDoc,
     type LayerVersionState,
@@ -56,6 +58,8 @@ export interface VersionView {
     } | null;
     /** M9: how `locate` found the frame and what proved it (`docs/research/M9-calibration.md` §8). */
     readonly calibration: Calibration | null;
+    /** M25: what `warp` measured of a Landsat scene (its shift from Sentinel-2, the city's cloud); null for every other version. */
+    readonly landsat: LandsatReport | null;
     readonly output: {
         readonly bounds: BBox;
         readonly minzoom: number;
@@ -92,6 +96,8 @@ export interface VersionView {
     readonly basedOn: string | null;
     readonly recalibration: Recalibration | null;
     readonly publicUrl: string | null;
+    /** Batch 4: an archive series' placement report. */
+    readonly archive: ArchiveReport | null;
 }
 
 /** M16: the public archive a published version is drawn from (none once its grace ended and it was removed). */
@@ -180,10 +186,12 @@ export function versionViewOf(doc: Stored<LayerVersionDoc>): VersionView {
         ...{ id: doc.id, layerId: version.layerId, label: version.label, year: version.year, date: orNull(version.date) },
         ...{ sensor: orNull(version.sensor), origin: version.origin, state: version.state, georef: georefOf(version.georef) },
         calibration: orNull(version.calibration),
+        landsat: orNull(version.landsat),
         ...{ output: outputOf(version), estimate: estimateOf(version), guard: guardOf(version.guard) },
         ...{ approval: approvalOf(version.approval), error: errorOf(version.error), hasScan: version.scan !== undefined },
         ...{ ...sourceOf(version.source), partOf: orNull(version.partOf), join: orNull(version.join) },
         ...{ basedOn: orNull(version.basedOn), recalibration: orNull(version.recalibration), publicUrl: publicUrlOf(version.own) },
+        archive: orNull(version.archive),
     };
 }
 

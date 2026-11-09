@@ -128,7 +128,7 @@ describe('<hcm-map-viewer>: boot', () => {
 
         expect(store.callsOf('openPhoto')).toEqual([['uranus-1984']]);
         const items = (part({ element, store }, 'hcm-fab-menu') as HTMLElement & { items: readonly { value: string }[] }).items;
-        expect(items.map((item) => item.value)).toEqual(['photos', 'share', 'language', 'about']);
+        expect(items.map((item) => item.value)).toEqual(['photos', 'share', 'settings', 'about']);
     });
 
     it('happyPath_theSheetsDecodedThumbnailEndsThePhotoMeasurement', async () => {
@@ -303,7 +303,7 @@ describe('<hcm-map-viewer>: store wiring', () => {
         store.set({ locale: 'en' });
         await element.updateComplete;
         expect(shadowQuery(element, '.timeline-note').textContent).toContain('Historical layers coming soon');
-        expect(layoutChecked(element)).toEqual(['consent', 'menu', 'timeline-note']);
+        expect(layoutChecked(element)).toEqual(['consent', 'menu', 'timeline-note', 'zoom']);
     });
 
     it('happyPath_everyFloatingControlIsNamedForTheLayoutCheck', async () => {
@@ -313,7 +313,7 @@ describe('<hcm-map-viewer>: store wiring', () => {
         store.showToast('error.tiles');
         await element.updateComplete;
 
-        expect(layoutChecked(element)).toEqual(['consent', 'menu', 'near-year', 'timeline', 'toast']);
+        expect(layoutChecked(element)).toEqual(['consent', 'menu', 'near-year', 'timeline', 'toast', 'zoom']);
     });
 
     it('badPath_withoutWebglNoTimelineNote', async () => {

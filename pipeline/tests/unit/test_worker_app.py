@@ -230,7 +230,7 @@ def test_happy_path_the_admins_origin_reads_the_state_and_posts_its_code(server:
         "Access-Control-Allow-Origin": HOSTING,
         "Vary": "Origin",
         "Access-Control-Allow-Methods": "GET, POST",
-        "Access-Control-Allow-Headers": "content-type",
+        "Access-Control-Allow-Headers": "content-type, x-hcm-path, x-hcm-session",
         "Access-Control-Max-Age": "600",
         "Access-Control-Allow-Private-Network": "true",
     }

@@ -1,7 +1,7 @@
 /**
  * `<hcm-list-detail>`: M3's list-detail canonical layout for the editors (`docs/research/M2c-interfaces.md` §1.2, §1.3),
- * measured on itself (never the viewport). From 840 px (and not at a compact height) the list (360 px; 412 px from 1600)
- * and the detail sit side by side; below, one pane shows: the list, or the detail with a Back button (Close on a compact window) at its top. It
+ * measured on itself (never the viewport). From 840 px (and not at a compact height; batch 4: from 1200 px with `split-from="large"`)
+ * the list (360 px; 412 px from 1600) and the detail sit side by side; below, one pane shows: the list, or the detail with a Back button (Close on a compact window) at its top. It
  * fills the page area it is given and only its panes scroll (fill mode: the page class declares `fillsPage`).
  *
  * `detail` says an item is open. While the detail replaces the list on a phone (a compact width, or a landscape phone's
@@ -25,8 +25,8 @@ export const HCM_LIST_DETAIL_TAG = 'hcm-list-detail';
 /** What the shell shows around a page: everything, or the full-screen editor of a compact window. */
 export type PageChrome = 'default' | 'editor';
 
-/** Window classes that show the list and the detail side by side. */
-const SPLIT: ReadonlySet<WindowClass> = new Set<WindowClass>(['expanded', 'large', 'extra-large']);
+/** Window classes that show the list and the detail side by side, from the narrowest. */
+const SPLIT_ORDER: readonly WindowClass[] = ['expanded', 'large', 'extra-large'];
 
 /**
  * Whether a page of this size shows the list and the detail side by side: from 840 px, but never at a compact height (a
@@ -34,9 +34,13 @@ const SPLIT: ReadonlySet<WindowClass> = new Set<WindowClass>(['expanded', 'large
  * flapping: hiding the navigation for the editor widened the page past 840 px, which split it and brought the
  * navigation back (found by the admin tour at 915 × 412, DECISIONS-for-review.md §34c).
  */
-export function splitsAt(size: Pick<WindowSize, 'widthClass' | 'heightClass'>): boolean {
-    return SPLIT.has(size.widthClass) && size.heightClass !== 'compact';
+export function splitsAt(size: Pick<WindowSize, 'widthClass' | 'heightClass'>, from: SplitFrom = 'expanded'): boolean {
+    // A page that splits from 1200 px is never a phone: a short element there (under a card, batch 4's Jobs) still splits.
+    return SPLIT_ORDER.indexOf(size.widthClass) >= SPLIT_ORDER.indexOf(from) && (from === 'large' || size.heightClass !== 'compact');
 }
+
+/** The narrowest window class that splits: `expanded` (840 px) by default; batch 4: the Jobs page from `large` (1200 px). */
+export type SplitFrom = 'expanded' | 'large';
 
 /** The detail's heading: the slotted element itself, or the first `[data-detail-heading]` inside it. */
 function headingIn(element: Element): HTMLElement | null {
@@ -52,6 +56,7 @@ export class HcmListDetail extends LitElement {
         detailLabel: { type: String, attribute: 'detail-label' },
         backLabel: { type: String, attribute: 'back-label' },
         closeLabel: { type: String, attribute: 'close-label' },
+        splitFrom: { type: String, attribute: 'split-from' },
     };
 
     static override readonly styles = [
@@ -106,6 +111,8 @@ export class HcmListDetail extends LitElement {
     declare detailLabel: string;
     declare backLabel: string;
     declare closeLabel: string;
+    /** Batch 4: the narrowest window class that shows both panes (`large` for a page whose list and detail are both wide). */
+    declare splitFrom: SplitFrom;
     /** The last measured size (0 × 0 until the first measurement); a class change applies on the next frame. */
     #measured: WindowSize = windowSizeFor(0, 0);
     #stopObserving: (() => void) | null = null;
@@ -123,12 +130,13 @@ export class HcmListDetail extends LitElement {
         this.detailLabel = '';
         this.backLabel = '';
         this.closeLabel = '';
+        this.splitFrom = 'expanded';
         this.addEventListener('keydown', this.#onKeyDown);
     }
 
     /** True while both panes show (none of the chrome is asked for before the first measurement). */
     get split(): boolean {
-        return splitsAt(this.#measured);
+        return splitsAt(this.#measured, this.splitFrom);
     }
 
     override connectedCallback(): void {

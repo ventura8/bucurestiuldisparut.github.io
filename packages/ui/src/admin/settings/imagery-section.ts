@@ -2,10 +2,12 @@
  * The imagery section (`docs/research/M3-interfaces.md` §10.7; CR-M3-8): whether a georeferenced scene goes to the
  * public map on its own when its checkpoint error is under the threshold, that threshold in metres (1–200), and the
  * years the search ranks first (at most 20), each removable; saved on their own (`cities/{city}.imagery`) with the
- * section's own draft and Save. A value the city document refuses is said at its field on Save.
+ * section's own draft and Save. A value the city document refuses is said at its field on Save. M25: the Landsat group (the switch of the
+ * tick's own imports and its years).
  */
 import {
     imagerySettingsOf,
+    MAP_THRESHOLD_MAX_RANGE,
     MAX_TARGET_YEARS,
     RMSE_THRESHOLD_RANGE,
     type CityDoc,
@@ -89,6 +91,84 @@ function thresholdField(context: SectionContext, city: CityDoc, issues: readonly
     });
 }
 
+/** M20 (`docs/research/M20-import-local.md` §5): whether a drawn map within its scaled threshold publishes itself, and the cap. */
+function mapsGroup(context: SectionContext, city: CityDoc, issues: readonly ValidationIssue[]): TemplateResult {
+    const { locale } = context;
+    const settings = imagerySettingsOf(city.imagery);
+    const label = contentText(locale, 'adminContent.imagery.settings.mapAutoPublish');
+    const range = { min: String(MAP_THRESHOLD_MAX_RANGE.min), max: String(MAP_THRESHOLD_MAX_RANGE.max) };
+    return html`<section class="group" data-maps>
+        <h3>${contentText(locale, 'adminContent.imagery.settings.maps')}</h3>
+        <p class="note">${contentText(locale, 'adminContent.imagery.settings.mapsNote')}</p>
+        <div class="switch-row">
+            <span aria-hidden="true">${label}</span>
+            <hcm-switch
+                .checked=${settings.mapAutoPublish}
+                ?disabled=${context.readOnly}
+                label=${label}
+                @hcm-change=${(event: Event) => {
+                    edit(context, city.imagery, { mapAutoPublish: (event as CustomEvent<{ checked: boolean }>).detail.checked });
+                }}
+            ></hcm-switch>
+        </div>
+        ${field(locale, {
+            id: 'imagery-map-threshold',
+            label: contentText(locale, 'adminContent.imagery.settings.mapThresholdMax'),
+            value: shown(settings.mapThresholdMaxM),
+            issue: issueAt(issues, 'imagery.mapThresholdMaxM'),
+            help: contentText(locale, 'adminContent.imagery.settings.mapThresholdMaxHelp', range),
+            inputMode: 'decimal',
+            readOnly: context.readOnly,
+            onInput: (text) => {
+                edit(context, city.imagery, { mapThresholdMaxM: thresholdOf(text) });
+            },
+        })}
+    </section>`;
+}
+
+/** M25 (`docs/research/M25-landsat.md` §4): a year field of the Landsat range (empty is NaN: the document refuses it on Save). */
+function landsatYearField(
+    context: SectionContext,
+    city: CityDoc,
+    issues: readonly ValidationIssue[],
+    key: 'landsatFrom' | 'landsatTo',
+): TemplateResult {
+    const { locale } = context;
+    return field(locale, {
+        id: `imagery-${key}`,
+        label: contentText(locale, `adminContent.imagery.settings.${key}`),
+        value: shown(imagerySettingsOf(city.imagery)[key]),
+        issue: issueAt(issues, `imagery.${key}`),
+        inputMode: 'numeric',
+        readOnly: context.readOnly,
+        onInput: (text) => {
+            edit(context, city.imagery, { [key]: thresholdOf(text) });
+        },
+    });
+}
+
+/** M25: whether the tick imports the best Landsat scene of each year on its own, and which years. */
+function landsatGroup(context: SectionContext, city: CityDoc, issues: readonly ValidationIssue[]): TemplateResult {
+    const { locale } = context;
+    const label = contentText(locale, 'adminContent.imagery.settings.landsatAuto');
+    return html`<section class="group" data-landsat>
+        <h3>${contentText(locale, 'adminContent.imagery.settings.landsat')}</h3>
+        <p class="note">${contentText(locale, 'adminContent.imagery.settings.landsatNote')}</p>
+        <div class="switch-row">
+            <span aria-hidden="true">${label}</span>
+            <hcm-switch
+                .checked=${imagerySettingsOf(city.imagery).landsatAuto}
+                ?disabled=${context.readOnly}
+                label=${label}
+                @hcm-change=${(event: Event) => {
+                    edit(context, city.imagery, { landsatAuto: (event as CustomEvent<{ checked: boolean }>).detail.checked });
+                }}
+            ></hcm-switch>
+        </div>
+        ${landsatYearField(context, city, issues, 'landsatFrom')} ${landsatYearField(context, city, issues, 'landsatTo')}
+    </section>`;
+}
+
 /** The typed year when the list takes it (from 1800 to 2099, not in the list yet, room left), else null. */
 function acceptedYear(text: string, years: readonly number[]): number | null {
     const year = Number(text);
@@ -170,5 +250,5 @@ export function imagerySection(context: SectionContext): TemplateResult {
             <h3>${contentText(locale, 'adminContent.imagery.settings.publishing')}</h3>
             ${autoPublishRow(context, city)} ${thresholdField(context, city, issues)} ${mapboxPathRow(context, city)}
         </section>
-        ${yearsGroup(context, city, issues)}`;
+        ${mapsGroup(context, city, issues)} ${yearsGroup(context, city, issues)} ${landsatGroup(context, city, issues)}`;
 }

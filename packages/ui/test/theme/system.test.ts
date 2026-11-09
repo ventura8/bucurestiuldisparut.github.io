@@ -32,6 +32,18 @@ describe('system tokens', () => {
         expect(SYSTEM_TOKENS['--md-ref-typeface-plain']).toBe(TEXT_FONT_STACK);
     });
 
+    it('happyPath_theEmphasizedWeightIsTheNextOneUp', () => {
+        expect(TYPE_SCALE['body-large']).toEqual({
+            size: '1rem',
+            lineHeight: '1.5rem',
+            tracking: '0.03125rem',
+            weight: '400',
+            emphasizedWeight: '500',
+        });
+        expect(TYPE_SCALE['label-large']).toMatchObject({ weight: '500', emphasizedWeight: '700' });
+        expect(SYSTEM_TOKENS['--md-sys-typescale-emphasized-title-medium-weight']).toBe('700');
+    });
+
     it('happyPath_springsUseTheOfficialWebCurves', () => {
         expect(SYSTEM_TOKENS['--md-sys-motion-spring-fast-spatial-easing']).toBe('cubic-bezier(0.42, 1.67, 0.21, 0.9)');
         expect(SYSTEM_TOKENS['--md-sys-motion-spring-default-spatial-duration']).toBe('500ms');

@@ -1,4 +1,4 @@
-/** The viewer's sixteen languages: the registry, the tags, the endonyms and every catalogue (DECISIONS-for-review.md §128). */
+/** The viewer's sixteen languages: the registry, the tags, the endonyms and every catalogue (DECISIONS-for-review.md §141). */
 import { describe, expect, it } from 'vitest';
 
 import {

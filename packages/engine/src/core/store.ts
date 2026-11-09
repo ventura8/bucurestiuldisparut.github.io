@@ -34,6 +34,7 @@ import {
     isCompareLayer,
     locateTarget,
     sheetAfterClosing,
+    withLayerYear,
     withStory,
     withYear,
     type MyLocationState,
@@ -56,7 +57,10 @@ export interface ViewerActions {
     retry(): Promise<void>;
     setLocale(locale: ViewerLocale): void;
     setYear(year: number | null): void;
-    /** Any overlay id (layer, `photos`, POI category); without `visible` it toggles. The map follows. */
+    /**
+     * Any overlay id (layer, `photos`, POI category); without `visible` it toggles. The map follows; a layer switched on
+     * moves the timeline to its year.
+     */
     toggleOverlay(overlayId: string, visible?: boolean): void;
     /** Live: the map follows on the next animation frame; `final` (slider released) also writes the hash. */
     setOverlayOpacity(overlayId: string, opacity: number, final?: boolean): void;
@@ -76,6 +80,8 @@ export interface ViewerActions {
     openStory(storyId: string | null): void;
     setLightbox(open: boolean): void;
     openSheet(sheet: SheetName): void;
+    /** Minimizes the extra-large Layers pane to its rail (true) or restores it: for the session, not in the hash (V03). */
+    setLayersHidden(hidden: boolean): void;
     /** Records the map's view (the `moveend` path); the camera does not move. */
     setView(view: MapView): void;
     /**
@@ -83,6 +89,11 @@ export interface ViewerActions {
      * keeps the view it had until the camera moves elsewhere: the view is the visitor's position.
      */
     flyTo(view: MapView): void;
+    /**
+     * The zoom buttons: one level in (`step` 1) or out (-1) from the camera's own zoom, animated unless reduced motion,
+     * within the city's zoom range; at its end nothing moves. The hash follows from the camera's `moveend` (`setView`).
+     */
+    zoomBy(step: number): void;
     /** The visitor shared the page (Web Share or the clipboard): the `share` analytics event (CR-17). */
     logShare(): void;
     setWindowSize(width: number, height: number): void;
@@ -255,8 +266,12 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         if (overlays === this.#state.overlays || overlay === undefined) {
             return;
         }
-        this.set({ ...this.#state, overlays });
+        const year = this.#state.year;
+        this.set(withLayerYear({ ...this.#state, overlays }, overlay));
         this.deps.telemetry.logEvent({ name: 'layer_toggle', layerId: overlayId, visible: overlay.visible });
+        if (this.#state.year !== year) {
+            this.deps.telemetry.logEvent({ name: 'year_change', year: this.#state.year });
+        }
         this.hash.schedule();
     }
 
@@ -366,6 +381,10 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         this.hash.schedule();
     }
 
+    setLayersHidden(layersHidden: boolean): void {
+        this.set({ ...this.#state, layersHidden });
+    }
+
     setView(view: MapView): void {
         const state = this.#state;
         // The hash's held view stays while the camera is where Show my location brought it: the flight's own `moveend`
@@ -384,6 +403,15 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         this.set({ ...state, view, hashView: state.hashView ?? state.view });
         this.#flying = true;
         this.#boot.flyMap(view);
+    }
+
+    zoomBy(step: number): void {
+        const city = this.#state.manifest?.city;
+        const view = this.deps.map.getView();
+        const zoom = city === undefined ? view.zoom : clamp(view.zoom + step, city.minZoom, city.maxZoom);
+        if (zoom !== view.zoom) {
+            this.#boot.flyMap({ ...view, zoom });
+        }
     }
 
     logShare(): void {

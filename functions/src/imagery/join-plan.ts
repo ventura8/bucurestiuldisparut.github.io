@@ -10,6 +10,7 @@ import {
     cityDocSchema,
     datePlanDocSchema,
     imagerySettingsOf,
+    isLandsatDataset,
     layerVersionDocSchema,
     planDates,
     timestampFromDate,
@@ -77,10 +78,15 @@ function versionsByLayer(versions: Versions): ReadonlyMap<string, Versions> {
     return byLayer;
 }
 
-/** The frames the plan chooses from: scenes the admin did not reject, on dates no published join shows yet. */
+/**
+ * The frames the plan chooses from: scenes the admin did not reject, on dates no published join shows yet. M25: never a Landsat scene,
+ * which holds the whole city on its own.
+ */
 function framesOf(scenes: readonly UsgsSceneDoc[], versions: Versions): DatePlanFrame[] {
     const byLayer = versionsByLayer(versions);
-    const standing = scenes.filter((scene) => scene.status !== 'rejected').map((scene) => [scene, versionOfScene(scene, byLayer)] as const);
+    const standing = scenes
+        .filter((scene) => scene.status !== 'rejected' && !isLandsatDataset(scene.dataset))
+        .map((scene) => [scene, versionOfScene(scene, byLayer)] as const);
     const joined = new Set(standing.filter(([, version]) => isJoin(version)).map(([scene]) => scene.acquisitionDate));
     return standing.filter(([scene]) => !joined.has(scene.acquisitionDate)).map(([scene, version]) => frameOf(scene, version));
 }

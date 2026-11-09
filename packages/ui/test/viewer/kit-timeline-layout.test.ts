@@ -245,3 +245,40 @@ describe('<hcm-map-viewer> the photos-near-the-year chip on the vertical timelin
         expect(onCentre, 'the chip on the centre').toBe(false);
     });
 });
+
+describe('<hcm-map-viewer> the zoom buttons beside the timeline, the chip and the menu button (merge of 2026-11-08)', () => {
+    beforeAll(async () => {
+        defineUiKit();
+        defineViewerElements();
+        await page.viewport(1500, 1100);
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it.each([...SIZES, { width: 568, height: 320 }].flatMap((size) => (['ltr', 'rtl'] as const).map((dir) => ({ ...size, dir }))))(
+        'badPath_at $width x $height $dir: theZoomGroupTouchesNeitherTheTimelineNorTheChipNorTheFab',
+        async ({ width, height, dir }) => {
+            // Standing, the timeline takes the leading edge and the chip a row above the FAB (as wide as the map on a phone);
+            // short, the FAB is on the leading side and the lying card and the chip on the trailing one.
+            const { element } = await viewerAt({ width, height }, 1977);
+            element.dir = dir;
+            await element.updateComplete;
+            const frame = element.getBoundingClientRect();
+            const zoom = boxOf(element, '.dock.zoom');
+            const centre = { x: frame.left + frame.width / 2, y: frame.top + frame.height / 2 };
+
+            for (const [name, other] of [
+                ['timeline', boxOf(element, 'hcm-timeline')],
+                ['chip', boxOf(element, '.dock.chip hcm-button')],
+                ['FAB', boxOf(element, 'hcm-fab-menu', '.fab')],
+            ] as const) {
+                expect(apart(zoom, other), `the zoom group clear of the ${name}`).toBe(true);
+            }
+            expect(zoom.left >= frame.left && zoom.right <= frame.right && zoom.top >= frame.top).toBe(true);
+            expect(frame.bottom - zoom.bottom).toBeGreaterThanOrEqual(MAPBOX_STRIP_PX);
+            expect(zoom.left <= centre.x && centre.x <= zoom.right && zoom.top <= centre.y && centre.y <= zoom.bottom).toBe(false);
+        },
+    );
+});

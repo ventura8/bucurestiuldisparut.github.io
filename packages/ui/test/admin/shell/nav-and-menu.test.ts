@@ -144,6 +144,7 @@ describe('<hcm-account-menu>', () => {
         deepAll(menu, 'hcm-button').at(-1)?.click();
 
         expect(deepText(menu)).toContain('Signed in as owner@e2e.test');
+        expect(deepText(menu)).toContain('Anonymous usage and performance statistics of the administration (Google Analytics)');
         expect(app.calls).toEqual([
             'setLocale "ro"',
             'setLocale "en"',
@@ -153,6 +154,14 @@ describe('<hcm-account-menu>', () => {
             'signOut',
         ]);
         expect(menu.open).toBe(false);
+    });
+
+    it('badPath_aVisitorOnTheContributePageIsToldOfItsStatistics_neverTheAdministrations @S-A92-BAD-NO-ADMIN-SIGN-IN', async () => {
+        const app = new FakeAdminApp(adminState({ auth: 'visitor', role: null, analytics: true, locale: 'ro' }));
+        const menu = await opened(app);
+
+        expect(deepText(menu)).toContain('Statistici anonime de utilizare și performanță ale paginii Contribuie (Google Analytics)');
+        expect(deepText(menu)).not.toContain('administrării');
     });
 
     it('badPath_withoutAUserOrAnalyticsTheMenuHoldsThePreferencesOnly', async () => {

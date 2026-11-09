@@ -22,9 +22,14 @@ export function wrapped(index: number, step: number, length: number): number {
     return index < 0 && step < 0 ? length - 1 : (index + step + length) % length;
 }
 
-/** About and the help panel: the same dialog, in the browser's top layer. */
+/** About, the help panel and Settings: the same dialog, in the browser's top layer. */
 export function isDialogSheet(sheet: ViewerState['sheet']): boolean {
-    return sheet === 'about' || sheet === 'help';
+    return sheet === 'about' || dialogMode(sheet) !== 'about';
+}
+
+/** What the dialog shows while `sheet` is open: the help panel, Settings, or About. */
+export function dialogMode(sheet: ViewerState['sheet']): 'about' | 'help' | 'settings' {
+    return sheet === 'help' || sheet === 'settings' ? sheet : 'about';
 }
 
 /** What a modal surface in front keeps for itself, or null with none. */

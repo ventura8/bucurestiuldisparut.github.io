@@ -34,7 +34,7 @@ export class HcmPhotoList extends LitElement {
 
             .count {
                 margin-block-end: 8px;
-                color: var(--md-sys-color-on-surface-variant, GrayText);
+                color: var(--md-sys-color-on-surface-variant);
             }
 
             button {
@@ -47,7 +47,7 @@ export class HcmPhotoList extends LitElement {
                 padding-block: 8px;
                 padding-inline: 8px 16px;
                 border: 0;
-                border-radius: var(--md-sys-shape-corner-medium, 12px);
+                border-radius: var(--md-sys-shape-corner-medium);
                 background: transparent;
                 color: inherit;
                 font: inherit;
@@ -56,29 +56,29 @@ export class HcmPhotoList extends LitElement {
             }
 
             button:hover {
-                background: var(--md-sys-color-surface-container-high, Canvas);
+                background: var(--md-sys-color-surface-container-high);
             }
 
             img {
                 grid-row: span 2;
                 inline-size: 56px;
                 block-size: 56px;
-                border-radius: var(--md-sys-shape-corner-small, 8px);
+                border-radius: var(--md-sys-shape-corner-small);
                 object-fit: cover;
-                background: var(--md-sys-color-surface-container-highest, Canvas);
+                background: var(--md-sys-color-surface-container-highest);
             }
 
             .title {
                 overflow-wrap: anywhere;
-                font-size: var(--md-sys-typescale-body-large-size, 1rem);
-                line-height: var(--md-sys-typescale-body-large-line-height, 1.5rem);
+                font-size: var(--md-sys-typescale-body-large-size);
+                line-height: var(--md-sys-typescale-body-large-line-height);
             }
 
             .date {
-                font-size: var(--md-sys-typescale-body-medium-size, 0.875rem);
-                line-height: var(--md-sys-typescale-body-medium-line-height, 1.25rem);
-                letter-spacing: var(--md-sys-typescale-body-medium-tracking, 0.016rem);
-                color: var(--md-sys-color-on-surface-variant, GrayText);
+                font-size: var(--md-sys-typescale-body-medium-size);
+                line-height: var(--md-sys-typescale-body-medium-line-height);
+                letter-spacing: var(--md-sys-typescale-body-medium-tracking);
+                color: var(--md-sys-color-on-surface-variant);
                 overflow-wrap: anywhere;
             }
         `,

@@ -55,8 +55,8 @@ test.describe('the viewer in any of its languages', () => {
             const requested = catalogueRequests(page);
             await openViewer(page, { lang });
 
-            await chooseMenuItem(page, lang, t(lang, 'language.label'));
-            await expect(page.getByRole('dialog', { name: t(lang, 'about.title') })).toBeVisible();
+            await chooseMenuItem(page, lang, t(lang, 'settings.title'));
+            await expect(page.getByRole('dialog', { name: t(lang, 'settings.title') })).toBeVisible();
             const names = languageList(page).getByRole('radio');
             // Each radio's label (the checked one also draws its check mark's ligature).
             expect(await names.evaluateAll((radios) => radios.map((radio) => radio.querySelector(':scope > span')?.textContent))).toEqual(
@@ -148,7 +148,7 @@ test.describe('a language that cannot be fetched', () => {
         await breakCatalogues(page, ['ko'], notFound);
         await openViewer(page, { lang });
 
-        await chooseMenuItem(page, lang, t(lang, 'language.label'));
+        await chooseMenuItem(page, lang, t(lang, 'settings.title'));
         await languageList(page).getByRole('radio', { name: LANGUAGE_NAMES.ko, exact: true }).click();
 
         await holdToast(page, t(lang, 'language.unavailable'));
@@ -168,7 +168,7 @@ test.describe('a language that cannot be fetched', () => {
         });
         await openViewer(page, { lang });
 
-        await chooseMenuItem(page, lang, t(lang, 'language.label'));
+        await chooseMenuItem(page, lang, t(lang, 'settings.title'));
         await languageList(page).getByRole('radio', { name: LANGUAGE_NAMES.fr, exact: true }).click();
 
         await holdToast(page, t(lang, 'language.unavailable'));

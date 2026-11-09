@@ -11,7 +11,7 @@ export type Locale = (typeof LOCALES)[number];
 /**
  * The public viewer's languages (docs/ENGINE_API.md → Language): Romanian, the default and the source of every key,
  * English, and fourteen more. The engine bundles none of their catalogues: each is fetched once, when first shown,
- * from `i18n/<locale>.json` next to the engine (`docs/research/DECISIONS-for-review.md` §128).
+ * from `i18n/<locale>.json` next to the engine (`docs/research/DECISIONS-for-review.md` §141).
  */
 export const VIEWER_LOCALES = ['ro', 'en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'uk', 'pl', 'tr', 'ar', 'hi', 'zh', 'ja', 'ko'] as const;
 

@@ -125,8 +125,8 @@ describe('rankScene', () => {
         expect(codes(context)).not.toContain('sameDate');
     });
 
-    it('happyPath_theRankingVersionMovedWithTheSameDateReason', () => {
-        expect(RANKING_VERSION).toBe(3);
+    it('happyPath_theRankingVersionMovedWithTheLandsatSeason', () => {
+        expect(RANKING_VERSION).toBe(4);
     });
 
     it('happyPath_aCityWithoutLayersSaysAnyYearIsNew', () => {

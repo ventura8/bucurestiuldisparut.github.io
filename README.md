@@ -12,6 +12,14 @@ It is also a **reusable engine** (Historic City Map): any city can host its own 
 
 ## Your city
 
+### Start your own map (no install)
+
+**[Start the setup wizard for a new place →](https://start-historic-city.web.app/)**
+
+Open the link, sign in with Google and name your place: the wizard makes your own Google Cloud project, installs the map and its admin there, and takes you to the admin's Setup Assistant, which finishes the rest (billing, Mapbox, USGS). Nothing to install and no terminal; terms, billing and every password stay on Google's and the providers' own pages. What it does, step by step: [docs/research/M14-start-your-map.md](docs/research/M14-start-your-map.md). Pornește-ți propria hartă: același link, în română.
+
+### From a terminal
+
 A new city starts from the starter kit (from v1.0.0, once it is published on npm, `docs/research/M5-status.md` §3): `npx create-historic-city@1.0.0 my-city` asks for the city's name and its rectangle on the map and writes the three files (the page, `city.json`, the README), ready for GitHub Pages. With a Firebase project of your own and the admin app, `npx create-historic-city@1.0.0 self-host my-city --project <id> --experimental` walks you through the steps, with a yes/no for each; signing in to Google, the terms and billing happen in Google's own pages only. It is in progress: the Setup Assistant cannot run in a project of your own yet (CR-M5-7, [docs/SELF_HOST.md](docs/SELF_HOST.md)).
 
 ## Repository

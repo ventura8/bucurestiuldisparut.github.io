@@ -26,6 +26,7 @@ const FLOATING = [
     '.dock.timeline hcm-timeline',
     '.dock.menu hcm-fab-menu',
     '.dock.chip hcm-button',
+    '.dock.zoom',
     'a.mapboxgl-ctrl-logo',
     '.mapboxgl-ctrl-attrib',
 ];
@@ -168,12 +169,12 @@ function aboutFacts(): { overflow: number; themeIcons: number; wrapped: string[]
 
 for (const width of [320, 360]) {
     test(
-        `At ${String(width)} px the full-screen About never scrolls sideways and its theme labels have no icons`,
+        `At ${String(width)} px the full-screen Settings never scroll sideways and their theme labels have no icons`,
         { tag: '@S-V15-BAD-LONG-LABELS' },
         async ({ page }) => {
             await boot(page, { width, height: 640 }, 'ro');
-            await chooseMenuItem(page, 'ro', t('ro', 'about.title'));
-            await expect(page.getByRole('dialog', { name: t('ro', 'about.title') })).toBeVisible();
+            await chooseMenuItem(page, 'ro', t('ro', 'settings.title'));
+            await expect(page.getByRole('dialog', { name: t('ro', 'settings.title') })).toBeVisible();
 
             const facts = await page.evaluate(aboutFacts);
             expect(facts.overflow).toBe(0);
@@ -183,10 +184,10 @@ for (const width of [320, 360]) {
     );
 }
 
-test('At 1440 px no language or theme label of About wraps', { tag: '@S-V15-BAD-LONG-LABELS' }, async ({ page }) => {
+test('At 1440 px no language or theme label of Settings wraps', { tag: '@S-V15-BAD-LONG-LABELS' }, async ({ page }) => {
     await boot(page, { width: 1440, height: 900 }, 'ro');
-    await chooseMenuItem(page, 'ro', t('ro', 'about.title'));
-    await expect(page.getByRole('dialog', { name: t('ro', 'about.title') })).toBeVisible();
+    await chooseMenuItem(page, 'ro', t('ro', 'settings.title'));
+    await expect(page.getByRole('dialog', { name: t('ro', 'settings.title') })).toBeVisible();
 
     expect((await page.evaluate(aboutFacts)).wrapped).toEqual([]);
 });

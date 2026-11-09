@@ -49,7 +49,7 @@ export const viewerStyles = [
             min-block-size: 320px;
             overflow: hidden;
             container: hcm-viewer / size;
-            background: var(--md-sys-color-surface, Canvas);
+            background: var(--md-sys-color-surface);
         }
 
         /* A wrapper, not the host, is the grid: a page may set the element's own display (display: block). */
@@ -78,8 +78,8 @@ export const viewerStyles = [
             grid-area: 2 / 1 / 3 / 2;
             padding-block-end: env(safe-area-inset-bottom, 0);
             padding-inline: var(--hcm-gutter);
-            border-block-start: 1px solid var(--md-sys-color-outline-variant, GrayText);
-            background: var(--md-sys-color-surface-container, Canvas);
+            border-block-start: 1px solid var(--md-sys-color-outline-variant);
+            background: var(--md-sys-color-surface-container);
         }
 
         /* While the logo and the attribution show in the legal bar or in About, Mapbox's own stay out of sight. */
@@ -94,7 +94,7 @@ export const viewerStyles = [
          * tone, measured 1.71:1 on the collapsed attribution's toggle (the tour).
          */
         .mapboxgl-ctrl-attrib :focus-visible {
-            outline-color: light-dark(var(--md-sys-color-primary, Highlight), var(--md-sys-color-inverse-primary, Highlight));
+            outline-color: light-dark(var(--md-sys-color-primary), var(--md-sys-color-inverse-primary));
         }
 
         /*
@@ -167,8 +167,22 @@ export const viewerStyles = [
             display: contents;
         }
 
+        /*
+         * The minimized Layers pane (extra-large) is one floating button on the map's leading edge: the map takes the whole width
+         * (its ResizeObserver resizes Mapbox), and the top docks begin after the button.
+         */
+        .frame:has(> .pane.leading > [minimized]) {
+            --hcm-pane-leading: 0px;
+            --hcm-top-start: calc(var(--hcm-gutter) + 152px);
+        }
+
+        /* The floating button lies outside the empty column: its pane must not clip it (the tour: off screen, its focus ring cut). */
+        .pane.leading:has(> [minimized]) {
+            overflow: visible;
+        }
+
         .pane.leading .docked {
-            border-inline: 0 1px solid var(--md-sys-color-outline-variant, GrayText);
+            border-inline: 0 1px solid var(--md-sys-color-outline-variant);
         }
 
         .map-pane {
@@ -190,9 +204,9 @@ export const viewerStyles = [
             min-block-size: 48px;
             padding-inline: 16px;
             border: 0;
-            border-radius: var(--md-sys-shape-corner-full, 9999px);
-            background: var(--md-sys-color-primary, Highlight);
-            color: var(--md-sys-color-on-primary, HighlightText);
+            border-radius: var(--md-sys-shape-corner-full);
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
             font: inherit;
             transform: translateY(-200%);
         }
@@ -216,7 +230,7 @@ export const viewerStyles = [
             box-sizing: border-box;
             padding: var(--hcm-gutter);
             overflow: auto;
-            background: var(--md-sys-color-surface, Canvas);
+            background: var(--md-sys-color-surface);
         }
 
         .skeleton {
@@ -231,9 +245,9 @@ export const viewerStyles = [
             border-radius: 6px;
             background: linear-gradient(
                 90deg,
-                var(--md-sys-color-surface-container-high, Canvas),
-                var(--md-sys-color-surface-container-highest, GrayText),
-                var(--md-sys-color-surface-container-high, Canvas)
+                var(--md-sys-color-surface-container-high),
+                var(--md-sys-color-surface-container-highest),
+                var(--md-sys-color-surface-container-high)
             );
             background-size: 200% 100%;
             animation: hcm-shimmer 1.4s linear infinite;
@@ -297,18 +311,22 @@ export const viewerStyles = [
             pointer-events: none;
         }
 
-        .note {
+        .note,
+        .dock.zoom {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            min-block-size: 40px;
             box-sizing: border-box;
+            border-radius: var(--md-sys-shape-corner-full);
+            background: var(--md-sys-color-surface-container-high);
+            color: var(--md-sys-color-on-surface-variant);
+            box-shadow: var(--md-sys-elevation-level2);
+        }
+
+        .note {
+            min-block-size: 40px;
             padding: 8px 16px 8px 12px;
-            border-radius: var(--md-sys-shape-corner-full, 9999px);
-            background: var(--md-sys-color-surface-container-high, Canvas);
-            color: var(--md-sys-color-on-surface-variant, CanvasText);
-            box-shadow: var(--md-sys-elevation-level2, 0 2px 6px rgb(0 0 0 / 30%));
-            font-size: var(--md-sys-typescale-label-large-size, 0.875rem);
+            font-size: var(--md-sys-typescale-label-large-size);
             line-height: 1.4;
             pointer-events: auto;
         }
@@ -339,6 +357,27 @@ export const viewerStyles = [
             inset-inline-start: max(var(--hcm-gutter) + 72px, 50% - 320px);
             inset-block-end: calc(
                 var(--hcm-map-chrome) + var(--hcm-timeline-block) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px)
+            );
+        }
+
+        /*
+         * The zoom buttons (V52): a vertical group (4 px around two 40 px buttons: 48 px targets) centred over the FAB on
+         * the trailing edge, 8 px above it.
+         */
+        .dock.zoom {
+            inset-inline-end: calc(var(--hcm-gutter) + 4px);
+            inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-fab-size) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px));
+            flex-direction: column;
+            padding: 4px;
+        }
+
+        /*
+         * Beside a standing timeline, above the chip's row (the chip, on the leading edge a row above the FAB, can be as
+         * wide as the map): the group's foot is level with the card's.
+         */
+        .frame[data-timeline='vertical'] .dock.zoom {
+            inset-block-end: calc(
+                var(--hcm-map-chrome) + var(--hcm-fab-size) + 40px + 2 * var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px)
             );
         }
 
@@ -413,9 +452,22 @@ export const viewerStyles = [
             inset-inline: auto max(var(--hcm-gutter), 50% - 356px);
         }
 
+        /*
+         * On a short window the FAB is on the leading side and the lying card and the chip take the trailing column: the
+         * group goes over the FAB there, in the leading column the card leaves free.
+         */
+        .frame[data-compact-height] .dock.zoom {
+            inset-inline: calc(var(--hcm-gutter) + 4px) auto;
+        }
+
         /* Upright, the items begin above the chip's row (the owner's phone: the last item covered the chip's end). */
         .frame[data-timeline='vertical'] .dock.chip ~ .dock.menu {
             --hcm-fab-menu-gap: calc(40px + 2 * var(--hcm-dock-gap));
+        }
+
+        /* The open menu grows over the group: the group steps aside until it closes (the tour's overlap check). */
+        .dock.menu:has(> [open]) + .dock.zoom {
+            visibility: hidden;
         }
 
         @media (prefers-reduced-motion: reduce) {

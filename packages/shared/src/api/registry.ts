@@ -7,6 +7,7 @@
  */
 import type { z } from 'zod';
 
+import { imageryArchiveImportRequestSchema, imageryArchiveImportResponseSchema } from './archive.js';
 import {
     claimRequestSchema,
     claimResponseSchema,
@@ -312,6 +313,8 @@ export const ADMIN_CALLABLES = {
     // M7 (docs/research/M7-local-worker.md §3): the admin's choice of where a job runs. The local worker's five callables
     // are `WORKER_CALLABLES` (worker-calls.ts).
     'imagery.runOn': cityEditor('fn-imagery', imageryRunOnRequestSchema, imageryRunOnResponseSchema),
+    // M20 (docs/research/M20-import-local.md §8): one click imports an archive's series; the worker reports them (worker-calls.ts).
+    'imagery.archiveImport': cityEditor('fn-imagery', imageryArchiveImportRequestSchema, imageryArchiveImportResponseSchema),
     // Finding 67 of 2026-11-02: the worker command's one-time pairing code, and Disconnect this computer.
     'worker.pairCode': cityEditor('fn-worker', workerPairCodeRequestSchema, workerPairCodeResponseSchema),
     'worker.revoke': cityEditor('fn-worker', workerRevokeRequestSchema, workerRevokeResponseSchema),
@@ -328,6 +331,7 @@ export const WORKER_CALLABLE_NAMES = [
     'worker.step',
     'worker.urls',
     'worker.end',
+    'worker.archiveReport',
     'worker.pair',
     'worker.image',
 ] as const;

@@ -1,6 +1,6 @@
 /**
  * What the viewer's controls do to the store: closing a sheet, opening a photo, the FAB menu's actions (sheets, share,
- * Show my location, `my-location.ts`) and the language. Plain functions over `ViewerStorePort` and `ViewerServices`, so each is tested without
+ * Show my location, `my-location.ts`) and Settings. Plain functions over `ViewerStorePort` and `ViewerServices`, so each is tested without
  * the element.
  */
 import { localized, type Layer, type Manifest, type ViewerLocale } from '@hcm/shared';
@@ -11,8 +11,8 @@ import { shareMessage, sharePage, type ViewerServices } from './services.js';
 import type { ViewerState, ViewerStorePort } from './store-port.js';
 import { localizedText } from './text.js';
 
-/** The FAB menu's actions (`language` opens About, where the sixteen languages are listed). */
-const MENU_ACTIONS = ['layers', 'photos', 'unplaced', 'stories', 'locate', 'share', 'contribute', 'about', 'language'] as const;
+/** The FAB menu's actions (`settings`: the language and the theme, out of About since 2026-11-08). */
+const MENU_ACTIONS = ['layers', 'photos', 'unplaced', 'stories', 'locate', 'share', 'contribute', 'about', 'settings'] as const;
 
 export type MenuAction = (typeof MENU_ACTIONS)[number];
 
@@ -119,9 +119,16 @@ export function menuAction(store: ViewerStorePort, services: ViewerServices, act
             store.openStory(null);
         },
         contribute: () => {
-            const url = store.getState().manifest?.contributeUrl;
+            const { manifest, locale } = store.getState();
+            const url = manifest?.contributeUrl;
             if (url !== undefined) {
-                services.openPage(url);
+                // M13 §3: the Contribute page's signed-out welcome speaks the map's language and names the city.
+                services.openPage(
+                    url.replace(
+                        '#',
+                        `?lang=${locale}&name=${encodeURIComponent(manifest === null ? '' : localized(manifest.city.name, locale))}#`,
+                    ),
+                );
             }
         },
         about: () => {
@@ -133,8 +140,8 @@ export function menuAction(store: ViewerStorePort, services: ViewerServices, act
         locate: () => {
             toggleMyLocation(store, services);
         },
-        language: () => {
-            store.openSheet('about');
+        settings: () => {
+            store.openSheet('settings');
         },
     };
     actions[action]();

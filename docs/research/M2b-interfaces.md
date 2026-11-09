@@ -122,6 +122,8 @@ drawer) from large; never a drawer.
 | `joinPending` | `admin.session` says `invitePending` | join panel | `admin` |
 | `notAdmin` | the map has an owner and no invitation waits | blocked panel, `adminShell.auth.notAdmin`, then sign-out (S-A01-BAD-STRANGER) | `signedOut` |
 | `admin` | `admin.session` says `admin` and `claim` | the shell in normal mode | `signedOut`, `backendDown` |
+| `visitor` | M13: on `#/contribute/<city>`, `admin.session` says the map has an owner and the account is no admin | the Contribute page, no navigation | `signedOut` |
+| `contributeClosed` | M13: on `#/contribute/<city>`, a start-up deploy's map or `ownerClaimed: false` (`docs/research/M13-roles.md` §3; there a server that does not answer, or a refused session, is `backendDown` in a contributor's words) | blocked panel, `adminShell.welcome.closed`, Back to the map | `signedOut` |
 
 ### 1.4 Boot sequence
 

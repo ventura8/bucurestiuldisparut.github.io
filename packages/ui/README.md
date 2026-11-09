@@ -72,8 +72,10 @@ passed in already localized (the kit has no catalogue of its own).
 - `src/theme/system.ts`: the shape scale (with 20, 32 and 48 px), the type scale and its emphasized weights, the
   Expressive springs as Google's web cubic-bezier curves, elevation shadows and state-layer opacities, from
   `@material/web@2.5.0` `tokens/versions/latest` (design system 34.0.21).
-- `src/theme/baseline.ts`: the precomputed theme of the default seed, for the viewer's loading and error states before
-  a manifest arrives (the viewer never ships the colour library).
+- `src/theme/baseline.ts`: the precomputed theme of the default seed (the admin's, the start page's). The viewer applies
+  `src/viewer/viewer-baseline.ts`, the same values cut to the 27 colour tokens the viewer, the kit and the map name,
+  before a manifest arrives and under a city theme that sets only some tokens (the viewer never ships the colour
+  library).
 - `@hcm/ui/dynamic-color`: `themeFromSeed(seed, variant)` with `tonalSpot` (default), `expressive` or `vibrant`.
 
 - The focus ring (`focusRing`) is 3 px of secondary, or of `--hcm-focus-ring-color` where a surface sets it: the ring

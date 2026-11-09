@@ -4,7 +4,8 @@
  * project and (M5) fewer than the city's own share (`apiError.imagery.dailyLimit {limit}`), and the layer has no
  * unfinished job (`apiError.layers.busy`). The daily
  * count and the busy check are queries, which a Firestore transaction cannot hold, so two creators racing in the same
- * second may both pass: the cap is a spend guard, not an exact quota.
+ * second may both pass: the cap is a spend guard, not an exact quota. M20's counting transactions (an archive's import, the
+ * daily release) are exact: each passes the turnstile `ops/daily` and counts inside its transaction (`dailyRoomIn`).
  */
 import {
     FINISHED_JOB_STATUSES,
@@ -12,22 +13,45 @@ import {
     JOBS_PER_DAY,
     cityDocSchema,
     jobDocSchema,
+    opsDailyDocSchema,
     timestampFromDate,
+    timestampToDate,
+    type JobDoc,
     type JobStatus,
     type JobType,
 } from '@hcm/shared';
 
 import { ApiError } from '../api/api-error.js';
-import type { DocumentStore } from '../ports/documents.js';
-import { guardIsRed } from './records.js';
+import type { DocumentStore, DocumentTransaction } from '../ports/documents.js';
+import { guardIsRed, IMAGERY_WRITER, stampOf } from './records.js';
 
 const FINISHED: ReadonlySet<JobStatus> = new Set(FINISHED_JOB_STATUSES);
+/** The turnstile's schema (`ops/daily`), built once. */
+const TURNSTILE = opsDailyDocSchema();
 /**
  * M18 item 3 (`docs/research/M18-improvements.md`): the jobs that count against the day's limit are the ones that bring
  * new imagery in (a scene, an upload, a join). A re-run of what is already here (new points, a crop, Locate again) never
  * counts, whatever it costs: the cap guards the downloads and the new layers, and the budget guard still stops any start.
  */
-const COUNTED: ReadonlySet<JobType> = new Set<JobType>(['usgs-import', 'geotiff-import', 'layer-join']);
+const COUNTED: ReadonlySet<JobType> = new Set<JobType>(['usgs-import', 'geotiff-import', 'layer-join', 'archive-series']);
+
+/**
+ * M20 (`docs/research/M20-import-local.md` §1.3): when a job counted. An archive series counts once, on the day it was let
+ * start (`countedAt`: at its creation when today's share had room, else when `imagery.tick` released it from `daily`); one still
+ * waiting counts nothing. Every other counted type counts on the day it was created.
+ */
+function countedAtOf(job: JobDoc): Date | undefined {
+    if (job.countedAt !== undefined) {
+        return timestampToDate(job.countedAt);
+    }
+    return job.type === 'archive-series' ? undefined : timestampToDate(job.createdAt);
+}
+
+/** True when the job counts against the day that began at `since`. */
+function countsSince(job: JobDoc, since: Date): boolean {
+    const at = countedAtOf(job);
+    return COUNTED.has(job.type) && at !== undefined && at >= since;
+}
 
 /** The first instant of `now`'s day, UTC. */
 function dayStart(now: Date): Date {
@@ -40,13 +64,23 @@ export async function cityIds(documents: DocumentStore): Promise<string[]> {
     return [...cities.documents, ...cities.invalid].map((city) => city.id);
 }
 
-/** The imports created since the start of today (UTC), per city. */
+/** The city's jobs created or (M20) counted since `since`, each once. */
+async function jobsSince(documents: DocumentStore, cityId: string, since: Date): Promise<readonly JobDoc[]> {
+    const at = timestampFromDate(since);
+    const queryFrom = (field: 'createdAt' | 'countedAt') =>
+        documents.query(FIRESTORE_PATHS.jobs(cityId), jobDocSchema, { where: [[field, '>=', at]] });
+    const [created, counted] = await Promise.all([queryFrom('createdAt'), queryFrom('countedAt')]);
+    const byId = new Map([...created.documents, ...counted.documents].map((job) => [job.id, job.data]));
+    return [...byId.values()];
+}
+
+/** The imports that counted since the start of today (UTC), per city. */
 async function rasterJobsToday(documents: DocumentStore, now: Date): Promise<ReadonlyMap<string, number>> {
-    const since = timestampFromDate(dayStart(now));
+    const since = dayStart(now);
     const counts = await Promise.all(
         (await cityIds(documents)).map(async (cityId) => {
-            const jobs = await documents.query(FIRESTORE_PATHS.jobs(cityId), jobDocSchema, { where: [['createdAt', '>=', since]] });
-            return [cityId, jobs.documents.filter((job) => COUNTED.has(job.data.type)).length] as const;
+            const jobs = await jobsSince(documents, cityId, since);
+            return [cityId, jobs.filter((job) => countsSince(job, since)).length] as const;
         }),
     );
     return new Map(counts);
@@ -84,6 +118,33 @@ export async function refuseRasterJobs(documents: DocumentStore, now: Date, city
         JOBS_PER_DAY,
     );
     refuseAtLimit((today.get(cityId) ?? 0) + count - 1, await cityDailyJobs(documents, cityId));
+}
+
+/**
+ * M20 (§1.3): how many more counted jobs today's shares leave for `cityId`: the project's `JOBS_PER_DAY` and the city's own
+ * share, whichever is smaller (never below zero). An archive's series beyond it wait (`daily`), never refused.
+ */
+async function dailyRoom(documents: DocumentStore, now: Date, cityId: string): Promise<number> {
+    const today = await rasterJobsToday(documents, now);
+    const project = JOBS_PER_DAY - [...today.values()].reduce((sum, jobs) => sum + jobs, 0);
+    const share = await cityDailyJobs(documents, cityId);
+    const city = share === undefined ? project : share - (today.get(cityId) ?? 0);
+    return Math.max(0, Math.min(project, city));
+}
+
+/**
+ * M20 (§1.3): today's room for `cityId`, counted inside `transaction` once it read the turnstile `ops/daily`. A counting
+ * transaction that commits meanwhile writes the turnstile, so this one retries and counts again: two never spend the same room.
+ * The caller passes the turnstile (`passTurnstile`) with its writes.
+ */
+export async function dailyRoomIn(transaction: DocumentTransaction, documents: DocumentStore, now: Date, cityId: string): Promise<number> {
+    await transaction.get(FIRESTORE_PATHS.opsDaily, TURNSTILE);
+    return dailyRoom(documents, now, cityId);
+}
+
+/** Writes the turnstile `ops/daily`, so a counting transaction that read it before this one commits counts again. */
+export async function passTurnstile(transaction: DocumentTransaction, now: Date): Promise<void> {
+    await transaction.set(FIRESTORE_PATHS.opsDaily, TURNSTILE, stampOf(IMAGERY_WRITER, now));
 }
 
 /** `apiError.imagery.dailyLimit` once `count` reached `limit` (none: no limit of its own, as a city created before M5). */

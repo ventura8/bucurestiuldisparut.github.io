@@ -11,7 +11,7 @@ staged, read and let go in turn. `version.calibration` records what happened; it
 """
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
@@ -26,6 +26,7 @@ from hcm_pipeline.calibrate.prior import MeasuredModel, pass_key
 from hcm_pipeline.calibrate.proof import Proof
 from hcm_pipeline.calibrate.reach import measured_pct, outline, proved_box, reach_of
 from hcm_pipeline.calibrate.stored import StoredTiles
+from hcm_pipeline.calibrate.strip import Windowed, best_of, searches
 from hcm_pipeline.contract import MAX_SCAN_PIXELS, SENSOR_SPECS, Errors, SensorSpec
 from hcm_pipeline.documents import GeorefInfo, Scene, city_bounds
 from hcm_pipeline.frames import FRAME_JSON, FRAME_PREVIEW, FrameLayout, Placement, Segment
@@ -226,9 +227,10 @@ class LocateStep:
         layout = FrameLayout.from_json(ctx.stage(ctx.work_file(FRAME_JSON), FRAME_JSON).read_text(encoding="utf-8"))
         preview = ctx.stage(ctx.work_file(FRAME_PREVIEW), FRAME_PREVIEW)
         try:
-            search = self._search(ctx, (scene, entity.sensor), window, preview, layout)
-            found = gdal_step(
-                ctx, lambda: find_frame(search, ctx.checkpoint, lambda line: ctx.log.info(line, self.name)), "search the frame"
+            windows = self._search(ctx, (scene, entity.sensor), window, preview, layout)
+            say = self._say(ctx)
+            search, found = gdal_step(
+                ctx, lambda: best_of(windows, lambda each: find_frame(each, ctx.checkpoint, say), say), "search the frame"
             )
             return self._cropped(ctx, search, found, layout)
         except CityNotFoundError as error:
@@ -240,7 +242,10 @@ class LocateStep:
             return self._not_proved(ctx, search, found, layout)
         return self._proved(ctx, search, found, Proved(proof, proof.mapping, proof.forward.order), layout)
 
-    def _search(self, ctx: JobContext, shot: tuple[Scene, str], window: MercatorBox, preview: Path, layout: FrameLayout) -> FrameSearch:
+    def _say(self, ctx: JobContext) -> Callable[[str], None]:
+        return lambda line: ctx.log.info(line, self.name)
+
+    def _search(self, ctx: JobContext, shot: tuple[Scene, str], window: MercatorBox, preview: Path, layout: FrameLayout) -> list[Windowed]:
         scene, sensor = shot
         source = sentinel2(ctx, window)
         grid = source.grid()
@@ -249,13 +254,11 @@ class LocateStep:
         frame = on_exposure(gdal_step(ctx, lambda: scoring_frame(preview, *size, frame_pixel_m(scene, size)), "read the frame"), camera)
         firsts = first_guesses(frame, scene.corner_quad(), grid.box(), camera)
         spec = SENSOR_SPECS[sensor]
-        reached = reaching(frame, firsts, grid.scaled(_REACH_FACTOR), spec.search.margin_ground_m)
         seed = int(fnv1a(ctx.job.id)[:7], 16)
         seeded(seed)
-        orientations = tuple(each for each, _ in reached)
-        return FrameSearch(
+        whole = FrameSearch(
             frame,
-            orientations,
+            tuple(firsts),
             grey_reference(source),
             grid,
             SegmentReader(ctx, layout),
@@ -268,6 +271,8 @@ class LocateStep:
             matcher=ctx.services.proposal_matcher,
             wide=lambda box: _wide_reference(ctx, box),
         )
+        reach = grid.scaled(_REACH_FACTOR)
+        return searches(whole, spec.strip, lambda film, firsts: reaching(film, firsts, reach, spec.search.margin_ground_m))
 
     def _proved(self, ctx: JobContext, search: FrameSearch, found: Found, proved: Proved, layout: FrameLayout) -> StepResult:
         window, limits, mapping = search.window, search.limits, proved.mapping
