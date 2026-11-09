@@ -10,7 +10,11 @@ waits for points (`awaiting_gcps`). A low-confidence placer leaves its correspon
 from collections.abc import Mapping
 from typing import Final, Protocol
 
-from hcm_pipeline.jobs import JobContext, StepResult, Waiting
+from hcm_pipeline.jobs import JobContext, StepResult
+from hcm_pipeline.placing.embedded import EmbeddedPlacer
+from hcm_pipeline.placing.grid import GridPlacer
+from hcm_pipeline.placing.maps import AtlasPlacer, PiecesPlacer, SinglePlacer
+from hcm_pipeline.placing.output import wait_for_help
 from hcm_pipeline.steps.gather import text_param
 
 NO_PATH_NOTE: Final = "No automatic placement for this kind of series yet: add about four points, or wait for an update."
@@ -22,15 +26,15 @@ class Placer(Protocol):
     def place(self, ctx: JobContext) -> StepResult: ...
 
 
-# The paths of §3, by series class; each lands with its workstream (C grid, D drawn maps, E atlases and pieces, a georeferenced files).
-PLACERS: dict[str, Placer] = {}
-
-
-def wait_for_help(ctx: JobContext, reason: str, note: str, fields: Mapping[str, object] | None = None) -> Waiting:
-    """The version waits for a person with why (`help`); the job waits for points."""
-    help_item = {"reason": reason, "note": note[:200], "at": ctx.now()}
-    ctx.update_version({"state": "needs_gcps", "help": help_item, **(fields or {})})
-    return Waiting("awaiting_gcps", "gcps", note)
+# The paths of §3, by series class (`placing/`): a georeferenced file, a grid series, an atlas, pieces and a single drawn map. A CAD
+# drawing never becomes a series (it is skipped at the scan: it needs an export from CAD in v1).
+PLACERS: dict[str, Placer] = {
+    "georeferenced": EmbeddedPlacer(),
+    "grid": GridPlacer(),
+    "atlas": AtlasPlacer(),
+    "pieces": PiecesPlacer(),
+    "single": SinglePlacer(),
+}
 
 
 class PlaceStep:

@@ -15519,6 +15519,204 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_steps.py."
+        },
+        {
+            "id": "S-P20-HAPPY-STREETS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A drawn map's street network and junctions are found",
+            "asserts": "streets as paper corridors between blocks (grey, colour, line art); junctions by crossing number, a staircase is none",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_parts.py."
+        },
+        {
+            "id": "S-P20-HAPPY-FRAME",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A sheet's neat line is found in the full scan's pixels",
+            "asserts": "the largest four-cornered convex outline inside the sheet, top left first",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_parts.py."
+        },
+        {
+            "id": "S-P20-BAD-FRAME-NOT-FOUND",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A sheet with no frame is left out and the series waits when none has one",
+            "asserts": "no outline -> no frame; a series of frameless sheets -> awaiting_gcps, help frame-not-found",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_parts.py, pipeline/tests/unit/test_placing_grid.py."
+        },
+        {
+            "id": "S-P20-HAPPY-CHECKS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Checks are held out in spatial blocks and measured on the map's own extent",
+            "asserts": "one block in five held out; a gross check dropped and counted; span on the map's extent; a rung's error added in quadrature",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_parts.py."
+        },
+        {
+            "id": "S-P20-HAPPY-MATCH",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A drawn map is placed by its streets, upside down too",
+            "asserts": "chamfer over scales and rotations, fine junction fit with TPS, held-out checks under 15 m, rival clean, warped.tif",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_single.py."
+        },
+        {
+            "id": "S-P20-BAD-OTHER-CITY",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A map of another town is never placed",
+            "asserts": "no fit holds -> awaiting_gcps, no archive report (zero false accepts)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_single.py."
+        },
+        {
+            "id": "S-P20-BAD-LOW-CONFIDENCE",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A map that does not place waits with suggested pairs",
+            "asserts": "help no-scale or low-confidence, suggestions method junctions, at most 100 pairs",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_single.py."
+        },
+        {
+            "id": "S-P20-HAPPY-LINEART",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Line art warps with nearest and a 1-bit scan reads as grey",
+            "asserts": "a G4 scan normalised to 0-255; the warp keeps two values",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_single.py."
+        },
+        {
+            "id": "S-P20-HAPPY-PIECES",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Overlapping pieces are stitched and placed as one map",
+            "asserts": "SIFT affine chain, hard nearest-centre seams, a lone piece left out; scanner-ordered folders become one pieces series",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_assemble.py, pipeline/tests/unit/test_placing_embedded.py."
+        },
+        {
+            "id": "S-P20-HAPPY-ATLAS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An atlas's pages are laid out by their edges and placed as one map",
+            "asserts": "strongest edge continuations first, a missing page a hole, shuffled pages placed",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_assemble.py."
+        },
+        {
+            "id": "S-P20-HAPPY-PDF",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A PDF's page images come out as stored, owner-locked too",
+            "asserts": "pikepdf, an empty user password, JPEG bytes unchanged, a page with no image counted",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_assemble.py."
+        },
+        {
+            "id": "S-P20-BAD-PDF-PASSWORD",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A PDF that needs a password is skipped, never cracked",
+            "asserts": "extract -> None; the series waits with the export note",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_assemble.py."
+        },
+        {
+            "id": "S-P20-HAPPY-GRID",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A sheet series is placed from its names on the city grid",
+            "asserts": "frames, quarter order from the seams, the mosaic placed rigidly on OpenStreetMap or from the owner's confirmed grid, every sheet rendered, placed count written",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_grid.py, functions/test/worker/step-archive.test.ts."
+        },
+        {
+            "id": "S-P20-BAD-GRID-NOT-PROVED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A grid that does not prove waits for three sheets",
+            "asserts": "another town's sheets -> awaiting_gcps with the three-sheet note",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_grid.py."
+        },
+        {
+            "id": "S-P20-HAPPY-EMBEDDED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A georeferenced file is warped and measured against OpenStreetMap",
+            "asserts": "own tags, or a world file with no .prj read in the one system that lands in the city (Stereo 70)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_embedded.py."
+        },
+        {
+            "id": "S-P20-BAD-EMBEDDED-DISAGREES",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A georeference that disagrees with OpenStreetMap waits for a look",
+            "asserts": "a 60 m shift -> awaiting_gcps 'disagrees with OpenStreetMap by N m'; an unknown system -> waits",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_embedded.py."
+        },
+        {
+            "id": "S-P20-HAPPY-LADDER",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A calibrated layer is a rung of the reference ladder",
+            "asserts": "the layer's COG read as streets, its own error carried",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_embedded.py."
+        },
+        {
+            "id": "S-P20-BAD-SOURCE-FORGED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A run writes only its sheet counts of the version's source",
+            "asserts": "renaming the series or its sheet count, or a USGS source -> apiError.worker.refused",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: functions/test/worker/step-archive.test.ts."
         }
     ]
 }

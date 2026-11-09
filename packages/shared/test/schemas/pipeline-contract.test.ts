@@ -66,6 +66,7 @@ import {
     PIPELINE_STEPS,
     S2_CHECK_STATUSES,
     SCAN_PREVIEW_MAX_PX,
+    VERSION_ORIGINS,
 } from '../../src/schemas/imagery.js';
 import { SENSOR_SPECS } from '../../src/schemas/usgs-scene.js';
 import { validate } from '../../src/schemas/validation.js';
@@ -130,6 +131,7 @@ describe('the pipeline contract', () => {
             JOB_MACHINES,
             JOB_STEPS,
             LAYER_VERSION_STATES,
+            VERSION_ORIGINS,
             GEOREF_TRANSFORMS,
             MIN_GCPS,
             GCP_ORIGINS,

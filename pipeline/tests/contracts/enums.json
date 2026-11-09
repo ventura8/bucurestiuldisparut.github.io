@@ -100,6 +100,7 @@
         "cancelled",
         "joined"
     ],
+    "VERSION_ORIGINS": ["usgs", "upload", "regeoref", "crop", "join", "archive"],
     "GEOREF_TRANSFORMS": ["affine", "poly2", "tps"],
     "MIN_GCPS": {
         "affine": 3,

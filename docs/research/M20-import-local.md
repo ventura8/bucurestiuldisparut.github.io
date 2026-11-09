@@ -540,3 +540,53 @@ What the paths phase (§3, Workstreams C, D, E and the rest of F) needs from the
 - **The approval** already applies §5 to `archive` (no `georef` or `scan` is needed); `register` and the publish steps are unchanged.
 - **Not built in the core:** the admin's Import card, scan report, rights dialog and progress (Workstream H), the manifest's `layer.rights?` and the viewer's Maps subgroup, chip glyph and rights row (§9: they need engine bytes the IIFE does not have; the layer document already keeps the rights), OCR prefill (§2.3 step 11), contact sheets and thumbnails (§2.2, §2.4), grid documents written by a solve, recalibration of a series (§4, M16), and the acceptance run on `harti.zip` (Workstream I).
 - **A layer's year is 1800 to 2100** (`yearSchema`): `imagery.archiveImport` refuses a series dated before 1800 (the 1770–1799 maps) with `apiError.invalidRequest` until the viewer's timeline takes earlier years; the report itself takes years from 1500.
+
+## 15. As built: the paths (track/archive, 2026-11-09)
+
+What landed (§3 a–e, *PDFs*, *Atlases and pieces*, the reference ladder of §1.7, the checks of §3 c step 6; Workstreams C, D and E):
+
+| Part | Where | Notes |
+| --- | --- | --- |
+| The placers | `pipeline/src/hcm_pipeline/placing/`, registered in `steps/place.py` `PLACERS` | `georeferenced` → `embedded.py`; `grid` → `grid.py` (+ `gridscheme.py`, `render.py`); `single`, `atlas`, `pieces` → `maps.py` (+ `single.py`, `assemble.py`, `pdfpages.py`). Each writes `warped.tif` and the version's `archive` report and `source.placedCount`, or waits `needs_gcps` with `help` (and `junctions` suggestions), never `failed`. |
+| Street network (§3 c step 2, the classical path) | `placing/streets.py` | Paper (lighter than Otsu, unsaturated in colour) that spans the map; Zhang–Suen skeleton; on a line plan only the skeleton within 2.5 street half-widths of ink (block interiors are paper too); junctions by crossing number, merged within a street's width. The AI `RoadSegmenter` is not built (no licensed weights verified). |
+| Neat line (§3 b step 2, §3 c step 1) | `placing/frame.py` | The outermost rows and columns of ink that run across half the sheet (a faint line of a reduced 1-bit scan counts as ink), each side fitted as a line and their crossings the corners; else the largest convex four-cornered outline; 30–99.5 % of the sheet, in full-scan pixels. |
+| Reference (§1.7, §3 c step 3) | `placing/reference.py` | The job's `referenceLayerIds` (a calibrated layer's COG, read as streets, its own error carried), then OpenStreetMap, asked once per city window and cached in the worker's work folder (`osm/`). Never Mapbox Satellite. |
+| Coarse placement (§3 c step 4) | `placing/coarse.py` | Chamfer by FFT template matching, zero-mean (the closeness on the map's lines less what the window gives by chance: lesson 511) on a loosened closeness (σ 4 px), scales 12 % apart (±25 % around a stated scale and dpi), four quarter turns ± 3°; three placements far apart are kept; each is refined in 2 % and 1° steps on a finer reference. |
+| Fine fit and checks (§3 c steps 5–6) | `placing/fine.py`, `placing/checks.py`, `placing/geometry.py` | Junction pairs within 4 reference pixels, a seeded RANSAC similarity that keeps the pixel flip, an affine, then a thin-plate spline with ≥ 30 pairs over ≥ 60 % of the map (a grid's mosaic stays affine). Checks: one block in five held out before any fit; gross = max(100 m, 5 mm × scale), any gross check blocks; the span on the map's own extent. Holds with ≥ 20 pairs and ≥ 20 % of the training junctions, ≥ 5 checks; the winner is the candidate with most pairs and its runner-up must have at most half as many (M9's rival share). A ladder rung's own error is added in quadrature. |
+| Grid series (§3 b) | `placing/grid.py`, `gridscheme.py`, `render.py` | `CityGrid` (500 m cells, rows south, columns east, quarters, 2 × 2 blocks, cadastral cells) as a pluggable scheme per grammar; the quarter order of eight chosen by the seams; the series' mosaic at 2 m (coarser past 6,000 px) placed as one map of known scale, north up, rigid; or from the owner's confirmed grid (`params.gridId` → `cities/{c}/grids/{g}`). Every sheet rendered by a 5 × 5 lattice through its frame's homography, cut at its neat line, hard seams. Not built: the joint seam solve, printed-crossing detection, TPS per sheet. |
+| Atlases and pieces | `placing/assemble.py`, `placing/maps.py` | Atlas pages (or a PDF's pages) cropped to their frames and laid out by edge continuity, strongest links first (no OCR of the index page); pieces chained by SIFT affines along the strongest overlaps, nearest-centre hard seams (no graph cut, no bundle adjustment). The canvas stays in the job's scratch folder and is placed as one drawn map. |
+| PDFs | `placing/pdfpages.py` (pikepdf 10.18.0) | Each page's largest image written as stored; an owner-locked PDF (Miorini 1923: Standard handler, V4 R4) is read; a password PDF waits (`PDF_LOCKED`) and is never cracked. |
+| Georeferenced files (§3 a) | `placing/embedded.py` | Own tags or GCPs; a world file read by the placer itself (lesson 505), its system inferred among Stereo 70, the city's UTM zone, EPSG:3857 and 4326 by where the centre lands; the ruler against OpenStreetMap: a median offset over 15 m waits ("disagrees with OpenStreetMap by N m"). |
+| Pieces at the scan | `archive/classify.py` `take_pieces` | A folder of ≥ 3 scans in a scanner's order (`img362.jpg`) is one pieces series; sibling folders that are all pieces merge at their parent (the four `N_quadrat` of the coloured 1895 plan). |
+| Server | `functions/src/worker/{allow-list,step-update}.ts` | A run may write `source`, but only an archive series' `placedCount` and `skipped` (`sourceAllowed`). |
+| Contracts | `AUTO_GCP_METHODS` (+ `junctions`) | Shared, Python, `pipeline/tests/contracts/autogcp.json`. |
+
+Tests: `pipeline/tests/unit/test_placing_{parts,single,assemble,grid,embedded}.py` on a synthetic town (`pipeline/tests/synthetic/town.py`: a jittered, bent street grid drawn as grey, colour or line-art maps, sheets, pages and pieces through known placements), `functions/test/worker/step-archive.test.ts`; scenarios `S-P20-HAPPY-{STREETS,FRAME,CHECKS,MATCH,LINEART,PIECES,ATLAS,PDF,GRID,EMBEDDED,LADDER}` and `S-P20-BAD-{FRAME-NOT-FOUND,OTHER-CITY,LOW-CONFIDENCE,PDF-PASSWORD,GRID-NOT-PROVED,EMBEDDED-DISAGREES,SOURCE-FORGED}`.
+
+### 15.1 The local dry run on `harti.zip`
+
+Run on the NUC on 2026-11-09 against the extracted `harti.zip`, with the worker's own intake and the real `gather` and `place` steps in a
+local-only world (documents in memory, objects in a local folder, nothing uploaded); OpenStreetMap read once for the city window from a
+public Overpass mirror and cached (the main instance refused this network). Maximum zoom capped at 16 for the run.
+
+- **Scan**: 5,703 files probed in 74 minutes (one spawned probe child per file); after the classification fixes (DECISIONS §126h) 64
+  series: 9 grid (1:500 base and 6 one-sheet editions, the 1:2000, the cadastral plan), 4 atlases (Borroczyn 1846 twice, the 1969 atlas,
+  Miorini's PDF), 1 pieces (the coloured 1895, 60 scans), 46 singles, 4 skipped (Oltean, two Giurescu pages, the 500 px 1799 plan); 66
+  files skipped (50 not a map, 10 duplicates, 4 titled pages, 1 index, 1 DWG).
+- **Outcome**: **no series placed itself**; all 60 imported series ended `awaiting_gcps` with a one-line `help`, none failed, none was
+  placed wrongly. Times: 1:500 grid 18.0 min (4,533 sheets, peak 1.2 GB), 1:2000 grid 7.1 min, every other series under 2 minutes.
+- **What worked**: names to cells and neat lines placed the sheets on the city grid by themselves: the 1:2000 mosaic (303 of 512 sheets
+  framed) shows Bucharest's ring railway, the Dâmbovița and its street pattern in place (preview `preview-ipb-1-2000-mosaic.png`), and the
+  1:500 mosaic (2,356 of 4,501 framed) the city's outline; the PDF's 143 pages came out of the encrypted file.
+- **Why they wait** (each a next step):
+  - the grid solve against OpenStreetMap does not prove: the classical street network is read from paper corridors, and the IPB line
+    plans are sparse outlines; a solve on the ink itself (rails, river, block edges) against OpenStreetMap's lines is the next try;
+  - the cadastral sheets have no printed neat line (`frame-not-found`): their cells need a frame from the content's extent or the grid's
+    printed crossings; 2,145 of the 1:500 and 209 of the 1:2000 sheets are framed by neither method yet;
+  - drawn maps: guide maps hatch or tint their blocks and letter their streets, so a grey threshold finds no street network or the wrong
+    one (the 1900 Baedeker crop, `streets-baedeker-1900-crop.png`); six coloured maps showed no network at all. This is the case §3 c
+    step 2 kept for the `RoadSegmenter` (gate R2), and OCR of the printed scale would narrow the search for every single map;
+  - atlases: edge continuity joined 2 of 94 Borroczyn pages and none of Miorini's (hand-drawn pages do not continue pixel for pixel
+    after cropping); the index page (OCR) is needed; pieces: SIFT on the reduced colour scans joined 1 of 60.
+
+The per-series table and the previews are the run's artefacts (`harti-dryrun.json`, kept outside the repository with the archive).

@@ -59,6 +59,8 @@ def test_happy_path_a_connected_series_of_one_size_is_accepted() -> None:
     cells = [Cell("quarter", row, col, 1) for row in range(3) for col in range(3)]
 
     assert grammar.accepts(9, 10, cells, [(7008, 9933)] * 9)
+    assert grammar.accepts(9, 10, cells, [(7008, 9933)] * 6 + [(6608, 9363)] * 3)
+    assert not grammar.alike([])
 
 
 @pytest.mark.parametrize(

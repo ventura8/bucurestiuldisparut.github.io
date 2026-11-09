@@ -2991,3 +2991,38 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the engine validates the whole manifest with the shared schema, so every field of `layerSchema` ships in the viewer, read or not.
     - Fix: the field stays on the layer document (`layerRightsSchema`, `imagery-archive.ts`) and out of the manifest; the credit reaches the visitor through `attribution`; the manifest field waits for viewer bytes (DECISIONS §125c).
     - **A manifest field is engine bytes: build and measure before promising one, and keep server-only data on the server's own document.**
+505. **The pipeline's own GDAL settings hid every world file from the georeferenced path.**
+    - Seen: 2026-11-09, track/archive's paths: a Stereo 70 test map with a `.tfw` and no `.prj` opened with no geotransform under the test configuration, though it opened with one in a bare script.
+    - Cause: `rasters.DEFAULT_SETTINGS` sets `GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR` (no folder listing on open), so GDAL never looks for a sidecar world file.
+    - Fix and pin: `placing/embedded.py` reads the world file itself (`world_file`, six numbers, the centre of the top-left pixel) and warps by its four corners when the file's own tags have no placement (`test_placing_embedded.py`, S-P20-HAPPY-EMBEDDED).
+    - **A setting that keeps GDAL off the network also keeps it off the file's neighbours: read sidecars yourself.**
+506. **A two-point similarity could not fit scan pixels to Mercator metres, so every RANSAC sample was wrong.**
+    - Seen: 2026-11-09, the drawn-map path's first fine fits: 262 of 559 pairs agreed with the coarse placement, and the RANSAC similarity refitted on them agreed with none.
+    - Cause: pixels run down and Mercator metres run up, a reflection; the Umeyama similarity is reflection-free by design.
+    - Fix and pin: `placing/geometry.similarity(..., flipped=True)` fits on (x, -y) and composes the flip; RANSAC keeps the handedness of the placement it starts from, and that placement competes as one more round (`test_placing_parts.py`).
+    - **Write down the handedness of every transform between pixel and ground coordinates before fitting one.**
+507. **The chamfer score alone placed a street-grid map one block over, and a few chance pairs then "held".**
+    - Seen: 2026-11-09, synthetic towns: the best chamfer peak was 1.5 km off while the third was 11 m off; an 18-pair affine on the wrong peak passed 12 inliers, 5 checks and no gross check.
+    - Cause: a regular street pattern scores almost as well shifted by a block, and nearest-junction checks always find a neighbour within 100 m in a dense city.
+    - Fix and pin: the coarse search keeps three placements far apart, the fine fit runs on each, the one with most agreeing pairs wins and holds only when the runner-up has at most half as many (M9's rival share) and its pairs are at least 20 % of the junctions (`placing/single.py`, `placing/fine.py`; S-P20-BAD-OTHER-CITY).
+    - **Choose between placements by the evidence the fit uses, never by the coarse score; a fit's share of the data is as much a gate as its count.**
+508. **An 8-connected skeleton's staircase is full of "junctions".**
+    - Seen: 2026-11-09: the drawn maps' junctions matched OpenStreetMap's for only 37 % of them under the true placement.
+    - Cause: a pixel with three skeleton neighbours is a junction by count, and every diagonal step has three.
+    - Fix and pin: a junction is a crossing number (empty-to-set turns around the eight neighbours) of three or more, clusters within a street's width merged, and on a line plan only the skeleton within 2.5 street half-widths of ink counts (block interiors are paper too) (`placing/streets.py`, S-P20-HAPPY-STREETS).
+    - **Count branches by transitions around the pixel, not by neighbours.**
+509. **A synthetic map drawn with no margin came out blank, and an Otsu split read the dark class as paper.**
+    - Seen: 2026-11-09, the assembly tests: every page of an atlas drawn with `margin_px=0` was white, and every edge profile was zero.
+    - Cause: `image[-margin:]` with a margin of 0 is the whole image; and `strip < threshold` misses the class Otsu puts at the threshold itself.
+    - Fix: the margin is drawn only when there is one (`tests/synthetic/town.py`); edge profiles compare grey levels, not a thresholded ink mask (`placing/assemble.py`).
+    - **A negative slice of zero is everything: guard every `-n:` whose n may be 0.**
+510. **The core's archive versions could not be read by the pipeline at all: Python's version origins missed `archive`.**
+    - Seen: 2026-11-09, the first local dry run of an `archive-series` job: `Version.of` raised "origin must be one of crop, join, regeoref, upload, usgs".
+    - Cause: M20's core added `archive` to `VERSION_ORIGINS` in `@hcm/shared` only; the Python copy in `documents.py` had no parity test, and the core's step tests built versions that kept the seed's `usgs` origin.
+    - Fix and pin: `archive` added; `VERSION_ORIGINS` joins `pipeline/tests/contracts/enums.json`, held equal by `test_contract.py` and `pipeline-contract.test.ts`.
+    - **Every enum a Python reader checks belongs in the parity contract, and a new job type's test must read the version its server writes.**
+511. **A chamfer score that is a plain mean prefers the densest part of the reference over the true place.**
+    - Seen: 2026-11-09, synthetic towns: after a change to the skeleton's pruning, the true placement of a map at 5.2 m a pixel fell out of the six best chamfer peaks; every peak scored about 0.78.
+    - Cause: the mean closeness under the template is high wherever the reference has many streets, so a shifted placement inside the town scores almost as well as the true one, and small changes reorder them.
+    - Fix and pin: the template is correlated zero-mean (`cv2.TM_CCOEFF`, divided by its point count): the score is the closeness on the map's lines less what the same window gives on average; the true placement became the first candidate in every style tried (`placing/coarse.py`; S-P20-HAPPY-MATCH).
+    - **Score a match against what chance gives in the same window, never in absolute terms.**

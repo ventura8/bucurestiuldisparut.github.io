@@ -117,7 +117,8 @@ def test_bad_path_gather_refuses_a_job_without_its_archive(world: PipelineWorld,
 
 def test_bad_path_a_class_with_no_path_yet_waits_for_a_person_with_why(world: PipelineWorld, tmp_path: Path) -> None:
     """Scenarios: S-P20-BAD-NO-PATH"""
-    ctx = context(world, tmp_path, {**SERIES_PARAMS, "archiveId": "ar-0123456789abcdef", "seriesId": "s-0123456789ab"}, None)
+    params = {**SERIES_PARAMS, "class": "cad", "archiveId": "ar-0123456789abcdef", "seriesId": "s-0123456789ab"}
+    ctx = context(world, tmp_path, params, None)
 
     result = PlaceStep().run(ctx)
 

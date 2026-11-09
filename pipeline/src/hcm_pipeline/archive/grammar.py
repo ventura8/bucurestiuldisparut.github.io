@@ -15,15 +15,17 @@ set, and their pixel sizes agree. What a sheet's cell means on the ground is the
 """
 
 import re
-from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Final
 
+import numpy
+
 GRID_LETTERS: Final = "ABCDEFGHIKLMNOPRSTUVWXYZ"
 MIN_SHEETS: Final = 4
 MIN_SHARE: Final = 0.8
+SIZE_TOLERANCE: Final = 0.1
 _QUARTER: Final = re.compile(r"^(\d{1,2})('*)([A-Z])('*)([1-4])(?:[_-](\d{2,4}))?(?:\s*(.+))?$", re.IGNORECASE)
 _BLOCK: Final = re.compile(r"^(\d{1,2})('*)-(\d{1,2})('*)\s*([A-Z])('*)([A-Z])('*)(?:[_-](\d{2,4}))?(?:\s*(.+))?$", re.IGNORECASE)
 _FOLDER_ROW: Final = re.compile(r"^seria\s*(\d{1,2})('*)$", re.IGNORECASE)
@@ -135,7 +137,7 @@ def _component(start: tuple[int, int], places: set[tuple[int, int]]) -> set[tupl
 
 
 def connected(cells: Iterable[Cell]) -> bool:
-    """True when 80 % of the cells (a quarter's cell counts as its cell) form one set joined by edges or corners (a gap of one cell)."""
+    """True when 80 % of the cells (a quarter's cell counts as its cell) form one set, each within `REACH` cells of the next."""
     places = {(cell.row, cell.col) for cell in cells}
     largest, left = 0, set(places)
     while left:
@@ -144,12 +146,26 @@ def connected(cells: Iterable[Cell]) -> bool:
     return largest > 0 and largest >= MIN_SHARE * len(places)
 
 
+# Sheets join when they lie within this many cells of each other: a surviving series has gaps (the cadastral plan's rows are 9, 11, 12,
+# 15, 18, 19, 21 and 22), a set of names that happen to parse is scattered further.
+REACH: Final = 3
+
+
 def _neighbours(place: tuple[int, int]) -> list[tuple[int, int]]:
-    return [(place[0] + dr, place[1] + dc) for dr in (-2, -1, 0, 1, 2) for dc in (-2, -1, 0, 1, 2) if dr or dc]
+    steps = range(-REACH, REACH + 1)
+    return [(place[0] + dr, place[1] + dc) for dr in steps for dc in steps if dr or dc]
+
+
+def alike(sizes: Sequence[tuple[int, int]]) -> bool:
+    """80 % of the sheets are within `SIZE_TOLERANCE` of the median size on both sides: sheets cut by hand, or scanned in two batches
+    a few per cent apart (Bucharest's 1:2000 sheets are 7008 x 9933 and 6608 x 9363), are one series; an atlas of mixed pages is not."""
+    if not sizes:
+        return False
+    measured = numpy.array(sizes, numpy.float64)
+    close = numpy.all(numpy.abs(measured / numpy.median(measured, axis=0) - 1.0) <= SIZE_TOLERANCE, axis=1)
+    return bool(close.mean() >= MIN_SHARE)
 
 
 def accepts(parsed: int, rasters: int, cells: Sequence[Cell], sizes: Sequence[tuple[int, int]]) -> bool:
-    """§2.3: enough sheets, 80 % of the rasters parse, one connected set, and 80 % share one pixel size."""
-    common = Counter(sizes).most_common(1)
-    alike = bool(common) and common[0][1] >= MIN_SHARE * len(sizes)
-    return parsed >= MIN_SHEETS and parsed >= MIN_SHARE * rasters and alike and connected(cells)
+    """§2.3: enough sheets, 80 % of the rasters parse, one connected set, and 80 % of one size (`alike`)."""
+    return parsed >= MIN_SHEETS and parsed >= MIN_SHARE * rasters and alike(sizes) and connected(cells)

@@ -3,8 +3,10 @@
 The detectors run in order, each on what the ones before left: junk (thumbnail caches, autosaves, listings, system files), exact
 duplicates (SHA-256; the shortest name is kept), CAD drawings (reported: they need an export from CAD in v1), already georeferenced
 rasters, sheet series whose names a grammar reads (`grammar.py`; an edition suffix makes its own partial series), atlases (numbered pages
-in one folder; titled pages that are no map are skipped, an index page is kept for the layout only), and single maps. A raster too small
-to calibrate becomes a series the report proposes to skip. Overlapping pieces and twin scans need the pixels (§3 E) and stay singles here.
+in one folder; titled pages that are no map are skipped, an index page is kept for the layout only), pieces (a folder of at least three
+scans in a scanner's own order, `img362.jpg`, one series per folder, or per parent when all its folders are pieces: the four `N_quadrat`
+folders of one sheet), and single maps. A raster too small to calibrate becomes a series the report proposes to skip. Whether pieces
+really overlap is the placer's to find (`placing.assemble`); twin scans need the pixels and stay singles here.
 """
 
 import re
@@ -25,7 +27,10 @@ SIDECAR_SUFFIXES: Final = frozenset({".tfw", ".tifw", ".jgw", ".pgw", ".wld", ".
 INDEX_WORDS: Final = ("cuprins", "index", "inhalt", "contents")
 MIN_ATLAS_PAGES: Final = 3
 _PAGE: Final = re.compile(r"^(\d{1,4})(?:[_\s-]+(.*))?$")
-_YEAR: Final = re.compile(r"(?<!\d)(1[5-9]\d\d|20\d\d)(?!\d)")
+_SCANNER_ORDER: Final = re.compile(r"^(?:img|image|scan|dsc|dscn|pict)[_\s-]?\d{2,6}$", re.IGNORECASE)
+MIN_PIECES: Final = 3
+# A year is four digits on their own; one that follows `1_`, `1:` or `1-` is a scale's denominator (`1_2000`, `1-10000`), never a year.
+_YEAR: Final = re.compile(r"(?<!\d)(?<!1[_:-])(1[5-9]\d\d|20\d\d)(?!\d)")
 _SCALE: Final = re.compile(r"1[_:](\d{3,7})(?!\d)")
 
 
@@ -195,11 +200,11 @@ def _family_order(item: tuple[tuple[str, str, int | None], object]) -> tuple[str
 
 
 def _take_family(
-    rows: Sequence[FileRow], key: tuple[str, str, int | None], members: Sequence[tuple[FileRow, grammar.Cell]], found: Found
+    rows: Sequence[FileRow], key: tuple[str, str, int | None], members: Sequence[tuple[FileRow, grammar.Cell]], found: Found, based: bool
 ) -> set[str]:
-    """The family's series, when its grammar is accepted; the paths it took."""
+    """The family's series, when its grammar is accepted (or it is an edition of an accepted base series); the paths it took."""
     odd = _odd_names(rows, key, members)
-    if not _accepted(members, odd):
+    if not (based or _accepted(members, odd)):
         return set()
     whole = [*members, *odd]
     found.series.append(_grid_series(key, whole))
@@ -211,10 +216,14 @@ def _left(rows: Sequence[FileRow], taken: set[str]) -> list[FileRow]:
 
 
 def take_grids(rows: Sequence[FileRow], found: Found) -> list[FileRow]:
-    """Class b: a family of sheets a grammar reads; its base edition takes the odd names of its folders too."""
+    """Class b: a family of sheets a grammar reads; its base edition takes the odd names of its folders too. An edition of an accepted
+    base series is a series of its own however few its sheets (§1.4: a partial layer of its year, which the owner may drop)."""
     taken: set[str] = set()
+    bases: set[tuple[str, str]] = set()
     for key, members in sorted(_families(rows).items(), key=_family_order):
-        taken |= _take_family(rows, key, members, found)
+        took = _take_family(rows, key, members, found, (key[0], key[1]) in bases)
+        bases |= {(key[0], key[1])} if took and key[2] is None else set()
+        taken |= took
     return _left(rows, taken)
 
 
@@ -274,6 +283,42 @@ def take_atlases(rows: Sequence[FileRow], found: Found) -> list[FileRow]:
     return _left(rows, taken)
 
 
+def _scanner_named(row: FileRow) -> bool:
+    return row.probe.format in RASTERS and _SCANNER_ORDER.match(_name(row).stem) is not None
+
+
+def _piece_folders(rows: Sequence[FileRow]) -> dict[str, list[FileRow]]:
+    """Folders holding at least `MIN_PIECES` scans named in a scanner's order."""
+    folders: dict[str, list[FileRow]] = defaultdict(list)
+    for row in filter(_scanner_named, rows):
+        folders[str(_name(row).parent)].append(row)
+    return {folder: pieces for folder, pieces in folders.items() if len(pieces) >= MIN_PIECES}
+
+
+def pieces_group(folder: str, pieces: set[str], rows: Sequence[FileRow]) -> str:
+    """A pieces folder's series: its parent when every folder of rasters under that parent is a pieces folder, else itself."""
+    parent = str(PurePosixPath(folder).parent)
+    siblings = _raster_folders_under(parent, rows)
+    return parent if len(siblings) > 1 and siblings <= pieces else folder
+
+
+def _raster_folders_under(parent: str, rows: Sequence[FileRow]) -> set[str]:
+    """The folders right under `parent` that hold a raster."""
+    folders = {_name(row).parent for row in rows if row.probe.format in RASTERS}
+    return {str(folder) for folder in folders if str(folder.parent) == parent}
+
+
+def take_pieces(rows: Sequence[FileRow], found: Found) -> list[FileRow]:
+    """Pieces: scans of one sheet in a scanner's order, made one map by the placer."""
+    folders = _piece_folders(rows)
+    groups: dict[str, list[FileRow]] = defaultdict(list)
+    for folder, members in sorted(folders.items()):
+        groups[pieces_group(folder, set(folders), rows)].extend(members)
+    for group, members in groups.items():
+        found.series.append(Series(f"pieces:{group}", "pieces", title_of(group), tuple(members), year_in(group), scale=scale_in(group)))
+    return _left(rows, {row.path for members in groups.values() for row in members})
+
+
 def _small(row: FileRow) -> bool:
     return row.probe.raster and max(row.probe.width, row.probe.height) < MIN_LONG_SIDE_PX
 
@@ -307,6 +352,7 @@ DETECTORS: Final[tuple[Callable[[Sequence[FileRow], Found], list[FileRow]], ...]
     take_georeferenced,
     take_grids,
     take_atlases,
+    take_pieces,
     take_singles,
 )
 

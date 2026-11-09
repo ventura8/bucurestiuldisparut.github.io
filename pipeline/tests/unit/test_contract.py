@@ -3,7 +3,7 @@
 from collections.abc import Callable
 
 import pytest
-from hcm_pipeline import contract, paths
+from hcm_pipeline import contract, documents, paths
 from hcm_pipeline.archive import model
 
 from tests.contracts_loader import golden, record, records
@@ -32,6 +32,7 @@ def test_happy_path_the_constants_equal_the_shared_copy() -> None:
         "JOB_MACHINES": list(contract.JOB_MACHINES),
         "JOB_STEPS": {job_type: list(steps) for job_type, steps in contract.JOB_STEPS.items()},
         "LAYER_VERSION_STATES": list(contract.LAYER_VERSION_STATES),
+        "VERSION_ORIGINS": list(documents.VERSION_ORIGINS),
         "GEOREF_TRANSFORMS": list(contract.GEOREF_TRANSFORMS),
         "MIN_GCPS": dict(contract.MIN_GCPS),
         "GCP_ORIGINS": list(contract.GCP_ORIGINS),

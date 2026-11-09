@@ -32,6 +32,7 @@ def bucharest() -> list[FileRow]:
     return [
         *quarters(plan, range(16, 19)),
         *quarters(plan, range(16, 18), "_62"),
+        row(f"{plan}/16/16B'2_71.tif"),
         row(f"{plan}/17/17A1 bis.tif"),
         row(f"{plan}/17/17xx.tif"),
         row("Harti/1844-1846_Rudolf Arthur Borroczyn/11_Cuprins.jpg", GREY),
@@ -76,12 +77,13 @@ def test_happy_path_the_sheet_grid_its_edition_and_its_odd_names_are_found() -> 
     """Scenarios: S-P20-HAPPY-GRID-NAMES"""
     grids = by_class(classify.classify(bucharest()))["grid"]
 
-    base, edition = sorted(grids, key=lambda series: series.edition or "")
+    base, edition, lone = sorted(grids, key=lambda series: series.edition or "")
     assert (base.title, len(base.files), base.scale, base.year) == ("Bucuresti actual 1 500", 3 * 12 + 2, 500, None)
     assert base.cells["Harti/Bucuresti actual 500 2000/Bucuresti actual 1_500/17/17A'3.tif"] == "17,0,3"
     assert base.cells["Harti/Bucuresti actual 500 2000/Bucuresti actual 1_500/17/17A1 bis.tif"] == "17,-1,1?"
     assert base.cells["Harti/Bucuresti actual 500 2000/Bucuresti actual 1_500/17/17xx.tif"] == "0,0,0?"
     assert (edition.edition, edition.year, len(edition.files)) == ("1962", 1962, 24)
+    assert (lone.edition, len(lone.files)) == ("1971", 1)
 
 
 def test_happy_path_an_atlas_keeps_its_maps_and_skips_its_titled_pages() -> None:
@@ -122,6 +124,12 @@ def records(rows: list[FileRow], context: report.Context = CONTEXT) -> dict[str,
     return {str(record["title"]): record for record in made.series}
 
 
+def test_happy_path_a_scales_denominator_is_never_a_year() -> None:
+    assert classify.year_in("Harti/Bucuresti actual 1_2000") is None
+    assert classify.year_in("Harti/Bucuresti 1895-1899/1-10000") is None
+    assert classify.year_in("Harti/plan cadastral 1911-1914") == 1911
+
+
 def test_happy_path_the_report_orders_the_ladder_and_prefills_rights_encoding_and_zoom() -> None:
     """Scenarios: S-P20-HAPPY-REPORT"""
     found = classify.classify(bucharest())
@@ -130,7 +138,7 @@ def test_happy_path_the_report_orders_the_ladder_and_prefills_rights_encoding_an
     titles = [str(record["title"]) for record in made.series]
     assert titles[:2] == ["ortho", "scan"]
     # The grids solve the city's grid, dated newest first; an undated base edition after them until its owner dates it.
-    assert titles[2:4] == ["Bucuresti actual 1 500 (1962)", "Bucuresti actual 1 500"]
+    assert titles[2:5] == ["Bucuresti actual 1 500 (1971)", "Bucuresti actual 1 500 (1962)", "Bucuresti actual 1 500"]
     plan = next(record for record in made.series if record["title"] == "Bucuresti actual 1 500")
     assert (plan["encoding"], plan["action"], plan["scaleDenominator"], plan["yearLabel"]) == ("lineart", "import", 500, "?")
     assert plan["rights"] == {"licence": "unknown", "state": "needs-confirmation", "year": "?", "note": rights.YEARLESS_NOTE}
