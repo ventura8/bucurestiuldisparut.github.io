@@ -3148,3 +3148,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-09, writing `S-A130-BAD-CLOUDY`: a 35 % cloudy scene contributes only 3 of the cloud part's 10 points, behind free, coverage and "no layers yet", and a card shows three reasons.
     - Fix and pin: a Landsat scene over the tick's 20 % cap, and one out of the leaf-on months, list their cloud or season reason first (`always`, `packages/shared/src/imagery/ranking.ts`; `RANKING_VERSION` 4).
     - **When a new kind of item is ranked by an old score, check which reason its card shows first, not only its place in the list.**
+535. **One new import from the shared core renamed the core's exports, and a chunk that did not change outgrew its budget.**
+    - Seen: 2026-11-09, track/landsat: `join-card` measured 3,027 bytes gzip against 3,000 with the same 8,449 raw bytes as before (2,991): the approval card's new `landsatClear` was one more export of `admin-core`, every later export's short name moved one letter, and the join card's imports (`Dr as e` became `Or as t`) renamed its locals and compressed worse.
+    - Found by: building the base commit beside the branch on the NUC and comparing the chunk's first bytes, then dropping one import at a time.
+    - Fix and pin: the verdict lives in `packages/shared/src/schemas/landsat-verdict.ts`, which imports nothing at run time, so it travels in the approval chunk alone; the scene list derives its chips from `USGS_DATASETS` rather than importing two more lists. The budget is not raised (DECISIONS-for-review.md §138g).
+    - **When a chunk's gzip grows with its raw bytes unchanged, look at its import names: a new export of a shared chunk renames everything after it.**

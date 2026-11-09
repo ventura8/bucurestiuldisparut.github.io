@@ -31,10 +31,6 @@ export const LEAF_ON_MONTHS: readonly number[] = [6, 7, 8];
 export const LANDSAT_SEARCH_MAX_CLOUD = 40;
 export const LANDSAT_AUTO_MAX_CLOUD = 20;
 
-/** A version publishes on its own within this many pixels of Sentinel-2, and with at most this share of the city under cloud. */
-export const LANDSAT_MAX_OFFSET_PX = 1;
-export const LANDSAT_MAX_CITY_CLOUD_PCT = 10;
-
 /** The tick starts at most this many Landsat imports a city per run; the daily cap still counts each. */
 export const LANDSAT_AUTO_PER_TICK = 1;
 
@@ -62,12 +58,3 @@ export const landsatReportSchema = z.strictObject({
 });
 
 export type LandsatReport = z.infer<typeof landsatReportSchema>;
-
-/** The report's verdict: measured, within a pixel, and a clear city; anything else waits for Approve. */
-export function landsatClear(report: LandsatReport): boolean {
-    return (
-        report.checked &&
-        (report.offsetPx ?? Number.POSITIVE_INFINITY) <= LANDSAT_MAX_OFFSET_PX &&
-        report.cityCloudPct <= LANDSAT_MAX_CITY_CLOUD_PCT
-    );
-}

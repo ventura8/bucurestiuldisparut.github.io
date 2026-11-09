@@ -5,7 +5,7 @@
  * camera and frame: finding 53 of 2026-11-01), its score and first reasons in plain words, and its
  * chips (Free or Needs ordering, Imported). Without USGS set up the view says so with the way to Setup's USGS card.
  */
-import { DECLASS_DATASETS, LANDSAT_DATASETS, type Locale, type UsgsDataset } from '@hcm/shared';
+import { USGS_DATASETS, type Locale, type UsgsDataset } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { current, errorTemplate, loadingTemplate } from '../editing/states.js';
@@ -33,7 +33,11 @@ function chip(label: string, selected: boolean, change: (selected: boolean) => v
 }
 
 /** M25: one chip per declassified dataset, and one for Landsat's two (Landsat 4-5 TM and Landsat 7 ETM+ together). */
-const CHIP_SOURCES: readonly (readonly UsgsDataset[])[] = [...DECLASS_DATASETS.map((dataset) => [dataset]), LANDSAT_DATASETS];
+const LANDSAT = (dataset: UsgsDataset): boolean => dataset.startsWith('landsat_');
+const CHIP_SOURCES: readonly (readonly UsgsDataset[])[] = [
+    ...USGS_DATASETS.filter((dataset) => !LANDSAT(dataset)).map((dataset) => [dataset]),
+    USGS_DATASETS.filter(LANDSAT),
+];
 
 function sourceLabel(locale: Locale, source: readonly UsgsDataset[]): string {
     const [only] = source;

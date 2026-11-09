@@ -6294,3 +6294,4 @@ The owner's request of 2026-11-09 ("import the landsat, add it to our sources, a
 - **138d Approval without a georeference**: within one Landsat pixel of Sentinel-2 (phase correlation of high-passed images) and at most 10 % of the city under cloud, with the city auto-publishing and covered; otherwise Approve. Public domain: no rights step.
 - **138e ETM+ stops at 2003-05-30** (the scan line corrector's failure), and a Landsat scene never joins a date plan.
 - **138f The shared index names the new exports** (lesson 532: no `export *`), and its imagery-settings block is written on two lines to stay within 400.
+- **138g No budget raised for the join card**: Landsat's verdict (`landsatClear` and its two bars) is a module of its own (`schemas/landsat-verdict.ts`, lesson 535), so the admin's shared core gains no export and the join card stays at 2,989 bytes gzip of its 3,000.

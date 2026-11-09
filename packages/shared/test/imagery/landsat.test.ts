@@ -7,7 +7,8 @@ import { describe, expect, it } from 'vitest';
 import { rankScene, type RankedScene } from '../../src/imagery/ranking.js';
 import { DECLASS_DATASETS, LANDSAT_DATASETS, USGS_DATASETS } from '../../src/schemas/firestore.js';
 import { DEFAULT_LANDSAT_YEARS, cityImagerySchema, imagerySettingsOf, landsatYearsOf } from '../../src/schemas/imagery-settings.js';
-import { isLandsatDataset, landsatClear, landsatReportSchema, type LandsatReport } from '../../src/schemas/landsat.js';
+import { landsatClear } from '../../src/schemas/landsat-verdict.js';
+import { isLandsatDataset, landsatReportSchema, type LandsatReport } from '../../src/schemas/landsat.js';
 import { SENSOR_SPECS, usgsBrowseUrlSchema } from '../../src/schemas/usgs-scene.js';
 
 const CLEAR: LandsatReport = {
