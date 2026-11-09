@@ -3153,3 +3153,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: building the base commit beside the branch on the NUC and comparing the chunk's first bytes, then dropping one import at a time.
     - Fix and pin: the verdict lives in `packages/shared/src/schemas/landsat-verdict.ts`, which imports nothing at run time, so it travels in the approval chunk alone; the scene list derives its chips from `USGS_DATASETS` rather than importing two more lists. The budget is not raised (DECISIONS-for-review.md §138g).
     - **When a chunk's gzip grows with its raw bytes unchanged, look at its import names: a new export of a shared chunk renames everything after it.**
+536. **A Landsat product id, 40 characters with no space, pushed the scene list sideways on a phone.**
+    - Seen: 2026-11-09, the first run of `landsat.spec.ts`: the tour's checker found the list pane 15 px too wide at 360 px (`imagery.results-landsat`), and at the laptop's list beside a version.
+    - Cause: the scene row's text column was `1fr` (its minimum the longest word) and the declassified ids were short enough to fit.
+    - Fix and pin: the column is `minmax(0, 1fr)` and the row's details wrap anywhere (`packages/ui/src/admin/imagery/imagery-styles.ts`); the two Landsat tour states pass the checkers.
+    - **A new data source brings new string shapes: run the layout checkers on its rows at the phone's width before trusting the old ones.**

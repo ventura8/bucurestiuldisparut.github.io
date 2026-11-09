@@ -46,7 +46,7 @@ const LISTED_FREE = 9;
 async function landsatListed(page: Page, lang: 'ro' | 'en'): Promise<void> {
     await page.goto(adminPath(lang, 'imagery'));
     await expect(sceneList(page, lang).getByRole('link')).toHaveCount(LISTED_FREE, { timeout: FUNCTIONS_TIMEOUT_MS });
-    await page.getByRole('button', { name: imageryText(lang, 'adminContent.imagery.filter.landsat') }).click();
+    await page.getByRole('button', { name: imageryText(lang, 'adminContent.imagery.filter.landsat'), exact: true }).click();
     await expect(sceneList(page, lang).getByRole('link')).toHaveCount(3);
 }
 
