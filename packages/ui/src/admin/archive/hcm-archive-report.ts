@@ -91,9 +91,7 @@ export class HcmArchiveReport extends ArchiveElement {
 
     #result(view: ArchiveViewPort): string {
         const result = view.result;
-        return result === null
-            ? ''
-            : this.t('adminArchive.imported', { today: count(this.locale, result.today), waiting: count(this.locale, result.waiting) });
+        return result === null ? '' : this.t('adminArchive.imported', { today: count(this.locale, result.today) });
     }
 
     #skipped(report: Report): TemplateResult {
@@ -114,7 +112,7 @@ export class HcmArchiveReport extends ArchiveElement {
         const chosen = chosenOf(report.series, view.edits);
         const valid = chosen.length > 0 && chosen.every((series) => yearShown(view.edits[series.seriesId]?.year ?? ''));
         return html`${report.series.map((series) => this.#series(view, series))}
-            <p data-total>${totalText(this.locale, chosen, view.share)}</p>
+            <p data-total>${totalText(this.locale, chosen)}</p>
             <div class="actions">
                 <hcm-button
                     variant="filled"

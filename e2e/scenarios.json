@@ -5172,6 +5172,28 @@
             "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
         },
         {
+            "id": "S-A12-HAPPY-RETRY-OUTDATED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A job an outdated computer could not run offers Run it again past its attempts",
+            "asserts": "an archive series failed three times by a worker image that did not run its type (apiError.imagery.pipelineOutdated, or the legacy apiError.invalidRequest naming the type) -> the Jobs page titles it Archive import, shows its error without a literal placeholder and offers Run it again; the retry queues it with its attempts back to 0; the pipeline fails an unknown type as pipelineOutdated and a worker claims only the types its image runs",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live report of 2026-11-09 (four archive-series jobs failed on an old worker image). Test: e2e/admin/specs/imagery/jobs.spec.ts."
+        },
+        {
+            "id": "S-A12-BAD-RETRY-EXHAUSTED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "An ordinary job past its attempts still offers no Run it again",
+            "asserts": "an import that failed on its own three times shows no Run it again on the Jobs page; imagery.retry refuses any other exhausted failure, an invalid request included, with apiError.imagery.attemptsExhausted",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live report of 2026-11-09. Test: e2e/admin/specs/imagery/jobs.spec.ts."
+        },
+        {
             "id": "S-A12-HAPPY-OUT-OF-MEMORY-RETRY",
             "behaviour": "A12",
             "area": "admin",
@@ -15714,8 +15736,8 @@
             "behaviour": "A120",
             "area": "admin",
             "path": "bad",
-            "title": "Series beyond today's share wait for the next days, never refused",
-            "asserts": "a share of 2 and five series -> 2 start today, 3 wait (daily, not counted, not claimed); tomorrow's tick releases the next two of the ladder",
+            "title": "Every archive series starts at once; the cap holds only work that is not local-only",
+            "asserts": "a share of 2 and five series -> all five start today (worker, not counted); a legacy series held daily is released today past the share; a non-local job held daily stays held while the share is full and starts on a later day, counted then",
             "tier": "functions",
             "status": "exists",
             "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-import.test.ts."
@@ -15813,8 +15835,8 @@
             "behaviour": "A120",
             "area": "admin",
             "path": "bad",
-            "title": "A retried or concurrent import never spends today's room twice",
-            "asserts": "the import and each daily release count today's room inside their transaction behind ops/daily; a retried import counts again (2 start, 1 waits at a share of 2) with distinct layer ids; a share of 0 says none starts until it is raised",
+            "title": "A retried or concurrent release never spends today's room twice",
+            "asserts": "a non-local job's daily release counts today's room inside its transaction behind ops/daily; a retried release counts again; an archive import passes the turnstile and counts nothing",
             "tier": "functions",
             "status": "exists",
             "notes": "M20 (docs/research/M20-import-local.md §7, §8, review 2026-11-09). Tests: functions/test/imagery/archive-import.test.ts, packages/ui/test/admin/archive/archive.test.ts."
@@ -15886,15 +15908,26 @@
             "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/ui/test/admin/archive/archive.test.ts, packages/admin/test/archive/feed.test.ts."
         },
         {
+            "id": "S-A121-HAPPY-LOCAL-UNCAPPED",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "happy",
+            "title": "A local archive's series all start the same day, past the daily share",
+            "asserts": "a share of 1 and two series -> one Import starts both (no series reads Waiting for a later day's share); series that waited before the change are released by the next tick whatever the share, and count nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (31 series of harti.zip held by the cap). Tests: e2e/admin/specs/imagery/archive.spec.ts, functions/test/imagery/archive-import.test.ts."
+        },
+        {
             "id": "S-A121-BAD-DAILY-SPLITS",
             "behaviour": "A121",
             "area": "admin",
             "path": "bad",
-            "title": "Series past the city's daily share wait for their day, shown per series",
-            "asserts": "a share of 1 and two series -> one starts, the other reads Waiting for a later day's share",
-            "tier": "e2e-admin",
+            "title": "A Cloud Run import past the daily share still waits or is refused; only local-only jobs pass",
+            "asserts": "archive series counted today (local-only) do not fill the share: a USGS import still starts; at a full share of cloud imports the next import is refused (apiError.imagery.dailyLimit) and a non-local job held daily stays held until a later day",
+            "tier": "functions",
             "status": "exists",
-            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts."
+            "notes": "M20 (docs/research/M20-import-local.md §1.3); the owner, 2026-11-09. Tests: functions/test/imagery/archive-import.test.ts."
         },
         {
             "id": "S-A121-HAPPY-REPORT-EDIT",

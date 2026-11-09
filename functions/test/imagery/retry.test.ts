@@ -249,6 +249,33 @@ describe('imagery.retry: a version that is no longer failed', () => {
     });
 });
 
+describe('imagery.retry: an outdated runner spent no attempt', () => {
+    it.each([
+        ['the outdated code', { code: 'apiError.imagery.pipelineOutdated', message: 'the pipeline does not run archive-series jobs' }],
+        ['the legacy invalid request', { code: 'apiError.invalidRequest', message: 'the pipeline does not run archive-series jobs' }],
+    ])('happyPath_pastTheAttemptsAFailureOf_%s_IsQueuedAgainWithItsCountReset @S-A12-HAPPY-RETRY-OUTDATED', async (_name, error) => {
+        const world = await readyWorld();
+        await seedJob(world, JOB, failed({ attempt: JOB_MAX_ATTEMPTS, error }));
+        await seedFailedVersion(world);
+
+        await expect(retry(world)).resolves.toEqual({ status: 'queued', attempt: 0 });
+
+        expect((await readJob(world, JOB))?.attempt).toBe(0);
+    });
+
+    it('badPath_anotherInvalidRequestPastTheAttemptsIsNotTriedAgain @S-A12-BAD-RETRY-EXHAUSTED', async () => {
+        const world = await readyWorld();
+        await seedJob(
+            world,
+            JOB,
+            failed({ attempt: JOB_MAX_ATTEMPTS, error: { code: 'apiError.invalidRequest', message: 'basedOn must be an id' } }),
+        );
+        await seedFailedVersion(world);
+
+        expect(await failureOf(retry(world))).toMatchObject({ details: { code: 'apiError.imagery.attemptsExhausted' } });
+    });
+});
+
 describe('imagery.retry: what is not tried again', () => {
     it('badPath_pastTheAttemptsItIsNotTriedAgain', async () => {
         const world = await readyWorld();

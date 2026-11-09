@@ -5,6 +5,7 @@ from hcm_pipeline.contract import PIPELINE_WRITER
 from hcm_pipeline.documents import GeorefInfo, JoinReport, JoinSeam, OutputInfo, ReferenceInfo, ScanInfo, Version
 from hcm_pipeline.geo import Bounds
 from hcm_pipeline.model import (
+    RUN_JOB_TYPES,
     ArchiveSeriesParams,
     DocumentError,
     GeotiffImportParams,
@@ -12,6 +13,7 @@ from hcm_pipeline.model import (
     JoinParams,
     JoinPart,
     Lease,
+    OutdatedJobError,
     RegeorefParams,
     StepRecord,
     Timestamp,
@@ -195,6 +197,14 @@ def test_happy_path_each_type_reads_its_own_params(job_type: str, params: dict[s
 def test_bad_path_malformed_params_are_refused(job_type: str, params: dict[str, object], problem: str) -> None:
     with pytest.raises(DocumentError, match=problem):
         params_of(Job("j", job_type, "starting", params, None, None))
+
+
+def test_bad_path_a_type_this_image_does_not_run_is_an_outdated_pipeline_not_a_bad_job() -> None:
+    """Scenarios: S-A12-HAPPY-RETRY-OUTDATED"""
+    with pytest.raises(OutdatedJobError, match="does not run future-type jobs"):
+        params_of(Job("j", "future-type", "starting", {}, None, None))
+    assert "archive-series" in RUN_JOB_TYPES
+    assert "republish" not in RUN_JOB_TYPES
 
 
 def test_happy_path_timestamps_round_trip_epoch_seconds() -> None:

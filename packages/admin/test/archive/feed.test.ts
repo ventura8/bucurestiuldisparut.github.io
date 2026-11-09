@@ -111,7 +111,6 @@ describe('the archive feed', () => {
         expect(feed.state).toMatchObject({
             status: 'ready',
             connected: true,
-            share: 10,
             importUrl: 'http://127.0.0.1:8765/import?lat=44.4300',
         });
         expect(feed.state.archives).toEqual([{ id: ARCHIVE, name: 'harti.zip', files: 120, bytes: 9_000_000, series: 4, imported: false }]);
@@ -139,7 +138,6 @@ describe('the archive feed', () => {
 
         expect(feed.state).toMatchObject({
             connected: false,
-            share: 3,
             importUrl: 'http://127.0.0.1:8765/import?lat=44.4500',
             archives: [],
         });

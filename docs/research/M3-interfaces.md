@@ -183,7 +183,8 @@ A KH-9 panoramic frame often holds only part of a city, so M8 joins one date's f
 
 Limits (`packages/shared/src/api/imagery.ts`, done): `JOBS_PER_DAY` 10 raster jobs a day per project, `RUNNING_JOBS_MAX`
 2 at once, `JOB_MAX_ATTEMPTS` 3, `LEASE_SECONDS` 600 renewed every `HEARTBEAT_SECONDS` 60, `STARTING_STALE_MINUTES` 10,
-`USGS_BACKOFF_MINUTES` 30 → 720.
+`USGS_BACKOFF_MINUTES` 30 → 720. A local-only job (`localOnly`: an M20 archive series) never counts toward `JOBS_PER_DAY` nor
+waits for it: the cap guards the Cloud Run work (2026-11-09, `docs/research/M20-import-local.md` §1.3).
 
 ### 2.5 USGS scenes
 
@@ -421,7 +422,9 @@ belong to the dispatcher and the lease, so an execution never races its own retr
   neither Dismiss nor Cancel takes it), never one that ended otherwise (2026-11-06); it becomes `queued` with every step after the first finished of `locate`, `inspect`, `extract`, `fetch`
   `pending` (finding 78 of 2026-11-03: a pipeline updated since the failure redoes its own results); the steps kept are
   skipped by their recorded outputs (§5.2), `fetch` also once `extract` is finished, as the segments outlive the delivery by a
-  week. A failure at a publish step goes back to the publisher, not to Cloud Run.
+  week. A failure at a publish step goes back to the publisher, not to Cloud Run. A failure of a runner older than the
+  job's type (`apiError.imagery.pipelineOutdated`, or the legacy `apiError.invalidRequest` "the pipeline does not run <type> jobs":
+  `failedOutdated`) spent no real attempt: its retry is allowed whatever `attempt` is, and sets it back to 0 (2026-11-09).
 - **Locate again** (`imagery.locateAgain`, a city editor; S-A69-*; the owner's live use of 2026-11-07): a USGS frame waiting for points
   (`needs_gcps`, its job `awaiting_gcps`, not asked to stop) goes back to `queued` from `stitch`, which Retry cannot do (it takes failed
   jobs only): `fetch` and `extract` stay as recorded, `stitch` (the reason of finding 78: an older pipeline's `frame.json` and preview

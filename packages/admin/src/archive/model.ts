@@ -5,7 +5,6 @@
  */
 import {
     imagerySettingsOf,
-    JOBS_PER_DAY,
     mapThresholdM,
     yearSchema,
     type ArchiveDoc,
@@ -118,11 +117,6 @@ export function choicesOf(archive: ArchiveDoc, edits: Readonly<Record<string, Se
         return null;
     }
     return chosen.map(({ series, edit }) => choiceOf(series, edit));
-}
-
-/** The city's share of new layers a day: its own limit, never above the project's. */
-export function shareOf(city: CityDoc | undefined): number {
-    return Math.min(JOBS_PER_DAY, city?.limits?.rasterJobsPerDay ?? JOBS_PER_DAY);
 }
 
 /** The worker's import page on this computer, with the city's latitude (the scan's ground resolution). */

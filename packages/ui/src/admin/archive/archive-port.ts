@@ -82,8 +82,6 @@ export interface ArchiveViewPort {
     readonly open: OpenArchivePort | null;
     readonly edits: Readonly<Record<string, SeriesEditPort>>;
     readonly progress: Readonly<Record<string, SeriesProgressPort>>;
-    /** The city's daily share of new layers (the total's days). */
-    readonly share: number;
     readonly importing: boolean;
     readonly result: { readonly today: number; readonly waiting: number } | null;
     readonly refusal: AdminNoticeInputPort | null;

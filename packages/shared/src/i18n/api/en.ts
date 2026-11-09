@@ -118,6 +118,7 @@ export const en: ApiMessages = {
     'apiError.imagery.archiveImported': 'This archive was already imported.',
     'apiError.imagery.archiveYear': 'Type this map’s year first. Maps from before 1800 cannot be imported yet.',
     'apiError.imagery.missingBand': 'The Landsat delivery lacks band {band}: no colour image. Try another scene of that year.',
+    'apiError.imagery.pipelineOutdated': "This computer's program is too old for this job: Update the map in Setup, then try again.",
     'apiError.worker.notHolder': 'This job no longer belongs to this computer.',
     'apiError.worker.refused': 'The computer asked for something its job does not need.',
     'apiError.worker.pairCode': 'This pairing code is not valid any more: copy the command from the admin again.',
