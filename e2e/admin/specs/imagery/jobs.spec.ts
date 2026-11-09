@@ -193,7 +193,7 @@ test(
         const retry = page.getByRole('button', { name: text(lang, 'adminContent.jobs.retry') });
         await expect(retry).toBeEnabled();
         await retry.click();
-        await expect(page.locator('hcm-jobs-page .chips')).toContainText(text(lang, 'adminContent.jobs.status.queued'));
+        await expect(page.locator('hcm-jobs-page .pane .chips .tag')).toContainText(text(lang, 'adminContent.jobs.status.queued'));
         await expect.poll(async () => (await content.emulators.document(`cities/${content.city}/jobs/outdated`))?.['attempt']).toBe(0);
 
         // An import that failed on its own three times stays failed, with no Run it again.

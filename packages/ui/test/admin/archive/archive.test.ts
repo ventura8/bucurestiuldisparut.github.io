@@ -77,7 +77,7 @@ function view(changes: Partial<ArchiveViewPort> = {}): ArchiveViewPort {
             [SERIES[1]?.seriesId ?? '']: { include: true, title: 'IPB 1974', year: '1974', confirmedBy: null },
             [SERIES[2]?.seriesId ?? '']: { include: false, title: 'Oltean', year: '1911', confirmedBy: null },
         },
-        ...{ progress: {}, share: 10, importing: false, result: null, refusal: null },
+        ...{ progress: {}, importing: false, result: null, refusal: null },
         local: { phase: 'idle', percent: 0, done: 0, total: 0, error: null },
         ...changes,
     };
@@ -322,7 +322,7 @@ describe('<hcm-archive-report>', () => {
         expect(text).toContain(t('adminArchive.action.grid', { files: '4,545' }));
         expect(text).toContain(t('adminArchive.action.skip', { reason: t('adminArchive.reason.do-not-publish') }));
         expect(text).toContain('IPB 1974, 1962–1978');
-        expect(text).toContain(t('adminArchive.total', { jobs: '2', size: sizeText('en', 2_000_000_000), days: '1' }));
+        expect(text).toContain(t('adminArchive.total', { jobs: '2', size: sizeText('en', 2_000_000_000) }));
         expect(deep(element, '[data-rights="needs-confirmation"]').textContent).toBe(t('adminArchive.rights.needs-confirmation'));
         expect(await axeViolations(element)).toEqual([]);
 
@@ -348,9 +348,9 @@ describe('<hcm-archive-report>', () => {
             `rights ${SERIES[1]?.seriesId ?? ''} Idei Urbane`,
             'import',
         ]);
-        host.feed.set({ result: { today: 1, waiting: 1 }, importing: true });
+        host.feed.set({ result: { today: 2, waiting: 0 }, importing: true });
         await updated(element);
-        expect(deep(element, '[data-result]').textContent).toBe(t('adminArchive.imported', { today: '1', waiting: '1' }));
+        expect(deep(element, '[data-result]').textContent).toBe(t('adminArchive.imported', { today: '2' }));
         expect(button(element, '[data-import]').disabled).toBe(true);
     });
 
@@ -376,10 +376,8 @@ describe('<hcm-archive-report>', () => {
         const other = await report(confirmed, true);
         expect(deep(other, '[data-rights-confirmed]').textContent).toBe(t('adminArchive.rights.confirmed', { by: 'Idei Urbane' }));
         expect(button(other, '[data-import]').disabled).toBe(true);
-        confirmed.feed.set({ share: 0 });
-        await updated(other);
-        expect(deep(other, '[data-total]').textContent).toBe(totalText('en', SERIES.slice(1, 2), 0));
-        expect(totalText('en', SERIES.slice(1, 2), 0)).not.toContain('days');
+        expect(deep(other, '[data-total]').textContent).toBe(totalText('en', SERIES.slice(1, 2)));
+        expect(totalText('en', SERIES.slice(1, 2))).not.toContain('days');
     });
 
     it('happyPath_anImportedArchiveShowsEachSeriesWhereItStandsAndOpensItsVersion @S-A121-HAPPY-PROGRESS', async () => {

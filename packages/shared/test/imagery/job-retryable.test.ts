@@ -36,6 +36,9 @@ describe('jobRetryable: a runner older than the job', () => {
             false,
         );
         expect(jobRetryable(EXHAUSTED)).toBe(false);
+        // A guard still pending was never reached: the runs' attempts decide, not the publish's.
+        expect(jobRetryable({ ...EXHAUSTED, steps: { guard: { status: 'pending' } } })).toBe(false);
+        expect(jobRetryable({ ...EXHAUSTED, steps: { guard: { status: 'done' } } })).toBe(true);
         expect(failedOutdated({})).toBe(false);
     });
 });

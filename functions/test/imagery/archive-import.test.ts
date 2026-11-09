@@ -1,8 +1,8 @@
 /**
  * M20 (`docs/research/M20-import-local.md` §1.3, §2.4, §8): `worker.archiveReport` records a scan's report and a sample of its
- * skipped paths; `imagery.archiveImport` makes one local-only `archive-series` job per kept series in the ladder's order, those
- * beyond today's share born waiting (`daily`) and released by `imagery.tick` on the next days; a local-only job never moves to
- * the cloud; an archive is imported once.
+ * skipped paths; `imagery.archiveImport` makes one local-only `archive-series` job per kept series in the ladder's order, all
+ * started at once (a local-only job is outside the daily cap since 2026-11-09; the cap still holds and counts Cloud Run work);
+ * a local-only job never moves to the cloud; an archive is imported once.
  */
 import {
     DEFAULT_NEW_CITY_LIMITS,
@@ -16,6 +16,7 @@ import { describe, expect, it } from 'vitest';
 
 import { archiveImportFunction } from '../../src/imagery/archive-import.js';
 import { releaseDaily } from '../../src/imagery/daily.js';
+import { refuseNewRasterJob } from '../../src/imagery/limits.js';
 import { runOnFunction } from '../../src/imagery/run-on.js';
 import { claimFunction } from '../../src/worker/claim.js';
 import { archiveReportFunction } from '../../src/worker/archive-report.js';
@@ -153,8 +154,8 @@ describe('imagery.archiveImport', () => {
             runOn: 'local',
             localOnly: true,
             waitReason: 'worker',
-            countedAt: at(NOW),
         });
+        expect(job).not.toHaveProperty('countedAt');
         expect(job?.params).toMatchObject<Partial<ArchiveSeriesParams>>({
             archiveId: ARCHIVE,
             seriesId: seriesIdOf(0),
@@ -195,48 +196,68 @@ describe('imagery.archiveImport', () => {
         expect((await readVersion(world, response.jobs[0]?.jobId ?? ''))?.rights?.confirmedAt).toBeUndefined();
         expect((await readJob(world, response.jobs[1]?.jobId ?? ''))?.params).toMatchObject({ edition: '62', scaleDenominator: 500 });
     });
+});
 
-    it('badPath_beyondTodaysShareTheSeriesWaitForTheNextDays @S-A120-BAD-DAILY-SPLITS', async () => {
+describe('imagery.archiveImport and the daily cap', () => {
+    it('happyPath_pastTodaysShareEverySeriesStartsAtOnce_aLegacyHeldOneIsReleasedToday @S-A120-BAD-DAILY-SPLITS @S-A121-HAPPY-LOCAL-UNCAPPED', async () => {
         const world = await readyWorld();
         await shareOf(world, 2);
         await seedArchive(world, archiveDoc(5));
 
         const response = await importAll(world, 5);
 
-        expect(response).toMatchObject({ today: 2, waiting: 3 });
+        expect(response).toMatchObject({ today: 5, waiting: 0 });
         const jobs = await jobsOf(world);
-        expect(jobs.filter((job) => job.waitReason === 'daily')).toHaveLength(3);
-        expect(jobs.filter((job) => job.waitReason === 'daily').every((job) => job.countedAt === undefined)).toBe(true);
+        expect(jobs.every((job) => job.waitReason === 'worker' && job.countedAt === undefined)).toBe(true);
+        // A series held before the change (2026-11-09) is released by the next tick, past the share, and counts nothing.
+        await seedJob(world, 'ar-held', { ...waitingJob(), runOn: 'local', localOnly: true, waitReason: 'daily' });
+        await expect(releaseDaily(world.deps, CITY, new Date(NOW))).resolves.toBe(1);
+        expect(await readJob(world, 'ar-held')).toMatchObject({ waitReason: 'worker' });
+        expect(await readJob(world, 'ar-held')).not.toHaveProperty('countedAt');
+    });
 
-        // Nothing frees today: the tick releases none; tomorrow it releases the next two of the ladder, in order.
+    it('badPath_aJobThatIsNotLocalOnlyStillWaitsForItsDayAndCountsThen @S-A120-BAD-DAILY-SPLITS', async () => {
+        const world = await readyWorld();
+        await shareOf(world, 1);
+        await seedJob(world, 'gt-1', { ...waitingJob(), type: 'geotiff-import', params: { uploadPath: 'u.tif', replaces: false } });
+        await seedJob(world, 'cloud-held', { ...waitingJob(), runOn: 'local', waitReason: 'daily' });
+
         await expect(releaseDaily(world.deps, CITY, new Date(NOW))).resolves.toBe(0);
-        await expect(releaseDaily(world.deps, CITY, new Date(TOMORROW))).resolves.toBe(2);
-        const released = (await jobsOf(world)).filter((job) => job.countedAt?.seconds === at(TOMORROW).seconds);
-        expect(released.map((job) => (job.params as ArchiveSeriesParams).order).sort((a, b) => a - b)).toEqual([2, 3]);
-        expect(released.every((job) => job.waitReason === 'worker')).toBe(true);
-        // Both counted behind the turnstile, so a concurrent import or release counts again rather than spend the same room.
-        expect(world.deps.documents.peek(FIRESTORE_PATHS.opsDaily)).toMatchObject({ updatedAt: at(TOMORROW) });
+        expect((await readJob(world, 'cloud-held'))?.waitReason).toBe('daily');
+        await expect(releaseDaily(world.deps, CITY, new Date(TOMORROW))).resolves.toBe(1);
+        expect(await readJob(world, 'cloud-held')).toMatchObject({ waitReason: 'worker', countedAt: at(TOMORROW) });
     });
 
     it('badPath_aSeriesWaitingForItsDayIsNotClaimedByTheWorker', async () => {
         const world = await workerWorld();
         await seedWorker(world);
-        await shareOf(world, 0);
-        await seedArchive(world, archiveDoc(1));
-        await importAll(world, 1);
+        await seedJob(world, 'ar-held', { ...waitingJob(), runOn: 'local', localOnly: true, waitReason: 'daily' });
 
         await expect(callAs(world, claimFunction, { workerId: 'w-0123456789abcdef' })).resolves.toEqual({ job: null });
     });
 
-    it('badPath_aReRunDoesNotCountAndAnArchivesJobsCountOnce', async () => {
+    it('badPath_localOnlySeriesDoNotFillTheShare_cloudImportsStillDo @S-A121-BAD-DAILY-SPLITS', async () => {
         const world = await readyWorld();
-        await shareOf(world, 2);
-        await seedJob(world, 'rg-1', { ...waitingJob(), type: 'regeoref', params: { basedOn: 'v0' } });
-        await seedArchive(world, archiveDoc(3));
+        await shareOf(world, 1);
+        const counted = {
+            ...waitingJob(),
+            runOn: 'local' as const,
+            localOnly: true as const,
+            waitReason: 'worker' as const,
+            countedAt: at(NOW),
+        };
+        await seedJob(world, 'ar-1', counted);
+        await seedJob(world, 'ar-2', counted);
 
-        await expect(importAll(world, 3)).resolves.toMatchObject({ today: 2, waiting: 1 });
+        await expect(refuseNewRasterJob(world.deps.documents, new Date(NOW), CITY)).resolves.toBeUndefined();
+        await seedJob(world, 'gt-1', { ...waitingJob(), type: 'geotiff-import', params: { uploadPath: 'u.tif', replaces: false } });
+        expect(await failureOf(refuseNewRasterJob(world.deps.documents, new Date(NOW), CITY))).toMatchObject({
+            code: 'apiError.imagery.dailyLimit',
+        });
     });
+});
 
+describe('imagery.archiveImport, what is refused', () => {
     it('badPath_anArchiveIsImportedOnce_anUnknownOneIsNotFound', async () => {
         const world = await readyWorld();
         await seedArchive(world, archiveDoc(1));
@@ -348,17 +369,22 @@ describe('imagery.archiveImport, the rights', () => {
 });
 
 describe('the daily release', () => {
-    it('badPath_aRetriedImportCountsTodaysRoomAgain @S-A120-BAD-DAILY-RACE', async () => {
+    it('badPath_aRetriedReleaseCountsTodaysRoomAgain_aRetriedImportStartsEverySeriesOnce @S-A120-BAD-DAILY-RACE', async () => {
         const world = await readyWorld();
-        await shareOf(world, 2);
-        await seedArchive(world, archiveDoc(3));
+        await shareOf(world, 1);
+        await seedJob(world, 'held-1', { ...waitingJob(), runOn: 'local', waitReason: 'daily' });
+        await seedJob(world, 'held-2', { ...waitingJob(), runOn: 'local', waitReason: 'daily', createdAt: at(TOMORROW) });
         world.deps.documents.contend(1);
 
-        const response = await importAll(world, 3);
+        await expect(releaseDaily(world.deps, CITY, new Date(NOW))).resolves.toBe(1);
+        expect((await readJob(world, 'held-2'))?.waitReason).toBe('daily');
+        expect(world.deps.documents.peek(FIRESTORE_PATHS.opsDaily)).toMatchObject({ updatedAt: at(NOW) });
 
-        expect(response).toMatchObject({ today: 2, waiting: 1 });
+        await seedArchive(world, archiveDoc(3));
+        world.deps.documents.contend(1);
+        const response = await importAll(world, 3);
+        expect(response).toMatchObject({ today: 3, waiting: 0 });
         expect(response.jobs.map((job) => job.layerId)).toEqual([...new Set(response.jobs.map((job) => job.layerId))]);
-        expect((await jobsOf(world)).filter((job) => job.countedAt !== undefined)).toHaveLength(2);
     });
 
     it('happyPath_aJobThatMovedMeanwhileIsLeftAlone_andAnUnreadableOneGoesLast', async () => {
@@ -383,6 +409,14 @@ describe('the daily release', () => {
 
         expect((await readJob(world, 'ar-gone'))?.waitReason).toBe('daily');
         expect((await readJob(world, 'ar-good'))?.waitReason).toBe('worker');
+    });
+
+    it('happyPath_aCityWithoutItsOwnShareReleasesAHeldCloudJobWithinTheProjectsCap', async () => {
+        const world = await readyWorld();
+        await seedJob(world, 'held-1', { ...waitingJob(), runOn: 'local', waitReason: 'daily' });
+
+        await expect(releaseDaily(world.deps, CITY, new Date(NOW))).resolves.toBe(1);
+        expect(await readJob(world, 'held-1')).toMatchObject({ waitReason: 'worker', countedAt: at(NOW) });
     });
 
     it('happyPath_noJobWaitingReleasesNothing', async () => {

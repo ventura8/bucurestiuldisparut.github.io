@@ -38,7 +38,6 @@ import {
     latitudeOf,
     progressOf,
     rowOf,
-    shareOf,
     skippedOf,
     type ArchiveRow,
     type SeriesEdit,
@@ -67,7 +66,6 @@ export interface ArchiveState {
     readonly open: OpenArchive | null;
     readonly edits: Readonly<Record<string, SeriesEdit>>;
     readonly progress: Readonly<Record<string, SeriesProgress>>;
-    readonly share: number;
     readonly importing: boolean;
     readonly result: { readonly today: number; readonly waiting: number } | null;
     readonly refusal: NoticeInput | null;
@@ -90,7 +88,7 @@ interface ArchiveIntents {
 
 const INITIAL: ArchiveState = {
     ...{ status: 'loading', failure: null, connected: false, importUrl: importUrlOf(WORKER_PORT, undefined), archives: [] },
-    ...{ open: null, edits: {}, progress: {}, share: 0, importing: false, result: null, refusal: null, local: LOCAL_IDLE },
+    ...{ open: null, edits: {}, progress: {}, importing: false, result: null, refusal: null, local: LOCAL_IDLE },
 };
 
 /**
@@ -286,7 +284,7 @@ export class ArchiveFeed {
 
     #cityRead(): void {
         const city = this.#city.state.doc?.data;
-        this.#cell.update({ importUrl: importUrlOf(WORKER_PORT, city), share: shareOf(city) });
+        this.#cell.update({ importUrl: importUrlOf(WORKER_PORT, city) });
         this.#progressed();
     }
 

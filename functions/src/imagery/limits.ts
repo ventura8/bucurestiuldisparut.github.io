@@ -47,10 +47,14 @@ function countedAtOf(job: JobDoc): Date | undefined {
     return job.type === 'archive-series' ? undefined : timestampToDate(job.createdAt);
 }
 
-/** True when the job counts against the day that began at `since`. */
+/**
+ * True when the job counts against the day that began at `since`. A local-only job (`localOnly`: an archive series) never
+ * counts: it runs free on the owner's computer and its tiles stay in the project's own bucket, so the cap, which guards the
+ * Cloud Run spend, neither counts nor holds it (the owner, 2026-11-09).
+ */
 function countsSince(job: JobDoc, since: Date): boolean {
     const at = countedAtOf(job);
-    return COUNTED.has(job.type) && at !== undefined && at >= since;
+    return COUNTED.has(job.type) && job.localOnly !== true && at !== undefined && at >= since;
 }
 
 /** The first instant of `now`'s day, UTC. */

@@ -40,6 +40,7 @@ The scenario rows are `S-A120-*` (functions) and `S-P20-*` (pipeline) in `e2e/sc
      - Local CPU and GPU are the owner's, so archive jobs never count toward the Cloud Run free tier (M7 §4 already skips `runOn: 'local'`).
    - The import is never refused for the cap. Series beyond today's allowance wait (`waitReason: 'daily'`, a new reason), and `imagery.tick` releases them in the plan's order as each day's count frees.
    - The Bucharest archive has about 33 importable series: about 4 days at the default share, unless the owner raises the city's `rasterJobsPerDay` up to the project's 10.
+   - **Superseded on 2026-11-09 (the owner: "I want the data from harti.zip in our app as soon as possible"; 31 series sat behind the cap).** A local-only job (`localOnly`: every archive series) neither counts toward nor is held by the daily cap: it runs free on the owner's computer and its tiles go to the project's own bucket, so the cap keeps guarding the Cloud Run work alone. `imagery.archiveImport` starts every series at once (`waitReason: 'worker'`, no `countedAt`), the worker still runs them one at a time, and `releaseDaily` releases a local-only job held `daily` whatever today's share (the series held before the change go at the next tick). A job that is not local-only and is held `daily` still waits for room and counts on its day (`functions/src/imagery/limits.ts` `countsSince`, `functions/src/imagery/daily.ts`; S-A121-HAPPY-LOCAL-UNCAPPED, S-A121-BAD-DAILY-SPLITS, S-A120-BAD-DAILY-SPLITS).
 4. **Same date only, read for maps as same edition.** M8 joins frames of one acquisition date. A map series joins sheets of one edition. Sheets of other editions (`_62`, `_64`, `_71`) form their own partial layers of their year. The scan report lists them, and the owner may drop them. A series with no per-sheet edition (the base 1:500 sheets, 1961–77) gets one layer with `year` set to the latest revision the sheets state (1977, prefilled and editable). Its label carries the range.
 5. **Never publish a bad fit.** Every series ends in one of two states:
    - `awaiting_approval`, which auto-publishes only under the map rule in §5;
@@ -221,7 +222,7 @@ These are skipped with a reason shown in the report and nothing is processed:
 
 | Item | Value |
 | --- | --- |
-| Type | `archive-series` (new, in `COUNTED`). `runOn: 'local'`, `localOnly: true`, `waitReason` `daily` when today's share is used. |
+| Type | `archive-series` (new, in `COUNTED`, but never counted since it is `localOnly`: 2026-11-09). `runOn: 'local'`, `localOnly: true`, `waitReason: 'worker'` at once (`daily` only for the series held before 2026-11-09, released at the next tick). |
 | Input | `{archiveId, seriesId, sheets: <count>, class, gridId?, referenceLayerIds[], edition?}`. The sheet list itself is the local `archive.json`, checked by SHA-256 in `gather`. |
 | Steps | `gather` → `prepare` (per sheet: decode, frame, mask; resumable per sheet through `work/.../prepare.checkpoint.json`) → `place` (grid, atlas, pieces or match) → `refine` (joint and TPS) → `check` → `merge` (RGB- or line-art-aware) → `export` → `tiles` → `register` → the publish steps (M12 own tiles, or Mapbox if the city chose it). A failure in `place` or `check` moves the job to `awaiting_gcps` with suggested pairs, never to `failed`. |
 | Version | `origin: 'archive'` and `source: {kind: 'archive', archiveId, seriesId, sheetCount, placedCount, skipped: {reason: n}}`. `georef` has `method: 'grid' \| 'atlas' \| 'match' \| 'embedded' \| 'gcps'` and the blocked checkpoint figure. A series cannot be described by one scan's pixels, so the version carries per-sheet residuals only as a summary (median, p95, worst five sheet names). |
@@ -318,8 +319,8 @@ For Bucharest:
    - a header with files, size, series found and files skipped;
    - one row per series: contact-sheet thumbnail, title, year, files, size, class, what will happen ("Place 4,545 sheets from their names on the city grid", "Match against the 1895 plan", "Skip: modern artwork, copyright"), the estimated zoom and bytes, auto-calibration likelihood (*likely*, *possible*, *needs points*), and the rights chip;
    - editable title, year, licence and author per series, an include toggle, and the table of odd names;
-   - a total: bytes to publish, jobs, and days at the city's share.
-3. **One Import click.** `archive.import {cityId, archiveId, series: [{seriesId, include, title, year, rights}]}` creates every included series job in reference-ladder order. The jobs beyond today's share are created `queued` with `waitReason: 'daily'`. The response shows "11 series start today, 22 wait for the next 3 days".
+   - a total: bytes to publish and jobs (no days since 2026-11-09: every series starts at once on the computer).
+3. **One Import click.** `archive.import {cityId, archiveId, series: [{seriesId, include, title, year, rights}]}` creates every included series job in reference-ladder order. Since 2026-11-09 every job starts at once (`waitReason: 'worker'`); the response shows "33 series start on this computer". (Before, the jobs beyond today's share were created with `waitReason: 'daily'`.)
 4. **Progress per series** on the Jobs page and on the archive page: step and sheet counts ("prepare 1,812 of 4,545"), skipped sheets with reasons, and the GPU or CPU in use (M10).
 5. **Results.** Error in metres (the blocked figure), the threshold that applies and why, the checkerboard and own-tiles preview (M12), and sheet outlines over the map with per-sheet residuals coloured. *Approve*, *Fix points* (opens the georeferencer with suggested pairs), or *Exclude sheet*.
 6. **Rights confirmation.** A dialog per flagged series, with the question and a free-text "permission from", logged in `rights.confirmedBy` and `rights.confirmedAt`. Publish stays disabled until it is done.
@@ -501,7 +502,7 @@ For Bucharest:
   - the run times and byte figures (all checked in Workstream I).
 - **Owner decisions:**
   - the map threshold rule and its 60 m cap (§5);
-  - whether local archive jobs count against the daily cap (proposed: yes, one per series, §1.3);
+  - whether local archive jobs count against the daily cap (proposed: yes, one per series, §1.3; decided by the owner on 2026-11-09: no, a local-only job is uncapped);
   - z19 versus z20 for the 1:500 plan;
   - the year for undated base editions (1977 prefilled);
   - where the IPB sheets came from and permission to publish them;

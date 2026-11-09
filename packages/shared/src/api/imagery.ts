@@ -195,9 +195,13 @@ const NOT_RETRYABLE: ReadonlySet<string> = new Set(NOT_RETRYABLE_CODES);
 
 type RetriedJob = Pick<JobDoc, 'status' | 'type' | 'layerId' | 'attempt' | 'publishAttempts' | 'error' | 'steps' | 'cancelRequested'>;
 
-/** The job reached the publisher's guard: a retry starts the publish again, not a run. */
+/**
+ * The job reached the publisher's guard: a retry starts the publish again, not a run. A guard still `pending` was not
+ * reached (the pipeline lists every step from the start: an exhausted import offered Retry, 2026-11-09).
+ */
 function atPublish(job: RetriedJob): boolean {
-    return job.type === 'republish' || job.steps?.['guard'] !== undefined;
+    const guard = job.steps?.['guard']?.status;
+    return job.type === 'republish' || (guard !== undefined && guard !== 'pending');
 }
 
 /** The attempts a retry would add to: the publish starts once the job reached the publisher's guard, else the runs. */

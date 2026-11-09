@@ -1,9 +1,9 @@
 // M20's Import local files, the pure part (docs/research/M20-import-local.md §8): the worker's page, the city's share, what a
 // request sends of the owner's edits, and progress from versions and jobs of other origins.
-import type { ArchiveDoc, CityDoc, LayerVersionDoc } from '@hcm/shared';
+import type { ArchiveDoc, LayerVersionDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
-import { choicesOf, editsOf, importUrlOf, progressOf, shareOf } from '../../src/archive/model.js';
+import { choicesOf, editsOf, importUrlOf, progressOf } from '../../src/archive/model.js';
 import type { Stored } from '../../src/content/services.js';
 
 function stored<T>(id: string, data: T): Stored<T> {
@@ -27,8 +27,6 @@ const SERIES = {
 describe('the archive model', () => {
     it('happyPath_aCityWithoutCentreOrNoneAtAllAndTheShare', () => {
         expect(importUrlOf(8765, undefined)).toBe('http://127.0.0.1:8765/import');
-        expect(shareOf(undefined)).toBe(10);
-        expect(shareOf({ limits: { rasterJobsPerDay: 50 } } as unknown as CityDoc)).toBe(10);
     });
 
     it('happyPath_aTitleClearedOrUnchangedAndTheSameYearSendNothingButTheChoice', () => {

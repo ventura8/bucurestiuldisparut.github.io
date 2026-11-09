@@ -183,7 +183,8 @@ A KH-9 panoramic frame often holds only part of a city, so M8 joins one date's f
 
 Limits (`packages/shared/src/api/imagery.ts`, done): `JOBS_PER_DAY` 10 raster jobs a day per project, `RUNNING_JOBS_MAX`
 2 at once, `JOB_MAX_ATTEMPTS` 3, `LEASE_SECONDS` 600 renewed every `HEARTBEAT_SECONDS` 60, `STARTING_STALE_MINUTES` 10,
-`USGS_BACKOFF_MINUTES` 30 → 720.
+`USGS_BACKOFF_MINUTES` 30 → 720. A local-only job (`localOnly`: an M20 archive series) never counts toward `JOBS_PER_DAY` nor
+waits for it: the cap guards the Cloud Run work (2026-11-09, `docs/research/M20-import-local.md` §1.3).
 
 ### 2.5 USGS scenes
 
