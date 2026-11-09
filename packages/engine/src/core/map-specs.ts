@@ -73,7 +73,8 @@ export function rasterSpec(layer: Layer, overlay: Overlay | undefined, base: str
         maxzoom: layer.maxzoom,
         visible: state.visible,
         opacity: state.opacity,
-        order: layer.order,
+        // Layers stack by date, the newest on top, whatever the admin's `order` (the owner 2026-11-09).
+        order: layer.year,
         attribution: layer.attribution,
         ...rasterExtras(layer),
     };

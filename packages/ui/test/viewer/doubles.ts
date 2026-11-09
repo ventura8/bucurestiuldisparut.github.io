@@ -75,10 +75,11 @@ class DialogDouble extends LitElement {
 }
 
 class ButtonDouble extends LitElement {
-    static override readonly properties = { variant: {}, icon: {}, disabled: { type: Boolean } };
+    static override readonly properties = { variant: {}, icon: {}, disabled: { type: Boolean }, label: { attribute: false } };
+    declare label: string | undefined;
 
     override render(): TemplateResult {
-        return html`<button><slot></slot></button>`;
+        return html`<button aria-label=${this.label ?? nothing}><slot></slot></button>`;
     }
 }
 

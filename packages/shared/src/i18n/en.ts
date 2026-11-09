@@ -119,6 +119,7 @@ export const en: Messages = {
     'photo.credit': 'Added by {name}',
     'photo.openLightbox': 'Open the full-size photo',
     'photo.locate': 'Show on map',
+    'photo.mapOf': 'Map of {year}',
     'poi.category': 'Category: {category}',
     'poi.year': 'In {year}',
     'poi.years': 'From {yearStart} to {yearEnd}',

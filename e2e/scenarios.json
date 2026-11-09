@@ -15490,6 +15490,72 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "The merge of track/accuracy (M15) with M16, 2026-11-08 (docs/research/M16-recalibrate.md §14). Test: pipeline/tests/integration/test_recalibrate_job.py."
+        },
+        {
+            "id": "S-V03-HAPPY-LAYER-MOVES-TIMELINE",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A historical layer switched on moves the timeline to its year",
+            "asserts": "from today, switching the 1966 layer on puts the timeline at 1966, its tiles draw and the hash names it; unit: packages/engine/test/core/store-layer-year.test.ts",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-09 (docs/research/DECISIONS-for-review.md §133). Test: e2e/specs/viewer/layer-year.spec.ts."
+        },
+        {
+            "id": "S-V03-BAD-LAYER-OF-ANOTHER-YEAR",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A layer of another year than the timeline's still shows, and switching every layer off leaves the timeline",
+            "asserts": "the timeline at 1966 with its layer, the 1980 layer switched on -> the timeline at 1980, the 1980 tiles draw over the 1966 ones, the hash names both; both switched off -> the basemap, the timeline stays at 1980",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-09 (docs/research/DECISIONS-for-review.md §133). Test: e2e/specs/viewer/layer-year.spec.ts."
+        },
+        {
+            "id": "S-V03-HAPPY-STACK-BY-DATE",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Several historical layers stack by date, the newest on top, whatever the admin's order",
+            "asserts": "a manifest ordering 1966 above 1980, both visible from the hash -> the probe reads the opaque 1980 tiles; unit: packages/engine/test/core/map-specs.test.ts",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-09 (docs/research/DECISIONS-for-review.md §133). Test: e2e/specs/viewer/layer-year.spec.ts."
+        },
+        {
+            "id": "S-V03-BAD-STACK-SWITCHED-LAST",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "bad",
+            "title": "The older layer switched on last still draws below the newer one",
+            "asserts": "1980 switched on, then 1966 -> the timeline at 1966, the probe still reads the 1980 tiles on top",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-09 (docs/research/DECISIONS-for-review.md §133). Test: e2e/specs/viewer/layer-year.spec.ts."
+        },
+        {
+            "id": "S-V07-HAPPY-MAP-OF-YEAR",
+            "behaviour": "V07",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A photo's date that holds a layer's year shows the map of that year, the photo still open",
+            "asserts": "the 1980 photo's date button (named by the date and 'Map of 1980') -> the timeline at 1980, the hash names the 1980 layer and still the photo; unit: packages/ui/test/viewer/hcm-photo-sheet-years.test.ts",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-09 (docs/research/DECISIONS-for-review.md §133). Test: e2e/specs/viewer/layer-year.spec.ts."
+        },
+        {
+            "id": "S-V07-BAD-NO-LAYER-OF-ITS-YEAR",
+            "behaviour": "V07",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A photo between layer years offers the near ones as chips, nearest first; one far from every layer offers none",
+            "asserts": "the 1976 photo -> chips 'Map of 1980' then 'Map of 1966', the second puts the timeline at 1966 with the photo open; the 1930 photo -> no chip",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-09 (docs/research/DECISIONS-for-review.md §133). Test: e2e/specs/viewer/layer-year.spec.ts."
         }
     ]
 }

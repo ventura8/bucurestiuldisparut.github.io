@@ -207,6 +207,15 @@ const VIEWER_STATES = {
             await expect(page.getByRole('heading', { name: PHOTO_TITLE })).toBeVisible();
         },
     },
+    'photo-map-year': {
+        title: "A photo's sheet after its chip of a near layer year: the map of 1980 behind it, the sheet still open",
+        enter: async ({ page, lang }) => {
+            await page.getByRole('button', { name: t(lang, 'photo.mapOf', { year: '1980' }), exact: true }).click();
+            // The timeline may sit behind a modal sheet (inert): the hash says the map moved to 1980.
+            await page.waitForFunction(() => location.hash.includes('layers=e2e-1980'));
+            await page.getByRole('heading', { name: PHOTO_TITLE }).waitFor();
+        },
+    },
     'photo-peek': {
         title: "A photo's sheet at its lowest height",
         enter: ({ page, lang }) => toDetent(page, lang, 'peek'),
@@ -425,7 +434,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
         title: 'A photo at every height, shown on the map, its lightbox, and the photo list',
         id: 'photo',
         boot: ({ page, lang }) => openViewer(page, { lang, hash: `18/44.42955/26.09560&photo=${PHOTO}` }),
-        states: ['photo', 'photo-located', 'photo-peek', 'photo-full', 'lightbox', 'photo-list'],
+        states: ['photo', 'photo-map-year', 'photo-located', 'photo-peek', 'photo-full', 'lightbox', 'photo-list'],
     },
     {
         title: 'A point of interest at every height, and About from top to end',

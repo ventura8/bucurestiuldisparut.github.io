@@ -33,6 +33,7 @@ import {
     isCompareLayer,
     locateTarget,
     sheetAfterClosing,
+    withLayerYear,
     withStory,
     withYear,
     type MyLocationState,
@@ -55,7 +56,10 @@ export interface ViewerActions {
     retry(): Promise<void>;
     setLocale(locale: Locale): void;
     setYear(year: number | null): void;
-    /** Any overlay id (layer, `photos`, POI category); without `visible` it toggles. The map follows. */
+    /**
+     * Any overlay id (layer, `photos`, POI category); without `visible` it toggles. The map follows; a layer switched on
+     * moves the timeline to its year.
+     */
     toggleOverlay(overlayId: string, visible?: boolean): void;
     /** Live: the map follows on the next animation frame; `final` (slider released) also writes the hash. */
     setOverlayOpacity(overlayId: string, opacity: number, final?: boolean): void;
@@ -235,8 +239,12 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         if (overlays === this.#state.overlays || overlay === undefined) {
             return;
         }
-        this.set({ ...this.#state, overlays });
+        const year = this.#state.year;
+        this.set(withLayerYear({ ...this.#state, overlays }, overlay));
         this.deps.telemetry.logEvent({ name: 'layer_toggle', layerId: overlayId, visible: overlay.visible });
+        if (this.#state.year !== year) {
+            this.deps.telemetry.logEvent({ name: 'year_change', year: this.#state.year });
+        }
         this.hash.schedule();
     }
 

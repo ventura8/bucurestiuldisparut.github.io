@@ -143,7 +143,10 @@ interface HistoricCityMapController {
     readonly ready: Promise<{ readonly ok: true; readonly cityId: string } | { readonly ok: false; readonly code: MessageKey }>;
     /** Shows the layers of `year` (null: today, no historical layer). */
     setYear(year: number | null): void;
-    /** Shows or hides an overlay (a layer id, `photos` or a POI category id); without `visible` it toggles. */
+    /**
+     * Shows or hides an overlay (a layer id, `photos` or a POI category id); without `visible` it toggles. A historical layer
+     * switched on moves the timeline to its year (the other visible layers stay); switching layers off leaves the timeline.
+     */
     toggleLayer(layerId: string, visible?: boolean): void;
     /** Sets an overlay's opacity (0 to 1, clamped) live; an unknown id is ignored. */
     setOverlayOpacity(overlayId: string, opacity: number): void;
@@ -319,7 +322,7 @@ Common rules:
 | `source` | object | `{type: 'mapbox', tilesetId: '<owner>.<id>'}`, `{type: 'xyz', tiles: [https template with {z} {x} {y}], tileSize: 256 or 512}` or `{type: 'pmtiles', url}` (M12, `docs/research/M12-own-tiles.md`: one PMTiles v3 archive of 256 px WebP tiles with alpha, what the project's own bucket holds; the address may be relative to the manifest in a static export; the engine reads it itself with one `Range` request a tile through Mapbox GL's custom source, so no tileset, compute unit or token, and a server without `Range` fails that layer only, naming it in a toast). The admin links a `mapbox` tileset of the city's own Mapbox account only, and never an address carrying a key or a token (`layers.link`, which refuses them as `apiError.layers.foreignTileset` and `apiError.layers.secretInAddress`); an `xyz` or `pmtiles` host must also be in the page's CSP (`img-src`, `connect-src`; the public bucket's already is) |
 | `minzoom`, `maxzoom` | number | 0 to 24, `minzoom` ≤ `maxzoom` |
 | `bounds?` | `[[w, s], [e, n]]` | where tiles exist |
-| `order` | integer | drawing order (higher on top) in the Standard style's `middle` slot |
+| `order` | integer | the Layers panel's order within a year (higher first). The map stacks the historical layers by date, the newest on top, whatever their `order` (the owner, 2026-11-09), on the main map and in compare |
 | `defaultVisible`, `opacity` | boolean, 0 to 1 | initial state |
 | `adjustments?` | `{brightnessMin?, brightnessMax?, contrast?, saturation?}` | Mapbox `raster-brightness-min`, `raster-brightness-max`, `raster-contrast`, `raster-saturation` (brightness 0 to 1, min ≤ max; contrast and saturation -1 to 1; ranges and neutral values in `LAYER_ADJUSTMENT_RANGES`), applied live without reprocessing (PLAN Addendum 3). An absent adjustment is neutral; `rasterAdjustmentPaint` clamps live slider values and never lets the minimum pass the maximum. Mapbox has no gamma property: the brightness range is the levels control |
 
@@ -393,7 +396,7 @@ At most 1,000 stories. Nothing in a story is rendered as HTML: the engine parses
 
 ### Overlays
 
-The viewer's Layers panel lists one **overlay** per historical layer, one for the photos (markers and view cones, id `photos`) and one per POI category, each with a switch and a 0–100 % slider that updates the map live. Layer ids, `photos` and category ids are one namespace (a clash is `validation.duplicateId`), because the URL hash's `op=` names overlays by id. Order: historical layers by year (the higher `order` first within a year), the photos, then the categories in manifest order.
+The viewer's Layers panel lists one **overlay** per historical layer, one for the photos (markers and view cones, id `photos`) and one per POI category, each with a switch and a 0–100 % slider that updates the map live. Layer ids, `photos` and category ids are one namespace (a clash is `validation.duplicateId`), because the URL hash's `op=` names overlays by id. Order: historical layers by year (the higher `order` first within a year), the photos, then the categories in manifest order. Switching a historical layer on moves the timeline to its year, so it always shows (with several on, the timeline follows the last one switched on; switching layers off leaves it), and the hash names the visible layers; a shared link's year is still the newest of its layers. In a photo's sheet, with a map, a date that holds a layer's year is a button (named by the date and **Harta din 1966** / **Map of 1966**) that shows the map at that year with its layers, the photo staying open; otherwise up to three chips name the layer years within ten years of the photo's, nearest first.
 
 | Kind | Starts | Opacity paint (`overlayOpacityPaint`) |
 | --- | --- | --- |

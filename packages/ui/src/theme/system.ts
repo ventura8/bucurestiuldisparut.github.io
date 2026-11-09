@@ -38,24 +38,29 @@ interface TypeStyle {
     readonly emphasizedWeight: string;
 }
 
+/** A type style; its emphasized weight is the next one up (regular: medium, medium: bold), spelt once (§133b). */
+function typeStyle(size: string, lineHeight: string, tracking: string, weight: typeof REGULAR | typeof MEDIUM): TypeStyle {
+    return { size, lineHeight, tracking, weight, emphasizedWeight: weight === REGULAR ? MEDIUM : BOLD };
+}
+
 /** The M3 type scale (rem, so the visitor's text zoom applies). */
 export const TYPE_SCALE = {
-    'display-large': { size: '3.5625rem', lineHeight: '4rem', tracking: '-0.015625rem', weight: REGULAR, emphasizedWeight: MEDIUM },
-    'display-medium': { size: '2.8125rem', lineHeight: '3.25rem', tracking: '0rem', weight: REGULAR, emphasizedWeight: MEDIUM },
-    'display-small': { size: '2.25rem', lineHeight: '2.75rem', tracking: '0rem', weight: REGULAR, emphasizedWeight: MEDIUM },
-    'headline-large': { size: '2rem', lineHeight: '2.5rem', tracking: '0rem', weight: REGULAR, emphasizedWeight: MEDIUM },
-    'headline-medium': { size: '1.75rem', lineHeight: '2.25rem', tracking: '0rem', weight: REGULAR, emphasizedWeight: MEDIUM },
-    'headline-small': { size: '1.5rem', lineHeight: '2rem', tracking: '0rem', weight: REGULAR, emphasizedWeight: MEDIUM },
-    'title-large': { size: '1.375rem', lineHeight: '1.75rem', tracking: '0rem', weight: REGULAR, emphasizedWeight: MEDIUM },
-    'title-medium': { size: '1rem', lineHeight: '1.5rem', tracking: '0.009375rem', weight: MEDIUM, emphasizedWeight: BOLD },
-    'title-small': { size: '0.875rem', lineHeight: '1.25rem', tracking: '0.00625rem', weight: MEDIUM, emphasizedWeight: BOLD },
-    'body-large': { size: '1rem', lineHeight: '1.5rem', tracking: '0.03125rem', weight: REGULAR, emphasizedWeight: MEDIUM },
-    'body-medium': { size: '0.875rem', lineHeight: '1.25rem', tracking: '0.015625rem', weight: REGULAR, emphasizedWeight: MEDIUM },
-    'body-small': { size: '0.75rem', lineHeight: '1rem', tracking: '0.025rem', weight: REGULAR, emphasizedWeight: MEDIUM },
-    'label-large': { size: '0.875rem', lineHeight: '1.25rem', tracking: '0.00625rem', weight: MEDIUM, emphasizedWeight: BOLD },
-    'label-medium': { size: '0.75rem', lineHeight: '1rem', tracking: '0.03125rem', weight: MEDIUM, emphasizedWeight: BOLD },
-    'label-small': { size: '0.6875rem', lineHeight: '1rem', tracking: '0.03125rem', weight: MEDIUM, emphasizedWeight: BOLD },
-} as const satisfies Readonly<Record<string, TypeStyle>>;
+    'display-large': typeStyle('3.5625rem', '4rem', '-0.015625rem', REGULAR),
+    'display-medium': typeStyle('2.8125rem', '3.25rem', '0rem', REGULAR),
+    'display-small': typeStyle('2.25rem', '2.75rem', '0rem', REGULAR),
+    'headline-large': typeStyle('2rem', '2.5rem', '0rem', REGULAR),
+    'headline-medium': typeStyle('1.75rem', '2.25rem', '0rem', REGULAR),
+    'headline-small': typeStyle('1.5rem', '2rem', '0rem', REGULAR),
+    'title-large': typeStyle('1.375rem', '1.75rem', '0rem', REGULAR),
+    'title-medium': typeStyle('1rem', '1.5rem', '0.009375rem', MEDIUM),
+    'title-small': typeStyle('0.875rem', '1.25rem', '0.00625rem', MEDIUM),
+    'body-large': typeStyle('1rem', '1.5rem', '0.03125rem', REGULAR),
+    'body-medium': typeStyle('0.875rem', '1.25rem', '0.015625rem', REGULAR),
+    'body-small': typeStyle('0.75rem', '1rem', '0.025rem', REGULAR),
+    'label-large': typeStyle('0.875rem', '1.25rem', '0.00625rem', MEDIUM),
+    'label-medium': typeStyle('0.75rem', '1rem', '0.03125rem', MEDIUM),
+    'label-small': typeStyle('0.6875rem', '1rem', '0.03125rem', MEDIUM),
+} satisfies Readonly<Record<string, TypeStyle>>;
 
 export type TypeScaleName = keyof typeof TYPE_SCALE;
 

@@ -388,8 +388,10 @@ function photoSheet(view: ViewerView, ready: Ready, placement: Placement, handle
         .contributeUrl=${ready.manifest.contributeUrl ?? null}
         .stories=${ready.manifest.stories ?? []}
         .canLocate=${ready.state.webgl}
+        .years=${view.stops}
         ?inert=${placement.inert === true}
         @hcm-close=${handlers.onSheetClose}
+        @hcm-year-change=${handlers.onYearChange}
         @hcm-photo-locate=${handlers.onPhotoLocate}
         @hcm-photo-select=${handlers.onPhotoSelect}
         @hcm-story-select=${handlers.onStorySelect}

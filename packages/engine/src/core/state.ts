@@ -182,6 +182,15 @@ export function withVisibleLayers(overlays: readonly Overlay[], ids: ReadonlySet
         .reduce((list, overlay) => withOverlayVisibility(list, overlay.id, ids.has(overlay.id)), overlays);
 }
 
+/**
+ * A historical layer switched on moves the timeline to its year, so that it shows (V03, the owner 2026-11-09); with several
+ * on, the last one switched on is the timeline's. Switched off, or any other overlay, leaves the timeline as it is.
+ */
+export function withLayerYear(state: ViewerState, overlay: Overlay): ViewerState {
+    const layer = overlay.visible ? state.manifest?.layers.find((candidate) => candidate.id === overlay.id) : undefined;
+    return layer === undefined ? state : { ...state, year: layer.year };
+}
+
 /** The timeline stop nearest `year`, with exactly its layers visible. */
 export function withYear(state: ViewerState, year: number | null): ViewerState {
     const layers = state.manifest?.layers ?? [];

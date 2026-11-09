@@ -9,7 +9,7 @@
  * Once the thumbnail is decoded (or failed) the sheet fires `hcm-photo-shown` (`{ ok }`), which the viewer turns into
  * the `photo_timing` field measurement (docs/ARCHITECTURE.md → *Field measurements*).
  */
-import { DEFAULT_LOCALE, translate, type Locale, type Photo, type Poi, type PoiCategory, type Story } from '@hcm/shared';
+import { DEFAULT_LOCALE, isPhotoNearYear, translate, type Locale, type Photo, type Poi, type PoiCategory, type Story } from '@hcm/shared';
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 
 import type { CameraOffset } from '../map/mapbox-types.js';
@@ -22,6 +22,7 @@ import { closeEvent, renderSheetFrame } from './sheet-frame.js';
 import { baseStyles, detailStyles, sheetStyles } from './shared-styles.js';
 import { photoRights } from './photo-rights.js';
 import { localizedText, photoDateText, photoSourceText } from './text.js';
+import type { TimelineStop } from './timeline-model.js';
 
 export const HCM_PHOTO_SHEET_TAG = 'hcm-photo-sheet';
 
@@ -41,6 +42,22 @@ export function locateOffset(mode: SheetMode, sheet: DOMRect | undefined, map: D
     return [onTheRight ? (sheet.left - map.right) / 2 : (sheet.right - map.left) / 2, 0];
 }
 
+/**
+ * The layer years a photo's date names (the owner 2026-11-09): the first of `stops` its span holds (`match`), else up to three
+ * within ten years of it, nearest first (the older on a tie). An undated photo names none.
+ */
+export function photoMapYears(
+    photo: Pick<Photo, 'year' | 'yearEnd'>,
+    stops: readonly TimelineStop[],
+): { readonly match: number | undefined; readonly near: readonly number[] } {
+    const years = stops.filter((stop) => stop !== null);
+    const match = years.find((year) => isPhotoNearYear(photo, year, 0));
+    // The distance to the span [year, yearEnd] orders as |2y - year - yearEnd| does: the span's length is the same for all.
+    const { year: start = 0, yearEnd: end = start } = photo;
+    const near = years.filter((year) => match === undefined && isPhotoNearYear(photo, year));
+    return { match, near: near.toSorted((a, b) => Math.abs(2 * a - start - end) - Math.abs(2 * b - start - end)).slice(0, 3) };
+}
+
 export class HcmPhotoSheet extends LitElement {
     static override readonly properties = {
         photo: { attribute: false },
@@ -54,6 +71,7 @@ export class HcmPhotoSheet extends LitElement {
         contributeUrl: { attribute: false },
         stories: { attribute: false },
         canLocate: { attribute: false },
+        years: { attribute: false },
         imageFailed: { state: true },
     };
 
@@ -109,6 +127,8 @@ export class HcmPhotoSheet extends LitElement {
     declare stories: readonly Story[];
     /** There is a map to show the photo on (none without WebGL: the photo list's sheet has no Locate). */
     declare canLocate: boolean;
+    /** The timeline's stops: with a map, the photo's date leads to the map of its layer years (`photoMapYears`). */
+    declare years: readonly TimelineStop[];
     declare mode: SheetMode;
     declare open: boolean;
     declare manifestUrl: string;
@@ -127,6 +147,7 @@ export class HcmPhotoSheet extends LitElement {
         this.contributeUrl = null;
         this.stories = [];
         this.canLocate = false;
+        this.years = [];
         this.imageFailed = false;
     }
 
@@ -173,9 +194,7 @@ export class HcmPhotoSheet extends LitElement {
     #photoDetails(photo: Photo): TemplateResult {
         const locale = this.locale;
         return html`<div class="details">
-            ${this.#image(photo)} ${this.#locate(photo)}
-            <p class="supporting">${photoDateText(photo, locale)}</p>
-            ${photoRights(photo, locale)} ${this.#source(photo)}
+            ${this.#image(photo)} ${this.#locate(photo)} ${this.#date(photo)} ${photoRights(photo, locale)} ${this.#source(photo)}
             ${photo.description === undefined ? nothing : html`<p>${localizedText(photo.description, locale)}</p>`} ${this.#links(photo)}
             ${this.#suggestion(photo)} ${relatedStories(this.stories, 'photoIds', photo.id, this.locale)}
         </div>`;
@@ -194,6 +213,36 @@ export class HcmPhotoSheet extends LitElement {
         return html`<p>
             <hcm-button variant="tonal" icon="location_on" @click=${onLocate}>${translate(this.locale, 'photo.locate')}</hcm-button>
         </p>`;
+    }
+
+    /** The date; holding a layer's year it is a button to the map of that year, else chips name the near ones (V07). */
+    #date(photo: Photo): TemplateResult {
+        const date = photoDateText(photo, this.locale);
+        const { match, near } = photoMapYears(photo, this.canLocate ? this.years : []);
+        if (match !== undefined) {
+            return html`<p>${this.#mapYear(match, date, [date, this.#mapOf(match)].join(', '))}</p>`;
+        }
+        return html`<p class="supporting">${date}</p>
+            ${this.#nearYears(near)}`;
+    }
+
+    /** Up to three chips of the layer years near the photo's, nearest first, one under another (48 px targets); none: nothing. */
+    #nearYears(near: readonly number[]): TemplateResult | typeof nothing {
+        return near.length === 0 ? nothing : html`<section>${near.map((year) => this.#mapYear(year, this.#mapOf(year)))}</section>`;
+    }
+
+    #mapOf(year: number): string {
+        return translate(this.locale, 'photo.mapOf', { year: String(year) });
+    }
+
+    /** Shows the map at `year` with its layers; the photo stays open. */
+    #mapYear(year: number, text: string, label?: string): TemplateResult {
+        const show = (): void => {
+            this.dispatchEvent(new CustomEvent('hcm-year-change', { detail: { year } }));
+        };
+        return html`<hcm-button variant=${label === undefined ? 'outlined' : 'text'} icon="map" .label=${label} @click=${show}
+            >${text}</hcm-button
+        >`;
     }
 
     /** M13 §4: contesting the photo is a page of its own, which signs in; the map holds only the link. */
