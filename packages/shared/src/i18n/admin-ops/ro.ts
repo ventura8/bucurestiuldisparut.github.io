@@ -94,6 +94,7 @@ export const ro = {
     'adminContent.jobs.empty': 'Nicio procesare încă.',
     'adminContent.jobs.emptyHint': 'Procesările pornesc din Imagini istorice: un import, un strat georeferențiat, republicat sau șters.',
     'adminContent.jobs.listLabel': 'Procesări',
+    'adminContent.jobs.computerTitle': 'Calculatorul tău, unde rulează procesările noi și Cloud Run luna aceasta',
     'adminContent.jobs.detailLabel': 'Detaliile procesării',
     'adminContent.jobs.filterLabel': 'Arată procesările',
     'adminContent.jobs.filter.all': 'Toate',

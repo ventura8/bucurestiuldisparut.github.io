@@ -3139,3 +3139,13 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: building the engine with one change at a time on the NUC (`git stash`, then a `sed` per experiment): deleting the index's star line, or naming its exports, measured 124,990; a star-exported barrel of named exports did not.
     - Fix: `packages/shared/src/index.ts` names `imagery-archive.ts`'s runtime exports and re-exports its types with `export type *`, and `api/index.ts` names `api/archive.ts`'s (DECISIONS-for-review.md §137j).
     - **When the engine grows with no source of its own changing, bisect the package index's `export *` lines: a star re-export can cost bytes even when tree-shaking drops the module's code.**
+533. **A join failed live because a frame the owner approved while it waited counted as "ended", and the old join's retry said the same of a frame a newer join had taken.**
+    - Seen: live 2026-11-09: 1980 (A038 published, A039 awaiting approval) "Frame D3C1216-100235A039 ended; import or retry it", and 2 Feb 1972 "Two of these frames are already published: delete one layer first".
+    - Cause, proved by tests that failed first (`join.test.ts`, `join-parts.test.ts`, `retry.test.ts`): `partGone` treated a frame published as any layer but the join's as gone, the transaction refused a frame the policy had approved, `publishedFrame` refused two, and a frame stamped by a newer join answered the same `joinPartGone` as one whose versions all ended.
+    - Fix: §138a–c (M8 §18): any usable version serves, the joined layer retires the others when it publishes, `joinPartTaken` is its own, not retryable, code.
+    - **A refusal names the one condition that caused it. "Ended" for three different states sent the owner to the wrong fix.**
+534. **Two archive tests used scenario ids a docstring and a registry row already held, and a docstring's explanation was read as ids.**
+    - Seen: 2026-11-09, `check_e2e_matrix.py write` on track/batch4: "S-P20-HAPPY-GRID-NAMES: registered 2 times", and `streets`, `the`, `waits` "named but not registered".
+    - Cause: `Scenarios:` takes every word after it as an id, and an id was reused for a new behaviour.
+    - Fix: the explanation went into a comment, the new row is `S-P20-HAPPY-GRID-BY-NAMES`.
+    - **Grep the registry for an id before adding it, and keep a `Scenarios:` line to ids only.**

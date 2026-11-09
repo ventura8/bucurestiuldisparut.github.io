@@ -56,6 +56,21 @@ export interface SeriesProgressPort {
     readonly thresholdM: number | null;
 }
 
+/** Batch 4: the folder or zip on its way to the worker from the admin's tab, then its scan (`packages/admin/src/archive/local-import.ts`). */
+export interface LocalImportPort {
+    readonly phase: 'idle' | 'upload' | 'scan' | 'done' | 'failed' | 'cancelled';
+    readonly percent: number;
+    readonly done: number;
+    readonly total: number;
+    readonly error: string | null;
+}
+
+/** One picked file with its path inside the chosen folder (or the zip's name). */
+export interface LocalFilePort {
+    readonly path: string;
+    readonly file: Blob;
+}
+
 export interface ArchiveViewPort {
     readonly status: LoadStatusPort;
     readonly failure: StoreFailurePort | null;
@@ -72,6 +87,7 @@ export interface ArchiveViewPort {
     readonly importing: boolean;
     readonly result: { readonly today: number; readonly waiting: number } | null;
     readonly refusal: AdminNoticeInputPort | null;
+    readonly local: LocalImportPort;
 }
 
 interface ArchiveIntentsPort {
@@ -84,6 +100,8 @@ interface ArchiveIntentsPort {
     /** One click: every included series' job (`imagery.archiveImport`); true once the server took it. */
     import(): Promise<boolean>;
     retry(): void;
+    importLocal(files: readonly LocalFilePort[], source: 'folder' | 'zip', name: string): Promise<void>;
+    cancelLocal(): Promise<void>;
 }
 
 /** One element's feed: started when it connects, stopped when it goes. */

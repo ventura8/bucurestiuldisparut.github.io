@@ -12,6 +12,7 @@ import { approveFunction } from '../../src/imagery/approve.js';
 import { finalizeVersion } from '../../src/imagery/finalize.js';
 import { failureOf } from '../admin/world.js';
 import { adminCall } from '../publish/fakes.js';
+import { fakeAdmins } from '../support/fakes.js';
 import { CLEAR, PLACED, UNCONFIRMED, archiveJob, archiveVersion } from './archive-world.js';
 import { CITY, NOW, at, readLayer, readVersion, readyWorld, seedCity, seedJob, seedVersion } from './world.js';
 
@@ -61,6 +62,7 @@ describe('the approval policy on an archive series', () => {
         ['a rival placement', report({ rivalClean: false }), {}],
         ['too little of its own extent', report({ measuredPct: 69 }), {}],
         ['placed by the owners points', report({ method: 'gcps' }), {}],
+        ['placed from its sheet names without a proof', report({ method: 'grid-names', seamScore: 0.82 }), {}],
         ['rights not confirmed', archiveVersion({ rights: UNCONFIRMED }), {}],
         ['no rights', archiveVersion({ rights: undefined }), {}],
         ['no placement report', archiveVersion({ archive: undefined }), {}],
@@ -75,12 +77,34 @@ describe('the approval policy on an archive series', () => {
 });
 
 describe('imagery.approve on an archive series', () => {
-    async function approve(version: LayerVersionDoc) {
+    async function approve(version: LayerVersionDoc, role: 'owner' | 'editor' = 'owner') {
         const world = await readyWorld();
         await seedVersion(world, SERIES, version);
         await seedJob(world, SERIES, archiveJob());
-        return { world, call: approveFunction(() => world.deps).run(adminCall({ cityId: CITY, versionId: SERIES })) };
+        const admins = fakeAdmins(['u-admin'], { projectRole: 'admin', cities: { [CITY]: role } });
+        const deps = role === 'owner' ? world.deps : { ...world.deps, admins };
+        return { world, call: approveFunction(() => deps).run(adminCall({ cityId: CITY, versionId: SERIES })) };
     }
+
+    it('happyPath_theOwnerApprovesTheSheetNamePlacement @S-A120-HAPPY-GRID-NAMES', async () => {
+        const { world, call } = await approve(report({ method: 'grid-names', seamScore: 0.82, rivalClean: false }));
+
+        await expect(call).resolves.toEqual({ state: 'approved', jobId: SERIES });
+        expect((await readVersion(world, SERIES))?.approval).toMatchObject({ auto: false, by: 'u-admin' });
+    });
+
+    it('badPath_anEditorCannotApproveTheSheetNamePlacement @S-A120-BAD-GRID-NAMES-EDITOR', async () => {
+        const { world, call } = await approve(report({ method: 'grid-names' }), 'editor');
+
+        await expect(failureOf(call)).resolves.toMatchObject({ details: { code: 'apiError.city.notOwner' } });
+        expect((await readVersion(world, SERIES))?.state).toBe('awaiting_approval');
+    });
+
+    it('happyPath_anEditorStillApprovesAProvedGrid', async () => {
+        const { call } = await approve(archiveVersion(), 'editor');
+
+        await expect(call).resolves.toMatchObject({ state: 'approved' });
+    });
 
     it('badPath_rightsNotConfirmedRefuseThePublish @S-A120-BAD-RIGHTS-UNCONFIRMED', async () => {
         const { world, call } = await approve(archiveVersion({ rights: UNCONFIRMED }));
@@ -138,5 +162,43 @@ describe('the layer of an archive series', () => {
             attribution: 'IGA, Planul IGA 1895, 1895 · PD · scan: Idei Urbane – DocuBucurești (romaniaforum)',
             rights: { licence: 'PD', author: 'IGA', source: { label: 'Idei Urbane – DocuBucurești', url: rights.sourceUrl } },
         });
+    });
+
+    it('happyPath_aGridPlacedFromItsSheetNamesRecordsItsOwnersApproval @S-A120-HAPPY-GRID-NAMES', async () => {
+        const world = await readyWorld();
+        const approval = { auto: false, by: 'u-admin', at: at(NOW) };
+        await seedVersion(world, SERIES, { ...report({ method: 'grid-names' }), state: 'approved', approval, rights: CLEAR });
+        await seedJob(world, SERIES, archiveJob({ status: 'mts_processing', waitReason: 'mapbox' }));
+
+        await finalizeVersion(world.deps, {
+            cityId: CITY,
+            jobId: SERIES,
+            versionId: SERIES,
+            origin: 'own',
+            path: 'x',
+            url: 'https://cdn.test/x',
+            bytes: 1,
+        });
+
+        expect((await readLayer(world, LAYER))?.provenance?.archive).toEqual({ method: 'grid-names', approvedBy: 'owner' });
+    });
+
+    it('badPath_aProvedGridRecordsNoOwnersApproval', async () => {
+        const world = await readyWorld();
+        const approval = { auto: true, by: 'system:imagery', at: at(NOW) };
+        await seedVersion(world, SERIES, archiveVersion({ state: 'approved', approval, rights: CLEAR }));
+        await seedJob(world, SERIES, archiveJob({ status: 'mts_processing', waitReason: 'mapbox' }));
+
+        await finalizeVersion(world.deps, {
+            cityId: CITY,
+            jobId: SERIES,
+            versionId: SERIES,
+            origin: 'own',
+            path: 'x',
+            url: 'https://cdn.test/x',
+            bytes: 1,
+        });
+
+        expect((await readLayer(world, LAYER))?.provenance?.archive).toEqual({ method: 'grid' });
     });
 });

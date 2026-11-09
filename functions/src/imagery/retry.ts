@@ -23,7 +23,7 @@ import { defineCallable, type CallableDeps } from '../api/callable.js';
 import { omit } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
-import { GO, partsReady } from './join-parts.js';
+import { GO, isRefused, partRefusal, partsReady } from './join-parts.js';
 import { enqueuePublish } from './publish-queue.js';
 import { guardIsRed, requireJob, stampOf, versionIdOf, type Stamp } from './records.js';
 
@@ -167,8 +167,8 @@ function retriedJob(job: JobDoc, atPublish: boolean, stamp: Stamp): JobDoc {
 /** M8: a join's frames are still its own; a publish retry cannot wait, so it needs them all ready now. */
 async function requireJoinFrames(transaction: DocumentTransaction, request: Request, job: JobDoc, atPublish: boolean): Promise<void> {
     const ready = job.type === 'layer-join' ? await partsReady(transaction, request.cityId, request.jobId, job) : GO;
-    if (ready.kind === 'gone') {
-        throw new ApiError('apiError.imagery.joinPartGone', { frame: ready.frame });
+    if (isRefused(ready)) {
+        throw partRefusal(ready);
     }
     if (atPublish && ready.kind === 'hold') {
         throw new ApiError('apiError.imagery.versionState');

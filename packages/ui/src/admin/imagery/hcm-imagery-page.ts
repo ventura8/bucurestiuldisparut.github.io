@@ -13,6 +13,7 @@ import { MAPBOX_GL_CSS_URL } from '../../map/mapbox-loader.js';
 import type { AdminRouteIdPort } from '../admin-port.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
 import { AreaPage } from '../editing/area-page.js';
+import { cityRoleOfState } from '../shell/city-role.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
 import type { ImageryContext, ImageryQuestion } from './context.js';
@@ -166,6 +167,7 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
     #context(view: ImageryViewState): ImageryContext {
         return {
             ...{ locale: this.locale, view, intents: this.intents, readOnly: this.readOnly, app: this.app },
+            owner: cityRoleOfState(this.state) === 'owner',
             href: (params) => this.href(params),
             go: (params) => {
                 this.go(params);

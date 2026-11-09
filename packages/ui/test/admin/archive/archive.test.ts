@@ -6,10 +6,17 @@ import { axeViolations } from '@hcm/test-support/axe';
 import { html, type LitElement } from 'lit';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { ArchiveFeedPort, ArchiveHostPort, ArchiveViewPort, SeriesProgressPort } from '../../../src/admin/archive/archive-port.js';
+import type {
+    ArchiveFeedPort,
+    ArchiveHostPort,
+    ArchiveViewPort,
+    LocalFilePort,
+    SeriesProgressPort,
+} from '../../../src/admin/archive/archive-port.js';
 import { sizeText } from '../../../src/admin/archive/archive-element.js';
+import { archiveName, pickedFiles } from '../../../src/admin/archive/hcm-archive-panel.js';
 import { defineArchiveElements } from '../../../src/admin/archive/define.js';
-import { stateText, totalText } from '../../../src/admin/archive/series-text.js';
+import { overallPercent, stateText, totalText } from '../../../src/admin/archive/series-text.js';
 import { cleanup, fixture } from '../../helpers.js';
 import { deep, deepAll, deepText, updated } from '../shell/fake-app.js';
 
@@ -71,6 +78,7 @@ function view(changes: Partial<ArchiveViewPort> = {}): ArchiveViewPort {
             [SERIES[2]?.seriesId ?? '']: { include: false, title: 'Oltean', year: '1911', confirmedBy: null },
         },
         ...{ progress: {}, share: 10, importing: false, result: null, refusal: null },
+        local: { phase: 'idle', percent: 0, done: 0, total: 0, error: null },
         ...changes,
     };
 }
@@ -103,6 +111,14 @@ class FakeFeed implements ArchiveFeedPort {
         },
         retry: (): void => {
             this.calls.push('retry');
+        },
+        importLocal: (files: readonly LocalFilePort[], source: 'folder' | 'zip', name: string): Promise<void> => {
+            this.calls.push(`importLocal ${source} ${name} ${files.map((each) => each.path).join(',')}`);
+            return Promise.resolve();
+        },
+        cancelLocal: (): Promise<void> => {
+            this.calls.push('cancelLocal');
+            return Promise.resolve();
         },
     };
 
@@ -191,8 +207,12 @@ describe('<hcm-archive-panel>', () => {
         const host = new FakeHost();
         const element = await panel(host);
 
-        const choose = deep(element, 'a[data-choose]') as HTMLAnchorElement;
-        expect([choose.href, choose.target]).toEqual(['http://127.0.0.1:8765/import?lat=44.4300', '_blank']);
+        const fallback = deep(element, 'a[data-fallback]') as HTMLAnchorElement;
+        expect([fallback.href, fallback.target]).toEqual(['http://127.0.0.1:8765/import?lat=44.4300', '_blank']);
+        expect(deepAll(element, 'hcm-button[data-choose]').map((each) => each.textContent.trim())).toEqual([
+            t('adminArchive.local.folder'),
+            t('adminArchive.local.zip'),
+        ]);
         expect((deep(element, `a[data-archive="${ARCHIVE}"]`) as HTMLAnchorElement).getAttribute('href')).toBe(
             `#/imagery/archive/${ARCHIVE}`,
         );
@@ -206,13 +226,62 @@ describe('<hcm-archive-panel>', () => {
         const host = new FakeHost(view({ connected: false, archives: [] }));
         const element = await panel(host, 'ro');
 
-        expect(deepAll(element, 'a[data-choose]')).toHaveLength(0);
+        expect(deepAll(element, '[data-choose]')).toHaveLength(0);
         expect(deep(element, '[data-state="no-worker"]').textContent).toBe(t('adminArchive.noWorker', undefined, 'ro'));
         expect(deep(element, '[data-state="no-archives"]').textContent).toBe(t('adminArchive.none', undefined, 'ro'));
         host.feed.set({ status: 'error', failure: { kind: 'unavailable', code: 'unavailable' } });
         await updated(element);
         deep(deep(element, 'hcm-button'), 'button').click();
         expect(host.feed.calls).toContain('retry');
+    });
+
+    it('happyPath_aFolderPickedInThisTabGoesToTheWorkerWithItsProgressAndCancel @S-A121-HAPPY-LOCAL-TAB', async () => {
+        const host = new FakeHost();
+        const element = await panel(host);
+        const input = deep(element, 'input[data-pick="folder"]') as HTMLInputElement;
+        const picked = new DataTransfer();
+        picked.items.add(new File(['a'], '1911.jpg'));
+        input.files = picked.files;
+        input.dispatchEvent(new Event('change'));
+
+        host.feed.set({ local: { phase: 'upload', percent: 42, done: 0, total: 1, error: null } });
+        await settled(element);
+        const sending = deep(element, '[data-local="upload"] [role="status"]').textContent;
+        host.feed.set({ local: { phase: 'scan', percent: 2, done: 120, total: 5703, error: null } });
+        await settled(element);
+        const reading = deep(element, '[data-local="scan"] [role="status"]').textContent;
+        expect((deepAll(element, 'hcm-button[data-choose]')[0] as HTMLElement & { disabled: boolean }).disabled).toBe(true);
+        deepAll(element, '[data-local="scan"] hcm-button')[0]?.click();
+        expect(await axeViolations(element)).toEqual([]);
+
+        expect(host.feed.calls).toContain('importLocal folder 1911.jpg 1911.jpg');
+        expect(host.feed.calls).toContain('cancelLocal');
+        expect(sending).toBe(t('adminArchive.local.upload', { percent: '42' }));
+        expect(reading).toBe(t('adminArchive.local.scan', { done: '120', total: '5,703', percent: '2' }));
+    });
+
+    it.each([
+        ['notPaired', 'adminArchive.local.notPaired'],
+        ['unreachable', 'adminArchive.local.unreachable'],
+        ['refused', 'adminArchive.local.refused'],
+    ] as const)('badPath_anImportThatStopped_%s_saysWhy @S-A121-BAD-LOCAL-TAB', async (error, key) => {
+        const host = new FakeHost(view({ local: { phase: 'failed', percent: 0, done: 0, total: 0, error } }));
+        const element = await panel(host);
+
+        expect(deep(element, '[data-local="failed"]').textContent).toBe(t('adminArchive.local.failed', { why: t(key) }));
+    });
+
+    it('badPath_aScanErrorCodeIsShownAsItCame_andCancelledAndDoneSaySo', async () => {
+        const host = new FakeHost(view({ local: { phase: 'failed', percent: 0, done: 0, total: 0, error: 'apiError.internal' } }));
+        const element = await panel(host);
+        expect(deep(element, '[data-local="failed"]').textContent).toContain('apiError.internal');
+        host.feed.set({ local: { phase: 'cancelled', percent: 0, done: 0, total: 0, error: null } });
+        await settled(element);
+        expect(deep(element, '[data-local="cancelled"]').textContent).toBe(t('adminArchive.local.cancelled'));
+        host.feed.set({ local: { phase: 'done', percent: 100, done: 0, total: 0, error: null } });
+        await settled(element);
+        expect(deep(element, '[data-local="done"]').textContent).toBe(t('adminArchive.local.done'));
+        deep(element, 'hcm-button[data-choose="zip"]').click();
     });
 
     it('happyPath_anArchiveThatArrivesWhileTheCardIsOpenOpensItsReport @S-A121-HAPPY-BUDGET', async () => {
@@ -236,7 +305,7 @@ describe('<hcm-archive-panel>', () => {
         const element = await panel(failing);
         const alone = await panel(null);
 
-        expect(deepAll(element, 'a[data-choose]')).toHaveLength(0);
+        expect(deepAll(element, '[data-choose]')).toHaveLength(0);
         expect(deepText(alone)).toContain(t('adminArchive.title'));
     });
 });
@@ -336,6 +405,7 @@ describe('<hcm-archive-report>', () => {
         const element = await report(host);
 
         expect(deepAll(element, '[data-progress]')).toHaveLength(2);
+        expect(deep(element, '[data-overall]').textContent).toBe(t('adminArchive.local.overall', { percent: '100' }));
         expect(deepText(element)).toContain(t('adminArchive.state.approval', { error: '4.2', threshold: '15' }));
         expect(deepText(element)).toContain(t('adminArchive.state.points', { note: t('adminArchive.help.frame-not-found') }));
         expect((deep(element, '[data-progress] a') as HTMLAnchorElement).getAttribute('href')).toBe('#/imagery/version/job-0');
@@ -413,5 +483,40 @@ describe('stateText', () => {
             t('adminArchive.state.queued'),
         ]);
         expect(sizeText('en', 512)).toBe('512 byte');
+    });
+});
+
+describe('overallPercent', () => {
+    it('happyPath_aRunningSeriesCountsItsShareAndAnEndedOneAllOfIt', () => {
+        expect(overallPercent([progress({ state: 'processing', progress: 0.5 }), progress({ state: 'published' })])).toBe(75);
+        expect(overallPercent([progress({ state: null, progress: null })])).toBe(0);
+    });
+
+    it('badPath_noSeriesIsNothingDone', () => {
+        expect(overallPercent([])).toBe(0);
+    });
+});
+
+describe('the picked files', () => {
+    it('happyPath_aFolderKeepsEachFilesPathAndIsNamedByItsTopFolder', () => {
+        const inFolder = { webkitRelativePath: 'Harti/1911.jpg', name: '1911.jpg' } as File;
+
+        expect(pickedFiles([inFolder]).map((each) => each.path)).toEqual(['Harti/1911.jpg']);
+        expect([archiveName('Harti/1911.jpg', 'folder'), archiveName('harti.zip', 'zip'), archiveName('a.jpg', 'folder')]).toEqual([
+            'Harti',
+            'harti.zip',
+            'a.jpg',
+        ]);
+    });
+
+    it('badPath_noListAndAnEmptyPickSendNothing', async () => {
+        expect(pickedFiles(null)).toEqual([]);
+        const host = new FakeHost(view({ local: { phase: 'failed', percent: 0, done: 0, total: 0, error: null } }));
+        const element = await panel(host);
+        const input = deep(element, 'input[data-pick="zip"]') as HTMLInputElement;
+        input.dispatchEvent(new Event('change'));
+
+        expect(host.feed.calls.filter((call) => call.startsWith('importLocal'))).toEqual([]);
+        expect(deep(element, '[data-local="failed"]').textContent).toBe(t('adminArchive.local.failed', { why: '' }));
     });
 });

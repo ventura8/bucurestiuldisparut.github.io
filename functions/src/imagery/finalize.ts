@@ -18,16 +18,13 @@ import {
     USGS_ATTRIBUTION,
     creditLine,
     layerRightsOf,
-    enabledGcps,
     jobDocSchema,
     layerDocSchema,
     layerVersionDocSchema,
     timestampToDate,
     usageDocSchema,
     usageMonth,
-    type Georef,
     type JobDoc,
-    type JoinPart,
     type LayerDoc,
     type LayerVersionDoc,
     type MtsPrecision,
@@ -38,7 +35,8 @@ import {
 import { compact, omit } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
-import { joinFrameWrites, readJoinFrames } from './finalize-join.js';
+import { joinFrameWrites, readJoinFrames, retiredByJoin, retiredLayer } from './finalize-join.js';
+import { provenanceOf } from './finalize-provenance.js';
 import { IMAGERY_WRITER, stampOf, withStep, type Stamp } from './records.js';
 
 export type FinalizeDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
@@ -68,7 +66,6 @@ interface OwnFinish extends FinishedVersion {
 export type Finish = MapboxFinish | OwnFinish;
 
 type Output = NonNullable<LayerVersionDoc['output']>;
-type Provenance = NonNullable<LayerDoc['provenance']>;
 
 /** A file name or label that says it shows a plan or a map (else an aerial photograph). */
 const MAP_OPACITY = 0.85;
@@ -113,39 +110,6 @@ function ownAttribution(version: LayerVersionDoc): string {
     return version.georef?.terrain === undefined ? own : `${own}; ${DEM_ATTRIBUTION}`.slice(0, 500);
 }
 
-function georefProvenance(georef: Georef): NonNullable<Provenance['georef']> {
-    return compact<NonNullable<Provenance['georef']>>({
-        method: georef.method,
-        gcpCount: georef.method === 'embedded' ? undefined : enabledGcps(georef.gcps),
-        checkpointRmseM: georef.checkpointRmseM,
-    });
-}
-
-type UsgsProvenance = Pick<Provenance, 'usgsEntityId' | 'usgsDataset' | 'usgsParts'>;
-
-/** M8: a join's first frame stands for it (`rasterExportable` reads `usgsEntityId`), with every frame in `usgsParts`. */
-function joinProvenance([first, ...rest]: readonly JoinPart[]): UsgsProvenance {
-    if (first === undefined) {
-        return {};
-    }
-    return { usgsEntityId: first.entityId, usgsDataset: first.dataset, usgsParts: [first, ...rest].map((part) => part.entityId) };
-}
-
-function usgsProvenance(version: LayerVersionDoc): UsgsProvenance {
-    const source = version.source;
-    if (source?.kind === 'join') {
-        return joinProvenance(source.parts);
-    }
-    return source?.kind === 'usgs' ? { usgsEntityId: source.entityId, usgsDataset: source.dataset } : {};
-}
-
-/** Where the tiles came from, kept on the layer: the USGS frame (the layer's own when the version has no source). */
-function provenanceOf(version: LayerVersionDoc, before: LayerDoc | undefined): Provenance {
-    const kept = omit(before?.provenance ?? {}, ['georef']);
-    const georef = version.georef === undefined ? {} : { georef: georefProvenance(version.georef) };
-    return { ...kept, ...usgsProvenance(version), ...georef };
-}
-
 function mapboxOf(finish: MapboxFinish, output: Output): NonNullable<LayerDoc['mapbox']> {
     return compact<NonNullable<LayerDoc['mapbox']>>({
         tilesetId: finish.tilesetId,
@@ -185,6 +149,7 @@ function newLayer(version: LayerVersionDoc, order: number, stamp: Stamp): Omit<L
         mapbox: undefined,
         currentVersion: undefined,
         pendingVersion: undefined,
+        retired: undefined,
         createdAt: stamp.updatedAt,
         ...stamp,
     });
@@ -375,9 +340,11 @@ export async function finalizeVersion(deps: FinalizeDeps, finish: Finish): Promi
             return false;
         }
         const frames = await readJoinFrames(transaction, finish.cityId, held.version);
+        const retiredBy = await retiredByJoin(transaction, finish.cityId, held.version);
+        const layer = retiredLayer(layerAfter(held, finish, order, stamp), retiredBy, stamp);
         const writes = [
-            ...joinFrameWrites(frames, held.version.layerId, stamp),
-            setting(FIRESTORE_PATHS.layer(finish.cityId, held.version.layerId), layerDocSchema, layerAfter(held, finish, order, stamp)),
+            ...joinFrameWrites(frames, held.version.layerId, finish.versionId, stamp),
+            setting(FIRESTORE_PATHS.layer(finish.cityId, held.version.layerId), layerDocSchema, layer),
             supersede(held, finish, stamp),
             setting(
                 FIRESTORE_PATHS.layerVersion(finish.cityId, finish.versionId),

@@ -31,8 +31,10 @@ import { deleteWorkFiles } from './work-files.js';
  * `imagery.join` (a city editor; `docs/research/M8-join-interfaces.md` §5; S-A65-*): one date's frames become one layer. Frames
  * not imported yet are imported for it; the join's job is born waiting for its frames (`parts`) and the dispatcher starts it
  * once they rendered. Every check comes before anything is created: the frames share a date and a camera, the set fits the
- * guard and today's limits, the missing frames are scanned. With one frame already published the join is a new version of
- * that layer, so its tileset and presentation stay; otherwise it reserves its own layer id.
+ * guard and today's limits, the missing frames are scanned. With a frame already published the join is a new version of
+ * that layer, so its tileset and presentation stay; otherwise it reserves its own layer id. Batch 4 (§5.1): any frame with a usable
+ * version serves (awaiting approval, approved, publishing, published); with frames published as layers of their own, the join takes
+ * the first one's layer and the others are retired when it publishes (`finalize-join.ts`); only a frame with no usable version refuses.
  */
 export type JoinDeps = ImportDeps & Pick<Ports, 'blobs'>;
 
@@ -107,13 +109,13 @@ async function requireScanned(deps: JoinDeps, cityId: string, missing: readonly 
     }
 }
 
-/** The one frame that already is a layer, or none; two are `apiError.imagery.joinTwoPublished`. */
+/**
+ * The frame whose layer the join becomes a new version of: the first one published, else the first on its way to a layer; none when no
+ * frame is a layer. Batch 4: the other frames' layers of the date are retired when the join publishes (`finalize-join.ts`).
+ */
 function publishedFrame(frames: readonly Frame[]): StoredDocument<LayerVersionDoc> | undefined {
     const onLayers = frames.flatMap((frame) => (frame.onLayer && frame.part !== undefined ? [frame.part] : []));
-    if (onLayers.length > 1) {
-        throw new ApiError('apiError.imagery.joinTwoPublished');
-    }
-    return onLayers[0];
+    return onLayers.find((part) => part.data.state === 'published') ?? onLayers[0];
 }
 
 /**

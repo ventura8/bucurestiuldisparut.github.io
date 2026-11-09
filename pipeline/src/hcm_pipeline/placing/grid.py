@@ -8,8 +8,9 @@
 4. Solve the grid once: the sheets pasted on the grid at 2 m (coarser for a city-wide series) make the whole series' street
    pattern, placed on the reference (the ladder, then OpenStreetMap) as a map of known scale, north up, its fit rigid (an affine),
    with the rival search and the held-out checks of a drawn map (`single`). A grid the owner confirmed (`params.gridId`,
-   `cities/{c}/grids/{g}`) starts the fit instead of the search. A grid that does not prove waits for a person (the owner places
-   three sheets: Workstream H's screen writes the grid).
+   `cities/{c}/grids/{g}`) starts the fit instead of the search. Batch 4 (§5.1): a grid that does not prove but was fitted is still
+   rendered from the sheets' names (`grid-names`), with its seams and its checks against the reference measured, for the owner alone to
+   approve by hand (the policy never publishes it); with no fit at all it waits for a person (three sheets placed on the map).
 5. Render: each sheet warped from its own scan into the series' one `warped.tif`, cut at its neat line (hard seams, no feather), through
    a 5 x 5 lattice of its homography composed with the solved grid.
 
@@ -51,6 +52,7 @@ FRAME_PX: Final = 1000
 NO_SCHEME: Final = "These sheets' names are read, but no grid scheme places them yet: add about four points on a few sheets."
 NO_FRAMES: Final = "No sheet's frame was found: add about four points on a few sheets."
 NOT_PROVED: Final = "The grid could not be placed on its own: place three sheets on the map, and the rest follow."
+OWNER_METHOD: Final = "grid-names"
 
 
 @dataclass(frozen=True)
@@ -245,10 +247,14 @@ def _solved(ctx: JobContext, series: SeriesJob, rectified: list[Rectified], sche
     mosaic = mosaic_of(rectified, scheme, order)
     found = _placed(ctx, series, mosaic, mosaic_drawn(ctx, mosaic, rectified))
     held = None if found is None else found.held()
-    if held is None:
+    if held is not None:
+        ctx.log.info(f"the grid is placed, its quarters read in order {order}", ctx.step)
+        return _rendered(ctx, series, Solved(rectified, scheme, order, mosaic, held[0].transform), Placed("grid", held[0].checked, True))
+    if found is None or found.fit is None:
         return wait_for_help(ctx, "low-confidence", NOT_PROVED)
-    ctx.log.info(f"the grid is placed, its quarters read in order {order}", ctx.step)
-    return _rendered(ctx, series, Solved(rectified, scheme, order, mosaic, held[0].transform), held[0].checked)
+    ctx.log.info(f"the grid did not prove: placed from the sheets' names for the owner to approve, order {order}", ctx.step)
+    placed = Placed(OWNER_METHOD, found.fit.checked, found.rival_clean)
+    return _rendered(ctx, series, Solved(rectified, scheme, order, mosaic, found.fit.transform), placed)
 
 
 @dataclass(frozen=True)
@@ -262,15 +268,25 @@ class Solved:
     transform: Transform
 
 
-def _rendered(ctx: JobContext, series: SeriesJob, solved: Solved, checks: Checked) -> StepResult:
-    """Every framed sheet rendered into the series' `warped.tif`, and the report."""
+@dataclass(frozen=True)
+class Placed:
+    """How the grid was placed: proved (`grid`) or from the names alone (`grid-names`), its checks and its rival search."""
+
+    method: str
+    checks: Checked
+    rival_clean: bool
+
+
+def _rendered(ctx: JobContext, series: SeriesJob, solved: Solved, placed: Placed) -> StepResult:
+    """Every framed sheet rendered into the series' `warped.tif`, and the report with its seams."""
     origin = (solved.mosaic.west, solved.mosaic.north, solved.mosaic.metres)
     warps = [
         SheetWarp.of(item.sheet.path, item.corners, solved.scheme.box(item.cell, solved.order), origin, solved.transform)
         for item in solved.rectified
     ]
     warped = render_sheets(warps, ctx.local("warped.tif"), resolution_of(ctx.job.params), series.nearest)
-    placed = {"order": solved.order, "sheets": [item.sheet.name for item in solved.rectified]}
-    ctx.local("placed.json").write_text(json.dumps(placed), encoding="utf-8")
-    placement = Placement("grid", series.encoding, checks, True, series.scale, series.paper_transparent)
+    record = {"order": solved.order, "sheets": [item.sheet.name for item in solved.rectified]}
+    ctx.local("placed.json").write_text(json.dumps(record), encoding="utf-8")
+    seam = seam_score(solved.rectified, solved.scheme, solved.order)
+    placement = Placement(placed.method, series.encoding, placed.checks, placed.rival_clean, series.scale, series.paper_transparent, seam)
     return finish(ctx, placement, warped, len(solved.rectified))

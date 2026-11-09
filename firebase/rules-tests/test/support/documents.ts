@@ -207,6 +207,7 @@ export function layerDoc(): Data {
         mapbox: { tilesetId: 'hcm-test.corona-1966', publishedSourceSha: SHA, sourceId: 'corona-1966', origin: 'mts' },
         currentVersion: 'v-1966',
         pendingVersion: 'v-1966-crop',
+        retired: { by: 'jn-1966', at: past() },
         createdAt: past(),
         ...systemStamp('imagery'),
     };

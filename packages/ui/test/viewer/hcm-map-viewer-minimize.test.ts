@@ -1,6 +1,6 @@
 /**
- * Minimizing the extra-large Layers pane (the owner, 2026-11-08): the leading column shrinks to an 88 px rail, the map
- * takes the rest, the photo open beside it stays. The store keeps it (`layersHidden`, for the session, not in the hash),
+ * Minimizing the extra-large Layers pane (the owner, 2026-11-08): the leading column goes, the map takes the whole width (batch 4,
+ * the owner 2026-11-09: no rail) and one floating button on its leading edge brings the pane back; the photo open beside it stays. The store keeps it (`layersHidden`, for the session, not in the hash),
  * so the pane re-created when the window leaves the extra-large layout and comes back is still minimized.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -35,8 +35,12 @@ describe('<hcm-map-viewer>: the minimized Layers pane', () => {
         await page.getByRole('button', { name: 'Restrânge straturile' }).click();
         await expect.element(page.getByRole('button', { name: 'Straturi' })).toHaveAttribute('aria-expanded', 'false');
 
-        expect(width(mounted, '.pane.leading')).toBe(88);
-        expect(width(mounted, '.map-pane')).toBe(map + 272);
+        expect(width(mounted, '.pane.leading')).toBe(0);
+        expect(width(mounted, '.map-pane')).toBe(map + 360);
+        const button = page.getByRole('button', { name: 'Straturi' }).element().getBoundingClientRect();
+        const pane = part(mounted, '.map-pane').getBoundingClientRect();
+        expect([button.left - pane.left, button.top - pane.top], 'floating on the map, at its leading gutter').toEqual([24, 24]);
+        expect(button.height).toBeGreaterThanOrEqual(48);
         expect(mounted.store.getState().sheet).toBe('photo');
         // One store action (the photo sheet's own thumbnail timing aside): the minimized pane, which is no sheet.
         const actions = (): unknown => mounted.store.calls.slice(calls).filter((call) => call.method !== 'photoShown');
@@ -66,7 +70,7 @@ describe('<hcm-map-viewer>: the minimized Layers pane', () => {
         setBox(mounted.element, EXTRA_LARGE);
 
         await expect.element(page.getByRole('button', { name: 'Straturi' })).toHaveAttribute('aria-expanded', 'false');
-        expect(width(mounted, '.pane.leading')).toBe(88);
+        expect(width(mounted, '.pane.leading')).toBe(0);
         expect(mounted.store.getState().layersHidden).toBe(true);
     });
 });

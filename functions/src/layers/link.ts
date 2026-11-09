@@ -107,6 +107,7 @@ function layerOf(request: Request, order: number, caller: VerifiedCaller, now: D
         mapbox: undefined,
         currentVersion: undefined,
         pendingVersion: undefined,
+        retired: undefined,
         createdAt: at,
         updatedBy: caller.uid,
         updatedAt: at,

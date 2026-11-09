@@ -14,7 +14,7 @@ import { EMPTY } from '../shell/empty.js';
 import { noticeOf } from '../shell/text.js';
 import type { ArchiveViewPort, OpenArchivePort, SeriesEditPort, SeriesProgressPort } from './archive-port.js';
 import { ArchiveElement, count, sizeText } from './archive-element.js';
-import { actionText, chosenOf, estimateText, stateText, totalText, yearShown } from './series-text.js';
+import { actionText, chosenOf, estimateText, overallPercent, stateText, totalText, yearShown } from './series-text.js';
 
 export const HCM_ARCHIVE_REPORT_TAG = 'hcm-archive-report';
 
@@ -227,11 +227,16 @@ export class HcmArchiveReport extends ArchiveElement {
     }
 
     #progress(view: ArchiveViewPort, report: Report): TemplateResult {
-        const rows = report.series.flatMap((series) => {
+        const known = report.series.flatMap((series) => {
             const progress = view.progress[series.seriesId];
-            return progress === undefined ? [] : [this.#progressRow(series, progress)];
+            return progress === undefined ? [] : [[series, progress] as const];
         });
+        const rows = known.map(([series, progress]) => this.#progressRow(series, progress));
+        const percent = overallPercent(known.map(([, progress]) => progress));
+        const said = this.t('adminArchive.local.overall', { percent: String(percent) });
         return html`<h3>${this.t('adminArchive.progressTitle')}</h3>
+            <p data-overall=${String(percent)}>${said}</p>
+            <hcm-progress .value=${percent / 100} .label=${said}></hcm-progress>
             <ul class="rows">
                 ${rows}
             </ul>`;

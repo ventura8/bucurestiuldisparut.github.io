@@ -297,3 +297,27 @@ describe('the archive feed, once imported', () => {
         store.destroy();
     });
 });
+
+describe('the archive feed: the admin tab’s import (batch 4)', () => {
+    it('happyPath_importLocalAsksTheWorkerForASessionForTheCityAndTheStateFollows @S-A121-HAPPY-LOCAL-TAB', async () => {
+        const world = seeded();
+        const asked: unknown[] = [];
+        const transport = {
+            json: (path: string, body: unknown) => {
+                asked.push([path, body]);
+                return Promise.resolve({ status: 409, body: { error: 'notPaired' } });
+            },
+            upload: () => Promise.resolve(201),
+        };
+        const feed = createArchiveFeed(world.services, transport);
+        feed.start();
+        await settle();
+
+        await feed.intents.importLocal([{ path: 'a.jpg', file: new Blob(['a']) }], 'folder', 'Harti');
+        await feed.intents.cancelLocal();
+
+        expect(asked).toEqual([['/import/session', { city: CITY }]]);
+        expect(feed.state.local).toEqual({ phase: 'failed', percent: 0, done: 0, total: 0, error: 'notPaired' });
+        feed.stop();
+    });
+});

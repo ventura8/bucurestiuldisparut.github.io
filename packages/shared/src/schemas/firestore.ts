@@ -25,7 +25,7 @@ import {
     themeSchema,
     LAYER_KINDS,
 } from './manifest.js';
-import { layerRightsSchema } from './imagery-archive.js';
+import { ARCHIVE_PLACE_METHODS, layerRightsSchema } from './imagery-archive.js';
 import { iconNameSchema, MAX_POI_PHOTOS, photosOverlaySchema } from './poi.js';
 import { heldImageSchema, reviewFields } from './review.js';
 import { localizedStorySchema, storyFields } from './story.js';
@@ -263,6 +263,8 @@ export const layerDocSchema = z.strictObject({
                     checkpointRmseM: z.number().min(0).optional(),
                 })
                 .optional(),
+            /** Batch 4: how an archive series was placed; `grid-names` with `approvedBy: 'owner'` when its owner approved it by hand. */
+            archive: z.strictObject({ method: z.enum(ARCHIVE_PLACE_METHODS), approvedBy: z.literal('owner').optional() }).optional(),
         })
         .optional(),
     mapbox: z
@@ -278,6 +280,11 @@ export const layerDocSchema = z.strictObject({
     currentVersion: idSchema.optional(),
     /** M3: a newer version under way or waiting for approval; the layer keeps its tiles until that one is published. */
     pendingVersion: idSchema.optional(),
+    /**
+     * Batch 4 (`docs/research/M8-join-interfaces.md` §5.1): the published join of its date that replaced this frame's layer (`by`, its
+     * version) and when; the layer left the manifest, its tiles and versions are kept until the owner deletes it.
+     */
+    retired: z.strictObject({ by: idSchema, at: timestampSchema }).optional(),
     createdAt: timestampSchema.optional(),
     ...stamp,
 });

@@ -1213,8 +1213,8 @@
             "behaviour": "V03",
             "area": "viewer",
             "path": "happy",
-            "title": "The always-docked Layers pane minimizes to a rail and comes back",
-            "asserts": "1920 px: the pane's collapse button (Restrânge straturile / Collapse layers, aria-expanded true, no Close) minimizes it to an 88 px rail whose button (Straturi, aria-expanded false) takes the focus; the map and Mapbox's canvas grow by 272 px; Enter on the rail restores the pane with the focus on its collapse button",
+            "title": "The always-docked Layers pane minimizes to one floating button and comes back",
+            "asserts": "1920 px: the pane's collapse button (Restrânge straturile / Collapse layers, aria-expanded true, no Close) minimizes it to one floating button at the map's leading gutter (Straturi, aria-expanded false, no rail: batch 4, the owner 2026-11-09) that takes the focus; the map and Mapbox's canvas take the whole width (+360 px); Enter on the button restores the pane with the focus on its collapse button",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-08 (track/settings): \"viewer should be able to minimize the layers panel\". Tests: e2e/specs/viewer/layers-minimize.spec.ts, packages/ui/test/viewer/hcm-layer-panel-minimize.test.ts, the tour's state layers-minimized."
@@ -1236,7 +1236,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "The minimized Layers pane stays minimized when the window leaves the extra-large layout and comes back",
-            "asserts": "1920 px, minimized; at 1280 px there is no leading pane; back at 1920 px the re-created pane is still the 88 px rail (aria-expanded false), its collapse button absent, the URL hash unchanged",
+            "asserts": "1920 px, minimized; at 1280 px there is no leading pane; back at 1920 px the re-created pane is still the floating button (aria-expanded false, no leading column), its collapse button absent, the URL hash unchanged",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The review of track/settings (2026-11-09): the state lived in the panel element, which the layout re-creates, so it was lost. It is the store's now (layersHidden, setLayersHidden). Tests: e2e/specs/viewer/layers-minimize.spec.ts, packages/ui/test/viewer/hcm-map-viewer-minimize.test.ts, packages/engine/test/core/store-layers-hidden.test.ts."
@@ -10431,11 +10431,33 @@
             "behaviour": "A62",
             "area": "admin",
             "path": "happy",
-            "title": "The worker's panel on the Jobs page lines up with the filter chips",
-            "asserts": "the panel's heading starts at the same left edge as the filter chips above it, inside the list pane's padding",
+            "title": "The worker's panel on the Jobs page is a full-width card above the list",
+            "asserts": "batch 4: the panel sits in a collapsible card (Your computer, where new jobs run and Cloud Run this month) above the list and the job, its heading 16 px inside the card's title; the list starts below it",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Finding 81 of docs/research/manual-test-2026-10-25.md (the owner, 2026-11-05). In e2e/admin/specs/imagery/worker.spec.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-JOBS-LAYOUT",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "The Jobs page: the computer above, the list and the job side by side from 1200 px",
+            "asserts": "1300 px: a full-width open card (details) holds the worker, where new jobs run and the Cloud Run meter above the list-detail, which splits with a list column of at least 360 px; its summary collapses it; the three choices read When it is on / Always on my computer / Always in the cloud and wrap between words",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Batch 4 (the owner, 2026-11-09: the worker card squeezed the list, 'compute r'). Tests: packages/ui/test/admin/ops/jobs-page.test.ts, e2e/admin/specs/imagery/worker.spec.ts."
+        },
+        {
+            "id": "S-A62-BAD-JOBS-LAYOUT",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "Under 1200 px the Jobs list and the open job are stacked",
+            "asserts": "1000 px with a job open: no split, the list pane hidden, the job with its Back button",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Batch 4. Tests: packages/ui/test/admin/ops/jobs-page.test.ts."
         },
         {
             "id": "S-A62-BAD-NO-WORKER",
@@ -11349,6 +11371,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A65-HAPPY-PUBLISHED-FRAMES",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "happy",
+            "title": "Frames published as their own layers join, and the joined layer retires those layers",
+            "asserts": "two frames each published as a layer of the same date -> the join takes the first one's layer, a frame approved, publishing or published serves the dispatcher; when the join publishes, the other frame's layer leaves the manifest (published false, retired by the join) with its tiles and versions kept, a frame publishing alone after its join is born retired; the date row says so before Join frames, the layer's page links the join",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Batch 4 (docs/research/M8-join-interfaces.md §5.1; live 2026-11-09: 2 Feb 1972 F039 and F040, 1980 A038 and A039). Tests: functions/test/imagery/join*.test.ts, packages/ui/test/admin/imagery/join.test.ts, packages/ui/test/admin/layers/layer-geometry.test.ts."
+        },
+        {
+            "id": "S-A65-BAD-PART-TAKEN",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "A join whose frame a newer join took fails with its own words and offers no retry",
+            "asserts": "a frame stamped by a newer join -> the older join fails, and its retry refuses, with apiError.imagery.joinPartTaken naming the frame; the code is not retryable",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Batch 4 (docs/research/M8-join-interfaces.md §5.1): the live 1980 retry said the frame ended. Tests: functions/test/imagery/join-parts.test.ts, retry.test.ts."
         },
         {
             "id": "S-A65-BAD-PART-HELD",
@@ -15685,6 +15729,28 @@
             "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-approval.test.ts."
         },
         {
+            "id": "S-A120-HAPPY-GRID-NAMES",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner approves a grid series placed from its sheet names",
+            "asserts": "a version whose archive.method is grid-names -> the policy never approves it; the approval card shows its seams and checks against OpenStreetMap and Approve the sheet-name placement; the owner's approval publishes and the layer records provenance.archive {method grid-names, approvedBy owner}",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Batch 4 (docs/research/M20-import-local.md §5.1). Tests: functions/test/imagery/archive-approval.test.ts, packages/ui/test/admin/imagery/grid-names.test.ts."
+        },
+        {
+            "id": "S-A120-BAD-GRID-NAMES-EDITOR",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "An editor cannot approve a placement from sheet names",
+            "asserts": "an editor's imagery.approve on a grid-names version -> apiError.city.notOwner, it stays awaiting approval; the card shows no Approve, only that the owner decides",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Batch 4 (docs/research/M20-import-local.md §5.1). Tests: functions/test/imagery/archive-approval.test.ts, packages/ui/test/admin/imagery/grid-names.test.ts."
+        },
+        {
             "id": "S-A120-BAD-RIGHTS-UNCONFIRMED",
             "behaviour": "A120",
             "area": "admin",
@@ -15723,10 +15789,32 @@
             "area": "admin",
             "path": "happy",
             "title": "Upload shows Import local files with the computer connected",
-            "asserts": "a worker seen 30 s ago -> Choose a folder or zip on this computer links to the worker's own import page on 127.0.0.1:8765 with the city's latitude, in a new tab; the scanned archives open their reports",
+            "asserts": "a worker seen 30 s ago -> Choose a folder and Choose a zip in the card (batch 4: no new tab), the worker's own import page on 127.0.0.1:8765 with the city's latitude kept as a fallback link; the scanned archives open their reports",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/ui/test/admin/archive/archive.test.ts, packages/admin/test/archive/feed.test.ts."
+        },
+        {
+            "id": "S-A121-HAPPY-LOCAL-TAB",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "happy",
+            "title": "A folder or zip picked in the Imagery tab goes to the worker with its progress and Cancel",
+            "asserts": "Choose a zip in the Upload view (no new tab): the admin asks the worker on 127.0.0.1:8765 for a session, creates the archive, sends the file, has the zip read, starts the scan and follows it to reported; the card shows Sending the files: N %, then Reading the files: done of total (N %), with Cancel; the report opens by itself; the imported archive shows every series' progress and all of them together in %",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Batch 4 (the owner, 2026-11-09). Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/admin/test/archive/local-import.test.ts, packages/ui/test/admin/archive/archive.test.ts."
+        },
+        {
+            "id": "S-A121-BAD-LOCAL-TAB",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "bad",
+            "title": "An import the worker refuses, or one cancelled, stops and says why",
+            "asserts": "a worker not signed in for the city (409 notPaired), no worker answering, a refused file: the card says The import stopped and why; Cancel aborts and asks the worker to drop the archive",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Batch 4. Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/admin/test/archive/local-import.test.ts."
         },
         {
             "id": "S-A121-BAD-NO-WORKER",
@@ -15745,7 +15833,7 @@
             "area": "admin",
             "path": "happy",
             "title": "Scan and import take three inputs",
-            "asserts": "Choose (1), the zip on the worker's page (2), the report opens by itself when the worker's report arrives, Import (3): the flow stays within its budget of 3",
+            "asserts": "Choose a zip (1, the file picked in the browser's own dialog), the report opens by itself when the worker's report arrives, Import (2): the flow stays within its budget of 3",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/ui/test/admin/archive/archive.test.ts."
@@ -16224,12 +16312,56 @@
             "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_grid.py, functions/test/worker/step-archive.test.ts."
         },
         {
+            "id": "S-P20-HAPPY-GRID-BY-NAMES",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A grid that does not prove is still rendered from its sheet names for the owner",
+            "asserts": "OpenStreetMap with half the streets: the grid is fitted but its checks do not hold -> Done with archive.method grid-names, the dropped checks and seamScore, no help",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Batch 4 (docs/research/M20-import-local.md §5.1). Tests: pipeline/tests/unit/test_placing_grid.py."
+        },
+        {
+            "id": "S-P20-HAPPY-ADMIN-IMPORT",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The worker takes the admin tab's import from a Hosting origin with a session token",
+            "asserts": "OPTIONS /import/new from a Hosting origin answers 204 with Private Network Access and the session header allowed; POST /import/session while signed in for the city gives a token; new, file, scan with it from the Hosting origin; the scan's state says read of total files and carries CORS",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Batch 4. Tests: pipeline/tests/unit/test_worker_imports.py."
+        },
+        {
+            "id": "S-P20-BAD-ADMIN-IMPORT",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "No import session for another city, another site or a forged token",
+            "asserts": "another city or not signed in -> 409; another site -> 403; a forged session token -> 403; a preflight from another site -> 403",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Batch 4. Tests: pipeline/tests/unit/test_worker_imports.py."
+        },
+        {
+            "id": "S-P20-BAD-ADMIN-IMPORT-CANCELLED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A cancelled import leaves nothing on the computer",
+            "asserts": "cancel while the scan runs stops it at its next file, the state is cancelled and the archive's folder is gone; cancel while files are still sent removes it at once",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Batch 4. Tests: pipeline/tests/unit/test_worker_imports.py."
+        },
+        {
             "id": "S-P20-BAD-GRID-NOT-PROVED",
             "behaviour": "P20",
             "area": "pipeline",
             "path": "bad",
             "title": "A grid that does not prove waits for three sheets",
-            "asserts": "another town's sheets -> awaiting_gcps with the three-sheet note",
+            "asserts": "another town's sheets, no fit at all -> awaiting_gcps with the three-sheet note (batch 4: a fitted grid that does not prove renders as grid-names instead)",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_grid.py."

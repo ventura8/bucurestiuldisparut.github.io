@@ -92,6 +92,7 @@ export const en: Readonly<Record<AdminOpsKey, string>> = {
     'adminContent.jobs.empty': 'No jobs yet.',
     'adminContent.jobs.emptyHint': 'Jobs start in Historical imagery: an import, a layer georeferenced or published again, or deleted.',
     'adminContent.jobs.listLabel': 'Jobs',
+    'adminContent.jobs.computerTitle': 'Your computer, where new jobs run and Cloud Run this month',
     'adminContent.jobs.detailLabel': 'Job details',
     'adminContent.jobs.filterLabel': 'Show jobs',
     'adminContent.jobs.filter.all': 'All',

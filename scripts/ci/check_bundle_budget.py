@@ -208,6 +208,10 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # (`@hcm/shared/admin-archive`), fetched when the Upload view or an archive's report first shows: 8.6 KB measured on 2026-11-09
     # plus about 16 % (DECISIONS-for-review.md §136d).
     "archive": 10,
+    # Batch 4 (the owner, 2026-11-09: Import local files from the admin's own tab): the client that streams the picked files to the
+    # worker on the computer's loopback (`packages/admin/src/archive/local-run.ts`, the archive feed's one dynamic import), fetched on
+    # the first pick: about 1.2 KB, out of the `archive` chunk so that its 10 KB stays (DECISIONS-for-review.md §138d).
+    "local-run": 2,
 }
 # The entry and every chunk together. 620 until M7 (2026-11-02), 630 since: the total counts every lazy chunk, also those
 # loaded only on use, and M7's `worker` chunk (5.5 KB, loaded only by the Jobs page, the pipeline card and a version page)

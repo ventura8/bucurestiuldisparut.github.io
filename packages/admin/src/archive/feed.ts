@@ -3,7 +3,8 @@
  * a worker of the city was seen within `WORKER_FRESH_SECONDS` (its import page is where files are chosen: a page of `web.app` cannot
  * reach the computer's loopback), the city's scanned archives (`cities/{city}/archives`, newest first), the routed archive's report
  * with the owner's edits (include, title, year, rights confirmed), the one Import click (`imagery.archiveImport`), and then each
- * series' progress from its version and its job, live.
+ * series' progress from its version and its job, live. Batch 4: the folder or zip picked in the admin's own tab, streamed to the
+ * worker with its progress and Cancel (`local-import.ts`).
  */
 import {
     archiveDocSchema,
@@ -28,10 +29,13 @@ import type { ContentServices, Stored, StoreFailure } from '../content/services.
 import { refusalOf } from '../imagery/api.js';
 import { Store } from '../state/store.js';
 import type { NoticeInput } from '../state/state.js';
+import type { LocalImport } from './local-import.js';
+import { LOCAL_IDLE, type LocalFile, type LocalImportState, type LocalTransport } from './local-state.js';
 import {
     choicesOf,
     editsOf,
     importUrlOf,
+    latitudeOf,
     progressOf,
     rowOf,
     shareOf,
@@ -67,6 +71,8 @@ export interface ArchiveState {
     readonly importing: boolean;
     readonly result: { readonly today: number; readonly waiting: number } | null;
     readonly refusal: NoticeInput | null;
+    /** Batch 4: the folder or zip on its way to the worker, and its scan. */
+    readonly local: LocalImportState;
 }
 
 interface ArchiveIntents {
@@ -77,11 +83,14 @@ interface ArchiveIntents {
     confirmRights(seriesId: string, by: string): void;
     import(): Promise<boolean>;
     retry(): void;
+    /** Batch 4: sends the picked files (a folder's, or one zip) to the worker and follows its scan. */
+    importLocal(files: readonly LocalFile[], source: 'folder' | 'zip', name: string): Promise<void>;
+    cancelLocal(): Promise<void>;
 }
 
 const INITIAL: ArchiveState = {
     ...{ status: 'loading', failure: null, connected: false, importUrl: importUrlOf(WORKER_PORT, undefined), archives: [] },
-    ...{ open: null, edits: {}, progress: {}, share: 0, importing: false, result: null, refusal: null },
+    ...{ open: null, edits: {}, progress: {}, share: 0, importing: false, result: null, refusal: null, local: LOCAL_IDLE },
 };
 
 /**
@@ -110,11 +119,14 @@ export class ArchiveFeed {
     readonly #versions: LiveList<LayerVersionDoc, Stored<LayerVersionDoc>>;
     readonly #jobs: LiveList<JobDoc, Stored<JobDoc>>;
     readonly intents: ArchiveIntents;
+    readonly #transport: LocalTransport | undefined;
+    #local: Promise<LocalImport> | null = null;
     #stale: unknown = null;
 
-    constructor(services: ContentServices) {
+    constructor(services: ContentServices, transport?: LocalTransport) {
         this.#services = services;
         this.#cell = new Store<ArchiveState>(INITIAL, services.log);
+        this.#transport = transport;
         const { store, clock, cityId } = services;
         const denied = (): void => {
             services.denied();
@@ -207,7 +219,25 @@ export class ArchiveFeed {
                 this.#archives.retry();
                 this.#archive.retry();
             },
+            importLocal: async (files, source, name) => {
+                const city = this.#city.state.doc?.data;
+                const local = await this.#localImport();
+                await local.run({ city: this.#services.cityId, latitude: latitudeOf(city), name, source, files });
+            },
+            cancelLocal: async () => {
+                await (await this.#local)?.cancel();
+            },
         };
+    }
+
+    /** Batch 4: the client of the worker's loopback, the lazy `local-run` chunk, fetched on the first pick. */
+    #localImport(): Promise<LocalImport> {
+        this.#local ??= import('./local-run.js').then((chunk) =>
+            chunk.createLocalImport(this.#transport, this.#services.clock, (local) => {
+                this.#cell.update({ local });
+            }),
+        );
+        return this.#local;
     }
 
     #open(archiveId: string | null): void {
@@ -314,6 +344,6 @@ export class ArchiveFeed {
 }
 
 /** The archive's feed over the area's services (the Imagery store hands it to the elements: `ImageryIntents.archive`). */
-export function createArchiveFeed(services: ContentServices): ArchiveFeed {
-    return new ArchiveFeed(services);
+export function createArchiveFeed(services: ContentServices, transport?: LocalTransport): ArchiveFeed {
+    return new ArchiveFeed(services, transport);
 }

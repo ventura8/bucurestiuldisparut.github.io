@@ -20,6 +20,8 @@ origins, answer CORS (`Access-Control-Allow-Origin: <origin>`, `Vary: Origin`) a
 | `OPTIONS /state`, `OPTIONS /pair` from a Hosting origin | 204, the CORS preflight (403 from any other origin) |
 | `POST /pair` `{code}` from a Hosting origin | 202 and the state: the worker pairs with the code at its loop's next pass |
 | `GET /import`, `POST /import/...` | M20's import of a local archive (`imports.py`, docs/research/M20-import-local.md §2.1) |
+| `POST /import/session` `{city}` from a Hosting origin | 201 `{token}` while signed in for that city, else 409 |
+| `OPTIONS /import/...` from a Hosting origin | 204, the preflight of the admin's own import (batch 4) |
 | anything else | 404, or 405 for another method |
 
 `POST` and `DELETE` answer 403 unless `Origin` is the page's, the body is JSON (`Content-Type: application/json`, which a
@@ -27,6 +29,11 @@ cross-site form cannot send without a preflight nobody answers) and `X-HCM-Worke
 per process, written only into the page). `POST /pair` has no CSRF token (the admin's page cannot know it): its guard is
 the Origin allow-list (a page of another site cannot send one of the project's origins, and its JSON body needs a
 preflight only those origins pass) and the code itself, single-use and minted by a city editor minutes before.
+
+Batch 4 (the owner, 2026-11-09: no new tab): the admin's Import local files sends the import's requests itself, from a Hosting origin.
+It first asks `POST /import/session` for a token, which the worker gives only while it is paired and signed in for the city the admin
+names (the Hosting origins are the project's own; 32 random bytes, for this process). Every import request then carries it as
+`X-HCM-Session` in place of the page's CSRF header, and CORS and Private Network Access answer those paths for the Hosting origins only.
 """
 
 import hmac
@@ -54,9 +61,10 @@ JSON_TYPE: Final = "application/json"
 POLL_SECONDS: Final = 0.2
 # The paths the admin reads and posts to from its Hosting origin (auto-pair), and the preflight's fixed answers.
 CORS_PATHS: Final = ("/state", "/pair")
+SESSION_HEADER: Final = "x-hcm-session"
 PREFLIGHT_HEADERS: Final = (
     ("Access-Control-Allow-Methods", "GET, POST"),
-    ("Access-Control-Allow-Headers", "content-type"),
+    ("Access-Control-Allow-Headers", "content-type, x-hcm-path, x-hcm-session"),
     ("Access-Control-Max-Age", "600"),
 )
 _STATIC: Final = {
@@ -147,6 +155,7 @@ class LocalServer:
         self._imports: ImportRoutes | None = None
         self._settings = settings
         self._cors_origins = frozenset(cors_origins)
+        self._sessions: set[str] = set()
         self._httpd = make_server(bind[0], bind[1], self._wsgi, server_class=_ThreadingServer, handler_class=_QuietHandler)
         self._thread = threading.Thread(target=self._httpd.serve_forever, kwargs={"poll_interval": POLL_SECONDS}, daemon=True)
         self.headers: Mapping[str, str] = {
@@ -260,9 +269,29 @@ class LocalServer:
     # --- M20's import (imports.py) ------------------------------------------------------------------------------
 
     def _import_allowed(self, request: Request) -> bool:
-        """The page's origin and its CSRF token (a file's body is not JSON, so the type is not asked of an upload)."""
+        """The page's origin and its CSRF token (a file's body is not JSON: the type is not asked of an upload), or the admin's session."""
         token = request.headers.get(CSRF_HEADER, "").encode("utf-8")
-        return self._origin_allowed(request.headers.get("origin")) and hmac.compare_digest(token, self._settings.csrf.encode("utf-8"))
+        own = self._origin_allowed(request.headers.get("origin")) and hmac.compare_digest(token, self._settings.csrf.encode("utf-8"))
+        return own or self._session_allowed(request)
+
+    def _session_allowed(self, request: Request) -> bool:
+        """Batch 4: a Hosting origin with a token `POST /import/session` gave (compared in constant time)."""
+        token = request.headers.get(SESSION_HEADER, "").encode("utf-8")
+        known = any(hmac.compare_digest(token, each.encode("utf-8")) for each in self._sessions)
+        return self.cors_allowed(request.headers.get("origin")) and known
+
+    def _import_session(self, request: Request) -> Reply:
+        """A token for the admin's import, while this worker is signed in for the city it names."""
+        if not self._pair_allowed(request) or request.body is None:
+            return _json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
+        body, state = _parsed(request.body), self._app.state()
+        # The Hosting origins are the project's own, so the city is what is left to match.
+        paired = state.get("signedIn") is True and state.get("city") == body.get("city")
+        if not paired:
+            return _json(HTTPStatus.CONFLICT, {"error": "notPaired"})
+        token = secrets.token_hex(32)
+        self._sessions.add(token)
+        return _json(HTTPStatus.CREATED, {"token": token})
 
     def upload(self, request: Request, archive_id: str, stream: BinaryIO, length: int) -> Reply:
         """`POST /import/<id>/file`: the body streamed into the archive, every guard first."""
@@ -272,9 +301,15 @@ class LocalServer:
             return _json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
         return self._imports.upload(archive_id, request.headers, stream, length)
 
+    def _import_post_allowed(self, request: Request) -> bool:
+        """The page's origin, JSON and token, or (batch 4) JSON from a Hosting origin with the admin's session."""
+        return self._state_change_allowed(request) or (self._json_body(request) and self._session_allowed(request))
+
     def _import_post(self, request: Request) -> Reply:
-        """`POST /import/new`, `/import/<id>/zip`, `/import/<id>/scan`: JSON, the page's origin and token."""
-        if self._imports is None or not self._state_change_allowed(request):
+        """`POST /import/new`, `<id>/zip`, `<id>/scan`, `<id>/cancel`: JSON, the page's origin and token, or the admin's session."""
+        if request.path == "/import/session":
+            return self._import_session(request)
+        if self._imports is None or not self._import_post_allowed(request):
             return _json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
         if request.body is None:
             return _json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {})
@@ -294,8 +329,9 @@ class LocalServer:
         return _json(HTTPStatus.OK, self._app.state())
 
     def preflight(self, request: Request) -> Reply:
-        """The CORS (and Private Network Access) preflight of the admin's `GET /state` and `POST /pair`."""
-        allowed = request.path in CORS_PATHS and self.cors_allowed(request.headers.get("origin"))
+        """The CORS (and Private Network Access) preflight of the admin's `GET /state`, `POST /pair` and (batch 4) its import."""
+        cors_path = request.path in CORS_PATHS or request.path.startswith(IMPORT_PREFIX)
+        allowed = cors_path and self.cors_allowed(request.headers.get("origin"))
         return (HTTPStatus.NO_CONTENT, b"", "text/plain") if allowed else _json(HTTPStatus.FORBIDDEN, {})
 
     def _guarded(self, request: Request, action: Callable[[Mapping[str, object]], Reply]) -> Reply:
@@ -338,7 +374,7 @@ def _import_route(imports: ImportRoutes, rest: str, body: Mapping[str, object]) 
     if rest == "new":
         return imports.new()
     archive_id, _, action = rest.partition("/")
-    routes = {"zip": imports.unzip, "scan": imports.scan}
+    routes = {"zip": imports.unzip, "scan": imports.scan, "cancel": imports.cancel}
     route = routes.get(action)
     return route(archive_id, body) if route is not None else _json(HTTPStatus.NOT_FOUND, {})
 

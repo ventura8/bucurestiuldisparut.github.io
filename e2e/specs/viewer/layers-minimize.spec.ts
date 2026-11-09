@@ -18,8 +18,8 @@ import {
 /**
  * Minimizing the Layers panel (behaviour V03; the owner, 2026-11-08: "viewer should be able to minimize the layers
  * panel"). On an extra-large window the pane is always docked: its close button ("Restrânge straturile", expanded)
- * minimizes it to a rail on the same edge whose one button (collapsed) brings it back, the map takes the space, and
- * nothing the visitor set is lost. The rail lasts for the session, also when the window leaves the extra-large layout
+ * minimizes it to one floating button on the map's leading edge (collapsed; batch 4, the owner 2026-11-09: no rail) that brings it
+ * back, the map takes the whole width, and nothing the visitor set is lost. The minimized pane lasts for the session, also when the window leaves the extra-large layout
  * and comes back. Everywhere else the panel is a sheet or a pane its close button already closes; opened again, it
  * shows the same values.
  */
@@ -54,7 +54,7 @@ function railOf(page: Page, lang: Locale): { close: ReturnType<Page['getByRole']
 }
 
 test(
-    'At 1920 px the docked Layers pane minimizes to a rail and comes back, the map taking the space',
+    'At 1920 px the docked Layers pane minimizes to one floating button and comes back, the map taking the whole width',
     { tag: '@S-V03-HAPPY-MINIMIZE' },
     async ({ page, lang }) => {
         await boot(page, { width: 1920, height: 1080 }, lang, '15/44.42700/26.08530&layers=e2e-1966');
@@ -70,12 +70,17 @@ test(
         await close.click();
         await expect(rail).toBeFocused();
         await expect(rail).toHaveAttribute('aria-expanded', 'false');
-        expect(await width(page, '.pane.leading')).toBe(88);
-        expect(await width(page, '.map-pane')).toBe(map + 272);
+        expect(await width(page, '.pane.leading')).toBe(0);
+        expect(await width(page, '.map-pane')).toBe(map + 360);
+        const button = await rail.boundingBox();
+        const pane = await viewer(page).locator('.map-pane').boundingBox();
+        expect([(button?.x ?? 0) - (pane?.x ?? 0), (button?.y ?? 0) - (pane?.y ?? 0)], "floating at the map pane's leading gutter").toEqual(
+            [24, 24],
+        );
         const canvas = viewer(page).locator('canvas.mapboxgl-canvas');
         await expect
             .poll(() => canvas.evaluate((element) => element.getBoundingClientRect().width), { message: 'Mapbox resized its canvas' })
-            .toBe(map + 272);
+            .toBe(map + 360);
 
         await page.keyboard.press('Enter');
         await expect(close).toBeFocused();
@@ -146,7 +151,7 @@ test(
         await page.setViewportSize({ width: 1920, height: 1080 });
 
         await expect(rail).toHaveAttribute('aria-expanded', 'false');
-        expect(await width(page, '.pane.leading')).toBe(88);
+        expect(await width(page, '.pane.leading')).toBe(0);
         await expect(close).toHaveCount(0);
         expect(await currentHash(page)).toBe(hash);
     },

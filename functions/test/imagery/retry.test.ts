@@ -388,7 +388,7 @@ describe('imagery.retry of a join (M8)', () => {
 
         const failure = await failureOf(retryJoin(world));
 
-        expect(failure.details).toMatchObject({ code: 'apiError.imagery.joinPartGone', params: { frame: F039 } });
+        expect(failure.details).toMatchObject({ code: 'apiError.imagery.joinPartTaken', params: { frame: F039 } });
         expect((await readJob(world, JOIN))?.status).toBe('failed');
         expect((await readVersion(world, JOIN))?.state).toBe('failed');
     });
@@ -405,7 +405,7 @@ describe('imagery.retry of a join (M8)', () => {
         });
     });
 
-    it('badPath_atPublishAFramePublishedOnItsOwnMeanwhileRefuses_nothingIsQueued', async () => {
+    it('happyPath_atPublishAFramePublishedOnItsOwnMeanwhileStillServes_thePublishIsQueued_live1980', async () => {
         const world = await readyWorld();
         const approval = { auto: false, by: 'u-admin', at: at(NOW) };
         await joinFailedOfTwo(
@@ -420,8 +420,8 @@ describe('imagery.retry of a join (M8)', () => {
             mapbox: { tilesetId: 'a.b', origin: 'mts', publishedAt: at(NOW) },
         });
 
-        expect((await failureOf(retryJoin(world))).details).toMatchObject({ code: 'apiError.imagery.joinPartGone' });
-        expect(world.deps.tasks.queued).toEqual([]);
+        await expect(retryJoin(world)).resolves.toMatchObject({ status: 'awaiting_approval' });
+        expect(world.deps.tasks.queued).toHaveLength(1);
     });
 
     it('happyPath_atPublishFramesStillWaitingGoBackToThePublisher', async () => {
@@ -438,15 +438,17 @@ describe('imagery.retry of a join (M8)', () => {
         expect((await readVersion(world, JOIN))?.state).toBe('approved');
     });
 
-    it.each(['apiError.imagery.joinSeamTooFar', 'apiError.imagery.joinNoFrames', 'apiError.imagery.joinPartMissing'] as const)(
-        'badPath_%sNoRetryCures',
-        async (code) => {
-            const world = await readyWorld();
-            await joinFailedOfTwo(world, {}, { error: { code, message: code } });
+    it.each([
+        'apiError.imagery.joinSeamTooFar',
+        'apiError.imagery.joinNoFrames',
+        'apiError.imagery.joinPartMissing',
+        'apiError.imagery.joinPartTaken',
+    ] as const)('badPath_%sNoRetryCures', async (code) => {
+        const world = await readyWorld();
+        await joinFailedOfTwo(world, {}, { error: { code, message: code } });
 
-            expect((await failureOf(retryJoin(world))).details).toMatchObject({ code: 'apiError.imagery.versionState' });
-        },
-    );
+        expect((await failureOf(retryJoin(world))).details).toMatchObject({ code: 'apiError.imagery.versionState' });
+    });
 });
 
 describe('imagery.retry of a side job (M12)', () => {

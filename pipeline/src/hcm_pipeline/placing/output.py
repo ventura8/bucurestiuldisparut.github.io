@@ -44,6 +44,7 @@ class Placement:
     rival_clean: bool
     scale: int | None = None
     paper_transparent: bool = True
+    seam: float | None = None
 
     def as_record(self) -> dict[str, object]:
         record: dict[str, object] = {
@@ -55,7 +56,12 @@ class Placement:
             "measuredPct": min(100.0, self.checked.measured_pct),
             "rivalClean": self.rival_clean,
         }
-        optional = {"scaleDenominator": self.scale, "checkpointRmseM": self._rmse(), "residuals": self._residuals()}
+        optional = {
+            "scaleDenominator": self.scale,
+            "checkpointRmseM": self._rmse(),
+            "residuals": self._residuals(),
+            "seamScore": None if self.seam is None else round(max(-1.0, min(1.0, self.seam)), 3),
+        }
         return record | {key: value for key, value in optional.items() if value is not None}
 
     def _rmse(self) -> float | None:

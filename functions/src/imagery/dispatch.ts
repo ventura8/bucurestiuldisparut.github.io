@@ -38,7 +38,7 @@ import type { Ports } from '../ports/index.js';
 import { endWork } from './end.js';
 import { askForOk, needsFreeTierOk } from './free-tier.js';
 import { cityIds } from './limits.js';
-import { partsReady } from './join-parts.js';
+import { partRefusal, partsReady } from './join-parts.js';
 import { handedOver, machineOf } from './machine.js';
 import { placeFor } from './place.js';
 import { enqueuePublish } from './publish-queue.js';
@@ -290,7 +290,7 @@ async function dispatchJoin(deps: DispatchDeps, cityId: string, jobId: string, j
     if (ready.kind === 'hold') {
         return wait(deps, cityId, jobId, 'parts');
     }
-    const error = { code: 'apiError.imagery.joinPartGone', params: { frame: ready.frame } } as const;
+    const error = { code: partRefusal(ready).code, params: { frame: ready.frame } };
     await endWork(deps, cityId, jobId, { status: 'failed', versionState: 'failed', by: IMAGERY_WRITER, error });
     return 'failed';
 }

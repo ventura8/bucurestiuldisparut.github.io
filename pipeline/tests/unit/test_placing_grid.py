@@ -15,7 +15,7 @@ from hcm_pipeline.steps.place import PlaceStep
 from tests.fakes.world import CITY, PipelineWorld
 from tests.synthetic.scenes import CENTRE
 from tests.synthetic.town import Drawing, Line, TownSpec, draw_map, town_lines, write_map
-from tests.unit.placing_support import originals, series_context
+from tests.unit.placing_support import answer_with, originals, series_context
 
 LETTERS = "ABCD"
 TRUE_ORDER = 3
@@ -83,6 +83,7 @@ def test_happy_path_a_sheet_series_is_placed_from_its_names_its_quarter_order_re
     report = world.version()["archive"]
     assert isinstance(report, dict)
     assert report["method"] == "grid"
+    assert 0.0 < report["seamScore"] <= 1.0
     assert report["paperTransparent"] is True
     assert report["checkpointRmseM"] < 15
     assert report["checksDropped"] == 0
@@ -105,6 +106,7 @@ def test_happy_path_a_grid_the_owner_confirmed_places_the_series_without_a_searc
 
 def test_bad_path_a_series_of_another_town_does_not_prove_its_grid(world: PipelineWorld, tmp_path: Path) -> None:
     """Scenarios: S-P20-BAD-GRID-NOT-PROVED"""
+    # No fit at all: the grid waits for three sheets.
     ctx = grid_series(world, tmp_path, lines=town_lines(TownSpec(seed=41, block_m=140.0)))
 
     result = PlaceStep().run(ctx)
@@ -113,6 +115,26 @@ def test_bad_path_a_series_of_another_town_does_not_prove_its_grid(world: Pipeli
     help_item = world.version()["help"]
     assert isinstance(help_item, dict)
     assert help_item["note"] == grid.NOT_PROVED
+
+
+def test_happy_path_a_fitted_grid_that_does_not_prove_is_rendered_from_its_names_for_the_owner(
+    world: PipelineWorld, tmp_path: Path
+) -> None:
+    """Scenarios: S-P20-HAPPY-GRID-BY-NAMES"""
+    # OpenStreetMap has half the streets: the fit is found, but its checks do not hold.
+    ctx = grid_series(world, tmp_path)
+    answer_with(world, town_lines()[::2])
+
+    result = PlaceStep().run(ctx)
+
+    assert isinstance(result, Done)
+    version = world.version()
+    report = version["archive"]
+    assert isinstance(report, dict)
+    assert report["method"] == "grid-names"
+    assert report["checksDropped"] > 0
+    assert 0.0 < report["seamScore"] <= 1.0
+    assert "help" not in version
 
 
 def test_bad_path_sheets_without_frames_or_a_scheme_wait_for_a_person(world: PipelineWorld, tmp_path: Path) -> None:

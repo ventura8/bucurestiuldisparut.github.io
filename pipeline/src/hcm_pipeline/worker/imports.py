@@ -8,10 +8,12 @@
 | `POST /import/<id>/file` (any body, `X-HCM-Path`: the file's relative path, URI-encoded) | 201 `{path}`: one file, streamed |
 | `POST /import/<id>/zip` (JSON `{path}`) | 200 `{written, refused}`: an uploaded zip read in place (every entry checked) |
 | `POST /import/<id>/scan` (JSON `{name, source, latitude?}`) | 202: the scan starts; it reports to the server when done |
-| `GET /import/<id>` | the scan's state: `scanning`, `reported` (with its counts) or `failed` (with its code) |
+| `POST /import/<id>/cancel` (JSON) | 200: the scan stops at its next file and the archive's folder goes |
+| `GET /import/<id>` | the scan's state: `scanning` (`read` of `total` files), `reported` (its counts), `failed` (its code), `cancelled` |
 
 Every POST needs what the main page's do: the page's own origin and the CSRF header; a file's body is not JSON, which is why only
-`/file` takes another type (a cross-site form cannot set `X-HCM-Path` or the CSRF header without a preflight nobody answers).
+`/file` takes another type (a cross-site form cannot set `X-HCM-Path` or the CSRF header without a preflight nobody answers). Batch 4
+(the owner, 2026-11-09): the admin's own tab sends the same requests from a Hosting origin with a session token instead (`server.py`).
 """
 
 import json
@@ -62,6 +64,10 @@ def chunks_of(stream: BinaryIO, length: int) -> Iterator[bytes]:
         yield chunk
 
 
+class ScanCancelledError(RuntimeError):
+    """The owner cancelled the import while its scan ran."""
+
+
 @dataclass
 class ImportRoutes:
     """The import routes over an `ArchiveStore`; `report` sends a scan's report to the server."""
@@ -69,6 +75,7 @@ class ImportRoutes:
     store: ArchiveStore
     report: Reporter
     states: dict[str, dict[str, object]] = field(default_factory=dict)
+    cancelled: set[str] = field(default_factory=set)
     now: Callable[[], datetime] = lambda: datetime.now(UTC)
     # How a scan is started: in its own daemon thread (tests run it at once).
     start: Callable[[Callable[[], None]], None] = lambda work: threading.Thread(target=work, daemon=True).start()
@@ -111,22 +118,46 @@ class ImportRoutes:
             self.store.files(archive_id)
         except IntakeError:
             return reply(HTTPStatus.NOT_FOUND, {})
-        self.states[archive_id] = {"state": "scanning"}
+        self.states[archive_id] = {"state": "scanning", "read": 0, "total": 0}
+        self.cancelled.discard(archive_id)
         kept = dict(body)
         self.start(lambda: self.run_scan(archive_id, kept))
         return reply(HTTPStatus.ACCEPTED, self.states[archive_id])
 
+    def cancel(self, archive_id: str, _body: Mapping[str, object]) -> Reply:
+        """Batch 4: the scan stops at its next file (or, while files are still sent, at once) and the archive's folder goes."""
+        try:
+            self.store.folder(archive_id)
+        except IntakeError:
+            return reply(HTTPStatus.NOT_FOUND, {})
+        self.cancelled.add(archive_id)
+        if self.states.get(archive_id, {}).get("state") != "scanning":
+            self.store.discard(archive_id)
+            self.states[archive_id] = {"state": "cancelled"}
+        return reply(HTTPStatus.OK, {"state": "cancelled"})
+
+    def _progress(self, archive_id: str) -> Callable[[int, int], None]:
+        def read(done: int, total: int) -> None:
+            if archive_id in self.cancelled:
+                raise ScanCancelledError(archive_id)
+            self.states[archive_id] = {"state": "scanning", "read": done, "total": total}
+
+        return read
+
     def run_scan(self, archive_id: str, body: Mapping[str, object]) -> None:
-        """The scan and its report; any failure is the state's, never the server's."""
+        """The scan and its report; any failure is the state's, never the server's; a cancelled one leaves nothing."""
         try:
             self.states[archive_id] = self.scanned(archive_id, body)
+        except ScanCancelledError:
+            self.store.discard(archive_id)
+            self.states[archive_id] = {"state": "cancelled"}
         except Exception as error:  # the page must learn of any failure: the worker itself goes on
             LOG.exception("archive scan failed")
             self.states[archive_id] = {"state": "failed", "error": getattr(error, "code", "apiError.internal")}
 
     def scanned(self, archive_id: str, body: Mapping[str, object]) -> dict[str, object]:
         context = report.Context(_latitude(body.get("latitude")), self.now().year, Sidecar())
-        made = self.store.scan(archive_id, context)
+        made = self.store.scan(archive_id, context, self._progress(archive_id))
         sent: dict[str, object] = {
             "archiveId": archive_id,
             "name": str(body.get("name") or archive_id)[:200],

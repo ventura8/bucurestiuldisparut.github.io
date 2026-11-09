@@ -1,6 +1,6 @@
 /**
- * The extra-large Layers pane minimizes to a rail on the same edge and comes back (the owner, 2026-11-08): the close
- * button minimizes instead of closing, and says so (its name, `aria-expanded`), the rail's one button restores, each tells
+ * The extra-large Layers pane minimizes to one floating button on the map's leading edge and comes back (the owner, 2026-11-08): the close
+ * button minimizes instead of closing, and says so (its name, `aria-expanded`), that button restores, each tells
  * the viewer (`hcm-layers-minimize`, kept in the store), the focus follows both ways, and the switches and sliders, which
  * are the store's, come back as they were.
  */
@@ -33,7 +33,7 @@ function listed(element: HcmLayerPanel): unknown {
     return list.items.map(({ id, visible, opacity }) => [id, visible, opacity]);
 }
 
-describe('<hcm-layer-panel>: minimize to a rail', () => {
+describe('<hcm-layer-panel>: minimize to one button', () => {
     beforeAll(() => {
         defineKitDoubles();
         defineHcmLayerPanel();
@@ -72,14 +72,14 @@ describe('<hcm-layer-panel>: minimize to a rail', () => {
         expect(deepActiveElement()?.getAttribute('aria-label')).toBe('Restrânge straturile');
     });
 
-    it('happyPath_theRailAndItsCollapseSpeakEnglish', async () => {
+    it('happyPath_theButtonAndItsCollapseSpeakEnglish_noRail', async () => {
         const element = await pane({ locale: 'en' });
         await expect.element(page.getByRole('button', { name: 'Collapse layers' })).toHaveAttribute('aria-expanded', 'true');
 
         element.minimized = true;
 
-        await expect.element(page.getByRole('region', { name: 'Layers' })).toBeVisible();
         await expect.element(page.getByRole('button', { name: 'Layers' })).toHaveAttribute('aria-expanded', 'false');
+        expect(element.shadowRoot?.querySelector('section')).toBeNull();
     });
 
     it('badPath_minimizingLosesNoSwitchOrSlider', async () => {

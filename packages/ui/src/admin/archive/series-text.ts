@@ -105,3 +105,16 @@ export function stateText(locale: Locale, progress: SeriesProgressPort): string 
     const line = progress.state === null ? undefined : LINES[progress.state];
     return (line ?? processing)(locale, progress);
 }
+
+/** Batch 4: how far a series' processing went, 0 to 1: its job's share while its version is processing, else all of it (it ended or waits for a person). */
+function doneShare(progress: SeriesProgressPort): number {
+    return progress.state === 'processing' || progress.state === null ? (progress.progress ?? 0) : 1;
+}
+
+/** Batch 4: every imported series' processing together, in whole percent (the owner, 2026-11-09: progress per series and overall). */
+export function overallPercent(progresses: readonly SeriesProgressPort[]): number {
+    if (progresses.length === 0) {
+        return 0;
+    }
+    return Math.round((progresses.reduce((sum, each) => sum + doneShare(each), 0) / progresses.length) * 100);
+}
