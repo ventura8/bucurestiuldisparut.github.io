@@ -39,6 +39,11 @@ function width(page: Page, selector: string): Promise<number> {
         .evaluate((element) => element.getBoundingClientRect().width);
 }
 
+/** The photo sheet's heading in the trailing pane (the sheet's host is `display: contents`, which Playwright calls hidden). */
+function photoHeading(page: Page): ReturnType<Page['getByRole']> {
+    return viewer(page).locator('.pane.trailing hcm-photo-sheet').getByRole('heading').first();
+}
+
 /** The leading pane's collapse button and its rail's button. */
 function railOf(page: Page, lang: Locale): { close: ReturnType<Page['getByRole']>; rail: ReturnType<Page['getByRole']> } {
     const pane = viewer(page).locator('.pane.leading');
@@ -96,13 +101,13 @@ test(
         await close.click();
         await expect(rail).toBeVisible();
         expect(await currentHash(page)).toBe(hash);
-        await expect(viewer(page).locator('.pane.trailing hcm-photo-sheet')).toBeVisible();
+        await expect(photoHeading(page)).toBeVisible();
         await rail.click();
 
         await expect(slider).toHaveAttribute('aria-valuenow', value ?? '');
         await expect(visibilitySwitch(page, lang, LAYER_LABEL)).toBeChecked();
         expect(await currentHash(page)).toBe(hash);
-        await expect(viewer(page).locator('.pane.trailing hcm-photo-sheet')).toBeVisible();
+        await expect(photoHeading(page)).toBeVisible();
     },
 );
 

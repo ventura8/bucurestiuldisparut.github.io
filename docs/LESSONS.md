@@ -2947,3 +2947,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the `tests` stage (the builder's run and again here).
     - Fix and pin: `withViewerBaseline` lays the city's tokens over the viewer's baseline, scheme by scheme (`viewer-baseline.test.ts`; the partial test theme now passes the ring checks); a standalone element test applies `VIEWER_BASELINE` itself, as the viewer would.
     - **Before dropping a fallback, prove the value is set on every path that reaches it: here the proof covered the baseline, not a city's theme.**
+496. **A Playwright check of the photo sheet beside the minimized pane never saw it, though it was on screen.**
+    - Seen: 2026-11-09, track/settings, `layers-minimize.spec.ts` (S-V03-BAD-MINIMIZE-KEEPS-VALUES) at `fn-l1440-ro`: `toBeVisible()` on `.pane.trailing hcm-photo-sheet` timed out with the sheet in the screenshot.
+    - Cause: the sheet's host is `display: contents`, which has no box; Playwright looks for a visible child among the host's light-DOM children only, and the sheet draws everything in its shadow root.
+    - Found by: the targeted Playwright run before the commit (the spec had not run since it was written).
+    - Fix and pin: the spec asserts the sheet's heading (`photoHeading`), as `input.spec.ts` does.
+    - **Assert what the visitor sees inside a `display: contents` element (a heading, a control), never the host itself.**
