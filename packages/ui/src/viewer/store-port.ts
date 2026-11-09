@@ -107,6 +107,8 @@ export interface ViewerStorePort {
     setView(view: MapView): void;
     /** Moves the camera (and records the view): "show my location"; the URL hash keeps the view it had until the camera moves. */
     flyTo(view: MapView): void;
+    /** The zoom buttons: one level in (1) or out (-1), within the city's zoom range (the hash follows the camera). */
+    zoomBy(step: number): void;
     /** Logs the `share` analytics event after the page was shared or its link copied. */
     logShare(): void;
     setWindowSize(width: number, height: number): void;

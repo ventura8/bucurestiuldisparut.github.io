@@ -26,6 +26,7 @@ const FLOATING = [
     '.dock.timeline hcm-timeline',
     '.dock.menu hcm-fab-menu',
     '.dock.chip hcm-button',
+    '.dock.zoom',
     'a.mapboxgl-ctrl-logo',
     '.mapboxgl-ctrl-attrib',
 ];

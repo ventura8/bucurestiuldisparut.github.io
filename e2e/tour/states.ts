@@ -1,5 +1,5 @@
 import type { Locale } from '@hcm/shared';
-import { expect, type BrowserContext, type Locator, type Page, type Route } from '@playwright/test';
+import { expect, type BrowserContext, type Page, type Route } from '@playwright/test';
 
 import { IMAGERY_STATES } from '../admin/specs/imagery/states.js';
 import { ADMIN_SECTION_STATES } from './admin-sections.js';
@@ -9,8 +9,9 @@ import { STORY_JOURNEY, storyStates } from './story-states.js';
 import { INPUT_JOURNEY, INPUT_STATES } from './input-states.js';
 import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
 import { MY_LOCATION_STATES } from './my-location-states.js';
+import { ZOOM_JOURNEY, ZOOM_STATES } from './zoom-states.js';
 import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
-import { hasBottomSheets, toDetent } from './sheets.js';
+import { hasBottomSheets, scrollToEnd, toDetent } from './sheets.js';
 import { OPS_STATES } from '../admin/specs/ops/states.js';
 import { POIS_STATES } from '../admin/specs/pois/states.js';
 import { SITE_ORIGIN } from '../fixtures/world.js';
@@ -93,23 +94,6 @@ function leadOf(lang: Locale, key: Parameters<typeof t>[1], params: Readonly<Rec
     return t(lang, key, { ...params, [varying]: '\u0000' }).split('\u0000')[0] ?? '';
 }
 
-/** Scrolls the scrolling part of `host`'s dialog to its end (About is taller than a phone). */
-async function scrollToEnd(host: Locator): Promise<void> {
-    await host.evaluate((element) => {
-        const visit = (root: Element | ShadowRoot): void => {
-            for (const node of Array.from(root.querySelectorAll('*'))) {
-                if (node.scrollHeight > node.clientHeight + 1 && ['auto', 'scroll'].includes(getComputedStyle(node).overflowY)) {
-                    node.scrollTop = node.scrollHeight;
-                }
-                if (node.shadowRoot !== null) {
-                    visit(node.shadowRoot);
-                }
-            }
-        };
-        visit(element.shadowRoot ?? element);
-    });
-}
-
 /** The photo the photo states open, and a view near it. */
 const PHOTO = 'strandul-opereta-1976';
 const PHOTO_TITLE = 'Ștrandul Operetă';
@@ -120,6 +104,7 @@ const POI = 'fixture-cladire';
 const VIEWER_STATES = {
     ...INPUT_STATES,
     ...MY_LOCATION_STATES,
+    ...ZOOM_STATES,
     'skip-link': {
         title: 'The first Tab: the skip link shows over the map with a focus ring',
         enter: async ({ page, lang }) => {
@@ -459,6 +444,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
         states: ['poi', 'poi-peek', 'poi-full', 'about', 'about-end'],
     },
     INPUT_JOURNEY,
+    ZOOM_JOURNEY,
     {
         title: 'Swipe compare: the divider at 50 % and at both edges, from the keyboard; the toggle of a compact window; the chooser',
         id: 'compare',

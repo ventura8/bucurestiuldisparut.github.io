@@ -12,7 +12,10 @@ export type IconButtonVariant = 'standard' | 'filled' | 'tonal' | 'outlined';
  * An M3 icon button (40 px in a 48 px target). `label` is the accessible name and is required. With `toggle` it is a
  * toggle button (`aria-pressed`): a click flips `selected` (the icon fills, the shape squares off) and fires
  * `hcm-change` with `{selected}`. Fires the native `click` either way. `variant` gives map controls a container so
- * they stay visible on any map.
+ * they stay visible on any map. `softDisabled` (`soft-disabled`) looks disabled and says so (`aria-disabled`) but keeps
+ * the focus and its place in the Tab order: the map's zoom buttons at the end of the zoom range, where a disabled button
+ * would drop the focus of a visitor pressing Enter. Its clicks still fire; the owner ignores them (the map's zoom
+ * buttons drop their listener). It shows no hover or pressed layer and turns GrayText in forced colours.
  */
 export class HcmIconButton extends LitElement {
     static override readonly shadowRootOptions: ShadowRootInit = { ...LitElement.shadowRootOptions, delegatesFocus: true };
@@ -23,6 +26,7 @@ export class HcmIconButton extends LitElement {
         toggle: { type: Boolean },
         selected: { type: Boolean, reflect: true },
         disabled: { type: Boolean, reflect: true },
+        softDisabled: { type: Boolean, reflect: true, attribute: 'soft-disabled' },
         variant: { type: String, reflect: true },
     };
 
@@ -76,14 +80,26 @@ export class HcmIconButton extends LitElement {
                 border: 1px solid var(--md-sys-color-outline-variant);
             }
 
-            :host([disabled]) button {
+            :host([disabled]) button,
+            :host([soft-disabled]) button {
                 background: none;
                 color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+                cursor: default;
+            }
+
+            /* What a native disabled button gets from the state layer: no hover or pressed layer. */
+            :host([soft-disabled]) button::before {
+                opacity: 0;
             }
 
             @media (forced-colors: active) {
                 :host([selected]) button {
                     border: 2px solid Highlight;
+                }
+
+                /* Forced colours drop the color-mix dimming; GrayText is what the browser gives a disabled button. */
+                :host([soft-disabled]) button {
+                    color: GrayText;
                 }
             }
         `,
@@ -94,6 +110,7 @@ export class HcmIconButton extends LitElement {
     declare toggle: boolean;
     declare selected: boolean;
     declare disabled: boolean;
+    declare softDisabled: boolean;
     declare variant: IconButtonVariant;
 
     constructor() {
@@ -103,6 +120,7 @@ export class HcmIconButton extends LitElement {
         this.toggle = false;
         this.selected = false;
         this.disabled = false;
+        this.softDisabled = false;
         this.variant = 'standard';
     }
 
@@ -113,6 +131,7 @@ export class HcmIconButton extends LitElement {
             aria-label=${this.label}
             aria-pressed=${this.toggle ? String(this.selected) : nothing}
             ?disabled=${this.disabled}
+            aria-disabled=${this.softDisabled ? 'true' : nothing}
             @click=${this.onClick}
         >
             <hcm-icon name=${this.icon} ?filled=${this.toggle && this.selected}></hcm-icon>
@@ -120,7 +139,7 @@ export class HcmIconButton extends LitElement {
     }
 
     private readonly onClick = (): void => {
-        if (this.toggle) {
+        if (this.toggle && !this.softDisabled) {
             this.selected = !this.selected;
             emit(this, 'hcm-change', { selected: this.selected });
         }

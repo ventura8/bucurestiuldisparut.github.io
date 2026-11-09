@@ -82,6 +82,11 @@ export interface ViewerActions {
      * keeps the view it had until the camera moves elsewhere: the view is the visitor's position.
      */
     flyTo(view: MapView): void;
+    /**
+     * The zoom buttons: one level in (`step` 1) or out (-1) from the camera's own zoom, animated unless reduced motion,
+     * within the city's zoom range; at its end nothing moves. The hash follows from the camera's `moveend` (`setView`).
+     */
+    zoomBy(step: number): void;
     /** The visitor shared the page (Web Share or the clipboard): the `share` analytics event (CR-17). */
     logShare(): void;
     setWindowSize(width: number, height: number): void;
@@ -357,6 +362,15 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         this.set({ ...state, view, hashView: state.hashView ?? state.view });
         this.#flying = true;
         this.#boot.flyMap(view);
+    }
+
+    zoomBy(step: number): void {
+        const city = this.#state.manifest?.city;
+        const view = this.deps.map.getView();
+        const zoom = city === undefined ? view.zoom : clamp(view.zoom + step, city.minZoom, city.maxZoom);
+        if (zoom !== view.zoom) {
+            this.#boot.flyMap({ ...view, zoom });
+        }
     }
 
     logShare(): void {

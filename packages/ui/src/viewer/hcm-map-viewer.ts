@@ -31,6 +31,7 @@ import { isViewerKey, shortcutOf } from './viewer-keyboard.js';
 import { modalOpen } from './viewer-legal.js';
 import { renderViewer, type OverlayOpacityDetail, type ViewerHandlers } from './viewer-render.js';
 import { viewerStyles } from './viewer-styles.js';
+import type { MapSize } from './viewer-zoom.js';
 
 export const HCM_MAP_VIEWER_TAG = 'hcm-map-viewer';
 
@@ -60,6 +61,11 @@ function tokensOf(state: ViewerState | null): ThemeTokens {
 /** A copy of `state` before boot: the starting point of the events of a store attached in any state. */
 function idleOf(state: ViewerState): ViewerState {
     return { ...state, status: 'idle', selectedPhotoId: null, selectedPoiId: null };
+}
+
+/** The map container's box: read at each render, which a resize of the map follows (Mapbox's `moveend`). */
+function sizeOf(map: HTMLElement | null): MapSize | null {
+    return map === null ? null : { width: map.clientWidth, height: map.clientHeight };
 }
 
 type Opener = 'sheet' | 'lightbox';
@@ -268,6 +274,7 @@ export class HcmMapViewer extends LitElement {
             engineVersion: this.engineVersion,
             mapboxCssUrl: this.mapboxCssUrl,
             attribution: this.attribution,
+            mapSize: sizeOf(this.mapContainer),
         };
         return renderViewer(view, this.#handlers);
     }

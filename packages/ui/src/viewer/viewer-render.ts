@@ -24,6 +24,7 @@ import { photosNearYear, type TimelineStop } from './timeline-model.js';
 import { menuActions, menuItem } from './viewer-menu.js';
 import { storiesSheet } from './viewer-stories.js';
 import { unplacedSheet } from './viewer-unplaced.js';
+import { zoomButtons, type MapSize } from './viewer-zoom.js';
 import { legalMirror, modalOpen, renderConsentBanner, renderLegalBar, type LegalMirror } from './viewer-legal.js';
 
 /** What one render needs, derived from the store state by the element. */
@@ -38,6 +39,8 @@ export interface ViewerView {
     readonly mapboxCssUrl: string;
     /** The map's attribution as Mapbox GL shows it (`watchAttribution`), for the legal bar and About. */
     readonly attribution: readonly AttributionPart[];
+    /** The map container's box (null before the first render): Zoom out's limit (`viewer-zoom.ts`). */
+    readonly mapSize: MapSize | null;
 }
 
 /** `hcm-photo-locate` of `<hcm-photo-sheet>`: the photo, and its place's offset from the map's centre (`locateOffset`). */
@@ -79,6 +82,8 @@ export interface ViewerHandlers {
     /** The Layers panel's Map labels switches (V31). */
     readonly onMapLabel: (event: CustomEvent<MapLabelDetail>) => void;
     readonly onToastDismiss: (event: Event) => void;
+    /** The zoom buttons: one level in (1) or out (-1). */
+    readonly onZoom: (step: number) => void;
     /** The help panel's switch of the single-key shortcuts. */
     readonly onShortcuts: (event: CustomEvent<{ readonly enabled: boolean }>) => void;
     /** About's button to the help panel. */
@@ -274,6 +279,7 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
                 @hcm-select=${handlers.onMenuSelect}
             ></hcm-fab-menu>
         </div>
+        ${state.webgl ? zoomButtons(view, state.view, manifest, handlers.onZoom) : nothing}
         ${consent ? renderConsentBanner(view.locale, handlers.onConsent) : nothing} ${toast(view, state, handlers)}`;
 }
 

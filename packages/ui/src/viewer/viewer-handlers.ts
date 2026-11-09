@@ -79,6 +79,17 @@ function storyHandlers(on: On): Pick<ViewerHandlers, 'onStorySelect' | 'onPoiSel
     };
 }
 
+/** The zoom buttons (V52): one level in (1) or out (-1); a click is no event of a part, nothing to stop. */
+function zoomHandler(host: HandlerHost): Pick<ViewerHandlers, 'onZoom'> {
+    return {
+        onZoom: (step) => {
+            host.act(null, (store) => {
+                store.zoomBy(step);
+            });
+        },
+    };
+}
+
 export function createHandlers(host: HandlerHost): ViewerHandlers {
     const on = actingOn(host);
     return {
@@ -112,6 +123,7 @@ export function createHandlers(host: HandlerHost): ViewerHandlers {
             void store.retry();
         }),
         onCompareToggle: on(toggleCompare),
+        ...zoomHandler(host),
         onToastDismiss: on((store) => {
             store.dismissToast();
         }),

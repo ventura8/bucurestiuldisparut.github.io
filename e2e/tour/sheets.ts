@@ -3,7 +3,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 
 import { t, viewer } from '../support/viewer.js';
 
-/** The tour's bottom sheets (e2e/tour/states.ts): which windows have them, the open one, and its three heights. */
+/** The tour's sheets (e2e/tour/states.ts): which windows have bottom sheets, the open one, its heights; a dialog scrolled down. */
 
 /** A phone held upright: sheets are bottom sheets with three heights (peek, half, full). */
 export function hasBottomSheets(page: Page): boolean {
@@ -30,4 +30,21 @@ export async function toDetent(page: Page, lang: Locale, detent: 'peek' | 'half'
     }
     await expect(sheet).toHaveAttribute('detent', detent);
     await expect.poll(() => box.evaluate((element) => element.getAnimations().length), { message: 'the sheet has settled' }).toBe(0);
+}
+
+/** Scrolls the scrolling part of `host`'s dialog to its end (About is taller than a phone). */
+export async function scrollToEnd(host: Locator): Promise<void> {
+    await host.evaluate((element) => {
+        const visit = (root: Element | ShadowRoot): void => {
+            for (const node of Array.from(root.querySelectorAll('*'))) {
+                if (node.scrollHeight > node.clientHeight + 1 && ['auto', 'scroll'].includes(getComputedStyle(node).overflowY)) {
+                    node.scrollTop = node.scrollHeight;
+                }
+                if (node.shadowRoot !== null) {
+                    visit(node.shadowRoot);
+                }
+            }
+        };
+        visit(element.shadowRoot ?? element);
+    });
 }
