@@ -257,6 +257,7 @@
         "apiError.imagery.noSpread",
         "apiError.imagery.notImproved",
         "apiError.imagery.notScanned",
+        "apiError.imagery.pipelineOutdated",
         "apiError.imagery.processingFailed",
         "apiError.imagery.referenceUnavailable",
         "apiError.imagery.refineRefused",

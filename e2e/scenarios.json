@@ -5172,6 +5172,28 @@
             "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
         },
         {
+            "id": "S-A12-HAPPY-RETRY-OUTDATED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A job an outdated computer could not run offers Run it again past its attempts",
+            "asserts": "an archive series failed three times by a worker image that did not run its type (apiError.imagery.pipelineOutdated, or the legacy apiError.invalidRequest naming the type) -> the Jobs page titles it Archive import, shows its error without a literal placeholder and offers Run it again; the retry queues it with its attempts back to 0; the pipeline fails an unknown type as pipelineOutdated and a worker claims only the types its image runs",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live report of 2026-11-09 (four archive-series jobs failed on an old worker image). Test: e2e/admin/specs/imagery/jobs.spec.ts."
+        },
+        {
+            "id": "S-A12-BAD-RETRY-EXHAUSTED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "An ordinary job past its attempts still offers no Run it again",
+            "asserts": "an import that failed on its own three times shows no Run it again on the Jobs page; imagery.retry refuses any other exhausted failure, an invalid request included, with apiError.imagery.attemptsExhausted",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live report of 2026-11-09. Test: e2e/admin/specs/imagery/jobs.spec.ts."
+        },
+        {
             "id": "S-A12-HAPPY-OUT-OF-MEMORY-RETRY",
             "behaviour": "A12",
             "area": "admin",

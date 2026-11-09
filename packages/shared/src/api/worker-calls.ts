@@ -55,8 +55,19 @@ export const workerHelloResponseSchema = z.strictObject({
     outdated: z.boolean().optional(),
 });
 
-/** `worker.claim`: the oldest due local job of the city, leased to this worker, or none. */
-export const workerClaimRequestSchema = z.strictObject({ cityId: cityIdSchema, workerId: workerIdSchema });
+/**
+ * `worker.claim`: the oldest due local job of the city, leased to this worker, or none. `types`: the job types the worker's
+ * pipeline runs (an older image leaves a newer type queued for an updated one); absent, every type (a worker before it).
+ * Free text of a type's shape, not the enum: a newer worker may name a type this server does not know yet.
+ */
+export const workerClaimRequestSchema = z.strictObject({
+    cityId: cityIdSchema,
+    workerId: workerIdSchema,
+    types: z
+        .array(z.string().regex(/^[a-z][a-z-]{0,39}$/))
+        .max(20)
+        .optional(),
+});
 export const workerClaimResponseSchema = z.strictObject({
     job: z.strictObject({ jobId: idSchema }).nullable(),
     /** True when the worker's image is not the installed one (no job is given to it). */

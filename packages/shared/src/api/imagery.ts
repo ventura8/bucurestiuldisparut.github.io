@@ -219,9 +219,28 @@ function failedWork(job: RetriedJob): boolean {
     return job.status === 'failed' && job.type !== 'layer-delete' && job.layerId !== undefined && job.cancelRequested !== true;
 }
 
-/** A failed raster job a Retry may run again: a failure a retry can cure, attempts left (`imagery.retry` decides). */
+/** The code an outdated runner fails a job with. */
+export const PIPELINE_OUTDATED = 'apiError.imagery.pipelineOutdated';
+
+/** The legacy form of an outdated runner's failure, before it had its own code (jobs failed so are still in Firestore). */
+const OUTDATED_DETAIL = /the pipeline does not run [a-z-]+ jobs/;
+
+/**
+ * The job failed because the runner's pipeline was older than its type (`apiError.imagery.pipelineOutdated`, or the legacy
+ * `apiError.invalidRequest` naming the type): no attempt was really spent, so a retry is allowed whatever the count and
+ * starts the count again.
+ */
+export function failedOutdated(job: Pick<JobDoc, 'error'>): boolean {
+    const error = job.error;
+    if (error === undefined) {
+        return false;
+    }
+    return error.code === PIPELINE_OUTDATED || (error.code === 'apiError.invalidRequest' && OUTDATED_DETAIL.test(error.message));
+}
+
+/** A failed raster job a Retry may run again: a curable failure with attempts left, or an outdated runner's (`imagery.retry` decides). */
 export function jobRetryable(job: RetriedJob): boolean {
-    return failedWork(job) && curable(job) && attemptsLeft(job);
+    return failedWork(job) && curable(job) && (attemptsLeft(job) || failedOutdated(job));
 }
 
 /**

@@ -357,11 +357,19 @@ _PARAMS: Final[Mapping[str, Callable[[Mapping[str, object]], JobParams]]] = {
 }
 
 
+# The job types this pipeline runs: the local worker claims only these (an older image leaves a newer type queued).
+RUN_JOB_TYPES: Final = tuple(sorted(_PARAMS))
+
+
+class OutdatedJobError(DocumentError):
+    """A job type this pipeline does not run: an older image than the job's, so an updated one can (a retry cures it)."""
+
+
 def params_of(job: Job) -> JobParams:
-    """The job's parameters for its type; DocumentError for a type the pipeline does not run or a malformed one."""
+    """The job's parameters for its type; OutdatedJobError for a type the pipeline does not run, DocumentError for malformed ones."""
     parse = _PARAMS.get(job.type)
     if parse is None:
-        raise DocumentError(f"the pipeline does not run {job.type} jobs")
+        raise OutdatedJobError(f"the pipeline does not run {job.type} jobs")
     return parse(job.params)
 
 

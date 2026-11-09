@@ -108,6 +108,7 @@ export const ro = {
     'adminContent.jobs.type.layerDelete': 'Ștergerea dalelor unui strat',
     'adminContent.jobs.type.layerJoin': 'Unire cadre',
     'adminContent.jobs.type.layerTiles': 'Dale pentru hartă',
+    'adminContent.jobs.type.archiveSeries': 'Import din arhivă',
     'adminContent.jobs.type.other': 'Procesare',
     'adminContent.jobs.status.queued': 'În așteptare',
     'adminContent.jobs.status.starting': 'Pornește',

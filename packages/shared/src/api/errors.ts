@@ -184,6 +184,8 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.archiveYear': spec('failed-precondition'),
     // M25 (docs/research/M25-landsat.md §3): a Landsat delivery without a band the true colour needs {band}.
     'apiError.imagery.missingBand': spec('failed-precondition'),
+    // A job type the worker's pipeline does not run: its image is older than the job; an updated one's retry runs it.
+    'apiError.imagery.pipelineOutdated': spec('failed-precondition'),
     'apiError.worker.notHolder': spec('failed-precondition'),
     'apiError.worker.refused': spec('permission-denied'),
     // Finding 67 of 2026-11-02: a pairing code unknown, used or expired (one answer for the three), and a disconnected computer.

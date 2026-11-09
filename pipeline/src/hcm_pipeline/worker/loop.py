@@ -11,6 +11,7 @@ loop's (a signal after the run's last checkpoint was once lost), and the loop's 
 Finding 67 of 2026-11-02: without a session each pass first lets the connector try (the command's pairing code, or the
 session kept in the work folder); a call answered `apiError.worker.revoked` (Disconnect this computer) ends the session
 and deletes the kept one; a claim answered `outdated` (the pipeline was updated in the admin) is said on the page.
+A claim names the job types this image runs (`RUN_JOB_TYPES`): a newer type stays queued for an updated worker, not failed here.
 Finding 72 (the starter file, M7 §1.5): under the starter's supervisor (`supervised`) an outdated claim ends the loop
 instead (`outdated_exit`), and the command exits with `ExitCode.OUTDATED`, so the supervisor pulls the installed image.
 Each pass that holds a session sweeps the work folder after its claim (`sweep`, `runtime.py`), told the job it claimed.
@@ -30,6 +31,7 @@ from hcm_pipeline.contract import Errors
 from hcm_pipeline.joblog import scrub
 from hcm_pipeline.jobs import LeaseLostError, RunStoppedError
 from hcm_pipeline.log import get_logger
+from hcm_pipeline.model import RUN_JOB_TYPES
 from hcm_pipeline.paths import ID
 from hcm_pipeline.runner import STOP_SIGNALS, RunOutcome
 from hcm_pipeline.worker.api import CLAIM, END, REVOKED, RevokedError, WorkerApi, WorkerApiError
@@ -183,7 +185,8 @@ class WorkerLoop:
 
     def _claim(self) -> str | None:
         try:
-            answer = self._api.call(CLAIM, self._ids)
+            # Only the types this image runs: a newer type stays queued for an updated worker, never failed here.
+            answer = self._api.call(CLAIM, {**self._ids, "types": list(RUN_JOB_TYPES)})
         except CALL_ERRORS as error:
             LOG.warning("worker.claim failed: %s", error)
             self._refused(error)

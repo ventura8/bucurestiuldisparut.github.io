@@ -6,6 +6,7 @@ import {
     JOB_STEPS,
     NOT_RETRYABLE_CODES,
     PUBLISH_MAX_ATTEMPTS,
+    failedOutdated,
     isSideJob,
     jobDocSchema,
     layerVersionDocSchema,
@@ -55,7 +56,10 @@ function failedAtPublish(job: JobDoc, version: LayerVersionDoc | undefined): boo
     return !isSideJob(job.type) && (job.type === 'republish' || version?.approval !== undefined);
 }
 
-/** The attempts a retry would add to: the publish starts after approval, the executions before. */
+/**
+ * The attempts a retry would add to: the publish starts after approval, the executions before. A failure of a runner whose
+ * pipeline was older than the job's type spent no real attempt (`failedOutdated`): its retry is allowed whatever the count.
+ */
 function requireAttemptsLeft(job: JobDoc, version: LayerVersionDoc): void {
     const [attempts, max] = failedAtPublish(job, version)
         ? [job.publishAttempts ?? 0, PUBLISH_MAX_ATTEMPTS]
@@ -103,7 +107,9 @@ async function requireFailedWork(deps: RetryDeps, request: Request): Promise<{ j
 /** The job may be retried: failed with its version, a raster type, a curable failure, attempts left, the guard green. */
 async function requireRetryable(deps: RetryDeps, request: Request): Promise<JobDoc> {
     const { job, version } = await requireFailedWork(deps, request);
-    requireAttemptsLeft(job, version);
+    if (!failedOutdated(job)) {
+        requireAttemptsLeft(job, version);
+    }
     if (await guardIsRed(deps.documents)) {
         throw new ApiError('apiError.guardPaused');
     }
@@ -156,8 +162,13 @@ function queuedAgain(job: JobDoc): Pick<JobDoc, 'waitReason'> {
     return job.type === 'layer-join' ? { waitReason: 'parts' } : {};
 }
 
+/** An outdated runner's failure starts the count again: an updated runner gets every attempt. */
+function attemptsAgain(job: JobDoc): Pick<JobDoc, 'attempt'> {
+    return failedOutdated(job) ? { attempt: 0 } : {};
+}
+
 function retriedJob(job: JobDoc, atPublish: boolean, stamp: Stamp): JobDoc {
-    const kept = omit(job, ['error', 'finishedAt', 'lease', 'retryAt', 'executionName', 'mapboxJobId']);
+    const kept = { ...omit(job, ['error', 'finishedAt', 'lease', 'retryAt', 'executionName', 'mapboxJobId']), ...attemptsAgain(job) };
     if (atPublish) {
         return { ...kept, status: 'awaiting_approval', waitReason: 'approval', ...publishReopened(job), ...stamp };
     }

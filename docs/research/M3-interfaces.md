@@ -421,7 +421,9 @@ belong to the dispatcher and the lease, so an execution never races its own retr
   neither Dismiss nor Cancel takes it), never one that ended otherwise (2026-11-06); it becomes `queued` with every step after the first finished of `locate`, `inspect`, `extract`, `fetch`
   `pending` (finding 78 of 2026-11-03: a pipeline updated since the failure redoes its own results); the steps kept are
   skipped by their recorded outputs (§5.2), `fetch` also once `extract` is finished, as the segments outlive the delivery by a
-  week. A failure at a publish step goes back to the publisher, not to Cloud Run.
+  week. A failure at a publish step goes back to the publisher, not to Cloud Run. A failure of a runner older than the
+  job's type (`apiError.imagery.pipelineOutdated`, or the legacy `apiError.invalidRequest` "the pipeline does not run <type> jobs":
+  `failedOutdated`) spent no real attempt: its retry is allowed whatever `attempt` is, and sets it back to 0 (2026-11-09).
 - **Locate again** (`imagery.locateAgain`, a city editor; S-A69-*; the owner's live use of 2026-11-07): a USGS frame waiting for points
   (`needs_gcps`, its job `awaiting_gcps`, not asked to stop) goes back to `queued` from `stitch`, which Retry cannot do (it takes failed
   jobs only): `fetch` and `extract` stay as recorded, `stitch` (the reason of finding 78: an older pipeline's `frame.json` and preview

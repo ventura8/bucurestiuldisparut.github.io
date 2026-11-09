@@ -1,3 +1,4 @@
+import { JOB_TYPES } from '@hcm/shared';
 import { axeViolations } from '@hcm/test-support/axe';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
@@ -217,6 +218,14 @@ describe('<hcm-jobs-page>: waiting, finished and failing jobs', () => {
             'Aliniere îmbinări',
             'Unire cadre',
         ]);
+    });
+
+    it('happyPath_everyJobTypeHasItsOwnTitle_anArchiveSeriesIsAnArchiveImport', () => {
+        for (const locale of ['ro', 'en'] as const) {
+            const other = jobTypeText(locale, 'something-new');
+            expect(JOB_TYPES.filter((type) => jobTypeText(locale, type) === other)).toEqual([]);
+        }
+        expect([jobTypeText('en', 'archive-series'), jobTypeText('ro', 'archive-series')]).toEqual(['Archive import', 'Import din arhivă']);
     });
 
     it('happyPath_theWordsOfJobsInRomanian', () => {
