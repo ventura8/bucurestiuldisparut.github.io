@@ -20,12 +20,14 @@ import type { SiteFileSystem } from '../files.js';
 import { ADMIN_REDIRECT_FILE, ADMIN_REDIRECT_SOURCE } from '../hosting/admin-redirect.js';
 import { FIRST_CITY_FILE, renderFirstCityPage, renderStartUpPage } from '../hosting/static-pages.js';
 import { element, renderDocument } from '../html.js';
+import { START_SITE_STYLESHEET_FILE, startFooter } from './legal.js';
 
 /**
  * The start site (`docs/research/M14-start-your-map.md` §5, §6; `npm run build:start`), into `outDir` below `dist/`:
  *
  * ```text
  * index.html, start.mjs, start-config.json       the page: dist/start-app's build, its policy and its configuration
+ * privacy.html, terms.html, start-site.css       what Google's OAuth verification asks for (`legal.ts`), and its file
  * release/<slug>/start-release.json              every file below, with its SHA-256, and Hosting's rules
  * release/<slug>/tree/…                          what a new project's first Hosting release holds
  * ```
@@ -151,7 +153,7 @@ export function startPagePolicy(): string {
     ].join('; ');
 }
 
-/** The page: the element, the script, a sentence for a browser without JavaScript, in both languages. */
+/** The page: the element, the script, a sentence for a browser without JavaScript, the footer with the app's name and its links. */
 export function renderStartPage(): string {
     const head = element('head', {}, [
         element('meta', { charset: 'utf-8' }),
@@ -161,13 +163,14 @@ export function renderStartPage(): string {
         element('meta', { name: 'color-scheme', content: 'light dark' }),
         element('title', {}, ['Pornește-ți harta / Start your map']),
         element('link', { rel: 'icon', href: 'data:,' }),
+        element('link', { rel: 'stylesheet', href: `./${START_SITE_STYLESHEET_FILE}` }),
         element('script', { type: 'module', src: './start.mjs' }),
     ]);
     const noscript = element('noscript', {}, [
         element('p', {}, ['Pagina are nevoie de JavaScript.']),
         element('p', { lang: 'en' }, ['This page needs JavaScript.']),
     ]);
-    return renderDocument(element('html', { lang: 'ro' }, [head, element('body', {}, [element('hcm-start-page', {}), noscript])]));
+    return renderDocument(element('html', { lang: 'ro' }, [head, element('body', {}, [element('hcm-start-page', {}), noscript, startFooter()])]));
 }
 
 function readApp(inputs: StartTreeInputs, files: SiteFileSystem): void {

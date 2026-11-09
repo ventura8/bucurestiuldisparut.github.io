@@ -36,6 +36,7 @@ import {
     E2E_HOSTING_START_UP_DIR,
     E2E_START_CLIENT_ID,
     E2E_START_DIR,
+    E2E_START_SITE_VERIFICATION,
     PAGES_REDIRECT_FOLDER,
 } from '../admin/world.js';
 import { buildFixtureManifest } from '../fixtures/manifest.js';
@@ -126,8 +127,9 @@ try {
     // The admin's Hosting folder joins the e2e Hosting tree under /admin/, so every run builds it (M6).
     log.info('e2e admin built', { ...buildAdminSite({ outDir: ADMIN_DIST_DIR }, files) });
     buildHosting();
-    // M14: the start site over the e2e Hosting tree, its project the e2e world's, with a client id so its road is open.
-    const startEnv = { ...process.env, HCM_START_OAUTH_CLIENT_ID: E2E_START_CLIENT_ID };
+    // M14: the start site over the e2e Hosting tree, its project the e2e world's, with a client id so its road is open, and a
+    // Search Console file name so the verification file is served.
+    const startEnv = { ...process.env, HCM_START_OAUTH_CLIENT_ID: E2E_START_CLIENT_ID, HCM_START_SITE_VERIFICATION: E2E_START_SITE_VERIFICATION };
     const started = buildStartSite(
         {
             publicTree: E2E_HOSTING_DIR,
