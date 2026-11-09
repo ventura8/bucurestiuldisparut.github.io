@@ -113,8 +113,7 @@ export const ro = {
     'adminSetup.mapbox.saved': 'Salvat pentru contul Mapbox {user}.',
     'adminSetup.usgs.answers': 'Răspunsuri la înregistrare: persoană fizică, cercetare istorică necomercială.',
     'adminSetup.usgs.justification': 'Cercetare istorică necomercială pentru o hartă publică: câteva scene declasificate pe lună.',
-    'adminSetup.usgs.datasets':
-        'Seturi de date: corona2, declassii, declassiii și Landsat (landsat_tm_c2_l1, landsat_etm_c2_l1), toate cu același acces.',
+    'adminSetup.usgs.datasets': 'Seturi de date: corona2, declassii, declassiii, landsat_tm_c2_l1, landsat_etm_c2_l1.',
     'adminSetup.usgs.area': 'Zona (vest, sud, est, nord): {area}.',
     'adminSetup.usgs.copyRequest': 'Copiază textul cererii',
     'adminSetup.usgs.username': 'Numele de utilizator ERS',

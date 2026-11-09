@@ -280,8 +280,7 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.settings.mapThresholdMax': "A map's largest threshold (metres)",
     'adminContent.imagery.settings.mapThresholdMaxHelp': 'From {min} to {max}. Past it, a map waits for your approval.',
     'adminContent.imagery.settings.landsat': 'Landsat',
-    'adminContent.imagery.settings.landsatNote':
-        'Free, already placed satellite images: the clearest summer scene of each year comes in; the daily limit counts it.',
+    'adminContent.imagery.settings.landsatNote': 'Free and already placed: each year’s clearest summer scene, within the daily limit.',
     'adminContent.imagery.settings.landsatAuto': 'Import the best Landsat scene of each year on its own',
     'adminContent.imagery.settings.landsatFrom': 'From the year',
     'adminContent.imagery.settings.landsatTo': 'To the year',

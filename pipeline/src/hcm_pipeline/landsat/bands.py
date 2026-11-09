@@ -82,6 +82,13 @@ def _readable_bands(ctx: JobContext, delivery: str, needed: tuple[str, ...]) -> 
         raise StepFailedError(Errors.ARCHIVE_CORRUPT, f"the Landsat bundle is unreadable ({type(error).__name__})") from error
 
 
+def _refuse_missing(needed: tuple[str, ...], kept: Mapping[str, ObjectInfo]) -> None:
+    """`missingBand` naming the first needed band the bundle lacks."""
+    missing = next((band for band in needed if band not in kept), None)
+    if missing is not None:
+        raise StepFailedError(Errors.MISSING_BAND, f"the Landsat bundle has no {missing}", {"band": missing})
+
+
 class LandsatBandsStep:
     name = "extract"
 
@@ -91,7 +98,5 @@ class LandsatBandsStep:
             raise StepFailedError(Errors.ARCHIVE_CORRUPT, "the job has no fetched delivery")
         needed = needed_bands(UsgsImportParams.of(ctx.job.params).sensor)
         kept = _readable_bands(ctx, delivery, needed)
-        missing = [band for band in needed if band not in kept]
-        if missing:
-            raise StepFailedError(Errors.MISSING_BAND, f"the Landsat bundle has no {missing[0]}", {"band": missing[0]})
+        _refuse_missing(needed, kept)
         return Done(kept[needed[0]])

@@ -189,7 +189,7 @@ describe('<hcm-settings-page> imagery: Landsat', () => {
             'editCity {"imagery":{"landsatFrom":1986}}',
             'editCity {"imagery":{"landsatTo":1999}}',
         ]);
-        expect(deepText(group)).toContain('the daily limit counts it');
+        expect(deepText(group)).toContain('within the daily limit');
         expect(await axeViolations(group)).toEqual([]);
     });
 

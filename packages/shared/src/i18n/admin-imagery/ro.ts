@@ -282,8 +282,7 @@ export const ro = {
     'adminContent.imagery.settings.mapThresholdMax': 'Pragul cel mai mare al unei hărți (metri)',
     'adminContent.imagery.settings.mapThresholdMaxHelp': 'Între {min} și {max}. Peste el, o hartă așteaptă aprobarea ta.',
     'adminContent.imagery.settings.landsat': 'Landsat',
-    'adminContent.imagery.settings.landsatNote':
-        'Imagini din satelit gratuite, deja așezate: vine cea mai senină scenă de vară a fiecărui an; limita zilnică o numără.',
+    'adminContent.imagery.settings.landsatNote': 'Gratuite, deja așezate: cea mai senină scenă de vară a fiecărui an, în limita zilnică.',
     'adminContent.imagery.settings.landsatAuto': 'Importă singur cea mai bună scenă Landsat a fiecărui an',
     'adminContent.imagery.settings.landsatFrom': 'Din anul',
     'adminContent.imagery.settings.landsatTo': 'Până în anul',

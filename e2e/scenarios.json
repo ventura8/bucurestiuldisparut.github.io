@@ -16364,7 +16364,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A Landsat delivery without a band fails in plain words",
-            "asserts": "the import's extract fails with apiError.imagery.missingBand {band: B3} -> the version is failed, its error reads 'The Landsat delivery lacks band B3, so no colour image can be made. Try another scene of that year.', the extract step failed",
+            "asserts": "the import's extract fails with apiError.imagery.missingBand {band: B3} -> the version is failed, its error reads 'The Landsat delivery lacks band B3: no colour image. Try another scene of that year.', the extract step failed",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M25 (docs/research/M25-landsat.md). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/landsat.test.ts, packages/shared/test/imagery/landsat.test.ts, packages/ui/test/admin/imagery/landsat.test.ts."
