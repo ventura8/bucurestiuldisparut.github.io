@@ -1,16 +1,18 @@
 """The Landsat path's parts (docs/research/M25-landsat.md §3): which steps a scene takes, its bands, its colour and its shift."""
 
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import cast
 
 import numpy
 import pytest
-from hcm_pipeline.contract import SENSOR_SPECS
-from hcm_pipeline.geo import FloatArray, Grid
-from hcm_pipeline.jobs import Done, JobContext, Skipped
+from hcm_pipeline.contract import SENSOR_SPECS, Errors
+from hcm_pipeline.geo import FloatArray, Grid, MercatorBox
+from hcm_pipeline.jobs import Done, JobContext, Skipped, StepFailedError
+from hcm_pipeline.landsat import compose as compose_module
 from hcm_pipeline.landsat.bands import ETM_BANDS, TM_BANDS, band_of, needed_bands
 from hcm_pipeline.landsat.colour import CLOUD_BITS, FILL_BIT, Bands, brovey, cloud_pct, compose, masks, stretch
-from hcm_pipeline.landsat.compose import measured_shift, shift_record
+from hcm_pipeline.landsat.compose import measured_shift, reference_grey, shift_record, staged_bands
 from hcm_pipeline.landsat.offset import Shift, shift_of
 from hcm_pipeline.landsat.route import AlreadyGeoreferenced, ForLandsat, is_landsat
 from hcm_pipeline.model import Job
@@ -174,3 +176,53 @@ def test_happy_path_the_shift_is_reported_in_ground_metres_and_the_cameras_own_p
     assert record == {"checked": True, "offsetPx": 3.33, "offsetM": 100.0, "eastM": 60.0, "northM": 80.0}
     assert shift_record(None, grid, SENSOR_SPECS["L5-TM"], 0.0) == {"checked": False}
     assert measured_shift(compose(scene()), None) is None
+
+
+@dataclass
+class Objects:
+    """No band in the bucket."""
+
+    def stat(self, _path: str) -> None:
+        return None
+
+
+@dataclass
+class Log:
+    lines: list[str] = field(default_factory=list)
+
+    def warn(self, message: str, step: str | None = None) -> None:
+        self.lines.append(f"{step}: {message}")
+
+
+@dataclass
+class BucketContext:
+    """The part of a `JobContext` `staged_bands` and `reference_grey` read."""
+
+    services: SimpleNamespace = field(default_factory=lambda: SimpleNamespace(objects=Objects()))
+    log: Log = field(default_factory=Log)
+
+    def work_file(self, name: str) -> str:
+        return f"work/c/j/{name}"
+
+
+def test_bad_path_a_band_missing_from_the_bucket_fails_as_one_missing_from_the_bundle() -> None:
+    """Scenarios: S-P30-BAD-MISSING-BAND"""
+    with pytest.raises(StepFailedError) as raised:
+        staged_bands(cast("JobContext", BucketContext()), "L5-TM")
+
+    assert (raised.value.code, raised.value.params) == (Errors.MISSING_BAND, {"band": "B3"})
+
+
+def test_bad_path_no_sentinel_2_leaves_the_shift_unmeasured_and_says_why(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Scenarios: S-P30-BAD-OFFSET"""
+
+    def unavailable(_ctx: JobContext, _window: MercatorBox) -> None:
+        raise StepFailedError(Errors.REFERENCE_UNAVAILABLE, "no clear Sentinel-2 date")
+
+    monkeypatch.setattr(compose_module, "sentinel2", unavailable)
+    ctx = BucketContext()
+
+    grey = reference_grey(cast("JobContext", ctx), MercatorBox(0, 0, 10, 10), Grid(0.0, 10.0, 1.0, 10, 10))
+
+    assert grey is None
+    assert ctx.log.lines == ["warp: no Sentinel-2 to check the Landsat scene against: no clear Sentinel-2 date"]

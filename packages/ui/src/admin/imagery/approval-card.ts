@@ -7,7 +7,7 @@
  * threshold still waits. M25: a Landsat scene has no checkpoint error; the card says its shift from Sentinel-2 and the city's cloud.
  */
 import { landsatClear, recalibrationVerdict, type LandsatReport, type Locale } from '@hcm/shared';
-import { html, type TemplateResult } from 'lit';
+import { html, nothing, type TemplateResult } from 'lit';
 
 import { contentText } from '../shell/text.js';
 import type { ImageryContext } from './context.js';
@@ -17,7 +17,7 @@ import { numberText } from './imagery-text.js';
 import { lazyJoin } from './join/lazy-card.js';
 import { lazyMapboxChoices } from './lazy-approval.js';
 import type { Guard } from './mapbox-choices.js';
-import { when, withValue } from './when.js';
+import { withValue } from './when.js';
 
 /** The page is busy with another action, or nothing may be written. */
 function busy(context: ImageryContext, page: VersionPagePort): boolean {
@@ -48,7 +48,7 @@ function landsatText(locale: Locale, report: LandsatReport): TemplateResult {
               });
     const clear = landsatClear(report);
     const cloud = contentText(locale, 'adminContent.imagery.landsat.cloud', { percent: numberText(locale, report.cityCloudPct) });
-    const held = when(!clear, () => html`<p class="alert">${contentText(locale, 'adminContent.imagery.landsat.held')}</p>`);
+    const held = clear ? nothing : html`<p class="alert">${contentText(locale, 'adminContent.imagery.landsat.held')}</p>`;
     return html`<p data-landsat=${clear ? 'clear' : 'held'}>${offset}</p>
         <p class="note">${cloud}</p>
         ${held}`;
