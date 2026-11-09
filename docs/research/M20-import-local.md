@@ -551,12 +551,12 @@ What landed (§3 a–e, *PDFs*, *Atlases and pieces*, the reference ladder of §
 | Street network (§3 c step 2, the classical path) | `placing/streets.py` | Paper (lighter than Otsu, unsaturated in colour) that spans the map; Zhang–Suen skeleton; on a line plan only the skeleton within 2.5 street half-widths of ink (block interiors are paper too); junctions by crossing number, merged within a street's width. The AI `RoadSegmenter` is not built (no licensed weights verified). |
 | Neat line (§3 b step 2, §3 c step 1) | `placing/frame.py` | The outermost rows and columns of ink that run across half the sheet (a faint line of a reduced 1-bit scan counts as ink), each side fitted as a line and their crossings the corners; else the largest convex four-cornered outline; 30–99.5 % of the sheet, in full-scan pixels. |
 | Reference (§1.7, §3 c step 3) | `placing/reference.py` | The job's `referenceLayerIds` (a calibrated layer's COG, read as streets, its own error carried), then OpenStreetMap, asked once per city window and cached in the worker's work folder (`osm/`). Never Mapbox Satellite. |
-| Coarse placement (§3 c step 4) | `placing/coarse.py` | Chamfer by FFT template matching, zero-mean (the closeness on the map's lines less what the window gives by chance: lesson 511) on a loosened closeness (σ 4 px), scales 12 % apart (±25 % around a stated scale and dpi), four quarter turns ± 3°; three placements far apart are kept; each is refined in 2 % and 1° steps on a finer reference. |
+| Coarse placement (§3 c step 4) | `placing/coarse.py` | Chamfer by FFT template matching, zero-mean (the closeness on the map's lines less what the window gives by chance: lesson 528) on a loosened closeness (σ 4 px), scales 12 % apart (±25 % around a stated scale and dpi), four quarter turns ± 3°; three placements far apart are kept; each is refined in 2 % and 1° steps on a finer reference. |
 | Fine fit and checks (§3 c steps 5–6) | `placing/fine.py`, `placing/checks.py`, `placing/geometry.py` | Junction pairs within 4 reference pixels, a seeded RANSAC similarity that keeps the pixel flip, an affine, then a thin-plate spline with ≥ 30 pairs over ≥ 60 % of the map (a grid's mosaic stays affine). Checks: one block in five held out before any fit; gross = max(100 m, 5 mm × scale), any gross check blocks; the span on the map's own extent. Holds with ≥ 20 pairs and ≥ 20 % of the training junctions, ≥ 5 checks; the winner is the candidate with most pairs and its runner-up must have at most half as many (M9's rival share). A ladder rung's own error is added in quadrature. |
 | Grid series (§3 b) | `placing/grid.py`, `gridscheme.py`, `render.py` | `CityGrid` (500 m cells, rows south, columns east, quarters, 2 × 2 blocks, cadastral cells) as a pluggable scheme per grammar; the quarter order of eight chosen by the seams; the series' mosaic at 2 m (coarser past 6,000 px) placed as one map of known scale, north up, rigid; or from the owner's confirmed grid (`params.gridId` → `cities/{c}/grids/{g}`). Every sheet rendered by a 5 × 5 lattice through its frame's homography, cut at its neat line, hard seams. Not built: the joint seam solve, printed-crossing detection, TPS per sheet. |
 | Atlases and pieces | `placing/assemble.py`, `placing/maps.py` | Atlas pages (or a PDF's pages) cropped to their frames and laid out by edge continuity, strongest links first (no OCR of the index page); pieces chained by SIFT affines along the strongest overlaps, nearest-centre hard seams (no graph cut, no bundle adjustment). The canvas stays in the job's scratch folder and is placed as one drawn map. |
 | PDFs | `placing/pdfpages.py` (pikepdf 10.18.0) | Each page's largest image written as stored; an owner-locked PDF (Miorini 1923: Standard handler, V4 R4) is read; a password PDF waits (`PDF_LOCKED`) and is never cracked. |
-| Georeferenced files (§3 a) | `placing/embedded.py` | Own tags or GCPs; a world file read by the placer itself (lesson 505), its system inferred among Stereo 70, the city's UTM zone, EPSG:3857 and 4326 by where the centre lands; the ruler against OpenStreetMap: a median offset over 15 m waits ("disagrees with OpenStreetMap by N m"). |
+| Georeferenced files (§3 a) | `placing/embedded.py` | Own tags or GCPs; a world file read by the placer itself (lesson 522), its system inferred among Stereo 70, the city's UTM zone, EPSG:3857 and 4326 by where the centre lands; the ruler against OpenStreetMap: a median offset over 15 m waits ("disagrees with OpenStreetMap by N m"). |
 | Pieces at the scan | `archive/classify.py` `take_pieces` | A folder of ≥ 3 scans in a scanner's order (`img362.jpg`) is one pieces series; sibling folders that are all pieces merge at their parent (the four `N_quadrat` of the coloured 1895 plan). |
 | Server | `functions/src/worker/{allow-list,step-update}.ts` | A run may write `source`, but only an archive series' `placedCount` and `skipped` (`sourceAllowed`). |
 | Contracts | `AUTO_GCP_METHODS` (+ `junctions`) | Shared, Python, `pipeline/tests/contracts/autogcp.json`. |
@@ -569,7 +569,7 @@ Run on the NUC on 2026-11-09 against the extracted `harti.zip`, with the worker'
 local-only world (documents in memory, objects in a local folder, nothing uploaded); OpenStreetMap read once for the city window from a
 public Overpass mirror and cached (the main instance refused this network). Maximum zoom capped at 16 for the run.
 
-- **Scan**: 5,703 files probed in 74 minutes (one spawned probe child per file); after the classification fixes (DECISIONS §126h) 64
+- **Scan**: 5,703 files probed in 74 minutes (one spawned probe child per file); after the classification fixes (DECISIONS §135h) 64
   series: 9 grid (1:500 base and 6 one-sheet editions, the 1:2000, the cadastral plan), 4 atlases (Borroczyn 1846 twice, the 1969 atlas,
   Miorini's PDF), 1 pieces (the coloured 1895, 60 scans), 46 singles, 4 skipped (Oltean, two Giurescu pages, the 500 px 1799 plan); 66
   files skipped (50 not a map, 10 duplicates, 4 titled pages, 1 index, 1 DWG).
@@ -593,7 +593,7 @@ The per-series table and the previews are the run's artefacts (`harti-dryrun.jso
 
 ## 16. As built: the admin and the viewer (Workstream H, track/archive, 2026-11-09)
 
-What landed (§8, §9, §5's settings; behaviours A121 and V52):
+What landed (§8, §9, §5's settings; behaviours A121 and V53):
 
 | Part | Where | Notes |
 | --- | --- | --- |
@@ -603,18 +603,18 @@ What landed (§8, §9, §5's settings; behaviours A121 and V52):
 | Progress | the same report once the archive records its jobs | Each series from its version and its job, live (`layerVersions` where `source.archiveId`, `jobs` where `params.archiveId`): Waiting for a later day's share, Waiting for the computer, Working: step, percent; Needs your points and the help's reason; Waiting for approval with the blocked error against the threshold its scale earns (`mapThresholdM` with the city's settings), or "the map has no scale"; Publishing, Published, Failed, Cancelled; each opens its version's page. |
 | Rights confirmed | `functions/src/imagery/archive-import.ts` | A choice whose rights name `confirmedBy` is stamped `confirmedAt` by the server's clock. |
 | Settings | `packages/ui/src/admin/settings/imagery-section.ts`, group *Drawn maps* | Publish drawn maps within their threshold on their own (`mapAutoPublish`, on) and A map's largest threshold (`mapThresholdMaxM`, 60, 15–200, said at its field when out of range). |
-| A version's place | `packages/admin/src/worker/feed.ts` | `archive-series` joins the pipeline's job types, so an archive version's page shows where its job runs and why it waits (lesson 512). |
+| A version's place | `packages/admin/src/worker/feed.ts` | `archive-series` joins the pipeline's job types, so an archive version's page shows where its job runs and why it waits (lesson 529). |
 | The chunk | `packages/admin/src/archive/archive.ts` (the `archive` chunk, its own row in `scripts/ci/check_bundle_budget.py`), texts `@hcm/shared/admin-archive` (`ro`, `en`) | Fetched when the Upload view or a report first shows (`ImageryIntents.archive`, `archiveElements`). |
 | The owner's sidecar in a folder | `pipeline/src/hcm_pipeline/archive/sidecar.py` | A folder chosen whole arrives under its own name, so `hcm-archive.json` is also read from the archive's one top folder; its paths stay relative to the archive's root (`Harti/...`). |
-| The viewer | none | A map layer already renders, is listed in Layers with its credit (`attribution`, the built credit line) and credits the legal line while it shows (S-V52-*). §9's Maps subgroup, the chip's map glyph and the rights row are **not built**: the engine's IIFE has 4 bytes of headroom (DECISIONS §113a), so they wait for the owner's budget decision or a saving (DECISIONS §127c). |
+| The viewer | none | A map layer already renders, is listed in Layers with its credit (`attribution`, the built credit line) and credits the legal line while it shows (S-V53-*). §9's Maps subgroup, the chip's map glyph and the rights row are **not built**: the engine's IIFE has 4 bytes of headroom (DECISIONS §113a), so they wait for the owner's budget decision or a saving (DECISIONS §136c). |
 
-The admin-input budget: from the Upload view, Choose (1), the zip on the worker's page (2), Import (3); the report opens by itself when the worker's report arrives (S-A121-HAPPY-BUDGET). Scenarios `S-A121-*`, `S-V52-*`, `S-P20-HAPPY-SIDECAR-FOLDER`; tour states `archive.*` (`e2e/admin/specs/imagery/archive-states.ts`).
+The admin-input budget: from the Upload view, Choose (1), the zip on the worker's page (2), Import (3); the report opens by itself when the worker's report arrives (S-A121-HAPPY-BUDGET). Scenarios `S-A121-*`, `S-V53-*`, `S-P20-HAPPY-SIDECAR-FOLDER`; tour states `archive.*` (`e2e/admin/specs/imagery/archive-states.ts`).
 
 **Not built here:** the sheet outlines and per-sheet residuals over the map, Exclude sheet, the checkerboard for a series (the version's page shows its own-tiles preview as for any version), a rights confirmation after Import (Approve refuses until then; a re-scan imports again), Home's *What needs you* rows for series, OCR prefill and contact sheets in the report.
 
 ## 17. As built: the review's fixes (track/archive, 2026-11-09)
 
-DECISIONS §128; lessons 513 and 514.
+DECISIONS §137; lessons 530 and 531.
 
 | What | Where | Behaviour |
 | --- | --- | --- |

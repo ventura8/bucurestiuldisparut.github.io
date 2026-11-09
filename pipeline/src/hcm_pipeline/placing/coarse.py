@@ -3,7 +3,7 @@
 The map's street skeleton (points in its working pixels) is drawn, for each scale and rotation tried, as a template in the reference's
 pixels; correlating it with the reference's closeness image (OpenCV's template matching, by FFT) scores every shift at once, as the mean
 closeness of the map's lines to the reference's less what the same area of the reference would give anywhere (zero-mean correlation:
-lesson 511). A plain mean favours wherever the reference is densest, and a dense town wins over the true place. The scale comes from
+lesson 528). A plain mean favours wherever the reference is densest, and a dense town wins over the true place. The scale comes from
 the map's printed scale when it is known (a narrow band around it), else from a wide band of sizes against the city; the rotation is
 north up, give or take a few degrees, in each of the four quarter turns.
 The best placements are kept, each more than `RIVAL_SHARE` of the map's size from the others (M9's rival search): `CANDIDATES` of

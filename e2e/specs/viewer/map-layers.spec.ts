@@ -7,7 +7,7 @@ import { expect, test } from '../../support/test.js';
 import { openLayers, openViewer, serveManifest, t, viewer, visibilitySwitch } from '../../support/viewer.js';
 
 /**
- * M20 (docs/research/M20-import-local.md §7, §9; behaviour V52): a scanned map imported from a local archive is a layer of kind
+ * M20 (docs/research/M20-import-local.md §7, §9; behaviour V53): a scanned map imported from a local archive is a layer of kind
  * `map` at 0.85 whose `attribution` is the credit line built from its rights. The viewer needs no byte of its own for it: the
  * layer is listed in Layers with its credit, draws its tiles and puts its credit on the map's legal line while it shows.
  */
@@ -37,7 +37,7 @@ function withMapLayer(): Json {
 
 test(
     'A drawn map from an archive is listed in Layers with its credit and credits the legal line while it shows',
-    { tag: '@S-V52-HAPPY' },
+    { tag: '@S-V53-HAPPY' },
     async ({ page, lang }) => {
         await serveManifest(page, withMapLayer());
         await openViewer(page, { lang, hash: EMPTY_VIEW });
@@ -55,7 +55,7 @@ test(
 
 test(
     'A drawn map that is not shown draws nothing and leaves the legal line without its credit',
-    { tag: '@S-V52-BAD-HIDDEN' },
+    { tag: '@S-V53-BAD-HIDDEN' },
     async ({ page, lang }) => {
         await serveManifest(page, withMapLayer());
         await openViewer(page, { lang, hash: EMPTY_VIEW });

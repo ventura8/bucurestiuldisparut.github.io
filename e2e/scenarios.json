@@ -920,7 +920,7 @@
             "source": "the owner, 2026-11-08: a locate image button in the photo detail panel"
         },
         {
-            "id": "V52",
+            "id": "V53",
             "area": "viewer",
             "name": "A drawn map imported from an archive is listed, drawn and credited like any layer",
             "milestone": "M20",
@@ -14985,8 +14985,8 @@
             "notes": "Test: e2e/specs/viewer/no-webgl.spec.ts (project nogl)."
         },
         {
-            "id": "S-V52-HAPPY",
-            "behaviour": "V52",
+            "id": "S-V53-HAPPY",
+            "behaviour": "V53",
             "area": "viewer",
             "path": "happy",
             "title": "A drawn map from an archive is listed and credited",
@@ -14996,8 +14996,8 @@
             "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/specs/viewer/map-layers.spec.ts."
         },
         {
-            "id": "S-V52-BAD-HIDDEN",
-            "behaviour": "V52",
+            "id": "S-V53-BAD-HIDDEN",
+            "behaviour": "V53",
             "area": "viewer",
             "path": "bad",
             "title": "A drawn map not shown draws nothing and adds no credit",
