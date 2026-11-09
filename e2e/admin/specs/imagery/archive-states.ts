@@ -5,7 +5,11 @@
  */
 export const ARCHIVE_STATES = {
     'archive.panel-worker': {
-        title: 'Historical imagery, Upload: Import local files with the computer connected, Choose a folder or zip, the scanned archives',
+        title: 'Historical imagery, Upload: Import local files with the computer connected, Choose a folder, Choose a zip, the scanned archives',
+        visit: 'specs/imagery/archive.spec.ts',
+    },
+    'archive.panel-local-refused': {
+        title: "Historical imagery, Upload: Import local files that the computer's worker refused, and why (batch 4)",
         visit: 'specs/imagery/archive.spec.ts',
     },
     'archive.panel-no-worker': {

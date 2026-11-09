@@ -233,3 +233,41 @@ describe('<hcm-jobs-page>: waiting, finished and failing jobs', () => {
         ]).toEqual(['good', 'wait', null]);
     });
 });
+
+describe('<hcm-jobs-page>: its layout (batch 4)', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_theComputerIsAFullWidthCardAboveAListAndJobSideBySideFrom1200px @S-A62-HAPPY-JOBS-LAYOUT', async () => {
+        const jobs = area(jobsState({ detail: detail() }));
+        const { element } = await page('jobs', jobs, { params: ['b'], width: 1300 });
+        await new Promise(requestAnimationFrame);
+        await updated(element);
+        const card = deep(element, 'details[data-computer]') as HTMLDetailsElement;
+        const split = deep(element, 'hcm-list-detail');
+        const list = deep(split, '.pane.list').getBoundingClientRect();
+
+        expect(card.open).toBe(true);
+        expect(deep(card, 'summary').textContent).toBe('Your computer, where new jobs run and Cloud Run this month');
+        expect(card.getBoundingClientRect().bottom).toBeLessThanOrEqual(split.getBoundingClientRect().top);
+        expect(card.getBoundingClientRect().width).toBeGreaterThan(1200);
+        expect(split.hasAttribute('split')).toBe(true);
+        expect(list.width).toBeGreaterThanOrEqual(360);
+        deep(card, 'summary').click();
+        await updated(element);
+        expect(card.open).toBe(false);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_under1200pxTheListAndTheJobAreStacked_theJobReplacesTheList @S-A62-BAD-JOBS-LAYOUT', async () => {
+        const jobs = area(jobsState({ detail: detail(jobItem({ steps: [], progress: null })) }));
+        const { element } = await page('jobs', jobs, { params: ['b'], width: 1000 });
+        await new Promise(requestAnimationFrame);
+        await updated(element);
+        const split = deep(element, 'hcm-list-detail');
+
+        expect(split.hasAttribute('split')).toBe(false);
+        expect(deep(split, '.pane.list').hidden).toBe(true);
+        expect(deep(split, '.back hcm-button').textContent.trim()).toBe('Back to the list');
+    });
+});

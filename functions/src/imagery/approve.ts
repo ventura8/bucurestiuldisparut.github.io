@@ -89,6 +89,16 @@ function refuseUnconfirmedRights(version: LayerVersionDoc): void {
     }
 }
 
+/**
+ * Batch 4 (`docs/research/M20-import-local.md` §5.1; S-A120-*-GRID-NAMES): a grid series placed from its sheets' names without a proof is
+ * approved by the city's owner alone (Approve the sheet-name placement); an editor's approval is `apiError.city.notOwner`.
+ */
+function refuseGridNamesUnlessOwner(version: LayerVersionDoc, caller: VerifiedCaller, cityId: string): void {
+    if (version.archive?.method === 'grid-names' && caller.membership?.roleIn(cityId) !== 'owner') {
+        throw new ApiError('apiError.city.notOwner');
+    }
+}
+
 /** The version is approved now, its estimate recorded; any other state is `apiError.imagery.versionState`. */
 async function approveVersion(deps: ApprovalDeps, caller: VerifiedCaller, request: ApproveRequest): Promise<LayerVersionDoc> {
     const path = FIRESTORE_PATHS.layerVersion(request.cityId, request.versionId);
@@ -103,6 +113,7 @@ async function approveVersion(deps: ApprovalDeps, caller: VerifiedCaller, reques
         }
         await refuseHeldPart(transaction, request.cityId, version);
         refuseUnconfirmedRights(version);
+        refuseGridNamesUnlessOwner(version, caller, request.cityId);
         await refuseUnchosenWorse(transaction, version, request);
         const result = approved({ ...version, estimate: version.estimate ?? estimateOf(version.output, now) }, caller.uid, now);
         await transaction.set(path, layerVersionDocSchema, result);

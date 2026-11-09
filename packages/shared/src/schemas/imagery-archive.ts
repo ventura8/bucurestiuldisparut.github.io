@@ -65,8 +65,11 @@ export type ArchiveEncoding = (typeof ARCHIVE_ENCODINGS)[number];
 /** How likely a series calibrates itself (the report's chip): likely, possible, or it needs the owner's points. */
 export const ARCHIVE_AUTO_LIKELIHOODS = ['likely', 'possible', 'points'] as const;
 
-/** How a series' layer was placed (§4), the version's `archive.method`; `gcps`: the owner's points. */
-export const ARCHIVE_PLACE_METHODS = ['embedded', 'grid', 'atlas', 'pieces', 'match', 'gcps'] as const;
+/**
+ * How a series' layer was placed (§4), the version's `archive.method`; `gcps`: the owner's points. Batch 4 (§5.1): `grid-names`, a grid
+ * series placed from its sheets' names and frames whose grid did not prove on the reference: only its owner approves it, by hand.
+ */
+export const ARCHIVE_PLACE_METHODS = ['embedded', 'grid', 'atlas', 'pieces', 'match', 'gcps', 'grid-names'] as const;
 
 /** M20 (§7): the licences a published map layer may carry. */
 export const LAYER_LICENSES = ['PD', 'CC0', 'CC-BY-4.0', 'CC-BY-SA-4.0', 'permission'] as const;
@@ -238,6 +241,8 @@ export const archiveReportSchema = z.strictObject({
     measuredPct: z.number().min(0).max(100),
     /** True when the rival search found no second placement. */
     rivalClean: z.boolean(),
+    /** Batch 4: a grid series' seams, the mean correlation of neighbouring sheets' edges (1: every line continues). */
+    seamScore: z.number().min(-1).max(1).optional(),
     residuals: z
         .strictObject({
             medianM: z.number().min(0),

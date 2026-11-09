@@ -209,7 +209,7 @@
     ],
     "ARCHIVE_ENCODINGS": ["lineart", "grey", "colour"],
     "ARCHIVE_AUTO_LIKELIHOODS": ["likely", "possible", "points"],
-    "ARCHIVE_PLACE_METHODS": ["embedded", "grid", "atlas", "pieces", "match", "gcps"],
+    "ARCHIVE_PLACE_METHODS": ["embedded", "grid", "atlas", "pieces", "match", "gcps", "grid-names"],
     "RIGHTS_LICENCES": ["PD", "CC0", "CC-BY-4.0", "CC-BY-SA-4.0", "permission", "unknown"],
     "RIGHTS_STATES": ["clear", "needs-confirmation", "do-not-publish"],
     "HELP_REASONS": ["no-path", "low-confidence", "frame-not-found", "no-scale", "archive-missing"],

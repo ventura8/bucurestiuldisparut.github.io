@@ -265,3 +265,64 @@ describe('the files of a joined frame', () => {
         expect(world.deps.blobs.paths('private', 'rasters/')).toEqual([`rasters/${CITY}/layer-f040/v-f040/scan.tif`]);
     });
 });
+
+describe('finalizing a join: the layers of its date (batch 4)', () => {
+    it('happyPath_aFramesOwnPublishedLayerIsRetired_offTheMapAndKept_liveFeb1972 @S-A65-HAPPY-PUBLISHED-FRAMES', async () => {
+        const world = await readyWorld();
+        await seedJoinOfTwo(world, JOIN, { state: 'publishing', approval: { auto: false, by: 'u-admin', at: at(NOW) } });
+        const f040 = await requireVersion(world, 'v-f040');
+        await seedVersion(world, 'v-f040', { ...f040, state: 'published', mapbox: MAPBOX });
+        await seedLayer(world, f040.layerId, { currentVersion: 'v-f040', published: true });
+
+        await finalize(world);
+
+        expect(await readLayer(world, f040.layerId)).toMatchObject({
+            published: false,
+            retired: { by: JOIN, at: at(NOW) },
+            currentVersion: 'v-f040',
+            source: { type: 'mapbox' },
+        });
+        expect((await readVersion(world, 'v-f040'))?.state).toBe('published');
+        expect((await readScene(world, F040))?.layerId).toBe('layer-join');
+        expect((await readLayer(world, 'layer-join'))?.published).toBe(true);
+    });
+
+    it('happyPath_aLayerAlreadyRetiredStaysAsItIs', async () => {
+        const world = await readyWorld();
+        await seedJoinOfTwo(world, JOIN, { state: 'publishing', approval: { auto: false, by: 'u-admin', at: at(NOW) } });
+        const f040 = await requireVersion(world, 'v-f040');
+        await seedLayer(world, f040.layerId, { published: false, retired: { by: 'jn-0', at: LONG_AGO } });
+
+        await finalize(world);
+
+        expect((await readLayer(world, f040.layerId))?.retired).toEqual({ by: 'jn-0', at: LONG_AGO });
+    });
+
+    it('happyPath_aFramePublishingAloneAfterItsJoinPublishedIsBornRetired @S-A65-HAPPY-PUBLISHED-FRAMES', async () => {
+        const world = await readyWorld();
+        const approval = { auto: false, by: 'u-admin', at: at(NOW) };
+        await seedJoinOfTwo(world, JOIN, { state: 'published', mapbox: MAPBOX });
+        const f040 = await requireVersion(world, 'v-f040');
+        await seedVersion(world, 'v-f040', { ...f040, state: 'publishing', approval });
+        await seedJob(world, 'v-f040', { ...(await requireJob(world, 'v-f040')), status: 'mts_processing', waitReason: undefined });
+
+        await expect(finalize(world, 'v-f040')).resolves.toBe(true);
+
+        expect(await readLayer(world, f040.layerId)).toMatchObject({ published: false, retired: { by: JOIN } });
+        expect((await readVersion(world, 'v-f040'))?.state).toBe('published');
+    });
+
+    it('badPath_aFramePublishingAloneWhileItsJoinIsNotPublishedIsPublic', async () => {
+        const world = await readyWorld();
+        const approval = { auto: false, by: 'u-admin', at: at(NOW) };
+        await seedJoinOfTwo(world, JOIN);
+        const f040 = await requireVersion(world, 'v-f040');
+        await seedVersion(world, 'v-f040', { ...f040, state: 'publishing', approval });
+
+        await finalize(world, 'v-f040');
+
+        const layer = await readLayer(world, f040.layerId);
+        expect(layer?.published).toBe(true);
+        expect(layer?.retired).toBeUndefined();
+    });
+});

@@ -6,7 +6,7 @@ import { chooseMenuItem, dismissToast, menuButton, t, viewer } from '../support/
 /**
  * The states of the owner's request of 2026-11-08 in the tour's inventory: Settings (Setări), the menu's dialog that holds
  * the language and the theme since they left About, visited by the journey `home` of e2e/tour/states.ts, then the other
- * language chosen in it; and the Layers pane minimized to its rail, which exists only where the pane is always docked
+ * language chosen in it; and the Layers pane minimized to one floating button, which exists only where the pane is always docked
  * (extra-large, 1600 px and wider), visited by the journey `year-layers` after the opacity state.
  */
 
@@ -51,7 +51,7 @@ export const SETTINGS_STATES = {
         shows: (lang: Locale): Locale => (lang === 'ro' ? 'en' : 'ro'),
     },
     'layers-minimized': {
-        title: 'The always-docked Layers pane minimized to its rail: the map takes the rest',
+        title: 'The always-docked Layers pane minimized to one floating button: the map takes the whole width',
         enter: async ({ page, lang }: SettingsTour) => {
             const pane = viewer(page).locator('.pane.leading');
             const collapse = pane.getByRole('button', { name: t(lang, 'layers.minimize'), exact: true });

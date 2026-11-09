@@ -126,13 +126,15 @@ export function shareOf(city: CityDoc | undefined): number {
 }
 
 /** The worker's import page on this computer, with the city's latitude (the scan's ground resolution). */
+/** The city's latitude (its centre, else its bounds' middle) for the scan's ground scale; null before the city is read. */
+export function latitudeOf(city: CityDoc | undefined): number | null {
+    return city === undefined ? null : (city.center?.lat ?? (city.bounds.south + city.bounds.north) / 2);
+}
+
 export function importUrlOf(port: number, city: CityDoc | undefined): string {
     const page = `http://127.0.0.1:${String(port)}/import`;
-    if (city === undefined) {
-        return page;
-    }
-    const lat = city.center?.lat ?? (city.bounds.south + city.bounds.north) / 2;
-    return `${page}?lat=${lat.toFixed(4)}`;
+    const lat = latitudeOf(city);
+    return lat === null ? page : `${page}?lat=${lat.toFixed(4)}`;
 }
 
 const NO_PROGRESS: SeriesProgress = {

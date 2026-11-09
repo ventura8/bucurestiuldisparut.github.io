@@ -158,7 +158,8 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.workerLost': spec('unavailable'),
     // M8 (docs/research/M8-join-interfaces.md §4): joining frames of one date into one layer.
     'apiError.imagery.joinMixedFrames': spec('invalid-argument'),
-    'apiError.imagery.joinTwoPublished': spec('failed-precondition'),
+    // Batch 4: a frame a newer join of its date stamped (a failed join's retry cannot take it back).
+    'apiError.imagery.joinPartTaken': spec('failed-precondition'),
     'apiError.imagery.joinPartGone': spec('failed-precondition'),
     'apiError.imagery.joinPartHeld': spec('failed-precondition'),
     // M18 item 4: a join whose published frame's layer is busy; the admin offers to join once it is free.

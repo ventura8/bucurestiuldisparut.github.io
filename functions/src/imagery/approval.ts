@@ -101,7 +101,8 @@ function provedWhole({ calibration }: LayerVersionDoc): boolean {
  * clean, and the agreeing checks spanning the map's own extent.
  */
 const ARCHIVE_CONDITIONS: readonly ((report: ArchiveReport, threshold: number) => boolean)[] = [
-    (report) => report.method !== 'gcps',
+    // Batch 4: a grid placed from its sheets' names alone is its owner's call, never the policy's.
+    (report) => report.method !== 'gcps' && report.method !== 'grid-names',
     (report) => report.checkpointCount >= MIN_CHECKPOINTS && report.checksDropped === 0,
     (report, threshold) => (report.checkpointRmseM ?? Number.POSITIVE_INFINITY) <= threshold,
     (report) => report.rivalClean && report.measuredPct >= AUTO_MIN_MEASURED_PCT,

@@ -21,6 +21,8 @@ export interface ImageryContext {
     readonly go: (params: readonly string[]) => void;
     /** A revoked admin's page: nothing writes. */
     readonly readOnly: boolean;
+    /** Batch 4: the signed-in admin owns the city (Approve the sheet-name placement is the owner's alone). */
+    readonly owner?: boolean;
     readonly ask: (question: ImageryQuestion) => void;
     /** Renders the page again: a chunk it fetched on first need settled (`orders/lazy-card.ts`). */
     readonly refresh: () => void;

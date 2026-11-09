@@ -90,37 +90,71 @@ function report(page: Page): Locator {
     return page.locator('hcm-archive-report');
 }
 
+/** The admin's own import's archive on the computer (batch 4). */
+const LOCAL_ID = 'ar-00000000000000aa';
+
+/** What the worker answers each of the admin's import requests (`pipeline/src/hcm_pipeline/worker/server.py`). */
+function loopbackAnswer(path: string): { status: number; body: string } {
+    const answers: Readonly<Record<string, [number, unknown]>> = {
+        '/import/session': [201, { token: 'f'.repeat(64) }],
+        '/import/new': [201, { archiveId: LOCAL_ID }],
+        [`/import/${LOCAL_ID}/file`]: [201, { path: 'harti.zip' }],
+        [`/import/${LOCAL_ID}/zip`]: [200, { written: 124, refused: 0 }],
+        [`/import/${LOCAL_ID}/scan`]: [202, { state: 'scanning' }],
+        [`/import/${LOCAL_ID}`]: [200, { state: 'reported', series: 2, skipped: {} }],
+    };
+    const [status, body] = answers[path] ?? [404, {}];
+    return { status, body: JSON.stringify(body) };
+}
+
 test(
-    "Choose the files on the worker's page, the report opens by itself, one Import starts today's share and the rest wait",
-    { tag: ['@S-A121-HAPPY-PANEL', '@S-A121-HAPPY-BUDGET', '@S-A121-HAPPY-IMPORT', '@S-A121-BAD-DAILY-SPLITS'] },
+    "Choose a zip in the Imagery tab, it goes to the worker, the report opens by itself, one Import starts today's share and the rest wait",
+    { tag: ['@S-A121-HAPPY-PANEL', '@S-A121-HAPPY-BUDGET', '@S-A121-HAPPY-IMPORT', '@S-A121-BAD-DAILY-SPLITS', '@S-A121-HAPPY-LOCAL-TAB'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream, inputBudget }, testInfo) => {
         const owner = adminWorld.accounts.owner.uid;
         const imagery = await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, owner);
         await seedWorker(imagery, owner, 30);
         await shareOf(imagery, 1);
-        // The worker's own page, on the computer's loopback: a stand-in with its zip input.
-        await page.context().route('http://127.0.0.1:8765/**', (route) =>
-            route.fulfill({
-                contentType: 'text/html',
-                body: '<!doctype html><title>Import</title><input id="zip" type="file" aria-label="zip">',
-            }),
-        );
+        // Batch 4: the worker on the computer's loopback (the external boundary), as `worker/server.py` answers the admin's own tab.
+        const asked: string[] = [];
+        await page.context().route('http://127.0.0.1:8765/**', async (route) => {
+            const request = route.request();
+            const url = new URL(request.url());
+            const cors = {
+                'access-control-allow-origin': (await request.headerValue('origin')) ?? '*',
+                'access-control-allow-headers': 'content-type, x-hcm-path, x-hcm-session',
+                'access-control-allow-private-network': 'true',
+            };
+            if (request.method() === 'OPTIONS') {
+                await route.fulfill({ status: 204, headers: cors });
+                return;
+            }
+            asked.push(`${request.method()} ${url.pathname}`);
+            await route.fulfill({ contentType: 'application/json', headers: cors, ...loopbackAnswer(url.pathname) });
+        });
         const flow = inputBudget.flow('scan and import a local archive', 3);
 
         const panel = await openUpload(page, lang);
-        const choose = panel.getByRole('link', { name: text(lang, 'adminArchive.choose') });
-        await expect(choose).toHaveAttribute('href', /^http:\/\/127\.0\.0\.1:8765\/import\?lat=\d+\.\d{4}$/, {
+        const fallback = panel.getByRole('link', { name: text(lang, 'adminArchive.local.fallback') });
+        await expect(fallback).toHaveAttribute('href', /^http:\/\/127\.0\.0\.1:8765\/import\?lat=\d+\.\d{4}$/, {
             timeout: FUNCTIONS_TIMEOUT_MS,
         });
         await expect(panel.getByText(text(lang, 'adminArchive.none'))).toBeVisible();
         await expectStateSound(page, adminVisit('archive.panel-worker', lang));
-        const popup = page.waitForEvent('popup');
-        await flow.click(choose);
-        const workerPage = await popup;
         const zip = testInfo.outputPath('harti.zip');
         writeFileSync(zip, 'PK\u0005\u0006'.padEnd(22, '\u0000'));
-        await flow.setInputFiles(workerPage.locator('#zip'), zip);
-        await workerPage.close();
+        const chooser = page.waitForEvent('filechooser');
+        await flow.click(panel.getByRole('button', { name: text(lang, 'adminArchive.local.zip') }));
+        await (await chooser).setFiles(zip);
+        await expect(panel.getByRole('status').filter({ hasText: text(lang, 'adminArchive.local.done') })).toBeVisible();
+        expect(asked).toEqual([
+            'POST /import/session',
+            'POST /import/new',
+            `POST /import/${LOCAL_ID}/file`,
+            `POST /import/${LOCAL_ID}/zip`,
+            `POST /import/${LOCAL_ID}/scan`,
+            `GET /import/${LOCAL_ID}`,
+        ]);
         await seedArchive(imagery, owner);
 
         const shown = report(page);
@@ -145,6 +179,36 @@ test(
 );
 
 test(
+    'A worker on this computer not signed in for the city refuses the import, and the card says why',
+    { tag: ['@S-A121-BAD-LOCAL-TAB'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }, testInfo) => {
+        const owner = adminWorld.accounts.owner.uid;
+        const imagery = await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, owner);
+        await seedWorker(imagery, owner, 30);
+        await page.context().route('http://127.0.0.1:8765/**', async (route) => {
+            const origin = (await route.request().headerValue('origin')) ?? '*';
+            const headers = { 'access-control-allow-origin': origin, 'access-control-allow-headers': 'content-type' };
+            await route.fulfill(
+                route.request().method() === 'OPTIONS'
+                    ? { status: 204, headers }
+                    : { status: 409, headers, contentType: 'application/json', body: '{"error":"notPaired"}' },
+            );
+        });
+
+        const panel = await openUpload(page, lang);
+        const zip = testInfo.outputPath('harti.zip');
+        writeFileSync(zip, 'PK');
+        const chooser = page.waitForEvent('filechooser');
+        await panel.getByRole('button', { name: text(lang, 'adminArchive.local.zip') }).click({ timeout: FUNCTIONS_TIMEOUT_MS });
+        await (await chooser).setFiles(zip);
+
+        const why = text(lang, 'adminArchive.local.failed', { why: text(lang, 'adminArchive.local.notPaired') });
+        await expect(panel.getByRole('status').filter({ hasText: why })).toBeVisible();
+        await expectStateSound(page, adminVisit('archive.panel-local-refused', lang));
+    },
+);
+
+test(
     'With no computer connected the card says to start the worker first and offers no choice of files',
     { tag: ['@S-A121-BAD-NO-WORKER', '@S-A121-BAD-NOT-FOUND'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
@@ -156,7 +220,7 @@ test(
         const panel = await openUpload(page, lang);
         await expect(panel.getByText(text(lang, 'adminArchive.noWorker'))).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
         await expect(panel.getByRole('link', { name: text(lang, 'adminArchive.openJobs') })).toHaveAttribute('href', '#/jobs');
-        await expect(panel.getByRole('link', { name: text(lang, 'adminArchive.choose') })).toHaveCount(0);
+        await expect(panel.getByRole('button', { name: text(lang, 'adminArchive.local.zip') })).toHaveCount(0);
         await expect(panel.getByRole('link', { name: /harti\.zip/ })).toHaveAttribute('href', `#/imagery/archive/${ARCHIVE}`);
         await expectStateSound(page, adminVisit('archive.panel-no-worker', lang));
 

@@ -104,3 +104,33 @@ test(
         await expect(page.getByRole('button', { name: text(lang, 'adminContent.jobs.retry') })).toHaveCount(0);
     },
 );
+
+test(
+    'The Jobs page: the computer in a card above, the list and an open job side by side from 1200 px, stacked below',
+    { tag: ['@S-A62-HAPPY-JOBS-LAYOUT', '@S-A62-BAD-JOBS-LAYOUT'] },
+    async ({ page, lang, content }) => {
+        await seedCity(content, AT);
+        await seedJob(
+            content,
+            'failed',
+            { ...IMPORT, status: 'failed', versionId: 'failed', attempt: 1, createdBy: content.uid, steps: STEPS_OF_FAILED },
+            AT,
+        );
+
+        await page.setViewportSize({ width: 1680, height: 900 });
+        await page.goto(content.address(lang, 'jobs/failed', { map: false }));
+        const split = page.locator('hcm-jobs-page hcm-list-detail');
+        await expect(split).toHaveAttribute('split', '');
+        const card = page.locator('hcm-jobs-page details[data-computer]');
+        await expect(card).toHaveAttribute('open', '');
+        const [cardBox, listBox] = [await card.boundingBox(), await split.locator('.pane.list').boundingBox()];
+        expect(listBox?.width ?? 0).toBeGreaterThanOrEqual(360);
+        expect((cardBox?.y ?? Number.NaN) + (cardBox?.height ?? 0)).toBeLessThanOrEqual(listBox?.y ?? Number.NaN);
+
+        // Below 1200 px the open job replaces the list, with Back to it.
+        await page.setViewportSize({ width: 1100, height: 900 });
+        await expect(split).not.toHaveAttribute('split', '');
+        await expect(split.locator('.pane.list')).toBeHidden();
+        await expect(page.getByRole('button', { name: text(lang, 'adminContent.common.back') })).toBeVisible();
+    },
+);

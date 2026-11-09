@@ -11,8 +11,8 @@
  * has nothing to switch), each firing `hcm-map-label`; its note tells them from the city's own Places above.
  *
  * The extra-large pane that is always there is `minimizable` (the owner, 2026-11-08): its close button ("Restrânge
- * straturile", a chevron, `aria-expanded="true"`) turns it into a rail on the same edge whose one button ("Straturi",
- * `aria-expanded="false"`) brings it back. Each fires `hcm-layers-minimize` (`{minimized}`): the viewer keeps it in the
+ * straturile", a chevron, `aria-expanded="true"`) turns it into one floating button on the map's leading edge ("Straturi",
+ * `aria-expanded="false"`, the owner 2026-11-09: no rail, the map takes the full width) that brings it back. Each fires `hcm-layers-minimize` (`{minimized}`): the viewer keeps it in the
  * store (`layersHidden`, for the session only) and binds `minimized` (reflected for the viewer's grid) to it, so the pane
  * re-created when the window comes back to extra-large is still minimized. The switches and sliders are the store's, so
  * minimizing loses none of them. The focus follows: to the rail's button, then back to the panel's close button.
@@ -109,22 +109,22 @@ export class HcmLayerPanel extends LitElement {
             }
 
             .rail {
-                align-items: center;
-                padding-block: 12px;
-            }
-
-            .rail button {
+                position: absolute;
+                inset-block-start: var(--hcm-gutter);
+                inset-inline-start: var(--hcm-gutter);
+                z-index: 20;
                 display: flex;
-                flex-direction: column;
                 align-items: center;
-                gap: 4px;
-                padding: 8px;
+                gap: 8px;
+                min-block-size: 48px;
+                padding-inline: 16px 20px;
                 border: 0;
                 border-radius: var(--md-sys-shape-corner-large);
                 background: var(--md-sys-color-secondary-container);
                 color: var(--md-sys-color-on-secondary-container);
+                box-shadow: var(--md-sys-elevation-level2);
                 font: inherit;
-                font-size: var(--md-sys-typescale-label-medium-size);
+                font-size: var(--md-sys-typescale-label-large-size);
             }
 
             .content {
@@ -191,9 +191,9 @@ export class HcmLayerPanel extends LitElement {
     declare locale: Locale;
     declare mode: SheetMode;
     declare open: boolean;
-    /** The pane is always docked (extra-large): its close button minimizes it to a rail. */
+    /** The pane is always docked (extra-large): its close button minimizes it to one floating button. */
     declare minimizable: boolean;
-    /** The minimizable pane shows as its rail. */
+    /** The minimizable pane shows as its floating button. */
     declare minimized: boolean;
     /** The city has historical layers and the map is drawn: the Compare button shows (M4). */
     declare canCompare: boolean;
@@ -254,11 +254,9 @@ export class HcmLayerPanel extends LitElement {
         const onRestore = (): void => {
             this.#minimize(false);
         };
-        return html`<section class="docked rail" aria-label=${label}>
-            <button type="button" class="interactive" aria-expanded="false" @click=${onRestore}>
-                <hcm-icon name="layers"></hcm-icon>${label}
-            </button>
-        </section>`;
+        return html`<button type="button" class="rail interactive" aria-expanded="false" @click=${onRestore}>
+            <hcm-icon name="layers"></hcm-icon>${label}
+        </button>`;
     }
 
     #content(): TemplateResult {

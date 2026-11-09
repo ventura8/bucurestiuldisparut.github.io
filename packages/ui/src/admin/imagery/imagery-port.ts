@@ -4,6 +4,7 @@
  * `packages/admin/test/app/admin-port.test.ts` checks that the real store satisfies it.
  */
 import type {
+    ArchiveReport,
     ApiErrorCode,
     BBox,
     Calibration,
@@ -186,6 +187,8 @@ export interface VersionViewPort {
     readonly basedOn: string | null;
     readonly recalibration: Recalibration | null;
     readonly publicUrl: string | null;
+    /** M20, batch 4: what an archive series' placement measured (`grid-names`: placed from its sheets' names, its owner approves). */
+    readonly archive?: ArchiveReport | null;
 }
 
 export interface JobViewPort {

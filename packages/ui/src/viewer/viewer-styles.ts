@@ -49,7 +49,7 @@ export const viewerStyles = [
             min-block-size: 320px;
             overflow: hidden;
             container: hcm-viewer / size;
-            background: var(--md-sys-color-surface, Canvas);
+            background: var(--md-sys-color-surface);
         }
 
         /* A wrapper, not the host, is the grid: a page may set the element's own display (display: block). */
@@ -78,8 +78,8 @@ export const viewerStyles = [
             grid-area: 2 / 1 / 3 / 2;
             padding-block-end: env(safe-area-inset-bottom, 0);
             padding-inline: var(--hcm-gutter);
-            border-block-start: 1px solid var(--md-sys-color-outline-variant, GrayText);
-            background: var(--md-sys-color-surface-container, Canvas);
+            border-block-start: 1px solid var(--md-sys-color-outline-variant);
+            background: var(--md-sys-color-surface-container);
         }
 
         /* While the logo and the attribution show in the legal bar or in About, Mapbox's own stay out of sight. */
@@ -94,7 +94,7 @@ export const viewerStyles = [
          * tone, measured 1.71:1 on the collapsed attribution's toggle (the tour).
          */
         .mapboxgl-ctrl-attrib :focus-visible {
-            outline-color: light-dark(var(--md-sys-color-primary, Highlight), var(--md-sys-color-inverse-primary, Highlight));
+            outline-color: light-dark(var(--md-sys-color-primary), var(--md-sys-color-inverse-primary));
         }
 
         /*
@@ -167,13 +167,17 @@ export const viewerStyles = [
             display: contents;
         }
 
-        /* The minimized Layers pane (extra-large) is a rail: the map takes the rest (its ResizeObserver resizes Mapbox). */
+        /*
+         * The minimized Layers pane (extra-large) is one floating button on the map's leading edge: the map takes the whole width
+         * (its ResizeObserver resizes Mapbox), and the top docks begin after the button.
+         */
         .frame:has(> .pane.leading > [minimized]) {
-            --hcm-pane-leading: 88px;
+            --hcm-pane-leading: 0px;
+            --hcm-top-start: calc(var(--hcm-gutter) + 152px);
         }
 
         .pane.leading .docked {
-            border-inline: 0 1px solid var(--md-sys-color-outline-variant, GrayText);
+            border-inline: 0 1px solid var(--md-sys-color-outline-variant);
         }
 
         .map-pane {
@@ -195,9 +199,9 @@ export const viewerStyles = [
             min-block-size: 48px;
             padding-inline: 16px;
             border: 0;
-            border-radius: var(--md-sys-shape-corner-full, 9999px);
-            background: var(--md-sys-color-primary, Highlight);
-            color: var(--md-sys-color-on-primary, HighlightText);
+            border-radius: var(--md-sys-shape-corner-full);
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
             font: inherit;
             transform: translateY(-200%);
         }
@@ -221,7 +225,7 @@ export const viewerStyles = [
             box-sizing: border-box;
             padding: var(--hcm-gutter);
             overflow: auto;
-            background: var(--md-sys-color-surface, Canvas);
+            background: var(--md-sys-color-surface);
         }
 
         .skeleton {
@@ -236,9 +240,9 @@ export const viewerStyles = [
             border-radius: 6px;
             background: linear-gradient(
                 90deg,
-                var(--md-sys-color-surface-container-high, Canvas),
-                var(--md-sys-color-surface-container-highest, GrayText),
-                var(--md-sys-color-surface-container-high, Canvas)
+                var(--md-sys-color-surface-container-high),
+                var(--md-sys-color-surface-container-highest),
+                var(--md-sys-color-surface-container-high)
             );
             background-size: 200% 100%;
             animation: hcm-shimmer 1.4s linear infinite;
@@ -308,16 +312,16 @@ export const viewerStyles = [
             align-items: center;
             gap: 8px;
             box-sizing: border-box;
-            border-radius: var(--md-sys-shape-corner-full, 9999px);
-            background: var(--md-sys-color-surface-container-high, Canvas);
-            color: var(--md-sys-color-on-surface-variant, CanvasText);
-            box-shadow: var(--md-sys-elevation-level2, 0 2px 6px rgb(0 0 0 / 30%));
+            border-radius: var(--md-sys-shape-corner-full);
+            background: var(--md-sys-color-surface-container-high);
+            color: var(--md-sys-color-on-surface-variant);
+            box-shadow: var(--md-sys-elevation-level2);
         }
 
         .note {
             min-block-size: 40px;
             padding: 8px 16px 8px 12px;
-            font-size: var(--md-sys-typescale-label-large-size, 0.875rem);
+            font-size: var(--md-sys-typescale-label-large-size);
             line-height: 1.4;
             pointer-events: auto;
         }

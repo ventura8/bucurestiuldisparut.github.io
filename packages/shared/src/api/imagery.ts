@@ -177,7 +177,8 @@ export const imageryJoinResponseSchema = z.strictObject({ jobId: idSchema, versi
  * or the job used up its attempts. `imagery.retry` refuses them and the admin's pages offer no Retry for them. Out of
  * memory on the large machine is retried (finding 58 of 2026-11-01: a later pipeline may fit it, finding 57). M8: a join's
  * frames too far apart or adding nothing are measured the same way again; only **Join frames** with the fixed frames cures them.
- * `joinPartGone` stays: the frame's own retry can bring it back, and the join with it.
+ * `joinPartGone` stays: the frame's own retry can bring it back, and the join with it. Batch 4: `joinPartTaken` (a newer join of the date
+ * holds the frame) never comes back: that join is the one to open.
  */
 export const NOT_RETRYABLE_CODES = [
     'apiError.mapbox.tokenInvalid',
@@ -187,6 +188,7 @@ export const NOT_RETRYABLE_CODES = [
     'apiError.imagery.joinSeamTooFar',
     'apiError.imagery.joinNoFrames',
     'apiError.imagery.joinPartMissing',
+    'apiError.imagery.joinPartTaken',
 ] as const;
 
 const NOT_RETRYABLE: ReadonlySet<string> = new Set(NOT_RETRYABLE_CODES);

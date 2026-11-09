@@ -6,7 +6,7 @@ Files go over real HTTP to the worker's server; the scan's report goes to a fake
 import io
 import json
 import zipfile
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -18,7 +18,7 @@ from hcm_pipeline.worker.args import Endpoints
 from hcm_pipeline.worker.import_page import render_import_page
 from hcm_pipeline.worker.imports import ImportRoutes, chunks_of
 from hcm_pipeline.worker.page import PageSettings, content_security_policy
-from hcm_pipeline.worker.server import LocalServer, Request
+from hcm_pipeline.worker.server import SESSION_HEADER, LocalServer, Request
 
 from tests.fakes.worker_api import PROJECT
 
@@ -211,3 +211,120 @@ def test_happy_path_the_import_page_carries_the_token_and_its_two_languages() ->
     assert 'src="/import.js"' in page
     assert list(chunks_of(io.BytesIO(b"abc"), 10)) == [b"abc"]
     assert list(chunks_of(io.BytesIO(b"abcdef"), 4)) == [b"abcd"]
+
+
+class PairedApp(App):
+    """A worker signed in for the test's city and project (the admin's import asks for a session only then)."""
+
+    def __init__(self, signed_in: bool = True) -> None:
+        self.signed_in = signed_in
+
+    def state(self) -> Mapping[str, object]:
+        return {"signedIn": self.signed_in, "city": "bucharest", "project": PROJECT}
+
+
+@pytest.fixture
+def admin_served(tmp_path: Path) -> Iterator[tuple[LocalServer, ImportRoutes, PairedApp]]:
+    app = PairedApp()
+    routes = ImportRoutes(
+        ArchiveStore(tmp_path / "work", probed), Reports(), now=lambda: datetime(2026, 11, 9, tzinfo=UTC), start=lambda work: work()
+    )
+    local = LocalServer(app, SETTINGS, ("127.0.0.1", 0), content_security_policy(PROJECT), Endpoints.cloud(PROJECT).hosting_origins)
+    local.serve_imports(routes)
+    local.start()
+    try:
+        yield local, routes, app
+    finally:
+        local.stop()
+
+
+def hosting() -> str:
+    return Endpoints.cloud(PROJECT).hosting_origins[0]
+
+
+def test_happy_path_the_admins_tab_imports_with_a_session_from_its_hosting_origin(
+    admin_served: tuple[LocalServer, ImportRoutes, PairedApp],
+) -> None:
+    """Scenarios: S-P20-HAPPY-ADMIN-IMPORT"""
+    local, routes, _app = admin_served
+    preflight = httpx.request(
+        "OPTIONS",
+        f"{base(local)}/import/new",
+        headers={"origin": hosting(), "access-control-request-private-network": "true", "access-control-request-method": "POST"},
+    )
+    session = httpx.post(f"{base(local)}/import/session", json={"city": "bucharest", "project": PROJECT}, headers={"origin": hosting()})
+    admin = {"origin": hosting(), SESSION_HEADER: session.json()["token"]}
+    archive_id = httpx.post(f"{base(local)}/import/new", json={}, headers=admin).json()["archiveId"]
+    sent = httpx.post(
+        f"{base(local)}/import/{archive_id}/file",
+        content=b"a map",
+        headers={**admin, "content-type": "application/octet-stream", "x-hcm-path": "Harti/1911.jpg"},
+    )
+    started = httpx.post(f"{base(local)}/import/{archive_id}/scan", json={"name": "Harti", "source": "folder"}, headers=admin)
+    state = httpx.get(f"{base(local)}/import/{archive_id}", headers={"origin": hosting()})
+
+    assert preflight.status_code == 204
+    assert preflight.headers["access-control-allow-private-network"] == "true"
+    assert "x-hcm-session" in preflight.headers["access-control-allow-headers"]
+    assert session.status_code == 201
+    assert (sent.status_code, started.status_code) == (201, 202)
+    assert state.json() == {"state": "reported", "series": 1, "skipped": {}}
+    assert state.headers["access-control-allow-origin"] == hosting()
+    assert routes.states[archive_id]["state"] == "reported"
+
+
+def test_bad_path_no_session_unless_paired_for_the_city_and_none_for_another_site(
+    admin_served: tuple[LocalServer, ImportRoutes, PairedApp],
+) -> None:
+    """Scenarios: S-P20-BAD-ADMIN-IMPORT"""
+    local, _routes, app = admin_served
+    session = f"{base(local)}/import/session"
+    answers = {
+        "another city": httpx.post(session, json={"city": "bacau", "project": PROJECT}, headers={"origin": hosting()}).status_code,
+        "another site": httpx.post(
+            session, json={"city": "bucharest", "project": PROJECT}, headers={"origin": "https://evil.example"}
+        ).status_code,
+        "a forged token": httpx.post(
+            f"{base(local)}/import/new", json={}, headers={"origin": hosting(), SESSION_HEADER: "f" * 64}
+        ).status_code,
+        "a preflight from another site": httpx.request(
+            "OPTIONS", f"{base(local)}/import/new", headers={"origin": "https://evil.example"}
+        ).status_code,
+    }
+    app.signed_in = False
+    answers["not signed in"] = httpx.post(
+        session, json={"city": "bucharest", "project": PROJECT}, headers={"origin": hosting()}
+    ).status_code
+
+    assert answers == {
+        "another city": 409,
+        "another site": 403,
+        "a forged token": 403,
+        "a preflight from another site": 403,
+        "not signed in": 409,
+    }
+
+
+def test_happy_path_the_scan_says_how_many_files_it_read_and_cancel_leaves_nothing(tmp_path: Path) -> None:
+    """Scenarios: S-P20-HAPPY-ADMIN-IMPORT, S-P20-BAD-ADMIN-IMPORT-CANCELLED"""
+    deferred: list[Callable[[], None]] = []
+    seen: list[dict[str, object]] = []
+    routes = ImportRoutes(ArchiveStore(tmp_path / "work", probed), Reports(), start=deferred.append)
+    archive_id = routes.store.create()
+    for name in ("a.jpg", "b.jpg"):
+        routes.store.receive(archive_id, name, [b"x"], 1)
+    routes.store.rows(archive_id, lambda read, total: seen.append({"read": read, "total": total}))
+
+    assert routes.scan(archive_id, {})[0] == 202
+    assert routes.states[archive_id] == {"state": "scanning", "read": 0, "total": 0}
+    assert routes.cancel(archive_id, {})[0] == 200
+    deferred[0]()
+
+    assert seen == [{"read": 1, "total": 2}, {"read": 2, "total": 2}]
+    assert routes.states[archive_id] == {"state": "cancelled"}
+    assert not routes.store.folder(archive_id).exists()
+
+    sending = routes.store.create()
+    assert routes.cancel(sending, {})[0] == 200
+    assert (routes.states[sending], routes.store.folder(sending).exists()) == ({"state": "cancelled"}, False)
+    assert routes.cancel("not-an-id", {})[0] == 404

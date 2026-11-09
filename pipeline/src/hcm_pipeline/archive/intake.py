@@ -26,6 +26,8 @@ MAX_FILE_BYTES: Final = zipread.MAX_ENTRY_BYTES
 WORLD_SUFFIXES: Final = (".tfw", ".tifw", ".jgw", ".pgw", ".wld", ".prj", ".aux.xml")
 
 Prober = Callable[[Path], Probe]
+# Files read so far and of how many (the admin's scan progress).
+Progress = Callable[[int, int], None]
 
 
 class IntakeError(ValueError):
@@ -80,19 +82,29 @@ class ArchiveStore:
         root = self.files(archive_id)
         return zipread.extract(zip_path, root, shutil.disk_usage(root).free, limits)
 
-    def rows(self, archive_id: str) -> list[FileRow]:
-        """Every regular file under `x/` (links are never followed), probed."""
+    def rows(self, archive_id: str, progress: Progress | None = None) -> list[FileRow]:
+        """Every regular file under `x/` (links are never followed), probed; batch 4: `progress(read, total)` after each."""
         root = self.files(archive_id)
-        return [self._row(root, path) for path in sorted(_regular_files(root))]
+        paths = sorted(_regular_files(root))
+        rows: list[FileRow] = []
+        for path in paths:
+            rows.append(self._row(root, path))
+            if progress is not None:
+                progress(len(rows), len(paths))
+        return rows
 
     def _row(self, root: Path, path: Path) -> FileRow:
         relative = path.relative_to(root).as_posix()
         sidecars = tuple(suffix for suffix in WORLD_SUFFIXES if path.with_name(path.stem + suffix).is_file())
         return FileRow(relative, path.stat().st_size, probe.sha256_file(path), self._probe(path), sidecars)
 
-    def scan(self, archive_id: str, context: report.Context) -> report.Report:
+    def discard(self, archive_id: str) -> None:
+        """Batch 4: an import the owner cancelled leaves nothing on this computer."""
+        shutil.rmtree(self.folder(archive_id), ignore_errors=True)
+
+    def scan(self, archive_id: str, context: report.Context, progress: Progress | None = None) -> report.Report:
         """The scan: rows, series and skips; `archive.json` written; the report answered."""
-        rows = self.rows(archive_id)
+        rows = self.rows(archive_id, progress)
         found = classify.classify(rows)
         context = report.Context(context.latitude, context.current_year, sidecar.read(self.files(archive_id)))
         made = report.report_of(found.series, found.skips, context)

@@ -627,3 +627,22 @@ DECISIONS §137; lessons 530 and 531.
 | Sheet names | `pipeline/src/hcm_pipeline/archive/grammar.py` | Blocks of neighbours only; `prim`, `-MIC`, whole cells read as odd; no extension, no cell. |
 | Intake | `archive/intake.py`, `archive/zipread.py` | A cut-off file is removed and refused; an entry onto the zip itself is refused. |
 | Estimates | `archive/report.py`, `archive/intake.py` | A grid sheet counts `GRID_CELL_SHARE` (0.5) of its paper; `bytes` is every file's. |
+
+## 18. Batch 4: the owner approves a sheet-name placement; Import local files in the admin's own tab (2026-11-09)
+
+DECISIONS-for-review.md §138d–f; lessons 533 and 534.
+
+| What | Where | Behaviour |
+| --- | --- | --- |
+| A grid placed from its names | `pipeline/src/hcm_pipeline/placing/grid.py` (`OWNER_METHOD`, `Placed`), `output.py` | A grid that is fitted on the reference but whose checks do not hold (the IPB line plans) is rendered anyway from its sheets' names and frames, `archive.method: 'grid-names'`, with its checks against OpenStreetMap and `seamScore` (the mean edge correlation of neighbouring sheets). No fit at all still waits for three sheets. |
+| Never on its own | `functions/src/imagery/approval.ts` | `ARCHIVE_CONDITIONS` refuse `grid-names` as they refuse `gcps`. |
+| The owner alone | `functions/src/imagery/approve.ts` `refuseGridNamesUnlessOwner`; `packages/ui/src/admin/imagery/approval-card.ts` | An editor's Approve is `apiError.city.notOwner`; the card shows the seams and the checks, the overlay is the version's private preview on its map, and only the owner sees **Approve the sheet-name placement** (an editor reads that the owner decides). |
+| What the layer records | `functions/src/imagery/finalize-provenance.ts` | `provenance.archive: {method: 'grid-names', approvedBy: 'owner'}` (any archive series records its method). |
+| Picking files in the tab | `packages/ui/src/admin/archive/hcm-archive-panel.ts` | **Choose a folder** (`webkitdirectory`) and **Choose a zip** pick in the admin's tab; the worker's own page stays a link (the fallback). |
+| Streaming to the worker | `packages/admin/src/archive/local-import.ts`, `local-transport.ts` (the lazy `local-run` chunk), `local-state.ts`, `feed.ts` | `POST /import/session {city}` for a token, `new`, each file (`XMLHttpRequest` for the upload's progress), `zip`, `scan`, then `GET /import/<id>` every second until `reported`; **Cancel** aborts and posts `/import/<id>/cancel`. Progress: bytes sent, then files read of total; after Import the report shows **All series: N %** beside each series. |
+| The worker's side | `pipeline/src/hcm_pipeline/worker/server.py`, `imports.py`, `archive/intake.py` | A session token only while the worker is signed in for the city; import requests from a Hosting origin carry it (`X-HCM-Session`) instead of the page's CSRF token; CORS and Private Network Access answer `/import/...` for the Hosting origins only. The scan reports `read` of `total`; cancel stops it at its next file and removes the archive's folder. |
+
+Tests: `pipeline/tests/unit/{test_placing_grid,test_worker_imports,test_worker_app}.py`, `functions/test/imagery/archive-approval.test.ts`,
+`packages/admin/test/archive/{local-import,feed}.test.ts`, `packages/ui/test/admin/{archive/archive,imagery/grid-names}.test.ts`,
+`e2e/admin/specs/imagery/archive.spec.ts`; scenarios `S-A120-HAPPY-GRID-NAMES`, `S-A120-BAD-GRID-NAMES-EDITOR`, `S-P20-HAPPY-GRID-BY-NAMES`,
+`S-A121-HAPPY-LOCAL-TAB`, `S-A121-BAD-LOCAL-TAB`, `S-P20-HAPPY-ADMIN-IMPORT`, `S-P20-BAD-ADMIN-IMPORT`, `S-P20-BAD-ADMIN-IMPORT-CANCELLED`.
