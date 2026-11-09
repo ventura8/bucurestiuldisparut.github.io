@@ -188,7 +188,11 @@ export class HcmAccountMenu extends LitElement {
         if (!state.analytics) {
             return EMPTY;
         }
-        const label = shellText(state.locale, 'adminShell.account.analytics');
+        // M13 §3: a visitor on the Contribute page is told of the Contribute page's statistics, not the administration's.
+        const label = shellText(
+            state.locale,
+            state.auth === 'visitor' ? 'adminShell.account.analyticsVisitor' : 'adminShell.account.analytics',
+        );
         const change = (event: CustomEvent<{ readonly checked: boolean }>): void => {
             this.app?.intents.setConsent(event.detail.checked ? 'granted' : 'denied');
         };

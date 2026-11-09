@@ -5,6 +5,7 @@
 import type { AdminContentKey, AdminSetupKey, AdminShellKey, ApiErrorCode, CityRole, Locale, ThemeTokens } from '@hcm/shared';
 
 import type { AdminAuthState, AdminMode } from '../auth/auth-state.js';
+import type { ContributorWelcome } from '../app/welcome.js';
 import type { AuthUser } from '../firebase/ports.js';
 import type { AdminRoute, AdminRouteId } from '../routing/routes.js';
 
@@ -132,6 +133,11 @@ export interface AdminState<Setup = unknown> {
     /** From the web configuration: the project the texts name, the domain of Google's unverified-app screen. */
     readonly projectId: string;
     readonly authDomain: string;
+    /**
+     * M13 §3: the Contribute page's welcome while its address is open (`../app/welcome.ts`), else null or absent: signed out,
+     * the shell then shows a contributor's welcome in place of the admin's sign-in.
+     */
+    readonly welcome?: ContributorWelcome | null;
     readonly setup: Setup;
 }
 

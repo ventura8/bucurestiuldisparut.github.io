@@ -31,6 +31,8 @@ export const ADMIN_AUTH_STATES = [
     'admin',
     /** M13: a signed-in account of no role here, on the Contribute page, which needs no more (`docs/research/M13-roles.md` §3). */
     'visitor',
+    /** M13 §3: the Contribute page of a map nobody set up yet (no owner, or a start-up deploy's): not open to contributions. */
+    'contributeClosed',
 ] as const;
 
 export type AdminAuthState = (typeof ADMIN_AUTH_STATES)[number];

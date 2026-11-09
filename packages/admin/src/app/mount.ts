@@ -17,7 +17,7 @@ import type { FirebasePorts } from '../firebase/ports.js';
 import { unregisterOnSignOut } from '../inbox/push-device.js';
 import type { PageRegistry } from '../routing/pages.js';
 import { parseAdminRoute, type AdminRoute, type AdminRouteId } from '../routing/routes.js';
-import { LANGUAGE_KEY, resolveAdminLocale } from '../state/locale.js';
+import { LANGUAGE_KEY } from '../state/locale.js';
 import { NO_GATE, type AdminState, type NoticeInput, type ShellStateAccess, type ThemeMode } from '../state/state.js';
 import { Store } from '../state/store.js';
 import type { AdminRuntime, FirebaseWebConfig } from './config.js';
@@ -27,6 +27,7 @@ import { chooseCity, cityRefresher, switchTo, type CityChoiceDeps } from './curr
 import { Navigation } from './navigation.js';
 import { rememberedSetupReady } from './setup-readiness.js';
 import { consentWithRetry } from './consent-retry.js';
+import { contributorWelcome, startLocale } from './welcome.js';
 import { shellWatches, type ShellWatchSources } from './shell-watches.js';
 import { destinationOf, RETURN_TO_KEY } from '../routing/router.js';
 import type { Clock, HashLocation, KeyValueStore, PageVisibility, Unsubscribe } from './ports.js';
@@ -144,7 +145,7 @@ function initialState<Setup>(deps: AdminDeps<Setup, unknown>): AdminState<Setup>
         gate: NO_GATE,
         route: { id: 'setup', params: [] },
         destinations: [destinationOf('setup')],
-        locale: resolveAdminLocale(deps.location.search(), deps.local.get(LANGUAGE_KEY), deps.languages),
+        locale: startLocale(deps.location, deps.local, deps.languages),
         theme: { mode: themeModeOf(deps.local.get(THEME_KEY)), city: null, preview: null },
         consent: 'unknown',
         analytics: false,
@@ -161,6 +162,7 @@ function initialState<Setup>(deps: AdminDeps<Setup, unknown>): AdminState<Setup>
         setupReady: rememberedSetupReady(deps.local, deps.config.projectId),
         projectId: deps.config.projectId,
         authDomain: deps.config.authDomain,
+        welcome: contributorWelcome(deps.location, deps.project.cities[0] ?? null),
         setup: deps.setup.initial,
     };
 }

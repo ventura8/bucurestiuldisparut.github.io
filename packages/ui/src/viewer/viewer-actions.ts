@@ -119,9 +119,11 @@ export function menuAction(store: ViewerStorePort, services: ViewerServices, act
             store.openStory(null);
         },
         contribute: () => {
-            const url = store.getState().manifest?.contributeUrl;
+            const { manifest, locale } = store.getState();
+            const url = manifest?.contributeUrl;
             if (url !== undefined) {
-                services.openPage(url);
+                // M13 §3: the Contribute page's signed-out welcome speaks the map's language and names the city.
+                services.openPage(url.replace('#', `?lang=${locale}&name=${encodeURIComponent(manifest?.city.name[locale] ?? '')}#`));
             }
         },
         about: () => {
