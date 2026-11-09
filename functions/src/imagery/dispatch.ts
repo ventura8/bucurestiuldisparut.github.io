@@ -259,9 +259,12 @@ async function admit(deps: DispatchDeps, cityId: string, jobId: string): Promise
     return takeSlot(deps, cityId, jobId, await busyExecutions(deps));
 }
 
-/** A queued job that is not due yet, or that used up its attempts. */
+/**
+ * A queued job that is not due yet (M20, `docs/research/M20-import-local.md` §1.3: an archive series waiting for a later day's
+ * share is not due until `imagery.tick` releases it), or that used up its attempts.
+ */
 function notYet(job: JobDoc, now: Date): 'not-due' | 'exhausted' | undefined {
-    if (!isDue(job, now)) {
+    if (job.waitReason === 'daily' || !isDue(job, now)) {
         return 'not-due';
     }
     return (job.attempt ?? 0) >= JOB_MAX_ATTEMPTS ? 'exhausted' : undefined;

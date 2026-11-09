@@ -203,6 +203,11 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # or a frame over terrain publishes (M15) and Snap my points (M16), out of the `georef` chunk (18 KB since §110): 1.0 KB measured
     # on 2026-11-08 plus about 20 %, rounded up (DECISIONS-for-review.md §110).
     "georef-extras": 2,
+    # M20 (docs/research/M20-import-local.md §8): Import local files (`packages/admin/src/archive/archive.ts`, its one dynamic entry,
+    # which the Imagery store imports): the archive's feed, `<hcm-archive-panel>`, `<hcm-archive-report>` and their texts
+    # (`@hcm/shared/admin-archive`), fetched when the Upload view or an archive's report first shows: 8.6 KB measured on 2026-11-09
+    # plus about 16 % (DECISIONS-for-review.md §136d).
+    "archive": 10,
 }
 # The entry and every chunk together. 620 until M7 (2026-11-02), 630 since: the total counts every lazy chunk, also those
 # loaded only on use, and M7's `worker` chunk (5.5 KB, loaded only by the Jobs page, the pipeline card and a version page)

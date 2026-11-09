@@ -229,7 +229,7 @@ function isEmbedded(run: Run): boolean {
 }
 
 /** `warp`, and a join's `merge`: what `export` reads next. */
-async function writeWarped(run: Run, step: 'warp' | 'merge'): Promise<StepResult> {
+async function writeWarped(run: Run, step: 'warp' | 'merge' | 'place'): Promise<StepResult> {
     const warped = await uploadObject(
         RASTER_PATHS.work(run.city, run.jobId, 'warped.tif'),
         new Uint8Array(await smallTiff(130)),
@@ -330,6 +330,12 @@ const STEPS: Readonly<Record<PipelineStep, (run: Run) => Promise<StepResult>>> =
         return writeWarped(run, 'merge');
     },
     warp: (run) => writeWarped(run, 'warp'),
+    // M20 (docs/research/M20-import-local.md §4): an archive series' originals checked, then placed by its class.
+    gather: async (run) => {
+        await run.stepEnded('gather', 'done');
+        return 'next';
+    },
+    place: (run) => writeWarped(run, 'place'),
     export: async (run) => {
         const cog = await store(run, 'cog.tif', await smallTiff(150), 'image/tiff');
         await store(run, 'preview.png', await warpedPreviewPng(outputBounds(run)), 'image/png');

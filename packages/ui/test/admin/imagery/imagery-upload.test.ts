@@ -7,7 +7,9 @@ import { cleanup, deep, deepAll, deepText, updated } from '../shell/fake-app.js'
 import { button, click, defineImagery, imageryPage, imageryState } from './fixtures.js';
 
 function calls(area: FakeArea<ImageryViewState, ImageryIntentsPort>): readonly string[] {
-    return area.calls.filter((call) => !call.startsWith('open [') && !call.startsWith('attachMap') && call !== 'close');
+    // M20: the Upload view registers the `archive` chunk's elements (Import local files) once, which is no upload intent.
+    const quiet = new Set(['close', 'archiveElements']);
+    return area.calls.filter((call) => !call.startsWith('open [') && !call.startsWith('attachMap') && !quiet.has(call));
 }
 
 function upload(overrides: Partial<UploadStatePort>): UploadStatePort {
@@ -127,5 +129,33 @@ describe('<hcm-imagery-page>: Upload', () => {
         const { element } = await imageryPage(imageryState({ tab: 'upload', replaceLayer: 'kh-4a-1966' }));
 
         expect(deep(element, '[data-view="upload"] h3').textContent).toBe("Replace the layer's image");
+    });
+});
+
+describe('<hcm-imagery-page>: Import local files (M20)', () => {
+    beforeAll(defineImagery);
+    afterEach(cleanup);
+
+    it('happyPath_anArchivesAddressShowsItsReportAndAnArrivingArchiveOpensIt @S-A121-HAPPY-BUDGET', async () => {
+        const detail = { kind: 'archive' as const, id: 'ar-0123456789abcdef' };
+        const { element, area, app } = await imageryPage(imageryState({ detail }), { params: ['archive', detail.id] });
+        const report = deep(element, 'hcm-archive-report');
+
+        expect(report.getAttribute('archive')).toBe(detail.id);
+        expect(area.calls.filter((call) => call === 'archiveElements')).toEqual(['archiveElements']);
+        area.set({ tab: 'upload' });
+        await updated(element);
+        deep(element, 'hcm-archive-panel').dispatchEvent(
+            new CustomEvent('hcm-archive-arrived', { detail: { id: 'ar-ffffffffffffffff' }, bubbles: true, composed: true }),
+        );
+
+        expect(area.calls.filter((call) => call === 'archiveElements')).toHaveLength(1);
+        expect(app.named('navigate')).toEqual(['navigate {"id":"imagery","params":["archive","ar-ffffffffffffffff"]}']);
+    });
+
+    it('badPath_theFindViewWithNoDetailAsksForNoArchiveElements', async () => {
+        const { area } = await imageryPage(imageryState());
+
+        expect(area.calls).not.toContain('archiveElements');
     });
 });

@@ -27,9 +27,11 @@ from hcm_pipeline.steps.align import AlignStep
 from hcm_pipeline.steps.export import ExportStep
 from hcm_pipeline.steps.extract import ExtractStep
 from hcm_pipeline.steps.fetch import FetchStep
+from hcm_pipeline.steps.gather import GatherStep
 from hcm_pipeline.steps.inspect import InspectStep
 from hcm_pipeline.steps.locate import LocateStep
 from hcm_pipeline.steps.merge import MergeStep
+from hcm_pipeline.steps.place import PlaceStep
 from hcm_pipeline.steps.pyramid import PyramidStep
 from hcm_pipeline.steps.recalibrate import RecalibratedGeorefStep
 from hcm_pipeline.steps.reference import ReferenceStep
@@ -47,11 +49,13 @@ DOWNLOAD_TIMEOUT: Final = httpx.Timeout(60.0, read=300.0)
 def default_steps() -> Mapping[str, JobStep]:
     """Every pipeline step by name (`PIPELINE_STEPS`)."""
     steps: tuple[JobStep, ...] = (
+        GatherStep(),
         FetchStep(),
         ExtractStep(),
         StitchStep(),
         InspectStep(),
         LocateStep(),
+        PlaceStep(),
         ReferenceStep(),
         RecalibratedGeorefStep(),
         AlignStep(),

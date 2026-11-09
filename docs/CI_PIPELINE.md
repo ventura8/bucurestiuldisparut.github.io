@@ -108,7 +108,7 @@ All npm versions were checked with `npm view` on 2026-10-11 and are pinned exact
 | Runtime | lit 3.3.3; Mapbox GL JS 3.34.1 (external, from `api.mapbox.com`) |
 | Firebase | firebase-tools 15.34.2 (emulator JARs baked into the image), JDK 21; functions: firebase-functions 7.4.0, firebase-admin 14.5.0, google-auth-library 11.3.2; rules tests: @firebase/rules-unit-testing 6.0.0, firebase 13.1.0 |
 | Python | 3.14.4 (the GDAL image's interpreter); CI tools in `scripts/ci/requirements.txt`: ruff 0.17.3, mypy 2.4.1, pytest 9.2.0, pytest-cov 7.1.0, pytest-xdist 3.8.0, coverage 7.17.0, yamllint 1.38.0, check-jsonschema 0.39.0, bandit 1.9.4, pip-audit 2.10.1, radon 6.0.1, taplo 0.9.3 |
-| Raster pipeline | Poetry 2.5.1 (`pipeline/requirements-poetry.txt`); `pipeline/poetry.lock`: numpy 2.5.4, opencv-python-headless 5.0.0.93, httpx 0.28.1, google-cloud-firestore 2.34.1, google-cloud-storage 3.17.1; dev pytest 9.2.0, pytest-cov 7.1.0, coverage 7.17.0, respx 0.23.1, hypothesis 6.170.14; GDAL from the base image |
+| Raster pipeline | Poetry 2.5.1 (`pipeline/requirements-poetry.txt`); `pipeline/poetry.lock`: numpy 2.5.4, opencv-python-headless 5.0.0.93, httpx 0.28.1, google-cloud-firestore 2.34.1, google-cloud-storage 3.17.1, pikepdf 10.18.0 (with Pillow 13.0.0, lxml 6.1.3); dev pytest 9.2.0, pytest-cov 7.1.0, coverage 7.17.0, respx 0.23.1, hypothesis 6.170.14; GDAL from the base image |
 | Image base | `ghcr.io/osgeo/gdal:ubuntu-small-3.13.3` (Ubuntu 26.04, GDAL 3.13.3), by digest |
 | Binaries | actionlint 1.7.12, hadolint 2.15.1, shellcheck 0.11.0, shfmt 3.14.1, gitleaks 8.30.1, SonarScanner CLI 8.1.0.6389 (`sonarsource/sonar-scanner-cli:12.3.0.4285_8.1.0`, run on the image's JDK 21), all copied from digest-pinned images |
 

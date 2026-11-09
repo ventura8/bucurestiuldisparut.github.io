@@ -16,6 +16,8 @@ import {
     MAPBOX_FREE_COMPUTE_UNITS,
     SENSOR_SPECS,
     USGS_ATTRIBUTION,
+    creditLine,
+    layerRightsOf,
     enabledGcps,
     jobDocSchema,
     layerDocSchema,
@@ -69,6 +71,7 @@ type Output = NonNullable<LayerVersionDoc['output']>;
 type Provenance = NonNullable<LayerDoc['provenance']>;
 
 /** A file name or label that says it shows a plan or a map (else an aerial photograph). */
+const MAP_OPACITY = 0.85;
 const MAP_WORDS = /\b(?:plan|planul|harta|hart[aă]|map)\b/i;
 
 type Apply = (transaction: DocumentTransaction) => Promise<void>;
@@ -82,15 +85,30 @@ function nameOf(version: LayerVersionDoc): string {
     return version.source?.kind === 'upload' ? (version.source.originalName ?? version.label.ro) : version.label.ro;
 }
 
-function kindOf(version: LayerVersionDoc): LayerDoc['kind'] {
+/** A USGS frame is a satellite layer; M20: an archive series is a map (`docs/research/M20-import-local.md` §9). */
+function knownKindOf(version: LayerVersionDoc): LayerDoc['kind'] | undefined {
     if (version.source?.kind === 'usgs' || version.sensor !== undefined) {
         return 'satellite';
     }
-    return MAP_WORDS.test(nameOf(version)) ? 'map' : 'aerial';
+    return version.origin === 'archive' ? 'map' : undefined;
+}
+
+function kindOf(version: LayerVersionDoc): LayerDoc['kind'] {
+    return knownKindOf(version) ?? (MAP_WORDS.test(nameOf(version)) ? 'map' : 'aerial');
+}
+
+/** M20 (§9): a drawn map starts at 0.85, so the streets beneath it show; every other layer at 1. */
+function opacityOf(version: LayerVersionDoc): number {
+    return version.origin === 'archive' ? MAP_OPACITY : 1;
 }
 
 /** USGS's courtesy credit, or an upload's own name until the admin writes one; a frame fitted over terrain adds the DEM's notice (M15). */
 function attributionOf(version: LayerVersionDoc): string {
+    // M20 (docs/research/M20-import-local.md §7): an archive series credits its author, title, year, licence and the scan's source.
+    return version.rights === undefined ? ownAttribution(version) : creditLine(version.rights, version.label.ro);
+}
+
+function ownAttribution(version: LayerVersionDoc): string {
     const own = version.source?.kind === 'upload' ? nameOf(version).slice(0, 500) : USGS_ATTRIBUTION;
     return version.georef?.terrain === undefined ? own : `${own}; ${DEM_ATTRIBUTION}`.slice(0, 500);
 }
@@ -158,9 +176,10 @@ function newLayer(version: LayerVersionDoc, order: number, stamp: Stamp): Omit<L
         attribution: attributionOf(version),
         bounds: undefined,
         order,
-        opacity: 1,
+        opacity: opacityOf(version),
         defaultVisible: false,
         adjustments: undefined,
+        rights: version.rights === undefined ? undefined : layerRightsOf(version.rights),
         published: true,
         provenance: undefined,
         mapbox: undefined,

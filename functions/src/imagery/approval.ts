@@ -20,6 +20,9 @@ import {
     imagerySettingsOf,
     jobDocSchema,
     layerVersionDocSchema,
+    mapThresholdM,
+    rightsAllowPublish,
+    type ArchiveReport,
     precisionOf,
     timestampFromDate,
     type Georef,
@@ -92,6 +95,22 @@ function provedWhole({ calibration }: LayerVersionDoc): boolean {
     return calibration !== undefined && CALIBRATION_CONDITIONS.every((condition) => condition(calibration));
 }
 
+/**
+ * What an archive series' placement must show to publish on its own (M20 §5), each condition on its own: a placement the pipeline
+ * made (never the owner's points alone), enough held-out checks within the threshold, none dropped as gross, the rival search
+ * clean, and the agreeing checks spanning the map's own extent.
+ */
+const ARCHIVE_CONDITIONS: readonly ((report: ArchiveReport, threshold: number) => boolean)[] = [
+    (report) => report.method !== 'gcps',
+    (report) => report.checkpointCount >= MIN_CHECKPOINTS && report.checksDropped === 0,
+    (report, threshold) => (report.checkpointRmseM ?? Number.POSITIVE_INFINITY) <= threshold,
+    (report) => report.rivalClean && report.measuredPct >= AUTO_MIN_MEASURED_PCT,
+];
+
+function archiveWithin(report: ArchiveReport, threshold: number): boolean {
+    return ARCHIVE_CONDITIONS.every((condition) => condition(report, threshold));
+}
+
 /** A seam the pipeline measured, corrected, and found closed. */
 function seamClosed(seam: JoinSeam): boolean {
     return seam.measured && seam.applied && (seam.afterRmseM ?? Number.POSITIVE_INFINITY) <= JOIN_MAX_SEAM_M;
@@ -118,14 +137,45 @@ function evidenceWithin(version: Rendered, threshold: number): boolean {
     return version.join !== undefined && joinWithin(version.join, threshold);
 }
 
+/**
+ * The threshold the version answers to: the city's, or (M20, `docs/research/M20-import-local.md` §5) for a drawn map of an archive,
+ * 1 mm of its paper capped by the city's `mapThresholdMaxM`, none for a map of no known scale (it never publishes itself).
+ */
+function thresholdOf(version: LayerVersionDoc, settings: ImagerySettings): number | undefined {
+    if (version.origin !== 'archive') {
+        return settings.rmseThresholdM;
+    }
+    return mapThresholdM(settings.rmseThresholdM, version.archive?.scaleDenominator, settings.mapThresholdMaxM);
+}
+
 /** True when the version may be published without anyone's click. M16: a recalibration is first seen beside the current one, always. */
 function autoApproves(version: Rendered, settings: ImagerySettings): boolean {
+    if (version.origin === 'archive') {
+        return archiveApproves(version, settings);
+    }
     return settings.autoPublish && version.recalibration === undefined && evidenceWithin(version, settings.rmseThresholdM);
 }
 
-/** The checkpoint error a version answers for: its georeference's, or the worst frame's of a join. */
+/** M20 (§5, §7): a series publishes itself only with both switches on, its rights clear and its evidence within its own threshold. */
+function archiveApproves(version: Rendered, settings: ImagerySettings): boolean {
+    const threshold = thresholdOf(version, settings);
+    const report = version.archive;
+    return archiveAllowed(version, settings) && threshold !== undefined && report !== undefined && archiveWithin(report, threshold);
+}
+
+/** Both switches on (`autoPublish`, `mapAutoPublish`) and the series' rights clear. */
+function archiveAllowed(version: Rendered, settings: ImagerySettings): boolean {
+    return settings.autoPublish && settings.mapAutoPublish && rightsAllowPublish(version.rights);
+}
+
+/** The checkpoint error a version answers for: its georeference's, the worst frame's of a join, or an archive series' blocked figure. */
 function measuredRmseOf(version: LayerVersionDoc): number | undefined {
-    return version.georef?.checkpointRmseM ?? version.join?.checkpointRmseM;
+    return version.georef?.checkpointRmseM ?? reportedRmseOf(version);
+}
+
+/** A version of many scans: the worst frame's of a join, or an archive series' blocked figure. */
+function reportedRmseOf(version: LayerVersionDoc): number | undefined {
+    return version.join?.checkpointRmseM ?? version.archive?.checkpointRmseM;
 }
 
 /** The version approved: by the policy (`auto`, with the error and the threshold it met) or by an admin. */
@@ -135,7 +185,7 @@ export function approved(version: LayerVersionDoc, by: string, now: Date, settin
         by,
         at: timestampFromDate(now),
         checkpointRmseM: settings === undefined ? undefined : measuredRmseOf(version),
-        thresholdM: settings?.rmseThresholdM,
+        thresholdM: settings === undefined ? undefined : thresholdOf(version, settings),
     });
     return { ...version, state: 'approved', approval, ...stampOf(by, now) };
 }

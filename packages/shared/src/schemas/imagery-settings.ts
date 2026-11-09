@@ -39,6 +39,13 @@ export const CITY_MIN_COVERAGE_PCT = 90;
 export const AUTO_MIN_MEASURED_PCT = 70;
 
 /**
+ * M20 (`docs/research/M20-import-local.md` §5, the owner's decision of 2026-11-09): the most a drawn map's threshold may grow to by
+ * default (1 mm of its paper, never under the city's own), and the bounds an owner may set it to. Here because this module is a leaf.
+ */
+export const DEFAULT_MAP_THRESHOLD_MAX_M = 60;
+export const MAP_THRESHOLD_MAX_RANGE = { min: 15, max: 200 } as const;
+
+/**
  * `cities/{city}.imagery`. Every field is optional in the document: an absent field takes its default
  * ({@link imagerySettingsOf}), so a city created before M3 needs no migration.
  */
@@ -57,6 +64,10 @@ export const cityImagerySchema = z.strictObject({
      * the tiles from the project's own public bucket, with no Mapbox compute units, tileset or token.
      */
     publishThroughMapbox: z.boolean().optional(),
+    /** M20 (§5): the cap of a drawn map's scaled threshold (default 60 m). */
+    mapThresholdMaxM: z.number().min(MAP_THRESHOLD_MAX_RANGE.min).max(MAP_THRESHOLD_MAX_RANGE.max).optional(),
+    /** M20 (§5): true (the default): a drawn map within its scaled threshold, its rights clear, publishes without a click. */
+    mapAutoPublish: z.boolean().optional(),
 });
 
 export type CityImagery = z.infer<typeof cityImagerySchema>;
@@ -67,6 +78,8 @@ export interface ImagerySettings {
     readonly rmseThresholdM: number;
     readonly targetYears: readonly number[];
     readonly publishThroughMapbox: boolean;
+    readonly mapThresholdMaxM: number;
+    readonly mapAutoPublish: boolean;
 }
 
 /** What a city that set nothing gets: auto-publish, the default threshold, no target years, tiles from its own bucket. */
@@ -75,6 +88,8 @@ const DEFAULT_SETTINGS: ImagerySettings = {
     rmseThresholdM: DEFAULT_RMSE_THRESHOLD_M,
     targetYears: [],
     publishThroughMapbox: false,
+    mapThresholdMaxM: DEFAULT_MAP_THRESHOLD_MAX_M,
+    mapAutoPublish: true,
 };
 
 function setting<K extends keyof ImagerySettings>(imagery: CityImagery | undefined, key: K): ImagerySettings[K] {
@@ -88,5 +103,7 @@ export function imagerySettingsOf(imagery: CityImagery | undefined): ImagerySett
         rmseThresholdM: setting(imagery, 'rmseThresholdM'),
         targetYears: setting(imagery, 'targetYears'),
         publishThroughMapbox: setting(imagery, 'publishThroughMapbox'),
+        mapThresholdMaxM: setting(imagery, 'mapThresholdMaxM'),
+        mapAutoPublish: setting(imagery, 'mapAutoPublish'),
     };
 }

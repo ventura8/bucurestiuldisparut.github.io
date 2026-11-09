@@ -34,6 +34,8 @@ const CLAIM_RULES: readonly ((job: JobDoc, now: Date) => boolean)[] = [
     (job) => (job.attempt ?? 0) < JOB_MAX_ATTEMPTS,
     // M8 (docs/research/M8-join-interfaces.md §5): a join still waiting for its frames; the dispatcher moves it on.
     (job) => job.waitReason !== 'parts',
+    // M20 (docs/research/M20-import-local.md §1.3): an archive series waiting for a later day's share; imagery.tick releases it.
+    (job) => job.waitReason !== 'daily',
     (job, now) => [job.dispatchAt, job.retryAt].every((time) => time === undefined || timestampToDate(time) <= now),
 ];
 

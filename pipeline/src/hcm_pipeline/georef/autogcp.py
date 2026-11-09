@@ -23,7 +23,7 @@ from hcm_pipeline.contract import MIN_GCPS
 from hcm_pipeline.georef.transforms import Fit, Gcp, enabled_gcps, fit, residuals_m, spread_share
 from hcm_pipeline.model import Record, Timestamp
 
-AUTO_GCP_METHODS: Final = ("sift", "orb")
+AUTO_GCP_METHODS: Final = ("sift", "orb", "junctions")
 MATCH_CHANNELS: Final = ("s2", "osm")
 AUTO_GCP_MIN_CONFIDENCE: Final = 0.6
 AUTO_GCP_SUGGEST_MIN: Final = 0.3

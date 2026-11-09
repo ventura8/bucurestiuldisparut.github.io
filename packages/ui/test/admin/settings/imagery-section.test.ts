@@ -70,6 +70,34 @@ describe('<hcm-settings-page> imagery', () => {
         expect(await axeViolations(element)).toEqual([]);
     });
 
+    it('happyPath_drawnMapsPublishThemselvesUnderSixtyMetresByDefaultAndBothChange', async () => {
+        const settings = area(imageryState(cityDoc()));
+        const { element } = await page('settings', settings, { params: ['imagery'] });
+        const group = deep(element, '[data-maps]');
+        const field = deep(group, '#imagery-map-threshold') as HTMLInputElement;
+        const toggle = deep(group, 'hcm-switch') as HTMLElement & { checked: boolean };
+
+        const shown = [field.value, toggle.checked];
+        toggle.dispatchEvent(new CustomEvent('hcm-change', { detail: { checked: false } }));
+        field.value = '40';
+        field.dispatchEvent(new Event('input'));
+
+        expect(shown).toEqual(['60', true]);
+        expect(calls(settings)).toEqual(['editCity {"imagery":{"mapAutoPublish":false}}', 'editCity {"imagery":{"mapThresholdMaxM":40}}']);
+        expect(deepText(element)).toContain('No scale: never on its own.');
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_aMapCapOutsideItsRangeIsSaidAtItsField', async () => {
+        const issues = [{ path: 'imagery.mapThresholdMaxM', code: 'validation.tooBig' as const }];
+        const city = cityDoc({ imagery: { mapThresholdMaxM: 200 } });
+        const settings = area(imageryState(city, { draft: draftOf(city, { issues }) }));
+        const { element } = await page('settings', settings, { params: ['imagery'], locale: 'ro' });
+
+        expect(deep(element, '#imagery-map-threshold').closest('.field')?.hasAttribute('data-invalid')).toBe(true);
+        expect(deepText(element)).toContain('Între 15 și 200.');
+    });
+
     it('badPath_aYearThatIsNoYearOrAlreadyListedIsRefusedAndAnInvalidThresholdIsSaid', async () => {
         const issues = [
             { path: 'imagery.rmseThresholdM', code: 'validation.tooSmall' as const },

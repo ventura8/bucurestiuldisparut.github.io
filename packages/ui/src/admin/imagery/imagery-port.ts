@@ -27,6 +27,7 @@ import type {
     UsgsDataset,
 } from '@hcm/shared';
 
+import type { ArchiveFeedPort } from '../archive/archive-port.js';
 import type { DocStatePort, ListStatePort, StoreFailurePort } from '../area-port.js';
 import type { AdminNoticeInputPort } from '../notice-port.js';
 import type { GuardPort } from './guard-port.js';
@@ -88,7 +89,7 @@ export interface VersionItemPort {
     readonly layerId: string;
     readonly label: { readonly ro: string; readonly en?: string | undefined };
     readonly year: number;
-    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop' | 'join';
+    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop' | 'join' | 'archive';
     readonly state: LayerVersionState;
     readonly updatedAt: string;
     readonly needsYou: boolean;
@@ -136,7 +137,7 @@ export interface VersionViewPort {
     readonly year: number;
     readonly date: string | null;
     readonly sensor: Sensor | null;
-    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop' | 'join';
+    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop' | 'join' | 'archive';
     readonly state: LayerVersionState;
     readonly georef: {
         readonly method: string;
@@ -266,7 +267,7 @@ export interface ImageryViewState {
     readonly browse: Readonly<Record<string, BrowseImagePort>>;
     readonly versions: ListStatePort<VersionItemPort>;
     readonly jobs: Readonly<Record<string, JobProgressPort>>;
-    readonly detail: { readonly kind: 'scene' | 'version'; readonly id: string } | null;
+    readonly detail: { readonly kind: 'scene' | 'version' | 'archive'; readonly id: string } | null;
     readonly version: VersionPagePort | null;
     readonly importing: string | null;
     readonly importRefusal: { readonly id: string; readonly notice: AdminNoticeInputPort } | null;
@@ -341,4 +342,7 @@ export interface ImageryIntentsPort {
     /** M8: Join frames (the new join's version id, or null when refused) and Add {year} to target years. */
     joinFrames(entityIds: readonly string[]): Promise<string | null>;
     addTargetYear(year: number): Promise<boolean>;
+    /** M20 (`docs/research/M20-import-local.md` §8): Import local files' feed and elements, from the lazy `archive` chunk. */
+    archive(): Promise<ArchiveFeedPort>;
+    archiveElements(): Promise<void>;
 }

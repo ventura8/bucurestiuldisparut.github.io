@@ -37,14 +37,20 @@ JOB_WAIT_REASONS: Final = (
     "worker",
     "free-tier",
     "parts",
+    # M20: an archive series waiting for a later day's share of new layers.
+    "daily",
 )
 JOB_STEP_STATES: Final = ("pending", "running", "done", "failed", "skipped")
 PIPELINE_STEPS: Final = (
+    # M20 (docs/research/M20-import-local.md §4): an archive series' originals checked on the owner's computer.
+    "gather",
     "fetch",
     "extract",
     "stitch",
     "inspect",
     "locate",
+    # M20: an archive series placed by the path of its class, or parked for points with a one-line reason.
+    "place",
     "reference",
     "georef",
     "align",
@@ -70,6 +76,8 @@ JOB_STEPS: Final[Mapping[str, tuple[str, ...]]] = {
     "layer-join": ("align", "merge", "export", "pyramid", "register", *PUBLISH_STEPS),
     # M12: tiles for a version rendered before them; the version keeps its state, whatever this job does.
     "layer-tiles": ("pyramid",),
+    # M20: the originals never leave the computer; `place` writes the `warped.tif` the shared tail reads.
+    "archive-series": ("gather", "place", "export", "pyramid", "register", *PUBLISH_STEPS),
 }
 # The job types that work beside a version and never decide its state (`SIDE_JOB_TYPES`).
 SIDE_JOB_TYPES: Final = frozenset({"layer-tiles"})
@@ -195,11 +203,13 @@ SENSOR_SPECS: Final[Mapping[str, SensorSpec]] = {
 # The share of a job's progress each pipeline step stands for (`usgs-import`'s weights add up to 1; other job
 # types scale the weights of their own steps to 1, docs/research/M3-interfaces.md §4.4).
 STEP_WEIGHTS: Final[Mapping[str, float]] = {
+    "gather": 0.05,
     "fetch": 0.25,
     "extract": 0.05,
     "stitch": 0.10,
     "inspect": 0.10,
     "locate": 0.05,
+    "place": 0.60,
     "reference": 0.05,
     "georef": 0.20,
     "align": 0.15,
@@ -245,6 +255,8 @@ class Errors:
     REFINE_REFUSED: Final = "apiError.imagery.refineRefused"
     # Too few held-out checks to compare the two fits: the tiles agreed, only the comparison was impossible.
     REFINE_UNMEASURED: Final = "apiError.imagery.refineUnmeasured"
+    # M20: an archive series' originals are not on this computer, or are no longer the files its scan read.
+    ARCHIVE_MISSING: Final = "apiError.imagery.archiveMissing"
 
 
 def pipeline_steps_of(job_type: str) -> tuple[str, ...]:
