@@ -52,6 +52,9 @@ export const WORKER_VERSION_FIELDS: ReadonlySet<string> = new Set([
     // server's (`step-update.ts` `recalibrationAllowed`).
     'recalibration',
     'join',
+    // M20 (docs/research/M20-import-local.md §4): an archive series' placement report, and why it waits for a person.
+    'archive',
+    'help',
     'suggestions',
     'output',
     'machines',

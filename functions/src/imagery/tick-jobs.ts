@@ -28,6 +28,7 @@ import type { StoredDocument } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { applyApprovalPolicy } from './approval.js';
 import { beforeMapbox, cancelJob } from './cancel.js';
+import { releaseDaily } from './daily.js';
 import { dispatchJob } from './dispatch.js';
 import { endWork, type Ending } from './end.js';
 import { enqueuePublish } from './publish-queue.js';
@@ -92,8 +93,12 @@ function resumable(job: JobDoc, now: Date): boolean {
     return job.status === 'waiting_usgs' ? usgsWaitOver(job, now) : staleStart(job, now);
 }
 
-/** Step 1: due queued jobs dispatched; USGS waits past `retryAt` and stale starts back to `queued` first. */
+/**
+ * Step 1: due queued jobs dispatched; USGS waits past `retryAt` and stale starts back to `queued` first, and (M20) the archive
+ * series today's share has room for released from their `daily` wait.
+ */
 export async function dispatchDue(deps: TickJobsDeps, cityId: string, now: Date): Promise<void> {
+    await releaseDaily(deps, cityId, now);
     for (const { id, data } of await jobsIn(deps, cityId, ['waiting_usgs', 'starting'])) {
         if (resumable(data, now)) {
             await requeue(deps, { cityId, jobId: id, from: data.status });

@@ -1,6 +1,6 @@
 // M8 (docs/research/M8-join-interfaces.md §6): Join frames and Add {year} as the Imagery area runs them, the plan's feed, a
 // join version as its page reads it, a frame a live join holds, and Settings' search after saving the target years.
-import { FIRESTORE_PATHS, datePlanDocSchema, type DatePlanRow } from '@hcm/shared';
+import { FIRESTORE_PATHS, datePlanDocSchema, imagerySettingsOf, type DatePlanRow } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { ImageryFeeds, type FeedsPatch } from '../../src/imagery/feeds.js';
@@ -158,7 +158,7 @@ describe('Join frames', () => {
             return ANSWER;
         });
         const search = (): Promise<void> => Promise.resolve();
-        const settings = { autoPublish: true, rmseThresholdM: 15, targetYears: [], publishThroughMapbox: false };
+        const settings = imagerySettingsOf({ rmseThresholdM: 15 });
 
         const first = actions.join(['F039', 'F040']);
         await expect(actions.join(['F039', 'F040'])).resolves.toBeNull();
@@ -195,6 +195,8 @@ describe('Add {year} to target years', () => {
             rmseThresholdM: 9,
             targetYears: [1966, 1972, 1978],
             publishThroughMapbox: false,
+            mapThresholdMaxM: 60,
+            mapAutoPublish: true,
         });
         expect(callsOf(callables, 'imagery.search')).toEqual([{ cityId: CITY }]);
         expect(imagery.state.addingYear).toBeNull();
@@ -219,7 +221,7 @@ describe('Add {year} to target years', () => {
         const actions = new JoinActions(world.services, () => undefined);
         world.store.outcomes.push({ ok: false, reason: 'denied' });
 
-        const settings = { autoPublish: true, rmseThresholdM: 15, targetYears: [], publishThroughMapbox: false };
+        const settings = imagerySettingsOf({ rmseThresholdM: 15 });
         await expect(actions.addYear(1972, { settings, version: null, search: () => Promise.resolve() })).resolves.toBe(false);
 
         expect(world.denials.count).toBe(1);

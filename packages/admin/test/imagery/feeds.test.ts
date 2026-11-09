@@ -27,7 +27,14 @@ describe('the Imagery area reads', () => {
         reads.start(true);
 
         expect(last('usgs')).toBe('pending');
-        expect(last('settings')).toEqual({ autoPublish: true, rmseThresholdM: 9, targetYears: [1966], publishThroughMapbox: false });
+        expect(last('settings')).toEqual({
+            autoPublish: true,
+            rmseThresholdM: 9,
+            targetYears: [1966],
+            publishThroughMapbox: false,
+            mapThresholdMaxM: 60,
+            mapAutoPublish: true,
+        });
         expect(last('frame')?.bounds).toEqual([
             [25.9, 44.3],
             [26.3, 44.6],

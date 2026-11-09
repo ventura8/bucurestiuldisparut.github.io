@@ -43,6 +43,12 @@ The Python + GDAL pipeline that turns declassified USGS film scans (Corona KH-4,
 - A proof over more ground than the window speaks for the window only through `Found.window_spread`: a new figure read from a wide proof goes through it too.
 - Tests take no card and no weights: `tests/fakes/sidecar.py` (the real search over ORB keypoints), a fake `torch` (`test_matcher_torch.py`), stand-ins of `docker` and `curl` (`functions/test/worker/starter-sidecar.test.ts`). A new upstream file goes in `pins.json` with its hash, on `AI_FILE_HOSTS`, its licence read into `matcher/NOTICE.md`; LightGlue's `superpoint.py` is confidential and never leaves the tarball.
 
+## M20: a local archive (`docs/research/M20-import-local.md`)
+
+- The worker's own page (`GET /import`, `worker/import_page.py`, `worker/imports.py`) takes a folder or a zip over loopback into `<work>/import/<archiveId>/x/` (`archive/intake.py`); the zip is read in place under `archive/zipread.py`'s limits (100,000 entries, 200:1, 64 GiB, the free space less 10 GiB); every path goes through `archive/safepath.py`.
+- `archive/probe.py` hashes and sniffs (`archive/magic.py`); a raster or a PDF is read by the spawned `probe_child` with `RLIMIT_AS` 4 GiB and 60 s of CPU; a crash or timeout is an `unreadable` row. `archive/classify.py` puts each file in one series or one skip reason; `archive/grammar.py` reads sheet names; `archive/sidecar.py` reads the owner's `hcm-archive.json` (data, entry by entry); `archive/rights.py` pre-flags §7; `archive/report.py` builds `worker.archiveReport`'s body in the ladder's order (§1.7) with stable series ids.
+- The job `archive-series` (local-only, counted once per series; `daily` waits are released by `imagery.tick`): `steps/gather.py`, `steps/place.py` (`PLACERS`, `wait_for_help`), then `export` (a line-art COG is DEFLATE), `pyramid` (`series_encoding`, `tiles/encoding.py`), `register` and the publish steps. A placer writes `warped.tif` and the version's `archive` report; the approval reads that report under the map threshold (§5).
+
 ## Job state machine (`cities/{c}/jobs/{id}`)
 
 - Leases and heartbeat; `waiting_usgs` with backoff for maintenance (503 HTML); re-login at 100 minutes; a cancel flag; SIGTERM → `cancelled` with temp files removed.

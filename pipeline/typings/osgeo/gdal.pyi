@@ -20,6 +20,7 @@ GDT_Byte: int
 GDT_UInt16: int
 GDT_Float32: int
 GCI_GrayIndex: int
+GCI_PaletteIndex: int
 GCI_RedBand: int
 GCI_GreenBand: int
 GCI_BlueBand: int
@@ -61,6 +62,7 @@ class Band:
     def SetMetadataItem(self, name: str, value: str, domain: str = "", /) -> int: ...
     def SetNoDataValue(self, value: float, /) -> int: ...
     def GetNoDataValue(self) -> float | None: ...
+    def GetMetadataItem(self, name: str, domain: str = "", /) -> str | None: ...
 
 class Dataset:
     RasterXSize: int

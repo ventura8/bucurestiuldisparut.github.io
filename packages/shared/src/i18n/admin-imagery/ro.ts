@@ -35,6 +35,7 @@ export const ro = {
     'adminContent.imagery.wait.deferred': 'Se publică pe {date}',
     'adminContent.imagery.wait.mapbox': 'Mapbox pregătește dalele',
     'adminContent.imagery.wait.parts': 'Așteaptă cadrele',
+    'adminContent.imagery.wait.daily': 'Așteaptă o zi următoare: cota de straturi noi de azi s-a folosit',
     'adminContent.imagery.version.processing': 'În lucru',
     'adminContent.imagery.version.needsGcps': 'Are nevoie de puncte',
     'adminContent.imagery.version.awaitingApproval': 'Așteaptă aprobarea',

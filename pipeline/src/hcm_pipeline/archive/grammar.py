@@ -1,0 +1,155 @@
+"""Sheet names that say where a sheet lies (docs/research/M20-import-local.md §2.3 step 4, §3 b).
+
+A small library of name grammars, none tied to one city:
+
+- `quarter`: a city grid's row, column and quarter (`17A'3`): rows numbered from a zero row, a prime north of it; columns lettered
+  without J and Q, a prime east of a zero meridian (A' is column 0, A is -1); quarters 1-4 of a cell. An edition year may follow
+  (`17A1_62`), and words such as `bis` or `mic` mark an odd sheet the report lists.
+- `block`: two rows and two columns of the same grid in one sheet (`29-30cb`, `9-10v'w'`, `1'-0AA'`).
+- `folder-row`: the row in the folder's name (`Seria 11/`) and the column in the file's (`C`, or `C1` for C'); words after it are odd.
+- `international-1m`: the international 1:1,000,000 scheme and its subdivisions (`L-35-12-A-b`).
+- `row-col`: two numbers (`12-07`, `r12c07`).
+
+A grammar is accepted for a set of sheets by `accepts` (§2.3): at least 80 % of the folder's rasters parse, the cells are one connected
+set, and their pixel sizes agree. What a sheet's cell means on the ground is the grid solve's (§3 b), not this module's.
+"""
+
+import re
+from collections import Counter
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
+from pathlib import PurePosixPath
+from typing import Final
+
+GRID_LETTERS: Final = "ABCDEFGHIKLMNOPRSTUVWXYZ"
+MIN_SHEETS: Final = 4
+MIN_SHARE: Final = 0.8
+_QUARTER: Final = re.compile(r"^(\d{1,2})('*)([A-Z])('*)([1-4])(?:[_-](\d{2,4}))?(?:\s*(.+))?$", re.IGNORECASE)
+_BLOCK: Final = re.compile(r"^(\d{1,2})('*)-(\d{1,2})('*)\s*([A-Z])('*)([A-Z])('*)(?:[_-](\d{2,4}))?(?:\s*(.+))?$", re.IGNORECASE)
+_FOLDER_ROW: Final = re.compile(r"^seria\s*(\d{1,2})('*)$", re.IGNORECASE)
+_FOLDER_COL: Final = re.compile(r"^([A-Z])(1)?(?:\s+(.+))?$", re.IGNORECASE)
+_INTERNATIONAL: Final = re.compile(r"^([A-V])-(\d{1,2})(?:-(\d{1,3}))?(?:-([A-D]))?(?:-([a-d]))?$", re.IGNORECASE)
+_ROW_COL: Final = re.compile(r"^r?(\d{1,3})[-_ c](\d{1,3})$", re.IGNORECASE)
+_TWO_DIGITS: Final = 100
+# A letter the grid does not use (J, Q): no column at all.
+NO_COLUMN: Final = -1000
+_CENTURY: Final = 1900
+
+
+@dataclass(frozen=True)
+class Cell:
+    """A sheet's place on its grid: row and column (and quarter); `odd` when the name says more than the grammar reads."""
+
+    grammar: str
+    row: int
+    col: int
+    quarter: int = 0
+    span: int = 1
+    edition: int | None = None
+    odd: bool = False
+
+
+def column(letter: str, primes: str) -> int:
+    """A grid column: primed letters east from 0 (A' is 0), plain ones west from -1 (A is -1); `NO_COLUMN` for J or Q."""
+    index = GRID_LETTERS.find(letter.upper())
+    if index < 0:
+        return NO_COLUMN
+    return index if primes else -(index + 1)
+
+
+def row(number: str, primes: str) -> int:
+    """A grid row: numbered south of the zero row, a prime north of it."""
+    return -int(number) if primes else int(number)
+
+
+def edition_year(text: str | None) -> int | None:
+    """`62` is 1962, `1977` is 1977; none when the name has none."""
+    if text is None:
+        return None
+    value = int(text)
+    return value + _CENTURY if value < _TWO_DIGITS else value
+
+
+def parse_quarter(stem: str) -> Cell | None:
+    match = _QUARTER.match(stem)
+    if match is None:
+        return None
+    number, row_primes, letter, col_primes, quarter, edition, extra = match.groups()
+    col = column(letter, col_primes)
+    return Cell("quarter", row(number, row_primes), col, int(quarter), 1, edition_year(edition), bool(extra)) if col > NO_COLUMN else None
+
+
+def parse_block(stem: str) -> Cell | None:
+    match = _BLOCK.match(stem)
+    if match is None:
+        return None
+    first, first_primes, _second, _second_primes, west, west_primes, east, east_primes, edition, extra = match.groups()
+    cols = sorted([column(west, west_primes), column(east, east_primes)])
+    if cols[0] <= NO_COLUMN:
+        return None
+    return Cell("block", row(first, first_primes), cols[0], 0, 2, edition_year(edition), bool(extra))
+
+
+def parse_folder_row(folder: str, stem: str) -> Cell | None:
+    """`Seria 11/C1`: row 11, column C' (the cadastral plan writes A1 for A')."""
+    row_match, col_match = _FOLDER_ROW.match(folder), _FOLDER_COL.match(stem)
+    if row_match is None or col_match is None:
+        return None
+    letter, primed, extra = col_match.groups()
+    col = column(letter, "'" if primed else "")
+    return Cell("folder-row", row(*row_match.groups()), col, odd=bool(extra)) if col > NO_COLUMN else None
+
+
+def parse_international(stem: str) -> Cell | None:
+    match = _INTERNATIONAL.match(stem)
+    if match is None:
+        return None
+    band, zone, part = match.group(1, 2, 3)
+    return Cell("international-1m", ord(band.upper()) - ord("A"), int(zone), int(part or 0))
+
+
+def parse_row_col(stem: str) -> Cell | None:
+    match = _ROW_COL.match(stem)
+    return None if match is None else Cell("row-col", int(match.group(1)), int(match.group(2)))
+
+
+def parse(path: str) -> Cell | None:
+    """The first grammar that reads the file's name (with its folder's, for `folder-row`), or None."""
+    pure = PurePosixPath(path)
+    stem, folder = pure.stem, pure.parent.name
+    for reader in (parse_quarter, parse_block, parse_international, parse_row_col):
+        cell = reader(stem)
+        if cell is not None:
+            return cell
+    return parse_folder_row(folder, stem)
+
+
+def _component(start: tuple[int, int], places: set[tuple[int, int]]) -> set[tuple[int, int]]:
+    seen, todo = set[tuple[int, int]](), [start]
+    while todo:
+        here = todo.pop()
+        if here not in seen:
+            seen.add(here)
+            todo.extend(place for place in _neighbours(here) if place in places)
+    return seen
+
+
+def connected(cells: Iterable[Cell]) -> bool:
+    """True when 80 % of the cells (a quarter's cell counts as its cell) form one set joined by edges or corners (a gap of one cell)."""
+    places = {(cell.row, cell.col) for cell in cells}
+    largest, left = 0, set(places)
+    while left:
+        part = _component(next(iter(left)), places)
+        largest, left = max(largest, len(part)), left - part
+    return largest > 0 and largest >= MIN_SHARE * len(places)
+
+
+def _neighbours(place: tuple[int, int]) -> list[tuple[int, int]]:
+    return [(place[0] + dr, place[1] + dc) for dr in (-2, -1, 0, 1, 2) for dc in (-2, -1, 0, 1, 2) if dr or dc]
+
+
+def accepts(parsed: int, rasters: int, cells: Sequence[Cell], sizes: Sequence[tuple[int, int]]) -> bool:
+    """§2.3: enough sheets, 80 % of the rasters parse, one connected set, and 80 % share one pixel size."""
+    common = Counter(sizes).most_common(1)
+    alike = bool(common) and common[0][1] >= MIN_SHARE * len(sizes)
+    return parsed >= MIN_SHEETS and parsed >= MIN_SHARE * rasters and alike and connected(cells)

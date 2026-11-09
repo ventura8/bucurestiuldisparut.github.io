@@ -2972,3 +2972,22 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: a dark pixel is not a fade pixel; a fade is a ramp that rises outward, a lake is flat. And `n` side steps reach `n / sqrt(2)` pixels across a diagonal edge.
     - Fix and pin: `tiles/rim.py` measures the band with a Euclidean distance transform (`edge_distance`) and grows the fade only where the dark pixels' profile still rises (`rising`: the mean grey of a pixel's distance shell over a 7 px window beats the shell two pixels nearer by `2 x RIM_RISE` and the next one nearer, or the next one farther beats it, so a grain's dip inside a fade is crossed), plus the fade's last dark pixel before the scene; a flat patch at grey 30, 50 or 70 loses at most two preview pixels past the core at 0, 18 and 45 degrees (12 px of a 60 m patch before), grain of 12 grey at most six; fades of 50 to 200 m at those angles keep nothing under 65 % of the scene within 150 m and are never cut past 150 m and a pixel; the live 1980 crop still ends on a median grey of 79 (`test_rim_profile.py`, S-P08-BAD-RIM-DARK-PATCH, S-P08-HAPPY-RIM-ANGLES).
     - **A threshold says how dark a pixel is, not what it is: an artefact with a shape (a ramp from the edge) is found by its shape, and a distance on a raster is Euclidean unless the test says it may not be.**
+501. **An owner's "permission" with nobody named would have made the whole archive's report invalid.**
+    - Seen: 2026-11-09, building M20's core: the scan's report prefilled `licence: 'permission'`, `state: 'clear'` from the owner's sidecar for the IPB sheets, and the server's `rightsSchema` refuses a permission without `confirmedBy`, so `worker.archiveReport` would have refused the report of every series at once.
+    - Cause: the Python twin of the rights record had no `confirmedBy` and no rule for a permission nobody granted; the schema's refinement lived only in TypeScript.
+    - Fix and pin: the sidecar takes `confirmedBy`; `report.rights_of` reads a permission with no one named as `unknown`, *needs confirmation* (`PERMISSION_NOTE`), and keeps a copyright mark *do not publish* unless a permission is named (`test_archive_classify.py`, S-P20-BAD-SIDECAR).
+    - **A cross-field rule a schema refines in one language must have its twin, and a test, on the side that writes the record.**
+502. **Two tracks took the same scenario behaviour id the same day.**
+    - Seen: 2026-11-09: M20's rows were first written as `S-A101-*`; `track/blocks` and `track/favicon` had already used `A101` for their own behaviours.
+    - Cause: every track picks "the next free id" from its own base commit, and the merges renumber decisions and lessons but not scenario ids.
+    - Fix: M20 uses `A120` and `P20` (its milestone's number); a row's id was grepped across every worktree before it was written.
+    - **Pick a scenario id that names the milestone, and check the other worktrees before writing one.**
+503. **`subprocess` for a sandboxed probe fails bandit; a spawned `multiprocessing` child is the repository's way.**
+    - Seen: 2026-11-09, `pipeline-bandit` on the archive's probe (B404, B603).
+    - Fix: `archive/probe.py` spawns `probe.child_main` (never forked), which sets GDAL's local-only options, limits itself (`RLIMIT_AS`, `RLIMIT_CPU`) and sends one JSON record over a pipe; a timeout, a death before the answer (`EOFError`) or a bad answer is an `unreadable` row (`test_archive_store.py`, `test_archive_intake.py`, S-P20-BAD-PROBE-CRASH), as `matcher/serve.py` already spawns its child.
+    - **Reach for the pattern the repository already proved under its gates before adding a new kind of process.**
+504. **One optional field in the manifest's strict schema cost the engine 40 bytes it did not have.**
+    - Seen: 2026-11-09, the `build` stage of track/archive: with M20's `layer.rights?` (a strict object of a licence enum, an author and a source) `engine.iife.js` measured 125,040 bytes gzip against its 125,000 budget.
+    - Cause: the engine validates the whole manifest with the shared schema, so every field of `layerSchema` ships in the viewer, read or not.
+    - Fix: the field stays on the layer document (`layerRightsSchema`, `imagery-archive.ts`) and out of the manifest; the credit reaches the visitor through `attribution`; the manifest field waits for viewer bytes (DECISIONS §125c).
+    - **A manifest field is engine bytes: build and measure before promising one, and keep server-only data on the server's own document.**

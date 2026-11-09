@@ -939,6 +939,20 @@
             "name": "A recalibration measures the current fit and the new one on the same checks; a refine with nothing better renders nothing",
             "milestone": "M16",
             "source": "the owner, 2026-11-08: calibrate a satellite image even more after publishing (manual, automatic, semi-auto); docs/research/M16-recalibrate.md"
+        },
+        {
+            "id": "A120",
+            "area": "admin",
+            "name": "Import a local archive of scanned maps: the worker's scan report, one Import click, the daily share, the rights gate, the map threshold",
+            "milestone": "M20",
+            "source": "the owner, 2026-11-09: import, optimise and calibrate a local archive of scanned maps (harti.zip); docs/research/M20-import-local.md"
+        },
+        {
+            "id": "P20",
+            "area": "pipeline",
+            "name": "A local archive is taken in untrusted, classified into series and its series' job runs on the owner's computer",
+            "milestone": "M20",
+            "source": "the owner, 2026-11-09: import, optimise and calibrate a local archive of scanned maps (harti.zip); docs/research/M20-import-local.md"
         }
     ],
     "scenarios": [
@@ -15219,6 +15233,292 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "The merge of track/accuracy (M15) with M16, 2026-11-08 (docs/research/M16-recalibrate.md §14). Test: pipeline/tests/integration/test_recalibrate_job.py."
+        },
+        {
+            "id": "S-A120-HAPPY-REPORT",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "happy",
+            "title": "The worker's scan report is recorded with a sample of its skipped paths",
+            "asserts": "a report of three series and two skipped paths -> archives/{id} with its series and counts, issues 000 and 001; a rescan replaces both and keeps its creator",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-import.test.ts."
+        },
+        {
+            "id": "S-A120-HAPPY-IMPORT",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "happy",
+            "title": "One Import click makes a local-only job per kept series in the ladder's order",
+            "asserts": "three series reported out of order -> three archive-series jobs queued on the computer (runOn local, localOnly, counted today), versions of origin archive with their rights, the archive records its jobs",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-import.test.ts."
+        },
+        {
+            "id": "S-A120-BAD-DAILY-SPLITS",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "Series beyond today's share wait for the next days, never refused",
+            "asserts": "a share of 2 and five series -> 2 start today, 3 wait (daily, not counted, not claimed); tomorrow's tick releases the next two of the ladder",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-import.test.ts."
+        },
+        {
+            "id": "S-A120-BAD-LOCAL-ONLY",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "A series whose originals are on the computer never moves to the cloud",
+            "asserts": "imagery.runOn cloud on a localOnly job -> apiError.imagery.localOnly, the job stays local",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-import.test.ts."
+        },
+        {
+            "id": "S-A120-HAPPY-AUTO-MAP",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "happy",
+            "title": "A drawn map within its scaled threshold publishes on its own",
+            "asserts": "a grid series at 4.2 m on 24 blocked checks -> approved automatically at 15 m; 1:40000 at 38 m -> 40 m; 1:100000 under a 100 m cap -> 100 m",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-approval.test.ts."
+        },
+        {
+            "id": "S-A120-BAD-NO-AUTO-MAP",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "A map of no known scale, over its threshold or with rights unconfirmed waits for Approve",
+            "asserts": "no scale, 41 m at 1:40000, 61 m past the 60 m cap, a dropped check, a rival, 69 % of its own extent, the owner's points, rights unconfirmed, either switch off -> awaiting_approval",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-approval.test.ts."
+        },
+        {
+            "id": "S-A120-HAPPY-RIGHTS",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "happy",
+            "title": "Rights the owner confirmed let the series publish",
+            "asserts": "licence permission, confirmedBy given, state clear -> Approve approves",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-approval.test.ts."
+        },
+        {
+            "id": "S-A120-BAD-RIGHTS-UNCONFIRMED",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "A series whose rights wait for the owner never publishes",
+            "asserts": "Approve on a version needing confirmation -> apiError.imagery.rightsUnconfirmed, it stays awaiting approval",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-approval.test.ts."
+        },
+        {
+            "id": "S-A120-HAPPY-CREDITS",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "happy",
+            "title": "An archive layer is a map at 0.85 credited from its rights",
+            "asserts": "finalize -> kind map, opacity 0.85, attribution 'IGA, Planul IGA 1895, 1895 · PD · scan: Idei Urbane – DocuBucurești (romaniaforum)', the layer keeps rights with licence, author and source",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-approval.test.ts."
+        },
+        {
+            "id": "S-P20-HAPPY-INTAKE",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A folder or a zip is taken in over loopback and read by its magic bytes",
+            "asserts": "files streamed to /import/<id>/file and a zip read in place land under x/; a TIFF named .368 and one with no extension are TIFFs; the real probe child reads a 1-bit TIFF and a PDF",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_intake.py, pipeline/tests/unit/test_archive_store.py, pipeline/tests/unit/test_worker_imports.py."
+        },
+        {
+            "id": "S-P20-BAD-ZIP-SLIP",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An unsafe zip or path is refused",
+            "asserts": "an absolute path, .., a drive, a link, a ratio bomb, too many entries, no room -> refused, nothing written outside the archive's folder",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_intake.py, pipeline/tests/unit/test_archive_store.py, pipeline/tests/unit/test_worker_imports.py."
+        },
+        {
+            "id": "S-P20-BAD-PROBE-CRASH",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A file that crashes or stalls the probe is one unreadable row",
+            "asserts": "a child that times out, dies or answers garbage -> an unreadable probe, the scan goes on",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_intake.py, pipeline/tests/unit/test_archive_store.py."
+        },
+        {
+            "id": "S-P20-HAPPY-CLASSIFY",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Every file lands in exactly one series or one skip reason",
+            "asserts": "junk, duplicates, CAD, georeferenced, grids, atlases and singles of a synthetic archive -> each file once",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_classify.py."
+        },
+        {
+            "id": "S-P20-BAD-DUPLICATE",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An exact duplicate is skipped for its shortest name",
+            "asserts": "two files of one SHA-256 -> the shorter kept, the other duplicate-of it",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_classify.py."
+        },
+        {
+            "id": "S-P20-BAD-CAD",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A CAD drawing is reported as needing an export",
+            "asserts": "a DWG -> needs-cad-export, no series",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_classify.py."
+        },
+        {
+            "id": "S-P20-HAPPY-GRID-NAMES",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Sheet names a grammar reads make one grid series per edition",
+            "asserts": "17A'3, 29-30cb, Seria 11/C1 and _62 editions -> cells and edition series",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_classify.py, pipeline/tests/unit/test_archive_grammar.py."
+        },
+        {
+            "id": "S-P20-BAD-GRID-ODD-NAMES",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Names the grammar cannot read join the table of odd names",
+            "asserts": "17A1 bis and words after a column -> odd cells the report asks about",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_grammar.py."
+        },
+        {
+            "id": "S-P20-HAPPY-REPORT",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The report carries series and counts, never a host path",
+            "asserts": "a scan -> series ids stable across rescans, the ladder's order, rights pre-flagged, relative paths only",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_classify.py, pipeline/tests/unit/test_archive_store.py."
+        },
+        {
+            "id": "S-P20-BAD-SIDECAR",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An invalid owner sidecar entry is ignored and counted",
+            "asserts": "an unknown key, a wrong type or an unsafe path -> refused, the valid entries applied",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_classify.py."
+        },
+        {
+            "id": "S-P20-BAD-TOO-MANY-SERIES",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Past 200 series the rest are counted, not sent",
+            "asserts": "201 series -> 200 sent, the rest too-many-series",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_classify.py."
+        },
+        {
+            "id": "S-P20-BAD-REPORT-REFUSED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A report the server refuses is the page's failure, not the worker's",
+            "asserts": "worker.archiveReport raises -> the scan's state failed with its code",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_worker_imports.py."
+        },
+        {
+            "id": "S-P20-HAPPY-GATHER",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "gather finds the series' sheets as the scan read them",
+            "asserts": "the record's files with their SHA-256 -> sheets.json written",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_steps.py."
+        },
+        {
+            "id": "S-P20-BAD-ARCHIVE-MISSING",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A moved or changed original fails the job with its reason",
+            "asserts": "a changed, moved, unrecorded or unsafe sheet, or no archive root -> apiError.imagery.archiveMissing",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_steps.py."
+        },
+        {
+            "id": "S-P20-HAPPY-PLACE",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A class with a placer is placed by it",
+            "asserts": "place with a placer for the class -> its result",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_steps.py."
+        },
+        {
+            "id": "S-P20-BAD-NO-PATH",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A class with no placer waits for a person with one line why",
+            "asserts": "place on a class with no path -> version needs_gcps with help no-path, the job awaiting_gcps",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_steps.py."
+        },
+        {
+            "id": "S-P20-HAPPY-ENCODING",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A series' tiles follow its encoding",
+            "asserts": "line art lossless and nearest with its paper transparent, colour at 82, grey as today",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_steps.py."
         }
     ]
 }

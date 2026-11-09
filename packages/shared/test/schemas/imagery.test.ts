@@ -141,12 +141,16 @@ describe('city imagery settings', () => {
             rmseThresholdM: DEFAULT_RMSE_THRESHOLD_M,
             targetYears: [],
             publishThroughMapbox: false,
+            mapThresholdMaxM: 60,
+            mapAutoPublish: true,
         });
         expect(imagerySettingsOf({ autoPublish: false, rmseThresholdM: 8, targetYears: [1966], publishThroughMapbox: true })).toEqual({
             autoPublish: false,
             rmseThresholdM: 8,
             targetYears: [1966],
             publishThroughMapbox: true,
+            mapThresholdMaxM: 60,
+            mapAutoPublish: true,
         });
     });
 

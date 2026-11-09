@@ -36,6 +36,9 @@ type Request = CallableRequest<'imagery.runOn'>;
 /** The statuses in which a job holds no run, so where it runs may still change. */
 const MOVABLE: ReadonlySet<JobStatus> = new Set<JobStatus>(['queued', 'waiting_usgs', 'awaiting_gcps']);
 
+/** The waits a move keeps: M8's join for its frames, M20's archive series for a later day's share (a move must not skip the cap). */
+const HELD_WAITS: ReadonlySet<JobDoc['waitReason']> = new Set<JobDoc['waitReason']>(['parts', 'daily']);
+
 /** Which job moves where, by whom, with or without the OK. */
 interface Move {
     readonly cityId: string;
@@ -66,7 +69,7 @@ function movedJob(job: JobDoc, move: Move, stamp: Stamp): JobDoc {
         move.place === 'local' ? ['worker', 'waitReason', 'freeTierOk', 'workerOverdueAt'] : ['worker', 'waitReason', 'workerOverdueAt'],
     );
     const okay = move.place === 'cloud' && move.ok ? { freeTierOk: { by: move.uid, at: stamp.updatedAt } } : {};
-    const held = job.waitReason === 'parts' ? { waitReason: job.waitReason } : {};
+    const held = HELD_WAITS.has(job.waitReason) ? { waitReason: job.waitReason } : {};
     return { ...omit(kept, ['filesOn']), runOn: move.place, ...okay, ...held, ...filesLeftOn(job, move.place), ...stamp };
 }
 
@@ -78,6 +81,10 @@ async function moveJob(transaction: DocumentTransaction, move: Move, stamp: Stam
     }
     if (!MOVABLE.has(job.status)) {
         throw new ApiError('apiError.imagery.versionState');
+    }
+    // M20 (docs/research/M20-import-local.md §1.1): an archive's originals never leave the owner's computer.
+    if (job.localOnly === true && move.place === 'cloud') {
+        throw new ApiError('apiError.imagery.localOnly');
     }
     await transaction.set(path, jobDocSchema, movedJob(job, move, stamp));
     await transaction.set(FIRESTORE_PATHS.runChoice(move.cityId), runChoiceDocSchema, { choice: move.place, ...stamp });

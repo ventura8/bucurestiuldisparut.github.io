@@ -58,6 +58,7 @@ const DEFAULT_OUTCOMES: Readonly<Record<JobType, StandinAttempt['outcome']>> = {
     republish: 'under',
     'layer-delete': 'under',
     'layer-join': 'under',
+    'archive-series': 'under',
     'layer-tiles': 'under',
 };
 

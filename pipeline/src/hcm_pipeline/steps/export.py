@@ -22,6 +22,7 @@ from hcm_pipeline.documents import OutputInfo, city_bounds
 from hcm_pipeline.geo import ZOOM0_RESOLUTION_M, Grid, ground_scale
 from hcm_pipeline.jobs import Done, JobContext, StepResult
 from hcm_pipeline.join.canvas import DatasetSource
+from hcm_pipeline.model import Job
 from hcm_pipeline.objects import ObjectInfo, sha256_of
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.rasters import fit_long_side, raster_info, read_band
@@ -31,6 +32,8 @@ from hcm_pipeline.steps.merge import city_part, coverage_pct
 from hcm_pipeline.steps.warp import zooms
 
 COG_OPTIONS: Final = ("COMPRESS=JPEG", "QUALITY=85", "BLOCKSIZE=512", "OVERVIEWS=AUTO")
+# M20 (docs/research/M20-import-local.md §6): an archive's line art is never JPEG; DEFLATE with a predictor keeps its lines exact.
+LINEART_COG_OPTIONS: Final = ("COMPRESS=DEFLATE", "PREDICTOR=2", "BLOCKSIZE=512", "OVERVIEWS=AUTO")
 STUDIO_OPTIONS: Final = ("COMPRESS=JPEG", "JPEG_QUALITY=85", "TILED=YES", "BIGTIFF=IF_SAFER")
 PREVIEW_MAX_PX: Final = 2048
 AREA_SAMPLE_PX: Final = 2048
@@ -61,9 +64,15 @@ class Warped:
         return round(math.log2(ZOOM0_RESOLUTION_M / self.grid.resolution))
 
 
-def write_cog(warped: Warped, target: Path) -> Path:
-    gdal.Translate(str(target), str(warped.path), format="COG", creationOptions=list(COG_OPTIONS)).Close()
+def write_cog(warped: Warped, target: Path, options: tuple[str, ...] = COG_OPTIONS) -> Path:
+    gdal.Translate(str(target), str(warped.path), format="COG", creationOptions=list(options)).Close()
     return target
+
+
+def cog_options(job: Job) -> tuple[str, ...]:
+    """The COG's compression: lossless for an archive series of line art, JPEG for every other layer."""
+    lineart = job.type == "archive-series" and job.params.get("encoding") == "lineart"
+    return LINEART_COG_OPTIONS if lineart else COG_OPTIONS
 
 
 def write_preview(warped: Warped, target: Path) -> Path:
@@ -151,7 +160,7 @@ class ExportStep:
         self._studio_max_bytes = studio_max_bytes
 
     def _mapbox_files(self, ctx: JobContext, warped: Warped) -> MapboxFiles:
-        cog = gdal_step(ctx, lambda: write_cog(warped, ctx.local("cog.tif")), "write the COG")
+        cog = gdal_step(ctx, lambda: write_cog(warped, ctx.local("cog.tif"), cog_options(ctx.job)), "write the COG")
         studio = gdal_step(ctx, lambda: write_studio(warped, ctx.local("studio.tif"), self._studio_max_bytes), "write the Studio file")
         sha256 = sha256_of(cog)
         cog_info = ctx.publish(cog, ctx.version_file("cog.tif"), "image/tiff")

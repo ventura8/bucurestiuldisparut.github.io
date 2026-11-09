@@ -29,7 +29,7 @@ export { redactText } from './text/redact.js';
 export type { InlineNode, MarkdownDocument, MarkdownParagraph } from './text/markdown.js';
 export { parseStory, storyFigureIds, type StoryBlock, type StoryFigure } from './text/story.js';
 
-export { ID_PATTERN, MAX_LINKS, MAX_TOKENS, PHOTOS_OVERLAY_ID, TOKEN_NAME_PATTERN, isId } from './schemas/primitives.js';
+export { ID_PATTERN, MAX_LINKS, MAX_TOKENS, PHOTOS_OVERLAY_ID, TOKEN_NAME_PATTERN, isId, yearSchema } from './schemas/primitives.js';
 export type { ValidationCode } from './schemas/primitives.js';
 export {
     LAYER_ADJUSTMENT_RANGES,
@@ -310,6 +310,8 @@ export * from './schemas/imagery-calibration.js';
 export * from './schemas/imagery-recalibration.js';
 export * from './schemas/imagery-join.js';
 export * from './schemas/imagery-plan.js';
+// M20 (docs/research/M20-import-local.md): a local archive's report, its series, rights, the map threshold.
+export * from './schemas/imagery-archive.js';
 // M5 (docs/research/M5-interfaces.md): many cities in one project, the static export, engine releases on jsDelivr (every
 // export of these modules is public; `test/index.test.ts` lists them).
 export * from './schemas/cities.js';

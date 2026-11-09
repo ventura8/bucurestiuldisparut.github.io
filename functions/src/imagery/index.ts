@@ -7,6 +7,7 @@
 import type { CallableDeps } from '../api/callable.js';
 import type { Ports } from '../ports/index.js';
 import { approveFunction, rejectFunction } from './approve.js';
+import { archiveImportFunction } from './archive-import.js';
 import { browseFunction } from './browse.js';
 import { cropFunction } from './crop.js';
 import { importFunction } from './import.js';
@@ -46,6 +47,7 @@ export function imageryFunctions(getDeps: () => ImageryFamilyDeps, bucket?: stri
         previewUrl: previewUrlFunction(getDeps),
         recalibrate: recalibrateFunction(getDeps),
         runOn: runOnFunction(getDeps),
+        archiveImport: archiveImportFunction(getDeps),
         probeTiles: probeTilesFunction(getDeps),
         resumeGuard: resumeGuardFunction(getDeps),
         onJobWrite: onJobWriteFunction(getDeps),

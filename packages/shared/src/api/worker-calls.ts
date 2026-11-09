@@ -10,6 +10,7 @@ import { idSchema } from '../schemas/primitives.js';
 import { cityIdSchema } from '../schemas/paths.js';
 import { workerAiSchema } from '../schemas/worker.js';
 import { JOB_STATUSES, WORKER_ID_PATTERN } from '../schemas/firestore-ops.js';
+import { workerArchiveReportRequestSchema, workerArchiveReportResponseSchema } from './archive.js';
 import { isoTimeSchema } from './common.js';
 import type { CallableSpec, WorkerCallableName } from './registry.js';
 import { WORKER_PAIR_CODE_PATTERN, WORKER_PAIR_ID_PATTERN, WORKER_URLS_MAX, WORKER_USGS_ENDPOINTS } from './worker.js';
@@ -173,6 +174,8 @@ export const WORKER_CALLABLES = {
     'worker.step': workerCallable(workerStepRequestSchema, workerStepResponseSchema),
     'worker.urls': workerCallable(workerUrlsRequestSchema, workerUrlsResponseSchema),
     'worker.end': workerCallable(workerEndRequestSchema, workerEndResponseSchema),
+    // M20 (docs/research/M20-import-local.md §2.4): a local archive's scan report; bound to the worker, not to a job.
+    'worker.archiveReport': workerCallable(workerArchiveReportRequestSchema, workerArchiveReportResponseSchema),
     // Finding 67: no sign-in; the one-time code is the credential, the attempts are limited per city.
     'worker.pair': {
         access: 'none',

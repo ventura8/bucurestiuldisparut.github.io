@@ -88,7 +88,7 @@ export interface VersionItemPort {
     readonly layerId: string;
     readonly label: { readonly ro: string; readonly en?: string | undefined };
     readonly year: number;
-    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop' | 'join';
+    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop' | 'join' | 'archive';
     readonly state: LayerVersionState;
     readonly updatedAt: string;
     readonly needsYou: boolean;
@@ -136,7 +136,7 @@ export interface VersionViewPort {
     readonly year: number;
     readonly date: string | null;
     readonly sensor: Sensor | null;
-    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop' | 'join';
+    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop' | 'join' | 'archive';
     readonly state: LayerVersionState;
     readonly georef: {
         readonly method: string;

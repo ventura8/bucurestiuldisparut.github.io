@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 import pytest
 from hcm_pipeline import contract, paths
+from hcm_pipeline.archive import model
 
 from tests.contracts_loader import golden, record, records
 
@@ -49,12 +50,24 @@ def test_happy_path_the_constants_equal_the_shared_copy() -> None:
         "S2_CHECK_STATUSES": list(contract.S2_CHECK_STATUSES),
         "ALIGNMENT_STATUSES": list(contract.ALIGNMENT_STATUSES),
         "ALIGNMENT_MAX_PARTNERS": contract.ALIGNMENT_MAX_PARTNERS,
+        # M20 (docs/research/M20-import-local.md): the archive's vocabulary (`archive/model.py`).
+        "ARCHIVE_SERIES_CLASSES": list(model.ARCHIVE_SERIES_CLASSES),
+        "ARCHIVE_SKIP_REASONS": list(model.ARCHIVE_SKIP_REASONS),
+        "ARCHIVE_ENCODINGS": list(model.ARCHIVE_ENCODINGS),
+        "ARCHIVE_AUTO_LIKELIHOODS": list(model.ARCHIVE_AUTO_LIKELIHOODS),
+        "ARCHIVE_PLACE_METHODS": list(model.ARCHIVE_PLACE_METHODS),
+        "RIGHTS_LICENCES": list(model.RIGHTS_LICENCES),
+        "RIGHTS_STATES": list(model.RIGHTS_STATES),
+        "HELP_REASONS": list(model.HELP_REASONS),
+        "ARCHIVE_MAX_SERIES": model.ARCHIVE_MAX_SERIES,
+        "ARCHIVE_ISSUES_MAX": model.ARCHIVE_ISSUES_MAX,
+        "ARCHIVE_SERIES_MAX_BYTES": model.ARCHIVE_SERIES_MAX_BYTES,
         # Every code a step fails or waits with: the shared test holds each to a code the admin can read (finding 62).
         "PIPELINE_ERROR_CODES": sorted(value for name, value in vars(contract.Errors).items() if name.isupper()),
     }
 
 
-@pytest.mark.parametrize("job_type", ["usgs-import", "geotiff-import", "regeoref", "layer-join"])
+@pytest.mark.parametrize("job_type", ["usgs-import", "geotiff-import", "regeoref", "layer-join", "archive-series"])
 def test_happy_path_each_pipeline_job_type_weighs_its_steps_to_one(job_type: str) -> None:
     weights = contract.step_weights(job_type)
 

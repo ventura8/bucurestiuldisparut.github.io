@@ -40,6 +40,19 @@ import {
     type GeorefTransform,
 } from '../../src/schemas/georef.js';
 import { ALIGNMENT_MAX_PARTNERS, ALIGNMENT_STATUSES } from '../../src/schemas/imagery-calibration.js';
+import {
+    ARCHIVE_AUTO_LIKELIHOODS,
+    ARCHIVE_ENCODINGS,
+    ARCHIVE_ISSUES_MAX,
+    ARCHIVE_MAX_SERIES,
+    ARCHIVE_PLACE_METHODS,
+    ARCHIVE_SERIES_CLASSES,
+    ARCHIVE_SERIES_MAX_BYTES,
+    ARCHIVE_SKIP_REASONS,
+    HELP_REASONS,
+    RIGHTS_LICENCES,
+    RIGHTS_STATES,
+} from '../../src/schemas/imagery-archive.js';
 import { RASTER_PATHS, VERSION_FILES } from '../../src/schemas/imagery-paths.js';
 import { STUDIO_MAX_BYTES } from '../../src/schemas/imagery-publish.js';
 import { RECALIBRATE_MIN_CHECKS, RECALIBRATE_MIN_GAIN_M } from '../../src/schemas/imagery-recalibration.js';
@@ -135,6 +148,17 @@ describe('the pipeline contract', () => {
             S2_CHECK_STATUSES,
             ALIGNMENT_STATUSES,
             ALIGNMENT_MAX_PARTNERS,
+            ARCHIVE_SERIES_CLASSES,
+            ARCHIVE_SKIP_REASONS,
+            ARCHIVE_ENCODINGS,
+            ARCHIVE_AUTO_LIKELIHOODS,
+            ARCHIVE_PLACE_METHODS,
+            RIGHTS_LICENCES,
+            RIGHTS_STATES,
+            HELP_REASONS,
+            ARCHIVE_MAX_SERIES,
+            ARCHIVE_ISSUES_MAX,
+            ARCHIVE_SERIES_MAX_BYTES,
         });
     });
 

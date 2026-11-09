@@ -7,6 +7,7 @@ import {
     layerDocSchema,
     layerVersionDocSchema,
     recalibrationVerdict,
+    rightsAllowPublish,
     type CallableRequest,
     type CallableResponse,
     type JobDoc,
@@ -78,6 +79,16 @@ async function refuseUnchosenWorse(transaction: DocumentTransaction, version: La
     }
 }
 
+/**
+ * M20 (`docs/research/M20-import-local.md` §1.6, §7; S-A120-BAD-RIGHTS-UNCONFIRMED): a version that carries rights (an archive series)
+ * publishes only once they allow it; one waiting for its owner's confirmation, or never to be published, stays private.
+ */
+function refuseUnconfirmedRights(version: LayerVersionDoc): void {
+    if (version.rights !== undefined && !rightsAllowPublish(version.rights)) {
+        throw new ApiError('apiError.imagery.rightsUnconfirmed');
+    }
+}
+
 /** The version is approved now, its estimate recorded; any other state is `apiError.imagery.versionState`. */
 async function approveVersion(deps: ApprovalDeps, caller: VerifiedCaller, request: ApproveRequest): Promise<LayerVersionDoc> {
     const path = FIRESTORE_PATHS.layerVersion(request.cityId, request.versionId);
@@ -91,6 +102,7 @@ async function approveVersion(deps: ApprovalDeps, caller: VerifiedCaller, reques
             throw new ApiError('apiError.imagery.versionState');
         }
         await refuseHeldPart(transaction, request.cityId, version);
+        refuseUnconfirmedRights(version);
         await refuseUnchosenWorse(transaction, version, request);
         const result = approved({ ...version, estimate: version.estimate ?? estimateOf(version.output, now) }, caller.uid, now);
         await transaction.set(path, layerVersionDocSchema, result);

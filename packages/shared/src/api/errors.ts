@@ -174,6 +174,12 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.refineUnmeasured': spec('failed-precondition'),
     'apiError.imagery.notBetter': spec('failed-precondition'),
     'apiError.imagery.joinRecalibrate': spec('failed-precondition'),
+    // M20 (docs/research/M20-import-local.md §1): a local archive's series never moves to the cloud, never publishes before its
+    // rights are confirmed, runs only where its originals are, and is imported once.
+    'apiError.imagery.localOnly': spec('failed-precondition'),
+    'apiError.imagery.rightsUnconfirmed': spec('failed-precondition'),
+    'apiError.imagery.archiveMissing': spec('failed-precondition'),
+    'apiError.imagery.archiveImported': spec('failed-precondition'),
     'apiError.worker.notHolder': spec('failed-precondition'),
     'apiError.worker.refused': spec('permission-denied'),
     // Finding 67 of 2026-11-02: a pairing code unknown, used or expired (one answer for the three), and a disconnected computer.

@@ -25,6 +25,7 @@ import {
     themeSchema,
     LAYER_KINDS,
 } from './manifest.js';
+import { layerRightsSchema } from './imagery-archive.js';
 import { iconNameSchema, MAX_POI_PHOTOS, photosOverlaySchema } from './poi.js';
 import { heldImageSchema, reviewFields } from './review.js';
 import { localizedStorySchema, storyFields } from './story.js';
@@ -245,6 +246,8 @@ export const layerDocSchema = z.strictObject({
     opacity: opacitySchema,
     defaultVisible: z.boolean(),
     adjustments: layerAdjustmentsSchema.optional(),
+    /** M20 (`docs/research/M20-import-local.md` §7): an archive map's licence, author and source, copied into the manifest. */
+    rights: layerRightsSchema.optional(),
     status: z.enum(LAYER_STATUSES),
     published: z.boolean(),
     provenance: z
