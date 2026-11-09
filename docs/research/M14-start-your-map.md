@@ -140,6 +140,8 @@ Every fake in `packages/test-support/src/fakes/google-hosting.ts` follows the do
 2. Create the Hosting site `start-historic-city` and deploy `dist/start/`.
 3. The first real run from a clean Google account; item by item, §9.
 
+Done 2026-11-09 (the owner's approval): the Web client `Start your map (start-historic-city)` in `bucurestiul-disparut` (origin and redirect `https://start-historic-city.web.app`, with and without the slash; its public id is in the deployed `start-config.json`, the secret is never used), the Hosting site `start-historic-city` created, and `dist/start/` of `1.0.0+25aee1e` deployed there; the README links it. The consent screen is External and in production without verification: Google shows its unverified-app screen and caps sensitive-scope sign-ins at 100 users until verification. Still open: verification, and item 3.
+
 ## 11. Scenarios and tests
 
 Behaviour `A76` (`e2e/scenarios.json`), `e2e/admin/specs/start/`, on the fakes and emulators. `V29`'s rows follow CR-M5-7. Tour states `start.*` in `e2e/admin/specs/start/states.ts`.
