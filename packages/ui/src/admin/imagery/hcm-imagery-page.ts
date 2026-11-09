@@ -93,6 +93,8 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
     declare mapCss: string;
     /** The upload whose version the page opened. */
     #opened: string | null = null;
+    /** M20: the `archive` chunk's elements were asked for. */
+    #archiveAsked = false;
 
     constructor() {
         super();
@@ -109,12 +111,24 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
         this.#follow();
     }
 
-    /** A finished upload opens its version. */
+    /** A finished upload opens its version; the Upload view or an archive's report first registers the `archive` chunk's elements. */
     #follow(): void {
         const view = this.view;
         if (view !== null) {
             this.#followUpload(view.upload);
+            this.#askArchive(view);
         }
+    }
+
+    #askArchive(view: ImageryViewState): void {
+        if (!this.#archiveAsked && showsArchive(view)) {
+            this.#archiveAsked = true;
+            void this.#archiveElements().catch(() => undefined);
+        }
+    }
+
+    async #archiveElements(): Promise<void> {
+        await this.intents?.archiveElements();
     }
 
     #followUpload(upload: ImageryViewState['upload']): void {
@@ -205,7 +219,15 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
         if (view.tab === 'work') {
             return workView(context);
         }
-        return chunkTemplate(context, UPLOAD_PANEL_CHUNK, ({ uploadPanel }) =>
+        const archive = html`<hcm-archive-panel
+            class="pane"
+            .app=${context.app}
+            .locale=${context.locale}
+            @hcm-archive-arrived=${(event: Event) => {
+                context.go(['archive', (event as CustomEvent<{ id: string }>).detail.id]);
+            }}
+        ></hcm-archive-panel>`;
+        return html`${chunkTemplate(context, UPLOAD_PANEL_CHUNK, ({ uploadPanel }) =>
             uploadPanel(
                 context.locale,
                 { ...view.upload, layerId: view.upload.layerId ?? view.replaceLayer },
@@ -215,7 +237,8 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
                     readOnly: context.readOnly,
                 },
             ),
-        );
+        )}
+        ${archive}`;
     }
 
     /** The page's one map, always first in the detail pane so it stays the same element. */
@@ -245,12 +268,23 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
             ></hcm-empty-state>`;
         }
         if (detail.kind === 'scene') {
-            // M4: an ordered scene the filters hide (Free only) opens too, from Work's orders or a notification's link; any
-            // other scene they hide, or past the list's page, from its own read (a shared or bookmarked address).
-            const scenes = [...view.scenes.items, ...view.orders.items, ...(view.named.scene === null ? [] : [view.named.scene])];
-            return sceneDetail(context, scenes.find((scene) => scene.id === detail.id) ?? null);
+            return this.#scene(context, detail.id);
         }
-        return chunkTemplate(context, APPROVAL_MAP_CHUNK, ({ versionDetail }) => versionDetail(context, view.version));
+        return detail.kind === 'archive' ? archiveReport(context, detail.id) : this.#version(context);
+    }
+
+    /**
+     * M4: an ordered scene the filters hide (Free only) opens too, from Work's orders or a notification's link; any other scene they
+     * hide, or past the list's page, from its own read (a shared or bookmarked address).
+     */
+    #scene(context: ImageryContext, id: string): TemplateResult {
+        const view = context.view;
+        const scenes = [...view.scenes.items, ...view.orders.items, ...(view.named.scene === null ? [] : [view.named.scene])];
+        return sceneDetail(context, scenes.find((scene) => scene.id === id) ?? null);
+    }
+
+    #version(context: ImageryContext): TemplateResult {
+        return chunkTemplate(context, APPROVAL_MAP_CHUNK, ({ versionDetail }) => versionDetail(context, context.view.version));
     }
 
     #dialog(context: ImageryContext): TemplateResult {
@@ -278,6 +312,21 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
             }}
         ></hcm-confirm-dialog>`;
     }
+}
+
+/** M20: an archive's report (`#/imagery/archive/<id>`), the `archive` chunk's element. */
+function archiveReport(context: ImageryContext, archiveId: string): TemplateResult {
+    return html`<hcm-archive-report
+        .app=${context.app}
+        .locale=${context.locale}
+        archive=${archiveId}
+        ?read-only=${context.readOnly}
+    ></hcm-archive-report>`;
+}
+
+/** M20: the Upload view (Import local files) or an archive's report is on screen. */
+function showsArchive(view: ImageryViewState): boolean {
+    return view.tab === 'upload' || view.detail?.kind === 'archive';
 }
 
 /** The open version's overage cost in dollars, for the Pay question, as the Pay button writes it. */

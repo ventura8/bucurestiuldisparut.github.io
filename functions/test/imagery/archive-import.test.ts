@@ -191,6 +191,7 @@ describe('imagery.archiveImport', () => {
             rights: { year: '1846' },
         });
         expect(response.jobs[0]?.layerId).toBe('planul-borroczyn');
+        expect((await readVersion(world, response.jobs[0]?.jobId ?? ''))?.rights?.confirmedAt).toBeUndefined();
         expect((await readJob(world, response.jobs[1]?.jobId ?? ''))?.params).toMatchObject({ edition: '62', scaleDenominator: 500 });
     });
 
@@ -281,6 +282,22 @@ function waitingJob(): JobDoc {
         updatedAt: at(NOW),
     };
 }
+
+describe('imagery.archiveImport, the rights', () => {
+    it('happyPath_theOwnersWordOnTheRightsIsStampedByTheServer @S-A121-HAPPY-RIGHTS-CONFIRMED', async () => {
+        const world = await readyWorld();
+        await seedArchive(world, archiveDoc(1, { series: [archiveSeries(0, { rights: UNCONFIRMED })] }));
+        const rights = { ...UNCONFIRMED, licence: 'permission', state: 'clear', confirmedBy: 'Idei Urbane – DocuBucurești' };
+
+        const response = await archiveImportFunction(() => world.deps).run(
+            adminCall({ cityId: CITY, archiveId: ARCHIVE, series: [{ seriesId: seriesIdOf(0), include: true, rights }] }),
+        );
+
+        const version = await readVersion(world, response.jobs[0]?.jobId ?? '');
+        expect(version?.rights).toMatchObject({ licence: 'permission', state: 'clear', confirmedBy: 'Idei Urbane – DocuBucurești' });
+        expect(version?.rights?.confirmedAt).toBeDefined();
+    });
+});
 
 describe('the daily release', () => {
     it('happyPath_aJobThatMovedMeanwhileIsLeftAlone_andAnUnreadableOneGoesLast', async () => {

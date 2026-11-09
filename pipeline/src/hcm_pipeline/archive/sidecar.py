@@ -112,9 +112,23 @@ def parse(text: str) -> Sidecar:
     return Sidecar(refused=1) if raw is None else _counted([entry_of(item) for item in raw])
 
 
-def read(root: Path) -> Sidecar:
-    """The archive's sidecar, if it has one (and it is not larger than 1 MiB)."""
+def _folders(root: Path) -> list[Path]:
+    """The archive root's own folders (none for a root that is not one); links are never followed."""
+    if not root.is_dir():
+        return []
+    return [child for child in root.iterdir() if child.is_dir() and not child.is_symlink()]
+
+
+def _located(root: Path) -> Path:
+    """The sidecar at the archive's root, or in its one top folder: a folder chosen whole arrives under its own name."""
     path = root / FILE_NAME
+    folders = [] if path.is_file() else _folders(root)
+    return folders[0] / FILE_NAME if len(folders) == 1 else path
+
+
+def read(root: Path) -> Sidecar:
+    """The archive's sidecar, if it has one (and it is not larger than 1 MiB); its paths stay relative to the archive's root."""
+    path = _located(root)
     if not path.is_file() or path.stat().st_size > MAX_BYTES:
         return Sidecar(refused=int(path.is_file()))
     return parse(path.read_text(encoding="utf-8", errors="replace"))

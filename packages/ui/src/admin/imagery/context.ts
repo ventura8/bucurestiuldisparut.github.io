@@ -5,6 +5,7 @@
  */
 import type { Locale } from '@hcm/shared';
 
+import type { ArchiveHostPort } from '../archive/archive-port.js';
 import type { WorkerHostPort } from '../worker/worker-port.js';
 import type { ImageryIntentsPort, ImageryViewState } from './imagery-port.js';
 
@@ -31,5 +32,5 @@ export interface ImageryContext {
     /** M12: brings the page's one map into view (a phone's approval card lies below it). */
     readonly showMap: () => void;
     /** M7: the admin app, which hands a version's `<hcm-run-place>` its feed (absent: no place shown). */
-    readonly app?: WorkerHostPort | null;
+    readonly app?: (WorkerHostPort & ArchiveHostPort) | null;
 }

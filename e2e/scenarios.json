@@ -920,6 +920,13 @@
             "source": "the owner, 2026-11-08: a locate image button in the photo detail panel"
         },
         {
+            "id": "V52",
+            "area": "viewer",
+            "name": "A drawn map imported from an archive is listed, drawn and credited like any layer",
+            "milestone": "M20",
+            "source": "docs/research/M20-import-local.md §9"
+        },
+        {
             "id": "A100",
             "area": "admin",
             "name": "Stories in the admin: written, published, reviewed and reverted like photos and places",
@@ -946,6 +953,13 @@
             "name": "Import a local archive of scanned maps: the worker's scan report, one Import click, the daily share, the rights gate, the map threshold",
             "milestone": "M20",
             "source": "the owner, 2026-11-09: import, optimise and calibrate a local archive of scanned maps (harti.zip); docs/research/M20-import-local.md"
+        },
+        {
+            "id": "A121",
+            "area": "admin",
+            "name": "Import local files in the admin: the worker's import page, the scan report, one Import, each series' progress, the rights confirmed, the drawn maps' settings",
+            "milestone": "M20",
+            "source": "the owner, 2026-11-09: docs/research/M20-import-local.md §8 (Workstream H)"
         },
         {
             "id": "P20",
@@ -14971,6 +14985,28 @@
             "notes": "Test: e2e/specs/viewer/no-webgl.spec.ts (project nogl)."
         },
         {
+            "id": "S-V52-HAPPY",
+            "behaviour": "V52",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A drawn map from an archive is listed and credited",
+            "asserts": "a layer of kind map at 0.85 whose attribution is its credit line -> listed in Layers with its credit; shown, the legal line carries 'Idei Urbane – DocuBucurești' and PD",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/specs/viewer/map-layers.spec.ts."
+        },
+        {
+            "id": "S-V52-BAD-HIDDEN",
+            "behaviour": "V52",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A drawn map not shown draws nothing and adds no credit",
+            "asserts": "the map layer hidden by default -> the basemap's colour at the probe, no credit on the legal line, its switch off",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/specs/viewer/map-layers.spec.ts."
+        },
+        {
             "id": "S-A100-BAD-REVIEW-EMPTY",
             "behaviour": "A100",
             "area": "admin",
@@ -15332,6 +15368,149 @@
             "tier": "functions",
             "status": "exists",
             "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-approval.test.ts."
+        },
+        {
+            "id": "S-A121-HAPPY-PANEL",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "happy",
+            "title": "Upload shows Import local files with the computer connected",
+            "asserts": "a worker seen 30 s ago -> Choose a folder or zip on this computer links to the worker's own import page on 127.0.0.1:8765 with the city's latitude, in a new tab; the scanned archives open their reports",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/ui/test/admin/archive/archive.test.ts, packages/admin/test/archive/feed.test.ts."
+        },
+        {
+            "id": "S-A121-BAD-NO-WORKER",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "bad",
+            "title": "With no computer connected the card asks to start the worker first",
+            "asserts": "a worker last seen ten minutes ago (or disconnected) -> Start the worker on this computer first, Open Jobs (#/jobs); no Choose link; the scanned archives still listed",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/ui/test/admin/archive/archive.test.ts, packages/admin/test/archive/feed.test.ts."
+        },
+        {
+            "id": "S-A121-HAPPY-BUDGET",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "happy",
+            "title": "Scan and import take three inputs",
+            "asserts": "Choose (1), the zip on the worker's page (2), the report opens by itself when the worker's report arrives, Import (3): the flow stays within its budget of 3",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/ui/test/admin/archive/archive.test.ts."
+        },
+        {
+            "id": "S-A121-HAPPY-IMPORT",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "happy",
+            "title": "One Import makes every kept series' job and says how many start today",
+            "asserts": "the report's series with their action, rights and estimate, the total; Import -> imagery.archiveImport with only the owner's edits; '1 series start today, 1 wait for the next days'; the archive records both jobs",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/ui/test/admin/archive/archive.test.ts, packages/admin/test/archive/feed.test.ts."
+        },
+        {
+            "id": "S-A121-BAD-DAILY-SPLITS",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "bad",
+            "title": "Series past the city's daily share wait for their day, shown per series",
+            "asserts": "a share of 1 and two series -> one starts, the other reads Waiting for a later day's share",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts."
+        },
+        {
+            "id": "S-A121-HAPPY-REPORT-EDIT",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner's title, year and confirmed rights reach the series' version",
+            "asserts": "a new title and year, Permission from 'Idei Urbane – DocuBucurești' and Confirm the rights -> the version's label and year, rights permission, clear, confirmedBy",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts."
+        },
+        {
+            "id": "S-A121-BAD-YEAR-EMPTY",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "bad",
+            "title": "A year a layer cannot show stops Import and says why",
+            "asserts": "an empty year (or 1770) on a kept series -> 'Type a year from 1800 to 2100, or leave the series out.' at its field, Import disabled, nothing sent; a series dated before 1800 starts left out",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/ui/test/admin/archive/archive.test.ts, packages/admin/test/archive/feed.test.ts."
+        },
+        {
+            "id": "S-A121-HAPPY-PROGRESS",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "happy",
+            "title": "An imported archive shows where each series stands",
+            "asserts": "a job running on the computer -> 'Working: place, 40%'; a version awaiting approval -> its error against the threshold its scale earns (38.2 m at 1:40000 -> 40 m); each series opens its version",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/ui/test/admin/archive/archive.test.ts, packages/admin/test/archive/feed.test.ts."
+        },
+        {
+            "id": "S-A121-BAD-LOW-CONFIDENCE",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "bad",
+            "title": "A series the placer could not prove waits for points with its reason",
+            "asserts": "a version needs_gcps with help low-confidence -> 'Needs your points: the match is not certain', no Import, its link opens the version",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts."
+        },
+        {
+            "id": "S-A121-BAD-NOT-FOUND",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "bad",
+            "title": "An archive that does not exist or whose read fails says so",
+            "asserts": "an unknown archive id -> 'This archive was not found.'; a failed read -> Try again",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/ui/test/admin/archive/archive.test.ts, packages/admin/test/archive/feed.test.ts."
+        },
+        {
+            "id": "S-A121-HAPPY-RIGHTS-CONFIRMED",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner's word on the rights is stamped by the server",
+            "asserts": "rights permission with confirmedBy in the request -> the version keeps them with confirmedAt from the server's clock; without confirmedBy no stamp",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: functions/test/imagery/archive-import.test.ts."
+        },
+        {
+            "id": "S-A121-HAPPY-SETTINGS",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "happy",
+            "title": "Settings: drawn maps publish themselves within a 60 m cap by default",
+            "asserts": "Settings -> Historical imagery: Publish drawn maps within their threshold on their own on, A map's largest threshold 60; 40 and Save -> cities/{city}.imagery.mapThresholdMaxM 40",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/ui/test/admin/settings/imagery-section.test.ts."
+        },
+        {
+            "id": "S-A121-BAD-SETTINGS-RANGE",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "bad",
+            "title": "A map cap past its range is refused at its field",
+            "asserts": "500 -> the field is invalid ('From 15 to 200.') and Save is disabled, nothing saved",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/ui/test/admin/settings/imagery-section.test.ts."
         },
         {
             "id": "S-P20-HAPPY-INTAKE",
@@ -15717,6 +15896,17 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: functions/test/worker/step-archive.test.ts."
+        },
+        {
+            "id": "S-P20-HAPPY-SIDECAR-FOLDER",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A folder chosen whole brings its owner's sidecar one level down",
+            "asserts": "Harti/hcm-archive.json under the archive's one top folder -> its entries are read, paths relative to the archive; two top folders -> none",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: pipeline/tests/unit/test_archive_store.py."
         }
     ]
 }

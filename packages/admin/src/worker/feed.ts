@@ -122,6 +122,7 @@ const PIPELINE_TYPES: ReadonlySet<JobDoc['type']> = new Set<JobDoc['type']>([
     'regeoref',
     'layer-join',
     'layer-tiles',
+    'archive-series',
 ]);
 
 /** The pipeline job of a version's page, or null (none, or a job the pipeline does not run). */

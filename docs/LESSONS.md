@@ -3026,3 +3026,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the mean closeness under the template is high wherever the reference has many streets, so a shifted placement inside the town scores almost as well as the true one, and small changes reorder them.
     - Fix and pin: the template is correlated zero-mean (`cv2.TM_CCOEFF`, divided by its point count): the score is the closeness on the map's lines less what the same window gives on average; the true placement became the first candidate in every style tried (`placing/coarse.py`; S-P20-HAPPY-MATCH).
     - **Score a match against what chance gives in the same window, never in absolute terms.**
+512. **An archive series' version page showed no place for its job: the worker feed's list of pipeline job types missed `archive-series`.**
+    - Seen: 2026-11-09, building M20's admin: the version page of a series waiting for its day said nothing of where it would run, as for a job the pipeline does not run.
+    - Cause: `PIPELINE_TYPES` in `packages/admin/src/worker/feed.ts` is a hand-kept list; M20's core added the job type to the shared contracts only.
+    - Fix and pin: `archive-series` added; `packages/admin/test/worker/feed.test.ts` reads an archive series' place and its `daily` wait.
+    - **A new job type the pipeline runs joins every hand-kept list of them in the same change: search for an existing type's name (`'layer-tiles'`).**

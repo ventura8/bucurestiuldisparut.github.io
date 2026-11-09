@@ -19,6 +19,10 @@
             "types": "./src/admin/worker/define.ts",
             "default": "./src/admin/worker/define.ts"
         },
+        "./admin/archive": {
+            "types": "./src/admin/archive/define.ts",
+            "default": "./src/admin/archive/define.ts"
+        },
         "./admin/worker/local": {
             "types": "./src/admin/worker/hcm-worker-local.ts",
             "default": "./src/admin/worker/hcm-worker-local.ts"

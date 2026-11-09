@@ -15,6 +15,10 @@
             "types": "./src/i18n/admin-worker/index.ts",
             "default": "./src/i18n/admin-worker/index.ts"
         },
+        "./admin-archive": {
+            "types": "./src/i18n/admin-archive/index.ts",
+            "default": "./src/i18n/admin-archive/index.ts"
+        },
         "./admin-worker-local": {
             "types": "./src/i18n/admin-worker-local/index.ts",
             "default": "./src/i18n/admin-worker-local/index.ts"

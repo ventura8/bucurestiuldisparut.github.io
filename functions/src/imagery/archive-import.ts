@@ -69,15 +69,21 @@ function yearOf(choice: Choice, series: ArchiveSeries): number {
     return year;
 }
 
+/** The owner's word on a series' rights is stamped by the server's clock (`rights.confirmedAt`, §8.6), never the browser's. */
+function stampedRights(rights: Rights, choice: Choice, now: Date): Rights {
+    return choice.rights?.confirmedBy === undefined ? rights : { ...rights, confirmedAt: timestampFromDate(now) };
+}
+
 /** The series as kept: the report's, with the owner's edits. */
-function keptOf(archive: ArchiveDoc, choice: Choice): Kept {
+function keptOf(archive: ArchiveDoc, choice: Choice, now: Date): Kept {
     const series = seriesOf(archive, choice.seriesId);
-    return { series, title: choice.title ?? series.title, year: yearOf(choice, series), rights: choice.rights ?? series.rights };
+    const rights = stampedRights(choice.rights ?? series.rights, choice, now);
+    return { series, title: choice.title ?? series.title, year: yearOf(choice, series), rights };
 }
 
 /** The kept series in the archive's order (the reference ladder, then the report's own order). */
-function keptInOrder(archive: ArchiveDoc, request: Request): Kept[] {
-    const kept = request.series.filter((choice) => choice.include).map((choice) => keptOf(archive, choice));
+function keptInOrder(archive: ArchiveDoc, request: Request, now: Date): Kept[] {
+    const kept = request.series.filter((choice) => choice.include).map((choice) => keptOf(archive, choice, now));
     if (kept.length === 0) {
         throw new ApiError('apiError.invalidRequest');
     }
@@ -172,9 +178,9 @@ async function archiveImport(
     request: Request,
 ): Promise<CallableResponse<'imagery.archiveImport'>> {
     await requireCity(deps.documents, request.cityId);
-    const kept = keptInOrder(await requireFresh(deps.documents, request.cityId, request.archiveId), request);
-    await refuseWhileGuardRed(deps.documents);
     const start = { uid: caller.uid, now: deps.clock.now() };
+    const kept = keptInOrder(await requireFresh(deps.documents, request.cityId, request.archiveId), request, start.now);
+    await refuseWhileGuardRed(deps.documents);
     const room = await dailyRoom(deps.documents, start.now, request.cityId);
     const planned = planOf(request, kept, room, start)(await reserveLayerIds(deps.documents, request.cityId));
     await deps.documents.transaction((transaction) => writeAll(transaction, request, planned, start));

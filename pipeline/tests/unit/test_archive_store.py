@@ -216,3 +216,15 @@ def test_bad_path_a_sidecar_that_is_absent_or_too_large_is_read_as_none(tmp_path
     assert sidecar.read(tmp_path).entries[0].fields == {"year": 1911}
     monkeypatch.setattr(sidecar, "MAX_BYTES", 4)
     assert sidecar.read(tmp_path) == sidecar.Sidecar(refused=1)
+
+
+def test_happy_path_a_folder_chosen_whole_brings_its_sidecar_one_level_down(tmp_path: Path) -> None:
+    """Scenarios: S-P20-HAPPY-SIDECAR-FOLDER"""
+    (tmp_path / "Harti").mkdir()
+    entry = '{"series": [{"path": "Harti/plan.jpg", "year": 1911}]}'
+    (tmp_path / "Harti" / sidecar.FILE_NAME).write_text(entry, encoding="utf-8")
+
+    assert sidecar.read(tmp_path).entries[0].path == "Harti/plan.jpg"
+    (tmp_path / "Other").mkdir()
+    assert sidecar.read(tmp_path) == sidecar.Sidecar()
+    assert sidecar.read(tmp_path / "missing") == sidecar.Sidecar()

@@ -1,4 +1,5 @@
 import { CITIES_STATES } from '../admin/specs/cities/states.js';
+import { ARCHIVE_STATES } from '../admin/specs/imagery/archive-states.js';
 import { ROLES_STATES } from '../admin/specs/roles/states.js';
 import { EXPORT_STATES } from '../admin/specs/export/states.js';
 import { JOIN_STATES } from '../admin/specs/imagery/join-states.js';
@@ -63,4 +64,8 @@ export const ADMIN_SECTION_STATES = {
     // [section join] owner: e2e (M8)
     ...JOIN_STATES,
     // [end join]
+    // M20 (docs/research/M20-import-local.md §8): Import local files, an archive's report and progress, Settings' drawn maps, ids 'archive.<state>'.
+    // [section archive] owner: archive (M20)
+    ...ARCHIVE_STATES,
+    // [end archive]
 } as const;

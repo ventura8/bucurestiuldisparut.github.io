@@ -44,7 +44,7 @@ export function replaceOf(params: readonly string[]): string | null {
 }
 
 function isDetailKind(kind: string | undefined): kind is ImageryDetail['kind'] {
-    return kind === 'scene' || kind === 'version';
+    return kind === 'scene' || kind === 'version' || kind === 'archive';
 }
 
 /** The same routed item (or none on both sides). */
@@ -170,6 +170,10 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
             ...{ ...this.#findIntents(), ...this.#versionIntents(), ...this.#uploadIntents(), ...this.#orderIntents(), resumeGuard },
             joinFrames: (entityIds) => this.#join.join(entityIds),
             addTargetYear: (year) => this.#addYear(year),
+            archive: async () => (await import('../archive/archive.js')).createArchiveFeed(this.#services),
+            archiveElements: async () => {
+                (await import('../archive/archive.js')).defineArchiveElements();
+            },
         };
     }
 
