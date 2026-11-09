@@ -24,7 +24,7 @@ import { photosNearYear, type TimelineStop } from './timeline-model.js';
 import { menuActions, menuItem } from './viewer-menu.js';
 import { storiesSheet } from './viewer-stories.js';
 import { unplacedSheet } from './viewer-unplaced.js';
-import { catalogueDown, wordless } from './viewer-wordless.js';
+import { statusOrCard } from './viewer-wordless.js';
 import { zoomButtons, type MapSize } from './viewer-zoom.js';
 import { legalMirror, modalOpen, renderConsentBanner, renderLegalBar, type LegalMirror } from './viewer-legal.js';
 
@@ -168,7 +168,7 @@ export function renderViewer(view: ViewerView, handlers: ViewerHandlers): Templa
                 ${skipLink(view, ready, handlers)} ${leadingPane(view, ready, handlers)}
                 <div class="map-pane">
                     <div class="map" dir="ltr" role="region" aria-label=${mapLabel(view, ready)}></div>
-                    ${statusOrCard(view, handlers)} ${ready === null ? nothing : controls(view, ready, handlers)}
+                    ${statusOrCard(view, () => statusLayer(view, handlers))} ${ready === null ? nothing : controls(view, ready, handlers)}
                 </div>
                 ${trailingPane(view, ready, handlers)}
             </div>
@@ -204,12 +204,6 @@ function leadingPane(view: ViewerView, ready: Ready | null, handlers: ViewerHand
     return ready !== null && view.layout.layersDocked
         ? html`<div class="pane leading">${layerPanel(view, ready, { ...DOCKED_OPEN, minimizable: true }, handlers)}</div>`
         : EMPTY;
-}
-
-/** The status layer, or the engine's own card when no language's texts could be fetched (`viewer-wordless.ts`). */
-function statusOrCard(view: ViewerView, handlers: ViewerHandlers): TemplateResult {
-    const failed = view.bootError !== null || view.state?.status === 'error';
-    return wordless(failed, view.locale) ? catalogueDown() : statusLayer(view, handlers);
 }
 
 function statusLayer(view: ViewerView, handlers: ViewerHandlers): TemplateResult {

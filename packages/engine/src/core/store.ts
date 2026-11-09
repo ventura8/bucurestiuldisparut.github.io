@@ -8,7 +8,6 @@ import {
     clamp,
     encodeHash,
     findOverlay,
-    hasCatalogue,
     withOverlayOpacity,
     withOverlayVisibility,
     type DecodedHash,
@@ -26,6 +25,7 @@ import { Boot, type BootHost } from './boot.js';
 import { CompareDriver, type CompareDriverHost } from './compare-driver.js';
 import type { MountedMap } from './compare-port.js';
 import type { ViewerDeps } from './deps.js';
+import { LocaleSwitch } from './locale-switch.js';
 import { withRequestedLabels } from './map-labels.js';
 import { Preferences } from './preferences.js';
 import {
@@ -139,8 +139,7 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
     readonly #unsubscribe: Unsubscribe[] = [];
     #state: ViewerState;
     #destroyed = false;
-    /** The language the visitor chose last, while its texts may still be loading. */
-    #wantedLocale: ViewerLocale | null = null;
+    readonly #locale: LocaleSwitch;
     /** Show my location's flight is under way: its own `moveend` keeps the hash's view wherever the flight ended. */
     #flying = false;
     /**
@@ -157,6 +156,7 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         });
         this.#boot = new Boot(this);
         this.#compare = new CompareDriver(this);
+        this.#locale = new LocaleSwitch(this, (locale) => this.#boot.catalogue(locale));
         this.#state = this.#boot.initialState();
         this.hash = new HashWriter(deps.location, () => encodeViewerHash(this.#state, this.#boot.defaultLocale));
         this.#unsubscribe.push(
@@ -214,37 +214,9 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         return this.#boot.load();
     }
 
-    /**
-     * The visitor's language, once its texts are here (at once when they are): the latest choice wins over one still
-     * loading; a language that cannot be fetched leaves the page as it was, with `language.unavailable` in its language.
-     */
+    /** The visitor's language, once its texts are here (`locale-switch.ts`). */
     setLocale(locale: ViewerLocale): void {
-        this.#wantedLocale = locale;
-        if (hasCatalogue(locale)) {
-            this.#commitLocale(locale, true);
-            return;
-        }
-        void this.#boot.catalogue(locale).then((ok) => {
-            this.#commitLocale(locale, ok);
-        });
-    }
-
-    #commitLocale(locale: ViewerLocale, ok: boolean): void {
-        if (this.#wantedLocale !== locale) {
-            return;
-        }
-        if (!ok) {
-            this.showToast('language.unavailable');
-        } else if (locale !== this.#state.locale) {
-            this.#switchTo(locale);
-        }
-    }
-
-    /** The language changes: the state, the city's stored choice, the hash. */
-    #switchTo(locale: ViewerLocale): void {
-        this.set({ ...this.#state, locale });
-        this.preferences.set(this.#state.manifest?.city.id ?? this.deps.config.cityId, 'lang', locale);
-        this.hash.schedule();
+        this.#locale.choose(locale);
     }
 
     setYear(year: number | null): void {

@@ -6312,6 +6312,7 @@ The owner's request of 2026-11-09 ("import the landsat, add it to our sources, a
 - **140e ETM+ stops at 2003-05-30** (the scan line corrector's failure), and a Landsat scene never joins a date plan.
 - **140f The shared index names the new exports** (lesson 532: no `export *`), and its imagery-settings block is written on two lines to stay within 400.
 - **140g No budget raised for the join card**: Landsat's verdict (`landsatClear` and its two bars) is a module of its own (`schemas/landsat-verdict.ts`, lesson 538), so the admin's shared core gains no export and the join card stays at 2,989 bytes gzip of its 3,000.
+
 ## 141. The viewer in sixteen languages, each fetched when first shown (track/langs, 2026-11-09) — APPLIED, no budget raised
 
 - **141a What.** The owner's decision: the public viewer speaks `ro` (the default and the source), `en`, `es`, `fr`, `de`, `it`, `pt`, `ru`, `uk`, `pl`, `tr`, `ar` (right to left), `hi`, `zh`, `ja` and `ko`, every translation Claude's. `VIEWER_LOCALES` and `ViewerLocale` of `@hcm/shared` are the viewer's; `Locale` (`ro | en`) stays the admin's and a city's own texts' (`{ro, en}`), so the admin's 127 files that index `{ro, en}` by it are unchanged (the design's `AdminLocale` turned round: the same split, fewer changes). Each language is `packages/shared/src/i18n/<locale>.ts` (and `map-labels/<locale>.ts`), typed against `ro.ts`; `VIEWER_CATALOGUES` (`viewer-catalogues.ts`) holds them all, the main family and the map labels merged, for the build and the tests.

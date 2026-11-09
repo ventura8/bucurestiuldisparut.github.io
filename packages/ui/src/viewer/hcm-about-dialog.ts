@@ -247,7 +247,7 @@ export class HcmAboutDialog extends LitElement {
         // fetched leaves it where it was, and its new value comes back with the page's.
         const onLanguage = (event: Event): void => {
             const chosen = resolveViewerLocale(changedValue(event));
-            (event.currentTarget as { value: string }).value = locale;
+            (event.currentTarget as HTMLElement & { value: string }).value = locale;
             this.#emit('hcm-locale-change', { locale: chosen });
         };
         const onTheme = (event: Event): void => {

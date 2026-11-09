@@ -6,13 +6,21 @@
 import { hasCatalogue, type ViewerLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
-/** Boot `failed` and the page has no texts in `locale`. */
-export function wordless(failed: boolean, locale: ViewerLocale): boolean {
-    return failed && !hasCatalogue(locale);
+/** What the choice reads of the render's view: a boot error, the state's status, the page's language. */
+interface BootView {
+    readonly bootError: unknown;
+    readonly state: { readonly status: string } | null;
+    readonly locale: ViewerLocale;
+}
+
+/** The status layer (`status`), or this card when boot failed and the page has no texts in its language. */
+export function statusOrCard(view: BootView, status: () => TemplateResult): TemplateResult {
+    const failed = view.bootError !== null || view.state?.status === 'error';
+    return failed && !hasCatalogue(view.locale) ? catalogueDown() : status();
 }
 
 /** The card, in Romanian and English; its button reloads the page, the one retry every boot has. */
-export function catalogueDown(): TemplateResult {
+function catalogueDown(): TemplateResult {
     const reload = (): void => {
         globalThis.location.reload();
     };
