@@ -298,13 +298,12 @@ describe('<hcm-map-viewer>: details, lightbox and menu', () => {
         });
         chooseFromMenu(mounted, 'photos');
         expect(mounted.store.getState().sheet).toBe('photos');
-        chooseFromMenu(mounted, 'about');
+        // Language opens About, where the sixteen languages are listed.
+        chooseFromMenu(mounted, 'language');
+        expect(mounted.store.getState().sheet).toBe('about');
         await mounted.element.updateComplete;
         await expect.element(page.getByRole('dialog', { name: 'Despre' })).toBeVisible();
-        chooseFromMenu(mounted, 'language');
-
-        expect(mounted.store.getState().locale).toBe('en');
-        expect(mounted.element.getAttribute('lang')).toBe('en');
+        await expect.element(page.getByRole('radio', { name: 'Deutsch' })).toBeVisible();
     });
 
     it('badPath_anUnknownMenuValueDoesNothing', async () => {

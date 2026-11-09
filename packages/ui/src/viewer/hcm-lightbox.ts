@@ -8,11 +8,12 @@
  *
  * Events (viewer-internal): `hcm-close`, `hcm-photo-select` (`{photoId}`, the previous or next photo).
  */
-import { DEFAULT_LOCALE, translate, type Locale, type Photo } from '@hcm/shared';
+import { DEFAULT_LOCALE, translate, type ViewerLocale, type Photo } from '@hcm/shared';
 import { LitElement, html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { cssProperties } from '../components/css-properties.js';
 import { trapTab } from '../components/focus.js';
+import { logicalKey } from '../components/internal.js';
 import { EMPTY } from './empty.js';
 import { photoSelectEvent } from './hcm-poi-detail.js';
 import { lightboxStyles } from './lightbox-styles.js';
@@ -45,7 +46,7 @@ export class HcmLightbox extends LitElement {
     /** The photos the arrows step through, in order. */
     declare photos: readonly Photo[];
     declare photoId: string | null;
-    declare locale: Locale;
+    declare locale: ViewerLocale;
     declare manifestUrl: string;
     declare zoom: ZoomState;
     declare failed: boolean;
@@ -227,7 +228,8 @@ export class HcmLightbox extends LitElement {
                 this.zoom = ZOOM_RESET;
             },
         };
-        const action = actions[event.key];
+        // Right to left the next photo is on the left: the arrows follow the screen.
+        const action = actions[logicalKey(event.key, this)];
         if (action !== undefined) {
             event.preventDefault();
             action();

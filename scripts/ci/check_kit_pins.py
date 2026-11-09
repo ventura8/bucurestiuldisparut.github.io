@@ -211,7 +211,7 @@ def engine_pin_problems(page: KitPage) -> list[str]:
 
 
 def csp_problems(page: KitPage) -> list[str]:
-    """The meta CSP lets the pinned folder serve the engine's script, stylesheet and fonts."""
+    """The meta CSP lets the pinned folder serve the engine's script, stylesheet, languages and fonts."""
     base = page_base(page)
     if base is None:
         return []

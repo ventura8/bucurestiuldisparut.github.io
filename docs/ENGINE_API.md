@@ -85,7 +85,7 @@ A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](rese
 | `manifest` | object | none | An inline City Manifest v1 (the starter kit's static mode, no backend). Validated like a fetched one. |
 | `cityId` | string | none | `^[A-Za-z0-9_-]{1,40}$`. When present it must equal `manifest.city.id` (else `error.config.cityMismatch`); it also namespaces the stored preferences. |
 | `container` | string | `#historic-city-map` | CSS selector of the element to mount into (auto-boot only). |
-| `lang` | string | `ro` | A BCP 47 tag; anything that is not English resolves to Romanian. |
+| `lang` | string | `ro` | A BCP 47 tag, read by its primary subtag (`de-AT` is German); a tag of no viewer language resolves to Romanian. |
 | `engineBase` | string | the folder of the engine script | https or relative, ending with `/`: where the engine's own files live (`fonts/`: the self-hosted Roboto Flex and Material Symbols subset). |
 
 **Auto-boot.** When either build runs (the ES module or the IIFE), it registers the elements and, once the document is parsed, reads `window.HistoricCityMapConfig`:
@@ -95,7 +95,13 @@ A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](rese
 - absent while `#historic-city-map` exists: the error card shows `error.config.missing` (scenario V17);
 - absent and no default container: nothing happens (the page uses `<hcm-map-viewer>` or `HistoricCityMap.mount` itself).
 
-**Language** is resolved in this order: the URL (`#…&lang=` or `?lang=`), the visitor's stored choice, `config.lang`, then Romanian. `<html lang>` follows the result (scenario V11). An error card shown before any manifest (a missing or invalid `config.js`) follows the URL, then `config.lang`. The visitor switches it in the menu (the item names the other language) and in About; the theme (system, light, dark) is in About. `setLang` accepts any tag and resolves it like `config.lang`.
+**Language.** The viewer speaks sixteen languages (`VIEWER_LOCALES` of `@hcm/shared`): `ro` (the default and the source of every text), `en`, `es`, `fr`, `de`, `it`, `pt`, `ru`, `uk`, `pl`, `tr`, `ar` (right to left), `hi`, `zh` (Simplified), `ja` and `ko`. It is resolved in this order: the URL (`#…&lang=` or `?lang=`, an exact code), the visitor's stored choice, `config.lang`, then Romanian; a code the viewer does not have is ignored where it stands (scenario V11). `<html lang>` and `dir` follow the result: Arabic mirrors the whole viewer, while the map's own container stays left to right (Mapbox's logo and attribution, swipe compare). An error card shown before any manifest (a missing or invalid `config.js`) follows the URL, then `config.lang`. The menu's Language item opens About, which lists the sixteen languages by their own names (`LANGUAGE_NAMES`, each with its `lang`, always in the same order); the theme (system, light, dark) is in About too. `setLang` accepts a code or a tag of one (`pt-BR`) and ignores anything else.
+
+- **Each language is a file next to the engine.** The engine bundles no catalogue: `i18n/<code>.json` beside its script (the jsDelivr release folder, which `release.json` lists with each file's SRI, Hosting's `engine/` or an export's) holds a language's texts and names the engine version; the engine fetches the file the first time it shows that language, beside the manifest at boot, and takes it only when it names its own version and that language (`docs/research/DECISIONS-for-review.md` §128). A page's CSP must let the engine's folder answer `connect-src` (the kit's policy does: `kitContentSecurityPolicy`).
+- **A language that cannot be fetched** leaves the page in the language it had, and the snackbar says so (`language.unavailable`). At boot the viewer falls back to Romanian, saying so; when not even Romanian's file can be fetched (a page opened from the disk, `file://`), the engine shows its one card worded in its own bundle, in Romanian and English with a Retry that reloads, and `hcm-error` still reports the boot's own error.
+- **A city's own texts** (`{ro, en?}`, `{ro, en}`) show in the visitor's language when the city has it, else in English, else in Romanian: the element showing one carries the `lang` it is in, and a note says when a text is not in the visitor's language (`content.fallback`).
+- **The basemap's labels** follow the language where Mapbox's style has names in it (`zh` as `zh-Hans`); elsewhere each place shows its local name.
+- **Fonts.** Latin and Cyrillic come from the engine's `fonts/`; Arabic, Devanagari, Chinese, Japanese and Korean use the system's fonts (`system-ui, sans-serif`), so nothing is fetched from a font CDN.
 
 ## `<hcm-map-viewer>`
 
@@ -105,7 +111,7 @@ The engine's custom element (Lit, registered by the engine; the tag never change
 | --- | --- | --- | --- |
 | `manifest-url` | `manifestUrl` | string | As in `config.js`. |
 | `city-id` | `cityId` | string | As in `config.js`. |
-| `lang` | `lang` | `ro` or `en` | Reflected; changing it switches the language live. |
+| `lang` | `lang` | a viewer language (a tag of one) | Reflected; changing it switches the language live, once its texts are fetched; `dir` follows. |
 | `engine-base` | `engineBase` | string | As in `config.js`. |
 | (none) | `manifest` | object | An inline manifest; set it before the element is connected. |
 | (none) | `controller` | `HistoricCityMapController` or `null` | Read-only; the same object `mount` returns, `null` before connection. |
@@ -151,7 +157,7 @@ interface HistoricCityMapController {
     openPhoto(photoId: string | null): void;
     /** Opens a POI's details (null closes them); an unknown id is ignored. */
     openPoi(poiId: string | null): void;
-    setLang(lang: 'ro' | 'en'): void;
+    setLang(lang: ViewerLocale): void; // one of the sixteen codes, or a tag of one; anything else is ignored
     /** M4: compares the map with `layerId` (null: today, no historical layer); an unknown or non-raster id is ignored. */
     openCompare(layerId: string | null, options?: { readonly position?: number }): void;
     /** M4: moves the divider (0: the compared side fills the map, 1: the main side does; clamped). */
@@ -170,7 +176,7 @@ interface HistoricCityMapController {
 ## URL hash v1
 
 ```text
-#<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&cmp=<id>][&sw=<0..100>][&labels=streets,pois][&photo=<id>][&story=<id>][&lang=ro|en]
+#<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&cmp=<id>][&sw=<0..100>][&labels=streets,pois][&photo=<id>][&story=<id>][&lang=<code>]
 ```
 
 | Part | Rule when read |
@@ -184,7 +190,7 @@ interface HistoricCityMapController {
 | `labels` | The basemap's labels that are drawn: `streets`, `pois`, comma-separated, in any order; `labels=` (empty) means none. Absent is the city's default, and the encoder omits a default, so a link from before this parameter opens as it did. An unknown word is ignored (`labels=streets,transit` is `streets`), and a value with nothing but unknown words is ignored as a whole. A kind the city's basemap does not have is dropped and the next write omits it ([Map labels](#map-labels)). |
 | `photo` | The open photo; an id that is not in the manifest shows a toast (scenario V09). |
 | `story` | M17: the open story, in its sheet, with the timeline at the stop nearest its first year; an id that is not in the manifest shows a toast (`error.unknownStory`, scenario V50) and opens nothing. The viewer writes it while a story is open, so Share copies a story's own link. With `layers=` in the same hash, the link's layers (and their year) win over the story's year. |
-| `lang` | `ro` or `en`; anything else is ignored. |
+| `lang` | One of the sixteen viewer languages (`ro`, `en`, `es`, `fr`, `de`, `it`, `pt`, `ru`, `uk`, `pl`, `tr`, `ar`, `hi`, `zh`, `ja`, `ko`); anything else is ignored. |
 
 Unknown parameters are ignored, a repeated one keeps its last valid value, and a hash longer than 2,048 characters is ignored as a whole. Ids are only ever looked up in a `Map`, never used in a selector. The legacy hash of the 2015–2022 site, `#zoom/lat/lng/rotation/!a3!p2`, still opens the same view: its `!…` layer codes are ignored and the viewer rewrites the hash in the v1 form. Codec: `encodeHash` and `decodeHash` in `packages/shared/src/url/hash.ts`.
 
@@ -271,7 +277,7 @@ The only data the viewer reads: a static JSON file (from the public bucket, or i
 
 Common rules:
 
-- **Text** is plain text, rendered with `textContent` or Lit templates, never as HTML; it is trimmed and must not be empty. `{ro, en}` means both languages are required, `{ro, en?}` that English falls back to Romanian.
+- **Text** is plain text, rendered with `textContent` or Lit templates, never as HTML; it is trimmed and must not be empty. `{ro, en}` means both languages are required, `{ro, en?}` that English falls back to Romanian; a visitor reading another of the viewer's languages sees the English text, else the Romanian one, with its own `lang` and a note (Language, above).
 - **Markdown subset** (`about`, `privacy`, POI `description`): paragraphs separated by a blank line, `**bold**`, `_italic_` or `*italic*`, `[label](https://…)` links, `\` escapes. A link that is not https makes the manifest invalid; HTML is shown as text. Parser: `parseMarkdown` in `packages/shared/src/text/markdown.ts`.
 - **URLs** are https without credentials. Image and archive addresses may also be relative to the manifest (no `..`, no `//host`, no query).
 - **Coordinates** are `[lng, lat]` in degrees; bounds are `[[west, south], [east, north]]` with west < east and south < north.

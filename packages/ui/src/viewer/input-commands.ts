@@ -3,7 +3,7 @@
  * `ViewerStorePort`, so both inputs act alike and each command is tested without the element. A year or opacity change
  * says its new value in a toast, which is also the announcement for a screen reader.
  */
-import { clamp, type Photo } from '@hcm/shared';
+import { clamp, overlayLabel, type Photo } from '@hcm/shared';
 
 import { layoutFor } from './layout.js';
 import type { ViewerState, ViewerStorePort } from './store-port.js';
@@ -64,7 +64,7 @@ function stepOpacity(store: ViewerStorePort, step: number): void {
     }
     const percent = Math.round(clamp(layer.opacity + step, 0, 1) * 100);
     store.setOverlayOpacity(layer.id, percent / 100, true);
-    store.showToast('layers.opacityChanged', { name: layer.label[state.locale], percent: String(percent) });
+    store.showToast('layers.opacityChanged', { name: overlayLabel(layer, state.locale), percent: String(percent) });
 }
 
 /** The photos a step goes through: those near the year, all of them at "today" or in the lightbox. */

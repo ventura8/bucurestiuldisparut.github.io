@@ -5,7 +5,7 @@
  * side compared now), and the compared layer's source, which the bar credits because the second map's own attribution is
  * hidden (one Mapbox logo and attribution on the map, the viewer map's). Pure; texts in the state's language.
  */
-import { translate, type Manifest } from '@hcm/shared';
+import { overlayLabel, translate, type Manifest } from '@hcm/shared';
 import type { CompareChoice, CompareUiProps } from '@hcm/ui/viewer/compare';
 
 import { compareModeOf, overlayName, type CompareView, type ViewerState } from '../core/state.js';
@@ -20,7 +20,7 @@ export function mainSideLabel(state: ViewerState): string {
     const visible = mainSideLayers(state);
     return visible.length === 0
         ? translate(state.locale, 'compare.today')
-        : visible.map((overlay) => overlay.label[state.locale]).join(', ');
+        : visible.map((overlay) => overlayLabel(overlay, state.locale)).join(', ');
 }
 
 /** The sides the main side shows: its visible historical layers, or today (null) when it shows none. */

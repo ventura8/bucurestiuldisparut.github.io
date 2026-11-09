@@ -3,7 +3,7 @@
  * Show my location, `my-location.ts`) and the language. Plain functions over `ViewerStorePort` and `ViewerServices`, so each is tested without
  * the element.
  */
-import type { Layer, Locale, Manifest } from '@hcm/shared';
+import { localized, type Layer, type Manifest, type ViewerLocale } from '@hcm/shared';
 
 import { layoutFor } from './layout.js';
 import { toggleMyLocation } from './my-location.js';
@@ -11,18 +11,13 @@ import { shareMessage, sharePage, type ViewerServices } from './services.js';
 import type { ViewerState, ViewerStorePort } from './store-port.js';
 import { localizedText } from './text.js';
 
-/** The FAB menu's actions (`language` switches to the other language). */
+/** The FAB menu's actions (`language` opens About, where the sixteen languages are listed). */
 const MENU_ACTIONS = ['layers', 'photos', 'unplaced', 'stories', 'locate', 'share', 'contribute', 'about', 'language'] as const;
 
 export type MenuAction = (typeof MENU_ACTIONS)[number];
 
 export function isMenuAction(value: string): value is MenuAction {
     return (MENU_ACTIONS as readonly string[]).includes(value);
-}
-
-/** The viewer speaks two languages: the language item switches to the one not shown. */
-export function otherLocale(locale: Locale): Locale {
-    return locale === 'ro' ? 'en' : 'ro';
 }
 
 /** Closes whatever sheet is open: a photo's or a POI's details close their selection too. */
@@ -49,19 +44,19 @@ export function selectPhoto(store: ViewerStorePort, photoId: string): void {
 }
 
 /** Switches the store to `locale` unless it already shows it (the element's `lang` attribute follows the store). */
-export function syncLocale(store: ViewerStorePort, locale: Locale): void {
+export function syncLocale(store: ViewerStorePort, locale: ViewerLocale): void {
     if (store.getState().locale !== locale) {
         store.setLocale(locale);
     }
 }
 
 /** The title a share uses: the open photo's title, else the city's name in `locale` (nothing before the manifest). */
-export function shareTitle(manifest: Manifest | null, state: Pick<ViewerState, 'selectedPhotoId'>, locale: Locale): string {
+export function shareTitle(manifest: Manifest | null, state: Pick<ViewerState, 'selectedPhotoId'>, locale: ViewerLocale): string {
     if (manifest === null) {
         return '';
     }
     const photo = manifest.photos.find((candidate) => candidate.id === state.selectedPhotoId);
-    return photo === undefined ? manifest.city.name[locale] : localizedText(photo.title, locale);
+    return photo === undefined ? localized(manifest.city.name, locale) : localizedText(photo.title, locale);
 }
 
 /**
@@ -139,7 +134,7 @@ export function menuAction(store: ViewerStorePort, services: ViewerServices, act
             toggleMyLocation(store, services);
         },
         language: () => {
-            store.setLocale(otherLocale(store.getState().locale));
+            store.openSheet('about');
         },
     };
     actions[action]();

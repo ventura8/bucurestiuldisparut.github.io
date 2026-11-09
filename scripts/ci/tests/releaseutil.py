@@ -75,7 +75,11 @@ def kit_page(
     """The kit's page pinned to `version`: `engine` replaces the block's content, `head` adds tags, `csp` the policy,
     `integrity` is the engine's (stylesheet, script)."""
     base = base_of(version)
-    policy = csp if csp is not None else f"default-src 'none'; script-src {base} {MAPBOX_JS_URL}; style-src {base}; font-src {base}"
+    policy = (
+        csp
+        if csp is not None
+        else f"default-src 'none'; script-src {base} {MAPBOX_JS_URL}; style-src {base}; connect-src 'self' {base}; font-src {base}"
+    )
     block = engine if engine is not None else engine_tags(base, *integrity)
     return (
         '<!doctype html>\n<html lang="ro">\n<head>\n'

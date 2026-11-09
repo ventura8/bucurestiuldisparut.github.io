@@ -2,7 +2,7 @@
  * Pins the engine-core contract of docs/research/M1-interfaces.md §4 and §6 at the type level: the names the viewer
  * (engine-ui) imports and their shapes. A change here is a contract change (a change request), not a refactor.
  */
-import type { Locale, MapView, MessageKey, Overlay } from '@hcm/shared';
+import type { MapView, MessageKey, Overlay, ViewerLocale } from '@hcm/shared';
 import type { WindowClass } from '@hcm/ui';
 import { PHOTOS_OVERLAY_ID, type MapErrorKind, type MapEventMap, type ViewerMapPort, type PhotoPointProperties } from '@hcm/ui/map';
 import { describe, expect, expectTypeOf, it } from 'vitest';
@@ -31,7 +31,7 @@ describe('engine-core contract', () => {
             'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'stories' | 'about' | 'help'
         >();
         expectTypeOf<ViewerError['code']>().toEqualTypeOf<MessageKey>();
-        expectTypeOf<ViewerState['locale']>().toEqualTypeOf<Locale>();
+        expectTypeOf<ViewerState['locale']>().toEqualTypeOf<ViewerLocale>();
         expectTypeOf<ViewerState['view']>().toEqualTypeOf<MapView>();
         expectTypeOf<ViewerState['overlays']>().toEqualTypeOf<readonly Overlay[]>();
         expectTypeOf<ViewerState['windowClass']>().toEqualTypeOf<WindowClass>();

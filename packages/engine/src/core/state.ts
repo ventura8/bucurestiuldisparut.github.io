@@ -6,10 +6,11 @@ import {
     clamp,
     DEFAULT_COMPARE_POSITION,
     findOverlay,
+    overlayLabel,
     overlaysFromManifest,
     withOverlayVisibility,
     type LngLat,
-    type Locale,
+    type ViewerLocale,
     type Manifest,
     type MapView,
     type MessageKey,
@@ -63,7 +64,7 @@ export type CompareMode = 'swipe' | 'toggle';
 export interface ViewerState {
     readonly status: ViewerStatus;
     readonly error: ViewerError | null;
-    readonly locale: Locale;
+    readonly locale: ViewerLocale;
     readonly manifest: Manifest | null;
     readonly webgl: boolean;
     readonly view: MapView;
@@ -105,7 +106,7 @@ export interface ViewerState {
 
 const NO_VIEW: MapView = { center: [0, 0], zoom: 0, bearing: 0 };
 
-export function initialState(locale: Locale, theme: ThemeMode, consent: ConsentState): ViewerState {
+export function initialState(locale: ViewerLocale, theme: ThemeMode, consent: ConsentState): ViewerState {
     return {
         status: 'idle',
         error: null,
@@ -213,7 +214,8 @@ function storyOf(manifest: Manifest | null, storyId: string): Story | undefined 
 
 /** The overlay's label in the current language (`id` when the overlay is unknown). */
 export function overlayName(state: ViewerState, id: string): string {
-    return findOverlay(state.overlays, id)?.label[state.locale] ?? id;
+    const overlay = findOverlay(state.overlays, id);
+    return overlay === undefined ? id : overlayLabel(overlay, state.locale);
 }
 
 /** Compare's mode at the state's window class: a compact window toggles on its one map. */

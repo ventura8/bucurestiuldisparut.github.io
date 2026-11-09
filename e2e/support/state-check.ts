@@ -1,3 +1,4 @@
+import type { ViewerLocale } from '@hcm/shared';
 import { expect, type Page } from '@playwright/test';
 
 import { assertAccessible, assertEscapeCloses } from './a11y.js';
@@ -20,7 +21,7 @@ export interface StateVisit {
     /** What the visitor sees in it, as the inventory says (it names the state in the i18n check's message). */
     readonly title?: string;
     /** The language the page shows (a Romanian page must show no English-only text). */
-    readonly lang: 'ro' | 'en';
+    readonly lang: ViewerLocale;
     /** Texts a live region must have announced on the way into the state. */
     readonly announcements?: readonly string[];
     /** Axe rules that do not apply as emulated (the author-colour rules under forced colours). */

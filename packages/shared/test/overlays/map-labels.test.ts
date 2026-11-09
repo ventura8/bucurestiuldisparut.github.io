@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { registerCatalogue } from '../../src/i18n/index.js';
 import { en } from '../../src/i18n/map-labels/en.js';
 import { basemapLabels, translateMapLabels } from '../../src/i18n/map-labels/index.js';
+import { VIEWER_CATALOGUES } from '../../src/i18n/viewer-catalogues.js';
 
 describe('basemapLabels', () => {
     it('happyPath_aKindTheConfigDoesNotSetIsDrawn', () => {
@@ -23,5 +25,17 @@ describe('translateMapLabels', () => {
     it('happyPath_bothLanguages', () => {
         expect(translateMapLabels('ro', 'mapLabels.streets')).toBe('Numele străzilor');
         expect(translateMapLabels('en', 'mapLabels.streets')).toBe(en['mapLabels.streets']);
+    });
+});
+
+describe('translateMapLabels in a fetched language', () => {
+    it('happyPath_aRegisteredCatalogueHoldsTheFamily', () => {
+        registerCatalogue('de', VIEWER_CATALOGUES.de);
+
+        expect(translateMapLabels('de', 'mapLabels.streets')).toBe(VIEWER_CATALOGUES.de['mapLabels.streets']);
+    });
+
+    it('badPath_aLanguageNotFetchedYetGivesNoText', () => {
+        expect(translateMapLabels('ko', 'mapLabels.streets')).toBe('');
     });
 });

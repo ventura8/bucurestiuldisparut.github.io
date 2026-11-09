@@ -8,11 +8,12 @@ import {
     clamp,
     encodeHash,
     findOverlay,
+    hasCatalogue,
     withOverlayOpacity,
     withOverlayVisibility,
     type DecodedHash,
     type LngLat,
-    type Locale,
+    type ViewerLocale,
     type MapView,
     type MessageKey,
 } from '@hcm/shared';
@@ -53,7 +54,7 @@ export interface ViewerActions {
     /** Fetch (or take the inline) manifest, check compat, validate, mount the map; errors land in state.error. */
     load(): Promise<void>;
     retry(): Promise<void>;
-    setLocale(locale: Locale): void;
+    setLocale(locale: ViewerLocale): void;
     setYear(year: number | null): void;
     /** Any overlay id (layer, `photos`, POI category); without `visible` it toggles. The map follows. */
     toggleOverlay(overlayId: string, visible?: boolean): void;
@@ -127,6 +128,8 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
     readonly #unsubscribe: Unsubscribe[] = [];
     #state: ViewerState;
     #destroyed = false;
+    /** The language the visitor chose last, while its texts may still be loading. */
+    #wantedLocale: ViewerLocale | null = null;
     /** Show my location's flight is under way: its own `moveend` keeps the hash's view wherever the flight ended. */
     #flying = false;
     /**
@@ -200,10 +203,34 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         return this.#boot.load();
     }
 
-    setLocale(locale: Locale): void {
-        if (locale === this.#state.locale) {
+    /**
+     * The visitor's language, once its texts are here (at once when they are): the latest choice wins over one still
+     * loading; a language that cannot be fetched leaves the page as it was, with `language.unavailable` in its language.
+     */
+    setLocale(locale: ViewerLocale): void {
+        this.#wantedLocale = locale;
+        if (hasCatalogue(locale)) {
+            this.#commitLocale(locale, true);
             return;
         }
+        void this.#boot.catalogue(locale).then((ok) => {
+            this.#commitLocale(locale, ok);
+        });
+    }
+
+    #commitLocale(locale: ViewerLocale, ok: boolean): void {
+        if (this.#wantedLocale !== locale) {
+            return;
+        }
+        if (!ok) {
+            this.showToast('language.unavailable');
+        } else if (locale !== this.#state.locale) {
+            this.#switchTo(locale);
+        }
+    }
+
+    /** The language changes: the state, the city's stored choice, the hash. */
+    #switchTo(locale: ViewerLocale): void {
         this.set({ ...this.#state, locale });
         this.preferences.set(this.#state.manifest?.city.id ?? this.deps.config.cityId, 'lang', locale);
         this.hash.schedule();

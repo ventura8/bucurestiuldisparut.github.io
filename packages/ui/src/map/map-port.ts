@@ -4,7 +4,7 @@
  * bundled); `FakeMap` (`@hcm/test-support`) implements it for the unit tests. Paint property names never appear in
  * the core: the adapter takes them from `overlayOpacityPaint` and `rasterAdjustmentPaint` of `@hcm/shared`.
  */
-import type { BBox, Geometry, LayerAdjustments, LayerSource, LngLat, Locale, MapView, RasterAdjustmentPaint } from '@hcm/shared';
+import type { BBox, Geometry, LayerAdjustments, LayerSource, LngLat, ViewerLocale, MapView, RasterAdjustmentPaint } from '@hcm/shared';
 
 import type { CameraOffset } from './mapbox-types.js';
 
@@ -101,7 +101,7 @@ export interface MapOptions {
     readonly minZoom: number;
     readonly maxZoom: number;
     readonly maxBounds?: BBox;
-    readonly locale: Locale;
+    readonly locale: ViewerLocale;
     /** True with `prefers-reduced-motion: reduce` at mount: a flyTo without `animate` jumps instead of animating. */
     readonly reducedMotion: boolean;
 }
@@ -187,7 +187,7 @@ export interface MapPort {
      * The visitor switched the language: Mapbox's own UI strings (the canvas's accessible name, the logo link, the
      * attribution toggle) and the basemap's labels follow it (the tour found the first language's left behind).
      */
-    setLocale(locale: Locale): void;
+    setLocale(locale: ViewerLocale): void;
     /** Called by the viewer's ResizeObserver. */
     resize(): void;
     /** Removes the map and every listener; mount may be called again (a new map load). */

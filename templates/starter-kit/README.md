@@ -39,7 +39,7 @@ A historical map of your city in three files: old photos, vanished places and ma
 7. **Verifică.** Dacă ceva nu e în regulă în `city.json`, pagina arată o eroare care spune exact ce câmp trebuie corectat. Dacă textul „Harta se încarcă” rămâne pe ecran, motorul nu s-a putut încărca: versiunea sau valoarea `integrity` din `index.html` nu se potrivesc (folosește valorile din `release.json`-ul versiunii, vezi mai jos).
 8. **Actualizează motorul.** Fiecare versiune are un fișier `release.json` (pe pagina versiunii din GitHub și în `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@v<versiune>/cdn/engine/release.json`) cu adresele și valorile `integrity`. Cel mai simplu: `npx create-historic-city@<versiune> upgrade`, care rescrie doar blocul motorului din `index.html` (sursele pe care le-ai adăugat în CSP rămân).
 
-**Local:** servește folderul cu orice server static (de exemplu `npx serve .` sau `python3 -m http.server`) și deschide adresa lui. Deschisă direct din fișier (`file://`), pagina nu poate citi `city.json`.
+**Local:** servește folderul cu orice server static (de exemplu `npx serve .` sau `python3 -m http.server`) și deschide adresa lui. Deschisă direct din fișier (`file://`), pagina nu poate citi `city.json` și nici textele limbii ei (`engine/i18n/`).
 
 **Confidențialitate:** harta nu folosește cookie-uri fără acordul vizitatorului (statistici Google Analytics doar dacă `city.json` are un id de măsurare și vizitatorul acceptă). Mapbox vede adresa IP a fiecărui vizitator: spune asta în textul despre confidențialitate.
 
@@ -70,7 +70,7 @@ A historical map of your city in three files: old photos, vanished places and ma
 7. **Check it.** If something in `city.json` is wrong, the page shows an error that names the exact field to fix. If the "The map is loading" text stays on screen, the engine could not load: the version or the `integrity` value in `index.html` does not match (use the values of the version's `release.json`, below).
 8. **Update the engine.** Every version has a `release.json` (on the version's GitHub release page and at `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@v<version>/cdn/engine/release.json`) with the addresses and `integrity` values. The easiest: `npx create-historic-city@<version> upgrade`, which rewrites only the engine block of `index.html` (the sources you added to the CSP stay).
 
-**Locally:** serve the folder with any static server (for example `npx serve .` or `python3 -m http.server`) and open its address. Opened straight from the file (`file://`), the page cannot read `city.json`.
+**Locally:** serve the folder with any static server (for example `npx serve .` or `python3 -m http.server`) and open its address. Opened straight from the file (`file://`), the page can read neither `city.json` nor its language's texts (`engine/i18n/`).
 
 **Privacy:** the map sets no cookies without the visitor's consent (Google Analytics statistics only when `city.json` has a measurement id and the visitor accepts). Mapbox sees each visitor's IP address: say so in the privacy text.
 

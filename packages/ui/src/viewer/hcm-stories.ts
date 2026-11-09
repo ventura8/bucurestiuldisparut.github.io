@@ -9,7 +9,7 @@ import {
     parseStory,
     storyFigureIds,
     translate,
-    type Locale,
+    type ViewerLocale,
     type Photo,
     type Poi,
     type Story,
@@ -41,7 +41,7 @@ function poiSelectEvent(poiId: string): CustomEvent<{ readonly poiId: string }> 
 }
 
 /** The stories that name `id` among their photos (`photoIds`) or places (`poiIds`), as buttons that open them. */
-export function relatedStories(stories: readonly Story[], key: 'photoIds' | 'poiIds', id: string, locale: Locale): TemplateResult {
+export function relatedStories(stories: readonly Story[], key: 'photoIds' | 'poiIds', id: string, locale: ViewerLocale): TemplateResult {
     const related = stories.filter((story) => story[key]?.includes(id) === true);
     if (related.length === 0) {
         return EMPTY;
@@ -165,7 +165,7 @@ export class HcmStories extends LitElement {
     /** Every photo of the manifest, placed or not: figures and the cover come from here; only a placed one opens. */
     declare photos: readonly AnyPhoto[];
     declare pois: readonly Poi[];
-    declare locale: Locale;
+    declare locale: ViewerLocale;
     declare manifestUrl: string;
 
     constructor() {

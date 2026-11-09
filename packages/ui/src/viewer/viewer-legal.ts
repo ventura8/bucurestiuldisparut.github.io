@@ -4,7 +4,7 @@
  * would sit under it, so the viewer hides them and shows the same in its legal bar (below a sheet or the lightbox) or at
  * the foot of About (`<hcm-map-attribution>`). Without a map (loading, an error, no WebGL) there is nothing to credit.
  */
-import { translate, type Locale } from '@hcm/shared';
+import { translate, type ViewerLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import type { AttributionPart } from './attribution.js';
@@ -34,7 +34,7 @@ export function legalMirror(state: ViewerState | null, mode: SheetMode): LegalMi
 }
 
 /** The legal bar: the viewer's last grid row, under the modal layer, so a sheet, its scrim or the lightbox ends above it. */
-export function renderLegalBar(parts: readonly AttributionPart[], locale: Locale, cssUrl: string): TemplateResult {
+export function renderLegalBar(parts: readonly AttributionPart[], locale: ViewerLocale, cssUrl: string): TemplateResult {
     return html`<div class="legal">
         <hcm-map-attribution .parts=${parts} .locale=${locale} .cssUrl=${cssUrl}></hcm-map-attribution>
     </div>`;
@@ -42,7 +42,7 @@ export function renderLegalBar(parts: readonly AttributionPart[], locale: Locale
 
 /** The consent banner, in its dock over the map. */
 export function renderConsentBanner(
-    locale: Locale,
+    locale: ViewerLocale,
     onConsent: (event: CustomEvent<{ readonly decision: 'granted' | 'denied' }>) => void,
     docked = true,
 ): TemplateResult {

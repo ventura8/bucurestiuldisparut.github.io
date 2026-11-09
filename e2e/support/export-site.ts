@@ -52,8 +52,11 @@ async function fileOf(path: string): Promise<KitFile> {
 
 /** The engine's files as the functions' build copies them (no source maps, no ES module build). */
 async function engineFiles(): Promise<KitFile[]> {
-    const fonts = (await readdir(join(ENGINE_DIST, 'fonts'))).map((name) => join(ENGINE_DIST, 'fonts', name));
-    return Promise.all([...ENGINE_FILES.map((name) => join(ENGINE_DIST, name)), ...fonts].map(fileOf));
+    // The fonts and the languages' texts (`i18n/<locale>.json`, fetched when shown) are folders beside the engine.
+    const folders = await Promise.all(
+        ['fonts', 'i18n'].map(async (folder) => (await readdir(join(ENGINE_DIST, folder))).map((name) => join(ENGINE_DIST, folder, name))),
+    );
+    return Promise.all([...ENGINE_FILES.map((name) => join(ENGINE_DIST, name)), ...folders.flat()].map(fileOf));
 }
 
 /** The fixture city as the admin publishes it: its photos in the public bucket, the GA4 id when asked. */

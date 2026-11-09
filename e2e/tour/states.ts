@@ -1,4 +1,4 @@
-import type { Locale } from '@hcm/shared';
+import type { Locale, ViewerLocale } from '@hcm/shared';
 import { expect, type BrowserContext, type Locator, type Page, type Route } from '@playwright/test';
 
 import { IMAGERY_STATES } from '../admin/specs/imagery/states.js';
@@ -7,6 +7,7 @@ import { COMPARE_STATES, openComparing } from './compare-states.js';
 import { UNPLACED_JOURNEY, unplacedStates } from './unplaced-states.js';
 import { STORY_JOURNEY, storyStates } from './story-states.js';
 import { INPUT_JOURNEY, INPUT_STATES } from './input-states.js';
+import { CJK_JOURNEY, LANGUAGE_STATES, RTL_JOURNEY } from './language-states.js';
 import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
 import { MY_LOCATION_STATES } from './my-location-states.js';
 import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
@@ -24,7 +25,6 @@ import {
     BUCHAREST_MANIFEST,
     callController,
     chooseMenuItem,
-    dismissToast,
     holdToast,
     menuButton,
     openLayers,
@@ -68,8 +68,8 @@ interface ViewerState {
     readonly announcements?: (lang: Locale) => readonly string[];
     /** Esc closes the state's popup (the focus goes back to the control of this name); only where it is a popup. */
     readonly escape?: (tour: TourContext) => { readonly opener: string | null } | null;
-    /** The language the page shows (the language item of the menu switches to the other one). */
-    readonly shows?: (lang: Locale) => Locale;
+    /** The language the page shows (a state may switch it, or open the viewer in a language of its own). */
+    readonly shows?: (lang: Locale) => ViewerLocale;
 }
 
 /**
@@ -159,18 +159,6 @@ const VIEWER_STATES = {
             await holdToast(page, t(lang, 'error.geolocate.denied'));
         },
         announcements: (lang) => [t(lang, 'error.geolocate.denied')],
-    },
-    language: {
-        title: 'The menu switched the language: the whole viewer in the other language',
-        enter: async ({ page, lang }) => {
-            const other = lang === 'ro' ? 'en' : 'ro';
-            // The previous state's toast is closed first: re-worded in the other language, its timer starts again and it
-            // went mid-check on a slow machine (the Tab round then never reached its Close).
-            await dismissToast(page, lang);
-            await chooseMenuItem(page, lang, t(lang, `language.${other}`));
-            await expect(menuButton(page, other)).toBeVisible();
-        },
-        shows: (lang) => (lang === 'ro' ? 'en' : 'ro'),
     },
     year: {
         title: 'A historical year: its layer, the photos-near-this-year chip',
@@ -337,6 +325,8 @@ const VIEWER_STATES = {
     ...COMPARE_STATES,
     ...MAP_LABEL_STATES,
     ...PHOTO_SOURCE_STATES,
+    // The language list, Arabic right to left and Japanese (V11).
+    ...LANGUAGE_STATES,
 } as const satisfies Record<string, Omit<ViewerState, 'id'>>;
 
 type ViewerStateId = keyof typeof VIEWER_STATES;
@@ -446,6 +436,8 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
     },
     MAP_LABEL_JOURNEY,
     PHOTO_SOURCE_JOURNEY,
+    RTL_JOURNEY,
+    CJK_JOURNEY,
     {
         title: 'A photo at every height, shown on the map, its lightbox, and the photo list',
         id: 'photo',

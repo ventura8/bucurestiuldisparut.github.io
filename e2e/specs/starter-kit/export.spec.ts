@@ -14,7 +14,7 @@ import { engineEvents, t, viewer, waitForEngineEvent } from '../../support/viewe
  * served by a plain static server. The engine comes from the export's own `engine/`, the photos from its `photos/`, and
  * nothing goes to Firestore, Firebase, googleapis or a CDN: the firewall fails the test on any host outside the mocked
  * ones, and the record of the mocked ones holds Mapbox only. The export carries no analytics ids, so nothing asks for
- * consent; opened by a double-click (`file://`), the page says the map could not load, with Try again.
+ * consent; opened by a double-click (`file://`), the page says the map could not load, in Romanian and English, with Try again.
  */
 
 /** A folder of its own per test, project and retry (the projects run in parallel). */
@@ -98,8 +98,10 @@ test.describe('opened from the disk', () => {
 
             await page.goto(`${pathToFileURL(site.folder).href}/index.html?lang=${lang}`);
 
-            await expect(page.getByRole('alert')).toContainText(t(lang, 'error.manifest.network'));
-            await expect(page.getByRole('button', { name: t(lang, 'action.retry') })).toBeVisible();
+            // Nor can it fetch its language's texts (`engine/i18n/`): the engine's own card says so in both its languages.
+            await expect(page.getByRole('alert').locator('p[lang="en"]')).toHaveText('The map could not be loaded.');
+            await expect(page.getByRole('alert').locator('p[lang="ro"]')).toHaveText('Harta nu s-a putut încărca.');
+            await expect(page.getByRole('button', { name: 'Reîncearcă · Retry' })).toBeVisible();
             expect(await engineEvents(page, 'hcm-error')).toEqual([
                 expect.objectContaining({ code: 'error.manifest.network', retryable: true }),
             ]);

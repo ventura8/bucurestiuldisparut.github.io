@@ -8,12 +8,13 @@ import {
     DEFAULT_FOV,
     findOverlay,
     isHttpsUrl,
+    localized,
     poiIcon,
     poiInYear,
     type Basemap,
     type Layer,
     type LayerSource,
-    type Locale,
+    type ViewerLocale,
     type Manifest,
     type MapView,
     type Overlay,
@@ -39,11 +40,6 @@ export const LIGHT_PRESET = 'lightPreset';
 
 /** Length of a view cone's sides on the map, in metres (a drawing choice, `ViewCone.distanceM`). */
 export const CONE_LENGTH_M = 60;
-
-/** Text in the visitor's language; a missing English text falls back to Romanian. */
-export function localized(text: { readonly ro: string; readonly en?: string | undefined }, locale: Locale): string {
-    return text[locale] ?? text.ro;
-}
 
 /** `url` as the browser must load it: https stays, a relative path is resolved against the manifest's address. */
 export function resolveAssetUrl(url: string, base: string | undefined): string {
@@ -79,7 +75,7 @@ export function rasterSpec(layer: Layer, overlay: Overlay | undefined, base: str
     };
 }
 
-function photoPoint(photo: Photo, locale: Locale): PhotoPointFeature {
+function photoPoint(photo: Photo, locale: ViewerLocale): PhotoPointFeature {
     return {
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [photo.location.lng, photo.location.lat] },
@@ -97,16 +93,16 @@ function photoCone(photo: Photo): PhotoConeFeature[] {
 }
 
 /** The photos the timeline shows at `year`, as markers plus a cone for each photo with a bearing. */
-export function photoFeatures(photos: readonly Photo[], locale: Locale, year: number | null): PhotoFeatureCollection {
+export function photoFeatures(photos: readonly Photo[], locale: ViewerLocale, year: number | null): PhotoFeatureCollection {
     const shown = photosNearYear(photos, year);
     return { type: 'FeatureCollection', features: [...shown.map((photo) => photoPoint(photo, locale)), ...shown.flatMap(photoCone)] };
 }
 
-function poiFeature(poi: Poi, locale: Locale): PoiFeature {
+function poiFeature(poi: Poi, locale: ViewerLocale): PoiFeature {
     return { type: 'Feature', geometry: poi.geometry, properties: { id: poi.id, title: localized(poi.title, locale) } };
 }
 
-function poiSpec(category: PoiCategory, pois: readonly Poi[], overlay: Overlay | undefined, locale: Locale): VectorOverlaySpec {
+function poiSpec(category: PoiCategory, pois: readonly Poi[], overlay: Overlay | undefined, locale: ViewerLocale): VectorOverlaySpec {
     return {
         id: category.id,
         kind: 'poi',
@@ -122,7 +118,7 @@ function poiSpec(category: PoiCategory, pois: readonly Poi[], overlay: Overlay |
 export function poiSpecs(
     manifest: Manifest,
     overlays: readonly Overlay[],
-    locale: Locale,
+    locale: ViewerLocale,
     year: number | null,
 ): readonly VectorOverlaySpec[] {
     const shown = (manifest.pois ?? []).filter((poi) => poiInYear(poi, year));
@@ -132,7 +128,7 @@ export function poiSpecs(
 /** What a map is mounted with besides the manifest: the moment's view, language, motion and basemap labels. */
 export interface MapMoment {
     readonly view: MapView;
-    readonly locale: Locale;
+    readonly locale: ViewerLocale;
     readonly reducedMotion: boolean;
     readonly labels: MapLabels;
     /** The light the theme asks of the basemap (`map-light.ts`), null when the city's basemap sets its own. */

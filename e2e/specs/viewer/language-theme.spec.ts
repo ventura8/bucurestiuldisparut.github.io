@@ -7,6 +7,7 @@ import { sitePath } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
 import {
     BUCHAREST_MANIFEST,
+    chooseLanguage,
     chooseMenuItem,
     closeModalSheet,
     menuButton,
@@ -35,11 +36,11 @@ async function hostToken(page: Page, name: string): Promise<string> {
 test('Romanian by default; English chosen in the menu persists after a reload', { tag: '@S-V11-HAPPY' }, async ({ page }) => {
     await openViewer(page, { hash: `17/44.42955/26.09560&photo=${LONE}` });
     await expect(page.locator('html')).toHaveAttribute('lang', 'ro');
-    await expect(viewer(page).locator('hcm-photo-sheet .supporting')).toHaveText(t('ro', 'photo.year', { year: '1976' }));
+    await expect(viewer(page).locator('hcm-photo-sheet .supporting').first()).toHaveText(t('ro', 'photo.year', { year: '1976' }));
 
     await closeModalSheet(page);
-    await chooseMenuItem(page, 'ro', t('ro', 'language.en'));
-    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await chooseLanguage(page, 'ro', 'en');
+    await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
     await expect(menuButton(page, 'en')).toBeVisible();
 
     // A fresh load (another document first: the same path with another hash would only change the hash).
@@ -47,12 +48,13 @@ test('Romanian by default; English chosen in the menu persists after a reload', 
     await page.goto(sitePath('bucharest', { hash: `17/44.42955/26.09560&photo=${LONE}` }));
     await waitForEngineEvent(page, 'hcm-ready');
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-    await expect(viewer(page).locator('hcm-photo-sheet .supporting')).toHaveText(t('en', 'photo.year', { year: '1976' }));
+    await expect(viewer(page).locator('hcm-photo-sheet .supporting').first()).toHaveText(t('en', 'photo.year', { year: '1976' }));
     await expect(page.getByRole('slider', { name: t('en', 'timeline.label'), exact: true })).toBeVisible();
 });
 
 test('An unsupported language in the URL falls back to Romanian', { tag: '@S-V11-BAD-UNSUPPORTED-LANG' }, async ({ page }) => {
-    await page.goto('/bucharest/?lang=fr#14/44.42700/26.08530&lang=de');
+    // Swedish is no viewer language, nor is `xx`: each is ignored where it stands.
+    await page.goto('/bucharest/?lang=sv#14/44.42700/26.08530&lang=xx');
     await waitForEngineEvent(page, 'hcm-ready');
 
     await expect(page.locator('html')).toHaveAttribute('lang', 'ro');
@@ -67,6 +69,8 @@ test('A text without its English version shows the Romanian one, never a key', {
     await openViewer(page, { lang: 'en', hash: `17/44.42955/26.09560&photo=${LONE}` });
 
     await expect(page.getByRole('heading', { name: LONE_TITLE_RO, exact: true })).toBeVisible();
+    // A note says which language the text is in (WCAG 3.1.2 asks for its own `lang` too).
+    await expect(viewer(page).locator('hcm-photo-sheet .fallback-note')).toHaveText(t('en', 'content.fallback', { language: 'Română' }));
     expect(await pageTexts(page)).toContain(t('en', 'license.permission-legacy'));
     expect(await i18nLeaks(page, 'en'), 'no raw message key is shown').toEqual([]);
 });
@@ -77,9 +81,8 @@ test("A language switch also relabels the map's own controls", { tag: '@S-V11-BA
     const map = viewer(page).locator('.map');
     await expect(map.locator('canvas.mapboxgl-canvas')).toHaveAttribute('aria-label', t('en', 'map.title'));
 
-    await chooseMenuItem(page, 'en', t('en', 'language.ro'));
+    await chooseLanguage(page, 'en', 'ro');
 
-    await expect(page.locator('html')).toHaveAttribute('lang', 'ro');
     await expect(map.locator('canvas.mapboxgl-canvas')).toHaveAttribute('aria-label', t('ro', 'map.title'));
     await expect(map.locator('a.mapboxgl-ctrl-logo')).toHaveAttribute('aria-label', t('ro', 'map.logo'));
     await expect(map.locator('.mapboxgl-ctrl-attrib-button')).toHaveAttribute('aria-label', t('ro', 'map.toggleAttribution'));

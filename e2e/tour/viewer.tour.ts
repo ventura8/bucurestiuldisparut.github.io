@@ -89,6 +89,22 @@ test(
 );
 
 test(
+    'Arabic, right to left: a photo, home and the language list',
+    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V11-HAPPY-RTL-TOUR'] },
+    async ({ page, context, lang }) => {
+        await expectJourneySound({ page, context, lang }, journey('rtl'));
+    },
+);
+
+test(
+    'Japanese: home and the Layers panel',
+    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V11-HAPPY-CJK-TOUR'] },
+    async ({ page, context, lang }) => {
+        await expectJourneySound({ page, context, lang }, journey('cjk'));
+    },
+);
+
+test(
     'Photos with no place yet, and the Contribute link',
     { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V40-HAPPY-GALLERY'] },
     async ({ page, context, lang }) => {

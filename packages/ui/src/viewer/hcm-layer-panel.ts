@@ -10,7 +10,7 @@
  * list, the Map labels group (V31) has a switch per label the city's basemap really has (none: no group, a custom style
  * has nothing to switch), each firing `hcm-map-label`; its note tells them from the city's own Places above.
  */
-import { DEFAULT_LOCALE, overlayLabel, poiIcon, translate, type Locale, type Manifest, type Overlay } from '@hcm/shared';
+import { DEFAULT_LOCALE, overlayLabel, poiIcon, translate, type ViewerLocale, type Manifest, type Overlay } from '@hcm/shared';
 import { translateMapLabels, type MapLabelKind, type MapLabels, type MapLabelsKey } from '@hcm/shared/map-labels';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 
@@ -37,7 +37,7 @@ export interface LayerPanelLabels {
 const LABEL_NAMES: Readonly<Record<MapLabelKind, MapLabelsKey>> = { streets: 'mapLabels.streets', pois: 'mapLabels.pois' };
 
 /** The list rows: overlay labels in `locale`; a POI category also gets its colour and its bundled icon. */
-export function overlayItems(overlays: readonly Overlay[], manifest: Manifest, locale: Locale): readonly OverlayListItem[] {
+export function overlayItems(overlays: readonly Overlay[], manifest: Manifest, locale: ViewerLocale): readonly OverlayListItem[] {
     const categories = new Map((manifest.poiCategories ?? []).map((category) => [category.id, category]));
     return overlays.map((overlay) => {
         const item = {
@@ -53,14 +53,14 @@ export function overlayItems(overlays: readonly Overlay[], manifest: Manifest, l
 }
 
 /** The group headings: historical layers always, places only when the manifest has POI categories. */
-export function overlayGroups(manifest: Manifest, locale: Locale): readonly OverlayListGroup[] {
+export function overlayGroups(manifest: Manifest, locale: ViewerLocale): readonly OverlayListGroup[] {
     const historical: OverlayListGroup = { kind: 'raster', label: translate(locale, 'layers.group.historical') };
     const hasPlaces = (manifest.poiCategories ?? []).length > 0;
     return hasPlaces ? [historical, { kind: 'poi', label: translate(locale, 'layers.group.places') }] : [historical];
 }
 
 /** `Sursa: USGS EROS` for every visible historical layer, in list order. */
-export function attributionLines(overlays: readonly Overlay[], manifest: Manifest, locale: Locale): readonly string[] {
+export function attributionLines(overlays: readonly Overlay[], manifest: Manifest, locale: ViewerLocale): readonly string[] {
     const layers = new Map(manifest.layers.map((layer) => [layer.id, layer]));
     return overlays
         .filter((overlay) => overlay.kind === 'raster' && overlay.visible)
@@ -71,7 +71,7 @@ export function attributionLines(overlays: readonly Overlay[], manifest: Manifes
 }
 
 /** The note below the switches: what they are, and how they differ from the city's own places when it has some. */
-function labelsNote(manifest: Manifest, locale: Locale): string {
+function labelsNote(manifest: Manifest, locale: ViewerLocale): string {
     const note = translateMapLabels(locale, 'mapLabels.note');
     return (manifest.poiCategories ?? []).length > 0 ? `${note} ${translateMapLabels(locale, 'mapLabels.notePlaces')}` : note;
 }
@@ -159,7 +159,7 @@ export class HcmLayerPanel extends LitElement {
 
     declare overlays: readonly Overlay[];
     declare manifest: Manifest | null;
-    declare locale: Locale;
+    declare locale: ViewerLocale;
     declare mode: SheetMode;
     declare open: boolean;
     /** False when the panel is always docked (extra-large): it has no close button. */
@@ -221,7 +221,7 @@ export class HcmLayerPanel extends LitElement {
         </div>`;
     }
 
-    #mapLabels(manifest: Manifest, locale: Locale): TemplateResult {
+    #mapLabels(manifest: Manifest, locale: ViewerLocale): TemplateResult {
         const kinds = this.labels?.available ?? [];
         if (kinds.length === 0) {
             return EMPTY;
@@ -235,7 +235,7 @@ export class HcmLayerPanel extends LitElement {
         </div>`;
     }
 
-    #mapLabel(kind: MapLabelKind, locale: Locale): TemplateResult {
+    #mapLabel(kind: MapLabelKind, locale: ViewerLocale): TemplateResult {
         const name = translateMapLabels(locale, LABEL_NAMES[kind]);
         const onChange = (event: CustomEvent<{ readonly checked: boolean }>): void => {
             event.stopPropagation();
@@ -248,7 +248,7 @@ export class HcmLayerPanel extends LitElement {
         </li>`;
     }
 
-    #compareButton(locale: Locale): TemplateResult {
+    #compareButton(locale: ViewerLocale): TemplateResult {
         if (!this.canCompare) {
             return EMPTY;
         }
