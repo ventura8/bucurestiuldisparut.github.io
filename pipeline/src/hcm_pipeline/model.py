@@ -315,13 +315,45 @@ class LayerTilesParams:
         return cls(id_of(params, "versionId"))
 
 
-JobParams = UsgsImportParams | GeotiffImportParams | RegeorefParams | JoinParams | LayerTilesParams
+_ARCHIVE_SERIES_KEYS: Final = frozenset(
+    {
+        "archiveId",
+        "seriesId",
+        "class",
+        "sheets",
+        "encoding",
+        "order",
+        "gridId",
+        "referenceLayerIds",
+        "edition",
+        "scaleDenominator",
+        "paperTransparent",
+        "maxzoom",
+    }
+)
+
+
+@dataclass(frozen=True)
+class ArchiveSeriesParams:
+    """An `archive-series` job (M20): the archive and series it places; its steps read the rest of the params themselves."""
+
+    archive_id: str
+    series_id: str
+
+    @classmethod
+    def of(cls, params: Mapping[str, object]) -> ArchiveSeriesParams:
+        _strict(params, _ARCHIVE_SERIES_KEYS)
+        return cls(id_of(params, "archiveId"), id_of(params, "seriesId"))
+
+
+JobParams = UsgsImportParams | GeotiffImportParams | RegeorefParams | JoinParams | LayerTilesParams | ArchiveSeriesParams
 _PARAMS: Final[Mapping[str, Callable[[Mapping[str, object]], JobParams]]] = {
     "usgs-import": UsgsImportParams.of,
     "geotiff-import": GeotiffImportParams.of,
     "regeoref": RegeorefParams.of,
     "layer-join": JoinParams.of,
     "layer-tiles": LayerTilesParams.of,
+    "archive-series": ArchiveSeriesParams.of,
 }
 
 

@@ -3173,3 +3173,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the scene row's text column was `1fr` (its minimum the longest word) and the declassified ids were short enough to fit.
     - Fix and pin: the column is `minmax(0, 1fr)` and the row's details wrap anywhere (`packages/ui/src/admin/imagery/imagery-styles.ts`); the two Landsat tour states pass the checkers.
     - **A new data source brings new string shapes: run the layout checkers on its rows at the phone's width before trusting the old ones.**
+
+540. **Every archive series failed on the owner's computer: "the pipeline does not run archive-series jobs".**
+    - Seen: 2026-11-09, the first real import of `harti.zip`: 4 series failed at once on the worker, before any step ran.
+    - Cause: the M20 merge registered the series' steps in `contract.py` but not its params in `model.py`'s `_PARAMS`, which the runner checks first; the steps' own tests built their contexts directly and never went through `params_of`.
+    - Fix and pin: `ArchiveSeriesParams` in `pipeline/src/hcm_pipeline/model.py`, with a happy and two bad rows in `tests/unit/test_model.py`.
+    - **A new job type is three registrations (the steps, the params, the server's job writer): test it once through the runner's own entry, not only step by step.**
