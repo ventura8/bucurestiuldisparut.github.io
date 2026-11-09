@@ -25,6 +25,11 @@ export interface ViewerServices {
     readonly matchMedia: (query: string) => MediaQueryList;
     /** M13: opens a page of its own (the Contribute page), with nothing of this page passed on. */
     readonly openPage: (url: string) => void;
+    /**
+     * Side-loads `<hcm-lightbox>` (`lightbox-loader.ts`): the engine sets it; without it the element must be defined already
+     * (the kit's own tests).
+     */
+    readonly loadLightbox?: () => Promise<void>;
 }
 
 /** How long the browser may look for a position, and how old a cached one may be; the dot wants the device's best. */

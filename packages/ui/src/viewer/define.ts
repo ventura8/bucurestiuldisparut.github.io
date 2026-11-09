@@ -1,12 +1,12 @@
 /**
  * Registers every viewer element once (idempotent per registry). The ui-kit elements the viewer renders (`hcm-sheet`,
  * `hcm-dialog`, `hcm-overlay-list`, `hcm-fab-menu`, `hcm-consent-banner`, ...) are registered by the kit's own
- * `defineUiKit`; the engine's `defineElements` calls both.
+ * `defineUiKit`; the engine's `defineElements` calls both. `<hcm-lightbox>` is not among them: the engine side-loads it
+ * when a photo first opens full size (`lightbox-loader.ts`).
  */
 import { defineHcmAboutDialog, HCM_ABOUT_DIALOG_TAG } from './hcm-about-dialog.js';
 import { defineHcmErrorCard, HCM_ERROR_CARD_TAG } from './hcm-error-card.js';
 import { defineHcmLayerPanel, HCM_LAYER_PANEL_TAG } from './hcm-layer-panel.js';
-import { defineHcmLightbox, HCM_LIGHTBOX_TAG } from './hcm-lightbox.js';
 import { defineHcmMapAttribution, HCM_MAP_ATTRIBUTION_TAG } from './hcm-map-attribution.js';
 import { defineHcmMapViewer, HCM_MAP_VIEWER_TAG } from './hcm-map-viewer.js';
 import { defineHcmPhotoList, HCM_PHOTO_LIST_TAG } from './hcm-photo-list.js';
@@ -26,7 +26,6 @@ export const VIEWER_TAGS = [
     HCM_PHOTO_LIST_TAG,
     HCM_UNPLACED_GALLERY_TAG,
     HCM_STORIES_TAG,
-    HCM_LIGHTBOX_TAG,
     HCM_ABOUT_DIALOG_TAG,
     HCM_ERROR_CARD_TAG,
     HCM_MAP_ATTRIBUTION_TAG,
@@ -41,7 +40,6 @@ const DEFINERS: readonly ((registry: CustomElementRegistry) => void)[] = [
     defineHcmPhotoList,
     defineHcmUnplacedGallery,
     defineHcmStories,
-    defineHcmLightbox,
     defineHcmAboutDialog,
     defineHcmErrorCard,
     defineHcmMapAttribution,

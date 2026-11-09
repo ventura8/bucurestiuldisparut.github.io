@@ -6,6 +6,7 @@ import { vi } from 'vitest';
 
 import type { WindowClass } from '../../src/theme/tokens.js';
 import { defineViewerElements } from '../../src/viewer/define.js';
+import { defineHcmLightbox } from '../../src/viewer/hcm-lightbox.js';
 import type { HcmMapViewer } from '../../src/viewer/hcm-map-viewer.js';
 import type { ViewerServices } from '../../src/viewer/services.js';
 import type { ViewerController, ViewerState } from '../../src/viewer/store-port.js';
@@ -69,6 +70,8 @@ export async function mountViewer(
 ): Promise<Mounted> {
     defineKitDoubles();
     defineViewerElements();
+    // The engine side-loads the full-size view (`lightbox-loader.ts`); here it is defined as if it had loaded.
+    defineHcmLightbox();
     const element = document.createElement('hcm-map-viewer');
     element.services = fakeServices();
     element.engineVersion = '1.2.3';

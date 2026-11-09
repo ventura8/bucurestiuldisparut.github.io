@@ -7,6 +7,7 @@ import { FIRESTORE_PATHS } from '@hcm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { CITY_BOUNDS, cityDoc, links, newPhoto, photoDoc } from './support/documents.js';
+import { photoVersion } from './support/photo-fields.js';
 import {
     createWorld,
     deleted,
@@ -215,6 +216,35 @@ describe('update', () => {
         ['a photo of unknown licence', () => processed({ license: 'unknown' })],
     ])('badPath_adminCannotPublish_%s', async (_label, seed) => {
         expect(await update(seed(), { published: true })).toBe('deny');
+    });
+
+    it('happyPath_aReviewerRemovesAVersionAndSetsItsCredit', async () => {
+        expect(await update(processed(), { versions: { improved: photoVersion() } })).toBe('allow');
+        expect(await update(processed(), { versions: deleted() })).toBe('allow');
+        expect(await update(processed(), { versionCredits: { colorized: 'Ana Pop' } })).toBe('allow');
+    });
+
+    it.each([
+        [
+            'a version added',
+            () => withChanges(processed(), { versions: { improved: photoVersion() } }),
+            { versions: { improved: photoVersion(), colorized: photoVersion() } },
+        ],
+        [
+            'a version changed',
+            processed,
+            {
+                versions: {
+                    improved: { ...photoVersion(), original: { path: 'x', contentType: 'image/jpeg', bytes: 2, sha256: 'b' } },
+                    colorized: photoVersion(),
+                },
+            },
+        ],
+        ['a version that is no map', processed, { versions: 'gone' }],
+        ['a credit of an unknown version', processed, { versionCredits: { sepia: 'Ion' } }],
+        ['a credit over 200 characters', processed, { versionCredits: { improved: 'x'.repeat(201) } }],
+    ])('badPath_onlyPhotosOnUploadAddsOrChangesAVersion_%s', async (_label, seed, changes) => {
+        expect(await update(seed(), changes)).toBe('deny');
     });
 
     it('badPath_aPublishedPhotoCannotSwitchToAnUnknownLicence', async () => {

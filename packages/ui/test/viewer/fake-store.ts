@@ -13,6 +13,7 @@ import {
     type Manifest,
     type MapView,
     type MessageKey,
+    type PhotoView,
 } from '@hcm/shared';
 
 import { testManifest } from './fixtures.js';
@@ -39,6 +40,7 @@ export function idleState(): ViewerState {
         selectedPoiId: null,
         selectedStoryId: null,
         lightbox: false,
+        photoVersion: null,
         sheet: 'none',
         layersHidden: false,
         windowClass: 'compact',
@@ -153,6 +155,11 @@ export class FakeStore implements ViewerStorePort {
     openPoi(poiId: string | null): void {
         this.#record('openPoi', poiId);
         this.set({ selectedPoiId: poiId, sheet: poiId === null ? 'none' : 'poi' });
+    }
+
+    setPhotoVersion(view: PhotoView): void {
+        this.#record('setPhotoVersion', view);
+        this.set({ photoVersion: view });
     }
 
     setLightbox(open: boolean): void {

@@ -7,9 +7,21 @@
  * image, while there is a map (`canLocate`), "Show on map" fires `hcm-photo-locate` (`{ photoId, offset }`): the viewer
  * brings the camera to the photo's place, `offset` px from the map's centre so that a modal sheet does not cover it (V51).
  * Once the thumbnail is decoded (or failed) the sheet fires `hcm-photo-shown` (`{ ok }`), which the viewer turns into
- * the `photo_timing` field measurement (docs/ARCHITECTURE.md → *Field measurements*).
+ * the `photo_timing` field measurement (docs/ARCHITECTURE.md → *Field measurements*). A photo with an improved or a
+ * colorized version shows the version `photoVersion` picks and a switch between them (`photo-version.ts`), which fires
+ * `hcm-photo-version` (`{ view }`).
  */
-import { DEFAULT_LOCALE, isPhotoNearYear, translate, type Locale, type Photo, type Poi, type PoiCategory, type Story } from '@hcm/shared';
+import {
+    DEFAULT_LOCALE,
+    isPhotoNearYear,
+    translate,
+    type Locale,
+    type Photo,
+    type PhotoView,
+    type Poi,
+    type PoiCategory,
+    type Story,
+} from '@hcm/shared';
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 
 import type { CameraOffset } from '../map/mapbox-types.js';
@@ -21,6 +33,7 @@ import { resolveAssetUrl } from './services.js';
 import { closeEvent, renderSheetFrame } from './sheet-frame.js';
 import { baseStyles, detailStyles, sheetStyles } from './shared-styles.js';
 import { photoRights } from './photo-rights.js';
+import { hasVersions, shownView, versionSwitch, viewCredit, viewImage } from './photo-version.js';
 import { localizedText, photoDateText, photoSourceText } from './text.js';
 import type { TimelineStop } from './timeline-model.js';
 
@@ -72,6 +85,7 @@ export class HcmPhotoSheet extends LitElement {
         stories: { attribute: false },
         canLocate: { attribute: false },
         years: { attribute: false },
+        photoVersion: { attribute: false },
         imageFailed: { state: true },
     };
 
@@ -129,6 +143,8 @@ export class HcmPhotoSheet extends LitElement {
     declare canLocate: boolean;
     /** The timeline's stops: with a map, the photo's date leads to the map of its layer years (`photoMapYears`). */
     declare years: readonly TimelineStop[];
+    /** The version the visitor picked (null: the photo's default, `shownView`). */
+    declare photoVersion: PhotoView | null;
     declare mode: SheetMode;
     declare open: boolean;
     declare manifestUrl: string;
@@ -148,11 +164,12 @@ export class HcmPhotoSheet extends LitElement {
         this.stories = [];
         this.canLocate = false;
         this.years = [];
+        this.photoVersion = null;
         this.imageFailed = false;
     }
 
     protected override willUpdate(changed: PropertyValues<this>): void {
-        if (changed.has('photo')) {
+        if (changed.has('photo') || changed.has('photoVersion')) {
             this.imageFailed = false;
         }
     }
@@ -255,8 +272,15 @@ export class HcmPhotoSheet extends LitElement {
     }
 
     #image(photo: Photo): TemplateResult {
+        const view = shownView(photo, this.photoVersion);
+        const versions = hasVersions(photo) ? versionSwitch(photo, view, this.locale, this) : EMPTY;
+        return html`${this.#thumbnail(photo, view)} ${versions} ${viewCredit(photo, view, this.locale)}`;
+    }
+
+    #thumbnail(photo: Photo, view: PhotoView): TemplateResult {
         const title = localizedText(photo.title, this.locale);
-        const src = resolveAssetUrl(photo.image.thumb, this.manifestUrl, document.baseURI);
+        const image = viewImage(photo, view);
+        const src = resolveAssetUrl(image.thumb, this.manifestUrl, document.baseURI);
         if (this.imageFailed || src === null) {
             return html`<div class="placeholder" role="img" aria-label=${title}>
                 <hcm-icon name="broken_image"></hcm-icon>
@@ -280,8 +304,8 @@ export class HcmPhotoSheet extends LitElement {
             <img
                 src=${src}
                 alt=${title}
-                width=${photo.image.w}
-                height=${photo.image.h}
+                width=${image.w}
+                height=${image.h}
                 loading="lazy"
                 decoding="async"
                 @load=${onLoad}

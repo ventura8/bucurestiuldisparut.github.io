@@ -988,6 +988,27 @@
             "name": "A Landsat scene is composed on the tile grid, pan-sharpened for ETM+, and checked against Sentinel-2 instead of georeferenced",
             "milestone": "M25",
             "source": "the owner, 2026-11-09: import Landsat for 1984-2000, added to the sources and automated like USGS; docs/research/M25-landsat.md"
+        },
+        {
+            "id": "V60",
+            "area": "viewer",
+            "name": "The full-size view's Zoom in and Zoom out buttons, soft-disabled at the photo's size and at 4x",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-09: add + and - buttons when viewing a photo full screen; a photo has versions (original, improved, colorized)"
+        },
+        {
+            "id": "V61",
+            "area": "viewer",
+            "name": "A photo's versions: improved shown first, a switch Original / Improved / Colorized in the sheet and the full-size view, kept in the address",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-09: add + and - buttons when viewing a photo full screen; a photo has versions (original, improved, colorized)"
+        },
+        {
+            "id": "A140",
+            "area": "admin",
+            "name": "A photo's improved and colorized versions in the editor: added, replaced, removed, each with its credit",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-09: add + and - buttons when viewing a photo full screen; a photo has versions (original, improved, colorized)"
         }
     ],
     "scenarios": [
@@ -16599,6 +16620,83 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M25 (docs/research/M25-landsat.md). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
+        },
+        {
+            "id": "S-V60-HAPPY",
+            "behaviour": "V60",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The full-size view loads beside the engine and its buttons zoom the photo",
+            "asserts": "no engine.lightbox.js request before the photo opens full size, one when it does; Zoom in enlarges the image by more than 20 %, Zoom out brings it back",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+        },
+        {
+            "id": "S-V60-BAD-LIMITS",
+            "behaviour": "V60",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Zoom out is disabled at the photo size and Zoom in at the largest",
+            "asserts": "on opening Zoom out says aria-disabled; Enter pressed eight times on Zoom in -> it says aria-disabled and keeps the focus, Zoom out is enabled",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+        },
+        {
+            "id": "S-V61-HAPPY",
+            "behaviour": "V61",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A photo with versions shows the improved one, switches to colorized and keeps it",
+            "asserts": "the sheet's switch has Improved checked; Colorized -> the address says pv=colorized and \"Colorized by Ana Pop\" shows; after a reload the full-size view has Colorized checked and shows its image",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+        },
+        {
+            "id": "S-V61-BAD-UNKNOWN-VERSION",
+            "behaviour": "V61",
+            "area": "viewer",
+            "path": "bad",
+            "title": "An unknown pv= shows the original; a photo with only its original has no switch",
+            "asserts": "#photo=x&pv=sepia -> Original checked; a photo without versions -> no switch in its sheet nor in the full-size view",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+        },
+        {
+            "id": "S-V61-HAPPY-TOUR",
+            "behaviour": "V61",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The versions and the zoom buttons pass the layout and accessibility checks on every window class",
+            "asserts": "expectStateSound on the photo-versions journey: the sheet with Colorized picked and credited, the full-size view with its switch, zoomed in once",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141). Tests: e2e/tour/viewer.tour.ts (e2e/tour/photo-version-states.ts)."
+        },
+        {
+            "id": "S-A140-HAPPY",
+            "behaviour": "A140",
+            "area": "admin",
+            "path": "happy",
+            "title": "A colorized version is added beside the published image, credited, and reaches the public map",
+            "asserts": "Add a file in Colorized version -> photos.onUpload writes versions.colorized, the image and publication unchanged; the credit saved -> the manifest lists the version with \"Ana Pop\"; the public viewer shows the switch with two versions",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141). Tests: e2e/admin/specs/photos/replace.spec.ts."
+        },
+        {
+            "id": "S-A140-BAD-WRONG-TYPE",
+            "behaviour": "A140",
+            "area": "admin",
+            "path": "bad",
+            "title": "A file that is no photo is refused at once as a version",
+            "asserts": "note.txt chosen for Improved version -> \"The new image was refused\" with the unsupported-type reason in its section, nothing uploaded, no versions on the photo",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141). Tests: e2e/admin/specs/photos/replace.spec.ts."
         }
     ]
 }

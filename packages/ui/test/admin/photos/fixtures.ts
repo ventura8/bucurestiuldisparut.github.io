@@ -77,6 +77,7 @@ export function editor(overrides: Partial<PhotoEditorPort> = {}): PhotoEditorPor
         suggestions: [],
         picking: false,
         replace: null,
+        versionUploads: { improved: null, colorized: null },
         ...overrides,
     };
 }

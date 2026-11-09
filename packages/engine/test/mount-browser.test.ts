@@ -98,6 +98,17 @@ describe('the gamepad and the colour scheme of the page', () => {
     });
 });
 
+/** A `<script>` as the full-size view's loader uses it. */
+class ScriptDouble extends EventTarget {
+    src = '';
+    integrity = '';
+    crossOrigin: string | null = null;
+
+    remove(): void {
+        // Nothing to detach from.
+    }
+}
+
 describe('browserEnvironment', () => {
     afterEach(() => {
         vi.restoreAllMocks();
@@ -140,6 +151,20 @@ describe('browserEnvironment', () => {
         expect(page.fonts.every((source) => source.startsWith('url("https://example.org/engine/fonts/'))).toBe(true);
         expect(next.fonts.every((source) => source.startsWith('url("https://cdn.example.org/hcm/fonts/'))).toBe(true);
         expect(page.fonts.length).toBeGreaterThan(0);
+    });
+
+    it('happyPath_theFullSizeViewIsAddedBesideTheEngine', async () => {
+        const appended: ScriptDouble[] = [];
+        const script = new ScriptDouble();
+        const document = { createElement: () => script, head: { append: (element: ScriptDouble) => appended.push(element) } };
+        const page = fakePage({ document, customElements: { get: () => undefined } });
+        const env = browserEnvironment(page.window, RELEASE, createLogger('test'));
+
+        const loading = env.loadLightbox?.(undefined);
+        script.dispatchEvent(new Event('load'));
+        await loading;
+
+        expect(appended.map((element) => element.src)).toEqual(['https://example.org/engine/engine.lightbox.js']);
     });
 
     it('happyPath_compareIsTheLazyChunk', async () => {

@@ -21,6 +21,7 @@ import { DOCKED_OPEN, type Placement, type SheetMode, type ViewerLayout } from '
 import { renderSheetFrame } from './sheet-frame.js';
 import type { ViewerError, ViewerState } from './store-port.js';
 import { photosNearYear, type TimelineStop } from './timeline-model.js';
+import { lightbox, type LightboxHandlers } from './viewer-lightbox.js';
 import { menuActions, menuItem } from './viewer-menu.js';
 import { storiesSheet } from './viewer-stories.js';
 import { unplacedSheet } from './viewer-unplaced.js';
@@ -57,12 +58,11 @@ export interface OverlayOpacityDetail {
 }
 
 /** The element's event handlers, bound once. */
-export interface ViewerHandlers {
+export interface ViewerHandlers extends LightboxHandlers {
     readonly onYearChange: (event: CustomEvent<{ readonly year: number | null }>) => void;
     readonly onOverlayVisibility: (event: CustomEvent<{ readonly id: string; readonly visible: boolean }>) => void;
     readonly onOverlayOpacity: (event: CustomEvent<OverlayOpacityDetail>) => void;
     readonly onSheetClose: (event: Event) => void;
-    readonly onPhotoSelect: (event: CustomEvent<{ readonly photoId: string }>) => void;
     /** The photo sheet's "Show on map" (V51). */
     readonly onPhotoLocate: (event: CustomEvent<PhotoLocateDetail>) => void;
     /** M17: a story to open (null: their list), and a place a story names. */
@@ -71,7 +71,6 @@ export interface ViewerHandlers {
     readonly onLightboxOpen: (event: Event) => void;
     /** The photo sheet's thumbnail was decoded (or failed): the `photo_timing` field measurement. */
     readonly onPhotoShown: (event: CustomEvent<{ readonly ok: boolean }>) => void;
-    readonly onLightboxClose: (event: Event) => void;
     readonly onMenuSelect: (event: CustomEvent<{ readonly value: string }>) => void;
     readonly onLocaleChange: (event: CustomEvent<{ readonly locale: Locale }>) => void;
     readonly onThemeChange: (event: CustomEvent<{ readonly theme: ViewerState['theme'] }>) => void;
@@ -389,6 +388,7 @@ function photoSheet(view: ViewerView, ready: Ready, placement: Placement, handle
         .stories=${ready.manifest.stories ?? []}
         .canLocate=${ready.state.webgl}
         .years=${view.stops}
+        .photoVersion=${ready.state.photoVersion}
         ?inert=${placement.inert === true}
         @hcm-close=${handlers.onSheetClose}
         @hcm-year-change=${handlers.onYearChange}
@@ -397,6 +397,7 @@ function photoSheet(view: ViewerView, ready: Ready, placement: Placement, handle
         @hcm-story-select=${handlers.onStorySelect}
         @hcm-lightbox-open=${handlers.onLightboxOpen}
         @hcm-photo-shown=${handlers.onPhotoShown}
+        @hcm-photo-version=${handlers.onPhotoVersion}
     ></hcm-photo-sheet>`;
 }
 
@@ -459,15 +460,7 @@ function overlays(view: ViewerView, ready: Ready, legal: LegalMirror, handlers: 
             @hcm-shortcuts-change=${handlers.onShortcuts}
             @hcm-help-open=${handlers.onHelpOpen}
         ></hcm-about-dialog>
-        <hcm-lightbox
-            .open=${state.lightbox && state.selectedPhotoId !== null}
-            .photos=${manifest.photos}
-            .photoId=${state.selectedPhotoId}
-            .locale=${view.locale}
-            .manifestUrl=${view.manifestUrl}
-            @hcm-close=${handlers.onLightboxClose}
-            @hcm-photo-select=${handlers.onPhotoSelect}
-        ></hcm-lightbox>`;
+        ${lightbox(state, manifest.photos, view, handlers)}`;
 }
 
 /**

@@ -46,6 +46,7 @@ describe('<hcm-admin-photo-editor>: states', () => {
         expect(deepText(element)).toContain('Saved');
         expect(deepAll(element, 'legend').map((legend) => legend.textContent)).toEqual([
             'Image',
+            'Improved and colorized versions',
             'Texts',
             'Date',
             'Author and rights',
@@ -209,7 +210,7 @@ describe('<hcm-admin-photo-editor>: fields', () => {
         type(element, '#photo-link-label-0', 'Arhiva');
         type(element, '#photo-link-url-0', 'https://b.example');
         deep(deep(element, '.link-row hcm-icon-button'), 'button').click();
-        deep(deep(deepAll(element, 'fieldset')[5] ?? element, '.actions hcm-button'), 'button').click();
+        deep(deep(deepAll(element, 'fieldset')[6] ?? element, '.actions hcm-button'), 'button').click();
 
         expect(photos.calls).toEqual([
             'edit {}',
@@ -228,7 +229,7 @@ describe('<hcm-admin-photo-editor>: fields', () => {
 
         expect(deepText(element)).toContain('At most 5 links.');
         expect(
-            (deep(deepAll(element, 'fieldset')[5] ?? element, '.actions hcm-button') as HTMLElement & { disabled: boolean }).disabled,
+            (deep(deepAll(element, 'fieldset')[6] ?? element, '.actions hcm-button') as HTMLElement & { disabled: boolean }).disabled,
         ).toBe(true);
     });
 });
@@ -243,7 +244,7 @@ describe('<hcm-admin-photo-editor>: place, direction and publishing', () => {
         type(element, '#photo-lat', '44.5');
         type(element, '#photo-lng', 'x');
         type(element, '#photo-bearing', '');
-        const actions = deepAll(deepAll(element, 'fieldset')[6] ?? element, '.actions hcm-button');
+        const actions = deepAll(deepAll(element, 'fieldset')[7] ?? element, '.actions hcm-button');
         deep(actions[0] ?? element, 'button').click();
         deep(actions[1] ?? element, 'button').click();
         const slider = deep(element, 'hcm-slider');
@@ -263,7 +264,7 @@ describe('<hcm-admin-photo-editor>: place, direction and publishing', () => {
     it('badPath_withoutAMapTheDirectionButtonsAreOff', async () => {
         const { element } = await editorOf(editor());
 
-        const actions = deepAll(deepAll(element, 'fieldset')[6] ?? element, '.actions hcm-button') as (HTMLElement & {
+        const actions = deepAll(deepAll(element, 'fieldset')[7] ?? element, '.actions hcm-button') as (HTMLElement & {
             disabled: boolean;
         })[];
         expect(actions.map((button) => button.disabled)).toEqual([true, true]);
@@ -274,7 +275,7 @@ describe('<hcm-admin-photo-editor>: place, direction and publishing', () => {
         const { element, photos } = await editorOf(editor({ picking: true }), { mapReady: true });
 
         expect(deepText(element)).toContain('Click on the map where the camera looked.');
-        deep(deep(deepAll(element, 'fieldset')[6] ?? element, '.banner hcm-button'), 'button').click();
+        deep(deep(deepAll(element, 'fieldset')[7] ?? element, '.banner hcm-button'), 'button').click();
 
         expect(photos.calls).toEqual(['cancelDirection']);
     });
@@ -297,7 +298,7 @@ describe('<hcm-admin-photo-editor>: place, direction and publishing', () => {
         expect(text).toContain('The EXIF place is outside the city, so it cannot be applied.');
         expect(text).toContain('Year from EXIF: 1936');
         expect(text).toContain('Check or confirm the place to publish it.');
-        const fieldset = deepAll(element, 'fieldset')[6] ?? element;
+        const fieldset = deepAll(element, 'fieldset')[7] ?? element;
         deep(deep(fieldset, '.banner hcm-button'), 'button').click();
         for (const button of deepAll(fieldset, 'li hcm-button')) {
             deep(button, 'button').click();

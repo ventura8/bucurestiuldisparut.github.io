@@ -61,6 +61,7 @@ export const ro = {
     'apiError.photo.unreadable': 'Imaginea nu a putut fi citită.',
     'apiError.photo.duplicate': 'Această fotografie a fost deja încărcată.',
     'apiError.photo.notReceived': 'Neprocesată: serverul nu a primit încărcarea, nici a doua oară (lipsește roles/run.invoker).',
+    'apiError.photo.versionNotAllowed': 'O versiune o adaugă un moderator, la o fotografie care nu așteaptă verificarea.',
     'apiError.layers.alreadyLinked': 'Această sursă este deja stratul „{layer}”.',
     'apiError.layers.busy': 'Stratul este procesat acum. Încearcă din nou după ce procesarea se termină.',
     'apiError.layers.foreignTileset': 'Setul de dale aparține contului Mapbox „{owner}”. Poți lega doar seturile contului hărții.',

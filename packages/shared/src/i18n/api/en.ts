@@ -57,6 +57,7 @@ export const en: ApiMessages = {
     'apiError.photo.unreadable': 'The image could not be read.',
     'apiError.photo.duplicate': 'This photo has already been uploaded.',
     'apiError.photo.notReceived': 'Not processed: the server did not receive the upload, even sent twice (no roles/run.invoker).',
+    'apiError.photo.versionNotAllowed': 'A moderator adds a version, to a photo that does not wait for review.',
     'apiError.layers.alreadyLinked': 'This source is already the layer “{layer}”.',
     'apiError.layers.busy': 'The layer is being processed. Try again once the processing ends.',
     'apiError.layers.foreignTileset': 'The tileset belongs to the Mapbox account “{owner}”. Only the map’s own tilesets can be linked.',

@@ -83,6 +83,7 @@ const EXPORTS = {
         'MAX_LINKS',
         'MAX_PHOTOS',
         'PHOTO_LOCATION_SLACK_DEG',
+        'PHOTO_VIEWS',
         'THEME_SCHEMES',
         'citySchema',
         'layerSchema',

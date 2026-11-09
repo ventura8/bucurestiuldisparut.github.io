@@ -6,7 +6,7 @@
  * that is assignable to `ViewerStorePort`, which `packages/engine/src/mount.ts` checks at compile time. The viewer
  * renders `getState()` and calls the actions; it never touches the map or the URL hash itself.
  */
-import type { LngLat, Locale, Manifest, MapView, MessageKey, Overlay } from '@hcm/shared';
+import type { LngLat, Locale, Manifest, MapView, MessageKey, Overlay, PhotoView } from '@hcm/shared';
 import type { MapLabelKind, MapLabels } from '@hcm/shared/map-labels';
 
 import type { CameraOffset } from '../map/mapbox-types.js';
@@ -60,6 +60,8 @@ export interface ViewerState {
     /** M17: the story the `stories` sheet shows; null shows their list. */
     readonly selectedStoryId: string | null;
     readonly lightbox: boolean;
+    /** The photo version the visitor picked; null: each photo's default (improved, else the original). */
+    readonly photoVersion: PhotoView | null;
     readonly sheet: SheetName;
     /** The extra-large Layers pane is minimized to its rail: for the session, never in the hash. */
     readonly layersHidden: boolean;
@@ -104,6 +106,8 @@ export interface ViewerStorePort {
     openPoi(poiId: string | null): void;
     /** M17: opens a story (null: the list of stories); an unknown id shows `error.unknownStory`. */
     openStory(storyId: string | null): void;
+    /** The open photo's version (the URL hash's `pv=`). */
+    setPhotoVersion(view: PhotoView): void;
     setLightbox(open: boolean): void;
     openSheet(sheet: SheetName): void;
     /** Minimizes the extra-large Layers pane to its rail (true) or restores it. */

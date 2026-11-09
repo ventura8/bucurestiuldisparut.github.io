@@ -173,7 +173,7 @@ interface HistoricCityMapController {
 ## URL hash v1
 
 ```text
-#<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&cmp=<id>][&sw=<0..100>][&labels=streets,pois][&photo=<id>][&story=<id>][&lang=ro|en]
+#<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&cmp=<id>][&sw=<0..100>][&labels=streets,pois][&photo=<id>][&pv=original|improved|colorized][&story=<id>][&lang=ro|en]
 ```
 
 | Part | Rule when read |
@@ -186,6 +186,7 @@ interface HistoricCityMapController {
 | `sw` | M4: the divider in percent of the map's width, clamped to `[0, 100]`; 50 when absent, ignored without `cmp`; on a compact window 0 shows the compared side and anything else the main one. Either of `cmp` and `sw` may come first. |
 | `labels` | The basemap's labels that are drawn: `streets`, `pois`, comma-separated, in any order; `labels=` (empty) means none. Absent is the city's default, and the encoder omits a default, so a link from before this parameter opens as it did. An unknown word is ignored (`labels=streets,transit` is `streets`), and a value with nothing but unknown words is ignored as a whole. A kind the city's basemap does not have is dropped and the next write omits it ([Map labels](#map-labels)). |
 | `photo` | The open photo; an id that is not in the manifest shows a toast (scenario V09). |
+| `pv` | The version of the open photo the visitor picked ([Photo versions](#photo-versions), V61): `original`, `improved` or `colorized`; any other word reads as `original`. Written only with `photo=`, and only once the visitor picked one; absent, each photo shows its default. A version the photo does not have shows its default. |
 | `story` | M17: the open story, in its sheet, with the timeline at the stop nearest its first year; an id that is not in the manifest shows a toast (`error.unknownStory`, scenario V50) and opens nothing. The viewer writes it while a story is open, so Share copies a story's own link. With `layers=` in the same hash, the link's layers (and their year) win over the story's year. |
 | `lang` | `ro` or `en`; anything else is ignored. |
 
@@ -276,6 +277,30 @@ Status (2026-11-08): the owner's request ("add zoom in and out buttons to the ma
 
 Code: `packages/ui/src/viewer/viewer-zoom.ts` (the group), `zoomBy` in `packages/engine/src/core/store.ts` (one level within the range), `packages/ui/src/components/icon-button.ts` (`softDisabled`).
 
+## The full-size view
+
+Status (2026-11-09): the owner's request ("add + and - buttons for when viewing a photo full screen"); scenario rows V60, `e2e/specs/viewer/photo-versions.spec.ts`, the tour's journey `photo-versions`. Additive within v1.
+
+- **Zoom in** and **Zoom out** ("Mărește fotografia", "Micșorează fotografia") are tonal 48 px icon buttons between the previous and next arrows. Each multiplies or divides the scale by 1.25 around the photo's centre, as `+` and `-` do (`0` resets; the wheel, a pinch and a drag still work, and a zoomed photo pans by dragging). At the photo's own size (1x) Zoom out and at 4x Zoom in are soft-disabled: `aria-disabled="true"`, the focus kept, a press changes nothing.
+- **Side-loaded**: the view is not in `engine.iife.js` nor `engine.mjs` but in `engine.lightbox.js` beside them (see [Side-loaded parts](#side-loaded-parts)), added the first time a visitor opens a photo full size. If it cannot load (offline, or a file its integrity refuses), the view closes and a toast says the image could not be loaded; the next open tries again.
+
+## Photo versions
+
+Status (2026-11-09): the owner's request ("we will have multiple versions of a photo (original, improved, colorized)"); scenario rows V61, A140. Additive within v1: a manifest without `versions` is read as before.
+
+- A photo has its original (`image`) and, optionally, an **improved** (restored) and a **colorized** version (`photos[].versions`), each with the credit of whoever made it.
+- The viewer shows the improved version when there is one, else the original; the colorized one only when the visitor picks it. With more than one version the detail sheet and the full-size view show a segmented button **Original / Îmbunătățită / Colorizată** (Original / Improved / Colorized) and, under a version that names its maker, "Colorizată de Ana Pop" ("Colorized by Ana Pop"). The pick is kept for the session and in the address (`pv=`), so a shared link opens the same version.
+- Code: `packages/ui/src/viewer/photo-version.ts` (which version shows, the switch), `setPhotoVersion` in `packages/engine/src/core/store.ts`, `photoVersion` in `packages/engine/src/core/state.ts` and `url-sync.ts`; the admin's side: [ADMIN_GUIDE.en.md](ADMIN_GUIDE.en.md).
+
+## Side-loaded parts
+
+The owner's "Load extras on demand" (2026-11-09; DECISIONS-for-review.md §141): what only some visitors use leaves the engine's script for a small script of its own in the same folder, which the engine adds as a `<script>` with its Subresource Integrity when it is first needed. Today one part: `engine.lightbox.js`, the full-size view (about 2.6 KB gzip; `ENGINE_CHUNK_BUDGETS` of `scripts/ci/check_bundle_budget.py`), which took about 1.5 KB out of the IIFE.
+
+- **Where from**: `<engineBase>engine.lightbox.js`, the engine's own folder unless `engineBase` names another, the same rule as the fonts. A page's Content Security Policy that allows the engine's folder in `script-src` allows the part too; nothing else is fetched.
+- **Integrity**: the engine's build writes the part's `sha384-` digest into the engine (`packages/engine/src/lightbox-part.ts`, by `sidePartPlugin` of `scripts/site/src/side-part.ts`), and adds the script with `integrity` and `crossorigin="anonymous"`: a part that does not match the engine it came with is refused. `release.json` lists the part with its integrity like every file of the folder.
+- **One Lit**: the part brings no copy of Lit or of the texts; it reads them from the engine (`packages/ui/src/viewer/lightbox-kit.ts`, handed over as `globalThis.__hcmLightboxKit` just before the script runs). The part's build (`packages/engine/vite.part.config.ts`) makes every import from outside the part a read of that kit, and a unit test checks that the kit names everything the part imports.
+- **Who copies it**: a page that self-hosts the engine copies `engine.lightbox.js` with `engine.iife.js` (the static export does, `functions/build.mjs`); one that loads the engine from jsDelivr gets it from the same release folder.
+
 ## City Manifest v1
 
 The only data the viewer reads: a static JSON file (from the public bucket, or inline in `config.js`). Schema: `manifestSchema` in `packages/shared/src/schemas/manifest.ts`; the Bucharest seed is `seed/bucharest/manifest.static.json`. Every object is strict: an unknown key is an error (which also blocks prototype-pollution keys).
@@ -343,6 +368,7 @@ Common rules:
 | `location` | `{lat, lng}` | within the city bounds plus 0.5° |
 | `bearing?`, `fov?` | number | 0 to 360 and 1 to 180; a photo with a bearing gets a view cone (default field of view 60°) |
 | `image` | `{web, thumb, w, h}` | WebP derivatives (2048 px and 400 px on the long edge), metadata stripped; `w`, `h` of `web` |
+| `versions?` | `{improved?, colorized?}` | each `{web, thumb, w, h, credit?}`: the improved and the colorized version beside the original `image`, made as `image` is; `credit` at most 200 characters ([Photo versions](#photo-versions)) |
 
 ### `photosOverlay` (optional)
 
@@ -433,12 +459,12 @@ A fetch that returns 404 shows `error.manifest.notFound`, a network failure `err
 
 ### Releases on jsDelivr
 
-A release is a tag `vX.Y.Z` of this repository ([releases/README.md](releases/README.md)); the root and every workspace `package.json`, `ENGINE_VERSION` and the release's `release.json` carry its version. jsDelivr's GitHub route serves only what a tag holds, so the release commit carries the built engine in `cdn/engine/`: `engine.iife.js`, `engine.mjs` and its lazy chunks (`compare-<hash>.js`, `firebase-sdk-<hash>.js`, `field-sdk-<hash>.js`), `engine.css`, `fonts/` and `THIRD_PARTY_NOTICES.txt`, each exactly as `npm run build --workspace @hcm/engine` makes it but for the source-map line (the maps are attached to the GitHub Release), and `release.json`. Each tag keeps its own folder; the tree holds one release at a time.
+A release is a tag `vX.Y.Z` of this repository ([releases/README.md](releases/README.md)); the root and every workspace `package.json`, `ENGINE_VERSION` and the release's `release.json` carry its version. jsDelivr's GitHub route serves only what a tag holds, so the release commit carries the built engine in `cdn/engine/`: `engine.iife.js`, `engine.mjs` and its lazy chunks (`compare-<hash>.js`, `firebase-sdk-<hash>.js`, `field-sdk-<hash>.js`), the side-loaded `engine.lightbox.js`, `engine.css`, `fonts/` and `THIRD_PARTY_NOTICES.txt`, each exactly as `npm run build --workspace @hcm/engine` makes it but for the source-map line (the maps are attached to the GitHub Release), and `release.json`. Each tag keeps its own folder; the tree holds one release at a time.
 
 | Use | Address | Integrity |
 | --- | --- | --- |
 | A page that pins the release (the starter kit, and every city that copies it) | `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@vX.Y.Z/cdn/engine/engine.iife.js` and `engine.css` | yes: the values of that release's `release.json`, also in the GitHub Release body |
-| The engine's fonts and chunks | the same folder: `engineBase` defaults to the folder of the engine script | not needed: the IIFE carries the chunks inline, and fonts are not scripts |
+| The engine's fonts and chunks | the same folder: `engineBase` defaults to the folder of the engine script | not needed: the IIFE carries the chunks inline, adds `engine.lightbox.js` with the integrity it was built with, and fonts are not scripts |
 | A page that follows the 1.x line | `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@1/cdn/engine/engine.iife.js` | never: the files change under it with every 1.x release |
 
 - **`release.json`** (`engineReleaseSchema` in `packages/shared/src/schemas/engine-release.ts`): `version`; `repository`; `base`, the pinned folder above; `mapboxGl`, the Mapbox GL JS release the engine is written against with the address and integrity of its script and stylesheet on api.mapbox.com; `files`, every file of the folder (never `release.json` itself) with its size in bytes and its `sha384-` integrity. Its address is `<base>release.json`.

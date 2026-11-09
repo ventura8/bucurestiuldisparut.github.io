@@ -73,6 +73,10 @@ ENGINE_CHUNK_BUDGETS: Mapping[str, int] = {
     "compare": 5,
     # The gamepad (docs/research/viewer-input.md §3), fetched only once a pad connects: 1.6 KB on 2026-11-07.
     "gamepad": 2,
+    # The side-loaded full-size view (the owner's "Load extras on demand", 2026-11-09; docs/ENGINE_API.md -> Side-loaded
+    # parts): `engine.lightbox.js`, one IIFE beside both builds with its own integrity, added the first time a photo opens
+    # full size; it reads Lit and the texts from the engine's kit. 2.6 KB on 2026-11-09 (its zoom buttons and versions in).
+    "engine.lightbox.js": 4,
     # firebase/app and firebase/analytics, fetched only after the visitor's consent: 13.3 KB on 2026-10-24.
     "firebase-sdk": 16,
     # The field chunk (DECISIONS-for-review.md §76): Google's web-vitals (attribution build, 5.4 KB of it) and the event

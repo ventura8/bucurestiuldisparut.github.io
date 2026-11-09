@@ -179,8 +179,23 @@ function photoCommon(photo: PhotoDoc & { readonly image: NonNullable<PhotoDoc['i
         source: photo.sourceUrl === undefined ? undefined : { url: photo.sourceUrl, label: photo.sourceLabel },
         credit: photo.credit,
         links: photo.links ?? [],
-        image: { web: photo.image.web, thumb: photo.image.thumb, w: photo.image.w, h: photo.image.h },
+        image: imageEntry(photo.image),
+        versions: versionEntries(photo),
     };
+}
+
+/** The public part of an image: its two addresses and its size. */
+function imageEntry(image: NonNullable<PhotoDoc['image']>) {
+    return { web: image.web, thumb: image.thumb, w: image.w, h: image.h };
+}
+
+/** The improved and colorized versions, each with its credit (the owner 2026-11-09); absent when the photo has neither. */
+function versionEntries({ versions, versionCredits }: PhotoDoc): unknown {
+    const entries = (['improved', 'colorized'] as const).flatMap((kind) => {
+        const version = versions?.[kind];
+        return version === undefined ? [] : [[kind, { ...imageEntry(version.image), credit: versionCredits?.[kind] }] as const];
+    });
+    return entries.length === 0 ? undefined : Object.fromEntries(entries);
 }
 
 function photoEntry(photo: PhotoDoc & { readonly image: NonNullable<PhotoDoc['image']> }, id: string): unknown {

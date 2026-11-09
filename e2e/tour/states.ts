@@ -10,6 +10,7 @@ import { INPUT_JOURNEY, INPUT_STATES } from './input-states.js';
 import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
 import { MY_LOCATION_STATES } from './my-location-states.js';
 import { ZOOM_JOURNEY, ZOOM_STATES } from './zoom-states.js';
+import { PHOTO_VERSION_JOURNEY, PHOTO_VERSION_STATES } from './photo-version-states.js';
 import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
 import { SETTINGS_STATES } from './settings-states.js';
 import { hasBottomSheets, scrollToEnd, toDetent } from './sheets.js';
@@ -105,6 +106,7 @@ const VIEWER_STATES = {
     ...INPUT_STATES,
     ...MY_LOCATION_STATES,
     ...ZOOM_STATES,
+    ...PHOTO_VERSION_STATES,
     ...SETTINGS_STATES,
     'skip-link': {
         title: 'The first Tab: the skip link shows over the map with a focus ring',
@@ -444,6 +446,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
     },
     INPUT_JOURNEY,
     ZOOM_JOURNEY,
+    PHOTO_VERSION_JOURNEY,
     {
         title: 'Swipe compare: the divider at 50 % and at both edges, from the keyboard; the toggle of a compact window; the chooser',
         id: 'compare',

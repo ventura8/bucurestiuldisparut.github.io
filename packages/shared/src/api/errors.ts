@@ -115,6 +115,7 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.photo.unreadable': spec('invalid-argument'),
     'apiError.photo.duplicate': spec('already-exists'),
     'apiError.photo.notReceived': spec('failed-precondition'),
+    'apiError.photo.versionNotAllowed': spec('permission-denied'),
     'apiError.layers.alreadyLinked': spec('already-exists'),
     'apiError.layers.busy': spec('failed-precondition'),
     'apiError.layers.foreignTileset': spec('permission-denied'),

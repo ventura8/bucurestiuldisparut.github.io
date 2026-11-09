@@ -13,7 +13,7 @@ import type { BulkReport } from './bulk.js';
 import type { DraftConflict, PhotoEditable, PhotoValue } from './draft.js';
 import type { MapStatus } from './map.js';
 import { NO_SEARCH, type PhotoFilter, type PhotoRow, type PhotoSearch, type PublishBlock } from './model.js';
-import type { ReplaceState } from './replace.js';
+import type { PhotoVersionKind, ReplaceState } from './replace.js';
 import type { StickyFields } from './session.js';
 import type { UploadItem } from './upload-queue.js';
 
@@ -61,6 +61,8 @@ export interface PhotoEditorState {
     /** Set direction: the next click on the map is what the camera looked at. */
     readonly picking: boolean;
     readonly replace: ReplaceState | null;
+    /** The improved and colorized versions' uploads (A140), as `replace` is the image's. */
+    readonly versionUploads: Readonly<Record<PhotoVersionKind, ReplaceState | null>>;
 }
 
 /** The confirmation before a delete (§9.5): the photos and, for one, its title. */

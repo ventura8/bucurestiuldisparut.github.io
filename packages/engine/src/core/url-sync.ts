@@ -72,13 +72,16 @@ function withHashLayers(state: ViewerState, layers: readonly string[] | undefine
     return { ...state, overlays, year: yearOfLayers(state.manifest.layers, layers) };
 }
 
-function withHashPhoto(state: ViewerState, photo: string | undefined): AppliedHash {
+function withHashPhoto(state: ViewerState, { photo, photoVersion }: DecodedHash): AppliedHash {
     if (photo === undefined) {
         return { state, unknownPhoto: null };
     }
     const known = state.manifest?.photos.some((candidate) => candidate.id === photo) === true;
     return known
-        ? { state: { ...state, selectedPhotoId: photo, selectedPoiId: null, sheet: 'photo' }, unknownPhoto: null }
+        ? {
+              state: { ...state, selectedPhotoId: photo, selectedPoiId: null, sheet: 'photo', photoVersion: photoVersion ?? null },
+              unknownPhoto: null,
+          }
         : { state, unknownPhoto: photo };
 }
 
@@ -109,7 +112,7 @@ export function applyDecodedHash(state: ViewerState, hash: DecodedHash): Applied
     const withLayers = withHashMapLabels(withHashCompare(withHashLayers(withView, hash.layers), hash.compare), hash.labels);
     const overlays = withHashOpacity(withLayers.overlays, hash);
     const withLang = hash.lang === undefined ? withLayers : { ...withLayers, locale: hash.lang };
-    return withHashStory(withHashPhoto(overlays === withLang.overlays ? withLang : { ...withLang, overlays }, hash.photo), hash);
+    return withHashStory(withHashPhoto(overlays === withLang.overlays ? withLang : { ...withLang, overlays }, hash), hash);
 }
 
 function sameIds(a: readonly string[], b: readonly string[]): boolean {
@@ -133,10 +136,18 @@ export function hashStateOf(state: ViewerState, defaultLocale: Locale): HashStat
         ...(overlayOpacity === undefined ? {} : { overlayOpacity }),
         ...(state.compare === null ? {} : { compare: { layer: state.compare.layerId, position: state.compare.position } }),
         ...hashMapLabels(state.mapLabels),
-        ...(state.selectedPhotoId === null ? {} : { photo: state.selectedPhotoId }),
+        ...photoOf(state),
         ...storyOf(state),
         ...(state.locale === defaultLocale ? {} : { lang: state.locale }),
     };
+}
+
+/** `photo=` while a photo is open, and `pv=` with it once the visitor picked a version. */
+function photoOf({ selectedPhotoId: photo, photoVersion }: ViewerState): Pick<HashState, 'photo' | 'photoVersion'> {
+    if (photo === null) {
+        return {};
+    }
+    return photoVersion === null ? { photo } : { photo, photoVersion };
 }
 
 /** The view the hash carries: the one it kept while the camera is at the visitor's position (`store.flyTo`), else the camera's. */

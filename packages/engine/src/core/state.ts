@@ -14,6 +14,7 @@ import {
     type MapView,
     type MessageKey,
     type Overlay,
+    type PhotoView,
     type Story,
 } from '@hcm/shared';
 import type { WindowClass } from '@hcm/ui';
@@ -84,6 +85,8 @@ export interface ViewerState {
     /** M17: the story the `stories` sheet shows; null shows their list. */
     readonly selectedStoryId: string | null;
     readonly lightbox: boolean;
+    /** The photo version the visitor picked (`pv=`); null: each photo's default (improved, else the original). */
+    readonly photoVersion: PhotoView | null;
     readonly sheet: SheetName;
     /** The extra-large Layers pane is minimized to its rail (V03): for the session, never in the hash. */
     readonly layersHidden: boolean;
@@ -121,6 +124,7 @@ export function initialState(locale: Locale, theme: ThemeMode, consent: ConsentS
         selectedPoiId: null,
         selectedStoryId: null,
         lightbox: false,
+        photoVersion: null,
         sheet: 'none',
         layersHidden: false,
         windowClass: 'compact',

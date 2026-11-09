@@ -3179,3 +3179,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the M20 merge registered the series' steps in `contract.py` but not its params in `model.py`'s `_PARAMS`, which the runner checks first; the steps' own tests built their contexts directly and never went through `params_of`.
     - Fix and pin: `ArchiveSeriesParams` in `pipeline/src/hcm_pipeline/model.py`, with a happy and two bad rows in `tests/unit/test_model.py`.
     - **A new job type is three registrations (the steps, the params, the server's job writer): test it once through the runner's own entry, not only step by step.**
+541. **A part's build that was meant to share the engine's Lit bundled its own Lit and zod: 44 KB instead of 2.6.**
+    - Seen: 2026-11-09, track/photoversions: the first build of `engine.lightbox.js` measured 146 KB raw, 44 KB gzip.
+    - Cause: the plugin that turns every outside import into the engine's kit ran after Vite's own resolver, which had already resolved `lit` and `@hcm/shared` to files, so its `resolveId` never saw them.
+    - Fix and pin: `sidePartKitPlugin` has `enforce: 'pre'` (`scripts/site/src/side-part.ts`); the part measures 2.6 KB gzip within its row of `ENGINE_CHUNK_BUDGETS`, and `packages/ui/test/viewer/lightbox-loader.test.ts` checks that the kit names everything the part imports.
+    - **A Vite plugin that must decide how an import resolves runs with `enforce: 'pre'`; check a new build's size against what it should carry.**

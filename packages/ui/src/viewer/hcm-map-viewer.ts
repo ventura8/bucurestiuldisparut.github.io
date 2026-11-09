@@ -318,6 +318,20 @@ export class HcmMapViewer extends LitElement {
         }
         this.#trackOpener('sheet', previous.sheet !== 'none', state.sheet !== 'none');
         this.#trackOpener('lightbox', previous.lightbox, state.lightbox);
+        this.#loadLightbox(previous.lightbox, state.lightbox);
+    }
+
+    /** The full-size view is side-loaded the first time it opens (`lightbox-loader.ts`); if it cannot load, it closes and says so. */
+    #loadLightbox(wasOpen: boolean, open: boolean): void {
+        if (wasOpen || !open) {
+            return;
+        }
+        this.services.loadLightbox?.().catch(() => {
+            this.#act(null, (store) => {
+                store.setLightbox(false);
+                store.showToast('error.photoImage');
+            });
+        });
     }
 
     #applyTheme(state: ViewerState | null): void {

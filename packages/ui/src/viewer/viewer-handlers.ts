@@ -48,7 +48,10 @@ function inputHandlers(on: On): Pick<ViewerHandlers, 'onMapLabel' | 'onLayersMin
 }
 
 /** A photo to open, to show on the map (V51) or full size, and its thumbnail on screen. */
-type PhotoHandlers = Pick<ViewerHandlers, 'onPhotoSelect' | 'onPhotoLocate' | 'onLightboxOpen' | 'onPhotoShown' | 'onLightboxClose'>;
+type PhotoHandlers = Pick<
+    ViewerHandlers,
+    'onPhotoSelect' | 'onPhotoLocate' | 'onLightboxOpen' | 'onPhotoShown' | 'onPhotoVersion' | 'onLightboxClose'
+>;
 
 function photoHandlers(on: On): PhotoHandlers {
     return {
@@ -63,6 +66,9 @@ function photoHandlers(on: On): PhotoHandlers {
         }),
         onPhotoShown: on((store, event) => {
             store.photoShown?.(event.detail.ok);
+        }),
+        onPhotoVersion: on((store, event) => {
+            store.setPhotoVersion(event.detail.view);
         }),
         onLightboxClose: on((store) => {
             store.setLightbox(false);
