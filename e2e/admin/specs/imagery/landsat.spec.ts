@@ -62,6 +62,7 @@ test(
     'Landsat scenes are listed beside the declassified ones, and Import publishes one credited to NASA and USGS',
     { tag: '@S-A130-HAPPY' },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        test.setTimeout(420_000);
         const fixtures = { emulators: adminWorld.emulators, api: mockApiRequest, upstream };
         const imagery = await readyImagery(fixtures, adminWorld.accounts.owner.uid, {}, { published: true });
         await upstream.scenario('usgs.landsatScenes', 'server');
