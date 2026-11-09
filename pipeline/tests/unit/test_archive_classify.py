@@ -81,7 +81,8 @@ def test_happy_path_the_sheet_grid_its_edition_and_its_odd_names_are_found() -> 
     assert (base.title, len(base.files), base.scale, base.year) == ("Bucuresti actual 1 500", 3 * 12 + 2, 500, None)
     assert base.cells["Harti/Bucuresti actual 500 2000/Bucuresti actual 1_500/17/17A'3.tif"] == "17,0,3"
     assert base.cells["Harti/Bucuresti actual 500 2000/Bucuresti actual 1_500/17/17A1 bis.tif"] == "17,-1,1?"
-    assert base.cells["Harti/Bucuresti actual 500 2000/Bucuresti actual 1_500/17/17xx.tif"] == "0,0,0?"
+    # A whole cell with words after it (no quarter) is read as its cell and listed as odd.
+    assert base.cells["Harti/Bucuresti actual 500 2000/Bucuresti actual 1_500/17/17xx.tif"] == "17,-22,0?"
     assert (edition.edition, edition.year, len(edition.files)) == ("1962", 1962, 24)
     assert (lone.edition, len(lone.files)) == ("1971", 1)
 
@@ -153,17 +154,31 @@ def test_happy_path_the_owners_sidecar_states_what_detection_cannot() -> None:
             {
                 "series": [
                     {
+                        "path": "Harti",
+                        "sourceLabel": "Idei Urbane \u2013 DocuBucurești",
+                        "sourceUrl": "https://ideiurbane.ro/docubucuresti-planuri-harti-si-alte-documente/",
+                    },
+                    {
+                        "path": "Harti/Bucuresti actual 500 2000",
+                        "licence": "permission",
+                        "state": "clear",
+                        "confirmedBy": "Idei Urbane \u2013 DocuBucurești (the owner, 2026-11-09)",
+                        "originalLabel": "UAUIM \u201eIon Mincu\u201d",
+                        "originalProbable": True,
+                    },
+                    {
                         "path": "Harti/Bucuresti actual 500 2000/Bucuresti actual 1_500",
                         "title": "Planul topografic 1:500",
                         "year": 1977,
                         "yearLabel": "1961\u20131977",
-                        "licence": "permission",
-                        "state": "clear",
-                        "sourceLabel": "Idei Urbane \u2013 DocuBucurești",
-                        "sourceUrl": "https://ideiurbane.ro/docubucuresti-planuri-harti-si-alte-documente/",
-                        "confirmedBy": "Idei Urbane \u2013 DocuBucurești (the owner, 2026-11-09)",
                         "maxzoom": 19,
                     },
+                    {
+                        "path": "Harti/harta București 1939.jpg",
+                        "originalLabel": "muzeuldefotografie.ro",
+                        "originalUrl": "https://muzeuldefotografie.ro/",
+                    },
+                    {"path": "Harti/b.jpg", "originalProbable": False},
                     {"path": "Harti/bucuresti 1847.jpg", "skip": "do-not-publish"},
                     {"path": "../x", "title": "refused"},
                     {"path": "Harti/a.jpg", "colour": "red"},
@@ -182,12 +197,23 @@ def test_happy_path_the_owners_sidecar_states_what_detection_cannot() -> None:
         "sourceLabel": "Idei Urbane \u2013 DocuBucurești",
         "sourceUrl": "https://ideiurbane.ro/docubucuresti-planuri-harti-si-alte-documente/",
         "confirmedBy": "Idei Urbane \u2013 DocuBucurești (the owner, 2026-11-09)",
+        "original": {"label": "UAUIM \u201eIon Mincu\u201d", "probable": True},
+    }
+    # A public-domain map keeps the archive's credit from the root entry, and its own original.
+    assert found["harta București 1939"]["rights"] == {
+        "licence": "PD",
+        "state": "needs-confirmation",
+        "year": "1939",
+        "note": rights.AUTHOR_NOTE,
+        "sourceLabel": "Idei Urbane \u2013 DocuBucurești",
+        "sourceUrl": "https://ideiurbane.ro/docubucuresti-planuri-harti-si-alte-documente/",
+        "original": {"label": "muzeuldefotografie.ro", "url": "https://muzeuldefotografie.ro/"},
     }
     estimate = plan["estimate"]
     assert isinstance(estimate, dict)
     assert estimate["maxzoom"] <= 19
     assert (found["bucuresti 1847"]["action"], found["bucuresti 1847"]["reason"]) == ("skip", "do-not-publish")
-    assert declared.refused == 2
+    assert declared.refused == 3
 
 
 @pytest.mark.parametrize("text", ["not json", "[]", '{"series": 3}'])

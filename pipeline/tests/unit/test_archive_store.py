@@ -168,6 +168,16 @@ def test_bad_path_an_unsafe_name_or_a_body_longer_than_it_says_is_refused(tmp_pa
     assert not (tmp_path / "work" / "import" / "out.jpg").exists()
 
 
+def test_bad_path_an_upload_cut_off_mid_file_is_removed_never_kept(tmp_path: Path) -> None:
+    """Scenarios: S-P20-BAD-UPLOAD-CUT"""
+    store = ArchiveStore(tmp_path / "work", fake_probe)
+    archive_id = store.create()
+
+    with pytest.raises(IntakeError, match="cut off"):
+        store.receive(archive_id, "Harti/a.jpg", [b"half"], 8)
+    assert not (store.files(archive_id) / "Harti" / "a.jpg").exists()
+
+
 @pytest.mark.parametrize("archive_id", ["../x", "ar-XYZ", "ar-0123", "w-0123456789abcdef"])
 def test_bad_path_an_archive_id_that_is_not_one_names_no_folder(tmp_path: Path, archive_id: str) -> None:
     store = ArchiveStore(tmp_path / "work", fake_probe)

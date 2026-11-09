@@ -3031,3 +3031,13 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `PIPELINE_TYPES` in `packages/admin/src/worker/feed.ts` is a hand-kept list; M20's core added the job type to the shared contracts only.
     - Fix and pin: `archive-series` added; `packages/admin/test/worker/feed.test.ts` reads an archive series' place and its `daily` wait.
     - **A new job type the pipeline runs joins every hand-kept list of them in the same change: search for an existing type's name (`'layer-tiles'`).**
+513. **The owner's sidecar applied only its deepest entry, so 4,545 sheets lost their folder's rights and credit.**
+    - Seen: 2026-11-09, the review of track/archive: every IPB 1:500 sheet matched `Bucuresti actual 1_500` (year and zoom only), so the parent folder's permission and Idei Urbane credit never reached it; the report said `unknown`, `needs-confirmation`, no source.
+    - Cause: `Sidecar.entry_for` took the longest matching path, like a router, while the owner writes the sidecar like a folder tree: rights on the folder, a year on the sub-folder.
+    - Fix and pin: every matching entry merges from the root down, a deeper key overriding (`archive/sidecar.py`); `test_happy_path_the_owners_sidecar_states_what_detection_cannot` reads a root credit, a folder's rights and a sub-folder's year on one sheet (S-P20-HAPPY-REPORT).
+    - **Declarations keyed by folder inherit down the tree; test a key set on a parent and read on a grandchild.**
+514. **The import trusted the rights the browser sent, so "confirm the rights" was enforced only by the page.**
+    - Seen: 2026-11-09, the review of track/archive: `imagery.archiveImport` stored `choice.rights` as sent; `{licence: 'PD', state: 'clear'}` with no `confirmedBy` passed, and the layer could then publish itself.
+    - Cause: the callable treated the owner's edits as data to keep, not as a claim to check; `rightsSchema` only requires `confirmedBy` for a permission.
+    - Fix and pin: the server starts from the stored report's rights; rights sent with a series are a confirmation, accepted only from the city's owner with `confirmedBy`, and only their licence, state and words are taken (`functions/src/imagery/archive-import.ts`; S-A121-BAD-RIGHTS-FORGED).
+    - **Anything that lets content publish is derived on the server; what the browser sends is a request to change it, checked by role.**

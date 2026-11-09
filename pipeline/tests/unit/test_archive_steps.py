@@ -18,7 +18,7 @@ from hcm_pipeline.jobs import Done, JobContext, RunFlags, StepFailedError, StepR
 from hcm_pipeline.log import get_logger
 from hcm_pipeline.model import Job
 from hcm_pipeline.raster import gdal
-from hcm_pipeline.steps.export import COG_OPTIONS, LINEART_COG_OPTIONS, Warped, cog_options, write_cog
+from hcm_pipeline.steps.export import COG_OPTIONS, LINEART_COG_OPTIONS, Warped, cog_options, uploads_rasters, write_cog
 from hcm_pipeline.steps.gather import SHEETS, GatherStep
 from hcm_pipeline.steps.place import NO_PATH_NOTE, PlaceStep
 from hcm_pipeline.steps.pyramid import series_encoding
@@ -194,6 +194,16 @@ def test_happy_path_a_line_art_series_cog_is_lossless_and_every_other_cog_jpeg(w
     assert cog_options(grey) == cog_options(other) == COG_OPTIONS
     made = gdal.Open(str(write_cog(Warped.of(warped), tmp_path / "cog.tif", LINEART_COG_OPTIONS)))
     assert made.GetMetadataItem("COMPRESSION", "IMAGE_STRUCTURE") == "DEFLATE"
+
+
+def test_bad_path_an_archive_series_full_resolution_rasters_never_leave_the_computer(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P20-BAD-RASTERS-STAY-LOCAL"""
+    series = context(world, tmp_path, {**SERIES_PARAMS, "archiveId": "a", "seriesId": "s"}, None).job
+    mapbox_city = {"imagery": {"publishThroughMapbox": True}}
+
+    assert not uploads_rasters(mapbox_city, series)
+    assert uploads_rasters(mapbox_city, replace(series, type="usgs-import"))
+    assert not uploads_rasters({}, replace(series, type="usgs-import"))
 
 
 def test_bad_path_line_art_without_a_tiff_driver_says_so(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

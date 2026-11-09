@@ -24,6 +24,12 @@ from hcm_pipeline.archive.grammar import Cell
         ("x/1_2000/9-10/9-10v'w'.tif", Cell("block", 9, 19, 0, 2)),
         ("x/1_2000/1'-0/1'-0AA'.TIF", Cell("block", -1, -1, 0, 2)),
         ("x/1_2000/27-28/27-28 CB-1977.tif", Cell("block", 27, -3, 0, 2, 1977)),
+        ("x/1_2000/23-24/23-24i-h.tif", Cell("block", 23, -9, 0, 2)),
+        # A prime spelled as a word; a whole cell with no quarter is read, and listed as odd.
+        ("x/1_500/13/13Aprim1.tif", Cell("quarter", 13, 0, 1)),
+        ("x/1_500/2/2C.tif", Cell("quarter", 2, -3, 0, 1, None, True)),
+        ("x/1_500/31/31A-MIC3.TIF", Cell("quarter", 31, -1, 3, 1, None, True)),
+        ("x/1_500/3'/3'S'.tif", Cell("quarter", -3, 16, 0, 1, None, True)),
         # The cadastral plan: the row in the folder, A1 for A'; a street name after the letter is odd.
         ("x/cadastral/Seria 11/C1.tif", Cell("folder-row", 11, 2)),
         ("x/cadastral/Seria 11/E pta matache.tif", Cell("folder-row", 11, -5, odd=True)),
@@ -48,6 +54,13 @@ def test_happy_path_a_grammar_reads_where_a_sheet_lies(path: str, expected: Cell
         "x/1871-Maior-D-Pappasoglu.jpg",
         "x/12.jpg",
         "x/Bucuresti 1770.jpg",
+        # A block whose columns or rows are not neighbours is never put on a wrong cell.
+        "x/1_2000/19-20/19-20z'a.tif",
+        "x/1_2000/11-12/11-12z'a''.tif",
+        "x/1_2000/9-10/9-10azmic.tif",
+        "x/1_2000/9-12/9-12cb.tif",
+        # A file with no extension is no sheet's name.
+        "x/1_500/25/25-26",
     ],
 )
 def test_bad_path_a_name_no_grammar_reads_is_left_to_the_other_detectors(path: str) -> None:

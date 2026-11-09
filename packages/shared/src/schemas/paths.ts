@@ -183,6 +183,8 @@ export const FIRESTORE_PATHS = {
     opsDispatch: 'ops/dispatch',
     /** M6: the self-test's events probe, answered by `ops.onProbe` (`docs/research/M6-interfaces.md` §3.2). */
     opsProbe: 'ops/probe',
+    /** M20: the turnstile of the jobs counted against today's shares (`opsDailyDocSchema`). */
+    opsDaily: 'ops/daily',
     /** M3: a city's last USGS harvest attempt (CR-M3-47). */
     harvestState: (cityId: string) => `ops/harvest-${segment(cityId, isCityId)}`,
     manifestStates: 'manifests',

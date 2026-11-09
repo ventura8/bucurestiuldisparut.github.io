@@ -66,6 +66,8 @@ interface WorkerJob {
     readonly progress: number | null;
     /** Finding 68: waited `WORKER_WAIT_MINUTES` for a computer that never came. */
     readonly overdue: boolean;
+    /** M20: its files are only on the computer (an archive's series): never offered the cloud. */
+    readonly localOnly?: boolean;
 }
 
 export interface WorkerState {
@@ -142,8 +144,9 @@ function jobOf(doc: Stored<JobDoc> | null): WorkerJob | null {
 }
 
 /** Finding 68: how far a running job got, and whether no computer came for it. */
-function runOf(job: JobDoc): Pick<WorkerJob, 'step' | 'progress' | 'overdue'> {
-    return { step: job.step ?? null, progress: job.progress ?? null, overdue: job.workerOverdueAt !== undefined };
+function runOf(job: JobDoc): Pick<WorkerJob, 'step' | 'progress' | 'overdue' | 'localOnly'> {
+    const run = { step: job.step ?? null, progress: job.progress ?? null, overdue: job.workerOverdueAt !== undefined };
+    return job.localOnly === true ? { ...run, localOnly: true } : run;
 }
 
 /** The pipeline image's digest `setup.status` names, or null. */

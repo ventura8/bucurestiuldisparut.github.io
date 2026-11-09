@@ -33,6 +33,7 @@ export const M20_EXPORTS = [
     'layerRightsOf',
     'layerRightsSchema',
     'mapThresholdM',
+    'opsDailyDocSchema',
     'rightsAllowPublish',
     'rightsSchema',
     'workerArchiveReportRequestSchema',

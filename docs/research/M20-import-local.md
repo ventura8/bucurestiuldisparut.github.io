@@ -611,3 +611,19 @@ What landed (§8, §9, §5's settings; behaviours A121 and V52):
 The admin-input budget: from the Upload view, Choose (1), the zip on the worker's page (2), Import (3); the report opens by itself when the worker's report arrives (S-A121-HAPPY-BUDGET). Scenarios `S-A121-*`, `S-V52-*`, `S-P20-HAPPY-SIDECAR-FOLDER`; tour states `archive.*` (`e2e/admin/specs/imagery/archive-states.ts`).
 
 **Not built here:** the sheet outlines and per-sheet residuals over the map, Exclude sheet, the checkerboard for a series (the version's page shows its own-tiles preview as for any version), a rights confirmation after Import (Approve refuses until then; a re-scan imports again), Home's *What needs you* rows for series, OCR prefill and contact sheets in the report.
+
+## 17. As built: the review's fixes (track/archive, 2026-11-09)
+
+DECISIONS §128; lessons 513 and 514.
+
+| What | Where | Behaviour |
+| --- | --- | --- |
+| Sidecar inheritance | `pipeline/src/hcm_pipeline/archive/sidecar.py` | Every entry that covers a file applies from the root down, a deeper key overriding. New keys `originalLabel`, `originalUrl`, `originalProbable`. |
+| The original in the credit | `packages/shared/src/schemas/imagery-archive.ts` | `rights.original {label, url?, probable?}`; the credit line ends "original: …" or "original, probably: …". |
+| Rights on the server | `functions/src/imagery/archive-import.ts` | The stored report's rights; a series' sent rights are the owner's confirmation only (owner role, `confirmedBy`), stamped `confirmedAt`. |
+| Year | same, `packages/admin/src/archive/model.ts` | `?` or before 1800 without a typed year: `apiError.imagery.archiveYear`. The 1800 minimum stays (owner, 2026-11-09). |
+| Daily share | `functions/src/imagery/limits.ts` (`dailyRoomIn`, `passTurnstile`), `daily.ts` | Counted inside the import's and each release's transaction behind `ops/daily`. A share of 0: "none starts until it is raised". |
+| Local only | `pipeline/src/hcm_pipeline/steps/export.py` (`uploads_rasters`), `functions/src/imagery/tick-worker.ts`, `packages/ui/src/admin/worker/hcm-run-place.ts` | No COG or Studio upload for an archive series; no cloud offer for a local-only job. |
+| Sheet names | `pipeline/src/hcm_pipeline/archive/grammar.py` | Blocks of neighbours only; `prim`, `-MIC`, whole cells read as odd; no extension, no cell. |
+| Intake | `archive/intake.py`, `archive/zipread.py` | A cut-off file is removed and refused; an entry onto the zip itself is refused. |
+| Estimates | `archive/report.py`, `archive/intake.py` | A grid sheet counts `GRID_CELL_SHARE` (0.5) of its paper; `bytes` is every file's. |

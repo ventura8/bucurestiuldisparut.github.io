@@ -16,9 +16,8 @@ import {
 import type { VerifiedCaller } from '../api/access.js';
 import { ApiError } from '../api/api-error.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
-import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
-import { dailyRoom, refuseWhileGuardRed } from './limits.js';
+import { dailyRoomIn, passTurnstile, refuseWhileGuardRed } from './limits.js';
 import { requireCity, stampOf } from './records.js';
 import { createWork, jobIdFor, reserveLayerIds, type NewWork } from './versions.js';
 
@@ -34,6 +33,9 @@ export type ArchiveImportDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 
 type Request = CallableRequest<'imagery.archiveImport'>;
 type Choice = Request['series'][number];
+
+/** The year label of a series the scan could not date (`report.py`): this year stands in until the owner types one. */
+const UNDATED = '?';
 
 /** A series the owner kept, as the report found it and as they edited it. */
 interface Kept {
@@ -58,32 +60,61 @@ function seriesOf(archive: ArchiveDoc, seriesId: string): ArchiveSeries {
 }
 
 /**
- * The layer's year, or `apiError.invalidRequest` for one a layer cannot show yet (before 1800: the report knows 1770, a layer's
- * year does not; the owner types a year, or the series waits until layers go further back).
+ * The layer's year, or `apiError.imagery.archiveYear` for one a layer cannot show yet: a series the scan could not date (`?`) until
+ * the owner types its year, and one before 1800 (the report knows 1770, a layer's year does not; it waits until layers go further back).
  */
 function yearOf(choice: Choice, series: ArchiveSeries): number {
+    const undated = choice.year === undefined && series.yearLabel === UNDATED;
     const year = choice.year ?? series.year;
-    if (!yearSchema.safeParse(year).success) {
-        throw new ApiError('apiError.invalidRequest');
+    if (undated || !yearSchema.safeParse(year).success) {
+        throw new ApiError('apiError.imagery.archiveYear');
     }
     return year;
 }
 
-/** The owner's word on a series' rights is stamped by the server's clock (`rights.confirmedAt`, §8.6), never the browser's. */
-function stampedRights(rights: Rights, choice: Choice, now: Date): Rights {
-    return choice.rights?.confirmedBy === undefined ? rights : { ...rights, confirmedAt: timestampFromDate(now) };
+/** Who imports, and when: only the city's owner may confirm a series' rights (§8.6). */
+interface Importer {
+    readonly owner: boolean;
+    readonly cityId: string;
+    readonly now: Date;
 }
 
-/** The series as kept: the report's, with the owner's edits. */
-function keptOf(archive: ArchiveDoc, choice: Choice, now: Date): Kept {
+/**
+ * §8.6: the rights are the stored report's, never the browser's. Rights sent with a series are the owner's confirmation: only the
+ * city's owner may send them, with who granted them; the server takes their licence, state and words over the report's and stamps
+ * `confirmedAt` by its own clock.
+ */
+function confirmedRights(series: ArchiveSeries, choice: Choice, importer: Importer): Rights {
+    const sent = choice.rights;
+    if (sent === undefined) {
+        return series.rights;
+    }
+    if (!importer.owner) {
+        throw new ApiError('apiError.city.notOwner', { cityId: importer.cityId });
+    }
+    if (sent.confirmedBy === undefined || series.rights.state === 'do-not-publish') {
+        throw new ApiError('apiError.imagery.rightsUnconfirmed');
+    }
+    const confirmedAt = timestampFromDate(importer.now);
+    return { ...series.rights, licence: sent.licence, state: sent.state, confirmedBy: sent.confirmedBy, confirmedAt };
+}
+
+/** The series as kept: the report's, with the owner's title and year (the rights' printed year follows a year they typed). */
+function keptOf(archive: ArchiveDoc, choice: Choice, importer: Importer): Kept {
     const series = seriesOf(archive, choice.seriesId);
-    const rights = stampedRights(choice.rights ?? series.rights, choice, now);
-    return { series, title: choice.title ?? series.title, year: yearOf(choice, series), rights };
+    const year = yearOf(choice, series);
+    const rights = confirmedRights(series, choice, importer);
+    return {
+        series,
+        title: choice.title ?? series.title,
+        year,
+        rights: choice.year === undefined ? rights : { ...rights, year: String(year) },
+    };
 }
 
 /** The kept series in the archive's order (the reference ladder, then the report's own order). */
-function keptInOrder(archive: ArchiveDoc, request: Request, now: Date): Kept[] {
-    const kept = request.series.filter((choice) => choice.include).map((choice) => keptOf(archive, choice, now));
+function keptInOrder(archive: ArchiveDoc, request: Request, importer: Importer): Kept[] {
+    const kept = request.series.filter((choice) => choice.include).map((choice) => keptOf(archive, choice, importer));
     if (kept.length === 0) {
         throw new ApiError('apiError.invalidRequest');
     }
@@ -124,7 +155,13 @@ interface Planned {
     readonly waiting: boolean;
 }
 
-function planOf(request: Request, kept: readonly Kept[], room: number, start: { readonly uid: string; readonly now: Date }) {
+/** Who imports, by the server's clock. */
+interface Start {
+    readonly uid: string;
+    readonly now: Date;
+}
+
+function planOf(request: Request, kept: readonly Kept[], room: number, start: Start) {
     return (layerIdFor: (label: string) => string): Planned[] =>
         kept.map((each, index) => {
             const waiting = index >= room;
@@ -146,29 +183,34 @@ function planOf(request: Request, kept: readonly Kept[], room: number, start: { 
         });
 }
 
-async function writeAll(
-    transaction: DocumentTransaction,
-    request: Request,
-    planned: readonly Planned[],
-    start: { uid: string; now: Date },
-) {
-    const archive = await requireFresh(transaction, request.cityId, request.archiveId);
-    for (const { kept, work } of planned) {
-        await createWork(transaction, work, {
-            origin: 'archive',
-            source: { kind: 'archive', archiveId: request.archiveId, seriesId: kept.series.seriesId, sheetCount: kept.series.files },
-            label: { ro: kept.title },
-            year: kept.year,
-            rights: kept.rights,
+/**
+ * Everything in one transaction: the archive still unimported, today's room counted behind the turnstile (`ops/daily`, so a
+ * concurrent import or daily release never spends the same room), the jobs and versions, and the archive's record of its jobs.
+ */
+async function writeAll(deps: ArchiveImportDeps, request: Request, kept: readonly Kept[], start: Start): Promise<Planned[]> {
+    return deps.documents.transaction(async (transaction) => {
+        const archive = await requireFresh(transaction, request.cityId, request.archiveId);
+        const room = await dailyRoomIn(transaction, deps.documents, start.now, request.cityId);
+        const planned = planOf(request, kept, room, start)(await reserveLayerIds(deps.documents, request.cityId));
+        for (const { kept: each, work } of planned) {
+            await createWork(transaction, work, {
+                origin: 'archive',
+                source: { kind: 'archive', archiveId: request.archiveId, seriesId: each.series.seriesId, sheetCount: each.series.files },
+                label: { ro: each.title },
+                year: each.year,
+                rights: each.rights,
+            });
+        }
+        const jobs = Object.fromEntries(planned.map(({ kept: each, work }) => [each.series.seriesId, work.jobId]));
+        await transaction.set(FIRESTORE_PATHS.archive(request.cityId, request.archiveId), archiveDocSchema, {
+            ...archive,
+            jobs,
+            importedBy: start.uid,
+            importedAt: timestampFromDate(start.now),
+            ...stampOf(start.uid, start.now),
         });
-    }
-    const jobs = Object.fromEntries(planned.map(({ kept, work }) => [kept.series.seriesId, work.jobId]));
-    await transaction.set(FIRESTORE_PATHS.archive(request.cityId, request.archiveId), archiveDocSchema, {
-        ...archive,
-        jobs,
-        importedBy: start.uid,
-        importedAt: timestampFromDate(start.now),
-        ...stampOf(start.uid, start.now),
+        await passTurnstile(transaction, start.now);
+        return planned;
     });
 }
 
@@ -179,11 +221,10 @@ async function archiveImport(
 ): Promise<CallableResponse<'imagery.archiveImport'>> {
     await requireCity(deps.documents, request.cityId);
     const start = { uid: caller.uid, now: deps.clock.now() };
-    const kept = keptInOrder(await requireFresh(deps.documents, request.cityId, request.archiveId), request, start.now);
+    const importer = { owner: caller.membership?.roleIn(request.cityId) === 'owner', cityId: request.cityId, now: start.now };
+    const kept = keptInOrder(await requireFresh(deps.documents, request.cityId, request.archiveId), request, importer);
     await refuseWhileGuardRed(deps.documents);
-    const room = await dailyRoom(deps.documents, start.now, request.cityId);
-    const planned = planOf(request, kept, room, start)(await reserveLayerIds(deps.documents, request.cityId));
-    await deps.documents.transaction((transaction) => writeAll(transaction, request, planned, start));
+    const planned = await writeAll(deps, request, kept, start);
     const waiting = planned.filter((each) => each.waiting).length;
     deps.log.info('archive imported', {
         uid: caller.uid,

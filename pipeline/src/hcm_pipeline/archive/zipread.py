@@ -111,12 +111,19 @@ def _target(info: zipfile.ZipInfo, root: Path) -> tuple[str, Path] | None:
         return None
 
 
+def _not_itself(target: tuple[str, Path] | None, itself: Path) -> tuple[str, Path] | None:
+    """The entry's target, unless it is the zip being read."""
+    return None if target is None or target[1].resolve() == itself else target
+
+
 def extract(zip_path: Path, root: Path, free_bytes: int, limits: ZipLimits | None = None) -> ZipResult:
-    """Every safe entry of `zip_path` written under `root`; the unsafe ones named in `refused`, directories left out."""
+    """Every safe entry of `zip_path` written under `root`; the unsafe ones named in `refused`, directories left out. An entry that
+    would land on the zip itself (it lies under `root` while it is read) is refused, never written over the zip."""
     written, refused = list[str](), list[str]()
+    itself = zip_path.resolve()
     with zipfile.ZipFile(zip_path) as archive:
         for info in check_directory(archive, limits or ZipLimits(), free_bytes):
-            target = _target(info, root)
+            target = _not_itself(_target(info, root), itself)
             if target is None:
                 refused.extend([] if info.is_dir() else [entry_name(info)])
                 continue

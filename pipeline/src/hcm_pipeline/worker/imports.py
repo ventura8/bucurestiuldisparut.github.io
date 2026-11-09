@@ -132,7 +132,7 @@ class ImportRoutes:
             "name": str(body.get("name") or archive_id)[:200],
             "source": "zip" if body.get("source") == "zip" else "folder",
             "fileCount": sum(made.skipped.values()) + sum(int(str(each["files"])) for each in made.series),
-            "bytes": sum(int(str(each["bytes"])) for each in made.series),
+            "bytes": made.total_bytes,
             "series": made.series,
             "skipped": made.skipped,
             "issues": made.issues,

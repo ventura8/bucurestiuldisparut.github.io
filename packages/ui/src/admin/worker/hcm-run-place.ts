@@ -41,6 +41,11 @@ function placeable(view: WorkerViewPort | null): WorkerJobPort | null {
     return job !== null && PLACEABLE.has(job.status) ? job : null;
 }
 
+/** M20: a local-only job (an archive's series, its files only on the computer) is never offered the cloud. */
+function offered(job: WorkerJobPort, place: RunPlace): boolean {
+    return place === 'local' || job.localOnly !== true;
+}
+
 export class HcmRunPlace extends WorkerElement {
     static override readonly properties = { ...WorkerElement.properties, job: { type: String } };
 
@@ -81,7 +86,7 @@ export class HcmRunPlace extends WorkerElement {
         if (job.waitReason === 'worker') {
             return this.#waiting(view, job);
         }
-        const places: readonly RunPlace[] = (['local', 'cloud'] as const).filter((place) => place !== job.runOn);
+        const places: readonly RunPlace[] = (['local', 'cloud'] as const).filter((place) => place !== job.runOn && offered(job, place));
         return html`<p>${this.t(job.runOn === null ? 'adminWorker.place.auto' : PLACE_TEXT[job.runOn])}</p>
             <div class="actions">${places.map((place) => this.#button(view, place, false, false))}</div>`;
     }
@@ -94,7 +99,15 @@ export class HcmRunPlace extends WorkerElement {
         return html`<p>${this.t('adminWorker.waitWorker')}</p>
             ${overdue}
             <a class="external" href="#/jobs">${this.t('adminWorker.startWorker')}</a>
-            <div class="actions">${this.#button(view, 'cloud', false, job.overdue)}</div>`;
+            ${this.#cloudOffer(view, job)}`;
+    }
+
+    /** Run in Google Cloud (instead, once no computer came), unless the job's files are only on the computer. */
+    #cloudOffer(view: WorkerViewPort, job: WorkerJobPort): TemplateResult {
+        if (!offered(job, 'cloud')) {
+            return html``;
+        }
+        return html`<div class="actions">${this.#button(view, 'cloud', false, job.overdue)}</div>`;
     }
 
     /** Run on my computer, Run in Google Cloud (instead, filled, once no computer came), or Run in Google Cloud anyway. */

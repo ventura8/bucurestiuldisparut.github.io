@@ -89,11 +89,22 @@ class Rights:
     note: str | None = None
     # Who granted the permission or confirmed the licence, in the owner's own words.
     confirmed_by: str | None = None
+    # The original the scan was made from (a library, a museum), its address, and whether that is only likely.
+    original_label: str | None = None
+    original_url: str | None = None
+    original_probable: bool = False
+
+    def _original(self) -> dict[str, object] | None:
+        if self.original_label is None:
+            return None
+        original: dict[str, object] = {"label": self.original_label}
+        original |= {"url": self.original_url} if self.original_url else {}
+        return original | ({"probable": True} if self.original_probable else {})
 
     def as_record(self) -> dict[str, object]:
         record: dict[str, object] = {"licence": self.licence, "state": self.state, "year": self.year}
-        optional = {"author": self.author, "sourceLabel": self.source_label, "sourceUrl": self.source_url}
-        optional |= {"watermark": self.watermark, "note": self.note, "confirmedBy": self.confirmed_by}
+        optional: dict[str, object] = {"author": self.author, "sourceLabel": self.source_label, "sourceUrl": self.source_url}
+        optional |= {"watermark": self.watermark, "note": self.note, "confirmedBy": self.confirmed_by, "original": self._original()}
         return record | {key: value for key, value in optional.items() if value}
 
 

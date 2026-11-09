@@ -19,6 +19,9 @@ from hcm_pipeline.archive.sidecar import Entry, Sidecar
 MIN_YEAR: Final = 1500
 DEFAULT_ZOOM: Final = 17
 DEFAULT_SHEET_M2: Final = 4_000_000.0
+# A grid sheet's scan is its paper, margins, title block and the overlap with its neighbours included: its own cell is about half of
+# it (Bucharest's 1:500 sheets scan to about 296 x 420 m of ground for a 250 m cell). Measured on one city's sheets, not proved general.
+GRID_CELL_SHARE: Final = 0.5
 COPYRIGHT_WORDS: Final = ("copyright", "\u00a9")
 _CLASS_RANK: Final = {"georeferenced": 0, "grid": 1}
 _LIKELIHOOD: Final = {"georeferenced": "likely", "grid": "likely", "atlas": "possible", "pieces": "possible", "single": "possible"}
@@ -100,17 +103,21 @@ def rights_of(series: Series, entry: Entry | None, context: Context) -> Rights:
         source_label=_str(entry, "sourceLabel"),
         source_url=_str(entry, "sourceUrl"),
         watermark=_str(entry, "watermark"),
+        original_label=_str(entry, "originalLabel"),
+        original_url=_str(entry, "originalUrl"),
+        original_probable=entry is not None and entry.fields.get("originalProbable") is True,
     )
     return _guarded(found, stated)
 
 
 def _area(series: Series) -> float:
-    """The ground the series covers: its sheets at their scan resolution, or about 2 km square a sheet when that is not known."""
+    """The ground the series covers: its sheets at their scan resolution (a grid sheet's own cell only, `GRID_CELL_SHARE`), or about
+    2 km square a sheet when that is not known."""
     total = 0.0
     for row in series.files:
         gsd = encoding.ground_m_per_px(row.probe.dpi, series.scale)
         total += row.probe.width * row.probe.height * gsd**2 if gsd else DEFAULT_SHEET_M2
-    return total
+    return total * GRID_CELL_SHARE if series.series_class == "grid" else total
 
 
 def _scan_zoom(series: Series, latitude: float) -> int:
@@ -187,6 +194,8 @@ class Report:
     series: list[dict[str, object]]
     skipped: dict[str, int]
     issues: list[dict[str, str]]
+    # Every file's bytes, the skipped ones included (the archive's size the server shows).
+    total_bytes: int = 0
 
 
 def _overflow(series: Sequence[Series]) -> list[Skip]:

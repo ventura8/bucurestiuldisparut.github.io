@@ -4,7 +4,8 @@
  * project and (M5) fewer than the city's own share (`apiError.imagery.dailyLimit {limit}`), and the layer has no
  * unfinished job (`apiError.layers.busy`). The daily
  * count and the busy check are queries, which a Firestore transaction cannot hold, so two creators racing in the same
- * second may both pass: the cap is a spend guard, not an exact quota.
+ * second may both pass: the cap is a spend guard, not an exact quota. M20's counting transactions (an archive's import, the
+ * daily release) are exact: each passes the turnstile `ops/daily` and counts inside its transaction (`dailyRoomIn`).
  */
 import {
     FINISHED_JOB_STATUSES,
@@ -12,6 +13,7 @@ import {
     JOBS_PER_DAY,
     cityDocSchema,
     jobDocSchema,
+    opsDailyDocSchema,
     timestampFromDate,
     timestampToDate,
     type JobDoc,
@@ -20,8 +22,8 @@ import {
 } from '@hcm/shared';
 
 import { ApiError } from '../api/api-error.js';
-import type { DocumentStore } from '../ports/documents.js';
-import { guardIsRed } from './records.js';
+import type { DocumentStore, DocumentTransaction } from '../ports/documents.js';
+import { guardIsRed, IMAGERY_WRITER, stampOf } from './records.js';
 
 const FINISHED: ReadonlySet<JobStatus> = new Set(FINISHED_JOB_STATUSES);
 /**
@@ -120,12 +122,27 @@ export async function refuseRasterJobs(documents: DocumentStore, now: Date, city
  * M20 (§1.3): how many more counted jobs today's shares leave for `cityId`: the project's `JOBS_PER_DAY` and the city's own
  * share, whichever is smaller (never below zero). An archive's series beyond it wait (`daily`), never refused.
  */
-export async function dailyRoom(documents: DocumentStore, now: Date, cityId: string): Promise<number> {
+async function dailyRoom(documents: DocumentStore, now: Date, cityId: string): Promise<number> {
     const today = await rasterJobsToday(documents, now);
     const project = JOBS_PER_DAY - [...today.values()].reduce((sum, jobs) => sum + jobs, 0);
     const share = await cityDailyJobs(documents, cityId);
     const city = share === undefined ? project : share - (today.get(cityId) ?? 0);
     return Math.max(0, Math.min(project, city));
+}
+
+/**
+ * M20 (§1.3): today's room for `cityId`, counted inside `transaction` once it read the turnstile `ops/daily`. A counting
+ * transaction that commits meanwhile writes the turnstile, so this one retries and counts again: two never spend the same room.
+ * The caller passes the turnstile (`passTurnstile`) with its writes.
+ */
+export async function dailyRoomIn(transaction: DocumentTransaction, documents: DocumentStore, now: Date, cityId: string): Promise<number> {
+    await transaction.get(FIRESTORE_PATHS.opsDaily, opsDailyDocSchema);
+    return dailyRoom(documents, now, cityId);
+}
+
+/** Writes the turnstile `ops/daily`, so a counting transaction that read it before this one commits counts again. */
+export async function passTurnstile(transaction: DocumentTransaction, now: Date): Promise<void> {
+    await transaction.set(FIRESTORE_PATHS.opsDaily, opsDailyDocSchema, stampOf(IMAGERY_WRITER, now));
 }
 
 /** `apiError.imagery.dailyLimit` once `count` reached `limit` (none: no limit of its own, as a city created before M5). */

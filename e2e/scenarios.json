@@ -15370,6 +15370,17 @@
             "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-approval.test.ts."
         },
         {
+            "id": "S-A120-BAD-DAILY-RACE",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "A retried or concurrent import never spends today's room twice",
+            "asserts": "the import and each daily release count today's room inside their transaction behind ops/daily; a retried import counts again (2 start, 1 waits at a share of 2) with distinct layer ids; a share of 0 says none starts until it is raised",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §7, §8, review 2026-11-09). Tests: functions/test/imagery/archive-import.test.ts, packages/ui/test/admin/archive/archive.test.ts."
+        },
+        {
             "id": "S-A121-HAPPY-PANEL",
             "behaviour": "A121",
             "area": "admin",
@@ -15511,6 +15522,39 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/ui/test/admin/settings/imagery-section.test.ts."
+        },
+        {
+            "id": "S-A121-BAD-RIGHTS-FORGED",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "bad",
+            "title": "The browser's rights are not trusted: only the city owner's named confirmation counts",
+            "asserts": "imagery.archiveImport with rights PD/clear and no confirmedBy -> apiError.imagery.rightsUnconfirmed; an editor's confirmation -> apiError.city.notOwner; nothing imported; the owner's confirmation keeps the report's source and note and is stamped confirmedAt by the server",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §7, §8, review 2026-11-09). Tests: functions/test/imagery/archive-import.test.ts."
+        },
+        {
+            "id": "S-A121-BAD-YEAR-UNDATED",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "bad",
+            "title": "An undated series or one before 1800 is refused until its year is typed",
+            "asserts": "a series labelled '?' or dated 1770 with no typed year -> apiError.imagery.archiveYear ('Type this map's year first. Maps from before 1800 cannot be imported yet.'); its first edit starts left out with an empty year; a typed year imports it and becomes the rights' year",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §7, §8, review 2026-11-09). Tests: functions/test/imagery/archive-import.test.ts, packages/admin/test/archive/model.test.ts."
+        },
+        {
+            "id": "S-A121-BAD-LOCAL-ONLY-CLOUD",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "bad",
+            "title": "A local-only series is never offered the cloud",
+            "asserts": "a localOnly job waiting for the computer gets no job.noWorker mark and no Run in Google Cloud button",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §7, §8, review 2026-11-09). Tests: functions/test/imagery/tick-worker.test.ts, packages/ui/test/admin/worker/worker.test.ts."
         },
         {
             "id": "S-P20-HAPPY-INTAKE",
@@ -15907,6 +15951,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M20 (docs/research/M20-import-local.md §8). Tests: pipeline/tests/unit/test_archive_store.py."
+        },
+        {
+            "id": "S-P20-BAD-RASTERS-STAY-LOCAL",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An archive series' full-resolution rasters never leave the computer",
+            "asserts": "export for an archive-series job on a Mapbox city uploads no cog.tif nor studio.tif; other jobs still do",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §7, §8, review 2026-11-09). Tests: pipeline/tests/unit/test_archive_steps.py."
+        },
+        {
+            "id": "S-P20-BAD-UPLOAD-CUT",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An upload cut off mid-file is removed, never scanned",
+            "asserts": "a body shorter than its announced length -> refused ('the file was cut off'), the partial file removed; a zip entry that would overwrite the zip being read is refused",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §7, §8, review 2026-11-09). Tests: pipeline/tests/unit/test_archive_store.py, pipeline/tests/unit/test_archive_intake.py."
         }
     ]
 }

@@ -105,15 +105,21 @@ def test_happy_path_a_folder_is_streamed_scanned_and_reported(served: tuple[Loca
         content=b"a map",
         headers=own(local, **{"content-type": "application/octet-stream", "x-hcm-path": "H%C4%83r%C8%9Bi/1911%20plan.jpg"}),
     )
+    junk = httpx.post(
+        f"{base(local)}/import/{archive_id}/file",
+        content=b"junk",
+        headers=own(local, **{"content-type": "application/octet-stream", "x-hcm-path": "H%C4%83r%C8%9Bi/Thumbs.db"}),
+    )
     started = post(local, f"/import/{archive_id}/scan", {"name": "Hărți", "source": "folder", "latitude": 44.43})
     state = httpx.get(f"{base(local)}/import/{archive_id}").json()
 
-    assert (sent.status_code, sent.json()) == (201, {"path": "Hărți/1911 plan.jpg"})
+    assert (sent.status_code, sent.json(), junk.status_code) == (201, {"path": "Hărți/1911 plan.jpg"}, 201)
     assert started.status_code == 202
     assert routes.states[archive_id] == state
-    assert state == {"state": "reported", "series": 1, "skipped": {}}
+    assert state == {"state": "reported", "series": 1, "skipped": {"not-a-map": 1}}
     body = reports.sent[-1]
-    assert (body["name"], body["source"], body["fileCount"]) == ("Hărți", "folder", 1)
+    # The archive's size counts every file, the skipped ones too.
+    assert (body["name"], body["source"], body["fileCount"], body["bytes"]) == ("Hărți", "folder", 2, 9)
     assert "work" not in json.dumps(body)
 
 

@@ -2,13 +2,14 @@
 
 Data, never code: a list of entries, each naming a relative path (a file, or a folder and everything under it) and what the owner knows of
 it: title, year and its label, author, scale, rights and source (and who confirmed them), the deepest zoom, a low priority, or a
-reason to skip it. Each entry is checked on its own: one with an
-unknown key, a wrong type or an unsafe path is left out and counted (`Sidecar.refused`), never applied in part. The deepest entry that
-covers a file wins.
+reason to skip it, and the original the scan was made from (`originalLabel`, `originalUrl`, `originalProbable` when it is only
+likely). Each entry is checked on its own: one with an unknown key, a wrong type or an unsafe path is left out and counted
+(`Sidecar.refused`), never applied in part. Every entry that covers a file applies, from the root down: a deeper entry's keys override
+its folders' (so a sheet series keeps its folder's rights and credit and adds its own year).
 """
 
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
@@ -18,12 +19,14 @@ from hcm_pipeline.archive.safepath import UnsafePathError, relative_path
 
 FILE_NAME: Final = "hcm-archive.json"
 MAX_BYTES: Final = 1024 * 1024
-TEXTS: Final = ("title", "yearLabel", "author", "sourceLabel", "note", "watermark", "confirmedBy")
+TEXTS: Final = ("title", "yearLabel", "author", "sourceLabel", "note", "watermark", "confirmedBy", "originalLabel")
+URLS: Final = ("sourceUrl", "originalUrl")
+FLAGS: Final = ("originalProbable",)
 _CHOICES: Final = {"licence": RIGHTS_LICENCES, "state": RIGHTS_STATES, "skip": ARCHIVE_SKIP_REASONS, "priority": ("low", "normal")}
 _NUMBERS: Final = ("year", "scale", "maxzoom")
 _HTTPS: Final = "https://"
 _MAX_TEXT: Final = 200
-_KNOWN: Final = frozenset({"path", "sourceUrl", *TEXTS, *_CHOICES, *_NUMBERS})
+_KNOWN: Final = frozenset({"path", *URLS, *FLAGS, *TEXTS, *_CHOICES, *_NUMBERS})
 
 
 @dataclass(frozen=True)
@@ -43,9 +46,15 @@ class Sidecar:
     refused: int = 0
 
     def entry_for(self, path: str) -> Entry | None:
-        """The deepest entry that covers `path`."""
-        found = [entry for entry in self.entries if entry.covers(path)]
-        return max(found, key=lambda entry: len(entry.path), default=None)
+        """Every entry that covers `path`, merged from the root down (a deeper entry's keys override); named by the deepest."""
+        return _merged(sorted((entry for entry in self.entries if entry.covers(path)), key=lambda entry: len(entry.path)))
+
+
+def _merged(found: list[Entry]) -> Entry | None:
+    """The entries' fields, each over the ones before it, under the last one's path; none for no entry."""
+    if not found:
+        return None
+    return Entry(found[-1].path, {key: value for entry in found for key, value in entry.fields.items()})
 
 
 def _text_ok(value: object) -> bool:
@@ -60,11 +69,21 @@ def _url_ok(value: object) -> bool:
     return _text_ok(value) and str(value).startswith(_HTTPS)
 
 
+def _flag_ok(value: object) -> bool:
+    return value is True
+
+
+def _checker(key: str) -> Callable[[object], bool]:
+    if key in _NUMBERS:
+        return _number_ok
+    if key in URLS:
+        return _url_ok
+    return _flag_ok if key in FLAGS else _text_ok
+
+
 def _field_ok(key: str, value: object) -> bool:
     choices = _CHOICES.get(key)
-    if choices is not None:
-        return value in choices
-    return (_number_ok if key in _NUMBERS else _url_ok if key == "sourceUrl" else _text_ok)(value)
+    return value in choices if choices is not None else _checker(key)(value)
 
 
 def _shape_ok(raw: object) -> bool:

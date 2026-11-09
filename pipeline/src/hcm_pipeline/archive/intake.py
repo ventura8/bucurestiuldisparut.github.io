@@ -10,7 +10,7 @@ import json
 import secrets
 import shutil
 from collections.abc import Callable, Iterable, Iterator
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Final
 
@@ -97,7 +97,7 @@ class ArchiveStore:
         context = report.Context(context.latitude, context.current_year, sidecar.read(self.files(archive_id)))
         made = report.report_of(found.series, found.skips, context)
         self.write_record(archive_id, rows, found.series)
-        return made
+        return replace(made, total_bytes=sum(row.size for row in rows))
 
     def write_record(self, archive_id: str, rows: Iterable[FileRow], series: Iterable[Series]) -> None:
         record = {
@@ -130,12 +130,15 @@ def _regular_files(root: Path) -> Iterator[Path]:
 
 
 def _write(target: Path, chunks: Iterable[bytes], length: int) -> None:
-    """The file, never past its announced length."""
+    """The file, exactly its announced length: one larger, or cut off (a dropped connection), is removed and refused."""
     target.parent.mkdir(parents=True, exist_ok=True)
     written = 0
     with target.open("wb") as sink:
         for chunk in chunks:
             written += len(chunk)
             if written > length:
-                raise IntakeError("the file is larger than it says")
+                break
             sink.write(chunk)
+    if written != length:
+        target.unlink()
+        raise IntakeError("the file is larger than it says" if written > length else "the file was cut off")

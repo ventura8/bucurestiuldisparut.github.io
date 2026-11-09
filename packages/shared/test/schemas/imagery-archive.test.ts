@@ -101,6 +101,14 @@ describe('rights (§7)', () => {
         expect(creditLine({ licence: 'PD', state: 'clear', year: '1911', watermark: 'dacoromanica' }, 'Plan')).toBe(
             'Plan, 1911 · PD · scan (dacoromanica)',
         );
+        const library = { label: 'Biblioteca Academiei Române', url: 'https://commons.wikimedia.org/' };
+        expect(creditLine({ ...RIGHTS, original: library }, 'Planul IGA')).toBe(
+            'IGA, Planul IGA, 1895 · PD · scan: Idei Urbane – DocuBucurești · original: Biblioteca Academiei Române',
+        );
+        expect(creditLine({ licence: 'PD', state: 'clear', year: '1911', original: { label: 'UAUIM', probable: true } }, 'Plan')).toBe(
+            'Plan, 1911 · PD · original, probably: UAUIM',
+        );
+        expect(rightsSchema.safeParse({ ...RIGHTS, original: { label: 'UAUIM', probable: false } }).success).toBe(false);
     });
 
     it('badPath_theCreditLineNeverPassesTheAttributionLimit', () => {

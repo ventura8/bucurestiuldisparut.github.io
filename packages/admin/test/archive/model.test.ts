@@ -3,7 +3,7 @@
 import type { ArchiveDoc, CityDoc, LayerVersionDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
-import { choicesOf, importUrlOf, progressOf, shareOf } from '../../src/archive/model.js';
+import { choicesOf, editsOf, importUrlOf, progressOf, shareOf } from '../../src/archive/model.js';
 import type { Stored } from '../../src/content/services.js';
 
 function stored<T>(id: string, data: T): Stored<T> {
@@ -39,6 +39,16 @@ describe('the archive model', () => {
         expect(sent('  ', '1911')).toEqual([{ seriesId: SERIES.seriesId, include: true }]);
         expect(sent('Plan 1911', '1912')).toEqual([{ seriesId: SERIES.seriesId, include: true, year: 1912 }]);
         expect(sent('Plan', '1770')).toBeNull();
+    });
+
+    it('badPath_anUndatedSeriesWaitsForTheOwnersYearAndAlwaysSendsIt', () => {
+        const undated = { ...SERIES, year: 2026, yearLabel: '?' };
+        const archive = { series: [undated] } as unknown as ArchiveDoc;
+
+        expect(editsOf(archive, {})).toEqual({ [SERIES.seriesId]: { include: false, title: 'Plan 1911', year: '', confirmedBy: null } });
+        expect(choicesOf(archive, { [SERIES.seriesId]: { include: true, title: 'Plan 1911', year: '2026', confirmedBy: null } })).toEqual([
+            { seriesId: SERIES.seriesId, include: true, year: 2026 },
+        ]);
     });
 
     it('badPath_versionsOfOtherOriginsAndAReportWithoutAFigureNorACityShowNoError', () => {

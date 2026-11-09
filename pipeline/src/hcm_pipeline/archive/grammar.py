@@ -4,14 +4,18 @@ A small library of name grammars, none tied to one city:
 
 - `quarter`: a city grid's row, column and quarter (`17A'3`): rows numbered from a zero row, a prime north of it; columns lettered
   without J and Q, a prime east of a zero meridian (A' is column 0, A is -1); quarters 1-4 of a cell. An edition year may follow
-  (`17A1_62`), and words such as `bis` or `mic` mark an odd sheet the report lists.
-- `block`: two rows and two columns of the same grid in one sheet (`29-30cb`, `9-10v'w'`, `1'-0AA'`).
+  (`17A1_62`), and words such as `bis` or `mic` mark an odd sheet the report lists (`31A-MIC3` is quarter 3); so does a whole cell
+  with no quarter (`2C`). A
+  prime spelled as a word (`13Aprim1`) reads as one.
+- `block`: two neighbouring rows and two neighbouring columns of the same grid in one sheet (`29-30cb`, `9-10v'w'`, `1'-0AA'`,
+  `23-24i-h`); a name whose rows or columns are not neighbours (`z'a''`, `9-10azmic`) is read by none.
 - `folder-row`: the row in the folder's name (`Seria 11/`) and the column in the file's (`C`, or `C1` for C'); words after it are odd.
 - `international-1m`: the international 1:1,000,000 scheme and its subdivisions (`L-35-12-A-b`).
 - `row-col`: two numbers (`12-07`, `r12c07`).
 
 A grammar is accepted for a set of sheets by `accepts` (§2.3): at least 80 % of the folder's rasters parse, the cells are one connected
-set, and their pixel sizes agree. What a sheet's cell means on the ground is the grid solve's (§3 b), not this module's.
+set, and their pixel sizes agree. What a sheet's cell means on the ground is the grid solve's (§3 b), not this module's. A file with no
+extension (`25/25-26`) is read by none: its name is not a sheet's.
 """
 
 import re
@@ -26,8 +30,12 @@ GRID_LETTERS: Final = "ABCDEFGHIKLMNOPRSTUVWXYZ"
 MIN_SHEETS: Final = 4
 MIN_SHARE: Final = 0.8
 SIZE_TOLERANCE: Final = 0.1
-_QUARTER: Final = re.compile(r"^(\d{1,2})('*)([A-Z])('*)([1-4])(?:[_-](\d{2,4}))?(?:\s*(.+))?$", re.IGNORECASE)
-_BLOCK: Final = re.compile(r"^(\d{1,2})('*)-(\d{1,2})('*)\s*([A-Z])('*)([A-Z])('*)(?:[_-](\d{2,4}))?(?:\s*(.+))?$", re.IGNORECASE)
+_QUARTER: Final = re.compile(r"^(\d{1,2})('*)([A-Z])('*)([1-4])?(?:[_-](\d{2,4}))?(?:\s*(.+))?$", re.IGNORECASE)
+_BLOCK: Final = re.compile(r"^(\d{1,2})('*)-(\d{1,2})('*)\s*([A-Z])('*)-?([A-Z])('*)(?:[_-](\d{2,4}))?(?:\s*(.+))?$", re.IGNORECASE)
+# A small sheet's mark before its quarter (`31A-MIC3`): the quarter is read, the sheet listed as odd.
+_SMALL: Final = re.compile(r"-?mic(?=[1-4]$)", re.IGNORECASE)
+# A prime spelled as a word after a column letter (`13Aprim1` is 13A'1).
+_PRIME_WORD: Final = re.compile(r"(?<=[A-Z])prim(?=\d|'|$)", re.IGNORECASE)
 _FOLDER_ROW: Final = re.compile(r"^seria\s*(\d{1,2})('*)$", re.IGNORECASE)
 _FOLDER_COL: Final = re.compile(r"^([A-Z])(1)?(?:\s+(.+))?$", re.IGNORECASE)
 _INTERNATIONAL: Final = re.compile(r"^([A-V])-(\d{1,2})(?:-(\d{1,3}))?(?:-([A-D]))?(?:-([a-d]))?$", re.IGNORECASE)
@@ -73,23 +81,35 @@ def edition_year(text: str | None) -> int | None:
 
 
 def parse_quarter(stem: str) -> Cell | None:
-    match = _QUARTER.match(stem)
+    match = _QUARTER.match(_SMALL.sub("", stem))
     if match is None:
         return None
     number, row_primes, letter, col_primes, quarter, edition, extra = match.groups()
     col = column(letter, col_primes)
-    return Cell("quarter", row(number, row_primes), col, int(quarter), 1, edition_year(edition), bool(extra)) if col > NO_COLUMN else None
+    odd = _odd_quarter(stem, quarter, extra)
+    return Cell("quarter", row(number, row_primes), col, int(quarter or 0), 1, edition_year(edition), odd) if col > NO_COLUMN else None
+
+
+def _odd_quarter(stem: str, quarter: str | None, extra: str | None) -> bool:
+    """Words after the name, no quarter (a whole cell) or a small sheet's mark: the report lists the sheet."""
+    return bool(extra) or quarter is None or _SMALL.search(stem) is not None
 
 
 def parse_block(stem: str) -> Cell | None:
     match = _BLOCK.match(stem)
     if match is None:
         return None
-    first, first_primes, _second, _second_primes, west, west_primes, east, east_primes, edition, extra = match.groups()
+    first, first_primes, second, second_primes, west, west_primes, east, east_primes, edition, extra = match.groups()
     cols = sorted([column(west, west_primes), column(east, east_primes)])
-    if cols[0] <= NO_COLUMN:
+    top = row(first, first_primes)
+    if cols[0] <= NO_COLUMN or not _neighbours_of(cols, top, row(second, second_primes)):
         return None
-    return Cell("block", row(first, first_primes), cols[0], 0, 2, edition_year(edition), bool(extra))
+    return Cell("block", top, cols[0], 0, 2, edition_year(edition), bool(extra))
+
+
+def _neighbours_of(cols: Sequence[int], top: int, bottom: int) -> bool:
+    """A block's two columns are side by side and its second row is the one south of its first."""
+    return cols[1] - cols[0] == 1 and bottom - top == 1
 
 
 def parse_folder_row(folder: str, stem: str) -> Cell | None:
@@ -118,7 +138,9 @@ def parse_row_col(stem: str) -> Cell | None:
 def parse(path: str) -> Cell | None:
     """The first grammar that reads the file's name (with its folder's, for `folder-row`), or None."""
     pure = PurePosixPath(path)
-    stem, folder = pure.stem, pure.parent.name
+    if not pure.suffix:
+        return None
+    stem, folder = _PRIME_WORD.sub("'", pure.stem), pure.parent.name
     for reader in (parse_quarter, parse_block, parse_international, parse_row_col):
         cell = reader(stem)
         if cell is not None:

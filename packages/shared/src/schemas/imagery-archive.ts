@@ -11,7 +11,7 @@
  */
 import { z } from 'zod';
 
-import { timestampSchema, uidSchema } from './firestore-common.js';
+import { stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import { DEFAULT_MAP_THRESHOLD_MAX_M } from './imagery-settings.js';
 
 export { DEFAULT_MAP_THRESHOLD_MAX_M, MAP_THRESHOLD_MAX_RANGE } from './imagery-settings.js';
@@ -113,6 +113,10 @@ export const rightsSchema = z
         /** Who granted the permission, or who confirmed the licence: the owner's own words. */
         confirmedBy: plainText(200).optional(),
         confirmedAt: timestampSchema.optional(),
+        /** The original the scan was made from (a library, a museum), its address, and `probable` when that is only likely. */
+        original: z
+            .strictObject({ label: plainText(200), url: httpsUrlSchema.optional(), probable: z.literal(true).optional() })
+            .optional(),
     })
     .refine((rights) => rights.licence !== 'permission' || rights.confirmedBy !== undefined, coded('validation.required', ['confirmedBy']));
 
@@ -303,14 +307,23 @@ function scanPart(rights: Rights): string | undefined {
     return `${scan} (${rights.watermark})`;
 }
 
+/** "original: label" (or "original, probably: label"), or nothing. */
+function originalPart(rights: Rights): string | undefined {
+    const original = rights.original;
+    if (original === undefined) {
+        return undefined;
+    }
+    return `${original.probable === true ? 'original, probably' : 'original'}: ${original.label}`;
+}
+
 /** The parts of the credit line, each skipped when absent. */
 function creditParts(rights: Rights, title: string): string[] {
     const work = [rights.author, title, rights.year].filter((part) => part !== undefined).join(', ');
     const licence = rights.licence === 'unknown' ? undefined : rights.licence;
-    return [work, licence, scanPart(rights)].filter((part) => part !== undefined);
+    return [work, licence, scanPart(rights), originalPart(rights)].filter((part) => part !== undefined);
 }
 
-/** §7: the layer's credit line, "Author, Title, year · licence · scan: source (watermark)", within the 500 characters. */
+/** §7: the layer's credit line, "Author, Title, year · licence · scan: source (watermark) · original: label", within 500 characters. */
 export function creditLine(rights: Rights, title: string): string {
     return creditParts(rights, title).join(' · ').slice(0, 500);
 }
@@ -335,3 +348,10 @@ export function layerRightsOf(rights: Rights): LayerRights | undefined {
         ...(source === undefined ? {} : { source }),
     };
 }
+
+/**
+ * `ops/daily` (M20 §1.3): the counted jobs' turnstile. Every transaction that counts a new raster job against today's shares
+ * (`imagery.archiveImport`, the daily release of `imagery.tick`) reads and writes it, so two of them never both spend the same
+ * room: the later one retries and counts again. Written by the functions only; no client reads it.
+ */
+export const opsDailyDocSchema = z.strictObject({ ...stamp });

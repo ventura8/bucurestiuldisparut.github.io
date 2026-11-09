@@ -57,6 +57,7 @@ export const en: Readonly<Record<AdminArchiveKey, string>> = {
     'adminArchive.yearInvalid': 'Type a year from 1800 to 2100, or leave the series out.',
     'adminArchive.total': "{jobs} series, {size} of tiles, {days} days at the city's daily share",
     'adminArchive.totalNone': 'No series chosen.',
+    'adminArchive.totalNoShare': '{jobs} series, {size} of tiles. The daily share is 0: none starts until it is raised.',
     'adminArchive.import': 'Import',
     'adminArchive.importing': 'Importing…',
     'adminArchive.imported': '{today} series start today, {waiting} wait for the next days.',

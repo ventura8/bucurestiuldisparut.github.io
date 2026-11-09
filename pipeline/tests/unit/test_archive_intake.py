@@ -72,6 +72,19 @@ def test_happy_path_a_zip_is_read_in_place_and_its_unsafe_entries_reported(tmp_p
     assert not (tmp_path / "evil.tif").exists()
 
 
+def test_bad_path_an_entry_that_would_overwrite_the_zip_being_read_is_refused(tmp_path: Path) -> None:
+    """Scenarios: S-P20-BAD-ZIP-SLIP"""
+    root = tmp_path / "x"
+    root.mkdir()
+    source = zipped(root / "harti.zip", {"harti.zip": b"over", "Harti/1.tif": TIFF_HEAD})
+    kept = source.read_bytes()
+
+    result = zipread.extract(source, root, 10**15)
+
+    assert (result.written, result.refused) == (("Harti/1.tif",), ("harti.zip",))
+    assert source.read_bytes() == kept
+
+
 @pytest.mark.parametrize(
     ("entries", "limits", "free"),
     [

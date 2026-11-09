@@ -67,9 +67,12 @@ function yearShown(text: string): boolean {
     return /^\d{4}$/.test(text.trim()) && yearSchema.safeParse(Number(text)).success;
 }
 
-/** The first edit of a series: imported when the scan proposes it and a layer can show its year. */
+/** The year label of a series the scan could not date: this year stands in, and the server refuses it until the owner types one. */
+const UNDATED = '?';
+
+/** The first edit of a series: imported when the scan proposes it and a layer can show its year (an undated one waits for it). */
 function firstEdit(series: ArchiveSeries): SeriesEdit {
-    const year = String(series.year);
+    const year = series.yearLabel === UNDATED ? '' : String(series.year);
     return { include: series.action === 'import' && yearShown(year), title: series.title, year, confirmedBy: null };
 }
 
@@ -86,6 +89,12 @@ function rightsOf(series: ArchiveSeries, edit: SeriesEdit): Rights | undefined {
     return { ...series.rights, licence: 'permission', state: 'clear', confirmedBy: edit.confirmedBy };
 }
 
+/** The year the request sends: one the owner changed, and always one they typed for an undated series. */
+function yearSent(series: ArchiveSeries, edit: SeriesEdit): { year?: number } {
+    const kept = Number(edit.year) === series.year && series.yearLabel !== UNDATED;
+    return kept ? {} : { year: Number(edit.year) };
+}
+
 /** One series as the request sends it: only what the owner changed. */
 function choiceOf(series: ArchiveSeries, edit: SeriesEdit): ImageryArchiveImportRequest['series'][number] {
     const title = edit.title.trim();
@@ -94,7 +103,7 @@ function choiceOf(series: ArchiveSeries, edit: SeriesEdit): ImageryArchiveImport
         seriesId: series.seriesId,
         include: true,
         ...(title !== '' && title !== series.title ? { title } : {}),
-        ...(Number(edit.year) === series.year ? {} : { year: Number(edit.year) }),
+        ...yearSent(series, edit),
         ...(rights === undefined ? {} : { rights }),
     };
 }

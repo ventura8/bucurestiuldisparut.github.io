@@ -20,6 +20,7 @@ import { runOnFunction } from '../../src/imagery/run-on.js';
 import { claimFunction } from '../../src/worker/claim.js';
 import { archiveReportFunction } from '../../src/worker/archive-report.js';
 import { failureOf } from '../admin/world.js';
+import { fakeAdmins } from '../support/fakes.js';
 import { adminCall } from '../publish/fakes.js';
 import { callAs, seedWorker, workerWorld, type WorkerWorld } from '../worker/world.js';
 import { ARCHIVE, CLEAR, UNCONFIRMED, archiveDoc, archiveSeries, readArchive, seedArchive, seriesIdOf } from './archive-world.js';
@@ -179,7 +180,7 @@ describe('imagery.archiveImport', () => {
             }),
         );
         const series = [
-            { seriesId: seriesIdOf(0), include: true, title: 'Planul Borroczyn', year: 1846, rights: { ...CLEAR, year: '1846' } },
+            { seriesId: seriesIdOf(0), include: true, title: 'Planul Borroczyn', year: 1846 },
             { seriesId: seriesIdOf(1), include: true },
         ];
 
@@ -188,7 +189,7 @@ describe('imagery.archiveImport', () => {
         expect(await readVersion(world, response.jobs[0]?.jobId ?? '')).toMatchObject({
             label: { ro: 'Planul Borroczyn' },
             year: 1846,
-            rights: { year: '1846' },
+            rights: { ...CLEAR, year: '1846' },
         });
         expect(response.jobs[0]?.layerId).toBe('planul-borroczyn');
         expect((await readVersion(world, response.jobs[0]?.jobId ?? ''))?.rights?.confirmedAt).toBeUndefined();
@@ -213,6 +214,8 @@ describe('imagery.archiveImport', () => {
         const released = (await jobsOf(world)).filter((job) => job.countedAt?.seconds === at(TOMORROW).seconds);
         expect(released.map((job) => (job.params as ArchiveSeriesParams).order).sort((a, b) => a - b)).toEqual([2, 3]);
         expect(released.every((job) => job.waitReason === 'worker')).toBe(true);
+        // Both counted behind the turnstile, so a concurrent import or release counts again rather than spend the same room.
+        expect(world.deps.documents.peek(FIRESTORE_PATHS.opsDaily)).toMatchObject({ updatedAt: at(TOMORROW) });
     });
 
     it('badPath_aSeriesWaitingForItsDayIsNotClaimedByTheWorker', async () => {
@@ -297,9 +300,67 @@ describe('imagery.archiveImport, the rights', () => {
         expect(version?.rights).toMatchObject({ licence: 'permission', state: 'clear', confirmedBy: 'Idei Urbane – DocuBucurești' });
         expect(version?.rights?.confirmedAt).toBeDefined();
     });
+
+    it('badPath_theBrowsersRightsAreNotTrusted_onlyTheOwnersNamedConfirmation @S-A121-BAD-RIGHTS-FORGED', async () => {
+        const world = await readyWorld();
+        await seedArchive(world, archiveDoc(1, { series: [archiveSeries(0, { rights: UNCONFIRMED })] }));
+        const forged = { ...UNCONFIRMED, licence: 'PD', state: 'clear', sourceLabel: 'Altcineva' };
+        const sent = (rights: unknown, deps: typeof world.deps = world.deps) =>
+            failureOf(
+                archiveImportFunction(() => deps).run(
+                    adminCall({ cityId: CITY, archiveId: ARCHIVE, series: [{ seriesId: seriesIdOf(0), include: true, rights }] }),
+                ),
+            );
+        const editor = { ...world.deps, admins: fakeAdmins(['u-admin'], { projectRole: 'admin', cities: { [CITY]: 'editor' } }) };
+
+        expect(await sent(forged)).toMatchObject({ details: { code: 'apiError.imagery.rightsUnconfirmed' } });
+        expect(await sent({ ...forged, confirmedBy: 'Idei Urbane' }, editor)).toMatchObject({
+            details: { code: 'apiError.city.notOwner' },
+        });
+        expect(await jobsOf(world)).toEqual([]);
+
+        const response = await archiveImportFunction(() => world.deps).run(
+            adminCall({
+                cityId: CITY,
+                archiveId: ARCHIVE,
+                series: [{ seriesId: seriesIdOf(0), include: true, rights: { ...forged, confirmedBy: 'Eu' } }],
+            }),
+        );
+        const version = await readVersion(world, response.jobs[0]?.jobId ?? '');
+        expect(version?.rights).toMatchObject({ licence: 'PD', state: 'clear', confirmedBy: 'Eu', note: UNCONFIRMED.note });
+        expect(version?.rights?.sourceLabel).toBeUndefined();
+    });
+
+    it('badPath_anUndatedSeriesOrOneBefore1800IsRefusedUntilItsYearIsTyped @S-A121-BAD-YEAR-UNDATED', async () => {
+        const world = await readyWorld();
+        const undated = archiveSeries(0, { year: 2026, yearLabel: '?', rights: { ...CLEAR, year: '?' } });
+        await seedArchive(world, archiveDoc(2, { series: [undated, archiveSeries(1, { year: 1770 })] }));
+
+        expect(await failureOf(importAll(world, 1))).toMatchObject({ details: { code: 'apiError.imagery.archiveYear' } });
+        const old = [{ seriesId: seriesIdOf(1), include: true }];
+        expect(
+            await failureOf(archiveImportFunction(() => world.deps).run(adminCall({ cityId: CITY, archiveId: ARCHIVE, series: old }))),
+        ).toMatchObject({ details: { code: 'apiError.imagery.archiveYear' } });
+        const typed = [{ seriesId: seriesIdOf(0), include: true, year: 1912 }];
+        const response = await archiveImportFunction(() => world.deps).run(adminCall({ cityId: CITY, archiveId: ARCHIVE, series: typed }));
+        expect(await readVersion(world, response.jobs[0]?.jobId ?? '')).toMatchObject({ year: 1912, rights: { year: '1912' } });
+    });
 });
 
 describe('the daily release', () => {
+    it('badPath_aRetriedImportCountsTodaysRoomAgain @S-A120-BAD-DAILY-RACE', async () => {
+        const world = await readyWorld();
+        await shareOf(world, 2);
+        await seedArchive(world, archiveDoc(3));
+        world.deps.documents.contend(1);
+
+        const response = await importAll(world, 3);
+
+        expect(response).toMatchObject({ today: 2, waiting: 1 });
+        expect(response.jobs.map((job) => job.layerId)).toEqual([...new Set(response.jobs.map((job) => job.layerId))]);
+        expect((await jobsOf(world)).filter((job) => job.countedAt !== undefined)).toHaveLength(2);
+    });
+
     it('happyPath_aJobThatMovedMeanwhileIsLeftAlone_andAnUnreadableOneGoesLast', async () => {
         const world = await readyWorld();
         const daily = { ...waitingJob(), runOn: 'local' as const, localOnly: true as const, waitReason: 'daily' as const };

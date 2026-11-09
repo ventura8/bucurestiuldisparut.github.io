@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { ArchiveFeedPort, ArchiveHostPort, ArchiveViewPort, SeriesProgressPort } from '../../../src/admin/archive/archive-port.js';
 import { sizeText } from '../../../src/admin/archive/archive-element.js';
 import { defineArchiveElements } from '../../../src/admin/archive/define.js';
-import { stateText } from '../../../src/admin/archive/series-text.js';
+import { stateText, totalText } from '../../../src/admin/archive/series-text.js';
 import { cleanup, fixture } from '../../helpers.js';
 import { deep, deepAll, deepText, updated } from '../shell/fake-app.js';
 
@@ -307,6 +307,10 @@ describe('<hcm-archive-report>', () => {
         const other = await report(confirmed, true);
         expect(deep(other, '[data-rights-confirmed]').textContent).toBe(t('adminArchive.rights.confirmed', { by: 'Idei Urbane' }));
         expect(button(other, '[data-import]').disabled).toBe(true);
+        confirmed.feed.set({ share: 0 });
+        await updated(other);
+        expect(deep(other, '[data-total]').textContent).toBe(totalText('en', SERIES.slice(1, 2), 0));
+        expect(totalText('en', SERIES.slice(1, 2), 0)).not.toContain('days');
     });
 
     it('happyPath_anImportedArchiveShowsEachSeriesWhereItStandsAndOpensItsVersion @S-A121-HAPPY-PROGRESS', async () => {

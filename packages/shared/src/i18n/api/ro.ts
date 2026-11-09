@@ -120,6 +120,7 @@ export const ro = {
     'apiError.imagery.rightsUnconfirmed': 'Confirmă drepturile acestei hărți înainte să fie publicată.',
     'apiError.imagery.archiveMissing': 'Calculatorul nu are fișierele arhivei sau s-au schimbat. Pornește worker-ul unde a fost scanată.',
     'apiError.imagery.archiveImported': 'Arhiva aceasta a fost deja importată.',
+    'apiError.imagery.archiveYear': 'Scrie mai întâi anul hărții. Hărțile de dinainte de 1800 nu pot fi importate încă.',
     'apiError.worker.notHolder': 'Sarcina nu mai este a acestui calculator.',
     'apiError.worker.refused': 'Calculatorul a cerut ceva de care sarcina lui nu are nevoie.',
     'apiError.worker.pairCode': 'Acest cod de asociere nu mai este valabil: copiază din nou comanda din administrare.',

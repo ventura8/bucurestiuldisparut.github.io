@@ -153,6 +153,12 @@ def publishes_through_mapbox(city: Mapping[str, object] | None) -> bool:
     return isinstance(imagery, dict) and imagery.get("publishThroughMapbox") is True
 
 
+def uploads_rasters(city: Mapping[str, object] | None, job: Job) -> bool:
+    """The COG and the Studio file go up for a city on Mapbox's path, never for an archive series (M20 §4): its full-resolution
+    rasters stay on the owner's computer; only its tiles, thumbnail, preview and sheets go up."""
+    return publishes_through_mapbox(city) and job.type != "archive-series"
+
+
 class ExportStep:
     name = "export"
 
@@ -169,7 +175,7 @@ class ExportStep:
     def run(self, ctx: JobContext) -> StepResult:
         warped = gdal_step(ctx, lambda: Warped.of(ctx.stage(ctx.work_file("warped.tif"), "warped.tif")), "read the warped layer")
         city = ctx.read(f"cities/{ctx.city}")
-        mapbox = self._mapbox_files(ctx, warped) if publishes_through_mapbox(city) else MapboxFiles()
+        mapbox = self._mapbox_files(ctx, warped) if uploads_rasters(city, ctx.job) else MapboxFiles()
         preview = gdal_step(ctx, lambda: write_preview(warped, ctx.local("preview.png")), "write the preview")
         preview_info = ctx.publish(preview, ctx.version_file("preview.png"), "image/png")
         publish_align(ctx, ctx.stage(ctx.work_file("warped.tif"), "warped.tif"))

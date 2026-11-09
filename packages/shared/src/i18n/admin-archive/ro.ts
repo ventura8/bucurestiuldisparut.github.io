@@ -57,6 +57,7 @@ export const ro = {
     'adminArchive.yearInvalid': 'Scrie un an între 1800 și 2100, sau nu importa seria.',
     'adminArchive.total': '{jobs} serii, {size} de imagini, {days} zile la porția zilnică a orașului',
     'adminArchive.totalNone': 'Nicio serie aleasă.',
+    'adminArchive.totalNoShare': '{jobs} serii, {size} de imagini. Porția zilnică e 0: nu pornește niciuna până nu o mărești.',
     'adminArchive.import': 'Importă',
     'adminArchive.importing': 'Se importă…',
     'adminArchive.imported': '{today} serii pornesc azi, {waiting} așteaptă zilele următoare.',
