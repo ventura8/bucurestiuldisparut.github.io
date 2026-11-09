@@ -1181,6 +1181,50 @@
             "notes": "Milestone M1. engine-core CR-11: packages/engine/src/map/basemap.ts."
         },
         {
+            "id": "S-V03-HAPPY-MINIMIZE",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The always-docked Layers pane minimizes to a rail and comes back",
+            "asserts": "1920 px: the pane's collapse button (Restrânge straturile / Collapse layers, aria-expanded true, no Close) minimizes it to an 88 px rail whose button (Straturi, aria-expanded false) takes the focus; the map and Mapbox's canvas grow by 272 px; Enter on the rail restores the pane with the focus on its collapse button",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08 (track/settings): \"viewer should be able to minimize the layers panel\". Tests: e2e/specs/viewer/layers-minimize.spec.ts, packages/ui/test/viewer/hcm-layer-panel-minimize.test.ts, the tour's state layers-minimized."
+        },
+        {
+            "id": "S-V03-BAD-MINIMIZE-KEEPS-VALUES",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Minimizing the Layers pane loses nothing and touches neither the hash nor the photo beside it",
+            "asserts": "a lowered opacity and a switched-on layer are the same after minimize and restore; the URL hash is unchanged; the photo open in the trailing pane stays open",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08 (track/settings): the minimized state is the store's (layersHidden) for the session, never the hash's. Tests: e2e/specs/viewer/layers-minimize.spec.ts, packages/ui/test/viewer/hcm-map-viewer-minimize.test.ts."
+        },
+        {
+            "id": "S-V03-BAD-MINIMIZE-SURVIVES-RESIZE",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "bad",
+            "title": "The minimized Layers pane stays minimized when the window leaves the extra-large layout and comes back",
+            "asserts": "1920 px, minimized; at 1280 px there is no leading pane; back at 1920 px the re-created pane is still the 88 px rail (aria-expanded false), its collapse button absent, the URL hash unchanged",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The review of track/settings (2026-11-09): the state lived in the panel element, which the layout re-creates, so it was lost. It is the store's now (layersHidden, setLayersHidden). Tests: e2e/specs/viewer/layers-minimize.spec.ts, packages/ui/test/viewer/hcm-map-viewer-minimize.test.ts, packages/engine/test/core/store-layers-hidden.test.ts."
+        },
+        {
+            "id": "S-V03-HAPPY-COMPACT-CLOSE",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "happy",
+            "title": "On a phone the Layers sheet's close is its minimize: opened again it keeps its values",
+            "asserts": "412 px: a lowered opacity, the sheet closed and opened again from the menu -> the same opacity and switch",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08 (track/settings): a modal sheet covers the map, so it closes rather than minimizes. Tests: e2e/specs/viewer/layers-minimize.spec.ts."
+        },
+        {
             "id": "S-V04-HAPPY",
             "behaviour": "V04",
             "area": "viewer",
@@ -1691,11 +1735,11 @@
             "behaviour": "V11",
             "area": "viewer",
             "path": "happy",
-            "title": "Romanian by default; English persists after reload",
-            "asserts": "RO by default; switch to EN persists after reload; html lang; localized dates",
+            "title": "Romanian by default; English chosen in the menu's Settings persists after reload",
+            "asserts": "RO by default; English chosen in Settings (Setări) persists after reload; html lang; localized dates",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Milestone M1."
+            "notes": "Milestone M1. The owner, 2026-11-08 (track/settings): the language is chosen in the menu's Settings, no longer by a one-tap menu item or in About."
         },
         {
             "id": "S-V11-BAD-UNSUPPORTED-LANG",
@@ -1724,8 +1768,8 @@
             "behaviour": "V11",
             "area": "viewer",
             "path": "bad",
-            "title": "A language switch also relabels the map's own controls",
-            "asserts": "English viewer switched to Romanian in the menu: the map canvas, the Mapbox logo link and the attribution toggle carry their Romanian names; no English-only text is left on the page",
+            "title": "A language switch in Settings also relabels the map's own controls, and the menu has no language item",
+            "asserts": "English viewer switched to Romanian in Settings: the map canvas, the Mapbox logo link and the attribution toggle carry their Romanian names; the menu has no one-tap language item; no English-only text is left on the page",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Since 2026-10-17. The tour's i18n check found Mapbox's own labels ('Map', 'Mapbox homepage', the toggle) in the first language after a switch (docs/research/layout-a11y-findings.md): Mapbox sets them once, so the engine rewrites them through MapPort.setLocale (docs/research/M1-interfaces.md CR-22)."
@@ -1735,11 +1779,22 @@
             "behaviour": "V12",
             "area": "viewer",
             "path": "happy",
-            "title": "System dark theme, manual toggle and seed colour apply",
-            "asserts": "system dark; manual toggle persists; seed colour applied (axe contrast)",
+            "title": "System dark theme, the visitor's choice in Settings and the seed colour apply",
+            "asserts": "system dark; the theme chosen in the menu's Settings persists after reload; seed colour applied (axe contrast)",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V12-BAD-ABOUT-NO-PREFERENCES",
+            "behaviour": "V12",
+            "area": "viewer",
+            "path": "bad",
+            "title": "About holds no language or theme choice",
+            "asserts": "About open: the city, its privacy notice; no radio group and no Language or Theme heading (both are in the menu's Settings)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-08 (track/settings): \"Limba and Tema should not be in the About screen\". Tests: e2e/specs/viewer/language-theme.spec.ts, packages/ui/test/viewer/hcm-about-dialog.test.ts."
         },
         {
             "id": "S-V12-BAD-INVALID-SEED",
@@ -1966,8 +2021,8 @@
             "behaviour": "V15",
             "area": "viewer",
             "path": "bad",
-            "title": "Long Romanian labels in About wrap inside their choice instead of scrolling the dialog sideways",
-            "asserts": "at 320 and 360 px the full-screen About dialog has no horizontal scroll and its theme choice shows no icon beside the labels (only the check mark); at 1440 px no language or theme label wraps",
+            "title": "Long Romanian labels in Settings wrap inside their choice instead of scrolling the dialog sideways",
+            "asserts": "at 320 and 360 px the full-screen Settings dialog has no horizontal scroll and its theme choice shows no icon beside the labels (only the check mark); at 1440 px no language or theme label wraps",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1. Integrator, found in the M1 review screenshots: hcm-segmented-button segments are content-sized and wrap in a narrow container (packages/ui/src/components/segmented-button.ts; unit tests in packages/ui/test/components/segmented-button.test.ts and packages/ui/test/viewer/hcm-about-dialog.test.ts)."

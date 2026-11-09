@@ -19,7 +19,8 @@ import {
 /**
  * Language (behaviour V11) and theme (V12): Romanian unless the URL, the visitor's stored choice or the embed asks for
  * English, `<html lang>` following it; the city's colour theme for light, dark and high contrast, the visitor's choice
- * kept across reloads; an invalid theme leaves the engine's own palette; blocked fonts leave every control named.
+ * kept across reloads; an invalid theme leaves the engine's own palette; blocked fonts leave every control named. The
+ * visitor chooses both in the menu's Settings (Setări), never in About (the owner, 2026-11-08).
  */
 
 const TOKENS = (siteManifestData()['city'] as { theme: { tokens: Record<string, Record<string, string>> } }).theme.tokens;
@@ -27,19 +28,28 @@ const PRIMARY = '--md-sys-color-primary';
 const LONE = 'strandul-opereta-1976';
 const LONE_TITLE_RO = 'Ștrandul Operetă';
 
+/** Opens Settings from the menu and picks the choice named `choice` (a language or a theme). */
+async function chooseSetting(page: Page, lang: 'ro' | 'en', choice: string): Promise<void> {
+    await chooseMenuItem(page, lang, t(lang, 'settings.title'));
+    await expect(page.getByRole('dialog', { name: t(lang, 'settings.title') })).toBeVisible();
+    await viewer(page).locator('hcm-about-dialog').getByRole('radio', { name: choice, exact: true }).click();
+}
+
 /** The colour token the viewer's host resolves now (the theme is adopted on `<hcm-map-viewer>`). */
 async function hostToken(page: Page, name: string): Promise<string> {
     return viewer(page).evaluate((host, token) => getComputedStyle(host).getPropertyValue(token).trim().toLowerCase(), name);
 }
 
-test('Romanian by default; English chosen in the menu persists after a reload', { tag: '@S-V11-HAPPY' }, async ({ page }) => {
+test('Romanian by default; English chosen in Settings persists after a reload', { tag: '@S-V11-HAPPY' }, async ({ page }) => {
     await openViewer(page, { hash: `17/44.42955/26.09560&photo=${LONE}` });
     await expect(page.locator('html')).toHaveAttribute('lang', 'ro');
     await expect(viewer(page).locator('hcm-photo-sheet .supporting')).toHaveText(t('ro', 'photo.year', { year: '1976' }));
 
     await closeModalSheet(page);
-    await chooseMenuItem(page, 'ro', t('ro', 'language.en'));
+    await chooseSetting(page, 'ro', t('ro', 'language.en'));
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    await expect(page.getByRole('dialog', { name: t('en', 'settings.title') })).toBeVisible();
+    await page.keyboard.press('Escape');
     await expect(menuButton(page, 'en')).toBeVisible();
 
     // A fresh load (another document first: the same path with another hash would only change the hash).
@@ -77,9 +87,14 @@ test("A language switch also relabels the map's own controls", { tag: '@S-V11-BA
     const map = viewer(page).locator('.map');
     await expect(map.locator('canvas.mapboxgl-canvas')).toHaveAttribute('aria-label', t('en', 'map.title'));
 
-    await chooseMenuItem(page, 'en', t('en', 'language.ro'));
+    await chooseSetting(page, 'en', t('en', 'language.ro'));
 
     await expect(page.locator('html')).toHaveAttribute('lang', 'ro');
+    // The menu has no one-tap language item any more: Settings holds the choice.
+    await page.keyboard.press('Escape');
+    await menuButton(page, 'ro').click();
+    await expect(page.getByRole('menuitem', { name: t('ro', 'language.en'), exact: true })).toHaveCount(0);
+    await page.keyboard.press('Escape');
     await expect(map.locator('canvas.mapboxgl-canvas')).toHaveAttribute('aria-label', t('ro', 'map.title'));
     await expect(map.locator('a.mapboxgl-ctrl-logo')).toHaveAttribute('aria-label', t('ro', 'map.logo'));
     await expect(map.locator('.mapboxgl-ctrl-attrib-button')).toHaveAttribute('aria-label', t('ro', 'map.toggleAttribution'));
@@ -91,11 +106,7 @@ test('The city theme follows the system, and the visitor choice persists', { tag
     await openViewer(page, { lang });
     await expect.poll(() => hostToken(page, PRIMARY)).toBe(TOKENS['dark']?.[PRIMARY]?.toLowerCase());
 
-    await chooseMenuItem(page, lang, t(lang, 'about.title'));
-    await viewer(page)
-        .locator('hcm-about-dialog')
-        .getByRole('radio', { name: t(lang, 'theme.light') })
-        .click();
+    await chooseSetting(page, lang, t(lang, 'theme.light'));
     await expect.poll(() => hostToken(page, PRIMARY)).toBe(TOKENS['light']?.[PRIMARY]?.toLowerCase());
     const axe = await new AxeBuilder({ page }).withTags(['wcag2aa']).withRules(['color-contrast']).include('hcm-map-viewer').analyze();
     expect(axe.violations.map((violation) => violation.id)).toEqual([]);
@@ -104,6 +115,22 @@ test('The city theme follows the system, and the visitor choice persists', { tag
     await waitForEngineEvent(page, 'hcm-ready');
     await expect.poll(() => hostToken(page, PRIMARY)).toBe(TOKENS['light']?.[PRIMARY]?.toLowerCase());
 });
+
+test(
+    'About holds no language or theme choice: they are in Settings',
+    { tag: '@S-V12-BAD-ABOUT-NO-PREFERENCES' },
+    async ({ page, lang }) => {
+        await openViewer(page, { lang });
+        await chooseMenuItem(page, lang, t(lang, 'about.title'));
+
+        await expect(page.getByRole('dialog', { name: t(lang, 'about.title') })).toBeVisible();
+        const about = viewer(page).locator('hcm-about-dialog');
+        await expect(about.getByRole('heading', { name: t(lang, 'about.privacy') })).toBeVisible();
+        await expect(about.getByRole('radiogroup')).toHaveCount(0);
+        await expect(about.getByRole('heading', { name: t(lang, 'language.label'), exact: true })).toHaveCount(0);
+        await expect(about.getByRole('heading', { name: t(lang, 'theme.label'), exact: true })).toHaveCount(0);
+    },
+);
 
 test(
     'An invalid theme seed is refused and the card keeps the engine palette',

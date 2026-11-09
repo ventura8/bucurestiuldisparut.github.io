@@ -99,7 +99,7 @@ export class HcmStories extends LitElement {
                 min-block-size: 48px;
                 padding: 4px;
                 border: 0;
-                border-radius: var(--md-sys-shape-corner-medium, 12px);
+                border-radius: var(--md-sys-shape-corner-medium);
                 background: none;
                 color: inherit;
                 font: inherit;
@@ -111,9 +111,9 @@ export class HcmStories extends LitElement {
                 display: block;
                 inline-size: 100%;
                 aspect-ratio: 1;
-                border-radius: var(--md-sys-shape-corner-medium, 12px);
+                border-radius: var(--md-sys-shape-corner-medium);
                 object-fit: cover;
-                background: var(--md-sys-color-surface-container-highest, Canvas);
+                background: var(--md-sys-color-surface-container-highest);
             }
 
             figure {
@@ -135,7 +135,7 @@ export class HcmStories extends LitElement {
 
             .years,
             figcaption {
-                color: var(--md-sys-color-on-surface-variant, GrayText);
+                color: var(--md-sys-color-on-surface-variant);
             }
 
             .link {
@@ -143,7 +143,7 @@ export class HcmStories extends LitElement {
                 padding: 0;
                 border: 0;
                 background: none;
-                color: var(--md-sys-color-primary, LinkText);
+                color: var(--md-sys-color-primary);
                 font: inherit;
                 text-align: start;
                 cursor: pointer;

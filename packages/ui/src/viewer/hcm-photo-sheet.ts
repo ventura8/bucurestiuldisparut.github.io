@@ -71,9 +71,9 @@ export class HcmPhotoSheet extends LitElement {
                 inline-size: 100%;
                 padding: 0;
                 border: 0;
-                border-radius: var(--md-sys-shape-corner-large, 16px);
+                border-radius: var(--md-sys-shape-corner-large);
                 overflow: hidden;
-                background: var(--md-sys-color-surface-container-highest, Canvas);
+                background: var(--md-sys-color-surface-container-highest);
                 cursor: zoom-in;
             }
 
@@ -90,9 +90,9 @@ export class HcmPhotoSheet extends LitElement {
                 justify-content: center;
                 gap: 8px;
                 min-block-size: 160px;
-                border-radius: var(--md-sys-shape-corner-large, 16px);
-                background: var(--md-sys-color-surface-container-highest, Canvas);
-                color: var(--md-sys-color-on-surface-variant, GrayText);
+                border-radius: var(--md-sys-shape-corner-large);
+                background: var(--md-sys-color-surface-container-highest);
+                color: var(--md-sys-color-on-surface-variant);
             }
         `,
     ];

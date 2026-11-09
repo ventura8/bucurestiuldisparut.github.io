@@ -42,13 +42,13 @@ export function layoutFor(windowClass: WindowClass, compactHeight: boolean): Vie
 }
 
 /**
- * Where a sheet shows, whether it is open, whether it can be closed (the always-docked layers pane cannot) and whether
- * a modal surface above it (the lightbox over a modal sheet) makes it inert.
+ * Where a sheet shows, whether it is open, whether its close button minimizes it (the always-docked layers pane) and
+ * whether a modal surface above it (the lightbox over a modal sheet) makes it inert.
  */
 export interface Placement {
     readonly mode: SheetMode;
     readonly open: boolean;
-    readonly closable?: boolean;
+    readonly minimizable?: boolean;
     readonly inert?: boolean;
 }
 

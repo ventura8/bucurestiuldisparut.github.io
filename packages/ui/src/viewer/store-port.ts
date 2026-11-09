@@ -16,7 +16,7 @@ import type { WindowClass } from '../theme/tokens.js';
 export type { ThemeMode } from '../theme/apply.js';
 
 export type ViewerStatus = 'idle' | 'loading' | 'ready' | 'error';
-export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'stories' | 'about' | 'help';
+export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'stories' | 'about' | 'help' | 'settings';
 export type ConsentState = 'unknown' | 'granted' | 'denied';
 export type Unsubscribe = () => void;
 
@@ -61,6 +61,8 @@ export interface ViewerState {
     readonly selectedStoryId: string | null;
     readonly lightbox: boolean;
     readonly sheet: SheetName;
+    /** The extra-large Layers pane is minimized to its rail: for the session, never in the hash. */
+    readonly layersHidden: boolean;
     readonly windowClass: WindowClass;
     readonly compactHeight: boolean;
     readonly theme: ThemeMode;
@@ -104,6 +106,8 @@ export interface ViewerStorePort {
     openStory(storyId: string | null): void;
     setLightbox(open: boolean): void;
     openSheet(sheet: SheetName): void;
+    /** Minimizes the extra-large Layers pane to its rail (true) or restores it. */
+    setLayersHidden(hidden: boolean): void;
     setView(view: MapView): void;
     /** Moves the camera (and records the view): "show my location"; the URL hash keeps the view it had until the camera moves. */
     flyTo(view: MapView): void;

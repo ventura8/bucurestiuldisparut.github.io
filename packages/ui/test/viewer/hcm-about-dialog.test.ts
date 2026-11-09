@@ -42,7 +42,15 @@ describe('<hcm-about-dialog>', () => {
         expect(text).toContain('Motor: Historic City Map 1.4.2');
         expect(element.shadowRoot?.querySelector('strong')?.textContent).toBe('Despre');
         await expect.element(page.getByRole('link', { name: 'OpenStreetMap' })).toHaveAttribute('rel', 'noopener noreferrer nofollow ugc');
-        expect(themeIcons(element)).toEqual(['brightness_auto', 'light_mode', 'dark_mode']);
+    });
+
+    it('badPath_aboutHoldsNoLanguageOrThemeChoice', async () => {
+        // The owner (2026-11-08): Limba and Tema do not belong in About; they are the menu's Settings.
+        const element = await about({ locale: 'en' });
+
+        expect(shadowQueryAll(element, 'hcm-segmented-button')).toEqual([]);
+        expect(shadowText(element)).not.toContain('Language');
+        expect(shadowText(element)).not.toContain('Theme');
     });
 
     it('happyPath_englishAndFullScreen', async () => {
@@ -51,8 +59,6 @@ describe('<hcm-about-dialog>', () => {
         expect(shadowText(element)).toContain('Lost Bucharest');
         expect(shadowText(element)).toContain('No cookies without consent.');
         expect(shadowQuery(element, 'hcm-dialog').hasAttribute('fullscreen')).toBe(true);
-        // A compact screen has no room for an icon beside every theme label (the kit still shows the check mark).
-        expect(themeIcons(element)).toEqual([undefined, undefined, undefined]);
     });
 
     it('happyPath_itsFootShowsTheMapboxLogoAndTheMapsAttribution', async () => {
@@ -98,10 +104,13 @@ describe('<hcm-about-dialog>', () => {
         expect(shadowText(none)).not.toContain('Statistici anonime');
     });
 
-    it('happyPath_languageAndThemeChoices', async () => {
-        const element = await about({ theme: 'dark' });
+    it('happyPath_settingsHoldTheLanguageAndThemeChoices', async () => {
+        const element = await about({ mode: 'settings', theme: 'dark' });
         const events = recordEvents(element, 'hcm-locale-change', 'hcm-theme-change', 'hcm-change');
 
+        await expect.element(page.getByRole('dialog', { name: 'Setări' })).toBeVisible();
+        expect(shadowText(element)).not.toContain('Mulțumiri');
+        expect(themeIcons(element)).toEqual(['brightness_auto', 'light_mode', 'dark_mode']);
         await expect.element(page.getByRole('radio', { name: 'Întunecată' })).toHaveAttribute('aria-checked', 'true');
         await expect.element(page.getByRole('radio', { name: 'Română' })).toHaveAttribute('aria-checked', 'true');
         await page.getByRole('radio', { name: 'English' }).click();
@@ -113,8 +122,16 @@ describe('<hcm-about-dialog>', () => {
         ]);
     });
 
+    it('happyPath_settingsInEnglishAndFullScreenDropTheThemeIcons', async () => {
+        const element = await about({ mode: 'settings', locale: 'en', fullscreen: true });
+
+        await expect.element(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+        // A compact screen has no room for an icon beside every theme label (the kit still shows the check mark).
+        expect(themeIcons(element)).toEqual([undefined, undefined, undefined]);
+    });
+
     it('badPath_anUnknownThemeValueIsIgnored', async () => {
-        const element = await about();
+        const element = await about({ mode: 'settings' });
         const events = recordEvents(element, 'hcm-theme-change');
 
         fireKitEvent(shadowQuery(element, 'hcm-segmented-button:last-of-type'), 'hcm-change', { value: 'sepia' });
@@ -165,7 +182,7 @@ describe('<hcm-about-dialog>: the statement and the help panel', () => {
         buttons.at(-1)?.click();
         expect(events.map((event) => event.type)).toEqual(['hcm-help-open']);
 
-        element.help = true;
+        element.mode = 'help';
         await element.updateComplete;
 
         await expect.element(page.getByRole('dialog', { name: 'Tastatură și gamepad' })).toBeVisible();
@@ -185,7 +202,7 @@ describe('<hcm-about-dialog>: the statement and the help panel', () => {
     });
 
     it('happyPath_theHelpPanelsSwitchSaysItsChoice', async () => {
-        const element = await about({ help: true });
+        const element = await about({ mode: 'help' });
         const events = recordEvents(element, 'hcm-shortcuts-change');
 
         fireKitEvent(shadowQuery(element, 'hcm-switch'), 'hcm-change', { checked: false });
@@ -196,9 +213,19 @@ describe('<hcm-about-dialog>: the statement and the help panel', () => {
     it('edge_openingHelpInAClosedDialogMovesNoFocus', async () => {
         const element = await about({ open: false });
 
-        element.help = true;
+        element.mode = 'help';
         await element.updateComplete;
 
-        expect(element.help).toBe(true);
+        expect(element.mode).toBe('help');
+    });
+
+    it('edge_goingFromSettingsToAboutMovesNoFocus', async () => {
+        const element = await about({ mode: 'settings' });
+        const before = document.activeElement;
+
+        element.mode = 'about';
+        await element.updateComplete;
+
+        expect(document.activeElement).toBe(before);
     });
 });

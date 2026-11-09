@@ -128,7 +128,7 @@ describe('<hcm-map-viewer>: boot', () => {
 
         expect(store.callsOf('openPhoto')).toEqual([['uranus-1984']]);
         const items = (part({ element, store }, 'hcm-fab-menu') as HTMLElement & { items: readonly { value: string }[] }).items;
-        expect(items.map((item) => item.value)).toEqual(['photos', 'share', 'language', 'about']);
+        expect(items.map((item) => item.value)).toEqual(['photos', 'share', 'settings', 'about']);
     });
 
     it('happyPath_theSheetsDecodedThumbnailEndsThePhotoMeasurement', async () => {

@@ -15,7 +15,8 @@ export type IconButtonVariant = 'standard' | 'filled' | 'tonal' | 'outlined';
  * they stay visible on any map. `softDisabled` (`soft-disabled`) looks disabled and says so (`aria-disabled`) but keeps
  * the focus and its place in the Tab order: the map's zoom buttons at the end of the zoom range, where a disabled button
  * would drop the focus of a visitor pressing Enter. Its clicks still fire; the owner ignores them (the map's zoom
- * buttons drop their listener). It shows no hover or pressed layer and turns GrayText in forced colours.
+ * buttons drop their listener). It shows no hover or pressed layer and turns GrayText in forced colours. `expanded`, when
+ * set, is its `aria-expanded`: a button that collapses what it heads.
  */
 export class HcmIconButton extends LitElement {
     static override readonly shadowRootOptions: ShadowRootInit = { ...LitElement.shadowRootOptions, delegatesFocus: true };
@@ -27,6 +28,7 @@ export class HcmIconButton extends LitElement {
         selected: { type: Boolean, reflect: true },
         disabled: { type: Boolean, reflect: true },
         softDisabled: { type: Boolean, reflect: true, attribute: 'soft-disabled' },
+        expanded: { attribute: false },
         variant: { type: String, reflect: true },
     };
 
@@ -111,6 +113,7 @@ export class HcmIconButton extends LitElement {
     declare selected: boolean;
     declare disabled: boolean;
     declare softDisabled: boolean;
+    declare expanded: boolean | undefined;
     declare variant: IconButtonVariant;
 
     constructor() {
@@ -130,6 +133,7 @@ export class HcmIconButton extends LitElement {
             part="button"
             aria-label=${this.label}
             aria-pressed=${this.toggle ? String(this.selected) : nothing}
+            aria-expanded=${this.expanded ?? nothing}
             ?disabled=${this.disabled}
             aria-disabled=${this.softDisabled ? 'true' : nothing}
             @click=${this.onClick}
