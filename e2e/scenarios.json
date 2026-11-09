@@ -13521,10 +13521,43 @@
             "area": "admin",
             "path": "bad",
             "title": "An admin address signed out still shows the admin's sign-in",
-            "asserts": "#/photos signed out: 'Map administration', the admin's intro and button, no Back to the map; start-up mode has no welcome; a name from the link is text, cleaned and cut at 80 characters",
+            "asserts": "#/photos signed out: 'Map administration', the admin's intro and button, no Back to the map; a name from the link is text, cleaned and cut at 80 characters",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/admin/specs/roles/welcome.spec.ts, packages/ui/test/admin/auth/contribute-welcome.test.ts, packages/admin/test/app/welcome.test.ts."
+        },
+        {
+            "id": "S-A92-BAD-CONTRIBUTE-NO-SERVER",
+            "behaviour": "A92",
+            "area": "admin",
+            "path": "bad",
+            "title": "On the Contribute page a server that does not answer is resting, never the setup",
+            "asserts": "the probe finds no server: the contributor's welcome (no setup intro, no Cloud consent note), the sign-in asks no Cloud scope and no owner check; signed in: 'The map is resting', Try again and Back to the map; once the server answers, Try again opens the Contribute page; a start-up deploy or a map nobody claimed: 'not open yet', never the claim",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/admin/specs/roles/welcome.spec.ts, packages/admin/test/auth/controller-contribute.test.ts, packages/ui/test/admin/auth/contribute-blocked.test.ts, packages/ui/test/admin/auth/contribute-welcome.test.ts."
+        },
+        {
+            "id": "S-A92-BAD-CONTRIBUTE-BUSY",
+            "behaviour": "A92",
+            "area": "admin",
+            "path": "bad",
+            "title": "On the Contribute page a busy server is resting with Try again and Back to the map",
+            "asserts": "admin.session answers unavailable after sign-in: the welcome's heading, 'The map is resting', its reason, Try again and Back to the map; never 'Map administration' nor 'Use another Google account'; the account stays signed in",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/admin/specs/roles/welcome.spec.ts, packages/admin/test/auth/controller-contribute.test.ts, packages/ui/test/admin/auth/contribute-blocked.test.ts."
+        },
+        {
+            "id": "S-A92-BAD-CONTRIBUTE-SESSION",
+            "behaviour": "A92",
+            "area": "admin",
+            "path": "bad",
+            "title": "On the Contribute page a refused session is said to the contributor, never 'not an admin'",
+            "asserts": "admin.session refuses the account (a non-retryable error): the contributor's panel with the reason, Try again and Back to the map; never 'does not administer this map', and the account is not signed out; the account menu's statistics line names the Contribute page",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/admin/specs/roles/welcome.spec.ts, packages/admin/test/auth/controller-contribute.test.ts, packages/ui/test/admin/auth/contribute-blocked.test.ts, packages/ui/test/admin/shell/nav-and-menu.test.ts."
         },
         {
             "id": "S-A92-BAD-REFUSED-TOLD",

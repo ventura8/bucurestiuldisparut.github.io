@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 134 | 1293 | 516 | 777 | 1291 | 2 | 315 |
+| 134 | 1296 | 516 | 780 | 1294 | 2 | 315 |
 
 ## Viewer
 
@@ -1095,9 +1095,12 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-A92-HAPPY-VISITOR-STAYS` | A92 | happy | A reload keeps the visitor's page | the form is there again | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts` |
 | `S-A92-HAPPY-WELCOME` | A92 | happy | A visitor from the map is welcomed as a contributor, in the map's language | signed out at #/contribute/<city>: the city's name, what contributing means, Google needed only to send, 'Sign in with Google to contribute', the tab says Contribute; Back to the map opens the city's map (the Hosting root for the first city, /<city>/ for another) | e2e-admin | exists | `e2e/admin/specs/roles/welcome.spec.ts` |
 | `S-A92-HAPPY-WELCOME-SIGN-IN` | A92 | happy | Signing in from the welcome lands an account of no role on the Contribute page | the stranger's page is the Contribute page's form, no navigation, no admin document | e2e-admin | exists | `e2e/admin/specs/roles/welcome.spec.ts` |
-| `S-A92-BAD-ADMIN-ROUTE` | A92 | bad | An admin address signed out still shows the admin's sign-in | #/photos signed out: 'Map administration', the admin's intro and button, no Back to the map; start-up mode has no welcome; a name from the link is text, cleaned and cut at 80 characters | e2e-admin | exists | `e2e/admin/specs/roles/welcome.spec.ts` |
+| `S-A92-BAD-ADMIN-ROUTE` | A92 | bad | An admin address signed out still shows the admin's sign-in | #/photos signed out: 'Map administration', the admin's intro and button, no Back to the map; a name from the link is text, cleaned and cut at 80 characters | e2e-admin | exists | `e2e/admin/specs/roles/welcome.spec.ts` |
 | `S-A92-BAD-ALREADY-PENDING` | A92 | bad | One open request per account | a second: apiError.contribute.alreadyPending | functions | exists | `functions/test/admin/contribute.test.ts` |
 | `S-A92-BAD-BLOCKED` | A92 | bad | A blocked account may not ask | apiError.contribute.blocked | functions | exists | `functions/test/admin/contribute.test.ts` |
+| `S-A92-BAD-CONTRIBUTE-BUSY` | A92 | bad | On the Contribute page a busy server is resting with Try again and Back to the map | admin.session answers unavailable after sign-in: the welcome's heading, 'The map is resting', its reason, Try again and Back to the map; never 'Map administration' nor 'Use another Google account'; the account stays signed in | e2e-admin | exists | `e2e/admin/specs/roles/welcome.spec.ts` |
+| `S-A92-BAD-CONTRIBUTE-NO-SERVER` | A92 | bad | On the Contribute page a server that does not answer is resting, never the setup | the probe finds no server: the contributor's welcome (no setup intro, no Cloud consent note), the sign-in asks no Cloud scope and no owner check; signed in: 'The map is resting', Try again and Back to the map; once the server answers, Try again opens the Contribute page; a start-up deploy or a map nobody claimed: 'not open yet', never the claim | e2e-admin | exists | `e2e/admin/specs/roles/welcome.spec.ts` |
+| `S-A92-BAD-CONTRIBUTE-SESSION` | A92 | bad | On the Contribute page a refused session is said to the contributor, never 'not an admin' | admin.session refuses the account (a non-retryable error): the contributor's panel with the reason, Try again and Back to the map; never 'does not administer this map', and the account is not signed out; the account menu's statistics line names the Contribute page | e2e-admin | exists | `e2e/admin/specs/roles/welcome.spec.ts` |
 | `S-A92-BAD-DECIDED-TWICE` | A92 | bad | A request is answered once | apiError.contribute.alreadyDecided | functions | exists | `functions/test/admin/contribute.test.ts` |
 | `S-A92-BAD-NO-ADMIN-SIGN-IN` | A92 | bad | The Contribute page never shows the admin's sign-in | no 'Map administration', no 'the Google account that administers the map', no plain 'Sign in with Google' on #/contribute/<city>; a closed popup is still said | e2e-admin | exists | `e2e/admin/specs/roles/welcome.spec.ts` |
 | `S-A92-BAD-NOT-OWNER` | A92 | bad | Only the city's owners answer | an editor, a moderator or an uploader: apiError.city.notOwner; nothing written | functions | exists | `functions/test/admin/contribute.test.ts` |

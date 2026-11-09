@@ -104,4 +104,12 @@ export const panelStyles = css`
         flex-wrap: wrap;
         gap: 8px;
     }
+
+    /* M13 §3: the Contribute page's way back to the map, a link with a button's target size. */
+    .back {
+        display: inline-flex;
+        align-items: center;
+        min-block-size: 48px;
+        padding-inline: 12px;
+    }
 `;

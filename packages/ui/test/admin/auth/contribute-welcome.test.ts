@@ -58,6 +58,13 @@ describe('<hcm-sign-in> on the Contribute page', () => {
         expect(await axeViolations(element)).toEqual([]);
     });
 
+    it('happyPath_inRomanianTheTitleSaysTheMapOfTheCityNamesCity', async () => {
+        const element = await panel({ ...VISITOR, locale: 'ro' });
+
+        // „harta orașului București”: correct Romanian for any name, as „harta București” is not.
+        expect(deep(element, 'h1').textContent).toBe('Contribuie la harta orașului București');
+    });
+
     it('happyPath_inRomanian_andWithoutANameTheTitleNamesNoCity', async () => {
         const element = await panel({ ...VISITOR, locale: 'ro', welcome: { ...WELCOME, cityName: null } });
 
@@ -103,9 +110,18 @@ describe('the welcome before the shell', () => {
         expect(document.title).toBe('Contribute · București');
     });
 
-    it('badPath_startUpModeOrTheShellItselfIsTheAdministration', async () => {
-        const bootstrap = { ...VISITOR, mode: 'bootstrap' as const };
-        expect(welcomeOf(bootstrap)).toBeNull();
+    it('badPath_aServerThatDidNotAnswerStillWelcomesAContributor_neverTheSetupIntro @S-A92-BAD-CONTRIBUTE-NO-SERVER', async () => {
+        const bootstrap = { ...VISITOR, mode: 'bootstrap' as const, locale: 'en' as const };
+        expect(welcomeOf(bootstrap)).toEqual(WELCOME);
+
+        const element = await panel(bootstrap);
+
+        expect(deep(element, 'h1').textContent).toBe('Contribute to the map of București');
+        expect(deepAll(element, 'hcm-consent-note')).toEqual([]);
+        expect(deepText(element)).not.toContain('demo-hcm');
+    });
+
+    it('badPath_theShellItselfIsTheAdministration', async () => {
         expect(welcomeOf(adminState({ auth: 'signedOut', user: null }))).toBeNull();
         expect(welcomeName(VISITOR, true)).toBeNull();
         expect(welcomeName({ ...VISITOR, locale: 'ro', welcome: { ...WELCOME, cityName: null } }, false)).toEqual({

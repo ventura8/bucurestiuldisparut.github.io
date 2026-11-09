@@ -27,7 +27,8 @@ export type AdminAuthStatePort =
     | 'joinPending'
     | 'notAdmin'
     | 'admin'
-    | 'visitor';
+    | 'visitor'
+    | 'contributeClosed';
 
 export type AdminRouteIdPort =
     | 'home'

@@ -21,7 +21,7 @@ import { applyTheme, type ThemeMode } from '../../theme/apply.js';
 import { BASELINE_THEME } from '../../theme/baseline.js';
 import type { WindowClass } from '../../theme/tokens.js';
 import type { AdminAppPort, AdminAuthStatePort, AdminRouteIdPort, AdminStatePort } from '../admin-port.js';
-import { welcomeName } from '../auth/hcm-sign-in.js';
+import { welcomeName, welcomeOf } from '../auth/hcm-sign-in.js';
 import type { PageChrome } from '../editing/hcm-list-detail.js';
 import { EMPTY } from './empty.js';
 import type { HcmAccountMenu } from './hcm-account-menu.js';
@@ -67,6 +67,7 @@ const SCREENS: Readonly<Record<AdminAuthStatePort, Screen>> = {
     notOwner: 'blocked',
     notAdmin: 'blocked',
     backendDown: 'blocked',
+    contributeClosed: 'blocked',
     bootstrap: 'shell',
     admin: 'shell',
     visitor: 'visitor',
@@ -78,8 +79,14 @@ const LOADING_TEXTS: Readonly<Partial<Record<AdminAuthStatePort, AdminShellKey>>
     claiming: 'adminShell.auth.claiming',
 };
 
+/** M13 §3: what a contributor waits for on the Contribute page: never the owner's check with Google. */
+const CONTRIBUTOR_LOADING_TEXTS: Readonly<Partial<Record<AdminAuthStatePort, AdminShellKey>>> = {
+    signingIn: 'adminShell.auth.signingIn',
+};
+
 function loadingText(state: AdminStatePort): string {
-    return shellText(state.locale, LOADING_TEXTS[state.auth] ?? 'adminShell.loading');
+    const texts = welcomeOf(state) === null ? LOADING_TEXTS : CONTRIBUTOR_LOADING_TEXTS;
+    return shellText(state.locale, texts[state.auth] ?? 'adminShell.loading');
 }
 
 /** The theme shown: Settings' live preview, else the city's, else the kit's baseline. */

@@ -6,8 +6,10 @@
  *
  * M13 §3: on the Contribute page's address (`state.welcome`) a public visitor is welcomed as a contributor, never as an
  * admin: the city's name, what contributing means, that Google is needed only to send something, one sign-in button and
- * the way back to the map. The tab's title says Contribute too (`<hcm-admin-shell>`).
+ * the way back to the map. The tab's title says Contribute too (`<hcm-admin-shell>`). Whether the server answers or not:
+ * a visitor never sees the start-up mode's setup intro or its Cloud consent note.
  */
+import type { Locale } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
 
 import type { AdminStatePort, AdminWelcomePort } from '../admin-port.js';
@@ -27,9 +29,16 @@ function introOf(state: AdminStatePort): string {
         : shellText(state.locale, 'adminShell.auth.setupIntro', { projectId: state.projectId });
 }
 
-/** The welcome to show: the Contribute page's, unless the map is being set up (no server, so nothing to contribute to yet). */
+/** The welcome to show: the Contribute page's while its address is open, whatever the server says (M13 §3). */
 export function welcomeOf(state: AdminStatePort): AdminWelcomePort | null {
-    return state.mode === 'bootstrap' ? null : (state.welcome ?? null);
+    return state.welcome ?? null;
+}
+
+/** The Contribute page's heading: the map of the city the link named, or of no city. */
+export function welcomeTitle(locale: Locale, welcome: AdminWelcomePort): string {
+    return welcome.cityName === null
+        ? shellText(locale, 'adminShell.welcome.titleNoCity')
+        : shellText(locale, 'adminShell.welcome.title', { city: welcome.cityName });
 }
 
 /**
@@ -58,13 +67,6 @@ export class HcmSignIn extends AdminPanel {
                 margin: 0;
                 padding-inline-start: 24px;
             }
-
-            .back {
-                display: inline-flex;
-                align-items: center;
-                min-block-size: 48px;
-                padding-inline: 12px;
-            }
         `,
     ];
 
@@ -84,12 +86,8 @@ export class HcmSignIn extends AdminPanel {
     /** M13 §3: a visitor who came from the map to contribute. */
     #welcome(state: AdminStatePort, welcome: AdminWelcomePort): TemplateResult {
         const locale = state.locale;
-        const title =
-            welcome.cityName === null
-                ? shellText(locale, 'adminShell.welcome.titleNoCity')
-                : shellText(locale, 'adminShell.welcome.title', { city: welcome.cityName });
         return html`<section class="panel" aria-labelledby="title">
-            <h1 id="title">${title}</h1>
+            <h1 id="title">${welcomeTitle(locale, welcome)}</h1>
             <p>${shellText(locale, 'adminShell.welcome.intro')}</p>
             <ul>
                 <li>${shellText(locale, 'adminShell.welcome.send')}</li>

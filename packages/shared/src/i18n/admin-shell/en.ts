@@ -72,6 +72,7 @@ export const en: AdminShellMessages = {
     'adminShell.account.label': 'Account and preferences',
     'adminShell.account.close': 'Close',
     'adminShell.account.analytics': 'Anonymous usage and performance statistics of the administration (Google Analytics)',
+    'adminShell.account.analyticsVisitor': 'Anonymous usage and performance statistics of the Contribute page (Google Analytics)',
     'adminShell.notice.close': 'Close the message',
     'adminShell.nav.close': 'Close',
     'adminShell.page.unavailable': 'This page is not available yet.',
@@ -169,4 +170,6 @@ export const en: AdminShellMessages = {
     'adminShell.welcome.signIn': 'Sign in with Google to contribute',
     'adminShell.welcome.back': 'Back to the map',
     'adminShell.welcome.tabTitle': 'Contribute',
+    'adminShell.welcome.resting': 'The map is resting. Try again in a minute.',
+    'adminShell.welcome.closed': 'Contributions to this map are not open yet.',
 };

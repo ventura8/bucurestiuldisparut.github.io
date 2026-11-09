@@ -7,6 +7,14 @@ export const ROLES_STATES = {
         title: "The Contribute page signed out: a contributor's welcome, never the admin's sign-in",
         visit: 'specs/roles/welcome.spec.ts',
     },
+    'roles.contribute-resting': {
+        title: 'The Contribute page when the server does not answer: the map rests, Try again and Back to the map',
+        visit: 'specs/roles/welcome.spec.ts',
+    },
+    'roles.contribute-closed': {
+        title: 'The Contribute page of a map nobody set up: not open to contributions yet',
+        visit: 'specs/roles/welcome.spec.ts',
+    },
     'roles.contribute-request': { title: 'The Contribute page: asking for a role', visit: 'specs/roles/roles.spec.ts' },
     'roles.contribute-pending': { title: 'The Contribute page: the request waits', visit: 'specs/roles/roles.spec.ts' },
     'roles.contribute-refused': {

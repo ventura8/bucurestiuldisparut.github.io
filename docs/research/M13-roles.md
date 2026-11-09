@@ -90,7 +90,13 @@ A refused upload answers `apiError.review.alreadyDecided` through the usual reco
   city's map (`hcm:<city>:lang`, the same origin), else the admin's own choice, else Romanian, and names no city.
   **Back to the map** opens the city's map on the admin's own Hosting (M6 §2.4: the project's first city at `/`, any
   other at `/<city>/`). After sign-in an account of no role is a visitor and stays on the page (`contributing`), never on
-  an admin screen; start-up mode (no server yet) keeps the admin's sign-in.
+  an admin screen.
+- **Every state of the page is a contributor's** (lesson 494, DECISIONS §124): the sign-in asks for no Cloud scope; whether
+  the server answers or not the signed-out page is the welcome (never the start-up mode's intro); signed in, a server that
+  does not answer or is busy is "The map is resting. Try again in a minute." with Try again and Back to the map (`backendDown`),
+  a refused session is the same panel with its reason (never `notAdmin`, the account stays signed in), and a map nobody set
+  up (a start-up deploy, or `ownerClaimed: false`) is "Contributions to this map are not open yet." (`contributeClosed`):
+  never Google's owner check, the claim or "Map administration". The account menu's statistics line names the Contribute page.
 
 - `contribute.context` (`signedIn`): the city's public name and view, the caller's role and request, whether they are blocked, and
   with a `photoId` the published photo's public fields. A photo that is not public answers `apiError.notFound`.
