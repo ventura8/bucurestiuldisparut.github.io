@@ -988,6 +988,20 @@
             "name": "A Landsat scene is composed on the tile grid, pan-sharpened for ETM+, and checked against Sentinel-2 instead of georeferenced",
             "milestone": "M25",
             "source": "the owner, 2026-11-09: import Landsat for 1984-2000, added to the sources and automated like USGS; docs/research/M25-landsat.md"
+        },
+        {
+            "id": "P22",
+            "area": "pipeline",
+            "name": "A series that waits for a person leaves one stitched picture to place, and a help round places it from the admin's rough placement and pairs",
+            "milestone": "M22",
+            "source": "the owner, 2026-11-09: stitch the harti.zip tiles in our pipeline and a setup wizard for what needs the admin; docs/research/M22-help-calibrate.md"
+        },
+        {
+            "id": "A122",
+            "area": "admin",
+            "name": "An archive series waiting for points opens in the georeferencer like any frame (its stitched picture, OpenStreetMap lines), placed again on Locate again, with room to work and full screen",
+            "milestone": "M22",
+            "source": "the owner, 2026-11-09: the georeferencer of 1895-1899 showed no scan and no reference, and was too small; docs/research/M22-help-calibrate.md §13.2"
         }
     ],
     "scenarios": [
@@ -16599,6 +16613,105 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M25 (docs/research/M25-landsat.md). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
+        },
+        {
+            "id": "S-P22-HAPPY-STITCHED-PREVIEW",
+            "behaviour": "P22",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A grid, atlas or pieces series that does not place itself keeps its stitched picture for the admin",
+            "asserts": "help.stitched: the preview stitched.jpg uploaded, size, parts joined, left-out parts with their reason, metres a pixel of a grid",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M22 §4.1. Tests: pipeline/tests/unit/test_placing_assemble.py, pipeline/tests/unit/test_placing_grid.py."
+        },
+        {
+            "id": "S-P22-BAD-ATLAS-PAGES-APART",
+            "behaviour": "P22",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An atlas page that joins no other is left out of the stitched picture with its reason",
+            "asserts": "leftOut lists the page as no-join; joined and parts count it",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M22 §4.1. Tests: pipeline/tests/unit/test_placing_assemble.py."
+        },
+        {
+            "id": "S-P22-HAPPY-JOIN-QUALITY",
+            "behaviour": "P22",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Pieces and overlapping atlas pages are joined by their features at twice the old resolution, with the joins' quality",
+            "asserts": "SIFT + FLANN + similarity RANSAC at 2,400 px; 2,000 px scans overlapping a tenth join; links, mean inliers, residual reported",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M22 §4.1. Tests: pipeline/tests/unit/test_placing_assemble.py."
+        },
+        {
+            "id": "S-P22-HAPPY-CONTENT-FRAME",
+            "behaviour": "P22",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A cadastral sheet with no printed neat line is framed by its drawing's extent",
+            "asserts": "the dense ink run across and down, kept only with its cell's shape; a blank or misshapen one is not framed",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M22 §4.1. Tests: pipeline/tests/unit/test_placing_grid.py."
+        },
+        {
+            "id": "S-A122-HAPPY-PLACE-AGAIN",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "happy",
+            "title": "An archive series waiting for points offers Locate again, which places it again from place",
+            "asserts": "the button calls imagery.locateAgain; the job goes back to queued from place, gather kept; the version forgets its help",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M22 §13.2. Tests: functions/test/imagery/locate-again-archive.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
+            "id": "S-A122-BAD-PLACE-AGAIN-CANCELLED",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "bad",
+            "title": "A series asked to stop, or failed, is not placed again",
+            "asserts": "apiError.imagery.versionState; no Locate again on a failed archive series",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M22 §13.2. Tests: functions/test/imagery/locate-again-archive.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
+            "id": "S-A122-HAPPY-GEOREF-FULL-SCREEN",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "happy",
+            "title": "The georeferencer's scan and map take seven tenths of the window, and Full screen fills it; Esc leaves",
+            "asserts": "data-full on the page; Esc clears it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M22 §13.2. Tests: packages/ui/test/admin/georef/georef-page.test.ts."
+        },
+        {
+            "id": "S-A122-BAD-GEOREF-FULL-SCREEN-LEFT",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "bad",
+            "title": "Leave full screen by its own button",
+            "asserts": "the page is back in its place",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M22 §13.2. Tests: packages/ui/test/admin/georef/georef-page.test.ts."
+        },
+        {
+            "id": "S-P22-HAPPY-GEOREF-SCAN",
+            "behaviour": "P22",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A parked archive series gives the georeferencer its picture and the city's OpenStreetMap lines",
+            "asserts": "version.scan (scan.tif, scan-preview.jpg) and reference.osmPath uploaded",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M22 §13.2. Tests: pipeline/tests/unit/test_placing_assemble.py."
         }
     ]
 }

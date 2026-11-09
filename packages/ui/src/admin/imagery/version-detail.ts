@@ -169,13 +169,19 @@ function failedCrop(job: JobViewPort): boolean {
 
 /**
  * A USGS frame waiting for points searches for its place again (`imagery.locateAgain`): a newer pipeline may now find it.
- * M18 item 3: a frame whose crop failed is offered the same, before a new import.
+ * M18 item 3: a frame whose crop failed is offered the same, before a new import. M22: an archive series waiting for points places
+ * itself again, which also makes its stitched picture for the georeferencer (one parked before that had none).
  */
 function locatable(version: VersionViewPort, job: JobViewPort): boolean {
-    if (version.origin !== 'usgs') {
-        return false;
+    if (version.origin === 'archive') {
+        return parked(version, job);
     }
-    return version.state === 'needs_gcps' ? job.status === 'awaiting_gcps' : version.state === 'failed' && failedCrop(job);
+    return version.origin === 'usgs' && (parked(version, job) || (version.state === 'failed' && failedCrop(job)));
+}
+
+/** Waiting for points, its job too. */
+function parked(version: VersionViewPort, job: JobViewPort): boolean {
+    return version.state === 'needs_gcps' && job.status === 'awaiting_gcps';
 }
 
 function locateButton(shown: Shown): TemplateResult {

@@ -81,7 +81,7 @@ def _asked(ctx: JobContext, box: MercatorBox) -> MercatorBox:
     return window if window is not None and _overlaps(box, window) else box
 
 
-def _osm_features(ctx: JobContext, box: MercatorBox) -> dict[str, object] | None:
+def osm_features_cached(ctx: JobContext, box: MercatorBox) -> dict[str, object] | None:
     """OpenStreetMap's lines around `box`, cached beside the jobs of this computer (one Overpass answer per city window)."""
     asked = _asked(ctx, box)
     folder = ctx.services.archive_root or ctx.workdir.parent
@@ -101,7 +101,7 @@ def _osm_features(ctx: JobContext, box: MercatorBox) -> dict[str, object] | None
 
 def osm_reference(ctx: JobContext, box: MercatorBox, resolution: float) -> Reference | None:
     """OpenStreetMap's lines over `box` at `resolution` Mercator metres a pixel, or None when Overpass cannot answer."""
-    features = _osm_features(ctx, box)
+    features = osm_features_cached(ctx, box)
     if features is None:
         return None
     grid = Grid.over(box, resolution)

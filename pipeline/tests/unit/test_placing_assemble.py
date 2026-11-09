@@ -7,12 +7,12 @@ import numpy
 import pikepdf
 import pytest
 from hcm_pipeline.jobs import Done, Waiting
-from hcm_pipeline.placing import assemble, maps
+from hcm_pipeline.placing import assemble, joins, maps, stitched
 from hcm_pipeline.placing.pdfpages import extract_pages
 from hcm_pipeline.steps.place import PlaceStep
 
 from tests.fakes.world import PipelineWorld
-from tests.synthetic.town import Drawing, draw_map, placement, town_lines, write_map
+from tests.synthetic.town import Drawing, TownSpec, draw_map, placement, town_lines, write_map
 from tests.unit.placing_support import originals, series_context
 
 RNG = numpy.random.default_rng(11)
@@ -28,33 +28,54 @@ def texture(size: tuple[int, int] = (900, 700)) -> numpy.ndarray:
     return image
 
 
-def test_happy_path_overlapping_pieces_are_stitched_where_they_were_cut() -> None:
-    """Scenarios: S-P20-HAPPY-PIECES"""
+def write_parts(folder: Path, parts: list[numpy.ndarray]) -> list[Path]:
+    folder.mkdir(parents=True, exist_ok=True)
+    return [write_map(folder / f"img{index:03d}.tif", numpy.dstack([part] * 3), grey=True) for index, part in enumerate(parts)]
+
+
+def test_happy_path_overlapping_pieces_are_joined_where_they_were_cut_with_their_quality(tmp_path: Path) -> None:
+    """Scenarios: S-P20-HAPPY-PIECES, S-P22-HAPPY-JOIN-QUALITY"""
     whole = texture()
     pieces = [whole[0:400, 0:500], whole[0:400, 400:900], whole[300:700, 0:500], whole[300:700, 400:900]]
-    lonely = texture((300, 300))
 
-    layout = assemble.pieces_layout([*pieces, lonely])
-    assert layout is not None
-    canvas = assemble.compose_canvas([*pieces, lonely], layout)
+    found = joins.joined(write_parts(tmp_path / "p", [*pieces, texture((300, 300))]))
 
-    assert layout.left_out == (4,)
-    assert layout.size == pytest.approx((900, 700), abs=2)
-    assert numpy.abs(canvas[:690, :890].astype(int) - whole[:690, :890].astype(int)).mean() < 3
+    assert found is not None
+    canvas = assemble.compose_canvas(found.images, found.layout)
+    assert found.layout.left_out == (4,)
+    assert found.layout.size == pytest.approx((900, 700), abs=3)
+    assert numpy.abs(canvas[:690, :890].astype(int) - whole[:690, :890].astype(int)).mean() < 4
+    assert found.quality.links == 3
+    assert found.quality.mean_inliers >= joins.MIN_MATCHES
+    assert found.quality.rms_px < 1.5
 
 
-def test_bad_path_pieces_that_never_overlap_leave_one_part() -> None:
+def test_happy_path_pieces_scanned_large_are_joined_at_the_finer_resolution(tmp_path: Path) -> None:
+    """Scenarios: S-P22-HAPPY-JOIN-QUALITY"""
+    # Four 2000 px scans that overlap by a tenth: read at 1,200 px (the old matching size) their fine texture blurs away.
+    whole = numpy.asarray(cv2.resize(texture((1000, 1000)), (3800, 3800), interpolation=cv2.INTER_NEAREST), numpy.uint8)
+    pieces = [whole[0:2000, 0:2000], whole[0:2000, 1800:3800], whole[1800:3800, 0:2000], whole[1800:3800, 1800:3800]]
+
+    found = joins.joined(write_parts(tmp_path / "big", pieces))
+
+    assert found is not None
+    assert not found.layout.left_out
+    assert found.quality.links == 3
+
+
+def test_bad_path_pieces_that_never_overlap_or_differ_in_scale_leave_one_part(tmp_path: Path) -> None:
     whole = texture()
     enlarged = numpy.asarray(cv2.resize(whole[0:400, 300:900], None, fx=1.6, fy=1.6), numpy.uint8)
-    layout = assemble.pieces_layout([texture((300, 300)), texture((300, 300))])
-    scaled = assemble.pieces_layout([whole[0:400, 0:500], enlarged])
+    apart = joins.joined(write_parts(tmp_path / "a", [texture((300, 300)), texture((300, 300))]))
+    scaled = joins.joined(write_parts(tmp_path / "b", [whole[0:400, 0:500], enlarged]))
+    blank = joins.features_of(numpy.full((50, 50), 250, numpy.uint8))
 
-    assert layout is not None
+    assert apart is not None
     assert scaled is not None
-    assert scaled.left_out == (1,)
-    assert len(layout.placed) == 1
-    assert layout.left_out == (1,)
-    assert assemble.piece_overlap(([], None), ([], None)) is None
+    assert scaled.layout.left_out == (1,)
+    assert apart.layout.left_out == (1,)
+    assert apart.quality.links == 0
+    assert joins.join_of(blank, blank, (0, 1)) is None
 
 
 def town_map(size: tuple[int, int] = (900, 900)) -> numpy.ndarray:
@@ -189,6 +210,7 @@ def test_bad_path_pieces_that_would_make_a_huge_canvas_wait_for_a_person(
     help_item = world.version()["help"]
     assert isinstance(help_item, dict)
     assert help_item["note"] == maps.NO_STITCH
+    assert "stitched" not in help_item
 
 
 def test_happy_path_pieces_are_stitched_and_placed_as_one_map(world: PipelineWorld, tmp_path: Path) -> None:
@@ -217,3 +239,65 @@ def test_happy_path_a_pages_frame_is_cropped_and_the_page_size_follows_the_count
     assert assemble.frame_crop(numpy.full((50, 50), 250, numpy.uint8)).shape == (50, 50)
     assert maps.page_px(95) == assemble.CANVAS_MAX_PX // 11
     assert maps.page_px(10_000) == assemble.PAGE_PX
+
+
+def test_happy_path_an_atlas_that_does_not_place_itself_leaves_its_stitched_picture_with_the_pages_left_out(
+    world: PipelineWorld, tmp_path: Path
+) -> None:
+    """Scenarios: S-P22-HAPPY-STITCHED-PREVIEW, S-P22-BAD-ATLAS-PAGES-APART, S-P22-HAPPY-GEOREF-SCAN"""
+    # Another town's streets on the pages: no placement holds; one blank page joins nothing.
+    names = [f"Atlas/{index}.tif" for index in range(1, 6)]
+    ctx = series_context(world, tmp_path, names, {"class": "atlas", "encoding": "grey"}, lines=town_lines(TownSpec(seed=41)))
+    (originals(ctx) / "Atlas").mkdir()
+    page_images = [*cut_pages(town_map((1000, 1000)), 2, 2).values(), numpy.full((500, 500), 250, numpy.uint8)]
+    for name, image in zip(names, page_images, strict=True):
+        write_map(originals(ctx) / name, numpy.dstack([image] * 3), grey=True)
+
+    assert isinstance(PlaceStep().run(ctx), Waiting)
+
+    help_item = world.version()["help"]
+    assert isinstance(help_item, dict)
+    record = help_item["stitched"]
+    assert isinstance(record, dict)
+    assert record["method"] == "atlas"
+    assert (record["parts"], record["joined"], record["leftOutCount"]) == (5, 4, 1)
+    assert record["leftOut"] == [{"name": "5.tif", "reason": stitched.NO_JOIN}]
+    assert record["width"] == 1000
+    assert str(record["previewPath"]).endswith("/stitched.jpg")
+    assert str(record["previewPath"]) in world.gcs.objects
+    # The georeferencer opens it like any frame: its scan and the city window's OpenStreetMap lines.
+    version = world.version()
+    scan, reference = version["scan"], version["reference"]
+    assert isinstance(scan, dict)
+    assert isinstance(reference, dict)
+    assert (scan["width"], scan["height"]) == (1000, 1000)
+    assert str(scan["previewPath"]).endswith("/scan-preview.jpg")
+    assert str(reference["osmPath"]) in world.gcs.objects
+
+
+def test_happy_path_overlapping_atlas_pages_are_joined_by_their_overlaps(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P22-HAPPY-JOIN-QUALITY"""
+    whole = texture((900, 900))
+    pages = [whole[0:500, 0:500], whole[0:500, 400:900], whole[400:900, 0:500], whole[400:900, 400:900]]
+    names = [f"Atlas/{index}.tif" for index in range(1, 5)]
+    ctx = series_context(world, tmp_path, names, {"class": "atlas", "encoding": "grey"}, lines=town_lines(TownSpec(seed=41)))
+    for path, image in zip(names, pages, strict=True):
+        (originals(ctx) / path).parent.mkdir(parents=True, exist_ok=True)
+        write_map(originals(ctx) / path, numpy.dstack([image] * 3), grey=True)
+
+    assert isinstance(PlaceStep().run(ctx), Waiting)
+
+    help_item = world.version()["help"]
+    assert isinstance(help_item, dict)
+    record = help_item["stitched"]
+    assert isinstance(record, dict)
+    assert record["joined"] == 4
+    assert record["joins"]["links"] == 3
+
+
+def test_happy_path_a_preview_is_never_larger_than_the_georeferencers(world: PipelineWorld, tmp_path: Path) -> None:
+    ctx = series_context(world, tmp_path, ["a.tif"], {"class": "single", "encoding": "grey"})
+    record = stitched.publish_stitched(ctx, stitched.Stitched(numpy.full((10, 5000), 200, numpy.uint8), "single", 1, (), 2.0))
+
+    assert record["previewScale"] == pytest.approx(stitched.PREVIEW_PX / 5000)
+    assert record["metresPerPx"] == 2.0

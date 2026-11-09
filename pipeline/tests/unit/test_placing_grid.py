@@ -9,6 +9,7 @@ from hcm_pipeline.archive.grammar import Cell
 from hcm_pipeline.geo import to_mercator
 from hcm_pipeline.jobs import Done, JobContext, Waiting
 from hcm_pipeline.placing import grid
+from hcm_pipeline.placing.frame import content_frame
 from hcm_pipeline.placing.gridscheme import QUARTER_ORDERS, CityGrid, scheme_for
 from hcm_pipeline.steps.place import PlaceStep
 
@@ -178,3 +179,39 @@ def test_bad_path_a_grid_record_that_is_not_a_similarity_is_ignored() -> None:
     assert grid._grid_matrix({}, mosaic) is None
     assert grid.quarter_order([], CityGrid()) == 0
     assert grid.seam_score([], CityGrid(), 0) == pytest.approx(0.0)
+
+
+def test_happy_path_a_sheet_without_a_neat_line_is_framed_by_its_drawings_extent() -> None:
+    """Scenarios: S-P22-HAPPY-CONTENT-FRAME"""
+    sheet = numpy.full((400, 300), 250, numpy.uint8)
+    for x in range(40, 260, 12):
+        sheet[50:350, x : x + 3] = 20
+    for y in range(50, 350, 15):
+        sheet[y : y + 3, 40:260] = 20
+
+    corners = content_frame(sheet, 220 / 300, 2.0)
+    wrong = content_frame(sheet, 2.0)
+
+    assert corners is not None
+    assert corners[0] == pytest.approx((81, 101), abs=8)
+    assert corners[2] == pytest.approx((521, 701), abs=8)
+    assert wrong is None
+    assert content_frame(numpy.full((100, 100), 250, numpy.uint8), 1.0) is None
+
+
+def test_bad_path_a_grid_that_does_not_prove_keeps_its_mosaic_as_one_stitched_picture(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P22-HAPPY-STITCHED-PREVIEW"""
+    ctx = grid_series(world, tmp_path, lines=town_lines(TownSpec(seed=41, block_m=140.0)))
+    blank = originals(ctx) / sheet_name(CELLS[0])
+    write_map(blank, numpy.full((60, 60, 3), 250, numpy.uint8), grey=True)
+
+    assert isinstance(PlaceStep().run(ctx), Waiting)
+
+    help_item = world.version()["help"]
+    assert isinstance(help_item, dict)
+    record = help_item["stitched"]
+    assert isinstance(record, dict)
+    assert record["method"] == "grid"
+    assert record["metresPerPx"] == grid.MOSAIC_M
+    assert (record["parts"], record["joined"]) == (64, 63)
+    assert record["leftOut"][0]["reason"] == "no-frame"

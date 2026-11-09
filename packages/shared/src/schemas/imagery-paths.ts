@@ -38,6 +38,8 @@ export const VERSION_FILES = [
     'thumb.webp',
     /** M15: a proved frame at 5 m on the ground, what a later frame's film ties are measured against (`steps/aligning.py`). */
     'align.tif',
+    /** M22 (§4.1): an archive series that waits for a person, its sheets stitched into one picture, the Help calibrate wizard's. */
+    'stitched.jpg',
 ] as const;
 
 export type VersionFile = (typeof VERSION_FILES)[number];

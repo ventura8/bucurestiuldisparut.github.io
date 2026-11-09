@@ -3179,3 +3179,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the M20 merge registered the series' steps in `contract.py` but not its params in `model.py`'s `_PARAMS`, which the runner checks first; the steps' own tests built their contexts directly and never went through `params_of`.
     - Fix and pin: `ArchiveSeriesParams` in `pipeline/src/hcm_pipeline/model.py`, with a happy and two bad rows in `tests/unit/test_model.py`.
     - **A new job type is three registrations (the steps, the params, the server's job writer): test it once through the runner's own entry, not only step by step.**
+
+541. **An archive series waiting for points opened a georeferencer with "The scan cannot be shown" and "No reference image".**
+    - Seen: 2026-11-09, the owner's screenshot of `1895-1899` (pieces) in the georeferencer; its panes were also too small to work in.
+    - Cause: an archive series is many scans, so M20 parked it with `help` only (`requiredOf`): no `scan`, no `reference`; the georeferencer reads exactly those two, and Locate again was offered to USGS frames only, so a parked series could not be made again.
+    - Fix and pin: a parked series' stitched picture is also its `scan` and the city window's OpenStreetMap lines its `reference` (`placing/stitched.py`, `test_placing_assemble.py`); Locate again places an archive series again from `place` (`locate-again-archive.test.ts`); the panes take 70 % of the window, with Full screen (`georeferencer.spec.ts`, S-A122-*).
+    - **A new kind of version that can wait for points must carry what every screen that opens a waiting version reads: test it by opening that screen, not by the version's schema alone.**

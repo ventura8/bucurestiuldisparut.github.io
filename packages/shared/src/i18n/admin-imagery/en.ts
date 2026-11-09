@@ -327,6 +327,8 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.georef.missing.other': '{missing} more pairs needed',
     'adminContent.georef.addPairs': 'Add pairs',
     'adminContent.georef.addAtCentres': 'Add at the centres',
+    'adminContent.georef.fullScreen': 'Full screen',
+    'adminContent.georef.leaveFullScreen': 'Leave full screen',
     'adminContent.georef.save': 'Save and georeference',
     'adminContent.georef.snap': 'Snap my points',
     'adminContent.georef.snapNone': 'Place one to twelve new points where the image looks off, then snap them.',

@@ -2,15 +2,17 @@
 
 1. Parse: each sheet's name is a cell of its grammar (`archive.grammar`); the grammar's grid scheme (`gridscheme`) says where the cell
    lies in the grid's metres. A grammar with no scheme yet, or a name the report marked odd, is not placed by name.
-2. Frame per sheet: the neat line on a reduced copy (`frame`); its four corners make the sheet's homography to its cell. A sheet whose
-   frame is not found is left out and counted (`frame-not-found`): one bad sheet never blocks the series.
+2. Frame per sheet: the neat line on a reduced copy (`frame`); its four corners make the sheet's homography to its cell. A sheet with
+   no printed neat line (the cadastral sheets) is framed by its drawing's extent when that holds its cell's shape (M22 §4.1). A sheet
+   framed by neither is left out and counted (`frame-not-found`): one bad sheet never blocks the series.
 3. The quarter numbering: of the eight orders, the one whose neighbouring sheets continue each other's lines best (edge profiles).
 4. Solve the grid once: the sheets pasted on the grid at 2 m (coarser for a city-wide series) make the whole series' street
    pattern, placed on the reference (the ladder, then OpenStreetMap) as a map of known scale, north up, its fit rigid (an affine),
    with the rival search and the held-out checks of a drawn map (`single`). A grid the owner confirmed (`params.gridId`,
    `cities/{c}/grids/{g}`) starts the fit instead of the search. Batch 4 (§5.1): a grid that does not prove but was fitted is still
    rendered from the sheets' names (`grid-names`), with its seams and its checks against the reference measured, for the owner alone to
-   approve by hand (the policy never publishes it); with no fit at all it waits for a person (three sheets placed on the map).
+   approve by hand (the policy never publishes it); with no fit at all it waits for a person, its mosaic kept as the one stitched
+   picture the Help calibrate wizard places (`stitched`, M22 §4.1).
 5. Render: each sheet warped from its own scan into the series' one `warped.tif`, cut at its neat line (hard seams, no feather), through
    a 5 x 5 lattice of its homography composed with the solved grid.
 
@@ -31,7 +33,7 @@ from hcm_pipeline.georef.transforms import Transform
 from hcm_pipeline.jobs import JobContext, StepResult
 from hcm_pipeline.placing import assemble
 from hcm_pipeline.placing.checks import Checked
-from hcm_pipeline.placing.frame import find_frame
+from hcm_pipeline.placing.frame import content_frame, find_frame
 from hcm_pipeline.placing.geometry import FloatArray, compose
 from hcm_pipeline.placing.gridscheme import QUARTER_ORDERS, Box, CityGrid, scheme_for
 from hcm_pipeline.placing.output import Placement, finish, resolution_of, wait_for_help
@@ -40,6 +42,7 @@ from hcm_pipeline.placing.reference import city_window
 from hcm_pipeline.placing.render import SheetWarp, render_sheets
 from hcm_pipeline.placing.series import SeriesJob, Sheet, series_of
 from hcm_pipeline.placing.single import Attempt, Drawn, Search, attempt, drawn_of, fit_from
+from hcm_pipeline.placing.stitched import NO_FRAME, Stitched, wait_stitched
 from hcm_pipeline.placing.streets import UInt8Array, grey_of
 
 SEAM_M: Final = 2.0
@@ -63,25 +66,29 @@ class Rectified:
     cell: Cell
     corners: FloatArray
     image: UInt8Array
+    # How its frame was found: its printed neat line (`line`) or its drawing's extent (`content`).
+    framed_by: str = "line"
 
 
 def rectify(sheet: Sheet, cell: Cell, scheme: CityGrid) -> Rectified | None:
-    """The sheet straightened onto its cell, or None when its frame is not found."""
+    """The sheet straightened onto its cell, or None when neither its neat line nor its drawing's extent frames it."""
     working = read_working(sheet.path, FRAME_PX)
     grey = grey_of(working.image)
+    box = scheme.box(cell)
     corners = find_frame(grey, working.scale)
+    framed_by = "line"
+    if corners is None:
+        corners, framed_by = content_frame(grey, box.width / box.height, working.scale), "content"
     if corners is None:
         return None
-    box = scheme.box(cell)
     width, height = round(box.width / SEAM_M), round(box.height / SEAM_M)
     inset = INSET_SHARE * max(width, height) + 1
     target = numpy.array(
         [[-inset, -inset], [width + inset, -inset], [width + inset, height + inset], [-inset, height + inset]], numpy.float32
     )
     homography = cv2.getPerspectiveTransform((corners / working.scale).astype(numpy.float32), target)
-    return Rectified(
-        sheet, cell, corners, numpy.asarray(cv2.warpPerspective(grey, homography, (width, height), borderValue=255), numpy.uint8)
-    )
+    picture = numpy.asarray(cv2.warpPerspective(grey, homography, (width, height), borderValue=255), numpy.uint8)
+    return Rectified(sheet, cell, corners, picture, framed_by)
 
 
 NEIGHBOUR_STEPS: Final = ((1, 0, "right", "left"), (0, -1, "bottom", "top"))
@@ -231,8 +238,17 @@ class GridPlacer:
         rectified = framed(read.cells, read.scheme)
         if not rectified:
             return wait_for_help(ctx, "frame-not-found", NO_FRAMES)
-        ctx.log.info(f"{len(rectified)} sheets framed, {len(read.cells) - len(rectified)} without a frame", ctx.step)
-        return _solved(ctx, series, rectified, read.scheme)
+        return _solved(ctx, series, rectified, read.scheme, _unframed(ctx, read.cells, rectified))
+
+
+def _unframed(ctx: JobContext, cells: list[tuple[Sheet, Cell]], rectified: list[Rectified]) -> tuple[tuple[str, str], ...]:
+    """The sheets no frame was found on (logged with how the others were framed)."""
+    by_content = sum(item.framed_by == "content" for item in rectified)
+    ctx.log.info(
+        f"{len(rectified)} sheets framed ({by_content} by their drawing's extent), {len(cells) - len(rectified)} without a frame", ctx.step
+    )
+    kept = {item.sheet.relative for item in rectified}
+    return tuple((sheet.name, NO_FRAME) for sheet, _cell in cells if sheet.relative not in kept)
 
 
 def framed(cells: list[tuple[Sheet, Cell]], scheme: CityGrid) -> list[Rectified]:
@@ -241,8 +257,11 @@ def framed(cells: list[tuple[Sheet, Cell]], scheme: CityGrid) -> list[Rectified]
     return [item for item in found if item is not None]
 
 
-def _solved(ctx: JobContext, series: SeriesJob, rectified: list[Rectified], scheme: CityGrid) -> StepResult:
-    """The quarter order chosen, the grid placed and the sheets rendered; or a wait for a person when the grid does not prove."""
+def _solved(
+    ctx: JobContext, series: SeriesJob, rectified: list[Rectified], scheme: CityGrid, unframed: tuple[tuple[str, str], ...] = ()
+) -> StepResult:
+    """The quarter order chosen, the grid placed and the sheets rendered; or a wait for a person with the mosaic to place when the
+    grid does not prove."""
     order = quarter_order(rectified, scheme)
     mosaic = mosaic_of(rectified, scheme, order)
     found = _placed(ctx, series, mosaic, mosaic_drawn(ctx, mosaic, rectified))
@@ -251,7 +270,8 @@ def _solved(ctx: JobContext, series: SeriesJob, rectified: list[Rectified], sche
         ctx.log.info(f"the grid is placed, its quarters read in order {order}", ctx.step)
         return _rendered(ctx, series, Solved(rectified, scheme, order, mosaic, held[0].transform), Placed("grid", held[0].checked, True))
     if found is None or found.fit is None:
-        return wait_for_help(ctx, "low-confidence", NOT_PROVED)
+        stitched = Stitched(mosaic.image, "grid", len(rectified) + len(unframed), unframed, mosaic.metres)
+        return wait_stitched(ctx, stitched, "low-confidence", NOT_PROVED)
     ctx.log.info(f"the grid did not prove: placed from the sheets' names for the owner to approve, order {order}", ctx.step)
     placed = Placed(OWNER_METHOD, found.fit.checked, found.rival_clean)
     return _rendered(ctx, series, Solved(rectified, scheme, order, mosaic, found.fit.transform), placed)

@@ -78,9 +78,18 @@ def finish(ctx: JobContext, placement: Placement, warped: Path, placed: int) -> 
     return Done(ctx.publish(warped, ctx.work_file("warped.tif"), "image/tiff"))
 
 
-def wait_for_help(ctx: JobContext, reason: str, note: str, fields: Mapping[str, object] | None = None) -> Waiting:
-    """The version waits for a person with why (`help`); the job waits for points."""
-    help_item = {"reason": reason, "note": note[:200], "at": ctx.now()}
+def wait_for_help(
+    ctx: JobContext,
+    reason: str,
+    note: str,
+    fields: Mapping[str, object] | None = None,
+    stitched: Mapping[str, object] | None = None,
+) -> Waiting:
+    """The version waits for a person with why (`help`) and, for a series joined into one picture, that picture (`stitched`,
+    M22 §4.1); the job waits for points."""
+    help_item: dict[str, object] = {"reason": reason, "note": note[:200], "at": ctx.now()}
+    if stitched is not None:
+        help_item["stitched"] = dict(stitched)
     ctx.update_version({"state": "needs_gcps", "help": help_item, **(fields or {})})
     ctx.log.info(f"waits for a person ({reason}): {note[:200]}", ctx.step)
     return Waiting("awaiting_gcps", "gcps", note)
