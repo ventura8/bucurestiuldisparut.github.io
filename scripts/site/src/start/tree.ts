@@ -170,7 +170,9 @@ export function renderStartPage(): string {
         element('p', {}, ['Pagina are nevoie de JavaScript.']),
         element('p', { lang: 'en' }, ['This page needs JavaScript.']),
     ]);
-    return renderDocument(element('html', { lang: 'ro' }, [head, element('body', {}, [element('hcm-start-page', {}), noscript, startFooter()])]));
+    return renderDocument(
+        element('html', { lang: 'ro' }, [head, element('body', {}, [element('hcm-start-page', {}), noscript, startFooter()])]),
+    );
 }
 
 function readApp(inputs: StartTreeInputs, files: SiteFileSystem): void {

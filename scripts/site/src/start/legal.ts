@@ -25,7 +25,7 @@ import {
 export const START_SITE_STYLESHEET_FILE = 'start-site.css';
 
 /** Search Console's file name: `google` and the hexadecimal token Search Console gives, `.html`. */
-export const SITE_VERIFICATION_PATTERN = /^google[0-9a-f]{8,32}\.html$/;
+const SITE_VERIFICATION_PATTERN = /^google[0-9a-f]{8,32}\.html$/;
 export const SITE_VERIFICATION_ENV = 'HCM_START_SITE_VERIFICATION';
 
 /** The verification file's name from the environment; none when unset or empty, a build error when it is no such name. */
@@ -48,7 +48,16 @@ function inline(text: LegalText): HtmlNode[] {
 }
 
 function section(part: LegalSection, level: 'h2' | 'h3'): HtmlElement {
-    const items = part.items === undefined ? [] : [element('ul', {}, part.items.map((item) => element('li', {}, inline(item))))];
+    const items =
+        part.items === undefined
+            ? []
+            : [
+                  element(
+                      'ul',
+                      {},
+                      part.items.map((item) => element('li', {}, inline(item))),
+                  ),
+              ];
     return element('section', {}, [
         element(level, {}, [part.heading]),
         ...part.paragraphs.map((paragraph) => element('p', {}, inline(paragraph))),
@@ -113,7 +122,7 @@ export function renderLegalPage(page: LegalPage): string {
 }
 
 /** `start-site.css`: system colours (light and dark follow the browser), a readable measure, links of at least 44 px. */
-export const START_SITE_STYLESHEET_SOURCE = [
+const START_SITE_STYLESHEET_SOURCE = [
     "/* Historic City Map: the start site's own pages and the home page's footer (scripts/site/src/start/legal.ts). */",
     ':root {',
     '    color-scheme: light dark;',

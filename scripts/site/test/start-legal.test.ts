@@ -31,7 +31,7 @@ describe('the start site for Google verification', () => {
             '<section lang="en" aria-labelledby="en">',
             `href="${START_SITE_STYLESHEET_FILE}"`,
         ]) {
-            expect(page, text).toContain(text);
+            expect(page).toContain(text);
         }
         expect(page).not.toContain('<script');
         expect(page).toContain("script-src 'none'");
@@ -66,7 +66,11 @@ describe('the start site for Google verification', () => {
         expect(siteVerificationOf({ [SITE_VERIFICATION_ENV]: '' })).toBeUndefined();
         const { files } = repositoryWithTemporaryDist();
         writeLegalFiles('dist/legal', undefined, files);
-        expect(files.listFiles('dist/legal').sort()).toEqual(['privacy.html', 'start-site.css', 'terms.html']);
+        expect(files.listFiles('dist/legal').sort((left, right) => left.localeCompare(right))).toEqual([
+            'privacy.html',
+            'start-site.css',
+            'terms.html',
+        ]);
     });
 
     it.each(['index.html', 'google.html', 'google0123ABCD.html', 'google0123abcd.htm', '../google0123abcd.html', 'google0123abcd.html/x'])(

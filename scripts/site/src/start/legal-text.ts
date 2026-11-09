@@ -4,7 +4,7 @@
  */
 
 /** A link inside a paragraph. */
-export interface LegalLink {
+interface LegalLink {
     readonly href: string;
     readonly text: string;
 }
@@ -33,9 +33,9 @@ export interface LegalPage {
 }
 
 /** The day the words last changed. */
-export const LEGAL_UPDATED = '2026-11-09';
-export const START_SITE_ORIGIN = 'https://start-historic-city.web.app';
-export const ISSUES_URL = 'https://github.com/ventura8/bucurestiuldisparut.github.io/issues';
+const LEGAL_UPDATED = '2026-11-09';
+const START_SITE_ORIGIN = 'https://start-historic-city.web.app';
+const ISSUES_URL = 'https://github.com/ventura8/bucurestiuldisparut.github.io/issues';
 export const SOURCE_URL = 'https://github.com/ventura8/bucurestiuldisparut.github.io';
 export const PERMISSIONS_URL = 'https://myaccount.google.com/permissions';
 export const USER_DATA_POLICY_URL = 'https://developers.google.com/terms/api-services-user-data-policy';
@@ -167,7 +167,9 @@ export const PRIVACY_PAGE: LegalPage = {
             },
             {
                 heading: 'How to revoke access',
-                paragraphs: [["The token expires by itself within an hour. You can remove the page's access at any time at ", permissions, '.']],
+                paragraphs: [
+                    ["The token expires by itself within an hour. You can remove the page's access at any time at ", permissions, '.'],
+                ],
             },
             {
                 heading: 'Changes and contact',
@@ -209,7 +211,9 @@ export const TERMS_PAGE: LegalPage = {
             },
             {
                 heading: 'Conținutul tău',
-                paragraphs: ['Răspunzi de ce publici pe harta ta și trebuie să ai dreptul să publici fotografiile, textele și imaginile ei.'],
+                paragraphs: [
+                    'Răspunzi de ce publici pe harta ta și trebuie să ai dreptul să publici fotografiile, textele și imaginile ei.',
+                ],
             },
             {
                 heading: 'Servicii terțe',
@@ -250,7 +254,9 @@ export const TERMS_PAGE: LegalPage = {
             },
             {
                 heading: 'Your content',
-                paragraphs: ['You are responsible for what you publish on your map and must have the right to publish its photos, texts and imagery.'],
+                paragraphs: [
+                    'You are responsible for what you publish on your map and must have the right to publish its photos, texts and imagery.',
+                ],
             },
             {
                 heading: 'Third-party services',
