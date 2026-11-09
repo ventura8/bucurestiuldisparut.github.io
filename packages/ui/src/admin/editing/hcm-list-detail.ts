@@ -35,7 +35,8 @@ const SPLIT_ORDER: readonly WindowClass[] = ['expanded', 'large', 'extra-large']
  * navigation back (found by the admin tour at 915 × 412, DECISIONS-for-review.md §34c).
  */
 export function splitsAt(size: Pick<WindowSize, 'widthClass' | 'heightClass'>, from: SplitFrom = 'expanded'): boolean {
-    return SPLIT_ORDER.indexOf(size.widthClass) >= SPLIT_ORDER.indexOf(from) && size.heightClass !== 'compact';
+    // A page that splits from 1200 px is never a phone: a short element there (under a card, batch 4's Jobs) still splits.
+    return SPLIT_ORDER.indexOf(size.widthClass) >= SPLIT_ORDER.indexOf(from) && (from === 'large' || size.heightClass !== 'compact');
 }
 
 /** The narrowest window class that splits: `expanded` (840 px) by default; batch 4: the Jobs page from `large` (1200 px). */

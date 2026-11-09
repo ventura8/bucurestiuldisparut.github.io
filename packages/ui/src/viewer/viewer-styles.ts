@@ -176,6 +176,11 @@ export const viewerStyles = [
             --hcm-top-start: calc(var(--hcm-gutter) + 152px);
         }
 
+        /* The floating button lies outside the empty column: its pane must not clip it (the tour: off screen, its focus ring cut). */
+        .pane.leading:has(> [minimized]) {
+            overflow: visible;
+        }
+
         .pane.leading .docked {
             border-inline: 0 1px solid var(--md-sys-color-outline-variant);
         }

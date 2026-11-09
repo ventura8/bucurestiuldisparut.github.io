@@ -181,7 +181,7 @@ test(
 test(
     'A worker on this computer not signed in for the city refuses the import, and the card says why',
     { tag: ['@S-A121-BAD-LOCAL-TAB'] },
-    async ({ page, lang, adminWorld, mockApiRequest, upstream }, testInfo) => {
+    async ({ page, lang, adminWorld, mockApiRequest, upstream, consoleErrors }, testInfo) => {
         const owner = adminWorld.accounts.owner.uid;
         const imagery = await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, owner);
         await seedWorker(imagery, owner, 30);
@@ -205,6 +205,8 @@ test(
         const why = text(lang, 'adminArchive.local.failed', { why: text(lang, 'adminArchive.local.notPaired') });
         await expect(panel.getByRole('status').filter({ hasText: why })).toBeVisible();
         await expectStateSound(page, adminVisit('archive.panel-local-refused', lang));
+        // The browser logs the worker's 409 itself; the card's words are what the owner reads.
+        consoleErrors.takeMatching(/8765\/import\/session/);
     },
 );
 
