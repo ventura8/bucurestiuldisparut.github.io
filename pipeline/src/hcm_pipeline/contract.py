@@ -166,6 +166,8 @@ class SensorSpec:
     half_angle_deg: float | None = None
     full_aspect: float | None = None
     search: SearchRange = SearchRange(30_000.0, (1.0,))
+    # A panoramic strip with no camera model: `locate` searches it window by window along its length (`calibrate/strip.py`).
+    strip: bool = False
 
     def as_contract(self) -> dict[str, object]:
         """The camelCase record of `enums.json` (the TypeScript `SensorSpec`)."""
@@ -180,11 +182,12 @@ class SensorSpec:
 
 
 _CORONA_SEARCH: Final = SearchRange(30_000.0, (0.85, 1.0, 1.15))
-# Corona is panoramic too, but **UNVERIFIED**: it keeps the corner homography until a real run measures its half angle.
+# Corona is panoramic too, but **UNVERIFIED**: it keeps the corner homography until a real run measures its half angle, fitted
+# locally along the strip around the city (`strip`, M9 §16).
 SENSOR_SPECS: Final[Mapping[str, SensorSpec]] = {
-    "KH-4": SensorSpec("corona2", "KH-4 Corona", 7.5, 10, 15, "std", search=_CORONA_SEARCH),
-    "KH-4A": SensorSpec("corona2", "KH-4A Corona", 2.75, 10, 16, "std", search=_CORONA_SEARCH),
-    "KH-4B": SensorSpec("corona2", "KH-4B Corona", 1.8, 10, 16, "std", search=_CORONA_SEARCH),
+    "KH-4": SensorSpec("corona2", "KH-4 Corona", 7.5, 10, 15, "std", search=_CORONA_SEARCH, strip=True),
+    "KH-4A": SensorSpec("corona2", "KH-4A Corona", 2.75, 10, 16, "std", search=_CORONA_SEARCH, strip=True),
+    "KH-4B": SensorSpec("corona2", "KH-4B Corona", 1.8, 10, 16, "std", search=_CORONA_SEARCH, strip=True),
     # The Argon mapping camera: a frame 550 km across at 34 m a pixel, 140 m on the ground. DS09065A089MC039 (1964) was read as KH-4A. Its
     # true place is 20 km from its footprint's, and nothing proves it: no vote agrees, and the proof reaches 14 tiles at most (M9 §14).
     "KH-5": SensorSpec("corona2", "KH-5 Argon", 140, 8, 12, "std", search=SearchRange(30_000.0, (1.0,))),

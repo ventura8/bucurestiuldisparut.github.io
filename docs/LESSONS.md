@@ -3149,3 +3149,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `Scenarios:` takes every word after it as an id, and an id was reused for a new behaviour.
     - Fix: the explanation went into a comment, the new row is `S-P20-HAPPY-GRID-BY-NAMES`.
     - **Grep the registry for an id before adding it, and keep a `Scenarios:` line to ids only.**
+
+535. **Two KH-4A Corona strips of 1966 found no vote and parked with a crop of the whole strip.**
+    - Seen: 2026-11-09, the live 1966-08-18 frames F046 and F047 ended `locate` with `not proved (no-votes): crop 137350 x 9288 px`.
+    - Found by: the owner's import of the 1964 and 1966 coverage; no test held a strip whose corners make no parallelogram, and every synthetic frame was a rectangle on the ground.
+    - Fix and pin: `calibrate/strip.py` (docs/research/M9-calibration.md §16): a Corona strip is searched in a window of the city plus 15 km along it, under a local map linear along the footprint's long edges, each end in turn; a footprint off the city slides windows. `S-P06-HAPPY-STRIP-WINDOW`, `S-P06-BAD-STRIP-NO-PLACE`.
+    - **A homography through four corners bends a long strip as a perspective would: fit a long frame locally, where the city is, and never crop the union of orientations that put the city at opposite ends.**
