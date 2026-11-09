@@ -1,24 +1,30 @@
 """The placers of drawn maps (docs/research/M20-import-local.md §3 c, *Atlases and pieces*, *PDFs*): single, atlas and pieces.
 
 A single map is placed by its streets as it is. An atlas's pages (image files, or a PDF's pages taken out with pikepdf) and overlapping
-pieces are first assembled into one canvas in the job's scratch folder (`assemble`), then placed as one map: many junctions over the
-whole city are far stronger than page by page. A PDF that needs a password waits for a person (`low-confidence`: the owner exports its
-pages). Pages or pieces that join nothing are left out: the job's log says how many, and the version's placed count leaves them out.
+pieces are first assembled into one canvas in the job's scratch folder (`assemble`, `joins`), then placed as one map: many junctions
+over the whole city are far stronger than page by page. Pieces are joined by their features at a higher resolution (`joins`); an
+atlas's pages by their edges, or by their overlaps when those join more pages (M22 §4.1). A PDF that needs a password waits for a person
+(`low-confidence`: the owner exports its pages). Pages or pieces that join nothing are left out: the job's log says how many, and the
+version's placed count leaves them out. A map or canvas that is not placed on its own is kept as the one stitched picture the Help
+calibrate wizard places (`stitched`), with the parts left out and why.
 """
 
 import math
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Final
 
 import numpy
 
 from hcm_pipeline.archive.magic import sniff_file
-from hcm_pipeline.jobs import JobContext, StepResult
-from hcm_pipeline.placing import assemble
+from hcm_pipeline.jobs import JobContext, StepResult, Waiting
+from hcm_pipeline.placing import assemble, joins
 from hcm_pipeline.placing.output import wait_for_help
 from hcm_pipeline.placing.pdfpages import extract_pages
+from hcm_pipeline.placing.raster_io import read_working
 from hcm_pipeline.placing.series import SeriesJob, Sheet, series_of
-from hcm_pipeline.placing.single import Drawn, drawn_of, place_map
+from hcm_pipeline.placing.single import LARGEST_WORKING_PX, Drawn, drawn_of, place_map
+from hcm_pipeline.placing.stitched import NO_JOIN, JoinQuality, Stitched, publish_stitched
 from hcm_pipeline.placing.streets import UInt8Array
 
 PDF_LOCKED: Final = "This PDF needs a password: export its pages as images from a PDF reader, then import them."
@@ -50,10 +56,29 @@ def _drawn(ctx: JobContext, canvas: UInt8Array, name: str) -> Drawn:
     return drawn_of(path, name, max(canvas.shape[:2]), framed=False)
 
 
-def _assembled(ctx: JobContext, series: SeriesJob, canvas: UInt8Array, layout: assemble.Layout, method: str) -> StepResult:
-    left_out = len(layout.left_out)
-    ctx.log.info(f"assembled {len(layout.placed)} parts, {left_out} left out, {layout.holes} holes", ctx.step)
-    return place_map(ctx, series, _drawn(ctx, canvas, method), method, len(layout.placed))
+@dataclass(frozen=True)
+class Assembled:
+    """A canvas made of a series' parts: the picture, its layout, the parts' names, how, and the joins' quality."""
+
+    canvas: UInt8Array
+    layout: assemble.Layout
+    names: tuple[str, ...]
+    method: str
+    quality: JoinQuality | None = None
+
+    def stitched(self) -> Stitched:
+        left_out = tuple((self.names[index], NO_JOIN) for index in self.layout.left_out)
+        return Stitched(self.canvas, self.method, len(self.names), left_out, joins=self.quality)
+
+
+def _assembled(ctx: JobContext, series: SeriesJob, made: Assembled) -> StepResult:
+    """The canvas placed as one map; when it waits for a person, its stitched picture goes with it."""
+    layout = made.layout
+    ctx.log.info(f"assembled {len(layout.placed)} parts, {len(layout.left_out)} left out, {layout.holes} holes", ctx.step)
+    result = place_map(ctx, series, _drawn(ctx, made.canvas, made.method), made.method, len(layout.placed))
+    if isinstance(result, Waiting):
+        ctx.update_version({"help.stitched": publish_stitched(ctx, made.stitched())})
+    return result
 
 
 class SinglePlacer:
@@ -66,7 +91,11 @@ class SinglePlacer:
             return wait_for_help(ctx, "low-confidence", PDF_LOCKED)
         if not sheets:
             return wait_for_help(ctx, "low-confidence", NO_PAGES)
-        return place_map(ctx, series, drawn_of(sheets[0].path, sheets[0].name))
+        result = place_map(ctx, series, drawn_of(sheets[0].path, sheets[0].name))
+        if isinstance(result, Waiting):
+            picture = read_working(sheets[0].path, LARGEST_WORKING_PX).image
+            ctx.update_version({"help.stitched": publish_stitched(ctx, Stitched(picture, "single", 1))})
+        return result
 
 
 def page_px(count: int) -> int:
@@ -75,7 +104,7 @@ def page_px(count: int) -> int:
 
 
 class AtlasPlacer:
-    """An atlas: its pages laid out by their edges and assembled, then placed as one map."""
+    """An atlas: its pages laid out by their edges (or their overlaps) and assembled, then placed as one map."""
 
     def place(self, ctx: JobContext) -> StepResult:
         series = series_of(ctx)
@@ -86,20 +115,41 @@ class AtlasPlacer:
 
 
 def _atlas(ctx: JobContext, series: SeriesJob, sheets: Sequence[Sheet]) -> StepResult:
-    """The pages cropped to their frames, laid out on their median size, assembled and placed."""
-    pages = [assemble.frame_crop(image) for image in assemble.read_parts([sheet.path for sheet in sheets], page_px(len(sheets)))]
-    cell = (int(numpy.median([page.shape[1] for page in pages])), int(numpy.median([page.shape[0] for page in pages])))
+    """The pages cropped to their frames and laid out on their median size by their edges, or by their overlaps when those join
+    more pages; assembled and placed."""
+    pages, cell = _pages(sheets)
     layout = assemble.atlas_layout(pages, cell)
-    return _assembled(ctx, series, assemble.compose_canvas(pages, layout), layout, "atlas")
+    names = tuple(sheet.name for sheet in sheets)
+    overlapping = _overlapping(sheets, len(layout.placed))
+    if overlapping is not None:
+        ctx.log.info(f"the pages join better by their overlaps: {len(overlapping.layout.placed)} against {len(layout.placed)}", ctx.step)
+        canvas = assemble.compose_canvas(overlapping.images, overlapping.layout)
+        return _assembled(ctx, series, Assembled(canvas, overlapping.layout, names, "atlas", overlapping.quality))
+    return _assembled(ctx, series, Assembled(assemble.compose_canvas(pages, layout), layout, names, "atlas"))
+
+
+def _pages(sheets: Sequence[Sheet]) -> tuple[list[UInt8Array], tuple[int, int]]:
+    """The pages cropped to their frames, and their median size."""
+    pages = [assemble.frame_crop(image) for image in assemble.read_parts([sheet.path for sheet in sheets], page_px(len(sheets)))]
+    return pages, (int(numpy.median([page.shape[1] for page in pages])), int(numpy.median([page.shape[0] for page in pages])))
+
+
+def _overlapping(sheets: Sequence[Sheet], by_edges: int) -> joins.Joined | None:
+    """The pages joined by their overlaps when their edges left some out and the overlaps place more of them; else None."""
+    if by_edges >= len(sheets):
+        return None
+    found = joins.joined([sheet.path for sheet in sheets])
+    return found if found is not None and len(found.layout.placed) > by_edges else None
 
 
 class PiecesPlacer:
-    """Overlapping pieces of one sheet: stitched on their overlaps, then placed as one map."""
+    """Overlapping pieces of one sheet: joined on their overlaps at a higher resolution, then placed as one map."""
 
     def place(self, ctx: JobContext) -> StepResult:
         series = series_of(ctx)
-        images = assemble.read_parts([sheet.path for sheet in series.sheets], assemble.MATCH_PX)
-        layout = assemble.pieces_layout(images)
-        if layout is None:
+        found = joins.joined([sheet.path for sheet in series.sheets])
+        if found is None:
             return wait_for_help(ctx, "low-confidence", NO_STITCH)
-        return _assembled(ctx, series, assemble.compose_canvas(images, layout), layout, "pieces")
+        names = tuple(sheet.name for sheet in series.sheets)
+        canvas = assemble.compose_canvas(found.images, found.layout)
+        return _assembled(ctx, series, Assembled(canvas, found.layout, names, "pieces", found.quality))

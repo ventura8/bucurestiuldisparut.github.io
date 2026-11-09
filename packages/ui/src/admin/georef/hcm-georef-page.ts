@@ -17,6 +17,7 @@ import { labelText } from '../imagery/imagery-text.js';
 import { when } from '../imagery/when.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
+import { FullScreenInert } from './full-screen.js';
 import { panes } from './georef-panes.js';
 import { previewControls, summary, tools, transforms, type GeorefContext } from './georef-parts.js';
 import type { GeorefIntentsPort, GeorefVersionPort, GeorefViewState } from './georef-port.js';
@@ -30,26 +31,37 @@ export const HCM_GEOREF_PAGE_TAG = 'hcm-georef-page';
 class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
     static override readonly fillsPage: boolean = true;
 
-    static override readonly properties = { ...AreaPage.properties, sort: { state: true }, mapCss: { attribute: false } };
+    static override readonly properties = {
+        ...AreaPage.properties,
+        sort: { state: true },
+        full: { state: true },
+        mapCss: { attribute: false },
+    };
 
     static override readonly styles = [...georefStyles, suggestionsStyles];
 
     protected readonly route: AdminRouteIdPort = 'georef';
     declare sort: ResidualSort;
+    /** M22 (§13.2): the actions, the scan and the map fill the window (Esc leaves it). */
+    declare full: boolean;
     /** mapbox-gl.css of the pinned release ('' in tests: no network). */
     declare mapCss: string;
     /** The saved version the page opened. */
     #opened: string | null = null;
+    /** What full screen made inert around the page. */
+    readonly #inert = new FullScreenInert();
 
     constructor() {
         super();
         this.sort = 'pair';
+        this.full = false;
         this.mapCss = MAPBOX_GL_CSS_URL;
         // Esc anywhere on the page: the half pair goes, else the selected pair is let go. The scan pane handles its own
         // (and marks it handled), so one press never does both.
         this.addEventListener('keydown', (event) => {
             if (event.key === 'Escape' && !event.defaultPrevented) {
                 this.intents?.cancelHalf();
+                this.full = false;
             }
         });
     }
@@ -58,8 +70,16 @@ class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
         return content.georef;
     }
 
+    override disconnectedCallback(): void {
+        this.#inert.cover(this, false);
+        super.disconnectedCallback();
+    }
+
     protected override updated(changed: PropertyValues<this>): void {
         super.updated(changed);
+        if (changed.has('full')) {
+            this.#inert.cover(this, this.full);
+        }
         const saved = this.#newlySaved();
         if (saved !== null) {
             this.#opened = saved;
@@ -106,17 +126,27 @@ class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
             addAtCentres: () => {
                 this.#addAtCentres();
             },
+            full: this.full,
+            toggleFull: () => {
+                this.full = !this.full;
+            },
         };
     }
 
     #page(context: GeorefContext, version: GeorefVersionPort): TemplateResult {
         const { locale, view, intents } = context;
         const title = `${contentText(locale, 'adminContent.georef.title')} · ${labelText(version.label, locale)}`;
+        // Full screen: the shell's own first-level heading is inert under it, so the page names itself at that level.
+        const heading = when(
+            context.full,
+            () => html`<h1 class="visually-hidden">${contentText(locale, 'adminContent.georef.title')}</h1>`,
+        );
         const readOnlyNote = when(
             !version.editable,
             () => html`<p class="note" data-state="read-only">${contentText(locale, 'adminContent.georef.notEditable')}</p>`,
         );
-        return html`<div class="page" data-state=${view.adding ? 'adding' : 'editing'}>
+        return html`<div class="page" data-state=${view.adding ? 'adding' : 'editing'} ?data-full=${context.full}>
+            ${heading}
             <h2 tabindex="-1" data-detail-heading>${title}</h2>
             ${reconnectingStatus(locale, view.doc.reconnecting)} ${readOnlyNote} ${summary(context)} ${transforms(context)}
             ${tools(context)} ${panes(context)} ${previewControls(context)} ${this.#suggestions(context)}

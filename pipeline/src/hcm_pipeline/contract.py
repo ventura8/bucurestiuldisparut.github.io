@@ -111,6 +111,7 @@ VERSION_FILES: Final = (
     "tiles.pmtiles",
     "thumb.webp",
     "align.tif",
+    "stitched.jpg",
 )
 LEASE_SECONDS: Final = 600
 HEARTBEAT_SECONDS: Final = 60

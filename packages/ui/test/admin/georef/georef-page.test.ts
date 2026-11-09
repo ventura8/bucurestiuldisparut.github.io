@@ -2,6 +2,7 @@ import { axeViolations } from '@hcm/test-support/axe';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import type { GeorefIntentsPort, GeorefViewState } from '../../../src/admin/georef/georef-port.js';
+import { surroundings } from '../../../src/admin/georef/full-screen.js';
 import type { FakeArea } from '../editing/fake-area.js';
 import { button, click, defineImagery, georefPage, georefReference, georefState, georefVersion, nth } from '../imagery/fixtures.js';
 import { cleanup, deep, deepAll, deepText, updated } from '../shell/fake-app.js';
@@ -241,5 +242,46 @@ describe('<hcm-georef-page>: pairs, saving and states', () => {
         expect(rows.map((row) => row.getAttribute('data-pair'))).toEqual(['g2', 'g1', 'g3', 'g4']);
         expect(rows[3]?.textContent).toContain('–');
         expect(deep(nth(element, 'table.residuals tbody tr', 1), 'button.pair').getAttribute('aria-pressed')).toBe('true');
+    });
+});
+
+describe('<hcm-georef-page>: full screen (M22)', () => {
+    beforeAll(defineImagery);
+    afterEach(cleanup);
+
+    it('happyPath_fullScreenFillsTheWindowAndEscLeavesIt @S-A122-HAPPY-GEOREF-FULL-SCREEN', async () => {
+        const { element } = await georefPage(georefState());
+
+        click(button(element, 'Full screen'));
+        await updated(element);
+        const filled = deep(element, '.page').hasAttribute('data-full');
+        const level = deepAll(element, 'h1').length;
+        element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        await updated(element);
+
+        expect(filled).toBe(true);
+        expect(level).toBe(1);
+        expect(deep(element, '.page').hasAttribute('data-full')).toBe(false);
+        expect(document.querySelectorAll('[inert]')).toHaveLength(0);
+        expect(deepText(element)).toContain('Full screen');
+    });
+
+    it('badPath_leaveFullScreenByItsOwnButton @S-A122-BAD-GEOREF-FULL-SCREEN-LEFT', async () => {
+        const { element } = await georefPage(georefState());
+        const nav = document.createElement('nav');
+        document.body.prepend(nav);
+        const around = surroundings(element);
+
+        click(button(element, 'Full screen'));
+        await updated(element);
+        const inert = around.map((each) => each.hasAttribute('inert'));
+        click(button(element, 'Leave full screen'));
+        await updated(element);
+        nav.remove();
+
+        expect(deep(element, '.page').hasAttribute('data-full')).toBe(false);
+        expect(inert.length).toBeGreaterThan(0);
+        expect(inert.every(Boolean)).toBe(true);
+        expect(document.querySelectorAll('[inert]')).toHaveLength(0);
     });
 });

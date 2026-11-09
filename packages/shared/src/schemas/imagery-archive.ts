@@ -15,6 +15,7 @@ import { stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import { DEFAULT_MAP_THRESHOLD_MAX_M } from './imagery-settings.js';
 
 export { DEFAULT_MAP_THRESHOLD_MAX_M, MAP_THRESHOLD_MAX_RANGE } from './imagery-settings.js';
+import { stitchedSchema } from './imagery-help.js';
 import { coded, httpsUrlSchema, idSchema, plainText } from './primitives.js';
 
 /** At most this many series in one archive's report (the document stays far below Firestore's 1 MiB). */
@@ -259,6 +260,8 @@ export const helpItemSchema = z.strictObject({
     reason: z.enum(HELP_REASONS),
     note: plainText(200),
     at: timestampSchema,
+    /** M22 (§4.1): the series joined into one picture, which the Help calibrate wizard places. */
+    stitched: stitchedSchema.optional(),
 });
 
 export type HelpItem = z.infer<typeof helpItemSchema>;

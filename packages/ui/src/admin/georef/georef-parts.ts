@@ -25,6 +25,9 @@ export interface GeorefContext {
     readonly setSort: (sort: ResidualSort) => void;
     /** The keyboard's way: a pair at the scan's crosshair and the map's centre. */
     readonly addAtCentres: () => void;
+    /** M22 (§13.2): the scan and the map fill the window, the actions above them. */
+    readonly full: boolean;
+    readonly toggleFull: () => void;
 }
 
 function refusal(context: GeorefContext, reason: 'too-few' | 'degenerate'): TemplateResult {
@@ -192,6 +195,14 @@ export function tools(context: GeorefContext): TemplateResult {
             >
             <hcm-button variant="outlined" icon="my_location" ?disabled=${context.locked} @click=${context.addAtCentres}
                 >${contentText(locale, 'adminContent.georef.addAtCentres')}</hcm-button
+            >
+            <hcm-button
+                variant="outlined"
+                icon=${context.full ? 'fullscreen_exit' : 'fullscreen'}
+                .pressed=${context.full}
+                data-action="full-screen"
+                @click=${context.toggleFull}
+                >${contentText(locale, context.full ? 'adminContent.georef.leaveFullScreen' : 'adminContent.georef.fullScreen')}</hcm-button
             >
             ${saveButtons(context)}
         </div>

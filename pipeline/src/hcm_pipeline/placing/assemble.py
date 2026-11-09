@@ -1,16 +1,16 @@
 """The two assembly cases (docs/research/M20-import-local.md §3, *Atlases and pieces*): many scans made one map before it is placed.
 
-- **Pieces**: overlapping scans of one big sheet. Each pair is matched on SIFT features of a reduced copy, and an affine (flat scans: no
-  camera model) is fitted by RANSAC; a pair with fewer than `MIN_PIECE_MATCHES` agreeing matches does not overlap. The pieces are
-  chained from the best-connected one along the strongest overlaps (a maximum spanning tree), and every pixel of the canvas takes the
-  piece whose centre is nearest among those that cover it: a hard seam, never a feather (blending line art doubles its lines). The
+- **Pieces**: overlapping scans of one big sheet, joined pair by pair on their features (`joins`, M22 §4.1). The pieces are
+  chained from the best-connected one along the strongest overlaps (a maximum spanning tree, `tree`), and every pixel of the canvas
+  takes the piece whose centre is nearest among those that cover it: a hard seam, never a feather (blending line art doubles its lines). The
   global bundle adjustment and the graph-cut seam of §3 are not built: the tree's chained fits and the nearest-centre seam stand for them.
 - **Atlas**: numbered pages that abut on a printed grid. Without OCR of the index page (not built), the layout comes from the pages
   themselves: two pages are neighbours when the ink along one's right (or bottom) edge continues along the other's left (or top) edge,
   each the other's best match, and the pages are laid out on whole cells from the best-connected page.
 
 Either way, a part that joins nothing is left out and reported, and a cell inside the layout with no part is a hole (§3: Borroczyn's page
-50 is in the twin set). The canvas is written to the job's scratch folder only: it is a working file, never uploaded.
+50 is in the twin set). The canvas is written to the job's scratch folder; one that waits for a person is kept as its stitched
+picture (`stitched`).
 """
 
 import math
@@ -24,15 +24,12 @@ import numpy
 from numpy.typing import NDArray
 
 from hcm_pipeline.placing.frame import find_frame
-from hcm_pipeline.placing.geometry import FloatArray, compose, invert, scale_of
+from hcm_pipeline.placing.geometry import FloatArray, compose, invert
 from hcm_pipeline.placing.raster_io import RGB, read_working
 from hcm_pipeline.placing.streets import UInt8Array, grey_of
 from hcm_pipeline.rasters import GTIFF_OPTIONS, GeoTiff, write_geotiff
 
 MATCH_PX: Final = 1200
-MIN_PIECE_MATCHES: Final = 25
-SIFT_RATIO: Final = 0.75
-RANSAC_PX: Final = 3.0
 CANVAS_MAX_PX: Final = 20_000
 PAGE_PX: Final = 800
 PROFILE_SAMPLES: Final = 256
@@ -41,7 +38,6 @@ MIN_EDGE_SCORE: Final = 0.6
 # The best continuation must beat the page's next best by this much (a missing page leaves its neighbours a poor second best).
 EDGE_MARGIN: Final = 0.15
 OWNER_STEP: Final = 8
-PIECE_SCALE_SLACK: Final = 0.1
 
 
 @dataclass(frozen=True)
@@ -56,81 +52,23 @@ class Layout:
 
 
 @dataclass
-class _Edges:
+class Edges:
     """The overlaps found: (strength, i, j, the 2x3 taking j's pixels to i's)."""
 
     found: list[tuple[float, int, int, FloatArray]] = field(default_factory=list)
 
 
-Found = tuple[list[cv2.KeyPoint], numpy.ndarray | None]
 IDENTITY: Final = numpy.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
-KNN: Final = 2
 
 
-def _features(image: UInt8Array) -> Found:
-    keypoints, descriptors = cv2.SIFT.create(nfeatures=4000).detectAndCompute(image, None)
-    return list(keypoints), None if descriptors is None else numpy.asarray(descriptors)
-
-
-def _usable(found: Found) -> bool:
-    return found[1] is not None and len(found[0]) >= MIN_PIECE_MATCHES
-
-
-def _passes(pair: Sequence[cv2.DMatch]) -> bool:
-    return len(pair) == KNN and pair[0].distance < SIFT_RATIO * pair[1].distance
-
-
-def _good(first: numpy.ndarray, second: numpy.ndarray) -> list[cv2.DMatch]:
-    """Second's descriptors matched to first's, kept by Lowe's ratio."""
-    return [pair[0] for pair in cv2.BFMatcher(cv2.NORM_L2).knnMatch(second, first, k=KNN) if _passes(pair)]
-
-
-def _matches(first: Found, second: Found) -> list[cv2.DMatch]:
-    if first[1] is None or second[1] is None or not (_usable(first) and _usable(second)):
-        return []
-    return _good(first[1], second[1])
-
-
-def _points(keypoints: list[cv2.KeyPoint], indices: list[int]) -> NDArray[numpy.float32]:
-    return numpy.array([keypoints[index].pt for index in indices], numpy.float32)
-
-
-def _pair_points(first: Found, second: Found, good: list[cv2.DMatch]) -> tuple[NDArray[numpy.float32], NDArray[numpy.float32]]:
-    return _points(second[0], [match.queryIdx for match in good]), _points(first[0], [match.trainIdx for match in good])
-
-
-def piece_overlap(first: Found, second: Found) -> tuple[int, FloatArray] | None:
-    """How many matches agree on an affine taking the second piece's pixels to the first's, and that affine; None without overlap."""
-    good = _matches(first, second)
-    if len(good) < MIN_PIECE_MATCHES:
-        return None
-    source, target = _pair_points(first, second, good)
-    matrix, inliers = cv2.estimateAffine2D(source, target, method=cv2.RANSAC, ransacReprojThreshold=RANSAC_PX)
-    return _agreed(matrix, inliers)
-
-
-def _agreed(matrix: numpy.ndarray | None, inliers: numpy.ndarray | None) -> tuple[int, FloatArray] | None:
-    """The affine and its agreeing matches, when enough agree on a flat scan's transform."""
-    if matrix is None or inliers is None:
-        return None
-    found, count = numpy.asarray(matrix, numpy.float64), int(numpy.asarray(inliers).sum())
-    return (count, found) if count >= MIN_PIECE_MATCHES and _flat_scan(found) else None
-
-
-def _flat_scan(matrix: FloatArray) -> bool:
-    """Two scans of one sheet differ by a shift and a turn (any: a piece may lie on the scanner either way) at about one scale; another
-    scale is a chance agreement."""
-    return abs(scale_of(matrix) - 1.0) <= PIECE_SCALE_SLACK
-
-
-def _strength(count: int, edges: _Edges) -> FloatArray:
+def _strength(count: int, edges: Edges) -> FloatArray:
     strength = numpy.zeros(count)
     for weight, i, j, _ in edges.found:
         strength[[i, j]] += weight
     return strength
 
 
-def _tree(count: int, edges: _Edges) -> tuple[dict[int, FloatArray], tuple[int, ...]]:
+def tree(count: int, edges: Edges) -> tuple[dict[int, FloatArray], tuple[int, ...]]:
     """Each part's transform to the root's pixels along the strongest overlaps, from the best-connected part."""
     placed = {int(numpy.argmax(_strength(count, edges))): IDENTITY}
     for _ in range(count):
@@ -138,7 +76,7 @@ def _tree(count: int, edges: _Edges) -> tuple[dict[int, FloatArray], tuple[int, 
     return placed, tuple(index for index in range(count) if index not in placed)
 
 
-def _grow(placed: dict[int, FloatArray], edges: _Edges) -> None:
+def _grow(placed: dict[int, FloatArray], edges: Edges) -> None:
     """The strongest overlap between a placed part and one not yet placed joins the latter."""
     joining = [edge for edge in sorted(edges.found, key=lambda edge: -edge[0]) if (edge[1] in placed) != (edge[2] in placed)]
     if joining:
@@ -147,7 +85,7 @@ def _grow(placed: dict[int, FloatArray], edges: _Edges) -> None:
         placed[new] = transform
 
 
-def _bounds(placed: dict[int, FloatArray], sizes: Sequence[tuple[int, int]]) -> tuple[FloatArray, tuple[int, int]]:
+def bounds(placed: dict[int, FloatArray], sizes: Sequence[tuple[int, int]]) -> tuple[FloatArray, tuple[int, int]]:
     corners = []
     for index, matrix in placed.items():
         width, height = sizes[index]
@@ -156,27 +94,6 @@ def _bounds(placed: dict[int, FloatArray], sizes: Sequence[tuple[int, int]]) -> 
     stacked = numpy.vstack(corners)
     low, high = stacked.min(axis=0), stacked.max(axis=0)
     return low, (math.ceil(high[0] - low[0]), math.ceil(high[1] - low[1]))
-
-
-def _overlaps(found: Sequence[Found]) -> _Edges:
-    edges = _Edges()
-    pairs = [(i, j) for i in range(len(found)) for j in range(i + 1, len(found))]
-    for i, j in pairs:
-        overlap = piece_overlap(found[i], found[j])
-        if overlap is not None:
-            edges.found.append((float(overlap[0]), i, j, overlap[1]))
-    return edges
-
-
-def pieces_layout(images: Sequence[UInt8Array]) -> Layout | None:
-    """The pieces chained on their overlaps (pixels of each reduced copy to canvas pixels); None when the chain would make a canvas
-    larger than `CANVAS_MAX_PX` (the overlaps do not describe one sheet)."""
-    placed, left_out = _tree(len(images), _overlaps([_features(grey_of(image)) for image in images]))
-    low, size = _bounds(placed, [(image.shape[1], image.shape[0]) for image in images])
-    if max(size) > CANVAS_MAX_PX:
-        return None
-    shift = numpy.array([[1.0, 0.0, -low[0]], [0.0, 1.0, -low[1]]])
-    return Layout({index: compose(shift, matrix) for index, matrix in placed.items()}, size, left_out)
 
 
 # --- atlas pages ------------------------------------------------------------------------------------------------------

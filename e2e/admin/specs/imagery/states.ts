@@ -209,6 +209,10 @@ export const IMAGERY_STATES = {
         title: 'Georeferencer: too few pairs, Save off',
         visit: 'specs/imagery/georeferencer.spec.ts',
     },
+    'georef.full-screen': {
+        title: 'Georeferencer: full screen, the actions above the scan and the map',
+        visit: 'specs/imagery/georeferencer.spec.ts',
+    },
     'georef.rmse-over': {
         title: 'Georeferencer: an error over the threshold, the warning',
         visit: 'specs/imagery/georeferencer.spec.ts',

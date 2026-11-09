@@ -3191,3 +3191,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: M20 counted a local-only series against the daily cap, a spend guard meant for Cloud Run and new cloud layers; the plan proposed it and nobody revisited it once the series ran only on the owner's computer.
     - Fix and pin: `countsSince` (`functions/src/imagery/limits.ts`) never counts a `localOnly` job; `imagery.archiveImport` starts every series at once; `releaseDaily` frees a local-only job whatever the share, so the held series go at the next tick; the report's total no longer counts days. S-A121-HAPPY-LOCAL-UNCAPPED, S-A121-BAD-DAILY-SPLITS.
     - **A cap is for the cost it guards: work that costs the project nothing must not wait behind it.**
+
+543. **An archive series waiting for points opened a georeferencer with "The scan cannot be shown" and "No reference image".**
+    - Seen: 2026-11-09, the owner's screenshot of `1895-1899` (pieces) in the georeferencer; its panes were also too small to work in.
+    - Cause: an archive series is many scans, so M20 parked it with `help` only (`requiredOf`): no `scan`, no `reference`; the georeferencer reads exactly those two, and Locate again was offered to USGS frames only, so a parked series could not be made again.
+    - Fix and pin: a parked series' stitched picture is also its `scan` and the city window's OpenStreetMap lines its `reference` (`placing/stitched.py`, `test_placing_assemble.py`); Locate again places an archive series again from `place` (`locate-again-archive.test.ts`); the panes take 70 % of the window, with Full screen (`georeferencer.spec.ts`, S-A122-*).
+    - **A new kind of version that can wait for points must carry what every screen that opens a waiting version reads: test it by opening that screen, not by the version's schema alone.**

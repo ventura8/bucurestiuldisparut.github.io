@@ -329,6 +329,8 @@ export const ro = {
     'adminContent.georef.missing.other': 'mai trebuie {missing} de perechi',
     'adminContent.georef.addPairs': 'Adaugă perechi',
     'adminContent.georef.addAtCentres': 'Adaugă la centre',
+    'adminContent.georef.fullScreen': 'Ecran complet',
+    'adminContent.georef.leaveFullScreen': 'Ieși din ecranul complet',
     'adminContent.georef.save': 'Salvează și georeferențiază',
     'adminContent.georef.snap': 'Potrivește punctele mele',
     'adminContent.georef.snapNone': 'Pune între unu și douăsprezece puncte noi unde imaginea pare deplasată, apoi potrivește-le.',

@@ -118,7 +118,8 @@
         "studio.tif",
         "tiles.pmtiles",
         "thumb.webp",
-        "align.tif"
+        "align.tif",
+        "stitched.jpg"
     ],
     "LEASE_SECONDS": 600,
     "HEARTBEAT_SECONDS": 60,
