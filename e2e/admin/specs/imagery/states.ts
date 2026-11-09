@@ -123,6 +123,15 @@ export const IMAGERY_STATES = {
         title: 'Historical imagery: a version with no tiles yet, its small picture on the map and why',
         visit: 'specs/imagery/own-tiles.spec.ts',
     },
+    // M25 (docs/research/M25-landsat.md §8): Landsat beside the declassified sources.
+    'imagery.results-landsat': {
+        title: 'Historical imagery: the Landsat chip chosen, its scenes ranked by cloud and season, each free',
+        visit: 'specs/imagery/landsat.spec.ts',
+    },
+    'imagery.version-landsat-held': {
+        title: 'Historical imagery: a Landsat version off Sentinel-2 by more than a pixel, its shift and cloud, waiting for Approve',
+        visit: 'specs/imagery/landsat.spec.ts',
+    },
     'imagery.work-thumbs': {
         title: "Historical imagery: Work's waiting row with the version's small picture",
         visit: 'specs/imagery/own-tiles.spec.ts',

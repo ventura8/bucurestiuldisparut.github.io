@@ -52,6 +52,8 @@ const DATASETS = {
     corona2: 'adminContent.imagery.dataset.corona2',
     declassii: 'adminContent.imagery.dataset.declassii',
     declassiii: 'adminContent.imagery.dataset.declassiii',
+    landsat_tm_c2_l1: 'adminContent.imagery.dataset.landsat_tm_c2_l1',
+    landsat_etm_c2_l1: 'adminContent.imagery.dataset.landsat_etm_c2_l1',
 } as const satisfies Readonly<Record<UsgsDataset, string>>;
 
 export function versionStateText(locale: Locale, state: LayerVersionState): string {

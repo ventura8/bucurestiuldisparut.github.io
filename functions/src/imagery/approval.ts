@@ -9,7 +9,9 @@
  * `held-out` alone says little off that path. No check of it may have been dropped as gross, and its tiles must span the frame
  * (S-A17-BAD-CHECKS-DROPPED, S-A17-BAD-UNMEASURED-AREA). A missing figure never approves. Otherwise it waits for Approve. M8
  * (`docs/research/M8-join-interfaces.md` §5): a frame made for a join never approves on its own, whether that join is live or
- * ended (half a city would go public), and a join has its own conditions, every one required: it has no georeference.
+ * ended (half a city would go public), and a join has its own conditions, every one required: it has no georeference. M25
+ * (`docs/research/M25-landsat.md` §5): a Landsat scene has none either; it approves on its own within a pixel of Sentinel-2 over a
+ * clear city it covers.
  */
 import {
     AUTO_MIN_MEASURED_PCT,
@@ -19,6 +21,7 @@ import {
     estimateComputeUnits,
     imagerySettingsOf,
     jobDocSchema,
+    landsatClear,
     layerVersionDocSchema,
     mapThresholdM,
     rightsAllowPublish,
@@ -129,11 +132,24 @@ function joinWithin(join: JoinReport, threshold: number): boolean {
     return JOIN_CONDITIONS.every((condition) => condition(join, threshold));
 }
 
-/** A version's own evidence: its georeference, or a join's report; neither means no evidence. */
+/**
+ * A version's own evidence: its georeference, a join's report, or (M25) a Landsat scene's: within a pixel of Sentinel-2 over a clear
+ * city that it covers (public domain: no rights to confirm); none means no evidence.
+ */
 function evidenceWithin(version: Rendered, threshold: number): boolean {
-    if (version.georef !== undefined) {
-        return measuredWithin(version.georef, threshold) && provedWhole(version) && frameCoversCity(version);
+    if (version.landsat !== undefined) {
+        return landsatClear(version.landsat) && frameCoversCity(version);
     }
+    return version.georef === undefined ? joinEvidenceWithin(version, threshold) : georefEvidenceWithin(version, version.georef, threshold);
+}
+
+/** A frame's fit within the threshold, proved whole, over the city. */
+function georefEvidenceWithin(version: Rendered, georef: Georef, threshold: number): boolean {
+    return measuredWithin(georef, threshold) && provedWhole(version) && frameCoversCity(version);
+}
+
+/** A join's report within the threshold; no report is no evidence. */
+function joinEvidenceWithin(version: Rendered, threshold: number): boolean {
     return version.join !== undefined && joinWithin(version.join, threshold);
 }
 
@@ -168,9 +184,12 @@ function archiveAllowed(version: Rendered, settings: ImagerySettings): boolean {
     return settings.autoPublish && settings.mapAutoPublish && rightsAllowPublish(version.rights);
 }
 
-/** The checkpoint error a version answers for: its georeference's, the worst frame's of a join, or an archive series' blocked figure. */
+/**
+ * The checkpoint error a version answers for: its georeference's, the worst frame's of a join, an archive series' blocked figure, or
+ * (M25) a Landsat scene's shift from Sentinel-2.
+ */
 function measuredRmseOf(version: LayerVersionDoc): number | undefined {
-    return version.georef?.checkpointRmseM ?? reportedRmseOf(version);
+    return version.georef?.checkpointRmseM ?? reportedRmseOf(version) ?? version.landsat?.offsetM;
 }
 
 /** A version of many scans: the worst frame's of a join, or an archive series' blocked figure. */

@@ -238,6 +238,15 @@ Declassified USGS satellite frames (Corona, Gambit, Hexagon; 1960–1984) become
 - Limits: 10 imports a day and 2 running at once, per project.
 - **Paused by the budget guard**: when the month's Google Cloud cost reaches the budget, imports, retries, the georeferencer's saves, crops and publishes stop (the public map never does). **Historical imagery** and **Jobs** say so with the cost and the budget, and **Resume processing** (asked first) starts them again for the rest of the month; next month's alert pauses them again.
 
+### Landsat (M25)
+
+Landsat satellite images (1982 to 2013, public domain) come through the same USGS account as the declassified frames, already placed on the map: no points, no calibration.
+
+- **Find**: the search lists Landsat's summer scenes beside the declassified frames; the **Landsat** chip shows only them. A scene from May or September says its month; a cloudy one says its clouds first and ranks lower. Each is **Import (free)**.
+- **On its own**: by default the app imports the clearest summer scene of each year from 1984 to 2000, one at a time, within the day's limit of imports. **Settings → Imagery → Landsat** turns it off or changes the years.
+- **What it checks**: the image must lie within one Landsat pixel (30 m, 15 m for Landsat 7) of today's Sentinel-2 picture, with at most a tenth of the city under clouds; then it goes on the map by itself, credited "Landsat imagery courtesy of NASA Goddard Space Flight Center and U.S. Geological Survey". Otherwise it waits for **Approve**, and says how far off it is and how cloudy the city is.
+- A delivery that lacks a colour band stops with "The Landsat delivery lacks band B3…": choose another scene of that year.
+
 ### A whole-city layer from one date's frames (M8)
 
 A KH-9 frame often holds only part of the city. Frames of one date, from one camera, can be joined into one layer. The design: `docs/research/M8-join-interfaces.md`.

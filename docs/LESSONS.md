@@ -3139,3 +3139,12 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: building the engine with one change at a time on the NUC (`git stash`, then a `sed` per experiment): deleting the index's star line, or naming its exports, measured 124,990; a star-exported barrel of named exports did not.
     - Fix: `packages/shared/src/index.ts` names `imagery-archive.ts`'s runtime exports and re-exports its types with `export type *`, and `api/index.ts` names `api/archive.ts`'s (DECISIONS-for-review.md §137j).
     - **When the engine grows with no source of its own changing, bisect the package index's `export *` lines: a star re-export can cost bytes even when tree-shaking drops the module's code.**
+533. **"Every dataset fails" named the three declassified datasets, so adding Landsat turned a USGS outage into a partial harvest.**
+    - Seen: 2026-11-09, track/landsat: with `USGS_DATASETS` grown to five, `search.test.ts`'s "every dataset in maintenance" and `tick.test.ts`'s back-off failed: the fake answered the two Landsat datasets with no scenes, so the harvest reported "found 0" instead of `apiError.usgs.maintenance`.
+    - Cause: the tests listed `['corona2', 'declassii', 'declassiii']` where they meant "every dataset"; the code was right (it fails only when every requested dataset failed).
+    - Fix and pin: the tests loop over `USGS_DATASETS` (`functions/test/imagery/search.test.ts`, `tick.test.ts`); the fake answers Landsat's scenes only once a spec asks (`usgs.landsatScenes`), so no other spec's counts move.
+    - **A test that means "all of a list" iterates the list's constant, never a copy of today's members.**
+534. **A Landsat scene's cloud reason was the fourth of its reasons, so its card never said why it ranked low.**
+    - Seen: 2026-11-09, writing `S-A130-BAD-CLOUDY`: a 35 % cloudy scene contributes only 3 of the cloud part's 10 points, behind free, coverage and "no layers yet", and a card shows three reasons.
+    - Fix and pin: a Landsat scene over the tick's 20 % cap, and one out of the leaf-on months, list their cloud or season reason first (`always`, `packages/shared/src/imagery/ranking.ts`; `RANKING_VERSION` 4).
+    - **When a new kind of item is ranked by an old score, check which reason its card shows first, not only its place in the list.**

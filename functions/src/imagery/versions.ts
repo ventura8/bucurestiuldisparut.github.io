@@ -203,6 +203,7 @@ function processingVersion(work: NewWork, fields: VersionFields): LayerVersionDo
         refining: undefined,
         join: undefined,
         archive: undefined,
+        landsat: undefined,
         rights: fields.rights,
         help: undefined,
         suggestions: undefined,

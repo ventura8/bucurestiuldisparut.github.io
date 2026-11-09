@@ -17,6 +17,7 @@ import { cropRingSchema, georefSchema, MAX_SCAN_PIXELS } from './georef.js';
 import { calibrationSchema, measuredOutlineSchema } from './imagery-calibration.js';
 import { joinReportSchema, joinSourceSchema, layerJoinParamsSchema } from './imagery-join.js';
 import { recalibrationSchema } from './imagery-recalibration.js';
+import { landsatReportSchema } from './landsat.js';
 import {
     boundsRecordSchema,
     coded,
@@ -328,6 +329,8 @@ export const layerVersionDocSchema = z
         join: joinReportSchema.optional(),
         /** M20 (§4): what the placement of an archive series measured; such a version has no `scan` and no `georef`. */
         archive: archiveReportSchema.optional(),
+        /** M25: what `warp` measured of a Landsat scene (its shift against Sentinel-2, the city's cloud); such a version has no `georef`. */
+        landsat: landsatReportSchema.optional(),
         /** M20 (§7): the series' rights; nothing publishes the version until they allow it (`rightsAllowPublish`). */
         rights: rightsSchema.optional(),
         /** The owner's standing rule (2026-11-09): why it waits for a person, for the shared "Help calibrate" queue. */

@@ -15,6 +15,7 @@ import type {
     JobWaitReason,
     JoinPart,
     JoinReport,
+    LandsatReport,
     LayerVersionState,
     LngLat,
     OrderState,
@@ -150,6 +151,8 @@ export interface VersionViewPort {
     } | null;
     /** M9: how the frame was found and what proved it (`calibration-card.ts`). */
     readonly calibration: Calibration | null;
+    /** M25: what the pipeline measured of a Landsat scene (`approval-card.ts` says it instead of a checkpoint error). */
+    readonly landsat: LandsatReport | null;
     readonly output: {
         readonly bounds: BBox;
         readonly minzoom: number;

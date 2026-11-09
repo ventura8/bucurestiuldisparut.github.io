@@ -268,11 +268,16 @@ service cloud.firestore {
 
         // M3 imagery settings (`cityImagerySchema`, CR-M3-2): auto-publish, its RMSE threshold in metres (1-200) and
         // the target years; every field optional. M20 (docs/research/M20-import-local.md §5): a drawn map's threshold cap
-        // in metres (15-200) and whether a map publishes on its own.
+        // in metres (15-200) and whether a map publishes on its own. M25 (docs/research/M25-landsat.md §4): whether the tick imports
+        // Landsat on its own, and the years from and to.
         function validImagery(imagery) {
             return imagery.keys().hasOnly([
-                    'autoPublish', 'rmseThresholdM', 'targetYears', 'publishThroughMapbox', 'mapThresholdMaxM', 'mapAutoPublish'
+                    'autoPublish', 'rmseThresholdM', 'targetYears', 'publishThroughMapbox', 'mapThresholdMaxM', 'mapAutoPublish',
+                    'landsatAuto', 'landsatFrom', 'landsatTo'
                 ])
+                && imagery.get('landsatAuto', true) is bool
+                && isYear(imagery.get('landsatFrom', 1984))
+                && isYear(imagery.get('landsatTo', 2000))
                 && imagery.get('autoPublish', true) is bool
                 && imagery.get('mapAutoPublish', true) is bool
                 && imagery.get('mapThresholdMaxM', 60) is number

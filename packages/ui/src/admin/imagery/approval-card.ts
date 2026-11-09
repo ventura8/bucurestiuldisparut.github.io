@@ -4,9 +4,9 @@
  * (`docs/research/M12-own-tiles.md`): by default a layer's tiles go to the city's own public bucket, and the card says what that costs in
  * the owner's words (`image-view.ts`): no compute units, Studio steps or choices. A city that publishes through Mapbox sees those from
  * the `mapbox-choices` chunk. M8: a join's section says what it measured (`join/join-card.ts`), and M9 there too: why a frame under the
- * threshold still waits.
+ * threshold still waits. M25: a Landsat scene has no checkpoint error; the card says its shift from Sentinel-2 and the city's cloud.
  */
-import { recalibrationVerdict, type Locale } from '@hcm/shared';
+import { landsatClear, recalibrationVerdict, type LandsatReport, type Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { contentText } from '../shell/text.js';
@@ -17,7 +17,7 @@ import { numberText } from './imagery-text.js';
 import { lazyJoin } from './join/lazy-card.js';
 import { lazyMapboxChoices } from './lazy-approval.js';
 import type { Guard } from './mapbox-choices.js';
-import { withValue } from './when.js';
+import { when, withValue } from './when.js';
 
 /** The page is busy with another action, or nothing may be written. */
 function busy(context: ImageryContext, page: VersionPagePort): boolean {
@@ -37,7 +37,27 @@ function checkpointOf(version: VersionViewPort): number | null {
     return version.georef?.checkpointRmseM ?? version.join?.checkpointRmseM ?? null;
 }
 
+/** M25: a Landsat scene's shift from Sentinel-2 and the city's cloud, and why it waits when it is not clear. */
+function landsatText(locale: Locale, report: LandsatReport): TemplateResult {
+    const offset =
+        report.offsetPx === undefined || report.offsetM === undefined
+            ? contentText(locale, 'adminContent.imagery.landsat.unchecked')
+            : contentText(locale, 'adminContent.imagery.landsat.offset', {
+                  pixels: numberText(locale, report.offsetPx),
+                  metres: numberText(locale, report.offsetM),
+              });
+    const clear = landsatClear(report);
+    const cloud = contentText(locale, 'adminContent.imagery.landsat.cloud', { percent: numberText(locale, report.cityCloudPct) });
+    const held = when(!clear, () => html`<p class="alert">${contentText(locale, 'adminContent.imagery.landsat.held')}</p>`);
+    return html`<p data-landsat=${clear ? 'clear' : 'held'}>${offset}</p>
+        <p class="note">${cloud}</p>
+        ${held}`;
+}
+
 function rmseText(context: ImageryContext, version: VersionViewPort): TemplateResult {
+    if (version.landsat !== null) {
+        return landsatText(context.locale, version.landsat);
+    }
     const rmse = checkpointOf(version);
     return rmse === null
         ? html`<p class="note" data-rmse="unmeasured">${contentText(context.locale, 'adminContent.imagery.approval.unmeasured')}</p>`

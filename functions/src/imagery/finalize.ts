@@ -15,7 +15,9 @@ import {
     FIRESTORE_PATHS,
     MAPBOX_FREE_COMPUTE_UNITS,
     SENSOR_SPECS,
+    LANDSAT_ATTRIBUTION,
     USGS_ATTRIBUTION,
+    isLandsatDataset,
     creditLine,
     layerRightsOf,
     enabledGcps,
@@ -109,8 +111,13 @@ function attributionOf(version: LayerVersionDoc): string {
 }
 
 function ownAttribution(version: LayerVersionDoc): string {
-    const own = version.source?.kind === 'upload' ? nameOf(version).slice(0, 500) : USGS_ATTRIBUTION;
+    const own = version.source?.kind === 'upload' ? nameOf(version).slice(0, 500) : usgsCredit(version);
     return version.georef?.terrain === undefined ? own : `${own}; ${DEM_ATTRIBUTION}`.slice(0, 500);
+}
+
+/** M25: a Landsat scene credits NASA and USGS as they ask; a declassified frame USGS EROS. */
+function usgsCredit(version: LayerVersionDoc): string {
+    return version.source?.kind === 'usgs' && isLandsatDataset(version.source.dataset) ? LANDSAT_ATTRIBUTION : USGS_ATTRIBUTION;
 }
 
 function georefProvenance(georef: Georef): NonNullable<Provenance['georef']> {

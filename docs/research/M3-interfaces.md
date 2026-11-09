@@ -255,6 +255,11 @@ provisioner's `bucket-lifecycle` item applies `PRIVATE_BUCKET_LIFECYCLE` (CR-M3-
    change). The response counts `found`, `added`, `updated`.
 5. The best `BROWSE_PREFETCH` (20) scenes without a copy get one (§3.4), each isolated.
 
+M25 (`M25-landsat.md` §1): the two Landsat datasets (`landsat_tm_c2_l1`, `landsat_etm_c2_l1`) are searched the same way, with M2M's
+`seasonalFilter` (May to September) and `cloudCoverFilter` (at most 40 %), ETM+ only before 2003-05-31; their import is a
+`usgs-import` that skips `stitch`, `locate` and `georef` and composes in `warp` (§5 of M25), and the tick imports the best scene of
+each wanted year on its own (§4 of M25).
+
 ### 3.2 What a scene keeps
 
 | Field | From the `scene-search` result |

@@ -974,6 +974,20 @@
             "name": "A local archive is taken in untrusted, classified into series and its series' job runs on the owner's computer",
             "milestone": "M20",
             "source": "the owner, 2026-11-09: import, optimise and calibrate a local archive of scanned maps (harti.zip); docs/research/M20-import-local.md"
+        },
+        {
+            "id": "A130",
+            "area": "admin",
+            "name": "Landsat beside the declassified sources: its chip, Import (free), the tick's own import of each wanted year, and its approval",
+            "milestone": "M25",
+            "source": "the owner, 2026-11-09: import Landsat for 1984-2000, added to the sources and automated like USGS; docs/research/M25-landsat.md"
+        },
+        {
+            "id": "P30",
+            "area": "pipeline",
+            "name": "A Landsat scene is composed on the tile grid, pan-sharpened for ETM+, and checked against Sentinel-2 instead of georeferenced",
+            "milestone": "M25",
+            "source": "the owner, 2026-11-09: import Landsat for 1984-2000, added to the sources and automated like USGS; docs/research/M25-landsat.md"
         }
     ],
     "scenarios": [
@@ -16310,6 +16324,127 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M20 (docs/research/M20-import-local.md §7, §8, review 2026-11-09). Tests: pipeline/tests/unit/test_archive_store.py, pipeline/tests/unit/test_archive_intake.py."
+        },
+        {
+            "id": "S-A130-HAPPY",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "happy",
+            "title": "Landsat scenes are listed beside the declassified ones and Import publishes one credited to NASA and USGS",
+            "asserts": "usgs.landsatScenes -> the page's own search lists nine free scenes; the Landsat chip leaves the three Landsat 5 TM scenes, each Free; Import (free) on the clear 1989 scene -> the stand-in skips stitch, locate and georef, warp writes the landsat report within a pixel -> the policy publishes it; the layer is satellite, Landsat 5 TM, credited 'Landsat imagery courtesy of NASA Goddard Space Flight Center and U.S. Geological Survey'",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M25 (docs/research/M25-landsat.md). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/landsat.test.ts, packages/shared/test/imagery/landsat.test.ts, packages/ui/test/admin/imagery/landsat.test.ts."
+        },
+        {
+            "id": "S-A130-HAPPY-AUTO",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "happy",
+            "title": "The tick imports the clearest scene of a wanted year on its own",
+            "asserts": "Landsat harvested, the city's default 1984-2000 and its switch on -> imagery.tick imports the clear 1989 scene (the oldest wanted year), one a tick, as an ordinary usgs-import the daily cap counts",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M25 (docs/research/M25-landsat.md). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/landsat.test.ts, packages/shared/test/imagery/landsat.test.ts, packages/ui/test/admin/imagery/landsat.test.ts."
+        },
+        {
+            "id": "S-A130-BAD-CLOUDY",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "bad",
+            "title": "A cloudy Landsat scene ranks below a clear one of the same summer and is never imported on its own",
+            "asserts": "the 35 % cloudy scene of July 1989 is listed after the clear one with 'Clouds: 35%' first among its reasons; an off-season scene says its month; the tick leaves it a candidate",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M25 (docs/research/M25-landsat.md). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/landsat.test.ts, packages/shared/test/imagery/landsat.test.ts, packages/ui/test/admin/imagery/landsat.test.ts."
+        },
+        {
+            "id": "S-A130-BAD-MISSING-BAND",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Landsat delivery without a band fails in plain words",
+            "asserts": "the import's extract fails with apiError.imagery.missingBand {band: B3} -> the version is failed, its error reads 'The Landsat delivery lacks band B3, so no colour image can be made. Try another scene of that year.', the extract step failed",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M25 (docs/research/M25-landsat.md). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/landsat.test.ts, packages/shared/test/imagery/landsat.test.ts, packages/ui/test/admin/imagery/landsat.test.ts."
+        },
+        {
+            "id": "S-A130-BAD-OFFSET",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Landsat scene off Sentinel-2 by more than a pixel, or under cloud over the city, waits for Approve and says why",
+            "asserts": "warp's report off by 1.7 px (51 m) -> the policy does not approve it; the approval card shows the shift, the city's cloud and 'Waits for your approval: over one pixel off, or clouds over the city.' with Approve",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M25 (docs/research/M25-landsat.md). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/landsat.test.ts, packages/shared/test/imagery/landsat.test.ts, packages/ui/test/admin/imagery/landsat.test.ts."
+        },
+        {
+            "id": "S-A130-BAD-AUTO-OFF",
+            "behaviour": "A130",
+            "area": "admin",
+            "path": "bad",
+            "title": "With its switch off, the guard red, no USGS downloads or no wanted year left, the tick imports no Landsat scene",
+            "asserts": "imagery.landsatAuto false, ops/guard red, USGS role search only, or landsatFrom..landsatTo past every harvested year -> importLandsat starts no job and the scenes stay candidates; a reversed range has no year; a non-year is refused by the schema, the rules and at its Settings field",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M25 (docs/research/M25-landsat.md). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/landsat.test.ts, packages/shared/test/imagery/landsat.test.ts, packages/ui/test/admin/imagery/landsat.test.ts. firebase/rules-tests/test/cities.test.ts, packages/ui/test/admin/settings/imagery-section.test.ts."
+        },
+        {
+            "id": "S-P30-HAPPY",
+            "behaviour": "P30",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A Landsat 5 TM scene becomes a true-colour layer on the tile grid within a pixel of Sentinel-2",
+            "asserts": "a synthetic Level-1 bundle of the synthetic world (UTM 35N, 30 m) -> fetch, extract keeps B1-B3 and QA_PIXEL, stitch/locate/georef skipped, warp composes RGBA at z13 and measures its shift (<= 1 px), the city clear (0 %), the delivery deleted, the version awaiting approval with output z8-z13",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M25 (docs/research/M25-landsat.md). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
+        },
+        {
+            "id": "S-P30-HAPPY-ETM",
+            "behaviour": "P30",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A Landsat 7 ETM+ scene is pan-sharpened to 15 m at z14",
+            "asserts": "a bundle with B8 -> Brovey pan-sharpening (the intensity becomes the panchromatic band, the colour ratios kept), output maxzoom 14, report pansharpened and resolution 15",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M25 (docs/research/M25-landsat.md). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
+        },
+        {
+            "id": "S-P30-BAD-MISSING-BAND",
+            "behaviour": "P30",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A Landsat bundle without a band fails with that band",
+            "asserts": "a bundle without B3 -> extract fails with apiError.imagery.missingBand {band: B3}; the job failed",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M25 (docs/research/M25-landsat.md). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
+        },
+        {
+            "id": "S-P30-BAD-OFFSET",
+            "behaviour": "P30",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A Landsat scene off Sentinel-2 says so in its report",
+            "asserts": "Sentinel-2 served 90 m north -> the report's shift over one pixel, northM negative; too few common pixels or no peak measures nothing (checked false)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M25 (docs/research/M25-landsat.md). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
+        },
+        {
+            "id": "S-P30-BAD-CLOUD",
+            "behaviour": "P30",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Clouds and fill are masked: they never set the stretch, and the city's cloud share is measured",
+            "asserts": "QA_PIXEL cloud bits over half the scene -> those pixels are cloud, the clear half spans 1..255, the city's cloud 50 %; fill is no data; a scene with no clear pixel stretches its valid ones; a cloud box over the synthetic city -> cityCloudPct over 10",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M25 (docs/research/M25-landsat.md). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
         }
     ]
 }

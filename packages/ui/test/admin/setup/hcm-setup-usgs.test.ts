@@ -194,7 +194,9 @@ describe('<hcm-setup-usgs> the countdown and the status', () => {
         );
         await page.getByRole('button', { name: 'Copy the request text' }).click();
 
-        expect(writeText.mock.calls[0]?.[0]).toContain('Datasets: corona2, declassii, declassiii.');
+        expect(writeText.mock.calls[0]?.[0]).toContain(
+            'Datasets: corona2, declassii, declassiii, and Landsat (landsat_tm_c2_l1, landsat_etm_c2_l1), all with the same access.',
+        );
         vi.restoreAllMocks();
     });
 
