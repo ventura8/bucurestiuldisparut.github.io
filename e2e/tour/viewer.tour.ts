@@ -97,6 +97,14 @@ test(
 );
 
 test(
+    "The map's menu, open",
+    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V62-HAPPY-TOUR'] },
+    async ({ page, context, lang }) => {
+        await expectJourneySound({ page, context, lang }, journey('map-menu'));
+    },
+);
+
+test(
     "A city whose basemap is a custom style, without Standard's labels",
     { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE'] },
     async ({ page, context, lang }) => {

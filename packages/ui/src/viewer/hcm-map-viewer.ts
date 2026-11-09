@@ -18,8 +18,9 @@ import { applyTheme } from '../theme/apply.js';
 import { watchAttribution, type AttributionPart } from './attribution.js';
 import { OverlayChangeTracker, overlayEvents, viewerEvents, type PublicEvent } from './events.js';
 import type { HcmTimeline } from './hcm-timeline.js';
-import { commandAllowed, runInputCommand, type InputCommand } from './input-commands.js';
+import { commandAllowed, isDialogSheet, runInputCommand, type InputCommand } from './input-commands.js';
 import { layoutFor, type ViewerLayout } from './layout.js';
+import { watchMapMenu, type MenuPoint } from './map-menu-trigger.js';
 import { stopMyLocation } from './my-location.js';
 import { browserServices, type ViewerServices } from './services.js';
 import type { Unsubscribe, ViewerController, ViewerError, ViewerState, ViewerStorePort } from './store-port.js';
@@ -70,6 +71,21 @@ function sizeOf(map: HTMLElement | null): MapSize | null {
 
 type Opener = 'sheet' | 'lightbox';
 
+/** The full-size view and About (or its help panel) are side-loaded (`extras-loader.ts`). */
+function hasExtras(state: ViewerState): boolean {
+    return state.lightbox || isDialogSheet(state.sheet);
+}
+
+/** Extras that could not load: the full-size view or About closes, and a toast says the full-size image failed. */
+function closeExtras(store: ViewerStorePort): void {
+    if (store.getState().lightbox) {
+        store.setLightbox(false);
+        store.showToast('error.photoImage');
+    } else {
+        store.openSheet('none');
+    }
+}
+
 /** A new attribution re-renders only when its text or links changed (Mapbox rewrites it on every source change). */
 function attributionChanged(next: readonly AttributionPart[], previous: readonly AttributionPart[] | undefined): boolean {
     return JSON.stringify(next) !== JSON.stringify(previous);
@@ -86,6 +102,7 @@ export class HcmMapViewer extends LitElement {
         mapboxCssUrl: { attribute: false },
         engineVersion: { attribute: false },
         viewState: { state: true },
+        mapMenu: { state: true },
         attribution: { state: true, hasChanged: attributionChanged },
     };
 
@@ -107,6 +124,8 @@ export class HcmMapViewer extends LitElement {
     declare mapboxCssUrl: string;
     declare engineVersion: string;
     declare viewState: ViewerState | null;
+    /** Where the map's menu is open (V62), in the map's px; null: closed. */
+    declare mapMenu: MenuPoint | null;
     /** What Mapbox GL's attribution control shows (empty until the map has drawn it). */
     declare attribution: readonly AttributionPart[];
 
@@ -143,6 +162,9 @@ export class HcmMapViewer extends LitElement {
             this.#setOpacity(store, detail);
         },
         services: () => this.services,
+        mapMenu: (point) => {
+            this.mapMenu = point;
+        },
         focusTimeline: () => {
             this.renderRoot.querySelector<HcmTimeline>('#timeline')?.focus();
         },
@@ -159,6 +181,7 @@ export class HcmMapViewer extends LitElement {
         this.mapboxCssUrl = '';
         this.engineVersion = '';
         this.viewState = null;
+        this.mapMenu = null;
         this.attribution = [];
     }
 
@@ -275,6 +298,7 @@ export class HcmMapViewer extends LitElement {
             mapboxCssUrl: this.mapboxCssUrl,
             attribution: this.attribution,
             mapSize: sizeOf(this.mapContainer),
+            mapMenu: this.mapMenu,
         };
         return renderViewer(view, this.#handlers);
     }
@@ -283,11 +307,29 @@ export class HcmMapViewer extends LitElement {
         this.#stopAttribution();
         const container = this.mapContainer;
         if (container !== null) {
-            this.#stopAttribution = watchAttribution(container, (parts) => {
+            const stopAttribution = watchAttribution(container, (parts) => {
                 this.attribution = parts;
             });
+            const stopMenu = watchMapMenu(container, this.#openMapMenu);
+            this.#stopAttribution = () => {
+                stopAttribution();
+                stopMenu();
+            };
         }
     }
+
+    /** The map's menu is side-loaded with the full-size view (`extras-loader.ts`); it opens once a map shows. */
+    readonly #openMapMenu = (point: MenuPoint): void => {
+        if (this.viewState?.status !== 'ready') {
+            return;
+        }
+        void (this.services.loadExtras?.() ?? Promise.resolve()).then(
+            () => {
+                this.mapMenu = point;
+            },
+            () => undefined,
+        );
+    };
 
     #stopMyLocation(): void {
         if (this.#store !== null) {
@@ -318,19 +360,16 @@ export class HcmMapViewer extends LitElement {
         }
         this.#trackOpener('sheet', previous.sheet !== 'none', state.sheet !== 'none');
         this.#trackOpener('lightbox', previous.lightbox, state.lightbox);
-        this.#loadLightbox(previous.lightbox, state.lightbox);
+        this.#loadExtras(hasExtras(previous), hasExtras(state));
     }
 
-    /** The full-size view is side-loaded the first time it opens (`lightbox-loader.ts`); if it cannot load, it closes and says so. */
-    #loadLightbox(wasOpen: boolean, open: boolean): void {
+    /** The full-size view is side-loaded the first time it opens (`extras-loader.ts`); if it cannot load, it closes and says so. */
+    #loadExtras(wasOpen: boolean, open: boolean): void {
         if (wasOpen || !open) {
             return;
         }
-        this.services.loadLightbox?.().catch(() => {
-            this.#act(null, (store) => {
-                store.setLightbox(false);
-                store.showToast('error.photoImage');
-            });
+        this.services.loadExtras?.().catch(() => {
+            this.#act(null, closeExtras);
         });
     }
 

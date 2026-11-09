@@ -32,6 +32,7 @@ const EXPORTS = {
         'bearingDelta',
         'clamp',
         'roundTo',
+        'streetViewUrl',
         'toDegrees',
         'toRadians',
         'wrapBearing',

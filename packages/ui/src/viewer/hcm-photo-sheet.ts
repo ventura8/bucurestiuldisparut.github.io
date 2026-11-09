@@ -9,11 +9,13 @@
  * Once the thumbnail is decoded (or failed) the sheet fires `hcm-photo-shown` (`{ ok }`), which the viewer turns into
  * the `photo_timing` field measurement (docs/ARCHITECTURE.md → *Field measurements*). A photo with an improved or a
  * colorized version shows the version `photoVersion` picks and a switch between them (`photo-version.ts`), which fires
- * `hcm-photo-version` (`{ view }`).
+ * `hcm-photo-version` (`{ view }`). "Open in Google Street View" is a plain link to the photo's place, looking along its
+ * bearing (V62).
  */
 import {
     DEFAULT_LOCALE,
     isPhotoNearYear,
+    streetViewUrl,
     translate,
     type Locale,
     type Photo,
@@ -211,7 +213,9 @@ export class HcmPhotoSheet extends LitElement {
     #photoDetails(photo: Photo): TemplateResult {
         const locale = this.locale;
         return html`<div class="details">
-            ${this.#image(photo)} ${this.#locate(photo)} ${this.#date(photo)} ${photoRights(photo, locale)} ${this.#source(photo)}
+            ${this.#image(photo)} ${this.#locate(photo)}
+            <p>${externalLink(streetViewUrl(photo.location, photo.bearing), translate(locale, 'mapMenu.streetView'))}</p>
+            ${this.#date(photo)} ${photoRights(photo, locale)} ${this.#source(photo)}
             ${photo.description === undefined ? nothing : html`<p>${localizedText(photo.description, locale)}</p>`} ${this.#links(photo)}
             ${this.#suggestion(photo)} ${relatedStories(this.stories, 'photoIds', photo.id, this.locale)}
         </div>`;

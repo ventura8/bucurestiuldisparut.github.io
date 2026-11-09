@@ -3,6 +3,6 @@
  * Subresource Integrity, which the engine's build writes here once the part is built (`lightboxPartPlugin`,
  * `packages/engine/vite.config.ts`). Empty in the sources and the tests: the script is then added without integrity.
  */
-export const LIGHTBOX_PART_FILE = 'engine.lightbox.js';
+export const EXTRAS_PART_FILE = 'engine.extras.js';
 
-export const LIGHTBOX_PART_INTEGRITY = '';
+export const EXTRAS_PART_INTEGRITY = '';

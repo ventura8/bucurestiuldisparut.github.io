@@ -11,7 +11,7 @@ const VIEWER_EXPORTS = [
     'VIEWER_TAGS',
     'defineViewerElements',
     'setViewerBootstrap',
-    'sideLoadLightbox',
+    'sideLoadExtras',
     'watchGamepads',
 ];
 
