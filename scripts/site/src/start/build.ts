@@ -7,6 +7,7 @@ import { SiteBuildError } from '../errors.js';
 import type { SiteFileSystem } from '../files.js';
 import { buildInstallBundle, type StepFiles } from '../install/bundle.js';
 import { servingConfigOf } from './hosting-config.js';
+import { siteVerificationOf, writeLegalFiles } from './legal.js';
 import { startTreeFiles, writeStartSite, type StartTreeFile, type StartTreeInputs } from './tree.js';
 
 /**
@@ -15,6 +16,7 @@ import { startTreeFiles, writeStartSite, type StartTreeFile, type StartTreeInput
  * the functions' build, `npm run build --workspace @hcm/admin` having built the page; `docs/research/M14-start-your-map.md` §5, §6). Assembles the start site: the page, and a release
  * whose tree holds the start-up variant with a generic install bundle made from the public variant. `HCM_START_OAUTH_CLIENT_ID`
  * (a public id, never a secret) opens the page; without it the page says it is not open yet and shows the terminal road.
+ * `HCM_START_SITE_VERIFICATION` (`google<hex>.html`, Search Console's HTML file) writes that file at the root; another value is refused.
  *
  * Exit status: 0 built, 1 an input is missing or invalid, 2 usage.
  */
@@ -55,6 +57,7 @@ export function buildStartSite(
     steps: StepFiles,
 ): { release: string; files: number } {
     const { files, env } = context;
+    const verification = siteVerificationOf(env);
     const project = options.project ?? projectOf(files);
     const hosting = (JSON.parse(files.readText('firebase.json')) as { readonly hosting?: unknown }).hosting;
     const inputs: StartTreeInputs = {
@@ -95,6 +98,7 @@ export function buildStartSite(
     }));
     const clientId = env['HCM_START_OAUTH_CLIENT_ID'];
     const manifest = writeStartSite(inputs, [...startUp, ...install], clientId === '' ? undefined : clientId, files);
+    writeLegalFiles(options.outDir, verification, files);
     files.remove(GENERIC_PUBLIC);
     files.remove(bundleDir);
     return { release: manifest.release, files: manifest.files.length };
@@ -124,6 +128,7 @@ export async function runStartCli(argv: readonly string[], context: StartCliCont
         return EXIT_USAGE;
     }
     try {
+        siteVerificationOf(context.env);
         context.log.info('start site built', buildStartSite(options, context, await context.steps()));
         return EXIT_OK;
     } catch (error: unknown) {

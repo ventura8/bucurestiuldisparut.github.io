@@ -14756,6 +14756,28 @@
             "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
         },
         {
+            "id": "S-A76-HAPPY-LEGAL",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "happy",
+            "title": "The start page names the app and links its privacy policy and terms, in both languages",
+            "asserts": "the home page's footer, plain HTML below the page, names Historic City Map and links privacy.html and terms.html; each opens with its Romanian heading and its English section, and links back; Search Console's file is served with its one line",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-09: Google's OAuth verification (docs/research/M14-start-your-map.md §10). Test: e2e/admin/specs/start/legal.spec.ts."
+        },
+        {
+            "id": "S-A76-BAD-VERIFICATION",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Search Console name that is no verification file stops the start build",
+            "asserts": "HCM_START_SITE_VERIFICATION outside google<hex>.html -> exit 1 before the steps are read, nothing written",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-09. Test: e2e/admin/specs/start/legal.spec.ts."
+        },
+        {
             "id": "S-A61-HAPPY-SELF-RELOAD",
             "behaviour": "A61",
             "area": "admin",
