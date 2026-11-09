@@ -11,6 +11,7 @@ import {
     type Calibration,
     type JobType,
     type JoinReport,
+    type LandsatReport,
     type PipelineStep,
     type TimestampLike,
 } from '@hcm/shared';
@@ -71,6 +72,8 @@ export interface StandinAttempt {
      * running: a long download as the admin watches it (finding 55 of 2026-11-01; the pipeline's `ctx.report_bytes`).
      */
     readonly downloading?: { readonly received: number; readonly total?: number };
+    /** M25: a Landsat scene's report beyond the stand-in's (within a pixel, a clear city): its shift or the city's cloud. */
+    readonly landsat?: Partial<LandsatReport>;
 }
 
 /** The pipeline's weights of the `usgs-import` steps (§4.4); other job types scale theirs to 1. */

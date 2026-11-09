@@ -10,7 +10,8 @@
  * §1.6): a known scene also keeps its order (the buy flow's record), and every scene records EarthExplorer's id of its
  * dataset (`dataset-search`, once a run), which the order card's deep link needs. M8
  * (`docs/research/M8-join-interfaces.md` §5): a dataset at the cap is searched again per target year
- * (`harvest-target.ts`), and the plan of whole-city dates is rewritten (`join-plan.ts`).
+ * (`harvest-target.ts`), and the plan of whole-city dates is rewritten (`join-plan.ts`). M25 (`docs/research/M25-landsat.md` §1): the two
+ * Landsat datasets are searched the same way, in summer months under a cloud cap (`harvest-landsat.ts`).
  */
 import {
     BROWSE_PREFETCH,
@@ -37,6 +38,7 @@ import { copyBrowse } from './browse.js';
 import { IMAGERY_WRITER, requireCity, stampOf } from './records.js';
 import { browseSourceOf, sceneFields, type SceneFields, type SceneRecord } from './scene-record.js';
 import { recordHarvest } from './harvest-state.js';
+import { searchOf } from './harvest-landsat.js';
 import { MAX_SCENES_PER_DATASET, withTargetYears, type SearchWindow } from './harvest-target.js';
 import { rewriteDatePlan } from './join-plan.js';
 import { requireUsgs, usgsError, withUsgs } from './usgs-session.js';
@@ -84,7 +86,7 @@ async function searchPages(
 async function searchDataset(deps: HarvestDeps, apiKey: string, dataset: UsgsDataset, search: Search): Promise<Found[]> {
     const window = windowOf(search.request);
     const pagesIn = (within: SearchWindow) =>
-        searchPages(deps, apiKey, { dataset, bounds: search.bounds, maxResults: PAGE_SIZE, ...within });
+        searchPages(deps, apiKey, { dataset, bounds: search.bounds, maxResults: PAGE_SIZE, ...searchOf(dataset, within) });
     const context = { log: deps.log, cityId: search.request.cityId, dataset, targetYears: search.targetYears, window };
     const records = await withTargetYears(context, await pagesIn(window), pagesIn);
     return records.map((record): Found => ({ dataset, record }));

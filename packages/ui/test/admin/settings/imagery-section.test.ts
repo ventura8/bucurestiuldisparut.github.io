@@ -162,3 +162,45 @@ describe('<hcm-settings-page> imagery', () => {
         expect(deepAll(element, '#imagery-threshold')).toHaveLength(0);
     });
 });
+
+// M25 (docs/research/M25-landsat.md §4): the tick's own Landsat imports.
+describe('<hcm-settings-page> imagery: Landsat', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_landsatImportsItselfFrom1984To2000ByDefaultAndAllThreeChange @S-A130-HAPPY-AUTO', async () => {
+        const settings = area(imageryState(cityDoc()));
+        const { element } = await page('settings', settings, { params: ['imagery'] });
+        const group = deep(element, '[data-landsat]');
+        const from = deep(group, '#imagery-landsatFrom') as HTMLInputElement;
+        const to = deep(group, '#imagery-landsatTo') as HTMLInputElement;
+        const toggle = deep(group, 'hcm-switch') as HTMLElement & { checked: boolean };
+
+        const shown = [from.value, to.value, toggle.checked];
+        toggle.dispatchEvent(new CustomEvent('hcm-change', { detail: { checked: false } }));
+        from.value = '1986';
+        from.dispatchEvent(new Event('input'));
+        to.value = '1999';
+        to.dispatchEvent(new Event('input'));
+
+        expect(shown).toEqual(['1984', '2000', true]);
+        expect(calls(settings)).toEqual([
+            'editCity {"imagery":{"landsatAuto":false}}',
+            'editCity {"imagery":{"landsatFrom":1986}}',
+            'editCity {"imagery":{"landsatTo":1999}}',
+        ]);
+        expect(deepText(group)).toContain('within the daily limit');
+        expect(await axeViolations(group)).toEqual([]);
+    });
+
+    it('badPath_aLandsatYearTheCityRefusesIsSaidAtItsField @S-A130-BAD-AUTO-OFF', async () => {
+        const issues = [{ path: 'imagery.landsatFrom', code: 'validation.tooSmall' as const }];
+        const city = cityDoc({ imagery: { landsatAuto: false } });
+        const settings = area(imageryState(city, { draft: draftOf(city, { issues }) }));
+        const { element } = await page('settings', settings, { params: ['imagery'], locale: 'ro' });
+
+        expect(deep(element, '#imagery-landsatFrom').closest('.field')?.hasAttribute('data-invalid')).toBe(true);
+        expect((deep(deep(element, '[data-landsat]'), 'hcm-switch') as HTMLElement & { checked: boolean }).checked).toBe(false);
+        expect(deepText(element)).toContain('Din anul');
+    });
+});

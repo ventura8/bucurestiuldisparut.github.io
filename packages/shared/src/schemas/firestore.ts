@@ -59,7 +59,14 @@ import { daySchema, monthSchema, withPhotoDate } from './photo-date.js';
 export const FIRESTORE_LICENSES = [...LICENSES, 'unknown'] as const;
 export const PROCESSING_STATES = ['pending', 'done', 'failed'] as const;
 export const LAYER_STATUSES = ['draft', 'processing', 'awaiting_approval', 'ready', 'failed'] as const;
-export const USGS_DATASETS = ['corona2', 'declassii', 'declassiii'] as const;
+/** The declassified datasets (Declass 1, 2 and 3): scans of film, georeferenced by the pipeline. */
+export const DECLASS_DATASETS = ['corona2', 'declassii', 'declassiii'] as const;
+/**
+ * M25 (`docs/research/M25-landsat.md`): Landsat Collection 2 Level-1 over the same M2M API: Landsat 4-5 TM (30 m, 1982-2013) and
+ * Landsat 7 ETM+ (15 m panchromatic, from 1999), already georeferenced and public domain.
+ */
+export const LANDSAT_DATASETS = ['landsat_tm_c2_l1', 'landsat_etm_c2_l1'] as const;
+export const USGS_DATASETS = [...DECLASS_DATASETS, ...LANDSAT_DATASETS] as const;
 /** How a layer was georeferenced: the scene's corners, the admin's points, the automatic matcher, or an upload's own (M3). */
 export const GEOREF_METHODS = ['corners', 'gcps', 'auto', 'embedded'] as const;
 /**

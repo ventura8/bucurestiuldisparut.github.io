@@ -182,6 +182,8 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.archiveMissing': spec('failed-precondition'),
     'apiError.imagery.archiveImported': spec('failed-precondition'),
     'apiError.imagery.archiveYear': spec('failed-precondition'),
+    // M25 (docs/research/M25-landsat.md §3): a Landsat delivery without a band the true colour needs {band}.
+    'apiError.imagery.missingBand': spec('failed-precondition'),
     'apiError.worker.notHolder': spec('failed-precondition'),
     'apiError.worker.refused': spec('permission-denied'),
     // Finding 67 of 2026-11-02: a pairing code unknown, used or expired (one answer for the three), and a disconnected computer.

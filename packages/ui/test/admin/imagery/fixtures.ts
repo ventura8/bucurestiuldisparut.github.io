@@ -107,6 +107,7 @@ export function versionView(overrides: Partial<VersionViewPort> = {}): VersionVi
             checkpointKind: 'held-out',
         },
         calibration: null,
+        landsat: null,
         output: {
             bounds: [
                 [25.95, 44.33],

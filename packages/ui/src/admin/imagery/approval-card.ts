@@ -6,8 +6,9 @@
  * the `mapbox-choices` chunk. M8: a join's section says what it measured (`join/join-card.ts`), and M9 there too: why a frame under the
  * threshold still waits. Batch 4 (`docs/research/M20-import-local.md` §5.1): a grid series placed from its sheets' names without a proof
  * shows its seams and its checks against OpenStreetMap, and only the city's owner sees **Approve the sheet-name placement**.
+ * M25: a Landsat scene has no checkpoint error; the card says its shift from Sentinel-2 and the city's cloud.
  */
-import { recalibrationVerdict, type Locale } from '@hcm/shared';
+import { landsatClear, recalibrationVerdict, type LandsatReport, type Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
@@ -58,7 +59,27 @@ function namesReport(context: ImageryContext, version: VersionViewPort): Templat
     </p>`;
 }
 
+/** M25: a Landsat scene's shift from Sentinel-2 and the city's cloud, and why it waits when it is not clear. */
+function landsatText(locale: Locale, report: LandsatReport): TemplateResult {
+    const offset =
+        report.offsetPx === undefined || report.offsetM === undefined
+            ? contentText(locale, 'adminContent.imagery.landsat.unchecked')
+            : contentText(locale, 'adminContent.imagery.landsat.offset', {
+                  pixels: numberText(locale, report.offsetPx),
+                  metres: numberText(locale, report.offsetM),
+              });
+    const clear = landsatClear(report);
+    const cloud = contentText(locale, 'adminContent.imagery.landsat.cloud', { percent: numberText(locale, report.cityCloudPct) });
+    const held = clear ? '' : html`<p class="alert">${contentText(locale, 'adminContent.imagery.landsat.held')}</p>`;
+    return html`<p data-landsat=${clear ? 'clear' : 'held'}>${offset}</p>
+        <p class="note">${cloud}</p>
+        ${held}`;
+}
+
 function rmseText(context: ImageryContext, version: VersionViewPort): TemplateResult {
+    if (version.landsat !== null) {
+        return landsatText(context.locale, version.landsat);
+    }
     const rmse = checkpointOf(version);
     return rmse === null
         ? html`<p class="note" data-rmse="unmeasured">${contentText(context.locale, 'adminContent.imagery.approval.unmeasured')}</p>`

@@ -86,6 +86,7 @@ export function defaultUsgsState(): UsgsState {
         sessions: new Map(),
         noScenes: false,
         failingDatasets: new Set(),
+        landsat: false,
         ...defaultDownloadState(),
     };
 }
@@ -226,6 +227,10 @@ export function createUsgsFake(state: UsgsState): ServiceFake {
             },
             declassiiiUnavailable: () => {
                 state.failingDatasets.add('declassiii');
+            },
+            // M25: the harvest lists Landsat 5 TM's three scenes over the city.
+            landsatScenes: () => {
+                state.landsat = true;
             },
             ...downloadScenarios(state),
         },

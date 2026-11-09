@@ -3149,9 +3149,27 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `Scenarios:` takes every word after it as an id, and an id was reused for a new behaviour.
     - Fix: the explanation went into a comment, the new row is `S-P20-HAPPY-GRID-BY-NAMES`.
     - **Grep the registry for an id before adding it, and keep a `Scenarios:` line to ids only.**
-
 535. **Two KH-4A Corona strips of 1966 found no vote and parked with a crop of the whole strip.**
     - Seen: 2026-11-09, the live 1966-08-18 frames F046 and F047 ended `locate` with `not proved (no-votes): crop 137350 x 9288 px`.
     - Found by: the owner's import of the 1964 and 1966 coverage; no test held a strip whose corners make no parallelogram, and every synthetic frame was a rectangle on the ground.
     - Fix and pin: `calibrate/strip.py` (docs/research/M9-calibration.md §16): a Corona strip is searched in a window of the city plus 15 km along it, under a local map linear along the footprint's long edges, each end in turn; a footprint off the city slides windows. `S-P06-HAPPY-STRIP-WINDOW`, `S-P06-BAD-STRIP-NO-PLACE`.
     - **A homography through four corners bends a long strip as a perspective would: fit a long frame locally, where the city is, and never crop the union of orientations that put the city at opposite ends.**
+536. **"Every dataset fails" named the three declassified datasets, so adding Landsat turned a USGS outage into a partial harvest.**
+    - Seen: 2026-11-09, track/landsat: with `USGS_DATASETS` grown to five, `search.test.ts`'s "every dataset in maintenance" and `tick.test.ts`'s back-off failed: the fake answered the two Landsat datasets with no scenes, so the harvest reported "found 0" instead of `apiError.usgs.maintenance`.
+    - Cause: the tests listed `['corona2', 'declassii', 'declassiii']` where they meant "every dataset"; the code was right (it fails only when every requested dataset failed).
+    - Fix and pin: the tests loop over `USGS_DATASETS` (`functions/test/imagery/search.test.ts`, `tick.test.ts`); the fake answers Landsat's scenes only once a spec asks (`usgs.landsatScenes`), so no other spec's counts move.
+    - **A test that means "all of a list" iterates the list's constant, never a copy of today's members.**
+537. **A Landsat scene's cloud reason was the fourth of its reasons, so its card never said why it ranked low.**
+    - Seen: 2026-11-09, writing `S-A130-BAD-CLOUDY`: a 35 % cloudy scene contributes only 3 of the cloud part's 10 points, behind free, coverage and "no layers yet", and a card shows three reasons.
+    - Fix and pin: a Landsat scene over the tick's 20 % cap, and one out of the leaf-on months, list their cloud or season reason first (`always`, `packages/shared/src/imagery/ranking.ts`; `RANKING_VERSION` 4).
+    - **When a new kind of item is ranked by an old score, check which reason its card shows first, not only its place in the list.**
+538. **One new import from the shared core renamed the core's exports, and a chunk that did not change outgrew its budget.**
+    - Seen: 2026-11-09, track/landsat: `join-card` measured 3,027 bytes gzip against 3,000 with the same 8,449 raw bytes as before (2,991): the approval card's new `landsatClear` was one more export of `admin-core`, every later export's short name moved one letter, and the join card's imports (`Dr as e` became `Or as t`) renamed its locals and compressed worse.
+    - Found by: building the base commit beside the branch on the NUC and comparing the chunk's first bytes, then dropping one import at a time.
+    - Fix and pin: the verdict lives in `packages/shared/src/schemas/landsat-verdict.ts`, which imports nothing at run time, so it travels in the approval chunk alone; the scene list derives its chips from `USGS_DATASETS` rather than importing two more lists. The budget is not raised (DECISIONS-for-review.md §138g).
+    - **When a chunk's gzip grows with its raw bytes unchanged, look at its import names: a new export of a shared chunk renames everything after it.**
+539. **A Landsat product id, 40 characters with no space, pushed the scene list sideways on a phone.**
+    - Seen: 2026-11-09, the first run of `landsat.spec.ts`: the tour's checker found the list pane 15 px too wide at 360 px (`imagery.results-landsat`), and at the laptop's list beside a version.
+    - Cause: the scene row's text column was `1fr` (its minimum the longest word) and the declassified ids were short enough to fit.
+    - Fix and pin: the column is `minmax(0, 1fr)` and the row's details wrap anywhere (`packages/ui/src/admin/imagery/imagery-styles.ts`); the two Landsat tour states pass the checkers.
+    - **A new data source brings new string shapes: run the layout checkers on its rows at the phone's width before trusting the old ones.**

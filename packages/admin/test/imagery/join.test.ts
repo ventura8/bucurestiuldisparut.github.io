@@ -197,6 +197,9 @@ describe('Add {year} to target years', () => {
             publishThroughMapbox: false,
             mapThresholdMaxM: 60,
             mapAutoPublish: true,
+            landsatAuto: true,
+            landsatFrom: 1984,
+            landsatTo: 2000,
         });
         expect(callsOf(callables, 'imagery.search')).toEqual([{ cityId: CITY }]);
         expect(imagery.state.addingYear).toBeNull();

@@ -21,13 +21,13 @@ import { IMAGERY_WRITER, stampOf } from './records.js';
 
 /**
  * The browse proxy (`docs/research/M3-interfaces.md` §3.4): the browser never requests a USGS address, so a scene's
- * browse image is fetched server-side from `ims.cr.usgs.gov` only (`RemoteFiles` with `allowedHosts`), checked to be a
+ * browse image is fetched server-side from `ims.cr.usgs.gov` (M25: and `landsatlook.usgs.gov`) only (`RemoteFiles` with `allowedHosts`), checked to be a
  * JPEG or a PNG, and copied create-only into the private bucket, where the admin reads it with the Storage SDK.
  */
 export type BrowseDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'remote' | 'blobs'>;
 
-/** USGS's browse host: the only address a browse image is fetched from. */
-const BROWSE_HOST = 'ims.cr.usgs.gov';
+/** USGS's browse hosts: the only addresses a browse image is fetched from (M25: LandsatLook's for a Landsat scene). */
+const BROWSE_HOSTS = ['ims.cr.usgs.gov', 'landsatlook.usgs.gov'];
 const BROWSE_TIMEOUT_MS = 10_000;
 
 type BrowseType = CallableResponse<'imagery.browse'>['contentType'];
@@ -50,7 +50,7 @@ async function fetchAndStore(deps: BrowseDeps, scene: UsgsSceneDoc, sourceUrl: s
     const file = await deps.remote.get(sourceUrl, {
         maxBytes: BROWSE_MAX_BYTES,
         timeoutMs: BROWSE_TIMEOUT_MS,
-        allowedHosts: [BROWSE_HOST],
+        allowedHosts: BROWSE_HOSTS,
     });
     const contentType = imageTypeOf(file.bytes, BROWSE_TYPES);
     if (contentType === undefined) {

@@ -69,6 +69,7 @@ describe('update', () => {
         ['a threshold of one metre and a fraction', { imagery: { rmseThresholdM: 1.5 } }],
         ['the choice of Mapbox for the tiles (M12)', { imagery: { publishThroughMapbox: true } }],
         ['a drawn map’s threshold cap and its own auto-publish (M20)', { imagery: { mapThresholdMaxM: 100, mapAutoPublish: false } }],
+        ['Landsat’s own imports and their years (M25)', { imagery: { landsatAuto: false, landsatFrom: 1986, landsatTo: 1999 } }],
         ['no imagery settings', { imagery: deleted() }],
     ])('happyPath_adminSaves_%s', async (_label, changes) => {
         expect(await edit(changes)).toBe('allow');
@@ -135,6 +136,9 @@ describe('update', () => {
         ['a map threshold cap under 15 m (M20)', { imagery: { mapThresholdMaxM: 14 } }],
         ['a map threshold cap over 200 m (M20)', { imagery: { mapThresholdMaxM: 201 } }],
         ['a map auto-publish that is not a boolean (M20)', { imagery: { mapAutoPublish: 'yes' } }],
+        ['a Landsat switch that is not a boolean (M25)', { imagery: { landsatAuto: 'yes' } }],
+        ['a Landsat year that is no year (M25)', { imagery: { landsatFrom: 1700 } }],
+        ['a Landsat year that is text (M25)', { imagery: { landsatTo: '2000' } }],
         ['a threshold under one metre', { imagery: { rmseThresholdM: 0.5 } }],
         ['a threshold over 200 metres', { imagery: { rmseThresholdM: 201 } }],
         ['a threshold that is text', { imagery: { rmseThresholdM: '15' } }],

@@ -94,7 +94,9 @@ LAYER_VERSION_STATES: Final = (
     "cancelled",
     "joined",
 )
-USGS_DATASETS: Final = ("corona2", "declassii", "declassiii")
+# M25 (docs/research/M25-landsat.md): Landsat 4-5 TM and Landsat 7 ETM+ Collection 2 Level-1, already georeferenced.
+LANDSAT_DATASETS: Final = ("landsat_tm_c2_l1", "landsat_etm_c2_l1")
+USGS_DATASETS: Final = ("corona2", "declassii", "declassiii", *LANDSAT_DATASETS)
 GEOREF_TRANSFORMS: Final = ("affine", "poly2", "tps")
 MIN_GCPS: Final[Mapping[str, int]] = {"affine": 3, "poly2": 6, "tps": 10}
 GCP_ORIGINS: Final = ("corner", "auto", "manual")
@@ -201,6 +203,10 @@ SENSOR_SPECS: Final[Mapping[str, SensorSpec]] = {
     # F007 0.92, F039 0.956; five more full sweeps 0.915 to 0.950), but a short film's is about right (0.998 to 1.010; A015, 1983, is found
     # only there): the model's own scale first, one warp set more for a full sweep, which agrees at either (M9 §14).
     "KH-9-pan": SensorSpec("declassiii", "KH-9 Hexagon", 1, 10, 17, "xl", 60.5, 20.2, SearchRange(30_000.0, (1.0, 0.94))),
+    # M25: tiles to the pixel's zoom (z13 for 30 m, z14 for 15 m); `locate` never runs for them (already georeferenced).
+    "L4-TM": SensorSpec("landsat_tm_c2_l1", "Landsat 4 TM", 30, 8, 13, "std"),
+    "L5-TM": SensorSpec("landsat_tm_c2_l1", "Landsat 5 TM", 30, 8, 13, "std"),
+    "L7-ETM": SensorSpec("landsat_etm_c2_l1", "Landsat 7 ETM+", 15, 8, 14, "std"),
 }
 
 # The share of a job's progress each pipeline step stands for (`usgs-import`'s weights add up to 1; other job
@@ -260,6 +266,8 @@ class Errors:
     REFINE_UNMEASURED: Final = "apiError.imagery.refineUnmeasured"
     # M20: an archive series' originals are not on this computer, or are no longer the files its scan read.
     ARCHIVE_MISSING: Final = "apiError.imagery.archiveMissing"
+    # M25: a Landsat delivery without a band the true colour needs.
+    MISSING_BAND: Final = "apiError.imagery.missingBand"
 
 
 def pipeline_steps_of(job_type: str) -> tuple[str, ...]:

@@ -6300,3 +6300,15 @@ The review of track/archive (2851ae51..69ce4978); the owner kept the 1800 minimu
 - **139b** The window is the city plus 15 km along the strip (the task's figure; 20 km merged the two ends' windows of a city 60 % along on a 240 km strip), the film's full height. UNVERIFIED on a real Corona.
 - **139c** A footprint off the city slides 40 km windows, half overlapping, with no local AI (it would run once a window); the matcher still runs in a footprint window.
 - **139d** A frame nothing proved keeps the crop of its best-voted window, not of the whole strip.
+
+## 140. Landsat as a source (track/landsat, 2026-11-09) — APPLIED, no budget raised
+
+The owner's request of 2026-11-09 ("import the landsat, add it to our sources, and automate import, as we have for usgs"); as built in `docs/research/M25-landsat.md`.
+
+- **140a Level-1, not Level-2**: Collection 2 Level-1 (`landsat_tm_c2_l1`, `landsat_etm_c2_l1`) keeps ETM+'s 15 m panchromatic band; a per-scene stretch over the clear pixels replaces surface reflectance for a historical layer.
+- **140b No new job type**: a Landsat scene is a `usgs-import` whose dataset is Landsat; the pipeline routes `extract` and `warp` by dataset and skips `stitch`, `locate` and `georef` (`landsat/route.py`). The daily cap, the worker's allow-list and the scene's release work unchanged.
+- **140c The tick imports on its own by default** (`imagery.landsatAuto`, 1984–2000 by default, one a tick, at most 20 % cloud, the city covered); the daily cap and the guard refuse it as any import. The owner can turn it off in Settings → Imagery → Landsat.
+- **140d Approval without a georeference**: within one Landsat pixel of Sentinel-2 (phase correlation of high-passed images) and at most 10 % of the city under cloud, with the city auto-publishing and covered; otherwise Approve. Public domain: no rights step.
+- **140e ETM+ stops at 2003-05-30** (the scan line corrector's failure), and a Landsat scene never joins a date plan.
+- **140f The shared index names the new exports** (lesson 532: no `export *`), and its imagery-settings block is written on two lines to stay within 400.
+- **140g No budget raised for the join card**: Landsat's verdict (`landsatClear` and its two bars) is a module of its own (`schemas/landsat-verdict.ts`, lesson 538), so the admin's shared core gains no export and the join card stays at 2,989 bytes gzip of its 3,000.

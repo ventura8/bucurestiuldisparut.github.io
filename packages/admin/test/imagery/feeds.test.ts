@@ -34,6 +34,9 @@ describe('the Imagery area reads', () => {
             publishThroughMapbox: false,
             mapThresholdMaxM: 60,
             mapAutoPublish: true,
+            landsatAuto: true,
+            landsatFrom: 1984,
+            landsatTo: 2000,
         });
         expect(last('frame')?.bounds).toEqual([
             [25.9, 44.3],

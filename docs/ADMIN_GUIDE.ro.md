@@ -239,6 +239,15 @@ Cadrele de satelit declasificate ale USGS (Corona, Gambit, Hexagon; 1960–1984)
 - Limite: 10 importuri pe zi și 2 în lucru deodată, pe proiect.
 - **Oprită de protecția bugetului**: când costul Google Cloud al lunii ajunge la buget, importurile, reîncercările, salvările georeferențiatorului, decupările și publicările se opresc (harta publică niciodată). **Imagini istorice** și **Procesări** spun asta, cu costul și bugetul, iar **Reia procesarea** (cu întrebare) le pornește din nou pentru restul lunii; alerta lunii viitoare le oprește iar.
 
+### Landsat (M25)
+
+Imaginile din satelit Landsat (1982–2013, domeniu public) vin prin același cont USGS ca și cadrele declasificate, deja așezate pe hartă: fără puncte, fără calibrare.
+
+- **Căutare**: căutarea arată scenele de vară Landsat lângă cadrele declasificate; filtrul **Landsat** le arată doar pe ele. O scenă din mai sau septembrie își spune luna; una cu nori își spune întâi norii și e mai jos în listă. Fiecare are **Importă (gratuit)**.
+- **Singur**: implicit aplicația importă cea mai senină scenă de vară a fiecărui an între 1984 și 2000, câte una, în limita importurilor zilnice. **Setări → Imagini → Landsat** oprește importul sau schimbă anii.
+- **Ce verifică**: imaginea trebuie să fie la cel mult un pixel Landsat (30 m, 15 m pentru Landsat 7) de imaginea Sentinel-2 de azi, cu cel mult o zecime din oraș sub nori; atunci apare singură pe hartă, cu mențiunea „Landsat imagery courtesy of NASA Goddard Space Flight Center and U.S. Geological Survey”. Altfel așteaptă **Aprobă** și spune cât de departe e și cât de înnorat e orașul.
+- O livrare fără o bandă de culoare se oprește cu „Livrarea Landsat nu are banda B3…”: alege altă scenă din acel an.
+
 ### Un strat pentru tot orașul din cadrele unei zile (M8)
 
 Un cadru KH-9 cuprinde adesea doar o parte din oraș. Cadrele din aceeași zi, de la aceeași cameră, se pot uni într-un singur strat. Proiectul: `docs/research/M8-join-interfaces.md`.
