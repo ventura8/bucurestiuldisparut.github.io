@@ -25,13 +25,14 @@ const WHY: Readonly<Record<string, AdminArchiveKey | undefined>> = {
 };
 
 /** The picked files, each with its path inside the chosen folder (`webkitRelativePath`), else its name (a zip). */
-function pickedFiles(list: FileList | null): LocalFilePort[] {
+export function pickedFiles(list: Iterable<File> | null): LocalFilePort[] {
     return [...(list ?? [])].map((file) => ({ path: file.webkitRelativePath || file.name, file }));
 }
 
 /** The archive's name: the zip's, or the chosen folder's (the first part of a file's path in it). */
-function archiveName(path: string, source: 'folder' | 'zip'): string {
-    return source === 'zip' ? path : (path.split('/')[0] ?? path);
+export function archiveName(path: string, source: 'folder' | 'zip'): string {
+    const slash = path.indexOf('/');
+    return source === 'zip' || slash < 0 ? path : path.slice(0, slash);
 }
 
 export class HcmArchivePanel extends ArchiveElement {

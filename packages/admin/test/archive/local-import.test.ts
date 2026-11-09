@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { LocalImport, SCAN_POLL_MS, type LocalImportRequest } from '../../src/archive/local-import.js';
 import type { LocalAnswer, LocalImportState, LocalTransport, LocalUpload } from '../../src/archive/local-state.js';
+import { createLocalImport } from '../../src/archive/local-run.js';
 import { loopbackTransport, type XhrLike } from '../../src/archive/local-transport.js';
 import { FakeClock } from '../app/fakes.js';
 
@@ -271,5 +272,15 @@ describe('the loopback transport', () => {
         abort.abort();
         await expect(aborted).rejects.toThrow('aborted');
         expect(FakeXhr.world.last?.aborted).toBe(true);
+    });
+});
+
+describe('the local-run chunk', () => {
+    it('happyPath_itMakesAnImportOverTheGivenTransportOrTheBrowsersLoopback', () => {
+        const clock = new FakeClock();
+        const changed = (): void => undefined;
+
+        expect(createLocalImport(new FakeWorker(), clock, changed)).toBeInstanceOf(LocalImport);
+        expect(createLocalImport(undefined, clock, changed)).toBeInstanceOf(LocalImport);
     });
 });

@@ -14,6 +14,7 @@ import type {
     SeriesProgressPort,
 } from '../../../src/admin/archive/archive-port.js';
 import { sizeText } from '../../../src/admin/archive/archive-element.js';
+import { archiveName, pickedFiles } from '../../../src/admin/archive/hcm-archive-panel.js';
 import { defineArchiveElements } from '../../../src/admin/archive/define.js';
 import { overallPercent, stateText, totalText } from '../../../src/admin/archive/series-text.js';
 import { cleanup, fixture } from '../../helpers.js';
@@ -493,5 +494,29 @@ describe('overallPercent', () => {
 
     it('badPath_noSeriesIsNothingDone', () => {
         expect(overallPercent([])).toBe(0);
+    });
+});
+
+describe('the picked files', () => {
+    it('happyPath_aFolderKeepsEachFilesPathAndIsNamedByItsTopFolder', () => {
+        const inFolder = { webkitRelativePath: 'Harti/1911.jpg', name: '1911.jpg' } as File;
+
+        expect(pickedFiles([inFolder]).map((each) => each.path)).toEqual(['Harti/1911.jpg']);
+        expect([archiveName('Harti/1911.jpg', 'folder'), archiveName('harti.zip', 'zip'), archiveName('a.jpg', 'folder')]).toEqual([
+            'Harti',
+            'harti.zip',
+            'a.jpg',
+        ]);
+    });
+
+    it('badPath_noListAndAnEmptyPickSendNothing', async () => {
+        expect(pickedFiles(null)).toEqual([]);
+        const host = new FakeHost(view({ local: { phase: 'failed', percent: 0, done: 0, total: 0, error: null } }));
+        const element = await panel(host);
+        const input = deep(element, 'input[data-pick="zip"]') as HTMLInputElement;
+        input.dispatchEvent(new Event('change'));
+
+        expect(host.feed.calls.filter((call) => call.startsWith('importLocal'))).toEqual([]);
+        expect(deep(element, '[data-local="failed"]').textContent).toBe(t('adminArchive.local.failed', { why: '' }));
     });
 });
