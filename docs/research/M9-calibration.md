@@ -564,3 +564,22 @@ Everything of §7, §8, §11 and §12 landed; where it differs:
 | `coverage_pct` | Stops at 100 | Whole pixels over a fractional span read 100.04 %, which the schemas refuse (`docs/LESSONS.md` 370). |
 
 A frame nothing proved shows `notFound` only while it needs points; once it has them it shows the fit's figures. A re-rendered version carries no `calibration` (`regeoref.ts` does not copy it), so its page has no block, and its `source` keeps it under the coverage rule.
+
+## 16. Panoramic strips searched along their length (2026-11-09)
+
+The live KH-4A frames of 1966-08-18 (F046, F047) ended in `locate` with `not proved (no-votes)` and a crop of 137,350 by 9,288 pixels: a Corona strip is about 17 by 230 km, and its four corners give no homography. A corner quad that is not a parallelogram makes one bend the strip's long axis as a perspective would, kilometres off and tens of percent out of scale far from its ends; and the crop of a frame nothing proved was the union of orientations that put the city at either end, so the whole strip.
+
+`calibrate/strip.py`, for a sensor whose `SensorSpec.strip` is set (KH-4, KH-4A, KH-4B; not KH-9-pan, which has its camera model) and a film at least `STRIP_MIN_ASPECT` (4) times as long as it is high:
+
+| What | How |
+| --- | --- |
+| Where the city lies along the strip | Each plausible orientation's centre line (the middle of the first column to the middle of the last, on the ground) is taken as linear in film columns; the city's window projects onto it as a share of the length. |
+| The window | That share with `STRIP_MARGIN_GROUND_M` (15 km) before and after, the film's full height; overlapping windows of several orientations are one. The film stored reversed is another orientation, so the city's place from the other end is a window too. |
+| The map inside it | `local_map`: the window's four film corners onto the footprint's long edges, linearly; the votes, the proof and the local AI then run unchanged inside it (`Frame.exposure` and `limits` are the window's columns). |
+| Which window | The chain in each in turn: the first proved ends it; else the window with the most agreeing votes (the first of equals), whose crop is that window's, never the whole strip. |
+| No place on the strip | A footprint that puts the city on no part of the strip under any orientation slides `SLIDE_GROUND_M` (40 km) windows, half overlapping, along the whole strip, each moved onto the city: votes and proofs only, the local AI asked of none (it would run once a window). |
+| The log | `strip window: film columns a to b of W (x to y % along), from the footprint, n orientations` for each, and `strip window kept: …` for the one kept. |
+
+Tests: `pipeline/tests/unit/test_calibrate_strip.py`, a synthetic 240 by 17.5 km strip wider at one end (16 to 20 km, no parallelogram), the city 60 % along, the corners 3 km off: proved within 25 m in the window around 60 %, and stored reversed, around 40 %; a footprint 400 km off slides windows over the whole strip (`S-P06-HAPPY-STRIP-WINDOW`, `S-P06-BAD-STRIP-NO-PLACE`).
+
+**UNVERIFIED** on a real Corona: no real KH-4 frame has run through it yet. Corona keeps no camera model, so a window's map is the footprint's linear one: near the strip's middle a 70-degree sweep makes the ground about 13 % shorter along and up to 22 % narrower across than the corners say, which the Corona scales (0.85, 1.0, 1.15) cover only in part. DS09065A089MC039 (1964-06-18) is a KH-5 Argon mapping frame, square, read by its own camera (§14); the strip windows do not apply to it.

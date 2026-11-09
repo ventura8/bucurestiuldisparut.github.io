@@ -3139,3 +3139,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: building the engine with one change at a time on the NUC (`git stash`, then a `sed` per experiment): deleting the index's star line, or naming its exports, measured 124,990; a star-exported barrel of named exports did not.
     - Fix: `packages/shared/src/index.ts` names `imagery-archive.ts`'s runtime exports and re-exports its types with `export type *`, and `api/index.ts` names `api/archive.ts`'s (DECISIONS-for-review.md §137j).
     - **When the engine grows with no source of its own changing, bisect the package index's `export *` lines: a star re-export can cost bytes even when tree-shaking drops the module's code.**
+
+533. **Two KH-4A Corona strips of 1966 found no vote and parked with a crop of the whole strip.**
+    - Seen: 2026-11-09, the live 1966-08-18 frames F046 and F047 ended `locate` with `not proved (no-votes): crop 137350 x 9288 px`.
+    - Found by: the owner's import of the 1964 and 1966 coverage; no test held a strip whose corners make no parallelogram, and every synthetic frame was a rectangle on the ground.
+    - Fix and pin: `calibrate/strip.py` (docs/research/M9-calibration.md §16): a Corona strip is searched in a window of the city plus 15 km along it, under a local map linear along the footprint's long edges, each end in turn; a footprint off the city slides windows. `S-P06-HAPPY-STRIP-WINDOW`, `S-P06-BAD-STRIP-NO-PLACE`.
+    - **A homography through four corners bends a long strip as a perspective would: fit a long frame locally, where the city is, and never crop the union of orientations that put the city at opposite ends.**

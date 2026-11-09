@@ -6283,3 +6283,10 @@ The review of track/archive (2851ae51..69ce4978); the owner kept the 1800 minimu
 - **137h Untrusted files**: a cut-off upload is removed and refused; a zip entry that would land on the zip being read is refused.
 - **137i Estimates**: a grid sheet counts half its scanned paper (Bucharest's 1:500, measured on one city); the archive's size counts every file. The per-sheet seconds and tiles per minute stay UNVERIFIED (shown as "about").
 - **137j The engine's budget at the merge into feat/engine-rewrite**: the two branches together measured 125,009 bytes gzip against 125,000 (feat/engine-rewrite alone 124,990). Bisecting showed no line of `imagery-archive.ts` in the engine: `export * from './schemas/imagery-archive.js'` in the package's index cost 19 bytes of module glue by itself (named exports, or no export, measured 124,990; a star-exported barrel of named exports did not help). The index now names the module's runtime exports (`export type *` for its types), `api/index.ts` names `api/archive.ts`'s (its star cost 13 more), and `geometry.js`'s list is written on two lines to stay within the index's 400 lines. No behaviour or API change; the budget is not raised.
+
+## 138. Corona strips searched along their length (track/corona, 2026-11-09) — APPLIED, no gate changed
+
+- **138a** `SensorSpec.strip` (pipeline only, not in `as_contract`) marks KH-4, KH-4A and KH-4B; `locate` searches such a film, when at least 4 times as long as high, window by window (`calibrate/strip.py`, M9 §16). KH-9-pan keeps its camera model; KH-5, KH-7 and KH-9 mapping are unchanged.
+- **138b** The window is the city plus 15 km along the strip (the task's figure; 20 km merged the two ends' windows of a city 60 % along on a 240 km strip), the film's full height. UNVERIFIED on a real Corona.
+- **138c** A footprint off the city slides 40 km windows, half overlapping, with no local AI (it would run once a window); the matcher still runs in a footprint window.
+- **138d** A frame nothing proved keeps the crop of its best-voted window, not of the whole strip.

@@ -12297,6 +12297,28 @@
             "notes": "M15 terrain (docs/research/M15-calibration-accuracy.md, Terrain; its review of 2026-11-08). Tests: pipeline/tests/unit/test_georef_rpc.py, pipeline/tests/integration/test_terrain_job.py, packages/shared/test/schemas/imagery.test.ts, packages/shared/test/georef/terrain.test.ts."
         },
         {
+            "id": "S-P06-HAPPY-STRIP-WINDOW",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A Corona strip is searched where the city lies along it and proved there",
+            "asserts": "a 240 by 17.5 km strip wider at one end, the city 60 % along, its corners 3 km off -> two windows (60 % and, for the film stored reversed, 40 %) of the city plus 15 km either side, a local map linear along the footprint's long edges; the chain proves the frame within 25 m in the window around 60 % (stored reversed: around 40 %), the crop is that window's, and the log names each window and the one kept",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §16. Test: pipeline/tests/unit/test_calibrate_strip.py."
+        },
+        {
+            "id": "S-P06-BAD-STRIP-NO-PLACE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A strip whose footprint misses the city slides windows; no window that reaches it is no city",
+            "asserts": "a footprint 400 km off the city -> 40 km windows, half overlapping, over the whole strip, each moved onto the city, no local AI asked; no window reaches the city -> CityNotFoundError; a frame under 4:1 or a camera with no strip flag is searched whole; no window proved -> the best-voted is kept, the first of equals",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §16. Test: pipeline/tests/unit/test_calibrate_strip.py."
+        },
+        {
             "id": "S-A17-BAD-NOT-PROVED",
             "behaviour": "A17",
             "area": "admin",
