@@ -1,3 +1,4 @@
+import { PAIR_NUMBERS_OVERLAY_ID } from '../../src/georef/georef-map.js';
 import { FIRESTORE_PATHS, PLACING_POINTS_HOLD_MS } from '@hcm/shared';
 import { FakeMap } from '@hcm/test-support/fake-map';
 import { FakeMapDraw } from '@hcm/test-support/fake-map-draw';
@@ -81,6 +82,13 @@ describe('the georeferencer', () => {
         expect([georef.state.selected, georef.state.dirty, georef.hasUnsavedChanges()]).toEqual(['g3', true, true]);
         expect(draw.mode).toBe('static');
         expect(draw.features.map((feature) => feature.id)).toEqual(['g1', 'g2', 'g3']);
+        const numbers = map.calls
+            .filter((call) => call.method === 'addVectorOverlay')
+            .map((call) => call.args[0] as { id: string; features: { properties: { id: string; title: string } }[] })
+            .filter((spec) => spec.id === PAIR_NUMBERS_OVERLAY_ID)
+            .at(-1)
+            ?.features.map((feature) => `${feature.properties.title}:${feature.properties.id}`);
+        expect(numbers).toEqual(['1:g1', '2:g2', '3:g3']);
     });
 
     it('happyPath_aVersionWithoutAScanTakesPairsUnclampedAndAMapClickOutsideAddingIsNothing', async () => {

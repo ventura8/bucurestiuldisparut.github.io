@@ -32,6 +32,8 @@ export const PAIR_COLOR = '#d81b60';
 /** The matcher's suggestions on the map (M4 §2.5): flags in their own colour, labelled `a1`, `a2`, … from zoom 16. */
 export const SUGGESTION_COLOR = '#8a5a00';
 export const SUGGESTIONS_OVERLAY_ID = 'georef-suggestions';
+/** The pairs' numbers beside their points, as on the scan (a click passes through to the points). */
+export const PAIR_NUMBERS_OVERLAY_ID = 'georef-pair-numbers';
 
 /** The reference's box as the map's frame. */
 export function referenceFrame(version: GeorefVersion | null): CityFrame | null {
@@ -169,6 +171,23 @@ export class GeorefMap {
             draw.load(this.#pairs.map((pair) => ({ id: pair.id, geometry: { type: 'Point', coordinates: [pair.geo.lng, pair.geo.lat] } })));
             draw.select(this.#selected);
         }
+        this.#handle?.port.addVectorOverlay(
+            {
+                id: PAIR_NUMBERS_OVERLAY_ID,
+                kind: 'poi',
+                features: this.#pairs.map((pair, index) => ({
+                    type: 'Feature' as const,
+                    geometry: { type: 'Point' as const, coordinates: [pair.geo.lng, pair.geo.lat] as [number, number] },
+                    properties: { id: pair.id, title: String(index + 1) },
+                })),
+                color: PAIR_COLOR,
+                icon: 'location_on',
+                visible: true,
+                opacity: 1,
+                clickable: false,
+            },
+            'top',
+        );
     }
 
     async #create(): Promise<void> {
