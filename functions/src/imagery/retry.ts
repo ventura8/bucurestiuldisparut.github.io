@@ -99,18 +99,28 @@ function revivable(job: JobDoc, version: LayerVersionDoc | undefined): version i
     return REVIVABLE.has(version.state);
 }
 
+/** A failed raster job whose failure a retry may cure. */
+function failedRetryable(job: JobDoc, version: LayerVersionDoc | undefined): version is LayerVersionDoc {
+    return job.status === 'failed' && revivable(job, version) && curable(job);
+}
+
+/** A stopped job's version must still be cancelled. */
+function cancelledRetryable(version: LayerVersionDoc | undefined): boolean {
+    return version?.state === 'cancelled';
+}
+
 /** A failed or stopped raster job, made with its version (a refused upload has none), whose failure a retry may cure. */
 function retryable(job: JobDoc, version: LayerVersionDoc | undefined): version is LayerVersionDoc {
     if (job.type === 'layer-delete') {
         return false;
     }
     if (job.status === 'cancelled') {
-        return version !== undefined && version.state === 'cancelled';
+        return cancelledRetryable(version);
     }
-    return job.status === 'failed' && revivable(job, version) && curable(job);
+    return failedRetryable(job, version);
 }
 
-/** A failed or stopped raster job with its version, whose failure a retry may cure. */
+/** A failed raster job with its version, whose failure a retry may cure. */
 async function requireFailedWork(deps: RetryDeps, request: Request): Promise<{ job: JobDoc; version: LayerVersionDoc }> {
     const job = await requireJob(deps.documents, request.cityId, request.jobId);
     const path = FIRESTORE_PATHS.layerVersion(request.cityId, versionIdOf(request.jobId, job));
@@ -207,24 +217,69 @@ function retriedVersion(version: LayerVersionDoc, atPublish: boolean, stamp: Sta
     return { ...omit(version, ['error']), state: atPublish ? 'approved' : 'processing', ...stamp };
 }
 
-async function retryIn(transaction: DocumentTransaction, request: Request, stamp: Stamp): Promise<{ job: JobDoc; atPublish: boolean }> {
-    const jobPath = FIRESTORE_PATHS.job(request.cityId, request.jobId);
-    const job = await transaction.get(jobPath, jobDocSchema);
+/** The job in the transaction must still be failed or cancelled. */
+function requireRetryableStatus(job: JobDoc | undefined): asserts job is JobDoc {
     if (job?.status !== 'failed' && job?.status !== 'cancelled') {
         throw new ApiError('apiError.imagery.versionState');
     }
-    const versionPath = FIRESTORE_PATHS.layerVersion(request.cityId, versionIdOf(request.jobId, job));
-    const version = await transaction.get(versionPath, layerVersionDocSchema);
+}
+
+/** The version in the transaction must still be revivable. */
+function requireRevivable(job: JobDoc, version: LayerVersionDoc | undefined): asserts version is LayerVersionDoc {
     if (!revivable(job, version)) {
         throw new ApiError('apiError.imagery.versionState');
     }
+}
+
+/** Write the version back only if it was failed or cancelled (a stranded `processing` version stays as is). */
+async function updateVersionIfEnded(
+    transaction: DocumentTransaction,
+    ctx: { versionPath: string; version: LayerVersionDoc; atPublish: boolean; stamp: Stamp },
+): Promise<void> {
+    if (ctx.version.state === 'failed' || ctx.version.state === 'cancelled') {
+        await transaction.set(ctx.versionPath, layerVersionDocSchema, retriedVersion(ctx.version, ctx.atPublish, ctx.stamp));
+    }
+}
+
+/** Read the job and version from the transaction, asserting they are still retryable. */
+async function readRetryable(
+    transaction: DocumentTransaction,
+    request: Request,
+): Promise<{ job: JobDoc; version: LayerVersionDoc; jobPath: string; versionPath: string }> {
+    const jobPath = FIRESTORE_PATHS.job(request.cityId, request.jobId);
+    const job = await transaction.get(jobPath, jobDocSchema);
+    requireRetryableStatus(job);
+    const versionPath = FIRESTORE_PATHS.layerVersion(request.cityId, versionIdOf(request.jobId, job));
+    const version = await transaction.get(versionPath, layerVersionDocSchema);
+    requireRevivable(job, version);
+    return { job, version, jobPath, versionPath };
+}
+
+/** Write the retried job and version back into the transaction. */
+async function writeRetried(
+    transaction: DocumentTransaction,
+    ctx: { jobPath: string; versionPath: string; job: JobDoc; version: LayerVersionDoc; atPublish: boolean; stamp: Stamp },
+): Promise<JobDoc> {
+    const retried = retriedJob(ctx.job, ctx.atPublish, ctx.stamp);
+    await transaction.set(ctx.jobPath, jobDocSchema, retried);
+    await updateVersionIfEnded(transaction, {
+        versionPath: ctx.versionPath,
+        version: ctx.version,
+        atPublish: ctx.atPublish,
+        stamp: ctx.stamp,
+    });
+    return retried;
+}
+
+async function retryIn(
+    transaction: DocumentTransaction,
+    request: Request,
+    stamp: Stamp,
+): Promise<{ job: JobDoc; atPublish: boolean }> {
+    const { job, version, jobPath, versionPath } = await readRetryable(transaction, request);
     const atPublish = failedAtPublish(job, version);
     await requireJoinFrames(transaction, request, job, atPublish);
-    const retried = retriedJob(job, atPublish, stamp);
-    await transaction.set(jobPath, jobDocSchema, retried);
-    if (version.state === 'failed' || version.state === 'cancelled') {
-        await transaction.set(versionPath, layerVersionDocSchema, retriedVersion(version, atPublish, stamp));
-    }
+    const retried = await writeRetried(transaction, { jobPath, versionPath, job, version, atPublish, stamp });
     return { job: retried, atPublish };
 }
 

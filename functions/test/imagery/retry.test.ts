@@ -167,7 +167,9 @@ describe('imagery.retry', () => {
             },
         ]);
     });
+});
 
+describe('imagery.retry: a publish retry keeps the upload', () => {
     it('happyPath_aPublishRetryKeepsTheUploadAndClearsThePublishSteps', async () => {
         const world = await readyWorld();
         await seedJob(
@@ -185,7 +187,9 @@ describe('imagery.retry', () => {
 
         expect((await readJob(world, JOB))?.steps).toEqual({ upload: { status: 'done', sha256: 'c'.repeat(64) } });
     });
+});
 
+describe('imagery.retry: a stopped job', () => {
     it('happyPath_aStoppedJobWithACancelledVersionIsQueuedAgain', async () => {
         const world = await readyWorld();
         await seedJob(world, JOB, failed({ status: 'cancelled', error: undefined }));
