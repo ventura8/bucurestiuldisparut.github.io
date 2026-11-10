@@ -154,7 +154,7 @@ function action(
 
 function retryButton(shown: Shown): TemplateResult {
     const { job, context } = shown;
-    const offered = job?.status === 'failed' && job.retryable;
+    const offered = (job?.status === 'failed' || job?.status === 'cancelled') && job.retryable;
     return action(shown, { offered, icon: 'replay', label: 'adminContent.common.retry' }, () => context.intents?.retryJob());
 }
 
