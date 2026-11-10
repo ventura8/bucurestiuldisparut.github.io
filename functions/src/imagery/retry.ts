@@ -39,7 +39,8 @@ import { guardIsRed, requireJob, stampOf, versionIdOf, type Stamp } from './reco
  * that ended otherwise: a dismissed one gave its scene and its scratch files back, and a retry would make a layer no scene
  * knows (finding of 2026-11-06; S-A12-BAD-RETRY-DISMISSED). A version still `processing` under a failed job is a stranded run
  * (the runner's second write did not arrive): the retry is the way out, as neither Dismiss nor Cancel takes it
- * (S-A12-BAD-STRANDED-VERSION). Checked again in the transaction that retries. M8 (`docs/research/M8-join-interfaces.md` §5): a
+ * (S-A12-BAD-STRANDED-VERSION). A stopped job (status `cancelled`, version `cancelled`) is retried the same way as a failed one.
+ * Checked again in the transaction that retries. M8 (`docs/research/M8-join-interfaces.md` §5): a
  * failed join freed its frames, so its retry asks whether they are still its own (a newer join, new points or a publish of its
  * own may have taken one: `apiError.imagery.joinPartGone`), and it goes back waiting for them, so no worker can claim it before the
  * dispatcher looked; a publish retry needs them all still there.
@@ -77,7 +78,8 @@ function curable(job: JobDoc): boolean {
 /**
  * The states a retry may bring a version back from: failed; processing under a failed job, a stranded run (`_fail_job`
  * writes the job first); or approved or publishing for a publish retry (the schema gives those two an approval, so
- * `failedAtPublish` holds); never one dismissed or otherwise ended.
+ * `failedAtPublish` holds); never one dismissed or otherwise ended. A stopped job (status `cancelled`) revives only a
+ * version still `cancelled`.
  */
 const REVIVABLE: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>(['failed', 'processing', 'approved', 'publishing']);
 
@@ -85,15 +87,30 @@ const REVIVABLE: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>(['f
 const SIDE_JOB_VERSIONS: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>(['awaiting_approval', 'approved']);
 
 function revivable(job: JobDoc, version: LayerVersionDoc | undefined): version is LayerVersionDoc {
-    return version !== undefined && (isSideJob(job.type) ? SIDE_JOB_VERSIONS : REVIVABLE).has(version.state);
+    if (version === undefined) {
+        return false;
+    }
+    if (isSideJob(job.type)) {
+        return SIDE_JOB_VERSIONS.has(version.state);
+    }
+    if (job.status === 'cancelled') {
+        return version.state === 'cancelled';
+    }
+    return REVIVABLE.has(version.state);
 }
 
-/** A failed raster job, made with its version (a refused upload has none), whose failure a retry may cure. */
+/** A failed or stopped raster job, made with its version (a refused upload has none), whose failure a retry may cure. */
 function retryable(job: JobDoc, version: LayerVersionDoc | undefined): version is LayerVersionDoc {
-    return job.status === 'failed' && job.type !== 'layer-delete' && revivable(job, version) && curable(job);
+    if (job.type === 'layer-delete') {
+        return false;
+    }
+    if (job.status === 'cancelled') {
+        return version !== undefined && version.state === 'cancelled';
+    }
+    return job.status === 'failed' && revivable(job, version) && curable(job);
 }
 
-/** A failed raster job with its version, whose failure a retry may cure. */
+/** A failed or stopped raster job with its version, whose failure a retry may cure. */
 async function requireFailedWork(deps: RetryDeps, request: Request): Promise<{ job: JobDoc; version: LayerVersionDoc }> {
     const job = await requireJob(deps.documents, request.cityId, request.jobId);
     const path = FIRESTORE_PATHS.layerVersion(request.cityId, versionIdOf(request.jobId, job));
@@ -104,7 +121,7 @@ async function requireFailedWork(deps: RetryDeps, request: Request): Promise<{ j
     return { job, version };
 }
 
-/** The job may be retried: failed with its version, a raster type, a curable failure, attempts left, the guard green. */
+/** The job may be retried: failed or stopped with its version, a raster type, a curable failure, attempts left, the guard green. */
 async function requireRetryable(deps: RetryDeps, request: Request): Promise<JobDoc> {
     const { job, version } = await requireFailedWork(deps, request);
     if (!failedOutdated(job)) {
@@ -193,7 +210,7 @@ function retriedVersion(version: LayerVersionDoc, atPublish: boolean, stamp: Sta
 async function retryIn(transaction: DocumentTransaction, request: Request, stamp: Stamp): Promise<{ job: JobDoc; atPublish: boolean }> {
     const jobPath = FIRESTORE_PATHS.job(request.cityId, request.jobId);
     const job = await transaction.get(jobPath, jobDocSchema);
-    if (job?.status !== 'failed') {
+    if (job?.status !== 'failed' && job?.status !== 'cancelled') {
         throw new ApiError('apiError.imagery.versionState');
     }
     const versionPath = FIRESTORE_PATHS.layerVersion(request.cityId, versionIdOf(request.jobId, job));
@@ -205,7 +222,7 @@ async function retryIn(transaction: DocumentTransaction, request: Request, stamp
     await requireJoinFrames(transaction, request, job, atPublish);
     const retried = retriedJob(job, atPublish, stamp);
     await transaction.set(jobPath, jobDocSchema, retried);
-    if (version.state === 'failed') {
+    if (version.state === 'failed' || version.state === 'cancelled') {
         await transaction.set(versionPath, layerVersionDocSchema, retriedVersion(version, atPublish, stamp));
     }
     return { job: retried, atPublish };

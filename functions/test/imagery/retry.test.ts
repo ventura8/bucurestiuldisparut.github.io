@@ -1,7 +1,8 @@
 /**
  * `imagery.retry` (`functions/src/imagery/retry.ts`, `docs/research/M3-interfaces.md` §4.5): a failed raster job again
  * after what it keeps (the city crop, the segments, the delivery): a pipeline failure goes back to `queued` (the dispatcher starts it), a failure after
- * approval goes back to the publisher; never past the attempts, never while the budget guard is red.
+ * approval goes back to the publisher; never past the attempts, never while the budget guard is red. A stopped job
+ * (status `cancelled`, version `cancelled`) is retried the same way as a failed one.
  */
 import { JOB_MAX_ATTEMPTS, PUBLISH_MAX_ATTEMPTS, type JobDoc, type LayerVersionDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
@@ -183,6 +184,25 @@ describe('imagery.retry', () => {
         await retry(world);
 
         expect((await readJob(world, JOB))?.steps).toEqual({ upload: { status: 'done', sha256: 'c'.repeat(64) } });
+    });
+
+    it('happyPath_aStoppedJobWithACancelledVersionIsQueuedAgain', async () => {
+        const world = await readyWorld();
+        await seedJob(world, JOB, failed({ status: 'cancelled', error: undefined }));
+        await seedVersion(world, JOB, renderedVersion({ state: 'cancelled', output: undefined, error: undefined }));
+
+        await expect(retry(world)).resolves.toEqual({ status: 'queued', attempt: 1 });
+
+        const job = await readJob(world, JOB);
+        expect(job).toMatchObject({
+            status: 'queued',
+            attempt: 1,
+            updatedBy: 'u-admin',
+        });
+        expect(job?.error).toBeUndefined();
+        expect(job?.finishedAt).toBeUndefined();
+        expect((await readVersion(world, JOB))?.state).toBe('processing');
+        expect(world.deps.tasks.queued).toEqual([]);
     });
 });
 

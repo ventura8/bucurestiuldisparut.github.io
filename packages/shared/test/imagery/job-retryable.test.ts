@@ -1,7 +1,8 @@
 /**
  * `jobRetryable` (`packages/shared/src/api/imagery.ts`), which the Jobs page and the version page read: a dismissal leaves its
  * job failed, marked `cancelRequested`, and neither page offers a Retry `imagery.retry` would refuse; a runner older than the
- * job's type spent no attempt, so its failure offers Retry past the attempts (`failedOutdated`).
+ * job's type spent no attempt, so its failure offers Retry past the attempts (`failedOutdated`). A stopped job (status
+ * `cancelled`) is retryable the same way as a failed one, unless its version was rejected.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -40,5 +41,17 @@ describe('jobRetryable: a runner older than the job', () => {
         expect(jobRetryable({ ...EXHAUSTED, steps: { guard: { status: 'pending' } } })).toBe(false);
         expect(jobRetryable({ ...EXHAUSTED, steps: { guard: { status: 'done' } } })).toBe(true);
         expect(failedOutdated({})).toBe(false);
+    });
+});
+
+describe('jobRetryable: a stopped job', () => {
+    const CANCELLED = { status: 'cancelled', type: 'usgs-import', layerId: 'corona-1966' } as const;
+
+    it('happyPath_aStoppedJobOffersRetry', () => {
+        expect(jobRetryable(CANCELLED)).toBe(true);
+    });
+
+    it('badPath_aStoppedJobWhoseVersionWasRejectedOffersNoRetry', () => {
+        expect(jobRetryable({ ...CANCELLED, cancelRequested: true })).toBe(false);
     });
 });

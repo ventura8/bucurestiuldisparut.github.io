@@ -223,6 +223,14 @@ function failedWork(job: RetriedJob): boolean {
     return job.status === 'failed' && job.type !== 'layer-delete' && job.layerId !== undefined && job.cancelRequested !== true;
 }
 
+/**
+ * A stopped job with work to run again: not a tileset deletion, made with its layer version, not dismissed (a dismissal
+ * marks the job `cancelRequested`: the version is `rejected`, and `imagery.retry` refuses it).
+ */
+function cancelledWork(job: RetriedJob): boolean {
+    return job.status === 'cancelled' && job.type !== 'layer-delete' && job.layerId !== undefined && job.cancelRequested !== true;
+}
+
 /** The code an outdated runner fails a job with. */
 export const PIPELINE_OUTDATED = 'apiError.imagery.pipelineOutdated';
 
@@ -242,8 +250,11 @@ export function failedOutdated(job: Pick<JobDoc, 'error'>): boolean {
     return error.code === PIPELINE_OUTDATED || (error.code === 'apiError.invalidRequest' && OUTDATED_DETAIL.test(error.message));
 }
 
-/** A failed raster job a Retry may run again: a curable failure with attempts left, or an outdated runner's (`imagery.retry` decides). */
+/** A failed or stopped raster job a Retry may run again: a curable failure with attempts left, or an outdated runner's (`imagery.retry` decides). */
 export function jobRetryable(job: RetriedJob): boolean {
+    if (cancelledWork(job)) {
+        return attemptsLeft(job);
+    }
     return failedWork(job) && curable(job) && (attemptsLeft(job) || failedOutdated(job));
 }
 
