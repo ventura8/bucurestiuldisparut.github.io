@@ -5,7 +5,7 @@
 import type { Gcp } from '@hcm/shared';
 
 /** How many edits Undo can take back. */
-export const UNDO_DEPTH = 50;
+const UNDO_DEPTH = 50;
 
 export class PairHistory {
     #steps: (readonly Gcp[])[] = [];
