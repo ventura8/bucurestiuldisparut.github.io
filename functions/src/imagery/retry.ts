@@ -62,11 +62,18 @@ function failedAtPublish(job: JobDoc, version: LayerVersionDoc | undefined): boo
  * pipeline was older than the job's type spent no real attempt (`failedOutdated`): its retry is allowed whatever the count.
  */
 function requireAttemptsLeft(job: JobDoc, version: LayerVersionDoc): void {
+    // A job the owner stopped spent no attempt it could be blamed for: its retry starts the count again.
+    if (job.status === 'cancelled') {
+        return;
+    }
+    requireCounted(job, version);
+}
+
+function requireCounted(job: JobDoc, version: LayerVersionDoc): void {
     const [attempts, max] = failedAtPublish(job, version)
         ? [job.publishAttempts ?? 0, PUBLISH_MAX_ATTEMPTS]
         : [job.attempt ?? 0, JOB_MAX_ATTEMPTS];
-    // A job the owner stopped spent no attempt it could be blamed for: its retry starts the count again.
-    if (attempts >= max && job.status !== 'cancelled') {
+    if (attempts >= max) {
         throw new ApiError('apiError.imagery.attemptsExhausted', { attempts: String(attempts) });
     }
 }
