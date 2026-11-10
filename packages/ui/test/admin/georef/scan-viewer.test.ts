@@ -116,6 +116,20 @@ describe('<hcm-scan-viewer>', () => {
         expect(element.centre.x).toBeGreaterThan(centre.x);
     });
 
+    it('happyPath_theZoomButtonsZoomInAndOutAndAreNamed', async () => {
+        const element = await viewer({});
+        element.zoomInLabel = 'Zoom in';
+        element.zoomOutLabel = 'Zoom out';
+        await updated(element);
+        const buttons = [...(element.shadowRoot?.querySelectorAll('.zoom hcm-icon-button') ?? [])] as HTMLElement[];
+
+        expect(buttons.map((button) => button.getAttribute('label'))).toEqual(['Zoom in', 'Zoom out']);
+        buttons[0]?.click();
+        buttons[0]?.click();
+        buttons[1]?.click();
+        expect(element.events).toEqual([]);
+    });
+
     it('happyPath_theWheelAndTheKeysZoomPanMoveDeleteAndPick', async () => {
         const element = await viewer({ selected: 'g1' });
         const canvas = canvasOf(element);

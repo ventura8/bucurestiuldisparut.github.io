@@ -176,7 +176,8 @@ export class GeorefPictures {
     }
 
     async #showReference(choice: ReferenceChoice | null): Promise<void> {
-        if (choice === null) {
+        // The base map is OpenStreetMap already: its lines stretched over the city only blur it (the owner, 2026-11-10).
+        if (choice === null || choice.kind === 'osm') {
             return;
         }
         const decoded = await this.#decode(choice.path);

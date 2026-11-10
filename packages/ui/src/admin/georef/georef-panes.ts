@@ -49,6 +49,8 @@ function scanViewer(context: GeorefContext, scan: NonNullable<NonNullable<Georef
             .half=${halfPixel(view.half)}
             ?adding=${view.adding}
             .label=${contentText(locale, 'adminContent.georef.scanLabel')}
+            .zoomInLabel=${contentText(locale, 'adminContent.map.zoomIn')}
+            .zoomOutLabel=${contentText(locale, 'adminContent.map.zoomOut')}
             @hcm-pick=${(event: Detail<{ pixel: PixelPositionPort }>) => {
                 intents?.pickScan(event.detail.pixel);
             }}

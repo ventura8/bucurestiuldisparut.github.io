@@ -1,6 +1,6 @@
 /**
  * `<hcm-scan-viewer>`: the georeferencer's scan pane (`docs/research/M3-interfaces.md` §10.4): the scan preview on a
- * canvas, zoomed with the wheel or a pinch (up to 8×) and panned by dragging, with the pairs' numbered markers (filled
+ * canvas, zoomed with the wheel or a pinch (up to 32×, or the + and − buttons) and panned by dragging, with the pairs' numbered markers (filled
  * when used for the fit, hollow when kept as checkpoints, the selected one larger) and the half pair's cross. One Tab stop:
  * focused, a crosshair marks the centre; the arrow keys move the selected marker by one preview pixel (ten with Shift) or
  * pan, `+` and `-` zoom, Enter adds the pair's scan end at the crosshair while pairs are being added, Delete removes the
@@ -63,6 +63,8 @@ export class HcmScanViewer extends LitElement {
         half: { attribute: false },
         adding: { type: Boolean },
         label: { type: String },
+        zoomInLabel: { attribute: false },
+        zoomOutLabel: { attribute: false },
         focused: { state: true },
     };
 
@@ -92,6 +94,20 @@ export class HcmScanViewer extends LitElement {
             :host([adding]) canvas {
                 cursor: crosshair;
             }
+
+            .zoom {
+                position: absolute;
+                inset-block-start: 8px;
+                inset-inline-end: 8px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .zoom hcm-icon-button {
+                background: var(--md-sys-color-surface-container-highest, Canvas);
+                border-radius: 50%;
+            }
         `,
     ];
 
@@ -107,6 +123,9 @@ export class HcmScanViewer extends LitElement {
     declare half: Point | null;
     declare adding: boolean;
     declare label: string;
+    /** The on-screen zoom buttons' names (the page's locale); the wheel, a pinch and + / - zoom too. */
+    declare zoomInLabel: string;
+    declare zoomOutLabel: string;
     declare focused: boolean;
     #image: HTMLImageElement | null = null;
     #view: ScanView | null = null;
@@ -128,6 +147,8 @@ export class HcmScanViewer extends LitElement {
         this.half = null;
         this.adding = false;
         this.label = '';
+        this.zoomInLabel = '';
+        this.zoomOutLabel = '';
         this.focused = false;
     }
 
@@ -196,7 +217,11 @@ export class HcmScanViewer extends LitElement {
             @blur=${() => {
                 this.focused = false;
             }}
-        ></canvas>`;
+        ></canvas>
+        <div class="zoom">
+            <hcm-icon-button icon="add" label=${this.zoomInLabel} @click=${() => this.#zoomKey('+')}></hcm-icon-button>
+            <hcm-icon-button icon="remove" label=${this.zoomOutLabel} @click=${() => this.#zoomKey('-')}></hcm-icon-button>
+        </div>`;
     }
 
     #load(): void {

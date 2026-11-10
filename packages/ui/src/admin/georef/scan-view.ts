@@ -16,7 +16,7 @@ export interface Size {
 }
 
 /** How far the admin may zoom in, beyond the scale that fits the whole preview. */
-export const MAX_ZOOM = 8;
+export const MAX_ZOOM = 32;
 
 /** A marker answers a pointer this close to it (CSS pixels): a 48 px target. */
 const HIT_RADIUS = 24;
