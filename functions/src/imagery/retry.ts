@@ -271,11 +271,7 @@ async function writeRetried(
     return retried;
 }
 
-async function retryIn(
-    transaction: DocumentTransaction,
-    request: Request,
-    stamp: Stamp,
-): Promise<{ job: JobDoc; atPublish: boolean }> {
+async function retryIn(transaction: DocumentTransaction, request: Request, stamp: Stamp): Promise<{ job: JobDoc; atPublish: boolean }> {
     const { job, version, jobPath, versionPath } = await readRetryable(transaction, request);
     const atPublish = failedAtPublish(job, version);
     await requireJoinFrames(transaction, request, job, atPublish);
