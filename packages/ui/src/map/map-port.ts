@@ -89,8 +89,6 @@ export interface VectorOverlaySpec {
     readonly opacity: number;
     /** False: clicks pass through to the map (`onMapClick`), as the admin's drawing needs; true by default. */
     readonly clickable?: boolean;
-    /** True: no icon, the feature title drawn in white at the centre of its circle (the georeferencer's numbered points). */
-    readonly numbered?: boolean;
 }
 
 export interface MapOptions {

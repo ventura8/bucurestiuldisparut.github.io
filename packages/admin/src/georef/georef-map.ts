@@ -32,14 +32,13 @@ export const PAIR_COLOR = '#d81b60';
 /** The matcher's suggestions on the map (M4 §2.5): flags in their own colour, labelled `a1`, `a2`, … from zoom 16. */
 export const SUGGESTION_COLOR = '#8a5a00';
 export const SUGGESTIONS_OVERLAY_ID = 'georef-suggestions';
-/** How a set of points looks: its colour, its icon, and whether its labels sit on the points (numbered). */
+/** How a set of points looks: its colour and its icon. */
 interface PointLook {
     readonly color: string;
     readonly icon: string;
-    readonly numbered?: boolean;
 }
 
-/** The pairs' numbers on their points, as on the scan (a click passes through to the points). */
+/** The pairs' numbers beside their points, as on the scan (a click passes through to the points). */
 export const PAIR_NUMBERS_OVERLAY_ID = 'georef-pins';
 
 /** The reference's box as the map's frame. */
@@ -168,7 +167,7 @@ export class GeorefMap {
         this.#points(
             PAIR_NUMBERS_OVERLAY_ID,
             this.#pairs.map((pair, index) => ({ id: pair.id, title: String(index + 1), geo: pair.geo })),
-            { color: PAIR_COLOR, icon: 'place', numbered: true },
+            { color: PAIR_COLOR, icon: 'place' },
         );
     }
 
