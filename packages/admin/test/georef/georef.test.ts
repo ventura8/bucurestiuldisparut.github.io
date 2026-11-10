@@ -190,6 +190,26 @@ describe('the georeferencer: the fit and saving', () => {
         expect([georef.state.transform, georef.state.dirty]).toEqual(['poly2', false]);
     });
 
+    it('happyPath_undoTakesBackTheLastEditsOneByOneAndNothingMoreAfterDiscard', () => {
+        const { georef } = setup();
+        georef.open([RENDERED]);
+        const saved = georef.state.pairs;
+
+        georef.intents.remove(saved[0]?.id ?? '');
+        georef.intents.remove(saved[1]?.id ?? '');
+        georef.intents.undo();
+        const afterOne = georef.state.pairs.length;
+        georef.intents.undo();
+        const afterTwo = [georef.state.pairs.length, georef.state.dirty];
+        georef.intents.remove(saved[0]?.id ?? '');
+        georef.intents.discard();
+        georef.intents.undo();
+
+        expect(afterOne).toBe(saved.length - 1);
+        expect(afterTwo).toEqual([saved.length, false]);
+        expect([georef.state.pairs.length, georef.state.dirty]).toEqual([saved.length, false]);
+    });
+
     it('happyPath_aScanWaitingForPointsSavesThemAndItsJobGoesOn', async () => {
         const { georef, callables, notices, store } = setup();
         const corners = [pair('g1', 0, 0), pair('g2', 8000, 0), pair('g3', 8000, 6000)].map((corner) => ({ ...corner, origin: 'corner' }));

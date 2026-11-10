@@ -398,6 +398,7 @@ export const ro = {
     'adminContent.georef.guide.s4': 'Mărește cu + și −; trage un ac ca să-l corectezi, Delete îl șterge.',
     'adminContent.georef.guide.s5': 'Salvează și georeferențiază, verifică previzualizarea, apoi aprob-o.',
     'adminContent.georef.guide.tip': '6 perechi permit potrivirea curbată, 10 pe cea flexibilă.',
+    'adminContent.georef.undo': 'Anulează pasul',
     // [end georef]
 } as const;
 

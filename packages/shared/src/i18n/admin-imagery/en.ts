@@ -396,5 +396,6 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.georef.guide.s4': 'Zoom with + and −; drag a pin to fix it, Delete removes it.',
     'adminContent.georef.guide.s5': 'Save and georeference, check the preview, then approve.',
     'adminContent.georef.guide.tip': '6 pairs allow the curved fit, 10 the flexible one.',
+    'adminContent.georef.undo': 'Undo',
     // [end georef]
 };

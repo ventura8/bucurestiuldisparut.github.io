@@ -45,6 +45,7 @@ import {
     type GeoPosition,
     type PixelPosition,
 } from './pairs.js';
+import { PairHistory } from './history.js';
 import { georefVersionOf, INITIAL_GEOREF, type GeorefIntents, type GeorefState, type GeorefVersion, type ReferenceKind } from './state.js';
 import { Suggestions } from './suggestions.js';
 
@@ -69,6 +70,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     readonly #extras: ExtrasLoader;
     /** The version's own pairs and transform: what Discard returns to and the unsaved guard compares with. */
     #base: { readonly pairs: readonly Gcp[]; readonly transform: GeorefTransform } = { pairs: [], transform: 'affine' };
+    readonly #history = new PairHistory();
     #transform: FittedTransform | null = null;
     /** The version's own figures and published map (M15), shown while its pairs are unedited. */
     #own: OwnFit | null = null;
@@ -155,6 +157,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         this.#suggestions.reset();
         this.#placing.reset();
         this.#base = { pairs: [], transform: 'affine' };
+        this.#history.clear();
         this.#transform = null;
         this.#own = null;
         this.#cell.update({ ...INITIAL_GEOREF, thresholdM: this.#cell.state.thresholdM });
@@ -193,7 +196,8 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         const pairs = (): GeorefState['pairs'] => this.#cell.state.pairs;
         return {
             setAdding: (adding) => {
-                this.#setAdding(adding);
+                this.#cell.update({ adding, half: null });
+                this.#map.setAdding(adding);
             },
             pickScan: (pixel) => {
                 this.#pickScan(pixel);
@@ -235,10 +239,13 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
                 this.#setReference(kind);
             },
             setPreviewOpacity: (percent) => {
-                this.#setOpacity(percent);
+                const previewOpacity = clamp(Math.round(percent), 0, 100) / 100;
+                this.#cell.update({ previewOpacity });
+                this.#pictures.setOpacity(previewOpacity);
             },
             togglePreview: (show) => {
-                this.#togglePreview(show);
+                this.#cell.update({ showPreview: show });
+                this.#warp();
             },
             setPane: (pane) => {
                 this.#cell.update({ pane });
@@ -246,7 +253,11 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
             save: () => this.#save(),
             snap: () => this.#snap(),
             discard: () => {
+                this.#history.clear();
                 this.#refit(this.#base.pairs, this.#base.transform);
+            },
+            undo: () => {
+                this.#edit(this.#history.pop() ?? this.#cell.state.pairs, false);
             },
             attachMap: (container) => {
                 this.#map.attach(container);
@@ -308,11 +319,6 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
             this.#cell.update({ thresholdM: imagerySettingsOf(city.imagery).rmseThresholdM });
             this.#refit(this.#cell.state.pairs, this.#cell.state.transform);
         }
-    }
-
-    #setAdding(adding: boolean): void {
-        this.#cell.update({ adding, half: null });
-        this.#map.setAdding(adding);
     }
 
     /**
@@ -386,8 +392,10 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         this.#map.showPairs(this.#cell.state.pairs, id);
     }
 
-    #edit(pairs: readonly Gcp[]): void {
+    /** The pairs edited (remembered for Undo unless `remember` is false: Undo itself). */
+    #edit(pairs: readonly Gcp[], remember = true): void {
         if (!this.#services.readOnly()) {
+            this.#history.note(this.#cell.state.pairs, remember);
             this.#refit(pairs, this.#cell.state.transform);
             this.#placing.edited(this.#doc.state.doc?.data ?? null);
         }
@@ -424,17 +432,6 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
             this.#cell.update({ reference: this.#pictures.reference });
             this.#warp();
         }
-    }
-
-    #setOpacity(percent: number): void {
-        const previewOpacity = clamp(Math.round(percent), 0, 100) / 100;
-        this.#cell.update({ previewOpacity });
-        this.#pictures.setOpacity(previewOpacity);
-    }
-
-    #togglePreview(show: boolean): void {
-        this.#cell.update({ showPreview: show });
-        this.#warp();
     }
 
     async #save(): Promise<boolean> {

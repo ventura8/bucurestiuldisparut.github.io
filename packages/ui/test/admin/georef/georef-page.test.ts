@@ -61,6 +61,7 @@ describe('<hcm-georef-page>', () => {
         click(button(element, 'Add at the centres'));
         click(button(element, 'Save and georeference'));
         click(button(element, 'Discard changes'));
+        click(button(element, 'Undo'));
         deepAll(element, 'button.pair')[1]?.click();
         (deepAll(element, '.use input')[0] as HTMLInputElement).click();
         click(nth(element, 'table.residuals hcm-icon-button', 2));
@@ -76,6 +77,7 @@ describe('<hcm-georef-page>', () => {
         expect(made.slice(2)).toEqual([
             'save',
             'discard',
+            'undo',
             'select "g2"',
             'toggle "g1"',
             'remove "g3"',

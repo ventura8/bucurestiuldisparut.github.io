@@ -102,6 +102,8 @@ export interface GeorefIntentsPort {
     /** M16: the points placed since the page opened, snapped into a new version of a published or waiting one. */
     snap(): Promise<boolean>;
     discard(): void;
+    /** The last change to the pairs taken back (an add, a move, a removal), one step at a time. */
+    undo(): void;
     attachMap(container: HTMLElement): void;
     zoomBy(delta: number): void;
 }

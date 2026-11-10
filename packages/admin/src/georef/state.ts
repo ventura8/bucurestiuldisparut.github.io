@@ -145,6 +145,8 @@ export interface GeorefIntents {
     /** M16: Snap my points (`snap.ts`). */
     snap(): Promise<boolean>;
     discard(): void;
+    /** The last change to the pairs taken back, one step at a time. */
+    undo(): void;
     attachMap(container: HTMLElement): void;
     zoomBy(delta: number): void;
 }

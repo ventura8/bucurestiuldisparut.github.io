@@ -184,6 +184,15 @@ function saveButtons(context: GeorefContext): TemplateResult {
         ${snapButton(context)}
         <hcm-button
             variant="text"
+            icon="undo"
+            ?disabled=${!view.dirty || view.saving}
+            @click=${() => {
+                intents?.undo();
+            }}
+            >${contentText(locale, 'adminContent.georef.undo')}</hcm-button
+        >
+        <hcm-button
+            variant="text"
             ?disabled=${!view.dirty || view.saving}
             @click=${() => {
                 intents?.discard();
