@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 143 | 1433 | 582 | 851 | 1431 | 2 | 350 |
+| 143 | 1435 | 583 | 852 | 1433 | 2 | 351 |
 
 ## Viewer
 
@@ -1425,6 +1425,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-P20-HAPPY-LADDER` | P20 | happy | A calibrated layer is a rung of the reference ladder | the layer's COG read as streets, its own error carried | e2e-pipeline | exists | `pipeline/tests/unit/test_placing_embedded.py` |
 | `S-P20-HAPPY-LINEART` | P20 | happy | Line art warps with nearest and a 1-bit scan reads as grey | a G4 scan normalised to 0-255; the warp keeps two values | e2e-pipeline | exists | `pipeline/tests/unit/test_placing_single.py` |
 | `S-P20-HAPPY-MATCH` | P20 | happy | A drawn map is placed by its streets, upside down too | chamfer over scales and rotations, fine junction fit with TPS, held-out checks under 15 m, rival clean, warped.tif | e2e-pipeline | exists | `pipeline/tests/unit/test_placing_single.py` |
+| `S-P20-HAPPY-OWNER-PAIRS` | P20 | happy | A parked series is placed from the owner's saved pairs | saveGcps resumes place; place warps the stitched picture through the pairs within 15 m, archive method gcps, never the placer again | e2e-pipeline | exists | `functions/test/imagery/save-gcps.test.ts`<br>`pipeline/tests/unit/test_placing_owner.py` |
 | `S-P20-HAPPY-PDF` | P20 | happy | A PDF's page images come out as stored, owner-locked too | pikepdf, an empty user password, JPEG bytes unchanged, a page with no image counted | e2e-pipeline | exists | `pipeline/tests/unit/test_placing_assemble.py` |
 | `S-P20-HAPPY-PIECES` | P20 | happy | Overlapping pieces are stitched and placed as one map | SIFT affine chain, hard nearest-centre seams, a lone piece left out; scanner-ordered folders become one pieces series | e2e-pipeline | exists | `pipeline/tests/unit/test_placing_assemble.py`<br>`pipeline/tests/unit/test_placing_embedded.py` |
 | `S-P20-HAPPY-PLACE` | P20 | happy | A class with a placer is placed by it | place with a placer for the class -> its result | e2e-pipeline | exists | `pipeline/tests/unit/test_archive_steps.py` |
@@ -1443,6 +1444,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-P20-BAD-LOW-CONFIDENCE` | P20 | bad | A map that does not place waits with suggested pairs | help no-scale or low-confidence, suggestions method junctions, at most 100 pairs | e2e-pipeline | exists | `pipeline/tests/unit/test_placing_single.py` |
 | `S-P20-BAD-NO-PATH` | P20 | bad | A class with no placer waits for a person with one line why | place on a class with no path -> version needs_gcps with help no-path, the job awaiting_gcps | e2e-pipeline | exists | `pipeline/tests/unit/test_archive_steps.py` |
 | `S-P20-BAD-OTHER-CITY` | P20 | bad | A map of another town is never placed | no fit holds -> awaiting_gcps, no archive report (zero false accepts) | e2e-pipeline | exists | `pipeline/tests/unit/test_placing_single.py` |
+| `S-P20-BAD-OWNER-PAIRS-FEW` | P20 | bad | Too few owner pairs park the series again with its help | needs_gcps, help reason and stitched kept with a new note, no archive report, no warped.tif | e2e-pipeline | exists | `pipeline/tests/unit/test_placing_owner.py` |
 | `S-P20-BAD-PDF-PASSWORD` | P20 | bad | A PDF that needs a password is skipped, never cracked | extract -> None; the series waits with the export note | e2e-pipeline | exists | `pipeline/tests/unit/test_placing_assemble.py` |
 | `S-P20-BAD-PROBE-CRASH` | P20 | bad | A file that crashes or stalls the probe is one unreadable row | a child that times out, dies or answers garbage -> an unreadable probe, the scan goes on | e2e-pipeline | exists | `pipeline/tests/unit/test_archive_intake.py`<br>`pipeline/tests/unit/test_archive_store.py` |
 | `S-P20-BAD-RASTERS-STAY-LOCAL` | P20 | bad | An archive series' full-resolution rasters never leave the computer | export for an archive-series job on a Mapbox city uploads no cog.tif nor studio.tif; other jobs still do | e2e-pipeline | exists | `pipeline/tests/unit/test_archive_steps.py` |

@@ -31,6 +31,7 @@ from hcm_pipeline.steps.georef import recorded
 from hcm_pipeline.steps.warp import scan_size
 
 OWNER_METHOD: Final = "gcps"
+PICTURE_GONE: Final = "the stitched picture is gone: the pairs are warped on the scan they were placed on"
 NOT_ENOUGH: Final = "Your points are too few, or lie almost in a line, for the chosen fit: add a few more, spread over the map."
 
 
@@ -54,7 +55,7 @@ def picture_of(ctx: JobContext, scan: ScanInfo) -> Picture:
     if not local.is_file() and ctx.services.objects.stat(ctx.work_file(STITCHED)) is not None:
         local = ctx.stage(ctx.work_file(STITCHED), STITCHED)
     if not local.is_file():
-        ctx.log.info("the stitched picture is gone: the pairs are warped on the scan they were placed on", ctx.step)
+        ctx.log.info(PICTURE_GONE, ctx.step)
         return Picture(ctx.stage(scan.path, "scan.tif"), 1.0, 1.0)
     width, height = scan_size(local)
     return Picture(local, width / max(scan.width, 1), height / max(scan.height, 1))

@@ -118,7 +118,9 @@ def test_bad_path_too_few_pairs_park_the_series_again_with_its_help(world: Pipel
     assert (help_item["reason"], help_item["note"], help_item["stitched"]) == ("low-confidence", NOT_ENOUGH, {"parts": 2})
     assert not (tmp_path / "scratch" / "warped.tif").exists()
 
-    no_scan = replace(ctx, version=replace(ctx.version, scan=None, georef=replace(ctx.version.georef, transform="affine")))
+    few = ctx.version.georef
+    assert few is not None
+    no_scan = replace(ctx, version=replace(ctx.version, scan=None, georef=replace(few, transform="affine")))
     assert isinstance(PlaceStep().run(no_scan), Waiting)
 
 

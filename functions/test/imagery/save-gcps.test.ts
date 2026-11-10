@@ -121,20 +121,6 @@ describe('imagery.saveGcps', () => {
         expect([resumed?.waitReason, resumed?.placingPoints]).toEqual([undefined, undefined]);
     });
 
-    it('happyPath_aParkedArchiveSeriesResumesFromPlaceWithTheOwnersPairs @S-P20-HAPPY-OWNER-PAIRS', async () => {
-        const world = await waitingWorld();
-        const params = { archiveId: 'ar-0123456789abcdef', seriesId: 's-0123456789ab', class: 'grid', sheets: 4, encoding: 'grey' };
-        const steps = { gather: { status: 'done' as const }, place: { status: 'pending' as const } };
-        await seedJob(world, PLAN, job({ type: 'archive-series', params: { ...params, order: 0, referenceLayerIds: [] }, steps }));
-
-        await expect(save(world, { versionId: PLAN, gcps: pairs(8) })).resolves.toMatchObject({ resumed: true });
-
-        const resumed = await readJob(world, PLAN);
-        expect(resumed).toMatchObject({ status: 'queued', steps: { gather: { status: 'done' }, place: { status: 'pending' } } });
-        expect(resumed?.steps.georef).toBeUndefined();
-        expect((await readVersion(world, PLAN))?.georef?.method).toBe('gcps');
-    });
-
     it('happyPath_threeEnabledPairsFixAnAffineFitAndKeepNoResidualOfTheirOwn', async () => {
         const world = await waitingWorld();
         const gcps = pairs(5).map((gcp, index) => ({ ...gcp, enabled: index < 3, residualM: 99 }));
@@ -246,6 +232,22 @@ describe('imagery.saveGcps', () => {
         expect(failure).toMatchObject({ details: { code: 'apiError.imagery.versionState' } });
         expect((await readJob(world, CORONA))?.status).toBe('mts_processing');
         expect(world.deps.documents.paths(FIRESTORE_PATHS.jobs(CITY))).toEqual([FIRESTORE_PATHS.job(CITY, CORONA)]);
+    });
+});
+
+describe('imagery.saveGcps: an archive series (2026-11-10)', () => {
+    it('happyPath_aParkedArchiveSeriesResumesFromPlaceWithTheOwnersPairs @S-P20-HAPPY-OWNER-PAIRS', async () => {
+        const world = await waitingWorld();
+        const params = { archiveId: 'ar-0123456789abcdef', seriesId: 's-0123456789ab', class: 'grid', sheets: 4, encoding: 'grey' };
+        const steps = { gather: { status: 'done' as const }, place: { status: 'pending' as const } };
+        await seedJob(world, PLAN, job({ type: 'archive-series', params: { ...params, order: 0, referenceLayerIds: [] }, steps }));
+
+        await expect(save(world, { versionId: PLAN, gcps: pairs(8) })).resolves.toMatchObject({ resumed: true });
+
+        const resumed = await readJob(world, PLAN);
+        expect(resumed).toMatchObject({ status: 'queued', steps: { gather: { status: 'done' }, place: { status: 'pending' } } });
+        expect(resumed?.steps?.['georef']).toBeUndefined();
+        expect((await readVersion(world, PLAN))?.georef?.method).toBe('gcps');
     });
 });
 
