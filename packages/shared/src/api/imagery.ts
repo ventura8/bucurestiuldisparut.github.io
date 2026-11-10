@@ -254,7 +254,7 @@ export function failedOutdated(job: Pick<JobDoc, 'error'>): boolean {
 /** A failed or stopped raster job a Retry may run again: a curable failure with attempts left, or an outdated runner's (`imagery.retry` decides). */
 export function jobRetryable(job: RetriedJob): boolean {
     if (cancelledWork(job)) {
-        return attemptsLeft(job);
+        return true;
     }
     return failedWork(job) && curable(job) && (attemptsLeft(job) || failedOutdated(job));
 }

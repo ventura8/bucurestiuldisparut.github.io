@@ -65,7 +65,8 @@ function requireAttemptsLeft(job: JobDoc, version: LayerVersionDoc): void {
     const [attempts, max] = failedAtPublish(job, version)
         ? [job.publishAttempts ?? 0, PUBLISH_MAX_ATTEMPTS]
         : [job.attempt ?? 0, JOB_MAX_ATTEMPTS];
-    if (attempts >= max) {
+    // A job the owner stopped spent no attempt it could be blamed for: its retry starts the count again.
+    if (attempts >= max && job.status !== 'cancelled') {
         throw new ApiError('apiError.imagery.attemptsExhausted', { attempts: String(attempts) });
     }
 }
@@ -191,7 +192,7 @@ function queuedAgain(job: JobDoc): Pick<JobDoc, 'waitReason'> {
 
 /** An outdated runner's failure starts the count again: an updated runner gets every attempt. */
 function attemptsAgain(job: JobDoc): Pick<JobDoc, 'attempt'> {
-    return failedOutdated(job) ? { attempt: 0 } : {};
+    return failedOutdated(job) || job.status === 'cancelled' ? { attempt: 0 } : {};
 }
 
 function retriedJob(job: JobDoc, atPublish: boolean, stamp: Stamp): JobDoc {
