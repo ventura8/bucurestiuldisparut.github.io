@@ -58,6 +58,16 @@ export const POI_CASING_WIDTH = byZoom([12, 6], [16, 10], [20, 14]);
 
 const LINE_LAYOUT: Style = { 'line-cap': 'round', 'line-join': 'round' };
 
+/** Returns the layout for a numbered point symbol layer. */
+function numberedLayout(): Style {
+    return { ...LABEL_LAYOUT, 'text-allow-overlap': true, 'text-anchor': 'center' };
+}
+
+/** Returns the paint for a numbered point symbol layer. */
+function numberedPaint(): Style {
+    return { ...LABEL_PAINT, 'text-color': '#ffffff', 'text-halo-width': 0 };
+}
+
 const POI_LAYER_KINDS: readonly PoiLayerKind[] = [
     {
         suffix: 'fill',
@@ -105,17 +115,26 @@ const POI_LAYER_KINDS: readonly PoiLayerKind[] = [
         suffix: 'symbol',
         type: 'symbol',
         base: {},
-        style: (spec) => ({
-            filter: geometryIs('Point'),
-            layout: {
-                ...LABEL_LAYOUT,
-                'icon-image': poiIconId(spec.icon),
-                'icon-allow-overlap': true,
-                'text-offset': [0, 1.6],
-                'text-anchor': 'top',
-            },
-            paint: LABEL_PAINT,
-        }),
+        style: (spec) => {
+            if (spec.numbered) {
+                return {
+                    filter: geometryIs('Point'),
+                    layout: numberedLayout(),
+                    paint: numberedPaint(),
+                };
+            }
+            return {
+                filter: geometryIs('Point'),
+                layout: {
+                    ...LABEL_LAYOUT,
+                    'icon-image': poiIconId(spec.icon),
+                    'icon-allow-overlap': true,
+                    'text-offset': [0, 1.6],
+                    'text-anchor': 'top',
+                },
+                paint: LABEL_PAINT,
+            };
+        },
     },
     {
         suffix: 'label-line',
