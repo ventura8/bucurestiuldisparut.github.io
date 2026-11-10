@@ -390,17 +390,11 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.georef.suggestions.none': 'No pair to suggest: add pairs by hand.',
     'adminContent.georef.suggestions.allDecided': 'You have decided on every suggestion.',
     'adminContent.georef.guide.title': 'How to place this map',
-    'adminContent.georef.guide.s1':
-        'Find a place you can see on both: a street crossing, a church, a bridge or a bend of the river that still exists.',
-    'adminContent.georef.guide.s2':
-        "Click Add pairs, click that place on the old map (left), then the same place on today's map (right). A numbered pin appears on both.",
-    'adminContent.georef.guide.s3':
-        'Repeat for at least 3 places, better 6 or more, spread over the whole map: the four corners and the middle, not all close together.',
-    'adminContent.georef.guide.s4':
-        'Zoom in on both sides (the + and − buttons, or the mouse wheel) to click precisely. A pin can be dragged to correct it; Delete removes the selected one.',
-    'adminContent.georef.guide.s5':
-        'Click Save and georeference. Your computer fits the map in a few minutes; then check the preview and approve it, and it appears on the public map.',
-    'adminContent.georef.guide.tip':
-        'With more points, choose a finer fit below: 6 points allow the curved fit, 10 the most flexible one for old, stretched paper.',
+    'adminContent.georef.guide.s1': 'Find places on both maps: crossings, churches, bridges, river bends.',
+    'adminContent.georef.guide.s2': "Add pairs: click the place on the old map, then on today's map.",
+    'adminContent.georef.guide.s3': 'Add at least 3 pairs, better 6, spread to the corners.',
+    'adminContent.georef.guide.s4': 'Zoom with + and −; drag a pin to fix it, Delete removes it.',
+    'adminContent.georef.guide.s5': 'Save and georeference, check the preview, then approve.',
+    'adminContent.georef.guide.tip': '6 pairs allow the curved fit, 10 the flexible one.',
     // [end georef]
 };

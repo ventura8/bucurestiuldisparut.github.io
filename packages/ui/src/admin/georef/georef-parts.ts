@@ -119,18 +119,23 @@ export function transforms(context: GeorefContext): TemplateResult {
     </fieldset>`;
 }
 
-const GUIDE_STEPS = ['s1', 's2', 's3', 's4', 's5'] as const;
+const GUIDE_STEPS = [
+    'adminContent.georef.guide.s1',
+    'adminContent.georef.guide.s2',
+    'adminContent.georef.guide.s3',
+    'adminContent.georef.guide.s4',
+    'adminContent.georef.guide.s5',
+] as const;
 
 /** How to place a map, step by step: open while the version has no pairs yet, a click away after. */
 export function guide(context: GeorefContext): TemplateResult {
     const { locale, view } = context;
-    const text = (key: string): string => contentText(locale, `adminContent.georef.guide.${key}`);
     return html`<details class="guide" ?open=${view.pairs.length === 0}>
-        <summary>${text('title')}</summary>
+        <summary>${contentText(locale, 'adminContent.georef.guide.title')}</summary>
         <ol>
-            ${GUIDE_STEPS.map((step) => html`<li>${text(step)}</li>`)}
+            ${GUIDE_STEPS.map((step) => html`<li>${contentText(locale, step)}</li>`)}
         </ol>
-        <p>${text('tip')}</p>
+        <p>${contentText(locale, 'adminContent.georef.guide.tip')}</p>
     </details>`;
 }
 
