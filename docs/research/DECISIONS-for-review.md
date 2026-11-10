@@ -6312,3 +6312,9 @@ The owner's request of 2026-11-09 ("import the landsat, add it to our sources, a
 - **140e ETM+ stops at 2003-05-30** (the scan line corrector's failure), and a Landsat scene never joins a date plan.
 - **140f The shared index names the new exports** (lesson 532: no `export *`), and its imagery-settings block is written on two lines to stay within 400.
 - **140g No budget raised for the join card**: Landsat's verdict (`landsatClear` and its two bars) is a module of its own (`schemas/landsat-verdict.ts`, lesson 538), so the admin's shared core gains no export and the join card stays at 2,989 bytes gzip of its 3,000.
+
+## 141. The georeferencer's chunk budget, 18 → 19 KB (2026-11-10) — APPLIED, the owner's explicit yes
+
+- **What**: `scripts/ci/check_bundle_budget.py` `"georef": 19` (was 18).
+- **Why**: the owner asked for zoom buttons on the scan, Undo, a step-by-step placing guide and the pair numbers on the map while placing the `harti.zip` maps; together they measure about 18,030 bytes gzip (level 9), 30 bytes over 18 KB after the pair and suggestion overlays were merged into one routine and strings shortened. The chunk loads only on the admin's georeferencer page, never in the public viewer.
+- **Owner**: asked in chat, answered "yes" (2026-11-10).

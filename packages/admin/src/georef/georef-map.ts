@@ -33,7 +33,7 @@ export const PAIR_COLOR = '#d81b60';
 export const SUGGESTION_COLOR = '#8a5a00';
 export const SUGGESTIONS_OVERLAY_ID = 'georef-suggestions';
 /** The pairs' numbers beside their points, as on the scan (a click passes through to the points). */
-export const PAIR_NUMBERS_OVERLAY_ID = 'georef-pair-numbers';
+export const PAIR_NUMBERS_OVERLAY_ID = 'georef-pins';
 
 /** The reference's box as the map's frame. */
 export function referenceFrame(version: GeorefVersion | null): CityFrame | null {
@@ -138,31 +138,18 @@ export class GeorefMap {
 
     /** The suggestions as a POI-like overlay that clicks pass through (a click on the map stays a place). */
     #loadSuggestions(): void {
-        const port = this.#handle?.port;
-        if (port === undefined) {
-            return;
-        }
-        const features = this.#suggestions.map((row) => {
-            const coordinates: [number, number] = [row.pair.geo.lng, row.pair.geo.lat];
-            return {
-                type: 'Feature' as const,
-                geometry: { type: 'Point' as const, coordinates },
-                properties: { id: row.pair.id, title: row.label },
-            };
-        });
-        port.addVectorOverlay(
-            {
-                id: SUGGESTIONS_OVERLAY_ID,
-                kind: 'poi',
-                features,
-                color: SUGGESTION_COLOR,
-                icon: 'flag',
-                visible: true,
-                opacity: 1,
-                clickable: false,
-            },
-            'top',
-        );
+        const points = this.#suggestions.map((row) => ({ id: row.pair.id, title: row.label, geo: row.pair.geo }));
+        this.#points(SUGGESTIONS_OVERLAY_ID, points, SUGGESTION_COLOR, 'flag');
+    }
+
+    /** Labelled points as a POI-like overlay on top that clicks pass through. */
+    #points(id: string, points: readonly { id: string; title: string; geo: GeoPosition }[], color: string, icon: string): void {
+        const features = points.map((point) => ({
+            type: 'Feature' as const,
+            geometry: { type: 'Point' as const, coordinates: [point.geo.lng, point.geo.lat] as [number, number] },
+            properties: { id: point.id, title: point.title },
+        }));
+        this.#handle?.port.addVectorOverlay({ id, kind: 'poi', features, color, icon, visible: true, opacity: 1, clickable: false }, 'top');
     }
 
     #loadPairs(): void {
@@ -171,22 +158,11 @@ export class GeorefMap {
             draw.load(this.#pairs.map((pair) => ({ id: pair.id, geometry: { type: 'Point', coordinates: [pair.geo.lng, pair.geo.lat] } })));
             draw.select(this.#selected);
         }
-        this.#handle?.port.addVectorOverlay(
-            {
-                id: PAIR_NUMBERS_OVERLAY_ID,
-                kind: 'poi',
-                features: this.#pairs.map((pair, index) => ({
-                    type: 'Feature' as const,
-                    geometry: { type: 'Point' as const, coordinates: [pair.geo.lng, pair.geo.lat] as [number, number] },
-                    properties: { id: pair.id, title: String(index + 1) },
-                })),
-                color: PAIR_COLOR,
-                icon: 'location_on',
-                visible: true,
-                opacity: 1,
-                clickable: false,
-            },
-            'top',
+        this.#points(
+            PAIR_NUMBERS_OVERLAY_ID,
+            this.#pairs.map((pair, index) => ({ id: pair.id, title: String(index + 1), geo: pair.geo })),
+            PAIR_COLOR,
+            'place',
         );
     }
 
