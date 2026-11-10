@@ -45,6 +45,15 @@ describe('<hcm-georef-page>', () => {
         expect(await axeViolations(element)).toEqual([]);
     });
 
+    it('happyPath_theGuideExplainsThePlacingStepsAndFoldsOnceThereArePairs', async () => {
+        const { element } = await georefPage();
+        const guide = deep(element, 'details.guide') as HTMLDetailsElement;
+
+        expect(guide.querySelector('summary')?.textContent).toBe('How to place this map');
+        expect(guide.querySelectorAll('ol li')).toHaveLength(5);
+        expect(guide.open).toBe(false);
+    });
+
     it('happyPath_theToolsTheTableAndTheReferenceCallTheirIntents', async () => {
         const { element, area } = await georefPage(georefState({ dirty: true }));
 

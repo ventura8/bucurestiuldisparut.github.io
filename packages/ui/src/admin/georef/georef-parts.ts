@@ -119,6 +119,21 @@ export function transforms(context: GeorefContext): TemplateResult {
     </fieldset>`;
 }
 
+const GUIDE_STEPS = ['s1', 's2', 's3', 's4', 's5'] as const;
+
+/** How to place a map, step by step: open while the version has no pairs yet, a click away after. */
+export function guide(context: GeorefContext): TemplateResult {
+    const { locale, view } = context;
+    const text = (key: string): string => contentText(locale, `adminContent.georef.guide.${key}`);
+    return html`<details class="guide" ?open=${view.pairs.length === 0}>
+        <summary>${text('title')}</summary>
+        <ol>
+            ${GUIDE_STEPS.map((step) => html`<li>${text(step)}</li>`)}
+        </ol>
+        <p>${text('tip')}</p>
+    </details>`;
+}
+
 /** The hint under the tools: the half pair's next click, or how to add a pair. */
 function halfText(locale: Locale, view: GeorefViewState): string {
     if (view.half !== null) {

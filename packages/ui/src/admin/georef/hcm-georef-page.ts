@@ -19,7 +19,7 @@ import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
 import { FullScreenInert } from './full-screen.js';
 import { panes } from './georef-panes.js';
-import { previewControls, summary, tools, transforms, type GeorefContext } from './georef-parts.js';
+import { guide, previewControls, summary, tools, transforms, type GeorefContext } from './georef-parts.js';
 import type { GeorefIntentsPort, GeorefVersionPort, GeorefViewState } from './georef-port.js';
 import { georefStyles } from './georef-styles.js';
 import type { HcmScanViewer } from './hcm-scan-viewer.js';
@@ -148,8 +148,8 @@ class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
         return html`<div class="page" data-state=${view.adding ? 'adding' : 'editing'} ?data-full=${context.full}>
             ${heading}
             <h2 tabindex="-1" data-detail-heading>${title}</h2>
-            ${reconnectingStatus(locale, view.doc.reconnecting)} ${readOnlyNote} ${summary(context)} ${transforms(context)}
-            ${tools(context)} ${panes(context)} ${previewControls(context)} ${this.#suggestions(context)}
+            ${reconnectingStatus(locale, view.doc.reconnecting)} ${readOnlyNote} ${summary(context)} ${guide(context)}
+            ${transforms(context)} ${tools(context)} ${panes(context)} ${previewControls(context)} ${this.#suggestions(context)}
             <h3>${contentText(locale, 'adminContent.georef.pairs')}</h3>
             ${residualTable({
                 ...{ locale, pairs: view.pairs, residuals: view.fit.residuals, selected: view.selected, sort: context.sort },

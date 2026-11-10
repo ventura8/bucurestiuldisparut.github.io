@@ -77,6 +77,15 @@ export const georefStyles = [
             overflow: hidden;
         }
 
+        .guide {
+            max-inline-size: 72ch;
+        }
+
+        .guide summary {
+            cursor: pointer;
+            font: var(--md-sys-typescale-title-small-font, 500 0.875rem/1.25rem system-ui);
+        }
+
         .transforms {
             display: flex;
             flex-wrap: wrap;

@@ -391,6 +391,19 @@ export const ro = {
     'adminContent.georef.suggestions.noSpread': 'Perechi sigure găsite automat: {pairs}, dar aproape în linie: adaugă perechi pe imagine.',
     'adminContent.georef.suggestions.none': 'Nicio pereche de sugerat: adaugă perechi de mână.',
     'adminContent.georef.suggestions.allDecided': 'Ai hotărât toate sugestiile.',
+    'adminContent.georef.guide.title': 'Cum pui harta la locul ei',
+    'adminContent.georef.guide.s1':
+        'Găsește un loc care se vede pe amândouă: o intersecție, o biserică, un pod sau un cot al râului care există și azi.',
+    'adminContent.georef.guide.s2':
+        'Apasă Adaugă perechi, fă clic pe acel loc pe harta veche (stânga), apoi pe același loc pe harta de azi (dreapta). Pe amândouă apare un ac numerotat.',
+    'adminContent.georef.guide.s3':
+        'Repetă pentru cel puțin 3 locuri, mai bine 6 sau mai multe, răspândite pe toată harta: cele patru colțuri și mijlocul, nu toate apropiate.',
+    'adminContent.georef.guide.s4':
+        'Mărește pe ambele părți (butoanele + și − sau rotița mouse-ului) ca să faci clic precis. Un ac poate fi tras ca să-l corectezi; Delete îl șterge pe cel selectat.',
+    'adminContent.georef.guide.s5':
+        'Apasă Salvează și georeferențiază. Calculatorul tău potrivește harta în câteva minute; apoi verifică previzualizarea și aprob-o, iar harta apare pe harta publică.',
+    'adminContent.georef.guide.tip':
+        'Cu mai multe puncte, alege mai jos o potrivire mai fină: 6 puncte permit potrivirea curbată, 10 pe cea mai flexibilă, pentru hârtie veche și deformată.',
     // [end georef]
 } as const;
 

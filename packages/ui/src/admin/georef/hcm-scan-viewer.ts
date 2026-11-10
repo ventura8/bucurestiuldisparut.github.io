@@ -201,27 +201,27 @@ export class HcmScanViewer extends LitElement {
 
     override render(): TemplateResult {
         return html`<canvas
-            tabindex="0"
-            role="application"
-            aria-roledescription="scan"
-            aria-label=${this.label}
-            @pointerdown=${this.#down}
-            @pointermove=${this.#moveTo}
-            @pointerup=${this.#up}
-            @pointercancel=${this.#cancel}
-            @wheel=${this.#wheel}
-            @keydown=${this.#key}
-            @focus=${() => {
-                this.focused = true;
-            }}
-            @blur=${() => {
-                this.focused = false;
-            }}
-        ></canvas>
-        <div class="zoom">
-            <hcm-icon-button icon="add" label=${this.zoomInLabel} @click=${() => this.#zoomKey('+')}></hcm-icon-button>
-            <hcm-icon-button icon="remove" label=${this.zoomOutLabel} @click=${() => this.#zoomKey('-')}></hcm-icon-button>
-        </div>`;
+                tabindex="0"
+                role="application"
+                aria-roledescription="scan"
+                aria-label=${this.label}
+                @pointerdown=${this.#down}
+                @pointermove=${this.#moveTo}
+                @pointerup=${this.#up}
+                @pointercancel=${this.#cancel}
+                @wheel=${this.#wheel}
+                @keydown=${this.#key}
+                @focus=${() => {
+                    this.focused = true;
+                }}
+                @blur=${() => {
+                    this.focused = false;
+                }}
+            ></canvas>
+            <div class="zoom">
+                <hcm-icon-button icon="add" label=${this.zoomInLabel} @click=${() => this.#zoomKey('+')}></hcm-icon-button>
+                <hcm-icon-button icon="remove" label=${this.zoomOutLabel} @click=${() => this.#zoomKey('-')}></hcm-icon-button>
+            </div>`;
     }
 
     #load(): void {
