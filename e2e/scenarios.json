@@ -16351,6 +16351,28 @@
             "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_single.py."
         },
         {
+            "id": "S-P20-HAPPY-OWNER-PAIRS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A parked series is placed from the owner's saved pairs",
+            "asserts": "saveGcps resumes place; place warps the stitched picture through the pairs within 15 m, archive method gcps, never the placer again",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "2026-11-10 live bug (docs/LESSONS.md). Tests: pipeline/tests/unit/test_placing_owner.py, functions/test/imagery/save-gcps.test.ts."
+        },
+        {
+            "id": "S-P20-BAD-OWNER-PAIRS-FEW",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Too few owner pairs park the series again with its help",
+            "asserts": "needs_gcps, help reason and stitched kept with a new note, no archive report, no warped.tif",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "2026-11-10 live bug (docs/LESSONS.md). Tests: pipeline/tests/unit/test_placing_owner.py."
+        },
+        {
             "id": "S-P20-HAPPY-LINEART",
             "behaviour": "P20",
             "area": "pipeline",

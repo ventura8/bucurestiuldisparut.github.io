@@ -29,7 +29,7 @@ import { startRegeoref, type RegeorefDeps } from './regeoref.js';
  * `imagery.saveGcps` (admin; `docs/research/M3-interfaces.md` §4.1, §6; S-A16-*, S-P02-*): the georeferencer's points,
  * refitted server-side with the same mathematics the page used (`fitTransform`), each pair on the scan and in the city.
  * A version waiting for points (`needs_gcps`) continues its own job from `georef`, with a run of its own even when the runs before
- * used up `JOB_MAX_ATTEMPTS` (S-A16-HAPPY-POINTS-AFTER-ATTEMPTS: Locate again spends them, and the points were accepted and then
+ * used up `JOB_MAX_ATTEMPTS` (an archive series from `place`, S-P20-HAPPY-OWNER-PAIRS) (S-A16-HAPPY-POINTS-AFTER-ATTEMPTS: Locate again spends them, and the points were accepted and then
  * failed the job for good); the layer's current version or one awaiting approval gets a new `regeoref` job and version, and the
  * layer keeps its tiles until that one is published.
  */
@@ -103,6 +103,14 @@ function attemptForPoints(job: JobDoc): Pick<JobDoc, 'attempt'> {
     return (job.attempt ?? 0) >= JOB_MAX_ATTEMPTS ? { attempt: JOB_MAX_ATTEMPTS - 1 } : {};
 }
 
+/**
+ * The step the points resume: `georef` for a frame; `place` for an archive series, whose steps have no `georef` and which places the
+ * series from the owner's pairs (`pipeline/src/hcm_pipeline/placing/owner.py`; a stray `georef` step was written before 2026-11-10).
+ */
+function resumedStep(job: JobDoc): 'georef' | 'place' {
+    return job.type === 'archive-series' ? 'place' : 'georef';
+}
+
 /** A `needs_gcps` version continues its own job (the dispatcher starts it again; the pipeline fits from `georef`). */
 async function resumeIn(transaction: DocumentTransaction, resume: Resume): Promise<Response> {
     const { request, georef } = resume;
@@ -121,7 +129,7 @@ async function resumeIn(transaction: DocumentTransaction, resume: Resume): Promi
         ...crop,
         ...stamp,
     });
-    const steps = { ...job.steps, georef: { status: 'pending' as const } };
+    const steps = { ...job.steps, [resumedStep(job)]: { status: 'pending' as const } };
     await transaction.set(jobPath, jobDocSchema, {
         ...omit(job, ['waitReason', 'error', 'placingPoints']),
         ...attemptForPoints(job),

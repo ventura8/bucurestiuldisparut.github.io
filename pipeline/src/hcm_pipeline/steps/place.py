@@ -4,7 +4,9 @@ Each class has its placer (`PLACERS`: the georeferenced read, the grid solve, th
 series' `warped.tif` and the version's `archive` report and answers `Done`; `export`, `pyramid` and `register` then run as for any layer.
 A class with no placer yet, or a placer that cannot prove a placement, never fails the job: the version waits for a person
 (`needs_gcps`) with one line saying why (`help`: the owner's standing rule of 2026-11-09, the shared "Help calibrate" queue), and the job
-waits for points (`awaiting_gcps`). A low-confidence placer leaves its correspondences as suggested pairs first.
+waits for points (`awaiting_gcps`). A low-confidence placer leaves its correspondences as suggested pairs first. Once the owner saved
+pairs on the parked series (`imagery.saveGcps`: the version's `georef`, `method: 'gcps'`), `place` warps it through them
+(`placing/owner.py`) and never runs the class's placer again: it only parked the series once more (2026-11-10).
 """
 
 from collections.abc import Mapping
@@ -15,6 +17,7 @@ from hcm_pipeline.placing.embedded import EmbeddedPlacer
 from hcm_pipeline.placing.grid import GridPlacer
 from hcm_pipeline.placing.maps import AtlasPlacer, PiecesPlacer, SinglePlacer
 from hcm_pipeline.placing.output import wait_for_help
+from hcm_pipeline.placing.owner import owner_pairs, place_from_pairs
 from hcm_pipeline.steps.gather import text_param
 
 NO_PATH_NOTE: Final = "No automatic placement for this kind of series yet: add about four points, or wait for an update."
@@ -44,6 +47,9 @@ class PlaceStep:
         self._placers = PLACERS if placers is None else placers
 
     def run(self, ctx: JobContext) -> StepResult:
+        pairs = owner_pairs(ctx.version.georef)
+        if pairs is not None:
+            return place_from_pairs(ctx, pairs)
         placer = self._placers.get(text_param(ctx.job.params, "class"))
         if placer is None:
             return wait_for_help(ctx, "no-path", NO_PATH_NOTE)
