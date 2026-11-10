@@ -224,11 +224,12 @@ function failedWork(job: RetriedJob): boolean {
 }
 
 /**
- * A stopped job with work to run again: not a tileset deletion, made with its layer version, not dismissed (a dismissal
- * marks the job `cancelRequested`: the version is `rejected`, and `imagery.retry` refuses it).
+ * A stopped job with work to run again: not a tileset deletion, made with its layer version. `cancelRequested` is set by
+ * an owner's Stop as well as a dismissal, so it cannot distinguish the two; `imagery.retry` checks the version state on
+ * the server and refuses a rejected version.
  */
 function cancelledWork(job: RetriedJob): boolean {
-    return job.status === 'cancelled' && job.type !== 'layer-delete' && job.layerId !== undefined && job.cancelRequested !== true;
+    return job.status === 'cancelled' && job.type !== 'layer-delete' && job.layerId !== undefined;
 }
 
 /** The code an outdated runner fails a job with. */

@@ -2,7 +2,7 @@
  * `jobRetryable` (`packages/shared/src/api/imagery.ts`), which the Jobs page and the version page read: a dismissal leaves its
  * job failed, marked `cancelRequested`, and neither page offers a Retry `imagery.retry` would refuse; a runner older than the
  * job's type spent no attempt, so its failure offers Retry past the attempts (`failedOutdated`). A stopped job (status
- * `cancelled`) is retryable the same way as a failed one, unless its version was rejected.
+ * `cancelled`) is retryable the same way as a failed one; the server refuses a rejected version.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -49,9 +49,10 @@ describe('jobRetryable: a stopped job', () => {
 
     it('happyPath_aStoppedJobOffersRetry', () => {
         expect(jobRetryable(CANCELLED)).toBe(true);
+        expect(jobRetryable({ ...CANCELLED, cancelRequested: true })).toBe(true);
     });
 
-    it('badPath_aStoppedJobWhoseVersionWasRejectedOffersNoRetry', () => {
-        expect(jobRetryable({ ...CANCELLED, cancelRequested: true })).toBe(false);
+    it('badPath_aStoppedLayerDeleteOffersNoRetry', () => {
+        expect(jobRetryable({ ...CANCELLED, type: 'layer-delete' })).toBe(false);
     });
 });
