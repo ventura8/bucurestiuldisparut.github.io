@@ -1,4 +1,4 @@
-"""Find a series' overview map in the archive and build its mosaic (slice 3)."""
+"""Find a series' overview map in the archive and build its mosaic (slices 3-4)."""
 
 from __future__ import annotations
 
@@ -81,22 +81,61 @@ def _under_root(path: Path, root: Path) -> bool:
     return resolved == base or base in resolved.parents
 
 
+def _path_tokens(path: Path) -> set[str]:
+    return _tokens(path.stem) | _tokens(path.parent.name)
+
+
+def _series_root(folder: Path, root: Path) -> Path | None:
+    """The archive series folder: the ancestor that sits directly under `root`."""
+    base, current = root.resolve(), folder.resolve()
+    if not _under_root(current, root) or current == base:
+        return None
+    while current.parent != base:
+        current = current.parent
+    return current
+
+
+def _related(candidates: Sequence[Path], tokens: set[str]) -> list[Path]:
+    return [path for path in candidates if _path_tokens(path) & tokens]
+
+
+def _sibling_candidates(series: Path, sheets: set[Path]) -> list[Path]:
+    parent = series.parent
+    if not parent.is_dir():
+        return []
+    found: list[Path] = []
+    for child in parent.iterdir():
+        if child.is_dir() and child.resolve() != series.resolve():
+            found.extend(_candidates(child, sheets))
+    return found
+
+
+def _near_overview(folder: Path, root: Path, sheets: set[Path], tokens: set[str]) -> Path | None:
+    found = _pick(_candidates(folder.parent, sheets), tokens)
+    if found is not None:
+        return found
+    series = _series_root(folder, root)
+    if series is None:
+        return None
+    return _pick(_related(_sibling_candidates(series, sheets), tokens), tokens)
+
+
 def _search(folder: Path, root: Path, sheets: set[Path], tokens: set[str]) -> Path | None:
     found = _pick(_candidates(folder, sheets), tokens)
     if found is not None or not _under_root(folder.parent, root):
         return found
-    return _pick(_candidates(folder.parent, sheets), tokens)
+    return _near_overview(folder, root, sheets, tokens)
 
 
 def find_overview(root: Path, sheets: Sequence[Path]) -> Path | None:
-    """A loose overview raster beside the series' tiles, or None when none is found."""
+    """A loose overview raster beside the series' tiles (or a same-year sibling series), or None."""
     if not sheets:
         return None
     resolved = [sheet.resolve() for sheet in sheets]
     folder = Path(os.path.commonpath([str(path.parent) for path in resolved]))
     if not _under_root(folder, root):
         return None
-    return _search(folder, root, set(resolved), _tokens(folder.name))
+    return _search(folder, root, set(resolved), _tokens(folder.name) | _tokens(folder.parent.name))
 
 
 def _read_grey(path: Path, read_px: int) -> UInt8Array:

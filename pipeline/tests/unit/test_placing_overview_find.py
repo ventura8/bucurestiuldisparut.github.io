@@ -114,6 +114,33 @@ def test_empty_sheets_returns_none(tmp_path: Path) -> None:
     assert find_overview(tmp_path, []) is None
 
 
+def test_happy_sibling_series_overview(tmp_path: Path) -> None:
+    """Scenarios: S-P20-HAPPY-OVERVIEW-SIBLING"""
+    pieces = tmp_path / "pieces-1895" / "1_quadrat"
+    pieces.mkdir(parents=True)
+    tile = pieces / "tile_001.png"
+    _write_dummy_file(tile)
+    iga = tmp_path / "iga-1895"
+    iga.mkdir()
+    overview = iga / "sheet.png"
+    _write_dummy_file(overview)
+
+    assert find_overview(tmp_path, [tile]) == overview
+
+
+def test_bad_sibling_other_year_ignored(tmp_path: Path) -> None:
+    """Scenarios: S-P20-BAD-OVERVIEW-SIBLING-YEAR"""
+    pieces = tmp_path / "pieces-1895" / "1_quadrat"
+    pieces.mkdir(parents=True)
+    tile = pieces / "tile_001.png"
+    _write_dummy_file(tile)
+    other = tmp_path / "map-1900"
+    other.mkdir()
+    _write_dummy_file(other / "sheet.png")
+
+    assert find_overview(tmp_path, [tile]) is None
+
+
 def test_happy_overview_canvas_matches_source(tmp_path: Path) -> None:
     """Scenarios: S-P20-HAPPY-OVERVIEW"""
     overview = _make_overview((800, 800))

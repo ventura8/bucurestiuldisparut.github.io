@@ -16439,6 +16439,28 @@
             "notes": "Owner 2026-11-10 tile import piece 3. Tests: pipeline/tests/unit/test_placing_overview_find.py, pipeline/tests/unit/test_placing_assemble.py."
         },
         {
+            "id": "S-P20-HAPPY-OVERVIEW-SIBLING",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An overview in a same-year sibling series is found for pieces",
+            "asserts": "find_overview under the archive root returns a raster from a sibling folder sharing a year token",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Owner 2026-11-11 tile import piece 4 (harti.zip coloured 1895 vs IGA). Tests: pipeline/tests/unit/test_placing_overview_find.py."
+        },
+        {
+            "id": "S-P20-BAD-OVERVIEW-SIBLING-YEAR",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A sibling series of another year is not used as the overview",
+            "asserts": "find_overview returns None when the only sibling raster's year does not match the pieces folder",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Owner 2026-11-11 tile import piece 4. Tests: pipeline/tests/unit/test_placing_overview_find.py."
+        },
+        {
             "id": "S-P20-HAPPY-ATLAS",
             "behaviour": "P20",
             "area": "pipeline",
