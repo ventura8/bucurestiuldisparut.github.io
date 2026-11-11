@@ -16417,6 +16417,28 @@
             "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_assemble.py, pipeline/tests/unit/test_placing_embedded.py."
         },
         {
+            "id": "S-P20-HAPPY-OVERVIEW",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Pieces with an archive overview become one stitched picture on that overview",
+            "asserts": "find_overview in the parent folder; mosaic_on_overview places most tiles; help.stitched.method is overview; georeferencer gets that picture",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Owner 2026-11-10 tile import piece 3. Tests: pipeline/tests/unit/test_placing_assemble.py, pipeline/tests/unit/test_placing_overview_find.py."
+        },
+        {
+            "id": "S-P20-BAD-OVERVIEW-BLANK",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A blank overview does not replace today's stitching",
+            "asserts": "overview_canvas returns None when too few tiles match; PiecesPlacer falls back to joins.joined",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Owner 2026-11-10 tile import piece 3. Tests: pipeline/tests/unit/test_placing_overview_find.py, pipeline/tests/unit/test_placing_assemble.py."
+        },
+        {
             "id": "S-P20-HAPPY-ATLAS",
             "behaviour": "P20",
             "area": "pipeline",

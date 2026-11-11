@@ -2,16 +2,18 @@
 
 A single map is placed by its streets as it is. An atlas's pages (image files, or a PDF's pages taken out with pikepdf) and overlapping
 pieces are first assembled into one canvas in the job's scratch folder (`assemble`, `joins`), then placed as one map: many junctions
-over the whole city are far stronger than page by page. Pieces are joined by their features at a higher resolution (`joins`); an
-atlas's pages by their edges, or by their overlaps when those join more pages (M22 §4.1). A PDF that needs a password waits for a person
-(`low-confidence`: the owner exports its pages). Pages or pieces that join nothing are left out: the job's log says how many, and the
-version's placed count leaves them out. A map or canvas that is not placed on its own is kept as the one stitched picture the Help
-calibrate wizard places (`stitched`), with the parts left out and why.
+over the whole city are far stronger than page by page. Pieces are joined by their features at a higher resolution (`joins`); when the
+archive holds a complete smaller-scale overview of the same area, pieces are laid on that overview first (`overview_find`) and that
+mosaic is the series' picture. An atlas's pages join by their edges, or by their overlaps when those join more pages (M22 §4.1). A PDF
+that needs a password waits for a person (`low-confidence`: the owner exports its pages). Pages or pieces that join nothing are left
+out: the job's log says how many, and the version's placed count leaves them out. A map or canvas that is not placed on its own is kept
+as the one stitched picture the Help calibrate wizard places (`stitched`), with the parts left out and why.
 """
 
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Final
 
 import numpy
@@ -20,12 +22,15 @@ from hcm_pipeline.archive.magic import sniff_file
 from hcm_pipeline.jobs import JobContext, StepResult, Waiting
 from hcm_pipeline.placing import assemble, joins
 from hcm_pipeline.placing.output import wait_for_help
+from hcm_pipeline.placing.overview import MosaicReport
+from hcm_pipeline.placing.overview_find import find_overview, overview_canvas
 from hcm_pipeline.placing.pdfpages import extract_pages
 from hcm_pipeline.placing.raster_io import read_working
 from hcm_pipeline.placing.series import SeriesJob, Sheet, series_of
 from hcm_pipeline.placing.single import LARGEST_WORKING_PX, Drawn, drawn_of, place_map
 from hcm_pipeline.placing.stitched import NO_JOIN, JoinQuality, Stitched, publish_stitched
 from hcm_pipeline.placing.streets import UInt8Array
+from hcm_pipeline.steps.gather import store_of, text_param
 
 PDF_LOCKED: Final = "This PDF needs a password: export its pages as images from a PDF reader, then import them."
 NO_PAGES: Final = "No page of this series could be laid out: add about four points on its pages, or import them as single maps."
@@ -142,14 +147,49 @@ def _overlapping(sheets: Sequence[Sheet], by_edges: int) -> joins.Joined | None:
     return found if found is not None and len(found.layout.placed) > by_edges else None
 
 
+def _overview_layout(names: tuple[str, ...], report: MosaicReport, size: tuple[int, int]) -> assemble.Layout:
+    """A layout that only records which parts landed on the overview (identity transforms; the canvas is already drawn)."""
+    index = {name: position for position, name in enumerate(names)}
+    left = tuple(index[name] for name in report.unplaced if name in index)
+    kept = set(range(len(names))) - set(left)
+    placed = {position: assemble.IDENTITY for position in kept}
+    return assemble.Layout(placed, size, left, 0)
+
+
+def _series_overview(ctx: JobContext, series: SeriesJob) -> Path | None:
+    root = store_of(ctx).files(text_param(ctx.job.params, "archiveId"))
+    return find_overview(root, [sheet.path for sheet in series.sheets])
+
+
+def _try_overview(ctx: JobContext, series: SeriesJob) -> Assembled | None:
+    """The series' mosaic on its archive overview, or None when no overview is found or too few tiles match."""
+    overview = _series_overview(ctx, series)
+    if overview is None:
+        return None
+    made = overview_canvas([(sheet.name, sheet.path) for sheet in series.sheets], overview)
+    if made is None:
+        return None
+    canvas, report = made
+    names = tuple(sheet.name for sheet in series.sheets)
+    quality = JoinQuality(links=len(report.placed), mean_inliers=0.0, rms_px=report.rms_px)
+    return Assembled(canvas, _overview_layout(names, report, (canvas.shape[1], canvas.shape[0])), names, "overview", quality)
+
+
+def _pieces_joined(ctx: JobContext, series: SeriesJob) -> StepResult:
+    found = joins.joined([sheet.path for sheet in series.sheets])
+    if found is None:
+        return wait_for_help(ctx, "low-confidence", NO_STITCH)
+    names = tuple(sheet.name for sheet in series.sheets)
+    canvas = assemble.compose_canvas(found.images, found.layout)
+    return _assembled(ctx, series, Assembled(canvas, found.layout, names, "pieces", found.quality))
+
+
 class PiecesPlacer:
-    """Overlapping pieces of one sheet: joined on their overlaps at a higher resolution, then placed as one map."""
+    """Overlapping pieces of one sheet: on an overview when the archive has one, else joined on their overlaps."""
 
     def place(self, ctx: JobContext) -> StepResult:
         series = series_of(ctx)
-        found = joins.joined([sheet.path for sheet in series.sheets])
-        if found is None:
-            return wait_for_help(ctx, "low-confidence", NO_STITCH)
-        names = tuple(sheet.name for sheet in series.sheets)
-        canvas = assemble.compose_canvas(found.images, found.layout)
-        return _assembled(ctx, series, Assembled(canvas, found.layout, names, "pieces", found.quality))
+        overviewed = _try_overview(ctx, series)
+        if overviewed is not None:
+            return _assembled(ctx, series, overviewed)
+        return _pieces_joined(ctx, series)

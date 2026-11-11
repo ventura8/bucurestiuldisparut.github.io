@@ -12,7 +12,8 @@
    `cities/{c}/grids/{g}`) starts the fit instead of the search. Batch 4 (§5.1): a grid that does not prove but was fitted is still
    rendered from the sheets' names (`grid-names`), with its seams and its checks against the reference measured, for the owner alone to
    approve by hand (the policy never publishes it); with no fit at all it waits for a person, its mosaic kept as the one stitched
-   picture the Help calibrate wizard places (`stitched`, M22 §4.1).
+   picture the Help calibrate wizard places (`stitched`, M22 §4.1), preferring tiles laid on an archive overview when one is found
+   (`overview_find`).
 5. Render: each sheet warped from its own scan into the series' one `warped.tif`, cut at its neat line (hard seams, no feather), through
    a 5 x 5 lattice of its homography composed with the solved grid.
 
@@ -23,6 +24,7 @@ detection on a printed grid (the IGA quadrants) are not built: the frames' homog
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import Final
 
 import cv2
@@ -37,13 +39,15 @@ from hcm_pipeline.placing.frame import content_frame, find_frame
 from hcm_pipeline.placing.geometry import FloatArray, compose
 from hcm_pipeline.placing.gridscheme import QUARTER_ORDERS, Box, CityGrid, scheme_for
 from hcm_pipeline.placing.output import Placement, finish, resolution_of, wait_for_help
+from hcm_pipeline.placing.overview_find import find_overview, overview_canvas
 from hcm_pipeline.placing.raster_io import read_working
 from hcm_pipeline.placing.reference import city_window
 from hcm_pipeline.placing.render import SheetWarp, render_sheets
 from hcm_pipeline.placing.series import SeriesJob, Sheet, series_of
 from hcm_pipeline.placing.single import Attempt, Drawn, Search, attempt, drawn_of, fit_from
-from hcm_pipeline.placing.stitched import NO_FRAME, Stitched, wait_stitched
+from hcm_pipeline.placing.stitched import NO_FRAME, NO_JOIN, JoinQuality, Stitched, wait_stitched
 from hcm_pipeline.placing.streets import UInt8Array, grey_of
+from hcm_pipeline.steps.gather import store_of, text_param
 
 SEAM_M: Final = 2.0
 # The frame's own line is left outside the straightened sheet (it would draw the grid's lines into the mosaic and blind its seams).
@@ -257,6 +261,38 @@ def framed(cells: list[tuple[Sheet, Cell]], scheme: CityGrid) -> list[Rectified]
     return [item for item in found if item is not None]
 
 
+def _framed_overview(ctx: JobContext, rectified: list[Rectified]) -> Path | None:
+    root = store_of(ctx).files(text_param(ctx.job.params, "archiveId"))
+    return find_overview(root, [item.sheet.path for item in rectified])
+
+
+def _overview_picture(ctx: JobContext, rectified: list[Rectified], unframed: tuple[tuple[str, str], ...]) -> Stitched | None:
+    """The framed sheets laid on an archive overview, or None when none is found or too few match."""
+    overview = _framed_overview(ctx, rectified)
+    if overview is None:
+        return None
+    made = overview_canvas([(item.sheet.name, item.sheet.path) for item in rectified], overview)
+    if made is None:
+        return None
+    canvas, report = made
+    left = tuple((name, NO_JOIN) for name in report.unplaced) + unframed
+    quality = JoinQuality(links=len(report.placed), mean_inliers=0.0, rms_px=report.rms_px)
+    return Stitched(canvas, "overview", len(rectified) + len(unframed), left, joins=quality)
+
+
+def _wait_picture(
+    ctx: JobContext,
+    mosaic: Mosaic,
+    rectified: list[Rectified],
+    unframed: tuple[tuple[str, str], ...],
+) -> Stitched:
+    """Prefer the overview mosaic for the georeferencer; else the name/frame mosaic."""
+    overviewed = _overview_picture(ctx, rectified, unframed)
+    if overviewed is not None:
+        return overviewed
+    return Stitched(mosaic.image, "grid", len(rectified) + len(unframed), unframed, mosaic.metres)
+
+
 def _solved(
     ctx: JobContext, series: SeriesJob, rectified: list[Rectified], scheme: CityGrid, unframed: tuple[tuple[str, str], ...] = ()
 ) -> StepResult:
@@ -270,8 +306,7 @@ def _solved(
         ctx.log.info(f"the grid is placed, its quarters read in order {order}", ctx.step)
         return _rendered(ctx, series, Solved(rectified, scheme, order, mosaic, held[0].transform), Placed("grid", held[0].checked, True))
     if found is None or found.fit is None:
-        stitched = Stitched(mosaic.image, "grid", len(rectified) + len(unframed), unframed, mosaic.metres)
-        return wait_stitched(ctx, stitched, "low-confidence", NOT_PROVED)
+        return wait_stitched(ctx, _wait_picture(ctx, mosaic, rectified, unframed), "low-confidence", NOT_PROVED)
     ctx.log.info(f"the grid did not prove: placed from the sheets' names for the owner to approve, order {order}", ctx.step)
     placed = Placed(OWNER_METHOD, found.fit.checked, found.rival_clean)
     return _rendered(ctx, series, Solved(rectified, scheme, order, mosaic, found.fit.transform), placed)
