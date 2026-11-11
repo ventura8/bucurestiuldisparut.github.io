@@ -109,20 +109,20 @@ export class HcmOverlayList extends LitElement {
                 grid-template-columns: auto 1fr auto;
                 gap: 0 8px;
                 align-items: center;
-                min-block-size: 48px;
+                min-block-size: 40px;
                 padding-block: 0;
             }
 
             .swatch {
                 display: grid;
                 place-items: center;
-                width: 24px;
-                height: 24px;
+                width: 32px;
+                height: 32px;
                 border-radius: var(--md-sys-shape-corner-full);
                 background: var(--swatch, var(--md-sys-color-secondary-container));
                 color: var(--md-sys-color-on-secondary-container);
 
-                --hcm-icon-size: 16px;
+                --hcm-icon-size: 20px;
             }
 
             .swatch.colored {

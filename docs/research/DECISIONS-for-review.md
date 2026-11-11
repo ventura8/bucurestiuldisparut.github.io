@@ -6318,3 +6318,10 @@ The owner's request of 2026-11-09 ("import the landsat, add it to our sources, a
 - **What**: `scripts/ci/check_bundle_budget.py` `"georef": 19` (was 18).
 - **Why**: the owner asked for zoom buttons on the scan, Undo, a step-by-step placing guide and the pair numbers on the map while placing the `harti.zip` maps; together they measure about 18,030 bytes gzip (level 9), 30 bytes over 18 KB after the pair and suggestion overlays were merged into one routine and strings shortened. The chunk loads only on the admin's georeferencer page, never in the public viewer.
 - **Owner**: asked in chat, answered "yes" (2026-11-10).
+
+## 142. Standing Hosting deploy and Update the map (2026-11-11) — APPLIED, the owner's explicit yes
+
+- **What**: the agent may run Firebase Hosting deploys (`ship.sh` / `firebase deploy --only hosting:…`) and Setup's **Update the map** (server, pipeline image, worker digest) without asking each time.
+- **Why**: the owner, 2026-11-11 in chat: "u have my persimission to always deplay and update the map yourself".
+- **Still ask first**: pushes to `master` or a tag, merges, payments, credentials, relaxing a gate, and cloud changes outside that Update-the-map path.
+- **Layers row height (same day)**: overlay swatches back to 32 px (`--hcm-icon-size: 20px`); Compare / Street names / POIs and overlay rows `min-block-size` 40 px (switch keeps its own 48 px target).

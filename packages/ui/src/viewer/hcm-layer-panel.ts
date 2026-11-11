@@ -140,8 +140,8 @@ export class HcmLayerPanel extends LitElement {
                 z-index: 1;
                 display: flex;
                 flex-direction: column;
-                gap: 8px;
-                padding-block: 0 8px;
+                gap: 4px;
+                padding-block: 0 4px;
                 background: var(--md-sys-color-surface-container-low);
                 box-shadow: 0 1px 0 var(--md-sys-color-outline-variant);
             }
@@ -186,9 +186,9 @@ export class HcmLayerPanel extends LitElement {
                 align-items: center;
                 justify-content: space-between;
 
-                /* Compact row; the switch keeps its own 48 px target (the tour's target-size check). */
+                /* Shorter row; the switch keeps its own 48 px target (the tour's target-size check). */
                 padding-block: 0;
-                min-block-size: 48px;
+                min-block-size: 40px;
             }
 
             .labels p {
