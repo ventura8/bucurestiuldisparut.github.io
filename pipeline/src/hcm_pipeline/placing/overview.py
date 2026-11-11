@@ -9,6 +9,7 @@ row/column from its file name to produce a positional hint.
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -26,6 +27,15 @@ class TileFit:
 
     matrix: np.ndarray
     inliers: int
+    rms_px: float
+
+
+@dataclass(frozen=True)
+class MosaicReport:
+    """Summary of tiles placed and unplaced in the mosaic."""
+
+    placed: list[str]
+    unplaced: list[str]
     rms_px: float
 
 
@@ -244,3 +254,74 @@ def grid_hint(
     cy = (r + 0.5) * oh / rows
     cx = (c + 0.5) * ow / cols
     return (cx, cy)
+
+
+def _paste_tile(
+    canvas: np.ndarray,
+    tile: np.ndarray,
+    matrix: np.ndarray,
+    upscale: float,
+) -> None:
+    """Warp a tile onto the canvas using the scaled affine matrix."""
+    m_canvas = matrix * upscale
+    ch, cw = canvas.shape[:2]
+    warped = cv2.warpAffine(
+        tile,
+        m_canvas,
+        (cw, ch),
+        flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=0,
+    )
+    mask_src = np.full(tile.shape[:2], 255, dtype=np.uint8)
+    mask = cv2.warpAffine(
+        mask_src,
+        m_canvas,
+        (cw, ch),
+        flags=cv2.INTER_NEAREST,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=0,
+    )
+    valid = mask > 0
+    canvas[valid] = warped[valid]
+
+
+def mosaic_on_overview(
+    tiles: Sequence[tuple[str, np.ndarray]],
+    overview: np.ndarray,
+    rows: int,
+    cols: int,
+    upscale: float,
+) -> tuple[np.ndarray, MosaicReport]:
+    """Assemble a mosaic canvas from tiles placed on the overview.
+
+    The canvas is the overview resized by *upscale*, filled with 255
+    (paper) where no tile lands.  Each tile is matched via
+    :func:`tile_on_overview` and warped onto the canvas with the fit
+    matrix scaled by *upscale*.  Tiles that fail to match are listed in
+    the report's ``unplaced`` field.
+
+    Returns the canvas and a :class:`MosaicReport`.
+    """
+    oh, ow = overview.shape[:2]
+    canvas_h = int(oh * upscale)
+    canvas_w = int(ow * upscale)
+    canvas = np.full((canvas_h, canvas_w), 255, dtype=np.uint8)
+
+    placed: list[str] = []
+    unplaced: list[str] = []
+    rms_values: list[float] = []
+
+    for name, tile in tiles:
+        hint = grid_hint(name, rows, cols, overview.shape)
+        fit = tile_on_overview(tile, overview, hint)
+        if fit is None:
+            unplaced.append(name)
+            continue
+        _paste_tile(canvas, tile, fit.matrix, upscale)
+        placed.append(name)
+        rms_values.append(fit.rms_px)
+
+    rms = float(np.mean(rms_values)) if rms_values else 0.0
+    report = MosaicReport(placed=placed, unplaced=unplaced, rms_px=rms)
+    return canvas, report

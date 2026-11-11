@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+import cv2
 import numpy as np
-from hcm_pipeline.placing.overview import grid_hint, tile_on_overview
+from hcm_pipeline.placing.overview import (
+    MosaicReport,
+    grid_hint,
+    mosaic_on_overview,
+    tile_on_overview,
+)
 
 
 def _draw_cell_features(
@@ -66,6 +72,30 @@ def _make_overview(shape: tuple[int, int] = (800, 800)) -> np.ndarray:
     return img
 
 
+def _make_overview_3x3(shape: tuple[int, int] = (600, 600)) -> np.ndarray:
+    """Create a synthetic street-like overview with a 3x3 grid."""
+    rng = np.random.default_rng(42)
+    img = np.full(shape, 220, dtype=np.uint8)
+    rows, cols = 3, 3
+    ch = shape[0] // rows
+    cw = shape[1] // cols
+
+    # Grid streets
+    for i in range(rows + 1):
+        pos = i * ch
+        img[max(0, pos - 3) : pos + 4, :] = 40
+    for i in range(cols + 1):
+        pos = i * cw
+        img[:, max(0, pos - 3) : pos + 4] = 40
+
+    # Internal features per cell
+    for r in range(rows):
+        for c in range(cols):
+            _draw_cell_features(img, rng, r * ch + 20, c * cw + 20)
+
+    return img
+
+
 def _make_tile(
     overview: np.ndarray,
     row: int,
@@ -82,6 +112,55 @@ def _make_tile(
     x0 = col * cw
     crop = overview[y0 : y0 + ch, x0 : x0 + cw]
     return np.repeat(np.repeat(crop, upscale, axis=0), upscale, axis=1)
+
+
+def _tile_for_cell(
+    overview: np.ndarray,
+    r: int,
+    c: int,
+    grid: tuple[int, int],
+    upscale: int,
+) -> np.ndarray:
+    """Return a blank tile for cell (1,1) or a cropped tile otherwise."""
+    if r == 1 and c == 1:
+        return np.full((400, 400), 128, dtype=np.uint8)
+    return _make_tile(overview, r, c, grid, upscale=upscale)
+
+
+def _build_mosaic_tiles(
+    overview: np.ndarray,
+    rows: int,
+    cols: int,
+    upscale: int,
+) -> list[tuple[str, np.ndarray]]:
+    """Build the 3x3 tile list with one blank tile at (1,1)."""
+    tiles: list[tuple[str, np.ndarray]] = []
+    for r in range(rows):
+        for c in range(cols):
+            name = f"r{r + 1:02d}c{c + 1:02d}"
+            tiles.append((name, _tile_for_cell(overview, r, c, (rows, cols), upscale)))
+    return tiles
+
+
+def _verify_mosaic_region(
+    canvas: np.ndarray,
+    overview: np.ndarray,
+    rows: int,
+    cols: int,
+    upscale: int,
+) -> None:
+    """Verify each placed tile region matches expected content within MAD 12."""
+    for r in range(rows):
+        for c in range(cols):
+            if r == 1 and c == 1:
+                continue
+            name = f"r{r + 1:02d}c{c + 1:02d}"
+            y0 = r * 400
+            x0 = c * 400
+            region = canvas[y0 : y0 + 400, x0 : x0 + 400]
+            expected = _make_tile(overview, r, c, (rows, cols), upscale=upscale)
+            mad = float(np.mean(np.abs(region.astype(np.int16) - expected.astype(np.int16))))
+            assert mad < 12, f"Tile {name} MAD {mad:.1f} exceeds 12 grey levels"
 
 
 def test_tile_on_overview_fits_within_2px() -> None:
@@ -168,3 +247,47 @@ def test_grid_hint_no_numbers() -> None:
     """A name without any numbers should return None."""
     h = grid_hint("tile_alpha", 4, 4, (800, 800))
     assert h is None
+
+
+def test_mosaic_3x3_placed_and_unplaced() -> None:
+    """3x3 mosaic: 8 tiles placed within MAD 12, 1 blank tile unplaced."""
+    overview = _make_overview_3x3((600, 600))
+    rows, cols = 3, 3
+    upscale = 2.0
+
+    tiles = _build_mosaic_tiles(overview, rows, cols, 2)
+    canvas, report = mosaic_on_overview(tiles, overview, rows, cols, upscale)
+
+    # Canvas dimensions
+    assert canvas.shape == (1200, 1200)
+    assert canvas.dtype == np.uint8
+
+    # 8 placed, 1 unplaced
+    assert len(report.placed) == 8
+    assert len(report.unplaced) == 1
+    assert "r02c02" in report.unplaced
+
+    # The placed area matches the overview at the tiles' resolution
+    expected = cv2.resize(overview, (1200, 1200), interpolation=cv2.INTER_LINEAR)
+    placed_area = canvas != 255
+    mad = float(np.mean(np.abs(canvas[placed_area].astype(np.int16) - expected[placed_area].astype(np.int16))))
+    assert mad < 12, f"mosaic MAD {mad:.1f} exceeds 12 grey levels"
+
+    # RMS should be a positive finite value
+    assert report.rms_px > 0.0
+    assert np.isfinite(report.rms_px)
+
+    # Each placed tile region should match the expected content
+    _verify_mosaic_region(canvas, overview, rows, cols, 2)
+
+
+def test_mosaic_report_type() -> None:
+    """MosaicReport fields have the expected types."""
+    overview = _make_overview_3x3((600, 600))
+    tile = _make_tile(overview, 0, 0, (3, 3), upscale=2)
+    tiles = [("r01c01", tile)]
+    _, report = mosaic_on_overview(tiles, overview, 3, 3, 2.0)
+    assert isinstance(report, MosaicReport)
+    assert isinstance(report.placed, list)
+    assert isinstance(report.unplaced, list)
+    assert isinstance(report.rms_px, float)
