@@ -88,7 +88,7 @@ export class HcmOverlayList extends LitElement {
             }
 
             h3 {
-                margin: 16px 0 4px;
+                margin: 8px 0 0;
                 color: var(--md-sys-color-primary);
                 font-size: var(--md-sys-typescale-title-small-size);
                 font-weight: var(--md-sys-typescale-title-small-weight);
@@ -98,7 +98,7 @@ export class HcmOverlayList extends LitElement {
             ul {
                 display: flex;
                 flex-direction: column;
-                gap: 4px;
+                gap: 0;
                 padding: 0;
                 margin: 0;
                 list-style: none;
@@ -107,21 +107,22 @@ export class HcmOverlayList extends LitElement {
             li {
                 display: grid;
                 grid-template-columns: auto 1fr auto;
-                gap: 0 12px;
+                gap: 0 8px;
                 align-items: center;
-                padding-block: 4px;
+                min-block-size: 48px;
+                padding-block: 0;
             }
 
             .swatch {
                 display: grid;
                 place-items: center;
-                width: 32px;
-                height: 32px;
+                width: 24px;
+                height: 24px;
                 border-radius: var(--md-sys-shape-corner-full);
                 background: var(--swatch, var(--md-sys-color-secondary-container));
                 color: var(--md-sys-color-on-secondary-container);
 
-                --hcm-icon-size: 20px;
+                --hcm-icon-size: 16px;
             }
 
             .swatch.colored {

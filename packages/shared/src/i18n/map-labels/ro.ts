@@ -8,7 +8,7 @@ export const ro = {
     'mapLabels.streets': 'Numele străzilor',
     'mapLabels.pois': 'Puncte de interes',
     'mapLabels.note': 'Texte de pe harta de azi, precum magazine și restaurante.',
-    'mapLabels.notePlaces': 'Locurile de mai sus sunt ale acestui site și au comutatoare proprii.',
+    'mapLabels.notePlaces': 'Locurile de mai jos sunt ale acestui site și au comutatoare proprii.',
 } as const;
 
 export type MapLabelsKey = keyof typeof ro;

@@ -5,10 +5,10 @@
  * layer. It is presentational: the list's `hcm-overlay-visibility` and `hcm-overlay-opacity` events bubble to
  * `<hcm-map-viewer>`, which updates the store (the map follows live, the hash on release). A city without historical
  * layers yet gets a note at the top, where the layers will be (below the photos and places it read as a footnote).
- * With historical layers and a map, a Compare button below the list opens swipe compare (M4, V06), or closes it while
- * the visitor compares: it fires `hcm-compare-toggle`, which the viewer turns into the store's compare action. Below the
- * list, the Map labels group (V31) has a switch per label the city's basemap really has (none: no group, a custom style
- * has nothing to switch), each firing `hcm-map-label`; its note tells them from the city's own Places above.
+ * With historical layers and a map, a Compare button and the Map labels group (Street names, POIs; V31) sit pinned at the
+ * top of the panel (the owner, 2026-11-10): they stay while the overlay list scrolls. Compare opens swipe compare (M4, V06)
+ * or closes it while the visitor compares (`hcm-compare-toggle`). Each map-label switch fires `hcm-map-label`; its note
+ * tells them from the city's own Places below.
  *
  * The extra-large pane that is always there is `minimizable` (the owner, 2026-11-08): its close button ("Restrânge
  * straturile", a chevron, `aria-expanded="true"`) turns it into one floating button on the map's leading edge ("Straturi",
@@ -130,14 +130,27 @@ export class HcmLayerPanel extends LitElement {
             .content {
                 display: flex;
                 flex-direction: column;
-                gap: 16px;
+                gap: 12px;
+            }
+
+            /* Compare + Street names / POIs stay while the overlay list scrolls (owner, 2026-11-10). */
+            .pinned {
+                position: sticky;
+                inset-block-start: 0;
+                z-index: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                padding-block: 0 8px;
+                background: var(--md-sys-color-surface-container-low);
+                box-shadow: 0 1px 0 var(--md-sys-color-outline-variant);
             }
 
             .empty {
                 display: flex;
                 align-items: center;
                 gap: 12px;
-                padding: 12px 16px;
+                padding: 8px 12px;
                 border-radius: var(--md-sys-shape-corner-medium);
                 background: var(--md-sys-color-surface-container-high);
                 color: var(--md-sys-color-on-surface-variant);
@@ -156,7 +169,7 @@ export class HcmLayerPanel extends LitElement {
 
             /* The size and weight are baseStyles' h3 (title small). */
             .labels h3 {
-                margin-block-end: 4px;
+                margin-block-end: 0;
                 color: var(--md-sys-color-primary);
                 line-height: var(--md-sys-typescale-title-small-line-height);
             }
@@ -173,12 +186,13 @@ export class HcmLayerPanel extends LitElement {
                 align-items: center;
                 justify-content: space-between;
 
-                /* 48 px rows: each switch's touch target stays its own, none reaches over its neighbour (the tour's target-size check). */
-                padding-block: 8px;
+                /* Compact row; the switch keeps its own 48 px target (the tour's target-size check). */
+                padding-block: 0;
+                min-block-size: 48px;
             }
 
             .labels p {
-                margin: 4px 0 0;
+                margin: 0;
                 color: var(--md-sys-color-on-surface-variant);
                 font-size: var(--md-sys-typescale-body-small-size);
                 line-height: var(--md-sys-typescale-body-small-line-height);
@@ -259,15 +273,23 @@ export class HcmLayerPanel extends LitElement {
         </button>`;
     }
 
+    #hasPinned(): boolean {
+        return this.canCompare || (this.labels?.available?.length ?? 0) > 0;
+    }
+
     #content(): TemplateResult {
         const manifest = this.manifest;
         if (manifest === null) {
             return EMPTY;
         }
         const locale = this.locale;
-        const hasHistorical = manifest.layers.length > 0;
         return html`<div class="content">
-            ${hasHistorical ? nothing : html`<p class="empty"><hcm-icon name="timeline"></hcm-icon>${translate(locale, 'layers.empty')}</p>`}
+            ${this.#hasPinned() ? html`<div class="pinned">${this.#compareButton(locale)}${this.#mapLabels(manifest, locale)}</div>` : nothing}
+            ${
+                manifest.layers.length > 0
+                    ? nothing
+                    : html`<p class="empty"><hcm-icon name="timeline"></hcm-icon>${translate(locale, 'layers.empty')}</p>`
+            }
             <hcm-overlay-list
                 .items=${overlayItems(this.overlays, manifest, locale)}
                 .groups=${overlayGroups(manifest, locale)}
@@ -278,7 +300,6 @@ export class HcmLayerPanel extends LitElement {
                 .shownText=${translate(locale, 'layers.shown')}
                 .hiddenText=${translate(locale, 'layers.hidden')}
             ></hcm-overlay-list>
-            ${this.#mapLabels(manifest, locale)} ${this.#compareButton(locale)}
             <ul class="attribution">
                 ${attributionLines(this.overlays, manifest, locale).map((line) => html`<li>${line}</li>`)}
             </ul>

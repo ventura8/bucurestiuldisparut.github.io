@@ -6,5 +6,5 @@ export const en: Readonly<Record<MapLabelsKey, string>> = {
     'mapLabels.streets': 'Street names',
     'mapLabels.pois': 'Points of interest',
     'mapLabels.note': "Text on today's map, such as shops and restaurants.",
-    'mapLabels.notePlaces': "The Places above are this site's own and have their own switches.",
+    'mapLabels.notePlaces': "The Places below are this site's own and have their own switches.",
 };
