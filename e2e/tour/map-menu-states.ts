@@ -6,7 +6,7 @@ import { openViewer, t, viewer } from '../support/viewer.js';
 /**
  * The map's menu in the tour's inventory (behaviour V62; the owner on 2026-11-09), visited by the journey `map-menu` of
  * e2e/tour/states.ts at every viewer viewport: open from a right click a third of the way into the map, its first item
- * focused.
+ * focused, its three items (Street View, Copy coordinates, Share a link to this view) inside the map.
  */
 
 export interface MapMenuTour {
@@ -19,7 +19,10 @@ export const MAP_MENU_STATES = {
         title: "The map's menu, open at a point of the map, its first item focused",
         enter: async ({ page, lang }: MapMenuTour) => {
             const box = await viewer(page).locator('.map').boundingBox();
-            await page.mouse.click((box?.x ?? 0) + (box?.width ?? 0) / 3, (box?.y ?? 0) + (box?.height ?? 0) / 3, { button: 'right' });
+            // On a short map the menu opens higher: a third of the way down it would cut the zoom group's touch targets.
+            const size = { width: box?.width ?? 0, height: box?.height ?? 0 };
+            const down = size.height < 600 ? 80 : size.height / 3;
+            await page.mouse.click((box?.x ?? 0) + size.width / 3, (box?.y ?? 0) + down, { button: 'right' });
             const menu = page.getByRole('menu', { name: t(lang, 'mapMenu.label') });
             await expect(menu.getByRole('menuitem', { name: t(lang, 'mapMenu.streetView') })).toBeFocused();
         },

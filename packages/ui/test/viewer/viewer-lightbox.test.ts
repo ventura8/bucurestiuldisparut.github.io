@@ -79,6 +79,55 @@ describe('the viewer and the full-size view', () => {
         expect(element.mapMenu).toBeNull();
     });
 
+    /** The viewer with the map's menu open from a right click. */
+    async function withOpenMenu(services: Parameters<typeof fakeServices>[0]) {
+        const mounted = await mountViewer(readyState());
+        mounted.element.services = fakeServices(services);
+        const map = mounted.element.mapContainer ?? mounted.element;
+        map.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 20, clientY: 30 }));
+        await vi.waitFor(() => {
+            expect(mounted.element.mapMenu).not.toBeNull();
+        });
+        await mounted.element.updateComplete;
+        return { ...mounted, menu: shadowQuery(mounted.element, 'hcm-map-menu') };
+    }
+
+    it('happyPath_theMenusShareCopiesThePagesAddressAndSaysSo', async () => {
+        const copied: string[] = [];
+        const { element, store, menu } = await withOpenMenu({
+            share: null,
+            pageUrl: () => 'https://example.org/#16/44.4/26.1',
+            copyText: (text) => {
+                copied.push(text);
+                return Promise.resolve();
+            },
+        });
+        const left: string[] = [];
+        element.addEventListener('hcm-map-menu-share', (event) => left.push(event.type));
+
+        fireKitEvent(menu, 'hcm-map-menu-share');
+
+        await vi.waitFor(() => {
+            expect(store.getState().toast).toEqual({ key: 'share.copied' });
+        });
+        expect(copied).toEqual(['https://example.org/#16/44.4/26.1']);
+        expect(left, 'the event stays inside the viewer').toEqual([]);
+    });
+
+    it('badPath_aClipboardThatRefusesSaysTheCoordinatesWereNotCopiedAndTheLinkNeither', async () => {
+        const { store, menu } = await withOpenMenu({ share: null, copyText: () => Promise.reject(new Error('denied')) });
+
+        fireKitEvent(menu, 'hcm-map-menu-copy', { text: '44.4, 26.1' });
+        await vi.waitFor(() => {
+            expect(store.getState().toast).toEqual({ key: 'mapMenu.copyFailed' });
+        });
+        fireKitEvent(menu, 'hcm-map-menu-share');
+
+        await vi.waitFor(() => {
+            expect(store.getState().toast).toEqual({ key: 'share.failed' });
+        });
+    });
+
     it('badPath_beforeTheMapIsReadyNoMenuOpens', async () => {
         const { element } = await mountViewer(idleState());
 

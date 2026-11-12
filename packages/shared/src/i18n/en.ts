@@ -145,6 +145,8 @@ export const en: Messages = {
     'mapMenu.streetView': 'Open in Google Street View',
     'mapMenu.copy': 'Copy coordinates',
     'mapMenu.copied': 'Coordinates copied.',
+    'mapMenu.copyFailed': 'The coordinates could not be copied.',
+    'mapMenu.share': 'Share a link to this view',
     'photoVersion.original': 'Original',
     'photoVersion.improved': 'Improved',
     'photoVersion.colorized': 'Colorized',

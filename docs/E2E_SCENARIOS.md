@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 149 | 1500 | 613 | 887 | 1498 | 2 | 377 |
+| 149 | 1503 | 615 | 888 | 1501 | 2 | 377 |
 
 ## Viewer
 
@@ -257,10 +257,13 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V61-HAPPY` | V61 | happy | A photo with versions shows the improved one, switches to colorized and keeps it | the sheet's switch has Improved checked; Colorized -> the address says pv=colorized and "Colorized by Ana Pop" shows; after a reload the full-size view has Colorized checked and shows its image | e2e-viewer | exists | `e2e/specs/viewer/photo-versions.spec.ts` |
 | `S-V61-HAPPY-TOUR` | V61 | happy | The versions and the zoom buttons pass the layout and accessibility checks on every window class | expectStateSound on the photo-versions journey: the sheet with Colorized picked and credited, the full-size view with its switch, zoomed in once | e2e-viewer | exists | `e2e/tour/viewer.tour.ts` |
 | `S-V61-BAD-UNKNOWN-VERSION` | V61 | bad | An unknown pv= shows the original; a photo with only its original has no switch | #photo=x&pv=sepia -> Original checked; a photo without versions -> no switch in its sheet nor in the full-size view | e2e-viewer | exists | `e2e/specs/viewer/photo-versions.spec.ts` |
+| `S-V62-HAPPY-KEYBOARD-COPY` | V62 | happy | Shift+F10 on the focused map opens the menu at its centre; Copy coordinates copies the place and the focus returns | the map's canvas focused, Shift+F10 -> the menu, its first item focused; ArrowDown, Enter on Copy coordinates -> the toast 'Coordonatele au fost copiate.', the clipboard holds the hash centre to 3 decimals, no menu, the focus back on the map | e2e-viewer | exists | `e2e/specs/viewer/map-menu.spec.ts` |
 | `S-V62-HAPPY-LONG-PRESS` | V62 | happy | A long press on a touch screen opens the menu | a touch pointer held on the map -> the menu opens and stays when the finger lifts | e2e-viewer | exists | `e2e/specs/viewer/map-menu.spec.ts` |
 | `S-V62-HAPPY-PHOTO` | V62 | happy | A photo's sheet links to Street View looking along its bearing | a photo with a bearing -> Open in Google Street View names its place and &heading=<bearing> | e2e-viewer | exists | `e2e/specs/viewer/map-menu.spec.ts` |
-| `S-V62-HAPPY-RIGHT-CLICK` | V62 | happy | A right click opens the menu at the place, whose Street View link names it | right click at the map centre -> the menu, its first item focused; the Street View link opens in a new tab (noopener noreferrer) at the hash centre to 3 decimals; Copy coordinates is there | e2e-viewer | exists | `e2e/specs/viewer/map-menu.spec.ts` |
+| `S-V62-HAPPY-RIGHT-CLICK` | V62 | happy | A right click opens the menu at the place, whose Street View link names it | right click at the map centre -> the menu, its first item focused; the Street View link opens in a new tab (noopener noreferrer) at the hash centre to 3 decimals; Copy coordinates and Share a link to this view are there | e2e-viewer | exists | `e2e/specs/viewer/map-menu.spec.ts` |
+| `S-V62-HAPPY-SHARE` | V62 | happy | Share a link to this view copies the address of the view | without the Web Share API: right click, Share a link to this view -> the toast of share.copied, the clipboard holds the page's address with the view in its hash, no menu | e2e-viewer | exists | `e2e/specs/viewer/map-menu.spec.ts` |
 | `S-V62-HAPPY-TOUR` | V62 | happy | The open menu passes the layout and accessibility checks on every window class | expectStateSound on the map-menu journey's open menu | e2e-viewer | exists | `e2e/tour/viewer.tour.ts` |
+| `S-V62-BAD-CLIPBOARD-REFUSED` | V62 | bad | A clipboard that refuses: neither the coordinates nor the link is copied, and a toast says so | the clipboard rejects every write: Copy coordinates -> the toast 'Coordonatele nu au putut fi copiate.'; Share a link to this view -> the toast of share.failed; the menu closed, the address unchanged | e2e-viewer | exists | `e2e/specs/viewer/map-menu.spec.ts` |
 | `S-V62-BAD-DRAG` | V62 | bad | A right-drag rotates the map and opens no menu | right button down, moved 120 px, released -> no menu | e2e-viewer | exists | `e2e/specs/viewer/map-menu.spec.ts` |
 | `S-V62-BAD-ESC-EDGE` | V62 | bad | Esc closes the menu; near the edge it stays inside the map | a right click 4 px from the right edge -> the menu lies inside the map; Esc -> no menu | e2e-viewer | exists | `e2e/specs/viewer/map-menu.spec.ts` |
 

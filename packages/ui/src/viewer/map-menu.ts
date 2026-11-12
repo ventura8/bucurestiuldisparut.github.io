@@ -3,10 +3,12 @@
  * (`map-menu-trigger.ts`) at a point of the map. An M3 menu at that point, kept inside the map; Esc or a press outside it
  * closes it (no scrim: the map's controls and its legal line stay uncovered); the arrow keys, Home and End move between its
  * items, Tab walks them as any link and button. Its items are `MAP_MENU_ITEMS`, a registry: an item is
- * a link opened in a new tab (`href`) or a text to copy (`copy`) for the place under the pointer, so a new use of the menu is
- * one more entry (docs/ENGINE_API.md → *The map's menu*). It is part of the side-loaded `engine.extras.js`.
+ * a link opened in a new tab (`href`), a text to copy (`copy`) for the place under the pointer, or, with neither, the share
+ * of the view on screen, so a new use of the menu is one more entry (docs/ENGINE_API.md → *The map's menu*). It is part of
+ * the side-loaded `engine.extras.js`.
  *
- * Events (viewer-internal): `hcm-close`, `hcm-map-menu-copy` (`{text}`, which the viewer copies and announces).
+ * Events (viewer-internal): `hcm-close`, `hcm-map-menu-copy` (`{text}`, which the viewer copies and announces),
+ * `hcm-map-menu-share` (the viewer shares the page's address, whose hash carries the view).
  */
 import { DEFAULT_LOCALE, streetViewUrl, translate, type Locale, type MapView, type MessageKey } from '@hcm/shared';
 import { LitElement, css, html, type PropertyValues, type TemplateResult } from 'lit';
@@ -23,7 +25,7 @@ export interface MapPlace {
     readonly lng: number;
 }
 
-/** One entry of the menu: a link to open in a new tab, or a text to copy, for the place. */
+/** One entry of the menu: a link to open in a new tab or a text to copy, for the place; with neither, the view's share. */
 export interface MapMenuItem {
     readonly id: string;
     readonly icon: string;
@@ -36,6 +38,7 @@ export interface MapMenuItem {
 export const MAP_MENU_ITEMS: readonly MapMenuItem[] = [
     { id: 'street-view', icon: 'travel_explore', label: 'mapMenu.streetView', href: (place) => streetViewUrl(place) },
     { id: 'copy', icon: 'content_copy', label: 'mapMenu.copy', copy: (place) => `${place.lat.toFixed(6)}, ${place.lng.toFixed(6)}` },
+    { id: 'share', icon: 'share', label: 'mapMenu.share' },
 ];
 
 /** Mapbox's world is 512 px wide at zoom 0. */
@@ -74,6 +77,15 @@ const NEXT: Readonly<Record<string, (index: number, count: number) => number>> =
     Home: () => 0,
     End: (_index, count) => count - 1,
 };
+
+/** The element that has the focus, through the shadow roots. */
+function focused(doc: Document): Element | null {
+    let active = doc.activeElement;
+    while (active?.shadowRoot?.activeElement) {
+        active = active.shadowRoot.activeElement;
+    }
+    return active;
+}
 
 export class HcmMapMenu extends LitElement {
     static override readonly properties = {
@@ -136,6 +148,8 @@ export class HcmMapMenu extends LitElement {
     declare point: MenuPoint | null;
     declare view: MapView;
     declare locale: Locale;
+    /** What had the focus when the menu opened. */
+    #opener: Element | null = null;
 
     constructor() {
         super();
@@ -160,16 +174,37 @@ export class HcmMapMenu extends LitElement {
     }
 
     protected override updated(changed: PropertyValues<this>): void {
-        const menu = this.renderRoot.querySelector<HTMLElement>('.menu');
-        if (!changed.has('point') || menu === null || this.point === null) {
-            this.ownerDocument.removeEventListener('pointerdown', this.#outside, true);
+        if (!changed.has('point')) {
             return;
         }
+        const menu = this.renderRoot.querySelector<HTMLElement>('.menu');
+        if (menu === null || this.point === null) {
+            this.#closed();
+            return;
+        }
+        this.#opened(menu, this.point, (changed.get('point') ?? null) === null);
+    }
+
+    /** Open at `point`: placed inside the map, its first item focused; `fresh`, it remembers what had the focus. */
+    #opened(menu: HTMLElement, point: MenuPoint, fresh: boolean): void {
+        if (fresh) {
+            this.#opener = focused(this.ownerDocument);
+        }
         this.ownerDocument.addEventListener('pointerdown', this.#outside, true);
-        const origin = menuOrigin(this.point, { width: menu.offsetWidth, height: menu.offsetHeight }, this.#size());
+        const origin = menuOrigin(point, { width: menu.offsetWidth, height: menu.offsetHeight }, this.#size());
         menu.style.setProperty('left', `${String(origin.x)}px`);
         menu.style.setProperty('top', `${String(origin.y)}px`);
         this.#items()[0]?.focus();
+    }
+
+    /** Closed, the focus its item held goes back to what had it (the map), unless the visitor already put it elsewhere. */
+    #closed(): void {
+        this.ownerDocument.removeEventListener('pointerdown', this.#outside, true);
+        const opener = this.#opener;
+        this.#opener = null;
+        if (opener instanceof HTMLElement && focused(this.ownerDocument) === this.ownerDocument.body) {
+            opener.focus();
+        }
     }
 
     #size(): { readonly width: number; readonly height: number } {
@@ -195,13 +230,17 @@ export class HcmMapMenu extends LitElement {
                 >${content}</a
             >`;
         }
-        const copy = (): void => {
+        const act = (): void => {
+            const text = item.copy?.(place);
+            const init = { bubbles: true, composed: true };
             this.dispatchEvent(
-                new CustomEvent('hcm-map-menu-copy', { bubbles: true, composed: true, detail: { text: item.copy?.(place) ?? '' } }),
+                text === undefined
+                    ? new CustomEvent('hcm-map-menu-share', init)
+                    : new CustomEvent('hcm-map-menu-copy', { ...init, detail: { text } }),
             );
             this.#close();
         };
-        return html`<button type="button" class="item" role="menuitem" data-item=${item.id} @click=${copy}>${content}</button>`;
+        return html`<button type="button" class="item" role="menuitem" data-item=${item.id} @click=${act}>${content}</button>`;
     }
 
     /** A press anywhere but on the menu closes it. */

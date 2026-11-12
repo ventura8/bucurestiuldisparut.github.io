@@ -13,6 +13,8 @@ import type { ViewerState } from './store-port.js';
 export interface MapMenuHandlers {
     readonly onMapMenuClose: (event: Event) => void;
     readonly onMapMenuCopy: (event: CustomEvent<{ readonly text: string }>) => void;
+    /** Share a link to this view: the page's address, as the menu's Share. */
+    readonly onMapMenuShare: (event: Event) => void;
 }
 
 /** The map's menu over the map (side-loaded with the full-size view; closed while `point` is null). */
@@ -27,6 +29,7 @@ export function mapMenu(
         .locale=${view.locale}
         @hcm-close=${handlers.onMapMenuClose}
         @hcm-map-menu-copy=${handlers.onMapMenuCopy}
+        @hcm-map-menu-share=${handlers.onMapMenuShare}
     ></hcm-map-menu>`;
 }
 

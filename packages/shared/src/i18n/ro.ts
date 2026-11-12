@@ -150,6 +150,8 @@ export const ro = {
     'mapMenu.streetView': 'Deschide în Google Street View',
     'mapMenu.copy': 'Copiază coordonatele',
     'mapMenu.copied': 'Coordonatele au fost copiate.',
+    'mapMenu.copyFailed': 'Coordonatele nu au putut fi copiate.',
+    'mapMenu.share': 'Distribuie un link către această vedere',
     'photoVersion.original': 'Original',
     'photoVersion.improved': 'Îmbunătățită',
     'photoVersion.colorized': 'Colorizată',

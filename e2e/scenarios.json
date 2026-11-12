@@ -1041,7 +1041,7 @@
         {
             "id": "V62",
             "area": "viewer",
-            "name": "The map's menu (right click, long press, ContextMenu key) with Open in Google Street View and Copy coordinates; a photo's sheet links to Street View",
+            "name": "The map's menu (right click, long press, ContextMenu key or Shift+F10) with Open in Google Street View, Copy coordinates and Share a link to this view; a photo's sheet links to Street View",
             "milestone": "M17",
             "source": "the owner, 2026-11-09: go to Google Street View from a right-click panel (hold on a touch screen) on the map, and from a photo's details"
         }
@@ -17487,7 +17487,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "A right click opens the menu at the place, whose Street View link names it",
-            "asserts": "right click at the map centre -> the menu, its first item focused; the Street View link opens in a new tab (noopener noreferrer) at the hash centre to 3 decimals; Copy coordinates is there",
+            "asserts": "right click at the map centre -> the menu, its first item focused; the Street View link opens in a new tab (noopener noreferrer) at the hash centre to 3 decimals; Copy coordinates and Share a link to this view are there",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162h). Tests: e2e/specs/viewer/map-menu.spec.ts."
@@ -17513,6 +17513,39 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+        },
+        {
+            "id": "S-V62-HAPPY-KEYBOARD-COPY",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Shift+F10 on the focused map opens the menu at its centre; Copy coordinates copies the place and the focus returns",
+            "asserts": "the map's canvas focused, Shift+F10 -> the menu, its first item focused; ArrowDown, Enter on Copy coordinates -> the toast 'Coordonatele au fost copiate.', the clipboard holds the hash centre to 3 decimals, no menu, the focus back on the map",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (DECISIONS-for-review.md §162h, §162j). Tests: e2e/specs/viewer/map-menu.spec.ts; packages/ui/test/viewer/map-menu.test.ts, viewer-lightbox.test.ts."
+        },
+        {
+            "id": "S-V62-HAPPY-SHARE",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Share a link to this view copies the address of the view",
+            "asserts": "without the Web Share API: right click, Share a link to this view -> the toast of share.copied, the clipboard holds the page's address with the view in its hash, no menu",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (DECISIONS-for-review.md §162h, §162j). Tests: e2e/specs/viewer/map-menu.spec.ts; packages/ui/test/viewer/map-menu.test.ts, viewer-lightbox.test.ts."
+        },
+        {
+            "id": "S-V62-BAD-CLIPBOARD-REFUSED",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A clipboard that refuses: neither the coordinates nor the link is copied, and a toast says so",
+            "asserts": "the clipboard rejects every write: Copy coordinates -> the toast 'Coordonatele nu au putut fi copiate.'; Share a link to this view -> the toast of share.failed; the menu closed, the address unchanged",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (DECISIONS-for-review.md §162h, §162j). Tests: e2e/specs/viewer/map-menu.spec.ts; packages/ui/test/viewer/map-menu.test.ts, viewer-lightbox.test.ts."
         },
         {
             "id": "S-V62-BAD-DRAG",

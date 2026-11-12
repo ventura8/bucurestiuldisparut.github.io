@@ -171,7 +171,21 @@ describe('<hcm-map-menu>', () => {
             { type: 'hcm-map-menu-copy', detail: { text: '44.430000, 26.100000' } },
             { type: 'hcm-close', detail: null },
         ]);
-        expect(MAP_MENU_ITEMS.map((item) => item.id)).toEqual(['street-view', 'copy']);
+        expect(MAP_MENU_ITEMS.map((item) => item.id)).toEqual(['street-view', 'copy', 'share']);
+    });
+
+    it('happyPath_shareALinkToThisViewAsksTheViewerAndCloses', async () => {
+        const element = await menu({ x: 200, y: 150 });
+        const events = recordEvents(element, 'hcm-map-menu-share', 'hcm-map-menu-copy', 'hcm-close');
+        const share = shadowQuery(element, '[data-item="share"]');
+
+        share.click();
+
+        expect([share.localName, share.textContent.trim()]).toEqual(['button', 'Share a link to this view']);
+        expect(events).toEqual([
+            { type: 'hcm-map-menu-share', detail: null },
+            { type: 'hcm-close', detail: null },
+        ]);
     });
 
     it('badPath_escAndAPressOutsideClose', async () => {
@@ -187,7 +201,7 @@ describe('<hcm-map-menu>', () => {
         key('End');
         key('Home');
         key('ArrowUp');
-        expect(element.shadowRoot?.activeElement).toBe(items[1]);
+        expect(element.shadowRoot?.activeElement).toBe(items[2]);
         key('x');
         key('Escape');
         items[0]?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true }));
@@ -197,6 +211,38 @@ describe('<hcm-map-menu>', () => {
         expect(events).toHaveLength(2);
         expect(box.right).toBeLessThanOrEqual(400);
         expect(box.bottom).toBeLessThanOrEqual(300);
+    });
+
+    it('happyPath_closedTheFocusGoesBackToWhatHadIt', async () => {
+        const opener = document.createElement('button');
+        document.body.append(opener);
+        opener.focus();
+        const element = await menu(null);
+        element.point = { x: 10, y: 10 };
+        await element.updateComplete;
+        expect(element.shadowRoot?.activeElement?.getAttribute('data-item')).toBe('street-view');
+        element.point = { x: 40, y: 40 };
+        await element.updateComplete;
+
+        element.point = null;
+        await element.updateComplete;
+
+        expect(document.activeElement).toBe(opener);
+    });
+
+    it('badPath_closedByAPressOnAnotherControlTheFocusStaysThere', async () => {
+        const [opener, other] = [document.createElement('button'), document.createElement('button')];
+        document.body.append(opener, other);
+        opener.focus();
+        const element = await menu(null);
+        element.point = { x: 10, y: 10 };
+        await element.updateComplete;
+        other.focus();
+
+        element.point = null;
+        await element.updateComplete;
+
+        expect(document.activeElement).toBe(other);
     });
 
     it('badPath_closedItRendersNothingAndAPressOutsideDoesNothing', async () => {

@@ -2,14 +2,16 @@ import type { Locale } from '@hcm/shared';
 import type { Locator, Page } from '@playwright/test';
 
 import { siteManifestData } from '../../fixtures/manifest.js';
+import { SITE_ORIGIN } from '../../fixtures/world.js';
 import { expect, test } from '../../support/test.js';
 import { openViewer, t, viewer } from '../../support/viewer.js';
 
 /**
  * The map's menu (behaviour V62; the owner on 2026-11-09): a right click, a long press on a touch screen or the ContextMenu
  * key opens a menu at that point of the map with "Open in Google Street View" (a plain link to Google Maps' panorama of the
- * place, in a new tab) and "Copy coordinates"; a right-drag rotates the map and opens nothing; Esc closes it; near an edge
- * it stays inside the map. A photo's sheet links to Street View at the photo's place, looking along its bearing.
+ * place, in a new tab), "Copy coordinates" and "Share a link to this view" (the page's address, whose hash carries the view;
+ * the owner, 2026-11-12); a right-drag rotates the map and opens nothing; Esc closes it and the focus goes back to the map;
+ * near an edge it stays inside the map; a clipboard that refuses is said by a toast. A photo's sheet links to Street View at the photo's place, looking along its bearing.
  */
 
 const CENTRE = { lat: 44.42704, lng: 26.0853 };
@@ -52,6 +54,89 @@ test(
         expect(place.lat).toBeCloseTo(CENTRE.lat, 3);
         expect(place.lng).toBeCloseTo(CENTRE.lng, 3);
         await expect(menu(page, lang).getByRole('menuitem', { name: t(lang, 'mapMenu.copy') })).toBeVisible();
+        await expect(menu(page, lang).getByRole('menuitem', { name: t(lang, 'mapMenu.share') })).toBeVisible();
+    },
+);
+
+/** No Web Share API (Linux Chromium has none either): sharing goes through the clipboard. */
+function withoutWebShare(): void {
+    Reflect.deleteProperty(Navigator.prototype, 'share');
+}
+
+/** The clipboard refuses every write, as a browser does without permission. */
+function refusingClipboard(): void {
+    Reflect.deleteProperty(Navigator.prototype, 'share');
+    Object.defineProperty(Navigator.prototype, 'clipboard', {
+        configurable: true,
+        get: () => ({ writeText: () => Promise.reject(new DOMException('Write permission denied.', 'NotAllowedError')) }),
+    });
+}
+
+function toast(page: Page, text: string): Locator {
+    return page.getByRole('status').filter({ hasText: text });
+}
+
+async function openByRightClick(page: Page, lang: Locale): Promise<Locator> {
+    const box = await mapBox(page);
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+    await expect(menu(page, lang)).toBeVisible();
+    return menu(page, lang);
+}
+
+test(
+    'Shift+F10 on the focused map opens the menu at its centre; Copy coordinates copies the place and the focus returns',
+    { tag: '@S-V62-HAPPY-KEYBOARD-COPY' },
+    async ({ page, context, lang }) => {
+        await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: SITE_ORIGIN });
+        await openViewer(page, { lang, hash: HASH });
+        const canvas = map(page).locator('canvas.mapboxgl-canvas');
+        await canvas.focus();
+
+        await page.keyboard.press('Shift+F10');
+        await expect(menu(page, lang).getByRole('menuitem', { name: t(lang, 'mapMenu.streetView') })).toBeFocused();
+        await page.keyboard.press('ArrowDown');
+        await expect(menu(page, lang).getByRole('menuitem', { name: t(lang, 'mapMenu.copy') })).toBeFocused();
+        await page.keyboard.press('Enter');
+
+        await expect(toast(page, t(lang, 'mapMenu.copied'))).toBeVisible();
+        await expect(menu(page, lang)).toHaveCount(0);
+        await expect(canvas).toBeFocused();
+        const [lat = 'NaN', lng = 'NaN'] = (await page.evaluate(() => navigator.clipboard.readText())).split(', ');
+        expect(Number(lat)).toBeCloseTo(CENTRE.lat, 3);
+        expect(Number(lng)).toBeCloseTo(CENTRE.lng, 3);
+    },
+);
+
+test('Share a link to this view copies the address of the view', { tag: '@S-V62-HAPPY-SHARE' }, async ({ page, context, lang }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: SITE_ORIGIN });
+    await page.addInitScript(withoutWebShare);
+    await openViewer(page, { lang, hash: HASH });
+    const opened = await openByRightClick(page, lang);
+
+    await opened.getByRole('menuitem', { name: t(lang, 'mapMenu.share') }).click();
+
+    await expect(toast(page, t(lang, 'share.copied'))).toBeVisible();
+    await expect(menu(page, lang)).toHaveCount(0);
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toBe(page.url());
+    expect(new URL(copied).hash).toContain('16/44.427');
+});
+
+test(
+    'A clipboard that refuses: neither the coordinates nor the link is copied, and a toast says so',
+    { tag: '@S-V62-BAD-CLIPBOARD-REFUSED' },
+    async ({ page, lang }) => {
+        await page.addInitScript(refusingClipboard);
+        await openViewer(page, { lang, hash: HASH });
+        const before = page.url();
+
+        await (await openByRightClick(page, lang)).getByRole('menuitem', { name: t(lang, 'mapMenu.copy') }).click();
+        await expect(toast(page, t(lang, 'mapMenu.copyFailed'))).toBeVisible();
+        await (await openByRightClick(page, lang)).getByRole('menuitem', { name: t(lang, 'mapMenu.share') }).click();
+
+        await expect(toast(page, t(lang, 'share.failed'))).toBeVisible();
+        await expect(menu(page, lang)).toHaveCount(0);
+        expect(page.url()).toBe(before);
     },
 );
 

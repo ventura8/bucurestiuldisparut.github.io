@@ -6,7 +6,7 @@
 import type { MenuPoint } from './map-menu-trigger.js';
 import type { ViewerServices } from './services.js';
 import type { ViewerStorePort } from './store-port.js';
-import { closeSheet, isMenuAction, menuAction, selectPhoto, toggleCompare } from './viewer-actions.js';
+import { closeSheet, isMenuAction, menuAction, selectPhoto, shareViewer, toggleCompare } from './viewer-actions.js';
 import type { OverlayOpacityDetail, ViewerHandlers } from './viewer-render.js';
 
 /** What the handlers need from the element. */
@@ -91,21 +91,28 @@ function storyHandlers(on: On): Pick<ViewerHandlers, 'onStorySelect' | 'onPoiSel
     };
 }
 
-/** The map's menu (V62): its close, and Copy coordinates through the clipboard service, said by a toast. */
-function mapMenuHandlers(host: HandlerHost): Pick<ViewerHandlers, 'onMapMenuClose' | 'onMapMenuCopy'> {
+/**
+ * The map's menu (V62): its close, Copy coordinates through the clipboard service, said by a toast whether it worked or
+ * not, and Share a link to this view, the menu's Share (the page's address carries the view).
+ */
+function mapMenuHandlers(host: HandlerHost): Pick<ViewerHandlers, 'onMapMenuClose' | 'onMapMenuCopy' | 'onMapMenuShare'> {
+    const say = (key: 'mapMenu.copied' | 'mapMenu.copyFailed') => (): void => {
+        host.act(null, (store) => {
+            store.showToast(key);
+        });
+    };
     return {
         onMapMenuClose: () => {
             host.mapMenu(null);
         },
         onMapMenuCopy: (event) => {
-            void host
-                .services()
-                .copyText(event.detail.text)
-                .then(() => {
-                    host.act(null, (store) => {
-                        store.showToast('mapMenu.copied');
-                    });
-                });
+            event.stopPropagation();
+            void host.services().copyText(event.detail.text).then(say('mapMenu.copied'), say('mapMenu.copyFailed'));
+        },
+        onMapMenuShare: (event) => {
+            host.act(event, (store) => {
+                void shareViewer(store, host.services());
+            });
         },
     };
 }
