@@ -25,6 +25,8 @@ export interface BadgePalette {
 }
 
 export const BADGE_RADIUS = 11;
+/** A pair answers a pointer this close to its badge (CSS px: a 48 px target), on the scan and on the map alike. */
+export const PAIR_HIT_RADIUS = 24;
 export const BADGE_SELECTED_RADIUS = 15;
 const CROSS = 12;
 const DASH: number[] = [4, 3];

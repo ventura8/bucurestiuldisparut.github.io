@@ -54,7 +54,7 @@ export function errorsLine(page: Page): Locator {
  * Shows one pane where the window shows one at a time (a compact window: the Scan | Map switch), and waits for it; both
  * panes show side by side from a medium window, where there is nothing to switch.
  */
-async function showPane(page: Page, lang: 'ro' | 'en', pane: 'scan' | 'map'): Promise<void> {
+export async function showPane(page: Page, lang: 'ro' | 'en', pane: 'scan' | 'map'): Promise<void> {
     const switcher = page.getByRole('radiogroup', { name: georefText(lang, 'adminContent.georef.pane.label') });
     if (await switcher.isVisible()) {
         await switcher.getByRole('radio', { name: georefText(lang, `adminContent.georef.pane.${pane}`) }).click();
@@ -80,7 +80,7 @@ export function pairRows(page: Page, lang: 'ro' | 'en'): Locator {
 }
 
 /** Where a full-resolution scan pixel is on the page, the scan shown whole (fitted and centred in its pane). */
-async function scanPointOf(
+export async function scanPointOf(
     page: Page,
     lang: 'ro' | 'en',
     pixel: { readonly x: number; readonly y: number },
@@ -140,7 +140,11 @@ export async function addPair(page: Page, lang: 'ro' | 'en', place: LatLng, offs
  * Where a place is drawn on the reference map once it is in view: the map follows the selected pair closely, so a place
  * further away is brought in with Zoom out, as a person does.
  */
-async function pointInView(page: Page, lang: 'ro' | 'en', lngLat: [number, number]): Promise<{ readonly x: number; readonly y: number }> {
+export async function pointInView(
+    page: Page,
+    lang: 'ro' | 'en',
+    lngLat: [number, number],
+): Promise<{ readonly x: number; readonly y: number }> {
     const map = page.locator('hcm-admin-map');
     const zoomOut = map.getByRole('button', { name: georefText(lang, 'adminContent.map.zoomOut'), exact: true });
     for (let attempt = 0; attempt < 8; attempt += 1) {

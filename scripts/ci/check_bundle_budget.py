@@ -206,6 +206,10 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # or a frame over terrain publishes (M15) and Snap my points (M16), out of the `georef` chunk (18 KB since §110): 1.0 KB measured
     # on 2026-11-08 plus about 20 %, rounded up (DECISIONS-for-review.md §110).
     "georef-extras": 2,
+    # The georeferencer's context menu (2026-11-12; DECISIONS-for-review.md §151): `<hcm-georef-menu>` and the gestures that open it
+    # (`packages/ui/src/admin/georef/georef-menu.ts` with `georef-menu-host.ts`), fetched at the page's first render, out of the `georef`
+    # chunk (19 KB): 2.4 KB measured on 2026-11-12 plus about 20 %, rounded up.
+    "georef-menu": 3,
     # M20 (docs/research/M20-import-local.md §8): Import local files (`packages/admin/src/archive/archive.ts`, its one dynamic entry,
     # which the Imagery store imports): the archive's feed, `<hcm-archive-panel>`, `<hcm-archive-report>` and their texts
     # (`@hcm/shared/admin-archive`), fetched when the Upload view or an archive's report first shows: 8.6 KB measured on 2026-11-09

@@ -3273,3 +3273,13 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the export's COG is one grey band with its alpha kept as an internal mask; the line-art encoder read alpha only from a second band, so a one-band source was all opaque and the black outside the warp became ink.
     - Fix and pin: `_alpha_rows` reads the band's mask (`GetMaskBand`) for a one-band source; `S-P20-BAD-ENCODING-MASK`.
     - **A one-band raster's edge lives in its mask; read the mask band, never assume all opaque.**
+
+557. **A right-click on the georeferencer's scan picked a point or let the selection go.**
+    - Seen: 2026-11-12, adding the georeferencer's context menu: `<hcm-scan-viewer>`'s `pointerdown` started a gesture for any mouse button, so the right button's release was a click (`hcm-pick` while adding, `hcm-select` otherwise) under the menu it opened.
+    - Fix and pin: only the main button (`button === 0`) starts a pick, drag or pan; a long press that opened the menu forgets its gesture (`cancelGesture`) and the map's click after it is swallowed. `S-A16-HAPPY-GEOREF-MENU` (`scan-viewer.test.ts` `badPath_aRightButtonPressPicksNothing…`, `georef-menu.test.ts`).
+    - **A pointer handler that means a click checks the button; a press that opened a menu is no click.**
+
+558. **The georeferencer's summary and map box failed the context menu's tour state.**
+    - Seen: 2026-11-12, the first run of `georef.context-menu` (`S-A16-HAPPY-GEOREF-MENU`): at admin-c360-ro the guide's `<summary>` was a 328 × 19 px touch target; at admin-l1440-en the focus ring of the map's box (`div.canvas`, the keyboard's crosshair) was cut off by `hcm-admin-map`, which the georeferencer's panes round and clip.
+    - Fix and pin: `.guide summary` is at least 48 px tall; `hcm-admin-map` draws the ring of its focusable box inside (`outline-offset: -3px`, as Mapbox's own canvas). Pinned by the state check of `georef.context-menu`.
+    - **A box that takes the focus inside a clipped, rounded pane draws its ring inside.**

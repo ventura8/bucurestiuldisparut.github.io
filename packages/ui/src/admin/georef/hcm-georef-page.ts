@@ -4,20 +4,24 @@
  * on each, in either order; Esc drops the half pair) or **Add at the centres** from the keyboard, the transform as a
  * radio group (one without enough pairs is disabled with the count missing), the fit's errors and the warning over the
  * city's threshold, the live warped preview and its opacity, the residual table, and **Save**, which queues the job and
- * opens the version's page. A version that takes no points shows them read-only.
+ * opens the version's page. A version that takes no points shows them read-only. A right-click, a long press or the
+ * ContextMenu key on either pane opens the context menu (`./georef-menu-host.ts`): Add a point here, Move and Delete this
+ * point, Undo; nothing that edits on a read-only version.
  */
 import { html, type PropertyValues, type TemplateResult } from 'lit';
 
+import { deepActiveElement } from '../../components/focus.js';
 import { MAPBOX_GL_CSS_URL } from '../../map/mapbox-loader.js';
 import type { AdminRouteIdPort } from '../admin-port.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
 import { AreaPage } from '../editing/area-page.js';
 import { errorTemplate, loadingTemplate, reconnectingStatus } from '../editing/states.js';
 import { labelText } from '../imagery/imagery-text.js';
-import { when } from '../imagery/when.js';
+import { when, withValue } from '../imagery/when.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
 import { FullScreenInert } from './full-screen.js';
+import type { GeorefMenuOpen } from './georef-menu-host.js';
 import { panes } from './georef-panes.js';
 import { guide, previewControls, summary, tools, transforms, type GeorefContext } from './georef-parts.js';
 import type { GeorefIntentsPort, GeorefVersionPort, GeorefViewState } from './georef-port.js';
@@ -36,6 +40,7 @@ class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
         sort: { state: true },
         full: { state: true },
         mapCss: { attribute: false },
+        menu: { state: true },
     };
 
     static override readonly styles = [...georefStyles, suggestionsStyles];
@@ -46,6 +51,10 @@ class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
     declare full: boolean;
     /** mapbox-gl.css of the pinned release ('' in tests: no network). */
     declare mapCss: string;
+    /** The context menu, where it is open (null: closed). */
+    declare menu: GeorefMenuOpen | null;
+    /** What had the focus when the menu opened: it gets it back. */
+    #menuOpener: Element | null = null;
     /** The saved version the page opened. */
     #opened: string | null = null;
     /** What full screen made inert around the page. */
@@ -56,6 +65,7 @@ class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
         this.sort = 'pair';
         this.full = false;
         this.mapCss = MAPBOX_GL_CSS_URL;
+        this.menu = null;
         // Esc anywhere on the page: the half pair goes, else the selected pair is let go. The scan pane handles its own
         // (and marks it handled), so one press never does both.
         this.addEventListener('keydown', (event) => {
@@ -73,6 +83,16 @@ class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
     override disconnectedCallback(): void {
         this.#inert.cover(this, false);
         super.disconnectedCallback();
+    }
+
+    /** The context menu's chunk: its element, and its gestures listening on both panes from now on. */
+    protected override firstUpdated(): void {
+        void import('./georef-menu.js').then((chunk) => {
+            chunk.defineHcmGeorefMenu();
+            new chunk.MenuGestures((pane, at) => {
+                this.#openMenu((always) => chunk.menuAt(pane, at, this.intents, always));
+            }).attach(this.renderRoot);
+        });
     }
 
     protected override updated(changed: PropertyValues<this>): void {
@@ -150,6 +170,7 @@ class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
             <h2 tabindex="-1" data-detail-heading>${title}</h2>
             ${reconnectingStatus(locale, view.doc.reconnecting)} ${readOnlyNote} ${summary(context)} ${guide(context)}
             ${transforms(context)} ${tools(context)} ${panes(context)} ${previewControls(context)} ${this.#suggestions(context)}
+            ${this.#menuTemplate(context)}
             <h3>${contentText(locale, 'adminContent.georef.pairs')}</h3>
             ${residualTable({
                 ...{ locale, pairs: view.pairs, residuals: view.fit.residuals, selected: view.selected, sort: context.sort },
@@ -199,6 +220,47 @@ class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
         const rows = [...this.renderRoot.querySelectorAll<HTMLButtonElement>('button.suggestion')];
         const next = rows[Math.min(index, rows.length - 1)] ?? this.renderRoot.querySelector<HTMLElement>(`#${SUGGESTIONS_HEADING_ID}`);
         next?.focus();
+    }
+
+    /** Opens the menu found there, unless it would have nothing in it (`always`: Undo, or a read-only version's line). */
+    #openMenu(found: (always: boolean) => GeorefMenuOpen | null): void {
+        const view = this.view;
+        const menu = view === null ? null : found(view.canUndo || this.#locked(view));
+        if (menu !== null) {
+            this.#menuOpener = deepActiveElement(this.ownerDocument);
+            this.menu = menu;
+        }
+    }
+
+    #locked(view: GeorefViewState): boolean {
+        return this.readOnly || view.version?.editable !== true;
+    }
+
+    #menuTemplate(context: GeorefContext): TemplateResult {
+        return withValue(
+            this.menu,
+            (menu) =>
+                html`<hcm-georef-menu
+                    .menu=${menu}
+                    .locale=${context.locale}
+                    .intents=${this.intents}
+                    ?can-undo=${context.view.canUndo}
+                    ?locked=${context.locked}
+                    @hcm-close=${() => {
+                        this.#closeMenu();
+                    }}
+                ></hcm-georef-menu>`,
+        );
+    }
+
+    /** Closed: the focus goes back where it was when the menu opened. */
+    #closeMenu(): void {
+        this.menu = null;
+        const opener = this.#menuOpener;
+        this.#menuOpener = null;
+        if (opener instanceof HTMLElement) {
+            opener.focus();
+        }
     }
 
     #addAtCentres(): void {

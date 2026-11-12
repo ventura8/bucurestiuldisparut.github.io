@@ -405,6 +405,14 @@ export const ro = {
     'adminContent.georef.guide.s5': 'Salvează și georeferențiază, verifică previzualizarea, apoi aprob-o.',
     'adminContent.georef.guide.tip': '6 perechi permit potrivirea curbată, 10 pe cea flexibilă.',
     'adminContent.georef.undo': 'Anulează pasul',
+    'adminContent.georef.menu.label': 'Acțiuni pentru punct',
+    'adminContent.georef.menu.add': 'Adaugă un punct aici',
+    'adminContent.georef.menu.move': 'Mută acest punct',
+    'adminContent.georef.menu.delete': 'Șterge acest punct',
+    'adminContent.georef.menu.undo': 'Anulează pasul',
+    'adminContent.georef.menu.readOnly': 'Versiunea nu primește puncte: nu e nimic de schimbat aici',
+    'adminContent.georef.menu.moving.scan': 'Muți punctul {number}: dă clic pe noul lui loc pe scanare. Esc îl lasă unde era.',
+    'adminContent.georef.menu.moving.map': 'Muți punctul {number}: dă clic pe noul lui loc pe hartă. Esc îl lasă unde era.',
     // [end georef]
 } as const;
 

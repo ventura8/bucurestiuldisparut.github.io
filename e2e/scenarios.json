@@ -5898,6 +5898,28 @@
             "notes": "Code review of 2026-11-07. Tests: functions/test/imagery/save-gcps.test.ts."
         },
         {
+            "id": "S-A16-HAPPY-GEOREF-MENU",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "The georeferencer's context menu adds, moves, deletes and undoes points on the scan and the map",
+            "asserts": "a right-click, a touch held still for 500 ms, or the ContextMenu key / Shift+F10 (at the focused pane's centre) on the scan or the map opens a role=menu with its first item focused: Add a point here starts or completes a pair exactly there (Add pairs turned on), Move this point and Delete this point only on a pair within the hit radius (Move: the next click on that pane drops it, one Undo step; Esc or a click on the other pane puts it back), Undo with a step to take back; the arrow keys, Home and End walk it; Esc, Tab, a press outside or an action closes it and the focus goes back; a long press is no click, a right-click picks nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (DECISIONS-for-review.md §151: the menu and its gestures are the lazy georef-menu chunk). Tests: e2e/admin/specs/imagery/georef-menu.spec.ts (state georef.context-menu), packages/ui/test/admin/georef/georef-menu.test.ts, packages/admin/test/georef/georef.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-GEOREF-MENU-READONLY",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version that takes no points shows a context menu with nothing that edits",
+            "asserts": "a failed version (or a read-only admin) opened in the georeferencer: the context menu on either pane has one disabled line saying the version takes no points; choosing it does nothing; Esc closes it; no Add, Move, Delete or Undo",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12. Tests: e2e/admin/specs/imagery/georef-menu.spec.ts, packages/ui/test/admin/georef/georef-menu.test.ts."
+        },
+        {
             "id": "S-A17-HAPPY",
             "behaviour": "A17",
             "area": "admin",

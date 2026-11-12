@@ -25,6 +25,7 @@ export interface GeorefIntentActions {
     edit(pairs: readonly Gcp[], remember?: boolean): void;
     refit(pairs: readonly Gcp[], transform: GeorefTransform): void;
     pickScan(pixel: PixelPosition): void;
+    pickMap(geo: GeoPosition): void;
     addAtCentres(pixel: PixelPosition): void;
     movePixel(id: string, pixel: PixelPosition): void;
     select(id: string | null): void;
@@ -55,6 +56,29 @@ function suggestionIntents(
             actions.suggestions.select(id);
             actions.showSuggestions();
         },
+    };
+}
+
+/** The context menu's: Add a point here (Add pairs turned on first, as a click there) and Move this point. */
+function menuIntents(actions: GeorefIntentActions): Pick<GeorefIntents, 'addAt' | 'pickUp' | 'mapTarget'> {
+    return {
+        addAt: (end) => {
+            if (!actions.cell.state.adding) {
+                actions.cell.update({ adding: true, half: null });
+                actions.map.setAdding(true);
+            }
+            if ('pixel' in end) {
+                actions.pickScan(end.pixel);
+            } else {
+                actions.pickMap(end.geo);
+            }
+        },
+        pickUp: (id, pane) => {
+            actions.cell.update({ moving: { id, pane } });
+            // The map's points stand still while one waits for its place (a click there is the drop).
+            actions.map.setAdding(true);
+        },
+        mapTarget: (point) => actions.map.targetAt(point),
     };
 }
 
@@ -112,6 +136,9 @@ type PageIntent = Exclude<
     | 'remove'
     | 'toggle'
     | 'cancelHalf'
+    | 'addAt'
+    | 'pickUp'
+    | 'mapTarget'
 >;
 
 function pageIntents(actions: GeorefIntentActions): Pick<GeorefIntents, PageIntent> {
@@ -165,5 +192,5 @@ function pageIntents(actions: GeorefIntentActions): Pick<GeorefIntents, PageInte
 
 /** All page intents from the store's actions. */
 export function georefIntentsOf(actions: GeorefIntentActions): GeorefIntents {
-    return { ...pairIntents(actions), ...suggestionIntents(actions), ...pageIntents(actions) };
+    return { ...pairIntents(actions), ...menuIntents(actions), ...suggestionIntents(actions), ...pageIntents(actions) };
 }

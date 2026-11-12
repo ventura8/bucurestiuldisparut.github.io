@@ -163,6 +163,9 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
             pickScan: (pixel) => {
                 this.#pickScan(pixel);
             },
+            pickMap: (geo) => {
+                this.#pickMap(geo);
+            },
             addAtCentres: (pixel) => {
                 this.#addAtCentres(pixel);
             },
@@ -240,6 +243,9 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     }
 
     #pickScan(pixel: PixelPosition): void {
+        if (this.#dropped('scan', (id) => movePixel(this.#cell.state.pairs, id, this.#scanPixel(pixel)))) {
+            return;
+        }
         const { adding, half } = this.#cell.state;
         if (!adding) {
             return;
@@ -253,6 +259,9 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     }
 
     #pickMap(geo: GeoPosition): void {
+        if (this.#dropped('map', (id) => moveGeo(this.#cell.state.pairs, id, geo))) {
+            return;
+        }
         const { adding, half } = this.#cell.state;
         if (!adding) {
             return;
@@ -279,7 +288,29 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         this.#edit(pairs);
     }
 
+    /** A point picked up from the context menu: a click on its pane drops it there (one Undo step), one elsewhere puts it back. */
+    #dropped(pane: 'scan' | 'map', moved: (id: string) => readonly Gcp[]): boolean {
+        const moving = this.#cell.state.moving;
+        if (moving === null) {
+            return false;
+        }
+        this.#putBack();
+        if (moving.pane === pane) {
+            this.#edit(moved(moving.id));
+        }
+        return true;
+    }
+
+    #putBack(): void {
+        this.#cell.update({ moving: null });
+        this.#map.setAdding(this.#cell.state.adding);
+    }
+
     #escape(): void {
+        if (this.#cell.state.moving !== null) {
+            this.#putBack();
+            return;
+        }
         if (this.#cell.state.half !== null) {
             this.#cell.update({ half: null });
             this.#syncHalf();

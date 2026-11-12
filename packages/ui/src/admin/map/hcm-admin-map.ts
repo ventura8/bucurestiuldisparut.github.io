@@ -84,8 +84,11 @@ export class HcmAdminMap extends LitElement {
                 min-block-size: 48px;
             }
 
-            /* Mapbox's box hides its overflow and the canvas fills it: the ring is drawn inside (the viewer's fix). */
-            .mapboxgl-canvas:focus-visible {
+            /* Mapbox's box hides its overflow and the canvas fills it: the ring is drawn inside (the viewer's fix). The box
+               itself takes the focus too (the keyboard's crosshair), inside a page box that may hide its overflow and round
+               its corners (the georeferencer's panes): its ring is drawn inside as well (lesson 558). */
+            .mapboxgl-canvas:focus-visible,
+            .canvas:focus-visible {
                 outline-offset: -3px;
             }
 

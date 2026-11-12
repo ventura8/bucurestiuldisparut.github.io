@@ -5,7 +5,9 @@
  * focused, a crosshair marks the centre; the arrow keys move the selected marker by one preview pixel (ten with Shift) or
  * pan, `+` and `-` zoom, Enter adds the pair's scan end at the crosshair while pairs are being added, Delete removes the
  * selected pair, Esc drops the half pair or lets the selected one go. Events: `hcm-pick` `{pixel}`, `hcm-select` `{id}`,
- * `hcm-move` `{id, pixel}`, `hcm-delete` `{id}`, `hcm-escape`; pixels are the full-resolution scan's. A pane hidden on a
+ * `hcm-move` `{id, pixel}`, `hcm-delete` `{id}`, `hcm-escape`; pixels are the full-resolution scan's. Only the main button
+ * picks, drags or pans (a right-click is the page's context menu, which reads `targetAt` and, after a long press,
+ * `cancelGesture`). A pane hidden on a
  * compact window (the map showing) keeps the view it had (CR-M3-47): its crosshair is still where the admin left it,
  * never a division by a zero size.
  */
@@ -288,12 +290,16 @@ export class HcmScanViewer extends LitElement {
         return { ...gesture.marker, pixel: paneToScan(this.#currentView(), gesture.last, this.previewScale) };
     }
 
-    #pointOf(event: PointerEvent | WheelEvent): Point {
+    #pointOf(event: { readonly clientX: number; readonly clientY: number }): Point {
         const box = this.getBoundingClientRect();
         return { x: event.clientX - box.left, y: event.clientY - box.top };
     }
 
     readonly #down = (event: PointerEvent): void => {
+        // Only the main button picks, drags or pans: a right-click opens the page's context menu.
+        if (event.button !== 0) {
+            return;
+        }
         const at = this.#pointOf(event);
         this.#pointers.set(event.pointerId, at);
         (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
@@ -441,6 +447,17 @@ export class HcmScanViewer extends LitElement {
     /** Enter adds at the crosshair (while adding), Delete removes the selected pair, Esc drops the half pair. */
     #command(key: string): boolean {
         return COMMANDS[key]?.(this) === true;
+    }
+
+    /** The full-resolution pixel under a viewport point and the pair drawn within the hit radius there (the context menu). */
+    targetAt(client: { readonly clientX: number; readonly clientY: number }): { readonly pixel: Point; readonly hit: string | null } {
+        const [view, at] = [this.#currentView(), this.#pointOf(client)];
+        return { pixel: paneToScan(view, at, this.previewScale), hit: hitPair(view, this.markers, at, this.previewScale)?.id ?? null };
+    }
+
+    /** A long press opened the context menu: its release is no click (a second finger had already ended the press). */
+    cancelGesture(): void {
+        this.#gesture = null;
     }
 
     /** Enter: the pair's scan end at the crosshair, while pairs are being added. */

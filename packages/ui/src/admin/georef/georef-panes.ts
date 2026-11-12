@@ -7,7 +7,7 @@
 import type { Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
-import { when } from '../imagery/when.js';
+import { when, withValue } from '../imagery/when.js';
 import { contentText } from '../shell/text.js';
 import type { GeorefContext } from './georef-parts.js';
 import type { GeorefViewState, HalfPairPort, PixelPositionPort, ReferenceKindPort } from './georef-port.js';
@@ -54,7 +54,7 @@ function scanViewer(context: GeorefContext, scan: NonNullable<NonNullable<Georef
             .suggestions=${suggestionMarkersOf(view)}
             .selectedSuggestion=${view.suggestions.selected}
             .half=${halfPixel(view.half)}
-            ?adding=${view.adding}
+            ?adding=${view.adding || view.moving !== null}
             .label=${contentText(locale, 'adminContent.georef.scanLabel')}
             .zoomInLabel=${contentText(locale, 'adminContent.map.zoomIn')}
             .zoomOutLabel=${contentText(locale, 'adminContent.map.zoomOut')}
@@ -168,8 +168,19 @@ function paneSwitch(context: GeorefContext): TemplateResult {
     );
 }
 
+/** While a point picked up from the context menu waits for its place: which one, where to click, and Esc. */
+function movingNote(context: GeorefContext): TemplateResult {
+    const { locale, view } = context;
+    return withValue(view.moving, (moving) => {
+        const number = String(view.pairs.findIndex((pair) => pair.id === moving.id) + 1);
+        return html`<p class="note" role="status" data-state="moving">
+            ${contentText(locale, `adminContent.georef.menu.moving.${moving.pane}`, { number })}
+        </p>`;
+    });
+}
+
 export function panes(context: GeorefContext): TemplateResult {
-    return html`${paneSwitch(context)}
+    return html`${paneSwitch(context)} ${movingNote(context)}
         <div class="panes" ?data-compact=${context.compact} data-pane=${context.view.pane}>
             <div class="scan-pane">${scanPane(context)}</div>
             <div class="map-pane">${mapPane(context)}</div>

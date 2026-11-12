@@ -117,6 +117,23 @@ describe('<hcm-scan-viewer>', () => {
         expect(canvasOf(plain).getAttribute('aria-label')).toBe('The scan');
     });
 
+    it('badPath_aRightButtonPressPicksNothingAndTheMenuReadsWhatIsUnderIt', async () => {
+        const element = await viewer({ adding: true });
+        const canvas = canvasOf(element);
+        const box = element.getBoundingClientRect();
+        const at = { clientX: box.left + 20, clientY: box.top + 20, pointerId: 1, bubbles: true, button: 2 };
+
+        canvas.dispatchEvent(new PointerEvent('pointerdown', at));
+        canvas.dispatchEvent(new PointerEvent('pointerup', at));
+        const onMarker = element.targetAt({ clientX: box.left + 20, clientY: box.top + 20 });
+        const empty = element.targetAt({ clientX: box.left + 200, clientY: box.top + 100 });
+        element.cancelGesture();
+
+        expect(element.events).toEqual([]);
+        expect(onMarker).toEqual({ pixel: { x: 100, y: 100 }, hit: 'g1' });
+        expect(empty).toEqual({ pixel: { x: 1000, y: 500 }, hit: null });
+    });
+
     it('happyPath_aMarkerDraggedMovesAndADragElsewherePans', async () => {
         const element = await viewer();
 
