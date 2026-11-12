@@ -3418,7 +3418,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
 582. **A KH-5 Argon frame searched an hour with no end.**
     - Seen: 2026-11-12, DS09065A089MC039 (1964-06-18): `locate` ran about an hour with no log line until it was cancelled.
     - Cause: the frame is about 550 km across at 140 m on the ground, so the city is a small patch of it; the vote search had no time bound, and nothing proves a KH-5 frame yet (M9 §14).
-    - Fix and pin: `SensorSpec.search_seconds` (35 min, KH-5 10 min) bounds the search (`SearchBudget`): past it the windows left are not searched and the frame is cropped around the city by its footprint, not proved, so it waits for points (S-P06-HAPPY-SEARCH-BUDGET, S-P06-BAD-SEARCH-BUDGET).
+    - Fix and pin: `SensorSpec.search_seconds` (35 min, KH-5 10 min) bounds the search (`SearchBudget`): past it the windows left are not searched and the frame, not proved, waits for points (S-P06-HAPPY-SEARCH-BUDGET, S-P06-BAD-SEARCH-BUDGET); since lesson 603 as the whole frame shrunk, not as a crop by its footprint.
     - **Every search over an unknown space gets a time budget whose end is a result (not found, ask a person), not a failure.**
 
 583. **The 1895 series offered 26 suggested pairs off its own scan.**
@@ -3537,3 +3537,28 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the map's buttons turned it with an animation, whose `move` events kept turning the scan after the owner's next press; and every map move read the scan's angle back through an oblique fit, whose two conversions are not exact inverses.
     - Fix and pin: the map's turn is a jump (`GeorefMap.rotateBy`), and only a move that changes the map's bearing turns the scan (`linkedPanesOf`; `rotation.test.ts`).
     - **Run a test of linked motion several times before trusting it; an animation is a second actor.**
+
+603. **A Corona strip nothing proved showed the owner farmland.**
+    - Seen: 2026-11-12, DS1103-1058DF027 (1968-05-05, 131,443 px wide): two footprint windows, no AI proposal in either, then `not proved (no-votes): crop 35664 x 8172 px, delivery kept`; the georeferencer showed the first window, countryside, and no point could be placed on București.
+    - Cause: `best_of` kept the best-voted window, the first of equals, and `locate` cut the frame by it: with no votes anywhere the choice was only the order of the list.
+    - Fix and pin: a frame nothing proved is cut by a guess only when it was searched whole, in time, and fits a scan shown whole; else the scan is the whole exposure shrunk (`steps/whole.py`, marked in `scan.tif`), and the owner's rough points crop the film at full resolution (`steps/recrop.py`); the KH-5 cap ends the same way (S-P06-HAPPY-WHOLE-STRIP, S-P06-BAD-WHOLE-STRIP-UNPROVED, S-P06-HAPPY-ROUGH-POINTS-CROP, S-P06-BAD-ROUGH-POINTS-OUTSIDE, S-P06-BAD-ROUGH-POINTS-FILM-GONE).
+    - **When nothing is proved, never let an unproved guess decide what the person sees: show everything, coarser, and let their answer choose.**
+
+604. **The worker's memory was set for a server, not for the computer it runs on.**
+    - Seen: 2026-11-12, `reports/resource-audit.md`: a warp held 4.5 GB and a 60-sheet colour atlas 3.8 GB on a 16 GB laptop that also ran the desktop; tile cutting started one 170 MB process a CPU.
+    - Cause: `GDAL_CACHEMAX` 1,024 MB and `warpMemoryLimit` 2,048 MB were constants; `compose_canvas` warped every sheet onto a whole canvas and resized the owners' grid to it; `num-threads` was `ALL_CPUS`.
+    - Fix and pin: the settings follow the memory the process may use (`rasters.gdal_memory`), each sheet is pasted in its own box, the tile processes are capped (`pyramid.tile_processes`), a city crop is copied by rows and every preview read shrunk (`locate.write_crop`, `common.scan_preview`), an atlas's pages are held grey and read again in colour to paste (`assemble.Pages`); each has a budget test in a process of its own (S-P31-HAPPY-WARP-BUDGET, S-P31-HAPPY-CANVAS-BUDGET, S-P31-HAPPY-TILE-PROCESSES and their bad rows).
+    - **A memory setting is a share of the machine it runs on, read at run time, and every heavy call has a budget test that fails when the memory grows back.**
+
+605. **An idle worker asked for a job 86,400 times a month, and a busy one could take the whole computer.**
+    - Seen: 2026-11-12, `reports/resource-audit.md`: `hcm-worker` ran with no memory limit and nice 0 (an out-of-memory run takes the desktop with it), and `worker.claim` was called every 30 s for ever, each call with its Firestore reads.
+    - Cause: the starter's `docker run` named no limit; the poll interval was one constant, and the admin counted a worker gone after 180 s, which forbade any longer wait.
+    - Fix and pin: the starters cap the container at 60 % of Docker's memory with a low CPU weight, the worker nices itself and leaves a core; `worker/pace.py` backs the claims off to `idlePollSeconds` (60 s: the owner refused a five-minute wait for a new job) and wakes on a job or the admin's look, with `WORKER_FRESH_SECONDS` above the longest wait (S-P31-HAPPY-WORKER-POLITE, S-P31-BAD-WORKER-POLITE-OVERRIDE, S-P31-HAPPY-CLAIM-BACKOFF, S-P31-BAD-CLAIM-BACKOFF-OLD-SERVER).
+    - **A poll's interval and the presence window that reads it change together, and the newer side must work against the older one in either deploy order.**
+
+606. **Every memory probe started from pytest reported 2,105 MB.**
+    - Seen: 2026-11-12, `pipeline/tests/integration/test_memory_budgets.py` in the full pipeline run on the PC: four budgets failed with the same peak, which no probe reached alone.
+    - Cause: `getrusage(RUSAGE_SELF).ru_maxrss` keeps, across `exec`, the peak of the process that forked: a probe started from a pytest that had grown to 2.1 GB inherited its figure. Run alone or from a shell, the probes read right.
+    - Fix and pin: `tests/budget_probe.py` reads its own `VmHWM` from `/proc/self/status`, which starts afresh with the new program.
+    - **A child's own peak memory is `VmHWM`, never `ru_maxrss` read inside a process another large one started.**
+

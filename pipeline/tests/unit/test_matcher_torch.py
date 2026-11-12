@@ -197,15 +197,18 @@ def test_bad_path_no_graphics_card_exits_77_and_small_one_76_so_a_silent_process
     assert read_status(world.box) is None
 
 
-def test_happy_path_the_processor_runs_only_when_told_with_half_the_threads_and_says_why(
+def test_happy_path_the_processor_runs_only_when_told_on_the_cores_but_one_niced_and_says_why(
     world: World, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """Scenarios: S-P07-HAPPY-CPU-FALLBACK"""
+    """Scenarios: S-P07-HAPPY-CPU-FALLBACK, S-P31-HAPPY-WORKER-POLITE"""
     monkeypatch.setattr(world.backend.os, "cpu_count", lambda: 8)
+    niced: list[int] = []
+    monkeypatch.setattr(world.backend.os, "nice", niced.append)
 
     assert world.child.main(["probe", "cpu", "no-gpu"], {"HCM_AI_ROOT": str(world.root)}) == 0
 
-    assert world.fake.threads == [4]
+    assert world.fake.threads == [7]
+    assert niced == [10]
     status = read_status(world.box)
     assert status is not None
     assert (status.device, status.fallback) == ("cpu", "no-gpu")

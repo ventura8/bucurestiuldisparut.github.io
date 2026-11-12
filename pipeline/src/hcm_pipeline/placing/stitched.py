@@ -14,6 +14,7 @@ their residual, in canvas pixels).
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Final
 
 from hcm_pipeline.archive import model
@@ -102,14 +103,22 @@ def _measures(stitched: Stitched) -> dict[str, object]:
     return {**scale, **joins}
 
 
-def publish_stitched(ctx: JobContext, stitched: Stitched) -> dict[str, object]:
+def _linked(written: Path, target: Path) -> Path:
+    """A canvas already written (an assembled series': `maps._assembled`) kept as the stitched picture by a second name, not encoded
+    a second time (reports/resource-audit.md: a 600 MB write, twice)."""
+    target.unlink(missing_ok=True)
+    target.hardlink_to(written)
+    return target
+
+
+def publish_stitched(ctx: JobContext, stitched: Stitched, written: Path | None = None) -> dict[str, object]:
     """The canvas kept with the job's files, its preview with the version's; the record `help.stitched` keeps.
 
     A method the server's schema does not know is refused here, before any file is published: the worker's write would be refused
     after minutes of work (`overview`, harti.zip 1895, lesson 569).
     """
     _known(stitched)
-    canvas = assemble.write_canvas(ctx.local(STITCHED), stitched.canvas)
+    canvas = _linked(written, ctx.local(STITCHED)) if written is not None else assemble.write_canvas(ctx.local(STITCHED), stitched.canvas)
     ctx.publish(canvas, ctx.work_file(STITCHED), "image/tiff")
     small, scale = _preview(stitched.canvas)
     preview = ctx.publish(write_jpeg(ctx.local(PREVIEW), small, PREVIEW_QUALITY), ctx.version_file(PREVIEW), "image/jpeg")

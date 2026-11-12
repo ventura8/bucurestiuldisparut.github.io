@@ -9,7 +9,10 @@ fails with `apiError.imagery.cityNotFound`; a panoramic camera's frame is read o
 is never read whole; the search reads `stitch`'s shrunk preview, and everything else is read window by window out of the segments, each
 staged, read and let go in turn. `version.calibration` records what happened; it is what the admin shows. The search is held to its
 camera's `search_seconds` (live 2026-11-12: a KH-5 Argon frame, 550 km across, searched an hour with no end): past it the windows left
-are not searched, and the frame is cropped around the city by its footprint, not proved, and waits for points like any refusal.
+are not searched. **Not proved, and no guess to cut it by** (a strip none of whose windows was proved, a search out of time, a frame
+over `whole.WHOLE_MAX_PX`): the scan is the whole exposure shrunk, with no corner pairs, and waits for the owner's rough points, around
+which `steps/recrop.py` cuts the film at full resolution (`steps/whole.py`; live 2026-11-12: a Corona strip kept its first window,
+countryside).
 """
 
 import math
@@ -51,8 +54,11 @@ from hcm_pipeline.georef.transforms import Gcp
 from hcm_pipeline.images import UInt8Array, as_uint8, resize, seeded
 from hcm_pipeline.jobs import Done, JobContext, StepFailedError, StepResult
 from hcm_pipeline.model import UsgsImportParams
-from hcm_pipeline.rasters import GeoTiff, read_band, to_uint8, write_geotiff
+from hcm_pipeline.raster import gdal
+from hcm_pipeline.rasters import GTIFF_OPTIONS, GeoTiff, driver_of, read_band, to_uint8, write_geotiff
 from hcm_pipeline.steps.common import city_window, gdal_step, grey_reference, publish_scan, sentinel2
+from hcm_pipeline.steps.whole import POINTS_NEXT, Limits, WholeFrame, mark, offered_whole, shrink
+from hcm_pipeline.store import DELETE
 
 # The frame is shrunk until a pixel is about this many metres before the votes read it.
 SCORING_PIXEL_M: Final = 30.0
@@ -62,6 +68,8 @@ USGS_RAW_PREFIX: Final = "usgs-raw/"
 # A film this share of the sensor's full aspect or longer swept the whole angle (four real KH-9 frames: 19.6 to 20.5 for 20.2).
 FULL_SWEEP_SHARE: Final = 0.9
 PERCENT: Final = 100.0
+# Rows of a crop copied at a time: at a Corona strip's 35,000 columns, about 36 MB.
+CROP_BLOCK_ROWS: Final = 1024
 
 
 def _scene(ctx: JobContext, entity: UsgsImportParams) -> Scene:
@@ -126,19 +134,29 @@ def film_limits(camera: PanoramicCamera | None, layout: FrameLayout) -> tuple[in
     )
 
 
-def crop_pixels(ctx: JobContext, layout: FrameLayout, box: Crop) -> UInt8Array:
-    """The frame's pixels in `box`, read from the segments that cover it, one at a time (a later one on top)."""
+def write_crop(ctx: JobContext, layout: FrameLayout, box: Crop, target: Path) -> Path:
+    """The frame's pixels in `box` as a GeoTIFF, copied out of the segments that cover it, one at a time (a later one on top),
+    `CROP_BLOCK_ROWS` rows at a time: the crop is never held whole (reports/resource-audit.md: a city on a KH-9 frame was 2.5 GB as
+    one array, held again for its preview)."""
+    dataset = driver_of("GTiff").Create(str(target), box.width, box.height, 1, gdal.GDT_Byte, list(GTIFF_OPTIONS))
     window = (box.left, box.top, box.width, box.height)
-    pixels = numpy.zeros((box.height, box.width), numpy.uint8)
     for placement in layout.covering(window):
-        x, y, width, height = placement.window(window) or window
-        segment = Segment(ctx.stage(placement.path))
-        part = segment.read(x - placement.x, y - placement.y, width, height)
-        pixels[y - box.top : y - box.top + height, x - box.left : x - box.left + width] = part
-        segment.close()
-        ctx.unstage(placement.path)
+        _copy_rows(ctx, placement, placement.window(window) or window, (dataset.GetRasterBand(1), box.left, box.top))
+    dataset.Close()
+    return target
+
+
+def _copy_rows(ctx: JobContext, placement: Placement, part: tuple[int, int, int, int], onto: tuple[gdal.Band, int, int]) -> None:
+    """`part` (in the frame's pixels) of one segment onto the crop's band, whose corner lies at `onto`'s column and row of the frame."""
+    x, y, width, height = part
+    band, left, top = onto
+    segment = Segment(ctx.stage(placement.path))
+    for row in range(y, y + height, CROP_BLOCK_ROWS):
+        rows = min(CROP_BLOCK_ROWS, y + height - row)
+        band.WriteArray(segment.read(x - placement.x, row - placement.y, width, rows), x - left, row - top)
         ctx.checkpoint()
-    return as_uint8(pixels)
+    segment.close()
+    ctx.unstage(placement.path)
 
 
 def delete_delivery(ctx: JobContext) -> None:
@@ -243,7 +261,7 @@ class SearchBudget:
                 return find_frame(search, self.tick, say)
             except SearchTimeUpError:
                 self.timed_out = True
-                say(f"the search ran out of its {round(self._seconds / 60)} min: the city is cropped by the footprint, points are next")
+                say(f"the search ran out of its {round(self._seconds / 60)} min: the whole frame is offered, points are next")
         return Found(None, "none", None, (0, 0), None, ())
 
 
@@ -261,15 +279,32 @@ class LocateStep:
             say = self._say(ctx)
             budget = SearchBudget(ctx, SENSOR_SPECS[entity.sensor].search_seconds)
             search, found = gdal_step(ctx, lambda: best_of(windows, lambda each: budget.find(each, say), say), "search the frame")
-            return self._cropped(ctx, search, found, layout)
+            return self._cropped(ctx, search, found, layout, budget.timed_out)
         except CityNotFoundError as error:
             raise StepFailedError(Errors.CITY_NOT_FOUND, str(error)) from error
 
-    def _cropped(self, ctx: JobContext, search: FrameSearch, found: Found, layout: FrameLayout) -> StepResult:
+    def _cropped(self, ctx: JobContext, search: FrameSearch, found: Found, layout: FrameLayout, timed_out: bool = False) -> StepResult:
         proof = found.proof
         if proof is None or proof.mapping is None or proof.forward is None:
-            return self._not_proved(ctx, search, found, layout)
+            return self._unproved(ctx, search, found, layout, timed_out)
         return self._proved(ctx, search, found, Proved(proof, proof.mapping, proof.forward.order), layout)
+
+    def _unproved(self, ctx: JobContext, search: FrameSearch, found: Found, layout: FrameLayout, timed_out: bool) -> StepResult:
+        """A guess cuts the frame only when it was searched whole, in time, and is no larger than a scan shown whole."""
+        limits = film_limits(camera_of(search.sensor, layout), layout)
+        if offered_whole(search.limits, limits, timed_out):
+            return self._whole(ctx, found, layout, limits)
+        return self._not_proved(ctx, search, found, layout)
+
+    def _whole(self, ctx: JobContext, found: Found, layout: FrameLayout, limits: Limits) -> StepResult:
+        """The whole exposure, shrunk to what the georeferencer shows, with no corner pairs: the owner's rough points are next."""
+        whole = WholeFrame(shrink(limits), limits[2], 0)
+        box = (limits[2], 0, limits[0], limits[1])
+        pixels = gdal_step(ctx, lambda: SegmentReader(ctx, layout).read(box, whole.factor), "read the whole frame")
+        scan = publish_scan(ctx, mark(write_geotiff(ctx.local("scan.tif"), GeoTiff([pixels])), whole), pixels)
+        ctx.update_version({"scan": scan.as_record(), "georef": DELETE, "calibration": _refusal_record(found, 0)})
+        ctx.log.warn(f"{_why_not(found)} in any part of the frame: {_whole_line(whole, scan.width, scan.height)}", self.name)
+        return Done(ctx.services.objects.stat(scan.path), scan.sha256)
 
     def _say(self, ctx: JobContext) -> Callable[[str], None]:
         return lambda line: ctx.log.info(line, self.name)
@@ -309,11 +344,11 @@ class LocateStep:
         if box is None:
             raise CityNotFoundError
         located = Crop(box[0], box[1], box[2] - box[0], box[3] - box[1], proved_gcps(mapping, box))
-        pixels = gdal_step(ctx, lambda: crop_pixels(ctx, layout, within_limits(located)), "crop the frame")
+        local = gdal_step(ctx, lambda: write_crop(ctx, layout, within_limits(located), ctx.local("scan.tif")), "crop the frame")
         camera = rad_per_px(search.sensor, layout)
         stored = StoredTiles(proved.proof.measured.rows, proved.order, box[0], box[1], window.bounds().middle_lat, camera)
         ctx.publish(stored.write(ctx.local(CALIBRATION_FILE)), ctx.work_file(CALIBRATION_FILE), "application/json")
-        scan = publish_scan(ctx, write_geotiff(ctx.local("scan.tif"), GeoTiff([pixels])), pixels)
+        scan = gdal_step(ctx, lambda: publish_scan(ctx, local), "read the crop")
         record = _calibration(ctx, found, mapping, limits)
         georef = GeorefInfo("corners", "affine", located.gcps)
         ctx.update_version({"scan": scan.as_record(), "georef": georef.as_record(), "calibration": record})
@@ -324,8 +359,8 @@ class LocateStep:
     def _not_proved(self, ctx: JobContext, search: FrameSearch, found: Found, layout: FrameLayout) -> StepResult:
         ranked = _by_votes(search.orientations, found)
         located, cut = bounded_crop(ranked, search.window, search.limits, MAX_SCAN_PIXELS)
-        pixels = gdal_step(ctx, lambda: crop_pixels(ctx, layout, within_limits(located)), "crop the frame")
-        scan = publish_scan(ctx, write_geotiff(ctx.local("scan.tif"), GeoTiff([pixels])), pixels)
+        local = gdal_step(ctx, lambda: write_crop(ctx, layout, within_limits(located), ctx.local("scan.tif")), "crop the frame")
+        scan = gdal_step(ctx, lambda: publish_scan(ctx, local), "read the crop")
         georef = GeorefInfo("corners", "affine", located.gcps, weak_corners=True)
         record = _refusal_record(found, cut)
         ctx.update_version({"scan": scan.as_record(), "georef": georef.as_record(), "calibration": record})
@@ -400,10 +435,17 @@ def _proved_line(proof: Proof, covered: object, located: Crop) -> str:
     )
 
 
-def _not_proved_line(found: Found, located: Crop) -> str:
+def _why_not(found: Found) -> str:
     proof = found.refused
-    why = "no-votes" if proof is None else f"{proof.refusal}: {proof.inliers} of {proof.tried}"
-    return f"not proved ({why}): crop {located.width} x {located.height} px, delivery kept, the admin's points are next"
+    return f"not proved ({'no-votes' if proof is None else f'{proof.refusal}: {proof.inliers} of {proof.tried}'})"
+
+
+def _not_proved_line(found: Found, located: Crop) -> str:
+    return f"{_why_not(found)}: crop {located.width} x {located.height} px, delivery kept, the admin's points are next"
+
+
+def _whole_line(whole: WholeFrame, width: int, height: int) -> str:
+    return f"the whole frame is the scan, shrunk {whole.factor} times ({width} x {height} px), delivery kept; {POINTS_NEXT}"
 
 
 def within_limits(located: Crop) -> Crop:
