@@ -38,7 +38,7 @@ export interface GeorefVersion {
         readonly height: number;
         readonly previewScale: number;
         readonly previewPath: string;
-        /** The sharper scan (`scan-detail.jpg`) and its pixels per scan pixel; null: none (a short scan, or an older version). */
+        /** The sharper scan (`scan-tiles.bin`) and its pixels per scan pixel; null: none (a short scan, or an older version). */
         readonly detail: { readonly path: string; readonly scale: number } | null;
     } | null;
     readonly reference: {
@@ -89,9 +89,9 @@ export interface MapTarget {
 
 export type ScanImage = { readonly status: 'none' | 'loading' | 'failed' } | { readonly status: 'ready'; readonly url: string };
 
-/** The sharper scan for a zoomed-in pane (a `blob:` address) and its pixels per scan pixel. */
+/** The sharper scan for a zoomed-in pane (its tiles' file, `scan-tiles.bin`) and its pixels per scan pixel. */
 export interface ScanDetail {
-    readonly url: string;
+    readonly file: Blob;
     readonly scale: number;
 }
 

@@ -216,7 +216,7 @@ Everything lives in the private bucket; tiles live at Mapbox; nothing of M3 is w
 | USGS delivery | `usgs-raw/{dataset}/{entityId}/{file}` (shared by every city) | 30 days (USGS is the archive; paid scans move to ARCHIVE in M4) |
 | browse copy | `usgs-browse/{dataset}/{entityId}.jpg` | kept |
 | a job's scratch | `work/{city}/{job}/{name}` (one or two segments: `segments/a.tif`, `frame.tif`, `fetch.checkpoint.json`, `warped.tif`) | 14 days; deleted on success and on cancel |
-| a version's files | `rasters/{city}/{layer}/{version}/{scan.tif, scan-preview.jpg, scan-detail.jpg, reference-osm.png, reference-s2.jpg, cog.tif, preview.png, studio.tif, align.tif}` (`align.tif`: a proved frame at 5 ground metres, M15 *Joint solve*) | kept while the version is current or pending; `imagery.tick` deletes those of versions rejected, cancelled, failed or superseded more than 30 days ago |
+| a version's files | `rasters/{city}/{layer}/{version}/{scan.tif, scan-preview.jpg, scan-tiles.bin, reference-osm.png, reference-s2.jpg, cog.tif, preview.png, studio.tif, align.tif}` (`align.tif`: a proved frame at 5 ground metres, M15 *Joint solve*) | kept while the version is current or pending; `imagery.tick` deletes those of versions rejected, cancelled, failed or superseded more than 30 days ago |
 | reference cache | `reference/{city}/s2/{key}.tif`, `reference/{city}/osm/{key}.geojson`, `reference/{city}/dem/{key}.tif` (M15 *Terrain*: the window's Copernicus DEM GLO-30, 30 m, averaged over 900 m) | 90 days |
 
 The pipeline spells the same paths (`hcm_pipeline.paths`), held equal by `pipeline/tests/contracts/paths.json` (done). The
@@ -1406,12 +1406,23 @@ The owner placed points on 1966 Corona frames and hit four things; each is fixed
   (shift, turn and one scale, in Web Mercator with north up) that carries the two latest enabled pairs' pixels onto their places
   (`packages/admin/src/georef/ghost.ts`, in the lazy `georef-extras` chunk; `ghosts.ts` fetches it only when a ghost can exist).
   Rows: S-A16-HAPPY-GEOREF-GHOST, S-A16-BAD-GEOREF-GHOST-NO-PAIRS; tour state `georef.ghost`.
-- **The sharper scan**: `publish_scan` writes `scan-detail.jpg` beside `scan-preview.jpg` when the scan is longer than the preview
-  (`SCAN_DETAIL_MAX_PX` = 16,384 px long and `SCAN_DETAIL_MAX_PIXELS` = 64 million pixels in all, since a browser decodes it whole: a near-square 20,000 px upload gets 8,000 × 8,000, never less than about twice the preview; a `VERSION_FILES` member), and the version's `scan` records `detailPath` and `detailScale`
-  (optional: a short scan and a version parked before have none). The store fetches it once (a `blob:` address, `scanDetail`) when
+- **The sharper scan**: `publish_scan` writes `scan-tiles.bin` beside `scan-preview.jpg` when the scan is longer than the preview:
+  the scan at up to `SCAN_DETAIL_MAX_PX` = 16,384 px long and `SCAN_DETAIL_MAX_PIXELS` = 64 million pixels in all (a near-square
+  20,000 px upload gets 8,000 × 8,000, never less than about twice the preview), cut into JPEG tiles of `SCAN_TILE_PX` = 1,024 px
+  and packed in one object (a `VERSION_FILES` member, so no path, rule or allow-list changes). A browser decodes a JPEG whole
+  (16,384 px a side is about 1 GiB of RGBA), so the picture is never one JPEG. The file, little-endian
+  (`pipeline/src/hcm_pipeline/scan_tiles.py`, read by `packages/ui/src/admin/georef/scan-tiles.ts`): `HCMT`, five `uint32` (format
+  version 1, tile side, width, height, tile count), one `uint32` per tile plus one (each tile's first byte, row by row, then the
+  file's length), the tiles. The version's `scan` records `detailPath` and `detailScale`
+  (optional: a short scan and a version parked before have none). The store reads the file once (a `Blob`, `scanDetail`) when
   the scan pane shows more than one device pixel per preview pixel (CSS pixels × `devicePixelRatio`: a HiDPI screen upscales the
-  preview from half the zoom), by the owner's zoom or the linked map's; the pane draws it instead of the preview past that scale.
-  A USGS frame parked before gets its detail when the `relocate` tick searches it again after the pipeline update (or Locate again). A missing file, or a late answer after the page closed, leaves the preview, with no error. The
+  preview from half the zoom), by the owner's zoom or the linked map's. The pane (`detailScene`) then draws the preview and, over
+  it, the tiles in view: each is decoded once (`createImageBitmap` of the tile's slice of the `Blob`), at most `SCAN_TILES_KEPT` = 32
+  stay decoded (4 MiB each, about 128 MiB; with a 4,096 px preview under 200 MiB in all), the least recently shown out of view are
+  closed, and a view that would need more than 32 tiles keeps the preview until the owner zooms further. A tile that does not
+  decode is not asked for again; a file that is not a tiles file, a missing file, or a late answer after the page closed, leaves
+  the preview, with no error. A USGS frame parked before gets its tiles when the `relocate` tick searches it again after the
+  pipeline update (or Locate again). The
   warped map preview is drawn `WARP_MAX_SIDE` = 4,096 px across (3,072 before), its mesh code in a lazy chunk of its own
   (`georef-warp.ts`, fetched when a version opens). Rows: S-A16-HAPPY-GEOREF-FULL-RES, S-A16-BAD-GEOREF-FULL-RES-NONE.
 

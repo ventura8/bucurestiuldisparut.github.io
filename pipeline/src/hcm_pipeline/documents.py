@@ -59,7 +59,7 @@ class ScanInfo:
     sha256: str
     preview_path: str
     preview_scale: float
-    # The sharper scan (`scan-detail.jpg`): written only when the scan is longer than its preview (None: none, or an older version).
+    # The sharper scan (`scan-tiles.bin`): written only when the scan is longer than its preview (None: none, or an older version).
     detail_path: str | None = None
     detail_scale: float | None = None
 

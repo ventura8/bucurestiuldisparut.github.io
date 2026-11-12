@@ -19,8 +19,8 @@ import { pair } from './fixtures.js';
 
 const UPLOAD = 'up-plan1911';
 const RENDERED = 'job-1966-0712';
-const DETAIL = 'rasters/bucharest/planul-bucurestilor-1911/up-plan1911/scan-detail.jpg';
-const CORONA_DETAIL = 'rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan-detail.jpg';
+const DETAIL = 'rasters/bucharest/planul-bucurestilor-1911/up-plan1911/scan-tiles.bin';
+const CORONA_DETAIL = 'rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan-tiles.bin';
 
 const EXTRAS = await loadGeorefExtras();
 
@@ -183,7 +183,7 @@ describe('the sharper scan through the store', () => {
 
         world.georef.intents.scanMoved({ centre: { x: 100, y: 100 }, scale: 1.5 });
         await settle();
-        expect(world.georef.state.scanDetail).toEqual({ url: `blob:${DETAIL}`, scale: 1 });
+        expect(world.georef.state.scanDetail).toEqual({ file: world.files.objects.get(DETAIL), scale: 1 });
 
         world.georef.close();
         expect(world.georef.state.scanDetail).toBeNull();
@@ -200,6 +200,6 @@ describe('the sharper scan through the store', () => {
         await settle();
 
         expect(world.georef.state.scanFollow?.scale).toBeGreaterThan(0.2);
-        expect(world.georef.state.scanDetail).toEqual({ url: `blob:${CORONA_DETAIL}`, scale: 0.8 });
+        expect(world.georef.state.scanDetail).toEqual({ file: world.files.objects.get(CORONA_DETAIL), scale: 0.8 });
     });
 });

@@ -1,7 +1,7 @@
 /**
  * Draws the georeferencer's scan pane (`./hcm-scan-viewer.ts`): the scan preview at the view's scale and offset, the
  * pairs' numbered markers (shared with the map: `./marker-badge.ts`), the half pair's cross, the ghost of a pair begun on the map
- * and, while the pane has the keyboard, the crosshair at its centre; zoomed past the preview's own pixels, the sharper scan instead.
+ * and, while the pane has the keyboard, the crosshair at its centre; zoomed past the preview's own pixels, the sharper scan's tiles over it.
  */
 import {
     badgePaletteOf,
@@ -12,6 +12,7 @@ import {
     type BadgeMarker,
     type BadgePalette,
 } from './marker-badge.js';
+import type { ScanDetailScene } from './scan-tiles.js';
 import { scanToPane, type Point, type ScanView } from './scan-view.js';
 
 export interface ScanMarker extends BadgeMarker {
@@ -31,8 +32,8 @@ export interface ScanScene {
     /** M4: the matcher's suggestions, dashed and hollow, the selected one larger (`docs/research/M4-interfaces.md` §2.5). */
     readonly suggestions?: readonly ScanMarker[];
     readonly selectedSuggestion?: string | null;
-    /** The sharper scan and its pixels per scan pixel, drawn instead of the preview once zoomed past the preview's own pixels. */
-    readonly detail?: { readonly image: CanvasImageSource; readonly scale: number } | null;
+    /** The sharper scan's decoded tiles in view and their pixels per scan pixel, drawn over the preview (`./scan-tiles.ts`). */
+    readonly detail?: ScanDetailScene | null;
     /** Where the pairs so far expect the pending pair's scan end (a dashed ring, `./marker-badge.ts`). */
     readonly ghost?: Point | null;
 }
@@ -60,28 +61,21 @@ function placed(scene: ScanScene): readonly ScanMarker[] {
     return dragged === null ? scene.markers : scene.markers.map((item) => (item.id === dragged.id ? dragged : item));
 }
 
-/**
- * The picture to draw and its preview pixels per picture pixel: the sharper scan once a preview pixel covers more than one device
- * pixel (`ratio`: a HiDPI screen upscales the preview from half the zoom already), else the preview.
- */
-function pictureOf(scene: ScanScene, ratio: number): { readonly image: CanvasImageSource; readonly scale: number } | null {
-    const detail = scene.detail ?? null;
-    if (detail !== null && scene.view.scale * ratio > 1) {
-        return { image: detail.image, scale: scene.previewScale / detail.scale };
-    }
-    return scene.image === null ? null : { image: scene.image, scale: 1 };
-}
-
-/** The scan at the view's scale and offset. */
+/** The scan at the view's scale and offset: the preview, and over it the sharper scan's decoded tiles in view. */
 function image(context: CanvasRenderingContext2D, scene: ScanScene, ratio: number): void {
-    const picture = pictureOf(scene, ratio);
-    if (picture === null) {
-        return;
+    const { offset, scale } = scene.view;
+    if (scene.image !== null) {
+        context.setTransform(ratio * scale, 0, 0, ratio * scale, ratio * offset.x, ratio * offset.y);
+        context.drawImage(scene.image, 0, 0);
     }
-    const { offset } = scene.view;
-    const scale = scene.view.scale * picture.scale;
-    context.setTransform(ratio * scale, 0, 0, ratio * scale, ratio * offset.x, ratio * offset.y);
-    context.drawImage(picture.image, 0, 0);
+    const detail = scene.detail ?? null;
+    if (detail !== null) {
+        const across = (scale * scene.previewScale) / detail.scale;
+        context.setTransform(ratio * across, 0, 0, ratio * across, ratio * offset.x, ratio * offset.y);
+        for (const piece of detail.pieces) {
+            context.drawImage(piece.image, piece.x, piece.y);
+        }
+    }
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
 }
 

@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import { expectStateSound } from '../../../support/state-check.js';
 import { mapFacts, mapIdle, screenPointOf } from '../../../support/map.js';
 import { adminVisit } from '../../../tour/states.js';
+import { SCAN_TILE } from '../../support/imagery-images.js';
 import { scanPixelOf, scanToGeo, SCAN_PREVIEW_SCALE, SCAN_SIZE, type LatLng, type Pixel } from '../../support/imagery-geometry.js';
 import { ADMIN_LOCK, expect, test } from '../../support/test.js';
 import { georefText, landmark, openGeoreferencer, pairRows, pointInView, removePair, scanCentre, scanPane, showPane } from './georef.js';
@@ -274,7 +275,7 @@ test(
 function detailRequests(page: Page): string[] {
     const asked: string[] = [];
     page.on('request', (request) => {
-        if (decodeURIComponent(request.url()).includes('scan-detail.jpg')) {
+        if (decodeURIComponent(request.url()).includes('scan-tiles.bin')) {
             asked.push(request.url());
         }
     });
@@ -295,11 +296,32 @@ async function zoomPastPreview(page: Page, pixel: Pixel): Promise<void> {
     }).toPass();
 }
 
-/** The sharper scan the scan pane was handed (null: none). */
-async function paneDetail(page: Page): Promise<{ readonly url: string; readonly scale: number } | null> {
-    return page
-        .locator('hcm-scan-viewer')
-        .evaluate((viewer) => (viewer as unknown as { detail: { url: string; scale: number } | null }).detail ?? null);
+/** The sharper scan the scan pane was handed: its scale and its file's bytes (null: none). */
+async function paneDetail(page: Page): Promise<{ readonly scale: number; readonly bytes: number } | null> {
+    return page.locator('hcm-scan-viewer').evaluate((viewer) => {
+        const detail = (viewer as unknown as { detail: { file: Blob; scale: number } | null }).detail ?? null;
+        return detail === null ? null : { scale: detail.scale, bytes: detail.file.size };
+    });
+}
+
+/** Counts the pictures the page decodes from now on (`createImageBitmap`: the sharper scan's tiles), with each one's size. */
+async function countDecodes(page: Page): Promise<void> {
+    await page.evaluate(() => {
+        const sizes: number[][] = [];
+        const native = globalThis.createImageBitmap.bind(globalThis);
+        Object.assign(globalThis, {
+            hcmDecoded: sizes,
+            createImageBitmap: async (source: ImageBitmapSource) => {
+                const bitmap = await native(source);
+                sizes.push([bitmap.width, bitmap.height]);
+                return bitmap;
+            },
+        });
+    });
+}
+
+async function decodes(page: Page): Promise<readonly (readonly number[])[]> {
+    return page.evaluate(() => (globalThis as unknown as { hcmDecoded: number[][] }).hcmDecoded);
 }
 
 test(
@@ -315,10 +337,16 @@ test(
         await zoomPastPreview(page, pixel);
         await expect.poll(() => asked.length).toBe(1);
         await expect.poll(async () => (await paneDetail(page))?.scale).toBe(1);
-        expect((await paneDetail(page))?.url).toMatch(/^blob:/);
+        expect((await paneDetail(page))?.bytes).toBeGreaterThan(1000);
 
-        // Zoomed in further: fetched once a version.
-        await zoomScanAt(page, pixel, -300);
+        // Zoomed in further: fetched once a version, and only the tiles under the pane are decoded, none larger than a tile
+        // (the 1600 × 1200 sharper scan is twelve tiles of 400 px; the whole of it is never one picture).
+        await countDecodes(page);
+        await zoomScanAt(page, pixel, -900);
+        await expect.poll(async () => (await decodes(page)).length).toBeGreaterThan(0);
+        const sizes = await decodes(page);
+        expect(sizes.length).toBeLessThan(12);
+        expect(Math.max(...sizes.flat())).toBeLessThanOrEqual(SCAN_TILE);
         expect(asked).toHaveLength(1);
     },
 );

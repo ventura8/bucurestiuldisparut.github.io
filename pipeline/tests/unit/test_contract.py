@@ -43,6 +43,7 @@ def test_happy_path_the_constants_equal_the_shared_copy() -> None:
         "SCAN_PREVIEW_MAX_PX": contract.SCAN_PREVIEW_MAX_PX,
         "SCAN_DETAIL_MAX_PX": contract.SCAN_DETAIL_MAX_PX,
         "SCAN_DETAIL_MAX_PIXELS": contract.SCAN_DETAIL_MAX_PIXELS,
+        "SCAN_TILE_PX": contract.SCAN_TILE_PX,
         "STUDIO_MAX_BYTES": contract.STUDIO_MAX_BYTES,
         "SENSOR_SPECS": sensors,
         "MAX_GCPS": contract.MAX_GCPS,

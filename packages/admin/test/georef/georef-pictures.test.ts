@@ -19,7 +19,7 @@ import { FakeFiles, FakePictures } from '../imagery/world.js';
 import { pair } from './fixtures.js';
 
 const SCAN = { width: 1000, height: 500, previewScale: 0.5, previewPath: 'v/scan-preview.jpg', detail: null };
-const DETAIL = { path: 'v/scan-detail.jpg', scale: 1 };
+const DETAIL = { path: 'v/scan-tiles.bin', scale: 1 };
 /** The warp chunk, fetched once before the tests. */
 const WARP = await loadWarp();
 const LOADED: WarpLoader = () => Promise.resolve(WARP);
@@ -232,7 +232,7 @@ describe('the warp chunk', () => {
 describe('the sharper scan (S-A16-HAPPY-GEOREF-FULL-RES)', () => {
     const DETAILED = { ...SCAN, detail: DETAIL };
 
-    it('happyPath_zoomedPastThePreviewsOwnPixelsTheDetailIsFetchedOnceAndReleasedOnClear @S-A16-HAPPY-GEOREF-FULL-RES', async () => {
+    it('happyPath_zoomedPastThePreviewsOwnPixelsTheTilesFileIsFetchedOnceAndDroppedOnClear @S-A16-HAPPY-GEOREF-FULL-RES', async () => {
         const { shown, files, details } = await setup();
         files.put(DETAIL.path);
 
@@ -244,13 +244,12 @@ describe('the sharper scan (S-A16-HAPPY-GEOREF-FULL-RES)', () => {
         shown.zoomed(DETAILED, 0.8, 1);
         shown.zoomed(DETAILED, 2, 1);
         await settle();
-        expect(details).toEqual([{ url: `blob:${DETAIL.path}`, scale: 1 }]);
+        expect(details).toEqual([{ file: files.objects.get(DETAIL.path), scale: 1 }]);
         shown.zoomed(DETAILED, 4, 1);
         await settle();
         expect(details).toHaveLength(1);
 
         shown.clear();
-        expect(files.released).toContain(`blob:${DETAIL.path}`);
         expect(details.at(-1)).toBeNull();
     });
 
@@ -264,7 +263,7 @@ describe('the sharper scan (S-A16-HAPPY-GEOREF-FULL-RES)', () => {
         expect(details).toEqual([]);
         shown.zoomed(DETAILED, 0.3, 2);
         await settle();
-        expect(details).toEqual([{ url: `blob:${DETAIL.path}`, scale: 1 }]);
+        expect(details).toEqual([{ file: files.objects.get(DETAIL.path), scale: 1 }]);
     });
 
     it('happyPath_theScreensRatioIsAtLeastOneAndOneWithoutAScreen @S-A16-HAPPY-GEOREF-FULL-RES', () => {
@@ -296,6 +295,5 @@ describe('the sharper scan (S-A16-HAPPY-GEOREF-FULL-RES)', () => {
         files.flush();
         await settle();
         expect(details).toEqual([null, null]);
-        expect(files.released).toContain(`blob:${DETAIL.path}`);
     });
 });

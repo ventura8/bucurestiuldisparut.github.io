@@ -3414,3 +3414,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: completing a pair selects it, and `GeorefMap` handed the selection to the drawing tools; the Terra Draw adapter's `select` switches the tools to `select` mode, in which a map click moves the selected point (the single-pointer way to place a pin, WCAG 2.5.7). The `static` mode that Add pairs had set was undone silently.
     - Fix and pin: while adding, `GeorefMap` does not select in the tools (the badges show the selection) and selects again when adding ends (`packages/admin/test/georef/georef-map.test.ts`; `e2e/admin/specs/imagery/georef-ghost.spec.ts`: the pair made before keeps its place).
     - **A port call can change a mode as a side effect: after it, assert the mode the feature relies on, and test the click after the edit, not only the edit.**
+
+582. **A cap on a picture's area still left one JPEG of a quarter gigabyte decoded.**
+    - Seen: 2026-11-12, audit of the georeferencer's sharper scan: capped at 64 million pixels it still decoded to 256 MiB of RGBA in one piece (more for a 2:1 frame), on laptops short of memory.
+    - Cause: an `<img>` decodes the whole file whatever part the canvas draws; a cap only moves the number.
+    - Fix and pin: the sharper scan is JPEG tiles in one file (`scan-tiles.bin`, `scan_tiles.py`); the pane decodes the tiles in view and keeps at most 32 (`scan-tiles.ts`; `scan-tiles.test.ts` pans a 16,384 px scan and counts; `test_publish_scan.py` reads every tile's size; DECISIONS §164).
+    - **A picture larger than the screen is shown in pieces: budget the decoded bytes, and test the count and size of the pieces asked for.**

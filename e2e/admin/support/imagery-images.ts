@@ -87,9 +87,39 @@ export function scanPreviewJpeg(bounds: Bounds): Promise<Buffer> {
     return scanJpeg(bounds, SCAN_PREVIEW_SCALE);
 }
 
-/** `scan-detail.jpg`: the georeferencer's sharper scan, the same world at the scan's own pixels (1600 × 1200). */
-export function scanDetailJpeg(bounds: Bounds): Promise<Buffer> {
-    return scanJpeg(bounds, 1);
+/** The stand-in's tile side: the 1600 × 1200 sharper scan is four columns by three rows (the pipeline's is `SCAN_TILE_PX`). */
+export const SCAN_TILE = 400;
+
+/**
+ * `scan-tiles.bin`: the georeferencer's sharper scan, the same world at the scan's own pixels (1600 × 1200) as JPEG tiles in the
+ * pipeline's layout (`pipeline/src/hcm_pipeline/scan_tiles.py`).
+ */
+export function scanTilesFile(bounds: Bounds): Promise<Buffer> {
+    return once(keyOf('scan-tiles', bounds), async () => {
+        const whole = await scanJpeg(bounds, 1);
+        const tiles: Buffer[] = [];
+        for (let top = 0; top < SCAN_SIZE.height; top += SCAN_TILE) {
+            for (let left = 0; left < SCAN_SIZE.width; left += SCAN_TILE) {
+                const box = {
+                    left,
+                    top,
+                    width: Math.min(SCAN_TILE, SCAN_SIZE.width - left),
+                    height: Math.min(SCAN_TILE, SCAN_SIZE.height - top),
+                };
+                tiles.push(await sharp(whole).extract(box).jpeg({ quality: 80 }).toBuffer());
+            }
+        }
+        const head = Buffer.alloc(24 + 4 * (tiles.length + 1));
+        head.write('HCMT', 0, 'latin1');
+        [1, SCAN_TILE, SCAN_SIZE.width, SCAN_SIZE.height, tiles.length].forEach((value, index) => head.writeUInt32LE(value, 4 + 4 * index));
+        let offset = head.length;
+        for (const [index, tile] of tiles.entries()) {
+            head.writeUInt32LE(offset, 24 + 4 * index);
+            offset += tile.length;
+        }
+        head.writeUInt32LE(offset, 24 + 4 * tiles.length);
+        return Buffer.concat([head, ...tiles]);
+    });
 }
 
 /** The scan at `scale` of its own pixels. */

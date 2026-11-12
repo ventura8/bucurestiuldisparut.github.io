@@ -83,11 +83,14 @@ export type MtsPrecision = (typeof MTS_PRECISIONS)[number];
 /** The scan preview's long side in pixels: what the georeferencer shows (`scan-preview.jpg`). */
 export const SCAN_PREVIEW_MAX_PX = 4096;
 
-/** The sharper scan's long side (`scan-detail.jpg`): written when the scan is longer than the preview, fetched once the pane zooms past it. */
+/** The sharper scan's long side (`scan-tiles.bin`): written when the scan is longer than the preview, fetched once the pane zooms past it. */
 export const SCAN_DETAIL_MAX_PX = 16384;
 
-/** ... and its area in pixels: a browser decodes it whole, so a near-square scan's detail is capped by its area as well. */
+/** ... and its area in pixels (the file's size). */
 export const SCAN_DETAIL_MAX_PIXELS = 64_000_000;
+
+/** The sharper scan's JPEG tiles are this long a side: the scan pane decodes only the tiles it shows (a whole 16384 px JPEG is about 1 GiB). */
+export const SCAN_TILE_PX = 1024;
 
 const pathSchema = z.string().min(1).max(500);
 
@@ -118,7 +121,7 @@ const scanSchema = z.strictObject({
     previewPath: pathSchema,
     /** Preview pixels per scan pixel (at most 1): a GCP's preview position is `pixel × previewScale`. */
     previewScale: z.number().positive().max(1),
-    /** The sharper scan (`scan-detail.jpg`, at most `SCAN_DETAIL_MAX_PX` long; absent on a scan no longer than its preview, or older). */
+    /** The sharper scan (`scan-tiles.bin`, tiles of `SCAN_TILE_PX`, at most `SCAN_DETAIL_MAX_PX` long; absent on a scan no longer than its preview, or older). */
     detailPath: pathSchema.optional(),
     /** Detail pixels per scan pixel (at most 1). */
     detailScale: z.number().positive().max(1).optional(),

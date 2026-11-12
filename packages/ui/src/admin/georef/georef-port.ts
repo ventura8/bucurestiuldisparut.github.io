@@ -76,8 +76,8 @@ export interface GeorefViewState {
     readonly notFound: boolean;
     readonly version: GeorefVersionPort | null;
     readonly scan: ScanImagePort;
-    /** The sharper scan once the pane zoomed past the preview: its address and its pixels per scan pixel. */
-    readonly scanDetail: { readonly url: string; readonly scale: number } | null;
+    /** The sharper scan once the pane zoomed past the preview: its tiles' file and its pixels per scan pixel. */
+    readonly scanDetail: { readonly file: Blob; readonly scale: number } | null;
     readonly reference: ReferenceKindPort | null;
     readonly pairs: readonly Gcp[];
     readonly adding: boolean;

@@ -6118,10 +6118,10 @@
             "area": "admin",
             "path": "happy",
             "title": "Zoomed past the preview's own pixels, the scan pane draws the sharper scan",
-            "asserts": "a scan longer than its 4096 px preview gets a sharper copy (scan-detail.jpg, at most 16384 px long and 64 million pixels, so a near-square upload gets 8000 x 8000) when the pipeline parks it; zoomed past the preview's own device pixels (CSS px x devicePixelRatio: a phone sooner), by the owner or by the linked map, the page fetches it once and the pane draws it instead of the preview at the same place and scale; leaving the page releases it; the warped map preview is drawn 4096 px across (3072 before)",
+            "asserts": "a scan longer than its 4096 px preview gets a sharper copy as JPEG tiles of 1024 px in one file (scan-tiles.bin, at most 16384 px long and 64 million pixels, so a near-square upload gets 8000 x 8000) when the pipeline parks it; zoomed past the preview's own device pixels (CSS px x devicePixelRatio: a phone sooner), by the owner or by the linked map, the page fetches the file once and the pane decodes only the tiles it shows, none larger than a tile, draws them over the preview at the same place and scale and keeps at most 32 decoded (about 128 MiB), closing the rest; leaving the page closes them; the warped map preview is drawn 4096 px across (3072 before)",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner's 1966 Corona frames, 2026-11-12 (DECISIONS-for-review.md, the section on the georeferencer's ghost and sharper scan). Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts, pipeline/tests/unit/test_publish_scan.py, packages/admin/test/georef/georef-pictures.test.ts, packages/admin/test/georef/georef-ghost.test.ts, packages/ui/test/admin/georef/scan-viewer-keep.test.ts."
+            "notes": "The owner's 1966 Corona frames, 2026-11-12 (DECISIONS-for-review.md, the section on the georeferencer's ghost and sharper scan). Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts, pipeline/tests/unit/test_publish_scan.py, packages/admin/test/georef/georef-pictures.test.ts, packages/admin/test/georef/georef-ghost.test.ts, packages/ui/test/admin/georef/scan-viewer-keep.test.ts, packages/ui/test/admin/georef/scan-tiles.test.ts."
         },
         {
             "id": "S-A16-BAD-GEOREF-FULL-RES-NONE",

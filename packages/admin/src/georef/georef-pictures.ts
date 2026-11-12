@@ -95,9 +95,8 @@ export class GeorefPictures {
     readonly #deps: GeorefPicturesDeps;
     #versionId: string | null = null;
     #scanUrl: string | null = null;
-    /** The sharper scan asked for (once a version), and its address once in. */
+    /** The sharper scan asked for (once a version). */
     #detailAsked = false;
-    #detailUrl: string | null = null;
     #scanPicture: Decoded | null = null;
     #target: Picture | null = null;
     #reference: ReferenceKind | null = null;
@@ -138,7 +137,8 @@ export class GeorefPictures {
     /**
      * The scan pane shows `scale` CSS px a scan pixel on a screen of `ratio` device px a CSS px: once a preview pixel covers more than
      * one device pixel, the version's sharper scan is fetched (once a version; a failed fetch leaves the preview, as a version without
-     * one does). The pane draws it from the same threshold (`scan-draw.ts` `pictureOf`).
+     * one does): the file of its tiles (`scan-tiles.bin`), of which the pane decodes only the ones it shows, from the same threshold
+     * (`packages/ui/src/admin/georef/scan-tiles.ts` `detailScene`).
      */
     zoomed(scan: Scan | null, scale: number, ratio: number): void {
         const detail = scan !== null && scale * ratio > scan.previewScale ? scan.detail : null;
@@ -150,13 +150,10 @@ export class GeorefPictures {
 
     async #loadDetail({ path, scale }: NonNullable<Scan['detail']>): Promise<void> {
         const generation = this.#generation;
-        const url = await this.#deps.files.url(path);
-        if (generation !== this.#generation || url === null) {
-            this.#release(url);
-            return;
+        const file = await this.#deps.files.read(path);
+        if (generation === this.#generation && file !== null) {
+            this.#deps.detail({ file, scale });
         }
-        this.#detailUrl = url;
-        this.#deps.detail({ url, scale });
     }
 
     /** Draws the warped preview of `transform` again (soon, once); null removes it. */
@@ -194,9 +191,7 @@ export class GeorefPictures {
         if (this.#scanUrl !== null) {
             this.#deps.files.release(this.#scanUrl);
         }
-        this.#release(this.#detailUrl);
         this.#scanUrl = null;
-        this.#detailUrl = null;
         this.#detailAsked = false;
         this.#scanPicture = null;
         this.#target = null;

@@ -21,7 +21,7 @@ describe('the ghost of a pending pair on the page', () => {
     afterEach(cleanup);
 
     it('happyPath_aPairBegunOnTheMapShowsItsGhostOnTheScanAndSaysSo @S-A16-HAPPY-GEOREF-GHOST', async () => {
-        const detail = { url: 'blob:detail', scale: 1 };
+        const detail = { file: new Blob(['tiles']), scale: 1 };
         const { element } = await georefPage(
             georefState({
                 adding: true,

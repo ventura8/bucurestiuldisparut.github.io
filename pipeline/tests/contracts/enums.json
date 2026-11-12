@@ -120,7 +120,7 @@
         "thumb.webp",
         "align.tif",
         "stitched.jpg",
-        "scan-detail.jpg"
+        "scan-tiles.bin"
     ],
     "LEASE_SECONDS": 600,
     "HEARTBEAT_SECONDS": 60,
@@ -128,6 +128,7 @@
     "SCAN_PREVIEW_MAX_PX": 4096,
     "SCAN_DETAIL_MAX_PX": 16384,
     "SCAN_DETAIL_MAX_PIXELS": 64000000,
+    "SCAN_TILE_PX": 1024,
     "STUDIO_MAX_BYTES": 300000000,
     "SENSOR_SPECS": {
         "KH-4": {

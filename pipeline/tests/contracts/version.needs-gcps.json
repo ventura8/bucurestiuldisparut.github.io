@@ -20,7 +20,7 @@
         "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "previewPath": "rasters/bucharest/planul-bucurestilor-1911/up-plan1911/scan-preview.jpg",
         "previewScale": 0.5,
-        "detailPath": "rasters/bucharest/planul-bucurestilor-1911/up-plan1911/scan-detail.jpg",
+        "detailPath": "rasters/bucharest/planul-bucurestilor-1911/up-plan1911/scan-tiles.bin",
         "detailScale": 1
     },
     "reference": {
