@@ -27,6 +27,7 @@ const EXPORTS = {
         'translate',
     ],
     adminI18n: ['translateAdminContent', 'translateAdminSetup', 'translateAdminShell'],
+    viewerExtras: ['PHOTO_VIEWS', 'streetViewUrl'],
     geo: [
         'EARTH_RADIUS_M',
         'MAX_MERCATOR_LAT',
@@ -63,7 +64,6 @@ const EXPORTS = {
         'isHostOf',
         'isHttpsUrl',
         'isRelativeUrl',
-        'streetViewUrl',
         'toHttpsUrl',
         'linkTargets',
         'markdownToPlainText',
@@ -85,7 +85,6 @@ const EXPORTS = {
         'MAX_LINKS',
         'MAX_PHOTOS',
         'PHOTO_LOCATION_SLACK_DEG',
-        'PHOTO_VIEWS',
         'THEME_SCHEMES',
         'citySchema',
         'layerSchema',

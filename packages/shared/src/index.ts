@@ -13,6 +13,8 @@ export type { LogData, LogLevel, LogRecord, LogSink, Logger, LoggerOptions } fro
 
 export { EARTH_RADIUS_M, MAX_MERCATOR_LAT, bearingDelta, clamp, roundTo, toDegrees, toRadians, wrapBearing } from './geo/math.js';
 export type { LngLat } from './geo/math.js';
+export { streetViewUrl } from './geo/street-view.js';
+export { PHOTO_VIEWS, type PhotoVersion, type PhotoView } from './schemas/manifest.js';
 export { bearingBetween, destinationPoint, distanceMeters } from './geo/bearing.js';
 export { DEFAULT_FOV, MAX_FOV, MIN_FOV, angularSpan, coneFromPolygon, conePolygon, findConeApex, openRing } from './geo/cone.js';
 export type { MeasuredCone, ViewCone } from './geo/cone.js';
@@ -23,7 +25,7 @@ export { DEFAULT_COMPARE_POSITION, DEFAULT_HASH_LIMITS, MAX_HASH_LENGTH, MAX_OVE
 export type { CompareState, DecodedHash, HashLimits, HashState, MapView } from './url/hash.js';
 
 export { formatPhotoDate, monthNames } from './text/photo-date.js';
-export { MAX_URL_LENGTH, isCspOrigin, isHostOf, isHttpsUrl, isRelativeUrl, streetViewUrl, toHttpsUrl } from './text/urls.js';
+export { MAX_URL_LENGTH, isCspOrigin, isHostOf, isHttpsUrl, isRelativeUrl, toHttpsUrl } from './text/urls.js';
 export { linkTargets, markdownToPlainText, parseMarkdown } from './text/markdown.js';
 export { redactText } from './text/redact.js';
 export type { InlineNode, MarkdownDocument, MarkdownParagraph } from './text/markdown.js';
@@ -38,7 +40,6 @@ export {
     MANIFEST_VERSION,
     MAX_LAYERS,
     MAX_PHOTOS,
-    PHOTO_VIEWS,
     THEME_SCHEMES,
     citySchema,
     layerSchema,
@@ -83,8 +84,6 @@ export type {
     UnplacedPhoto,
     PhotoImage,
     PhotoLink,
-    PhotoVersion,
-    PhotoView,
     Theme,
     ThemeScheme,
     ThemeTokens,
@@ -351,8 +350,7 @@ export {
 export type { AuditedDocument, PhotoUpload, PhotoVariant } from './schemas/paths.js';
 export { formatPath, isValidationCode, parseManifestJson, toValidationIssues, validate, validateManifest } from './schemas/validation.js';
 export type { Schema, ValidationIssue, ValidationResult } from './schemas/validation.js';
-export { checkManifestCompat, compareVersions, parseVersion } from './schemas/compat.js';
-export type { ManifestCompat } from './schemas/compat.js';
+export { checkManifestCompat, compareVersions, parseVersion, type ManifestCompat } from './schemas/compat.js';
 
 export {
     DEFAULT_PHOTOS_OPACITY,
@@ -413,8 +411,7 @@ export type {
     WebVitalName,
 } from './telemetry/field-events.js';
 export { VIEWER_EVENT_PARAMS, createViewerGuard, type ViewerEventName } from './telemetry/viewer-events.js';
-export { ADMIN_EVENT_PARAMS, createAdminGuard } from './telemetry/admin-events.js';
-export type { AdminEventName } from './telemetry/admin-events.js';
+export { ADMIN_EVENT_PARAMS, createAdminGuard, type AdminEventName } from './telemetry/admin-events.js';
 export { observeWebVitals, sanitizeTarget, shortTarget, vitalParams } from './telemetry/web-vitals.js';
 export type { FieldChunk, VitalAttribution, VitalMetric, VitalObserver, VitalOptions } from './telemetry/web-vitals.js';
 export * from './migration/index.js';
