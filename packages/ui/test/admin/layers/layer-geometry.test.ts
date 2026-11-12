@@ -49,7 +49,7 @@ describe('<hcm-layers-page>: the image and geometry tools', () => {
         expect(links).toEqual([
             ['#/imagery/version/corona-v2', 'A new version is under way: open it'],
             ['#/imagery/replace/corona', 'Replace the image'],
-            ['#/georef/corona-v1', 'Georeference again'],
+            ['#/georef/corona-v1', 'Edit points'],
         ]);
         expect(calls(layers)).toEqual(['crop']);
         expect(await axeViolations(element)).toEqual([]);

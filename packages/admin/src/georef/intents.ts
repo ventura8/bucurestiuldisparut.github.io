@@ -4,18 +4,23 @@
 import { clamp, type Gcp, type GeorefTransform, type LayerVersionDoc } from '@hcm/shared';
 
 import type { LiveDoc } from '../content/doc.js';
+import type { BaseLayers } from './base-layers.js';
 import type { Store } from '../state/store.js';
 import type { GeorefMap } from './georef-map.js';
 import type { GeorefPictures } from './georef-pictures.js';
 import type { PairHistory } from './history.js';
 import type { LinkedPanes } from './link.js';
-import { moveGeo, togglePair, withoutPair, type GeoPosition, type PixelPosition } from './pairs.js';
+import { moveGeo, togglePair, type GeoPosition, type PixelPosition } from './pairs.js';
 import type { PersistBase } from './persist.js';
+import { removePair, type RemovingHost } from './removing.js';
 import type { GeorefIntents, GeorefState, ReferenceKind } from './state.js';
 import type { Suggestions } from './suggestions.js';
 
 /** Collaborators and actions the store exposes to build its intents object. */
 export interface GeorefIntentActions {
+    readonly services: RemovingHost['services'];
+    /** What the map pane shows under the pairs (`./base-layers.ts`). */
+    readonly bases: Pick<BaseLayers, 'choose'>;
     readonly cell: Store<GeorefState>;
     readonly map: GeorefMap;
     readonly pictures: GeorefPictures;
@@ -27,6 +32,10 @@ export interface GeorefIntentActions {
     edit(pairs: readonly Gcp[], remember?: boolean): void;
     refit(pairs: readonly Gcp[], transform: GeorefTransform): void;
     pickScan(pixel: PixelPosition): void;
+    /** The half pair changed outside a click (Add pairs toggled): the map's cross and the ghost follow. */
+    syncHalf(): void;
+    /** The scan pane shows `scale` CSS px a scan pixel (the sharper scan past the preview's own). */
+    zoomed(scale: number): void;
     pickMap(geo: GeoPosition): void;
     addAtCentres(pixel: PixelPosition): void;
     movePixel(id: string, pixel: PixelPosition): void;
@@ -68,6 +77,7 @@ function menuIntents(actions: GeorefIntentActions): Pick<GeorefIntents, 'addAt' 
             if (!actions.cell.state.adding) {
                 actions.cell.update({ adding: true, half: null });
                 actions.map.setAdding(true);
+                actions.syncHalf();
             }
             if ('pixel' in end) {
                 actions.pickScan(end.pixel);
@@ -96,6 +106,7 @@ function pairIntents(
             // A picked-up point is put back: both panes take the new mode together.
             actions.cell.update({ adding, half: null, moving: null });
             actions.map.setAdding(adding);
+            actions.syncHalf();
         },
         pickScan: (pixel) => {
             actions.pickScan(pixel);
@@ -113,7 +124,10 @@ function pairIntents(
             actions.select(id);
         },
         remove: (id) => {
-            actions.edit(withoutPair(pairs(), id));
+            const edit = (next: readonly Gcp[]): void => {
+                actions.edit(next);
+            };
+            removePair({ services: actions.services, pairs, edit }, id);
         },
         toggle: (id) => {
             actions.edit(togglePair(pairs(), id));
@@ -144,16 +158,26 @@ type PageIntent = Exclude<
     | 'mapTarget'
     | 'setLinked'
     | 'scanMoved'
+    | 'setRotateLinked'
+    | 'rotateMap'
 >;
 
 /** Link the views, and the scan pane's moves for the linked map. */
-function linkIntents(actions: GeorefIntentActions): Pick<GeorefIntents, 'setLinked' | 'scanMoved'> {
+function linkIntents(actions: GeorefIntentActions): Pick<GeorefIntents, 'setLinked' | 'scanMoved' | 'setRotateLinked' | 'rotateMap'> {
     return {
         setLinked: (linked) => {
             actions.cell.update({ linked });
         },
+        setRotateLinked: (rotateLinked) => {
+            actions.cell.update({ rotateLinked });
+        },
+        rotateMap: (degrees) => {
+            actions.map.rotateBy(degrees);
+        },
         scanMoved: (camera) => {
+            actions.cell.update({ scanAngle: camera.angle ?? actions.cell.state.scanAngle });
             actions.link.scan(camera);
+            actions.zoomed(camera.scale);
         },
     };
 }
@@ -168,6 +192,9 @@ function pageIntents(actions: GeorefIntentActions): Pick<GeorefIntents, PageInte
         },
         setReference: (kind) => {
             actions.setReference(kind);
+        },
+        setBase: (id) => {
+            actions.bases.choose(id);
         },
         setPreviewOpacity: (percent) => {
             const previewOpacity = clamp(Math.round(percent), 0, 100) / 100;

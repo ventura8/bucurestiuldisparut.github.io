@@ -18,7 +18,7 @@ import {
     type Bounds,
     type LatLng,
 } from './imagery-geometry.js';
-import { referenceOsmPng, referenceS2Jpeg, scanPreviewJpeg, smallTiff, warpedPreviewPng } from './imagery-images.js';
+import { referenceOsmPng, referenceS2Jpeg, scanPreviewJpeg, scanTilesFile, smallTiff, warpedPreviewPng } from './imagery-images.js';
 import type { Run } from './imagery-run.js';
 import { joinReportOf } from './imagery-standin-join.js';
 import { recalibrated } from './imagery-standin-recalibrate.js';
@@ -60,13 +60,13 @@ async function writeReferences(run: Run): Promise<void> {
     await run.stepEnded('reference', 'done', recorded(s2));
 }
 
-/** `scan.tif` and its preview, recorded on the version (`locate`, `inspect`). */
+/** `scan.tif`, its preview and its sharper scan's tiles (the scan is longer than its preview), recorded on the version (`locate`, `inspect`). */
 async function writeScan(run: Run): Promise<StoredObject> {
     const scan = await store(run, 'scan.tif', await smallTiff(140), 'image/tiff');
     const preview = await store(run, 'scan-preview.jpg', await scanPreviewJpeg(run.bounds), 'image/jpeg');
-    await run.writeVersion({
-        scan: { path: scan.path, ...SCAN_SIZE, sha256: scan.sha256, previewPath: preview.path, previewScale: SCAN_PREVIEW_SCALE },
-    });
+    const detail = await store(run, 'scan-tiles.bin', await scanTilesFile(run.bounds), 'application/octet-stream');
+    const previewed = { previewPath: preview.path, previewScale: SCAN_PREVIEW_SCALE, detailPath: detail.path, detailScale: 1 };
+    await run.writeVersion({ scan: { path: scan.path, ...SCAN_SIZE, sha256: scan.sha256, ...previewed } });
     return scan;
 }
 
