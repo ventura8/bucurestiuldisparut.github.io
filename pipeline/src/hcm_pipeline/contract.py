@@ -112,6 +112,9 @@ VERSION_FILES: Final = (
     "thumb.webp",
     "align.tif",
     "stitched.jpg",
+    "layout.json",
+    "thumbs.jpg",
+    "seams.jpg",
 )
 LEASE_SECONDS: Final = 600
 HEARTBEAT_SECONDS: Final = 60
