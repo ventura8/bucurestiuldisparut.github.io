@@ -5380,6 +5380,39 @@
             "notes": "Review of 2026-11-06, integrated. Tests: functions/test/imagery/retry.test.ts; pipeline/tests/unit/test_runner.py."
         },
         {
+            "id": "S-A12-HAPPY-RETRY-STOPPED-PAIRS",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A stopped archive series tried again places itself from the owner's saved pairs",
+            "asserts": "pairs saved on a parked series, then Stop (cancelRequested) ended it -> imagery.retry queues it without cancelRequested, attempt 0, every step pending; its version is processing with georef method gcps and the pairs kept; the tick's pass over cancellations leaves it queued; place warps it through the pairs and never runs the class placer; the georeferencer opens the parked series editable with the pairs",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "2026-11-12 live bug, the 1914 SOCEC series (docs/LESSONS.md 565). Tests: functions/test/imagery/retry-stopped.test.ts; pipeline/tests/unit/test_placing_owner.py; packages/admin/test/georef/georef.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-RETRY-STOPPED-DISMISSED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A stopped series whose version was dismissed is not brought back, its Stop kept",
+            "asserts": "a stopped archive series whose version became rejected -> imagery.retry refuses with apiError.imagery.versionState; the job stays cancelled with cancelRequested, the version rejected",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "2026-11-12 (docs/LESSONS.md 565). In functions/test/imagery/retry-stopped.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-RETRY-STOPPED-PLACING",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A retried series still placing itself is read-only in the georeferencer",
+            "asserts": "an archive series' version processing (the retry runs, the pairs kept) -> the georeferencer opens it with editable false; only a version waiting for points (needs_gcps) takes new pairs",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "2026-11-12 (docs/LESSONS.md 565). In packages/admin/test/georef/georef.test.ts."
+        },
+        {
             "id": "S-A12-BAD-FAILED-HOLDS-ID",
             "behaviour": "A12",
             "area": "admin",

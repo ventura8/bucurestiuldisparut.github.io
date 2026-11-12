@@ -128,3 +128,27 @@ def test_bad_path_only_the_owners_own_pairs_skip_the_placer() -> None:
     assert owner_pairs(None) is None
     assert owner_pairs(GeorefInfo("gcps", "affine")) is None
     assert owner_pairs(GeorefInfo("corners", "affine", (Gcp("a", 0, 0, 44.4, 26.1),))) is None
+
+
+class _NeverRun:
+    """A class placer the owner's pairs must spare: it would only park the series again."""
+
+    def place(self, ctx: JobContext) -> Waiting:
+        raise AssertionError(f"the class placer ran on {ctx.job.id} although the owner's pairs were saved")
+
+
+def test_happy_path_a_stopped_series_tried_again_places_from_the_kept_pairs(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-A12-HAPPY-RETRY-STOPPED-PAIRS"""
+    # docs/LESSONS.md 565: the Stop deleted the job's work files (`stitched.tif`) and the retry set the version `processing`
+    # with its `georef` and `help` kept; `place` runs from the start of the walk again.
+    ctx = parked(world, tmp_path, "affine", 8, keep_stitched=False)
+    world.store.update(world.version_path(), {"state": "processing"})
+
+    result = PlaceStep({"grid": _NeverRun()}).run(ctx)
+
+    assert isinstance(result, Done)
+    version = world.version()
+    assert version["state"] == "processing"
+    report = version["archive"]
+    assert isinstance(report, dict)
+    assert report["method"] == "gcps"

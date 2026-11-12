@@ -179,7 +179,7 @@ A KH-9 panoramic frame often holds only part of a city, so M8 joins one date's f
 | `awaiting_gcps` | the scan waits for the admin's points | `queued` (`imagery.saveGcps`), `cancelled` |
 | `awaiting_approval` | rendered; waits for Approve, a compute-unit choice, or the 1st of next month | `mts_processing` (publish), `cancelled` (reject or cancel) |
 | `mts_processing` | Mapbox processes the tileset (cannot be cancelled: `apiError.imagery.mapboxFinishing` in the log) | `succeeded`, `failed` |
-| `succeeded`, `failed`, `cancelled` | ended (`FINISHED_JOB_STATUSES`) | `queued` again only through `imagery.retry` from `failed` |
+| `succeeded`, `failed`, `cancelled` | ended (`FINISHED_JOB_STATUSES`) | `queued` again only through `imagery.retry` from `failed` or `cancelled` (a Stop, 2026-11-12) |
 
 Limits (`packages/shared/src/api/imagery.ts`, done): `JOBS_PER_DAY` 10 raster jobs a day per project, `RUNNING_JOBS_MAX`
 2 at once, `JOB_MAX_ATTEMPTS` 3, `LEASE_SECONDS` 600 renewed every `HEARTBEAT_SECONDS` 60, `STARTING_STALE_MINUTES` 10,
@@ -425,6 +425,11 @@ belong to the dispatcher and the lease, so an execution never races its own retr
   week. A failure at a publish step goes back to the publisher, not to Cloud Run. A failure of a runner older than the
   job's type (`apiError.imagery.pipelineOutdated`, or the legacy `apiError.invalidRequest` "the pipeline does not run <type> jobs":
   `failedOutdated`) spent no real attempt: its retry is allowed whatever `attempt` is, and sets it back to 0 (2026-11-09).
+  A job the owner stopped (`cancelled`, its version `cancelled`) is retried the same way, its `attempt` back to 0, and the retried
+  job carries nothing the run or the Stop left: no `cancelRequested` (kept, the dispatcher and every worker's claim pass the job over
+  and the tick cancels it again), no `waitReason`, no `placingPoints`, no `workerOverdueAt` (`docs/LESSONS.md` 565, the 1914 SOCEC series). The version
+  keeps what the owner gave it: an archive series with saved pairs (`georef`, `method: 'gcps'`) places itself from them in `place`
+  (`placing/owner.py`), as after `imagery.saveGcps` (S-A12-HAPPY-RETRY-STOPPED-PAIRS).
 - **Locate again** (`imagery.locateAgain`, a city editor; S-A69-*; the owner's live use of 2026-11-07): a USGS frame waiting for points
   (`needs_gcps`, its job `awaiting_gcps`, not asked to stop) goes back to `queued` from `stitch`, which Retry cannot do (it takes failed
   jobs only): `fetch` and `extract` stay as recorded, `stitch` (the reason of finding 78: an older pipeline's `frame.json` and preview
