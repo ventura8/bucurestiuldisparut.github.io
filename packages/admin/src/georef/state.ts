@@ -95,6 +95,13 @@ export interface ScanDetail {
     readonly scale: number;
 }
 
+/** A published layer the map pane can show under the pairs. */
+export interface BaseLayerItem {
+    readonly id: string;
+    readonly label: LayerVersionDoc['label'];
+    readonly year: number;
+}
+
 export interface GeorefState {
     readonly versionId: string | null;
     readonly doc: Omit<DocState<never>, 'doc'>;
@@ -139,6 +146,10 @@ export interface GeorefState {
     readonly linked: boolean;
     /** Where the linked map last put the scan pane (a new object each time; the pane moves without answering). */
     readonly scanFollow: ScanCamera | null;
+    /** The city's published layers, oldest first: what the map pane can show besides the reference. */
+    readonly baseLayers: readonly BaseLayerItem[];
+    /** The published layer the map pane shows under the pairs (null: the reference alone); kept while the admin is open. */
+    readonly base: string | null;
 }
 
 const EMPTY_FIT: FitView = {
@@ -159,7 +170,7 @@ export const INITIAL_GEOREF: GeorefState = {
         refusal: null,
     },
     ...{ transform: 'affine', saved: null, showPreview: true, previewOpacity: 0.7, map: 'none', pane: 'scan', suggestions: NO_SUGGESTIONS },
-    ...{ linked: true, scanFollow: null },
+    ...{ linked: true, scanFollow: null, baseLayers: [], base: null },
 };
 
 export interface GeorefIntents {
@@ -194,6 +205,8 @@ export interface GeorefIntents {
     selectSuggestion(id: string | null): void;
     setTransform(kind: GeorefTransform): void;
     setReference(kind: ReferenceKind): void;
+    /** The map pane shows a published layer under the pairs (null: the reference alone). */
+    setBase(id: string | null): void;
     setPreviewOpacity(percent: number): void;
     togglePreview(show: boolean): void;
     setPane(pane: 'scan' | 'map'): void;

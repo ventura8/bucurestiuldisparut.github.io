@@ -18,11 +18,13 @@ import type { ContentServices } from '../content/services.js';
 import { frameOf, type CityFrame } from '../layers/map-session.js';
 import { Store } from '../state/store.js';
 import { loadGeorefExtras, publishedOf, type ExtrasLoader } from './extras.js';
+import { BaseLayers } from './base-layers.js';
 import { baseOf, fitOf, ownFitOf, shownFit, type OwnFit } from './fit-view.js';
 import { GeorefMap, referenceFrame } from './georef-map.js';
 import { deviceRatio, georefPicturesOf, type GeorefPictures } from './georef-pictures.js';
 import { showGhost, type GhostDeps } from './ghosts.js';
 import { PairHistory } from './history.js';
+import { removePair, type RemovingHost } from './removing.js';
 import { moveGeo, movePixel, roundPixel, samePairs, withPair, type GeoPosition, type PixelPosition } from './pairs.js';
 import { georefIntentsOf, type GeorefIntentActions } from './intents.js';
 import { ANIMATION_FRAME, linkedPanesOf, type FrameScheduler, type LinkedPanes } from './link.js';
@@ -49,6 +51,8 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     readonly #link: LinkedPanes;
     readonly #ghost: GhostDeps;
     readonly #moving: MovingHost;
+    readonly #removing: RemovingHost;
+    readonly #bases: BaseLayers;
     #base: { readonly pairs: readonly Gcp[]; readonly transform: GeorefTransform } = { pairs: [], transform: 'affine' };
     readonly #history = new PairHistory();
     #transform: FittedTransform | null = null;
@@ -118,6 +122,11 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
                 this.#edit(pairs);
             },
         };
+        this.#removing = { services, pairs: () => this.#cell.state.pairs, edit: this.#moving.edit };
+        const raised = (): void => {
+            this.#warp();
+        };
+        this.#bases = new BaseLayers({ services, cell: this.#cell, map: this.#map, raised });
         this.intents = georefIntentsOf(this.#intentActions());
     }
 
@@ -136,6 +145,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         }
         this.close();
         this.#city.show(FIRESTORE_PATHS.city(this.#services.cityId));
+        this.#bases.open();
         if (isId(id)) {
             this.#cell.update({ versionId: id });
             this.#doc.show(FIRESTORE_PATHS.layerVersion(this.#services.cityId, id));
@@ -147,6 +157,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     close(): void {
         this.#doc.stop();
         this.#city.stop();
+        this.#bases.close();
         this.#map.detach();
         this.#pictures.clear();
         this.#suggestions.reset();
@@ -155,7 +166,8 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         this.#history.clear();
         this.#transform = null;
         this.#own = null;
-        this.#cell.update({ ...INITIAL_GEOREF, thresholdM: this.#cell.state.thresholdM, linked: this.#cell.state.linked });
+        const { thresholdM, linked, base } = this.#cell.state;
+        this.#cell.update({ ...INITIAL_GEOREF, thresholdM, linked, base });
     }
 
     hasUnsavedChanges(): boolean {
@@ -201,11 +213,17 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
             select: (id) => {
                 this.#select(id);
             },
+            remove: (id) => {
+                removePair(this.#removing, id);
+            },
             escape: () => {
                 this.#escape();
             },
             setReference: (kind) => {
                 this.#setReference(kind);
+            },
+            setBase: (id) => {
+                this.#bases.choose(id);
             },
             warp: () => {
                 this.#warp();

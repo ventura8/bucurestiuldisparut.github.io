@@ -233,6 +233,18 @@ export const IMAGERY_STATES = {
         title: 'Georeferencer: a pair begun on the scan, the dashed ring where the pairs expect it on the still map, and the hint',
         visit: 'specs/imagery/georef-ghost.spec.ts',
     },
+    'georef.pair-removed': {
+        title: 'Georeferencer: the chosen pair removed with the button beside the panes, the notice with Undo',
+        visit: 'specs/imagery/georef-ghost.spec.ts',
+    },
+    'georef.edit-published': {
+        title: 'Georeferencer: Edit points on the version the map shows, the note on what saving does',
+        visit: 'specs/imagery/layer-geometry.spec.ts',
+    },
+    'georef.map-shows': {
+        title: 'Georeferencer: the map pane showing a published layer under the pairs, chosen from The map shows',
+        visit: 'specs/imagery/layer-geometry.spec.ts',
+    },
     'georef.refitted': {
         title: "Georeferencer: a fitted version's pairs edited, the figures said to be a refit",
         visit: 'specs/imagery/georeferencer.spec.ts',

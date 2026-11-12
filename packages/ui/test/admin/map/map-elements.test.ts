@@ -84,6 +84,12 @@ describe('<hcm-admin-map>', () => {
         key('ArrowUp');
         key('ArrowDown', true);
         key('Enter');
+        // Delete and Backspace ask the page to remove its chosen point; any other key asks nothing.
+        const removals = events<Record<string, never>>(element, 'hcm-map-delete');
+        key('Delete');
+        key('Backspace');
+        key('Enter');
+        expect(removals).toHaveLength(2);
 
         expect(nudges).toEqual([
             { dx: -1, dy: 0 },

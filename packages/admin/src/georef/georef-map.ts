@@ -18,7 +18,7 @@ import {
     type MapView,
 } from '@hcm/shared';
 import { PAIR_HIT_RADIUS, type BadgeTone } from '@hcm/ui/admin/georef/marker-badge';
-import type { Unsubscribe } from '@hcm/ui/map';
+import type { RasterLayerSpec, Unsubscribe } from '@hcm/ui/map';
 import type { DrawChange, MapDrawPort } from '@hcm/ui/map/draw';
 
 import { PictureOverlays } from '../imagery/overlay.js';
@@ -72,6 +72,8 @@ export class GeorefMap {
     #crosshair = false;
     #tones: Readonly<Record<string, BadgeTone>> = {};
     #adding = false;
+    /** The published layer under the pairs (null: none). */
+    #base: RasterLayerSpec | null = null;
     /** A point of the map is being dragged (Terra Draw's change not yet settled): the linked views stand still. */
     dragging = false;
     /** Bumped by every attach and detach: a slower create of an older host is dropped. */
@@ -222,6 +224,12 @@ export class GeorefMap {
         this.#paintBadges();
     }
 
+    /** The map pane's choice: a published layer under the pairs and the pictures (null: none), on this one map. */
+    showBase(spec: RasterLayerSpec | null): void {
+        this.#base = spec;
+        this.#handle?.preview.show({ layers: spec === null ? [] : [spec] });
+    }
+
     /**
      * While adding pairs a click on the map is a place, not a selection: the points stand still, and the selected pair is
      * the drawing tools' selection again only once adding ends (selecting would switch them to `select`, where a click moves it).
@@ -317,6 +325,8 @@ export class GeorefMap {
             return;
         }
         this.#handle = result.map;
+        // Before the pictures (the status brings them): they stay above the layer.
+        this.showBase(this.#base);
         this.#deps.status('ready');
         this.#listeners.push(
             result.map.port.onMapClick(([lng, lat]) => {

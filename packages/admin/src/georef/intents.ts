@@ -9,7 +9,7 @@ import type { GeorefMap } from './georef-map.js';
 import type { GeorefPictures } from './georef-pictures.js';
 import type { PairHistory } from './history.js';
 import type { LinkedPanes } from './link.js';
-import { moveGeo, togglePair, withoutPair, type GeoPosition, type PixelPosition } from './pairs.js';
+import { moveGeo, togglePair, type GeoPosition, type PixelPosition } from './pairs.js';
 import type { PersistBase } from './persist.js';
 import type { GeorefIntents, GeorefState, ReferenceKind } from './state.js';
 import type { Suggestions } from './suggestions.js';
@@ -35,8 +35,11 @@ export interface GeorefIntentActions {
     addAtCentres(pixel: PixelPosition): void;
     movePixel(id: string, pixel: PixelPosition): void;
     select(id: string | null): void;
+    /** Removes a pair and says so, with Undo (`./removing.ts`). */
+    remove(id: string): void;
     escape(): void;
     setReference(kind: ReferenceKind): void;
+    setBase(id: string | null): void;
     warp(): void;
     showSuggestions(): void;
     save(): Promise<boolean>;
@@ -119,7 +122,7 @@ function pairIntents(
             actions.select(id);
         },
         remove: (id) => {
-            actions.edit(withoutPair(pairs(), id));
+            actions.remove(id);
         },
         toggle: (id) => {
             actions.edit(togglePair(pairs(), id));
@@ -175,6 +178,9 @@ function pageIntents(actions: GeorefIntentActions): Pick<GeorefIntents, PageInte
         },
         setReference: (kind) => {
             actions.setReference(kind);
+        },
+        setBase: (id) => {
+            actions.setBase(id);
         },
         setPreviewOpacity: (percent) => {
             const previewOpacity = clamp(Math.round(percent), 0, 100) / 100;

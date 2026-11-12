@@ -77,6 +77,9 @@ export interface GeorefViewState {
     readonly version: GeorefVersionPort | null;
     readonly scan: ScanImagePort;
     /** The sharper scan once the pane zoomed past the preview: its tiles' file and its pixels per scan pixel. */
+    /** The city's published layers, oldest first, and the one the map pane shows under the pairs (null: the reference alone). */
+    readonly baseLayers: readonly { readonly id: string; readonly label: GeorefVersionPort['label']; readonly year: number }[];
+    readonly base: string | null;
     readonly scanDetail: { readonly file: Blob; readonly scale: number } | null;
     readonly reference: ReferenceKindPort | null;
     readonly pairs: readonly Gcp[];
@@ -117,6 +120,8 @@ export interface GeorefIntentsPort {
     moveGeo(id: string, geo: GeoPositionPort): void;
     select(id: string | null): void;
     remove(id: string): void;
+    /** The map pane shows a published layer under the pairs (null: the reference alone). */
+    setBase(id: string | null): void;
     toggle(id: string): void;
     cancelHalf(): void;
     /** The context menu's Add a point here: Add pairs on, then that end exactly as a click there. */

@@ -5,7 +5,7 @@ import type { Page } from '@playwright/test';
 import { expectStateSound } from '../../../support/state-check.js';
 import { adminVisit } from '../../../tour/states.js';
 import { contentFlowBudget } from '../../../../packages/admin/src/content/budgets.js';
-import { expectColourAt, mapFraction, pixelsOfColour } from '../../../support/map.js';
+import { expectColourAt, mapFacts, mapFraction, pixelsOfColour } from '../../../support/map.js';
 import { FUNCTIONS_TIMEOUT_MS } from '../../support/emulators.js';
 import { awaitManifest, entry, openPublicViewer } from '../../support/flows.js';
 import { georeferencedTiff, writeUpload } from '../../support/imagery-files.js';
@@ -38,7 +38,7 @@ test.describe.configure({ lock: ADMIN_LOCK });
  * `regeoref` job (the stand-in runner of the e2e world), approved (what it kept holds part of the city, M9) and published: the layer's bounds,
  * the manifest's and the viewer's tiles end at the polygon. Replace the image is the Imagery area's upload for the layer:
  * the layer keeps its tiles while the new version waits (for Approve, then for the compute-unit guard's choice), and
- * points to it once published; Georeference again saves points in the georeferencer as a `regeoref` job of the layer.
+ * points to it once published; Edit points saves points in the georeferencer as a `regeoref` job of the layer.
  */
 test.use({ persona: 'owner', mapOwner: 'owner' });
 
@@ -238,7 +238,7 @@ test(
 
 test(
     'A published layer is re-georeferenced without losing its tiles',
-    { tag: '@S-A16-HAPPY-REGEOREF-LAYER' },
+    { tag: ['@S-A16-HAPPY-REGEOREF-LAYER', '@S-A16-HAPPY-EDIT-POINTS-PUBLISHED', '@S-A16-HAPPY-GEOREF-MAP-SHOWS'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
         test.setTimeout(480_000);
         const fixtures = { emulators: adminWorld.emulators, api: mockApiRequest, upstream };
@@ -247,11 +247,22 @@ test(
         // The new points' run waits before rendering, so the version stays on its way while the layer is looked at.
         await imagery.script({ attempts: [{ outcome: 'over', holdAt: 'warp' }] });
 
-        // Georeference again: the georeferencer on the layer's current version; one more pair, Save.
+        // Edit points: the georeferencer on the layer's current version; one more pair, Save.
         await page.goto(adminPath(lang, `layers/${layer.id}`));
         await page.getByRole('link', { name: imageryText(lang, 'adminContent.imagery.layer.regeoref') }).click();
         await expect(page).toHaveURL(new RegExp(`#/georef/${first}$`));
         await georeferencerReady(page, lang);
+        // The version is on the map: the page says what saving does.
+        await expect(page.locator('[data-state="published-note"]')).toHaveText(georefText(lang, 'adminContent.georef.publishedNote'));
+        await expectStateSound(page, adminVisit('georef.edit-published', lang));
+        // The map shows: the published layer itself goes under the pairs, on the page's one map; back to OpenStreetMap, it is gone.
+        const shows = page.getByLabel(georefText(lang, 'adminContent.georef.shows.map'));
+        await shows.selectOption(`layer:${layer.id}`);
+        await expect(page.locator('.map-pane .note')).toContainText('(1966)');
+        await expect.poll(async () => (await mapFacts(page)).layers.some((id) => id.includes(layer.id))).toBe(true);
+        await expectStateSound(page, adminVisit('georef.map-shows', lang));
+        await shows.selectOption('reference:osm');
+        await expect.poll(async () => (await mapFacts(page)).layers.some((id) => id.includes(layer.id))).toBe(false);
         await addPair(page, lang, landmark(0));
         await page.getByRole('button', { name: georefText(lang, 'adminContent.georef.save') }).click();
         await expect(page).toHaveURL(/#\/imagery\/version\//, { timeout: FUNCTIONS_TIMEOUT_MS });

@@ -266,6 +266,8 @@ export function georefState(overrides: Partial<GeorefViewState> = {}): GeorefVie
             linked: true,
             scanFollow: null,
             scanDetail: null,
+            baseLayers: [],
+            base: null,
         },
         pairs: [
             { id: 'g1', pixel: { x: 100, y: 100 }, geo: { lat: 44.5, lng: 26 }, enabled: true, origin: 'auto', score: 0.9 },

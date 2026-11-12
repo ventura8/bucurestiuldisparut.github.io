@@ -378,3 +378,53 @@ test(
         expect(await paneDetail(page)).toBeNull();
     },
 );
+
+test(
+    'The selected pair is removed from beside the panes and from the map with Delete, and the notice puts it back',
+    { tag: '@S-A16-HAPPY-GEOREF-REMOVE-UNDO' },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        await opened({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, adminWorld.accounts.owner.uid, page, lang);
+        const pairName = (number: number): string => georefText(lang, 'adminContent.georef.pairName', { number: String(number) });
+        const removed = (number: number) =>
+            page
+                .locator('hcm-snackbar')
+                .filter({ hasText: georefText(lang, 'adminContent.georef.pairRemoved', { number: String(number) }) });
+
+        // Pair 2 chosen in the table: its Delete button is beside the panes.
+        await page.getByRole('button', { name: pairName(2), exact: true }).click();
+        await page.getByRole('button', { name: georefText(lang, 'adminContent.georef.deleteSelected', { number: '2' }) }).click();
+        await expect(pairRows(page, lang)).toHaveCount(3);
+        await expect(removed(2)).toBeVisible();
+        await expectStateSound(page, adminVisit('georef.pair-removed', lang));
+        // Undo in the notice: the pair is back, second in the list, and nothing is left to save.
+        await removed(2)
+            .getByRole('button', { name: georefText(lang, 'adminContent.georef.pairRemovedUndo') })
+            .click();
+        await expect(pairRows(page, lang)).toHaveCount(4);
+
+        // Delete on the map pane removes the chosen pair too.
+        await page.getByRole('button', { name: pairName(3), exact: true }).click();
+        await showPane(page, lang, 'map');
+        await page.locator('hcm-admin-map').getByRole('application').focus();
+        await page.keyboard.press('Delete');
+        await expect(pairRows(page, lang)).toHaveCount(3);
+        await expect(removed(3)).toBeVisible();
+    },
+);
+
+test(
+    'With no pair chosen there is no Delete button and Delete on the map removes nothing',
+    { tag: '@S-A16-BAD-GEOREF-REMOVE-NOTHING' },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        await opened({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, adminWorld.accounts.owner.uid, page, lang);
+        await expect(page.locator('[data-action="delete-selected"]')).toHaveCount(0);
+        await showPane(page, lang, 'map');
+        await page.locator('hcm-admin-map').getByRole('application').focus();
+        await page.keyboard.press('Delete');
+        await page.keyboard.press('Backspace');
+        await expect(pairRows(page, lang)).toHaveCount(4);
+        await expect(
+            page.locator('hcm-snackbar').filter({ hasText: georefText(lang, 'adminContent.georef.pairRemoved', { number: '1' }) }),
+        ).toHaveCount(0);
+    },
+);
