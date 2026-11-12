@@ -18,7 +18,7 @@ import { FakeMapDraw } from '@hcm/test-support/fake-map-draw';
 import { describe, expect, it } from 'vitest';
 
 import { loadGeorefExtras, type ExtrasLoader } from '../../src/georef/extras.js';
-import { WARP_DELAY_MS } from '../../src/georef/georef-pictures.js';
+import { loadWarp, WARP_DELAY_MS } from '../../src/georef/georef-pictures.js';
 import { warpTriangles } from '../../src/georef/warp.js';
 import { georefModule } from '../../src/georef/georef.js';
 import type { FakeClock } from '../app/fakes.js';
@@ -87,6 +87,8 @@ function terrain(gcps: readonly Gcp[]): NonNullable<Georef['terrain']> {
 
 /** The lazy chunk, fetched once before the tests: the page gets it within a few microtasks, as from the browser's module map. */
 const EXTRAS = await loadGeorefExtras();
+/** The warp chunk, fetched once before the tests (the page's own fetch then finds it in the module map). */
+await loadWarp();
 const LOADED: ExtrasLoader = () => Promise.resolve(EXTRAS);
 /** The chunk's fetch failing: offline, or a deploy replaced it. */
 const OFFLINE: ExtrasLoader = () => Promise.reject(new TypeError('Failed to fetch dynamically imported module'));

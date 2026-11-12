@@ -6047,6 +6047,72 @@
             "notes": "The owner, 2026-11-12. Tests: e2e/admin/specs/imagery/georef-linked.spec.ts, packages/admin/test/georef/linked-views.test.ts, packages/admin/test/georef/georef-linked.test.ts, packages/ui/test/admin/georef/scan-viewer-linked.test.ts, packages/ui/test/admin/georef/georef-linked-page.test.ts."
         },
         {
+            "id": "S-A16-HAPPY-GEOREF-KEEP-ZOOM",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "The scan keeps the owner's zoom and centre when a pair is added and when its pane changes size",
+            "asserts": "the scan zoomed in on a landmark: a pair added there (a click on the scan, one on the map) leaves the scan at the same zoom with the same pixel in the middle; a window a scrollbar's width narrower (the page grown taller below) keeps that zoom and centre too, the pane only re-centred",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's 1966 Corona frames, 2026-11-12 (DECISIONS-for-review.md, the section on the georeferencer's ghost and sharper scan). Root cause: the scan pane fitted the whole strip again whenever its size changed. Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts, packages/ui/test/admin/georef/scan-viewer-keep.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-GEOREF-KEEP-ZOOM-NEVER-SHOWN",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "A scan never zoomed, or never shown, fits the whole frame again when its pane changes size",
+            "asserts": "the scan showing the whole frame: a narrower window shows the whole frame at the new pane's scale with its middle at the centre; a pane that had no size (hidden on a compact window) fits the frame when it first shows",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's 1966 Corona frames, 2026-11-12 (DECISIONS-for-review.md, the section on the georeferencer's ghost and sharper scan). Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts, packages/ui/test/admin/georef/scan-viewer-keep.test.ts."
+        },
+        {
+            "id": "S-A16-HAPPY-GEOREF-GHOST",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "While a pair waits for its second click the panes stand still and a dashed ring shows where the pairs expect it",
+            "asserts": "Add pairs, a click on the scan: the hint says to click the same place on the map and that the dashed ring is where it is expected (where the pairs so far put it); zooming the scan meanwhile leaves the map where it is even with the views linked; the ring takes no click, a click on the place makes the pair; map first, the ring is on the scan and the scan stays still while the map zooms; with a fit the ring is the fit's place, with exactly two pairs it comes from the shift, turn and scale that carry the one onto the other; Esc or Add pairs off takes it away",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's 1966 Corona frames, 2026-11-12 (DECISIONS-for-review.md, the section on the georeferencer's ghost and sharper scan). A fast second click had landed 1 km off when the linked map moved to the fit's place. The arithmetic is in the lazy georef-extras chunk. Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts (state georef.ghost), packages/admin/test/georef/ghost.test.ts, packages/admin/test/georef/georef-ghost.test.ts, packages/ui/test/admin/georef/georef-ghost-page.test.ts, packages/ui/test/admin/georef/scan-viewer-keep.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-GEOREF-GHOST-NO-PAIRS",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "With fewer than two pairs and no fit there is no ghost, and only the plain hint",
+            "asserts": "one pair (or none) and no fit: a click on the scan shows the plain hint to click the same place on the map and no dashed ring, and the lazy chunk is not fetched for it; two pairs at one pixel or at one place, or a place the mapping cannot give, show no ring either",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's 1966 Corona frames, 2026-11-12 (DECISIONS-for-review.md, the section on the georeferencer's ghost and sharper scan). Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts, packages/admin/test/georef/ghost.test.ts, packages/admin/test/georef/georef-ghost.test.ts, packages/ui/test/admin/georef/georef-ghost-page.test.ts."
+        },
+        {
+            "id": "S-A16-HAPPY-GEOREF-FULL-RES",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "Zoomed past the preview's own pixels, the scan pane draws the sharper scan",
+            "asserts": "a scan longer than its 4096 px preview gets a sharper copy (scan-detail.jpg, at most 16384 px long) when the pipeline parks it; zoomed past the preview's own pixels, by the owner or by the linked map, the page fetches it once and the pane draws it instead of the preview at the same place and scale; leaving the page releases it; the warped map preview is drawn 4096 px across (3072 before)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's 1966 Corona frames, 2026-11-12 (DECISIONS-for-review.md, the section on the georeferencer's ghost and sharper scan). Tests: pipeline/tests/unit/test_publish_scan.py, packages/admin/test/georef/georef-pictures.test.ts, packages/admin/test/georef/georef-ghost.test.ts, packages/ui/test/admin/georef/scan-viewer-keep.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-GEOREF-FULL-RES-NONE",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without a sharper scan, or while it loads, the pane keeps the preview and says nothing",
+            "asserts": "a scan no longer than its preview gets no sharper copy and the version records none; a version parked before has none either; a sharper scan missing from the bucket, still loading or arriving after the page closed leaves the preview drawn, with no error",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's 1966 Corona frames, 2026-11-12 (DECISIONS-for-review.md, the section on the georeferencer's ghost and sharper scan). Tests: pipeline/tests/unit/test_publish_scan.py, packages/admin/test/georef/georef-pictures.test.ts, packages/ui/test/admin/georef/scan-viewer-keep.test.ts."
+        },
+        {
             "id": "S-A17-HAPPY",
             "behaviour": "A17",
             "area": "admin",

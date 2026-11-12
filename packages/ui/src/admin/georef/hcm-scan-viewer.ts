@@ -11,7 +11,9 @@
  * picks, drags or pans (a right-click is the page's context menu, which reads `targetAt` and, after a long press,
  * `cancelGesture`). A pane hidden on a
  * compact window (the map showing) keeps the view it had (CR-M3-47): its crosshair is still where the admin left it,
- * never a division by a zero size.
+ * never a division by a zero size; a shown pane that changes size keeps its zoom and centre (`resizedView`: a scrollbar that came
+ * with a pair added below threw it back to the whole strip, 2026-11-12). `ghost` draws where the pairs expect the scan end of a pair
+ * begun on the map; `detail` (`{url, scale}`) is the sharper scan, drawn instead of the preview once zoomed past its own pixels.
  */
 import { LitElement, html, type PropertyValues, type TemplateResult } from 'lit';
 
@@ -19,7 +21,8 @@ import { defineOnce, emit } from '../../components/internal.js';
 import { adminBase } from '../shell/admin-styles.js';
 import { drawScan, type ScanMarker } from './scan-draw.js';
 import { scanViewerStyles } from './scan-viewer-styles.js';
-import { centredView, fitView, hitPair, panView, paneToScan, zoomView, type Point, type ScanView } from './scan-view.js';
+import { ARROW_STEPS, imageOf, type Gesture, type Pinch } from './scan-input.js';
+import { centredView, fitView, hitPair, panView, paneToScan, resizedView, zoomView, type Point, type ScanView } from './scan-view.js';
 
 const HCM_SCAN_VIEWER_TAG = 'hcm-scan-viewer';
 
@@ -27,21 +30,6 @@ const HCM_SCAN_VIEWER_TAG = 'hcm-scan-viewer';
 const CLICK_SLOP = 4;
 const PAN_STEP = 40;
 const KEY_ZOOM = 1.5;
-
-interface Gesture {
-    readonly start: Point;
-    readonly view: ScanView;
-    /** The marker being dragged, or null (the view pans). */
-    readonly marker: ScanMarker | null;
-    moved: boolean;
-    last: Point;
-}
-
-interface Pinch {
-    readonly view: ScanView;
-    readonly startDistance: number;
-    readonly centre: Point;
-}
 
 /** The keys that act at once, and what they do (true: handled). */
 const COMMANDS: Readonly<Record<string, ((viewer: HcmScanViewer) => boolean) | undefined>> = {
@@ -52,13 +40,6 @@ const COMMANDS: Readonly<Record<string, ((viewer: HcmScanViewer) => boolean) | u
         emit(viewer, 'hcm-escape', {});
         return true;
     },
-};
-
-const ARROWS: Readonly<Record<string, Point>> = {
-    ArrowLeft: { x: -1, y: 0 },
-    ArrowRight: { x: 1, y: 0 },
-    ArrowUp: { x: 0, y: -1 },
-    ArrowDown: { x: 0, y: 1 },
 };
 
 export class HcmScanViewer extends LitElement {
@@ -72,6 +53,8 @@ export class HcmScanViewer extends LitElement {
         suggestions: { attribute: false },
         selectedSuggestion: { attribute: false },
         half: { attribute: false },
+        ghost: { attribute: false },
+        detail: { attribute: false },
         follow: { attribute: false },
         adding: { type: Boolean },
         label: { type: String },
@@ -92,6 +75,10 @@ export class HcmScanViewer extends LitElement {
     declare suggestions: readonly ScanMarker[];
     declare selectedSuggestion: string | null;
     declare half: Point | null;
+    /** Where the pairs so far expect the scan end of a pair begun on the map (a dashed ring; a click there is a click as any). */
+    declare ghost: Point | null;
+    /** The sharper scan (its address and its pixels per scan pixel), drawn once zoomed past the preview's own pixels (null: none). */
+    declare detail: { readonly url: string; readonly scale: number } | null;
     /** The linked map's place for this pane: the full-resolution pixel to centre and CSS px per scan pixel (null: none). */
     declare follow: { readonly centre: Point; readonly scale: number } | null;
     declare adding: boolean;
@@ -101,6 +88,7 @@ export class HcmScanViewer extends LitElement {
     declare zoomOutLabel: string;
     declare focused: boolean;
     #image: HTMLImageElement | null = null;
+    #detailImage: HTMLImageElement | null = null;
     #view: ScanView | null = null;
     #gesture: Gesture | null = null;
     #pinch: Pinch | null = null;
@@ -120,6 +108,8 @@ export class HcmScanViewer extends LitElement {
         this.suggestions = [];
         this.selectedSuggestion = null;
         this.half = null;
+        this.ghost = null;
+        this.detail = null;
         this.follow = null;
         this.adding = false;
         this.label = '';
@@ -173,6 +163,9 @@ export class HcmScanViewer extends LitElement {
     protected override willUpdate(changed: PropertyValues<this>): void {
         if (changed.has('src')) {
             this.#load();
+        }
+        if (changed.has('detail')) {
+            this.#loadDetail();
         }
         if (changed.has('follow')) {
             this.#followMap();
@@ -233,15 +226,26 @@ export class HcmScanViewer extends LitElement {
             this.#draw();
             return;
         }
-        const image = new Image();
-        image.addEventListener('load', () => {
+        this.#image = imageOf(this.src, (image) => {
             if (this.#image === image) {
                 this.#view = null;
                 this.#draw();
             }
         });
-        image.src = this.src;
-        this.#image = image;
+    }
+
+    /** The sharper scan, drawn once it is in (the preview until then, or for good when it does not load). */
+    #loadDetail(): void {
+        const detail = this.detail;
+        this.#detailImage = null;
+        if (detail !== null) {
+            imageOf(detail.url, (image) => {
+                if (this.detail === detail) {
+                    this.#detailImage = image;
+                    this.#draw();
+                }
+            });
+        }
     }
 
     /** The preview's size in its own pixels. */
@@ -253,10 +257,11 @@ export class HcmScanViewer extends LitElement {
         return fitView(this.#pane, this.#previewSize());
     }
 
-    /** The view, fitted again when the shown pane's size changed (a hidden pane keeps it). */
+    /** The view, kept over a change of the shown pane's size (zoom and centre, `resizedView`; a hidden pane keeps it as it is). */
     #currentView(): ScanView {
-        if (this.#measure()) {
-            this.#view = null;
+        const before = this.#pane;
+        if (this.#measure() && this.#view !== null) {
+            this.#view = resizedView(this.#view, before, this.#pane, this.#previewSize());
         }
         this.#view ??= this.#fitted();
         return this.#view;
@@ -268,7 +273,8 @@ export class HcmScanViewer extends LitElement {
             drawScan(canvas, {
                 ...{ image: this.#image, view: this.#currentView(), previewScale: this.previewScale, markers: this.markers },
                 ...{ selected: this.selected, half: this.half, crosshair: this.focused, dragged: this.#dragged() },
-                ...{ suggestions: this.suggestions, selectedSuggestion: this.selectedSuggestion },
+                ...{ suggestions: this.suggestions, selectedSuggestion: this.selectedSuggestion, ghost: this.ghost },
+                detail: this.#detailImage === null ? null : { image: this.#detailImage, scale: this.detail?.scale ?? 1 },
             });
         }
     }
@@ -410,7 +416,7 @@ export class HcmScanViewer extends LitElement {
 
     /** An arrow moves the selected marker by one preview pixel (ten with Shift), or pans. */
     #arrow(event: KeyboardEvent): boolean {
-        const step = ARROWS[event.key];
+        const step = ARROW_STEPS[event.key];
         if (step === undefined) {
             return false;
         }

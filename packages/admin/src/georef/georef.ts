@@ -15,18 +15,19 @@ import {
 import type { AreaModule, AreaStore } from '../content/areas.js';
 import { LiveDoc, type DocState } from '../content/doc.js';
 import type { ContentServices } from '../content/services.js';
-import { NO_FILES } from '../imagery/files.js';
 import { frameOf, type CityFrame } from '../layers/map-session.js';
 import { Store } from '../state/store.js';
 import { loadGeorefExtras, publishedOf, type ExtrasLoader } from './extras.js';
 import { baseOf, fitOf, ownFitOf, shownFit, type OwnFit } from './fit-view.js';
 import { GeorefMap, referenceFrame } from './georef-map.js';
-import { GeorefPictures } from './georef-pictures.js';
+import { georefPicturesOf, type GeorefPictures } from './georef-pictures.js';
+import { showGhost, type GhostDeps } from './ghosts.js';
 import { PairHistory } from './history.js';
 import { moveGeo, movePixel, roundPixel, samePairs, withPair, type GeoPosition, type PixelPosition } from './pairs.js';
 import { georefIntentsOf, type GeorefIntentActions } from './intents.js';
 import { ANIMATION_FRAME, linkedPanesOf, type FrameScheduler, type LinkedPanes } from './link.js';
 import { saveGeoref, snapGeoref, type PersistHost } from './persist.js';
+import { dropGone, dropped, putBack, type MovingHost } from './moving.js';
 import { PlacingMark } from './placing.js';
 import { georefVersionOf, INITIAL_GEOREF, type GeorefIntents, type GeorefState, type GeorefVersion, type ReferenceKind } from './state.js';
 import { Suggestions } from './suggestions.js';
@@ -46,12 +47,20 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     readonly #placing: PlacingMark;
     readonly #extras: ExtrasLoader;
     readonly #link: LinkedPanes;
+    readonly #ghost: GhostDeps;
+    readonly #moving: MovingHost;
     #base: { readonly pairs: readonly Gcp[]; readonly transform: GeorefTransform } = { pairs: [], transform: 'affine' };
     readonly #history = new PairHistory();
     #transform: FittedTransform | null = null;
     #own: OwnFit | null = null;
     #cityFrame: CityFrame | null = null;
     readonly intents: GeorefIntents;
+    /** The store's fit now (the linked views and the ghost read it). */
+    readonly #fit = (): FittedTransform | null => this.#transform;
+    /** The scan pane shows `scale` CSS px a scan pixel: past the preview's own pixels the sharper scan is fetched. */
+    readonly #zoomed = (scale: number): void => {
+        this.#pictures.zoomed(this.#cell.state.version?.scan ?? null, scale);
+    };
 
     constructor(services: ContentServices, extras: ExtrasLoader, frame: FrameScheduler) {
         this.#services = services;
@@ -99,13 +108,16 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
                 this.#link.seen(view);
             },
         });
-        this.#link = linkedPanesOf({ ...{ services, extras, frame, map: this.#map, cell: this.#cell }, transform: () => this.#transform });
-        this.#pictures = new GeorefPictures({
-            ...{ files: services.files ?? NO_FILES, pictures: services.pictures ?? null, clock, overlays: this.#map.overlays },
-            scan: (scan) => {
-                this.#cell.update({ scan });
+        const transform = this.#fit;
+        this.#link = linkedPanesOf({ ...{ services, extras, frame, map: this.#map, cell: this.#cell }, transform, zoomed: this.#zoomed });
+        this.#ghost = { services, extras, cell: this.#cell, map: this.#map, transform };
+        this.#pictures = georefPicturesOf(services, this.#map.overlays, this.#cell);
+        this.#moving = {
+            ...{ cell: this.#cell, map: this.#map },
+            edit: (pairs) => {
+                this.#edit(pairs);
             },
-        });
+        };
         this.intents = georefIntentsOf(this.#intentActions());
     }
 
@@ -173,6 +185,10 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
             pickScan: (pixel) => {
                 this.#pickScan(pixel);
             },
+            syncHalf: () => {
+                this.#syncHalf();
+            },
+            zoomed: this.#zoomed,
             pickMap: (geo) => {
                 this.#pickMap(geo);
             },
@@ -253,7 +269,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     }
 
     #pickScan(pixel: PixelPosition): void {
-        if (this.#dropped('scan', (id) => movePixel(this.#cell.state.pairs, id, this.#scanPixel(pixel)))) {
+        if (dropped(this.#moving, 'scan', (id) => movePixel(this.#cell.state.pairs, id, this.#scanPixel(pixel)))) {
             return;
         }
         const { adding, half } = this.#cell.state;
@@ -269,7 +285,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     }
 
     #pickMap(geo: GeoPosition): void {
-        if (this.#dropped('map', (id) => moveGeo(this.#cell.state.pairs, id, geo))) {
+        if (dropped(this.#moving, 'map', (id) => moveGeo(this.#cell.state.pairs, id, geo))) {
             return;
         }
         const { adding, half } = this.#cell.state;
@@ -298,35 +314,9 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         this.#edit(pairs);
     }
 
-    /** A point picked up from the context menu: a click on its pane drops it there (one Undo step), one elsewhere puts it back. */
-    #dropped(pane: 'scan' | 'map', moved: (id: string) => readonly Gcp[]): boolean {
-        const moving = this.#cell.state.moving;
-        if (moving === null) {
-            return false;
-        }
-        this.#putBack();
-        if (moving.pane === pane) {
-            this.#edit(moved(moving.id));
-        }
-        return true;
-    }
-
-    #putBack(): void {
-        this.#cell.update({ moving: null });
-        this.#map.setAdding(this.#cell.state.adding);
-    }
-
-    /** A picked-up point whose pair went away (deleted, undone) waits for nothing: the panes go back to their modes. */
-    #dropGone(pairs: readonly Gcp[]): void {
-        const moving = this.#cell.state.moving;
-        if (moving !== null && !pairs.some((pair) => pair.id === moving.id)) {
-            this.#putBack();
-        }
-    }
-
     #escape(): void {
         if (this.#cell.state.moving !== null) {
-            this.#putBack();
+            putBack(this.#moving);
             return;
         }
         if (this.#cell.state.half !== null) {
@@ -371,7 +361,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         const fitted = shownFit(fitOf(transform, pairs, thresholdM), this.#own, dirty, thresholdM);
         this.#transform = fitted.transform;
         this.#cell.update({ pairs, transform, fit: fitted.view, dirty, canUndo: this.#history.canUndo, refusal: null });
-        this.#dropGone(pairs);
+        dropGone(this.#moving, pairs);
         this.#map.showPairs(pairs, this.#cell.state.selected);
         this.#map.setTones(tonesOf(fitted.view.residuals, thresholdM));
         this.#syncHalf();
@@ -382,6 +372,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     #syncHalf(): void {
         const half = this.#cell.state.half;
         this.#map.setHalf(half !== null && 'geo' in half ? half.geo : null);
+        void showGhost(this.#ghost);
     }
 
     #showSuggestions(): void {

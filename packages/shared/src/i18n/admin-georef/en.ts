@@ -42,6 +42,8 @@ export const en: Readonly<Record<AdminGeorefKey, string>> = {
     'adminContent.georef.addingHint': 'Click the scan, then the same place on the map (or the other way round).',
     'adminContent.georef.halfOnScan': 'Now click the same place on the map. Esc cancels.',
     'adminContent.georef.halfOnMap': 'Now click the same place on the scan. Esc cancels.',
+    'adminContent.georef.halfOnScanGhost': 'Click the same place on the map; the dashed ring is where it is expected. Esc cancels.',
+    'adminContent.georef.halfOnMapGhost': 'Click the same place on the scan; the dashed ring is where it is expected. Esc cancels.',
     'adminContent.georef.pane.label': 'What the screen shows',
     'adminContent.georef.pane.scan': 'Scan',
     'adminContent.georef.pane.map': 'Map',

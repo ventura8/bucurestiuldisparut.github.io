@@ -211,6 +211,11 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # (`packages/ui/src/admin/georef/georef-menu.ts` with `georef-menu-host.ts`), fetched at the page's first render, out of the `georef`
     # chunk (19 KB): 2.4 KB measured on 2026-11-12 plus about 20 %, rounded up.
     "georef-menu": 3,
+    # The georeferencer's warped preview (2026-11-12; DECISIONS-for-review.md, *The georeferencer's ghost and sharper scan*): the mesh
+    # and triangles (`packages/admin/src/georef/georef-warp.ts` over `warp.ts`, with `@hcm/shared`'s `previewMesh`, `scanBounds` and
+    # `triangleTransform`), fetched when a version opens, out of the `georef` chunk (19 KB, which the ghost and the sharper scan had
+    # taken to 19.5 KB; 18.2 KB after): 0.9 KB measured on 2026-11-12 plus about 20 %, rounded up.
+    "georef-warp": 2,
     # The tolerant reads of an older release's records (`packages/shared/src/schemas/legacy-reads.ts`), which Home, the Imagery lists
     # and a version's page share: out of `editor-shared` (13.05 KB with them, budget 13): 0.5 KB measured on 2026-11-12, a row of
     # 1 KB, the smallest whole budget (DECISIONS-for-review.md §155).

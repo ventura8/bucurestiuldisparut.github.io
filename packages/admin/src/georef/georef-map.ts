@@ -68,6 +68,7 @@ export class GeorefMap {
     #suggestions: readonly SuggestionRow[] = [];
     #selectedSuggestion: string | null = null;
     #half: GeoPosition | null = null;
+    #ghost: GeoPosition | null = null;
     #crosshair = false;
     #tones: Readonly<Record<string, BadgeTone>> = {};
     #adding = false;
@@ -151,6 +152,12 @@ export class GeorefMap {
     /** Half pair started on the map (a `+` at that place). */
     setHalf(half: GeoPosition | null): void {
         this.#half = half;
+        this.#paintBadges();
+    }
+
+    /** Where the pairs so far expect a half pair started on the scan (a dashed ring; the map itself never moves to it). */
+    setGhost(ghost: GeoPosition | null): void {
+        this.#ghost = ghost;
         this.#paintBadges();
     }
 
@@ -243,6 +250,7 @@ export class GeorefMap {
             suggestions: this.#suggestions,
             selectedSuggestion: this.#selectedSuggestion,
             half: this.#half,
+            ghost: this.#ghost,
             crosshair: this.#crosshair,
             tones: this.#tones,
         });

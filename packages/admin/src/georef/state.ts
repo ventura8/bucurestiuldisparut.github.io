@@ -19,6 +19,7 @@ import type { MapStatus } from '../layers/map-session.js';
 import type { NoticeInput } from '../state/state.js';
 import type { FitView } from './fit-view.js';
 import type { ScanCamera } from './linked-views.js';
+import type { Ghost } from './ghost.js';
 import type { GeoPosition, HalfPair, PixelPosition } from './pairs.js';
 import { NO_SUGGESTIONS, type SuggestionsView } from './suggestions.js';
 
@@ -32,7 +33,14 @@ export interface GeorefVersion {
     readonly layerId: string;
     readonly label: LayerVersionDoc['label'];
     readonly state: LayerVersionState;
-    readonly scan: { readonly width: number; readonly height: number; readonly previewScale: number; readonly previewPath: string } | null;
+    readonly scan: {
+        readonly width: number;
+        readonly height: number;
+        readonly previewScale: number;
+        readonly previewPath: string;
+        /** The sharper scan (`scan-detail.jpg`) and its pixels per scan pixel; null: none (a short scan, or an older version). */
+        readonly detail: { readonly path: string; readonly scale: number } | null;
+    } | null;
     readonly reference: {
         readonly bounds: BBox;
         readonly osmPath: string | null;
@@ -52,9 +60,12 @@ function referenceOf(reference: LayerVersionDoc['reference']): GeorefVersion['re
 }
 
 function scanOf(scan: LayerVersionDoc['scan']): GeorefVersion['scan'] {
-    return scan === undefined
-        ? null
-        : { width: scan.width, height: scan.height, previewScale: scan.previewScale, previewPath: scan.previewPath };
+    if (scan === undefined) {
+        return null;
+    }
+    const { width, height, previewScale, previewPath, detailPath, detailScale } = scan;
+    const detail = detailPath === undefined ? null : { path: detailPath, scale: detailScale ?? 1 };
+    return { width, height, previewScale, previewPath, detail };
 }
 
 export function georefVersionOf(id: string, version: LayerVersionDoc): GeorefVersion {
@@ -78,6 +89,12 @@ export interface MapTarget {
 
 export type ScanImage = { readonly status: 'none' | 'loading' | 'failed' } | { readonly status: 'ready'; readonly url: string };
 
+/** The sharper scan for a zoomed-in pane (a `blob:` address) and its pixels per scan pixel. */
+export interface ScanDetail {
+    readonly url: string;
+    readonly scale: number;
+}
+
 export interface GeorefState {
     readonly versionId: string | null;
     readonly doc: Omit<DocState<never>, 'doc'>;
@@ -86,12 +103,16 @@ export interface GeorefState {
     readonly version: GeorefVersion | null;
     /** The scan preview for the scan pane (a `blob:` address). */
     readonly scan: ScanImage;
+    /** The sharper scan, fetched once the pane zooms past the preview's own pixels (null: not yet, or none). */
+    readonly scanDetail: ScanDetail | null;
     /** The reference shown on the map (null: the version has none). */
     readonly reference: ReferenceKind | null;
     readonly pairs: readonly Gcp[];
     /** "Add pairs" is on: a click on the scan or the map is one end of the next pair. */
     readonly adding: boolean;
     readonly half: HalfPair | null;
+    /** Where the pairs so far expect the half pair's other end (a dashed ring on the other pane; null: none). */
+    readonly ghost: Ghost | null;
     /** The context menu's Move this point: the pair whose end on `pane` the next click drops there (Esc cancels). */
     readonly moving: Moving | null;
     readonly selected: string | null;
@@ -127,7 +148,8 @@ const EMPTY_FIT: FitView = {
 
 export const INITIAL_GEOREF: GeorefState = {
     ...{ versionId: null, doc: { status: 'loading', reconnecting: false, failure: null }, notFound: false, version: null },
-    ...{ scan: { status: 'none' }, reference: null, pairs: [], adding: false, half: null, moving: null, selected: null },
+    ...{ scan: { status: 'none' }, scanDetail: null, reference: null, pairs: [], adding: false, half: null, ghost: null },
+    ...{ moving: null, selected: null },
     ...{
         fit: EMPTY_FIT,
         thresholdM: imagerySettingsOf(undefined).rmseThresholdM,

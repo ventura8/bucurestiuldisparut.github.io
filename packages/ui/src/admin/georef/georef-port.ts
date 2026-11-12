@@ -76,10 +76,14 @@ export interface GeorefViewState {
     readonly notFound: boolean;
     readonly version: GeorefVersionPort | null;
     readonly scan: ScanImagePort;
+    /** The sharper scan once the pane zoomed past the preview: its address and its pixels per scan pixel. */
+    readonly scanDetail: { readonly url: string; readonly scale: number } | null;
     readonly reference: ReferenceKindPort | null;
     readonly pairs: readonly Gcp[];
     readonly adding: boolean;
     readonly half: HalfPairPort | null;
+    /** Where the pairs so far expect the half pair's other end (a dashed ring on the other pane). */
+    readonly ghost: HalfPairPort | null;
     /** The context menu's Move this point: the pair whose end the next click drops (Esc cancels). */
     readonly moving: MovingPort | null;
     readonly selected: string | null;

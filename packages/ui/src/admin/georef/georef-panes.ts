@@ -54,6 +54,8 @@ function scanViewer(context: GeorefContext, scan: NonNullable<NonNullable<Georef
             .suggestions=${suggestionMarkersOf(view)}
             .selectedSuggestion=${view.suggestions.selected}
             .half=${halfPixel(view.half)}
+            .ghost=${halfPixel(view.ghost)}
+            .detail=${view.scanDetail}
             .follow=${view.scanFollow}
             ?adding=${view.adding || view.moving !== null}
             .label=${contentText(locale, 'adminContent.georef.scanLabel')}

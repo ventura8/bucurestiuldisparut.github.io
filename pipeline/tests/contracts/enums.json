@@ -119,12 +119,14 @@
         "tiles.pmtiles",
         "thumb.webp",
         "align.tif",
-        "stitched.jpg"
+        "stitched.jpg",
+        "scan-detail.jpg"
     ],
     "LEASE_SECONDS": 600,
     "HEARTBEAT_SECONDS": 60,
     "USGS_BACKOFF_MINUTES": [30, 60, 120, 240, 480, 720],
     "SCAN_PREVIEW_MAX_PX": 4096,
+    "SCAN_DETAIL_MAX_PX": 16384,
     "STUDIO_MAX_BYTES": 300000000,
     "SENSOR_SPECS": {
         "KH-4": {

@@ -141,6 +141,16 @@ export async function scanCentre(page: Page): Promise<{ readonly x: number; read
     }, SCAN_PREVIEW_SCALE);
 }
 
+/**
+ * The hint after a pair's scan end: the plain one, or the one that names the ghost's dashed ring once the pairs so far can tell
+ * where the place is (two pairs or a fit; it comes a moment later, with the georeferencer's lazy chunk).
+ */
+export function halfOnScanHint(page: Page, lang: 'ro' | 'en'): Locator {
+    return page
+        .getByText(georefText(lang, 'adminContent.georef.halfOnScan'))
+        .or(page.getByText(georefText(lang, 'adminContent.georef.halfOnScanGhost')));
+}
+
 /** The landmarks a spec pairs (vertices of the world inside the scan), far enough apart that a click never lands on another pair. */
 const PAIRABLE = [1, 11, 17, 14, 6, 20];
 
@@ -171,7 +181,7 @@ export async function addPair(page: Page, lang: 'ro' | 'en', place: LatLng, offs
     await showPane(page, lang, 'scan');
     const scan = await scanPointOf(page, lang, scanPixelOf(place));
     await page.mouse.click(scan.x, scan.y);
-    await expect(page.getByText(georefText(lang, 'adminContent.georef.halfOnScan'))).toBeVisible();
+    await expect(halfOnScanHint(page, lang)).toBeVisible();
     await showPane(page, lang, 'map');
     const lng = place.lng + offsetMetres / (111_320 * Math.cos((place.lat * Math.PI) / 180));
     const point = await pointInView(page, lang, [lng, place.lat]);

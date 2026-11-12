@@ -40,6 +40,8 @@ export const VERSION_FILES = [
     'align.tif',
     /** M22 (§4.1): an archive series that waits for a person, its sheets stitched into one picture, the Help calibrate wizard's. */
     'stitched.jpg',
+    /** The scan at up to `SCAN_DETAIL_MAX_PX` long: the georeferencer's sharper scan once zoomed past the preview (2026-11-12). */
+    'scan-detail.jpg',
 ] as const;
 
 export type VersionFile = (typeof VERSION_FILES)[number];

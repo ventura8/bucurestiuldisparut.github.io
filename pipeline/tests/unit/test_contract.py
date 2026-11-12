@@ -41,6 +41,7 @@ def test_happy_path_the_constants_equal_the_shared_copy() -> None:
         "HEARTBEAT_SECONDS": contract.HEARTBEAT_SECONDS,
         "USGS_BACKOFF_MINUTES": list(contract.USGS_BACKOFF_MINUTES),
         "SCAN_PREVIEW_MAX_PX": contract.SCAN_PREVIEW_MAX_PX,
+        "SCAN_DETAIL_MAX_PX": contract.SCAN_DETAIL_MAX_PX,
         "STUDIO_MAX_BYTES": contract.STUDIO_MAX_BYTES,
         "SENSOR_SPECS": sensors,
         "MAX_GCPS": contract.MAX_GCPS,

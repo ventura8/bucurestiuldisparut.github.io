@@ -1,11 +1,12 @@
 /**
  * Draws the georeferencer's scan pane (`./hcm-scan-viewer.ts`): the scan preview at the view's scale and offset, the
- * pairs' numbered markers (shared with the map: `./marker-badge.ts`), the half pair's cross and, while the pane has the
- * keyboard, the crosshair at its centre.
+ * pairs' numbered markers (shared with the map: `./marker-badge.ts`), the half pair's cross, the ghost of a pair begun on the map
+ * and, while the pane has the keyboard, the crosshair at its centre; zoomed past the preview's own pixels, the sharper scan instead.
  */
 import {
     badgePaletteOf,
     paintBadgeCross,
+    paintGhostBadge,
     paintPairBadge,
     paintSuggestionBadge,
     type BadgeMarker,
@@ -30,6 +31,10 @@ export interface ScanScene {
     /** M4: the matcher's suggestions, dashed and hollow, the selected one larger (`docs/research/M4-interfaces.md` §2.5). */
     readonly suggestions?: readonly ScanMarker[];
     readonly selectedSuggestion?: string | null;
+    /** The sharper scan and its pixels per scan pixel, drawn instead of the preview once zoomed past the preview's own pixels. */
+    readonly detail?: { readonly image: CanvasImageSource; readonly scale: number } | null;
+    /** Where the pairs so far expect the pending pair's scan end (a dashed ring, `./marker-badge.ts`). */
+    readonly ghost?: Point | null;
 }
 
 /** The canvas sized to its box at the device's pixel ratio, cleared; null without a 2D context. */
@@ -55,14 +60,25 @@ function placed(scene: ScanScene): readonly ScanMarker[] {
     return dragged === null ? scene.markers : scene.markers.map((item) => (item.id === dragged.id ? dragged : item));
 }
 
-/** The scan preview at the view's scale and offset. */
+/** The picture to draw and its preview pixels per picture pixel: the sharper scan past the preview's own pixels, else the preview. */
+function pictureOf(scene: ScanScene): { readonly image: CanvasImageSource; readonly scale: number } | null {
+    const detail = scene.detail ?? null;
+    if (detail !== null && scene.view.scale > 1) {
+        return { image: detail.image, scale: scene.previewScale / detail.scale };
+    }
+    return scene.image === null ? null : { image: scene.image, scale: 1 };
+}
+
+/** The scan at the view's scale and offset. */
 function image(context: CanvasRenderingContext2D, scene: ScanScene, ratio: number): void {
-    if (scene.image === null) {
+    const picture = pictureOf(scene);
+    if (picture === null) {
         return;
     }
-    const { scale, offset } = scene.view;
+    const { offset } = scene.view;
+    const scale = scene.view.scale * picture.scale;
     context.setTransform(ratio * scale, 0, 0, ratio * scale, ratio * offset.x, ratio * offset.y);
-    context.drawImage(scene.image, 0, 0);
+    context.drawImage(picture.image, 0, 0);
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
 }
 
@@ -91,10 +107,19 @@ export function drawScan(canvas: HTMLCanvasElement, scene: ScanScene): void {
     const palette = badgePaletteOf(canvas);
     image(context, scene, ratio);
     markers(context, scene, palette);
-    if (scene.half !== null) {
-        paintBadgeCross(context, scanToPane(scene.view, scene.half, scene.previewScale), palette.marker);
-    }
+    pending(context, scene, palette);
     if (scene.crosshair) {
         paintBadgeCross(context, { x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 }, palette.outline);
+    }
+}
+
+/** The pending pair: the ghost of one begun on the map, the cross of one begun here. */
+function pending(context: CanvasRenderingContext2D, scene: ScanScene, palette: BadgePalette): void {
+    const ghost = scene.ghost ?? null;
+    if (ghost !== null) {
+        paintGhostBadge(context, scanToPane(scene.view, ghost, scene.previewScale), palette);
+    }
+    if (scene.half !== null) {
+        paintBadgeCross(context, scanToPane(scene.view, scene.half, scene.previewScale), palette.marker);
     }
 }

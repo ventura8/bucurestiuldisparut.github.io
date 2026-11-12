@@ -259,11 +259,13 @@ export function georefState(overrides: Partial<GeorefViewState> = {}): GeorefVie
             reference: 'osm',
             adding: false,
             half: null,
+            ghost: null,
             moving: null,
             selected: null,
             transform: 'affine',
             linked: true,
             scanFollow: null,
+            scanDetail: null,
         },
         pairs: [
             { id: 'g1', pixel: { x: 100, y: 100 }, geo: { lat: 44.5, lng: 26 }, enabled: true, origin: 'auto', score: 0.9 },

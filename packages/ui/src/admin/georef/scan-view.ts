@@ -52,6 +52,18 @@ export function centredView(
     return { scale: zoom, offset: { x: pane.width / 2 - camera.centre.x * across, y: pane.height / 2 - camera.centre.y * across } };
 }
 
+/**
+ * The view after the pane went from `before` to `after` (a scrollbar came, the window changed): still the whole preview when it showed
+ * the whole preview (or the pane had never been shown), else the same zoom with the same scan point at the pane's centre, so a pair
+ * added below never throws the owner's zoom away (2026-11-12).
+ */
+export function resizedView(view: ScanView, before: Size, after: Size, image: Size): ScanView {
+    if (before.width === 0 || before.height === 0 || view.scale <= fitView(before, image).scale) {
+        return fitView(after, image);
+    }
+    return panView(view, (after.width - before.width) / 2, (after.height - before.height) / 2);
+}
+
 export function panView(view: ScanView, dx: number, dy: number): ScanView {
     return { scale: view.scale, offset: { x: view.offset.x + dx, y: view.offset.y + dy } };
 }

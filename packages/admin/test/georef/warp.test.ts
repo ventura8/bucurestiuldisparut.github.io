@@ -1,7 +1,7 @@
-import { fitTransform, type FittedTransform } from '@hcm/shared';
+import { fitTransform, triangleTransform, type FittedTransform } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
-import { WARP_CELLS, WARP_MAX_SIDE, warpFrame, warpTriangles } from '../../src/georef/warp.js';
+import { triangleCanvasTransform, WARP_CELLS, WARP_MAX_SIDE, warpFrame, warpTriangles } from '../../src/georef/warp.js';
 import { pair } from './fixtures.js';
 
 function fitted(): FittedTransform {
@@ -38,5 +38,26 @@ describe('the warped preview', () => {
                 { width: 100, height: 50 },
             ),
         ).toEqual([]);
+    });
+
+    it('happyPath_theClosedFormTriangleIsSharedsMatrixSolveAndAFlatOneIsNone', () => {
+        const from = [
+            { x: 3, y: 4 },
+            { x: 120, y: 9 },
+            { x: 15, y: 210 },
+        ] as const;
+        const to = [
+            { x: 40, y: -2 },
+            { x: 300, y: 50 },
+            { x: -20, y: 400 },
+        ] as const;
+        const solved = triangleTransform(from, to) ?? [];
+        const closed = triangleCanvasTransform(from, to) ?? [];
+
+        expect(closed).toHaveLength(6);
+        closed.forEach((value, index) => {
+            expect(value).toBeCloseTo(solved[index] ?? Number.NaN, 9);
+        });
+        expect(triangleCanvasTransform([from[0], from[0], from[1]], to)).toBeNull();
     });
 });

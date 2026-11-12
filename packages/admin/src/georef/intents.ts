@@ -27,6 +27,10 @@ export interface GeorefIntentActions {
     edit(pairs: readonly Gcp[], remember?: boolean): void;
     refit(pairs: readonly Gcp[], transform: GeorefTransform): void;
     pickScan(pixel: PixelPosition): void;
+    /** The half pair changed outside a click (Add pairs toggled): the map's cross and the ghost follow. */
+    syncHalf(): void;
+    /** The scan pane shows `scale` CSS px a scan pixel (the sharper scan past the preview's own). */
+    zoomed(scale: number): void;
     pickMap(geo: GeoPosition): void;
     addAtCentres(pixel: PixelPosition): void;
     movePixel(id: string, pixel: PixelPosition): void;
@@ -68,6 +72,7 @@ function menuIntents(actions: GeorefIntentActions): Pick<GeorefIntents, 'addAt' 
             if (!actions.cell.state.adding) {
                 actions.cell.update({ adding: true, half: null });
                 actions.map.setAdding(true);
+                actions.syncHalf();
             }
             if ('pixel' in end) {
                 actions.pickScan(end.pixel);
@@ -96,6 +101,7 @@ function pairIntents(
             // A picked-up point is put back: both panes take the new mode together.
             actions.cell.update({ adding, half: null, moving: null });
             actions.map.setAdding(adding);
+            actions.syncHalf();
         },
         pickScan: (pixel) => {
             actions.pickScan(pixel);
@@ -154,6 +160,7 @@ function linkIntents(actions: GeorefIntentActions): Pick<GeorefIntents, 'setLink
         },
         scanMoved: (camera) => {
             actions.link.scan(camera);
+            actions.zoomed(camera.scale);
         },
     };
 }

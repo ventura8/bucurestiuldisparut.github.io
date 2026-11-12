@@ -17,7 +17,7 @@ import numpy
 
 from hcm_pipeline import paths
 from hcm_pipeline.agreement import AGREED, REJECT_M, Agreement, Candidate, Patch, candidates, decide, read_patch, readings
-from hcm_pipeline.contract import SCAN_PREVIEW_MAX_PX, Errors
+from hcm_pipeline.contract import SCAN_DETAIL_MAX_PX, SCAN_PREVIEW_MAX_PX, Errors
 from hcm_pipeline.documents import ScanInfo, city_bounds
 from hcm_pipeline.geo import Bounds, Grid, MercatorBox, fnv1a
 from hcm_pipeline.images import UInt8Array, resize, write_jpeg
@@ -215,12 +215,25 @@ def grey_reference(source: Sentinel2) -> UInt8Array:
     return numpy.asarray(numpy.asarray(total) / 3, numpy.uint8)
 
 
+def _scaled_jpeg(ctx: JobContext, pixels: UInt8Array, name: str, longest: int) -> float:
+    """`pixels` shrunk to at most `longest` on the long side as the version's JPEG `name`; its scale (its pixels per scan pixel)."""
+    height, width = (int(side) for side in pixels.shape[:2])
+    scale = min(1.0, longest / max(width, height))
+    local = write_jpeg(ctx.local(name), resize(pixels, (max(1, round(width * scale)), max(1, round(height * scale)))))
+    ctx.publish(local, ctx.version_file(name), "image/jpeg")
+    return scale
+
+
 def publish_scan(ctx: JobContext, local: Path, pixels: UInt8Array) -> ScanInfo:
-    """`scan.tif` and its preview (long side at most `SCAN_PREVIEW_MAX_PX`) as the version's files."""
+    """`scan.tif`, its preview (long side at most `SCAN_PREVIEW_MAX_PX`) and, for a longer scan, its sharper `scan-detail.jpg`.
+
+    The detail (long side at most `SCAN_DETAIL_MAX_PX`) is what the georeferencer draws once the owner zooms past the preview's own
+    pixels (a 1966 Corona frame was a blur at high zoom, 2026-11-12); a scan no longer than its preview needs none.
+    """
     height, width = pixels.shape[:2]
-    scale = min(1.0, SCAN_PREVIEW_MAX_PX / max(width, height))
-    preview = write_jpeg(ctx.local("scan-preview.jpg"), resize(pixels, (max(1, round(width * scale)), max(1, round(height * scale)))))
+    scale = _scaled_jpeg(ctx, pixels, "scan-preview.jpg", SCAN_PREVIEW_MAX_PX)
+    detail = None if scale >= 1.0 else _scaled_jpeg(ctx, pixels, "scan-detail.jpg", SCAN_DETAIL_MAX_PX)
     sha256 = sha256_of(local)
     scan = ctx.publish(local, ctx.version_file("scan.tif"), "image/tiff")
-    ctx.publish(preview, ctx.version_file("scan-preview.jpg"), "image/jpeg")
-    return ScanInfo(scan.path, width, height, sha256, ctx.version_file("scan-preview.jpg"), scale)
+    detail_path = None if detail is None else ctx.version_file("scan-detail.jpg")
+    return ScanInfo(scan.path, width, height, sha256, ctx.version_file("scan-preview.jpg"), scale, detail_path, detail)

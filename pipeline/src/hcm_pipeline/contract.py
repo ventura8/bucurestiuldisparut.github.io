@@ -112,11 +112,14 @@ VERSION_FILES: Final = (
     "thumb.webp",
     "align.tif",
     "stitched.jpg",
+    "scan-detail.jpg",
 )
 LEASE_SECONDS: Final = 600
 HEARTBEAT_SECONDS: Final = 60
 USGS_BACKOFF_MINUTES: Final = (30, 60, 120, 240, 480, 720)
 SCAN_PREVIEW_MAX_PX: Final = 4096
+# The georeferencer's sharper scan (`scan-detail.jpg`): its long side at most this, written when the scan is longer than its preview.
+SCAN_DETAIL_MAX_PX: Final = 16384
 STUDIO_MAX_BYTES: Final = 300_000_000
 # At most this many GCPs per georeferencing (`MAX_GCPS`), the largest scan side (`MAX_SCAN_PIXELS`), log lines per job.
 MAX_GCPS: Final = 300

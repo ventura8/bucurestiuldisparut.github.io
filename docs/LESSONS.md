@@ -3384,3 +3384,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: DECISIONS-for-review.md §143 moved the map's pair and suggestion markers from Mapbox sources to one badge canvas over the map (`packages/admin/src/georef/marker-overlay.ts`), so no `hcm-source-georef-suggestions` exists; the spec still read the old source, which nothing asserted was gone.
     - Fix and pin: `georefBadgesAt` (`e2e/admin/support/map.ts`) counts the places with paint on the `canvas[data-georef-badges]` near their projection; the spec reads the suggested places from the version, shows the map pane, zooms out with the map's own button until they are on screen (a badge off the view is not drawn) and expects four. S-A44-HAPPY's asserts say so.
     - **When a rendering moves from a map source to a canvas, its e2e reads move with it: assert the pixels the user sees, and grep the specs for the old source id in the same change.**
+
+577. **The scan pane threw the owner's zoom away whenever its box changed size.**
+    - Seen: 2026-11-12, the owner placing points on 1966 Corona frames: after a pair was added, the scan sometimes showed the whole strip again.
+    - Cause: `<hcm-scan-viewer>` set its view back to "fit" whenever its measured size changed (`#currentView` → `#measure`), and adding a pair changes the page below the panes (the residual table grows, a scrollbar comes, a status line wraps), which narrows the pane by a few pixels.
+    - Fix and pin: `resizedView` keeps the zoom and the pixel at the centre over a size change and fits again only a pane never zoomed or never shown (`packages/ui/test/admin/georef/scan-viewer-keep.test.ts`, `e2e/admin/specs/imagery/georef-ghost.spec.ts`: S-A16-HAPPY-GEOREF-KEEP-ZOOM).
+    - **A view the user chose survives a layout change: re-centre it, never reset it, and test it by resizing the box.**
+
+578. **The linked map moved between the two clicks of a pair, so a fast second click landed 1 km off.**
+    - Seen: 2026-11-12, the same session: with a fit, a scan zoom (or the wheel's trailing events) after the scan click moved the map to the fit's place of the scan centre while the owner aimed at the map.
+    - Cause: the linked views (§156) applied every scan move to the map, a half pair pending or not.
+    - Fix and pin: the link pauses while a half pair exists; the expected place is shown as a dashed ring instead (`ghost.ts`, `ghosts.ts`; S-A16-HAPPY-GEOREF-GHOST).
+    - **Never move the target a user is about to click: show where you expect it instead.**

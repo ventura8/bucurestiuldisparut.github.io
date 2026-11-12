@@ -43,6 +43,8 @@ export const ro = {
     'adminContent.georef.addingHint': 'Fă clic pe scanare, apoi pe același loc pe hartă (sau invers).',
     'adminContent.georef.halfOnScan': 'Acum fă clic pe același loc pe hartă. Esc renunță.',
     'adminContent.georef.halfOnMap': 'Acum fă clic pe același loc pe scanare. Esc renunță.',
+    'adminContent.georef.halfOnScanGhost': 'Fă clic pe același loc pe hartă; cercul punctat arată unde e așteptat. Esc renunță.',
+    'adminContent.georef.halfOnMapGhost': 'Fă clic pe același loc pe scanare; cercul punctat arată unde e așteptat. Esc renunță.',
     'adminContent.georef.pane.label': 'Ce arată ecranul',
     'adminContent.georef.pane.scan': 'Scanare',
     'adminContent.georef.pane.map': 'Hartă',

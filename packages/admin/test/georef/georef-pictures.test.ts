@@ -1,15 +1,27 @@
 import { fitTransform, type FittedTransform } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
-import { GeorefPictures, REFERENCE_PICTURE, referenceOf, WARP_DELAY_MS, WARPED_PICTURE } from '../../src/georef/georef-pictures.js';
-import type { GeorefVersion, ScanImage } from '../../src/georef/state.js';
+import {
+    GeorefPictures,
+    loadWarp,
+    REFERENCE_PICTURE,
+    referenceOf,
+    WARP_DELAY_MS,
+    WARPED_PICTURE,
+    type WarpLoader,
+} from '../../src/georef/georef-pictures.js';
+import type { GeorefVersion, ScanDetail, ScanImage } from '../../src/georef/state.js';
 import { PictureOverlays } from '../../src/imagery/overlay.js';
 import { FakeClock, settle } from '../app/fakes.js';
 import { mapboxHandle } from '../imagery/maps.js';
 import { FakeFiles, FakePictures } from '../imagery/world.js';
 import { pair } from './fixtures.js';
 
-const SCAN = { width: 1000, height: 500, previewScale: 0.5, previewPath: 'v/scan-preview.jpg' };
+const SCAN = { width: 1000, height: 500, previewScale: 0.5, previewPath: 'v/scan-preview.jpg', detail: null };
+const DETAIL = { path: 'v/scan-detail.jpg', scale: 1 };
+/** The warp chunk, fetched once before the tests. */
+const WARP = await loadWarp();
+const LOADED: WarpLoader = () => Promise.resolve(WARP);
 const REFERENCE = {
     bounds: [
         [26, 44.4],
@@ -42,17 +54,22 @@ function fitted(): FittedTransform {
     return result.transform;
 }
 
-async function setup(pictures: FakePictures | null = new FakePictures()) {
+async function setup(pictures: FakePictures | null = new FakePictures(), warp: WarpLoader = LOADED) {
     const { handle, native } = await mapboxHandle();
     const files = new FakeFiles();
     const clock = new FakeClock();
     const scans: ScanImage[] = [];
+    const details: (ScanDetail | null)[] = [];
     const overlays = new PictureOverlays(() => handle.port);
-    const shown = new GeorefPictures({ files, pictures, clock, overlays, scan: (image) => scans.push(image) });
+    const shown = new GeorefPictures({
+        ...{ files, pictures, clock, overlays, scan: (image) => scans.push(image) },
+        detail: (detail) => details.push(detail),
+        warp,
+    });
     for (const path of [SCAN.previewPath, REFERENCE.osmPath, REFERENCE.s2Path]) {
         files.put(path);
     }
-    return { shown, files, clock, scans, overlays, native, pictures };
+    return { shown, files, clock, scans, details, overlays, native, pictures };
 }
 
 describe('the references a version offers', () => {
@@ -144,7 +161,10 @@ describe('the georeferencer pictures', () => {
         const overlays = new PictureOverlays(() => (ready ? handle.port : null));
         const files = new FakeFiles();
         const clock = new FakeClock();
-        const shown = new GeorefPictures({ files, pictures: new FakePictures(), clock, overlays, scan: () => undefined });
+        const shown = new GeorefPictures({
+            ...{ files, pictures: new FakePictures(), clock, overlays },
+            ...{ scan: () => undefined, detail: () => undefined, warp: LOADED },
+        });
         for (const path of [SCAN.previewPath, REFERENCE.s2Path]) {
             files.put(path);
         }
@@ -185,5 +205,72 @@ describe('the georeferencer pictures', () => {
 
         expect(files.released).toEqual([`blob:${SCAN.previewPath}`, `blob:${SCAN.previewPath}`]);
         expect(scans.at(-1)).toEqual({ status: 'none' });
+    });
+});
+
+describe('the warp chunk', () => {
+    it('badPath_aWarpChunkThatFailsToLoadDrawsNoPreviewAndIsAskedForAgainAtTheNextDraw', async () => {
+        let attempts = 0;
+        const flaky: WarpLoader = () => {
+            attempts += 1;
+            return attempts === 1 ? Promise.reject(new TypeError('Failed to fetch dynamically imported module')) : Promise.resolve(WARP);
+        };
+        const { shown, clock, overlays } = await setup(new FakePictures(), flaky);
+
+        shown.load(version(), 's2');
+        await settle();
+        shown.warp(fitted(), SCAN, 0.6);
+        clock.advance(WARP_DELAY_MS);
+        await settle();
+
+        expect(attempts).toBe(2);
+        expect(overlays.has(WARPED_PICTURE)).toBe(true);
+    });
+});
+
+describe('the sharper scan (S-A16-HAPPY-GEOREF-FULL-RES)', () => {
+    const DETAILED = { ...SCAN, detail: DETAIL };
+
+    it('happyPath_zoomedPastThePreviewsOwnPixelsTheDetailIsFetchedOnceAndReleasedOnClear @S-A16-HAPPY-GEOREF-FULL-RES', async () => {
+        const { shown, files, details } = await setup();
+        files.put(DETAIL.path);
+
+        // At the preview's own pixels (0.5 CSS px a scan pixel here) and below: the preview is enough, nothing is fetched.
+        shown.zoomed(DETAILED, 0.5);
+        await settle();
+        expect(details).toEqual([]);
+
+        shown.zoomed(DETAILED, 0.8);
+        shown.zoomed(DETAILED, 2);
+        await settle();
+        expect(details).toEqual([{ url: `blob:${DETAIL.path}`, scale: 1 }]);
+        shown.zoomed(DETAILED, 4);
+        await settle();
+        expect(details).toHaveLength(1);
+
+        shown.clear();
+        expect(files.released).toContain(`blob:${DETAIL.path}`);
+        expect(details.at(-1)).toBeNull();
+    });
+
+    it('badPath_noDetailOrAFailedFetchLeavesThePreviewAndAClearedPageDropsALateOne @S-A16-BAD-GEOREF-FULL-RES-NONE', async () => {
+        const { shown, files, details } = await setup();
+
+        // A short scan (or an older version) has none; a missing file keeps the preview; neither is said as an error.
+        shown.zoomed(SCAN, 4);
+        shown.zoomed(null, 4);
+        shown.zoomed(DETAILED, 4);
+        await settle();
+        expect(details).toEqual([]);
+
+        shown.clear();
+        files.put(DETAIL.path);
+        files.hold = true;
+        shown.zoomed(DETAILED, 4);
+        shown.clear();
+        files.flush();
+        await settle();
+        expect(details).toEqual([null, null]);
+        expect(files.released).toContain(`blob:${DETAIL.path}`);
     });
 });

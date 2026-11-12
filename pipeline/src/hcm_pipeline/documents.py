@@ -59,10 +59,14 @@ class ScanInfo:
     sha256: str
     preview_path: str
     preview_scale: float
+    # The sharper scan (`scan-detail.jpg`): written only when the scan is longer than its preview (None: none, or an older version).
+    detail_path: str | None = None
+    detail_scale: float | None = None
 
     @classmethod
     def of(cls, value: object) -> ScanInfo:
         record = record_of(value, "scan")
+        detail_path = optional_text(record, "detailPath")
         return cls(
             text_of(record, "path"),
             int(number_of(record, "width")),
@@ -70,17 +74,24 @@ class ScanInfo:
             text_of(record, "sha256"),
             text_of(record, "previewPath"),
             number_of(record, "previewScale"),
+            detail_path,
+            None if detail_path is None else number_of(record, "detailScale"),
         )
 
     def as_record(self) -> Record:
-        return {
-            "path": self.path,
-            "width": self.width,
-            "height": self.height,
-            "sha256": self.sha256,
-            "previewPath": self.preview_path,
-            "previewScale": round(self.preview_scale, 6),
-        }
+        detail_scale = None if self.detail_scale is None else round(self.detail_scale, 6)
+        return _without_none(
+            {
+                "path": self.path,
+                "width": self.width,
+                "height": self.height,
+                "sha256": self.sha256,
+                "previewPath": self.preview_path,
+                "previewScale": round(self.preview_scale, 6),
+                "detailPath": self.detail_path,
+                "detailScale": detail_scale,
+            }
+        )
 
 
 @dataclass(frozen=True)

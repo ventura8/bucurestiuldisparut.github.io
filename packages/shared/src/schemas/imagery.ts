@@ -83,6 +83,9 @@ export type MtsPrecision = (typeof MTS_PRECISIONS)[number];
 /** The scan preview's long side in pixels: what the georeferencer shows (`scan-preview.jpg`). */
 export const SCAN_PREVIEW_MAX_PX = 4096;
 
+/** The sharper scan's long side (`scan-detail.jpg`): written when the scan is longer than the preview, fetched once the pane zooms past it. */
+export const SCAN_DETAIL_MAX_PX = 16384;
+
 const pathSchema = z.string().min(1).max(500);
 
 const sourceSchema = z.discriminatedUnion('kind', [
@@ -112,6 +115,10 @@ const scanSchema = z.strictObject({
     previewPath: pathSchema,
     /** Preview pixels per scan pixel (at most 1): a GCP's preview position is `pixel × previewScale`. */
     previewScale: z.number().positive().max(1),
+    /** The sharper scan (`scan-detail.jpg`, at most `SCAN_DETAIL_MAX_PX` long; absent on a scan no longer than its preview, or older). */
+    detailPath: pathSchema.optional(),
+    /** Detail pixels per scan pixel (at most 1). */
+    detailScale: z.number().positive().max(1).optional(),
 });
 
 /**

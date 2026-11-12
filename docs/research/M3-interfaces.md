@@ -213,7 +213,7 @@ Everything lives in the private bucket; tiles live at Mapbox; nothing of M3 is w
 | USGS delivery | `usgs-raw/{dataset}/{entityId}/{file}` (shared by every city) | 30 days (USGS is the archive; paid scans move to ARCHIVE in M4) |
 | browse copy | `usgs-browse/{dataset}/{entityId}.jpg` | kept |
 | a job's scratch | `work/{city}/{job}/{name}` (one or two segments: `segments/a.tif`, `frame.tif`, `fetch.checkpoint.json`, `warped.tif`) | 14 days; deleted on success and on cancel |
-| a version's files | `rasters/{city}/{layer}/{version}/{scan.tif, scan-preview.jpg, reference-osm.png, reference-s2.jpg, cog.tif, preview.png, studio.tif, align.tif}` (`align.tif`: a proved frame at 5 ground metres, M15 *Joint solve*) | kept while the version is current or pending; `imagery.tick` deletes those of versions rejected, cancelled, failed or superseded more than 30 days ago |
+| a version's files | `rasters/{city}/{layer}/{version}/{scan.tif, scan-preview.jpg, scan-detail.jpg, reference-osm.png, reference-s2.jpg, cog.tif, preview.png, studio.tif, align.tif}` (`align.tif`: a proved frame at 5 ground metres, M15 *Joint solve*) | kept while the version is current or pending; `imagery.tick` deletes those of versions rejected, cancelled, failed or superseded more than 30 days ago |
 | reference cache | `reference/{city}/s2/{key}.tif`, `reference/{city}/osm/{key}.geojson`, `reference/{city}/dem/{key}.tif` (M15 *Terrain*: the window's Copernicus DEM GLO-30, 30 m, averaged over 900 m) | 90 days |
 
 The pipeline spells the same paths (`hcm_pipeline.paths`), held equal by `pipeline/tests/contracts/paths.json` (done). The
@@ -1384,3 +1384,31 @@ first pane move once a fit exists (`link.ts`; the latest move made while it load
 helpers and full screen's cover moved into the static `georef-badges` group so `georef` stays within its 19 KB (DECISIONS-for-review.md
 §156). Rows: S-A16-HAPPY-GEOREF-LINKED, S-A16-BAD-GEOREF-LINKED-NO-FIT; tour state `georef.linked`. The e2e specs other than
 `georef-linked.spec.ts` open the georeferencer with the link off (`georeferencerReady`), as their clicks read the scan shown whole.
+
+## Addendum of 2026-11-12: the kept zoom, the ghost and the sharper scan
+
+The owner placed points on 1966 Corona frames and hit four things; each is fixed as follows.
+
+- **The kept zoom**: the scan pane fitted the whole strip again whenever its size changed, and adding a pair below it (the residual
+  table growing, a scrollbar coming) changed it. A shown pane now keeps its zoom and the same pixel at its centre across a size
+  change (`resizedView` in `packages/ui/src/admin/georef/scan-view.ts`); a pane never zoomed, or never shown, fits the whole frame
+  again. Rows: S-A16-HAPPY-GEOREF-KEEP-ZOOM, S-A16-BAD-GEOREF-KEEP-ZOOM-NEVER-SHOWN.
+- **No pane moves while a pair waits**: the linked views pause while a half pair exists (`linkedPanesOf`: `active` also needs
+  `half === null`), so a scan zoom made between the two clicks no longer moves the map under the second one (a pin had landed 1 km
+  off). Instead the state's `ghost` is the place the pairs so far expect for the other end: a dashed double ring with a dot
+  (`paintGhostBadge`), on the map's badge canvas for a pair begun on the scan, on the scan for one begun on the map. It takes no click
+  (a click there is the pair's place, as anywhere) and the hint names it (`adminContent.georef.halfOnScanGhost` /
+  `halfOnMapGhost`). Through the store's fit when there is one; with no fit and two or more enabled pairs, through the similarity
+  (shift, turn and one scale, in Web Mercator with north up) that carries the two latest enabled pairs' pixels onto their places
+  (`packages/admin/src/georef/ghost.ts`, in the lazy `georef-extras` chunk; `ghosts.ts` fetches it only when a ghost can exist).
+  Rows: S-A16-HAPPY-GEOREF-GHOST, S-A16-BAD-GEOREF-GHOST-NO-PAIRS; tour state `georef.ghost`.
+- **The sharper scan**: `publish_scan` writes `scan-detail.jpg` beside `scan-preview.jpg` when the scan is longer than the preview
+  (`SCAN_DETAIL_MAX_PX` = 16,384 px long, a `VERSION_FILES` member), and the version's `scan` records `detailPath` and `detailScale`
+  (optional: a short scan and a version parked before have none). The store fetches it once (a `blob:` address, `scanDetail`) when
+  the scan pane shows more than one CSS pixel per preview pixel, by the owner's zoom or the linked map's; the pane draws it instead
+  of the preview past that scale. A missing file, or a late answer after the page closed, leaves the preview, with no error. The
+  warped map preview is drawn `WARP_MAX_SIDE` = 4,096 px across (3,072 before), its mesh code in a lazy chunk of its own
+  (`georef-warp.ts`, fetched when a version opens). Rows: S-A16-HAPPY-GEOREF-FULL-RES, S-A16-BAD-GEOREF-FULL-RES-NONE.
+
+Budgets: `georef` 18.8 KB of 19 (19.5 KB before the warp moved out), `georef-warp` 1.0 of 2 (new), `georef-extras` 1.9 of 2,
+`georef-badges` 2.9 of 3 (DECISIONS-for-review.md, *The georeferencer's kept zoom, ghost and sharper scan*).

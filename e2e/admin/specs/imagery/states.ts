@@ -229,6 +229,10 @@ export const IMAGERY_STATES = {
         title: 'Georeferencer: the views linked, the map zoomed with the scan',
         visit: 'specs/imagery/georef-linked.spec.ts',
     },
+    'georef.ghost': {
+        title: 'Georeferencer: a pair begun on the scan, the dashed ring where the pairs expect it on the still map, and the hint',
+        visit: 'specs/imagery/georef-ghost.spec.ts',
+    },
     'georef.refitted': {
         title: "Georeferencer: a fitted version's pairs edited, the figures said to be a refit",
         visit: 'specs/imagery/georeferencer.spec.ts',

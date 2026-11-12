@@ -99,20 +99,27 @@ interface StoreSide {
     readonly cell: Store<GeorefState>;
     /** The store's fit now (null: none). */
     readonly transform: () => FittedTransform | null;
+    /** The scan pane shows this many CSS px a scan pixel (the sharper scan past the preview's own). */
+    readonly zoomed: (scale: number) => void;
 }
 
-/** The georeferencer store's linked panes: on while `linked` and no map point is dragged; the scan pane follows through `scanFollow`. */
-export function linkedPanesOf({ services, extras, frame, map, cell, transform }: StoreSide): LinkedPanes {
+/**
+ * The georeferencer store's linked panes: on while `linked`, no map point is dragged and no pair waits for its second click (a pane that
+ * moved under it put a fast click 1 km off, 2026-11-12); the scan pane follows through `scanFollow`.
+ */
+export function linkedPanesOf({ services, extras, frame, map, cell, transform, zoomed }: StoreSide): LinkedPanes {
     return new LinkedPanes({
         ...{ services, extras },
         ports: {
             transform,
-            active: () => cell.state.linked && !map.dragging,
+            // A pair waiting for its second click stops both panes: the other one stays where the owner looks (`./ghost.ts`).
+            active: () => cell.state.linked && !map.dragging && cell.state.half === null,
             moveMap: (camera) => {
                 map.follow(camera);
             },
             moveScan: (scanFollow) => {
                 cell.update({ scanFollow });
+                zoomed(scanFollow.scale);
             },
             frame,
         },

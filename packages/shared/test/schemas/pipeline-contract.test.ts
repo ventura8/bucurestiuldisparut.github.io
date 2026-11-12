@@ -66,6 +66,7 @@ import {
     layerVersionDocSchema,
     PIPELINE_STEPS,
     S2_CHECK_STATUSES,
+    SCAN_DETAIL_MAX_PX,
     SCAN_PREVIEW_MAX_PX,
     VERSION_ORIGINS,
 } from '../../src/schemas/imagery.js';
@@ -141,6 +142,7 @@ describe('the pipeline contract', () => {
             HEARTBEAT_SECONDS,
             USGS_BACKOFF_MINUTES,
             SCAN_PREVIEW_MAX_PX,
+            SCAN_DETAIL_MAX_PX,
             STUDIO_MAX_BYTES,
             SENSOR_SPECS,
             MAX_GCPS,
