@@ -3537,3 +3537,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the map's buttons turned it with an animation, whose `move` events kept turning the scan after the owner's next press; and every map move read the scan's angle back through an oblique fit, whose two conversions are not exact inverses.
     - Fix and pin: the map's turn is a jump (`GeorefMap.rotateBy`), and only a move that changes the map's bearing turns the scan (`linkedPanesOf`; `rotation.test.ts`).
     - **Run a test of linked motion several times before trusting it; an animation is a second actor.**
+
+603. **Points of interest off still drew tram and metro stations.**
+    - Seen: 2026-11-08, the owner on the live map: the Layers panel's Points of interest switch off, the stations stayed.
+    - Cause: Mapbox Standard splits what a visitor calls points of interest across `showPointOfInterestLabels` and `showTransitLabels`; the switch wrote only the first (DECISIONS-for-review.md §92b left transit the city's), and the e2e style draws no text, so every test passed on the property the code wrote.
+    - Fix and pin: the switch drives `showTransitLabels` too, live, in the mount `config` and on swipe compare's map, with an explicit city `basemap.config` value standing (`transitLabels`; DECISIONS §174); `happyPath_transitStationsFollowThePointsOfInterestOffAndOn`, `happyPath_bothSidesHideTransitStationsWithThePointsOfInterest`, `S-V31-HAPPY-TRANSIT`, `S-V31-BAD-TRANSIT-CITY`, `S-V31-BAD-TRANSIT-UNKNOWN`.
+    - **A switch named for what a visitor sees maps to every style property that draws it: read the style's whole configuration list against the switch's name, not only the property whose name matches.**

@@ -3188,6 +3188,39 @@
             "notes": "Code review of 2026-11-07. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts."
         },
         {
+            "id": "S-V31-HAPPY-TRANSIT",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Points of interest off hide the tram and metro stations too, and a reload keeps them hidden",
+            "asserts": "the points of interest switch off -> Mapbox GL reports showTransitLabels false on the basemap import and the hash names labels=streets; a reload mounts with them hidden; the switch on shows them again; one map",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-08: tram and metro stations stayed after the points of interest were turned off. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts, packages/engine/test/compare/session.test.ts."
+        },
+        {
+            "id": "S-V31-BAD-TRANSIT-CITY",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A city's own transit choice stands when the points of interest come back",
+            "asserts": "basemap.config showTransitLabels false and labels=streets -> the points of interest switch on draws them, and Mapbox GL still reports showTransitLabels false",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-08. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts, packages/shared/test/overlays/map-labels.test.ts."
+        },
+        {
+            "id": "S-V31-BAD-TRANSIT-UNKNOWN",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A custom basemap is sent no transit property",
+            "asserts": "a custom style without the basemap import -> no points of interest switch; setMapLabels({pois: false}) writes nothing (Mapbox GL reports no showTransitLabels) and fires nothing",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-08. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts, packages/engine/test/core/map-specs.test.ts."
+        },
+        {
             "id": "S-V03-HAPPY-LAYERS-PINNED",
             "behaviour": "V03",
             "area": "viewer",

@@ -38,6 +38,12 @@ function rasters(map: FakeMap): Record<string, boolean> {
     );
 }
 
+/** Points of interest off on a basemap with transit stations: both properties, live. */
+const POIS_OFF_WRITES = [
+    ['showPointOfInterestLabels', false],
+    ['showTransitLabels', false],
+];
+
 describe('swipe compare session', () => {
     beforeEach(() => {
         vi.useFakeTimers();
@@ -70,6 +76,23 @@ describe('swipe compare session', () => {
         expect((second?.callsOf('mount')[0]?.[1] as MapOptions).config).toMatchObject({ showPointOfInterestLabels: false });
         expect(second?.getBasemapFlag('showPointOfInterestLabels')).toBe(false);
         expect(second?.callsOf('setBasemapFlag')).toEqual([]);
+    });
+
+    it('happyPath_bothSidesHideTransitStationsWithThePointsOfInterest', async () => {
+        const flags = { basemapFlags: { showRoadLabels: true, showPointOfInterestLabels: true, showTransitLabels: true } };
+        const compare = new FakeCompare();
+        compare.mapOptions = flags;
+        const { store, map } = await comparing({ compare, map: flags });
+        store.openCompare(null);
+        await settle();
+        const second = compare.maps[0];
+
+        store.setMapLabels({ pois: false });
+
+        expect(map.callsOf('setBasemapFlag')).toEqual(POIS_OFF_WRITES);
+        expect(second?.callsOf('setBasemapFlag')).toEqual(map.callsOf('setBasemapFlag'));
+        store.setMapLabels({ pois: true });
+        expect(second?.getBasemapFlag('showTransitLabels')).toBe(true);
     });
 
     it('badPath_aCustomBasemapIsNeverWrittenOnEitherSide', async () => {
