@@ -6376,4 +6376,3 @@ The owner's request of 2026-11-09 ("import the landsat, add it to our sources, a
 - **What**: its public site's historical maps may be used as a reference: looked at (by the owner or an agent) to find where a feature lies while placing points on our own scans, or to judge a result by eye (`docs/MANUAL_TEST_PLAN.md` J8). Nothing of it is embedded or copied: no tileset, style, token or dataset in our code, config or layers, and no tile or asset shipped.
 - **Why**: the owner, 2026-11-12: "new hard rule: we can use fostulbucuresti for reference!" (the 1966 frames DF046/DF047 wait for points). A Mapbox token belongs to its account (using theirs from our app bills them and breaks Mapbox's terms), and copied tiles would ship their georeferencing as ours, so "reference" stays visual.
 - **Where**: `AGENTS.md` (*Never*, *Project hard constraints*); automatic matching against their tiles is not part of this and would need its own decision.
-

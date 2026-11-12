@@ -16645,6 +16645,50 @@
             "notes": "Owner 2026-11-11 tile import piece 4. Tests: pipeline/tests/unit/test_placing_overview_find.py."
         },
         {
+            "id": "S-P20-HAPPY-OVERVIEW-ANCESTOR",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The overview two folders up, under the archive's top folder, is found",
+            "asserts": "find_overview climbs from the pieces' folder towards the archive root and returns the same-year map loose beside an ancestor's branch (harti.zip: Harti/Harta Bucuresti 1895.png), not a larger same-city map of another year",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895-1899 pieces stitched 4 of 60 (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_find.py."
+        },
+        {
+            "id": "S-P20-BAD-OVERVIEW-ANCESTOR-YEAR",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A same-city map of another year up the tree is not taken as the overview",
+            "asserts": "find_overview returns None when the only rasters up the tree share the city's name but not the pieces' year, and a scale folder like 1-10000 is no year",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895-1899 pieces stitched 4 of 60 (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_find.py."
+        },
+        {
+            "id": "S-P20-HAPPY-OVERVIEW-SCALE",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Pieces read at the overview's own size still land on it",
+            "asserts": "overview_canvas estimates the downscale from the pieces' count (16 tiles at 4x on an 800 px overview, all read at 800 px), places at least 12 with RMS under 3 px and draws the canvas at the tiles' detail",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895-1899 pieces stitched 4 of 60 (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_scale.py."
+        },
+        {
+            "id": "S-P20-BAD-OVERVIEW-SCALE-BLANK",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A blank piece among landed pieces is left out of the overview mosaic",
+            "asserts": "fit_tiles returns None for a uniform piece while the real pieces land; a weak fit joins only when its scale and turn agree with the strong fits",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895-1899 pieces stitched 4 of 60 (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_scale.py."
+        },
+        {
             "id": "S-P20-HAPPY-ATLAS",
             "behaviour": "P20",
             "area": "pipeline",

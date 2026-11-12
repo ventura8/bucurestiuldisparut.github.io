@@ -236,12 +236,47 @@ def test_bad_stat_error_skips_candidate(tmp_path: Path, monkeypatch: pytest.Monk
     assert find_overview(tmp_path, [tile1]) is None
 
 
-def test_bad_series_root_and_sibling_edges(tmp_path: Path) -> None:
+def test_bad_levels_stop_at_the_archive_root(tmp_path: Path) -> None:
     root = tmp_path / "archive"
-    root.mkdir()
-    assert overview_find_mod._series_root(root, root) is None
-    assert overview_find_mod._sibling_candidates(Path("/no/such/series/deep"), set()) == []
-    assert overview_find_mod._near_overview(root, root, set(), set()) is None
+    deep = root / "a" / "b"
+    deep.mkdir(parents=True)
+    assert overview_find_mod._levels(deep, root) == [(root / "a").resolve(), root.resolve()]
+    assert overview_find_mod._levels(root, root) == []
+    assert overview_find_mod._near_overview(deep, root, set(), {"1895"}) is None
+
+
+def test_happy_overview_two_folders_up_under_a_top_folder(tmp_path: Path) -> None:
+    """Scenarios: S-P20-HAPPY-OVERVIEW-ANCESTOR"""
+    harti = tmp_path / "Harti"
+    tiles = []
+    for quadrant in ("1_quadrat", "2_quadrat"):
+        tile = harti / "Bucuresti 1895-1899" / "1895-1899.jpg" / quadrant / "img362.jpg"
+        _write_dummy_file(tile)
+        tiles.append(tile)
+    _write_dummy_file(harti / "Bucuresti 1895-1899" / "1-10000" / "A.tif", size=200_000)
+    _write_dummy_file(harti / "Bucuresti harta 1914.jpg", size=300_000)
+    overview = harti / "Harta Bucuresti 1895.png"
+    _write_dummy_file(overview, size=100_000)
+
+    assert find_overview(tmp_path, tiles) == overview
+
+
+def test_bad_overview_ancestor_of_another_year_is_not_taken(tmp_path: Path) -> None:
+    """Scenarios: S-P20-BAD-OVERVIEW-ANCESTOR-YEAR"""
+    harti = tmp_path / "Harti"
+    tile = harti / "Bucuresti 1895-1899" / "1895-1899.jpg" / "1_quadrat" / "img362.jpg"
+    _write_dummy_file(tile)
+    _write_dummy_file(harti / "Bucuresti harta 1914.jpg", size=300_000)
+    _write_dummy_file(harti / "Bucuresti 1895-1899" / "1-10000" / "A.tif", size=200_000)
+
+    assert find_overview(tmp_path, [tile]) is None
+
+
+def test_year_tokens_stand_alone() -> None:
+    assert overview_find_mod._tokens("1-10000") == set()
+    assert overview_find_mod._tokens("Bucuresti 1895-1899") == {"bucuresti", "1895", "1899"}
+    assert overview_find_mod._needed({"bucuresti", "1895"}) == {"1895"}
+    assert overview_find_mod._needed({"alpha"}) == {"alpha"}
 
 
 def test_happy_overview_canvas_infers_grid_and_upscale(tmp_path: Path) -> None:
