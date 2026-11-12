@@ -9,9 +9,9 @@
  * top edge and the timeline 2 px from the collapsed attribution on phones). A dock is only a box around its control:
  * the empty part of the toast dock and the FAB menu's let taps through to the map and the timeline.
  *
- * Inside the host, `.viewer` is a two-row grid: the frame spans both rows (the map never resizes), the modal layer
- * fills the first, and the legal bar, shown while a modal surface covers the map, is the second (auto height): a
- * sheet, its scrim and the lightbox end where the bar begins, and Mapbox's own bottom controls are hidden meanwhile.
+ * Inside the host, `.viewer` is a grid of one cell: the frame and the modal layer above it. The modal surfaces draw
+ * above Mapbox's own logo and attribution, which move into the part of the map a modal sheet leaves in view (V18,
+ * `legal-lift.ts`: `--hcm-legal-lift-*`).
  */
 import { css } from 'lit';
 
@@ -57,14 +57,18 @@ export const viewerStyles = [
         .viewer {
             position: relative;
             display: grid;
-            grid-template-rows: minmax(0, 1fr) auto;
+            grid-template-rows: minmax(0, 1fr);
             grid-template-columns: minmax(0, 1fr);
             block-size: 100%;
         }
 
-        /* The modal surfaces' containing block; it lets pointers through to the map where no surface is open. */
+        /*
+         * The modal surfaces' containing block; it lets pointers through to the map where no surface is open. Above the frame and everything in it, Mapbox's controls included (their z-index 2 drew the credits over the
+         * lightbox, whose own z-index is auto: the Pixel 9 Pro review, P3) and the floating controls (z-index up to 26).
+         */
         .modal-layer {
             position: relative;
+            z-index: 30;
             grid-area: 1 / 1 / 2 / 2;
             pointer-events: none;
         }
@@ -73,20 +77,22 @@ export const viewerStyles = [
             pointer-events: auto;
         }
 
-        .legal {
-            position: relative;
-            z-index: 32;
-            grid-area: 2 / 1 / 3 / 2;
-            padding-block-end: env(safe-area-inset-bottom, 0);
-            padding-inline: var(--hcm-gutter);
-            border-block-start: 1px solid var(--md-sys-color-outline-variant);
-            background: var(--md-sys-color-surface-container);
+        /*
+         * Mapbox's bottom corners move out from under an open modal sheet: above a bottom sheet's top edge, beside a side
+         * sheet (the Pixel 9 Pro review, P3: a copy of the credits in a bar took the foot of every sheet). Under the
+         * sheet's scrim they stay in view, as the rest of the map does.
+         */
+        .frame .mapboxgl-ctrl-bottom-left,
+        .frame .mapboxgl-ctrl-bottom-right {
+            bottom: var(--hcm-legal-lift-bottom, 0);
         }
 
-        /* While the logo and the attribution show in the legal bar or in About, Mapbox's own stay out of sight. */
-        .frame[data-legal-mirror] .mapboxgl-ctrl-bottom-left,
-        .frame[data-legal-mirror] .mapboxgl-ctrl-bottom-right {
-            visibility: hidden;
+        .frame .mapboxgl-ctrl-bottom-left {
+            left: var(--hcm-legal-lift-left, 0);
+        }
+
+        .frame .mapboxgl-ctrl-bottom-right {
+            right: var(--hcm-legal-lift-right, 0);
         }
 
         /*
@@ -133,10 +139,9 @@ export const viewerStyles = [
             }
         }
 
-        /* The frame spans both rows of the viewer: the map keeps the whole height while the legal bar shows. */
         .frame {
             display: grid;
-            grid-area: 1 / 1 / 3 / 2;
+            grid-area: 1 / 1 / 2 / 2;
             grid-template-columns: minmax(0, 1fr);
             block-size: 100%;
         }

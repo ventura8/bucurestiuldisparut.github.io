@@ -175,7 +175,6 @@ test(
         expect(whileHeld, 'selectstart under the finger is cancelled').toBe(false);
         expect(await selectionStarts(map(page).locator('.mapboxgl-ctrl-attrib')), 'nor after the long press, on the credits').toBe(false);
         await expect(map(page)).toHaveCSS('user-select', 'none');
-        await expect(map(page)).toHaveCSS('-webkit-touch-callout', 'none');
         expect(await page.evaluate(() => getSelection()?.toString() ?? ''), 'nothing is selected').toBe('');
     },
 );

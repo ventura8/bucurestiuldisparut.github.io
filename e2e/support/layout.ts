@@ -15,7 +15,8 @@ import { violationLines, type Violation } from './violations.js';
  * centre and four inner points, and with a modal open everything outside it is inert, hidden or out of the Tab order;
  * (b) no two pieces of usable floating chrome overlap (but for `SANCTIONED_STACKINGS`) and on compact and medium windows
  * their touch targets keep 8 px apart; (c) nothing a visitor uses or reads is partly off screen unless it scrolls into
- * view, and the page never scrolls sideways; (d) with a map, exactly one Mapbox logo and one attribution show, uncovered;
+ * view, and the page never scrolls sideways; (d) with a map in view, exactly one Mapbox logo and one attribution show,
+ * uncovered or under nothing but a translucent scrim (none is owed where the lightbox or a full-screen dialog hides the map);
  * (e) no label cuts its text and no text runs over another. The helpers below it serve the functional specs' own
  * layout assertions; every check runs in the page and walks into open shadow roots, where the viewer renders.
  */
@@ -40,7 +41,7 @@ const FLOATING_CHROME: readonly ChromeSource[] = [
     { kind: 'navigation', selector: 'hcm-admin-nav' },
     { kind: 'top-bar', selector: 'header.top-bar' },
     { kind: 'mapbox-logo', selector: 'a.mapboxgl-ctrl-logo' },
-    { kind: 'attribution', selector: '.mapboxgl-ctrl-attrib, [data-layout-check="map-attribution"]' },
+    { kind: 'attribution', selector: '.mapboxgl-ctrl-attrib' },
     { kind: 'mapbox-control', selector: '.mapboxgl-ctrl' },
     { kind: 'marked', selector: '[data-layout-check]' },
 ];
@@ -74,11 +75,11 @@ const SANCTIONED_STACKINGS: readonly Sanctioned[] = [
     },
 ];
 
-/** The map canvas and the Mapbox logo and attribution: Mapbox's own controls, or the viewer's copy (V18). */
+/** The map canvas and Mapbox's own logo and attribution (V18). */
 const LEGAL = {
     map: 'canvas.mapboxgl-canvas',
     logo: 'a.mapboxgl-ctrl-logo',
-    attribution: '.mapboxgl-ctrl-attrib, [data-layout-check="map-attribution"]',
+    attribution: '.mapboxgl-ctrl-attrib',
 } as const;
 
 const PROBE_OPTIONS: ProbeOptions = {
