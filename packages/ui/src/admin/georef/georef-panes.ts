@@ -7,7 +7,6 @@
 import type { Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
-import { labelText } from '../imagery/imagery-text.js';
 import { when, withValue } from '../imagery/when.js';
 import { contentText } from '../shell/text.js';
 import type { GeorefContext } from './georef-parts.js';
@@ -147,6 +146,11 @@ function referencesOf(view: GeorefViewState): readonly ReferenceKindPort[] {
     return (['osm', 's2'] as const).filter((kind) => (kind === 'osm' ? reference.osmPath : reference.s2Path) !== null);
 }
 
+/** A published layer's name in the page's language (Romanian when it has no other): kept here so the panes' chunk imports no other area's texts. */
+function layerName(layer: GeorefViewState['baseLayers'][number], locale: Locale): string {
+    return locale === 'en' ? (layer.label.en ?? layer.label.ro) : layer.label.ro;
+}
+
 /** One thing the map pane can show: a reference of the version, or a published layer of the city. */
 interface MapChoice {
     readonly value: string;
@@ -165,7 +169,7 @@ function mapChoices({ locale, view }: GeorefContext): readonly MapChoice[] {
     }));
     const layers = view.baseLayers.map((layer) => ({
         value: `layer:${layer.id}`,
-        label: contentText(locale, 'adminContent.georef.shows.layer', { name: labelText(layer.label, locale), year: String(layer.year) }),
+        label: contentText(locale, 'adminContent.georef.shows.layer', { name: layerName(layer, locale), year: String(layer.year) }),
         choose: (intents: NonNullable<GeorefContext['intents']>): void => {
             intents.setBase(layer.id);
         },
@@ -215,7 +219,7 @@ function attribution(locale: Locale, view: GeorefViewState): string {
     const layer = view.baseLayers.find((item) => item.id === view.base);
     if (layer !== undefined) {
         return contentText(locale, 'adminContent.georef.shows.layerNote', {
-            name: labelText(layer.label, locale),
+            name: layerName(layer, locale),
             year: String(layer.year),
         });
     }
