@@ -3244,3 +3244,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `MapPort.project` / `unproject` lived on the shared Mapbox adapter (IIFE inlines it); georef also kept dead POI-overlay exports and the new painters exceeded 19 KB in one chunk.
     - Fix and pin: admin-only `withMapProjection`; drop dead overlay exports; `georef-badges` named chunk (5 KB) for painters + map overlay so `georef` stays 19; shorter Map labels copy; DECISIONS §146. No existing budget raised.
     - **Admin-only map helpers belong beside `ViewerMapPort`, not on shared `MapPort`, or the public engine pays for them in the IIFE.**
+
+552. **Approve stranded on `rights.state === 'needs-confirmation'` with no Confirm on the version.**
+    - Seen: 2026-11-12, live archive version `ar-mw993zri-s-83618d0c24e6` (IPB) waiting for approval: Approve → `apiError.imagery.rightsUnconfirmed`; rights had been cleared once by hand, but the product had no path after Import.
+    - Cause: M20 confirmed rights only in `imagery.archiveImport` (and the scan report). A version already `awaiting_approval` with `needs-confirmation` had no callable or approval-card control, so Approve stayed refused forever.
+    - Fix and pin: `imagery.confirmRights` (`cityOwner`); VersionView rights summary; approval card Confirm + Approve disabled until `rightsAllowPublish`; DECISIONS §148; S-A120-HAPPY-CONFIRM-RIGHTS / S-A120-BAD-CONFIRM-*.
+    - **A publish gate that only the owner can clear needs a Confirm on the surface where Approve lives, not only at Import.**

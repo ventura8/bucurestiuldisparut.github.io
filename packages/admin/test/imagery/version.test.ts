@@ -340,6 +340,47 @@ describe('a version and its job as the page reads them', () => {
             approval: null,
             hasScan: false,
             error: { key: 'apiError.internal' },
+            rights: null,
+        });
+    });
+});
+
+describe('M20 rights on a version view', () => {
+    it('happyPath_rightsSummaryForConfirmAndApprove @S-A120-HAPPY-CONFIRM-RIGHTS', () => {
+        const base = layerVersionDocSchema.parse(versionDoc());
+        const waiting = {
+            ...base,
+            rights: {
+                licence: 'unknown' as const,
+                state: 'needs-confirmation' as const,
+                year: '1977',
+                note: 'Confirm where it came from.',
+            },
+        };
+        const cleared = {
+            ...waiting,
+            rights: {
+                ...waiting.rights,
+                licence: 'permission' as const,
+                state: 'clear' as const,
+                confirmedBy: 'Idei Urbane',
+                confirmedAt: base.updatedAt,
+            },
+        };
+
+        expect(versionViewOf(stored(ID, waiting)).rights).toEqual({
+            state: 'needs-confirmation',
+            licence: 'unknown',
+            year: '1977',
+            note: 'Confirm where it came from.',
+            confirmedBy: null,
+            allowPublish: false,
+        });
+        expect(versionViewOf(stored(ID, cleared)).rights).toMatchObject({
+            state: 'clear',
+            licence: 'permission',
+            confirmedBy: 'Idei Urbane',
+            allowPublish: true,
         });
     });
 });

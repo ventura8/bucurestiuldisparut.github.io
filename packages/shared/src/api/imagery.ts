@@ -100,6 +100,20 @@ export const imageryApproveRequestSchema = z.strictObject({ ...versionIdField, a
 export const imageryApproveResponseSchema = z.strictObject({ state: z.enum(LAYER_VERSION_STATES), jobId: idSchema });
 export const imageryRejectResponseSchema = z.strictObject({ state: z.literal('rejected') });
 
+/**
+ * M20 (`imagery.confirmRights`, the city's owner; `docs/research/M20-import-local.md` §7; S-A120-*-CONFIRM-*): confirm a
+ * version whose rights wait (`needs-confirmation`) so Approve can publish it. `confirmedBy` may be empty on the wire;
+ * the handler refuses that as `apiError.imagery.rightsUnconfirmed` (schema trim alone would be a validation error).
+ */
+export const imageryConfirmRightsRequestSchema = z.strictObject({
+    ...versionIdField,
+    confirmedBy: z.string().max(200),
+});
+export const imageryConfirmRightsResponseSchema = z.strictObject({
+    state: z.literal('clear'),
+    confirmedAt: isoTimeSchema,
+});
+
 /** `imagery.choose` (admin; App Check consume for `pay`): the way out of a publish that does not fit the month. */
 export const imageryChooseRequestSchema = z.strictObject({ ...versionIdField, choice: z.enum(PUBLISH_CHOICES) });
 export const imageryChooseResponseSchema = z.strictObject({

@@ -9,6 +9,7 @@ import type { Ports } from '../ports/index.js';
 import { approveFunction, rejectFunction } from './approve.js';
 import { archiveImportFunction } from './archive-import.js';
 import { browseFunction } from './browse.js';
+import { confirmRightsFunction } from './confirm-rights.js';
 import { cropFunction } from './crop.js';
 import { importFunction } from './import.js';
 import { joinFunction } from './join.js';
@@ -37,6 +38,7 @@ export function imageryFunctions(getDeps: () => ImageryFamilyDeps, bucket?: stri
         import: importFunction(getDeps),
         approve: approveFunction(getDeps),
         reject: rejectFunction(getDeps),
+        confirmRights: confirmRightsFunction(getDeps),
         choose: chooseFunction(getDeps),
         studioDone: studioDoneFunction(getDeps),
         saveGcps: saveGcpsFunction(getDeps),

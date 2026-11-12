@@ -173,6 +173,8 @@ export {
     imageryBrowseResponseSchema,
     imageryChooseRequestSchema,
     imageryChooseResponseSchema,
+    imageryConfirmRightsRequestSchema,
+    imageryConfirmRightsResponseSchema,
     imageryCropRequestSchema,
     imageryCropResponseSchema,
     imageryImportRequestSchema,

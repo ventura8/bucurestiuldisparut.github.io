@@ -153,6 +153,7 @@ describe('the M5 access of each callable (docs/research/M5-interfaces.md §1.3)'
             'admins.invite',
             'admins.revoke',
             'setup.rotatePublicToken',
+            'imagery.confirmRights',
             'admins.setRole',
             'export.start',
             'export.download',

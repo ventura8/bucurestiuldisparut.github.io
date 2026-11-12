@@ -30,6 +30,8 @@ export const M20_EXPORTS = [
     'helpItemSchema',
     'imageryArchiveImportRequestSchema',
     'imageryArchiveImportResponseSchema',
+    'imageryConfirmRightsRequestSchema',
+    'imageryConfirmRightsResponseSchema',
     'layerRightsOf',
     'layerRightsSchema',
     'mapThresholdM',

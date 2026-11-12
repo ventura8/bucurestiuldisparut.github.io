@@ -9,6 +9,7 @@ import {
     imageryApproveResponseSchema,
     imageryBrowseResponseSchema,
     imageryChooseResponseSchema,
+    imageryConfirmRightsResponseSchema,
     imageryCropResponseSchema,
     imageryImportResponseSchema,
     imageryJoinResponseSchema,
@@ -26,6 +27,7 @@ import type {
     imageryApproveRequestSchema,
     imageryBrowseRequestSchema,
     imageryChooseRequestSchema,
+    imageryConfirmRightsRequestSchema,
     imageryCropRequestSchema,
     imageryImportRequestSchema,
     imageryJoinRequestSchema,
@@ -50,6 +52,7 @@ const IMAGERY_RESPONSES = {
     'imagery.join': imageryJoinResponseSchema,
     'imagery.approve': imageryApproveResponseSchema,
     'imagery.reject': imageryRejectResponseSchema,
+    'imagery.confirmRights': imageryConfirmRightsResponseSchema,
     'imagery.choose': imageryChooseResponseSchema,
     'imagery.studioDone': imageryStudioDoneResponseSchema,
     'imagery.saveGcps': imagerySaveGcpsResponseSchema,
@@ -73,6 +76,7 @@ interface ImageryRequests {
     'imagery.join': typeof imageryJoinRequestSchema;
     'imagery.approve': typeof imageryApproveRequestSchema;
     'imagery.reject': typeof imageryVersionRequestSchema;
+    'imagery.confirmRights': typeof imageryConfirmRightsRequestSchema;
     'imagery.choose': typeof imageryChooseRequestSchema;
     'imagery.studioDone': typeof imageryVersionRequestSchema;
     'imagery.saveGcps': typeof imagerySaveGcpsRequestSchema;

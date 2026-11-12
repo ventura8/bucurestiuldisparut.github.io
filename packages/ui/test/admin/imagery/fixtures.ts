@@ -121,7 +121,7 @@ export function versionView(overrides: Partial<VersionViewPort> = {}): VersionVi
         },
         ...{ estimate: 2.5, guard: null, approval: null, error: null, hasScan: true },
         ...{ entityId: 'DS1035-1057DA023', partOf: null, parts: [], join: null },
-        ...{ basedOn: null, recalibration: null, publicUrl: null },
+        ...{ basedOn: null, recalibration: null, publicUrl: null, rights: null },
         ...overrides,
     };
 }
@@ -337,6 +337,7 @@ export function imageryPage(
             search: Promise.resolve(),
             approve: Promise.resolve(true),
             reject: Promise.resolve(true),
+            confirmRights: Promise.resolve(true),
         },
         ...{
             choose: Promise.resolve(true),

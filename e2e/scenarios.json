@@ -15885,6 +15885,39 @@
             "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-approval.test.ts."
         },
         {
+            "id": "S-A120-HAPPY-CONFIRM-RIGHTS",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner confirms a version whose rights wait so Approve can publish",
+            "asserts": "imagery.confirmRights on needs-confirmation -> state clear, licence permission, confirmedBy and confirmedAt from the server; the approval card shows Confirm and keeps Approve disabled until rights allow publish",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §7; DECISIONS §148). Tests: functions/test/imagery/confirm-rights.test.ts, packages/ui/test/admin/imagery/confirm-rights.test.ts."
+        },
+        {
+            "id": "S-A120-BAD-CONFIRM-EMPTY",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "Empty confirmation words never clear rights",
+            "asserts": "imagery.confirmRights with blank confirmedBy -> apiError.imagery.rightsUnconfirmed; rights stay needs-confirmation",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §7; DECISIONS §148). Tests: functions/test/imagery/confirm-rights.test.ts."
+        },
+        {
+            "id": "S-A120-BAD-CONFIRM-STATE",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "Confirm rights refuses a version that is not waiting for confirmation",
+            "asserts": "already clear, do-not-publish or no rights -> apiError.imagery.rightsUnconfirmed; not awaiting_approval -> apiError.imagery.versionState; an editor sees no Confirm and Approve stays off",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §7; DECISIONS §148). Tests: functions/test/imagery/confirm-rights.test.ts, packages/ui/test/admin/imagery/confirm-rights.test.ts."
+        },
+        {
             "id": "S-A120-HAPPY-CREDITS",
             "behaviour": "A120",
             "area": "admin",

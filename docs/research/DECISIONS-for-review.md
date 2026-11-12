@@ -6353,3 +6353,9 @@ The owner's request of 2026-11-09 ("import the landsat, add it to our sources, a
 
 - **What**: Root `overrides` pin `"fast-xml-parser": "5.12.0"` (first release above the advisory's `<=5.11.2` range). `package-lock.json` and `functions/deploy-lock/` refreshed in the digest-pinned Node image. Never an allowlist.
 - **Why**: `static`'s `npm-audit` / `deploy-lock-audit` fail on GHSA-474x-hrwr-fgx4 (quadratic CPU on unterminated stop-node tags); same pre-approved "keeps a gate working" pattern as §74e.
+
+## 148. `imagery.confirmRights` so Approve never strands on needs-confirmation (2026-11-12) — APPLIED
+
+- **What**: Callable `imagery.confirmRights` (`cityOwner`, `fn-imagery` / runs as `fn-admin`): a version awaiting approval whose rights are `needs-confirmation` becomes `clear` with licence `permission`, the owner's `confirmedBy` and `confirmedAt` from the server clock. Empty words → `apiError.imagery.rightsUnconfirmed`; wrong rights → same; not `awaiting_approval` → `apiError.imagery.versionState`. VersionView exposes a rights summary; the approval card shows Confirm and keeps Approve disabled until `rightsAllowPublish`. Live IPB version `ar-mw993zri-s-83618d0c24e6` had rights cleared earlier; this is the product path so it does not happen again.
+- **Why**: M20 gated publish on rights but only confirmed at Import; a series already waiting for approval had no Confirm, so Approve refused forever (`rightsUnconfirmed`). Lesson 552; S-A120-HAPPY-CONFIRM-RIGHTS, S-A120-BAD-CONFIRM-EMPTY, S-A120-BAD-CONFIRM-STATE.
+- **No budget raised.**

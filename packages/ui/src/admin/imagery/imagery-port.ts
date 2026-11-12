@@ -28,6 +28,7 @@ import type {
     ServiceState,
     UsgsDataset,
 } from '@hcm/shared';
+import type { Rights } from '@hcm/shared';
 
 import type { ArchiveFeedPort } from '../archive/archive-port.js';
 import type { DocStatePort, ListStatePort, StoreFailurePort } from '../area-port.js';
@@ -192,6 +193,18 @@ export interface VersionViewPort {
     readonly publicUrl: string | null;
     /** M20, batch 4: what an archive series' placement measured (`grid-names`: placed from its sheets' names, its owner approves). */
     readonly archive?: ArchiveReport | null;
+    /**
+     * M20 (§7): rights summary for the approval card (null: none). Approve stays off until `allowPublish`; Confirm when
+     * `state` is `needs-confirmation`.
+     */
+    readonly rights?: {
+        readonly state: Rights['state'];
+        readonly licence: Rights['licence'];
+        readonly year: string;
+        readonly note: string | null;
+        readonly confirmedBy: string | null;
+        readonly allowPublish: boolean;
+    } | null;
 }
 
 export interface JobViewPort {
@@ -236,7 +249,8 @@ interface UsagePort {
     readonly reservations: Readonly<Record<string, { readonly computeUnits: number }>>;
 }
 
-type VersionActionPort = 'approve' | 'reject' | 'choose' | 'studioDone' | 'download' | 'retry' | 'locate' | 'cancel' | 'recalibrate';
+type VersionActionPort =
+    'approve' | 'reject' | 'confirmRights' | 'choose' | 'studioDone' | 'download' | 'retry' | 'locate' | 'cancel' | 'recalibrate';
 
 export interface VersionPagePort {
     readonly id: string;
@@ -320,6 +334,8 @@ export interface ImageryIntentsPort {
     /** M16: `acceptWorse`: the owner chose a recalibration not shown better. */
     approve(acceptWorse?: boolean): Promise<boolean>;
     reject(): Promise<boolean>;
+    /** M20 (§7): the city's owner confirms who granted the permission (`imagery.confirmRights`). */
+    confirmRights(confirmedBy: string): Promise<boolean>;
     /** M16: Refine automatically (the new version's id, or null when refused), and the map between the new version and the current one. */
     recalibrate(): Promise<string | null>;
     toggleCurrent(): void;

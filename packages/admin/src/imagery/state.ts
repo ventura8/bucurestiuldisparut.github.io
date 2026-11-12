@@ -109,6 +109,8 @@ export interface ImageryIntents {
     recalibrate(): Promise<string | null>;
     toggleCurrent(): void;
     reject(): Promise<boolean>;
+    /** M20 (§7): the city's owner confirms who granted the permission (`imagery.confirmRights`). */
+    confirmRights(confirmedBy: string): Promise<boolean>;
     choose(choice: PublishChoice): Promise<boolean>;
     studioDone(): Promise<boolean>;
     /** Saves the Studio file. */

@@ -30,7 +30,8 @@ import { callImagery, refusalOf, type ImageryCallName, type ImageryRequest, type
 import type { FilePort } from './files.js';
 import { jobViewOf, versionViewOf, type JobView, type VersionView } from './version-view.js';
 
-export type VersionAction = 'approve' | 'reject' | 'choose' | 'studioDone' | 'download' | 'retry' | 'locate' | 'cancel' | 'recalibrate';
+export type VersionAction =
+    'approve' | 'reject' | 'confirmRights' | 'choose' | 'studioDone' | 'download' | 'retry' | 'locate' | 'cancel' | 'recalibrate';
 
 export interface JobLogLine {
     readonly seq: number;
@@ -229,6 +230,16 @@ export class VersionPage {
     reject(): Promise<boolean> {
         const notice = { key: this.#rejectNotice() };
         return this.#act('reject', 'imagery.reject', (id) => ({ cityId: this.#services.cityId, versionId: id }), notice);
+    }
+
+    /** M20 (§7): the city's owner names who granted the permission; Approve stays disabled until rights are clear. */
+    confirmRights(confirmedBy: string): Promise<boolean> {
+        return this.#act(
+            'confirmRights',
+            'imagery.confirmRights',
+            (id) => ({ cityId: this.#services.cityId, versionId: id, confirmedBy }),
+            { key: 'adminContent.imagery.notice.rightsConfirmed' },
+        );
     }
 
     /** M16 with M18: a recalibration of a published version leaves that one on the map, and the notice says so. */

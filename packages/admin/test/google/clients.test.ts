@@ -208,8 +208,8 @@ describe('the deployment', () => {
         // `worker.image` (the starter file's supervisor's); finding 73: `worker.starter` (the starter file, HTTPS); `imagery.locateAgain`.
         // M12: `imagery.previewUrl` (a signed hour of a version's private archive). M13: the roles' and review's 7.
         // M16: `imagery.recalibrate`. M17: the stories' `history.onStoryWrite` and `publish.onStoryWrite`. M20: the local
-        // archive's `worker.archiveReport` and `imagery.archiveImport`.
-        expect(expected).toHaveLength(95);
+        // archive's `worker.archiveReport`, `imagery.archiveImport` and `imagery.confirmRights`.
+        expect(expected).toHaveLength(96);
         expect(expected).toEqual(
             expect.arrayContaining([
                 'worker-hello',
@@ -223,9 +223,10 @@ describe('the deployment', () => {
                 'worker-starter',
                 'worker-archiveReport',
                 'imagery-archiveImport',
+                'imagery-confirmRights',
             ]),
         );
-        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 95, total: 95, failed: [] });
+        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 96, total: 96, failed: [] });
     });
 
     it('badPath_someMissingIsPendingAndOneFailedIsInvalid', () => {
