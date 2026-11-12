@@ -6571,7 +6571,7 @@ leftovers of §164. Every figure is the container's cgroup `memory.peak` (page c
   `HCM_STACK_MEM_GB` (default 8) with `--oom-score-adj 500`.
 - **171c Peak memory per stage** (NUC, 12 GB slot, `HCM_LINT_WORKERS=1`): `static` 6.6 GB (ESLint 3.0, `tsc -b` 2.0,
   `npm ci` 1.2, dependency-cruiser 0.8, knip 0.7); `build` 2.2 GB (`npm ci` 1.2, the install bundle's build 0.55, the
-  functions' build 0.47); `tests` 9.6 GB (after 171g: the Firestore JVM 6.4 GB while it builds the rule-coverage report, the check 1.4 GB; before it the report failed, 171g) `e2e` hit the 12 GB cap: 46 Functions emulator workers held 8.8 GB (one Node
+  functions' build 0.47); `tests` 9.6 GB (after 171g: the Firestore JVM 6.4 GB while it builds the rule-coverage report, the check 1.7 GB; before it the report failed, 171g) `e2e` hit the 12 GB cap: 46 Functions emulator workers held 8.8 GB (one Node
   process per function trigger and more under concurrent calls, each about 250 MB, kept while idle), the browsers 1.4 GB,
   Playwright's runner 0.7 GB, and the kernel killed the Firestore JVM, after which the admin tests failed in under 100 ms.
 - **171d The emulators' JVMs get a heap ceiling** through `JAVA_TOOL_OPTIONS`: unset, each takes up to a quarter of the
