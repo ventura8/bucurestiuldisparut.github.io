@@ -4,7 +4,14 @@ import { describe, expect, it } from 'vitest';
 
 import { DOCKER_BUILDER_IMAGE } from '@hcm/shared';
 
-import { buildDefinition, installerServiceAccount, releaseTag, targetTag, type BuildParams } from '../../src/install/build-spec.js';
+import {
+    OVER_TAG,
+    buildDefinition,
+    installerServiceAccount,
+    releaseTag,
+    targetTag,
+    type BuildParams,
+} from '../../src/install/build-spec.js';
 import { FETCH_BUNDLE_SCRIPT } from '../../src/install/fetch-script.js';
 
 /**
@@ -60,6 +67,16 @@ describe('buildDefinition', () => {
                 tags: ['hcm-install', targetTag(target), releaseTag('1-0-0-abc1234')],
             });
         }
+    });
+
+    it('happyPath_aBuildTheOwnerInstalledOverANewerReleaseCarriesItsTag', () => {
+        // The live finding of 2026-11-12: a confirmed rollback stays in Cloud Build's history.
+        expect(buildDefinition('server', { ...PARAMS, over: true })['tags']).toEqual([
+            'hcm-install',
+            'hcm-server',
+            releaseTag('1-0-0-abc1234'),
+            OVER_TAG,
+        ]);
     });
 
     it('happyPath_everyStepNamesItsImageByDigest', () => {

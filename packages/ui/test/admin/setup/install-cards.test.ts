@@ -134,7 +134,7 @@ describe('<hcm-setup-deploy>: Install the server', () => {
         expect(await axeViolations(element)).toEqual([]);
     });
 
-    it('happyPath_anOlderServerOffersUpdateTheMap_aNewerOneAsksForAReload', async () => {
+    it('happyPath_anOlderServerOffersUpdateTheMap_aNewerOneOffersNoUpdate', async () => {
         const older = await card('deploy', { server: { state: 'updateAvailable', installedRelease: '0.9.0' } });
 
         expect(shadowPart(older.element, '.body').textContent).toContain('An update is ready: 1.0.0+abc1234.');
@@ -144,7 +144,9 @@ describe('<hcm-setup-deploy>: Install the server', () => {
 
         const newer = await card('deploy', { server: { state: 'newerInstalled', installedRelease: '9.0.0' } });
         expect(shadowPart(newer.element, '.body').textContent).toContain('Installed 9.0.0, newer than this admin: reload the page.');
+        // The downgrade guard: no Update; only the override, behind its confirmation.
         expect(newer.element.renderRoot.querySelector('hcm-button')).toBeNull();
+        expect(newer.element.renderRoot.querySelector('hcm-install-over')).not.toBeNull();
     });
 
     it('happyPath_anInstalledServerNamesItsReleaseAndTheGithubPathStaysCollapsed', async () => {
@@ -366,6 +368,41 @@ describe('the installed line', () => {
     });
 });
 
+describe("<hcm-setup-deploy>: Install this admin's version anyway (the live finding of 2026-11-12)", () => {
+    afterEach(cleanup);
+
+    it('happyPath_theOverrideAsksFirstThenInstallsThisAdminsReleaseOverTheNewerOne @S-A55-HAPPY-INSTALL-OVER', async () => {
+        // The live finding of 2026-11-12: a rollback is the owner's choice, confirmed in a dialog that says what it replaces.
+        const { port, element } = await card('deploy', { server: { state: 'newerInstalled', installedRelease: '9.0.0' } });
+
+        await page.getByRole('button', { name: "Install this admin's version anyway" }).click();
+        expect(port.calls).toEqual([]);
+        await expect.element(page.getByRole('dialog', { name: 'Replace a newer release?' })).toBeVisible();
+        await expect
+            .element(page.getByText('This replaces the newer 9.0.0 with the older 1.0.0+abc1234: a rollback, marked in Cloud Build.'))
+            .toBeVisible();
+        await page.getByRole('button', { name: 'Install 1.0.0+abc1234' }).click();
+        expect(port.calls).toEqual([['installOver', 'server']]);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_keepingTheNewerReleaseInstallsNothing_andABuildUnderWayTurnsTheOverrideOff', async () => {
+        const { port } = await card('deploy', { server: { state: 'newerInstalled', installedRelease: '9.0.0' } }, {}, 'ro');
+
+        await page.getByRole('button', { name: 'Instalează totuși versiunea acestei administrări' }).click();
+        await page.getByRole('button', { name: 'Păstrează 9.0.0' }).click();
+        expect(port.calls).toEqual([]);
+        cleanup();
+
+        const busy = await card('deploy', {
+            server: { state: 'newerInstalled', installedRelease: '9.0.0' },
+            site: { state: 'working' },
+        });
+        const over = busy.element.renderRoot.querySelector<HTMLElement & { disabled: boolean }>('hcm-install-over');
+        expect(over?.disabled).toBe(true);
+    });
+});
+
 describe('installCardAsks (finding 40 of 2026-11-01)', () => {
     const LOOKED = '2026-11-01T09:00:00Z';
 
@@ -376,6 +413,8 @@ describe('installCardAsks (finding 40 of 2026-11-01)', () => {
         ).toBe(true);
         expect(installCardAsks(view({ site: { state: 'notInstalled' } }), 'site')).toBe(true);
         expect(installCardAsks(view({ site: { state: 'updateAvailable' } }), 'site')).toBe(true);
+        // The live finding of 2026-11-12: a newer target offers Install this admin's version anyway, which asks Google.
+        expect(installCardAsks(view({ server: { state: 'newerInstalled', checkedAt: LOOKED } }), 'deploy')).toBe(true);
         // Not an install card: the frame decides as before.
         expect(installCardAsks(view({}), 'billing')).toBe(true);
     });
@@ -388,12 +427,6 @@ describe('installCardAsks (finding 40 of 2026-11-01)', () => {
         const off = { key: 'apiError.install.notAvailable' } as const;
         expect(
             installCardAsks(view({ server: { state: 'installed' }, pipeline: { checkedAt: LOOKED }, pipelineOff: off }), 'pipeline'),
-        ).toBe(false);
-        expect(
-            installCardAsks(
-                view({ server: { state: 'newerInstalled', checkedAt: LOOKED } }, { steps: { deploy: { state: 'ok' } } }),
-                'deploy',
-            ),
         ).toBe(false);
     });
 });

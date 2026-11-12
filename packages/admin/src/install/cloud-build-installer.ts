@@ -31,7 +31,7 @@ import { createGoogleTransport, type GoogleTransport } from '../google/transport
 import { buildDefinition, targetTag } from './build-spec.js';
 import { InstallBundleError, type InstallBundle } from './bundle.js';
 import type { InstalledInfo, InstallMessage } from './model.js';
-import type { InstallAccess, InstallerPort, ServerProgress, TargetObservation } from './ports.js';
+import type { InstallAccess, InstallerPort, ServerProgress, SubmitOptions, TargetObservation } from './ports.js';
 
 export interface CloudBuildInstallerDeps {
     readonly fetch: typeof fetch;
@@ -172,7 +172,7 @@ class CloudBuildInstaller implements InstallerPort {
         return bundle;
     }
 
-    async submit(target: InstallTarget, access: InstallAccess): Promise<CloudBuild> {
+    async submit(target: InstallTarget, access: InstallAccess, options: SubmitOptions = {}): Promise<CloudBuild> {
         const bundle = await this.#bundleFor(target);
         const { manifest } = bundle;
         const definition = buildDefinition(target, {
@@ -188,8 +188,9 @@ class CloudBuildInstaller implements InstallerPort {
             images: { node: manifest.tools.node, docker: manifest.tools.docker ?? '' },
             legacy: await this.#needsLegacy(target, manifest),
             ...(manifest.projectId === GENERIC_INSTALL_PROJECT ? { adopt: true } : {}),
+            ...(options.over === true ? { over: true } : {}),
         });
-        this.#deps.log.info('install build submitted', { target, release: manifest.release });
+        this.#deps.log.info('install build submitted', { target, release: manifest.release, over: options.over === true });
         return createCloudBuildClient(this.#transport(access)).create(this.#deps.projectId, this.#deps.region, definition);
     }
 
