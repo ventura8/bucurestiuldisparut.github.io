@@ -138,7 +138,9 @@ RUN --mount=type=cache,id=hcm-pip,target=/root/.cache/pip,sharing=locked \
 # bind-mounted at run time). This fills the baked npm cache that the pipeline's runtime
 # `npm ci --prefer-offline` installs from, then installs the Playwright browsers and the Firebase
 # emulator JARs at versions locked here. The build-time node_modules is dropped afterwards; nothing at
-# run time uses it. A new workspace with registry dependencies of its own needs its line in the `manifests` stage (and
+# run time uses it. Chromium is installed as its headless shell only (`--only-shell`, 2026-11-12): every Vitest browser
+# project and every Playwright project launches it headless, which Playwright serves from the shell; the full Chromium
+# (about 400 MB) ran nowhere. Firefox and WebKit stay: the admin's forms run on both (e2e/projects.ts). A new workspace with registry dependencies of its own needs its line in the `manifests` stage (and
 # in .dockerignore).
 WORKDIR /opt/hcm/workspace
 COPY --from=manifests /m/ ./
@@ -147,7 +149,7 @@ COPY vendor/npm/minimatch vendor/npm/minimatch
 RUN --mount=type=cache,id=hcm-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=hcm-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     npm ci --no-audit --no-fund \
-    && npx playwright install --with-deps chromium firefox webkit \
+    && npx playwright install --with-deps --only-shell chromium firefox webkit \
     && npm run emulators:setup \
     && rm -rf node_modules \
     && chmod -R a+rwX /opt/hcm/npm-cache /opt/hcm/firebase-emulators \
