@@ -11,8 +11,8 @@
 //
 // The static export's kit (M5, docs/research/M5-interfaces.md §5.3, CR-M5-9) is copied beside the bundle into
 // dist/export-kit/: the starter kit's index.html and README.md (templates/starter-kit/), the engine's files without
-// source maps (packages/engine/dist: engine.iife.js, engine.css, fonts/, THIRD_PARTY_NOTICES.txt, so the engine is built
-// first, as `npm run build` does) and kit.json, the engine's ENGINE_VERSION and every copied file with its size.
+// source maps (packages/engine/dist: engine.iife.js with its extras `extra-<name>-<hash>.js`, engine.css, fonts/,
+// THIRD_PARTY_NOTICES.txt, so the engine is built first, as `npm run build` does) and kit.json, the engine's ENGINE_VERSION and every copied file with its size.
 //
 // The starter files' templates (finding 73 of 2026-11-03: `worker.starter` serves them filled as a download) are copied
 // from packages/admin/starter/ into dist/starter/.
@@ -60,6 +60,8 @@ await build({
 const KIT_DIR = here('dist/export-kit/');
 const ENGINE_DIST = here('../packages/engine/dist/');
 const ENGINE_FILES = ['engine.iife.js', 'engine.css', 'THIRD_PARTY_NOTICES.txt'];
+// The IIFE loads its extras from its own folder with their integrity (DECISIONS-for-review.md §159): the export carries them.
+const ENGINE_EXTRA = /^extra-[\w-]+\.js$/;
 const ENGINE_VERSION = /^export const ENGINE_VERSION = '(\d{1,4}\.\d{1,4}\.\d{1,6})';$/m;
 const engineVersion = ENGINE_VERSION.exec(await readFile(here('../packages/engine/src/index.ts'), 'utf8'))?.[1];
 if (engineVersion === undefined) {
@@ -69,8 +71,11 @@ await mkdir(`${KIT_DIR}engine`, { recursive: true });
 for (const file of ['index.html', 'README.md']) {
     await copyFile(here(`../templates/starter-kit/${file}`), `${KIT_DIR}${file}`);
 }
+// No build yet: no extras, and the copy below says to build the engine first.
+const engineExtras = (await readdir(ENGINE_DIST).catch(() => [])).filter((file) => ENGINE_EXTRA.test(file)).sort();
+const engineFiles = [...ENGINE_FILES, ...engineExtras];
 try {
-    for (const file of ENGINE_FILES) {
+    for (const file of engineFiles) {
         await copyFile(`${ENGINE_DIST}${file}`, `${KIT_DIR}engine/${file}`);
     }
     await cp(`${ENGINE_DIST}fonts`, `${KIT_DIR}engine/fonts`, { recursive: true });
@@ -81,7 +86,7 @@ try {
 }
 const fonts = (await readdir(`${KIT_DIR}engine/fonts`)).sort().map((file) => `fonts/${file}`);
 const engine = await Promise.all(
-    [...ENGINE_FILES, ...fonts].sort().map(async (path) => ({ path, bytes: (await stat(`${KIT_DIR}engine/${path}`)).size })),
+    [...engineFiles, ...fonts].sort().map(async (path) => ({ path, bytes: (await stat(`${KIT_DIR}engine/${path}`)).size })),
 );
 await writeFile(`${KIT_DIR}kit.json`, `${JSON.stringify({ engineVersion, engine }, null, 4)}\n`);
 

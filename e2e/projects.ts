@@ -130,6 +130,8 @@ const ONE_PROJECT_SPECS = [
     'viewer/deep-links.spec.ts',
     'viewer/field-measurements.spec.ts',
     'viewer/embed-api.spec.ts',
+    // The IIFE's extras on demand (V54, DECISIONS-for-review.md §159): their tests set their own window.
+    'viewer/extras.spec.ts',
     'viewer/geolocate.spec.ts',
     'viewer/language-theme.spec.ts',
     'viewer/no-javascript.spec.ts',

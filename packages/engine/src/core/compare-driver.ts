@@ -42,15 +42,35 @@ export class CompareDriver {
 
     async #start(compare: CompareDeps): Promise<void> {
         try {
-            this.#begin(await compare.load(), compare);
+            const module = await this.#load(compare);
+            if (module !== null) {
+                this.#begin(module, compare);
+            }
         } catch (error: unknown) {
-            this.#host.deps.log.warn('compare could not start', { error: String(error) });
-            this.#host.compareReady?.(false);
-            this.#host.closeCompare();
-            this.#host.showToast('error.mapLoad');
+            this.#fail(error, 'error.mapLoad');
         } finally {
             this.#loading = false;
         }
+    }
+
+    /**
+     * The chunk (the IIFE's extra, `extras/loader.ts`); one that does not arrive closes compare with a message that says to
+     * try again, and the visitor's next Compare fetches it afresh.
+     */
+    async #load(compare: CompareDeps): Promise<CompareModule | null> {
+        try {
+            return await compare.load();
+        } catch (error: unknown) {
+            this.#fail(error, 'error.extraLoad');
+            return null;
+        }
+    }
+
+    #fail(error: unknown, message: 'error.mapLoad' | 'error.extraLoad'): void {
+        this.#host.deps.log.warn('compare could not start', { error: String(error) });
+        this.#host.compareReady?.(false);
+        this.#host.closeCompare();
+        this.#host.showToast(message);
     }
 
     /** Starts the session, unless the visitor stopped comparing while the chunk loaded. */

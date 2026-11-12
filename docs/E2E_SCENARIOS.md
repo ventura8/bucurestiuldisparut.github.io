@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 145 | 1483 | 603 | 880 | 1481 | 2 | 374 |
+| 146 | 1485 | 604 | 881 | 1483 | 2 | 375 |
 
 ## Viewer
 
@@ -250,6 +250,8 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V52-BAD-ZOOM-AT-LIMIT` | V52 | bad | At the city zoom limits the button says it is disabled, keeps the focus and changes nothing | #20/...: Zoom in aria-disabled=true, a click and Enter leave the address and the camera at 20 with the focus on the button, and in forced colours its colour differs from the enabled Zoom out's; #10/...: a click and Enter on the soft-disabled Zoom out fire no map move and leave the whole address and the camera unchanged | e2e-viewer | exists | `e2e/specs/viewer/zoom.spec.ts` |
 | `S-V53-HAPPY` | V53 | happy | A drawn map from an archive is listed and credited | a layer of kind map at 0.85 whose attribution is its credit line -> listed in Layers with its credit; shown, the legal line carries 'Idei Urbane – DocuBucurești' and PD | e2e-viewer | exists | `e2e/specs/viewer/map-layers.spec.ts` |
 | `S-V53-BAD-HIDDEN` | V53 | bad | A drawn map not shown draws nothing and adds no credit | the map layer hidden by default -> the basemap's colour at the probe, no credit on the legal line, its switch off | e2e-viewer | exists | `e2e/specs/viewer/map-layers.spec.ts` |
+| `S-V54-HAPPY-EXTRAS-ON-DEMAND` | V54 | happy | The IIFE fetches swipe compare only at the first Compare, once, as a script with its integrity | a page with engine.iife.js mounts the viewer and requests no extra-*.js; openCompare(null) adds one head script extra-compare-<hash>.js with integrity sha384-… and crossorigin anonymous, the compare bar shows and the second map is created (2 made, 0 removed); closing and comparing again requests nothing more | e2e-viewer | exists | `e2e/specs/viewer/extras.spec.ts` |
+| `S-V54-BAD-EXTRAS-CHUNK-FAILS` | V54 | bad | An extra that does not arrive closes compare with a message to try again, and the next Compare fetches it afresh | extra-compare-<hash>.js refused -> a toast 'error.extraLoad', no compare bar, no extra script left in head, one map only and the map still shown; once the file is served again, Compare requests it a second time and opens with the second map | e2e-viewer | exists | `e2e/specs/viewer/extras.spec.ts` |
 
 ## Admin
 

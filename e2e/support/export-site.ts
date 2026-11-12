@@ -28,6 +28,8 @@ const SITE_DATA = join(ROOT, E2E_SITE_DIR, 'bucharest', 'data');
 const ENGINE_DIST = join(ROOT, 'packages', 'engine', 'dist');
 const KIT = join(ROOT, 'templates', 'starter-kit');
 const ENGINE_FILES = ['engine.iife.js', 'engine.css', 'THIRD_PARTY_NOTICES.txt'];
+/** The IIFE's extras, which it loads from its own folder (DECISIONS-for-review.md §159). */
+const ENGINE_EXTRA = /^extra-[\w-]+\.js$/;
 const PUBLIC_PREFIX = publicObjectUrl(E2E_PUBLIC_BUCKET, '');
 
 /**
@@ -50,10 +52,16 @@ async function fileOf(path: string): Promise<KitFile> {
     return { path: relative(ENGINE_DIST, path), bytes: (await stat(path)).size, open: () => createReadStream(path) };
 }
 
-/** The engine's files as the functions' build copies them (no source maps, no ES module build). */
+/** The engine's files as the functions' build copies them (no source maps, no ES module build; the IIFE's extras). */
 async function engineFiles(): Promise<KitFile[]> {
     const fonts = (await readdir(join(ENGINE_DIST, 'fonts'))).map((name) => join(ENGINE_DIST, 'fonts', name));
-    return Promise.all([...ENGINE_FILES.map((name) => join(ENGINE_DIST, name)), ...fonts].map(fileOf));
+    const extras = (await readdir(ENGINE_DIST)).filter((name) => ENGINE_EXTRA.test(name));
+    return Promise.all(
+        [...ENGINE_FILES, ...extras]
+            .map((name) => join(ENGINE_DIST, name))
+            .concat(fonts)
+            .map(fileOf),
+    );
 }
 
 /** The fixture city as the admin publishes it: its photos in the public bucket, the GA4 id when asked. */

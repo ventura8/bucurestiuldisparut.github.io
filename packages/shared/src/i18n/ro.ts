@@ -46,6 +46,7 @@ export const ro = {
     'error.config.cityMismatch': 'cityId din config.js ({cityId}) nu corespunde hărții ({manifestCityId}).',
     'error.config.container': 'Elementul hărții „{selector}” nu există în pagină.',
     'error.webgl': 'Browserul tău nu poate afișa harta interactivă. Lista fotografiilor rămâne disponibilă.',
+    'error.extraLoad': 'Această parte a hărții nu s-a putut încărca. Verifică conexiunea și încearcă din nou.',
     'error.mapLoad': 'Harta de fundal nu s-a putut încărca. Verifică conexiunea și încearcă din nou.',
     'error.tiles': 'Unele porțiuni ale hărții nu se încarcă.',
     'error.layer': 'Stratul „{name}” nu s-a putut încărca.',

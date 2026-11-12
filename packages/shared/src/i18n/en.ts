@@ -41,6 +41,7 @@ export const en: Messages = {
     'error.config.cityMismatch': 'The cityId in config.js ({cityId}) does not match the map ({manifestCityId}).',
     'error.config.container': 'The map element “{selector}” does not exist on the page.',
     'error.webgl': 'Your browser cannot show the interactive map. The photo list is still available.',
+    'error.extraLoad': 'This part of the map could not be loaded. Check your connection and try again.',
     'error.mapLoad': 'The background map could not be loaded. Check your connection and try again.',
     'error.tiles': 'Some parts of the map are not loading.',
     'error.layer': 'The layer “{name}” could not be loaded.',
