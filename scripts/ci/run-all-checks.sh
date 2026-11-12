@@ -13,6 +13,9 @@
 # the Bucharest site reads; unset, it bundles the seed snapshot), SONAR_TOKEN, the memory knobs of scripts/ci/parallel.py (HCM_MAX_PARALLEL, HCM_LOW_MEM, HCM_LINT_WORKERS,
 # HCM_E2E_WORKERS, VITEST_MAX_WORKERS) and PIPELINE_JOBS (how many gates run at
 # once; unset is what the CPUs and the free memory allow, 1 runs them one at a time).
+# HCM_MEM_GB=<n> caps the container's memory (and swap) at n GB; unset, it has no cap. scripts/ci/parallel.py reads the cap
+# (cgroup `memory.max`), so a capped run picks fewer workers instead of running out (measured peaks of each stage:
+# docs/research/DECISIONS-for-review.md §169).
 set -euo pipefail
 
 main() {
@@ -24,7 +27,11 @@ main() {
 	if [[ -t 1 ]]; then
 		tty=(--tty)
 	fi
-	docker run --rm --init "${tty[@]}" \
+	local -a memory=()
+	if [[ "${HCM_MEM_GB:-}" =~ ^[1-9][0-9]*$ ]]; then
+		memory=(--memory "${HCM_MEM_GB}g" --memory-swap "${HCM_MEM_GB}g")
+	fi
+	docker run --rm --init "${tty[@]}" "${memory[@]}" \
 		--user "$(id -u):$(id -g)" \
 		--env HOME=/tmp/hcm-home \
 		--env PIPELINE_STAGE="${PIPELINE_STAGE:-all}" \
