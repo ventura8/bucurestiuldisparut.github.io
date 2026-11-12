@@ -286,7 +286,7 @@ $0.000002 a GiB-second past the free tier; functions $0.000024 and $0.0000025); 
 | Job | Today → proposed | Why |
 | --- | --- | --- |
 | `raster-fetch` | 1 vCPU / 4 GiB → keep | a download is network-bound (finding 56); the scratch folder is memory and holds the delivery |
-| `raster-pipeline` (`std`) | 4 / 16 → **2 / 8** | GDAL's cache and a warp's memory follow the machine (`rasters.gdal_memory` of `track/stripfix`, which merges first; until then the escalation to `xl`, today's `std`, catches a run out of memory: 512 and 1,024 MB on 8 GiB; a warp of a 1 GB scan 1.2 GB, measured) and an atlas is pasted part by part (3.8 to 1.7 GB, measured); a 2,700 s phase takes 5,400 vCPU-s and 21,600 GiB-s instead of 10,800 and 43,200: **16 free runs a month, not 8**; past the free tier $0.14 a run instead of $0.28 |
+| `raster-pipeline` (`std`) | 4 / 16 → **2 / 8** | GDAL's cache and a warp's memory follow the machine (`rasters.gdal_memory`, from `track/stripfix`, merged 2026-11-13: 512 and 1,024 MB on 8 GiB; a warp of a 1 GB scan 1.2 GB, measured) and an atlas is pasted part by part (3.8 to 1.7 GB, measured); a 2,700 s phase takes 5,400 vCPU-s and 21,600 GiB-s instead of 10,800 and 43,200: **16 free runs a month, not 8**; past the free tier $0.14 a run instead of $0.28 |
 | `raster-pipeline-xl` (`xl`) | 8 / 32 → **4 / 16** | the escalation after an out-of-memory exit and a KH-9 panoramic frame; a frame is never joined in memory (finding 57); past the free tier $0.37 an hour instead of $0.75 |
 | out-of-memory retry | keep | `fetch` → `std` → `xl`, then `apiError.imagery.outOfMemory`: the smaller defaults stay safe. Risk: a frame that needed more than 16 GiB now fails where 32 passed; **UNVERIFIED** until a real KH-9 frame runs (§11) |
 
@@ -318,7 +318,7 @@ A run on 2 vCPUs may take longer than on 4 (the CPU-bound warp: 2.6 times the wa
 | --- | --- | --- |
 | Cloud Scheduler | 2 jobs (`ops.tick`, `imagery.tick`) → keep | three jobs a billing account are free |
 | Instances | none warm → keep | |
-| `worker.claim` polling | every 30 s for ever → `track/stripfix` (an idle worker asks less often) | about 78,000 calls a month a worker |
+| `worker.claim` polling | every 30 s for ever → done by `track/stripfix` (an idle worker asks less often: `worker/pace.py`) | about 78,000 calls a month a worker |
 | Pipeline images (Artifact Registry `hcm`) | the two newest kept (about 1 GB each) → keep | about $0.10 a month; the second is the rollback while a run uses it |
 | Functions' images (`gcf-artifacts`) | kept 1 day → keep | |
 | Private bucket | STANDARD, soft delete off; lifecycle `tmp/` 1 day, `uploads/` 7, `work/` 14, `usgs-raw/` 7 (the delivery is deleted after the crop), `reference/` 90, `exports/` 7 → keep | Nearline would halve the price of originals but loses Cloud Storage's always-free 5 GB of STANDARD in us-central1 and bills each read |
