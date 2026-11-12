@@ -8549,7 +8549,7 @@
             "area": "admin",
             "path": "happy",
             "title": "Suggested points are accepted with one click and saved",
-            "asserts": "a version waiting for points with four suggestions beside its four corner pairs: dashed markers on the scan and the map's suggestion overlay, rows with their confidence in words and their distance from the page's live fit; Accept all -> the four join the table as automatic pairs, the fit and both errors updated live, the keyboard on the panel's heading; Save -> the same job continues from georef and the version's georef holds them (input budget acceptSuggestions: 2)",
+            "asserts": "a version waiting for points with four suggestions beside its four corner pairs: dashed markers on the scan and a badge at each suggested place on the map's badge canvas (DECISIONS-for-review.md §143), rows with their confidence in words and their distance from the page's live fit; Accept all -> the four join the table as automatic pairs, the fit and both errors updated live, the keyboard on the panel's heading; Save -> the same job continues from georef and the version's georef holds them (input budget acceptSuggestions: 2)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M4 (docs/research/M4-interfaces.md §2.5; owner: autogcp). Test: e2e/admin/specs/imagery/suggestions.spec.ts against the emulators and the stand-in runner's `suggestions` outcome (e2e-admin)."

@@ -3378,3 +3378,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-12, the merge of track/englishdocs: `packages/shared/test/kit/template.test.ts` `happyPath_itsPhotoExamplesAreValidPhotosInBothLanguages` expected two JSON photo examples in `templates/starter-kit/README.md`; DECISIONS-for-review.md §157 left one. The branch ran only the functions tests it touched.
     - Fix and pin: the test is `happyPath_itsPhotoExampleIsAValidPhoto` and expects the one English example, still parsed by `photoSchema`.
     - **A docs-only change can break a test that reads the docs: run `vitest related` on the Markdown's readers too (`grep -rn` the file name in `**/test/`), not only on the code the branch changed.**
+
+576. **S-A44-HAPPY waited for a map source the georeferencer no longer has.**
+    - Seen: 2026-11-12, the merge of track/linkedviews (and already on fbf8af6a, before linked views): `suggestions.spec.ts` polled `overlayFeatureIds(page, 'georef-suggestions')` for the four suggestions and got `[]` at every window.
+    - Cause: DECISIONS-for-review.md §143 moved the map's pair and suggestion markers from Mapbox sources to one badge canvas over the map (`packages/admin/src/georef/marker-overlay.ts`), so no `hcm-source-georef-suggestions` exists; the spec still read the old source, which nothing asserted was gone.
+    - Fix and pin: `georefBadgesAt` (`e2e/admin/support/map.ts`) counts the places with paint on the `canvas[data-georef-badges]` near their projection; the spec reads the suggested places from the version, shows the map pane, zooms out with the map's own button until they are on screen (a badge off the view is not drawn) and expects four. S-A44-HAPPY's asserts say so.
+    - **When a rendering moves from a map source to a canvas, its e2e reads move with it: assert the pixels the user sees, and grep the specs for the old source id in the same change.**
