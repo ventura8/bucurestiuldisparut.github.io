@@ -20,15 +20,12 @@ const EXTENSION_FRAME = /(?:chrome|moz|safari|safari-web|ms-browser)-extension:\
 const PAGE_FRAME = /https?:\/\/[^\s()]*?(?:\/|\.html?):1:\d+\)?$/;
 const FRAME = /(?:^\s*at\s|@)/;
 
-function nameOf(error: unknown): string {
-    return typeof error === 'object' && error !== null && 'name' in error && typeof error.name === 'string' ? error.name : '';
-}
-
-function textOf(error: unknown, key: 'message' | 'stack'): string {
+/** A field of an error-like value as text: a string error is its own message; anything else gives ''. */
+function fieldOf(error: unknown, key: 'name' | 'message' | 'stack'): string {
     if (typeof error === 'string') {
         return key === 'message' ? error : '';
     }
-    const value: unknown = typeof error === 'object' && error !== null && key in error ? (error as Record<string, unknown>)[key] : '';
+    const value: unknown = typeof error === 'object' && error !== null ? (error as Record<string, unknown>)[key] : undefined;
     return typeof value === 'string' ? value : '';
 }
 
@@ -46,15 +43,15 @@ function injected(message: string, frames: readonly string[]): boolean {
 
 /** The reason `error` is no crash of the page's, or null when it is one. */
 export function crashNoiseOf(error: unknown): CrashNoise | null {
-    if (nameOf(error) === 'AbortError') {
+    if (fieldOf(error, 'name') === 'AbortError') {
         return 'aborted';
     }
-    const stack = textOf(error, 'stack');
+    const stack = fieldOf(error, 'stack');
     const frames = framesOf(stack);
     if (frames.some((frame) => EXTENSION_FRAME.test(frame))) {
         return 'extension';
     }
-    return injected(textOf(error, 'message'), frames) ? 'injected' : null;
+    return injected(fieldOf(error, 'message'), frames) ? 'injected' : null;
 }
 
 /** The device class of a User-Agent: what a crash needs to know about the screen, nothing more. */
@@ -70,7 +67,8 @@ const BROWSERS: readonly (readonly [string, RegExp])[] = [
 ];
 
 function deviceOf(userAgent: string): DeviceClass {
-    if (/iPad|Tablet|Android(?!.*Mobile)/i.test(userAgent)) {
+    // An Android tablet's User-Agent says Android without Mobile.
+    if (/iPad|Tablet/i.test(userAgent) || (/Android/i.test(userAgent) && !/Mobile/i.test(userAgent))) {
         return 'tablet';
     }
     return /Mobi|iPhone|Android/i.test(userAgent) ? 'mobile' : 'desktop';

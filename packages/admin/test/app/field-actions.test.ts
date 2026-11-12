@@ -26,7 +26,7 @@ describe('measuredCallables', () => {
     it('happyPath_aJourneyStepIsMeasuredWithItsOutcomeAndDuration', async () => {
         const { callables, events } = world(() => Promise.resolve({ jobId: 'j1' }));
 
-        await callables.call('imagery.approve', { cityId: 'bucharest', versionId: 'v1' } as never);
+        await callables.call('imagery.approve', { cityId: 'bucharest', versionId: 'v1' });
 
         expect(events).toEqual([{ name: 'admin_action', params: { action: 'imagery_approve', outcome: 'ok', duration_ms: 250 } }]);
     });
@@ -45,7 +45,7 @@ describe('measuredCallables', () => {
             name === 'imagery.join' ? Promise.reject(new Error('offline')) : Promise.resolve({}),
         );
 
-        await callables.call('setup.status', {} as never);
+        await callables.call('setup.status', {});
         await expect(callables.call('imagery.join', {} as never)).rejects.toThrow('offline');
 
         expect(events.map((event) => event.params['outcome'])).toEqual(['error']);

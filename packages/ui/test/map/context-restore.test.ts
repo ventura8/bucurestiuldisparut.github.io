@@ -72,9 +72,10 @@ describe('the WebGL context restore guard', () => {
     it('badPath_aMapboxWithoutTheseInternalsIsLeftAlone', () => {
         expect(fillMissingModelScopes({})).toBe(0);
         expect(fillMissingModelScopes({ style: {} })).toBe(0);
-        expect(
-            fillMissingModelScopes({ style: { forEachFragmentStyle: (visit) => visit({ scope: 3, modelManager: { modelUris: {} } }) } }),
-        ).toBe(0);
+        const oddScope = (visit: (fragment: { scope: unknown; modelManager: { modelUris: Record<string, unknown> } }) => void): void => {
+            visit({ scope: 3, modelManager: { modelUris: {} } });
+        };
+        expect(fillMissingModelScopes({ style: { forEachFragmentStyle: oddScope } })).toBe(0);
         expect(fillMissingModelScopes({ style: { modelManager: { modelUris: {} } } })).toBe(1);
     });
 });

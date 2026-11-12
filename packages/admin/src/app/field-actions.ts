@@ -7,11 +7,11 @@
  */
 import type { AdminCallableName, CallableRequest, CallableResponse } from '@hcm/shared';
 
-import type { CallablesPort, CallOptions } from '../firebase/ports.js';
+import { CallableFailure, type CallablesPort, type CallOptions } from '../firebase/ports.js';
 import type { Measure } from './telemetry.js';
 
 /** The callables that are a journey's step; the others (reads, Setup's checks) are not counted. */
-export const MEASURED_ACTIONS: ReadonlySet<string> = new Set([
+const MEASURED_ACTIONS: ReadonlySet<string> = new Set([
     'imagery.import',
     'imagery.archiveImport',
     'imagery.saveGcps',
@@ -26,11 +26,7 @@ export const MEASURED_ACTIONS: ReadonlySet<string> = new Set([
 
 /** The refusal's code (`apiError.…`) of a failed call, else `error`. */
 function outcomeOf(failure: unknown): string {
-    const code: unknown =
-        typeof failure === 'object' && failure !== null && 'details' in failure
-            ? (failure.details as { readonly code?: unknown } | undefined)?.code
-            : undefined;
-    return typeof code === 'string' ? code.slice(0, 100) : 'error';
+    return failure instanceof CallableFailure ? failure.details.code : 'error';
 }
 
 /** `callables` with each {@link MEASURED_ACTIONS} call measured as `admin_action`. */

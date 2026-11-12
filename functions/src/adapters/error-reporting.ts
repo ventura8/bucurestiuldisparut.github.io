@@ -109,20 +109,21 @@ function toGroups(value: unknown): Group[] {
     if (groupId === undefined || firstSeen === undefined || lastSeen === undefined) {
         return [];
     }
-    return [
-        {
-            groupId: groupId.slice(0, LIMITS.groupId),
-            message: firstLine(text(representative['message']) ?? ''),
-            ...topFrames(text(representative['message']) ?? ''),
-            ...requestFields(representative),
-            ...affectedOf(stats['affectedUsersCount']),
-            ...serviceFields(representative),
-            count: countOf(stats['count']),
-            firstSeen,
-            lastSeen,
-            resolution: resolutionOf(group['resolutionStatus']),
-        },
-    ];
+    return [{ ...groupFields(groupId, stats, representative), firstSeen, lastSeen, resolution: resolutionOf(group['resolutionStatus']) }];
+}
+
+/** The fields of a readable group but its times and state. */
+function groupFields(groupId: string, stats: Fields, representative: Fields): Omit<Group, 'firstSeen' | 'lastSeen' | 'resolution'> {
+    const message = text(representative['message']) ?? '';
+    return {
+        groupId: groupId.slice(0, LIMITS.groupId),
+        message: firstLine(message),
+        ...topFrames(message),
+        ...requestFields(representative),
+        ...affectedOf(stats['affectedUsersCount']),
+        ...serviceFields(representative),
+        count: countOf(stats['count']),
+    };
 }
 
 function toResponse(body: unknown): ListGroupsResponse {

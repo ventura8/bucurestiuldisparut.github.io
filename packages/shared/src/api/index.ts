@@ -127,6 +127,8 @@ export {
     reportedErrorEventSchema,
 } from './telemetry.js';
 export type { ErrorReport, ListGroupsRequest, ListGroupsResponse, ReportedErrorEvent } from './telemetry.js';
+// What a crash report is not, and the browser of one (the reporters and `telemetry.reportError`).
+export { clientLabel, crashNoiseOf } from '../telemetry/crash-noise.js';
 export {
     DERIVATIVE_WRITTEN_AT,
     IMMUTABLE_CACHE_CONTROL,

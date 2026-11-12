@@ -126,7 +126,7 @@ function accept(deps: ReportErrorDeps, limiter: RateLimiter, request: ReportRequ
         deps.log.warn('crash report refused: invalid body', { fields: report.issues.map((issue) => issue.path).join(',') });
         return refusal('apiError.invalidRequest', cors, report.issues);
     }
-    return deliver(deps, report.value, origin, cors, request.userAgent);
+    return deliver(deps, report.value, { origin, cors, userAgent: request.userAgent });
 }
 
 /** The reason a report is no crash of the page's (an older page sends it unfiltered), else null. */
@@ -136,7 +136,11 @@ function noiseOf(report: ErrorReport): string | null {
 }
 
 /** A valid report: logged for Error Reporting as its page's service, or refused when its page is not on its origin. */
-function deliver(deps: ReportErrorDeps, report: ErrorReport, origin: string, cors: Headers, userAgent?: string): ReportResponse {
+function deliver(
+    deps: ReportErrorDeps,
+    report: ErrorReport,
+    { origin, cors, userAgent }: { readonly origin: string; readonly cors: Headers; readonly userAgent: string | undefined },
+): ReportResponse {
     const service = serviceOf(deps.config, origin, report.page);
     if (service === undefined) {
         return refusal('apiError.telemetry.origin', cors);

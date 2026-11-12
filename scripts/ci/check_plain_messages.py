@@ -88,27 +88,46 @@ def jargon(folder: Path, key: str, message: str) -> Iterator[str]:
         yield '"token"'
 
 
-def catalogue_problems(root: Path) -> Iterator[str]:
+def message_problems(label: str, folder: Path, key: str, message: str) -> Iterator[str]:
+    if generic(key, message):
+        yield f"{label}: {key} is only a generic phrase ({message!r}): say what happened, why and the fix"
+    for name in jargon(folder, key, message):
+        yield f"{label}: {key} shows the reader {name}: say it in plain words (codes go to the logs)"
+
+
+def catalogue_files(root: Path) -> Iterator[tuple[Path, Path, str]]:
+    """(folder, catalogue file, locale) of every catalogue that exists."""
     for folder in catalogue_folders(root):
         for locale in LOCALES:
             path = folder / f"{locale}.ts"
-            if not path.is_file():
-                continue
-            label = str(path.relative_to(root))
-            for key, message in read_catalogue(path, label, locale).messages.items():
-                if generic(key, message):
-                    yield f"{label}: {key} is only a generic phrase ({message!r}): say what happened, why and the fix"
-                for name in jargon(folder, key, message):
-                    yield f"{label}: {key} shows the reader {name}: say it in plain words (codes go to the logs)"
+            if path.is_file():
+                yield folder, path, locale
+
+
+def catalogue_problems(root: Path) -> Iterator[str]:
+    for folder, path, locale in catalogue_files(root):
+        label = str(path.relative_to(root))
+        for key, message in read_catalogue(path, label, locale).messages.items():
+            yield from message_problems(label, folder, key, message)
+
+
+def source_files(root: Path) -> Iterator[Path]:
+    for pattern in SOURCE_GLOBS:
+        yield from sorted(root.glob(pattern))
+
+
+def generic_log_line(line: str) -> str | None:
+    """The message of a logger call that is only a generic phrase, else None."""
+    match = LOGGER_CALL.search(line)
+    return match.group(1) if match is not None and generic("log", match.group(1)) else None
 
 
 def logger_problems(root: Path) -> Iterator[str]:
-    for pattern in SOURCE_GLOBS:
-        for path in sorted(root.glob(pattern)):
-            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-                match = LOGGER_CALL.search(line)
-                if match is not None and generic("log", match.group(1)):
-                    yield f"{path.relative_to(root)}:{number}: the log says only {match.group(1)!r}: name what failed, with ids and numbers"
+    for path in source_files(root):
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            message = generic_log_line(line)
+            if message is not None:
+                yield f"{path.relative_to(root)}:{number}: the log says only {message!r}: name what failed, with ids and numbers"
 
 
 def main(argv: list[str] | None = None) -> int:
