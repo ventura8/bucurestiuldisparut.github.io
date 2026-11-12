@@ -9,7 +9,8 @@
 # (scripts/ci/check_rules_coverage.py, which asks for the JSON and the HTML report at once). The
 # report is saved even when Vitest fails, and the Vitest exit status is preserved.
 #
-# `npm test` starts the emulators with JAVA_TOOL_OPTIONS=-XX:CICompilerCount=2: one C1 and one C2
+# `npm test` starts the emulators with JAVA_TOOL_OPTIONS='-XX:CICompilerCount=2 -Xmx1536m': a heap ceiling of 1.5 GB per JVM
+# (unset, each may take a quarter of the machine's memory; DECISIONS-for-review.md §169) and one C1 and one C2
 # compiler thread per JVM instead of about four and eight on 16 hardware threads, whose JIT work
 # took about two thirds of the Firestore emulator's CPU in a run this short, beside the tests.
 # C1 alone (-XX:TieredStopAtLevel=1) cut that further but made the two 250 MB coverage reports
