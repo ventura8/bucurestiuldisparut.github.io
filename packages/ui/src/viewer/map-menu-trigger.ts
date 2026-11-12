@@ -13,7 +13,7 @@ export interface MenuPoint {
 
 export const LONG_PRESS_MS = 500;
 /** A pointer that moved more than this (px) dragged: no menu. */
-export const MOVE_TOLERANCE_PX = 8;
+const MOVE_TOLERANCE_PX = 8;
 
 interface Press {
     readonly x: number;

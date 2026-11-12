@@ -64,8 +64,8 @@ export function menuOrigin(
     menu: { readonly width: number; readonly height: number },
     map: { readonly width: number; readonly height: number },
 ): MenuPoint {
-    const fit = (at: number, length: number, room: number): number => Math.max(EDGE, Math.min(at, room - length - EDGE));
-    return { x: fit(point.x, menu.width, map.width), y: fit(point.y, menu.height, map.height) };
+    const within = (at: number, length: number, room: number): number => Math.max(EDGE, Math.min(at, room - length - EDGE));
+    return { x: within(point.x, menu.width, map.width), y: within(point.y, menu.height, map.height) };
 }
 
 const NEXT: Readonly<Record<string, (index: number, count: number) => number>> = {
@@ -94,10 +94,9 @@ export class HcmMapMenu extends LitElement {
             }
 
             .menu {
-                pointer-events: auto;
-
                 position: absolute;
                 z-index: 41;
+                pointer-events: auto;
                 display: flex;
                 flex-direction: column;
                 min-inline-size: 112px;

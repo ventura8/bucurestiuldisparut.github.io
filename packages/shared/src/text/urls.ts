@@ -64,3 +64,6 @@ function upgrade(url: URL, upgradeHosts: readonly string[]): URL {
     }
     return url;
 }
+
+/** Google Street View at a place (`../geo/street-view.ts`), with the other addresses the viewer writes. */
+export { streetViewUrl } from '../geo/street-view.js';

@@ -13,7 +13,6 @@ export type { LogData, LogLevel, LogRecord, LogSink, Logger, LoggerOptions } fro
 
 export { EARTH_RADIUS_M, MAX_MERCATOR_LAT, bearingDelta, clamp, roundTo, toDegrees, toRadians, wrapBearing } from './geo/math.js';
 export type { LngLat } from './geo/math.js';
-export { streetViewUrl } from './geo/street-view.js';
 export { bearingBetween, destinationPoint, distanceMeters } from './geo/bearing.js';
 export { DEFAULT_FOV, MAX_FOV, MIN_FOV, angularSpan, coneFromPolygon, conePolygon, findConeApex, openRing } from './geo/cone.js';
 export type { MeasuredCone, ViewCone } from './geo/cone.js';
@@ -24,7 +23,7 @@ export { DEFAULT_COMPARE_POSITION, DEFAULT_HASH_LIMITS, MAX_HASH_LENGTH, MAX_OVE
 export type { CompareState, DecodedHash, HashLimits, HashState, MapView } from './url/hash.js';
 
 export { formatPhotoDate, monthNames } from './text/photo-date.js';
-export { MAX_URL_LENGTH, isCspOrigin, isHostOf, isHttpsUrl, isRelativeUrl, toHttpsUrl } from './text/urls.js';
+export { MAX_URL_LENGTH, isCspOrigin, isHostOf, isHttpsUrl, isRelativeUrl, streetViewUrl, toHttpsUrl } from './text/urls.js';
 export { linkTargets, markdownToPlainText, parseMarkdown } from './text/markdown.js';
 export { redactText } from './text/redact.js';
 export type { InlineNode, MarkdownDocument, MarkdownParagraph } from './text/markdown.js';
