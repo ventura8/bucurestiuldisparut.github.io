@@ -2,6 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import process from 'node:process';
 
+import type { ViewerLocale } from '@hcm/shared';
 import { test, type Page } from '@playwright/test';
 
 import { settleAnimations } from './layout.js';
@@ -50,7 +51,7 @@ function schemesOf(own: Scheme): Scheme[] {
 }
 
 /** Saves the state `id` the page is in (see the module comment); does nothing without `HCM_STATE_SCREENSHOTS`. */
-export async function saveStateShots(page: Page, id: string, lang: 'ro' | 'en'): Promise<void> {
+export async function saveStateShots(page: Page, id: string, lang: ViewerLocale): Promise<void> {
     const dir = shotsDir();
     if (dir === null) {
         return;

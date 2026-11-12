@@ -10,7 +10,7 @@
  * host (`applyTheme`). It reads Mapbox GL's attribution from that container (`watchAttribution`) to show it in its
  * legal bar or in About while a modal surface covers the map (scenario V18).
  */
-import { resolveLocale, type MessageKey, type ThemeTokens } from '@hcm/shared';
+import { isRtl, resolveViewerLocale, type MessageKey, type ThemeTokens } from '@hcm/shared';
 import { LitElement, type TemplateResult } from 'lit';
 
 import { deepActiveElement, restoreFocus, tabbableElements } from '../components/focus.js';
@@ -256,8 +256,11 @@ export class HcmMapViewer extends LitElement {
     override attributeChangedCallback(name: string, old: string | null, value: string | null): void {
         super.attributeChangedCallback(name, old, value);
         if (name === 'lang') {
+            const locale = resolveViewerLocale(value);
+            // Arabic reads right to left: the whole viewer mirrors, its map container stays left to right (`viewer-render.ts`).
+            this.dir = isRtl(locale) ? 'rtl' : 'ltr';
             this.#act(null, (store) => {
-                syncLocale(store, resolveLocale(value));
+                syncLocale(store, locale);
             });
         }
     }
@@ -268,7 +271,7 @@ export class HcmMapViewer extends LitElement {
             state,
             bootError: this.bootError,
             layout: layoutOf(state),
-            locale: state === null ? resolveLocale(this.getAttribute('lang')) : state.locale,
+            locale: state === null ? resolveViewerLocale(this.getAttribute('lang')) : state.locale,
             stops: stopsOf(state),
             manifestUrl: this.manifestUrl,
             engineVersion: this.engineVersion,
@@ -312,6 +315,7 @@ export class HcmMapViewer extends LitElement {
         if (this.getAttribute('lang') !== state.locale) {
             this.setAttribute('lang', state.locale);
             this.ownerDocument.documentElement.lang = state.locale;
+            this.ownerDocument.documentElement.dir = this.dir;
         }
         if (state.theme !== previous.theme || state.manifest !== previous.manifest) {
             this.#applyTheme(state);

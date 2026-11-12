@@ -26,6 +26,20 @@ const EXPORTS = {
         'resolveLocale',
         'translate',
     ],
+    // The viewer's sixteen languages (DECISIONS-for-review.md §159).
+    viewerI18n: [
+        'LANGUAGE_NAMES',
+        'VIEWER_LOCALES',
+        'catalogueText',
+        'hasCatalogue',
+        'intlTag',
+        'isRtl',
+        'localized',
+        'registerCatalogue',
+        'resolveViewerLocale',
+        'shownLanguage',
+        'viewerLocaleOf',
+    ],
     adminI18n: ['translateAdminContent', 'translateAdminSetup', 'translateAdminShell'],
     geo: [
         'EARTH_RADIUS_M',

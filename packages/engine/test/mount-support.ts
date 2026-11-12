@@ -98,6 +98,8 @@ export interface TestEnvironmentOptions {
     readonly webgl?: boolean;
     /** The page address's hash and query (`?lang=en`); empty by default. */
     readonly location?: { readonly hash?: string; readonly search?: string };
+    /** The languages' texts by engine folder (`MountEnvironment.catalogues`); without it only Romanian and English. */
+    readonly catalogues?: MountEnvironment['catalogues'];
 }
 
 /** A `MountEnvironment` with the real store on fakes; `containers` answers `querySelector`. */
@@ -151,6 +153,7 @@ export function testEnvironment(options: TestEnvironmentOptions = {}): TestEnvir
             fonts.push(engineBase);
         },
         loadCompare: () => compare.deps.load(),
+        ...(options.catalogues === undefined ? {} : { catalogues: options.catalogues }),
     };
     return { env, viewer, map, telemetry, log, stores, fonts, containers, created, compare };
 }

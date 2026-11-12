@@ -6,8 +6,8 @@
  * table, so the sites, the kit and the export never drift (`docs/research/DECISIONS-for-review.md` §15c).
  *
  * Fixed sources: the page's own origin (the manifest and the photos served next to the page), Mapbox GL JS from
- * api.mapbox.com and the Mapbox APIs, the engine's own files (its script, stylesheet and fonts: the page's origin, or
- * the pinned folder of a release) and the Google Analytics and Firebase hosts the telemetry may load after the visitor
+ * api.mapbox.com and the Mapbox APIs, the engine's own files (its script, stylesheet, fonts and languages: the page's
+ * origin, or the pinned folder of a release) and the Google Analytics and Firebase hosts the telemetry may load after the visitor
  * consents. A site adds the origins its manifest names (an https manifest, photo or tile host, the crash endpoint).
  */
 
@@ -75,7 +75,8 @@ function directives(extra: ExtraSources, engine: string, analytics: boolean): re
         ['script-src', [engine, MAPBOX_GL_CDN, "'wasm-unsafe-eval'", ...telemetry.script]],
         ['style-src', [engine, MAPBOX_GL_CDN]],
         ['img-src', [SELF_SOURCE, 'data:', 'blob:', 'https://api.mapbox.com', ...telemetry.images, ...extra.images]],
-        ['connect-src', [SELF_SOURCE, ...MAPBOX_CONNECT_SOURCES, ...telemetry.connect, ...extra.connect]],
+        // The engine's own folder too: it fetches the visitor's language from `<engine>i18n/` (DECISIONS-for-review.md §159).
+        ['connect-src', [SELF_SOURCE, engine, ...MAPBOX_CONNECT_SOURCES, ...telemetry.connect, ...extra.connect]],
         // The engine's self-hosted fonts (FontFace from `engineBase`, the folder of its script).
         ['font-src', [engine]],
         // Mapbox GL runs its workers from blob: URLs; child-src covers browsers without worker-src (Safari < 15.5).

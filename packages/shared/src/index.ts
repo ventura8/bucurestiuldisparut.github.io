@@ -1,6 +1,7 @@
-export { DEFAULT_LOCALE, LOCALES, resolveLocale, translate } from './i18n/index.js';
+export { DEFAULT_LOCALE, LOCALES, VIEWER_LOCALES, resolveLocale, resolveViewerLocale, translate, viewerLocaleOf } from './i18n/index.js';
+export { LANGUAGE_NAMES, catalogueText, hasCatalogue, intlTag, isRtl, localized, registerCatalogue, shownLanguage } from './i18n/index.js';
 export { pluralOf } from './i18n/plural.js';
-export type { Locale, MessageKey, Messages } from './i18n/index.js';
+export type { CityText, Locale, MessageKey, Messages, ViewerLocale } from './i18n/index.js';
 export type { Translator } from './i18n/catalogue.js';
 // The admin's own texts (docs/research/M2b-interfaces.md §1.6): separate catalogues the viewer never imports.
 export { translateAdminShell } from './i18n/admin-shell/index.js';

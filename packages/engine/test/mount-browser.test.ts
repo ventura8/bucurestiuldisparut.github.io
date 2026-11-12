@@ -212,7 +212,8 @@ describe('autoBoot', () => {
 
         expect(world.log.messages()).toEqual([
             'The map element “#nope” does not exist on the page.',
-            'Elementul hărții „!invalid” nu există în pagină.',
+            // In English whatever the configuration's language: the engine has no catalogue before it fetches one.
+            'The map element “!invalid” does not exist on the page.',
         ]);
         expect(world.created).toEqual([]);
     });
@@ -233,7 +234,7 @@ describe('autoBoot', () => {
 
         expect(autoBoot(undefined, world.env)).toBeNull();
         expect(autoBoot({ container: 42 }, world.env)).toBeNull();
-        expect(world.log.messages()).toEqual(['Elementul hărții „#historic-city-map” nu există în pagină.']);
+        expect(world.log.messages()).toEqual(['The map element “#historic-city-map” does not exist on the page.']);
     });
 });
 
@@ -259,7 +260,7 @@ describe('startEngine', () => {
         listeners.forEach((run) => {
             run();
         });
-        expect(world.log.messages()).toContain('Elementul hărții „#historic-city-map” nu există în pagină.');
+        expect(world.log.messages()).toContain('The map element “#historic-city-map” does not exist on the page.');
     });
 
     it('happyPath_aParsedDocumentBootsAtOnce', () => {

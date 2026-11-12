@@ -5,7 +5,7 @@
  * configured) and Sign out. A rotation of a phone moves it between the top bar and the rail: the shell then gives the
  * new one's button the focus the old one held (`active`, `focusButton`).
  */
-import { translate, type Locale } from '@hcm/shared';
+import { LANGUAGE_NAMES, translate, type Locale } from '@hcm/shared';
 import { LitElement, css, html, type TemplateResult } from 'lit';
 
 import type { SegmentOption } from '../../components/segmented-button.js';
@@ -20,12 +20,12 @@ export const HCM_ACCOUNT_MENU_TAG = 'hcm-account-menu';
 
 const THEMES: readonly ThemeMode[] = ['system', 'light', 'dark'];
 
-function languageOptions(locale: Locale): SegmentOption[] {
-    return [
-        { value: 'ro', label: translate(locale, 'language.ro') },
-        { value: 'en', label: translate(locale, 'language.en') },
-    ];
-}
+/** The admin's two languages, each by its own name (`LANGUAGE_NAMES`, the viewer's list's) and in its own language. */
+const LANGUAGE_OPTIONS: readonly SegmentOption[] = (['ro', 'en'] as const).map((value) => ({
+    value,
+    label: LANGUAGE_NAMES[value],
+    lang: value,
+}));
 
 function themeOptions(locale: Locale): SegmentOption[] {
     return THEMES.map((mode) => ({ value: mode, label: translate(locale, `theme.${mode}`) }));
@@ -157,7 +157,7 @@ export class HcmAccountMenu extends LitElement {
             <span class="group-label">${label}</span>
             <hcm-segmented-button
                 .label=${label}
-                .options=${languageOptions(state.locale)}
+                .options=${LANGUAGE_OPTIONS}
                 .value=${state.locale}
                 @hcm-change=${change}
             ></hcm-segmented-button>

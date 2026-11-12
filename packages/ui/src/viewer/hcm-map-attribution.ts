@@ -5,7 +5,7 @@
  * the text is the map's attribution as `watchAttribution` read it, or the basemap's credits while there is none. Links
  * open in a new tab and only https addresses become links.
  */
-import { DEFAULT_LOCALE, translate, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, translate, type ViewerLocale } from '@hcm/shared';
 import { LitElement, css, html, type TemplateResult } from 'lit';
 
 import { BASEMAP_ATTRIBUTION, MAPBOX_HOME, type AttributionPart } from './attribution.js';
@@ -74,7 +74,7 @@ export class HcmMapAttribution extends LitElement {
 
     /** The map's attribution (`readAttribution`); empty shows the basemap's credits. */
     declare parts: readonly AttributionPart[];
-    declare locale: Locale;
+    declare locale: ViewerLocale;
     /** mapbox-gl.css (the logo's image); empty in tests. */
     declare cssUrl: string;
 
@@ -95,7 +95,7 @@ export class HcmMapAttribution extends LitElement {
                 rel="noopener nofollow"
                 aria-label=${translate(this.locale, 'map.logo')}
             ></a>
-            <p class="attribution" data-layout-check="map-attribution">${parts.map(partTemplate)}</p>`;
+            <p class="attribution" dir="ltr" data-layout-check="map-attribution">${parts.map(partTemplate)}</p>`;
     }
 }
 

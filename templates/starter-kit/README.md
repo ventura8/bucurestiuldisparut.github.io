@@ -37,7 +37,7 @@ A historical map of your city in three files: old photos, vanished places and ma
 7. **Check it.** If something in `city.json` is wrong, the page shows an error that names the exact field to fix. If the "The map is loading" text stays on screen, the engine could not load: the version or the `integrity` value in `index.html` does not match (use the values of the version's `release.json`, below).
 8. **Update the engine.** Every version has a `release.json` (on the version's GitHub release page and at `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@v<version>/cdn/engine/release.json`) with the addresses and `integrity` values. The easiest: `npx create-historic-city@<version> upgrade`, which rewrites only the engine block of `index.html` (the sources you added to the CSP stay).
 
-**Locally:** serve the folder with any static server (for example `npx serve .` or `python3 -m http.server`) and open its address. Opened straight from the file (`file://`), the page cannot read `city.json`.
+**Locally:** serve the folder with any static server (for example `npx serve .` or `python3 -m http.server`) and open its address. Opened straight from the file (`file://`), the page can read neither `city.json` nor its language's texts (`engine/i18n/`).
 
 **Privacy:** the map sets no cookies without the visitor's consent (Google Analytics statistics only when `city.json` has a measurement id and the visitor accepts). Mapbox sees each visitor's IP address: say so in the privacy text.
 

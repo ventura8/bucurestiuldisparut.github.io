@@ -1,11 +1,13 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vite';
 
-import { cataloguePackPlugin } from '../../scripts/site/src/catalogue-pack.js';
 import { cssLiteralsPlugin } from '../../scripts/site/src/css-literals.js';
+import { i18nCataloguesPlugin } from '../../scripts/site/src/i18n-catalogues.js';
 import { thirdPartyNoticesPlugin } from '../../scripts/site/src/notices.js';
 import { zodStandInsPlugin } from '../../scripts/site/src/zod-stand-ins.js';
+import { VIEWER_CATALOGUES } from '../shared/src/i18n/viewer-catalogues.js';
 import { FONT_FILES } from '../ui/src/fonts/font-files.js';
 
 /**
@@ -24,10 +26,15 @@ import { FONT_FILES } from '../ui/src/fonts/font-files.js';
  *   (scripts/site/src/zod-stand-ins.ts; DECISIONS-for-review.md §100): about 6 KB gzip of both builds. zod's English
  *   messages, which the engine never shows (an issue reaches the visitor as its `validation.*` code), resolve to the admin's
  *   empty stand-in (§120a): about 1 KB gzip of both builds.
- * - The viewer's message catalogues are packed by `cataloguePackPlugin` (scripts/site/src/catalogue-pack.ts,
- *   DECISIONS-for-review.md §127a): the same objects, built from one string of keys and an array of texts, about 270 bytes
- *   gzip of the IIFE.
+ * - The viewer's message catalogues are not in the bundle (`i18nCataloguesPlugin`, scripts/site/src/i18n-catalogues.ts,
+ *   DECISIONS-for-review.md §159, which replaced §127a's packing): each of the sixteen languages is
+ *   dist/i18n/<locale>.json, fetched when the viewer first shows it (`ENGINE_VERSION` is the package's version, which the
+ *   release keeps equal: a file of another version is refused).
  */
+/** The engine's version: the release keeps `ENGINE_VERSION` equal to it, and a catalogue file names it. */
+const ENGINE_PACKAGE_VERSION = (JSON.parse(readFileSync(new URL('package.json', import.meta.url), 'utf8')) as { readonly version: string })
+    .version;
+
 export default defineConfig({
     plugins: [
         zodStandInsPlugin({
@@ -35,7 +42,7 @@ export default defineConfig({
             messages: fileURLToPath(new URL('../admin/src/vendor/zod-locale-none.ts', import.meta.url)),
         }),
         cssLiteralsPlugin(),
-        cataloguePackPlugin(/[\\/]packages[\\/]shared[\\/]src[\\/]i18n[\\/]/),
+        i18nCataloguesPlugin(ENGINE_PACKAGE_VERSION, VIEWER_CATALOGUES),
         thirdPartyNoticesPlugin({
             product: 'the Historic City Map engine (engine.mjs, engine.iife.js, their chunks and fonts)',
             assets: FONT_FILES.map((font) => ({ package: font.source.package, file: `fonts/${font.file}` })),

@@ -7,7 +7,7 @@
  * Zoom out's limit is the higher of `city.minZoom` and the zoom at which the city's bounds just cover the map: Mapbox keeps
  * the view inside `maxBounds`, so on most screens it stops there first (Bucharest: about 10.8 on a phone, 11.6 at 1440 px).
  */
-import { translate, type BBox, type Locale, type Manifest, type MapView } from '@hcm/shared';
+import { translate, type BBox, type ViewerLocale, type Manifest, type MapView } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 /**
@@ -46,7 +46,7 @@ export function coverZoom([[west, south], [east, north]]: BBox, size: MapSize): 
  * `onZoom` gets 1 or -1. A hundredth of a level covers the rounding of the camera Mapbox stopped.
  */
 export function zoomButtons(
-    { locale, mapSize }: { readonly locale: Locale; readonly mapSize: MapSize | null },
+    { locale, mapSize }: { readonly locale: ViewerLocale; readonly mapSize: MapSize | null },
     view: MapView,
     manifest: Manifest,
     onZoom: (step: number) => void,

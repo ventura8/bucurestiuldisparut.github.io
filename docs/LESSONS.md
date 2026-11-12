@@ -3384,3 +3384,39 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: DECISIONS-for-review.md §143 moved the map's pair and suggestion markers from Mapbox sources to one badge canvas over the map (`packages/admin/src/georef/marker-overlay.ts`), so no `hcm-source-georef-suggestions` exists; the spec still read the old source, which nothing asserted was gone.
     - Fix and pin: `georefBadgesAt` (`e2e/admin/support/map.ts`) counts the places with paint on the `canvas[data-georef-badges]` near their projection; the spec reads the suggested places from the version, shows the map pane, zooms out with the map's own button until they are on screen (a badge off the view is not drawn) and expects four. S-A44-HAPPY's asserts say so.
     - **When a rendering moves from a map source to a canvas, its e2e reads move with it: assert the pixels the user sees, and grep the specs for the old source id in the same change.**
+577. **The engine's build emptied the Romanian catalogue, and one module that read it as it loaded broke every page.**
+    - Seen: 2026-11-09 (track/langs), the first e2e run after the catalogues left the bundle: every viewer test failed on "uncaught TypeError: Cannot convert undefined or null to object" before `hcm-ready`.
+    - Cause: `schemas/validation.ts` built its set of `validation.*` codes from `Object.keys(ro)` at load; the engine's build resolves `ro.ts` to `export const ro = undefined`.
+    - Found by: the e2e suite only: Vitest imports the real catalogues, so every unit test passed.
+    - Fix and pin: the codes are listed by name (`validation.test.ts` checks every catalogue key is one, and a near miss is not); every page boots in the e2e runs.
+    - **Code the engine bundles never reads a catalogue object as it loads: a catalogue is data the engine fetches, read only through `translate` once registered.**
+578. **A language's texts arrived after the skeleton had rendered, and nothing rendered again.**
+    - Seen: 2026-11-09 (track/langs), while wiring the boot: the loading view rendered before its catalogue, with an empty "Loading the map…" and a progress indicator without a name, until the manifest changed the state.
+    - Cause: the catalogue lives in a registry outside the store's state, so its arrival changed nothing a Lit element observes.
+    - Found by: reading the boot path against the tour's `loading` state (manifest held, catalogue free).
+    - Fix and pin: the boot sets the state again once the texts arrive (`#textsArrived`); the tour's `loading` state checks the named indicator.
+    - **State kept outside the store (a registry, a cache) must announce its change through the store, or the view never learns of it.**
+579. **The leak check called a city's English text, rightly shown in an Arabic page, a leak.**
+    - Seen: 2026-11-09 (track/langs), the tour's `rtl-languages`: "Anonymous statistics", the fixture's English privacy heading, matched the English catalogue.
+    - Cause: the check, generalised from Romanian pages to sixteen languages, compared every visible text, including data shown in its fallback language.
+    - Found by: the tour's i18n check in the new Arabic journey.
+    - Fix and pin: a city's text names its language (`lang`, WCAG 3.1.2), and the check skips what is marked as another language (`e2e/support/i18n.ts`).
+    - **Mark text by its language where it is shown; a check of "the page's language" then reads the marks instead of guessing.**
+580. **Right to left, the mirrored Mapbox attribution put its two links side by side and failed the target size.**
+    - Seen: 2026-11-09 (track/langs), the tour's `rtl-photo` at 360 px: axe target-size (serious) on the legal bar's two links.
+    - Cause: the bidi algorithm reordered the attribution's Latin runs and its separators inside an Arabic paragraph.
+    - Found by: the tour's accessibility checker in the new Arabic journey.
+    - Fix and pin: the attribution is `dir="ltr"`, as the map's own control is (`hcm-map-attribution.ts`); the tour's Arabic journey passes at every per-push viewport.
+    - **Legal and third-party text in a right-to-left page keeps its own direction: mark it `dir="ltr"`, as the map's container is.**
+581. **A language that could not be fetched stayed checked in the list.**
+    - Seen: 2026-11-09 (track/langs), S-V11-BAD-CATALOGUE-404: the page stayed Romanian, the snackbar said so, the list showed Korean checked.
+    - Cause: the kit's segmented button checks a choice at once; the dialog's value had not changed, so Lit never set it back (`live` only acts on a render).
+    - Found by: the e2e row.
+    - Fix and pin: the list is controlled: it shows the page's language until the store has switched (`hcm-about-dialog.ts`; `languages.test.ts`, S-V11-BAD-CATALOGUE-404).
+    - **A choice whose effect can fail is controlled by its outcome, never by the click.**
+582. **One translator removed a folder it had made and took another's catalogue with it.**
+    - Seen: 2026-11-09 (track/langs): the Simplified Chinese catalogue, written to `i18n/viewer/zh.ts`, was gone; the Korean translator had created and then removed `i18n/viewer/`.
+    - Cause: parallel agents in one worktree, two layouts in the brief and the design, and a clean-up of a folder that was no longer only its own.
+    - Found by: the integration's key check (fifteen catalogues where sixteen were expected).
+    - Fix and pin: re-translated in the agreed layout; the gate requires all sixteen files.
+    - **Parallel writers agree on the paths first and never delete what they did not create alone.**

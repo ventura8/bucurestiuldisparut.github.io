@@ -40,9 +40,9 @@ describe('buildAdminSite', () => {
             photos: 57,
             originals: 56,
             warnings: 1,
-            fonts: 3,
+            fonts: 4,
             // The legacy bundle's corrections.json (the old site's later directions) included.
-            files: 67,
+            files: 68,
         });
         const integrity = subresourceIntegrity(files.readBytes('node_modules/mapbox-gl/dist/mapbox-gl.js'));
         expect(files.readText(`${OUT}/index.html`)).toBe(renderAdminPage(undefined, { mapboxGlIntegrity: integrity }));
@@ -57,6 +57,7 @@ describe('buildAdminSite', () => {
         expect(files.listFiles(`${OUT}/${FONTS_FOLDER}`)).toEqual([
             'LICENSES.md',
             'material-symbols-rounded.woff2',
+            'roboto-flex-cyrillic-wght.woff2',
             'roboto-flex-latin-ext-wght.woff2',
             'roboto-flex-latin-wght.woff2',
         ]);

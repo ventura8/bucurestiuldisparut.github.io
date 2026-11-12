@@ -1,4 +1,4 @@
-import type { Locale } from '@hcm/shared';
+import { LANGUAGE_NAMES, type Locale } from '@hcm/shared';
 import { expect, type Page } from '@playwright/test';
 
 import { chooseMenuItem, dismissToast, menuButton, t, viewer } from '../support/viewer.js';
@@ -40,10 +40,7 @@ export const SETTINGS_STATES = {
             const other = lang === 'ro' ? 'en' : 'ro';
             // The Settings state's Esc closed the dialog: it is opened again from the menu.
             await chooseMenuItem(page, lang, t(lang, 'settings.title'));
-            await viewer(page)
-                .locator('hcm-about-dialog')
-                .getByRole('radio', { name: t(lang, `language.${other}`) })
-                .click();
+            await viewer(page).locator('hcm-about-dialog').getByRole('radio', { name: LANGUAGE_NAMES[other], exact: true }).click();
             await expect(page.getByRole('dialog', { name: t(other, 'settings.title') })).toBeVisible();
             await page.keyboard.press('Escape');
             await expect(menuButton(page, other)).toBeVisible();

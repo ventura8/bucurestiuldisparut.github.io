@@ -2,7 +2,7 @@
  * URL-hash codec v1 of the public viewer (docs/ENGINE_API.md → URL hash).
  *
  *     #<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&cmp=<id>][&sw=<0..100>]
- *         [&labels=streets,pois][&photo=<id>][&story=<id>][&lang=ro|en]
+ *         [&labels=streets,pois][&photo=<id>][&story=<id>][&lang=<one of VIEWER_LOCALES>]
  *
  * Decoding is defensive: the hash is visitor input. Numbers must be plain decimals, every range is
  * clamped, ids must match `ID_PATTERN` (anything else is dropped, never put into a selector), unknown
@@ -17,7 +17,7 @@
  */
 import { clampToBBox, type BBox } from '../geo/bbox.js';
 import { clamp, MAX_MERCATOR_LAT, roundTo, wrapBearing, type LngLat } from '../geo/math.js';
-import type { Locale } from '../i18n/index.js';
+import { VIEWER_LOCALES, type ViewerLocale } from '../i18n/index.js';
 import { MAP_LABEL_KINDS, type MapLabels } from '../overlays/map-labels.js';
 import { isId } from '../schemas/primitives.js';
 
@@ -63,7 +63,7 @@ export interface HashState {
     readonly photo?: string;
     /** M17: the open story. */
     readonly story?: string;
-    readonly lang?: Locale;
+    readonly lang?: ViewerLocale;
 }
 
 export interface DecodedHash extends HashState {
@@ -86,7 +86,6 @@ export interface HashLimits {
 export const DEFAULT_HASH_LIMITS: HashLimits = { minZoom: 0, maxZoom: 22 };
 
 const DECIMAL = /^-?\d{1,4}(?:\.\d{1,12})?$/;
-const LOCALES: readonly Locale[] = ['ro', 'en'];
 
 /** A plain decimal (`-12.5`, `14`), or null for anything else (`1e3`, `Infinity`, `0x10`, blanks). */
 function parseDecimal(text: string): number | null {
@@ -243,7 +242,7 @@ function decodeLabels(value: string): Partial<HashState> {
 type ParamDecoder = (value: string, limits: HashLimits) => Partial<Decoding>;
 
 function decodeLang(value: string): Partial<HashState> {
-    const lang = LOCALES.find((locale) => locale === value);
+    const lang = VIEWER_LOCALES.find((locale) => locale === value);
     return lang === undefined ? {} : { lang };
 }
 

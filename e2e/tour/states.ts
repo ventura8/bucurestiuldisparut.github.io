@@ -1,4 +1,4 @@
-import type { Locale } from '@hcm/shared';
+import type { Locale, ViewerLocale } from '@hcm/shared';
 import { expect, type BrowserContext, type Page, type Route } from '@playwright/test';
 
 import { IMAGERY_STATES } from '../admin/specs/imagery/states.js';
@@ -7,6 +7,7 @@ import { COMPARE_STATES, openComparing } from './compare-states.js';
 import { UNPLACED_JOURNEY, unplacedStates } from './unplaced-states.js';
 import { STORY_JOURNEY, storyStates } from './story-states.js';
 import { INPUT_JOURNEY, INPUT_STATES } from './input-states.js';
+import { CJK_JOURNEY, LANGUAGE_STATES, RTL_JOURNEY } from './language-states.js';
 import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
 import { MY_LOCATION_STATES } from './my-location-states.js';
 import { ZOOM_JOURNEY, ZOOM_STATES } from './zoom-states.js';
@@ -69,8 +70,8 @@ interface ViewerState {
     readonly announcements?: (lang: Locale) => readonly string[];
     /** Esc closes the state's popup (the focus goes back to the control of this name); only where it is a popup. */
     readonly escape?: (tour: TourContext) => { readonly opener: string | null } | null;
-    /** The language the page shows (the language chosen in Settings switches to the other one). */
-    readonly shows?: (lang: Locale) => Locale;
+    /** The language the page shows (a state may switch it, or open the viewer in a language of its own). */
+    readonly shows?: (lang: Locale) => ViewerLocale;
 }
 
 /**
@@ -320,6 +321,8 @@ const VIEWER_STATES = {
     ...COMPARE_STATES,
     ...MAP_LABEL_STATES,
     ...PHOTO_SOURCE_STATES,
+    // The language list, Arabic right to left and Japanese (V11).
+    ...LANGUAGE_STATES,
 } as const satisfies Record<string, Omit<ViewerState, 'id'>>;
 
 type ViewerStateId = keyof typeof VIEWER_STATES;
@@ -430,6 +433,8 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
     },
     MAP_LABEL_JOURNEY,
     PHOTO_SOURCE_JOURNEY,
+    RTL_JOURNEY,
+    CJK_JOURNEY,
     {
         title: 'A photo at every height, shown on the map, its lightbox, and the photo list',
         id: 'photo',

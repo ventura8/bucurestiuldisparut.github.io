@@ -8,7 +8,7 @@
  * More years than the card holds scroll: the track is at least 30 px per gap (`--hcm-gaps`) and the selected stop snaps
  * into view, except while a drag is on (`timeline-styles.ts`). A new stop fires `hcm-year-change` (`{year}`, null for today).
  */
-import { DEFAULT_LOCALE, translate, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, translate, type ViewerLocale } from '@hcm/shared';
 import { LitElement, html, type TemplateResult } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 
@@ -64,7 +64,7 @@ export class HcmTimeline extends LitElement {
 
     declare stops: readonly TimelineStop[];
     declare value: TimelineStop;
-    declare locale: Locale;
+    declare locale: ViewerLocale;
     declare orientation: TimelineOrientation;
     declare dragging: boolean;
 
