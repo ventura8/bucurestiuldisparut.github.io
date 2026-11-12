@@ -29,7 +29,13 @@ function setup(load: ExtrasLoader = () => Promise.resolve(EXTRAS)) {
     const map = new FakeMap();
     map.view = { center: [26.1, 44.45], zoom: 13, bearing: 0 };
     const handle = { port: map, preview: createMapPreview(map, fakeFrames()), draw: () => Promise.resolve(draw), destroy: () => undefined };
-    const world = imageryWorld({ maps: factoryOf([{ ok: true, map: handle }]) });
+    // Two: a test re-makes the map (as a page that shows it again).
+    const world = imageryWorld({
+        maps: factoryOf([
+            { ok: true, map: handle },
+            { ok: true, map: handle },
+        ]),
+    });
     world.store.docs.set(FIRESTORE_PATHS.city(CITY), cityDoc({ imagery: { rmseThresholdM: 5 } }));
     world.store.docs.set(VERSIONS(UPLOAD), golden('version.needs-gcps.json'));
     world.store.docs.set(VERSIONS(RENDERED), golden('version.awaiting-approval.json'));
@@ -110,6 +116,37 @@ describe('the georeferencer links its views', () => {
         const follow = world.georef.state.scanFollow;
         expect(follow?.scale).toBeGreaterThan(0.5);
         expect(jumps(world)).toHaveLength(2);
+    });
+
+    it('happyPath_aFirstMoveOnTheMapMovesTheScanWhileTheChunkLoads @S-A16-HAPPY-GEOREF-LINKED', async () => {
+        const world = await opened(RENDERED);
+
+        // Reduced motion: one jump, one `move`, compared with the camera the map showed when it was made.
+        ownerMoves(world, { center: [26.11, 44.44], zoom: 15 });
+        await settle();
+        world.flush();
+
+        expect(world.fetched.count).toBe(1);
+        expect(world.georef.state.scanFollow?.scale).toBeGreaterThan(0);
+        expect(jumps(world)).toHaveLength(0);
+    });
+
+    it('happyPath_twoMapMovesBeforeTheChunkIsInFollowTheLatest @S-A16-HAPPY-GEOREF-LINKED', async () => {
+        const world = await opened(RENDERED);
+
+        ownerMoves(world, { center: [26.11, 44.44], zoom: 14 });
+        ownerMoves(world, { center: [26.12, 44.44], zoom: 15 });
+        await settle();
+        world.flush();
+        const first = world.georef.state.scanFollow;
+        // A re-made map only says where it is now: no move of the scan.
+        world.map.view = { center: [26.2, 44.5], zoom: 12, bearing: 0 };
+        world.georef.intents.attachMap(host());
+        await settle();
+        world.flush();
+
+        expect(first).not.toBeNull();
+        expect(world.georef.state.scanFollow).toBe(first);
     });
 
     it('happyPath_theToggleStopsBothWaysAndIsRememberedForTheNextVersion @S-A16-HAPPY-GEOREF-LINKED', async () => {

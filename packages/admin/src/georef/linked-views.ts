@@ -74,11 +74,16 @@ export class ViewLink {
     #pending: Pending | null = null;
     /** True while a move is applied: the other pane's own `move` it causes is no move of the owner's. */
     #applying = false;
-    /** The map's camera at its last `move` (null: none seen yet, the first only sets it). */
+    /** The map's camera at its last `move` or `seen` (null: none seen yet, the first `move` only sets it). */
     #lastMap: MapCamera | null = null;
 
     constructor(ports: LinkPorts) {
         this.#ports = ports;
+    }
+
+    /** The map's camera before any move of the owner's (as it showed, or the last seen while this chunk loaded): no move itself. */
+    seen(camera: MapCamera): void {
+        this.#lastMap = camera;
     }
 
     /** The owner panned or zoomed the scan. */

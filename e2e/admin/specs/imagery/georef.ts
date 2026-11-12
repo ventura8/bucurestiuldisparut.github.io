@@ -49,6 +49,18 @@ export function linkViews(page: Page, lang: 'ro' | 'en'): Locator {
     return page.getByRole('button', { name: georefText(lang, 'adminContent.map.linkViews'), exact: true });
 }
 
+/** The pages opened with Link the views off: a version with no fit gets one later (the toggle is enabled, and on, only then). */
+const UNLINKED = new WeakSet<Page>();
+
+/** Turns Link the views off where the page was opened unlinked and the toggle is now on (a fit appeared). */
+async function keepUnlinked(page: Page, lang: 'ro' | 'en'): Promise<void> {
+    const toggle = linkViews(page, lang);
+    if (UNLINKED.has(page) && (await toggle.getAttribute('aria-pressed')) === 'true') {
+        await toggle.click();
+        await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    }
+}
+
 /**
  * The georeferencer is open and settled: the map first (its centre is the keyboard's crosshair), then the scan; Link the views off
  * unless `linked`.
@@ -57,11 +69,12 @@ export async function georeferencerReady(page: Page, lang: 'ro' | 'en', { linked
     await expect(page.getByRole('button', { name: georefText(lang, 'adminContent.georef.save') })).toBeVisible();
     await showPane(page, lang, 'map');
     await showPane(page, lang, 'scan');
-    const toggle = linkViews(page, lang);
-    if (!linked && (await toggle.getAttribute('aria-pressed')) === 'true') {
-        await toggle.click();
-        await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    if (linked) {
+        UNLINKED.delete(page);
+        return;
     }
+    UNLINKED.add(page);
+    await keepUnlinked(page, lang);
 }
 
 /** The fit's errors line (`Fit error: … m`, then the checkpoints' error or why there is none). */
@@ -164,6 +177,7 @@ export async function addPair(page: Page, lang: 'ro' | 'en', place: LatLng, offs
     const point = await pointInView(page, lang, [lng, place.lat]);
     await page.mouse.click(point.x, point.y);
     await showPane(page, lang, 'scan');
+    await keepUnlinked(page, lang);
 }
 
 /**

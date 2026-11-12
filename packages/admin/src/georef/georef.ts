@@ -95,6 +95,9 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
             viewed: (view) => {
                 this.#link.map(view);
             },
+            shown: (view) => {
+                this.#link.seen(view);
+            },
         });
         this.#link = linkedPanesOf({ ...{ services, extras, frame, map: this.#map, cell: this.#cell }, transform: () => this.#transform });
         this.#pictures = new GeorefPictures({

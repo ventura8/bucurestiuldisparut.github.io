@@ -1,7 +1,9 @@
 /**
  * The store's side of the linked views (`./linked-views.ts`, in the lazy chunk): the first pane move once a fit exists fetches the
- * chunk, the latest move made meanwhile is played once it is in, and from then on every move goes to its `ViewLink`. A failed fetch
- * is logged and the panes simply stay unlinked for the visit.
+ * chunk, the latest move made meanwhile is played once it is in, and from then on every move goes to its `ViewLink`. The map's
+ * camera before that move (as the map first showed, or its previous `move`) is handed over with it, so a first move that starts on
+ * the map (one jump, one `move`, under reduced motion) still moves the scan. A failed fetch is logged and the panes simply stay
+ * unlinked for the visit.
  */
 import type { FittedTransform } from '@hcm/shared';
 
@@ -31,6 +33,8 @@ export class LinkedPanes {
     #loading = false;
     /** The latest move made while the chunk loads (a quick zoom is over before it is in). */
     #waiting: ((link: ViewLink) => void) | null = null;
+    /** The map's camera last seen before the chunk is in (null: none yet). */
+    #mapSeen: MapCamera | null = null;
 
     constructor(deps: LinkDeps) {
         this.#deps = deps;
@@ -42,8 +46,26 @@ export class LinkedPanes {
         });
     }
 
+    /** The map shows `camera` without a move of the owner's (it has just been made). */
+    seen(camera: MapCamera): void {
+        if (this.#link === null) {
+            this.#mapSeen = camera;
+            return;
+        }
+        this.#link.seen(camera);
+    }
+
     map(camera: MapCamera): void {
+        if (this.#link !== null) {
+            this.#link.map(camera);
+            return;
+        }
+        const before = this.#mapSeen;
+        this.#mapSeen = camera;
         this.#use((link) => {
+            if (before !== null) {
+                link.seen(before);
+            }
             link.map(camera);
         });
     }

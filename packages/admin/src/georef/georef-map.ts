@@ -50,6 +50,8 @@ export interface GeorefMapDeps {
     readonly selected: (id: string | null) => void;
     /** The map's camera moved (the linked views). */
     readonly viewed: (view: MapView) => void;
+    /** The map is made and shows `view` (the linked views' camera before the owner's first move). */
+    readonly shown: (view: MapView) => void;
 }
 
 export class GeorefMap {
@@ -300,6 +302,7 @@ export class GeorefMap {
             }),
             result.map.port.on('move', this.#deps.viewed),
         );
+        this.#deps.shown(result.map.port.getView());
         const host = this.#container;
         if (host !== null) {
             this.#badges.attach(host, result.map.port);
