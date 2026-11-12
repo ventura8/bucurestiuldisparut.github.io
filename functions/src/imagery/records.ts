@@ -116,9 +116,17 @@ export async function requireJob(documents: DocumentStore, cityId: string, jobId
     return job;
 }
 
-/** The layer version, or `apiError.notFound`. */
-export async function requireVersion(documents: DocumentStore, cityId: string, versionId: string): Promise<LayerVersionDoc> {
-    const version = await documents.get(FIRESTORE_PATHS.layerVersion(cityId, versionId), layerVersionDocSchema);
+/**
+ * The layer version, or `apiError.notFound`. An ending passes `layerVersionReadSchema`: a record its schema refuses is
+ * still read, without the fields it refuses (`legacy-reads.ts` in `@hcm/shared`).
+ */
+export async function requireVersion(
+    documents: DocumentStore,
+    cityId: string,
+    versionId: string,
+    schema: Schema<LayerVersionDoc> = layerVersionDocSchema,
+): Promise<LayerVersionDoc> {
+    const version = await documents.get(FIRESTORE_PATHS.layerVersion(cityId, versionId), schema);
     if (version === undefined) {
         throw new ApiError('apiError.notFound');
     }

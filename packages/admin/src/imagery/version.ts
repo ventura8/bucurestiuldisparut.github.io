@@ -11,6 +11,7 @@ import {
     jobDocSchema,
     jobLogDocSchema,
     layerVersionDocSchema,
+    layerVersionReadSchema,
     tilesetName,
     usageDocSchema,
     usageMonth,
@@ -154,7 +155,7 @@ export class VersionPage {
         const update = (): void => {
             this.#refresh();
         };
-        this.#version = new LiveDoc({ store, clock, denied, schema: layerVersionDocSchema, changed: update });
+        this.#version = new LiveDoc({ store, clock, denied, schema: layerVersionReadSchema, changed: update });
         this.#job = new LiveDoc({ store, clock, denied, schema: jobDocSchema, changed: update });
         this.#usage = new LiveDoc({ store, clock, denied, schema: usageDocSchema, changed: update });
         this.#current = new LiveDoc({ store, clock, denied, schema: layerVersionDocSchema, changed: update });

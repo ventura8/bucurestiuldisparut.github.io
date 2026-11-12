@@ -4962,6 +4962,28 @@
             "notes": "Code review of 2026-11-07. Tests: e2e/admin/specs/imagery/rows.spec.ts, packages/admin/test/imagery/browse.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
         },
         {
+            "id": "S-A11-HAPPY-USGS-BESIDE-BAD-AREA",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "Find shows the search when USGS is connected, whatever another Setup area holds",
+            "asserts": "setup/status with a malformed install record and USGS ok -> Find shows the search, not Connect USGS; the next Setup write replaces the malformed record and keeps USGS",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding of 2026-11-12 (live: setup/status written with Firestore timestamps in install.*.checkedAt by an out-of-band write, updatedBy u-overnight). Tests: functions/test/setup/record-install.test.ts; the admin read in packages/admin/test/imagery/feeds.test.ts, the schema in packages/shared/test/schemas/firestore-ops.test.ts."
+        },
+        {
+            "id": "S-A11-BAD-USGS-RECORD-MALFORMED",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A malformed USGS record reads as USGS not connected, the same in Setup and in Find",
+            "asserts": "a USGS record the schema refuses -> Find shows Connect USGS and Setup the USGS step to do; the next Setup write drops the record; a malformed stamp still refuses the document",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding of 2026-11-12 (live: setup/status written with Firestore timestamps in install.*.checkedAt by an out-of-band write, updatedBy u-overnight). Tests: functions/test/setup/record-install.test.ts; packages/admin/test/imagery/feeds.test.ts; packages/shared/test/schemas/firestore-ops.test.ts."
+        },
+        {
             "id": "S-A12-HAPPY",
             "behaviour": "A12",
             "area": "admin",
@@ -5257,6 +5279,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A12-HAPPY-LEGACY-VERSION-ENDS",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A version its schema refuses is still listed and can be rejected or cancelled",
+            "asserts": "a waiting version stored with a scan wider than today's limit -> it shows in Waiting for you and its page with Reject and Cancel; Reject or Cancel ends it and its job, writes it back valid without the refused fields, and its layer is no longer busy",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding of 2026-11-12 (live: cities/bucharest/layerVersions/im-mvya873z-D3C1202-200149F039 stored by the pipeline, unvalidated, with scan.width 258271 over MAX_SCAN_PIXELS 200000 (finding 62, lesson 332); its layer answered joinLayerBusy for ever). Tests: functions/test/imagery/legacy-version.test.ts; the admin list in packages/admin/test/imagery/feeds.test.ts; the read in packages/shared/test/schemas/legacy-reads.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-LEGACY-VERSION-UNREADABLE",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version whose required fields fail is still refused and nothing changes",
+            "asserts": "a stored version whose layer id fails -> Reject answers an internal error, its job keeps waiting, the version is not listed",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding of 2026-11-12 (live: cities/bucharest/layerVersions/im-mvya873z-D3C1202-200149F039 stored by the pipeline, unvalidated, with scan.width 258271 over MAX_SCAN_PIXELS 200000 (finding 62, lesson 332); its layer answered joinLayerBusy for ever). Tests: functions/test/imagery/legacy-version.test.ts; packages/shared/test/schemas/legacy-reads.test.ts."
         },
         {
             "id": "S-A12-BAD-LOST-RUN-STEP",
@@ -14883,6 +14927,17 @@
             "tier": "functions",
             "status": "exists",
             "notes": "M18 (docs/research/M18-improvements.md item 3, the owner 2026-11-08). Test: functions/test/imagery/relocate.test.ts."
+        },
+        {
+            "id": "S-A69-BAD-AUTO-RELOCATE-INVALID",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "bad",
+            "title": "A parked frame whose record its schema refuses does not stop the others",
+            "asserts": "one parked frame whose version fails its schema among valid ones -> a warning naming the version, the frame remembered with the installed image, and every other frame still searches again",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding of 2026-11-12 (live: \"imagery tick part failed ... InvalidDocumentError ... im-mvya873z\"). Test: functions/test/imagery/relocate.test.ts."
         },
         {
             "id": "S-A69-HAPPY-FAILED-CROP",

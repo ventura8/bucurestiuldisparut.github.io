@@ -281,65 +281,69 @@ function hasStateFields(version: { readonly state: LayerVersionState } & Partial
     return tilesKnown && requiredOf(version).every((field) => version[field] !== undefined);
 }
 
+/**
+ * A layer version's fields, without the rule of which ones each state needs: what `layerVersionReadSchema` keeps of a record the full schema
+ * refuses (`legacy-reads.ts`).
+ */
+export const layerVersionFieldsSchema = z.strictObject({
+    /** The layer it renders: an existing one (re-georeference, crop, replace) or the id reserved at Import. */
+    layerId: idSchema,
+    /** The job that made it; the version's id is the same. */
+    jobId: idSchema,
+    origin: z.enum(VERSION_ORIGINS),
+    /** The version whose scan it reuses (`regeoref`, `crop`). */
+    basedOn: idSchema.optional(),
+    state: z.enum(LAYER_VERSION_STATES),
+    source: sourceSchema.optional(),
+    /** What a new layer gets at its first publish. */
+    label: localizedPartial(200),
+    year: yearSchema,
+    date: isoDateSchema.optional(),
+    sensor: z.enum(SENSORS).optional(),
+    scan: scanSchema.optional(),
+    reference: referenceSchema.optional(),
+    georef: georefSchema.optional(),
+    /** M9: how `locate` found the frame and what proved it, or why nothing did (`georef` adds its own figures). */
+    calibration: calibrationSchema.optional(),
+    /** M4: the matcher's pairs below the confidence, for the georeferencer's Accept (never in the fit until saved). */
+    suggestions: gcpSuggestionsSchema.optional(),
+    crop: cropRingSchema.optional(),
+    output: outputSchema.optional(),
+    estimate: estimateSchema.optional(),
+    guard: guardSchema.optional(),
+    approval: approvalSchema.optional(),
+    mapbox: mapboxSchema.optional(),
+    /** M12: published from the project's own bucket, no Mapbox involved. */
+    own: ownTilesSchema.optional(),
+    /** Finding 56: the Cloud Run job each phase of its making ran on (`download`: fetch and extract; `process`: the rest). */
+    machines: z.strictObject({ download: z.enum(JOB_MACHINES).optional(), process: z.enum(JOB_MACHINES).optional() }).optional(),
+    error: z.strictObject({ code: apiErrorCodeSchema, params: apiErrorParamsSchema.optional() }).optional(),
+    /** M8: the join version that holds this frame while it is live; a stale one (the join ended) is ignored. */
+    partOf: idSchema.optional(),
+    /** M16: a recalibration of the version it is `basedOn`, with the two fits measured on the same checks. */
+    recalibration: recalibrationSchema.optional(),
+    /**
+     * M16 (§5): the Refine or Snap started from this version while it waits for approval. A second start, or a Save, finds that job
+     * unfinished in its transaction and is `apiError.layers.busy`; a stale one (the refine ended) is ignored.
+     */
+    refining: idSchema.optional(),
+    /** M8: what the join measured; a join version has no `scan` and no `georef` (`georefSchema` means one scan's pixels). */
+    join: joinReportSchema.optional(),
+    /** M20 (§4): what the placement of an archive series measured; such a version has no `scan` and no `georef`. */
+    archive: archiveReportSchema.optional(),
+    /** M25: what `warp` measured of a Landsat scene (its shift against Sentinel-2, the city's cloud); such a version has no `georef`. */
+    landsat: landsatReportSchema.optional(),
+    /** M20 (§7): the series' rights; nothing publishes the version until they allow it (`rightsAllowPublish`). */
+    rights: rightsSchema.optional(),
+    /** The owner's standing rule (2026-11-09): why it waits for a person, for the shared "Help calibrate" queue. */
+    help: helpItemSchema.optional(),
+    createdBy: uidSchema,
+    createdAt: timestampSchema,
+    ...stamp,
+});
+
 /** `cities/{city}/layerVersions/{version}`: written by the imagery callables, the pipeline and the publisher only. */
-export const layerVersionDocSchema = z
-    .strictObject({
-        /** The layer it renders: an existing one (re-georeference, crop, replace) or the id reserved at Import. */
-        layerId: idSchema,
-        /** The job that made it; the version's id is the same. */
-        jobId: idSchema,
-        origin: z.enum(VERSION_ORIGINS),
-        /** The version whose scan it reuses (`regeoref`, `crop`). */
-        basedOn: idSchema.optional(),
-        state: z.enum(LAYER_VERSION_STATES),
-        source: sourceSchema.optional(),
-        /** What a new layer gets at its first publish. */
-        label: localizedPartial(200),
-        year: yearSchema,
-        date: isoDateSchema.optional(),
-        sensor: z.enum(SENSORS).optional(),
-        scan: scanSchema.optional(),
-        reference: referenceSchema.optional(),
-        georef: georefSchema.optional(),
-        /** M9: how `locate` found the frame and what proved it, or why nothing did (`georef` adds its own figures). */
-        calibration: calibrationSchema.optional(),
-        /** M4: the matcher's pairs below the confidence, for the georeferencer's Accept (never in the fit until saved). */
-        suggestions: gcpSuggestionsSchema.optional(),
-        crop: cropRingSchema.optional(),
-        output: outputSchema.optional(),
-        estimate: estimateSchema.optional(),
-        guard: guardSchema.optional(),
-        approval: approvalSchema.optional(),
-        mapbox: mapboxSchema.optional(),
-        /** M12: published from the project's own bucket, no Mapbox involved. */
-        own: ownTilesSchema.optional(),
-        /** Finding 56: the Cloud Run job each phase of its making ran on (`download`: fetch and extract; `process`: the rest). */
-        machines: z.strictObject({ download: z.enum(JOB_MACHINES).optional(), process: z.enum(JOB_MACHINES).optional() }).optional(),
-        error: z.strictObject({ code: apiErrorCodeSchema, params: apiErrorParamsSchema.optional() }).optional(),
-        /** M8: the join version that holds this frame while it is live; a stale one (the join ended) is ignored. */
-        partOf: idSchema.optional(),
-        /** M16: a recalibration of the version it is `basedOn`, with the two fits measured on the same checks. */
-        recalibration: recalibrationSchema.optional(),
-        /**
-         * M16 (§5): the Refine or Snap started from this version while it waits for approval. A second start, or a Save, finds that job
-         * unfinished in its transaction and is `apiError.layers.busy`; a stale one (the refine ended) is ignored.
-         */
-        refining: idSchema.optional(),
-        /** M8: what the join measured; a join version has no `scan` and no `georef` (`georefSchema` means one scan's pixels). */
-        join: joinReportSchema.optional(),
-        /** M20 (§4): what the placement of an archive series measured; such a version has no `scan` and no `georef`. */
-        archive: archiveReportSchema.optional(),
-        /** M25: what `warp` measured of a Landsat scene (its shift against Sentinel-2, the city's cloud); such a version has no `georef`. */
-        landsat: landsatReportSchema.optional(),
-        /** M20 (§7): the series' rights; nothing publishes the version until they allow it (`rightsAllowPublish`). */
-        rights: rightsSchema.optional(),
-        /** The owner's standing rule (2026-11-09): why it waits for a person, for the shared "Help calibrate" queue. */
-        help: helpItemSchema.optional(),
-        createdBy: uidSchema,
-        createdAt: timestampSchema,
-        ...stamp,
-    })
-    .refine(hasStateFields, coded('validation.required', ['state']));
+export const layerVersionDocSchema = layerVersionFieldsSchema.refine(hasStateFields, coded('validation.required', ['state']));
 
 export type LayerVersionDoc = z.infer<typeof layerVersionDocSchema>;
 
