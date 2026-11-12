@@ -7,6 +7,7 @@ import {
     INSTALL_STEPS,
     INSTALL_TARGETS,
     compareRelease,
+    releaseChannel,
     installLogLine,
     installManifestSchema,
     installRecordSchema,
@@ -59,6 +60,10 @@ describe('the install release', () => {
         expect(releaseOfSlug('0-0-0')).toBe('0.0.0');
         expect(releaseOfSlug('release')).toBeNull();
         expect(releaseOfSlug(installReleaseSlug('2.10.3+0f1e2d3'))).toBe('2.10.3+0f1e2d3');
+        // The live finding of 2026-11-12: a pre-release's slug goes back to it, with or without a commit.
+        expect(releaseOfSlug(installReleaseSlug('1.0.0-beta.1+593d539'))).toBe('1.0.0-beta.1+593d539');
+        expect(releaseOfSlug(installReleaseSlug('1.0.0-rc.2'))).toBe('1.0.0-rc.2');
+        expect(releaseOfSlug('1-0-0-gamma-1')).toBeNull();
     });
 
     it('happyPath_theVersionDecidesFirst', () => {
@@ -69,7 +74,43 @@ describe('the install release', () => {
 
     it('badPath_anotherBuildOfTheSameVersionCountsAsOlder', () => {
         expect(compareRelease('1.0.0+aaaaaaa', '1.0.0+bbbbbbb')).toBe(-1);
-        expect(compareRelease('1.0.0', '1.0.0+bbbbbbb')).toBe(-1);
+        // A tagged release that cannot be placed is never replaced by a dev build of its version that cannot either.
+        expect(compareRelease('1.0.0', '1.0.0+bbbbbbb')).toBe(1);
+    });
+
+    it('happyPath_aReleaseNamesItsChannel_badPath_oneThatDoesNotParseHasNone', () => {
+        expect(['1.0.0', '1.0.0-beta.1', '1.0.0-rc.2', '1.0.0+dcfb067', '1.0.0-beta.1+593d539'].map(releaseChannel)).toEqual([
+            'release',
+            'prerelease',
+            'prerelease',
+            'dev',
+            'dev',
+        ]);
+        expect(releaseChannel('e2e')).toBeNull();
+    });
+
+    it('happyPath_aDevBuildIsOlderThanALaterPrereleaseOfItsCore', () => {
+        // The live finding of 2026-11-12: the untagged 1.0.0+dcfb067 (16:18) against the admin 1.0.0-beta.1+593d539 (21:44).
+        const times = { installed: 1_794_493_124, bundle: 1_794_512_688 };
+        expect(compareRelease('1.0.0+dcfb067', '1.0.0-beta.1+593d539', times)).toBe(-1);
+        expect(compareRelease('1.0.0+dcfb067', '1.0.0-beta.1', times)).toBe(-1);
+        expect(compareRelease('1.0.0+dcfb067', '1.0.0', times)).toBe(-1);
+        // A dev build made after a tagged pre-release of its core is the newer one.
+        expect(compareRelease('1.0.0-beta.1+593d539', '1.0.0-beta.1', { installed: 2, bundle: 1 })).toBe(1);
+        // A dev build without a time (deployed before the times) is replaced by any build of its core.
+        expect(compareRelease('1.0.0+dcfb067', '1.0.0-beta.1+593d539', { installed: null, bundle: null })).toBe(-1);
+        // Another core still decides first.
+        expect(compareRelease('1.0.0+dcfb067', '0.9.0', { installed: 1, bundle: 2 })).toBe(1);
+    });
+
+    it('badPath_aTaggedReleaseIsNewerThanAnOlderPrerelease_theDowngradeGuard', () => {
+        expect(compareRelease('1.0.0', '1.0.0-beta.1', { installed: 1, bundle: 2 })).toBe(1);
+        expect(compareRelease('1.0.0-rc.1', '1.0.0-beta.2')).toBe(1);
+        expect(compareRelease('1.0.0-beta.1', '1.0.0')).toBe(-1);
+        expect(compareRelease('1.0.0-beta.1', '1.0.0-beta.1', { installed: null, bundle: null })).toBe(0);
+        // Times missing on one side: SemVer decides between a tagged release and a dev build of another pre-release.
+        expect(compareRelease('1.0.0', '1.0.0-beta.1+593d539', { installed: null, bundle: 5 })).toBe(1);
+        expect(compareRelease('1.0.0-beta.1+593d539', '1.0.0', { installed: 5, bundle: null })).toBe(-1);
     });
 
     it('happyPath_twoBuildsOfOneVersionAreOrderedByTheirBuildTimes', () => {
@@ -112,6 +153,10 @@ describe('the install manifest', () => {
     it('happyPath_aBundleManifestParses', () => {
         expect(installManifestSchema.safeParse(manifest()).success).toBe(true);
         expect(installManifestSchema.safeParse(manifest({ releaseTime: null })).success).toBe(true);
+        expect(installManifestSchema.safeParse(manifest({ channel: 'dev' })).success).toBe(true);
+        expect(
+            installManifestSchema.safeParse(manifest({ release: '1.0.0-beta.1', slug: '1-0-0-beta-1', channel: 'prerelease' })).success,
+        ).toBe(true);
         expect(installManifestSchema.safeParse(manifest({ tools: { firebaseTools: '15.34.2', node: NODE, docker: NODE } })).success).toBe(
             true,
         );
@@ -130,6 +175,7 @@ describe('the install manifest', () => {
         ['another format', { format: 2 }],
         ['a build time that is not one', { releaseTime: '1761955200' }],
         ['a slug of another release', { slug: '1-0-1-abc1234' }],
+        ['a channel its release does not name', { channel: 'release' }],
         [
             'a tarball under another name',
             { files: { ...(manifest()['files'] as object), site: { name: 'site.tgz', bytes: 1, sha256: 'c'.repeat(64) } } },

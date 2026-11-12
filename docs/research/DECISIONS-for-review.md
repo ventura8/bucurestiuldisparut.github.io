@@ -6529,3 +6529,22 @@ the limits!!!". A relaxed gate, so it is the owner's decision, recorded here.
 - **168b** The admin's budgets, the start page's and the other chunks' stay as they were.
 - **168c** The rule stands: a budget moves only by a reviewed change with its reason; code that only some visitors need
   still goes to the on-demand parts first (`docs/ENGINE_API.md` → *Side-loaded parts*).
+
+## 169. Release channels: an untagged build never blocks a later one; a confirmed override over a newer release (the live finding of 2026-11-12) — APPLIED
+
+The admin `1.0.0-beta.1+593d539` (the release prep's bump) met the live server `1.0.0+dcfb067`, an untagged build of
+before the bump: by SemVer `1.0.0-beta.1` < `1.0.0`, so step d said "newer than this admin" and offered no Update.
+
+- **169a** A build of a commit that carries `v<version>` names the version alone (`release` or `prerelease`); every
+  other build keeps `+<commit>` and is `dev`. The channel travels in the release string, so no server, label or record
+  needs a new field; `runtime.json` and the install manifest also write `channel`. The live `1.0.0+dcfb067` reads `dev`.
+- **169b** `compareRelease`: the core first; two tagged releases of one core follow SemVer (the downgrade guard
+  stays); a dev build is placed by the build times against anything of its core. The unit tests pin the live pair.
+- **169c** The owner's override: **Install this admin's version anyway**, behind a confirmation, submits the build
+  tagged `hcm-over`. Recorded in Cloud Build's history and the admin's log, not in the History page: a rollback installs
+  an older server, whose strict schemas would refuse an entry of a kind they do not know. To review: whether a History
+  entity for installs is wanted once every live server knows it.
+- **169d** `releaseOfSlug` reads pre-release slugs (`1-0-0-beta-1-593d539`), so a pre-release's pipeline jobs name
+  their release.
+- **169e** For CI: a tag build (`refs/tags/v1.0.0-beta.1`) now names `1.0.0-beta.1` without the commit; crash reports of
+  a tagged release name the tag, which names the commit.

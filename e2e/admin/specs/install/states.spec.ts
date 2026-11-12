@@ -1,4 +1,4 @@
-import { OLDER_BUILD_RELEASE, OLDER_SERVER_RELEASE } from '@hcm/test-support/fakes';
+import { NEWER_SERVER_RELEASE, OLDER_BUILD_RELEASE, OLDER_SERVER_RELEASE } from '@hcm/test-support/fakes';
 import type { Locator, Page } from '@playwright/test';
 
 import type { InputFlow } from '../../../support/budget.js';
@@ -168,15 +168,31 @@ test("A server older than the admin's release offers Update the map", async ({
     await recorded(adminWorld.emulators, { server: { state: 'updateAvailable' } });
 });
 
-test('A server newer than this admin offers nothing', async ({ page, lang, consent, inputBudget, upstream, adminWorld }) => {
-    await upstream.scenario('cloud-functions.deployedNewerRelease', 'browser');
-    const inputs = { clicks: inputBudget.flow('tour', 1), consents: inputBudget.flow('tourConsents', 1) };
-    const { card } = await lookedAt(page, lang, consent, 'deploy', inputs);
+test(
+    'A server newer than this admin offers no Update, only the override behind its confirmation',
+    { tag: ['@S-A55-BAD-INSTALL-OVER-KEPT'] },
+    async ({ page, lang, consent, inputBudget, upstream, adminWorld }) => {
+        await upstream.scenario('cloud-functions.deployedNewerRelease', 'browser');
+        const inputs = { clicks: inputBudget.flow('tour', 3), consents: inputBudget.flow('tourConsents', 1) };
+        const { card } = await lookedAt(page, lang, consent, 'deploy', inputs);
 
-    await expect(installState(card)).toContainText(setupText(lang, 'adminSetup.install.state.newerInstalled'));
-    await expectStateSound(page, adminVisit('setup.install-newer', lang));
-    await recorded(adminWorld.emulators, { server: { state: 'newerInstalled' } });
-});
+        await expect(installState(card)).toContainText(setupText(lang, 'adminSetup.install.state.newerInstalled'));
+        await expect(card.getByRole('button', { name: setupText(lang, 'adminSetup.install.updateAction') })).toHaveCount(0);
+        await expectStateSound(page, adminVisit('setup.install-newer', lang));
+        await recorded(adminWorld.emulators, { server: { state: 'newerInstalled' } });
+
+        // The live finding of 2026-11-12: Install this admin's version anyway asks first; Keep submits nothing.
+        const over = card.getByRole('button', { name: setupText(lang, 'adminSetup.install.over.action') });
+        await inputs.clicks.click(over);
+        const dialog = page.getByRole('dialog', { name: setupText(lang, 'adminSetup.install.over.title') });
+        await expect(dialog).toBeVisible();
+        await expectStateSound(page, adminVisit('setup.install-over-dialog', lang));
+        const params = { installed: NEWER_SERVER_RELEASE, release: INSTALL_RELEASE };
+        await inputs.clicks.click(page.getByRole('button', { name: setupText(lang, 'adminSetup.install.over.cancel', params) }));
+        await expect(dialog).toBeHidden();
+        expect(await buildCount(upstream, 'server')).toBe(0);
+    },
+);
 
 test('An older build of the same version recorded installed offers Update the map, with the consent note', async ({
     page,
