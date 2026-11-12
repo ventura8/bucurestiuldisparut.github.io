@@ -55,6 +55,23 @@ import {
 } from '../../src/schemas/imagery-archive.js';
 import { LEFT_OUT_REASONS, STITCHED_LEFT_OUT_MAX, STITCH_METHODS } from '../../src/schemas/imagery-help.js';
 import { RASTER_PATHS, VERSION_FILES } from '../../src/schemas/imagery-paths.js';
+import {
+    LAYOUT_SEAMS_MAX,
+    LAYOUT_SHEETS_MAX,
+    LAYOUT_WEAK_SEAMS_MAX,
+    SEAM_CELL_PX,
+    SEAM_SIDES,
+    SEAM_STATES,
+    SHEET_SOURCES,
+    SHEET_TURNS,
+    STITCH_GOOD_PLACED_PCT,
+    STITCH_GOOD_RMS_PX,
+    STITCH_GOOD_SEAM_NCC,
+    STITCH_MAX_MOVE_CELL,
+    STITCH_VERDICTS,
+    THUMB_CELL_PX,
+    THUMB_SPRITE_COLS,
+} from '../../src/schemas/imagery-tiles.js';
 import { STUDIO_MAX_BYTES } from '../../src/schemas/imagery-publish.js';
 import { RECALIBRATE_MIN_CHECKS, RECALIBRATE_MIN_GAIN_M } from '../../src/schemas/imagery-recalibration.js';
 import { JOIN_MAX_PARTS } from '../../src/schemas/imagery-settings.js';
@@ -116,6 +133,66 @@ const writtenCases = (['job', 'version', 'log'] as const).flatMap((kind) =>
     written[kind].map((document, index) => ({ kind, index, document })),
 );
 
+/** The constants `enums.json` copies for the pipeline (`pipeline/src/hcm_pipeline/contract.py`, `archive/model.py`). */
+const SHARED_CONSTANTS = {
+    JOB_STATUSES,
+    JOB_WAIT_REASONS,
+    JOB_STEP_STATES,
+    PIPELINE_STEPS,
+    DOWNLOAD_STEPS,
+    JOB_MACHINES,
+    JOB_STEPS,
+    LAYER_VERSION_STATES,
+    VERSION_ORIGINS,
+    GEOREF_TRANSFORMS,
+    MIN_GCPS,
+    GCP_ORIGINS,
+    VERSION_FILES,
+    LEASE_SECONDS,
+    HEARTBEAT_SECONDS,
+    USGS_BACKOFF_MINUTES,
+    SCAN_PREVIEW_MAX_PX,
+    STUDIO_MAX_BYTES,
+    SENSOR_SPECS,
+    MAX_GCPS,
+    MAX_SCAN_PIXELS,
+    JOIN_MAX_PARTS,
+    RECALIBRATE_MIN_GAIN_M,
+    RECALIBRATE_MIN_CHECKS,
+    S2_CHECK_STATUSES,
+    ALIGNMENT_STATUSES,
+    ALIGNMENT_MAX_PARTNERS,
+    ARCHIVE_SERIES_CLASSES,
+    ARCHIVE_SKIP_REASONS,
+    ARCHIVE_ENCODINGS,
+    ARCHIVE_AUTO_LIKELIHOODS,
+    ARCHIVE_PLACE_METHODS,
+    STITCH_METHODS,
+    LEFT_OUT_REASONS,
+    STITCHED_LEFT_OUT_MAX,
+    RIGHTS_LICENCES,
+    RIGHTS_STATES,
+    HELP_REASONS,
+    SEAM_STATES,
+    SHEET_SOURCES,
+    SHEET_TURNS,
+    STITCH_VERDICTS,
+    SEAM_SIDES,
+    STITCH_GOOD_PLACED_PCT,
+    STITCH_GOOD_SEAM_NCC,
+    STITCH_GOOD_RMS_PX,
+    STITCH_MAX_MOVE_CELL,
+    LAYOUT_WEAK_SEAMS_MAX,
+    LAYOUT_SHEETS_MAX,
+    LAYOUT_SEAMS_MAX,
+    THUMB_CELL_PX,
+    THUMB_SPRITE_COLS,
+    SEAM_CELL_PX,
+    ARCHIVE_MAX_SERIES,
+    ARCHIVE_ISSUES_MAX,
+    ARCHIVE_SERIES_MAX_BYTES,
+};
+
 describe('the pipeline contract', () => {
     it('happyPath_theSharedConstantsEqualThePipelinesCopy', () => {
         const { comment, PIPELINE_ERROR_CODES: codes, ...constants } = golden('enums.json') as Readonly<Record<string, unknown>>;
@@ -123,49 +200,7 @@ describe('the pipeline contract', () => {
         expect(typeof comment).toBe('string');
         // Every code a pipeline step fails or waits with is one the admin reads (finding 62 of 2026-11-02).
         expect((codes as readonly string[]).filter((code) => !isApiErrorCode(code))).toEqual([]);
-        expect(constants).toEqual({
-            JOB_STATUSES,
-            JOB_WAIT_REASONS,
-            JOB_STEP_STATES,
-            PIPELINE_STEPS,
-            DOWNLOAD_STEPS,
-            JOB_MACHINES,
-            JOB_STEPS,
-            LAYER_VERSION_STATES,
-            VERSION_ORIGINS,
-            GEOREF_TRANSFORMS,
-            MIN_GCPS,
-            GCP_ORIGINS,
-            VERSION_FILES,
-            LEASE_SECONDS,
-            HEARTBEAT_SECONDS,
-            USGS_BACKOFF_MINUTES,
-            SCAN_PREVIEW_MAX_PX,
-            STUDIO_MAX_BYTES,
-            SENSOR_SPECS,
-            MAX_GCPS,
-            MAX_SCAN_PIXELS,
-            JOIN_MAX_PARTS,
-            RECALIBRATE_MIN_GAIN_M,
-            RECALIBRATE_MIN_CHECKS,
-            S2_CHECK_STATUSES,
-            ALIGNMENT_STATUSES,
-            ALIGNMENT_MAX_PARTNERS,
-            ARCHIVE_SERIES_CLASSES,
-            ARCHIVE_SKIP_REASONS,
-            ARCHIVE_ENCODINGS,
-            ARCHIVE_AUTO_LIKELIHOODS,
-            ARCHIVE_PLACE_METHODS,
-            STITCH_METHODS,
-            LEFT_OUT_REASONS,
-            STITCHED_LEFT_OUT_MAX,
-            RIGHTS_LICENCES,
-            RIGHTS_STATES,
-            HELP_REASONS,
-            ARCHIVE_MAX_SERIES,
-            ARCHIVE_ISSUES_MAX,
-            ARCHIVE_SERIES_MAX_BYTES,
-        });
+        expect(constants).toEqual(SHARED_CONSTANTS);
     });
 
     it('happyPath_aRunningImportJobPassesTheJobSchemaAndItsParams', () => {
@@ -205,14 +240,17 @@ describe('the pipeline contract', () => {
         });
     });
 
-    it.each(['version.awaiting-approval.json', 'version.needs-gcps.json', 'version.needs-gcps.suggestions.json', 'version.join.json'])(
-        'happyPath_%s passes the version schema',
-        (name) => {
-            const result = validate(layerVersionDocSchema, golden(name));
+    it.each([
+        'version.awaiting-approval.json',
+        'version.needs-gcps.json',
+        'version.needs-gcps.suggestions.json',
+        'version.join.json',
+        'version.layout-check.json',
+    ])('happyPath_%s passes the version schema', (name) => {
+        const result = validate(layerVersionDocSchema, golden(name));
 
-            expect(result.ok ? [] : result.issues).toEqual([]);
-        },
-    );
+        expect(result.ok ? [] : result.issues).toEqual([]);
+    });
 
     it('happyPath_suggestionsStayBelowTheConfidenceTheFitTakes', () => {
         const version = golden('version.needs-gcps.suggestions.json') as {

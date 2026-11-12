@@ -40,6 +40,10 @@ export const VERSION_FILES = [
     'align.tif',
     /** M22 (§4.1): an archive series that waits for a person, its sheets stitched into one picture, the Help calibrate wizard's. */
     'stitched.jpg',
+    /** The tile layout of an archive series (`imagery-tiles.ts`): every sheet and seam, the sheets' thumbnails, the weak seams' strips. */
+    'layout.json',
+    'thumbs.jpg',
+    'seams.jpg',
 ] as const;
 
 export type VersionFile = (typeof VERSION_FILES)[number];

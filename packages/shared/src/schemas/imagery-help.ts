@@ -6,14 +6,15 @@
  */
 import { z } from 'zod';
 
+import { LEFT_OUT_REASONS, stitchLayoutSchema } from './imagery-tiles.js';
 import { plainText } from './primitives.js';
 
-/** How the parts were joined: a grid's names and frames, an atlas's edges or overlaps, pieces' overlaps, one map alone, or the parts laid on
- * the archive's complete overview map (harti.zip, 2026-11-12). */
-export const STITCH_METHODS = ['grid', 'atlas', 'pieces', 'single', 'overview'] as const;
+export { LEFT_OUT_REASONS } from './imagery-tiles.js';
 
-/** Why a part is not in the stitched picture: no frame on the sheet, or no edge or overlap shared with the others. */
-export const LEFT_OUT_REASONS = ['no-frame', 'no-join'] as const;
+/** How the parts were joined: a grid's names and frames, an atlas's edges or overlaps, pieces' overlaps, one map alone, or the parts laid on
+ * the archive's complete overview map (harti.zip, 2026-11-12); the files' names with their seams, or the owner's layout from the
+ * tile-import wizard (`imagery-tiles.ts`). */
+export const STITCH_METHODS = ['grid', 'atlas', 'pieces', 'single', 'overview', 'names', 'owner'] as const;
 
 /** At most this many left-out parts are named (`leftOutCount` says how many there were). */
 export const STITCHED_LEFT_OUT_MAX = 200;
@@ -35,6 +36,8 @@ export const stitchedSchema = z.strictObject({
     /** Ground metres per stitched pixel when known (a grid's mosaic). */
     metresPerPx: z.number().positive().optional(),
     joins: z.strictObject({ links: z.number().int().min(0), meanInliers: z.number().min(0), rmsPx: z.number().min(0) }).optional(),
+    /** The tile layout (`imagery-tiles.ts`): the grid, its revision, its quality and its weakest seams; `layout.json` has the rest. */
+    layout: stitchLayoutSchema.optional(),
 });
 
 export type Stitched = z.infer<typeof stitchedSchema>;

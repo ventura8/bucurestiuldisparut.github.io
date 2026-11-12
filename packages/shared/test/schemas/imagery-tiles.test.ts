@@ -1,0 +1,85 @@
+/**
+ * The tile layout's contract (`docs/research/M20-import-local.md` §16): the golden `layout.json` the pipeline writes, the small
+ * Firestore summary, the owner's answer and the wizard's two callables, with their limits and a strict refusal of extra fields.
+ */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { describe, expect, it } from 'vitest';
+
+import { imageryAcceptLayoutRequestSchema, imagerySaveLayoutRequestSchema } from '../../src/api/imagery-tiles.js';
+import { timestampFromDate } from '../../src/schemas/firestore-common.js';
+import {
+    LAYOUT_SHEETS_MAX,
+    LAYOUT_WEAK_SEAMS_MAX,
+    layoutAnswerSchema,
+    layoutFileSchema,
+    stitchLayoutSchema,
+    type LayoutFile,
+} from '../../src/schemas/imagery-tiles.js';
+import { validate } from '../../src/schemas/validation.js';
+
+const CONTRACTS = resolve(import.meta.dirname, '../../../../pipeline/tests/contracts');
+const SAMPLE = JSON.parse(readFileSync(resolve(CONTRACTS, 'layout.sample.json'), 'utf8')) as LayoutFile;
+const SHEET = { index: 0, row: 0, col: 1, turn: 90, flip: false };
+const SEAM = { a: 0, b: 1, side: 'right', points: { a: [10, 20], b: [3, 21] } };
+const BODY = { revision: 2, sheets: [SHEET], seams: [SEAM], preview: true };
+const REQUEST = { cityId: 'bucharest', versionId: 'ar-mw993zri-s-4054e55659a3', ...BODY };
+
+describe('layout.json', () => {
+    it('happyPath_theGoldenLayoutPasses', () => {
+        const result = validate(layoutFileSchema, SAMPLE);
+
+        expect(result.ok ? [] : result.issues).toEqual([]);
+    });
+
+    it('badPath_aTurnThatIsNotAQuarterIsRefused', () => {
+        const sheets = [{ ...SAMPLE.sheets[0], turn: 45 }, ...SAMPLE.sheets.slice(1)];
+
+        expect(validate(layoutFileSchema, { ...SAMPLE, sheets }).ok).toBe(false);
+    });
+
+    it('badPath_anUnknownSeamStateAndAnExtraFieldAreRefused', () => {
+        const seams = [{ ...SAMPLE.seams[0], state: 'maybe' }];
+
+        expect(validate(layoutFileSchema, { ...SAMPLE, seams }).ok).toBe(false);
+        expect(validate(layoutFileSchema, { ...SAMPLE, extra: 1 }).ok).toBe(false);
+    });
+});
+
+describe('help.stitched.layout', () => {
+    const summary = { rows: 2, cols: 2, revision: 2, quality: SAMPLE.quality, weakSeams: [] };
+
+    it('happyPath_theSummaryPasses', () => {
+        expect(validate(stitchLayoutSchema, summary).ok).toBe(true);
+    });
+
+    it('badPath_tooManyWeakSeamsAreRefused', () => {
+        const weakSeams = Array.from({ length: LAYOUT_WEAK_SEAMS_MAX + 1 }, () => ({ a: 0, b: 1, side: 'right', score: 0.1 }));
+
+        expect(validate(stitchLayoutSchema, { ...summary, weakSeams }).ok).toBe(false);
+    });
+});
+
+describe('the owner answer', () => {
+    it('happyPath_theSaveAndAcceptRequestsPass', () => {
+        expect(validate(imagerySaveLayoutRequestSchema, REQUEST).ok).toBe(true);
+        expect(validate(imageryAcceptLayoutRequestSchema, { cityId: 'bucharest', versionId: REQUEST.versionId, revision: 2 }).ok).toBe(
+            true,
+        );
+    });
+
+    it('happyPath_theStoredAnswerCarriesWhoAndWhen', () => {
+        const stored = { ...BODY, accepted: true, by: 'u-admin', at: timestampFromDate(new Date('2026-11-12T08:00:00Z')) };
+
+        expect(validate(layoutAnswerSchema, stored).ok).toBe(true);
+    });
+
+    it('badPath_onlyNotPartMarksASheetOut', () => {
+        expect(validate(imagerySaveLayoutRequestSchema, { ...REQUEST, sheets: [{ ...SHEET, out: 'blank' }] }).ok).toBe(false);
+    });
+
+    it('badPath_aSheetIndexBeyondTheLimitIsRefused', () => {
+        expect(validate(imagerySaveLayoutRequestSchema, { ...REQUEST, sheets: [{ ...SHEET, index: LAYOUT_SHEETS_MAX }] }).ok).toBe(false);
+    });
+});
