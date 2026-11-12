@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { DEFAULT_FAVICON_DATA_URL, parseManifestJson } from '@hcm/shared';
+import { DEFAULT_TAB_ICONS, parseManifestJson } from '@hcm/shared';
 
 import { buildSite, type SiteBuildOptions } from '../src/build.js';
 import { readConfigJs } from '../src/config-js.js';
@@ -60,7 +60,7 @@ describe('buildSite (the committed sites)', () => {
             outDir: 'dist/site/bucharest',
             cityId: 'bucharest',
             photos: photoCount,
-            files: 4 + photoCount * 2 + ENGINE_FILES.length,
+            files: 5 + photoCount * 2 + ENGINE_FILES.length,
         });
         const out = dist.listFiles('dist/site/bucharest');
         expect(out).toEqual(
@@ -132,7 +132,7 @@ describe('buildSite (bad inputs)', () => {
     it('happyPath_aSyntheticSiteBuilds', () => {
         const { files, options } = syntheticRoot();
 
-        expect(buildSite(options, files).files).toBe(4 + 4 + ENGINE_FILES.length);
+        expect(buildSite(options, files).files).toBe(5 + 4 + ENGINE_FILES.length);
         expect(files.readText('dist/site/starter-kit/data/media/mihai-voda-1978/thumb.webp')).toBe('thumb mihai-voda-1978');
     });
 
@@ -272,16 +272,24 @@ describe('buildSite (the manifest the admin publishes, DECISIONS-for-review.md ย
             manifestUrl: `https://storage.googleapis.com/${BUCKET}/cities/bucharest/manifest.json`,
         });
         expect(dist.listFiles('dist/site/bucharest').filter((name) => name.startsWith('data/'))).toEqual([]);
-        expect(report).toMatchObject({ cityId: 'bucharest', photos: 0, files: 3 + ENGINE_FILES.length });
+        expect(report).toMatchObject({ cityId: 'bucharest', photos: 0, files: 4 + ENGINE_FILES.length });
         const html = dist.readText('dist/site/bucharest/index.html');
         expect(html).toMatch(
             /connect-src [^;]*https:\/\/storage\.googleapis\.com[^;]*https:\/\/us-central1-bucurestiul-disparut\.cloudfunctions\.net/,
         );
         expect(html).toMatch(/img-src [^;]*https:\/\/storage\.googleapis\.com/);
-        // The tab icon is the city's own in the bucket (S-V54-HAPPY): an icon an editor uploads shows without a deploy.
-        const icons = `https://storage.googleapis.com/${BUCKET}/cities/bucharest/`;
-        expect(html).toContain(`<link rel="icon" type="image/png" sizes="32x32" href="${icons}icon-32.png">`);
-        expect(html).toContain(`<link rel="apple-touch-icon" href="${icons}icon-180.png">`);
+        // The tab icon: the default in both schemes first (S-V55-HAPPY), then the script that paints the visitor's theme and
+        // shows the city's own from the bucket (S-V54-HAPPY): an icon an editor uploads shows without a deploy.
+        expect(html).toContain(
+            `<link rel="icon" type="image/png" sizes="32x32" media="(prefers-color-scheme: light)" href="${DEFAULT_TAB_ICONS.light}">`,
+        );
+        expect(html).toContain(
+            `<link rel="icon" type="image/png" sizes="32x32" media="(prefers-color-scheme: dark)" href="${DEFAULT_TAB_ICONS.dark}">`,
+        );
+        expect(html).toContain('<script src="config.js" defer></script>\n        <script src="tab-icon.js" defer></script>');
+        const script = dist.readText('dist/site/bucharest/tab-icon.js');
+        expect(script).toContain('hcm-map-viewer');
+        expect(script).toContain(`(window, "https://storage.googleapis.com/${BUCKET}/cities/");`);
     });
 
     it('badPath_withoutABucketOrWithoutTheSitesConsentTheSnapshotIsBundled', () => {
@@ -296,8 +304,11 @@ describe('buildSite (the manifest the admin publishes, DECISIONS-for-review.md ย
             expect(files.isFile('dist/site/starter-kit/data/manifest.json')).toBe(true);
             // Without the bucket the page inlines the default tab icon: the Layers panel's map glyph.
             const html = files.readText('dist/site/starter-kit/index.html');
-            expect(html).toContain(`<link rel="icon" type="image/png" sizes="32x32" href="${DEFAULT_FAVICON_DATA_URL}">`);
-            expect(html).not.toContain('apple-touch-icon');
+            expect(html).toContain(
+                `<link rel="icon" type="image/png" sizes="32x32" media="(prefers-color-scheme: light)" href="${DEFAULT_TAB_ICONS.light}">`,
+            );
+            expect(files.readText('dist/site/starter-kit/tab-icon.js')).toContain('hcm-map-viewer');
+            expect(files.readText('dist/site/starter-kit/tab-icon.js')).not.toContain('icon-32.png');
         }
     });
 
@@ -354,7 +365,7 @@ describe('buildSite (a city without a seed manifest, M5-interfaces ยง1.10)', () 
 
         const report = buildSite({ ...options, publicBucket: BUCKET }, files);
 
-        expect(report).toMatchObject({ cityId: 'exemplu', photos: 0, files: 3 + ENGINE_FILES.length });
+        expect(report).toMatchObject({ cityId: 'exemplu', photos: 0, files: 4 + ENGINE_FILES.length });
         expect(readConfigJs(files.readText('dist/site/starter-kit/config.js')).manifestUrl).toBe(
             `https://storage.googleapis.com/${BUCKET}/cities/exemplu/manifest.json`,
         );

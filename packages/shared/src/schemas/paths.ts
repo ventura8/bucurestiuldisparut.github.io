@@ -259,6 +259,12 @@ export const STORAGE_PATHS = {
      * the city's tab icon at `CITY_ICON_SIZES`, which the city's pages link straight to (the page never learns a hash).
      */
     cityIcon: (cityId: string, size: CityIconSize) => `cities/${citySegment(cityId)}/icon-${String(size)}.png`,
+    /**
+     * public, written by `cities.setIcon` for an editor's upload only and deleted by Use the default: the uploaded icon
+     * at 32 px. A city's pages show it in the tab in place of the default, which they draw in the visitor's theme; its
+     * absence is how a page knows the city's icon is the default (the page never reads Firestore).
+     */
+    cityOwnIcon: (cityId: string) => `cities/${citySegment(cityId)}/icon-own-32.png`,
     /** private, written by `export.build` (M5 §5), deleted by the bucket's lifecycle after `EXPORT_LIMITS.ttlDays`. */
     cityExport: (cityId: string, exportId: string) => ['exports', citySegment(cityId), `${idSegment(exportId)}.zip`].join('/'),
 } as const;

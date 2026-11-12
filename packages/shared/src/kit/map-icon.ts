@@ -55,22 +55,26 @@ const RADIUS = 211;
 /** The glyph spans 720 units; at this scale it fills about 62 % of the square. */
 const GLYPH_SCALE = 0.8267;
 
-/** The icon as SVG text: a rounded square of `seedColor` with the glyph in white. Throws on anything but `#RRGGBB`. */
 /** An icon's side: a whole number of pixels from 16 to 1024. */
 function iconSide(size: number): boolean {
     return Number.isInteger(size) && size >= 16 && size <= 1024;
 }
 
-export function mapIconSvg(seedColor: string, size = 512): string {
-    if (!HEX_COLOR.test(seedColor) || !iconSide(size)) {
-        throw new RangeError(`not an icon colour and size: ${JSON.stringify(seedColor)}, ${String(size)}`);
+/**
+ * The icon as SVG text: a rounded square of `seedColor` with the glyph in `glyphColor` (white unless named). Throws on
+ * anything but `#RRGGBB` colours.
+ */
+
+export function mapIconSvg(seedColor: string, size = 512, glyphColor = '#FFFFFF'): string {
+    if (![seedColor, glyphColor].every((colour) => HEX_COLOR.test(colour)) || !iconSide(size)) {
+        throw new RangeError(`not an icon's colours and size: ${JSON.stringify([seedColor, glyphColor])}, ${String(size)}`);
     }
     const [half, scale] = [String(EM / 2), String(GLYPH_SCALE)];
     const glyph = `translate(${half} ${half}) scale(${scale} -${scale}) translate(-${half} -${half})`;
     return [
         `<svg xmlns="http://www.w3.org/2000/svg" width="${String(size)}" height="${String(size)}" viewBox="0 0 ${String(EM)} ${String(EM)}">`,
         `<rect width="${String(EM)}" height="${String(EM)}" rx="${String(RADIUS)}" fill="${seedColor}"/>`,
-        `<path transform="${glyph}" fill="#FFFFFF" d="${MAP_GLYPH_PATH}"/>`,
+        `<path transform="${glyph}" fill="${glyphColor}" d="${MAP_GLYPH_PATH}"/>`,
         '</svg>',
     ].join('');
 }
@@ -86,3 +90,42 @@ export const DEFAULT_FAVICON_DATA_URL =
     '7LYFBAICAYGAwP9FAM8rnlkAzy6eX08IQFAgLBAYERAgCBEECcIkEoBwQcAgZE0TEAGpheRCekVAmiHRomSLgLQ3TAAmYhcwFzAZMBu8n5kPmBCYETeifA4z' +
     'MTAzMDX1TA8zpUrRrQM2CnYKtqreArBlsGewabBrsG2wb/vNEfw3pX7acrb71yUkB34kJqwUYuePHuLZEdIkr1MzQzvWWZUfggTSJS++XA/LHa4ZMo4D6dJO' +
     'Ku3+d/xjCmaxehZrO9v+G9tIuMRFoT7ILgAAAABJRU5ErkJggg==';
+
+/**
+ * The default icon's two variants (the owner, 2026-11-12: "make sure the icon in the tab uses the theme set by the
+ * user"): the square in the theme's `primary` and the glyph in its `on-primary`, of the light and of the dark palette of
+ * `DEFAULT_ICON_COLOR`'s theme (`node packages/ui/scripts/gen-theme.mjs --seed '#8B5E3C'`). A page links both, each under
+ * its `prefers-color-scheme`, so the tab follows the system before any script runs; `paintTabIcon` (`tab-icon.ts`) then
+ * draws the glyph in the colours of the theme the visitor chose.
+ */
+export const DEFAULT_ICON_VARIANTS = {
+    light: { fill: '#875329', glyph: '#FFF7F4' },
+    dark: { fill: '#F4BB92', glyph: '#5D3719' },
+} as const;
+
+/** The two variants at 32 px, PNGs as `data:` addresses (sharp's drawing of `mapIconSvg`; the functions' test checks them). */
+export const DEFAULT_TAB_ICONS = {
+    light:
+        'data:image/png;base64,' +
+        'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAACVklEQVRYw2NgQAI9kWoibcGaje3BmmfbgzQ+A+n/VM' +
+        'Egs4I0zwDZDW0BGsIM2EBrkGZAW5DmB6pZigND7fDHsBzowr+0thwRImC7/BHBTgefY2KN9+DoAMUL/S2HRYdGPQOQODdQDgAlTAZiU/ucAp//R5ZP+P/w' +
+        '/KH/l3at+L+qOeV/Z5guXj2LKyP+n9k47/+mviJcDvjIgM+AWbme/w8t6fv/+s7l//+/f8HA314/+X9u88L/S6oi/7eHaIH1TEy0+r9vbuv/N3euwNV9fv' +
+        '4Apx04HXB+6yIMC7+/eQamf3988//3p7coch+f3Pl/98Su/3+/fMDqUJIdANIE0vz69qX/BxZ2/Z+R7fZ/x/QasNjza6f+98Wa/t8ysez/vVN7/v/7+hHF' +
+        'wk/P7v0/tnLy/10z6yl3wMqmZLgYsgOQ1U5Ksv7/7v51sNzx1dP+d4TqgMVBeuniABAGiYHkQGpgYqMOGHXAqANGHTC8HAAqXkHFLEgMVOyCil+6OABUoY' +
+        'AqFlAFg1zhgCogUEUEqpBAFROyA0AVF6gCA1VkFDsAGYOqWlCVC6p6kcVBVTOoikauspExqGon2QGgRgTMAFDjAtTIADU2wPLAxgeoEQJqjGBzKLgaBzZi' +
+        'QI0ZUKMGX6OHAdgR+YRNAtSMAjWnQM0qfAaAmmWg5hmomQZqroGabaDmG7F9hEHQKB3AZjmwQVzHAOocDEjHJEjjXW+olhC4dwTqJtG7a9YWqOWH0j8EOw' +
+        'LYXaKHz9uD1H2x9pAh0aFRD0ocuHIHmT7+CIzm0yCz4cEOBQBvHUvzoUPWjAAAAABJRU5ErkJggg==',
+    dark:
+        'data:image/png;base64,' +
+        'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAACVUlEQVRYw+1XS0scQRCe36BeRD0YkICoBy+K8SCSBz' +
+        '7jAx8goiSSICh7CLuIqKuGRBFFe8SL4knxgQcFJZgZMddIEgkeBT3qQdDdnd2jlP217trrziw+Z0G2oRio7q76Zqqnv68URRq+X6NJhq4OGBr759eY4ddV' +
+        'ehTjsXjcv4bO+r36ZKJiNgJbapVfZ55HS2ppzBPQ2fuI5Bzh+dMnvzTkCoHAZ7fnzW+WRT0T5UBdbE9+DcKtGJq6GysAOJjKbU/7/nwvLXbV0WBDHk21v6' +
+        'XfUw7ybo5H3bM366JZRzltj36yWuNVogU4WHTTcnc9uSqyqTkvOcLai1/QTGcZ/Z9xEv91xZ7jtSFadTeRszwrtK7jdYZlDksA0x0lEQk/F6WL58fCNPrw' +
+        'Ki1szvHuJQ03F1JrQaop0DsDwCZsdlXm0EpPIx0uDdCPb63C11OTSyfrI6SPtNH3pgJqyU8JS9j5JoMWXLW08bXl4QB2eK2DPhmAvPZodYi+lGaKuTlnNf' +
+        'm0CeHHXlsAwODDHNYEfXEAcQBxAHEAzwsArldcs/Dh2sX1awsAEAqIBQQjEw4ICEQEQgIxyQBAXCAwENmDAcgGqgXlgnplP6gZFC1Ttmyg9jsDgIgIBoC4' +
+        'gMiA2BBSiosPiBCIETOggsa5iIGYgaiJJnq4JFN9ZhOQUZBTkFXRAkCWQZ5BpkGuQbZBvt22R4i9KI2tLGd9CpqDmDQmOjv1bI4lXLZmvE2yvTXTJivD+0' +
+        'MOAu2SHW8e+MkqTDtkUQ7eLuFwWP0d9zQvP2t/EDv02a/GBV4HWp3q4Er7AAAAAElFTkSuQmCC',
+} as const;
+
+/** The icon's geometry for a canvas (`paintTabIcon`): the em, the square's corner radius, the glyph's scale. */
+export const MAP_ICON_GEOMETRY = { em: EM, radius: RADIUS, scale: GLYPH_SCALE } as const;

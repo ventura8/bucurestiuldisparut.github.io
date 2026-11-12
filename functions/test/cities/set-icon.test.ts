@@ -51,6 +51,9 @@ describe('cities.setIcon: an upload', () => {
             expect([metadata.format, metadata.width, metadata.height]).toEqual(['png', [32, 180, 512][index], [32, 180, 512][index]]);
             expect(stored?.options).toMatchObject({ contentType: 'image/png', cacheControl: 'public, max-age=300' });
         }
+        // The tab's own copy, which only an upload has: the city's pages show it in every theme.
+        const own = await sharp(deps.blobs.object('public', STORAGE_PATHS.cityOwnIcon(CITY_ID))?.bytes).metadata();
+        expect([own.format, own.width, own.height]).toEqual(['png', 32, 32]);
         await expect(cityIcon(deps)).resolves.toMatchObject({ source: 'custom', sha256: answer.sha256, updatedBy: 'u-admin' });
         // An icon-only write: the city's own stamp stays.
         expect((await deps.documents.get(FIRESTORE_PATHS.city(CITY_ID), cityDocSchema))?.updatedAt).toEqual(cityDoc().updatedAt);
@@ -111,6 +114,8 @@ describe('cities.setIcon: the default', () => {
         await expect(setIcon(deps, { kind: 'reset', cityId: CITY_ID })).resolves.toMatchObject({ source: 'default' });
 
         await expect(cityIcon(deps)).resolves.toMatchObject({ source: 'default', seedColor: '#8B5E3C' });
+        // The upload's own tab copy is gone: the city's pages draw the default again, in the visitor's theme.
+        expect(deps.blobs.object('public', STORAGE_PATHS.cityOwnIcon(CITY_ID))).toBeUndefined();
         const { data, info } = await sharp(deps.blobs.object('public', ICON_PATHS[2] ?? '')?.bytes)
             .raw()
             .toBuffer({ resolveWithObject: true });

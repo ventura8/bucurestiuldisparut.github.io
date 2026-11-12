@@ -1025,6 +1025,13 @@
             "source": "the owner, 2026-11-08: the Layers map icon as the default browser tab icon, and the admin can change it; docs/research/M2-interfaces.md → The city's tab icon"
         },
         {
+            "id": "V55",
+            "area": "viewer",
+            "name": "The default tab icon wears the theme the user chose: the system's scheme first, then the chosen theme's colours",
+            "milestone": "M18",
+            "source": "the owner, 2026-11-12: make sure the icon in the tab uses the theme set by the user; docs/ENGINE_API.md → The page's tab icon"
+        },
+        {
             "id": "A101",
             "area": "admin",
             "name": "Settings → Browser tab icon: the default drawn for every city, an upload checked from its bytes, Use the default",
@@ -17369,12 +17376,34 @@
             "notes": "Lesson 547. Tests: packages/admin/test/georef/georef.test.ts (happyPath_undoTakesBackTheLastEditsOneByOneAndNothingMoreAfterDiscard)."
         },
         {
+            "id": "S-V55-HAPPY",
+            "behaviour": "V55",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The default tab icon wears the visitor's theme",
+            "asserts": "under a dark system the page's one icon link is the glyph on the city's dark primary; Light chosen in Settings -> the link is redrawn on the light primary, and stays so after a reload (the stored choice wins over the system); a city on the default keeps the themed icon and links icon-180.png for the home screen; the admin's tab is drawn in the admin's theme the same way",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12 (docs/ENGINE_API.md → The page's tab icon; DECISIONS-for-review.md §163). Test: e2e/specs/viewer/language-theme.spec.ts, scripts/site/test/hosting-pages.test.ts, packages/shared/test/kit/tab-icon.test.ts, packages/ui/test/admin/shell/tab-icon.test.ts."
+        },
+        {
+            "id": "S-V55-BAD-UNKNOWN-THEME",
+            "behaviour": "V55",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A stored theme that is no theme leaves the tab icon in the system's scheme",
+            "asserts": "localStorage holds a theme value the engine does not know, the system is dark -> the viewer and the tab icon wear the dark scheme; a city's uploaded icon, a page without an icon link, a host without a theme and a browser without a canvas are left as they are",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12 (docs/ENGINE_API.md → The page's tab icon). Test: e2e/specs/viewer/language-theme.spec.ts, packages/shared/test/kit/tab-icon.test.ts."
+        },
+        {
             "id": "S-V54-HAPPY",
             "behaviour": "V54",
             "area": "viewer",
             "path": "happy",
             "title": "Every city's tab shows its own icon from the public bucket",
-            "asserts": "the Hosting root links icon-32.png and icon-180.png of its city in the public bucket; the generic city page (/bacau/) swaps its inlined default for the city's icon once that loads; a site built without the bucket inlines the default",
+            "asserts": "the Hosting root and the generic city page (/bacau/) swap their inlined default for the city's uploaded icon (icon-own-32.png) once that loads, in one link without a scheme, and link icon-180.png for a phone's home screen; a site built without the bucket inlines the default",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/specs/viewer/hosting.spec.ts, scripts/site/test/hosting-pages.test.ts, scripts/site/test/build.test.ts."
@@ -17385,7 +17414,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "A city without an icon keeps the default in its tab",
-            "asserts": "the generic city page of a city the bucket does not hold (icon-32.png 404) keeps its inlined default and adds no home-screen icon; the page says the map was not found as before",
+            "asserts": "the generic city page of a city the bucket does not hold (icon-own-32.png and icon-180.png 404) keeps its inlined default and adds no home-screen icon; the page says the map was not found as before",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/specs/viewer/hosting.spec.ts, scripts/site/test/hosting-pages.test.ts."

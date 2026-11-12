@@ -52,6 +52,15 @@ async function publishedManifest(route: Route, source: BucketCity): Promise<void
 const CITY_ICON_PNG = Buffer.from(DEFAULT_FAVICON_DATA_URL.slice(DEFAULT_FAVICON_DATA_URL.indexOf(',') + 1), 'base64');
 
 /**
+ * Answers the tab icon's files of a city's folder in the public bucket (`icon-own-32.png`, `icon-180.png`: what a page
+ * that reads the bucket probes, behaviours V54 and V55), apart from the folder's other routes and unrecorded: a spec
+ * about the manifest registers it after its own route, so the probes add no request to its list and no 404 line.
+ */
+export async function serveCityIcons(page: Page, folder: string): Promise<void> {
+    await page.route(`${folder}icon-*.png`, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: CITY_ICON_PNG }));
+}
+
+/**
  * Answers the public bucket's folder of `source.city` as the admin's publish leaves it: the manifest and, relative to it,
  * the photos, and the city's tab icon (behaviour V54: the generic city page fetches it to show it). Returns the addresses
  * asked, in order, the icon's left out.
@@ -68,7 +77,7 @@ export async function serveBucketCity(page: Page, source: BucketCity): Promise<s
         }
         await route.fulfill({ response: await route.fetch({ url: `${SITE_ORIGIN}/${source.site}/data/${url.slice(folder.length)}` }) });
     });
-    await page.route(`${folder}icon-*.png`, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: CITY_ICON_PNG }));
+    await serveCityIcons(page, folder);
     return asked;
 }
 

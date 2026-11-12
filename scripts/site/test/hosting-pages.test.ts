@@ -7,7 +7,7 @@
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 
-import { CITY_ID_PATTERN, DEFAULT_FAVICON_DATA_URL } from '@hcm/shared';
+import { CITY_ID_PATTERN, DEFAULT_TAB_ICONS } from '@hcm/shared';
 import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -167,6 +167,28 @@ describe('admin-redirect.js', () => {
     });
 });
 
+interface IconLink {
+    href: string;
+    media: string | null;
+    removed: boolean;
+    removeAttribute(name: string): void;
+    remove(): void;
+}
+
+function iconLink(href: string, media: string): IconLink {
+    return {
+        href,
+        media,
+        removed: false,
+        removeAttribute(name) {
+            this.media = name === 'media' ? null : this.media;
+        },
+        remove() {
+            this.removed = true;
+        },
+    };
+}
+
 describe('the generic city page', () => {
     const before = 'https://storage.googleapis.com/demo-hcm-public/cities/';
 
@@ -185,27 +207,27 @@ describe('the generic city page', () => {
         expect(scope.HistoricCityMapConfig).toEqual({ cityId, manifestUrl: `${before}${cityId}/manifest.json` });
     });
 
-    /** A page whose icon probe loads (the city has an icon) or never does (none: a 404). */
+    /** A page whose icon probes load (the names in `loads`: the city has those files) or never do (a 404). */
     function iconPage(
-        loads: boolean,
-    ): CityIconScope & { readonly icon: { href: string }; readonly appended: { rel: string; href: string }[] } {
-        const icon = { href: 'data:image/png;base64,default' };
+        loads: readonly string[],
+    ): CityIconScope & { readonly icons: IconLink[]; readonly appended: { rel: string; href: string }[] } {
+        const icons = [iconLink('data:image/png;base64,light', 'light'), iconLink('data:image/png;base64,dark', 'dark')];
         const appended: { rel: string; href: string }[] = [];
         class Probe {
             onload: (() => void) | null = null;
-            set src(_value: string) {
-                if (loads) {
+            set src(value: string) {
+                if (loads.some((name) => value.endsWith(name))) {
                     this.onload?.();
                 }
             }
         }
         return {
-            icon,
+            icons,
             appended,
             HistoricCityMapConfig: { cityId: 'bacau', manifestUrl: `${before}bacau/manifest.json` },
             Image: Probe,
             document: {
-                querySelector: (selector) => (selector === 'link[rel="icon"]' ? icon : null),
+                querySelectorAll: (selector) => (selector === 'link[rel="icon"]' ? icons : []),
                 createElement: () => ({ rel: '', href: '' }),
                 head: {
                     append: (node) => {
@@ -217,26 +239,45 @@ describe('the generic city page', () => {
     }
 
     it('happyPath_theCitysOwnIconReplacesTheDefaultOnceItLoads @S-V54-HAPPY', () => {
-        const page = iconPage(true);
+        const page = iconPage(['icon-own-32.png', 'icon-180.png']);
 
         showCityIcon(page, before);
 
-        expect(page.icon.href).toBe(`${before}bacau/icon-32.png`);
+        // The city's own icon in every theme: one link, without a scheme.
+        expect(page.icons.map((icon) => [icon.href, icon.media, icon.removed])).toEqual([
+            [`${before}bacau/icon-own-32.png`, null, false],
+            ['data:image/png;base64,dark', 'dark', true],
+        ]);
         expect(page.appended).toEqual([{ rel: 'apple-touch-icon', href: `${before}bacau/icon-180.png` }]);
     });
 
     it('badPath_aCityWithoutAnIconKeepsTheDefault @S-V54-BAD-MISSING', () => {
-        const page = iconPage(false);
+        const page = iconPage([]);
 
         showCityIcon(page, before);
 
-        expect(page.icon.href).toBe('data:image/png;base64,default');
+        expect(page.icons.map((icon) => [icon.href, icon.media, icon.removed])).toEqual([
+            ['data:image/png;base64,light', 'light', false],
+            ['data:image/png;base64,dark', 'dark', false],
+        ]);
         expect(page.appended).toEqual([]);
     });
 
+    it('happyPath_aCityOnTheDefaultKeepsTheThemedTabIconAndGivesThePhoneItsOwnColour @S-V55-HAPPY', () => {
+        const page = iconPage(['icon-180.png']);
+
+        showCityIcon(page, before);
+
+        expect(page.icons.map((icon) => [icon.href, icon.removed])).toEqual([
+            ['data:image/png;base64,light', false],
+            ['data:image/png;base64,dark', false],
+        ]);
+        expect(page.appended).toEqual([{ rel: 'apple-touch-icon', href: `${before}bacau/icon-180.png` }]);
+    });
+
     it('badPath_aPageWithoutAnIconLinkOrConfigurationStillGetsTheHomeScreenIcon', () => {
-        const page = { ...iconPage(true), HistoricCityMapConfig: undefined };
-        const bare = { ...page, document: { ...page.document, querySelector: () => null } };
+        const page = { ...iconPage(['icon-own-32.png', 'icon-180.png']), HistoricCityMapConfig: undefined };
+        const bare = { ...page, document: { ...page.document, querySelectorAll: () => [] } };
 
         showCityIcon(bare, before);
 
@@ -268,7 +309,14 @@ describe('the generic city page', () => {
         expect(planned.config.to).toBe('city/config.js');
         expect(planned.config.content).toContain(`(window, "${before}", "/manifest.json", "city");`);
         expect(planned.config.content).toContain(`(window, "${before}");`);
-        expect(planned.page.content).toContain(`<link rel="icon" type="image/png" sizes="32x32" href="${DEFAULT_FAVICON_DATA_URL}">`);
+        expect(planned.config.content).toContain('hcm-map-viewer');
+        expect(planned.page.content).toContain(
+            `<link rel="icon" type="image/png" sizes="32x32" media="(prefers-color-scheme: light)" href="${DEFAULT_TAB_ICONS.light}">`,
+        );
+        expect(planned.page.content).toContain(
+            `<link rel="icon" type="image/png" sizes="32x32" media="(prefers-color-scheme: dark)" href="${DEFAULT_TAB_ICONS.dark}">`,
+        );
+        expect(planned.page.content).not.toContain('tab-icon.js');
     });
 
     it('badPath_aBucketNameThatIsNoBucketsFailsTheBuild', () => {

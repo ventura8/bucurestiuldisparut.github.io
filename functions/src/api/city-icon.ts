@@ -41,6 +41,20 @@ function sourceBytes(source: IconSource): Uint8Array | string {
 }
 
 /**
+ * The tab's own copy of an upload (`STORAGE_PATHS.cityOwnIcon`), which a city's pages show in every theme; a default has
+ * none (the pages draw the default themselves, in the visitor's theme), so drawing one deletes the copy.
+ */
+async function storeOwnIcon(deps: CityIconDeps, cityId: string, source: IconSource): Promise<void> {
+    const path = STORAGE_PATHS.cityOwnIcon(cityId);
+    if ('upload' in source) {
+        const png = await deps.images.iconPng(source, 32);
+        await deps.blobs.write('public', path, png, { contentType: 'image/png', cacheControl: CITY_ICON_CACHE_CONTROL });
+        return;
+    }
+    await deps.blobs.delete('public', path);
+}
+
+/**
  * Writes the icon's PNGs over the previous ones; returns the preview's address and the source's SHA-256 (what the
  * admin's preview is versioned by: a new upload or a new colour changes it).
  */
@@ -58,6 +72,7 @@ export async function storeCityIcon(
             });
         }),
     );
+    await storeOwnIcon(deps, cityId, source);
     return {
         url: publicObjectUrl(deps.config.buckets.public, STORAGE_PATHS.cityIcon(cityId, PREVIEW_SIZE)),
         sha256: createHash('sha256').update(sourceBytes(source)).digest('hex'),

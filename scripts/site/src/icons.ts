@@ -1,36 +1,24 @@
-import { DEFAULT_FAVICON_DATA_URL, STORAGE_PATHS, publicObjectUrl } from '@hcm/shared';
+import { DEFAULT_TAB_ICONS } from '@hcm/shared';
 
 import { element, type HtmlElement } from './html.js';
 
 /**
  * The tab icon of every page the build writes (the owner, 2026-11-08: the Layers panel's map glyph by default, and a
- * city's admins can change it; `docs/ENGINE_API.md` → *The page's tab icon*):
- *
- * - a city site that reads the public bucket links straight to its city's icon there (`STORAGE_PATHS.cityIcon`, fixed
- *   names `cities.setIcon` overwrites with a five-minute cache), so a new icon reaches the tab without a deploy;
- * - every other page (a site built without a bucket, the generic `/city/` page until its city's icon loads, the admin,
- *   the start page, 404 and start-up) inlines the default (`DEFAULT_FAVICON_DATA_URL`, the glyph in the project's
- *   colour): their policies allow `data:` images, and nothing is fetched.
+ * city's admins can change it; 2026-11-12: the default wears the theme the user chose; `docs/ENGINE_API.md` → *The
+ * page's tab icon*): the default is inlined twice, in the light and in the dark palette's colours
+ * (`DEFAULT_TAB_ICONS`), each link under its `prefers-color-scheme`, so the tab follows the system before any script
+ * runs and nothing is fetched (every page's policy allows `data:` images). A viewer page's `config.js` then paints the
+ * chosen theme and swaps in a city's own uploaded icon (`tabIconSource`, `hosting/city-page.ts`); the admin paints its
+ * own theme (`packages/ui/src/admin/shell/root-surface.ts`).
  */
-export interface PageIcons {
-    /** The 32 px icon of the tab. */
-    readonly favicon: string;
-    /** The 180 px icon a phone's home screen takes; none for the default. */
-    readonly appleTouch?: string;
-}
-
-export const DEFAULT_PAGE_ICONS: PageIcons = { favicon: DEFAULT_FAVICON_DATA_URL };
-
-/** The icons of `cityId` in the public bucket. */
-export function bucketIcons(bucket: string, cityId: string): PageIcons {
-    return {
-        favicon: publicObjectUrl(bucket, STORAGE_PATHS.cityIcon(cityId, 32)),
-        appleTouch: publicObjectUrl(bucket, STORAGE_PATHS.cityIcon(cityId, 180)),
-    };
-}
-
-/** The `<link>`s of the page's head. */
-export function iconLinks(icons: PageIcons = DEFAULT_PAGE_ICONS): HtmlElement[] {
-    const touch = icons.appleTouch === undefined ? [] : [element('link', { rel: 'apple-touch-icon', href: icons.appleTouch })];
-    return [element('link', { rel: 'icon', type: 'image/png', sizes: '32x32', href: icons.favicon }), ...touch];
+export function iconLinks(): HtmlElement[] {
+    return (['light', 'dark'] as const).map((scheme) =>
+        element('link', {
+            rel: 'icon',
+            type: 'image/png',
+            sizes: '32x32',
+            media: `(prefers-color-scheme: ${scheme})`,
+            href: DEFAULT_TAB_ICONS[scheme],
+        }),
+    );
 }

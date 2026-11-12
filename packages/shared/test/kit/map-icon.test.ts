@@ -6,7 +6,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { cityIconRequestSchema } from '../../src/api/city-icon.js';
-import { CITY_ICON_LIMITS, DEFAULT_FAVICON_DATA_URL, MAP_GLYPH_PATH, mapIconSvg } from '../../src/kit/map-icon.js';
+import {
+    CITY_ICON_LIMITS,
+    DEFAULT_FAVICON_DATA_URL,
+    DEFAULT_ICON_VARIANTS,
+    DEFAULT_TAB_ICONS,
+    MAP_GLYPH_PATH,
+    MAP_ICON_GEOMETRY,
+    mapIconSvg,
+} from '../../src/kit/map-icon.js';
 import { STORAGE_PATHS } from '../../src/schemas/paths.js';
 
 describe('mapIconSvg', () => {
@@ -18,8 +26,13 @@ describe('mapIconSvg', () => {
         expect(svg).toContain(`fill="#FFFFFF" d="${MAP_GLYPH_PATH}"`);
     });
 
+    it('happyPath_theGlyphInANamedColourForADarkTheme', () => {
+        expect(mapIconSvg('#F4BB92', 32, '#5D3719')).toContain(`fill="#5D3719" d="${MAP_GLYPH_PATH}"`);
+    });
+
     it.each([['red'], ['#3D6B8C" onload="x'], ['#3D6B8']])('badPath_theColour_%s_isRefused', (colour) => {
         expect(() => mapIconSvg(colour)).toThrow(RangeError);
+        expect(() => mapIconSvg('#3D6B8C', 512, colour)).toThrow(RangeError);
     });
 
     it.each([[8], [2048], [31.5]])('badPath_theSize_%s_isRefused', (size) => {
@@ -31,6 +44,12 @@ describe('the icon files and their request', () => {
     it('happyPath_theDefaultIsAPngAndTheFilesHaveFixedNames', () => {
         expect(DEFAULT_FAVICON_DATA_URL).toMatch(/^data:image\/png;base64,iVBORw0KGgo[A-Za-z0-9+/]+=*$/);
         expect(STORAGE_PATHS.cityIcon('bacau', 32)).toBe('cities/bacau/icon-32.png');
+        expect(STORAGE_PATHS.cityOwnIcon('bacau')).toBe('cities/bacau/icon-own-32.png');
+        for (const scheme of ['light', 'dark'] as const) {
+            expect(DEFAULT_TAB_ICONS[scheme]).toMatch(/^data:image\/png;base64,iVBORw0KGgo[A-Za-z0-9+/]+=*$/);
+            expect(Object.values(DEFAULT_ICON_VARIANTS[scheme]).every((colour) => /^#[0-9A-F]{6}$/.test(colour))).toBe(true);
+        }
+        expect(MAP_ICON_GEOMETRY).toEqual({ em: 960, radius: 211, scale: 0.8267 });
         expect(cityIconRequestSchema.safeParse({ kind: 'upload', cityId: 'bacau', image: 'iVBORw0KGgo=' }).success).toBe(true);
         expect(cityIconRequestSchema.safeParse({ kind: 'reset', cityId: 'bacau' }).success).toBe(true);
     });

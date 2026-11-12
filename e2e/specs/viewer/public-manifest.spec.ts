@@ -1,6 +1,7 @@
 import type { Page, Request, Route } from '@playwright/test';
 
 import { E2E_PUBLIC_BUCKET, SITE_ORIGIN } from '../../fixtures/world.js';
+import { serveCityIcons } from '../../support/hosting.js';
 import { sitePath } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
 import { engineEvents, t, waitForEngineEvent } from '../../support/viewer.js';
@@ -27,6 +28,7 @@ async function serveBucket(page: Page): Promise<string[]> {
         asked.push(route.request().url());
         await route.fulfill({ response: await route.fetch({ url: siteFileOf(route.request().url()) }) });
     });
+    await serveCityIcons(page, BUCKET);
     return asked;
 }
 
@@ -64,6 +66,8 @@ test(
     { tag: '@S-V01-BAD-PUBLIC-BUCKET-404' },
     async ({ page, lang, consoleErrors }) => {
         await page.route(`${BUCKET}**`, (route) => route.fulfill({ status: 404, contentType: 'text/plain', body: 'Not found' }));
+        // The tab icon's probes are answered apart: this row is about the manifest's 404 line.
+        await serveCityIcons(page, BUCKET);
         const snapshots = bundledSnapshots(page);
 
         await page.goto(sitePath('bucharest-bucket', { lang }));

@@ -1,4 +1,12 @@
-import { STORAGE_PATHS, publicObjectUrl, type EngineConfig } from '@hcm/shared';
+import {
+    MAP_GLYPH_PATH,
+    MAP_ICON_GEOMETRY,
+    STORAGE_PATHS,
+    followViewerTheme,
+    paintTabIcon,
+    publicObjectUrl,
+    type EngineConfig,
+} from '@hcm/shared';
 
 import { contentSecurityPolicy } from '../csp.js';
 import type { SiteFileSystem } from '../files.js';
@@ -46,7 +54,7 @@ export function configureCityPage(scope: CityConfigScope, before: string, after:
 export interface CityIconScope {
     readonly HistoricCityMapConfig?: unknown;
     readonly document: {
-        querySelector(selector: string): { href: string } | null;
+        querySelectorAll(selector: string): ArrayLike<{ href: string; removeAttribute(name: string): void; remove(): void }>;
         createElement(tag: 'link'): { rel: string; href: string };
         readonly head: { append(node: { rel: string; href: string }): void };
     };
@@ -54,29 +62,62 @@ export interface CityIconScope {
 }
 
 /**
- * The city's own tab icon (`docs/ENGINE_API.md` → *The page's tab icon*): once its 32 px icon has loaded from the public
- * bucket (`before + id + /icon-32.png`, the files `cities.setIcon` writes), the tab shows it and a phone's home screen
- * gets the 180 px one; a city without an icon keeps the page's default. Self-contained, like `configureCityPage`, after
+ * The city's own tab icon (`docs/ENGINE_API.md` → *The page's tab icon*), from the public bucket's folder of the city
+ * (`before + id + /`, the files `cities.setIcon` and the manifest's build write). Once an editor's uploaded icon has
+ * loaded (`icon-own-32.png`, which only an upload has), the tab shows it in every theme: the first icon link takes its
+ * address and loses its `media`, the others go, and `paintTabIcon` leaves a link that is no `data:` address alone. A
+ * phone's home screen gets the city's 180 px icon (`icon-180.png`: the upload, or the default in the city's colour) once
+ * that has loaded. A city without either keeps the page's default. Self-contained, like `configureCityPage`, after
  * which it runs; it builds elements, never HTML.
  */
 export function showCityIcon(scope: CityIconScope, before: string): void {
     const config = scope.HistoricCityMapConfig as { readonly cityId?: unknown } | undefined;
     const folder = `${before}${typeof config?.cityId === 'string' ? config.cityId : ''}/`;
-    const probe = new scope.Image();
-    probe.onload = () => {
-        const link = scope.document.querySelector('link[rel="icon"]');
-        if (link !== null) {
-            link.href = `${folder}icon-32.png`;
-        }
+    const whenLoaded = (address: string, show: () => void): void => {
+        const probe = new scope.Image();
+        probe.onload = show;
+        probe.src = address;
+    };
+    whenLoaded(`${folder}icon-own-32.png`, () => {
+        Array.from(scope.document.querySelectorAll('link[rel="icon"]')).forEach((link, index) => {
+            if (index > 0) {
+                link.remove();
+                return;
+            }
+            link.href = `${folder}icon-own-32.png`;
+            link.removeAttribute('media');
+        });
+    });
+    whenLoaded(`${folder}icon-180.png`, () => {
         const touch = scope.document.createElement('link');
         touch.rel = 'apple-touch-icon';
         touch.href = `${folder}icon-180.png`;
         scope.document.head.append(touch);
-    };
-    probe.src = `${folder}icon-32.png`;
+    });
 }
 
-/** The page's spec: generic, since it serves every city made in the admin (each manifest names its city). */
+/** The address of a city's folder in `bucket`, up to its id (the same address every site build names). */
+function cityFolderPrefix(bucket: string): string {
+    const marker = 'hcm-city-id';
+    return publicObjectUrl(bucket, STORAGE_PATHS.manifest(marker)).split(marker)[0] ?? '';
+}
+
+/**
+ * The lines a viewer page's `config.js` ends with (`docs/ENGINE_API.md` → *The page's tab icon*): the default icon
+ * follows the theme the visitor chose (`followViewerTheme`, `paintTabIcon` of `@hcm/shared`), and a page that reads
+ * `bucket` shows its city's own uploaded icon instead once it has loaded. Throws RangeError on a name no bucket has.
+ */
+export function tabIconSource(bucket: string | undefined): string {
+    const glyph = JSON.stringify({ path: MAP_GLYPH_PATH, ...MAP_ICON_GEOMETRY });
+    const own = bucket === undefined ? [] : [`(${showCityIcon.toString()})(window, ${JSON.stringify(cityFolderPrefix(bucket))});`];
+    return [
+        "// The tab icon (docs/ENGINE_API.md → The page's tab icon), from scripts/site/src/hosting/city-page.ts.",
+        `(${followViewerTheme.toString()})(window, ${paintTabIcon.toString()}, ${glyph});`,
+        ...own,
+        '',
+    ].join('\n');
+}
+
 function cityPageSpec(themeColor: string): SiteSpec {
     return {
         lang: 'ro',
@@ -121,8 +162,7 @@ function configSource(bucket: string): string {
         '// from scripts/site/src/hosting/city-page.ts.',
         "'use strict';",
         `(${configureCityPage.toString()})(window, ${args});`,
-        `(${showCityIcon.toString()})(window, ${JSON.stringify(before)});`,
-        '',
+        tabIconSource(bucket),
     ].join('\n');
 }
 

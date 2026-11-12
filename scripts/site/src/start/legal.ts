@@ -3,6 +3,7 @@ import { SiteBuildError } from '../errors.js';
 import type { SiteFileSystem } from '../files.js';
 import { staticPagePolicy } from '../hosting/static-pages.js';
 import { element, renderDocument, type HtmlElement, type HtmlNode } from '../html.js';
+import { iconLinks } from '../icons.js';
 import {
     PRIVACY_FILE,
     PRIVACY_PAGE,
@@ -107,7 +108,7 @@ export function renderLegalPage(page: LegalPage): string {
         element('meta', { name: 'description', content: page.description }),
         element('meta', { name: 'color-scheme', content: 'light dark' }),
         element('title', {}, [`${page.ro.title} · ${page.en.title}`]),
-        element('link', { rel: 'icon', href: 'data:,' }),
+        ...iconLinks(),
         element('link', { rel: 'stylesheet', href: START_SITE_STYLESHEET_FILE }),
     ]);
     const body = element('body', { class: 'start-legal-body' }, [

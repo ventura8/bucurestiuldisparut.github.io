@@ -49,64 +49,14 @@ The manifest is the one the admin publishes to the project's public bucket. A si
 
 ### The page's tab icon
 
-Every page has a tab icon: by default the Layers panel's map glyph (Material Symbols Rounded `map`, Apache License 2.0) in white on a rounded square of the project's colour (`#8B5E3C`), and a city's editors can change their city's in the admin (Settings → Browser tab icon, `cities.setIcon`: [research/M2-interfaces.md](research/M2-interfaces.md) → *The city's tab icon*). The City Manifest does not change: the page finds the icon by its fixed address.
+Every page has a tab icon: by default the Layers panel's map glyph (Material Symbols Rounded `map`, Apache License 2.0) on a rounded square, in the colours of the theme the user chose; a city's editors can replace their city's with an image in the admin (Settings → Browser tab icon, `cities.setIcon`: [research/M2-interfaces.md](research/M2-interfaces.md) → *The city's tab icon*). The City Manifest does not change and the engine gains no byte: the page's own script does the work.
 
-- **A page that reads the public bucket** (a `publicManifest` site built with `HCM_PUBLIC_BUCKET`, the Hosting root) links its city's icon there: `<link rel="icon" type="image/png" sizes="32x32" href="https://storage.googleapis.com/<project>-public/cities/<cityId>/icon-32.png">` and `<link rel="apple-touch-icon" href="…/icon-180.png">`. The admin overwrites those objects in place (`Cache-Control: public, max-age=300`), so a new icon reaches the next load of every tab without a deploy; a tab already open may keep the old one until it is reloaded (the browser's own favicon cache). The manifest's build draws the default for a city that has none, in its theme's seed colour, and draws it again when that colour changes.
-- **The generic city page** (`/city/`, every city made in the admin) inlines the default, and its `config.js` swaps in the city's own icon once `icon-32.png` has loaded from the bucket (`showCityIcon`, `scripts/site/src/hosting/city-page.ts`: elements, never HTML); a city without one keeps the default.
-- **Every other page** the build writes (a site built without the bucket, the admin, the start page, 404 and start-up) and the starter kit's `index.html` inline the default as a 32 px PNG `data:` address (`DEFAULT_FAVICON_DATA_URL` of `@hcm/shared`); every page's policy allows `data:` images, and nothing is fetched. A static export carries its city's own icon inlined the same way (`fillKitPage`'s optional `icon`), or the kit's default.
+- **Before any script runs**, every page the build writes (a city site, the generic `/city/` page, the admin, the start and legal pages, 404 and start-up) links the default twice, inlined as 32 px PNG `data:` addresses (`DEFAULT_TAB_ICONS` of `@hcm/shared`), each under its scheme: `<link rel="icon" type="image/png" sizes="32x32" media="(prefers-color-scheme: light)" href="data:…">` and the same for `dark`. The square is the theme's `primary` and the glyph its `on-primary`, of the project's default colour `#8B5E3C`: `#875329` with `#FFF7F4` in light, `#F4BB92` with `#5D3719` in dark (`DEFAULT_ICON_VARIANTS`). Every page's policy allows `data:` images; nothing is fetched.
+- **The chosen theme.** A viewer page loads `tab-icon.js` after `config.js` (the generic city page's `config.js` ends with the same lines; `tabIconSource`, `scripts/site/src/hosting/city-page.ts`). `followViewerTheme` paints the icon when the page has loaded (the stored choice, else the system's scheme), when the map is ready or failed (the city's own colours arrive with its manifest), after a click or a key (the visitor picked Light, Dark or System in Settings) and when the system's scheme or contrast changes. `paintTabIcon` reads `--md-sys-color-primary` and `--md-sys-color-on-primary` from `<hcm-map-viewer>`, draws the glyph on a canvas and puts the PNG's `data:` address into the one icon link left (its `media` removed): no request, elements and attributes only, never HTML. A stored value that is no theme counts as System, as in the engine. The admin does the same from its root's theme each time the shell applies one (`packages/ui/src/admin/shell/tab-icon.ts`), so a seed colour being previewed shows in the tab too.
+- **A city's own uploaded icon is never recoloured.** A page that reads the public bucket (the Hosting root, `/city/`) probes `https://storage.googleapis.com/<project>-public/cities/<cityId>/icon-own-32.png`, which exists only while the city's icon is an upload (`STORAGE_PATHS.cityOwnIcon`). Once it has loaded, the tab's link takes that address (`showCityIcon`) and `paintTabIcon` leaves it alone in every theme. The admin overwrites the object in place (`Cache-Control: public, max-age=300`), so a new icon reaches the next load of every tab without a deploy; Use the default deletes it. The same script links `…/icon-180.png` as `apple-touch-icon` once it has loaded: the upload, or the default in the city's seed colour, which the manifest's build draws (a home screen has no theme). A city with neither file keeps the themed default; each missing file is one 404 line in the console.
+- **The starter kit's `index.html`** inlines the default in the project's colour (`DEFAULT_FAVICON_DATA_URL`), and a static export carries its city's own icon inlined the same way (`fillKitPage`'s optional `icon`), or the kit's default.
 
-The default's outline is `MAP_GLYPH_PATH` (`packages/shared/src/kit/map-icon.ts`), checked against the kit's font subset by the static stage's `fonts` gate.
-
-## The starter kit
-
-A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](research/M5-interfaces.md) §3), or runs `npx create-historic-city@1.0.0-beta.1 <folder>`, which writes the same three files with its name, rectangle, start view and theme ([SELF_HOST.md](SELF_HOST.md)). There is no `config.js`: the element's attributes are the configuration.
-
-| File | Role |
-| --- | --- |
-| `index.html` | the page: the meta CSP first, Mapbox GL JS 3.34.1 from `api.mapbox.com` and the engine's `engine.css` and `engine.iife.js` from a pinned jsDelivr folder, each with `integrity` and `crossorigin`, and `<hcm-map-viewer manifest-url="city.json" lang="ro">` |
-| `city.json` | a City Manifest v1: an example city with one place category and three places (a point, a line, an area), no photos and no layers, and the placeholder token `pk.replace-with-your-token`, which Mapbox refuses until the owner puts their own URL-restricted public token in |
-| `README.md` | the steps, in English |
-
-```html
-<body class="hcm-fullpage">
-    <main>
-        <h1 class="hcm-visually-hidden">Orașul meu</h1>
-        <hcm-map-viewer manifest-url="city.json" lang="ro">
-            <p class="hcm-note" lang="ro">Harta se încarcă. …</p>
-            <p class="hcm-note" lang="en">The map is loading. …</p>
-        </hcm-map-viewer>
-    </main>
-</body>
-```
-
-- **The page frame lives in `engine.css`**, since the kit has no fourth file: `.hcm-fullpage` (on `<body>`: no margin, the system's background and text colours, the viewer filling the window in `dvh`) and `.hcm-note` (a readable line length and size for the notes). A page of its own may use them too.
-- **The note**: an element the engine has not defined shows its children; once the engine defines `<hcm-map-viewer>`, its shadow root (which has no slot) hides them. The bilingual note therefore stays only when the engine was refused (a wrong `integrity`, a version that does not exist) or never came, and it names the README's check. Without JavaScript, `<noscript>` says the map needs it.
-- **The engine block** sits between `<!-- hcm:engine -->` and `<!-- /hcm:engine -->`. `fillKitPage(template, values)` (`@hcm/shared`, `packages/shared/src/kit/page.ts`) replaces only the page's slots: the `lang` of `<html>` and of the element, the title, the description and theme-colour metas, the level-one heading, the element's `manifest-url`, the CSP (always recomputed from the engine's source: `kitContentSecurityPolicy`) and the engine block, either `{kind: 'cdn', release}` (the release's folder, with the integrity `release.json` publishes) or `{kind: 'local'}` (`engine/` beside the page, the static export's). A template without one of these slots, or with one twice, throws `KitPageError`. The release pins the committed template this way; `create-historic-city upgrade` carries a newer release's pins into an existing page.
-- **The tab icon** is the default map glyph, inlined (see [The page's tab icon](#the-pages-tab-icon)); `fillKitPage`'s optional `icon` (a PNG as a `data:` address) replaces it, which the static export does with its city's own. The owner may put any other icon there.
-- **The CSP** is the one table of every engine page (`packages/shared/src/kit/csp.ts`): with the engine from jsDelivr, `script-src`, `style-src` and `font-src` name the pinned folder instead of `'self'`; `connect-src` and `img-src` keep `'self'` for `city.json` and the photos beside it. A manifest that names tiles or photos on another host needs that origin in `img-src` and `connect-src` (the README says so).
-- **Updating the engine** changes the version and both `integrity` values of the engine block together (the new release's `release.json`); a page pinned with integrity never follows a range such as `@1`.
-
-## config.js
-
-`window.HistoricCityMapConfig` is validated with `engineConfigSchema` (`packages/shared/src/schemas/config.ts`); every object is strict, so an unknown key is an error.
-
-| Field | Type | Default | Rule |
-| --- | --- | --- | --- |
-| `manifestUrl` | string | none | https, or relative to the page (no `..`, no `//host`). Exactly one of `manifestUrl` and `manifest`. |
-| `manifest` | object | none | An inline City Manifest v1 (the starter kit's static mode, no backend). Validated like a fetched one. |
-| `cityId` | string | none | `^[A-Za-z0-9_-]{1,40}$`. When present it must equal `manifest.city.id` (else `error.config.cityMismatch`); it also namespaces the stored preferences. |
-| `container` | string | `#historic-city-map` | CSS selector of the element to mount into (auto-boot only). |
-| `lang` | string | `ro` | A BCP 47 tag; anything that is not English resolves to Romanian. |
-| `engineBase` | string | the folder of the engine script | https or relative, ending with `/`: where the engine's own files live (`fonts/`: the self-hosted Roboto Flex and Material Symbols subset). |
-
-**Auto-boot.** When either build runs (the ES module or the IIFE), it registers the elements and, once the document is parsed, reads `window.HistoricCityMapConfig`:
-
-- present and valid: it mounts into `container`; a missing element shows `error.config.container` in the console log and nothing on the page (there is nowhere to draw);
-- present and invalid: the error card in `container` shows `error.config.invalid` with the first issue (`path` and the localized `validation.*` message), so the city owner sees what to fix;
-- absent while `#historic-city-map` exists: the error card shows `error.config.missing` (scenario V17);
-- absent and no default container: nothing happens (the page uses `<hcm-map-viewer>` or `HistoricCityMap.mount` itself).
-
-**Language** is resolved in this order: the URL (`#…&lang=` or `?lang=`), the visitor's stored choice, `config.lang`, then Romanian. `<html lang>` follows the result (scenario V11). An error card shown before any manifest (a missing or invalid `config.js`) follows the URL, then `config.lang`. The visitor switches it, and the theme (system, light, dark), in the menu's **Settings** (Setări), a dialog of its own; About holds neither (the owner, 2026-11-08). `setLang` accepts any tag and resolves it like `config.lang`. On an extra-large window (1600 px and wider) the Layers pane, always docked there, minimizes with its collapse button (**Restrânge straturile** / **Collapse layers**, `aria-expanded="true"`, where narrower windows have a close) to one floating button on the map's leading edge, at its gutter (**Straturi**, a layers icon, `aria-expanded="false"`, or the `l` key's focus on it), which brings it back; there is no rail, and the map takes the whole width (the owner, 2026-11-09). The minimized pane lasts for the session, also when the window leaves the extra-large layout and comes back: it is not in the URL hash, and the switches and sliders keep their values.
+The default's outline is `MAP_GLYPH_PATH` (`packages/shared/src/kit/map-icon.ts`), checked against the kit's font subset by the static stage's `fonts` gate; `functions/test/cities/map-icon.test.ts` draws the three inlined PNGs again with sharp and compares the pixels.
 
 ## `<hcm-map-viewer>`
 

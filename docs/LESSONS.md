@@ -3408,3 +3408,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the settings chunk had about 0.5 KB left, and a card's view, its CSS and its file checks weigh more.
     - Found by: the `build` stage's `bundle-budget` on the NUC. Fix: the card is a chunk of its own fetched when its section first opens (`lazy-icon.ts`), the file checks went with it, its CSS went (the page's own classes do), and the new chunk got its row (DECISIONS-for-review.md §162l); no budget raised.
     - **A new Settings card starts as a lazy chunk when the settings chunk is within 1 KB of its budget; measure before the review, not after.**
+
+581. **A page that links a file the server has not written yet shows nothing until the server is updated.**
+    - Seen: 2026-11-12, track/favicon: the Hosting root linked `cities/bucharest/icon-32.png` in the public bucket, which only the new functions draw; a Hosting deploy alone would have left the live tab without an icon until Update the map.
+    - Cause: the default was made to depend on a server-written object, though the page could inline it.
+    - Found by: comparing the built page with the live bucket (a 404) before the deploy. Fix: every page inlines the default and a script swaps in the bucket's file once it has loaded (DECISIONS-for-review.md §163d).
+    - **A default never depends on another deploy: inline it, and treat the server's file as the upgrade.**
+
+582. **Lines appended to a served `config.js` break every reader that expects one literal assignment.**
+    - Seen: 2026-11-12, track/favicon: `build.test.ts` reads the built `config.js` with `readConfigJs`.
+    - Found by: reading the tests before the change. Fix: the tab icon's script is its own file, `tab-icon.js` (§163c).
+    - **A page's new behaviour gets its own script file; `config.js` stays data.**
+

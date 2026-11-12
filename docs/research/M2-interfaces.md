@@ -615,7 +615,7 @@ five M3 ports until fn-imagery wires them.
 ## The city's tab icon (2026-11-08)
 
 The owner (2026-11-08): the Layers panel's map icon is the default browser tab icon of the app, and the admin can change
-it. Behaviours V54 (the public page) and A101 (Settings → Browser tab icon); the page's side is
+it. Behaviours V54 (the public page), V55 (the default in the user's theme) and A101 (Settings → Browser tab icon); the page's side is
 [ENGINE_API.md](../ENGINE_API.md) → *The page's tab icon*; the choices are `DECISIONS-for-review.md` §162.
 
 - **`cities.setIcon`** (`cityEditor`, `fn-cities`, App Check enforced; `functions/src/cities/set-icon.ts`; schemas
@@ -630,6 +630,10 @@ it. Behaviours V54 (the public page) and A101 (Settings → Browser tab icon); t
   cropped, no metadata, `limitInputPixels`), and `STORAGE_PATHS.cityIcon(city, size)` (`cities/<city>/icon-<size>.png`,
   sizes `CITY_ICON_SIZES`: 32, 180, 512) in the **public** bucket, `Cache-Control: public, max-age=300`, overwritten in
   place: the pages link these fixed names (`functions/src/api/city-icon.ts`).
+- **The tab's own copy** (2026-11-12, `DECISIONS-for-review.md` §163): an upload is also written at 32 px to
+  `STORAGE_PATHS.cityOwnIcon(city)` (`cities/<city>/icon-own-32.png`, the same cache), and drawing the default (a `reset`,
+  the build) deletes it. A city's pages show that file in the tab in every theme; without it they draw the default
+  themselves, in the visitor's theme. Its absence is how a page knows the icon is the default without reading Firestore.
 - **The record**: `cities/{city}.icon` (`cityDocSchema`): `source` (`default` | `custom`), the default's `seedColor`,
   `url` (the 180 px file, the admin's preview), `sha256` (the source's: the upload's bytes or the default's SVG), its own stamp. Server-owned: it is not in
   `CLIENT_WRITES.city.update`, so the rules refuse it to every client (S-A101-BAD-CLIENT-WRITE); not in

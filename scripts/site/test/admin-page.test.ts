@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_FAVICON_DATA_URL } from '@hcm/shared';
+import { DEFAULT_TAB_ICONS } from '@hcm/shared';
 
 import {
     ADMIN_PAGE,
@@ -31,7 +31,8 @@ describe('renderAdminPage', () => {
         const html = renderAdminPage();
 
         expect([...html.matchAll(/<(?:script|link) [^>]*>/g)].map(([tag]) => tag)).toEqual([
-            `<link rel="icon" type="image/png" sizes="32x32" href="${DEFAULT_FAVICON_DATA_URL}">`,
+            `<link rel="icon" type="image/png" sizes="32x32" media="(prefers-color-scheme: light)" href="${DEFAULT_TAB_ICONS.light}">`,
+            `<link rel="icon" type="image/png" sizes="32x32" media="(prefers-color-scheme: dark)" href="${DEFAULT_TAB_ICONS.dark}">`,
             `<link rel="stylesheet" href="${ADMIN_STYLESHEET_FILE}">`,
             `<script type="module" src="${ADMIN_SCRIPT_FILE}">`,
         ]);

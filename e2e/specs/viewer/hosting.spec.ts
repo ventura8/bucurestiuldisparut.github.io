@@ -1,4 +1,3 @@
-import { DEFAULT_FAVICON_DATA_URL } from '@hcm/shared';
 import type { Page, Request } from '@playwright/test';
 
 import { ADMIN_ORIGIN, ADMIN_URL, PAGES_REDIRECT_FOLDER } from '../../admin/world.js';
@@ -78,7 +77,7 @@ async function iconLinks(page: Page): Promise<{ readonly icon: string | null; re
 }
 
 test(
-    "Every city's tab shows its own icon from the public bucket: the root's links, the generic page's once it loads",
+    "Every city's tab shows its own uploaded icon from the public bucket once it loads, on the root and the generic page",
     { tag: '@S-V54-HAPPY' },
     async ({ page, lang }) => {
         await serveBucketCity(page, { city: E2E_CITY_ID, site: 'bucharest' });
@@ -87,10 +86,12 @@ test(
         await page.goto(hostingUrl('/', { lang }));
         await waitForEngineEvent(page, 'hcm-ready');
 
-        expect(await iconLinks(page)).toEqual({
-            icon: `${bucketFolder(E2E_CITY_ID)}icon-32.png`,
-            touch: `${bucketFolder(E2E_CITY_ID)}icon-180.png`,
-        });
+        await expect
+            .poll(() => iconLinks(page))
+            .toEqual({
+                icon: `${bucketFolder(E2E_CITY_ID)}icon-own-32.png`,
+                touch: `${bucketFolder(E2E_CITY_ID)}icon-180.png`,
+            });
 
         await page.goto(hostingUrl(`/${ADMIN_MADE_CITY}/`, { lang }));
         await waitForEngineEvent(page, 'hcm-ready');
@@ -98,7 +99,7 @@ test(
         await expect
             .poll(() => iconLinks(page))
             .toEqual({
-                icon: `${bucketFolder(ADMIN_MADE_CITY)}icon-32.png`,
+                icon: `${bucketFolder(ADMIN_MADE_CITY)}icon-own-32.png`,
                 touch: `${bucketFolder(ADMIN_MADE_CITY)}icon-180.png`,
             });
     },
@@ -175,20 +176,21 @@ test(
 
         await expect(page.getByRole('alert')).toContainText(t(lang, 'error.manifest.notFound'));
         expect((await instrumentation.read(page)).mapsCreated).toBe(0);
-        // The page also looks for the city's tab icon (V54; an image, which the browser may ask after the manifest): none,
-        // so the default stays, and each 404 is one console line.
+        // The page also looks for the city's own tab icon and its home-screen icon (V54; images, which the browser may ask
+        // after the manifest): none, so the default stays, and each 404 is one console line.
         await expect
             .poll(() => [...asked].sort((a, b) => a.localeCompare(b)))
-            .toEqual([`${bucketFolder(UNPUBLISHED_CITY)}icon-32.png`, `${bucketFolder(UNPUBLISHED_CITY)}manifest.json`]);
+            .toEqual(['icon-180.png', 'icon-own-32.png', 'manifest.json'].map((name) => `${bucketFolder(UNPUBLISHED_CITY)}${name}`));
         const errors: string[] = [];
         await expect
             .poll(() => {
                 errors.push(...consoleErrors.take());
                 return errors.length;
             })
-            .toBe(2);
-        expect(errors).toEqual([expect.stringContaining('404'), expect.stringContaining('404')]);
-        expect(await iconLinks(page)).toEqual({ icon: DEFAULT_FAVICON_DATA_URL, touch: null });
+            .toBe(3);
+        expect(errors).toEqual([expect.stringContaining('404'), expect.stringContaining('404'), expect.stringContaining('404')]);
+        // The default, inlined (and drawn in the page's theme): nothing of the bucket's.
+        expect(await iconLinks(page)).toEqual({ icon: expect.stringMatching(/^data:image\/png;base64,/), touch: null });
 
         const answer = await page.goto(hostingUrl('/Not_A_City/'));
 
