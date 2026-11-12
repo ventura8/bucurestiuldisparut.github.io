@@ -88,7 +88,7 @@ describe('an opened sharper scan', () => {
     });
 });
 
-describe('the pane's holder of its sharper scan', () => {
+describe('the scan pane holds its sharper scan', () => {
     it('badPath_aDetailReplacedDroppedOrNotTilesWhileItOpensIsNeverDrawn @S-A16-BAD-GEOREF-FULL-RES-NONE', async () => {
         const holder = new DetailTiles();
         const view = { scale: 4, offset: { x: 0, y: 0 } };
