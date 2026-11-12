@@ -150,6 +150,8 @@ export interface VersionItem {
     readonly partOf: string | null;
     /** M8: the USGS frames it is made of: a frame's own, a join's all, none for an upload. */
     readonly entityIds: readonly string[];
+    /** The version it was made from (a recalibration, a crop, a georeferencing again): that one cannot be deleted while it is. */
+    readonly basedOn: string | null;
     /** M12: the small picture Work's waiting row shows (null: none yet). */
     readonly thumbPath: string | null;
 }
@@ -182,6 +184,7 @@ export function versionItemOf(doc: Stored<LayerVersionDoc>): VersionItem {
         checkpointRmseM: orNull(version.georef?.checkpointRmseM),
         partOf: orNull(version.partOf),
         entityIds: entityIdsOf(version.source),
+        basedOn: orNull(version.basedOn),
         thumbPath: orNull(version.output?.tiles?.thumbPath),
     };
 }

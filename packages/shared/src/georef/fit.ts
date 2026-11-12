@@ -6,12 +6,19 @@
  * residual, a disabled pair's (a checkpoint) its distance from where the transform puts its pixel. `checkpointRmseM` is
  * the disabled pairs' RMSE when there are any, else the leave-one-out RMSE of the enabled ones (null when none has one);
  * `checkpointKind` says which (M9: only `held-out` approves on its own).
+ *
+ * A poly2 has no poly2 inverse: the place→pixel map is fitted on a grid of the forward map over the pairs' pixels
+ * (`POLY2_INVERSE_GRID`, pipeline `INVERSE_GRID`), never on the pairs alone — that refused well-spread scans whose places
+ * lay on two lines (DECISIONS §144).
  */
 import { MIN_GCPS, type CheckpointKind, type Gcp, type GeorefTransform } from '../schemas/georef.js';
 import { geoToMercator, groundMetres, mercatorToGeo, type GeoPoint, type PlanePoint } from './mercator.js';
-import { evaluatePolynomial, fitPolynomial, type Correspondence, type PolynomialKind } from './polynomial.js';
+import { evaluatePolynomial, fitPolynomial, type Correspondence, type PolynomialKind, type PolynomialModel } from './polynomial.js';
 import { isDegenerateSpread } from './spread.js';
 import { evaluateSpline, fitSpline } from './tps.js';
+
+/** Side length of the grid the poly2 inverse is fitted on (pipeline `transforms.INVERSE_GRID`). */
+const POLY2_INVERSE_GRID = 15;
 
 export type PixelPoint = PlanePoint;
 
@@ -68,6 +75,45 @@ function polynomialFitter(kind: PolynomialKind): Fitter {
     };
 }
 
+/** One axis of the poly2 inverse grid: `index` of `POLY2_INVERSE_GRID` samples from `min` to `max`. */
+function gridAxis(min: number, max: number, index: number): number {
+    return min + ((max - min) * index) / (POLY2_INVERSE_GRID - 1);
+}
+
+/** Place→pixel samples of the forward poly2 on a grid over the pairs' pixels (a quadratic has no exact inverse). */
+function poly2InverseNodes(forward: PolynomialModel, pairs: readonly Correspondence[]): Correspondence[] {
+    const xs = pairs.map((pair) => pair.input.x);
+    const ys = pairs.map((pair) => pair.input.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    return Array.from({ length: POLY2_INVERSE_GRID * POLY2_INVERSE_GRID }, (_node, index) => {
+        const pixel = {
+            x: gridAxis(minX, maxX, index % POLY2_INVERSE_GRID),
+            y: gridAxis(minY, maxY, Math.floor(index / POLY2_INVERSE_GRID)),
+        };
+        return { input: evaluatePolynomial(forward, pixel), output: pixel };
+    });
+}
+
+/** Poly2: forward through the pairs; inverse through a forward-sampled grid (pipeline `_inverse_grid`). */
+const poly2Fitter: Fitter = (pairs) => {
+    const forward = fitPolynomial('poly2', pairs.forward);
+    if (forward === null) {
+        return null;
+    }
+    const backward = fitPolynomial('poly2', poly2InverseNodes(forward.model, pairs.forward));
+    if (backward === null) {
+        return null;
+    }
+    return {
+        forward: (pixel) => evaluatePolynomial(forward.model, pixel),
+        backward: (point) => evaluatePolynomial(backward.model, point),
+        leaveOneOut: forward.leaveOneOut,
+    };
+};
+
 const splineFitter: Fitter = (pairs) => {
     const forward = fitSpline(pairs.forward);
     const backward = fitSpline(pairs.backward);
@@ -83,7 +129,7 @@ const splineFitter: Fitter = (pairs) => {
 
 const FITTERS: Readonly<Record<GeorefTransform, Fitter>> = {
     affine: polynomialFitter('affine'),
-    poly2: polynomialFitter('poly2'),
+    poly2: poly2Fitter,
     tps: splineFitter,
 };
 

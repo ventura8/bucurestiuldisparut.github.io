@@ -11,7 +11,7 @@ import {
     FIRESTORE_PATHS,
     manifestStateDocSchema,
     SETUP_AREAS,
-    setupStatusDocSchema,
+    setupStatusReadSchema,
     type CityRole,
     type ManifestStateDoc,
     type ServiceState,
@@ -187,7 +187,7 @@ class HomeStore implements AreaStore<HomeState, HomeIntents> {
             services.denied();
         };
         this.#status = new LiveDoc({
-            ...{ store, clock, denied, schema: setupStatusDocSchema },
+            ...{ store, clock, denied, schema: setupStatusReadSchema },
             changed: (state) => {
                 const status = state.doc?.data ?? null;
                 this.#cell.update({

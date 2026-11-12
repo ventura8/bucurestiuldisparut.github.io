@@ -603,3 +603,40 @@ describe('<hcm-imagery-page>: an upload and its version', () => {
         expect(app.named('navigate')).toEqual(['navigate {"id":"imagery","params":[]}']);
     });
 });
+
+describe('<hcm-imagery-page>: an archive series waiting for points (M22)', () => {
+    beforeAll(defineImagery);
+    afterEach(cleanup);
+
+    // M22: an archive series waiting for points places itself again (and makes its picture for the georeferencer); a failed one does not.
+    it('happyPath_anArchiveSeriesWaitingForPointsOffersLocateAgain @S-A122-HAPPY-PLACE-AGAIN', async () => {
+        const waiting = jobView({ status: 'awaiting_gcps', waitReason: 'gcps', finished: false });
+        const { element, area } = await imageryPage(
+            imageryState({
+                detail: VERSION,
+                version: versionPage({}, versionView({ state: 'needs_gcps', origin: 'archive', output: null }), waiting),
+            }),
+        );
+
+        click(button(element, 'Locate again'));
+
+        expect(calls(area)).toEqual(['locateAgain']);
+    });
+
+    it('badPath_aFailedArchiveSeriesOffersNoLocateAgain @S-A122-BAD-PLACE-AGAIN-CANCELLED', async () => {
+        const failed = jobView({
+            status: 'failed',
+            finished: true,
+            retryable: false,
+            steps: [{ name: 'place', status: 'failed', transfer: null }],
+        });
+        const { element } = await imageryPage(
+            imageryState({
+                detail: VERSION,
+                version: versionPage({}, versionView({ state: 'failed', origin: 'archive', output: null }), failed),
+            }),
+        );
+
+        expect(deepAll(element, '.actions hcm-button').map((found) => found.textContent.trim())).not.toContain('Locate again');
+    });
+});

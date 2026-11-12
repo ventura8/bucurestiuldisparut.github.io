@@ -1,6 +1,6 @@
 # Testing
 
-How **Historic City Map** is tested: the tiers, the fakes and seams, the emulators, the scenario registry and the per-file coverage gate. The agent-facing rules are in [.agent/skills/quality/testing_strategy_skill.md](../.agent/skills/quality/testing_strategy_skill.md) and [.agent/skills/quality/e2e_scenario_matrix_skill.md](../.agent/skills/quality/e2e_scenario_matrix_skill.md); the design behind them is [research/design-review-testability.md](research/design-review-testability.md).
+How **Historic City Map Maker** is tested: the tiers, the fakes and seams, the emulators, the scenario registry and the per-file coverage gate. The agent-facing rules are in [.agent/skills/quality/testing_strategy_skill.md](../.agent/skills/quality/testing_strategy_skill.md) and [.agent/skills/quality/e2e_scenario_matrix_skill.md](../.agent/skills/quality/e2e_scenario_matrix_skill.md); the design behind them is [research/design-review-testability.md](research/design-review-testability.md).
 
 Every tier runs **inside the quality image** (`hcm-quality:local`), never on the host: Node 24, JDK 21 for the emulators, Chromium, Firefox and WebKit for Playwright, GDAL for the pipeline.
 

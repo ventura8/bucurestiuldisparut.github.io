@@ -37,7 +37,10 @@ function editorOf(
 }
 
 function fresh(shape: FreshPlace['shape']): FreshPlace {
-    return { shape, value: { category: 'biserici', geometry: null, title: { ro: 'Loc' }, links: [], photoIds: [], published: true } };
+    return {
+        shape,
+        value: { category: 'biserici', geometry: null, title: { ro: 'Loc' }, yearStart: 1890, links: [], photoIds: [], published: true },
+    };
 }
 
 describe('a place editor: what counts as unsaved', () => {

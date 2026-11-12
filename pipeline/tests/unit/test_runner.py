@@ -118,6 +118,17 @@ def test_bad_path_an_invalid_job_fails_without_running_a_step(world: PipelineWor
     assert all(step.runs == 0 for step in steps.values())
 
 
+def test_bad_path_a_job_type_this_image_does_not_run_fails_as_an_outdated_pipeline(world: PipelineWorld) -> None:
+    """Scenarios: S-A12-HAPPY-RETRY-OUTDATED"""
+    config = seed(world)
+    world.store.update(world.job_path(JOB), {"type": "future-type", "versionId": JOB})
+
+    assert runner(world, config, scripted()).run() is RunOutcome.FAILED
+
+    assert dig(world.job(JOB), "error", "code") == Errors.PIPELINE_OUTDATED
+    assert dig(world.version(JOB), "error", "code") == Errors.PIPELINE_OUTDATED
+
+
 def test_bad_path_an_invalid_jobs_version_fails_with_it_so_a_retry_or_a_dismiss_finds_it_failed(world: PipelineWorld) -> None:
     """Scenarios: S-A12-BAD-STRANDED-VERSION"""
     config = seed(world, {"basedOn": "../x"})

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
+from hcm_pipeline.archive import model
 from hcm_pipeline.geo import to_lnglat, zoom_resolution
 from hcm_pipeline.georef.autogcp import MAX_SUGGESTIONS, GcpSuggestions
 from hcm_pipeline.georef.transforms import Gcp
@@ -43,10 +44,11 @@ class Placement:
     checked: Checked
     rival_clean: bool
     scale: int | None = None
-    paper_transparent: bool = True
+    paper_transparent: bool = False
     seam: float | None = None
 
     def as_record(self) -> dict[str, object]:
+        self._require_known_method()
         record: dict[str, object] = {
             "method": self.method,
             "encoding": self.encoding,
@@ -60,9 +62,17 @@ class Placement:
             "scaleDenominator": self.scale,
             "checkpointRmseM": self._rmse(),
             "residuals": self._residuals(),
-            "seamScore": None if self.seam is None else round(max(-1.0, min(1.0, self.seam)), 3),
+            "seamScore": self._seam_score(),
         }
         return record | {key: value for key, value in optional.items() if value is not None}
+
+    def _require_known_method(self) -> None:
+        """A method the server's `ARCHIVE_PLACE_METHODS` does not list fails here, before the write it would refuse."""
+        if self.method not in model.ARCHIVE_PLACE_METHODS:
+            raise ValueError(f"unknown place method {self.method!r}")
+
+    def _seam_score(self) -> float | None:
+        return None if self.seam is None else round(max(-1.0, min(1.0, self.seam)), 3)
 
     def _rmse(self) -> float | None:
         return None if self.checked.rmse_m is None else round(self.checked.rmse_m, 2)
@@ -78,9 +88,18 @@ def finish(ctx: JobContext, placement: Placement, warped: Path, placed: int) -> 
     return Done(ctx.publish(warped, ctx.work_file("warped.tif"), "image/tiff"))
 
 
-def wait_for_help(ctx: JobContext, reason: str, note: str, fields: Mapping[str, object] | None = None) -> Waiting:
-    """The version waits for a person with why (`help`); the job waits for points."""
-    help_item = {"reason": reason, "note": note[:200], "at": ctx.now()}
+def wait_for_help(
+    ctx: JobContext,
+    reason: str,
+    note: str,
+    fields: Mapping[str, object] | None = None,
+    stitched: Mapping[str, object] | None = None,
+) -> Waiting:
+    """The version waits for a person with why (`help`) and, for a series joined into one picture, that picture (`stitched`,
+    M22 §4.1); the job waits for points."""
+    help_item: dict[str, object] = {"reason": reason, "note": note[:200], "at": ctx.now()}
+    if stitched is not None:
+        help_item["stitched"] = dict(stitched)
     ctx.update_version({"state": "needs_gcps", "help": help_item, **(fields or {})})
     ctx.log.info(f"waits for a person ({reason}): {note[:200]}", ctx.step)
     return Waiting("awaiting_gcps", "gcps", note)

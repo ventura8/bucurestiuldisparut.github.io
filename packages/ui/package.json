@@ -31,6 +31,10 @@
             "types": "./src/admin/areas/*.ts",
             "default": "./src/admin/areas/*.ts"
         },
+        "./admin/georef/marker-badge": {
+            "types": "./src/admin/georef/marker-badge.ts",
+            "default": "./src/admin/georef/marker-badge.ts"
+        },
         "./start": {
             "types": "./src/start/hcm-start-page.ts",
             "default": "./src/start/hcm-start-page.ts"

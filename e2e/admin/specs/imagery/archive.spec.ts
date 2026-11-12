@@ -108,8 +108,16 @@ function loopbackAnswer(path: string): { status: number; body: string } {
 }
 
 test(
-    "Choose a zip in the Imagery tab, it goes to the worker, the report opens by itself, one Import starts today's share and the rest wait",
-    { tag: ['@S-A121-HAPPY-PANEL', '@S-A121-HAPPY-BUDGET', '@S-A121-HAPPY-IMPORT', '@S-A121-BAD-DAILY-SPLITS', '@S-A121-HAPPY-LOCAL-TAB'] },
+    'Choose a zip in the Imagery tab, it goes to the worker, the report opens by itself, one Import starts every series past the daily share',
+    {
+        tag: [
+            '@S-A121-HAPPY-PANEL',
+            '@S-A121-HAPPY-BUDGET',
+            '@S-A121-HAPPY-IMPORT',
+            '@S-A121-HAPPY-LOCAL-UNCAPPED',
+            '@S-A121-HAPPY-LOCAL-TAB',
+        ],
+    },
     async ({ page, lang, adminWorld, mockApiRequest, upstream, inputBudget }, testInfo) => {
         const owner = adminWorld.accounts.owner.uid;
         const imagery = await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, owner);
@@ -165,13 +173,12 @@ test(
         await expectStateSound(page, adminVisit('archive.report', lang));
         await flow.click(shown.getByRole('button', { name: text(lang, 'adminArchive.import') }));
 
-        await expect(
-            shown.getByRole('status').filter({ hasText: text(lang, 'adminArchive.imported', { today: '1', waiting: '1' }) }),
-        ).toBeVisible({
+        // A share of 1 holds neither series (2026-11-09): a local-only job runs free on the computer, outside the daily cap.
+        await expect(shown.getByRole('status').filter({ hasText: text(lang, 'adminArchive.imported', { today: '2' }) })).toBeVisible({
             timeout: FUNCTIONS_TIMEOUT_MS,
         });
-        await expect(shown.getByText(text(lang, 'adminArchive.state.daily'))).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
         await expect(shown.locator('[data-progress]')).toHaveCount(2);
+        await expect(shown.getByText(text(lang, 'adminArchive.state.daily'))).toHaveCount(0);
         const archive = await adminWorld.emulators.document(`cities/${imagery.city}/archives/${ARCHIVE}`);
         const jobs = (archive?.['jobs'] ?? {}) as Readonly<Record<string, string>>;
         expect(Object.keys(jobs).toSorted((a, b) => a.localeCompare(b))).toEqual([SID(0), SID(1)]);

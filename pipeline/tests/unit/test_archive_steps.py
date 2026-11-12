@@ -22,7 +22,7 @@ from hcm_pipeline.steps.export import COG_OPTIONS, LINEART_COG_OPTIONS, Warped, 
 from hcm_pipeline.steps.gather import SHEETS, GatherStep
 from hcm_pipeline.steps.place import NO_PATH_NOTE, PlaceStep
 from hcm_pipeline.steps.pyramid import series_encoding
-from hcm_pipeline.tiles.encoding import ENCODINGS, encoding_of, paper_transparent
+from hcm_pipeline.tiles.encoding import ENCODINGS, encoding_of, paper_opaque, paper_transparent
 
 from tests.fakes.world import JOB_ID, PipelineWorld
 
@@ -147,16 +147,18 @@ def test_happy_path_a_class_with_its_path_is_placed_by_it(world: PipelineWorld, 
 def test_happy_path_each_series_tiles_in_its_encoding_and_every_other_job_in_todays(world: PipelineWorld, tmp_path: Path) -> None:
     """Scenarios: S-P20-HAPPY-ENCODING"""
     lineart = context(world, tmp_path, {**SERIES_PARAMS, "archiveId": "a", "seriesId": "s"}, None)
-    kept = replace(lineart, job=replace(lineart.job, params={**SERIES_PARAMS, "paperTransparent": False}))
+    overlay = replace(lineart, job=replace(lineart.job, params={**SERIES_PARAMS, "paperTransparent": True}))
     colour = replace(lineart, job=replace(lineart.job, params={**SERIES_PARAMS, "encoding": "colour"}))
     other = replace(lineart, job=replace(lineart.job, type="usgs-import"))
 
-    assert series_encoding(lineart) == (ENCODINGS["lineart"], True)
-    assert series_encoding(kept) == (ENCODINGS["lineart"], False)
-    assert series_encoding(colour) == (ENCODINGS["colour"], False)
-    assert series_encoding(other) == (ENCODINGS["grey"], False)
+    assert series_encoding(lineart) == (ENCODINGS["lineart"], False)
+    assert series_encoding(overlay) == (ENCODINGS["lineart"], True)
+    assert series_encoding(colour) == (ENCODINGS["colour"], None)
+    assert series_encoding(other) == (ENCODINGS["grey"], None)
     assert (encoding_of(None), ENCODINGS["grey"].options) == (ENCODINGS["grey"], ("QUALITY=75",))
-    assert ENCODINGS["lineart"] == replace(ENCODINGS["lineart"], options=("LOSSLESS=YES",), resampling="nearest")
+    assert ENCODINGS["lineart"] == replace(
+        ENCODINGS["lineart"], options=("LOSSLESS=YES",), resampling="nearest", overview_resampling="nearest"
+    )
 
 
 def grey_and_alpha(path: Path, bands: int) -> Path:
@@ -183,6 +185,20 @@ def test_happy_path_line_art_keeps_its_ink_black_and_makes_its_paper_and_outside
     assert colours <= {(0, 0, 0, 255), (255, 255, 255, 0)}
 
 
+@pytest.mark.parametrize(
+    ("bands", "alpha"),
+    [(2, [[255, 255, 0, 255], [255, 255, 255, 255]]), (1, [[255, 255, 255, 255], [255, 255, 255, 255]])],
+)
+def test_happy_path_line_art_default_keeps_opaque_white_paper(tmp_path: Path, bands: int, alpha: list[list[int]]) -> None:
+    """Scenarios: S-P20-HAPPY-ENCODING"""
+    # Opaque white paper by default (lesson 555, the Post 1847 map).
+    made = gdal.Open(str(paper_opaque(grey_and_alpha(tmp_path / "warped.tif", bands), tmp_path / "white.tif")))
+
+    assert made.GetRasterBand(4).ReadAsArray().tolist() == alpha
+    colours = {tuple(made.GetRasterBand(band).ReadAsArray()[row][col] for band in (1, 2, 3, 4)) for row in range(2) for col in range(4)}
+    assert colours <= {(0, 0, 0, 255), (255, 255, 255, 255), (255, 255, 255, 0)}
+
+
 def test_happy_path_a_line_art_series_cog_is_lossless_and_every_other_cog_jpeg(world: PipelineWorld, tmp_path: Path) -> None:
     """Scenarios: S-P20-HAPPY-ENCODING"""
     lineart = context(world, tmp_path, {**SERIES_PARAMS, "archiveId": "a", "seriesId": "s"}, None)
@@ -204,6 +220,20 @@ def test_bad_path_an_archive_series_full_resolution_rasters_never_leave_the_comp
     assert not uploads_rasters(mapbox_city, series)
     assert uploads_rasters(mapbox_city, replace(series, type="usgs-import"))
     assert not uploads_rasters({}, replace(series, type="usgs-import"))
+
+
+def test_bad_path_line_art_of_a_masked_cog_keeps_outside_the_map_clear(tmp_path: Path) -> None:
+    """Scenarios: S-P20-BAD-ENCODING-MASK"""
+    # The export's COG holds one grey band and its alpha as a mask; black outside pixels must not become ink (Post 1847, 2026-11-12).
+    source = grey_and_alpha(tmp_path / "masked.tif", 1)
+    dataset = gdal.Open(str(source), gdal.GA_Update)
+    dataset.CreateMaskBand(gdal.GMF_PER_DATASET)
+    dataset.GetRasterBand(1).GetMaskBand().WriteArray(numpy.array([[255, 255, 0, 0], [255, 255, 255, 0]], dtype=numpy.uint8))
+    dataset.Close()
+
+    made = gdal.Open(str(paper_opaque(source, tmp_path / "white.tif")))
+
+    assert made.GetRasterBand(4).ReadAsArray().tolist() == [[255, 255, 0, 0], [255, 255, 255, 0]]
 
 
 def test_bad_path_line_art_without_a_tiff_driver_says_so(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

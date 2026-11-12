@@ -1,6 +1,7 @@
 # Claude Code Instructions
 
-The canonical agent rules for this repository live in `AGENTS.md`; this file only imports them so
+This repository is **Historic City Map Maker** (`ventura8/historic-city-map-maker`), a historical map engine and admin
+for any city; București dispărut (`https://bucurestiul-disparut.web.app/`) is an example map made with it. The canonical agent rules for this repository live in `AGENTS.md`; this file only imports them so
 Claude Code and every other agent read the same contract.
 
 @AGENTS.md

@@ -23,7 +23,7 @@ import {
 
 import type { Ports } from '../ports/index.js';
 import { startImport } from './import.js';
-import { refuseNewRasterJob } from './limits.js';
+import { refuseNewRasterJob, type Placement } from './limits.js';
 import { IMAGERY_WRITER, usgsRecord } from './records.js';
 import { usgsDownloads, usgsSearchable } from './usgs-session.js';
 
@@ -92,13 +92,14 @@ async function picksFor(deps: LandsatAutoDeps, cityId: string): Promise<UsgsScen
 
 /** One import, or false when the guard or today's cap refuses it (it waits for a later tick). */
 async function importOne(deps: LandsatAutoDeps, cityId: string, scene: UsgsSceneDoc, now: Date): Promise<boolean> {
+    let placement: Placement;
     try {
-        await refuseNewRasterJob(deps.documents, now, cityId);
+        placement = await refuseNewRasterJob(deps.documents, now, cityId);
     } catch (error) {
         deps.log.info('a landsat import waits', { cityId, entityId: scene.entityId, reason: String(error) });
         return false;
     }
-    const { jobId, layerId } = await startImport(deps, { cityId, scene, createdBy: IMAGERY_WRITER, now });
+    const { jobId, layerId } = await startImport(deps, { cityId, scene, createdBy: IMAGERY_WRITER, now, ...placement });
     deps.log.info('landsat scene imported on its own', { cityId, entityId: scene.entityId, jobId, layerId });
     return true;
 }

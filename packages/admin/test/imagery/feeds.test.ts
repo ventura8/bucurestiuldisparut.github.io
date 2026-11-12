@@ -65,6 +65,49 @@ describe('the Imagery area reads', () => {
         expect([last('usgs'), last('newest'), patches.some((patch) => 'settings' in patch)]).toEqual(['missing', null, false]);
     });
 
+    // Finding of 2026-11-12: an install record stored with Firestore timestamps failed the whole setup/status, so Find said
+    // "Connect USGS" while Setup showed USGS done; one malformed area now reads as absent and USGS still answers.
+    it('happyPath_aMalformedAreaOfSetupStatusLeavesUsgsConnected @S-A11-HAPPY-USGS-BESIDE-BAD-AREA', () => {
+        const { reads, store, last } = feeds();
+        const checkedAt = at('2026-11-12T05:45:23Z');
+        store.docs.set(FIRESTORE_PATHS.setupStatus, {
+            ...setupStatus('ok'),
+            install: { server: { state: 'installed', release: '1.0.0+3897359', checkedAt } },
+        });
+
+        reads.start(true);
+
+        expect(last('usgs')).toBe('ok');
+    });
+
+    it('badPath_aMalformedUsgsRecordIsUsgsMissing @S-A11-BAD-USGS-RECORD-MALFORMED', () => {
+        const { reads, store, last } = feeds();
+        store.docs.set(FIRESTORE_PATHS.setupStatus, { ...setupStatus('ok'), usgs: { state: 'ok', checkedAt: 'yesterday' } });
+
+        reads.start(true);
+
+        expect(last('usgs')).toBe('missing');
+    });
+
+    // Finding of 2026-11-12: a version stored with a scan over MAX_SCAN_PIXELS is still listed, so the owner can end it.
+    it('happyPath_aVersionALaterSchemaRefusesIsStillListed @S-A12-HAPPY-LEGACY-VERSION-ENDS', () => {
+        const { reads, store, last } = feeds();
+        const scan = {
+            path: 'rasters/bucharest/l/v/scan.tif',
+            width: 258_271,
+            height: 1468,
+            sha256: 'a'.repeat(64),
+            previewPath: 'rasters/bucharest/l/v/scan-preview.jpg',
+            previewScale: 0.015,
+        };
+        store.docs.set(VERSIONS('legacy'), versionDoc({ state: 'needs_gcps', scan, output: undefined }));
+        store.docs.set(VERSIONS('broken'), versionDoc({ layerId: 'Not An Id!' }));
+
+        reads.start(true);
+
+        expect(last('versions')?.items.map((version) => version.id)).toEqual(['legacy']);
+    });
+
     it.each([
         ['download', 'ok'],
         ['search', 'pending'],

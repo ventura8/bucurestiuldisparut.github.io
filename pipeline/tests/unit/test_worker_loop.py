@@ -10,6 +10,7 @@ import httpx
 import pytest
 from hcm_pipeline.contract import Errors
 from hcm_pipeline.jobs import LeaseLostError
+from hcm_pipeline.model import RUN_JOB_TYPES
 from hcm_pipeline.runner import RunOutcome
 from hcm_pipeline.worker.api import WorkerApi
 from hcm_pipeline.worker.loop import Pass, WorkerLoop
@@ -119,6 +120,16 @@ def test_bad_path_an_outdated_image_under_the_supervisor_ends_the_loop() -> None
     loop.run()
 
     assert (loop.outdated_exit, state.snapshot()["outdated"], runtime.jobs) == (True, True, [])
+
+
+def test_happy_path_a_claim_names_only_the_job_types_this_image_runs() -> None:
+    server = Server(None)
+    loop, _state, _session = loop_with(server, Runtime())
+
+    assert loop.run_once() is Pass.IDLE
+    (name, data), *_rest = server.calls
+    assert name == "worker-claim"
+    assert data["types"] == list(RUN_JOB_TYPES)
 
 
 def test_happy_path_an_outdated_image_without_the_supervisor_stays_and_takes_no_job() -> None:

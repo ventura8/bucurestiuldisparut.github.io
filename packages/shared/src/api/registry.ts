@@ -58,6 +58,9 @@ import {
     imageryBrowseResponseSchema,
     imageryChooseRequestSchema,
     imageryChooseResponseSchema,
+    imageryConfirmRightsRequestSchema,
+    imageryConfirmRightsResponseSchema,
+    imageryDeleteVersionResponseSchema,
     imageryCropRequestSchema,
     imageryCropResponseSchema,
     imageryImportRequestSchema,
@@ -272,6 +275,10 @@ export const ADMIN_CALLABLES = {
     'imagery.import': cityEditor('fn-imagery', imageryImportRequestSchema, imageryImportResponseSchema),
     'imagery.approve': cityEditor('fn-imagery', imageryApproveRequestSchema, imageryApproveResponseSchema),
     'imagery.reject': cityEditor('fn-imagery', imageryVersionRequestSchema, imageryRejectResponseSchema),
+    // M20 (§7): only the city's owner confirms a version whose rights wait, so Approve is never stranded.
+    'imagery.confirmRights': cityOwner('fn-imagery', imageryConfirmRightsRequestSchema, imageryConfirmRightsResponseSchema),
+    // A version that never reached the map, deleted with its job, its log and its own files (S-A125-*).
+    'imagery.deleteVersion': cityEditor('fn-imagery', imageryVersionRequestSchema, imageryDeleteVersionResponseSchema),
     'imagery.choose': cityEditor('fn-imagery', imageryChooseRequestSchema, imageryChooseResponseSchema, 'consume'),
     'imagery.studioDone': cityEditor('fn-imagery', imageryVersionRequestSchema, imageryStudioDoneResponseSchema),
     'imagery.saveGcps': cityEditor('fn-imagery', imagerySaveGcpsRequestSchema, imagerySaveGcpsResponseSchema),

@@ -15,6 +15,7 @@ import { stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import { DEFAULT_MAP_THRESHOLD_MAX_M } from './imagery-settings.js';
 
 export { DEFAULT_MAP_THRESHOLD_MAX_M, MAP_THRESHOLD_MAX_RANGE } from './imagery-settings.js';
+import { stitchedSchema } from './imagery-help.js';
 import { coded, httpsUrlSchema, idSchema, plainText } from './primitives.js';
 
 /** At most this many series in one archive's report (the document stays far below Firestore's 1 MiB). */
@@ -58,7 +59,7 @@ export type ArchiveSkipReason = (typeof ARCHIVE_SKIP_REASONS)[number];
 /** What the report proposes for a series: import it, or skip it with a reason. */
 export const ARCHIVE_ACTIONS = ['import', 'skip'] as const;
 
-/** How a series' tiles are encoded (§6): crisp lossless line art with the paper transparent, grey, or colour. */
+/** How a series' tiles are encoded (§6): crisp lossless line art (opaque white paper by default), grey, or colour. */
 export const ARCHIVE_ENCODINGS = ['lineart', 'grey', 'colour'] as const;
 export type ArchiveEncoding = (typeof ARCHIVE_ENCODINGS)[number];
 
@@ -69,7 +70,7 @@ export const ARCHIVE_AUTO_LIKELIHOODS = ['likely', 'possible', 'points'] as cons
  * How a series' layer was placed (§4), the version's `archive.method`; `gcps`: the owner's points. Batch 4 (§5.1): `grid-names`, a grid
  * series placed from its sheets' names and frames whose grid did not prove on the reference: only its owner approves it, by hand.
  */
-export const ARCHIVE_PLACE_METHODS = ['embedded', 'grid', 'atlas', 'pieces', 'match', 'gcps', 'grid-names'] as const;
+export const ARCHIVE_PLACE_METHODS = ['embedded', 'grid', 'atlas', 'pieces', 'match', 'gcps', 'grid-names', 'overview'] as const;
 
 /** M20 (§7): the licences a published map layer may carry. */
 export const LAYER_LICENSES = ['PD', 'CC0', 'CC-BY-4.0', 'CC-BY-SA-4.0', 'permission'] as const;
@@ -259,6 +260,8 @@ export const helpItemSchema = z.strictObject({
     reason: z.enum(HELP_REASONS),
     note: plainText(200),
     at: timestampSchema,
+    /** M22 (§4.1): the series joined into one picture, which the Help calibrate wizard places. */
+    stitched: stitchedSchema.optional(),
 });
 
 export type HelpItem = z.infer<typeof helpItemSchema>;

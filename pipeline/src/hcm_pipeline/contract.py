@@ -111,6 +111,7 @@ VERSION_FILES: Final = (
     "tiles.pmtiles",
     "thumb.webp",
     "align.tif",
+    "stitched.jpg",
 )
 LEASE_SECONDS: Final = 600
 HEARTBEAT_SECONDS: Final = 60
@@ -268,6 +269,8 @@ class Errors:
     ARCHIVE_MISSING: Final = "apiError.imagery.archiveMissing"
     # M25: a Landsat delivery without a band the true colour needs.
     MISSING_BAND: Final = "apiError.imagery.missingBand"
+    # A job type this image does not run: the worker's pipeline is older than the job; an updated one runs it (retryable).
+    PIPELINE_OUTDATED: Final = "apiError.imagery.pipelineOutdated"
 
 
 def pipeline_steps_of(job_type: str) -> tuple[str, ...]:

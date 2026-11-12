@@ -186,6 +186,31 @@ export class FakeMap implements ViewerMapPort {
         return this.view;
     }
 
+    /**
+     * A flat test projection: 256 CSS px per zoom-0 world, centre of the fake at (400, 300). Enough for the
+     * georeferencer's badge overlay and keyboard nudge tests.
+     */
+    project(position: LngLat): { readonly x: number; readonly y: number } | null {
+        this.#record('project', position);
+        if (!this.mounted) {
+            return null;
+        }
+        const scale = 256 * 2 ** this.view.zoom;
+        return {
+            x: 400 + ((position[0] - this.view.center[0]) / 360) * scale,
+            y: 300 - ((position[1] - this.view.center[1]) / 180) * scale,
+        };
+    }
+
+    unproject(point: { readonly x: number; readonly y: number }): LngLat | null {
+        this.#record('unproject', point);
+        if (!this.mounted) {
+            return null;
+        }
+        const scale = 256 * 2 ** this.view.zoom;
+        return [this.view.center[0] + ((point.x - 400) / scale) * 360, this.view.center[1] - ((point.y - 300) / scale) * 180];
+    }
+
     on<E extends keyof MapEventMap>(event: E, handler: (payload: MapEventMap[E]) => void): Unsubscribe {
         const handlers = this.#handlers[event] as Set<(payload: MapEventMap[E]) => void>;
         handlers.add(handler);
@@ -531,6 +556,22 @@ export class FakeMapboxMap implements MapboxMap {
 
     getBearing(): number {
         return this.bearing;
+    }
+
+    project(lngLat: { readonly lng: number; readonly lat: number }): MapPoint {
+        const scale = 256 * 2 ** this.zoom;
+        return {
+            x: 400 + ((lngLat.lng - this.center.lng) / 360) * scale,
+            y: 300 - ((lngLat.lat - this.center.lat) / 180) * scale,
+        };
+    }
+
+    unproject(point: MapPoint): { readonly lng: number; readonly lat: number } {
+        const scale = 256 * 2 ** this.zoom;
+        return {
+            lng: this.center.lng + ((point.x - 400) / scale) * 360,
+            lat: this.center.lat - ((point.y - 300) / scale) * 180,
+        };
     }
 
     queryRenderedFeatures(

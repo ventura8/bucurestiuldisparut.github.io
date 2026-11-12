@@ -9,6 +9,7 @@ import { M7_EXPORTS } from './fixtures/exports-m7.js';
 import { M8_EXPORTS } from './fixtures/exports-m8.js';
 import { M9_EXPORTS } from './fixtures/exports-m9.js';
 import { M20_EXPORTS } from './fixtures/exports-m20.js';
+import { M22_EXPORTS } from './fixtures/exports-m22.js';
 import { M25_EXPORTS } from './fixtures/exports-m25.js';
 import { MIGRATION_EXPORTS } from './fixtures/exports-migration.js';
 
@@ -108,6 +109,9 @@ const EXPORTS = {
         'photosOverlaySchema',
         'poiCategorySchema',
         'poiSchema',
+        'hasPlaceYear',
+        'latestPlaceYear',
+        'placeYearIssues',
         'DEFAULT_CONTAINER_SELECTOR',
         'engineConfigSchema',
         'ADMIN_ROLES',
@@ -132,6 +136,7 @@ const EXPORTS = {
         'poiCategoryDocSchema',
         'poiDocSchema',
         'setupStatusDocSchema',
+        'setupStatusReadSchema',
         'timestampSchema',
         'usgsSceneDocSchema',
         'PHOTO_CONTENT_TYPES',
@@ -371,6 +376,8 @@ const EXPORTS = {
         'VERSION_ORIGINS',
         'geotiffImportParamsSchema',
         'layerVersionDocSchema',
+        'layerVersionReadSchema',
+        'salvageLayerVersion',
         'regeorefParamsSchema',
         'republishParamsSchema',
         'runsOnPipeline',
@@ -410,6 +417,7 @@ const EXPORTS = {
         'JOB_MAX_ATTEMPTS',
         'LEASE_SECONDS',
         'NOT_RETRYABLE_CODES',
+        'PIPELINE_OUTDATED',
         'PIPELINE_RUN_ARGS',
         'PROBE_LIMITS',
         'PUBLISH_MAX_ATTEMPTS',
@@ -439,9 +447,13 @@ const EXPORTS = {
         'imagerySearchResponseSchema',
         'imageryStudioDoneResponseSchema',
         'imageryVersionRequestSchema',
+        'failedOutdated',
         'jobRetryable',
         'publishTaskSchema',
         'rasterUploadMetadataSchema',
+        'retryCures',
+        'retryPastCap',
+        'runsLocally',
     ],
     imageryHelpers: [
         'MAX_FOOTPRINT_VERTICES',
@@ -588,6 +600,8 @@ const EXPORTS = {
     m8: M8_EXPORTS,
     m9: M9_EXPORTS,
     m20: M20_EXPORTS,
+    /** M22 (docs/research/M22-help-calibrate.md): a waiting series' stitched picture. */
+    m22: M22_EXPORTS,
     /** M25 (docs/research/M25-landsat.md): Landsat. */
     m25: M25_EXPORTS,
     migration: MIGRATION_EXPORTS,

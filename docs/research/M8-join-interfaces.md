@@ -225,7 +225,7 @@ Other behaviours:
 
 1. `requireCity`, read the scenes, require one date and one sensor.
 2. For an imported scene, the part is found with `layerVersions where layerId == scene.layerId`: not ended, or published, newest. `failed` or `rejected` raises `joinPartGone`.
-3. A new `refuseRasterJobs(documents, now, cityId, count)` in `limits.ts`, with count = missing frames + 1.
+3. A new `refuseRasterJobs(documents, now, cityId, count)` in `limits.ts`, with count = missing frames + 1. For a city whose choice is `local` it asks only the budget guard and every job of the join is created `runOn: 'local'` (2026-11-12, `docs/research/M7-local-worker.md` §4.5).
 4. For a missing frame, require `downloadAvailable` and `requireUsgs`, then `confirmScanned`.
 5. `reserveLayerIds`. With one published part, the join becomes a new version of **that** layer (`refuseBusyLayer`), so tileset and presentation stay and `supersede` handles the old version. Otherwise it gets a new id.
 6. One transaction, all reads first:

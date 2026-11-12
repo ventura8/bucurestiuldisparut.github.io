@@ -31,19 +31,15 @@ export function estimateText(locale: Locale, series: ArchiveSeries): string {
 }
 
 /**
- * The chosen series' total: how many, their tiles' bytes and the days at the city's share. A share of 0 releases nothing (the
- * server never starts a series then), so the total says so instead of a count of days.
+ * The chosen series' total: how many and their tiles' bytes. Every series starts at once on the owner's computer: a local-only
+ * job is outside the daily share of new layers (2026-11-09), so the total no longer counts days.
  */
-export function totalText(locale: Locale, chosen: readonly ArchiveSeries[], share: number): string {
+export function totalText(locale: Locale, chosen: readonly ArchiveSeries[]): string {
     if (chosen.length === 0) {
         return archiveText(locale, 'adminArchive.totalNone');
     }
     const bytes = chosen.reduce((sum, series) => sum + series.estimate.tilesBytes, 0);
-    const counted = { jobs: count(locale, chosen.length), size: sizeText(locale, bytes) };
-    if (share <= 0) {
-        return archiveText(locale, 'adminArchive.totalNoShare', counted);
-    }
-    return archiveText(locale, 'adminArchive.total', { ...counted, days: count(locale, Math.ceil(chosen.length / share)) });
+    return archiveText(locale, 'adminArchive.total', { jobs: count(locale, chosen.length), size: sizeText(locale, bytes) });
 }
 
 /** The series the owner keeps. */

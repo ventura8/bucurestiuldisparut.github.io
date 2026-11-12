@@ -105,6 +105,9 @@ export interface MapboxMap {
     getCenter(): { readonly lng: number; readonly lat: number };
     getZoom(): number;
     getBearing(): number;
+    /** Screen CSS px of a lon/lat (admin projection helper, Terra Draw). */
+    project(lngLat: { readonly lng: number; readonly lat: number }): MapPoint;
+    unproject(point: MapPoint): { readonly lng: number; readonly lat: number };
     queryRenderedFeatures(
         geometry: MapPoint | readonly [MapPoint, MapPoint],
         options: { readonly layers: readonly string[] },

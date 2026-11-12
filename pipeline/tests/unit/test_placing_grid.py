@@ -9,13 +9,19 @@ from hcm_pipeline.archive.grammar import Cell
 from hcm_pipeline.geo import to_mercator
 from hcm_pipeline.jobs import Done, JobContext, Waiting
 from hcm_pipeline.placing import grid
+from hcm_pipeline.placing.frame import content_frame
 from hcm_pipeline.placing.gridscheme import QUARTER_ORDERS, CityGrid, scheme_for
+from hcm_pipeline.placing.overview import MosaicReport
+from hcm_pipeline.placing.series import Sheet
+from hcm_pipeline.placing.stitched import NO_FRAME, NO_JOIN
 from hcm_pipeline.steps.place import PlaceStep
 
 from tests.fakes.world import CITY, PipelineWorld
 from tests.synthetic.scenes import CENTRE
 from tests.synthetic.town import Drawing, Line, TownSpec, draw_map, town_lines, write_map
 from tests.unit.placing_support import answer_with, originals, series_context
+from tests.unit.test_placing_overview import _make_overview, _make_tile
+from tests.unit.test_placing_overview_colour import _tinted
 
 LETTERS = "ABCD"
 TRUE_ORDER = 3
@@ -84,7 +90,7 @@ def test_happy_path_a_sheet_series_is_placed_from_its_names_its_quarter_order_re
     assert isinstance(report, dict)
     assert report["method"] == "grid"
     assert 0.0 < report["seamScore"] <= 1.0
-    assert report["paperTransparent"] is True
+    assert report["paperTransparent"] is False
     assert report["checkpointRmseM"] < 15
     assert report["checksDropped"] == 0
     assert '"order": 3' in (tmp_path / "scratch" / "placed.json").read_text(encoding="utf-8")
@@ -178,3 +184,137 @@ def test_bad_path_a_grid_record_that_is_not_a_similarity_is_ignored() -> None:
     assert grid._grid_matrix({}, mosaic) is None
     assert grid.quarter_order([], CityGrid()) == 0
     assert grid.seam_score([], CityGrid(), 0) == pytest.approx(0.0)
+
+
+def test_happy_path_a_sheet_without_a_neat_line_is_framed_by_its_drawings_extent() -> None:
+    """Scenarios: S-P22-HAPPY-CONTENT-FRAME"""
+    sheet = numpy.full((400, 300), 250, numpy.uint8)
+    for x in range(40, 260, 12):
+        sheet[50:350, x : x + 3] = 20
+    for y in range(50, 350, 15):
+        sheet[y : y + 3, 40:260] = 20
+
+    corners = content_frame(sheet, 220 / 300, 2.0)
+    wrong = content_frame(sheet, 2.0)
+
+    assert corners is not None
+    assert corners[0] == pytest.approx((81, 101), abs=8)
+    assert corners[2] == pytest.approx((521, 701), abs=8)
+    assert wrong is None
+    assert content_frame(numpy.full((100, 100), 250, numpy.uint8), 1.0) is None
+
+
+def test_bad_path_a_grid_that_does_not_prove_keeps_its_mosaic_as_one_stitched_picture(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P22-HAPPY-STITCHED-PREVIEW"""
+    ctx = grid_series(world, tmp_path, lines=town_lines(TownSpec(seed=41, block_m=140.0)))
+    blank = originals(ctx) / sheet_name(CELLS[0])
+    write_map(blank, numpy.full((60, 60, 3), 250, numpy.uint8), grey=True)
+
+    assert isinstance(PlaceStep().run(ctx), Waiting)
+
+    help_item = world.version()["help"]
+    assert isinstance(help_item, dict)
+    record = help_item["stitched"]
+    assert isinstance(record, dict)
+    assert record["method"] == "grid"
+    assert record["metresPerPx"] == grid.MOSAIC_M
+    assert (record["parts"], record["joined"]) == (64, 63)
+    assert record["leftOut"][0]["reason"] == "no-frame"
+
+
+def test_bad_path_without_city_bounds_the_grid_cannot_be_searched(world: PipelineWorld, tmp_path: Path) -> None:
+    ctx = grid_series(world, tmp_path)
+    city = world.store.documents[f"cities/{CITY}"]
+    world.store.seed(f"cities/{CITY}", {**city, "bounds": None})
+
+    result = PlaceStep().run(ctx)
+
+    assert isinstance(result, Waiting)
+    help_item = world.version()["help"]
+    assert isinstance(help_item, dict)
+    assert help_item["note"] == grid.NOT_PROVED
+
+
+def _sample_rectified(path: Path) -> grid.Rectified:
+    sheet = Sheet(path, path.name, None, path.name)
+    cell = Cell("quarter", 1, 0, 1)
+    corners = numpy.array([[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]], numpy.float64)
+    return grid.Rectified(sheet, cell, corners, numpy.full((8, 8), 200, numpy.uint8))
+
+
+def test_wait_picture_prefers_an_overview_mosaic_when_tiles_match(
+    world: PipelineWorld, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    ctx = series_context(world, tmp_path, ["a.tif"], {"class": "grid", "encoding": "grey"})
+    rectified = [_sample_rectified(tmp_path / "a.tif"), _sample_rectified(tmp_path / "b.tif")]
+    mosaic = grid.Mosaic(numpy.full((4, 4), 255, numpy.uint8), numpy.full((4, 4), -1, numpy.int32), 0.0, 0.0)
+    canvas = numpy.full((12, 12), 180, numpy.uint8)
+    report = MosaicReport(placed=["a.tif"], unplaced=["b.tif"], rms_px=1.25)
+    monkeypatch.setattr(grid, "_framed_overview", lambda _ctx, _items: tmp_path / "overview.tif")
+    monkeypatch.setattr(grid, "overview_canvas", lambda _tiles, _path, _opts: (canvas, report))
+
+    picture = grid._wait_picture(ctx, mosaic, rectified, (("gone", NO_FRAME),), False)
+
+    assert picture.method == "overview"
+    assert picture.canvas is canvas
+    assert picture.parts == 3
+    assert picture.left_out[0] == ("b.tif", NO_JOIN)
+    assert picture.left_out[-1] == ("gone", NO_FRAME)
+    assert picture.joins is not None
+    assert picture.joins.links == 1
+    assert picture.joins.rms_px == pytest.approx(1.25)
+
+
+def test_overview_picture_returns_none_when_canvas_cannot_place_tiles(
+    world: PipelineWorld, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    ctx = series_context(world, tmp_path, ["a.tif"], {"class": "grid", "encoding": "grey"})
+    rectified = [_sample_rectified(tmp_path / "a.tif")]
+    monkeypatch.setattr(grid, "_framed_overview", lambda _ctx, _items: tmp_path / "overview.tif")
+    monkeypatch.setattr(grid, "overview_canvas", lambda _tiles, _path, _opts: None)
+
+    assert grid._overview_picture(ctx, rectified, (), False) is None
+
+
+def _coloured_sheets(tmp_path: Path, colour: bool) -> tuple[Path, list[grid.Rectified]]:
+    """An overview and its four quarters written to disk, tinted (three bands) or grey."""
+    overview = _make_overview((800, 800))
+    picture = _tinted(overview) if colour else overview
+    write_map(tmp_path / "area-1895.tif", picture if colour else numpy.dstack([picture] * 3), grey=not colour)
+    rectified = []
+    for row, col in ((0, 0), (0, 1), (1, 0), (1, 1)):
+        tile = _make_tile(picture, row, col, (2, 2), upscale=2)
+        path = write_map(tmp_path / f"r{row}c{col}.tif", tile if colour else numpy.dstack([tile] * 3), grey=not colour)
+        rectified.append(_sample_rectified(path))
+    return tmp_path / "area-1895.tif", rectified
+
+
+def test_happy_path_a_colour_grid_series_keeps_its_colour_on_the_overview(
+    world: PipelineWorld, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Scenarios: S-P20-HAPPY-OVERVIEW-COLOUR"""
+    ctx = series_context(world, tmp_path, ["a.tif"], {"class": "grid", "encoding": "colour"})
+    overview, rectified = _coloured_sheets(tmp_path, colour=True)
+    monkeypatch.setattr(grid, "_framed_overview", lambda _ctx, _items: overview)
+
+    picture = grid._overview_picture(ctx, rectified, (), True)
+
+    assert picture is not None
+    assert picture.method == "overview"
+    assert picture.canvas.ndim == 3
+    bands = picture.canvas.astype(int)
+    assert float(numpy.mean(numpy.abs(bands[:, :, 0] - bands[:, :, 2]))) > 20
+
+
+def test_bad_path_a_grey_grid_series_on_its_overview_stays_one_band(
+    world: PipelineWorld, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Scenarios: S-P20-BAD-OVERVIEW-GREY-STAYS-GREY"""
+    ctx = series_context(world, tmp_path, ["a.tif"], {"class": "grid", "encoding": "grey"})
+    overview, rectified = _coloured_sheets(tmp_path, colour=False)
+    monkeypatch.setattr(grid, "_framed_overview", lambda _ctx, _items: overview)
+
+    picture = grid._overview_picture(ctx, rectified, (), False)
+
+    assert picture is not None
+    assert picture.canvas.ndim == 2

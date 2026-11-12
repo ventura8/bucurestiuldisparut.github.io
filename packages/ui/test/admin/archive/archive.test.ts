@@ -70,14 +70,22 @@ function view(changes: Partial<ArchiveViewPort> = {}): ArchiveViewPort {
         open: {
             id: ARCHIVE,
             status: 'ready',
-            report: { name: 'harti.zip', files: 5703, bytes: 9_000_000_000, series: SERIES, skipped: [['not-a-map', 50]], imported: false },
+            report: {
+                name: 'harti.zip',
+                files: 5703,
+                bytes: 9_000_000_000,
+                series: SERIES,
+                skipped: [['not-a-map', 50]],
+                imported: false,
+                importedSeries: [],
+            },
         },
         edits: {
             [SERIES[0]?.seriesId ?? '']: { include: true, title: 'Plan 0', year: '1911', confirmedBy: null },
             [SERIES[1]?.seriesId ?? '']: { include: true, title: 'IPB 1974', year: '1974', confirmedBy: null },
             [SERIES[2]?.seriesId ?? '']: { include: false, title: 'Oltean', year: '1911', confirmedBy: null },
         },
-        ...{ progress: {}, share: 10, importing: false, result: null, refusal: null },
+        ...{ progress: {}, importing: false, result: null, refusal: null },
         local: { phase: 'idle', percent: 0, done: 0, total: 0, error: null },
         ...changes,
     };
@@ -322,7 +330,7 @@ describe('<hcm-archive-report>', () => {
         expect(text).toContain(t('adminArchive.action.grid', { files: '4,545' }));
         expect(text).toContain(t('adminArchive.action.skip', { reason: t('adminArchive.reason.do-not-publish') }));
         expect(text).toContain('IPB 1974, 1962–1978');
-        expect(text).toContain(t('adminArchive.total', { jobs: '2', size: sizeText('en', 2_000_000_000), days: '1' }));
+        expect(text).toContain(t('adminArchive.total', { jobs: '2', size: sizeText('en', 2_000_000_000) }));
         expect(deep(element, '[data-rights="needs-confirmation"]').textContent).toBe(t('adminArchive.rights.needs-confirmation'));
         expect(await axeViolations(element)).toEqual([]);
 
@@ -348,9 +356,9 @@ describe('<hcm-archive-report>', () => {
             `rights ${SERIES[1]?.seriesId ?? ''} Idei Urbane`,
             'import',
         ]);
-        host.feed.set({ result: { today: 1, waiting: 1 }, importing: true });
+        host.feed.set({ result: { today: 2, waiting: 0 }, importing: true });
         await updated(element);
-        expect(deep(element, '[data-result]').textContent).toBe(t('adminArchive.imported', { today: '1', waiting: '1' }));
+        expect(deep(element, '[data-result]').textContent).toBe(t('adminArchive.imported', { today: '2' }));
         expect(button(element, '[data-import]').disabled).toBe(true);
     });
 
@@ -376,10 +384,8 @@ describe('<hcm-archive-report>', () => {
         const other = await report(confirmed, true);
         expect(deep(other, '[data-rights-confirmed]').textContent).toBe(t('adminArchive.rights.confirmed', { by: 'Idei Urbane' }));
         expect(button(other, '[data-import]').disabled).toBe(true);
-        confirmed.feed.set({ share: 0 });
-        await updated(other);
-        expect(deep(other, '[data-total]').textContent).toBe(totalText('en', SERIES.slice(1, 2), 0));
-        expect(totalText('en', SERIES.slice(1, 2), 0)).not.toContain('days');
+        expect(deep(other, '[data-total]').textContent).toBe(totalText('en', SERIES.slice(1, 2)));
+        expect(totalText('en', SERIES.slice(1, 2))).not.toContain('days');
     });
 
     it('happyPath_anImportedArchiveShowsEachSeriesWhereItStandsAndOpensItsVersion @S-A121-HAPPY-PROGRESS', async () => {
@@ -388,7 +394,11 @@ describe('<hcm-archive-report>', () => {
             ...base.open,
             id: ARCHIVE,
             status: 'ready' as const,
-            report: { ...base.open?.report, name: 'harti.zip', files: 1, bytes: 1, series: SERIES, skipped: [], imported: true },
+            report: {
+                ...base.open?.report,
+                ...{ name: 'harti.zip', files: 1, bytes: 1, series: SERIES, skipped: [], imported: true },
+                importedSeries: [SERIES[0]?.seriesId ?? '', SERIES[1]?.seriesId ?? ''],
+            },
         };
         const host = new FakeHost(
             view({
@@ -405,6 +415,7 @@ describe('<hcm-archive-report>', () => {
         const element = await report(host);
 
         expect(deepAll(element, '[data-progress]')).toHaveLength(2);
+        expect(deepAll(element, '[data-import]')).toHaveLength(0);
         expect(deep(element, '[data-overall]').textContent).toBe(t('adminArchive.local.overall', { percent: '100' }));
         expect(deepText(element)).toContain(t('adminArchive.state.approval', { error: '4.2', threshold: '15' }));
         expect(deepText(element)).toContain(t('adminArchive.state.points', { note: t('adminArchive.help.frame-not-found') }));
@@ -432,11 +443,35 @@ describe('<hcm-archive-report>', () => {
 describe('<hcm-archive-report>, the rest', () => {
     afterEach(cleanup);
 
+    it('happyPath_aSeriesStartedOverIsOfferedAgainBelowTheOthersProgress @S-A125-HAPPY-DELETE-VERSION', async () => {
+        const base = view();
+        const first = SERIES[0]?.seriesId ?? '';
+        const open = {
+            ...base.open,
+            id: ARCHIVE,
+            status: 'ready' as const,
+            report: {
+                ...{ name: 'harti.zip', files: 1, bytes: 1, series: SERIES, skipped: [], imported: true },
+                importedSeries: [first],
+            },
+        };
+        const host = new FakeHost(view({ open, progress: { [first]: progress({ state: 'awaiting_approval' }) } }));
+        const element = await report(host);
+
+        expect(deepAll(element, '[data-progress]').map((row) => row.getAttribute('data-progress'))).toEqual([first]);
+        expect(deepAll(element, '[data-series]').map((row) => row.getAttribute('data-series'))).toEqual([
+            SERIES[1]?.seriesId,
+            SERIES[2]?.seriesId,
+        ]);
+        expect(deepAll(element, '[data-import]')).toHaveLength(1);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
     it('badPath_noAppNoArchiveNoSkippedFilesASeriesWithoutEditAndAProgressWithoutVersion', async () => {
         const alone = await settled(await fixture<LitElement>(html`<hcm-archive-report locale="en"></hcm-archive-report>`));
         expect(deepAll(alone, 'hcm-loading-indicator')).toHaveLength(1);
 
-        const report = { name: 'harti.zip', files: 1, bytes: 1, series: SERIES, skipped: [], imported: false };
+        const report = { name: 'harti.zip', files: 1, bytes: 1, series: SERIES, skipped: [], imported: false, importedSeries: [] };
         const host = new FakeHost(view({ open: { id: ARCHIVE, status: 'ready', report }, edits: {} }));
         const element = await settled(await fixture<LitElement>(html`<hcm-archive-report .app=${host} locale="en"></hcm-archive-report>`));
         expect(host.feed.calls).toEqual(['start', 'open null']);

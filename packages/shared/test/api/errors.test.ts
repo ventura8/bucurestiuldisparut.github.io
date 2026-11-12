@@ -40,6 +40,12 @@ describe('API error codes', () => {
         expect(translateApiError('ro', 'apiError.claim.notOwner')).toContain('{projectId}');
     });
 
+    it('badPath_anAsideWithoutItsValueIsDropped_withItsValueItIsFilled', () => {
+        expect(translateApiError('en', 'apiError.invalidRequest')).toBe('The request is invalid.');
+        expect(translateApiError('ro', 'apiError.invalidRequest')).toBe('Cererea nu este validă.');
+        expect(translateApiError('en', 'apiError.invalidRequest', { count: '2' })).toBe('The request is invalid (problems found: 2).');
+    });
+
     it.each([
         ['apiError.internal', true],
         ['validation.required', false],

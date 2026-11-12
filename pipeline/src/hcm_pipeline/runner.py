@@ -11,6 +11,7 @@ How a run ends:
 | a step waits | `waiting_usgs` with `retryAt`, or `awaiting_gcps`; the step `pending` | 0 |
 | a step fails | `failed` with `error {code, message, params}`; the version `failed` | 1 |
 | an invalid job | `failed` with `apiError.invalidRequest` (a retry cannot help) | 1 |
+| a job type this image does not run | `failed` with `apiError.imagery.pipelineOutdated` (an updated pipeline's retry runs it) | 1 |
 | a step declines (M16: a refine with nothing better, `DeclinedError`) | `cancelled` with its `error`; the version `cancelled` with it | 0 |
 | `cancelRequested` (heartbeat, a checkpoint, or SIGTERM after it) | `cancelled`; the version `cancelled`; its `work/` objects deleted | 0 |
 | SIGTERM (or SIGINT: a local worker's Ctrl-C), no cancel | `queued` with `retryAt` + 1 minute; the step `pending` | 0 |
@@ -61,7 +62,7 @@ from hcm_pipeline.jobs import (
 )
 from hcm_pipeline.lease import Heartbeat, owned_change, take_lease
 from hcm_pipeline.log import get_logger
-from hcm_pipeline.model import DocumentError, Job, Record, StepRecord, Timestamp, params_of, stamp
+from hcm_pipeline.model import DocumentError, Job, OutdatedJobError, Record, StepRecord, Timestamp, params_of, stamp
 from hcm_pipeline.store import DELETE
 
 LOG = get_logger("runner")
@@ -164,8 +165,9 @@ class JobRunner:
         try:
             ctx = self._context(Job.of(self._config.job_id, record), flags, scratch)
         except DocumentError as error:
-            self._fail_version_of(record, StepFailedError(Errors.INVALID_REQUEST, str(error)))
-            return self._fail_job(None, StepFailedError(Errors.INVALID_REQUEST, str(error)))
+            failure = StepFailedError(_invalid_code(error), str(error))
+            self._fail_version_of(record, failure)
+            return self._fail_job(None, failure)
         return self._guarded(ctx, only)
 
     def _guarded(self, ctx: JobContext, only: str | None) -> RunOutcome:
@@ -377,6 +379,11 @@ def _record(result: Done | Skipped, started: Timestamp, finished: Timestamp) -> 
         started_at=started,
         finished_at=finished,
     ).as_record()
+
+
+def _invalid_code(error: DocumentError) -> str:
+    """An unknown job type is this image being older than the job (retryable); any other invalid job is invalid for good."""
+    return Errors.PIPELINE_OUTDATED if isinstance(error, OutdatedJobError) else Errors.INVALID_REQUEST
 
 
 def _job_error(error: StepFailedError) -> Record:

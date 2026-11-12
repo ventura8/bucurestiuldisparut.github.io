@@ -111,3 +111,40 @@ export async function rasterPaint(page: Page, layerId: string, property: string)
 export async function mapPaint(page: Page, layerId: string, property: string): Promise<unknown> {
     return page.evaluate(paintInPage, { layerId, property });
 }
+
+/** Runs in the page: how many of the points have paint on the georeferencer's badge canvas within 4 CSS px of them. */
+function badgesInPage(points: readonly (readonly [number, number])[]): number {
+    interface BadgedMap {
+        project(lngLat: readonly [number, number]): { x: number; y: number };
+        getContainer(): HTMLElement;
+    }
+    const map = (window as unknown as { __hcmE2e?: { maps: BadgedMap[] } }).__hcmE2e?.maps.at(-1);
+    const container = map?.getContainer();
+    const canvas =
+        container?.querySelector('canvas[data-georef-badges]') ?? container?.parentElement?.querySelector('canvas[data-georef-badges]');
+    const context = canvas instanceof HTMLCanvasElement ? canvas.getContext('2d') : null;
+    if (map === undefined || !(canvas instanceof HTMLCanvasElement) || context === null || canvas.clientWidth === 0) {
+        return 0;
+    }
+    const ratio = canvas.width / canvas.clientWidth;
+    const painted = (point: readonly [number, number]): boolean => {
+        const at = map.project(point);
+        const size = Math.round(9 * ratio);
+        const left = Math.round((at.x - 4) * ratio);
+        const top = Math.round((at.y - 4) * ratio);
+        if (left < 0 || top < 0 || left + size > canvas.width || top + size > canvas.height) {
+            return false;
+        }
+        return context.getImageData(left, top, size, size).data.some((value, index) => index % 4 === 3 && value > 0);
+    };
+    return points.filter(painted).length;
+}
+
+/**
+ * How many of `points` (`[longitude, latitude]`) carry a badge on the georeferencer's map: its pairs and suggestions are
+ * painted on one canvas over the map (`packages/admin/src/georef/marker-overlay.ts`, DECISIONS-for-review.md §143), not
+ * held by a map source, so the test reads the pixels the user sees there.
+ */
+export async function georefBadgesAt(page: Page, points: readonly LngLat[]): Promise<number> {
+    return page.evaluate(badgesInPage, points);
+}

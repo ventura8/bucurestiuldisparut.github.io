@@ -106,6 +106,7 @@ export const en: Readonly<Record<AdminOpsKey, string>> = {
     'adminContent.jobs.type.layerDelete': "Deleting a layer's tiles",
     'adminContent.jobs.type.layerJoin': 'Join frames',
     'adminContent.jobs.type.layerTiles': 'Make map tiles',
+    'adminContent.jobs.type.archiveSeries': 'Archive import',
     'adminContent.jobs.type.other': 'Job',
     'adminContent.jobs.status.queued': 'Queued',
     'adminContent.jobs.status.starting': 'Starting',

@@ -30,6 +30,8 @@ export interface OpenArchivePort {
         readonly series: readonly ArchiveSeries[];
         readonly skipped: readonly (readonly [reason: string, count: number])[];
         readonly imported: boolean;
+        /** The series the archive's record names (imported); the others may be imported later (left out, or started over). */
+        readonly importedSeries: readonly string[];
     } | null;
 }
 
@@ -82,8 +84,6 @@ export interface ArchiveViewPort {
     readonly open: OpenArchivePort | null;
     readonly edits: Readonly<Record<string, SeriesEditPort>>;
     readonly progress: Readonly<Record<string, SeriesProgressPort>>;
-    /** The city's daily share of new layers (the total's days). */
-    readonly share: number;
     readonly importing: boolean;
     readonly result: { readonly today: number; readonly waiting: number } | null;
     readonly refusal: AdminNoticeInputPort | null;

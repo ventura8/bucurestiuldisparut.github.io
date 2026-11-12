@@ -1,9 +1,9 @@
 // M20's Import local files, the pure part (docs/research/M20-import-local.md §8): the worker's page, the city's share, what a
 // request sends of the owner's edits, and progress from versions and jobs of other origins.
-import type { ArchiveDoc, CityDoc, LayerVersionDoc } from '@hcm/shared';
+import type { ArchiveDoc, LayerVersionDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
-import { choicesOf, editsOf, importUrlOf, progressOf, shareOf } from '../../src/archive/model.js';
+import { choicesOf, editsOf, importUrlOf, progressOf } from '../../src/archive/model.js';
 import type { Stored } from '../../src/content/services.js';
 
 function stored<T>(id: string, data: T): Stored<T> {
@@ -27,8 +27,6 @@ const SERIES = {
 describe('the archive model', () => {
     it('happyPath_aCityWithoutCentreOrNoneAtAllAndTheShare', () => {
         expect(importUrlOf(8765, undefined)).toBe('http://127.0.0.1:8765/import');
-        expect(shareOf(undefined)).toBe(10);
-        expect(shareOf({ limits: { rasterJobsPerDay: 50 } } as unknown as CityDoc)).toBe(10);
     });
 
     it('happyPath_aTitleClearedOrUnchangedAndTheSameYearSendNothingButTheChoice', () => {
@@ -49,6 +47,17 @@ describe('the archive model', () => {
         expect(choicesOf(archive, { [SERIES.seriesId]: { include: true, title: 'Plan 1911', year: '2026', confirmedBy: null } })).toEqual([
             { seriesId: SERIES.seriesId, include: true, year: 2026 },
         ]);
+    });
+
+    it('happyPath_anImportedSeriesIsNeverChosenAgainAndOneStartedOverIsTheOwnersToChoose @S-A125-HAPPY-DELETE-VERSION', () => {
+        const other = { ...SERIES, seriesId: 's-000000000001' };
+        const archive = { series: [SERIES, other], jobs: { [SERIES.seriesId]: 'ar-0' } } as unknown as ArchiveDoc;
+        const kept = { [SERIES.seriesId]: { include: true, title: 'Plan 1911', year: '1911', confirmedBy: null } };
+
+        const edits = editsOf(archive, kept);
+
+        expect([edits[SERIES.seriesId]?.include, edits[other.seriesId]?.include]).toEqual([false, true]);
+        expect(choicesOf(archive, edits)).toEqual([{ seriesId: other.seriesId, include: true }]);
     });
 
     it('badPath_versionsOfOtherOriginsAndAReportWithoutAFigureNorACityShowNoError', () => {

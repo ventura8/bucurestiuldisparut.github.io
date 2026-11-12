@@ -13,6 +13,7 @@ import {
     usageDocSchema,
     usgsSceneDocSchema,
 } from '../../src/schemas/firestore-ops.js';
+import { setupStatusReadSchema } from '../../src/schemas/legacy-reads.js';
 import { validate, type ValidationResult } from '../../src/schemas/validation.js';
 
 function check(schema: z.ZodType, doc: unknown): ValidationResult<unknown> {
@@ -277,5 +278,22 @@ describe('Firestore operational documents: the M3 fields', () => {
         ],
     ] as const)('badPath_%s', (_name, schema, doc, path, code) => {
         expect(check(schema, doc)).toEqual({ ok: false, issues: [{ path, code }] });
+    });
+});
+
+// Finding of 2026-11-12: an install record stored with Firestore timestamps failed the whole document, hiding USGS from Imagery.
+describe('setup/status as a reader takes it', () => {
+    const install = { server: { state: 'installed', checkedAt: now } };
+
+    it('happyPath_aMalformedAreaReadsAsAbsentAndTheOthersAnswer @S-A11-HAPPY-USGS-BESIDE-BAD-AREA', () => {
+        const stored = { ...stamp, usgs: { state: 'ok', role: 'download' }, install, retired: true };
+
+        expect(check(setupStatusDocSchema, stored)).toMatchObject({ ok: false });
+        expect(check(setupStatusReadSchema, stored)).toEqual({ ok: true, value: { ...stamp, usgs: { state: 'ok', role: 'download' } } });
+    });
+
+    it('badPath_aMalformedStampIsStillRefused @S-A11-BAD-USGS-RECORD-MALFORMED', () => {
+        expect(check(setupStatusReadSchema, { usgs: { state: 'ok' }, updatedBy: 'system:ops' })).toMatchObject({ ok: false });
+        expect(check(setupStatusReadSchema, { ...stamp, usgs: { state: 'bogus' } })).toEqual({ ok: true, value: stamp });
     });
 });

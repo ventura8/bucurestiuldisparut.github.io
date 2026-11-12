@@ -38,7 +38,6 @@ import {
     latitudeOf,
     progressOf,
     rowOf,
-    shareOf,
     skippedOf,
     type ArchiveRow,
     type SeriesEdit,
@@ -55,7 +54,22 @@ interface OpenArchive {
         readonly series: ArchiveDoc['series'];
         readonly skipped: readonly (readonly [reason: string, count: number])[];
         readonly imported: boolean;
+        /** The series the archive's record names (imported); the others may be imported later (left out, or started over). */
+        readonly importedSeries: readonly string[];
     } | null;
+}
+
+/** The routed archive's report as the page reads it. */
+function reportOf(archive: ArchiveDoc): NonNullable<OpenArchive['report']> {
+    return {
+        name: archive.name,
+        files: archive.fileCount,
+        bytes: archive.bytes,
+        series: archive.series,
+        skipped: skippedOf(archive),
+        imported: archive.jobs !== undefined,
+        importedSeries: Object.keys(archive.jobs ?? {}),
+    };
 }
 
 export interface ArchiveState {
@@ -67,7 +81,6 @@ export interface ArchiveState {
     readonly open: OpenArchive | null;
     readonly edits: Readonly<Record<string, SeriesEdit>>;
     readonly progress: Readonly<Record<string, SeriesProgress>>;
-    readonly share: number;
     readonly importing: boolean;
     readonly result: { readonly today: number; readonly waiting: number } | null;
     readonly refusal: NoticeInput | null;
@@ -90,7 +103,7 @@ interface ArchiveIntents {
 
 const INITIAL: ArchiveState = {
     ...{ status: 'loading', failure: null, connected: false, importUrl: importUrlOf(WORKER_PORT, undefined), archives: [] },
-    ...{ open: null, edits: {}, progress: {}, share: 0, importing: false, result: null, refusal: null, local: LOCAL_IDLE },
+    ...{ open: null, edits: {}, progress: {}, importing: false, result: null, refusal: null, local: LOCAL_IDLE },
 };
 
 /**
@@ -269,24 +282,14 @@ export class ArchiveFeed {
             return;
         }
         const archive = state.doc?.data;
-        const report =
-            archive === undefined
-                ? null
-                : {
-                      name: archive.name,
-                      files: archive.fileCount,
-                      bytes: archive.bytes,
-                      series: archive.series,
-                      skipped: skippedOf(archive),
-                      imported: archive.jobs !== undefined,
-                  };
+        const report = archive === undefined ? null : reportOf(archive);
         const edits = archive === undefined ? {} : editsOf(archive, this.#cell.state.edits);
         this.#cell.update({ open: { id: open.id, status: state.status, report }, edits });
     }
 
     #cityRead(): void {
         const city = this.#city.state.doc?.data;
-        this.#cell.update({ importUrl: importUrlOf(WORKER_PORT, city), share: shareOf(city) });
+        this.#cell.update({ importUrl: importUrlOf(WORKER_PORT, city) });
         this.#progressed();
     }
 

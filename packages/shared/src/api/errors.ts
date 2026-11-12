@@ -85,6 +85,7 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.history.notFound': spec('not-found'),
     'apiError.history.nothingToRestore': spec('failed-precondition'),
     'apiError.history.invalidSnapshot': spec('failed-precondition'),
+    'apiError.history.placeYear': spec('failed-precondition'),
     'apiError.history.layerGone': spec('failed-precondition'),
     'apiError.mapbox.publicToken': spec('invalid-argument'),
     'apiError.mapbox.tokenFormat': spec('invalid-argument'),
@@ -185,6 +186,12 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.archiveYear': spec('failed-precondition'),
     // M25 (docs/research/M25-landsat.md §3): a Landsat delivery without a band the true colour needs {band}.
     'apiError.imagery.missingBand': spec('failed-precondition'),
+    // A job type the worker's pipeline does not run: its image is older than the job; an updated one's retry runs it.
+    'apiError.imagery.pipelineOutdated': spec('failed-precondition'),
+    // A version is deleted only once it never reached the map, nothing runs for it and no other version is built on it.
+    'apiError.imagery.deletePublished': spec('failed-precondition'),
+    'apiError.imagery.deleteRunning': spec('failed-precondition'),
+    'apiError.imagery.deleteInUse': spec('failed-precondition'),
     'apiError.worker.notHolder': spec('failed-precondition'),
     'apiError.worker.refused': spec('permission-denied'),
     // Finding 67 of 2026-11-02: a pairing code unknown, used or expired (one answer for the three), and a disconnected computer.
@@ -221,6 +228,7 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.review.licenseUnknown': spec('failed-precondition'),
     'apiError.review.changed': spec('failed-precondition'),
     'apiError.review.storyEmpty': spec('failed-precondition'),
+    'apiError.review.placeYear': spec('failed-precondition'),
     'apiError.suggestion.dailyLimit': spec('resource-exhausted'),
     'apiError.suggestion.wrongKind': spec('failed-precondition'),
     'apiError.suggestion.outsideCity': spec('invalid-argument'),

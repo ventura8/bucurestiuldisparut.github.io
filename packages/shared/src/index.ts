@@ -65,6 +65,7 @@ export {
     poiSchema,
 } from './schemas/poi.js';
 export type { PhotosOverlay, Poi, PoiCategory, PoiIcon } from './schemas/poi.js';
+export { hasPlaceYear, latestPlaceYear, placeYearIssues, type PlaceYears } from './schemas/place-year.js';
 export { storyDocSchema, type StoryDoc } from './schemas/firestore.js';
 export { MAX_STORIES, MAX_STORY_LINKS, MAX_STORY_TEXT, storySchema, type Story } from './schemas/story.js';
 export type {
@@ -302,6 +303,7 @@ export * from './schemas/worker.js';
 export * from './schemas/imagery-calibration.js';
 export * from './schemas/imagery-recalibration.js';
 export * from './schemas/imagery-join.js';
+export { layerVersionReadSchema, salvageLayerVersion, setupStatusReadSchema, type SalvagedVersion } from './schemas/legacy-reads.js';
 export * from './schemas/imagery-plan.js';
 // M20 (docs/research/M20-import-local.md): a local archive's report, its series, rights, the map threshold. By name, not
 // `export *`: the star cost the engine's IIFE 19 bytes gzip of module glue it never uses (DECISIONS-for-review.md §137j).
@@ -314,6 +316,8 @@ export { archiveIssueSchema, archiveReportSchema, archiveSeriesParamsSchema, arc
 export { archiveSourceSchema, creditLine, gridDocSchema, helpItemSchema, layerRightsOf } from './schemas/imagery-archive.js';
 export { layerRightsSchema, mapThresholdM, opsDailyDocSchema, rightsAllowPublish, rightsSchema } from './schemas/imagery-archive.js';
 export type * from './schemas/imagery-archive.js';
+export { LEFT_OUT_REASONS, STITCH_METHODS, STITCHED_PREVIEW_MAX_PX, stitchedSchema } from './schemas/imagery-help.js';
+export type * from './schemas/imagery-help.js';
 // M5 (docs/research/M5-interfaces.md): many cities in one project, the static export, engine releases on jsDelivr (every
 // export of these modules is public; `test/index.test.ts` lists them).
 export * from './schemas/cities.js';
@@ -408,8 +412,7 @@ export type {
     ViewerPhase,
     WebVitalName,
 } from './telemetry/field-events.js';
-export { VIEWER_EVENT_PARAMS, createViewerGuard } from './telemetry/viewer-events.js';
-export type { ViewerEventName } from './telemetry/viewer-events.js';
+export { VIEWER_EVENT_PARAMS, createViewerGuard, type ViewerEventName } from './telemetry/viewer-events.js';
 export { ADMIN_EVENT_PARAMS, createAdminGuard } from './telemetry/admin-events.js';
 export type { AdminEventName } from './telemetry/admin-events.js';
 export { observeWebVitals, sanitizeTarget, shortTarget, vitalParams } from './telemetry/web-vitals.js';

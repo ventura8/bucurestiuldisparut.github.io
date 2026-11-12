@@ -56,10 +56,16 @@ function failedCrop(version: LayerVersionDoc, job: JobDoc): boolean {
     return version.state === 'failed' && job.status === 'failed' && CROP_STEPS.some((step) => job.steps?.[step]?.status === 'failed');
 }
 
-/** A job not asked to stop whose type has a `locate`, of a frame parked for points or whose crop failed. */
+/** M22: an archive series parked for points places itself again from `place` (which also makes its stitched picture). */
+function parkedSeries(version: LayerVersionDoc, job: JobDoc): boolean {
+    return job.type === 'archive-series' && parkedFrame(version, job);
+}
+
+/** A job not asked to stop whose type has a `locate`, of a frame parked for points or whose crop failed; or an archive series parked. */
 function locatable(version: LayerVersionDoc, job: JobDoc): boolean {
     const found = parkedFrame(version, job) || failedCrop(version, job);
-    return found && job.cancelRequested !== true && JOB_STEPS[job.type].includes('locate');
+    const searchable = found && JOB_STEPS[job.type].includes('locate');
+    return job.cancelRequested !== true && (searchable || parkedSeries(version, job));
 }
 
 /**
@@ -106,19 +112,27 @@ function requireFilesHere(job: JobDoc): void {
     }
 }
 
+/** A job whose files stay where it runs (the owner's computer), or an archive series (its originals never leave it). */
+function filesOutOfReach(job: JobDoc): boolean {
+    return job.runOn === 'local' || job.type === 'archive-series';
+}
+
 /** Something to search in: the segments, or the delivery they come from; a local job's are out of the server's reach. */
 async function requireInputs(deps: LocateAgainDeps, job: JobDoc): Promise<void> {
     const steps = job.steps ?? {};
-    if (job.runOn === 'local' || (await outputStored(deps, steps['extract'])) || (await outputStored(deps, steps['fetch']))) {
+    if (filesOutOfReach(job) || (await outputStored(deps, steps['extract'])) || (await outputStored(deps, steps['fetch']))) {
         return;
     }
     throw new ApiError('apiError.imagery.locateInputsGone');
 }
 
-/** `stitch` and every step after it are to run again; those before it stay as recorded (`locatable`: a job of a type with both). */
+/**
+ * `stitch` and every step after it are to run again; those before it stay as recorded (`locatable`: a job of a type with both). An
+ * archive series runs again from `place`.
+ */
 function fromStitch(job: JobDoc): JobDoc['steps'] {
     const order: readonly string[] = JOB_STEPS[job.type];
-    const first = order.indexOf('stitch');
+    const first = order.indexOf(job.type === 'archive-series' ? 'place' : 'stitch');
     const steps = Object.entries(job.steps ?? {}).map(([name, step]) => [
         name,
         order.indexOf(name) >= first ? { status: 'pending' as const } : step,
@@ -134,7 +148,7 @@ async function requeueIn(transaction: DocumentTransaction, request: Pick<Request
         await transaction.get(versionPath, layerVersionDocSchema),
         await transaction.get(jobPath, jobDocSchema),
     );
-    const left = omit(version, ['error', 'georef', 'calibration', 'suggestions']);
+    const left = omit(version, ['error', 'georef', 'calibration', 'suggestions', 'help']);
     await transaction.set(versionPath, layerVersionDocSchema, { ...left, state: 'processing', ...stamp });
     const kept = omit(job, ['waitReason', 'error', 'finishedAt', 'lease', 'retryAt', 'executionName', 'searchedWith', 'placingPoints']);
     const queued: JobDoc = { ...kept, status: 'queued', ...attemptForSearch(version, job), steps: fromStitch(job), ...stamp };

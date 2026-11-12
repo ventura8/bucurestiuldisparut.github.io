@@ -126,3 +126,36 @@ def find_frame(grey: UInt8Array, scale: float = 1.0) -> FloatArray | None:
     found = line_frame(grey)
     found = _largest_quad(_ink(grey), float(grey.shape[0] * grey.shape[1])) if found is None else found
     return None if found is None else order_corners((found + 0.5) * scale)
+
+
+# A sheet with no printed neat line (the cadastral sheets): the drawing's own extent, where ink is dense along both axes.
+CONTENT_DENSITY: Final = 0.04
+CONTENT_SMOOTH: Final = 0.02
+# The drawing must hold its cell's shape within this share (a title block beside it would stretch it).
+ASPECT_SLACK: Final = 0.2
+
+
+def _span(profile: numpy.ndarray, size: int) -> tuple[int, int] | None:
+    """The longest run of `profile` (ink share per row or column, smoothed) at or above `CONTENT_DENSITY`, or None."""
+    width = max(1, round(CONTENT_SMOOTH * size))
+    dense = numpy.convolve(profile, numpy.ones(width) / width, mode="same") >= CONTENT_DENSITY
+    edges = numpy.flatnonzero(numpy.diff(numpy.concatenate(([0], dense.astype(numpy.int8), [0]))))
+    runs = list(zip(edges[::2], edges[1::2], strict=True))
+    return max(runs, key=lambda run: run[1] - run[0], default=None)
+
+
+def content_frame(grey: UInt8Array, aspect: float, scale: float = 1.0) -> FloatArray | None:
+    """The drawing's extent as a frame (corners in the full scan's pixels, top left first, clockwise) for a sheet without a neat line:
+    the longest dense run of ink across and down, kept when it holds 30-99.5 % of the sheet and its cell's shape (`aspect`, width over
+    height) within `ASPECT_SLACK`; else None."""
+    ink = _ink(grey) > 0
+    height, width = ink.shape
+    across, down = _span(ink.mean(axis=0), width), _span(ink.mean(axis=1), height)
+    if across is None or down is None:
+        return None
+    (left, right), (top, bottom) = across, down
+    box = numpy.array([[left, top], [right, top], [right, bottom], [left, bottom]], numpy.float64)
+    shape = (right - left) / max(1, bottom - top)
+    if not _fits(box, float(width * height)) or abs(shape / aspect - 1.0) > ASPECT_SLACK:
+        return None
+    return order_corners((box + 0.5) * scale)

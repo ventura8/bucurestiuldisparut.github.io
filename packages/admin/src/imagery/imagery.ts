@@ -223,6 +223,8 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
         | 'recalibrate'
         | 'toggleCurrent'
         | 'reject'
+        | 'confirmRights'
+        | 'deleteVersion'
         | 'choose'
         | 'studioDone'
         | 'download'
@@ -244,6 +246,8 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
                     version.toggleCurrent();
                 },
                 reject: () => version.reject(),
+                confirmRights: (confirmedBy: string) => version.confirmRights(confirmedBy),
+                deleteVersion: () => version.deleteVersion(),
                 choose: (choice: PublishChoice) => version.choose(choice),
             },
             ...{ studioDone: () => version.studioDone(), download: () => version.download(), retryJob: () => version.retry() },

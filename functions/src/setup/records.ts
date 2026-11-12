@@ -2,6 +2,7 @@ import {
     FIRESTORE_PATHS,
     cityDocSchema,
     setupStatusDocSchema,
+    setupStatusReadSchema,
     timestampFromDate,
     type CityDoc,
     type SetupStatusDoc,
@@ -39,9 +40,12 @@ export async function requireCity(documents: DocumentStore, cityId: string): Pro
     return city;
 }
 
-/** `setup/status`, strictly validated (a writer must not build on a document its schema refuses). */
+/**
+ * `setup/status` for a writer to build on: each area validated strictly, and one its schema refuses read as absent
+ * (`setupStatusReadSchema`), so the write that follows leaves it out instead of every Setup write failing on it.
+ */
 export function readSetupStatus(reader: Pick<DocumentStore, 'get'>): Promise<SetupStatusDoc | undefined> {
-    return reader.get(FIRESTORE_PATHS.setupStatus, setupStatusDocSchema);
+    return reader.get(FIRESTORE_PATHS.setupStatus, setupStatusReadSchema);
 }
 
 type StatusChange = (current: SetupStatusFields) => SetupStatusFields;

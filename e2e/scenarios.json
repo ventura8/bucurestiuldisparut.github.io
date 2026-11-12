@@ -983,11 +983,39 @@
             "source": "the owner, 2026-11-09: import Landsat for 1984-2000, added to the sources and automated like USGS; docs/research/M25-landsat.md"
         },
         {
+            "id": "A131",
+            "area": "admin",
+            "name": "Georeferencer Undo keeps about fifty real edits; a map settle of every point costs one step, and Undo is off when history is empty",
+            "milestone": "M3",
+            "source": "the owner, 2026-11-12: Undo does not keep 50 commands; DECISIONS §143/lesson 547"
+        },
+        {
             "id": "P30",
             "area": "pipeline",
             "name": "A Landsat scene is composed on the tile grid, pan-sharpened for ETM+, and checked against Sentinel-2 instead of georeferenced",
             "milestone": "M25",
             "source": "the owner, 2026-11-09: import Landsat for 1984-2000, added to the sources and automated like USGS; docs/research/M25-landsat.md"
+        },
+        {
+            "id": "P22",
+            "area": "pipeline",
+            "name": "A series that waits for a person leaves one stitched picture to place, and a help round places it from the admin's rough placement and pairs",
+            "milestone": "M22",
+            "source": "the owner, 2026-11-09: stitch the harti.zip tiles in our pipeline and a setup wizard for what needs the admin; docs/research/M22-help-calibrate.md"
+        },
+        {
+            "id": "A122",
+            "area": "admin",
+            "name": "An archive series waiting for points opens in the georeferencer like any frame (its stitched picture, OpenStreetMap lines), placed again on Locate again, with room to work and full screen",
+            "milestone": "M22",
+            "source": "the owner, 2026-11-09: the georeferencer of 1895-1899 showed no scan and no reference, and was too small; docs/research/M22-help-calibrate.md §13.2"
+        },
+        {
+            "id": "A125",
+            "area": "admin",
+            "name": "Delete a version that never reached the map: its job, log and own files go for good, after a question that says the originals stay",
+            "milestone": "M3",
+            "source": "the owner, 2026-11-12: a cancelled or failed version (and an archive series waiting for points) can be deleted from its page; docs/research/M3-interfaces.md §7.1"
         },
         {
             "id": "V60",
@@ -3110,6 +3138,28 @@
             "notes": "Code review of 2026-11-07. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts."
         },
         {
+            "id": "S-V03-HAPPY-LAYERS-PINNED",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Compare, Street names and POIs stay pinned at the top of Layers",
+            "asserts": "Layers open with Compare and map-label switches -> they sit in .pinned above hcm-overlay-list; scrolling the list leaves them in place",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Owner 2026-11-10. Tests: e2e/specs/viewer/layers-pinned.spec.ts, packages/ui/test/viewer/hcm-layer-panel.test.ts."
+        },
+        {
+            "id": "S-V03-BAD-LAYERS-NO-PINNED",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Without Compare or map labels, Layers has no pinned strip",
+            "asserts": "no historical layers and a custom basemap with no map-label kinds -> no Compare, no map-labels group, no .pinned; the overlay list still lists photos and places",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Owner 2026-11-10. Tests: e2e/specs/viewer/layers-pinned.spec.ts, packages/ui/test/viewer/hcm-layer-panel.test.ts."
+        },
+        {
             "id": "S-V32-HAPPY-OWN-TILES",
             "behaviour": "V32",
             "area": "viewer",
@@ -4947,6 +4997,28 @@
             "notes": "Code review of 2026-11-07. Tests: e2e/admin/specs/imagery/rows.spec.ts, packages/admin/test/imagery/browse.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
         },
         {
+            "id": "S-A11-HAPPY-USGS-BESIDE-BAD-AREA",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "Find shows the search when USGS is connected, whatever another Setup area holds",
+            "asserts": "setup/status with a malformed install record and USGS ok -> Find shows the search, not Connect USGS; the next Setup write replaces the malformed record and keeps USGS",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding of 2026-11-12 (live: setup/status written with Firestore timestamps in install.*.checkedAt by an out-of-band write, updatedBy u-overnight). Tests: functions/test/setup/record-install.test.ts; the admin read in packages/admin/test/imagery/feeds.test.ts, the schema in packages/shared/test/schemas/firestore-ops.test.ts."
+        },
+        {
+            "id": "S-A11-BAD-USGS-RECORD-MALFORMED",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A malformed USGS record reads as USGS not connected, the same in Setup and in Find",
+            "asserts": "a USGS record the schema refuses -> Find shows Connect USGS and Setup the USGS step to do; the next Setup write drops the record; a malformed stamp still refuses the document",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding of 2026-11-12 (live: setup/status written with Firestore timestamps in install.*.checkedAt by an out-of-band write, updatedBy u-overnight). Tests: functions/test/setup/record-install.test.ts; packages/admin/test/imagery/feeds.test.ts; packages/shared/test/schemas/firestore-ops.test.ts."
+        },
+        {
             "id": "S-A12-HAPPY",
             "behaviour": "A12",
             "area": "admin",
@@ -5101,6 +5173,28 @@
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/import.test.ts (fn-imagery, 2026-10-23)."
         },
         {
+            "id": "S-A12-HAPPY-LOCAL-PAST-DAILY-CAP",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A city that runs its jobs on the owner's computer imports and joins past the daily cap",
+            "asserts": "with ten cloud imports today and the city's choice local, an import and a join of two missing frames start, every new job recorded runOn local; ten jobs on the computer today do not fill a cloud city's cap",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (docs/research/M7-local-worker.md §4.5). Test: functions/test/imagery/local-daily-cap.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-RUNON-CLOUD-PAST-CAP",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A job on the computer moved to the cloud past the daily cap is refused",
+            "asserts": "imagery.runOn cloud of a local import with ten cloud imports today -> apiError.imagery.dailyLimit {limit: 10}, the job unchanged; under the cap the move stamps countedAt today and the next import is refused",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (docs/research/M7-local-worker.md §4.5). Test: functions/test/imagery/local-daily-cap.test.ts."
+        },
+        {
             "id": "S-A12-HAPPY-DISPATCH",
             "behaviour": "A12",
             "area": "admin",
@@ -5200,6 +5294,50 @@
             "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
         },
         {
+            "id": "S-A12-HAPPY-RETRY-OUTDATED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A job an outdated computer could not run offers Run it again past its attempts",
+            "asserts": "an archive series failed three times by a worker image that did not run its type (apiError.imagery.pipelineOutdated, or the legacy apiError.invalidRequest naming the type) -> the Jobs page titles it Archive import, shows its error without a literal placeholder and offers Run it again; the retry queues it with its attempts back to 0; the pipeline fails an unknown type as pipelineOutdated and a worker claims only the types its image runs",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live report of 2026-11-09 (four archive-series jobs failed on an old worker image). Test: e2e/admin/specs/imagery/jobs.spec.ts."
+        },
+        {
+            "id": "S-A12-BAD-RETRY-EXHAUSTED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "An ordinary job past its attempts still offers no Run it again",
+            "asserts": "an import that failed on its own three times shows no Run it again on the Jobs page; imagery.retry refuses any other exhausted failure, an invalid request included, with apiError.imagery.attemptsExhausted",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live report of 2026-11-09. Test: e2e/admin/specs/imagery/jobs.spec.ts."
+        },
+        {
+            "id": "S-A12-HAPPY-LOCAL-RETRY-PAST-CAP",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A run on the owner's computer offers Try again past its attempts",
+            "asserts": "an archive series (runOn local, localOnly) failed three times in place on a server bug, or ended by the dispatcher with apiError.imagery.attemptsExhausted -> its version page and the Jobs page offer Try again; imagery.retry queues it again on the computer with its attempts back to 0 (a local run costs no cloud compute)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live report of 2026-11-12 (archive series ar-mw993zri-s-4054e55659a3 left with only Delete this version). One shared rule: retryPastCap and retryCures of @hcm/shared, used by jobRetryable and imagery.retry."
+        },
+        {
+            "id": "S-A12-BAD-CLOUD-RETRY-AT-CAP",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A cloud run or a publish at its cap still offers no Try again",
+            "asserts": "a failed job run in Google Cloud (or never placed) at JOB_MAX_ATTEMPTS, a local run whose publish used its starts, a local run whose Mapbox token was refused and a dismissed local run offer no Try again; imagery.retry refuses the cloud run and the publish with apiError.imagery.attemptsExhausted and the token failure with apiError.imagery.versionState",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live report of 2026-11-12: the cap that stops paid work looping stays for the cloud and for Mapbox."
+        },
+        {
             "id": "S-A12-HAPPY-OUT-OF-MEMORY-RETRY",
             "behaviour": "A12",
             "area": "admin",
@@ -5215,11 +5353,33 @@
             "behaviour": "A12",
             "area": "admin",
             "path": "bad",
-            "title": "A failed version is dismissed, asked first",
-            "asserts": "Dismiss asks first; confirmed, the version is rejected (its job stays failed) and leaves Waiting for you; a version that left failed meanwhile is not dismissed",
+            "title": "A failed version is deleted, asked first",
+            "asserts": "the page offers Delete this version (no Dismiss beside it, since 2026-11-12) and asks first; confirmed, the version and its job go and the page shows the list; imagery.reject still dismisses a failed version (rejected, its job stays failed) and a version that left failed meanwhile is not dismissed",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A12-HAPPY-LEGACY-VERSION-ENDS",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A version its schema refuses is still listed and can be rejected or cancelled",
+            "asserts": "a waiting version stored with a scan wider than today's limit -> it shows in Waiting for you and its page with Reject and Cancel; Reject or Cancel ends it and its job, writes it back valid without the refused fields, and its layer is no longer busy",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding of 2026-11-12 (live: cities/bucharest/layerVersions/im-mvya873z-D3C1202-200149F039 stored by the pipeline, unvalidated, with scan.width 258271 over MAX_SCAN_PIXELS 200000 (finding 62, lesson 332); its layer answered joinLayerBusy for ever). Tests: functions/test/imagery/legacy-version.test.ts; the admin list in packages/admin/test/imagery/feeds.test.ts; the read in packages/shared/test/schemas/legacy-reads.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-LEGACY-VERSION-UNREADABLE",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version whose required fields fail is still refused and nothing changes",
+            "asserts": "a stored version whose layer id fails -> Reject answers an internal error, its job keeps waiting, the version is not listed",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding of 2026-11-12 (live: cities/bucharest/layerVersions/im-mvya873z-D3C1202-200149F039 stored by the pipeline, unvalidated, with scan.width 258271 over MAX_SCAN_PIXELS 200000 (finding 62, lesson 332); its layer answered joinLayerBusy for ever). Tests: functions/test/imagery/legacy-version.test.ts; packages/shared/test/schemas/legacy-reads.test.ts."
         },
         {
             "id": "S-A12-BAD-LOST-RUN-STEP",
@@ -5259,8 +5419,8 @@
             "behaviour": "A12",
             "area": "admin",
             "path": "happy",
-            "title": "A dismissed failed import can be imported again",
-            "asserts": "a version that failed in the pipeline, dismissed -> its scene is a candidate again, its reserved layer id freed, and its page offers Import; a scene an earlier release left reserved is freed by the next tick",
+            "title": "A deleted or dismissed failed import can be imported again",
+            "asserts": "a version that failed in the pipeline, deleted (or dismissed) -> its scene is a candidate again, its reserved layer id freed, and its page offers Import; a scene an earlier release left reserved is freed by the next tick",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Finding 85 of docs/research/manual-test-2026-10-25.md (2026-11-05). In e2e/admin/specs/imagery/import.spec.ts and functions/test/imagery/approve.test.ts."
@@ -5297,6 +5457,39 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Review of 2026-11-06, integrated. Tests: functions/test/imagery/retry.test.ts; pipeline/tests/unit/test_runner.py."
+        },
+        {
+            "id": "S-A12-HAPPY-RETRY-STOPPED-PAIRS",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A stopped archive series tried again places itself from the owner's saved pairs",
+            "asserts": "pairs saved on a parked series, then Stop (cancelRequested) ended it -> imagery.retry queues it without cancelRequested, attempt 0, every step pending; its version is processing with georef method gcps and the pairs kept; the tick's pass over cancellations leaves it queued; place warps it through the pairs and never runs the class placer; the georeferencer opens the parked series editable with the pairs",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "2026-11-12 live bug, the 1914 SOCEC series (docs/LESSONS.md 565). Tests: functions/test/imagery/retry-stopped.test.ts; pipeline/tests/unit/test_placing_owner.py; packages/admin/test/georef/georef.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-RETRY-STOPPED-DISMISSED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A stopped series whose version was dismissed is not brought back, its Stop kept",
+            "asserts": "a stopped archive series whose version became rejected -> imagery.retry refuses with apiError.imagery.versionState; the job stays cancelled with cancelRequested, the version rejected",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "2026-11-12 (docs/LESSONS.md 565). In functions/test/imagery/retry-stopped.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-RETRY-STOPPED-PLACING",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A retried series still placing itself is read-only in the georeferencer",
+            "asserts": "an archive series' version processing (the retry runs, the pairs kept) -> the georeferencer opens it with editable false; only a version waiting for points (needs_gcps) takes new pairs",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "2026-11-12 (docs/LESSONS.md 565). In packages/admin/test/georef/georef.test.ts."
         },
         {
             "id": "S-A12-BAD-FAILED-HOLDS-ID",
@@ -5667,10 +5860,10 @@
             "area": "admin",
             "path": "happy",
             "title": "GCP editing updates residuals, transform and preview, and saving queues a job",
-            "asserts": "the scan and the reference map side by side; pairs added, moved, disabled and deleted update the residual table, the RMSE and the live warped preview; the transform switches; Save -> a regeoref job (or the waiting job continues)",
+            "asserts": "the scan and the reference map side by side; pair and suggestion badges on the map match the scan (number in the disc at every zoom, hollow checkpoints, selected ring, dashed suggestions, half-pair +); pairs added, moved, disabled and deleted update the residual table, the RMSE and the live warped preview; the transform switches; Save -> a regeoref job (or the waiting job continues)",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/georeferencer.spec.ts. Leaving the georeferencer no longer throws (CR-M3-34)."
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/georeferencer.spec.ts. Leaving the georeferencer no longer throws (CR-M3-34). Marker parity: DECISIONS §143 (2026-11-11)."
         },
         {
             "id": "S-A16-BAD-TOO-FEW-GCPS",
@@ -5737,6 +5930,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/georeferencer.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes."
+        },
+        {
+            "id": "S-A16-HAPPY-POLY2-GRID-INVERSE",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "Second-order polynomial fits when places lie on two streets",
+            "asserts": "six well-spread scan pixels whose places lie on two latitudes -> poly2 fits (fit RMSE under 0.01 m, kind poly2) instead of refusing as degenerate; affine still fits; the inverse is the forward map sampled on a 15 x 15 grid, as the pipeline does",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS §144 / lesson 553. Tests: packages/shared/test/georef/fit.test.ts (happyPath_placesOnTwoStreetsStillFitWhenTheInverseIsSampledOnTheForwardGrid)."
+        },
+        {
+            "id": "S-A16-BAD-POLY2-TWO-ROWS",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "Second-order polynomial refuses pairs on only two scan rows",
+            "asserts": "six pairs on only two horizontal scan rows -> poly2 refused as degenerate; affine still fits",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS §144 / lesson 553. Tests: packages/shared/test/georef/fit.test.ts (badPath_pixelsOnOnlyTwoRowsLeaveTheSecondOrderFitSingular)."
         },
         {
             "id": "S-A16-HAPPY-REGEOREF-LAYER",
@@ -5836,6 +6051,50 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Code review of 2026-11-07. Tests: functions/test/imagery/save-gcps.test.ts."
+        },
+        {
+            "id": "S-A16-HAPPY-GEOREF-MENU",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "The georeferencer's context menu adds, moves, deletes and undoes points on the scan and the map",
+            "asserts": "a right-click, a touch held still for 500 ms, or the ContextMenu key / Shift+F10 (at the focused pane's centre) on the scan or the map opens a role=menu with its first item focused: Add a point here starts or completes a pair exactly there (Add pairs turned on), Move this point and Delete this point only on a pair within the hit radius (Move: the next click on that pane drops it, one Undo step; Esc or a click on the other pane puts it back), Undo with a step to take back; the arrow keys, Home and End walk it; Esc, Tab, a press outside or an action closes it and the focus goes back; a long press is no click, a right-click picks nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (DECISIONS-for-review.md §152: the menu and its gestures are the lazy georef-menu chunk). Tests: e2e/admin/specs/imagery/georef-menu.spec.ts (state georef.context-menu), packages/ui/test/admin/georef/georef-menu.test.ts, packages/admin/test/georef/georef.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-GEOREF-MENU-READONLY",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version that takes no points shows a context menu with nothing that edits",
+            "asserts": "a failed version (or a read-only admin) opened in the georeferencer: the context menu on either pane has one disabled line saying the version takes no points; choosing it does nothing; Esc closes it; no Add, Move, Delete or Undo",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12. Tests: e2e/admin/specs/imagery/georef-menu.spec.ts, packages/ui/test/admin/georef/georef-menu.test.ts."
+        },
+        {
+            "id": "S-A16-HAPPY-GEOREF-LINKED",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "Once the pairs give a fit, moving the scan or the map moves the other to the same place",
+            "asserts": "a version whose pairs give a fit: Link the views is on (pressed); zooming or panning the scan (wheel, drag, pinch, + and -, the arrows) jumps the map, once a frame and without an animation, to the place the fit puts at the scan's centre at the zoom of the fit's local scale there; the map's own pan or zoom centres the scan on the pixel its inverse gives at the matching scale; the move one pane makes is not sent back (no loop); turned off, each pane moves alone, and the choice holds for the next version opened in the same session; a read-only version links too",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12 (DECISIONS-for-review.md §156; the mapping is in the lazy georef-extras chunk). Tests: e2e/admin/specs/imagery/georef-linked.spec.ts (state georef.linked), packages/admin/test/georef/linked-views.test.ts, packages/admin/test/georef/georef-linked.test.ts, packages/ui/test/admin/georef/scan-viewer-linked.test.ts, packages/ui/test/admin/georef/georef-linked-page.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-GEOREF-LINKED-NO-FIT",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without a fit the views are not linked and the page says when they will be",
+            "asserts": "too few pairs (or pairs that span no area): Link the views is disabled and not pressed, a note says the views link once the pairs give a fit; zooming the scan leaves the map where it is and the chunk is not fetched; while a point is dragged on the map, or a pointer is down on the scan, nothing follows; a map move that leaves its camera where it was (a resize) moves nothing; a place the fit cannot map moves nothing; a chunk that fails to load leaves the views unlinked and is asked for once",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12. Tests: e2e/admin/specs/imagery/georef-linked.spec.ts, packages/admin/test/georef/linked-views.test.ts, packages/admin/test/georef/georef-linked.test.ts, packages/ui/test/admin/georef/scan-viewer-linked.test.ts, packages/ui/test/admin/georef/georef-linked-page.test.ts."
         },
         {
             "id": "S-A17-HAPPY",
@@ -7163,7 +7422,7 @@
             "area": "admin",
             "path": "happy",
             "title": "The daily flows stay within their input budgets",
-            "asserts": "a batch upload with EXIF 3, a photo without EXIF 4, a photo's direction 3, a point place 5, a category 3, a delete with Undo 3, a GeoJSON import 3 and an invitation 3 inputs (CONTENT_INPUT_BUDGETS, inputBudget.flow)",
+            "asserts": "a batch upload with EXIF 3, a photo without EXIF 4, a photo's direction 3, a point place 6 (its year included), a category 3, a delete with Undo 3, a GeoJSON import 3 and an invitation 3 inputs (CONTENT_INPUT_BUDGETS, inputBudget.flow)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.6; owner: ops-screens with each area)."
@@ -7356,6 +7615,28 @@
             "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/pois/import-delete.spec.ts; packages/admin/test/pois/pois.test.ts, packages/ui/test/admin/pois/pois-page.test.ts."
         },
         {
+            "id": "S-A32-HAPPY-PLACE-YEAR",
+            "behaviour": "A32",
+            "area": "admin",
+            "path": "happy",
+            "title": "A place with one year or a span is saved, and an old place without one still loads",
+            "asserts": "a place with a single year, an open start or end, or a span from and to is created; a place stored without a year still reads, shows Year missing in the list, can be published, unpublished or moved to another category, and saves once it is given a year; an undated place's earlier version and an undone delete still restore",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12: every place (point, line, area) names a year. Tests: firebase/rules-tests/test/pois.test.ts, functions/test/history/revert.test.ts; the editor, the list badge and the import: packages/admin/test/pois/draft.test.ts, packages/admin/test/pois/pois.test.ts, packages/admin/test/pois/geojson.test.ts, packages/ui/test/admin/pois/poi-editor.test.ts, packages/ui/test/admin/pois/pois-page.test.ts; docs/research/M2c-interfaces.md §7.2."
+        },
+        {
+            "id": "S-A32-BAD-PLACE-YEAR",
+            "behaviour": "A32",
+            "area": "admin",
+            "path": "bad",
+            "title": "A place without a year is not saved",
+            "asserts": "a new place without a year, an old place retitled or redrawn without one, or a place whose years are removed (by an edit or by history.revert, apiError.history.placeYear) is refused, as is a year after next year in the rules and the import; the editor says Write a year, or the years from and to under the start year at once and in Save's note, Save is off, and a year after next year says The year cannot be after next year",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12: every place (point, line, area) names a year. Tests: firebase/rules-tests/test/pois.test.ts, functions/test/history/revert.test.ts; the editor, the list badge and the import: packages/admin/test/pois/draft.test.ts, packages/admin/test/pois/pois.test.ts, packages/admin/test/pois/geojson.test.ts, packages/ui/test/admin/pois/poi-editor.test.ts, packages/ui/test/admin/pois/pois-page.test.ts; docs/research/M2c-interfaces.md §7.2."
+        },
+        {
             "id": "S-A33-HAPPY",
             "behaviour": "A33",
             "area": "admin",
@@ -7453,6 +7734,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A33-HAPPY-DELETE-INDEXED",
+            "behaviour": "A33",
+            "area": "admin",
+            "path": "happy",
+            "title": "Deleting a layer asks Firestore only what its indexes answer",
+            "asserts": "layers.delete checks the layer's unfinished jobs by the indexed status and matches params.layerId or layerId in code -> the layer goes, its tileset deletion waits seven days",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 557 (Bucuresti actual could not be deleted, 2026-11-12). Tests: functions/test/layers/delete.test.ts."
+        },
+        {
+            "id": "S-A33-BAD-UNINDEXED-QUERY",
+            "behaviour": "A33",
+            "area": "admin",
+            "path": "bad",
+            "title": "A query on a field exempt from indexing fails in tests as it fails in Firestore",
+            "asserts": "the fake document store refuses a query or count filtering on jobs.params.* (exempt in firebase/firestore.indexes.json) with FAILED_PRECONDITION; a query on status passes",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 557: the emulator does not enforce indexes. Tests: functions/test/support/port-fakes.test.ts."
         },
         {
             "id": "S-A33-BAD-DELETE-FAILED-KEEPS-SCENE",
@@ -8296,7 +8599,7 @@
             "area": "admin",
             "path": "happy",
             "title": "Suggested points are accepted with one click and saved",
-            "asserts": "a version waiting for points with four suggestions beside its four corner pairs: dashed markers on the scan and the map's suggestion overlay, rows with their confidence in words and their distance from the page's live fit; Accept all -> the four join the table as automatic pairs, the fit and both errors updated live, the keyboard on the panel's heading; Save -> the same job continues from georef and the version's georef holds them (input budget acceptSuggestions: 2)",
+            "asserts": "a version waiting for points with four suggestions beside its four corner pairs: dashed markers on the scan and a badge at each suggested place on the map's badge canvas (DECISIONS-for-review.md §143), rows with their confidence in words and their distance from the page's live fit; Accept all -> the four join the table as automatic pairs, the fit and both errors updated live, the keyboard on the panel's heading; Save -> the same job continues from georef and the version's georef holds them (input budget acceptSuggestions: 2)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M4 (docs/research/M4-interfaces.md §2.5; owner: autogcp). Test: e2e/admin/specs/imagery/suggestions.spec.ts against the emulators and the stand-in runner's `suggestions` outcome (e2e-admin)."
@@ -9246,6 +9549,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Milestone M5, the reviews' fixes (docs/research/DECISIONS-for-review.md §65; owner: the fixer). The security review's finding 7 (docs/LESSONS.md 241). Test: functions/test/export/documents.test.ts, firebase/rules-tests/test/cities.test.ts."
+        },
+        {
+            "id": "S-A53-HAPPY-ENGLISH-DOCS",
+            "behaviour": "A53",
+            "area": "admin",
+            "path": "happy",
+            "title": "The export's README and RIGHTS are written in English only",
+            "asserts": "an export's README.md opens with '# <the city's English name>: static export (<day>)', its preface in English and no Romanian section, then the kit's README; RIGHTS.md is titled 'Rights' with the header row '| Photo | Title | Rights holder | Licence |' and lists a photo under its English title (the Romanian one when it has none)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's rule of 2026-11-10: all project Markdown in English only (docs/research/DECISIONS-for-review.md §157). Test: functions/test/export/documents.test.ts."
+        },
+        {
+            "id": "S-A53-BAD-NAME-MARKUP",
+            "behaviour": "A53",
+            "area": "admin",
+            "path": "bad",
+            "title": "A city name with Markdown characters stays plain text in the README's title",
+            "asserts": "a city whose English name holds '#', '|' and '*' -> the README's first line is one heading with each character escaped, never a table, a second heading or emphasis",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS §157 moved the title to the English name. Test: functions/test/export/documents.test.ts."
         },
         {
             "id": "S-A53-BAD-CLIENT-EXPORTS",
@@ -14220,6 +14545,17 @@
             "notes": "Milestone M13 (docs/research/M13-roles.md). Test: e2e/admin/specs/roles/roles.spec.ts, packages/admin/test/photos/store.test.ts, packages/admin/test/pois/pois.test.ts."
         },
         {
+            "id": "S-A90-BAD-PLACE-YEAR",
+            "behaviour": "A90",
+            "area": "admin",
+            "path": "bad",
+            "title": "A place without a year is not approved",
+            "asserts": "apiError.review.placeYear, the place still pending and unpublished; refusing it still works",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12: every place names a year. Test: functions/test/photos/review-decide.test.ts."
+        },
+        {
             "id": "S-A92-HAPPY-ASK-AGAIN",
             "behaviour": "A92",
             "area": "admin",
@@ -14748,6 +15084,28 @@
             "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
         },
         {
+            "id": "S-A76-HAPPY-LEGAL",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "happy",
+            "title": "The start page names the app and links its privacy policy and terms, in both languages",
+            "asserts": "the home page's footer, plain HTML below the page, names Historic City Map and links privacy.html and terms.html; each opens with its Romanian heading and its English section, and links back; Search Console's file is served with its one line",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-09: Google's OAuth verification (docs/research/M14-start-your-map.md §10). Test: e2e/admin/specs/start/legal.spec.ts."
+        },
+        {
+            "id": "S-A76-BAD-VERIFICATION",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Search Console name that is no verification file stops the start build",
+            "asserts": "HCM_START_SITE_VERIFICATION outside google<hex>.html -> exit 1 before the steps are read, nothing written",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-09. Test: e2e/admin/specs/start/legal.spec.ts."
+        },
+        {
             "id": "S-A61-HAPPY-SELF-RELOAD",
             "behaviour": "A61",
             "area": "admin",
@@ -14801,6 +15159,17 @@
             "tier": "functions",
             "status": "exists",
             "notes": "M18 (docs/research/M18-improvements.md item 3, the owner 2026-11-08). Test: functions/test/imagery/relocate.test.ts."
+        },
+        {
+            "id": "S-A69-BAD-AUTO-RELOCATE-INVALID",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "bad",
+            "title": "A parked frame whose record its schema refuses does not stop the others",
+            "asserts": "one parked frame whose version fails its schema among valid ones -> a warning naming the version, the frame remembered with the installed image, and every other frame still searches again",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding of 2026-11-12 (live: \"imagery tick part failed ... InvalidDocumentError ... im-mvya873z\"). Test: functions/test/imagery/relocate.test.ts."
         },
         {
             "id": "S-A69-HAPPY-FAILED-CROP",
@@ -14863,7 +15232,7 @@
             "area": "admin",
             "path": "happy",
             "title": "An image is deleted with one word and one question at every stage",
-            "asserts": "waiting for points, waiting for approval, approved but stopped at the guard, failed -> the button says Delete and the dialog Delete this image? with Delete, each by imagery.reject, so the version then reads Deleted (never Cancelled); published (Layers) -> Delete this image? (its name)",
+            "asserts": "waiting for points, waiting for approval, approved but stopped at the guard -> the button says Delete and the dialog Delete this image? with Delete, each by imagery.reject, so the version then reads Deleted (never Cancelled); failed -> one Delete this version (imagery.deleteVersion, S-A125), never a second Delete; published (Layers) -> Delete this image? (its name)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M18 (docs/research/M18-improvements.md item 5, the owner 2026-11-08); review of 2026-11-08: the waiting frame was cancelled (Cancelled) and the guard offered no Delete. Tests: e2e/admin/specs/imagery/import.spec.ts (failed), packages/ui/test/admin/imagery/imagery-detail.test.ts (waiting for points, approval, guard), packages/ui/test/admin/layers/layers-page.test.ts (published)."
@@ -15742,8 +16111,8 @@
             "behaviour": "A120",
             "area": "admin",
             "path": "bad",
-            "title": "Series beyond today's share wait for the next days, never refused",
-            "asserts": "a share of 2 and five series -> 2 start today, 3 wait (daily, not counted, not claimed); tomorrow's tick releases the next two of the ladder",
+            "title": "Every archive series starts at once; the cap holds only work that is not local-only",
+            "asserts": "a share of 2 and five series -> all five start today (worker, not counted); a legacy series held daily is released today past the share; a non-local job held daily stays held while the share is full and starts on a later day, counted then",
             "tier": "functions",
             "status": "exists",
             "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-import.test.ts."
@@ -15826,6 +16195,39 @@
             "notes": "M20 (docs/research/M20-import-local.md). Tests: functions/test/imagery/archive-approval.test.ts."
         },
         {
+            "id": "S-A120-HAPPY-CONFIRM-RIGHTS",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner confirms a version whose rights wait so Approve can publish",
+            "asserts": "imagery.confirmRights on needs-confirmation -> state clear, licence permission, confirmedBy and confirmedAt from the server; the approval card shows Confirm and keeps Approve disabled until rights allow publish",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §7; DECISIONS §148). Tests: functions/test/imagery/confirm-rights.test.ts, packages/ui/test/admin/imagery/confirm-rights.test.ts."
+        },
+        {
+            "id": "S-A120-BAD-CONFIRM-EMPTY",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "Empty confirmation words never clear rights",
+            "asserts": "imagery.confirmRights with blank confirmedBy -> apiError.imagery.rightsUnconfirmed; rights stay needs-confirmation",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §7; DECISIONS §148). Tests: functions/test/imagery/confirm-rights.test.ts."
+        },
+        {
+            "id": "S-A120-BAD-CONFIRM-STATE",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "Confirm rights refuses a version that is not waiting for confirmation",
+            "asserts": "already clear, do-not-publish or no rights -> apiError.imagery.rightsUnconfirmed; not awaiting_approval -> apiError.imagery.versionState; an editor sees no Confirm and Approve stays off",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M20 (docs/research/M20-import-local.md §7; DECISIONS §148). Tests: functions/test/imagery/confirm-rights.test.ts, packages/ui/test/admin/imagery/confirm-rights.test.ts."
+        },
+        {
             "id": "S-A120-HAPPY-CREDITS",
             "behaviour": "A120",
             "area": "admin",
@@ -15841,8 +16243,8 @@
             "behaviour": "A120",
             "area": "admin",
             "path": "bad",
-            "title": "A retried or concurrent import never spends today's room twice",
-            "asserts": "the import and each daily release count today's room inside their transaction behind ops/daily; a retried import counts again (2 start, 1 waits at a share of 2) with distinct layer ids; a share of 0 says none starts until it is raised",
+            "title": "A retried or concurrent release never spends today's room twice",
+            "asserts": "a non-local job's daily release counts today's room inside its transaction behind ops/daily; a retried release counts again; an archive import passes the turnstile and counts nothing",
             "tier": "functions",
             "status": "exists",
             "notes": "M20 (docs/research/M20-import-local.md §7, §8, review 2026-11-09). Tests: functions/test/imagery/archive-import.test.ts, packages/ui/test/admin/archive/archive.test.ts."
@@ -15914,15 +16316,26 @@
             "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts, packages/ui/test/admin/archive/archive.test.ts, packages/admin/test/archive/feed.test.ts."
         },
         {
+            "id": "S-A121-HAPPY-LOCAL-UNCAPPED",
+            "behaviour": "A121",
+            "area": "admin",
+            "path": "happy",
+            "title": "A local archive's series all start the same day, past the daily share",
+            "asserts": "a share of 1 and two series -> one Import starts both (no series reads Waiting for a later day's share); series that waited before the change are released by the next tick whatever the share, and count nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (31 series of harti.zip held by the cap). Tests: e2e/admin/specs/imagery/archive.spec.ts, functions/test/imagery/archive-import.test.ts."
+        },
+        {
             "id": "S-A121-BAD-DAILY-SPLITS",
             "behaviour": "A121",
             "area": "admin",
             "path": "bad",
-            "title": "Series past the city's daily share wait for their day, shown per series",
-            "asserts": "a share of 1 and two series -> one starts, the other reads Waiting for a later day's share",
-            "tier": "e2e-admin",
+            "title": "A Cloud Run import past the daily share still waits or is refused; only local-only jobs pass",
+            "asserts": "archive series counted today (local-only) do not fill the share: a USGS import still starts; at a full share of cloud imports the next import is refused (apiError.imagery.dailyLimit) and a non-local job held daily stays held until a later day",
+            "tier": "functions",
             "status": "exists",
-            "notes": "M20 (docs/research/M20-import-local.md §8). Tests: e2e/admin/specs/imagery/archive.spec.ts."
+            "notes": "M20 (docs/research/M20-import-local.md §1.3); the owner, 2026-11-09. Tests: functions/test/imagery/archive-import.test.ts."
         },
         {
             "id": "S-A121-HAPPY-REPORT-EDIT",
@@ -16227,10 +16640,32 @@
             "area": "pipeline",
             "path": "happy",
             "title": "A series' tiles follow its encoding",
-            "asserts": "line art lossless and nearest with its paper transparent, colour at 82, grey as today",
+            "asserts": "line art lossless and nearest at every zoom (overviews too) with opaque white paper by default (transparent only when paperTransparent true) and binary alpha; colour at 82; grey as today",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_steps.py."
+            "notes": "M20 (docs/research/M20-import-local.md); lesson 546 (Post 1847). Tests: pipeline/tests/unit/test_archive_steps.py, pipeline/tests/integration/test_lineart_tiles.py."
+        },
+        {
+            "id": "S-P20-BAD-LINEART-AVERAGE",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Averaged line-art overviews wash ink alpha",
+            "asserts": "the same checker tiled with overview-resampling average -> soft (non-binary) alpha at a city zoom; lineart encoding stays nearest",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pins lesson 546 so Post 1847 cannot recur. Test: pipeline/tests/integration/test_lineart_tiles.py."
+        },
+        {
+            "id": "S-P20-BAD-ENCODING-MASK",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Outside a line-art map stays clear, never a black frame",
+            "asserts": "a one-band COG whose alpha is an internal mask -> line art keeps the mask as alpha (outside clear), black outside pixels never read as ink",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "The Post 1847 black frame, 2026-11-12 (lesson 556). Test: pipeline/tests/unit/test_archive_steps.py."
         },
         {
             "id": "S-P20-HAPPY-STREETS",
@@ -16310,6 +16745,28 @@
             "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_single.py."
         },
         {
+            "id": "S-P20-HAPPY-OWNER-PAIRS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A parked series is placed from the owner's saved pairs",
+            "asserts": "saveGcps resumes place; place warps the stitched picture through the pairs within 15 m, archive method gcps, never the placer again",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "2026-11-10 live bug (docs/LESSONS.md). Tests: pipeline/tests/unit/test_placing_owner.py, functions/test/imagery/save-gcps.test.ts."
+        },
+        {
+            "id": "S-P20-BAD-OWNER-PAIRS-FEW",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Too few owner pairs park the series again with its help",
+            "asserts": "needs_gcps, help reason and stitched kept with a new note, no archive report, no warped.tif",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "2026-11-10 live bug (docs/LESSONS.md). Tests: pipeline/tests/unit/test_placing_owner.py."
+        },
+        {
             "id": "S-P20-HAPPY-LINEART",
             "behaviour": "P20",
             "area": "pipeline",
@@ -16330,6 +16787,149 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_assemble.py, pipeline/tests/unit/test_placing_embedded.py."
+        },
+        {
+            "id": "S-P20-HAPPY-OVERVIEW",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Pieces with an archive overview become one stitched picture on that overview",
+            "asserts": "find_overview in the parent folder; mosaic_on_overview places most tiles; help.stitched.method is overview; georeferencer gets that picture",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Owner 2026-11-10 tile import piece 3. Tests: pipeline/tests/unit/test_placing_assemble.py, pipeline/tests/unit/test_placing_overview_find.py."
+        },
+        {
+            "id": "S-P20-BAD-OVERVIEW-BLANK",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A blank overview does not replace today's stitching",
+            "asserts": "overview_canvas returns None when too few tiles match; PiecesPlacer falls back to joins.joined",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Owner 2026-11-10 tile import piece 3. Tests: pipeline/tests/unit/test_placing_overview_find.py, pipeline/tests/unit/test_placing_assemble.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-METHOD-UNKNOWN",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A stitch or place method the server does not know never leaves the worker",
+            "asserts": "publish_stitched with a method outside STITCH_METHODS, or an archive report (Placement.as_record) with a method outside ARCHIVE_PLACE_METHODS -> ValueError before any file is published or written; the overview method is in STITCH_METHODS and ARCHIVE_PLACE_METHODS on both sides of the contract (enums.json)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895: the worker's write of help.stitched (method overview) was refused as apiError.invalidRequest after 10 minutes of work (lesson 569). Tests: pipeline/tests/unit/test_placing_assemble_overview.py, pipeline/tests/unit/test_contract.py, packages/shared/test/schemas/pipeline-contract.test.ts."
+        },
+        {
+            "id": "S-P20-HAPPY-OVERVIEW-ATLAS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An atlas whose archive holds an overview is stitched on it",
+            "asserts": "atlas pages beside a complete smaller-scale sheet -> the stitched picture is the pages on the overview (method overview, at least 3 joined)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip (2026-11-12). Tests: pipeline/tests/unit/test_placing_assemble_overview.py."
+        },
+        {
+            "id": "S-P20-BAD-OVERVIEW-ATLAS-BLANK",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An atlas with a blank overview keeps its page layout",
+            "asserts": "a blank overview beside the pages -> too few pages land on it, the atlas is laid out by its edges or overlaps (method atlas)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip (2026-11-12). Tests: pipeline/tests/unit/test_placing_assemble_overview.py."
+        },
+        {
+            "id": "S-P20-HAPPY-OVERVIEW-SIBLING",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An overview in a same-year sibling series is found for pieces",
+            "asserts": "find_overview under the archive root returns a raster from a sibling folder sharing a year token",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Owner 2026-11-11 tile import piece 4 (harti.zip coloured 1895 vs IGA). Tests: pipeline/tests/unit/test_placing_overview_find.py."
+        },
+        {
+            "id": "S-P20-BAD-OVERVIEW-SIBLING-YEAR",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A sibling series of another year is not used as the overview",
+            "asserts": "find_overview returns None when the only sibling raster's year does not match the pieces folder",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Owner 2026-11-11 tile import piece 4. Tests: pipeline/tests/unit/test_placing_overview_find.py."
+        },
+        {
+            "id": "S-P20-HAPPY-OVERVIEW-ANCESTOR",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The overview two folders up, under the archive's top folder, is found",
+            "asserts": "find_overview climbs from the pieces' folder towards the archive root and returns the same-year map loose beside an ancestor's branch (harti.zip: Harti/Harta Bucuresti 1895.png), not a larger same-city map of another year",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895-1899 pieces stitched 4 of 60 (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_find.py."
+        },
+        {
+            "id": "S-P20-BAD-OVERVIEW-ANCESTOR-YEAR",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A same-city map of another year up the tree is not taken as the overview",
+            "asserts": "find_overview returns None when the only rasters up the tree share the city's name but not the pieces' year, and a scale folder like 1-10000 is no year",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895-1899 pieces stitched 4 of 60 (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_find.py."
+        },
+        {
+            "id": "S-P20-HAPPY-OVERVIEW-SCALE",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Pieces read at the overview's own size still land on it",
+            "asserts": "overview_canvas estimates the downscale from the pieces' count (16 tiles at 4x on an 800 px overview, all read at 800 px), places at least 12 with RMS under 3 px and draws the canvas at the tiles' detail",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895-1899 pieces stitched 4 of 60 (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_scale.py."
+        },
+        {
+            "id": "S-P20-BAD-OVERVIEW-SCALE-BLANK",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A blank piece among landed pieces is left out of the overview mosaic",
+            "asserts": "fit_tiles returns None for a uniform piece while the real pieces land; a weak fit joins only when its scale and turn agree with the strong fits",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895-1899 pieces stitched 4 of 60 (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_scale.py."
+        },
+        {
+            "id": "S-P20-HAPPY-OVERVIEW-COLOUR",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A colour series stitched on its overview keeps its colour",
+            "asserts": "overview_canvas with colour fits on grey features but pastes each piece in its own colour (three bands, each within a small mean error of the source); a grey piece fills every band; the canvas, stitched.tif and the georeferencer's scan.tif of a colour pieces series stay three-band, its warped output from the owner's pairs keeps red, green and blue bands, and a colour grid series' overview wait picture is three-band",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895-1899 coloured map shown grey in the georeferencer (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_colour.py, pipeline/tests/unit/test_placing_assemble_overview.py, pipeline/tests/unit/test_placing_grid.py."
+        },
+        {
+            "id": "S-P20-BAD-OVERVIEW-GREY-STAYS-GREY",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A grey series stitched on its overview stays one band, even from colour pieces",
+            "asserts": "overview_canvas without colour returns a single-band canvas from three-band pieces, the pieces placed as before; a grey grid series' overview wait picture stays one band",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895-1899 coloured map shown grey in the georeferencer (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_colour.py, pipeline/tests/unit/test_placing_grid.py."
         },
         {
             "id": "S-P20-HAPPY-ATLAS",
@@ -16629,6 +17229,160 @@
             "notes": "M25 (docs/research/M25-landsat.md). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
         },
         {
+            "id": "S-P22-HAPPY-STITCHED-PREVIEW",
+            "behaviour": "P22",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A grid, atlas or pieces series that does not place itself keeps its stitched picture for the admin",
+            "asserts": "help.stitched: the preview stitched.jpg uploaded, size, parts joined, left-out parts with their reason, metres a pixel of a grid",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M22 §4.1. Tests: pipeline/tests/unit/test_placing_assemble.py, pipeline/tests/unit/test_placing_grid.py."
+        },
+        {
+            "id": "S-P22-BAD-ATLAS-PAGES-APART",
+            "behaviour": "P22",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An atlas page that joins no other is left out of the stitched picture with its reason",
+            "asserts": "leftOut lists the page as no-join; joined and parts count it",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M22 §4.1. Tests: pipeline/tests/unit/test_placing_assemble.py."
+        },
+        {
+            "id": "S-P22-HAPPY-JOIN-QUALITY",
+            "behaviour": "P22",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Pieces and overlapping atlas pages are joined by their features at twice the old resolution, with the joins' quality",
+            "asserts": "SIFT + FLANN + similarity RANSAC at 2,400 px; 2,000 px scans overlapping a tenth join; links, mean inliers, residual reported",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M22 §4.1. Tests: pipeline/tests/unit/test_placing_assemble.py."
+        },
+        {
+            "id": "S-P22-HAPPY-CONTENT-FRAME",
+            "behaviour": "P22",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A cadastral sheet with no printed neat line is framed by its drawing's extent",
+            "asserts": "the dense ink run across and down, kept only with its cell's shape; a blank or misshapen one is not framed",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M22 §4.1. Tests: pipeline/tests/unit/test_placing_grid.py."
+        },
+        {
+            "id": "S-A122-HAPPY-PLACE-AGAIN",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "happy",
+            "title": "An archive series waiting for points offers Locate again, which places it again from place",
+            "asserts": "the button calls imagery.locateAgain; the job goes back to queued from place, gather kept; the version forgets its help",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M22 §13.2. Tests: functions/test/imagery/locate-again-archive.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
+            "id": "S-A122-BAD-PLACE-AGAIN-CANCELLED",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "bad",
+            "title": "A series asked to stop, or failed, is not placed again",
+            "asserts": "apiError.imagery.versionState; no Locate again on a failed archive series",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M22 §13.2. Tests: functions/test/imagery/locate-again-archive.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
+            "id": "S-A122-HAPPY-GEOREF-FULL-SCREEN",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "happy",
+            "title": "The georeferencer's scan and map take seven tenths of the window, and Full screen fills it; Esc leaves",
+            "asserts": "data-full on the page; Esc clears it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M22 §13.2. Tests: packages/ui/test/admin/georef/georef-page.test.ts."
+        },
+        {
+            "id": "S-A122-BAD-GEOREF-FULL-SCREEN-LEFT",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "bad",
+            "title": "Leave full screen by its own button",
+            "asserts": "the page is back in its place",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M22 §13.2. Tests: packages/ui/test/admin/georef/georef-page.test.ts."
+        },
+        {
+            "id": "S-A125-HAPPY-DELETE-VERSION",
+            "behaviour": "A125",
+            "area": "admin",
+            "path": "happy",
+            "title": "Delete this version removes a version that never reached the map, after a question, and returns to the list",
+            "asserts": "a cancelled, rejected or failed version, or an archive series waiting for points (ended first), goes with its job, the job's log, its scratch files and its own private folder; another version's folder, a USGS delivery and an upload's original stay; a failed first import's scene is free again; an archive series leaves its archive's record of jobs, so the archive page offers it again and imagery.archiveImport takes it (the last one leaves the archive unimported); a failed version's page offers this one Delete; the page asks first (what goes, the originals on the computer stay) and then shows the Historical imagery list",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M3 (docs/research/M3-interfaces.md §7.1, §10.2; DECISIONS §153). Tests: e2e/admin/specs/imagery/import.spec.ts (a failed import deleted end to end, the question in the tour as imagery.version-delete), functions/test/imagery/delete-version.test.ts, functions/test/imagery/legacy-version.test.ts (a version stored with fields its schema refuses is read as an ending reads it and deleted too), packages/admin/test/imagery/version-delete.test.ts, packages/admin/test/archive/model.test.ts, packages/ui/test/admin/imagery/delete-version.test.ts, packages/ui/test/admin/imagery/imagery-cures.test.ts, packages/ui/test/admin/archive/archive.test.ts."
+        },
+        {
+            "id": "S-A125-BAD-DELETE-PUBLISHED",
+            "behaviour": "A125",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version on the map, or approved for it, is never deleted from its page",
+            "asserts": "imagery.deleteVersion on published, approved, publishing, superseded or joined -> apiError.imagery.deletePublished and nothing changes; the page offers no Delete this version for a published, waiting or processing version, nor while a job still runs",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M3 (docs/research/M3-interfaces.md §7.1, §10.2; DECISIONS §153). Tests: functions/test/imagery/delete-version.test.ts, packages/admin/test/imagery/version-delete.test.ts, packages/ui/test/admin/imagery/delete-version.test.ts."
+        },
+        {
+            "id": "S-A125-BAD-DELETE-RUNNING",
+            "behaviour": "A125",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version still under way, one another is built on, or a caller who is not an editor cannot delete",
+            "asserts": "a queued, running or waiting job -> apiError.imagery.deleteRunning (also when a Retry lands between the check and the deletion); a version another one is based on -> apiError.imagery.deleteInUse (its page offers no Delete this version); a version deleted meanwhile -> apiError.notFound, one that left its state meanwhile -> apiError.imagery.versionState; a moderator or an uploader -> apiError.city.notEditor; nothing is deleted and a refusal stays on the page, which does not leave",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M3 (docs/research/M3-interfaces.md §7.1, §10.2; DECISIONS §153). Tests: functions/test/imagery/delete-version.test.ts, packages/admin/test/imagery/version-delete.test.ts, packages/ui/test/admin/imagery/delete-version.test.ts."
+        },
+        {
+            "id": "S-P22-HAPPY-GEOREF-SCAN",
+            "behaviour": "P22",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A parked archive series gives the georeferencer its picture and the city's OpenStreetMap lines",
+            "asserts": "version.scan (scan.tif, scan-preview.jpg) and reference.osmPath uploaded",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M22 §13.2. Tests: pipeline/tests/unit/test_placing_assemble.py."
+        },
+        {
+            "id": "S-A131-HAPPY-GEOREF-UNDO",
+            "behaviour": "A131",
+            "area": "admin",
+            "path": "happy",
+            "title": "Undo takes back fifty pair moves one by one; a settle that lists every point costs one step",
+            "asserts": "after fifty movePixel edits, fifty Undos restore the start; canUndo is true while history remains; the Undo button enables only then",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 547. Tests: packages/admin/test/georef/georef.test.ts (happyPath_undoKeepsFiftyPairEditsAndAMapSettleOfEveryPointCostsOneStep)."
+        },
+        {
+            "id": "S-A131-BAD-GEOREF-UNDO-EMPTY",
+            "behaviour": "A131",
+            "area": "admin",
+            "path": "bad",
+            "title": "Undo with an empty history changes nothing",
+            "asserts": "after Discard or Save, canUndo is false; further undo leaves pairs where they are; the Undo button stays disabled",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 547. Tests: packages/admin/test/georef/georef.test.ts (happyPath_undoTakesBackTheLastEditsOneByOneAndNothingMoreAfterDiscard)."
+        },
+        {
             "id": "S-V60-HAPPY",
             "behaviour": "V60",
             "area": "viewer",
@@ -16637,7 +17391,7 @@
             "asserts": "no engine.extras.js request before the photo opens full size, one when it does; Zoom in enlarges the image by more than 20 %, Zoom out brings it back",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162). Tests: e2e/specs/viewer/photo-versions.spec.ts."
         },
         {
             "id": "S-V60-BAD-LIMITS",
@@ -16648,7 +17402,7 @@
             "asserts": "on opening Zoom out says aria-disabled; Enter pressed eight times on Zoom in -> it says aria-disabled and keeps the focus, Zoom out is enabled",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162). Tests: e2e/specs/viewer/photo-versions.spec.ts."
         },
         {
             "id": "S-V61-HAPPY",
@@ -16659,7 +17413,7 @@
             "asserts": "the sheet's switch has Improved checked; Colorized -> the address says pv=colorized and \"Colorized by Ana Pop\" shows; after a reload the full-size view has Colorized checked and shows its image",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162). Tests: e2e/specs/viewer/photo-versions.spec.ts."
         },
         {
             "id": "S-V61-BAD-UNKNOWN-VERSION",
@@ -16670,7 +17424,7 @@
             "asserts": "#photo=x&pv=sepia -> Original checked; a photo without versions -> no switch in its sheet nor in the full-size view",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162). Tests: e2e/specs/viewer/photo-versions.spec.ts."
         },
         {
             "id": "S-V61-HAPPY-TOUR",
@@ -16681,7 +17435,7 @@
             "asserts": "expectStateSound on the photo-versions journey: the sheet with Colorized picked and credited, the full-size view with its switch, zoomed in once",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141). Tests: e2e/tour/viewer.tour.ts (e2e/tour/photo-version-states.ts)."
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162). Tests: e2e/tour/viewer.tour.ts (e2e/tour/photo-version-states.ts)."
         },
         {
             "id": "S-A140-HAPPY",
@@ -16692,7 +17446,7 @@
             "asserts": "Add a file in Colorized version -> photos.onUpload writes versions.colorized, the image and publication unchanged; the credit saved -> the manifest lists the version with \"Ana Pop\"; the public viewer shows the switch with two versions",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141). Tests: e2e/admin/specs/photos/replace.spec.ts."
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162). Tests: e2e/admin/specs/photos/replace.spec.ts."
         },
         {
             "id": "S-A140-BAD-WRONG-TYPE",
@@ -16703,7 +17457,7 @@
             "asserts": "note.txt chosen for Improved version -> \"The new image was refused\" with the unsupported-type reason in its section, nothing uploaded, no versions on the photo",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141). Tests: e2e/admin/specs/photos/replace.spec.ts."
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162). Tests: e2e/admin/specs/photos/replace.spec.ts."
         },
         {
             "id": "S-V62-HAPPY-RIGHT-CLICK",
@@ -16714,7 +17468,7 @@
             "asserts": "right click at the map centre -> the menu, its first item focused; the Street View link opens in a new tab (noopener noreferrer) at the hash centre to 3 decimals; Copy coordinates is there",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162h). Tests: e2e/specs/viewer/map-menu.spec.ts."
         },
         {
             "id": "S-V62-HAPPY-LONG-PRESS",
@@ -16725,7 +17479,7 @@
             "asserts": "a touch pointer held on the map -> the menu opens and stays when the finger lifts",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162h). Tests: e2e/specs/viewer/map-menu.spec.ts."
         },
         {
             "id": "S-V62-HAPPY-PHOTO",
@@ -16736,7 +17490,7 @@
             "asserts": "a photo with a bearing -> Open in Google Street View names its place and &heading=<bearing>",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162h). Tests: e2e/specs/viewer/map-menu.spec.ts."
         },
         {
             "id": "S-V62-BAD-DRAG",
@@ -16747,7 +17501,7 @@
             "asserts": "right button down, moved 120 px, released -> no menu",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162h). Tests: e2e/specs/viewer/map-menu.spec.ts."
         },
         {
             "id": "S-V62-BAD-ESC-EDGE",
@@ -16758,7 +17512,7 @@
             "asserts": "a right click 4 px from the right edge -> the menu lies inside the map; Esc -> no menu",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162h). Tests: e2e/specs/viewer/map-menu.spec.ts."
         },
         {
             "id": "S-V62-HAPPY-TOUR",
@@ -16769,7 +17523,7 @@
             "asserts": "expectStateSound on the map-menu journey's open menu",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §141h). Tests: e2e/tour/viewer.tour.ts (e2e/tour/map-menu-states.ts)."
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162h). Tests: e2e/tour/viewer.tour.ts (e2e/tour/map-menu-states.ts)."
         }
     ]
 }

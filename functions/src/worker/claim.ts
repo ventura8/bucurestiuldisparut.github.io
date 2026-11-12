@@ -39,8 +39,14 @@ const CLAIM_RULES: readonly ((job: JobDoc, now: Date) => boolean)[] = [
     (job, now) => [job.dispatchAt, job.retryAt].every((time) => time === undefined || timestampToDate(time) <= now),
 ];
 
-function claimable(job: JobDoc | undefined, now: Date): job is JobDoc {
-    return job !== undefined && CLAIM_RULES.every((rule) => rule(job, now));
+/** The types the worker's pipeline runs, when it named them: an older image leaves a newer type queued for an updated one. */
+type Runs = readonly string[] | undefined;
+
+/** The worker's call with the types it runs. */
+type Claim = WorkerCall & { readonly runs: Runs };
+
+function claimable(job: JobDoc | undefined, now: Date, runs: Runs): job is JobDoc {
+    return job !== undefined && CLAIM_RULES.every((rule) => rule(job, now)) && (runs === undefined || runs.includes(job.type));
 }
 
 /** The job as the worker takes it: `starting`, one more attempt, leased to the worker, no Cloud Run machine. */
@@ -64,8 +70,8 @@ function seen(worker: WorkerDoc, call: WorkerCall, now: Date, jobId?: string): W
 }
 
 /** The first of the city's claimable jobs this worker takes, or null. */
-async function takeFirst(deps: ClaimDeps, call: WorkerCall, now: Date): Promise<string | null> {
-    for (const jobId of await candidates(deps, call.cityId, now)) {
+async function takeFirst(deps: ClaimDeps, call: Claim, now: Date): Promise<string | null> {
+    for (const jobId of await candidates(deps, call.cityId, now, call.runs)) {
         if (await take(deps, call, jobId, now)) {
             return jobId;
         }
@@ -74,12 +80,12 @@ async function takeFirst(deps: ClaimDeps, call: WorkerCall, now: Date): Promise<
 }
 
 /** Takes `jobId` for the worker in one transaction, if it is still claimable; false when another worker or event came first. */
-function take(deps: ClaimDeps, call: WorkerCall, jobId: string, now: Date): Promise<boolean> {
+function take(deps: ClaimDeps, call: Claim, jobId: string, now: Date): Promise<boolean> {
     const path = FIRESTORE_PATHS.job(call.cityId, jobId);
     return deps.documents.transaction(async (transaction) => {
         const job = await transaction.get(path, jobDocSchema);
         const worker = await requireWorker(transaction, call);
-        if (!claimable(job, now)) {
+        if (!claimable(job, now, call.runs)) {
             return false;
         }
         await transaction.set(path, jobDocSchema, claimed(job, call, now));
@@ -89,7 +95,7 @@ function take(deps: ClaimDeps, call: WorkerCall, jobId: string, now: Date): Prom
 }
 
 /** The oldest queued local jobs of the city, oldest first (index `jobs`: `runOn`, `status`, `createdAt`). */
-async function candidates(deps: ClaimDeps, cityId: string, now: Date): Promise<string[]> {
+async function candidates(deps: ClaimDeps, cityId: string, now: Date, runs: Runs): Promise<string[]> {
     const found = await deps.documents.query(FIRESTORE_PATHS.jobs(cityId), jobDocSchema, {
         where: [
             ['runOn', '==', 'local'],
@@ -98,13 +104,14 @@ async function candidates(deps: ClaimDeps, cityId: string, now: Date): Promise<s
         orderBy: ['createdAt', 'asc'],
         limit: CLAIM_SCAN,
     });
-    return found.documents.filter((job) => claimable(job.data, now)).map((job) => job.id);
+    return found.documents.filter((job) => claimable(job.data, now, runs)).map((job) => job.id);
 }
 
 /**
  * `worker.claim` (`docs/research/M7-local-worker.md` §1.2, §2.4; S-A62-HAPPY-CLAIM): the oldest due queued job of the city
  * chosen for the owner's computer, taken in one transaction (`starting`, its attempt counted, the lease and `worker`
- * naming this worker, no Cloud Run machine or wait), or none; either way the worker is seen now. Finding 67: a paired
+ * naming this worker, no Cloud Run machine or wait), or none, of the types the worker said its pipeline runs (an older image
+ * leaves a newer type queued; 2026-11-09); either way the worker is seen now. Finding 67: a paired
  * worker whose image is no longer the installed pipeline's takes nothing (`outdated`) until the owner runs the new command.
  */
 async function workerClaim(
@@ -118,7 +125,7 @@ async function workerClaim(
     const worker = await requireWorker(deps.documents, call);
     // Finding 72: the image `worker.hello` recorded (the supervisor's), else the pairing's.
     const { outdated } = await imageState(deps, caller, call.cityId, worker.image);
-    const jobId = outdated ? null : await takeFirst(deps, call, now);
+    const jobId = outdated ? null : await takeFirst(deps, { ...call, runs: request.types }, now);
     if (jobId !== null) {
         deps.log.info('worker claimed a job', { cityId: call.cityId, workerId: call.workerId, jobId });
         return { job: { jobId } };

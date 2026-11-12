@@ -1,11 +1,13 @@
+import { translateAdminContent, type LngLat } from '@hcm/shared';
 import type { Locator, Page } from '@playwright/test';
 
+import { mapIdle } from '../../../support/map.js';
 import { expectStateSound } from '../../../support/state-check.js';
 import { adminVisit } from '../../../tour/states.js';
 import { FUNCTIONS_TIMEOUT_MS } from '../../support/emulators.js';
-import { overlayFeatureIds } from '../../support/map.js';
+import { georefBadgesAt } from '../../support/map.js';
 import { ADMIN_LOCK, expect, test } from '../../support/test.js';
-import { addPair, errorsLine, georefText, landmark, openGeoreferencer, pairRows } from './georef.js';
+import { addPair, errorsLine, georefText, landmark, openGeoreferencer, pairRows, showPane } from './georef.js';
 import { readyImagery, versionState } from './world.js';
 
 // One admin test at a time: the import that waits for points runs in the server's world and reads setup/status.
@@ -22,9 +24,6 @@ test.describe.configure({ lock: ADMIN_LOCK });
 test.use({ persona: 'owner', mapOwner: 'owner' });
 
 const SUGGESTED = ['a001', 'a002', 'a003', 'a004'] as const;
-
-/** The map's overlay of the suggestions (`SUGGESTIONS_OVERLAY_ID` of packages/admin/src/georef/georef-map.ts). */
-const MAP_OVERLAY = 'georef-suggestions';
 
 /** A suggestion's row in the panel (its name button is the row's own). */
 function suggestionName(page: Page, lang: 'ro' | 'en', label: string): Locator {
@@ -53,6 +52,30 @@ async function drawnSuggestions(page: Page): Promise<number> {
 interface SavedGcp {
     readonly id: string;
     readonly origin: string;
+}
+
+/** Where the matcher put the version's suggestions on the map (`[longitude, latitude]`), as stored on the version. */
+async function suggestedPlaces(imagery: Awaited<ReturnType<typeof readyImagery>>, versionId: string): Promise<readonly LngLat[]> {
+    const suggestions = (await imagery.version(versionId))?.['suggestions'] as { pairs: SavedPair[] } | undefined;
+    return (suggestions?.pairs ?? []).map((pair) => [pair.geo.lng, pair.geo.lat] as const);
+}
+
+interface SavedPair {
+    readonly geo: { readonly lng: number; readonly lat: number };
+}
+
+/**
+ * Zooms the georeferencer's map out with its own button, as a person would, until the badges at `places` show (the map
+ * opens on part of the city, and a badge off the view is not drawn); at most five steps.
+ */
+async function zoomOutToShow(page: Page, lang: 'ro' | 'en', places: readonly LngLat[]): Promise<void> {
+    const zoomOut = page
+        .locator('hcm-admin-map')
+        .getByRole('button', { name: translateAdminContent(lang, 'adminContent.map.zoomOut'), exact: true });
+    for (let step = 0; step < 5 && (await georefBadgesAt(page, places)) < places.length; step += 1) {
+        await zoomOut.click();
+        await mapIdle(page);
+    }
 }
 
 async function savedGcps(imagery: Awaited<ReturnType<typeof readyImagery>>, versionId: string): Promise<readonly SavedGcp[]> {
@@ -89,7 +112,13 @@ test(
             georefText(lang, 'adminContent.georef.suggestions.noResidual'),
         );
         expect(await drawnSuggestions(page)).toBe(4);
-        await expect.poll(() => overlayFeatureIds(page, MAP_OVERLAY)).toEqual([...SUGGESTED]);
+        // The map paints them as canvas badges, like the scan (DECISIONS-for-review.md §143): a badge at each suggested place.
+        const places = await suggestedPlaces(imagery, versionId);
+        expect(places).toHaveLength(4);
+        await showPane(page, lang, 'map');
+        await zoomOutToShow(page, lang, places);
+        await expect.poll(() => georefBadgesAt(page, places)).toBe(4);
+        await showPane(page, lang, 'scan');
         await expect(pairRows(page, lang)).toHaveCount(4);
         await expectStateSound(page, adminVisit('georef.suggestions', lang));
 
@@ -103,7 +132,6 @@ test(
         // The list Accept all was in is gone: the keyboard lands on the panel's heading, not the page's body.
         await expect(page.getByRole('heading', { name: georefText(lang, 'adminContent.georef.suggestions.title') })).toBeFocused();
         expect(await drawnSuggestions(page)).toBe(0);
-        await expect.poll(() => overlayFeatureIds(page, MAP_OVERLAY)).toEqual([]);
         await expectStateSound(page, adminVisit('georef.suggestions-accepted', lang));
 
         // Input 2 of 2: Save. The same job goes on from georeferencing, on the corner pairs and the accepted ones.

@@ -6,9 +6,9 @@
  * `MAX_BATCH_WRITES`, new places with new ids, every write stamped by the store. The total after the import may not pass
  * `MAX_POIS`, checked before the first write.
  */
-import { FIRESTORE_PATHS, MAX_POIS } from '@hcm/shared';
+import { FIRESTORE_PATHS, latestPlaceYear, MAX_POIS } from '@hcm/shared';
 
-import { MAX_BATCH_WRITES, type BatchWrite, type ContentStore } from '../content/services.js';
+import { MAX_BATCH_WRITES, type BatchWrite, type ContentServices, type ContentStore } from '../content/services.js';
 import { MAX_IMPORT_BYTES, planImport, readFeatures, type ImportContext, type ImportFileRefusal, type ImportPlan } from './geojson.js';
 import { docFieldsOf, type PoiValue } from './model.js';
 
@@ -36,6 +36,8 @@ export interface ImportState {
 export interface ImporterDeps {
     readonly store: Pick<ContentStore, 'batch' | 'newId' | 'count'>;
     readonly cityId: string;
+    /** Today, for the latest year a feature may name (`latestPlaceYear`: next year), as the editor's Save. */
+    readonly clock: Pick<ContentServices['clock'], 'now'>;
     readonly context: () => Omit<ImportContext, 'fallbackCategory' | 'existing'>;
     /** Every place of the city, read once per chosen file (and the ids it could not make sense of); null when it could not be read. */
     readonly places: () => Promise<{
@@ -115,7 +117,8 @@ export class Importer {
 
     /** The plan (again, when the category for uncategorised features changes). */
     #plan(fallbackCategory: string | null): void {
-        const context = { ...this.#deps.context(), existing: this.#existing, unreadable: this.#unreadable, fallbackCategory };
+        const latestYear = latestPlaceYear(this.#deps.clock.now());
+        const context = { ...this.#deps.context(), latestYear, existing: this.#existing, unreadable: this.#unreadable, fallbackCategory };
         const plan = planImport(this.#features, context);
         this.#update({ status: 'preview', plan, fallbackCategory });
     }

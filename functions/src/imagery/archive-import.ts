@@ -17,17 +17,19 @@ import type { VerifiedCaller } from '../api/access.js';
 import { ApiError } from '../api/api-error.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
 import type { Ports } from '../ports/index.js';
-import { dailyRoomIn, passTurnstile, refuseWhileGuardRed } from './limits.js';
+import { passTurnstile, refuseWhileGuardRed } from './limits.js';
 import { requireCity, stampOf } from './records.js';
 import { createWork, jobIdFor, reserveLayerIds, type NewWork } from './versions.js';
 
 /**
  * `imagery.archiveImport` (a city editor; `docs/research/M20-import-local.md` §1.3, §8; S-A120-*): one click imports the series the
  * owner kept of a scanned archive. Each becomes one `archive-series` job and its version, under a layer id reserved from its title,
- * pinned to the owner's computer (`runOn: 'local'`, `localOnly`), in the archive's order (the reference ladder). Today's share of
- * new layers (`dailyRoom`) lets the first ones start; the rest are born waiting (`daily`) and `imagery.tick` releases them on the
- * following days: the import is never refused for the cap, only paused by the budget guard. Everything, the archive's record of
+ * pinned to the owner's computer (`runOn: 'local'`, `localOnly`), in the archive's order (the reference ladder). Every series starts
+ * at once: a local-only job is outside the daily cap of new layers (the owner, 2026-11-09; it once let today's share start and held
+ * the rest `daily`); the import is only paused by the budget guard. Everything, the archive's record of
  * its jobs included, is written in one transaction, so a second click finds the series imported (`apiError.imagery.archiveImported`).
+ * A series the record no longer names (its version deleted by `imagery.deleteVersion`: the owner starts it over) is taken again,
+ * its job added to the others.
  */
 export type ArchiveImportDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 
@@ -121,13 +123,22 @@ function keptInOrder(archive: ArchiveDoc, request: Request, importer: Importer):
     return kept.sort((a, b) => a.series.order - b.series.order);
 }
 
-/** The archive, unimported, or `apiError.notFound` / `apiError.imagery.archiveImported`. */
-async function requireFresh(reader: Pick<Ports['documents'], 'get'>, cityId: string, archiveId: string): Promise<ArchiveDoc> {
-    const archive = await reader.get(FIRESTORE_PATHS.archive(cityId, archiveId), archiveDocSchema);
+/** The series an import asks for. */
+function asked(request: Request): string[] {
+    return request.series.filter((choice) => choice.include).map((choice) => choice.seriesId);
+}
+
+/**
+ * The archive, none of the asked series imported yet, or `apiError.notFound` / `apiError.imagery.archiveImported` (a series the
+ * record no longer names, its version deleted to start it over, is taken again).
+ */
+async function requireFresh(reader: Pick<Ports['documents'], 'get'>, request: Request): Promise<ArchiveDoc> {
+    const archive = await reader.get(FIRESTORE_PATHS.archive(request.cityId, request.archiveId), archiveDocSchema);
     if (archive === undefined) {
         throw new ApiError('apiError.notFound');
     }
-    if (archive.jobs !== undefined) {
+    const jobs = archive.jobs ?? {};
+    if (asked(request).some((seriesId) => seriesId in jobs)) {
         throw new ApiError('apiError.imagery.archiveImported');
     }
     return archive;
@@ -161,10 +172,13 @@ interface Start {
     readonly now: Date;
 }
 
-function planOf(request: Request, kept: readonly Kept[], room: number, start: Start) {
+/**
+ * Every series starts at once (2026-11-09): a local-only job runs free on the owner's computer, so the daily cap of new
+ * layers, which guards the Cloud Run spend, neither counts nor holds it; the worker still runs them one at a time.
+ */
+function planOf(request: Request, kept: readonly Kept[], start: Start) {
     return (layerIdFor: (label: string) => string): Planned[] =>
-        kept.map((each, index) => {
-            const waiting = index >= room;
+        kept.map((each) => {
             const work: NewWork = {
                 cityId: request.cityId,
                 jobId: jobIdFor('ar', start.now, each.series.seriesId),
@@ -175,11 +189,9 @@ function planOf(request: Request, kept: readonly Kept[], room: number, start: St
                 now: start.now,
                 runOn: 'local',
                 localOnly: true,
-                ...(waiting
-                    ? { waitReason: 'daily' as const }
-                    : { waitReason: 'worker' as const, countedAt: timestampFromDate(start.now) }),
+                waitReason: 'worker',
             };
-            return { kept: each, work, waiting };
+            return { kept: each, work, waiting: false };
         });
 }
 
@@ -189,9 +201,8 @@ function planOf(request: Request, kept: readonly Kept[], room: number, start: St
  */
 async function writeAll(deps: ArchiveImportDeps, request: Request, kept: readonly Kept[], start: Start): Promise<Planned[]> {
     return deps.documents.transaction(async (transaction) => {
-        const archive = await requireFresh(transaction, request.cityId, request.archiveId);
-        const room = await dailyRoomIn(transaction, deps.documents, start.now, request.cityId);
-        const planned = planOf(request, kept, room, start)(await reserveLayerIds(deps.documents, request.cityId));
+        const archive = await requireFresh(transaction, request);
+        const planned = planOf(request, kept, start)(await reserveLayerIds(deps.documents, request.cityId));
         for (const { kept: each, work } of planned) {
             await createWork(transaction, work, {
                 origin: 'archive',
@@ -201,10 +212,10 @@ async function writeAll(deps: ArchiveImportDeps, request: Request, kept: readonl
                 rights: each.rights,
             });
         }
-        const jobs = Object.fromEntries(planned.map(({ kept: each, work }) => [each.series.seriesId, work.jobId]));
+        const added = Object.fromEntries(planned.map(({ kept: each, work }) => [each.series.seriesId, work.jobId]));
         await transaction.set(FIRESTORE_PATHS.archive(request.cityId, request.archiveId), archiveDocSchema, {
             ...archive,
-            jobs,
+            jobs: { ...archive.jobs, ...added },
             importedBy: start.uid,
             importedAt: timestampFromDate(start.now),
             ...stampOf(start.uid, start.now),
@@ -222,7 +233,7 @@ async function archiveImport(
     await requireCity(deps.documents, request.cityId);
     const start = { uid: caller.uid, now: deps.clock.now() };
     const importer = { owner: caller.membership?.roleIn(request.cityId) === 'owner', cityId: request.cityId, now: start.now };
-    const kept = keptInOrder(await requireFresh(deps.documents, request.cityId, request.archiveId), request, importer);
+    const kept = keptInOrder(await requireFresh(deps.documents, request), request, importer);
     await refuseWhileGuardRed(deps.documents);
     const planned = await writeAll(deps, request, kept, start);
     const waiting = planned.filter((each) => each.waiting).length;

@@ -22,6 +22,11 @@ import { lazyMapboxChoices } from './lazy-approval.js';
 import type { Guard } from './mapbox-choices.js';
 import { withValue } from './when.js';
 
+/** True when the version has no rights gate, or its rights already allow a publish. */
+function rightsReady(version: VersionViewPort): boolean {
+    return !version.rights || version.rights.allowPublish;
+}
+
 /** The page is busy with another action, or nothing may be written. */
 function busy(context: ImageryContext, page: VersionPagePort): boolean {
     return page.acting !== null || context.readOnly;
@@ -139,7 +144,7 @@ function approveButton(context: ImageryContext, page: VersionPagePort, version: 
     return html`<hcm-button
         variant="filled"
         icon="approval"
-        ?disabled=${busy(context, page)}
+        ?disabled=${busy(context, page) || !rightsReady(version)}
         @click=${() => {
             approve(context, version);
         }}
@@ -147,8 +152,50 @@ function approveButton(context: ImageryContext, page: VersionPagePort, version: 
     >`;
 }
 
+type RightsSummary = NonNullable<VersionViewPort['rights']>;
+
+function rightsNote(rights: RightsSummary): TemplateResult {
+    return rights.note === null ? EMPTY : html`<p class="note" data-rights-note>${rights.note}</p>`;
+}
+
+/** The owner's Confirm form once rights wait. */
+function rightsForm(context: ImageryContext, page: VersionPagePort, version: VersionViewPort, note: TemplateResult): TemplateResult {
+    const { locale } = context;
+    const fieldId = `rights-by-${version.id}`;
+    const confirm = (event: Event): void => {
+        const root = (event.currentTarget as HTMLElement).getRootNode() as ParentNode;
+        const input = root.querySelector<HTMLInputElement>(`#${fieldId}`);
+        void context.intents?.confirmRights(input?.value ?? '');
+    };
+    return html`${note}
+        <p class="alert" data-rights="needs-confirmation">${contentText(locale, 'adminContent.imagery.rights.needsConfirmation')}</p>
+        <div class="field">
+            <label for=${fieldId}>${contentText(locale, 'adminContent.imagery.rights.by')}</label>
+            <input id=${fieldId} ?readonly=${busy(context, page)} />
+        </div>
+        <div class="actions">
+            <hcm-button variant="tonal" icon="check" data-confirm-rights ?disabled=${busy(context, page)} @click=${confirm}
+                >${contentText(locale, 'adminContent.imagery.rights.confirm')}</hcm-button
+            >
+        </div>`;
+}
+
+/** M20 (§7): Confirm who granted the permission; only the city's owner, while rights wait. */
+function rightsBlock(context: ImageryContext, page: VersionPagePort, version: VersionViewPort): TemplateResult {
+    const rights = version.rights;
+    if (rights?.state !== 'needs-confirmation') {
+        return EMPTY;
+    }
+    const note = rightsNote(rights);
+    return context.owner === true
+        ? rightsForm(context, page, version, note)
+        : html`${note}
+              <p class="note" data-rights="owner">${contentText(context.locale, 'adminContent.imagery.rights.ownerOnly')}</p>`;
+}
+
 function decision(context: ImageryContext, page: VersionPagePort, version: VersionViewPort): TemplateResult {
-    return html`<div class="actions">${approveButton(context, page, version)} ${deleteButton(context, page, version)}</div>`;
+    return html`${rightsBlock(context, page, version)}
+        <div class="actions">${approveButton(context, page, version)} ${deleteButton(context, page, version)}</div>`;
 }
 
 /** The guard's verdict when it stopped the publish (null: within, or not checked yet). */

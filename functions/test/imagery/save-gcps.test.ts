@@ -235,6 +235,22 @@ describe('imagery.saveGcps', () => {
     });
 });
 
+describe('imagery.saveGcps: an archive series (2026-11-10)', () => {
+    it('happyPath_aParkedArchiveSeriesResumesFromPlaceWithTheOwnersPairs @S-P20-HAPPY-OWNER-PAIRS', async () => {
+        const world = await waitingWorld();
+        const params = { archiveId: 'ar-0123456789abcdef', seriesId: 's-0123456789ab', class: 'grid', sheets: 4, encoding: 'grey' };
+        const steps = { gather: { status: 'done' as const }, place: { status: 'pending' as const } };
+        await seedJob(world, PLAN, job({ type: 'archive-series', params: { ...params, order: 0, referenceLayerIds: [] }, steps }));
+
+        await expect(save(world, { versionId: PLAN, gcps: pairs(8) })).resolves.toMatchObject({ resumed: true });
+
+        const resumed = await readJob(world, PLAN);
+        expect(resumed).toMatchObject({ status: 'queued', steps: { gather: { status: 'done' }, place: { status: 'pending' } } });
+        expect(resumed?.steps?.['georef']).toBeUndefined();
+        expect((await readVersion(world, PLAN))?.georef?.method).toBe('gcps');
+    });
+});
+
 describe('imagery.saveGcps: a camera map (M15)', () => {
     it('badPath_newPointsDropTheCameraMapTheyCannotRebuild @S-A16-BAD-POINTS-DROP-LATTICE', async () => {
         const world = await readyWorld();

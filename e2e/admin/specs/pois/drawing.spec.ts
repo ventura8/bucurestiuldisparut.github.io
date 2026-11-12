@@ -6,7 +6,20 @@ import { expect, test } from '../../support/content-test.js';
 import { awaitManifest, entry, openPublicViewer, seedPublicCity } from '../../support/flows.js';
 import { adminMapReady, clickMapAt, mapPointOf } from '../../support/map.js';
 import { poisText, seedCategories, seedPlace } from './places.js';
-import { AREA, AT, addPlace, coordinate, openPlaces, readyToDraw, refusal, saveButton, savedPlace, shape, titleField } from './drawing.js';
+import {
+    AREA,
+    AT,
+    addPlace,
+    coordinate,
+    openPlaces,
+    readyToDraw,
+    refusal,
+    saveButton,
+    savedPlace,
+    shape,
+    titleField,
+    yearField,
+} from './drawing.js';
 
 /**
  * Drawing places on the admin map (docs/research/M2c-interfaces.md §4.4–§4.6, §7.2; behaviours A32, A31) in a city of the
@@ -25,7 +38,7 @@ test(
         await openPlaces(page, content, lang);
         const flow = inputBudget.flow('polygonPlace', contentFlowBudget('polygonPlace', AREA.length));
 
-        // Add place, Area, four clicks (the click tools close the ring), the title, Save.
+        // Add place, Area, four clicks (the click tools close the ring), the title, the year, Save.
         await flow.click(addPlace(page, lang));
         await flow.click(shape(page, lang, 'polygon'));
         await readyToDraw(page, lang);
@@ -34,6 +47,7 @@ test(
         }
         await expect(coordinate(page, 'v3-lng')).toHaveValue(/^26\.09/);
         await flow.fill(titleField(page, lang), 'Piața Universității');
+        await flow.fill(yearField(page, lang), '1968');
         await flow.click(saveButton(page, lang));
         const [id, place] = await savedPlace(content);
         const geometry = place['geometry'] as { type: string; rings: { points: { lat: number; lng: number }[] }[] };
@@ -64,12 +78,13 @@ test(
             await clickMapAt(page, position);
         }
         await titleField(page, lang).fill('Bulevardul Elisabeta');
+        await yearField(page, lang).fill('1890');
         await saveButton(page, lang).click();
         const [lineId, line] = await savedPlace(content);
         expect((line['geometry'] as { type: string; points: unknown[] }).points).toHaveLength(3);
         expect(line['geometry']).toMatchObject({ type: 'LineString' });
 
-        // A point in five inputs: Add place, Point, a click, the title, Save (from the list: on a one-pane window the
+        // A point in six inputs: Add place, Point, a click, the title, the year, Save (from the list: on a one-pane window the
         // saved line's editor covers it).
         await page.goto(content.address(lang, 'pois'));
         const flow = inputBudget.flow('pointPlace', contentFlowBudget('pointPlace'));
@@ -77,6 +92,7 @@ test(
         await flow.click(shape(page, lang, 'point'));
         await flow.clickAt(page, await mapPointOf(page, [26.1, 44.43]));
         await flow.fill(titleField(page, lang), 'Statuia lui Mihai Viteazul');
+        await flow.fill(yearField(page, lang), '1874');
         await flow.click(saveButton(page, lang));
         await expect.poll(async () => Object.keys(await content.collection('pois')).length).toBe(2);
         const [pointId = ''] = Object.keys(await content.collection('pois')).filter((id) => id !== lineId);
@@ -124,6 +140,7 @@ test(
         await expect(coordinate(page, 'v2-lat')).toHaveCount(0);
 
         await titleField(page, lang).fill('Strada Academiei');
+        await yearField(page, lang).fill('1890');
         await saveButton(page, lang).press('Enter');
         const [, place] = await savedPlace(content);
         expect(place['geometry']).toEqual({

@@ -21,7 +21,7 @@ from hcm_pipeline.model import DocumentError, bounds_of, number_of
 from hcm_pipeline.objects import sha256_of
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.steps.common import gdal_step
-from hcm_pipeline.tiles.encoding import ENCODINGS, TileEncoding, encoding_of, paper_transparent
+from hcm_pipeline.tiles.encoding import ENCODINGS, TileEncoding, encoding_of, paper_opaque, paper_transparent
 from hcm_pipeline.tiles.pack import ArchiveInfo, Packed, PackError, pack
 from hcm_pipeline.tiles.rim import add_trimmed_alpha, find_rim, trimmed_alpha
 
@@ -98,7 +98,7 @@ def rgba_view(source: Path, target: Path, film: bool = True) -> Path:
 
 
 def write_tree(view: Path, tree: Path, rendered: Rendered, ctx: JobContext, encoding: TileEncoding = ENCODINGS["grey"]) -> Path:
-    """The tile pyramid: blank tiles skipped, bilinear at the deepest zoom (M20: nearest for line art), averaged above it."""
+    """The tile pyramid: blank tiles skipped; line art uses nearest at every zoom (M20; overviews too — averaged RGBA washed ink)."""
     arguments: dict[str, object] = {
         "input": str(view),
         "output": str(tree),
@@ -126,13 +126,18 @@ def write_thumb(view: Path, target: Path) -> Path:
     return target
 
 
-def series_encoding(ctx: JobContext) -> tuple[TileEncoding, bool]:
-    """M20 (docs/research/M20-import-local.md §6): an archive series' encoding and whether its paper goes transparent (line art, unless
-    the owner kept it); every other job's tiles are today's grey."""
+def series_encoding(ctx: JobContext) -> tuple[TileEncoding, bool | None]:
+    """M20 (docs/research/M20-import-local.md §6): an archive series' encoding and its paper mode.
+
+    For line art, `True` is transparent paper (opt-in), `False` is opaque white (the default); every other job returns `None`
+    and today's grey tiles.
+    """
     if ctx.job.type != ARCHIVE_JOB:
-        return ENCODINGS["grey"], False
+        return ENCODINGS["grey"], None
     name = ctx.job.params.get("encoding")
-    return encoding_of(name), name == "lineart" and ctx.job.params.get("paperTransparent") is not False
+    if name != "lineart":
+        return encoding_of(name), None
+    return ENCODINGS["lineart"], ctx.job.params.get("paperTransparent") is True
 
 
 def _source_of(ctx: JobContext, rendered: Rendered) -> Path:
@@ -143,15 +148,22 @@ def _source_of(ctx: JobContext, rendered: Rendered) -> Path:
     return ctx.stage(rendered.cog_path, "cog.tif")
 
 
+def _lineart_view(ctx: JobContext, source: Path, transparent: bool) -> Path:
+    """Line art as opaque white paper (default) or transparent paper (opt-in)."""
+    encode = paper_transparent if transparent else paper_opaque
+    note = "make the paper transparent" if transparent else "make the paper opaque white"
+    return gdal_step(ctx, lambda: encode(source, ctx.local("lineart.tif")), note)
+
+
 class PyramidStep:
     name = "pyramid"
 
     def run(self, ctx: JobContext) -> StepResult:
         rendered = Rendered.of(ctx.read(ctx.version_path()))
-        encoding, transparent = series_encoding(ctx)
+        encoding, paper = series_encoding(ctx)
         source = _source_of(ctx, rendered)
-        if transparent:
-            source = gdal_step(ctx, lambda: paper_transparent(source, ctx.local("lineart.tif")), "make the paper transparent")
+        if paper is not None:
+            source = _lineart_view(ctx, source, paper)
         film = ctx.job.type != ARCHIVE_JOB
         view = gdal_step(ctx, lambda: rgba_view(source, ctx.local("rgba.vrt"), film), "read the rendered layer")
         tree = gdal_step(ctx, lambda: write_tree(view, ctx.local("tree"), rendered, ctx, encoding), "make the tiles")

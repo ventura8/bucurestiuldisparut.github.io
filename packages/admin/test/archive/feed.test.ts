@@ -111,7 +111,6 @@ describe('the archive feed', () => {
         expect(feed.state).toMatchObject({
             status: 'ready',
             connected: true,
-            share: 10,
             importUrl: 'http://127.0.0.1:8765/import?lat=44.4300',
         });
         expect(feed.state.archives).toEqual([{ id: ARCHIVE, name: 'harti.zip', files: 120, bytes: 9_000_000, series: 4, imported: false }]);
@@ -139,7 +138,6 @@ describe('the archive feed', () => {
 
         expect(feed.state).toMatchObject({
             connected: false,
-            share: 3,
             importUrl: 'http://127.0.0.1:8765/import?lat=44.4500',
             archives: [],
         });
@@ -171,6 +169,7 @@ describe('the archive feed', () => {
         expect(feed.state.open?.report).toMatchObject({
             name: 'harti.zip',
             imported: false,
+            importedSeries: [],
             skipped: [
                 ['duplicate-of', 10],
                 ['not-a-map', 3],
@@ -254,6 +253,7 @@ describe('the archive feed, once imported', () => {
         await settle();
 
         expect(feed.state.open?.report?.imported).toBe(true);
+        expect(feed.state.open?.report?.importedSeries).toEqual([SID(0), SID(1)]);
         expect(feed.state.progress[SID(0)]).toMatchObject({
             state: 'awaiting_approval',
             jobStatus: 'running',
