@@ -57,7 +57,12 @@ describe('themeRules', () => {
             ['(prefers-contrast: more)', '#000004'],
             ['(prefers-reduced-motion: reduce)', undefined],
         ]);
-        expect(rules[0]?.declarations['color-scheme']).toBe('dark');
+        expect(rules[0]?.declarations['color-scheme']).toBe('only dark');
+    });
+
+    it('badPath_aChosenLightSchemeIsOnlyLightSoChromesDarkThemeForSitesLeavesItAlone', () => {
+        expect(themeRules(tokens(), 'light', false)[0]?.declarations['color-scheme']).toBe('only light');
+        expect(themeRules(tokens(), 'light', true)[0]?.declarations['color-scheme']).toBe('only light');
     });
 
     it('happyPath_forcedHighContrastNeedsNoContrastQuery', () => {
@@ -86,7 +91,7 @@ describe('applyTheme', () => {
         expect(target.getAttribute(THEME_ATTRIBUTE)).toMatch(/^\d+$/);
         expect(primaryOf(child)).toBe('#000001');
         expect(getComputedStyle(target).getPropertyValue('--md-sys-shape-corner-full').trim()).toBe('9999px');
-        expect(getComputedStyle(target).colorScheme).toBe('light');
+        expect(getComputedStyle(target).colorScheme).toBe('light only');
     });
 
     it('happyPath_aShadowHostIsThemedThroughHost', async () => {

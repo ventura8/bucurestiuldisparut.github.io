@@ -3484,19 +3484,91 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: `CITY_ID_PATTERN` is in `schemas/primitives.ts` and the checks in `schemas/city-id.ts` (`paths.ts` and `cities.ts` re-export them): 60.4 KB gzip, no `apiError.*` text in the page, no budget raised (`bundle-budget`). The photo's `derivative` helper moved to `photo-fields.ts`. The same full run found two gaps the branches' targeted runs had not measured: `placing/maps.py` at 88 % of its branches (no test of an atlas or of pieces whose PDF needs a password: added in `test_placing_pdf.py`) and `issue-text.ts` at 87.5 % (two branches nothing reaches, removed).
     - **A check a small page needs lives in a module that imports no schema; when a budget is within 1 % on several branches, measure the merge, not the branches, and read which modules the bundle holds before cutting bytes.**
 
-594. **A test held a layout at a minimum gap that a real card could not hold: the timeline overflowed and clipped its first year.**
+594. **An untagged dev build of `1.0.0` blocked every `1.0.0-beta.1`: by SemVer the pre-release is older.**
+    - Seen: 2026-11-12, live: the admin `1.0.0-beta.1+593d539` (the release prep's bump) against the server `1.0.0+dcfb067`, an untagged build of before the bump; step d said "Installed 1.0.0+dcfb067, newer than this admin: reload the page" and offered no Update.
+    - Cause: `compareRelease` ordered by SemVer first; every build before the bump had called itself `1.0.0` though no `v1.0.0` tag existed, so it outranked every pre-release of 1.0.0.
+    - Fix and pin: a release names its channel (a tagged build the version alone, any other `+<commit>`: `dev`); within one core a dev build is placed by its build time, two tagged releases by SemVer; a confirmed override installs over a newer release (`happyPath_aDevBuildIsOlderThanALaterPrereleaseOfItsCore`, `badPath_aTaggedReleaseIsNewerThanAnOlderPrerelease_theDowngradeGuard`, S-A55-HAPPY-INSTALL-OVER).
+    - **A version that was never released must not outrank one that was: say in the build whether it is a tagged release, and give every guard an owner's way past it.**
+
+595. **The scan pane threw the owner's zoom away whenever its box changed size.**
+    - Seen: 2026-11-12, the owner placing points on 1966 Corona frames: after a pair was added, the scan sometimes showed the whole strip again.
+    - Cause: `<hcm-scan-viewer>` set its view back to "fit" whenever its measured size changed (`#currentView` → `#measure`), and adding a pair changes the page below the panes (the residual table grows, a scrollbar comes, a status line wraps), which narrows the pane by a few pixels.
+    - Fix and pin: `resizedView` keeps the zoom and the pixel at the centre over a size change and fits again only a pane never zoomed or never shown (`packages/ui/test/admin/georef/scan-viewer-keep.test.ts`, `e2e/admin/specs/imagery/georef-ghost.spec.ts`: S-A16-HAPPY-GEOREF-KEEP-ZOOM).
+    - **A view the user chose survives a layout change: re-centre it, never reset it, and test it by resizing the box.**
+
+596. **The linked map moved between the two clicks of a pair, so a fast second click landed 1 km off.**
+    - Seen: 2026-11-12, the same session: with a fit, a scan zoom (or the wheel's trailing events) after the scan click moved the map to the fit's place of the scan centre while the owner aimed at the map.
+    - Cause: the linked views (§156) applied every scan move to the map, a half pair pending or not.
+    - Fix and pin: the link pauses while a half pair exists; the expected place is shown as a dashed ring instead (`ghost.ts`, `ghosts.ts`; S-A16-HAPPY-GEOREF-GHOST).
+    - **Never move the target a user is about to click: show where you expect it instead.**
+
+597. **The sharper scan was capped by its long side only, and switched on in CSS pixels.**
+    - Seen: 2026-11-12, review of the georeferencer's sharper scan (§170): a near-square upload (20,000 px a side) would have written a 16,384 × 16,384 `scan-detail.jpg`, about 1 GiB of RGBA once the browser decodes it; and on a screen of two device pixels a CSS pixel the 4,096 px preview was already upscaled (blurry) from half the zoom that fetched the sharper one.
+    - Cause: `publish_scan` sized the detail like the preview (one long-side cap, right for a long Corona strip), and the pane compared `view.scale` with 1 in CSS pixels, ignoring `devicePixelRatio`.
+    - Fix and pin: `detail_scale` also caps the area (`SCAN_DETAIL_MAX_PIXELS` = 64 million, both sides of the contract; `pipeline/tests/unit/test_publish_scan.py`); the pane and the store compare `scale × devicePixelRatio` (`scan-draw.ts` `pictureOf`, `georef-pictures.ts` `zoomed`; `scan-viewer-keep.test.ts`, `georef-pictures.test.ts`, `georef-ghost.spec.ts`: S-A16-HAPPY-GEOREF-FULL-RES).
+    - **An image a browser decodes whole is capped by its area, not only its side; a "past native resolution" test counts device pixels.**
+
+598. **A map click right after a pair was made moved that pair to the click as well as starting the next one.**
+    - Seen: 2026-11-12, the ghost spec once it checked the ring's place (review of §170): with Add pairs on, the click on the map that began pair 6 also moved pair 5 there (its fit error jumped to kilometres); a likely part of the owner's "pin landed 1 km off".
+    - Cause: completing a pair selects it, and `GeorefMap` handed the selection to the drawing tools; the Terra Draw adapter's `select` switches the tools to `select` mode, in which a map click moves the selected point (the single-pointer way to place a pin, WCAG 2.5.7). The `static` mode that Add pairs had set was undone silently.
+    - Fix and pin: while adding, `GeorefMap` does not select in the tools (the badges show the selection) and selects again when adding ends (`packages/admin/test/georef/georef-map.test.ts`; `e2e/admin/specs/imagery/georef-ghost.spec.ts`: the pair made before keeps its place).
+    - **A port call can change a mode as a side effect: after it, assert the mode the feature relies on, and test the click after the edit, not only the edit.**
+
+599. **A cap on a picture's area still left one JPEG of a quarter gigabyte decoded.**
+    - Seen: 2026-11-12, audit of the georeferencer's sharper scan: capped at 64 million pixels it still decoded to 256 MiB of RGBA in one piece (more for a 2:1 frame), on laptops short of memory.
+    - Cause: an `<img>` decodes the whole file whatever part the canvas draws; a cap only moves the number.
+    - Fix and pin: the sharper scan is JPEG tiles in one file (`scan-tiles.bin`, `scan_tiles.py`); the pane decodes the tiles in view and keeps at most 32 (`scan-tiles.ts`; `scan-tiles.test.ts` pans a 16,384 px scan and counts; `test_publish_scan.py` reads every tile's size; DECISIONS §172).
+    - **A picture larger than the screen is shown in pieces: budget the decoded bytes, and test the count and size of the pieces asked for.**
+
+600. **Turning the map by the scan's angle minus the fit's rotation was 2 degrees off on the stand-in's frame.**
+    - Seen: 2026-11-12, `georef-linked.spec.ts` (S-A16-HAPPY-GEOREF-ROTATE): the scan turned 15 degrees, the map 12.9.
+    - Cause: an affine fit that stretches one axis more than the other turns different scan directions by different angles; the first version read the rotation of the scan's x axis only and subtracted angles.
+    - Fix and pin: `rotation.ts` carries the very direction the pane shows along its x axis through the fit (`fitAngle` with an angle) and, the other way, a step of the map's x axis back through the inverse fit (`angleFor`); `rotation.test.ts`, the e2e within a few degrees of the stand-in's oblique fit.
+    - **A rotation read from a fit is the rotation of one direction: carry the direction you show, not the scan's axis.**
+
+601. **A tour state with a snackbar failed the scroll sweep on Mapbox's logo.**
+    - Seen: 2026-11-12, `georef.pair-removed`: scrolled to 675 px, the map's clipped Mapbox logo lay within 12 px of the snackbar's Undo, which floats over the page at a large window.
+    - Cause: the sweep scrolls the page under fixed elements; a notice that stays ten seconds meets whatever scrolls beneath it.
+    - Fix and pin: the state is checked once the notice is gone (after its Undo); the notice itself is checked in the shell's own states.
+    - **Check a page's state without a transient overlay over it, or the sweep reports the overlay's meeting with scrolled content.**
+
+602. **The linked scan drifted a few degrees after the map's turn buttons, one run in four.**
+    - Seen: 2026-11-13, `georef-linked.spec.ts` repeated three times at two projects: the scan's next turn was undone, or Upright ended at 4 degrees.
+    - Cause: the map's buttons turned it with an animation, whose `move` events kept turning the scan after the owner's next press; and every map move read the scan's angle back through an oblique fit, whose two conversions are not exact inverses.
+    - Fix and pin: the map's turn is a jump (`GeorefMap.rotateBy`), and only a move that changes the map's bearing turns the scan (`linkedPanesOf`; `rotation.test.ts`).
+    - **Run a test of linked motion several times before trusting it; an animation is a second actor.**
+
+603. **The light theme's FAB and menu labels were painted nearly invisible on Android, while every checker measured 6.9:1.**
+    - Seen: 2026-11-12, the Pixel 9 Pro review (P2): #33406D on #BAC7FD in the computed styles, pale lilac on lilac on the screen.
+    - Cause: the theme's light mode declared `color-scheme: light`. Chrome's dark theme for sites (on by default on Android with a dark system) repaints every element whose used scheme is light: it lightened the dark text and kept the tinted fill. Axe and the tour's non-text contrast read computed styles, which the repaint never touches, and no e2e browser ran with it.
+    - Fix and pin: a chosen mode is `only light` / `only dark` (`packages/ui/src/theme/apply.ts`); the dark tours run Chromium with `--blink-settings=forceDarkModeEnabled=true`, the state `other-theme-menu` picks the other theme and opens the menu, and `e2e/support/rendered-contrast.ts` reads the FAB menu's contrast from pixels (`S-V12-HAPPY-ONLY-LIGHT`, `S-V12-BAD-FORCED-DARK-SYSTEM`).
+    - **A colour check that reads styles cannot see a browser's repaint: measure pixels where it matters, and run a tour with the repaints real phones apply.**
+
+604. **Mapbox's credits drew over the lightbox, and a copy of them took the foot of every sheet, About and Settings on a phone.**
+    - Seen: 2026-11-12, the Pixel 9 Pro review (P3).
+    - Cause: the legal bar (§21c) was a design the tour enforced: its rule asked for one logo and one attribution on top in every state, so a bar eating 40 to 80 px of a full-screen surface passed, and the legal controls were exempt from the modal checks. Mapbox's corners carry z-index 2 in the frame's stacking context, above the modal layer's auto.
+    - Fix and pin: the modal layer has z-index 30; Mapbox's corners move out from under an open modal sheet (`legal-lift.ts`); no credit is owed where no map shows (`mapSeen` in `e2e/support/layout-probe.ts`), and a point seen through a scrim counts as uncovered (`S-V18-HAPPY-MODAL-STATES`, `S-V18-BAD-FULL-SHEET`, `packages/ui/test/viewer/legal-lift.test.ts`).
+    - **A checker that encodes a design passes that design's defects: ask what the surface loses, not only whether the rule's element shows.**
+
+605. **The FAB menu of a landscape phone ran seven items in one row off the screen.**
+    - Seen: 2026-11-12, the Pixel 9 Pro at 884 × 322 with Chrome's bars (P1): "Setări" began at x 888.
+    - Cause: the menu's columns were capped at the height left above the timeline and the chip; with Chrome's bars that was under one item, so each item made a column, and nothing capped the width. The tour's landscape viewport (915 × 412) was tall enough for two rows.
+    - Fix and pin: rows that stack upwards across the map's width, 48 px items, the card and the chip hidden while the menu is open, a scroll as the last resort (`dock-styles.ts`, `fab-menu.ts`); the tour's journey `short-landscape` resizes every tour project to 884 × 322 and 568 × 270 and opens the menu (`e2e/tour/settings-states.ts`); `packages/ui/test/viewer/landscape-menu.test.ts` at 884 × 290 and 568 × 270.
+    - **Test the shortest window a real phone gives, bars included, not only the nominal landscape size.**
+
+606. **A test held a layout at a minimum gap that a real card could not hold: the timeline overflowed and clipped its first year.**
     - Seen: 2026-11-12, the Pixel Tablet: twenty-two stops at 30 px each were wider than the card; 1847 showed as "7".
     - Cause: the scroll test only asked that the selected stop was in view and the labels did not meet; nothing asked that the labels stayed inside the card.
     - Fix and pin: the track fits the card with a density (`timeline-model.ts`); `S-V04-BAD-MANY-YEARS-FIT` checks no label sticks out at five window sizes.
     - **A layout check asks what is cut off as well as what overlaps.**
 
-595. **`touch-action: none` on a control inside a scrolling panel turned every swipe across it into input.**
+607. **`touch-action: none` on a control inside a scrolling panel turned every swipe across it into input.**
     - Seen: 2026-11-12, the Pixel Tablet: a swipe meant to scroll the Layers panel set a layer's opacity to 4 %.
     - Fix and pin: the slider is `pan-y` and waits 8 px for the finger's direction (`slider.ts`); `S-V22-BAD-TOUCH-VERTICAL-SWIPE` swipes with Chromium's own touch events.
     - **A control that moves along one axis leaves the other axis to the browser; test it with real touch events, not mouse ones.**
 
-596. **A module script waits for every deferred script before it: the engine painted nothing until 526 KB of Mapbox GL had arrived.**
+608. **A module script waits for every deferred script before it: the engine painted nothing until 526 KB of Mapbox GL had arrived.**
     - Seen: 2026-11-12, the Pixel Tablet: cold first paint 5,376 ms against 764 ms warm.
     - Found by: a throttled cold load (CDP Fast 4G, 4x CPU) with Mapbox's files given their CDN time: the first paint came after `mapbox-gl.js`'s end every time.
-    - Fix and pin: Mapbox GL loads `async` and the map adapter takes a promise of it (§169f); `S-V01-BAD-SLOW-MAPBOX-FIRST-PAINT`.
+    - Fix and pin: Mapbox GL loads `async` and the map adapter takes a promise of it (§175f); `S-V01-BAD-SLOW-MAPBOX-FIRST-PAINT`.
     - **A third-party script the first paint does not need is `async`, and the code that needs it waits for it, not the page.**

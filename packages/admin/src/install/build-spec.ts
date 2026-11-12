@@ -44,10 +44,18 @@ export interface BuildParams {
      * project's id into the tree it unpacks and takes `project.json` from the live site.
      */
     readonly adopt?: boolean;
+    /**
+     * The owner confirmed "Install this admin's version anyway" over a newer release (the live finding of 2026-11-12):
+     * the build carries `OVER_TAG`, so Cloud Build's history keeps the rollback.
+     */
+    readonly over?: boolean;
 }
 
 /** Every build's tag, and each target's own (the cards list builds by it). */
 const INSTALL_TAG = 'hcm-install';
+
+/** The tag of a build the owner installed over a newer release. */
+export const OVER_TAG = 'hcm-over';
 
 export function targetTag(target: InstallTarget): string {
     return `hcm-${target}`;
@@ -221,7 +229,7 @@ export function buildDefinition(target: InstallTarget, params: BuildParams): Jso
         options: { logging: 'CLOUD_LOGGING_ONLY' },
         timeout: `${String(TIMEOUT_SECONDS[target])}s`,
         queueTtl: `${String(QUEUE_TTL_SECONDS)}s`,
-        tags: [INSTALL_TAG, targetTag(target), releaseTag(params.slug)],
+        tags: [INSTALL_TAG, targetTag(target), releaseTag(params.slug), ...(params.over === true ? [OVER_TAG] : [])],
         substitutions: {
             _ORIGIN: params.origin,
             _BASE: params.basePath,

@@ -6527,34 +6527,113 @@ the limits!!!". A relaxed gate, so it is the owner's decision, recorded here.
 - **168a** `packages/engine/dist/engine.iife.js` 125 → 150 KB gzip; `packages/engine/dist/engine.mjs` 100 → 120 KB;
   the side-loaded `engine.extras.js` chunk 7 → 12 KB (`scripts/ci/check_bundle_budget.py`).
 - **168b** The admin's budgets, the start page's and the other chunks' stay as they were.
+- **168d** The admin's total 700 → 750 KB gzip (`ADMIN_TOTAL_KB`, the coordinator under this instruction, 2026-11-12): the merge of the
+  georeferencer's beta.1 work measured 701.8 KB with its panes (`georef-panes`, 4.2 KB, loaded with the page) and the sharper scan's
+  tiles (`scan-tiles`, 1.2 KB, loaded on zoom). The entry's 450 KB and every chunk's own budget stay.
 - **168c** The rule stands: a budget moves only by a reviewed change with its reason; code that only some visitors need
   still goes to the on-demand parts first (`docs/ENGINE_API.md` → *Side-loaded parts*).
 
-## 169. The Pixel Tablet's findings on the public map (track/viewer-device, 2026-11-12) — APPLIED, no budget raised
+## 169. Release channels: an untagged build never blocks a later one; a confirmed override over a newer release (the live finding of 2026-11-12) — APPLIED
+
+The admin `1.0.0-beta.1+593d539` (the release prep's bump) met the live server `1.0.0+dcfb067`, an untagged build of
+before the bump: by SemVer `1.0.0-beta.1` < `1.0.0`, so step d said "newer than this admin" and offered no Update.
+
+- **169a** A build of a commit that carries `v<version>` names the version alone (`release` or `prerelease`); every
+  other build keeps `+<commit>` and is `dev`. The channel travels in the release string, so no server, label or record
+  needs a new field; `runtime.json` and the install manifest also write `channel`. The live `1.0.0+dcfb067` reads `dev`.
+- **169b** `compareRelease`: the core first; two tagged releases of one core follow SemVer (the downgrade guard
+  stays); a dev build is placed by the build times against anything of its core. The unit tests pin the live pair.
+- **169c** The owner's override: **Install this admin's version anyway**, behind a confirmation, submits the build
+  tagged `hcm-over`. Recorded in Cloud Build's history and the admin's log, not in the History page: a rollback installs
+  an older server, whose strict schemas would refuse an entry of a kind they do not know. To review: whether a History
+  entity for installs is wanted once every live server knows it.
+- **169d** `releaseOfSlug` reads pre-release slugs (`1-0-0-beta-1-593d539`), so a pre-release's pipeline jobs name
+  their release.
+- **169e** For CI: a tag build (`refs/tags/v1.0.0-beta.1`) now names `1.0.0-beta.1` without the commit; crash reports of
+  a tagged release name the tag, which names the commit.
+
+## 170. The georeferencer's kept zoom, ghost and sharper scan, within the 19 KB `georef` chunk (2026-11-12) — APPLIED, no budget raised
+
+- **What**: four fixes the owner asked for after placing points on 1966 Corona frames (`docs/research/M3-interfaces.md`, addendum *The kept zoom, the ghost and the sharper scan*): the scan pane keeps its zoom and centre over a size change; the linked views pause while a pair waits for its second click; the expected place of that click is a dashed ring (the fit's, or with two pairs and no fit their similarity's); scans longer than their preview get `scan-detail.jpg` (at most 16,384 px long, a new `VERSION_FILES` member and optional `scan.detailPath` / `scan.detailScale`), fetched once when the pane zooms past the preview; the warped map preview is 4,096 px across (3,072 before).
+- **Budget**: the four took `georef` to 19,471 bytes gzip (budget 19,000). The warped preview's mesh code (`warp.ts` with `previewMesh` and `scanBounds`) moved to a new lazy chunk `georef-warp` (fetched when a version opens; 991 bytes, budget 2 KB: the measurement plus about 20 %, rounded up, a new row of `ADMIN_CHUNK_BUDGETS`), and its triangle transform is solved in closed form (`triangleCanvasTransform`), because `@hcm/shared`'s `triangleTransform` shares the matrix solver with the `georef` chunk's fit and Rolldown then moved that solver to `editor-shared` (13.4 KB of 13). After: `georef` 18,745 bytes, `editor-shared` 12.8 KB, `georef-extras` 1.9 KB of 2 (the ghost's arithmetic), `georef-badges` 2.9 KB of 3 (the ring's painter). No budget was raised.
+- **Not done**: a scan parked before this change has no `scan-detail.jpg`; it gets one only when the pipeline writes its scan again (Locate again, a new import). Tiles from `scan.tif` itself (a COG range reader in the browser) were not built: the scan is a plain GeoTIFF of up to 200,000 px per side and the 16,384 px JPEG is the smallest correct path. `georef.ts` moved its picked-up point's helpers to `moving.ts` and `<hcm-scan-viewer>` its gesture types to `scan-input.ts` to stay within 400 lines.
+- **Verify**: `npm run build` then `python3 scripts/ci/check_bundle_budget.py`; S-A16-HAPPY-GEOREF-KEEP-ZOOM, S-A16-BAD-GEOREF-KEEP-ZOOM-NEVER-SHOWN, S-A16-HAPPY-GEOREF-GHOST, S-A16-BAD-GEOREF-GHOST-NO-PAIRS, S-A16-HAPPY-GEOREF-FULL-RES, S-A16-BAD-GEOREF-FULL-RES-NONE.
+
+## 171. The sharper scan capped by its area, switched on in device pixels, and the older frames' backfill (2026-11-12) — APPLIED
+
+- **What**: review of §170. `scan-detail.jpg` is now also capped at `SCAN_DETAIL_MAX_PIXELS` = 64,000,000 pixels (`detail_scale` in `steps/common.py`; the constant on both sides of the contract, `enums.json` included): a 20,000 px square upload gets 8,000 × 8,000 (about 256 MB of RGBA decoded, instead of about 1 GiB). The "not well above the preview" guard the review suggested is not code: at this area the detail is never shorter than 8,000 px, about twice the 4,096 px preview, and a pytest pins that relation (`SCAN_DETAIL_MAX_PIXELS ** 0.5 >= 1.5 × SCAN_PREVIEW_MAX_PX`) instead of a branch no input reaches. The pane draws, and the store fetches, the sharper scan once `scale × devicePixelRatio` passes one device pixel per preview pixel.
+- **Older frames**: no new backfill job. A USGS frame parked for points before this pipeline searches again by itself once the newer image is installed (`functions/src/imagery/relocate.ts`, M18 item 3), and that search writes the scan again through `publish_scan`, so it gets its detail; **Locate again** does the same by hand. An uploaded scan parked before (`inspect`) has no such path and stays at the preview until imported again; ADMIN_GUIDE and MANUAL_TEST_PLAN M5c say so (§170's *Not done* line is superseded).
+- **E2E**: the stand-in now writes `scan-detail.jpg` (the world at the scan's own pixels, `scanDetailJpeg`) with `detailPath` / `detailScale`, so `georef-ghost.spec.ts` drives the sharper scan (S-A16-HAPPY-GEOREF-FULL-RES, S-A16-BAD-GEOREF-FULL-RES-NONE) and asserts the ghost ring's position and that a click on its centre makes the pair there.
+- **A bug the ring's position found**: with Add pairs on, the map click after a completed pair also moved that pair to the click, because selecting it in the Terra Draw adapter switched the tools from `static` to `select` (LESSONS 598). `GeorefMap` no longer selects in the tools while adding.
+- **Verify**: `pipeline/tests/unit/test_publish_scan.py`, `pipeline/tests/unit/test_contract.py`, `packages/shared/test/schemas/pipeline-contract.test.ts`, `packages/admin/test/georef/georef-pictures.test.ts`, `packages/ui/test/admin/georef/scan-viewer-keep.test.ts`, `e2e/admin/specs/imagery/georef-ghost.spec.ts`.
+
+## 172. The sharper scan as tiles in one file, at most 32 decoded (2026-11-12) — APPLIED
+
+- **What**: the audit of §170 and §171: even capped by its area, `scan-detail.jpg` was one JPEG the browser decoded whole (256 MiB at 8,000 px a side, about 430 MiB for a 16,384 × 6,500 Hexagon half). The pipeline now writes `scan-tiles.bin` instead: the same picture as JPEG tiles of `SCAN_TILE_PX` = 1,024 px in one object (`pipeline/src/hcm_pipeline/scan_tiles.py`: `HCMT`, five `uint32`, the offsets, the tiles). The scan pane (`packages/ui/src/admin/georef/scan-tiles.ts`) decodes only the tiles in view with `createImageBitmap` over a slice of the `Blob`, keeps at most `SCAN_TILES_KEPT` = 32 (about 128 MiB; with the preview under 200 MiB), closes the rest, and draws them over the preview.
+- **Why one file, not a tile folder**: a version's files are a fixed list (`VERSION_FILES`) that the paths, the local worker's allow-list (`worker.step`), `deleteVersion` and the rules all enumerate; a folder of tiles would have changed all four and added one signed address per tile for a run on the owner's computer. One object changes none of them; the browser already fetched the whole detail in one request. The file's bytes (about 15 MB at the area cap) are held as a `Blob`, not decoded.
+- **The trade**: a view that needs more than 32 tiles (a large pane only just past the preview's pixels) keeps the preview until the owner zooms further: there is one level, no pyramid. On a 2,560 px laptop pane the tiles come in at about 1.3 device pixels a preview pixel for a Corona strip. A second level would remove that gap at about 25 % more bytes; not built.
+- **`scan-detail.jpg` never shipped** (it lived only on `track/georefux`), so there is no older file to read: the name left `VERSION_FILES`.
+- **Verify**: `pipeline/tests/unit/test_publish_scan.py` (tile count and sizes), `packages/ui/test/admin/georef/scan-tiles.test.ts` (the tiles asked for and kept while panning a 16,384 px scan), `packages/ui/test/admin/georef/scan-viewer-keep.test.ts`, `e2e/admin/specs/imagery/georef-ghost.spec.ts` (S-A16-HAPPY-GEOREF-FULL-RES: fewer decodes than tiles, none larger than a tile).
+- **The resource audit's browser items, with the tiles** (`reports/resource-audit.md` §3, item 15 and budget test 4; 2026-11-12): the live warped preview's canvas is 2,048 px on a window narrower than 840 CSS px (`warpSideFor`, 16 MiB instead of up to 64); a PMTiles reader keeps its 32 most recently read leaf directories (`Recent` in `pmtiles-source.ts`; it dropped none before; it fits the engine budgets the owner raised in §168); and two budget tests hold the scan pane: `packages/ui/test/admin/georef/scan-budget.test.ts` pans a 16,384 × 4,096 px strip from end to end at three zooms in Chromium and counts every bitmap decoded and closed (at most 32 live, 128 MiB, where the whole picture is 256 MiB; the JavaScript heap grows by under 32 MiB), and `georef-ghost.spec.ts` reads the page's `JSHeapUsedSize` over CDP with the sharper scan zoomed in (budget 300 MB). Decoded bitmaps are not part of the JavaScript heap and Chromium gives a page no figure for them, so they are counted, not measured: before, one 16,384 × 4,096 JPEG was 256 MiB decoded (1 GiB for a square one); after, at most 128 MiB at any zoom.
+
+## 173. The georeferencer for beta.1: what the map shows, turning, Delete with Undo, Edit points (2026-11-12) — APPLIED
+
+- **What** (the owner's requests of 2026-11-12, branch `track/georefbase`): (a) **The map shows**, a native list on the map pane: OpenStreetMap, Sentinel-2 or any published layer of the city, drawn opaque under the pairs on the page's one map (`base-layers.ts`, `GeorefMap.showBase`); kept while the admin is open. (b) A chosen pair has **Delete pair N** beside the panes, Delete and Backspace work on the map pane too, and every removal shows a notice with **Undo** (`removing.ts`). (c) **Edit points** on a published version: the server already allowed it (`imagery.saveGcps` → `regeoref`, the layer keeps its tiles until the new version is published), so only the names and a note changed; no rule and no callable changed.
+- **A native `<select>`, not a kit component**: the kit has no list component, and a native list is keyboard and screen-reader friendly as it is; the segmented OpenStreetMap | Sentinel-2 switch it replaces could not hold a city's layers.
+- **The scan pane has no list**: it shows the scan; its warped preview is drawn on the map and keeps its switch and opacity below the panes. A list with one entry was not added.
+- **(d) Rotation**: each pane turns on its own (buttons under each pane; `r`, `R`, `n` and Ctrl with a drag on the scan; Mapbox's own gestures and the buttons on the map), and with a fit the two turn together by default (**Turn the panes together**, off to turn them apart): `rotation.ts` reads the fit's rotation where the pane looks, the scan's angle is that minus the map's bearing. Text buttons, not icons: the kit's font subset has no turn icons, and adding glyphs is a font rebuild. A scan that is mirrored (a film scanned from its back) cannot be made to match by turning; nothing was added for that.
+- **The `georef` chunk stays 19 KB by a new eager group, `georef-panes`** (the owner kept it, 2026-11-12): with these requests `georef` measured 19.9 KB. Following §146 and §156, the panes' template, the scan pane's gestures and view arithmetic, pair removal, the map pane's layers and the turning moved to a group that loads with the page (a budget row of its own, see `check_bundle_budget.py`); the sharper scan's reader is a lazy chunk (`scan-tiles`, 2 KB row). The page's eager download grew by what the features weigh; no existing row was raised and the admin's total stays within its 650 KB. If the owner would rather raise `georef` itself, the group can be folded back.
+- **Verify**: S-A16-HAPPY-GEOREF-MAP-SHOWS, S-A16-BAD-GEOREF-MAP-SHOWS-GONE, S-A16-HAPPY-GEOREF-REMOVE-UNDO, S-A16-BAD-GEOREF-REMOVE-NOTHING, S-A16-HAPPY-EDIT-POINTS-PUBLISHED, S-A16-BAD-EDIT-POINTS-ENDED, S-A16-HAPPY-GEOREF-ROTATE, S-A16-BAD-GEOREF-ROTATE-APART.
+
+## 174. The Pixel 9 Pro review of the public viewer (track/viewer-phone, 2026-11-12) — APPLIED, no gate relaxed
+
+The owner's device review (`reports/devices/FINDINGS.md`, section *Pixel 9 Pro*), P1 to P6 but P5 (track/viewer-device).
+
+- **174a (P3, supersedes §21c)** The modal surfaces draw above Mapbox's logo and attribution; nothing copies them. The
+  legal bar below the sheets and the lightbox and the copy at the foot of About took 40 to 80 px of every surface on a
+  phone, and Mapbox's corners (z-index 2) drew over the lightbox (z-index auto in the frame's stacking context). Now the
+  modal layer has z-index 30; while a modal sheet is open Mapbox's corners move into the part of the map it leaves
+  (above a bottom sheet's top edge, beside a side sheet; `legal-lift.ts`), under its translucent scrim like the map;
+  the lightbox and a full-screen dialog hide the whole map, so no credit is owed there (Mapbox's terms ask for it where
+  the map is displayed), and a centred dialog leaves the corners in view. §21c's option 2, without its cost: a
+  ResizeObserver follows the sheet's own box, so the viewer needs no report of its height.
+- **174b (P2)** A chosen light or dark theme declares `color-scheme: only light` / `only dark`: Chrome's dark theme for
+  sites (Android, dark system) repaints every element whose used scheme is light, inverting dark text to a light tone
+  while it keeps tinted fills; `system` stays `light dark`. The dark tours run with that repaint
+  (`--blink-settings=forceDarkModeEnabled=true`), and the tour measures the FAB menu's painted contrast from pixels.
+- **174c (P1)** On a landscape phone the open FAB menu lays its items in rows from the leading edge across the map's
+  width, 48 px tall, while the lying card, the chip and the zoom group step aside; a window too short even for that
+  scrolls the menu. The tour's journey `short-landscape` opens it at 884 × 322 and 568 × 270 in every tour project
+  (a whole new viewport found other short-window defects, left for their own task).
+- **174d (P4, P6)** No text selection or Touch to Search from a long press on the map; the lightbox zooms on a double
+  tap and counts and pages through the list it was opened from.
+
+## 175. The Pixel Tablet's findings on the public map (track/viewer-device, 2026-11-12) — APPLIED, no budget raised
 
 The owner's real-device test (Pixel Tablet, Chrome; `reports/devices/FINDINGS.md` T1–T6 and the cold load). No gate was
 relaxed; one new e2e budget.
 
-- **169a Timeline density** (T1). The track fits the card; the gap between stops decides the density
+- **175a Timeline density** (T1). The track fits the card; the gap between stops decides the density
   (`packages/ui/src/viewer/timeline-model.ts`): `roomy` from 30 px (every year named), `dense` from 14 px (every other
   year, the ends always, the selected one on the pill), `scroll` below 14 px (16 px per gap, the card scrolls under a
   finger along the timeline, the edge with more years beyond fades 24 px, the selected year is centred unless a drag is
   on). The thumb keeps `touch-action: none` so it still drags on a scrolling track; elsewhere a finger taps a year.
-- **169b Slider under a finger** (T2). `hcm-slider` is `touch-action: pan-y`; a finger moves the value only once it has
+- **175b Slider under a finger** (T2). `hcm-slider` is `touch-action: pan-y`; a finger moves the value only once it has
   gone 8 px (`TOUCH_SLOP_PX`) more sideways than up or down, a tap still sets it, `pointercancel` ends the press without a
   change. Mouse, pen and keyboard are unchanged.
-- **169c Docked pane from 760 px** (T3). A medium window at least 760 px wide (`DOCKED_PANE_MIN_PX`) and not of compact
+- **175c Docked pane from 760 px** (T3). A medium window at least 760 px wide (`DOCKED_PANE_MIN_PX`) and not of compact
   height docks the sheets beside the map like expanded (the map keeps 400 px beside a 360 px pane); below it, or short,
   the modal sheets stay. `ViewerState.dockable` carries it; the e2e helpers' `sheetsDock` mirror it (the 768 px tablet
   project now docks).
-- **169d Credits in the visitor's language, once** (T5). The pipeline keeps writing the English constants
+- **175d Credits in the visitor's language, once** (T5). The pipeline keeps writing the English constants
   (`USGS_ATTRIBUTION`, `LANDSAT_ATTRIBUTION`); the viewer shows a known credit by its text key
   (`layers.attribution.usgs`, `layers.attribution.landsat`) in the visitor's language and an unknown one as written, each
   once (`@hcm/shared/credits`: a subpath export, so the shared index stays within 400 lines; lesson 591). The Layers
-  panel, the map's attribution and swipe compare's bar use it. New keys exist in `ro` and `en` only (the viewer's two
+  panel, Mapbox's attribution line (each raster source's credit in the language of the first load, `rasterSpec`; its text
+  rewritten on a language switch, `relabelMapbox`) and swipe compare's bar use it. New keys exist in `ro` and `en` only (the viewer's two
   locales).
-- **169e Lone links 48 px tall** (T6): `.details .link > a` in the detail sheets.
-- **169f The cold load.** Traced on a local build with CDP (Fast 4G, 4x CPU, cache off): the engine is a module
+- **175e Lone links 48 px tall** (T6): `.details .link > a` in the detail sheets.
+- **175f The cold load.** Traced on a local build with CDP (Fast 4G, 4x CPU, cache off): the engine is a module
   script, which runs in document order after the deferred `mapbox-gl.js` (1.9 MB, 526 KB gzip, from a new origin), so
   nothing was painted before Mapbox GL had arrived and run. The page now loads Mapbox GL `async`; the engine renders the
   viewer at once and `mapboxOf` hands the map adapter a promise of `mapboxgl` when the script is still loading (no global

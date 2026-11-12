@@ -1,6 +1,6 @@
 /**
  * The page's Mapbox GL JS for the viewer's map: the global `mapboxgl` from api.mapbox.com, which the public pages load
- * `async` (the cold load of 2026-11-12, DECISIONS-for-review.md §169f), so the engine may run before it.
+ * `async` (the cold load of 2026-11-12, DECISIONS-for-review.md §175f), so the engine may run before it.
  */
 import type { MapboxGl } from '@hcm/ui/map';
 

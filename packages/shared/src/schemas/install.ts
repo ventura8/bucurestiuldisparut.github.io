@@ -199,14 +199,23 @@ export function installReleaseSlug(release: string): string {
     return slug === '' ? 'release' : slug;
 }
 
-/** A slug of a release (`1-0-0-abc1234`) back to the release (`1.0.0+abc1234`); null for any other slug. */
+/** A release slug's parts: the three numbers, a pre-release's channel and number, and the build's commit. */
+const SLUG_PATTERN = /^(\d{1,4})-(\d{1,4})-(\d{1,6})(?:-(beta|rc)-(0|[1-9]\d{0,5}))?(?:-([0-9a-z]{1,40}))?$/;
+
+/**
+ * A slug of a release back to the release: `1-0-0-abc1234` → `1.0.0+abc1234`, `1-0-0-beta-1-abc1234` →
+ * `1.0.0-beta.1+abc1234` (the live finding of 2026-11-12: a pre-release's slug read as none, so its pipeline jobs named no
+ * release), `1-0-0-rc-2` → `1.0.0-rc.2`; null for any other slug.
+ */
 export function releaseOfSlug(slug: string): string | null {
-    const match = /^(\d{1,4})-(\d{1,4})-(\d{1,6})(?:-([0-9a-z]{1,40}))?$/.exec(slug);
+    const match = SLUG_PATTERN.exec(slug);
     if (match === null) {
         return null;
     }
-    const version = `${String(match[1])}.${String(match[2])}.${String(match[3])}`;
-    return match[4] === undefined ? version : `${version}+${match[4]}`;
+    const [, major, minor, patch, channel, number, build] = match;
+    const pre = channel === undefined ? '' : `-${channel}.${String(number)}`;
+    const version = `${String(major)}.${String(minor)}.${String(patch)}${pre}`;
+    return build === undefined ? version : `${version}+${build}`;
 }
 
 interface ParsedRelease {
@@ -251,35 +260,89 @@ export interface ReleaseTimes {
 const UNKNOWN_TIMES: ReleaseTimes = { installed: null, bundle: null };
 
 /**
- * Two builds of one version: the same commit is the same release; else the later build time is the newer one. An
- * installed build without a time (recorded or deployed before the times existed) counts as older, so the admin's
- * bundle replaces it; a timed installed build against an admin without a time counts as newer, never replaced by a
- * build that cannot be placed; equal times of two commits count as older.
+ * What a release is (the live finding of 2026-11-12, `docs/research/M6-interfaces.md` §1.7.1): a build of a commit that
+ * carries the version's tag `v<version>` names the version alone (`1.0.0`, `1.0.0-beta.1`): a `release` or a
+ * `prerelease`; every other build, untagged, names its commit after `+` (`1.0.0+dcfb067`): a `dev` build. A release
+ * from before the channels (the live server `1.0.0+dcfb067`, built when no tag existed) reads the same way, so no field
+ * has to travel with it: the functions' `HCM_RELEASE`, the jobs' label, the site's `release.json` and the records all
+ * carry the channel in the release itself. A build outside a git checkout names the version alone too.
  */
-function compareBuilds(installed: string, bundle: string, times: ReleaseTimes): number {
-    if (installed === bundle) {
-        return 0;
+export const RELEASE_CHANNELS = ['release', 'prerelease', 'dev'] as const;
+export type ReleaseChannel = (typeof RELEASE_CHANNELS)[number];
+export const releaseChannelSchema = z.enum(RELEASE_CHANNELS);
+
+/** The channel `release` names (`RELEASE_CHANNELS`), or null for a release that does not parse. */
+export function releaseChannel(release: string): ReleaseChannel | null {
+    const parsed = parseRelease(release);
+    if (parsed === null) {
+        return null;
     }
-    if (times.installed === null) {
-        return -1;
+    if (parsed.build !== '') {
+        return 'dev';
     }
-    if (times.bundle === null) {
-        return 1;
-    }
-    return times.installed > times.bundle ? 1 : -1;
+    return parsed.version.includes('-') ? 'prerelease' : 'release';
 }
 
-/** Two parsed releases: the version first, then the builds of one version by their times. */
+/** `1.0.0-beta.1` → `1.0.0`: the version's three numbers alone. */
+function coreOf(version: string): string {
+    const dash = version.indexOf('-');
+    return dash === -1 ? version : version.slice(0, dash);
+}
+
+/** The SemVer order of two versions (`1.0.0-beta.1` < `1.0.0`) as -1, 0 or 1. */
+function versionOrder(installed: string, bundle: string): number {
+    return Math.sign(compareVersions(installed, bundle) ?? 0);
+}
+
+/**
+ * Two builds of one core, at least one of them a dev build, placed by their build times: the later is the newer (equal
+ * times of two builds count as older). A dev build installed without a time (deployed before the times existed)
+ * counts as older, so the admin's bundle replaces it. Otherwise, with a time missing, SemVer decides, and a tie keeps
+ * what is installed: it is never replaced by a build that cannot be placed.
+ */
+function compareByTime(installed: ParsedRelease, bundle: ParsedRelease, times: ReleaseTimes): number {
+    if (times.installed !== null && times.bundle !== null) {
+        return times.installed > times.bundle ? 1 : -1;
+    }
+    return compareUntimed(installed, bundle, times.installed === null);
+}
+
+/** `compareByTime` with a time missing: an untimed dev build installed is behind; else SemVer, a tie keeping it. */
+function compareUntimed(installed: ParsedRelease, bundle: ParsedRelease, installedUntimed: boolean): number {
+    if (installedUntimed && installed.build !== '') {
+        return -1;
+    }
+    const order = versionOrder(installed.version, bundle.version);
+    return order === 0 ? 1 : order;
+}
+
+/**
+ * Two parsed releases of one core: the same release is equal; two tagged releases follow SemVer (a tagged `1.0.0` is
+ * newer than a tagged `1.0.0-beta.1`: the downgrade guard); a dev build against anything is placed by the build times,
+ * so the untagged `1.0.0+dcfb067` is older than a `1.0.0-beta.1` made after it (the live finding of 2026-11-12).
+ */
+function compareSameCore(installed: ParsedRelease, bundle: ParsedRelease, times: ReleaseTimes): number {
+    if (installed.version === bundle.version && installed.build === bundle.build) {
+        return 0;
+    }
+    if (installed.build === '' && bundle.build === '') {
+        return versionOrder(installed.version, bundle.version);
+    }
+    return compareByTime(installed, bundle, times);
+}
+
+/** Two parsed releases: the core (`major.minor.patch`) first, then `compareSameCore`. */
 function compareParsed(installed: ParsedRelease, bundle: ParsedRelease, times: ReleaseTimes): number {
-    const order = compareVersions(installed.version, bundle.version) ?? 0;
-    return order === 0 ? compareBuilds(installed.build, bundle.build, times) : Math.sign(order);
+    const core = versionOrder(coreOf(installed.version), coreOf(bundle.version));
+    return core === 0 ? compareSameCore(installed, bundle, times) : core;
 }
 
 /**
  * `installed` against `bundle` (the admin's own): negative when the installed release is older, 0 when it is the same,
- * positive when it is newer. A total order that follows the build (finding 39): the version decides first; two builds
- * of the same version are ordered by their build times (`times`, `compareBuilds`). An installed release that does not
- * parse is older than any bundle, and a bundle that does not parse never replaces anything.
+ * positive when it is newer. A total order that follows the build (finding 39 of 2026-11-01, the live finding of
+ * 2026-11-12): the core decides first; within one core two tagged releases follow SemVer, and a dev build is placed by
+ * the build times (`compareByTime`). An installed release that does not parse is older than any bundle, and a bundle
+ * that does not parse never replaces anything.
  */
 export function compareRelease(installed: string, bundle: string, times: ReleaseTimes = UNKNOWN_TIMES): number {
     const left = parseRelease(installed);
@@ -311,6 +374,8 @@ export const installManifestSchema = z
         release: releaseSchema,
         /** The admin's `runtime.json` build time (finding 39), or null for a build that knows none. */
         releaseTime: releaseTimeSchema.nullable(),
+        /** What the release is (`releaseChannel`): written by the bundle's build; absent from a bundle made before it. */
+        channel: releaseChannelSchema.optional(),
         slug: installSlugSchema,
         /** `infra/project.json`'s project. */
         projectId: z.string().regex(PROJECT_ID_PATTERN, coded('validation.format')),
@@ -339,7 +404,11 @@ export const installManifestSchema = z
             site: z.strictObject({ buildMinutes: z.number().int().min(1).max(1000) }),
         }),
     })
-    .refine((manifest) => manifest.slug === installReleaseSlug(manifest.release), coded('validation.value', ['slug']));
+    .refine((manifest) => manifest.slug === installReleaseSlug(manifest.release), coded('validation.value', ['slug']))
+    .refine(
+        (manifest) => manifest.channel === undefined || manifest.channel === releaseChannel(manifest.release),
+        coded('validation.value', ['channel']),
+    );
 
 export type InstallManifest = z.infer<typeof installManifestSchema>;
 

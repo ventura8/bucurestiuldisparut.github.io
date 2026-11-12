@@ -31,7 +31,7 @@ import { loadWorkerElements } from '../worker/load.js';
 /** Setup's Mapbox step, where the secret token and its scopes are pasted again. */
 const MAPBOX_SETUP_HREF = '#/setup/mapbox';
 
-/** Versions the georeferencer opens: waiting for points, rendered, or published. */
+/** Versions the georeferencer opens: waiting for points, rendered, or published (**Edit points**: saving there makes a new version). */
 const GEOREF_STATES: ReadonlySet<VersionViewPort['state']> = new Set(['needs_gcps', 'awaiting_approval', 'published']);
 
 const TONES: Readonly<Partial<Record<VersionViewPort['state'], 'error' | 'good'>>> = {
@@ -268,8 +268,11 @@ function georefLink({ context, version }: Shown): TemplateResult {
     return withValue(
         target,
         (shown) =>
-            html`<a class="external" href=${['#/georef', shown.id].join('/')}
-                >${contentText(context.locale, 'adminContent.imagery.openGeoref')}</a
+            html`<a
+                class="external"
+                data-action=${shown.state === 'published' ? 'edit-points' : 'open-georef'}
+                href=${['#/georef', shown.id].join('/')}
+                >${contentText(context.locale, shown.state === 'published' ? 'adminContent.imagery.editPoints' : 'adminContent.imagery.openGeoref')}</a
             >`,
     );
 }

@@ -30,6 +30,11 @@ export interface InstallCards {
     install(target: InstallTarget): Promise<void>;
     /** Update the map: one click (and one consent without a live token), counted on `step`'s card. */
     updateMap(step: SetupStepId): Promise<void>;
+    /**
+     * "Install this admin's version anyway" on the card of a target newer than the admin, once the owner confirmed it (a
+     * rollback, the live finding of 2026-11-12): the button and the confirmation (and one consent without a live token).
+     */
+    installOver(target: InstallTarget): Promise<void>;
     /** Check again on an install card: one look (the consent popup without a live token). */
     recheck(target: InstallTarget): Promise<void>;
     dispose(): void;
@@ -187,6 +192,15 @@ class Cards implements InstallCards {
         return new Promise((settled) => {
             this.#serverSettled = settled;
         });
+    }
+
+    async installOver(target: InstallTarget): Promise<void> {
+        const step = INSTALL_STEP_OF[target];
+        this.#ctx.count(step, 'inputs');
+        const access = accessOf(await googleAccess(this.#ctx, step, 'cloudPlatform', true));
+        if (access !== null) {
+            await this.#flows[target].installOver(access);
+        }
     }
 
     async recheck(target: InstallTarget): Promise<void> {

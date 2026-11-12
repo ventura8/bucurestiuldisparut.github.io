@@ -1,43 +1,23 @@
 /**
- * Modal surfaces and the map's legal line (scenario V18; Mapbox terms, docs/research/design-review-security-cost.md §5):
- * while a modal sheet, the lightbox or About covers the map, its frame is inert and Mapbox GL's own logo and attribution
- * would sit under it, so the viewer hides them and shows the same in its legal bar (below a sheet or the lightbox) or at
- * the foot of About (`<hcm-map-attribution>`). Without a map (loading, an error, no WebGL) there is nothing to credit.
+ * Modal surfaces and the map's legal line (scenario V18; Mapbox terms, docs/research/design-review-security-cost.md §5).
+ * While a modal sheet, the lightbox or a dialog covers the map, the frame is inert and the surface sits above Mapbox's
+ * own logo and attribution, never under them: the lightbox and a full-screen dialog hide the whole map, so nothing is
+ * shown that needs a credit; a modal sheet leaves part of the map in view, and Mapbox's controls move into that part,
+ * above a bottom sheet's top edge or beside a side sheet (`viewer-styles.ts`, from the sheet's own `variant` and
+ * `detent`), under its scrim like the rest of the map. Until the Pixel 9 Pro review (P3) the viewer showed a copy of the
+ * credits in a bar below the surfaces and at the foot of About, which took the last 40 to 80 px of every sheet, the
+ * lightbox, About and Settings on a phone.
  */
 import { translate, type Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
-import type { AttributionPart } from './attribution.js';
 import { isDialogSheet } from './input-commands.js';
 import type { SheetMode } from './layout.js';
 import type { ViewerState } from './store-port.js';
 
-/** Where the logo and attribution show: on the map (nothing covers it), in the legal bar, or at the foot of About. */
-export type LegalMirror = 'none' | 'bar' | 'about';
-
 /** True while a modal surface covers the frame (its content is then inert): the lightbox, About, a modal sheet. */
 export function modalOpen(state: ViewerState | null, mode: SheetMode): boolean {
     return state !== null && (state.lightbox || isDialogSheet(state.sheet) || (mode !== 'docked' && state.sheet !== 'none'));
-}
-
-/** A ready viewer that draws a map (WebGL): the only state with a Mapbox logo and attribution to keep visible. */
-function hasMap(state: ViewerState | null): state is ViewerState {
-    return state !== null && state.status === 'ready' && state.webgl;
-}
-
-/** About is in the browser's top layer, above everything the viewer draws: it carries its own copy. */
-export function legalMirror(state: ViewerState | null, mode: SheetMode): LegalMirror {
-    if (!hasMap(state) || !modalOpen(state, mode)) {
-        return 'none';
-    }
-    return isDialogSheet(state.sheet) ? 'about' : 'bar';
-}
-
-/** The legal bar: the viewer's last grid row, under the modal layer, so a sheet, its scrim or the lightbox ends above it. */
-export function renderLegalBar(parts: readonly AttributionPart[], locale: Locale, cssUrl: string): TemplateResult {
-    return html`<div class="legal">
-        <hcm-map-attribution .parts=${parts} .locale=${locale} .cssUrl=${cssUrl}></hcm-map-attribution>
-    </div>`;
 }
 
 /** The consent banner, in its dock over the map. */

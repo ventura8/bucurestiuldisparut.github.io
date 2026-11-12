@@ -176,6 +176,7 @@ function recordingIntents(calls: IntentCall[]): SetupIntentsPort {
         'installServer',
         'install',
         'updateMap',
+        'installOver',
         // [end install]
     ];
     return Object.fromEntries(names.map((name) => [name, record(name)])) as unknown as SetupIntentsPort;

@@ -9,6 +9,7 @@ import { layoutFor } from './layout.js';
 import type { ViewerState, ViewerStorePort } from './store-port.js';
 import { photosNearYear, stopIndex, timelineStops } from './timeline-model.js';
 import { closeSheet, selectPhoto } from './viewer-actions.js';
+import { lightboxPhotos } from './viewer-lightbox.js';
 
 export type InputCommand =
     'year-next' | 'year-previous' | 'opacity-up' | 'opacity-down' | 'photo-next' | 'photo-previous' | 'layers' | 'help' | 'close';
@@ -72,10 +73,13 @@ function stepOpacity(store: ViewerStorePort, step: number): void {
     store.showToast('layers.opacityChanged', { name: layer.label[state.locale], percent: String(percent) });
 }
 
-/** The photos a step goes through: those near the year, all of them at "today" or in the lightbox. */
+/** The photos a step goes through: those near the year, all of them at "today"; in the lightbox, the list it counts. */
 function steppedPhotos(state: ViewerState): readonly Photo[] {
     const all = state.manifest?.photos ?? [];
-    return state.lightbox || state.year === null ? all : photosNearYear(all, state.year);
+    if (state.lightbox) {
+        return lightboxPhotos(all, state.year, state.selectedPhotoId);
+    }
+    return state.year === null ? all : photosNearYear(all, state.year);
 }
 
 function stepPhoto(store: ViewerStorePort, step: number): void {

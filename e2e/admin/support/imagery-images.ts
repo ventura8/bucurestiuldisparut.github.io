@@ -84,12 +84,52 @@ const keyOf = (name: string, bounds: Bounds): string => `${name}:${[bounds.west,
 
 /** `scan-preview.jpg`: the scan at `SCAN_PREVIEW_SCALE` (800 × 600), the world as the film shows it. */
 export function scanPreviewJpeg(bounds: Bounds): Promise<Buffer> {
-    const size = { width: SCAN_SIZE.width * SCAN_PREVIEW_SCALE, height: SCAN_SIZE.height * SCAN_PREVIEW_SCALE };
+    return scanJpeg(bounds, SCAN_PREVIEW_SCALE);
+}
+
+/** The stand-in's tile side: the 1600 × 1200 sharper scan is four columns by three rows (the pipeline's is `SCAN_TILE_PX`). */
+export const SCAN_TILE = 400;
+
+/**
+ * `scan-tiles.bin`: the georeferencer's sharper scan, the same world at the scan's own pixels (1600 × 1200) as JPEG tiles in the
+ * pipeline's layout (`pipeline/src/hcm_pipeline/scan_tiles.py`).
+ */
+export function scanTilesFile(bounds: Bounds): Promise<Buffer> {
+    return once(keyOf('scan-tiles', bounds), async () => {
+        const whole = await scanJpeg(bounds, 1);
+        const tiles: Buffer[] = [];
+        for (let top = 0; top < SCAN_SIZE.height; top += SCAN_TILE) {
+            for (let left = 0; left < SCAN_SIZE.width; left += SCAN_TILE) {
+                const box = {
+                    left,
+                    top,
+                    width: Math.min(SCAN_TILE, SCAN_SIZE.width - left),
+                    height: Math.min(SCAN_TILE, SCAN_SIZE.height - top),
+                };
+                tiles.push(await sharp(whole).extract(box).jpeg({ quality: 80 }).toBuffer());
+            }
+        }
+        const head = Buffer.alloc(24 + 4 * (tiles.length + 1));
+        head.write('HCMT', 0, 'latin1');
+        [1, SCAN_TILE, SCAN_SIZE.width, SCAN_SIZE.height, tiles.length].forEach((value, index) => head.writeUInt32LE(value, 4 + 4 * index));
+        let offset = head.length;
+        for (const [index, tile] of tiles.entries()) {
+            head.writeUInt32LE(offset, 24 + 4 * index);
+            offset += tile.length;
+        }
+        head.writeUInt32LE(offset, 24 + 4 * tiles.length);
+        return Buffer.concat([head, ...tiles]);
+    });
+}
+
+/** The scan at `scale` of its own pixels. */
+function scanJpeg(bounds: Bounds, scale: number): Promise<Buffer> {
+    const size = { width: SCAN_SIZE.width * scale, height: SCAN_SIZE.height * scale };
     const project: Project = (place) => {
         const pixel = scanPixelOf(place, bounds);
-        return { x: pixel.x * SCAN_PREVIEW_SCALE, y: pixel.y * SCAN_PREVIEW_SCALE };
+        return { x: pixel.x * scale, y: pixel.y * scale };
     };
-    return once(keyOf('scan', bounds), () =>
+    return once(keyOf(`scan@${String(scale)}`, bounds), () =>
         sharp(svg(size, project, FILM))
             .grayscale()
             .jpeg({ quality: 80 })

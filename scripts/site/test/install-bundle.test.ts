@@ -60,6 +60,8 @@ describe('buildInstallBundle', () => {
             release: report.release,
             // Finding 39 of 2026-11-01: the build time, here SOURCE_DATE_EPOCH's.
             releaseTime: 1_700_000_000,
+            // The live finding of 2026-11-12: an untagged build is a dev build.
+            channel: 'dev',
             projectId: 'bucurestiul-disparut',
             // §67e: the pipeline's Docker builder by digest, so the admin offers Install the pipeline.
             tools: { node: NODE_STEP_IMAGE, docker: DOCKER_BUILDER_IMAGE },

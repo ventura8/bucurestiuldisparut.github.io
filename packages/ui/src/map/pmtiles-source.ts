@@ -190,9 +190,49 @@ export function rangeRequest(address: string, range: string): { readonly url: st
         : { url: `${address}${address.includes('?') ? '&' : '?'}range=${range}`, init: { headers } };
 }
 
+/** The leaf directories a reader keeps (the least recently read are dropped and read again when needed). */
+export const LEAVES_KEPT = 32;
+
+/** A map that keeps its `kept` most recently read or written entries (the others are dropped, oldest first). */
+export class Recent<Key, Value> {
+    readonly #entries = new Map<Key, Value>();
+    readonly #kept: number;
+
+    constructor(kept: number) {
+        this.#kept = kept;
+    }
+
+    get size(): number {
+        return this.#entries.size;
+    }
+
+    get(key: Key): Value | undefined {
+        const value = this.#entries.get(key);
+        if (value !== undefined) {
+            // Read again: the last to be dropped.
+            this.#entries.delete(key);
+            this.#entries.set(key, value);
+        }
+        return value;
+    }
+
+    set(key: Key, value: Value): void {
+        this.#entries.delete(key);
+        this.#entries.set(key, value);
+        for (const old of [...this.#entries.keys()].slice(0, Math.max(0, this.#entries.size - this.#kept))) {
+            this.#entries.delete(old);
+        }
+    }
+
+    delete(key: Key): boolean {
+        return this.#entries.delete(key);
+    }
+}
+
 export class PmtilesReader {
     readonly #url: string;
-    readonly #leaves = new Map<number, Promise<readonly Entry[]>>();
+    /** At most `LEAVES_KEPT` directories stay: a long pan over a large archive dropped none before (the resource audit, 2026-11-12). */
+    readonly #leaves = new Recent<number, Promise<readonly Entry[]>>(LEAVES_KEPT);
     #head: Promise<Head> | null = null;
 
     constructor(url: string) {

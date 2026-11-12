@@ -86,6 +86,7 @@ export const CONTENT_INPUT_BUDGETS = {
     // [end setup-ux]
     // [section install] owner: installer (docs/research/M6-interfaces.md §1.7, §4.2; plus one Google consent in daily use)
     updateMap: { inputs: 1, how: 'Update the map on the card of a target behind the admin (every target behind, one build each)' },
+    installOver: { inputs: 2, how: "Install this admin's version anyway on a card newer than the admin, then Install it in the dialog" },
     // [end install]
 } as const satisfies Readonly<Record<string, ContentFlowBudget>>;
 

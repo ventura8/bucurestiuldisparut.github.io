@@ -10,7 +10,8 @@ import { chooseMenuItem, menuButton, openLayers, t, viewer, visibilitySwitch, wa
  * Responsive layout (behaviour V15) and the legal controls on compact (V18): a landscape phone collapses the controls
  * into the menu and keeps the timeline lying at the foot of the map (too short to stand); the compact bottom sheet has three heights and closes when dragged
  * away; long Romanian labels never scroll the full-screen About sideways; the collapsed Mapbox attribution stays
- * reachable, and a sheet at full height ends above the legal bar that carries the logo and the credits meanwhile. Each
+ * reachable, and a sheet at full height reaches the foot of the viewer while Mapbox's own logo and credits rise into the
+ * strip of map it leaves (the Pixel 9 Pro review, P3: a bar with a copy of them took the foot of every sheet). Each
  * test sets its own viewport, so every functional project runs it at that size. The layout of every screen at all 11
  * viewports is the tour's (e2e/tour/viewer.tour.ts).
  */
@@ -95,7 +96,7 @@ test(
         await boot(page, COMPACT, 'ro');
         await openLayers(page, 'ro');
         const { sheet, handle, box } = layersSheet(page);
-        // The sheets' container: the viewer above the legal bar, which shows while a sheet covers the map (V18).
+        // The sheets' container: the whole viewer (V18: no bar below the sheets since the Pixel 9 Pro review, P3).
         const pane = (await viewer(page).locator('.modal-layer').boundingBox())?.height ?? 0;
         await expect(sheet).toHaveAttribute('detent', 'half');
         await expect.poll(() => sheetHeight(box)).toBeCloseTo(pane * 0.5, -1);
@@ -213,7 +214,7 @@ test(
 );
 
 test(
-    'A full-height sheet on a phone ends above the legal bar, which keeps the logo and the credits of a layer switched on',
+    "A full-height sheet on a phone reaches the viewer's foot; Mapbox's logo and credits, a layer's among them, rise above it",
     { tag: '@S-V18-BAD-FULL-SHEET' },
     async ({ page }) => {
         await boot(page, COMPACT, 'ro');
@@ -224,22 +225,29 @@ test(
         await expect(sheet).toHaveAttribute('detent', 'full');
         await settled(box);
 
-        const legal = viewer(page).locator('.legal');
-        const logo = legal.locator('a.mapboxgl-ctrl-logo');
-        const credits = legal.locator('[data-layout-check="map-attribution"]');
+        const logo = viewer(page).locator('.mapboxgl-ctrl-bottom-left a.mapboxgl-ctrl-logo');
+        const credits = viewer(page).locator('.mapboxgl-ctrl-bottom-right .mapboxgl-ctrl-attrib');
+        const sheetBox = (await box.boundingBox()) ?? { y: 0, height: 0 };
+        const frame = (await viewer(page).boundingBox()) ?? { y: 0, height: Number.POSITIVE_INFINITY };
+        expect(sheetBox.y + sheetBox.height, 'the sheet reaches the foot of the viewer').toBeCloseTo(frame.y + frame.height, 0);
+        await expect(viewer(page).locator('.legal')).toHaveCount(0);
         for (const control of [logo, credits]) {
             await expect(control).toBeVisible();
-            await expect(isOnTop(control)).resolves.toBe(true);
+            await expect
+                .poll(
+                    async () => {
+                        const at = await control.boundingBox();
+                        return at === null ? Number.POSITIVE_INFINITY : at.y + at.height;
+                    },
+                    { message: 'above the sheet, in the strip of map it leaves' },
+                )
+                .toBeLessThanOrEqual(sheetBox.y + 0.5);
         }
-        await expect(viewer(page).locator('.mapboxgl-ctrl-bottom-left a.mapboxgl-ctrl-logo')).toBeHidden();
-        const sheetBox = (await box.boundingBox()) ?? { y: 0, height: Number.POSITIVE_INFINITY };
-        const legalBox = (await legal.boundingBox()) ?? { y: 0 };
-        expect(sheetBox.y + sheetBox.height, 'the sheet ends where the legal bar begins').toBeLessThanOrEqual(legalBox.y + 1);
 
         await visibilitySwitch(page, 'ro', 'Corona 1966 (e2e)').click();
         await expect(credits).toContainText('USGS (e2e)');
-        await expect(credits.getByRole('link', { name: '© Mapbox' })).toHaveAttribute('href', 'https://www.mapbox.com/about/maps/');
-        await expect(logo).toHaveAttribute('aria-label', t('ro', 'map.logo'));
+        // The collapsed attribution keeps its links out of the accessibility tree until it is opened.
+        await expect(credits.locator('a', { hasText: '© Mapbox' })).toHaveAttribute('href', 'https://www.mapbox.com/about/maps/');
     },
 );
 

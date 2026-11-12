@@ -121,6 +121,26 @@ export function paintSuggestionBadge(context: CanvasRenderingContext2D, at: Badg
     label(context, at, item.label, 11);
 }
 
+/** The ghost (2026-11-12): where the pairs so far expect the pending pair's other end, a dashed double ring with a dot, never a target. */
+export function paintGhostBadge(context: CanvasRenderingContext2D, at: BadgePoint, palette: BadgePalette): void {
+    context.setLineDash(DASH);
+    context.lineWidth = 2;
+    for (const [radius, colour] of [
+        [BADGE_SELECTED_RADIUS, palette.marker],
+        [BADGE_SELECTED_RADIUS + 2, palette.onMarker],
+    ] as const) {
+        context.beginPath();
+        context.arc(at.x, at.y, radius, 0, Math.PI * 2);
+        context.strokeStyle = colour;
+        context.stroke();
+    }
+    context.setLineDash([]);
+    context.beginPath();
+    context.arc(at.x, at.y, 2, 0, Math.PI * 2);
+    context.fillStyle = palette.marker;
+    context.fill();
+}
+
 /** Half-pair or keyboard crosshair. */
 export function paintBadgeCross(context: CanvasRenderingContext2D, at: BadgePoint, colour: string): void {
     context.beginPath();

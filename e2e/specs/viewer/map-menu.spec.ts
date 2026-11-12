@@ -153,6 +153,49 @@ test('A long press on a touch screen opens the menu', { tag: '@S-V62-HAPPY-LONG-
     await expect(menu(page, lang)).toBeVisible();
 });
 
+/** Whether the browser's text selection may start at `target` (false: the page cancelled `selectstart`). */
+async function selectionStarts(target: Locator): Promise<boolean> {
+    return target.evaluate((element) =>
+        element.dispatchEvent(new Event('selectstart', { bubbles: true, cancelable: true, composed: true })),
+    );
+}
+
+test(
+    'A long press on the map selects no text and offers no touch callout; the menu alone answers',
+    { tag: '@S-V62-HAPPY-NO-SELECTION' },
+    async ({ page, lang }) => {
+        await openViewer(page, { lang, hash: HASH });
+        const box = await mapBox(page);
+        const at = { clientX: box.x + 60, clientY: box.y + 80 };
+
+        await map(page).dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 7, isPrimary: true, ...at });
+        const whileHeld = await selectionStarts(map(page).locator('canvas.mapboxgl-canvas'));
+        await expect(menu(page, lang)).toBeVisible();
+        await map(page).dispatchEvent('pointerup', { pointerType: 'touch', pointerId: 7, isPrimary: true, ...at });
+
+        expect(whileHeld, 'selectstart under the finger is cancelled').toBe(false);
+        expect(await selectionStarts(map(page).locator('.mapboxgl-ctrl-attrib')), 'nor after the long press, on the credits').toBe(false);
+        await expect(map(page)).toHaveCSS('user-select', 'none');
+        expect(await page.evaluate(() => getSelection()?.toString() ?? ''), 'nothing is selected').toBe('');
+    },
+);
+
+test(
+    'A short tap on the map lets the browser select again once the finger lifts, and opens no menu',
+    { tag: '@S-V62-BAD-SHORT-TAP' },
+    async ({ page, lang }) => {
+        await openViewer(page, { lang, hash: HASH });
+        const box = await mapBox(page);
+        const at = { clientX: box.x + 60, clientY: box.y + 80 };
+
+        await map(page).dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 8, isPrimary: true, ...at });
+        await map(page).dispatchEvent('pointerup', { pointerType: 'touch', pointerId: 8, isPrimary: true, ...at });
+
+        expect(await selectionStarts(map(page)), 'no finger down: the page no longer cancels selectstart').toBe(true);
+        await expect(menu(page, lang)).toHaveCount(0);
+    },
+);
+
 test(
     "A photo's sheet links to Street View at its place, looking along its bearing",
     { tag: '@S-V62-HAPPY-PHOTO' },

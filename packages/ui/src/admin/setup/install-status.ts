@@ -88,21 +88,24 @@ const CARD_BUTTONS: Readonly<Record<InstallTarget, (state: SetupViewState) => bo
     site: (state) => INSTALLABLE_STATES.has(state.install.site.state),
 };
 
+/** The states whose card offers a button that asks Google: Update the map, or Install this admin's version anyway. */
+const ASKING_STATES: ReadonlySet<InstallState> = new Set<InstallState>(['updateAvailable', 'newerInstalled']);
+
 /** The install cards' steps and their targets. */
 const STEP_TARGETS: Partial<Readonly<Record<SetupStepId, InstallTarget>>> = { deploy: 'server', pipeline: 'pipeline', site: 'site' };
 
 /**
  * Finding 40 of 2026-11-01: whether an install card's body shows a button that asks Google for its token (Install,
  * Publish, Try again, Install the pipeline, Update the map), so Google's consent note goes with it. A card with nothing
- * to do (installed, no update; a build under way; newer than this admin) shows no note: its Check again still asks
- * Google, as Continue does after an expired token, beside which the frame keeps the note. Any other step: true.
+ * to do (installed, no update; a build under way) shows no note; one newer than this admin offers the override, which
+ * asks (the live finding of 2026-11-12). Its Check again still asks Google, as Continue does after an expired token, beside which the frame keeps the note. Any other step: true.
  */
 export function installCardAsks(state: SetupViewState, step: SetupStepId): boolean {
     const target = STEP_TARGETS[step];
     if (target === undefined) {
         return true;
     }
-    return state.install[target].state === 'updateAvailable' || CARD_BUTTONS[target](state);
+    return ASKING_STATES.has(state.install[target].state) || CARD_BUTTONS[target](state);
 }
 
 /** The blockers whose fix is Prepare the project (step c): the card links it. */
@@ -457,9 +460,26 @@ function updateOffered(input: InstallStatusInput, view: InstallTargetViewPort): 
     return due && !building(input.slice);
 }
 
+/**
+ * A target newer than this admin (the live finding of 2026-11-12): no Update (the downgrade guard), but the owner may
+ * install this admin's release anyway after a confirmation (`<hcm-install-over>`), never while a build runs.
+ */
+function newerLine(input: InstallStatusInput, view: InstallTargetViewPort): TemplateResult {
+    const installed = view.installedRelease ?? '';
+    return html`<p class="note">${label(input, 'adminSetup.install.newer', { release: installed })}</p>
+        <hcm-install-over
+            .target=${input.target}
+            .locale=${input.locale}
+            .installed=${installed}
+            .release=${input.slice.release}
+            .intents=${input.intents}
+            ?disabled=${view.busy || building(input.slice)}
+        ></hcm-install-over>`;
+}
+
 function updateLine(input: InstallStatusInput, view: InstallTargetViewPort): TemplateResult {
     if (view.state === 'newerInstalled') {
-        return html`<p class="note">${label(input, 'adminSetup.install.newer', { release: view.installedRelease ?? '' })}</p>`;
+        return newerLine(input, view);
     }
     if (!updateOffered(input, view)) {
         return EMPTY;

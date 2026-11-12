@@ -13,7 +13,7 @@ import { ZOOM_JOURNEY, ZOOM_STATES } from './zoom-states.js';
 import { PHOTO_VERSION_JOURNEY, PHOTO_VERSION_STATES } from './photo-version-states.js';
 import { MAP_MENU_JOURNEY, MAP_MENU_STATES } from './map-menu-states.js';
 import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
-import { SETTINGS_STATES } from './settings-states.js';
+import { SETTINGS_STATES, SHORT_LANDSCAPE_JOURNEY, THEME_MENU_JOURNEY } from './settings-states.js';
 import { hasBottomSheets, scrollToEnd, toDetent } from './sheets.js';
 import { OPS_STATES } from '../admin/specs/ops/states.js';
 import { POIS_STATES } from '../admin/specs/pois/states.js';
@@ -201,7 +201,7 @@ const VIEWER_STATES = {
         exists: hasBottomSheets,
     },
     'layers-full': {
-        title: 'The Layers sheet at full height, above the legal line',
+        title: "The Layers sheet at full height, Mapbox's logo and credits in the strip of map above it",
         enter: ({ page, lang }) => toDetent(page, lang, 'full'),
         exists: hasBottomSheets,
     },
@@ -231,7 +231,7 @@ const VIEWER_STATES = {
         exists: hasBottomSheets,
     },
     lightbox: {
-        title: 'The lightbox over everything but the legal line',
+        title: 'The lightbox over everything, the map and its credits included',
         enter: async ({ page, lang }) => {
             await page.getByRole('button', { name: t(lang, 'photo.openLightbox') }).click();
             await expect(page.getByRole('dialog', { name: t(lang, 'lightbox.label') })).toBeVisible();
@@ -450,6 +450,8 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
     ZOOM_JOURNEY,
     PHOTO_VERSION_JOURNEY,
     MAP_MENU_JOURNEY,
+    THEME_MENU_JOURNEY,
+    SHORT_LANDSCAPE_JOURNEY,
     {
         title: 'Swipe compare: the divider at 50 % and at both edges, from the keyboard; the toggle of a compact window; the chooser',
         id: 'compare',

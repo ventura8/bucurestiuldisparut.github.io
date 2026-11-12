@@ -14,12 +14,16 @@ import { geoToMercator, WEB_MERCATOR_RADIUS_M, type FittedTransform, type LngLat
 export interface ScanCamera {
     readonly centre: PixelPoint;
     readonly scale: number;
+    /** How far the scan is turned in its pane, radians clockwise (absent: as it is). */
+    readonly angle?: number;
 }
 
 /** What the map shows: its centre and its zoom. */
 export interface MapCamera {
     readonly center: LngLat;
     readonly zoom: number;
+    /** The map's bearing in degrees (absent: as it is). */
+    readonly bearing?: number;
 }
 
 /** Mapbox's world at zoom 0 is one 512-pixel tile; its width in Web Mercator metres. */
@@ -53,7 +57,7 @@ export function mapToScan(transform: FittedTransform, camera: MapCamera): ScanCa
 }
 
 function sameCamera(a: MapCamera, b: MapCamera): boolean {
-    return a.zoom === b.zoom && a.center[0] === b.center[0] && a.center[1] === b.center[1];
+    return a.zoom === b.zoom && a.bearing === b.bearing && a.center[0] === b.center[0] && a.center[1] === b.center[1];
 }
 
 export interface LinkPorts {
