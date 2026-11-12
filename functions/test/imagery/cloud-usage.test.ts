@@ -45,13 +45,13 @@ describe('counting a cloud run', () => {
 
         await onJobWrite(world.deps, CITY, JOB, { before: job(), after: ended });
 
-        expect(await usage(world)).toMatchObject({ month: '2026-10', vcpuSeconds: 4000, gibSeconds: 16_000, runs: 1 });
+        expect(await usage(world)).toMatchObject({ month: '2026-10', vcpuSeconds: 2000, gibSeconds: 8000, runs: 1 });
         // The job records the counted dispatch and keeps the pipeline's stamp.
         expect(await readJob(world, JOB)).toMatchObject({ usageCountedAt: DISPATCHED, updatedBy: 'system:pipeline' });
 
         // The redelivered event adds nothing.
         await onJobWrite(world.deps, CITY, JOB, { before: job(), after: ended });
-        expect(await usage(world)).toMatchObject({ vcpuSeconds: 4000, gibSeconds: 16_000, runs: 1 });
+        expect(await usage(world)).toMatchObject({ vcpuSeconds: 2000, gibSeconds: 8000, runs: 1 });
     });
 
     it('happyPath_aLocalRunIsNeverCounted @S-A63-HAPPY-COUNTED', async () => {
