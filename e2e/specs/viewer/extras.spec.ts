@@ -2,14 +2,18 @@ import type { Page } from '@playwright/test';
 
 import { E2E_CITY_ID } from '../../fixtures/world.js';
 import { compareBar, expectMapCounts } from '../../support/compare.js';
+import { analyticsManifest, gaEvents } from '../../support/ga4.js';
+import { connectPad, installFakePads } from '../../support/gamepad.js';
 import { expect, test } from '../../support/test.js';
-import { t, viewer } from '../../support/viewer.js';
+import { serveManifest, t, viewer } from '../../support/viewer.js';
 
 /**
  * The IIFE's extras on demand (behaviour V54, docs/ENGINE_API.md → *Extras on demand*, DECISIONS-for-review.md §159): a
  * page that loads `engine.iife.js` fetches no extra for its first paint; the first Compare adds swipe compare's
  * `extra-compare-<hash>.js` beside the engine as a script with its integrity, once, and compare works. An extra that does
- * not arrive closes compare with a message that says to try again, and the next Compare fetches it afresh.
+ * not arrive closes compare with a message that says to try again, and the next Compare fetches it afresh. The other
+ * extras come the same way: the Firebase SDK and the field chunk after the analytics consent, the gamepad's once a pad
+ * connects.
  */
 
 /** A page of its own beside the site, as a third party embeds the engine (the embed API's page, V21). */
@@ -27,6 +31,10 @@ const EXTRAS_HTML = `<!DOCTYPE html>
 
 const WIDE = { width: 1280, height: 800 };
 const EXTRA_COMPARE = /\/engine\/extra-compare-[\w-]{8}\.js$/;
+const EXTRA_FIREBASE_SDK = /\/engine\/extra-firebase-sdk-[\w-]{8}\.js$/;
+const EXTRA_FIELD_SDK = /\/engine\/extra-field-sdk-[\w-]{8}\.js$/;
+const EXTRA_GAMEPAD = /\/engine\/extra-gamepad-[\w-]{8}\.js$/;
+const INTEGRITY = /^sha384-[\w+/]{64}$/;
 
 interface ExtrasWindow {
     HistoricCityMap: {
@@ -81,7 +89,7 @@ test(
         expect(requested).toHaveLength(1);
         expect(requested[0]).toMatch(EXTRA_COMPARE);
         const script = page.locator('head script[src*="extra-compare-"]');
-        await expect(script).toHaveAttribute('integrity', /^sha384-[\w+/]{64}$/);
+        await expect(script).toHaveAttribute('integrity', INTEGRITY);
         await expect(script).toHaveAttribute('crossorigin', 'anonymous');
 
         await page.evaluate(() => {
@@ -119,5 +127,43 @@ test(
         await expect(compareBar(page, 'ro')).toBeVisible();
         await expectMapCounts(page, 2, 0);
         expect(requested).toHaveLength(2);
+    },
+);
+
+/** The page's scripts added for `name`'s extra: each one in head, with its integrity and CORS. */
+async function expectOneExtraScript(page: Page, name: string): Promise<void> {
+    const script = page.locator(`head script[src*="/extra-${name}-"]`);
+    await expect(script).toHaveCount(1);
+    await expect(script).toHaveAttribute('integrity', INTEGRITY);
+    await expect(script).toHaveAttribute('crossorigin', 'anonymous');
+}
+
+test(
+    'The IIFE fetches the analytics extras only after the consent and the gamepad extra only with a pad, each once',
+    { tag: '@S-V54-HAPPY-EXTRAS-CONSENT-AND-PAD' },
+    async ({ page, mockApis }) => {
+        await serveManifest(page, analyticsManifest());
+        await installFakePads(page);
+        const requested = await openPage(page);
+        await expect(viewer(page).locator('hcm-consent-banner')).toBeVisible();
+        expect(requested).toEqual([]);
+
+        await page.getByRole('button', { name: t('ro', 'consent.accept'), exact: true }).click();
+
+        await expect.poll(() => requested.filter((path) => EXTRA_FIELD_SDK.test(path))).toHaveLength(1);
+        expect(requested.filter((path) => EXTRA_FIREBASE_SDK.test(path))).toHaveLength(1);
+        await expectOneExtraScript(page, 'firebase-sdk');
+        await expectOneExtraScript(page, 'field-sdk');
+        await expect.poll(async () => (await gaEvents(mockApis)).map((event) => event.name)).toContain('viewer_timing');
+
+        await connectPad(page);
+        await expect(
+            viewer(page)
+                .locator('hcm-snackbar .snackbar')
+                .filter({ hasText: t('ro', 'gamepad.ready') }),
+        ).toBeVisible();
+        expect(requested.filter((path) => EXTRA_GAMEPAD.test(path))).toHaveLength(1);
+        await expectOneExtraScript(page, 'gamepad');
+        expect(requested).toHaveLength(3);
     },
 );

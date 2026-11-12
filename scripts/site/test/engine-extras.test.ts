@@ -15,7 +15,9 @@ import {
     finishedCode,
     importedBindings,
     importedKeys,
+    hostKeyOf,
     importsModuleCode,
+    readyFooter,
     type BuiltExtra,
     type EngineExtrasOptions,
 } from '../src/engine-extras.js';
@@ -40,7 +42,9 @@ function fixture(entry: string): EngineExtrasOptions {
         root,
         importsModule: join(root, 'src/imports.ts'),
         runtimeModule: join(root, 'src/runtime.ts'),
+        hostKey: 'v9_9_9',
         registry: 'testHost.extras',
+        ready: 'testHost.ready',
         extras: [{ name: 'the-extra', global: 'theExtra', entry: join(root, 'src/entry.ts') }],
         host: [{ specifier: 'host-pkg', global: 'testHost.pkg', module: join(root, 'src/host-pkg.ts') }],
         forbidden: FORBIDDEN,
@@ -63,14 +67,22 @@ describe('the extras: names, code and the generated module', () => {
             { extra: { name: 'compare', global: 'compare', entry: '/e.ts' }, fileName: 'extra-compare-x.js', integrity: 'sha384-i' },
         ];
 
-        expect(importsModuleCode('/engine/src/extras/runtime.ts', built as unknown as BuiltExtra[])).toBe(
+        expect(importsModuleCode('/engine/src/extras/runtime.ts', 'v1_0_0', built as unknown as BuiltExtra[])).toBe(
             [
                 'import { loadExtra } from "/engine/src/extras/runtime.ts";',
                 'export const extraImports = {',
-                '    "compare": () => loadExtra({"global":"compare","file":"extra-compare-x.js","integrity":"sha384-i"}),',
+                '    "compare": () => loadExtra({"host":"v1_0_0","global":"compare","file":"extra-compare-x.js","integrity":"sha384-i"}),',
                 '};',
                 '',
             ].join('\n'),
+        );
+    });
+
+    it('happyPath_eachReleaseHasItsOwnEntryOnTheHostAndTheReadyMarkSetsTheExtrasKey', () => {
+        expect(hostKeyOf('1.0.0')).toBe('v1_0_0');
+        expect(hostKeyOf('1.2.0-beta.1')).toBe('v1_2_0_beta_1');
+        expect(readyFooter('testHost.ready', 'the-extra')).toBe(
+            '(function(r){r["the-extra"]=!0})(this.testHost.ready=this.testHost.ready||{});',
         );
     });
 
@@ -152,6 +164,10 @@ describe('the extras: built', () => {
         expect(built?.map).toContain('helper.ts');
         expect(built?.modules.some((id) => id.endsWith('helper.ts'))).toBe(true);
         expect(built?.code).toMatch(/\.value=/);
+        // The ready mark is the script's last statement, after the IIFE that registers the exports.
+        expect(built?.code.trimEnd()).toMatch(
+            /\.theExtra\|\|\{\}.*\(function\((\w)\)\{\1\.theExtra=!0\}\)\(this\.testHost\.ready=this\.testHost\.ready\|\|\{\}\);$/s,
+        );
     }, 60_000);
 
     it('badPath_anExtraThatImportsWhatTheHostDoesNotExportOrCarriesAHostModuleStopsTheBuild', async () => {

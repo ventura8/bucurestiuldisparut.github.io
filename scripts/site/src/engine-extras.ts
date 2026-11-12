@@ -13,7 +13,8 @@ import { subresourceIntegrity } from './sri.js';
  *
  * - Each extra is built on its own (Vite, IIFE, minified, a hidden source map: the release keeps no source-map line and
  *   every byte the integrity covers) when the engine's build starts, and its exports are registered on the page's host
- *   (`<registry>.<global>`, `extend`). What it shares with the engine, Lit and `@hcm/shared` (one copy and one catalogue
+ *   (`<registry>.<global>`, `extend`). Its last statement marks it ready (`<ready>.<global> = true`, `readyFooter`): the
+ *   registry's entry exists from the script's first statement, so only the mark tells the loader the script did not throw. What it shares with the engine, Lit and `@hcm/shared` (one copy and one catalogue
  *   state per page), it takes from the host's globals (`host`), never from its own copy: an extra carrying a module of
  *   `forbidden` stops the build, and so does a binding it imports from the host that the host's module does not export.
  * - The engine's `imports.ts` (`importsModule`: a dynamic import per extra, as the tests run it) is replaced by
@@ -48,8 +49,12 @@ export interface EngineExtrasOptions {
     readonly importsModule: string;
     /** `packages/engine/src/extras/runtime.ts`, whose `loadExtra` the generated module calls. */
     readonly runtimeModule: string;
-    /** The host's registry the extras register on (`__hcmEngineHost.extras`). */
+    /** The release's entry on the host (`hostKeyOf(ENGINE_VERSION)`), which the generated module gives the loader. */
+    readonly hostKey: string;
+    /** The host's registry the extras register on (`__hcmEngineHost.<release>.extras`). */
     readonly registry: string;
+    /** The host's record each extra marks itself ready on, its last statement (`__hcmEngineHost.<release>.ready`). */
+    readonly ready: string;
     readonly extras: readonly EngineExtra[];
     readonly host: readonly HostModule[];
     /** Modules an extra must take from the host and never carry (Lit, the catalogues, zod). */
@@ -82,10 +87,23 @@ export function finishedCode(code: string): string {
     return code.endsWith('\n') ? code : `${code}\n`;
 }
 
+/**
+ * A release's entry on the extras' host (`packages/engine/src/extras/host.ts`): an identifier the extras' scripts can
+ * name, `1.2.0-beta.1` -> `v1_2_0_beta_1`. Two engine releases on one page keep apart this way.
+ */
+export function hostKeyOf(version: string): string {
+    return `v${version.replaceAll(/\W/g, '_')}`;
+}
+
+/** The extra's last statement: marks it ready on the host once everything before it ran (the IIFE threw nothing). */
+export function readyFooter(ready: string, global: string): string {
+    return `(function(r){r[${JSON.stringify(global)}]=!0})(this.${ready}=this.${ready}||{});`;
+}
+
 /** The generated `imports.ts`: one loader call per extra with its file and integrity. */
-export function importsModuleCode(runtimeModule: string, built: readonly BuiltExtra[]): string {
+export function importsModuleCode(runtimeModule: string, hostKey: string, built: readonly BuiltExtra[]): string {
     const entries = built.map((item) => {
-        const file = { global: item.extra.global, file: item.fileName, integrity: item.integrity };
+        const file = { host: hostKey, global: item.extra.global, file: item.fileName, integrity: item.integrity };
         return `    ${JSON.stringify(item.extra.global)}: () => loadExtra(${JSON.stringify(file)}),`;
     });
     return [`import { loadExtra } from ${JSON.stringify(runtimeModule)};`, 'export const extraImports = {', ...entries, '};', ''].join(
@@ -204,7 +222,14 @@ function extraConfig(options: EngineExtrasOptions, extra: EngineExtra): InlineCo
             rolldownOptions: {
                 external: Object.keys(globals),
                 output: [
-                    { format: 'iife', name: `${options.registry}.${extra.global}`, extend: true, globals, entryFileNames: 'extra.js' },
+                    {
+                        format: 'iife',
+                        name: `${options.registry}.${extra.global}`,
+                        extend: true,
+                        globals,
+                        entryFileNames: 'extra.js',
+                        footer: readyFooter(options.ready, extra.global),
+                    },
                     { format: 'es', entryFileNames: 'extra.mjs' },
                 ],
             },
@@ -277,7 +302,7 @@ export function engineExtrasPlugin(options: EngineExtrasOptions): EngineExtrasPl
             built = await started;
         },
         load(id) {
-            return id.split('?')[0] === options.importsModule ? importsModuleCode(options.runtimeModule, built) : null;
+            return id.split('?')[0] === options.importsModule ? importsModuleCode(options.runtimeModule, options.hostKey, built) : null;
         },
         generateBundle() {
             for (const item of built) {

@@ -23,9 +23,17 @@ describe('loadExtra', () => {
     it('happyPath_loadsFromTheEngineFolderAndRegistersOnTheHost', async () => {
         setExtrasBase('https://example.org/engine/');
 
-        const loading = loadExtra({ global: 'fieldSdk', file: 'extra-field-sdk-12345678.js', integrity: 'sha384-f' });
-        const host = Reflect.get(globalThis, EXTRAS_HOST_GLOBAL) as ExtrasHost;
+        const loading = loadExtra({
+            host: 'v2_1_0_beta_3',
+            global: 'fieldSdk',
+            file: 'extra-field-sdk-12345678.js',
+            integrity: 'sha384-f',
+        });
+        const hosts = Reflect.get(globalThis, EXTRAS_HOST_GLOBAL) as Record<string, ExtrasHost>;
+        expect(Object.keys(hosts)).toEqual(['v2_1_0_beta_3']);
+        const [host] = Object.values(hosts) as [ExtrasHost];
         host.extras['fieldSdk'] = { fieldSdk: 'chunk' };
+        host.ready['fieldSdk'] = true;
         page.scripts.at(-1)?.fire('load');
 
         await expect(loading).resolves.toEqual({ fieldSdk: 'chunk' });
@@ -33,7 +41,12 @@ describe('loadExtra', () => {
     });
 
     it('badPath_aRefusedScriptRejectsTheWish', async () => {
-        const loading = loadExtra({ global: 'gamepad', file: 'extra-gamepad-12345678.js', integrity: 'sha384-wrong' });
+        const loading = loadExtra({
+            host: 'v2_1_0_beta_3',
+            global: 'gamepad',
+            file: 'extra-gamepad-12345678.js',
+            integrity: 'sha384-wrong',
+        });
         page.scripts.at(-1)?.fire('error');
 
         await expect(loading).rejects.toThrow('could not be loaded');

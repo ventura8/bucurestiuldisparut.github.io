@@ -1,10 +1,11 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vite';
 
 import { cataloguePackPlugin } from '../../scripts/site/src/catalogue-pack.js';
 import { cssLiteralsPlugin } from '../../scripts/site/src/css-literals.js';
-import { engineExtrasPlugin } from '../../scripts/site/src/engine-extras.js';
+import { engineExtrasPlugin, hostKeyOf } from '../../scripts/site/src/engine-extras.js';
 import { thirdPartyNoticesPlugin } from '../../scripts/site/src/notices.js';
 import { zodStandInsPlugin } from '../../scripts/site/src/zod-stand-ins.js';
 import { FONT_FILES } from '../ui/src/fonts/font-files.js';
@@ -45,13 +46,25 @@ const zodStandIns = (): ReturnType<typeof zodStandInsPlugin> =>
         messages: here('../admin/src/vendor/zod-locale-none.ts'),
     });
 
-const HOST = '__hcmEngineHost';
+/** ENGINE_VERSION of src/index.ts: the extras register on this release's entry of the host (src/extras/host.ts). */
+function engineVersion(): string {
+    const version = /ENGINE_VERSION = '([^']+)'/.exec(readFileSync(here('src/index.ts'), 'utf8'))?.[1];
+    if (version === undefined) {
+        throw new Error('packages/engine/src/index.ts declares no ENGINE_VERSION');
+    }
+    return version;
+}
+
+const HOST_KEY = hostKeyOf(engineVersion());
+const HOST = `__hcmEngineHost.${HOST_KEY}`;
 
 const extras = engineExtrasPlugin({
     root: here('.'),
     importsModule: here('src/extras/imports.ts'),
     runtimeModule: here('src/extras/runtime.ts'),
+    hostKey: HOST_KEY,
     registry: `${HOST}.extras`,
+    ready: `${HOST}.ready`,
     // The keys of src/extras/imports.ts.
     extras: [
         { name: 'compare', global: 'compare', entry: here('src/compare/compare.ts') },
