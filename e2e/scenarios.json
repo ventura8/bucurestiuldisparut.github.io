@@ -5776,7 +5776,30 @@
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/georeferencer.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes."
         },
         {
+            "id": "S-A16-HAPPY-POLY2-GRID-INVERSE",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "Second-order polynomial fits when places lie on two streets",
+            "asserts": "six well-spread scan pixels whose places lie on two latitudes -> poly2 fits (fit RMSE under 0.01 m, kind poly2) instead of refusing as degenerate; affine still fits; the inverse is the forward map sampled on a 15 x 15 grid, as the pipeline does",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS §144 / lesson 553. Tests: packages/shared/test/georef/fit.test.ts (happyPath_placesOnTwoStreetsStillFitWhenTheInverseIsSampledOnTheForwardGrid)."
+        },
+        {
+            "id": "S-A16-BAD-POLY2-TWO-ROWS",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "Second-order polynomial refuses pairs on only two scan rows",
+            "asserts": "six pairs on only two horizontal scan rows -> poly2 refused as degenerate; affine still fits",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS §144 / lesson 553. Tests: packages/shared/test/georef/fit.test.ts (badPath_pixelsOnOnlyTwoRowsLeaveTheSecondOrderFitSingular)."
+        },
+        {
             "id": "S-A16-HAPPY-REGEOREF-LAYER",
+
             "behaviour": "A16",
             "area": "admin",
             "path": "happy",

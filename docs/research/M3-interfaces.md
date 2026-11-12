@@ -713,6 +713,8 @@ export function previewMesh(transform: FittedTransform, bounds: BBox, cells: num
 - Pure, DOM-free, under complexity 5 per function; the fit of 300 pairs with leave-one-out runs under 50 ms in Chromium
   (the georeferencer refits on every move, coalesced per animation frame).
 - `imagery.saveGcps` refits server-side with the same module before it accepts the points.
+- A poly2 has no poly2 inverse: `toPixel` for `poly2` is a second-order fit on a 15×15 grid of the forward map over the
+  pairs' pixels (pipeline `INVERSE_GRID` / `_inverse_grid`), never a reverse fit on the pairs alone (DECISIONS §144).
 
 ### 6.3 Golden cases (done)
 

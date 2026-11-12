@@ -60,6 +60,8 @@ TEST_GLOBS = (
     "firebase/rules-tests/*.test.ts",
     # Admin georef Undo (A131) and related matrix tags live in Vitest, not Playwright.
     "packages/admin/test/georef/*.test.ts",
+    # Shared poly2 inverse parity (A16 / DECISIONS §144) lives in Vitest, not Playwright.
+    "packages/shared/test/georef/*.test.ts",
 )
 # Area -> section title, in the doc's order.
 AREAS = {

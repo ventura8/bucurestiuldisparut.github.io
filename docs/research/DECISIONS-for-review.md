@@ -6332,11 +6332,12 @@ The owner's request of 2026-11-09 ("import the landsat, add it to our sources, a
 - **Why**: the owner, 2026-11-11: "i want in georeferencer: the points on the right screen to be exactly the same as on the left."
 - **Also**: admin-only `project` / `unproject` (`packages/admin/src/map/projection.ts`) for screen-space badges and nudges — not on shared `MapPort` (§146). M22 `#/help` stays the next phase.
 
-## 144. Georeferencer: Second-order polynomial is broken (2026-11-12) — PLANNED, owner report
+## 144. Georeferencer: Second-order polynomial is broken (2026-11-12) — APPLIED
 
-- **What**: On `#/georef`, the transform **Second-order polynomial (at least 6 pairs)** / **Polinomială de gradul 2 (cel puțin 6 perechi)** (`poly2`) is broken. Fix next after the live 1847 transparency repair and the Undo depth bug (settle was burning one Undo step per pair).
+- **What**: On `#/georef`, the transform **Second-order polynomial (at least 6 pairs)** / **Polinomială de gradul 2 (cel puțin 6 perechi)** (`poly2`) refused many real pair sets as `degenerate` while affine and thin-plate still fitted.
 - **Why**: the owner, 2026-11-12: "also add to plan, this broken: Second-order polynomial (at least 6 pairs)".
-- **Scope**: reproduce on a version with ≥6 pairs, pin with a happy/bad georef row, fix the fit or the UI that offers it; affine and thin-plate stay the workaround until then.
+- **Cause**: TypeScript fitted the poly2 place→pixel map on the pairs alone; a quadratic has no quadratic inverse, so well-spread scan pixels whose places lay on two lines (two streets) made the reverse design singular and the whole fit refused. The pipeline already sampled the forward map on a 15×15 grid (`INVERSE_GRID`) for that inverse.
+- **Fix**: `packages/shared/src/georef/fit.ts` `poly2Fitter` matches the pipeline (`poly2InverseNodes`); pin S-A16-HAPPY-POLY2-GRID-INVERSE / S-A16-BAD-POLY2-TWO-ROWS; lesson 553. Pairs on only two scan rows still refuse (forward singular) — spread across the image. The e2e-matrix `TEST_GLOBS` also scan `packages/shared/test/georef/*.test.ts` so those Vitest tags count.
 
 ## 145. Line-art tiles: never average overview alpha again (2026-11-12) — APPLIED
 

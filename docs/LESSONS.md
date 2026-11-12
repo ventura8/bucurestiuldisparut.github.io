@@ -3250,3 +3250,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: M20 confirmed rights only in `imagery.archiveImport` (and the scan report). A version already `awaiting_approval` with `needs-confirmation` had no callable or approval-card control, so Approve stayed refused forever.
     - Fix and pin: `imagery.confirmRights` (`cityOwner`); VersionView rights summary; approval card Confirm + Approve disabled until `rightsAllowPublish`; DECISIONS §148; S-A120-HAPPY-CONFIRM-RIGHTS / S-A120-BAD-CONFIRM-*.
     - **A publish gate that only the owner can clear needs a Confirm on the surface where Approve lives, not only at Import.**
+553. **Georeferencer Second-order polynomial refused sets affine still fitted.**
+    - Seen: 2026-11-12, owner: "Second-order polynomial (at least 6 pairs)" broken on `#/georef` (DECISIONS §144).
+    - Cause: TypeScript fitted the poly2 place→pixel map on the pairs alone. A quadratic has no quadratic inverse, so well-spread scan pixels whose places lay on two lines made the reverse design singular and `fitTransform('poly2')` returned `degenerate` while the pipeline's `_inverse_grid` (15×15 forward samples) still fitted. Pairs on only two scan rows stay singular in the forward design.
+    - Fix and pin: `poly2Fitter` samples the forward map for the inverse (`POLY2_INVERSE_GRID`); S-A16-HAPPY-POLY2-GRID-INVERSE / S-A16-BAD-POLY2-TWO-ROWS.
+    - **When a model has no inverse in its own class, build the reverse from samples of the forward map, not from the control pairs alone.**

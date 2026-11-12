@@ -70,8 +70,9 @@ pipeline's pytest suite. `e2e/scenarios.json` names the test of every row.
   table, both errors, the transforms each pair count allows, the warped preview; pairs on a line refused; Save continues
   the waiting job or makes a new version of a published layer; Crop on a published layer renders it again inside the
   polygon, and the viewer's tiles end there. Map markers match the scan (DECISIONS §143). __Undo__ keeps about fifty
-  real edits (`canUndo`; a map settle of every point is one step — lesson 547, S-A131-*). __Known broken (2026-11-12,
-  DECISIONS §144):__ __Second-order polynomial (at least 6 pairs)__ / `poly2` — use affine or thin-plate until fixed.
+  real edits (`canUndo`; a map settle of every point is one step — lesson 547, S-A131-*). __Second-order polynomial__ /
+  `poly2` (DECISIONS §144, lesson 553): inverse through a forward-sampled 15×15 grid, as the pipeline; pairs on only two
+  scan rows still refuse — spread them across the image (S-A16-HAPPY-POLY2-GRID-INVERSE / S-A16-BAD-POLY2-TWO-ROWS).
 - __Publishing and the guard__ (A42): auto-publish off makes every version wait; a publish over the month's compute
   units waits with three ways out (also when the policy approved it), the free Studio path ending with the tileset the
   admin uploaded as the layer's source and `studioUploads` counted; nothing reaches Mapbox without a way chosen.

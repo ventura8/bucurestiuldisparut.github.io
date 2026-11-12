@@ -150,6 +150,39 @@ def test_bad_path_points_on_a_conic_make_a_degenerate_second_order_design() -> N
     assert fit("poly2", gcps) is FitRefusal.DEGENERATE
 
 
+def test_happy_path_poly2_fits_when_places_lie_on_two_streets() -> None:
+    """Scenarios: S-A16-HAPPY-POLY2-GRID-INVERSE"""
+    pixels = ((0, 0), (9000, 0), (9000, 7000), (0, 7000), (4500, 3500), (2000, 5000))
+    gcps = [
+        Gcp(
+            f"s{index}",
+            float(px),
+            float(py),
+            44.55 if index % 2 == 0 else 44.5,
+            26.0 + index * 0.015,
+        )
+        for index, (px, py) in enumerate(pixels)
+    ]
+
+    result = expect_ok(fit("poly2", gcps))
+
+    assert result.fit_rmse_m < 0.01
+    assert result.transform.kind == "poly2"
+    assert not isinstance(fit("affine", gcps), FitRefusal)
+
+
+def test_bad_path_pixels_on_only_two_rows_leave_poly2_singular() -> None:
+    """Scenarios: S-A16-BAD-POLY2-TWO-ROWS"""
+    gcps = [
+        Gcp(f"{'tb'[row]}{col}", float(col * 4500), float(row * 7000), 44.4 + row * 0.05, 26.0 + col * 0.02)
+        for row in range(2)
+        for col in range(3)
+    ]
+
+    assert fit("poly2", gcps) is FitRefusal.DEGENERATE
+    assert not isinstance(fit("affine", gcps), FitRefusal)
+
+
 def test_bad_path_a_singular_spline_system_is_degenerate() -> None:
     gcps = grid_gcps(BUCHAREST_AFFINE, 4)
     doubled = [*gcps, Gcp("dup", gcps[0].x, gcps[0].y, gcps[0].lat, gcps[0].lng)]
