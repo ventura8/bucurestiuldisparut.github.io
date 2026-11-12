@@ -55,7 +55,7 @@ describe('<hcm-georef-page>', () => {
     });
 
     it('happyPath_theToolsTheTableAndTheReferenceCallTheirIntents', async () => {
-        const { element, area } = await georefPage(georefState({ dirty: true }));
+        const { element, area } = await georefPage(georefState({ dirty: true, canUndo: true }));
 
         click(button(element, 'Add pairs'));
         click(button(element, 'Add at the centres'));

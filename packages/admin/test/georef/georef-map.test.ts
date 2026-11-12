@@ -3,7 +3,8 @@ import { FakeMap } from '@hcm/test-support/fake-map';
 import { FakeMapDraw } from '@hcm/test-support/fake-map-draw';
 import { describe, expect, it } from 'vitest';
 
-import { GeorefMap, PAIR_COLOR } from '../../src/georef/georef-map.js';
+import { GeorefMap } from '../../src/georef/georef-map.js';
+import { DRAW_HIT_COLOR } from '../../src/georef/marker-overlay.js';
 import type { GeoPosition } from '../../src/georef/pairs.js';
 import type { MapStatus } from '../../src/layers/map-session.js';
 import type { AdminMapFactory, AdminMapHandle, AdminMapResult } from '../../src/map/factory.js';
@@ -77,7 +78,7 @@ describe('the georeferencer map', () => {
         map.zoomBy(1);
 
         expect(statuses).toEqual(['none', 'loading', 'ready']);
-        expect(draw.attached?.options).toMatchObject({ color: PAIR_COLOR, maxVertices: 500, maxRings: 20 });
+        expect(draw.attached?.options).toMatchObject({ color: DRAW_HIT_COLOR, maxVertices: 500, maxRings: 20 });
         expect(draw.features).toEqual([{ id: 'g1', geometry: { type: 'Point', coordinates: [26.2, 44.4] } }]);
         expect(draw.callsOf('select')).toContainEqual(['g1']);
         expect(clicks).toEqual([{ lat: 44.42, lng: 26.15 }]);
@@ -88,6 +89,28 @@ describe('the georeferencer map', () => {
         expect(made.map.view.zoom).toBe(14);
         map.detach();
         expect([made.destroyed.count, statuses.at(-1), map.centre]).toEqual([1, 'none', null]);
+    });
+
+    it('happyPath_aSettleThatListsEveryPairOnlyMovesTheOneThatChanged', async () => {
+        const draw = new FakeMapDraw();
+        const made = handle(draw);
+        const { map, moves } = session(factoryOf([{ ok: true, map: made.handle }]));
+        const kept = { ...pair('g1', 0, 0), geo: { lat: 44.4, lng: 26.1 } };
+        const other = { ...pair('g2', 100, 0), geo: { lat: 44.41, lng: 26.11 } };
+        map.showPairs([kept, other], 'g2');
+        map.attach(host());
+        map.setFrame(FRAME);
+        await settle();
+
+        draw.emitChange(
+            [
+                { id: 'g1', geometry: { type: 'Point', coordinates: [kept.geo.lng, kept.geo.lat] } },
+                { id: 'g2', geometry: { type: 'Point', coordinates: [26.2, 44.4] } },
+            ],
+            true,
+        );
+
+        expect(moves).toEqual(['g2 44.4 26.2']);
     });
 
     it('badPath_noFactoryIsAFailedMapAndANoMapResultSaysWhy', async () => {
@@ -144,7 +167,9 @@ describe('the georeferencer map', () => {
 
         expect(statuses).toEqual(['none', 'loading', 'none']);
     });
+});
 
+describe('the georeferencer map: tools and nudge', () => {
     it('happyPath_toolsThatLoadWhilePairsAreBeingAddedStandStill', async () => {
         const draw = new FakeMapDraw();
         const made = handle(draw);
@@ -156,6 +181,37 @@ describe('the georeferencer map', () => {
         await settle();
 
         expect(draw.mode).toBe('static');
+    });
+
+    it('happyPath_nudgeMovesTheSelectedPairInScreenSpace', async () => {
+        const draw = new FakeMapDraw();
+        const made = handle(draw);
+        made.map.mounted = true;
+        const { map, moves } = session(factoryOf([{ ok: true, map: made.handle }]));
+        map.attach(host());
+        map.setFrame(FRAME);
+        await settle();
+        map.showPairs([pair('g1', 0, 0)], 'g1');
+        map.setHalf({ lat: 44.4, lng: 26.2 });
+        map.setCrosshair(true);
+
+        expect(map.nudgeSelected(10, 0)).toBe(true);
+        expect(moves[0]?.startsWith('g1 ')).toBe(true);
+        expect(map.nudgeSelected(0, 0)).toBe(true);
+    });
+
+    it('badPath_nudgeWithoutASelectedPairDoesNothing', async () => {
+        const draw = new FakeMapDraw();
+        const made = handle(draw);
+        made.map.mounted = true;
+        const { map, moves } = session(factoryOf([{ ok: true, map: made.handle }]));
+        map.attach(host());
+        map.setFrame(FRAME);
+        await settle();
+        map.showPairs([pair('g1', 0, 0)], null);
+
+        expect(map.nudgeSelected(5, 0)).toBe(false);
+        expect(moves).toEqual([]);
     });
 
     it('badPath_toolsThatLoadAfterThePageLeftAreNotAttached', async () => {

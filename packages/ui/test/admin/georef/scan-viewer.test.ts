@@ -66,6 +66,21 @@ function drag(element: HcmScanViewer, from: { x: number; y: number }, to: { x: n
     canvas.dispatchEvent(new PointerEvent('pointerup', at(to)));
 }
 
+/** Multi-touch helpers for the scan canvas (pinch tests). */
+function touchCanvas(element: HcmScanViewer): {
+    readonly canvas: HTMLCanvasElement;
+    readonly point: (id: number, x: number, y: number) => PointerEventInit;
+} {
+    const canvas = canvasOf(element);
+    canvas.setPointerCapture = () => undefined;
+    canvas.releasePointerCapture = () => undefined;
+    const box = element.getBoundingClientRect();
+    return {
+        canvas,
+        point: (id, x, y) => ({ clientX: box.left + x, clientY: box.top + y, pointerId: id, bubbles: true }),
+    };
+}
+
 describe('the scan view', () => {
     it('happyPath_fitZoomPanAndTheConversionsBothWays', () => {
         const fit = fitView({ width: 400, height: 200 }, { width: 1000, height: 500 });
@@ -174,6 +189,61 @@ describe('<hcm-scan-viewer>', () => {
         await new Promise((resolve) => setTimeout(resolve, 50));
 
         expect(canvasOf(element).width).toBeGreaterThan(0);
+    });
+
+    it('happyPath_twoFingersPinchZoomAboutTheirMidpoint', async () => {
+        const element = await viewer();
+        const { canvas, point } = touchCanvas(element);
+        const before = element.centre;
+
+        canvas.dispatchEvent(new PointerEvent('pointerdown', point(1, 120, 100)));
+        canvas.dispatchEvent(new PointerEvent('pointerdown', point(2, 280, 100)));
+        canvas.dispatchEvent(new PointerEvent('pointermove', point(1, 80, 100)));
+        canvas.dispatchEvent(new PointerEvent('pointermove', point(2, 320, 100)));
+        canvas.dispatchEvent(new PointerEvent('pointerup', point(1, 80, 100)));
+        canvas.dispatchEvent(new PointerEvent('pointerup', point(2, 320, 100)));
+
+        expect(element.centre).not.toEqual(before);
+        expect(element.events).toEqual([]);
+    });
+});
+
+describe('<hcm-scan-viewer> pinch edges and an empty pane', () => {
+    beforeAll(() => {
+        defineHcmScanViewer();
+    });
+    afterEach(cleanup);
+
+    it('happyPath_coincidentFingersAndALoneFingerAfterPinchDoNotThrow', async () => {
+        const element = await viewer();
+        const { canvas, point } = touchCanvas(element);
+
+        canvas.dispatchEvent(new PointerEvent('pointerdown', point(1, 200, 100)));
+        canvas.dispatchEvent(new PointerEvent('pointerdown', point(2, 200, 100)));
+        canvas.dispatchEvent(new PointerEvent('pointermove', point(1, 200, 100)));
+        canvas.dispatchEvent(new PointerEvent('pointerup', point(2, 200, 100)));
+        canvas.dispatchEvent(new PointerEvent('pointermove', point(1, 220, 110)));
+        canvas.dispatchEvent(new PointerEvent('pointerup', point(1, 220, 110)));
+
+        expect(element.events).toEqual([]);
+    });
+
+    it('happyPath_centreIsTheScanMiddleWhileThePaneHasNoSize', async () => {
+        const element = await mount<HcmScanViewer>(
+            html`<hcm-scan-viewer
+                style="inline-size: 0; block-size: 0"
+                .src=${blankImage()}
+                .scanWidth=${2000}
+                .scanHeight=${1200}
+                .previewScale=${0.5}
+                .markers=${MARKERS}
+                .label=${'The scan'}
+            ></hcm-scan-viewer>`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        await updated(element);
+
+        expect(element.centre).toEqual({ x: 1000, y: 600 });
     });
 });
 

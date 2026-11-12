@@ -78,6 +78,13 @@ const IMAGERY_UI_SHARED_MODULES = /packages[\\/]ui[\\/]src[\\/]admin[\\/]imagery
 const ASSIST_MODULES = /packages[\\/](?:admin[\\/]src|ui[\\/]src[\\/]admin)[\\/]assist[\\/]/;
 
 /**
+ * Shared georeferencer badge painters and the map's canvas overlay (owner, 2026-11-11; DECISIONS-for-review.md §146): out of
+ * the `georef` chunk so it stays within 19 KB after identical scan/map markers, residual tones and pinch-zoom.
+ */
+const GEOREF_BADGE_MODULES =
+    /packages[\\/](?:ui[\\/]src[\\/]admin[\\/]georef[\\/](?:marker-badge|scan-draw)|admin[\\/]src[\\/]georef[\\/]marker-overlay)\.ts$/;
+
+/**
  * `re2js` resolves to the admin's stand-in (`src/vendor/re2js-unsupported.ts`): the Firestore SDK needs it only for the
  * regular expressions of Firestore Pipelines, which the admin never evaluates (DECISIONS-for-review.md §65k).
  */
@@ -137,14 +144,16 @@ export default defineConfig({
                 // `assist`: the editors' title suggestions and translation drafts (M4, the photo, place and layer editors share
                 // them), kept out of `editor-shared` (DECISIONS-for-review.md §54b). `editor-texts`: a field's name and its
                 // problem's words, which every editor shares (§77e). `starter-categories`: the starter place categories, which
-                // the place editor and the settings share (§78d). M7's `worker` chunk is no group: the natural chunk of its one
-                // dynamic entry (`src/worker/worker.ts`), whose namespace is the chunk's own (a group's needs Rolldown's runtime
-                // helper, a chunk of its own beside terra-draw's), with its texts on a path of their own (`@hcm/shared/admin-worker`).
+                // the place editor and the settings share (§78d). `georef-badges`: shared pair painters and the map overlay (§146).
+                // M7's `worker` chunk is no group: the natural chunk of its one dynamic entry (`src/worker/worker.ts`), whose
+                // namespace is the chunk's own (a group's needs Rolldown's runtime helper, a chunk of its own beside terra-draw's),
+                // with its texts on a path of their own (`@hcm/shared/admin-worker`).
                 codeSplitting: {
                     groups: [
                         { name: 'terra-draw', test: /node_modules[\\/]terra-draw/, priority: 4 },
                         { name: 'firebase-installations', test: /node_modules[\\/]@firebase[\\/]installations[\\/]/, priority: 2 },
                         { name: 'assist', test: ASSIST_MODULES, priority: 2 },
+                        { name: 'georef-badges', test: GEOREF_BADGE_MODULES, priority: 2 },
                         {
                             name: 'editor-texts',
                             test: (id: string) =>

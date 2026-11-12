@@ -11,6 +11,7 @@ import { when } from '../imagery/when.js';
 import { contentText } from '../shell/text.js';
 import type { GeorefContext } from './georef-parts.js';
 import type { GeorefViewState, HalfPairPort, PixelPositionPort, ReferenceKindPort } from './georef-port.js';
+import { badgeToneOf } from './marker-badge.js';
 import type { ScanMarker } from './scan-draw.js';
 
 const ATTRIBUTION = {
@@ -20,7 +21,13 @@ const ATTRIBUTION = {
 
 /** The scan's markers, numbered as the residual table numbers its rows (in the pairs' order). */
 function markersOf(view: GeorefViewState): readonly ScanMarker[] {
-    return view.pairs.map((pair, index) => ({ id: pair.id, label: String(index + 1), pixel: pair.pixel, enabled: pair.enabled }));
+    return view.pairs.map((pair, index) => ({
+        id: pair.id,
+        label: String(index + 1),
+        pixel: pair.pixel,
+        enabled: pair.enabled,
+        tone: badgeToneOf(view.fit.residuals[pair.id], view.thresholdM),
+    }));
 }
 
 /** The matcher's suggestions still to decide, labelled `a1`, `a2`, … as in their list (drawn dashed, M4 §2.5). */
@@ -130,6 +137,12 @@ function mapPane(context: GeorefContext): TemplateResult {
             }}
             @hcm-zoom=${(event: Detail<{ delta: number }>) => {
                 intents?.zoomBy(event.detail.delta);
+            }}
+            @hcm-map-focus=${(event: Detail<{ focused: boolean }>) => {
+                intents?.setMapFocus(event.detail.focused);
+            }}
+            @hcm-map-nudge=${(event: Detail<{ dx: number; dy: number }>) => {
+                intents?.nudgeMap(event.detail.dx, event.detail.dy);
             }}
         ></hcm-admin-map>
         <p class="note">${attribution(locale, view)}</p>`;

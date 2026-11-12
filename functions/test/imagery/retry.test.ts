@@ -195,12 +195,13 @@ describe('imagery.retry: a stopped job', () => {
         await seedJob(world, JOB, failed({ status: 'cancelled', error: undefined }));
         await seedVersion(world, JOB, renderedVersion({ state: 'cancelled', output: undefined, error: undefined }));
 
-        await expect(retry(world)).resolves.toEqual({ status: 'queued', attempt: 1 });
+        // A stopped job spent no attempt it could be blamed for: retry starts the count again (`attemptsAgain`).
+        await expect(retry(world)).resolves.toEqual({ status: 'queued', attempt: 0 });
 
         const job = await readJob(world, JOB);
         expect(job).toMatchObject({
             status: 'queued',
-            attempt: 1,
+            attempt: 0,
             updatedBy: 'u-admin',
         });
         expect(job?.error).toBeUndefined();

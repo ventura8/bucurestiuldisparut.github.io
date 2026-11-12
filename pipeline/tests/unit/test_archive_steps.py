@@ -156,7 +156,9 @@ def test_happy_path_each_series_tiles_in_its_encoding_and_every_other_job_in_tod
     assert series_encoding(colour) == (ENCODINGS["colour"], False)
     assert series_encoding(other) == (ENCODINGS["grey"], False)
     assert (encoding_of(None), ENCODINGS["grey"].options) == (ENCODINGS["grey"], ("QUALITY=75",))
-    assert ENCODINGS["lineart"] == replace(ENCODINGS["lineart"], options=("LOSSLESS=YES",), resampling="nearest")
+    assert ENCODINGS["lineart"] == replace(
+        ENCODINGS["lineart"], options=("LOSSLESS=YES",), resampling="nearest", overview_resampling="nearest"
+    )
 
 
 def grey_and_alpha(path: Path, bands: int) -> Path:

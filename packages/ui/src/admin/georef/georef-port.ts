@@ -67,6 +67,8 @@ export interface GeorefViewState {
     readonly fit: FitViewPort;
     readonly thresholdM: number;
     readonly dirty: boolean;
+    /** Undo has a remembered pair edit (up to 50). */
+    readonly canUndo: boolean;
     readonly saving: boolean;
     readonly refusal: AdminNoticeInputPort | null;
     readonly saved: string | null;
@@ -106,4 +108,6 @@ export interface GeorefIntentsPort {
     undo(): void;
     attachMap(container: HTMLElement): void;
     zoomBy(delta: number): void;
+    setMapFocus(focused: boolean): void;
+    nudgeMap(dx: number, dy: number): void;
 }

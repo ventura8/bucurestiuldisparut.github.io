@@ -6325,3 +6325,31 @@ The owner's request of 2026-11-09 ("import the landsat, add it to our sources, a
 - **Why**: the owner, 2026-11-11 in chat: "u have my persimission to always deplay and update the map yourself".
 - **Still ask first**: pushes to `master` or a tag, merges, payments, credentials, relaxing a gate, and cloud changes outside that Update-the-map path.
 - **Layers row height (same day)**: overlay swatches back to 32 px (`--hcm-icon-size: 20px`); Compare / Street names / POIs and overlay rows `min-block-size` 40 px (switch keeps its own 48 px target).
+
+## 143. Georeferencer: map markers identical to the scan (2026-11-11) — APPLIED, the owner's explicit yes
+
+- **What**: On `#/georef`, every pair and suggestion badge on the **map (right)** looks and behaves like the **scan (left)**: same disc, number inside at every zoom, selected ring, hollow checkpoint, dashed `aN` suggestion, half-pair `+`. Shared painters in `packages/ui/src/admin/georef/marker-badge.ts`; the map paints them on a canvas overlay (`packages/admin/src/georef/marker-overlay.ts`) instead of POI overlays (`POI_LABEL_MIN_ZOOM` / `place` / `flag`). Terra Draw keeps transparent hit targets only. Map keyboard: focusable pane, badge crosshair, arrow nudge 1/10 CSS px. Residual colour bands on both panes; pinch-zoom on the scan.
+- **Why**: the owner, 2026-11-11: "i want in georeferencer: the points on the right screen to be exactly the same as on the left."
+- **Also**: admin-only `project` / `unproject` (`packages/admin/src/map/projection.ts`) for screen-space badges and nudges — not on shared `MapPort` (§146). M22 `#/help` stays the next phase.
+
+## 144. Georeferencer: Second-order polynomial is broken (2026-11-12) — PLANNED, owner report
+
+- **What**: On `#/georef`, the transform **Second-order polynomial (at least 6 pairs)** / **Polinomială de gradul 2 (cel puțin 6 perechi)** (`poly2`) is broken. Fix next after the live 1847 transparency repair and the Undo depth bug (settle was burning one Undo step per pair).
+- **Why**: the owner, 2026-11-12: "also add to plan, this broken: Second-order polynomial (at least 6 pairs)".
+- **Scope**: reproduce on a version with ≥6 pairs, pin with a happy/bad georef row, fix the fit or the UI that offers it; affine and thin-plate stay the workaround until then.
+
+## 145. Line-art tiles: never average overview alpha again (2026-11-12) — APPLIED
+
+- **What**: `lineart` pyramid uses `overview_resampling="nearest"` (and deepest-zoom `nearest`); live Post 1847 repaired and cache-busted. Recurrence pinned by `S-P20-HAPPY-ENCODING` / `S-P20-BAD-LINEART-AVERAGE` (`test_lineart_tiles.py`: soft alpha 0 % with nearest at every zoom; the same source with `average` washes above 5 %).
+- **Why**: the owner, 2026-11-12: "also make sure the 1847 problem does not happen again!!!".
+
+## 146. Bundle budget: keep georef projection off the engine MapPort (2026-11-12) — APPLIED, no budget raised
+
+- **What**: Shared `MapPort` / `createMapboxPort` do **not** grow `project` / `unproject`. The admin wraps the port with `withMapProjection` (`packages/admin/src/map/projection.ts`, same split idea as `ViewerMapPort`). Dead georef exports dropped (`PAIR_COLOR`, `PAIR_NUMBERS_OVERLAY_ID`, deprecated suggestion overlay ids). Badge painters + map overlay move to a new named chunk `georef-badges` (3 KB; 1.9 measured, like §56b / §77e) so `georef` stays **19 KB** (17.6 measured) — no existing budget raised. Engine room from shorter Map labels copy (Streets / POIs / Străzi / POI, tighter notes): IIFE 125.0 of 125 KB gzip.
+- **Why**: §143's badge work pushed `engine.iife.js` over 125 KB gzip and `georef` over 19 KB; owner rule: do not raise budgets.
+- **Verify**: `PIPELINE_STAGE=build` → `[SUCCESS] stage 'build' passed`.
+
+## 147. npm-audit: `fast-xml-parser` GHSA-474x-hrwr-fgx4 (2026-11-12) — APPLIED
+
+- **What**: Root `overrides` pin `"fast-xml-parser": "5.12.0"` (first release above the advisory's `<=5.11.2` range). `package-lock.json` and `functions/deploy-lock/` refreshed in the digest-pinned Node image. Never an allowlist.
+- **Why**: `static`'s `npm-audit` / `deploy-lock-audit` fail on GHSA-474x-hrwr-fgx4 (quadratic CPU on unterminated stop-node tags); same pre-approved "keeps a gate working" pattern as §74e.

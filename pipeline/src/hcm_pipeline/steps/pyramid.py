@@ -98,7 +98,7 @@ def rgba_view(source: Path, target: Path, film: bool = True) -> Path:
 
 
 def write_tree(view: Path, tree: Path, rendered: Rendered, ctx: JobContext, encoding: TileEncoding = ENCODINGS["grey"]) -> Path:
-    """The tile pyramid: blank tiles skipped, bilinear at the deepest zoom (M20: nearest for line art), averaged above it."""
+    """The tile pyramid: blank tiles skipped; line art uses nearest at every zoom (M20; overviews too — averaged RGBA washed ink)."""
     arguments: dict[str, object] = {
         "input": str(view),
         "output": str(tree),

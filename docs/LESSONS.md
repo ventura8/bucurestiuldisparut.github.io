@@ -3203,3 +3203,44 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `imagery.saveGcps` wrote the pairs as the version's `georef` and reset a `georef` step the archive job does not have; the runner re-ran `place` (left pending by the wait), whose class placer never read `georef` and failed as before.
     - Fix and pin: `place` warps a series from the owner's pairs when the version carries them (`placing/owner.py`: the pairs scaled from the scan to `stitched.tif`, a lattice through the fit, `warped.tif` at the series' `maxzoom`, `archive.method: 'gcps'`); too few pairs park it again with its help kept; `saveGcps` resets `place` for an archive series (`test_placing_owner.py`, `save-gcps.test.ts`, S-P20-HAPPY-OWNER-PAIRS, S-P20-BAD-OWNER-PAIRS-FEW).
     - **A wait for a person must be answered by the step that waited: test the resume path from the save to the step's result, not the save alone.**
+
+545. **Georeferencer pair numbers on the map vanished below zoom 16.**
+    - Seen: 2026-11-11, after §141 put pair numbers on the map via `addVectorOverlay(..., kind: 'poi')`.
+    - Cause: `pois.ts` hides POI `title` below `POI_LABEL_MIN_ZOOM` (16); the georeferencer opens at zoom 13, so badges showed a `place`/`flag` icon with no number, unlike the scan's numbered discs. Checkpoints and selection also differed.
+    - Fix and pin: shared `marker-badge.ts` painters; map canvas overlay (`marker-overlay.ts`); DECISIONS §143; S-A16-HAPPY asserts marker parity.
+
+546. **Published Post 1847 line-art looked almost transparent on the public map.**
+    - Seen: 2026-11-11, layer `post-1847-ante-1852` after Approve (own tiles, `paperTransparent`).
+    - Cause: `lineart` used nearest only at the deepest zoom; overview levels averaged RGBA, so ink alpha washed toward transparent at city zooms. Layer opacity 0.85 was fine; the tiles themselves were soft.
+    - Fix and pin: `ENCODINGS["lineart"].overview_resampling = "nearest"` (`tiles/encoding.py`); `write_tree` passes `overview-resampling`; live archive repaired as `…-fix1.pmtiles` and pointed from `cities/bucharest/manifest.json` plus the Firestore layer `source.url` (cache-bust past the prior one-year `Cache-Control`). Soft alpha on content tiles: 0 %. Regression: `test_lineart_tiles.py` — nearest keeps soft alpha at 0 % at every zoom; the same source with `average` washes above 5 % (`S-P20-BAD-LINEART-AVERAGE`).
+    - **Line art with transparent paper must never average alpha across pyramid levels: nearest at every zoom, pin it with a tile that fails under average, and a live overwrite needs a new object name when the old one was cached for a year.**
+
+547. **Georeferencer Undo only lasted one or a few steps with many pairs.**
+    - Seen: 2026-11-12, owner: Undo does not keep 50 commands.
+    - Cause: Terra Draw's settle emits every point; `GeorefMap.#changed` called `moved` for each, so one drag wrote one Undo step per pair and filled `UNDO_DEPTH` (50) after a couple of moves. The Undo button also keyed off `dirty` instead of history depth.
+    - Fix and pin: only a place that actually moved is an edit (`#movedFeature`); `#edit` ignores no-ops; `canUndo` drives the button; Save clears history; fifty move/undo cycle in `georef.test.ts`.
+    - **A settle that lists every feature must not turn unchanged neighbours into Undo steps.**
+
+548. **Georef published lattice/terrain Vitest timed out under a full `tests` run.**
+    - Seen: 2026-11-12, `georef-published.test.ts` lattice and terrain happy paths at Vitest's 5 s while the suite was busy; alone they finish in ~0.5 s.
+    - Cause: opening a camera lattice (17×17) and warping under load exceeds the default; the assertions were fine.
+    - Fix and pin: those two `it`s take 20 s (`georef-published.test.ts`).
+    - **A test that is fine idle and times out only under the suite needs the suite's timeout, not a weaker assertion.**
+
+549. **Georef coverage: Node canvas mock `??` hid null context; pinch null-guards stayed uncovered.**
+    - Seen: 2026-11-12, `PIPELINE_STAGE=tests` blocked on `marker-overlay.ts` / `hcm-scan-viewer.ts` branch floors while shipping the 1847 lineart fix.
+    - Cause: `host({ context: null })` used `options.context ?? context2d()`, so the null-context paint path never ran; pinch helpers kept `if (pair === null) return` after the caller already required two pointers, which v8 never marks covered. `FakeMap.project` also needs `mounted = true` or every badge paint skips.
+    - Fix and pin: `'context' in options` for the mock; pinch takes a typed `[Point, Point]` once size ≥ 2; scan tests cover zero-size centre, coincident fingers and a lone finger after pinch; overview_find mid-size JPEG probe and series-root edges (`testing_strategy_skill.md` gotchas).
+    - **A mock option of `null` must not be written with `??`; a guard the caller already made impossible is an uncovered branch forever—remove it or hit it from outside.**
+
+550. **Grid/overview branch floors missed the wait-overview path and ORB early returns.**
+    - Seen: 2026-11-12, `PIPELINE_STAGE=tests` blocked on `placing/grid.py` (80.8% branches) and `placing/overview.py` (84.1%).
+    - Cause: waiting grids always fell through to the name mosaic (no overview canvas success/fail); ORB helpers never hit `des_o is None`, few keypoints, `hint is None`, a hint that empties matches, or an out-of-range sheet number.
+    - Fix and pin: unit tests drive `_wait_picture` / `_overview_picture` with a stubbed overview, clear city bounds for `_placed`, and call the overview guards directly (`test_placing_grid.py`, `test_placing_overview.py`).
+    - **A preferred alternate path that production rarely takes still needs both its success and its `None` return covered, or the branch floor fails.**
+
+551. **Georef badges briefly put the engine over its IIFE gzip budget.**
+    - Seen: 2026-11-12, `bundle-budget`: `engine.iife.js` 125.1 KB (budget 125) and `georef` 19.2 KB (budget 19) after map canvas badges / pinch / undo.
+    - Cause: `MapPort.project` / `unproject` lived on the shared Mapbox adapter (IIFE inlines it); georef also kept dead POI-overlay exports and the new painters exceeded 19 KB in one chunk.
+    - Fix and pin: admin-only `withMapProjection`; drop dead overlay exports; `georef-badges` named chunk (5 KB) for painters + map overlay so `georef` stays 19; shorter Map labels copy; DECISIONS §146. No existing budget raised.
+    - **Admin-only map helpers belong beside `ViewerMapPort`, not on shared `MapPort`, or the public engine pays for them in the IIFE.**

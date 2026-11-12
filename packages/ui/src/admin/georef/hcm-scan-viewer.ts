@@ -32,6 +32,12 @@ interface Gesture {
     last: Point;
 }
 
+interface Pinch {
+    readonly view: ScanView;
+    readonly startDistance: number;
+    readonly centre: Point;
+}
+
 /** The keys that act at once, and what they do (true: handled). */
 const COMMANDS: Readonly<Record<string, ((viewer: HcmScanViewer) => boolean) | undefined>> = {
     Enter: (viewer) => viewer.pickCentre(),
@@ -130,6 +136,8 @@ export class HcmScanViewer extends LitElement {
     #image: HTMLImageElement | null = null;
     #view: ScanView | null = null;
     #gesture: Gesture | null = null;
+    #pinch: Pinch | null = null;
+    readonly #pointers = new Map<number, Point>();
     #observer: ResizeObserver | null = null;
     /** The pane's size the last time it was shown (a hidden pane measures 0 × 0). */
     #pane: { readonly width: number; readonly height: number } = { width: 0, height: 0 };
@@ -287,30 +295,54 @@ export class HcmScanViewer extends LitElement {
 
     readonly #down = (event: PointerEvent): void => {
         const at = this.#pointOf(event);
+        this.#pointers.set(event.pointerId, at);
+        (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+        if (this.#pointers.size >= 2) {
+            this.#startPinch();
+            return;
+        }
         const view = this.#currentView();
         const marker = this.adding ? null : hitPair(view, this.markers, at, this.previewScale);
         this.#gesture = { start: at, view, marker, moved: false, last: at };
-        (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     };
 
     readonly #moveTo = (event: PointerEvent): void => {
+        if (!this.#pointers.has(event.pointerId)) {
+            return;
+        }
+        const at = this.#pointOf(event);
+        this.#pointers.set(event.pointerId, at);
+        const pinch = this.#pinch;
+        if (pinch !== null && this.#pointers.size >= 2) {
+            this.#movePinch(pinch);
+            return;
+        }
+        this.#dragAt(at);
+    };
+
+    /** One-finger pan or marker drag after the pinch check has already returned. */
+    #dragAt(at: Point): void {
         const gesture = this.#gesture;
         if (gesture === null) {
             return;
         }
-        const at = this.#pointOf(event);
         gesture.last = at;
         gesture.moved ||= Math.hypot(at.x - gesture.start.x, at.y - gesture.start.y) > CLICK_SLOP;
         if (gesture.moved && gesture.marker === null) {
             this.#view = panView(gesture.view, at.x - gesture.start.x, at.y - gesture.start.y);
         }
         this.#draw();
-    };
+    }
 
     readonly #up = (event: PointerEvent): void => {
+        this.#pointers.delete(event.pointerId);
+        if (this.#pointers.size < 2) {
+            this.#pinch = null;
+        }
         const gesture = this.#gesture;
         this.#gesture = null;
-        if (gesture === null) {
+        if (gesture === null || this.#pointers.size > 0) {
+            this.#draw();
             return;
         }
         const pixel = paneToScan(this.#currentView(), this.#pointOf(event), this.previewScale);
@@ -322,10 +354,35 @@ export class HcmScanViewer extends LitElement {
         this.#draw();
     };
 
-    readonly #cancel = (): void => {
+    readonly #cancel = (event: PointerEvent): void => {
+        this.#pointers.delete(event.pointerId);
         this.#gesture = null;
+        this.#pinch = null;
         this.#draw();
     };
+
+    /** The two fingers currently down (caller already checked size ≥ 2). */
+    #fingers(): readonly [Point, Point] {
+        return [...this.#pointers.values()] as [Point, Point];
+    }
+
+    /** Two fingers: zoom about their midpoint (M3 §10.4). Only called while two pointers are down. */
+    #startPinch(): void {
+        const [a, b] = this.#fingers();
+        this.#gesture = null;
+        this.#pinch = {
+            view: this.#currentView(),
+            startDistance: Math.hypot(b.x - a.x, b.y - a.y) || 1,
+            centre: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+        };
+    }
+
+    /** Continues a pinch; the caller has already checked `#pinch` and that two pointers are down. */
+    #movePinch(pinch: Pinch): void {
+        const [a, b] = this.#fingers();
+        this.#view = zoomView(pinch.view, (Math.hypot(b.x - a.x, b.y - a.y) || 1) / pinch.startDistance, pinch.centre, this.#fitted());
+        this.#draw();
+    }
 
     #dropped(gesture: Gesture, pixel: Point): void {
         if (gesture.marker !== null) {

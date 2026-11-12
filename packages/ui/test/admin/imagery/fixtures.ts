@@ -280,6 +280,7 @@ export function georefState(overrides: Partial<GeorefViewState> = {}): GeorefVie
         ...{
             thresholdM: 15,
             dirty: false,
+            canUndo: false,
             saving: false,
             refusal: null,
             saved: null,

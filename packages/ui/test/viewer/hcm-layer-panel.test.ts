@@ -181,11 +181,11 @@ describe('<hcm-layer-panel>', () => {
         it('happyPath_aSwitchPerLabelTheBasemapHasWithTheirState', async () => {
             const element = await panel({ mode: 'docked', labels: { shown, available } });
 
-            expect(shadowText(element)).toContain('Etichetele hărții');
+            expect(shadowText(element)).toContain('Etichete hartă');
             expect(shadowQuery(element, '[role="group"]').getAttribute('aria-labelledby')).toBe('map-labels');
             expect(switches(element)).toEqual([
-                { label: 'Numele străzilor', checked: true },
-                { label: 'Puncte de interes', checked: false },
+                { label: 'Străzi', checked: true },
+                { label: 'POI', checked: false },
             ]);
         });
 
@@ -202,19 +202,19 @@ describe('<hcm-layer-panel>', () => {
 
         it('happyPath_theNoteTellsThemFromTheCitysPlacesOnlyWhenTheCityHasPlaces', async () => {
             const withPlaces = await panel({ mode: 'docked', locale: 'en', labels: { shown, available } });
-            expect(shadowText(withPlaces)).toContain("The Places below are this site's own");
+            expect(shadowText(withPlaces)).toContain("Places below are this site's, with their own switches");
 
             const city = testManifest();
             const without = { ...city, poiCategories: [], pois: [] };
             const element = await panel({ mode: 'docked', locale: 'en', manifest: without, labels: { shown, available } });
-            expect(shadowText(element)).toContain("Text on today's map");
+            expect(shadowText(element)).toContain("Today's map labels");
             expect(shadowText(element)).not.toContain('Places above');
         });
 
         it('happyPath_onlyTheKindTheBasemapHasGetsASwitch', async () => {
             const element = await panel({ mode: 'docked', labels: { shown, available: ['pois'] } });
 
-            expect(switches(element)).toEqual([{ label: 'Puncte de interes', checked: false }]);
+            expect(switches(element)).toEqual([{ label: 'POI', checked: false }]);
         });
 
         it('badPath_aBasemapWithoutThePropertiesOrNoMapHasNoGroup', async () => {

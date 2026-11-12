@@ -4,11 +4,11 @@
  * truth for `MapLabelsKey`; `en.ts` is typed against it. One entry per line (scripts/ci/check_i18n.py).
  */
 export const ro = {
-    'mapLabels.group': 'Etichetele hărții',
-    'mapLabels.streets': 'Numele străzilor',
-    'mapLabels.pois': 'Puncte de interes',
-    'mapLabels.note': 'Texte de pe harta de azi, precum magazine și restaurante.',
-    'mapLabels.notePlaces': 'Locurile de mai jos sunt ale acestui site și au comutatoare proprii.',
+    'mapLabels.group': 'Etichete hartă',
+    'mapLabels.streets': 'Străzi',
+    'mapLabels.pois': 'POI',
+    'mapLabels.note': 'Etichete pe harta de azi (magazine, restaurante).',
+    'mapLabels.notePlaces': 'Locurile de mai jos sunt ale site-ului, cu comutatoare proprii.',
 } as const;
 
 export type MapLabelsKey = keyof typeof ro;

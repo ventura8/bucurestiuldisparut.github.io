@@ -23,7 +23,7 @@ test.use({ persona: 'owner', mapOwner: 'owner' });
 
 const SUGGESTED = ['a001', 'a002', 'a003', 'a004'] as const;
 
-/** The map's overlay of the suggestions (`SUGGESTIONS_OVERLAY_ID` of packages/admin/src/georef/georef-map.ts). */
+/** Suggestions paint as canvas badges on the map (same helpers as the scan), not a POI vector overlay. */
 const MAP_OVERLAY = 'georef-suggestions';
 
 /** A suggestion's row in the panel (its name button is the row's own). */

@@ -10,6 +10,11 @@ const UNDO_DEPTH = 50;
 export class PairHistory {
     #steps: (readonly Gcp[])[] = [];
 
+    /** True when Undo has a step to take back. */
+    get canUndo(): boolean {
+        return this.#steps.length > 0;
+    }
+
     /** Remembers the pairs an edit is about to replace (`remember` false: Undo's own edit, not remembered). */
     note(pairs: readonly Gcp[], remember: boolean): void {
         this.#steps = remember ? [...this.#steps, pairs].slice(-UNDO_DEPTH) : this.#steps;

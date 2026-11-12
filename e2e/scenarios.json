@@ -983,6 +983,13 @@
             "source": "the owner, 2026-11-09: import Landsat for 1984-2000, added to the sources and automated like USGS; docs/research/M25-landsat.md"
         },
         {
+            "id": "A131",
+            "area": "admin",
+            "name": "Georeferencer Undo keeps about fifty real edits; a map settle of every point costs one step, and Undo is off when history is empty",
+            "milestone": "M3",
+            "source": "the owner, 2026-11-12: Undo does not keep 50 commands; DECISIONS §143/lesson 547"
+        },
+        {
             "id": "P30",
             "area": "pipeline",
             "name": "A Landsat scene is composed on the tile grid, pan-sharpened for ETM+, and checked against Sentinel-2 instead of georeferenced",
@@ -5697,10 +5704,10 @@
             "area": "admin",
             "path": "happy",
             "title": "GCP editing updates residuals, transform and preview, and saving queues a job",
-            "asserts": "the scan and the reference map side by side; pairs added, moved, disabled and deleted update the residual table, the RMSE and the live warped preview; the transform switches; Save -> a regeoref job (or the waiting job continues)",
+            "asserts": "the scan and the reference map side by side; pair and suggestion badges on the map match the scan (number in the disc at every zoom, hollow checkpoints, selected ring, dashed suggestions, half-pair +); pairs added, moved, disabled and deleted update the residual table, the RMSE and the live warped preview; the transform switches; Save -> a regeoref job (or the waiting job continues)",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/georeferencer.spec.ts. Leaving the georeferencer no longer throws (CR-M3-34)."
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/georeferencer.spec.ts. Leaving the georeferencer no longer throws (CR-M3-34). Marker parity: DECISIONS §143 (2026-11-11)."
         },
         {
             "id": "S-A16-BAD-TOO-FEW-GCPS",
@@ -16290,10 +16297,21 @@
             "area": "pipeline",
             "path": "happy",
             "title": "A series' tiles follow its encoding",
-            "asserts": "line art lossless and nearest with its paper transparent, colour at 82, grey as today",
+            "asserts": "line art lossless and nearest at every zoom (overviews too) with paper transparent and binary alpha; colour at 82; grey as today",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "M20 (docs/research/M20-import-local.md). Tests: pipeline/tests/unit/test_archive_steps.py."
+            "notes": "M20 (docs/research/M20-import-local.md); lesson 546 (Post 1847). Tests: pipeline/tests/unit/test_archive_steps.py, pipeline/tests/integration/test_lineart_tiles.py."
+        },
+        {
+            "id": "S-P20-BAD-LINEART-AVERAGE",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Averaged line-art overviews wash ink alpha",
+            "asserts": "the same checker tiled with overview-resampling average -> soft (non-binary) alpha at a city zoom; lineart encoding stays nearest",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pins lesson 546 so Post 1847 cannot recur. Test: pipeline/tests/integration/test_lineart_tiles.py."
         },
         {
             "id": "S-P20-HAPPY-STREETS",
@@ -16855,6 +16873,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M22 §13.2. Tests: pipeline/tests/unit/test_placing_assemble.py."
+        },
+        {
+            "id": "S-A131-HAPPY-GEOREF-UNDO",
+            "behaviour": "A131",
+            "area": "admin",
+            "path": "happy",
+            "title": "Undo takes back fifty pair moves one by one; a settle that lists every point costs one step",
+            "asserts": "after fifty movePixel edits, fifty Undos restore the start; canUndo is true while history remains; the Undo button enables only then",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 547. Tests: packages/admin/test/georef/georef.test.ts (happyPath_undoKeepsFiftyPairEditsAndAMapSettleOfEveryPointCostsOneStep)."
+        },
+        {
+            "id": "S-A131-BAD-GEOREF-UNDO-EMPTY",
+            "behaviour": "A131",
+            "area": "admin",
+            "path": "bad",
+            "title": "Undo with an empty history changes nothing",
+            "asserts": "after Discard or Save, canUndo is false; further undo leaves pairs where they are; the Undo button stays disabled",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 547. Tests: packages/admin/test/georef/georef.test.ts (happyPath_undoTakesBackTheLastEditsOneByOneAndNothingMoreAfterDiscard)."
         }
     ]
 }

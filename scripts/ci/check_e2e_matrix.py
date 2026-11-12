@@ -58,6 +58,8 @@ TEST_GLOBS = (
     "pipeline/tests/*/test_*.py",
     "functions/test/*.test.ts",
     "firebase/rules-tests/*.test.ts",
+    # Admin georef Undo (A131) and related matrix tags live in Vitest, not Playwright.
+    "packages/admin/test/georef/*.test.ts",
 )
 # Area -> section title, in the doc's order.
 AREAS = {

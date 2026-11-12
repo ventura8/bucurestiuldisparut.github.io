@@ -119,6 +119,20 @@ def _affine_fit(src: np.ndarray, dst: np.ndarray) -> TileFit | None:
     return TileFit(matrix=matrix, inliers=n, rms_px=rms)
 
 
+def _match_points(kp_t: list[Any], kp_o: list[Any], good: list[Any]) -> tuple[np.ndarray, np.ndarray]:
+    """Source/destination pixel arrays for the ratio-test survivors."""
+    src = np.array([kp_t[m.queryIdx].pt for m in good], dtype=np.float32)
+    dst = np.array([kp_o[m.trainIdx].pt for m in good], dtype=np.float32)
+    return src, dst
+
+
+def _rescaled_fit(fit: TileFit, scale: float) -> TileFit:
+    """Map a fit measured on a downscaled tile back to full-resolution pixels."""
+    matrix = fit.matrix.copy()
+    matrix[:, :2] /= scale
+    return TileFit(matrix=matrix, inliers=fit.inliers, rms_px=fit.rms_px)
+
+
 def _match_at_scale(
     tile: np.ndarray,
     overview: np.ndarray,
@@ -141,20 +155,11 @@ def _match_at_scale(
     if len(good) < _MIN_MATCHES:
         return None
 
-    src = np.array([kp_t[m.queryIdx].pt for m in good], dtype=np.float32)
-    dst = np.array([kp_o[m.trainIdx].pt for m in good], dtype=np.float32)
-
-    pts = _apply_hint(src, dst, hint, new_w * 0.75, new_h * 0.75)
+    pts = _apply_hint(*_match_points(kp_t, kp_o, good), hint, new_w * 0.75, new_h * 0.75)
     if pts is None:
         return None
-    src, dst = pts
-
-    fit = _affine_fit(src, dst)
-    if fit is None:
-        return None
-    matrix = fit.matrix.copy()
-    matrix[:, :2] /= scale
-    return TileFit(matrix=matrix, inliers=fit.inliers, rms_px=fit.rms_px)
+    fit = _affine_fit(*pts)
+    return None if fit is None else _rescaled_fit(fit, scale)
 
 
 def _better(a: TileFit | None, b: TileFit) -> bool:

@@ -6,6 +6,8 @@ from pathlib import Path
 
 import cv2
 import numpy
+import pytest
+from hcm_pipeline.placing import overview_find as overview_find_mod
 from hcm_pipeline.placing.overview_find import CanvasOpts, find_overview, overview_canvas
 
 from tests.synthetic.town import write_map
@@ -168,3 +170,90 @@ def test_bad_blank_overview_canvas_returns_none(tmp_path: Path) -> None:
     tile = write_map(tmp_path / "r01c01.tif", numpy.dstack([tile_img] * 3), grey=True)
 
     assert overview_canvas([("r01c01.tif", tile), ("r01c02.tif", tile)], overview_path) is None
+
+
+def test_bad_overview_canvas_needs_tiles_and_a_file(tmp_path: Path) -> None:
+    tile = write_map(tmp_path / "r01c01.tif", numpy.dstack([_make_overview((40, 40))] * 3), grey=True)
+    assert overview_canvas([], tmp_path / "missing.tif") is None
+    assert overview_canvas([("r01c01.tif", tile)], tmp_path / "gone.tif") is None
+
+
+def test_bad_sheets_outside_root_return_none(tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    tile = outside / "tile.png"
+    _write_dummy_file(tile)
+    root = tmp_path / "archive"
+    root.mkdir()
+    assert find_overview(root, [tile]) is None
+
+
+def test_bad_unreadable_mid_size_file_is_skipped(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    series_dir = tmp_path / "series"
+    series_dir.mkdir()
+    tile1 = series_dir / "tile_001.png"
+    _write_dummy_file(tile1)
+    mid = tmp_path / "mid.png"
+    _write_dummy_file(mid, size=20_000)
+
+    def boom(_path: Path, _side: int) -> object:
+        raise OSError("unreadable")
+
+    monkeypatch.setattr("hcm_pipeline.placing.overview_find.read_working", boom)
+    assert find_overview(tmp_path, [tile1]) is None
+
+
+def test_happy_mid_size_overview_probed_for_long_side(tmp_path: Path) -> None:
+    series_dir = tmp_path / "series"
+    series_dir.mkdir()
+    tile1 = series_dir / "tile_001.png"
+    _write_dummy_file(tile1)
+    overview = tmp_path / "mid.jpg"
+    pattern = numpy.zeros((300, 300), dtype=numpy.uint8)
+    pattern[::3, :] = 200
+    pattern[:, ::3] = 90
+    cv2.imwrite(str(overview), pattern, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
+    assert overview_find_mod.MIN_BYTES <= overview.stat().st_size < overview_find_mod.TRUST_BYTES
+    assert overview_find_mod._long_side(overview) >= overview_find_mod.MIN_SIDE
+    assert find_overview(tmp_path, [tile1]) == overview
+
+
+def test_bad_stat_error_skips_candidate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    series_dir = tmp_path / "series"
+    series_dir.mkdir()
+    tile1 = series_dir / "tile_001.png"
+    _write_dummy_file(tile1)
+    mid = tmp_path / "mid.png"
+    _write_dummy_file(mid, size=20_000)
+    real_stat = Path.stat
+
+    def flaky(self: Path, *, follow_symlinks: bool = True) -> object:
+        if self.name == "mid.png":
+            raise OSError("gone")
+        return real_stat(self, follow_symlinks=follow_symlinks)
+
+    monkeypatch.setattr(Path, "stat", flaky)
+    assert find_overview(tmp_path, [tile1]) is None
+
+
+def test_bad_series_root_and_sibling_edges(tmp_path: Path) -> None:
+    root = tmp_path / "archive"
+    root.mkdir()
+    assert overview_find_mod._series_root(root, root) is None
+    assert overview_find_mod._sibling_candidates(Path("/no/such/series/deep"), set()) == []
+    assert overview_find_mod._near_overview(root, root, set(), set()) is None
+
+
+def test_happy_overview_canvas_infers_grid_and_upscale(tmp_path: Path) -> None:
+    overview = _make_overview((600, 600))
+    overview_path = write_map(tmp_path / "overview.tif", numpy.dstack([overview] * 3), grey=True)
+    tiles = []
+    for row, col in ((0, 0), (0, 1), (1, 0), (1, 1)):
+        name = f"r{row + 1:02d}c{col + 1:02d}.tif"
+        image = _make_tile(overview, row, col, (2, 2), upscale=2)
+        tiles.append((name, write_map(tmp_path / name, numpy.dstack([image] * 3), grey=True)))
+
+    made = overview_canvas(tiles, overview_path, CanvasOpts(read_px=800))
+    assert made is not None
+    _canvas, report = made
+    assert len(report.placed) >= 2

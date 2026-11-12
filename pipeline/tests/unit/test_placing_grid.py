@@ -11,6 +11,9 @@ from hcm_pipeline.jobs import Done, JobContext, Waiting
 from hcm_pipeline.placing import grid
 from hcm_pipeline.placing.frame import content_frame
 from hcm_pipeline.placing.gridscheme import QUARTER_ORDERS, CityGrid, scheme_for
+from hcm_pipeline.placing.overview import MosaicReport
+from hcm_pipeline.placing.series import Sheet
+from hcm_pipeline.placing.stitched import NO_FRAME, NO_JOIN
 from hcm_pipeline.steps.place import PlaceStep
 
 from tests.fakes.world import CITY, PipelineWorld
@@ -215,3 +218,57 @@ def test_bad_path_a_grid_that_does_not_prove_keeps_its_mosaic_as_one_stitched_pi
     assert record["metresPerPx"] == grid.MOSAIC_M
     assert (record["parts"], record["joined"]) == (64, 63)
     assert record["leftOut"][0]["reason"] == "no-frame"
+
+
+def test_bad_path_without_city_bounds_the_grid_cannot_be_searched(world: PipelineWorld, tmp_path: Path) -> None:
+    ctx = grid_series(world, tmp_path)
+    city = world.store.documents[f"cities/{CITY}"]
+    world.store.seed(f"cities/{CITY}", {**city, "bounds": None})
+
+    result = PlaceStep().run(ctx)
+
+    assert isinstance(result, Waiting)
+    help_item = world.version()["help"]
+    assert isinstance(help_item, dict)
+    assert help_item["note"] == grid.NOT_PROVED
+
+
+def _sample_rectified(path: Path) -> grid.Rectified:
+    sheet = Sheet(path, path.name, None, path.name)
+    cell = Cell("quarter", 1, 0, 1)
+    corners = numpy.array([[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]], numpy.float64)
+    return grid.Rectified(sheet, cell, corners, numpy.full((8, 8), 200, numpy.uint8))
+
+
+def test_wait_picture_prefers_an_overview_mosaic_when_tiles_match(
+    world: PipelineWorld, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    ctx = series_context(world, tmp_path, ["a.tif"], {"class": "grid", "encoding": "grey"})
+    rectified = [_sample_rectified(tmp_path / "a.tif"), _sample_rectified(tmp_path / "b.tif")]
+    mosaic = grid.Mosaic(numpy.full((4, 4), 255, numpy.uint8), numpy.full((4, 4), -1, numpy.int32), 0.0, 0.0)
+    canvas = numpy.full((12, 12), 180, numpy.uint8)
+    report = MosaicReport(placed=["a.tif"], unplaced=["b.tif"], rms_px=1.25)
+    monkeypatch.setattr(grid, "_framed_overview", lambda _ctx, _items: tmp_path / "overview.tif")
+    monkeypatch.setattr(grid, "overview_canvas", lambda _tiles, _path: (canvas, report))
+
+    picture = grid._wait_picture(ctx, mosaic, rectified, (("gone", NO_FRAME),))
+
+    assert picture.method == "overview"
+    assert picture.canvas is canvas
+    assert picture.parts == 3
+    assert picture.left_out[0] == ("b.tif", NO_JOIN)
+    assert picture.left_out[-1] == ("gone", NO_FRAME)
+    assert picture.joins is not None
+    assert picture.joins.links == 1
+    assert picture.joins.rms_px == pytest.approx(1.25)
+
+
+def test_overview_picture_returns_none_when_canvas_cannot_place_tiles(
+    world: PipelineWorld, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    ctx = series_context(world, tmp_path, ["a.tif"], {"class": "grid", "encoding": "grey"})
+    rectified = [_sample_rectified(tmp_path / "a.tif")]
+    monkeypatch.setattr(grid, "_framed_overview", lambda _ctx, _items: tmp_path / "overview.tif")
+    monkeypatch.setattr(grid, "overview_canvas", lambda _tiles, _path: None)
+
+    assert grid._overview_picture(ctx, rectified, ()) is None

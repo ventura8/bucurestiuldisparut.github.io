@@ -133,7 +133,6 @@ export class HcmLayerPanel extends LitElement {
                 gap: 12px;
             }
 
-            /* Compare + Street names / POIs stay while the overlay list scrolls (owner, 2026-11-10). */
             .pinned {
                 position: sticky;
                 inset-block-start: 0;
@@ -141,7 +140,7 @@ export class HcmLayerPanel extends LitElement {
                 display: flex;
                 flex-direction: column;
                 gap: 4px;
-                padding-block: 0 4px;
+                padding-block-end: 4px;
                 background: var(--md-sys-color-surface-container-low);
                 box-shadow: 0 1px 0 var(--md-sys-color-outline-variant);
             }
@@ -185,9 +184,6 @@ export class HcmLayerPanel extends LitElement {
                 gap: 12px;
                 align-items: center;
                 justify-content: space-between;
-
-                /* Shorter row; the switch keeps its own 48 px target (the tour's target-size check). */
-                padding-block: 0;
                 min-block-size: 40px;
             }
 

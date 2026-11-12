@@ -185,7 +185,7 @@ function saveButtons(context: GeorefContext): TemplateResult {
         <hcm-button
             variant="text"
             icon="undo"
-            ?disabled=${!view.dirty || view.saving}
+            ?disabled=${!view.canUndo || view.saving}
             @click=${() => {
                 intents?.undo();
             }}

@@ -1,4 +1,3 @@
-import { PAIR_NUMBERS_OVERLAY_ID } from '../../src/georef/georef-map.js';
 import { FIRESTORE_PATHS, PLACING_POINTS_HOLD_MS } from '@hcm/shared';
 import { FakeMap } from '@hcm/test-support/fake-map';
 import { FakeMapDraw } from '@hcm/test-support/fake-map-draw';
@@ -82,13 +81,8 @@ describe('the georeferencer', () => {
         expect([georef.state.selected, georef.state.dirty, georef.hasUnsavedChanges()]).toEqual(['g3', true, true]);
         expect(draw.mode).toBe('static');
         expect(draw.features.map((feature) => feature.id)).toEqual(['g1', 'g2', 'g3']);
-        const numbers = map.calls
-            .filter((call) => call.method === 'addVectorOverlay')
-            .map((call) => call.args[0] as { id: string; features: { properties: { id: string; title: string } }[] })
-            .filter((spec) => spec.id === PAIR_NUMBERS_OVERLAY_ID)
-            .at(-1)
-            ?.features.map((feature) => `${feature.properties.title}:${feature.properties.id}`);
-        expect(numbers).toEqual(['1:g1', '2:g2', '3:g3']);
+        // Pair numbers are canvas badges (§143), not POI vector overlays.
+        expect(map.calls.filter((call) => call.method === 'addVectorOverlay')).toEqual([]);
     });
 
     it('happyPath_aVersionWithoutAScanTakesPairsUnclampedAndAMapClickOutsideAddingIsNothing', async () => {
@@ -198,26 +192,52 @@ describe('the georeferencer: the fit and saving', () => {
         expect([georef.state.transform, georef.state.dirty]).toEqual(['poly2', false]);
     });
 
-    it('happyPath_undoTakesBackTheLastEditsOneByOneAndNothingMoreAfterDiscard', () => {
+    it('happyPath_undoTakesBackTheLastEditsOneByOneAndNothingMoreAfterDiscard @S-A131-BAD-GEOREF-UNDO-EMPTY', () => {
         const { georef } = setup();
         georef.open([RENDERED]);
         const saved = georef.state.pairs;
 
         georef.intents.remove(saved[0]?.id ?? '');
         georef.intents.remove(saved[1]?.id ?? '');
+        expect(georef.state.canUndo).toBe(true);
         georef.intents.undo();
         const afterOne = georef.state.pairs.length;
         georef.intents.undo();
-        const afterTwo = [georef.state.pairs.length, georef.state.dirty];
+        const afterTwo = [georef.state.pairs.length, georef.state.dirty, georef.state.canUndo];
         georef.intents.remove(saved[0]?.id ?? '');
         georef.intents.discard();
         georef.intents.undo();
 
         expect(afterOne).toBe(saved.length - 1);
-        expect(afterTwo).toEqual([saved.length, false]);
-        expect([georef.state.pairs.length, georef.state.dirty]).toEqual([saved.length, false]);
+        expect(afterTwo).toEqual([saved.length, false, false]);
+        expect([georef.state.pairs.length, georef.state.dirty, georef.state.canUndo]).toEqual([saved.length, false, false]);
     });
 
+    it('happyPath_undoKeepsFiftyPairEditsAndAMapSettleOfEveryPointCostsOneStep @S-A131-HAPPY-GEOREF-UNDO', () => {
+        const { georef } = setup();
+        georef.open([RENDERED]);
+        const first = georef.state.pairs[0];
+        expect(first).toBeDefined();
+        const id = first?.id ?? '';
+        const start = first?.pixel ?? { x: 0, y: 0 };
+
+        for (let step = 1; step <= 50; step += 1) {
+            georef.intents.movePixel(id, { x: start.x + step, y: start.y });
+        }
+        const afterFifty = georef.state.pairs.find((pair) => pair.id === id)?.pixel.x;
+        for (let step = 0; step < 50; step += 1) {
+            georef.intents.undo();
+        }
+
+        expect(afterFifty).toBe(start.x + 50);
+        expect(georef.state.pairs.find((pair) => pair.id === id)?.pixel).toEqual(start);
+        expect(georef.state.canUndo).toBe(false);
+        georef.intents.undo();
+        expect(georef.state.pairs.find((pair) => pair.id === id)?.pixel).toEqual(start);
+    });
+});
+
+describe('the georeferencer: saving', () => {
     it('happyPath_aScanWaitingForPointsSavesThemAndItsJobGoesOn', async () => {
         const { georef, callables, notices, store } = setup();
         const corners = [pair('g1', 0, 0), pair('g2', 8000, 0), pair('g3', 8000, 6000)].map((corner) => ({ ...corner, origin: 'corner' }));

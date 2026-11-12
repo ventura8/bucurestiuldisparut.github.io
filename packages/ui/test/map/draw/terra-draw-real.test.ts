@@ -77,11 +77,11 @@ class PointerMap extends FakeMapboxMap {
         return this.container;
     }
 
-    project({ lng, lat }: { lng: number; lat: number }): { x: number; y: number } {
+    override project({ lng, lat }: { lng: number; lat: number }): { x: number; y: number } {
         return { x: (lng - WEST) * SCALE, y: (NORTH - lat) * SCALE };
     }
 
-    unproject({ x, y }: { x: number; y: number }): { lng: number; lat: number } {
+    override unproject({ x, y }: { x: number; y: number }): { lng: number; lat: number } {
         return { lng: WEST + x / SCALE, lat: NORTH - y / SCALE };
     }
 

@@ -110,7 +110,6 @@ export class HcmOverlayList extends LitElement {
                 gap: 0 8px;
                 align-items: center;
                 min-block-size: 40px;
-                padding-block: 0;
             }
 
             .swatch {

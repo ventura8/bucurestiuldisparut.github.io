@@ -1,9 +1,10 @@
 """How an archive series' tiles are encoded (docs/research/M20-import-local.md §6); every other layer keeps today's tiles.
 
 `grey` is today's: lossy WebP at quality 75, bilinear at the deepest zoom, averaged above. `colour`: lossy WebP at 82, the same resampling.
-`lineart` (a 1-bit or two-tone plan): lossless WebP (libwebp keeps a palette when a tile has few colours), nearest at the deepest zoom so a
-line stays one crisp pixel and no grey halo appears, averaged above; with the paper transparent (`paper_transparent`), the plan overlays
-the basemap or a satellite layer. Paper is any pixel lighter than the threshold; ink stays opaque black.
+`lineart` (a 1-bit or two-tone plan): lossless WebP (libwebp keeps a palette when a tile has few colours), nearest at every zoom so a
+line stays one crisp pixel and no grey halo appears (overview averaging washed alpha to near-invisible — Post 1847, 2026-11-11);
+with the paper transparent (`paper_transparent`), the plan overlays the basemap or a satellite layer. Paper is any pixel lighter than
+the threshold; ink stays opaque black.
 """
 
 from dataclasses import dataclass
@@ -34,7 +35,8 @@ class TileEncoding:
 ENCODINGS: Final = {
     "grey": TileEncoding(("QUALITY=75",), "bilinear"),
     "colour": TileEncoding(("QUALITY=82",), "bilinear"),
-    "lineart": TileEncoding(("LOSSLESS=YES",), "nearest"),
+    # Nearest for overviews too: averaging RGBA line art made ink semi-transparent (lesson: Post 1847 almost invisible).
+    "lineart": TileEncoding(("LOSSLESS=YES",), "nearest", overview_resampling="nearest"),
 }
 
 

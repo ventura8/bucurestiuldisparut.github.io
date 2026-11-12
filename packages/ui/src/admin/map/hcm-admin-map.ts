@@ -216,17 +216,39 @@ export class HcmAdminMap extends LitElement {
         return html`${this.#stylesheet()}
             <div
                 class="canvas"
+                tabindex="0"
+                role="application"
                 ?hidden=${!shown}
                 @focusin=${() => {
                     this.focused = true;
+                    emit(this, 'hcm-map-focus', { focused: true });
                 }}
                 @focusout=${() => {
                     this.focused = false;
+                    emit(this, 'hcm-map-focus', { focused: false });
                 }}
+                @keydown=${this.#key}
             ></div>
             ${this.#crosshair(shown)} ${this.status === 'ready' ? this.#controls() : EMPTY} ${this.#note()}
             <div class="tools"><slot></slot></div>`;
     }
+
+    /** Arrow keys nudge a selected georef pair (1 CSS px, 10 with Shift); the store decides when nothing is selected. */
+    readonly #key = (event: KeyboardEvent): void => {
+        const steps: Readonly<Record<string, readonly [number, number]>> = {
+            ArrowLeft: [-1, 0],
+            ArrowRight: [1, 0],
+            ArrowUp: [0, -1],
+            ArrowDown: [0, 1],
+        };
+        const step = steps[event.key];
+        if (step === undefined) {
+            return;
+        }
+        event.preventDefault();
+        const distance = event.shiftKey ? 10 : 1;
+        emit(this, 'hcm-map-nudge', { dx: step[0] * distance, dy: step[1] * distance });
+    };
 
     #controls(): TemplateResult {
         const zoom = (delta: number) => (): void => {

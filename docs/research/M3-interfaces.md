@@ -970,7 +970,10 @@ until fn-imagery wires them (done: `Omit<Ports, 'jobs' | 'tilesets' | 'scenes' |
 - **Pairs**: Add pair (a click on the scan, then on the map; Esc cancels the half pair), drag either marker to move,
   Delete (button, Delete key), Disable (keeps it as a checkpoint). Keyboard: each pane has a crosshair; **Add at the
   centres** adds a pair at both crosshairs; the arrow keys move the selected marker by one preview pixel (ten with Shift)
-  or pan the map (`S-A16-HAPPY-KEYBOARD`).
+  or pan the map (`S-A16-HAPPY-KEYBOARD`). **As built, 2026-11-11 (DECISIONS §143):** the map's badges are painted with
+  the same helpers as the scan (`marker-badge.ts` + canvas overlay), so numbers, hollow checkpoints, selection, dashed
+  suggestions and the half-pair `+` match on both panes at every zoom; residual colour bands and scan pinch-zoom land
+  with that change.
 - **The residual table** (a native table with the kit's styles): id, origin, enabled, pixel, place, residual in metres;
   sortable; selecting a row selects both markers.
 - **Transform**: affine, polynomial, thin-plate spline as a radio group; a transform with too few enabled pairs is

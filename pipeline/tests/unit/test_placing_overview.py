@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import cv2
 import numpy as np
+import pytest
+from hcm_pipeline.placing import overview as overview_mod
 from hcm_pipeline.placing.overview import (
     MosaicReport,
+    TileFit,
     grid_hint,
     mosaic_on_overview,
     tile_on_overview,
@@ -291,3 +294,66 @@ def test_mosaic_report_type() -> None:
     assert isinstance(report.placed, list)
     assert isinstance(report.unplaced, list)
     assert isinstance(report.rms_px, float)
+
+
+def test_descriptors_ok_rejects_missing_overview_descriptors_and_few_keypoints() -> None:
+    des = np.zeros((20, 32), dtype=np.uint8)
+    many = [object()] * 20
+    few = [object()] * 5
+    assert overview_mod._descriptors_ok(des, None, many, many) is None
+    assert overview_mod._descriptors_ok(des, des, few, many) is None
+    assert overview_mod._descriptors_ok(des, des, many, few) is None
+    assert overview_mod._descriptors_ok(des, des, many, many) is not None
+
+
+def test_apply_hint_passes_through_without_hint_and_rejects_empty_window() -> None:
+    src = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]], dtype=np.float32)
+    dst = src.copy()
+    kept = overview_mod._apply_hint(src, dst, None, 10.0, 10.0)
+    assert kept is not None
+    assert len(kept[0]) == 4
+    assert overview_mod._apply_hint(src, dst, (1000.0, 1000.0), 1.0, 1.0) is None
+
+
+def test_tile_on_overview_without_hint_still_fits() -> None:
+    overview = _make_overview((800, 800))
+    tile = _make_tile(overview, 0, 0, (4, 4), upscale=2)
+    fit = tile_on_overview(tile, overview, None)
+    assert fit is not None
+    assert fit.inliers >= 25
+
+
+def test_match_rejects_too_few_ratio_matches(monkeypatch: pytest.MonkeyPatch) -> None:
+    overview = _make_overview((800, 800))
+    tile = _make_tile(overview, 0, 0, (4, 4), upscale=2)
+    monkeypatch.setattr(overview_mod, "_ratio_match", lambda _a, _b: [])
+    assert tile_on_overview(tile, overview, (100.0, 100.0)) is None
+
+
+def test_match_rejects_when_hint_window_keeps_too_few_points() -> None:
+    overview = _make_overview((800, 800))
+    tile = _make_tile(overview, 0, 0, (4, 4), upscale=2)
+    assert tile_on_overview(tile, overview, (10_000.0, 10_000.0)) is None
+
+
+def test_grid_hint_rejects_sheet_outside_the_grid() -> None:
+    assert grid_hint("99", 2, 2, (100, 100)) is None
+    assert overview_mod._parse_sheet("tile", 2, 2) is None
+
+
+def test_mosaic_all_unplaced_reports_zero_rms() -> None:
+    overview = _make_overview((400, 400))
+    blank = np.full((200, 200), 128, dtype=np.uint8)
+    canvas, report = mosaic_on_overview([("blank", blank)], overview, 2, 2, 1.0)
+    assert report.placed == []
+    assert report.unplaced == ["blank"]
+    assert report.rms_px == 0.0
+    assert canvas.shape == (400, 400)
+
+
+def test_better_prefers_more_inliers() -> None:
+    weak = TileFit(matrix=np.eye(2, 3, dtype=np.float64), inliers=30, rms_px=1.0)
+    strong = TileFit(matrix=np.eye(2, 3, dtype=np.float64), inliers=40, rms_px=2.0)
+    assert overview_mod._better(None, weak) is True
+    assert overview_mod._better(weak, strong) is True
+    assert overview_mod._better(strong, weak) is False

@@ -85,6 +85,8 @@ export interface GeorefState {
     readonly thresholdM: number;
     /** The pairs or the transform differ from the version's. */
     readonly dirty: boolean;
+    /** Undo has a remembered pair edit to take back (up to 50 since open or Discard). */
+    readonly canUndo: boolean;
     readonly saving: boolean;
     readonly refusal: NoticeInput | null;
     /** The version Save started or continued (the page opens it). */
@@ -107,7 +109,14 @@ const EMPTY_FIT: FitView = {
 export const INITIAL_GEOREF: GeorefState = {
     ...{ versionId: null, doc: { status: 'loading', reconnecting: false, failure: null }, notFound: false, version: null },
     ...{ scan: { status: 'none' }, reference: null, pairs: [], adding: false, half: null, selected: null, transform: 'affine' },
-    ...{ fit: EMPTY_FIT, thresholdM: imagerySettingsOf(undefined).rmseThresholdM, dirty: false, saving: false, refusal: null },
+    ...{
+        fit: EMPTY_FIT,
+        thresholdM: imagerySettingsOf(undefined).rmseThresholdM,
+        dirty: false,
+        canUndo: false,
+        saving: false,
+        refusal: null,
+    },
     ...{ saved: null, showPreview: true, previewOpacity: 0.7, map: 'none', pane: 'scan', suggestions: NO_SUGGESTIONS },
 };
 
@@ -149,4 +158,8 @@ export interface GeorefIntents {
     undo(): void;
     attachMap(container: HTMLElement): void;
     zoomBy(delta: number): void;
+    /** Map pane keyboard focus: badge crosshair matches the scan. */
+    setMapFocus(focused: boolean): void;
+    /** Arrow nudge of the selected pair in screen CSS px (same as the scan). */
+    nudgeMap(dx: number, dy: number): void;
 }
