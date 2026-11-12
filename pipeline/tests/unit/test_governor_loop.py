@@ -6,7 +6,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import pytest
-from hcm_pipeline.governor.actuate import Actuators, Gate, apply_gdal, lower_priority
+from hcm_pipeline.governor.actuate import Actuators, Gate, apply_gdal, idle_io, libc_syscall, lower_priority
 from hcm_pipeline.governor.budget import budget_for
 from hcm_pipeline.governor.governor import CHOICE_FILE, Governor, load_choice, owner_threads
 from hcm_pipeline.governor.policy import Choice
@@ -176,15 +176,21 @@ def test_the_gate_holds_until_resumed_or_stopped() -> None:
 
 
 def test_priority_and_gdal_settings() -> None:
-    commands: list[list[str]] = []
+    calls: list[tuple[int, ...]] = []
 
     def refused(_value: int) -> int:
         raise OSError("not permitted")
 
-    lower_priority(refused, commands.append, lambda _name: "/usr/bin/ionice")
-    assert commands[0][1:3] == ["-c", "3"]
-    lower_priority(lambda value: value, commands.append, lambda _name: None)
-    assert len(commands) == 1
+    def syscall(*arguments: int) -> int:
+        calls.append(arguments)
+        return 0
+
+    lower_priority(refused, syscall, "x86_64")
+    assert calls == [(251, 1, 0, 3 << 13)]
+    lower_priority(lambda value: value, syscall, "riscv64")
+    idle_io(lambda *_arguments: -1, "aarch64")
+    assert len(calls) == 1
+    assert libc_syscall(-1) == -1
     options = Options()
     apply_gdal(budget_for("paused", SMALL_NO_GPU), options)
     assert options.set == {}

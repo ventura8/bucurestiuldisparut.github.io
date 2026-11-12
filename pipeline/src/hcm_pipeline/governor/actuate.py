@@ -10,9 +10,9 @@
   `cpu.max` the probe reads back is the proof it took.
 """
 
+import ctypes
 import os
-import shutil
-import subprocess
+import platform
 import threading
 import time
 from collections.abc import Callable
@@ -24,34 +24,41 @@ from hcm_pipeline.log import get_logger
 
 LOG = get_logger("governor.actuate")
 NICENESS: Final = 10
-IDLE_IO_CLASS: Final = "3"
+# `ioprio_set(IOPRIO_WHO_PROCESS, 0, IOPRIO_PRIO_VALUE(IOPRIO_CLASS_IDLE, 0))`: the class sits above bit 13; the call's number per
+# architecture (the kernel's syscall tables).
+IOPRIO_SET: Final = {"x86_64": 251, "aarch64": 30}
+IOPRIO_WHO_PROCESS: Final = 1
+IDLE_IO_PRIORITY: Final = 3 << 13
 WAIT_S: Final = 1.0
 THREADS_OPTION: Final = "GDAL_NUM_THREADS"
 CACHE_OPTION: Final = "GDAL_CACHEMAX"
 WARP_OPTION: Final = "HCM_GOVERNED_WARP_MB"
 
 
-def idle_io(
-    run: Callable[[list[str]], object] = lambda command: subprocess.run(command, check=False, capture_output=True),
-    which: Callable[[str], str | None] = shutil.which,
-) -> None:
-    """The idle I/O class when `ionice` is there (a priority only: nothing fails without it)."""
-    ionice = which("ionice")
-    if ionice is not None:
-        run([ionice, "-c", IDLE_IO_CLASS, "-p", str(os.getpid())])
+def libc_syscall(number: int, *arguments: int) -> int:
+    """libc's `syscall`; -1 where there is no libc to call."""
+    try:
+        return int(ctypes.CDLL(None, use_errno=True).syscall(number, *arguments))
+    except OSError, AttributeError:
+        return -1
+
+
+def idle_io(syscall: Callable[..., int] = libc_syscall, machine: str = platform.machine()) -> None:
+    """The idle I/O class (`ioprio_set`, as `ionice -c 3` does), a priority only: nothing fails without it."""
+    number = IOPRIO_SET.get(machine)
+    if number is None or syscall(number, IOPRIO_WHO_PROCESS, 0, IDLE_IO_PRIORITY) != 0:
+        LOG.info("the worker keeps the usual I/O priority (no idle class on this system)")
 
 
 def lower_priority(
-    nice: Callable[[int], int] = os.nice,
-    run: Callable[[list[str]], object] = lambda command: subprocess.run(command, check=False, capture_output=True),
-    which: Callable[[str], str | None] = shutil.which,
+    nice: Callable[[int], int] = os.nice, syscall: Callable[..., int] = libc_syscall, machine: str = platform.machine()
 ) -> None:
     """Nice 10 and the idle I/O class: a process the worker's command did not nice already (the load test's)."""
     try:
         nice(NICENESS)
     except OSError as error:
         LOG.warning("the worker could not lower its priority: %s", error)
-    idle_io(run, which)
+    idle_io(syscall, machine)
 
 
 def apply_gdal(budget: Budget, set_option: Callable[[str, str], None]) -> None:

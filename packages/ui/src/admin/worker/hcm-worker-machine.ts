@@ -1,5 +1,5 @@
 /**
- * `<hcm-worker-machine>` (M26, `docs/research/M26-governor.md` §6; behaviour A90), the "This computer" card under the
+ * `<hcm-worker-machine>` (M26, `docs/research/M26-governor.md` §6; behaviour A141), the "This computer" card under the
  * worker panel's computer part once it is connected, in the lazy `worker-local` chunk: the computer's size, the owner's
  * choice (Automatic, Quiet, Full: posted to the worker, kept on that computer), the profile in force and why, the budget
  * the governor sets, and where the local AI runs (a line when no graphics card can be reached). A worker older than the
@@ -13,7 +13,7 @@ import { defineOnce } from '../../components/internal.js';
 import { workerStyles } from './worker-element.js';
 import type { LocalPort, MachineViewPort } from './worker-port.js';
 
-export const HCM_WORKER_MACHINE_TAG = 'hcm-worker-machine';
+const HCM_WORKER_MACHINE_TAG = 'hcm-worker-machine';
 const MB_PER_GB = 1024;
 
 /** GB with one decimal under 10, whole above. */
@@ -22,7 +22,7 @@ function gigabytes(megabytes: number): string {
     return value < 10 ? value.toFixed(1) : String(Math.round(value));
 }
 
-export class HcmWorkerMachine extends LitElement {
+class HcmWorkerMachine extends LitElement {
     static override readonly properties = {
         local: { attribute: false },
         locale: { type: String },
