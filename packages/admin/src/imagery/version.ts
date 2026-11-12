@@ -31,7 +31,17 @@ import type { FilePort } from './files.js';
 import { jobViewOf, versionViewOf, type JobView, type VersionView } from './version-view.js';
 
 export type VersionAction =
-    'approve' | 'reject' | 'confirmRights' | 'choose' | 'studioDone' | 'download' | 'retry' | 'locate' | 'cancel' | 'recalibrate';
+    | 'approve'
+    | 'reject'
+    | 'confirmRights'
+    | 'deleteVersion'
+    | 'choose'
+    | 'studioDone'
+    | 'download'
+    | 'retry'
+    | 'locate'
+    | 'cancel'
+    | 'recalibrate';
 
 export interface JobLogLine {
     readonly seq: number;
@@ -240,6 +250,13 @@ export class VersionPage {
             (id) => ({ cityId: this.#services.cityId, versionId: id, confirmedBy }),
             { key: 'adminContent.imagery.notice.rightsConfirmed' },
         );
+    }
+
+    /** A version that never reached the map goes for good, its job, log and own files with it (`imagery.deleteVersion`). */
+    deleteVersion(): Promise<boolean> {
+        return this.#act('deleteVersion', 'imagery.deleteVersion', (id) => ({ cityId: this.#services.cityId, versionId: id }), {
+            key: 'adminContent.imagery.notice.versionDeleted',
+        });
     }
 
     /** M16 with M18: a recalibration of a published version leaves that one on the map, and the notice says so. */

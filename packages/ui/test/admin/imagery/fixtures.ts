@@ -338,6 +338,7 @@ export function imageryPage(
             approve: Promise.resolve(true),
             reject: Promise.resolve(true),
             confirmRights: Promise.resolve(true),
+            deleteVersion: Promise.resolve(true),
         },
         ...{
             choose: Promise.resolve(true),

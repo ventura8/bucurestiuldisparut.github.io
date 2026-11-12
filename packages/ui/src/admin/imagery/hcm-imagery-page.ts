@@ -4,7 +4,8 @@
  * Find (the ranked scenes, their filters and the search), Work (the versions in progress and those waiting for the
  * admin) and Upload; the detail pane holds the page's one map (the footprints and the selected scene's browse image, or
  * a version's preview) above the open scene or version. While the budget guard pauses the raster work the list pane
- * says so, with the spend, and offers Resume processing (CR-M3-47). Reject, Dismiss, Pay, Cancel and Resume ask first.
+ * says so, with the spend, and offers Resume processing (CR-M3-47). Reject, Dismiss, Pay, Cancel, Resume and Delete this version ask
+ * first; a deleted version's page returns to the list.
  */
 import type { Locale, PublishChoice } from '@hcm/shared';
 import { html, type PropertyValues, type TemplateResult } from 'lit';
@@ -79,6 +80,12 @@ const QUESTIONS = {
         headline: 'adminContent.imagery.confirm.rejectRecalibration',
         body: 'adminContent.imagery.confirm.rejectRecalibrationBody',
         confirm: 'adminContent.imagery.reject',
+    },
+    // A version that never reached the map goes for good: the question says what goes and that the originals on the owner's computer stay.
+    deleteVersion: {
+        headline: 'adminContent.imagery.confirm.deleteVersion',
+        body: 'adminContent.imagery.confirm.deleteBody',
+        confirm: 'adminContent.imagery.deleteVersion',
     },
 } as const;
 
@@ -294,7 +301,9 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
         const texts = QUESTIONS[question ?? 'reject'];
         const { locale } = context;
         const usd = usdOf(context.view, locale);
-        const actions = answers(context.intents);
+        const actions = answers(context.intents, () => {
+            context.go([]);
+        });
         return html`<hcm-confirm-dialog
             ?destructive=${question !== 'pay' && question !== 'resume'}
             .open=${question !== null}
@@ -336,8 +345,15 @@ function usdOf(view: ImageryViewState, locale: Locale): string {
     return numberText(locale, view.version?.version.doc?.data.guard?.overageUsd ?? 0, 2);
 }
 
-/** What each question does once confirmed. */
-function answers(intents: ImageryIntentsPort | null): Readonly<Record<ImageryQuestion, () => void>> {
+/** A deleted version's page has nothing left to show: back to the Historical imagery list. */
+async function deleteAndLeave(intents: ImageryIntentsPort | null, leave: () => void): Promise<void> {
+    if ((await intents?.deleteVersion()) === true) {
+        leave();
+    }
+}
+
+/** What each question does once confirmed (`leave`: back to the list). */
+function answers(intents: ImageryIntentsPort | null, leave: () => void): Readonly<Record<ImageryQuestion, () => void>> {
     return {
         reject: () => void intents?.reject(),
         dismiss: () => void intents?.reject(),
@@ -347,6 +363,7 @@ function answers(intents: ImageryIntentsPort | null): Readonly<Record<ImageryQue
         rejectRecalibration: () => void intents?.reject(),
         resume: () => void intents?.resumeGuard(),
         approveWorse: () => void intents?.approve(true),
+        deleteVersion: () => void deleteAndLeave(intents, leave),
     };
 }
 

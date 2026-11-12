@@ -10,7 +10,8 @@ import type { WorkerHostPort } from '../worker/worker-port.js';
 import type { ImageryIntentsPort, ImageryViewState } from './imagery-port.js';
 
 /** The questions the page asks before an action that cannot be taken back or costs money. */
-export type ImageryQuestion = 'reject' | 'dismiss' | 'pay' | 'cancel' | 'resume' | 'drop' | 'approveWorse' | 'rejectRecalibration';
+export type ImageryQuestion =
+    'reject' | 'dismiss' | 'pay' | 'cancel' | 'resume' | 'drop' | 'approveWorse' | 'rejectRecalibration' | 'deleteVersion';
 
 export interface ImageryContext {
     readonly locale: Locale;

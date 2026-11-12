@@ -1009,6 +1009,13 @@
             "name": "An archive series waiting for points opens in the georeferencer like any frame (its stitched picture, OpenStreetMap lines), placed again on Locate again, with room to work and full screen",
             "milestone": "M22",
             "source": "the owner, 2026-11-09: the georeferencer of 1895-1899 showed no scan and no reference, and was too small; docs/research/M22-help-calibrate.md §13.2"
+        },
+        {
+            "id": "A125",
+            "area": "admin",
+            "name": "Delete a version that never reached the map: its job, log and own files go for good, after a question that says the originals stay",
+            "milestone": "M3",
+            "source": "the owner, 2026-11-12: a cancelled or failed version (and an archive series waiting for points) can be deleted from its page; docs/research/M3-interfaces.md §7.1"
         }
     ],
     "scenarios": [
@@ -5799,7 +5806,6 @@
         },
         {
             "id": "S-A16-HAPPY-REGEOREF-LAYER",
-
             "behaviour": "A16",
             "area": "admin",
             "path": "happy",
@@ -16929,6 +16935,39 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M22 §13.2. Tests: packages/ui/test/admin/georef/georef-page.test.ts."
+        },
+        {
+            "id": "S-A125-HAPPY-DELETE-VERSION",
+            "behaviour": "A125",
+            "area": "admin",
+            "path": "happy",
+            "title": "Delete this version removes a version that never reached the map, after a question, and returns to the list",
+            "asserts": "a cancelled, rejected or failed version, or an archive series waiting for points (ended first), goes with its job, the job's log, its scratch files and its own private folder; another version's folder, a USGS delivery and an upload's original stay; a failed first import's scene is free again; the page asks first (what goes, the originals on the computer stay) and then shows the Historical imagery list",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M3 (docs/research/M3-interfaces.md §7.1, §10.2; DECISIONS §151). Tests: functions/test/imagery/delete-version.test.ts, packages/admin/test/imagery/version-delete.test.ts, packages/ui/test/admin/imagery/delete-version.test.ts."
+        },
+        {
+            "id": "S-A125-BAD-DELETE-PUBLISHED",
+            "behaviour": "A125",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version on the map, or approved for it, is never deleted from its page",
+            "asserts": "imagery.deleteVersion on published, approved, publishing, superseded or joined -> apiError.imagery.deletePublished and nothing changes; the page offers no Delete this version for a published, waiting, processing or failed version (a failed one is dismissed first)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M3 (docs/research/M3-interfaces.md §7.1, §10.2; DECISIONS §151). Tests: functions/test/imagery/delete-version.test.ts, packages/admin/test/imagery/version-delete.test.ts, packages/ui/test/admin/imagery/delete-version.test.ts."
+        },
+        {
+            "id": "S-A125-BAD-DELETE-RUNNING",
+            "behaviour": "A125",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version still under way, one another is built on, or a caller who is not an editor cannot delete",
+            "asserts": "a queued, running or waiting job -> apiError.imagery.deleteRunning (also when a Retry lands between the check and the deletion); a version another one is based on -> apiError.imagery.deleteInUse; a moderator or an uploader -> apiError.city.notEditor; nothing is deleted and a refusal stays on the page, which does not leave",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M3 (docs/research/M3-interfaces.md §7.1, §10.2; DECISIONS §151). Tests: functions/test/imagery/delete-version.test.ts, packages/admin/test/imagery/version-delete.test.ts, packages/ui/test/admin/imagery/delete-version.test.ts."
         },
         {
             "id": "S-P22-HAPPY-GEOREF-SCAN",
