@@ -734,3 +734,15 @@ flips, scale ±5 %, grey, colour and line art, every name scheme, shuffled, miss
 (`test_placing_autostitch.py`, `test_placing_canvas_window.py`): every sheet placed at 3 % overlap or more and for named abutting atlases;
 seam error median ≤ 1.5 px and p95 ≤ 3 px; a foreign sheet never placed; noise judged `poor` (it waits, never a mosaic); peak RSS ≤ 1.5 GB
 for 100 sheets of 6000 px.
+
+Real series (dry run on the NUC, 2026-11-13, `autostitch.propose` alone, no overview; before: the older edges and SIFT joins, §15.1 and the
+worker's log):
+
+| Series | Before | After (placed / verdict) | Peak RSS | Time |
+| --- | --- | --- | --- | --- |
+| Borroczyn 1844-1846 atlas, 99 files in page order | 2 of 94 joined | 38 placed, 1 blank, 60 no seam: `poor`, waits with its proposal | 285 MB | 124 s |
+| 1895-1899 pieces, 60 scans in 4 quadrant folders | 1 of 60 joined (57 of 60 on the overview, unchanged: the overview comes first) | 60 placed on a misread 4 x 15 grid (each folder is a quadrant, not a row): `check`, waits | 369 MB | 124 s |
+| 1969 atlas, 144 pages in order | 2 parts, 98 left out | 102 placed, 42 no seam: `check`, waits | 369 MB | 165 s |
+
+No series was mosaicked wrongly: each waits for the tile-import wizard with its proposal. Next steps: folders that are quadrants (each
+its own grid, nested 2 x 2), and the atlas's index page (OCR) for page numbers that are not row-major.
