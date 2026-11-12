@@ -383,7 +383,7 @@ test(
         await image.click({ position: { x: before.width * 0.2, y: before.height * 0.5 } });
         await image.click({ position: { x: before.width * 0.8, y: before.height * 0.5 } });
 
-        await expect(image).toHaveCSS('transform', 'none');
+        await expect(image).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
         expect((await image.boundingBox())?.width ?? 0).toBeCloseTo(before.width, 0);
     },
 );

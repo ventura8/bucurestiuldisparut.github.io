@@ -6529,3 +6529,26 @@ the limits!!!". A relaxed gate, so it is the owner's decision, recorded here.
 - **168b** The admin's budgets, the start page's and the other chunks' stay as they were.
 - **168c** The rule stands: a budget moves only by a reviewed change with its reason; code that only some visitors need
   still goes to the on-demand parts first (`docs/ENGINE_API.md` → *Side-loaded parts*).
+
+## 169. The Pixel 9 Pro review of the public viewer (track/viewer-phone, 2026-11-12) — APPLIED, no gate relaxed
+
+The owner's device review (`reports/devices/FINDINGS.md`, section *Pixel 9 Pro*), P1 to P6 but P5 (track/viewer-device).
+
+- **169a (P3, supersedes §21c)** The modal surfaces draw above Mapbox's logo and attribution; nothing copies them. The
+  legal bar below the sheets and the lightbox and the copy at the foot of About took 40 to 80 px of every surface on a
+  phone, and Mapbox's corners (z-index 2) drew over the lightbox (z-index auto in the frame's stacking context). Now the
+  modal layer has z-index 30; while a modal sheet is open Mapbox's corners move into the part of the map it leaves
+  (above a bottom sheet's top edge, beside a side sheet; `legal-lift.ts`), under its translucent scrim like the map;
+  the lightbox and a full-screen dialog hide the whole map, so no credit is owed there (Mapbox's terms ask for it where
+  the map is displayed), and a centred dialog leaves the corners in view. §21c's option 2, without its cost: a
+  ResizeObserver follows the sheet's own box, so the viewer needs no report of its height.
+- **169b (P2)** A chosen light or dark theme declares `color-scheme: only light` / `only dark`: Chrome's dark theme for
+  sites (Android, dark system) repaints every element whose used scheme is light, inverting dark text to a light tone
+  while it keeps tinted fills; `system` stays `light dark`. The dark tours run with that repaint
+  (`--blink-settings=forceDarkModeEnabled=true`), and the tour measures the FAB menu's painted contrast from pixels.
+- **169c (P1)** On a landscape phone the open FAB menu lays its items in rows from the leading edge across the map's
+  width, 48 px tall, while the lying card, the chip and the zoom group step aside; a window too short even for that
+  scrolls the menu. The tour's journey `short-landscape` opens it at 884 × 322 and 568 × 270 in every tour project
+  (a whole new viewport found other short-window defects, left for their own task).
+- **169d (P4, P6)** No text selection or Touch to Search from a long press on the map; the lightbox zooms on a double
+  tap and counts and pages through the list it was opened from.

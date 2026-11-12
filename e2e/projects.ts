@@ -2,6 +2,7 @@ import type { PlaywrightTestOptions, PlaywrightWorkerOptions, Project } from '@p
 
 import { ADMIN_ORIGIN } from './admin/world.js';
 import { inPart, type ShardRange } from './split.js';
+import { FORCE_DARK, GL_ARGS, HOST_RULES } from './support/chromium-args.js';
 import type { WorkerOptions } from './support/test.js';
 
 /**
@@ -50,10 +51,6 @@ export type Tier = (typeof TIERS)[number];
  */
 const PUSH_TIERS: readonly Tier[] = TIERS.filter((tier) => tier !== 'tour-matrix');
 
-/** Only loopback resolves in Chromium: defence in depth behind the firewall fixture (support/network.ts). */
-const HOST_RULES = '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE localhost';
-/** WebGL without a GPU: ANGLE on SwiftShader, which the containers and CI runners always have. */
-const GL_ARGS = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', HOST_RULES];
 /** No WebGL at all (scenario V02's bad path): the viewer must fall back to the photo list. */
 const NO_GL_ARGS = ['--disable-3d-apis', HOST_RULES];
 
@@ -132,6 +129,8 @@ const ONE_PROJECT_SPECS = [
     'viewer/embed-api.spec.ts',
     'viewer/geolocate.spec.ts',
     'viewer/language-theme.spec.ts',
+    // Chrome's dark theme for sites (P2 of the Pixel 9 Pro review): the spec starts its own browser with it.
+    'viewer/dark-theme-for-sites.spec.ts',
     'viewer/no-javascript.spec.ts',
     // Swipe compare sets the window each test needs (a second map from 600 px wide, a toggle below: M4, V06).
     'viewer/compare.spec.ts',
@@ -233,7 +232,8 @@ function tourProject(
         tier,
         `tour-${viewport}-${scheme}-${lang}${files.suffix}`,
         files.match,
-        { ...chromium(viewport, lang), colorScheme: scheme },
+        // A dark system on Android turns on Chrome's dark theme for sites: the dark tours run with it (P2 of the Pixel review).
+        { ...chromium(viewport, lang, scheme === 'dark' ? [...GL_ARGS, FORCE_DARK] : GL_ARGS), colorScheme: scheme },
         // Up to seven states per test, each through both generic checkers (axe, a full Tab round, the text-spacing and
         // reflow variants): a 3840 px frame under SwiftShader took 90 s on a loaded laptop (2026-10-17), so 240 s.
         { testDir: 'tour', timeout: 240_000 },

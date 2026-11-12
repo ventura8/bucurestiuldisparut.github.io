@@ -9,12 +9,13 @@
  * top edge and the timeline 2 px from the collapsed attribution on phones). A dock is only a box around its control:
  * the empty part of the toast dock and the FAB menu's let taps through to the map and the timeline.
  *
- * Inside the host, `.viewer` is a two-row grid: the frame spans both rows (the map never resizes), the modal layer
- * fills the first, and the legal bar, shown while a modal surface covers the map, is the second (auto height): a
- * sheet, its scrim and the lightbox end where the bar begins, and Mapbox's own bottom controls are hidden meanwhile.
+ * Inside the host, `.viewer` is a grid of one cell: the frame and the modal layer above it. The modal surfaces draw
+ * above Mapbox's own logo and attribution, which move into the part of the map a modal sheet leaves in view (V18,
+ * `legal-lift.ts`: `--hcm-legal-lift-*`).
  */
 import { css } from 'lit';
 
+import { dockStyles } from './dock-styles.js';
 import { baseStyles, sheetStyles } from './shared-styles.js';
 
 export const viewerStyles = [
@@ -56,14 +57,18 @@ export const viewerStyles = [
         .viewer {
             position: relative;
             display: grid;
-            grid-template-rows: minmax(0, 1fr) auto;
+            grid-template-rows: minmax(0, 1fr);
             grid-template-columns: minmax(0, 1fr);
             block-size: 100%;
         }
 
-        /* The modal surfaces' containing block; it lets pointers through to the map where no surface is open. */
+        /*
+         * The modal surfaces' containing block; it lets pointers through to the map where no surface is open. Above the frame and everything in it, Mapbox's controls included (their z-index 2 drew the credits over the
+         * lightbox, whose own z-index is auto: the Pixel 9 Pro review, P3) and the floating controls (z-index up to 26).
+         */
         .modal-layer {
             position: relative;
+            z-index: 30;
             grid-area: 1 / 1 / 2 / 2;
             pointer-events: none;
         }
@@ -72,20 +77,22 @@ export const viewerStyles = [
             pointer-events: auto;
         }
 
-        .legal {
-            position: relative;
-            z-index: 32;
-            grid-area: 2 / 1 / 3 / 2;
-            padding-block-end: env(safe-area-inset-bottom, 0);
-            padding-inline: var(--hcm-gutter);
-            border-block-start: 1px solid var(--md-sys-color-outline-variant);
-            background: var(--md-sys-color-surface-container);
+        /*
+         * Mapbox's bottom corners move out from under an open modal sheet: above a bottom sheet's top edge, beside a side
+         * sheet (the Pixel 9 Pro review, P3: a copy of the credits in a bar took the foot of every sheet). Under the
+         * sheet's scrim they stay in view, as the rest of the map does.
+         */
+        .frame .mapboxgl-ctrl-bottom-left,
+        .frame .mapboxgl-ctrl-bottom-right {
+            bottom: var(--hcm-legal-lift-bottom, 0);
         }
 
-        /* While the logo and the attribution show in the legal bar or in About, Mapbox's own stay out of sight. */
-        .frame[data-legal-mirror] .mapboxgl-ctrl-bottom-left,
-        .frame[data-legal-mirror] .mapboxgl-ctrl-bottom-right {
-            visibility: hidden;
+        .frame .mapboxgl-ctrl-bottom-left {
+            left: var(--hcm-legal-lift-left, 0);
+        }
+
+        .frame .mapboxgl-ctrl-bottom-right {
+            right: var(--hcm-legal-lift-right, 0);
         }
 
         /*
@@ -132,10 +139,9 @@ export const viewerStyles = [
             }
         }
 
-        /* The frame spans both rows of the viewer: the map keeps the whole height while the legal bar shows. */
         .frame {
             display: grid;
-            grid-area: 1 / 1 / 3 / 2;
+            grid-area: 1 / 1 / 2 / 2;
             grid-template-columns: minmax(0, 1fr);
             block-size: 100%;
         }
@@ -275,211 +281,11 @@ export const viewerStyles = [
             padding-block-end: calc(var(--hcm-map-chrome) + var(--hcm-fab-size) + var(--hcm-dock-gap));
         }
 
-        .dock {
-            position: absolute;
-            z-index: 10;
-        }
-
-        /* The menu's and the toast's docks are as wide as their popup or their row: only what they draw takes the pointer. */
-        .dock.menu,
-        .dock.toast {
-            pointer-events: none;
-        }
-
-        /*
-         * Lying (from 600 px, and on a short window of any width) the timeline is centred at the foot of the map, at most
-         * 640 px wide, with a column free on either side for the menu button.
-         */
-        .dock.timeline {
-            inset-inline: calc(var(--hcm-gutter) + 72px);
-            inset-block-end: calc(var(--hcm-map-chrome) + env(safe-area-inset-bottom, 0px));
-            max-inline-size: 640px;
-            margin-inline: auto;
-        }
-
-        /*
-         * Standing (a phone held upright, the owner's request of 2026-11-08) on the leading edge, from the top gutter
-         * down to the chip's row: the chip, an icon button there, docks 8 px under its foot, a row above the menu button,
-         * which keeps the bottom trailing corner; the open menu grows on the trailing side, clear of the 68 px card.
-         */
-        .frame[data-timeline='vertical'] .dock.timeline {
-            inset-inline: var(--hcm-gutter) auto;
-            inset-block: var(--hcm-gutter)
-                calc(var(--hcm-map-chrome) + var(--hcm-fab-size) + 40px + 2 * var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px));
-        }
-
-        /* No layers yet: a small note where the timeline will be, clear of the FAB menu on the trailing side. */
-        .dock.timeline-note {
-            inset-inline: var(--hcm-gutter) calc(var(--hcm-gutter) + 72px);
-            inset-block-end: calc(var(--hcm-map-chrome) + env(safe-area-inset-bottom, 0px));
-            display: flex;
-            justify-content: flex-start;
-            pointer-events: none;
-        }
-
-        .note,
-        .dock.zoom {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            box-sizing: border-box;
-            border-radius: var(--md-sys-shape-corner-full);
-            background: var(--md-sys-color-surface-container-high);
-            color: var(--md-sys-color-on-surface-variant);
-            box-shadow: var(--md-sys-elevation-level2);
-        }
-
-        .note {
-            min-block-size: 40px;
-            padding: 8px 16px 8px 12px;
-            font-size: var(--md-sys-typescale-label-large-size);
-            line-height: 1.4;
-            pointer-events: auto;
-        }
-
-        .dock.menu {
-            /* Above the consent banner and the snackbar: the open menu grows upwards over them (kit-integration test). */
-            z-index: 26;
-
-            /* Beside a standing timeline the dock ends 8 px from it, and an item too wide wraps (text spacing at 320 px). */
-            inset-inline: var(--hcm-top-start, auto) var(--hcm-gutter);
-            text-align: end;
-            inset-block-end: calc(var(--hcm-map-chrome) + env(safe-area-inset-bottom, 0px));
-        }
-
-        /*
-         * Beside the lying timeline, which is taller than the FAB, the open menu's items end 8 px above it (the visual
-         * audit found the last item over the timeline's thumb at 768 px).
-         */
-        .frame[data-timeline='horizontal'] .dock.menu {
-            --hcm-fab-menu-gap: calc(var(--hcm-timeline-block) - var(--hcm-fab-size) + var(--hcm-dock-gap));
-        }
-
-        /*
-         * On the lying card's leading edge, 8 px above it (the owner's screenshot of 2026-11-08: 72 px in from the map's
-         * edge it was aligned to nothing beside the centred card); 50 % is half the map pane, the containing block of both.
-         */
-        .dock.chip {
-            inset-inline-start: max(var(--hcm-gutter) + 72px, 50% - 320px);
-            inset-block-end: calc(
-                var(--hcm-map-chrome) + var(--hcm-timeline-block) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px)
-            );
-        }
-
-        /*
-         * The zoom buttons (V52): a vertical group (4 px around two 40 px buttons: 48 px targets) centred over the FAB on
-         * the trailing edge, 8 px above it.
-         */
-        .dock.zoom {
-            inset-inline-end: calc(var(--hcm-gutter) + 4px);
-            inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-fab-size) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px));
-            flex-direction: column;
-            padding: 4px;
-        }
-
-        /*
-         * Beside a standing timeline, above the chip's row: the group's foot is level with the card's. The chip there is a
-         * 40 px icon button (the owner, 2026-11-12) centred under the 68 px card, a row above the FAB: 14 px in.
-         */
-        .frame[data-timeline='vertical'] .dock.zoom {
-            inset-block-end: calc(
-                var(--hcm-map-chrome) + var(--hcm-fab-size) + 40px + 2 * var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px)
-            );
-        }
-
-        .frame[data-timeline='vertical'] .dock.chip {
-            inset-inline-start: calc(var(--hcm-gutter) + 14px);
-            inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-fab-size) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px));
-        }
-
-        .dock.consent {
-            inset-inline: var(--hcm-top-start, var(--hcm-gutter)) var(--hcm-gutter);
-            inset-block-start: var(--hcm-gutter);
-            max-inline-size: 480px;
-            z-index: 20;
-        }
-
-        .dock.toast {
-            inset-inline: var(--hcm-top-start, var(--hcm-gutter)) var(--hcm-gutter);
-            inset-block-start: var(--hcm-gutter);
-            display: grid;
-            justify-items: center;
-            z-index: 25;
-        }
-
-        /*
-         * The kit's snackbar places itself at the bottom of its container; here it flows in the top dock (the tour
-         * found it above the top edge of the map).
-         */
-        .dock.toast hcm-snackbar {
-            position: static;
-        }
-
-        /*
-         * The top docks, compare's bar, the skip link and the menu's dock begin 8 px after the standing timeline, 68 px wide
-         * (the tour found the toast's dock, then the focused skip link, over the thumb of a vertical timeline).
-         */
-        .frame[data-timeline='vertical'] {
-            --hcm-top-start: calc(var(--hcm-gutter) + 76px);
-        }
-
-        @container hcm-viewer (width >= 600px) {
-            .dock.timeline-note {
-                justify-content: center;
-            }
-        }
-
-        /*
-         * A landscape phone is too short for the whole menu: below the top gutter its items continue in a second
-         * column (the tour found items off screen). The menu is docked on the leading edge, so the FAB and the items
-         * line up there: aligned to the end, the wider two-column menu pushed the FAB 300 px away from where it was
-         * tapped (UX review). Its items end above the chip's row (40 px and 8 more, 56 px with the gap to the card), kept
-         * free when no chip shows so the menu does not move: at 568 x 320 the menu needs three columns, which reach the
-         * trailing edge (the review found "Distribuie" and "Despre" over the chip).
-         */
-        .frame[data-compact-height] .dock.menu {
-            inset-inline: var(--hcm-gutter) auto;
-
-            --hcm-fab-menu-align: flex-start;
-            --hcm-fab-menu-gap: calc(var(--hcm-timeline-block) - var(--hcm-fab-size) + 56px);
-            --hcm-fab-menu-max-block-size: calc(100cqb - var(--hcm-map-chrome) - var(--hcm-timeline-block) - 56px - var(--hcm-gutter));
-        }
-
-        /*
-         * The menu button is on the leading side only, so the lying card takes the trailing column too, and the chip its
-         * trailing edge: 50 % - 356 px is where the centred 640 px card ends (the review at 568 x 320: 72 px in, the chip
-         * sat on the map's centre point; it now ends at the gutter, with 9 px to spare in Romanian).
-         */
-        .frame[data-compact-height] .dock.timeline {
-            inset-inline-end: var(--hcm-gutter);
-        }
-
-        .frame[data-compact-height] .dock.chip {
-            inset-inline: auto max(var(--hcm-gutter), 50% - 356px);
-        }
-
-        /*
-         * On a short window the FAB is on the leading side and the lying card and the chip take the trailing column: the
-         * group goes over the FAB there, in the leading column the card leaves free.
-         */
-        .frame[data-compact-height] .dock.zoom {
-            inset-inline: calc(var(--hcm-gutter) + 4px) auto;
-        }
-
-        /* Upright, the items begin above the chip's row (the owner's phone: the last item covered the chip's end). */
-        .frame[data-timeline='vertical'] .dock.chip ~ .dock.menu {
-            --hcm-fab-menu-gap: calc(40px + 2 * var(--hcm-dock-gap));
-        }
-
-        /* The open menu grows over the group: the group steps aside until it closes (the tour's overlap check). */
-        .dock.menu:has(> [open]) + .dock.zoom {
-            visibility: hidden;
-        }
-
         @media (prefers-reduced-motion: reduce) {
             .skeleton .shimmer {
                 animation: none;
             }
         }
     `,
+    dockStyles,
 ];

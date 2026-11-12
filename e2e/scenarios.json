@@ -1719,7 +1719,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "Two clicks far apart on the photo are no double tap: the photo keeps its size",
-            "asserts": "a click at 20 % and one at 80 % of the photo's width -> no transform, the same width",
+            "asserts": "a click at 20 % and one at 80 % of the photo's width -> the identity transform, the same width",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The Pixel 9 Pro review, 2026-11-12 (P6). Tests: e2e/specs/viewer/photos.spec.ts; packages/ui/test/viewer/hcm-lightbox.test.ts, zoom.test.ts, viewer-lightbox.test.ts."
@@ -1978,6 +1978,28 @@
             "notes": "Milestone M1."
         },
         {
+            "id": "S-V12-HAPPY-ONLY-LIGHT",
+            "behaviour": "V12",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The light theme under a dark system keeps its own colours: the FAB and the menu's labels are painted with their contrast",
+            "asserts": "a dark system with Chrome's dark theme for sites, Settings -> Luminoasă: the viewer's color-scheme is 'only light'; the FAB's icon painted at 3:1 or more on its fill, read from the screen's pixels; the open menu's labels at 4.5:1 or more",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P2). Tests: e2e/specs/viewer/dark-theme-for-sites.spec.ts (its own Chromium with --blink-settings=forceDarkModeEnabled=true); the tour's rendered contrast (e2e/support/rendered-contrast.ts) at the dark tours, state other-theme-menu; packages/ui/test/theme/apply.test.ts."
+        },
+        {
+            "id": "S-V12-BAD-FORCED-DARK-SYSTEM",
+            "behaviour": "V12",
+            "area": "viewer",
+            "path": "bad",
+            "title": "The dark theme chosen, or the system's, is the viewer's own dark, which Chrome's dark theme for sites leaves alone",
+            "asserts": "a dark system with Chrome's dark theme for sites: the system theme is 'light dark' and the open menu painted with its contrast; Settings -> Întunecată: 'only dark', the same",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P2). Tests: e2e/specs/viewer/dark-theme-for-sites.spec.ts (its own Chromium with --blink-settings=forceDarkModeEnabled=true); the tour's rendered contrast (e2e/support/rendered-contrast.ts) at the dark tours, state other-theme-menu; packages/ui/test/theme/apply.test.ts."
+        },
+        {
             "id": "S-V12-BAD-ABOUT-NO-PREFERENCES",
             "behaviour": "V12",
             "area": "viewer",
@@ -2137,7 +2159,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "Every viewer state passes the generic accessibility checker at every viewport",
-            "asserts": "tour, every state of the inventory at all 11 viewports, light and dark, RO and EN: axe (WCAG 2.0, 2.1 and 2.2 A and AA plus best practices) passes; pointer targets at least 24 px or spaced (WCAG 2.5.8) and 48 px on compact and medium; one full Tab round reaches every control once, never climbing back up inside a component, each with a focus ring of 3:1, uncovered, without a trap and never out of an open modal; Esc closes a popup and the focus returns to its opener; switches, sliders, fields and icon buttons reach 3:1 in the page's scheme and in high contrast; landmarks are named and distinct; the slider's new opacity is announced",
+            "asserts": "tour, every state of the inventory at all 11 viewports, light and dark, RO and EN: axe (WCAG 2.0, 2.1 and 2.2 A and AA plus best practices) passes; pointer targets at least 24 px or spaced (WCAG 2.5.8) and 48 px on compact and medium; one full Tab round reaches every control once, never climbing back up inside a component, each with a focus ring of 3:1, uncovered, without a trap and never out of an open modal; Esc closes a popup and the focus returns to its opener; switches, sliders, fields and icon buttons reach 3:1 in the page's scheme and in high contrast; the FAB and the open menu's items are painted at 3:1 (icon) and 4.5:1 (label), read from the screen's pixels (the dark tours run with Chrome's dark theme for sites); landmarks are named and distinct; the slider's new opacity is announced",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Since 2026-10-17. The user's request of 2026-10-12 ('in the phone screens the menu button sometimes overlaps with other elements. we should have tests for overlapping elements!!! also for accessibility!!'): the generic checkers of e2e/support/layout.ts and e2e/support/a11y.ts over the state inventory e2e/tour/states.ts (docs/TESTING.md, The tour's checkers)."
@@ -2240,6 +2262,17 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Since 2026-10-17. The 320 px projects of the tour matrix check it natively; the other upright phones narrow to 320 and back. The user's request of 2026-10-12 ('in the phone screens the menu button sometimes overlaps with other elements. we should have tests for overlapping elements!!! also for accessibility!!'): the generic checkers of e2e/support/layout.ts and e2e/support/a11y.ts over the state inventory e2e/tour/states.ts (docs/TESTING.md, The tour's checkers)."
+        },
+        {
+            "id": "S-V15-BAD-SHORT-LANDSCAPE-MENU",
+            "behaviour": "V15",
+            "area": "viewer",
+            "path": "bad",
+            "title": "On a short landscape phone the open FAB menu keeps every item on screen, in rows above the FAB",
+            "asserts": "tour journey short-landscape in every tour project: the window at 884 x 322 and at 568 x 270, the FAB menu open -> the generic layout and accessibility checks pass (no item off screen, nothing overlapping, 48 px targets), Esc closes it and the focus returns to the FAB; unit: at 884 x 290 every item inside the viewer above the FAB, the card hidden, items 48 px tall; at 568 x 270 the menu scrolls and End brings its last item into view",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P1: at 884 x 322 with Chrome's bars seven items lay in one row, 263 px off the screen). Tests: e2e/tour/viewer.tour.ts (e2e/tour/settings-states.ts); packages/ui/test/viewer/landscape-menu.test.ts."
         },
         {
             "id": "S-V16-HAPPY",
@@ -2356,22 +2389,22 @@
             "behaviour": "V18",
             "area": "viewer",
             "path": "happy",
-            "title": "With a sheet, the lightbox or About open the Mapbox logo and attribution stay visible and uncovered",
-            "asserts": "tour, every state at all 11 viewports: exactly one visible Mapbox logo and one attribution, on top (Mapbox's own on the map; the viewer's legal bar below a modal sheet or the lightbox; the foot of About); the usable floating controls stay apart",
+            "title": "With a sheet, the lightbox or a dialog open, the surface sits above the map and its credits, which stay visible wherever the map shows",
+            "asserts": "tour, every state at all 11 viewports: with any of the map in view, exactly one visible Mapbox logo and one attribution, uncovered or under nothing but a sheet's translucent scrim (Mapbox's own controls, moved above a bottom sheet or beside a side sheet); none owed where the lightbox or a full-screen dialog hides the whole map; no copy of the credits at the foot of a sheet, the lightbox, About or Settings; the usable floating controls stay apart",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o). packages/ui/src/viewer/attribution.ts, viewer-legal.ts, hcm-map-attribution.ts; the tour (e2e/tour/viewer.tour.ts)."
+            "notes": "M1 follow-up, delivered with M2; redesigned after the Pixel 9 Pro review, 2026-11-12 (P3: the legal bar and About's copy took 40 to 80 px of every surface on a phone). packages/ui/src/viewer/legal-lift.ts, viewer-legal.ts, viewer-styles.ts; the tour (e2e/tour/viewer.tour.ts, e2e/support/layout-probe.ts mapSeen and probeLegal); packages/ui/test/viewer/legal-lift.test.ts."
         },
         {
             "id": "S-V18-BAD-FULL-SHEET",
             "behaviour": "V18",
             "area": "viewer",
             "path": "bad",
-            "title": "A full-height sheet on a phone ends above the legal bar, which keeps the logo and the credits of a layer switched on",
-            "asserts": "360 x 800, the Layers sheet at full height -> the sheet ends where the legal bar begins; the bar's logo and attribution are on top and Mapbox's own controls hidden; switching on the 1966 layer adds USGS (e2e) to the bar; its links are https",
+            "title": "A full-height sheet on a phone reaches the viewer's foot; Mapbox's logo and credits, a layer's among them, rise above it",
+            "asserts": "360 x 800, the Layers sheet at full height -> the sheet ends at the viewer's foot, no legal bar; Mapbox's own logo and attribution are visible and end above the sheet's top edge, in the 72 px of map it leaves; switching on the 1966 layer adds USGS (e2e) to Mapbox's attribution; its links are https",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o)."
+            "notes": "M1 follow-up, delivered with M2; redesigned after the Pixel 9 Pro review, 2026-11-12 (P3). Tests: e2e/specs/viewer/responsive.spec.ts; packages/ui/test/viewer/legal-lift.test.ts."
         },
         {
             "id": "S-V19-HAPPY",
@@ -17834,7 +17867,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "A long press on the map selects no text and offers no touch callout; the menu alone answers",
-            "asserts": "a touch pointer held on the map -> selectstart under it is cancelled, the menu opens, selectstart on the credits after it is cancelled too; the map is user-select: none and -webkit-touch-callout: none; nothing is selected",
+            "asserts": "a touch pointer held on the map -> selectstart under it is cancelled, the menu opens, selectstart on the credits after it is cancelled too; the map is user-select: none (and -webkit-touch-callout: none for Safari); nothing is selected",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The Pixel 9 Pro review, 2026-11-12 (P4: Chrome on Android began a text selection and Touch to Search under the long press). Tests: e2e/specs/viewer/map-menu.spec.ts; packages/ui/test/viewer/map-menu.test.ts."

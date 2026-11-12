@@ -33,7 +33,7 @@ const TARGET_GAP_PX = 8;
 
 /**
  * Chrome that is a surface, not a touch target: a sheet, a navigation bar or rail, a top bar. Their edges meet other
- * bars by design (a full sheet ends where the legal line begins, V18); the controls on them are checked by occlusion.
+ * bars by design (a navigation rail beside a top bar); the controls on them are checked by occlusion.
  */
 const SURFACE_KINDS: ReadonlySet<string> = new Set(['sheet', 'navigation', 'top-bar']);
 
