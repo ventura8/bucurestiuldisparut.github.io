@@ -7,7 +7,6 @@
  * the rest one family per viewer feature. Keep one entry per line (scripts/ci/check_i18n.py).
  */
 export const ro = {
-    'hello.greeting': 'Salut, {name}!',
     'validation.required': 'Lipsește un câmp obligatoriu.',
     'validation.type': 'Valoarea are un tip greșit.',
     'validation.tooSmall': 'Valoarea este prea mică sau prea scurtă.',

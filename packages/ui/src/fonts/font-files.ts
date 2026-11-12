@@ -7,7 +7,7 @@
 /** The text family of every kit element (variable weight 100–1000). */
 export const TEXT_FONT_FAMILY = 'HCM Roboto Flex';
 
-/** The icon family: Material Symbols Rounded, subset to `ICONS` (`packages/ui/src/icons.ts`). */
+/** The icon family: Material Symbols Rounded, subset to `ICONS` (`packages/ui/src/icons-sorted.ts`, the lists of `icons.ts`). */
 export const ICON_FONT_FAMILY = 'HCM Material Symbols Rounded';
 
 /** The CSS `font-family` stack of the kit: ours first, then the M3 fallbacks. */

@@ -3,9 +3,10 @@
 // * Roboto Flex (OFL-1.1): the weight-axis files of @fontsource-variable/roboto-flex for the `latin` and `latin-ext`
 //   ranges (Romanian needs both: ă ș ț live in latin-ext), copied as they are;
 // * Material Symbols Rounded (Apache-2.0): a subset of the 5 MB variable font of `material-symbols` that keeps only the
-//   ligatures of ICONS (packages/ui/src/icons.ts) and the letters they are typed with, instanced at wght 400, GRAD 0,
-//   opsz 24 with the FILL axis kept (filled icons for selected states). HarfBuzz shapes every name to find its glyph,
-//   then subsets with "no layout closure", so GSUB keeps exactly those ligatures; wawoff2 decodes and encodes WOFF2.
+//   ligatures of ICONS (packages/ui/src/icons-sorted.ts, from the lists of icons.ts) and the letters they are typed with,
+//   instanced at wght 400, GRAD 0, opsz 24 with the FILL axis kept (filled icons for selected states). HarfBuzz shapes
+//   every name to find its glyph, then subsets with "no layout closure", so GSUB keeps exactly those ligatures; wawoff2
+//   decodes and encodes WOFF2.
 //
 // Run with Node 24 in the quality image:
 //
@@ -40,7 +41,7 @@ registerHooks({
 });
 
 const { createLogger } = await import('../../shared/src/log.ts');
-const { ICONS } = await import('../src/icons.ts');
+const { ICONS } = await import('../src/icons-sorted.ts');
 const { FONT_FILES, ICON_FONT_AXES } = await import('../src/fonts/font-files.ts');
 const { iconNamesIn } = await import('../src/fonts/icon-scan.ts');
 

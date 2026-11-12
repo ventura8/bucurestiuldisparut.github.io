@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { fontUrl, installFonts, loadIconFont } from '../../src/fonts/font-faces.js';
 import { FONT_FILES, ICON_FONT_AXES, ICON_FONT_FAMILY, TEXT_FONT_FAMILY, TEXT_FONT_STACK } from '../../src/fonts/font-files.js';
-import { ICONS, UI_ICONS, isBundledIcon } from '../../src/icons.js';
+import { ICONS } from '../../src/icons-sorted.js';
+import { UI_ICONS, isBundledIcon } from '../../src/icons.js';
 import { FONT_BASE, cleanup } from '../helpers.js';
 
 const ICON_SIZE = 24;
