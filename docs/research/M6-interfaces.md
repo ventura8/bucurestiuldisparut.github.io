@@ -345,7 +345,13 @@ finished first: the job `raster-pipeline` ran the new image, so `worker.image` h
 the old server refused until its own build caught up. Update the map now holds the pipeline, like the site, until the
 server it submitted has settled installed (`packages/admin/src/setup/install.ts`, `#afterServerTargets`); a stopped server
 releases neither, and each card keeps Update the map. Installing a new map (Install the server) still submits both at
-once: no worker is paired before the server exists. S-A56-HAPPY-UPDATE-AFTER-SERVER, S-A56-BAD-UPDATE-SERVER-STOPPED.
+once: no worker is paired before the server exists. The order is kept by the admin tab that clicked: the pipeline and
+the site are submitted from that tab once its look at the server's build sees it installed, with the live token. If the
+tab is closed during the server's build, or the token has expired by the time it looks again, the server's update still
+finishes on Google's side, the pipeline and the site are not submitted, and their cards offer Update the map again (the
+local worker keeps the old image meanwhile: safe, but a second click). An update started outside the admin (GitHub
+Actions) has no such guard; the server-side one is proposed in `DECISIONS-for-review.md` §159.
+S-A56-HAPPY-UPDATE-AFTER-SERVER, S-A56-BAD-UPDATE-SERVER-STOPPED.
 
 **Addendum 2026-11-01 (finding 39 of `manual-test-2026-10-25.md`, `DECISIONS-for-review.md` §78a): the release order.**
 Every release of a version shares its semver (`1.0.0+<commit>`; build metadata has no precedence), so a release also

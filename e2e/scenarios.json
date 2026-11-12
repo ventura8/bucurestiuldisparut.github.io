@@ -12762,10 +12762,10 @@
             "area": "admin",
             "path": "happy",
             "title": "Every paid frame of a date has its own Buy this scan",
-            "asserts": "a date with one free and two paid frames -> the row says 2 more would need ordering and lists Buy this scan: F022 and Buy this scan: F023; the second opens its own scene page with the order card's Buy this scan",
+            "asserts": "a date with one free and two paid frames -> the row says 2 more would need ordering and lists Buy this scan: F022 and Buy this scan: F023; the second opens its own scene page, where the order card's heading shows",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "2026-11-12 (only the first paid frame was linked). Test: e2e/admin/specs/imagery/join-dates.spec.ts; packages/ui/test/admin/imagery/join.test.ts."
+            "notes": "2026-11-12 (only the first paid frame was linked). Test: e2e/admin/specs/imagery/join-dates.spec.ts; packages/ui/test/admin/imagery/join-paid.test.ts."
         },
         {
             "id": "S-A66-BAD-PAID-ORDERED",
@@ -12776,7 +12776,7 @@
             "asserts": "one of the row's paid frames has an open order -> its line reads Your order: F022 with the Ordered chip, while the other still reads Buy this scan: F023",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "2026-11-12. Test: e2e/admin/specs/imagery/join-dates.spec.ts; packages/ui/test/admin/imagery/join.test.ts."
+            "notes": "2026-11-12. An expired order reads Order it again: F022 instead (unit test). Test: e2e/admin/specs/imagery/join-dates.spec.ts; packages/ui/test/admin/imagery/join-paid.test.ts."
         },
         {
             "id": "S-P07-HAPPY-GPU",

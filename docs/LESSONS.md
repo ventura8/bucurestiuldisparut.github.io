@@ -3393,5 +3393,5 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
 
 578. **A whole-city date with two paid frames linked only the first.**
     - Seen: 2026-11-12, Find's Whole-city dates: "2 more would need ordering" was one link to the first paid frame's page; the second could be bought only by finding it in the list.
-    - Fix and pin: each paid frame has its own Buy this scan: {frame}, or Your order: {frame} with its chip (`join-card.ts`; S-A66-HAPPY-BUY-EVERY-PAID, S-A66-BAD-PAID-ORDERED).
+    - Fix and pin: each paid frame has its own Buy this scan: {frame}, or Your order: {frame} with its chip while the order is open, Order it again: {frame} once it expired (`paidFrameList` in `packages/ui/src/admin/imagery/orders/order-list.ts`, rendered by `join-card.ts`; `packages/ui/test/admin/imagery/join-paid.test.ts`; S-A66-HAPPY-BUY-EVERY-PAID, S-A66-BAD-PAID-ORDERED).
     - **A count that stands for several things is not a link to one of them: list each with its own action.**

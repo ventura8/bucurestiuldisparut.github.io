@@ -4,7 +4,7 @@
  * order never delivered, until it is ordered again or its mark taken back); every open order counts in Work's tab
  * (finding 54 of 2026-11-01). A reminder to pay is no longer the admin's to clear once it was sent: it waits like any order.
  */
-import type { Locale, OrderState } from '@hcm/shared';
+import type { AdminContentKey, Locale, OrderState } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { current } from '../../editing/states.js';
@@ -91,14 +91,26 @@ function openOrder(context: ImageryContext, entityId: string): SceneItemPort | u
 }
 
 /**
+ * The words of a paid frame's link: Buy this scan without an order, Order it again once its order expired (the order
+ * card offers it there; the red chip alone read as nothing to do), else Your order.
+ */
+function paidFrameKey(ordered: SceneItemPort | undefined): AdminContentKey {
+    if (ordered === undefined) {
+        return 'adminContent.imagery.join.buyFrame';
+    }
+    return needsYou(ordered) ? 'adminContent.imagery.join.orderAgainFrame' : 'adminContent.imagery.join.orderedFrame';
+}
+
+/**
  * One paid frame of the row (2026-11-12: only the first was linked): Buy this scan opens the frame's own page, where the
- * order card (M4) buys it; a frame already ordered says so, with its order's chip, and opens the same page.
+ * order card (M4) buys it; a frame already ordered says so, with its order's chip, and opens the same page (an expired
+ * order reads Order it again).
  * In the Imagery chunk, beside the orders' other rows: the join's chunk has no room for it.
  */
 function paidFrame(context: ImageryContext, entityId: string): TemplateResult {
     const { locale } = context;
     const ordered = openOrder(context, entityId);
-    const key = ordered === undefined ? 'adminContent.imagery.join.buyFrame' : 'adminContent.imagery.join.orderedFrame';
+    const key = paidFrameKey(ordered);
     return html`<li data-paid=${entityId}>
         <a class="external" href=${context.href(['scene', entityId])} data-state="join-buy"
             >${contentText(locale, key, { frame: frameName(entityId) })}</a

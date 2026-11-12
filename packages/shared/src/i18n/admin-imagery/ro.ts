@@ -60,6 +60,7 @@ export const ro = {
     'adminContent.imagery.join.paidFrameOne': 'Încă 1 ar trebui comandat',
     'adminContent.imagery.join.buyFrame': 'Cumpără această scanare: {frame}',
     'adminContent.imagery.join.orderedFrame': 'Comanda ta: {frame}',
+    'adminContent.imagery.join.orderAgainFrame': 'Comandă din nou: {frame}',
     'adminContent.imagery.join.winter': 'Iarnă: poate necesita puncte',
     'adminContent.imagery.join.addYear': 'Adaugă {year} la anii țintă',
     'adminContent.imagery.join.whenFree': 'Unește când se termină',

@@ -62,4 +62,26 @@ describe("a whole-city date's paid frames", () => {
         expect(deep(row, '[data-paid="D3C1205-200122F022"] .tag').textContent).toBe('Ordered');
         expect(deepAll(row, '[data-paid="D3C1205-200122F021"] .tag')).toEqual([]);
     });
+
+    it('badPath_aPaidFrameWhoseOrderExpiredOffersToOrderItAgain', async () => {
+        // Review of 2026-11-12: an expired order read "Your order" with the red chip, as if nothing were left to do.
+        const order = {
+            state: 'expired' as const,
+            orderedAt: '2026-07-01T08:00:00.000Z',
+            nextCheckAt: '2026-10-01T08:00:00.000Z',
+            lastCheckedAt: '2026-10-01T08:00:00.000Z',
+            lastError: null,
+            importJobId: null,
+        };
+        const orders = ready([scene({ id: 'D3C1205-200122F022', free: false, order })]);
+        const paid = { ...ROW, paidFrames: ['D3C1205-200122F022'] };
+        const { element } = await imageryPage(imageryState({ dates: [paid], orders }));
+        const link = deep(element, '[data-paid="D3C1205-200122F022"] [data-state="join-buy"]');
+
+        expect([link.textContent.trim(), link.getAttribute('href')]).toEqual([
+            'Order it again: F022',
+            '#/imagery/scene/D3C1205-200122F022',
+        ]);
+        expect(deep(element, '[data-paid="D3C1205-200122F022"] .tag').textContent).toBe('Never delivered');
+    });
 });
