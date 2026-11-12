@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { UpstreamError } from '../../src/ports/errors.js';
 import { processPhotoUpload } from '../../src/photos/upload.js';
 import { contentDeps, publicUrl } from '../publish/fakes.js';
-import { PDF, SVG, isoMedia, jpeg, pngHeaderOnly, truncatedJpeg } from './images.js';
+import { PDF, SVG, isoMedia, jpeg, pngHeaderOnly, rotatedJpeg, truncatedJpeg } from './images.js';
 import { CITY, photo, seedPhoto, uploaded } from './world.js';
 
 const NOW = '2026-10-12T08:30:00.000Z';
@@ -70,6 +70,48 @@ describe('processPhotoUpload: processed', () => {
         const thumb = deps.blobs.object('public', STORAGE_PATHS.photoDerivative(CITY, 'p1', sha(bytes), 'thumb'));
         expect(await sharp(thumb?.bytes).metadata()).toMatchObject({ width: 400, height: 133 });
         expect((await photo(deps, 'p1'))?.suggested).toBeUndefined();
+    });
+
+    it('happyPath_theOriginalIsDecodedOnceAndTheThumbnailComesUprightFromTheWebDerivative @S-A08-HAPPY-THUMB-FROM-WEB', async () => {
+        // 2026-11-12 (reports/resource-audit.md item 10): the second decode of the original is gone; the thumbnail is the web WebP's.
+        const deps = contentDeps(NOW);
+        await seedPhoto(deps, 'p1');
+        const bytes = await rotatedJpeg(3000, 1000);
+        const inputs: Uint8Array[] = [];
+        const images = {
+            ...deps.images,
+            webp: (input: Uint8Array, options: { readonly longEdge: number; readonly quality: number }) => {
+                inputs.push(input);
+                return deps.images.webp(input, options);
+            },
+        };
+
+        await expect(processPhotoUpload({ ...deps, images }, uploaded(deps, 'p1', bytes))).resolves.toBe('done');
+
+        const web = deps.blobs.object('public', STORAGE_PATHS.photoDerivative(CITY, 'p1', sha(bytes), 'web'));
+        const thumb = deps.blobs.object('public', STORAGE_PATHS.photoDerivative(CITY, 'p1', sha(bytes), 'thumb'));
+        expect(inputs).toEqual([bytes, web?.bytes]);
+        expect(await sharp(web?.bytes).metadata()).toMatchObject({ width: 683, height: 2048 });
+        expect(await sharp(thumb?.bytes).metadata()).toMatchObject({ width: 133, height: 400 });
+    });
+
+    it('badPath_anOriginalThatDoesNotDecodeMakesNoThumbnailAttempt @S-A08-BAD-NO-THUMB-ATTEMPT', async () => {
+        const deps = contentDeps(NOW);
+        await seedPhoto(deps, 'p1');
+        const calls: number[] = [];
+        const images = {
+            ...deps.images,
+            webp: (_input: Uint8Array, options: { readonly longEdge: number; readonly quality: number }) => {
+                calls.push(options.longEdge);
+                return Promise.reject(new UpstreamError('image', 'invalid'));
+            },
+        };
+
+        await processPhotoUpload({ ...deps, images }, uploaded(deps, 'p1', await jpeg(16, 16)));
+
+        expect(calls).toEqual([2048]);
+        expect(await photo(deps, 'p1')).toMatchObject({ processing: 'failed', processingError: 'apiError.photo.unreadable' });
+        expect(deps.blobs.paths('public')).toEqual([]);
     });
 
     it('happyPath_aRedeliveredEventFindsItsDerivativesAndStillFinishes', async () => {

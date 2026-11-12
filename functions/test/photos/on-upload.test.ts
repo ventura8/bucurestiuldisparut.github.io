@@ -55,11 +55,11 @@ describe('photos-onUpload', () => {
         expect((await photo(deps, 'p1'))?.processing).toBe('done');
     });
 
-    it('happyPath_deploysOnThePrivateBucketWithTwoGigabytesAndNoRetry', () => {
+    it('happyPath_deploysOnThePrivateBucketWithOneGigabyteAndNoRetry', () => {
         const endpoint = onUploadFunction(() => contentDeps(), BUCKET).__endpoint;
 
         expect(endpoint).toMatchObject({
-            availableMemoryMb: 2048,
+            availableMemoryMb: 1024,
             concurrency: 1,
             maxInstances: 5,
             timeoutSeconds: 300,
