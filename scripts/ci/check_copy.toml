@@ -107,5 +107,10 @@ kind = 'strings'
 path = 'functions/src/imagery/relocate.ts'
 kind = 'strings'
 
+# The start page's privacy policy and terms (the consent screen links to them): prose a visitor reads, kept outside the catalogues.
+[[source]]
+path = 'scripts/site/src/start/legal-text.ts'
+kind = 'strings'
+
 # ---------------------------------------------------------------------------------------------------------------
 # Allowed uses. `where` is a catalogue key or a source path; `term` the exact text matched (any case).
