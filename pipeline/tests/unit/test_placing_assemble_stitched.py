@@ -8,7 +8,7 @@ from hcm_pipeline.jobs import Waiting
 from hcm_pipeline.placing import stitched
 from hcm_pipeline.steps.place import PlaceStep
 
-from tests.fakes.world import PipelineWorld
+from tests.fakes.world import PipelineWorld, dig
 from tests.synthetic.town import TownSpec, town_lines, write_map
 from tests.unit.placing_support import originals, series_context
 from tests.unit.test_placing_assemble import cut_pages, texture, town_map
@@ -74,3 +74,46 @@ def test_happy_path_a_preview_is_never_larger_than_the_georeferencers(world: Pip
 
     assert record["previewScale"] == pytest.approx(stitched.PREVIEW_PX / 5000)
     assert record["metresPerPx"] == 2.0
+
+
+def _pair(index: int, x: float, y: float) -> dict[str, object]:
+    return {"id": f"j{index:03d}", "pixel": {"x": x, "y": y}, "geo": {"lat": 44.43, "lng": 26.1}, "enabled": True, "origin": "auto"}
+
+
+def test_happy_path_suggested_pairs_follow_the_stitched_picture_into_the_shrunk_scan(
+    world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P22-HAPPY-PAIRS-IN-SCAN"""
+    # 1895, 2026-11-12: the canvas was 16963 px wide, the scan 8192, and the pairs stayed in the canvas's pixels.
+    monkeypatch.setattr(stitched, "SCAN_MAX_PX", 500)
+    ctx = series_context(world, tmp_path, ["a.tif"], {"class": "pieces", "encoding": "grey"})
+    pairs = [_pair(0, 800.0, 400.0), _pair(1, 10.0, 990.0)]
+    ctx.update_version({"suggestions": {"method": "junctions", "tiles": {"matched": 2, "total": 9}, "pairs": pairs}})
+
+    stitched.publish_stitched(ctx, stitched.Stitched(numpy.full((1000, 1000), 200, numpy.uint8), "pieces", 1))
+
+    assert dig(world.version(), "scan", "width") == 500
+    moved = dig(world.version(), "suggestions", "pairs")
+    assert isinstance(moved, list)
+    assert [pair["pixel"] for pair in moved] == [{"x": 400.0, "y": 200.0}, {"x": 5.0, "y": 495.0}]
+    assert dig(world.version(), "suggestions", "tiles") == {"matched": 2, "total": 9}
+
+
+def test_happy_path_a_single_maps_pairs_in_its_original_pixels_land_on_its_working_copy() -> None:
+    """Scenarios: S-P22-HAPPY-PAIRS-IN-SCAN"""
+    record = stitched.in_scan({"pairs": [_pair(0, 4000.0, 2000.0)]}, (1 / 4.0) * 1.0, (1500, 1000))
+
+    assert record["pairs"] == [{**_pair(0, 0.0, 0.0), "pixel": {"x": 1000.0, "y": 500.0}}]
+
+
+def test_bad_path_a_suggested_pair_outside_the_scan_is_never_offered() -> None:
+    """Scenarios: S-P22-BAD-PAIRS-OUTSIDE-SCAN"""
+    suggested = {"tiles": {"matched": 3, "total": 3}, "pairs": [_pair(0, 9000.0, 10.0), _pair(1, -1.0, 5.0), _pair(2, 100.0, 50.0), "x"]}
+
+    record = stitched.in_scan(suggested, 1.0, (8192, 6000))
+
+    kept = record["pairs"]
+    assert isinstance(kept, list)
+    assert [pair["id"] for pair in kept] == ["j002"]
+    assert record["tiles"] == {"matched": 1, "total": 3}
+    assert stitched.in_scan({"pairs": "none"}, 1.0, (10, 10))["pairs"] == []

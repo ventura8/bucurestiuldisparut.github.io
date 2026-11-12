@@ -162,6 +162,16 @@ describe('imagery.join: what it creates', () => {
         expect((await readVersion(world, 'jn-old'))?.state).toBe('rejected');
     });
 
+    it('happyPath_aFrameJoinedByAnEarlierJoinJoinsAgain_live20261112 @S-A65-HAPPY-JOINED-FRAME', async () => {
+        const world = await readyWorld();
+        await seedPart(world, F039, { state: 'joined', partOf: 'jn-old' });
+        await seedPart(world, F040);
+
+        const answer = await join(world, [F039, F040]);
+
+        expect(await readVersion(world, 'v-f039')).toMatchObject({ state: 'joined', partOf: answer.jobId });
+    });
+
     it('happyPath_aTransactionRunTwiceCreatesOneSet', async () => {
         const world = await readyWorld();
         await seedFree(world, F039, F040);

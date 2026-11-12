@@ -274,6 +274,8 @@ export {
     exportTaskSchema,
 } from './city-export.js';
 export type { ExportDownloadResponse, ExportStartRequest, ExportTask } from './city-export.js';
+export { CITY_ICON_LIMITS, CITY_ICON_SIZES, cityIconRequestSchema, cityIconResponseSchema, type CityIconSize } from './city-icon.js';
+export type { CityIconRequest, CityIconResponse } from './city-icon.js';
 export {
     CLOUD_RUN_ESTIMATE_SECONDS,
     CLOUD_RUN_FREE_TIER,

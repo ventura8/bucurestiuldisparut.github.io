@@ -9,7 +9,7 @@ from pathlib import Path
 
 from release_pins import ENGINE_FOLDER, KIT_PAGE, RELEASE_JSON, sri
 
-REPOSITORY = "ventura8/bucurestiuldisparut.github.io"
+REPOSITORY = "ventura8/historic-city-map-maker"
 MAPBOX_JS_URL = "https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js"
 MAPBOX_CSS_URL = "https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css"
 MAPBOX_JS_SRI = sri(b"mapbox-gl test script\n")

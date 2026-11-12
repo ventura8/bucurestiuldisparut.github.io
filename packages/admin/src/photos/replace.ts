@@ -3,7 +3,9 @@
  * folder and the document is not touched (a `processing: 'pending'` would take a published photo off the public map).
  * `photos.onUpload` then swaps the image in one write, or keeps it and records why in `replacement` (CR-M2c-4); the
  * same file again leaves the image as it was. The editor shows "Processing the new image…" meanwhile (session state);
- * Cancel during the upload changes nothing (`S-A37-BAD-CANCEL-UPLOAD`).
+ * Cancel during the upload changes nothing (`S-A37-BAD-CANCEL-UPLOAD`). The same flow adds or replaces an improved or
+ * colorized version (the owner 2026-11-09, A140): `version` goes into the upload's custom metadata, and `photos.onUpload`
+ * writes `versions.<version>` instead of the image.
  */
 import { STORAGE_PATHS, systemWriter, type AdminContentKey, type ApiErrorCode, type PhotoDoc } from '@hcm/shared';
 
@@ -24,8 +26,13 @@ export interface ReplaceState {
     readonly duplicateOf: string | null;
 }
 
+/** The versions of a photo besides its original image. */
+export type PhotoVersionKind = 'improved' | 'colorized';
+
 export interface ReplacementDeps {
     readonly services: Pick<PhotosServices, 'cityId' | 'uploads' | 'user' | 'store'>;
+    /** The version this replaces; absent: the photo's own image. */
+    readonly version?: PhotoVersionKind;
     readonly changed: (state: ReplaceState | null) => void;
 }
 
@@ -53,13 +60,17 @@ function refusalOf(before: PhotoDoc, after: PhotoDoc): Result | null {
     return { phase: 'refused', error: refusal.error, duplicateOf: refusal.duplicateOf ?? null };
 }
 
-function shaOf(photo: PhotoDoc): string | null {
-    return photo.image === undefined ? null : photo.image.sha256;
+function imageOf(photo: PhotoDoc, version: PhotoVersionKind | undefined): PhotoDoc['image'] {
+    return version === undefined ? photo.image : photo.versions?.[version]?.image;
+}
+
+function shaOf(photo: PhotoDoc, version: PhotoVersionKind | undefined): string | null {
+    return imageOf(photo, version)?.sha256 ?? null;
 }
 
 /** What `photos.onUpload` did: refused the file, kept the same image, or swapped it. */
-function resultOf(before: PhotoDoc, after: PhotoDoc): Result {
-    const kept = shaOf(after) === shaOf(before);
+function resultOf(before: PhotoDoc, after: PhotoDoc, version: PhotoVersionKind | undefined): Result {
+    const kept = shaOf(after, version) === shaOf(before, version);
     return refusalOf(before, after) ?? { phase: kept ? 'same' : 'replaced', error: null, duplicateOf: null };
 }
 
@@ -98,7 +109,10 @@ export class PhotoReplacement {
             path,
             data: file.data,
             contentType: ready.kind.contentType,
-            customMetadata: { originalName: originalName(file.name) },
+            customMetadata: {
+                originalName: originalName(file.name),
+                ...(this.#deps.version === undefined ? {} : { version: this.#deps.version }),
+            },
         };
         const handle = uploads.start(request, (progress) => {
             this.#progress(progress.total === 0 ? 0 : Math.round((progress.sent / progress.total) * 100));
@@ -140,7 +154,7 @@ export class PhotoReplacement {
         if (start === null || !isServerWrite(start, stored)) {
             return;
         }
-        this.#result = resultOf(start.data, stored.data);
+        this.#result = resultOf(start.data, stored.data, this.#deps.version);
         if (this.#state?.phase === 'processing') {
             this.#finish(this.#result);
         }

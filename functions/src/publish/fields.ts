@@ -68,6 +68,8 @@ export const MANIFEST_FIELDS: Readonly<Record<HistoryEntity, readonly string[]>>
         'bearing',
         'fov',
         'image',
+        'versions',
+        'versionCredits',
         'processing',
     ],
     poi: ['category', 'geometry', 'title', 'description', 'yearStart', 'yearEnd', 'links', 'photoIds', 'credit'],

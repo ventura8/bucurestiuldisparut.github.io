@@ -6,7 +6,7 @@
  */
 import { z } from 'zod';
 
-import { CITY_ID_PATTERN } from './paths.js';
+import { CITY_ID_PATTERN } from './primitives.js';
 
 /** The manifest's format; a page refuses a manifest of another one. */
 export const START_RELEASE_FORMAT = 1;

@@ -8,7 +8,7 @@
             {
                 "role": "roles/iam.workloadIdentityUser",
                 "members": [
-                    "principalSet://iam.googleapis.com/projects/{{projectNumber}}/locations/global/workloadIdentityPools/{{poolId}}/attribute.repository/ventura8/bucurestiuldisparut.github.io"
+                    "principalSet://iam.googleapis.com/projects/{{projectNumber}}/locations/global/workloadIdentityPools/{{poolId}}/attribute.repository/ventura8/historic-city-map-maker"
                 ]
             }
         ]

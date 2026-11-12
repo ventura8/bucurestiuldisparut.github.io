@@ -5,7 +5,15 @@ import { HcmMapViewer } from '../../src/viewer/hcm-map-viewer.js';
 import * as viewer from '../../src/viewer/index.js';
 
 /** The viewer's public API inside @hcm/ui (engine-ui workstream): what @hcm/engine mounts, drives and types. */
-const VIEWER_EXPORTS = ['HCM_MAP_VIEWER_TAG', 'HcmMapViewer', 'VIEWER_TAGS', 'defineViewerElements', 'setViewerBootstrap', 'watchGamepads'];
+const VIEWER_EXPORTS = [
+    'HCM_MAP_VIEWER_TAG',
+    'HcmMapViewer',
+    'VIEWER_TAGS',
+    'defineViewerElements',
+    'setViewerBootstrap',
+    'sideLoadExtras',
+    'watchGamepads',
+];
 
 /** A registry of its own, so the test sees every definition the viewer makes. */
 function scopedRegistry(): { readonly registry: CustomElementRegistry; readonly defined: Map<string, CustomElementConstructor> } {

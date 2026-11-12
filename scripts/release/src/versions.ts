@@ -26,7 +26,10 @@ export interface FileChange {
     readonly text: string;
 }
 
-/** `1.0.0`: a release version, without a `v`, a pre-release or a build suffix (`docs/releases/README.md`). */
+/**
+ * `1.0.0`, or a pre-release `1.0.0-beta.1` / `1.0.0-rc.2`: a release version without a `v`, another pre-release or a
+ * build suffix (`docs/releases/README.md`).
+ */
 export function isReleaseVersion(version: string): boolean {
     return RELEASE_TAG_PATTERN.test(`v${version}`);
 }
@@ -92,11 +95,13 @@ export const PINNED_DOCS = [
     'docs/MANUAL_TEST_PLAN.md',
     'docs/SELF_HOST.md',
     'packages/create-historic-city/README.md',
+    'sites/landing/index.html',
+    'sites/landing/ro.html',
     'starter-kit/README.md',
     'templates/starter-kit/README.md',
 ] as const;
 
-const CLI_PIN = /(?<![\w-])((?:create-)?historic-city)@\d+\.\d+\.\d+(?![\w.])/g;
+const CLI_PIN = /(?<![\w-])((?:create-)?historic-city)@\d+\.\d+\.\d+(?:-(?:beta|rc)\.\d+)?(?![\w.])/g;
 
 /** `text` with every pinned CLI command at `version`. */
 export function bumpDocPins(text: string, version: string): string {
@@ -137,7 +142,9 @@ function jsonChanges(files: ReleaseFiles, version: string): FileChange[] {
 /** Every file the bump to `version` rewrites, with its new text; a file already at `version` is left out. */
 export function planBump(files: ReleaseFiles, version: string): FileChange[] {
     if (!isReleaseVersion(version)) {
-        throw new ReleaseError(`${JSON.stringify(version)} is not a release version MAJOR.MINOR.PATCH (no v, no suffix)`);
+        throw new ReleaseError(
+            `${JSON.stringify(version)} is not a release version MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-beta.N / -rc.N (no v, no other suffix)`,
+        );
     }
     if (!files.isFile(ENGINE_INDEX)) {
         throw new ReleaseError(`${ENGINE_INDEX} is missing`);

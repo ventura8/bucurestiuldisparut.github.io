@@ -10,7 +10,7 @@ afterEach(cleanup);
 
 /** Generated test digests (64 base64 characters each), never a real file's. */
 const sri = (letter: string): string => `sha384-${letter.repeat(64)}`;
-const BASE = 'https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@v1.2.0/cdn/engine/';
+const BASE = 'https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@v1.2.0/cdn/engine/';
 
 const RELEASE: EngineRelease = {
     version: '1.2.0',
@@ -52,10 +52,27 @@ describe('pinned subresources', () => {
         expect(block).toContain(`| Mapbox GL JS stylesheet | \`${RELEASE.mapboxGl.stylesheet.url}\` | \`${sri('N')}\` |`);
         expect(block).toContain(`Every file of the release with its size and integrity: \`${BASE}release.json\`.`);
         expect(block).toContain(
-            'The 1.x line without integrity, for a page that follows every compatible release: `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@1/cdn/engine/`.',
+            'The 1.x line without integrity, for a page that follows every compatible release: `https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@1/cdn/engine/`.',
         );
         expect(block).toContain(`<script src="${BASE}engine.iife.js" integrity="${sri('A')}" crossorigin="anonymous" defer></script>`);
         expect(block).toContain(`<link rel="stylesheet" href="${BASE}engine.css" integrity="${sri('B')}" crossorigin="anonymous" />`);
+    });
+});
+
+describe('a pre-release’s block', () => {
+    const PRE_BASE = 'https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@v1.2.0-beta.1/cdn/engine/';
+    const PRE: EngineRelease = { ...RELEASE, version: '1.2.0-beta.1', base: PRE_BASE };
+
+    it('happyPath_aPreReleaseIsPinnedAtItsFullVersionAndOffersNoMajorLine', () => {
+        const block = sriBlock(PRE).split('\n');
+
+        expect(block).toContain(`| Engine script | \`${PRE_BASE}engine.iife.js\` | \`${sri('A')}\` |`);
+        expect(block).toContain('A pre-release is served only at its exact version: no major line (such as `@1`) resolves to it.');
+        expect(block.join('\n')).not.toContain('historic-city-map-maker@1/');
+    });
+
+    it('badPath_aPreReleaseOfAnotherFormIsNoRelease', () => {
+        expect(() => sriBlock({ ...PRE, version: '1.2.0-alpha.1' })).toThrow(RangeError);
     });
 });
 

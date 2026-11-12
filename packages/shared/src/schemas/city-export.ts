@@ -9,9 +9,10 @@
 import { z } from 'zod';
 
 import { apiErrorCodeSchema, apiErrorParamsSchema } from '../api/errors.js';
+import { releaseVersionSchema } from './engine-release.js';
 import { sha256Schema, stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import type { PhotoVariant } from './paths.js';
-import { isId, versionSchema } from './primitives.js';
+import { isId } from './primitives.js';
 
 /**
  * Where an export stands: `queued` (the task is enqueued), `building` (the zip is being written), `ready` (it can be
@@ -65,8 +66,9 @@ function exportId(value: string): string {
 }
 
 /** `photos/<photo>/<variant>.webp`: where an exported photo's public file goes, and what `city.json` names. */
-export function exportPhotoPath(photoId: string, variant: PhotoVariant): string {
-    return `${EXPORT_LAYOUT.photosFolder}/${exportId(photoId)}/${variant}.webp`;
+export function exportPhotoPath(photoId: string, variant: PhotoVariant, version?: 'improved' | 'colorized'): string {
+    const prefix = version === undefined ? '' : version + '-';
+    return `${EXPORT_LAYOUT.photosFolder}/${exportId(photoId)}/${prefix}${variant}.webp`;
 }
 
 /** `rasters/<layer>.tif`: where a layer's Cloud-Optimized GeoTIFF goes when its rights allow it. */
@@ -109,7 +111,7 @@ export const cityExportDocSchema = z.strictObject({
     /** The layers' scans were asked for (`rasterExportable` ones only). */
     rasters: z.boolean(),
     /** The engine release the zip carries (`ENGINE_VERSION` of the deployed functions' build). */
-    engineVersion: versionSchema,
+    engineVersion: releaseVersionSchema,
     createdAt: timestampSchema,
     startedAt: timestampSchema.optional(),
     finishedAt: timestampSchema.optional(),

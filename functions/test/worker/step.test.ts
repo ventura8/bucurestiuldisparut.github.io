@@ -33,6 +33,7 @@ import {
     localJob,
     minutes,
     processingVersion,
+    readWorker,
     seedHeld,
     seedWorker,
     workerWorld,
@@ -223,6 +224,33 @@ describe('worker.step update', () => {
             updatedAt: at(NOW),
         });
         expect(job).not.toHaveProperty('retryAt');
+    });
+
+    it('happyPath_aHeartbeatSaysTheWorkerIsAliveWhileAStepRuns_live20261112 @S-A62-HAPPY-BUSY-SEEN', async () => {
+        const world = await held();
+
+        await expect(update(world, JOB_PATH, { 'lease.until': minutes(1), progress: 0.4 })).resolves.toEqual({ ok: true });
+
+        expect(await readWorker(world)).toMatchObject({ state: 'busy', jobId: JOB, lastSeenAt: at(NOW) });
+    });
+
+    it('badPath_aWriteWithoutTheLeaseLeavesTheWorkersLastSeenAsItWas @S-A62-HAPPY-BUSY-SEEN', async () => {
+        const world = await held();
+
+        await expect(update(world, JOB_PATH, { progress: 0.4 })).resolves.toEqual({ ok: true });
+
+        expect((await readWorker(world))?.lastSeenAt).toEqual(minutes(-1));
+    });
+
+    it('badPath_aValueThatCannotBeStoredIsRefusedNamingItsField @S-A62-BAD-NAMED-FIELD', async () => {
+        const world = await held();
+
+        const failure = await failureOf(update(world, VERSION_PATH, { 'help.stitched': { leftOut: [DELETE] } }));
+
+        expect(failure.details).toMatchObject({
+            code: 'apiError.invalidRequest',
+            issues: [{ path: 'help.stitched', code: 'validation.value' }],
+        });
     });
 
     it('happyPath_theLeaseIsTakenAndReleased', async () => {

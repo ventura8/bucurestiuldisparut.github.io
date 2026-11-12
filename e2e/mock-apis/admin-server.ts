@@ -47,6 +47,8 @@ export interface AdminServerOptions {
     readonly startUpDir?: string;
     /** M14: the start site, served as it is at `/start/` (`docs/research/M14-start-your-map.md` §5). */
     readonly startDir?: string;
+    /** The project's landing page (`sites/landing/`, GitHub Pages; DECISIONS-for-review.md §162), served as it is at `/landing/`. */
+    readonly landingDir?: string;
     /** M14: the folder of what a test released on the fake Hosting (below it, one folder per test, named by the cookie). */
     readonly releasedDir?: string;
     readonly hosting: HostingConfig;
@@ -145,17 +147,22 @@ function releasedTree(options: AdminServerOptions, request: IncomingMessage): st
     return folder === undefined || options.releasedDir === undefined ? undefined : join(options.releasedDir, folder);
 }
 
-/** A file of the start site at `/start/` (the page for its folder), or undefined for any other address. */
-async function startSite(options: AdminServerOptions, pathname: string): Promise<MockResponse | undefined> {
-    if (options.startDir === undefined || !pathname.startsWith('/start/')) {
+/** A file of a static folder served as it is below `prefix` (the page for its folder), or undefined for any other address. */
+async function staticFolder(dir: string | undefined, prefix: string, pathname: string): Promise<MockResponse | undefined> {
+    if (dir === undefined || !pathname.startsWith(prefix)) {
         return undefined;
     }
-    const relative = normalize(decodeURIComponent(pathname.slice('/start/'.length)) || 'index.html');
-    const file = resolve(options.startDir, relative);
-    if (!file.startsWith(`${resolve(options.startDir)}${sep}`) || !statSync(file, { throwIfNoEntry: false })?.isFile()) {
+    const relative = normalize(decodeURIComponent(pathname.slice(prefix.length)) || 'index.html');
+    const file = resolve(dir, relative);
+    if (!file.startsWith(`${resolve(dir)}${sep}`) || !statSync(file, { throwIfNoEntry: false })?.isFile()) {
         return NOT_FOUND;
     }
     return { status: 200, type: SITE_TYPES[extname(file)] ?? 'application/octet-stream', body: await readFile(file) };
+}
+
+/** The start site at `/start/` (M14) or the landing page at `/landing/`, or undefined for any other address. */
+async function startSite(options: AdminServerOptions, pathname: string): Promise<MockResponse | undefined> {
+    return (await staticFolder(options.startDir, '/start/', pathname)) ?? staticFolder(options.landingDir, '/landing/', pathname);
 }
 
 async function answer(options: AdminServerOptions, request: IncomingMessage, target: Target): Promise<Answered> {

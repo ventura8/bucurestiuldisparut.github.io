@@ -23,26 +23,42 @@ export interface LazyBudgetContext extends BudgetCardContext {
     readonly refresh: () => void;
 }
 
-function heading(locale: Locale): TemplateResult {
-    return html`<h2 tabindex="-1" data-detail-heading>${contentText(locale, 'adminContent.budgets.title')}</h2>`;
+/** What a lazy card of Settings needs of its section: the language, and a way to render the page again. */
+interface LazyCardContext {
+    readonly locale: Locale;
+    readonly refresh: () => void;
 }
 
-function fetchChunk(context: LazyBudgetContext, chunk: ChunkLoader<BudgetCardChunk>): void {
-    chunk.load().then(context.refresh, context.refresh);
+/**
+ * A Settings card whose chunk is fetched on first need (the budget's, the export's, the browser tab icon's): the card once its chunk
+ * is in; until then the section's heading with Loading, or the failed fetch with Try again. The page renders again
+ * when a fetch settles.
+ */
+export function lazyCard<Chunk>(
+    context: LazyCardContext,
+    chunk: ChunkLoader<Chunk>,
+    title: string,
+    card: (loaded: Chunk) => TemplateResult,
+): TemplateResult {
+    const loaded = chunk.loaded();
+    if (loaded !== undefined) {
+        return card(loaded);
+    }
+    const heading = html`<h2 tabindex="-1" data-detail-heading>${title}</h2>`;
+    const fetchChunk = (): void => {
+        chunk.load().then(context.refresh, context.refresh);
+    };
+    if (chunk.failed()) {
+        return html`${heading}${errorTemplate(context.locale, CHUNK_FAILURE, () => {
+            fetchChunk();
+            context.refresh();
+        })}`;
+    }
+    fetchChunk();
+    return html`${heading}${loadingTemplate(context.locale)}`;
 }
 
 /** The section's card, fetched on first need. */
 export function lazyBudgetCard(context: LazyBudgetContext, chunk: ChunkLoader<BudgetCardChunk> = BUDGET_CARD_CHUNK): TemplateResult {
-    const loaded = chunk.loaded();
-    if (loaded !== undefined) {
-        return loaded.budgetCard(context);
-    }
-    if (chunk.failed()) {
-        return html`${heading(context.locale)}${errorTemplate(context.locale, CHUNK_FAILURE, () => {
-            fetchChunk(context, chunk);
-            context.refresh();
-        })}`;
-    }
-    fetchChunk(context, chunk);
-    return html`${heading(context.locale)}${loadingTemplate(context.locale)}`;
+    return lazyCard(context, chunk, contentText(context.locale, 'adminContent.budgets.title'), (loaded) => loaded.budgetCard(context));
 }

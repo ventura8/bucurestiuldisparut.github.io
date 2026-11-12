@@ -23,6 +23,7 @@ import { RowDrag } from '../layers/reorder.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
 import { areaSection } from './area-section.js';
+import { lazyIconCard } from './lazy-icon.js';
 import { imagerySection } from './imagery-section.js';
 import { categoriesSection } from './categories-section.js';
 import { lazyBudgetCard } from '../cities/lazy-budget.js';
@@ -42,6 +43,7 @@ const SECTIONS: readonly SettingsSectionPort[] = [
     'area',
     'texts',
     'theme',
+    'icon',
     'imagery',
     'categories',
     'overlays',
@@ -57,6 +59,7 @@ const SECTION_ICONS: Readonly<Record<SettingsSectionPort, string>> = {
     area: 'crop_free',
     texts: 'translate',
     theme: 'palette',
+    icon: 'map',
     imagery: 'satellite_alt',
     categories: 'place',
     overlays: 'opacity',
@@ -69,6 +72,8 @@ const RENDERERS: Readonly<Record<Exclude<SettingsSectionPort, 'categories'>, (co
     area: areaSection,
     texts: textsSection,
     theme: themeSection,
+    // The public map's browser tab icon (docs/research/M2-interfaces.md → The city's tab icon): a chunk of its own.
+    icon: lazyIconCard,
     imagery: imagerySection,
     overlays: overlaysSection,
     // M5 (the integrator, DECISIONS-for-review.md §63a): whether visitors see the city.

@@ -30,6 +30,7 @@ const FLOATING_CHROME: readonly ChromeSource[] = [
     { kind: 'fab', selector: 'hcm-fab-menu >>> button.fab' },
     { kind: 'fab', selector: 'hcm-fab >>> button' },
     { kind: 'menu', selector: 'hcm-fab-menu >>> [role="menu"]' },
+    { kind: 'context-menu', selector: 'hcm-map-menu >>> [role="menu"]' },
     { kind: 'timeline', selector: 'hcm-timeline' },
     { kind: 'toolbar', selector: 'hcm-toolbar, [role="toolbar"]' },
     { kind: 'chip', selector: 'hcm-chip' },
@@ -55,6 +56,11 @@ const SANCTIONED_STACKINGS: readonly Sanctioned[] = [
         over: 'menu',
         under: 'content',
         why: 'the open FAB menu is a transient popup over the map and its markers until it closes (M3 FAB menu); its items must still be on top, on screen and clear of the floating chrome around it',
+    },
+    {
+        over: 'context-menu',
+        under: '*',
+        why: "the map's menu (V62) opens where the visitor pressed, or at the map's centre from the keyboard, so what it covers is the visitor's choice: a transient popup until Esc or a press anywhere else; its own items must still be on top and on screen",
     },
     {
         over: 'menu',

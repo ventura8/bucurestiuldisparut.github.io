@@ -19,7 +19,15 @@ export interface ImageInspection {
     readonly width: number;
     readonly height: number;
     readonly exif: ExifSummary;
+    /** The frames of the image (more than one: an animated WebP or GIF); absent for one. */
+    readonly frames?: number;
 }
+
+/**
+ * What a tab icon is drawn from: the bytes an editor uploaded (a PNG or a WebP the handler checked), or our own SVG text
+ * (`mapIconSvg` of `@hcm/shared`, the default icon). A user's SVG never reaches the processor: `inspect` refuses it.
+ */
+export type IconSource = { readonly upload: Uint8Array } | { readonly ownSvg: string };
 
 interface DerivativeOptions {
     readonly longEdge: number;
@@ -43,4 +51,9 @@ export interface ImageProcessor {
         bytes: Uint8Array,
         options: DerivativeOptions,
     ): Promise<{ readonly bytes: Uint8Array; readonly width: number; readonly height: number }>;
+    /**
+     * A PNG of the source fitted inside a square of `size` (never cropped, the rest transparent), no metadata
+     * (`limitInputPixels` enforced). Rejects with `UpstreamError('image', 'invalid')` for unreadable bytes.
+     */
+    iconPng(source: IconSource, size: number): Promise<Uint8Array>;
 }

@@ -25,7 +25,19 @@ export const ON_ITS_LAYER: ReadonlySet<LayerVersionState> = new Set<LayerVersion
  * The states in which a rendered frame is ready for its join. Batch 4 (`docs/research/M8-join-interfaces.md` §5.1): a frame on its way
  * to, or on, a layer of its own serves too; that layer is retired when the join publishes (`finalize-join.ts`).
  */
-const READY: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>(['awaiting_approval', 'approved', 'publishing', 'published']);
+const READY: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>([
+    'awaiting_approval',
+    'approved',
+    'publishing',
+    'published',
+    'joined',
+]);
+/**
+ * The ended states in which a frame still serves a new join: published, or `joined` (rendered and used by an earlier join). Live
+ * 2026-11-12: the 1980-07-16 join refused frame D3C1216-100235A039 because its version was `joined`, and the scene page offered no
+ * Import any more, so the owner was stuck. Only rejected, superseded, failed and cancelled frames are gone.
+ */
+const ENDED_YET_USABLE: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>(['published', 'joined']);
 
 /** A version not ended; only such a join holds its frames. */
 function isLiveJoin(join: LayerVersionDoc | undefined): join is LayerVersionDoc {
@@ -33,11 +45,15 @@ function isLiveJoin(join: LayerVersionDoc | undefined): join is LayerVersionDoc 
 }
 
 /**
- * A version a new join may still find on a frame's layer: published, or not ended. A join that is not published yet is left out:
- * with a published frame it is that layer's newest version, and the frame is what "add a frame" takes again.
+ * A version a new join may still find on a frame's layer: published, a frame `joined` before, or not ended. A join that is not
+ * published yet is left out: with a published frame it is that layer's newest version, and the frame is what "add a frame" takes again.
  */
 export function isUsablePart(version: LayerVersionDoc): boolean {
-    return version.state === 'published' || (!ENDED.has(version.state) && version.source?.kind !== 'join');
+    if (version.state === 'published') {
+        return true;
+    }
+    const live = version.state === 'joined' || !ENDED.has(version.state);
+    return live && version.source?.kind !== 'join';
 }
 
 /** The live join that holds `part`, if any. */
@@ -78,10 +94,11 @@ const HOLD: PartsReady = { kind: 'hold' };
 
 /**
  * A frame that can never serve this join: its version ended (rejected, failed, cancelled, superseded). Batch 4: published, on the
- * join's layer or a layer of its own, it serves (live 2026-11-09: a frame approved while its join waited failed the join).
+ * join's layer or a layer of its own, it serves (live 2026-11-09: a frame approved while its join waited failed the join); so does a
+ * frame `joined` by an earlier join (live 2026-11-12).
  */
 function partGone(part: LayerVersionDoc): boolean {
-    return part.state !== 'published' && ENDED.has(part.state);
+    return !ENDED_YET_USABLE.has(part.state) && ENDED.has(part.state);
 }
 
 function partReady(part: LayerVersionDoc, joinId: string): PartsReady {

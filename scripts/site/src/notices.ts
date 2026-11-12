@@ -53,7 +53,7 @@ interface NoticeAsset {
 }
 
 export interface NoticesOptions {
-    /** What the files are, for the first line (`the Historic City Map engine`). */
+    /** What the files are, for the first line (`the Historic City Map Maker engine`). */
     readonly product: string;
     /** Files copied into the output from npm packages (the self-hosted fonts), each listed under its package. */
     readonly assets?: readonly NoticeAsset[];

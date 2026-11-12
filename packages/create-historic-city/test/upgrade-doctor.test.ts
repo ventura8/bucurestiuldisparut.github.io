@@ -2,7 +2,16 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { engineCdnBase, fillKitPage, KIT_PLACEHOLDER_TOKEN, policyExtras, readKitEngine, readKitPolicy, type KitEngine } from '@hcm/shared';
+import {
+    engineCdnBase,
+    fillKitPage,
+    KIT_PLACEHOLDER_TOKEN,
+    KIT_UNPINNED_INTEGRITY,
+    policyExtras,
+    readKitEngine,
+    readKitPolicy,
+    type KitEngine,
+} from '@hcm/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { translator } from '../src/i18n/index.js';
@@ -29,14 +38,24 @@ function pinned(version: string, letter: string): KitEngine {
     };
 }
 
-/** A package whose template pins `engine` (a released CLI), or the committed template's placeholder. */
-function release(engine?: KitEngine): string {
+/** The template's placeholder before any release pinned it: a folder and the unpinned integrity. */
+const UNPINNED: KitEngine = {
+    kind: 'cdn',
+    release: {
+        base: engineCdnBase('1.0.0'),
+        files: [
+            { path: 'engine.css', integrity: KIT_UNPINNED_INTEGRITY },
+            { path: 'engine.iife.js', integrity: KIT_UNPINNED_INTEGRITY },
+        ],
+    },
+};
+
+/** A package whose template pins `engine` (a released CLI), or the placeholder no release has pinned yet. */
+function release(engine: KitEngine = UNPINNED): string {
     const dir = packageFolder();
     folders.push(dir);
-    if (engine !== undefined) {
-        const page = join(dir, 'template/index.html');
-        writeFileSync(page, fillKitPage(read(page), { engine }));
-    }
+    const page = join(dir, 'template/index.html');
+    writeFileSync(page, fillKitPage(read(page), { engine }));
     return dir;
 }
 

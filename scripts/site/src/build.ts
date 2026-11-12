@@ -9,7 +9,16 @@ import { prepareManifest, type PreparedManifest } from './manifest.js';
 import { bucketOrigins, manifestOrigins } from './origins.js';
 import { isOutputDir } from './output-dir.js';
 import { ADMIN_REDIRECT_FILE, ADMIN_REDIRECT_SOURCE } from './hosting/admin-redirect.js';
-import { ENGINE_FOLDER, ENGINE_MODULE_FILE, ENGINE_STYLESHEET_FILE, RELATIVE_ASSETS, renderSitePage, type PageAssets } from './page.js';
+import { tabIconSource } from './hosting/city-page.js';
+import {
+    ENGINE_FOLDER,
+    ENGINE_MODULE_FILE,
+    ENGINE_STYLESHEET_FILE,
+    RELATIVE_ASSETS,
+    TAB_ICON_FILE,
+    renderSitePage,
+    type PageAssets,
+} from './page.js';
 import { publicManifest } from './public-manifest.js';
 import { parseSiteSpec, type SiteSpec } from './site-spec.js';
 import { subresourceIntegrity } from './sri.js';
@@ -20,6 +29,7 @@ import { subresourceIntegrity } from './sri.js';
  * ```text
  * <outDir>/index.html          generated (page.ts), with the meta CSP of this site's manifest and configuration
  * <outDir>/config.js           the site's own, validated
+ * <outDir>/tab-icon.js         the tab icon in the visitor's theme, a city's own from the bucket (`tabIconSource`)
  * <outDir>/site.css            the site's own
  * <outDir>/data/manifest.json  the source manifest, photos moved to data/media/, the build's Mapbox token, the city
  *                              renamed to config.js's when the source names the site's `legacyCityId`
@@ -195,6 +205,8 @@ interface PageParts {
     readonly spec: SiteSpec;
     readonly csp: string;
     readonly configSource: string;
+    /** The public bucket a page reads its city from (its city's own tab icon is there too: `tabIconSource`), or none. */
+    readonly bucket: string | undefined;
 }
 
 /** The root of the Hosting site's first script and its file (M6, §2.7); nothing for any other site. */
@@ -216,6 +228,7 @@ function pageFiles(options: SiteBuildOptions, parts: PageParts, files: SiteFileS
     return [
         { to: 'index.html', content: page },
         { to: 'config.js', content: parts.configSource },
+        { to: TAB_ICON_FILE, content: tabIconSource(parts.bucket) },
         { to: 'site.css', from: requireFile(files, `${options.siteDir}/site.css`, 'every site has its page styles') },
         ...redirect.files,
     ];
@@ -240,8 +253,9 @@ function manifestPlan(options: SiteBuildOptions, inputs: SiteInputs, source: Sou
     const served = servedConfig(options, spec, { source: inputs.configSource, config }, files);
     const bundled = served.config === config;
     const csp = contentSecurityPolicy(withConnect(manifestOrigins(manifest, served.config), served.connect));
+    const bucket = bundled ? undefined : options.publicBucket;
     const planned = [
-        ...pageFiles(options, { spec, csp, configSource: served.source }, files),
+        ...pageFiles(options, { spec, csp, configSource: served.source, bucket }, files),
         ...dataFiles(bundled, prepared, source, files),
         ...engineFiles(files, options.engineDir ?? DEFAULT_ENGINE_DIR),
     ];
@@ -262,7 +276,7 @@ function bucketPlan(options: SiteBuildOptions, inputs: SiteInputs, files: SiteFi
     const remote = publicManifest(options.publicBucket, inputs.config, options.siteDir, files);
     const csp = contentSecurityPolicy(bucketOrigins(remote.config, remote.connect));
     const planned = [
-        ...pageFiles(options, { spec: inputs.spec, csp, configSource: remote.configSource }, files),
+        ...pageFiles(options, { spec: inputs.spec, csp, configSource: remote.configSource, bucket: options.publicBucket }, files),
         ...engineFiles(files, options.engineDir ?? DEFAULT_ENGINE_DIR),
     ];
     return { files: planned, cityId: remote.config.cityId ?? '', photos: 0 };

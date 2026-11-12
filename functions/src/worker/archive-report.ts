@@ -29,7 +29,7 @@ function issueId(index: number): string {
 /** Every series id once (the report's rows are the import's keys). */
 function refuseRepeatedSeries(request: Request): void {
     if (new Set(request.series.map((series) => series.seriesId)).size !== request.series.length) {
-        throw new ApiError('apiError.invalidRequest');
+        throw new ApiError('apiError.invalidRequest', undefined, [{ path: 'series', code: 'validation.value' }]);
     }
 }
 

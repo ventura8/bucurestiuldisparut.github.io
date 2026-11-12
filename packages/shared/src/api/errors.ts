@@ -116,6 +116,15 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.photo.unreadable': spec('invalid-argument'),
     'apiError.photo.duplicate': spec('already-exists'),
     'apiError.photo.notReceived': spec('failed-precondition'),
+    'apiError.photo.versionNotAllowed': spec('permission-denied'),
+    // The city's tab icon (cities.setIcon): what the bytes are, not what they are called.
+    'apiError.cityIcon.badType': spec('invalid-argument'),
+    'apiError.cityIcon.tooBig': spec('invalid-argument'),
+    'apiError.cityIcon.tooSmall': spec('invalid-argument'),
+    'apiError.cityIcon.tooLarge': spec('invalid-argument'),
+    'apiError.cityIcon.notSquare': spec('invalid-argument'),
+    'apiError.cityIcon.animated': spec('invalid-argument'),
+    'apiError.cityIcon.invalid': spec('invalid-argument'),
     'apiError.layers.alreadyLinked': spec('already-exists'),
     'apiError.layers.busy': spec('failed-precondition'),
     'apiError.layers.foreignTileset': spec('permission-denied'),
@@ -169,6 +178,8 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.joinSeamTooFar': spec('failed-precondition'),
     'apiError.imagery.joinNoFrames': spec('failed-precondition'),
     'apiError.imagery.joinNoRoom': spec('failed-precondition'),
+    // A step that ran past its wall-time limit (`STEP_LIMITS_SECONDS` of the pipeline; live 2026-11-12: an hour in `locate`).
+    'apiError.imagery.stepTimeLimit': spec('failed-precondition'),
     // M16 (docs/research/M16-recalibrate.md): a refine that found nothing better, or whose proof did not hold, ends with these (the job and
     // its version cancelled, nothing else changed); Approve of a recalibration not shown better asks for the owner's choice; a join refines frame by frame.
     'apiError.imagery.notImproved': spec('failed-precondition'),

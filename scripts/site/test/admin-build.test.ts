@@ -36,7 +36,7 @@ describe('buildAdminSite', () => {
         expect(report).toEqual({
             outDir: OUT,
             projectId: 'bucurestiul-disparut',
-            release: expect.stringMatching(/^\d+\.\d+\.\d+(?:\+[0-9a-f]{7})?$/) as unknown,
+            release: expect.stringMatching(/^\d+\.\d+\.\d+(?:-(?:beta|rc)\.\d+)?(?:\+[0-9a-f]{7})?$/) as unknown,
             photos: 57,
             originals: 56,
             warnings: 1,

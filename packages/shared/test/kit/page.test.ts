@@ -204,6 +204,27 @@ describe('fillKitPage', () => {
     });
 });
 
+describe('fillKitPage: the tab icon', () => {
+    it('happyPath_theTabIconIsSetOnlyWhenGiven', () => {
+        const withIcon = TEMPLATE.replace('        <title>', '        <link rel="icon" href="data:," />\n        <title>');
+        const icon = 'data:image/png;base64,iVBORw0KGgo=';
+
+        expect(fillKitPage(withIcon, { engine: LOCAL, icon })).toContain(`<link rel="icon" href="${icon}" />`);
+        expect(fillKitPage(withIcon, { engine: LOCAL })).toContain('<link rel="icon" href="data:," />');
+        // A page without the icon link fills as before when no icon is given.
+        expect(() => fillKitPage(TEMPLATE, { engine: LOCAL })).not.toThrow();
+    });
+
+    it('badPath_aTabIconThatIsNoPngDataAddressIsRefused', () => {
+        const withIcon = TEMPLATE.replace('        <title>', '        <link rel="icon" href="data:," />\n        <title>');
+
+        for (const icon of ['https://example.org/icon.png', 'data:image/svg+xml;base64,PHN2Zz4=', 'data:image/png;base64,"><script>']) {
+            expect(() => fillKitPage(withIcon, { engine: LOCAL, icon })).toThrow(KitPageError);
+        }
+        expect(() => fillKitPage(TEMPLATE, { engine: LOCAL, icon: 'data:image/png;base64,iVBORw0KGgo=' })).toThrow(KitPageError);
+    });
+});
+
 describe('readKitEngine', () => {
     it('badPath_anEngineBlockItCannotReadThrows', () => {
         const pinned = fillKitPage(TEMPLATE, { engine: CDN });

@@ -12,19 +12,17 @@
 import { z } from 'zod';
 
 import { JOBS_PER_DAY } from '../api/imagery.js';
-import { slugify, truncateSlug } from '../migration/slug.js';
 import { AI_MONTHLY_CAP, GEOCODE_DAILY_CAP } from './assist.js';
 import { EXPORT_LIMITS } from './city-export.js';
+import { CITY_SPAN_LIMITS, type CityBounds } from './city-id.js';
 import { CITY_ROLES, type CityRole, type CityRoles } from './city-roles.js';
 import { stamp, timestampSchema } from './firestore-common.js';
 import { MAPBOX_FREE_COMPUTE_UNITS } from './imagery-publish.js';
-import { CITY_ID_PATTERN } from './paths.js';
-import { coded, idSchema, isoDateSchema } from './primitives.js';
+import { CITY_ID_PATTERN, coded, idSchema, isoDateSchema } from './primitives.js';
+
+export * from './city-id.js';
 
 export { CITY_ROLES, MAX_CITIES, cityRolesSchema, type CityRole, type CityRoles } from './city-roles.js';
-
-/** The longest city id (`CITY_ID_PATTERN`: it names Storage folders and the public site's path). */
-export const MAX_CITY_ID_LENGTH = 32;
 
 /** The admin's role in `cityId`, or null (an own key only: `constructor` or `__proto__` are never roles). */
 export function cityRoleOf(roles: CityRoles | undefined, cityId: string): CityRole | null {
@@ -49,86 +47,6 @@ export function cityIdsOf(roles: CityRoles | undefined): string[] {
 export function legacyCityRoles(projectRole: 'owner' | 'admin', cityIds: readonly string[]): Record<string, CityRole> {
     const role: CityRole = projectRole === 'owner' ? 'owner' : 'editor';
     return Object.fromEntries(cityIds.map((cityId) => [cityId, role]));
-}
-
-/**
- * Ids no city may take: the folders of a public site, the starter kit and the export (`engine/`, `photos/`, ...) and
- * the admin's own words, so `/<city>/` on GitHub Pages and on Firebase Hosting and `#/c/<city>/` in the admin never collide
- * with them. M6 (`docs/research/M6-interfaces.md` §2.1, hosting): `city`, the folder of the Hosting site's generic city page
- * (`/city/`), which every other city's address is rewritten to; `admin` is the admin's folder there.
- */
-export const RESERVED_CITY_IDS = [
-    'admin',
-    'api',
-    'assets',
-    'cdn',
-    'cities',
-    'city',
-    'data',
-    'engine',
-    'export',
-    'fonts',
-    'legacy',
-    'media',
-    'new',
-    'photos',
-    'rasters',
-    'starter-kit',
-    'templates',
-] as const;
-
-/** A well-formed id that is not reserved. */
-export function isUsableCityId(cityId: string): boolean {
-    return CITY_ID_PATTERN.test(cityId) && !(RESERVED_CITY_IDS as readonly string[]).includes(cityId);
-}
-
-function unavailable(cityId: string, taken: ReadonlySet<string>): boolean {
-    return taken.has(cityId) || !isUsableCityId(cityId);
-}
-
-/**
- * The id the New city flow suggests for a name (`Cluj-Napoca` → `cluj-napoca`, `Bacău` → `bacau`): the slug cut to
- * `MAX_CITY_ID_LENGTH` at a word boundary, `my-city` when the name has no letter or digit (`city` is reserved since M6),
- * then `-2`, `-3`, ... while it is taken or reserved.
- */
-/** The suggestion for a name without a letter or a digit. */
-const FALLBACK_CITY_ID = 'my-city';
-
-export function suggestCityId(name: string, taken: readonly string[] = []): string {
-    const used = new Set(taken);
-    const slug = truncateSlug(slugify(name), MAX_CITY_ID_LENGTH);
-    const root = slug.length >= 2 ? slug : FALLBACK_CITY_ID;
-    let id = root;
-    let suffix = 1;
-    while (unavailable(id, used)) {
-        suffix += 1;
-        id = `${truncateSlug(root, MAX_CITY_ID_LENGTH - String(suffix).length - 1)}-${String(suffix)}`;
-    }
-    return id;
-}
-
-/** A city's rectangle: at least this many degrees on its shorter side, at most this many on its longer one. */
-export const CITY_SPAN_LIMITS = { minDeg: 0.01, maxDeg: 2 } as const;
-
-/** `{west, south, east, north}` in degrees, as the city document stores it. */
-export interface CityBounds {
-    readonly west: number;
-    readonly south: number;
-    readonly east: number;
-    readonly north: number;
-}
-
-/** Why a drawn rectangle cannot be a city (`validation.bounds`, `.tooSmall`, `.tooBig`), or null when it can. */
-export function cityBoundsProblem(bounds: CityBounds): 'validation.bounds' | 'validation.tooSmall' | 'validation.tooBig' | null {
-    const width = bounds.east - bounds.west;
-    const height = bounds.north - bounds.south;
-    if (!(width > 0 && height > 0)) {
-        return 'validation.bounds';
-    }
-    if (Math.min(width, height) < CITY_SPAN_LIMITS.minDeg) {
-        return 'validation.tooSmall';
-    }
-    return Math.max(width, height) > CITY_SPAN_LIMITS.maxDeg ? 'validation.tooBig' : null;
 }
 
 /** The narrowest side New city offers for a place found by name (a district; `CITY_SPAN_LIMITS.minDeg` is a block). */

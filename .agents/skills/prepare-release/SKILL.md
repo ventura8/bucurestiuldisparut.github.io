@@ -17,6 +17,7 @@ Working notes: `.agent/skills/quality/prepare_release_skill.md`; file rules: `do
                                                         # and the guides' `npx create-historic-city@X.Y.Z` (PINNED_DOCS: never `@1`)
    npm run build --workspace @hcm/engine && npm run release:cdn   # cdn/engine/ and release.json (SHA-384 of every file)
    npm run release:pin-kit                              # templates/starter-kit/index.html pinned to that release
+   npm run build:landing                                # sites/landing/ (GitHub Pages) names the CLI at that release
    ```
 
 3. Write `docs/releases/vX.Y.Z.md` (full notes) and `docs/releases/vX.Y.Z_github_description.md` (the GitHub Release body; its single H1 is the release title; it keeps the lines `<!-- hcm:sri -->` and `<!-- /hcm:sri -->`), then `npm run release:notes -- --write docs/releases/vX.Y.Z_github_description.md`, and list the version under *Releases* in `docs/releases/README.md`.

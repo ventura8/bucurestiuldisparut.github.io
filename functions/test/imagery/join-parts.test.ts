@@ -116,6 +116,7 @@ describe('the dispatcher and a join', () => {
         ],
         ['approved', { state: 'approved' as const, approval: { auto: false, by: 'u-admin', at: at(NOW) } }],
         ['publishing', { state: 'publishing' as const, approval: { auto: false, by: 'u-admin', at: at(NOW) } }],
+        ['joined by an earlier join (live 2026-11-12)', { state: 'joined' as const }],
     ])('happyPath_aFrame_%s_servesTheJoin_liveFeb1972 @S-A65-HAPPY-PUBLISHED-FRAMES', async (_name, state) => {
         const world = await heldWorld(state);
 
@@ -145,8 +146,8 @@ describe('the dispatcher and a join', () => {
     it.each([
         ['cancelled', { state: 'cancelled' as const, output: undefined }],
         ['failed', { state: 'failed' as const, output: undefined, error: { code: 'apiError.imagery.referenceUnavailable' as const } }],
-        ['joined into another', { state: 'joined' as const }],
         ['superseded', { state: 'superseded' as const, mapbox: { tilesetId: 'a.b', origin: 'mts' as const, publishedAt: at(NOW) } }],
+        ['rejected', { state: 'rejected' as const }],
     ])('badPath_aFrame_%s_failsTheJoin_namingIt @S-A65-BAD-PART-GONE', async (_name, ended) => {
         const world = await heldWorld(ended);
 

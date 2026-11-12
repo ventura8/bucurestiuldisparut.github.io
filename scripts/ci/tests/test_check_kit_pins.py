@@ -52,9 +52,10 @@ def test_happy_path_before_the_first_release_the_page_is_checked_in_shape(tmp_pa
     assert f"[kit-pins] OK: {PAGE} is pinned in shape (no engine release in cdn/engine yet)" in log.text
 
 
-def test_happy_path_the_page_pins_exactly_the_release(tmp_path: Path, log: pytest.LogCaptureFixture) -> None:
-    write_release_folder(tmp_path, "1.0.0")
-    write_kit_page(tmp_path, kit_page("1.0.0"))
+@pytest.mark.parametrize("version", ["1.0.0", "1.0.0-beta.1", "2.3.4-rc.0"])
+def test_happy_path_the_page_pins_exactly_the_release(tmp_path: Path, log: pytest.LogCaptureFixture, version: str) -> None:
+    write_release_folder(tmp_path, version)
+    write_kit_page(tmp_path, kit_page(version))
 
     assert check_kit_pins.main(["--root", str(tmp_path)]) == 0
     assert f"[kit-pins] OK: {PAGE} pins exactly the engine release in cdn/engine" in log.text
@@ -154,6 +155,8 @@ PAGE_ENTRIES = [entry("engine.css"), entry("engine.iife.js")]
     [
         ({"version": "1.0.0"}, "cdn/engine/release.json: keys ['version'], expected"),
         (broken({"version": "v1.0.0"}), "version 'v1.0.0' or repository"),
+        (broken({"version": "1.0.0-alpha.1"}), "version '1.0.0-alpha.1' or repository"),
+        (broken({"version": "1.0.0-beta.01"}), "version '1.0.0-beta.01' or repository"),
         (broken({"repository": "no-slash"}), "or repository 'no-slash' is malformed"),
         (broken({"base": base_of("1.0.1")}), f"base '{base_of('1.0.1')}', expected '{base_of('1.0.0')}'"),
         (broken({"mapboxGl": {"version": "3.34.1"}}), "mapboxGl must name a version and its script and stylesheet"),
@@ -202,6 +205,9 @@ def test_happy_path_the_page_parser_reads_pins_markers_and_policy(tmp_path: Path
     assert release_pins.page_base(page) == base_of("1.2.3")
     assert release_pins.base_version(release_pins.page_base(page)) == "1.2.3"
     assert release_pins.base_version(None) is None
+    assert release_pins.base_version(base_of("1.2.3-rc.4")) == "1.2.3-rc.4"
+    assert release_pins.base_version(base_of("1.2.3-alpha.4")) is None
+    assert release_pins.base_version(base_of("1").replace("@v1", "@1")) is None
     assert page.csp is not None
     assert page.csp["font-src"] == [base_of("1.2.3")]
     assert release_pins.parse_csp("Script-Src a b;; ;img-src") == {"script-src": ["a", "b"], "img-src": []}

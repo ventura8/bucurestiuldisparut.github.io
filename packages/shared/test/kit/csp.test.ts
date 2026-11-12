@@ -9,7 +9,7 @@ function directive(policy: string, name: string): string[] {
     return (found ?? '').split(' ').slice(1);
 }
 
-const PINNED = 'https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@v1.0.0/cdn/engine/';
+const PINNED = 'https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@v1.0.0/cdn/engine/';
 /** A clear-text origin, which no policy names (built, so no `http:` address stands in the source). */
 const CLEAR_TEXT_ORIGIN = ['http', '//a.org'].join(':');
 
@@ -58,7 +58,7 @@ describe('contentSecurityPolicy', () => {
         // The manifest and the photos beside the page stay the page's own origin.
         expect(directive(policy, 'connect-src')[0]).toBe(SELF_SOURCE);
         expect(directive(policy, 'img-src')[0]).toBe(SELF_SOURCE);
-        expect(policy).not.toContain('cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@1/');
+        expect(policy).not.toContain('cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@1/');
     });
 
     it('happyPath_aManifestsOwnOriginsJoinOnceEach', () => {

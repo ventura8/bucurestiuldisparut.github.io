@@ -9,8 +9,8 @@ interface KitRecord {
     readonly engine: readonly { readonly path: string; readonly bytes: number }[];
 }
 
-/** `ENGINE_VERSION`'s form (`MAJOR.MINOR.PATCH`, as `versionSchema` of `@hcm/shared`). */
-const VERSION = /^\d{1,4}\.\d{1,4}\.\d{1,6}$/;
+/** `ENGINE_VERSION`'s form (`MAJOR.MINOR.PATCH` or a pre-release `-beta.N` / `-rc.N`, as `releaseVersionSchema` of `@hcm/shared`). */
+const VERSION = /^\d{1,4}\.\d{1,4}\.\d{1,6}(?:-(?:beta|rc)\.(?:0|[1-9]\d{0,5}))?$/;
 
 /** A file below `engine/`: relative, no `..`, no backslash (the build lists what it copied). */
 const KIT_PATH = /^(?:\w[\w.-]*\/)*\w[\w.-]*$/;

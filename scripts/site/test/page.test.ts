@@ -40,6 +40,8 @@ describe('renderSitePage', () => {
         expect(scripts).toEqual([
             `<script src="${MAPBOX_GL_SCRIPT}" defer integrity="sha384-script" crossorigin="anonymous">`,
             '<script src="config.js" defer>',
+            // The tab icon in the visitor's theme (`tabIconSource`), after the configuration it reads.
+            '<script src="tab-icon.js" defer>',
             '<script type="module" src="engine/engine.mjs">',
         ]);
         expect(html).toContain(`<link rel="stylesheet" href="${MAPBOX_GL_STYLESHEET}" integrity="sha384-style" crossorigin="anonymous">`);

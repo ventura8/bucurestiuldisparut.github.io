@@ -17,6 +17,6 @@ export interface ExportKit {
     engineVersion(): Promise<string>;
     /** The starter kit's `index.html` and `README.md` as committed (`templates/starter-kit/`). */
     texts(): Promise<{ readonly page: string; readonly readme: string }>;
-    /** The engine's files without source maps: `engine.iife.js`, `engine.css`, `fonts/…`, `THIRD_PARTY_NOTICES.txt`. */
+    /** The engine's files without source maps: `engine.iife.js`, `engine.extras.js`, `engine.css`, `fonts/…`, `THIRD_PARTY_NOTICES.txt`. */
     engineFiles(): Promise<readonly KitFile[]>;
 }

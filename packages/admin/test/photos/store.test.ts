@@ -270,6 +270,9 @@ describe('the photos area: the editor without a map', () => {
         store.intents.replaceImage(file('a.jpg'));
         store.intents.cancelReplace();
         store.intents.dismissReplace();
+        store.intents.uploadVersion('improved', file('a.jpg'));
+        store.intents.cancelVersion('improved');
+        store.intents.dismissVersion('improved');
         store.intents.pointAtCentre();
         store.intents.cancelDirection();
         await store.intents.setDirection();
@@ -308,8 +311,12 @@ describe('the photos area: intents and the map lifecycle', () => {
         store.intents.cancelReplace();
         await settle();
         store.intents.dismissReplace();
+        store.intents.uploadVersion('colorized', file('color.jpg'));
+        expect(store.state.editor?.versionUploads.colorized?.phase).toBe('uploading');
+        store.intents.cancelVersion('colorized');
+        store.intents.dismissVersion('colorized');
 
-        expect(store.state.editor).toMatchObject({ dirty: [], replace: null });
+        expect(store.state.editor).toMatchObject({ dirty: [], replace: null, versionUploads: { improved: null, colorized: null } });
     });
 
     it('badPath_withoutAMapFactoryTheMapIsUnavailable', async () => {

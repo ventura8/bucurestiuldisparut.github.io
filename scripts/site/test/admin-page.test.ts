@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { DEFAULT_TAB_ICONS } from '@hcm/shared/tab-icon';
+
 import {
     ADMIN_PAGE,
     ADMIN_SCRIPT_FILE,
@@ -29,7 +31,8 @@ describe('renderAdminPage', () => {
         const html = renderAdminPage();
 
         expect([...html.matchAll(/<(?:script|link) [^>]*>/g)].map(([tag]) => tag)).toEqual([
-            '<link rel="icon" href="data:,">',
+            `<link rel="icon" type="image/png" sizes="32x32" media="(prefers-color-scheme: light)" href="${DEFAULT_TAB_ICONS.light}">`,
+            `<link rel="icon" type="image/png" sizes="32x32" media="(prefers-color-scheme: dark)" href="${DEFAULT_TAB_ICONS.dark}">`,
             `<link rel="stylesheet" href="${ADMIN_STYLESHEET_FILE}">`,
             `<script type="module" src="${ADMIN_SCRIPT_FILE}">`,
         ]);

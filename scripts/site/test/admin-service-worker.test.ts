@@ -154,7 +154,7 @@ describe('the worker file', () => {
 
         expect(result.status).toBe(0);
         expect(output.diagnostics).toEqual([]);
-        expect(result.stdout).toMatch(/^\/\/ Historic City Map admin: web push/);
+        expect(result.stdout).toMatch(/^\/\/ Historic City Map Maker admin: web push/);
         expect(result.stdout.trimEnd().endsWith('})(self);')).toBe(true);
         expect(result.stdout).not.toContain('PushWorkerScope');
     });

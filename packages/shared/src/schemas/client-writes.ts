@@ -54,6 +54,8 @@ const PHOTO_EDITABLE = [
     'rightsReview',
     /** M13: the optional credit name. */
     'credit',
+    /** Who improved or colorized the photo (the owner 2026-11-09); the versions themselves are `photos.onUpload`'s. */
+    'versionCredits',
     ...STAMP,
 ] as const;
 
@@ -101,9 +103,10 @@ export const CLIENT_WRITES = {
     city: { create: [], update: CITY_EDITABLE },
     /**
      * A new photo starts `processing: 'pending'`, unpublished; `photos.onUpload` owns the image fields. M13: an uploader's
-     * create of a photo or a place also carries `reviewStatus: 'pending'`, and nobody else's may (`firestore.rules`).
+     * create of a photo or a place also carries `reviewStatus: 'pending'`, and nobody else's may (`firestore.rules`). A reviewer's
+     * update may remove an improved or colorized version from `versions` and nothing else of it.
      */
-    photo: { create: [...PHOTO_EDITABLE, 'processing', 'createdAt', 'createdBy'], update: PHOTO_EDITABLE },
+    photo: { create: [...PHOTO_EDITABLE, 'processing', 'createdAt', 'createdBy'], update: [...PHOTO_EDITABLE, 'versions'] },
     /** Layers are created by the pipeline; admins edit presentation, default opacity and image adjustments. */
     layer: { create: [], update: LAYER_EDITABLE },
     poi: { create: [...POI_EDITABLE, 'createdAt', 'createdBy'], update: POI_EDITABLE },

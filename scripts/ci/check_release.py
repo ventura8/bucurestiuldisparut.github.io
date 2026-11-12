@@ -2,8 +2,8 @@
 """Release gate (stage `release`, run by .github/workflows/release.yml on a v* tag): the tag being
 released agrees with the repository before anything is published (docs/research/M5-interfaces.md §2.2).
 
-- Exactly one tag `vMAJOR.MINOR.PATCH` points at HEAD (or `--tag` names it, to check before tagging);
-  no pre-release or build suffix.
+- Exactly one tag `vMAJOR.MINOR.PATCH`, or a pre-release `vMAJOR.MINOR.PATCH-beta.N` / `-rc.N`, points at HEAD
+  (or `--tag` names it, to check before tagging); no other pre-release and no build suffix.
 - The root package.json, every workspace package.json and ENGINE_VERSION in
   packages/engine/src/index.ts carry that version, and so does every dependency of a workspace on
   another workspace (npm resolves a workspace only at its exact version).
@@ -32,13 +32,23 @@ from pathlib import Path
 
 from cilog import get_logger
 from cirepo import GIT
-from release_pins import KIT_PAGE, RELEASE_JSON, PinError, base_version, expected_pins, page_base, read_json_object, read_kit_page
+from release_pins import (
+    KIT_PAGE,
+    RELEASE_JSON,
+    RELEASE_VERSION,
+    PinError,
+    base_version,
+    expected_pins,
+    page_base,
+    read_json_object,
+    read_kit_page,
+)
 
 LOG = get_logger("release")
 ROOT = Path(__file__).resolve().parents[2]
 ENGINE_INDEX = Path("packages", "engine", "src", "index.ts")
 RELEASE_NOTES = Path("docs", "releases")
-SEMVER_TAG = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
+SEMVER_TAG = re.compile(rf"^v{RELEASE_VERSION}$")
 ENGINE_VERSION = re.compile(r"ENGINE_VERSION\s*=\s*'([^']*)'")
 DEPENDENCY_FIELDS = ("dependencies", "devDependencies", "peerDependencies", "optionalDependencies")
 SRI_TOKEN = re.compile(r"sha384-[A-Za-z0-9+/]{64}")
@@ -51,10 +61,12 @@ PINNED_DOCS = (
     "docs/MANUAL_TEST_PLAN.md",
     "docs/SELF_HOST.md",
     "packages/create-historic-city/README.md",
+    "sites/landing/index.html",
+    "sites/landing/ro.html",
     "starter-kit/README.md",
     "templates/starter-kit/README.md",
 )
-CLI_PIN = re.compile(r"(?<![\w-])(?:create-)?historic-city@(\d+\.\d+\.\d+)(?![\w.])")
+CLI_PIN = re.compile(r"(?<![\w-])(?:create-)?historic-city@(\d+\.\d+\.\d+(?:-(?:beta|rc)\.\d+)?)(?![\w.])")
 
 Capture = Callable[[Sequence[str]], str]
 
@@ -221,7 +233,7 @@ def notes_problems(root: Path, tag: str) -> list[str]:
 def release_problems(root: Path, tag: str) -> list[str]:
     """Everything that disagrees with releasing `tag` from `root` (empty when consistent)."""
     if not SEMVER_TAG.match(tag):
-        return [f"tag {tag!r} is not vMAJOR.MINOR.PATCH (no pre-release or build suffix)"]
+        return [f"tag {tag!r} is not vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-beta.N / -rc.N (no other suffix)"]
     version = tag.removeprefix("v")
     try:
         versions = [*manifest_problems(root, version), *dependency_problems(root, version), *engine_problems(root, version)]

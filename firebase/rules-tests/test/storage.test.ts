@@ -118,6 +118,15 @@ describe('photo uploads', () => {
         expect(await put('admin', photoUpload('admin'), { size })).toBe('deny');
     });
 
+    it('happyPath_anImprovedOrColorizedVersionTravelsAsMetadata', async () => {
+        expect(await put('admin', photoUpload('admin'), { metadata: { version: 'improved' } })).toBe('allow');
+        expect(await put('admin', photoUpload('admin'), { metadata: { version: 'colorized' } })).toBe('allow');
+    });
+
+    it('badPath_anUnknownVersionIsRejected', async () => {
+        expect(await put('admin', photoUpload('admin'), { metadata: { version: 'sepia' } })).toBe('deny');
+    });
+
     it('badPath_anOriginalNameOver255CharactersIsRejected', async () => {
         expect(await put('admin', photoUpload('admin'), { originalName: 'x'.repeat(256) })).toBe('deny');
     });
@@ -232,6 +241,8 @@ describe('server-written objects', () => {
         // Paths of the PUBLIC bucket's layout: in this bucket they are server-only.
         [STORAGE_PATHS.photoDerivative(CITY_ID, PHOTO_ID, 'ab'.repeat(32), 'web'), NOBODY],
         [STORAGE_PATHS.manifest(CITY_ID), NOBODY],
+        // The city's tab icon (cities.setIcon writes it with its service account).
+        [STORAGE_PATHS.cityIcon(CITY_ID, 32), NOBODY],
     ];
 
     it.each(objects)('happyPath_theRightAdminsRead_%s', async (path, readers) => {
@@ -249,6 +260,15 @@ describe('server-written objects', () => {
         const deletes = await verdicts(EVERYONE, (persona) => world.storage(persona).ref(path).delete());
 
         expect({ writes, deletes }).toEqual({ writes: expected(EVERYONE, []), deletes: expected(EVERYONE, []) });
+    });
+
+    it('badPath_noClientWritesACitysTabIconNotEvenAsAPng @S-A101-BAD-CLIENT-WRITE', async () => {
+        const writes = await verdicts(EVERYONE, (persona) =>
+            send(persona, STORAGE_PATHS.cityIcon(CITY_ID, 180), { contentType: 'image/png', size: 2048 }),
+        );
+        const svg = await verdicts(EVERYONE, (persona) => send(persona, `cities/${CITY_ID}/icon.svg`, { contentType: 'image/svg+xml' }));
+
+        expect({ writes, svg }).toEqual({ writes: expected(EVERYONE, []), svg: expected(EVERYONE, []) });
     });
 
     it('badPath_onlyTheCitysAdminsListItsFolders', async () => {

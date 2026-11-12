@@ -80,7 +80,12 @@ docker run --rm -p 127.0.0.1:8765:8765 -v "$HOME/hcm-worker:/work" \
 2. `worker.hello {cityId, workerId, version}` once (`workerId`: `w-` and 16 hex characters, kept in the work folder across restarts since finding 77 and forgotten with the session), which
    records `cities/{city}/workers/{workerId}` and answers the poll interval.
 3. Every `WORKER_POLL_SECONDS` (30) while idle: `worker.claim {cityId, workerId}` (which also refreshes the worker's
-   `lastSeenAt`). A claimed job runs at once; one job at a time.
+   `lastSeenAt`). A claimed job runs at once; one job at a time. While it runs, each heartbeat (`lease.until` through
+   `worker.step`) refreshes `lastSeenAt` too (2026-11-12: a long `locate` or `place` showed "No computer connected" and sent new
+   jobs to the cloud), and each step has a wall-time limit (`STEP_LIMIT_SECONDS`: `locate` 45 min, `place`, `align`, `merge`
+   4 h, others 3 h): past it the step fails at its next checkpoint with `apiError.imagery.stepTimeLimit {step, minutes}`.
+   A refused write names its fields: `apiError.invalidRequest` carries the issues' paths and codes (never a value), and the
+   worker's error repeats them.
 4. A claimed job runs as `run` does on Cloud Run (`runner.py`: the lease is taken by the owner
    `worker:<workerId>`, which the claim already wrote, so the run proceeds; the heartbeat, the step loop, the waits, the
    failures, the cancel), with every step of the job's type (a worker job names no machine, `DECISIONS-for-review.md`

@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pytest
 from fakeshell import FakeShell
+from parallel import Machine
 
 import pipeline
 from pipeline import COMPOSITE_STAGES, GATES, STAGES, Context, Gate
@@ -269,10 +270,19 @@ def test_happy_path_pipeline_jobs_sets_how_many_gates_run_at_once(value: str, ex
 
 @pytest.mark.parametrize("value", ["", "0", "-2", "many", "2.5"])
 def test_bad_path_an_unusable_pipeline_jobs_falls_back_to_the_cpu_count(value: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(os, "process_cpu_count", lambda: 6)
+    monkeypatch.setattr(pipeline, "this_machine", lambda: Machine(6, 64))
 
     assert pipeline.default_jobs({pipeline.JOBS_VARIABLE: value}) == 6
     assert pipeline.default_jobs({}) == 6
+
+
+def test_happy_path_little_free_memory_runs_fewer_gates_at_once_and_the_low_memory_mode_one(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(pipeline, "this_machine", lambda: Machine(16, 9))
+
+    assert pipeline.default_jobs({}) == 4
+    assert pipeline.default_jobs({"HCM_MAX_PARALLEL": "2"}) == 2
+    assert pipeline.default_jobs({"HCM_LOW_MEM": "1"}) == 1
+    assert pipeline.default_jobs({"HCM_LOW_MEM": "1", pipeline.JOBS_VARIABLE: "5"}) == 5
 
 
 def test_bad_path_an_unknown_cpu_count_runs_one_gate_at_a_time(monkeypatch: pytest.MonkeyPatch) -> None:
