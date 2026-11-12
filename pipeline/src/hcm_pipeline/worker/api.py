@@ -88,10 +88,16 @@ ISSUES_NAMED: Final = 5
 
 def _issues(body: Mapping[str, object]) -> str:
     """The fields a validation refused, as `path (code)`: where to look, never a value (the server sends none)."""
-    found = _record(_record(body.get("error")).get("details")).get("issues")
-    issues = [_record(item) for item in found] if isinstance(found, list) else []
-    named = [f"{issue.get('path') or '(the value)'} ({issue.get('code')})" for issue in issues[:ISSUES_NAMED]]
+    named = [_issue(_record(item)) for item in _list(_record(_record(body.get("error")).get("details")).get("issues"))[:ISSUES_NAMED]]
     return f": {', '.join(named)}" if named else ""
+
+
+def _list(value: object) -> list[object]:
+    return value if isinstance(value, list) else []
+
+
+def _issue(issue: Mapping[str, object]) -> str:
+    return f"{issue.get('path') or '(the value)'} ({issue.get('code')})"
 
 
 def refusal(status: int, body: Mapping[str, object]) -> Exception:

@@ -30,9 +30,7 @@ SCRIPT = Path(parallel.__file__)
         ("playwright", Machine(16, None), 8),
     ],
 )
-def test_happy_path_the_count_is_the_smaller_of_what_cores_and_free_memory_allow(
-    name: str, machine: Machine, expected: int
-) -> None:
+def test_happy_path_the_count_is_the_smaller_of_what_cores_and_free_memory_allow(name: str, machine: Machine, expected: int) -> None:
     assert parallel.workers(name, {}, machine) == expected
 
 

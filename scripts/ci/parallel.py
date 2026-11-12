@@ -70,8 +70,8 @@ def available_gib(meminfo: Path = MEMINFO) -> int | None:
         lines = meminfo.read_text(encoding="utf-8").splitlines()
     except OSError:
         return None
-    found = [line.split() for line in lines if line.startswith("MemAvailable:")]
-    return int(found[0][1]) // KIB_PER_GIB if found and len(found[0]) > 1 and found[0][1].isdecimal() else None
+    kib = _positive(next((" ".join(line.split()[1:2]) for line in lines if line.startswith("MemAvailable:")), None))
+    return None if kib is None else kib // KIB_PER_GIB
 
 
 def this_machine() -> Machine:
