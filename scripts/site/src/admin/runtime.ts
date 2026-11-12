@@ -9,7 +9,10 @@ import type { AdminFile } from './legacy.js';
  * (`DECISIONS-for-review.md` §23b's redesign):
  *
  * - `release`: the repository's version and the short commit the admin was built from (`0.0.0+5d02329`): the boot log
- *   and every crash report name it (a build outside a git checkout names the version only);
+ *   and every crash report name it. A build of a commit that carries the version's tag `v<version>` (CI's tag ref, or
+ *   `git tag --points-at`) names the version alone (`1.0.0-beta.1`): the release itself, never a dev build of it (the live
+ *   finding of 2026-11-12, `docs/research/M6-interfaces.md` §1.7.1). A build outside a git checkout names the version only;
+ * - `channel`: what the release is, read from it (`releaseChannelOf`): `release`, `prerelease` or `dev`;
  * - `releaseTime`: the build time, the commit's time in seconds since 1970 (`SOURCE_DATE_EPOCH`, else
  *   `git show -s --format=%ct <commit>`; absent when neither says): it orders two builds of the same version, whose
  *   semver is the same (live manual test 2026-11-01, finding 39). The functions' `HCM_RELEASE_TIME`, the install
@@ -75,11 +78,24 @@ function repositoryVersion(files: SiteFileSystem): string {
     return typeof parsed.version === 'string' && parsed.version !== '' ? parsed.version : '0.0.0';
 }
 
-/** `<version>+<short commit>`, or the version alone without a commit. */
-export function adminRelease(files: SiteFileSystem, env: BuildEnvironment): string {
-    const version = repositoryVersion(files);
-    const commit = buildCommit(files, env);
-    return commit === null ? version : `${version}+${commit.slice(0, SHORT_COMMIT)}`;
+/** Reads the tags that point at a commit (`git tag --points-at`), or none when they cannot be read. */
+export type CommitTags = (commit: string) => readonly string[];
+
+/** What a release is, as `releaseChannel` of `@hcm/shared` reads it (this file imports Node built-ins only). */
+export type BuildChannel = 'release' | 'prerelease' | 'dev';
+
+/** An untagged build names its commit after `+` (`dev`); a tagged one is a pre-release (`-beta.N`, `-rc.N`) or a release. */
+export function releaseChannelOf(release: string): BuildChannel {
+    if (release.includes('+')) {
+        return 'dev';
+    }
+    return release.includes('-') ? 'prerelease' : 'release';
+}
+
+/** The build is the version's tagged release: CI's tag ref is `refs/tags/v<version>`, or the commit carries that tag. */
+export function taggedBuild(version: string, commit: string, env: BuildEnvironment, tags: CommitTags): boolean {
+    const tag = `v${version}`;
+    return env['GITHUB_REF'] === `refs/tags/${tag}` || tags(commit).includes(tag);
 }
 
 /** Reads a commit's time in seconds since 1970, or null when it cannot be read. */
@@ -107,6 +123,31 @@ export function gitCommitTime(commit: string): number | null {
     }
 }
 
+/** The tags at the commit, from the working directory's repository (`git tag --points-at`); none without git. */
+export function gitCommitTags(commit: string): readonly string[] {
+    try {
+        return execFileSync(GIT, ['-c', 'safe.directory=*', 'tag', '--points-at', commit], {
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'ignore'],
+        })
+            .split('\n')
+            .map((tag) => tag.trim())
+            .filter((tag) => tag !== '');
+    } catch {
+        return [];
+    }
+}
+
+/** `<version>+<short commit>`; the version alone for a tagged build (`taggedBuild`) or without a commit. */
+export function adminRelease(files: SiteFileSystem, env: BuildEnvironment, tags: CommitTags = gitCommitTags): string {
+    const version = repositoryVersion(files);
+    const commit = buildCommit(files, env);
+    if (commit === null || taggedBuild(version, commit, env, tags)) {
+        return version;
+    }
+    return `${version}+${commit.slice(0, SHORT_COMMIT)}`;
+}
+
 /**
  * The build time (finding 39): `SOURCE_DATE_EPOCH` when it is whole seconds, else the build commit's time (`clock`), else
  * null (a build outside a checkout).
@@ -125,15 +166,17 @@ export function startUpDeploy(env: BuildEnvironment): boolean {
     return ['1', 'true'].includes(env[START_UP_VARIABLE] ?? '');
 }
 
-/** The page's `runtime.json`: the release, its build time when known, and a start-up deploy's `startUp`. */
+/** The page's `runtime.json`: the release, its channel, its build time when known, and a start-up deploy's `startUp`. */
 export function planRuntimeFile(
     files: SiteFileSystem,
     env: BuildEnvironment,
     clock: CommitClock = gitCommitTime,
+    tags: CommitTags = gitCommitTags,
 ): { readonly file: AdminFile; readonly release: string } {
-    const release = adminRelease(files, env);
+    const release = adminRelease(files, env, tags);
     const time = releaseTime(files, env, clock);
-    const stamp = time === null ? { release } : { release, releaseTime: time };
+    const channel = releaseChannelOf(release);
+    const stamp = time === null ? { release, channel } : { release, channel, releaseTime: time };
     const runtime = startUpDeploy(env) ? { ...stamp, startUp: true } : stamp;
     return { file: { to: RUNTIME_FILE, content: `${JSON.stringify(runtime, null, 4)}\n` }, release };
 }

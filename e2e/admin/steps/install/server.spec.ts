@@ -1,6 +1,8 @@
 import { NEWER_SERVER_RELEASE, PLANTED_LOG_SECRETS, registryFunctions } from '@hcm/test-support/fakes';
 import type { Locator } from '@playwright/test';
 
+import { contentFlowBudget } from '../../../../packages/admin/src/content/budgets.js';
+
 import { apiText, setupText, shellText, templatePattern } from '../../support/i18n.js';
 import {
     INSTALL_RELEASE,
@@ -273,6 +275,33 @@ test.describe('Install the server: a build that stops', () => {
             await expect(installState(deploy)).toContainText(setupText(lang, 'adminSetup.install.state.queued'));
             await expect(installButton(deploy, lang)).toHaveCount(0);
             expect(await serverBuilds(upstream)).toHaveLength(1);
+            serverDeployment.claimErrors();
+        },
+    );
+});
+
+test.describe("Install the server: the owner's override over a newer server (the live finding of 2026-11-12)", () => {
+    test(
+        "The owner installs this admin's release over a newer server once the confirmation says what it replaces",
+        { tag: ['@S-A55-HAPPY-INSTALL-OVER'] },
+        async ({ page, lang, consent, inputBudget, setupBudget, upstream, serverDeployment }) => {
+            // The live finding of 2026-11-12: a rollback is the owner's choice, never Update's; Cloud Build's history marks it.
+            await serverDeployment.hide();
+            const { deploy } = await preparedProject({
+                ...{ page, lang, consent, setupBudget, upstream, signInBudget: inputBudget.flow('signIn', 1) },
+                signInConsent: inputBudget.flow('signInConsent', 1),
+            });
+            await upstream.scenario('cloud-functions.deployedNewerRelease', 'browser');
+            await page.clock.fastForward(60_000);
+            const over = inputBudget.flow('installOver', contentFlowBudget('installOver'));
+
+            await over.click(deploy.getByRole('button', { name: setupText(lang, 'adminSetup.install.over.action') }));
+            const dialog = page.getByRole('dialog', { name: setupText(lang, 'adminSetup.install.over.title') });
+            const params = { installed: NEWER_SERVER_RELEASE, release: INSTALL_RELEASE };
+            await expect(dialog.getByText(setupText(lang, 'adminSetup.install.over.body', params))).toBeVisible();
+            await over.click(dialog.getByRole('button', { name: setupText(lang, 'adminSetup.install.over.confirm', params) }));
+
+            await expect.poll(async () => (await serverBuilds(upstream)).map((build) => build.tags.includes('hcm-over'))).toEqual([true]);
             serverDeployment.claimErrors();
         },
     );

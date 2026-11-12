@@ -194,6 +194,29 @@ describe('Publish the map, Check again, Update the map', () => {
         cards.dispose();
     });
 
+    it('happyPath_theOwnersConfirmedOverrideInstallsOverANewerServer @S-A55-HAPPY-INSTALL-OVER', async () => {
+        // The live finding of 2026-11-12: a rollback over a newer server, after the card's confirmation.
+        const { harness, ctx, cards } = setup('normal');
+        harness.installer.observe.mockResolvedValue(observed({ installed: { complete: true, release: '99.0.0+e2e9999' } }));
+
+        await cards.installOver('server');
+
+        expect(harness.google.requests).toEqual(['cloudPlatform']);
+        expect(harness.installer.submit.mock.calls.map(([target, , options]) => [target, options])).toEqual([['server', { over: true }]]);
+        expect(ctx.state().steps.deploy.used.inputs).toBe(1);
+        cards.dispose();
+    });
+
+    it('badPath_theOverrideWithoutAConsentSubmitsNothing', async () => {
+        const { harness, cards } = setup('normal');
+        harness.google.answer = () => Promise.resolve(null);
+
+        await cards.installOver('server');
+
+        expect(harness.installer.submit).not.toHaveBeenCalled();
+        cards.dispose();
+    });
+
     it('badPath_nothingBehindAsksNothing', async () => {
         const { harness, cards, provisioned } = setup('normal');
 

@@ -81,6 +81,11 @@ export interface InstallFlow {
     install(): Promise<void>;
     /** As `install`, with a token the caller already holds (Update the map asks once for every target). */
     installWith(access: InstallAccess): Promise<void>;
+    /**
+     * The owner's confirmed override (the live finding of 2026-11-12): installs the admin's own release over a newer one
+     * (a rollback); in any other state it does what `installWith` does.
+     */
+    installOver(access: InstallAccess): Promise<void>;
     view(): InstallTargetView;
     dispose(): void;
 }
@@ -252,13 +257,22 @@ class TargetFlow implements InstallFlow {
         await this.installWith(access);
     }
 
-    async installWith(access: InstallAccess): Promise<void> {
+    installWith(access: InstallAccess): Promise<void> {
+        return this.#installWith(access, false);
+    }
+
+    installOver(access: InstallAccess): Promise<void> {
+        return this.#installWith(access, true);
+    }
+
+    async #installWith(access: InstallAccess, over: boolean): Promise<void> {
         this.#set({ busy: true, error: null });
         this.#resubmitAllowed = true;
         await this.#guarded(async () => {
             await this.#look(access);
-            if (SUBMITTABLE.has(this.#view.state) && this.#view.blocker === null) {
-                this.#applyBuild(await this.#deps.installer.submit(this.#deps.target, access));
+            const replaces = over && this.#view.state === 'newerInstalled';
+            if ((replaces || SUBMITTABLE.has(this.#view.state)) && this.#view.blocker === null) {
+                this.#applyBuild(await this.#submit(access, replaces));
             }
         });
         this.#set({ busy: false });
@@ -269,6 +283,16 @@ class TargetFlow implements InstallFlow {
 
     view(): InstallTargetView {
         return this.#view;
+    }
+
+    /** Submits the admin's build; the owner's override is logged with what it replaces (the log crash reports carry). */
+    #submit(access: InstallAccess, over: boolean): Promise<CloudBuild> {
+        const { target, release, installer } = this.#deps;
+        if (!over) {
+            return installer.submit(target, access);
+        }
+        this.#deps.log.warn('install over a newer release', { target, installed: this.#view.installedRelease ?? '', release });
+        return installer.submit(target, access, { over: true });
     }
 
     dispose(): void {

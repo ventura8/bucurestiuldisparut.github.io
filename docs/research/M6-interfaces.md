@@ -358,6 +358,33 @@ button that asks Google for the token (Install, Publish, Try again, Install the 
 Continue; an install card with nothing to do (installed, under way, newer than the admin) shows none, its Check again
 still asking Google when the token is gone (S-A55-BAD-NOTE-NOTHING-TO-DO).
 
+#### 1.7.1 Release channels and the owner's override (the live finding of 2026-11-12, `DECISIONS-for-review.md` §169)
+
+The release prep bumped every version to `1.0.0-beta.1`; the live server was `1.0.0+dcfb067`, an untagged build of
+before the bump (no `v1.0.0` tag ever existed). By SemVer `1.0.0-beta.1` < `1.0.0`, so step d said "newer than this
+admin" and offered no Update. The rule since:
+
+- **The channel is in the release.** A build of a commit that carries the version's tag `v<version>` (CI's
+  `GITHUB_REF=refs/tags/v<version>`, or `git tag --points-at`) names the version alone (`1.0.0`, `1.0.0-beta.1`): a
+  `release` or a `prerelease`. Every other build names its commit after `+` (`1.0.0-beta.1+593d539`): a `dev` build
+  (`adminRelease`, `scripts/site/src/admin/runtime.ts`; `releaseChannel` of `@hcm/shared`). So the functions'
+  `HCM_RELEASE`, the jobs' label, `/release.json` and the records carry the channel with no new field, and a release
+  from before the channels reads the same way: `1.0.0+dcfb067` is `dev`. `runtime.json` and the install manifest also
+  write it out as `channel` (the manifest refuses one its release does not name). A build outside git names the
+  version alone and counts as a release.
+- **The order.** The core (`major.minor.patch`) first. Within one core two tagged releases follow SemVer (a tagged
+  `1.0.0` stays newer than `1.0.0-beta.1`: the downgrade guard); a dev build against anything is placed by the build
+  times, so a dev build is older than any build of its core made after it. An installed dev build without a time is
+  behind; with a time missing otherwise, SemVer decides and a tie keeps what is installed (`compareRelease`).
+- **The override.** A card newer than the admin still offers no Update, but **Install this admin's version anyway**
+  (`<hcm-install-over>`) opens a confirmation that names both releases and says it replaces the newer one (a
+  rollback); **Install <release>** submits the admin's build with the tag `hcm-over` (`OVER_TAG`), which Cloud
+  Build's history keeps, and the admin's log says what it replaced. Not a History entry: a rollback installs an older
+  server, whose strict schemas would refuse a record they do not know. Two inputs, the consent when the token is gone
+  (S-A55-HAPPY-INSTALL-OVER, S-A55-BAD-INSTALL-OVER-KEPT; tour state `setup.install-over-dialog`).
+- **Slugs of pre-releases.** `releaseOfSlug` reads `1-0-0-beta-1-593d539` back to `1.0.0-beta.1+593d539` (before, a
+  pre-release's pipeline jobs named no release).
+
 ### 1.8 The cards (installer; the step frame's rules from setup-ux)
 
 - **(d) Install the map's server**: why, what it creates, the cost line (§1.9), **Install the server** (one click; the

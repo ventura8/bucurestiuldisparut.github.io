@@ -4,8 +4,10 @@ import {
     adminRelease,
     buildCommit,
     headCommit,
+    gitCommitTags,
     gitCommitTime,
     planRuntimeFile,
+    releaseChannelOf,
     releaseTime,
     RUNTIME_FILE,
     START_UP_VARIABLE,
@@ -74,13 +76,39 @@ describe('the runtime file', () => {
         const { file, release } = planRuntimeFile(checkout({ HEAD: `${COMMIT}\n` }), {});
 
         expect(release).toBe('1.2.3+5d02329');
-        expect(file).toEqual({ to: RUNTIME_FILE, content: '{\n    "release": "1.2.3+5d02329"\n}\n' });
+        expect(file).toEqual({ to: RUNTIME_FILE, content: '{\n    "release": "1.2.3+5d02329",\n    "channel": "dev"\n}\n' });
+    });
+
+    it('happyPath_aTaggedBuildNamesItsVersionAlone_aReleaseOrAPrerelease', () => {
+        // The live finding of 2026-11-12: a build of the version's tag is the release itself, never a dev build of it.
+        const files = checkout({ HEAD: `${COMMIT}\n` });
+        const tagged = (commit: string): readonly string[] => (commit === COMMIT ? ['v1.2.3', 'other'] : []);
+
+        expect(adminRelease(files, {}, tagged)).toBe('1.2.3');
+        expect(adminRelease(files, { GITHUB_REF: 'refs/tags/v1.2.3' }, () => [])).toBe('1.2.3');
+        const { file } = planRuntimeFile(files, {}, () => null, tagged);
+        expect('content' in file ? JSON.parse(file.content) : null).toEqual({ release: '1.2.3', channel: 'release' });
+        expect(['1.0.0-beta.1', '1.0.0-rc.2', '1.0.0', '1.0.0-beta.1+593d539'].map(releaseChannelOf)).toEqual([
+            'prerelease',
+            'prerelease',
+            'release',
+            'dev',
+        ]);
+    });
+
+    it('badPath_anotherTagOrAnotherRefLeavesADevBuild', () => {
+        const files = checkout({ HEAD: `${COMMIT}\n` });
+
+        expect(adminRelease(files, {}, () => ['v1.2.2', 'v1.2.3-beta.1'])).toBe('1.2.3+5d02329');
+        expect(adminRelease(files, { GITHUB_REF: 'refs/heads/v1.2.3' }, () => [])).toBe('1.2.3+5d02329');
+        // git knows no such commit: no tag.
+        expect(gitCommitTags(OTHER)).toEqual([]);
     });
 
     it.each(['1', 'true'])('happyPath_aStartUpDeploySaysSo_%s', (value) => {
         const { file } = planRuntimeFile(checkout({}), { [START_UP_VARIABLE]: value });
 
-        expect('content' in file ? JSON.parse(file.content) : null).toEqual({ release: '1.2.3', startUp: true });
+        expect('content' in file ? JSON.parse(file.content) : null).toEqual({ release: '1.2.3', channel: 'release', startUp: true });
     });
 
     it.each([undefined, '', '0', 'false', 'yes'])('badPath_anythingElseIsNoStartUp_%s', (value) => {
@@ -101,10 +129,15 @@ describe('the build time (finding 39 of 2026-11-01)', () => {
         expect(releaseTime(files, {}, clock)).toBe(1_761_955_200);
         expect(asked).toEqual([COMMIT]);
         const { file } = planRuntimeFile(files, {}, clock);
-        expect('content' in file ? JSON.parse(file.content) : null).toEqual({ release: '1.2.3+5d02329', releaseTime: 1_761_955_200 });
+        expect('content' in file ? JSON.parse(file.content) : null).toEqual({
+            release: '1.2.3+5d02329',
+            channel: 'dev',
+            releaseTime: 1_761_955_200,
+        });
         const startUp = planRuntimeFile(files, { [START_UP_VARIABLE]: '1' }, clock).file;
         expect('content' in startUp ? JSON.parse(startUp.content) : null).toEqual({
             release: '1.2.3+5d02329',
+            channel: 'dev',
             releaseTime: 1_761_955_200,
             startUp: true,
         });
@@ -123,5 +156,6 @@ describe('the build time (finding 39 of 2026-11-01)', () => {
 
         expect(head).not.toBeNull();
         expect(gitCommitTime(head ?? '')).toEqual(expect.any(Number));
+        expect(gitCommitTags(head ?? '')).toEqual(expect.any(Array));
     });
 });
