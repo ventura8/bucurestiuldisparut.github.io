@@ -98,7 +98,6 @@ export class HcmOverlayList extends LitElement {
             ul {
                 display: flex;
                 flex-direction: column;
-                gap: 0;
                 padding: 0;
                 margin: 0;
                 list-style: none;
@@ -109,7 +108,8 @@ export class HcmOverlayList extends LitElement {
                 grid-template-columns: auto 1fr auto;
                 gap: 0 8px;
                 align-items: center;
-                min-block-size: 40px;
+                /* A row of 48 px each for the switch and the slider: their 48 px targets never overlap (M3's touch target). */
+                grid-auto-rows: minmax(48px, auto);
             }
 
             .swatch {

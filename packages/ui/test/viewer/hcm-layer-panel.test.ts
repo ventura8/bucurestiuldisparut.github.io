@@ -263,6 +263,19 @@ describe('<hcm-layer-panel> pinned Compare and map labels', () => {
         expect(pinned?.compareDocumentPosition(list ?? pinned) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
 
+    it('happyPath_theStripStaysPinnedInTheDockedPaneOnly', async () => {
+        const labels: HcmLayerPanel['labels'] = { shown: { streets: true, pois: true }, available: ['streets', 'pois'] };
+        const docked = await panel({ mode: 'docked', canCompare: true, labels });
+        const dockedStrip = docked.shadowRoot?.querySelector('.pinned');
+        expect(dockedStrip === null || dockedStrip === undefined ? '' : getComputedStyle(dockedStrip).position).toBe('sticky');
+        document.body.replaceChildren();
+
+        // A modal sheet is too short to keep it: the list scrolled under it hid a focused switch (WCAG 2.4.11).
+        const sheet = await panel({ mode: 'bottom', open: true, canCompare: true, labels });
+        const sheetStrip = sheet.shadowRoot?.querySelector('.pinned');
+        expect(sheetStrip === null || sheetStrip === undefined ? '' : getComputedStyle(sheetStrip).position).toBe('static');
+    });
+
     it('badPath_noCompareButtonWithoutHistoricalLayersOrAMap', async () => {
         await panel({ mode: 'docked' });
 
