@@ -22,7 +22,7 @@ import { omit } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import { importWork, readFreeScene, writeImport } from './import.js';
 import { heldPart, isUsablePart, liveJoinOf } from './join-parts.js';
-import { stampOf, type Stamp } from './records.js';
+import { pickDefined, stampOf, type Stamp } from './records.js';
 import { createWork, type NewWork } from './versions.js';
 
 /** One frame of the new join: its version and layer, existing or about to be imported. */
@@ -47,6 +47,8 @@ export interface JoinPlan {
     readonly sensor: Sensor;
     readonly by: string;
     readonly now: Date;
+    /** Where its jobs run when the city's choice is `local` (`Placement`, `docs/research/M7-local-worker.md` §4.5). */
+    readonly runOn?: 'local';
 }
 
 /** A live join that shares a frame and gives way to the new one. */
@@ -181,7 +183,7 @@ export async function writeJoin(transaction: DocumentTransaction, plan: JoinPlan
         await rejectReplaced(transaction, cityId, replaced, stamp);
     }
     for (const [frame, scene] of read.fresh) {
-        const start = { cityId, scene, createdBy: by, now };
+        const start = { cityId, scene, createdBy: by, now, ...pickDefined(plan, ['runOn']) };
         await writeImport(transaction, importWork(start, frame.layerId), scene, jobId);
     }
     for (const [frame, part] of read.parts) {
@@ -191,7 +193,18 @@ export async function writeJoin(transaction: DocumentTransaction, plan: JoinPlan
             ...stamp,
         });
     }
-    const work: NewWork = { cityId, jobId, type: 'layer-join', params, layerId: plan.layerId, createdBy: by, now, waitReason: 'parts' };
+    const placed = pickDefined(plan, ['runOn']);
+    const work: NewWork = {
+        cityId,
+        jobId,
+        type: 'layer-join',
+        params,
+        layerId: plan.layerId,
+        createdBy: by,
+        now,
+        waitReason: 'parts',
+        ...placed,
+    };
     const { label, year, date, sensor } = plan;
     await createWork(transaction, work, { origin: 'join', source: sourceOf(plan), label, year, date, sensor });
     if (read.layer !== undefined) {

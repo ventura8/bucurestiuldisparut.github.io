@@ -250,6 +250,18 @@ automation (`createdBy` a `system:` writer) also raises the notification `job.ne
 opens the version. The admin's OK is `imagery.runOn {jobId, runOn: 'cloud', freeTierOk: true}`; "Run on my computer" is
 `runOn: 'local'`.
 
+### 4.5 The daily cap counts only cloud work (2026-11-12)
+
+`JOBS_PER_DAY` (10 a day per project) and a city's own share bound the paid Cloud Run work, so a job that runs on the
+owner's computer never counts toward them: `runOn: 'local'` or `localOnly` (`functions/src/imagery/limits.ts`). When the
+city's remembered choice (`cities/{city}/workers/choice`) is `local`, a new import, upload, landsat or delivered-order
+import and a join (its missing frames and the `layer-join`) start past the cap, after the budget guard only, and each new
+job is recorded `runOn: 'local'` at its creation, so the decision stays on the job. `auto` and `cloud` keep the cap. A
+counted job moved from the computer to the cloud (`imagery.runOn`, "Run in Google Cloud") is checked against the budget
+guard and today's caps first (`apiError.imagery.dailyLimit`) and then counts on the day of the move (`countedAt`); its
+cloud dispatch still waits for the free-tier OK (§4.3). `JOBS_PER_DAY` is unchanged. Scenarios: S-A12-HAPPY-LOCAL-PAST-DAILY-CAP,
+S-A12-BAD-RUNON-CLOUD-PAST-CAP.
+
 ### 4.4 What the admin shows
 
 On the Jobs page and the pipeline card: "Cloud Run this month (estimate): 12,345 of 180,000 vCPU-seconds · 45,678 of

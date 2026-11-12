@@ -174,10 +174,10 @@ async function imageryJoin(deps: JoinDeps, caller: VerifiedCaller, request: Requ
     const { head, all } = await requireScenes(deps, request);
     const frames = await Promise.all(all.map((scene) => frameOf(deps, request.cityId, scene)));
     const missing = frames.filter((frame) => frame.part === undefined);
-    await refuseRasterJobs(deps.documents, deps.clock.now(), request.cityId, missing.length + 1);
+    const placement = await refuseRasterJobs(deps.documents, deps.clock.now(), request.cityId, missing.length + 1);
     await requireScanned(deps, request.cityId, missing);
     await requireFreeLayer(deps, request.cityId, publishedFrame(frames));
-    const plan = await planOf(deps, { request, by: caller.uid, head, frames });
+    const plan = { ...(await planOf(deps, { request, by: caller.uid, head, frames })), ...placement };
     const replaced = await deps.documents.transaction((transaction) => writeJoin(transaction, plan, paramsOf(plan)));
     await Promise.all(replaced.map((jobId) => deleteWorkFiles(deps, request.cityId, jobId)));
     deps.log.info('frames joined', {
