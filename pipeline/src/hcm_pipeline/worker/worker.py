@@ -83,6 +83,7 @@ class Worker:
         imports = ImportRoutes(ArchiveStore(args.work), lambda body: api.call(ARCHIVE_REPORT, {**ids, **body}))
         server = LocalServer(actions, settings, (bind_host, args.port), policy, args.endpoints.hosting_origins)
         server.serve_imports(imports)
+        server.on_admin = state.pace.wake
         runtime = WorkerRuntime(args, api, worker_id, state, steps)
         runtime.clock = clock
         runtime.announce_ai = actions.announce_ai

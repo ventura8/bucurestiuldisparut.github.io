@@ -153,6 +153,8 @@ class LocalServer:
     ) -> None:
         self._app = app
         self._imports: ImportRoutes | None = None
+        # What a look from the admin's page does besides its answer (`Worker.build`: the claims are frequent again).
+        self.on_admin: Callable[[], None] = lambda: None
         self._settings = settings
         self._cors_origins = frozenset(cors_origins)
         self._sessions: set[str] = set()
@@ -326,6 +328,9 @@ class LocalServer:
         origin = request.headers.get("origin")
         if origin is not None and not (self._origin_allowed(origin) or self.cors_allowed(origin)):
             return _json(HTTPStatus.FORBIDDEN, {})
+        if self.cors_allowed(origin):
+            # The admin's page is open and looks at this worker: it may start a job, so the worker asks often again (`pace.py`).
+            self.on_admin()
         return _json(HTTPStatus.OK, self._app.state())
 
     def preflight(self, request: Request) -> Reply:

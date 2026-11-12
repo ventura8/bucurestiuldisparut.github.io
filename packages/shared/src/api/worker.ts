@@ -16,10 +16,19 @@ import { isoTimeSchema } from './common.js';
 
 /** The local page's port, on the computer's loopback only (`-p 127.0.0.1:8765:8765`). */
 export const WORKER_PORT = 8765;
-/** A worker seen this recently counts as connected (`auto` sends new jobs to the computer). */
-export const WORKER_FRESH_SECONDS = 180;
-/** How often an idle worker asks for a job (`worker.claim` also refreshes its `lastSeenAt`). */
+/**
+ * A worker seen this recently counts as connected (`auto` sends new jobs to the computer): two of an idle worker's longest
+ * waits (`WORKER_IDLE_POLL_SECONDS`, a tenth more with its jitter), so one claim lost on the way does not disconnect it.
+ */
+export const WORKER_FRESH_SECONDS = 570;
+/** How often a worker asks for a job while awake (`worker.claim` also refreshes its `lastSeenAt`). */
 export const WORKER_POLL_SECONDS = 30;
+/**
+ * The longest an idle worker waits between two claims (`worker.hello`'s `idlePollSeconds`; `pipeline/src/hcm_pipeline/worker/pace.py`):
+ * ten minutes after its last job or the admin's last look it asks half as often at each pass, down to this. Every 30 s for
+ * ever was 86,400 calls a month a worker, each with its Firestore reads (`reports/resource-audit.md` §4).
+ */
+export const WORKER_IDLE_POLL_SECONDS = 300;
 /** How long a signed URL of `worker.urls` works. */
 export const WORKER_URL_SECONDS = 900;
 /** At most this many objects per `worker.urls` call. */

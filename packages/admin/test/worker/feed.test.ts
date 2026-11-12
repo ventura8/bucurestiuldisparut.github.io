@@ -1,4 +1,4 @@
-import { FIRESTORE_PATHS, type SetupStatusView } from '@hcm/shared';
+import { FIRESTORE_PATHS, WORKER_FRESH_SECONDS, type SetupStatusView } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { JOBS_MODULE } from '../../src/jobs/jobs.js';
@@ -60,7 +60,7 @@ async function settle(): Promise<void> {
 }
 
 describe('the local worker feed', () => {
-    it('happyPath_aWorkerSeenAMinuteAgoIsConnectedUntilThreeMinutesPassWithItsChoiceUsageAndImage', async () => {
+    it('happyPath_aWorkerSeenAMinuteAgoIsConnectedUntilItsFreshTimePassesWithItsChoiceUsageAndImage', async () => {
         const world = contentWorld();
         world.callables.answer('setup.status', () => status(DIGEST));
         world.store.docs.set(
@@ -95,8 +95,10 @@ describe('the local worker feed', () => {
             job: null,
             worker: { id: WORKER, state: 'idle', jobId: null, lastJob: { id: 'j1', outcome: 'done', at: '2025-10-09T08:00:00.000Z' } },
         });
-        // Two minutes on, it no longer counts as connected (seen 180 s ago at most).
-        world.clock.advance(120_001);
+        // Still connected a second before its fresh time ends (an idle worker asks only every five minutes), and no longer after it.
+        world.clock.advance((WORKER_FRESH_SECONDS - 60) * 1000 - 1000);
+        expect(feed.state.connected).toBe(true);
+        world.clock.advance(1001);
         expect(feed.state.connected).toBe(false);
         feed.stop();
     });
