@@ -3561,4 +3561,3 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `getrusage(RUSAGE_SELF).ru_maxrss` keeps, across `exec`, the peak of the process that forked: a probe started from a pytest that had grown to 2.1 GB inherited its figure. Run alone or from a shell, the probes read right.
     - Fix and pin: `tests/budget_probe.py` reads its own `VmHWM` from `/proc/self/status`, which starts afresh with the new program.
     - **A child's own peak memory is `VmHWM`, never `ru_maxrss` read inside a process another large one started.**
-
