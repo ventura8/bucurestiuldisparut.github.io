@@ -654,7 +654,7 @@ its `projectId` differs from the web configuration's (`invalid`, "this build bel
 ```
 
 (`ownerId` and `repoId` are the numbers `gh api users/ventura8 --jq .id` and `gh api
-repos/ventura8/bucurestiuldisparut.github.io --jq .id` print; the e2e build uses the fixture values of
+repos/ventura8/historic-city-map-maker --jq .id` print; the e2e build uses the fixture values of
 `@hcm/test-support`.)
 
 ## 4. Module ownership

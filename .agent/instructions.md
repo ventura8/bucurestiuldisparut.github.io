@@ -1,6 +1,6 @@
 # Agent Instructions
 
-This file is the canonical pre-task entry point for the `.agent` assets of the **Historic City Map** repository (București dispărut). `AGENTS.md` at the root holds the commands, boundaries and global rules; this file is the reading order and the execution rules; `docs/LESSONS.md` holds the defects behind them.
+This file is the canonical pre-task entry point for the `.agent` assets of the **Historic City Map Maker** repository (București dispărut). `AGENTS.md` at the root holds the commands, boundaries and global rules; this file is the reading order and the execution rules; `docs/LESSONS.md` holds the defects behind them.
 
 ## Mandatory Pre-Task Review
 

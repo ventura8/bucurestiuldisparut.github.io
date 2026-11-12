@@ -1,6 +1,6 @@
 # Agent Asset Maintenance Skill
 
-This skill governs the agent assets of **Historic City Map**: `AGENTS.md` (imported by `CLAUDE.md`), `.agent/` (instructions, skills, workflows), `.agents/skills/`, its byte mirror `.claude/skills/`, the subagents in `.claude/agents/`, and `docs/LESSONS.md`.
+This skill governs the agent assets of **Historic City Map Maker**: `AGENTS.md` (imported by `CLAUDE.md`), `.agent/` (instructions, skills, workflows), `.agents/skills/`, its byte mirror `.claude/skills/`, the subagents in `.claude/agents/`, and `docs/LESSONS.md`.
 
 ## Purpose
 

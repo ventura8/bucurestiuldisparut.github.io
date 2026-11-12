@@ -1,6 +1,6 @@
 ---
 name: e2e-scenarios
-description: Write, extend, audit or debug Historic City Map end-to-end scenarios - the registry e2e/scenarios.json (viewer V, admin A, pipeline P; a happy and a bad row per behaviour, ids like S-V01-HAPPY and S-V01-BAD-MANIFEST404), Playwright 1.64 tiers under the Firebase emulators (demo-hcm) and mock APIs, the network firewall, the map-instance counter, axe and the layout tour, and the admin-input budget. Use whenever a user-visible behaviour is added or changed, before closing a feature task, or when a scenario fails.
+description: Write, extend, audit or debug Historic City Map Maker end-to-end scenarios - the registry e2e/scenarios.json (viewer V, admin A, pipeline P; a happy and a bad row per behaviour, ids like S-V01-HAPPY and S-V01-BAD-MANIFEST404), Playwright 1.64 tiers under the Firebase emulators (demo-hcm) and mock APIs, the network firewall, the map-instance counter, axe and the layout tour, and the admin-input budget. Use whenever a user-visible behaviour is added or changed, before closing a feature task, or when a scenario fails.
 ---
 
 # End-to-End Scenarios Skill

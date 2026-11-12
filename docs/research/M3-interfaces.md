@@ -184,7 +184,10 @@ A KH-9 panoramic frame often holds only part of a city, so M8 joins one date's f
 Limits (`packages/shared/src/api/imagery.ts`, done): `JOBS_PER_DAY` 10 raster jobs a day per project, `RUNNING_JOBS_MAX`
 2 at once, `JOB_MAX_ATTEMPTS` 3, `LEASE_SECONDS` 600 renewed every `HEARTBEAT_SECONDS` 60, `STARTING_STALE_MINUTES` 10,
 `USGS_BACKOFF_MINUTES` 30 → 720. A local-only job (`localOnly`: an M20 archive series) never counts toward `JOBS_PER_DAY` nor
-waits for it: the cap guards the Cloud Run work (2026-11-09, `docs/research/M20-import-local.md` §1.3).
+waits for it: the cap guards the Cloud Run work (2026-11-09, `docs/research/M20-import-local.md` §1.3). Nor does any job
+placed on the owner's computer (`runOn: 'local'`), and a city whose choice is `local` starts new imports and joins past
+the cap, each placed there at its creation; moving one to the cloud asks the cap then (2026-11-12,
+`docs/research/M7-local-worker.md` §4.5).
 
 ### 2.5 USGS scenes
 
@@ -341,7 +344,8 @@ The browser never requests a USGS address (the admin's CSP does not allow one, a
 | `layers.delete` (M2c, done) | `layer-delete` `{layerId, tilesetId?, sourceSha?}` with `dispatchAt` + 7 days | |
 
 Every creator refuses when `ops/guard` is red (`apiError.guardPaused`), when today's raster jobs reached `JOBS_PER_DAY`
-(`apiError.imagery.dailyLimit {limit}`), and when the layer has an unfinished job (`apiError.layers.busy`).
+(`apiError.imagery.dailyLimit {limit}`; not for a city whose choice is `local`, M7 §4.5), and when the layer has an
+unfinished job (`apiError.layers.busy`).
 
 A new version's label and year: for a scene, `layerLabelFor(sensor, date)` (`packages/shared/src/imagery/`, fn-imagery):
 `SENSOR_SPECS[sensor].name` and the date in each language (`KH-4A Corona, 12 iulie 1966`, `KH-4A Corona, 12 July 1966`),

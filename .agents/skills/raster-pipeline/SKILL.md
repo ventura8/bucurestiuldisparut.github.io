@@ -1,6 +1,6 @@
 ---
 name: raster-pipeline
-description: Build, test or debug the Historic City Map raster pipeline (pipeline/src/hcm_pipeline, Python 3.14 with osgeo.gdal from the pinned GDAL image, Poetry) that fetches declassified USGS scans over M2M, crops, georeferences against OSM and Sentinel-2 (never Mapbox Satellite), warps to EPSG 3857, exports COGs and publishes to Mapbox MTS only after approval and within the compute-unit guard, as a resumable Cloud Run Job. Use for any pipeline, georeferencing, USGS or Mapbox publishing task.
+description: Build, test or debug the Historic City Map Maker raster pipeline (pipeline/src/hcm_pipeline, Python 3.14 with osgeo.gdal from the pinned GDAL image, Poetry) that fetches declassified USGS scans over M2M, crops, georeferences against OSM and Sentinel-2 (never Mapbox Satellite), warps to EPSG 3857, exports COGs and publishes to Mapbox MTS only after approval and within the compute-unit guard, as a resumable Cloud Run Job. Use for any pipeline, georeferencing, USGS or Mapbox publishing task.
 ---
 
 # Raster Pipeline Skill

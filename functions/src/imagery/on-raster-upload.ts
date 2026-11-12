@@ -26,7 +26,7 @@ import { UpstreamError } from '../ports/errors.js';
 import type { Ports } from '../ports/index.js';
 import { refuseBusyLayer, refuseNewRasterJob } from './limits.js';
 import { isTiff } from './magic.js';
-import { IMAGERY_WRITER, stampOf } from './records.js';
+import { IMAGERY_WRITER, pickDefined, stampOf } from './records.js';
 import { createWork, reserveLayerId, type NewWork } from './versions.js';
 
 /**
@@ -53,6 +53,8 @@ interface Plan {
     readonly label: LayerDoc['label'];
     readonly year: number;
     readonly replaces: boolean;
+    /** Where the job runs when the city's choice is `local` (`Placement`). */
+    readonly runOn?: 'local';
 }
 
 /** Why an upload is refused: an error code and the parameters its text names (`{count}` of an invalid request). */
@@ -115,8 +117,11 @@ async function planOf(deps: RasterUploadDeps, upload: RasterUpload, metadata: Ra
     if ((await deps.documents.get(FIRESTORE_PATHS.city(upload.cityId), cityDocSchema)) === undefined) {
         throw new ApiError('apiError.notFound');
     }
-    await refuseNewRasterJob(deps.documents, deps.clock.now(), upload.cityId);
-    return metadata.layerId === undefined ? newLayerPlan(deps, upload, metadata) : replacementPlan(deps, upload, metadata.layerId);
+    const placement = await refuseNewRasterJob(deps.documents, deps.clock.now(), upload.cityId);
+    const plan = await (metadata.layerId === undefined
+        ? newLayerPlan(deps, upload, metadata)
+        : replacementPlan(deps, upload, metadata.layerId));
+    return { ...plan, ...placement };
 }
 
 /** An upload that passed the sniff, with its custom metadata. */
@@ -139,6 +144,7 @@ async function createImport(deps: RasterUploadDeps, incoming: Incoming, plan: Pl
         layerId: plan.layerId,
         createdBy: upload.uid,
         now,
+        ...pickDefined(plan, ['runOn']),
     };
     await deps.documents.transaction(async (transaction) => {
         const layer = plan.replaces ? await replacedLayer(transaction, upload, plan) : undefined;
