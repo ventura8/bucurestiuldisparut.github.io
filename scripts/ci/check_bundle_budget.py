@@ -169,6 +169,10 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # editor needs them from: 0.5 KB measured on 2026-11-07, rounded up (DECISIONS-for-review.md §97h).
     "proposal-fields": 1,
     "city-budget": 2,
+    # Settings -> Browser tab icon (track/favicon, DECISIONS-for-review.md §165l): the card and the browser's checks of a
+    # chosen file, fetched the first time its section opens, so the settings chunk stays within its 20 KB (19.8 KB with the
+    # card's state): 1.3 KB measured on 2026-11-08 plus about 20 %, rounded up.
+    "icon-section": 2,
     # Step (g)'s Create the measurement reports (`packages/admin/src/google/analytics-reports.ts`: the GA4 property found
     # from the measurement id and the field measurements' custom definitions), fetched on its button's click only: 0.8 KB
     # measured on 2026-11-01 plus about 20 %, rounded up (DECISIONS-for-review.md §76f).

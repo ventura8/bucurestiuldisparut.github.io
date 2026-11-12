@@ -1023,6 +1023,27 @@
             "name": "The project’s landing page on GitHub Pages: what Historic City Map Maker is, the start page, the terminal road, the example and the links, in English and Romanian",
             "milestone": "M14",
             "source": "the owner, 2026-11-12: GitHub Pages becomes the landing page for whoever wants to start their own map (DECISIONS §162)"
+        },
+        {
+            "id": "V54",
+            "area": "viewer",
+            "name": "The public map's tab shows its city's icon: the Layers map glyph by default, an editor's upload once set",
+            "milestone": "M18",
+            "source": "the owner, 2026-11-08: the Layers map icon as the default browser tab icon, and the admin can change it; docs/research/M2-interfaces.md → The city's tab icon"
+        },
+        {
+            "id": "V55",
+            "area": "viewer",
+            "name": "The default tab icon wears the theme the user chose: the system's scheme first, then the chosen theme's colours",
+            "milestone": "M18",
+            "source": "the owner, 2026-11-12: make sure the icon in the tab uses the theme set by the user; docs/ENGINE_API.md → The page's tab icon"
+        },
+        {
+            "id": "A101",
+            "area": "admin",
+            "name": "Settings → Browser tab icon: the default drawn for every city, an upload checked from its bytes, Use the default",
+            "milestone": "M18",
+            "source": "the owner, 2026-11-08: the Layers map icon as the default browser tab icon, and the admin can change it; docs/research/M2-interfaces.md → The city's tab icon"
         }
     ],
     "scenarios": [
@@ -17503,6 +17524,116 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Live 2026-11-12 (harti.zip 1895, track/workerfix). Tests: pipeline/tests/unit/test_placing_assemble_stitched.py."
+        },
+        {
+            "id": "S-V55-HAPPY",
+            "behaviour": "V55",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The default tab icon wears the visitor's theme",
+            "asserts": "under a dark system the page's one icon link is the glyph on the city's dark primary; Light chosen in Settings -> the link is redrawn on the light primary, and stays so after a reload (the stored choice wins over the system); a city on the default keeps the themed icon and links icon-180.png for the home screen; the admin's tab is drawn in the admin's theme the same way",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12 (docs/ENGINE_API.md → The page's tab icon; DECISIONS-for-review.md §166). Test: e2e/specs/viewer/language-theme.spec.ts, scripts/site/test/hosting-pages.test.ts, packages/shared/test/kit/tab-icon.test.ts, packages/ui/test/admin/shell/tab-icon.test.ts."
+        },
+        {
+            "id": "S-V55-BAD-UNKNOWN-THEME",
+            "behaviour": "V55",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A stored theme that is no theme leaves the tab icon in the system's scheme",
+            "asserts": "localStorage holds a theme value the engine does not know, the system is dark -> the viewer and the tab icon wear the dark scheme; a city's uploaded icon, a page without an icon link, a host without a theme and a browser without a canvas are left as they are",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12 (docs/ENGINE_API.md → The page's tab icon). Test: e2e/specs/viewer/language-theme.spec.ts, packages/shared/test/kit/tab-icon.test.ts."
+        },
+        {
+            "id": "S-V54-HAPPY",
+            "behaviour": "V54",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Every city's tab shows its own icon from the public bucket",
+            "asserts": "the Hosting root and the generic city page (/bacau/) swap their inlined default for the city's uploaded icon (icon-own-32.png) once that loads, in one link without a scheme, and link icon-180.png for a phone's home screen; a site built without the bucket inlines the default",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/specs/viewer/hosting.spec.ts, scripts/site/test/hosting-pages.test.ts, scripts/site/test/build.test.ts."
+        },
+        {
+            "id": "S-V54-BAD-MISSING",
+            "behaviour": "V54",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A city without an icon keeps the default in its tab",
+            "asserts": "the generic city page of a city the bucket does not hold (icon-own-32.png and icon-180.png 404) keeps its inlined default and adds no home-screen icon; the page says the map was not found as before",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/specs/viewer/hosting.spec.ts, scripts/site/test/hosting-pages.test.ts."
+        },
+        {
+            "id": "S-A101-HAPPY-DEFAULT",
+            "behaviour": "A101",
+            "area": "admin",
+            "path": "happy",
+            "title": "A new city gets the default tab icon from the manifest's build",
+            "asserts": "a city written with no icon -> the build draws the map glyph in its seed colour as icon-32/180/512.png in the public bucket and records icon.source default; Settings shows it tagged Default; a new seed colour draws it again, an upload is left alone",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/admin/specs/settings/icon.spec.ts, functions/test/publish/icon.test.ts."
+        },
+        {
+            "id": "S-A101-HAPPY-UPLOAD",
+            "behaviour": "A101",
+            "area": "admin",
+            "path": "happy",
+            "title": "An editor uploads a PNG as the city's tab icon",
+            "asserts": "Upload an image with a 256 px PNG -> cities.setIcon writes the three PNGs (5-minute cache) over the old ones, the city's icon is Custom, the card previews the new 180 px file and the snackbar says it changed; a WebP works the same",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/admin/specs/settings/icon.spec.ts, functions/test/cities/set-icon.test.ts, packages/admin/test/settings/icon.test.ts, packages/ui/test/admin/settings/icon-section.test.ts."
+        },
+        {
+            "id": "S-A101-HAPPY-RESET",
+            "behaviour": "A101",
+            "area": "admin",
+            "path": "happy",
+            "title": "Use the default icon draws the default again",
+            "asserts": "an uploaded icon, Use the default icon -> cities.setIcon reset draws the map glyph in the city's colour and the card says Default",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/admin/specs/settings/icon.spec.ts, functions/test/cities/set-icon.test.ts, packages/admin/test/settings/icon.test.ts."
+        },
+        {
+            "id": "S-A101-BAD-SVG",
+            "behaviour": "A101",
+            "area": "admin",
+            "path": "bad",
+            "title": "An SVG (or any file that is not PNG or WebP) is refused and nothing changes",
+            "asserts": "an SVG named sigla.png -> refused in the browser from its first bytes with apiError.cityIcon.badType in the admin's language, nothing sent; the server refuses an SVG, JPEG, PDF or renamed file the same, and an image too large, not square or animated with its own message; no object or record is written",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/admin/specs/settings/icon.spec.ts, functions/test/cities/set-icon.test.ts, packages/admin/test/settings/icon.test.ts."
+        },
+        {
+            "id": "S-A101-BAD-SMALL",
+            "behaviour": "A101",
+            "area": "admin",
+            "path": "bad",
+            "title": "An image too small is refused by the server with a plain message",
+            "asserts": "a 64 px PNG -> apiError.cityIcon.tooSmall {min: 192} beside the buttons; the city's icon is not custom",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/admin/specs/settings/icon.spec.ts, packages/admin/test/settings/icon.test.ts."
+        },
+        {
+            "id": "S-A101-BAD-CLIENT-WRITE",
+            "behaviour": "A101",
+            "area": "admin",
+            "path": "bad",
+            "title": "No client writes a city's icon record or files",
+            "asserts": "a client update of cities/{city}.icon, or a write of cities/{city}/icon-*.png (or an SVG beside it) -> denied for every persona",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: firebase/rules-tests/test/cities.test.ts, firebase/rules-tests/test/storage.test.ts."
         }
     ]
 }

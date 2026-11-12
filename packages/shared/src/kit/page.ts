@@ -61,6 +61,12 @@ export interface KitPageValues {
     readonly sources?: ExtraSources;
     /** The telemetry's hosts in the policy (default true; an export's manifest has no analytics id: false). */
     readonly analytics?: boolean;
+    /**
+     * The tab icon, a PNG as a `data:` address (an export carries its city's: `docs/ENGINE_API.md` → *The page's tab
+     * icon*). Left out, the page keeps its own (the template's: the Layers panel's map glyph). Only this slot is optional:
+     * a page made before icons has `<link rel="icon" href="data:," />`, which it fills just the same.
+     */
+    readonly icon?: string;
 }
 
 const TEXT_ENTITIES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
@@ -124,6 +130,7 @@ const SLOTS = {
     viewerManifest: { tag: 'hcm-map-viewer', name: 'manifest-url' },
     description: { tag: 'meta', name: 'content', keep: named('description') },
     themeColor: { tag: 'meta', name: 'content', keep: named('theme-color') },
+    icon: { tag: 'link', name: 'href', keep: (tag) => attributeOf(tag, 'rel') === 'icon' },
     policy: { tag: 'meta', name: 'content', keep: (tag) => attributeOf(tag, 'http-equiv') === 'Content-Security-Policy' },
 } as const satisfies Record<string, AttributeSlot>;
 
@@ -286,6 +293,16 @@ function checkedColor(color: string): string {
     return color;
 }
 
+/** A PNG as a `data:` address, at most 100 000 characters (a 32 px icon is a few kilobytes). */
+const PNG_DATA_URL = /^data:image\/png;base64,[A-Za-z0-9+/]{4,100000}={0,2}$/;
+
+function checkedIcon(icon: string): string {
+    if (!PNG_DATA_URL.test(icon)) {
+        throw new KitPageError('the tab icon must be a PNG as a data: address');
+    }
+    return icon;
+}
+
 function checkedLang(lang: string): string {
     if (lang !== 'ro' && lang !== 'en') {
         throw new KitPageError(`the kit page's language is ro or en: ${lang}`);
@@ -319,6 +336,7 @@ function textSteps(values: KitPageValues): readonly ((page: string) => string)[]
                 given(values.manifestUrl, (url) => escaped(checkedManifestUrl(url), true)),
             ),
         (page) => setAttribute(page, SLOTS.viewerLang, lang),
+        (page) => (values.icon === undefined ? page : setAttribute(page, SLOTS.icon, checkedIcon(values.icon))),
     ];
 }
 

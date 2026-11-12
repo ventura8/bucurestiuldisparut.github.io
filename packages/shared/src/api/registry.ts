@@ -32,6 +32,7 @@ import {
     citySetRoleRequestSchema,
     citySetRoleResponseSchema,
 } from './cities.js';
+import { cityIconRequestSchema, cityIconResponseSchema } from './city-icon.js';
 import {
     EXPORT_QUEUE,
     exportDownloadRequestSchema,
@@ -313,6 +314,8 @@ export const ADMIN_CALLABLES = {
     'cities.create': projectOwner('fn-cities', citiesCreateRequestSchema, citiesCreateResponseSchema),
     'cities.locate': projectOwner('fn-cities', citiesLocateRequestSchema, citiesLocateResponseSchema),
     'cities.setLimits': projectOwner('fn-cities', citiesSetLimitsRequestSchema, citiesSetLimitsResponseSchema),
+    // The city's browser tab icon (docs/research/M2-interfaces.md → The city's tab icon): its editors change it, as the theme.
+    'cities.setIcon': cityEditor('fn-cities', cityIconRequestSchema, cityIconResponseSchema),
     'admins.setRole': cityOwner('fn-admin', citySetRoleRequestSchema, citySetRoleResponseSchema),
     // M5 static export (owner fn-export, docs/research/M5-interfaces.md §5.3): a city's owners export it and download it.
     'export.start': cityOwner('fn-export', exportStartRequestSchema, exportStartResponseSchema),

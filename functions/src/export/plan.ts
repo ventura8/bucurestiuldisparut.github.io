@@ -55,6 +55,8 @@ export interface PlanInput {
     readonly engine: readonly KitFile[];
     /** The export's day (the README names it). */
     readonly madeAt: Date;
+    /** The city's own tab icon (32 px, a `data:` address); absent, the page keeps the kit's default. */
+    readonly icon?: string;
 }
 
 type ExportCounts = NonNullable<CityExportDoc['counts']>;
@@ -160,7 +162,7 @@ export function planExport(input: PlanInput): ExportPlan {
         madeAt: input.madeAt,
     });
     const entries: PlannedEntry[] = [
-        text(EXPORT_LAYOUT.page, exportPage(input.kitPage, manifest)),
+        text(EXPORT_LAYOUT.page, exportPage(input.kitPage, manifest, input.icon)),
         text(EXPORT_LAYOUT.manifest, `${JSON.stringify(manifest, null, 2)}\n`),
         text(EXPORT_LAYOUT.readme, readme),
         text(EXPORT_LAYOUT.rights, rightsDocument(manifest.city.name, rights)),

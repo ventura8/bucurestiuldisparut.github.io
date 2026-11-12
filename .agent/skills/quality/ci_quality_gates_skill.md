@@ -139,3 +139,4 @@ Today the stage runs the harness (`e2e/specs/harness/`, behaviour V00: WebGL2, t
 - Lower a threshold, add an exclusion to pass, `.skip`, `.only`, `xfail`, or move a file out of a gate's scope.
 - Accept a Sonar finding as "Accepted" or "False positive", or add `sonar.issue.ignore.*`.
 - Pipe the pipeline through `tail`/`head`, or edit `scripts/ci/run-all-checks.sh` while it runs.
+- A new Settings card goes into a lazy chunk of its own (`lazy-icon.ts`, `lazy-budget.ts`) with its row in `ADMIN_CHUNK_BUDGETS` when the `settings` chunk is within about 1 KB of its 20 KB; never a raise of the settings budget (`docs/LESSONS.md` 495).

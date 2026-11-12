@@ -209,8 +209,8 @@ describe('the deployment', () => {
         // M12: `imagery.previewUrl` (a signed hour of a version's private archive). M13: the roles' and review's 7.
         // M16: `imagery.recalibrate`. M17: the stories' `history.onStoryWrite` and `publish.onStoryWrite`. M20: the local
         // archive's `worker.archiveReport`, `imagery.archiveImport` and `imagery.confirmRights`;
-        // `imagery.deleteVersion`.
-        expect(expected).toHaveLength(97);
+        // `imagery.deleteVersion`. The tab icon's `cities.setIcon`.
+        expect(expected).toHaveLength(98);
         expect(expected).toEqual(
             expect.arrayContaining([
                 'worker-hello',
@@ -228,7 +228,7 @@ describe('the deployment', () => {
                 'imagery-deleteVersion',
             ]),
         );
-        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 97, total: 97, failed: [] });
+        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 98, total: 98, failed: [] });
     });
 
     it('badPath_someMissingIsPendingAndOneFailedIsInvalid', () => {

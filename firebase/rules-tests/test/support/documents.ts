@@ -91,6 +91,7 @@ export function cityDoc(cityId: string): Data {
         imagery: { autoPublish: true, rmseThresholdM: 15, targetYears: [1966, 1976, 1977, 1978, 1980] },
         // M5 (docs/research/M5-interfaces.md §1.8): the city's share of the budgets, server-owned.
         limits: { computeUnitsPerMonth: 5, rasterJobsPerDay: 3, aiRequestsPerMonth: 100, geocodeCellsPerDay: 100, exportsPerDay: 3 },
+        icon: { source: 'custom', url: 'https://storage.googleapis.com/b/icon-180.png', sha256: 'c'.repeat(64), ...systemStamp('icon') },
         published: true,
         createdAt: past(),
         ...systemStamp('setup'),

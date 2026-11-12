@@ -3432,3 +3432,32 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `start-site.css` and `landing.css` gave their links `min-block-size: 2.75rem`; `landing.spec.ts` passed the project's language to `adminVisit` for a page whose language is its own (`index.html` English, `ro.html` Romanian). The specs had been run at `admin-l1440-ro` only.
     - Fix and pin: both link classes are `3rem` high; the landing visits name the page's own language (S-A132-HAPPY-LANDING, S-A76-HAPPY-LEGAL at every admin project).
     - **A link that stands alone (a footer, a list, a switch) is a touch target of 48 px; a page with its own language is checked in that language, not the project's; a new spec is run at the compact and the medium project before it is called green.**
+
+585. **A new server-owned field the complete rules fixture lacks makes its "never removed" row pass for nothing.**
+    - Seen: 2026-11-08, track/favicon: `client-writes.test.ts` found that a client could "remove" `cities/{city}.icon`, the tab icon's record; removing a field the seeded city did not have changes nothing, so the rule allowed it.
+    - Cause: the field was added to `cityDocSchema` and the server, but not to `firebase/rules-tests/test/support/documents.ts`'s complete city, which every server-owned row seeds.
+    - Found by: the `tests` stage (`documents.test.ts` compares the fixture's keys with the schema's, `client-writes.test.ts` the removal). Fix: the fixture carries `icon`; the rule was right all along.
+    - **A field added to a document schema joins the rules' complete fixture in the same change, server-owned or not.**
+
+586. **A request limit equal to the size limit's base64 hides the size message behind "invalid request".**
+    - Seen: 2026-11-08, track/favicon: a 1,000,003-byte PNG sent to `cities.setIcon` came back `apiError.invalidRequest`, not `apiError.cityIcon.tooBig`, because its base64 was longer than the schema's `maxBase64Chars`.
+    - Cause: the schema's cap (base64 of exactly 1 MB) refuses everything above it before the handler measures the bytes.
+    - Found by: `functions/test/cities/set-icon.test.ts`. Fix: the admin checks the size in the browser first (`browserProblem`), so an editor always reads the size message; the server's cap stays as the request's own limit.
+    - **When a schema caps a payload that the handler also measures, the client says the plain reason before sending.**
+
+587. **A card added to an area chunk at its budget pushes the chunk over it.**
+    - Seen: 2026-11-08, track/favicon: Settings → Browser tab icon took the `settings` chunk to 20.6 KB of its 20 KB.
+    - Cause: the settings chunk had about 0.5 KB left, and a card's view, its CSS and its file checks weigh more.
+    - Found by: the `build` stage's `bundle-budget` on the NUC. Fix: the card is a chunk of its own fetched when its section first opens (`lazy-icon.ts`), the file checks went with it, its CSS went (the page's own classes do), and the new chunk got its row (DECISIONS-for-review.md §165l); no budget raised.
+    - **A new Settings card starts as a lazy chunk when the settings chunk is within 1 KB of its budget; measure before the review, not after.**
+
+588. **A page that links a file the server has not written yet shows nothing until the server is updated.**
+    - Seen: 2026-11-12, track/favicon: the Hosting root linked `cities/bucharest/icon-32.png` in the public bucket, which only the new functions draw; a Hosting deploy alone would have left the live tab without an icon until Update the map.
+    - Cause: the default was made to depend on a server-written object, though the page could inline it.
+    - Found by: comparing the built page with the live bucket (a 404) before the deploy. Fix: every page inlines the default and a script swaps in the bucket's file once it has loaded (DECISIONS-for-review.md §166d).
+    - **A default never depends on another deploy: inline it, and treat the server's file as the upgrade.**
+
+589. **Lines appended to a served `config.js` break every reader that expects one literal assignment.**
+    - Seen: 2026-11-12, track/favicon: `build.test.ts` reads the built `config.js` with `readConfigJs`.
+    - Found by: reading the tests before the change. Fix: the tab icon's script is its own file, `tab-icon.js` (§166c).
+    - **A page's new behaviour gets its own script file; `config.js` stays data.**

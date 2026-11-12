@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
+import { DEFAULT_FAVICON_DATA_URL } from '../../src/kit/map-icon.js';
 import { KIT_PLACEHOLDER_TOKEN, readKitEngine } from '../../src/kit/page.js';
 import { NEW_CITY_SEEDS } from '../../src/schemas/cities.js';
 import { photoSchema } from '../../src/schemas/manifest.js';
@@ -89,5 +90,14 @@ describe('the template index.html', () => {
         expect(page).not.toMatch(/<style\b|\sstyle="/);
         expect(page).toMatch(/<hcm-map-viewer manifest-url="city\.json" lang="ro">\s*<p class="hcm-note" lang="ro">/);
         expect(page).toContain('<p class="hcm-note" lang="en">');
+    });
+});
+
+describe('the template page’s tab icon', () => {
+    it('happyPath_isTheDefaultMapIconInlined', () => {
+        const page = readFileSync(new URL(`${KIT}index.html`, ROOT), 'utf8');
+
+        expect(page).toContain(`href="${DEFAULT_FAVICON_DATA_URL}"`);
+        expect(page).not.toContain('href="data:,"');
     });
 });

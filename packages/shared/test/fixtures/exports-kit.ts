@@ -20,4 +20,10 @@ export const KIT_EXPORTS: readonly string[] = [
     'readKitPolicy',
     'kitResult',
     'isUnpinned',
+    // The browser tab icon's limits and callable schemas (`src/api/city-icon.ts`); the glyph, the default and its painter
+    // are `@hcm/shared/tab-icon`.
+    'CITY_ICON_LIMITS',
+    'CITY_ICON_SIZES',
+    'cityIconRequestSchema',
+    'cityIconResponseSchema',
 ];

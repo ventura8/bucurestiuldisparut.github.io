@@ -174,6 +174,8 @@ export function settingsState(overrides: Partial<SettingsViewState> = {}): Setti
         },
         // M5 (owner: multi-city): the city's budget, as its section starts.
         budget: { status: 'loading', failure: null, owner: false, limits: null, draft: {}, used: {}, saving: false, error: null },
+        // The browser tab icon's card, idle.
+        icon: { busy: false, error: null },
         ...overrides,
     };
 }

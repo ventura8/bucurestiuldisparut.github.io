@@ -133,6 +133,21 @@ export const cityDocSchema = z.strictObject({
             exportsPerDay: z.number().int().min(0),
         })
         .optional(),
+    /**
+     * The city's tab icon (`docs/research/M2-interfaces.md` → *The city's tab icon*), server-owned: written by
+     * `cities.setIcon` and the manifest's build (the default, in the city's seed colour, `seedColor`), never by a client.
+     * The files are `STORAGE_PATHS.cityIcon`; `url` is the 180 px one (the admin's preview), `sha256` the source's (the
+     * upload's bytes, or the default's SVG).
+     */
+    icon: z
+        .strictObject({
+            source: z.enum(['default', 'custom']),
+            seedColor: hexColorSchema.optional(),
+            url: httpsUrlSchema,
+            sha256: sha256Schema,
+            ...stamp,
+        })
+        .optional(),
     published: z.boolean(),
     createdAt: timestampSchema.optional(),
     ...stamp,

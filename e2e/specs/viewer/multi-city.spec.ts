@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 
 import { PAGES_FOLDER, SECOND_CITY, SECOND_CITY_PHOTOS, UNPUBLISHED_CITY } from '../../fixtures/second-city.js';
 import { E2E_CITY_ID, E2E_PUBLIC_BUCKET } from '../../fixtures/world.js';
+import { serveCityIcons } from '../../support/hosting.js';
 import { mapFacts } from '../../support/map.js';
 import { expect, test } from '../../support/test.js';
 import { engineEvents, t, waitForEngineEvent } from '../../support/viewer.js';
@@ -83,6 +84,8 @@ test(
             asked.push(route.request().url());
             await route.fulfill({ status: 404, contentType: 'text/plain', body: 'Not found' });
         });
+        // The tab icon's probes are answered apart: this row is about the manifest's 404 line.
+        await serveCityIcons(page, bucket);
 
         await page.goto(pagePath(UNPUBLISHED_CITY, lang));
 
