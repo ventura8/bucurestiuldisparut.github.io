@@ -20,8 +20,8 @@ import { releaseScenes } from './release-scene.js';
 import { relocateParked } from './relocate.js';
 
 /**
- * `imagery.tick` (every 5 minutes, one instance; `docs/research/M3-interfaces.md` §4.6): the raster work's clock. For
- * every city, each part on its own (a failure is logged and the next part runs): dispatch, lost executions, the
+ * `imagery.tick` (every 15 minutes, `IMAGERY_TICK_SCHEDULE`, one instance; `docs/research/M3-interfaces.md` §4.6): the raster
+ * work's clock. For every city, each part on its own (a failure is logged and the next part runs): dispatch, lost executions, the
  * cancellations and approvals a lost event left, MTS polls gone missing, deferred publishes, due layer deletions, the
  * files of long-ended versions, the monthly harvest, (M25) the Landsat imports and (M4) the order watch. While the budget guard is red only the
  * parts that end or recover work run (lost executions, cancellations) and the order watch, which asks USGS and reminds

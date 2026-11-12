@@ -1,7 +1,7 @@
 /**
  * The `imagery.*` functions (`docs/research/M3-interfaces.md` §9): the callables of the Imagery area, the georeferencer
  * and the layer editor; the dispatcher on job writes, the raster upload trigger, the publisher's task queue and the
- * five-minute tick; M7's choice of where a job runs (`imagery.runOn`). `functions/src/index.ts` exports
+ * fifteen-minute tick; M7's choice of where a job runs (`imagery.runOn`). `functions/src/index.ts` exports
  * `imagery = imageryFunctions(getDeps, bucket)`, which deploys `imagery-search`, `imagery-browse`, ..., `imagery-tick`.
  */
 import type { CallableDeps } from '../api/callable.js';

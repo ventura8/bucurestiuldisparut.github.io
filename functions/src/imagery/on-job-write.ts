@@ -1,6 +1,6 @@
 import '../global-options.js';
 
-import { BACKGROUND_FUNCTIONS, CITY_ID_PATTERN, jobDocSchema, validate, type JobDoc } from '@hcm/shared';
+import { BACKGROUND_FUNCTIONS, CITY_ID_PATTERN, FIRESTORE_PATHS, jobDocSchema, validate, type JobDoc } from '@hcm/shared';
 import { onDocumentWritten } from 'firebase-functions/firestore';
 
 import { runAs } from '../global-options.js';
@@ -12,6 +12,7 @@ import { dispatchJob } from './dispatch.js';
 import { releaseCancelled } from './end.js';
 import { noticeJobChange } from './job-notices.js';
 import { datePlanChangedBy, rewriteDatePlan } from './join-plan.js';
+import { cityIds } from './limits.js';
 import { locateEnded, recordProvedPass } from './pass-calibration.js';
 
 /**
@@ -24,7 +25,9 @@ import { locateEnded, recordProvedPass } from './pass-calibration.js';
  * changed, or that got the admin's OK past the free tier, is dispatched again; a cloud run that ended is counted into
  * the month's Cloud Run use. M8 (`docs/research/M8-join-interfaces.md` §5): a frame that rendered, or a join published,
  * rewrites the plan of whole-city dates. M9 (`docs/research/M9-calibration.md` §2): a `locate` that ended proved leaves its model
- * for the next frame of its pass.
+ * for the next frame of its pass. 2026-11-12 (reports/resource-audit.md item 9): a run that ends frees its place, so the queued jobs
+ * of every city are dispatched at once (a third job waiting for capacity, a join waiting for its frames), not at the next
+ * `imagery.tick`, which runs every 15 minutes since.
  */
 export type JobWriteDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'jobs' | 'tasks'>;
 
@@ -106,6 +109,26 @@ async function recordRests(deps: JobWriteDeps, cityId: string, jobId: string, wr
     }
 }
 
+/** The statuses of a job that holds a place among `RUNNING_JOBS_MAX`, or will: its run's start or its run. */
+const HOLDING: ReadonlySet<JobDoc['status']> = new Set<JobDoc['status']>(['starting', 'running']);
+
+/** A run that ended, or went back to a wait: the place it held is free. */
+export function placeFreed(before: JobDoc | undefined, after: JobDoc): boolean {
+    return before !== undefined && HOLDING.has(before.status) && !HOLDING.has(after.status);
+}
+
+/** Every city's queued jobs dispatched (places are the project's, not a city's), each on its own: a failure is logged. */
+async function dispatchQueued(deps: JobWriteDeps): Promise<void> {
+    for (const cityId of await cityIds(deps.documents)) {
+        const queued = await deps.documents.query(FIRESTORE_PATHS.jobs(cityId), jobDocSchema, { where: [['status', '==', 'queued']] });
+        for (const { id } of queued.documents) {
+            await dispatchJob(deps, cityId, id).catch((error: unknown) => {
+                deps.log.warn('queued job not dispatched', { cityId, jobId: id, error: String(error) });
+            });
+        }
+    }
+}
+
 /** Acts on one write of a job; returns the transition it acted on. */
 export async function onJobWrite(deps: JobWriteDeps, cityId: string, jobId: string, change: JobChange): Promise<JobTransition> {
     const after = parsed(change.after);
@@ -124,6 +147,9 @@ export async function onJobWrite(deps: JobWriteDeps, cityId: string, jobId: stri
     // M4 (docs/research/M4-interfaces.md §5.1, assists-notify): a failed job, a version waiting for Approve or for points.
     await noticeJobChange(deps, { cityId, jobId, job: after }, before);
     await recordRests(deps, cityId, jobId, { before, after });
+    if (placeFreed(before, after)) {
+        await dispatchQueued(deps);
+    }
     return transition;
 }
 

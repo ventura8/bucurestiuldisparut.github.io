@@ -31,7 +31,7 @@ export type OwnTilesSweepDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'tas
 
 type StoredVersion = StoredDocument<LayerVersionDoc>;
 
-/** Two ticks' rest after a version's last write: its own publish task may be on its way, and the sweep must not run beside it. */
+/** Five minutes' rest after a version's last write: its own publish task may be on its way, and the sweep must not run beside it. */
 const SETTLE_MS = 300_000;
 
 /** The job of a version's tiles: one per version, so a failed one waits for its Retry instead of being made again each tick. */

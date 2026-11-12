@@ -245,7 +245,7 @@ export const ro = {
     'adminContent.imagery.notice.cancelRefused': 'Procesarea nu a putut fi oprită.',
     'adminContent.imagery.notice.dismissed': 'Imaginea a fost ștearsă.',
     'adminContent.imagery.notice.versionDeleted': 'Versiunea a fost ștearsă.',
-    'adminContent.imagery.notice.resumed': 'Procesarea reîncepe în cel mult cinci minute.',
+    'adminContent.imagery.notice.resumed': 'Procesarea reîncepe în cel mult 15 minute.',
     'adminContent.imagery.guard.paused': 'Procesare oprită: Google Cloud a costat luna aceasta {cost} din {budget}. Harta publică merge.',
     'adminContent.imagery.guard.pausedPlain': 'Procesarea e oprită de protecția bugetului. Harta publică funcționează în continuare.',
     'adminContent.imagery.guard.resume': 'Reia procesarea',
