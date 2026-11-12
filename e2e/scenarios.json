@@ -17034,7 +17034,7 @@
             "asserts": "extract -> None; the series waits with the export note",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_assemble.py."
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_assemble.py (a single map), pipeline/tests/unit/test_placing_pdf.py (an atlas and pieces, lesson 593)."
         },
         {
             "id": "S-P20-HAPPY-GRID",

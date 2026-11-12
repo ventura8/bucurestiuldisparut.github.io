@@ -7,8 +7,8 @@ import numpy
 import pikepdf
 import pytest
 from hcm_pipeline.contract import Errors
-from hcm_pipeline.jobs import Done, StepFailedError
-from hcm_pipeline.placing import pdfpages
+from hcm_pipeline.jobs import Done, StepFailedError, Waiting
+from hcm_pipeline.placing import maps, pdfpages
 from hcm_pipeline.placing.pdfpages import extract_pages
 from hcm_pipeline.steps.place import PlaceStep
 
@@ -75,3 +75,28 @@ def test_bad_path_a_broken_pdf_fails_the_job_with_one_clear_line(world: Pipeline
 
     assert failed.value.code == Errors.ARCHIVE_CORRUPT
     assert "broken.pdf is not a readable PDF" in str(failed.value)
+
+
+@pytest.mark.parametrize("series_class", ["atlas", "pieces"])
+def test_bad_path_an_atlas_or_pieces_pdf_that_needs_a_password_waits_for_a_person(
+    world: PipelineWorld, tmp_path: Path, series_class: str
+) -> None:
+    """Scenarios: S-P20-BAD-PDF-PASSWORD"""
+    ctx = series_context(world, tmp_path, ["locked.pdf"], {"class": series_class, "encoding": "grey"})
+    locked = pikepdf.Encryption(owner="owner-secret-x", user="user-secret-y", R=6)
+    pdf_of(originals(ctx) / "locked.pdf", [numpy.full((40, 30), 90, numpy.uint8)], locked)
+
+    assert isinstance(PlaceStep().run(ctx), Waiting)
+    help_item = world.version()["help"]
+    assert isinstance(help_item, dict)
+    assert help_item["note"] == maps.PDF_LOCKED
+
+
+def test_bad_path_an_atlas_pdf_with_no_page_image_has_nothing_to_lay_out(world: PipelineWorld, tmp_path: Path) -> None:
+    ctx = series_context(world, tmp_path, ["text.pdf"], {"class": "atlas", "encoding": "grey"})
+    pdf_of(originals(ctx) / "text.pdf", [None])
+
+    assert isinstance(PlaceStep().run(ctx), Waiting)
+    help_item = world.version()["help"]
+    assert isinstance(help_item, dict)
+    assert help_item["note"] == maps.NO_PAGES
