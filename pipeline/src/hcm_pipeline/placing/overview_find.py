@@ -8,6 +8,9 @@ import re
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Final
+
+import numpy as np
 
 from hcm_pipeline.placing.assemble import CANVAS_MAX_PX
 from hcm_pipeline.placing.overview import MosaicReport, TileFit, detail_of, fit_tiles, paste_on_overview
@@ -143,6 +146,10 @@ def find_overview(root: Path, sheets: Sequence[Path]) -> Path | None:
     return _search(folder, root, set(resolved), _tokens(folder.name) | _tokens(folder.parent.name))
 
 
+# What stands for a tile that did not fit: never pasted, so never read.
+_EMPTY: Final = np.zeros((0, 0), dtype=np.uint8)
+
+
 def _read_grey(path: Path, read_px: int) -> UInt8Array:
     return grey_of(read_working(path, read_px).image)
 
@@ -158,10 +165,11 @@ def _enough(placed: int, total: int) -> bool:
     return placed >= max(2, (total + 1) // 2)
 
 
-def _colour_tiles(tiles: Sequence[tuple[str, Path]], read_px: int) -> Iterator[tuple[str, UInt8Array]]:
-    """Each tile read again in its own colour at the size it was fitted at, one at a time as it is pasted: a colour series' tiles
-    are never all held in three bands at once (the canvas itself can be 15,000 x 17,000)."""
-    return ((name, read_working(path, read_px).image) for name, path in tiles)
+def _colour_tiles(tiles: Sequence[tuple[str, Path]], fits: Sequence[TileFit | None], read_px: int) -> Iterator[tuple[str, UInt8Array]]:
+    """Each placed tile read again in its own colour at the size it was fitted at, one at a time as it is pasted: a colour series'
+    tiles are never all held in three bands at once (the canvas itself can be 15,000 x 17,000). A tile that did not fit is skipped
+    by the paste, so it is not read again (an empty stand-in keeps the pairing with its fit)."""
+    return ((name, _EMPTY if fit is None else read_working(path, read_px).image) for (name, path), fit in zip(tiles, fits, strict=True))
 
 
 def _mosaic(
@@ -176,7 +184,7 @@ def _mosaic(
     cols = settings.cols if settings.cols is not None else side
     fits = fit_tiles(loaded, overview_grey, rows, cols)
     scale = settings.upscale if settings.upscale is not None else _upscale_of(fits, overview_grey)
-    pieces = _colour_tiles(tiles, settings.read_px) if settings.colour else loaded
+    pieces = _colour_tiles(tiles, fits, settings.read_px) if settings.colour else loaded
     return paste_on_overview(pieces, fits, overview_grey.shape, scale, settings.colour)
 
 

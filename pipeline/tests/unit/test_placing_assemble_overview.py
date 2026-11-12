@@ -1,15 +1,21 @@
 """Pieces and atlases overview mosaic and page-size helpers (docs/research/M20-import-local.md)."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import cv2
 import numpy
-from hcm_pipeline.jobs import Done, Waiting
+from hcm_pipeline.documents import GeorefInfo, ScanInfo
+from hcm_pipeline.geo import to_lnglat, to_mercator
+from hcm_pipeline.georef.transforms import Gcp
+from hcm_pipeline.jobs import Done, JobContext, Waiting
 from hcm_pipeline.placing import assemble, maps
 from hcm_pipeline.placing.raster_io import read_working
+from hcm_pipeline.raster import gdal
 from hcm_pipeline.steps.place import PlaceStep
 
 from tests.fakes.world import PipelineWorld
+from tests.synthetic.scenes import CENTRE
 from tests.synthetic.town import TownSpec, town_lines, write_map
 from tests.unit.placing_support import originals, series_context
 from tests.unit.test_placing_assemble import town_map
@@ -40,8 +46,8 @@ def test_happy_path_pieces_with_an_overview_use_it_as_the_series_picture(world: 
     assert record["joined"] >= 3
 
 
-def test_happy_path_a_colour_series_on_its_overview_keeps_its_colour(world: PipelineWorld, tmp_path: Path) -> None:
-    """Scenarios: S-P20-HAPPY-OVERVIEW-COLOUR"""
+def _colour_pieces(world: PipelineWorld, tmp_path: Path) -> JobContext:
+    """A colour pieces series cut from a tinted overview that lies beside it in the archive."""
     overview = _tinted(_make_overview((800, 800)))
     names = [f"Sheet/r{row}c{col}.tif" for row, col in ((1, 1), (1, 2), (2, 1), (2, 2))]
     ctx = series_context(world, tmp_path, names, {"class": "pieces", "encoding": "colour"}, lines=town_lines(TownSpec(seed=77)))
@@ -50,6 +56,33 @@ def test_happy_path_a_colour_series_on_its_overview_keeps_its_colour(world: Pipe
     write_map(root / "area-1895.tif", overview)
     for index, (row, col) in enumerate(((0, 0), (0, 1), (1, 0), (1, 1))):
         write_map(root / names[index], _make_tile(overview, row, col, (2, 2), upscale=2))
+    return ctx
+
+
+def _coloured(path: Path) -> None:
+    """The raster keeps three distinct colour bands (a grey canvas would give equal ones)."""
+    bands = read_working(path, 400).image
+    assert bands.ndim == 3
+    assert float(numpy.mean(numpy.abs(bands[:, :, 0].astype(int) - bands[:, :, 2].astype(int)))) > 20
+
+
+def _owner_georef(scan: ScanInfo) -> GeorefInfo:
+    """Eight of the owner's pairs over the scan: one metre a pixel, north up, on the town's centre."""
+    cx, cy = to_mercator(*CENTRE)
+    spots = [
+        (scan.width * fx, scan.height * fy)
+        for fx, fy in ((0.1, 0.1), (0.9, 0.1), (0.9, 0.9), (0.1, 0.9), (0.5, 0.5), (0.3, 0.7), (0.7, 0.3), (0.6, 0.8))
+    ]
+    gcps = []
+    for index, (x, y) in enumerate(spots):
+        lng, lat = to_lnglat(cx + x, cy - y)
+        gcps.append(Gcp(f"p{index}", x, y, lat, lng))
+    return GeorefInfo("gcps", "affine", tuple(gcps))
+
+
+def test_happy_path_a_colour_series_on_its_overview_keeps_its_colour(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P20-HAPPY-OVERVIEW-COLOUR"""
+    ctx = _colour_pieces(world, tmp_path)
 
     result = PlaceStep().run(ctx)
 
@@ -59,9 +92,25 @@ def test_happy_path_a_colour_series_on_its_overview_keeps_its_colour(world: Pipe
     assert isinstance(record["stitched"], dict)
     assert record["stitched"]["method"] == "overview"
     for picture in (maps.CANVAS, "stitched.tif", "scan.tif"):
-        bands = read_working(ctx.local(picture), 400).image
-        assert bands.ndim == 3
-        assert float(numpy.mean(numpy.abs(bands[:, :, 0].astype(int) - bands[:, :, 2].astype(int)))) > 20
+        _coloured(ctx.local(picture))
+
+
+def test_happy_path_a_colour_series_placed_from_its_overview_renders_in_colour(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P20-HAPPY-OVERVIEW-COLOUR"""
+    ctx = _colour_pieces(world, tmp_path)
+    assert isinstance(PlaceStep().run(ctx), Waiting)
+    scan = ScanInfo.of(world.version()["scan"])
+    placed = replace(ctx, version=replace(ctx.version, scan=scan, georef=_owner_georef(scan)))
+
+    result = PlaceStep().run(placed)
+
+    assert isinstance(result, Done)
+    warped = ctx.local("warped.tif")
+    dataset = gdal.Open(str(warped))
+    colour_bands = [dataset.GetRasterBand(index + 1).GetColorInterpretation() for index in range(dataset.RasterCount)]
+    dataset.Close()
+    assert colour_bands[:3] == [gdal.GCI_RedBand, gdal.GCI_GreenBand, gdal.GCI_BlueBand]
+    _coloured(warped)
 
 
 def test_bad_path_a_blank_overview_falls_back_to_joining_pieces(world: PipelineWorld, tmp_path: Path) -> None:
