@@ -1,7 +1,7 @@
 /**
  * The place editor's fields (docs/research/M2c-interfaces.md §7.2): category, titles and descriptions in Romanian and
  * English (the description in the Markdown subset, previewed as DOM by the viewer's own renderer: markup stays text),
- * the years (either open), the links (at most five, https), the linked photos and Published. Every field shows its
+ * the years (one at least, either open), the links (at most five, https), the linked photos and Published. Every field shows its
  * problem at the field (`aria-invalid`, `aria-describedby`) in the viewer's validation words; a year once it has been
  * left (it commits on every key, `../editing/number-fields.ts`); a required field's problem says what to do ("Add a title in
  * Romanian", "Choose a category": `../editing/issue-text.ts`). A city without categories gets, instead of an empty select,
@@ -233,8 +233,16 @@ const YEAR_KEYS: Readonly<Record<'yearStart' | 'yearEnd', AdminContentKey>> = {
     yearEnd: 'adminContent.pois.field.yearEnd',
 };
 
+/**
+ * The problems a year field says: all of them once it has been left; before that only a missing year (a place needs one,
+ * owner request of 2026-11-12), so a place stored without one says so as it opens.
+ */
+function shownYearIssues(context: FieldContext, field: 'yearStart' | 'yearEnd'): readonly ValidationIssue[] {
+    return context.left.has(field) ? context.issues : context.issues.filter((issue) => issue.code === 'validation.required');
+}
+
 function yearField(context: FieldContext, field: 'yearStart' | 'yearEnd'): TemplateResult {
-    const shownIssues = context.left.has(field) ? context.issues : [];
+    const shownIssues = shownYearIssues(context, field);
     const { invalid, describedBy, line } = problem({ ...context, issues: shownIssues }, field, { id: field, hints: 'years-hint' });
     return html`<div class="field" ?data-invalid=${invalid !== nothing}>
         <label for=${field}>${poiText(context.locale, YEAR_KEYS[field])}</label>

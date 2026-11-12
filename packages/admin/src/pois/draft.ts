@@ -4,14 +4,23 @@
  * §5.4), a stored one updated with the changed fields only, refused when another admin changed it meanwhile. A snapshot
  * that arrives while editing merges the fields the draft does not change; one that changed a field the draft changed too
  * raises the conflict the admin resolves (keep mine, take theirs), never a silent overwrite. The whole document is
- * validated with `poiDocSchema`, the geometry against the city's limits and the category against the city's categories,
- * before anything is sent.
+ * validated with `poiDocSchema`, the geometry against the city's limits, the category against the city's categories and
+ * the years with `placeYearIssues` (one year at least, none after next year: a place stored without one opens, and Save
+ * asks for it), before anything is sent.
  *
  * A new place counts as unsaved only once the admin changed it (finding 42 of `docs/research/manual-test-2026-10-25.md`):
  * typed text, a drawn shape, a field moved from its default. Its first value and a default the page fills in later
  * (`prefill`: the category once the categories are listed) are no edit, so leaving an untouched new place asks nothing.
  */
-import { FIRESTORE_PATHS, poiDocSchema, validate, type PoiDoc, type ValidationCode, type ValidationIssue } from '@hcm/shared';
+import {
+    FIRESTORE_PATHS,
+    placeYearIssues,
+    poiDocSchema,
+    validate,
+    type PoiDoc,
+    type ValidationCode,
+    type ValidationIssue,
+} from '@hcm/shared';
 import { checkGeometry, type DrawLimits, type DrawRefusal } from '@hcm/ui/map/draw';
 
 import type { ContentStore, Stored, WriteOutcome } from '../content/services.js';
@@ -30,6 +39,8 @@ import {
 export interface PoiContext {
     readonly limits: DrawLimits | null;
     readonly categories: ReadonlySet<string> | null;
+    /** The latest year a place may name (`latestPlaceYear`: next year); absent or null, only a missing year is checked. */
+    readonly latestYear?: number | null;
 }
 
 interface PoiConflict {
@@ -101,7 +112,12 @@ export function draftIssues(value: PoiValue, context: PoiContext): readonly Vali
     const fields =
         value.geometry === null ? docFieldsOf({ ...value, geometry: { type: 'Point', coordinates: [0, 0] } }) : docFieldsOf(value);
     const result = validate(poiDocSchema, { ...fields, ...DRAFT_STAMP });
-    return [...geometryIssues(value, context.limits), ...(result.ok ? [] : result.issues), ...categoryIssues(value, context.categories)];
+    return [
+        ...geometryIssues(value, context.limits),
+        ...(result.ok ? [] : result.issues),
+        ...placeYearIssues(value, context.latestYear ?? null),
+        ...categoryIssues(value, context.categories),
+    ];
 }
 
 export class PoiDraft {

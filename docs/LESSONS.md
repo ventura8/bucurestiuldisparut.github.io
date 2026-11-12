@@ -3330,3 +3330,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the deletion cleaned the version's own documents and files but not the records that point at them (`archives/{a}.jobs`), and the UI's deletable states were narrowed to dodge a substring locator in an e2e test.
     - Fix and pin: the delete transaction drops the series from `archives/{a}.jobs` and the import refuses only a series still named; the archive page plans the series not imported yet; a failed version offers Delete this version alone, the e2e locators match exactly; `S-A125-HAPPY-DELETE-VERSION`.
     - **A deletion also clears every record that names what it deleted; never narrow a behaviour to suit a test's locator, fix the locator.**
+
+567. **A place's year rule had a back door through History's Revert, and its date bound lived only in the editor.**
+    - Seen: 2026-11-12, review of the place-year change: `history.revert` checked a restored place only against `poiDocSchema` (years optional), so reverting a dated place to an older version removed its years; the GeoJSON import and the rules accepted a year up to 2100, only the editor refused one after next year.
+    - Fix and pin: `history.revert` answers `apiError.history.placeYear` for a version without a year over a dated place; the places area's context carries `latestYear` for the import; the rules' `dated` compares with `request.time.year() + 1`; `S-A32-HAPPY-PLACE-YEAR`, `S-A32-BAD-PLACE-YEAR`.
+    - **A rule a lenient stored schema cannot hold must be checked at every door that writes, Admin SDK copies of old versions included, with the same bounds.**

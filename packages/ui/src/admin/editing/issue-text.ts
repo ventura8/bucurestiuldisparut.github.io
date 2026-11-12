@@ -29,6 +29,8 @@ const OWN_WORDS: Readonly<Record<string, OwnWords>> = {
     category: { key: 'adminContent.common.issue.category', codes: null },
     geometry: { key: 'adminContent.common.issue.geometry', codes: ['validation.required'] },
     year: { key: 'adminContent.common.issue.year', codes: ['validation.required', 'validation.type'] },
+    /** A place's years (owner request of 2026-11-12): Save wants one at least, reported at the start year. */
+    yearStart: { key: 'adminContent.common.issue.placeYear', codes: ['validation.required'] },
 };
 
 /** The key of the field's own words for this problem, or null when the validation words say it. */
