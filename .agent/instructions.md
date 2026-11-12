@@ -63,7 +63,7 @@ The stages, their gates and the meaning of `quality` and `all` are defined once,
 - **Scenario matrix discipline**: every behaviour has a happy and a bad row in `e2e/scenarios.json`. Change the behaviour, change the row and the test; a row without its test says `planned`.
 - **Zero inline suppressions**: relax a rule only in the tool's repository-wide configuration file, with the reason next to it.
 - **Logging standard**: TypeScript logs only through `createLogger(scope, …)` from `@hcm/shared` (secret-looking keys are redacted); Python CI scripts through `scripts/ci/cilog.py`; the raster pipeline through its own logger with the same redaction. Never `console.*` or `print`.
-- **i18n**: Romanian is the default and the key source of truth; English is typed against it, so a missing key is a compile error (`web/i18n_skill.md`).
+- **i18n**: Romanian is the default and the key source of truth; English is typed against it, so a missing key is a compile error (`web/i18n_skill.md`). That is the app's texts only: every Markdown file of the repository (docs, READMEs, skills, the kit's and the CLI's READMEs, the Markdown a generator writes) is in English only, quoting a Romanian UI label where it documents one (the owner, 2026-11-10; DECISIONS §152).
 
 ---
 

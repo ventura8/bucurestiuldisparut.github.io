@@ -6,14 +6,14 @@ Every task updates the documentation that describes it, in the same task: applic
 
 | File | Owns |
 | --- | --- |
-| `README.md` | What the project is (in English only, short; the user, 2026-10-31: the app and the admin guides stay RO + EN), badges, the one-command quick start, links to every doc. No counts, no tool versions. |
+| `README.md` | What the project is (in English only, short), badges, the one-command quick start, links to every doc. No counts, no tool versions. |
 | `AGENTS.md` | Commands, boundaries, global rules, project hard constraints (budget 24,000 bytes). |
 | `docs/ARCHITECTURE.md` | Components, data model, buckets, functions, the raster pipeline, the viewer and admin, security and cost guards, analytics and crashes. The *why* of each shape. |
 | `docs/CI_PIPELINE.md` | The file-type to gates table, CI workflows, tool versions, held dependencies. Stages are summarised and link to `.agent/skills/quality/pipeline_skill.md` → *Stages*. |
 | `docs/TESTING.md` | Test tiers, fakes and seams, emulators, the scenario registry, the coverage gate, how to run each tier. |
 | `docs/SETUP.md` | Developer setup: Docker, the quality image, npm in a container, git hooks, `.env.local`, the Sonar token, emulators, what the user does once. |
 | `docs/LESSONS.md` | Defects a test, analyser or crash report found, and the lesson each one taught. |
-| `docs/ADMIN_GUIDE.ro.md`, `docs/ADMIN_GUIDE.en.md` | The city admin's guide: the Setup Assistant and the daily flows. Both languages change together. |
+| `docs/ADMIN_GUIDE.en.md` | The city admin's guide: the Setup Assistant and the daily flows. English only (see *Language*). |
 | `docs/E2E_SCENARIOS.md` (generated) | The rendered scenario registry and the **only** test counts (`## Counts`). Never edited by hand: `python3 scripts/ci/check_e2e_matrix.py write` regenerates it. |
 | `docs/releases/` | Two files per tag (`docs/releases/README.md`). |
 | `docs/research/` | The verbatim research and the approved plan: append dated addenda, never rewrite; `M0-handoff.md` records what was actually built. |
@@ -24,7 +24,7 @@ Every task updates the documentation that describes it, in the same task: applic
 - **Describe what exists**, mark what is planned. A planned path is listed under *Planned paths* in `docs/research/M0-handoff.md` until it exists.
 - **No counts outside the generated scenario doc**: write "the suite", "every static gate". Fixed decisions (90 % per file, complexity 5) may be repeated.
 - **No secret, token, email or Firebase web config** in any document, even as an example. Use placeholders that cannot be mistaken for a credential (`<your-token>` in prose, never a realistic prefix plus random characters).
-- **Both languages**: a user-facing document that exists in RO and EN changes in both, in the same task.
+- **Language**: every Markdown file is in English only (the owner, 2026-11-10; DECISIONS §152): docs, READMEs, skills, the starter kit's and the CLI's READMEs and the Markdown a generator writes (the static export's `README.md` and `RIGHTS.md`). No `*.ro.md`, no Romanian section. A Romanian UI label is quoted where a document names it (with its English gloss), an i18n table keeps its `ro` column, and the photos' own titles are data. The app's texts (the i18n catalogues) stay in every language.
 - **Links**: relative Markdown links between documents (for example from `docs/TESTING.md` to the setup guide as a link whose target is `SETUP.md` relative to it), back-ticked repository paths in agent assets. The `agent-assets` gate resolves both.
 
 ## Markdown style (markdownlint-cli2 with `.markdownlint-cli2.jsonc`)

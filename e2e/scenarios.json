@@ -9374,6 +9374,28 @@
             "notes": "Milestone M5, the reviews' fixes (docs/research/DECISIONS-for-review.md §65; owner: the fixer). The security review's finding 7 (docs/LESSONS.md 241). Test: functions/test/export/documents.test.ts, firebase/rules-tests/test/cities.test.ts."
         },
         {
+            "id": "S-A53-HAPPY-ENGLISH-DOCS",
+            "behaviour": "A53",
+            "area": "admin",
+            "path": "happy",
+            "title": "The export's README and RIGHTS are written in English only",
+            "asserts": "an export's README.md opens with '# <the city's English name>: static export (<day>)', its preface in English and no Romanian section, then the kit's README; RIGHTS.md is titled 'Rights' with the columns Photo, Title, Rights holder, Licence",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's rule of 2026-11-10: all project Markdown in English only (docs/research/DECISIONS-for-review.md §152). Test: functions/test/export/documents.test.ts."
+        },
+        {
+            "id": "S-A53-BAD-NAME-MARKUP",
+            "behaviour": "A53",
+            "area": "admin",
+            "path": "bad",
+            "title": "A city name with Markdown characters stays plain text in the README's title",
+            "asserts": "a city whose English name holds '#', '|' and '*' -> the README's first line is one heading with each character escaped, never a table, a second heading or emphasis",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS §152 moved the title to the English name. Test: functions/test/export/documents.test.ts."
+        },
+        {
             "id": "S-A53-BAD-CLIENT-EXPORTS",
             "behaviour": "A53",
             "area": "admin",

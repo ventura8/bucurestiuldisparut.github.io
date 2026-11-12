@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { markdownLine, rightsDocument } from '../../src/export/documents.js';
+import { exportReadme, markdownLine, rightsDocument } from '../../src/export/documents.js';
 import { exportPage, exportSources } from '../../src/export/page.js';
 import { KIT_PAGE, publishedManifest } from './world.js';
 
@@ -31,6 +31,35 @@ describe('rightsDocument', () => {
 
         expect(text).toContain('| `strand-1976` | Fotografia strand-1976 | Ion Pop | permission |');
         expect(text).toContain('| `fara-autor` | Fotografia strand-1976 | — | permission-legacy |');
+    });
+});
+
+describe('exportReadme', () => {
+    const MADE_AT = new Date('2026-11-12T10:00:00Z');
+
+    it('happyPath_thePrefaceIsEnglishOnlyAndTheKitReadmeFollows @S-A53-HAPPY-ENGLISH-DOCS', () => {
+        const text = exportReadme({ manifest: publishedManifest(), rasters: 0, kitReadme: '# Kit\n\nThe kit.\n', madeAt: MADE_AT });
+
+        expect(text.split('\n')[0]).toBe('# The exported city: static export (2026-11-12)');
+        expect(text).toContain('This archive holds everything the map The exported city needs');
+        expect(text).not.toMatch(/Română|Această|export static/);
+        expect(text.trimEnd().endsWith('# Kit\n\nThe kit.')).toBe(true);
+        expect(rightsDocument({ ro: 'Oraș', en: 'City' }, [])).toBe(
+            '# Rights\n\nThe photos below are published with their rights holders’ permission for the map City only.\n' +
+                'Do not republish them elsewhere without their consent.\n\nNo photo has this restriction.\n',
+        );
+    });
+
+    it('badPath_aNameWithMarkdownCharactersStaysOneEscapedHeading @S-A53-BAD-NAME-MARKUP', () => {
+        const manifest = publishedManifest();
+        const text = exportReadme({
+            manifest: { ...manifest, city: { ...manifest.city, name: { ro: 'Oraș', en: '# A | *b*' } } },
+            rasters: 1,
+            kitReadme: '',
+            madeAt: MADE_AT,
+        });
+
+        expect(text.split('\n')[0]).toBe('# \\# A \\| \\*b\\*: static export (2026-11-12)');
     });
 });
 

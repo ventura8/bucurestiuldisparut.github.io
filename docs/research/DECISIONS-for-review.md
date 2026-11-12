@@ -6376,3 +6376,10 @@ The owner's request of 2026-11-09 ("import the landsat, add it to our sources, a
 - **What**: its public site's historical maps may be used as a reference: looked at (by the owner or an agent) to find where a feature lies while placing points on our own scans, or to judge a result by eye (`docs/MANUAL_TEST_PLAN.md` J8). Nothing of it is embedded or copied: no tileset, style, token or dataset in our code, config or layers, and no tile or asset shipped.
 - **Why**: the owner, 2026-11-12: "new hard rule: we can use fostulbucuresti for reference!" (the 1966 frames DF046/DF047 wait for points). A Mapbox token belongs to its account (using theirs from our app bills them and breaks Mapbox's terms), and copied tiles would ship their georeferencing as ours, so "reference" stays visual.
 - **Where**: `AGENTS.md` (*Never*, *Project hard constraints*); automatic matching against their tiles is not part of this and would need its own decision.
+
+## 152. All project Markdown in English only (2026-11-12) — APPLIED
+
+- **What**: every Markdown file of the repository is written in English only. `docs/ADMIN_GUIDE.ro.md` is gone (`docs/ADMIN_GUIDE.en.md` is the one guide, and kept what only the Romanian one said); the Romanian halves of `docs/SELF_HOST.md`, `starter-kit/README.md`, `templates/starter-kit/README.md` (which `create-historic-city` copies into a new city) and `packages/create-historic-city/README.md` are removed, their English halves kept. The static export's own `README.md` and `RIGHTS.md` (`functions/src/export/documents.ts`) are written in English only.
+- **Not affected**: the in-app texts (the i18n catalogues of the viewer, the admin, the CLI and the exported page) stay in every language; Markdown that documents a Romanian UI label (a quoted button, an i18n key's `ro` column) keeps it; the photos' and places' own titles are data; the legacy `seed/bucharest/` is not touched.
+- **Why**: the owner, 2026-11-10: all project Markdown in English; the app's texts stay in all languages.
+- **Where**: `.agent/instructions.md` (*i18n*), `.agent/skills/governance/doc_update_skill.md`, `docs/research/M5-interfaces.md` §3.4.

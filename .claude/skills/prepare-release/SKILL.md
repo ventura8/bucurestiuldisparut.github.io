@@ -20,7 +20,7 @@ Working notes: `.agent/skills/quality/prepare_release_skill.md`; file rules: `do
    ```
 
 3. Write `docs/releases/vX.Y.Z.md` (full notes) and `docs/releases/vX.Y.Z_github_description.md` (the GitHub Release body; its single H1 is the release title; it keeps the lines `<!-- hcm:sri -->` and `<!-- /hcm:sri -->`), then `npm run release:notes -- --write docs/releases/vX.Y.Z_github_description.md`, and list the version under *Releases* in `docs/releases/README.md`.
-4. Review the whole diff since the previous tag against `README.md`, `docs/*.md`, both admin guides and the agent assets.
+4. Review the whole diff since the previous tag against `README.md`, `docs/*.md`, the admin guide and the agent assets.
 5. Run the checks and read the verdicts: `python3 scripts/ci/check_release.py --tag vX.Y.Z` and `npm run release:cdn -- --check` in the image, then the full pipeline split with the NUC:
 
    ```bash

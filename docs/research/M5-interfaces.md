@@ -49,7 +49,7 @@ with how the first real run proves it (§10).
    Content Security Policy, Mapbox GL JS 3.32.0 from api.mapbox.com and the engine's IIFE and stylesheet from the pinned
    jsDelivr folder, each with `integrity`, and `<hcm-map-viewer manifest-url="city.json">` with a bilingual loading
    note that stays when the engine cannot load), `city.json` (a City Manifest v1: an example city with places and no
-   photos, whose rights would not travel) and `README.md` (Romanian and English). A later, ask-first step turns the
+   photos, whose rights would not travel) and `README.md` (English; since 2026-11-12 the project's Markdown is English only, DECISIONS §152). A later, ask-first step turns the
    folder into a GitHub template repository. An e2e tier boots it against the mock world.
 4. **`create-historic-city`** (§4): a self-host bootstrap CLI in `packages/create-historic-city/` (Node 24, no runtime
    dependency: one bundled file), run as `npm create historic-city@1`. It scaffolds a city folder from the kit with
@@ -413,7 +413,7 @@ stricter gate):
 | --- | --- |
 | `index.html` | the page: CSP, Mapbox GL JS, the pinned engine, `<hcm-map-viewer manifest-url="city.json">` |
 | `city.json` | a City Manifest v1 the owner edits (no `config.js`: the element's attributes are the configuration) |
-| `README.md` | the steps in Romanian and English |
+| `README.md` | the steps, in English |
 
 The M1 folder `starter-kit/` stays: it is the site build's same-origin variant (`config.js`, the engine copied beside
 the page) that the M1 rows S-V17-* test; its README's first step points to the template.
@@ -457,7 +457,7 @@ example photos are licensed for București dispărut only and may not travel in 
 
 ### 3.4 `README.md`
 
-Romanian first, then English, as the M1 kit's: what the three files are; the Mapbox public token (`pk.`, the three
+In English (it was Romanian, then English, until the English-only rule of 2026-11-12, DECISIONS §152): what the three files are; the Mapbox public token (`pk.`, the three
 scopes, restricted to the site's address; the account and the token are the owner's own steps); editing `city.json`
 (the city, places, photos in `photos/<id>/web.webp` and `thumb.webp`, layers); turning on GitHub Pages (Settings, Pages,
 deploy from the main branch, root); checking (the page names the field to fix); updating the engine (the new version's
