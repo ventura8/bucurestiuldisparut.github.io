@@ -103,7 +103,7 @@ export class PlaceEditor {
     #newDraft(start: { readonly base: Stored<PoiDoc> } | { readonly value: PoiValue }): PoiDraft {
         const { store, cityId, context, locked, clock } = this.#deps;
         return new PoiDraft(this.#state.id, start, {
-            // A year after next year is refused here, by the clock (`placeYearIssues`); the import checks only a missing one.
+            // A year after next year is refused by the clock (`placeYearIssues`), as the import does (`Importer`).
             ...{ store, cityId, context: () => ({ ...context(), latestYear: latestPlaceYear(clock.now()) }) },
             ...(locked === undefined ? {} : { locked }),
             ...(this.#deps.reviewed === undefined ? {} : { reviewed: this.#deps.reviewed }),

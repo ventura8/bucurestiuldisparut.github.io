@@ -7420,10 +7420,10 @@
             "area": "admin",
             "path": "happy",
             "title": "A place with one year or a span is saved, and an old place without one still loads",
-            "asserts": "a place with a single year, an open start or end, or a span from and to is created; a place stored without a year still reads, shows Year missing in the list, can be published, unpublished or moved to another category, and saves once it is given a year",
+            "asserts": "a place with a single year, an open start or end, or a span from and to is created; a place stored without a year still reads, shows Year missing in the list, can be published, unpublished or moved to another category, and saves once it is given a year; an undated place's earlier version and an undone delete still restore",
             "tier": "rules",
             "status": "exists",
-            "notes": "The owner's request of 2026-11-12: every place (point, line, area) names a year. Tests: firebase/rules-tests/test/pois.test.ts; the editor, the list badge and the import: packages/admin/test/pois/draft.test.ts, packages/admin/test/pois/pois.test.ts, packages/admin/test/pois/geojson.test.ts, packages/ui/test/admin/pois/poi-editor.test.ts, packages/ui/test/admin/pois/pois-page.test.ts; docs/research/M2c-interfaces.md §7.2."
+            "notes": "The owner's request of 2026-11-12: every place (point, line, area) names a year. Tests: firebase/rules-tests/test/pois.test.ts, functions/test/history/revert.test.ts; the editor, the list badge and the import: packages/admin/test/pois/draft.test.ts, packages/admin/test/pois/pois.test.ts, packages/admin/test/pois/geojson.test.ts, packages/ui/test/admin/pois/poi-editor.test.ts, packages/ui/test/admin/pois/pois-page.test.ts; docs/research/M2c-interfaces.md §7.2."
         },
         {
             "id": "S-A32-BAD-PLACE-YEAR",
@@ -7431,10 +7431,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A place without a year is not saved",
-            "asserts": "a new place without a year, an old place retitled or redrawn without one, or a place whose years are removed is refused; the editor says Write a year, or the years from and to under the start year at once and in Save's note, Save is off, and a year after next year says The year cannot be after next year",
+            "asserts": "a new place without a year, an old place retitled or redrawn without one, or a place whose years are removed (by an edit or by history.revert, apiError.history.placeYear) is refused, as is a year after next year in the rules and the import; the editor says Write a year, or the years from and to under the start year at once and in Save's note, Save is off, and a year after next year says The year cannot be after next year",
             "tier": "rules",
             "status": "exists",
-            "notes": "The owner's request of 2026-11-12: every place (point, line, area) names a year. Tests: firebase/rules-tests/test/pois.test.ts; the editor, the list badge and the import: packages/admin/test/pois/draft.test.ts, packages/admin/test/pois/pois.test.ts, packages/admin/test/pois/geojson.test.ts, packages/ui/test/admin/pois/poi-editor.test.ts, packages/ui/test/admin/pois/pois-page.test.ts; docs/research/M2c-interfaces.md §7.2."
+            "notes": "The owner's request of 2026-11-12: every place (point, line, area) names a year. Tests: firebase/rules-tests/test/pois.test.ts, functions/test/history/revert.test.ts; the editor, the list badge and the import: packages/admin/test/pois/draft.test.ts, packages/admin/test/pois/pois.test.ts, packages/admin/test/pois/geojson.test.ts, packages/ui/test/admin/pois/poi-editor.test.ts, packages/ui/test/admin/pois/pois-page.test.ts; docs/research/M2c-interfaces.md §7.2."
         },
         {
             "id": "S-A33-HAPPY",

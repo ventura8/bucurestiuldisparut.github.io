@@ -3,9 +3,9 @@
  * and to. The stored schemas (`poiDocSchema`, the manifest's `poiSchema`) keep both years optional, so a place written
  * before the rule still loads in the admin and still shows on the public map; the admin's editor, the GeoJSON import,
  * the Firestore rules (`firebase/firestore.rules` → `dated`) and `review.decide` ask for at least one year before a place
- * is written or approved. The stored range stays 1800 to 2100 (`yearSchema`): an engine already on jsDelivr validates
- * every manifest against it. The editor also refuses a year after next year, which needs today's date, so it is a check
- * here and not part of a schema.
+ * is written or approved, and `history.revert` keeps a dated place's years. The stored range stays 1800 to 2100
+ * (`yearSchema`): an engine already on jsDelivr validates every manifest against it. The editor, the import and the rules
+ * also refuse a year after next year, which needs today's date, so it is a check here and not part of a schema.
  */
 import type { ValidationIssue } from './validation.js';
 

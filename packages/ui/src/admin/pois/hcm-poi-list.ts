@@ -1,8 +1,9 @@
 /**
  * `<hcm-poi-list>`: the places page's list pane (docs/research/M2c-interfaces.md §1.5, §7.1, §7.4): the title, Add place
  * (it asks which shape: Point, Line, Area), import and export of GeoJSON, the category chips and Unpublished, a search of
- * the loaded page, the selection's bar once a place is selected (`../editing/bulk-bar.ts`), and the rows (a check box, the category's swatch, the title,
- * the years or, for a place stored without one, Year missing, the shape, Unpublished). Fires `hcm-add` with `{shape}`, `hcm-import` with `{file}`, `hcm-export` with
+ * the loaded page, the selection's bar once a place is selected (`../editing/bulk-bar.ts`), and the rows (a check box,
+ * the category's swatch, the title, the years or, for a place stored without one, Year missing, the shape, Unpublished).
+ * Fires `hcm-add` with `{shape}`, `hcm-import` with `{file}`, `hcm-export` with
  * `{selection}` and `hcm-bulk` with `{action}`; filters and the selection go to the area's intents.
  */
 import type { Locale } from '@hcm/shared';
@@ -283,9 +284,16 @@ export class HcmPoiList extends LitElement {
             <a class="row" href=${poiHref(place.id)} aria-current=${current(place.id === this.selected)}>
                 <span class="row-title"><span class="swatch" ${cssProperties({ background: color })}></span>${title}</span>
                 <span class="row-detail">${this.#detail(place, categories)}</span>
-                ${yearMissing(place) ? html`<span class="year-missing">${poiText(this.locale, 'adminContent.pois.yearMissing')}</span>` : EMPTY}
+                ${this.#yearMissing(place)}
             </a>
         </li>`;
+    }
+
+    /** The Year missing mark of a place stored without a year. */
+    #yearMissing(place: PoiItemPort): TemplateResult {
+        return yearMissing(place)
+            ? html`<span class="year-missing">${poiText(this.locale, 'adminContent.pois.yearMissing')}</span>`
+            : EMPTY;
     }
 
     #detail(place: PoiItemPort, categories: readonly CategoryItemPort[]): string {

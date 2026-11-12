@@ -3273,3 +3273,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the export's COG is one grey band with its alpha kept as an internal mask; the line-art encoder read alpha only from a second band, so a one-band source was all opaque and the black outside the warp became ink.
     - Fix and pin: `_alpha_rows` reads the band's mask (`GetMaskBand`) for a one-band source; `S-P20-BAD-ENCODING-MASK`.
     - **A one-band raster's edge lives in its mask; read the mask band, never assume all opaque.**
+
+557. **A place's year rule had a back door through History's Revert, and its date bound lived only in the editor.**
+    - Seen: 2026-11-12, review of the place-year change: `history.revert` checked a restored place only against `poiDocSchema` (years optional), so reverting a dated place to an older version removed its years; the GeoJSON import and the rules accepted a year up to 2100, only the editor refused one after next year.
+    - Fix and pin: `history.revert` answers `apiError.history.placeYear` for a version without a year over a dated place; the places area's context carries `latestYear` for the import; the rules' `dated` compares with `request.time.year() + 1`; `S-A32-HAPPY-PLACE-YEAR`, `S-A32-BAD-PLACE-YEAR`.
+    - **A rule a lenient stored schema cannot hold must be checked at every door that writes, Admin SDK copies of old versions included, with the same bounds.**

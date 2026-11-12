@@ -85,6 +85,7 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.history.notFound': spec('not-found'),
     'apiError.history.nothingToRestore': spec('failed-precondition'),
     'apiError.history.invalidSnapshot': spec('failed-precondition'),
+    'apiError.history.placeYear': spec('failed-precondition'),
     'apiError.history.layerGone': spec('failed-precondition'),
     'apiError.mapbox.publicToken': spec('invalid-argument'),
     'apiError.mapbox.tokenFormat': spec('invalid-argument'),

@@ -35,6 +35,7 @@ function importer(
     const states: (ImportState | null)[] = [];
     const subject = new Importer({
         store: world.store,
+        clock: world.clock,
         cityId: CITY,
         context: () => ({ limits: LIMITS, categories: new Set(['biserici', 'parcuri']) }),
         places: () => Promise.resolve({ places: [...existing].map(([id, value]) => ({ id, value })), unreadable: [] }),
@@ -101,6 +102,7 @@ describe('the import dialog', () => {
         let categories: ReadonlySet<string> | null = null;
         const subject = new Importer({
             store: world.store,
+            clock: world.clock,
             cityId: CITY,
             context: () => ({ limits: LIMITS, categories }),
             places: () => Promise.resolve({ places: [], unreadable: [] }),
@@ -139,6 +141,7 @@ describe('the import: what it cannot do', () => {
         const world = poisWorld();
         const subject = new Importer({
             store: world.store,
+            clock: world.clock,
             cityId: CITY,
             context: () => ({ limits: LIMITS, categories: new Set(['biserici']) }),
             places: () => Promise.resolve(null),
@@ -208,6 +211,7 @@ describe('the import: what it cannot do', () => {
         const world = poisWorld();
         const subject = new Importer({
             store: world.store,
+            clock: world.clock,
             cityId: CITY,
             context: () => ({ limits: LIMITS, categories: new Set(['biserici']) }),
             places: () => Promise.resolve({ places: [], unreadable: ['stricat'] }),
@@ -239,6 +243,7 @@ describe('a file chosen while another one reads', () => {
         const answers: ((places: Places) => void)[] = [];
         const subject = new Importer({
             store: world.store,
+            clock: world.clock,
             cityId: CITY,
             context: () => ({ limits: LIMITS, categories: new Set(['biserici']) }),
             places: () =>

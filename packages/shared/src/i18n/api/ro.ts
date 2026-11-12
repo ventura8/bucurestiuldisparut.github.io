@@ -31,6 +31,7 @@ export const ro = {
     'apiError.history.notFound': 'Versiunea aceasta nu mai există.',
     'apiError.history.nothingToRestore': 'Intrarea marchează crearea elementului: nu există o versiune anterioară.',
     'apiError.history.invalidSnapshot': 'Versiunea anterioară nu mai este validă și nu poate fi restaurată (probleme: {count}).',
+    'apiError.history.placeYear': 'Versiunea aceea nu are an, iar locul are unul: își păstrează anii. Editează locul în schimb.',
     'apiError.history.layerGone': 'Stratul nu mai poate fi restaurat: plăcile lui de la Mapbox au fost deja șterse.',
     'apiError.mapbox.publicToken': 'Acesta este un token public (pk.). Lipește tokenul secret (sk.) pe care l-ai creat.',
     'apiError.mapbox.tokenFormat': 'Textul nu arată ca un token secret Mapbox (acesta începe cu sk.).',

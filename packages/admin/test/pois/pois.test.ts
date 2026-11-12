@@ -135,6 +135,23 @@ describe('places: the years', () => {
         store.intents.edit({ yearStart: next });
         expect(await store.intents.save()).toEqual({ ok: true });
     });
+
+    it('badPath_anImportedFeatureDatedAfterNextYearIsRefused', async () => {
+        const world = seededWorld();
+        const store = opened(world);
+        const next = new Date(world.clock.now()).getUTCFullYear() + 1;
+        const features = [next, next + 1].map((yearStart) => ({
+            type: 'Feature',
+            geometry: POINT,
+            properties: { title: 'Nou', yearStart },
+        }));
+        const text = JSON.stringify({ type: 'FeatureCollection', features });
+
+        await store.intents.chooseImport({ name: 'a.geojson', size: text.length, text: () => Promise.resolve(text) });
+        store.intents.setImportCategory('biserici');
+
+        expect(store.state.importing?.plan?.refused).toEqual([{ number: 2, title: 'Nou', reason: 'invalid', path: 'yearStart' }]);
+    });
 });
 
 describe('places: adding and editing', () => {

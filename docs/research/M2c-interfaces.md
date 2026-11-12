@@ -741,7 +741,10 @@ draws every place in its category's overlay; a click on a shape selects it (`onP
   is left), then §5.3. The stored schemas keep both years optional, so a place saved before the rule still loads in the
   admin and still shows on the public map; its Save asks for a year. The Firestore rules ask the same (`dated`): every
   create names a year, and an update without one only publishes, unpublishes or moves the place to another category
-  (the list's bulk actions). `review.decide` refuses to approve a place without one (`apiError.review.placeYear`).
+  (the list's bulk actions); no year may be after next year by the server's clock (`request.time`). The GeoJSON import
+  checks both, by the admin's clock, as Save does. `review.decide` refuses to approve a place without one
+  (`apiError.review.placeYear`), and `history.revert` does not restore a version without a year over a place that names
+  one (`apiError.history.placeYear`); an Undo of a delete and a place that never had a year restore as before.
 
 ### 7.3 Delete
 
@@ -881,7 +884,8 @@ callables are M2's (`admins.list`, `admins.invite`, `admins.revoke`, **done**); 
 - `#/history/<entity>/<id>`: the document's entries; the selected entry shows each changed field before and after, as
   text (a geometry as its type and position count, adjustments as percentages, a theme as its seed colour).
 - **Revert** (and **Restore**) asks first, then calls `history.revert` (**done**); a refusal shows its code as an alert
-  (`apiError.history.invalidSnapshot` with the count, `nothingToRestore`, the new `layerGone`) and changes nothing
+  (`apiError.history.invalidSnapshot` with the count, `nothingToRestore`, the new `layerGone`, `placeYear` for a place's
+  version without a year over a dated place, §7.2) and changes nothing
   (`S-A23-BAD-REFUSED-SHOWN`). A creation entry offers no Revert.
 
 ### 9.3 Jobs (A18)

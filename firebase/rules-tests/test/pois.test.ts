@@ -185,6 +185,14 @@ describe('POI years @S-A32-HAPPY-PLACE-YEAR @S-A32-BAD-PLACE-YEAR', () => {
         expect(await createPoi({ yearStart: deleted(), yearEnd: deleted() })).toBe('deny');
     });
 
+    // 2100 is a stored year (`isYear`) but after next year until 2099: refused by the server's clock, not the test's.
+    it.each([
+        ['starting', { yearStart: 2100, yearEnd: deleted() }],
+        ['ending', { yearStart: deleted(), yearEnd: 2100 }],
+    ])('badPath_aPlace_%s_afterNextYearIsNotCreated', async (_label, changes) => {
+        expect(await createPoi(changes)).toBe('deny');
+    });
+
     it.each([
         ['unpublished', { published: false }],
         ['moved to another category', { category: 'strazi' }],

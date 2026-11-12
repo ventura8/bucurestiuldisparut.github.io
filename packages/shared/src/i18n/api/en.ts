@@ -27,6 +27,7 @@ export const en: ApiMessages = {
     'apiError.history.notFound': 'This version no longer exists.',
     'apiError.history.nothingToRestore': 'This entry records the creation: there is no earlier version.',
     'apiError.history.invalidSnapshot': 'The earlier version is no longer valid and cannot be restored (problems: {count}).',
+    'apiError.history.placeYear': 'That version has no year, and this place names one: it keeps its years. Edit the place instead.',
     'apiError.history.layerGone': 'The layer cannot be restored: its Mapbox tiles have already been deleted.',
     'apiError.mapbox.publicToken': 'This is a public token (pk.). Paste the secret token (sk.) you created.',
     'apiError.mapbox.tokenFormat': 'This does not look like a Mapbox secret token (one starts with sk.).',
