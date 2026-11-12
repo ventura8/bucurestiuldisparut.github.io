@@ -3537,3 +3537,21 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the map's buttons turned it with an animation, whose `move` events kept turning the scan after the owner's next press; and every map move read the scan's angle back through an oblique fit, whose two conversions are not exact inverses.
     - Fix and pin: the map's turn is a jump (`GeorefMap.rotateBy`), and only a move that changes the map's bearing turns the scan (`linkedPanesOf`; `rotation.test.ts`).
     - **Run a test of linked motion several times before trusting it; an animation is a second actor.**
+
+603. **The light theme's FAB and menu labels were painted nearly invisible on Android, while every checker measured 6.9:1.**
+    - Seen: 2026-11-12, the Pixel 9 Pro review (P2): #33406D on #BAC7FD in the computed styles, pale lilac on lilac on the screen.
+    - Cause: the theme's light mode declared `color-scheme: light`. Chrome's dark theme for sites (on by default on Android with a dark system) repaints every element whose used scheme is light: it lightened the dark text and kept the tinted fill. Axe and the tour's non-text contrast read computed styles, which the repaint never touches, and no e2e browser ran with it.
+    - Fix and pin: a chosen mode is `only light` / `only dark` (`packages/ui/src/theme/apply.ts`); the dark tours run Chromium with `--blink-settings=forceDarkModeEnabled=true`, the state `other-theme-menu` picks the other theme and opens the menu, and `e2e/support/rendered-contrast.ts` reads the FAB menu's contrast from pixels (`S-V12-HAPPY-ONLY-LIGHT`, `S-V12-BAD-FORCED-DARK-SYSTEM`).
+    - **A colour check that reads styles cannot see a browser's repaint: measure pixels where it matters, and run a tour with the repaints real phones apply.**
+
+604. **Mapbox's credits drew over the lightbox, and a copy of them took the foot of every sheet, About and Settings on a phone.**
+    - Seen: 2026-11-12, the Pixel 9 Pro review (P3).
+    - Cause: the legal bar (§21c) was a design the tour enforced: its rule asked for one logo and one attribution on top in every state, so a bar eating 40 to 80 px of a full-screen surface passed, and the legal controls were exempt from the modal checks. Mapbox's corners carry z-index 2 in the frame's stacking context, above the modal layer's auto.
+    - Fix and pin: the modal layer has z-index 30; Mapbox's corners move out from under an open modal sheet (`legal-lift.ts`); no credit is owed where no map shows (`mapSeen` in `e2e/support/layout-probe.ts`), and a point seen through a scrim counts as uncovered (`S-V18-HAPPY-MODAL-STATES`, `S-V18-BAD-FULL-SHEET`, `packages/ui/test/viewer/legal-lift.test.ts`).
+    - **A checker that encodes a design passes that design's defects: ask what the surface loses, not only whether the rule's element shows.**
+
+605. **The FAB menu of a landscape phone ran seven items in one row off the screen.**
+    - Seen: 2026-11-12, the Pixel 9 Pro at 884 × 322 with Chrome's bars (P1): "Setări" began at x 888.
+    - Cause: the menu's columns were capped at the height left above the timeline and the chip; with Chrome's bars that was under one item, so each item made a column, and nothing capped the width. The tour's landscape viewport (915 × 412) was tall enough for two rows.
+    - Fix and pin: rows that stack upwards across the map's width, 48 px items, the card and the chip hidden while the menu is open, a scroll as the last resort (`dock-styles.ts`, `fab-menu.ts`); the tour's journey `short-landscape` resizes every tour project to 884 × 322 and 568 × 270 and opens the menu (`e2e/tour/settings-states.ts`); `packages/ui/test/viewer/landscape-menu.test.ts` at 884 × 290 and 568 × 270.
+    - **Test the shortest window a real phone gives, bars included, not only the nominal landscape size.**
