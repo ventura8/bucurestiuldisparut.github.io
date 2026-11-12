@@ -10910,7 +10910,7 @@
             "area": "admin",
             "path": "happy",
             "title": "A new job goes to the computer while a worker is connected",
-            "asserts": "choice auto and a worker seen within WORKER_FRESH_SECONDS (nine minutes ago: an idle worker asks every five) -> the queued import gets runOn local and waits for the worker; no Cloud Run execution is asked for and no slot is taken",
+            "asserts": "choice auto and a worker seen within three minutes -> the queued import gets runOn local and waits for the worker; no Cloud Run execution is asked for and no slot is taken",
             "tier": "functions",
             "status": "exists",
             "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/imagery/dispatch-place.test.ts."
@@ -11009,7 +11009,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A job that may still be claimed is left alone",
-            "asserts": "a local job waiting less than 15 minutes, already marked, in the cloud, running, or a worker seen within WORKER_FRESH_SECONDS -> nothing marked, no inbox item",
+            "asserts": "a local job waiting less than 15 minutes, already marked, in the cloud, running, or a worker seen within three minutes -> nothing marked, no inbox item",
             "tier": "functions",
             "status": "exists",
             "notes": "Finding 68 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§3.1. Test: functions/test/imagery/tick-worker.test.ts."
@@ -17664,7 +17664,7 @@
             "area": "pipeline",
             "path": "happy",
             "title": "An idle worker asks for a job less and less often, and often again after a job or the admin's look",
-            "asserts": "ten minutes after its start, its last job or the admin's last GET /state the waits double from pollSeconds up to idlePollSeconds (5 min) with a tenth of jitter; a job that ran or the admin's page looking ends a long wait; the worker still counts as connected (WORKER_FRESH_SECONDS covers the longest wait)",
+            "asserts": "ten minutes after its start, its last job or the admin's last GET /state the waits grow from pollSeconds up to idlePollSeconds (60 s, so a new job starts within a minute) with a tenth of jitter; a job that ran or the admin's page looking ends a long wait; the worker still counts as connected (WORKER_FRESH_SECONDS covers the longest wait)",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."

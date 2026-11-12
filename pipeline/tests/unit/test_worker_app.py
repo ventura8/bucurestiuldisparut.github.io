@@ -64,14 +64,14 @@ def args_for(api: FakeWorkerApi, work: Path) -> WorkerArgs:
 
 
 def test_happy_path_sign_in_takes_the_hello_timing(api: FakeWorkerApi, tmp_path: Path, built: list[Worker]) -> None:
-    api.hello_answer = {"pollSeconds": 12, "idlePollSeconds": 300, "heartbeatSeconds": 45}
+    api.hello_answer = {"pollSeconds": 12, "idlePollSeconds": 60, "heartbeatSeconds": 45}
     worker = worker_for(api, tmp_path, built)
     before = worker.state.timing.idle_poll_seconds
 
     assert worker.actions.sign_in(*api.sign_in_tokens(api.clock() + 3600)) is None
 
     assert (worker.state.timing.poll_seconds, worker.state.timing.heartbeat_seconds) == (12.0, 45.0)
-    assert (before, worker.state.timing.idle_poll_seconds) == (None, 300.0)
+    assert (before, worker.state.timing.idle_poll_seconds) == (None, 60.0)
     # The admin's page looking at the worker is what wakes its pace (`Worker.build`).
     assert worker.server.on_admin == worker.state.pace.wake
     assert worker.session.active is True

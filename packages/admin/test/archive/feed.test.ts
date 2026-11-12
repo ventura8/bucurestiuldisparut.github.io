@@ -1,6 +1,6 @@
 // M20's Import local files (docs/research/M20-import-local.md §8): the feed the Upload view's card and an archive's report follow,
 // over the fake store, the fake clock and the fake callables.
-import { FIRESTORE_PATHS, WORKER_FRESH_SECONDS } from '@hcm/shared';
+import { FIRESTORE_PATHS } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { createArchiveFeed, type ArchiveState } from '../../src/archive/feed.js';
@@ -114,7 +114,7 @@ describe('the archive feed', () => {
             importUrl: 'http://127.0.0.1:8765/import?lat=44.4300',
         });
         expect(feed.state.archives).toEqual([{ id: ARCHIVE, name: 'harti.zip', files: 120, bytes: 9_000_000, series: 4, imported: false }]);
-        world.clock.advance(WORKER_FRESH_SECONDS * 1000);
+        world.clock.advance(180_000);
         expect(feed.state.connected).toBe(false);
         feed.stop();
         expect(world.store.listeners()).toBe(0);

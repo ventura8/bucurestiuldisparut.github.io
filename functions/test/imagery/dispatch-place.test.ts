@@ -1,7 +1,7 @@
 /**
  * Where a job runs (`functions/src/imagery/{dispatch,place,on-job-write}.ts`, `docs/research/M7-local-worker.md` §3): the
  * dispatcher writes the place the first time it sees a queued job (the city's choice, `auto` meaning the computer while
- * one of its workers was seen within `WORKER_FRESH_SECONDS`, nine and a half minutes); a job for the computer waits for a worker, asks Cloud Run for
+ * one of its workers was seen within three minutes); a job for the computer waits for a worker, asks Cloud Run for
  * nothing and takes no slot; a queued job the admin moved, or gave the OK, is dispatched again by its trigger.
  */
 import {
@@ -72,8 +72,8 @@ async function seedChoice(world: ImageryWorld, choice: RunChoice): Promise<void>
 describe('where a job runs', () => {
     it('happyPath_aNewJobGoesToTheComputerWhileAWorkerIsConnected @S-A62-HAPPY-DISPATCH-LOCAL', async () => {
         const world = await readyWorld();
-        // Nine minutes ago, as an idle worker that asks every five minutes and lost one claim: within WORKER_FRESH_SECONDS.
-        await seedWorker(world, '2026-10-23T07:51:00.000Z');
+        // Two minutes ago: within WORKER_FRESH_SECONDS (three minutes).
+        await seedWorker(world, '2026-10-23T07:58:00.000Z');
         await seedJob(world, JOB, queued());
 
         expect(await dispatchJob(world.deps, CITY, JOB)).toBe('waiting');
@@ -94,8 +94,8 @@ describe('where a job runs', () => {
 
     it('happyPath_withoutAConnectedWorkerAutoMeansTheCloud', async () => {
         const world = await readyWorld();
-        // Ten minutes ago: no longer connected. The run choice document is not a worker.
-        await seedWorker(world, '2026-10-23T07:50:00.000Z');
+        // Four minutes ago: no longer connected. The run choice document is not a worker.
+        await seedWorker(world, '2026-10-23T07:56:00.000Z');
         await seedChoice(world, 'auto');
         await seedJob(world, JOB, queued());
 

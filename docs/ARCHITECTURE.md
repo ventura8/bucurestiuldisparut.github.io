@@ -142,7 +142,7 @@ only, claims jobs whose `runOn` is `local` through `worker.claim`, and runs thei
 USGS delivery, the scratch and the reference cache on the computer and sends only the version's files through
 15-minute signed URLs (`worker.urls`), and the M2M calls go through the server, which holds the USGS key. A job's place is
 decided by the dispatcher (the city's choice, `auto` by default: the computer while one of its workers was seen within
-`WORKER_FRESH_SECONDS`, nine and a half minutes: an idle worker asks for work every five); a local job never reaches Cloud Run.
+three minutes); a local job never reaches Cloud Run.
 
 Since the live test of 2026-11-02 (`DECISIONS-for-review.md` §85): the admin's one-line command (a named volume,
 detached, restarted with the computer) carries a one-time pairing code; `worker.pair` exchanges it once for a Firebase

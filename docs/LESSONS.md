@@ -3442,7 +3442,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
 586. **An idle worker asked for a job 86,400 times a month, and a busy one could take the whole computer.**
     - Seen: 2026-11-12, `reports/resource-audit.md`: `hcm-worker` ran with no memory limit and nice 0 (an out-of-memory run takes the desktop with it), and `worker.claim` was called every 30 s for ever, each call with its Firestore reads.
     - Cause: the starter's `docker run` named no limit; the poll interval was one constant, and the admin counted a worker gone after 180 s, which forbade any longer wait.
-    - Fix and pin: the starters cap the container at 60 % of Docker's memory with a low CPU weight, the worker nices itself and leaves a core; `worker/pace.py` backs the claims off to `idlePollSeconds` and wakes on a job or the admin's look, with `WORKER_FRESH_SECONDS` above the longest wait (S-P31-HAPPY-WORKER-POLITE, S-P31-BAD-WORKER-POLITE-OVERRIDE, S-P31-HAPPY-CLAIM-BACKOFF, S-P31-BAD-CLAIM-BACKOFF-OLD-SERVER).
+    - Fix and pin: the starters cap the container at 60 % of Docker's memory with a low CPU weight, the worker nices itself and leaves a core; `worker/pace.py` backs the claims off to `idlePollSeconds` (60 s: the owner refused a five-minute wait for a new job) and wakes on a job or the admin's look, with `WORKER_FRESH_SECONDS` above the longest wait (S-P31-HAPPY-WORKER-POLITE, S-P31-BAD-WORKER-POLITE-OVERRIDE, S-P31-HAPPY-CLAIM-BACKOFF, S-P31-BAD-CLAIM-BACKOFF-OLD-SERVER).
     - **A poll's interval and the presence window that reads it change together, and the newer side must work against the older one in either deploy order.**
 
 587. **Every memory probe started from pytest reported 2,105 MB.**

@@ -4,7 +4,7 @@ import pytest
 from hcm_pipeline.worker.pace import AWAKE_SECONDS, Pace
 
 POLL = 30.0
-SLOWEST = 300.0
+SLOWEST = 60.0
 
 
 class Clock:
@@ -30,9 +30,9 @@ def test_happy_path_a_worker_idle_past_its_awake_time_waits_twice_as_long_each_p
 
     assert idle_waits(pace, 3) == [POLL, POLL, POLL]
     clock.now += AWAKE_SECONDS
-    assert idle_waits(pace, 6) == [60.0, 120.0, 240.0, SLOWEST, SLOWEST, SLOWEST]
-    # A month of such waits: 8,640 claims, not the 86,400 of one every 30 s.
-    assert 30 * 86_400 / SLOWEST == 8640
+    assert idle_waits(pace, 4) == [60.0, SLOWEST, SLOWEST, SLOWEST]
+    # A month of such waits: 43,200 claims, not the 86,400 of one every 30 s, and a new job starts within a minute.
+    assert 30 * 86_400 / SLOWEST == 43_200
     # Idle for days: the count of doublings stops, so no float overflows.
     assert idle_waits(pace, 3000)[-1] == SLOWEST
 
@@ -44,14 +44,14 @@ def test_happy_path_a_job_or_the_admins_look_makes_it_ask_often_again_and_the_ji
     pace = Pace(clock, lambda: next(spreads))
     clock.now += AWAKE_SECONDS
 
-    assert idle_waits(pace, 2) == [pytest.approx(66.0), pytest.approx(108.0)]
+    assert idle_waits(pace, 2) == [pytest.approx(66.0), pytest.approx(54.0)]
     pace.wake()
     assert pace.awake
     # A wake in the middle of a long wait: the wait is the poll's from then on.
     assert pace.wait(POLL, SLOWEST) == POLL
     assert idle_waits(pace, 1) == [POLL]
     clock.now += AWAKE_SECONDS
-    assert idle_waits(pace, 2) == [60.0, 120.0]
+    assert idle_waits(pace, 2) == [60.0, SLOWEST]
 
 
 def test_bad_path_a_server_that_names_no_longest_wait_is_asked_every_poll_and_a_longest_under_the_poll_changes_nothing() -> None:

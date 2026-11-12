@@ -3,8 +3,8 @@ each with its Firestore reads, for nothing).
 
 Awake, the worker claims every `pollSeconds`: for `AWAKE_SECONDS` after it started, after a job it ran, and after the admin's page
 looked at it (`GET /state` from a Hosting origin: somebody is there, and may start a job). Past that, each idle pass waits twice as
-long as the one before, up to `idlePollSeconds` of `worker.hello` (five minutes), a tenth more or less so that workers do not ask
-together. A server that names no `idlePollSeconds` (one older than this image) is asked every `pollSeconds` as before: its admin
+long as the one before, up to `idlePollSeconds` of `worker.hello` (a minute: a new job never waits longer), a tenth more or less
+so that workers do not ask together. A server that names no `idlePollSeconds` (one older than this image) is asked every `pollSeconds` as before: its admin
 counts a worker gone after three minutes of silence.
 """
 

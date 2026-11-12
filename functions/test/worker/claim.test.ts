@@ -189,9 +189,10 @@ describe('worker.claim', () => {
 describe('worker.hello', () => {
     it('happyPath_anIdleWorkersLongestWaitWithItsJitterKeepsItConnected @S-P31-HAPPY-CLAIM-BACKOFF', () => {
         // The worker waits up to a tenth more than `idlePollSeconds` (`pipeline/src/hcm_pipeline/worker/pace.py`): it must be seen again
-        // well within the time it counts as connected, and it asks ten times less often than while awake.
+        // well within the time it counts as connected.
         expect(WORKER_IDLE_POLL_SECONDS * 1.1 + 2 * WORKER_POLL_SECONDS).toBeLessThan(WORKER_FRESH_SECONDS);
-        expect(WORKER_IDLE_POLL_SECONDS).toBe(10 * WORKER_POLL_SECONDS);
+        // A new job never waits more than a minute (the owner, 2026-11-13).
+        expect(WORKER_IDLE_POLL_SECONDS).toBeLessThanOrEqual(60);
     });
 
     it('happyPath_aNewWorkerIsRecordedIdleAndToldItsIntervals', async () => {
