@@ -73,7 +73,7 @@ def series_of(ctx: JobContext, store: ArchiveStore | None = None) -> SeriesJob:
         tuple(_sheet(root, row) for row in _sheets_record(ctx)),
         encoding,
         param_int(params, "scaleDenominator"),
-        params.get("paperTransparent") is not False,
+        params.get("paperTransparent") is True,
         _texts(params.get("referenceLayerIds")),
         grid_id if isinstance(grid_id, str) else None,
     )

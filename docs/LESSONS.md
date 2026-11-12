@@ -3261,3 +3261,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: Firebase Hosting's `/admin/**` rewrite serves `index.html` when the install files are absent from the uploaded tree. A fast Hosting upload of `dist/hosting` built with only `build:hosting` (or a stripped tree) replaces the previous release's install folder.
     - Fix and pin: always `build:hosting && build:install` before Hosting deploy; DECISIONS §149; restored `1-0-0-3897359` and re-ran Update builds.
     - **Never deploy Hosting without the install bundle; check `/admin/install/<slug>/manifest.json` is JSON before calling the ship done.**
+
+555. **Post 1847 stayed see-through after nearest overviews: transparent paper was the real bug.**
+    - Seen: 2026-11-12, live `post-1847-ante-1852` still see-through after `…-fix1.pmtiles` (lesson 546 nearest pin).
+    - Cause: `paperTransparent` defaulted on for line art (`params.get(...) is not False`), so paper alpha was 0 and the basemap showed through. Soft overview alpha was a second problem; opaque white paper is what the owner wanted.
+    - Fix and pin: default off; `paper_opaque` in the pyramid; live `…-fix2.pmtiles` + manifest/Firestore URL; DECISIONS §150; `S-P20-HAPPY-ENCODING`.
+    - **A see-through plan needs opaque white paper by default; transparent paper is an opt-in overlay, not the product default.**

@@ -96,6 +96,6 @@ def place_from_pairs(ctx: JobContext, georef: GeorefInfo) -> StepResult:
     warped = gdal_step(ctx, lambda: warp_by_pairs(picture.path, ctx.local("warped.tif"), plan), "warp the series by the owner's pairs")
     ctx.update_version({"georef": recorded(fitted, OWNER_METHOD).as_record()})
     scale = param_int(params, "scaleDenominator")
-    placement = Placement(OWNER_METHOD, encoding, _checked(fitted, scan), True, scale, params.get("paperTransparent") is not False)
+    placement = Placement(OWNER_METHOD, encoding, _checked(fitted, scan), True, scale, params.get("paperTransparent") is True)
     placed = param_int(ctx.version.source, "sheetCount", 1) or 1
     return finish(ctx, placement, warped, placed)

@@ -59,7 +59,7 @@ export type ArchiveSkipReason = (typeof ARCHIVE_SKIP_REASONS)[number];
 /** What the report proposes for a series: import it, or skip it with a reason. */
 export const ARCHIVE_ACTIONS = ['import', 'skip'] as const;
 
-/** How a series' tiles are encoded (§6): crisp lossless line art with the paper transparent, grey, or colour. */
+/** How a series' tiles are encoded (§6): crisp lossless line art (opaque white paper by default), grey, or colour. */
 export const ARCHIVE_ENCODINGS = ['lineart', 'grey', 'colour'] as const;
 export type ArchiveEncoding = (typeof ARCHIVE_ENCODINGS)[number];
 

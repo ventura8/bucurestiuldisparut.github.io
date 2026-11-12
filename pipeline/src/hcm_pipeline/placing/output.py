@@ -43,7 +43,7 @@ class Placement:
     checked: Checked
     rival_clean: bool
     scale: int | None = None
-    paper_transparent: bool = True
+    paper_transparent: bool = False
     seam: float | None = None
 
     def as_record(self) -> dict[str, object]:

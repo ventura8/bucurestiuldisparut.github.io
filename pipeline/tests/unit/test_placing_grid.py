@@ -88,7 +88,7 @@ def test_happy_path_a_sheet_series_is_placed_from_its_names_its_quarter_order_re
     assert isinstance(report, dict)
     assert report["method"] == "grid"
     assert 0.0 < report["seamScore"] <= 1.0
-    assert report["paperTransparent"] is True
+    assert report["paperTransparent"] is False
     assert report["checkpointRmseM"] < 15
     assert report["checksDropped"] == 0
     assert '"order": 3' in (tmp_path / "scratch" / "placed.json").read_text(encoding="utf-8")

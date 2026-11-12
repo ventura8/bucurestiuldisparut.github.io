@@ -6365,3 +6365,8 @@ The owner's request of 2026-11-09 ("import the landsat, add it to our sources, a
 
 - **What**: Every Hosting ship under §142 is `npm run build:hosting && npm run build:install` (quality image), then `firebase deploy --only hosting` via `firebase.deploy.json` (no host `predeploy`). A deploy of the admin/public tree without the install folder is refused from now on. Overnight 2026-11-12 restored `/admin/install/1-0-0-3897359/` and submitted Update builds for server, pipeline and site of `1.0.0+3897359`.
 - **Why**: Hosting-only uploads that skipped `build:install` left `/admin/install/<slug>/manifest.json` falling through the `/admin/**` SPA rewrite to `index.html`, so Update the map / Install could not fetch the bundle. Lesson 554.
+
+## 150. Line-art default is opaque white paper, not see-through (2026-11-12) — APPLIED
+
+- **What**: `paperTransparent` defaults to **off**. Pyramid runs `paper_opaque` (ink black, paper white, outside clear) for line art unless the owner sets `paperTransparent: true` (then `paper_transparent`). Live Post 1847 rebuilt and published as `…-fix2.pmtiles` and pointed from `cities/bucharest/manifest.json` plus the Firestore layer `source.url`. Pins: `S-P20-HAPPY-ENCODING` (default opaque; opt-in transparent).
+- **Why**: the owner, 2026-11-12: "1847 is still see through, give it a white background!!! that is the real fix." Nearest overviews alone left transparent paper, so the plan stayed see-through on the basemap.

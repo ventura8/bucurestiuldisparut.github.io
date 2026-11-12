@@ -16353,7 +16353,7 @@
             "area": "pipeline",
             "path": "happy",
             "title": "A series' tiles follow its encoding",
-            "asserts": "line art lossless and nearest at every zoom (overviews too) with paper transparent and binary alpha; colour at 82; grey as today",
+            "asserts": "line art lossless and nearest at every zoom (overviews too) with opaque white paper by default (transparent only when paperTransparent true) and binary alpha; colour at 82; grey as today",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M20 (docs/research/M20-import-local.md); lesson 546 (Post 1847). Tests: pipeline/tests/unit/test_archive_steps.py, pipeline/tests/integration/test_lineart_tiles.py."
