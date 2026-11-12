@@ -15,6 +15,9 @@ export const STITCH_METHODS = ['grid', 'atlas', 'pieces', 'single', 'overview'] 
 /** Why a part is not in the stitched picture: no frame on the sheet, or no edge or overlap shared with the others. */
 export const LEFT_OUT_REASONS = ['no-frame', 'no-join'] as const;
 
+/** At most this many left-out parts are named (`leftOutCount` says how many there were). */
+export const STITCHED_LEFT_OUT_MAX = 200;
+
 /** The stitched picture's long side at most (the georeferencer's preview size). */
 export const STITCHED_PREVIEW_MAX_PX = 4096;
 
@@ -27,7 +30,7 @@ export const stitchedSchema = z.strictObject({
     method: z.enum(STITCH_METHODS),
     parts: z.number().int().min(1),
     joined: z.number().int().min(0),
-    leftOut: z.array(z.strictObject({ name: plainText(200), reason: z.enum(LEFT_OUT_REASONS) })).max(200),
+    leftOut: z.array(z.strictObject({ name: plainText(200), reason: z.enum(LEFT_OUT_REASONS) })).max(STITCHED_LEFT_OUT_MAX),
     leftOutCount: z.number().int().min(0),
     /** Ground metres per stitched pixel when known (a grid's mosaic). */
     metresPerPx: z.number().positive().optional(),

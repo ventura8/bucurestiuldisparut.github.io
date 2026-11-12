@@ -112,6 +112,7 @@ export const ro = {
     'apiError.imagery.joinSeamTooFar': 'Cadrele {a} și {b} sunt prea departe pentru a fi unite; corectează punctele unuia.',
     'apiError.imagery.joinNoFrames': 'Mai puțin de două cadre adaugă ceva la oraș.',
     'apiError.imagery.joinNoRoom': 'Nu este destul spațiu pe disc pentru această unire; eliberează spațiu și reia.',
+    'apiError.imagery.stepTimeLimit': 'Pasul {step} a depășit {minutes} minute și a fost oprit. Reîncearcă sau deschide jurnalul.',
     'apiError.imagery.notImproved': 'Nimic mai bun: {after} m față de {before} m acum, pe aceleași verificări. Rămâne cea actuală.',
     'apiError.imagery.refineRefused': 'Zonele imaginii nu s-au potrivit destul cu harta. Rămâne potrivirea actuală.',
     'apiError.imagery.refineUnmeasured': 'Prea puține verificări pentru a compara potrivirea nouă cu cea actuală. Rămâne cea actuală.',

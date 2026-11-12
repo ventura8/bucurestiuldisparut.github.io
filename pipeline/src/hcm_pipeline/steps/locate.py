@@ -7,7 +7,9 @@ delivery is deleted (M7 §5). **Not proved:** `bounded_crop` holds the window wi
 what a scan may hold; the delivery stays, the matcher still runs and the admin's points are next. A frame that does not reach the window
 fails with `apiError.imagery.cityNotFound`; a panoramic camera's frame is read on its exposure alone. Finding 57 of 2026-11-01: the frame
 is never read whole; the search reads `stitch`'s shrunk preview, and everything else is read window by window out of the segments, each
-staged, read and let go in turn. `version.calibration` records what happened; it is what the admin shows.
+staged, read and let go in turn. `version.calibration` records what happened; it is what the admin shows. The search is held to its
+camera's `search_seconds` (live 2026-11-12: a KH-5 Argon frame, 550 km across, searched an hour with no end): past it the windows left
+are not searched, and the frame is cropped around the city by its footprint, not proved, and waits for points like any refusal.
 """
 
 import math
@@ -217,6 +219,34 @@ class Proved:
     order: int
 
 
+class SearchTimeUpError(Exception):
+    """The frame's search ran out of its time."""
+
+
+class SearchBudget:
+    """The chain's tick held to `seconds` from the first search: past it the chain stops, and each window left answers not found."""
+
+    def __init__(self, ctx: JobContext, seconds: float) -> None:
+        self._ctx = ctx
+        self._seconds = seconds
+        self._ends_at = ctx.services.clock() + seconds
+        self.timed_out = False
+
+    def tick(self) -> None:
+        self._ctx.checkpoint()
+        if self._ctx.services.clock() > self._ends_at:
+            raise SearchTimeUpError
+
+    def find(self, search: FrameSearch, say: Callable[[str], None]) -> Found:
+        if not self.timed_out:
+            try:
+                return find_frame(search, self.tick, say)
+            except SearchTimeUpError:
+                self.timed_out = True
+                say(f"the search ran out of its {round(self._seconds / 60)} min: the city is cropped by the footprint, points are next")
+        return Found(None, "none", None, (0, 0), None, ())
+
+
 class LocateStep:
     name = "locate"
 
@@ -229,9 +259,8 @@ class LocateStep:
         try:
             windows = self._search(ctx, (scene, entity.sensor), window, preview, layout)
             say = self._say(ctx)
-            search, found = gdal_step(
-                ctx, lambda: best_of(windows, lambda each: find_frame(each, ctx.checkpoint, say), say), "search the frame"
-            )
+            budget = SearchBudget(ctx, SENSOR_SPECS[entity.sensor].search_seconds)
+            search, found = gdal_step(ctx, lambda: best_of(windows, lambda each: budget.find(each, say), say), "search the frame")
             return self._cropped(ctx, search, found, layout)
         except CityNotFoundError as error:
             raise StepFailedError(Errors.CITY_NOT_FOUND, str(error)) from error

@@ -11,6 +11,7 @@ import { isDeepStrictEqual } from 'node:util';
 
 import {
     ENDED_VERSION_STATES,
+    FIRESTORE_PATHS,
     LEASE_SECONDS,
     isDeclinedCode,
     isOwnTiles,
@@ -18,6 +19,7 @@ import {
     jobDocSchema,
     layerVersionDocSchema,
     validate,
+    workerDocSchema,
     type JobDoc,
     type LayerVersionDoc,
     type LayerVersionState,
@@ -246,10 +248,33 @@ function changesFor(request: UpdateRequest): FieldChange[] {
     if (changes === undefined) {
         throw refused();
     }
-    if (!changes.every(([, value]) => storableChange(value))) {
-        throw new ApiError('apiError.invalidRequest');
+    const unstorable = changes.filter(([, value]) => !storableChange(value));
+    if (unstorable.length > 0) {
+        // The field named, never its value (a worker's write is the owner's data): the worker's log and the job's error say which.
+        throw new ApiError(
+            'apiError.invalidRequest',
+            undefined,
+            unstorable.map(([path]) => ({ path: path.join('.'), code: 'validation.value' as const })),
+        );
     }
     return changes;
+}
+
+/**
+ * A heartbeat (`lease.until`) also says the worker is alive: its `lastSeenAt` follows, or the admin showed "No computer connected"
+ * and sent new jobs to the cloud while a long step ran (live 2026-11-12: an hour in `locate`, then a 60-sheet `place`). The worker
+ * document is read before any write of the transaction (Firestore's rule) and written only once the job's update was.
+ */
+async function jobUpdate(context: UpdateContext, write: Write<JobDoc>, ifUpdateTime: string | undefined): Promise<boolean> {
+    const { call, now } = context;
+    const beat = write.changes.some(([[head]]) => head === 'lease');
+    const path = FIRESTORE_PATHS.worker(call.cityId, call.workerId);
+    const worker = beat ? await write.transaction.get(path, workerDocSchema) : undefined;
+    const ok = await writeChecked(context, write, ifUpdateTime);
+    if (ok && worker !== undefined) {
+        await write.transaction.set(path, workerDocSchema, { ...worker, lastSeenAt: at(now) });
+    }
+    return ok;
 }
 
 /** `update {path, fields, ifUpdateTime?}`: `{ok: true}` once written, `{ok: false}` when the update time no longer matches. */
@@ -265,7 +290,7 @@ export async function updateDocument(
         const scope: JobScope = { cityId: call.cityId, jobId, job, versionId: versionIdOf(jobId, job) };
         const target = documentTarget(scope, request.path);
         if (target === 'job') {
-            return writeChecked(context, { transaction, path: request.path, writable: jobWritable(call), changes }, request.ifUpdateTime);
+            return jobUpdate(context, { transaction, path: request.path, writable: jobWritable(call), changes }, request.ifUpdateTime);
         }
         if (target === 'version') {
             return writeChecked(

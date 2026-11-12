@@ -82,13 +82,26 @@ def _transient(response: httpx.Response) -> bool:
     return response.status_code in _RETRIED and not isinstance(_code(_body(response)), str)
 
 
+# At most this many refused fields are named in the error's message.
+ISSUES_NAMED: Final = 5
+
+
+def _issues(body: Mapping[str, object]) -> str:
+    """The fields a validation refused, as `path (code)`: where to look, never a value (the server sends none)."""
+    found = _record(_record(body.get("error")).get("details")).get("issues")
+    issues = [_record(item) for item in found] if isinstance(found, list) else []
+    named = [f"{issue.get('path') or '(the value)'} ({issue.get('code')})" for issue in issues[:ISSUES_NAMED]]
+    return f": {', '.join(named)}" if named else ""
+
+
 def refusal(status: int, body: Mapping[str, object]) -> Exception:
-    """The exception of a refused call: `LeaseLostError` for notHolder, else `WorkerApiError` with its code."""
+    """The exception of a refused call: `LeaseLostError` for notHolder, else `WorkerApiError` with its code and, for a validation,
+    the fields it refused (`apiError.invalidRequest: help.stitched.leftOut.0.name (validation.tooBig)`)."""
     error = _record(body.get("error"))
     code = _code(body)
     if not isinstance(code, str):
         code = _BY_STATUS.get(str(error.get("status")), Errors.INTERNAL)
-    message = str(error.get("message") or f"HTTP {status}")
+    message = str(error.get("message") or f"HTTP {status}") + _issues(body)
     if code == NOT_HOLDER:
         return LeaseLostError(f"the server says this worker no longer holds the job: {message}")
     if code == REVOKED:

@@ -58,6 +58,29 @@ def test_bad_path_a_refusal_carries_its_code(answer: httpx.Response, code: str) 
     assert caught.value.code == code
 
 
+def test_bad_path_an_invalid_request_names_the_fields_the_server_refused() -> None:
+    """Scenarios: S-A62-BAD-NAMED-FIELD"""
+    issues = [{"path": f"help.stitched.leftOut.{index}.name", "code": "validation.tooBig"} for index in range(7)]
+    details = {"code": "apiError.invalidRequest", "params": {"count": "7"}, "issues": issues}
+    answer = httpx.Response(400, json={"error": {"message": "apiError.invalidRequest", "status": "INVALID_ARGUMENT", "details": details}})
+
+    with pytest.raises(WorkerApiError) as caught:
+        api(lambda _request: answer).call("worker-step", {})
+
+    assert caught.value.code == "apiError.invalidRequest"
+    assert "help.stitched.leftOut.0.name (validation.tooBig)" in str(caught.value)
+    assert "leftOut.4.name" in str(caught.value)
+    assert "leftOut.5.name" not in str(caught.value)
+
+
+def test_bad_path_a_refusal_of_the_whole_value_says_so() -> None:
+    details = {"code": "apiError.invalidRequest", "issues": [{"path": "", "code": "validation.value"}, "not a record"]}
+    answer = httpx.Response(400, json={"error": {"message": "apiError.invalidRequest", "status": "INVALID_ARGUMENT", "details": details}})
+
+    with pytest.raises(WorkerApiError, match=r"\(the value\) \(validation.value\), \(the value\) \(None\)"):
+        api(lambda _request: answer).call("worker-step", {})
+
+
 def test_bad_path_not_holder_is_a_lost_lease() -> None:
     with pytest.raises(LeaseLostError, match="no longer holds the job"):
         api(lambda _request: coded("apiError.worker.notHolder")).call("worker-step", {})

@@ -36,14 +36,23 @@ import signal
 import tempfile
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from types import FrameType
 from typing import Final, Protocol
 
 from hcm_pipeline import paths
 from hcm_pipeline.config import Config
-from hcm_pipeline.contract import DOWNLOAD_STEPS, REQUEUE_SECONDS, SIDE_JOB_TYPES, Errors, pipeline_steps_of, step_weights
+from hcm_pipeline.contract import (
+    DEFAULT_STEP_LIMIT_SECONDS,
+    DOWNLOAD_STEPS,
+    REQUEUE_SECONDS,
+    SIDE_JOB_TYPES,
+    STEP_LIMIT_SECONDS,
+    Errors,
+    pipeline_steps_of,
+    step_weights,
+)
 from hcm_pipeline.documents import Version
 from hcm_pipeline.joblog import JobLog, scrub
 from hcm_pipeline.jobs import (
@@ -56,6 +65,7 @@ from hcm_pipeline.jobs import (
     RunStoppedError,
     Services,
     Skipped,
+    StepDeadline,
     StepFailedError,
     StepResult,
     Waiting,
@@ -135,6 +145,11 @@ class RunSettings:
 
     heartbeat_seconds: float | None = None
     asked_to_stop: Callable[[], bool] = lambda: False
+    # Each step's wall-time limit in seconds, over `STEP_LIMIT_SECONDS` (the rest keep `DEFAULT_STEP_LIMIT_SECONDS`).
+    step_limits: Mapping[str, float] = field(default_factory=dict)
+
+    def limit_of(self, step: str) -> float:
+        return float(self.step_limits.get(step, STEP_LIMIT_SECONDS.get(step, DEFAULT_STEP_LIMIT_SECONDS)))
 
 
 class JobRunner:
@@ -240,7 +255,9 @@ class JobRunner:
             return Done()
         ctx.step = name
         _record_machine(ctx, name)
-        ctx.flags.enter(name, base, weight)
+        limit = self._settings.limit_of(name)
+        clock = self._services.clock
+        ctx.flags.enter(name, base, weight, StepDeadline(name, clock() + limit, limit, clock))
         started = self._now()
         ctx.update_job({"step": name, f"steps.{name}": StepRecord("running", started_at=started).as_record(), "progress": round(base, 4)})
         self._log.info(f"step {name} started", name)

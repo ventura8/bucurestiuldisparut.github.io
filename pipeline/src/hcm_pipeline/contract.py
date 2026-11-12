@@ -115,6 +115,10 @@ VERSION_FILES: Final = (
 )
 LEASE_SECONDS: Final = 600
 HEARTBEAT_SECONDS: Final = 60
+# Each step's wall-time limit (live 2026-11-12: an hour in `locate` on a KH-5 frame held the computer's whole queue). Generous: a step
+# past it fails at its next checkpoint (`StepTimeLimitError`); `RunSettings.step_limits` overrides them (tests, a slow computer).
+DEFAULT_STEP_LIMIT_SECONDS: Final = 3 * 3600
+STEP_LIMIT_SECONDS: Final[Mapping[str, int]] = {"locate": 45 * 60, "place": 4 * 3600, "align": 4 * 3600, "merge": 4 * 3600}
 USGS_BACKOFF_MINUTES: Final = (30, 60, 120, 240, 480, 720)
 SCAN_PREVIEW_MAX_PX: Final = 4096
 STUDIO_MAX_BYTES: Final = 300_000_000
@@ -171,6 +175,8 @@ class SensorSpec:
     search: SearchRange = SearchRange(30_000.0, (1.0,))
     # A panoramic strip with no camera model: `locate` searches it window by window along its length (`calibrate/strip.py`).
     strip: bool = False
+    # How long `locate` searches the frame at most; past it the frame is cropped around the city by its footprint and waits for points.
+    search_seconds: float = 35 * 60
 
     def as_contract(self) -> dict[str, object]:
         """The camelCase record of `enums.json` (the TypeScript `SensorSpec`)."""
@@ -193,7 +199,8 @@ SENSOR_SPECS: Final[Mapping[str, SensorSpec]] = {
     "KH-4B": SensorSpec("corona2", "KH-4B Corona", 1.8, 10, 16, "std", search=_CORONA_SEARCH, strip=True),
     # The Argon mapping camera: a frame 550 km across at 34 m a pixel, 140 m on the ground. DS09065A089MC039 (1964) was read as KH-4A. Its
     # true place is 20 km from its footprint's, and nothing proves it: no vote agrees, and the proof reaches 14 tiles at most (M9 §14).
-    "KH-5": SensorSpec("corona2", "KH-5 Argon", 140, 8, 12, "std", search=SearchRange(30_000.0, (1.0,))),
+    # Live 2026-11-12: its search ran an hour with no end, so it is held to 10 minutes; then the city's crop waits for points.
+    "KH-5": SensorSpec("corona2", "KH-5 Argon", 140, 8, 12, "std", search=SearchRange(30_000.0, (1.0,)), search_seconds=10 * 60),
     # Measured on one frame, DZB00403000026H017001 (1966): 22 km ground off, 8 to 13 % small, and the film a parallelogram, about 9 degrees
     # from the rectangle of its corners (M9 §14).
     "KH-7": SensorSpec("declassii", "KH-7 Gambit", 1.2, 10, 17, "std", search=SearchRange(30_000.0, (1.0, 1.1), (0.0, 7.5, -7.5))),
@@ -260,6 +267,7 @@ class Errors:
     JOIN_SEAM_TOO_FAR: Final = "apiError.imagery.joinSeamTooFar"
     JOIN_NO_FRAMES: Final = "apiError.imagery.joinNoFrames"
     JOIN_NO_ROOM: Final = "apiError.imagery.joinNoRoom"
+    STEP_TIME_LIMIT: Final = "apiError.imagery.stepTimeLimit"
     # M16: a refine that renders nothing ends declined with one of these (`jobs.DeclinedError`).
     NOT_IMPROVED: Final = "apiError.imagery.notImproved"
     REFINE_REFUSED: Final = "apiError.imagery.refineRefused"

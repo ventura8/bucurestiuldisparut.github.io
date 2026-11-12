@@ -29,6 +29,10 @@ ARCHIVE_AUTO_LIKELIHOODS: Final = ("likely", "possible", "points")
 ARCHIVE_PLACE_METHODS: Final = ("embedded", "grid", "atlas", "pieces", "match", "gcps", "grid-names", "overview")
 # How a series' parts were joined into one picture (`help.stitched.method`; `STITCH_METHODS` of @hcm/shared).
 STITCH_METHODS: Final = ("grid", "atlas", "pieces", "single", "overview")
+# Why a part is left out of the stitched picture, and how many of them `help.stitched.leftOut` names (`LEFT_OUT_REASONS`,
+# `STITCHED_LEFT_OUT_MAX` of @hcm/shared; the shared contract since 2026-11-12, lesson 579).
+LEFT_OUT_REASONS: Final = ("no-frame", "no-join")
+STITCHED_LEFT_OUT_MAX: Final = 200
 RIGHTS_LICENCES: Final = ("PD", "CC0", "CC-BY-4.0", "CC-BY-SA-4.0", "permission", "unknown")
 RIGHTS_STATES: Final = ("clear", "needs-confirmation", "do-not-publish")
 HELP_REASONS: Final = ("no-path", "low-confidence", "frame-not-found", "no-scale", "archive-missing")

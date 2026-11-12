@@ -108,6 +108,7 @@ export const en: ApiMessages = {
     'apiError.imagery.joinSeamTooFar': 'Frames {a} and {b} are too far apart to join; fix the points of one.',
     'apiError.imagery.joinNoFrames': 'Fewer than two frames add anything to the city.',
     'apiError.imagery.joinNoRoom': 'Not enough disk space for this join; free some and retry.',
+    'apiError.imagery.stepTimeLimit': 'Step {step} ran over {minutes} minutes and was stopped. Try again, or open the job’s log.',
     'apiError.imagery.notImproved': 'No better fit: {after} m against the current {before} m on the same checks. The current one stays.',
     'apiError.imagery.refineRefused': "The image's areas did not agree with the map well enough. The current fit stays.",
     'apiError.imagery.refineUnmeasured': 'Too few checks to compare the new fit with the current one. The current fit stays.',
