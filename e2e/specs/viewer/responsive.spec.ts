@@ -246,6 +246,7 @@ test(
 
         await visibilitySwitch(page, 'ro', 'Corona 1966 (e2e)').click();
         await expect(credits).toContainText('USGS (e2e)');
-        await expect(credits.getByRole('link', { name: '© Mapbox' })).toHaveAttribute('href', 'https://www.mapbox.com/about/maps/');
+        // The collapsed attribution keeps its links out of the accessibility tree until it is opened.
+        await expect(credits.locator('a', { hasText: '© Mapbox' })).toHaveAttribute('href', 'https://www.mapbox.com/about/maps/');
     },
 );

@@ -170,6 +170,7 @@ export const dockStyles = css`
      */
     .frame[data-compact-height] .dock.menu {
         inset-inline: var(--hcm-gutter);
+        text-align: start;
 
         --hcm-fab-menu-align: flex-start;
         --hcm-fab-menu-flow: row wrap-reverse;
