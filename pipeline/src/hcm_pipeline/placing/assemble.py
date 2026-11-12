@@ -14,7 +14,7 @@ picture (`stitched`).
 """
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final
@@ -38,6 +38,8 @@ MIN_EDGE_SCORE: Final = 0.6
 # The best continuation must beat the page's next best by this much (a missing page leaves its neighbours a poor second best).
 EDGE_MARGIN: Final = 0.15
 OWNER_STEP: Final = 8
+# Paper white past a part's edge, in every band (a bare 255 is white in the first band only: a coloured sliver along the atlas's rim).
+PAPER: Final = (255, 255, 255)
 
 
 @dataclass(frozen=True)
@@ -187,14 +189,47 @@ def _join(cells: dict[int, tuple[int, int]], links: list[Link]) -> bool:
     return False
 
 
-def frame_crop(image: UInt8Array) -> UInt8Array:
-    """The page inside its frame (the whole page when it has none)."""
+def frame_box(image: UInt8Array) -> tuple[slice, slice]:
+    """The rows and columns of the page inside its frame (the whole page when it has none)."""
     corners = find_frame(grey_of(image))
     if corners is None:
-        return image
+        return slice(None), slice(None)
     left, top = numpy.floor(corners.min(axis=0)).astype(int)
     right, bottom = numpy.ceil(corners.max(axis=0)).astype(int)
-    return image[max(0, top) : bottom, max(0, left) : right]
+    return slice(max(0, int(top)), int(bottom)), slice(max(0, int(left)), int(right))
+
+
+def frame_crop(image: UInt8Array) -> UInt8Array:
+    """The page inside its frame (the whole page when it has none)."""
+    rows, columns = frame_box(image)
+    return image[rows, columns]
+
+
+@dataclass(frozen=True)
+class Pages:
+    """An atlas's pages, held grey and cropped to their frames (what the layout reads); each read again in colour only while it is
+    pasted (reports/resource-audit.md: 60 colour pages beside the canvas were 735 MB more)."""
+
+    paths: tuple[Path, ...]
+    max_px: int
+    grey: tuple[UInt8Array, ...]
+    boxes: tuple[tuple[slice, slice], ...]
+    colour: bool
+
+    @classmethod
+    def read(cls, paths: Sequence[Path], max_px: int) -> Pages:
+        grey, boxes, colour = [], [], False
+        for path in paths:
+            image = read_working(path, max_px).image
+            box = frame_box(image)
+            colour = colour or image.ndim == RGB
+            grey.append(grey_of(image[box]))
+            boxes.append(box)
+        return cls(tuple(paths), max_px, tuple(grey), tuple(boxes), colour)
+
+    def page(self, index: int) -> UInt8Array:
+        """Page `index` as it is pasted: read again, cropped to its frame."""
+        return read_working(self.paths[index], self.max_px).image[self.boxes[index]]
 
 
 def _stretch(page: UInt8Array, cell: tuple[int, int], at: tuple[int, int]) -> FloatArray:
@@ -233,9 +268,8 @@ def _owners(layout: Layout, sizes: Sequence[tuple[int, int]]) -> NDArray[numpy.i
     return owner
 
 
-def _blank(images: Sequence[UInt8Array], size: tuple[int, int]) -> UInt8Array:
+def _blank(colour: bool, size: tuple[int, int]) -> UInt8Array:
     width, height = size
-    colour = any(image.ndim == RGB for image in images)
     return numpy.full((height, width, RGB) if colour else (height, width), 255, numpy.uint8)
 
 
@@ -244,15 +278,48 @@ def _like(image: UInt8Array, canvas: UInt8Array) -> UInt8Array:
     return numpy.dstack([image] * RGB) if canvas.ndim == RGB and image.ndim != RGB else image
 
 
+def _own_box(matrix: FloatArray, size: tuple[int, int], canvas: tuple[int, int]) -> tuple[int, int, int, int]:
+    """The canvas pixels (left, top, right, bottom) a part of `size` reaches through `matrix`, a pixel more on every side (the blend at
+    its edge), inside the canvas."""
+    width, height = size
+    corners = numpy.array([[0, 0], [width, 0], [0, height], [width, height]], numpy.float64) @ matrix[:, :2].T + matrix[:, 2]
+    low, high = numpy.floor(corners.min(axis=0)) - 1, numpy.ceil(corners.max(axis=0)) + 1
+    return max(0, int(low[0])), max(0, int(low[1])), min(canvas[0], int(high[0])), min(canvas[1], int(high[1]))
+
+
+def _cells(pixels: int, cells: int, first: int, last: int) -> NDArray[numpy.intp]:
+    """The owners' cell of each canvas pixel from `first` up to `last` along a side of `pixels`: the nearest, as `cv2.resize` picks it."""
+    scale = 1.0 / (pixels / cells)
+    return numpy.minimum(numpy.floor(numpy.arange(first, last) * scale).astype(numpy.intp), cells - 1)
+
+
+def _paste(canvas: UInt8Array, image: UInt8Array, matrix: FloatArray, mine: NDArray[numpy.bool_], corner: tuple[int, int]) -> None:
+    """`image` through `matrix` onto its own box of the canvas (from `corner`, as large as `mine`), where `mine` says the box is its."""
+    height, width = mine.shape
+    shifted = matrix.copy()
+    shifted[:, 2] -= corner
+    warped = cv2.warpAffine(image, shifted, (width, height), flags=cv2.INTER_LINEAR, borderValue=PAPER)
+    canvas[corner[1] : corner[1] + height, corner[0] : corner[0] + width][mine] = warped[mine]
+
+
 def compose_canvas(images: Sequence[UInt8Array], layout: Layout) -> UInt8Array:
     """The parts on the canvas with hard seams (`_owners`); paper white where no part lies."""
-    canvas = _blank(images, layout.size)
     sizes = [(image.shape[1], image.shape[0]) for image in images]
-    owners = cv2.resize(_owners(layout, sizes), layout.size, interpolation=cv2.INTER_NEAREST)
+    return compose_parts(images.__getitem__, sizes, any(image.ndim == RGB for image in images), layout)
+
+
+def compose_parts(part: Callable[[int], UInt8Array], sizes: Sequence[tuple[int, int]], colour: bool, layout: Layout) -> UInt8Array:
+    """The parts (`part(index)`, of `sizes`) on the canvas with hard seams (`_owners`); paper white where no part lies. Each part is
+    asked for once, warped only into its own box, and the owners stay on their coarse grid (reports/resource-audit.md: 60 colour sheets
+    held 3.8 GB with every part warped onto a whole canvas and the owners resized to it, 1.7 GB so, for a sixth of the time)."""
+    canvas = _blank(colour, layout.size)
+    owners = _owners(layout, sizes)
     for index, matrix in layout.placed.items():
-        warped = cv2.warpAffine(_like(images[index], canvas), matrix, layout.size, flags=cv2.INTER_LINEAR, borderValue=255)
-        mine = owners == index
-        canvas[mine] = warped[mine]
+        left, top, right, bottom = _own_box(matrix, sizes[index], layout.size)
+        if right <= left or bottom <= top:
+            continue
+        rows, columns = _cells(layout.size[1], owners.shape[0], top, bottom), _cells(layout.size[0], owners.shape[1], left, right)
+        _paste(canvas, _like(part(index), canvas), matrix, owners[numpy.ix_(rows, columns)] == index, (left, top))
     return canvas
 
 
@@ -260,7 +327,3 @@ def write_canvas(target: Path, canvas: UInt8Array) -> Path:
     """The canvas as a plain (not georeferenced) TIFF in the scratch folder."""
     bands = [canvas[:, :, index] for index in range(RGB)] if canvas.ndim == RGB else [canvas]
     return write_geotiff(target, GeoTiff(bands, None), GTIFF_OPTIONS)
-
-
-def read_parts(paths: Sequence[Path], max_px: int) -> list[UInt8Array]:
-    return [read_working(path, max_px).image for path in paths]

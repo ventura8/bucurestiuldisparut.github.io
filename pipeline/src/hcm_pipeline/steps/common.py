@@ -25,11 +25,12 @@ from hcm_pipeline.jobs import JobContext, StepFailedError
 from hcm_pipeline.model import Record
 from hcm_pipeline.objects import ObjectInfo, sha256_of
 from hcm_pipeline.raster import gdal
-from hcm_pipeline.rasters import GTIFF_OPTIONS, RasterError, read_band
+from hcm_pipeline.rasters import GTIFF_OPTIONS, RasterError, open_raster, read_band
 from hcm_pipeline.stac import ReferenceUnavailableError, StacItem
 from hcm_pipeline.urlguard import AddressRefusedError, check_data_url, check_emulated_url
 
 REFERENCE_RESOLUTION_M: Final = 10.0
+RGB_BANDS: Final = 3
 # The reference guard's verdict, kept in the cached window's metadata so `locate` and `reference` measure it once.
 CHECK_METADATA: Final = "HCM_S2_CHECK"
 LOOPBACK_PREFIXES: Final = ("http://127.0.0.1", "http://localhost", "http://[::1]")
@@ -215,11 +216,37 @@ def grey_reference(source: Sentinel2) -> UInt8Array:
     return numpy.asarray(numpy.asarray(total) / 3, numpy.uint8)
 
 
-def publish_scan(ctx: JobContext, local: Path, pixels: UInt8Array) -> ScanInfo:
-    """`scan.tif` and its preview (long side at most `SCAN_PREVIEW_MAX_PX`) as the version's files."""
-    height, width = pixels.shape[:2]
+def _preview_size(width: int, height: int) -> tuple[tuple[int, int], float]:
     scale = min(1.0, SCAN_PREVIEW_MAX_PX / max(width, height))
-    preview = write_jpeg(ctx.local("scan-preview.jpg"), resize(pixels, (max(1, round(width * scale)), max(1, round(height * scale)))))
+    return (max(1, round(width * scale)), max(1, round(height * scale))), scale
+
+
+def scan_preview(local: Path) -> tuple[UInt8Array, tuple[int, int]]:
+    """The preview of the scan in `local` (grey, or RGB of a colour scan) and the scan's size, read by GDAL averaged down to the
+    preview's size: the scan itself is never held (reports/resource-audit.md: a 20,000 px colour upload read whole was 2.4 GB)."""
+    dataset = open_raster(local)
+    width, height = dataset.RasterXSize, dataset.RasterYSize
+    size, _ = _preview_size(width, height)
+    count = RGB_BANDS if dataset.RasterCount >= RGB_BANDS else 1
+    bands = [
+        numpy.asarray(dataset.GetRasterBand(band).ReadAsArray(0, 0, width, height, size[0], size[1], resample_alg=gdal.GRIORA_Average))
+        for band in range(1, count + 1)
+    ]
+    dataset.Close()
+    return numpy.asarray(bands[0] if count == 1 else numpy.dstack(bands), numpy.uint8), (width, height)
+
+
+def _shrunk_preview(pixels: UInt8Array) -> tuple[UInt8Array, tuple[int, int]]:
+    height, width = pixels.shape[:2]
+    return resize(pixels, _preview_size(width, height)[0]), (width, height)
+
+
+def publish_scan(ctx: JobContext, local: Path, pixels: UInt8Array | None = None) -> ScanInfo:
+    """`scan.tif` and its preview (long side at most `SCAN_PREVIEW_MAX_PX`) as the version's files; the preview from `pixels` when
+    the caller holds the scan anyway, else read out of the file shrunk."""
+    small, (width, height) = scan_preview(local) if pixels is None else _shrunk_preview(pixels)
+    scale = _preview_size(width, height)[1]
+    preview = write_jpeg(ctx.local("scan-preview.jpg"), small)
     sha256 = sha256_of(local)
     scan = ctx.publish(local, ctx.version_file("scan.tif"), "image/tiff")
     ctx.publish(preview, ctx.version_file("scan-preview.jpg"), "image/jpeg")

@@ -20,9 +20,8 @@ from hcm_pipeline.georef.corners import Crop
 from hcm_pipeline.georef.transforms import Gcp
 from hcm_pipeline.jobs import JobContext, StepFailedError
 from hcm_pipeline.model import UsgsImportParams
-from hcm_pipeline.rasters import GeoTiff, write_geotiff
 from hcm_pipeline.steps.common import city_window, gdal_step, publish_scan
-from hcm_pipeline.steps.locate import camera_of, crop_pixels, film_limits, within_limits
+from hcm_pipeline.steps.locate import camera_of, film_limits, within_limits, write_crop
 from hcm_pipeline.steps.whole import Box, RoughPointsError, WholeFrame, marked, rough_box
 
 STEP: Final = "georef"
@@ -84,10 +83,9 @@ def _cut(ctx: JobContext, georef: GeorefInfo, scan: ScanInfo, whole: WholeFrame)
     layout = _layout(ctx)
     left, top, right, bottom = _box(ctx, georef.gcps, film, layout)
     crop = within_limits(Crop(left, top, right - left, bottom - top, ()))
-    pixels = gdal_step(ctx, lambda: crop_pixels(ctx, layout, crop), "crop the frame")
     ctx.unstage(scan.path)
-    local = write_geotiff(ctx.local("scan.tif"), GeoTiff([pixels]))
-    cut = publish_scan(ctx, local, pixels)
+    local = gdal_step(ctx, lambda: write_crop(ctx, layout, crop, ctx.local("scan.tif")), "crop the frame")
+    cut = gdal_step(ctx, lambda: publish_scan(ctx, local), "read the crop")
     ctx.staged[cut.path] = local
     moved = tuple(replace(gcp, x=x - left, y=y - top) for gcp, (x, y) in zip(georef.gcps, film, strict=True))
     placed = replace(georef, gcps=moved)
