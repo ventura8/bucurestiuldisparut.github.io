@@ -48,6 +48,15 @@ describe('exportReadme', () => {
             '# Rights\n\nThe photos below are published with their rights holders’ permission for the map City only.\n' +
                 'Do not republish them elsewhere without their consent.\n\nNo photo has this restriction.\n',
         );
+        const [photo] = publishedManifest().photos;
+        if (photo === undefined) {
+            throw new Error('the world has photos');
+        }
+        const rights = rightsDocument({ ro: 'Oraș', en: 'City' }, [
+            { ...photo, license: 'permission', author: 'Ion Pop', title: { ro: 'Ștrandul', en: 'The lido' } },
+        ]).split('\n');
+        expect(rights).toContain('| Photo | Title | Rights holder | Licence |');
+        expect(rights).toContain('| `strand-1976` | The lido | Ion Pop | permission |');
     });
 
     it('badPath_aNameWithMarkdownCharactersStaysOneEscapedHeading @S-A53-BAD-NAME-MARKUP', () => {

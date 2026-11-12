@@ -9379,7 +9379,7 @@
             "area": "admin",
             "path": "happy",
             "title": "The export's README and RIGHTS are written in English only",
-            "asserts": "an export's README.md opens with '# <the city's English name>: static export (<day>)', its preface in English and no Romanian section, then the kit's README; RIGHTS.md is titled 'Rights' with the columns Photo, Title, Rights holder, Licence",
+            "asserts": "an export's README.md opens with '# <the city's English name>: static export (<day>)', its preface in English and no Romanian section, then the kit's README; RIGHTS.md is titled 'Rights' with the header row '| Photo | Title | Rights holder | Licence |' and lists a photo under its English title (the Romanian one when it has none)",
             "tier": "functions",
             "status": "exists",
             "notes": "The owner's rule of 2026-11-10: all project Markdown in English only (docs/research/DECISIONS-for-review.md §152). Test: functions/test/export/documents.test.ts."

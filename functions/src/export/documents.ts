@@ -64,7 +64,7 @@ export function exportReadme(input: ReadmeInput): string {
 }
 
 function rightsRow(photo: Photo): string {
-    const title = markdownLine(photo.title.ro);
+    const title = markdownLine(photo.title.en ?? photo.title.ro);
     const holder = markdownLine(photo.rightsHolder ?? photo.author ?? '—');
     return `| \`${photo.id}\` | ${title} | ${holder} | ${photo.license} |`;
 }
