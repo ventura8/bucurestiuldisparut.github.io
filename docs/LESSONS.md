@@ -3391,7 +3391,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: jobs on the computer (`runOn: 'local'`) never count; a `local` city's new jobs are created `runOn: 'local'` and pass the cap; a move to the cloud asks the cap then and counts on that day (DECISIONS-for-review.md §159; S-A12-HAPPY-LOCAL-PAST-DAILY-CAP, S-A12-BAD-RUNON-CLOUD-PAST-CAP).
     - **A cost cap counts only the work that costs: decide where a job runs when it is created, record it on the job, and check the cap again on every path that moves it to the paid place.**
 
-584. **"Import every direction from the old site" was already done: the 10 photos without one have no cone there either.**
+578. **"Import every direction from the old site" was already done: the 10 photos without one have no cone there either.**
     - Seen: 2026-11-12, the owner: *only one photo near Gara Obor has a direction in our app; on the old site they all have*.
     - Cause: none in the code. Compared with the old site's live `geojson/photos.json` (56 points, 47 cones), 47 of our 57 photos have a cone there and live Firestore has all 47 directions (0 differences), and the 9 photos at Gara Obor without one are pins without a cone on the old site as well; the viewer's year filter leaves one cone (Parc Ferdinand, 1930) at the 1930s. Local `master` is not the old live site (44 points): the live data is `bucurestiuldisparut/bucurestiuldisparut.github.io` (`docs/research/M5-interfaces.md` → *Directions from the old site*).
     - Fix and pin: none needed; S-A28-HAPPY-DIRECTIONS / S-A28-BAD-OWNER-DIRECTION-KEPT already pin the import, and `legacy-corrections.mjs` reproduces `corrections.json` unchanged.
