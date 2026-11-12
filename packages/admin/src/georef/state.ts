@@ -18,6 +18,7 @@ import type { DocState } from '../content/doc.js';
 import type { MapStatus } from '../layers/map-session.js';
 import type { NoticeInput } from '../state/state.js';
 import type { FitView } from './fit-view.js';
+import type { ScanCamera } from './linked-views.js';
 import type { GeoPosition, HalfPair, PixelPosition } from './pairs.js';
 import { NO_SUGGESTIONS, type SuggestionsView } from './suggestions.js';
 
@@ -113,6 +114,10 @@ export interface GeorefState {
     readonly pane: 'scan' | 'map';
     /** The matcher's suggestions still to decide (M4 §2.5). */
     readonly suggestions: SuggestionsView;
+    /** Link the views: once a fit exists, moving one pane moves the other (on by default; kept while the admin is open). */
+    readonly linked: boolean;
+    /** Where the linked map last put the scan pane (a new object each time; the pane moves without answering). */
+    readonly scanFollow: ScanCamera | null;
 }
 
 const EMPTY_FIT: FitView = {
@@ -132,6 +137,7 @@ export const INITIAL_GEOREF: GeorefState = {
         refusal: null,
     },
     ...{ transform: 'affine', saved: null, showPreview: true, previewOpacity: 0.7, map: 'none', pane: 'scan', suggestions: NO_SUGGESTIONS },
+    ...{ linked: true, scanFollow: null },
 };
 
 export interface GeorefIntents {
@@ -182,4 +188,8 @@ export interface GeorefIntents {
     setMapFocus(focused: boolean): void;
     /** Arrow nudge of the selected pair in screen CSS px (same as the scan). */
     nudgeMap(dx: number, dy: number): void;
+    /** Link the views on or off. */
+    setLinked(linked: boolean): void;
+    /** The owner panned or zoomed the scan pane: the linked map follows. */
+    scanMoved(camera: ScanCamera): void;
 }

@@ -22,6 +22,12 @@ interface GeoPositionPort {
     readonly lng: number;
 }
 
+/** What the scan pane shows: the full-resolution pixel at its centre and its CSS pixels per scan pixel. */
+export interface ScanCameraPort {
+    readonly centre: PixelPositionPort;
+    readonly scale: number;
+}
+
 export type HalfPairPort = { readonly pixel: PixelPositionPort } | { readonly geo: GeoPositionPort };
 
 /** What the context menu finds under a point of the map: the place, and the pair drawn within the hit radius. */
@@ -92,6 +98,10 @@ export interface GeorefViewState {
     readonly pane: 'scan' | 'map';
     /** M4: the matcher's suggestions still to decide. */
     readonly suggestions: SuggestionsViewPort;
+    /** Link the views (it acts once a fit exists). */
+    readonly linked: boolean;
+    /** Where the linked map last put the scan pane. */
+    readonly scanFollow: ScanCameraPort | null;
 }
 
 export interface GeorefIntentsPort {
@@ -130,4 +140,6 @@ export interface GeorefIntentsPort {
     zoomBy(delta: number): void;
     setMapFocus(focused: boolean): void;
     nudgeMap(dx: number, dy: number): void;
+    setLinked(linked: boolean): void;
+    scanMoved(camera: ScanCameraPort): void;
 }

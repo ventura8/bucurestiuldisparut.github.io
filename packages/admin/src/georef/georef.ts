@@ -25,6 +25,7 @@ import { GeorefPictures } from './georef-pictures.js';
 import { PairHistory } from './history.js';
 import { moveGeo, movePixel, roundPixel, samePairs, withPair, type GeoPosition, type PixelPosition } from './pairs.js';
 import { georefIntentsOf, type GeorefIntentActions } from './intents.js';
+import { ANIMATION_FRAME, linkedPanesOf, type FrameScheduler, type LinkedPanes } from './link.js';
 import { saveGeoref, snapGeoref, type PersistHost } from './persist.js';
 import { PlacingMark } from './placing.js';
 import { georefVersionOf, INITIAL_GEOREF, type GeorefIntents, type GeorefState, type GeorefVersion, type ReferenceKind } from './state.js';
@@ -44,6 +45,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     readonly #suggestions = new Suggestions();
     readonly #placing: PlacingMark;
     readonly #extras: ExtrasLoader;
+    readonly #link: LinkedPanes;
     #base: { readonly pairs: readonly Gcp[]; readonly transform: GeorefTransform } = { pairs: [], transform: 'affine' };
     readonly #history = new PairHistory();
     #transform: FittedTransform | null = null;
@@ -51,7 +53,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     #cityFrame: CityFrame | null = null;
     readonly intents: GeorefIntents;
 
-    constructor(services: ContentServices, extras: ExtrasLoader) {
+    constructor(services: ContentServices, extras: ExtrasLoader, frame: FrameScheduler) {
         this.#services = services;
         this.#placing = new PlacingMark(services);
         this.#extras = extras;
@@ -90,7 +92,11 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
             selected: (id) => {
                 this.#cell.update({ selected: id });
             },
+            viewed: (view) => {
+                this.#link.map(view);
+            },
         });
+        this.#link = linkedPanesOf({ ...{ services, extras, frame, map: this.#map, cell: this.#cell }, transform: () => this.#transform });
         this.#pictures = new GeorefPictures({
             ...{ files: services.files ?? NO_FILES, pictures: services.pictures ?? null, clock, overlays: this.#map.overlays },
             scan: (scan) => {
@@ -134,7 +140,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         this.#history.clear();
         this.#transform = null;
         this.#own = null;
-        this.#cell.update({ ...INITIAL_GEOREF, thresholdM: this.#cell.state.thresholdM });
+        this.#cell.update({ ...INITIAL_GEOREF, thresholdM: this.#cell.state.thresholdM, linked: this.#cell.state.linked });
     }
 
     hasUnsavedChanges(): boolean {
@@ -153,6 +159,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
             history: this.#history,
             doc: this.#doc,
             suggestions: this.#suggestions,
+            link: this.#link,
             base: () => this.#base,
             edit: (pairs, remember = true) => {
                 this.#edit(pairs, remember);
@@ -423,8 +430,8 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     }
 }
 
-export function georefModule(extras: ExtrasLoader = loadGeorefExtras): AreaModule<GeorefState, GeorefIntents> {
-    return { area: 'georef', create: (services) => new GeorefStore(services, extras) };
+export function georefModule(extras = loadGeorefExtras, frame = ANIMATION_FRAME): AreaModule<GeorefState, GeorefIntents> {
+    return { area: 'georef', create: (services) => new GeorefStore(services, extras, frame) };
 }
 
 export const GEOREF_MODULE = georefModule();

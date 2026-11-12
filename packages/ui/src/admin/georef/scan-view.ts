@@ -40,6 +40,18 @@ export function zoomView(view: ScanView, factor: number, at: Point, fit: ScanVie
     return { scale, offset: { x: at.x - (at.x - view.offset.x) * kept, y: at.y - (at.y - view.offset.y) * kept } };
 }
 
+/** The view with the full-resolution `camera.centre` at the pane's centre, `camera.scale` CSS px a scan pixel (within fit … fit × `MAX_ZOOM`). */
+export function centredView(
+    pane: Size,
+    camera: { readonly centre: Point; readonly scale: number },
+    previewScale: number,
+    fit: ScanView,
+): ScanView {
+    const zoom = clamp(camera.scale / previewScale, fit.scale, fit.scale * MAX_ZOOM);
+    const across = previewScale * zoom;
+    return { scale: zoom, offset: { x: pane.width / 2 - camera.centre.x * across, y: pane.height / 2 - camera.centre.y * across } };
+}
+
 export function panView(view: ScanView, dx: number, dy: number): ScanView {
     return { scale: view.scale, offset: { x: view.offset.x + dx, y: view.offset.y + dy } };
 }

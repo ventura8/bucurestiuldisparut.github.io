@@ -225,6 +225,10 @@ export const IMAGERY_STATES = {
         title: 'Georeferencer: the context menu on the scan, Add a point here focused',
         visit: 'specs/imagery/georef-menu.spec.ts',
     },
+    'georef.linked': {
+        title: 'Georeferencer: the views linked, the map zoomed with the scan',
+        visit: 'specs/imagery/georef-linked.spec.ts',
+    },
     'georef.refitted': {
         title: "Georeferencer: a fitted version's pairs edited, the figures said to be a refit",
         visit: 'specs/imagery/georeferencer.spec.ts',

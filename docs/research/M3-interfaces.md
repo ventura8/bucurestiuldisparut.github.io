@@ -1321,3 +1321,30 @@ A version that takes no points (or a read-only admin) gets one disabled line ins
 long press is no click (the scan forgets the press, the map's click after it is swallowed), and the scan's right button picks
 nothing (lesson 557). The element and its gestures are the lazy `georef-menu` chunk, fetched at the page's first render
 (DECISIONS-for-review.md §151). Rows: S-A16-HAPPY-GEOREF-MENU, S-A16-BAD-GEOREF-MENU-READONLY; tour state `georef.context-menu`.
+
+## Addendum of 2026-11-12: linked views
+
+The owner's request of 2026-11-12. Once the pairs give a fit, the store's current transform (the version's own map while
+unedited, else the refit), panning or zooming one pane moves the other to show the same place. **Link the views**
+(`adminContent.map.linkViews`, a pressed toggle beside the panes' controls) is on by default and kept in the store's memory for
+the session (`linked`, carried across `close()`; no browser storage); without a fit it is disabled, not pressed, and a note says
+when it will work (`adminContent.map.linkViewsNoFit`). A read-only version links too.
+
+- **Scan → map**: `<hcm-scan-viewer>` fires `hcm-view` `{centre, scale}` (the full-resolution pixel at its centre, CSS px per scan
+  pixel) after each pan or zoom of the admin's (drag, wheel, pinch, + and -, the arrows); `scanMoved(camera)` gives it to the link,
+  which jumps the map (`flyTo` without animation) to `toGeo(centre)` at the zoom where one CSS pixel spans
+  `metresPerPixel / scale` Web Mercator metres (`metresPerPixel`: the square root of the fit's local area at that pixel; Mapbox's
+  world is 512 CSS px at zoom 0).
+- **Map → scan**: the map's `move` gives `toPixel(center)` and the inverse of that scale; the store sets `scanFollow`, which the
+  scan pane centres (`centredView`, clamped to fit … fit × 32) without an `hcm-view` back, and ignores while a pointer is down.
+- **No loops, one move a frame**: `ViewLink` keeps the latest move and applies it at the next animation frame; the map's own `move`
+  that its jump causes comes while it applies and is dropped; a `move` that leaves the map's camera where it was (a resize, as when
+  a compact window shows the map) and the first one only set the camera to compare with; a place the fit cannot map moves nothing.
+- **Never while dragging**: nothing moves while Terra Draw's change of a map point is not settled (`GeorefMap.dragging`) or the
+  scan has a pointer down.
+
+The arithmetic and `ViewLink` (`packages/admin/src/georef/linked-views.ts`) are in the lazy `georef-extras` chunk, fetched by the
+first pane move once a fit exists (`link.ts`; the latest move made while it loads is played once it is in; a failed fetch is logged and the views stay unlinked for the visit); the pairs' leaf
+helpers and full screen's cover moved into the static `georef-badges` group so `georef` stays within its 19 KB (DECISIONS-for-review.md
+§152). Rows: S-A16-HAPPY-GEOREF-LINKED, S-A16-BAD-GEOREF-LINKED-NO-FIT; tour state `georef.linked`. The e2e specs other than
+`georef-linked.spec.ts` open the georeferencer with the link off (`georeferencerReady`), as their clicks read the scan shown whole.

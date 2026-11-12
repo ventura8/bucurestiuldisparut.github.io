@@ -79,10 +79,12 @@ const ASSIST_MODULES = /packages[\\/](?:admin[\\/]src|ui[\\/]src[\\/]admin)[\\/]
 
 /**
  * Shared georeferencer badge painters and the map's canvas overlay (owner, 2026-11-11; DECISIONS-for-review.md §146): out of
- * the `georef` chunk so it stays within 19 KB after identical scan/map markers, residual tones and pinch-zoom.
+ * the `georef` chunk so it stays within 19 KB after identical scan/map markers, residual tones and pinch-zoom. The linked views
+ * (2026-11-12, §152) moved the leaf helpers with no import into the `georef` chunk here too: the pairs' edits (`pairs.ts`), Undo's
+ * memory (`history.ts`), the residual tones (`tones.ts`) and full screen's inert cover (`full-screen.ts`).
  */
 const GEOREF_BADGE_MODULES =
-    /packages[\\/](?:ui[\\/]src[\\/]admin[\\/]georef[\\/](?:marker-badge|scan-draw)|admin[\\/]src[\\/]georef[\\/]marker-overlay)\.ts$/;
+    /packages[\\/](?:ui[\\/]src[\\/]admin[\\/]georef[\\/](?:marker-badge|scan-draw|full-screen)|admin[\\/]src[\\/]georef[\\/](?:marker-overlay|pairs|history|tones))\.ts$/;
 
 /**
  * `re2js` resolves to the admin's stand-in (`src/vendor/re2js-unsupported.ts`): the Firestore SDK needs it only for the

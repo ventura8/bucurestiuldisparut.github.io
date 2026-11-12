@@ -51,6 +51,7 @@ function session(maps: AdminMapFactory | null) {
         clicked: (geo) => clicks.push(geo),
         moved: (id, geo) => moves.push(`${id} ${String(geo.lat)} ${String(geo.lng)}`),
         selected: (id) => selections.push(id),
+        viewed: () => undefined,
     });
     return { map, statuses, clicks, moves, selections };
 }

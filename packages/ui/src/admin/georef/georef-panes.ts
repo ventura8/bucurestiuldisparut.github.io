@@ -10,7 +10,7 @@ import { html, type TemplateResult } from 'lit';
 import { when, withValue } from '../imagery/when.js';
 import { contentText } from '../shell/text.js';
 import type { GeorefContext } from './georef-parts.js';
-import type { GeorefViewState, HalfPairPort, PixelPositionPort, ReferenceKindPort } from './georef-port.js';
+import type { GeorefViewState, HalfPairPort, PixelPositionPort, ReferenceKindPort, ScanCameraPort } from './georef-port.js';
 import { badgeToneOf } from './marker-badge.js';
 import type { ScanMarker } from './scan-draw.js';
 
@@ -54,6 +54,7 @@ function scanViewer(context: GeorefContext, scan: NonNullable<NonNullable<Georef
             .suggestions=${suggestionMarkersOf(view)}
             .selectedSuggestion=${view.suggestions.selected}
             .half=${halfPixel(view.half)}
+            .follow=${view.scanFollow}
             ?adding=${view.adding || view.moving !== null}
             .label=${contentText(locale, 'adminContent.georef.scanLabel')}
             .zoomInLabel=${contentText(locale, 'adminContent.map.zoomIn')}
@@ -72,6 +73,9 @@ function scanViewer(context: GeorefContext, scan: NonNullable<NonNullable<Georef
             }}
             @hcm-escape=${() => {
                 intents?.cancelHalf();
+            }}
+            @hcm-view=${(event: Detail<ScanCameraPort>) => {
+                intents?.scanMoved(event.detail);
             }}
         ></hcm-scan-viewer>
         <p class="note">${contentText(locale, 'adminContent.georef.scanKeys')}</p>`;
@@ -179,8 +183,28 @@ function movingNote(context: GeorefContext): TemplateResult {
     });
 }
 
+/** Link the views: on by default once a fit exists; without one it is off and says when it will work. */
+function linkToggle(context: GeorefContext): TemplateResult {
+    const { locale, view, intents } = context;
+    const fitted = view.fit.refusal === null;
+    return html`<div class="actions">
+        <hcm-button
+            variant="outlined"
+            icon="link"
+            data-action="link-views"
+            .pressed=${fitted && view.linked}
+            ?disabled=${!fitted}
+            @click=${() => {
+                intents?.setLinked(!view.linked);
+            }}
+            >${contentText(locale, 'adminContent.map.linkViews')}</hcm-button
+        >
+        ${when(!fitted, () => html`<span class="note" data-state="link-no-fit">${contentText(locale, 'adminContent.map.linkViewsNoFit')}</span>`)}
+    </div>`;
+}
+
 export function panes(context: GeorefContext): TemplateResult {
-    return html`${paneSwitch(context)} ${movingNote(context)}
+    return html`${paneSwitch(context)} ${linkToggle(context)} ${movingNote(context)}
         <div class="panes" ?data-compact=${context.compact} data-pane=${context.view.pane}>
             <div class="scan-pane">${scanPane(context)}</div>
             <div class="map-pane">${mapPane(context)}</div>

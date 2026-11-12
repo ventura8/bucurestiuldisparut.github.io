@@ -49,6 +49,8 @@ export const en: Readonly<Record<AdminContentKitKey, string>> = {
     'adminContent.map.zoomIn': 'Zoom in',
     'adminContent.map.zoomOut': 'Zoom out',
     'adminContent.map.crosshair': 'Map centre: the arrow keys move the map, Add at centre puts a position here.',
+    'adminContent.map.linkViews': 'Link the views',
+    'adminContent.map.linkViewsNoFit': 'The views link once the pairs give a fit: moving one then moves the other to the same place.',
     'adminContent.map.toolbar': 'Drawing tools',
     'adminContent.map.tool.select': 'Select and move',
     'adminContent.map.tool.draw': 'Draw',

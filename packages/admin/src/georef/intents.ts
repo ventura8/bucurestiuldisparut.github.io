@@ -8,6 +8,7 @@ import type { Store } from '../state/store.js';
 import type { GeorefMap } from './georef-map.js';
 import type { GeorefPictures } from './georef-pictures.js';
 import type { PairHistory } from './history.js';
+import type { LinkedPanes } from './link.js';
 import { moveGeo, togglePair, withoutPair, type GeoPosition, type PixelPosition } from './pairs.js';
 import type { PersistBase } from './persist.js';
 import type { GeorefIntents, GeorefState, ReferenceKind } from './state.js';
@@ -21,6 +22,7 @@ export interface GeorefIntentActions {
     readonly history: PairHistory;
     readonly doc: LiveDoc<LayerVersionDoc>;
     readonly suggestions: Suggestions;
+    readonly link: LinkedPanes;
     base(): PersistBase;
     edit(pairs: readonly Gcp[], remember?: boolean): void;
     refit(pairs: readonly Gcp[], transform: GeorefTransform): void;
@@ -140,7 +142,21 @@ type PageIntent = Exclude<
     | 'addAt'
     | 'pickUp'
     | 'mapTarget'
+    | 'setLinked'
+    | 'scanMoved'
 >;
+
+/** Link the views, and the scan pane's moves for the linked map. */
+function linkIntents(actions: GeorefIntentActions): Pick<GeorefIntents, 'setLinked' | 'scanMoved'> {
+    return {
+        setLinked: (linked) => {
+            actions.cell.update({ linked });
+        },
+        scanMoved: (camera) => {
+            actions.link.scan(camera);
+        },
+    };
+}
 
 function pageIntents(actions: GeorefIntentActions): Pick<GeorefIntents, PageIntent> {
     return {
@@ -193,5 +209,11 @@ function pageIntents(actions: GeorefIntentActions): Pick<GeorefIntents, PageInte
 
 /** All page intents from the store's actions. */
 export function georefIntentsOf(actions: GeorefIntentActions): GeorefIntents {
-    return { ...pairIntents(actions), ...menuIntents(actions), ...suggestionIntents(actions), ...pageIntents(actions) };
+    return {
+        ...pairIntents(actions),
+        ...menuIntents(actions),
+        ...suggestionIntents(actions),
+        ...pageIntents(actions),
+        ...linkIntents(actions),
+    };
 }

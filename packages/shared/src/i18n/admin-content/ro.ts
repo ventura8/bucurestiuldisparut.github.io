@@ -51,6 +51,8 @@ export const ro = {
     'adminContent.map.zoomIn': 'Mărește harta',
     'adminContent.map.zoomOut': 'Micșorează harta',
     'adminContent.map.crosshair': 'Centrul hărții: săgețile mută harta, Adaugă în centru pune un punct aici.',
+    'adminContent.map.linkViews': 'Leagă vederile',
+    'adminContent.map.linkViewsNoFit': 'Vederile se leagă când perechile dau o potrivire: mutarea uneia o duce pe cealaltă în același loc.',
     'adminContent.map.toolbar': 'Unelte de desen',
     'adminContent.map.tool.select': 'Selectează și mută',
     'adminContent.map.tool.draw': 'Desenează',
