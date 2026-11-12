@@ -191,9 +191,15 @@ export const viewerStyles = [
             overflow: hidden;
         }
 
+        /*
+         * A long press on the map opens the map's menu (map-menu-trigger.ts): it never selects a label or the credits,
+         * nor offers the browser's touch callout or Touch to Search (the Pixel 9 Pro review, P4).
+         */
         .map {
             position: absolute;
             inset: 0;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
 
         .skip {

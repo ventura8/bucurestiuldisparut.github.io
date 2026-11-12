@@ -17785,6 +17785,28 @@
             "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/specs/viewer/map-menu.spec.ts."
         },
         {
+            "id": "S-V62-HAPPY-NO-SELECTION",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A long press on the map selects no text and offers no touch callout; the menu alone answers",
+            "asserts": "a touch pointer held on the map -> selectstart under it is cancelled, the menu opens, selectstart on the credits after it is cancelled too; the map is user-select: none and -webkit-touch-callout: none; nothing is selected",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P4: Chrome on Android began a text selection and Touch to Search under the long press). Tests: e2e/specs/viewer/map-menu.spec.ts; packages/ui/test/viewer/map-menu.test.ts."
+        },
+        {
+            "id": "S-V62-BAD-SHORT-TAP",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A short tap on the map lets the browser select again once the finger lifts, and opens no menu",
+            "asserts": "a touch pointer down and up at once -> no menu; selectstart is no longer cancelled",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P4: Chrome on Android began a text selection and Touch to Search under the long press). Tests: e2e/specs/viewer/map-menu.spec.ts; packages/ui/test/viewer/map-menu.test.ts."
+        },
+        {
             "id": "S-V62-HAPPY-PHOTO",
             "behaviour": "V62",
             "area": "viewer",

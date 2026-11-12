@@ -2,7 +2,10 @@
  * What opens the map's menu (the owner, 2026-11-09; V62): a right click, a long press on a touch screen (500 ms, cancelled
  * by a move or a second finger), or the keyboard's ContextMenu key or Shift+F10 on the map (at its centre). Only a click
  * that did not drag opens it: Mapbox's right-drag rotates the map and a press that moves pans it. The menu itself is the
- * side-loaded `<hcm-map-menu>` (`map-menu.ts`); this is the engine's small part that listens.
+ * side-loaded `<hcm-map-menu>` (`map-menu.ts`); this is the engine's small part that listens. A touch press on the map
+ * never starts the browser's own text selection (Chrome on Android began selecting a label and offered Touch to Search
+ * besides opening the menu; the Pixel 9 Pro review, P4): `selectstart` is cancelled while a finger is down and right after a
+ * long press, and the map's surface is `user-select: none` with no touch callout (`viewer-styles.ts`).
  */
 
 /** A point in the map's container, in CSS px from its top left corner. */
@@ -53,6 +56,8 @@ export class MapMenuTrigger {
     #timer: number | null = null;
     /** A long press opened the menu: the contextmenu a touch browser fires after it is the same gesture. */
     #pressed = false;
+    /** A finger is on the map: the browser's text selection would start under it. */
+    #touching = false;
 
     constructor(target: HTMLElement, open: (point: MenuPoint) => void, timers: MenuTimers = WINDOW_TIMERS) {
         this.#target = target;
@@ -64,6 +69,7 @@ export class MapMenuTrigger {
         target.addEventListener('pointercancel', this.#up, true);
         target.addEventListener('contextmenu', this.#contextMenu, true);
         target.addEventListener('keydown', this.#key, true);
+        target.addEventListener('selectstart', this.#selectStart, true);
     }
 
     stop(): void {
@@ -81,6 +87,7 @@ export class MapMenuTrigger {
             ['pointercancel', this.#up as EventListener],
             ['contextmenu', this.#contextMenu as EventListener],
             ['keydown', this.#key as EventListener],
+            ['selectstart', this.#selectStart as EventListener],
         ];
     }
 
@@ -102,7 +109,8 @@ export class MapMenuTrigger {
         this.#last = press;
         this.#cancel();
         this.#pressed = false;
-        if (event.pointerType === 'touch' && this.#presses.size === 1) {
+        this.#touching = event.pointerType === 'touch';
+        if (this.#touching && this.#presses.size === 1) {
             const point = this.#point(event);
             this.#timer = this.#timers.set(() => {
                 this.#timer = null;
@@ -124,6 +132,7 @@ export class MapMenuTrigger {
         this.#cancel();
         const press = this.#presses.get(event.pointerId);
         this.#presses.delete(event.pointerId);
+        this.#touching = this.#touching && this.#presses.size > 0;
         const pending = press?.moved === false ? press.pending : null;
         if (pending !== null) {
             this.#open(pending);
@@ -146,6 +155,13 @@ export class MapMenuTrigger {
             return;
         }
         down.pending = this.#point(event);
+    };
+
+    /** No text selection from a finger on the map, nor from the long press that opened the menu. */
+    readonly #selectStart = (event: Event): void => {
+        if (this.#touching || this.#pressed) {
+            event.preventDefault();
+        }
     };
 
     readonly #key = (event: KeyboardEvent): void => {
