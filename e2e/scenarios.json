@@ -7472,7 +7472,7 @@
             "area": "admin",
             "path": "happy",
             "title": "The framed admin is an app shell: the window never scrolls into blank space",
-            "asserts": "a Setup page, the wheel turned down -> the window stays at 0, the root has no overscroll, and the no-blank-scroll checker finds nothing (the frame clips what escapes the page's scroller)",
+            "asserts": "a Setup page, the wheel turned down -> the window stays at 0, the root has no overscroll, and the no-blank-scroll checker finds nothing (the positioned page scroller clips its absolute elements)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The owner's request for beta.1 (2026-11-12): never scroll past the app into blank space, on any screen, desktop or phone. The tour's no-blank-scroll checker (e2e/support/blank-scroll-probe.ts, docs/TESTING.md, The tour's checkers) runs on every state of e2e/tour/states.ts. Test: e2e/admin/specs/shell/setup-layout.spec.ts."

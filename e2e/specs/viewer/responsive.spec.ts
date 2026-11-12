@@ -261,11 +261,11 @@ test(
     { tag: '@S-V15-BAD-NO-BLANK-SCROLL' },
     async ({ page, lang }) => {
         await boot(page, COMPACT, lang);
-        // A fixture's fault: 400 px of nothing after the map, as a trailing margin or an element out of the frame leaves.
+        // A fixture's fault: 400 px of nothing after the body, which clips its own overflow, so the root's scroller grows.
         await page.evaluate(() => {
             const blank = document.createElement('div');
             blank.style.blockSize = '400px';
-            document.body.append(blank);
+            document.documentElement.append(blank);
         });
 
         const messages = (await blankScrollOf(page)).map((violation) => violation.message);
