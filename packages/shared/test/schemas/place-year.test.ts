@@ -27,8 +27,8 @@ describe('placeYearIssues', () => {
 
     it('badPath_aYearAfterNextYear_isLate', () => {
         expect(placeYearIssues({ yearStart: 2028, yearEnd: 2030 }, latestPlaceYear(NOW))).toEqual([
-            { path: 'yearStart', code: 'validation.yearLate' },
-            { path: 'yearEnd', code: 'validation.yearLate' },
+            { path: 'yearStart', code: 'validation.tooBig' },
+            { path: 'yearEnd', code: 'validation.tooBig' },
         ]);
     });
 

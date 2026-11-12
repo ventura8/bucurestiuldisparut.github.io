@@ -134,7 +134,7 @@ describe('a place draft: years', () => {
 
     it('badPath_aPlaceWithoutAYearOrAfterNextYearIsAnIssue', () => {
         expect(draftIssues(UNDATED, DATED)).toEqual([{ path: 'yearStart', code: 'validation.required' }]);
-        expect(draftIssues({ ...FRESH, yearStart: 2028 }, DATED)).toEqual([{ path: 'yearStart', code: 'validation.yearLate' }]);
+        expect(draftIssues({ ...FRESH, yearStart: 2028 }, DATED)).toEqual([{ path: 'yearStart', code: 'validation.tooBig' }]);
         expect(draftIssues({ ...FRESH, yearStart: 2028 }, CONTEXT)).toEqual([]);
     });
 

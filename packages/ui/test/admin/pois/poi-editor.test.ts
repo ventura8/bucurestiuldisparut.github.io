@@ -212,7 +212,7 @@ describe('<hcm-poi-editor>: the years', () => {
             editor({
                 draft: draft({
                     dirty: ['yearStart'],
-                    issues: [{ path: 'yearStart', code: 'validation.yearLate' }],
+                    issues: [{ path: 'yearStart', code: 'validation.tooBig' }],
                     value: { ...VALUE, yearStart: 2099 },
                 }),
             }),

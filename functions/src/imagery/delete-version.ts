@@ -65,7 +65,7 @@ const NEVER_SHOWN: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>([
 const FINISHED: ReadonlySet<JobStatus> = new Set(FINISHED_JOB_STATUSES);
 
 /** An archive series waiting for points, its job too: the owner may start it over. */
-export function parkedSeries(version: LayerVersionDoc, job: JobDoc | undefined): boolean {
+function parkedSeries(version: LayerVersionDoc, job: JobDoc | undefined): boolean {
     return version.origin === 'archive' && version.state === 'needs_gcps' && job?.status === 'awaiting_gcps';
 }
 
@@ -75,7 +75,7 @@ function jobDone(job: JobDoc | undefined): boolean {
 }
 
 /** The refusal for `version` and its `job`, or null when it may be deleted. */
-export function deleteRefusal(version: LayerVersionDoc, job: JobDoc | undefined): ApiError | null {
+function deleteRefusal(version: LayerVersionDoc, job: JobDoc | undefined): ApiError | null {
     if (ON_THE_MAP.has(version.state)) {
         return new ApiError('apiError.imagery.deletePublished');
     }
@@ -163,7 +163,7 @@ interface Deleter {
  * The archive's record without this series' job, so `imagery.archiveImport` takes the series again; with no series left, the
  * record reads as never imported. Null when the record names no job, or another job, for it (nothing to change).
  */
-export function withoutSeries(archive: ArchiveDoc, seriesId: string, jobId: string, by: Deleter): ArchiveDoc | null {
+function withoutSeries(archive: ArchiveDoc, seriesId: string, jobId: string, by: Deleter): ArchiveDoc | null {
     if (archive.jobs?.[seriesId] !== jobId) {
         return null;
     }

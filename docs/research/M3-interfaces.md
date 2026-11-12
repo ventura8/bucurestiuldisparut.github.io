@@ -1043,9 +1043,10 @@ section also calls `imagery.search`, because only a search re-ranks; a failed se
 ### 10.8 Texts and icons
 
 - `packages/shared/src/i18n/admin-imagery/{ro,en}.ts` (done: the skeleton with the reasons, the wait reasons, the
-  version states, the guard's choices and the transforms; sections `imagery` and `georef`, prefixes
-  `adminContent.imagery.` and `adminContent.georef.`), merged into `ADMIN_CONTENT_CATALOGUES`; admin-imagery adds every
-  other text in both languages. Error codes are the API catalogue's.
+  version states, the guard's choices and the transforms; section `imagery`, prefix `adminContent.imagery.`) and
+  `packages/shared/src/i18n/admin-georef/{ro,en}.ts` (section `georef`, prefix `adminContent.georef.`; out of `admin-imagery`
+  when that folder reached the 400-line limit, DECISIONS-for-review.md §154), both merged into `ADMIN_CONTENT_CATALOGUES`;
+  admin-imagery adds every other text in both languages. Error codes are the API catalogue's.
 - Icons, added to `UI_ICONS` and the font subset in one change (CR-M3-9): `satellite_alt`, `travel_explore`,
   `upload_file`, `add_location_alt`, `my_location`, `crop`, `approval`, `filter_alt`, `pending`, `replay`, `layers_clear`.
 
@@ -1106,7 +1107,7 @@ a change request.
 | --- | --- |
 | fn-imagery | `functions/src/imagery/**`, `functions/src/adapters/{cloud-run,mapbox-tilesets,remote-files,storage-reader}.ts`, the M3 additions of `functions/src/adapters/usgs.ts` and the move out of `adapters/mapbox.ts` (CR-M3-4), `functions/test/imagery/**`, `functions/test/adapters/` tests of those adapters, `functions/test/support/` M3 fakes (`RemoteFiles`, `UsgsScenes`, `MapboxTilesets` in memory); `packages/shared/src/imagery/**` (`rankScene`, `layerLabelFor`, the footprint coverage); the M3 registry rows (`packages/shared/src/api/registry.ts`, one line each), the `imagery` export line of `functions/src/index.ts`, its accounts in `functions/src/global-options.ts`, the five ports' wiring in `functions/src/deps.ts`, `functions/test/index.test.ts`; `firebase/firestore.rules`, `firebase/storage.rules`, `firebase/firestore.indexes.json`, `firebase/rules-tests/**` and `CLIENT_WRITES` (CR-M3-2) |
 | pipeline | `pipeline/**` (`src/hcm_pipeline/**`, `tests/**` but `tests/contracts/`, `Dockerfile`, `pyproject.toml`, `poetry.lock` only without a new dependency, `README.md`, `typings/`) |
-| admin-imagery | `packages/admin/src/{imagery,georef}/**`, `packages/admin/src/pages/{imagery,georef}.ts`, `packages/ui/src/admin/{imagery,georef}/**`, `packages/ui/src/admin/layers/geometry/**` and `packages/admin/src/layers/geometry/**` (the `layer-geometry` chunk), `packages/shared/src/georef/**`, `packages/shared/src/i18n/admin-imagery/**`; through change requests CR-M3-5 to CR-M3-9 the M3 edits of the Jobs page, the layers and settings areas, the routes, `AREA_CHUNKS`, `CONTENT_AREAS`, `ContentPort`, the icons and font subset, the provisioner's lifecycle, APIs and IAM, `links.json`, `ADMIN_CHUNK_BUDGETS` |
+| admin-imagery | `packages/admin/src/{imagery,georef}/**`, `packages/admin/src/pages/{imagery,georef}.ts`, `packages/ui/src/admin/{imagery,georef}/**`, `packages/ui/src/admin/layers/geometry/**` and `packages/admin/src/layers/geometry/**` (the `layer-geometry` chunk), `packages/shared/src/georef/**`, `packages/shared/src/i18n/admin-imagery/**`, `packages/shared/src/i18n/admin-georef/**`; through change requests CR-M3-5 to CR-M3-9 the M3 edits of the Jobs page, the layers and settings areas, the routes, `AREA_CHUNKS`, `CONTENT_AREAS`, `ContentPort`, the icons and font subset, the provisioner's lifecycle, APIs and IAM, `links.json`, `ADMIN_CHUNK_BUDGETS` |
 | e2e-fakes | `packages/test-support/src/fakes/**` and `api-fixtures/**` M3 additions (STAC, Overpass, M2M downloads and full metadata, browse images, Cloud Run's runner hook, the MTS extension), `e2e/mock-apis/**` M3 routes, the runners (`e2e/admin/support/imagery-runner.ts`: `standin`, `python`), `e2e/admin/specs/imagery/**`, `e2e/admin/support/imagery.ts`, `e2e/tour/admin-imagery.tour.ts`, `e2e/tour/admin-georef.tour.ts`, the `imagery` section of `e2e/tour/states.ts`, the M3 rows of `e2e/scenarios.json` (flip to `exists`, add rows) and `docs/E2E_SCENARIOS.md` (regenerated) |
 | contracts (done) | this file, `packages/shared/src/schemas/{imagery,imagery-paths,imagery-publish,imagery-settings,georef,usgs-scene}.ts`, `packages/shared/src/api/imagery.ts`, the M3 parts of `firestore-ops.ts`, `firestore.ts`, `paths.ts`, `errors.ts` and the API catalogues, `functions/src/ports/**` M3 files, `pipeline/tests/contracts/**` |
 | integrator (after the four) | `docs/*.md` (ARCHITECTURE, TESTING, the admin guides' Imagery chapter, LESSONS), `.agent/**`, `.agents/**`, `.claude/**`, `docs/research/M0-handoff.md`, `docs/research/DECISIONS-for-review.md`, the root `package.json`, the lockfile |
@@ -1118,7 +1119,7 @@ a change request.
 | `e2e/scenarios.json` | each workstream flips its rows (the `notes` name the owner) to `exists` in place when the tagged test lands; a new row after its behaviour's last; then `python3 scripts/ci/check_e2e_matrix.py write` |
 | `e2e/tour/states.ts` | inside the `imagery` section only, one entry per state |
 | `packages/shared/src/api/registry.ts`, `packages/shared/src/index.ts`, `packages/shared/src/i18n/api/{ro,en}.ts` | one line per addition at the end of its group; a new API code is a change request here |
-| `packages/shared/src/i18n/admin-imagery/{ro,en}.ts` | admin-imagery's; the other workstreams ask |
+| `packages/shared/src/i18n/admin-imagery/{ro,en}.ts`, `packages/shared/src/i18n/admin-georef/{ro,en}.ts` | admin-imagery's; the other workstreams ask |
 | `pipeline/tests/contracts/**` | change request (both languages must pass the change) |
 | `scripts/ci/check_bundle_budget.py` | admin-imagery adds its three chunk rows (logged) |
 

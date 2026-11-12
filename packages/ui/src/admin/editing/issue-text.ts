@@ -20,26 +20,28 @@ interface OwnWords {
     readonly codes: readonly ValidationCode[] | null;
 }
 
-/** The fields whose problems have words of their own, by the issue's path. */
-const OWN_WORDS: Readonly<Record<string, OwnWords>> = {
-    title: { key: 'adminContent.common.issue.titleRo', codes: MISSING_TEXT },
-    'title.ro': { key: 'adminContent.common.issue.titleRo', codes: MISSING_TEXT },
-    'label.ro': { key: 'adminContent.common.issue.labelRo', codes: MISSING_TEXT },
-    'name.ro': { key: 'adminContent.common.issue.nameRo', codes: MISSING_TEXT },
-    category: { key: 'adminContent.common.issue.category', codes: null },
-    geometry: { key: 'adminContent.common.issue.geometry', codes: ['validation.required'] },
-    year: { key: 'adminContent.common.issue.year', codes: ['validation.required', 'validation.type'] },
-    /** A place's years (owner request of 2026-11-12): Save wants one at least, reported at the start year. */
-    yearStart: { key: 'adminContent.common.issue.placeYear', codes: ['validation.required'] },
+/** A place's year after next year (`placeYearIssues`): the schema's `validation.tooBig`, in the editor's own words. */
+const YEAR_LATE: OwnWords = { key: 'adminContent.common.issue.yearLate', codes: ['validation.tooBig'] };
+
+/** The fields whose problems have words of their own, by the issue's path: the first whose codes match says it. */
+const OWN_WORDS: Readonly<Record<string, readonly OwnWords[]>> = {
+    title: [{ key: 'adminContent.common.issue.titleRo', codes: MISSING_TEXT }],
+    'title.ro': [{ key: 'adminContent.common.issue.titleRo', codes: MISSING_TEXT }],
+    'label.ro': [{ key: 'adminContent.common.issue.labelRo', codes: MISSING_TEXT }],
+    'name.ro': [{ key: 'adminContent.common.issue.nameRo', codes: MISSING_TEXT }],
+    category: [{ key: 'adminContent.common.issue.category', codes: null }],
+    geometry: [{ key: 'adminContent.common.issue.geometry', codes: ['validation.required'] }],
+    year: [{ key: 'adminContent.common.issue.year', codes: ['validation.required', 'validation.type'] }],
+    /** A place's years (owner request of 2026-11-12): Save wants one at least, reported at the start year, and none after next year. */
+    yearStart: [{ key: 'adminContent.common.issue.placeYear', codes: ['validation.required'] }, YEAR_LATE],
+    yearEnd: [YEAR_LATE],
 };
 
 /** The key of the field's own words for this problem, or null when the validation words say it. */
 function ownKey(issue: ValidationIssue): AdminContentKey | null {
-    const words = Object.hasOwn(OWN_WORDS, issue.path) ? OWN_WORDS[issue.path] : undefined;
-    if (words === undefined) {
-        return null;
-    }
-    return words.codes === null || words.codes.includes(issue.code) ? words.key : null;
+    const options = Object.hasOwn(OWN_WORDS, issue.path) ? (OWN_WORDS[issue.path] ?? []) : [];
+    const words = options.find((option) => option.codes === null || option.codes.includes(issue.code));
+    return words === undefined ? null : words.key;
 }
 
 /** A field's problem as its form says it under the field. */

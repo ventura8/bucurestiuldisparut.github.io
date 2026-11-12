@@ -23,7 +23,6 @@ export const ro = {
     'validation.duplicateId': 'Identificatorul apare de două ori.',
     'validation.outsideCity': 'Locația este în afara orașului.',
     'validation.yearRange': 'Anul de sfârșit este înaintea anului de început.',
-    'validation.yearLate': 'Anul nu poate fi după anul viitor.',
     'validation.datePart': 'Luna are nevoie de an, iar ziua are nevoie de lună.',
     'validation.dateImpossible': 'Această zi nu există în luna aleasă.',
     'validation.dateRange': 'Luna sau ziua merg cu un singur an: șterge anul de sfârșit sau luna.',

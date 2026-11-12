@@ -28,12 +28,12 @@ export function latestPlaceYear(nowMs: number): number {
 function lateYears(place: PlaceYears, latest: number): ValidationIssue[] {
     return (['yearStart', 'yearEnd'] as const)
         .filter((field) => (place[field] ?? 0) > latest)
-        .map((field) => ({ path: field, code: 'validation.yearLate' }));
+        .map((field) => ({ path: field, code: 'validation.tooBig' }));
 }
 
 /**
  * What Save says of a place's years beyond the schema: none at all (`validation.required` on `yearStart`), or a year after
- * `latest` (`validation.yearLate`; null: today is not known, nothing is checked). The order of the two and their range
+ * `latest` (`validation.tooBig`, whose words the admin's editor gives per field; null: today is not known, nothing is checked). The order of the two and their range
  * (1800 to 2100) are the schema's.
  */
 export function placeYearIssues(place: PlaceYears, latest: number | null): ValidationIssue[] {

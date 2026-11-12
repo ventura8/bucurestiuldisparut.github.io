@@ -737,8 +737,8 @@ draws every place in its category's overlay; a click on a shape selects it (`onP
   question).
 - Save: `geometryToDoc(geometry)`, validated with `poiDocSchema`, the manifest's place rules (inside the city,
   closed rings) and `placeYearIssues` (no year: `validation.required` at the start year, "Write a year, or the years from
-  and to", shown as the place opens; a year after next year by the admin's clock: `validation.yearLate`, once the field
-  is left), then §5.3. The stored schemas keep both years optional, so a place saved before the rule still loads in the
+  and to", shown as the place opens; a year after next year by the admin's clock: `validation.tooBig`, "The year cannot be after next year" in the editor's
+  own words (`issue-text.ts`, an admin text, so the viewer's catalogue does not carry it), once the field is left), then §5.3. The stored schemas keep both years optional, so a place saved before the rule still loads in the
   admin and still shows on the public map; its Save asks for a year. The Firestore rules ask the same (`dated`): every
   create names a year, and an update without one only publishes, unpublishes or moves the place to another category
   (the list's bulk actions); no year may be after next year by the server's clock (`request.time`). The GeoJSON import

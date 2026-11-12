@@ -131,7 +131,7 @@ describe('places: the years', () => {
         const next = new Date(world.clock.now()).getUTCFullYear() + 1;
 
         store.intents.edit({ yearStart: next + 1 });
-        expect(await store.intents.save()).toMatchObject({ ok: false, issues: [{ path: 'yearStart', code: 'validation.yearLate' }] });
+        expect(await store.intents.save()).toMatchObject({ ok: false, issues: [{ path: 'yearStart', code: 'validation.tooBig' }] });
         store.intents.edit({ yearStart: next });
         expect(await store.intents.save()).toEqual({ ok: true });
     });

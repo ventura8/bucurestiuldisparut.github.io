@@ -74,6 +74,13 @@ const IMAGERY_SHARED_MODULES = /packages[\\/]shared[\\/]src[\\/](?:schemas[\\/]i
  */
 const IMAGERY_UI_SHARED_MODULES = /packages[\\/]ui[\\/]src[\\/]admin[\\/]imagery[\\/]scene-refusal\.ts$/;
 
+/**
+ * The tolerant reads of an older release's records (`packages/shared/src/schemas/legacy-reads.ts`), which Home, the Imagery
+ * lists and a version's page share: their own chunk, kept out of `editor-shared`, which they took to 13.1 KB of its 13
+ * (DECISIONS-for-review.md §155).
+ */
+const LEGACY_READ_MODULES = /packages[\\/]shared[\\/]src[\\/]schemas[\\/]legacy-reads\.ts$/;
+
 /** M4: the editors' assists, their state and intents (`packages/admin/src/assist/`) and their slots (`packages/ui/src/admin/assist/`). */
 const ASSIST_MODULES = /packages[\\/](?:admin[\\/]src|ui[\\/]src[\\/]admin)[\\/]assist[\\/]/;
 
@@ -145,6 +152,7 @@ export default defineConfig({
                 // them), kept out of `editor-shared` (DECISIONS-for-review.md §54b). `editor-texts`: a field's name and its
                 // problem's words, which every editor shares (§77e). `starter-categories`: the starter place categories, which
                 // the place editor and the settings share (§78d). `georef-badges`: shared pair painters and the map overlay (§146).
+                // `legacy-reads`: the tolerant reads of older records, which Home and the Imagery pages share (§155).
                 // M7's `worker` chunk is no group: the natural chunk of its one dynamic entry (`src/worker/worker.ts`), whose
                 // namespace is the chunk's own (a group's needs Rolldown's runtime helper, a chunk of its own beside terra-draw's),
                 // with its texts on a path of their own (`@hcm/shared/admin-worker`).
@@ -154,6 +162,7 @@ export default defineConfig({
                         { name: 'firebase-installations', test: /node_modules[\\/]@firebase[\\/]installations[\\/]/, priority: 2 },
                         { name: 'assist', test: ASSIST_MODULES, priority: 2 },
                         { name: 'georef-badges', test: GEOREF_BADGE_MODULES, priority: 2 },
+                        { name: 'legacy-reads', test: LEGACY_READ_MODULES, priority: 2 },
                         {
                             name: 'editor-texts',
                             test: (id: string) =>
