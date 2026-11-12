@@ -1423,7 +1423,7 @@ The owner placed points on 1966 Corona frames and hit four things; each is fixed
   decode is not asked for again; a file that is not a tiles file, a missing file, or a late answer after the page closed, leaves
   the preview, with no error. A USGS frame parked before gets its tiles when the `relocate` tick searches it again after the
   pipeline update (or Locate again). The
-  warped map preview is drawn `WARP_MAX_SIDE` = 4,096 px across (3,072 before), its mesh code in a lazy chunk of its own
+  warped map preview is drawn `WARP_MAX_SIDE` = 4,096 px across (3,072 before; `WARP_SMALL_SIDE` = 2,048 px on a window under 840 CSS px), its mesh code in a lazy chunk of its own
   (`georef-warp.ts`, fetched when a version opens). Rows: S-A16-HAPPY-GEOREF-FULL-RES, S-A16-BAD-GEOREF-FULL-RES-NONE.
 
 Budgets: `georef` 18.8 KB of 19 (19.5 KB before the warp moved out), `georef-warp` 1.0 of 2 (new), `georef-extras` 1.9 of 2,

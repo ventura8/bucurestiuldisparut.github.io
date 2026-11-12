@@ -11,6 +11,15 @@ import type { PictureTriangle } from '../imagery/files.js';
 /** The warped canvas's long side, in pixels: as long as the scan preview it is drawn from (3072 until 2026-11-12, a blur). */
 export const WARP_MAX_SIDE = 4096;
 
+/** ... and on a window narrower than `WARP_SMALL_WINDOW` CSS px (a phone, a small tablet): 16 MiB of canvas instead of up to 64. */
+export const WARP_SMALL_SIDE = 2048;
+export const WARP_SMALL_WINDOW = 840;
+
+/** The warped canvas's long side for a window `width` CSS px across (unknown, as under Node: the large one). */
+export function warpSideFor(width: number | undefined): number {
+    return width !== undefined && width < WARP_SMALL_WINDOW ? WARP_SMALL_SIDE : WARP_MAX_SIDE;
+}
+
 /** Quads per side of the mesh: enough to bend through a second-order fit or a spline. */
 export const WARP_CELLS = 16;
 
@@ -25,15 +34,15 @@ interface Size {
     readonly height: number;
 }
 
-/** The canvas over the box the fitted scan covers. */
-export function warpFrame(transform: FittedTransform, scan: Size): WarpFrame {
+/** The canvas over the box the fitted scan covers, `side` px on its long side. */
+export function warpFrame(transform: FittedTransform, scan: Size, side = WARP_MAX_SIDE): WarpFrame {
     const bounds = scanBounds(transform, scan);
     const [[west, south], [east, north]] = bounds;
     const low = geoToMercator({ lat: south, lng: west });
     const high = geoToMercator({ lat: north, lng: east });
     const across = Math.max(high.x - low.x, 1e-9);
     const up = Math.max(high.y - low.y, 1e-9);
-    const scale = WARP_MAX_SIDE / Math.max(across, up);
+    const scale = side / Math.max(across, up);
     return { bounds, width: Math.max(1, Math.round(across * scale)), height: Math.max(1, Math.round(up * scale)) };
 }
 

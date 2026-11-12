@@ -20,6 +20,9 @@ test.describe.configure({ lock: ADMIN_LOCK });
  */
 test.use({ persona: 'owner', mapOwner: 'owner' });
 
+/** The georeferencer page's JavaScript heap with a scan zoomed in (the resource audit of 2026-11-12: 300 MB). */
+const HEAP_BUDGET_BYTES = 300 * 1024 * 1024;
+
 type Lang = 'ro' | 'en';
 
 type End = { readonly pixel: Pixel } | { readonly geo: LatLng };
@@ -347,6 +350,12 @@ test(
         const sizes = await decodes(page);
         expect(sizes.length).toBeLessThanOrEqual(12);
         expect(Math.max(...sizes.flat())).toBeLessThanOrEqual(SCAN_TILE);
+        // The page's JavaScript heap with the sharper scan zoomed in: within the georeferencer's 300 MB budget (the resource audit).
+        const session = await page.context().newCDPSession(page);
+        const { metrics } = await session.send('Performance.getMetrics');
+        const heap = metrics.find((metric) => metric.name === 'JSHeapUsedSize')?.value ?? Number.POSITIVE_INFINITY;
+        expect(heap).toBeLessThan(HEAP_BUDGET_BYTES);
+        process.stdout.write(`HEAP-MEASURED ${String(Math.round(heap / 1048576))} MiB\n`);
         expect(asked).toHaveLength(1);
     },
 );

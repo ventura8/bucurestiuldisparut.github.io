@@ -289,9 +289,10 @@ export class GeorefPictures {
         return transform === null || scan === null ? null : { source, transform, scan, opacity };
     }
 
-    #draw({ warpFrame, warpTriangles }: typeof WarpChunk, input: ReadyWarp): void {
+    #draw({ warpFrame, warpSideFor, warpTriangles }: typeof WarpChunk, input: ReadyWarp): void {
         const { pictures, picture } = input.source;
-        const frame = warpFrame(input.transform, input.scan);
+        // A phone-sized window draws the preview half as long: a quarter of the canvas's memory (the resource audit, 2026-11-12).
+        const frame = warpFrame(input.transform, input.scan, warpSideFor((globalThis as { innerWidth?: number }).innerWidth));
         const target = this.#targetOf(pictures, frame.width, frame.height);
         pictures.draw(target, picture, warpTriangles(input.transform, frame, input.scan, picture));
         this.#deps.overlays.show({ id: WARPED_PICTURE, picture: target, corners: cornersOfBox(frame.bounds), opacity: input.opacity });

@@ -3,4 +3,4 @@
  * (`./warp.ts`, with `previewMesh`, `scanBounds` and `triangleTransform` of `@hcm/shared`), fetched by `./georef-pictures.ts` when a
  * version opens and drawn once a fit exists, so the `georef` chunk keeps its 19 KB with the ghost and the sharper scan.
  */
-export { warpFrame, warpTriangles } from './warp.js';
+export { warpFrame, warpSideFor, warpTriangles } from './warp.js';

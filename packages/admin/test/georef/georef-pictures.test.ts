@@ -105,6 +105,27 @@ describe('the georeferencer pictures', () => {
         expect(native.paint.get('hcm-picture-layer-warped')?.['raster-opacity']).toBeCloseTo(0.3, 9);
     });
 
+    it('happyPath_onAPhoneSizedWindowTheWarpedPreviewIsHalfAsLong', async () => {
+        const { shown, clock, pictures } = await setup();
+        const side = (): number => {
+            const target = pictures?.drawn.at(-1)?.target;
+            return Math.max(target?.width ?? 0, target?.height ?? 0);
+        };
+
+        shown.load(version(), 's2');
+        await settle();
+        shown.warp(fitted(), SCAN, 0.6);
+        clock.advance(WARP_DELAY_MS);
+        expect(side()).toBe(4096);
+
+        // A 360 CSS px window: 2048 px, 16 MiB of canvas instead of up to 64.
+        vi.stubGlobal('innerWidth', 360);
+        shown.warp(fitted(), SCAN, 0.6);
+        clock.advance(WARP_DELAY_MS);
+        expect(side()).toBe(2048);
+        vi.unstubAllGlobals();
+    });
+
     it('happyPath_theOpenStreetMapLinesAreNotDrawnOverTheBaseMap', async () => {
         const { shown, overlays } = await setup();
 
