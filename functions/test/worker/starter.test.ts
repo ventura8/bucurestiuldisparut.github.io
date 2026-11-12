@@ -178,7 +178,7 @@ async function supervise(code: number): Promise<{ readonly output: string; reado
         curl: `printf '%s' '{"result":{"image":"us-central1-docker.pkg.dev/demo-hcm/hcm/pipeline@sha256:${DIGEST}"}}'`,
         docker: `[ "$1" = run ] && { echo run >>"${log}"; exit ${String(code)}; }\nexit 0`,
         // The fourth wait ends the supervisor (its parent shell), as a stop of the service would; the sidecar's loop beside it waits apart.
-        sleep: `[ "$1" = 20 ] && exec /bin/sleep 0.05\necho "sleep $1" >>"${log}"\n[ "$(grep -c sleep "${log}")" -ge 4 ] && kill -9 "$PPID"\nexit 0`,
+        sleep: `case "$1" in 20 | 5) exec /bin/sleep 0.05 ;; esac\necho "sleep $1" >>"${log}"\n[ "$(grep -c sleep "${log}")" -ge 4 ] && kill -9 "$PPID"\nexit 0`,
     };
     for (const [name, body] of Object.entries(tools)) {
         writeFileSync(join(bin, name), `#!/bin/sh\n${body}\n`);

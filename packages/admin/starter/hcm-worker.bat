@@ -45,6 +45,9 @@ $AiImageNote = Join-Path $Folder 'ai-image'
 $SidecarFlags = @('--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '-u', '10001:10001', '-e', 'HOME=/tmp', '--tmpfs', '/tmp')
 $SidecarFlags += @('-e', 'HCM_AI_ROOT=/ai', '-e', 'PYTHONPATH=/ai/files/code:/ai/files/lib', '-v', "${AiFiles}:/ai/files:ro", '-v', "${AiBox}:/ai/box", '--entrypoint', 'python')
 $script:SidecarImage = ''
+# The governor (docs/research/M26-governor.md): what only Windows can say, every few seconds, and the worker's CPU quota.
+$GovernSeconds = 5
+$Hints = '/work/host-hints.json'
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
 # Docker must be installed and running.
@@ -208,13 +211,72 @@ function Start-MatcherLoop($Supervisor) {
     Stop-Sidecar
 }
 
+# Seconds since the last keyboard or mouse input (GetLastInputInfo); $null when it cannot be read.
+function Get-IdleSeconds {
+    try {
+        if (-not ('HcmIdle' -as [type])) {
+            Add-Type -TypeDefinition @'
+using System; using System.Runtime.InteropServices;
+public static class HcmIdle {
+    [StructLayout(LayoutKind.Sequential)] struct Info { public uint Size; public uint Time; }
+    [DllImport("user32.dll")] static extern bool GetLastInputInfo(ref Info info);
+    public static uint Seconds() { var i = new Info(); i.Size = (uint)Marshal.SizeOf(i); GetLastInputInfo(ref i); return ((uint)Environment.TickCount - i.Time) / 1000; }
+}
+'@
+        }
+        return [HcmIdle]::Seconds()
+    } catch {
+        return $null
+    }
+}
+
+# The battery (Docker Desktop's VM cannot see it), and NVIDIA's cards through nvidia-smi (CUDA reaches them in WSL2).
+function Get-HostHints {
+    $hints = @{ at = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds(); idleS = Get-IdleSeconds; gpus = @(); npus = @() }
+    $battery = Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($battery) {
+        $source = if ($battery.BatteryStatus -eq 1) { 'battery' } else { 'ac' }
+        $hints.power = @{ source = $source; percent = [int]$battery.EstimatedChargeRemaining }
+    }
+    if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) {
+        $rows = & nvidia-smi --query-gpu=name,memory.total,memory.used,utilization.gpu,temperature.gpu --format=csv,noheader,nounits 2> $null
+        foreach ($row in @($rows)) {
+            $f = $row -split ',\s*'
+            $hints.gpus += @{ vendor = 'nvidia'; name = $f[0]; vramMb = [int]$f[1]; othersMb = [int]$f[2]; busyPct = [int]$f[3]; tempC = [int]$f[4]; via = 'cuda' }
+        }
+    }
+    return $hints
+}
+
+# Beside the worker, in a process of its own, for as long as the supervisor lives: the hints in the worker's volume (through its own
+# container) and the budget's threads as its CPU quota (`docker update --cpus`, only when they change; a pause keeps the last quota).
+function Start-GovernorLoop($Supervisor) {
+    $quota = 0
+    while (Get-Process -Id $Supervisor -ErrorAction SilentlyContinue) {
+        $json = Get-HostHints | ConvertTo-Json -Compress -Depth 4
+        $json | & docker exec -i $Name sh -c "cat > $Hints.part && mv $Hints.part $Hints" *> $null
+        try {
+            $threads = [int](Invoke-RestMethod -Uri "http://127.0.0.1:$Port/state" -TimeoutSec 3 -ErrorAction Stop).machine.budget.threads
+        } catch {
+            $threads = 0
+        }
+        if ($threads -gt 0 -and $threads -ne $quota) {
+            & docker update --cpus $threads $Name *> $null
+            if ($LASTEXITCODE -eq 0) { $quota = $threads; Write-Host "governor: the worker may use $threads cores" }
+        }
+        Start-Sleep -Seconds $GovernSeconds
+    }
+}
+
 # The supervisor: the worker in the foreground, started again whenever it ends: at once after an outdated image (75), else
 # after a wait that grows to five minutes while it keeps failing (and starts small again after a long run). A worker that
 # refuses the supervisor's arguments (usage error 2) three times in a row runs an image older than this starter: that is
 # said once, and the supervisor asks again every five minutes until the map is updated.
 function Start-Supervisor {
     Stop-Processes "*$Name.ps1*matcher*"
+    Stop-Processes "*$Name.ps1*governor*"
     Start-Process -FilePath 'powershell.exe' -ArgumentList "$Run matcher $PID" -WindowStyle Hidden
+    Start-Process -FilePath 'powershell.exe' -ArgumentList "$Run governor $PID" -WindowStyle Hidden
     $wait = 10
     $refused = 0
     while ($true) {
@@ -302,9 +364,11 @@ function Uninstall-Worker {
 
 # The installed copy started with the word `matcher` and its supervisor's process id is the sidecar's loop (Start-Supervisor starts it).
 if ($args -contains 'matcher') { $Action = 'matcher' }
+if ($args -contains 'governor') { $Action = 'governor' }
 switch ($Action) {
     'run' { Start-Supervisor }
     'matcher' { Start-MatcherLoop ([int]$args[1]) }
+    'governor' { Start-GovernorLoop ([int]$args[1]) }
     'uninstall' { Uninstall-Worker }
     default { Install-Worker }
 }
