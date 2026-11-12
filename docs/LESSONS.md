@@ -3390,3 +3390,39 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `limits.ts` counted every `usgs-import`, `geotiff-import` and `layer-join` except `localOnly` archive series; where a job would run was decided only at its first dispatch, after the cap.
     - Fix and pin: jobs on the computer (`runOn: 'local'`) never count; a `local` city's new jobs are created `runOn: 'local'` and pass the cap; a move to the cloud asks the cap then and counts on that day (DECISIONS-for-review.md §159; S-A12-HAPPY-LOCAL-PAST-DAILY-CAP, S-A12-BAD-RUNON-CLOUD-PAST-CAP).
     - **A cost cap counts only the work that costs: decide where a job runs when it is created, record it on the job, and check the cap again on every path that moves it to the paid place.**
+
+578. **The 1923 plan-ghid failed: GDAL was asked to open a PDF.**
+    - Seen: 2026-11-12, harti.zip on the owner's computer: the atlas `plan-ghid-al-orasului-bucuresti-v-miorini 1923.pdf` (143 pages) failed with `RasterError: GDAL cannot read … .pdf`.
+    - Cause: `AtlasPlacer` (and `PiecesPlacer`) looked for an archive overview before swapping the PDF for its pages; the search found a loose map beside it in `Harti/` and `overview_canvas` read the series' sheets, the PDF itself, through GDAL, whose PDF driver in the pipeline image writes but cannot read.
+    - Fix and pin: `maps.paged` swaps every PDF for its pages before any placer reads anything; a page that cannot be written as stored is decoded to a TIFF; a PDF pikepdf cannot open fails with `apiError.imagery.archiveCorrupt` naming it (S-P20-HAPPY-PDF-ATLAS, S-P20-BAD-PDF-BROKEN).
+    - **Turn a container format into rasters at the entry of every path, before the first read, not inside one branch: a later branch added on top reads the original.**
+
+579. **1844-1846 Borroczyn was refused by the server: the same `overview` record as lesson 569, run before its fix was deployed.**
+    - Seen: 2026-11-12, about 12:13 local (the job's `stitched.tif` on the worker's volume: 10:13 UTC): the atlas (94 pages) found a loose overview map in `Harti/`, stitched on it (a 3192 x 3600 canvas, nearly blank), and `help.stitched` was refused with `WorkerApiError: apiError.invalidRequest`.
+    - Cause: the deployed server's `STITCH_METHODS` did not list `overview` yet (commit a071ab5a, 13:17 local, lesson 569); the worker's error named no field, so it looked like a new bug. Rerun on today's branch with the worker's real files and a fake store, the whole version passes `layerVersionDocSchema`.
+    - Fix and pin: `apiError.invalidRequest` now carries the refused fields' paths and codes from every `worker.step` refusal (never a value) and the worker's `WorkerApiError` repeats them (S-A62-BAD-NAMED-FIELD); `LEFT_OUT_REASONS` and `STITCHED_LEFT_OUT_MAX` join the shared contract and `publish_stitched` refuses an unknown reason before the work is published (S-P20-BAD-STITCH-METHOD-UNKNOWN).
+    - **A refusal that does not name its field costs a reproduction: make the server say where, and date the run against the deploy before hunting a new cause.**
+
+580. **A worker busy with one long step looked gone, and nothing stopped a step that never ended.**
+    - Seen: 2026-11-12: an hour in `locate` on the KH-5 frame DS09065A089MC039, then a 60-sheet `place` at 110 % CPU; the admin said "No computer connected" both times and the whole local queue waited.
+    - Cause: the worker's `lastSeenAt` was refreshed only by `worker.hello`, `claim` and `end`, never during a run (the lease's heartbeat thread renewed only the job), so after `WORKER_FRESH_SECONDS` (180 s) the admin, and `placeFor`, took the worker as gone; no step had a time limit.
+    - Fix and pin: `worker.step`'s update stamps the worker's `lastSeenAt` when the write renews the lease (S-A62-HAPPY-BUSY-SEEN); every step has a wall-time limit raised at its next checkpoint as `apiError.imagery.stepTimeLimit` (S-P01-HAPPY-STEP-LIMIT, S-P01-BAD-STEP-LIMIT, on a fake clock).
+    - **Presence must be refreshed by what runs during the work (the heartbeat), not only by what runs between jobs.**
+
+581. **A frame joined before could never be joined again.**
+    - Seen: 2026-11-12, the 1980-07-16 join: "Frame D3C1216-100235A039 has no usable version left (rejected, cancelled, failed)", though its version was `joined` (11.7 m) and the scene page offered no Import.
+    - Cause: `isUsablePart` and `partGone` (`functions/src/imagery/join-parts.ts`) took every state of `ENDED_VERSION_STATES` but `published` as gone, and `joined` is one of them.
+    - Fix and pin: `ENDED_YET_USABLE` (`published`, `joined`); a joined frame is taken by a new join and ready for it (S-A65-HAPPY-JOINED-FRAME; the dispatcher's case "joined into another" moved from gone to ready).
+    - **When a list of ended states doubles as a list of unusable ones, name the ended states that still serve, and let the refusal's words match the list.**
+
+582. **A KH-5 Argon frame searched an hour with no end.**
+    - Seen: 2026-11-12, DS09065A089MC039 (1964-06-18): `locate` ran about an hour with no log line until it was cancelled.
+    - Cause: the frame is about 550 km across at 140 m on the ground, so the city is a small patch of it; the vote search had no time bound, and nothing proves a KH-5 frame yet (M9 §14).
+    - Fix and pin: `SensorSpec.search_seconds` (35 min, KH-5 10 min) bounds the search (`SearchBudget`): past it the windows left are not searched and the frame is cropped around the city by its footprint, not proved, so it waits for points (S-P06-HAPPY-SEARCH-BUDGET, S-P06-BAD-SEARCH-BUDGET).
+    - **Every search over an unknown space gets a time budget whose end is a result (not found, ask a person), not a failure.**
+
+583. **The 1895 series offered 26 suggested pairs off its own scan.**
+    - Seen: 2026-11-12, the 1895-1899 pieces on their overview (57 of 60, 16963 px wide): every "closest pair" had x past the 8192-px scan, and they put the scan 10 to 27 km off (a hand fit of 6 pairs: 9.4 m).
+    - Cause: `place_map` writes the suggestions in the canvas's pixels; `publish_stitched` then publishes the scan shrunk to `SCAN_MAX_PX` and left the pairs as they were. A single map's picture is its working copy, while its pairs are in its original's pixels.
+    - Fix and pin: `stitched.in_scan` moves the version's suggestions into the scan's pixels (`Stitched.pairs_scale` times the scan's shrink) and drops a pair outside the scan (S-P22-HAPPY-PAIRS-IN-SCAN, S-P22-BAD-PAIRS-OUTSIDE-SCAN).
+    - **Every pixel coordinate written beside a picture names the picture it belongs to; when the picture is resized for the reader, its coordinates move in the same write.**

@@ -11706,7 +11706,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A frame that ended fails the join with its name",
-            "asserts": "a frame failed or rejected -> apiError.imagery.joinPartGone naming it, from the callable and from the hold",
+            "asserts": "a frame failed, cancelled, rejected or superseded -> apiError.imagery.joinPartGone naming it, from the callable and from the hold (a frame joined by an earlier join is not gone: S-A65-HAPPY-JOINED-FRAME)",
             "tier": "functions",
             "status": "exists",
             "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: functions/test/imagery/join*.test.ts."
@@ -16788,7 +16788,7 @@
             "area": "pipeline",
             "path": "bad",
             "title": "A stitch or place method the server does not know never leaves the worker",
-            "asserts": "publish_stitched with a method outside STITCH_METHODS, or an archive report (Placement.as_record) with a method outside ARCHIVE_PLACE_METHODS -> ValueError before any file is published or written; the overview method is in STITCH_METHODS and ARCHIVE_PLACE_METHODS on both sides of the contract (enums.json)",
+            "asserts": "publish_stitched with a method outside STITCH_METHODS, or an archive report (Placement.as_record) with a method outside ARCHIVE_PLACE_METHODS -> ValueError before any file is published or written; the overview method is in STITCH_METHODS and ARCHIVE_PLACE_METHODS on both sides of the contract (enums.json); a left-out reason outside LEFT_OUT_REASONS is refused the same way, and LEFT_OUT_REASONS and STITCHED_LEFT_OUT_MAX join the shared contract (1844-1846 Borroczyn, 2026-11-12)",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "harti.zip 1895: the worker's write of help.stitched (method overview) was refused as apiError.invalidRequest after 10 minutes of work (lesson 569). Tests: pipeline/tests/unit/test_placing_assemble_overview.py, pipeline/tests/unit/test_contract.py, packages/shared/test/schemas/pipeline-contract.test.ts."
@@ -17353,6 +17353,127 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Lesson 547. Tests: packages/admin/test/georef/georef.test.ts (happyPath_undoTakesBackTheLastEditsOneByOneAndNothingMoreAfterDiscard)."
+        },
+        {
+            "id": "S-P20-HAPPY-PDF-ATLAS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A PDF atlas beside loose maps is laid out from its pages, never read by GDAL",
+            "asserts": "a four-page PDF atlas with a loose map beside it -> placed as an atlas from its extracted pages (the overview search sees only the pages, never the PDF); a page stored in a form that cannot be written as is is decoded to a TIFF",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_placing_pdf.py."
+        },
+        {
+            "id": "S-P20-BAD-PDF-BROKEN",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A broken PDF fails its series with one clear line",
+            "asserts": "an empty or truncated PDF -> the job fails apiError.imagery.archiveCorrupt naming the file, never a crash; a page that cannot be decoded either is counted as without an image",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_placing_pdf.py."
+        },
+        {
+            "id": "S-A65-HAPPY-JOINED-FRAME",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "happy",
+            "title": "A frame joined by an earlier join joins again",
+            "asserts": "a frame whose version is joined (used by an earlier join) -> imagery.join takes it, stamps it with the new join, and the dispatcher counts it ready; only rejected, cancelled, failed and superseded frames are gone",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: functions/test/imagery/join.test.ts, functions/test/imagery/join-parts.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-BUSY-SEEN",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A worker busy with a long step stays connected",
+            "asserts": "a run's heartbeat (lease.until through worker.step) -> the worker's lastSeenAt is the server's now, so the admin never says No computer connected and new jobs keep going to the computer; a write without the lease leaves lastSeenAt as it was",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: functions/test/worker/step.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-NAMED-FIELD",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A worker's write the server refuses names the field",
+            "asserts": "a value that cannot be stored, or a merged document that fails its schema -> apiError.invalidRequest with the refused fields' paths and codes (never their values); the worker's WorkerApiError and the job's error say which fields",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: functions/test/worker/step.test.ts, pipeline/tests/unit/test_worker_api.py."
+        },
+        {
+            "id": "S-P01-HAPPY-STEP-LIMIT",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A step within its wall-time limit runs on",
+            "asserts": "a step that ends before its limit -> done as before; each step has a generous limit (locate 45 min, place 4 h, others 3 h), RunSettings overrides it",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_step_limits.py."
+        },
+        {
+            "id": "S-P01-BAD-STEP-LIMIT",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A step past its wall-time limit fails with one clear line",
+            "asserts": "a step still running past its limit -> at its next checkpoint the job and the version fail apiError.imagery.stepTimeLimit {step, minutes}, so the computer's queue goes on; a fake clock, no sleep",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_step_limits.py."
+        },
+        {
+            "id": "S-P06-HAPPY-SEARCH-BUDGET",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A frame's search within its camera's budget answers what it found",
+            "asserts": "a search that ends within the camera's search_seconds -> its result, unchanged",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_step_limits.py."
+        },
+        {
+            "id": "S-P06-BAD-SEARCH-BUDGET",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A frame's search past its budget crops by the footprint and waits for points",
+            "asserts": "a KH-5 Argon search still running after 10 min -> it stops, the windows left are not searched, the frame is not proved and its city crop by the footprint waits for points (never an hour with no end)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_step_limits.py."
+        },
+        {
+            "id": "S-P22-HAPPY-PAIRS-IN-SCAN",
+            "behaviour": "P22",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A waiting series' suggested pairs are in its scan's pixels",
+            "asserts": "a stitched canvas larger than SCAN_MAX_PX -> the version's suggested pairs are scaled with it into scan.tif's pixels (a canvas pixel (800, 400) on a half-size scan is (400, 200)); a single map's pairs in its original's pixels land on its working copy",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip 1895, track/workerfix). Tests: pipeline/tests/unit/test_placing_assemble_stitched.py."
+        },
+        {
+            "id": "S-P22-BAD-PAIRS-OUTSIDE-SCAN",
+            "behaviour": "P22",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A suggested pair outside the scan is never offered",
+            "asserts": "a pair past the scan's width or height, or negative -> dropped, and tiles.matched counts only the pairs kept",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip 1895, track/workerfix). Tests: pipeline/tests/unit/test_placing_assemble_stitched.py."
         }
     ]
 }
