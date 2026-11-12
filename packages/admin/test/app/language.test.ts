@@ -17,6 +17,19 @@ function world(loaded: boolean): {
     return { local, update, language: adminLanguage({ fetch: vi.fn(), local, shell, load }) };
 }
 
+/** A language file that arrives when the test says so: every request waits for `arrive`. */
+function slowFiles(): { readonly load: (locale: string) => Promise<boolean>; readonly arrive: (ok: boolean) => void } {
+    const waiting: ((ok: boolean) => void)[] = [];
+    return {
+        load: () => new Promise<boolean>((resolve) => waiting.push(resolve)),
+        arrive: (ok) => {
+            waiting.forEach((resolve) => {
+                resolve(ok);
+            });
+        },
+    };
+}
+
 describe('adminLanguage', () => {
     it('happyPath_aChosenLanguageIsShownAndRememberedOnceItsTextsAreHere', async () => {
         const w = world(true);
@@ -40,5 +53,50 @@ describe('adminLanguage', () => {
         expect(w.update).toHaveBeenCalledWith({ notice: { key: 'adminShell.language.unavailable', params: { language: 'فارسی' }, id: 7 } });
         expect(w.update).not.toHaveBeenCalledWith({ locale: 'fa' });
         expect(w.local.get(LANGUAGE_KEY)).toBeNull();
+    });
+
+    it('happyPath_aSlowLanguageThenEnglishEndsInEnglishAndStoresEnglish', async () => {
+        const local = new MemoryStore();
+        const update = vi.fn();
+        const { load, arrive } = slowFiles();
+        const language = adminLanguage({ fetch: vi.fn(), local, shell: { update, notice: vi.fn() }, load });
+
+        const french = language.choose('fr');
+        await language.choose('en');
+        arrive(true);
+        await french;
+
+        expect(update.mock.calls).toEqual([[{ locale: 'en' }]]);
+        expect(local.get(LANGUAGE_KEY)).toBe('en');
+    });
+
+    it('badPath_theBootsFetchResolvingAfterAMenuChoiceNeverUndoesIt', async () => {
+        const local = new MemoryStore();
+        const update = vi.fn();
+        const { load, arrive } = slowFiles();
+        const language = adminLanguage({ fetch: vi.fn(), local, shell: { update, notice: vi.fn() }, load });
+
+        const boot = language.start('uk');
+        await language.choose('ro');
+        arrive(true);
+        await boot;
+
+        expect(update.mock.calls).toEqual([[{ locale: 'ro' }]]);
+        expect(local.get(LANGUAGE_KEY)).toBe('ro');
+    });
+
+    it('badPath_aSupersededLanguageThatCannotBeFetchedSaysNothing', async () => {
+        const local = new MemoryStore();
+        const update = vi.fn();
+        const { load, arrive } = slowFiles();
+        const language = adminLanguage({ fetch: vi.fn(), local, shell: { update, notice: vi.fn() }, load });
+
+        const german = language.choose('de');
+        await language.choose('en');
+        arrive(false);
+        await german;
+        await language.choose('xx' as never);
+
+        expect(update.mock.calls).toEqual([[{ locale: 'en' }]]);
     });
 });

@@ -17,9 +17,10 @@ import {
 } from '../../support/viewer.js';
 
 /**
- * The viewer's sixteen languages (V11; docs/ENGINE_API.md → Language): each fetched from `i18n/<locale>.json` next to
+ * The viewer's 25 languages (V11; docs/ENGINE_API.md → Language): each fetched from `i18n/<locale>.json` next to
  * the engine when first shown, Arabic right to left, the choice kept by the hash and across a reload; a language whose
- * file cannot be fetched leaves the page in the language it had, and says so.
+ * file cannot be fetched leaves the page in the language it had, and says so. A language still being translated (its file
+ * says `"fallback": "en"`) brings English with it, which shows each text it lacks (docs/I18N.md → Fallback).
  */
 
 /** The engine's language files on the site server (the engine is next to the page, in `engine/`). */
@@ -122,8 +123,8 @@ test.describe('the viewer in any of its languages', () => {
     );
 
     test('Every viewer language boots from its code in the address', { tag: '@S-V11-HAPPY-ALL-LANGS' }, async ({ page }) => {
-        // Eleven boots, each a page load with its map: a phone's SwiftShader frame takes about 5 s each.
-        test.setTimeout(180_000);
+        // Twenty boots, each a page load with its map: a phone's SwiftShader frame takes about 5 s each.
+        test.setTimeout(240_000);
         for (const locale of VIEWER_LOCALES.filter((each) => !['ro', 'en', 'de', 'ar', 'ja'].includes(each))) {
             await page.goto(sitePath('bucharest', { lang: locale }));
             await waitForEngineEvent(page, 'hcm-ready');
@@ -131,6 +132,47 @@ test.describe('the viewer in any of its languages', () => {
             await expect(menuButton(page, locale)).toBeVisible();
         }
     });
+});
+
+test.describe('a language still being translated', () => {
+    test(
+        'Persian reads right to left, and each text its file lacks shows in English',
+        { tag: '@S-V11-HAPPY-TRANSLATING-FALLS-BACK' },
+        async ({ page, lang }) => {
+            const requested = catalogueRequests(page);
+            await openViewer(page, { lang });
+
+            await chooseLanguage(page, lang, 'fa');
+
+            await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+            await expect(viewer(page)).toHaveAttribute('dir', 'rtl');
+            // Nothing is translated to Persian yet: the menu's name is the English one, fetched with it.
+            await expect(menuButton(page, 'fa')).toBeVisible();
+            expect(t('fa', 'timeline.label')).toBe(t('en', 'timeline.label'));
+            await expect(page.getByRole('slider', { name: t('en', 'timeline.label'), exact: true })).toBeVisible();
+            expect(requested).toContain('fa');
+            expect(requested).toContain('en');
+            expect(await i18nLeaks(page, 'fa'), 'no text of a third language in Persian').toEqual([]);
+        },
+    );
+
+    test(
+        "A text a language's file lacks shows in English, never a key or nothing",
+        { tag: '@S-V11-BAD-MISSING-KEY-FALLS-BACK' },
+        async ({ page }) => {
+            await breakCatalogues(page, ['de'], async (route) => {
+                const response = await route.fetch();
+                const file = (await response.json()) as { messages: Record<string, string> };
+                delete file.messages['timeline.label'];
+                await route.fulfill({ response, json: { ...file, fallback: 'en' } });
+            });
+            await openViewer(page, { lang: 'de' });
+
+            await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+            await expect(page.getByRole('slider', { name: t('en', 'timeline.label'), exact: true })).toBeVisible();
+            await expect(menuButton(page, 'de')).toBeVisible();
+        },
+    );
 });
 
 test.describe('a language that cannot be fetched', () => {

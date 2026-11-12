@@ -1,13 +1,13 @@
 /**
  * The admin's language switch (`docs/I18N.md` → Loading): a language beyond Romanian and English is fetched from the
  * build's `i18n/` folder before the shell shows it; the choice is remembered (`localStorage` `hcm:admin:lang`, try/catch
- * inside the store) only once it has taken. A file that cannot be read keeps the language and says so in the snackbar.
+ * inside the store) only once it has taken, and only while it is still the latest choice. A file that cannot be read keeps the language and says so in the snackbar.
  */
 import { UI_LANGUAGE_NAMES, type UiLocale } from '@hcm/shared';
 
 import { LANGUAGE_KEY } from '../state/locale.js';
 import type { ShellStateAccess } from '../state/state.js';
-import { isBundled, switchLanguage, uiCatalogueLoader, type LanguageSwitch, type UiCatalogueLoader } from '../state/ui-language.js';
+import { isBundled, latestLanguage, uiCatalogueLoader, type LanguageSwitch, type UiCatalogueLoader } from '../state/ui-language.js';
 import type { KeyValueStore } from './ports.js';
 
 /** Where the admin's build writes the languages: `/admin/i18n/<locale>.json` on Hosting. */
@@ -45,8 +45,10 @@ export function adminLanguage(deps: AdminLanguageDeps): AdminLanguage {
         },
         unavailable,
     };
+    // The boot's language and the menu's choices share one switch: the latest wins over a file still loading.
+    const latest = latestLanguage();
     return {
-        choose: (locale) => switchLanguage(remembered, locale),
-        start: (wanted) => (isBundled(wanted) ? Promise.resolve() : switchLanguage({ load, apply: show, unavailable }, wanted)),
+        choose: (locale) => latest(remembered, locale),
+        start: (wanted) => (isBundled(wanted) ? Promise.resolve() : latest({ load, apply: show, unavailable }, wanted)),
     };
 }

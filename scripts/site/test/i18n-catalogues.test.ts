@@ -3,7 +3,7 @@ import { VIEWER_LOCALES } from '@hcm/shared';
 import { VIEWER_CATALOGUES } from '@hcm/shared/viewer-catalogues';
 import { describe, expect, it } from 'vitest';
 
-import { CATALOGUE_FOLDER, catalogueFile, catalogueStandIn, i18nCataloguesPlugin } from '../src/i18n-catalogues.js';
+import { CATALOGUE_FOLDER, catalogueFile, catalogueStandIn, i18nCataloguesPlugin, isPartial } from '../src/i18n-catalogues.js';
 
 const I18N = '/repo/packages/shared/src/i18n';
 
@@ -33,14 +33,26 @@ describe('catalogueFile', () => {
         expect(Object.keys(file['messages'] as object)).toEqual(['a.key', 'b.key']);
     });
 
-    it('happyPath_everyViewerLanguageShipsTheSameKeysAsRomanian', () => {
-        const keys = (locale: (typeof VIEWER_LOCALES)[number]): string[] =>
-            Object.keys((JSON.parse(catalogueFile('1.0.0', locale, VIEWER_CATALOGUES[locale])) as { messages: object }).messages);
-
+    it('happyPath_everyViewerLanguageShipsRomaniansKeysOrNamesEnglishAsItsFallback', () => {
+        const source = VIEWER_CATALOGUES.ro;
+        const keys = Object.keys(source).length;
         for (const locale of VIEWER_LOCALES) {
-            expect({ locale, keys: keys(locale) }).toEqual({ locale, keys: keys('ro') });
+            const messages = VIEWER_CATALOGUES[locale];
+            const file = JSON.parse(catalogueFile('1.0.0', locale, messages, isPartial(messages, source))) as {
+                readonly messages: object;
+                readonly fallback?: string;
+            };
+            const complete = Object.keys(file.messages).length === keys;
+            expect({ locale, fallback: file.fallback }).toEqual({ locale, fallback: complete ? undefined : 'en' });
         }
-        expect(keys('ro')).toContain('mapLabels.streets');
+        expect(Object.keys(source)).toContain('mapLabels.streets');
+        expect(isPartial(VIEWER_CATALOGUES.fa, source)).toBe(true);
+    });
+
+    it('badPath_aMissingTextIsLeftOutAndEnglishNamedAsTheFallback', () => {
+        const file = JSON.parse(catalogueFile('1.2.3', 'fa', { 'a.key': 'الف', 'b.key': undefined }, true)) as Record<string, unknown>;
+
+        expect(file).toEqual({ engine: '1.2.3', locale: 'fa', messages: { 'a.key': 'الف' }, fallback: 'en' });
     });
 });
 
@@ -63,5 +75,16 @@ describe('i18nCataloguesPlugin', () => {
         expect(load(`${I18N}/de.ts`)).toBeNull();
         expect(emitted.map((file) => file.fileName)).toEqual([`${CATALOGUE_FOLDER}/de.json`, `${CATALOGUE_FOLDER}/ar.json`]);
         expect(JSON.parse(String(emitted[1]?.source))).toEqual({ engine: '2.0.0', locale: 'ar', messages: { 'a.key': 'ب' } });
+    });
+
+    it('happyPath_aLanguageLackingARomanianKeyNamesEnglishAsItsFallback', () => {
+        const plugin = i18nCataloguesPlugin('2.0.0', { ro: { 'a.key': 'A', 'b.key': 'B' }, ur: { 'a.key': 'ا' } });
+        const emitted: { fileName: string; source: string }[] = [];
+        const context = { emitFile: (file: { fileName: string; source: string }) => emitted.push(file) };
+
+        (plugin.generateBundle as unknown as (this: typeof context) => void).call(context);
+
+        expect(JSON.parse(String(emitted[0]?.source))).not.toHaveProperty('fallback');
+        expect(JSON.parse(String(emitted[1]?.source))).toHaveProperty('fallback', 'en');
     });
 });

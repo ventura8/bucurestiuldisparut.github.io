@@ -15,7 +15,7 @@ import { visuallyHidden } from '../../components/styles.js';
 import type { AdminDestinationPort, AdminRouteIdPort } from '../admin-port.js';
 import { adminBase } from './admin-styles.js';
 import { EMPTY } from './empty.js';
-import { contentText, shellText } from './text.js';
+import { contentText, shellLanguage, shellText } from './text.js';
 
 /** M4: the unread count as the badge shows it (`99+` above `INBOX_BADGE_MAX`), or null for none. */
 export function badgeText(unread: number | null): string | null {
@@ -242,7 +242,9 @@ export class HcmAdminNav extends LitElement {
         };
         return html`<a class="item" href=${['#', destination.id].join('/')} aria-current=${current ? 'page' : 'false'} @click=${close}>
             <span class="indicator"><hcm-icon name=${destination.icon} ?filled=${current}></hcm-icon></span>
-            <span class="label">${shellText(this.locale, `adminShell.nav.${destination.id}`)}</span>
+            <span class="label" lang=${shellLanguage(this.locale, `adminShell.nav.${destination.id}`)}
+                >${shellText(this.locale, `adminShell.nav.${destination.id}`)}</span
+            >
             ${destination.id === 'inbox' ? this.#badge() : EMPTY}
         </a>`;
     }

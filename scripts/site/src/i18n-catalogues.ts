@@ -10,8 +10,12 @@ import type { Plugin } from 'vite';
  *   engine fetches the one it shows, the folder its `fonts/` are in (jsDelivr's release folder, Hosting's, the export's).
  *
  * A file is `{"engine": "<version>", "locale": "<code>", "messages": {…}}`, its keys sorted; the engine takes it only when
- * both match (`packages/engine/src/core/catalogues.ts`).
+ * both match (`packages/engine/src/core/catalogues.ts`). A language still being translated (a key of Romanian it lacks)
+ * also says `"fallback": "en"`: the engine then fetches English too, which shows each missing key (docs/I18N.md → Fallback).
  */
+
+/** One language's texts as `VIEWER_CATALOGUES` holds them (a language being translated lacks some keys). */
+export type CatalogueTexts = Readonly<Partial<Record<string, string>>>;
 
 /** The four catalogue modules `@hcm/shared` imports, by their path. */
 const BUNDLED = /[\\/]packages[\\/]shared[\\/]src[\\/]i18n[\\/](?:map-labels[\\/])?(ro|en)\.ts$/;
@@ -23,19 +27,23 @@ export function catalogueStandIn(id: string): string | null {
 }
 
 /** One language's file, as the engine fetches it. */
-export function catalogueFile(engine: string, locale: string, messages: Readonly<Record<string, string>>): string {
-    const sorted = Object.fromEntries(Object.entries(messages).toSorted(([a], [b]) => (a < b ? -1 : 1)));
-    return JSON.stringify({ engine, locale, messages: sorted });
+export function catalogueFile(engine: string, locale: string, messages: CatalogueTexts, partial = false): string {
+    const present = Object.entries(messages).filter((entry): entry is [string, string] => entry[1] !== undefined);
+    const sorted = Object.fromEntries(present.toSorted(([a], [b]) => (a < b ? -1 : 1)));
+    return JSON.stringify({ engine, locale, messages: sorted, ...(partial ? { fallback: 'en' } : {}) });
+}
+
+/** True when `messages` lacks a key of `source` (Romanian's): the file names English as its fallback. */
+export function isPartial(messages: CatalogueTexts, source: CatalogueTexts): boolean {
+    return Object.keys(source).some((key) => messages[key] === undefined);
 }
 
 /** The folder of the files next to the engine. */
 export const CATALOGUE_FOLDER = 'i18n';
 
 /** The Vite plugin of the engine's build: the stand-ins while bundling, the files once the bundle is written. */
-export function i18nCataloguesPlugin(
-    engineVersion: string,
-    catalogues: Readonly<Record<string, Readonly<Record<string, string>>>>,
-): Plugin {
+export function i18nCataloguesPlugin(engineVersion: string, catalogues: Readonly<Record<string, CatalogueTexts>>): Plugin {
+    const source = catalogues['ro'] ?? {};
     return {
         name: 'hcm-i18n-catalogues',
         enforce: 'pre',
@@ -45,7 +53,7 @@ export function i18nCataloguesPlugin(
                 this.emitFile({
                     type: 'asset',
                     fileName: `${CATALOGUE_FOLDER}/${locale}.json`,
-                    source: catalogueFile(engineVersion, locale, messages),
+                    source: catalogueFile(engineVersion, locale, messages, isPartial(messages, source)),
                 });
             }
         },

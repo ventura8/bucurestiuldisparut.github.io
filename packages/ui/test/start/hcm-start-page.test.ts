@@ -150,6 +150,9 @@ describe('hcm-start-page', () => {
         select.dispatchEvent(new Event('change'));
         expect(calls).toEqual([]);
         expect(document.documentElement.dir).toBe('rtl');
+        // No Urdu file holds the start page's texts: they show in English and say so.
+        expect(root.querySelector('main')?.getAttribute('lang')).toBe('en');
+        expect(document.documentElement.lang).toBe('ur');
     });
 
     it('happyPath_theNoticeOfARefusedConsent', async () => {

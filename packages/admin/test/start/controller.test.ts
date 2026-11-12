@@ -428,7 +428,7 @@ describe('the start page, after the release', () => {
         stop();
         controller.intents.setLocale('en');
         expect(heard).toBe(1);
-        expect(world.session.get('hcm:start:lang')).toBe('en');
+        expect(world.local.get('hcm:start:lang')).toBe('en');
     });
 
     it('happyPath_aLanguageBeyondTheBundledTwoShowsOnceItsTextsAreHere', async () => {
@@ -444,7 +444,7 @@ describe('the start page, after the release', () => {
         await vi.waitFor(() => {
             expect(controller.view.locale).toBe('ko');
         });
-        expect(world.session.get('hcm:start:lang')).toBe('ko');
+        expect(world.local.get('hcm:start:lang')).toBe('ko');
     });
 
     it('badPath_aLanguageWhoseTextsCannotBeFetchedKeepsTheLanguageAndSaysSo', async () => {
@@ -455,6 +455,66 @@ describe('the start page, after the release', () => {
             expect(controller.view.notice).toBe('start.languageUnavailable');
         });
         expect(controller.view.locale).toBe('en');
-        expect(world.session.get('hcm:start:lang')).toBeUndefined();
+        expect(world.local.get('hcm:start:lang')).toBeUndefined();
+    });
+});
+
+/** A language file that arrives when the test says so: every request waits for `arrive`. */
+function slowFiles(): { readonly load: (locale: string) => Promise<boolean>; readonly arrive: (ok: boolean) => void } {
+    const waiting: ((ok: boolean) => void)[] = [];
+    return {
+        load: () => new Promise<boolean>((resolve) => waiting.push(resolve)),
+        arrive: (ok) => {
+            waiting.forEach((resolve) => {
+                resolve(ok);
+            });
+        },
+    };
+}
+
+describe('the start page language switch', () => {
+    it('happyPath_aSlowLanguageThenABundledOneEndsInTheBundledOne', async () => {
+        const world = startWorld();
+        const { load, arrive } = slowFiles();
+        const controller = new StartController({ ...world.deps, loadTexts: load });
+
+        controller.intents.setLocale('fr');
+        controller.intents.setLocale('ro');
+        arrive(true);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(controller.view.locale).toBe('ro');
+        expect(world.local.get('hcm:start:lang')).toBe('ro');
+    });
+
+    it('badPath_theBootsFetchArrivingAfterAChoiceNeverUndoesIt', async () => {
+        const world = startWorld();
+        const { load, arrive } = slowFiles();
+        const controller = new StartController({ ...world.deps, search: '?lang=uk', loadTexts: load });
+        await controller.start();
+
+        controller.intents.setLocale('en');
+        arrive(true);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(controller.view.locale).toBe('en');
+        expect(world.local.get('hcm:start:lang')).toBe('en');
+    });
+
+    it('badPath_aSupersededLanguageThatCannotBeFetchedSaysNothing', async () => {
+        const world = startWorld();
+        const { load, arrive } = slowFiles();
+        const controller = new StartController({ ...world.deps, loadTexts: load });
+
+        controller.intents.setLocale('vi');
+        controller.intents.setLocale('ro');
+        arrive(false);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(controller.view.notice).toBeNull();
+        expect(controller.view.locale).toBe('ro');
     });
 });

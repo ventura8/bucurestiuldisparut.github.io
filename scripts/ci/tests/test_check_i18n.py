@@ -149,7 +149,7 @@ def viewer_catalogue(locale: str, change: dict[str, str] | None = None) -> str:
 
 
 def viewer_tree(root: Path, changes: dict[str, dict[str, str]] | None = None) -> None:
-    for locale in i18n.VIEWER_LOCALES:
+    for locale in i18n.VIEWER_COMPLETE:
         write(root, f"packages/shared/src/i18n/{locale}.ts", viewer_catalogue(locale, (changes or {}).get(locale)), newline=False)
 
 
@@ -287,9 +287,46 @@ def test_bad_path_strict_mode_requires_every_language_complete(tmp_path: Path, m
     assert i18n.is_strict(True) is True
 
 
+def test_bad_path_strict_rejects_everything_the_default_mode_rejects(tmp_path: Path) -> None:
+    viewer_tree(tmp_path, {"de": {"layers.title": " Ebenen"}, "fr": {"layers.title": "<b>Calques</b>"}})
+    write(tmp_path, "packages/shared/src/i18n/nl.ts", "export const nl = {\n    'layers.title': 'Layers',\n};\n", newline=False)
+
+    default, _, _ = i18n.check(tmp_path)
+    strict, _, _ = i18n.check(tmp_path, strict=True)
+
+    assert set(default) <= set(strict)
+    assert "packages/shared/src/i18n/de.ts: 'layers.title' starts or ends with whitespace" in default
+    assert "packages/shared/src/i18n/fr.ts: 'layers.title' holds an HTML tag" in default
+    assert "packages/shared/src/i18n/nl.ts: 'layers.title' is the English text" in default
+    assert "packages/shared/src/i18n/ur.ts: missing catalogue" in strict
+    assert "packages/shared/src/i18n/nl.ts: missing key 'photos.count.one' (defined in ro)" in strict
+
+
+def test_happy_path_a_viewer_language_being_translated_is_optional_and_may_be_empty(tmp_path: Path) -> None:
+    viewer_tree(tmp_path)
+    write(
+        tmp_path, "packages/shared/src/i18n/fa.ts", "export const fa: Readonly<Partial<Record<MessageKey, string>>> = {};\n", newline=False
+    )
+    write(tmp_path, "packages/shared/src/i18n/ur.ts", "export const ur = {\n    'photos.count.one': '{count} پرتیں',\n};\n", newline=False)
+
+    problems, _, _ = i18n.check(tmp_path)
+
+    assert problems == []
+    assert i18n.completeness(tmp_path)["fa"] == (0, 7)
+
+
 def test_bad_path_romanian_and_english_never_wrap(tmp_path: Path) -> None:
     catalogues(tmp_path, ro=RO.replace("'app.title': 'București dispărut',", "'app.title':\n        'București dispărut',"))
 
     problems, _, _ = i18n.check(tmp_path)
 
     assert "packages/admin/src/i18n/ro.ts:4: not a one-line `'key': 'message',` entry" in problems
+
+
+def test_bad_path_a_folder_without_its_romanian_source(tmp_path: Path) -> None:
+    viewer_tree(tmp_path)
+    (tmp_path / "packages/shared/src/i18n/ro.ts").unlink()
+
+    problems, _, _ = i18n.check(tmp_path)
+
+    assert problems == ["packages/shared/src/i18n/ro.ts: missing catalogue"]

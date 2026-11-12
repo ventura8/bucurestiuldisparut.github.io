@@ -1,5 +1,5 @@
 import { createLogger } from '../log.js';
-import { FALLBACK_LOCALE, type UiLocale } from './locales.js';
+import { BUNDLED_LOCALES, directionOf, FALLBACK_LOCALE, type UiLocale } from './locales.js';
 
 /**
  * The languages fetched once chosen (`docs/I18N.md` → Loading): the engine's, the admin's and the start page's files join
@@ -62,7 +62,31 @@ export function uiText(locale: UiLocale, key: string, bundled: BundledTexts = {}
     return bundled[locale]?.[key] ?? registeredText(locale, key) ?? fallbackText(locale, key, bundled);
 }
 
-/** Fills `{name}` placeholders from `params`; unknown placeholders are left visible. */
-export function fillPlaceholders(text: string, params: Readonly<Record<string, string>>): string {
-    return text.replace(PLACEHOLDER, (placeholder: string, name: string) => params[name] ?? placeholder);
+/**
+ * Fills `{name}` placeholders from `params`; unknown placeholders are left visible. For a right-to-left `locale` (Arabic,
+ * Persian, Urdu) each value is isolated (U+2068 … U+2069), so a Latin city or layer name keeps its own order inside the
+ * sentence: the viewer's `translate`, every admin family's translator and the API's errors fill the same way.
+ */
+export function fillPlaceholders(text: string, params: Readonly<Record<string, string>>, locale?: UiLocale): string {
+    const [open, close] = locale !== undefined && directionOf(locale) === 'rtl' ? ['\u2068', '\u2069'] : ['', ''];
+    return text.replace(PLACEHOLDER, (placeholder: string, name: string) => {
+        const value = params[name];
+        return value === undefined ? placeholder : open + value + close;
+    });
+}
+
+/**
+ * The language `key`'s text shows in for a reader of `locale`: `locale` when it has the text (Romanian and English have
+ * every key, `check_i18n.py`), else English, the fallback. An element showing a fallback text names it with this `lang`
+ * (WCAG 3.1.2), so a screen reader reads English words with an English voice inside an Arabic page.
+ */
+export function textLanguage(locale: UiLocale, key: string): UiLocale {
+    return BUNDLED_LOCALES.includes(locale) || registeredText(locale, key) !== undefined ? locale : FALLBACK_LOCALE;
+}
+
+/** The language a family's texts (its keys starting with `prefix`) show in: `locale` once its file holds any of them, else English. */
+export function familyLanguage(locale: UiLocale, prefix: string): UiLocale {
+    const texts = REGISTERED[locale] ?? {};
+    const has = BUNDLED_LOCALES.includes(locale) || Object.keys(texts).some((key) => key.startsWith(prefix));
+    return has ? locale : FALLBACK_LOCALE;
 }

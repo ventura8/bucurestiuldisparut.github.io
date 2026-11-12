@@ -36,12 +36,14 @@ test(
         await expect(page.locator('html')).toHaveAttribute('lang', 'ur');
         await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
         await expect(languageList(page, 'en')).toHaveValue('ur');
-        // The choice is kept for the visit: the address without `lang` (which would win) opens in Urdu again.
+        // The choice is kept (localStorage): the address without `lang` (which would win) opens in Urdu again.
         await page.goto(`${START_URL}?test=${encodeURIComponent(testIdOf(testInfo))}`);
         await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
         await expect(startPage(page).getByRole('heading', { level: 1 })).toHaveText(translateStart('ur', 'start.title'));
-        // The leak check reads the page as English: no Urdu file exists yet, so every text shows in English (docs/I18N.md).
-        await expectStateSound(page, adminVisit('start.language-rtl', 'en'));
+        // No Urdu file exists yet: every text shows in English, inside elements marked lang="en" (docs/I18N.md → Fallback),
+        // and the leak check reads the page as the Urdu page it is.
+        await expect(startPage(page).locator('main')).toHaveAttribute('lang', 'en');
+        await expectStateSound(page, adminVisit('start.language-rtl', 'ur'));
     },
 );
 

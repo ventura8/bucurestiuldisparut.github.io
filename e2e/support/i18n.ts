@@ -16,22 +16,39 @@ function placeholderFree(locale: ViewerLocale): string[] {
     return Object.values(VIEWER_CATALOGUES[locale]).filter((text) => !text.includes('{'));
 }
 
-/** The texts of the other languages that `lang`'s catalogue does not have: shown in a page of `lang`, they leaked. */
+/**
+ * The texts of the other languages that `lang`'s catalogue does not have: shown in a page of `lang`, they leaked. A key a
+ * language being translated lacks shows in English by design (docs/I18N.md → Fallback): that English text is its own.
+ */
 function foreignTexts(lang: ViewerLocale): ReadonlySet<string> {
-    const own = new Set(Object.values(VIEWER_CATALOGUES[lang]));
+    const own = new Set(Object.values({ ...VIEWER_CATALOGUES.en, ...VIEWER_CATALOGUES[lang] }));
     const others = VIEWER_LOCALES.filter((locale) => locale !== lang).flatMap(placeholderFree);
     return new Set(others.filter((text) => !own.has(text)));
 }
 
 /**
  * Runs in the page: every visible text node and accessible name, open shadow roots included; with `lang`, none inside an
- * element marked as another language (a city's English text in a German page names its `lang`: it is no leak).
+ * element marked as another language (through shadow hosts, as `lang` is inherited) (a city's English text in a German page names its `lang`: it is no leak).
  */
 function textsInPage(lang: string | null): string[] {
     const texts: string[] = [];
+    // The language an element inherits in the composed tree, as the browser and a screen reader read it: `lang` reaches
+    // into a shadow root from its host (an admin page inside the shell's `lang="en"` area is English).
+    const markedOf = (element: Element): string | null => {
+        let at: Element | null = element;
+        while (at !== null) {
+            const marked = at.closest('[lang]');
+            if (marked !== null) {
+                return marked.getAttribute('lang');
+            }
+            const root = at.getRootNode();
+            at = root instanceof ShadowRoot ? root.host : null;
+        }
+        return null;
+    };
     const visit = (root: Document | ShadowRoot): void => {
         for (const element of Array.from(root.querySelectorAll('*'))) {
-            const marked = element.closest('[lang]')?.getAttribute('lang') ?? lang;
+            const marked = markedOf(element) ?? lang;
             const visible = element.checkVisibility() && (lang === null || marked === lang);
             for (const node of Array.from(element.childNodes)) {
                 if (visible && node.nodeType === Node.TEXT_NODE) {

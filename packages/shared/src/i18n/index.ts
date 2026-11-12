@@ -1,10 +1,18 @@
 import { en } from './en.js';
-import { directionOf, type UiLocale } from './locales.js';
-import { hasRegisteredCatalogue, registeredText, uiText } from './registry.js';
+import { directionOf, UI_LANGUAGE_NAMES, UI_LOCALES, UI_LOCALES_BY_NAME, type UiLocale } from './locales.js';
+import { fillPlaceholders, hasRegisteredCatalogue, registeredText, uiText } from './registry.js';
 import { ro, type MessageKey } from './ro.js';
 
 export type { MessageKey, Messages } from './ro.js';
-export { fillPlaceholders, hasRegisteredCatalogue, registerCatalogue, uiText, type BundledTexts } from './registry.js';
+export {
+    familyLanguage,
+    fillPlaceholders,
+    hasRegisteredCatalogue,
+    registerCatalogue,
+    textLanguage,
+    uiText,
+    type BundledTexts,
+} from './registry.js';
 
 /** The languages of the admin and of a city's own texts (`{ro, en}`): Romanian, the source, and English. */
 export const LOCALES = ['ro', 'en'] as const;
@@ -12,13 +20,14 @@ export const LOCALES = ['ro', 'en'] as const;
 export type Locale = (typeof LOCALES)[number];
 
 /**
- * The public viewer's languages (docs/ENGINE_API.md → Language): Romanian, the default and the source of every key,
- * English, and fourteen more. The engine bundles none of their catalogues: each is fetched once, when first shown,
- * from `i18n/<locale>.json` next to the engine (`docs/research/DECISIONS-for-review.md` §159).
+ * The public viewer's languages (docs/ENGINE_API.md → Language): every interface language of `locales.ts`, Romanian the
+ * default and the source of every key. The engine bundles none of their catalogues: each is fetched once, when first shown,
+ * from `i18n/<locale>.json` next to the engine (`docs/research/DECISIONS-for-review.md` §159); a language whose file lacks a
+ * key shows it in English (§160).
  */
-export const VIEWER_LOCALES = ['ro', 'en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'uk', 'pl', 'tr', 'ar', 'hi', 'zh', 'ja', 'ko'] as const;
+export const VIEWER_LOCALES = UI_LOCALES;
 
-export type ViewerLocale = (typeof VIEWER_LOCALES)[number];
+export type ViewerLocale = UiLocale;
 
 /** Romanian is the default for every visitor whose language is not explicitly another one. */
 export const DEFAULT_LOCALE: Locale = 'ro';
@@ -28,8 +37,6 @@ export const DEFAULT_LOCALE: Locale = 'ro';
  * replaces the two imports with empty stand-ins, so it registers every language it fetches (`registry.ts`).
  */
 const MAIN: Readonly<Partial<Record<UiLocale, Readonly<Record<string, string>>>>> = { ro, en };
-
-const PLACEHOLDER = /\{(\w+)\}/g;
 
 /** The viewer language of a BCP 47 tag (`de-AT`, `zh-TW`, `EN`), by its primary subtag, or undefined for any other. */
 export function viewerLocaleOf(tag: string | null | undefined): ViewerLocale | undefined {
@@ -74,42 +81,28 @@ function mainText(locale: UiLocale, key: string): string {
 /**
  * Translates `key` and fills `{name}` placeholders from `params`; unknown placeholders are left visible. A locale whose
  * catalogue is not here yet gives an empty text, never a raw key. In a right-to-left language each value is isolated
- * (U+2068 … U+2069), so a Latin layer name keeps its own order inside the Arabic sentence.
+ * (U+2068 … U+2069, `fillPlaceholders`), so a Latin layer name keeps its own order inside the Arabic sentence.
  */
 export function translate(locale: UiLocale, key: MessageKey, params: Readonly<Record<string, string>> = {}): string {
-    const [open, close] = isRtl(locale) ? ['⁨', '⁩'] : ['', ''];
-    return mainText(locale, key).replace(PLACEHOLDER, (placeholder: string, name: string) => {
-        const value = params[name];
-        return value === undefined ? placeholder : open + value + close;
-    });
+    return fillPlaceholders(mainText(locale, key), params, locale);
 }
 
 /**
- * Each viewer language by its own name (an endonym: data, not a translation, the same in every catalogue), in the order
- * the language list shows them: the root collation's (`Intl.Collator('und')`, Latin first), so the list never reorders
- * when the page's language changes.
+ * Each viewer language by its own name (`UI_LANGUAGE_NAMES`, the one table), in the order the language list shows them:
+ * the root collation's (`UI_LOCALES_BY_NAME`, Latin first), so the list never reorders when the page's language changes.
  */
-export const LANGUAGE_NAMES: Readonly<Record<ViewerLocale, string>> = {
-    de: 'Deutsch',
-    en: 'English',
-    es: 'Español',
-    fr: 'Français',
-    it: 'Italiano',
-    pl: 'Polski',
-    pt: 'Português',
-    ro: 'Română',
-    tr: 'Türkçe',
-    ru: 'Русский',
-    uk: 'Українська',
-    ar: 'العربية',
-    hi: 'हिन्दी',
-    ko: '한국어',
-    zh: '中文',
-    ja: '日本語',
-};
+export const LANGUAGE_NAMES = Object.fromEntries(UI_LOCALES_BY_NAME.map((locale) => [locale, UI_LANGUAGE_NAMES[locale]])) as Readonly<
+    Record<ViewerLocale, string>
+>;
 
-/** The tags `Intl` formats with where the bare code would not do: the owner's photo dates (`en` alone would write `July 12, 1936`), Latin digits in Arabic (as the timeline's years). */
-const INTL_TAGS: Partial<Record<UiLocale, string>> = { ro: 'ro-RO', en: 'en-GB', ar: 'ar-u-nu-latn' };
+/** The tags `Intl` formats with where the bare code would not do: the owner's photo dates (`en` alone would write `July 12, 1936`), Latin digits in Arabic, Persian and Bengali (as the timeline's years). */
+const INTL_TAGS: Partial<Record<UiLocale, string>> = {
+    ro: 'ro-RO',
+    en: 'en-GB',
+    ar: 'ar-u-nu-latn',
+    fa: 'fa-u-nu-latn',
+    bn: 'bn-u-nu-latn',
+};
 
 /** The `Intl` tag of an interface language. */
 export function intlTag(locale: UiLocale): string {

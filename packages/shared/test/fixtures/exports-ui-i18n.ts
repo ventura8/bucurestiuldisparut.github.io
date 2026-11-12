@@ -7,9 +7,11 @@ export const UI_I18N_EXPORTS = [
     'UI_LOCALES_BY_NAME',
     'contentLocale',
     'directionOf',
+    'familyLanguage',
     'fillPlaceholders',
     'hasRegisteredCatalogue',
     'isUiLocale',
+    'textLanguage',
     'uiLocaleOf',
     'uiText',
 ];
@@ -27,7 +29,7 @@ export const I18N_AND_LOGGING_EXPORTS = [
     'translate',
 ];
 
-/** The viewer's sixteen languages (DECISIONS-for-review.md §159), for `index.test.ts`. */
+/** The viewer's languages (DECISIONS-for-review.md §159), for `index.test.ts`. */
 export const VIEWER_I18N_EXPORTS = [
     'LANGUAGE_NAMES',
     'VIEWER_LOCALES',

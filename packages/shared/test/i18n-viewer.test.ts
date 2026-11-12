@@ -1,4 +1,4 @@
-/** The viewer's sixteen languages: the registry, the tags, the endonyms and every catalogue (DECISIONS-for-review.md §159). */
+/** The viewer's 25 languages (sixteen complete, nine being translated): the registry, the tags, the endonyms and every catalogue (DECISIONS-for-review.md §159). */
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -17,6 +17,7 @@ import {
     viewerLocaleOf,
     type ViewerLocale,
 } from '../src/i18n/index.js';
+import { UI_LOCALES } from '../src/i18n/locales.js';
 import { ro } from '../src/i18n/ro.js';
 import { VIEWER_CATALOGUES } from '../src/i18n/viewer-catalogues.js';
 
@@ -26,10 +27,10 @@ const byText = (a: string, b: string): number => a.localeCompare(b);
 const PLURAL_FORMS = ['zero', 'one', 'two', 'few', 'many', 'other'];
 
 describe('viewer languages', () => {
-    it('happyPath_sixteenLanguagesRomanianFirst', () => {
-        expect(VIEWER_LOCALES).toHaveLength(16);
+    it('happyPath_everyInterfaceLanguageRomanianFirst', () => {
+        expect(VIEWER_LOCALES).toBe(UI_LOCALES);
+        expect(VIEWER_LOCALES).toHaveLength(25);
         expect(VIEWER_LOCALES[0]).toBe('ro');
-        expect(new Set(VIEWER_LOCALES).size).toBe(16);
     });
 
     it.each([
@@ -39,6 +40,8 @@ describe('viewer languages', () => {
         ['pt-BR', 'pt'],
         ['ar-EG', 'ar'],
         ['ja', 'ja'],
+        ['fa-IR', 'fa'],
+        ['nl-BE', 'nl'],
     ] as const)('happyPath_%s_isTheViewerLanguage_%s', (tag, locale) => {
         expect(viewerLocaleOf(tag)).toBe(locale);
         expect(resolveViewerLocale(tag)).toBe(locale);
@@ -54,8 +57,8 @@ describe('viewer languages', () => {
         expect(resolveLocale('en-US')).toBe('en');
     });
 
-    it('happyPath_onlyArabicIsWrittenRightToLeft', () => {
-        expect(VIEWER_LOCALES.filter(isRtl)).toEqual(['ar']);
+    it('happyPath_arabicPersianAndUrduAreWrittenRightToLeft', () => {
+        expect(VIEWER_LOCALES.filter(isRtl)).toEqual(['ar', 'fa', 'ur']);
     });
 });
 
@@ -70,6 +73,13 @@ describe('the registry', () => {
         expect(hasCatalogue('ja')).toBe(true);
         expect(translate('ja', 'layers.title')).toBe(VIEWER_CATALOGUES.ja['layers.title']);
         expect(catalogueText('ja', 'mapLabels.group')).toBe(VIEWER_CATALOGUES.ja['mapLabels.group']);
+    });
+
+    it('happyPath_aKeyALanguageBeingTranslatedLacksShowsInEnglish', () => {
+        registerCatalogue('ur', VIEWER_CATALOGUES.ur);
+
+        expect(translate('ur', 'layers.title')).toBe(translate('en', 'layers.title'));
+        expect(translate('ur', 'layers.toggle', { name: 'KH-9' })).toBe('Show ⁨KH-9⁩');
     });
 
     it('badPath_aLanguageNotHereYetGivesNoTextNeverAKey', () => {
@@ -95,17 +105,24 @@ describe('the registry', () => {
     });
 });
 
+/** The languages the viewer is complete in (`VIEWER_COMPLETE` of scripts/ci/check_i18n.py); the others are being translated. */
+const COMPLETE: readonly ViewerLocale[] = ['ro', 'en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'uk', 'pl', 'tr', 'ar', 'hi', 'zh', 'ja', 'ko'];
+
 describe('every viewer catalogue', () => {
     const keys = Object.keys(VIEWER_CATALOGUES.ro).toSorted(byText);
 
-    it.each(VIEWER_LOCALES)('happyPath_%s_hasRomaniansKeysAndNoEmptyText', (locale) => {
+    it.each(COMPLETE)('happyPath_%s_hasRomaniansKeysAndNoEmptyText', (locale) => {
         const catalogue = VIEWER_CATALOGUES[locale];
 
         expect(Object.keys(catalogue).toSorted(byText)).toEqual(keys);
         expect(Object.values(catalogue).filter((text) => text.trim() === '')).toEqual([]);
     });
 
-    it.each(VIEWER_LOCALES)('happyPath_%s_spellsOutEveryPluralFormItsRulesSelect', (locale) => {
+    it.each(VIEWER_LOCALES.filter((locale) => !COMPLETE.includes(locale)))('happyPath_%s_beingTranslatedHasOnlyRomaniansKeys', (locale) => {
+        expect(Object.keys(VIEWER_CATALOGUES[locale]).filter((key) => !keys.includes(key))).toEqual([]);
+    });
+
+    it.each(COMPLETE)('happyPath_%s_spellsOutEveryPluralFormItsRulesSelect', (locale) => {
         const categories = new Intl.PluralRules(intlTag(locale)).resolvedOptions().pluralCategories;
 
         expect(PLURAL_FORMS).toEqual(expect.arrayContaining([...categories]));
@@ -135,6 +152,7 @@ describe('intlTag', () => {
         ['ro', 'ro-RO'],
         ['en', 'en-GB'],
         ['ar', 'ar-u-nu-latn'],
+        ['fa', 'fa-u-nu-latn'],
         ['de', 'de'],
         ['zh', 'zh'],
     ] as const)('happyPath_%s_formatsAs_%s', (locale, tag) => {

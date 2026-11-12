@@ -6,7 +6,9 @@
  * free text from the app: every message shown goes through here.
  */
 import {
+    familyLanguage,
     isApiErrorCode,
+    textLanguage,
     translateAdminContent,
     translateAdminSetup,
     translateAdminShell,
@@ -17,7 +19,7 @@ import {
     type UiLocale,
 } from '@hcm/shared';
 
-import type { AdminNoticeInputPort, AdminNoticeKey } from '../admin-port.js';
+import type { AdminNoticeInputPort, AdminNoticeKey, AdminRouteIdPort } from '../admin-port.js';
 
 type Params = Readonly<Record<string, string>>;
 
@@ -53,4 +55,24 @@ export function noticeText(locale: UiLocale, key: AdminNoticeKey, params?: Param
 /** A notice as text (none: empty). */
 export function noticeOf(locale: UiLocale, notice: AdminNoticeInputPort | null): string {
     return notice === null ? '' : noticeText(locale, notice.key, notice.params);
+}
+
+/** The family of each page's texts, by its keys' prefix: `adminContent.<route>.` unless named here. */
+const PAGE_FAMILIES: Readonly<Partial<Record<AdminRouteIdPort, string>>> = {
+    home: 'adminShell.home.',
+    setup: 'adminSetup.',
+    inbox: 'adminContent.notify.',
+};
+
+/**
+ * The `lang` of the page's area (`docs/I18N.md` → Fallback): the admin's language once its file holds the page's family,
+ * else English, which every text of the page then shows in (WCAG 3.1.2: a screen reader reads it with an English voice).
+ */
+export function pageLanguage(locale: UiLocale, route: AdminRouteIdPort): UiLocale {
+    return familyLanguage(locale, PAGE_FAMILIES[route] ?? `adminContent.${route}.`);
+}
+
+/** The `lang` of an element showing one shell text: the admin's language, or English when the text falls back to it. */
+export function shellLanguage(locale: UiLocale, key: AdminShellKey): UiLocale {
+    return textLanguage(locale, key);
 }

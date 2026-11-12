@@ -11,7 +11,7 @@ import { resolveAdminLocale } from '../state/locale.js';
 import {
     firstShown,
     isBundled,
-    switchLanguage,
+    latestLanguage,
     uiCatalogueLoader,
     type LanguageSwitch,
     type UiCatalogueLoader,
@@ -45,6 +45,8 @@ export interface StartDeps {
     readonly tools: FileTools;
     readonly clock: Clock;
     readonly session: KeyValueStore;
+    /** The visitor's language choice (`hcm:start:lang`): `localStorage`, kept after the tab is closed (try/catch inside). */
+    readonly local: KeyValueStore;
     readonly log: Logger;
     /** The start site's address, the redirect URI (no fragment or query). */
     readonly baseUrl: string;
@@ -72,13 +74,15 @@ export class StartController {
     readonly #loadTexts: UiCatalogueLoader;
     readonly #wanted: UiLocale;
     readonly #listeners = new Set<() => void>();
+    /** The page's first language and the picker's choices: the latest wins over a file still loading. */
+    readonly #switchLanguage = latestLanguage();
     #view: StartView;
     #grant: StartToken | null = null;
     #config: StartConfig | null = null;
 
     readonly intents: StartIntents = {
         setLocale: (locale) => {
-            void switchLanguage(this.#language(true), locale);
+            void this.#switchLanguage(this.#language(true), locale);
         },
         signIn: () => {
             this.#consent();
@@ -120,7 +124,7 @@ export class StartController {
 
     constructor(deps: StartDeps) {
         this.#deps = deps;
-        this.#wanted = resolveAdminLocale(deps.search, deps.session.get(LANGUAGE_KEY), deps.languages);
+        this.#wanted = resolveAdminLocale(deps.search, deps.local.get(LANGUAGE_KEY), deps.languages);
         this.#loadTexts = deps.loadTexts ?? uiCatalogueLoader(deps.fetch, 'i18n/');
         // A language beyond the bundled two shows once its texts are here (`start`); English before.
         this.#view = { ...INITIAL, command: deps.command, locale: firstShown(this.#wanted) };
@@ -129,7 +133,7 @@ export class StartController {
     /** The page's first language, when it is not bundled: fetched as the page starts. */
     #startLanguage(): void {
         if (!isBundled(this.#wanted)) {
-            void switchLanguage(this.#language(false), this.#wanted);
+            void this.#switchLanguage(this.#language(false), this.#wanted);
         }
     }
 
@@ -139,7 +143,7 @@ export class StartController {
             load: this.#loadTexts,
             apply: (locale) => {
                 if (remember) {
-                    this.#deps.session.set(LANGUAGE_KEY, locale);
+                    this.#deps.local.set(LANGUAGE_KEY, locale);
                 }
                 this.#update({ locale });
             },

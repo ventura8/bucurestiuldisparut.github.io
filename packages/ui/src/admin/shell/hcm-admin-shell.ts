@@ -26,7 +26,7 @@ import type { PageChrome } from '../editing/hcm-list-detail.js';
 import { EMPTY } from './empty.js';
 import type { HcmAccountMenu } from './hcm-account-menu.js';
 import { cityTitle } from './hcm-city-menu.js';
-import { contentText, noticeOf, noticeText, shellText } from './text.js';
+import { contentText, noticeOf, noticeText, pageLanguage, shellLanguage, shellText } from './text.js';
 import type { AdminNavVariant } from './hcm-admin-nav.js';
 import { paintRoot, unpaintRoot } from './root-surface.js';
 import { releaseBanner, revokedBanner } from './shell-banners.js';
@@ -95,9 +95,9 @@ export function themeTokensOf(state: AdminStatePort): ThemeTokens {
 }
 
 /** The open page's name: its navigation label (the top bar's title, or the hidden heading without a top bar). */
-function pageName(state: AdminStatePort): string {
+function pageName(state: AdminStatePort): TemplateResult {
     const key: AdminShellKey = `adminShell.nav.${state.route.id}`;
-    return shellText(state.locale, key);
+    return html`<span lang=${shellLanguage(state.locale, key)}>${shellText(state.locale, key)}</span>`;
 }
 
 export class HcmAdminShell extends LitElement {
@@ -266,7 +266,9 @@ export class HcmAdminShell extends LitElement {
                     <hcm-account-menu .app=${this.app} .state=${state}></hcm-account-menu>
                 </header>
                 <main class="content">
-                    <div class="scroller"><hcm-page-outlet .app=${this.app} .state=${state}></hcm-page-outlet></div>
+                    <div class="scroller" lang=${pageLanguage(state.locale, state.route.id)}>
+                        <hcm-page-outlet .app=${this.app} .state=${state}></hcm-page-outlet>
+                    </div>
                     ${this.#snackbar(state)}
                 </main>
             </div>
@@ -311,7 +313,7 @@ export class HcmAdminShell extends LitElement {
                     ${layout.topBar ? this.#topBar(state, layout) : EMPTY}
                     <main class="content">
                         ${this.#pageTitle(state, layout)}
-                        <div class="scroller">
+                        <div class="scroller" lang=${pageLanguage(state.locale, state.route.id)}>
                             ${this.#banners(state)}<hcm-page-outlet .app=${this.app} .state=${state}></hcm-page-outlet>
                         </div>
                         ${this.#snackbar(state)}

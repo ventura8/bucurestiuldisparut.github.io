@@ -3450,3 +3450,21 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the tour's checkers in the new right-to-left state, on a compact window.
     - Fix and pin: `min-block-size: 3rem` with `padding-block: 0.75rem` (`scripts/site/src/start/legal.ts`); the state stays in the inventory at every admin project.
     - **A new state on a page re-checks the whole page: let it, and fix what it finds rather than narrowing the state.**
+588. **The i18n gate's strict mode checked less than its default mode.**
+    - Seen: 2026-11-12 (track/langs25), review: a leading space in a copy of `de.ts` failed the default run and passed `--strict`.
+    - Cause: strict replaced the folder's languages with all 25, which switched off the viewer's checks (`viewer=locales == VIEWER_LOCALES`) and the shape checks that ran only on optional languages.
+    - Found by: the review of the branch, reproduced on a copy of the catalogues.
+    - Fix and pin: strict keeps every check and adds completeness (`check_folder`, `translations_problems`); `test_bad_path_strict_rejects_everything_the_default_mode_rejects`.
+    - **A stricter mode is the default mode plus rules: build it by adding, and test that it rejects everything the default rejects.**
+589. **A slow language file undid a later choice.**
+    - Seen: 2026-11-12 (track/langs25), review: in the admin and on the start page, French chosen on a slow network then English: the French file's arrival switched the page to French and stored it.
+    - Cause: `switchLanguage` applied whatever resolved, with no notion of the latest request; the viewer's store had one (§159b), the admin's copy did not.
+    - Found by: the review of the branch.
+    - Fix and pin: `latestLanguage` (one switch per page; a superseded switch shows, stores and reports nothing); `happyPath_aSlowLanguageThenEnglishEndsInEnglishAndStoresEnglish`, `badPath_theBootsFetchResolvingAfterAMenuChoiceNeverUndoesIt` and the start controller's equivalents.
+    - **Every asynchronous switch driven by a person's choices needs "the latest wins" before it ships, wherever it is copied.**
+590. **The tour's i18n leak check stopped at shadow roots, so a `lang` on a shadow host did not count.**
+    - Seen: 2026-11-12 (track/langs25), the admin's Arabic state read as Arabic: the photos page's English texts, inside the shell's `lang="en"` area, were reported as leaks.
+    - Cause: `textsInPage` asked `element.closest('[lang]')`, which ends at the shadow root; the browser and a screen reader inherit `lang` through the composed tree.
+    - Found by: `admin.shell.language-rtl` once its leak check used the page's real language.
+    - Fix and pin: the check walks up through shadow hosts (`markedOf` in `e2e/support/i18n.ts`); the same state and `admin.start.language-rtl` pass read as Arabic and Urdu. The start page's footer marks its Romanian link texts `lang="ro"` too.
+    - **A checker that reads the DOM must read it as assistive technology does: across shadow boundaries.**

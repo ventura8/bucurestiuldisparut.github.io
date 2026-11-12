@@ -30,6 +30,7 @@ type StartWindow = LocationWindow &
         readonly navigator: Navigator;
         readonly crypto: Crypto;
         readonly sessionStorage: Storage;
+        readonly localStorage: Storage;
         readonly fetch: typeof fetch;
     };
 
@@ -71,6 +72,7 @@ export function browserDeps(win: StartWindow, log: Logger, e2e: boolean = IS_E2E
         },
         clock: windowClock(win),
         session: webStorage(() => win.sessionStorage, log),
+        local: webStorage(() => win.localStorage, log),
         log,
         baseUrl,
         fragment: () => location.hash,

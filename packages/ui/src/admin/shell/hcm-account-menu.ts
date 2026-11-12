@@ -17,7 +17,7 @@ import type { AdminAppPort, AdminStatePort } from '../admin-port.js';
 import { adminBase } from './admin-styles.js';
 import { EMPTY } from './empty.js';
 import { showsCityMenu } from './hcm-city-menu.js';
-import { shellText } from './text.js';
+import { shellLanguage, shellText } from './text.js';
 
 export const HCM_ACCOUNT_MENU_TAG = 'hcm-account-menu';
 
@@ -136,7 +136,10 @@ export class HcmAccountMenu extends LitElement {
 
     #who(state: AdminStatePort): TemplateResult {
         const email = state.user?.email ?? null;
-        return email === null ? EMPTY : html`<p class="who">${shellText(state.locale, 'adminShell.auth.signedInAs', { email })}</p>`;
+        const key = 'adminShell.auth.signedInAs';
+        return email === null
+            ? EMPTY
+            : html`<p class="who" lang=${shellLanguage(state.locale, key)}>${shellText(state.locale, key, { email })}</p>`;
     }
 
     /** M5: the city switcher, when the shell puts it here (`cities`). */
@@ -212,7 +215,11 @@ export class HcmAccountMenu extends LitElement {
             this.open = false;
             void this.app?.intents.signOut();
         };
-        return html`<hcm-button variant="tonal" icon="logout" @click=${signOut}
+        return html`<hcm-button
+            variant="tonal"
+            icon="logout"
+            lang=${shellLanguage(state.locale, 'adminShell.auth.signOut')}
+            @click=${signOut}
             >${shellText(state.locale, 'adminShell.auth.signOut')}</hcm-button
         >`;
     }

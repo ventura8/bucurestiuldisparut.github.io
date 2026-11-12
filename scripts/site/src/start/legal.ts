@@ -78,7 +78,12 @@ function language(text: LegalLanguage, top: 'h1' | 'h2', id: string): HtmlNode[]
 /** The links between the site's pages, both languages in each. */
 function siteLinks(): HtmlElement {
     const link = (href: string, ro: string, en: string): HtmlElement =>
-        element('li', {}, [element('a', { class: 'start-site-link', href }, [ro, element('span', { lang: 'en' }, [` · ${en}`])])]);
+        element('li', {}, [
+            element('a', { class: 'start-site-link', href }, [
+                element('span', { lang: 'ro' }, [ro]),
+                element('span', { lang: 'en' }, [` · ${en}`]),
+            ]),
+        ]);
     return element('ul', { class: 'start-site-links' }, [
         link('./', 'Pornește-ți harta', 'Start your map'),
         link(PRIVACY_FILE, 'Confidențialitate', 'Privacy policy'),

@@ -61,8 +61,10 @@ test(
         await chooseLanguage(page, 'fr', 'ar');
         await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
         await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
-        // The leak check reads the page as English: what no Arabic file has yet shows in English (docs/I18N.md → Fallback).
-        await expectStateSound(page, adminVisit('shell.language-rtl', 'en'));
+        // What no Arabic file has yet shows in English inside an element marked lang="en" (docs/I18N.md → Fallback): the
+        // leak check reads the page as the Arabic page it is.
+        await expect(page.locator('main .scroller')).toHaveAttribute('lang', 'en');
+        await expectStateSound(page, adminVisit('shell.language-rtl', 'ar'));
     },
 );
 

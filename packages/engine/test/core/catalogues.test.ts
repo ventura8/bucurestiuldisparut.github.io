@@ -31,6 +31,16 @@ describe('catalogueLoader', () => {
         expect(de.fetch).toHaveBeenCalledTimes(1);
     });
 
+    it('happyPath_aLanguageStillTranslatedShowsEnglishForEachKeyItLacks', async () => {
+        const fa = source(() => Promise.resolve(jsonResponse(file('fa', { messages: { 'layers.title': 'لایه‌ها' }, fallback: 'en' }))));
+
+        expect(await catalogueLoader(fa)('fa')).toBe(true);
+
+        expect(translate('fa', 'layers.title')).toBe('لایه‌ها');
+        expect(translate('fa', 'theme.label')).toBe(translate('en', 'theme.label'));
+        expect(fa.fetch).toHaveBeenCalledTimes(1);
+    });
+
     it('happyPath_aLanguageThePageHasNeedsNoRequest', async () => {
         const none = source(() => Promise.reject(new Error('no request expected')));
 

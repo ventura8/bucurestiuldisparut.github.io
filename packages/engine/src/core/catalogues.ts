@@ -5,6 +5,8 @@
  * `@hcm/shared`'s registry, which `translate` reads, for the page's life. No SRI: the file comes from the same
  * version-pinned folder as the SRI-checked engine (immutable on jsDelivr), as the fonts do, and every value is rendered as
  * text only. The request is the manifest's (`fetchManifestJson`: its timeout, a network error or a 5xx retried twice).
+ * A language still being translated says `"fallback": "en"`: English is fetched with it, and shows each key it lacks
+ * (docs/I18N.md → Fallback).
  */
 import { hasCatalogue, registerCatalogue, type ViewerLocale } from '@hcm/shared';
 
@@ -31,36 +33,52 @@ function isTexts(messages: unknown): messages is Readonly<Record<string, string>
     return typeof messages === 'object' && messages !== null && Object.values(messages).every((text) => typeof text === 'string');
 }
 
+interface CatalogueFile {
+    readonly engine?: unknown;
+    readonly locale?: unknown;
+    readonly messages?: unknown;
+    readonly fallback?: unknown;
+}
+
 /** The texts of a fetched file, or null when it is not this engine's file of `locale` with a text for every value. */
-function messagesOf(file: unknown, locale: ViewerLocale, engineVersion: string): Readonly<Record<string, string>> | null {
-    const { engine, locale: named, messages } = (file ?? {}) as { engine?: unknown; locale?: unknown; messages?: unknown };
+function messagesOf(file: CatalogueFile, locale: ViewerLocale, engineVersion: string): Readonly<Record<string, string>> | null {
+    const { engine, locale: named, messages } = file;
     return engine === engineVersion && named === locale && isTexts(messages) ? messages : null;
 }
 
-async function fetchCatalogue(locale: ViewerLocale, source: CatalogueSource): Promise<boolean> {
-    const json = await fetchManifestJson(`${source.folder}${locale}.json`, source);
-    const messages = json.ok ? messagesOf(json.value, locale, source.engineVersion) : null;
-    if (messages !== null) {
+/** The fetched file's fields (none when it could not be read). */
+async function fetchFile(url: string, source: CatalogueSource): Promise<CatalogueFile> {
+    const json = await fetchManifestJson(url, source);
+    return json.ok ? (json.value ?? {}) : {};
+}
+
+/** Registers `locale`'s file; a partial one (`fallback: "en"`) only once English, which fills its gaps, is here too. */
+async function fetchCatalogue(locale: ViewerLocale, source: CatalogueSource, load: CatalogueLoader): Promise<boolean> {
+    const file = await fetchFile(`${source.folder}${locale}.json`, source);
+    const messages = messagesOf(file, locale, source.engineVersion);
+    const ready = messages !== null && (file.fallback !== 'en' || (await load('en')));
+    if (ready) {
         registerCatalogue(locale, messages);
     }
-    return messages !== null;
+    return ready;
 }
 
 /** One request per language at a time; once it settles the registry answers, or the next choice of it tries again. */
 export function catalogueLoader(source: CatalogueSource): CatalogueLoader {
     const requests = new Map<ViewerLocale, Promise<boolean>>();
-    return (locale) => {
+    const load: CatalogueLoader = (locale) => {
         if (hasCatalogue(locale)) {
             return Promise.resolve(true);
         }
         const request =
             requests.get(locale) ??
-            fetchCatalogue(locale, source).finally(() => {
+            fetchCatalogue(locale, source, load).finally(() => {
                 requests.delete(locale);
             });
         requests.set(locale, request);
         return request;
     };
+    return load;
 }
 
 /** The first language of `locale` and Romanian whose texts load (the boot's and a boot error's), or null when neither does. */

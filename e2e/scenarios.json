@@ -1885,6 +1885,28 @@
             "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §159). Test: e2e/specs/viewer/languages.spec.ts."
         },
         {
+            "id": "S-V11-HAPPY-TRANSLATING-FALLS-BACK",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The list offers all 25 languages; Persian, still being translated, reads right to left in English",
+            "asserts": "the Settings list names the 25 languages (LANGUAGE_NAMES); Persian chosen: html and the viewer dir=rtl, fa.json and en.json fetched (the file says fallback: en), the menu and the timeline named in English, no text of a third language",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25; docs/I18N.md -> Fallback, DECISIONS-for-review.md §160). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts, packages/shared/test/i18n-viewer.test.ts."
+        },
+        {
+            "id": "S-V11-BAD-MISSING-KEY-FALLS-BACK",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A text a language's file lacks shows in English",
+            "asserts": "de.json served without timeline.label (fallback: en): html lang de, the timeline's slider named in English, the rest in German",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25; docs/I18N.md -> Fallback). Test: e2e/specs/viewer/languages.spec.ts, scripts/site/test/i18n-catalogues.test.ts."
+        },
+        {
             "id": "S-V11-HAPPY-RTL-TOUR",
             "behaviour": "V11",
             "area": "viewer",
@@ -17444,7 +17466,7 @@
             "area": "admin",
             "path": "happy",
             "title": "The account menu lists the 25 languages; French is fetched, shown and kept after a reload; Arabic turns the page right to left",
-            "asserts": "25 radios by their own names; /admin/i18n/fr.json fetched, the photos page's empty text in French, html lang fr, again after a reload; Arabic: html dir rtl, the tour's layout and axe checks (admin.shell.language-rtl)",
+            "asserts": "25 radios by their own names; /admin/i18n/fr.json fetched, the photos page's empty text in French, html lang fr, again after a reload; Arabic: html dir rtl, the page's area marked lang en (no Arabic admin file yet), the tour's layout, axe and i18n checks read as Arabic (admin.shell.language-rtl); the latest choice wins over a file still loading (packages/admin/test/app/language.test.ts)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
@@ -17477,7 +17499,7 @@
             "area": "admin",
             "path": "happy",
             "title": "The start page lists the 25 languages; Urdu is fetched, shown right to left and kept after a reload",
-            "asserts": "25 options; Urdu chosen: html lang ur, dir rtl, kept after a reload; the tour's layout and axe checks (admin.start.language-rtl)",
+            "asserts": "25 options; Urdu chosen: html lang ur, dir rtl, kept after a reload (localStorage); main marked lang en (no Urdu file yet); the tour's layout, axe and i18n checks read as Urdu (admin.start.language-rtl); the latest choice wins (packages/admin/test/start/controller.test.ts)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."

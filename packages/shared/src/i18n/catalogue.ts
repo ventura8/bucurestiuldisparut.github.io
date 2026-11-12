@@ -17,5 +17,5 @@ interface Catalogues<Key extends string> {
  * (`uiText`, `docs/I18N.md` → Fallback).
  */
 export function catalogueTranslator<Key extends string>(catalogues: Catalogues<Key>): Translator<Key> {
-    return (locale, key, params = {}) => fillPlaceholders(uiText(locale, key, catalogues) ?? '', params);
+    return (locale, key, params = {}) => fillPlaceholders(uiText(locale, key, catalogues) ?? '', params, locale);
 }

@@ -5,7 +5,8 @@ import { translateAdminShell } from '../src/i18n/admin-shell/index.js';
 import { translateApiError } from '../src/i18n/api/index.js';
 import { catalogueTranslator } from '../src/i18n/catalogue.js';
 import { en } from '../src/i18n/en.js';
-import { hasCatalogue, isRtl, registerCatalogue, translate, uiText, VIEWER_LOCALES } from '../src/i18n/index.js';
+import { fillPlaceholders, hasCatalogue, isRtl, registerCatalogue, translate, uiText, VIEWER_LOCALES } from '../src/i18n/index.js';
+import { familyLanguage, textLanguage } from '../src/i18n/registry.js';
 import {
     BUNDLED_LOCALES,
     contentLocale,
@@ -101,12 +102,14 @@ describe('the fallback to English', () => {
         expect(translate('el', 'theme.label')).toBe('Θέμα');
     });
 
-    it('badPath_aLanguageWithNoFileShowsEnglishButAViewerLanguageStillWaitsForItsOwn', () => {
+    it('badPath_anAdminFamilyWithNoFileShowsEnglishButTheViewersTextsWaitForTheirFile', () => {
         vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-        expect(translate('bn', 'theme.label')).toBe(en['theme.label']);
         expect(translateAdminShell('bg', 'adminShell.notice.close')).toBe('Close the message');
+        expect(translate('bn', 'theme.label')).toBe('');
         expect(translate('ko', 'theme.label')).toBe('');
+        registerCatalogue('bn', {});
+        expect(translate('bn', 'theme.label')).toBe(en['theme.label']);
     });
 
     it('badPath_aKeyNoLanguageHasIsUndefined_andTheTranslatorsShowNoText', () => {
@@ -131,5 +134,30 @@ describe('the fallback to English', () => {
         registerCatalogue('ur', { 'theme.label': 'تھیم {name}' });
 
         expect(translate('ur', 'theme.label', { name: 'Map' })).toBe('تھیم ⁨Map⁩');
+    });
+
+    it('happyPath_everyAdminFamilyAndTheApiErrorsIsolateValuesInRightToLeftLanguages', () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        registerCatalogue('fa', { 'a.city': 'نقشهٔ {city}' });
+        const translateFamily = catalogueTranslator<'a.city'>({ ro: { 'a.city': 'Harta {city}' }, en: { 'a.city': 'Map of {city}' } });
+
+        expect(translateFamily('fa', 'a.city', { city: 'Bacău' })).toBe('نقشهٔ ⁨Bacău⁩');
+        expect(translateFamily('ar', 'a.city', { city: 'Bacău' })).toBe('Map of ⁨Bacău⁩');
+        expect(translateFamily('fr', 'a.city', { city: 'Bacău' })).toBe('Map of Bacău');
+        expect(fillPlaceholders('{a} {b}', { a: 'x' }, 'ur')).toBe('⁨x⁩ {b}');
+        expect(translateApiError('ur', 'apiError.city.notOwner', { cityId: 'bacau' })).toContain('⁨bacau⁩');
+        expect(translateApiError('en', 'apiError.city.notOwner', { cityId: 'bacau' })).not.toContain('⁨');
+    });
+
+    it('happyPath_theLanguageATextShowsInIsTheLanguagesOwnOrEnglish', () => {
+        registerCatalogue('hu', { 'b.own': 'Saját' });
+
+        expect(textLanguage('hu', 'b.own')).toBe('hu');
+        expect(textLanguage('hu', 'b.other')).toBe('en');
+        expect(textLanguage('ro', 'b.bundled')).toBe('ro');
+        expect(familyLanguage('hu', 'b.')).toBe('hu');
+        expect(familyLanguage('hu', 'c.')).toBe('en');
+        expect(familyLanguage('nl', 'b.')).toBe('en');
+        expect(familyLanguage('en', 'c.')).toBe('en');
     });
 });
