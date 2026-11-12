@@ -2,11 +2,12 @@
 e-mail only, never a token), the city, idle or the job and its step, and the last error; and what `worker.hello`
 answered (how often to claim, how often the heartbeat writes). Thread-safe: the page's server reads it while the loop
 writes it. Finding 72 of 2026-11-02 (auto-pair, M7 §2.7): the admin reads it too, from the project's Hosting origin: the
-worker's id and whether it takes a pairing code now (`pairable`: no session, and not disconnected in the admin).
+worker's id and whether it takes a pairing code now (`pairable`: no session, and not disconnected in the admin). M26: `machine`, the
+governor's word on this computer (its cores, memory, power, cards, the profile in force and the budget), for the admin's card.
 """
 
 import threading
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Final
 
@@ -42,6 +43,8 @@ class WorkerState:
         self._outdated = False
         self._ai = AiState()
         self.timing = Timing()
+        # The governor's word on this computer (docs/research/M26-governor.md §6); None before its first tick.
+        self.machine: Callable[[], Mapping[str, object] | None] = lambda: None
 
     def busy(self, job_id: str) -> None:
         with self._lock:
@@ -110,4 +113,5 @@ class WorkerState:
                 "lastError": last_error,
                 "outdated": self._outdated,
                 "ai": self._ai.on_state(),
+                "machine": self.machine(),
             }

@@ -6,15 +6,21 @@ in the work folder, so the page is for its state only (its Google sign-in stays 
 
 import os
 import secrets
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Final
 
 import httpx
 
 from hcm_pipeline.archive.intake import ArchiveStore
+from hcm_pipeline.governor.actuate import Actuators, lower_priority
+from hcm_pipeline.governor.governor import Governor
+from hcm_pipeline.governor.probe_linux import LinuxProbe
 from hcm_pipeline.log import get_logger
+from hcm_pipeline.raster import gdal
 from hcm_pipeline.services import default_steps, http
 from hcm_pipeline.worker.ai_state import initial_state
 from hcm_pipeline.worker.api import ARCHIVE_REPORT, WorkerApi
@@ -35,6 +41,7 @@ LOG = get_logger("worker")
 # it on the computer's loopback only (`-p 127.0.0.1:8765:8765`), and the Host and Origin checks refuse anything else.
 EVERY_INTERFACE: Final = ""
 WORKER_ID_PREFIX: Final = "w-"
+HOST_ROOT: Final = Path("/")
 
 
 def new_worker_id() -> str:
@@ -54,6 +61,8 @@ class Worker:
     client: httpx.Client
     worker_id: str
     connector: Connector
+    governor: Governor
+    governing: threading.Event
 
     @classmethod
     def build(
@@ -90,10 +99,21 @@ class Worker:
         loop = WorkerLoop(session, api, state, runtime, ids)
         connector = Connector(pairing, session_file, Signer(session, actions, state.failed, loop.stop), args.pair, clock)
         actions.accept_pairing(connector.offer)
+        # M26 (docs/research/M26-governor.md): how much of this computer the worker may use; `govern` starts it.
+        governor = Governor(LinuxProbe(HOST_ROOT, args.work, clock), args.work, Actuators(gdal.SetConfigOption))
+        state.machine = governor.machine
+        runtime.matcher_budget = governor.matcher_budget
+        actions.choose_profile = governor.choose
         loop.connect_with(connector)
         loop.sweep = runtime.sweep
         loop.supervised = args.supervised
-        return cls(session, api, state, actions, server, loop, runtime, client, worker_id, connector)
+        return cls(session, api, state, actions, server, loop, runtime, client, worker_id, connector, governor, threading.Event())
+
+    def govern(self, lower: Callable[[], None] = lower_priority) -> None:
+        """The person at the computer first: a lower priority, then the governor's ticks in a thread until `close`."""
+        lower()
+        self.governor.tick()
+        threading.Thread(target=self.governor.run, args=(self.governing,), name="governor", daemon=True).start()
 
     def serve(self) -> None:
         """The page in a thread, the loop here, until SIGTERM or Ctrl-C."""
@@ -109,6 +129,7 @@ class Worker:
 
     def close(self) -> None:
         """The page's socket and every client closed (the tokens go with the process)."""
+        self.governing.set()
         self.server.stop()
         self.runtime.close()
         self.client.close()

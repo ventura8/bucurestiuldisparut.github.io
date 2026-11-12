@@ -13,7 +13,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Final
 
-from hcm_pipeline.governor.actuate import GATE, Gate, apply_gdal
+from hcm_pipeline.governor.actuate import Actuators, apply_gdal
 from hcm_pipeline.governor.backends import IMAGES, Backend, Matcher, choose
 from hcm_pipeline.governor.budget import Budget, budget_for
 from hcm_pipeline.governor.policy import TICK_S, Choice, PolicyState, decide, effective
@@ -21,6 +21,7 @@ from hcm_pipeline.governor.probe import Probe
 from hcm_pipeline.governor.record import machine_record
 from hcm_pipeline.governor.signals import Chosen, Signals, Why
 from hcm_pipeline.log import get_logger
+from hcm_pipeline.matcher.box import MatcherBudget
 
 LOG = get_logger("governor")
 CHOICE_FILE: Final = "governor.json"
@@ -47,14 +48,6 @@ class Reading:
     why: Why
     budget: Budget
     backend: Backend
-
-
-@dataclass(frozen=True)
-class Actuators:
-    """Where the budget goes: GDAL's settings and the process's gate."""
-
-    set_option: Callable[[str, str], None]
-    gate: Gate = GATE
 
 
 class Governor:
@@ -122,6 +115,16 @@ class Governor:
             gate.pause()
         else:
             gate.resume()
+
+    def matcher_budget(self) -> MatcherBudget:
+        """Each matcher request's budget: the profile's threads and keypoints, the card's share, or the card left alone."""
+        with self._lock:
+            reading = self._reading
+        if reading is None:
+            return MatcherBudget()
+        budget, backend = reading.budget, reading.backend
+        held = backend.matcher == "cpu" and backend.why == "gpu-busy"
+        return MatcherBudget(budget.threads, budget.keypoints or 1, backend.gpu_fraction, held)
 
     def machine(self) -> dict[str, object] | None:
         """`/state`'s `machine`; None before the first tick."""

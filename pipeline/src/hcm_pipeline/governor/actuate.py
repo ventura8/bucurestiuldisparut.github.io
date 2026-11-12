@@ -14,6 +14,7 @@ import subprocess
 import threading
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Final
 
 from hcm_pipeline.governor.budget import Budget
@@ -82,3 +83,11 @@ class Gate:
 
 # The process's gate: the worker's governor closes it, every run's checkpoints wait at it.
 GATE: Final = Gate()
+
+
+@dataclass(frozen=True)
+class Actuators:
+    """Where the budget goes: GDAL's settings and the process's gate."""
+
+    set_option: Callable[[str, str], None]
+    gate: Gate = GATE

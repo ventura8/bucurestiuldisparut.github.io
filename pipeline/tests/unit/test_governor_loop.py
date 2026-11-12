@@ -6,11 +6,12 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import pytest
-from hcm_pipeline.governor.actuate import Gate, apply_gdal, lower_priority
+from hcm_pipeline.governor.actuate import Actuators, Gate, apply_gdal, lower_priority
 from hcm_pipeline.governor.budget import budget_for
-from hcm_pipeline.governor.governor import CHOICE_FILE, Actuators, Governor, load_choice
+from hcm_pipeline.governor.governor import CHOICE_FILE, Governor, load_choice
 from hcm_pipeline.governor.policy import Choice
 from hcm_pipeline.governor.signals import Power, Signals
+from hcm_pipeline.matcher.box import MatcherBudget
 
 from tests.fakes.machines import LINUX_INTEL_ARC_NPU, LINUX_NVIDIA_CDI, SMALL_NO_GPU
 from tests.fakes.world import FakeClock
@@ -111,10 +112,12 @@ def test_a_low_battery_closes_the_gate_and_the_mains_opens_it(tmp_path: Path) ->
     assert not gate.paused
 
 
-def test_a_busy_card_says_why(tmp_path: Path) -> None:
+def test_a_busy_card_says_why_and_the_matcher_leaves_it(tmp_path: Path) -> None:
     busy = replace(LINUX_NVIDIA_CDI, gpus=(replace(LINUX_NVIDIA_CDI.gpus[0], others_mb=7000, busy_pct=83, temp_c=81.0),))
     governor, *_ = _governor(tmp_path, busy)
+    assert governor.matcher_budget() == MatcherBudget()
     governor.tick()
+    assert governor.matcher_budget() == MatcherBudget(14, 2048, 0.0, yield_gpu=True)
     machine = governor.machine()
     assert machine is not None
     assert machine["profile"] == {"chosen": "auto", "active": "full", "why": "gpu-busy"}
