@@ -154,7 +154,9 @@ test('A long press on a touch screen opens the menu', { tag: '@S-V62-HAPPY-LONG-
 
 /** Whether the browser's text selection may start at `target` (false: the page cancelled `selectstart`). */
 async function selectionStarts(target: Locator): Promise<boolean> {
-    return target.evaluate((element) => element.dispatchEvent(new Event('selectstart', { bubbles: true, cancelable: true, composed: true })));
+    return target.evaluate((element) =>
+        element.dispatchEvent(new Event('selectstart', { bubbles: true, cancelable: true, composed: true })),
+    );
 }
 
 test(

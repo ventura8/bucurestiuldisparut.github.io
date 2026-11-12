@@ -1703,6 +1703,50 @@
             "notes": "Milestone M1."
         },
         {
+            "id": "S-V08-HAPPY-DOUBLE-TAP",
+            "behaviour": "V08",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A double tap zooms the photo in at the tapped point, and a second one zooms back out",
+            "asserts": "double click at 3/4 of the photo's width -> the photo more than twice as wide, the tapped point of the photo still under the pointer (to 0.1 of its width); a second double click there -> the whole photo again",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P6). Tests: e2e/specs/viewer/photos.spec.ts; packages/ui/test/viewer/hcm-lightbox.test.ts, zoom.test.ts, viewer-lightbox.test.ts."
+        },
+        {
+            "id": "S-V08-BAD-DOUBLE-TAP-APART",
+            "behaviour": "V08",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Two clicks far apart on the photo are no double tap: the photo keeps its size",
+            "asserts": "a click at 20 % and one at 80 % of the photo's width -> no transform, the same width",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P6). Tests: e2e/specs/viewer/photos.spec.ts; packages/ui/test/viewer/hcm-lightbox.test.ts, zoom.test.ts, viewer-lightbox.test.ts."
+        },
+        {
+            "id": "S-V08-HAPPY-OPENED-LIST",
+            "behaviour": "V08",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The lightbox counts and pages through the list it was opened from: the photos near the year",
+            "asserts": "the 1966 layer on, a photo near 1966 opened full size -> 'k din n' with n the photos within ten years of 1966 (fewer than all); the arrows stop at its last one",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P6). Tests: e2e/specs/viewer/photos.spec.ts; packages/ui/test/viewer/hcm-lightbox.test.ts, zoom.test.ts, viewer-lightbox.test.ts."
+        },
+        {
+            "id": "S-V08-BAD-PHOTO-OUTSIDE-LIST",
+            "behaviour": "V08",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A photo far from the year (a link to it) pages through all the photos",
+            "asserts": "the 1966 layer on, a link to a photo far from 1966 opened full size -> its position among all the photos",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P6). Tests: e2e/specs/viewer/photos.spec.ts; packages/ui/test/viewer/hcm-lightbox.test.ts, zoom.test.ts, viewer-lightbox.test.ts."
+        },
+        {
             "id": "S-V08-BAD-BROKEN-IMAGE",
             "behaviour": "V08",
             "area": "viewer",

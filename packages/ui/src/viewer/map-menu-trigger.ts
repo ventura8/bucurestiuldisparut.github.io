@@ -87,7 +87,7 @@ export class MapMenuTrigger {
             ['pointercancel', this.#up as EventListener],
             ['contextmenu', this.#contextMenu as EventListener],
             ['keydown', this.#key as EventListener],
-            ['selectstart', this.#selectStart as EventListener],
+            ['selectstart', this.#selectStart],
         ];
     }
 

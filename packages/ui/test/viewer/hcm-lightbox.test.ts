@@ -170,6 +170,60 @@ describe('<hcm-lightbox>', () => {
     });
 });
 
+describe('<hcm-lightbox> double tap', () => {
+    beforeAll(() => {
+        defineKitDoubles();
+        defineHcmLightbox();
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_aDoubleTapZoomsInAtThePointAndASecondOneZoomsBackOut', async () => {
+        const element = await lightbox();
+        const stage = shadowQuery(element, '.stage').getBoundingClientRect();
+        const x = stage.left + stage.width / 2 + 40;
+        const y = stage.top + stage.height / 2;
+        const tap = (id: number): void => {
+            pointer(element, 'pointerdown', id, x, y);
+            pointer(element, 'pointerup', id, x, y);
+        };
+
+        tap(1);
+        expect(element.zoom.scale).toBe(1);
+        tap(2);
+        const zoomed = element.zoom;
+        tap(3);
+        tap(4);
+
+        expect(zoomed.scale).toBe(2.5);
+        expect(zoomed.offset.x).toBeLessThan(0);
+        expect(element.zoom).toEqual({ scale: 1, offset: { x: 0, y: 0 } });
+    });
+
+    it('badPath_twoTapsApartADragOrAPinchAreNoDoubleTap', async () => {
+        const element = await lightbox();
+
+        pointer(element, 'pointerdown', 1, 100, 100);
+        pointer(element, 'pointerup', 1, 100, 100);
+        pointer(element, 'pointerdown', 2, 300, 300);
+        pointer(element, 'pointerup', 2, 300, 300);
+        pointer(element, 'pointerdown', 3, 300, 300);
+        pointer(element, 'pointermove', 3, 360, 300);
+        pointer(element, 'pointerup', 3, 360, 300);
+        pointer(element, 'pointerdown', 4, 360, 300);
+        pointer(element, 'pointercancel', 4, 360, 300);
+        pointer(element, 'pointerdown', 5, 360, 300);
+        pointer(element, 'pointerdown', 6, 400, 300);
+        pointer(element, 'pointerup', 6, 400, 300);
+        pointer(element, 'pointerup', 5, 360, 300);
+        pointer(element, 'pointerup', 9, 360, 300);
+
+        expect(element.zoom).toEqual({ scale: 1, offset: { x: 0, y: 0 } });
+    });
+});
+
 describe('<hcm-lightbox> focus', () => {
     beforeAll(() => {
         defineKitDoubles();
