@@ -5,7 +5,7 @@ description: Build or operate the Historic City Map admin Setup Assistant and th
 
 # Setup Assistant Skill
 
-Working notes: `.agent/skills/web/admin_setup_assistant_skill.md` (cards, state machine, input budget) and `.agent/skills/workflow/human_steps_and_consent_skill.md` (who does what). User guide: `docs/ADMIN_GUIDE.ro.md`, `docs/ADMIN_GUIDE.en.md`.
+Working notes: `.agent/skills/web/admin_setup_assistant_skill.md` (cards, state machine, input budget) and `.agent/skills/workflow/human_steps_and_consent_skill.md` (who does what). User guide: `docs/ADMIN_GUIDE.en.md`.
 
 ## What Claude never does
 

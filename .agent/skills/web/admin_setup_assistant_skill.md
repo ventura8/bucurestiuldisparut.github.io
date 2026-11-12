@@ -1,6 +1,6 @@
 # Admin and Setup Assistant Skill
 
-The "do-everything" admin `@hcm/admin` (`packages/admin`): it takes a city owner through Google Cloud, Mapbox and USGS with **minimum input**, then runs the daily flows (photos, satellite layers, georeferencing, jobs, settings, admins). It is served from Firebase Hosting on its own origin (`<proj>.web.app`). Since M2b the shell, the admins page and the whole Setup Assistant run end to end against the emulators and the fake upstreams (`e2e/admin/specs/journey.spec.ts`); the daily flows follow in M2c–M4. User-facing guide: `docs/ADMIN_GUIDE.ro.md`, `docs/ADMIN_GUIDE.en.md`. What only the human does: `workflow/human_steps_and_consent_skill.md`.
+The "do-everything" admin `@hcm/admin` (`packages/admin`): it takes a city owner through Google Cloud, Mapbox and USGS with **minimum input**, then runs the daily flows (photos, satellite layers, georeferencing, jobs, settings, admins). It is served from Firebase Hosting on its own origin (`<proj>.web.app`). Since M2b the shell, the admins page and the whole Setup Assistant run end to end against the emulators and the fake upstreams (`e2e/admin/specs/journey.spec.ts`); the daily flows follow in M2c–M4. User-facing guide: `docs/ADMIN_GUIDE.en.md` (English only). What only the human does: `workflow/human_steps_and_consent_skill.md`.
 
 ## Setup Assistant (first screen until green, re-checkable any time)
 

@@ -55,7 +55,7 @@ A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](rese
 | --- | --- |
 | `index.html` | the page: the meta CSP first, Mapbox GL JS 3.34.1 from `api.mapbox.com` and the engine's `engine.css` and `engine.iife.js` from a pinned jsDelivr folder, each with `integrity` and `crossorigin`, and `<hcm-map-viewer manifest-url="city.json" lang="ro">` |
 | `city.json` | a City Manifest v1: an example city with one place category and three places (a point, a line, an area), no photos and no layers, and the placeholder token `pk.replace-with-your-token`, which Mapbox refuses until the owner puts their own URL-restricted public token in |
-| `README.md` | the steps, in Romanian then English |
+| `README.md` | the steps, in English |
 
 ```html
 <body class="hcm-fullpage">

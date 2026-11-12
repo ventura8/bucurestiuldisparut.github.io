@@ -464,6 +464,10 @@ deploy from the main branch, root); checking (the page names the field to fix); 
 `release.json`, or `npx create-historic-city@<version> upgrade`); serving it locally (any static server, never
 `file://`); the privacy note (no cookies without consent; Mapbox sees each visitor's address).
 
+**Addendum 2026-11-12** (DECISIONS §157): the owner's rule of 2026-11-10 makes all project Markdown English only.
+The kit's `README.md` (§3, §3.3, §3.4) and the static export's `README.md` and `RIGHTS.md` (§5) are now written in English
+only; the Romanian half is gone. The in-app texts stay in every language.
+
 ### 3.5 The template repository (later, ask first)
 
 Prepared commands for the user's yes, after v1.0.0 is tagged (the kit's pins must resolve; the repository's name is

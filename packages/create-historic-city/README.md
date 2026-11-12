@@ -1,26 +1,6 @@
 # create-historic-city
 
-Harta istorică a orașului tău: fotografii vechi, locuri dispărute și hărți de odinioară pe harta de azi, cu motorul Historic City Map.
-
 A historical map of your city: old photos, vanished places and maps of the past over today's map, with the Historic City Map engine.
-
-## Română
-
-```bash
-npx create-historic-city@1.0.0 orasul-meu
-```
-
-Întreabă numele orașului (în română), dreptunghiul lui pe hartă (`vest,sud,est,nord`; pe openstreetmap.org, butonul Export le arată), culoarea temei și tokenul public Mapbox (Enter păstrează valoarea implicită), apoi scrie trei fișiere într-un folder nou: `index.html` (motorul de la jsDelivr, la o versiune fixă și cu verificare de integritate), `city.json` (orașul, locurile, fotografiile și straturile) și `README.md` (pașii: tokenul public Mapbox, editarea, GitHub Pages). Nu ai nevoie de server.
-
-Cu propriul tău proiect Firebase și aplicația de administrare (Asistentul de configurare, editoarele, imaginile istorice USGS): `npx create-historic-city@1.0.0 self-host orasul-meu --project <id>`, după prima comandă. Pașii sunt în `docs/SELF_HOST.md`.
-
-```bash
-npx create-historic-city@1.0.0 self-host orasul-meu --project <id> --experimental
-```
-
-Fiecare pas spune ce face și cât costă și întreabă `y/N`; rulează doar uneltele tale (`firebase`, opțional `gcloud`) și deschide paginile Google unde te conectezi, accepți termenii și legi plata. Comanda nu cere, nu scrie și nu afișează niciodată parole, tokenuri secrete sau date de plată și nu contactează singură niciun server. `--dry-run` arată totul fără să facă nimic. Alte comenzi: `theme` (culorile hărții dintr-o culoare), `deploy`, `upgrade`, `doctor`, `--help`.
-
-## English
 
 ```bash
 npx create-historic-city@1.0.0 my-city
