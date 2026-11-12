@@ -4,7 +4,8 @@
  * seed colour; a default whose colour is no longer the theme's (a theme change requests a build) is drawn again. An icon
  * an editor uploaded is never touched. A failure is logged and never fails the manifest.
  */
-import { FIRESTORE_PATHS, cityDocSchema, mapIconSvg, systemWriter, type CityDoc } from '@hcm/shared';
+import { FIRESTORE_PATHS, cityDocSchema, systemWriter, type CityDoc } from '@hcm/shared';
+import { mapIconSvg } from '@hcm/shared/tab-icon';
 
 import { iconSeedOf, iconStamp, recordCityIcon, storeCityIcon, type CityIconDeps } from '../api/city-icon.js';
 import type { Ports } from '../ports/index.js';

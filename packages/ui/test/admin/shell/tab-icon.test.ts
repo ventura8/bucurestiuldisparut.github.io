@@ -2,7 +2,7 @@
  * The admin's tab icon in the admin's theme (`packages/ui/src/admin/shell/tab-icon.ts`), in a real browser: the canvas
  * draws the glyph in the root's `primary`, the icon link takes it, and a city's own icon is never repainted.
  */
-import { DEFAULT_TAB_ICONS } from '@hcm/shared';
+import { DEFAULT_TAB_ICONS } from '@hcm/shared/tab-icon';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { paintRoot, unpaintRoot } from '../../../src/admin/shell/root-surface.js';

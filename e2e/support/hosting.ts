@@ -1,4 +1,4 @@
-import { DEFAULT_FAVICON_DATA_URL } from '@hcm/shared';
+import { DEFAULT_FAVICON_DATA_URL } from '@hcm/shared/tab-icon';
 import type { BrowserContext, Page, Route } from '@playwright/test';
 
 import { ADMIN_ORIGIN } from '../admin/world.js';

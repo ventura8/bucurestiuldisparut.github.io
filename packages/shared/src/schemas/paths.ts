@@ -7,7 +7,6 @@
 import { z } from 'zod';
 
 import { HISTORY_ENTITIES, type HistoryEntity, type PhotoContentType } from './firestore.js';
-import type { CityIconSize } from '../kit/map-icon.js';
 import { isId } from './primitives.js';
 
 /** City ids are lowercase: they name Storage folders, which `firebase/storage.rules` matches with `[a-z0-9-]{2,32}`. */
@@ -258,7 +257,7 @@ export const STORAGE_PATHS = {
      * public, `Cache-Control: public, max-age=300`, fixed names the server overwrites (`cities.setIcon`, the manifest's build):
      * the city's tab icon at `CITY_ICON_SIZES`, which the city's pages link straight to (the page never learns a hash).
      */
-    cityIcon: (cityId: string, size: CityIconSize) => `cities/${citySegment(cityId)}/icon-${String(size)}.png`,
+    cityIcon: (cityId: string, size: 32 | 180 | 512) => `cities/${citySegment(cityId)}/icon-${String(size)}.png`,
     /**
      * public, written by `cities.setIcon` for an editor's upload only and deleted by Use the default: the uploaded icon
      * at 32 px. A city's pages show it in the tab in place of the default, which they draw in the visitor's theme; its

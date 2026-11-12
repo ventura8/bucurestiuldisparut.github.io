@@ -8,7 +8,6 @@ import { createHash } from 'node:crypto';
 
 import {
     CITY_ICON_SIZES,
-    DEFAULT_ICON_COLOR,
     FIRESTORE_PATHS,
     STORAGE_PATHS,
     cityDocSchema,
@@ -16,6 +15,7 @@ import {
     timestampFromDate,
     type CityDoc,
 } from '@hcm/shared';
+import { DEFAULT_ICON_COLOR } from '@hcm/shared/tab-icon';
 
 import type { IconSource } from '../ports/image-processor.js';
 import type { Ports } from '../ports/index.js';

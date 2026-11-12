@@ -6,7 +6,7 @@
  * previewed), and again when the system's scheme or contrast changes (the `system` mode). `paintTabIcon` of
  * `@hcm/shared` draws it on a canvas: a `data:` address, no request.
  */
-import { MAP_GLYPH_PATH, MAP_ICON_GEOMETRY, paintTabIcon, type TabIconLink, type TabIconScope } from '@hcm/shared';
+import { MAP_GLYPH_PATH, MAP_ICON_GEOMETRY, paintTabIcon, type TabIconLink, type TabIconScope } from '@hcm/shared/tab-icon';
 
 const GLYPH = { path: MAP_GLYPH_PATH, ...MAP_ICON_GEOMETRY };
 const QUERIES = ['(prefers-color-scheme: dark)', '(prefers-contrast: more)'];

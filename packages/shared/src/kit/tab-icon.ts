@@ -13,6 +13,10 @@
  * calls `paintTabIcon` from its bundle.
  */
 
+// The glyph and the default's files, with the painter: the whole tab icon is this entry (`@hcm/shared/tab-icon`), outside
+// the root index, where each module costs the engine's IIFE an empty initialiser (DECISIONS-for-review.md §163h).
+export * from './map-icon.js';
+
 /** The 2D context `paintTabIcon` draws with. */
 export interface TabIconContext {
     fillStyle: unknown;

@@ -30,22 +30,6 @@ export const MAP_GLYPH_PATH =
 /** The project's default seed colour (`sites/bucharest/site.json` → `themeColor`, the kit's `theme-color`). */
 export const DEFAULT_ICON_COLOR = '#8B5E3C';
 
-/** The sizes a city's icon is stored at: the tab (32), the home screen (180, `apple-touch-icon`), the master (512). */
-export const CITY_ICON_SIZES = [32, 180, 512] as const;
-export type CityIconSize = (typeof CITY_ICON_SIZES)[number];
-
-/** What `cities.setIcon` accepts: PNG or WebP only (never SVG), square enough, large enough, at most 1 MB. */
-export const CITY_ICON_LIMITS = {
-    maxBytes: 1_000_000,
-    /** The request's base64 text: 4 characters per 3 bytes, rounded up. */
-    maxBase64Chars: 1_333_336,
-    minSide: 192,
-    maxSide: 4096,
-    /** The long side over the short one. */
-    maxRatio: 1.25,
-    contentTypes: ['image/png', 'image/webp'],
-} as const;
-
 const HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
 
 /** The em of the glyph's font. */

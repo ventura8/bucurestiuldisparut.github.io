@@ -10,7 +10,7 @@ import {
     DEFAULT_TAB_ICONS,
     MAP_GLYPH_PATH,
     mapIconSvg,
-} from '@hcm/shared';
+} from '@hcm/shared/tab-icon';
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 

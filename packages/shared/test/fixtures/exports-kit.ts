@@ -20,19 +20,10 @@ export const KIT_EXPORTS: readonly string[] = [
     'readKitPolicy',
     'kitResult',
     'isUnpinned',
-    // The browser tab icon (`src/kit/map-icon.ts`, `tab-icon.ts`; docs/ENGINE_API.md → The page's tab icon): the default,
-    // its limits, the callable's schemas, the default in the user's theme.
+    // The browser tab icon's limits and callable schemas (`src/api/city-icon.ts`); the glyph, the default and its painter
+    // are `@hcm/shared/tab-icon`.
     'CITY_ICON_LIMITS',
     'CITY_ICON_SIZES',
-    'DEFAULT_FAVICON_DATA_URL',
-    'DEFAULT_ICON_COLOR',
-    'DEFAULT_ICON_VARIANTS',
-    'DEFAULT_TAB_ICONS',
-    'MAP_GLYPH_PATH',
-    'MAP_ICON_GEOMETRY',
     'cityIconRequestSchema',
     'cityIconResponseSchema',
-    'followViewerTheme',
-    'mapIconSvg',
-    'paintTabIcon',
 ];

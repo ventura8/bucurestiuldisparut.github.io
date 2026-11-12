@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_TAB_ICONS } from '@hcm/shared';
+import { DEFAULT_TAB_ICONS } from '@hcm/shared/tab-icon';
 
 import {
     ADMIN_PAGE,

@@ -4,11 +4,11 @@ import {
     CITY_ICON_LIMITS,
     FIRESTORE_PATHS,
     cityDocSchema,
-    mapIconSvg,
     type ApiErrorCode,
     type CallableRequest,
     type CallableResponse,
 } from '@hcm/shared';
+import { mapIconSvg } from '@hcm/shared/tab-icon';
 
 import type { VerifiedCaller } from '../api/access.js';
 import { ApiError } from '../api/api-error.js';

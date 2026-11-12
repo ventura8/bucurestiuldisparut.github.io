@@ -5,7 +5,8 @@
  * **Upload an image** (PNG or WebP) and, for an upload, **Use the default icon**. While a change is on its way the
  * buttons wait; a refusal (an SVG, an image too small) shows beside them and nothing changes.
  */
-import { DEFAULT_FAVICON_DATA_URL, type CityDoc, type Locale } from '@hcm/shared';
+import { type CityDoc, type Locale } from '@hcm/shared';
+import { DEFAULT_FAVICON_DATA_URL } from '@hcm/shared/tab-icon';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
@@ -59,7 +60,7 @@ function chosen(context: SectionContext, event: Event): void {
 /** The file to `cities.setIcon`, or the browser's reason to the card. */
 function sendIcon(context: SectionContext, read: Awaited<ReturnType<typeof readIcon>>): void {
     if ('image' in read) {
-        void context.intents?.uploadIcon(read.image);
+        void context.intents?.setIcon({ kind: 'upload', image: read.image });
     } else {
         context.intents?.refuseIcon(read.problem);
     }
@@ -73,7 +74,7 @@ function actions(context: SectionContext, custom: boolean): TemplateResult {
     const { locale } = context;
     const busy = context.view.icon.busy || context.readOnly;
     const reset = (): void => {
-        void context.intents?.resetIcon();
+        void context.intents?.setIcon({ kind: 'reset' });
     };
     return html`<div class="actions">
             <hcm-button variant="filled" icon="upload" ?disabled=${busy} aria-describedby="icon-hint" @click=${pick}

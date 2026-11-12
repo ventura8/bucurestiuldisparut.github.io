@@ -324,7 +324,8 @@ export * from './schemas/engine-release.js';
 export * from './schemas/install.js';
 export * from './schemas/start-release.js';
 // M5 kit-cli (§3.2): the one CSP table of every engine page, and the starter kit's page (`fillKitPage`).
-export * from './kit/index.js';
+export * from './kit/csp.js';
+export * from './kit/page.js';
 export * from './imagery/index.js';
 export * from './georef/index.js';
 export { CLIENT_WRITES, type ClientCollection, type ClientWrites } from './schemas/client-writes.js';

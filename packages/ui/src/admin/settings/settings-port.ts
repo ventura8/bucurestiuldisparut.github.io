@@ -32,8 +32,7 @@ interface IconSectionPort {
 }
 
 interface IconIntentsPort {
-    uploadIcon(image: string): Promise<boolean>;
-    resetIcon(): Promise<boolean>;
+    setIcon(change: { readonly kind: 'upload'; readonly image: string } | { readonly kind: 'reset' }): Promise<boolean>;
     refuseIcon(problem: AdminNoticeInputPort): void;
 }
 

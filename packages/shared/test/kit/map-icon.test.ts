@@ -5,9 +5,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { cityIconRequestSchema } from '../../src/api/city-icon.js';
+import { CITY_ICON_LIMITS, cityIconRequestSchema } from '../../src/api/city-icon.js';
 import {
-    CITY_ICON_LIMITS,
     DEFAULT_FAVICON_DATA_URL,
     DEFAULT_ICON_VARIANTS,
     DEFAULT_TAB_ICONS,

@@ -7,7 +7,8 @@
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 
-import { CITY_ID_PATTERN, DEFAULT_TAB_ICONS } from '@hcm/shared';
+import { CITY_ID_PATTERN } from '@hcm/shared';
+import { DEFAULT_TAB_ICONS } from '@hcm/shared/tab-icon';
 import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
 

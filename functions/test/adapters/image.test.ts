@@ -3,7 +3,8 @@
  * inspection (a 240-megapixel header is measured, not decoded), HEIC reported but not decoded, and WebP derivatives
  * that are oriented, resized without enlargement and carry no metadata.
  */
-import { PHOTO_LIMITS, mapIconSvg } from '@hcm/shared';
+import { PHOTO_LIMITS } from '@hcm/shared';
+import { mapIconSvg } from '@hcm/shared/tab-icon';
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 

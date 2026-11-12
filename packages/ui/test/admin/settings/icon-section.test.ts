@@ -1,9 +1,10 @@
 /**
  * Settings → Browser tab icon (`packages/ui/src/admin/settings/icon-section.ts`; S-A101-*): the current icon and
- * whether it is the default or an upload, Upload an image (the picker's file goes to `uploadIcon` as base64, or its refusal to `refuseIcon`), Use the default for an
+ * whether it is the default or an upload, Upload an image (the picker's file goes to `setIcon` as base64, or its refusal to `refuseIcon`), Use the default for an
  * upload, the busy state and a refusal, in both languages, and nothing that writes for a revoked admin.
  */
-import { DEFAULT_FAVICON_DATA_URL, timestampFromDate, type CityDoc } from '@hcm/shared';
+import { timestampFromDate, type CityDoc } from '@hcm/shared';
+import { DEFAULT_FAVICON_DATA_URL } from '@hcm/shared/tab-icon';
 import { axeViolations } from '@hcm/test-support/axe';
 import { render } from 'lit';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
@@ -33,8 +34,7 @@ function iconState(icon: CityDoc['icon'], patch: Partial<SettingsViewState> = {}
 
 function area(state: SettingsViewState): FakeArea<SettingsViewState, SettingsIntentsPort> {
     return new FakeArea<SettingsViewState, SettingsIntentsPort>(state, {
-        uploadIcon: Promise.resolve(true),
-        resetIcon: Promise.resolve(true),
+        setIcon: Promise.resolve(true),
     });
 }
 
@@ -80,7 +80,7 @@ describe('<hcm-settings-page> browser tab icon', () => {
         input.dispatchEvent(new Event('change'));
 
         expect(opened).toBe(true);
-        await expect.poll(() => settings.named('uploadIcon')).toEqual(['uploadIcon "iVBORw0KGgo="']);
+        await expect.poll(() => settings.named('setIcon')).toEqual(['setIcon {"kind":"upload","image":"iVBORw0KGgo="}']);
         expect(input.value).toBe('');
         expect(await axeViolations(element)).toEqual([]);
     });
@@ -93,7 +93,7 @@ describe('<hcm-settings-page> browser tab icon', () => {
         expect(deep(element, 'img[data-icon-preview]').getAttribute('src')).toBe(`${CUSTOM.url}?v=abcdef12`);
         buttons(element)[1]?.click();
 
-        expect(settings.named('resetIcon')).toEqual(['resetIcon']);
+        expect(settings.named('setIcon')).toEqual(['setIcon {"kind":"reset"}']);
     });
 
     it('badPath_aRefusalShowsBesideTheButtons @S-A101-BAD-SVG', async () => {
@@ -126,7 +126,7 @@ describe('<hcm-settings-page> browser tab icon', () => {
         input.dispatchEvent(new Event('change'));
 
         await expect.poll(() => settings.named('refuseIcon')).toEqual(['refuseIcon {"key":"apiError.cityIcon.badType"}']);
-        expect(settings.named('uploadIcon')).toEqual([]);
+        expect(settings.named('setIcon')).toEqual([]);
     });
 
     it('badPath_aCancelledPickerSendsNothing', async () => {
@@ -135,7 +135,7 @@ describe('<hcm-settings-page> browser tab icon', () => {
 
         deep(element, 'input[type="file"]').dispatchEvent(new Event('change'));
 
-        expect(settings.named('uploadIcon')).toEqual([]);
+        expect(settings.named('setIcon')).toEqual([]);
     });
 });
 

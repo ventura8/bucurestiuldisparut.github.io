@@ -20,54 +20,37 @@ export interface IconSectionState {
 
 export const NO_ICON_SECTION: IconSectionState = { busy: false, error: null };
 
+/** What the card asks for: the chosen file as base64, or the default; the store adds the city. */
+export type IconChange = { readonly kind: 'upload'; readonly image: string } | { readonly kind: 'reset' };
+
 export interface IconIntents {
-    /** Sends the chosen file (the card's base64 of it, once the browser found it a PNG or WebP within 1 MB); true once it is the city's icon. */
-    uploadIcon(image: string): Promise<boolean>;
-    /** **Use the default icon**; true once it is drawn. */
-    resetIcon(): Promise<boolean>;
+    /**
+     * Sends the chosen file (the card's base64 of it, once the browser found it a PNG or WebP within 1 MB), or asks for the
+     * default (**Use the default icon**); true once it is the city's icon.
+     */
+    setIcon(change: IconChange): Promise<boolean>;
     /** The browser refused the chosen file (`packages/ui/src/admin/settings/icon-upload.ts`): its reason shows, nothing is sent. */
     refuseIcon(problem: NoticeInput): void;
 }
 
-export class IconSection {
-    readonly #services: ContentServices;
-    readonly #changed: (state: IconSectionState) => void;
-    #state: IconSectionState = NO_ICON_SECTION;
-    readonly intents: IconIntents;
-
-    constructor(services: ContentServices, changed: (state: IconSectionState) => void) {
-        this.#services = services;
-        this.#changed = changed;
-        this.intents = {
-            uploadIcon: (image) => this.#send({ kind: 'upload', cityId: this.#services.cityId, image }),
-            resetIcon: () => this.#send({ kind: 'reset', cityId: this.#services.cityId }),
-            refuseIcon: (problem) => {
-                this.#set({ busy: false, error: problem });
-            },
-        };
-    }
-
-    get state(): IconSectionState {
-        return this.#state;
-    }
-
-    /** Leaving the section forgets a refusal. */
-    close(): void {
-        this.#set(NO_ICON_SECTION);
-    }
-
-    #set(state: IconSectionState): void {
-        this.#state = state;
-        this.#changed(state);
-    }
-
-    async #send(request: CallableRequest<'cities.setIcon'>): Promise<boolean> {
-        this.#set({ busy: true, error: null });
-        const outcome = await outcomeOf(() => this.#services.callables.call('cities.setIcon', request));
-        this.#set({ busy: false, error: outcome.ok ? null : outcome.error });
-        if (outcome.ok) {
-            this.#services.notify({ key: 'adminContent.settings.icon.saved' });
-        }
-        return outcome.ok;
-    }
+/**
+ * The card's intents; `set` receives each state (the store keeps it, and sets `NO_ICON_SECTION` when the section is
+ * left, which forgets a refusal). A function, not a class: the settings chunk is at its budget (DECISIONS §163i).
+ */
+export function iconIntents(services: ContentServices, set: (state: IconSectionState) => void): IconIntents {
+    return {
+        setIcon: async (change) => {
+            set({ busy: true, error: null });
+            const request: CallableRequest<'cities.setIcon'> = { ...change, cityId: services.cityId };
+            const outcome = await outcomeOf(() => services.callables.call('cities.setIcon', request));
+            set({ busy: false, error: outcome.ok ? null : outcome.error });
+            if (outcome.ok) {
+                services.notify({ key: 'adminContent.settings.icon.saved' });
+            }
+            return outcome.ok;
+        },
+        refuseIcon: (error) => {
+            set({ busy: false, error });
+        },
+    };
 }

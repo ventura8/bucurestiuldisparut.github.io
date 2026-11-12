@@ -1,12 +1,5 @@
-import {
-    MAP_GLYPH_PATH,
-    MAP_ICON_GEOMETRY,
-    STORAGE_PATHS,
-    followViewerTheme,
-    paintTabIcon,
-    publicObjectUrl,
-    type EngineConfig,
-} from '@hcm/shared';
+import { STORAGE_PATHS, publicObjectUrl, type EngineConfig } from '@hcm/shared';
+import { MAP_GLYPH_PATH, MAP_ICON_GEOMETRY, followViewerTheme, paintTabIcon } from '@hcm/shared/tab-icon';
 
 import { contentSecurityPolicy } from '../csp.js';
 import type { SiteFileSystem } from '../files.js';

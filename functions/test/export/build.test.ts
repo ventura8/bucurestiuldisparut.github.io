@@ -6,7 +6,8 @@
  */
 import { createHash } from 'node:crypto';
 
-import { DEFAULT_FAVICON_DATA_URL, EXPORT_LIMITS, STORAGE_PATHS, timestampFromDate, validateManifest, type Manifest } from '@hcm/shared';
+import { EXPORT_LIMITS, STORAGE_PATHS, timestampFromDate, validateManifest, type Manifest } from '@hcm/shared';
+import { DEFAULT_FAVICON_DATA_URL } from '@hcm/shared/tab-icon';
 import { describe, expect, it } from 'vitest';
 
 import { buildExport, buildExportFunction, measured, type Written } from '../../src/export/build.js';

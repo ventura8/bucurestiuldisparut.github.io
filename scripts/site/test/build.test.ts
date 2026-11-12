@@ -3,7 +3,8 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { DEFAULT_TAB_ICONS, parseManifestJson } from '@hcm/shared';
+import { parseManifestJson } from '@hcm/shared';
+import { DEFAULT_TAB_ICONS } from '@hcm/shared/tab-icon';
 
 import { buildSite, type SiteBuildOptions } from '../src/build.js';
 import { readConfigJs } from '../src/config-js.js';

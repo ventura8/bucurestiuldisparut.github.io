@@ -1,4 +1,4 @@
-import { DEFAULT_TAB_ICONS } from '@hcm/shared';
+import { DEFAULT_TAB_ICONS } from '@hcm/shared/tab-icon';
 
 import { element, type HtmlElement } from './html.js';
 
