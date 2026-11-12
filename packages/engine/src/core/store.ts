@@ -18,7 +18,7 @@ import {
     type PhotoView,
 } from '@hcm/shared';
 import type { MapLabels } from '@hcm/shared/map-labels';
-import { isCompactHeight, windowClassFor } from '@hcm/ui';
+import { isCompactHeight, isDockable, windowClassFor } from '@hcm/ui';
 import { Listeners, type CameraOffset, type Unsubscribe } from '@hcm/ui/map';
 
 import type { Measurement } from '../telemetry/telemetry-port.js';
@@ -403,9 +403,10 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
     setWindowSize(width: number, height: number): void {
         const windowClass = windowClassFor(width);
         const compactHeight = isCompactHeight(height);
+        const dockable = isDockable(width);
         const state = this.#state;
-        if (windowClass !== state.windowClass || compactHeight !== state.compactHeight) {
-            this.set({ ...state, windowClass, compactHeight });
+        if (windowClass !== state.windowClass || compactHeight !== state.compactHeight || dockable !== state.dockable) {
+            this.set({ ...state, windowClass, compactHeight, dockable });
         }
     }
 

@@ -312,9 +312,21 @@ describe('viewer store: view, window, theme, consent', () => {
         store.setWindowSize(1300, 900);
         store.setWindowSize(1300, 400);
 
-        expect(store.getState()).toMatchObject({ windowClass: 'large', compactHeight: true });
+        expect(store.getState()).toMatchObject({ windowClass: 'large', compactHeight: true, dockable: true });
         expect(states).toEqual(['compact->large', 'large->large']);
         expect(telemetry.contexts.at(-1)?.windowClass).toBe('large');
+    });
+
+    it('happyPath_aTabletHeldUprightCanDockASheet', async () => {
+        const { store } = await loaded();
+        const states: boolean[] = [];
+        store.subscribe((state) => states.push(state.dockable));
+
+        store.setWindowSize(800, 1280);
+        store.setWindowSize(700, 1280);
+
+        expect(states).toEqual([true, false]);
+        expect(store.getState()).toMatchObject({ windowClass: 'medium', dockable: false });
     });
 
     it('happyPath_beforeTheManifestTheThemeIsStoredForTheConfiguredCity', () => {

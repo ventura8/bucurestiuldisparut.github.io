@@ -7,6 +7,7 @@ import * as ui from '../src/index.js';
 const KIT_EXPORTS = [
     'BASELINE_THEME',
     'COMPACT_HEIGHT_MAX_PX',
+    'DOCKED_PANE_MIN_PX',
     'FONT_FILES',
     'HCM_BUTTON_TAG',
     'HCM_CARD_TAG',
@@ -103,6 +104,7 @@ const KIT_EXPORTS = [
     'installFonts',
     'isBundledIcon',
     'isCompactHeight',
+    'isDockable',
     'loadIconFont',
     'observeWindowSize',
     'onlyWindowClass',

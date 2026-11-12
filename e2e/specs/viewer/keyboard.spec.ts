@@ -182,7 +182,7 @@ test(
         await canvas.focus();
         await page.keyboard.press('Enter');
         await expect(page.getByRole('heading', { name: LONE_TITLE })).toBeVisible();
-        // Below 840 px the photo opens in a modal sheet that focuses itself; wider, it is a docked pane beside the map.
+        // Below 760 px the photo opens in a modal sheet that focuses itself; wider, it is a docked pane beside the map.
         const sheet = viewer(page).locator('hcm-photo-sheet hcm-sheet[open]');
 
         await page.keyboard.press('Shift+Tab');
@@ -191,7 +191,7 @@ test(
 );
 
 /**
- * After Shift+Tab: below 840 px the photo's modal sheet keeps the focus, and Escape closes it and gives the focus back
+ * After Shift+Tab: below 760 px the photo's modal sheet keeps the focus, and Escape closes it and gives the focus back
  * to the map; wider, the photo is a docked pane beside the map, which stays open.
  */
 async function expectFocusAfterShiftTab(page: Page, sheet: Locator, canvas: Locator): Promise<void> {

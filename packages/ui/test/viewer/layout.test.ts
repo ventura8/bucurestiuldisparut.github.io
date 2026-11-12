@@ -16,6 +16,17 @@ describe('layoutFor', () => {
         expect(layoutFor('medium', false)).toMatchObject({ sheetMode: 'side', layersDocked: false, aboutFullscreen: false });
     });
 
+    it('happyPath_aMediumWindowFrom760PxDocksOneSupportingPane', () => {
+        // The Pixel Tablet upright (800 px, 2026-11-12): the modal side sheets covered the timeline, Menu and zoom.
+        expect(layoutFor('medium', false, true)).toEqual(layoutFor('expanded', false));
+        expect(layoutFor('medium', false, false)).toMatchObject({ sheetMode: 'side' });
+    });
+
+    it('badPath_aShortWideWindowKeepsModalSideSheets', () => {
+        expect(layoutFor('medium', true, true)).toMatchObject({ sheetMode: 'side', aboutFullscreen: true });
+        expect(layoutFor('compact', false, true)).toMatchObject({ sheetMode: 'bottom' });
+    });
+
     it('happyPath_expandedAndLargeDockOneSupportingPane', () => {
         expect(layoutFor('expanded', false)).toMatchObject({ sheetMode: 'docked', layersDocked: false });
         expect(layoutFor('large', false)).toMatchObject({ sheetMode: 'docked', layersDocked: false });

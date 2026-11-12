@@ -103,8 +103,8 @@ function toggleSheet(store: ViewerStorePort, sheet: 'layers' | 'help'): void {
 
 /** Where the panel is always docked nothing opens, and the photo or place open beside it stays: the viewer only moves the focus. */
 function toggleLayers(store: ViewerStorePort): void {
-    const { windowClass, compactHeight } = store.getState();
-    if (!layoutFor(windowClass, compactHeight).layersDocked) {
+    const { windowClass, compactHeight, dockable } = store.getState();
+    if (!layoutFor(windowClass, compactHeight, dockable).layersDocked) {
         toggleSheet(store, 'layers');
     }
 }

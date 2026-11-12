@@ -59,6 +59,20 @@ describe('<hcm-map-viewer>: layout per window class', () => {
         expect([sheet.mode, sheet.open]).toEqual(['side', true]);
     });
 
+    it('happyPath_aTabletHeldUprightDocksItsSheetsBesideTheMap', async () => {
+        // The Pixel Tablet upright (800 px, 2026-11-12): the modal side sheets covered the timeline, Menu and zoom.
+        const mounted = await mountViewer(readyState(), { width: 800, height: 1280 });
+        chooseFromMenu(mounted, 'layers');
+        await mounted.element.updateComplete;
+
+        expect((part(mounted, '.pane.trailing hcm-layer-panel') as Sheet).mode).toBe('docked');
+        expect(part(mounted, '.frame').dataset['panes']).toBe('trailing');
+        expect(part(mounted, '.frame').hasAttribute('inert')).toBe(false);
+        const timeline = part(mounted, 'hcm-timeline').getBoundingClientRect();
+        const pane = part(mounted, '.pane.trailing').getBoundingClientRect();
+        expect(timeline.right, 'the timeline stays beside the pane').toBeLessThanOrEqual(pane.left);
+    });
+
     it('happyPath_expandedDocksTheDetailsNextToTheLiveMap', async () => {
         const mounted = await mountViewer(readyState(), EXPANDED);
         mounted.store.openPhoto('mihai-voda-1978');

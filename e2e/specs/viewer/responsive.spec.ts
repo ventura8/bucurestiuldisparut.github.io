@@ -242,3 +242,44 @@ test(
         await expect(logo).toHaveAttribute('aria-label', t('ro', 'map.logo'));
     },
 );
+
+/** The map's own controls that a docked pane must leave uncovered (the Pixel Tablet upright: Menu, zoom and the timeline). */
+const MAP_CONTROLS = ['.dock.timeline hcm-timeline', '.dock.menu hcm-fab-menu', '.dock.zoom'];
+
+test(
+    'A tablet held upright docks the Layers panel beside the map, which keeps its timeline, Menu and zoom in view',
+    { tag: '@S-V15-HAPPY-TABLET-PORTRAIT-DOCKED' },
+    async ({ page, lang }) => {
+        // The Pixel Tablet, 2026-11-12 (800 x 1280): the modal side sheet covered the timeline, Menu and the zoom buttons.
+        await boot(page, { width: 800, height: 1280 }, lang, '15/44.42700/26.08530&layers=e2e-1966');
+        await openLayers(page, lang);
+
+        await expect(page.getByRole('region', { name: t(lang, 'layers.title'), exact: true })).toBeVisible();
+        await expect(page.getByRole('dialog', { name: t(lang, 'layers.title'), exact: true })).toHaveCount(0);
+        const controls = await visibleBoxes(page, MAP_CONTROLS);
+        expect(controls, 'the timeline, Menu and zoom are shown').toHaveLength(MAP_CONTROLS.length);
+        expect(overlaps(await visibleBoxes(page, ['hcm-layer-panel', ...MAP_CONTROLS])), 'the pane beside the controls').toEqual([]);
+        for (const selector of MAP_CONTROLS) {
+            await expect(isOnTop(viewer(page).locator(selector)), `${selector} uncovered`).resolves.toBe(true);
+        }
+        expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
+    },
+);
+
+test(
+    'A window under 760 px wide, or wide but short, still opens the Layers panel as a modal sheet',
+    { tag: '@S-V15-BAD-NARROW-OR-SHORT-MODAL' },
+    async ({ page, lang }) => {
+        for (const size of [
+            { width: 759, height: 1024 },
+            { width: 915, height: 412 },
+        ]) {
+            await boot(page, size, lang, '15/44.42700/26.08530&layers=e2e-1966');
+            await openLayers(page, lang);
+            const where = `${String(size.width)}x${String(size.height)}`;
+            await expect(page.getByRole('dialog', { name: t(lang, 'layers.title'), exact: true }), where).toBeVisible();
+            await page.keyboard.press('Escape');
+            await expect(page.getByRole('dialog', { name: t(lang, 'layers.title'), exact: true }), where).toHaveCount(0);
+        }
+    },
+);

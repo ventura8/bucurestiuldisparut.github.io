@@ -98,7 +98,7 @@ export function toggleCompare(store: ViewerStorePort): void {
         return;
     }
     store.openCompare(defaultCompareLayer(state));
-    if (state.sheet === 'layers' && layoutFor(state.windowClass, state.compactHeight).sheetMode !== 'docked') {
+    if (state.sheet === 'layers' && layoutFor(state.windowClass, state.compactHeight, state.dockable).sheetMode !== 'docked') {
         store.openSheet('none');
     }
 }

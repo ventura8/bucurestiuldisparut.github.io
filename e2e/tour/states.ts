@@ -33,6 +33,7 @@ import {
     openLayers,
     openViewer,
     serveManifest,
+    sheetsDock,
     t,
     viewer,
     waitForEngineEvent,
@@ -76,12 +77,11 @@ interface ViewerState {
 }
 
 /**
- * Sheets are modal on compact and medium windows and on a phone held landscape (compact height: modal side sheets);
- * from expanded up they dock in a pane (packages/ui/src/viewer/layout.ts).
+ * Sheets are modal below 760 px and on a phone held landscape (compact height: modal side sheets); wider they dock in a
+ * pane (packages/ui/src/viewer/layout.ts, `sheetsDock`).
  */
 function sheetsAreModal(page: Page): boolean {
-    const size = page.viewportSize();
-    return size === null || size.width < 840 || size.height < 480;
+    return !sheetsDock(page.viewportSize());
 }
 
 /** Esc closes a modal sheet; a docked pane is no popup. */

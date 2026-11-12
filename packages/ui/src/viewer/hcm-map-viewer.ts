@@ -47,7 +47,7 @@ export function setViewerBootstrap(boot: ViewerBootstrap | null): void {
 }
 
 function layoutOf(state: ViewerState | null): ViewerLayout {
-    return state === null ? layoutFor('compact', false) : layoutFor(state.windowClass, state.compactHeight);
+    return state === null ? layoutFor('compact', false) : layoutFor(state.windowClass, state.compactHeight, state.dockable);
 }
 
 function stopsOf(state: ViewerState | null): readonly TimelineStop[] {

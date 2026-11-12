@@ -9,6 +9,7 @@ import { expect, test } from '../../support/test.js';
 import {
     callController,
     hashParam,
+    isDocked,
     menuButton,
     openLayers,
     openViewer,
@@ -288,9 +289,9 @@ test(
     },
 );
 
-/** Expanded and wider windows dock the sheets in a pane (a labelled region); narrower ones open modal dialogs. */
+/** Windows from 760 px wide dock the sheets in a pane (a labelled region); narrower ones open modal dialogs. */
 function viewportIsDocked(page: Page): boolean {
-    return (page.viewportSize()?.width ?? 0) >= 840;
+    return isDocked(page);
 }
 
 test(

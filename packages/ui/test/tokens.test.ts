@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { COMPACT_HEIGHT_MAX_PX, TOUCH_TARGET_MIN_PX, isCompactHeight, windowClassFor } from '../src/theme/tokens.js';
+import {
+    COMPACT_HEIGHT_MAX_PX,
+    DOCKED_PANE_MIN_PX,
+    TOUCH_TARGET_MIN_PX,
+    isCompactHeight,
+    isDockable,
+    windowClassFor,
+} from '../src/theme/tokens.js';
 
 describe('windowClassFor', () => {
     it.each([
@@ -35,5 +42,18 @@ describe('isCompactHeight', () => {
 
     it('happyPath_touchTargetIs48dp', () => {
         expect(TOUCH_TARGET_MIN_PX).toBe(48);
+    });
+});
+
+describe('isDockable', () => {
+    it('happyPath_aTabletHeldUprightDocksItsSheets', () => {
+        // The Pixel Tablet upright is 800 px wide: its modal side sheets covered the timeline, Menu and zoom.
+        expect(isDockable(800)).toBe(true);
+        expect(isDockable(DOCKED_PANE_MIN_PX)).toBe(true);
+    });
+
+    it('badPath_aNarrowMediumWindowKeepsModalSheets', () => {
+        expect(isDockable(DOCKED_PANE_MIN_PX - 1)).toBe(false);
+        expect(isDockable(Number.NaN)).toBe(false);
     });
 });
