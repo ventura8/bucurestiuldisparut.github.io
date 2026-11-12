@@ -705,7 +705,7 @@ describe('imagery-publish', () => {
         expect(queue.__endpoint).toMatchObject({
             serviceAccountEmail: 'fn-events@demo-hcm.iam.gserviceaccount.com',
             maxInstances: 1,
-            availableMemoryMb: 1024,
+            availableMemoryMb: 512,
             timeoutSeconds: 1800,
         });
     });
