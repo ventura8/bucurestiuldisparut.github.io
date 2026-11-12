@@ -6527,6 +6527,9 @@ the limits!!!". A relaxed gate, so it is the owner's decision, recorded here.
 - **168a** `packages/engine/dist/engine.iife.js` 125 → 150 KB gzip; `packages/engine/dist/engine.mjs` 100 → 120 KB;
   the side-loaded `engine.extras.js` chunk 7 → 12 KB (`scripts/ci/check_bundle_budget.py`).
 - **168b** The admin's budgets, the start page's and the other chunks' stay as they were.
+- **168d** The admin's total 700 → 750 KB gzip (`ADMIN_TOTAL_KB`, the coordinator under this instruction, 2026-11-12): the merge of the
+  georeferencer's beta.1 work measured 701.8 KB with its panes (`georef-panes`, 4.2 KB, loaded with the page) and the sharper scan's
+  tiles (`scan-tiles`, 1.2 KB, loaded on zoom). The entry's 450 KB and every chunk's own budget stay.
 - **168c** The rule stands: a budget moves only by a reviewed change with its reason; code that only some visitors need
   still goes to the on-demand parts first (`docs/ENGINE_API.md` → *Side-loaded parts*).
 

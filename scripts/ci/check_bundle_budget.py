@@ -262,7 +262,9 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
 # 700 since 2026-11-08, the owner's decision (§105): the merge of stories, recalibration and the improvements reached
 # 653.8 KB with no saving left that was worth its risk, and the 16 languages come next; the entry's 450 KB still caps what
 # an admin waits for.
-ADMIN_TOTAL_KB = 700
+# 750 since 2026-11-12, the owner's decision (§168d): the georeferencer's panes and its sharper scan's tiles (`georef-panes`,
+# `scan-tiles`) took the total to 701.8 KB; both load only with the georeferencer, and the entry's 450 KB is unchanged.
+ADMIN_TOTAL_KB = 750
 
 # M6: the install bundle's folder in the deployed Hosting tree, and each tarball's budget in KB as served (it is gzip
 # already): the contract's ceilings (docs/research/M6-interfaces.md §1.3; DECISIONS-for-review.md §71). Since §73k
