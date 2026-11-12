@@ -9,6 +9,8 @@ import pytest
 from hcm_pipeline.archive import model
 from hcm_pipeline.jobs import Done, JobContext, Waiting
 from hcm_pipeline.placing import assemble, maps
+from hcm_pipeline.placing.checks import Checked
+from hcm_pipeline.placing.output import Placement
 from hcm_pipeline.placing.stitched import Stitched, publish_stitched
 from hcm_pipeline.steps.place import PlaceStep
 
@@ -126,3 +128,13 @@ def test_bad_path_a_stitch_method_the_server_does_not_know_is_refused_before_pub
 
     with pytest.raises(ValueError, match="unknown stitch method"):
         publish_stitched(cast(JobContext, None), stitched)
+
+
+def test_bad_path_a_place_method_the_server_does_not_know_is_refused_before_the_write() -> None:
+    """Scenarios: S-P20-BAD-STITCH-METHOD-UNKNOWN"""
+    # The archive report's `method` is checked against the server's `ARCHIVE_PLACE_METHODS` as the stitch's is (lesson 569).
+    placement = Placement("made-up", "lineart", Checked(None, 0, 0, 100.0, None), True)
+
+    with pytest.raises(ValueError, match="unknown place method"):
+        placement.as_record()
+    assert Placement("overview", "lineart", Checked(None, 0, 0, 100.0, None), True).as_record()["method"] == "overview"
