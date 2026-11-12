@@ -24,6 +24,7 @@ import { photosNearYear, type TimelineStop } from './timeline-model.js';
 import type { MenuPoint } from './map-menu-trigger.js';
 import { lightbox, mapMenu, type LightboxHandlers, type MapMenuHandlers } from './viewer-lightbox.js';
 import { menuActions, menuItem } from './viewer-menu.js';
+import { nearYearChip } from './viewer-near-year.js';
 import { storiesSheet } from './viewer-stories.js';
 import { unplacedSheet } from './viewer-unplaced.js';
 import { zoomButtons, type MapSize } from './viewer-zoom.js';
@@ -272,7 +273,7 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
     const items = menuActions({ webgl: state.webgl, layersDocked: view.layout.layersDocked, manifest }).map((action) =>
         menuItem(action, view.locale, state.myLocation !== null),
     );
-    return html`${timelineArea(view, ready, handlers)} ${nearYearChip(view, ready, handlers)}
+    return html`${timelineArea(view, ready, handlers)} ${nearYearChip(view, ready.state.year, ready.manifest.photos, handlers.onNearYear)}
         <div class="dock menu">
             <hcm-fab-menu
                 data-layout-check="menu"
@@ -299,18 +300,6 @@ function timeline(view: ViewerView, state: ViewerState, handlers: ViewerHandlers
             .orientation=${view.layout.timeline}
             @hcm-year-change=${handlers.onYearChange}
         ></hcm-timeline>
-    </div>`;
-}
-
-function nearYearChip(view: ViewerView, ready: Ready, handlers: ViewerHandlers): TemplateResult {
-    const year = ready.state.year;
-    if (year === null || photosNearYear(ready.manifest.photos, year).length === 0) {
-        return EMPTY;
-    }
-    return html`<div class="dock chip">
-        <hcm-button variant="tonal" icon="photo_library" data-layout-check="near-year" @click=${handlers.onNearYear}
-            >${translate(view.locale, 'photos.nearYear', { year: String(year) })}</hcm-button
-        >
     </div>`;
 }
 

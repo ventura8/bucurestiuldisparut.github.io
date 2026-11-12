@@ -151,7 +151,7 @@ const VIEWER_STATES = {
         announcements: (lang) => [t(lang, 'error.geolocate.denied')],
     },
     year: {
-        title: 'A historical year: its layer, the photos-near-this-year chip',
+        title: 'A historical year: its layer, the photos-near-this-year chip (an icon button under a standing timeline)',
         enter: async ({ page, lang }) => {
             await expect(page.getByRole('button', { name: t(lang, 'photos.nearYear', { year: '1966' }) })).toBeVisible();
         },

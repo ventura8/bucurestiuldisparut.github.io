@@ -1361,7 +1361,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "The photos-near-the-year chip sits on the timeline at every layout",
-            "asserts": "at a year with photos near it the chip 'Fotografii din jurul anului …' sits on the timeline card: on a phone held upright 8 px under the standing card's foot, leading edges aligned; from 600 px 8 px above the lying card on its leading edge, with the Layers pane docked too; at 915x412 8 px above the lying card on its trailing edge",
+            "asserts": "at a year with photos near it the chip 'Fotografii din jurul anului …' sits on the timeline card: on a phone held upright an icon button 8 px under the standing card's foot, centred on the card; from 600 px 8 px above the lying card on its leading edge, with the Layers pane docked too; at 915x412 8 px above the lying card on its trailing edge",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-08: the chip looked like it was floating; then the vertical timeline on phones. packages/ui/src/viewer/viewer-styles.ts (.dock.chip); unit tests in packages/ui/test/viewer/kit-integration.test.ts and kit-timeline-layout.test.ts."
@@ -1376,6 +1376,28 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-08. packages/ui/src/viewer/viewer-styles.ts (.dock.chip)."
+        },
+        {
+            "id": "S-V04-HAPPY-PHONE-ICON-CHIP",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "On a phone held upright the chip is an icon button under the timeline, named in full",
+            "asserts": "at 390x844, at a year with photos near it: one button whose accessible name and tooltip are 'Fotografii din jurul anului 1966', the photo_library icon, no text in the dock, a 40 px button (48 px target) centred 8 px under the standing timeline; pressing it opens the photos near the year",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12: no wide text pill on phones. packages/ui/src/viewer/viewer-render.ts (nearYearChip), viewer-styles.ts (.dock.chip). Tests: e2e/specs/viewer/timeline.spec.ts; packages/ui/test/viewer/kit-timeline-layout.test.ts; the tour's state `year` at the phone viewports."
+        },
+        {
+            "id": "S-V04-BAD-PHONE-NO-YEAR-NO-BUTTON",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "On a phone no year, or a year without photos, shows no button; a wide window keeps the text chip",
+            "asserts": "at 390x844 at today (the year is null) there is no chip dock and no button; back at today after a year with photos the button is gone; the same year at 1024x768 shows the text chip and no icon button",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12. Tests: e2e/specs/viewer/timeline.spec.ts; packages/ui/test/viewer/kit-timeline-layout.test.ts."
         },
         {
             "id": "S-V04-HAPPY-VERTICAL-ON-PHONE",

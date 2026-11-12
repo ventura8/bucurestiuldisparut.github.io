@@ -293,8 +293,8 @@ export const viewerStyles = [
 
         /*
          * Standing (a phone held upright, the owner's request of 2026-11-08) on the leading edge, from the top gutter
-         * down to the chip's row: the chip docks 8 px under its foot, a row above the menu button, which keeps the bottom
-         * trailing corner; the open menu grows on the trailing side, clear of the 68 px card.
+         * down to the chip's row: the chip, an icon button there, docks 8 px under its foot, a row above the menu button,
+         * which keeps the bottom trailing corner; the open menu grows on the trailing side, clear of the 68 px card.
          */
         .frame[data-timeline='vertical'] .dock.timeline {
             inset-inline: var(--hcm-gutter) auto;
@@ -372,8 +372,8 @@ export const viewerStyles = [
         }
 
         /*
-         * Beside a standing timeline, above the chip's row (the chip, on the leading edge a row above the FAB, can be as
-         * wide as the map): the group's foot is level with the card's.
+         * Beside a standing timeline, above the chip's row: the group's foot is level with the card's. The chip there is a
+         * 40 px icon button (the owner, 2026-11-12) centred under the 68 px card, a row above the FAB: 14 px in.
          */
         .frame[data-timeline='vertical'] .dock.zoom {
             inset-block-end: calc(
@@ -382,7 +382,7 @@ export const viewerStyles = [
         }
 
         .frame[data-timeline='vertical'] .dock.chip {
-            inset-inline-start: var(--hcm-gutter);
+            inset-inline-start: calc(var(--hcm-gutter) + 14px);
             inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-fab-size) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px));
         }
 
