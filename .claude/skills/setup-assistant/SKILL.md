@@ -1,11 +1,11 @@
 ---
 name: setup-assistant
-description: Build or operate the Historic City Map admin Setup Assistant and the human-only steps around it - Google Cloud billing and Blaze, the Provision cloud step, Mapbox (demo exit, secret token paste, auto-minted URL-restricted public tokens), USGS (ERS, M2M request, 60 second application token, approval polling), Analytics and crash reporting - with minimum admin input, verified deep links, and what Claude may and may not do (never type credentials, pay or create accounts; consent per action). Use for any setup card, deep link, console walkthrough or browser task in Mapbox, Google Cloud, USGS or SonarCloud.
+description: Build or operate the Historic City Map Maker admin Setup Assistant and the human-only steps around it - Google Cloud billing and Blaze, the Provision cloud step, Mapbox (demo exit, secret token paste, auto-minted URL-restricted public tokens), USGS (ERS, M2M request, 60 second application token, approval polling), Analytics and crash reporting - with minimum admin input, verified deep links, and what Claude may and may not do (never type credentials, pay or create accounts; consent per action). Use for any setup card, deep link, console walkthrough or browser task in Mapbox, Google Cloud, USGS or SonarCloud.
 ---
 
 # Setup Assistant Skill
 
-Working notes: `.agent/skills/web/admin_setup_assistant_skill.md` (cards, state machine, input budget) and `.agent/skills/workflow/human_steps_and_consent_skill.md` (who does what). User guide: `docs/ADMIN_GUIDE.ro.md`, `docs/ADMIN_GUIDE.en.md`.
+Working notes: `.agent/skills/web/admin_setup_assistant_skill.md` (cards, state machine, input budget) and `.agent/skills/workflow/human_steps_and_consent_skill.md` (who does what). User guide: `docs/ADMIN_GUIDE.en.md`.
 
 ## What Claude never does
 

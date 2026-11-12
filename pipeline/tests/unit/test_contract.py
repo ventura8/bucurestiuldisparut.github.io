@@ -57,6 +57,7 @@ def test_happy_path_the_constants_equal_the_shared_copy() -> None:
         "ARCHIVE_ENCODINGS": list(model.ARCHIVE_ENCODINGS),
         "ARCHIVE_AUTO_LIKELIHOODS": list(model.ARCHIVE_AUTO_LIKELIHOODS),
         "ARCHIVE_PLACE_METHODS": list(model.ARCHIVE_PLACE_METHODS),
+        "STITCH_METHODS": list(model.STITCH_METHODS),
         "RIGHTS_LICENCES": list(model.RIGHTS_LICENCES),
         "RIGHTS_STATES": list(model.RIGHTS_STATES),
         "HELP_REASONS": list(model.HELP_REASONS),

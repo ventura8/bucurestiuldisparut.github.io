@@ -39,7 +39,7 @@ from hcm_pipeline.placing.frame import content_frame, find_frame
 from hcm_pipeline.placing.geometry import FloatArray, compose
 from hcm_pipeline.placing.gridscheme import QUARTER_ORDERS, Box, CityGrid, scheme_for
 from hcm_pipeline.placing.output import Placement, finish, resolution_of, wait_for_help
-from hcm_pipeline.placing.overview_find import find_overview, overview_canvas
+from hcm_pipeline.placing.overview_find import CanvasOpts, find_overview, overview_canvas
 from hcm_pipeline.placing.raster_io import read_working
 from hcm_pipeline.placing.reference import city_window
 from hcm_pipeline.placing.render import SheetWarp, render_sheets
@@ -266,12 +266,13 @@ def _framed_overview(ctx: JobContext, rectified: list[Rectified]) -> Path | None
     return find_overview(root, [item.sheet.path for item in rectified])
 
 
-def _overview_picture(ctx: JobContext, rectified: list[Rectified], unframed: tuple[tuple[str, str], ...]) -> Stitched | None:
-    """The framed sheets laid on an archive overview, or None when none is found or too few match."""
+def _overview_picture(ctx: JobContext, rectified: list[Rectified], unframed: tuple[tuple[str, str], ...], colour: bool) -> Stitched | None:
+    """The framed sheets laid on an archive overview (in their colour for a colour series), or None when none is found or too few
+    match."""
     overview = _framed_overview(ctx, rectified)
     if overview is None:
         return None
-    made = overview_canvas([(item.sheet.name, item.sheet.path) for item in rectified], overview)
+    made = overview_canvas([(item.sheet.name, item.sheet.path) for item in rectified], overview, CanvasOpts(colour=colour))
     if made is None:
         return None
     canvas, report = made
@@ -285,9 +286,10 @@ def _wait_picture(
     mosaic: Mosaic,
     rectified: list[Rectified],
     unframed: tuple[tuple[str, str], ...],
+    colour: bool,
 ) -> Stitched:
     """Prefer the overview mosaic for the georeferencer; else the name/frame mosaic."""
-    overviewed = _overview_picture(ctx, rectified, unframed)
+    overviewed = _overview_picture(ctx, rectified, unframed, colour)
     if overviewed is not None:
         return overviewed
     return Stitched(mosaic.image, "grid", len(rectified) + len(unframed), unframed, mosaic.metres)
@@ -306,7 +308,7 @@ def _solved(
         ctx.log.info(f"the grid is placed, its quarters read in order {order}", ctx.step)
         return _rendered(ctx, series, Solved(rectified, scheme, order, mosaic, held[0].transform), Placed("grid", held[0].checked, True))
     if found is None or found.fit is None:
-        return wait_stitched(ctx, _wait_picture(ctx, mosaic, rectified, unframed), "low-confidence", NOT_PROVED)
+        return wait_stitched(ctx, _wait_picture(ctx, mosaic, rectified, unframed, series.colour), "low-confidence", NOT_PROVED)
     ctx.log.info(f"the grid did not prove: placed from the sheets' names for the owner to approve, order {order}", ctx.step)
     placed = Placed(OWNER_METHOD, found.fit.checked, found.rival_clean)
     return _rendered(ctx, series, Solved(rectified, scheme, order, mosaic, found.fit.transform), placed)

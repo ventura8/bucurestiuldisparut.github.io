@@ -175,6 +175,7 @@ export {
     imageryChooseResponseSchema,
     imageryConfirmRightsRequestSchema,
     imageryConfirmRightsResponseSchema,
+    imageryDeleteVersionResponseSchema,
     imageryCropRequestSchema,
     imageryCropResponseSchema,
     imageryImportRequestSchema,
@@ -202,6 +203,9 @@ export {
     jobRetryable,
     publishTaskSchema,
     rasterUploadMetadataSchema,
+    retryCures,
+    retryPastCap,
+    runsLocally,
 } from './imagery.js';
 export type {
     ImageryChooseRequest,

@@ -61,6 +61,7 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'imagery.approve': 'fn-admin',
     'imagery.reject': 'fn-admin',
     'imagery.confirmRights': 'fn-admin',
+    'imagery.deleteVersion': 'fn-admin',
     'imagery.choose': 'fn-admin',
     'imagery.studioDone': 'fn-admin',
     'imagery.saveGcps': 'fn-admin',

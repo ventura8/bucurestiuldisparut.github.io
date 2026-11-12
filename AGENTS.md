@@ -1,6 +1,6 @@
 # AI Instructions
 
-**Historic City Map** (npm root package `historic-city-map`) is a data-driven historical map engine and its first city, **București dispărut** (Bucharest). One npm-workspaces monorepo holds:
+**Historic City Map Maker** (npm root package `historic-city-map`, repository `ventura8/historic-city-map-maker`) is a data-driven historical map engine and admin for any city. Example: **București dispărut** (Bucharest, `https://bucurestiul-disparut.web.app/`), the first map made with it. One npm-workspaces monorepo holds:
 
 - the public viewer engine `@hcm/engine`: Lit custom elements on Mapbox GL JS 3.34.1, which is loaded from `api.mapbox.com` as the global `mapboxgl` and never bundled; the build exposes `window.HistoricCityMap`;
 - the "do-everything" admin `@hcm/admin`, whose Setup Assistant takes a city owner through Google Cloud, Mapbox and USGS with minimum input;

@@ -20,6 +20,8 @@ from tests.fakes.world import CITY, PipelineWorld
 from tests.synthetic.scenes import CENTRE
 from tests.synthetic.town import Drawing, Line, TownSpec, draw_map, town_lines, write_map
 from tests.unit.placing_support import answer_with, originals, series_context
+from tests.unit.test_placing_overview import _make_overview, _make_tile
+from tests.unit.test_placing_overview_colour import _tinted
 
 LETTERS = "ABCD"
 TRUE_ORDER = 3
@@ -249,9 +251,9 @@ def test_wait_picture_prefers_an_overview_mosaic_when_tiles_match(
     canvas = numpy.full((12, 12), 180, numpy.uint8)
     report = MosaicReport(placed=["a.tif"], unplaced=["b.tif"], rms_px=1.25)
     monkeypatch.setattr(grid, "_framed_overview", lambda _ctx, _items: tmp_path / "overview.tif")
-    monkeypatch.setattr(grid, "overview_canvas", lambda _tiles, _path: (canvas, report))
+    monkeypatch.setattr(grid, "overview_canvas", lambda _tiles, _path, _opts: (canvas, report))
 
-    picture = grid._wait_picture(ctx, mosaic, rectified, (("gone", NO_FRAME),))
+    picture = grid._wait_picture(ctx, mosaic, rectified, (("gone", NO_FRAME),), False)
 
     assert picture.method == "overview"
     assert picture.canvas is canvas
@@ -269,6 +271,50 @@ def test_overview_picture_returns_none_when_canvas_cannot_place_tiles(
     ctx = series_context(world, tmp_path, ["a.tif"], {"class": "grid", "encoding": "grey"})
     rectified = [_sample_rectified(tmp_path / "a.tif")]
     monkeypatch.setattr(grid, "_framed_overview", lambda _ctx, _items: tmp_path / "overview.tif")
-    monkeypatch.setattr(grid, "overview_canvas", lambda _tiles, _path: None)
+    monkeypatch.setattr(grid, "overview_canvas", lambda _tiles, _path, _opts: None)
 
-    assert grid._overview_picture(ctx, rectified, ()) is None
+    assert grid._overview_picture(ctx, rectified, (), False) is None
+
+
+def _coloured_sheets(tmp_path: Path, colour: bool) -> tuple[Path, list[grid.Rectified]]:
+    """An overview and its four quarters written to disk, tinted (three bands) or grey."""
+    overview = _make_overview((800, 800))
+    picture = _tinted(overview) if colour else overview
+    write_map(tmp_path / "area-1895.tif", picture if colour else numpy.dstack([picture] * 3), grey=not colour)
+    rectified = []
+    for row, col in ((0, 0), (0, 1), (1, 0), (1, 1)):
+        tile = _make_tile(picture, row, col, (2, 2), upscale=2)
+        path = write_map(tmp_path / f"r{row}c{col}.tif", tile if colour else numpy.dstack([tile] * 3), grey=not colour)
+        rectified.append(_sample_rectified(path))
+    return tmp_path / "area-1895.tif", rectified
+
+
+def test_happy_path_a_colour_grid_series_keeps_its_colour_on_the_overview(
+    world: PipelineWorld, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Scenarios: S-P20-HAPPY-OVERVIEW-COLOUR"""
+    ctx = series_context(world, tmp_path, ["a.tif"], {"class": "grid", "encoding": "colour"})
+    overview, rectified = _coloured_sheets(tmp_path, colour=True)
+    monkeypatch.setattr(grid, "_framed_overview", lambda _ctx, _items: overview)
+
+    picture = grid._overview_picture(ctx, rectified, (), True)
+
+    assert picture is not None
+    assert picture.method == "overview"
+    assert picture.canvas.ndim == 3
+    bands = picture.canvas.astype(int)
+    assert float(numpy.mean(numpy.abs(bands[:, :, 0] - bands[:, :, 2]))) > 20
+
+
+def test_bad_path_a_grey_grid_series_on_its_overview_stays_one_band(
+    world: PipelineWorld, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Scenarios: S-P20-BAD-OVERVIEW-GREY-STAYS-GREY"""
+    ctx = series_context(world, tmp_path, ["a.tif"], {"class": "grid", "encoding": "grey"})
+    overview, rectified = _coloured_sheets(tmp_path, colour=False)
+    monkeypatch.setattr(grid, "_framed_overview", lambda _ctx, _items: overview)
+
+    picture = grid._overview_picture(ctx, rectified, (), False)
+
+    assert picture is not None
+    assert picture.canvas.ndim == 2

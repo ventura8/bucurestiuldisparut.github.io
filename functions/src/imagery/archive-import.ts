@@ -28,6 +28,8 @@ import { createWork, jobIdFor, reserveLayerIds, type NewWork } from './versions.
  * at once: a local-only job is outside the daily cap of new layers (the owner, 2026-11-09; it once let today's share start and held
  * the rest `daily`); the import is only paused by the budget guard. Everything, the archive's record of
  * its jobs included, is written in one transaction, so a second click finds the series imported (`apiError.imagery.archiveImported`).
+ * A series the record no longer names (its version deleted by `imagery.deleteVersion`: the owner starts it over) is taken again,
+ * its job added to the others.
  */
 export type ArchiveImportDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 
@@ -121,13 +123,22 @@ function keptInOrder(archive: ArchiveDoc, request: Request, importer: Importer):
     return kept.sort((a, b) => a.series.order - b.series.order);
 }
 
-/** The archive, unimported, or `apiError.notFound` / `apiError.imagery.archiveImported`. */
-async function requireFresh(reader: Pick<Ports['documents'], 'get'>, cityId: string, archiveId: string): Promise<ArchiveDoc> {
-    const archive = await reader.get(FIRESTORE_PATHS.archive(cityId, archiveId), archiveDocSchema);
+/** The series an import asks for. */
+function asked(request: Request): string[] {
+    return request.series.filter((choice) => choice.include).map((choice) => choice.seriesId);
+}
+
+/**
+ * The archive, none of the asked series imported yet, or `apiError.notFound` / `apiError.imagery.archiveImported` (a series the
+ * record no longer names, its version deleted to start it over, is taken again).
+ */
+async function requireFresh(reader: Pick<Ports['documents'], 'get'>, request: Request): Promise<ArchiveDoc> {
+    const archive = await reader.get(FIRESTORE_PATHS.archive(request.cityId, request.archiveId), archiveDocSchema);
     if (archive === undefined) {
         throw new ApiError('apiError.notFound');
     }
-    if (archive.jobs !== undefined) {
+    const jobs = archive.jobs ?? {};
+    if (asked(request).some((seriesId) => seriesId in jobs)) {
         throw new ApiError('apiError.imagery.archiveImported');
     }
     return archive;
@@ -190,7 +201,7 @@ function planOf(request: Request, kept: readonly Kept[], start: Start) {
  */
 async function writeAll(deps: ArchiveImportDeps, request: Request, kept: readonly Kept[], start: Start): Promise<Planned[]> {
     return deps.documents.transaction(async (transaction) => {
-        const archive = await requireFresh(transaction, request.cityId, request.archiveId);
+        const archive = await requireFresh(transaction, request);
         const planned = planOf(request, kept, start)(await reserveLayerIds(deps.documents, request.cityId));
         for (const { kept: each, work } of planned) {
             await createWork(transaction, work, {
@@ -201,10 +212,10 @@ async function writeAll(deps: ArchiveImportDeps, request: Request, kept: readonl
                 rights: each.rights,
             });
         }
-        const jobs = Object.fromEntries(planned.map(({ kept: each, work }) => [each.series.seriesId, work.jobId]));
+        const added = Object.fromEntries(planned.map(({ kept: each, work }) => [each.series.seriesId, work.jobId]));
         await transaction.set(FIRESTORE_PATHS.archive(request.cityId, request.archiveId), archiveDocSchema, {
             ...archive,
-            jobs,
+            jobs: { ...archive.jobs, ...added },
             importedBy: start.uid,
             importedAt: timestampFromDate(start.now),
             ...stampOf(start.uid, start.now),
@@ -222,7 +233,7 @@ async function archiveImport(
     await requireCity(deps.documents, request.cityId);
     const start = { uid: caller.uid, now: deps.clock.now() };
     const importer = { owner: caller.membership?.roleIn(request.cityId) === 'owner', cityId: request.cityId, now: start.now };
-    const kept = keptInOrder(await requireFresh(deps.documents, request.cityId, request.archiveId), request, importer);
+    const kept = keptInOrder(await requireFresh(deps.documents, request), request, importer);
     await refuseWhileGuardRed(deps.documents);
     const planned = await writeAll(deps, request, kept, start);
     const waiting = planned.filter((each) => each.waiting).length;

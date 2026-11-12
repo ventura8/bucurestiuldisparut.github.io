@@ -70,7 +70,7 @@ export const ARCHIVE_AUTO_LIKELIHOODS = ['likely', 'possible', 'points'] as cons
  * How a series' layer was placed (§4), the version's `archive.method`; `gcps`: the owner's points. Batch 4 (§5.1): `grid-names`, a grid
  * series placed from its sheets' names and frames whose grid did not prove on the reference: only its owner approves it, by hand.
  */
-export const ARCHIVE_PLACE_METHODS = ['embedded', 'grid', 'atlas', 'pieces', 'match', 'gcps', 'grid-names'] as const;
+export const ARCHIVE_PLACE_METHODS = ['embedded', 'grid', 'atlas', 'pieces', 'match', 'gcps', 'grid-names', 'overview'] as const;
 
 /** M20 (§7): the licences a published map layer may carry. */
 export const LAYER_LICENSES = ['PD', 'CC0', 'CC-BY-4.0', 'CC-BY-SA-4.0', 'permission'] as const;

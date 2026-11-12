@@ -160,7 +160,7 @@ you. Run builds in the quality image (`docker run --rm -u "$(id -u):$(id -g)" -e
    artifact", `path: dist/site/bucharest` becomes `path: dist/pages`. With only Bucharest's site both trees serve the
    same files.
 4. **The jsDelivr probe** (§58g): open
-   `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@legacy-2022/README.md` once in your browser; if
+   `https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@legacy-2022/README.md` once in your browser; if
    jsDelivr refuses the repository, the release needs one of §58g's alternatives before the tag.
 
    **The npm name, also before the merge** (§65e, `docs/LESSONS.md` 238): the merge makes public every guide that says

@@ -11,6 +11,7 @@ import {
     imageryChooseResponseSchema,
     imageryConfirmRightsResponseSchema,
     imageryCropResponseSchema,
+    imageryDeleteVersionResponseSchema,
     imageryImportResponseSchema,
     imageryJoinResponseSchema,
     imageryPreviewUrlResponseSchema,
@@ -53,6 +54,7 @@ const IMAGERY_RESPONSES = {
     'imagery.approve': imageryApproveResponseSchema,
     'imagery.reject': imageryRejectResponseSchema,
     'imagery.confirmRights': imageryConfirmRightsResponseSchema,
+    'imagery.deleteVersion': imageryDeleteVersionResponseSchema,
     'imagery.choose': imageryChooseResponseSchema,
     'imagery.studioDone': imageryStudioDoneResponseSchema,
     'imagery.saveGcps': imagerySaveGcpsResponseSchema,
@@ -77,6 +79,7 @@ interface ImageryRequests {
     'imagery.approve': typeof imageryApproveRequestSchema;
     'imagery.reject': typeof imageryVersionRequestSchema;
     'imagery.confirmRights': typeof imageryConfirmRightsRequestSchema;
+    'imagery.deleteVersion': typeof imageryVersionRequestSchema;
     'imagery.choose': typeof imageryChooseRequestSchema;
     'imagery.studioDone': typeof imageryVersionRequestSchema;
     'imagery.saveGcps': typeof imagerySaveGcpsRequestSchema;

@@ -53,6 +53,7 @@ import {
     RIGHTS_LICENCES,
     RIGHTS_STATES,
 } from '../../src/schemas/imagery-archive.js';
+import { STITCH_METHODS } from '../../src/schemas/imagery-help.js';
 import { RASTER_PATHS, VERSION_FILES } from '../../src/schemas/imagery-paths.js';
 import { STUDIO_MAX_BYTES } from '../../src/schemas/imagery-publish.js';
 import { RECALIBRATE_MIN_CHECKS, RECALIBRATE_MIN_GAIN_M } from '../../src/schemas/imagery-recalibration.js';
@@ -155,6 +156,7 @@ describe('the pipeline contract', () => {
             ARCHIVE_ENCODINGS,
             ARCHIVE_AUTO_LIKELIHOODS,
             ARCHIVE_PLACE_METHODS,
+            STITCH_METHODS,
             RIGHTS_LICENCES,
             RIGHTS_STATES,
             HELP_REASONS,

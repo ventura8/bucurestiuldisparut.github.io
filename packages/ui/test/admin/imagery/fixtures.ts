@@ -87,6 +87,7 @@ export function versionItem(overrides: Partial<VersionItemPort> = {}): VersionIt
             checkpointRmseM: 7.2,
             partOf: null,
             entityIds: [],
+            basedOn: null,
             thumbPath: null,
         },
         ...overrides,
@@ -258,8 +259,11 @@ export function georefState(overrides: Partial<GeorefViewState> = {}): GeorefVie
             reference: 'osm',
             adding: false,
             half: null,
+            moving: null,
             selected: null,
             transform: 'affine',
+            linked: true,
+            scanFollow: null,
         },
         pairs: [
             { id: 'g1', pixel: { x: 100, y: 100 }, geo: { lat: 44.5, lng: 26 }, enabled: true, origin: 'auto', score: 0.9 },
@@ -338,6 +342,7 @@ export function imageryPage(
             approve: Promise.resolve(true),
             reject: Promise.resolve(true),
             confirmRights: Promise.resolve(true),
+            deleteVersion: Promise.resolve(true),
         },
         ...{
             choose: Promise.resolve(true),
@@ -356,8 +361,9 @@ export function imageryPage(
 export function georefPage(
     state: GeorefViewState = georefState(),
     options: Parameters<typeof mountPage>[3] = {},
+    answers: Partial<Record<keyof GeorefIntentsPort, unknown>> = {},
 ): Promise<Mounted<GeorefViewState, GeorefIntentsPort>> {
-    const area = new FakeArea<GeorefViewState, GeorefIntentsPort>(state, { save: Promise.resolve(true) });
+    const area = new FakeArea<GeorefViewState, GeorefIntentsPort>(state, { save: Promise.resolve(true), ...answers });
     return mountPage('hcm-georef-page', 'georef', area, { params: ['job-1966'], ...options });
 }
 

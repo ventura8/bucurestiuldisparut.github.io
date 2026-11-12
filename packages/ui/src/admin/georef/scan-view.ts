@@ -5,6 +5,8 @@
  */
 import { clamp } from '@hcm/shared';
 
+import { PAIR_HIT_RADIUS } from './marker-badge.js';
+
 export interface Point {
     readonly x: number;
     readonly y: number;
@@ -17,9 +19,6 @@ export interface Size {
 
 /** How far the admin may zoom in, beyond the scale that fits the whole preview. */
 export const MAX_ZOOM = 32;
-
-/** A marker answers a pointer this close to it (CSS pixels): a 48 px target. */
-const HIT_RADIUS = 24;
 
 export interface ScanView {
     /** CSS pixels per preview pixel. */
@@ -39,6 +38,18 @@ export function zoomView(view: ScanView, factor: number, at: Point, fit: ScanVie
     const scale = clamp(view.scale * factor, fit.scale, fit.scale * MAX_ZOOM);
     const kept = scale / view.scale;
     return { scale, offset: { x: at.x - (at.x - view.offset.x) * kept, y: at.y - (at.y - view.offset.y) * kept } };
+}
+
+/** The view with the full-resolution `camera.centre` at the pane's centre, `camera.scale` CSS px a scan pixel (within fit … fit × `MAX_ZOOM`). */
+export function centredView(
+    pane: Size,
+    camera: { readonly centre: Point; readonly scale: number },
+    previewScale: number,
+    fit: ScanView,
+): ScanView {
+    const zoom = clamp(camera.scale / previewScale, fit.scale, fit.scale * MAX_ZOOM);
+    const across = previewScale * zoom;
+    return { scale: zoom, offset: { x: pane.width / 2 - camera.centre.x * across, y: pane.height / 2 - camera.centre.y * across } };
 }
 
 export function panView(view: ScanView, dx: number, dy: number): ScanView {
@@ -63,7 +74,7 @@ export function hitPair<P extends { readonly id: string; readonly pixel: Point }
     previewScale: number,
 ): P | null {
     let best: P | null = null;
-    let distance = HIT_RADIUS;
+    let distance = PAIR_HIT_RADIUS;
     for (const pair of pairs) {
         const point = scanToPane(view, pair.pixel, previewScale);
         const here = Math.hypot(point.x - at.x, point.y - at.y);

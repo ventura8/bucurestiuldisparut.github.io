@@ -179,12 +179,15 @@ A KH-9 panoramic frame often holds only part of a city, so M8 joins one date's f
 | `awaiting_gcps` | the scan waits for the admin's points | `queued` (`imagery.saveGcps`), `cancelled` |
 | `awaiting_approval` | rendered; waits for Approve, a compute-unit choice, or the 1st of next month | `mts_processing` (publish), `cancelled` (reject or cancel) |
 | `mts_processing` | Mapbox processes the tileset (cannot be cancelled: `apiError.imagery.mapboxFinishing` in the log) | `succeeded`, `failed` |
-| `succeeded`, `failed`, `cancelled` | ended (`FINISHED_JOB_STATUSES`) | `queued` again only through `imagery.retry` from `failed` |
+| `succeeded`, `failed`, `cancelled` | ended (`FINISHED_JOB_STATUSES`) | `queued` again only through `imagery.retry` from `failed` or `cancelled` (a Stop, 2026-11-12) |
 
 Limits (`packages/shared/src/api/imagery.ts`, done): `JOBS_PER_DAY` 10 raster jobs a day per project, `RUNNING_JOBS_MAX`
 2 at once, `JOB_MAX_ATTEMPTS` 3, `LEASE_SECONDS` 600 renewed every `HEARTBEAT_SECONDS` 60, `STARTING_STALE_MINUTES` 10,
 `USGS_BACKOFF_MINUTES` 30 → 720. A local-only job (`localOnly`: an M20 archive series) never counts toward `JOBS_PER_DAY` nor
-waits for it: the cap guards the Cloud Run work (2026-11-09, `docs/research/M20-import-local.md` §1.3).
+waits for it: the cap guards the Cloud Run work (2026-11-09, `docs/research/M20-import-local.md` §1.3). Nor does any job
+placed on the owner's computer (`runOn: 'local'`), and a city whose choice is `local` starts new imports and joins past
+the cap, each placed there at its creation; moving one to the cloud asks the cap then (2026-11-12,
+`docs/research/M7-local-worker.md` §4.5).
 
 ### 2.5 USGS scenes
 
@@ -341,7 +344,8 @@ The browser never requests a USGS address (the admin's CSP does not allow one, a
 | `layers.delete` (M2c, done) | `layer-delete` `{layerId, tilesetId?, sourceSha?}` with `dispatchAt` + 7 days | |
 
 Every creator refuses when `ops/guard` is red (`apiError.guardPaused`), when today's raster jobs reached `JOBS_PER_DAY`
-(`apiError.imagery.dailyLimit {limit}`), and when the layer has an unfinished job (`apiError.layers.busy`).
+(`apiError.imagery.dailyLimit {limit}`; not for a city whose choice is `local`, M7 §4.5), and when the layer has an
+unfinished job (`apiError.layers.busy`).
 
 A new version's label and year: for a scene, `layerLabelFor(sensor, date)` (`packages/shared/src/imagery/`, fn-imagery):
 `SENSOR_SPECS[sensor].name` and the date in each language (`KH-4A Corona, 12 iulie 1966`, `KH-4A Corona, 12 July 1966`),
@@ -425,6 +429,17 @@ belong to the dispatcher and the lease, so an execution never races its own retr
   week. A failure at a publish step goes back to the publisher, not to Cloud Run. A failure of a runner older than the
   job's type (`apiError.imagery.pipelineOutdated`, or the legacy `apiError.invalidRequest` "the pipeline does not run <type> jobs":
   `failedOutdated`) spent no real attempt: its retry is allowed whatever `attempt` is, and sets it back to 0 (2026-11-09).
+  A run on the owner's own computer (`runOn: 'local'`, `localOnly`, or an `archive-series`, whose originals never leave the
+  computer) costs no cloud compute: the owner's manual Retry of it is allowed whatever `attempt` is, its
+  `apiError.imagery.attemptsExhausted` included, and sets it back to 0 (live report of 2026-11-12). A cloud run's cap and every
+  publish cap (`PUBLISH_MAX_ATTEMPTS`, Mapbox's paid work) stay, and automatic retries keep `JOB_MAX_ATTEMPTS` everywhere. One
+  rule on both sides: `retryPastCap` and `retryCures` of `@hcm/shared`, used by the admin's `jobRetryable` and by `imagery.retry`
+  (S-A12-HAPPY-LOCAL-RETRY-PAST-CAP, S-A12-BAD-CLOUD-RETRY-AT-CAP).
+  A job the owner stopped (`cancelled`, its version `cancelled`) is retried the same way, its `attempt` back to 0, and the retried
+  job carries nothing the run or the Stop left: no `cancelRequested` (kept, the dispatcher and every worker's claim pass the job over
+  and the tick cancels it again), no `waitReason`, no `placingPoints`, no `workerOverdueAt` (`docs/LESSONS.md` 565, the 1914 SOCEC series). The version
+  keeps what the owner gave it: an archive series with saved pairs (`georef`, `method: 'gcps'`) places itself from them in `place`
+  (`placing/owner.py`), as after `imagery.saveGcps` (S-A12-HAPPY-RETRY-STOPPED-PAIRS).
 - **Locate again** (`imagery.locateAgain`, a city editor; S-A69-*; the owner's live use of 2026-11-07): a USGS frame waiting for points
   (`needs_gcps`, its job `awaiting_gcps`, not asked to stop) goes back to `queued` from `stitch`, which Retry cannot do (it takes failed
   jobs only): `fetch` and `extract` stay as recorded, `stitch` (the reason of finding 78: an older pipeline's `frame.json` and preview
@@ -746,6 +761,29 @@ upload's own georeference waits (`S-A17-BAD-EMBEDDED-GEOREF`);
 version waits for `imagery.approve` (admin; any state but `awaiting_approval` → `apiError.imagery.versionState`) or
 `imagery.reject` (the version `rejected`, the job `cancelled`, the reserved id free again, `pendingVersion` cleared).
 
+A version that never reached the map is deleted for good by `imagery.deleteVersion` (an editor or the owner; S-A125-*;
+`functions/src/imagery/delete-version.ts`): a `failed`, `cancelled` or `rejected` one whose job is finished (or gone), or an archive
+series waiting for points (`needs_gcps`, its job `awaiting_gcps`) that the owner starts over, whose job is first ended as Cancel ends it
+(`endWork`, so whatever it held is released). The version and its job go in one transaction that reads both again (a Retry clicked
+meanwhile is never deleted under its run), then the job's `logs`, its scratch files (`work/{city}/{job}/`, `work-files.ts`) and the
+version's own folder of the private bucket (`rasters/{city}/{layer}/{version}/`) with a public copy a dead publish left
+(`deleteVersionTiles`); a failed first import's scene is freed as Dismiss frees it. Never touched: another version's folder (a
+regeoref's scan lies in its base's), a USGS delivery (`usgs-raw/`, any city's), an upload's original and an archive's originals, which
+stay on the owner's computer. Refused: `approved`, `publishing`, `published`, `superseded` or `joined` →
+`apiError.imagery.deletePublished` (delete the layer, §7.6); a job still queued, running or waiting → `apiError.imagery.deleteRunning`
+(Cancel first); a version another one is `basedOn` → `apiError.imagery.deleteInUse`; a version the transaction finds gone →
+`apiError.notFound`, one that left its deletable state meanwhile → `apiError.imagery.versionState`; a frame a live join holds →
+`apiError.imagery.joinPartHeld`; any other state → `apiError.imagery.versionState`. Layer versions are not audited documents (no
+`history` subcollection): the deletion is the structured log line `layer version deleted` with the caller's uid, as every version
+decision writes. The version is read as an ending reads it (`layerVersionReadSchema`), so a record an older release stored with
+fields today's schema refuses is deleted too. An archive series also leaves its archive's record of jobs (`archives/{a}.jobs`) in the same transaction, so the
+archive page offers it again and `imagery.archiveImport` takes it (that callable refuses only a series the record still names); the
+last series deleted leaves the archive unimported (`jobs`, `importedBy`, `importedAt` gone). The version page offers **Delete this
+version** (asked first: what goes, and that the map and the originals on the owner's computer stay) for a `failed`, `cancelled` or
+`rejected` version whose job is finished and for a parked archive series (whose Cancel-area Delete it replaces), never for one
+another version of the list is `basedOn`; a failed version has no Dismiss beside it any more, so the page never shows two Deletes
+(the server's `imagery.reject` still dismisses a failed version). Once deleted the page returns to the Historical imagery list.
+
 ### 7.2 The compute-unit guard (done: the functions; the transaction: fn-imagery)
 
 The publish task's `guard` step, in one transaction on `usage/mapbox-{usageMonth(now)}` (created with
@@ -867,6 +905,7 @@ implementation, `maxInstances` 3, as `fn-admin@`; the schemas are done (`package
 | `imagery.import` | enforce | `{cityId, entityId}` → `{jobId, versionId, layerId}` | `notFound`, `usgs.notConfigured`, `usgs.accessPending`, `imagery.notScanned`, `imagery.alreadyImported`, `imagery.dailyLimit`, `guardPaused` |
 | `imagery.approve` | enforce | `{cityId, versionId}` → `{state, jobId}` | `notFound`, `imagery.versionState` |
 | `imagery.reject` | enforce | `{cityId, versionId}` → `{state: 'rejected'}` | `notFound`, `imagery.versionState` |
+| `imagery.deleteVersion` | enforce | `{cityId, versionId}` → `{deleted: true}` | `notFound`, `imagery.deletePublished`, `imagery.deleteRunning`, `imagery.deleteInUse`, `imagery.joinPartHeld`, `imagery.versionState`, `city.notEditor` |
 | `imagery.choose` | consume | `{cityId, versionId, choice}` → `{state, deferUntil?, studioPath?}` | `notFound`, `imagery.versionState`, `imagery.tilesetLimit` (for `pay`) |
 | `imagery.studioDone` | enforce | `{cityId, versionId}` → `{tilesetId, layerId}` | `imagery.studioNotFound`, `imagery.versionState`, `mapbox.notConfigured` |
 | `imagery.saveGcps` | enforce | `imagerySaveGcpsRequestSchema` → `{jobId, versionId, resumed}` | `invalidRequest`, `imagery.tooFewGcps`, `imagery.degenerateGcps`, `imagery.gcpOutside`, `imagery.versionState`, `imagery.dailyLimit`, `guardPaused`, `layers.busy` |
@@ -1014,9 +1053,10 @@ section also calls `imagery.search`, because only a search re-ranks; a failed se
 ### 10.8 Texts and icons
 
 - `packages/shared/src/i18n/admin-imagery/{ro,en}.ts` (done: the skeleton with the reasons, the wait reasons, the
-  version states, the guard's choices and the transforms; sections `imagery` and `georef`, prefixes
-  `adminContent.imagery.` and `adminContent.georef.`), merged into `ADMIN_CONTENT_CATALOGUES`; admin-imagery adds every
-  other text in both languages. Error codes are the API catalogue's.
+  version states, the guard's choices and the transforms; section `imagery`, prefix `adminContent.imagery.`) and
+  `packages/shared/src/i18n/admin-georef/{ro,en}.ts` (section `georef`, prefix `adminContent.georef.`; out of `admin-imagery`
+  when that folder reached the 400-line limit, DECISIONS-for-review.md §154), both merged into `ADMIN_CONTENT_CATALOGUES`;
+  admin-imagery adds every other text in both languages. Error codes are the API catalogue's.
 - Icons, added to `UI_ICONS` and the font subset in one change (CR-M3-9): `satellite_alt`, `travel_explore`,
   `upload_file`, `add_location_alt`, `my_location`, `crop`, `approval`, `filter_alt`, `pending`, `replay`, `layers_clear`.
 
@@ -1077,7 +1117,7 @@ a change request.
 | --- | --- |
 | fn-imagery | `functions/src/imagery/**`, `functions/src/adapters/{cloud-run,mapbox-tilesets,remote-files,storage-reader}.ts`, the M3 additions of `functions/src/adapters/usgs.ts` and the move out of `adapters/mapbox.ts` (CR-M3-4), `functions/test/imagery/**`, `functions/test/adapters/` tests of those adapters, `functions/test/support/` M3 fakes (`RemoteFiles`, `UsgsScenes`, `MapboxTilesets` in memory); `packages/shared/src/imagery/**` (`rankScene`, `layerLabelFor`, the footprint coverage); the M3 registry rows (`packages/shared/src/api/registry.ts`, one line each), the `imagery` export line of `functions/src/index.ts`, its accounts in `functions/src/global-options.ts`, the five ports' wiring in `functions/src/deps.ts`, `functions/test/index.test.ts`; `firebase/firestore.rules`, `firebase/storage.rules`, `firebase/firestore.indexes.json`, `firebase/rules-tests/**` and `CLIENT_WRITES` (CR-M3-2) |
 | pipeline | `pipeline/**` (`src/hcm_pipeline/**`, `tests/**` but `tests/contracts/`, `Dockerfile`, `pyproject.toml`, `poetry.lock` only without a new dependency, `README.md`, `typings/`) |
-| admin-imagery | `packages/admin/src/{imagery,georef}/**`, `packages/admin/src/pages/{imagery,georef}.ts`, `packages/ui/src/admin/{imagery,georef}/**`, `packages/ui/src/admin/layers/geometry/**` and `packages/admin/src/layers/geometry/**` (the `layer-geometry` chunk), `packages/shared/src/georef/**`, `packages/shared/src/i18n/admin-imagery/**`; through change requests CR-M3-5 to CR-M3-9 the M3 edits of the Jobs page, the layers and settings areas, the routes, `AREA_CHUNKS`, `CONTENT_AREAS`, `ContentPort`, the icons and font subset, the provisioner's lifecycle, APIs and IAM, `links.json`, `ADMIN_CHUNK_BUDGETS` |
+| admin-imagery | `packages/admin/src/{imagery,georef}/**`, `packages/admin/src/pages/{imagery,georef}.ts`, `packages/ui/src/admin/{imagery,georef}/**`, `packages/ui/src/admin/layers/geometry/**` and `packages/admin/src/layers/geometry/**` (the `layer-geometry` chunk), `packages/shared/src/georef/**`, `packages/shared/src/i18n/admin-imagery/**`, `packages/shared/src/i18n/admin-georef/**`; through change requests CR-M3-5 to CR-M3-9 the M3 edits of the Jobs page, the layers and settings areas, the routes, `AREA_CHUNKS`, `CONTENT_AREAS`, `ContentPort`, the icons and font subset, the provisioner's lifecycle, APIs and IAM, `links.json`, `ADMIN_CHUNK_BUDGETS` |
 | e2e-fakes | `packages/test-support/src/fakes/**` and `api-fixtures/**` M3 additions (STAC, Overpass, M2M downloads and full metadata, browse images, Cloud Run's runner hook, the MTS extension), `e2e/mock-apis/**` M3 routes, the runners (`e2e/admin/support/imagery-runner.ts`: `standin`, `python`), `e2e/admin/specs/imagery/**`, `e2e/admin/support/imagery.ts`, `e2e/tour/admin-imagery.tour.ts`, `e2e/tour/admin-georef.tour.ts`, the `imagery` section of `e2e/tour/states.ts`, the M3 rows of `e2e/scenarios.json` (flip to `exists`, add rows) and `docs/E2E_SCENARIOS.md` (regenerated) |
 | contracts (done) | this file, `packages/shared/src/schemas/{imagery,imagery-paths,imagery-publish,imagery-settings,georef,usgs-scene}.ts`, `packages/shared/src/api/imagery.ts`, the M3 parts of `firestore-ops.ts`, `firestore.ts`, `paths.ts`, `errors.ts` and the API catalogues, `functions/src/ports/**` M3 files, `pipeline/tests/contracts/**` |
 | integrator (after the four) | `docs/*.md` (ARCHITECTURE, TESTING, the admin guides' Imagery chapter, LESSONS), `.agent/**`, `.agents/**`, `.claude/**`, `docs/research/M0-handoff.md`, `docs/research/DECISIONS-for-review.md`, the root `package.json`, the lockfile |
@@ -1089,7 +1129,7 @@ a change request.
 | `e2e/scenarios.json` | each workstream flips its rows (the `notes` name the owner) to `exists` in place when the tagged test lands; a new row after its behaviour's last; then `python3 scripts/ci/check_e2e_matrix.py write` |
 | `e2e/tour/states.ts` | inside the `imagery` section only, one entry per state |
 | `packages/shared/src/api/registry.ts`, `packages/shared/src/index.ts`, `packages/shared/src/i18n/api/{ro,en}.ts` | one line per addition at the end of its group; a new API code is a change request here |
-| `packages/shared/src/i18n/admin-imagery/{ro,en}.ts` | admin-imagery's; the other workstreams ask |
+| `packages/shared/src/i18n/admin-imagery/{ro,en}.ts`, `packages/shared/src/i18n/admin-georef/{ro,en}.ts` | admin-imagery's; the other workstreams ask |
 | `pipeline/tests/contracts/**` | change request (both languages must pass the change) |
 | `scripts/ci/check_bundle_budget.py` | admin-imagery adds its three chunk rows (logged) |
 
@@ -1302,3 +1342,49 @@ lifecycle stays as the backstop; a local worker's stays in its work folder until
 gone with it. A layer's deletion frees its scene only once it succeeded: one failed for good keeps the scene `imported` and the id
 taken, as the tileset is still at Mapbox and a revert can bring the layer back (`deletionsPending`, S-A33-BAD-DELETE-FAILED-KEEPS-SCENE).
 An invalid job's version fails with it when it can be read (S-A12-BAD-STRANDED-VERSION).
+
+## Addendum of 2026-11-12: the georeferencer's context menu
+
+The owner's request of 2026-11-12. On both panes a right-click, a touch held still for 500 ms (drifting 8 CSS px or a second
+finger ends it) or, from the keyboard, the ContextMenu key or Shift+F10 at the focused pane's centre opens `<hcm-georef-menu>`,
+a `role="menu"` in the top layer with its first `menuitem` focused (the arrow keys wrap, Home and End; Esc, Tab, a press outside
+or the focus leaving closes it, and the focus goes back where it was). Its items:
+
+- **Add a point here**: `addAt(end)`, Add pairs turned on first, then that end of a pair exactly as a click there (it starts or
+  completes the pair); on the map the place comes from `mapTarget(point)`, which the store answers with the map's projection.
+- **Move this point** and **Delete this point**, only on a pair within `PAIR_HIT_RADIUS` (24 CSS px, `marker-badge.ts`, the
+  scan's and the map's alike): `pickUp(id, pane)` sets `moving`, the next click on that pane drops the pair's end there (one
+  Undo step), one on the other pane or Esc puts it back; Delete is `remove(id)`, which Undo takes back.
+- **Undo** when there is a step (`canUndo`).
+
+A version that takes no points (or a read-only admin) gets one disabled line instead, `adminContent.georef.menu.readOnly`. A
+long press is no click (the scan forgets the press, the map's click after it is swallowed), and the scan's right button picks
+nothing (lesson 562). The element and its gestures are the lazy `georef-menu` chunk, fetched at the page's first render
+(DECISIONS-for-review.md §152). Rows: S-A16-HAPPY-GEOREF-MENU, S-A16-BAD-GEOREF-MENU-READONLY; tour state `georef.context-menu`.
+
+## Addendum of 2026-11-12: linked views
+
+The owner's request of 2026-11-12. Once the pairs give a fit, the store's current transform (the version's own map while
+unedited, else the refit), panning or zooming one pane moves the other to show the same place. **Link the views**
+(`adminContent.georef.linkViews`, a pressed toggle beside the panes' controls) is on by default and kept in the store's memory for
+the session (`linked`, carried across `close()`; no browser storage); without a fit it is disabled, not pressed, and a note says
+when it will work (`adminContent.georef.linkViewsNoFit`). A read-only version links too.
+
+- **Scan → map**: `<hcm-scan-viewer>` fires `hcm-view` `{centre, scale}` (the full-resolution pixel at its centre, CSS px per scan
+  pixel) after each pan or zoom of the admin's (drag, wheel, pinch, + and -, the arrows); `scanMoved(camera)` gives it to the link,
+  which jumps the map (`flyTo` without animation) to `toGeo(centre)` at the zoom where one CSS pixel spans
+  `metresPerPixel / scale` Web Mercator metres (`metresPerPixel`: the square root of the fit's local area at that pixel; Mapbox's
+  world is 512 CSS px at zoom 0).
+- **Map → scan**: the map's `move` gives `toPixel(center)` and the inverse of that scale; the store sets `scanFollow`, which the
+  scan pane centres (`centredView`, clamped to fit … fit × 32) without an `hcm-view` back, and ignores while a pointer is down.
+- **No loops, one move a frame**: `ViewLink` keeps the latest move and applies it at the next animation frame; the map's own `move`
+  that its jump causes comes while it applies and is dropped; a `move` that leaves the map's camera where it was (a resize, as when
+  a compact window shows the map) and the first one only set the camera to compare with; a place the fit cannot map moves nothing.
+- **Never while dragging**: nothing moves while Terra Draw's change of a map point is not settled (`GeorefMap.dragging`) or the
+  scan has a pointer down.
+
+The arithmetic and `ViewLink` (`packages/admin/src/georef/linked-views.ts`) are in the lazy `georef-extras` chunk, fetched by the
+first pane move once a fit exists (`link.ts`; the latest move made while it loads is played once it is in; a failed fetch is logged and the views stay unlinked for the visit); the pairs' leaf
+helpers and full screen's cover moved into the static `georef-badges` group so `georef` stays within its 19 KB (DECISIONS-for-review.md
+§156). Rows: S-A16-HAPPY-GEOREF-LINKED, S-A16-BAD-GEOREF-LINKED-NO-FIT; tour state `georef.linked`. The e2e specs other than
+`georef-linked.spec.ts` open the georeferencer with the link off (`georeferencerReady`), as their clicks read the scan shown whole.

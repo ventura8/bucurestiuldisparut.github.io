@@ -51,6 +51,8 @@ function session(maps: AdminMapFactory | null) {
         clicked: (geo) => clicks.push(geo),
         moved: (id, geo) => moves.push(`${id} ${String(geo.lat)} ${String(geo.lng)}`),
         selected: (id) => selections.push(id),
+        viewed: () => undefined,
+        shown: () => undefined,
     });
     return { map, statuses, clicks, moves, selections };
 }
@@ -235,5 +237,38 @@ describe('the georeferencer map: tools and nudge', () => {
         await settle();
 
         expect(draw.attached).toBeNull();
+    });
+});
+
+describe('the georeferencer map: the context menu', () => {
+    it('happyPath_aPointOfTheMapIsItsPlaceAndTheNearestPairWithinTheHitRadius', async () => {
+        const made = handle(new FakeMapDraw());
+        made.map.mounted = true;
+        const { map } = session(factoryOf([{ ok: true, map: made.handle }]));
+        map.attach(host());
+        map.setFrame(FRAME);
+        await settle();
+        const near = pair('g1', 0, 0);
+        const far = pair('g2', 4000, 4000);
+        map.showPairs([near, far], null);
+        const drawn = made.map.project([near.geo.lng, near.geo.lat]) ?? { x: 0, y: 0 };
+
+        const onPair = map.targetAt({ x: drawn.x + 10, y: drawn.y - 10 });
+        const beside = map.targetAt({ x: drawn.x + 40, y: drawn.y });
+
+        expect(onPair?.hit).toBe('g1');
+        expect(onPair?.geo.lat).toBeCloseTo(near.geo.lat, 2);
+        expect(beside?.hit).toBeNull();
+    });
+
+    it('badPath_noMapOrAnUnmountedOneAnswersNothing', async () => {
+        const made = handle(new FakeMapDraw());
+        const { map } = session(factoryOf([{ ok: true, map: made.handle }]));
+        const before = map.targetAt({ x: 10, y: 10 });
+        map.attach(host());
+        map.setFrame(FRAME);
+        await settle();
+
+        expect([before, map.targetAt({ x: 10, y: 10 })]).toEqual([null, null]);
     });
 });

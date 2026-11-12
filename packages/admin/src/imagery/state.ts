@@ -111,6 +111,8 @@ export interface ImageryIntents {
     reject(): Promise<boolean>;
     /** M20 (§7): the city's owner confirms who granted the permission (`imagery.confirmRights`). */
     confirmRights(confirmedBy: string): Promise<boolean>;
+    /** A version that never reached the map, deleted for good (`imagery.deleteVersion`); true once it is gone. */
+    deleteVersion(): Promise<boolean>;
     choose(choice: PublishChoice): Promise<boolean>;
     studioDone(): Promise<boolean>;
     /** Saves the Studio file. */

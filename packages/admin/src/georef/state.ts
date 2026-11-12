@@ -18,6 +18,7 @@ import type { DocState } from '../content/doc.js';
 import type { MapStatus } from '../layers/map-session.js';
 import type { NoticeInput } from '../state/state.js';
 import type { FitView } from './fit-view.js';
+import type { ScanCamera } from './linked-views.js';
 import type { GeoPosition, HalfPair, PixelPosition } from './pairs.js';
 import { NO_SUGGESTIONS, type SuggestionsView } from './suggestions.js';
 
@@ -63,6 +64,18 @@ export function georefVersionOf(id: string, version: LayerVersionDoc): GeorefVer
     };
 }
 
+/** A point picked up from the context menu. */
+interface Moving {
+    readonly id: string;
+    readonly pane: 'scan' | 'map';
+}
+
+/** What the context menu finds under a point of the map. */
+export interface MapTarget {
+    readonly geo: GeoPosition;
+    readonly hit: string | null;
+}
+
 export type ScanImage = { readonly status: 'none' | 'loading' | 'failed' } | { readonly status: 'ready'; readonly url: string };
 
 export interface GeorefState {
@@ -79,6 +92,8 @@ export interface GeorefState {
     /** "Add pairs" is on: a click on the scan or the map is one end of the next pair. */
     readonly adding: boolean;
     readonly half: HalfPair | null;
+    /** The context menu's Move this point: the pair whose end on `pane` the next click drops there (Esc cancels). */
+    readonly moving: Moving | null;
     readonly selected: string | null;
     readonly transform: GeorefTransform;
     readonly fit: FitView;
@@ -99,6 +114,10 @@ export interface GeorefState {
     readonly pane: 'scan' | 'map';
     /** The matcher's suggestions still to decide (M4 §2.5). */
     readonly suggestions: SuggestionsView;
+    /** Link the views: once a fit exists, moving one pane moves the other (on by default; kept while the admin is open). */
+    readonly linked: boolean;
+    /** Where the linked map last put the scan pane (a new object each time; the pane moves without answering). */
+    readonly scanFollow: ScanCamera | null;
 }
 
 const EMPTY_FIT: FitView = {
@@ -108,7 +127,7 @@ const EMPTY_FIT: FitView = {
 
 export const INITIAL_GEOREF: GeorefState = {
     ...{ versionId: null, doc: { status: 'loading', reconnecting: false, failure: null }, notFound: false, version: null },
-    ...{ scan: { status: 'none' }, reference: null, pairs: [], adding: false, half: null, selected: null, transform: 'affine' },
+    ...{ scan: { status: 'none' }, reference: null, pairs: [], adding: false, half: null, moving: null, selected: null },
     ...{
         fit: EMPTY_FIT,
         thresholdM: imagerySettingsOf(undefined).rmseThresholdM,
@@ -117,7 +136,8 @@ export const INITIAL_GEOREF: GeorefState = {
         saving: false,
         refusal: null,
     },
-    ...{ saved: null, showPreview: true, previewOpacity: 0.7, map: 'none', pane: 'scan', suggestions: NO_SUGGESTIONS },
+    ...{ transform: 'affine', saved: null, showPreview: true, previewOpacity: 0.7, map: 'none', pane: 'scan', suggestions: NO_SUGGESTIONS },
+    ...{ linked: true, scanFollow: null },
 };
 
 export interface GeorefIntents {
@@ -134,8 +154,14 @@ export interface GeorefIntents {
     remove(id: string): void;
     /** Enabled ↔ checkpoint. */
     toggle(id: string): void;
-    /** Esc: the half pair is dropped. */
+    /** Esc: a picked-up point is put back, else the half pair is dropped, else the selection. */
     cancelHalf(): void;
+    /** The context menu's Add a point here: Add pairs on, then that end exactly as a click there. */
+    addAt(end: HalfPair): void;
+    /** The context menu's Move this point: the pair's end on `pane` follows the next click there. */
+    pickUp(id: string, pane: Moving['pane']): void;
+    /** The place and the pair under a point of the map's box (CSS px from its corner); null without a map. */
+    mapTarget(point: PixelPosition): MapTarget | null;
     /** Accept: the suggestion joins the pairs (enabled, `auto`); saved only with Save. */
     acceptSuggestion(id: string): void;
     /** Accept all: every suggestion still to decide joins the pairs. */
@@ -162,4 +188,8 @@ export interface GeorefIntents {
     setMapFocus(focused: boolean): void;
     /** Arrow nudge of the selected pair in screen CSS px (same as the scan). */
     nudgeMap(dx: number, dy: number): void;
+    /** Link the views on or off. */
+    setLinked(linked: boolean): void;
+    /** The owner panned or zoomed the scan pane: the linked map follows. */
+    scanMoved(camera: ScanCamera): void;
 }

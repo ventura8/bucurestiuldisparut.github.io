@@ -169,6 +169,7 @@ describe('the archive feed', () => {
         expect(feed.state.open?.report).toMatchObject({
             name: 'harti.zip',
             imported: false,
+            importedSeries: [],
             skipped: [
                 ['duplicate-of', 10],
                 ['not-a-map', 3],
@@ -252,6 +253,7 @@ describe('the archive feed, once imported', () => {
         await settle();
 
         expect(feed.state.open?.report?.imported).toBe(true);
+        expect(feed.state.open?.report?.importedSeries).toEqual([SID(0), SID(1)]);
         expect(feed.state.progress[SID(0)]).toMatchObject({
             state: 'awaiting_approval',
             jobStatus: 'running',

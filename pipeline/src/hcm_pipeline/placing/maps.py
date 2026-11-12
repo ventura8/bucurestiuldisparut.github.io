@@ -23,7 +23,7 @@ from hcm_pipeline.jobs import JobContext, StepResult, Waiting
 from hcm_pipeline.placing import assemble, joins
 from hcm_pipeline.placing.output import wait_for_help
 from hcm_pipeline.placing.overview import MosaicReport
-from hcm_pipeline.placing.overview_find import find_overview, overview_canvas
+from hcm_pipeline.placing.overview_find import CanvasOpts, find_overview, overview_canvas
 from hcm_pipeline.placing.pdfpages import extract_pages
 from hcm_pipeline.placing.raster_io import read_working
 from hcm_pipeline.placing.series import SeriesJob, Sheet, series_of
@@ -169,7 +169,7 @@ def _try_overview(ctx: JobContext, series: SeriesJob) -> Assembled | None:
     overview = _series_overview(ctx, series)
     if overview is None:
         return None
-    made = overview_canvas([(sheet.name, sheet.path) for sheet in series.sheets], overview)
+    made = overview_canvas([(sheet.name, sheet.path) for sheet in series.sheets], overview, CanvasOpts(colour=series.colour))
     if made is None:
         return None
     canvas, report = made

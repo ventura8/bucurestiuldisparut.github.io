@@ -217,6 +217,10 @@ signed addresses).
 - `imagery.tick`'s lost-run step: a `running` (or `starting`) job with `runOn: 'local'` whose lease lapsed (no worker
   heartbeat for `LEASE_SECONDS`) goes back to `queued` (`waitReason: 'worker'`, `worker` removed) with a log line
   `apiError.imagery.workerLost`; its attempt stays counted (the dispatcher fails it past `JOB_MAX_ATTEMPTS`).
+- `imagery.retry` of a failed local run (`runOn: 'local'`, `localOnly`, an `archive-series`) by the owner: allowed past
+  `JOB_MAX_ATTEMPTS` (the dispatcher's `attemptsExhausted` included), with `attempt` back to 0 so `worker.claim` takes it
+  again; the cap stops paid cloud work looping and a local run costs none. A publish keeps its cap (`retryPastCap` of
+  `@hcm/shared`; `docs/research/M3-interfaces.md` §4.5; live report of 2026-11-12).
 
 ## 4. Cloud Run's free tier
 
@@ -245,6 +249,18 @@ plus the estimate passes either figure, the job stays `queued` with `waitReason:
 automation (`createdBy` a `system:` writer) also raises the notification `job.needsOk` (warning, push) whose inbox item
 opens the version. The admin's OK is `imagery.runOn {jobId, runOn: 'cloud', freeTierOk: true}`; "Run on my computer" is
 `runOn: 'local'`.
+
+### 4.5 The daily cap counts only cloud work (2026-11-12)
+
+`JOBS_PER_DAY` (10 a day per project) and a city's own share bound the paid Cloud Run work, so a job that runs on the
+owner's computer never counts toward them: `runOn: 'local'` or `localOnly` (`functions/src/imagery/limits.ts`). When the
+city's remembered choice (`cities/{city}/workers/choice`) is `local`, a new import, upload, landsat or delivered-order
+import and a join (its missing frames and the `layer-join`) start past the cap, after the budget guard only, and each new
+job is recorded `runOn: 'local'` at its creation, so the decision stays on the job. `auto` and `cloud` keep the cap. A
+counted job moved from the computer to the cloud (`imagery.runOn`, "Run in Google Cloud") is checked against the budget
+guard and today's caps first (`apiError.imagery.dailyLimit`) and then counts on the day of the move (`countedAt`); its
+cloud dispatch still waits for the free-tier OK (§4.3). `JOBS_PER_DAY` is unchanged. Scenarios: S-A12-HAPPY-LOCAL-PAST-DAILY-CAP,
+S-A12-BAD-RUNON-CLOUD-PAST-CAP.
 
 ### 4.4 What the admin shows
 

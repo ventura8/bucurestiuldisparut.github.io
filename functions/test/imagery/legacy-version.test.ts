@@ -2,12 +2,14 @@
  * A layer version its schema refuses (finding of 2026-11-12: a KH-9 frame the pipeline stored unvalidated with `scan.width` 258,271,
  * over `MAX_SCAN_PIXELS`, lesson 332) can still be ended by its owner: Reject and Cancel read it without the refused fields
  * (`layerVersionReadSchema`), end it and its job, and write it back valid; the layer is no longer busy. A valid version ends as before.
+ * Delete this version reads it the same way: a cancelled one goes with its job.
  */
 import { FIRESTORE_PATHS, MAX_SCAN_PIXELS, type JobDoc, type LayerVersionDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { rejectFunction } from '../../src/imagery/approve.js';
 import { cancelJob } from '../../src/imagery/cancel.js';
+import { deleteVersionFunction } from '../../src/imagery/delete-version.js';
 import { refuseBusyLayer } from '../../src/imagery/limits.js';
 import { failureOf } from '../admin/world.js';
 import { adminCall } from '../publish/fakes.js';
@@ -77,6 +79,20 @@ describe('a version its schema refuses', () => {
 
         expect((await readVersion(w, JOB))?.state).toBe('cancelled');
         expect((await readJob(w, JOB))?.status).toBe('cancelled');
+    });
+
+    it('happyPath_deleteThisVersionRemovesACancelledOneWithItsJob @S-A125-HAPPY-DELETE-VERSION', async () => {
+        const w = await readyWorld();
+        await seedJob(w, JOB, { ...parkedJob(), status: 'cancelled', waitReason: undefined, cancelRequested: true });
+        w.deps.documents.seed(FIRESTORE_PATHS.layerVersion(CITY, JOB), { ...legacy(), state: 'cancelled' });
+
+        await expect(deleteVersionFunction(() => w.deps).run(adminCall({ cityId: CITY, versionId: JOB }))).resolves.toEqual({
+            deleted: true,
+        });
+
+        expect(await readVersion(w, JOB)).toBeUndefined();
+        expect(await readJob(w, JOB)).toBeUndefined();
+        await expect(refuseBusyLayer(w.deps.documents, CITY, LAYER)).resolves.toBeUndefined();
     });
 
     it('happyPath_aValidVersionEndsUnchangedButForItsState', async () => {

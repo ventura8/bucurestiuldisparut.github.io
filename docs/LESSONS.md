@@ -3298,7 +3298,100 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: every failure is logged with the version and remembered, and the loop goes on; S-A69-BAD-AUTO-RELOCATE-INVALID.
     - **A per-item loop in a tick catches every error per item; only the item's own refusal codes differ in the log.**
 
-561. **"Import every direction from the old site" was already done: the 10 photos without one have no cone there either.**
+561. **The harti.zip 1895 pieces never reached their overview, and would not have landed on it.**
+    - Seen: 2026-11-12, local worker job `ar-mw993zri-s-4054e55659a3` (60 coloured pieces, class `pieces`): "assembled 4 parts, 56 left out", then `no-scale`; the overview path had returned None.
+    - Cause: two. `find_overview` took the folder directly under the archive root (`Harti`, the zip's top folder) for the series and looked only at its siblings, so `Harti/Harta Bucuresti 1895.png`, two levels up, was never seen. And `overview_canvas` reads pieces and overview at the same 2,400 px, then estimated the pieces' downscale from those pixel sizes (1.4 against a true 7.07) with a ±20 % sweep: 0 of 60 landed when the overview was given by hand. The overview's 4,000 ORB features (one tile's budget for the whole sheet), a 25-inlier floor that refused correct fits of 10–24 inliers, an RMS measured over outliers too (289 px), and an upscale from the same equal sizes (1.5 against 7.1) made it worse.
+    - Fix and pin: `find_overview` climbs ancestor by ancestor to the archive root (loose rasters and sibling folders, related by a shared year when the pieces' folders name one; a year is four digits standing alone); `expected_scale` from the pieces' count, a ×0.5–1.4 sweep, 20,000 overview features detected once, weak fits kept by scale-and-turn consensus, RMS over inliers, canvas upscale from the fits. Re-run on the real files: 57 of 60 on the overview, RMS 0.9 px; S-P20-HAPPY-OVERVIEW-ANCESTOR / S-P20-BAD-OVERVIEW-ANCESTOR-YEAR / S-P20-HAPPY-OVERVIEW-SCALE / S-P20-BAD-OVERVIEW-SCALE-BLANK.
+    - **Images read at one working size carry no scale between them: estimate it from what they depict (how many pieces cover the sheet), and test a placer on pieces at the real ratio, not a 2× crop.**
+
+562. **A right-click on the georeferencer's scan picked a point or let the selection go.**
+    - Seen: 2026-11-12, adding the georeferencer's context menu: `<hcm-scan-viewer>`'s `pointerdown` started a gesture for any mouse button, so the right button's release was a click (`hcm-pick` while adding, `hcm-select` otherwise) under the menu it opened.
+    - Fix and pin: only the main button (`button === 0`) starts a pick, drag or pan; a long press that opened the menu forgets its gesture (`cancelGesture`) and the map's click after it is swallowed. `S-A16-HAPPY-GEOREF-MENU` (`scan-viewer.test.ts` `badPath_aRightButtonPressPicksNothing…`, `georef-menu.test.ts`).
+    - **A pointer handler that means a click checks the button; a press that opened a menu is no click.**
+
+563. **The georeferencer's summary and map box failed the context menu's tour state.**
+    - Seen: 2026-11-12, the first run of `georef.context-menu` (`S-A16-HAPPY-GEOREF-MENU`): at admin-c360-ro the guide's `<summary>` was a 328 × 19 px touch target; at admin-l1440-en the focus ring of the map's box (`div.canvas`, the keyboard's crosshair) was cut off by `hcm-admin-map`, which the georeferencer's panes round and clip.
+    - Fix and pin: `.guide summary` is at least 48 px tall; `hcm-admin-map` draws the ring of its focusable box inside (`outline-offset: -3px`, as Mapbox's own canvas). Pinned by the state check of `georef.context-menu`.
+    - **A box that takes the focus inside a clipped, rounded pane draws its ring inside.**
+
+564. **A picked-up georeferencer point outlived its pair, and the menu's chunk failed silently.**
+    - Seen: 2026-11-12, review of the context menu: `moving` kept the id of a pair that was deleted (Delete key, residual table, the menu) or undone, so the panes said "Moving point 0" and stayed in pick mode; turning **Add pairs** off while a point was picked up put the map back in select mode with the scan still picking; and a rejected `import('./georef-menu.js')` was an unhandled rejection with nothing logged.
+    - Fix and pin: `GeorefStore.#refit` puts a picked-up point back when its pair is gone, `setAdding` clears `moving` with the mode, and the page's `menuChunk()` failure is logged through `createLogger('georef-page')` (the browser's own menu stays). `georef.test.ts` `badPath_aPickedUpPointWhosePairGoesAwayIsPutBack`, `badPath_turningAddPairsOffPutsAPickedUpPointBack…`; `georef-menu.test.ts` `badPath_aMenuChunkThatDoesNotLoad…`.
+    - **Transient state that names an item is cleared where the items change; every lazy `import()` has a logged `.catch`.**
+
+565. **A stopped archive series tried again never placed itself from the owner's saved pairs.**
+    - Seen: 2026-11-12, the 1914 SOCEC series: the owner saved pairs (`imagery.saveGcps`), stopped the job, then clicked Try again; the series did not place itself from the pairs, and the georeferencer showed it read-only.
+    - Cause: Stop writes `cancelRequested: true` on the job (`packages/admin/src/imagery/version.ts`), and `imagery.retry` copied it onto the retried job (`retriedJob` omitted only the error, the end, the lease and the execution). A queued job asked to stop is never dispatched (`dispatch.ts` `isQueued`), no worker claims it (`worker/claim.ts`), a run that starts stops at its first step (`runner.py` `_refresh`), and `imagery.tick` cancels it again (`cancelAsked`); meanwhile its version sat `processing`, which the georeferencer opens read-only (`georef/state.ts` `EDITABLE_STATES`). The pairs themselves were never lost: the retry keeps the version's `georef`, and `place` prefers them to the class's placer. The retry test seeded a stopped job without the `cancelRequested` every real Stop writes.
+    - Fix and pin: the retried job leaves `cancelRequested`, `waitReason`, `placingPoints` and a local worker's overdue mark `workerOverdueAt` behind (`retry.ts` `LEFT_BY_THE_RUN`; kept, a series stopped while overdue would come back offering Run in Google Cloud at once and `tick-worker` would never mark the new wait); the whole path save → Stop → Try again → the tick's cancellation pass in `retry-stopped.test.ts`; `place` from the kept pairs after a Stop deleted `stitched.tif`, the class placer never run (`test_placing_owner.py`); the parked series editable with its pairs and the retried one read-only (`georef.test.ts`); S-A12-HAPPY-RETRY-STOPPED-PAIRS, S-A12-BAD-RETRY-STOPPED-DISMISSED, S-A12-BAD-RETRY-STOPPED-PLACING.
+    - **A fixture of an ended job must carry every field the real ending writes; test a retry from the state the owner's own click leaves, not a hand-made one.**
+
+566. **A deleted archive series could never be imported again, and a failed version showed a Delete that did not delete.**
+    - Seen: 2026-11-12, review of `imagery.deleteVersion` (S-A125): the archive's record still named the deleted series' job, so `imagery.archiveImport` refused it (`archiveImported`) and the archive page showed it with no progress; a failed version kept Dismiss, labelled Delete but only `imagery.reject`, beside the new Delete this version.
+    - Cause: the deletion cleaned the version's own documents and files but not the records that point at them (`archives/{a}.jobs`), and the UI's deletable states were narrowed to dodge a substring locator in an e2e test.
+    - Fix and pin: the delete transaction drops the series from `archives/{a}.jobs` and the import refuses only a series still named; the archive page plans the series not imported yet; a failed version offers Delete this version alone, the e2e locators match exactly; `S-A125-HAPPY-DELETE-VERSION`.
+    - **A deletion also clears every record that names what it deleted; never narrow a behaviour to suit a test's locator, fix the locator.**
+
+567. **A place's year rule had a back door through History's Revert, and its date bound lived only in the editor.**
+    - Seen: 2026-11-12, review of the place-year change: `history.revert` checked a restored place only against `poiDocSchema` (years optional), so reverting a dated place to an older version removed its years; the GeoJSON import and the rules accepted a year up to 2100, only the editor refused one after next year.
+    - Fix and pin: `history.revert` answers `apiError.history.placeYear` for a version without a year over a dated place; the places area's context carries `latestYear` for the import; the rules' `dated` compares with `request.time.year() + 1`; `S-A32-HAPPY-PLACE-YEAR`, `S-A32-BAD-PLACE-YEAR`.
+    - **A rule a lenient stored schema cannot hold must be checked at every door that writes, Admin SDK copies of old versions included, with the same bounds.**
+
+568. **Merged on their own, three branches each fit their bundle budgets; together the viewer engine and `editor-shared` did not.**
+    - Seen: 2026-11-12, the merge of track/georefmenu, track/pairs1914, track/deletecancel and track/placeyear into `feat/engine-rewrite`: `check_bundle_budget.py` failed `engine.iife.js` at 125.04 KB of 125 (the place-year rule's `validation.yearLate` words, which only the admin's editor shows, sat in the viewer's catalogue, and the index's `export *` of `legacy-reads.ts` left an empty module wrapper in the IIFE) and `editor-shared` at 13.05 KB of 13 (the work branch's `legacy-reads.ts`, which Home and the Imagery pages share). The merge also put `admin-imagery/{ro,en}.ts` and `packages/shared/src/index.ts` at 401 lines.
+    - Fix and pin: a year after next year is the schema's `validation.tooBig`, said in the editor's own words (`adminContent.common.issue.yearLate` through `issue-text.ts`); `legacy-reads.ts` is its own chunk `legacy-reads` and the index names its exports; the georeferencer's texts moved to `admin-georef/` (DECISIONS-for-review.md §154, §155).
+    - **Words only the admin shows belong in an admin catalogue, never the viewer's; the shared index names a module's exports (an `export *` can cost the IIFE a wrapper); and a merge of branches is built and measured before it is called done, since each branch's headroom is spent once.**
+
+569. **The 1895 pieces stitched on their overview, then the server refused the record.**
+    - Seen: 2026-11-12, worker log: "stitched 57 of 60 parts into one 16963 x 14298 picture", then "job ar-mw993zri-s-4054e55659a3 crashed in place … WorkerApiError: apiError.invalidRequest".
+    - Cause: the pipeline writes `help.stitched.method: "overview"` (and `archive.method: "overview"` once placed), but `STITCH_METHODS` and `ARCHIVE_PLACE_METHODS` of `@hcm/shared` did not list it. The pipeline's fakes do not validate against the server's schemas, and `STITCH_METHODS` was not in the shared contract `pipeline/tests/contracts/enums.json`.
+    - Fix and pin: `overview` in both lists on both sides; `STITCH_METHODS` joins the contract (both contract tests); `publish_stitched` and the placed record refuse a method outside the lists before publishing; `S-P20-BAD-STITCH-METHOD-UNKNOWN`.
+    - **Every enum value the pipeline writes into a server document belongs to the shared contract; a new value goes into both languages in the same change.**
+
+570. **The linked views lost a quick zoom while their lazy chunk loaded.**
+    - Seen: 2026-11-12, `georef-linked.spec.ts`: two presses of `+` on the scan left the map where it was. The first pane move only started the fetch of `georef-extras`, and the second came before the chunk was in, so both were dropped.
+    - Fix and pin: `LinkedPanes` keeps the latest move made while the chunk loads and plays it once `ViewLink` exists (`packages/admin/test/georef/georef-linked.test.ts`, S-A16-HAPPY-GEOREF-LINKED). The spec's first assertion was also wrong: the whole scan shows more than the map at zoom 13, so a scan zoom can zoom the map out; it now checks one step as log2(1.5) map zoom.
+    - **An input that triggers a lazy load is kept and replayed, not dropped; assert relations the geometry guarantees, not a direction you expect.**
+
+571. **The linked views dropped a first move that started on the map.**
+    - Seen: 2026-11-12, review of the linked views: `ViewLink.map()` takes its first `move` only as the camera to compare with, and `LinkedPanes` replayed just the latest move once the chunk was in. A first action on the map of a fitted version (one jump and one `move` under reduced motion) therefore moved nothing; the tests and the spec always started on the scan. The e2e helper `georeferencerReady` also turned Link the views off only when it was already on, so a spec that opened a version without a fit and then added pairs (`suggestions.spec.ts`) ended up linked.
+    - Fix and pin: `GeorefMap` says what the new map shows (`shown` → `LinkedPanes.seen` → `ViewLink.seen`), and `LinkedPanes` hands the camera before the waiting move to the link with it; a re-made map only reseeds, it moves nothing. `georef-linked.test.ts` `happyPath_aFirstMoveOnTheMapMovesTheScanWhileTheChunkLoads`, `happyPath_twoMapMovesBeforeTheChunkIsInFollowTheLatest`. The e2e helper remembers a page opened unlinked and `addPair` turns the toggle off again once a fit turns it on.
+    - **A lazily loaded follower needs the state before the first input, not only the input; test the path from each side.**
+
+572. **A coloured series stitched on its overview came out grey.**
+    - Seen: 2026-11-12, harti.zip `Bucuresti 1895-1899` (coloured pieces, encoding `colour`): the georeferencer showed the stitched 1895-1899 map in grey.
+    - Cause: `overview_canvas` read every piece through `_read_grey` for ORB and pasted those same grey arrays on a one-band canvas, so the colour was gone before the canvas was written; `canvas.tif`, `stitched.tif`, the georeferencer's `scan.tif` and the warped output all inherited one band. The other assemblies (`compose_canvas`) already kept colour.
+    - Fix and pin: `CanvasOpts.colour` (from `SeriesJob.colour`) keeps fitting on grey and pastes each piece re-read in its own colour, one at a time, by the same matrix on a three-band canvas; grey and line-art series stay one band. S-P20-HAPPY-OVERVIEW-COLOUR / S-P20-BAD-OVERVIEW-GREY-STAYS-GREY.
+    - **Features want grey, pictures want the source's bands: keep the two reads apart instead of reusing the matcher's input as the picture.**
+
+573. **A pipeline test file grew past radon's maintainability grade A on its branch, and only the merge's `static` run saw it.**
+    - Seen: 2026-11-12, the merge of track/colourstitch: `pipeline-radon` failed `pipeline/tests/unit/test_placing_overview_find.py - B (13.83)` after the colour series' three tests and two helpers joined its 290 lines; the branch had run pytest, ruff and mypy but not the `static` stage.
+    - Fix and pin: the colour tests (S-P20-HAPPY-OVERVIEW-COLOUR, S-P20-BAD-OVERVIEW-GREY-STAYS-GREY) moved into their own `pipeline/tests/unit/test_placing_overview_colour.py`; the scenario notes follow.
+    - **Radon grades whole files, tests included: a branch that adds tests to a long test file runs `pipeline-radon` (or the whole `static` stage) before it is called done, and splits by behaviour rather than appending.**
+
+574. **A local series at its attempt cap could only be deleted.**
+    - Seen: 2026-11-12, the 1895 archive series of lesson 569: after the server fix was deployed its version page offered only Delete this version (`attempt: 3`, `apiError.internal`).
+    - Cause: `JOB_MAX_ATTEMPTS` capped every retry alike, though it exists to stop paid cloud work looping; a run on the owner's computer costs no cloud compute, and a server bug spent its three attempts.
+    - Fix and pin: `retryPastCap` and `retryCures` of `@hcm/shared`, used by `jobRetryable` and `imagery.retry`: the owner's Retry of a local run (`runOn: 'local'`, `localOnly`, `archive-series`) passes the cap, its `attemptsExhausted` included, and starts the count again; a cloud run and every publish keep their caps (DECISIONS-for-review.md §158; S-A12-HAPPY-LOCAL-RETRY-PAST-CAP, S-A12-BAD-CLOUD-RETRY-AT-CAP).
+    - **A limit that guards cost applies where the cost is: a manual retry that spends nothing must never be refused by it, and the client and the server read one shared predicate.**
+
+575. **Removing the starter kit's Romanian half left a test that counted two README examples.**
+    - Seen: 2026-11-12, the merge of track/englishdocs: `packages/shared/test/kit/template.test.ts` `happyPath_itsPhotoExamplesAreValidPhotosInBothLanguages` expected two JSON photo examples in `templates/starter-kit/README.md`; DECISIONS-for-review.md §157 left one. The branch ran only the functions tests it touched.
+    - Fix and pin: the test is `happyPath_itsPhotoExampleIsAValidPhoto` and expects the one English example, still parsed by `photoSchema`.
+    - **A docs-only change can break a test that reads the docs: run `vitest related` on the Markdown's readers too (`grep -rn` the file name in `**/test/`), not only on the code the branch changed.**
+
+576. **S-A44-HAPPY waited for a map source the georeferencer no longer has.**
+    - Seen: 2026-11-12, the merge of track/linkedviews (and already on fbf8af6a, before linked views): `suggestions.spec.ts` polled `overlayFeatureIds(page, 'georef-suggestions')` for the four suggestions and got `[]` at every window.
+    - Cause: DECISIONS-for-review.md §143 moved the map's pair and suggestion markers from Mapbox sources to one badge canvas over the map (`packages/admin/src/georef/marker-overlay.ts`), so no `hcm-source-georef-suggestions` exists; the spec still read the old source, which nothing asserted was gone.
+    - Fix and pin: `georefBadgesAt` (`e2e/admin/support/map.ts`) counts the places with paint on the `canvas[data-georef-badges]` near their projection; the spec reads the suggested places from the version, shows the map pane, zooms out with the map's own button until they are on screen (a badge off the view is not drawn) and expects four. S-A44-HAPPY's asserts say so.
+    - **When a rendering moves from a map source to a canvas, its e2e reads move with it: assert the pixels the user sees, and grep the specs for the old source id in the same change.**
+
+577. **A local city's join was refused by the cloud's daily cap.**
+    - Seen: 2026-11-12, Bucharest (worker choice `local`): `imagery.join` of free USGS frames answered `apiError.imagery.dailyLimit` after ten jobs that day, though none of them would run on Cloud Run.
+    - Cause: `limits.ts` counted every `usgs-import`, `geotiff-import` and `layer-join` except `localOnly` archive series; where a job would run was decided only at its first dispatch, after the cap.
+    - Fix and pin: jobs on the computer (`runOn: 'local'`) never count; a `local` city's new jobs are created `runOn: 'local'` and pass the cap; a move to the cloud asks the cap then and counts on that day (DECISIONS-for-review.md §159; S-A12-HAPPY-LOCAL-PAST-DAILY-CAP, S-A12-BAD-RUNON-CLOUD-PAST-CAP).
+    - **A cost cap counts only the work that costs: decide where a job runs when it is created, record it on the job, and check the cap again on every path that moves it to the paid place.**
+
+584. **"Import every direction from the old site" was already done: the 10 photos without one have no cone there either.**
     - Seen: 2026-11-12, the owner: *only one photo near Gara Obor has a direction in our app; on the old site they all have*.
     - Cause: none in the code. Compared with the old site's live `geojson/photos.json` (56 points, 47 cones), 47 of our 57 photos have a cone there and live Firestore has all 47 directions (0 differences), and the 9 photos at Gara Obor without one are pins without a cone on the old site as well; the viewer's year filter leaves one cone (Parc Ferdinand, 1930) at the 1930s. Local `master` is not the old live site (44 points): the live data is `bucurestiuldisparut/bucurestiuldisparut.github.io` (`docs/research/M5-interfaces.md` → *Directions from the old site*).
     - Fix and pin: none needed; S-A28-HAPPY-DIRECTIONS / S-A28-BAD-OWNER-DIRECTION-KEPT already pin the import, and `legacy-corrections.mjs` reproduces `corrections.json` unchanged.

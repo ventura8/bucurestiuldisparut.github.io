@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
+from hcm_pipeline.archive import model
 from hcm_pipeline.geo import to_lnglat, zoom_resolution
 from hcm_pipeline.georef.autogcp import MAX_SUGGESTIONS, GcpSuggestions
 from hcm_pipeline.georef.transforms import Gcp
@@ -47,6 +48,7 @@ class Placement:
     seam: float | None = None
 
     def as_record(self) -> dict[str, object]:
+        self._require_known_method()
         record: dict[str, object] = {
             "method": self.method,
             "encoding": self.encoding,
@@ -60,9 +62,17 @@ class Placement:
             "scaleDenominator": self.scale,
             "checkpointRmseM": self._rmse(),
             "residuals": self._residuals(),
-            "seamScore": None if self.seam is None else round(max(-1.0, min(1.0, self.seam)), 3),
+            "seamScore": self._seam_score(),
         }
         return record | {key: value for key, value in optional.items() if value is not None}
+
+    def _require_known_method(self) -> None:
+        """A method the server's `ARCHIVE_PLACE_METHODS` does not list fails here, before the write it would refuse."""
+        if self.method not in model.ARCHIVE_PLACE_METHODS:
+            raise ValueError(f"unknown place method {self.method!r}")
+
+    def _seam_score(self) -> float | None:
+        return None if self.seam is None else round(max(-1.0, min(1.0, self.seam)), 3)
 
     def _rmse(self) -> float | None:
         return None if self.checked.rmse_m is None else round(self.checked.rmse_m, 2)

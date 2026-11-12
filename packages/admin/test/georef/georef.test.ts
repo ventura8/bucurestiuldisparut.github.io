@@ -176,6 +176,118 @@ describe('the georeferencer: the keyboard and the panes', () => {
     });
 });
 
+describe('the georeferencer: the context menu', () => {
+    it('happyPath_addHereTurnsAddingOnAndPlacesEachEndExactlyThere @S-A16-HAPPY-GEOREF-MENU', async () => {
+        const { draw, map, maps } = mapWorld();
+        map.mounted = true;
+        const { georef } = setup({ maps });
+        georef.open([UPLOAD]);
+        georef.intents.attachMap(host());
+        await settle();
+
+        georef.intents.addAt({ pixel: { x: 120, y: 80 } });
+        const started = [georef.state.adding, georef.state.half, draw.mode];
+        georef.intents.addAt({ geo: { lat: 44.41, lng: 26.11 } });
+
+        expect(started).toEqual([true, { pixel: { x: 120, y: 80 } }, 'static']);
+        expect(georef.state.pairs.map((pair) => [pair.pixel, pair.geo])).toEqual([
+            [
+                { x: 120, y: 80 },
+                { lat: 44.41, lng: 26.11 },
+            ],
+        ]);
+        expect(georef.intents.mapTarget({ x: 400, y: 300 })).toEqual({ geo: { lat: 44.45, lng: 26.1 }, hit: null });
+    });
+
+    it('happyPath_aPickedUpPointDropsAtTheNextClickOnItsPaneAndUndoTakesItBack', async () => {
+        const { draw, map, maps } = mapWorld();
+        const { georef } = setup({ maps });
+        georef.open([RENDERED]);
+        georef.intents.attachMap(host());
+        await settle();
+        const [first, second] = georef.state.pairs;
+        const firstId = first?.id ?? '';
+
+        georef.intents.pickUp(firstId, 'scan');
+        const moving = [georef.state.moving, draw.mode];
+        georef.intents.pickScan({ x: 321, y: 123 });
+        const dropped = georef.state.pairs[0]?.pixel;
+        const afterDrop = [georef.state.moving, draw.mode];
+        georef.intents.pickUp(second?.id ?? '', 'map');
+        map.clickMap([26.12, 44.42]);
+        const placed = georef.state.pairs[1]?.geo;
+        georef.intents.undo();
+        georef.intents.undo();
+
+        expect(moving).toEqual([{ id: firstId, pane: 'scan' }, 'static']);
+        expect([dropped, afterDrop]).toEqual([{ x: 321, y: 123 }, [null, 'select']]);
+        expect(placed).toEqual({ lat: 44.42, lng: 26.12 });
+        expect(georef.state.pairs.slice(0, 2)).toEqual([first, second]);
+    });
+
+    it('badPath_escOrAClickOnTheOtherPanePutsAPickedUpPointBack', async () => {
+        const { map, maps } = mapWorld();
+        const { georef } = setup({ maps });
+        georef.open([RENDERED]);
+        georef.intents.attachMap(host());
+        await settle();
+        const pairs = georef.state.pairs;
+        const id = pairs[0]?.id ?? '';
+
+        georef.intents.pickUp(id, 'scan');
+        map.clickMap([26.12, 44.42]);
+        const afterOtherPane = georef.state.moving;
+        georef.intents.select(id);
+        georef.intents.pickUp(id, 'map');
+        georef.intents.cancelHalf();
+
+        expect([afterOtherPane, georef.state.moving, georef.state.selected]).toEqual([null, null, id]);
+        expect([georef.state.pairs, georef.state.canUndo]).toEqual([pairs, false]);
+    });
+});
+
+describe('the georeferencer: a picked-up point whose pair changes', () => {
+    it('badPath_aPickedUpPointWhosePairGoesAwayIsPutBack', async () => {
+        const { draw, map, maps } = mapWorld();
+        const { georef } = setup({ maps });
+        georef.open([RENDERED]);
+        georef.intents.attachMap(host());
+        await settle();
+        const id = georef.state.pairs[0]?.id ?? '';
+
+        georef.intents.pickUp(id, 'scan');
+        georef.intents.remove(id);
+        const afterRemove = [georef.state.moving, draw.mode];
+        georef.intents.undo();
+        const restored = georef.state.pairs;
+        georef.intents.addAt({ pixel: { x: 120, y: 80 } });
+        georef.intents.addAt({ geo: { lat: 44.41, lng: 26.11 } });
+        georef.intents.pickUp(georef.state.pairs.at(-1)?.id ?? '', 'map');
+        georef.intents.undo();
+        const afterUndo = georef.state.moving;
+        map.clickMap([26.12, 44.42]);
+
+        expect(afterRemove).toEqual([null, 'select']);
+        expect(afterUndo).toBeNull();
+        expect(georef.state.pairs).toEqual(restored);
+    });
+
+    it('badPath_turningAddPairsOffPutsAPickedUpPointBackSoBothPanesAgree', async () => {
+        const { draw, maps } = mapWorld();
+        const { georef } = setup({ maps });
+        georef.open([RENDERED]);
+        georef.intents.attachMap(host());
+        await settle();
+        const pairs = georef.state.pairs;
+
+        georef.intents.pickUp(pairs[0]?.id ?? '', 'map');
+        georef.intents.setAdding(false);
+
+        expect([georef.state.moving, georef.state.adding, draw.mode]).toEqual([null, false, 'select']);
+        expect(georef.state.pairs).toEqual(pairs);
+    });
+});
+
 describe('the georeferencer: the fit and saving', () => {
     it('happyPath_theTransformChangesTheFitAndDiscardReturnsToTheSavedOnes', () => {
         const { georef } = setup();
@@ -403,5 +515,38 @@ describe('the georeferencer: the version read', () => {
         georef.open([RENDERED]);
         georef.destroy();
         expect(georef.state.version).toBeNull();
+    });
+});
+
+describe('the georeferencer: an archive series (docs/LESSONS.md 565)', () => {
+    const SERIES = 'ar-socec1914-s-0123456789ab';
+
+    function seriesDoc(state: string) {
+        const doc = golden('version.needs-gcps.json');
+        const pairs = [pair('g1', 10, 10), pair('g2', 7000, 40), pair('g3', 3000, 5000), pair('g4', 6000, 5800)];
+        const source = { kind: 'archive', archiveId: 'ar-0123456789abcdef', seriesId: 's-0123456789ab', sheetCount: 4 };
+        const help = { reason: 'no-scale', note: 'The map states no scale.', at: doc['updatedAt'] };
+        return { ...doc, origin: 'archive', state, source, help, georef: { method: 'gcps', transform: 'affine', gcps: pairs } };
+    }
+
+    it('happyPath_aSeriesParkedWithTheOwnersPairsOpensEditableWithThem @S-A12-HAPPY-RETRY-STOPPED-PAIRS', async () => {
+        const { georef, store } = setup();
+        store.docs.set(VERSIONS(SERIES), seriesDoc('needs_gcps'));
+
+        georef.open([SERIES]);
+        await settle();
+
+        expect(georef.state.version).toMatchObject({ id: SERIES, state: 'needs_gcps', editable: true });
+        expect(georef.state.pairs.map((each) => each.id)).toEqual(['g1', 'g2', 'g3', 'g4']);
+    });
+
+    it('badPath_aRetriedSeriesStillPlacingItselfIsReadOnly @S-A12-BAD-RETRY-STOPPED-PLACING', async () => {
+        const { georef, store } = setup();
+        store.docs.set(VERSIONS(SERIES), seriesDoc('processing'));
+
+        georef.open([SERIES]);
+        await settle();
+
+        expect(georef.state.version).toMatchObject({ state: 'processing', editable: false });
     });
 });

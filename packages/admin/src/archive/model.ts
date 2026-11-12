@@ -75,9 +75,21 @@ function firstEdit(series: ArchiveSeries): SeriesEdit {
     return { include: series.action === 'import' && yearShown(year), title: series.title, year, confirmedBy: null };
 }
 
-/** The edits of a newly read report, keeping those the owner already made. */
+/** A series' edit: the owner's, else the first; never chosen again once its job exists (`imagery.archiveImport` refuses it). */
+function editOf(series: ArchiveSeries, kept: SeriesEdit | undefined, imported: boolean): SeriesEdit {
+    const edit = kept ?? firstEdit(series);
+    return imported ? { ...edit, include: false } : edit;
+}
+
+/**
+ * The edits of a newly read report, keeping those the owner already made. A series the record names is imported; one it no longer
+ * names (its version deleted to start it over) is the owner's to choose again.
+ */
 export function editsOf(archive: ArchiveDoc, kept: Readonly<Record<string, SeriesEdit>>): Record<string, SeriesEdit> {
-    return Object.fromEntries(archive.series.map((series) => [series.seriesId, kept[series.seriesId] ?? firstEdit(series)]));
+    const jobs = archive.jobs ?? {};
+    return Object.fromEntries(
+        archive.series.map((series) => [series.seriesId, editOf(series, kept[series.seriesId], series.seriesId in jobs)]),
+    );
 }
 
 /** The rights the owner confirmed: a permission from whom they typed, clear to publish. */

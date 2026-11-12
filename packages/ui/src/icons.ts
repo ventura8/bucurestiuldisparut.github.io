@@ -43,6 +43,7 @@ export const UI_ICONS = [
     'crop_square',
     'dark_mode',
     'delete',
+    'delete_forever',
     'deselect',
     'done_all',
     'download',

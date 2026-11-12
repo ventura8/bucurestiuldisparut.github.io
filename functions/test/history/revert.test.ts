@@ -214,3 +214,32 @@ describe('history.revert', () => {
         ]);
     });
 });
+
+describe('history.revert: a place keeps its years', () => {
+    it('badPath_aVersionWithoutAYearIsNotRestoredOverADatedPlace @S-A32-BAD-PLACE-YEAR', async () => {
+        const world = emulators.newWorld();
+        await seedAdmin(world);
+        await edit(world, POI_PATH, poi('Unu'), { id: 'e1', at: '2026-10-12T07:00:00.000Z' });
+        const dated = poi('Doi', { yearStart: 1890, updatedAt: T2 });
+        const update = await edit(world, POI_PATH, dated, { id: 'e2', at: '2026-10-12T07:30:00.000Z' });
+
+        const failure = await failureOf(revert(world, { cityId: CITY, entity: 'poi', entityId: 'p1', entryId: update }));
+
+        expect(failure).toMatchObject({ code: 'failed-precondition', details: { code: 'apiError.history.placeYear' } });
+        expectDocument(await world.documents.get(POI_PATH, poiDocSchema), dated);
+    });
+
+    it('happyPath_anUndatedPlaceAndAnUndoneDeleteStillRestore @S-A32-HAPPY-PLACE-YEAR', async () => {
+        const world = emulators.newWorld();
+        await seedAdmin(world);
+        await edit(world, POI_PATH, poi('Unu'), { id: 'e1', at: '2026-10-12T07:00:00.000Z' });
+        const renamed = await edit(world, POI_PATH, poi('Doi', { updatedAt: T2 }), { id: 'e2', at: '2026-10-12T07:30:00.000Z' });
+        await revert(world, { cityId: CITY, entity: 'poi', entityId: 'p1', entryId: renamed });
+        const deleted = await edit(world, POI_PATH, undefined, { id: 'e4', at: '2026-10-12T08:40:00.000Z' });
+
+        const response = await revert(world, { cityId: CITY, entity: 'poi', entityId: 'p1', entryId: deleted });
+
+        expect(response.restoredFields).toContain('title');
+        expect(await world.documents.get(POI_PATH, poiDocSchema)).toMatchObject({ title: { ro: 'Unu' } });
+    });
+});

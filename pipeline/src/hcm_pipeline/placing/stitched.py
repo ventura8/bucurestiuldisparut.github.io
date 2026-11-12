@@ -16,6 +16,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Final
 
+from hcm_pipeline.archive import model
 from hcm_pipeline.documents import ReferenceInfo
 from hcm_pipeline.geo import Grid
 from hcm_pipeline.images import resize, write_jpeg, write_png
@@ -56,7 +57,7 @@ class JoinQuality:
 
 @dataclass(frozen=True)
 class Stitched:
-    """A series' parts joined on one canvas: how (`grid`, `atlas`, `pieces` or `single`), how many parts and which were left out."""
+    """A series' parts joined on one canvas: how (`model.STITCH_METHODS`), how many parts and which were left out."""
 
     canvas: UInt8Array
     method: str
@@ -83,7 +84,13 @@ def _left_out(found: Sequence[tuple[str, str]]) -> list[dict[str, str]]:
 
 
 def publish_stitched(ctx: JobContext, stitched: Stitched) -> dict[str, object]:
-    """The canvas kept with the job's files, its preview with the version's; the record `help.stitched` keeps."""
+    """The canvas kept with the job's files, its preview with the version's; the record `help.stitched` keeps.
+
+    A method the server's schema does not know is refused here, before any file is published: the worker's write would be refused
+    after minutes of work (`overview`, harti.zip 1895, lesson 569).
+    """
+    if stitched.method not in model.STITCH_METHODS:
+        raise ValueError(f"unknown stitch method {stitched.method!r}")
     canvas = assemble.write_canvas(ctx.local(STITCHED), stitched.canvas)
     ctx.publish(canvas, ctx.work_file(STITCHED), "image/tiff")
     small, scale = _preview(stitched.canvas)
