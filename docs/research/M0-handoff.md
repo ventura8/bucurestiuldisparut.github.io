@@ -177,7 +177,8 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "
 - Lit: **no decorators** (ESLint bans the `Decorator` node). Declare reactive properties with
   `static override readonly properties = {...}`, `declare name: string;` fields and defaults in the
   constructor (required with `useDefineForClassFields: true`). Register with an idempotent
-  `define…()` function. Custom element prefix `hcm-`. `hcm-hello` is the scaffolding sample.
+  `define…()` function. Custom element prefix `hcm-`. (`hcm-hello`, the scaffolding sample, was removed
+  with its placeholder catalogue key; `hcm-chip` is a small example.)
 - Logging: product TS logs only through `createLogger(scope, { sink, minLevel })` from
   `@hcm/shared` (`no-console` everywhere except `packages/shared/src/log.ts`). Data keys that look
   like secrets (`token`, `secret`, `password`, `authorization`, `signature`, `apiKey`) are redacted.
@@ -376,7 +377,7 @@ lines (one 95% branch file); `scripts/ci/check_rules_coverage.py` is at 100%.
   short-circuited operand, `{}` in the report, does not count), when an `allow` condition never
   allowed or never denied (a constant such as `if false` is exempt), or when the report was made
   from other rules. Only the JSON is saved, streamed to disk (its HTML view doubled the emulator's
-  work: `DECISIONS-for-review.md` §171g). The Storage emulator has no coverage report:
+  work: `DECISIONS-for-review.md` §178g). The Storage emulator has no coverage report:
   `storage.test.ts` covers each condition explicitly.
 - The emulator's report format (firebase-tools 15.33.0): `{rules: {files: [{name, content}]},
   report: [node]}`, node = `{sourcePosition: {line, column, currentOffset, endOffset (inclusive,
@@ -922,7 +923,9 @@ the rest: `DECISIONS-for-review.md` §21, change requests CR-M2-36 to CR-M2-38 (
 - **Mapbox logo and attribution in every state**: while a modal sheet, the lightbox or About covers the map, Mapbox's
   own bottom controls are hidden and `<hcm-map-attribution>` shows the logo and the attribution read from Mapbox's
   control (a `MutationObserver`, `attribution.ts`) in a legal bar under the modal layer, or at the foot of About. The
-  viewer's layout moved into an inner grid `.viewer`: a page may set the element's own `display`.
+  viewer's layout moved into an inner grid `.viewer`: a page may set the element's own `display`. (Replaced on
+  2026-11-12 after the Pixel 9 Pro review, P3: the surfaces draw above Mapbox's controls, which move out from under a
+  modal sheet, `legal-lift.ts`; the bar and `<hcm-map-attribution>` are gone; DECISIONS-for-review.md §174.)
 - **Privacy**: no Performance Monitoring in the public viewer (the Firebase chunk is app and analytics only); GA4 gets
   the page without its hash on its configuration and on every event; a withdrawal expires `_ga` and `_ga_*`.
 - **CR-M2-4** applied: the error reporter uses `redactText` and `ErrorReport` of `@hcm/shared`.

@@ -10,7 +10,7 @@ with `ctx.report_bytes` (finding 55 of 2026-11-01: a long download looked stuck)
 
 import threading
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Final, Protocol
 
@@ -21,6 +21,7 @@ from hcm_pipeline.calibrate.ports import NullProposalMatcher, ProposalMatcher
 from hcm_pipeline.config import Config
 from hcm_pipeline.contract import Errors
 from hcm_pipeline.documents import Version
+from hcm_pipeline.governor.actuate import GATE
 from hcm_pipeline.joblog import JobLog
 from hcm_pipeline.model import Job, Record, Timestamp, stamp
 from hcm_pipeline.objects import ObjectInfo, ObjectStore
@@ -130,8 +131,10 @@ class RunFlags:
     between two bytecodes, also while that thread holds `_lock` (`progress_within` from GDAL's callback), and taking
     it there would wait for itself forever (docs/LESSONS.md 342)."""
 
-    def __init__(self, asked_to_stop: Callable[[], bool] = lambda: False) -> None:
+    def __init__(self, asked_to_stop: Callable[[], bool] = lambda: False, hold: Callable[[Callable[[], bool]], float] = GATE.hold) -> None:
         self._lock = threading.Lock()
+        # The governor's gate (docs/research/M26-governor.md §4): while this computer has no room, a checkpoint waits here.
+        self._hold = hold
         self._stop: type[RunStoppedError] | None = None
         self._interrupted = False
         # The local worker's stop (M7): a signal it took before the run's own handler was in place counts too.
@@ -161,7 +164,15 @@ class RunFlags:
             stop = self._stop
         return InterruptedRunError if stop is None and (self._interrupted or self._asked_to_stop()) else stop
 
+    def _held(self) -> None:
+        """Waits at the governor's gate while it is closed; the time waited is added to the step's time limit."""
+        waited = self._hold(lambda: self.stopping is not None)
+        deadline = self.deadline
+        if waited > 0 and deadline is not None:
+            self.deadline = replace(deadline, ends_at=deadline.ends_at + waited)
+
     def check(self) -> None:
+        self._held()
         stop = self.stopping
         if stop is not None:
             raise stop(f"the run stops: {stop.__name__}")
@@ -172,6 +183,7 @@ class RunFlags:
     def gdal_progress(self, complete: float, _message: str, _data: object) -> int:
         """GDAL's progress callback: 0 makes GDAL stop (and raise) when the run must stop."""
         self.progress_within(complete)
+        self._held()
         return GDAL_ABORT if self.stopping is not None else GDAL_CONTINUE
 
     def progress_within(self, fraction: float) -> None:

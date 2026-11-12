@@ -48,6 +48,8 @@ export const workerHelloRequestSchema = z.strictObject({
 });
 export const workerHelloResponseSchema = z.strictObject({
     pollSeconds: z.number().int().min(1),
+    /** The longest wait between two claims of a worker idle for a while; a worker older than it asks every `pollSeconds`. */
+    idlePollSeconds: z.number().int().min(1).optional(),
     heartbeatSeconds: z.number().int().min(1),
     /** The installed pipeline image (`setup/status.install.pipeline.image`), when one is recorded. */
     image: digestSchema.optional(),

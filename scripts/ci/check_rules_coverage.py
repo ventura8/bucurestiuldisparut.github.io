@@ -9,7 +9,7 @@ the measure (docs/research/design-review-testability.md §3.5). Two subcommands:
   streams it into reports/rules/firestore-coverage.json. The emulator builds the answer in its heap from
   every evaluation of the run (about 290 MB of JSON), so only the JSON is asked for: the HTML view of the
   same report doubled that work and, asked at once, ran the emulator out of memory
-  (docs/research/DECISIONS-for-review.md §171g). While the emulators run, `curl` gives it by hand.
+  (docs/research/DECISIONS-for-review.md §178g). While the emulators run, `curl` gives it by hand.
 * `check` (the `rules-coverage` gate) reads the saved JSON report and fails when
   1. an expression was never evaluated (an operand skipped by `&&`/`||` short-circuiting does not
      count as evaluated), or

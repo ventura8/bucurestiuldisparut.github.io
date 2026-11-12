@@ -1,7 +1,7 @@
 import type { Locale } from '@hcm/shared';
 import { expect, type Page } from '@playwright/test';
 
-import { chooseMenuItem, dismissToast, menuButton, t, viewer } from '../support/viewer.js';
+import { chooseMenuItem, dismissToast, menuButton, openViewer, t, viewer } from '../support/viewer.js';
 
 /**
  * The states of the owner's request of 2026-11-08 in the tour's inventory: Settings (Setări), the menu's dialog that holds
@@ -21,7 +21,36 @@ function hasDockedLayers(page: Page): boolean {
     return size !== null && size.width >= 1600 && size.height >= 480;
 }
 
+/** Picks in Settings the theme the system is not in (light under a dark system), then closes Settings. */
+async function chooseOtherTheme(page: Page, lang: Locale): Promise<void> {
+    const dark = await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches);
+    await chooseMenuItem(page, lang, t(lang, 'settings.title'));
+    await viewer(page)
+        .locator('hcm-about-dialog')
+        .getByRole('radio', { name: t(lang, dark ? 'theme.light' : 'theme.dark') })
+        .click();
+    await page.keyboard.press('Escape');
+}
+
+/** Resizes the window, waits for the viewer's compact-height layout and opens the FAB menu. */
+async function openMenuAt(page: Page, lang: Locale, size: { readonly width: number; readonly height: number }): Promise<void> {
+    await page.setViewportSize(size);
+    await expect(viewer(page).locator('.frame[data-compact-height]')).toHaveCount(1);
+    await menuButton(page, lang).click();
+    await expect(page.getByRole('menu', { name: t(lang, 'action.menu') })).toBeVisible();
+}
+
 export const SETTINGS_STATES = {
+    'menu-short-landscape': {
+        title: 'The FAB menu open at 884 × 322 (the Pixel 9 Pro held landscape): every item on screen, in rows above the FAB',
+        enter: ({ page, lang }: SettingsTour) => openMenuAt(page, lang, { width: 884, height: 322 }),
+        escape: ({ lang }: SettingsTour) => ({ opener: t(lang, 'action.menu') }),
+    },
+    'menu-shortest-landscape': {
+        title: 'The FAB menu open at 568 × 270 (the smallest landscape phone with its bars): the menu scrolls inside the window',
+        enter: ({ page, lang }: SettingsTour) => openMenuAt(page, lang, { width: 568, height: 270 }),
+        escape: ({ lang }: SettingsTour) => ({ opener: t(lang, 'action.menu') }),
+    },
     settings: {
         title: 'Settings from the menu: the language and the theme (full screen on a phone)',
         enter: async ({ page, lang }: SettingsTour) => {
@@ -31,6 +60,15 @@ export const SETTINGS_STATES = {
             const dialog = viewer(page).locator('hcm-about-dialog');
             await expect(page.getByRole('dialog', { name: t(lang, 'settings.title') })).toBeVisible();
             await expect(dialog.getByRole('radiogroup', { name: t(lang, 'theme.label') })).toBeVisible();
+        },
+        escape: ({ lang }: SettingsTour) => ({ opener: t(lang, 'action.menu') }),
+    },
+    'other-theme-menu': {
+        title: "The other theme chosen in Settings, then the menu open: light under a dark system, where Chrome's dark theme for sites repainted it",
+        enter: async ({ page, lang }: SettingsTour) => {
+            await chooseOtherTheme(page, lang);
+            await menuButton(page, lang).click();
+            await expect(page.getByRole('menu', { name: t(lang, 'action.menu') })).toBeVisible();
         },
         escape: ({ lang }: SettingsTour) => ({ opener: t(lang, 'action.menu') }),
     },
@@ -64,3 +102,23 @@ export const SETTINGS_STATES = {
         exists: hasDockedLayers,
     },
 };
+
+/**
+ * The other theme chosen in Settings with the menu open (the light theme under a dark system: the dark tours run with
+ * Chrome's dark theme for sites, which repainted it, P2 of the Pixel 9 Pro review), and the FAB menu of a short landscape
+ * phone (P1: at 884 × 322 with Chrome's bars its seven items lay in one row and ran off the screen), the window resized
+ * to the Pixel 9 Pro held landscape, then to the smallest landscape phone with its bars, in every tour project.
+ */
+export const THEME_MENU_JOURNEY = {
+    title: 'The other theme chosen in Settings, the menu open',
+    id: 'theme-menu',
+    boot: ({ page, lang }: SettingsTour) => openViewer(page, { lang }),
+    states: ['other-theme-menu'],
+} as const;
+
+export const SHORT_LANDSCAPE_JOURNEY = {
+    title: 'The FAB menu of a short landscape phone',
+    id: 'short-landscape',
+    boot: ({ page, lang }: SettingsTour) => openViewer(page, { lang, hash: '15/44.42700/26.08530&layers=e2e-1966' }),
+    states: ['menu-short-landscape', 'menu-shortest-landscape'],
+} as const;

@@ -34,6 +34,9 @@ const NOTES = {
 } as const;
 
 /** States that keep the map's box on screen (the others say why there is no map). */
+/** The keys that remove the page's chosen point (`hcm-map-delete`). */
+const REMOVE_KEYS: ReadonlySet<string> = new Set(['Delete', 'Backspace']);
+
 const SHOWN: ReadonlySet<AdminMapStatus> = new Set<AdminMapStatus>(['none', 'loading', 'ready']);
 
 export class HcmAdminMap extends LitElement {
@@ -246,6 +249,10 @@ export class HcmAdminMap extends LitElement {
         };
         const step = steps[event.key];
         if (step === undefined) {
+            // Delete or Backspace: the page's chosen point goes (the georeferencer's selected pair); a page without one ignores it.
+            if (REMOVE_KEYS.has(event.key)) {
+                emit(this, 'hcm-map-delete', {});
+            }
             return;
         }
         event.preventDefault();

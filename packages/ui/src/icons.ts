@@ -115,10 +115,12 @@ export const UI_ICONS = [
     'zoom_out',
 ] as const;
 
-/** Every bundled icon, sorted and without duplicates: the kit's own and the POI category icons. */
-export const ICONS: readonly string[] = [...new Set<string>([...UI_ICONS, ...POI_ICONS])].toSorted((a, b) => a.localeCompare(b, 'en'));
-
-const BUNDLED = new Set(ICONS);
+/**
+ * The bundled subset: the kit's own icons and the POI category icons. The sorted list of them, which only the font tools
+ * read, is `ICONS` of `icons-sorted.ts`: a module of its own, so a bundle that only asks `isBundledIcon` (the viewer's)
+ * carries no sort.
+ */
+const BUNDLED = new Set<string>([...UI_ICONS, ...POI_ICONS]);
 
 /** True when `name` is in the bundled subset (anything else would render as plain letters). */
 export function isBundledIcon(name: string): boolean {

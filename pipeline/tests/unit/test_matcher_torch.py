@@ -13,7 +13,7 @@ from typing import Any, cast
 
 import numpy
 import pytest
-from hcm_pipeline.matcher.box import Request, read_status, write_request
+from hcm_pipeline.matcher.box import ANSWER_SUFFIX, MatcherBudget, Request, read_answer, read_status, write_request
 
 GB = 1024**3
 
@@ -56,6 +56,7 @@ class FakeTorch:
     memory: int = 10 * GB
     loads: list[dict[str, object]] = field(default_factory=list)
     threads: list[int] = field(default_factory=list)
+    fractions: list[float] = field(default_factory=list)
     emptied: int = 0
 
     def module(self) -> ModuleType:
@@ -66,6 +67,7 @@ class FakeTorch:
                 get_device_properties=lambda _index: SimpleNamespace(total_memory=self.memory),
                 get_device_name=lambda _index: "NVIDIA RTX 3080",
                 empty_cache=self._empty,
+                set_per_process_memory_fraction=lambda fraction, _index: self.fractions.append(fraction),
                 OutOfMemoryError=FakeOutOfMemoryError,
             ),
             "hub": SimpleNamespace(load_state_dict_from_url=self._no_network),
@@ -117,7 +119,7 @@ def lightglue_module(torch: ModuleType, fail: BaseException | None = None) -> Mo
     module = ModuleType("lightglue")
 
     def aliked(**options: object) -> Network:
-        assert options["max_num_keypoints"] == 2048
+        assert options["max_num_keypoints"] in {1024, 2048}
         return Network(torch, "https://example.invalid/models/aliked-n16.pth", None)
 
     def lightglue(features: str) -> Network:
@@ -166,10 +168,10 @@ def world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[World]:
     sys.modules.pop("hcm_pipeline.matcher.child", None)
 
 
-def request_in(box: Path) -> Path:
+def request_in(box: Path, budget: MatcherBudget | None = None) -> Path:
     grid = numpy.eye(3)
     film = numpy.zeros((64, 64), numpy.uint8)
-    return write_request(box, "r001", Request(film, numpy.zeros((32, 32), numpy.uint8), grid, grid, 0.7))
+    return write_request(box, "r001", Request(film, numpy.zeros((32, 32), numpy.uint8), grid, grid, 0.7, budget or MatcherBudget()))
 
 
 def test_happy_path_the_graphics_card_comes_first(world: World) -> None:
@@ -197,15 +199,18 @@ def test_bad_path_no_graphics_card_exits_77_and_small_one_76_so_a_silent_process
     assert read_status(world.box) is None
 
 
-def test_happy_path_the_processor_runs_only_when_told_with_half_the_threads_and_says_why(
+def test_happy_path_the_processor_runs_only_when_told_on_the_cores_but_one_niced_and_says_why(
     world: World, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """Scenarios: S-P07-HAPPY-CPU-FALLBACK"""
+    """Scenarios: S-P07-HAPPY-CPU-FALLBACK, S-P31-HAPPY-WORKER-POLITE"""
     monkeypatch.setattr(world.backend.os, "cpu_count", lambda: 8)
+    niced: list[int] = []
+    monkeypatch.setattr(world.backend.os, "nice", niced.append)
 
     assert world.child.main(["probe", "cpu", "no-gpu"], {"HCM_AI_ROOT": str(world.root)}) == 0
 
-    assert world.fake.threads == [4]
+    assert world.fake.threads == [7]
+    assert niced == [10]
     status = read_status(world.box)
     assert status is not None
     assert (status.device, status.fallback) == ("cpu", "no-gpu")
@@ -306,3 +311,32 @@ def test_happy_path_the_weights_pins_are_read_from_pins_json(tmp_path: Path, mon
     assert set(pins) == {"aliked-n16.pth", "aliked_lightglue.pth"}
     sys.modules.pop("hcm_pipeline.matcher.torch_backend", None)
     sys.modules.pop("hcm_pipeline.matcher.child", None)
+
+
+def test_happy_path_the_governors_budget_caps_the_card_and_its_keypoints(world: World) -> None:
+    """The governor's budget (docs/research/M26-governor.md §4).
+
+    Scenarios: S-P07-HAPPY-GPU, S-A141-HAPPY
+    """
+    path = request_in(world.box, MatcherBudget(0, 1024, 0.4))
+
+    assert world.child.main(["run", str(path), "gpu", ""], {"HCM_AI_ROOT": str(world.root)}) == 0
+    assert world.fake.fractions == [0.4]
+    assert read_answer(world.box / f"r001{ANSWER_SUFFIX}").device == "gpu"
+
+
+def test_bad_path_a_card_others_hold_sends_the_request_to_the_processor_and_says_so(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The governor's yield (docs/research/M26-governor.md §5): on the processor, the budget's threads, niced as any processor run.
+
+    Scenarios: S-P07-HAPPY-CPU-FALLBACK, S-A141-BAD-NO-GPU
+    """
+    niced: list[int] = []
+    monkeypatch.setattr(world.backend.os, "nice", niced.append)
+    path = request_in(world.box, MatcherBudget(3, 1024, 0.0, yield_gpu=True))
+
+    assert world.child.main(["run", str(path), "gpu", ""], {"HCM_AI_ROOT": str(world.root)}) == 0
+    answer = read_answer(world.box / f"r001{ANSWER_SUFFIX}")
+    assert (answer.device, answer.fallback) == ("cpu", "gpu-busy")
+    assert world.fake.threads == [3]
+    assert niced == [10]
+    assert world.fake.fractions == []

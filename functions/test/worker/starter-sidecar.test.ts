@@ -132,7 +132,8 @@ describe('the local AI in the starter (docs/research/M10-local-ai.md)', () => {
         expect(output).toContain('local AI: graphics card through --gpus all');
         expect(calls).toContain(`pull ${AI_IMAGE}`);
         expect(sidecar).toContain('--name hcm-matcher --gpus all --network none --cap-drop ALL --security-opt no-new-privileges');
-        expect(sidecar).toContain('--memory 6g --memory-swap 6g --shm-size 1g --pids-limit 512');
+        // 4 GB (it held 2.4 GB in M10) and a light weight against the worker and the owner's programs (reports/resource-audit.md).
+        expect(sidecar).toContain('--memory 4g --memory-swap 4g --cpu-shares 128 --shm-size 1g --pids-limit 512');
         expect(sidecar).toContain('-u 10001:10001');
         expect(sidecar).toContain('-e HCM_AI_DEVICE=gpu');
         expect(sidecar).toContain('-v hcm-ai-files:/ai/files:ro -v hcm-ai-box:/ai/box');
@@ -240,7 +241,7 @@ describe('the local AI in the starter (docs/research/M10-local-ai.md)', () => {
             text.indexOf("Test-AiGpu $Image @('--device', 'nvidia.com/gpu=all')"),
         );
         expect(text.indexOf("'nvidia.com/gpu=all')))")).toBeLessThan(text.indexOf("Start-Sidecar $Image 'cpu' 'no-gpu'"));
-        expect(text).toContain("'--memory', '6g', '--memory-swap', '6g', '--shm-size', '1g', '--pids-limit', '512'");
+        expect(text).toContain("'--memory', '4g', '--memory-swap', '4g', '--cpu-shares', '128', '--shm-size', '1g', '--pids-limit', '512'");
         expect(text).toContain("$AiImagePattern = '^pytorch/pytorch(:[A-Za-z0-9._-]+)?@sha256:[0-9a-f]{64}$'");
     });
 

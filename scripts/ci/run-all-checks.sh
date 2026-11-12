@@ -15,7 +15,7 @@
 # once; unset is what the CPUs and the free memory allow, 1 runs them one at a time).
 # HCM_MEM_GB=<n> caps the container's memory (and swap) at n GB; unset, it has no cap. scripts/ci/parallel.py reads the cap
 # (cgroup `memory.max`), so a capped run picks fewer workers instead of running out (measured peaks of each stage:
-# docs/research/DECISIONS-for-review.md §171).
+# docs/research/DECISIONS-for-review.md §178).
 set -euo pipefail
 
 main() {

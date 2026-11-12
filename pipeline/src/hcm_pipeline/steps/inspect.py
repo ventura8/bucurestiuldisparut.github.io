@@ -14,11 +14,10 @@ import numpy
 
 from hcm_pipeline.contract import Errors
 from hcm_pipeline.documents import GeorefInfo
-from hcm_pipeline.images import UInt8Array
 from hcm_pipeline.jobs import Done, JobContext, StepResult
 from hcm_pipeline.model import GeotiffImportParams
 from hcm_pipeline.raster import gdal
-from hcm_pipeline.rasters import GTIFF_OPTIONS, RasterInfo, raster_info, read_band, to_uint8
+from hcm_pipeline.rasters import GTIFF_OPTIONS, RasterInfo, raster_info, read_band
 from hcm_pipeline.steps.common import gdal_step, publish_scan
 
 COLOUR_BANDS: Final = 3
@@ -42,12 +41,6 @@ def _scales(path: Path, info: RasterInfo, bands: list[int]) -> list[list[float]]
     return None if info.data_type == gdal.GDT_Byte else [_stretch(path, band, size) for band in bands]
 
 
-def scan_pixels(path: Path) -> UInt8Array:
-    """The scan's pixels for its preview: grey, or RGB for a colour scan."""
-    bands = [to_uint8(read_band(path, band)) for band in scan_bands(raster_info(path))]
-    return bands[0] if len(bands) == 1 else numpy.dstack(bands)
-
-
 def write_scan(source: Path, target: Path) -> Path:
     """The upload as an 8-bit scan, its georeference (geotransform or GCPs) kept."""
     info = raster_info(source)
@@ -67,8 +60,7 @@ class InspectStep:
         unreadable = Errors.UNREADABLE_RASTER
         info = gdal_step(ctx, lambda: raster_info(upload), "read the upload", unreadable)
         scan_path = gdal_step(ctx, lambda: write_scan(upload, ctx.local("scan.tif")), "convert the upload to 8 bits", unreadable)
-        pixels = gdal_step(ctx, lambda: scan_pixels(scan_path), "read the scan", unreadable)
-        scan = publish_scan(ctx, scan_path, pixels)
+        scan = gdal_step(ctx, lambda: publish_scan(ctx, scan_path), "read the scan", unreadable)
         fields: dict[str, object] = {"scan": scan.as_record()}
         if info.georeferenced:
             fields["georef"] = EMBEDDED.as_record()

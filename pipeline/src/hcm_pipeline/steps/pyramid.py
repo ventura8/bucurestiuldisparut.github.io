@@ -8,6 +8,7 @@ from its `warped.tif`; a `layer-tiles` job, for a version rendered before this s
 (`tiles/rim.py`), so a frame's edge shows the basemap rather than an opaque black band.
 """
 
+import os
 import shutil
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -20,6 +21,7 @@ from hcm_pipeline.jobs import Done, JobContext, StepFailedError, StepResult
 from hcm_pipeline.model import DocumentError, bounds_of, number_of
 from hcm_pipeline.objects import sha256_of
 from hcm_pipeline.raster import gdal
+from hcm_pipeline.rasters import machine_memory_mb
 from hcm_pipeline.steps.common import gdal_step
 from hcm_pipeline.tiles.encoding import ENCODINGS, TileEncoding, encoding_of, paper_opaque, paper_transparent
 from hcm_pipeline.tiles.pack import ArchiveInfo, Packed, PackError, pack
@@ -35,7 +37,10 @@ RGB_BANDS: Final = 3
 RGBA_INTERPRETATION: Final = "red,green,blue,alpha"
 RGB_INTERPRETATION: Final = "red,green,blue"
 THREADS_OPTION: Final = "GDAL_NUM_THREADS"
-ALL_CPUS: Final = "ALL_CPUS"
+# `gdal raster tile` starts a process a thread, each holding about 170 MB (reports/resource-audit.md: 16 of them, 2.7 GB): they
+# are as many as `GDAL_NUM_THREADS` says, at most the cores but one, and at most what a quarter of the memory holds at this much each.
+TILE_PROCESS_MB: Final = 256
+TILE_MEMORY_SHARE: Final = 1 / 4
 
 
 @dataclass(frozen=True)
@@ -97,6 +102,15 @@ def rgba_view(source: Path, target: Path, film: bool = True) -> Path:
     return target
 
 
+def tile_processes(configured: str | None, cores: int | None, memory_mb: int | None) -> int:
+    """How many processes cut the tiles: `configured` (`GDAL_NUM_THREADS`, a number; anything else: all there may be), the cores but
+    one, and the memory's share, whichever is least; at least one."""
+    spare = max(1, (cores or 1) - 1)
+    wanted = int(configured) if configured is not None and configured.isdigit() else spare
+    held = spare if memory_mb is None else int(memory_mb * TILE_MEMORY_SHARE) // TILE_PROCESS_MB
+    return max(1, min(wanted, spare, held))
+
+
 def write_tree(view: Path, tree: Path, rendered: Rendered, ctx: JobContext, encoding: TileEncoding = ENCODINGS["grey"]) -> Path:
     """The tile pyramid: blank tiles skipped; line art uses nearest at every zoom (M20; overviews too — averaged RGBA washed ink)."""
     arguments: dict[str, object] = {
@@ -111,7 +125,7 @@ def write_tree(view: Path, tree: Path, rendered: Rendered, ctx: JobContext, enco
         "resampling": encoding.resampling,
         "overview-resampling": encoding.overview_resampling,
         "webviewer": "none",
-        "num-threads": gdal.GetConfigOption(THREADS_OPTION) or ALL_CPUS,
+        "num-threads": tile_processes(gdal.GetConfigOption(THREADS_OPTION), os.cpu_count(), machine_memory_mb()),
     }
     gdal.Run(["raster", "tile"], arguments=arguments, progress=ctx.flags.gdal_progress)
     return tree

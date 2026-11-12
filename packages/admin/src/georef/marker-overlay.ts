@@ -1,11 +1,13 @@
 /**
  * Canvas badges on the georeferencer's map, painted with the same helpers as the scan (`@hcm/ui/admin/georef/marker-badge`).
- * Clicks pass through to Terra Draw / the map; the canvas redraws on every camera move.
+ * Clicks pass through to Terra Draw / the map (the ghost's ring too: a click there is the pending pair's place); the canvas redraws on
+ * every camera move.
  */
 import type { Gcp } from '@hcm/shared';
 import {
     badgePaletteOf,
     paintBadgeCross,
+    paintGhostBadge,
     paintPairBadge,
     paintSuggestionBadge,
     type BadgeMarker,
@@ -24,6 +26,8 @@ export interface MarkerOverlayScene {
     readonly suggestions: readonly SuggestionRow[];
     readonly selectedSuggestion: string | null;
     readonly half: GeoPosition | null;
+    /** The pending pair's expected place (`./ghost.ts`), a dashed ring the owner may click onto. */
+    readonly ghost: GeoPosition | null;
     readonly crosshair: boolean;
     readonly tones: Readonly<Record<string, BadgeTone>>;
 }
@@ -66,18 +70,26 @@ function paintMarkers(context: CanvasRenderingContext2D, port: ProjectableMapPor
     }
 }
 
+/** Paints at `geo`'s point of the map, when there is one and it is on the map. */
+function paintAt(port: ProjectableMapPort, geo: GeoPosition | null, paint: (at: { readonly x: number; readonly y: number }) => void): void {
+    const at = geo === null ? null : projected(port, geo);
+    if (at !== null) {
+        paint(at);
+    }
+}
+
 function paintExtras(
     context: CanvasRenderingContext2D,
     port: ProjectableMapPort,
     scene: MarkerOverlayScene,
     look: { readonly palette: BadgePalette; readonly canvas: HTMLCanvasElement },
 ): void {
-    if (scene.half !== null) {
-        const at = projected(port, scene.half);
-        if (at !== null) {
-            paintBadgeCross(context, at, look.palette.marker);
-        }
-    }
+    paintAt(port, scene.ghost, (at) => {
+        paintGhostBadge(context, at, look.palette);
+    });
+    paintAt(port, scene.half, (at) => {
+        paintBadgeCross(context, at, look.palette.marker);
+    });
     if (scene.crosshair) {
         paintBadgeCross(context, { x: look.canvas.clientWidth / 2, y: look.canvas.clientHeight / 2 }, look.palette.outline);
     }
@@ -132,6 +144,7 @@ export class GeorefMarkerOverlay {
         suggestions: [],
         selectedSuggestion: null,
         half: null,
+        ghost: null,
         crosshair: false,
         tones: {},
     };

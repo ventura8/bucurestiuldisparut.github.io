@@ -139,10 +139,11 @@ export function guide(context: GeorefContext): TemplateResult {
     </details>`;
 }
 
-/** The hint under the tools: the half pair's next click, or how to add a pair. */
+/** The hint under the tools: the half pair's next click (and the ghost's dashed ring, when there is one), or how to add a pair. */
 function halfText(locale: Locale, view: GeorefViewState): string {
     if (view.half !== null) {
-        return contentText(locale, 'pixel' in view.half ? 'adminContent.georef.halfOnScan' : 'adminContent.georef.halfOnMap');
+        const end = 'pixel' in view.half ? 'halfOnScan' : 'halfOnMap';
+        return contentText(locale, `adminContent.georef.${end}${view.ghost === null ? '' : 'Ghost'}`);
     }
     return view.adding ? contentText(locale, 'adminContent.georef.addingHint') : '';
 }

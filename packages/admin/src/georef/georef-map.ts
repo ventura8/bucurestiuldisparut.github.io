@@ -18,7 +18,7 @@ import {
     type MapView,
 } from '@hcm/shared';
 import { PAIR_HIT_RADIUS, type BadgeTone } from '@hcm/ui/admin/georef/marker-badge';
-import type { Unsubscribe } from '@hcm/ui/map';
+import type { RasterLayerSpec, Unsubscribe } from '@hcm/ui/map';
 import type { DrawChange, MapDrawPort } from '@hcm/ui/map/draw';
 
 import { PictureOverlays } from '../imagery/overlay.js';
@@ -68,9 +68,12 @@ export class GeorefMap {
     #suggestions: readonly SuggestionRow[] = [];
     #selectedSuggestion: string | null = null;
     #half: GeoPosition | null = null;
+    #ghost: GeoPosition | null = null;
     #crosshair = false;
     #tones: Readonly<Record<string, BadgeTone>> = {};
     #adding = false;
+    /** The published layer under the pairs (null: none). */
+    #base: RasterLayerSpec | null = null;
     /** A point of the map is being dragged (Terra Draw's change not yet settled): the linked views stand still. */
     dragging = false;
     /** Bumped by every attach and detach: a slower create of an older host is dropped. */
@@ -135,6 +138,17 @@ export class GeorefMap {
         this.#handle?.port.flyTo(camera, { animate: false });
     }
 
+    /** The map's bearing in degrees (0 without a map). */
+    get bearing(): number {
+        return this.#handle?.port.getView().bearing ?? 0;
+    }
+
+    /** Turns the map by `degrees` clockwise on the screen (its bearing falls); null: north up. */
+    rotateBy(degrees: number | null): void {
+        // A jump, as the linked views move it: an animated turn would keep turning the scan after the owner's next press.
+        this.#handle?.port.flyTo({ bearing: degrees === null ? 0 : this.bearing - degrees }, { animate: false });
+    }
+
     zoomBy(delta: number): void {
         const port = this.#handle?.port;
         if (port !== undefined) {
@@ -151,6 +165,12 @@ export class GeorefMap {
     /** Half pair started on the map (a `+` at that place). */
     setHalf(half: GeoPosition | null): void {
         this.#half = half;
+        this.#paintBadges();
+    }
+
+    /** Where the pairs so far expect a half pair started on the scan (a dashed ring; the map itself never moves to it). */
+    setGhost(ghost: GeoPosition | null): void {
+        this.#ghost = ghost;
         this.#paintBadges();
     }
 
@@ -215,10 +235,26 @@ export class GeorefMap {
         this.#paintBadges();
     }
 
-    /** While adding pairs a click on the map is a place, not a selection: the points stand still. */
+    /** The map pane's choice: a published layer under the pairs and the pictures (null: none), on this one map. */
+    showBase(spec: RasterLayerSpec | null): void {
+        this.#base = spec;
+        this.#handle?.preview.show({ layers: spec === null ? [] : [spec] });
+    }
+
+    /**
+     * While adding pairs a click on the map is a place, not a selection: the points stand still, and the selected pair is
+     * the drawing tools' selection again only once adding ends (selecting would switch them to `select`, where a click moves it).
+     */
     setAdding(adding: boolean): void {
         this.#adding = adding;
-        this.#draw?.setMode(adding ? 'static' : 'select');
+        const draw = this.#draw;
+        if (draw === null) {
+            return;
+        }
+        draw.setMode(adding ? 'static' : 'select');
+        if (!adding) {
+            draw.select(this.#selected);
+        }
     }
 
     detach(): void {
@@ -243,6 +279,7 @@ export class GeorefMap {
             suggestions: this.#suggestions,
             selectedSuggestion: this.#selectedSuggestion,
             half: this.#half,
+            ghost: this.#ghost,
             crosshair: this.#crosshair,
             tones: this.#tones,
         });
@@ -252,7 +289,11 @@ export class GeorefMap {
         const draw = this.#draw;
         if (draw !== null) {
             draw.load(this.#pairs.map((pair) => ({ id: pair.id, geometry: { type: 'Point', coordinates: [pair.geo.lng, pair.geo.lat] } })));
-            draw.select(this.#selected);
+            // Terra Draw's `select` switches the tools to `select` mode, where the next map click would move the pair just made
+            // (the owner's pin 1 km off, 2026-11-12): while adding, the badges show the selection alone.
+            if (!this.#adding) {
+                draw.select(this.#selected);
+            }
         }
     }
 
@@ -295,6 +336,8 @@ export class GeorefMap {
             return;
         }
         this.#handle = result.map;
+        // Before the pictures (the status brings them): they stay above the layer.
+        this.showBase(this.#base);
         this.#deps.status('ready');
         this.#listeners.push(
             result.map.port.onMapClick(([lng, lat]) => {

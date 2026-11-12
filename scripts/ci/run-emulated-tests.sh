@@ -12,7 +12,7 @@
 # `npm test` starts the emulators with JAVA_TOOL_OPTIONS='-XX:CICompilerCount=2 -Xmx6g': a heap ceiling of 6 GB per JVM.
 # Unset, each may take a quarter of the machine's memory, 3 GB under a 12 GB container cap; the Firestore emulator builds
 # the 582 MB JSON report in its heap, which ran out ("Java heap space", HTTP 500) at 3 and 4 GB and passed at 6 GB with the
-# whole container at 8.2 GB (DECISIONS-for-review.md §171g). And one C1 and one C2
+# whole container at 8.2 GB (DECISIONS-for-review.md §178g). And one C1 and one C2
 # compiler thread per JVM instead of about four and eight on 16 hardware threads, whose JIT work
 # took about two thirds of the Firestore emulator's CPU in a run this short, beside the tests.
 # C1 alone (-XX:TieredStopAtLevel=1) cut that further but made the coverage report

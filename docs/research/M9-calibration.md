@@ -114,6 +114,7 @@ Accepted when **all** hold; `refusal` names the first that fails:
 - A union's side over `MAX_SCAN_PIXELS` is cut to it, the first orientation's box kept whole; `calibration.cutOrientations` counts any lost.
 - `within_limits` stays as a guard no input reaches. A001 (225,264 px) becomes 200,000 px and `needs_gcps`.
 - The delivery stays (§15: what for). `georef/matcher.py` still runs at its unchanged bar, then the job waits and the corner pairs clear.
+- Since 2026-11-12 (§17) the guess cuts only a frame searched whole, in time, and no larger than a scan shown whole; any other frame nothing proved is offered whole.
 
 ## 7. `georef` (`steps/georef.py`, `calibrate/pairs.py`)
 
@@ -576,10 +577,28 @@ The live KH-4A frames of 1966-08-18 (F046, F047) ended in `locate` with `not pro
 | Where the city lies along the strip | Each plausible orientation's centre line (the middle of the first column to the middle of the last, on the ground) is taken as linear in film columns; the city's window projects onto it as a share of the length. |
 | The window | That share with `STRIP_MARGIN_GROUND_M` (15 km) before and after, the film's full height; overlapping windows of several orientations are one. The film stored reversed is another orientation, so the city's place from the other end is a window too. |
 | The map inside it | `local_map`: the window's four film corners onto the footprint's long edges, linearly; the votes, the proof and the local AI then run unchanged inside it (`Frame.exposure` and `limits` are the window's columns). |
-| Which window | The chain in each in turn: the first proved ends it; else the window with the most agreeing votes (the first of equals), whose crop is that window's, never the whole strip. |
+| Which window | The chain in each in turn: the first proved ends it; else the window with the most agreeing votes (the first of equals), whose crop was that window's until 2026-11-12; now no window is kept unproved and the whole strip is offered shrunk (§17). |
 | No place on the strip | A footprint that puts the city on no part of the strip under any orientation slides `SLIDE_GROUND_M` (40 km) windows, half overlapping, along the whole strip, each moved onto the city: votes and proofs only, the local AI asked of none (it would run once a window). |
 | The log | `strip window: film columns a to b of W (x to y % along), from the footprint, n orientations` for each, and `strip window kept: …` for the one kept. |
 
 Tests: `pipeline/tests/unit/test_calibrate_strip.py`, a synthetic 240 by 17.5 km strip wider at one end (16 to 20 km, no parallelogram), the city 60 % along, the corners 3 km off: proved within 25 m in the window around 60 %, and stored reversed, around 40 %; a footprint 400 km off slides windows over the whole strip (`S-P06-HAPPY-STRIP-WINDOW`, `S-P06-BAD-STRIP-NO-PLACE`).
 
 **UNVERIFIED** on a real Corona: no real KH-4 frame has run through it yet. Corona keeps no camera model, so a window's map is the footprint's linear one: near the strip's middle a 70-degree sweep makes the ground about 13 % shorter along and up to 22 % narrower across than the corners say, which the Corona scales (0.85, 1.0, 1.15) cover only in part. DS09065A089MC039 (1964-06-18) is a KH-5 Argon mapping frame, square, read by its own camera (§14); the strip windows do not apply to it.
+
+## 17. A frame nothing proved is offered whole (2026-11-12)
+
+Live: DS1103-1058DF027 (1968-05-05, a Corona strip 131,443 px wide). The footprint named two windows (columns 19,150 to 54,814 and 76,629 to 112,293); the local AI proposed nothing in either, and `locate` kept the **first** unproved (`not proved (no-votes): crop 35664 x 8172 px, delivery kept`). It is countryside: the georeferencer showed farmland and nobody could place a point on the city. A guess that could not be proved had still chosen what the owner sees.
+
+| What | How |
+| --- | --- |
+| When | `whole.offered_whole`: nothing proved **and** the search held a part of the frame (a strip's window), or ran out of its `search_seconds` (the KH-5 cap), or the exposure's long side is over `WHOLE_MAX_PX` (16,384, `stitch`'s preview budget). Only a frame searched whole, in time and within that budget keeps `bounded_crop` (§6) and the matcher. |
+| The scan | The whole exposure, averaged down by the whole number that fits `WHOLE_MAX_PX` (DF027: 9 times, about 14,600 by 900 px), read out of the segments by `SegmentReader`. `version.georef` is removed (no corner pairs: nothing starts a matcher on a shrunk strip), `calibration` is the refusal as before, the delivery stays. |
+| How the scan says so | `scan.tif` carries `HCM_WHOLE_FRAME` (`{factor, left, top}`) in its own GDAL metadata: the version's files outlive the work folder, and no document or schema changes shape. A whole frame at full resolution carries nothing: its points are fitted on it as they are. |
+| The log | `not proved (no-votes) in any part of the frame: the whole frame is the scan, shrunk 9 times (W x H px), delivery kept; waits for a person: place a few rough points anywhere on the strip`. |
+| After the points | `georef` (`steps/recrop.py`), for the admin's points on a marked scan of a frame nothing proved: the points go onto the film (`x * factor + left`), the film is cut around them with the city window's larger side as margin, at the points' own scale (how far they spread on film over how far on the ground), inside the exposure, at **full resolution** out of the segments; the points move into the crop, the version's `scan` and `georef` are written, and the step goes on as with any scan (the points seed the tiles, else are fitted as saved; then `warp`). |
+| Refusals | A point off the scan: `apiError.imagery.gcpOutside`. Points on one place: `apiError.imagery.degenerateGcps`. `frame.json` or a segment no longer stored: `apiError.imagery.processingFailed`, whose log line says to use **Locate again** while the delivery is kept, else to import the frame again. |
+| Frames parked with the wrong crop | **Locate again** (and `imagery.tick`'s `relocate`, once the image changes) runs `stitch` and `locate` again from the kept delivery: the frame then waits with the whole strip. |
+
+Tests: `pipeline/tests/unit/test_whole.py`, `pipeline/tests/integration/test_whole_frame.py` (a synthetic strip of 6000 by 900 px in four segments over another place, searched in its footprint's window): `S-P06-HAPPY-WHOLE-STRIP`, `S-P06-BAD-WHOLE-STRIP-UNPROVED`, `S-P06-HAPPY-ROUGH-POINTS-CROP`, `S-P06-BAD-ROUGH-POINTS-OUTSIDE`, `S-P06-BAD-ROUGH-POINTS-FILM-GONE`.
+
+**Not done here:** the admin's own text still says the scan needs points (`apiError.imagery.noMatch`); only the job's log says "anywhere on the strip". The georeferencer shows the 4,096 px preview of the shrunk strip (about 32 film pixels a preview pixel on DF027): enough to find the city, not a street.

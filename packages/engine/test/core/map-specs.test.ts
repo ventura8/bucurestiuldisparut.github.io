@@ -213,7 +213,28 @@ describe('map specs: photos, POIs, options', () => {
         const basemap = { style: 'mapbox://styles/mapbox/standard', config: { showPointOfInterestLabels: false } };
         const quiet = { ...city, city: { ...city.city, basemap } };
 
-        expect(mapOptions(quiet, moment(quiet, { streets: true, pois: false })).config).toEqual(basemap.config);
+        expect(mapOptions(quiet, moment(quiet, { streets: true, pois: false })).config).toEqual({
+            ...basemap.config,
+            showTransitLabels: false,
+        });
         expect(mapOptions(quiet, moment(quiet, ALL_LABELS)).config).toEqual({ showPointOfInterestLabels: true });
+    });
+
+    it('happyPath_pointsOfInterestOffHideTransitStationsFromTheFirstFrame', () => {
+        const city = manifest();
+
+        expect(mapOptions(city, moment(city, { streets: true, pois: false })).config).toEqual({
+            lightPreset: 'day',
+            showPointOfInterestLabels: false,
+            showTransitLabels: false,
+        });
+    });
+
+    it('badPath_aCityShowingTransitWithoutPointsOfInterestKeepsItsChoice', () => {
+        const city = manifest();
+        const basemap = { style: 'mapbox://styles/mapbox/standard', config: { showPointOfInterestLabels: false, showTransitLabels: true } };
+        const transit = { ...city, city: { ...city.city, basemap } };
+
+        expect(mapOptions(transit, moment(transit, { streets: true, pois: false })).config).toEqual(basemap.config);
     });
 });

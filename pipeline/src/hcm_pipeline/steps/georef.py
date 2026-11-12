@@ -2,7 +2,8 @@
 
 A frame `locate` proved (docs/research/M9-calibration.md §7) has its tiles in `calibration.json`: they become its pairs, every fifth cell
 a checkpoint set aside before RANSAC; with that file gone, the tiles are measured again on `scan.tif`. The admin's rough points of a frame
-nothing proved seed the same measuring: proved, they are replaced by tiles (`how: 'points'`); refused, they are fitted as today. A set
+nothing proved seed the same measuring: proved, they are replaced by tiles (`how: 'points'`); refused, they are fitted as today. Points
+placed on a whole frame shrunk (`steps/whole.py`) first become the city's crop at full resolution (`steps/recrop.py`). A set
 holding automatic pairs is fitted as saved, so a later edit is never overwritten.
 
 A version still on its corner GCPs and not proved (`method: 'corners'`, a USGS import) is matched against the Sentinel-2 window and
@@ -49,6 +50,7 @@ from hcm_pipeline.rasters import read_band, to_uint8
 from hcm_pipeline.steps.aligning import Joining, joined_to_held
 from hcm_pipeline.steps.common import Sentinel2, city_window, gdal_step, grey_reference, osm_features
 from hcm_pipeline.steps.locate import CALIBRATION_FILE
+from hcm_pipeline.steps.recrop import recropped
 from hcm_pipeline.steps.relief import city_heights, terrain_summary
 from hcm_pipeline.store import DELETE
 
@@ -287,7 +289,7 @@ class GeorefStep:
         if _embedded(georef):
             return Skipped("the upload carries its own georeference")
         scan = _scan_of(ctx.version.scan)
-        return wait_for_points(ctx, 0) if georef is None or not georef.gcps else self._of_gcps(ctx, georef, scan)
+        return wait_for_points(ctx, 0) if georef is None or not georef.gcps else self._of_gcps(ctx, *recropped(ctx, georef, scan))
 
     def _of_gcps(self, ctx: JobContext, georef: GeorefInfo, scan: ScanInfo) -> StepResult:
         if georef.lattice is not None:

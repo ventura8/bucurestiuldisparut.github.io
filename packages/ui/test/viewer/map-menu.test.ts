@@ -101,6 +101,40 @@ describe('MapMenuTrigger', () => {
         expect(open).not.toHaveBeenCalled();
     });
 
+    it('happyPath_aFingerOnTheMapAndTheLongPressThatOpenedTheMenuStartNoTextSelection', () => {
+        vi.useFakeTimers();
+        const map = mapBox();
+        const trigger = new MapMenuTrigger(map, vi.fn());
+        const select = (): boolean => !map.dispatchEvent(new Event('selectstart', { bubbles: true, cancelable: true }));
+
+        pointer(map, 'pointerdown', { pointerType: 'touch', clientX: 30, clientY: 40 });
+        const whileDown = select();
+        vi.advanceTimersByTime(LONG_PRESS_MS);
+        pointer(map, 'pointerup', { pointerType: 'touch', clientX: 30, clientY: 40 });
+        const afterTheMenu = select();
+        trigger.stop();
+
+        expect([whileDown, afterTheMenu]).toEqual([true, true]);
+    });
+
+    it('badPath_aMouseOnTheMapKeepsTheBrowsersSelectionAndATapReleasedLetsItGo', () => {
+        vi.useFakeTimers();
+        const map = mapBox();
+        const trigger = new MapMenuTrigger(map, vi.fn());
+        const select = (): boolean => !map.dispatchEvent(new Event('selectstart', { bubbles: true, cancelable: true }));
+
+        pointer(map, 'pointerdown', { pointerType: 'mouse', clientX: 30, clientY: 40 });
+        const mouse = select();
+        pointer(map, 'pointerup', { pointerType: 'mouse', clientX: 30, clientY: 40 });
+        pointer(map, 'pointerdown', { pointerType: 'touch', clientX: 30, clientY: 40 });
+        pointer(map, 'pointerup', { pointerType: 'touch', clientX: 30, clientY: 40 });
+        const afterATap = select();
+        trigger.stop();
+        const stopped = select();
+
+        expect([mouse, afterATap, stopped]).toEqual([false, false, false]);
+    });
+
     it('happyPath_theContextMenuKeyAndShiftF10OpenAtTheCentre', () => {
         const map = mapBox();
         const open = vi.fn();

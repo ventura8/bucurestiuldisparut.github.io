@@ -1,5 +1,7 @@
 // A fake of this computer's part (`LocalPort`, finding 72; finding 73: the starter files as links): its state set by
 // the test, its intents recorded.
+import type { WorkerProfileChoice } from '@hcm/shared';
+
 import type { LocalPort, LocalViewPort, WorkerOsPort } from '../../../src/admin/worker/worker-port.js';
 
 const BASE = 'https://us-central1-demo-hcm.cloudfunctions.net/worker-starter';
@@ -16,7 +18,7 @@ export function linksOf(os: WorkerOsPort): LocalViewPort['files'] {
 export class FakeLocal implements LocalPort {
     readonly calls: string[] = [];
     readonly #listeners = new Set<(state: LocalViewPort) => void>();
-    state: LocalViewPort = { os: 'linux', phase: 'none', code: null, starter: true, files: linksOf('linux') };
+    state: LocalViewPort = { os: 'linux', phase: 'none', code: null, starter: true, files: linksOf('linux'), machine: { kind: 'unknown' } };
 
     readonly intents = {
         setOs: (os: WorkerOsPort): void => {
@@ -32,6 +34,10 @@ export class FakeLocal implements LocalPort {
         },
         stop: (): Promise<void> => {
             this.calls.push('stopUsing');
+            return Promise.resolve();
+        },
+        profile: (choice: WorkerProfileChoice): Promise<void> => {
+            this.calls.push(`profile ${choice}`);
             return Promise.resolve();
         },
         command: (): Promise<void> => {

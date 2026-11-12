@@ -1,7 +1,8 @@
 """The worker's loop (docs/research/M7-local-worker.md §1.2).
 
-While a session is held: `worker.claim {cityId, workerId}` every `pollSeconds` (which also tells the server the worker
-is alive); a claimed job runs at once, one at a time, with the normal runner (`runtime.py`); then `worker.end` reports
+While a session is held: `worker.claim {cityId, workerId}` every `pollSeconds`, less often once idle for a while (`pace.py`;
+a claim also tells the server the worker is alive); a claimed job runs at once, one at a time, with the normal runner
+(`runtime.py`); then `worker.end` reports
 `done` whatever state the run left the job in, or `failed` with the error when the run crashed outside a step (the
 server fails the job if the worker still holds it). A job the server says this worker no longer holds, or a session
 that ended, stops the run where it is without another write (a lost lease to the runner). SIGTERM or Ctrl-C: between
@@ -146,13 +147,23 @@ class WorkerLoop:
     def _pause(self, done: Pass) -> None:
         if done is Pass.INTERRUPTED:
             self.stop()
-        elif done is not Pass.RAN:
-            self._wait(self.no_session_seconds if done is Pass.NO_SESSION else self._state.timing.poll_seconds)
+        elif done is Pass.RAN:
+            self._state.pace.wake()
+        elif done is Pass.NO_SESSION:
+            self._wait(lambda: self.no_session_seconds)
+        else:
+            self._state.pace.idle_pass()
+            self._wait(self._idle_seconds)
 
-    def _wait(self, seconds: float) -> None:
+    def _idle_seconds(self) -> float:
+        """How long this idle pass waits (`pace.py`): asked again at every look, so a wake shortens a long wait to the poll's."""
+        timing = self._state.timing
+        return self._state.pace.wait(timing.poll_seconds, timing.idle_poll_seconds)
+
+    def _wait(self, seconds: Callable[[], float]) -> None:
         """Until `seconds` passed or the loop stops, looking at the signal's flag every `SIGNAL_CHECK_SECONDS`."""
-        deadline = time.monotonic() + seconds
-        while not self._stopped() and (left := deadline - time.monotonic()) > 0:
+        started = time.monotonic()
+        while not self._stopped() and (left := started + seconds() - time.monotonic()) > 0:
             self.stopping.wait(min(left, SIGNAL_CHECK_SECONDS))
 
     def _on_signal(self, _signum: int, _frame: FrameType | None) -> None:
