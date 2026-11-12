@@ -27,7 +27,7 @@ const EXPORTS = {
         'translate',
     ],
     adminI18n: ['translateAdminContent', 'translateAdminSetup', 'translateAdminShell'],
-    viewerExtras: ['PHOTO_VIEWS', 'streetViewUrl'],
+    photoVersions: ['PHOTO_VIEWS'],
     geo: [
         'EARTH_RADIUS_M',
         'MAX_MERCATOR_LAT',

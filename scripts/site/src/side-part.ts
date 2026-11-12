@@ -1,10 +1,10 @@
 /**
  * The engine's side-loaded parts (the owner's "Load extras on demand", 2026-11-09; docs/ENGINE_API.md → *Side-loaded
  * parts*). A part is a small IIFE beside the engine that the engine adds as a `<script>` with its Subresource Integrity
- * when it is first needed: today `engine.extras.js`, the full-size view. Two plugins:
+ * when it is first needed: today `engine.lightbox.js`, the full-size view. Two plugins:
  *
  * - `sidePartKitPlugin` builds the part (`packages/engine/vite.part.config.ts`): every import of a module outside the
- *   part's own files becomes the one external `KIT_ID`, read from the global the engine sets (`extras-loader.ts`), so the
+ *   part's own files becomes the one external `KIT_ID`, read from the global the engine sets (`lightbox-loader.ts`), so the
  *   part carries no second Lit and no texts;
  * - `sidePartPlugin` builds the engine (`packages/engine/vite.config.ts`): it reads the built part, writes its integrity
  *   into the constant the engine loads it with, and emits the part next to the engine's two builds.
@@ -60,7 +60,7 @@ export interface SidePartOptions {
     readonly fileName: string;
 }
 
-/** The empty integrity in the sources (`packages/engine/src/extras-part.ts`), which the build replaces. */
+/** The empty integrity in the sources (`packages/engine/src/lightbox-part.ts`), which the build replaces. */
 export const EMPTY_INTEGRITY = "_INTEGRITY = '';";
 
 interface EmitContext {

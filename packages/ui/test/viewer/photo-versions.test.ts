@@ -2,7 +2,7 @@
  * A photo's versions in the viewer (the owner 2026-11-09; V61) and the full-size view's zoom buttons (V60): which version
  * shows, the switch in the detail sheet and the full-size view, and Zoom in and Zoom out at their limits.
  */
-import { streetViewUrl, type Photo } from '@hcm/shared';
+import type { Photo } from '@hcm/shared';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { HCM_LIGHTBOX_TAG, defineHcmLightbox, type HcmLightbox } from '../../src/viewer/hcm-lightbox.js';
@@ -93,14 +93,6 @@ describe('the version switch', () => {
         expect(events).toEqual([{ type: 'hcm-photo-version', detail: { view: 'colorized' } }]);
         expect(shadowQuery(element, 'img').getAttribute('src')).toContain('colorized/thumb.webp');
         expect(shadowText(element)).toContain('Colorized by Ana Pop');
-    });
-
-    it('happyPath_theSheetLinksToStreetViewLookingAlongTheBearing', async () => {
-        const element = await sheet({ ...BASE, bearing: 135 }, { locale: 'en' });
-
-        const link = [...(element.shadowRoot?.querySelectorAll('a') ?? [])].find((anchor) => anchor.href.includes('map_action=pano'));
-        expect(link?.textContent).toBe('Open in Google Street View');
-        expect(link?.href).toBe(streetViewUrl(BASE.location, 135));
     });
 
     it('badPath_aPhotoWithOnlyItsOriginalHasNoSwitch', async () => {

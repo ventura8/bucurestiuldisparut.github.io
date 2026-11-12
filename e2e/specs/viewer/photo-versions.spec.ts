@@ -7,7 +7,7 @@ import { currentHash, openViewer, serveManifest, t } from '../../support/viewer.
 
 /**
  * The full-size view's Zoom in and Zoom out (behaviour V60) and a photo's versions (V61; the owner on 2026-11-09). The
- * full-size view is side-loaded with its integrity the first time it opens (`engine.extras.js`); its buttons zoom the
+ * full-size view is side-loaded with its integrity the first time it opens (`engine.lightbox.js`); its buttons zoom the
  * photo around the centre and say they are disabled at the limits. A photo with an improved and a colorized version shows
  * the improved one, a switch Original / Improved / Colorized in the detail sheet and the full-size view, and the choice in
  * the address (`pv=`); a word the viewer does not know shows the original, and a photo with only its original has no switch.
@@ -62,7 +62,7 @@ test(
     async ({ page, lang }) => {
         const parts: string[] = [];
         page.on('request', (request) => {
-            if (request.url().endsWith('/engine.extras.js')) {
+            if (request.url().endsWith('/engine.lightbox.js')) {
                 parts.push(request.url());
             }
         });

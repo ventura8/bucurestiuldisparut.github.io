@@ -160,11 +160,11 @@ describe('browserEnvironment', () => {
         const page = fakePage({ document, customElements: { get: () => undefined } });
         const env = browserEnvironment(page.window, RELEASE, createLogger('test'));
 
-        const loading = env.loadExtras?.(undefined);
+        const loading = env.loadLightbox?.(undefined);
         script.dispatchEvent(new Event('load'));
         await loading;
 
-        expect(appended.map((element) => element.src)).toEqual(['https://example.org/engine/engine.extras.js']);
+        expect(appended.map((element) => element.src)).toEqual(['https://example.org/engine/engine.lightbox.js']);
     });
 
     it('happyPath_compareIsTheLazyChunk', async () => {

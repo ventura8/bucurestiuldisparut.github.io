@@ -59,7 +59,7 @@ await build({
 // The export kit: the page and README of the starter kit, and the engine the export carries beside its page.
 const KIT_DIR = here('dist/export-kit/');
 const ENGINE_DIST = here('../packages/engine/dist/');
-const ENGINE_FILES = ['engine.iife.js', 'engine.extras.js', 'engine.css', 'THIRD_PARTY_NOTICES.txt'];
+const ENGINE_FILES = ['engine.iife.js', 'engine.lightbox.js', 'engine.css', 'THIRD_PARTY_NOTICES.txt'];
 const ENGINE_VERSION = /^export const ENGINE_VERSION = '(\d{1,4}\.\d{1,4}\.\d{1,6})';$/m;
 const engineVersion = ENGINE_VERSION.exec(await readFile(here('../packages/engine/src/index.ts'), 'utf8'))?.[1];
 if (engineVersion === undefined) {

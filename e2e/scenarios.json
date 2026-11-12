@@ -1037,13 +1037,6 @@
             "name": "A photo's improved and colorized versions in the editor: added, replaced, removed, each with its credit",
             "milestone": "M17",
             "source": "the owner, 2026-11-09: add + and - buttons when viewing a photo full screen; a photo has versions (original, improved, colorized)"
-        },
-        {
-            "id": "V62",
-            "area": "viewer",
-            "name": "The map's menu (right click, long press, ContextMenu key) with Open in Google Street View and Copy coordinates; a photo's sheet links to Street View",
-            "milestone": "M17",
-            "source": "the owner, 2026-11-09: go to Google Street View from a right-click panel (hold on a touch screen) on the map, and from a photo's details"
         }
     ],
     "scenarios": [
@@ -17410,7 +17403,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "The full-size view loads beside the engine and its buttons zoom the photo",
-            "asserts": "no engine.extras.js request before the photo opens full size, one when it does; Zoom in enlarges the image by more than 20 %, Zoom out brings it back",
+            "asserts": "no engine.lightbox.js request before the photo opens full size, one when it does; Zoom in enlarges the image by more than 20 %, Zoom out brings it back",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162). Tests: e2e/specs/viewer/photo-versions.spec.ts."
@@ -17480,72 +17473,6 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162). Tests: e2e/admin/specs/photos/replace.spec.ts."
-        },
-        {
-            "id": "S-V62-HAPPY-RIGHT-CLICK",
-            "behaviour": "V62",
-            "area": "viewer",
-            "path": "happy",
-            "title": "A right click opens the menu at the place, whose Street View link names it",
-            "asserts": "right click at the map centre -> the menu, its first item focused; the Street View link opens in a new tab (noopener noreferrer) at the hash centre to 3 decimals; Copy coordinates is there",
-            "tier": "e2e-viewer",
-            "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162h). Tests: e2e/specs/viewer/map-menu.spec.ts."
-        },
-        {
-            "id": "S-V62-HAPPY-LONG-PRESS",
-            "behaviour": "V62",
-            "area": "viewer",
-            "path": "happy",
-            "title": "A long press on a touch screen opens the menu",
-            "asserts": "a touch pointer held on the map -> the menu opens and stays when the finger lifts",
-            "tier": "e2e-viewer",
-            "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162h). Tests: e2e/specs/viewer/map-menu.spec.ts."
-        },
-        {
-            "id": "S-V62-HAPPY-PHOTO",
-            "behaviour": "V62",
-            "area": "viewer",
-            "path": "happy",
-            "title": "A photo's sheet links to Street View looking along its bearing",
-            "asserts": "a photo with a bearing -> Open in Google Street View names its place and &heading=<bearing>",
-            "tier": "e2e-viewer",
-            "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162h). Tests: e2e/specs/viewer/map-menu.spec.ts."
-        },
-        {
-            "id": "S-V62-BAD-DRAG",
-            "behaviour": "V62",
-            "area": "viewer",
-            "path": "bad",
-            "title": "A right-drag rotates the map and opens no menu",
-            "asserts": "right button down, moved 120 px, released -> no menu",
-            "tier": "e2e-viewer",
-            "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162h). Tests: e2e/specs/viewer/map-menu.spec.ts."
-        },
-        {
-            "id": "S-V62-BAD-ESC-EDGE",
-            "behaviour": "V62",
-            "area": "viewer",
-            "path": "bad",
-            "title": "Esc closes the menu; near the edge it stays inside the map",
-            "asserts": "a right click 4 px from the right edge -> the menu lies inside the map; Esc -> no menu",
-            "tier": "e2e-viewer",
-            "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162h). Tests: e2e/specs/viewer/map-menu.spec.ts."
-        },
-        {
-            "id": "S-V62-HAPPY-TOUR",
-            "behaviour": "V62",
-            "area": "viewer",
-            "path": "happy",
-            "title": "The open menu passes the layout and accessibility checks on every window class",
-            "asserts": "expectStateSound on the map-menu journey's open menu",
-            "tier": "e2e-viewer",
-            "status": "exists",
-            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §162h). Tests: e2e/tour/viewer.tour.ts (e2e/tour/map-menu-states.ts)."
         }
     ]
 }

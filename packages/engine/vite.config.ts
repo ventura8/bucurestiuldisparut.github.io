@@ -28,9 +28,9 @@ import { FONT_FILES } from '../ui/src/fonts/font-files.js';
  * - The viewer's message catalogues are packed by `cataloguePackPlugin` (scripts/site/src/catalogue-pack.ts,
  *   DECISIONS-for-review.md §127a): the same objects, built from one string of keys and an array of texts, about 270 bytes
  *   gzip of the IIFE.
- * - dist/engine.extras.js is the side-loaded full-size view (docs/ENGINE_API.md → *Side-loaded parts*), built first by
+ * - dist/engine.lightbox.js is the side-loaded full-size view (docs/ENGINE_API.md → *Side-loaded parts*), built first by
  *   `vite.part.config.ts` into .tsbuild/part/; `sidePartPlugin` (scripts/site/src/side-part.ts) writes its Subresource
- *   Integrity into src/extras-part.ts, which both builds load it with, and serves it here (the owner's "Load extras on
+ *   Integrity into src/lightbox-part.ts, which both builds load it with, and serves it here (the owner's "Load extras on
  *   demand", 2026-11-09: about 1.5 KB gzip out of the IIFE).
  */
 export default defineConfig({
@@ -42,9 +42,9 @@ export default defineConfig({
         cssLiteralsPlugin(),
         cataloguePackPlugin(/[\\/]packages[\\/]shared[\\/]src[\\/]i18n[\\/]/),
         sidePartPlugin({
-            built: fileURLToPath(new URL('.tsbuild/part/engine.extras.js', import.meta.url)),
-            constantModule: fileURLToPath(new URL('src/extras-part.ts', import.meta.url)),
-            fileName: 'engine.extras.js',
+            built: fileURLToPath(new URL('.tsbuild/part/engine.lightbox.js', import.meta.url)),
+            constantModule: fileURLToPath(new URL('src/lightbox-part.ts', import.meta.url)),
+            fileName: 'engine.lightbox.js',
         }),
         thirdPartyNoticesPlugin({
             product: 'the Historic City Map engine (engine.mjs, engine.iife.js, their chunks and fonts)',

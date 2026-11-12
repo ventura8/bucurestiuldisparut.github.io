@@ -10,7 +10,7 @@
  * version `photoVersion` picks and a switch between them above the arrows (V61, `photo-version.ts`).
  *
  * It is not in the engine's script: the engine side-loads it, with its Subresource Integrity, the first time a visitor opens
- * a photo full size (`extras-loader.ts`, `engine.extras.js`; docs/ENGINE_API.md → *Side-loaded parts*).
+ * a photo full size (`lightbox-loader.ts`, `engine.lightbox.js`; docs/ENGINE_API.md → *Side-loaded parts*).
  *
  * Events (viewer-internal): `hcm-close`, `hcm-photo-select` (`{photoId}`, the previous or next photo), `hcm-photo-version`
  * (`{view}`).

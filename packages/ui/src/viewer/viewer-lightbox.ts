@@ -1,34 +1,11 @@
 /**
  * The full-size view in the viewer's modal layer (V08): `<hcm-lightbox>`, which the engine side-loads the first time it
- * opens (`extras-loader.ts`); until then the tag is an unknown element that keeps the properties set on it. The map's
- * menu (V62) is side-loaded the same way, the first time it opens.
+ * opens (`lightbox-loader.ts`); until then the tag is an unknown element that keeps the properties set on it.
  */
 import type { Locale, Photo, PhotoView } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
-import type { MenuPoint } from './map-menu-trigger.js';
 import type { ViewerState } from './store-port.js';
-
-/** The map's menu's events (V62). */
-export interface MapMenuHandlers {
-    readonly onMapMenuClose: (event: Event) => void;
-    readonly onMapMenuCopy: (event: CustomEvent<{ readonly text: string }>) => void;
-}
-
-/** The map's menu over the map (side-loaded with the full-size view; closed while `point` is null). */
-export function mapMenu(
-    view: { readonly locale: Locale; readonly mapMenu: MenuPoint | null },
-    state: ViewerState,
-    handlers: MapMenuHandlers,
-): TemplateResult {
-    return html`<hcm-map-menu
-        .point=${view.mapMenu}
-        .view=${state.view}
-        .locale=${view.locale}
-        @hcm-close=${handlers.onMapMenuClose}
-        @hcm-map-menu-copy=${handlers.onMapMenuCopy}
-    ></hcm-map-menu>`;
-}
 
 /** The full-size view's events, as the viewer handles them. */
 export interface LightboxHandlers {

@@ -36,9 +36,9 @@ describe('sidePartKitPlugin', () => {
 describe('sidePartPlugin', () => {
     it('happyPath_theIntegrityIsWrittenAndThePartEmittedOnceWithTheModuleBuild', () => {
         const folder = mkdtempSync(join(tmpdir(), 'side-part-'));
-        const built = join(folder, 'engine.extras.js');
+        const built = join(folder, 'engine.lightbox.js');
         writeFileSync(built, 'console;');
-        const plugin = sidePartPlugin({ built, constantModule: '/repo/src/extras-part.ts', fileName: 'engine.extras.js' });
+        const plugin = sidePartPlugin({ built, constantModule: '/repo/src/lightbox-part.ts', fileName: 'engine.lightbox.js' });
         const emitted: unknown[] = [];
         const context = {
             emitFile: (file: unknown) => {
@@ -48,13 +48,13 @@ describe('sidePartPlugin', () => {
         };
 
         plugin.buildStart();
-        const code = plugin.transform(`export const EXTRAS_PART${EMPTY_INTEGRITY}`, '/repo/src/extras-part.ts?used');
+        const code = plugin.transform(`export const LIGHTBOX_PART${EMPTY_INTEGRITY}`, '/repo/src/lightbox-part.ts?used');
         plugin.generateBundle.call(context, { format: 'iife' });
         plugin.generateBundle.call(context, { format: 'es' });
 
-        expect(code?.code).toBe(`export const EXTRAS_PART_INTEGRITY = '${sriOf(new TextEncoder().encode('console;'))}';`);
+        expect(code?.code).toBe(`export const LIGHTBOX_PART_INTEGRITY = '${sriOf(new TextEncoder().encode('console;'))}';`);
         expect(plugin.transform('x', '/repo/src/other.ts')).toBeNull();
-        expect(emitted).toEqual([{ type: 'asset', fileName: 'engine.extras.js', source: new TextEncoder().encode('console;') }]);
+        expect(emitted).toEqual([{ type: 'asset', fileName: 'engine.lightbox.js', source: new TextEncoder().encode('console;') }]);
     });
 
     it('badPath_aModuleWithoutTheEmptyConstantFailsTheBuild', () => {

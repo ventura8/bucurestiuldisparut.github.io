@@ -21,8 +21,7 @@ import { DOCKED_OPEN, type Placement, type SheetMode, type ViewerLayout } from '
 import { renderSheetFrame } from './sheet-frame.js';
 import type { ViewerError, ViewerState } from './store-port.js';
 import { photosNearYear, type TimelineStop } from './timeline-model.js';
-import type { MenuPoint } from './map-menu-trigger.js';
-import { lightbox, mapMenu, type LightboxHandlers, type MapMenuHandlers } from './viewer-lightbox.js';
+import { lightbox, type LightboxHandlers } from './viewer-lightbox.js';
 import { menuActions, menuItem } from './viewer-menu.js';
 import { nearYearChip } from './viewer-near-year.js';
 import { storiesSheet } from './viewer-stories.js';
@@ -44,8 +43,6 @@ export interface ViewerView {
     readonly attribution: readonly AttributionPart[];
     /** The map container's box (null before the first render): Zoom out's limit (`viewer-zoom.ts`). */
     readonly mapSize: MapSize | null;
-    /** Where the map's menu is open (V62); null: closed. */
-    readonly mapMenu: MenuPoint | null;
 }
 
 /** `hcm-photo-locate` of `<hcm-photo-sheet>`: the photo, and its place's offset from the map's centre (`locateOffset`). */
@@ -62,7 +59,7 @@ export interface OverlayOpacityDetail {
 }
 
 /** The element's event handlers, bound once. */
-export interface ViewerHandlers extends LightboxHandlers, MapMenuHandlers {
+export interface ViewerHandlers extends LightboxHandlers {
     readonly onYearChange: (event: CustomEvent<{ readonly year: number | null }>) => void;
     readonly onOverlayVisibility: (event: CustomEvent<{ readonly id: string; readonly visible: boolean }>) => void;
     readonly onOverlayOpacity: (event: CustomEvent<OverlayOpacityDetail>) => void;
@@ -285,8 +282,7 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
             ></hcm-fab-menu>
         </div>
         ${state.webgl ? zoomButtons(view, state.view, manifest, handlers.onZoom) : nothing}
-        ${consent ? renderConsentBanner(view.locale, handlers.onConsent) : nothing} ${toast(view, state, handlers)}
-        ${mapMenu(view, state, handlers)}`;
+        ${consent ? renderConsentBanner(view.locale, handlers.onConsent) : nothing} ${toast(view, state, handlers)}`;
 }
 
 function timeline(view: ViewerView, state: ViewerState, handlers: ViewerHandlers): TemplateResult {
