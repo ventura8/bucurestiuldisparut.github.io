@@ -233,8 +233,8 @@ signed addresses).
 
 `CLOUD_RUN_FREE_TIER = {vcpuSeconds: 180_000, gibSeconds: 360_000}` a month (the user's figures; Cloud Run's
 request-based free tier; jobs may be billed against the instance-based tier's 240,000 and 450,000 instead: **UNVERIFIED**,
-the lower figures are the conservative ones). `JOB_MACHINE_SIZES`: `fetch` 1 vCPU / 4 GiB, `std` 4 / 16, `xl` 8 / 32
-(`CLOUD_RUN_JOBS`). `CLOUD_RUN_ESTIMATE_SECONDS`: a download phase 1,800 s on `fetch`, a processing phase 2,700 s on `std`
+the lower figures are the conservative ones). `JOB_MACHINE_SIZES`: `fetch` 1 vCPU / 4 GiB, `std` 2 / 8, `xl` 4 / 16
+(`CLOUD_RUN_JOBS`; 4 / 16 and 8 / 32 until 2026-11-12, §4.6), the one source of the installer's three jobs (`PIPELINE_JOBS`). `CLOUD_RUN_ESTIMATE_SECONDS`: a download phase 1,800 s on `fetch`, a processing phase 2,700 s on `std`
 and 3,600 s on `xl`.
 
 ### 4.2 Counting
@@ -272,6 +272,65 @@ S-A12-BAD-RUNON-CLOUD-PAST-CAP.
 On the Jobs page and the pipeline card: "Cloud Run this month (estimate): 12,345 of 180,000 vCPU-seconds · 45,678 of
 360,000 GiB-seconds", a bar for the larger share, from `usage/cloudrun-<month>`; on a version waiting for the OK, the
 estimate and the two buttons.
+
+### 4.6 The cheap cloud defaults (2026-11-12, reports/resource-audit.md §4)
+
+The owner's principle: the app runs on modest hardware and costs little in the cloud. Every setting below was checked against the
+cheapest value that is still safe; `functions/test/cost-shape.test.ts` holds the functions' table (memory, timeouts, no
+`minInstances`, no explicit CPU, at most 5 instances, no schedule more often than every 15 minutes), `packages/shared/test/api/worker.test.ts`
+and `scripts/site/test/install-steps.test.ts` the jobs'. Prices are Google's list prices (Cloud Run jobs $0.000018 a vCPU-second and
+$0.000002 a GiB-second past the free tier; functions $0.000024 and $0.0000025); durations not measured in the cloud are **UNVERIFIED**.
+
+**Cloud Run jobs** (`JOB_MACHINE_SIZES`, the installer's `PIPELINE_JOBS`):
+
+| Job | Today → proposed | Why |
+| --- | --- | --- |
+| `raster-fetch` | 1 vCPU / 4 GiB → keep | a download is network-bound (finding 56); the scratch folder is memory and holds the delivery |
+| `raster-pipeline` (`std`) | 4 / 16 → **2 / 8** | GDAL's cache and a warp's memory follow the machine (`rasters.gdal_memory`, `track/stripfix`: 512 and 1,024 MB on 8 GiB; a warp of a 1 GB scan 1.2 GB, measured) and an atlas is pasted part by part (3.8 to 1.7 GB, measured); a 2,700 s phase takes 5,400 vCPU-s and 21,600 GiB-s instead of 10,800 and 43,200: **16 free runs a month, not 8**; past the free tier $0.14 a run instead of $0.28 |
+| `raster-pipeline-xl` (`xl`) | 8 / 32 → **4 / 16** | the escalation after an out-of-memory exit and a KH-9 panoramic frame; a frame is never joined in memory (finding 57); past the free tier $0.37 an hour instead of $0.75 |
+| out-of-memory retry | keep | `fetch` → `std` → `xl`, then `apiError.imagery.outOfMemory`: the smaller defaults stay safe. Risk: a frame that needed more than 16 GiB now fails where 32 passed; **UNVERIFIED** until a real KH-9 frame runs (§11) |
+
+A run on 2 vCPUs may take longer than on 4 (the CPU-bound warp: 2.6 times the wall time on 2 threads against 16, measured on the NUC);
+`CLOUD_RUN_ESTIMATE_SECONDS` stays 2,700 s for the OK, and the meter counts what a run really took (§4.2).
+
+**Functions** (firebase-functions gives every function 1 vCPU up to 2 GiB unless `cpu` is set; nothing sets it):
+
+| Function(s) | Today → proposed | Why |
+| --- | --- | --- |
+| every function | `minInstances` none → keep | an idle project keeps no instance warm: nothing billed while idle |
+| global options | us-central1, `maxInstances` 5, concurrency 80, 256 MiB, 60 s → keep | the smallest memory; concurrency 80 lets one instance serve a burst; `cpu: 'gcf_gen1'` (a sixth of a vCPU at 256 MiB) would force concurrency 1 and more instances, so it is not proposed |
+| callables (about 50: `admin.*`, `setup.*`, `imagery.*`, `worker.*`, ...) | 256 MiB, 60 s (`imagery.search` 300 s), `maxInstances` from the registry → keep | short reads and writes; billed only while a request runs |
+| `worker.starter`, `telemetry.reportError` (HTTPS) | 256 MiB, their registry caps → keep | |
+| Firestore triggers (`history.*`, `publish.on*`, `imagery.onJobWrite`, `notify.onEvent`, `ops.onProbe`), `ops.onBudget` | 256 MiB, 60 s → keep | |
+| `imagery.onJobWrite` | → also dispatches every city's queued jobs when a run leaves `starting` / `running` | so the tick can run every 15 minutes (S-A12-HAPPY-FREED-PLACE) |
+| `photos.onUpload` | 2 GiB, concurrency 1, 300 s → **1 GiB** | the thumbnail comes from the 2,048 px web WebP, so the original is decoded once: 200 MP measured on the NUC (`sharp` 0.35.5) peaked at 321 MB (JPEG with EXIF orientation 6) and 255 MB (PNG); CPU 1.8 to 1.1 s (JPEG), 3.3 to 1.6 s (PNG): **half the GiB-seconds and about 40 % fewer vCPU-seconds a photo** (S-A08-HAPPY-THUMB-FROM-WEB) |
+| `imagery.publish` | 1 GiB, 1,800 s, 1 instance → **512 MiB** | both upload paths (MTS multipart, the Uploads API's S3 `PUT`) stream the file from the bucket and never hold it; half the GiB-seconds of a publish |
+| `imagery.onRasterUpload` | 512 MiB, concurrency 1, 120 s → **256 MiB** | it reads a file's first bytes and writes two documents |
+| `imagery.tick` | every 5 min, 512 MiB, 540 s, 1 instance → **every 15 min** | 8,640 → 2,880 runs a month (−5,760); a queued job is dispatched by `imagery.onJobWrite` at once, and the waiting ones when a run ends; what remains for the tick (a lost run, a USGS wait over, a lost event, the noWorker offer after 15 minutes, own tiles one version a tick) tolerates 15 minutes. Memory kept: the harvest's answers and every city's jobs in one run |
+| `ops.tick` | every 15 min, 540 s → keep | |
+| `publish.buildManifest` | 512 MiB, 300 s, 1 at a time → keep | a city's manifest is built in memory |
+| `export.build` | 1 GiB, 30 min, 2 → keep | the zip, under 2 GiB |
+| `assist.geocode` | 256 MiB, 60 s, 1 → keep | Nominatim's one a second |
+
+**Billed while idle, and storage**:
+
+| Item | Today → proposed | Why |
+| --- | --- | --- |
+| Cloud Scheduler | 2 jobs (`ops.tick`, `imagery.tick`) → keep | three jobs a billing account are free |
+| Instances | none warm → keep | |
+| `worker.claim` polling | every 30 s for ever → `track/stripfix` (an idle worker asks less often) | about 78,000 calls a month a worker |
+| Pipeline images (Artifact Registry `hcm`) | the two newest kept (about 1 GB each) → keep | about $0.10 a month; the second is the rollback while a run uses it |
+| Functions' images (`gcf-artifacts`) | kept 1 day → keep | |
+| Private bucket | STANDARD, soft delete off; lifecycle `tmp/` 1 day, `uploads/` 7, `work/` 14, `usgs-raw/` 7 (the delivery is deleted after the crop), `reference/` 90, `exports/` 7 → keep | Nearline would halve the price of originals but loses Cloud Storage's always-free 5 GB of STANDARD in us-central1 and bills each read |
+| Public bucket (tiles, photos, manifest) | STANDARD; derivatives and own tiles `public, max-age=31536000, immutable`, the manifest 60 s → keep | Google's edge cache serves repeated reads, so egress is paid once per edge, not per visit |
+
+**Estimated monthly saving.** A quiet month (no import) was already inside the free tier, and stays so with headroom: the tick's
+5,760 fewer runs at about 2 s and 1 vCPU each (**UNVERIFIED**: one look at Cloud Monitoring) return about 11,500 vCPU-seconds and
+5,800 GiB-seconds, a sixteenth of the free vCPU-seconds, and their Firestore reads (a query a part a city, about 40 a run with two
+cities: about 230,000 reads). A busy month of 20 cloud imports (each 1,800 s on `fetch` and 2,700 s on `std`) cost, past the free
+tier, about $2.90 (269,000 vCPU-seconds and 1,016,000 GiB-seconds) and now about $0.45 (150,000 and 579,000): **about $2.50 a month**,
+and **twice the free processing runs (8 → 16)**; past that, each `std` run costs half ($0.28 → $0.14) and each `xl` hour half
+($0.75 → $0.37). Photos and publishes save half their GiB-seconds (a few cents a month for a few hundred photos).
 
 ## 5. The raw USGS delivery
 

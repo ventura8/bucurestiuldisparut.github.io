@@ -30,7 +30,7 @@ real account are marked **UNVERIFIED**, each with how the first real run proves 
    version is published (`S-A14-HAPPY-REPLACE-SOURCE`).
 3. **The job model** (§2.3, §4): jobs are created by callables and triggers only (the client keeps Cancel); the
    dispatcher `imagery.onJobWrite` starts one Cloud Run execution per queued pipeline job; the pipeline holds a lease with
-   a heartbeat, records each step's outputs and exits while it waits; `imagery.tick` (every 5 minutes) resumes, re-dispatches
+   a heartbeat, records each step's outputs and exits while it waits; `imagery.tick` (every 5 minutes; every 15 since 2026-11-12, `docs/research/M7-local-worker.md` §4.6) resumes, re-dispatches
    lost and out-of-memory executions, polls Mapbox, runs deferred publishes, due layer deletions and the monthly harvest.
    **New status `awaiting_gcps`** (done): the scan is ready but has no georeference.
 4. **Pipeline steps** (§5): `fetch`, `extract`, `stitch`, `inspect`, `locate`, `reference`, `georef`, `warp`, `export`,
@@ -399,7 +399,7 @@ The port (done, `functions/src/ports/cloud-run-jobs.ts`): `run(job, env, {args?,
   mock servers' loopback addresses; the pipeline tier). A spec picks the runner; the stand-in's script names the outcome
   (success under or over the threshold, too few matches, maintenance, failure at a step).
 
-Cloud Run job definitions (deployed by CI, ask first; never in M3): `raster-pipeline` (4 vCPU, 16 GiB) and
+Cloud Run job definitions (deployed by CI, ask first; never in M3): `raster-pipeline` (4 vCPU, 16 GiB; 2 and 8 since 2026-11-12, `docs/research/M7-local-worker.md` §4.6) and
 `raster-pipeline-xl` (8 vCPU, 32 GiB), service account `job-raster@`, task timeout 6 hours, `--max-retries 0` (retries
 belong to the dispatcher and the lease, so an execution never races its own retry), the image from Artifact Registry
 `pipeline` by digest, the variables `GOOGLE_CLOUD_PROJECT`, `HCM_PRIVATE_BUCKET`, `HCM_PUBLIC_BUCKET`; per execution
@@ -468,7 +468,7 @@ belong to the dispatcher and the lease, so an execution never races its own retr
 
 ### 4.6 `imagery.tick`
 
-Every 5 minutes (`IMAGERY_TICK_SCHEDULE`, `fn-events@`, one instance), each part isolated and logged, nothing when
+Every 15 minutes (`IMAGERY_TICK_SCHEDULE`; every 5 until 2026-11-12, `docs/research/M7-local-worker.md` §4.6: a run that ends dispatches the queued jobs from `imagery.onJobWrite`; `fn-events@`, one instance), each part isolated and logged, nothing when
 `ops/guard` is red except cancellations:
 
 1. **Dispatch**: `queued` jobs whose `retryAt` / `dispatchAt` passed (capacity permitting); `waiting_usgs` past `retryAt`
@@ -927,7 +927,7 @@ frame a live join holds.
 | `imagery.onJobWrite` | Firestore `cities/{city}/jobs/{id}` | `fn-events@` | §4.2 |
 | `imagery.onRasterUpload` | Storage `uploads/rasters/{city}/{uid}/{upload}/{file}` | `fn-events@` | §8.1; 512 MiB, concurrency 1, `maxInstances` 5 |
 | `imagery.publish` | task queue `imagery-publish` | `fn-events@` | §7.3 |
-| `imagery.tick` | schedule `every 5 minutes` | `fn-events@` | §4.6; one instance |
+| `imagery.tick` | schedule `every 15 minutes` (5 until 2026-11-12) | `fn-events@` | §4.6; one instance |
 
 `functions/src/imagery/` is a feature folder (the stricter dependency-cruiser rule, done); it imports only `ports/`,
 `api/` and `@hcm/shared`.
