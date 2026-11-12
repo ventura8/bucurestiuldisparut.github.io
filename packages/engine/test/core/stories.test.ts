@@ -50,7 +50,7 @@ describe('stories in the viewer state: refusals @S-V50-BAD-UNKNOWN', () => {
     });
 
     it('badPath_theStoreSaysAnUnknownStoryAndOpensAKnownOne', async () => {
-        const { store } = await loaded({ manifest: city, hash: '#story=nope' });
+        const { store, telemetry } = await loaded({ manifest: city, hash: '#story=nope' });
         expect(store.getState().toast).toEqual({ key: 'error.unknownStory' });
         store.openStory('nope');
         expect(store.getState().sheet).toBe('none');
@@ -58,5 +58,6 @@ describe('stories in the viewer state: refusals @S-V50-BAD-UNKNOWN', () => {
         expect(store.getState()).toMatchObject({ sheet: 'stories', selectedStoryId: 'teatrul', year: 1966 });
         store.openStory(null);
         expect(store.getState()).toMatchObject({ sheet: 'stories', selectedStoryId: null });
+        expect(telemetry.events.filter((event) => event.name === 'story_open')).toEqual([{ name: 'story_open', storyId: 'teatrul' }]);
     });
 });

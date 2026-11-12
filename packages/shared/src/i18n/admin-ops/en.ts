@@ -170,6 +170,7 @@ export const en: Readonly<Record<AdminOpsKey, string>> = {
     'adminContent.jobs.retry': 'Run it again',
     'adminContent.jobs.retrying': 'Starting again…',
     'adminContent.jobs.retried': 'The job is queued again.',
+    'adminContent.jobs.openNewer': 'Open the newer import',
     'adminContent.jobs.openGeoref': 'Open the georeferencer',
     // [end jobs]
     // [section crashes] owner: ops-screens; keys adminContent.crashes.*
@@ -194,5 +195,11 @@ export const en: Readonly<Record<AdminOpsKey, string>> = {
     'adminContent.crashes.openConsole': 'Open in Error Reporting (new tab)',
     'adminContent.crashes.apiDisabled': 'Error Reporting is not enabled in the project. Enable it from the analytics card of Setup.',
     'adminContent.crashes.openSetup': 'Open the analytics setup',
+    'adminContent.crashes.page': 'Page',
+    'adminContent.crashes.client': 'Browser and device',
+    'adminContent.crashes.affectedUsers': 'People affected',
+    'adminContent.crashes.frames': 'Where it happened (top of the stack, newest call first)',
+    'adminContent.crashes.noFrames': 'The browser sent no stack for this error: open it in Error Reporting for the full report.',
+    'adminContent.crashes.release': 'Release notes of {version} (new tab)',
     // [end crashes]
 };

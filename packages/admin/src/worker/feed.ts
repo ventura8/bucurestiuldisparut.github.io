@@ -46,6 +46,8 @@ export interface WorkerSeen {
     readonly seenAt: string;
     readonly jobId: string | null;
     readonly lastJob: { readonly id: string; readonly outcome: 'done' | 'failed'; readonly at: string } | null;
+    /** The pipeline version it runs, as it said in `worker.hello` (the owner's request of 2026-11-13: say which). */
+    readonly version: string;
     /** Its image is no longer the installed pipeline's: it takes no job until the command is run again. */
     readonly outdated: boolean;
     /** Disconnected in the admin (`worker.revoke`). */
@@ -114,7 +116,8 @@ function seenOf(doc: Stored<WorkerDoc>): WorkerSeen {
     const { state, jobId, lastJob, lastSeenAt } = doc.data;
     const last = lastJob === undefined ? null : { id: lastJob.id, outcome: lastJob.outcome, at: isoOf(lastJob.at) };
     const flags = { outdated: doc.data.outdated === true, revoked: doc.data.revokedAt !== undefined };
-    return { id: doc.id, state, seenAt: isoOf(lastSeenAt), jobId: jobId ?? null, lastJob: last, ai: doc.data.ai ?? null, ...flags };
+    const said = { version: doc.data.version, ai: doc.data.ai ?? null };
+    return { id: doc.id, state, seenAt: isoOf(lastSeenAt), jobId: jobId ?? null, lastJob: last, ...said, ...flags };
 }
 
 /** The jobs the raster pipeline runs, whose place may be the computer or the cloud. */

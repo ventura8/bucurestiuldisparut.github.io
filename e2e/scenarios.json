@@ -5498,6 +5498,17 @@
             "notes": "Round of 2026-11-06. In functions/test/imagery/retry.test.ts and approve.test.ts; jobRetryable in packages/shared/test/imagery/job-retryable.test.ts."
         },
         {
+            "id": "S-A12-BAD-RETRY-IMPORTED-AGAIN",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "Run it again on an import set aside after the frame was imported again names the newer import",
+            "asserts": "a failed job whose version was rejected, with a later import of the same frame in the same layer -> imagery.retry refuses apiError.imagery.importedAgain with the newer version's id (logged with both ids); the Jobs page says the frame was imported again later and offers Open the newer import; without a newer import, apiError.imagery.versionRejected says to import the frame again",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (the 1972 frame im-mw11bz00-D3C1202-200149F039, a bare HTTP 400). Covered by functions/test/imagery/retry.test.ts and packages/admin/test/jobs/raster.test.ts."
+        },
+        {
             "id": "S-A12-BAD-STRANDED-VERSION",
             "behaviour": "A12",
             "area": "admin",
@@ -6860,6 +6871,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/telemetry/report-error.test.ts."
+        },
+        {
+            "id": "S-A24-HAPPY-CLIENT-LABEL",
+            "behaviour": "A24",
+            "area": "admin",
+            "path": "happy",
+            "title": "A crash report names the browser and device class, never the User-Agent, and the route",
+            "asserts": "a report from Firefox for iOS with route photo -> the logged event's httpRequest.userAgent is 'Firefox 145 mobile' and hcm.route is photo; the full User-Agent string is nowhere in it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12 (crash reports and analytics). Covered by functions/test/telemetry/report-error.test.ts; packages/shared/src/telemetry/crash-noise.ts."
+        },
+        {
+            "id": "S-A24-BAD-NOISE-DROPPED",
+            "behaviour": "A24",
+            "area": "admin",
+            "path": "bad",
+            "title": "A script the browser injected or an aborted fetch is no crash: dropped with its reason",
+            "asserts": "a report of Firefox for iOS's __firefox__ reader script (stack at the page's line 1) and an AbortError -> 204, nothing reaches Error Reporting, the log names the reason (injected, aborted)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The Crashes groups of 2026-11-11. The viewer and the admin drop them at the source too (crashNoiseOf). Covered by functions/test/telemetry/report-error.test.ts."
         },
         {
             "id": "S-A24-BAD-TOO-LARGE",

@@ -4,9 +4,10 @@
  * preflight; `keepalive`, no credentials), which feeds Cloud Error Reporting as the `admin` service, and sent to GA4 as
  * `exception` events after consent. The reporter never throws, sends at most `MAX_REPORTS_PER_PAGE` reports per page
  * and one per message per `DEDUPE_WINDOW_MS`, and redacts with `redactText` (tokens, keys, addresses, URL queries) what
- * the endpoint redacts again. In start-up mode there is no endpoint yet (nothing is deployed), so nothing is posted.
+ * the endpoint redacts again. Errors the page did not cause (`crashNoiseOf`) are logged with their reason, never sent;
+ * a report names the area's route (`routeOfHash`). In start-up mode there is no endpoint yet (nothing is deployed), so nothing is posted.
  */
-import { redactText, type ErrorReport, type Logger } from '@hcm/shared';
+import { crashNoiseOf, redactText, type ErrorReport, type Logger } from '@hcm/shared';
 
 import type { Unsubscribe } from './ports.js';
 
@@ -28,7 +29,8 @@ export interface ErrorReporterDeps {
     /** The page's origin and path (never its hash or query). */
     readonly page: () => string;
     readonly viewport: () => { readonly width: number; readonly height: number };
-    readonly context: () => { readonly locale: string; readonly windowClass: string };
+    /** `route`: the area's route id (`georef`), never the ids after it (`routeOfHash`). */
+    readonly context: () => { readonly locale: string; readonly windowClass: string; readonly route?: string | undefined };
     readonly post: (url: string, body: string) => Promise<unknown>;
     /** GA4 `exception`, dropped without consent. */
     readonly exception: (description: string, fatal: boolean) => void;
@@ -57,6 +59,11 @@ export class AdminErrorReporter {
     /** Never throws. */
     report(error: unknown, context: { readonly fatal: boolean; readonly source: ErrorSource }): void {
         try {
+            const noise = crashNoiseOf(error);
+            if (noise !== null) {
+                this.#deps.log.info('error not reported: the page did not cause it', { reason: noise });
+                return;
+            }
             const message = redactText(messageOf(error)).slice(0, MAX_MESSAGE_LENGTH);
             if (!this.#admit(message)) {
                 return;
@@ -85,7 +92,7 @@ export class AdminErrorReporter {
         if (endpoint === null) {
             return;
         }
-        const { locale, windowClass } = this.#deps.context();
+        const { locale, windowClass, route } = this.#deps.context();
         const report: ErrorReport = {
             ...parts,
             release: this.#deps.release,
@@ -94,6 +101,7 @@ export class AdminErrorReporter {
             viewport: this.#deps.viewport(),
             windowClass,
             locale,
+            ...(route === undefined ? {} : { route }),
         };
         this.#deps.post(endpoint, JSON.stringify(report)).catch((failure: unknown) => {
             this.#deps.log.warn('error report not delivered', { error: String(failure) });
@@ -121,6 +129,14 @@ export function installErrorHooks(
         target.removeEventListener('error', onError);
         target.removeEventListener('unhandledrejection', onRejection);
     };
+}
+
+const ROUTE_ID = /^[a-z][a-z0-9-]*$/;
+
+/** The route id of an admin hash (`#/georef/im-1` → `georef`): the area only, never the record after it. */
+export function routeOfHash(hash: string): string | undefined {
+    const id = hash.replace(/^#\/?/, '').split('/', 1)[0] ?? '';
+    return ROUTE_ID.test(id) && id.length <= 40 ? id : undefined;
 }
 
 /** `telemetry.reportError` of the project (`M2-interfaces.md` §3.4), or the Functions emulator's in the e2e build. */

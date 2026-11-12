@@ -25,6 +25,7 @@ describe('viewer store actions', () => {
         vi.advanceTimersByTime(HASH_WRITE_DELAY_MS);
 
         expect(store.getState().locale).toBe('en');
+        expect(telemetry.events.filter((event) => event.name === 'locale_change')).toEqual([{ name: 'locale_change', locale: 'en' }]);
         expect(storage.get('hcm:bucuresti:lang')).toBe('en');
         expect(map.callsOf('setPhotosData')).toHaveLength(photosBefore + 1);
         const titles = (map.callsOf('setPhotosData').at(-1)?.[0] as PhotoFeatureCollection).features.map((feature) => feature.properties);
@@ -326,11 +327,12 @@ describe('viewer store: view, window, theme, consent', () => {
     });
 
     it('happyPath_theThemeIsRemembered', async () => {
-        const { store, storage } = await loaded();
+        const { store, storage, telemetry } = await loaded();
 
         store.setTheme('dark');
         store.setTheme('dark');
 
+        expect(telemetry.events.filter((event) => event.name === 'theme_change')).toEqual([{ name: 'theme_change', theme: 'dark' }]);
         expect(store.getState().theme).toBe('dark');
         expect(storage.get('hcm:bucuresti:theme')).toBe('dark');
     });

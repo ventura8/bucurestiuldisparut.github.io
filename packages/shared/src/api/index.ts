@@ -113,6 +113,7 @@ export type {
 export { USGS_ACCESS_PENDING, setupDone, usgsReadiness } from './setup-done.js';
 export type { SetupDoneInput, UsgsReadiness } from './setup-done.js';
 export {
+    CRASH_TOP_FRAMES,
     ERROR_GROUP_RESOLUTIONS,
     ERROR_REPORT_LIMITS,
     ERROR_REPORT_MAX_BYTES,

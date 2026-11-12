@@ -29,6 +29,7 @@ import {
     type Unsubscribe,
     type VectorOverlaySpec,
 } from './map-port.js';
+import { guardContextRestore } from './context-restore.js';
 import { classifyError, mapboxOptions, relabelMapbox, whenLoaded } from './lifecycle.js';
 import type { MapboxEvent, MapboxGl, MapboxMap } from './mapbox-types.js';
 import { OverlayRegistry } from './overlay-registry.js';
@@ -156,6 +157,7 @@ class MapboxPort implements MapPort {
         this.#forward(session, 'webglcontextrestored', () => {
             this.#events.emit('webglcontextrestored', undefined);
         });
+        session.cleanups.push(guardContextRestore(map));
         this.#forward(session, 'idle', () => {
             this.#events.emit('idle', undefined);
         });

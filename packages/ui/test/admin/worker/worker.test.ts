@@ -48,6 +48,7 @@ function seen(changes: Partial<NonNullable<WorkerViewPort['worker']>> = {}): Non
         seenAt: '2026-11-02T09:00:00.000Z',
         jobId: null,
         lastJob: null,
+        version: '1.0.0',
         outdated: false,
         revoked: false,
         ai: null,
@@ -195,6 +196,7 @@ describe('<hcm-worker-panel>', () => {
         expect(host.feed.calls).toEqual(['start null', 'local demo-hcm']);
         expect(text).toContain(t('en', 'adminWorker.connected', { when: '' }).split(' Seen')[0] ?? '');
         expect(text).toContain(t('en', 'adminWorker.lastDone', { when: '' }).slice(0, 10));
+        expect(deep(element, '[data-worker-version]').textContent).toBe(t('en', 'adminWorker.version', { version: '1.0.0' }));
         // Finding 72: this computer's part comes from the lazy chunk, started with the panel and stopped when it goes.
         const local = deep(element, 'hcm-worker-local') as LitElement & { image: string; city: string; project: string };
         expect([local.image, local.city, local.project]).toEqual([DIGEST, 'bucharest', 'demo-hcm']);
@@ -247,6 +249,12 @@ describe('<hcm-worker-panel>', () => {
         await updated(element);
         expect(deepText(element)).toContain(t('en', 'adminWorker.working'));
         expect(deep(element, 'a[href="#/jobs/j7"]').textContent).toBe('j7');
+        // Silent while busy on a job: a long step, said as such with the way to Jobs, never "no computer connected".
+        expect(deep(element, '[data-worker-silent="busy"]').textContent).toContain(
+            t('en', 'adminWorker.busySilent', { when: '' }).slice(0, 30),
+        );
+        expect(deep(element, 'a[href="#/jobs"]').textContent).toBe(t('en', 'adminWorker.busyHelp'));
+        expect(deepText(element)).not.toContain(t('en', 'adminWorker.none'));
 
         // Busy without a job yet, and no job before: nothing about jobs.
         host.feed.set({ worker: seen({ state: 'busy', seenAt }) });
@@ -333,7 +341,8 @@ describe('<hcm-worker-panel>: findings 66-68 of 2026-11-02', () => {
     it('badPath_anOutdatedWorkerIsToldToUpdateAndADisconnectedOneSaysSo', async () => {
         const host = new FakeHost(view({ connected: true, worker: seen({ outdated: true }) }));
         const element = await panel(host);
-        expect(deep(element, '[data-outdated]').textContent).toBe(t('en', 'adminWorker.outdated'));
+        expect(deep(element, '[data-outdated]').textContent).toBe(t('en', 'adminWorker.outdated', { version: '1.0.0' }));
+        expect(deepAll(element, '[data-worker-version]')).toHaveLength(0);
 
         host.feed.set({ connected: false, worker: seen({ revoked: true }) });
         await updated(element);

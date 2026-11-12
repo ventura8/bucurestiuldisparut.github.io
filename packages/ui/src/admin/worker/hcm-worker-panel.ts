@@ -31,6 +31,9 @@ const CHOICE_TEXT = {
     cloud: 'adminWorker.choice.cloud',
 } as const satisfies Readonly<Record<RunChoice, string>>;
 
+/** Nothing: an outdated computer's version is said in its alert. */
+const EMPTY_LINE = html``;
+
 export class HcmWorkerPanel extends WorkerElement {
     static override readonly properties = {
         ...WorkerElement.properties,
@@ -107,11 +110,27 @@ export class HcmWorkerPanel extends WorkerElement {
             return html`<p>${this.t('adminWorker.none')}</p>`;
         }
         const when = formatWhen(this.locale, worker.seenAt);
-        const line = view.connected
-            ? this.t('adminWorker.connected', { when })
-            : `${this.t('adminWorker.none')} ${this.t('adminWorker.lastSeen', { when })}`;
-        return html`<p>${line}</p>
-            ${this.#job(view, worker)} ${this.#ai(view, worker)} ${this.#outdated(view, worker)} ${this.#disconnect(view, worker)}`;
+        return html`${this.#presence(view, worker, when)} ${this.#job(view, worker)} ${this.#ai(view, worker)}
+        ${this.#outdated(view, worker)} ${this.#disconnect(view, worker)}`;
+    }
+
+    /**
+     * Connected, or silent: a computer whose last word was "busy on a job" is in a long step (it answers when the step
+     * ends), never "not connected" (the owner's report of 2026-11-12); one that was idle is not connected.
+     */
+    #presence(view: WorkerViewPort, worker: WorkerSeenPort, when: string): TemplateResult {
+        if (view.connected) {
+            const version = worker.outdated
+                ? EMPTY_LINE
+                : html`<p data-worker-version>${this.t('adminWorker.version', { version: worker.version })}</p>`;
+            return html`<p>${this.t('adminWorker.connected', { when })}</p>
+                ${version}`;
+        }
+        if (worker.state === 'busy' && worker.jobId !== null) {
+            return html`<p data-worker-silent="busy">${this.t('adminWorker.busySilent', { when })}</p>
+                <p><a href="#/jobs">${this.t('adminWorker.busyHelp')}</a></p>`;
+        }
+        return html`<p>${this.t('adminWorker.none')} ${this.t('adminWorker.lastSeen', { when })}</p>`;
     }
 
     /**
@@ -140,7 +159,9 @@ export class HcmWorkerPanel extends WorkerElement {
 
     /** Finding 67: a connected worker whose image is not the installed one takes no job until the command runs again. */
     #outdated(view: WorkerViewPort, worker: WorkerSeenPort): TemplateResult {
-        return view.connected && worker.outdated ? html`<p class="alert" data-outdated>${this.t('adminWorker.outdated')}</p>` : html``;
+        return view.connected && worker.outdated
+            ? html`<p class="alert" data-outdated>${this.t('adminWorker.outdated', { version: worker.version })}</p>`
+            : html``;
     }
 
     /** Disconnect this computer (`worker.revoke`): for a worker not disconnected yet. */

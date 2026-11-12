@@ -220,10 +220,25 @@ describe('imagery.retry: a version that is no longer failed', () => {
         await seedFailedVersion(world, { state: 'rejected' });
         await seedScene(world, SCENE);
 
-        expect(await failureOf(retry(world))).toMatchObject({ details: { code: 'apiError.imagery.versionState' } });
+        expect(await failureOf(retry(world))).toMatchObject({ details: { code: 'apiError.imagery.versionRejected' } });
 
         expect((await readJob(world, JOB))?.status).toBe('failed');
         expect((await readVersion(world, JOB))?.state).toBe('rejected');
+    });
+
+    it('badPath_anImportSetAsideAfterTheFrameWasImportedAgainNamesTheNewerImport @S-A12-BAD-RETRY-IMPORTED-AGAIN', async () => {
+        // The owner's report of 2026-11-13: the 1972 frame's old import answered a bare 400.
+        const world = await readyWorld();
+        await seedJob(world, JOB, failed());
+        await seedFailedVersion(world, { state: 'rejected' });
+        await seedVersion(world, 'im-older-0712', renderedVersion({ state: 'rejected' }));
+        await seedVersion(world, 'im-newer-0712', renderedVersion({ state: 'awaiting_approval' }));
+        await seedVersion(world, 'im-other-0999', renderedVersion({ state: 'awaiting_approval' }));
+
+        expect(await failureOf(retry(world))).toMatchObject({
+            details: { code: 'apiError.imagery.importedAgain', params: { versionId: 'im-newer-0712' } },
+        });
+        expect((await readJob(world, JOB))?.status).toBe('failed');
     });
 
     it('badPath_aVersionDismissedDuringTheRetryIsNotBroughtBack @S-A12-BAD-RETRY-DISMISSED', async () => {

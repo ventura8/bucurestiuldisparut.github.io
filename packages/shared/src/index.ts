@@ -414,5 +414,6 @@ export { VIEWER_EVENT_PARAMS, createViewerGuard, type ViewerEventName } from './
 export { ADMIN_EVENT_PARAMS, createAdminGuard, type AdminEventName } from './telemetry/admin-events.js';
 export { observeWebVitals, sanitizeTarget, shortTarget, vitalParams } from './telemetry/web-vitals.js';
 export type { FieldChunk, VitalAttribution, VitalMetric, VitalObserver, VitalOptions } from './telemetry/web-vitals.js';
+export { clientLabel, crashNoiseOf, type CrashNoise, type DeviceClass } from './telemetry/crash-noise.js';
 export * from './migration/index.js';
 export * from './api/index.js';

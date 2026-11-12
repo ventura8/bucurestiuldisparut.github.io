@@ -20,6 +20,8 @@ export interface WorkerSeenPort {
     readonly seenAt: string;
     readonly jobId: string | null;
     readonly lastJob: { readonly id: string; readonly outcome: 'done' | 'failed'; readonly at: string } | null;
+    /** The pipeline version it runs. */
+    readonly version: string;
     readonly outdated: boolean;
     readonly revoked: boolean;
     /** Its local AI (`docs/research/M10-local-ai.md`), or null for a worker older than it. */

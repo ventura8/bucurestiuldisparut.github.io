@@ -64,7 +64,7 @@ export const en: AdminInstallMessages = {
     'adminSetup.install.update': 'An update is ready: {release}.',
     'adminSetup.install.updateAction': 'Update the map',
     'adminSetup.install.provisionDue': 'The update also brings these project settings up to date: {items}.',
-    'adminSetup.install.newer': 'Installed {release}, newer than this admin: reload the page.',
+    'adminSetup.install.newer': 'This page is older than the installed version ({release}). Reload the page to get the new admin.',
     'adminSetup.install.over.action': "Install this admin's version anyway",
     'adminSetup.install.over.title': 'Replace a newer release?',
     'adminSetup.install.over.body': 'This replaces the newer {installed} with the older {release}: a rollback, marked in Cloud Build.',

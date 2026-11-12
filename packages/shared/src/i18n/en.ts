@@ -29,7 +29,7 @@ export const en: Messages = {
     'validation.ringClosed': 'A polygon ring must end where it starts.',
     'validation.reference': 'The value refers to an item that does not exist.',
     'validation.invalid': 'The value is not valid.',
-    'error.generic': 'Something unexpected went wrong.',
+    'error.generic': 'The map did not start because of a fault in this page (it is reported). Reload the page.',
     'error.manifest.notFound': 'The map could not be found. Please try again later.',
     'error.manifest.network': 'The map could not be loaded. Check your connection and try again.',
     'error.manifest.timeout': 'Loading the map is taking too long.',

@@ -15,7 +15,10 @@ export type TelemetryEvent =
     | { readonly name: 'photo_open'; readonly photoId: string }
     | { readonly name: 'poi_open'; readonly poiId: string }
     | { readonly name: 'share' }
-    | { readonly name: 'compare_open' };
+    | { readonly name: 'compare_open' }
+    | { readonly name: 'story_open'; readonly storyId: string }
+    | { readonly name: 'locale_change'; readonly locale: string }
+    | { readonly name: 'theme_change'; readonly theme: string };
 
 /**
  * A field measurement as GA4 receives it (docs/ARCHITECTURE.md → *Field measurements*): its parameters without the

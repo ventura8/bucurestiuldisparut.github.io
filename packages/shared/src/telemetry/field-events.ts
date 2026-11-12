@@ -42,7 +42,8 @@ export type FieldEventName =
     | 'install_build'
     | 'provision_item'
     | 'editor_save'
-    | 'job_done';
+    | 'job_done'
+    | 'admin_action';
 
 /** A duration or time in whole milliseconds: at most a day (a page left open overnight). */
 export const msSchema = z.number().int().min(0).max(86_400_000);

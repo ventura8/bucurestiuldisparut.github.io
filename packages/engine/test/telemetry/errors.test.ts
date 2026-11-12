@@ -77,6 +77,22 @@ describe('error reporter', () => {
         expect(exceptions).toEqual([['TypeError: cannot read tiles of https://api.mapbox.com/v4/x.json', true]]);
     });
 
+    it('badPath_errorsThePageDidNotCauseAreLoggedWithTheirReasonNeverSent', () => {
+        const { reporter, posts, exceptions, log } = setup();
+        // The Crashes group of 2026-11-11: Firefox for iOS's reader-mode script, injected into the page.
+        const injected = new TypeError("undefined is not an object (evaluating 'window.__firefox__.reader')");
+        injected.stack = 'global code@https://site.example.org/:1:19';
+        const extension = new Error('boom');
+        extension.stack = 'Error: boom\n    at run (moz-extension://abc/content.js:1:2)';
+
+        reporter.report(injected, { fatal: false, source: 'window' });
+        reporter.report(extension, { fatal: false, source: 'window' });
+
+        expect(posts).toEqual([]);
+        expect(exceptions).toEqual([]);
+        expect(log.records.map((record) => record.data?.['reason'])).toEqual(['injected', 'extension']);
+    });
+
     it('happyPath_tokensAndEmailsAreRedactedWithTheSharedRules', () => {
         // CR-M2-4: the reporter applies `redactText` of @hcm/shared, the endpoint's own rules (Google access tokens too).
         const { reporter, posts } = setup();

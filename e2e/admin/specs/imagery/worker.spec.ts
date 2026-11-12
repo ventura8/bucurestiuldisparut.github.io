@@ -304,7 +304,7 @@ test(
 
         // Finding 67: the pipeline was updated since the computer's command: it takes no job until the command runs again.
         await imagery.cityWorld.emulators.updateFields(workerPath, { state: 'idle', outdated: true }, ['state', 'jobId', 'outdated']);
-        await expect(panel(page).locator('[data-outdated]')).toHaveText(text(lang, 'adminWorker.outdated'), {
+        await expect(panel(page).locator('[data-outdated]')).toHaveText(text(lang, 'adminWorker.outdated', { version: '1.0.0' }), {
             timeout: FUNCTIONS_TIMEOUT_MS,
         });
         await expectStateSound(page, adminVisit('worker.panel-outdated', lang));

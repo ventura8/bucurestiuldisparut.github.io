@@ -79,6 +79,9 @@ const GA_PARAMS: { readonly [N in GaEvent['name']]?: (event: Extract<GaEvent, { 
     year_change: (event) => ({ year: event.year ?? 'today' }),
     photo_open: (event) => ({ photo_id: event.photoId }),
     poi_open: (event) => ({ poi_id: event.poiId }),
+    story_open: (event) => ({ story_id: event.storyId }),
+    locale_change: (event) => ({ locale: event.locale }),
+    theme_change: (event) => ({ theme: event.theme }),
     exception: (event) => ({ description: event.description, fatal: event.fatal }),
 };
 

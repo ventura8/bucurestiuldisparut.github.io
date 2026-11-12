@@ -16,7 +16,7 @@ import { areaServices } from './app/content-wiring.js';
 import { documentVisibility, webStorage, windowClock, windowLocation, type LocationWindow } from './app/browser.js';
 import type { Clock, HashLocation, KeyValueStore } from './app/ports.js';
 import type { AdminRuntime, FirebaseWebConfig } from './app/config.js';
-import { errorEndpointFor, installErrorHooks, AdminErrorReporter } from './app/errors.js';
+import { errorEndpointFor, installErrorHooks, AdminErrorReporter, routeOfHash } from './app/errors.js';
 import type { AdminApp, AdminDeps, TelemetryView } from './app/mount.js';
 import { watchRelease, type ReleaseWatch } from './app/release-watch.js';
 import type { AdminProject, SetupModuleSpec } from './app/services.js';
@@ -188,7 +188,7 @@ export function telemetryFor(
             endpoint: () => (view.serverAnswers() ? endpoint : null),
             page: () => location.page(),
             viewport: () => ({ width: win.innerWidth, height: win.innerHeight }),
-            context: () => ({ locale: view.locale(), windowClass: view.windowClass() }),
+            context: () => ({ locale: view.locale(), windowClass: view.windowClass(), route: routeOfHash(win.location.hash) }),
             post: (url, body) =>
                 win.fetch(url, { method: 'POST', body, headers: { 'content-type': 'text/plain' }, keepalive: true, credentials: 'omit' }),
             exception: (description, fatal) => {

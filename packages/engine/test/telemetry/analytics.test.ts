@@ -13,6 +13,9 @@ describe('analytics', () => {
         expect(gaParams({ name: 'year_change', year: null })).toEqual({ year: 'today' });
         expect(gaParams({ name: 'photo_open', photoId: 'p' })).toEqual({ photo_id: 'p' });
         expect(gaParams({ name: 'poi_open', poiId: 'x' })).toEqual({ poi_id: 'x' });
+        expect(gaParams({ name: 'story_open', storyId: 's' })).toEqual({ story_id: 's' });
+        expect(gaParams({ name: 'locale_change', locale: 'en' })).toEqual({ locale: 'en' });
+        expect(gaParams({ name: 'theme_change', theme: 'dark' })).toEqual({ theme: 'dark' });
         expect(gaParams({ name: 'exception', description: 'TypeError: x', fatal: false })).toEqual({
             description: 'TypeError: x',
             fatal: false,

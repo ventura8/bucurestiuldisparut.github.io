@@ -1,10 +1,17 @@
 import { errorReportSchema } from '@hcm/shared';
 import { describe, expect, it, vi } from 'vitest';
 
-import { AdminErrorReporter, DEDUPE_WINDOW_MS, errorEndpointFor, installErrorHooks, MAX_REPORTS_PER_PAGE } from '../../src/app/errors.js';
+import {
+    AdminErrorReporter,
+    DEDUPE_WINDOW_MS,
+    errorEndpointFor,
+    installErrorHooks,
+    MAX_REPORTS_PER_PAGE,
+    routeOfHash,
+} from '../../src/app/errors.js';
 import { FakeClock, testLog } from './fakes.js';
 
-function reporter(endpoint: string | null = 'https://us-central1-demo-hcm.cloudfunctions.net/telemetry-reportError') {
+function reporter(endpoint: string | null = 'https://us-central1-demo-hcm.cloudfunctions.net/telemetry-reportError', route?: string) {
     const clock = new FakeClock();
     const posts: { readonly url: string; readonly body: string }[] = [];
     const exceptions: { readonly description: string; readonly fatal: boolean }[] = [];
@@ -20,7 +27,7 @@ function reporter(endpoint: string | null = 'https://us-central1-demo-hcm.cloudf
         endpoint: () => endpoint,
         page: () => 'https://demo-hcm.web.app/',
         viewport: () => ({ width: 1440, height: 900 }),
-        context: () => ({ locale: 'ro', windowClass: 'large' }),
+        context: () => ({ locale: 'ro', windowClass: 'large', route }),
         post,
         exception: (description, fatal) => {
             exceptions.push({ description, fatal });
@@ -114,6 +121,36 @@ describe('installErrorHooks', () => {
             [thrown, { fatal: false, source: 'window' }],
             ['nope', { fatal: false, source: 'promise' }],
         ]);
+    });
+});
+
+describe('crash noise and the route', () => {
+    it('badPath_aScriptTheBrowserInjectedIsLoggedWithItsReasonNeverPosted', () => {
+        const r = reporter();
+        const injected = new Error("Can't find variable: __firefox__");
+        injected.stack = 'global code@https://demo-hcm.web.app/admin/:1:12';
+        const aborted = new DOMException('The operation was aborted.', 'AbortError');
+
+        r.errors.report(injected, { fatal: false, source: 'window' });
+        r.errors.report(aborted, { fatal: false, source: 'promise' });
+
+        expect(r.posts).toEqual([]);
+        expect(r.exceptions).toEqual([]);
+        expect(r.recording.records.map((record) => record.data?.['reason'])).toEqual(['injected', 'aborted']);
+    });
+
+    it('happyPath_aReportNamesTheAreaRouteOnly', () => {
+        const r = reporter(undefined, routeOfHash('#/georef/im-1-DS1103'));
+        r.errors.report(new Error('georef failed'), { fatal: false, source: 'window' });
+        expect(errorReportSchema.parse(JSON.parse(r.posts[0]?.body ?? '{}')).route).toBe('georef');
+    });
+
+    it('badPath_aHashWithoutAnAreaGivesNoRoute', () => {
+        expect(routeOfHash('')).toBeUndefined();
+        expect(routeOfHash('#/')).toBeUndefined();
+        expect(routeOfHash('#/Bad Route')).toBeUndefined();
+        expect(routeOfHash('#setup')).toBe('setup');
+        expect(routeOfHash(`#/${'a'.repeat(41)}`)).toBeUndefined();
     });
 });
 

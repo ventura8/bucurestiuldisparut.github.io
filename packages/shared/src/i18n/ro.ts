@@ -34,7 +34,7 @@ export const ro = {
     'validation.ringClosed': 'Un inel al poligonului trebuie să se termine unde începe.',
     'validation.reference': 'Valoarea trimite la un element care nu există.',
     'validation.invalid': 'Valoarea nu este validă.',
-    'error.generic': 'A apărut o eroare neașteptată.',
+    'error.generic': 'Harta nu a pornit din cauza unei defecțiuni a paginii (e raportată). Reîncarcă pagina.',
     'error.manifest.notFound': 'Harta nu a fost găsită. Încearcă din nou mai târziu.',
     'error.manifest.network': 'Harta nu s-a putut încărca. Verifică conexiunea și încearcă din nou.',
     'error.manifest.timeout': 'Încărcarea hărții durează prea mult.',
