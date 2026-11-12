@@ -3477,3 +3477,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-12: the NUC's copy keeps `.tsbuild/` between runs (the sync leaves it out), and 77 merged commits left its build info older than the files.
     - Fix: delete `packages/*/.tsbuild`, `e2e/.tsbuild` and every `*.tsbuildinfo` on the NUC, then run `tsc -b` again.
     - **After a large merge, clear the incremental TypeScript output of a machine that only receives the sources.**
+
+593. **Three branches, each under the start page's budget, went over it together: the page carried every Firestore schema and the API catalogue.**
+    - Seen: 2026-11-12, the merge of track/workerfix, track/favicon and track/photoversions: `dist/start-app/start.mjs` measured 72.9 KB gzip of 72 (each branch alone 71.7 to 71.9), and `firebase/rules-tests/test/support/documents.ts` reached 601 lines of 600.
+    - Cause: the start page needs a city id's pattern and three checks (`isUsableCityId`, `suggestCityId`, `cityBoundsProblem`); they lived in `schemas/paths.ts` and `schemas/cities.ts`, whose imports (`firestore.ts`, the API's limits) are zod schemas built at module level, which no bundler drops. So every new field, error text or schema of any branch grew the start page.
+    - Fix and pin: `CITY_ID_PATTERN` is in `schemas/primitives.ts` and the checks in `schemas/city-id.ts` (`paths.ts` and `cities.ts` re-export them): 60.4 KB gzip, no `apiError.*` text in the page, no budget raised (`bundle-budget`). The photo's `derivative` helper moved to `photo-fields.ts`.
+    - **A check a small page needs lives in a module that imports no schema; when a budget is within 1 % on several branches, measure the merge, not the branches, and read which modules the bundle holds before cutting bytes.**

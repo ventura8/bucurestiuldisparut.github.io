@@ -9,9 +9,9 @@
  *
  * Every value is a generated test value; the one shaped like a Google API key is assembled at run time.
  */
-import { CLIENT_WRITES, STORAGE_PATHS, publicObjectUrl, type ClientCollection, type PhotoVariant } from '@hcm/shared';
+import { CLIENT_WRITES, STORAGE_PATHS, publicObjectUrl, type ClientCollection } from '@hcm/shared';
 
-import { reviewedFields, versionEdits, versionFields } from './photo-fields.js';
+import { derivative, reviewedFields, versionEdits, versionFields } from './photo-fields.js';
 import { STORY_EDITS } from './stories.js';
 import { later, past, serverTime, stampedBy, systemStamp, type Data } from './world.js';
 
@@ -56,10 +56,6 @@ export function closedRing(count: number): Data[] {
 /** `count` vertices of an open line. */
 export function line(count: number): Data[] {
     return Array.from({ length: count }, (_, index) => ({ lat: 44.43 + index / 10_000, lng: 26.1 }));
-}
-
-function derivative(cityId: string, photoId: string, variant: PhotoVariant): string {
-    return publicObjectUrl(PUBLIC_BUCKET, STORAGE_PATHS.photoDerivative(cityId, photoId, SHA, variant));
 }
 
 export function cityDoc(cityId: string): Data {
