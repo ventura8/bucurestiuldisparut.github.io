@@ -121,7 +121,7 @@ export function renderLegalPage(page: LegalPage): string {
     return renderDocument(element('html', { lang: 'ro' }, [head, body]));
 }
 
-/** `start-site.css`: system colours (light and dark follow the browser), a readable measure, links of at least 44 px. */
+/** `start-site.css`: system colours (light and dark follow the browser), a readable measure, links of at least 48 px (M3's touch target). */
 const START_SITE_STYLESHEET_SOURCE = [
     "/* Historic City Map Maker: the start site's own pages and the home page's footer (scripts/site/src/start/legal.ts). */",
     ':root {',
@@ -186,8 +186,8 @@ const START_SITE_STYLESHEET_SOURCE = [
     '.start-site-link {',
     '    display: inline-block;',
     '    box-sizing: border-box;',
-    '    min-block-size: 2.75rem;',
-    '    padding-block: 0.625rem;',
+    '    min-block-size: 3rem;',
+    '    padding-block: 0.75rem;',
     '}',
     '',
     '.start-legal a:focus-visible,',

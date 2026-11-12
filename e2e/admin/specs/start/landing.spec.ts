@@ -24,7 +24,7 @@ const VERSION = (JSON.parse(readFileSync(resolve(REPOSITORY, 'package.json'), 'u
 test(
     'The landing page names the product and links the start page, the example and the other language',
     { tag: '@S-A132-HAPPY-LANDING' },
-    async ({ page, lang }) => {
+    async ({ page }) => {
         await page.goto(LANDING_URL);
         await expect(page.getByRole('heading', { level: 1, name: 'Historic City Map Maker' })).toBeVisible();
         await expect(page.getByRole('link', { name: 'Start your map' })).toHaveAttribute('href', 'https://start-historic-city.web.app/');
@@ -33,12 +33,12 @@ test(
             'https://bucurestiul-disparut.web.app/',
         );
         await expect(page.getByText(`npx create-historic-city@${VERSION} self-host`)).toBeVisible();
-        await expectStateSound(page, adminVisit('start.landing', lang));
+        await expectStateSound(page, adminVisit('start.landing', 'en'));
 
         await page.getByRole('navigation', { name: 'Language' }).getByRole('link', { name: 'Română' }).click();
         await expect(page.getByRole('link', { name: 'Pornește-ți harta' })).toHaveAttribute('href', 'https://start-historic-city.web.app/');
         await expect(page.locator('html')).toHaveAttribute('lang', 'ro');
-        await expectStateSound(page, adminVisit('start.landing-ro', lang));
+        await expectStateSound(page, adminVisit('start.landing-ro', 'ro'));
 
         await page.getByRole('navigation', { name: 'Limba' }).getByRole('link', { name: 'English' }).click();
         await expect(page.getByRole('heading', { level: 2, name: 'Prefer the terminal?' })).toBeVisible();

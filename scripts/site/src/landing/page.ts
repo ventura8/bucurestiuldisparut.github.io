@@ -110,7 +110,7 @@ export function renderLandingPage(lang: LandingLanguage, words: LandingCatalogue
     return renderDocument(element('html', { lang }, [head(words), body]));
 }
 
-/** `landing.css`: system colours (light and dark follow the browser), a readable measure, targets of at least 44 px. */
+/** `landing.css`: system colours (light and dark follow the browser), a readable measure, targets of at least 48 px (M3's touch target). */
 export const LANDING_STYLESHEET = [
     '/* Historic City Map Maker: the landing page on GitHub Pages (scripts/site/src/landing/page.ts). */',
     ':root {',
@@ -163,8 +163,8 @@ export const LANDING_STYLESHEET = [
     '.landing-link {',
     '    display: inline-block;',
     '    box-sizing: border-box;',
-    '    min-block-size: 2.75rem;',
-    '    padding-block: 0.625rem;',
+    '    min-block-size: 3rem;',
+    '    padding-block: 0.75rem;',
     '    color: LinkText;',
     '}',
     '',
