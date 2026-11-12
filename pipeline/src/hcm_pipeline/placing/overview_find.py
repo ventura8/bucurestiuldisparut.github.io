@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import os
 import re
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -30,12 +30,13 @@ UPSCALE_HI: float = 8.0
 
 @dataclass(frozen=True)
 class CanvasOpts:
-    """Grid size, upscale and read size for `overview_canvas`."""
+    """Grid size, upscale and read size for `overview_canvas`, and whether the canvas keeps the series' colour."""
 
     rows: int | None = None
     cols: int | None = None
     upscale: float | None = None
     read_px: int = DEFAULT_READ_PX
+    colour: bool = False
 
 
 def _tokens(name: str) -> set[str]:
@@ -157,17 +158,26 @@ def _enough(placed: int, total: int) -> bool:
     return placed >= max(2, (total + 1) // 2)
 
 
+def _colour_tiles(tiles: Sequence[tuple[str, Path]], read_px: int) -> Iterator[tuple[str, UInt8Array]]:
+    """Each tile read again in its own colour at the size it was fitted at, one at a time as it is pasted: a colour series' tiles
+    are never all held in three bands at once (the canvas itself can be 15,000 x 17,000)."""
+    return ((name, read_working(path, read_px).image) for name, path in tiles)
+
+
 def _mosaic(
+    tiles: Sequence[tuple[str, Path]],
     loaded: Sequence[tuple[str, UInt8Array]],
     overview_grey: UInt8Array,
     settings: CanvasOpts,
 ) -> tuple[UInt8Array, MosaicReport]:
+    """The tiles fitted on their grey features; pasted grey, or in their own colour when the series is colour."""
     side = max(1, math.ceil(math.sqrt(len(loaded))))
     rows = settings.rows if settings.rows is not None else side
     cols = settings.cols if settings.cols is not None else side
     fits = fit_tiles(loaded, overview_grey, rows, cols)
     scale = settings.upscale if settings.upscale is not None else _upscale_of(fits, overview_grey)
-    return paste_on_overview(loaded, fits, overview_grey.shape, scale)
+    pieces = _colour_tiles(tiles, settings.read_px) if settings.colour else loaded
+    return paste_on_overview(pieces, fits, overview_grey.shape, scale, settings.colour)
 
 
 def _load_tiles(tiles: Sequence[tuple[str, Path]], read_px: int) -> list[tuple[str, UInt8Array]]:
@@ -179,14 +189,14 @@ def overview_canvas(
     overview: Path,
     opts: CanvasOpts | None = None,
 ) -> tuple[UInt8Array, MosaicReport] | None:
-    """Tiles laid on the overview at tile detail, or None when too few match."""
+    """Tiles laid on the overview at tile detail (in colour when `opts.colour`), or None when too few match."""
     settings = opts or CanvasOpts()
     if not tiles:
         return None
     if not overview.is_file():
         return None
     loaded = _load_tiles(tiles, settings.read_px)
-    canvas, report = _mosaic(loaded, _read_grey(overview, settings.read_px), settings)
+    canvas, report = _mosaic(tiles, loaded, _read_grey(overview, settings.read_px), settings)
     if not _enough(len(report.placed), len(loaded)):
         return None
     return canvas, report

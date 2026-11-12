@@ -16689,6 +16689,28 @@
             "notes": "harti.zip 1895-1899 pieces stitched 4 of 60 (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_scale.py."
         },
         {
+            "id": "S-P20-HAPPY-OVERVIEW-COLOUR",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A colour series stitched on its overview keeps its colour",
+            "asserts": "overview_canvas with colour fits on grey features but pastes each piece in its own colour (three bands, each within a small mean error of the source); a grey piece fills every band; the canvas, stitched.tif and the georeferencer's scan.tif of a colour pieces series stay three-band",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895-1899 coloured map shown grey in the georeferencer (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_find.py, pipeline/tests/unit/test_placing_assemble_overview.py."
+        },
+        {
+            "id": "S-P20-BAD-OVERVIEW-GREY-STAYS-GREY",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A grey series stitched on its overview stays one band, even from colour pieces",
+            "asserts": "overview_canvas without colour returns a single-band canvas from three-band pieces, the pieces placed as before",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895-1899 coloured map shown grey in the georeferencer (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_find.py."
+        },
+        {
             "id": "S-P20-HAPPY-ATLAS",
             "behaviour": "P20",
             "area": "pipeline",

@@ -45,6 +45,11 @@ class SeriesJob:
         """Line art is warped with nearest, so its lines stay crisp (§6)."""
         return self.encoding == "lineart"
 
+    @property
+    def colour(self) -> bool:
+        """A colour series keeps its colour in every picture it is assembled into (an overview mosaic included)."""
+        return self.encoding == "colour"
+
 
 def _sheets_record(ctx: JobContext) -> list[Mapping[str, object]]:
     local = ctx.local(SHEETS)

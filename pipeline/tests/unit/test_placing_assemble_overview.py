@@ -6,6 +6,7 @@ import cv2
 import numpy
 from hcm_pipeline.jobs import Done, Waiting
 from hcm_pipeline.placing import assemble, maps
+from hcm_pipeline.placing.raster_io import read_working
 from hcm_pipeline.steps.place import PlaceStep
 
 from tests.fakes.world import PipelineWorld
@@ -13,6 +14,7 @@ from tests.synthetic.town import TownSpec, town_lines, write_map
 from tests.unit.placing_support import originals, series_context
 from tests.unit.test_placing_assemble import town_map
 from tests.unit.test_placing_overview import _make_overview, _make_tile
+from tests.unit.test_placing_overview_find import _tinted
 
 
 def test_happy_path_pieces_with_an_overview_use_it_as_the_series_picture(world: PipelineWorld, tmp_path: Path) -> None:
@@ -36,6 +38,30 @@ def test_happy_path_pieces_with_an_overview_use_it_as_the_series_picture(world: 
     assert isinstance(record, dict)
     assert record["method"] == "overview"
     assert record["joined"] >= 3
+
+
+def test_happy_path_a_colour_series_on_its_overview_keeps_its_colour(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P20-HAPPY-OVERVIEW-COLOUR"""
+    overview = _tinted(_make_overview((800, 800)))
+    names = [f"Sheet/r{row}c{col}.tif" for row, col in ((1, 1), (1, 2), (2, 1), (2, 2))]
+    ctx = series_context(world, tmp_path, names, {"class": "pieces", "encoding": "colour"}, lines=town_lines(TownSpec(seed=77)))
+    root = originals(ctx)
+    (root / "Sheet").mkdir()
+    write_map(root / "area-1895.tif", overview)
+    for index, (row, col) in enumerate(((0, 0), (0, 1), (1, 0), (1, 1))):
+        write_map(root / names[index], _make_tile(overview, row, col, (2, 2), upscale=2))
+
+    result = PlaceStep().run(ctx)
+
+    assert isinstance(result, Waiting)
+    record = world.version()["help"]
+    assert isinstance(record, dict)
+    assert isinstance(record["stitched"], dict)
+    assert record["stitched"]["method"] == "overview"
+    for picture in (maps.CANVAS, "stitched.tif", "scan.tif"):
+        bands = read_working(ctx.local(picture), 400).image
+        assert bands.ndim == 3
+        assert float(numpy.mean(numpy.abs(bands[:, :, 0].astype(int) - bands[:, :, 2].astype(int)))) > 20
 
 
 def test_bad_path_a_blank_overview_falls_back_to_joining_pieces(world: PipelineWorld, tmp_path: Path) -> None:

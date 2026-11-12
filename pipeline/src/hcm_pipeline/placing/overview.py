@@ -7,7 +7,7 @@ parses the tile's row/column from its file name for a positional hint.
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -89,15 +89,9 @@ def _descriptors_ok(
     kp_o: list[Any],
 ) -> tuple[np.ndarray, np.ndarray] | None:
     """Check that both descriptor sets are valid and sufficient."""
-    if des_t is None:
+    if des_t is None or des_o is None:
         return None
-    if des_o is None:
-        return None
-    if len(kp_t) < _MIN_KEYPOINTS:
-        return None
-    if len(kp_o) < _MIN_KEYPOINTS:
-        return None
-    return des_t, des_o
+    return (des_t, des_o) if min(len(kp_t), len(kp_o)) >= _MIN_KEYPOINTS else None
 
 
 def _ratio_match(des_t: np.ndarray, des_o: np.ndarray) -> list[Any]:
@@ -360,17 +354,22 @@ def _paste_tile(
     mask_src = np.full(tile.shape[:2], 255, dtype=np.uint8)
     mask = cv2.warpAffine(mask_src, shifted, size, flags=cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT, borderValue=0)
     valid = mask > 0
-    canvas[y0:y1, x0:x1][valid] = warped[valid]
+    values = warped[valid]
+    # A grey piece on a colour canvas (a colour series may hold a grey scan) fills all three bands.
+    canvas[y0:y1, x0:x1][valid] = values[:, None] if canvas.ndim > values.ndim + 1 else values
 
 
 def paste_on_overview(
-    tiles: Sequence[tuple[str, np.ndarray]],
+    tiles: Iterable[tuple[str, np.ndarray]],
     fits: Sequence[TileFit | None],
     overview_shape: tuple[int, ...],
     upscale: float,
+    colour: bool = False,
 ) -> tuple[np.ndarray, MosaicReport]:
-    """The overview's frame resized by *upscale*, paper (255) where no tile lands, each fitted tile warped on it."""
-    canvas = np.full((int(overview_shape[0] * upscale), int(overview_shape[1] * upscale)), 255, dtype=np.uint8)
+    """The overview's frame resized by *upscale*, paper (255) where no tile lands, each fitted tile warped on it; three bands when
+    *colour* (the tiles may then be read one at a time: *tiles* is iterated once)."""
+    size = (int(overview_shape[0] * upscale), int(overview_shape[1] * upscale))
+    canvas = np.full((*size, 3) if colour else size, 255, dtype=np.uint8)
     placed: list[str] = []
     unplaced: list[str] = []
     rms_values: list[float] = []
