@@ -6,6 +6,7 @@ this computer, never in Firestore, and survives a restart or an update of the wo
 """
 
 import json
+import math
 import threading
 import time
 from collections.abc import Callable
@@ -58,6 +59,7 @@ class Governor:
         self._reading: Reading | None = None
         self.images: frozenset[Matcher] = IMAGES
         self.tick_s = TICK_S
+        self._cap: float | None = None
 
     @property
     def choice(self) -> Choice:
@@ -82,8 +84,16 @@ class Governor:
         self.tick()
         return True
 
+    def _capped(self, signals: Signals) -> Signals:
+        """The cores within the quota the container started with (the slot of a shared machine, a `--cpus` the owner set): the starter's
+        own `docker update` comes later and only lowers it, so the first quota read is the cap, never one of ours."""
+        if self._cap is None:
+            self._cap = signals.cpu.quota or float(signals.cpu.cores)
+        cores = max(1, min(signals.cpu.cores, math.floor(self._cap)))
+        return replace(signals, cpu=replace(signals.cpu, cores=cores))
+
     def _read(self, before: PolicyState) -> Reading:
-        signals = self._probe.read()
+        signals = self._capped(self._probe.read())
         policy = decide(signals, self.choice, before, self._clock())
         profile, why = effective(policy)
         budget = budget_for(profile, signals)

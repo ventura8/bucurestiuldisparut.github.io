@@ -10,7 +10,7 @@ from hcm_pipeline.governor.actuate import Actuators, Gate, apply_gdal, lower_pri
 from hcm_pipeline.governor.budget import budget_for
 from hcm_pipeline.governor.governor import CHOICE_FILE, Governor, load_choice
 from hcm_pipeline.governor.policy import Choice
-from hcm_pipeline.governor.signals import Power, Signals
+from hcm_pipeline.governor.signals import Cpu, Power, Signals
 from hcm_pipeline.matcher.box import MatcherBudget
 
 from tests.fakes.machines import LINUX_INTEL_ARC_NPU, LINUX_NVIDIA_CDI, SMALL_NO_GPU
@@ -70,6 +70,15 @@ def test_a_tick_applies_the_budget_and_says_the_machine(tmp_path: Path) -> None:
         "budget": {"threads": 14, "memoryMb": 13_824, "gpuFraction": 0.7},
         "usage": {"cpuPct": 0.0, "othersCpuPct": 0.0, "memoryMb": 0, "vramMb": 0},
     }
+
+
+def test_the_quota_the_container_started_with_caps_the_cores_and_ours_never_does(tmp_path: Path) -> None:
+    """The NUC's test slot: 16 cores, a quota of 8; the starter's own later `docker update --cpus 6` changes nothing."""
+    slot = replace(LINUX_NVIDIA_CDI, cpu=Cpu(16, quota=8.0))
+    governor, probe, *_ = _governor(tmp_path, slot)
+    assert governor.tick().budget.threads == 6
+    probe.signals = replace(slot, cpu=Cpu(16, quota=6.0))
+    assert governor.tick().budget.threads == 6
 
 
 def test_the_nuc_says_its_npu(tmp_path: Path) -> None:
