@@ -17447,11 +17447,66 @@
             "behaviour": "P06",
             "area": "pipeline",
             "path": "bad",
-            "title": "A frame's search past its budget crops by the footprint and waits for points",
-            "asserts": "a KH-5 Argon search still running after 10 min -> it stops, the windows left are not searched, the frame is not proved and its city crop by the footprint waits for points (never an hour with no end)",
+            "title": "A frame's search past its budget offers the whole frame and waits for points",
+            "asserts": "a KH-5 Argon search still running after 10 min -> it stops, the windows left are not searched, the frame is not proved and waits for points as the whole frame shrunk (never an hour with no end, never a crop by an unproved footprint)",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_step_limits.py."
+        },
+        {
+            "id": "S-P06-HAPPY-WHOLE-STRIP",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A strip no window of which is proved is offered whole",
+            "asserts": "a Corona strip whose footprint windows prove nothing -> the scan is the whole exposure shrunk to the preview budget and marked so, no corner pairs, the delivery kept, the job waits for rough points anywhere on the strip",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
+        },
+        {
+            "id": "S-P06-BAD-WHOLE-STRIP-UNPROVED",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "No unproved window, timed-out search or oversized frame is cut by a guess",
+            "asserts": "nothing proved and the search held a window, ran out of time or the frame is over the budget -> never the first window's crop; only a small frame searched whole and in time keeps the bounded crop",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
+        },
+        {
+            "id": "S-P06-HAPPY-ROUGH-POINTS-CROP",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Rough points on the whole strip crop it at full resolution",
+            "asserts": "the owner's rough points on the shrunk strip -> the film is cut around them with the city window's margin at full resolution, the points move into the crop, and the job goes on to approval",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
+        },
+        {
+            "id": "S-P06-BAD-ROUGH-POINTS-OUTSIDE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Rough points outside the strip are refused",
+            "asserts": "a point off the shrunk scan -> gcpOutside naming it, the scan stays the whole strip; points on one place give no scale; points at the strip's end keep the crop on the film",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
+        },
+        {
+            "id": "S-P06-BAD-ROUGH-POINTS-FILM-GONE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Rough points on a strip whose film is gone ask for the import again",
+            "asserts": "frame.json or a segment no longer stored -> the step fails saying to use Locate again while the delivery is kept, else to import the frame again; nothing is cropped",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
         },
         {
             "id": "S-P22-HAPPY-PAIRS-IN-SCAN",

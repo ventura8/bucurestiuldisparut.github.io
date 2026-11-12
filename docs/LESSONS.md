@@ -3418,7 +3418,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
 582. **A KH-5 Argon frame searched an hour with no end.**
     - Seen: 2026-11-12, DS09065A089MC039 (1964-06-18): `locate` ran about an hour with no log line until it was cancelled.
     - Cause: the frame is about 550 km across at 140 m on the ground, so the city is a small patch of it; the vote search had no time bound, and nothing proves a KH-5 frame yet (M9 §14).
-    - Fix and pin: `SensorSpec.search_seconds` (35 min, KH-5 10 min) bounds the search (`SearchBudget`): past it the windows left are not searched and the frame is cropped around the city by its footprint, not proved, so it waits for points (S-P06-HAPPY-SEARCH-BUDGET, S-P06-BAD-SEARCH-BUDGET).
+    - Fix and pin: `SensorSpec.search_seconds` (35 min, KH-5 10 min) bounds the search (`SearchBudget`): past it the windows left are not searched and the frame, not proved, waits for points (S-P06-HAPPY-SEARCH-BUDGET, S-P06-BAD-SEARCH-BUDGET); since lesson 584 as the whole frame shrunk, not as a crop by its footprint.
     - **Every search over an unknown space gets a time budget whose end is a result (not found, ask a person), not a failure.**
 
 583. **The 1895 series offered 26 suggested pairs off its own scan.**
@@ -3426,3 +3426,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `place_map` writes the suggestions in the canvas's pixels; `publish_stitched` then publishes the scan shrunk to `SCAN_MAX_PX` and left the pairs as they were. A single map's picture is its working copy, while its pairs are in its original's pixels.
     - Fix and pin: `stitched.in_scan` moves the version's suggestions into the scan's pixels (`Stitched.pairs_scale` times the scan's shrink) and drops a pair outside the scan (S-P22-HAPPY-PAIRS-IN-SCAN, S-P22-BAD-PAIRS-OUTSIDE-SCAN).
     - **Every pixel coordinate written beside a picture names the picture it belongs to; when the picture is resized for the reader, its coordinates move in the same write.**
+
+584. **A Corona strip nothing proved showed the owner farmland.**
+    - Seen: 2026-11-12, DS1103-1058DF027 (1968-05-05, 131,443 px wide): two footprint windows, no AI proposal in either, then `not proved (no-votes): crop 35664 x 8172 px, delivery kept`; the georeferencer showed the first window, countryside, and no point could be placed on București.
+    - Cause: `best_of` kept the best-voted window, the first of equals, and `locate` cut the frame by it: with no votes anywhere the choice was only the order of the list.
+    - Fix and pin: a frame nothing proved is cut by a guess only when it was searched whole, in time, and fits a scan shown whole; else the scan is the whole exposure shrunk (`steps/whole.py`, marked in `scan.tif`), and the owner's rough points crop the film at full resolution (`steps/recrop.py`); the KH-5 cap ends the same way (S-P06-HAPPY-WHOLE-STRIP, S-P06-BAD-WHOLE-STRIP-UNPROVED, S-P06-HAPPY-ROUGH-POINTS-CROP, S-P06-BAD-ROUGH-POINTS-OUTSIDE, S-P06-BAD-ROUGH-POINTS-FILM-GONE).
+    - **When nothing is proved, never let an unproved guess decide what the person sees: show everything, coarser, and let their answer choose.**

@@ -36,7 +36,7 @@ marked **UNVERIFIED**, each with how the first real run proves it (§11).
    its dispatch to its end × the machine's vCPUs and GiB); a cloud job whose estimate would cross the free tier waits
    (`waitReason: 'free-tier'`) until the admin says OK; one made by automation also leaves an inbox item
    (`job.needsOk`).
-5. **The raw USGS delivery** is deleted by `locate` (M9: of a frame it proved; one nothing proved keeps it for the admin's points, `docs/research/M9-calibration.md` §6) once the city crop (`scan.tif`) and the version's `scan` are recorded
+5. **The raw USGS delivery** is deleted by `locate` (M9: of a frame it proved; one nothing proved keeps it for the admin's points, `docs/research/M9-calibration.md` §6; a frame offered whole, §17, is cut around those points out of the segments, which **Locate again** makes again from this delivery) once the city crop (`scan.tif`) and the version's `scan` are recorded
    (§5); the bucket's lifecycle for `usgs-raw/` drops from 30 to 7 days as the backstop.
 6. **Mapbox's Uploads API** publishes a version whose `studio.tif` is at most `UPLOADS_FREE_MAX_BYTES` (300 MB) while
    the month's Uploads API megabytes stay within `MAPBOX_FREE_UPLOAD_MB` (10,000) and the layer's tileset is not an MTS
