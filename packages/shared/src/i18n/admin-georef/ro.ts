@@ -107,6 +107,8 @@ export const ro = {
     'adminContent.georef.menu.readOnly': 'Versiunea nu primește puncte: nu e nimic de schimbat aici',
     'adminContent.georef.menu.moving.scan': 'Muți punctul {number}: dă clic pe noul lui loc pe scanare. Esc îl lasă unde era.',
     'adminContent.georef.menu.moving.map': 'Muți punctul {number}: dă clic pe noul lui loc pe hartă. Esc îl lasă unde era.',
+    'adminContent.georef.linkViews': 'Leagă vederile',
+    'adminContent.georef.linkViewsNoFit': 'Vederile se leagă când perechile dau o potrivire: mutarea uneia o duce pe cealaltă în același loc.',
     // [end georef]
 } as const;
 

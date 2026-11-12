@@ -15,6 +15,7 @@ import {
     type LngLat,
     type Locale,
     type Logger,
+    type MapView,
 } from '@hcm/shared';
 import { PAIR_HIT_RADIUS, type BadgeTone } from '@hcm/ui/admin/georef/marker-badge';
 import type { Unsubscribe } from '@hcm/ui/map';
@@ -26,6 +27,7 @@ import type { AdminMapFactory, AdminMapHandle, AdminMapResult } from '../map/fac
 import type { ProjectableMapPort } from '../map/projection.js';
 import { DRAW_HIT_COLOR, GeorefMarkerOverlay } from './marker-overlay.js';
 import { roundGeo, type GeoPosition } from './pairs.js';
+import type { MapCamera } from './linked-views.js';
 import type { GeorefVersion, MapTarget } from './state.js';
 import type { SuggestionRow } from './suggestions.js';
 
@@ -46,6 +48,10 @@ export interface GeorefMapDeps {
     readonly moved: (id: string, geo: GeoPosition) => void;
     /** A pair's point was selected on the map (null: none). */
     readonly selected: (id: string | null) => void;
+    /** The map's camera moved (the linked views). */
+    readonly viewed: (view: MapView) => void;
+    /** The map is made and shows `view` (the linked views' camera before the owner's first move). */
+    readonly shown: (view: MapView) => void;
 }
 
 export class GeorefMap {
@@ -65,6 +71,8 @@ export class GeorefMap {
     #crosshair = false;
     #tones: Readonly<Record<string, BadgeTone>> = {};
     #adding = false;
+    /** A point of the map is being dragged (Terra Draw's change not yet settled): the linked views stand still. */
+    dragging = false;
     /** Bumped by every attach and detach: a slower create of an older host is dropped. */
     #generation = 0;
 
@@ -120,6 +128,11 @@ export class GeorefMap {
             }
         }
         return best;
+    }
+
+    /** The linked views: the map jumps to `camera` (its `move` comes back at once, which the link drops). */
+    follow(camera: MapCamera): void {
+        this.#handle?.port.flyTo(camera, { animate: false });
     }
 
     zoomBy(delta: number): void {
@@ -217,6 +230,7 @@ export class GeorefMap {
         this.#badges.detach();
         this.overlays.clear();
         this.#draw = null;
+        this.dragging = false;
         this.#handle?.destroy();
         this.#handle = null;
         this.#deps.status('none');
@@ -286,7 +300,9 @@ export class GeorefMap {
             result.map.port.onMapClick(([lng, lat]) => {
                 this.#deps.clicked({ lat, lng });
             }),
+            result.map.port.on('move', this.#deps.viewed),
         );
+        this.#deps.shown(result.map.port.getView());
         const host = this.#container;
         if (host !== null) {
             this.#badges.attach(host, result.map.port);
@@ -317,6 +333,7 @@ export class GeorefMap {
     }
 
     #changed(change: DrawChange): void {
+        this.dragging = !change.final;
         if (!change.final) {
             return;
         }

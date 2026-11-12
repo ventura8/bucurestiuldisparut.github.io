@@ -106,5 +106,7 @@ export const en: Readonly<Record<AdminGeorefKey, string>> = {
     'adminContent.georef.menu.readOnly': 'This version takes no points: nothing to change here',
     'adminContent.georef.menu.moving.scan': 'Moving point {number}: click its new place on the scan. Esc puts it back.',
     'adminContent.georef.menu.moving.map': 'Moving point {number}: click its new place on the map. Esc puts it back.',
+    'adminContent.georef.linkViews': 'Link the views',
+    'adminContent.georef.linkViewsNoFit': 'The views link once the pairs give a fit: moving one then moves the other to the same place.',
     // [end georef]
 };

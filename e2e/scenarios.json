@@ -6003,6 +6003,28 @@
             "notes": "The owner, 2026-11-12. Tests: e2e/admin/specs/imagery/georef-menu.spec.ts, packages/ui/test/admin/georef/georef-menu.test.ts."
         },
         {
+            "id": "S-A16-HAPPY-GEOREF-LINKED",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "Once the pairs give a fit, moving the scan or the map moves the other to the same place",
+            "asserts": "a version whose pairs give a fit: Link the views is on (pressed); zooming or panning the scan (wheel, drag, pinch, + and -, the arrows) jumps the map, once a frame and without an animation, to the place the fit puts at the scan's centre at the zoom of the fit's local scale there; the map's own pan or zoom centres the scan on the pixel its inverse gives at the matching scale; the move one pane makes is not sent back (no loop); turned off, each pane moves alone, and the choice holds for the next version opened in the same session; a read-only version links too",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12 (DECISIONS-for-review.md §156; the mapping is in the lazy georef-extras chunk). Tests: e2e/admin/specs/imagery/georef-linked.spec.ts (state georef.linked), packages/admin/test/georef/linked-views.test.ts, packages/admin/test/georef/georef-linked.test.ts, packages/ui/test/admin/georef/scan-viewer-linked.test.ts, packages/ui/test/admin/georef/georef-linked-page.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-GEOREF-LINKED-NO-FIT",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without a fit the views are not linked and the page says when they will be",
+            "asserts": "too few pairs (or pairs that span no area): Link the views is disabled and not pressed, a note says the views link once the pairs give a fit; zooming the scan leaves the map where it is and the chunk is not fetched; while a point is dragged on the map, or a pointer is down on the scan, nothing follows; a map move that leaves its camera where it was (a resize) moves nothing; a place the fit cannot map moves nothing; a chunk that fails to load leaves the views unlinked and is asked for once",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12. Tests: e2e/admin/specs/imagery/georef-linked.spec.ts, packages/admin/test/georef/linked-views.test.ts, packages/admin/test/georef/georef-linked.test.ts, packages/ui/test/admin/georef/scan-viewer-linked.test.ts, packages/ui/test/admin/georef/georef-linked-page.test.ts."
+        },
+        {
             "id": "S-A17-HAPPY",
             "behaviour": "A17",
             "area": "admin",

@@ -108,7 +108,8 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # placing guide and the map's pair numbers (2026-11-10) took it to about 18,030, with Snap my points and the published maps
     # already in the lazy `georef-extras` chunk.
     "georef": 19,
-    # Shared badge painters + map canvas overlay (DECISIONS-for-review.md §146): 1.9 KB measured, out of `georef` (stays 19).
+    # Shared badge painters + map canvas overlay (DECISIONS-for-review.md §146): 1.9 KB measured, out of `georef` (stays 19); with the
+    # pairs' leaf helpers and full screen's cover moved in for the linked views (§156), 2.7 KB measured on 2026-11-12. No row rose.
     "georef-badges": 3,
     "layer-geometry": 3,
     # M4's order card (`packages/ui/src/admin/imagery/orders/lazy-card.ts`), fetched the first time a scene that must be
@@ -204,7 +205,7 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     "recalibrate-card": 2,
     # The georeferencer's lazy chunk (`packages/admin/src/georef/georef-extras.ts`, fetched by `extras.ts`): the map a camera's lattice
     # or a frame over terrain publishes (M15) and Snap my points (M16), out of the `georef` chunk (18 KB since §110): 1.0 KB measured
-    # on 2026-11-08 plus about 20 %, rounded up (DECISIONS-for-review.md §110).
+    # on 2026-11-08 plus about 20 %, rounded up (DECISIONS-for-review.md §110); with the linked views' arithmetic (§156) 1.5 KB.
     "georef-extras": 2,
     # The georeferencer's context menu (2026-11-12; DECISIONS-for-review.md §152): `<hcm-georef-menu>` and the gestures that open it
     # (`packages/ui/src/admin/georef/georef-menu.ts` with `georef-menu-host.ts`), fetched at the page's first render, out of the `georef`

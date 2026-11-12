@@ -8,13 +8,14 @@ import type { Gcp } from '@hcm/shared';
 
 import type { ContentServices } from '../content/services.js';
 import type { OwnFit } from './fit-view.js';
-import type { publishedMap, snapPoints } from './georef-extras.js';
+import type { publishedMap, snapPoints, ViewLink } from './georef-extras.js';
 import type { Snapped } from './snap.js';
 
 /** What the chunk gives the georeferencer. */
 interface GeorefExtrasChunk {
     readonly publishedMap: typeof publishedMap;
     readonly snapPoints: typeof snapPoints;
+    readonly ViewLink: typeof ViewLink;
 }
 
 export type ExtrasLoader = () => Promise<GeorefExtrasChunk>;
@@ -25,7 +26,7 @@ export const loadGeorefExtras: ExtrasLoader = async () => import('./georef-extra
 type Services = Pick<ContentServices, 'cityId' | 'callables' | 'notify' | 'log'>;
 
 /** The chunk, or null when its fetch failed (logged; `notice`, when given, in the snackbar). */
-async function chunkOf(
+export async function chunkOf(
     services: Services,
     load: ExtrasLoader,
     notice?: 'adminContent.georef.mapUnavailable',
