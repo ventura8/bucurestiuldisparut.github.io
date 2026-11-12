@@ -3531,3 +3531,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the sweep scrolls the page under fixed elements; a notice that stays ten seconds meets whatever scrolls beneath it.
     - Fix and pin: the state is checked once the notice is gone (after its Undo); the notice itself is checked in the shell's own states.
     - **Check a page's state without a transient overlay over it, or the sweep reports the overlay's meeting with scrolled content.**
+
+602. **The linked scan drifted a few degrees after the map's turn buttons, one run in four.**
+    - Seen: 2026-11-13, `georef-linked.spec.ts` repeated three times at two projects: the scan's next turn was undone, or Upright ended at 4 degrees.
+    - Cause: the map's buttons turned it with an animation, whose `move` events kept turning the scan after the owner's next press; and every map move read the scan's angle back through an oblique fit, whose two conversions are not exact inverses.
+    - Fix and pin: the map's turn is a jump (`GeorefMap.rotateBy`), and only a move that changes the map's bearing turns the scan (`linkedPanesOf`; `rotation.test.ts`).
+    - **Run a test of linked motion several times before trusting it; an animation is a second actor.**
