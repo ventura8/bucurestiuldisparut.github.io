@@ -20,9 +20,8 @@ import { LitElement, html, type PropertyValues, type TemplateResult } from 'lit'
 import { defineOnce, emit } from '../../components/internal.js';
 import { adminBase } from '../shell/admin-styles.js';
 import { drawScan, type ScanMarker } from './scan-draw.js';
-import type { OpenDetail } from './scan-tiles.js';
 import { scanViewerStyles } from './scan-viewer-styles.js';
-import { ARROW_STEPS, imageOf, type Gesture, type Pinch } from './scan-input.js';
+import { ARROW_STEPS, DetailTiles, imageOf, type Gesture, type Pinch, type ScanDetailFile } from './scan-input.js';
 import { centredView, fitView, hitPair, panView, paneToScan, resizedView, zoomView, type Point, type ScanView } from './scan-view.js';
 
 const HCM_SCAN_VIEWER_TAG = 'hcm-scan-viewer';
@@ -31,9 +30,6 @@ const HCM_SCAN_VIEWER_TAG = 'hcm-scan-viewer';
 const CLICK_SLOP = 4;
 const PAN_STEP = 40;
 const KEY_ZOOM = 1.5;
-
-/** A lazy chunk that did not load: the preview stays. */
-const NOTHING = (): void => undefined;
 
 /** The keys that act at once, and what they do (true: handled). */
 const COMMANDS: Readonly<Record<string, ((viewer: HcmScanViewer) => boolean) | undefined>> = {
@@ -82,7 +78,7 @@ export class HcmScanViewer extends LitElement {
     /** Where the pairs so far expect the scan end of a pair begun on the map (a dashed ring; a click there is a click as any). */
     declare ghost: Point | null;
     /** The sharper scan (its address and its pixels per scan pixel), drawn once zoomed past the preview's own pixels (null: none). */
-    declare detail: { readonly file: Blob; readonly scale: number } | null;
+    declare detail: ScanDetailFile | null;
     /** The linked map's place for this pane: the full-resolution pixel to centre and CSS px per scan pixel (null: none). */
     declare follow: { readonly centre: Point; readonly scale: number } | null;
     declare adding: boolean;
@@ -92,7 +88,7 @@ export class HcmScanViewer extends LitElement {
     declare zoomOutLabel: string;
     declare focused: boolean;
     #image: HTMLImageElement | null = null;
-    #shownTiles: OpenDetail | null = null;
+    readonly #tiles = new DetailTiles();
     #view: ScanView | null = null;
     #gesture: Gesture | null = null;
     #pinch: Pinch | null = null;
@@ -128,13 +124,15 @@ export class HcmScanViewer extends LitElement {
             this.#draw();
         });
         this.#observer.observe(this);
+        // Back on the page: the tiles closed when it left are opened again.
+        this.#tiles.load(this.detail, this.#redraw);
     }
 
     override disconnectedCallback(): void {
         super.disconnectedCallback();
         this.#observer?.disconnect();
         this.#observer = null;
-        this.#dropDetail();
+        this.#tiles.drop();
     }
 
     /**
@@ -170,7 +168,7 @@ export class HcmScanViewer extends LitElement {
             this.#load();
         }
         if (changed.has('detail')) {
-            this.#loadDetail();
+            this.#tiles.load(this.detail, this.#redraw);
         }
         if (changed.has('follow')) {
             this.#followMap();
@@ -239,36 +237,6 @@ export class HcmScanViewer extends LitElement {
         });
     }
 
-    /** The sharper scan's tiles, opened by their lazy chunk (the preview alone until then, or for good when the file is not one). */
-    #loadDetail(): void {
-        const detail = this.detail;
-        this.#dropDetail();
-        if (detail !== null) {
-            void import('./scan-tiles.js')
-                .then(async ({ openDetail }) => openDetail(detail, this.#redraw))
-                .then((opened) => {
-                    this.#keepDetail(detail, opened);
-                }, NOTHING);
-        }
-    }
-
-    /** The opened tiles, kept when they are still the pane's (dropped when the detail changed or the pane left the page meanwhile). */
-    #keepDetail(detail: HcmScanViewer['detail'], opened: OpenDetail | null): void {
-        if (this.detail !== detail || !this.isConnected) {
-            opened?.dispose();
-            return;
-        }
-        this.#dropDetail();
-        this.#shownTiles = opened;
-        this.#draw();
-    }
-
-    /** Closes the decoded tiles. */
-    #dropDetail(): void {
-        this.#shownTiles?.dispose();
-        this.#shownTiles = null;
-    }
-
     readonly #redraw = (): void => {
         this.#draw();
     };
@@ -299,13 +267,7 @@ export class HcmScanViewer extends LitElement {
                 ...{ image: this.#image, view: this.#currentView(), previewScale: this.previewScale, markers: this.markers },
                 ...{ selected: this.selected, half: this.half, crosshair: this.focused, dragged: this.#dragged() },
                 ...{ suggestions: this.suggestions, selectedSuggestion: this.selectedSuggestion, ghost: this.ghost },
-                detail: detailScene(
-                    this.#shownTiles,
-                    this.#currentView(),
-                    this.#pane,
-                    this.previewScale,
-                    Math.max(globalThis.devicePixelRatio, 1),
-                ),
+                detail: this.#tiles.scene(this.#currentView(), this.#pane, this.previewScale),
             });
         }
     }

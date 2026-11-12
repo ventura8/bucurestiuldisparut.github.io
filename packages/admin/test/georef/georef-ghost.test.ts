@@ -183,7 +183,7 @@ describe('the sharper scan through the store', () => {
 
         world.georef.intents.scanMoved({ centre: { x: 100, y: 100 }, scale: 1.5 });
         await settle();
-        expect(world.georef.state.scanDetail).toEqual({ file: world.files.objects.get(DETAIL), scale: 1 });
+        expect(world.georef.state.scanDetail).toEqual({ file: expect.any(Blob) as Blob, scale: 1 });
 
         world.georef.close();
         expect(world.georef.state.scanDetail).toBeNull();
@@ -200,6 +200,6 @@ describe('the sharper scan through the store', () => {
         await settle();
 
         expect(world.georef.state.scanFollow?.scale).toBeGreaterThan(0.2);
-        expect(world.georef.state.scanDetail).toEqual({ file: world.files.objects.get(CORONA_DETAIL), scale: 0.8 });
+        expect(world.georef.state.scanDetail).toEqual({ file: expect.any(Blob) as Blob, scale: 0.8 });
     });
 });

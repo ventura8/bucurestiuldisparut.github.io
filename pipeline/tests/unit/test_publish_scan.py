@@ -79,6 +79,7 @@ def _tiles(data: bytes) -> tuple[tuple[int, int, int, int, int], list[tuple[int,
     sizes = []
     for start, end in pairwise(offsets):
         decoded = cv2.imdecode(numpy.frombuffer(data[start:end], numpy.uint8), cv2.IMREAD_UNCHANGED)
+        assert decoded is not None
         sizes.append((int(decoded.shape[1]), int(decoded.shape[0])))
     return (numbers[0], numbers[1], numbers[2], numbers[3], count), sizes
 

@@ -96,7 +96,13 @@ async function tilesFile(width: number, height: number, tile: number): Promise<B
             canvas.width = Math.min(tile, width - left);
             canvas.height = Math.min(tile, height - top);
             canvas.getContext('2d')?.fillRect(0, 0, canvas.width, canvas.height);
-            pieces.push(await new Promise<Blob>((resolve) => canvas.toBlob((blob) => resolve(blob ?? new Blob()), 'image/jpeg')));
+            pieces.push(
+                await new Promise<Blob>((resolve) => {
+                    canvas.toBlob((blob) => {
+                        resolve(blob ?? new Blob());
+                    }, 'image/jpeg');
+                }),
+            );
         }
     }
     const first = 24 + 4 * (pieces.length + 1);

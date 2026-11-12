@@ -216,6 +216,10 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # `triangleTransform`), fetched when a version opens, out of the `georef` chunk (19 KB, which the ghost and the sharper scan had
     # taken to 19.5 KB; 18.2 KB after): 0.9 KB measured on 2026-11-12 plus about 20 %, rounded up.
     "georef-warp": 2,
+    # The sharper scan's tiles (2026-11-12; DECISIONS-for-review.md §164): the reader of `scan-tiles.bin`, the tiles in view and the cache
+    # of decoded ones (`packages/ui/src/admin/georef/scan-tiles.ts`), fetched when a version's sharper scan first arrives (the pane zoomed
+    # past the preview), out of the `georef` chunk: 1.2 KB measured on 2026-11-12 plus about 20 %, rounded up.
+    "scan-tiles": 2,
     # The tolerant reads of an older release's records (`packages/shared/src/schemas/legacy-reads.ts`), which Home, the Imagery lists
     # and a version's page share: out of `editor-shared` (13.05 KB with them, budget 13): 0.5 KB measured on 2026-11-12, a row of
     # 1 KB, the smallest whole budget (DECISIONS-for-review.md §155).

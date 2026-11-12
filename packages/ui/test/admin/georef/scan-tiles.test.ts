@@ -18,13 +18,15 @@ function largest(): ScanTiles {
     return { tile: 1024, width: 16384, height: 16384, columns: 16, pieces: Array.from({ length: 256 }, () => new Blob(['t'])) };
 }
 
+/** The bitmaps closed so far. */
+const counts = { closed: 0 };
+
 class FakeBitmap {
-    static closed = 0;
     readonly width = 1024;
     readonly height = 1024;
 
     close(): void {
-        FakeBitmap.closed += 1;
+        counts.closed += 1;
     }
 }
 
@@ -68,7 +70,9 @@ describe('an opened sharper scan', () => {
     it('happyPath_aTilesFileOpensAndANotTilesFileDoesNot @S-A16-HAPPY-GEOREF-FULL-RES', async () => {
         const opened = await openDetail({ file: fileOf([MAGIC, 1, 1024, 2500, 1100, 6], [1, 1, 1, 1, 1, 1]), scale: 0.5 }, () => undefined);
         // The pieces are not pictures: asked for, never drawn; the scene is the tiles' scale and none decoded yet.
-        expect(opened?.scene({ scale: 4, offset: { x: 0, y: 0 } }, { width: 200, height: 100 }, 0.25, 1)).toEqual({ scale: 0.5, pieces: [] });
+        expect(
+            opened?.scene({ view: { scale: 4, offset: { x: 0, y: 0 } }, pane: { width: 200, height: 100 }, previewScale: 0.25, ratio: 1 }),
+        ).toEqual({ scale: 0.5, pieces: [] });
         opened?.dispose();
 
         expect(await openDetail({ file: new Blob(['short']), scale: 1 }, () => undefined)).toBeNull();
@@ -93,16 +97,22 @@ describe('the tiles in view', () => {
 
 describe('the decoded tiles', () => {
     it('happyPath_aLaptopPaneDecodesOnlyItsTilesAndPanningKeepsAtMostTheBudget @S-A16-HAPPY-GEOREF-FULL-RES', async () => {
-        FakeBitmap.closed = 0;
+        counts.closed = 0;
         const tiles = largest();
         const { decode, asked } = decoder();
         let changes = 0;
-        const cache = new TileCache(tiles, () => (changes += 1), decode);
+        const cache = new TileCache(
+            tiles,
+            () => {
+                changes += 1;
+            },
+            decode,
+        );
         const shown = { tiles, cache, scale: 1 };
         // A 1,280 × 800 CSS px pane on a screen of two device px a CSS px; the preview is a quarter of the scan (4,096 px).
         const pane = { width: 1280, height: 800 };
         const scene = (scale: number, x: number): ReturnType<typeof detailScene> =>
-            detailScene(shown, { scale, offset: { x, y: 0 } }, pane, 0.25, 2);
+            detailScene(shown, { view: { scale, offset: { x, y: 0 } }, pane, previewScale: 0.25, ratio: 2 });
 
         // Just past one device pixel a preview pixel: 2,560 preview px across, 4 × that in the sharper scan would be 10 × 7 tiles.
         expect(scene(0.51, 0)).toEqual({ scale: 1, pieces: [] });
@@ -125,7 +135,7 @@ describe('the decoded tiles', () => {
             expect(cache.size).toBeLessThanOrEqual(SCAN_TILES_KEPT);
             expect(cache.size * 1024 * 1024 * 4).toBeLessThanOrEqual(128 * 1024 * 1024);
         }
-        expect(FakeBitmap.closed).toBeGreaterThan(0);
+        expect(counts.closed).toBeGreaterThan(0);
         // Back at the start: its tiles were closed, and are decoded again.
         const before = asked.length;
         scene(1.2, 0);
@@ -133,17 +143,17 @@ describe('the decoded tiles', () => {
         expect(asked.length).toBeGreaterThan(before);
 
         const kept = cache.size;
-        const closedBefore = FakeBitmap.closed;
+        const closedBefore = counts.closed;
         cache.dispose();
-        expect([cache.size, FakeBitmap.closed - closedBefore]).toEqual([0, kept]);
+        expect([cache.size, counts.closed - closedBefore]).toEqual([0, kept]);
     });
 
     it('badPath_noTilesAPlainZoomATileThatFailsOrOneLateAfterTheEndDrawNothing @S-A16-BAD-GEOREF-FULL-RES-NONE', async () => {
-        FakeBitmap.closed = 0;
+        counts.closed = 0;
         const tiles = largest();
         const pane = { width: 400, height: 300 };
         const view = { scale: 4, offset: { x: 0, y: 0 } };
-        expect(detailScene(null, view, pane, 0.25, 1)).toBeNull();
+        expect(detailScene(null, { view, pane, previewScale: 0.25, ratio: 1 })).toBeNull();
 
         let failures = 0;
         const failing = new TileCache(
@@ -155,20 +165,37 @@ describe('the decoded tiles', () => {
             },
         );
         // One device pixel a preview pixel or less: the preview is enough.
-        expect(detailScene({ tiles, cache: failing, scale: 1 }, { scale: 1, offset: { x: 0, y: 0 } }, pane, 0.25, 1)).toBeNull();
-        expect(detailScene({ tiles, cache: failing, scale: 1 }, view, pane, 0.25, 1)).toEqual({ scale: 1, pieces: [] });
+        expect(
+            detailScene(
+                { tiles, cache: failing, scale: 1 },
+                { view: { scale: 1, offset: { x: 0, y: 0 } }, pane, previewScale: 0.25, ratio: 1 },
+            ),
+        ).toBeNull();
+        expect(detailScene({ tiles, cache: failing, scale: 1 }, { view, pane, previewScale: 0.25, ratio: 1 })).toEqual({
+            scale: 1,
+            pieces: [],
+        });
         await settle();
         // A tile that does not decode is not asked for again, and a tile the file does not have is not asked for at all.
-        expect(detailScene({ tiles, cache: failing, scale: 1 }, view, pane, 0.25, 1)).toEqual({ scale: 1, pieces: [] });
+        expect(detailScene({ tiles, cache: failing, scale: 1 }, { view, pane, previewScale: 0.25, ratio: 1 })).toEqual({
+            scale: 1,
+            pieces: [],
+        });
         expect(failing.show([9999])).toEqual([]);
         expect(failures).toBe(1);
 
         const { decode } = decoder();
         let changes = 0;
-        const late = new TileCache(tiles, () => (changes += 1), decode);
+        const late = new TileCache(
+            tiles,
+            () => {
+                changes += 1;
+            },
+            decode,
+        );
         late.show([0, 1]);
         late.dispose();
         await settle();
-        expect([late.size, changes, FakeBitmap.closed]).toEqual([0, 0, 2]);
+        expect([late.size, changes, counts.closed]).toEqual([0, 0, 2]);
     });
 });

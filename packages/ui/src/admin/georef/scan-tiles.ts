@@ -40,6 +40,19 @@ export interface ScanDetailScene {
     readonly pieces: readonly ScanPiece[];
 }
 
+interface Header {
+    readonly tile: number;
+    readonly width: number;
+    readonly height: number;
+    readonly count: number;
+}
+
+/** A tile side above zero, and as many tiles as the picture's size needs. */
+function fits({ tile, width, height, count }: Header): boolean {
+    return tile > 0 && count === Math.ceil(width / tile) * Math.ceil(height / tile);
+}
+
+/** `count` little-endian `uint32` from `start`; null when the file ends before them. */
 async function words(file: Blob, start: number, count: number): Promise<readonly number[] | null> {
     const bytes = await file.slice(start, start + count * WORD).arrayBuffer();
     if (bytes.byteLength < count * WORD) {
@@ -49,19 +62,26 @@ async function words(file: Blob, start: number, count: number): Promise<readonly
     return Array.from({ length: count }, (_, index) => view.getUint32(index * WORD, true));
 }
 
-/** The tiles of a `scan-tiles.bin`; null when the file is not one (another format, cut short, a tile count that does not fit). */
-export async function readScanTiles(file: Blob): Promise<ScanTiles | null> {
-    const [magic = 0, version = 0, tile = 0, width = 0, height = 0, count = 0] = (await words(file, 0, HEADER_BYTES / WORD)) ?? [];
-    const columns = Math.ceil(width / Math.max(tile, 1));
-    if (magic !== MAGIC || version !== FORMAT_VERSION || count !== columns * Math.ceil(height / Math.max(tile, 1))) {
+async function headerOf(file: Blob): Promise<Header | null> {
+    const bytes = await file.slice(0, HEADER_BYTES).arrayBuffer();
+    if (bytes.byteLength < HEADER_BYTES) {
         return null;
     }
-    const offsets = await words(file, HEADER_BYTES, count + 1);
-    if (offsets === null) {
+    const view = new DataView(bytes);
+    const word = (index: number): number => view.getUint32(index * WORD, true);
+    const header = { tile: word(2), width: word(3), height: word(4), count: word(5) };
+    return word(0) === MAGIC && word(1) === FORMAT_VERSION && fits(header) ? header : null;
+}
+
+/** The tiles of a `scan-tiles.bin`; null when the file is not one (another format, cut short, a tile count that does not fit). */
+export async function readScanTiles(file: Blob): Promise<ScanTiles | null> {
+    const header = await headerOf(file);
+    const offsets = header === null ? null : await words(file, HEADER_BYTES, header.count + 1);
+    if (header === null || offsets === null) {
         return null;
     }
     const pieces = offsets.slice(1).map((end, index) => file.slice(offsets[index], end, 'image/jpeg'));
-    return { tile, width, height, columns, pieces };
+    return { tile: header.tile, width: header.width, height: header.height, columns: Math.ceil(header.width / header.tile), pieces };
 }
 
 /** A box in the sharper scan's pixels. */
@@ -194,17 +214,19 @@ export interface ShownTiles {
     readonly scale: number;
 }
 
+/** A pane's view of the scan: where the preview sits, the pane's CSS px, the preview's scale and the screen's device px a CSS px. */
+export interface SceneCamera {
+    readonly view: ScanView;
+    readonly pane: Size;
+    readonly previewScale: number;
+    readonly ratio: number;
+}
+
 /**
- * What to draw of the sharper scan in a pane of `pane` CSS px: nothing until a preview pixel covers more than one device pixel
- * (`ratio` device px a CSS px: a HiDPI screen upscales the preview from half the zoom), then the decoded tiles the pane shows.
+ * What to draw of the sharper scan in a pane: nothing until a preview pixel covers more than one device pixel (a HiDPI screen
+ * upscales the preview from half the zoom), then the decoded tiles the pane shows.
  */
-export function detailScene(
-    shown: ShownTiles | null,
-    view: ScanView,
-    pane: Size,
-    previewScale: number,
-    ratio: number,
-): ScanDetailScene | null {
+export function detailScene(shown: ShownTiles | null, { view, pane, previewScale, ratio }: SceneCamera): ScanDetailScene | null {
     if (shown === null || view.scale * ratio <= 1) {
         return null;
     }
@@ -219,7 +241,7 @@ export function detailScene(
 
 /** The sharper scan a pane has open: what to draw of it for a view, and its end (the decoded tiles closed). */
 export interface OpenDetail {
-    scene(view: ScanView, pane: Size, previewScale: number, ratio: number): ScanDetailScene | null;
+    scene(camera: SceneCamera): ScanDetailScene | null;
     dispose(): void;
 }
 
@@ -231,7 +253,7 @@ export async function openDetail(detail: { readonly file: Blob; readonly scale: 
     }
     const shown = { tiles, cache: new TileCache(tiles, changed), scale: detail.scale };
     return {
-        scene: (view, pane, previewScale, ratio) => detailScene(shown, view, pane, previewScale, ratio),
+        scene: (camera) => detailScene(shown, camera),
         dispose: () => {
             shown.cache.dispose();
         },
