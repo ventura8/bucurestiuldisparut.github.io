@@ -3,7 +3,7 @@ import { html } from 'lit';
 import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
-import { defineHcmSlider, fractionAt, type HcmSlider } from '../../src/components/slider.js';
+import { TOUCH_SLOP_PX, defineHcmSlider, fractionAt, touchIntent, type HcmSlider } from '../../src/components/slider.js';
 import { cleanup, fixture, nextFrame, press, recordEvents, release, shadowPart } from '../helpers.js';
 
 defineHcmSlider();
@@ -19,6 +19,12 @@ function slider(attributes = ''): Promise<HcmSlider> {
 
 function pointer(target: EventTarget, type: string, clientX: number, button = 0): void {
     target.dispatchEvent(new PointerEvent(type, { clientX, button, bubbles: true, composed: true, cancelable: true }));
+}
+
+/** A finger's pointer event at (clientX, clientY). */
+function finger(target: EventTarget, type: string, clientX: number, clientY: number): void {
+    const init = { clientX, clientY, pointerId: 7, pointerType: 'touch', button: 0, bubbles: true, composed: true, cancelable: true };
+    target.dispatchEvent(new PointerEvent(type, init));
 }
 
 function trackX(element: HcmSlider, fraction: number): number {
@@ -166,6 +172,83 @@ describe('<hcm-slider>', () => {
         const element = await fixture<HcmSlider>(html`<hcm-slider min="5" max="5" value="5" label="Fixed"></hcm-slider>`);
 
         expect(shadowPart(element, '.track').style.getPropertyValue('--fraction')).toBe('0');
+    });
+});
+
+describe('<hcm-slider> under a finger', () => {
+    afterEach(cleanup);
+
+    it('happyPath_aSidewaysDragPastTheSlopMovesTheValue', async () => {
+        const element = await slider();
+        const changes = recordEvents<{ value: number }>(element, 'hcm-change');
+        const y = shadowPart(element, '.track').getBoundingClientRect().top + 24;
+
+        finger(shadowPart(element, '.track'), 'pointerdown', trackX(element, 0.5), y);
+        finger(document, 'pointermove', trackX(element, 0.5) + 3, y);
+        expect(element.value, 'within the slop nothing moves').toBe(80);
+        finger(document, 'pointermove', trackX(element, 0.3), y + 2);
+        finger(document, 'pointerup', trackX(element, 0.3), y + 2);
+
+        expect(changes).toEqual([{ value: 30 }]);
+        expect(element.shadowRoot?.activeElement).toBe(shadowPart(element, '.handle'));
+        expect(getComputedStyle(shadowPart(element, '.track')).touchAction).toBe('pan-y');
+    });
+
+    it('happyPath_aTapSetsTheValueWhereTheFingerWent', async () => {
+        const element = await slider();
+        const changes = recordEvents<{ value: number }>(element, 'hcm-change');
+        const y = shadowPart(element, '.track').getBoundingClientRect().top + 24;
+
+        finger(shadowPart(element, '.track'), 'pointerdown', trackX(element, 0.2), y);
+        finger(document, 'pointerup', trackX(element, 0.2) + 2, y + 1);
+
+        expect(changes).toEqual([{ value: 20 }]);
+    });
+
+    it('badPath_anUpwardSwipeScrollsAndLeavesTheValue', async () => {
+        // The Pixel Tablet, 2026-11-12: a swipe meant to scroll the Layers panel set the 1977 layer to 4 %.
+        const element = await slider();
+        const inputs = recordEvents(element, 'hcm-input');
+        const changes = recordEvents(element, 'hcm-change');
+        const y = shadowPart(element, '.track').getBoundingClientRect().top + 24;
+
+        finger(shadowPart(element, '.track'), 'pointerdown', trackX(element, 0.04), y);
+        finger(document, 'pointermove', trackX(element, 0.04) + 4, y - 30);
+        finger(document, 'pointermove', trackX(element, 0.6), y - 32);
+        finger(document, 'pointerup', trackX(element, 0.6), y - 32);
+        await nextFrame();
+
+        expect(element.value).toBe(80);
+        expect(inputs).toEqual([]);
+        expect(changes).toEqual([]);
+    });
+
+    it('badPath_theBrowserTakingThePointerIsNoTapAndEndsADrag', async () => {
+        const element = await slider();
+        const changes = recordEvents<{ value: number }>(element, 'hcm-change');
+        const track = shadowPart(element, '.track');
+        const y = track.getBoundingClientRect().top + 24;
+
+        finger(track, 'pointerdown', trackX(element, 0.1), y);
+        finger(document, 'pointercancel', trackX(element, 0.1), y);
+        expect(element.value, 'a cancelled press is no tap').toBe(80);
+
+        finger(track, 'pointerdown', trackX(element, 0.5), y);
+        finger(document, 'pointermove', trackX(element, 0.4), y);
+        finger(document, 'pointercancel', trackX(element, 0.4), y);
+        finger(document, 'pointermove', trackX(element, 0.9), y);
+
+        expect(changes).toEqual([{ value: 40 }]);
+        expect(element.value).toBe(40);
+    });
+
+    it('happyPath_touchIntentWaitsThenTellsADragFromAScroll', () => {
+        const start = { x: 100, y: 100 };
+
+        expect(touchIntent(start, 100 + TOUCH_SLOP_PX - 1, 100)).toBe('wait');
+        expect(touchIntent(start, 100 + TOUCH_SLOP_PX, 103)).toBe('drag');
+        expect(touchIntent(start, 103, 100 - TOUCH_SLOP_PX)).toBe('scroll');
+        expect(touchIntent(start, 110, 110)).toBe('scroll');
     });
 });
 

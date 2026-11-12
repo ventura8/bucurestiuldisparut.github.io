@@ -10,8 +10,33 @@ export const HCM_SLIDER_TAG = 'hcm-slider';
 const HANDLE_SPAN_PX = 16;
 
 /**
+ * How far a finger travels before the slider decides between a drag (sideways) and a scroll of the page or the panel
+ * (upwards or downwards): the Pixel Tablet (2026-11-12) set 1977 to 4 % with a swipe meant to scroll the Layers panel.
+ */
+export const TOUCH_SLOP_PX = 8;
+
+/** A finger's press that has not yet moved past `TOUCH_SLOP_PX`: where it began. */
+interface PendingTouch {
+    readonly pointerId: number;
+    readonly x: number;
+    readonly y: number;
+}
+
+/** What a finger's move from `start` means: nothing yet, a drag of the value, or a scroll the slider leaves to the browser. */
+export function touchIntent(start: { readonly x: number; readonly y: number }, x: number, y: number): 'wait' | 'drag' | 'scroll' {
+    const dx = Math.abs(x - start.x);
+    const dy = Math.abs(y - start.y);
+    if (Math.max(dx, dy) < TOUCH_SLOP_PX) {
+        return 'wait';
+    }
+    return dx > dy ? 'drag' : 'scroll';
+}
+
+/**
  * An M3 Expressive slider (`role="slider"` on the handle). Keyboard: arrows ±`step`, PageUp/PageDown ±a tenth of the
- * range (at least one step), Home/End to the ends; pointer: press or drag anywhere on the track. While the value
+ * range (at least one step), Home/End to the ends; mouse and pen: press or drag anywhere on the track; a finger: a tap
+ * sets the value, a sideways drag past `TOUCH_SLOP_PX` moves it, and an upward or downward swipe scrolls the page or the
+ * panel and leaves the value alone (`touch-action: pan-y`; a cancelled pointer ends the drag). While the value
  * moves it fires `hcm-input` with `{value}` (once per animation frame while dragging, once per key press), and
  * `hcm-change` with `{value}` when the pointer or the key is released and the value changed. `valueText` becomes
  * `aria-valuetext` ("80 %"), `label` the accessible name.
@@ -42,7 +67,9 @@ export class HcmSlider extends LitElement {
                 position: relative;
                 height: 48px;
                 cursor: pointer;
-                touch-action: none;
+
+                /* A finger may scroll the page or the panel upwards or downwards across the slider; sideways is the slider's. */
+                touch-action: pan-y;
 
                 /* 16px: HANDLE_SPAN_PX, the handle and its two gaps. */
                 --used: calc(var(--fraction) * (100% - 16px));
@@ -131,6 +158,8 @@ export class HcmSlider extends LitElement {
     /** True from a press or key down until its release: the app's own updates then do not move `committed`. */
     private interacting = false;
     private frame = 0;
+    /** A finger's press waiting to become a drag, a tap or a scroll (none for a mouse or a pen). */
+    private pending: PendingTouch | null = null;
 
     constructor() {
         super();
@@ -221,31 +250,70 @@ export class HcmSlider extends LitElement {
         if (this.disabled || event.button !== 0) {
             return;
         }
-        event.preventDefault();
-        this.focus();
-        this.interacting = true;
-        this.moveTo(event.clientX);
+        this.stopDrag();
         const doc = this.ownerDocument;
         doc.addEventListener('pointermove', this.onPointerMove);
         doc.addEventListener('pointerup', this.onPointerUp);
-        doc.addEventListener('pointercancel', this.onPointerUp);
+        doc.addEventListener('pointercancel', this.onPointerCancel);
+        if (event.pointerType === 'touch') {
+            // No preventDefault: the browser may still scroll; the value waits for the finger's direction.
+            this.pending = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+            return;
+        }
+        event.preventDefault();
+        this.startDrag(event.clientX);
     };
+
+    private startDrag(clientX: number): void {
+        this.pending = null;
+        this.focus();
+        this.interacting = true;
+        this.moveTo(clientX);
+    }
 
     private readonly onPointerMove = (event: PointerEvent): void => {
-        this.moveTo(event.clientX);
+        if (this.pending === null) {
+            this.moveTo(event.clientX);
+            return;
+        }
+        const intent = touchIntent(this.pending, event.clientX, event.clientY);
+        if (intent === 'drag') {
+            this.startDrag(event.clientX);
+        } else if (intent === 'scroll') {
+            this.stopDrag();
+        }
     };
 
+    /** A release ends a drag; a finger lifted before it moved is a tap, which sets the value where it began. */
     private readonly onPointerUp = (): void => {
+        const tap = this.pending;
+        if (tap !== null) {
+            this.startDrag(tap.x);
+        }
+        this.endDrag();
+    };
+
+    /** The browser took the pointer (a scroll began, the window lost it): a drag ends where it is, a waiting press is no tap. */
+    private readonly onPointerCancel = (): void => {
+        if (this.pending === null) {
+            this.endDrag();
+        } else {
+            this.stopDrag();
+        }
+    };
+
+    private endDrag(): void {
         this.stopDrag();
         this.flushInput();
         this.commit();
-    };
+    }
 
     private stopDrag(): void {
+        this.pending = null;
         const doc = this.ownerDocument;
         doc.removeEventListener('pointermove', this.onPointerMove);
         doc.removeEventListener('pointerup', this.onPointerUp);
-        doc.removeEventListener('pointercancel', this.onPointerUp);
+        doc.removeEventListener('pointercancel', this.onPointerCancel);
     }
 
     /** Moves the keyboard focus to the handle (the slider's only focusable part). */
