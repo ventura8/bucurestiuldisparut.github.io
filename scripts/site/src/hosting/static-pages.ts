@@ -199,7 +199,8 @@ export const HOSTING_STYLESHEET_SOURCE = [
     '    box-sizing: border-box;',
     '    max-inline-size: 40rem;',
     '    margin: 0 auto;',
-    '    padding: 2rem 1rem;',
+    // The page ends at its last link: no trailing blank to scroll into (the tour's no-blank-scroll check).
+    '    padding: 2rem 1rem 0.5rem;',
     '    overflow-wrap: anywhere;',
     '}',
     '',

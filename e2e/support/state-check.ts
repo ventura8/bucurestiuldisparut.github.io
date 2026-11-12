@@ -1,10 +1,14 @@
 import { expect, type Page } from '@playwright/test';
 
 import { assertAccessible, assertEscapeCloses } from './a11y.js';
+import { BLANK_SCROLL_PROBE, blankScrollViolations, measureBlankScroll, type BlankScrollMeasure } from './blank-scroll-probe.js';
+import { DOM_WALK } from './dom-walk.js';
 import { i18nLeaks } from './i18n.js';
-import { assertLayoutSound } from './layout.js';
+import { assertLayoutSound, callInPage } from './layout.js';
+import { reportViolations } from './report.js';
 import { assertScrolledSound } from './scroll-sweep.js';
 import { saveStateShots } from './state-shots.js';
+import { violationLines, type Violation } from './violations.js';
 
 /**
  * One visit of a tour state (e2e/tour/states.ts): the generic layout checker, the generic accessibility checker and the
@@ -70,6 +74,22 @@ async function mapsLoaded(page: Page): Promise<void> {
     await page.waitForFunction(mapsLoadedInPage, undefined, { timeout: MAPS_LOADED_MS }).catch(() => undefined);
 }
 
+/**
+ * The `no-blank-scroll` checker (e2e/support/blank-scroll-probe.ts): an app shell's page never scrolls nor overscrolls,
+ * a document ends at its last element. `blankScrollOf` answers the page's violations; `assertNoBlankScroll` is the
+ * tour's soft assertion, reported with its outlined screenshot.
+ */
+export async function blankScrollOf(page: Page): Promise<Violation[]> {
+    const measure = await callInPage<BlankScrollMeasure>(page, [...DOM_WALK, ...BLANK_SCROLL_PROBE], measureBlankScroll);
+    return blankScrollViolations(measure);
+}
+
+async function assertNoBlankScroll(page: Page, state: string): Promise<void> {
+    const found = await blankScrollOf(page);
+    await reportViolations(page, state, found);
+    expect.soft(violationLines(state, found), `${state}: no blank space to scroll into`).toEqual([]);
+}
+
 /** Checks the state the page is in (see `StateVisit`); with `escape`, the page is left with its popup closed. */
 export async function expectStateSound(page: Page, visit: StateVisit): Promise<void> {
     await mapsLoaded(page);
@@ -81,6 +101,7 @@ export async function expectStateSound(page: Page, visit: StateVisit): Promise<v
         announcements: visit.announcements ?? [],
         skipRules: visit.skipRules ?? [],
     });
+    await assertNoBlankScroll(page, visit.id);
     await assertScrolledSound(page, visit.id, [...layout.violations, ...accessibility], { skipRules: visit.skipRules ?? [] });
     const name = visit.title === undefined ? visit.id : `${visit.id} (${visit.title})`;
     expect.soft(await i18nLeaks(page, visit.lang), `${name}: message keys, or English in a Romanian page`).toEqual([]);

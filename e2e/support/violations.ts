@@ -16,6 +16,7 @@ type Check =
     | 'edge'
     | 'page-scroll'
     | 'sideways-scroll'
+    | 'no-blank-scroll'
     | 'legal'
     | 'clipped-text'
     | 'text-overlap'

@@ -46,6 +46,16 @@ describe('<hcm-admin-shell>', () => {
         expect(deep(element, '.frame').dataset['nav']).toBe(variant);
     });
 
+    it('happyPath_theFramedScreensMarkTheShellAsAnAppShellAndThePanelsDoNot', async () => {
+        const app = new FakeAdminApp(adminState({ destinations: DESTINATIONS }));
+        const element = await shell(app);
+        expect(element.hasAttribute('data-frame')).toBe(true);
+
+        app.set({ auth: 'signedOut' });
+        await updated(element);
+        expect(element.hasAttribute('data-frame')).toBe(false);
+    });
+
     it('badPath_startUpModeShowsTheBannerAndSetupOnly', async () => {
         const app = new FakeAdminApp(adminState({ auth: 'bootstrap', mode: 'bootstrap', locale: 'ro' }));
         const element = await shell(app);

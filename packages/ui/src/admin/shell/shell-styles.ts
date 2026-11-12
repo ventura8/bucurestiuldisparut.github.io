@@ -24,11 +24,17 @@ export const shellStyles = [
             color: var(--md-sys-color-on-surface, CanvasText);
         }
 
-        /* The frame is the positioned container of the navigation's More sheet, which covers it. */
+        /*
+         * The frame is the positioned container of the navigation's More sheet, which covers it. It clips: an absolute
+         * element of a page (a visually hidden caption or label far down a long page) has the frame as its containing
+         * block, escapes the page's scroller and made the window scroll into blank space below the shell (the owner's
+         * Historical imagery, 2026-11-09: the tour's no-blank-scroll check).
+         */
         .frame {
             display: grid;
             position: relative;
             block-size: 100dvh;
+            overflow: clip;
         }
 
         .frame[data-nav='bar'] {
