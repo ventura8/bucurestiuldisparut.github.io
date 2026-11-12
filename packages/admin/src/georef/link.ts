@@ -12,6 +12,7 @@ import type { Store } from '../state/store.js';
 import { chunkOf, type ExtrasLoader } from './extras.js';
 import type { GeorefMap } from './georef-map.js';
 import type { LinkPorts, MapCamera, ScanCamera, ViewLink } from './linked-views.js';
+import { angleFor, bearingFor } from './rotation.js';
 import type { GeorefState } from './state.js';
 
 /** Runs a callback at the next animation frame (a seam for the tests). */
@@ -91,6 +92,26 @@ export class LinkedPanes {
     }
 }
 
+type Turning = Pick<GeorefState, 'rotateLinked' | 'scanAngle'>;
+
+/** The map's camera with the bearing that suits the scan as it is turned now (as it is: turned apart, no fit, no place). */
+function turnedMap(state: Turning, camera: MapCamera, transform: FittedTransform | null): MapCamera {
+    if (!state.rotateLinked || transform === null) {
+        return camera;
+    }
+    const bearing = bearingFor(transform, transform.toPixel({ lng: camera.center[0], lat: camera.center[1] }), state.scanAngle);
+    return bearing === null ? camera : { ...camera, bearing };
+}
+
+/** The scan's camera with the angle that suits the map's bearing (as it is: turned apart, no fit, no place). */
+function turnedScan(state: Turning, camera: ScanCamera, transform: FittedTransform | null, bearing: number): ScanCamera {
+    if (!state.rotateLinked || transform === null) {
+        return camera;
+    }
+    const angle = angleFor(transform, camera.centre, bearing);
+    return angle === null ? camera : { ...camera, angle };
+}
+
 interface StoreSide {
     readonly services: LinkDeps['services'];
     readonly extras: ExtrasLoader;
@@ -114,11 +135,14 @@ export function linkedPanesOf({ services, extras, frame, map, cell, transform, z
             transform,
             // A pair waiting for its second click stops both panes: the other one stays where the owner looks (`./ghost.ts`).
             active: () => cell.state.linked && !map.dragging && cell.state.half === null,
+            // The panes turn together (`./rotation.ts`): the map takes the bearing that suits the scan's angle, the scan the angle
+            // that suits the map's bearing; turned apart, each keeps its own.
             moveMap: (camera) => {
-                map.follow(camera);
+                map.follow(turnedMap(cell.state, camera, transform()));
             },
-            moveScan: (scanFollow) => {
-                cell.update({ scanFollow });
+            moveScan: (camera) => {
+                const scanFollow = turnedScan(cell.state, camera, transform(), map.bearing);
+                cell.update({ scanFollow, scanAngle: scanFollow.angle ?? cell.state.scanAngle });
                 zoomed(scanFollow.scale);
             },
             frame,

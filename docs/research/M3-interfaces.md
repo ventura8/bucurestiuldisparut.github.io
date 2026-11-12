@@ -1452,8 +1452,23 @@ The owner's requests for beta.1 (DECISIONS-for-review.md §165):
   the georeferencer on a published version says what saving does (`data-state="published-note"`). A version that is `approved`,
   `publishing` or ended takes no points. Rows: S-A16-HAPPY-EDIT-POINTS-PUBLISHED, S-A16-BAD-EDIT-POINTS-ENDED; tour state
   `georef.edit-published`.
-- **Not built: rotation.** Rotating each pane, and the two together through the fit's rotation, is not in this change: the scan
-  pane's view (`scan-view.ts`) has no angle and `MapCamera` / `ScanCamera` (`linked-views.ts`) carry no bearing.
+- **Turning the panes**: each pane turns on its own. The scan pane's view has an angle (`ScanView.angle`, radians clockwise about
+  the scan's origin; `scan-view.ts`: `scanToPane`, `paneToScan`, `centredView` and `rotateView` all carry it, so pairs, the ghost,
+  clicks, hit tests and the sharper tiles in view, the bounding box of the turned pane's corners, follow the turn). It turns by the
+  buttons under it (**Turn left**, **Turn right**, **Upright**: a `role="group"` named **Turn the scan**, 15 degrees a press), by
+  `r`, `R` and `n` on the pane, and by Ctrl with a drag about the pane's centre (`draggedView`); `hcm-view` says the angle. The map
+  turns by its own group (**Turn left**, **Turn right**, **North up**: `intents.rotateMap(degrees | null)` →
+  `GeorefMap.rotateBy`, a `flyTo` of the bearing) and by Mapbox's own gestures. **Turn the panes together**
+  (`GeorefState.rotateLinked`, on by default, off and disabled without a fit, kept over `close()`): the linked views' ports
+  (`link.ts`) give the map the bearing that suits the scan's angle and the scan the angle that suits the map's bearing
+  (`rotation.ts`: `fitAngle` is the direction of the scan's x axis on a north-up map under the fit; the scan's angle is
+  `fitAngle − bearing`), so the scan is shown as the map shows the same ground; `MapCamera.bearing` joins `sameCamera`, so a turn
+  of the map alone is a move. Turned apart, the places still follow and each pane keeps its own turn. No fit, a pending pair or a
+  dragged point: nothing links, as before.
+  Rows: S-A16-HAPPY-GEOREF-ROTATE, S-A16-BAD-GEOREF-ROTATE-APART; tour state `georef.rotated`.
+- **The chunk**: the panes' template, the scan pane's gestures and view arithmetic, pair removal, the map pane's layers and the
+  turning live in the eager group `georef-panes` (`GEOREF_PANE_MODULES` of `packages/admin/vite.config.ts`, its own budget row),
+  beside `georef` (19 KB, not raised) and `georef-badges`; the sharper scan's reader is the lazy chunk `scan-tiles`.
 
 Budgets: `georef` 18.8 KB of 19 (19.5 KB before the warp moved out), `georef-warp` 1.0 of 2 (new), `georef-extras` 1.9 of 2,
 `georef-badges` 2.9 of 3 (DECISIONS-for-review.md, *The georeferencer's kept zoom, ghost and sharper scan*).

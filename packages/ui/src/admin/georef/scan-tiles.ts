@@ -7,7 +7,7 @@
  * tile count), one `uint32` per tile plus one (each tile's first byte, row by row, then the file's length), the JPEG tiles.
  * A lazy chunk of its own (`scan-tiles`): `<hcm-scan-viewer>` fetches it when a version's sharper scan first arrives.
  */
-import type { ScanView, Size } from './scan-view.js';
+import { paneToScan, type ScanView, type Size } from './scan-view.js';
 
 /** At most this many decoded tiles are kept, and drawn at once. */
 export const SCAN_TILES_KEPT = 32;
@@ -230,12 +230,10 @@ export function detailScene(shown: ShownTiles | null, { view, pane, previewScale
     if (shown === null || view.scale * ratio <= 1) {
         return null;
     }
-    // Sharper pixels a CSS pixel.
-    const across = shown.scale / previewScale / view.scale;
-    const box = {
-        ...{ left: -view.offset.x * across, top: -view.offset.y * across },
-        ...{ right: (pane.width - view.offset.x) * across, bottom: (pane.height - view.offset.y) * across },
-    };
+    // The pane's corners in the sharper scan's pixels (a turned pane covers their bounding box).
+    const corners = [0, pane.width].flatMap((x) => [0, pane.height].map((y) => paneToScan(view, { x, y }, previewScale / shown.scale)));
+    const [xs, ys] = [corners.map((corner) => corner.x), corners.map((corner) => corner.y)];
+    const box = { left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) };
     return { scale: shown.scale, pieces: shown.cache.show(tilesIn(shown.tiles, box)) };
 }
 

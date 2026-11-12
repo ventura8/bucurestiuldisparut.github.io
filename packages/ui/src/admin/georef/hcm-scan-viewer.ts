@@ -6,7 +6,7 @@
  * pan, `+` and `-` zoom, Enter adds the pair's scan end at the crosshair while pairs are being added, Delete removes the
  * selected pair, Esc drops the half pair or lets the selected one go. Events: `hcm-pick` `{pixel}`, `hcm-select` `{id}`,
  * `hcm-move` `{id, pixel}`, `hcm-delete` `{id}`, `hcm-escape`, and `hcm-view` `{centre, scale}` after the admin pans or zooms (the
- * linked views); pixels are the full-resolution scan's. `follow` (`{centre, scale}`, the linked map's place) centres the view there
+ * linked views; `angle` is how far the scan is turned); pixels are the full-resolution scan's. `follow` (`{centre, scale, angle?}`, the linked map's place) centres the view there
  * without an `hcm-view` back, and is ignored while a pointer is down (a drag or a pinch). Only the main button
  * picks, drags or pans (a right-click is the page's context menu, which reads `targetAt` and, after a long press,
  * `cancelGesture`). A pane hidden on a
@@ -21,8 +21,19 @@ import { defineOnce, emit } from '../../components/internal.js';
 import { adminBase } from '../shell/admin-styles.js';
 import { drawScan, type ScanMarker } from './scan-draw.js';
 import { scanViewerStyles } from './scan-viewer-styles.js';
-import { ARROW_STEPS, DetailTiles, imageOf, type Gesture, type Pinch, type ScanDetailFile } from './scan-input.js';
-import { centredView, fitView, hitPair, panView, paneToScan, resizedView, zoomView, type Point, type ScanView } from './scan-view.js';
+import { ARROW_STEPS, DetailTiles, draggedView, imageOf, TURN_STEP, type Gesture, type Pinch, type ScanDetailFile } from './scan-input.js';
+import {
+    centredView,
+    fitView,
+    hitPair,
+    panView,
+    paneToScan,
+    resizedView,
+    rotateView,
+    zoomView,
+    type Point,
+    type ScanView,
+} from './scan-view.js';
 
 const HCM_SCAN_VIEWER_TAG = 'hcm-scan-viewer';
 
@@ -40,6 +51,10 @@ const COMMANDS: Readonly<Record<string, ((viewer: HcmScanViewer) => boolean) | u
         emit(viewer, 'hcm-escape', {});
         return true;
     },
+    // Turning the scan: r to the right, R (Shift) to the left, n upright again.
+    r: (viewer) => viewer.rotateBy(TURN_STEP),
+    R: (viewer) => viewer.rotateBy(-TURN_STEP),
+    n: (viewer) => viewer.upright(),
 };
 
 export class HcmScanViewer extends LitElement {
@@ -80,7 +95,7 @@ export class HcmScanViewer extends LitElement {
     /** The sharper scan (its address and its pixels per scan pixel), drawn once zoomed past the preview's own pixels (null: none). */
     declare detail: ScanDetailFile | null;
     /** The linked map's place for this pane: the full-resolution pixel to centre and CSS px per scan pixel (null: none). */
-    declare follow: { readonly centre: Point; readonly scale: number } | null;
+    declare follow: { readonly centre: Point; readonly scale: number; readonly angle?: number } | null;
     declare adding: boolean;
     declare label: string;
     /** The on-screen zoom buttons' names (the page's locale); the wheel, a pinch and + / - zoom too. */
@@ -148,6 +163,17 @@ export class HcmScanViewer extends LitElement {
         return paneToScan(view, { x: pane.width / 2, y: pane.height / 2 }, this.previewScale);
     }
 
+    /** Turns the scan by `delta` radians clockwise about the pane's centre (the buttons beside the pane, r and R, Ctrl and a drag). */
+    rotateBy(delta: number): boolean {
+        this.#setView(rotateView(this.#currentView(), delta, { x: this.#pane.width / 2, y: this.#pane.height / 2 }));
+        return true;
+    }
+
+    /** The scan upright again (its own up at the pane's top). */
+    upright(): boolean {
+        return this.rotateBy(-(this.#currentView().angle ?? 0));
+    }
+
     /** Where the preview sits in the pane now (its scale and offset): what the linked map last set or the admin last chose. */
     get view(): ScanView {
         return this.#currentView();
@@ -183,14 +209,16 @@ export class HcmScanViewer extends LitElement {
         if (follow === null || this.#pointers.size > 0 || this.#pane.width === 0) {
             return;
         }
-        this.#view = centredView(this.#pane, follow, this.previewScale, this.#fitted());
+        // A follow without an angle (the panes turn apart) keeps the pane as the owner turned it.
+        const angle = follow.angle ?? this.#view?.angle;
+        this.#view = centredView(this.#pane, { ...follow, angle }, this.previewScale, this.#fitted());
     }
 
     /** The admin panned or zoomed: drawn, and said (the linked map follows). */
     #setView(view: ScanView): void {
         this.#view = view;
         this.#draw();
-        emit(this, 'hcm-view', { centre: this.centre, scale: view.scale * this.previewScale });
+        emit(this, 'hcm-view', { centre: this.centre, scale: view.scale * this.previewScale, angle: view.angle ?? 0 });
     }
 
     protected override updated(): void {
@@ -299,8 +327,9 @@ export class HcmScanViewer extends LitElement {
             return;
         }
         const view = this.#currentView();
-        const marker = this.adding ? null : hitPair(view, this.markers, at, this.previewScale);
-        this.#gesture = { start: at, view, marker, moved: false, last: at };
+        // Ctrl and a drag turn the scan about the pane's centre; else a drag moves the pair under it, or pans.
+        const marker = this.adding || event.ctrlKey ? null : hitPair(view, this.markers, at, this.previewScale);
+        this.#gesture = { start: at, view, marker, moved: false, last: at, turning: event.ctrlKey };
     };
 
     readonly #moveTo = (event: PointerEvent): void => {
@@ -326,7 +355,7 @@ export class HcmScanViewer extends LitElement {
         gesture.last = at;
         gesture.moved ||= Math.hypot(at.x - gesture.start.x, at.y - gesture.start.y) > CLICK_SLOP;
         if (gesture.moved && gesture.marker === null) {
-            this.#setView(panView(gesture.view, at.x - gesture.start.x, at.y - gesture.start.y));
+            this.#setView(draggedView(gesture, at, this.#pane));
             return;
         }
         this.#draw();

@@ -43,6 +43,51 @@ function halfPixel(half: HalfPairPort | null): PixelPositionPort | null {
 
 type Detail<T> = CustomEvent<T>;
 
+/** One press of a turn button on the map: 15 degrees, as the scan pane's (`TURN_STEP`). */
+const TURN_DEGREES = 15;
+
+/** The scan pane's own turning (`<hcm-scan-viewer>`: its view lives in the element). */
+interface TurningViewer {
+    rotateBy(delta: number): boolean;
+    upright(): boolean;
+}
+
+/** The scan viewer of the pane a button sits in. */
+function viewerOf(event: Event): TurningViewer | null {
+    return (
+        (event.currentTarget as HTMLElement).closest('.scan-pane')?.querySelector<HTMLElement & TurningViewer>('hcm-scan-viewer') ?? null
+    );
+}
+
+/** What a turn button does on its pane: `direction` -1 to the left, 1 to the right, 0 upright (the scan) or north up (the map). */
+function turn(context: GeorefContext, pane: 'scan' | 'map', direction: -1 | 0 | 1): (event: Event) => void {
+    if (pane === 'map') {
+        return () => {
+            context.intents?.rotateMap(direction === 0 ? null : direction * TURN_DEGREES);
+        };
+    }
+    return (event) => {
+        const viewer = viewerOf(event);
+        if (direction === 0) {
+            viewer?.upright();
+        } else {
+            viewer?.rotateBy((direction * TURN_DEGREES * Math.PI) / 180);
+        }
+    };
+}
+
+/** Turn left, Turn right and Upright (the scan) or North up (the map): each pane turns on its own, by button and by keyboard. */
+function turnButtons(context: GeorefContext, pane: 'scan' | 'map'): TemplateResult {
+    const { locale } = context;
+    const button = (direction: -1 | 0 | 1, name: 'left' | 'right' | 'scanUp' | 'mapUp'): TemplateResult =>
+        html`<hcm-button variant="text" data-turn=${name} @click=${turn(context, pane, direction)}
+            >${contentText(locale, `adminContent.georef.turn.${name}`)}</hcm-button
+        >`;
+    return html`<div class="actions turn" role="group" aria-label=${contentText(locale, `adminContent.georef.turn.${pane}`)}>
+        ${button(-1, 'left')} ${button(1, 'right')} ${button(0, pane === 'scan' ? 'scanUp' : 'mapUp')}
+    </div>`;
+}
+
 function scanViewer(context: GeorefContext, scan: NonNullable<NonNullable<GeorefViewState['version']>['scan']>): TemplateResult {
     const { locale, view, intents } = context;
     return html`<hcm-scan-viewer
@@ -81,7 +126,8 @@ function scanViewer(context: GeorefContext, scan: NonNullable<NonNullable<Georef
                 intents?.scanMoved(event.detail);
             }}
         ></hcm-scan-viewer>
-        <p class="note">${contentText(locale, 'adminContent.georef.scanKeys')}</p>`;
+        ${turnButtons(context, 'scan')}
+        <p class="note">${contentText(locale, 'adminContent.georef.scanKeys')} ${contentText(locale, 'adminContent.georef.turn.keys')}</p>`;
 }
 
 function scanPane(context: GeorefContext): TemplateResult {
@@ -203,6 +249,7 @@ function mapPane(context: GeorefContext): TemplateResult {
                 removeSelected(context);
             }}
         ></hcm-admin-map>
+        ${turnButtons(context, 'map')}
         <p class="note">${attribution(locale, view)}</p>`;
 }
 
@@ -279,6 +326,17 @@ function linkToggle(context: GeorefContext): TemplateResult {
                 intents?.setLinked(!view.linked);
             }}
             >${contentText(locale, 'adminContent.georef.linkViews')}</hcm-button
+        >
+        <hcm-button
+            variant="outlined"
+            icon="explore"
+            data-action="rotate-together"
+            .pressed=${fitted && view.rotateLinked}
+            ?disabled=${!fitted}
+            @click=${() => {
+                intents?.setRotateLinked(!view.rotateLinked);
+            }}
+            >${contentText(locale, 'adminContent.georef.turn.together')}</hcm-button
         >
         ${deleteSelected(context)}
         ${when(!fitted, () => html`<span class="note" data-state="link-no-fit">${contentText(locale, 'adminContent.georef.linkViewsNoFit')}</span>`)}

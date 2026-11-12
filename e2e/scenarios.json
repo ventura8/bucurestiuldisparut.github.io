@@ -6201,6 +6201,28 @@
             "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §165). Tests: packages/admin/test/georef/edit-points.test.ts, packages/ui/test/admin/georef/georef-edit-points.test.ts."
         },
         {
+            "id": "S-A16-HAPPY-GEOREF-ROTATE",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "Each pane turns on its own and, once the pairs give a fit, the two turn together",
+            "asserts": "under each pane a group of buttons turns it: Turn left, Turn right and Upright (the scan) or North up (the map), 15 degrees a press; on the scan r and R turn it, n sets it upright and Ctrl with a drag turns it about the pane's centre, what is at the centre staying there; pairs, the ghost, clicks and the sharper tiles follow the turn; with a fit and Turn the panes together on (the default, kept while the admin is open) the map takes the bearing that shows the ground as the turned scan does and the scan the angle that suits the map's bearing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §165). Tests: e2e/admin/specs/imagery/georef-linked.spec.ts (state georef.rotated), packages/admin/test/georef/rotation.test.ts, packages/ui/test/admin/georef/scan-rotate.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-GEOREF-ROTATE-APART",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "Turned apart, or without a fit, a pane's turn leaves the other as it is",
+            "asserts": "Turn the panes together off: the scan turns and the map keeps its bearing, the map turns and the scan keeps its angle, while their places still follow each other; without a fit the toggle is off and disabled and each pane still turns alone; a fit with no place at the pane's centre turns nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §165). Tests: e2e/admin/specs/imagery/georef-linked.spec.ts, packages/admin/test/georef/rotation.test.ts, packages/ui/test/admin/georef/scan-rotate.test.ts."
+        },
+        {
             "id": "S-A17-HAPPY",
             "behaviour": "A17",
             "area": "admin",

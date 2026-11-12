@@ -26,6 +26,8 @@ interface GeoPositionPort {
 export interface ScanCameraPort {
     readonly centre: PixelPositionPort;
     readonly scale: number;
+    /** How far the scan is turned in its pane, radians clockwise (absent: as it is). */
+    readonly angle?: number;
 }
 
 export type HalfPairPort = { readonly pixel: PixelPositionPort } | { readonly geo: GeoPositionPort };
@@ -109,6 +111,8 @@ export interface GeorefViewState {
     readonly linked: boolean;
     /** Where the linked map last put the scan pane. */
     readonly scanFollow: ScanCameraPort | null;
+    /** The panes turn together once a fit exists. */
+    readonly rotateLinked: boolean;
 }
 
 export interface GeorefIntentsPort {
@@ -122,6 +126,10 @@ export interface GeorefIntentsPort {
     remove(id: string): void;
     /** The map pane shows a published layer under the pairs (null: the reference alone). */
     setBase(id: string | null): void;
+    /** The panes turn together, or each on its own. */
+    setRotateLinked(linked: boolean): void;
+    /** Turns the map by `degrees` clockwise on the screen; null: north up. */
+    rotateMap(degrees: number | null): void;
     toggle(id: string): void;
     cancelHalf(): void;
     /** The context menu's Add a point here: Add pairs on, then that end exactly as a click there. */

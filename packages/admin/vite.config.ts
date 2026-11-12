@@ -99,11 +99,11 @@ const GEOREF_BADGE_MODULES =
  * The georeferencer's panes and what the beta.1 requests added beside them (2026-11-12; DECISIONS-for-review.md §164, §165): the two
  * panes' template with the list of what the map shows and Delete pair N (`georef-panes.ts`), the scan pane's gestures and the holder
  * of its sharper scan's tiles (`scan-input.ts`), removing a pair with Undo (`removing.ts`) and the published layers the map pane can
- * show (`base-layers.ts`). None imports a module of the `georef` chunk at run time. Like `georef-badges`, this group loads with the
+ * show (`base-layers.ts`), the scan pane's view arithmetic (`scan-view.ts`) and the panes' turning together (`rotation.ts`). None imports a module of the `georef` chunk at run time. Like `georef-badges`, this group loads with the
  * georeferencer's page: it relocates code so that `georef` stays within its 19 KB, it defers none.
  */
 const GEOREF_PANE_MODULES =
-    /packages[\\/](?:ui[\\/]src[\\/]admin[\\/]georef[\\/](?:georef-panes|scan-input)|admin[\\/]src[\\/]georef[\\/](?:removing|base-layers))\.ts$/;
+    /packages[\\/](?:ui[\\/]src[\\/]admin[\\/]georef[\\/](?:georef-panes|scan-input|scan-view)|admin[\\/]src[\\/]georef[\\/](?:removing|base-layers|rotation))\.ts$/;
 
 /**
  * `re2js` resolves to the admin's stand-in (`src/vendor/re2js-unsupported.ts`): the Firestore SDK needs it only for the

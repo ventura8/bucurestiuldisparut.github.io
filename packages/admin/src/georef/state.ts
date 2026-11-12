@@ -146,6 +146,10 @@ export interface GeorefState {
     readonly linked: boolean;
     /** Where the linked map last put the scan pane (a new object each time; the pane moves without answering). */
     readonly scanFollow: ScanCamera | null;
+    /** The panes turn together once a fit exists (on by default; kept while the admin is open). */
+    readonly rotateLinked: boolean;
+    /** How far the scan pane is turned, radians clockwise (as it last said, or as the linked map last turned it). */
+    readonly scanAngle: number;
     /** The city's published layers, oldest first: what the map pane can show besides the reference. */
     readonly baseLayers: readonly BaseLayerItem[];
     /** The published layer the map pane shows under the pairs (null: the reference alone); kept while the admin is open. */
@@ -170,7 +174,7 @@ export const INITIAL_GEOREF: GeorefState = {
         refusal: null,
     },
     ...{ transform: 'affine', saved: null, showPreview: true, previewOpacity: 0.7, map: 'none', pane: 'scan', suggestions: NO_SUGGESTIONS },
-    ...{ linked: true, scanFollow: null, baseLayers: [], base: null },
+    ...{ linked: true, scanFollow: null, baseLayers: [], base: null, rotateLinked: true, scanAngle: 0 },
 };
 
 export interface GeorefIntents {
@@ -225,6 +229,10 @@ export interface GeorefIntents {
     nudgeMap(dx: number, dy: number): void;
     /** Link the views on or off. */
     setLinked(linked: boolean): void;
-    /** The owner panned or zoomed the scan pane: the linked map follows. */
+    /** The owner panned, zoomed or turned the scan pane: the linked map follows. */
     scanMoved(camera: ScanCamera): void;
+    /** The panes turn together, or each on its own. */
+    setRotateLinked(linked: boolean): void;
+    /** Turns the map by `degrees` clockwise on the screen; null: north up. */
+    rotateMap(degrees: number | null): void;
 }

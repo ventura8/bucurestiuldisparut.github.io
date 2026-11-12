@@ -222,7 +222,7 @@ export async function pointInView(
 /** Deletes pair `number` with its row's Remove button. */
 export async function removePair(page: Page, lang: 'ro' | 'en', number: number): Promise<void> {
     const name = georefText(lang, 'adminContent.georef.pairName', { number: String(number) });
-    await page.getByRole('button', { name: georefText(lang, 'adminContent.georef.remove', { name }) }).click();
+    await page.getByRole('button', { name: georefText(lang, 'adminContent.georef.remove', { name }), exact: true }).click();
 }
 
 /** A transform's radio (its name starts with the transform's own text; the missing count may follow). */

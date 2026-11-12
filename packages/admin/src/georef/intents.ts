@@ -124,7 +124,10 @@ function pairIntents(
             actions.select(id);
         },
         remove: (id) => {
-            removePair({ services: actions.services, pairs, edit: actions.edit }, id);
+            const edit = (next: readonly Gcp[]): void => {
+                actions.edit(next);
+            };
+            removePair({ services: actions.services, pairs, edit }, id);
         },
         toggle: (id) => {
             actions.edit(togglePair(pairs(), id));
@@ -155,15 +158,24 @@ type PageIntent = Exclude<
     | 'mapTarget'
     | 'setLinked'
     | 'scanMoved'
+    | 'setRotateLinked'
+    | 'rotateMap'
 >;
 
 /** Link the views, and the scan pane's moves for the linked map. */
-function linkIntents(actions: GeorefIntentActions): Pick<GeorefIntents, 'setLinked' | 'scanMoved'> {
+function linkIntents(actions: GeorefIntentActions): Pick<GeorefIntents, 'setLinked' | 'scanMoved' | 'setRotateLinked' | 'rotateMap'> {
     return {
         setLinked: (linked) => {
             actions.cell.update({ linked });
         },
+        setRotateLinked: (rotateLinked) => {
+            actions.cell.update({ rotateLinked });
+        },
+        rotateMap: (degrees) => {
+            actions.map.rotateBy(degrees);
+        },
         scanMoved: (camera) => {
+            actions.cell.update({ scanAngle: camera.angle ?? actions.cell.state.scanAngle });
             actions.link.scan(camera);
             actions.zoomed(camera.scale);
         },

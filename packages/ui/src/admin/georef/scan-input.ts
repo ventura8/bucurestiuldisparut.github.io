@@ -4,7 +4,7 @@
  */
 import type { ScanMarker } from './scan-draw.js';
 import type { OpenDetail, ScanDetailScene } from './scan-tiles.js';
-import type { Point, ScanView, Size } from './scan-view.js';
+import { panView, rotateView, type Point, type ScanView, type Size } from './scan-view.js';
 
 /** One pointer's press: where it began, the view then, the marker it drags (null: the view pans). */
 export interface Gesture {
@@ -14,6 +14,21 @@ export interface Gesture {
     readonly marker: ScanMarker | null;
     moved: boolean;
     last: Point;
+    /** Ctrl was down: the drag turns the scan about the pane's centre instead of panning it. */
+    readonly turning?: boolean;
+}
+
+/** One press of a turn button or key: 15 degrees. */
+export const TURN_STEP = Math.PI / 12;
+
+/** The view a drag without a marker leaves: panned by the drag, or (Ctrl) turned about the pane's centre by the angle it swept. */
+export function draggedView(gesture: Gesture, at: Point, pane: Size): ScanView {
+    if (gesture.turning !== true) {
+        return panView(gesture.view, at.x - gesture.start.x, at.y - gesture.start.y);
+    }
+    const centre = { x: pane.width / 2, y: pane.height / 2 };
+    const swept = Math.atan2(at.y - centre.y, at.x - centre.x) - Math.atan2(gesture.start.y - centre.y, gesture.start.x - centre.x);
+    return rotateView(gesture.view, swept, centre);
 }
 
 /** Two fingers: the view when they came down, their spread and their midpoint. */

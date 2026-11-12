@@ -61,17 +61,21 @@ function placed(scene: ScanScene): readonly ScanMarker[] {
     return dragged === null ? scene.markers : scene.markers.map((item) => (item.id === dragged.id ? dragged : item));
 }
 
-/** The scan at the view's scale and offset: the preview, and over it the sharper scan's decoded tiles in view. */
+/** The canvas transform that draws a picture of `scale` pane px a pixel at the view's offset and angle. */
+function place(context: CanvasRenderingContext2D, view: ScanView, scale: number, ratio: number): void {
+    const [cos, sin] = [Math.cos(view.angle ?? 0) * ratio * scale, Math.sin(view.angle ?? 0) * ratio * scale];
+    context.setTransform(cos, sin, -sin, cos, ratio * view.offset.x, ratio * view.offset.y);
+}
+
+/** The scan at the view's scale, offset and angle: the preview, and over it the sharper scan's decoded tiles in view. */
 function image(context: CanvasRenderingContext2D, scene: ScanScene, ratio: number): void {
-    const { offset, scale } = scene.view;
     if (scene.image !== null) {
-        context.setTransform(ratio * scale, 0, 0, ratio * scale, ratio * offset.x, ratio * offset.y);
+        place(context, scene.view, scene.view.scale, ratio);
         context.drawImage(scene.image, 0, 0);
     }
     const detail = scene.detail ?? null;
     if (detail !== null) {
-        const across = (scale * scene.previewScale) / detail.scale;
-        context.setTransform(ratio * across, 0, 0, ratio * across, ratio * offset.x, ratio * offset.y);
+        place(context, scene.view, (scene.view.scale * scene.previewScale) / detail.scale, ratio);
         for (const piece of detail.pieces) {
             context.drawImage(piece.image, piece.x, piece.y);
         }

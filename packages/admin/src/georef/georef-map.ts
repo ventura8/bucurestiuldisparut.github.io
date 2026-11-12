@@ -138,6 +138,16 @@ export class GeorefMap {
         this.#handle?.port.flyTo(camera, { animate: false });
     }
 
+    /** The map's bearing in degrees (0 without a map). */
+    get bearing(): number {
+        return this.#handle?.port.getView().bearing ?? 0;
+    }
+
+    /** Turns the map by `degrees` clockwise on the screen (its bearing falls); null: north up. */
+    rotateBy(degrees: number | null): void {
+        this.#handle?.port.flyTo({ bearing: degrees === null ? 0 : this.bearing - degrees });
+    }
+
     zoomBy(delta: number): void {
         const port = this.#handle?.port;
         if (port !== undefined) {

@@ -160,8 +160,8 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         this.#history.clear();
         this.#transform = null;
         this.#own = null;
-        const { thresholdM, linked, base } = this.#cell.state;
-        this.#cell.update({ ...INITIAL_GEOREF, thresholdM, linked, base });
+        const { thresholdM, linked, base, rotateLinked } = this.#cell.state;
+        this.#cell.update({ ...INITIAL_GEOREF, thresholdM, linked, base, rotateLinked });
     }
 
     hasUnsavedChanges(): boolean {

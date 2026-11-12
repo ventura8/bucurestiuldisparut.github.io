@@ -258,7 +258,7 @@ test(
         // The map shows: the published layer itself goes under the pairs, on the page's one map; back to OpenStreetMap, it is gone.
         const shows = page.getByLabel(georefText(lang, 'adminContent.georef.shows.map'));
         await shows.selectOption(`layer:${layer.id}`);
-        await expect(page.locator('.map-pane .note')).toContainText('(1966)');
+        await expect(page.locator('.map-pane > p.note')).toContainText('(1966)');
         await expect.poll(async () => (await mapFacts(page)).layers.some((id) => id.includes(layer.id))).toBe(true);
         await expectStateSound(page, adminVisit('georef.map-shows', lang));
         await shows.selectOption('reference:osm');

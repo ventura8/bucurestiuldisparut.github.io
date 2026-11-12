@@ -1,6 +1,6 @@
 /**
  * The scan pane's view (`docs/research/M3-interfaces.md` §10.4): where the scan preview sits in the pane, zoomed from
- * "fit" up to 8× and panned, and the conversions between the pane's CSS pixels, the preview's pixels and the
+ * "fit" up to 32×, panned and turned (each pane rotates on its own, 2026-11-12), and the conversions between the pane's CSS pixels, the preview's pixels and the
  * full-resolution scan's (`pixel × previewScale` is the preview's: §6.1). Pure, so the element only draws and listens.
  */
 import { clamp } from '@hcm/shared';
@@ -25,6 +25,14 @@ export interface ScanView {
     readonly scale: number;
     /** Where the preview's origin is in the pane (CSS pixels). */
     readonly offset: Point;
+    /** How far the scan is turned in the pane, in radians clockwise about its origin (absent or 0: upright). */
+    readonly angle?: number;
+}
+
+/** A vector turned by `angle` radians clockwise (the pane's y axis points down). */
+function turned(vector: Point, angle = 0): Point {
+    const [cos, sin] = [Math.cos(angle), Math.sin(angle)];
+    return { x: vector.x * cos - vector.y * sin, y: vector.x * sin + vector.y * cos };
 }
 
 /** The whole preview in the pane, centred. */
@@ -37,19 +45,30 @@ export function fitView(pane: Size, image: Size): ScanView {
 export function zoomView(view: ScanView, factor: number, at: Point, fit: ScanView): ScanView {
     const scale = clamp(view.scale * factor, fit.scale, fit.scale * MAX_ZOOM);
     const kept = scale / view.scale;
-    return { scale, offset: { x: at.x - (at.x - view.offset.x) * kept, y: at.y - (at.y - view.offset.y) * kept } };
+    return { ...view, scale, offset: { x: at.x - (at.x - view.offset.x) * kept, y: at.y - (at.y - view.offset.y) * kept } };
 }
 
-/** The view with the full-resolution `camera.centre` at the pane's centre, `camera.scale` CSS px a scan pixel (within fit … fit × `MAX_ZOOM`). */
+/**
+ * The view with the full-resolution `camera.centre` at the pane's centre, `camera.scale` CSS px a scan pixel (within fit … fit ×
+ * `MAX_ZOOM`), turned by `camera.angle` (absent: upright).
+ */
 export function centredView(
     pane: Size,
-    camera: { readonly centre: Point; readonly scale: number },
+    camera: { readonly centre: Point; readonly scale: number; readonly angle?: number | undefined },
     previewScale: number,
     fit: ScanView,
 ): ScanView {
     const zoom = clamp(camera.scale / previewScale, fit.scale, fit.scale * MAX_ZOOM);
     const across = previewScale * zoom;
-    return { scale: zoom, offset: { x: pane.width / 2 - camera.centre.x * across, y: pane.height / 2 - camera.centre.y * across } };
+    const centre = turned({ x: camera.centre.x * across, y: camera.centre.y * across }, camera.angle);
+    const offset = { x: pane.width / 2 - centre.x, y: pane.height / 2 - centre.y };
+    return camera.angle === undefined ? { scale: zoom, offset } : { scale: zoom, offset, angle: camera.angle };
+}
+
+/** The view turned by `delta` radians clockwise about the pane point `about` (the pane's centre: what is there stays there). */
+export function rotateView(view: ScanView, delta: number, about: Point): ScanView {
+    const arm = turned({ x: view.offset.x - about.x, y: view.offset.y - about.y }, delta);
+    return { scale: view.scale, offset: { x: about.x + arm.x, y: about.y + arm.y }, angle: (view.angle ?? 0) + delta };
 }
 
 /**
@@ -65,17 +84,20 @@ export function resizedView(view: ScanView, before: Size, after: Size, image: Si
 }
 
 export function panView(view: ScanView, dx: number, dy: number): ScanView {
-    return { scale: view.scale, offset: { x: view.offset.x + dx, y: view.offset.y + dy } };
+    return { ...view, offset: { x: view.offset.x + dx, y: view.offset.y + dy } };
 }
 
 /** A pane point as a full-resolution scan pixel. */
 export function paneToScan(view: ScanView, at: Point, previewScale: number): Point {
-    return { x: (at.x - view.offset.x) / view.scale / previewScale, y: (at.y - view.offset.y) / view.scale / previewScale };
+    const upright = turned({ x: at.x - view.offset.x, y: at.y - view.offset.y }, -(view.angle ?? 0));
+    return { x: upright.x / view.scale / previewScale, y: upright.y / view.scale / previewScale };
 }
 
 /** A full-resolution scan pixel as a pane point. */
 export function scanToPane(view: ScanView, pixel: Point, previewScale: number): Point {
-    return { x: view.offset.x + pixel.x * previewScale * view.scale, y: view.offset.y + pixel.y * previewScale * view.scale };
+    const across = previewScale * view.scale;
+    const drawn = turned({ x: pixel.x * across, y: pixel.y * across }, view.angle);
+    return { x: view.offset.x + drawn.x, y: view.offset.y + drawn.y };
 }
 
 /** The pair under a pane point (the nearest within `HIT_RADIUS`), or null. */
