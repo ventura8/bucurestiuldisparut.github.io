@@ -222,6 +222,20 @@ def test_bad_path_an_archive_series_full_resolution_rasters_never_leave_the_comp
     assert not uploads_rasters({}, replace(series, type="usgs-import"))
 
 
+def test_bad_path_line_art_of_a_masked_cog_keeps_outside_the_map_clear(tmp_path: Path) -> None:
+    """Scenarios: S-P20-BAD-ENCODING-MASK"""
+    # The export's COG holds one grey band and its alpha as a mask; black outside pixels must not become ink (Post 1847, 2026-11-12).
+    source = grey_and_alpha(tmp_path / "masked.tif", 1)
+    dataset = gdal.Open(str(source), gdal.GA_Update)
+    dataset.CreateMaskBand(gdal.GMF_PER_DATASET)
+    dataset.GetRasterBand(1).GetMaskBand().WriteArray(numpy.array([[255, 255, 0, 0], [255, 255, 255, 0]], dtype=numpy.uint8))
+    dataset.Close()
+
+    made = gdal.Open(str(paper_opaque(source, tmp_path / "white.tif")))
+
+    assert made.GetRasterBand(4).ReadAsArray().tolist() == [[255, 255, 0, 0], [255, 255, 255, 0]]
+
+
 def test_bad_path_line_art_without_a_tiff_driver_says_so(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     source = grey_and_alpha(tmp_path / "warped.tif", 1)
     monkeypatch.setattr(gdal, "GetDriverByName", lambda _name: None)

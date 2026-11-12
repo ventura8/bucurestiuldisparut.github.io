@@ -3267,3 +3267,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `paperTransparent` defaulted on for line art (`params.get(...) is not False`), so paper alpha was 0 and the basemap showed through. Soft overview alpha was a second problem; opaque white paper is what the owner wanted.
     - Fix and pin: default off; `paper_opaque` in the pyramid; live `…-fix2.pmtiles` + manifest/Firestore URL; DECISIONS §150; `S-P20-HAPPY-ENCODING`.
     - **A see-through plan needs opaque white paper by default; transparent paper is an opt-in overlay, not the product default.**
+
+556. **Post 1847 got a black frame once its paper was opaque.**
+    - Seen: 2026-11-12, owner screenshot: the rotated 1847 plan sat in a black rectangle after `…-fix2.pmtiles`.
+    - Cause: the export's COG is one grey band with its alpha kept as an internal mask; the line-art encoder read alpha only from a second band, so a one-band source was all opaque and the black outside the warp became ink.
+    - Fix and pin: `_alpha_rows` reads the band's mask (`GetMaskBand`) for a one-band source; `S-P20-BAD-ENCODING-MASK`.
+    - **A one-band raster's edge lives in its mask; read the mask band, never assume all opaque.**

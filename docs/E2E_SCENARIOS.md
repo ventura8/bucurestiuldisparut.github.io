@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 144 | 1449 | 589 | 860 | 1447 | 2 | 361 |
+| 144 | 1450 | 589 | 861 | 1448 | 2 | 361 |
 
 ## Viewer
 
@@ -1449,6 +1449,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-P20-BAD-CAD` | P20 | bad | A CAD drawing is reported as needing an export | a DWG -> needs-cad-export, no series | e2e-pipeline | exists | `pipeline/tests/unit/test_archive_classify.py` |
 | `S-P20-BAD-DUPLICATE` | P20 | bad | An exact duplicate is skipped for its shortest name | two files of one SHA-256 -> the shorter kept, the other duplicate-of it | e2e-pipeline | exists | `pipeline/tests/unit/test_archive_classify.py` |
 | `S-P20-BAD-EMBEDDED-DISAGREES` | P20 | bad | A georeference that disagrees with OpenStreetMap waits for a look | a 60 m shift -> awaiting_gcps 'disagrees with OpenStreetMap by N m'; an unknown system -> waits | e2e-pipeline | exists | `pipeline/tests/unit/test_placing_embedded.py` |
+| `S-P20-BAD-ENCODING-MASK` | P20 | bad | Outside a line-art map stays clear, never a black frame | a one-band COG whose alpha is an internal mask -> line art keeps the mask as alpha (outside clear), black outside pixels never read as ink | e2e-pipeline | exists | `pipeline/tests/unit/test_archive_steps.py` |
 | `S-P20-BAD-FRAME-NOT-FOUND` | P20 | bad | A sheet with no frame is left out and the series waits when none has one | no outline -> no frame; a series of frameless sheets -> awaiting_gcps, help frame-not-found | e2e-pipeline | exists | `pipeline/tests/unit/test_placing_grid.py`<br>`pipeline/tests/unit/test_placing_parts.py` |
 | `S-P20-BAD-GRID-NOT-PROVED` | P20 | bad | A grid that does not prove waits for three sheets | another town's sheets, no fit at all -> awaiting_gcps with the three-sheet note (batch 4: a fitted grid that does not prove renders as grid-names instead) | e2e-pipeline | exists | `pipeline/tests/unit/test_placing_grid.py` |
 | `S-P20-BAD-GRID-ODD-NAMES` | P20 | bad | Names the grammar cannot read join the table of odd names | 17A1 bis and words after a column -> odd cells the report asks about | e2e-pipeline | exists | `pipeline/tests/unit/test_archive_grammar.py` |

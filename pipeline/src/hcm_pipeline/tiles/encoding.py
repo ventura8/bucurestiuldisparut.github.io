@@ -66,9 +66,10 @@ def _created(source: gdal.Dataset, target: Path) -> gdal.Dataset:
 
 
 def _alpha_rows(dataset: gdal.Dataset, grey: NDArray[Any], top: int) -> NDArray[Any]:
-    """The source's own alpha (its last band) over the strip, or all opaque for a raster of one band."""
+    """The source's own alpha (its last band) over the strip; a raster of one band reads its mask (the export's COG keeps its alpha as
+    an internal mask, so outside the map stays clear — the Post 1847 black frame, 2026-11-12), all opaque when it has none."""
     if dataset.RasterCount == 1:
-        return np.full_like(grey, OPAQUE)
+        return dataset.GetRasterBand(1).GetMaskBand().ReadAsArray(0, top, dataset.RasterXSize, grey.shape[0])
     return dataset.GetRasterBand(dataset.RasterCount).ReadAsArray(0, top, dataset.RasterXSize, grey.shape[0])
 
 

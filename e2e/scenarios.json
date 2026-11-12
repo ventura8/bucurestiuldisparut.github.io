@@ -16370,6 +16370,17 @@
             "notes": "Pins lesson 546 so Post 1847 cannot recur. Test: pipeline/tests/integration/test_lineart_tiles.py."
         },
         {
+            "id": "S-P20-BAD-ENCODING-MASK",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Outside a line-art map stays clear, never a black frame",
+            "asserts": "a one-band COG whose alpha is an internal mask -> line art keeps the mask as alpha (outside clear), black outside pixels never read as ink",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "The Post 1847 black frame, 2026-11-12 (lesson 556). Test: pipeline/tests/unit/test_archive_steps.py."
+        },
+        {
             "id": "S-P20-HAPPY-STREETS",
             "behaviour": "P20",
             "area": "pipeline",
