@@ -79,7 +79,7 @@ async function iconLinks(page: Page): Promise<{ readonly icon: string | null; re
 
 test(
     "Every city's tab shows its own icon from the public bucket: the root's links, the generic page's once it loads",
-    { tag: '@S-V52-HAPPY' },
+    { tag: '@S-V54-HAPPY' },
     async ({ page, lang }) => {
         await serveBucketCity(page, { city: E2E_CITY_ID, site: 'bucharest' });
         await serveBucketCity(page, { city: ADMIN_MADE_CITY, site: SECOND_CITY });
@@ -167,7 +167,7 @@ test('Before Publish the map the root says the map is being set up', { tag: '@S-
 
 test(
     'A city that is not published, or a path that is no city, is said plainly',
-    { tag: ['@S-V30-BAD-UNKNOWN-CITY', '@S-V52-BAD-MISSING'] },
+    { tag: ['@S-V30-BAD-UNKNOWN-CITY', '@S-V54-BAD-MISSING'] },
     async ({ page, lang, consoleErrors, instrumentation }) => {
         const asked = await bucketWithout(page, UNPUBLISHED_CITY);
 
@@ -175,7 +175,7 @@ test(
 
         await expect(page.getByRole('alert')).toContainText(t(lang, 'error.manifest.notFound'));
         expect((await instrumentation.read(page)).mapsCreated).toBe(0);
-        // The page also looks for the city's tab icon (V52; an image, which the browser may ask after the manifest): none,
+        // The page also looks for the city's tab icon (V54; an image, which the browser may ask after the manifest): none,
         // so the default stays, and each 404 is one console line.
         await expect
             .poll(() => [...asked].sort((a, b) => a.localeCompare(b)))

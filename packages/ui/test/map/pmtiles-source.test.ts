@@ -262,23 +262,37 @@ describe('an archive the pipeline wrote', () => {
 describe('the source Mapbox GL takes', () => {
     const spec = { minzoom: 2, maxzoom: 4, attribution: 'USGS' };
 
-    it('happyPath_aTileDecodesToAPictureAndAHoleDrawsNothing @S-V32-HAPPY-OWN-TILES', async () => {
+    it('happyPath_aTileDecodesToAPicture @S-V32-HAPPY-OWN-TILES', async () => {
         serve(await pmtilesArchive([{ z: 3, x: 1, y: 2, data: WEBP_1X1 }]));
         const source = pmtilesSource('hcm-source-a', URL_OF_ARCHIVE, spec);
-        const { signal } = new AbortController();
 
-        const picture = await source.loadTile({ z: 3, x: 1, y: 2 }, { signal });
-        const hole = await source.loadTile({ z: 3, x: 0, y: 0 }, { signal });
+        const picture = await source.loadTile({ z: 3, x: 1, y: 2 }, { signal: new AbortController().signal });
 
         expect(picture).toBeInstanceOf(ImageBitmap);
-        expect(hole).toBeNull();
     });
 
-    it('happyPath_itsBoundsAreFlatAndOptional', () => {
-        const bounds = [
-            [25.9, 44.3],
-            [26.3, 44.6],
-        ] as const;
+    it('badPath_aHoleIsATransparentPictureNeverNullSoMapboxGlCannotDrawAnOldTileThere @S-V32-BAD-STALE-HOLE', async () => {
+        // Mapbox GL 3.34.1 draws a null tile with a texture from its pool and uploads no pixels to it: an earlier tile's picture,
+        // of another place and zoom (docs/LESSONS.md). A transparent picture of the tile's size overwrites whatever the texture held.
+        const { requests } = serve(await pmtilesArchive([{ z: 3, x: 1, y: 2, data: WEBP_1X1 }]));
+        const source = pmtilesSource('hcm-source-a', URL_OF_ARCHIVE, spec);
+        const { signal } = new AbortController();
+        await source.loadTile({ z: 3, x: 1, y: 2 }, { signal });
+        const reads = requests.length;
+
+        const hole = await source.loadTile({ z: 3, x: 0, y: 0 }, { signal });
+        const another = await source.loadTile({ z: 3, x: 7, y: 7 }, { signal });
+
+        expect(hole).toBeInstanceOf(ImageData);
+        expect(hole).toMatchObject({ width: 256, height: 256 });
+        expect((hole as ImageData).data.every((value) => value === 0)).toBe(true);
+        expect(another).toBe(hole);
+        expect(requests).toHaveLength(reads);
+    });
+
+    it('happyPath_itsBoundsAreOptionalAndPassAsRasterSourceFlattensThem', () => {
+        // rasters.ts flattens a layer's bounds for every raster source (layers.test.ts); the archive's source keeps them as given.
+        const bounds = [25.9, 44.3, 26.3, 44.6];
 
         expect(pmtilesSource('a', URL_OF_ARCHIVE, { ...spec, bounds })['bounds']).toEqual([25.9, 44.3, 26.3, 44.6]);
         expect(pmtilesSource('a', URL_OF_ARCHIVE, spec)).not.toHaveProperty('bounds');

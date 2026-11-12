@@ -143,6 +143,23 @@ function recalibrationAllowed(current: LayerVersionDoc, merged: LayerVersionDoc)
     return isDeepStrictEqual(serverRecalibration(current), serverRecalibration(merged));
 }
 
+/** The part of a version's `source` the server wrote: all of it, but an archive series' counts of placed and skipped sheets. */
+function serverSource(version: LayerVersionDoc): unknown {
+    const source = version.source;
+    if (source?.kind !== 'archive') {
+        return source;
+    }
+    return Object.fromEntries(Object.entries(source).filter(([key]) => key !== 'placedCount' && key !== 'skipped'));
+}
+
+/**
+ * M20 (`docs/research/M20-import-local.md` §4): a run of an archive series writes what became of its sheets (`source.placedCount`,
+ * `source.skipped`) and nothing else of its source; any other job's source stays the server's.
+ */
+function sourceAllowed(current: LayerVersionDoc, merged: LayerVersionDoc): boolean {
+    return isDeepStrictEqual(serverSource(current), serverSource(merged));
+}
+
 function versionWritable(scope: JobScope): Writable<LayerVersionDoc> {
     const { job } = scope;
     return {
@@ -151,6 +168,7 @@ function versionWritable(scope: JobScope): Writable<LayerVersionDoc> {
         allowed: (current, merged) =>
             outputAllowed(scope, current, merged) &&
             recalibrationAllowed(current, merged) &&
+            sourceAllowed(current, merged) &&
             (IN_RUN.has(job.status) ? versionStateAllowed(job, current, merged) : endsWithJob(job, current, merged)),
         ends: (current, merged) => merged.state !== current.state && ENDINGS.has(merged.state),
     };

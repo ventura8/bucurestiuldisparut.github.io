@@ -2,7 +2,7 @@
 import { translate, type Locale, type Manifest, type MessageKey } from '@hcm/shared';
 
 import type { FabMenuItem } from '../components/fab-menu.js';
-import { otherLocale, type MenuAction } from './viewer-actions.js';
+import type { MenuAction } from './viewer-actions.js';
 
 /** What the menu depends on. */
 export interface MenuContext {
@@ -21,13 +21,13 @@ export function menuActions({ webgl, layersDocked, manifest }: MenuContext): rea
         ['locate', webgl],
         ['share', true],
         ['contribute', manifest.contributeUrl !== undefined],
-        ['language', true],
+        ['settings', true],
         ['about', true],
     ];
     return candidates.filter(([, shown]) => shown).map(([action]) => action);
 }
 
-const MENU_ENTRIES: Readonly<Record<Exclude<MenuAction, 'language'>, { readonly icon: string; readonly label: MessageKey }>> = {
+const MENU_ENTRIES: Readonly<Record<MenuAction, { readonly icon: string; readonly label: MessageKey }>> = {
     layers: { icon: 'layers', label: 'layers.title' },
     photos: { icon: 'photo_library', label: 'photos.list' },
     unplaced: { icon: 'add_location_alt', label: 'unplaced.title' },
@@ -35,17 +35,12 @@ const MENU_ENTRIES: Readonly<Record<Exclude<MenuAction, 'language'>, { readonly 
     contribute: { icon: 'add_photo_alternate', label: 'contribute.link' },
     locate: { icon: 'my_location', label: 'action.locate' },
     share: { icon: 'share', label: 'action.share' },
+    settings: { icon: 'settings', label: 'settings.title' },
     about: { icon: 'info', label: 'about.title' },
 };
 
-/**
- * One FAB menu item; the language item is named after the language it switches to (`English`, `Română`), and Show my
- * location is a switch, checked while `locating` (V10).
- */
+/** One FAB menu item; Show my location is a switch, checked while `locating` (V10). */
 export function menuItem(action: MenuAction, locale: Locale, locating = false): FabMenuItem {
-    if (action === 'language') {
-        return { value: action, icon: 'translate', label: translate(locale, `language.${otherLocale(locale)}`) };
-    }
     const entry = MENU_ENTRIES[action];
     const item = { value: action, icon: entry.icon, label: translate(locale, entry.label) };
     return action === 'locate' ? { ...item, checked: locating } : item;

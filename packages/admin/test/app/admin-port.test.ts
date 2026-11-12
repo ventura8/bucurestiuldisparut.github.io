@@ -102,7 +102,7 @@ describe('the admin ports', () => {
             true,
             true,
         ]);
-        expect(ADMIN_AUTH_STATES).toHaveLength(14);
+        expect(ADMIN_AUTH_STATES).toHaveLength(15);
         expect(ADMIN_ROUTES).toHaveLength(17);
         expect(OPS_PORTS).toHaveLength(5);
     });

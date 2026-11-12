@@ -35,6 +35,8 @@ export interface WorkerJobPort {
     readonly step: string | null;
     readonly progress: number | null;
     readonly overdue: boolean;
+    /** M20: its files are only on the computer (an archive's series): the cloud is never offered. */
+    readonly localOnly?: boolean;
 }
 
 export interface WorkerViewPort {

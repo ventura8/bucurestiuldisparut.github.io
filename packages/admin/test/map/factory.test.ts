@@ -192,4 +192,15 @@ describe('the admin map factory', () => {
 
         expect(target.gl.map.removed).toBe(true);
     });
+
+    it('happyPath_theAdminPortProjectsAndUnprojectsOutsideTheEngineMapPort', async () => {
+        const target = world();
+        const handle = handleOf(await created(target));
+
+        const at = handle.port.project([26.1, 44.43]);
+        expect(at).toEqual({ x: 400, y: 300 });
+        expect(at === null ? null : handle.port.unproject(at)).toEqual([26.1, 44.43]);
+        handle.destroy();
+        expect(handle.port.project([26.1, 44.43])).toBeNull();
+    });
 });

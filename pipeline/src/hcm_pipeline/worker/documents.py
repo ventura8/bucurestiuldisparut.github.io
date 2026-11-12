@@ -1,7 +1,8 @@
 """`DocumentStore` over `worker.step` (docs/research/M7-local-worker.md §1.3, §2.4): the runner's and the steps' document
 reads and writes, each one operation of the claimed job, on the server's allow-list (§2.5).
 
-`get`, `update`, `create` and `list_ids` are the operations of the same names (`list` for the ids); `transact` is a
+`get`, `update`, `create` and `list_ids` are the operations of the same names (`list` for the ids, and since 2026-11-08 the count of
+the city's versions it left out for failing their schema, `skipped`); `transact` is a
 `get` with its update time, then an `update` with `ifUpdateTime` (the compare-and-set the Firestore adapter does),
 tried five times. On the wire a timestamp is `{seconds, nanoseconds}` and a removed field `{"__hcmDelete": true}`
 (Firestore's sentinel cannot travel as JSON); dotted field paths (`steps.fetch`, `lease.until`) go as they are.
@@ -67,6 +68,7 @@ class ApiDocumentStore:
         self._api = api
         self._ids = ids
         self._observer = observer
+        self._skipped: dict[str, int] = {}
 
     def _step(self, request: Mapping[str, object]) -> dict[str, object]:
         return self._api.call(STEP, {**self._ids.body(), "request": dict(request)})
@@ -95,8 +97,14 @@ class ApiDocumentStore:
         return self._step({"op": "create", "path": path, "data": to_api(data)}).get("created") is True
 
     def list_ids(self, collection: str) -> list[str]:
-        ids = self._step({"op": "list", "collection": collection}).get("ids")
+        answer = self._step({"op": "list", "collection": collection})
+        ids, skipped = answer.get("ids"), answer.get("skipped")
+        self._skipped[collection] = skipped if isinstance(skipped, int) else 0
         return [str(item) for item in ids] if isinstance(ids, list) else []
+
+    def skipped(self, collection: str) -> int:
+        """The city's versions the last list left out because they fail their schema (`SkipsInvalid`; an older server says none)."""
+        return self._skipped.get(collection, 0)
 
     def transact(self, path: str, change: Change) -> Mapping[str, object] | None:
         for _ in range(TRANSACTION_ATTEMPTS):

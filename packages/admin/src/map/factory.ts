@@ -11,6 +11,7 @@ import { createMapboxPort, type AdapterEnv, type MapboxGl, type MapPort } from '
 import { createClickDrawPort, createTerraDrawPort, type MapDrawPort, type TerraDrawModules } from '@hcm/ui/map/draw';
 
 import { createMapPreview, type MapPreview } from './preview.js';
+import { withMapProjection, type ProjectableMapPort } from './projection.js';
 
 /** The only style the admin's map ever loads. */
 export const ADMIN_MAP_STYLE = 'mapbox://styles/mapbox/standard';
@@ -35,7 +36,7 @@ export interface AdminMapOptions {
 }
 
 export interface AdminMapHandle {
-    readonly port: MapPort;
+    readonly port: ProjectableMapPort;
     readonly preview: MapPreview;
     /** The drawing tools, made on first use (the same ones afterwards). */
     draw(): Promise<MapDrawPort>;
@@ -65,14 +66,14 @@ export interface AdminMapDeps {
 }
 
 class Handle implements AdminMapHandle {
-    readonly port: MapPort;
+    readonly port: ProjectableMapPort;
     readonly preview: MapPreview;
     readonly #deps: AdminMapDeps;
     #draw: Promise<MapDrawPort> | null = null;
     /** The drawing tools once made: they leave the map before it is removed. */
     #tools: MapDrawPort | null = null;
 
-    constructor(port: MapPort, deps: AdminMapDeps) {
+    constructor(port: ProjectableMapPort, deps: AdminMapDeps) {
         this.port = port;
         this.#deps = deps;
         this.preview = createMapPreview(port, deps.env.frames);
@@ -181,7 +182,7 @@ class Factory implements AdminMapFactory {
         if (gl === null) {
             return { ok: false, reason: 'failed' };
         }
-        const port = createMapboxPort(gl, this.#deps.env);
+        const port = withMapProjection(createMapboxPort(gl, this.#deps.env));
         if (!port.isWebGLSupported()) {
             return { ok: false, reason: 'no-webgl' };
         }

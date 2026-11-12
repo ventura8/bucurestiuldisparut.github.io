@@ -2,7 +2,7 @@
  * What a failure, a pause or a refusal offers the admin (CR-M3-47; `docs/research/M3-interfaces.md` §10.2): the budget
  * guard's banner with the spend and Resume processing (asked first) on the Imagery and Jobs pages, a version page's cure
  * for each failure (Try again only when a retry can help, Setup's Mapbox step for a token or scope, Upload another file
- * for an upload the server refused, Dismiss for a failed version), Cancel before Mapbox is asked, the search's Try again
+ * for an upload the server refused, Delete this version for a failed one), Cancel before Mapbox is asked, the search's Try again
  * when USGS did not answer, and the georeferencer's keyboard way (the pair button toggles, Esc lets a pair go).
  */
 import { axeViolations } from '@hcm/test-support/axe';
@@ -131,16 +131,16 @@ describe('a failed version page offers what cures it', () => {
         expect(deep(element, 'a[href="#/setup/mapbox"]').textContent).toBe('Open the Mapbox step of Setup');
     });
 
-    it('happyPath_aFailedVersionIsDismissedAfterTheQuestion', async () => {
+    it('happyPath_aFailedVersionIsDeletedAfterTheQuestion @S-A125-HAPPY-DELETE-VERSION', async () => {
         const { element, area } = await failedPage({
             retryable: false,
             error: { notice: { key: 'apiError.imagery.mtsRefused' }, message: 'x' },
         });
 
-        click(button(element, 'Delete'));
+        click(button(element, 'Delete this version'));
         await confirm(element);
 
-        expect(calls(area)).toEqual(['reject']);
+        expect(calls(area)).toEqual(['deleteVersion']);
         expect(deepAll(element, 'a[href="#/setup/mapbox"]')).toHaveLength(0);
     });
 

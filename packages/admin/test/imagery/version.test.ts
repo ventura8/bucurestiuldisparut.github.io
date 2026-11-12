@@ -340,6 +340,47 @@ describe('a version and its job as the page reads them', () => {
             approval: null,
             hasScan: false,
             error: { key: 'apiError.internal' },
+            rights: null,
+        });
+    });
+});
+
+describe('M20 rights on a version view', () => {
+    it('happyPath_rightsSummaryForConfirmAndApprove @S-A120-HAPPY-CONFIRM-RIGHTS', () => {
+        const base = layerVersionDocSchema.parse(versionDoc());
+        const waiting = {
+            ...base,
+            rights: {
+                licence: 'unknown' as const,
+                state: 'needs-confirmation' as const,
+                year: '1977',
+                note: 'Confirm where it came from.',
+            },
+        };
+        const cleared = {
+            ...waiting,
+            rights: {
+                ...waiting.rights,
+                licence: 'permission' as const,
+                state: 'clear' as const,
+                confirmedBy: 'Idei Urbane',
+                confirmedAt: base.updatedAt,
+            },
+        };
+
+        expect(versionViewOf(stored(ID, waiting)).rights).toEqual({
+            state: 'needs-confirmation',
+            licence: 'unknown',
+            year: '1977',
+            note: 'Confirm where it came from.',
+            confirmedBy: null,
+            allowPublish: false,
+        });
+        expect(versionViewOf(stored(ID, cleared)).rights).toMatchObject({
+            state: 'clear',
+            licence: 'permission',
+            confirmedBy: 'Idei Urbane',
+            allowPublish: true,
         });
     });
 });
@@ -386,5 +427,16 @@ describe('what calibration measured, as the page reads it (M9)', () => {
             refusal: 'no-votes',
         });
         expect(versionViewOf(stored(ID, { ...base, calibration: undefined })).calibration).toBeNull();
+    });
+});
+
+describe('a job view at its attempt cap (live report of 2026-11-12)', () => {
+    it('happyPath_aLocalRunAtItsCapOffersTryAgain_aCloudRunDoesNot @S-A12-HAPPY-LOCAL-RETRY-PAST-CAP @S-A12-BAD-CLOUD-RETRY-AT-CAP', () => {
+        const view = (overrides: Record<string, unknown>) => jobViewOf(stored(ID, jobDocSchema.parse(jobDoc(overrides))));
+        const atCap = { status: 'failed', layerId: 'kh-4a-corona-1966', attempt: 3, error: { code: 'apiError.internal', message: 'x' } };
+
+        expect(view({ ...atCap, runOn: 'local' }).retryable).toBe(true);
+        expect(view({ ...atCap, runOn: 'cloud' }).retryable).toBe(false);
+        expect(view(atCap).retryable).toBe(false);
     });
 });

@@ -362,26 +362,29 @@ describe('imagery.join: refused before anything is created', () => {
 });
 
 describe('imagery.join: frames that cannot be taken', () => {
-    it.each(['approved', 'publishing'] as const)('badPath_aFrameThePolicyMoved_%s_SinceTheCallableLookedIsNotStamped', async (state) => {
-        const world = await readyWorld();
-        await seedPart(world, F039);
-        await seedPart(world, F040);
-        const transaction = world.deps.documents.transaction.bind(world.deps.documents);
-        world.deps.documents.transaction = async (work) => {
-            const frame = await requireVersion(world, 'v-f040');
-            await seedVersion(world, 'v-f040', {
-                ...frame,
-                state,
-                approval: { auto: true, by: 'system:imagery', at: at(NOW) },
-            });
-            return transaction(work);
-        };
+    it.each(['approved', 'publishing'] as const)(
+        'happyPath_aFrameThePolicyMoved_%s_SinceTheCallableLookedIsStampedAnyway',
+        async (state) => {
+            const world = await readyWorld();
+            await seedPart(world, F039);
+            await seedPart(world, F040);
+            const transaction = world.deps.documents.transaction.bind(world.deps.documents);
+            world.deps.documents.transaction = async (work) => {
+                const frame = await requireVersion(world, 'v-f040');
+                await seedVersion(world, 'v-f040', {
+                    ...frame,
+                    state,
+                    approval: { auto: true, by: 'system:imagery', at: at(NOW) },
+                });
+                return transaction(work);
+            };
 
-        const failure = await failureOf(joinFunction(() => world.deps).run(adminCall({ cityId: CITY, entityIds: [F039, F040] })));
+            const answer = await join(world, [F039, F040]);
 
-        expect(failure.details).toMatchObject({ code: 'apiError.imagery.joinPartGone', params: { frame: F040 } });
-        expect((await readVersion(world, 'v-f039'))?.partOf).toBeUndefined();
-    });
+            expect(await readVersion(world, 'v-f040')).toMatchObject({ state, partOf: answer.jobId });
+            expect((await readVersion(world, 'v-f039'))?.partOf).toBe(answer.jobId);
+        },
+    );
 
     it('badPath_aFrameNotScannedCreatesNothing', async () => {
         const world = await readyWorld();
@@ -468,17 +471,6 @@ describe('imagery.join: frames that cannot be taken', () => {
         });
     });
 
-    it('badPath_twoPublishedFramesAreRefused', async () => {
-        const world = await readyWorld();
-        const mapbox = { tilesetId: 'e2e-mapbox.x', origin: 'mts' as const, publishedAt: at(NOW) };
-        const first = await seedPart(world, F039, { state: 'published', mapbox }, { status: 'succeeded' });
-        const second = await seedPart(world, F040, { state: 'published', mapbox }, { status: 'succeeded' });
-        await seedLayer(world, first.layerId);
-        await seedLayer(world, second.layerId);
-
-        expect(await codeOf(join(world, [F039, F040]))).toMatchObject({ code: 'apiError.imagery.joinTwoPublished' });
-    });
-
     it('badPath_aFrameOnItsWayToAPublishWaitsForItsLayer @S-A65-BAD-JOIN-LAYER-BUSY', async () => {
         const world = await readyWorld();
         const approval = { auto: true, by: 'system:imagery', at: at(NOW) };
@@ -553,5 +545,35 @@ describe('imagery.join: the transaction reads again', () => {
         changedBefore(world, () => seedLayer(world, f039.layerId, { currentVersion: f039.versionId, pendingVersion: 'rg-1' }));
 
         expect(await codeOf(join(world, [F039, F040]))).toMatchObject({ code: 'apiError.imagery.joinLayerBusy' });
+    });
+});
+
+describe('imagery.join: frames published as layers of their own (batch 4)', () => {
+    it('happyPath_twoFramesPublishedAsTheirOwnLayersJoinIntoTheFirstsLayer_liveFeb1972 @S-A65-HAPPY-PUBLISHED-FRAMES', async () => {
+        const world = await readyWorld();
+        const mapbox = { tilesetId: 'e2e-mapbox.x', origin: 'mts' as const, publishedAt: at(NOW) };
+        const first = await seedPart(world, F039, { state: 'published', mapbox }, { status: 'succeeded' });
+        const second = await seedPart(world, F040, { state: 'published', mapbox }, { status: 'succeeded' });
+        await seedLayer(world, first.layerId, { currentVersion: first.versionId });
+        await seedLayer(world, second.layerId, { currentVersion: second.versionId });
+
+        const answer = await join(world, [F039, F040]);
+
+        expect(answer.layerId).toBe(first.layerId);
+        expect(await readLayer(world, first.layerId)).toMatchObject({ pendingVersion: answer.jobId, published: true });
+        expect(await readLayer(world, second.layerId)).toMatchObject({ published: true });
+        expect((await readLayer(world, second.layerId))?.pendingVersion).toBeUndefined();
+        expect(await readVersion(world, second.versionId)).toMatchObject({ state: 'published', partOf: answer.jobId });
+    });
+
+    it('happyPath_aPublishedFrameIsPreferredToOneAwaitingItsPublish', async () => {
+        const world = await readyWorld();
+        const mapbox = { tilesetId: 'e2e-mapbox.x', origin: 'mts' as const, publishedAt: at(NOW) };
+        const approval = { auto: false, by: 'u-admin', at: at(NOW) };
+        await seedPart(world, F039, { state: 'approved', approval }, { status: 'awaiting_approval' });
+        const second = await seedPart(world, F040, { state: 'published', mapbox }, { status: 'succeeded' });
+        await seedLayer(world, second.layerId, { currentVersion: second.versionId });
+
+        expect((await join(world, [F039, F040])).layerId).toBe(second.layerId);
     });
 });

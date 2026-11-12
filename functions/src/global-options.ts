@@ -60,6 +60,8 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'imagery.import': 'fn-admin',
     'imagery.approve': 'fn-admin',
     'imagery.reject': 'fn-admin',
+    'imagery.confirmRights': 'fn-admin',
+    'imagery.deleteVersion': 'fn-admin',
     'imagery.choose': 'fn-admin',
     'imagery.studioDone': 'fn-admin',
     'imagery.saveGcps': 'fn-admin',
@@ -70,6 +72,7 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'imagery.previewUrl': 'fn-admin',
     'imagery.recalibrate': 'fn-admin',
     'imagery.runOn': 'fn-admin',
+    'imagery.archiveImport': 'fn-admin',
     'imagery.probeTiles': 'fn-admin',
     'imagery.resumeGuard': 'fn-admin',
     // M4 orders (docs/research/M4-interfaces.md §1.4): the order card's callables, as every callable, fn-admin@ (USGS secrets).
@@ -123,6 +126,7 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'worker.image': 'fn-admin',
     // Finding 73: the starter file itself, filled from the templates beside the bundle (no Google call).
     'worker.starter': 'fn-admin',
+    'worker.archiveReport': 'fn-admin',
 };
 
 /** What firebase-tools and Cloud Run set to the project while the code loads (discovery, the emulator, a cold start). */

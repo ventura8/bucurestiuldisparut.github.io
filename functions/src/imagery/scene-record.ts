@@ -72,6 +72,16 @@ const CAMERAS: Readonly<
         fallback: 'KH-9-mapping',
     },
     declassiii: { patterns: [], ids: [], fallback: 'KH-9-pan' },
+    // M25: the satellite is in the entity id (`LT51830291989193MTI00`) and the product id (`LT05_L1TP_...`).
+    landsat_tm_c2_l1: {
+        patterns: [],
+        ids: [
+            [/^LT0?4/i, 'L4-TM'],
+            [/^LT0?5/i, 'L5-TM'],
+        ],
+        fallback: 'L5-TM',
+    },
+    landsat_etm_c2_l1: { patterns: [], ids: [], fallback: 'L7-ETM' },
 };
 
 const CORNERS = ['nw', 'ne', 'se', 'sw'] as const;
@@ -109,7 +119,7 @@ function cloudOf(cloudCover: number | null): number | undefined {
     return cloudCover === null || cloudCover < 0 ? undefined : Math.min(100, cloudCover);
 }
 
-/** The browse address when it is a browse image on `ims.cr.usgs.gov` (never anything else: no fetch of data's addresses). */
+/** The browse address when it is a browse image on `ims.cr.usgs.gov` or (M25) LandsatLook (never anything else: no fetch of data's addresses). */
 export function browseSourceOf(record: Pick<SceneRecord, 'browseUrl'>): string | undefined {
     return record.browseUrl !== undefined && validate(usgsBrowseUrlSchema, record.browseUrl).ok ? record.browseUrl : undefined;
 }

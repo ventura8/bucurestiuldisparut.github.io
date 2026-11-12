@@ -68,6 +68,7 @@ export async function seedPlace(world: CityWorld, id: string, title: string, at:
         category: 'monuments',
         geometry: { type: 'Point', point: { lat: 44.446, lng: 26.074 } },
         title: { ro: title },
+        yearStart: 1890,
         published: false,
         createdAt: at,
         createdBy: 'system:bootstrap',

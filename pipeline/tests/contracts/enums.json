@@ -25,15 +25,18 @@
         "mapbox",
         "worker",
         "free-tier",
-        "parts"
+        "parts",
+        "daily"
     ],
     "JOB_STEP_STATES": ["pending", "running", "done", "failed", "skipped"],
     "PIPELINE_STEPS": [
+        "gather",
         "fetch",
         "extract",
         "stitch",
         "inspect",
         "locate",
+        "place",
         "reference",
         "georef",
         "align",
@@ -81,7 +84,8 @@
         "republish": ["guard", "upload", "publish", "tiles", "finalize"],
         "layer-delete": ["delete"],
         "layer-join": ["align", "merge", "export", "pyramid", "register", "guard", "upload", "publish", "tiles", "finalize"],
-        "layer-tiles": ["pyramid"]
+        "layer-tiles": ["pyramid"],
+        "archive-series": ["gather", "place", "export", "pyramid", "register", "guard", "upload", "publish", "tiles", "finalize"]
     },
     "LAYER_VERSION_STATES": [
         "processing",
@@ -96,6 +100,7 @@
         "cancelled",
         "joined"
     ],
+    "VERSION_ORIGINS": ["usgs", "upload", "regeoref", "crop", "join", "archive"],
     "GEOREF_TRANSFORMS": ["affine", "poly2", "tps"],
     "MIN_GCPS": {
         "affine": 3,
@@ -113,7 +118,8 @@
         "studio.tif",
         "tiles.pmtiles",
         "thumb.webp",
-        "align.tif"
+        "align.tif",
+        "stitched.jpg"
     ],
     "LEASE_SECONDS": 600,
     "HEARTBEAT_SECONDS": 60,
@@ -176,6 +182,30 @@
             "minzoom": 10,
             "maxzoom": 17,
             "machine": "xl"
+        },
+        "L4-TM": {
+            "dataset": "landsat_tm_c2_l1",
+            "name": "Landsat 4 TM",
+            "resolutionM": 30,
+            "minzoom": 8,
+            "maxzoom": 13,
+            "machine": "std"
+        },
+        "L5-TM": {
+            "dataset": "landsat_tm_c2_l1",
+            "name": "Landsat 5 TM",
+            "resolutionM": 30,
+            "minzoom": 8,
+            "maxzoom": 13,
+            "machine": "std"
+        },
+        "L7-ETM": {
+            "dataset": "landsat_etm_c2_l1",
+            "name": "Landsat 7 ETM+",
+            "resolutionM": 15,
+            "minzoom": 8,
+            "maxzoom": 14,
+            "machine": "std"
         }
     },
     "MAX_GCPS": 300,
@@ -186,8 +216,35 @@
     "S2_CHECK_STATUSES": ["agreed", "unchecked", "disputed"],
     "ALIGNMENT_STATUSES": ["used", "few", "disagrees"],
     "ALIGNMENT_MAX_PARTNERS": 12,
+    "ARCHIVE_SERIES_CLASSES": ["georeferenced", "grid", "atlas", "pieces", "single", "cad"],
+    "ARCHIVE_SKIP_REASONS": [
+        "not-a-map",
+        "not-a-map-page",
+        "duplicate-of",
+        "twin-of",
+        "crop-of",
+        "do-not-publish",
+        "index-only",
+        "too-small",
+        "unreadable",
+        "pdf-password",
+        "needs-cad-export",
+        "unsafe-path",
+        "too-many-series"
+    ],
+    "ARCHIVE_ENCODINGS": ["lineart", "grey", "colour"],
+    "ARCHIVE_AUTO_LIKELIHOODS": ["likely", "possible", "points"],
+    "ARCHIVE_PLACE_METHODS": ["embedded", "grid", "atlas", "pieces", "match", "gcps", "grid-names", "overview"],
+    "STITCH_METHODS": ["grid", "atlas", "pieces", "single", "overview"],
+    "RIGHTS_LICENCES": ["PD", "CC0", "CC-BY-4.0", "CC-BY-SA-4.0", "permission", "unknown"],
+    "RIGHTS_STATES": ["clear", "needs-confirmation", "do-not-publish"],
+    "HELP_REASONS": ["no-path", "low-confidence", "frame-not-found", "no-scale", "archive-missing"],
+    "ARCHIVE_MAX_SERIES": 200,
+    "ARCHIVE_ISSUES_MAX": 500,
+    "ARCHIVE_SERIES_MAX_BYTES": 2000000000,
     "PIPELINE_ERROR_CODES": [
         "apiError.imagery.archiveCorrupt",
+        "apiError.imagery.archiveMissing",
         "apiError.imagery.cityNotFound",
         "apiError.imagery.degenerateGcps",
         "apiError.imagery.downloadIncomplete",
@@ -196,11 +253,13 @@
         "apiError.imagery.joinNoRoom",
         "apiError.imagery.joinPartMissing",
         "apiError.imagery.joinSeamTooFar",
+        "apiError.imagery.missingBand",
         "apiError.imagery.noMatch",
         "apiError.imagery.noScan",
         "apiError.imagery.noSpread",
         "apiError.imagery.notImproved",
         "apiError.imagery.notScanned",
+        "apiError.imagery.pipelineOutdated",
         "apiError.imagery.processingFailed",
         "apiError.imagery.referenceUnavailable",
         "apiError.imagery.refineRefused",

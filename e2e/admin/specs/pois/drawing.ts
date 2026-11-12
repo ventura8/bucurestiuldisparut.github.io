@@ -44,6 +44,11 @@ export function titleField(page: Page, lang: 'ro' | 'en'): Locator {
     return page.getByRole('textbox', { name: poisText(lang, 'adminContent.pois.field.titleRo') });
 }
 
+/** The start year: every place names a year (the owner's request of 2026-11-12), so a new place fills it before Save. */
+export function yearField(page: Page, lang: 'ro' | 'en'): Locator {
+    return page.getByRole('spinbutton', { name: poisText(lang, 'adminContent.pois.field.yearStart') });
+}
+
 export function saveButton(page: Page, lang: 'ro' | 'en'): Locator {
     return page.getByRole('button', { name: poisText(lang, 'adminContent.common.save'), exact: true });
 }

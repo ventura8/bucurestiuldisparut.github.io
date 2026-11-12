@@ -278,7 +278,7 @@ describe('buildSite (the manifest the admin publishes, DECISIONS-for-review.md Â
             /connect-src [^;]*https:\/\/storage\.googleapis\.com[^;]*https:\/\/us-central1-bucurestiul-disparut\.cloudfunctions\.net/,
         );
         expect(html).toMatch(/img-src [^;]*https:\/\/storage\.googleapis\.com/);
-        // The tab icon is the city's own in the bucket (S-V52-HAPPY): an icon an editor uploads shows without a deploy.
+        // The tab icon is the city's own in the bucket (S-V54-HAPPY): an icon an editor uploads shows without a deploy.
         const icons = `https://storage.googleapis.com/${BUCKET}/cities/bucharest/`;
         expect(html).toContain(`<link rel="icon" type="image/png" sizes="32x32" href="${icons}icon-32.png">`);
         expect(html).toContain(`<link rel="apple-touch-icon" href="${icons}icon-180.png">`);

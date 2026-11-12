@@ -216,7 +216,7 @@ describe('the generic city page', () => {
         };
     }
 
-    it('happyPath_theCitysOwnIconReplacesTheDefaultOnceItLoads @S-V52-HAPPY', () => {
+    it('happyPath_theCitysOwnIconReplacesTheDefaultOnceItLoads @S-V54-HAPPY', () => {
         const page = iconPage(true);
 
         showCityIcon(page, before);
@@ -225,7 +225,7 @@ describe('the generic city page', () => {
         expect(page.appended).toEqual([{ rel: 'apple-touch-icon', href: `${before}bacau/icon-180.png` }]);
     });
 
-    it('badPath_aCityWithoutAnIconKeepsTheDefault @S-V52-BAD-MISSING', () => {
+    it('badPath_aCityWithoutAnIconKeepsTheDefault @S-V54-BAD-MISSING', () => {
         const page = iconPage(false);
 
         showCityIcon(page, before);

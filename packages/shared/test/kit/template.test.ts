@@ -50,12 +50,13 @@ describe('the template city.json', () => {
 });
 
 describe('the template README', () => {
-    it('happyPath_itsPhotoExamplesAreValidPhotosInBothLanguages', () => {
-        // The UX review of M5 (#13): a photo needs `image` and `links`, which the README's step did not show.
+    it('happyPath_itsPhotoExampleIsAValidPhoto', () => {
+        // The UX review of M5 (#13): a photo needs `image` and `links`, which the README's step did not show. The README is in
+        // English only since DECISIONS-for-review.md §157, so it shows the example once.
         const readme = readFileSync(new URL(`${KIT}README.md`, ROOT), 'utf8');
         const examples = [...readme.matchAll(/```json\n([\s\S]*?)```/g)].map((match) => JSON.parse(match[1] ?? '') as unknown);
 
-        expect(examples).toHaveLength(2);
+        expect(examples).toHaveLength(1);
         for (const example of examples) {
             expect(photoSchema.safeParse(example).success).toBe(true);
         }

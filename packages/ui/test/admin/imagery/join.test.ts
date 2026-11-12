@@ -134,6 +134,21 @@ describe("Find's whole-city dates", () => {
         expect(calls(area)).toEqual(['addTargetYear 1972']);
     });
 
+    it('happyPath_aDateWithAPublishedFrameSaysAJoinReplacesItsLayer_noneSaysNothing @S-A65-HAPPY-PUBLISHED-FRAMES', async () => {
+        const published = {
+            ...ROW,
+            frames: [
+                { entityId: F039, free: true, state: 'published' as const },
+                { entityId: F040, free: true },
+            ],
+        };
+        const { element } = await imageryPage(imageryState({ dates: [published, { ...ROW, date: '1972-02-02' }] }));
+        const without = await imageryPage(imageryState({ dates: [ROW] }));
+        expect(deepAll(without.element, '[data-join-replaces]')).toEqual([]);
+
+        expect(deep(element, '[data-join-replaces]').textContent).toContain('not deleted');
+    });
+
     it('badPath_noPlanIsNoSectionAndNoFetch', async () => {
         const { element } = await imageryPage(imageryState());
 

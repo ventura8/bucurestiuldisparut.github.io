@@ -38,7 +38,7 @@ import type { Ports } from '../ports/index.js';
 import { endWork } from './end.js';
 import { askForOk, needsFreeTierOk } from './free-tier.js';
 import { cityIds } from './limits.js';
-import { partsReady } from './join-parts.js';
+import { partRefusal, partsReady } from './join-parts.js';
 import { handedOver, machineOf } from './machine.js';
 import { placeFor } from './place.js';
 import { enqueuePublish } from './publish-queue.js';
@@ -259,9 +259,12 @@ async function admit(deps: DispatchDeps, cityId: string, jobId: string): Promise
     return takeSlot(deps, cityId, jobId, await busyExecutions(deps));
 }
 
-/** A queued job that is not due yet, or that used up its attempts. */
+/**
+ * A queued job that is not due yet (M20, `docs/research/M20-import-local.md` §1.3: an archive series waiting for a later day's
+ * share is not due until `imagery.tick` releases it), or that used up its attempts.
+ */
 function notYet(job: JobDoc, now: Date): 'not-due' | 'exhausted' | undefined {
-    if (!isDue(job, now)) {
+    if (job.waitReason === 'daily' || !isDue(job, now)) {
         return 'not-due';
     }
     return (job.attempt ?? 0) >= JOB_MAX_ATTEMPTS ? 'exhausted' : undefined;
@@ -287,7 +290,7 @@ async function dispatchJoin(deps: DispatchDeps, cityId: string, jobId: string, j
     if (ready.kind === 'hold') {
         return wait(deps, cityId, jobId, 'parts');
     }
-    const error = { code: 'apiError.imagery.joinPartGone', params: { frame: ready.frame } } as const;
+    const error = { code: partRefusal(ready).code, params: { frame: ready.frame } };
     await endWork(deps, cityId, jobId, { status: 'failed', versionState: 'failed', by: IMAGERY_WRITER, error });
     return 'failed';
 }

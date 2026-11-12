@@ -187,6 +187,8 @@ class Services:
     resolver: Resolver
     # A local matcher plugs in on the worker alone (docs/research/M9-calibration.md §3).
     proposal_matcher: ProposalMatcher = field(default_factory=NullProposalMatcher)
+    # M20 (docs/research/M20-import-local.md §4): the work folder that holds the local archives, on the worker alone.
+    archive_root: Path | None = None
 
 
 @dataclass

@@ -8,6 +8,7 @@ import {
     FIRESTORE_PATHS,
     USGS_RECHECK_HOURS,
     setupStatusDocSchema,
+    setupStatusReadSchema,
     timestampFromDate,
     type ApiErrorCode,
     type SetupStatusDoc,
@@ -52,7 +53,7 @@ export async function noteUsgsRefusal(deps: Pick<Ports, 'documents' | 'log'>, er
         return;
     }
     await deps.documents.transaction(async (transaction) => {
-        const status = await transaction.get(FIRESTORE_PATHS.setupStatus, setupStatusDocSchema);
+        const status = await transaction.get(FIRESTORE_PATHS.setupStatus, setupStatusReadSchema);
         if (status?.usgs !== undefined) {
             await transaction.set(FIRESTORE_PATHS.setupStatus, setupStatusDocSchema, {
                 ...status,

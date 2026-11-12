@@ -24,7 +24,15 @@ const CONTEXT: PoiContext = {
     categories: new Set(['biserici', 'parcuri']),
 };
 
-const FRESH: PoiValue = { category: 'biserici', geometry: POINT, title: { ro: 'Loc nou' }, links: [], photoIds: [], published: true };
+const FRESH: PoiValue = {
+    category: 'biserici',
+    geometry: POINT,
+    title: { ro: 'Loc nou' },
+    yearStart: 1890,
+    links: [],
+    photoIds: [],
+    published: true,
+};
 
 const PATH = FIRESTORE_PATHS.poi(CITY, 'stavropoleos');
 
@@ -111,6 +119,41 @@ describe('a place draft: checks', () => {
         expect(draftIssues({ ...FRESH, yearStart: 1900, yearEnd: 1850 }, CONTEXT)).toEqual([
             { path: 'yearEnd', code: 'validation.yearRange' },
         ]);
+    });
+});
+
+describe('a place draft: years', () => {
+    const DATED: PoiContext = { ...CONTEXT, latestYear: 2027 };
+    const UNDATED: PoiValue = { category: 'biserici', geometry: POINT, title: { ro: 'Loc nou' }, links: [], photoIds: [], published: true };
+
+    it('happyPath_oneYearAnOpenEndOrASpanSaves', () => {
+        expect(draftIssues({ ...FRESH, yearStart: 2027 }, DATED)).toEqual([]);
+        expect(draftIssues({ ...UNDATED, yearEnd: 1977 }, DATED)).toEqual([]);
+        expect(draftIssues({ ...FRESH, yearStart: 1850, yearEnd: 1977 }, DATED)).toEqual([]);
+    });
+
+    it('badPath_aPlaceWithoutAYearOrAfterNextYearIsAnIssue', () => {
+        expect(draftIssues(UNDATED, DATED)).toEqual([{ path: 'yearStart', code: 'validation.required' }]);
+        expect(draftIssues({ ...FRESH, yearStart: 2028 }, DATED)).toEqual([{ path: 'yearStart', code: 'validation.tooBig' }]);
+        expect(draftIssues({ ...FRESH, yearStart: 2028 }, CONTEXT)).toEqual([]);
+    });
+
+    it('happyPath_aStoredPlaceWithoutAYearOpensAndSavesOnceItHasOne', async () => {
+        const world = poisWorld();
+        world.store.put(PATH, placeDoc(world, { yearStart: undefined }));
+        const { draft } = draftOf(world, { base: stored(world) }, DATED);
+
+        expect(draft.state.issues).toEqual([{ path: 'yearStart', code: 'validation.required' }]);
+        draft.edit({ title: { ro: 'Stavropoleos (1724)' } });
+        expect(await draft.save()).toMatchObject({ ok: false, reason: 'invalid' });
+        expect(world.store.writes).toEqual([]);
+
+        draft.edit({ yearStart: 1900 });
+        expect(await draft.save()).toEqual({ ok: true });
+        expect(world.store.writes.at(-1)).toMatchObject({
+            kind: 'update',
+            fields: { title: { ro: 'Stavropoleos (1724)' }, yearStart: 1900 },
+        });
     });
 });
 
@@ -205,6 +248,7 @@ function placeFields(value: PoiValue): Record<string, unknown> {
         category: value.category,
         geometry: geometryToDoc(POINT),
         title: value.title,
+        yearStart: value.yearStart,
         links: [],
         photoIds: [],
         published: true,
@@ -218,13 +262,13 @@ describe('a place draft: stored places', () => {
         const base = stored(world);
         const { draft } = draftOf(world, { base });
 
-        draft.edit({ yearStart: 1890, description: { ro: 'Text' } });
+        draft.edit({ yearStart: 1900, description: { ro: 'Text' } });
         expect(draft.state.dirty).toEqual(['description', 'yearStart']);
         const outcome = await draft.save();
 
         expect(outcome).toEqual({ ok: true });
         expect(world.store.writes).toEqual([
-            { kind: 'update', path: PATH, fields: { description: { ro: 'Text' }, yearStart: 1890 }, expected: base.version },
+            { kind: 'update', path: PATH, fields: { description: { ro: 'Text' }, yearStart: 1900 }, expected: base.version },
         ]);
         expect(draft.unsaved).toBe(false);
     });

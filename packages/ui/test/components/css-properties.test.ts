@@ -52,6 +52,6 @@ describe('cssProperties', () => {
 
         expect(() => {
             render(html`<div style=${cssProperties({ '--hcm-position': '1%' })}></div>`, host);
-        }).toThrow('cssProperties must be bound to an element');
+        }).toThrow('cssProperties binds an element only');
     });
 });

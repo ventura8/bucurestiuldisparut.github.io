@@ -1,6 +1,6 @@
-# Historic City Map Skills Catalog
+# Historic City Map Maker Skills Catalog
 
-This catalog indexes the project skills of **Historic City Map** (București dispărut): what each one covers and when to read it.
+This catalog indexes the project skills of **Historic City Map Maker** (București dispărut): what each one covers and when to read it.
 
 ## Mandatory Execution Rule
 

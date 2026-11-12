@@ -5,7 +5,15 @@
  * caught up, deferred publishes started, long-ended versions' files swept and the monthly harvest run; while the budget
  * guard is red only what ends or recovers work runs.
  */
-import { CLOUD_RUN_JOBS, FIRESTORE_PATHS, JOB_MAX_ATTEMPTS, harvestStateDocSchema, timestampFromDate, type JobDoc } from '@hcm/shared';
+import {
+    CLOUD_RUN_JOBS,
+    FIRESTORE_PATHS,
+    JOB_MAX_ATTEMPTS,
+    USGS_DATASETS,
+    harvestStateDocSchema,
+    timestampFromDate,
+    type JobDoc,
+} from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { lostAction } from '../../src/imagery/tick-jobs.js';
@@ -397,7 +405,7 @@ describe('maintenance: the monthly harvest', () => {
 
     it('badPath_aHarvestUsgsDoesNotAnswerBacksOffInsteadOfRepeatingEveryTick @S-A11-BAD-HARVEST-BACKOFF', async () => {
         const world = await readyWorld();
-        for (const dataset of ['corona2', 'declassii', 'declassiii']) {
+        for (const dataset of USGS_DATASETS) {
             world.scenes.failing.set(dataset, new UpstreamError('usgs', 'unavailable', { status: 502 }));
         }
         await seedScene(world, 'DS-OLD', { harvestedAt: minutesAgo(31 * 24 * 60) });

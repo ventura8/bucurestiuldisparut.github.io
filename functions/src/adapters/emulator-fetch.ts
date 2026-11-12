@@ -10,7 +10,7 @@ import type { Fetch } from './upstream-http.js';
 
 /**
  * The upstreams the adapters call: Mapbox, USGS M2M and the Google REST APIs (OAuth tokeninfo, and in M4 Vertex AI at
- * `us-central1-aiplatform.googleapis.com` and FCM included); USGS's browse images and the e2e tile server
+ * `us-central1-aiplatform.googleapis.com` and FCM included); USGS's browse images (M25: LandsatLook's too) and the e2e tile server
  * `tiles.e2e.test` (an XYZ source to probe), which `RemoteFiles` fetches (CR-M3-14); Nominatim (M4's title suggestions).
  */
 const UPSTREAM_HOSTS: readonly RegExp[] = [
@@ -18,6 +18,8 @@ const UPSTREAM_HOSTS: readonly RegExp[] = [
     /^m2m\.cr\.usgs\.gov$/,
     /^[a-z0-9-]+\.googleapis\.com$/,
     /^ims\.cr\.usgs\.gov$/,
+    // M25: LandsatLook's browse of a Landsat scene.
+    /^landsatlook\.usgs\.gov$/,
     /^tiles\.e2e\.test$/,
     /^nominatim\.openstreetmap\.org$/,
 ];

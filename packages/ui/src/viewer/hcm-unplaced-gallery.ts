@@ -49,13 +49,13 @@ export class HcmUnplacedGallery extends LitElement {
                 inline-size: 100%;
                 block-size: auto;
                 aspect-ratio: 1;
-                border-radius: var(--md-sys-shape-corner-medium, 12px);
+                border-radius: var(--md-sys-shape-corner-medium);
                 object-fit: cover;
-                background: var(--md-sys-color-surface-container-highest, Canvas);
+                background: var(--md-sys-color-surface-container-highest);
             }
 
             .date {
-                color: var(--md-sys-color-on-surface-variant, GrayText);
+                color: var(--md-sys-color-on-surface-variant);
             }
         `,
     ];

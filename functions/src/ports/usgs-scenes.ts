@@ -5,7 +5,7 @@
  * `unauthorized`, `invalid`, `unavailable`). The browser never calls USGS (no CORS outside `*.usgs.gov`).
  */
 interface SceneSearchRequest {
-    /** `corona2`, `declassii` or `declassiii`. */
+    /** `corona2`, `declassii`, `declassiii` or (M25) `landsat_tm_c2_l1`, `landsat_etm_c2_l1`. */
     readonly dataset: string;
     /** The city's bounds: the M2M `spatialFilter` (`mbr`). */
     readonly bounds: { readonly west: number; readonly south: number; readonly east: number; readonly north: number };
@@ -14,6 +14,10 @@ interface SceneSearchRequest {
     readonly to?: string;
     readonly maxResults: number;
     readonly startingNumber?: number;
+    /** M25: the months a Landsat search keeps (M2M `seasonalFilter`, 1 to 12). */
+    readonly months?: readonly number[];
+    /** M25: the most cloud a Landsat scene may have, percent (M2M `cloudCoverFilter`, unknown cover left out). */
+    readonly maxCloud?: number;
 }
 
 /** One `scene-search` result as the harvest needs it (`metadataType: 'full'`). */

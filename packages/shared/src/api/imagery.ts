@@ -100,6 +100,28 @@ export const imageryApproveRequestSchema = z.strictObject({ ...versionIdField, a
 export const imageryApproveResponseSchema = z.strictObject({ state: z.enum(LAYER_VERSION_STATES), jobId: idSchema });
 export const imageryRejectResponseSchema = z.strictObject({ state: z.literal('rejected') });
 
+/**
+ * M20 (`imagery.confirmRights`, the city's owner; `docs/research/M20-import-local.md` §7; S-A120-*-CONFIRM-*): confirm a
+ * version whose rights wait (`needs-confirmation`) so Approve can publish it. `confirmedBy` may be empty on the wire;
+ * the handler refuses that as `apiError.imagery.rightsUnconfirmed` (schema trim alone would be a validation error).
+ */
+export const imageryConfirmRightsRequestSchema = z.strictObject({
+    ...versionIdField,
+    confirmedBy: z.string().max(200),
+});
+export const imageryConfirmRightsResponseSchema = z.strictObject({
+    state: z.literal('clear'),
+    confirmedAt: isoTimeSchema,
+});
+
+/**
+ * `imagery.deleteVersion` (an editor or the owner; `docs/research/M3-interfaces.md` §7.1; S-A125-*): a version that never reached the
+ * map (failed, cancelled or rejected, or an archive series waiting for points that the owner starts over) goes with its job, the job's
+ * log and the files only it uses. Published or approved versions (`apiError.imagery.deletePublished`), a job still under way
+ * (`apiError.imagery.deleteRunning`) and a version another one is built on (`apiError.imagery.deleteInUse`) are refused.
+ */
+export const imageryDeleteVersionResponseSchema = z.strictObject({ deleted: z.literal(true) });
+
 /** `imagery.choose` (admin; App Check consume for `pay`): the way out of a publish that does not fit the month. */
 export const imageryChooseRequestSchema = z.strictObject({ ...versionIdField, choice: z.enum(PUBLISH_CHOICES) });
 export const imageryChooseResponseSchema = z.strictObject({
@@ -177,7 +199,8 @@ export const imageryJoinResponseSchema = z.strictObject({ jobId: idSchema, versi
  * or the job used up its attempts. `imagery.retry` refuses them and the admin's pages offer no Retry for them. Out of
  * memory on the large machine is retried (finding 58 of 2026-11-01: a later pipeline may fit it, finding 57). M8: a join's
  * frames too far apart or adding nothing are measured the same way again; only **Join frames** with the fixed frames cures them.
- * `joinPartGone` stays: the frame's own retry can bring it back, and the join with it.
+ * `joinPartGone` stays: the frame's own retry can bring it back, and the join with it. Batch 4: `joinPartTaken` (a newer join of the date
+ * holds the frame) never comes back: that join is the one to open.
  */
 export const NOT_RETRYABLE_CODES = [
     'apiError.mapbox.tokenInvalid',
@@ -187,25 +210,28 @@ export const NOT_RETRYABLE_CODES = [
     'apiError.imagery.joinSeamTooFar',
     'apiError.imagery.joinNoFrames',
     'apiError.imagery.joinPartMissing',
+    'apiError.imagery.joinPartTaken',
 ] as const;
 
 const NOT_RETRYABLE: ReadonlySet<string> = new Set(NOT_RETRYABLE_CODES);
 
-type RetriedJob = Pick<JobDoc, 'status' | 'type' | 'layerId' | 'attempt' | 'publishAttempts' | 'error' | 'steps' | 'cancelRequested'>;
+type RetriedJob = Pick<
+    JobDoc,
+    'status' | 'type' | 'layerId' | 'attempt' | 'publishAttempts' | 'error' | 'steps' | 'cancelRequested' | 'runOn' | 'localOnly'
+>;
 
-/** The job reached the publisher's guard: a retry starts the publish again, not a run. */
+/**
+ * The job reached the publisher's guard: a retry starts the publish again, not a run. A guard still `pending` was not
+ * reached (the pipeline lists every step from the start: an exhausted import offered Retry, 2026-11-09).
+ */
 function atPublish(job: RetriedJob): boolean {
-    return job.type === 'republish' || job.steps?.['guard'] !== undefined;
+    const guard = job.steps?.['guard']?.status;
+    return job.type === 'republish' || (guard !== undefined && guard !== 'pending');
 }
 
 /** The attempts a retry would add to: the publish starts once the job reached the publisher's guard, else the runs. */
 function attemptsLeft(job: RetriedJob): boolean {
     return atPublish(job) ? (job.publishAttempts ?? 0) < PUBLISH_MAX_ATTEMPTS : (job.attempt ?? 0) < JOB_MAX_ATTEMPTS;
-}
-
-/** A failure a retry may cure (none recorded counts as one). */
-function curable(job: RetriedJob): boolean {
-    return job.error === undefined || !NOT_RETRYABLE.has(job.error.code);
 }
 
 /**
@@ -217,9 +243,76 @@ function failedWork(job: RetriedJob): boolean {
     return job.status === 'failed' && job.type !== 'layer-delete' && job.layerId !== undefined && job.cancelRequested !== true;
 }
 
-/** A failed raster job a Retry may run again: a failure a retry can cure, attempts left (`imagery.retry` decides). */
+/**
+ * A stopped job with work to run again: not a tileset deletion, made with its layer version. `cancelRequested` is set by
+ * an owner's Stop as well as a dismissal, so it cannot distinguish the two; `imagery.retry` checks the version state on
+ * the server and refuses a rejected version.
+ */
+function cancelledWork(job: RetriedJob): boolean {
+    return job.status === 'cancelled' && job.type !== 'layer-delete' && job.layerId !== undefined;
+}
+
+/** The code an outdated runner fails a job with. */
+export const PIPELINE_OUTDATED = 'apiError.imagery.pipelineOutdated';
+
+/** The legacy form of an outdated runner's failure, before it had its own code (jobs failed so are still in Firestore). */
+const OUTDATED_DETAIL = /the pipeline does not run [a-z-]+ jobs/;
+
+/**
+ * The job failed because the runner's pipeline was older than its type (`apiError.imagery.pipelineOutdated`, or the legacy
+ * `apiError.invalidRequest` naming the type): no attempt was really spent, so a retry is allowed whatever the count and
+ * starts the count again.
+ */
+export function failedOutdated(job: Pick<JobDoc, 'error'>): boolean {
+    const error = job.error;
+    if (error === undefined) {
+        return false;
+    }
+    return error.code === PIPELINE_OUTDATED || (error.code === 'apiError.invalidRequest' && OUTDATED_DETAIL.test(error.message));
+}
+
+type CappedJob = Pick<JobDoc, 'type' | 'runOn' | 'localOnly' | 'error'>;
+
+/**
+ * M7: the job runs on the owner's own computer: chosen so (`runOn: 'local'`), or its files exist only there (`localOnly`, an
+ * archive series: its originals never leave the computer).
+ */
+export function runsLocally(job: Pick<JobDoc, 'type' | 'runOn' | 'localOnly'>): boolean {
+    return job.runOn === 'local' || job.localOnly === true || job.type === 'archive-series';
+}
+
+/**
+ * A manual retry past the attempt cap, which then starts the count again (live report of 2026-11-12: an archive series failed
+ * three times on a server bug, fixed since, and could only be deleted). The cap stops paid cloud work looping; an outdated
+ * runner's failure spent no attempt, and a run on the owner's computer costs no cloud compute. A publish (`publishing`) is
+ * Mapbox's paid work wherever the run was: its cap stays.
+ */
+export function retryPastCap(job: CappedJob, publishing: boolean): boolean {
+    return failedOutdated(job) || (!publishing && runsLocally(job));
+}
+
+/**
+ * A failure a retry may cure (none recorded counts as one); never one of `NOT_RETRYABLE_CODES`, except a local run's
+ * `attemptsExhausted`: the cap a manual retry of it lifts (`retryPastCap`). Shared by `jobRetryable` and `imagery.retry`.
+ */
+export function retryCures(job: CappedJob, publishing: boolean): boolean {
+    const code = job.error?.code;
+    if (code === undefined || !NOT_RETRYABLE.has(code)) {
+        return true;
+    }
+    return code === 'apiError.imagery.attemptsExhausted' && retryPastCap(job, publishing);
+}
+
+/**
+ * A failed or stopped raster job a Retry may run again: a curable failure with attempts left, or one a retry may take past
+ * the cap (`retryPastCap`: an outdated runner's, a local run's) (`imagery.retry` decides).
+ */
 export function jobRetryable(job: RetriedJob): boolean {
-    return failedWork(job) && curable(job) && attemptsLeft(job);
+    if (cancelledWork(job)) {
+        return true;
+    }
+    const publishing = atPublish(job);
+    return failedWork(job) && retryCures(job, publishing) && (attemptsLeft(job) || retryPastCap(job, publishing));
 }
 
 /**

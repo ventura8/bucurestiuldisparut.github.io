@@ -23,7 +23,7 @@ function collection(count: number, extra: Record<string, unknown> = {}): string 
     const features = Array.from({ length: count }, (_unused, index) => ({
         type: 'Feature',
         geometry: POINT,
-        properties: { category: 'biserici', title: `Loc ${String(index)}`, ...extra },
+        properties: { category: 'biserici', title: `Loc ${String(index)}`, yearStart: 1890, ...extra },
     }));
     return JSON.stringify({ type: 'FeatureCollection', features });
 }
@@ -35,6 +35,7 @@ function importer(
     const states: (ImportState | null)[] = [];
     const subject = new Importer({
         store: world.store,
+        clock: world.clock,
         cityId: CITY,
         context: () => ({ limits: LIMITS, categories: new Set(['biserici', 'parcuri']) }),
         places: () => Promise.resolve({ places: [...existing].map(([id, value]) => ({ id, value })), unreadable: [] }),
@@ -70,7 +71,7 @@ describe('the import dialog', () => {
             type: 'Feature',
             id: 'stavropoleos',
             geometry: POINT,
-            properties: { category: 'biserici', title: 'Nou' },
+            properties: { category: 'biserici', title: 'Nou', yearStart: 1890 },
         });
 
         await subject.choose(file(text), null);
@@ -101,6 +102,7 @@ describe('the import dialog', () => {
         let categories: ReadonlySet<string> | null = null;
         const subject = new Importer({
             store: world.store,
+            clock: world.clock,
             cityId: CITY,
             context: () => ({ limits: LIMITS, categories }),
             places: () => Promise.resolve({ places: [], unreadable: [] }),
@@ -139,6 +141,7 @@ describe('the import: what it cannot do', () => {
         const world = poisWorld();
         const subject = new Importer({
             store: world.store,
+            clock: world.clock,
             cityId: CITY,
             context: () => ({ limits: LIMITS, categories: new Set(['biserici']) }),
             places: () => Promise.resolve(null),
@@ -208,14 +211,20 @@ describe('the import: what it cannot do', () => {
         const world = poisWorld();
         const subject = new Importer({
             store: world.store,
+            clock: world.clock,
             cityId: CITY,
             context: () => ({ limits: LIMITS, categories: new Set(['biserici']) }),
             places: () => Promise.resolve({ places: [], unreadable: ['stricat'] }),
             changed: () => undefined,
         });
         const features = [
-            { type: 'Feature', id: 'stricat', geometry: POINT, properties: { category: 'biserici', title: 'Loc stricat' } },
-            { type: 'Feature', geometry: POINT, properties: { category: 'biserici', title: 'Loc nou' } },
+            {
+                type: 'Feature',
+                id: 'stricat',
+                geometry: POINT,
+                properties: { category: 'biserici', title: 'Loc stricat', yearStart: 1890 },
+            },
+            { type: 'Feature', geometry: POINT, properties: { category: 'biserici', title: 'Loc nou', yearStart: 1890 } },
         ];
 
         await subject.choose(file(JSON.stringify({ type: 'FeatureCollection', features })), null);
@@ -234,6 +243,7 @@ describe('a file chosen while another one reads', () => {
         const answers: ((places: Places) => void)[] = [];
         const subject = new Importer({
             store: world.store,
+            clock: world.clock,
             cityId: CITY,
             context: () => ({ limits: LIMITS, categories: new Set(['biserici']) }),
             places: () =>

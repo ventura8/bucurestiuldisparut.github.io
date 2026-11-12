@@ -33,6 +33,8 @@ export const E2E_HOSTING_DIR = 'dist/e2e-hosting';
 export const E2E_START_DIR = 'dist/e2e-start';
 /** The start site's OAuth client id in the e2e world: a generated value that names the scenario, no real client. */
 export const E2E_START_CLIENT_ID = 'e2e-start-client.apps.googleusercontent.com';
+/** The start site's Search Console file in the e2e world (`HCM_START_SITE_VERIFICATION`): a generated name, no real token. */
+export const E2E_START_SITE_VERIFICATION = 'google0e2e0e2e.html';
 /** Where a test puts what it released on the fake Hosting; the admin server serves it to a browser with the cookie. */
 export const E2E_RELEASED_DIR = 'dist/e2e-released';
 export const E2E_HOSTING_START_UP_DIR = 'dist/e2e-hosting-start-up';

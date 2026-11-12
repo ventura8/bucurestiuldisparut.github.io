@@ -4,14 +4,16 @@
 frames an admin accepted (`approved`, `publishing` or `published`) that a proof placed on their own Sentinel-2 tiles, that overlap it
 and that kept that file (`held_frames`); renders its own first map the same way; measures film ties against each
 (`calibrate/ties.py`), one partner's image at a time; and fits again with them held still (`calibrate/joining.py`). A partner's layer is
-never rendered again here: that is the admin's choice. Nothing here runs for a frame placed only by the admin's points, and such a frame
-is never a partner: every frame keeps its own tiles, so no position travels along a chain of frames.
+never rendered again here: that is the admin's choice. A partner that cannot be looked up, staged, read or measured (a refusal of the
+server, a store failure or a network that fails, a file GDAL cannot read) is left out with one job-log line naming it, and the frame is
+fitted with the others or alone; a lost lease or a disconnected computer still stops the run. Nothing here runs for a frame placed only
+by the admin's points, and such a frame is never a partner: every frame keeps its own tiles, so no position travels along a chain of
+frames.
 """
 
 import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
-from functools import partial
 from pathlib import Path
 from typing import Final
 
@@ -27,10 +29,12 @@ from hcm_pipeline.documents import GeorefInfo, ScanInfo, Version
 from hcm_pipeline.geo import Bounds, FloatArray, MercatorBox
 from hcm_pipeline.jobs import JobContext
 from hcm_pipeline.model import Record
+from hcm_pipeline.paths import PathError
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.rasters import GTIFF_OPTIONS, driver_of
 from hcm_pipeline.steps.common import city_window, gdal_step
 from hcm_pipeline.steps.warp import Attached, attached
+from hcm_pipeline.store import DocumentStoreError, SkipsInvalid
 from hcm_pipeline.worker.api import WorkerApiError
 
 ALIGN_FILE: Final = "align.tif"
@@ -38,6 +42,10 @@ HELD_STATES: Final = frozenset({"approved", "publishing", "published"})
 PROVED_HOWS: Final = frozenset({"votes", "pass", "points", "matcher", "local-ai"})
 MAX_PARTNERS: Final = ALIGNMENT_MAX_PARTNERS
 FULL: Final = 255
+# What one partner's look-up, download, read or measure may raise (`WorkerApiError`, `ObjectStoreError`, `DocumentStoreError`, GDAL's and
+# `RasterError` are `RuntimeError`s; `PathError` an id off the path pattern): that partner alone is left out. Both object stores raise
+# httpx's errors as `ObjectStoreError` and Firestore's as `DocumentStoreError` (the review of a6750294). `RunStoppedError` is none.
+PARTNER_FAILURES: Final = (RuntimeError, PathError)
 
 
 @dataclass(frozen=True)
@@ -81,11 +89,27 @@ def _over(record: Record, bounds: Bounds) -> str | None:
     return layer if isinstance(layer, str) and found is not None and _overlaps(found, bounds) else None
 
 
+def _left_out(ctx: JobContext, version_id: str, what: str) -> None:
+    """One partner that failed: the run stops when it must, else one line names the frame (never the error: it may carry a URL)."""
+    ctx.checkpoint()
+    ctx.log.warn(f"the accepted frame {version_id} could not be {what}: fitted without it", "georef")
+
+
+def _stat(ctx: JobContext, version_id: str, layer: str) -> str | None:
+    """The partner's `align.tif` when it is there; None when it is not, or cannot be looked up (left out by name)."""
+    try:
+        path = paths.version(ctx.city, layer, version_id, ALIGN_FILE)
+        return path if ctx.services.objects.stat(path) else None
+    except PARTNER_FAILURES:
+        _left_out(ctx, version_id, "found")
+        return None
+
+
 def _kept(ctx: JobContext, version_id: str, record: Record, layer: str) -> Held | None:
     """The frame held still, when it kept its `align.tif`."""
-    path = paths.version(ctx.city, layer, version_id, ALIGN_FILE)
+    path = _stat(ctx, version_id, layer)
     year = record.get("year")
-    return Held(version_id, year if isinstance(year, int) else None, path) if ctx.services.objects.stat(path) else None
+    return None if path is None else Held(version_id, year if isinstance(year, int) else None, path)
 
 
 def _held(ctx: JobContext, version_id: str, record: Record | None, bounds: Bounds) -> Held | None:
@@ -96,18 +120,46 @@ def _held(ctx: JobContext, version_id: str, record: Record | None, bounds: Bound
 
 
 def _listed(ctx: JobContext, collection: str) -> list[str]:
-    """The city's version ids; none when the server lists none to this run (a local worker on a server without the joint solve)."""
+    """The city's version ids; none when the server lists none to this run (a local worker on a server without the joint solve) or
+    Firestore cannot answer (Cloud Run)."""
     try:
         return ctx.services.store.list_ids(collection)
-    except WorkerApiError as error:
+    except (WorkerApiError, DocumentStoreError) as error:
         ctx.log.warn(f"the other frames could not be read ({error}): the frame is fitted alone", "georef")
         return []
 
 
+def _read_or_none(ctx: JobContext, path: str, unread: list[str], version_id: str) -> tuple[str, Record | None] | None:
+    try:
+        return version_id, ctx.read(path)
+    except PARTNER_FAILURES:
+        ctx.checkpoint()
+        unread.append(version_id)
+        return None
+
+
+def _skipped(ctx: JobContext, collection: str) -> None:
+    """The city's versions the server left out of its list because they fail their schema: counted in the job log, never named."""
+    store = ctx.services.store
+    count = store.skipped(collection) if isinstance(store, SkipsInvalid) else 0
+    if count:
+        ctx.log.warn(f"{count} of the city's frames could not be read and were left out", "georef")
+
+
+def _readable(ctx: JobContext, collection: str) -> list[tuple[str, Record | None]]:
+    """Each listed version with its record; one the server cannot read (it failed its schema there: 2026-11-08) is no partner."""
+    unread: list[str] = []
+    listed = _listed(ctx, collection)
+    _skipped(ctx, collection)
+    found = [_read_or_none(ctx, f"{collection}/{version_id}", unread, version_id) for version_id in listed]
+    if unread:
+        ctx.log.warn(f"{len(unread)} other frames could not be read ({', '.join(unread)}): fitted without them", "georef")
+    return [pair for pair in found if pair is not None]
+
+
 def held_frames(ctx: JobContext, bounds: Bounds) -> list[Held]:
     """The city's accepted, proved frames over `bounds` that kept their `align.tif`, newest first, at most `MAX_PARTNERS`."""
-    collection = f"cities/{ctx.city}/layerVersions"
-    found = [_held(ctx, version_id, ctx.read(f"{collection}/{version_id}"), bounds) for version_id in _listed(ctx, collection)]
+    found = [_held(ctx, version_id, record, bounds) for version_id, record in _readable(ctx, f"cities/{ctx.city}/layerVersions")]
     return sorted((frame for frame in found if frame is not None), key=lambda frame: -(frame.year or 0))[:MAX_PARTNERS]
 
 
@@ -211,6 +263,21 @@ def partner_ties(ctx: JobContext, mine: Ours, held: Held) -> PartnerTies:
     return tied(held.version_id, found, mine.image, to_film(mine.attached, mine.offset), ALIGN_GROUND_M)
 
 
+def _ties_or_none(ctx: JobContext, mine: Ours, held: Held) -> PartnerTies | None:
+    try:
+        return partner_ties(ctx, mine, held)
+    except PARTNER_FAILURES:
+        ctx.unstage(held.path)
+        _left_out(ctx, held.version_id, "measured")
+        return None
+
+
+def held_ties(ctx: JobContext, mine: Ours, held: Sequence[Held]) -> list[PartnerTies]:
+    """The ties with each held frame; one whose file cannot be staged, read or measured is left out by name (`_left_out`)."""
+    found = [_ties_or_none(ctx, mine, frame) for frame in held]
+    return [ties for ties in found if ties is not None]
+
+
 def bounds_of(georef: GeorefInfo) -> Bounds:
     """The box of the first fit's pairs and checks: where the frame was measured."""
     lng = [gcp.lng for gcp in georef.gcps]
@@ -242,7 +309,7 @@ class Joining:
 def _ties(ctx: JobContext, joining: Joining, held: Sequence[Held]) -> list[PartnerTies]:
     offset = (joining.proved.scan.left, joining.proved.scan.top)
     mine = gdal_step(ctx, lambda: ours(ctx, joining.georef, joining.scan, offset, city_window(ctx)), "render the frame for its ties")
-    return [gdal_step(ctx, partial(partner_ties, ctx, mine, frame), "measure the ties") for frame in held]
+    return held_ties(ctx, mine, held)
 
 
 def joined_to_held(ctx: JobContext, joining: Joining, found: Calibrated) -> Calibrated:

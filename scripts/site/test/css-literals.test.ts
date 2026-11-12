@@ -37,6 +37,24 @@ describe('minifyCss', () => {
         expect(minifyCss("a { content: ';}' }")).toBe("a{content:';}'}");
     });
 
+    it('happyPath_theSpaceInsideParenthesesAnIdentifiersQuotesInAnAttributeSelectorAndALeadingZeroGo', () => {
+        // The engine's IIFE was 81 bytes gzip over its budget with the timeline's scrolling (2026-11-08): these are 50.
+        expect(minifyCss(":host([orientation='vertical']) a { b: calc(\n 100% - 8px\n ) }")).toBe(
+            ':host([orientation=vertical]) a{b:calc(100% - 8px)}',
+        );
+        expect(minifyCss('a { opacity: 0.4; transform: scale(0.9) translate(1px, 0.5px); font: 0.75rem/1.5 x; margin: 1px 0.5px }')).toBe(
+            'a{opacity:.4;transform:scale(.9) translate(1px,.5px);font:.75rem/1.5 x;margin:1px .5px}',
+        );
+    });
+
+    it('badPath_aStringThatIsNoIdentifierOrNoAttributesValueKeepsItsQuotesAndOtherZerosStay', () => {
+        expect(minifyCss("[a='b c'] [d='1x'] [e='f' i] { content: 'g'; font-family: 'h' }")).toBe(
+            "[a='b c'] [d='1x'] [e='f' i]{content:'g';font-family:'h'}",
+        );
+        expect(minifyCss('a { b: 10.5px 0 0.x; c: -0.5px; d: x0.5 }')).toBe('a{b:10.5px 0 0.x;c:-0.5px;d:x0.5}');
+        expect(minifyCss('0.5px', { start: false, end: true })).toBe('0.5px');
+    });
+
     it('badPath_theSpacesAroundCalcsPlusAndMinusStay', () => {
         expect(minifyCss('a { inline-size: calc(100% - 2 * 8px + 4px) ; }')).toBe('a{inline-size:calc(100% - 2 * 8px + 4px)}');
     });

@@ -5,12 +5,15 @@ from hcm_pipeline.contract import PIPELINE_WRITER
 from hcm_pipeline.documents import GeorefInfo, JoinReport, JoinSeam, OutputInfo, ReferenceInfo, ScanInfo, Version
 from hcm_pipeline.geo import Bounds
 from hcm_pipeline.model import (
+    RUN_JOB_TYPES,
+    ArchiveSeriesParams,
     DocumentError,
     GeotiffImportParams,
     Job,
     JoinParams,
     JoinPart,
     Lease,
+    OutdatedJobError,
     RegeorefParams,
     StepRecord,
     Timestamp,
@@ -159,6 +162,11 @@ def test_happy_path_jobs_read_their_steps_lease_and_params() -> None:
             {"parts": [{"versionId": "v-1", "layerId": "l-1"}, {"versionId": "v-2", "layerId": "l-2"}], "sensor": "KH-9-pan"},
             JoinParams((JoinPart("v-1", "l-1"), JoinPart("v-2", "l-2")), "KH-9-pan"),
         ),
+        (
+            "archive-series",
+            {"archiveId": "ar-0123456789abcdef", "seriesId": "s-0123456789ab", "class": "grid", "sheets": 4, "order": 1},
+            ArchiveSeriesParams("ar-0123456789abcdef", "s-0123456789ab"),
+        ),
     ],
 )
 def test_happy_path_each_type_reads_its_own_params(job_type: str, params: dict[str, object], expected: object) -> None:
@@ -182,11 +190,21 @@ def test_happy_path_each_type_reads_its_own_params(job_type: str, params: dict[s
         ("layer-join", {"parts": [{"versionId": "v", "layerId": "l", "x": 1}] * 2, "sensor": "KH-9-pan"}, "unknown keys: x"),
         ("layer-join", {"parts": ["v", "w"], "sensor": "KH-9-pan"}, "a part must be a record"),
         ("layer-join", {"parts": [{"versionId": "v", "layerId": "l"}] * 2, "sensor": "KH-6"}, "sensor must be one of"),
+        ("archive-series", {"archiveId": "ar-1", "seriesId": "s-1", "sheetz": 1}, "unknown keys: sheetz"),
+        ("archive-series", {"archiveId": "../ar", "seriesId": "s-1"}, "archiveId must be an id"),
     ],
 )
 def test_bad_path_malformed_params_are_refused(job_type: str, params: dict[str, object], problem: str) -> None:
     with pytest.raises(DocumentError, match=problem):
         params_of(Job("j", job_type, "starting", params, None, None))
+
+
+def test_bad_path_a_type_this_image_does_not_run_is_an_outdated_pipeline_not_a_bad_job() -> None:
+    """Scenarios: S-A12-HAPPY-RETRY-OUTDATED"""
+    with pytest.raises(OutdatedJobError, match="does not run future-type jobs"):
+        params_of(Job("j", "future-type", "starting", {}, None, None))
+    assert "archive-series" in RUN_JOB_TYPES
+    assert "republish" not in RUN_JOB_TYPES
 
 
 def test_happy_path_timestamps_round_trip_epoch_seconds() -> None:

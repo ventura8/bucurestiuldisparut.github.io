@@ -114,6 +114,17 @@ export const poiStyles = [
             outline-offset: 2px;
         }
 
+        /* A place stored without a year (Save asks for one): a small tag under its row's detail. */
+        .year-missing {
+            align-self: flex-start;
+            padding: 0 8px;
+            border-radius: var(--md-sys-shape-corner-small, 8px);
+            background: var(--md-sys-color-error-container, Canvas);
+            color: var(--md-sys-color-on-error-container, CanvasText);
+            font-size: var(--md-sys-typescale-label-medium-size, 0.75rem);
+            line-height: var(--md-sys-typescale-label-medium-line-height, 1rem);
+        }
+
         .swatch {
             display: inline-block;
             inline-size: 12px;

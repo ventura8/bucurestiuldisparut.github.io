@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import shutil
+from collections.abc import Iterator
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -281,6 +282,7 @@ class SignedServer:
         self.upload_method = "PUT"
         self.generation_in = "header"
         self.status = 200
+        self.cut = False
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/worker-urls"):
@@ -301,6 +303,11 @@ class SignedServer:
         stored = self.objects.get(path)
         if stored is None or self.status != 200:
             return httpx.Response(404 if stored is None else self.status)
+        return self._found(stored)
+
+    def _found(self, stored: tuple[bytes, str]) -> httpx.Response:
+        if self.cut:
+            return httpx.Response(200, content=cut_short(stored[0]))
         return httpx.Response(200, content=stored[0], headers={"x-goog-generation": stored[1]} if self.generation_in == "header" else {})
 
     def _put(self, path: str, body: bytes) -> httpx.Response:
@@ -312,6 +319,12 @@ class SignedServer:
             "json": httpx.Response(200, json={"name": path, "generation": self.objects[path][1]}),
         }
         return answers.get(self.generation_in, httpx.Response(200, text="ok"))
+
+
+def cut_short(data: bytes) -> Iterator[bytes]:
+    """The object's first bytes, then a connection reset."""
+    yield data[:4]
+    raise httpx.ReadError("connection reset by peer")
 
 
 def signed_store(server: SignedServer) -> SignedObjectStore:
@@ -370,6 +383,20 @@ def test_bad_path_signed_requests_that_fail_raise(tmp_path: Path) -> None:
         store.upload_file(file_with(tmp_path, "y.tif", b"y"), SCAN, "image/tiff")
     with pytest.raises(ObjectStoreError, match="HTTP 403"), store.open_read(SCAN):
         pass
+
+
+def test_bad_path_a_download_the_network_cuts_midway_is_an_object_store_error_and_leaves_no_partial_file(tmp_path: Path) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE
+    The review of a6750294: httpx's `ReadError` escaped the port, failing the job, and left the bytes read so far in the scratch."""
+    server = SignedServer()
+    server.objects[SCAN] = (b"scan bytes", "42")
+    server.cut = True
+    local = tmp_path / "scan.tif"
+
+    with pytest.raises(ObjectStoreError, match=r"^the signed download: ReadError$"):
+        signed_store(server).download_file(SCAN, local)
+
+    assert not local.exists()
 
 
 def test_bad_path_an_answer_for_another_object_is_refused(tmp_path: Path) -> None:

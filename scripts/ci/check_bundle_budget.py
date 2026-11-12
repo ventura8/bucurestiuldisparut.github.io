@@ -103,10 +103,14 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # 2026-10-23), the georeferencer (14.0 KB) and the layer editor's Crop (`layer-geometry`, 1.9 KB), each the measurement
     # plus about 20 %, under the contract's ceilings of 30, 30 and 8 KB.
     "imagery": 18,
-    # The georeferencer: 17 until 2026-11-08, 18 since, the owner's decision (DECISIONS-for-review.md §110): M15's terrain map and the
-    # merge of the accuracy track into M16 measure 17,160 bytes gzip with Snap my points and the published maps already moved to the
-    # lazy `georef-extras` chunk.
-    "georef": 18,
+    # The georeferencer: 17 until 2026-11-08, 18 until 2026-11-10, 19 since, the owner's decisions (DECISIONS-for-review.md §110 and
+    # §141): M15's terrain map and the merge of the accuracy track into M16 measured 17,160 bytes gzip; the zoom buttons, Undo, the
+    # placing guide and the map's pair numbers (2026-11-10) took it to about 18,030, with Snap my points and the published maps
+    # already in the lazy `georef-extras` chunk.
+    "georef": 19,
+    # Shared badge painters + map canvas overlay (DECISIONS-for-review.md §146): 1.9 KB measured, out of `georef` (stays 19); with the
+    # pairs' leaf helpers and full screen's cover moved in for the linked views (§156), 2.7 KB measured on 2026-11-12. No row rose.
+    "georef-badges": 3,
     "layer-geometry": 3,
     # M4's order card (`packages/ui/src/admin/imagery/orders/lazy-card.ts`), fetched the first time a scene that must be
     # bought opens, so the Imagery area stays within its budget with the buy flow: 1.7 KB measured on 2026-10-24 plus about
@@ -165,7 +169,7 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # editor needs them from: 0.5 KB measured on 2026-11-07, rounded up (DECISIONS-for-review.md §97h).
     "proposal-fields": 1,
     "city-budget": 2,
-    # Settings -> Browser tab icon (track/favicon, DECISIONS-for-review.md §123l): the card and the browser's checks of a
+    # Settings -> Browser tab icon (track/favicon, DECISIONS-for-review.md §162l): the card and the browser's checks of a
     # chosen file, fetched the first time its section opens, so the settings chunk stays within its 20 KB (19.8 KB with the
     # card's state): 1.3 KB measured on 2026-11-08 plus about 20 %, rounded up.
     "icon-section": 2,
@@ -205,8 +209,25 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     "recalibrate-card": 2,
     # The georeferencer's lazy chunk (`packages/admin/src/georef/georef-extras.ts`, fetched by `extras.ts`): the map a camera's lattice
     # or a frame over terrain publishes (M15) and Snap my points (M16), out of the `georef` chunk (18 KB since §110): 1.0 KB measured
-    # on 2026-11-08 plus about 20 %, rounded up (DECISIONS-for-review.md §110).
+    # on 2026-11-08 plus about 20 %, rounded up (DECISIONS-for-review.md §110); with the linked views' arithmetic (§156) 1.5 KB.
     "georef-extras": 2,
+    # The georeferencer's context menu (2026-11-12; DECISIONS-for-review.md §152): `<hcm-georef-menu>` and the gestures that open it
+    # (`packages/ui/src/admin/georef/georef-menu.ts` with `georef-menu-host.ts`), fetched at the page's first render, out of the `georef`
+    # chunk (19 KB): 2.4 KB measured on 2026-11-12 plus about 20 %, rounded up.
+    "georef-menu": 3,
+    # The tolerant reads of an older release's records (`packages/shared/src/schemas/legacy-reads.ts`), which Home, the Imagery lists
+    # and a version's page share: out of `editor-shared` (13.05 KB with them, budget 13): 0.5 KB measured on 2026-11-12, a row of
+    # 1 KB, the smallest whole budget (DECISIONS-for-review.md §155).
+    "legacy-reads": 1,
+    # M20 (docs/research/M20-import-local.md §8): Import local files (`packages/admin/src/archive/archive.ts`, its one dynamic entry,
+    # which the Imagery store imports): the archive's feed, `<hcm-archive-panel>`, `<hcm-archive-report>` and their texts
+    # (`@hcm/shared/admin-archive`), fetched when the Upload view or an archive's report first shows: 8.6 KB measured on 2026-11-09
+    # plus about 16 % (DECISIONS-for-review.md §136d).
+    "archive": 10,
+    # Batch 4 (the owner, 2026-11-09: Import local files from the admin's own tab): the client that streams the picked files to the
+    # worker on the computer's loopback (`packages/admin/src/archive/local-run.ts`, the archive feed's one dynamic import), fetched on
+    # the first pick: about 1.2 KB, out of the `archive` chunk so that its 10 KB stays (DECISIONS-for-review.md §138d).
+    "local-run": 2,
 }
 # The entry and every chunk together. 620 until M7 (2026-11-02), 630 since: the total counts every lazy chunk, also those
 # loaded only on use, and M7's `worker` chunk (5.5 KB, loaded only by the Jobs page, the pipeline card and a version page)

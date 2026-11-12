@@ -78,7 +78,9 @@ test(
         await serveManifest(page, unplacedManifest());
         await openViewer(page, { lang: 'en' });
         const [popup] = await Promise.all([context.waitForEvent('page'), chooseMenuItem(page, 'en', t('en', 'contribute.link'))]);
-        await expect(popup).toHaveURL(CONTRIBUTE);
+        // M13 §3: the page's signed-out welcome speaks the map's language and names the city.
+        const name = (unplacedManifest()['city'] as { readonly name: { readonly en: string } }).name.en;
+        await expect(popup).toHaveURL(CONTRIBUTE.replace('#', `?lang=en&name=${encodeURIComponent(name)}#`));
         expect(await context.cookies()).toEqual([]);
         expect(asked.filter((url) => /firestore|identitytoolkit|securetoken|firebase/.test(url))).toEqual([]);
     },

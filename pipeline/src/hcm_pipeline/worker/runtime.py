@@ -113,6 +113,7 @@ class WorkerRuntime:
             sleep=time.sleep,
             resolver=resolve,
             proposal_matcher=self._matcher(),
+            archive_root=self._args.work,
         )
 
     def _matcher(self) -> LocalMatcher:

@@ -5,6 +5,7 @@
  */
 import { imagerySettingsOf, type DatePlanRow, type ImagerySettings, type PublishChoice, type ServiceState } from '@hcm/shared';
 
+import type { ArchiveFeed } from '../archive/feed.js';
 import { LOADING_LIST, type ListState } from '../content/list.js';
 import type { MapStatus } from '../layers/map-session.js';
 import type { NoticeInput } from '../state/state.js';
@@ -31,7 +32,7 @@ type ImageryTab = 'find' | 'work' | 'upload';
 
 /** The routed item: `#/imagery/scene/<entityId>` or `#/imagery/version/<versionId>`. */
 export interface ImageryDetail {
-    readonly kind: 'scene' | 'version';
+    readonly kind: 'scene' | 'version' | 'archive';
     readonly id: string;
 }
 
@@ -108,6 +109,10 @@ export interface ImageryIntents {
     recalibrate(): Promise<string | null>;
     toggleCurrent(): void;
     reject(): Promise<boolean>;
+    /** M20 (§7): the city's owner confirms who granted the permission (`imagery.confirmRights`). */
+    confirmRights(confirmedBy: string): Promise<boolean>;
+    /** A version that never reached the map, deleted for good (`imagery.deleteVersion`); true once it is gone. */
+    deleteVersion(): Promise<boolean>;
     choose(choice: PublishChoice): Promise<boolean>;
     studioDone(): Promise<boolean>;
     /** Saves the Studio file. */
@@ -143,4 +148,8 @@ export interface ImageryIntents {
     joinFrames(entityIds: readonly string[]): Promise<string | null>;
     /** M8: Add {year} to target years, then search again; true once it is saved. */
     addTargetYear(year: number): Promise<boolean>;
+    /** M20 (`docs/research/M20-import-local.md` §8): Import local files' feed, from the lazy `archive` chunk. */
+    archive(): Promise<ArchiveFeed>;
+    /** M20: registers the `archive` chunk's elements (the Upload view's card, an archive's report). */
+    archiveElements(): Promise<void>;
 }

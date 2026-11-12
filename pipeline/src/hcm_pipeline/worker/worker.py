@@ -13,12 +13,14 @@ from typing import Final
 
 import httpx
 
+from hcm_pipeline.archive.intake import ArchiveStore
 from hcm_pipeline.log import get_logger
 from hcm_pipeline.services import default_steps, http
 from hcm_pipeline.worker.ai_state import initial_state
-from hcm_pipeline.worker.api import WorkerApi
+from hcm_pipeline.worker.api import ARCHIVE_REPORT, WorkerApi
 from hcm_pipeline.worker.app import PageActions
 from hcm_pipeline.worker.args import WorkerArgs
+from hcm_pipeline.worker.imports import ImportRoutes
 from hcm_pipeline.worker.loop import WorkerLoop
 from hcm_pipeline.worker.page import PageSettings, content_security_policy
 from hcm_pipeline.worker.pairing import Connector, Pairing, SessionFile, Signer
@@ -77,7 +79,10 @@ class Worker:
         emulators = [host for host in (args.endpoints.auth_emulator,) if host]
         settings = PageSettings(args.project, args.city, LocalServer.new_csrf_token(), args.endpoints.auth_emulator)
         policy = content_security_policy(args.project, emulators)
+        # M20 (docs/research/M20-import-local.md §2): a local archive's import, its report sent with the worker's own ids.
+        imports = ImportRoutes(ArchiveStore(args.work), lambda body: api.call(ARCHIVE_REPORT, {**ids, **body}))
         server = LocalServer(actions, settings, (bind_host, args.port), policy, args.endpoints.hosting_origins)
+        server.serve_imports(imports)
         runtime = WorkerRuntime(args, api, worker_id, state, steps)
         runtime.clock = clock
         runtime.announce_ai = actions.announce_ai

@@ -75,6 +75,7 @@ export async function seedPlace(
         category: place.category,
         geometry: { type: 'Point', point: { lat: place.lat, lng: place.lng } },
         title: { ro: place.title },
+        yearStart: 1890,
         published: true,
         updatedBy: 'system:setup',
         updatedAt: at,

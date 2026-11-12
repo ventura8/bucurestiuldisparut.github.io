@@ -143,6 +143,13 @@ export const FIRESTORE_PATHS = {
     /** M9 (`docs/research/M9-calibration.md` §2): a pass's last proved model, the first place to look for its next frame. */
     imageryPasses: (cityId: string) => `${cityPath(cityId)}/imageryPasses`,
     imageryPass: (cityId: string, passKey: string) => child(cityId, 'imageryPasses', passKey),
+    /** M20 (`docs/research/M20-import-local.md` §2.4): the local archives' scan reports and a sample of their skipped files. */
+    archives: (cityId: string) => `${cityPath(cityId)}/archives`,
+    archive: (cityId: string, archiveId: string) => child(cityId, 'archives', archiveId),
+    archiveIssues: (cityId: string, archiveId: string) => `${child(cityId, 'archives', archiveId)}/issues`,
+    /** M20 (§2.3): a city's sheet grids, learnt once from a series and confirmed by its owner. */
+    grids: (cityId: string) => `${cityPath(cityId)}/grids`,
+    grid: (cityId: string, gridId: string) => child(cityId, 'grids', gridId),
     /** The `history` subcollection of an audited document (`auditedDocumentPath`). */
     history: (document: AuditedDocument) => `${auditedDocumentPath(document)}/history`,
     historyEntry: (document: AuditedDocument, entryId: string) =>
@@ -177,6 +184,8 @@ export const FIRESTORE_PATHS = {
     opsDispatch: 'ops/dispatch',
     /** M6: the self-test's events probe, answered by `ops.onProbe` (`docs/research/M6-interfaces.md` §3.2). */
     opsProbe: 'ops/probe',
+    /** M20: the turnstile of the jobs counted against today's shares (`opsDailyDocSchema`). */
+    opsDaily: 'ops/daily',
     /** M3: a city's last USGS harvest attempt (CR-M3-47). */
     harvestState: (cityId: string) => `ops/harvest-${segment(cityId, isCityId)}`,
     manifestStates: 'manifests',

@@ -39,6 +39,19 @@ export const CITY_MIN_COVERAGE_PCT = 90;
 export const AUTO_MIN_MEASURED_PCT = 70;
 
 /**
+ * M20 (`docs/research/M20-import-local.md` §5, the owner's decision of 2026-11-09): the most a drawn map's threshold may grow to by
+ * default (1 mm of its paper, never under the city's own), and the bounds an owner may set it to. Here because this module is a leaf.
+ */
+export const DEFAULT_MAP_THRESHOLD_MAX_M = 60;
+export const MAP_THRESHOLD_MAX_RANGE = { min: 15, max: 200 } as const;
+
+/**
+ * M25 (`docs/research/M25-landsat.md` §4): the years the tick imports a Landsat scene of on its own by default, the owner's 1984 to 2000
+ * (2026-11-09). Here because this module is a leaf.
+ */
+export const DEFAULT_LANDSAT_YEARS = { from: 1984, to: 2000 } as const;
+
+/**
  * `cities/{city}.imagery`. Every field is optional in the document: an absent field takes its default
  * ({@link imagerySettingsOf}), so a city created before M3 needs no migration.
  */
@@ -57,6 +70,14 @@ export const cityImagerySchema = z.strictObject({
      * the tiles from the project's own public bucket, with no Mapbox compute units, tileset or token.
      */
     publishThroughMapbox: z.boolean().optional(),
+    /** M20 (§5): the cap of a drawn map's scaled threshold (default 60 m). */
+    mapThresholdMaxM: z.number().min(MAP_THRESHOLD_MAX_RANGE.min).max(MAP_THRESHOLD_MAX_RANGE.max).optional(),
+    /** M20 (§5): true (the default): a drawn map within its scaled threshold, its rights clear, publishes without a click. */
+    mapAutoPublish: z.boolean().optional(),
+    /** M25: true (the default): `imagery.tick` imports the best Landsat scene of each year from `landsatFrom` to `landsatTo`. */
+    landsatAuto: z.boolean().optional(),
+    landsatFrom: yearSchema.optional(),
+    landsatTo: yearSchema.optional(),
 });
 
 export type CityImagery = z.infer<typeof cityImagerySchema>;
@@ -67,6 +88,11 @@ export interface ImagerySettings {
     readonly rmseThresholdM: number;
     readonly targetYears: readonly number[];
     readonly publishThroughMapbox: boolean;
+    readonly mapThresholdMaxM: number;
+    readonly mapAutoPublish: boolean;
+    readonly landsatAuto: boolean;
+    readonly landsatFrom: number;
+    readonly landsatTo: number;
 }
 
 /** What a city that set nothing gets: auto-publish, the default threshold, no target years, tiles from its own bucket. */
@@ -75,6 +101,11 @@ const DEFAULT_SETTINGS: ImagerySettings = {
     rmseThresholdM: DEFAULT_RMSE_THRESHOLD_M,
     targetYears: [],
     publishThroughMapbox: false,
+    mapThresholdMaxM: DEFAULT_MAP_THRESHOLD_MAX_M,
+    mapAutoPublish: true,
+    landsatAuto: true,
+    landsatFrom: DEFAULT_LANDSAT_YEARS.from,
+    landsatTo: DEFAULT_LANDSAT_YEARS.to,
 };
 
 function setting<K extends keyof ImagerySettings>(imagery: CityImagery | undefined, key: K): ImagerySettings[K] {
@@ -88,5 +119,16 @@ export function imagerySettingsOf(imagery: CityImagery | undefined): ImagerySett
         rmseThresholdM: setting(imagery, 'rmseThresholdM'),
         targetYears: setting(imagery, 'targetYears'),
         publishThroughMapbox: setting(imagery, 'publishThroughMapbox'),
+        mapThresholdMaxM: setting(imagery, 'mapThresholdMaxM'),
+        mapAutoPublish: setting(imagery, 'mapAutoPublish'),
+        landsatAuto: setting(imagery, 'landsatAuto'),
+        landsatFrom: setting(imagery, 'landsatFrom'),
+        landsatTo: setting(imagery, 'landsatTo'),
     };
+}
+
+/** M25: the years the tick imports Landsat of, oldest first (none when the range is reversed). */
+export function landsatYearsOf(settings: Pick<ImagerySettings, 'landsatFrom' | 'landsatTo'>): number[] {
+    const count = Math.max(0, settings.landsatTo - settings.landsatFrom + 1);
+    return Array.from({ length: count }, (_, index) => settings.landsatFrom + index);
 }

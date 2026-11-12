@@ -440,3 +440,16 @@ describe('the rank of a frame of a date in progress', () => {
         expect((await readScene(world, F040))?.rank.reasons.map((reason) => reason.code)).toContain('sameDate');
     });
 });
+
+// M25 (docs/research/M25-landsat.md §1): a Landsat scene holds the city on its own.
+describe('the plan of whole-city dates: Landsat', () => {
+    it('badPath_aLandsatSceneNeverJoinsAPlan @S-A130-HAPPY', async () => {
+        const world = await readyWorld();
+        await seedScene(world, F039, frameFields({ dataset: 'landsat_tm_c2_l1', sensor: 'L5-TM' }));
+        await seedScene(world, F040, frameFields({ footprint: EAST, dataset: 'landsat_tm_c2_l1', sensor: 'L5-TM' }));
+
+        await rewriteDatePlan(world.deps, CITY);
+
+        expect((await plan(world))?.rows).toEqual([]);
+    });
+});

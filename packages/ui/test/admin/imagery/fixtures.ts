@@ -87,6 +87,7 @@ export function versionItem(overrides: Partial<VersionItemPort> = {}): VersionIt
             checkpointRmseM: 7.2,
             partOf: null,
             entityIds: [],
+            basedOn: null,
             thumbPath: null,
         },
         ...overrides,
@@ -107,6 +108,7 @@ export function versionView(overrides: Partial<VersionViewPort> = {}): VersionVi
             checkpointKind: 'held-out',
         },
         calibration: null,
+        landsat: null,
         output: {
             bounds: [
                 [25.95, 44.33],
@@ -120,7 +122,7 @@ export function versionView(overrides: Partial<VersionViewPort> = {}): VersionVi
         },
         ...{ estimate: 2.5, guard: null, approval: null, error: null, hasScan: true },
         ...{ entityId: 'DS1035-1057DA023', partOf: null, parts: [], join: null },
-        ...{ basedOn: null, recalibration: null, publicUrl: null },
+        ...{ basedOn: null, recalibration: null, publicUrl: null, rights: null },
         ...overrides,
     };
 }
@@ -257,8 +259,11 @@ export function georefState(overrides: Partial<GeorefViewState> = {}): GeorefVie
             reference: 'osm',
             adding: false,
             half: null,
+            moving: null,
             selected: null,
             transform: 'affine',
+            linked: true,
+            scanFollow: null,
         },
         pairs: [
             { id: 'g1', pixel: { x: 100, y: 100 }, geo: { lat: 44.5, lng: 26 }, enabled: true, origin: 'auto', score: 0.9 },
@@ -279,6 +284,7 @@ export function georefState(overrides: Partial<GeorefViewState> = {}): GeorefVie
         ...{
             thresholdM: 15,
             dirty: false,
+            canUndo: false,
             saving: false,
             refusal: null,
             saved: null,
@@ -335,6 +341,8 @@ export function imageryPage(
             search: Promise.resolve(),
             approve: Promise.resolve(true),
             reject: Promise.resolve(true),
+            confirmRights: Promise.resolve(true),
+            deleteVersion: Promise.resolve(true),
         },
         ...{
             choose: Promise.resolve(true),
@@ -353,8 +361,9 @@ export function imageryPage(
 export function georefPage(
     state: GeorefViewState = georefState(),
     options: Parameters<typeof mountPage>[3] = {},
+    answers: Partial<Record<keyof GeorefIntentsPort, unknown>> = {},
 ): Promise<Mounted<GeorefViewState, GeorefIntentsPort>> {
-    const area = new FakeArea<GeorefViewState, GeorefIntentsPort>(state, { save: Promise.resolve(true) });
+    const area = new FakeArea<GeorefViewState, GeorefIntentsPort>(state, { save: Promise.resolve(true), ...answers });
     return mountPage('hcm-georef-page', 'georef', area, { params: ['job-1966'], ...options });
 }
 

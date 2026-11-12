@@ -90,7 +90,7 @@ describe('export.build', () => {
         expect(city.layers.map((layer) => layer.source)).toEqual(publishedManifest().layers.map((layer) => layer.source));
         expect(files['photos/strand-1976/web.webp']).toBe(`webp:photos/${CITY}/strand-1976/12345678/web.webp`);
         expect(files['README.md']).toContain(KIT_README.trim());
-        expect(files['README.md']).toContain('# Orașul \\| exportat: export static / static export (2026-11-02)');
+        expect(files['README.md']).toContain('# The exported city: static export (2026-11-02)');
         expect(await readExport(world, EXPORT)).toMatchObject({
             state: 'ready',
             bytes: zip.length,
@@ -129,7 +129,7 @@ describe('export.build', () => {
         expect(Object.keys(files).filter((name) => name.startsWith('rasters/'))).toEqual(['rasters/corona-1966.tif']);
         expect(files['rasters/corona-1966.tif']).toBe('cog:corona-1966');
         expect(unzip(zipOf(world)).find((file) => file.name === 'rasters/corona-1966.tif')?.method).toBe(0);
-        expect(files['README.md']).toContain('scanările USGS ale straturilor istorice (1)');
+        expect(files['README.md']).toContain('the USGS scans of the historical layers (1)');
         expect(files['README.md']).toContain('a layer uploaded as a GeoTIFF does not export its scan');
         expect((await readExport(world, EXPORT))?.counts).toMatchObject({ rasters: 1, layers: 2 });
     });
@@ -151,7 +151,7 @@ describe('export.build', () => {
         const rights = String(zipTexts(zipOf(world))['RIGHTS.md']);
         expect(rights).toContain('| `opera-1940` | Fotografia opera-1940 | Arhiva \\| familiei | permission |');
         expect(rights).not.toContain('strand-1976');
-        expect(rights).toContain('doar pentru harta Orașul \\| exportat');
+        expect(rights).toContain('for the map The exported city only');
         expect((await readExport(world, EXPORT))?.counts?.restrictedPhotos).toBe(1);
     });
 

@@ -1,6 +1,6 @@
 /**
  * What the viewer's controls do to the store: closing a sheet, opening a photo, the FAB menu's actions (sheets, share,
- * Show my location, `my-location.ts`) and the language. Plain functions over `ViewerStorePort` and `ViewerServices`, so each is tested without
+ * Show my location, `my-location.ts`) and Settings. Plain functions over `ViewerStorePort` and `ViewerServices`, so each is tested without
  * the element.
  */
 import type { Layer, Locale, Manifest } from '@hcm/shared';
@@ -11,18 +11,13 @@ import { shareMessage, sharePage, type ViewerServices } from './services.js';
 import type { ViewerState, ViewerStorePort } from './store-port.js';
 import { localizedText } from './text.js';
 
-/** The FAB menu's actions (`language` switches to the other language). */
-const MENU_ACTIONS = ['layers', 'photos', 'unplaced', 'stories', 'locate', 'share', 'contribute', 'about', 'language'] as const;
+/** The FAB menu's actions (`settings`: the language and the theme, out of About since 2026-11-08). */
+const MENU_ACTIONS = ['layers', 'photos', 'unplaced', 'stories', 'locate', 'share', 'contribute', 'about', 'settings'] as const;
 
 export type MenuAction = (typeof MENU_ACTIONS)[number];
 
 export function isMenuAction(value: string): value is MenuAction {
     return (MENU_ACTIONS as readonly string[]).includes(value);
-}
-
-/** The viewer speaks two languages: the language item switches to the one not shown. */
-export function otherLocale(locale: Locale): Locale {
-    return locale === 'ro' ? 'en' : 'ro';
 }
 
 /** Closes whatever sheet is open: a photo's or a POI's details close their selection too. */
@@ -124,9 +119,11 @@ export function menuAction(store: ViewerStorePort, services: ViewerServices, act
             store.openStory(null);
         },
         contribute: () => {
-            const url = store.getState().manifest?.contributeUrl;
+            const { manifest, locale } = store.getState();
+            const url = manifest?.contributeUrl;
             if (url !== undefined) {
-                services.openPage(url);
+                // M13 §3: the Contribute page's signed-out welcome speaks the map's language and names the city.
+                services.openPage(url.replace('#', `?lang=${locale}&name=${encodeURIComponent(manifest?.city.name[locale] ?? '')}#`));
             }
         },
         about: () => {
@@ -138,8 +135,8 @@ export function menuAction(store: ViewerStorePort, services: ViewerServices, act
         locate: () => {
             toggleMyLocation(store, services);
         },
-        language: () => {
-            store.setLocale(otherLocale(store.getState().locale));
+        settings: () => {
+            store.openSheet('settings');
         },
     };
     actions[action]();

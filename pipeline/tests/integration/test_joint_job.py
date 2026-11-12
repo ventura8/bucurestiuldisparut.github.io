@@ -124,3 +124,20 @@ def test_bad_path_a_frame_not_yet_accepted_is_never_held(world: PipelineWorld, t
 
     assert "alignment" not in record(world.version(SECOND)["calibration"])
     assert not any("accepted frames" in line for line in world.log_lines(SECOND))
+
+
+def test_bad_path_an_accepted_frame_whose_image_gdal_cannot_read_is_left_out_and_the_frame_joins_the_others(
+    world: PipelineWorld, tmp_path: Path
+) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE"""
+    world.seed_import()
+    assert world.run() is RunOutcome.DONE
+    accepted_copy(world, tmp_path)
+    world.store.seed(world.version_path("v-corrupt"), {**world.version(OLDER), "jobId": "v-corrupt", "year": 1970})
+    world.gcs.put(f"rasters/{CITY}/{LAYER_ID}/v-corrupt/align.tif", b"not a GeoTIFF")
+
+    assert second_import(world) is RunOutcome.DONE
+
+    partners = records(alignment(world, SECOND)["partners"])
+    assert [(partner["versionId"], partner["status"]) for partner in partners] == [(OLDER, "used")]
+    assert "the accepted frame v-corrupt could not be measured: fitted without it" in world.log_lines(SECOND)

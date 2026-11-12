@@ -66,10 +66,13 @@ pipeline's pytest suite. `e2e/scenarios.json` names the test of every row.
 - __Upload__ (A14): a GeoTIFF through the Storage SDK's resumable upload (refused in the page when it is not a TIFF,
   resumed after a dropped chunk) becomes its own job; its own georeference goes to Approve, a plain scan to the
   georeferencer; a replacement for a layer asks no year and keeps the layer's tiles until the new version is published.
-- __The georeferencer__ (A16): the scan and the reference side by side, pairs by pointer or keyboard, the residual
+- __The georeferencer__ (A16, A131): the scan and the reference side by side, pairs by pointer or keyboard, the residual
   table, both errors, the transforms each pair count allows, the warped preview; pairs on a line refused; Save continues
   the waiting job or makes a new version of a published layer; Crop on a published layer renders it again inside the
-  polygon, and the viewer's tiles end there.
+  polygon, and the viewer's tiles end there. Map markers match the scan (DECISIONS §143). __Undo__ keeps about fifty
+  real edits (`canUndo`; a map settle of every point is one step — lesson 547, S-A131-*). __Second-order polynomial__ /
+  `poly2` (DECISIONS §144, lesson 553): inverse through a forward-sampled 15×15 grid, as the pipeline; pairs on only two
+  scan rows still refuse — spread them across the image (S-A16-HAPPY-POLY2-GRID-INVERSE / S-A16-BAD-POLY2-TWO-ROWS).
 - __Publishing and the guard__ (A42): auto-publish off makes every version wait; a publish over the month's compute
   units waits with three ways out (also when the policy approved it), the free Studio path ending with the tileset the
   admin uploaded as the layer's source and `studioUploads` counted; nothing reaches Mapbox without a way chosen.

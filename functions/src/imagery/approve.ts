@@ -6,7 +6,9 @@ import {
     jobDocSchema,
     layerDocSchema,
     layerVersionDocSchema,
+    layerVersionReadSchema,
     recalibrationVerdict,
+    rightsAllowPublish,
     type CallableRequest,
     type CallableResponse,
     type JobDoc,
@@ -78,6 +80,26 @@ async function refuseUnchosenWorse(transaction: DocumentTransaction, version: La
     }
 }
 
+/**
+ * M20 (`docs/research/M20-import-local.md` §1.6, §7; S-A120-BAD-RIGHTS-UNCONFIRMED): a version that carries rights (an archive series)
+ * publishes only once they allow it; one waiting for its owner's confirmation, or never to be published, stays private.
+ */
+function refuseUnconfirmedRights(version: LayerVersionDoc): void {
+    if (version.rights !== undefined && !rightsAllowPublish(version.rights)) {
+        throw new ApiError('apiError.imagery.rightsUnconfirmed');
+    }
+}
+
+/**
+ * Batch 4 (`docs/research/M20-import-local.md` §5.1; S-A120-*-GRID-NAMES): a grid series placed from its sheets' names without a proof is
+ * approved by the city's owner alone (Approve the sheet-name placement); an editor's approval is `apiError.city.notOwner`.
+ */
+function refuseGridNamesUnlessOwner(version: LayerVersionDoc, caller: VerifiedCaller, cityId: string): void {
+    if (version.archive?.method === 'grid-names' && caller.membership?.roleIn(cityId) !== 'owner') {
+        throw new ApiError('apiError.city.notOwner');
+    }
+}
+
 /** The version is approved now, its estimate recorded; any other state is `apiError.imagery.versionState`. */
 async function approveVersion(deps: ApprovalDeps, caller: VerifiedCaller, request: ApproveRequest): Promise<LayerVersionDoc> {
     const path = FIRESTORE_PATHS.layerVersion(request.cityId, request.versionId);
@@ -91,6 +113,8 @@ async function approveVersion(deps: ApprovalDeps, caller: VerifiedCaller, reques
             throw new ApiError('apiError.imagery.versionState');
         }
         await refuseHeldPart(transaction, request.cityId, version);
+        refuseUnconfirmedRights(version);
+        refuseGridNamesUnlessOwner(version, caller, request.cityId);
         await refuseUnchosenWorse(transaction, version, request);
         const result = approved({ ...version, estimate: version.estimate ?? estimateOf(version.output, now) }, caller.uid, now);
         await transaction.set(path, layerVersionDocSchema, result);
@@ -111,7 +135,7 @@ async function imageryApprove(
 
 /** The version's job is still unfinished and not at Mapbox, so rejecting it changes nothing published. */
 async function requireRejectable(deps: ApprovalDeps, request: VersionRequest): Promise<LayerVersionDoc> {
-    const version = await requireVersion(deps.documents, request.cityId, request.versionId);
+    const version = await requireVersion(deps.documents, request.cityId, request.versionId, layerVersionReadSchema);
     const job = await deps.documents.get(FIRESTORE_PATHS.job(request.cityId, version.jobId), jobDocSchema);
     const busyAtMapbox = job === undefined || FINISHED.has(job.status) || job.status === 'mts_processing';
     if (!REJECTABLE.has(version.state) || busyAtMapbox) {
@@ -133,7 +157,7 @@ async function rejectFailed(deps: ApprovalDeps, caller: VerifiedCaller, request:
     const path = FIRESTORE_PATHS.layerVersion(request.cityId, request.versionId);
     const stamp = stampOf(caller.uid, deps.clock.now());
     return deps.documents.transaction(async (transaction) => {
-        const version = await transaction.get(path, layerVersionDocSchema);
+        const version = await transaction.get(path, layerVersionReadSchema);
         if (version?.state !== 'failed') {
             throw new ApiError('apiError.imagery.versionState');
         }
@@ -169,7 +193,7 @@ async function imageryReject(
     caller: VerifiedCaller,
     request: VersionRequest,
 ): Promise<CallableResponse<'imagery.reject'>> {
-    const current = await requireVersion(deps.documents, request.cityId, request.versionId);
+    const current = await requireVersion(deps.documents, request.cityId, request.versionId, layerVersionReadSchema);
     await refuseHeldPart(deps.documents, request.cityId, current);
     await (current.state === 'failed' ? dismissFailed(deps, caller, request) : rejectWaiting(deps, caller, request));
     deps.log.info('layer version rejected', { uid: caller.uid, cityId: request.cityId, versionId: request.versionId, was: current.state });

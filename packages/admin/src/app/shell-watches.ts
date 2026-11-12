@@ -3,7 +3,8 @@
  * Setup is complete (`setup-readiness.ts`) and, since M4, the admin's unread notifications for the Notifications item's
  * badge (`../inbox/badge.ts`), and (finding 29 of 2026-10-31) whether Hosting serves a newer admin (`./release-watch.ts`).
  * Each follows the shell's state and stops with the app. Finding 72 of 2026-11-02: this computer's worker, paired while the
- * admin is open in a browser that set the computer up (`./local-watch.ts`, a listener of the shell's state of its own).
+ * admin is open in a browser that set the computer up (`./local-watch.ts`, a listener of the shell's state of its own). M13
+ * §3: the Contribute page's welcome follows the address (`./welcome.ts`).
  */
 import type { ContentStore } from '../content/services.js';
 import type { DocumentsPort } from '../firebase/ports.js';
@@ -11,9 +12,10 @@ import { InboxBadge } from '../inbox/badge.js';
 import type { ShellState, ShellStateAccess } from '../state/state.js';
 import { CityTheme } from './city-theme.js';
 import { watchComputer, type ComputerWatchDeps, type JobsStores, type ShellStates } from './local-watch.js';
-import type { KeyValueStore } from './ports.js';
+import type { HashLocation, KeyValueStore } from './ports.js';
 import { followReleases, type ReleaseFollowDeps } from './release-reload.js';
 import { SetupReadiness } from './setup-readiness.js';
+import { followWelcome } from './welcome.js';
 
 export interface ShellWatchSources {
     readonly firebase: { readonly documents: DocumentsPort };
@@ -31,7 +33,8 @@ export interface ShellWatchSources {
     readonly releases?: ReleaseFollowDeps['releases'];
     readonly visibility: ReleaseFollowDeps['visibility'];
     readonly clock: ReleaseFollowDeps['clock'];
-    readonly location: ReleaseFollowDeps['location'];
+    /** The address: the release's reload, and (M13 §3) the Contribute page's welcome while it is open. */
+    readonly location: ReleaseFollowDeps['location'] & HashLocation;
     readonly unsaved: ReleaseFollowDeps['unsaved'];
     /** Finding 72: the shell's state, the areas' stores, the pages and the log, for this computer's worker. */
     readonly states: ShellStates;
@@ -59,6 +62,9 @@ export function shellWatches(sources: ShellWatchSources, shell: ShellStateAccess
     const badge = new InboxBadge({ store: sources.store, shell, denied });
     const releases = followReleases(sources, shell);
     const computer = watchComputer(sources, sources.states, sources.stores);
+    const welcome = followWelcome(sources.location, sources.project.cities, (next) => {
+        shell.update({ welcome: next });
+    });
     return {
         stateChanged: (state) => {
             readiness.stateChanged(state);
@@ -71,6 +77,7 @@ export function shellWatches(sources: ShellWatchSources, shell: ShellStateAccess
             badge.stop();
             releases();
             computer();
+            welcome();
         },
     };
 }

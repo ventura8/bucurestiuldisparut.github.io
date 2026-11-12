@@ -48,6 +48,7 @@ test(
         await page.locator('hcm-poi-editor #category').selectOption('markets');
         await page.getByRole('button', { name: poisText(lang, 'adminContent.map.tool.addCentre') }).click();
         await page.getByRole('textbox', { name: poisText(lang, 'adminContent.pois.field.titleRo') }).fill('Hala Matache');
+        await page.locator('hcm-poi-editor #yearStart').fill('1890');
         await page.getByRole('button', { name: poisText(lang, 'adminContent.common.save'), exact: true }).click();
         await expect(page.getByText(poisText(lang, 'adminContent.pois.state.saved'), { exact: true })).toBeVisible();
         expect(Object.keys(await content.collection('pois'))).toHaveLength(1);

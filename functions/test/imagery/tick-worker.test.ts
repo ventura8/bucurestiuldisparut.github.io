@@ -89,6 +89,17 @@ describe('a local job no computer came for', () => {
         await expect(events(world)).resolves.toEqual([]);
     });
 
+    it('badPath_aLocalOnlyJobIsNeverOfferedTheCloud @S-A121-BAD-LOCAL-ONLY-CLOUD', async () => {
+        const world = await readyWorld();
+        const job = waiting(60, { localOnly: true });
+        await seedJob(world, JOB, job);
+
+        await offerCloud(world.deps, CITY, new Date(NOW));
+
+        await expect(readJob(world, JOB)).resolves.toEqual(job);
+        await expect(events(world)).resolves.toEqual([]);
+    });
+
     it('badPath_aWorkerSeenLatelyWillClaimItSoNothingIsSaid @S-A62-BAD-NO-WORKER-QUIET', async () => {
         const world = await readyWorld();
         const job = waiting(60);

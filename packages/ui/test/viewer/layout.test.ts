@@ -7,7 +7,7 @@ describe('layoutFor', () => {
         expect(layoutFor('compact', false)).toEqual({
             sheetMode: 'bottom',
             layersDocked: false,
-            timeline: 'horizontal',
+            timeline: 'vertical',
             aboutFullscreen: true,
         });
     });
@@ -30,7 +30,7 @@ describe('layoutFor', () => {
             expect(layoutFor(windowClass, true)).toEqual({
                 sheetMode: 'side',
                 layersDocked: false,
-                timeline: 'vertical',
+                timeline: 'horizontal',
                 aboutFullscreen: true,
             });
         }

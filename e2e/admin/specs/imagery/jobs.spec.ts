@@ -104,3 +104,101 @@ test(
         await expect(page.getByRole('button', { name: text(lang, 'adminContent.jobs.retry') })).toHaveCount(0);
     },
 );
+
+test(
+    'The Jobs page: the computer in a card above, the list and an open job side by side from 1200 px, stacked below',
+    { tag: ['@S-A62-HAPPY-JOBS-LAYOUT', '@S-A62-BAD-JOBS-LAYOUT'] },
+    async ({ page, lang, content }) => {
+        await seedCity(content, AT);
+        await seedJob(
+            content,
+            'failed',
+            { ...IMPORT, status: 'failed', versionId: 'failed', attempt: 1, createdBy: content.uid, steps: STEPS_OF_FAILED },
+            AT,
+        );
+
+        await page.setViewportSize({ width: 1680, height: 900 });
+        await page.goto(content.address(lang, 'jobs/failed', { map: false }));
+        const split = page.locator('hcm-jobs-page hcm-list-detail');
+        await expect(split).toHaveAttribute('split', '');
+        const card = page.locator('hcm-jobs-page details[data-computer]');
+        await expect(card).toHaveAttribute('open', '');
+        const [cardBox, listBox] = [await card.boundingBox(), await split.locator('.pane.list').boundingBox()];
+        expect(listBox?.width ?? 0).toBeGreaterThanOrEqual(360);
+        expect((cardBox?.y ?? Number.NaN) + (cardBox?.height ?? 0)).toBeLessThanOrEqual(listBox?.y ?? Number.NaN);
+
+        // Below 1200 px the open job replaces the list, with Back to it.
+        await page.setViewportSize({ width: 1100, height: 900 });
+        await expect(split).not.toHaveAttribute('split', '');
+        await expect(split.locator('.pane.list')).toBeHidden();
+        await expect(page.getByRole('button', { name: text(lang, 'adminContent.common.back') })).toBeVisible();
+    },
+);
+
+/** A series of a local archive (M20), as `imagery.archiveImport` queues it for the owner's computer. */
+const ARCHIVE_SERIES = {
+    type: 'archive-series',
+    params: {
+        archiveId: 'ar-0123456789abcdef',
+        seriesId: 's-0123456789ab',
+        class: 'grid',
+        sheets: 4,
+        encoding: 'lineart',
+        order: 0,
+        referenceLayerIds: [],
+    },
+    layerId: 'plan-1911',
+    runOn: 'local',
+    localOnly: true,
+};
+
+/** The failure an older worker image left (2026-11-09): the type it did not run, its attempts used up. */
+const OUTDATED_FAILURE = {
+    status: 'failed',
+    attempt: 3,
+    error: { code: 'apiError.invalidRequest', message: 'the pipeline does not run archive-series jobs' },
+};
+
+test(
+    'A job an outdated computer could not run offers Run it again past its attempts; an ordinary exhausted one does not',
+    { tag: ['@S-A12-HAPPY-RETRY-OUTDATED', '@S-A12-BAD-RETRY-EXHAUSTED'] },
+    async ({ page, lang, content }) => {
+        await seedCity(content, AT);
+        await content.emulators.setDocument(`cities/${content.city}/layerVersions/outdated`, {
+            ...{ layerId: 'plan-1911', origin: 'archive', state: 'failed', year: 1911, label: { ro: 'Plan 1911' } },
+            source: { kind: 'archive', archiveId: 'ar-0123456789abcdef', seriesId: 's-0123456789ab', sheetCount: 4 },
+            error: { code: 'apiError.invalidRequest' },
+            ...{ jobId: 'outdated', createdBy: 'system:imagery', createdAt: AT, updatedBy: 'system:imagery', updatedAt: AT },
+        });
+        await seedJob(content, 'outdated', { ...ARCHIVE_SERIES, ...OUTDATED_FAILURE, versionId: 'outdated', createdBy: content.uid }, AT);
+        await seedJob(
+            content,
+            'exhausted',
+            {
+                ...IMPORT,
+                status: 'failed',
+                versionId: 'exhausted',
+                attempt: 3,
+                createdBy: content.uid,
+                steps: STEPS_OF_FAILED,
+                error: { code: 'apiError.imagery.archiveCorrupt', message: 'the archive could not be read' },
+            },
+            AT,
+        );
+
+        // The archive's job by its own title, its error without a placeholder left in it, and Run it again.
+        await page.goto(content.address(lang, 'jobs/outdated', { map: false }));
+        await expect(page.getByRole('heading', { name: text(lang, 'adminContent.jobs.type.archiveSeries') })).toBeVisible();
+        await expect(page.locator('hcm-jobs-page')).not.toContainText('{count}');
+        const retry = page.getByRole('button', { name: text(lang, 'adminContent.jobs.retry') });
+        await expect(retry).toBeEnabled();
+        await retry.click();
+        await expect(page.locator('hcm-jobs-page .pane .chips .tag')).toContainText(text(lang, 'adminContent.jobs.status.queued'));
+        await expect.poll(async () => (await content.emulators.document(`cities/${content.city}/jobs/outdated`))?.['attempt']).toBe(0);
+
+        // An import that failed on its own three times stays failed, with no Run it again.
+        await page.goto(content.address(lang, 'jobs/exhausted', { map: false }));
+        await expect(page.getByRole('heading', { name: text(lang, 'adminContent.jobs.type.usgsImport') })).toBeVisible();
+        await expect(page.getByRole('button', { name: text(lang, 'adminContent.jobs.retry') })).toHaveCount(0);
+    },
+);

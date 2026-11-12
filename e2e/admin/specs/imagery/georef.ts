@@ -10,7 +10,8 @@ import { detail, imageryText, importFromList, versionState } from './world.js';
  * The georeferencer's world for its specs (docs/research/M3-interfaces.md §10.4): a scene whose automatic georeferencing
  * found too few pairs (the stand-in's `no-match`: four corner pairs), opened in the georeferencer, and where a person
  * clicks to pair a landmark: on the scan at the pixel the scan's known transform puts it (e2e/admin/support/
- * imagery-geometry.ts), on the reference map at its place. The scan pane shows the whole preview centred until zoomed.
+ * imagery-geometry.ts), on the reference map at its place. The scan pane shows the whole preview centred until zoomed; the specs
+ * open it with Link the views off (a map zoomed to find a place would otherwise move the scan too), all but georef-linked.spec.ts.
  */
 
 const SCENE = 'DS1035-1057DA023';
@@ -28,21 +29,52 @@ export function georefText(
  * Imports the 1966 frame (the spec scripted its first attempt to find too few pairs) and opens its georeferencer from the
  * version's page; the version id.
  */
-export async function openGeoreferencer(page: Page, lang: 'ro' | 'en'): Promise<string> {
+export async function openGeoreferencer(page: Page, lang: 'ro' | 'en', options: ReadyOptions = {}): Promise<string> {
     const versionId = await importFromList(page, lang, SCENE);
     await expect(versionState(page, lang, 'adminContent.imagery.version.needsGcps')).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
     await detail(page)
         .getByRole('link', { name: imageryText(lang, 'adminContent.imagery.openGeoref') })
         .click();
-    await georeferencerReady(page, lang);
+    await georeferencerReady(page, lang, options);
     return versionId;
 }
 
-/** The georeferencer is open and settled: the map first (its centre is the keyboard's crosshair), then the scan. */
-export async function georeferencerReady(page: Page, lang: 'ro' | 'en'): Promise<void> {
+interface ReadyOptions {
+    /** Keep Link the views as the page opens it (on once a fit exists); else it is turned off. */
+    readonly linked?: boolean;
+}
+
+/** The toggle Link the views. */
+export function linkViews(page: Page, lang: 'ro' | 'en'): Locator {
+    return page.getByRole('button', { name: georefText(lang, 'adminContent.georef.linkViews'), exact: true });
+}
+
+/** The pages opened with Link the views off: a version with no fit gets one later (the toggle is enabled, and on, only then). */
+const UNLINKED = new WeakSet<Page>();
+
+/** Turns Link the views off where the page was opened unlinked and the toggle is now on (a fit appeared). */
+async function keepUnlinked(page: Page, lang: 'ro' | 'en'): Promise<void> {
+    const toggle = linkViews(page, lang);
+    if (UNLINKED.has(page) && (await toggle.getAttribute('aria-pressed')) === 'true') {
+        await toggle.click();
+        await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    }
+}
+
+/**
+ * The georeferencer is open and settled: the map first (its centre is the keyboard's crosshair), then the scan; Link the views off
+ * unless `linked`.
+ */
+export async function georeferencerReady(page: Page, lang: 'ro' | 'en', { linked = false }: ReadyOptions = {}): Promise<void> {
     await expect(page.getByRole('button', { name: georefText(lang, 'adminContent.georef.save') })).toBeVisible();
     await showPane(page, lang, 'map');
     await showPane(page, lang, 'scan');
+    if (linked) {
+        UNLINKED.delete(page);
+        return;
+    }
+    UNLINKED.add(page);
+    await keepUnlinked(page, lang);
 }
 
 /** The fit's errors line (`Fit error: … m`, then the checkpoints' error or why there is none). */
@@ -54,7 +86,7 @@ export function errorsLine(page: Page): Locator {
  * Shows one pane where the window shows one at a time (a compact window: the Scan | Map switch), and waits for it; both
  * panes show side by side from a medium window, where there is nothing to switch.
  */
-async function showPane(page: Page, lang: 'ro' | 'en', pane: 'scan' | 'map'): Promise<void> {
+export async function showPane(page: Page, lang: 'ro' | 'en', pane: 'scan' | 'map'): Promise<void> {
     const switcher = page.getByRole('radiogroup', { name: georefText(lang, 'adminContent.georef.pane.label') });
     if (await switcher.isVisible()) {
         await switcher.getByRole('radio', { name: georefText(lang, `adminContent.georef.pane.${pane}`) }).click();
@@ -80,7 +112,7 @@ export function pairRows(page: Page, lang: 'ro' | 'en'): Locator {
 }
 
 /** Where a full-resolution scan pixel is on the page, the scan shown whole (fitted and centred in its pane). */
-async function scanPointOf(
+export async function scanPointOf(
     page: Page,
     lang: 'ro' | 'en',
     pixel: { readonly x: number; readonly y: number },
@@ -96,6 +128,17 @@ async function scanPointOf(
         x: pane.x + (pane.width - width * scale) / 2 + pixel.x * SCAN_PREVIEW_SCALE * scale,
         y: pane.y + (pane.height - height * scale) / 2 + pixel.y * SCAN_PREVIEW_SCALE * scale,
     };
+}
+
+/**
+ * The full-resolution scan pixel at the scan pane's centre (its crosshair) and the pane's CSS pixels a scan pixel, as the pane says
+ * (`<hcm-scan-viewer>`'s `centre` and `view`): what a person sees in the middle of the scan, at what size.
+ */
+export async function scanCentre(page: Page): Promise<{ readonly x: number; readonly y: number; readonly scale: number }> {
+    return page.locator('hcm-scan-viewer').evaluate((viewer, previewScale) => {
+        const shown = viewer as unknown as { centre: { x: number; y: number }; view: { scale: number } };
+        return { x: shown.centre.x, y: shown.centre.y, scale: shown.view.scale * previewScale };
+    }, SCAN_PREVIEW_SCALE);
 }
 
 /** The landmarks a spec pairs (vertices of the world inside the scan), far enough apart that a click never lands on another pair. */
@@ -134,13 +177,18 @@ export async function addPair(page: Page, lang: 'ro' | 'en', place: LatLng, offs
     const point = await pointInView(page, lang, [lng, place.lat]);
     await page.mouse.click(point.x, point.y);
     await showPane(page, lang, 'scan');
+    await keepUnlinked(page, lang);
 }
 
 /**
  * Where a place is drawn on the reference map once it is in view: the map follows the selected pair closely, so a place
  * further away is brought in with Zoom out, as a person does.
  */
-async function pointInView(page: Page, lang: 'ro' | 'en', lngLat: [number, number]): Promise<{ readonly x: number; readonly y: number }> {
+export async function pointInView(
+    page: Page,
+    lang: 'ro' | 'en',
+    lngLat: [number, number],
+): Promise<{ readonly x: number; readonly y: number }> {
     const map = page.locator('hcm-admin-map');
     const zoomOut = map.getByRole('button', { name: georefText(lang, 'adminContent.map.zoomOut'), exact: true });
     for (let attempt = 0; attempt < 8; attempt += 1) {

@@ -85,6 +85,7 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.history.notFound': spec('not-found'),
     'apiError.history.nothingToRestore': spec('failed-precondition'),
     'apiError.history.invalidSnapshot': spec('failed-precondition'),
+    'apiError.history.placeYear': spec('failed-precondition'),
     'apiError.history.layerGone': spec('failed-precondition'),
     'apiError.mapbox.publicToken': spec('invalid-argument'),
     'apiError.mapbox.tokenFormat': spec('invalid-argument'),
@@ -166,7 +167,8 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.workerLost': spec('unavailable'),
     // M8 (docs/research/M8-join-interfaces.md §4): joining frames of one date into one layer.
     'apiError.imagery.joinMixedFrames': spec('invalid-argument'),
-    'apiError.imagery.joinTwoPublished': spec('failed-precondition'),
+    // Batch 4: a frame a newer join of its date stamped (a failed join's retry cannot take it back).
+    'apiError.imagery.joinPartTaken': spec('failed-precondition'),
     'apiError.imagery.joinPartGone': spec('failed-precondition'),
     'apiError.imagery.joinPartHeld': spec('failed-precondition'),
     // M18 item 4: a join whose published frame's layer is busy; the admin offers to join once it is free.
@@ -182,6 +184,21 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.refineUnmeasured': spec('failed-precondition'),
     'apiError.imagery.notBetter': spec('failed-precondition'),
     'apiError.imagery.joinRecalibrate': spec('failed-precondition'),
+    // M20 (docs/research/M20-import-local.md §1): a local archive's series never moves to the cloud, never publishes before its
+    // rights are confirmed, runs only where its originals are, and is imported once.
+    'apiError.imagery.localOnly': spec('failed-precondition'),
+    'apiError.imagery.rightsUnconfirmed': spec('failed-precondition'),
+    'apiError.imagery.archiveMissing': spec('failed-precondition'),
+    'apiError.imagery.archiveImported': spec('failed-precondition'),
+    'apiError.imagery.archiveYear': spec('failed-precondition'),
+    // M25 (docs/research/M25-landsat.md §3): a Landsat delivery without a band the true colour needs {band}.
+    'apiError.imagery.missingBand': spec('failed-precondition'),
+    // A job type the worker's pipeline does not run: its image is older than the job; an updated one's retry runs it.
+    'apiError.imagery.pipelineOutdated': spec('failed-precondition'),
+    // A version is deleted only once it never reached the map, nothing runs for it and no other version is built on it.
+    'apiError.imagery.deletePublished': spec('failed-precondition'),
+    'apiError.imagery.deleteRunning': spec('failed-precondition'),
+    'apiError.imagery.deleteInUse': spec('failed-precondition'),
     'apiError.worker.notHolder': spec('failed-precondition'),
     'apiError.worker.refused': spec('permission-denied'),
     // Finding 67 of 2026-11-02: a pairing code unknown, used or expired (one answer for the three), and a disconnected computer.
@@ -218,6 +235,7 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.review.licenseUnknown': spec('failed-precondition'),
     'apiError.review.changed': spec('failed-precondition'),
     'apiError.review.storyEmpty': spec('failed-precondition'),
+    'apiError.review.placeYear': spec('failed-precondition'),
     'apiError.suggestion.dailyLimit': spec('resource-exhausted'),
     'apiError.suggestion.wrongKind': spec('failed-precondition'),
     'apiError.suggestion.outsideCity': spec('invalid-argument'),

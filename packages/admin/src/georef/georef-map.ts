@@ -1,8 +1,8 @@
 /**
  * The georeferencer's reference map (`docs/research/M3-interfaces.md` §10.4): one map per page visit, Mapbox Standard
  * (**never Satellite**), with the version's reference image (OpenStreetMap lines or Sentinel-2) and the live warped
- * preview as canvas pictures (`../imagery/overlay.ts`), and the pairs' places as points of the drawing tools: dragged in
- * `select`, still (`static`) while pairs are being added, when a click on the map is the place of the next pair.
+ * preview as canvas pictures (`../imagery/overlay.ts`). Pair places stay Terra Draw hit targets (transparent); badges
+ * are painted on a canvas overlay identical to the scan (owner, 2026-11-11; `./marker-overlay.ts`).
  */
 import {
     bboxCenter,
@@ -15,23 +15,21 @@ import {
     type LngLat,
     type Locale,
     type Logger,
+    type MapView,
 } from '@hcm/shared';
+import { PAIR_HIT_RADIUS, type BadgeTone } from '@hcm/ui/admin/georef/marker-badge';
 import type { Unsubscribe } from '@hcm/ui/map';
 import type { DrawChange, MapDrawPort } from '@hcm/ui/map/draw';
 
 import { PictureOverlays } from '../imagery/overlay.js';
 import type { CityFrame, MapStatus } from '../layers/map-session.js';
 import type { AdminMapFactory, AdminMapHandle, AdminMapResult } from '../map/factory.js';
-import type { GeoPosition } from './pairs.js';
-import type { GeorefVersion } from './state.js';
+import type { ProjectableMapPort } from '../map/projection.js';
+import { DRAW_HIT_COLOR, GeorefMarkerOverlay } from './marker-overlay.js';
+import { roundGeo, type GeoPosition } from './pairs.js';
+import type { MapCamera } from './linked-views.js';
+import type { GeorefVersion, MapTarget } from './state.js';
 import type { SuggestionRow } from './suggestions.js';
-
-/** The pairs' colour on the map. */
-export const PAIR_COLOR = '#d81b60';
-
-/** The matcher's suggestions on the map (M4 §2.5): flags in their own colour, labelled `a1`, `a2`, … from zoom 16. */
-export const SUGGESTION_COLOR = '#8a5a00';
-export const SUGGESTIONS_OVERLAY_ID = 'georef-suggestions';
 
 /** The reference's box as the map's frame. */
 export function referenceFrame(version: GeorefVersion | null): CityFrame | null {
@@ -50,11 +48,16 @@ export interface GeorefMapDeps {
     readonly moved: (id: string, geo: GeoPosition) => void;
     /** A pair's point was selected on the map (null: none). */
     readonly selected: (id: string | null) => void;
+    /** The map's camera moved (the linked views). */
+    readonly viewed: (view: MapView) => void;
+    /** The map is made and shows `view` (the linked views' camera before the owner's first move). */
+    readonly shown: (view: MapView) => void;
 }
 
 export class GeorefMap {
     readonly #deps: GeorefMapDeps;
     readonly overlays: PictureOverlays;
+    readonly #badges = new GeorefMarkerOverlay();
     #container: HTMLElement | null = null;
     #frame: CityFrame | null = null;
     #handle: AdminMapHandle | null = null;
@@ -63,7 +66,13 @@ export class GeorefMap {
     #pairs: readonly Gcp[] = [];
     #selected: string | null = null;
     #suggestions: readonly SuggestionRow[] = [];
+    #selectedSuggestion: string | null = null;
+    #half: GeoPosition | null = null;
+    #crosshair = false;
+    #tones: Readonly<Record<string, BadgeTone>> = {};
     #adding = false;
+    /** A point of the map is being dragged (Terra Draw's change not yet settled): the linked views stand still. */
+    dragging = false;
     /** Bumped by every attach and detach: a slower create of an older host is dropped. */
     #generation = 0;
 
@@ -95,6 +104,37 @@ export class GeorefMap {
         return view === undefined ? null : { lat: view.center[1], lng: view.center[0] };
     }
 
+    /** The place under a point of the map's box (CSS px) and the pair drawn within the panes' hit radius; null without a map. */
+    targetAt(point: { readonly x: number; readonly y: number }): MapTarget | null {
+        const port = this.#handle?.port;
+        return port === undefined ? null : this.#targetOn(port, point);
+    }
+
+    #targetOn(port: ProjectableMapPort, point: { readonly x: number; readonly y: number }): MapTarget | null {
+        const at = port.unproject(point);
+        return at === null ? null : { geo: { lat: at[1], lng: at[0] }, hit: this.#hitAt(port, point) };
+    }
+
+    /** The nearest pair drawn within `PAIR_HIT_RADIUS` of `point`, or null. */
+    #hitAt(port: ProjectableMapPort, point: { readonly x: number; readonly y: number }): string | null {
+        let best: string | null = null;
+        let distance = PAIR_HIT_RADIUS;
+        for (const pair of this.#pairs) {
+            const drawn = port.project([pair.geo.lng, pair.geo.lat]);
+            const here = drawn === null ? Number.POSITIVE_INFINITY : Math.hypot(drawn.x - point.x, drawn.y - point.y);
+            if (here <= distance) {
+                best = pair.id;
+                distance = here;
+            }
+        }
+        return best;
+    }
+
+    /** The linked views: the map jumps to `camera` (its `move` comes back at once, which the link drops). */
+    follow(camera: MapCamera): void {
+        this.#handle?.port.flyTo(camera, { animate: false });
+    }
+
     zoomBy(delta: number): void {
         const port = this.#handle?.port;
         if (port !== undefined) {
@@ -102,17 +142,77 @@ export class GeorefMap {
         }
     }
 
+    /** Residual tones for both panes' badges. */
+    setTones(tones: Readonly<Record<string, BadgeTone>>): void {
+        this.#tones = tones;
+        this.#paintBadges();
+    }
+
+    /** Half pair started on the map (a `+` at that place). */
+    setHalf(half: GeoPosition | null): void {
+        this.#half = half;
+        this.#paintBadges();
+    }
+
+    /** Keyboard focus on the map pane: crosshair at the centre. */
+    setCrosshair(on: boolean): void {
+        this.#crosshair = on;
+        this.#paintBadges();
+    }
+
+    /**
+     * Nudge the selected pair by screen CSS px (1 / 10 with Shift), mirroring the scan pane. Returns false when there is
+     * no selected pair or no map.
+     */
+    nudgeSelected(dx: number, dy: number): boolean {
+        const moved = this.#nudgedGeo(dx, dy);
+        if (moved === null) {
+            return false;
+        }
+        this.#deps.moved(moved.id, moved.geo);
+        return true;
+    }
+
+    #nudgedGeo(dx: number, dy: number): { readonly id: string; readonly geo: GeoPosition } | null {
+        const id = this.#selected;
+        const port = this.#handle?.port;
+        if (id === null || port === undefined) {
+            return null;
+        }
+        const pair = this.#pairs.find((item) => item.id === id);
+        if (pair === undefined) {
+            return null;
+        }
+        return this.#shiftPair(id, pair, port, { dx, dy });
+    }
+
+    #shiftPair(
+        id: string,
+        pair: Gcp,
+        port: ProjectableMapPort,
+        delta: { readonly dx: number; readonly dy: number },
+    ): { readonly id: string; readonly geo: GeoPosition } | null {
+        const at = port.project([pair.geo.lng, pair.geo.lat]);
+        if (at === null) {
+            return null;
+        }
+        const next = port.unproject({ x: at.x + delta.dx, y: at.y + delta.dy });
+        return next === null ? null : { id, geo: { lng: next[0], lat: next[1] } };
+    }
+
     /** The pairs' places, the selected one selected. */
     showPairs(pairs: readonly Gcp[], selected: string | null): void {
         this.#pairs = pairs;
         this.#selected = selected;
         this.#loadPairs();
+        this.#paintBadges();
     }
 
     /** The suggestions still to decide, the selected one first so its label is drawn on top. */
     showSuggestions(rows: readonly SuggestionRow[], selected: string | null): void {
         this.#suggestions = rows.toSorted((a, b) => Number(b.pair.id === selected) - Number(a.pair.id === selected));
-        this.#loadSuggestions();
+        this.#selectedSuggestion = selected;
+        this.#paintBadges();
     }
 
     /** While adding pairs a click on the map is a place, not a selection: the points stand still. */
@@ -127,40 +227,25 @@ export class GeorefMap {
         for (const stop of this.#listeners.splice(0)) {
             stop();
         }
+        this.#badges.detach();
         this.overlays.clear();
         this.#draw = null;
+        this.dragging = false;
         this.#handle?.destroy();
         this.#handle = null;
         this.#deps.status('none');
     }
 
-    /** The suggestions as a POI-like overlay that clicks pass through (a click on the map stays a place). */
-    #loadSuggestions(): void {
-        const port = this.#handle?.port;
-        if (port === undefined) {
-            return;
-        }
-        const features = this.#suggestions.map((row) => {
-            const coordinates: [number, number] = [row.pair.geo.lng, row.pair.geo.lat];
-            return {
-                type: 'Feature' as const,
-                geometry: { type: 'Point' as const, coordinates },
-                properties: { id: row.pair.id, title: row.label },
-            };
+    #paintBadges(): void {
+        this.#badges.setScene({
+            pairs: this.#pairs,
+            selected: this.#selected,
+            suggestions: this.#suggestions,
+            selectedSuggestion: this.#selectedSuggestion,
+            half: this.#half,
+            crosshair: this.#crosshair,
+            tones: this.#tones,
         });
-        port.addVectorOverlay(
-            {
-                id: SUGGESTIONS_OVERLAY_ID,
-                kind: 'poi',
-                features,
-                color: SUGGESTION_COLOR,
-                icon: 'flag',
-                visible: true,
-                opacity: 1,
-                clickable: false,
-            },
-            'top',
-        );
     }
 
     #loadPairs(): void {
@@ -215,7 +300,13 @@ export class GeorefMap {
             result.map.port.onMapClick(([lng, lat]) => {
                 this.#deps.clicked({ lat, lng });
             }),
+            result.map.port.on('move', this.#deps.viewed),
         );
+        this.#deps.shown(result.map.port.getView());
+        const host = this.#container;
+        if (host !== null) {
+            this.#badges.attach(host, result.map.port);
+        }
         await this.#tools(result.map, frame, generation);
     }
 
@@ -226,7 +317,7 @@ export class GeorefMap {
             return;
         }
         const limits = bboxExpand(frame.bounds, PHOTO_LOCATION_SLACK_DEG);
-        draw.attach(handle.port, { limits, color: PAIR_COLOR, maxVertices: MAX_GEOMETRY_VERTICES, maxRings: MAX_POLYGON_RINGS });
+        draw.attach(handle.port, { limits, color: DRAW_HIT_COLOR, maxVertices: MAX_GEOMETRY_VERTICES, maxRings: MAX_POLYGON_RINGS });
         this.#draw = draw;
         this.#listeners.push(
             draw.on('change', (change) => {
@@ -238,17 +329,30 @@ export class GeorefMap {
         );
         draw.setMode(this.#adding ? 'static' : 'select');
         this.#loadPairs();
-        this.#loadSuggestions();
+        this.#paintBadges();
     }
 
     #changed(change: DrawChange): void {
+        this.dragging = !change.final;
         if (!change.final) {
             return;
         }
-        // Only the pairs' points are loaded: every feature is a Point.
+        // Terra Draw's settle emits every point; only a place that moved is an edit (else one drag burns one Undo per pair).
         for (const feature of change.features) {
-            const [lng, lat] = (feature.geometry as { readonly coordinates: LngLat }).coordinates;
-            this.#deps.moved(feature.id, { lat, lng });
+            this.#movedFeature(feature);
+        }
+    }
+
+    /** A settled point whose place differs from the pair's: one Undo step. */
+    #movedFeature(feature: DrawChange['features'][number]): void {
+        const pair = this.#pairs.find((item) => item.id === feature.id);
+        if (pair === undefined || feature.geometry.type !== 'Point') {
+            return;
+        }
+        const [lng, lat] = feature.geometry.coordinates as LngLat;
+        const geo = roundGeo({ lat, lng });
+        if (geo.lat !== pair.geo.lat || geo.lng !== pair.geo.lng) {
+            this.#deps.moved(feature.id, geo);
         }
     }
 }

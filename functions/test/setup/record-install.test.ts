@@ -45,6 +45,28 @@ describe('setup.recordCloud: the install targets', () => {
         expect(response.status.install).toEqual({ server: later, site });
     });
 
+    // Finding of 2026-11-12: install records stored with Firestore timestamps failed every Setup write (setup.recordCloud, ops.tick).
+    it('happyPath_aStoredAreaThatNoLongerValidatesIsReplacedByTheNextReport @S-A11-HAPPY-USGS-BESIDE-BAD-AREA', async () => {
+        const world = createWorld();
+        const usgs = { state: 'ok', role: 'download' } as const;
+        const broken = { server: { ...SERVER, checkedAt: CHECKED }, site: { ...SERVER, checkedAt: CHECKED } };
+        world.documents.seed(FIRESTORE_PATHS.setupStatus, { usgs, install: broken, updatedBy: 'u-overnight', updatedAt: CHECKED });
+
+        const response = await recordCloud(world.deps, ADMIN, { install: { server: SERVER } });
+
+        expect(response.status.install).toEqual({ server: SERVER });
+        expect(world.status()).toMatchObject({ usgs, install: { server: SERVER } });
+    });
+
+    it('badPath_aMalformedUsgsRecordIsDroppedSoSetupAndImageryBothSayUsgsIsMissing @S-A11-BAD-USGS-RECORD-MALFORMED', async () => {
+        const world = createWorld();
+        world.documents.seed(FIRESTORE_PATHS.setupStatus, { usgs: { state: 'bogus' }, updatedBy: ADMIN.uid, updatedAt: CHECKED });
+
+        await recordCloud(world.deps, ADMIN, { install: { server: SERVER } });
+
+        expect(world.status()?.usgs).toBeUndefined();
+    });
+
     it('badPath_aRequestWithALogLineOrATokenIsRefused', () => {
         expect(recordCloudRequestSchema.safeParse({ install: { server: { ...SERVER, log: 'ya29.token' } } }).success).toBe(false);
         expect(recordCloudRequestSchema.safeParse({ install: { server: { ...SERVER, detail: 'free text' } } }).success).toBe(false);

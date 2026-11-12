@@ -22,7 +22,25 @@ interface GeoPositionPort {
     readonly lng: number;
 }
 
+/** What the scan pane shows: the full-resolution pixel at its centre and its CSS pixels per scan pixel. */
+export interface ScanCameraPort {
+    readonly centre: PixelPositionPort;
+    readonly scale: number;
+}
+
 export type HalfPairPort = { readonly pixel: PixelPositionPort } | { readonly geo: GeoPositionPort };
+
+/** What the context menu finds under a point of the map: the place, and the pair drawn within the hit radius. */
+interface MapTargetPort {
+    readonly geo: GeoPositionPort;
+    readonly hit: string | null;
+}
+
+/** A point the context menu picked up: its end on `pane` follows the next click there. */
+interface MovingPort {
+    readonly id: string;
+    readonly pane: 'scan' | 'map';
+}
 
 export interface GeorefVersionPort {
     readonly id: string;
@@ -62,11 +80,15 @@ export interface GeorefViewState {
     readonly pairs: readonly Gcp[];
     readonly adding: boolean;
     readonly half: HalfPairPort | null;
+    /** The context menu's Move this point: the pair whose end the next click drops (Esc cancels). */
+    readonly moving: MovingPort | null;
     readonly selected: string | null;
     readonly transform: GeorefTransform;
     readonly fit: FitViewPort;
     readonly thresholdM: number;
     readonly dirty: boolean;
+    /** Undo has a remembered pair edit (up to 50). */
+    readonly canUndo: boolean;
     readonly saving: boolean;
     readonly refusal: AdminNoticeInputPort | null;
     readonly saved: string | null;
@@ -76,6 +98,10 @@ export interface GeorefViewState {
     readonly pane: 'scan' | 'map';
     /** M4: the matcher's suggestions still to decide. */
     readonly suggestions: SuggestionsViewPort;
+    /** Link the views (it acts once a fit exists). */
+    readonly linked: boolean;
+    /** Where the linked map last put the scan pane. */
+    readonly scanFollow: ScanCameraPort | null;
 }
 
 export interface GeorefIntentsPort {
@@ -89,6 +115,12 @@ export interface GeorefIntentsPort {
     remove(id: string): void;
     toggle(id: string): void;
     cancelHalf(): void;
+    /** The context menu's Add a point here: Add pairs on, then that end exactly as a click there. */
+    addAt(end: HalfPairPort): void;
+    /** The context menu's Move this point: the pair's end on `pane` follows the next click there. */
+    pickUp(id: string, pane: 'scan' | 'map'): void;
+    /** The place and the pair under a point of the map's box (CSS px from its corner); null without a map. */
+    mapTarget(point: PixelPositionPort): MapTargetPort | null;
     acceptSuggestion(id: string): void;
     acceptAllSuggestions(): void;
     rejectSuggestion(id: string): void;
@@ -102,6 +134,12 @@ export interface GeorefIntentsPort {
     /** M16: the points placed since the page opened, snapped into a new version of a published or waiting one. */
     snap(): Promise<boolean>;
     discard(): void;
+    /** The last change to the pairs taken back (an add, a move, a removal), one step at a time. */
+    undo(): void;
     attachMap(container: HTMLElement): void;
     zoomBy(delta: number): void;
+    setMapFocus(focused: boolean): void;
+    nudgeMap(dx: number, dy: number): void;
+    setLinked(linked: boolean): void;
+    scanMoved(camera: ScanCameraPort): void;
 }

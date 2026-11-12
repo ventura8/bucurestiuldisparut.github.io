@@ -333,6 +333,8 @@ const IMAGERY_PUBLISH_SPECS = [
     'specs/imagery/automation.spec.ts',
     // M8's join, from a date's row to the published layer.
     'specs/imagery/join.spec.ts',
+    // M25: Landsat from Find to the published layer, and the tick's own import.
+    'specs/imagery/landsat.spec.ts',
 ];
 const PIPELINE_SPECS = ['specs/imagery/pipeline.spec.ts', 'specs/imagery/worker-run.spec.ts', 'specs/imagery/join-pipeline.spec.ts'];
 

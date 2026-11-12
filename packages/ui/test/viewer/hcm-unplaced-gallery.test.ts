@@ -142,11 +142,16 @@ describe('<hcm-unplaced-gallery>', () => {
 });
 
 describe('the menu', () => {
-    it('happyPath_contributeOpensAPageOfItsOwn @S-V41-HAPPY-LINK', () => {
+    it('happyPath_contributeOpensAPageOfItsOwn_inTheMapsLanguage_namingTheCity @S-V41-HAPPY-LINK', () => {
         const openPage = vi.fn();
-        const store = new FakeStore(readyState({ ...testManifest(), contributeUrl: CONTRIBUTE }));
-        menuAction(store, fakeServices({ openPage }), 'contribute');
-        expect(openPage).toHaveBeenCalledWith(CONTRIBUTE);
+        const manifest = { ...testManifest(), contributeUrl: CONTRIBUTE };
+        menuAction(new FakeStore(readyState(manifest, { locale: 'en' })), fakeServices({ openPage }), 'contribute');
+        menuAction(new FakeStore(readyState(manifest, { locale: 'ro' })), fakeServices({ openPage }), 'contribute');
+        const [en, ro] = openPage.mock.calls.map(([url]) => new URL(String(url)));
+        expect(en?.hash).toBe('#/contribute/bucharest');
+        expect(en?.origin.concat(en.pathname)).toBe('https://demo.web.app/admin/');
+        expect(Object.fromEntries(en?.searchParams ?? [])).toEqual({ lang: 'en', name: manifest.city.name.en });
+        expect(Object.fromEntries(ro?.searchParams ?? [])).toEqual({ lang: 'ro', name: manifest.city.name.ro });
     });
 
     it('badPath_noPageNoOpening', () => {

@@ -53,7 +53,7 @@ const CITY_ICON_PNG = Buffer.from(DEFAULT_FAVICON_DATA_URL.slice(DEFAULT_FAVICON
 
 /**
  * Answers the public bucket's folder of `source.city` as the admin's publish leaves it: the manifest and, relative to it,
- * the photos, and the city's tab icon (behaviour V52: the generic city page fetches it to show it). Returns the addresses
+ * the photos, and the city's tab icon (behaviour V54: the generic city page fetches it to show it). Returns the addresses
  * asked, in order, the icon's left out.
  */
 export async function serveBucketCity(page: Page, source: BucketCity): Promise<string[]> {
