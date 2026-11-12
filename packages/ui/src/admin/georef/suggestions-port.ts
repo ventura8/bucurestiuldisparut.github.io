@@ -26,4 +26,6 @@ export interface SuggestionsViewPort {
     readonly confident: string | null;
     /** Those pairs lie almost in a line (they are not too few). */
     readonly noSpread: boolean;
+    /** The year of the published map the pairs were found on, or null (today's streets). */
+    readonly fromYear: number | null;
 }

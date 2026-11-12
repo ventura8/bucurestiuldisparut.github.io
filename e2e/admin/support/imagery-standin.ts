@@ -172,6 +172,9 @@ function terrainOf(run: Run): { readonly terrain?: Record<string, unknown> } {
     return { terrain: { source: 'glo30', reliefM: 4.2, rpc, heights } };
 }
 
+/** The published map the suggestions were found on. */
+export const SUGGESTED_FROM = { layerId: 'plan-1911', year: 1911 } as const;
+
 /** The suggestions' confidences (best first): one at the fit's confidence, three below it (M4 §2.3's "fewer" case). */
 const SUGGESTED_SCORES = [0.66, 0.58, 0.47, 0.35] as const;
 
@@ -214,8 +217,21 @@ function suggestedPairs(run: Run): Record<string, unknown> {
             score: SUGGESTED_SCORES[index] ?? 0.3,
         };
     });
+    // One more, made for an older and larger scan: its pixel lies off this one, so the page never offers it (none rather than bad ones).
+    const [first] = pairs;
+    const stale = first === undefined ? [] : [{ ...first, id: 'a005', pixel: { x: SCAN_SIZE.width + 500, y: 10 }, score: 0.9 }];
     const generatedAt = { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 };
-    return { method: 'orb', channels: ['s2', 'osm'], generatedAt, minConfidence: 0.6, tiles: { matched: 9, total: 64 }, pairs };
+    // Found on a published map of the city (M20 §3 c, the ladder): the page says which year.
+    const reference = { layerId: SUGGESTED_FROM.layerId, year: SUGGESTED_FROM.year };
+    return {
+        method: 'orb',
+        channels: ['layer'],
+        generatedAt,
+        minConfidence: 0.6,
+        tiles: { matched: 9, total: 64 },
+        reference,
+        pairs: [...pairs, ...stale],
+    };
 }
 
 function hasManualPoints(run: Run): boolean {

@@ -11,13 +11,16 @@ import { z } from 'zod';
 
 import { timestampSchema } from './firestore-common.js';
 import { gcpSchema, MAX_GCPS, type Gcp } from './georef.js';
-import { coded } from './primitives.js';
+import { coded, idSchema, yearSchema } from './primitives.js';
 
 /** The feature matcher that produced the suggestions: SIFT, or ORB when SIFT found too few keypoints; `junctions` for a drawn map's street junctions (M20 §3 c). */
 export const AUTO_GCP_METHODS = ['sift', 'orb', 'junctions'] as const;
 
-/** What the scan was matched against: Sentinel-2 L2A true colour, OpenStreetMap's lines as a distance field. */
-export const MATCH_CHANNELS = ['s2', 'osm'] as const;
+/**
+ * What the scan was matched against: Sentinel-2 L2A true colour, OpenStreetMap's lines as a distance field, or `layer`: a
+ * published layer of the city (an older or newer map, its own tiles), which the suggestions' `reference` names.
+ */
+export const MATCH_CHANNELS = ['s2', 'osm', 'layer'] as const;
 
 /** From this confidence (0 to 1) a pair joins the fit without a click; below it, it is a suggestion only. */
 export const AUTO_GCP_MIN_CONFIDENCE = 0.6;
@@ -48,6 +51,11 @@ export const gcpSuggestionsSchema = z.strictObject({
     minConfidence: z.number().min(0).max(1),
     /** Matching tiles that gave a pair, of the tiles tried. */
     tiles: z.strictObject({ matched: z.number().int().min(0), total: z.number().int().min(0) }),
+    /**
+     * The published layer of the city the pairs were found on (channel `layer`): its id and year. The georeferencer says "from the
+     * 1911 map" and shows that layer beside the scan. Absent: today's OpenStreetMap or Sentinel-2.
+     */
+    reference: z.strictObject({ layerId: idSchema, year: yearSchema }).optional(),
     /**
      * Pairs below the confidence, best first: origin `auto`, `score` = the confidence, `residualM` = how far the current
      * fit puts the pixel from its place (absent without a fit), `enabled` true (what an accepted one becomes).

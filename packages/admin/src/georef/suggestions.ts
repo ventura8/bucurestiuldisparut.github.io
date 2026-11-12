@@ -7,6 +7,11 @@
  * it (`offsetM`, computed again on every change of the pairs: the matcher's own `residualM` was against its fit of the
  * moment, and a version waiting for points had none). Nothing here writes: the accepted pairs are the page's unsaved
  * pairs until Save (`imagery.saveGcps`). Pure: the store keeps the rejected ids and the selection.
+ *
+ * None rather than bad ones (2026-11-13): a suggestion whose pixel lies outside the scan (made for an older scan) is never
+ * pending, and once the page has a fit, neither is one further than `FAR_FROM_FIT_M` from it (the owner's own points say it
+ * is wrong). The version's `reference` (the published layer the pairs were found on) is passed on so the panel says
+ * "from the 1911 map".
  */
 import {
     acceptSuggestions,
@@ -18,6 +23,9 @@ import {
     type Gcp,
     type LayerVersionDoc,
 } from '@hcm/shared';
+
+/** Beyond this many ground metres from the page's fit a suggestion is not offered: an old map's own distortion stays well under it. */
+export const FAR_FROM_FIT_M = 300;
 
 /** How sure the matching was, in words: from `AUTO_GCP_MIN_CONFIDENCE` high, from halfway down to the floor medium. */
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
@@ -50,9 +58,20 @@ export interface VersionSuggestions {
     readonly confident: string | null;
     /** The version waits because its confident pairs lie almost in a line (`noSpread`), not because they are too few. */
     readonly noSpread: boolean;
+    /** The year of the published map the pairs were found on, or null (today's streets). */
+    readonly fromYear: number | null;
+    /** The published layer the pairs were found on, or null. */
+    readonly fromLayer: string | null;
 }
 
-const NO_VERSION_SUGGESTIONS: VersionSuggestions = { matched: false, all: [], confident: null, noSpread: false };
+const NO_VERSION_SUGGESTIONS: VersionSuggestions = {
+    matched: false,
+    all: [],
+    confident: null,
+    noSpread: false,
+    fromYear: null,
+    fromLayer: null,
+};
 
 /** Why a version the matcher ran on waits for points: too few confident pairs, or enough that lie almost in a line. */
 const WAITING_CODES: readonly string[] = ['apiError.imagery.noMatch', 'apiError.imagery.noSpread'];
@@ -75,10 +94,22 @@ function waitsForSpread(doc: LayerVersionDoc): boolean {
     return waitsAfterMatching(doc) && doc.error?.code === 'apiError.imagery.noSpread';
 }
 
+/** The pair's pixel lies on the scan the version has now (always true when its size is unknown). */
+function onScan(doc: LayerVersionDoc, pair: Gcp): boolean {
+    const scan = doc.scan;
+    return scan === undefined || (pair.pixel.x >= 0 && pair.pixel.y >= 0 && pair.pixel.x < scan.width && pair.pixel.y < scan.height);
+}
+
+/** The published map the suggestions were found on: its year and layer, or nulls (today's streets). */
+function foundOn(doc: LayerVersionDoc): Pick<VersionSuggestions, 'fromYear' | 'fromLayer'> {
+    const reference = doc.suggestions?.reference;
+    return reference === undefined ? { fromYear: null, fromLayer: null } : { fromYear: reference.year, fromLayer: reference.layerId };
+}
+
 export function versionSuggestions(doc: LayerVersionDoc): VersionSuggestions {
     const confident = confidentOf(doc);
-    const all = doc.suggestions?.pairs ?? [];
-    return { matched: doc.suggestions !== undefined || confident !== null, all, confident, noSpread: waitsForSpread(doc) };
+    const all = (doc.suggestions?.pairs ?? []).filter((pair) => onScan(doc, pair));
+    return { matched: doc.suggestions !== undefined || confident !== null, all, confident, noSpread: waitsForSpread(doc), ...foundOn(doc) };
 }
 
 /** The panel's view: the pending suggestions, the selected one, and what the version says about its matching. */
@@ -89,9 +120,23 @@ export interface SuggestionsView {
     readonly selected: string | null;
     readonly confident: string | null;
     readonly noSpread: boolean;
+    readonly fromYear: number | null;
 }
 
-export const NO_SUGGESTIONS: SuggestionsView = { matched: false, total: 0, pending: [], selected: null, confident: null, noSpread: false };
+export const NO_SUGGESTIONS: SuggestionsView = {
+    matched: false,
+    total: 0,
+    pending: [],
+    selected: null,
+    confident: null,
+    noSpread: false,
+    fromYear: null,
+};
+
+/** A row the page's fit says is wrong: further from it than `FAR_FROM_FIT_M`. */
+function farFromFit(row: SuggestionRow): boolean {
+    return row.offsetM !== null && row.offsetM > FAR_FROM_FIT_M;
+}
 
 /** Suggestion `pair`, the `index`th of the version's list, as a row: its label, its confidence, its distance from `fit`. */
 function rowOf(pair: Gcp, index: number, fit: FittedTransform | null): SuggestionRow {
@@ -113,10 +158,11 @@ export function suggestionsView(source: VersionSuggestions, page: SuggestionsPag
     // An accepted suggestion moved since (a manual pair now) keeps its id: it is decided, not pending again.
     const placed = new Set(pairs.map((pair) => pair.id));
     const open = new Set(pendingSuggestions(source.all, pairs, rejected).map((pair) => pair.id));
-    const pending = source.all.flatMap((pair, index) => (open.has(pair.id) && !placed.has(pair.id) ? [rowOf(pair, index, fit)] : []));
+    const rows = source.all.flatMap((pair, index) => (open.has(pair.id) && !placed.has(pair.id) ? [rowOf(pair, index, fit)] : []));
+    const pending = rows.filter((row) => !farFromFit(row));
     const kept = pending.some((row) => row.pair.id === selected) ? selected : null;
-    const { matched, confident, noSpread } = source;
-    return { matched, total: source.all.length, pending, selected: kept, confident, noSpread };
+    const { matched, confident, noSpread, fromYear } = source;
+    return { matched, total: source.all.length, pending, selected: kept, confident, noSpread, fromYear };
 }
 
 /**
@@ -138,6 +184,11 @@ export class Suggestions {
         this.#source = NO_VERSION_SUGGESTIONS;
         this.#rejected = new Set();
         this.#selected = null;
+    }
+
+    /** The published layer the version's suggestions were found on (the picture the page shows beside the scan), or null. */
+    get fromLayer(): string | null {
+        return this.#source.fromLayer;
     }
 
     /** The panel's view for the page's pairs and its current fit. */

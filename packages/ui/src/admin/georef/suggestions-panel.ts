@@ -2,7 +2,7 @@
  * The georeferencer's Suggestions panel (`docs/research/M4-interfaces.md` §2.5; behaviour A44): the pairs the automatic
  * matching was less sure of, best first, each a row with its label (`a1`, … as its dashed markers on both panes), its
  * confidence in words and as a bar, how far the page's current fit puts it (computed again as pairs are accepted), and
- * Accept and Reject named after it; Accept all above (the keyboard then lands on the panel's heading). The keyboard reaches each row's name: focused, its markers are the selected ones; Enter accepts it, Delete
+ * Accept and Reject named after it, and the year of the published map they were found on when they come from one; Accept all above (the keyboard then lands on the panel's heading). The keyboard reaches each row's name: focused, its markers are the selected ones; Enter accepts it, Delete
  * rejects it. A version the matching left waiting says how many reliable pairs it found. Accepting only edits the
  * page's pairs: Save writes them. Text only: labels and numbers are never markup.
  */
@@ -104,6 +104,11 @@ function row(panel: SuggestionsPanel, item: SuggestionRowPort, index: number): T
 function list(panel: SuggestionsPanel): TemplateResult {
     const { locale, view } = panel;
     return html`<p class="note">${contentText(locale, 'adminContent.georef.suggestions.intro')}</p>
+        ${withValue(
+            view.fromYear === null ? null : String(view.fromYear),
+            (year) =>
+                html`<p class="note" data-state="from-map">${contentText(locale, 'adminContent.georef.suggestions.fromMap', { year })}</p>`,
+        )}
         <p class="note" id=${KEYS_ID}>${contentText(locale, 'adminContent.georef.suggestions.keys')}</p>
         <div class="actions">
             <hcm-button variant="filled" icon="check" ?disabled=${panel.locked} @click=${panel.onAcceptAll}

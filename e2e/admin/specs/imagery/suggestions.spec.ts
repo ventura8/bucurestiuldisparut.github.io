@@ -5,6 +5,7 @@ import { mapIdle } from '../../../support/map.js';
 import { expectStateSound } from '../../../support/state-check.js';
 import { adminVisit } from '../../../tour/states.js';
 import { FUNCTIONS_TIMEOUT_MS } from '../../support/emulators.js';
+import { SUGGESTED_FROM } from '../../support/imagery-standin.js';
 import { georefBadgesAt } from '../../support/map.js';
 import { ADMIN_LOCK, expect, test } from '../../support/test.js';
 import { addPair, errorsLine, georefText, landmark, openGeoreferencer, pairRows, showPane } from './georef.js';
@@ -84,7 +85,7 @@ async function savedGcps(imagery: Awaited<ReturnType<typeof readyImagery>>, vers
 
 test(
     'Suggested points are accepted with one click and saved',
-    { tag: '@S-A44-HAPPY' },
+    { tag: ['@S-A44-HAPPY', '@S-A44-HAPPY-FROM-MAP', '@S-A44-BAD-OFF-SCAN'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
         test.setTimeout(240_000);
         const imagery = await readyImagery(
@@ -113,8 +114,14 @@ test(
         );
         expect(await drawnSuggestions(page)).toBe(4);
         // The map paints them as canvas badges, like the scan (DECISIONS-for-review.md §143): a badge at each suggested place.
-        const places = await suggestedPlaces(imagery, versionId);
-        expect(places).toHaveLength(4);
+        // Five stored, four offered: the fifth was made for another scan (its pixel lies off this one) and is never listed or drawn.
+        const stored = await suggestedPlaces(imagery, versionId);
+        expect(stored).toHaveLength(5);
+        await expect(suggestionName(page, lang, 'a5')).toHaveCount(0);
+        await expect(
+            page.getByText(georefText(lang, 'adminContent.georef.suggestions.fromMap', { year: String(SUGGESTED_FROM.year) })),
+        ).toBeVisible();
+        const places = stored.slice(0, 4);
         await showPane(page, lang, 'map');
         await zoomOutToShow(page, lang, places);
         await expect.poll(() => georefBadgesAt(page, places)).toBe(4);

@@ -293,6 +293,12 @@ against Sentinel-2 (M3 §5.6, §5.9). M4 extends the same step; inputs and outpu
   the version (`S-A44-BAD-REJECTED-NEVER-SAVED`).
 - Keyboard: the list is reachable by Tab, Enter on a row accepts, Delete rejects; the markers follow the selection as
   M3's pairs do (`S-A44-HAPPY-KEYBOARD`).
+- **None rather than bad ones** (the owner, 2026-11-13): a suggestion whose pixel lies off the version's scan (made for
+  another scan) is never pending; once the page has a fit, neither is one more than `FAR_FROM_FIT_M` (300 m) from it
+  (`S-A44-BAD-OFF-SCAN`). The confidence reads in plain words: "Likely right" from `AUTO_GCP_MIN_CONFIDENCE`, else
+  "Check this" or "Check this carefully", with the percentage. Suggestions found on a published map of the city
+  (`suggestions.reference`, channel `layer`: M20 §1.7's ladder) say so: "Found by comparing with the 1911 map."
+  (`S-A44-HAPPY-FROM-MAP`).
 - **Input budget** (done): `acceptSuggestions` 2 (Accept all, Save).
 - **States** (§7.3): `georef.suggestions`, `georef.suggestions-accepted`, `georef.no-suggestions`.
 

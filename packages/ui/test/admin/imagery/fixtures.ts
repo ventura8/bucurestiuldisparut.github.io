@@ -292,7 +292,7 @@ export function georefState(overrides: Partial<GeorefViewState> = {}): GeorefVie
             previewOpacity: 0.7,
             map: 'none',
             pane: 'scan',
-            suggestions: { matched: false, total: 0, pending: [], selected: null, confident: null, noSpread: false },
+            suggestions: { matched: false, total: 0, pending: [], selected: null, confident: null, noSpread: false, fromYear: null },
         },
         ...overrides,
     };

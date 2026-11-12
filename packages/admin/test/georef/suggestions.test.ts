@@ -1,10 +1,10 @@
-import { FIRESTORE_PATHS, type Gcp, type LayerVersionDoc } from '@hcm/shared';
+import { FIRESTORE_PATHS, fitTransform, type Gcp, type LayerVersionDoc } from '@hcm/shared';
 import { FakeMap } from '@hcm/test-support/fake-map';
 import { FakeMapDraw } from '@hcm/test-support/fake-map-draw';
 import { describe, expect, it } from 'vitest';
 
 import { GEOREF_MODULE } from '../../src/georef/georef.js';
-import { confidenceLevel, suggestionsView, versionSuggestions } from '../../src/georef/suggestions.js';
+import { confidenceLevel, FAR_FROM_FIT_M, Suggestions, suggestionsView, versionSuggestions } from '../../src/georef/suggestions.js';
 import { createMapPreview } from '../../src/map/preview.js';
 import { settle } from '../app/fakes.js';
 import { factoryOf, host } from '../imagery/maps.js';
@@ -189,10 +189,45 @@ describe('the suggestions’ pure parts', () => {
 
         expect([confidenceLevel(0.6), confidenceLevel(0.45), confidenceLevel(0.44)]).toEqual(['high', 'medium', 'low']);
         const unscored = { ...pair('a9', 1, 1), origin: 'auto' as const };
-        const lone = { matched: true, all: [unscored], confident: null, noSpread: false };
+        const lone = { matched: true, all: [unscored], confident: null, noSpread: false, fromYear: null, fromLayer: null };
         expect(suggestionsView(lone, { pairs: [], fit: null, rejected: new Set(), selected: null }).pending[0]?.level).toBe('low');
         expect(view.pending.map((row) => row.label)).toEqual(['a2', 'a3']);
         expect(view.selected).toBeNull();
         expect(versionSuggestions({ ...doc, suggestions: undefined, error: undefined }).matched).toBe(false);
+    });
+
+    it('badPath_noneRatherThanBadOnesOffTheScanOrFarFromTheOwnersFitAreNotOffered', () => {
+        const doc = SUGGESTED as unknown as LayerVersionDoc;
+        const near = { ...pair('a1', 100, 100, 20), origin: 'auto' as const, score: 0.8 };
+        const far = { ...pair('a2', 200, 200, FAR_FROM_FIT_M * 4), origin: 'auto' as const, score: 0.9 };
+        const off = { ...pair('a3', 30_000, 100), origin: 'auto' as const, score: 0.9 };
+        const found = { ...doc, suggestions: { ...doc.suggestions, pairs: [near, far, off] } } as LayerVersionDoc;
+        const fitted = fitTransform('affine', [pair('g1', 0, 0), pair('g2', 1000, 0), pair('g3', 1000, 500), pair('g4', 0, 500)]);
+        if (!fitted.ok) {
+            throw new Error(fitted.reason);
+        }
+
+        const source = versionSuggestions(found);
+        const before = suggestionsView(source, { pairs: [], fit: null, rejected: new Set(), selected: null });
+        const after = suggestionsView(source, { pairs: [], fit: fitted.transform, rejected: new Set(), selected: null });
+
+        expect(source.all.map((gcp) => gcp.id)).toEqual(['a1', 'a2']);
+        expect(before.pending.map((row) => row.pair.id)).toEqual(['a1', 'a2']);
+        expect(after.pending.map((row) => row.pair.id)).toEqual(['a1']);
+    });
+
+    it('happyPath_suggestionsFoundOnAPublishedMapNameItsYearAndLayer', () => {
+        const doc = SUGGESTED as unknown as LayerVersionDoc;
+        const fromMap = {
+            ...doc,
+            suggestions: { ...doc.suggestions, channels: ['layer'], reference: { layerId: 'plan-1911', year: 1911 } },
+        };
+        const store = new Suggestions();
+
+        store.load(fromMap as LayerVersionDoc);
+
+        expect(store.fromLayer).toBe('plan-1911');
+        expect(store.view([], null).fromYear).toBe(1911);
+        expect(versionSuggestions(doc).fromYear).toBeNull();
     });
 });

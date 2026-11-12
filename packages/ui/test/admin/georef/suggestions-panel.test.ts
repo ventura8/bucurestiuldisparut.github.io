@@ -21,7 +21,7 @@ const ROWS: readonly SuggestionRowPort[] = [
 ];
 
 function view(overrides: Partial<SuggestionsViewPort> = {}): SuggestionsViewPort {
-    return { matched: true, total: 4, pending: ROWS, selected: null, confident: '2', noSpread: false, ...overrides };
+    return { matched: true, total: 4, pending: ROWS, selected: null, confident: '2', noSpread: false, fromYear: null, ...overrides };
 }
 
 function withSuggestions(overrides: Partial<SuggestionsViewPort> = {}, state: Partial<GeorefViewState> = {}): GeorefViewState {
@@ -77,11 +77,12 @@ describe('the georeferencer’s suggestions', () => {
         const text = deepText(element);
         expect(deep(element, '#suggestions-heading').textContent).toBe('Suggested pairs');
         expect(text).toContain('Reliable pairs found automatically: 2, too few for a fit.');
-        expect(text).toContain('Confidence medium: 58 %');
+        expect(text).toContain('Check this (58 %)');
         expect(text).toContain('3.2 m from the current fit');
         expect(text).toContain('No fit to compare it with yet');
         expect(text).not.toContain('99 m');
-        expect(text).toContain('Confidence high: 62 %');
+        expect(text).toContain('Likely right (62 %)');
+        expect(text).not.toContain('Found by comparing');
         expect(deepAll(element, 'button.suggestion').map((name) => name.textContent.trim())).toEqual([
             'Suggestion a1',
             'Suggestion a2',
@@ -177,14 +178,14 @@ describe('the georeferencer’s suggestions', () => {
         const unscored: Gcp = { id: 'a009', pixel: { x: 5, y: 5 }, geo: { lat: 44.42, lng: 26.1 }, enabled: true, origin: 'auto' };
         const { element } = await georefPage(withSuggestions({ pending: [{ label: 'a9', pair: unscored, level: 'low', offsetM: null }] }));
 
-        expect(deepText(element)).toContain('Confidence low: 0 %');
+        expect(deepText(element)).toContain('Check this carefully (0 %)');
         expect(deep(element, '[data-suggestion="a009"] .fill').style.getPropertyValue('--confidence')).toBe('0');
     });
 
     it('happyPath_romanianTexts', async () => {
         const { element } = await georefPage(withSuggestions(), { locale: 'ro' });
 
-        expect(deepText(element)).toContain('Încredere medie: 58 %');
+        expect(deepText(element)).toContain('Verific-o (58 %)');
         expect(() => button(element, 'Acceptă toate')).not.toThrow();
         expect(deepText(element)).toContain('La 3,2 m de potrivirea de acum');
     });
@@ -244,5 +245,11 @@ describe('the scan drawing of the suggestions', () => {
 
         expect(dashes.mock.calls).toEqual([[[4, 3]], [[]], [[4, 3]], [[]]]);
         expect(arcs.mock.calls.map((call) => call[2])).toEqual([11, 15]);
+    });
+
+    it('happyPath_pairsFoundOnAPublishedMapSayWhichYear', async () => {
+        const { element } = await georefPage(withSuggestions({ fromYear: 1911 }));
+
+        expect(deep(element, '[data-state="from-map"]').textContent).toBe('Found by comparing with the 1911 map.');
     });
 });
