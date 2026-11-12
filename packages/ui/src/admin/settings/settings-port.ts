@@ -3,7 +3,7 @@
  * structurally (`docs/research/M2c-interfaces.md` §2.3); `packages/admin/test/app/admin-port.test.ts` checks that the
  * real store satisfies it.
  */
-import type { CityDoc, Locale, OverlayKind, PoiCategoryDoc, ThemeTokens, ValidationIssue } from '@hcm/shared';
+import type { CityDoc, UiLocale, OverlayKind, PoiCategoryDoc, ThemeTokens, ValidationIssue } from '@hcm/shared';
 
 import type { DocStatePort, ListStatePort } from '../area-port.js';
 import type { BudgetIntentsPort, BudgetSectionPort } from '../cities/budget-port.js';
@@ -128,7 +128,7 @@ export interface SettingsIntentsPort extends ExportIntentsPort, BudgetIntentsPor
     retry(): void;
     editCity(patch: Partial<CityDoc>): void;
     setNumber(field: AreaNumberFieldPort, text: string): void;
-    setText(field: 'name' | 'about' | 'privacy', locale: Locale, text: string): void;
+    setText(field: 'name' | 'about' | 'privacy', locale: UiLocale, text: string): void;
     addCredit(): void;
     removeCredit(row: number): void;
     moveCredit(row: number, by: -1 | 1): void;
@@ -143,7 +143,7 @@ export interface SettingsIntentsPort extends ExportIntentsPort, BudgetIntentsPor
     moveCategory(id: string, direction: 'up' | 'down'): Promise<WriteOutcomePort | null>;
     moveCategoryTo(id: string, index: number): Promise<WriteOutcomePort | null>;
     editCategory(patch: Partial<Pick<PoiCategoryDoc, 'label' | 'icon' | 'color' | 'defaultOpacity'>>): void;
-    setCategoryLabel(locale: Locale, text: string): void;
+    setCategoryLabel(locale: UiLocale, text: string): void;
     setCategoryOpacity(percent: number): void;
     useProposedColor(): void;
     saveCategory(): Promise<string | null>;

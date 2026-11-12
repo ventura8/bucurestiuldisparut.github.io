@@ -5,7 +5,7 @@
  * number, Set direction (one click on the map), Point at map centre (the crosshair: no pointer needed) and the field of
  * view, whose cone the map redraws live.
  */
-import { DEFAULT_FOV, MAX_FOV, MIN_FOV, type Locale, type ValidationIssue } from '@hcm/shared';
+import { DEFAULT_FOV, MAX_FOV, MIN_FOV, type UiLocale, type ValidationIssue } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import type { FieldsLeft } from '../editing/number-fields.js';
@@ -15,7 +15,7 @@ import { fieldIssue, localized, messageText, photoHref, photoText } from './phot
 import type { PhotoEditorPort, PhotosIntentsPort, PhotoValuePort, ReplacePort, SuggestionPort } from './photos-port.js';
 
 export interface PlaceInput {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly editor: PhotoEditorPort;
     readonly value: PhotoValuePort;
     readonly issues: readonly ValidationIssue[];
@@ -38,7 +38,7 @@ const REPLACE_KEYS = {
 } as const;
 
 /** Cancel while uploading, nothing while processing, Close once it is over. */
-function replaceAction(locale: Locale, replace: ReplacePort, intents: PhotosIntentsPort | null): TemplateResult {
+function replaceAction(locale: UiLocale, replace: ReplacePort, intents: PhotosIntentsPort | null): TemplateResult {
     if (replace.phase === 'uploading') {
         return html`<hcm-button variant="text" icon="cancel" @click=${() => intents?.cancelReplace()}
             >${photoText(locale, 'adminContent.photos.replace.cancel')}</hcm-button
@@ -52,13 +52,13 @@ function replaceAction(locale: Locale, replace: ReplacePort, intents: PhotosInte
     >`;
 }
 
-function duplicateLink(locale: Locale, duplicateOf: string | null): TemplateResult {
+function duplicateLink(locale: UiLocale, duplicateOf: string | null): TemplateResult {
     return duplicateOf === null
         ? EMPTY
         : html`<a href=${photoHref(duplicateOf)}>${photoText(locale, 'adminContent.photos.openDuplicate')}</a>`;
 }
 
-function replaceStatus(locale: Locale, replace: ReplacePort, intents: PhotosIntentsPort | null): TemplateResult {
+function replaceStatus(locale: UiLocale, replace: ReplacePort, intents: PhotosIntentsPort | null): TemplateResult {
     const text = photoText(locale, REPLACE_KEYS[replace.phase], { percent: String(replace.percent) });
     return html`<div class="banner" role="status">
         <p>${text}</p>
@@ -69,7 +69,7 @@ function replaceStatus(locale: Locale, replace: ReplacePort, intents: PhotosInte
     </div>`;
 }
 
-function imageBody(locale: Locale, editor: PhotoEditorPort, title: string): TemplateResult {
+function imageBody(locale: UiLocale, editor: PhotoEditorPort, title: string): TemplateResult {
     if (editor.image !== null) {
         return html`<img class="image" src=${editor.image.web} alt=${photoText(locale, 'adminContent.photos.image.alt', { title })} />`;
     }

@@ -4,7 +4,7 @@
  * (another account's tileset, a credential in the address) is said at once; the fields' problems once Link was pressed.
  * A tile server's addresses must be allowed by the city site's CSP: the dialog names them.
  */
-import { LAYER_KINDS, translateApiError, type Locale } from '@hcm/shared';
+import { LAYER_KINDS, translateApiError, type UiLocale } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import { contentText } from '../shell/text.js';
@@ -12,7 +12,7 @@ import { field, issueAt } from './form-parts.js';
 import type { LayersIntentsPort, LinkFormPort, LinkStatePort } from './layers-port.js';
 
 function textField(
-    locale: Locale,
+    locale: UiLocale,
     link: LinkStatePort,
     intents: LayersIntentsPort | null,
     spec: { name: keyof LinkFormPort; path: string; key: Parameters<typeof contentText>[1]; help?: string; required?: boolean },
@@ -30,7 +30,7 @@ function textField(
     });
 }
 
-function choices(locale: Locale, link: LinkStatePort, intents: LayersIntentsPort | null): TemplateResult {
+function choices(locale: UiLocale, link: LinkStatePort, intents: LayersIntentsPort | null): TemplateResult {
     const kind = (event: Event): void => {
         intents?.editLink({ kind: (event.target as HTMLSelectElement).value as LinkFormPort['kind'] });
     };
@@ -63,24 +63,24 @@ function choices(locale: Locale, link: LinkStatePort, intents: LayersIntentsPort
     </div>`;
 }
 
-function refusalNote(locale: Locale, link: LinkStatePort): TemplateResult | typeof nothing {
+function refusalNote(locale: UiLocale, link: LinkStatePort): TemplateResult | typeof nothing {
     const refusal = link.refusal;
     return refusal === null
         ? nothing
         : html`<p class="alert" role="alert"><span>${translateApiError(locale, refusal.code, refusal.params)}</span></p>`;
 }
 
-function originsNote(locale: Locale, link: LinkStatePort): TemplateResult | typeof nothing {
+function originsNote(locale: UiLocale, link: LinkStatePort): TemplateResult | typeof nothing {
     const origins = link.origins.join(', ');
     return origins === '' ? nothing : html`<p class="note">${contentText(locale, 'adminContent.layers.cspNote', { origins })}</p>`;
 }
 
-function notes(locale: Locale, link: LinkStatePort): TemplateResult {
+function notes(locale: UiLocale, link: LinkStatePort): TemplateResult {
     return html`${refusalNote(locale, link)} ${originsNote(locale, link)}`;
 }
 
 /** Check's answer: checking, the tile's type, or why no tile came (S-A15-HAPPY-PROBED, S-A15-BAD-INVALID-URL). */
-function probeNote(locale: Locale, probe: LinkStatePort['probe']): TemplateResult {
+function probeNote(locale: UiLocale, probe: LinkStatePort['probe']): TemplateResult {
     if (probe.status === 'checking') {
         return html`<p class="note" role="status">${contentText(locale, 'adminContent.layers.checking')}</p>`;
     }
@@ -97,7 +97,7 @@ function probeNote(locale: Locale, probe: LinkStatePort['probe']): TemplateResul
 }
 
 /** Check, under the address: one tile asked by the server before the layer is linked. */
-function checkRow(locale: Locale, link: LinkStatePort, intents: LayersIntentsPort | null): TemplateResult {
+function checkRow(locale: UiLocale, link: LinkStatePort, intents: LayersIntentsPort | null): TemplateResult {
     return html`<div class="actions">
             <hcm-button
                 variant="tonal"
@@ -115,7 +115,7 @@ function checkRow(locale: Locale, link: LinkStatePort, intents: LayersIntentsPor
  * come first, under the intro: on a phone the form scrolls, and a reason below the fields would be out of sight.
  */
 export function linkDialog(
-    locale: Locale,
+    locale: UiLocale,
     link: LinkStatePort | null,
     intents: LayersIntentsPort | null,
     linked: (id: string) => void,

@@ -77,6 +77,7 @@ export const ro = {
     'adminShell.account.analytics': 'Statistici anonime de utilizare și performanță ale administrării (Google Analytics)',
     'adminShell.account.analyticsVisitor': 'Statistici anonime de utilizare și performanță ale paginii Contribuie (Google Analytics)',
     'adminShell.notice.close': 'Închide mesajul',
+    'adminShell.language.unavailable': 'Textele în {language} nu s-au putut încărca. Limba rămâne aceeași.',
     'adminShell.nav.close': 'Închide',
     'adminShell.page.unavailable': 'Pagina nu este încă disponibilă.',
     'adminShell.page.failed': 'Pagina nu s-a încărcat. Verifică legătura la internet și încearcă din nou.',

@@ -5,7 +5,7 @@
  * a sensitive one). It is text next to the button, never a dialog in between, so every consent costs exactly one click.
  * Setup-ui places it in its cards too.
  */
-import { DEFAULT_LOCALE, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, type UiLocale } from '@hcm/shared';
 import { LitElement, css, html, type TemplateResult } from 'lit';
 
 import { adminBase } from '../shell/admin-styles.js';
@@ -55,7 +55,7 @@ export class HcmConsentNote extends LitElement {
         `,
     ];
 
-    declare locale: Locale;
+    declare locale: UiLocale;
     declare scope: GoogleScopePort;
     declare projectId: string;
     /** The budget, already formatted (`5 USD`), for the billing scope's text. */

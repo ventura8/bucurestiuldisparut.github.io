@@ -703,6 +703,6 @@ export { expectKitJourneySound } from './kit-states.js';
 // [end kit]
 
 /** The visit of an admin state, in the project's language. */
-export function adminVisit(id: AdminStateId, lang: Locale, extra: Partial<StateVisit> = {}): StateVisit {
+export function adminVisit(id: AdminStateId, lang: ViewerLocale, extra: Partial<StateVisit> = {}): StateVisit {
     return { id: `admin.${id}`, title: ADMIN_STATES[id].title, lang, ...extra };
 }

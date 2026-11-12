@@ -3,7 +3,7 @@
  * hands each one the whole state (`view`), the controller's intents and the language; the body renders its slice as text and
  * calls an intent on each user action. Copy buttons write to the clipboard and say so.
  */
-import { DEFAULT_LOCALE, type AdminSetupKey, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, type AdminSetupKey, type UiLocale } from '@hcm/shared';
 import { LitElement, html, type TemplateResult } from 'lit';
 
 import { defineHcmIconButton } from '../../components/icon-button.js';
@@ -35,7 +35,7 @@ export abstract class SetupBody extends LitElement {
     /** The Setup Assistant's whole state (the page hands it to every body). */
     declare view: SetupViewState | null;
     declare intents: SetupIntentsPort | null;
-    declare locale: Locale;
+    declare locale: UiLocale;
     /** The name of the value just copied (its "Copied." note), or null. */
     declare copied: string | null;
 

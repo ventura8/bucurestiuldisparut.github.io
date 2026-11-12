@@ -14,7 +14,7 @@ import {
     poiDocSchema,
     type CityDoc,
     type Credit,
-    type Locale,
+    type UiLocale,
     type ThemeTokens,
     type ValidationIssue,
 } from '@hcm/shared';
@@ -132,7 +132,7 @@ export class CitySections {
     }
 
     /** The name, About or privacy text in one language (an empty English text is removed; so is an empty optional text). */
-    setText(field: 'name' | 'about' | 'privacy', locale: Locale, text: string): void {
+    setText(field: 'name' | 'about' | 'privacy', locale: UiLocale, text: string): void {
         const city = this.#draft?.state.value ?? null;
         if (city === null) {
             return;

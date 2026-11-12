@@ -14,7 +14,7 @@ import {
     type AdminContentKey,
     type AdminSetupKey,
     type AdminShellKey,
-    type Locale,
+    type UiLocale,
 } from '@hcm/shared';
 
 import type { AdminNoticeInputPort, AdminNoticeKey } from '../admin-port.js';
@@ -22,12 +22,12 @@ import type { AdminNoticeInputPort, AdminNoticeKey } from '../admin-port.js';
 type Params = Readonly<Record<string, string>>;
 
 /** A shell text. */
-export function shellText(locale: Locale, key: AdminShellKey, params?: Params): string {
+export function shellText(locale: UiLocale, key: AdminShellKey, params?: Params): string {
     return translateAdminShell(locale, key, params);
 }
 
 /** An editor text (`docs/research/M2c-interfaces.md` §10.1). */
-export function contentText(locale: Locale, key: AdminContentKey, params?: Params): string {
+export function contentText(locale: UiLocale, key: AdminContentKey, params?: Params): string {
     return translateAdminContent(locale, key, params);
 }
 
@@ -40,7 +40,7 @@ function isContentKey(key: AdminNoticeKey): key is AdminContentKey {
 }
 
 /** Any admin message key, by its family. */
-export function noticeText(locale: Locale, key: AdminNoticeKey, params?: Params): string {
+export function noticeText(locale: UiLocale, key: AdminNoticeKey, params?: Params): string {
     if (isApiErrorCode(key)) {
         return translateApiError(locale, key, params);
     }
@@ -51,6 +51,6 @@ export function noticeText(locale: Locale, key: AdminNoticeKey, params?: Params)
 }
 
 /** A notice as text (none: empty). */
-export function noticeOf(locale: Locale, notice: AdminNoticeInputPort | null): string {
+export function noticeOf(locale: UiLocale, notice: AdminNoticeInputPort | null): string {
     return notice === null ? '' : noticeText(locale, notice.key, notice.params);
 }

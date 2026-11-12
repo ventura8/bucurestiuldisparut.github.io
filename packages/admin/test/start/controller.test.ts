@@ -2,7 +2,7 @@
  * The start page's run (`docs/research/M14-start-your-map.md`) end to end over the fake upstreams, with the browser's other
  * parts as plain objects: every step looks before it acts, a failure says why and what to do, a reload resumes.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { StartController } from '../../src/start/controller.js';
 import { rememberState, savePlan, type StartPlan } from '../../src/start/plan.js';
@@ -429,5 +429,32 @@ describe('the start page, after the release', () => {
         controller.intents.setLocale('en');
         expect(heard).toBe(1);
         expect(world.session.get('hcm:start:lang')).toBe('en');
+    });
+
+    it('happyPath_aLanguageBeyondTheBundledTwoShowsOnceItsTextsAreHere', async () => {
+        const world = startWorld();
+        const loadTexts = vi.fn(() => Promise.resolve(true));
+        const controller = new StartController({ ...world.deps, search: '?lang=uk', loadTexts });
+        expect(controller.view.locale).toBe('en');
+        await controller.start();
+        await vi.waitFor(() => {
+            expect(controller.view.locale).toBe('uk');
+        });
+        controller.intents.setLocale('ko');
+        await vi.waitFor(() => {
+            expect(controller.view.locale).toBe('ko');
+        });
+        expect(world.session.get('hcm:start:lang')).toBe('ko');
+    });
+
+    it('badPath_aLanguageWhoseTextsCannotBeFetchedKeepsTheLanguageAndSaysSo', async () => {
+        const world = startWorld();
+        const controller = new StartController({ ...world.deps, loadTexts: () => Promise.resolve(false) });
+        controller.intents.setLocale('vi');
+        await vi.waitFor(() => {
+            expect(controller.view.notice).toBe('start.languageUnavailable');
+        });
+        expect(controller.view.locale).toBe('en');
+        expect(world.session.get('hcm:start:lang')).toBeUndefined();
     });
 });

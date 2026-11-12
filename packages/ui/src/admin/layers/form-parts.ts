@@ -6,7 +6,7 @@
  * admin's page is read-only (`DECISIONS-for-review.md` §42d): a field is `readOnly`, a slider `disabled`, the save row's
  * `readOnly` turns Save and Discard off. Text only: every value is bound as a property or text, never as markup.
  */
-import type { AdminContentKey, Locale, ValidationIssue } from '@hcm/shared';
+import type { AdminContentKey, UiLocale, ValidationIssue } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 import { live } from 'lit/directives/live.js';
 
@@ -99,7 +99,7 @@ function inputOf(spec: FieldSpec): TemplateResult {
  * as its hint, and what is typed handed on as an ISO date once it reads as one (a text that does not stays as typed, so
  * Save names the problem at the field).
  */
-function dateSpec(locale: Locale, spec: FieldSpec): FieldSpec {
+function dateSpec(locale: UiLocale, spec: FieldSpec): FieldSpec {
     const pattern = contentText(locale, 'adminContent.common.datePattern');
     return {
         ...spec,
@@ -114,7 +114,7 @@ function dateSpec(locale: Locale, spec: FieldSpec): FieldSpec {
 }
 
 /** One labelled field; its problem, when Save found one, is said under it and named to assistive technology. */
-export function field(locale: Locale, given: FieldSpec): TemplateResult {
+export function field(locale: UiLocale, given: FieldSpec): TemplateResult {
     const spec = given.type === 'date' ? dateSpec(locale, given) : given;
     const helpId = `${spec.id}-help`;
     const errorId = `${spec.id}-error`;
@@ -224,7 +224,7 @@ export interface SaveHandlers {
     readonly discard: () => void;
 }
 
-export function saveBar(locale: Locale, texts: SaveTexts, state: SaveState, handlers: SaveHandlers): TemplateResult {
+export function saveBar(locale: UiLocale, texts: SaveTexts, state: SaveState, handlers: SaveHandlers): TemplateResult {
     const open = state.readOnly !== true && !state.saving;
     const canSave = state.dirty && open && !state.blocked;
     return html`<div class="save-bar">
@@ -259,7 +259,7 @@ export interface BannerOptions {
  * keeps their own changes or takes the saved version (neither on a read-only page).
  */
 export function conflictBanner(
-    locale: Locale,
+    locale: UiLocale,
     texts: ConflictTexts,
     conflict: ConflictPort | null,
     options: BannerOptions,

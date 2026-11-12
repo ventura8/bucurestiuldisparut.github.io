@@ -6,7 +6,7 @@
  * page goes (every map load is billed, §3.5). The page's dialogs: delete (one place, or the selection), redraw, move
  * the selection, the photo picker and the import; the export is saved as a file from here.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { cityRoleOfState } from '../shell/city-role.js';
 import { html, type PropertyValues, type TemplateResult } from 'lit';
 
@@ -143,7 +143,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
         }
     }
 
-    #viewChoice(locale: Locale): TemplateResult {
+    #viewChoice(locale: UiLocale): TemplateResult {
         if (this.#split) {
             return EMPTY;
         }
@@ -162,7 +162,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
         </div>`;
     }
 
-    #mapBox(locale: Locale, view: PoisViewState): TemplateResult {
+    #mapBox(locale: UiLocale, view: PoisViewState): TemplateResult {
         return html`<hcm-admin-map
             .status=${view.map}
             .locale=${locale}
@@ -174,7 +174,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
         ></hcm-admin-map>`;
     }
 
-    #list(locale: Locale, view: PoisViewState, open: string): TemplateResult {
+    #list(locale: UiLocale, view: PoisViewState, open: string): TemplateResult {
         return html`<hcm-poi-list
             .view=${view}
             .intents=${this.intents}
@@ -193,7 +193,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
         ></hcm-poi-list>`;
     }
 
-    #detail(locale: Locale, view: PoisViewState, open: string): TemplateResult {
+    #detail(locale: UiLocale, view: PoisViewState, open: string): TemplateResult {
         const editor = view.editor;
         if (open === '' || editor === null) {
             return html`<hcm-empty-state icon="place" .text=${poiText(locale, 'adminContent.pois.overview')}></hcm-empty-state>`;
@@ -201,7 +201,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
         return editor.status === 'not-found' ? this.#notFound(locale, editor.id) : this.#editor(locale, view, editor);
     }
 
-    #notFound(locale: Locale, id: string): TemplateResult {
+    #notFound(locale: UiLocale, id: string): TemplateResult {
         return html`<div class="pane">
             <h2 data-detail-heading tabindex="-1">${poiText(locale, 'adminContent.pois.notFound')}</h2>
             <p><a href=${poiHistoryHref(id)}>${poiText(locale, 'adminContent.pois.openHistory')}</a></p>
@@ -209,7 +209,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
         </div>`;
     }
 
-    #editor(locale: Locale, view: PoisViewState, editor: PlaceEditorPort): TemplateResult {
+    #editor(locale: UiLocale, view: PoisViewState, editor: PlaceEditorPort): TemplateResult {
         const value = editor.draft?.value ?? null;
         return html`<hcm-poi-editor
             .editor=${editor}
@@ -280,7 +280,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
         }
     }
 
-    #dialogs(locale: Locale, view: PoisViewState): TemplateResult {
+    #dialogs(locale: UiLocale, view: PoisViewState): TemplateResult {
         const close = (): void => {
             this.dialog = null;
         };
@@ -301,7 +301,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
         })}`;
     }
 
-    #picker(locale: Locale, view: PoisViewState, close: () => void): TemplateResult {
+    #picker(locale: UiLocale, view: PoisViewState, close: () => void): TemplateResult {
         const chosen = chosenPhotos(view);
         const toggle = (id: string): void => {
             this.intents?.edit({ photoIds: chosen.includes(id) ? chosen.filter((photo) => photo !== id) : [...chosen, id] });

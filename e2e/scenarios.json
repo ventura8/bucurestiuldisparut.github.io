@@ -1016,6 +1016,13 @@
             "name": "Delete a version that never reached the map: its job, log and own files go for good, after a question that says the originals stay",
             "milestone": "M3",
             "source": "the owner, 2026-11-12: a cancelled or failed version (and an archive series waiting for points) can be deleted from its page; docs/research/M3-interfaces.md §7.1"
+        },
+        {
+            "id": "A95",
+            "area": "admin",
+            "name": "The interface in 25 languages: the admin's language picker, right to left, the fallback to English",
+            "milestone": "M26",
+            "source": "docs/I18N.md (the owner, 2026-11-12: every UI text in 25 languages)"
         }
     ],
     "scenarios": [
@@ -17430,6 +17437,61 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Lesson 547. Tests: packages/admin/test/georef/georef.test.ts (happyPath_undoTakesBackTheLastEditsOneByOneAndNothingMoreAfterDiscard)."
+        },
+        {
+            "id": "S-A95-HAPPY-LANGUAGE-PICKER",
+            "behaviour": "A95",
+            "area": "admin",
+            "path": "happy",
+            "title": "The account menu lists the 25 languages; French is fetched, shown and kept after a reload; Arabic turns the page right to left",
+            "asserts": "25 radios by their own names; /admin/i18n/fr.json fetched, the photos page's empty text in French, html lang fr, again after a reload; Arabic: html dir rtl, the tour's layout and axe checks (admin.shell.language-rtl)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+        },
+        {
+            "id": "S-A95-BAD-MISSING-KEY-FALLS-BACK",
+            "behaviour": "A95",
+            "area": "admin",
+            "path": "bad",
+            "title": "A key the chosen language's file lacks shows in English",
+            "asserts": "fr.json served without adminContent.photos.empty: html lang fr, the empty text in English",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+        },
+        {
+            "id": "S-A95-BAD-CATALOGUE-UNAVAILABLE",
+            "behaviour": "A95",
+            "area": "admin",
+            "path": "bad",
+            "title": "A language whose file cannot be fetched keeps the page's language and says so",
+            "asserts": "de.json 404: the snackbar names Deutsch, html lang and the page's texts unchanged",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+        },
+        {
+            "id": "S-A76-HAPPY-LANGUAGE-PICKER",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "happy",
+            "title": "The start page lists the 25 languages; Urdu is fetched, shown right to left and kept after a reload",
+            "asserts": "25 options; Urdu chosen: html lang ur, dir rtl, kept after a reload; the tour's layout and axe checks (admin.start.language-rtl)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+        },
+        {
+            "id": "S-A76-BAD-LANGUAGE-UNAVAILABLE",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "A language whose file cannot be fetched keeps the start page's language and says so",
+            "asserts": "de.json 404: start.languageUnavailable in an alert, html lang and the list unchanged",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
         }
     ]
 }

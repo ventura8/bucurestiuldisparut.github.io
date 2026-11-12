@@ -3,7 +3,7 @@
  * `city-budget-<hash>.js`, its budget in `scripts/ci/check_bundle_budget.py`): fetched the first time its section opens,
  * Loading until then, a failed fetch with Try again; the page renders again when a fetch settles (`refresh`).
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { errorTemplate, loadingTemplate } from '../editing/states.js';
@@ -23,7 +23,7 @@ export interface LazyBudgetContext extends BudgetCardContext {
     readonly refresh: () => void;
 }
 
-function heading(locale: Locale): TemplateResult {
+function heading(locale: UiLocale): TemplateResult {
     return html`<h2 tabindex="-1" data-detail-heading>${contentText(locale, 'adminContent.budgets.title')}</h2>`;
 }
 

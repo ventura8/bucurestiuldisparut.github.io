@@ -77,7 +77,12 @@ describe('<hcm-map-viewer> without any language', () => {
 
 describe('the language list', () => {
     it('happyPath_sixteenLanguagesEachByItsOwnNameInItsOwnLanguage', async () => {
-        const about = await mountElement<HcmAboutDialog>(HCM_ABOUT_DIALOG_TAG, { open: true, city: MANIFEST.city, locale: 'de' });
+        const about = await mountElement<HcmAboutDialog>(HCM_ABOUT_DIALOG_TAG, {
+            open: true,
+            mode: 'settings',
+            city: MANIFEST.city,
+            locale: 'de',
+        });
         const list = shadowQuery(about, 'hcm-segmented-button') as HTMLElement & {
             readonly options: readonly { readonly value: string; readonly label: string; readonly lang?: string }[];
             readonly value: string;
@@ -90,7 +95,12 @@ describe('the language list', () => {
     });
 
     it('badPath_theListKeepsThePagesLanguageUntilThePageSwitches', async () => {
-        const about = await mountElement<HcmAboutDialog>(HCM_ABOUT_DIALOG_TAG, { open: true, city: MANIFEST.city, locale: 'ro' });
+        const about = await mountElement<HcmAboutDialog>(HCM_ABOUT_DIALOG_TAG, {
+            open: true,
+            mode: 'settings',
+            city: MANIFEST.city,
+            locale: 'ro',
+        });
         const list = shadowQuery(about, 'hcm-segmented-button') as HTMLElement & { value: string };
         const events = recordEvents(about, 'hcm-locale-change');
 

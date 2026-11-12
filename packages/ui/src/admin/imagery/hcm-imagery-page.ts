@@ -7,7 +7,7 @@
  * says so, with the spend, and offers Resume processing (CR-M3-47). Reject, Dismiss, Pay, Cancel, Resume and Delete this version ask
  * first; a deleted version's page returns to the list.
  */
-import type { Locale, PublishChoice } from '@hcm/shared';
+import type { UiLocale, PublishChoice } from '@hcm/shared';
 import { html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { MAPBOX_GL_CSS_URL } from '../../map/mapbox-loader.js';
@@ -336,7 +336,7 @@ function showsArchive(view: ImageryViewState): boolean {
 }
 
 /** The open version's overage cost in dollars, for the Pay question, as the Pay button writes it. */
-function usdOf(view: ImageryViewState, locale: Locale): string {
+function usdOf(view: ImageryViewState, locale: UiLocale): string {
     return numberText(locale, view.version?.version.doc?.data.guard?.overageUsd ?? 0, 2);
 }
 

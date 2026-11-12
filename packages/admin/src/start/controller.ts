@@ -3,11 +3,19 @@
  * in memory only and asks the browser for nothing but through its ports, so the tests drive it end to end over the fake
  * upstreams. `<hcm-start-page>` renders the view and calls the intents.
  */
-import { startConfigSchema, type Locale, type Logger, type StartConfig } from '@hcm/shared';
+import { startConfigSchema, type UiLocale, type Logger, type StartConfig } from '@hcm/shared';
 
 import type { Clock, KeyValueStore } from '../app/ports.js';
 import { createGoogleTransport } from '../google/transport.js';
 import { resolveAdminLocale } from '../state/locale.js';
+import {
+    firstShown,
+    isBundled,
+    switchLanguage,
+    uiCatalogueLoader,
+    type LanguageSwitch,
+    type UiCatalogueLoader,
+} from '../state/ui-language.js';
 import { consentUrl, readConsentAnswer, type ConsentAnswer, type StartToken } from './consent.js';
 import { deployStart, START_STEPS, type StartStepId } from './deploy.js';
 import { startFailureOf } from './failure.js';
@@ -18,7 +26,7 @@ import { clearPlan, loadPlan, rememberState, savePlan, takeState, type StartPlan
 import { INITIAL, NOTICE_OF_ANSWER, stepStateAt, WAITING_STEPS, type StartView, type StepState } from './view.js';
 
 export interface StartIntents {
-    setLocale(locale: Locale): void;
+    setLocale(locale: UiLocale): void;
     signIn(): void;
     setName(name: string): void;
     setNameEn(name: string): void;
@@ -51,6 +59,8 @@ export interface StartDeps {
     readonly testId?: string;
     /** The terminal road (the catalogue names it with this command). */
     readonly command: string;
+    /** The languages beyond Romanian and English (`docs/I18N.md` → Loading): the page's `i18n/` folder by default. */
+    readonly loadTexts?: UiCatalogueLoader;
 }
 
 const CONFIG_FILE = 'start-config.json';
@@ -59,6 +69,8 @@ const LANGUAGE_KEY = 'hcm:start:lang';
 const MIN_TOKEN_LIFE_MS = 5 * 60_000;
 export class StartController {
     readonly #deps: StartDeps;
+    readonly #loadTexts: UiCatalogueLoader;
+    readonly #wanted: UiLocale;
     readonly #listeners = new Set<() => void>();
     #view: StartView;
     #grant: StartToken | null = null;
@@ -66,8 +78,7 @@ export class StartController {
 
     readonly intents: StartIntents = {
         setLocale: (locale) => {
-            this.#deps.session.set(LANGUAGE_KEY, locale);
-            this.#update({ locale });
+            void switchLanguage(this.#language(true), locale);
         },
         signIn: () => {
             this.#consent();
@@ -109,8 +120,33 @@ export class StartController {
 
     constructor(deps: StartDeps) {
         this.#deps = deps;
-        const stored = deps.session.get(LANGUAGE_KEY);
-        this.#view = { ...INITIAL, command: deps.command, locale: resolveAdminLocale(deps.search, stored, deps.languages) };
+        this.#wanted = resolveAdminLocale(deps.search, deps.session.get(LANGUAGE_KEY), deps.languages);
+        this.#loadTexts = deps.loadTexts ?? uiCatalogueLoader(deps.fetch, 'i18n/');
+        // A language beyond the bundled two shows once its texts are here (`start`); English before.
+        this.#view = { ...INITIAL, command: deps.command, locale: firstShown(this.#wanted) };
+    }
+
+    /** The page's first language, when it is not bundled: fetched as the page starts. */
+    #startLanguage(): void {
+        if (!isBundled(this.#wanted)) {
+            void switchLanguage(this.#language(false), this.#wanted);
+        }
+    }
+
+    /** The switch to a language: shown once its texts are here (and remembered, when the visitor chose it), else a notice. */
+    #language(remember: boolean): LanguageSwitch {
+        return {
+            load: this.#loadTexts,
+            apply: (locale) => {
+                if (remember) {
+                    this.#deps.session.set(LANGUAGE_KEY, locale);
+                }
+                this.#update({ locale });
+            },
+            unavailable: () => {
+                this.#update({ notice: 'start.languageUnavailable' });
+            },
+        };
     }
 
     get view(): StartView {
@@ -126,6 +162,7 @@ export class StartController {
 
     /** Reads the configuration and Google's answer, if the address carries one, and opens the right screen. */
     async start(): Promise<void> {
+        this.#startLanguage();
         const fragment = this.#deps.fragment();
         this.#deps.clearFragment();
         this.#config = await this.#readConfig();

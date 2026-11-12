@@ -6,7 +6,7 @@
  * after a confirmation, and the link to its versions, where Revert is; New story, Delete and Versions follow the city role as the
  * rules do (M17 §6). Text only: every value is bound as a property or text.
  */
-import type { Locale, StoryDoc } from '@hcm/shared';
+import type { UiLocale, StoryDoc } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
 
 import type { AdminRouteIdPort } from '../admin-port.js';
@@ -105,11 +105,11 @@ class HcmStoriesPage extends AreaPage<StoriesViewState, StoriesIntentsPort> {
         </hcm-list-detail>`;
     }
 
-    #choose(locale: Locale): TemplateResult {
+    #choose(locale: UiLocale): TemplateResult {
         return html`<hcm-empty-state icon="museum" .text=${t(locale, 'adminContent.stories.choose')}></hcm-empty-state>`;
     }
 
-    #create(locale: Locale, view: StoriesViewState): TemplateResult {
+    #create(locale: UiLocale, view: StoriesViewState): TemplateResult {
         if (!canCreateStory(view.role)) {
             return EMPTY;
         }
@@ -143,7 +143,7 @@ class HcmStoriesPage extends AreaPage<StoriesViewState, StoriesIntentsPort> {
         </div>`;
     }
 
-    #list(locale: Locale, view: StoriesViewState): TemplateResult {
+    #list(locale: UiLocale, view: StoriesViewState): TemplateResult {
         const list = view.list;
         if (list.status === 'error') {
             return html`<p class="alert" role="alert">
@@ -160,13 +160,13 @@ class HcmStoriesPage extends AreaPage<StoriesViewState, StoriesIntentsPort> {
     }
 
     /** No story yet, or none read yet. */
-    #empty(locale: Locale, list: StoriesViewState['list']): TemplateResult {
+    #empty(locale: UiLocale, list: StoriesViewState['list']): TemplateResult {
         return list.status === 'loading'
             ? loadingTemplate(locale)
             : html`<hcm-empty-state icon="museum" .text=${t(locale, 'adminContent.stories.empty')}></hcm-empty-state>`;
     }
 
-    #more(locale: Locale, hasMore: boolean): TemplateResult {
+    #more(locale: UiLocale, hasMore: boolean): TemplateResult {
         const more = (): void => {
             this.intents?.more();
         };
@@ -177,7 +177,7 @@ class HcmStoriesPage extends AreaPage<StoriesViewState, StoriesIntentsPort> {
             : EMPTY;
     }
 
-    #row(locale: Locale, item: StoryItemPort, selected: boolean): TemplateResult {
+    #row(locale: UiLocale, item: StoryItemPort, selected: boolean): TemplateResult {
         const years = [item.yearStart, item.yearEnd].filter((year) => year !== null).join('–');
         const status = stateText(locale, item);
         return html`<li>
@@ -195,7 +195,7 @@ class HcmStoriesPage extends AreaPage<StoriesViewState, StoriesIntentsPort> {
         </li>`;
     }
 
-    #detail(locale: Locale, view: StoriesViewState, open: Open): TemplateResult {
+    #detail(locale: UiLocale, view: StoriesViewState, open: Open): TemplateResult {
         const value = open.draft.value;
         if (value === null) {
             const missing = open.doc.status === 'ready' && open.doc.doc === null;
@@ -246,14 +246,14 @@ class HcmStoriesPage extends AreaPage<StoriesViewState, StoriesIntentsPort> {
         </div>`;
     }
 
-    #texts(locale: Locale, value: StoryDoc, issues: Open['draft']['issues'], edit: (patch: Partial<StoryDoc>) => void): TemplateResult {
+    #texts(locale: UiLocale, value: StoryDoc, issues: Open['draft']['issues'], edit: (patch: Partial<StoryDoc>) => void): TemplateResult {
         const readOnly = this.readOnly;
         return html`${textSpecs(locale, value, edit).map((spec) =>
             field(locale, { ...spec, label: t(locale, spec.key), issue: issueAt(issues, spec.id.replace('-', '.')), readOnly }),
         )}`;
     }
 
-    #links(locale: Locale, view: StoriesViewState, value: StoryDoc, edit: (patch: Partial<StoryDoc>) => void): TemplateResult {
+    #links(locale: UiLocale, view: StoriesViewState, value: StoryDoc, edit: (patch: Partial<StoryDoc>) => void): TemplateResult {
         const photos = {
             key: 'photoIds',
             options: view.picks?.photos,
@@ -270,7 +270,7 @@ class HcmStoriesPage extends AreaPage<StoriesViewState, StoriesIntentsPort> {
     }
 
     /** The linked photos or places as chips that remove them, and a select of the city's others that adds one. */
-    #linked(locale: Locale, value: StoryDoc, spec: LinkSpec, edit: (patch: Partial<StoryDoc>) => void): TemplateResult {
+    #linked(locale: UiLocale, value: StoryDoc, spec: LinkSpec, edit: (patch: Partial<StoryDoc>) => void): TemplateResult {
         const ids = value[spec.key] ?? [];
         const options = spec.options ?? [];
         const titleOf = (id: string): string => inLocale(options.find((pick) => pick.id === id)?.title ?? { ro: id }, locale);
@@ -316,7 +316,7 @@ class HcmStoriesPage extends AreaPage<StoriesViewState, StoriesIntentsPort> {
         }
     }
 
-    #publishing(locale: Locale, view: StoriesViewState, value: StoryDoc, edit: (patch: Partial<StoryDoc>) => void): TemplateResult {
+    #publishing(locale: UiLocale, view: StoriesViewState, value: StoryDoc, edit: (patch: Partial<StoryDoc>) => void): TemplateResult {
         const waiting = value.reviewStatus === 'pending' || value.reviewStatus === 'refused';
         if (!view.reviewer || waiting) {
             return html`<p class="note">${t(locale, 'adminContent.stories.waitsHelp')}</p>`;
@@ -336,7 +336,7 @@ class HcmStoriesPage extends AreaPage<StoriesViewState, StoriesIntentsPort> {
             <p class="note">${t(locale, 'adminContent.stories.publishedHelp')}</p>`;
     }
 
-    #actions(locale: Locale, view: StoriesViewState, open: Open, value: StoryDoc): TemplateResult {
+    #actions(locale: UiLocale, view: StoriesViewState, open: Open, value: StoryDoc): TemplateResult {
         const remove = async (): Promise<void> => {
             this.confirming = false;
             const outcome = await this.intents?.remove();

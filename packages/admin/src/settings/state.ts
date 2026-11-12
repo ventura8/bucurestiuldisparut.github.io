@@ -3,7 +3,7 @@
  * layers and categories as read, the open city section's draft, the open category, a category's deletion, the overlays'
  * defaults and a reorder being written; and what the module needs besides `ContentServices`.
  */
-import type { CityDoc, Locale, OverlayKind } from '@hcm/shared';
+import type { CityDoc, UiLocale, OverlayKind } from '@hcm/shared';
 
 import type { DocState } from '../content/doc.js';
 import type { ListState } from '../content/list.js';
@@ -59,7 +59,7 @@ export interface SettingsIntents extends CategoryIntents, ExportIntents, BudgetI
     /** A number of the area as typed: an edge of the bounds, the start centre, the start zoom, a zoom limit. */
     setNumber(field: AreaNumberField, text: string): void;
     /** The name, About or privacy text in one language. */
-    setText(field: 'name' | 'about' | 'privacy', locale: Locale, text: string): void;
+    setText(field: 'name' | 'about' | 'privacy', locale: UiLocale, text: string): void;
     addCredit(): void;
     removeCredit(row: number): void;
     moveCredit(row: number, by: -1 | 1): void;

@@ -224,3 +224,72 @@ def test_untranslated_is_english_with_letters_of_its_own(
 
 def test_happy_path_a_catalogue_without_letters_is_in_its_script() -> None:
     assert i18n.script_share("ar", {"value": "{percent}%"}) == 1.0
+
+
+# The interface's other languages (docs/I18N.md): optional files checked for shape, a completeness report, a strict mode.
+FR = """import type { Key } from './ro.js';
+
+export const fr: Readonly<Partial<Record<Key, string>>> = {
+    'hello.greeting': 'Bonjour, {name} !',
+    'app.title':
+        'Bucarest disparue',
+};
+"""
+
+
+def test_happy_path_ui_locales_are_the_ones_of_locales_ts() -> None:
+    text = (i18n.ROOT / "packages/shared/src/i18n/locales.ts").read_text(encoding="utf-8")
+    listed = text.split("export const UI_LOCALES = [", 1)[1].split("]", 1)[0]
+
+    assert tuple(code.strip().strip("',") for code in listed.split() if code.strip()) == i18n.UI_LOCALES
+
+
+def test_happy_path_a_partial_translation_passes_and_is_reported(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    catalogues(tmp_path)
+    write(tmp_path, "packages/admin/src/i18n/fr.ts", FR, newline=False)
+
+    assert i18n.main(["--root", str(tmp_path)]) == 0
+    assert caplog.messages[0].startswith(
+        "[i18n] languages still translating (their missing keys show in English):\n  - fr 2/3 (66 %)\n  - de 0/3 (0 %)"
+    )
+    assert caplog.messages[-1].startswith("[i18n] OK: 1 catalogue folder(s), 3 keys")
+
+
+def test_bad_path_what_an_imported_translation_may_not_hold(tmp_path: Path) -> None:
+    broken = FR.replace("'Bonjour, {name} !'", "'<b>Bonjour</b>, {nom} '").replace(
+        "'app.title':", "'gone.key': 'x',\n    'plain': '{count, plural}',\n    'app.title':"
+    )
+    catalogues(tmp_path)
+    write(tmp_path, "packages/admin/src/i18n/fr.ts", broken, newline=False)
+
+    problems, _, _ = i18n.check(tmp_path)
+
+    assert problems == [
+        "packages/admin/src/i18n/fr.ts: extra key 'gone.key' (not in ro)",
+        "packages/admin/src/i18n/fr.ts: 'hello.greeting' uses placeholders ['nom'], ro uses ['name']",
+        "packages/admin/src/i18n/fr.ts: 'hello.greeting' starts or ends with whitespace",
+        "packages/admin/src/i18n/fr.ts: 'plain' has a brace outside a {word} placeholder",
+        "packages/admin/src/i18n/fr.ts: 'hello.greeting' holds an HTML tag",
+    ]
+
+
+def test_bad_path_strict_mode_requires_every_language_complete(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    catalogues(tmp_path)
+    write(tmp_path, "packages/admin/src/i18n/fr.ts", FR, newline=False)
+    monkeypatch.setenv(i18n.STRICT_ENV, "1")
+
+    assert i18n.main(["--root", str(tmp_path)]) == 1
+    problems, _, _ = i18n.check(tmp_path, strict=True)
+    assert "packages/admin/src/i18n/de.ts: missing catalogue" in problems
+    assert i18n.is_strict(False) is True
+    monkeypatch.delenv(i18n.STRICT_ENV)
+    assert i18n.is_strict(False) is False
+    assert i18n.is_strict(True) is True
+
+
+def test_bad_path_romanian_and_english_never_wrap(tmp_path: Path) -> None:
+    catalogues(tmp_path, ro=RO.replace("'app.title': 'București dispărut',", "'app.title':\n        'București dispărut',"))
+
+    problems, _, _ = i18n.check(tmp_path)
+
+    assert "packages/admin/src/i18n/ro.ts:4: not a one-line `'key': 'message',` entry" in problems

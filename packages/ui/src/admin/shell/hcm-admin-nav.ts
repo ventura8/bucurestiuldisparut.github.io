@@ -8,7 +8,7 @@
  * its own (a landscape phone), and a label wider than its item wraps inside it (a long translation, or a reader's wider
  * text spacing, WCAG 1.4.12) instead of leaving the rail.
  */
-import { DEFAULT_LOCALE, INBOX_BADGE_MAX, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, INBOX_BADGE_MAX, type UiLocale } from '@hcm/shared';
 import { LitElement, css, html, type TemplateResult } from 'lit';
 
 import { visuallyHidden } from '../../components/styles.js';
@@ -207,7 +207,7 @@ export class HcmAdminNav extends LitElement {
     declare destinations: readonly AdminDestinationPort[];
     declare current: AdminRouteIdPort;
     declare variant: AdminNavVariant;
-    declare locale: Locale;
+    declare locale: UiLocale;
     declare moreOpen: boolean;
     /** M4: the signed-in admin's unread notifications, shown on the Notifications item (null: unknown or none). */
     declare unread: number | null;

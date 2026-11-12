@@ -7,7 +7,7 @@
  *   `app.intents.setup`, the language `state.locale`;
  * - as `port` (a test, or a host with the controller at hand), which the page subscribes to while it is connected.
  */
-import { DEFAULT_LOCALE, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, type UiLocale } from '@hcm/shared';
 import { LitElement, type PropertyValues } from 'lit';
 
 import type { SetupIntentsPort, SetupPort, SetupViewState } from './setup-port.js';
@@ -19,7 +19,7 @@ export interface SetupHostApp {
 
 /** What the page outlet's `state` offers: the admin's language and the Setup Assistant's state (`AdminState.setup`). */
 export interface SetupHostState {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly setup?: SetupViewState | null;
 }
 
@@ -35,7 +35,7 @@ export abstract class SetupPortHost extends LitElement {
     declare port: SetupPort | null;
     declare app: SetupHostApp | null;
     declare state: SetupHostState | null;
-    declare locale: Locale;
+    declare locale: UiLocale;
     /** The Setup Assistant's latest state (null before the controller exists). */
     declare view: SetupViewState | null;
 
@@ -54,7 +54,7 @@ export abstract class SetupPortHost extends LitElement {
     }
 
     /** The page's language: the admin's when the outlet gave its state, else `locale`. */
-    protected get language(): Locale {
+    protected get language(): UiLocale {
         return this.state?.locale ?? this.locale;
     }
 

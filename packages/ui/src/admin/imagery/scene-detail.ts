@@ -6,7 +6,7 @@
  * the order card instead (`orders/order-card.ts`, a chunk fetched on first need: `orders/lazy-card.ts`), and so has one
  * USGS just delivered (the server imports it). M8: a frame that leaves part of the city out is offered its date's others.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { errorTemplate, loadingTemplate } from '../editing/states.js';
@@ -57,12 +57,12 @@ function browseImage(context: ImageryContext, scene: SceneItemPort): TemplateRes
         : browseFailure(context, scene, image.error);
 }
 
-function fact(locale: Locale, key: Parameters<typeof contentText>[1], value: string): TemplateResult {
+function fact(locale: UiLocale, key: Parameters<typeof contentText>[1], value: string): TemplateResult {
     return html`<dt>${contentText(locale, key)}</dt>
         <dd>${value}</dd>`;
 }
 
-function facts(locale: Locale, scene: SceneItemPort): TemplateResult {
+function facts(locale: UiLocale, scene: SceneItemPort): TemplateResult {
     const cloud =
         scene.cloudCover === null
             ? contentText(locale, 'adminContent.imagery.cloudUnknown')

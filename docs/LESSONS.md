@@ -3420,3 +3420,33 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the integration's key check (fifteen catalogues where sixteen were expected).
     - Fix and pin: re-translated in the agreed layout; the gate requires all sixteen files.
     - **Parallel writers agree on the paths first and never delete what they did not create alone.**
+583. **The merge of the viewer's languages left two of its tests looking for the language list where it no longer was.**
+    - Seen: 2026-11-12 (track/langs25), the first `ui` run after merging track/langs into the branch: `languages.test.ts` failed "no hcm-segmented-button in <hcm-about-dialog>".
+    - Cause: track/settings had moved the language list into the dialog's `settings` mode while track/langs was apart; its tests mounted the dialog in its default `about` mode. The merge had only Markdown conflicts, so nothing flagged the TypeScript.
+    - Found by: the `ui` project's run of the merged branch.
+    - Fix and pin: the tests open the dialog in `mode: 'settings'` (`packages/ui/test/viewer/languages.test.ts`).
+    - **A merge with no conflict in code still changes code: run the tests of both branches' areas before building on it.**
+584. **The same merge took `packages/shared/test/index.test.ts` past ESLint's 600 lines.**
+    - Seen: 2026-11-12 (track/langs25), ESLint on the changed files: 612 counted lines before any new export was listed.
+    - Cause: each branch stayed under the limit; together they did not.
+    - Found by: ESLint on the merged file.
+    - Fix and pin: the i18n exports' lists moved to `packages/shared/test/fixtures/exports-ui-i18n.ts`, as the milestones' lists are.
+    - **After a merge, lint the files both sides grew, not only the ones you touch.**
+585. **A shared fallback put the viewer's catalogue into the start page's bundle.**
+    - Seen: 2026-11-12 (track/langs25), the bundle budget: `start.mjs` 75.9 KB of its 72 after the per-key fallback.
+    - Cause: the fallback lived in `i18n/index.ts` beside the viewer's bundled `{ro, en}`; the start page's translator imported it and the bundler kept the module's catalogue object the fallback read.
+    - Found by: `check_bundle_budget.py` after `npm run build`.
+    - Fix and pin: the registry of fetched files and the fallback are a module with no catalogue (`packages/shared/src/i18n/registry.ts`); the start page measures 70.4 KB.
+    - **A helper every family uses lives in a module that imports no family: what it reads, every page that uses it bundles.**
+586. **French translations run past 140 columns, and Prettier's wrap made the gate reject them.**
+    - Seen: 2026-11-12 (track/langs25), the first import of the model's French: Prettier wrapped 40 entries after their key, which `check_i18n.py` read as "not a one-line entry".
+    - Cause: Romanian and English are written to fit the line; a translation is longer and nobody shortens a model's text.
+    - Found by: `prettier --check` on the imported files, then the gate.
+    - Fix and pin: the gate and the build read a translation's wrapped entry as one (`unwrapped`, `catalogueEntries`); `ro` and `en` stay one line per entry (`test_bad_path_romanian_and_english_never_wrap`).
+    - **A format rule written for hand-made files must say what it does with generated ones before the first import.**
+587. **The start page's footer links were 44 px tall, under M3's 48 on a phone, and no tour state had scrolled a phone to them.**
+    - Seen: 2026-11-12 (track/langs25), the new `admin.start.language-rtl` state at `admin-c360-ro`: four target-size findings on `a.start-site-link` once the sweep scrolled to the footer.
+    - Cause: `.start-site-link` had `min-block-size: 2.75rem` (WCAG's 44 px), and the start page's states were visited only where the footer fit or was never scrolled to.
+    - Found by: the tour's checkers in the new right-to-left state, on a compact window.
+    - Fix and pin: `min-block-size: 3rem` with `padding-block: 0.75rem` (`scripts/site/src/start/legal.ts`); the state stays in the inventory at every admin project.
+    - **A new state on a page re-checks the whole page: let it, and fix what it finds rather than narrowing the state.**

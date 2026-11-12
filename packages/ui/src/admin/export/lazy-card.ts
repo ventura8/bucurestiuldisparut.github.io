@@ -4,7 +4,7 @@
  * its section opens. Until the chunk is in, the section says Loading; a failed fetch says so with Try again; once it is
  * in, every render is synchronous. The page renders again when a fetch settles (`refresh`).
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { errorTemplate, loadingTemplate } from '../editing/states.js';
@@ -49,7 +49,7 @@ function fetchChunk(context: LazyExportContext, chunk: ChunkLoader<ExportCardChu
     chunk.load().then(context.refresh, context.refresh);
 }
 
-function heading(locale: Locale): TemplateResult {
+function heading(locale: UiLocale): TemplateResult {
     return html`<h2 tabindex="-1" data-detail-heading>${contentText(locale, 'adminContent.export.title')}</h2>`;
 }
 

@@ -3,7 +3,7 @@
  * is a year, Day once there is a month. Clearing a part clears the parts below it, so no hidden part is left behind. A
  * range (an end year after the year) dates no month: Month stays hidden, unless the photo already has one to clear.
  */
-import { monthNames, type Locale, type ValidationIssue } from '@hcm/shared';
+import { monthNames, type UiLocale, type ValidationIssue } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import type { FieldsLeft } from '../editing/number-fields.js';
@@ -14,7 +14,7 @@ import type { PhotoPatchPort, PhotoValuePort } from './photos-port.js';
 
 /** What these fields read of the editor's section input. */
 interface DateInput {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly value: PhotoValuePort;
     readonly issues: readonly ValidationIssue[];
     readonly edit: (patch: PhotoPatchPort) => void;

@@ -1,7 +1,10 @@
 import { en } from './en.js';
+import { directionOf, type UiLocale } from './locales.js';
+import { hasRegisteredCatalogue, registeredText, uiText } from './registry.js';
 import { ro, type MessageKey } from './ro.js';
 
 export type { MessageKey, Messages } from './ro.js';
+export { fillPlaceholders, hasRegisteredCatalogue, registerCatalogue, uiText, type BundledTexts } from './registry.js';
 
 /** The languages of the admin and of a city's own texts (`{ro, en}`): Romanian, the source, and English. */
 export const LOCALES = ['ro', 'en'] as const;
@@ -21,10 +24,10 @@ export type ViewerLocale = (typeof VIEWER_LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'ro';
 
 /**
- * The catalogues this page has: Romanian and English imported (the admin, the start page, the tests), every other one
- * registered once fetched. The engine's build replaces the two imports with empty stand-ins, so it registers all of them.
+ * The viewer's main catalogues this page bundles: Romanian and English imported (the admin, the tests). The engine's build
+ * replaces the two imports with empty stand-ins, so it registers every language it fetches (`registry.ts`).
  */
-const CATALOGUES: Partial<Record<ViewerLocale, Readonly<Record<string, string>>>> = { ro, en };
+const MAIN: Readonly<Partial<Record<UiLocale, Readonly<Record<string, string>>>>> = { ro, en };
 
 const PLACEHOLDER = /\{(\w+)\}/g;
 
@@ -44,24 +47,28 @@ export function resolveLocale(tag: string | null | undefined): Locale {
     return viewerLocaleOf(tag) === 'en' ? 'en' : DEFAULT_LOCALE;
 }
 
-/** Arabic, the one language of the sixteen written right to left. */
-export function isRtl(locale: ViewerLocale): boolean {
-    return locale === 'ar';
-}
-
-/** Adds a fetched catalogue (the engine's loader, after checking it). */
-export function registerCatalogue(locale: ViewerLocale, messages: Readonly<Record<string, string>>): void {
-    CATALOGUES[locale] = messages;
+/** True for a language written right to left (Arabic, Persian, Urdu: `directionOf`). */
+export function isRtl(locale: UiLocale): boolean {
+    return directionOf(locale) === 'rtl';
 }
 
 /** True once `locale`'s texts are here: the viewer renders no text before. */
-export function hasCatalogue(locale: ViewerLocale): boolean {
-    return CATALOGUES[locale] !== undefined;
+export function hasCatalogue(locale: UiLocale): boolean {
+    return MAIN[locale] !== undefined || hasRegisteredCatalogue(locale);
 }
 
 /** One text of `locale`'s catalogue by any key (the map labels' family is in the same fetched file), or undefined. */
-export function catalogueText(locale: ViewerLocale, key: string): string | undefined {
-    return CATALOGUES[locale]?.[key];
+export function catalogueText(locale: UiLocale, key: string): string | undefined {
+    return MAIN[locale]?.[key] ?? registeredText(locale, key);
+}
+
+/**
+ * A viewer language whose file has not arrived gives an empty text (it will come; the viewer renders none before);
+ * any other language falls back to English per missing key.
+ */
+function mainText(locale: UiLocale, key: string): string {
+    const pending = viewerLocaleOf(locale) === locale && !hasCatalogue(locale);
+    return pending ? '' : (uiText(locale, key, MAIN) ?? '');
 }
 
 /**
@@ -69,9 +76,9 @@ export function catalogueText(locale: ViewerLocale, key: string): string | undef
  * catalogue is not here yet gives an empty text, never a raw key. In a right-to-left language each value is isolated
  * (U+2068 … U+2069), so a Latin layer name keeps its own order inside the Arabic sentence.
  */
-export function translate(locale: ViewerLocale, key: MessageKey, params: Readonly<Record<string, string>> = {}): string {
+export function translate(locale: UiLocale, key: MessageKey, params: Readonly<Record<string, string>> = {}): string {
     const [open, close] = isRtl(locale) ? ['⁨', '⁩'] : ['', ''];
-    return (catalogueText(locale, key) ?? '').replace(PLACEHOLDER, (placeholder: string, name: string) => {
+    return mainText(locale, key).replace(PLACEHOLDER, (placeholder: string, name: string) => {
         const value = params[name];
         return value === undefined ? placeholder : open + value + close;
     });
@@ -102,10 +109,10 @@ export const LANGUAGE_NAMES: Readonly<Record<ViewerLocale, string>> = {
 };
 
 /** The tags `Intl` formats with where the bare code would not do: the owner's photo dates (`en` alone would write `July 12, 1936`), Latin digits in Arabic (as the timeline's years). */
-const INTL_TAGS: Partial<Record<ViewerLocale, string>> = { ro: 'ro-RO', en: 'en-GB', ar: 'ar-u-nu-latn' };
+const INTL_TAGS: Partial<Record<UiLocale, string>> = { ro: 'ro-RO', en: 'en-GB', ar: 'ar-u-nu-latn' };
 
-/** The `Intl` tag of a viewer language. */
-export function intlTag(locale: ViewerLocale): string {
+/** The `Intl` tag of an interface language. */
+export function intlTag(locale: UiLocale): string {
     return INTL_TAGS[locale] ?? locale;
 }
 

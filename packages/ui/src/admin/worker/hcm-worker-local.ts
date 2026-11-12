@@ -12,7 +12,7 @@
  * Linux, where a double-click opens a `.sh` as text, the exact line `sh ~/Downloads/hcm-worker.sh` with its Copy button.
  * A server that does not make the file yet says to update the map instead of a link.
  */
-import { PIPELINE_REPOSITORY, WORKER_CONTAINER, WORKER_PORT, DEFAULT_LOCALE, type Locale } from '@hcm/shared';
+import { PIPELINE_REPOSITORY, WORKER_CONTAINER, WORKER_PORT, DEFAULT_LOCALE, type UiLocale } from '@hcm/shared';
 import { translateAdminWorkerLocal, type AdminWorkerLocalKey } from '@hcm/shared/admin-worker-local';
 import { css, html, LitElement, nothing, type PropertyValues, type TemplateResult } from 'lit';
 
@@ -137,7 +137,7 @@ export class HcmWorkerLocal extends LitElement {
     ];
 
     declare local: LocalPort | null;
-    declare locale: Locale;
+    declare locale: UiLocale;
     declare project: string;
     declare city: string;
     /** The pipeline image's digest the command names. */

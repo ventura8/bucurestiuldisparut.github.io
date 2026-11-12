@@ -6,7 +6,7 @@
  * panes show where each pair is), so nothing scrolls sideways (CR-M3-35 i). Text only: the pairs' ids and numbers are
  * never markup.
  */
-import type { Gcp, Locale } from '@hcm/shared';
+import type { Gcp, UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { numberText } from '../imagery/imagery-text.js';
@@ -16,7 +16,7 @@ import { contentText } from '../shell/text.js';
 export type ResidualSort = 'pair' | 'residual';
 
 export interface ResidualTable {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly pairs: readonly Gcp[];
     readonly residuals: Readonly<Record<string, number>>;
     readonly selected: string | null;

@@ -8,7 +8,7 @@
  * `ContentServices` too, each declared by its owner inside its own marked section below and built inside the same
  * section of `../app/content-wiring.ts`; a workstream never edits another's section (§11.2).
  */
-import type { CityRole, Locale, Logger, Schema, StartFirstCity, ThemeTokens, ValidationIssue } from '@hcm/shared';
+import type { CityRole, UiLocale, Logger, Schema, StartFirstCity, ThemeTokens, ValidationIssue } from '@hcm/shared';
 import type { ThemeTokenSet } from '@hcm/ui/dynamic-color';
 
 import type { Clock, KeyValueStore, Unsubscribe } from '../app/ports.js';
@@ -144,7 +144,7 @@ export interface ContentServices {
     readonly log: Logger;
     /** The signed-in admin (null only after sign-out, when no area is open). */
     readonly user: () => ContentUser | null;
-    readonly locale: () => Locale;
+    readonly locale: () => UiLocale;
     /** M13: the signed-in admin's role in the open city, or null (`docs/research/M13-roles.md` §1). */
     readonly cityRole: () => CityRole | null;
     /** The shell's snackbar. */

@@ -2,9 +2,10 @@
  * A photo's date as a person reads it, from `Intl` so that a new language needs no new text
  * (`docs/research/photo-date-source.md` §1): `12 July 1936`, `12 iulie 1936`, `July 1936`, `Iulie 1936`.
  */
-import { intlTag, type ViewerLocale } from '../i18n/index.js';
+import { intlTag } from '../i18n/index.js';
+import type { UiLocale } from '../i18n/locales.js';
 
-function sentenceCase(text: string, locale: ViewerLocale): string {
+function sentenceCase(text: string, locale: UiLocale): string {
     return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
 }
 
@@ -17,7 +18,7 @@ function utcDate(year: number, month: number, day: number): Date {
 /** The date at the precision given: a month and its year, or a day, a month and a year. */
 export function formatPhotoDate(
     date: { readonly year: number; readonly month: number; readonly day?: number | undefined },
-    locale: ViewerLocale,
+    locale: UiLocale,
 ): string {
     const format = new Intl.DateTimeFormat(intlTag(locale), {
         year: 'numeric',
@@ -29,7 +30,7 @@ export function formatPhotoDate(
 }
 
 /** The twelve month names in order, for the editor's list. */
-export function monthNames(locale: ViewerLocale): readonly string[] {
+export function monthNames(locale: UiLocale): readonly string[] {
     const format = new Intl.DateTimeFormat(intlTag(locale), { month: 'long', timeZone: 'UTC' });
     return Array.from({ length: 12 }, (_unused, index) => sentenceCase(format.format(utcDate(2000, index + 1, 1)), locale));
 }

@@ -4,7 +4,7 @@
  * (`<hcm-admin-shell>` of `@hcm/ui/admin` reads it through its structural `AdminAppPort`). DOM-free: the entry
  * (`../index.ts`) builds the real ports, the node tests pass fakes.
  */
-import type { Locale, Logger, ThemeTokens } from '@hcm/shared';
+import type { UiLocale, Logger, ThemeTokens } from '@hcm/shared';
 
 import { AuthController } from '../auth/controller.js';
 import { GoogleAccessStore } from '../auth/google-access.js';
@@ -17,7 +17,7 @@ import type { FirebasePorts } from '../firebase/ports.js';
 import { unregisterOnSignOut } from '../inbox/push-device.js';
 import type { PageRegistry } from '../routing/pages.js';
 import { parseAdminRoute, type AdminRoute, type AdminRouteId } from '../routing/routes.js';
-import { LANGUAGE_KEY } from '../state/locale.js';
+import { firstShown } from '../state/ui-language.js';
 import { NO_GATE, type AdminState, type NoticeInput, type ShellStateAccess, type ThemeMode } from '../state/state.js';
 import { Store } from '../state/store.js';
 import type { AdminRuntime, FirebaseWebConfig } from './config.js';
@@ -28,6 +28,7 @@ import { Navigation } from './navigation.js';
 import { rememberedSetupReady } from './setup-readiness.js';
 import { consentWithRetry } from './consent-retry.js';
 import { contributorWelcome, startLocale } from './welcome.js';
+import { adminLanguage } from './language.js';
 import { shellWatches, type ShellWatchSources } from './shell-watches.js';
 import { destinationOf, RETURN_TO_KEY } from '../routing/router.js';
 import type { Clock, HashLocation, KeyValueStore, PageVisibility, Unsubscribe } from './ports.js';
@@ -105,7 +106,7 @@ export interface AdminIntents<SetupIntents> {
      * just made one, which the menu lists without waiting out the minute).
      */
     refreshCities(now?: boolean): Promise<void>;
-    setLocale(locale: Locale): void;
+    setLocale(locale: UiLocale): void;
     setTheme(mode: ThemeMode): void;
     /** Settings' live preview of a seed colour's tokens; null returns to the city's. */
     previewTheme(tokens: ThemeTokens | null): void;
@@ -145,7 +146,8 @@ function initialState<Setup>(deps: AdminDeps<Setup, unknown>): AdminState<Setup>
         gate: NO_GATE,
         route: { id: 'setup', params: [] },
         destinations: [destinationOf('setup')],
-        locale: startLocale(deps.location, deps.local, deps.languages),
+        // A language beyond the bundled two shows once its texts are here (`shellIntents`, `adminLanguage`); English before.
+        locale: firstShown(startLocale(deps.location, deps.local, deps.languages)),
         theme: { mode: themeModeOf(deps.local.get(THEME_KEY)), city: null, preview: null },
         consent: 'unknown',
         analytics: false,
@@ -247,6 +249,9 @@ function shellIntents<Setup>(deps: AdminDeps<Setup, unknown>, parts: Parts<Setup
     const update = (patch: Partial<AdminState<Setup>>): void => {
         store.update(patch);
     };
+    // The first language beyond the bundled two is fetched now; the account menu's choice later (`adminLanguage`).
+    const language = adminLanguage({ fetch: deps.fetch, local: deps.local, shell: parts.shell });
+    void language.start(startLocale(deps.location, deps.local, deps.languages));
     return {
         signIn: () => controller.signIn(),
         signOut: () => {
@@ -279,8 +284,7 @@ function shellIntents<Setup>(deps: AdminDeps<Setup, unknown>, parts: Parts<Setup
         },
         ...cityIntents(parts, update),
         setLocale: (locale) => {
-            deps.local.set(LANGUAGE_KEY, locale);
-            update({ locale });
+            void language.choose(locale);
         },
         setTheme: (mode) => {
             deps.local.set(THEME_KEY, mode);

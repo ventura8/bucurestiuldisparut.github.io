@@ -4,7 +4,7 @@
  * the position Add at centre adds after. It edits the same draft as the map, so the map follows. Fires `hcm-vertex`
  * with the edit (`set`, `move`, `remove`) and `hcm-vertex-select` with `{index}` (null: none chosen).
  */
-import type { LngLat, Locale } from '@hcm/shared';
+import type { LngLat, UiLocale } from '@hcm/shared';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 
 import { defineHcmIconButton } from '../../components/icon-button.js';
@@ -86,7 +86,7 @@ export class HcmVertexList extends LitElement {
 
     declare positions: readonly LngLat[];
     declare selected: number | null;
-    declare locale: Locale;
+    declare locale: UiLocale;
     /** A revoked admin's editor (`DECISIONS-for-review.md` §42d): the positions are read-only, Move and Remove off. */
     declare readOnly: boolean;
 

@@ -5,7 +5,7 @@
  * camera and frame: finding 53 of 2026-11-01), its score and first reasons in plain words, and its
  * chips (Free or Needs ordering, Imported). Without USGS set up the view says so with the way to Setup's USGS card.
  */
-import { USGS_DATASETS, type Locale, type UsgsDataset } from '@hcm/shared';
+import { USGS_DATASETS, type UiLocale, type UsgsDataset } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { current, errorTemplate, loadingTemplate } from '../editing/states.js';
@@ -39,7 +39,7 @@ const CHIP_SOURCES: readonly (readonly UsgsDataset[])[] = [
     USGS_DATASETS.filter(LANDSAT),
 ];
 
-function sourceLabel(locale: Locale, source: readonly UsgsDataset[]): string {
+function sourceLabel(locale: UiLocale, source: readonly UsgsDataset[]): string {
     const [only] = source;
     return source.length === 1 && only !== undefined
         ? datasetText(locale, only)
@@ -96,7 +96,7 @@ function filters(context: ImageryContext): TemplateResult {
 }
 
 /** The search's state in words: searching, or what it found. */
-function searchLine(locale: Locale, search: ImageryContext['view']['search']): string {
+function searchLine(locale: UiLocale, search: ImageryContext['view']['search']): string {
     if (search.phase === 'searching') {
         return contentText(locale, 'adminContent.imagery.searching');
     }
@@ -105,7 +105,7 @@ function searchLine(locale: Locale, search: ImageryContext['view']['search']): s
         : '';
 }
 
-function failedDatasets(locale: Locale, search: ImageryContext['view']['search']): TemplateResult {
+function failedDatasets(locale: UiLocale, search: ImageryContext['view']['search']): TemplateResult {
     const failed = search.failedDatasets.map((dataset) => datasetText(locale, dataset)).join(', ');
     return when(
         failed !== '',
@@ -159,7 +159,7 @@ function searchStatus(context: ImageryContext): TemplateResult {
         ${failedDatasets(locale, search)}`;
 }
 
-function sceneTags(locale: Locale, scene: SceneItemPort): TemplateResult {
+function sceneTags(locale: UiLocale, scene: SceneItemPort): TemplateResult {
     const free = scene.free ? 'adminContent.imagery.tag.free' : 'adminContent.imagery.tag.needsOrder';
     return html`<span class="chips">
         <span class="tag" data-tone=${scene.free ? 'good' : 'wait'}>${contentText(locale, free)}</span>
@@ -188,7 +188,7 @@ function thumbnail(context: ImageryContext, scene: SceneItemPort): TemplateResul
 const FRAME_ID = /^(?:(?:DS|D3C)[\w-]+([AF])|DZB[\w-]+L)(\d{3})\d{0,3}$/;
 
 /** What tells a frame from its twins of the same day, in short: its camera and frame number, when its id says them. */
-export function frameText(locale: Locale, entityId: string): string {
+export function frameText(locale: UiLocale, entityId: string): string {
     const [, camera, frame] = FRAME_ID.exec(entityId) ?? [];
     if (frame === undefined) {
         return '';
@@ -199,7 +199,7 @@ export function frameText(locale: Locale, entityId: string): string {
 }
 
 /** The row's line that tells it apart from its twins of the same day: its USGS id, camera and frame. */
-function identity(locale: Locale, scene: SceneItemPort): string {
+function identity(locale: UiLocale, scene: SceneItemPort): string {
     const frame = frameText(locale, scene.id);
     return frame === '' ? scene.displayId : `${scene.displayId} · ${frame}`;
 }

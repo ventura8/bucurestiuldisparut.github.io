@@ -1,12 +1,15 @@
 /**
  * `<hcm-account-menu>`: the account button of the top app bar (or of the rail's foot on a landscape phone) and its
- * dialog (`docs/research/M2b-interfaces.md` §1.2): who is signed in, the language (Romanian, English: switching keeps
+ * dialog (`docs/research/M2b-interfaces.md` §1.2): who is signed in, the language (any of `docs/I18N.md`'s: switching keeps
  * every form's state), the theme (automatic, light, dark), the analytics consent (withdrawable at any time, when GA4 is
  * configured) and Sign out. A rotation of a phone moves it between the top bar and the rail: the shell then gives the
  * new one's button the focus the old one held (`active`, `focusButton`).
  */
-import { LANGUAGE_NAMES, translate, type Locale } from '@hcm/shared';
+import { isUiLocale, translate, type UiLocale } from '@hcm/shared';
 import { LitElement, css, html, type TemplateResult } from 'lit';
+import { live } from 'lit/directives/live.js';
+
+import { UI_LANGUAGE_OPTIONS } from '../../components/language-options.js';
 
 import type { SegmentOption } from '../../components/segmented-button.js';
 import type { ThemeMode } from '../../theme/apply.js';
@@ -20,14 +23,7 @@ export const HCM_ACCOUNT_MENU_TAG = 'hcm-account-menu';
 
 const THEMES: readonly ThemeMode[] = ['system', 'light', 'dark'];
 
-/** The admin's two languages, each by its own name (`LANGUAGE_NAMES`, the viewer's list's) and in its own language. */
-const LANGUAGE_OPTIONS: readonly SegmentOption[] = (['ro', 'en'] as const).map((value) => ({
-    value,
-    label: LANGUAGE_NAMES[value],
-    lang: value,
-}));
-
-function themeOptions(locale: Locale): SegmentOption[] {
+function themeOptions(locale: UiLocale): SegmentOption[] {
     return THEMES.map((mode) => ({ value: mode, label: translate(locale, `theme.${mode}`) }));
 }
 
@@ -150,15 +146,21 @@ export class HcmAccountMenu extends LitElement {
 
     #language(state: AdminStatePort): TemplateResult {
         const label = translate(state.locale, 'language.label');
+        // The list shows the admin's language until it has switched (`live`): a language whose texts cannot be fetched
+        // leaves it where it was (`docs/I18N.md` → Loading).
         const change = (event: CustomEvent<{ readonly value: string }>): void => {
-            this.app?.intents.setLocale(event.detail.value === 'en' ? 'en' : 'ro');
+            (event.currentTarget as HTMLElement & { value: string }).value = state.locale;
+            const chosen = event.detail.value;
+            if (isUiLocale(chosen)) {
+                this.app?.intents.setLocale(chosen);
+            }
         };
         return html`<div class="group">
             <span class="group-label">${label}</span>
             <hcm-segmented-button
                 .label=${label}
-                .options=${LANGUAGE_OPTIONS}
-                .value=${state.locale}
+                .options=${UI_LANGUAGE_OPTIONS}
+                .value=${live(state.locale)}
                 @hcm-change=${change}
             ></hcm-segmented-button>
         </div>`;

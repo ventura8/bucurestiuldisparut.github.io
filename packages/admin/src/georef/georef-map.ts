@@ -13,7 +13,7 @@ import {
     roundTo,
     type Gcp,
     type LngLat,
-    type Locale,
+    type UiLocale,
     type Logger,
     type MapView,
 } from '@hcm/shared';
@@ -39,7 +39,7 @@ export function referenceFrame(version: GeorefVersion | null): CityFrame | null 
 
 export interface GeorefMapDeps {
     readonly maps: AdminMapFactory | null;
-    readonly locale: () => Locale;
+    readonly locale: () => UiLocale;
     readonly log: Logger;
     readonly status: (status: MapStatus) => void;
     /** A click on the map (the place of the next pair while adding). */

@@ -5,7 +5,7 @@
  * members read it), so the name comes from the link and is shown as text. The way back is the city's map on the admin's
  * own Hosting (`docs/research/M6-interfaces.md` §2.4): the project's first city at `/`, every other at `/<city>/`.
  */
-import { DEFAULT_LOCALE, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, isUiLocale, type UiLocale } from '@hcm/shared';
 
 import { parseAdminRoute } from '../routing/routes.js';
 import { LANGUAGE_KEY, resolveAdminLocale } from '../state/locale.js';
@@ -59,8 +59,8 @@ export function followWelcome(
     });
 }
 
-function localeOf(value: string | null): Locale | null {
-    return value === 'ro' || value === 'en' ? value : null;
+function localeOf(value: string | null): UiLocale | null {
+    return isUiLocale(value) ? value : null;
 }
 
 /**
@@ -68,7 +68,7 @@ function localeOf(value: string | null): Locale | null {
  * visitor chose on that city's map (the viewer's `hcm:<city>:lang`, on the same origin: a photo's link carries no
  * language), else the admin's own choice, else the map's Romanian. Anywhere else, `resolveAdminLocale`'s order.
  */
-export function startLocale(location: Pick<HashLocation, 'hash' | 'search'>, local: KeyValueStore, languages: readonly string[]): Locale {
+export function startLocale(location: Pick<HashLocation, 'hash' | 'search'>, local: KeyValueStore, languages: readonly string[]): UiLocale {
     const route = parseAdminRoute(location.hash());
     if (route?.id !== 'contribute') {
         return resolveAdminLocale(location.search(), local.get(LANGUAGE_KEY), languages);
@@ -76,7 +76,7 @@ export function startLocale(location: Pick<HashLocation, 'hash' | 'search'>, loc
     return contributorLocale(route.params[0] ?? '', location.search(), local);
 }
 
-function contributorLocale(cityId: string, search: string, local: KeyValueStore): Locale {
+function contributorLocale(cityId: string, search: string, local: KeyValueStore): UiLocale {
     const asked = localeOf(new URLSearchParams(search).get('lang'));
     return asked ?? localeOf(local.get(`hcm:${cityId}:lang`)) ?? localeOf(local.get(LANGUAGE_KEY)) ?? DEFAULT_LOCALE;
 }

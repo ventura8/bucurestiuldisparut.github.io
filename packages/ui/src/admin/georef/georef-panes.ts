@@ -4,7 +4,7 @@
  * Sentinel-2 when the version has both, and the reference's attribution), side by side from medium windows, one at a
  * time under a Scan | Map switch on compact ones.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { when, withValue } from '../imagery/when.js';
@@ -121,7 +121,7 @@ function s2Year(view: GeorefViewState): string {
     return view.version?.reference?.s2Date?.slice(0, 4) ?? '';
 }
 
-function attribution(locale: Locale, view: GeorefViewState): string {
+function attribution(locale: UiLocale, view: GeorefViewState): string {
     const reference = view.reference;
     if (reference === null) {
         return contentText(locale, 'adminContent.georef.noReference');

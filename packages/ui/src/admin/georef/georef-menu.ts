@@ -8,7 +8,7 @@
  * Choosing one fires `hcm-close` and calls its intent; Esc, Tab, a press outside or the focus leaving fire `hcm-close` (the
  * page closes it and gives the focus back).
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 
 import { deepActiveElement } from '../../components/focus.js';
@@ -37,7 +37,7 @@ interface GeorefMenuItem {
 type MenuText = 'add' | 'move' | 'delete' | 'undo' | 'readOnly';
 
 /** The menu's items there: none that edits on a read-only version (one line saying so instead). */
-function menuItems(locale: Locale, menu: GeorefMenuOpen, canUndo: boolean, locked: boolean): readonly GeorefMenuItem[] {
+function menuItems(locale: UiLocale, menu: GeorefMenuOpen, canUndo: boolean, locked: boolean): readonly GeorefMenuItem[] {
     const text = (key: MenuText): string => contentText(locale, `adminContent.georef.menu.${key}`);
     if (locked) {
         return [{ value: 'none', label: text('readOnly'), disabled: true }];
@@ -130,7 +130,7 @@ export class HcmGeorefMenu extends LitElement {
 
     /** Where it opened and what is there. */
     declare menu: GeorefMenuOpen;
-    declare locale: Locale;
+    declare locale: UiLocale;
     declare canUndo: boolean;
     /** A read-only version: nothing that edits. */
     declare locked: boolean;

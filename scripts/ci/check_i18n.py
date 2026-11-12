@@ -29,7 +29,22 @@ what a translation gets wrong (`viewer_problems`):
   the wrong file fails;
 * Romanian writes ș and ț with a comma below, never ş and ţ with a cedilla.
 
-A catalogue is a flat object literal of one-line entries, the shape Prettier keeps:
+The interface's other languages (`UI_LOCALES`, the list of packages/shared/src/i18n/locales.ts: 25 in all)
+arrive one family at a time, translated by a local model and imported with
+scripts/i18n/import_translations.py (docs/I18N.md). Where a folder does not require a language, its file is
+optional; when it is there, it is checked for shape only (`translation_problems`):
+
+* no key the source lacks, and every message non-empty;
+* the same `{placeholder}` names as the source, braces only around them, no edge whitespace, no bidi control;
+* no HTML tag the source does not have (a model that answers with markup).
+
+A key the file lacks shows in English at run time; the gate reports each language's completeness
+(`completeness`, an info line per language) instead of failing. `--strict` (or `HCM_I18N_STRICT=1`) makes
+every language of `UI_LOCALES` required in every folder with every key: the owner switches it on once the
+translations are complete. The strictness of `ro` and `en` never changes.
+
+A catalogue is a flat object literal of one-line entries, the shape Prettier keeps (a translation's
+text too long for one line is wrapped by Prettier after its key, and read as one entry):
 
     export const ro = {
         'app.title': 'București dispărut',
@@ -39,10 +54,11 @@ A catalogue is a flat object literal of one-line entries, the shape Prettier kee
 Any other line inside the literal (a computed key, a nested object, a value split over lines)
 is reported rather than skipped, so the parity check never passes on a catalogue it misread.
 
-Usage: check_i18n.py [--root DIR]. Exit status: 0 OK, 1 problems found, 2 usage.
+Usage: check_i18n.py [--root DIR] [--strict]. Exit status: 0 OK, 1 problems found, 2 usage.
 """
 
 import argparse
+import os
 import re
 import sys
 import unicodedata
@@ -60,6 +76,13 @@ LOCALES = ("ro", "en")
 SOURCE_LOCALE = LOCALES[0]
 # The public viewer's languages (`VIEWER_LOCALES` of packages/shared/src/i18n/index.ts), in its folders.
 VIEWER_LOCALES = ("ro", "en", "es", "fr", "de", "it", "pt", "ru", "uk", "pl", "tr", "ar", "hi", "zh", "ja", "ko")
+# Every language of the interface (`UI_LOCALES` of packages/shared/src/i18n/locales.ts; test_check_i18n.py keeps them equal).
+UI_LOCALES = (
+    *("ro", "en", "fr", "de", "es", "it", "pt", "pl", "ru", "uk", "tr", "ja", "zh", "ko", "ar", "hi"),
+    *("nl", "hu", "id", "vi", "bn", "bg", "el", "fa", "ur"),
+)
+STRICT_ENV = "HCM_I18N_STRICT"
+HTML_TAG_RE = re.compile(r"<\s*/?\s*[A-Za-z][^<>]*>")
 VIEWER_FOLDERS = frozenset({"packages/shared/src/i18n", "packages/shared/src/i18n/map-labels"})
 PLURAL_FORMS = ("zero", "one", "two", "few", "many", "other")
 # The letters of a catalogue's script, by the start of their Unicode name; Latin for every other locale.
@@ -88,6 +111,7 @@ LETTER_RE = re.compile(r"[^\W\d_]")
 CATALOGUE_GLOBS = ("packages/*/src/i18n", "packages/*/src/i18n/*")
 _STRING = r"'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\""
 ENTRY_RE = re.compile(rf"^\s*(?P<key>{_STRING}|[A-Za-z_$][\w$]*)\s*:\s*(?P<value>{_STRING}|`[^`$]*`)\s*,?\s*$")
+KEY_ONLY_RE = re.compile(rf"^\s*(?:{_STRING}|[A-Za-z_$][\w$]*)\s*:\s*$")
 OPEN_RE = re.compile(r"^export\s+const\s+(?P<name>\w+)\b[^=]*=\s*\{\s*$")
 CLOSE_RE = re.compile(r"^\}")
 COMMENT_RE = re.compile(r"^\s*(//|/\*|\*)")
@@ -127,7 +151,20 @@ def literal_lines(text: str, locale: str) -> list[tuple[int, str]]:
     if start is None:
         return []
     end = literal_end(lines, start + 1)
-    return list(enumerate(lines[start + 1 : end], start=start + 2))
+    numbered = list(enumerate(lines[start + 1 : end], start=start + 2))
+    return numbered if locale in LOCALES else unwrapped(numbered)
+
+
+def unwrapped(numbered: list[tuple[int, str]]) -> list[tuple[int, str]]:
+    """A translation's entry Prettier wrapped after its key (a text longer than the line) as one line again; Romanian
+    and English stay one line per entry, so their catalogues never wrap."""
+    joined: list[tuple[int, str]] = []
+    for number, line in numbered:
+        if joined and KEY_ONLY_RE.match(joined[-1][1]):
+            joined[-1] = (joined[-1][0], f"{joined[-1][1]} {line.strip()}")
+        else:
+            joined.append((number, line))
+    return joined
 
 
 def read_entry(catalogue: Catalogue, where: str, line: str) -> None:
@@ -269,14 +306,53 @@ def locales_of(root: Path, folder: Path) -> tuple[str, ...]:
     return VIEWER_LOCALES if relative(root, folder) in VIEWER_FOLDERS else LOCALES
 
 
-def check_folder(root: Path, folder: Path) -> tuple[list[str], int]:
-    """(problems, keys of the source locale) for one i18n folder."""
-    locales = locales_of(root, folder)
+def html_problems(rel: str, source: dict[str, str], other: dict[str, str]) -> list[str]:
+    """A tag the source's message does not have (a model that answered with markup)."""
+    found = []
+    for key in sorted(set(source) & set(other)):
+        if set(HTML_TAG_RE.findall(other[key])) - set(HTML_TAG_RE.findall(source[key])):
+            found.append(f"{rel}: {key!r} holds an HTML tag")
+    return found
+
+
+def translation_problems(rel: str, source: dict[str, str], other: dict[str, str]) -> list[str]:
+    """An optional language's file: its shape only (the module docstring's list); a missing key is no problem."""
+    extra = [f"{rel}: extra key {key!r} (not in {SOURCE_LOCALE})" for key in sorted(set(other) - set(source))]
+    texts = chain.from_iterable(text_problems(rel, key, value) for key, value in other.items())
+    return [*extra, *message_problems(rel, source, other), *texts, *html_problems(rel, source, other)]
+
+
+def optional_locales(required: tuple[str, ...]) -> tuple[str, ...]:
+    """The interface's languages a folder does not require."""
+    return tuple(locale for locale in UI_LOCALES if locale not in required)
+
+
+def optional_problems(root: Path, folder: Path, required: tuple[str, ...]) -> list[str]:
+    """Every optional language's file that is there, against the folder's source."""
+    source = read_catalogue(folder / f"{SOURCE_LOCALE}.ts", relative(root, folder / f"{SOURCE_LOCALE}.ts"), SOURCE_LOCALE).messages
+    found: list[str] = []
+    for locale in optional_locales(required):
+        path = folder / f"{locale}.ts"
+        if path.is_file():
+            catalogue = read_catalogue(path, relative(root, path), locale)
+            found += catalogue.problems + translation_problems(relative(root, path), source, catalogue.messages)
+    return found
+
+
+def check_folder(root: Path, folder: Path, strict: bool = False) -> tuple[list[str], int]:
+    """(problems, keys of the source locale) for one i18n folder; `strict`: every interface language required."""
+    locales = UI_LOCALES if strict else locales_of(root, folder)
     files = {locale: folder / f"{locale}.ts" for locale in locales}
-    absent = [f"{relative(root, path)}: missing catalogue" for path in files.values() if not path.is_file()]
+    absent = absent_catalogues(root, files)
     if absent:
         return absent, 0
-    return compare(root, files, viewer=locales == VIEWER_LOCALES)
+    problems, keys = compare(root, files, viewer=locales == VIEWER_LOCALES)
+    return problems + optional_problems(root, folder, locales), keys
+
+
+def absent_catalogues(root: Path, files: dict[str, Path]) -> list[str]:
+    """A required catalogue file that is not there."""
+    return [f"{relative(root, path)}: missing catalogue" for path in files.values() if not path.is_file()]
 
 
 def catalogue_folders(root: Path) -> list[Path]:
@@ -287,22 +363,65 @@ def merge(results: Sequence[tuple[list[str], int]]) -> tuple[list[str], int]:
     return list(chain.from_iterable(problems for problems, _ in results)), sum(keys for _, keys in results)
 
 
-def check(root: Path) -> tuple[list[str], int, int]:
+def check(root: Path, strict: bool = False) -> tuple[list[str], int, int]:
     """(problems, catalogue folders, keys) for every catalogue folder (`CATALOGUE_GLOBS`)."""
     folders = catalogue_folders(root)
     if not folders:
         return [f"no catalogue folder matches {' or '.join(CATALOGUE_GLOBS)}"], 0, 0
-    problems, keys = merge([check_folder(root, folder) for folder in folders])
+    problems, keys = merge([check_folder(root, folder, strict) for folder in folders])
     return problems, len(folders), keys
+
+
+def folder_counts(folder: Path, locale: str) -> tuple[int, int]:
+    """(keys `locale` has that the source has, keys of the source) in one folder."""
+    source = read_catalogue(folder / f"{SOURCE_LOCALE}.ts", "", SOURCE_LOCALE).messages
+    path = folder / f"{locale}.ts"
+    other = read_catalogue(path, "", locale).messages if path.is_file() else {}
+    return len(set(source) & set(other)), len(source)
+
+
+def completeness(root: Path) -> dict[str, tuple[int, int]]:
+    """Each interface language: (keys translated, keys in all) over every catalogue folder."""
+    folders = [folder for folder in catalogue_folders(root) if (folder / f"{SOURCE_LOCALE}.ts").is_file()]
+    return {locale: locale_counts(folders, locale) for locale in UI_LOCALES}
+
+
+def locale_counts(folders: Sequence[Path], locale: str) -> tuple[int, int]:
+    """(keys translated, keys in all) of one language over `folders`."""
+    counts = [folder_counts(folder, locale) for folder in folders]
+    return sum(have for have, _ in counts), sum(total for _, total in counts)
+
+
+def translating(root: Path) -> bool:
+    """True once a folder holds a language it does not require: a translation is under way."""
+    folders = catalogue_folders(root)
+    optional = ((folder, optional_locales(locales_of(root, folder))) for folder in folders)
+    return any((folder / f"{locale}.ts").is_file() for folder, locales in optional for locale in locales)
+
+
+def report_lines(report: dict[str, tuple[int, int]]) -> list[str]:
+    """`fr 412/2804 (14 %)` for every language short of complete."""
+    short = [(locale, have, total) for locale, (have, total) in report.items() if have < total]
+    return [f"{locale} {have}/{total} ({have * 100 // max(total, 1)} %)" for locale, have, total in short]
+
+
+def is_strict(flag: bool) -> bool:
+    """The flag, or `HCM_I18N_STRICT=1` (the owner's switch once the translations are complete)."""
+    return flag or os.environ.get(STRICT_ENV, "") == "1"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Check that every UI catalogue holds the Romanian source's messages.")
     parser.add_argument("--root", type=Path, default=ROOT, help="repository root (default: this checkout)")
-    problems, folders, keys = check(parser.parse_args(argv).root)
+    parser.add_argument("--strict", action="store_true", help=f"every interface language complete (or {STRICT_ENV}=1)")
+    args = parser.parse_args(argv)
+    problems, folders, keys = check(args.root, is_strict(args.strict))
     if problems:
         LOG.error("[i18n] FAILED:\n%s", bullets(problems))
         return 1
+    incomplete = report_lines(completeness(args.root)) if translating(args.root) else []
+    if incomplete:
+        LOG.info("[i18n] languages still translating (their missing keys show in English):\n%s", bullets(incomplete))
     languages = " and ".join(LOCALES)
     viewer = len(VIEWER_LOCALES)
     LOG.info("[i18n] OK: %d catalogue folder(s), %d keys, identical in %s (the viewer's in %d languages)", folders, keys, languages, viewer)
