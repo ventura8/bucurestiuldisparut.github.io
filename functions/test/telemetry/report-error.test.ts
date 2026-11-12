@@ -6,7 +6,7 @@ import { ERROR_REPORT_LIMITS, ERROR_REPORT_MAX_BYTES, apiErrorDetailsSchema, cre
 import { createRecordingSink } from '@hcm/test-support';
 import { describe, expect, it } from 'vitest';
 
-import { createRateLimiter, type RateLimiter } from '../../src/telemetry/rate-limit.js';
+import { createRateLimiter, type RateLimiter } from '../../src/api/rate-limit.js';
 import {
     handleErrorReport,
     reportErrorFunction,

@@ -34,6 +34,8 @@ export const NOTIFICATION_KINDS = [
     'review.waiting',
     'suggestion.waiting',
     'role.requested',
+    // beta.1 Q1: a visitor of the public map reported a problem (at most one a city an hour).
+    'report.waiting',
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -66,6 +68,7 @@ export const NOTIFICATION_SPECS: Readonly<Record<NotificationKind, NotificationS
     'review.waiting': { severity: 'info', push: true },
     'suggestion.waiting': { severity: 'info', push: false },
     'role.requested': { severity: 'info', push: true },
+    'report.waiting': { severity: 'info', push: true },
 };
 
 /** M13 §7: who hears of each kind. Every kind before M13 is about the project or its imagery: its staff. */
@@ -75,7 +78,7 @@ export function notificationAudience(kind: NotificationKind): NotificationAudien
     if (kind === 'role.requested') {
         return 'owners';
     }
-    return kind === 'review.waiting' || kind === 'suggestion.waiting' ? 'reviewers' : 'staff';
+    return ['review.waiting', 'suggestion.waiting', 'report.waiting'].includes(kind) ? 'reviewers' : 'staff';
 }
 
 /** The kinds pushed when an admin turns push on and changes nothing else. */

@@ -1,8 +1,8 @@
-/** The in-memory limiter of `telemetry.reportError` (`functions/src/telemetry/rate-limit.ts`). */
+/** The in-memory limiter of the public endpoints `telemetry.reportError` and `reports.submit` (`functions/src/api/rate-limit.ts`). */
 import { ERROR_REPORT_LIMITS } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
-import { createRateLimiter } from '../../src/telemetry/rate-limit.js';
+import { createRateLimiter } from '../../src/api/rate-limit.js';
 
 const MINUTE = new Date('2026-10-12T08:30:00.000Z');
 const SAME_MINUTE = new Date('2026-10-12T08:30:59.999Z');
@@ -26,7 +26,7 @@ describe('createRateLimiter', () => {
     });
 
     it('badPath_theInstanceLimitCapsEveryClientTogether', () => {
-        const limiter = createRateLimiter('e2e-salt', { perClientPerMinute: 2, perInstancePerMinute: 3 });
+        const limiter = createRateLimiter('e2e-salt', { perClient: 2, perInstance: 3, windowMs: 60_000 });
 
         expect([...allowed(limiter, 'a', 2), ...allowed(limiter, 'b', 2), ...allowed(limiter, 'c', 1)]).toEqual([
             true,

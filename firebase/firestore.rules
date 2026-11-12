@@ -528,11 +528,11 @@ service cloud.firestore {
         // added there must be added here too: the rules test `notify.test.ts` saves every kind and the default list.
         function validPushKinds(kinds) {
             return kinds is list
-                && kinds.size() <= 15
+                && kinds.size() <= 16
                 && kinds.toSet().size() == kinds.size()
                 && kinds.hasOnly(['usgs.approved', 'order.delivered', 'order.imported', 'order.reminder', 'order.expired', 'job.failed',
                     'layer.readyToApprove', 'layer.needsPoints', 'budget.paused', 'crash.spike', 'job.needsOk', 'job.noWorker',
-                    'review.waiting', 'suggestion.waiting', 'role.requested']);
+                    'review.waiting', 'suggestion.waiting', 'role.requested', 'report.waiting']);
         }
 
         function ownAdmin(uid) {
@@ -860,6 +860,16 @@ service cloud.firestore {
 
             match /roleRequests/{request} {
                 allow read: if isCityOwner(city);
+            }
+
+            // beta.1 Q1 (docs/research/M2-interfaces.md §3.5): what visitors of the public map reported. Only reports.submit creates one
+            // (the visitor's address stays with the city's reviewers); a reviewer marks it done or open again, or deletes it.
+            match /reports/{report} {
+                allow read, delete: if isCityReviewer(city);
+                allow update: if isCityReviewer(city)
+                    && changedKeys().hasOnly(['status', 'updatedBy', 'updatedAt'])
+                    && request.resource.data.status in ['open', 'done']
+                    && stamped(request.resource.data);
             }
 
             // USGS scenes are harvested server-side; admins triage them (candidate, rejected) and annotate

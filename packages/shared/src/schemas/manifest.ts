@@ -253,6 +253,8 @@ export const manifestSchema = z
         unplaced: z.array(unplacedPhotoSchema).max(MAX_PHOTOS).optional(),
         /** M13: the Contribute page of this city, the map's one link to anything that signs in. */
         contributeUrl: httpsUrlSchema.optional(),
+        /** beta.1 Q1: where the map's Report a problem sends a report (`reports.submit`); absent, the map offers none. */
+        reportUrl: httpsUrlSchema.optional(),
         /** Defaults of the photos overlay; without it the photos start fully opaque. */
         photosOverlay: photosOverlaySchema.optional(),
         poiCategories: z.array(poiCategorySchema).max(MAX_POI_CATEGORIES).optional(),

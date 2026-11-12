@@ -20,7 +20,7 @@ import { onRequest } from 'firebase-functions/https';
 
 import type { Ports } from '../ports/index.js';
 import { toReportedErrorEvent } from './error-event.js';
-import { createRateLimiter, type RateLimiter } from './rate-limit.js';
+import { createRateLimiter, type RateLimiter } from '../api/rate-limit.js';
 
 export type ReportErrorDeps = Pick<Ports, 'errors' | 'config' | 'clock' | 'log'>;
 

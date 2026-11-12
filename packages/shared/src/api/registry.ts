@@ -51,6 +51,7 @@ import {
 import { COMMUNITY_CALLABLES } from './community.js';
 import { revertRequestSchema, revertResponseSchema } from './history.js';
 import { ASSIST_GEOCODE_QUEUE } from '../schemas/assist.js';
+import { REPORT_MAX_BYTES, reportSubmissionSchema } from '../schemas/report.js';
 import {
     IMAGERY_PUBLISH_QUEUE,
     IMAGERY_TICK_SCHEDULE,
@@ -366,6 +367,14 @@ export const HTTP_ENDPOINTS = {
         maxInstances: 2,
         request: workerStarterQuerySchema,
         owner: 'fn-worker',
+    },
+    /** beta.1 Q1 (`docs/research/M2-interfaces.md` §3.5): the public map's Report a problem. */
+    'reports.submit': {
+        method: 'POST',
+        maxBytes: REPORT_MAX_BYTES,
+        maxInstances: 2,
+        request: reportSubmissionSchema,
+        owner: 'fn-content',
     },
 } as const;
 

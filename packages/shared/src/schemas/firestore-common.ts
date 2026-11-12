@@ -66,6 +66,8 @@ export const SYSTEM_WRITERS = [
     'photos',
     'pipeline',
     'publish',
+    /** beta.1 Q1: `reports.submit`, the public map's Report a problem. */
+    'reports',
     'setup',
     'telemetry',
 ] as const;

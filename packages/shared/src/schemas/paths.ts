@@ -135,6 +135,9 @@ export const FIRESTORE_PATHS = {
     suggestions: (cityId: string) => `${cityPath(cityId)}/suggestions`,
     suggestion: (cityId: string, groupId: string) => child(cityId, 'suggestions', groupId),
     contributors: (cityId: string) => `${cityPath(cityId)}/contributors`,
+    /** beta.1 Q1 (`docs/research/M2-interfaces.md` §3.5): what visitors of the public map reported. */
+    reports: (cityId: string) => `${cityPath(cityId)}/reports`,
+    report: (cityId: string, reportId: string) => child(cityId, 'reports', reportId),
     contributor: (cityId: string, uid: string) => `${cityPath(cityId)}/contributors/${uid}`,
     /** M8 (`docs/research/M8-join-interfaces.md` §2): the one plan of which frames make each date's whole-city layer. */
     imageryPlan: (cityId: string) => child(cityId, 'imageryPlans', 'dates'),
