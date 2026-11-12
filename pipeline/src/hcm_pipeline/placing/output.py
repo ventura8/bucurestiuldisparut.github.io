@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
+from hcm_pipeline.archive import model
 from hcm_pipeline.geo import to_lnglat, zoom_resolution
 from hcm_pipeline.georef.autogcp import MAX_SUGGESTIONS, GcpSuggestions
 from hcm_pipeline.georef.transforms import Gcp
@@ -47,6 +48,8 @@ class Placement:
     seam: float | None = None
 
     def as_record(self) -> dict[str, object]:
+        if self.method not in model.ARCHIVE_PLACE_METHODS:
+            raise ValueError(f"unknown place method {self.method!r}")
         record: dict[str, object] = {
             "method": self.method,
             "encoding": self.encoding,
