@@ -115,11 +115,11 @@ export const FIREBASE_APP_NAME = '[DEFAULT]';
  * and no metadata-server probe. No `HCM_OAUTH_CLIENT_IDS` (a real project sets it in functions/deploy-env.json), so
  * `admin.claim` takes the path of a project without it: it asks the fake Identity Toolkit for the Google sign-in
  * client, the stand-in consent's (CR-M2b-2). The emulators' JVMs (Firestore, the Storage rules runtime, Pub/Sub) get a
- * heap ceiling of 1.5 GB each, as `npm test` gives them: without one each may grow to a quarter of the machine's memory
- * (DECISIONS-for-review.md §169).
+ * heap ceiling of 2 GB each: without one each may grow to a quarter of the machine's memory. `npm test` gives them 6 GB, as
+ * it also asks the Firestore emulator for the whole rule-coverage report (DECISIONS-for-review.md §171).
  */
 export const EMULATOR_ENV: Readonly<Record<string, string>> = {
-    JAVA_TOOL_OPTIONS: '-XX:CICompilerCount=2 -Xmx1536m',
+    JAVA_TOOL_OPTIONS: '-XX:CICompilerCount=2 -Xmx2g',
     HCM_UPSTREAM_BASE: MOCK_API_ORIGIN,
     HCM_ADMIN_ORIGINS: ADMIN_ORIGIN,
     STORAGE_BUCKET_URL: E2E_BUCKET,
