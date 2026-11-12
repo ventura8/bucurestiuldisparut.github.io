@@ -185,6 +185,23 @@ describe('the georeferencer map: tools and nudge', () => {
         expect(draw.mode).toBe('static');
     });
 
+    it('badPath_aPairMadeWhileAddingIsNotSelectedInTheToolsSoTheNextClickCannotMoveIt @S-A16-HAPPY-GEOREF-GHOST', async () => {
+        const draw = new FakeMapDraw();
+        const made = handle(draw);
+        const { map } = session(factoryOf([{ ok: true, map: made.handle }]));
+        map.setAdding(true);
+        map.attach(host());
+        map.setFrame(FRAME);
+        await settle();
+
+        // The pair just completed is selected in the store: the tools stay static and get no selection.
+        map.showPairs([pair('g1', 0, 0)], 'g1');
+        expect([draw.mode, draw.callsOf('select')]).toEqual(['static', []]);
+        // Adding ends: the tools select, and the selected pair is theirs again.
+        map.setAdding(false);
+        expect([draw.mode, draw.callsOf('select')]).toEqual(['select', [['g1']]]);
+    });
+
     it('happyPath_nudgeMovesTheSelectedPairInScreenSpace', async () => {
         const draw = new FakeMapDraw();
         const made = handle(draw);

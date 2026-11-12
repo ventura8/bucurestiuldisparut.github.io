@@ -91,6 +91,7 @@ describe('the ghost and the sharper scan on the scan pane', () => {
     afterEach(() => {
         cleanup();
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     it('happyPath_theGhostIsADashedDoubleRingAndTheDetailIsDrawnPastThePreviewsPixels @S-A16-HAPPY-GEOREF-FULL-RES', async () => {
@@ -114,6 +115,26 @@ describe('the ghost and the sharper scan on the scan pane', () => {
         const ratio = Math.max(globalThis.devicePixelRatio, 1);
         expect(transforms.mock.calls.some((call) => Math.abs(Number(call[0]) - ratio * element.view.scale * 0.5) < 1e-9)).toBe(true);
         expect(drawn).toHaveBeenCalled();
+    });
+
+    it('happyPath_onAHiDpiScreenTheDetailIsDrawnFromHalfTheZoom @S-A16-HAPPY-GEOREF-FULL-RES', () => {
+        const preview = document.createElement('canvas');
+        const sharper = document.createElement('canvas');
+        const drawn = vi.spyOn(CanvasRenderingContext2D.prototype, 'drawImage');
+        const plain = document.createElement('canvas');
+        document.body.append(plain);
+        const scene = {
+            ...{ image: preview, view: { scale: 0.75, offset: { x: 0, y: 0 } }, previewScale: 0.5, markers: [], selected: null },
+            ...{ half: null, crosshair: false, dragged: null, detail: { image: sharper, scale: 1 } },
+        };
+
+        // 0.75 CSS px a preview pixel: still sharp at one device px a CSS px, upscaled (so the sharper scan) at two.
+        vi.stubGlobal('devicePixelRatio', 1);
+        drawScan(plain, scene);
+        expect(drawn.mock.calls.at(-1)?.[0]).toBe(preview);
+        vi.stubGlobal('devicePixelRatio', 2);
+        drawScan(plain, scene);
+        expect(drawn.mock.calls.at(-1)?.[0]).toBe(sharper);
     });
 
     it('badPath_noDetailOrOneStillLoadingDrawsThePreviewAtItsScale @S-A16-BAD-GEOREF-FULL-RES-NONE', async () => {

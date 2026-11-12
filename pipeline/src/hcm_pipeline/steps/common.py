@@ -8,6 +8,7 @@ for the georeferencer and `georef` matches against the first.
 """
 
 import json
+import math
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,7 +18,7 @@ import numpy
 
 from hcm_pipeline import paths
 from hcm_pipeline.agreement import AGREED, REJECT_M, Agreement, Candidate, Patch, candidates, decide, read_patch, readings
-from hcm_pipeline.contract import SCAN_DETAIL_MAX_PX, SCAN_PREVIEW_MAX_PX, Errors
+from hcm_pipeline.contract import SCAN_DETAIL_MAX_PIXELS, SCAN_DETAIL_MAX_PX, SCAN_PREVIEW_MAX_PX, Errors
 from hcm_pipeline.documents import ScanInfo, city_bounds
 from hcm_pipeline.geo import Bounds, Grid, MercatorBox, fnv1a
 from hcm_pipeline.images import UInt8Array, resize, write_jpeg
@@ -215,10 +216,14 @@ def grey_reference(source: Sentinel2) -> UInt8Array:
     return numpy.asarray(numpy.asarray(total) / 3, numpy.uint8)
 
 
-def _scaled_jpeg(ctx: JobContext, pixels: UInt8Array, name: str, longest: int) -> float:
-    """`pixels` shrunk to at most `longest` on the long side as the version's JPEG `name`; its scale (its pixels per scan pixel)."""
+def detail_scale(width: int, height: int) -> float:
+    """The sharper scan's pixels per scan pixel: its long side at most `SCAN_DETAIL_MAX_PX`, its area at most `SCAN_DETAIL_MAX_PIXELS`."""
+    return min(1.0, SCAN_DETAIL_MAX_PX / max(width, height), math.sqrt(SCAN_DETAIL_MAX_PIXELS / (width * height)))
+
+
+def _scaled_jpeg(ctx: JobContext, pixels: UInt8Array, name: str, scale: float) -> float:
+    """`pixels` shrunk by `scale` as the version's JPEG `name`; `scale` (its pixels per scan pixel)."""
     height, width = (int(side) for side in pixels.shape[:2])
-    scale = min(1.0, longest / max(width, height))
     local = write_jpeg(ctx.local(name), resize(pixels, (max(1, round(width * scale)), max(1, round(height * scale)))))
     ctx.publish(local, ctx.version_file(name), "image/jpeg")
     return scale
@@ -227,12 +232,13 @@ def _scaled_jpeg(ctx: JobContext, pixels: UInt8Array, name: str, longest: int) -
 def publish_scan(ctx: JobContext, local: Path, pixels: UInt8Array) -> ScanInfo:
     """`scan.tif`, its preview (long side at most `SCAN_PREVIEW_MAX_PX`) and, for a longer scan, its sharper `scan-detail.jpg`.
 
-    The detail (long side at most `SCAN_DETAIL_MAX_PX`) is what the georeferencer draws once the owner zooms past the preview's own
-    pixels (a 1966 Corona frame was a blur at high zoom, 2026-11-12); a scan no longer than its preview needs none.
+    The detail (long side at most `SCAN_DETAIL_MAX_PX`, area at most `SCAN_DETAIL_MAX_PIXELS`: a browser decodes it whole) is what
+    the georeferencer draws once the owner zooms past the preview's own pixels (a 1966 Corona frame was a blur at high zoom,
+    2026-11-12); a scan no longer than its preview needs none.
     """
-    height, width = pixels.shape[:2]
-    scale = _scaled_jpeg(ctx, pixels, "scan-preview.jpg", SCAN_PREVIEW_MAX_PX)
-    detail = None if scale >= 1.0 else _scaled_jpeg(ctx, pixels, "scan-detail.jpg", SCAN_DETAIL_MAX_PX)
+    height, width = (int(side) for side in pixels.shape[:2])
+    scale = _scaled_jpeg(ctx, pixels, "scan-preview.jpg", min(1.0, SCAN_PREVIEW_MAX_PX / max(width, height)))
+    detail = None if scale >= 1.0 else _scaled_jpeg(ctx, pixels, "scan-detail.jpg", detail_scale(width, height))
     sha256 = sha256_of(local)
     scan = ctx.publish(local, ctx.version_file("scan.tif"), "image/tiff")
     detail_path = None if detail is None else ctx.version_file("scan-detail.jpg")

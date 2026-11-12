@@ -1,7 +1,8 @@
 import { fitTransform, type FittedTransform } from '@hcm/shared';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
+    deviceRatio,
     GeorefPictures,
     loadWarp,
     REFERENCE_PICTURE,
@@ -236,15 +237,15 @@ describe('the sharper scan (S-A16-HAPPY-GEOREF-FULL-RES)', () => {
         files.put(DETAIL.path);
 
         // At the preview's own pixels (0.5 CSS px a scan pixel here) and below: the preview is enough, nothing is fetched.
-        shown.zoomed(DETAILED, 0.5);
+        shown.zoomed(DETAILED, 0.5, 1);
         await settle();
         expect(details).toEqual([]);
 
-        shown.zoomed(DETAILED, 0.8);
-        shown.zoomed(DETAILED, 2);
+        shown.zoomed(DETAILED, 0.8, 1);
+        shown.zoomed(DETAILED, 2, 1);
         await settle();
         expect(details).toEqual([{ url: `blob:${DETAIL.path}`, scale: 1 }]);
-        shown.zoomed(DETAILED, 4);
+        shown.zoomed(DETAILED, 4, 1);
         await settle();
         expect(details).toHaveLength(1);
 
@@ -253,20 +254,44 @@ describe('the sharper scan (S-A16-HAPPY-GEOREF-FULL-RES)', () => {
         expect(details.at(-1)).toBeNull();
     });
 
+    it('happyPath_onAHiDpiScreenTheDetailIsFetchedFromHalfTheZoom @S-A16-HAPPY-GEOREF-FULL-RES', async () => {
+        const { shown, files, details } = await setup();
+        files.put(DETAIL.path);
+
+        // 0.3 CSS px a scan pixel: below the preview's 0.5 on a plain screen, past it at two device px a CSS px.
+        shown.zoomed(DETAILED, 0.3, 1);
+        await settle();
+        expect(details).toEqual([]);
+        shown.zoomed(DETAILED, 0.3, 2);
+        await settle();
+        expect(details).toEqual([{ url: `blob:${DETAIL.path}`, scale: 1 }]);
+    });
+
+    it('happyPath_theScreensRatioIsAtLeastOneAndOneWithoutAScreen @S-A16-HAPPY-GEOREF-FULL-RES', () => {
+        expect(deviceRatio()).toBeGreaterThanOrEqual(1);
+        vi.stubGlobal('devicePixelRatio', 2);
+        expect(deviceRatio()).toBe(2);
+        vi.stubGlobal('devicePixelRatio', 0.5);
+        expect(deviceRatio()).toBe(1);
+        vi.stubGlobal('devicePixelRatio', undefined);
+        expect(deviceRatio()).toBe(1);
+        vi.unstubAllGlobals();
+    });
+
     it('badPath_noDetailOrAFailedFetchLeavesThePreviewAndAClearedPageDropsALateOne @S-A16-BAD-GEOREF-FULL-RES-NONE', async () => {
         const { shown, files, details } = await setup();
 
         // A short scan (or an older version) has none; a missing file keeps the preview; neither is said as an error.
-        shown.zoomed(SCAN, 4);
-        shown.zoomed(null, 4);
-        shown.zoomed(DETAILED, 4);
+        shown.zoomed(SCAN, 4, 1);
+        shown.zoomed(null, 4, 1);
+        shown.zoomed(DETAILED, 4, 1);
         await settle();
         expect(details).toEqual([]);
 
         shown.clear();
         files.put(DETAIL.path);
         files.hold = true;
-        shown.zoomed(DETAILED, 4);
+        shown.zoomed(DETAILED, 4, 1);
         shown.clear();
         files.flush();
         await settle();

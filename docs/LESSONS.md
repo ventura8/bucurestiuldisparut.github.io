@@ -3396,3 +3396,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the linked views (§156) applied every scan move to the map, a half pair pending or not.
     - Fix and pin: the link pauses while a half pair exists; the expected place is shown as a dashed ring instead (`ghost.ts`, `ghosts.ts`; S-A16-HAPPY-GEOREF-GHOST).
     - **Never move the target a user is about to click: show where you expect it instead.**
+
+579. **The sharper scan was capped by its long side only, and switched on in CSS pixels.**
+    - Seen: 2026-11-12, review of the georeferencer's sharper scan (§159): a near-square upload (20,000 px a side) would have written a 16,384 × 16,384 `scan-detail.jpg`, about 1 GiB of RGBA once the browser decodes it; and on a screen of two device pixels a CSS pixel the 4,096 px preview was already upscaled (blurry) from half the zoom that fetched the sharper one.
+    - Cause: `publish_scan` sized the detail like the preview (one long-side cap, right for a long Corona strip), and the pane compared `view.scale` with 1 in CSS pixels, ignoring `devicePixelRatio`.
+    - Fix and pin: `detail_scale` also caps the area (`SCAN_DETAIL_MAX_PIXELS` = 64 million, both sides of the contract; `pipeline/tests/unit/test_publish_scan.py`); the pane and the store compare `scale × devicePixelRatio` (`scan-draw.ts` `pictureOf`, `georef-pictures.ts` `zoomed`; `scan-viewer-keep.test.ts`, `georef-pictures.test.ts`, `georef-ghost.spec.ts`: S-A16-HAPPY-GEOREF-FULL-RES).
+    - **An image a browser decodes whole is capped by its area, not only its side; a "past native resolution" test counts device pixels.**
+
+580. **A map click right after a pair was made moved that pair to the click as well as starting the next one.**
+    - Seen: 2026-11-12, the ghost spec once it checked the ring's place (review of §159): with Add pairs on, the click on the map that began pair 6 also moved pair 5 there (its fit error jumped to kilometres); a likely part of the owner's "pin landed 1 km off".
+    - Cause: completing a pair selects it, and `GeorefMap` handed the selection to the drawing tools; the Terra Draw adapter's `select` switches the tools to `select` mode, in which a map click moves the selected point (the single-pointer way to place a pin, WCAG 2.5.7). The `static` mode that Add pairs had set was undone silently.
+    - Fix and pin: while adding, `GeorefMap` does not select in the tools (the badges show the selection) and selects again when adding ends (`packages/admin/test/georef/georef-map.test.ts`; `e2e/admin/specs/imagery/georef-ghost.spec.ts`: the pair made before keeps its place).
+    - **A port call can change a mode as a side effect: after it, assert the mode the feature relies on, and test the click after the edit, not only the edit.**

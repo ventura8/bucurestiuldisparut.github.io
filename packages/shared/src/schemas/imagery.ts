@@ -86,6 +86,9 @@ export const SCAN_PREVIEW_MAX_PX = 4096;
 /** The sharper scan's long side (`scan-detail.jpg`): written when the scan is longer than the preview, fetched once the pane zooms past it. */
 export const SCAN_DETAIL_MAX_PX = 16384;
 
+/** ... and its area in pixels: a browser decodes it whole, so a near-square scan's detail is capped by its area as well. */
+export const SCAN_DETAIL_MAX_PIXELS = 64_000_000;
+
 const pathSchema = z.string().min(1).max(500);
 
 const sourceSchema = z.discriminatedUnion('kind', [

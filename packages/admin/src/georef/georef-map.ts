@@ -222,10 +222,20 @@ export class GeorefMap {
         this.#paintBadges();
     }
 
-    /** While adding pairs a click on the map is a place, not a selection: the points stand still. */
+    /**
+     * While adding pairs a click on the map is a place, not a selection: the points stand still, and the selected pair is
+     * the drawing tools' selection again only once adding ends (selecting would switch them to `select`, where a click moves it).
+     */
     setAdding(adding: boolean): void {
         this.#adding = adding;
-        this.#draw?.setMode(adding ? 'static' : 'select');
+        const draw = this.#draw;
+        if (draw === null) {
+            return;
+        }
+        draw.setMode(adding ? 'static' : 'select');
+        if (!adding) {
+            draw.select(this.#selected);
+        }
     }
 
     detach(): void {
@@ -260,7 +270,11 @@ export class GeorefMap {
         const draw = this.#draw;
         if (draw !== null) {
             draw.load(this.#pairs.map((pair) => ({ id: pair.id, geometry: { type: 'Point', coordinates: [pair.geo.lng, pair.geo.lat] } })));
-            draw.select(this.#selected);
+            // Terra Draw's `select` switches the tools to `select` mode, where the next map click would move the pair just made
+            // (the owner's pin 1 km off, 2026-11-12): while adding, the badges show the selection alone.
+            if (!this.#adding) {
+                draw.select(this.#selected);
+            }
         }
     }
 

@@ -31,6 +31,11 @@ export const loadWarp: WarpLoader = async () => import('./georef-warp.js');
 /** The scan and the reference are decoded at most this long (a canvas texture). */
 const DECODE_MAX_SIDE = 4096;
 
+/** The screen's device pixels a CSS pixel, at least 1 (1 where there is no screen, as in a worker or a test under Node). */
+export function deviceRatio(): number {
+    return Math.max(1, ...[globalThis.devicePixelRatio].filter(Number.isFinite));
+}
+
 export interface GeorefPicturesDeps {
     readonly files: FilePort;
     readonly pictures: PicturePort | null;
@@ -131,11 +136,12 @@ export class GeorefPictures {
     }
 
     /**
-     * The scan pane shows `scale` CSS px a scan pixel: once past the preview's own pixels, the version's sharper scan is fetched (once a
-     * version; a failed fetch leaves the preview, as a version without one does).
+     * The scan pane shows `scale` CSS px a scan pixel on a screen of `ratio` device px a CSS px: once a preview pixel covers more than
+     * one device pixel, the version's sharper scan is fetched (once a version; a failed fetch leaves the preview, as a version without
+     * one does). The pane draws it from the same threshold (`scan-draw.ts` `pictureOf`).
      */
-    zoomed(scan: Scan | null, scale: number): void {
-        const detail = scan !== null && scale > scan.previewScale ? scan.detail : null;
+    zoomed(scan: Scan | null, scale: number, ratio: number): void {
+        const detail = scan !== null && scale * ratio > scan.previewScale ? scan.detail : null;
         if (detail !== null && !this.#detailAsked) {
             this.#detailAsked = true;
             void this.#loadDetail(detail);

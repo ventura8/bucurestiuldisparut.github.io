@@ -120,6 +120,9 @@ USGS_BACKOFF_MINUTES: Final = (30, 60, 120, 240, 480, 720)
 SCAN_PREVIEW_MAX_PX: Final = 4096
 # The georeferencer's sharper scan (`scan-detail.jpg`): its long side at most this, written when the scan is longer than its preview.
 SCAN_DETAIL_MAX_PX: Final = 16384
+# ... and at most this many pixels in all: a near-square scan at 16384 px a side would decode to about 1 GiB of RGBA in the browser.
+# A detail at this area is never less than 8000 px long, about twice the preview's 4096, so it is always worth fetching.
+SCAN_DETAIL_MAX_PIXELS: Final = 64_000_000
 STUDIO_MAX_BYTES: Final = 300_000_000
 # At most this many GCPs per georeferencing (`MAX_GCPS`), the largest scan side (`MAX_SCAN_PIXELS`), log lines per job.
 MAX_GCPS: Final = 300

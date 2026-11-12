@@ -60,10 +60,13 @@ function placed(scene: ScanScene): readonly ScanMarker[] {
     return dragged === null ? scene.markers : scene.markers.map((item) => (item.id === dragged.id ? dragged : item));
 }
 
-/** The picture to draw and its preview pixels per picture pixel: the sharper scan past the preview's own pixels, else the preview. */
-function pictureOf(scene: ScanScene): { readonly image: CanvasImageSource; readonly scale: number } | null {
+/**
+ * The picture to draw and its preview pixels per picture pixel: the sharper scan once a preview pixel covers more than one device
+ * pixel (`ratio`: a HiDPI screen upscales the preview from half the zoom already), else the preview.
+ */
+function pictureOf(scene: ScanScene, ratio: number): { readonly image: CanvasImageSource; readonly scale: number } | null {
     const detail = scene.detail ?? null;
-    if (detail !== null && scene.view.scale > 1) {
+    if (detail !== null && scene.view.scale * ratio > 1) {
         return { image: detail.image, scale: scene.previewScale / detail.scale };
     }
     return scene.image === null ? null : { image: scene.image, scale: 1 };
@@ -71,7 +74,7 @@ function pictureOf(scene: ScanScene): { readonly image: CanvasImageSource; reado
 
 /** The scan at the view's scale and offset. */
 function image(context: CanvasRenderingContext2D, scene: ScanScene, ratio: number): void {
-    const picture = pictureOf(scene);
+    const picture = pictureOf(scene, ratio);
     if (picture === null) {
         return;
     }

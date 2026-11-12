@@ -20,7 +20,7 @@ import { Store } from '../state/store.js';
 import { loadGeorefExtras, publishedOf, type ExtrasLoader } from './extras.js';
 import { baseOf, fitOf, ownFitOf, shownFit, type OwnFit } from './fit-view.js';
 import { GeorefMap, referenceFrame } from './georef-map.js';
-import { georefPicturesOf, type GeorefPictures } from './georef-pictures.js';
+import { deviceRatio, georefPicturesOf, type GeorefPictures } from './georef-pictures.js';
 import { showGhost, type GhostDeps } from './ghosts.js';
 import { PairHistory } from './history.js';
 import { moveGeo, movePixel, roundPixel, samePairs, withPair, type GeoPosition, type PixelPosition } from './pairs.js';
@@ -57,9 +57,9 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     readonly intents: GeorefIntents;
     /** The store's fit now (the linked views and the ghost read it). */
     readonly #fit = (): FittedTransform | null => this.#transform;
-    /** The scan pane shows `scale` CSS px a scan pixel: past the preview's own pixels the sharper scan is fetched. */
+    /** The scan pane shows `scale` CSS px a scan pixel: past the preview's own device pixels the sharper scan is fetched. */
     readonly #zoomed = (scale: number): void => {
-        this.#pictures.zoomed(this.#cell.state.version?.scan ?? null, scale);
+        this.#pictures.zoomed(this.#cell.state.version?.scan ?? null, scale, deviceRatio());
     };
 
     constructor(services: ContentServices, extras: ExtrasLoader, frame: FrameScheduler) {

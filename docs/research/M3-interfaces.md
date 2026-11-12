@@ -1403,10 +1403,11 @@ The owner placed points on 1966 Corona frames and hit four things; each is fixed
   (`packages/admin/src/georef/ghost.ts`, in the lazy `georef-extras` chunk; `ghosts.ts` fetches it only when a ghost can exist).
   Rows: S-A16-HAPPY-GEOREF-GHOST, S-A16-BAD-GEOREF-GHOST-NO-PAIRS; tour state `georef.ghost`.
 - **The sharper scan**: `publish_scan` writes `scan-detail.jpg` beside `scan-preview.jpg` when the scan is longer than the preview
-  (`SCAN_DETAIL_MAX_PX` = 16,384 px long, a `VERSION_FILES` member), and the version's `scan` records `detailPath` and `detailScale`
+  (`SCAN_DETAIL_MAX_PX` = 16,384 px long and `SCAN_DETAIL_MAX_PIXELS` = 64 million pixels in all, since a browser decodes it whole: a near-square 20,000 px upload gets 8,000 × 8,000, never less than about twice the preview; a `VERSION_FILES` member), and the version's `scan` records `detailPath` and `detailScale`
   (optional: a short scan and a version parked before have none). The store fetches it once (a `blob:` address, `scanDetail`) when
-  the scan pane shows more than one CSS pixel per preview pixel, by the owner's zoom or the linked map's; the pane draws it instead
-  of the preview past that scale. A missing file, or a late answer after the page closed, leaves the preview, with no error. The
+  the scan pane shows more than one device pixel per preview pixel (CSS pixels × `devicePixelRatio`: a HiDPI screen upscales the
+  preview from half the zoom), by the owner's zoom or the linked map's; the pane draws it instead of the preview past that scale.
+  A USGS frame parked before gets its detail when the `relocate` tick searches it again after the pipeline update (or Locate again). A missing file, or a late answer after the page closed, leaves the preview, with no error. The
   warped map preview is drawn `WARP_MAX_SIDE` = 4,096 px across (3,072 before), its mesh code in a lazy chunk of its own
   (`georef-warp.ts`, fetched when a version opens). Rows: S-A16-HAPPY-GEOREF-FULL-RES, S-A16-BAD-GEOREF-FULL-RES-NONE.
 

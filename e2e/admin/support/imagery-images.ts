@@ -84,12 +84,22 @@ const keyOf = (name: string, bounds: Bounds): string => `${name}:${[bounds.west,
 
 /** `scan-preview.jpg`: the scan at `SCAN_PREVIEW_SCALE` (800 × 600), the world as the film shows it. */
 export function scanPreviewJpeg(bounds: Bounds): Promise<Buffer> {
-    const size = { width: SCAN_SIZE.width * SCAN_PREVIEW_SCALE, height: SCAN_SIZE.height * SCAN_PREVIEW_SCALE };
+    return scanJpeg(bounds, SCAN_PREVIEW_SCALE);
+}
+
+/** `scan-detail.jpg`: the georeferencer's sharper scan, the same world at the scan's own pixels (1600 × 1200). */
+export function scanDetailJpeg(bounds: Bounds): Promise<Buffer> {
+    return scanJpeg(bounds, 1);
+}
+
+/** The scan at `scale` of its own pixels. */
+function scanJpeg(bounds: Bounds, scale: number): Promise<Buffer> {
+    const size = { width: SCAN_SIZE.width * scale, height: SCAN_SIZE.height * scale };
     const project: Project = (place) => {
         const pixel = scanPixelOf(place, bounds);
-        return { x: pixel.x * SCAN_PREVIEW_SCALE, y: pixel.y * SCAN_PREVIEW_SCALE };
+        return { x: pixel.x * scale, y: pixel.y * scale };
     };
-    return once(keyOf('scan', bounds), () =>
+    return once(keyOf(`scan@${String(scale)}`, bounds), () =>
         sharp(svg(size, project, FILM))
             .grayscale()
             .jpeg({ quality: 80 })

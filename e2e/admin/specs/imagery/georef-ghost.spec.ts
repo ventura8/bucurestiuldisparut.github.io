@@ -1,9 +1,9 @@
 import type { Page } from '@playwright/test';
 
 import { expectStateSound } from '../../../support/state-check.js';
-import { mapFacts, mapIdle } from '../../../support/map.js';
+import { mapFacts, mapIdle, screenPointOf } from '../../../support/map.js';
 import { adminVisit } from '../../../tour/states.js';
-import { scanPixelOf, SCAN_PREVIEW_SCALE, SCAN_SIZE } from '../../support/imagery-geometry.js';
+import { scanPixelOf, scanToGeo, SCAN_PREVIEW_SCALE, SCAN_SIZE, type LatLng, type Pixel } from '../../support/imagery-geometry.js';
 import { ADMIN_LOCK, expect, test } from '../../support/test.js';
 import { georefText, landmark, openGeoreferencer, pairRows, pointInView, removePair, scanCentre, scanPane, showPane } from './georef.js';
 import { readyImagery } from './world.js';
@@ -15,11 +15,58 @@ test.describe.configure({ lock: ADMIN_LOCK });
  * The georeferencer while a pair is placed (behaviour A16; the owner's 1966 Corona frames, 2026-11-12): the scan keeps its zoom and
  * centre when a pair is added and when the window changes size; while a pair waits for its second click neither pane moves (the
  * views linked or not), and the place the pairs so far expect is a dashed ring on the other pane, named by the hint; with fewer than
- * two pairs and no fit there is none.
+ * two pairs and no fit there is none. Zoomed past the preview's own pixels, the pane fetches and draws the sharper scan.
  */
 test.use({ persona: 'owner', mapOwner: 'owner' });
 
 type Lang = 'ro' | 'en';
+
+type End = { readonly pixel: Pixel } | { readonly geo: LatLng };
+
+/** The store's pending pair as the page shows it: its first end (`half`) and where the pairs so far expect the other (`ghost`). */
+async function pendingPair(page: Page): Promise<{ readonly half: End | null; readonly ghost: End | null }> {
+    return page.locator('hcm-georef-page').evaluate((element) => {
+        const view = (element as unknown as { view: { half: End | null; ghost: End | null } | null }).view;
+        return { half: view?.half ?? null, ghost: view?.ghost ?? null };
+    });
+}
+
+/** The pending pair once its ghost is shown (it comes with the lazy chunk). */
+async function ghostShown(page: Page): Promise<{ readonly half: End | null; readonly ghost: End | null }> {
+    await expect.poll(async () => (await pendingPair(page)).ghost).not.toBeNull();
+    return pendingPair(page);
+}
+
+/** The pixel of a pending pair's end that is on the scan. */
+function pixelOf(end: End | null): Pixel {
+    if (end === null || !('pixel' in end)) {
+        throw new Error('the pending end is not on the scan');
+    }
+    return end.pixel;
+}
+
+/** The place of a pending pair's end that is on the map. */
+function geoOf(end: End | null): LatLng {
+    if (end === null || !('geo' in end)) {
+        throw new Error('the pending end is not on the map');
+    }
+    return end.geo;
+}
+
+/** Metres between two nearby places (flat Earth: the landmarks are a few kilometres apart). */
+function metresBetween(a: LatLng, b: LatLng): number {
+    const north = (a.lat - b.lat) * 111_320;
+    const east = (a.lng - b.lng) * 111_320 * Math.cos((a.lat * Math.PI) / 180);
+    return Math.hypot(north, east);
+}
+
+/** The newest pair's place. */
+async function lastPairPlace(page: Page): Promise<LatLng> {
+    return page.locator('hcm-georef-page').evaluate((element) => {
+        const pairs = (element as unknown as { view: { pairs: readonly { geo: LatLng }[] } }).view.pairs;
+        return pairs[pairs.length - 1]?.geo ?? { lat: 0, lng: 0 };
+    });
+}
 
 /** Where a full-resolution scan pixel is on the page with the scan as it shows now (zoomed or not). */
 async function scanPointNow(page: Page, pixel: { readonly x: number; readonly y: number }): Promise<{ x: number; y: number }> {
@@ -141,6 +188,11 @@ test(
         const onScan = await scanPointNow(page, pixel);
         await page.mouse.click(onScan.x, onScan.y);
         await expect(page.getByText(georefText(lang, 'adminContent.georef.halfOnScanGhost'))).toBeVisible();
+        // The ring is where the fit puts the clicked scan pixel (the stand-in's frame is affine: the place itself).
+        const scanFirst = await ghostShown(page);
+        const ring = geoOf(scanFirst.ghost);
+        expect(metresBetween(ring, scanToGeo(pixelOf(scanFirst.half))), 'the ring from the place the scan click shows').toBeLessThan(60);
+        expect(metresBetween(ring, place), 'the ring from the landmark').toBeLessThan(60);
         const still = await mapCamera(page, lang);
         await expectStateSound(page, adminVisit('georef.ghost', lang));
 
@@ -149,10 +201,14 @@ test(
         await zoomScanAt(page, pixel, -200);
         expect(await mapCamera(page, lang)).toEqual(still);
 
-        // The click on the place itself (on or beside the ring: it takes no click of its own) makes the pair.
-        const onMap = await pointInView(page, lang, [place.lng, place.lat]);
-        await page.mouse.click(onMap.x, onMap.y);
+        // A click on the ring's very centre goes through it (it takes no click of its own) and makes the pair there.
+        const onRing = await pointInView(page, lang, [ring.lng, ring.lat]);
+        await page.mouse.click(onRing.x, onRing.y);
         await expect(pairRows(page, lang)).toHaveCount(5);
+        const pairPlace = await lastPairPlace(page);
+        const made = await screenPointOf(page, [pairPlace.lng, pairPlace.lat]);
+        const ringNow = await screenPointOf(page, [ring.lng, ring.lat]);
+        expect(Math.hypot(made.x - ringNow.x, made.y - ringNow.y), 'the pair is where the ring was clicked').toBeLessThan(2);
 
         // The other way round: the map first, then the scan, which stands still while the map zooms.
         const second = landmark(2);
@@ -160,6 +216,15 @@ test(
         const first = await pointInView(page, lang, [second.lng, second.lat]);
         await page.mouse.click(first.x, first.y);
         await expect(page.getByText(georefText(lang, 'adminContent.georef.halfOnMapGhost'))).toBeVisible();
+        // The ring on the scan is the pixel that shows the clicked place, and it is what the scan pane draws.
+        const mapFirst = await ghostShown(page);
+        const expected = scanPixelOf(geoOf(mapFirst.half));
+        const ghostPixel = pixelOf(mapFirst.ghost);
+        expect(Math.hypot(ghostPixel.x - expected.x, ghostPixel.y - expected.y), 'the ring from the clicked place').toBeLessThan(3);
+        // The map click started the next pair and left the pair just made where it was (it once moved there too).
+        expect(metresBetween(await lastPairPlace(page), pairPlace), 'the pair made before').toBeLessThan(1);
+        const drawn = await page.locator('hcm-scan-viewer').evaluate((viewer) => (viewer as unknown as { ghost: unknown }).ghost);
+        expect(drawn).toEqual(ghostPixel);
         await showPane(page, lang, 'scan');
         const scanBefore = await scanCentre(page);
         await showPane(page, lang, 'map');
@@ -202,5 +267,77 @@ test(
         await page.mouse.click(again.x, again.y);
         await expect(page.getByText(georefText(lang, 'adminContent.georef.halfOnScan'))).toBeVisible();
         await expect(page.getByText(georefText(lang, 'adminContent.georef.halfOnScanGhost'))).toHaveCount(0);
+    },
+);
+
+/** The page's requests for the version's sharper scan, from now on. */
+function detailRequests(page: Page): string[] {
+    const asked: string[] = [];
+    page.on('request', (request) => {
+        if (decodeURIComponent(request.url()).includes('scan-detail.jpg')) {
+            asked.push(request.url());
+        }
+    });
+    return asked;
+}
+
+/** The scan's CSS px a scan pixel times the device's pixel ratio: past `SCAN_PREVIEW_SCALE`, a preview pixel is upscaled. */
+async function devicePixelsPerScanPixel(page: Page): Promise<number> {
+    const ratio = await page.evaluate(() => Math.max(globalThis.devicePixelRatio, 1));
+    return (await scanCentre(page)).scale * ratio;
+}
+
+/** Zooms the scan in about `pixel` until a preview pixel covers more than one device pixel. */
+async function zoomPastPreview(page: Page, pixel: Pixel): Promise<void> {
+    await expect(async () => {
+        await zoomScanAt(page, pixel, -300);
+        expect(await devicePixelsPerScanPixel(page)).toBeGreaterThan(SCAN_PREVIEW_SCALE);
+    }).toPass();
+}
+
+/** The sharper scan the scan pane was handed (null: none). */
+async function paneDetail(page: Page): Promise<{ readonly url: string; readonly scale: number } | null> {
+    return page
+        .locator('hcm-scan-viewer')
+        .evaluate((viewer) => (viewer as unknown as { detail: { url: string; scale: number } | null }).detail ?? null);
+}
+
+test(
+    "Zoomed past the preview's own pixels the scan pane fetches and draws the sharper scan",
+    { tag: '@S-A16-HAPPY-GEOREF-FULL-RES' },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        const asked = detailRequests(page);
+        await opened({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, adminWorld.accounts.owner.uid, page, lang);
+        expect(asked, 'the whole frame needs only the preview').toEqual([]);
+
+        // Zoomed in until a preview pixel covers more than one device pixel (a phone's two device px a CSS px: sooner).
+        const pixel = scanPixelOf(landmark(0));
+        await zoomPastPreview(page, pixel);
+        await expect.poll(() => asked.length).toBe(1);
+        await expect.poll(async () => (await paneDetail(page))?.scale).toBe(1);
+        expect((await paneDetail(page))?.url).toMatch(/^blob:/);
+
+        // Zoomed in further: fetched once a version.
+        await zoomScanAt(page, pixel, -300);
+        expect(asked).toHaveLength(1);
+    },
+);
+
+test(
+    'A scan never zoomed past its preview fetches no sharper scan',
+    { tag: '@S-A16-BAD-GEOREF-FULL-RES-NONE' },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        const asked = detailRequests(page);
+        await opened({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, adminWorld.accounts.owner.uid, page, lang);
+        expect(await devicePixelsPerScanPixel(page)).toBeLessThanOrEqual(SCAN_PREVIEW_SCALE);
+
+        // A pair placed on the whole frame: still the preview, nothing fetched and nothing handed to the pane.
+        await addingPairs(page, lang);
+        await showPane(page, lang, 'scan');
+        const onScan = await scanPointNow(page, scanPixelOf(landmark(0)));
+        await page.mouse.click(onScan.x, onScan.y);
+        await expect(page.getByText(georefText(lang, 'adminContent.georef.halfOnScanGhost'))).toBeVisible();
+        expect(asked).toEqual([]);
+        expect(await paneDetail(page)).toBeNull();
     },
 );
