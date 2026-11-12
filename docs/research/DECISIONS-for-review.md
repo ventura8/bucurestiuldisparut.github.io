@@ -6548,3 +6548,52 @@ before the bump: by SemVer `1.0.0-beta.1` < `1.0.0`, so step d said "newer than 
   their release.
 - **169e** For CI: a tag build (`refs/tags/v1.0.0-beta.1`) now names `1.0.0-beta.1` without the commit; crash reports of
   a tagged release name the tag, which names the commit.
+
+## 171. Dev tooling on modest hardware: ESLint by project groups, the containers' caps, the emulators' heaps, a smaller image (track/optdev, 2026-11-12) — APPLIED (pre-approved class: keeps a tool working, no gate, rule or threshold relaxed)
+
+The owner's priority "optimizations first", the product principle "runs on modest hardware", the audit's area 5 and the
+leftovers of §164. Every figure is the container's cgroup `memory.peak` (page cache included) on the NUC unless named.
+
+- **171a ESLint, one process per group of TypeScript projects** (`scripts/ci/lint.sh`). The debug log of
+  typescript-eslint's `projectService` showed no file in a default project: every file falls in one of the 22 `tsconfig`
+  projects, and one process over the whole tree held 21 TypeScript programs at once, because the service keeps every
+  program it opens until the process ends and a test project's program also loads its package and every package it
+  imports. Seven groups (functions, admin, shared, ui, e2e, scripts, the small packages with `firebase/`) and the rest of
+  the tree (`.` with the groups' folders ignored, so a new folder is still linted) run as separate processes. Before: one
+  worker 181 to 228 s and 8.6 to 8.8 GB, two 14.2 GB, four 17.8 GB. After, one group at a time: 222 s and 2.9 GB on the
+  NUC, 301 s and 3.08 GB on the laptop under `q.sh`'s 8 GB cap, with a planted `no-var`/`no-console` file reported and
+  the gate failed. Every rule runs on every file; a group's programs are the ones a whole-tree run builds for its files.
+  `scripts/ci/parallel.py lint` now counts groups: one per 2 CPUs and 4 GiB available. A solution-style `tsconfig` was
+  not needed: the programs were not duplicated per file, only held together.
+- **171b The available memory includes the container's own cap**: `parallel.py` takes the smaller of `MemAvailable`
+  (the host's, inside a container) and cgroup v2 `memory.max` less `memory.current`, so a run under a 8 or 12 GB cap
+  picks fewer workers. `HCM_MEM_GB=<n>` caps `run-all-checks.sh`'s container; `scripts/dev/dev-stack.sh` caps the stack at
+  `HCM_STACK_MEM_GB` (default 8) with `--oom-score-adj 500`.
+- **171c Peak memory per stage** (NUC, 12 GB slot, `HCM_LINT_WORKERS=1`): `static` 6.6 GB (ESLint 3.0, `tsc -b` 2.0,
+  `npm ci` 1.2, dependency-cruiser 0.8, knip 0.7); `build` 2.2 GB (`npm ci` 1.2, the install bundle's build 0.55, the
+  functions' build 0.47); `tests` 9.6 GB (after 171g: the Firestore JVM 6.4 GB while it builds the rule-coverage report, the check 1.4 GB; before it the report failed, 171g) `e2e` hit the 12 GB cap: 46 Functions emulator workers held 8.8 GB (one Node
+  process per function trigger and more under concurrent calls, each about 250 MB, kept while idle), the browsers 1.4 GB,
+  Playwright's runner 0.7 GB, and the kernel killed the Firestore JVM, after which the admin tests failed in under 100 ms.
+- **171d The emulators' JVMs get a heap ceiling** through `JAVA_TOOL_OPTIONS`: unset, each takes up to a quarter of the
+  machine's (or the container's) memory. `npm test`: 6 GB (171g), because 1.5 GB ran the Firestore emulator out of heap while it
+  built the rule-coverage report (`ruleCoverage` answered HTTP 500 and the `rules-coverage` gate failed). The e2e and
+  stack emulators (`EMULATOR_ENV`, `e2e/admin/world.ts`): 2 GB, which also gives them the tests tier's
+  `-XX:CICompilerCount=2`; their Firestore JVM held 0.86 GB when it was killed.
+- **171e The quality image** (6.09 GB; its largest layer 2.62 GB: browsers 1.3 GB, emulators 0.29, npm cache 0.18): Chromium
+  is installed as its headless shell only (`--only-shell`), as every Vitest and Playwright project launches it headless:
+  403 MB less. Checked with the full Chromium hidden from Playwright: Chromium (WebGL on), Firefox and WebKit launch and a
+  Vitest browser file passes. Firefox and WebKit stay (the admin's forms run on both); the Pub/Sub zip next to its
+  unpacked folder stays, as `firebase` re-downloads an emulator whose archive is missing.
+- **171g The rule-coverage report fits a 12 GB container** (the `tests` stage's `vitest` and `rules-coverage` gates). The
+  Firestore emulator builds `ruleCoverage` whole in its heap: 582 MB of indented JSON (132 MB of values without the
+  indentation), and its HTML view of the same data was asked for at the same time (§30c). Under a 12 GB cap the unset
+  heap is 3 GB; measured on the NUC with the JSON alone: 3 and 4 GB ran out ("Java heap space", HTTP 500), 6 GB passed
+  with the emulator at 6.46 GB resident and the container at 8.2 GB. So: `npm test` gives the JVMs `-Xmx6g`; `save` asks
+  only for the JSON (the HTML is a view of the same report, read by no gate: replaces §30c) and streams it to disk through
+  a `.part` file that a short body never replaces; `check` drops each evaluated value as it parses it (an object hook),
+  1.69 GB and 3.4 s instead of 2.2 GB. Every expression and every condition is checked as before (0 problems on the same
+  report). No rule, condition or gate dropped; the emulator offers no smaller or streamed report.
+- **171f Left**: under a cap the `vitest` gate gets fewer workers (171b), and with `--coverage` and 5 workers the six `create-historic-city` files fail to import `@material/material-color-utilities` ("Cannot find module …/dynamic_color"): reproduced on `origin/feat/engine-rewrite` as it is, so not this branch's, but this branch makes a capped run meet it; `scripts/site/test/admin-build.test.ts` fails two tests on origin too (the runtime file's new `channel`, §169a). The Functions emulator's workers (171c) are the largest consumer of the e2e tier and the dev stack;
+  `--inspect-functions` runs them all in one worker but serialises every call and turns off their timeouts, so it needs a
+  full e2e run of its own before it is adopted. The e2e stage's peak after 171d was not measured, as it cannot finish
+  under the 12 GB slot before that.

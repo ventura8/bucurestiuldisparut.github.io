@@ -3489,3 +3489,21 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `compareRelease` ordered by SemVer first; every build before the bump had called itself `1.0.0` though no `v1.0.0` tag existed, so it outranked every pre-release of 1.0.0.
     - Fix and pin: a release names its channel (a tagged build the version alone, any other `+<commit>`: `dev`); within one core a dev build is placed by its build time, two tagged releases by SemVer; a confirmed override installs over a newer release (`happyPath_aDevBuildIsOlderThanALaterPrereleaseOfItsCore`, `badPath_aTaggedReleaseIsNewerThanAnOlderPrerelease_theDowngradeGuard`, S-A55-HAPPY-INSTALL-OVER).
     - **A version that was never released must not outrank one that was: say in the build whether it is a tagged release, and give every guard an owner's way past it.**
+
+595. **The grouped lint passed every group and still failed: its EXIT trap named a variable local to `main`.**
+    - Seen: 2026-11-12, track/optdev: `scripts/ci/lint.sh` said `out: unbound variable` after the last group, and the `eslint` gate failed with every group clean.
+    - Cause: `trap 'rm -rf "$out"' EXIT` runs after `main` has returned, when its `local out` is gone, and `set -u` turns that into exit 1.
+    - Found by: the `static` stage on the NUC. Fix: the folder is a global, `LINT_OUT` (§171a); a planted violation then failed the gate and only it.
+    - **An EXIT trap reads only globals; a lint wrapper is proved by a planted violation as well as by a clean run.**
+
+596. **The e2e stage in a 12 GB container lost its Firestore emulator to the kernel.**
+    - Seen: 2026-11-12, track/optdev: the admin tests failed in under 100 ms each; the kernel log named the killed `java`.
+    - Cause: the Functions emulator keeps one Node worker per function trigger (more under concurrent calls), about 250 MB each and never stopped while idle: 46 of them held 8.8 GB.
+    - Found by: sampling the container's processes during the run (§171c). Fix so far: the JVMs' heap ceilings (§171d); the workers are §171f.
+    - **Measure a tier's peak under the cap it will run with; a run killed for memory looks like a flood of fast test failures.**
+
+597. **The rule-coverage report ran the Firestore emulator out of heap under a 12 GB container.**
+    - Seen: 2026-11-12, track/optdev: `ruleCoverage` answered HTTP 500, `firestore-debug.log` said "Java heap space", and the `vitest` and `rules-coverage` gates failed with every test green.
+    - Cause: the emulator builds the report whole in its heap: 582 MB of indented JSON, and the HTML view of the same data was asked for at once. The JVM's default heap is a quarter of the container's cap (3 GB); with the JSON alone 3 and 4 GB still ran out.
+    - Found by: sampling the emulator's resident memory per heap ceiling on the NUC (§171g). Fix: `-Xmx6g` in `npm test`, the JSON alone streamed to disk, the values dropped as the check parses them; a stubbed short body then showed that `HTTPResponse.read(n)` returns quietly when a transfer breaks, so the save compares what was announced with what came.
+    - **A report a gate needs is sized under the cap the gate runs with; a sized read of an HTTP body does not raise on a short body: check `response.length`.**

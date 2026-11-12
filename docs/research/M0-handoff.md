@@ -375,7 +375,8 @@ lines (one 95% branch file); `scripts/ci/check_rules_coverage.py` is at 100%.
   `reports/rules/firestore-coverage.json` and fails when an expression was never evaluated (a
   short-circuited operand, `{}` in the report, does not count), when an `allow` condition never
   allowed or never denied (a constant such as `if false` is exempt), or when the report was made
-  from other rules. The HTML report sits next to it. The Storage emulator has no coverage report:
+  from other rules. Only the JSON is saved, streamed to disk (its HTML view doubled the emulator's
+  work: `DECISIONS-for-review.md` §171g). The Storage emulator has no coverage report:
   `storage.test.ts` covers each condition explicitly.
 - The emulator's report format (firebase-tools 15.33.0): `{rules: {files: [{name, content}]},
   report: [node]}`, node = `{sourcePosition: {line, column, currentOffset, endOffset (inclusive,
