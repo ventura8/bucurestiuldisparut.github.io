@@ -6529,3 +6529,38 @@ the limits!!!". A relaxed gate, so it is the owner's decision, recorded here.
 - **168b** The admin's budgets, the start page's and the other chunks' stay as they were.
 - **168c** The rule stands: a budget moves only by a reviewed change with its reason; code that only some visitors need
   still goes to the on-demand parts first (`docs/ENGINE_API.md` → *Side-loaded parts*).
+
+## 169. The Pixel Tablet's findings on the public map (track/viewer-device, 2026-11-12) — APPLIED, no budget raised
+
+The owner's real-device test (Pixel Tablet, Chrome; `reports/devices/FINDINGS.md` T1–T6 and the cold load). No gate was
+relaxed; one new e2e budget.
+
+- **169a Timeline density** (T1). The track fits the card; the gap between stops decides the density
+  (`packages/ui/src/viewer/timeline-model.ts`): `roomy` from 30 px (every year named), `dense` from 14 px (every other
+  year, the ends always, the selected one on the pill), `scroll` below 14 px (16 px per gap, the card scrolls under a
+  finger along the timeline, the edge with more years beyond fades 24 px, the selected year is centred unless a drag is
+  on). The thumb keeps `touch-action: none` so it still drags on a scrolling track; elsewhere a finger taps a year.
+- **169b Slider under a finger** (T2). `hcm-slider` is `touch-action: pan-y`; a finger moves the value only once it has
+  gone 8 px (`TOUCH_SLOP_PX`) more sideways than up or down, a tap still sets it, `pointercancel` ends the press without a
+  change. Mouse, pen and keyboard are unchanged.
+- **169c Docked pane from 760 px** (T3). A medium window at least 760 px wide (`DOCKED_PANE_MIN_PX`) and not of compact
+  height docks the sheets beside the map like expanded (the map keeps 400 px beside a 360 px pane); below it, or short,
+  the modal sheets stay. `ViewerState.dockable` carries it; the e2e helpers' `sheetsDock` mirror it (the 768 px tablet
+  project now docks).
+- **169d Credits in the visitor's language, once** (T5). The pipeline keeps writing the English constants
+  (`USGS_ATTRIBUTION`, `LANDSAT_ATTRIBUTION`); the viewer shows a known credit by its text key
+  (`layers.attribution.usgs`, `layers.attribution.landsat`) in the visitor's language and an unknown one as written, each
+  once (`@hcm/shared/credits`: a subpath export, so the shared index stays within 400 lines; lesson 591). The Layers
+  panel, the map's attribution and swipe compare's bar use it. New keys exist in `ro` and `en` only (the viewer's two
+  locales).
+- **169e Lone links 48 px tall** (T6): `.details .link > a` in the detail sheets.
+- **169f The cold load.** Traced on a local build with CDP (Fast 4G, 4x CPU, cache off): the engine is a module
+  script, which runs in document order after the deferred `mapbox-gl.js` (1.9 MB, 526 KB gzip, from a new origin), so
+  nothing was painted before Mapbox GL had arrived and run. The page now loads Mapbox GL `async`; the engine renders the
+  viewer at once and `mapboxOf` hands the map adapter a promise of `mapboxgl` when the script is still loading (no global
+  and no loading script: the old error). The e2e budget `S-V01-HAPPY-COLD-FIRST-PAINT` (FCP under 1,800 ms at a phone
+  and a tablet) and `S-V01-BAD-SLOW-MAPBOX-FIRST-PAINT` (the viewer paints before Mapbox GL arrives) measure it with the
+  same method; Mapbox's files are answered by the firewall (`route.fulfill`, out of the throttling's reach), so the test
+  gives them a modelled cold CDN time (three round trips and their gzip bytes at Fast 4G) — the only timed wait in the
+  e2e suite, a network model rather than a wait for the page. The starter kit's own `index.html` keeps its order (it
+  works either way).

@@ -3483,3 +3483,20 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the start page needs a city id's pattern and three checks (`isUsableCityId`, `suggestCityId`, `cityBoundsProblem`); they lived in `schemas/paths.ts` and `schemas/cities.ts`, whose imports (`firestore.ts`, the API's limits) are zod schemas built at module level, which no bundler drops. So every new field, error text or schema of any branch grew the start page.
     - Fix and pin: `CITY_ID_PATTERN` is in `schemas/primitives.ts` and the checks in `schemas/city-id.ts` (`paths.ts` and `cities.ts` re-export them): 60.4 KB gzip, no `apiError.*` text in the page, no budget raised (`bundle-budget`). The photo's `derivative` helper moved to `photo-fields.ts`. The same full run found two gaps the branches' targeted runs had not measured: `placing/maps.py` at 88 % of its branches (no test of an atlas or of pieces whose PDF needs a password: added in `test_placing_pdf.py`) and `issue-text.ts` at 87.5 % (two branches nothing reaches, removed).
     - **A check a small page needs lives in a module that imports no schema; when a budget is within 1 % on several branches, measure the merge, not the branches, and read which modules the bundle holds before cutting bytes.**
+
+594. **A test held a layout at a minimum gap that a real card could not hold: the timeline overflowed and clipped its first year.**
+    - Seen: 2026-11-12, the Pixel Tablet: twenty-two stops at 30 px each were wider than the card; 1847 showed as "7".
+    - Cause: the scroll test only asked that the selected stop was in view and the labels did not meet; nothing asked that the labels stayed inside the card.
+    - Fix and pin: the track fits the card with a density (`timeline-model.ts`); `S-V04-BAD-MANY-YEARS-FIT` checks no label sticks out at five window sizes.
+    - **A layout check asks what is cut off as well as what overlaps.**
+
+595. **`touch-action: none` on a control inside a scrolling panel turned every swipe across it into input.**
+    - Seen: 2026-11-12, the Pixel Tablet: a swipe meant to scroll the Layers panel set a layer's opacity to 4 %.
+    - Fix and pin: the slider is `pan-y` and waits 8 px for the finger's direction (`slider.ts`); `S-V22-BAD-TOUCH-VERTICAL-SWIPE` swipes with Chromium's own touch events.
+    - **A control that moves along one axis leaves the other axis to the browser; test it with real touch events, not mouse ones.**
+
+596. **A module script waits for every deferred script before it: the engine painted nothing until 526 KB of Mapbox GL had arrived.**
+    - Seen: 2026-11-12, the Pixel Tablet: cold first paint 5,376 ms against 764 ms warm.
+    - Found by: a throttled cold load (CDP Fast 4G, 4x CPU) with Mapbox's files given their CDN time: the first paint came after `mapbox-gl.js`'s end every time.
+    - Fix and pin: Mapbox GL loads `async` and the map adapter takes a promise of it (§169f); `S-V01-BAD-SLOW-MAPBOX-FIRST-PAINT`.
+    - **A third-party script the first paint does not need is `async`, and the code that needs it waits for it, not the page.**
