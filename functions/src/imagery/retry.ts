@@ -206,8 +206,9 @@ function attemptsAgain(job: JobDoc): Pick<JobDoc, 'attempt'> {
 
 /**
  * What a run left that the retried job must not carry (docs/LESSONS.md 557): its error, its end, its lease and execution, its MTS
- * job, why it waited, an editor's placing mark, and the owner's Stop (`cancelRequested`). A Stop stays on the job it ended; kept on
- * the retried one, the dispatcher and every worker's claim pass the job over and `imagery.tick` cancels it again.
+ * job, why it waited, an editor's placing mark, a local worker's overdue mark (`workerOverdueAt`: the retry is a new wait) and the
+ * owner's Stop (`cancelRequested`). A Stop stays on the job it ended; kept on the retried one, the dispatcher and every worker's
+ * claim pass the job over and `imagery.tick` cancels it again.
  */
 const LEFT_BY_THE_RUN = [
     'error',
@@ -219,6 +220,7 @@ const LEFT_BY_THE_RUN = [
     'waitReason',
     'placingPoints',
     'cancelRequested',
+    'workerOverdueAt',
 ] as const;
 
 function retriedJob(job: JobDoc, atPublish: boolean, stamp: Stamp): JobDoc {

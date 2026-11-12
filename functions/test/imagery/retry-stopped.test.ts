@@ -59,7 +59,7 @@ async function written(world: ImageryWorld, write: () => Promise<unknown>): Prom
 }
 
 /** The owner's pairs saved on the parked series, then the owner's Stop carried out by the dispatcher. */
-async function savedThenStopped(): Promise<ImageryWorld> {
+async function savedThenStopped(overdue: Pick<JobDoc, 'workerOverdueAt'> = {}): Promise<ImageryWorld> {
     const world = await readyWorld();
     await seedVersion(world, SERIES, parkedVersion());
     await seedJob(world, SERIES, parkedSeries());
@@ -68,7 +68,7 @@ async function savedThenStopped(): Promise<ImageryWorld> {
     const stop = async (): Promise<void> => {
         const job = await readJob(world, SERIES);
         if (job !== undefined) {
-            await world.deps.documents.set(FIRESTORE_PATHS.job(CITY, SERIES), jobDocSchema, { ...job, cancelRequested: true });
+            await world.deps.documents.set(FIRESTORE_PATHS.job(CITY, SERIES), jobDocSchema, { ...job, ...overdue, cancelRequested: true });
         }
     };
     expect(await written(world, stop)).toMatchObject({ status: 'cancelled', cancelRequested: true });
@@ -97,6 +97,17 @@ describe('imagery.retry: a stopped archive series with the owner pairs (2026-11-
         await cancelAsked(world.deps, CITY);
         expect((await readJob(world, SERIES))?.status).toBe('queued');
         expect((await readVersion(world, SERIES))?.state).toBe('processing');
+    });
+
+    it('happyPath_aSeriesStoppedWhileOverdueStartsItsNewWaitFresh @S-A12-HAPPY-RETRY-STOPPED-PAIRS', async () => {
+        // tick-worker marks a queued local job no worker took (`workerOverdueAt`); a retry is a new wait, not an overdue one.
+        const world = await savedThenStopped({ workerOverdueAt: at(NOW) });
+
+        const job = await written(world, () => retry(world));
+
+        expect(job).toMatchObject({ status: 'queued', runOn: 'local' });
+        expect(job?.workerOverdueAt).toBeUndefined();
+        expect(job?.cancelRequested).toBeUndefined();
     });
 
     it('badPath_aStoppedSeriesWhoseVersionWasDismissedIsNotBroughtBack_theStopStays @S-A12-BAD-RETRY-STOPPED-DISMISSED', async () => {

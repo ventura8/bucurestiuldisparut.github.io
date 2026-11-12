@@ -427,7 +427,7 @@ belong to the dispatcher and the lease, so an execution never races its own retr
   `failedOutdated`) spent no real attempt: its retry is allowed whatever `attempt` is, and sets it back to 0 (2026-11-09).
   A job the owner stopped (`cancelled`, its version `cancelled`) is retried the same way, its `attempt` back to 0, and the retried
   job carries nothing the run or the Stop left: no `cancelRequested` (kept, the dispatcher and every worker's claim pass the job over
-  and the tick cancels it again), no `waitReason`, no `placingPoints` (`docs/LESSONS.md` 557, the 1914 SOCEC series). The version
+  and the tick cancels it again), no `waitReason`, no `placingPoints`, no `workerOverdueAt` (`docs/LESSONS.md` 557, the 1914 SOCEC series). The version
   keeps what the owner gave it: an archive series with saved pairs (`georef`, `method: 'gcps'`) places itself from them in `place`
   (`placing/owner.py`), as after `imagery.saveGcps` (S-A12-HAPPY-RETRY-STOPPED-PAIRS).
 - **Locate again** (`imagery.locateAgain`, a city editor; S-A69-*; the owner's live use of 2026-11-07): a USGS frame waiting for points
