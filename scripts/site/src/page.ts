@@ -1,4 +1,5 @@
 import { element, renderDocument, type HtmlElement } from './html.js';
+import { iconLinks } from './icons.js';
 import type { SiteSpec } from './site-spec.js';
 
 /**
@@ -46,10 +47,22 @@ export interface PageAssets {
      * an old admin address `/#/<route>` goes to `/admin/`, §2.7). None by default.
      */
     readonly redirect?: string;
+    /**
+     * The script that keeps the default tab icon in the visitor's theme and shows a city's own (`tabIconSource`,
+     * `hosting/city-page.ts`), after `config.js`. None when the page's `config.js` ends with it (the generic city page).
+     */
+    readonly tabIcon?: string;
 }
 
 /** A city site's own files, next to its page. */
-export const RELATIVE_ASSETS: PageAssets = { engineFolder: `${ENGINE_FOLDER}/`, config: 'config.js', stylesheet: 'site.css' };
+export const TAB_ICON_FILE = 'tab-icon.js';
+
+export const RELATIVE_ASSETS: PageAssets = {
+    engineFolder: `${ENGINE_FOLDER}/`,
+    config: 'config.js',
+    stylesheet: 'site.css',
+    tabIcon: TAB_ICON_FILE,
+};
 
 export interface PageInputs {
     readonly spec: SiteSpec;
@@ -70,6 +83,11 @@ function redirectScript(assets: PageAssets): HtmlElement[] {
     return assets.redirect === undefined ? [] : [element('script', { src: assets.redirect })];
 }
 
+/** After `config.js`, whose city it reads; deferred, so it runs before the engine's module. */
+function tabIconScript(assets: PageAssets): HtmlElement[] {
+    return assets.tabIcon === undefined ? [] : [element('script', { src: assets.tabIcon, defer: true })];
+}
+
 function head(inputs: PageInputs): HtmlElement {
     const { spec, csp, mapboxGlIntegrity } = inputs;
     const assets = inputs.assets ?? RELATIVE_ASSETS;
@@ -84,13 +102,14 @@ function head(inputs: PageInputs): HtmlElement {
         element('meta', { name: 'color-scheme', content: 'light dark' }),
         element('meta', { name: 'theme-color', content: spec.themeColor }),
         element('title', {}, [spec.title]),
-        element('link', { rel: 'icon', href: 'data:,' }),
+        ...iconLinks(),
         ...redirectScript(assets),
         element('link', { rel: 'stylesheet', href: MAPBOX_GL_STYLESHEET, ...crossOrigin(mapboxGlIntegrity.stylesheet) }),
         element('link', { rel: 'stylesheet', href: `${assets.engineFolder}${ENGINE_STYLESHEET_FILE}` }),
         element('link', { rel: 'stylesheet', href: assets.stylesheet }),
         element('script', { src: MAPBOX_GL_SCRIPT, defer: true, ...crossOrigin(mapboxGlIntegrity.script) }),
         element('script', { src: assets.config, defer: true }),
+        ...tabIconScript(assets),
         // Module scripts run after the deferred classic scripts above, in document order.
         element('script', { type: 'module', src: `${assets.engineFolder}${ENGINE_MODULE_FILE}` }),
     ]);

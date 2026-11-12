@@ -176,7 +176,7 @@ describe("<hcm-map-viewer> floating controls with the real kit (the user's repor
         const frame = element.getBoundingClientRect();
         const timeline = boxOf(element, 'hcm-timeline');
         const fab = boxOf(element, 'hcm-fab-menu', '.fab');
-        const chip = boxOf(element, '.dock.chip hcm-button');
+        const chip = boxOf(element, '.dock.chip [data-layout-check="near-year"]');
 
         expect(timeline.width).toBe(68);
         expect(frame.bottom - fab.bottom).toBeGreaterThanOrEqual(MAPBOX_STRIP_PX);
@@ -220,7 +220,7 @@ describe("<hcm-map-viewer> floating controls with the real kit (the user's repor
         const element = await viewer(store);
         await resize(element, store, MEDIUM, 'medium');
         const timeline = boxOf(element, 'hcm-timeline');
-        const chip = boxOf(element, '.dock.chip hcm-button');
+        const chip = boxOf(element, '.dock.chip [data-layout-check="near-year"]');
         const fab = boxOf(element, 'hcm-fab-menu', '.fab');
         expect(element.getBoundingClientRect().bottom - timeline.bottom).toBeGreaterThanOrEqual(MAPBOX_STRIP_PX);
         expect(timeline.top - chip.bottom).toBeGreaterThanOrEqual(TARGET_GAP_PX);
@@ -274,7 +274,7 @@ describe("<hcm-map-viewer> the photos-near-the-year chip on the timeline (the ow
         const element = await viewer(store);
         await resize(element, store, LARGE, 'large');
         let timeline = boxOf(element, 'hcm-timeline');
-        let chip = boxOf(element, '.dock.chip hcm-button');
+        let chip = boxOf(element, '.dock.chip [data-layout-check="near-year"]');
         expect(Math.abs(chip.left - timeline.left)).toBeLessThanOrEqual(1);
         expect(timeline.top - chip.bottom).toBeGreaterThanOrEqual(TARGET_GAP_PX);
 
@@ -282,7 +282,7 @@ describe("<hcm-map-viewer> the photos-near-the-year chip on the timeline (the ow
         element.dir = 'rtl';
         await element.updateComplete;
         timeline = boxOf(element, 'hcm-timeline');
-        chip = boxOf(element, '.dock.chip hcm-button');
+        chip = boxOf(element, '.dock.chip [data-layout-check="near-year"]');
         expect(Math.abs(chip.right - timeline.right)).toBeLessThanOrEqual(1);
     });
 
@@ -294,7 +294,7 @@ describe("<hcm-map-viewer> the photos-near-the-year chip on the timeline (the ow
         await page.getByRole('button', { name: 'Meniu' }).click();
         await expect.element(page.getByRole('menu', { name: 'Meniu' })).toBeVisible();
 
-        const chip = boxOf(element, '.dock.chip hcm-button');
+        const chip = boxOf(element, '.dock.chip [data-layout-check="near-year"]');
         const timeline = boxOf(element, 'hcm-timeline');
         const items = [...(partOf(element, 'hcm-fab-menu').shadowRoot?.querySelectorAll('[role^="menuitem"]') ?? [])];
         expect(items.length).toBeGreaterThan(0);

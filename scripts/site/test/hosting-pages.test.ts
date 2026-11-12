@@ -8,12 +8,20 @@ import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 
 import { CITY_ID_PATTERN } from '@hcm/shared';
+import { DEFAULT_TAB_ICONS } from '@hcm/shared/tab-icon';
 import ts from 'typescript';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { nodeFileSystem } from '../src/files.js';
 import { ADMIN_PATH, ADMIN_REDIRECT_SOURCE, forwardOldAdminAddress, type RedirectScope } from '../src/hosting/admin-redirect.js';
-import { CITY_PATH_REGEX, configureCityPage, planCityPage, type CityConfigScope } from '../src/hosting/city-page.js';
+import {
+    CITY_PATH_REGEX,
+    configureCityPage,
+    planCityPage,
+    showCityIcon,
+    type CityConfigScope,
+    type CityIconScope,
+} from '../src/hosting/city-page.js';
 import {
     PAGES_REDIRECT_FILE,
     PAGES_REDIRECT_SOURCE,
@@ -156,9 +164,31 @@ describe('admin-redirect.js', () => {
         expect(result.diagnostics).toEqual([]);
         expect(result.stdout.trimEnd().endsWith(`})(window, "${ADMIN_PATH}");`)).toBe(true);
         expect(result.stdout).not.toContain('RedirectScope');
-        expect(ADMIN_REDIRECT_SOURCE).toMatch(/^\/\/ Historic City Map: an old admin address/);
+        expect(ADMIN_REDIRECT_SOURCE).toMatch(/^\/\/ Historic City Map Maker: an old admin address/);
     });
 });
+
+interface IconLink {
+    href: string;
+    media: string | null;
+    removed: boolean;
+    removeAttribute(name: string): void;
+    remove(): void;
+}
+
+function iconLink(href: string, media: string): IconLink {
+    return {
+        href,
+        media,
+        removed: false,
+        removeAttribute(name) {
+            this.media = name === 'media' ? null : this.media;
+        },
+        remove() {
+            this.removed = true;
+        },
+    };
+}
 
 describe('the generic city page', () => {
     const before = 'https://storage.googleapis.com/demo-hcm-public/cities/';
@@ -176,6 +206,83 @@ describe('the generic city page', () => {
         configureCityPage(scope, before, '/manifest.json', 'city');
 
         expect(scope.HistoricCityMapConfig).toEqual({ cityId, manifestUrl: `${before}${cityId}/manifest.json` });
+    });
+
+    /** A page whose icon probes load (the names in `loads`: the city has those files) or never do (a 404). */
+    function iconPage(
+        loads: readonly string[],
+    ): CityIconScope & { readonly icons: IconLink[]; readonly appended: { rel: string; href: string }[] } {
+        const icons = [iconLink('data:image/png;base64,light', 'light'), iconLink('data:image/png;base64,dark', 'dark')];
+        const appended: { rel: string; href: string }[] = [];
+        class Probe {
+            onload: (() => void) | null = null;
+            set src(value: string) {
+                if (loads.some((name) => value.endsWith(name))) {
+                    this.onload?.();
+                }
+            }
+        }
+        return {
+            icons,
+            appended,
+            HistoricCityMapConfig: { cityId: 'bacau', manifestUrl: `${before}bacau/manifest.json` },
+            Image: Probe,
+            document: {
+                querySelectorAll: (selector) => (selector === 'link[rel="icon"]' ? icons : []),
+                createElement: () => ({ rel: '', href: '' }),
+                head: {
+                    append: (node) => {
+                        appended.push(node);
+                    },
+                },
+            },
+        };
+    }
+
+    it('happyPath_theCitysOwnIconReplacesTheDefaultOnceItLoads @S-V54-HAPPY', () => {
+        const page = iconPage(['icon-own-32.png', 'icon-180.png']);
+
+        showCityIcon(page, before);
+
+        // The city's own icon in every theme: one link, without a scheme.
+        expect(page.icons.map((icon) => [icon.href, icon.media, icon.removed])).toEqual([
+            [`${before}bacau/icon-own-32.png`, null, false],
+            ['data:image/png;base64,dark', 'dark', true],
+        ]);
+        expect(page.appended).toEqual([{ rel: 'apple-touch-icon', href: `${before}bacau/icon-180.png` }]);
+    });
+
+    it('badPath_aCityWithoutAnIconKeepsTheDefault @S-V54-BAD-MISSING', () => {
+        const page = iconPage([]);
+
+        showCityIcon(page, before);
+
+        expect(page.icons.map((icon) => [icon.href, icon.media, icon.removed])).toEqual([
+            ['data:image/png;base64,light', 'light', false],
+            ['data:image/png;base64,dark', 'dark', false],
+        ]);
+        expect(page.appended).toEqual([]);
+    });
+
+    it('happyPath_aCityOnTheDefaultKeepsTheThemedTabIconAndGivesThePhoneItsOwnColour @S-V55-HAPPY', () => {
+        const page = iconPage(['icon-180.png']);
+
+        showCityIcon(page, before);
+
+        expect(page.icons.map((icon) => [icon.href, icon.removed])).toEqual([
+            ['data:image/png;base64,light', false],
+            ['data:image/png;base64,dark', false],
+        ]);
+        expect(page.appended).toEqual([{ rel: 'apple-touch-icon', href: `${before}bacau/icon-180.png` }]);
+    });
+
+    it('badPath_aPageWithoutAnIconLinkOrConfigurationStillGetsTheHomeScreenIcon', () => {
+        const page = { ...iconPage(['icon-own-32.png', 'icon-180.png']), HistoricCityMapConfig: undefined };
+        const bare = { ...page, document: { ...page.document, querySelectorAll: () => [] } };
+
+        showCityIcon(bare, before);
+
+        expect(page.appended).toEqual([{ rel: 'apple-touch-icon', href: `${before}/icon-180.png` }]);
     });
 
     it('happyPath_itChecksTheSharedCityIdPatternAndHostingRewritesExactlyThoseIds', () => {
@@ -202,6 +309,15 @@ describe('the generic city page', () => {
         expect(planned.page.content).toContain('<title>Hartă istorică</title>');
         expect(planned.config.to).toBe('city/config.js');
         expect(planned.config.content).toContain(`(window, "${before}", "/manifest.json", "city");`);
+        expect(planned.config.content).toContain(`(window, "${before}");`);
+        expect(planned.config.content).toContain('hcm-map-viewer');
+        expect(planned.page.content).toContain(
+            `<link rel="icon" type="image/png" sizes="32x32" media="(prefers-color-scheme: light)" href="${DEFAULT_TAB_ICONS.light}">`,
+        );
+        expect(planned.page.content).toContain(
+            `<link rel="icon" type="image/png" sizes="32x32" media="(prefers-color-scheme: dark)" href="${DEFAULT_TAB_ICONS.dark}">`,
+        );
+        expect(planned.page.content).not.toContain('tab-icon.js');
     });
 
     it('badPath_aBucketNameThatIsNoBucketsFailsTheBuild', () => {
@@ -276,7 +392,7 @@ describe('the GitHub Pages redirect tree', () => {
     it('happyPath_theTargetComesFromTheCommittedProjectFile', () => {
         expect(pagesRedirectTarget(nodeFileSystem(ROOT))).toEqual({
             origin: 'https://bucurestiul-disparut.web.app',
-            base: '/bucurestiuldisparut.github.io/',
+            base: '/historic-city-map-maker/',
         });
         expect(pagesBase({ owner: 'Ventura8', repo: 'ventura8.github.io' })).toBe('/');
     });

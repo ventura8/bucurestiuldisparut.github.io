@@ -4,10 +4,9 @@
  * its section opens. Until the chunk is in, the section says Loading; a failed fetch says so with Try again; once it is
  * in, every render is synchronous. The page renders again when a fetch settles (`refresh`).
  */
-import type { Locale } from '@hcm/shared';
-import { html, type TemplateResult } from 'lit';
+import type { TemplateResult } from 'lit';
 
-import { errorTemplate, loadingTemplate } from '../editing/states.js';
+import { lazyCard } from '../cities/lazy-budget.js';
 import { chunkLoader, type ChunkLoader } from '../imagery/orders/lazy-card.js';
 import { contentText } from '../shell/text.js';
 import type { exportCard, ExportCardContext } from './export-card.js';
@@ -19,9 +18,6 @@ export interface ExportCardChunk {
 
 /** The card's chunk: one dynamic `import()`, so the bundler splits it. */
 export const EXPORT_CARD_CHUNK: ChunkLoader<ExportCardChunk> = chunkLoader(async () => import('./export-card.js'));
-
-/** Why the card is not there: its chunk could not be fetched (offline, or a deploy replaced it). */
-const CHUNK_FAILURE = { kind: 'unavailable', code: 'network' } as const;
 
 /** What the settings page gives the lazy card: the card's own context and a way to render the page again. */
 export interface LazyExportContext extends Omit<ExportCardContext, 'save'> {
@@ -45,30 +41,13 @@ export function saveFrom(scope: { readonly document: Document }): ExportCardCont
     };
 }
 
-function fetchChunk(context: LazyExportContext, chunk: ChunkLoader<ExportCardChunk>): void {
-    chunk.load().then(context.refresh, context.refresh);
-}
-
-function heading(locale: Locale): TemplateResult {
-    return html`<h2 tabindex="-1" data-detail-heading>${contentText(locale, 'adminContent.export.title')}</h2>`;
-}
-
-/** The section's card, fetched on first need. */
+/** The section's card, fetched on first need (`lazyCard`: Loading, or the failed fetch with Try again, until then). */
 export function lazyExportCard(
     context: LazyExportContext,
     chunk: ChunkLoader<ExportCardChunk> = EXPORT_CARD_CHUNK,
     scope: { readonly document: Document } = globalThis,
 ): TemplateResult {
-    const loaded = chunk.loaded();
-    if (loaded !== undefined) {
-        return loaded.exportCard({ ...context, save: saveFrom(scope) });
-    }
-    if (chunk.failed()) {
-        return html`${heading(context.locale)}${errorTemplate(context.locale, CHUNK_FAILURE, () => {
-            fetchChunk(context, chunk);
-            context.refresh();
-        })}`;
-    }
-    fetchChunk(context, chunk);
-    return html`${heading(context.locale)}${loadingTemplate(context.locale)}`;
+    return lazyCard(context, chunk, contentText(context.locale, 'adminContent.export.title'), (loaded) =>
+        loaded.exportCard({ ...context, save: saveFrom(scope) }),
+    );
 }

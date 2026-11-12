@@ -10,8 +10,9 @@
 # Variables forwarded by name only (`--env NAME`, never NAME=value, so no value is in argv): CI,
 # the commit ranges CI computes (GITLEAKS_LOG_OPTS, COMMIT_RANGE), E2E_SHARD, E2E_TIER and E2E_ADMIN_PART (the e2e run),
 # MAPBOX_PUBLIC_TOKEN (the site build's URL-restricted pk. token), HCM_PUBLIC_BUCKET (the public bucket whose manifest
-# the Bucharest site reads; unset, it bundles the seed snapshot), SONAR_TOKEN and PIPELINE_JOBS (how many gates run at
-# once; unset is the CPU count, 1 runs them one at a time).
+# the Bucharest site reads; unset, it bundles the seed snapshot), SONAR_TOKEN, the memory knobs of scripts/ci/parallel.py (HCM_MAX_PARALLEL, HCM_LOW_MEM, HCM_LINT_WORKERS,
+# HCM_E2E_WORKERS, VITEST_MAX_WORKERS) and PIPELINE_JOBS (how many gates run at
+# once; unset is what the CPUs and the free memory allow, 1 runs them one at a time).
 set -euo pipefail
 
 main() {
@@ -37,6 +38,12 @@ main() {
 		--env HCM_PUBLIC_BUCKET \
 		--env SONAR_TOKEN \
 		--env PIPELINE_JOBS \
+		--env HCM_MAX_PARALLEL \
+		--env HCM_LOW_MEM \
+		--env HCM_LINT_WORKERS \
+		--env HCM_E2E_WORKERS \
+		--env VITEST_MAX_WORKERS \
+		--oom-score-adj "${HCM_OOM_SCORE_ADJ:-500}" \
 		--volume "$root:$root" \
 		--workdir "$root" \
 		"$image" bash scripts/ci/in-container.sh

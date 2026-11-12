@@ -9,6 +9,8 @@ import {
     engineCdnUrl,
     engineMajorBase,
     engineReleaseSchema,
+    isPrerelease,
+    releaseDistTag,
     releaseIntegrity,
     releaseTag,
     SRI_PATTERN,
@@ -17,7 +19,7 @@ import {
 } from '../../src/schemas/engine-release.js';
 import { validate } from '../../src/schemas/validation.js';
 
-const BASE = 'https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@v1.0.0/cdn/engine/';
+const BASE = 'https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@v1.0.0/cdn/engine/';
 /** Generated test digests (64 base64 characters each), never a real file's. */
 const sri = (letter: string): string => `sha384-${letter.repeat(64)}`;
 
@@ -45,12 +47,40 @@ describe('release tags', () => {
         ['1.0.0', 'v1.0.0'],
         ['2.13.104', 'v2.13.104'],
         ['01.0.0', 'v1.0.0'],
+        ['1.0.0-beta.1', 'v1.0.0-beta.1'],
+        ['1.0.0-rc.0', 'v1.0.0-rc.0'],
+        ['2.1.0-rc.12', 'v2.1.0-rc.12'],
     ])('happyPath_version %s_is tag %s', (version, tag) => {
         expect(releaseTag(version)).toBe(tag);
     });
 
-    it.each(['1.0', 'v1.0.0', '1.0.0-rc.1', 'latest'])('badPath_%s_isNoReleaseVersion', (version) => {
+    it.each([
+        '1.0',
+        'v1.0.0',
+        '1.0.0-alpha.1',
+        '1.0.0-beta',
+        '1.0.0-beta.01',
+        '1.0.0-BETA.1',
+        '1.0.0-rc.1.1',
+        '1.0.0+build',
+        '1.0.0-beta.1+build',
+        'latest',
+    ])('badPath_%s_isNoReleaseVersion', (version) => {
         expect(() => releaseTag(version)).toThrow(RangeError);
+    });
+
+    it.each([
+        ['1.0.0', false, 'latest'],
+        ['1.0.0-beta.1', true, 'beta'],
+        ['1.0.0-rc.2', true, 'rc'],
+    ])('happyPath_%s_isPrerelease_%s_withDistTag_%s', (version, prerelease, distTag) => {
+        expect(isPrerelease(version)).toBe(prerelease);
+        expect(releaseDistTag(version)).toBe(distTag);
+    });
+
+    it('badPath_aVersionOfAnotherFormHasNoChannel', () => {
+        expect(() => isPrerelease('1.0.0-alpha.1')).toThrow(RangeError);
+        expect(() => releaseDistTag('next')).toThrow(RangeError);
     });
 
     it.each([
@@ -58,7 +88,11 @@ describe('release tags', () => {
         ['v10.2.33', '10.2.33'],
         ['v01.0.0', null],
         ['1.0.0', null],
-        ['v1.0.0-rc.1', null],
+        ['v1.0.0-rc.1', '1.0.0-rc.1'],
+        ['v1.0.0-beta.1', '1.0.0-beta.1'],
+        ['v1.0.0-beta.01', null],
+        ['v1.0.0-alpha.1', null],
+        ['v1.0.0-rc.1+build', null],
         ['legacy-2022', null],
     ])('versionOfTag_%s_is_%s', (tag, version) => {
         expect(versionOfTag(tag)).toBe(version);
@@ -76,7 +110,17 @@ describe('pinned jsDelivr addresses', () => {
     });
 
     it('happyPath_theMajorLineFloats', () => {
-        expect(engineMajorBase('1.4.2')).toBe('https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@1/cdn/engine/');
+        expect(engineMajorBase('1.4.2')).toBe('https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@1/cdn/engine/');
+    });
+
+    it('happyPath_aPreReleaseIsPinnedAtItsFullVersion', () => {
+        expect(engineCdnBase('1.0.0-beta.1')).toBe(
+            'https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@v1.0.0-beta.1/cdn/engine/',
+        );
+    });
+
+    it('badPath_aPreReleaseHasNoMajorLine', () => {
+        expect(() => engineMajorBase('1.0.0-beta.1')).toThrow('a pre-release has no major line');
     });
 
     it.each(['../release.json', '/engine.css', 'fonts/../../x.js', '.hidden', 'a//b', ''])('badPath_file %j_throws', (file) => {
@@ -95,10 +139,16 @@ describe('release.json', () => {
         expect(SRI_PATTERN.test(sri('A'))).toBe(true);
     });
 
+    it('happyPath_aPreReleaseListsItsFullVersionAndFolder', () => {
+        const pre = release({ version: '1.0.0-beta.1', base: BASE.replace('@v1.0.0', '@v1.0.0-beta.1') });
+        expect(validate(engineReleaseSchema, pre).ok).toBe(true);
+    });
+
     it.each([
         ['a base of another version', { base: BASE.replace('@v1.0.0', '@v1.0.1') }],
         ['a floating base', { base: engineMajorBase('1.0.0') }],
         ['a version that is no version', { version: '1.0' }],
+        ['an alpha pre-release', { version: '1.0.0-alpha.1' }],
         ['a file listed twice', { files: [...release().files, { path: 'engine.css', bytes: 272, integrity: sri('D') }] }],
         ['no stylesheet', { files: release().files.filter((file) => file.path !== 'engine.css') }],
         ['the release file listing itself', { files: [...release().files, { path: 'release.json', bytes: 900, integrity: sri('E') }] }],

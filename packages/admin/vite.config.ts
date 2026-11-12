@@ -96,7 +96,7 @@ const GEOREF_BADGE_MODULES =
     /packages[\\/](?:ui[\\/]src[\\/]admin[\\/]georef[\\/](?:marker-badge|full-screen)|admin[\\/]src[\\/]georef[\\/](?:marker-overlay|pairs|history|tones))\.ts$/;
 
 /**
- * The georeferencer's panes and what the beta.1 requests added beside them (2026-11-12; DECISIONS-for-review.md §164, §165): the two
+ * The georeferencer's panes and what the beta.1 requests added beside them (2026-11-12; DECISIONS-for-review.md §171, §172): the two
  * panes' template with the list of what the map shows and Delete pair N (`georef-panes.ts`), the scan pane's gestures and the holder
  * of its sharper scan's tiles (`scan-input.ts`), removing a pair with Undo (`removing.ts`), the scan pane's view arithmetic and drawing (`scan-view.ts`, `scan-draw.ts`, out of `georef-badges`, which was at 3.1 KB of 3 with the turned drawing) and the panes' turning together (`rotation.ts`). None imports a module of the `georef` chunk at run time. Like `georef-badges`, this group loads with the
  * georeferencer's page: it relocates code so that `georef` stays within its 19 KB, it defers none.
@@ -128,7 +128,7 @@ export default defineConfig({
         zodStandInsPlugin(ZOD_STAND_INS),
         cssLiteralsPlugin(),
         thirdPartyNoticesPlugin({
-            product: 'the Historic City Map admin (admin.mjs, its chunks and fonts)',
+            product: 'the Historic City Map Maker admin (admin.mjs, its chunks and fonts)',
             assets: FONT_FILES.map((font) => ({ package: font.source.package, file: `fonts/${font.file}` })),
         }),
     ],
@@ -165,7 +165,7 @@ export default defineConfig({
                 // them), kept out of `editor-shared` (DECISIONS-for-review.md §54b). `editor-texts`: a field's name and its
                 // problem's words, which every editor shares (§77e). `starter-categories`: the starter place categories, which
                 // the place editor and the settings share (§78d). `georef-badges`: shared pair painters and the map overlay (§146).
-                // `georef-panes`: the georeferencer's panes, pair removal and the map pane's layers (§165).
+                // `georef-panes`: the georeferencer's panes, pair removal and the map pane's layers (§172).
                 // `legacy-reads`: the tolerant reads of older records, which Home and the Imagery pages share (§155).
                 // M7's `worker` chunk is no group: the natural chunk of its one dynamic entry (`src/worker/worker.ts`), whose
                 // namespace is the chunk's own (a group's needs Rolldown's runtime helper, a chunk of its own beside terra-draw's),

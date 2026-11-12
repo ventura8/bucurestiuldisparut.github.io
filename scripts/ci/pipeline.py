@@ -7,7 +7,8 @@ scripts/ci/run-all-checks.sh starts the container and scripts/ci/in-container.sh
     python3 scripts/ci/pipeline.py --stage <static|tests|e2e|tour-matrix|build|sonar|deps|release|contract|quality|all>
 
 The gates of a stage run from the repository root, several at once (scripts/ci/gate_runner.py: at most
-PIPELINE_JOBS, default the number of CPUs; a gate waits for the gates in its `needs`, and an `exclusive` gate runs
+PIPELINE_JOBS, default what the CPUs and the free memory allow, scripts/ci/parallel.py; a gate waits for the gates
+in its `needs`, and an `exclusive` gate runs
 alone). Their output is printed gate by gate in registry order, each block announced as `static 3/51 eslint` and
 closed by `  eslint passed in 27.0s`, so the log reads like a serial run. Every gate runs even after a failure, so
 one run lists every problem. A gate that already ran in an earlier stage of the same run (`pytest` and `e2e-matrix`
@@ -34,6 +35,7 @@ from pathlib import Path
 
 from cilog import get_logger
 from gate_runner import Console, Outcome, Output, Task, Work, run_tasks
+from parallel import this_machine, tool_variables, workers
 
 LOG = get_logger("pipeline")
 ROOT = Path(__file__).resolve().parents[2]
@@ -145,6 +147,9 @@ GATES: dict[str, Gate] = {
         # The released engine (cdn/engine/ and its release.json: every file's size and SHA-384) and the starter kit's page
         # (templates/starter-kit/index.html) pin each other exactly; before the first release, the page's pins in shape.
         Gate("kit-pins", ("python3", "scripts/ci/check_kit_pins.py")),
+        # The landing page GitHub Pages publishes (sites/landing/, DECISIONS-for-review.md §162) is exactly what
+        # `npm run build:landing` writes: both languages complete, the terminal road pinned to this release.
+        Gate("landing", (*NPM_RUN, "build:landing", "--", "--check")),
         Gate("firebase-schema", FIREBASE_SCHEMA, files=(":(glob)**/firebase.json",)),
         Gate("editorconfig", ("python3", "scripts/ci/check_editorconfig.py")),
         Gate("e2e-matrix", ("python3", "scripts/ci/check_e2e_matrix.py", "check")),
@@ -259,6 +264,7 @@ STAGES: dict[str, tuple[str, ...]] = {
         "agent-assets",
         "data-files",
         "kit-pins",
+        "landing",
         "firebase-schema",
         "editorconfig",
         "e2e-matrix",
@@ -392,11 +398,12 @@ def capture_output(argv: Sequence[str], cwd: Path) -> str:
 
 
 def default_jobs(environ: Mapping[str, str] = os.environ) -> int:
-    """PIPELINE_JOBS when it is a positive integer (1 runs the gates one at a time), else the CPUs this process may use."""
+    """PIPELINE_JOBS when it is a positive integer (1 runs the gates one at a time), else what the CPUs and the free memory allow
+    (`parallel.py`: a gate per CPU and per 2 GiB available; `HCM_MAX_PARALLEL` caps it, `HCM_LOW_MEM=1` runs one at a time)."""
     value = environ.get(JOBS_VARIABLE, "").strip()
     if value.isdecimal() and int(value) > 0:
         return int(value)
-    return os.process_cpu_count() or 1
+    return workers("gates", environ, this_machine())
 
 
 def default_context(root: Path = ROOT, jobs: int = 0) -> Context:
@@ -651,6 +658,8 @@ def main(argv: Sequence[str] | None = None, ctx: Context | None = None) -> int:
     if not can_run(args.stage):
         LOG.error("[ERROR] run `PIPELINE_STAGE=<stage> bash scripts/ci/run-all-checks.sh` (needs --stage, inside the quality image)")
         return EXIT_USAGE
+    # The tools' own parallelism (ESLint, Vitest, Playwright) follows the free memory too, unless the caller set it.
+    os.environ.update(tool_variables(os.environ, this_machine()))
     return run_pipeline(args.stage, ctx or default_context())
 
 

@@ -46,7 +46,7 @@ describe('the start site for Google verification', () => {
 
     it('happyPath_theHomePageNamesTheAppAndLinksBothPages', () => {
         const page = renderStartPage();
-        expect(page).toContain('Historic City Map');
+        expect(page).toContain('Historic City Map Maker');
         expect(page).toContain('href="privacy.html"');
         expect(page).toContain('href="terms.html"');
         expect(page.indexOf('<hcm-start-page>')).toBeLessThan(page.indexOf('<footer'));

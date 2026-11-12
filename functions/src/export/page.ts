@@ -26,12 +26,16 @@ function originsOf(urls: readonly string[]): string[] {
 /** The origins outside the export that its manifest makes the browser contact (relative addresses are its own). */
 export function exportSources(manifest: Manifest): ExtraSources {
     const tiles = manifest.layers.flatMap((layer) => layerAddresses(layer.source));
-    const photos = manifest.photos.flatMap((photo) => [photo.image.web, photo.image.thumb]);
+    const images = manifest.photos.flatMap((photo) => [photo.image, photo.versions?.improved, photo.versions?.colorized]);
+    const photos = images.flatMap((image) => (image === undefined ? [] : [image.web, image.thumb]));
     return { connect: originsOf([...tiles, manifest.city.basemap.style]), images: originsOf([...tiles, ...photos]) };
 }
 
-/** The kit's page for the exported city: its name, its colour, Romanian first, the engine from `engine/`. */
-export function exportPage(template: string, manifest: Manifest): string {
+/**
+ * The kit's page for the exported city: its name, its colour, Romanian first, the engine from `engine/`, and its own tab
+ * icon inlined when it has one (`icon`, a `data:` address; else the kit's default stays).
+ */
+export function exportPage(template: string, manifest: Manifest, icon?: string): string {
     const { city } = manifest;
     return fillKitPage(template, {
         engine: { kind: 'local' },
@@ -43,5 +47,6 @@ export function exportPage(template: string, manifest: Manifest): string {
         manifestUrl: EXPORT_LAYOUT.manifest,
         sources: exportSources(manifest),
         analytics: false,
+        ...(icon === undefined ? {} : { icon }),
     });
 }

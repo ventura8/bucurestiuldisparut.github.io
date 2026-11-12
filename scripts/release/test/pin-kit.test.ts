@@ -22,8 +22,8 @@ function releaseFor(template: string, version = '1.4.0'): EngineRelease {
     const js = 'https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js';
     return {
         version,
-        repository: 'ventura8/bucurestiuldisparut.github.io',
-        base: `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@v${version}/cdn/engine/`,
+        repository: 'ventura8/historic-city-map-maker',
+        base: `https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@v${version}/cdn/engine/`,
         mapboxGl: { version: '3.34.1', script: { url: js, integrity: attribute(js) }, stylesheet: { url: css, integrity: attribute(css) } },
         files: [
             { path: 'engine.css', bytes: 10, integrity: sri('c') },

@@ -21,7 +21,10 @@ import { DOCKED_OPEN, type Placement, type SheetMode, type ViewerLayout } from '
 import { renderSheetFrame } from './sheet-frame.js';
 import type { ViewerError, ViewerState } from './store-port.js';
 import { photosNearYear, type TimelineStop } from './timeline-model.js';
+import type { MenuPoint } from './map-menu-trigger.js';
+import { lightbox, mapMenu, type LightboxHandlers, type MapMenuHandlers } from './viewer-lightbox.js';
 import { menuActions, menuItem } from './viewer-menu.js';
+import { nearYearChip } from './viewer-near-year.js';
 import { storiesSheet } from './viewer-stories.js';
 import { unplacedSheet } from './viewer-unplaced.js';
 import { zoomButtons, type MapSize } from './viewer-zoom.js';
@@ -41,6 +44,8 @@ export interface ViewerView {
     readonly attribution: readonly AttributionPart[];
     /** The map container's box (null before the first render): Zoom out's limit (`viewer-zoom.ts`). */
     readonly mapSize: MapSize | null;
+    /** Where the map's menu is open (V62); null: closed. */
+    readonly mapMenu: MenuPoint | null;
 }
 
 /** `hcm-photo-locate` of `<hcm-photo-sheet>`: the photo, and its place's offset from the map's centre (`locateOffset`). */
@@ -57,12 +62,11 @@ export interface OverlayOpacityDetail {
 }
 
 /** The element's event handlers, bound once. */
-export interface ViewerHandlers {
+export interface ViewerHandlers extends LightboxHandlers, MapMenuHandlers {
     readonly onYearChange: (event: CustomEvent<{ readonly year: number | null }>) => void;
     readonly onOverlayVisibility: (event: CustomEvent<{ readonly id: string; readonly visible: boolean }>) => void;
     readonly onOverlayOpacity: (event: CustomEvent<OverlayOpacityDetail>) => void;
     readonly onSheetClose: (event: Event) => void;
-    readonly onPhotoSelect: (event: CustomEvent<{ readonly photoId: string }>) => void;
     /** The photo sheet's "Show on map" (V51). */
     readonly onPhotoLocate: (event: CustomEvent<PhotoLocateDetail>) => void;
     /** M17: a story to open (null: their list), and a place a story names. */
@@ -71,7 +75,6 @@ export interface ViewerHandlers {
     readonly onLightboxOpen: (event: Event) => void;
     /** The photo sheet's thumbnail was decoded (or failed): the `photo_timing` field measurement. */
     readonly onPhotoShown: (event: CustomEvent<{ readonly ok: boolean }>) => void;
-    readonly onLightboxClose: (event: Event) => void;
     readonly onMenuSelect: (event: CustomEvent<{ readonly value: string }>) => void;
     readonly onLocaleChange: (event: CustomEvent<{ readonly locale: Locale }>) => void;
     readonly onThemeChange: (event: CustomEvent<{ readonly theme: ViewerState['theme'] }>) => void;
@@ -270,7 +273,7 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
     const items = menuActions({ webgl: state.webgl, layersDocked: view.layout.layersDocked, manifest }).map((action) =>
         menuItem(action, view.locale, state.myLocation !== null),
     );
-    return html`${timelineArea(view, ready, handlers)} ${nearYearChip(view, ready, handlers)}
+    return html`${timelineArea(view, ready, handlers)} ${nearYearChip(view, ready.state.year, ready.manifest.photos, handlers.onNearYear)}
         <div class="dock menu">
             <hcm-fab-menu
                 data-layout-check="menu"
@@ -282,7 +285,8 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
             ></hcm-fab-menu>
         </div>
         ${state.webgl ? zoomButtons(view, state.view, manifest, handlers.onZoom) : nothing}
-        ${consent ? renderConsentBanner(view.locale, handlers.onConsent) : nothing} ${toast(view, state, handlers)}`;
+        ${consent ? renderConsentBanner(view.locale, handlers.onConsent) : nothing} ${toast(view, state, handlers)}
+        ${mapMenu(view, state, handlers)}`;
 }
 
 function timeline(view: ViewerView, state: ViewerState, handlers: ViewerHandlers): TemplateResult {
@@ -296,18 +300,6 @@ function timeline(view: ViewerView, state: ViewerState, handlers: ViewerHandlers
             .orientation=${view.layout.timeline}
             @hcm-year-change=${handlers.onYearChange}
         ></hcm-timeline>
-    </div>`;
-}
-
-function nearYearChip(view: ViewerView, ready: Ready, handlers: ViewerHandlers): TemplateResult {
-    const year = ready.state.year;
-    if (year === null || photosNearYear(ready.manifest.photos, year).length === 0) {
-        return EMPTY;
-    }
-    return html`<div class="dock chip">
-        <hcm-button variant="tonal" icon="photo_library" data-layout-check="near-year" @click=${handlers.onNearYear}
-            >${translate(view.locale, 'photos.nearYear', { year: String(year) })}</hcm-button
-        >
     </div>`;
 }
 
@@ -389,6 +381,7 @@ function photoSheet(view: ViewerView, ready: Ready, placement: Placement, handle
         .stories=${ready.manifest.stories ?? []}
         .canLocate=${ready.state.webgl}
         .years=${view.stops}
+        .photoVersion=${ready.state.photoVersion}
         ?inert=${placement.inert === true}
         @hcm-close=${handlers.onSheetClose}
         @hcm-year-change=${handlers.onYearChange}
@@ -397,6 +390,7 @@ function photoSheet(view: ViewerView, ready: Ready, placement: Placement, handle
         @hcm-story-select=${handlers.onStorySelect}
         @hcm-lightbox-open=${handlers.onLightboxOpen}
         @hcm-photo-shown=${handlers.onPhotoShown}
+        @hcm-photo-version=${handlers.onPhotoVersion}
     ></hcm-photo-sheet>`;
 }
 
@@ -459,15 +453,7 @@ function overlays(view: ViewerView, ready: Ready, legal: LegalMirror, handlers: 
             @hcm-shortcuts-change=${handlers.onShortcuts}
             @hcm-help-open=${handlers.onHelpOpen}
         ></hcm-about-dialog>
-        <hcm-lightbox
-            .open=${state.lightbox && state.selectedPhotoId !== null}
-            .photos=${manifest.photos}
-            .photoId=${state.selectedPhotoId}
-            .locale=${view.locale}
-            .manifestUrl=${view.manifestUrl}
-            @hcm-close=${handlers.onLightboxClose}
-            @hcm-photo-select=${handlers.onPhotoSelect}
-        ></hcm-lightbox>`;
+        ${lightbox(state, manifest.photos, view, handlers)}`;
 }
 
 /**

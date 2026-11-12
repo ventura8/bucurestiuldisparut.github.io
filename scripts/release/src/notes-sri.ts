@@ -4,6 +4,7 @@ import {
     engineCdnUrl,
     engineMajorBase,
     engineReleaseSchema,
+    isPrerelease,
     releaseIntegrity,
     validate,
     type EngineRelease,
@@ -56,6 +57,17 @@ function tag(resource: PinnedSubresource): string {
         : `<link rel="stylesheet" href="${resource.url}" ${pin} />`;
 }
 
+/**
+ * The major line a page may follow without integrity (`@1`), or for a pre-release the sentence that it has none: a
+ * range never resolves to a pre-release, and a pre-release never moves the line.
+ */
+function majorLine(release: EngineRelease): string {
+    if (isPrerelease(release.version)) {
+        return 'A pre-release is served only at its exact version: no major line (such as `@1`) resolves to it.';
+    }
+    return `The ${String(release.version.split('.')[0])}.x line without integrity, for a page that follows every compatible release: \`${engineMajorBase(release.version, release.repository)}\`.`;
+}
+
 /** The Markdown block between the markers (markers included): the table, the floating folder, the tags to paste. */
 export function sriBlock(release: EngineRelease): string {
     const resources = pinnedSubresources(release);
@@ -67,7 +79,7 @@ export function sriBlock(release: EngineRelease): string {
         ...resources.map((resource) => `| ${resource.label} | \`${resource.url}\` | \`${resource.integrity}\` |`),
         '',
         `Every file of the release with its size and integrity: \`${engineCdnUrl(release.version, ENGINE_RELEASE_FILE, release.repository)}\`.`,
-        `The ${String(release.version.split('.')[0])}.x line without integrity, for a page that follows every compatible release: \`${engineMajorBase(release.version, release.repository)}\`.`,
+        majorLine(release),
         '',
         '```html',
         ...resources.map(tag),

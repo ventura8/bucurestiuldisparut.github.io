@@ -1016,6 +1016,62 @@
             "name": "Delete a version that never reached the map: its job, log and own files go for good, after a question that says the originals stay",
             "milestone": "M3",
             "source": "the owner, 2026-11-12: a cancelled or failed version (and an archive series waiting for points) can be deleted from its page; docs/research/M3-interfaces.md §7.1"
+        },
+        {
+            "id": "A132",
+            "area": "admin",
+            "name": "The project’s landing page on GitHub Pages: what Historic City Map Maker is, the start page, the terminal road, the example and the links, in English and Romanian",
+            "milestone": "M14",
+            "source": "the owner, 2026-11-12: GitHub Pages becomes the landing page for whoever wants to start their own map (DECISIONS §162)"
+        },
+        {
+            "id": "V54",
+            "area": "viewer",
+            "name": "The public map's tab shows its city's icon: the Layers map glyph by default, an editor's upload once set",
+            "milestone": "M18",
+            "source": "the owner, 2026-11-08: the Layers map icon as the default browser tab icon, and the admin can change it; docs/research/M2-interfaces.md → The city's tab icon"
+        },
+        {
+            "id": "V55",
+            "area": "viewer",
+            "name": "The default tab icon wears the theme the user chose: the system's scheme first, then the chosen theme's colours",
+            "milestone": "M18",
+            "source": "the owner, 2026-11-12: make sure the icon in the tab uses the theme set by the user; docs/ENGINE_API.md → The page's tab icon"
+        },
+        {
+            "id": "A101",
+            "area": "admin",
+            "name": "Settings → Browser tab icon: the default drawn for every city, an upload checked from its bytes, Use the default",
+            "milestone": "M18",
+            "source": "the owner, 2026-11-08: the Layers map icon as the default browser tab icon, and the admin can change it; docs/research/M2-interfaces.md → The city's tab icon"
+        },
+        {
+            "id": "V60",
+            "area": "viewer",
+            "name": "The full-size view's Zoom in and Zoom out buttons, soft-disabled at the photo's size and at 4x",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-09: add + and - buttons when viewing a photo full screen; a photo has versions (original, improved, colorized)"
+        },
+        {
+            "id": "V61",
+            "area": "viewer",
+            "name": "A photo's versions: improved shown first, a switch Original / Improved / Colorized in the sheet and the full-size view, kept in the address",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-09: add + and - buttons when viewing a photo full screen; a photo has versions (original, improved, colorized)"
+        },
+        {
+            "id": "A140",
+            "area": "admin",
+            "name": "A photo's improved and colorized versions in the editor: added, replaced, removed, each with its credit",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-09: add + and - buttons when viewing a photo full screen; a photo has versions (original, improved, colorized)"
+        },
+        {
+            "id": "V62",
+            "area": "viewer",
+            "name": "The map's menu (right click, long press, ContextMenu key or Shift+F10) with Open in Google Street View, Copy coordinates and Share a link to this view; a photo's sheet links to Street View",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-09: go to Google Street View from a right-click panel (hold on a touch screen) on the map, and from a photo's details"
         }
     ],
     "scenarios": [
@@ -1333,7 +1389,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "The photos-near-the-year chip sits on the timeline at every layout",
-            "asserts": "at a year with photos near it the chip 'Fotografii din jurul anului …' sits on the timeline card: on a phone held upright 8 px under the standing card's foot, leading edges aligned; from 600 px 8 px above the lying card on its leading edge, with the Layers pane docked too; at 915x412 8 px above the lying card on its trailing edge",
+            "asserts": "at a year with photos near it the chip 'Fotografii din jurul anului …' sits on the timeline card: on a phone held upright an icon button 8 px under the standing card's foot, centred on the card; from 600 px 8 px above the lying card on its leading edge, with the Layers pane docked too; at 915x412 8 px above the lying card on its trailing edge",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-08: the chip looked like it was floating; then the vertical timeline on phones. packages/ui/src/viewer/viewer-styles.ts (.dock.chip); unit tests in packages/ui/test/viewer/kit-integration.test.ts and kit-timeline-layout.test.ts."
@@ -1348,6 +1404,28 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-08. packages/ui/src/viewer/viewer-styles.ts (.dock.chip)."
+        },
+        {
+            "id": "S-V04-HAPPY-PHONE-ICON-CHIP",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "On a phone held upright the chip is an icon button under the timeline, named in full",
+            "asserts": "at 390x844, at a year with photos near it: one button whose accessible name and tooltip are 'Fotografii din jurul anului 1966', the photo_library icon, no text in the dock, a 40 px button (48 px target) centred 8 px under the standing timeline; pressing it opens the photos near the year",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12: no wide text pill on phones. packages/ui/src/viewer/viewer-render.ts (nearYearChip), viewer-styles.ts (.dock.chip). Tests: e2e/specs/viewer/timeline.spec.ts; packages/ui/test/viewer/kit-timeline-layout.test.ts; the tour's state `year` at the phone viewports."
+        },
+        {
+            "id": "S-V04-BAD-PHONE-NO-YEAR-NO-BUTTON",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "On a phone no year, or a year without photos, shows no button; a wide window keeps the text chip",
+            "asserts": "at 390x844 at today (the year is null) there is no chip dock and no button; back at today after a year with photos the button is gone; the same year at 1024x768 shows the text chip and no icon button",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12. Tests: e2e/specs/viewer/timeline.spec.ts; packages/ui/test/viewer/kit-timeline-layout.test.ts."
         },
         {
             "id": "S-V04-HAPPY-VERTICAL-ON-PHONE",
@@ -6143,7 +6221,7 @@
             "asserts": "a pair chosen in the table shows Delete pair N beside the panes; pressing it, or Delete or Backspace on the map pane (as on the scan), removes the pair in one Undo step and a notice says Pair N was removed with Undo for ten seconds; Undo puts that very pair back at its place in the list, whatever was edited since, and nothing is left to save",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §165). Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts (state georef.pair-removed), packages/admin/test/georef/removing.test.ts, packages/ui/test/admin/georef/georef-remove-page.test.ts, packages/ui/test/admin/map/map-elements.test.ts."
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §172). Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts (state georef.pair-removed), packages/admin/test/georef/removing.test.ts, packages/ui/test/admin/georef/georef-remove-page.test.ts, packages/ui/test/admin/map/map-elements.test.ts."
         },
         {
             "id": "S-A16-BAD-GEOREF-REMOVE-NOTHING",
@@ -6154,7 +6232,7 @@
             "asserts": "no pair chosen: no Delete button beside the panes, Delete and Backspace on the map remove nothing and no notice shows; a pair that is no longer there, a version that takes no points and an admin whose access was removed remove nothing",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §165). Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts, packages/admin/test/georef/removing.test.ts, packages/ui/test/admin/georef/georef-remove-page.test.ts."
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §172). Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts, packages/admin/test/georef/removing.test.ts, packages/ui/test/admin/georef/georef-remove-page.test.ts."
         },
         {
             "id": "S-A16-HAPPY-GEOREF-MAP-SHOWS",
@@ -6165,7 +6243,7 @@
             "asserts": "The map shows, a labelled native list above the map, offers the version's references and the city's published layers by name and year, oldest first; choosing a layer draws it opaque under the pairs and the warped preview on the page's one map and credits it below; choosing a reference takes it off; the choice is kept for the next version opened while the admin is open; Mapbox Satellite is never offered",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §165). Tests: e2e/admin/specs/imagery/layer-geometry.spec.ts (state georef.map-shows), packages/admin/test/georef/base-layers.test.ts, packages/ui/test/admin/georef/georef-map-shows.test.ts."
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §172). Tests: e2e/admin/specs/imagery/layer-geometry.spec.ts (state georef.map-shows), packages/admin/test/georef/base-layers.test.ts, packages/ui/test/admin/georef/georef-map-shows.test.ts."
         },
         {
             "id": "S-A16-BAD-GEOREF-MAP-SHOWS-GONE",
@@ -6176,7 +6254,7 @@
             "asserts": "a draft layer is not offered; a layer shown that stops being published goes off the map and the pane is back on the reference; a layer id that does not exist draws nothing; with one reference and no published layer there is no list",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §165). Tests: packages/admin/test/georef/base-layers.test.ts, packages/ui/test/admin/georef/georef-map-shows.test.ts."
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §172). Tests: packages/admin/test/georef/base-layers.test.ts, packages/ui/test/admin/georef/georef-map-shows.test.ts."
         },
         {
             "id": "S-A16-HAPPY-EDIT-POINTS-PUBLISHED",
@@ -6187,7 +6265,7 @@
             "asserts": "a published version's page and its layer's editor offer Edit points; the georeferencer opens on that version's pairs, editable, and says the version is on the map, that saving makes a new version and that this one stays until the new one is approved; saving starts a regeoref version of the same layer, which keeps its tiles until that one is published",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §165). The server side is S-A16-HAPPY-REGEOREF-LAYER's (imagery.saveGcps, regeoref.ts): nothing was missing. Tests: e2e/admin/specs/imagery/layer-geometry.spec.ts (state georef.edit-published), packages/admin/test/georef/edit-points.test.ts, packages/ui/test/admin/georef/georef-edit-points.test.ts."
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §172). The server side is S-A16-HAPPY-REGEOREF-LAYER's (imagery.saveGcps, regeoref.ts): nothing was missing. Tests: e2e/admin/specs/imagery/layer-geometry.spec.ts (state georef.edit-published), packages/admin/test/georef/edit-points.test.ts, packages/ui/test/admin/georef/georef-edit-points.test.ts."
         },
         {
             "id": "S-A16-BAD-EDIT-POINTS-ENDED",
@@ -6198,7 +6276,7 @@
             "asserts": "a superseded, approved or publishing version takes no points: its page has no link to the georeferencer, the georeferencer opened on it says it takes no points and says nothing about a new version; a version still waiting for its first points offers Open the georeferencer, not Edit points",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §165). Tests: packages/admin/test/georef/edit-points.test.ts, packages/ui/test/admin/georef/georef-edit-points.test.ts."
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §172). Tests: packages/admin/test/georef/edit-points.test.ts, packages/ui/test/admin/georef/georef-edit-points.test.ts."
         },
         {
             "id": "S-A16-HAPPY-GEOREF-ROTATE",
@@ -6209,7 +6287,7 @@
             "asserts": "under each pane a group of buttons turns it: Turn left, Turn right and Upright (the scan) or North up (the map), 15 degrees a press; on the scan r and R turn it, n sets it upright and Ctrl with a drag turns it about the pane's centre, what is at the centre staying there; pairs, the ghost, clicks and the sharper tiles follow the turn; with a fit and Turn the panes together on (the default, kept while the admin is open) the map takes the bearing that shows the ground as the turned scan does and the scan the angle that suits the map's bearing",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §165). Tests: e2e/admin/specs/imagery/georef-linked.spec.ts (state georef.rotated), packages/admin/test/georef/rotation.test.ts, packages/ui/test/admin/georef/scan-rotate.test.ts."
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §172). Tests: e2e/admin/specs/imagery/georef-linked.spec.ts (state georef.rotated), packages/admin/test/georef/rotation.test.ts, packages/ui/test/admin/georef/scan-rotate.test.ts."
         },
         {
             "id": "S-A16-BAD-GEOREF-ROTATE-APART",
@@ -6220,7 +6298,7 @@
             "asserts": "Turn the panes together off: the scan turns and the map keeps its bearing, the map turns and the scan keeps its angle, while their places still follow each other; without a fit the toggle is off and disabled and each pane still turns alone; a fit with no place at the pane's centre turns nothing",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §165). Tests: e2e/admin/specs/imagery/georef-linked.spec.ts, packages/admin/test/georef/rotation.test.ts, packages/ui/test/admin/georef/scan-rotate.test.ts."
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §172). Tests: e2e/admin/specs/imagery/georef-linked.spec.ts, packages/admin/test/georef/rotation.test.ts, packages/ui/test/admin/georef/scan-rotate.test.ts."
         },
         {
             "id": "S-A17-HAPPY",
@@ -11860,7 +11938,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A frame that ended fails the join with its name",
-            "asserts": "a frame failed or rejected -> apiError.imagery.joinPartGone naming it, from the callable and from the hold",
+            "asserts": "a frame failed, cancelled, rejected or superseded -> apiError.imagery.joinPartGone naming it, from the callable and from the hold (a frame joined by an earlier join is not gone: S-A65-HAPPY-JOINED-FRAME)",
             "tier": "functions",
             "status": "exists",
             "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: functions/test/imagery/join*.test.ts."
@@ -15215,7 +15293,7 @@
             "area": "admin",
             "path": "happy",
             "title": "The start page names the app and links its privacy policy and terms, in both languages",
-            "asserts": "the home page's footer, plain HTML below the page, names Historic City Map and links privacy.html and terms.html; each opens with its Romanian heading and its English section, and links back; Search Console's file is served with its one line",
+            "asserts": "the home page's footer, plain HTML below the page, names Historic City Map Maker and links privacy.html and terms.html; each opens with its Romanian heading and its English section, and links back; Search Console's file is served with its one line",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The owner's request of 2026-11-09: Google's OAuth verification (docs/research/M14-start-your-map.md §10). Test: e2e/admin/specs/start/legal.spec.ts."
@@ -15230,6 +15308,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The owner's request of 2026-11-09. Test: e2e/admin/specs/start/legal.spec.ts."
+        },
+        {
+            "id": "S-A132-HAPPY-LANDING",
+            "behaviour": "A132",
+            "area": "admin",
+            "path": "happy",
+            "title": "The landing page names the product and links the start page, the example and the other language",
+            "asserts": "index.html (English): the H1 Historic City Map Maker, Start your map links `https://start-historic-city.web.app/`, the terminal road names `npx create-historic-city@<this release> self-host` (never `@1`), the example links `https://bucurestiul-disparut.web.app/`; Română opens ro.html with the Romanian words and English leads back; both pass the tour's checkers",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12 (DECISIONS §162). Test: e2e/admin/specs/start/landing.spec.ts."
+        },
+        {
+            "id": "S-A132-BAD-LANDING-MISSING-KEY",
+            "behaviour": "A132",
+            "area": "admin",
+            "path": "bad",
+            "title": "A word missing from one language stops the landing build before anything is written",
+            "asserts": "a Romanian catalogue without its title and an English footer of spaces -> exit 1 naming 'en: footer, ro: title', the output folder not written",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12 (DECISIONS §162). Test: e2e/admin/specs/start/landing.spec.ts."
         },
         {
             "id": "S-A61-HAPPY-SELF-RELOAD",
@@ -16942,7 +17042,7 @@
             "area": "pipeline",
             "path": "bad",
             "title": "A stitch or place method the server does not know never leaves the worker",
-            "asserts": "publish_stitched with a method outside STITCH_METHODS, or an archive report (Placement.as_record) with a method outside ARCHIVE_PLACE_METHODS -> ValueError before any file is published or written; the overview method is in STITCH_METHODS and ARCHIVE_PLACE_METHODS on both sides of the contract (enums.json)",
+            "asserts": "publish_stitched with a method outside STITCH_METHODS, or an archive report (Placement.as_record) with a method outside ARCHIVE_PLACE_METHODS -> ValueError before any file is published or written; the overview method is in STITCH_METHODS and ARCHIVE_PLACE_METHODS on both sides of the contract (enums.json); a left-out reason outside LEFT_OUT_REASONS is refused the same way, and LEFT_OUT_REASONS and STITCHED_LEFT_OUT_MAX join the shared contract (1844-1846 Borroczyn, 2026-11-12)",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "harti.zip 1895: the worker's write of help.stitched (method overview) was refused as apiError.invalidRequest after 10 minutes of work (lesson 569). Tests: pipeline/tests/unit/test_placing_assemble_overview.py, pipeline/tests/unit/test_contract.py, packages/shared/test/schemas/pipeline-contract.test.ts."
@@ -17088,7 +17188,7 @@
             "asserts": "extract -> None; the series waits with the export note",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_assemble.py."
+            "notes": "M20 paths (docs/research/M20-import-local.md §3, §15). Tests: pipeline/tests/unit/test_placing_assemble.py (a single map), pipeline/tests/unit/test_placing_pdf.py (an atlas and pieces, lesson 593)."
         },
         {
             "id": "S-P20-HAPPY-GRID",
@@ -17507,6 +17607,413 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Lesson 547. Tests: packages/admin/test/georef/georef.test.ts (happyPath_undoTakesBackTheLastEditsOneByOneAndNothingMoreAfterDiscard)."
+        },
+        {
+            "id": "S-P20-HAPPY-PDF-ATLAS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A PDF atlas beside loose maps is laid out from its pages, never read by GDAL",
+            "asserts": "a four-page PDF atlas with a loose map beside it -> placed as an atlas from its extracted pages (the overview search sees only the pages, never the PDF); a page stored in a form that cannot be written as is is decoded to a TIFF",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_placing_pdf.py."
+        },
+        {
+            "id": "S-P20-BAD-PDF-BROKEN",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A broken PDF fails its series with one clear line",
+            "asserts": "an empty or truncated PDF -> the job fails apiError.imagery.archiveCorrupt naming the file, never a crash; a page that cannot be decoded either is counted as without an image",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_placing_pdf.py."
+        },
+        {
+            "id": "S-A65-HAPPY-JOINED-FRAME",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "happy",
+            "title": "A frame joined by an earlier join joins again",
+            "asserts": "a frame whose version is joined (used by an earlier join) -> imagery.join takes it, stamps it with the new join, and the dispatcher counts it ready; only rejected, cancelled, failed and superseded frames are gone",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: functions/test/imagery/join.test.ts, functions/test/imagery/join-parts.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-BUSY-SEEN",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A worker busy with a long step stays connected",
+            "asserts": "a run's heartbeat (lease.until through worker.step) -> the worker's lastSeenAt is the server's now, so the admin never says No computer connected and new jobs keep going to the computer; a write without the lease leaves lastSeenAt as it was",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: functions/test/worker/step.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-NAMED-FIELD",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A worker's write the server refuses names the field",
+            "asserts": "a value that cannot be stored, or a merged document that fails its schema -> apiError.invalidRequest with the refused fields' paths and codes (never their values); the worker's WorkerApiError and the job's error say which fields",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: functions/test/worker/step.test.ts, pipeline/tests/unit/test_worker_api.py."
+        },
+        {
+            "id": "S-P01-HAPPY-STEP-LIMIT",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A step within its wall-time limit runs on",
+            "asserts": "a step that ends before its limit -> done as before; each step has a generous limit (locate 45 min, place 4 h, others 3 h), RunSettings overrides it",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_step_limits.py."
+        },
+        {
+            "id": "S-P01-BAD-STEP-LIMIT",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A step past its wall-time limit fails with one clear line",
+            "asserts": "a step still running past its limit -> at its next checkpoint the job and the version fail apiError.imagery.stepTimeLimit {step, minutes}, so the computer's queue goes on; a fake clock, no sleep",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_step_limits.py."
+        },
+        {
+            "id": "S-P06-HAPPY-SEARCH-BUDGET",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A frame's search within its camera's budget answers what it found",
+            "asserts": "a search that ends within the camera's search_seconds -> its result, unchanged",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_step_limits.py."
+        },
+        {
+            "id": "S-P06-BAD-SEARCH-BUDGET",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A frame's search past its budget crops by the footprint and waits for points",
+            "asserts": "a KH-5 Argon search still running after 10 min -> it stops, the windows left are not searched, the frame is not proved and its city crop by the footprint waits for points (never an hour with no end)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_step_limits.py."
+        },
+        {
+            "id": "S-P22-HAPPY-PAIRS-IN-SCAN",
+            "behaviour": "P22",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A waiting series' suggested pairs are in its scan's pixels",
+            "asserts": "a stitched canvas larger than SCAN_MAX_PX -> the version's suggested pairs are scaled with it into scan.tif's pixels (a canvas pixel (800, 400) on a half-size scan is (400, 200)); a single map's pairs in its original's pixels land on its working copy",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip 1895, track/workerfix). Tests: pipeline/tests/unit/test_placing_assemble_stitched.py."
+        },
+        {
+            "id": "S-P22-BAD-PAIRS-OUTSIDE-SCAN",
+            "behaviour": "P22",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A suggested pair outside the scan is never offered",
+            "asserts": "a pair past the scan's width or height, or negative -> dropped, and tiles.matched counts only the pairs kept",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (harti.zip 1895, track/workerfix). Tests: pipeline/tests/unit/test_placing_assemble_stitched.py."
+        },
+        {
+            "id": "S-V55-HAPPY",
+            "behaviour": "V55",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The default tab icon wears the visitor's theme",
+            "asserts": "under a dark system the page's one icon link is the glyph on the city's dark primary; Light chosen in Settings -> the link is redrawn on the light primary, and stays so after a reload (the stored choice wins over the system); a city on the default keeps the themed icon and links icon-180.png for the home screen; the admin's tab is drawn in the admin's theme the same way",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12 (docs/ENGINE_API.md → The page's tab icon; DECISIONS-for-review.md §166). Test: e2e/specs/viewer/language-theme.spec.ts, scripts/site/test/hosting-pages.test.ts, packages/shared/test/kit/tab-icon.test.ts, packages/ui/test/admin/shell/tab-icon.test.ts."
+        },
+        {
+            "id": "S-V55-BAD-UNKNOWN-THEME",
+            "behaviour": "V55",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A stored theme that is no theme leaves the tab icon in the system's scheme",
+            "asserts": "localStorage holds a theme value the engine does not know, the system is dark -> the viewer and the tab icon wear the dark scheme; a city's uploaded icon, a page without an icon link, a host without a theme and a browser without a canvas are left as they are",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12 (docs/ENGINE_API.md → The page's tab icon). Test: e2e/specs/viewer/language-theme.spec.ts, packages/shared/test/kit/tab-icon.test.ts."
+        },
+        {
+            "id": "S-V54-HAPPY",
+            "behaviour": "V54",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Every city's tab shows its own icon from the public bucket",
+            "asserts": "the Hosting root and the generic city page (/bacau/) swap their inlined default for the city's uploaded icon (icon-own-32.png) once that loads, in one link without a scheme, and link icon-180.png for a phone's home screen; a site built without the bucket inlines the default",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/specs/viewer/hosting.spec.ts, scripts/site/test/hosting-pages.test.ts, scripts/site/test/build.test.ts."
+        },
+        {
+            "id": "S-V54-BAD-MISSING",
+            "behaviour": "V54",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A city without an icon keeps the default in its tab",
+            "asserts": "the generic city page of a city the bucket does not hold (icon-own-32.png and icon-180.png 404) keeps its inlined default and adds no home-screen icon; the page says the map was not found as before",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/specs/viewer/hosting.spec.ts, scripts/site/test/hosting-pages.test.ts."
+        },
+        {
+            "id": "S-A101-HAPPY-DEFAULT",
+            "behaviour": "A101",
+            "area": "admin",
+            "path": "happy",
+            "title": "A new city gets the default tab icon from the manifest's build",
+            "asserts": "a city written with no icon -> the build draws the map glyph in its seed colour as icon-32/180/512.png in the public bucket and records icon.source default; Settings shows it tagged Default; a new seed colour draws it again, an upload is left alone",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/admin/specs/settings/icon.spec.ts, functions/test/publish/icon.test.ts."
+        },
+        {
+            "id": "S-A101-HAPPY-UPLOAD",
+            "behaviour": "A101",
+            "area": "admin",
+            "path": "happy",
+            "title": "An editor uploads a PNG as the city's tab icon",
+            "asserts": "Upload an image with a 256 px PNG -> cities.setIcon writes the three PNGs (5-minute cache) over the old ones, the city's icon is Custom, the card previews the new 180 px file and the snackbar says it changed; a WebP works the same",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/admin/specs/settings/icon.spec.ts, functions/test/cities/set-icon.test.ts, packages/admin/test/settings/icon.test.ts, packages/ui/test/admin/settings/icon-section.test.ts."
+        },
+        {
+            "id": "S-A101-HAPPY-RESET",
+            "behaviour": "A101",
+            "area": "admin",
+            "path": "happy",
+            "title": "Use the default icon draws the default again",
+            "asserts": "an uploaded icon, Use the default icon -> cities.setIcon reset draws the map glyph in the city's colour and the card says Default",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/admin/specs/settings/icon.spec.ts, functions/test/cities/set-icon.test.ts, packages/admin/test/settings/icon.test.ts."
+        },
+        {
+            "id": "S-A101-BAD-SVG",
+            "behaviour": "A101",
+            "area": "admin",
+            "path": "bad",
+            "title": "An SVG (or any file that is not PNG or WebP) is refused and nothing changes",
+            "asserts": "an SVG named sigla.png -> refused in the browser from its first bytes with apiError.cityIcon.badType in the admin's language, nothing sent; the server refuses an SVG, JPEG, PDF or renamed file the same, and an image too large, not square or animated with its own message; no object or record is written",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/admin/specs/settings/icon.spec.ts, functions/test/cities/set-icon.test.ts, packages/admin/test/settings/icon.test.ts."
+        },
+        {
+            "id": "S-A101-BAD-SMALL",
+            "behaviour": "A101",
+            "area": "admin",
+            "path": "bad",
+            "title": "An image too small is refused by the server with a plain message",
+            "asserts": "a 64 px PNG -> apiError.cityIcon.tooSmall {min: 192} beside the buttons; the city's icon is not custom",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: e2e/admin/specs/settings/icon.spec.ts, packages/admin/test/settings/icon.test.ts."
+        },
+        {
+            "id": "S-A101-BAD-CLIENT-WRITE",
+            "behaviour": "A101",
+            "area": "admin",
+            "path": "bad",
+            "title": "No client writes a city's icon record or files",
+            "asserts": "a client update of cities/{city}.icon, or a write of cities/{city}/icon-*.png (or an SVG beside it) -> denied for every persona",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: firebase/rules-tests/test/cities.test.ts, firebase/rules-tests/test/storage.test.ts."
+        },
+        {
+            "id": "S-V60-HAPPY",
+            "behaviour": "V60",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The full-size view loads beside the engine and its buttons zoom the photo",
+            "asserts": "no engine.extras.js request before the photo opens full size, one when it does; Zoom in enlarges the image by more than 20 %, Zoom out brings it back",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+        },
+        {
+            "id": "S-V60-BAD-LIMITS",
+            "behaviour": "V60",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Zoom out is disabled at the photo size and Zoom in at the largest",
+            "asserts": "on opening Zoom out says aria-disabled; Enter pressed eight times on Zoom in -> it says aria-disabled and keeps the focus, Zoom out is enabled",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+        },
+        {
+            "id": "S-V61-HAPPY",
+            "behaviour": "V61",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A photo with versions shows the improved one, switches to colorized and keeps it",
+            "asserts": "the sheet's switch has Improved checked; Colorized -> the address says pv=colorized and \"Colorized by Ana Pop\" shows; after a reload the full-size view has Colorized checked and shows its image",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+        },
+        {
+            "id": "S-V61-BAD-UNKNOWN-VERSION",
+            "behaviour": "V61",
+            "area": "viewer",
+            "path": "bad",
+            "title": "An unknown pv= shows the original; a photo with only its original has no switch",
+            "asserts": "#photo=x&pv=sepia -> Original checked; a photo without versions -> no switch in its sheet nor in the full-size view",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+        },
+        {
+            "id": "S-V61-HAPPY-TOUR",
+            "behaviour": "V61",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The versions and the zoom buttons pass the layout and accessibility checks on every window class",
+            "asserts": "expectStateSound on the photo-versions journey: the sheet with Colorized picked and credited, the full-size view with its switch, zoomed in once",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167). Tests: e2e/tour/viewer.tour.ts (e2e/tour/photo-version-states.ts)."
+        },
+        {
+            "id": "S-A140-HAPPY",
+            "behaviour": "A140",
+            "area": "admin",
+            "path": "happy",
+            "title": "A colorized version is added beside the published image, credited, and reaches the public map",
+            "asserts": "Add a file in Colorized version -> photos.onUpload writes versions.colorized, the image and publication unchanged; the credit saved -> the manifest lists the version with \"Ana Pop\"; the public viewer shows the switch with two versions",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167). Tests: e2e/admin/specs/photos/replace.spec.ts."
+        },
+        {
+            "id": "S-A140-BAD-WRONG-TYPE",
+            "behaviour": "A140",
+            "area": "admin",
+            "path": "bad",
+            "title": "A file that is no photo is refused at once as a version",
+            "asserts": "note.txt chosen for Improved version -> \"The new image was refused\" with the unsupported-type reason in its section, nothing uploaded, no versions on the photo",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167). Tests: e2e/admin/specs/photos/replace.spec.ts."
+        },
+        {
+            "id": "S-V62-HAPPY-RIGHT-CLICK",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A right click opens the menu at the place, whose Street View link names it",
+            "asserts": "right click at the map centre -> the menu, its first item focused; the Street View link opens in a new tab (noopener noreferrer) at the hash centre to 3 decimals; Copy coordinates and Share a link to this view are there",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+        },
+        {
+            "id": "S-V62-HAPPY-LONG-PRESS",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A long press on a touch screen opens the menu",
+            "asserts": "a touch pointer held on the map -> the menu opens and stays when the finger lifts",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+        },
+        {
+            "id": "S-V62-HAPPY-PHOTO",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A photo's sheet links to Street View looking along its bearing",
+            "asserts": "a photo with a bearing -> Open in Google Street View names its place and &heading=<bearing>",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+        },
+        {
+            "id": "S-V62-HAPPY-KEYBOARD-COPY",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Shift+F10 on the focused map opens the menu at its centre; Copy coordinates copies the place and the focus returns",
+            "asserts": "the map's canvas focused, Shift+F10 -> the menu, its first item focused; ArrowDown, Enter on Copy coordinates -> the toast 'Coordonatele au fost copiate.', the clipboard holds the hash centre to 3 decimals, no menu, the focus back on the map",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (DECISIONS-for-review.md §167h, §167j). Tests: e2e/specs/viewer/map-menu.spec.ts; packages/ui/test/viewer/map-menu.test.ts, viewer-lightbox.test.ts."
+        },
+        {
+            "id": "S-V62-HAPPY-SHARE",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Share a link to this view copies the address of the view",
+            "asserts": "without the Web Share API: right click, Share a link to this view -> the toast of share.copied, the clipboard holds the page's address with the view in its hash, no menu",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (DECISIONS-for-review.md §167h, §167j). Tests: e2e/specs/viewer/map-menu.spec.ts; packages/ui/test/viewer/map-menu.test.ts, viewer-lightbox.test.ts."
+        },
+        {
+            "id": "S-V62-BAD-CLIPBOARD-REFUSED",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A clipboard that refuses: neither the coordinates nor the link is copied, and a toast says so",
+            "asserts": "the clipboard rejects every write: Copy coordinates -> the toast 'Coordonatele nu au putut fi copiate.'; Share a link to this view -> the toast of share.failed; the menu closed, the address unchanged",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (DECISIONS-for-review.md §167h, §167j). Tests: e2e/specs/viewer/map-menu.spec.ts; packages/ui/test/viewer/map-menu.test.ts, viewer-lightbox.test.ts."
+        },
+        {
+            "id": "S-V62-BAD-DRAG",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A right-drag rotates the map and opens no menu",
+            "asserts": "right button down, moved 120 px, released -> no menu",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+        },
+        {
+            "id": "S-V62-BAD-ESC-EDGE",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Esc closes the menu; near the edge it stays inside the map",
+            "asserts": "a right click 4 px from the right edge -> the menu lies inside the map; Esc -> no menu",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+        },
+        {
+            "id": "S-V62-HAPPY-TOUR",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The open menu passes the layout and accessibility checks on every window class",
+            "asserts": "expectStateSound on the map-menu journey's open menu",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/tour/viewer.tour.ts (e2e/tour/map-menu-states.ts)."
         }
     ]
 }

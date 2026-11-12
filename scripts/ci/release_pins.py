@@ -4,7 +4,8 @@ its `release.json`, the starter kit's page and the pins it carries. Standard lib
 
 A pin is a `<link rel="stylesheet">` or a `<script src>` of the kit's page: Mapbox GL JS from api.mapbox.com, and the
 engine's stylesheet and IIFE between `<!-- hcm:engine -->` and `<!-- /hcm:engine -->`, from one pinned jsDelivr folder
-`https://cdn.jsdelivr.net/gh/<owner>/<repo>@vX.Y.Z/cdn/engine/` (`engineCdnBase` of `@hcm/shared`).
+`https://cdn.jsdelivr.net/gh/<owner>/<repo>@vX.Y.Z/cdn/engine/` (`engineCdnBase` of `@hcm/shared`), or for a
+pre-release `@vX.Y.Z-beta.N` / `@vX.Y.Z-rc.N`: the full version, never a range.
 """
 
 import base64
@@ -26,7 +27,10 @@ JSDELIVR = "https://cdn.jsdelivr.net/"
 BLOCK_MARKERS = ["hcm:engine", "/hcm:engine"]
 CSP_FOLDER_DIRECTIVES = ("script-src", "style-src", "font-src")
 SEMVER = r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
-BASE_RE = re.compile(rf"^https://cdn\.jsdelivr\.net/gh/[A-Za-z0-9-]{{1,39}}/[\w.-]{{1,100}}@v(?P<version>{SEMVER})/cdn/engine/$")
+# A release: MAJOR.MINOR.PATCH, or a pre-release of it, -beta.N or -rc.N (N without leading zeros); nothing else
+# (RELEASE_TAG_PATTERN of @hcm/shared, docs/releases/README.md).
+RELEASE_VERSION = rf"{SEMVER}(?:-(?:beta|rc)\.(?:0|[1-9][0-9]*))?"
+BASE_RE = re.compile(rf"^https://cdn\.jsdelivr\.net/gh/[A-Za-z0-9-]{{1,39}}/[\w.-]{{1,100}}@v(?P<version>{RELEASE_VERSION})/cdn/engine/$")
 MAPBOX_URL_RE = re.compile(rf"^https://api\.mapbox\.com/mapbox-gl-js/v{SEMVER}/mapbox-gl\.(?:js|css)$")
 SRI_RE = re.compile(r"^sha384-[A-Za-z0-9+/]{64}$")
 

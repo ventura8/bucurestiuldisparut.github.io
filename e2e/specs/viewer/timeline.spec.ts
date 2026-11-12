@@ -124,7 +124,7 @@ test(
 
 /** The boxes of the photos-near-the-year chip and of the timeline card, both visible. */
 async function chipAndTimeline(page: Page): Promise<{ chip: Box; timeline: Box }> {
-    const chip = await viewer(page).locator('.dock.chip hcm-button').boundingBox();
+    const chip = await viewer(page).locator('.dock.chip [data-layout-check="near-year"]').boundingBox();
     const timeline = await viewer(page).locator('hcm-timeline').boundingBox();
     expect(chip, 'the chip is shown').not.toBeNull();
     expect(timeline, 'the timeline is shown').not.toBeNull();
@@ -142,13 +142,16 @@ const EMPTY_BOX: Box = { x: 0, y: 0, width: 0, height: 0 };
 
 /**
  * The chip is part of the timeline (the owner, 2026-11-08: "it looks like it is floating around"): on a phone held
- * upright 8 px under the standing card's foot, its leading edges aligned; elsewhere 8 px above the lying card, on its
+ * upright an icon button 8 px under the standing card's foot, centred on it; elsewhere 8 px above the lying card, on its
  * leading edge, or its trailing one on a short window, whose menu opens on the leading side.
  */
 async function expectChipOnTheTimeline(page: Page): Promise<void> {
     const { chip, timeline } = await chipAndTimeline(page);
     if (timeline.height > timeline.width) {
-        expect(Math.abs(chip.x - timeline.x), "on the standing timeline's leading edge").toBeLessThanOrEqual(1);
+        expect(
+            Math.abs(chip.x + chip.width / 2 - (timeline.x + timeline.width / 2)),
+            "on the standing timeline's axis",
+        ).toBeLessThanOrEqual(1);
         expect(Math.abs(chip.y - (timeline.y + timeline.height) - 8), '8 px under its foot').toBeLessThanOrEqual(1);
         return;
     }
@@ -174,7 +177,7 @@ async function openLayersWhereDocked(page: Page, lang: 'ro' | 'en'): Promise<voi
 async function expectOpenMenuLeavesTheChip(page: Page, lang: 'ro' | 'en'): Promise<void> {
     await menuButton(page, lang).click();
     await expect(page.getByRole('menu', { name: t(lang, 'action.menu') })).toBeVisible();
-    await expect(isOnTop(viewer(page).locator('.dock.chip hcm-button'))).resolves.toBe(true);
+    await expect(isOnTop(viewer(page).locator('.dock.chip [data-layout-check="near-year"]'))).resolves.toBe(true);
 }
 
 test(
@@ -225,6 +228,63 @@ test(
         await expect(chip).toHaveCount(1);
         await expectChipOnTheTimeline(page);
         await expectOpenMenuLeavesTheChip(page, lang);
+    },
+);
+
+const PHONE = { width: 390, height: 844 };
+
+test(
+    'On a phone held upright the chip is an icon button under the timeline, named in full',
+    { tag: '@S-V04-HAPPY-PHONE-ICON-CHIP' },
+    async ({ page, lang }, testInfo) => {
+        await page.setViewportSize(PHONE);
+        await openViewer(page, { lang, hash: OBOR_VIEW });
+        await expect(viewer(page).locator('hcm-timeline')).toHaveAttribute('orientation', 'vertical');
+        const slider = timelineSlider(page, lang);
+        await slider.focus();
+        await slider.press('Home');
+        const name = t(lang, 'photos.nearYear', { year: '1966' });
+        const button = page.getByRole('button', { name, exact: true });
+
+        await expect(button).toBeVisible();
+        const host = viewer(page).locator('.dock.chip hcm-icon-button');
+        await expect(host).toHaveAttribute('title', name);
+        await expect(host).toHaveAttribute('icon', 'photo_library');
+        await expect(viewer(page).locator('.dock.chip')).not.toContainText(name);
+        const { chip } = await chipAndTimeline(page);
+        expect([chip.width, chip.height], 'a 40 px icon button, no text pill').toEqual([40, 40]);
+        await expectChipOnTheTimeline(page);
+        await page.screenshot({ path: testInfo.outputPath('phone-near-year.png') });
+
+        await button.click();
+        await expect(page.getByRole('dialog', { name })).toBeVisible();
+    },
+);
+
+test(
+    'On a phone no year, or a year without photos, shows no button; a wide window keeps the text chip',
+    { tag: '@S-V04-BAD-PHONE-NO-YEAR-NO-BUTTON' },
+    async ({ page, lang }) => {
+        await page.setViewportSize(PHONE);
+        await openViewer(page, { lang, hash: OBOR_VIEW });
+        await expect(viewer(page).locator('hcm-timeline')).toHaveAttribute('orientation', 'vertical');
+        const chip = viewer(page).locator('.dock.chip');
+        // Today: the year is null.
+        await expect(chip).toHaveCount(0);
+        await expect(viewer(page).locator('[data-layout-check="near-year"]')).toHaveCount(0);
+
+        const slider = timelineSlider(page, lang);
+        await slider.focus();
+        await slider.press('Home');
+        await expect(chip.locator('hcm-icon-button')).toHaveCount(1);
+        await slider.press('End');
+        await expect(chip).toHaveCount(0);
+
+        await slider.press('Home');
+        await page.setViewportSize({ width: 1024, height: 768 });
+        await expect(viewer(page).locator('hcm-timeline')).toHaveAttribute('orientation', 'horizontal');
+        await expect(chip.locator('hcm-icon-button')).toHaveCount(0);
+        await expect(chip.locator('hcm-button')).toContainText(t(lang, 'photos.nearYear', { year: '1966' }));
     },
 );
 

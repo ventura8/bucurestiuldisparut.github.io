@@ -8,6 +8,7 @@ import type { CityDoc, Locale, OverlayKind, PoiCategoryDoc, ThemeTokens, Validat
 import type { DocStatePort, ListStatePort } from '../area-port.js';
 import type { BudgetIntentsPort, BudgetSectionPort } from '../cities/budget-port.js';
 import type { ExportIntentsPort, ExportSectionPort } from '../export/export-port.js';
+import type { AdminNoticeInputPort } from '../notice-port.js';
 import type {
     DraftConflictPort,
     DraftStatePort,
@@ -19,9 +20,21 @@ import type {
 
 /**
  * M5 (CR-M5-10; owner: export): `export`, the city's static export (`../export/`); (owner: multi-city) `budget`; (the
- * integrator, DECISIONS-for-review.md §63a) `publish`, whether visitors see the city.
+ * integrator, DECISIONS-for-review.md §63a) `publish`, whether visitors see the city; `icon`, the public map's tab icon.
  */
-export type SettingsSectionPort = 'area' | 'texts' | 'theme' | 'imagery' | 'publish' | 'categories' | 'overlays' | 'export' | 'budget';
+export type SettingsSectionPort =
+    'area' | 'texts' | 'theme' | 'icon' | 'imagery' | 'publish' | 'categories' | 'overlays' | 'export' | 'budget';
+
+/** The browser tab icon's card (`packages/admin/src/settings/icon.ts`). */
+interface IconSectionPort {
+    readonly busy: boolean;
+    readonly error: AdminNoticeInputPort | null;
+}
+
+interface IconIntentsPort {
+    setIcon(change: { readonly kind: 'upload'; readonly image: string } | { readonly kind: 'reset' }): Promise<boolean>;
+    refuseIcon(problem: AdminNoticeInputPort): void;
+}
 
 export type AreaNumberFieldPort = 'west' | 'south' | 'east' | 'north' | 'lat' | 'lng' | 'zoom' | 'minZoom' | 'maxZoom';
 
@@ -122,9 +135,11 @@ export interface SettingsViewState {
     readonly export: ExportSectionPort;
     /** M5: the city's budget (`../cities/budget-port.ts`). */
     readonly budget: BudgetSectionPort;
+    /** The browser tab icon's card. */
+    readonly icon: IconSectionPort;
 }
 
-export interface SettingsIntentsPort extends ExportIntentsPort, BudgetIntentsPort {
+export interface SettingsIntentsPort extends ExportIntentsPort, BudgetIntentsPort, IconIntentsPort {
     retry(): void;
     editCity(patch: Partial<CityDoc>): void;
     setNumber(field: AreaNumberFieldPort, text: string): void;

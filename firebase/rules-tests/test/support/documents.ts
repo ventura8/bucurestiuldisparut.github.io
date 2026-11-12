@@ -9,8 +9,9 @@
  *
  * Every value is a generated test value; the one shaped like a Google API key is assembled at run time.
  */
-import { CLIENT_WRITES, STORAGE_PATHS, publicObjectUrl, type ClientCollection, type PhotoVariant } from '@hcm/shared';
+import { CLIENT_WRITES, STORAGE_PATHS, publicObjectUrl, type ClientCollection } from '@hcm/shared';
 
+import { derivative, reviewedFields, versionEdits, versionFields } from './photo-fields.js';
 import { STORY_EDITS } from './stories.js';
 import { later, past, serverTime, stampedBy, systemStamp, type Data } from './world.js';
 
@@ -57,10 +58,6 @@ export function line(count: number): Data[] {
     return Array.from({ length: count }, (_, index) => ({ lat: 44.43 + index / 10_000, lng: 26.1 }));
 }
 
-function derivative(cityId: string, photoId: string, variant: PhotoVariant): string {
-    return publicObjectUrl(PUBLIC_BUCKET, STORAGE_PATHS.photoDerivative(cityId, photoId, SHA, variant));
-}
-
 export function cityDoc(cityId: string): Data {
     return {
         id: cityId,
@@ -91,6 +88,7 @@ export function cityDoc(cityId: string): Data {
         imagery: { autoPublish: true, rmseThresholdM: 15, targetYears: [1966, 1976, 1977, 1978, 1980] },
         // M5 (docs/research/M5-interfaces.md §1.8): the city's share of the budgets, server-owned.
         limits: { computeUnitsPerMonth: 5, rasterJobsPerDay: 3, aiRequestsPerMonth: 100, geocodeCellsPerDay: 100, exportsPerDay: 3 },
+        icon: { source: 'custom', url: 'https://storage.googleapis.com/b/icon-180.png', sha256: 'c'.repeat(64), ...systemStamp('icon') },
         published: true,
         createdAt: past(),
         ...systemStamp('setup'),
@@ -130,15 +128,11 @@ export function photoDoc(cityId: string, photoId: string, creator: string): Data
         },
         ...reviewedFields(creator),
         credit: 'Ion Mureșan',
+        ...versionFields(),
         createdAt: past(),
         createdBy: creator,
         ...systemStamp('photos'),
     };
-}
-
-/** M13: what a decided item carries, server-owned but for the credit. */
-function reviewedFields(reviewer: string): Data {
-    return { reviewStatus: 'approved', reviewNote: 'Bună.', reviewedBy: reviewer, reviewedAt: past() };
 }
 
 function photoText(): Data {
@@ -171,6 +165,7 @@ export function newPhoto(uid: string): Data {
         published: false,
         rightsReview: true,
         credit: 'Ion Mureșan',
+        versionCredits: { improved: 'Ana Pop' },
         processing: 'pending',
         createdAt: serverTime(),
         createdBy: uid,
@@ -656,6 +651,7 @@ export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
         published: true,
         rightsReview: true,
         credit: 'Maria Popescu',
+        ...versionEdits(),
     },
     layer: {
         label: { ro: 'București, 1966' },

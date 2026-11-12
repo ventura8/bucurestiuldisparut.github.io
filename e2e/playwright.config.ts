@@ -42,6 +42,7 @@ function shardOf({ first, last, total }: ShardRange): Shard {
 }
 
 const CI = process.env['CI'] === 'true';
+const E2E_WORKERS = /^[1-9]\d*$/.test(process.env['HCM_E2E_WORKERS'] ?? '') ? Number(process.env['HCM_E2E_WORKERS']) : undefined;
 /** The e2e servers run from the repository root, through Node's type stripping (scripts/site/register-ts.mjs). */
 const SERVER = 'node --import ./scripts/site/register-ts.mjs e2e/mock-apis/main.ts';
 const TIERS = tiersFrom(process.env['E2E_TIER']);
@@ -102,6 +103,8 @@ export default defineConfig<object, WorkerOptions>({
     retries: CI ? 1 : 0,
     failOnFlakyTests: CI,
     fullyParallel: true,
+    // What the free memory allows as well as the cores (`scripts/ci/parallel.py`); unset: Playwright's own default.
+    ...(E2E_WORKERS === undefined ? {} : { workers: E2E_WORKERS }),
     shard: SHARD,
     outputDir: `../reports/test-results${REPORT_SUFFIX}`,
     reporter: [

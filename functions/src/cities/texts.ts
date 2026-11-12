@@ -17,8 +17,8 @@ export function aboutText(name: Name): NonNullable<CityDoc['about']> {
     const ro = markdownLiteral(name.ro);
     const en = markdownLiteral(name.en ?? name.ro);
     return {
-        ro: `**${ro}** pe o hartă istorică: fotografii vechi, locuri și straturi istorice, făcută cu Historic City Map.`,
-        en: `**${en}** on a historical map: old photos, places and historical layers, made with Historic City Map.`,
+        ro: `**${ro}** pe o hartă istorică: fotografii vechi, locuri și straturi istorice, făcută cu Historic City Map Maker.`,
+        en: `**${en}** on a historical map: old photos, places and historical layers, made with Historic City Map Maker.`,
     };
 }
 

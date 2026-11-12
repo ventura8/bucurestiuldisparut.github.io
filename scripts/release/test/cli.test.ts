@@ -53,7 +53,9 @@ describe('release:bump', () => {
         const { log, records } = recordingLogger();
 
         expect(runBump(['v1.0.0'], { files, log })).toBe(EXIT_INVALID);
-        expect(messages(records, 'error')).toEqual(['"v1.0.0" is not a release version MAJOR.MINOR.PATCH (no v, no suffix)']);
+        expect(messages(records, 'error')).toEqual([
+            '"v1.0.0" is not a release version MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-beta.N / -rc.N (no v, no other suffix)',
+        ]);
         expect(readJsonObject(files, 'package.json')['version']).toBe('0.0.0');
     });
 });

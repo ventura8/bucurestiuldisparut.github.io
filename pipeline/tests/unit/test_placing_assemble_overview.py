@@ -205,6 +205,15 @@ def test_bad_path_a_stitch_method_the_server_does_not_know_is_refused_before_pub
         publish_stitched(cast(JobContext, None), stitched)
 
 
+def test_bad_path_a_left_out_reason_the_server_does_not_know_is_refused_before_publishing() -> None:
+    """Scenarios: S-P20-BAD-STITCH-METHOD-UNKNOWN"""
+    # 1844-1846 Borroczyn, 2026-11-12: the same class of refusal as lesson 569; every list `help.stitched` writes is checked first.
+    stitched = Stitched(numpy.zeros((4, 4), numpy.uint8), "atlas", 2, (("a.jpg", "no-join"), ("b.jpg", "lost")))
+
+    with pytest.raises(ValueError, match="unknown left-out reasons"):
+        publish_stitched(cast(JobContext, None), stitched)
+
+
 def test_bad_path_a_place_method_the_server_does_not_know_is_refused_before_the_write() -> None:
     """Scenarios: S-P20-BAD-STITCH-METHOD-UNKNOWN"""
     # The archive report's `method` is checked against the server's `ARCHIVE_PLACE_METHODS` as the stitch's is (lesson 569).

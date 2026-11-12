@@ -20,6 +20,7 @@ import type { SiteFileSystem } from '../files.js';
 import { ADMIN_REDIRECT_FILE, ADMIN_REDIRECT_SOURCE } from '../hosting/admin-redirect.js';
 import { FIRST_CITY_FILE, renderFirstCityPage, renderStartUpPage } from '../hosting/static-pages.js';
 import { element, renderDocument } from '../html.js';
+import { iconLinks } from '../icons.js';
 import { START_SITE_STYLESHEET_FILE, startFooter } from './legal.js';
 
 /**
@@ -161,8 +162,8 @@ export function renderStartPage(): string {
         element('meta', { name: 'viewport', content: 'width=device-width, initial-scale=1' }),
         element('meta', { name: 'description', content: 'Pornește-ți propria hartă istorică. Start your own historical map.' }),
         element('meta', { name: 'color-scheme', content: 'light dark' }),
-        element('title', {}, ['Pornește-ți harta / Start your map']),
-        element('link', { rel: 'icon', href: 'data:,' }),
+        element('title', {}, ['Pornește-ți harta / Start your map · Historic City Map Maker']),
+        ...iconLinks(),
         element('link', { rel: 'stylesheet', href: `./${START_SITE_STYLESHEET_FILE}` }),
         element('script', { type: 'module', src: './start.mjs' }),
     ]);

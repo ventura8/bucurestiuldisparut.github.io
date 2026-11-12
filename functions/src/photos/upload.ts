@@ -26,6 +26,9 @@ import {
     type PhotoVariant,
 } from '@hcm/shared';
 
+/** The versions an upload may be for besides the photo's own image (the owner 2026-11-09). */
+type PhotoVersionKind = 'improved' | 'colorized';
+
 import type { ExifSummary, ImageInspection } from '../ports/image-processor.js';
 import type { Ports } from '../ports/index.js';
 import { UpstreamError } from '../ports/errors.js';
@@ -349,27 +352,91 @@ function unexpected(deps: PhotoDeps, upload: PhotoUpload, error: unknown): Refus
     return { code: transient ? 'apiError.unavailable' : 'apiError.internal' };
 }
 
-async function recordFailure(deps: PhotoDeps, upload: PhotoUpload, object: FinalizedObject, error: unknown): Promise<void> {
+/** A refused or failed version leaves the photo as it was; `replacement` says why, as for a refused replacement image. */
+async function recordVersionFailed(deps: PhotoDeps, upload: PhotoUpload, refusal: Refusal): Promise<void> {
+    await updatePhoto(deps, upload, (current) => ({ ...refusedReplacement(deps, current, refusal), processing: current.processing }));
+}
+
+interface FailedUpload {
+    readonly upload: PhotoUpload;
+    readonly object: FinalizedObject;
+    readonly version: PhotoVersionKind | undefined;
+}
+
+async function recordFailure(deps: PhotoDeps, { upload, object, version }: FailedUpload, error: unknown): Promise<void> {
+    const record = version === undefined ? recordFailed : recordVersionFailed;
     if (!(error instanceof PhotoRefused)) {
-        await recordFailed(deps, upload, unexpected(deps, upload, error));
+        await record(deps, upload, unexpected(deps, upload, error));
         return;
     }
-    await recordFailed(deps, upload, error.refusal);
+    await record(deps, upload, error.refusal);
     await deps.blobs.delete('private', object.name);
     deps.log.info('photo refused', { cityId: upload.cityId, photoId: upload.photoId, code: error.refusal.code });
 }
 
+/** An upload read, with the photo it is for. */
+interface Received {
+    readonly upload: PhotoUpload;
+    readonly object: FinalizedObject;
+    readonly photo: PhotoDoc;
+    readonly bytes: Uint8Array;
+}
+
+/** The photo's own image: its derivatives public, or held back while the photo waits for review. */
+async function processImage(deps: PhotoDeps, { upload, object, photo, bytes }: Received): Promise<void> {
+    const held = await heldBack(deps, upload, photo);
+    await recordProcessed(deps, upload, await processBytes(deps, { upload, object, held }, bytes));
+    deps.log.info('photo processed', { cityId: upload.cityId, photoId: upload.photoId, held });
+}
+
+/** The improved or colorized version a file is for (the upload's custom metadata `version`); undefined: the photo's own image. */
+export function versionOf(metadata: Readonly<Record<string, string>>): PhotoVersionKind | undefined {
+    const value = metadata['version'];
+    return value === 'improved' || value === 'colorized' ? value : undefined;
+}
+
+/**
+ * The owner 2026-11-09: an improved or colorized version, from a reviewer only and never of a photo that waits for review
+ * (nothing of a pending photo gets a public address). Its derivatives are public and content-hashed as the image's; no
+ * duplicate check (a version is the same photo by design) and no EXIF suggestions; the photo's own image, its processing
+ * and its publication stay as they are.
+ */
+async function processVersion(deps: PhotoDeps, { upload, object, photo, bytes }: Received, kind: PhotoVersionKind): Promise<void> {
+    if (photo.reviewStatus === 'pending' || !(await byReviewer(deps, upload))) {
+        throw new PhotoRefused({ code: 'apiError.photo.versionNotAllowed' });
+    }
+    const accepted = accept(await deps.images.inspect(bytes).catch(refuseUnreadable));
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    const [web, thumb] = await render(deps, bytes);
+    const originalPath = STORAGE_PATHS.photoOriginal(upload.cityId, upload.photoId, sha256, accepted.contentType);
+    await deps.blobs.copy({ bucket: 'private', path: object.name }, { bucket: 'private', path: originalPath });
+    const image = {
+        web: await store(deps, upload, sha256, web),
+        thumb: await store(deps, upload, sha256, thumb),
+        sha256,
+        w: web.width,
+        h: web.height,
+    };
+    const original = { path: originalPath, contentType: accepted.contentType, bytes: bytes.length, sha256 };
+    await updatePhoto(deps, upload, (current) => ({
+        ...omit(current, ['replacement']),
+        versions: { ...current.versions, [kind]: { image, original } },
+        ...stamp(deps),
+    }));
+    deps.log.info('photo version processed', { cityId: upload.cityId, photoId: upload.photoId, version: kind });
+}
+
 async function processKnownUpload(deps: PhotoDeps, upload: PhotoUpload, object: FinalizedObject, photo: PhotoDoc): Promise<UploadOutcome> {
+    const version = versionOf(object.metadata);
     try {
         const bytes = await readUpload(deps, object);
         if (bytes === undefined) {
             return 'gone';
         }
-        const held = await heldBack(deps, upload, photo);
-        await recordProcessed(deps, upload, await processBytes(deps, { upload, object, held }, bytes));
-        deps.log.info('photo processed', { cityId: upload.cityId, photoId: upload.photoId, held });
+        const received = { upload, object, photo, bytes };
+        await (version === undefined ? processImage(deps, received) : processVersion(deps, received, version));
     } catch (error) {
-        await recordFailure(deps, upload, object, error);
+        await recordFailure(deps, { upload, object, version }, error);
         return 'failed';
     }
     await deps.blobs.delete('private', object.name);

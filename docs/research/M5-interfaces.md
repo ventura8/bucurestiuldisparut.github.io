@@ -66,7 +66,7 @@ with how the first real run proves it (§10).
 6. **Ownership** (§6): four workstreams; release is also the integrator (docs, the agent assets, the status file, the
    prepared release) and works last; the shared files' marked sections; the order of work; the change-request process.
 
-Done by this contract (CR-M5-1): the shared schemas and pure helpers `packages/shared/src/schemas/cities.ts`,
+Done by this contract (CR-M5-1): the shared schemas and pure helpers `packages/shared/src/schemas/cities.ts` (a city id's checks and rectangle since 2026-11-12 in `city-id.ts`, which imports no schema, re-exported: docs/LESSONS.md 593),
 `city-export.ts` and `engine-release.ts`; the API schemas `packages/shared/src/api/cities.ts` and `city-export.ts`; the
 paths `FIRESTORE_PATHS.cityUsage`, `.cityExports`, `.cityExport` and `STORAGE_PATHS.cityExport`; the system writers
 `cities` and `export`; thirteen error codes in both languages (`apiError.city.*`, `apiError.export.*`); the catalogue
@@ -591,6 +591,11 @@ one-time code.
 
 Layout constants and helpers (done): `EXPORT_LAYOUT`, `exportPhotoPath`, `exportRasterPath`, `exportFileName`,
 `rasterExportable`, `restrictedPhotoIds`.
+
+The tab icon (2026-11-08; `M2-interfaces.md` → *The city's tab icon*): `index.html` carries the city's own 32 px icon
+inlined as a `data:` address (`fillKitPage`'s optional `icon`, read from the public bucket's `cities/<city>/icon-32.png`),
+or keeps the kit's default (the Layers panel's map glyph) when the city has none; the zip gains no file. The kit's
+template inlines the default the same way, so `create-historic-city`, the release's pins and the export copy no image.
 
 ### 5.2 Rights
 

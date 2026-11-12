@@ -143,6 +143,64 @@ describe('<hcm-map-viewer> the timeline per size class (the owner, 2026-11-08)',
     });
 });
 
+describe('<hcm-map-viewer> the chip as an icon button under the standing timeline (the owner, 2026-11-12)', () => {
+    beforeAll(async () => {
+        defineUiKit();
+        defineViewerElements();
+        await page.viewport(1500, 1100);
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it.each([
+        { width: 375, height: 812 },
+        { width: 320, height: 568 },
+    ])('happyPath_at $width x $height: underTheStandingTimelineTheChipIsAnIconButtonNamedInFull', async (size) => {
+        // The owner, 2026-11-12: no wide text pill on a phone; the name and the tooltip keep the full text.
+        const { element } = await viewerAt(size, 1977);
+        const chip = partOf(element, '.dock.chip [data-layout-check="near-year"]') as HTMLElement & { label: string; icon: string };
+        const box = chip.getBoundingClientRect();
+        const name = 'Fotografii din jurul anului 1977';
+
+        expect([chip.localName, chip.icon, chip.label, chip.title]).toEqual(['hcm-icon-button', 'photo_library', name, name]);
+        expect(chip.shadowRoot?.querySelector('button')?.getAttribute('aria-label')).toBe(name);
+        expect(chip.textContent.trim()).toBe('');
+        expect([box.width, box.height]).toEqual([40, 40]);
+        expect(element.shadowRoot?.querySelector('.dock.chip hcm-button')).toBeNull();
+    });
+
+    it('happyPath_theIconButtonOpensThePhotosNearTheYear', async () => {
+        const { element, store } = await viewerAt({ width: 375, height: 812 }, 1977);
+
+        (partOf(element, '.dock.chip [data-layout-check="near-year"]') as HTMLElement).click();
+
+        expect(store.callsOf('openSheet').at(-1)).toEqual(['photos']);
+    });
+
+    it.each([
+        { width: 375, height: 812, year: null },
+        { width: 375, height: 812, year: 1700 },
+    ])('badPath_onAPhoneAt $year: noPhotosNearTheYearNoButton', async ({ year, ...size }) => {
+        const { element } = await viewerAt(size, year);
+
+        expect(element.shadowRoot?.querySelector('.dock.chip')).toBeNull();
+        expect(element.shadowRoot?.querySelector('[data-layout-check="near-year"]')).toBeNull();
+    });
+
+    it.each([
+        { width: 768, height: 1024 },
+        { width: 915, height: 412 },
+    ])('badPath_at $width x $height: theLyingTimelineKeepsTheTextChip', async (size) => {
+        const { element } = await viewerAt(size, 1977);
+        const chip = partOf(element, '.dock.chip [data-layout-check="near-year"]');
+
+        expect([chip.localName, chip.textContent.trim()]).toEqual(['hcm-button', 'Fotografii din jurul anului 1977']);
+        expect(element.shadowRoot?.querySelector('.dock.chip hcm-icon-button')).toBeNull();
+    });
+});
+
 describe('<hcm-map-viewer> the photos-near-the-year chip on the vertical timeline (the owner, 2026-11-08)', () => {
     beforeAll(async () => {
         defineUiKit();
@@ -161,11 +219,11 @@ describe('<hcm-map-viewer> the photos-near-the-year chip on the vertical timelin
         const { element } = await viewerAt(size, 1977);
         const frame = element.getBoundingClientRect();
         const timeline = boxOf(element, 'hcm-timeline');
-        const chip = boxOf(element, '.dock.chip hcm-button');
+        const chip = boxOf(element, '.dock.chip [data-layout-check="near-year"]');
         const fab = boxOf(element, 'hcm-fab-menu', '.fab');
 
         expect(timeline.left - frame.left).toBeCloseTo(GUTTER_PX, 0);
-        expect(Math.abs(chip.left - timeline.left), "the card's leading edge").toBeLessThanOrEqual(1);
+        expect(Math.abs(chip.left + chip.width / 2 - (timeline.left + timeline.width / 2)), "on the card's axis").toBeLessThanOrEqual(1);
         expect(Math.abs(chip.top - timeline.bottom - TARGET_GAP_PX), '8 px under the card').toBeLessThanOrEqual(1);
         expect(fab.top - chip.bottom).toBeGreaterThanOrEqual(TARGET_GAP_PX);
         expect(Math.abs(frame.right - fab.right - GUTTER_PX), 'the FAB on the trailing edge').toBeLessThanOrEqual(1);
@@ -180,7 +238,7 @@ describe('<hcm-map-viewer> the photos-near-the-year chip on the vertical timelin
     ])('badPath_at $width x $height: theOpenMenuCoversNeitherTheChipNorTheTimeline', async (size) => {
         // The owner's 375 px phone: the last item, Despre, covered the end of the chip.
         const { element } = await viewerAt(size, 1977);
-        const chip = boxOf(element, '.dock.chip hcm-button');
+        const chip = boxOf(element, '.dock.chip [data-layout-check="near-year"]');
         const timeline = boxOf(element, 'hcm-timeline');
         const frame = element.getBoundingClientRect();
 
@@ -216,14 +274,14 @@ describe('<hcm-map-viewer> the photos-near-the-year chip on the vertical timelin
     it('happyPath_onAShortPhoneTheChipSitsOnTheHorizontalCardsTrailingEdgeInBothDirections', async () => {
         const { element } = await viewerAt({ width: 915, height: 412 }, 1977);
         let timeline = boxOf(element, 'hcm-timeline');
-        let chip = boxOf(element, '.dock.chip hcm-button');
+        let chip = boxOf(element, '.dock.chip [data-layout-check="near-year"]');
         expect(Math.abs(chip.right - timeline.right)).toBeLessThanOrEqual(1);
         expect(Math.abs(timeline.top - chip.bottom - TARGET_GAP_PX)).toBeLessThanOrEqual(1);
 
         element.dir = 'rtl';
         await element.updateComplete;
         timeline = boxOf(element, 'hcm-timeline');
-        chip = boxOf(element, '.dock.chip hcm-button');
+        chip = boxOf(element, '.dock.chip [data-layout-check="near-year"]');
         expect(Math.abs(chip.left - timeline.left)).toBeLessThanOrEqual(1);
     });
 
@@ -234,7 +292,7 @@ describe('<hcm-map-viewer> the photos-near-the-year chip on the vertical timelin
         await element.updateComplete;
         const frame = element.getBoundingClientRect();
         const timeline = boxOf(element, 'hcm-timeline');
-        const chip = boxOf(element, '.dock.chip hcm-button');
+        const chip = boxOf(element, '.dock.chip [data-layout-check="near-year"]');
         const centre = { x: frame.left + frame.width / 2, y: frame.top + frame.height / 2 };
 
         const trailing =
@@ -271,7 +329,7 @@ describe('<hcm-map-viewer> the zoom buttons beside the timeline, the chip and th
 
             for (const [name, other] of [
                 ['timeline', boxOf(element, 'hcm-timeline')],
-                ['chip', boxOf(element, '.dock.chip hcm-button')],
+                ['chip', boxOf(element, '.dock.chip [data-layout-check="near-year"]')],
                 ['FAB', boxOf(element, 'hcm-fab-menu', '.fab')],
             ] as const) {
                 expect(apart(zoom, other), `the zoom group clear of the ${name}`).toBe(true);

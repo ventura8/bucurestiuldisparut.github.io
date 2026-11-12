@@ -361,8 +361,9 @@ test(
         await expect(next).toBeDisabled();
         await expect(lightbox).toBeFocused();
 
+        // The last control before the disabled Next is Zoom in (V60), between the arrows.
         await page.keyboard.press('Shift+Tab');
-        await expect(lightbox.getByRole('button', { name: t(lang, 'action.previous') })).toBeFocused();
+        await expect(lightbox.getByRole('button', { name: t(lang, 'lightbox.zoomIn'), exact: true })).toBeFocused();
         await page.keyboard.press('Tab');
         await expect(lightbox.getByRole('button', { name: t(lang, 'action.close') })).toBeFocused();
         await page.keyboard.press('Escape');

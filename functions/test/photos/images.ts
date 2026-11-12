@@ -104,3 +104,19 @@ export const PDF = new TextEncoder().encode('%PDF-1.7\n%test\n');
 export async function truncatedJpeg(): Promise<Uint8Array> {
     return (await jpeg(64, 64)).subarray(0, 200);
 }
+
+/** An animated WebP of two `side` × `side` frames (the tab icon refuses it). */
+export async function animatedWebp(side: number): Promise<Uint8Array> {
+    const frames = await Promise.all(
+        ['#224466', '#664422'].map((background) =>
+            sharp({ create: { width: side, height: side, channels: 3, background } })
+                .png()
+                .toBuffer(),
+        ),
+    );
+    return new Uint8Array(
+        await sharp(frames, { join: { animated: true } })
+            .webp({ loop: 0, delay: [100, 100] })
+            .toBuffer(),
+    );
+}

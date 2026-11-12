@@ -13,6 +13,10 @@ the engine script (`engineBase`), together with this file.
 Roboto Flex: Copyright 2017 The Roboto Flex Project Authors (<https://github.com/googlefonts/roboto-flex>).
 Material Symbols: Copyright Google LLC (<https://github.com/google/material-design-icons>).
 
+The browser tab icon of the map's pages (`MAP_GLYPH_PATH` and `DEFAULT_FAVICON_DATA_URL` of `packages/shared/src/kit/map-icon.ts`,
+and each city's default icon the functions draw) reuses the outline of this subset's `map` glyph, drawn white on a coloured
+rounded square and rendered to PNG; it is a derivative of Material Symbols Rounded under the Apache License 2.0 below.
+
 The pages that load these fonts register them under the namespaced families `HCM Roboto Flex` and
 `HCM Material Symbols Rounded` (`packages/ui/src/fonts/font-files.ts`); the fonts' own names are unchanged.
 

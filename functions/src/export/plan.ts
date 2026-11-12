@@ -55,6 +55,8 @@ export interface PlanInput {
     readonly engine: readonly KitFile[];
     /** The export's day (the README names it). */
     readonly madeAt: Date;
+    /** The city's own tab icon (32 px, a `data:` address); absent, the page keeps the kit's default. */
+    readonly icon?: string;
 }
 
 type ExportCounts = NonNullable<CityExportDoc['counts']>;
@@ -76,19 +78,36 @@ interface PhotoFiles {
     readonly entries: readonly PlannedEntry[];
 }
 
-/** A photo whose files are in the public bucket: its files under `photos/<id>/`, its addresses relative. */
-function photoFiles(photo: Photo, prefix: string): PhotoFiles {
-    const entries: PlannedEntry[] = [];
-    const image = { ...photo.image };
+/** One image's files in the public bucket, added to `entries` as `name(variant)`; the image with those relative addresses. */
+function imageFiles<T extends Pick<Photo['image'], PhotoVariant>>(
+    image: T,
+    prefix: string,
+    name: (variant: PhotoVariant) => string,
+    entries: PlannedEntry[],
+): T {
+    const local = { ...image };
     for (const variant of VARIANTS) {
-        const path = publicPath(photo.image[variant], prefix);
+        const path = publicPath(image[variant], prefix);
         if (path !== undefined) {
-            const name = exportPhotoPath(photo.id, variant);
-            entries.push({ name, source: { kind: 'object', bucket: 'public', path } });
-            image[variant] = name;
+            entries.push({ name: name(variant), source: { kind: 'object', bucket: 'public', path } });
+            local[variant] = name(variant);
         }
     }
-    return { photo: { ...photo, image }, entries };
+    return local;
+}
+
+/** A photo whose files are in the public bucket: its files (its versions' too) under `photos/<id>/`, its addresses relative. */
+function photoFiles(photo: Photo, prefix: string): PhotoFiles {
+    const entries: PlannedEntry[] = [];
+    const image = imageFiles(photo.image, prefix, (variant) => exportPhotoPath(photo.id, variant), entries);
+    const versions: NonNullable<Photo['versions']> = {};
+    for (const kind of ['improved', 'colorized'] as const) {
+        const version = photo.versions?.[kind];
+        if (version !== undefined) {
+            versions[kind] = imageFiles(version, prefix, (variant) => exportPhotoPath(photo.id, variant, kind), entries);
+        }
+    }
+    return { photo: { ...photo, image, ...(photo.versions === undefined ? {} : { versions }) }, entries };
 }
 
 /**
@@ -160,7 +179,7 @@ export function planExport(input: PlanInput): ExportPlan {
         madeAt: input.madeAt,
     });
     const entries: PlannedEntry[] = [
-        text(EXPORT_LAYOUT.page, exportPage(input.kitPage, manifest)),
+        text(EXPORT_LAYOUT.page, exportPage(input.kitPage, manifest, input.icon)),
         text(EXPORT_LAYOUT.manifest, `${JSON.stringify(manifest, null, 2)}\n`),
         text(EXPORT_LAYOUT.readme, readme),
         text(EXPORT_LAYOUT.rights, rightsDocument(manifest.city.name, rights)),

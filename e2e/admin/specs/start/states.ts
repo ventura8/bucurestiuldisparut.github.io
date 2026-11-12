@@ -30,5 +30,13 @@ export const START_STATES = {
         visit: 'specs/start/legal.spec.ts',
     },
     'start.terms': { title: 'Start your map: the terms of service, Romanian then English', visit: 'specs/start/legal.spec.ts' },
+    'start.landing': {
+        title: 'The project’s landing page: what it is, Start your map, the terminal road and the example, in English',
+        visit: 'specs/start/landing.spec.ts',
+    },
+    'start.landing-ro': {
+        title: 'The project’s landing page in Romanian, reached from the English page’s language switch',
+        visit: 'specs/start/landing.spec.ts',
+    },
     'start.done': { title: 'Start your map: the admin is published, the address and what comes next', visit: 'specs/start/start.spec.ts' },
 } as const;

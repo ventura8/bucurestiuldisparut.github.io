@@ -1,0 +1,78 @@
+{
+    "version": "1.0.0-beta.1",
+    "repository": "ventura8/historic-city-map-maker",
+    "base": "https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@v1.0.0-beta.1/cdn/engine/",
+    "mapboxGl": {
+        "version": "3.34.1",
+        "script": {
+            "url": "https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js",
+            "integrity": "sha384-bRGpP2/mvLNdh4nRXgIf97xnGmUJRpB58iFa5NaGLEFu8v+0T/Bc0c+iX+AvMgVP"
+        },
+        "stylesheet": {
+            "url": "https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css",
+            "integrity": "sha384-QWCpuitI3tz8lJHSbcFQpEAx5BkQcYir4RLGZBb8zOIH0es6XDO8Kv6Gat+wOJRN"
+        }
+    },
+    "files": [
+        {
+            "path": "THIRD_PARTY_NOTICES.txt",
+            "bytes": 111758,
+            "integrity": "sha384-7GVSGcCTW3pODt2mnj5YSXkjpjpyYmvEnFru0/cPizPjhAEYK2AueU2dKNtFEpgK"
+        },
+        {
+            "path": "compare-n8IlxNs0.js",
+            "bytes": 10407,
+            "integrity": "sha384-ZCixn38a4ArwZ00ev6vimwVA+a9XhDJBdnIGJx6N+I8RcPtOayTmwUEmf+7lT4rk"
+        },
+        {
+            "path": "engine.css",
+            "bytes": 599,
+            "integrity": "sha384-oBMM9ZQzsHSB+8G8GNSfiEqnyqFaVpwkEi8zWNkKrp9EuzK5Nvq9YOCrqNVVGzN1"
+        },
+        {
+            "path": "engine.iife.js",
+            "bytes": 416558,
+            "integrity": "sha384-VOl3X0hVE7g7ItkuzhC+YyJYCqH5FZ/ngUjOrxVYBEi/1VSQNRA9z2cOulKZCVw8"
+        },
+        {
+            "path": "engine.mjs",
+            "bytes": 339522,
+            "integrity": "sha384-XYPGUOqgdGq/wRO4V0bhWoHe90i/bmUksO/ITaQNucglIsISsx8Ke4Wwpfzmtdp7"
+        },
+        {
+            "path": "field-sdk-DKR7aI1-.js",
+            "bytes": 20361,
+            "integrity": "sha384-z7bQ574yUGKAV43u902mHeOnftn5HLvVnHnOvaZIYTOedOE++OFb4n3fqexRo9rQ"
+        },
+        {
+            "path": "firebase-sdk-LgXlC_yL.js",
+            "bytes": 41784,
+            "integrity": "sha384-uobaeTQ3BErKug0T9+5lgG6X0MJTI4OjE6yYNyclOr+FUgu5TmVzV/1mmqOSttPf"
+        },
+        {
+            "path": "fonts/LICENSES.md",
+            "bytes": 17514,
+            "integrity": "sha384-vqoBPV2BbJB1l23QRpNrFXaQMDWcgx3p7hNxs64ZcqN+OE7lq0juOXbDWBu2jJxW"
+        },
+        {
+            "path": "fonts/material-symbols-rounded.woff2",
+            "bytes": 17240,
+            "integrity": "sha384-15SrvoGZB8CZLnPIOzwlrZuZRa8WZRp281ycYmI/cf0Xf2bTSZFK1lnCdTFFTUAt"
+        },
+        {
+            "path": "fonts/roboto-flex-latin-ext-wght.woff2",
+            "bytes": 23480,
+            "integrity": "sha384-ZbxRz+AsosoNcLlmHhb6NcWSxA0/Z27AW8j1AAXuftQkA9MaZaAmc6I44pCIwwzI"
+        },
+        {
+            "path": "fonts/roboto-flex-latin-wght.woff2",
+            "bytes": 34320,
+            "integrity": "sha384-PxteXbRXolrh1kE3ROuzHP+geBD1/7bEJIGn3ZrzRm4wf/Y+mM1s0r9YVRB1IQro"
+        },
+        {
+            "path": "gamepad-DMmEeiUS.js",
+            "bytes": 3446,
+            "integrity": "sha384-BOUq/DbyqEo35Q37x/YamNmb57VrRzghhl1+dKmX0AzO8wc7QjVwHjf2DN5uIt4c"
+        }
+    ]
+}

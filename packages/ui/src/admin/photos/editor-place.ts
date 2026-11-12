@@ -37,17 +37,23 @@ const REPLACE_KEYS = {
     failed: 'adminContent.photos.replace.failed',
 } as const;
 
+/** What a replacement's banner does: stop the upload, or close its message. */
+export interface ReplaceActions {
+    readonly cancel: () => void;
+    readonly dismiss: () => void;
+}
+
 /** Cancel while uploading, nothing while processing, Close once it is over. */
-function replaceAction(locale: Locale, replace: ReplacePort, intents: PhotosIntentsPort | null): TemplateResult {
+function replaceAction(locale: Locale, replace: ReplacePort, actions: ReplaceActions): TemplateResult {
     if (replace.phase === 'uploading') {
-        return html`<hcm-button variant="text" icon="cancel" @click=${() => intents?.cancelReplace()}
+        return html`<hcm-button variant="text" icon="cancel" @click=${actions.cancel}
             >${photoText(locale, 'adminContent.photos.replace.cancel')}</hcm-button
         >`;
     }
     if (replace.phase === 'processing') {
         return EMPTY;
     }
-    return html`<hcm-button variant="text" icon="close" @click=${() => intents?.dismissReplace()}
+    return html`<hcm-button variant="text" icon="close" @click=${actions.dismiss}
         >${photoText(locale, 'adminContent.photos.replace.dismiss')}</hcm-button
     >`;
 }
@@ -58,14 +64,15 @@ function duplicateLink(locale: Locale, duplicateOf: string | null): TemplateResu
         : html`<a href=${photoHref(duplicateOf)}>${photoText(locale, 'adminContent.photos.openDuplicate')}</a>`;
 }
 
-function replaceStatus(locale: Locale, replace: ReplacePort, intents: PhotosIntentsPort | null): TemplateResult {
+/** The banner of an image's or a version's upload (A37, A140): its phase, why it was refused, its progress. */
+export function replaceStatus(locale: Locale, replace: ReplacePort, actions: ReplaceActions): TemplateResult {
     const text = photoText(locale, REPLACE_KEYS[replace.phase], { percent: String(replace.percent) });
     return html`<div class="banner" role="status">
         <p>${text}</p>
         ${replace.error === null ? nothing : html`<p>${messageText(locale, replace.error, replace.params)}</p>`}
         ${duplicateLink(locale, replace.duplicateOf)}
         ${replace.phase === 'uploading' ? html`<hcm-progress .value=${replace.percent / 100} .label=${text}></hcm-progress>` : nothing}
-        <div class="actions">${replaceAction(locale, replace, intents)}</div>
+        <div class="actions">${replaceAction(locale, replace, actions)}</div>
     </div>`;
 }
 
@@ -88,7 +95,14 @@ export function imageSection(input: PlaceInput, chooseFile: () => void): Templat
         <legend>${photoText(locale, 'adminContent.photos.section.image')}</legend>
         ${imageBody(locale, editor, title)}
         ${editor.duplicateOf === null ? nothing : html`<p>${duplicateLink(locale, editor.duplicateOf)}</p>`}
-        ${editor.replace === null ? nothing : replaceStatus(locale, editor.replace, intents)}
+        ${
+            editor.replace === null
+                ? nothing
+                : replaceStatus(locale, editor.replace, {
+                      cancel: () => intents?.cancelReplace(),
+                      dismiss: () => intents?.dismissReplace(),
+                  })
+        }
         <div class="actions">
             <hcm-button variant="tonal" icon="image" ?disabled=${replacing || input.readOnly} @click=${chooseFile}
                 >${photoText(locale, 'adminContent.photos.editor.replace')}</hcm-button

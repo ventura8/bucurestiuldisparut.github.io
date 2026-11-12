@@ -1,6 +1,6 @@
 {
     "name": "@hcm/shared",
-    "version": "1.0.0",
+    "version": "1.0.0-beta.1",
     "private": true,
     "description": "Environment-neutral code shared by the engine, admin and functions: logging, i18n catalogues (RO default, EN) and, from M1, zod schemas.",
     "license": "UNLICENSED",
@@ -22,6 +22,10 @@
         "./admin-worker-local": {
             "types": "./src/i18n/admin-worker-local/index.ts",
             "default": "./src/i18n/admin-worker-local/index.ts"
+        },
+        "./tab-icon": {
+            "types": "./src/kit/tab-icon.ts",
+            "default": "./src/kit/tab-icon.ts"
         },
         "./map-labels": {
             "types": "./src/i18n/map-labels/index.ts",

@@ -15,6 +15,7 @@ import {
     type Locale,
     type MapView,
     type MessageKey,
+    type PhotoView,
 } from '@hcm/shared';
 import type { MapLabels } from '@hcm/shared/map-labels';
 import { isCompactHeight, windowClassFor } from '@hcm/ui';
@@ -77,6 +78,8 @@ export interface ViewerActions {
     openPoi(poiId: string | null): void;
     /** M17: the `stories` sheet with that story (null: their list), the timeline at its year; an unknown id says so. */
     openStory(storyId: string | null): void;
+    /** The open photo's version (the URL hash's `pv=`). */
+    setPhotoVersion(view: PhotoView): void;
     setLightbox(open: boolean): void;
     openSheet(sheet: SheetName): void;
     /** Minimizes the extra-large Layers pane to its rail (true) or restores it: for the session, not in the hash (V03). */
@@ -334,6 +337,12 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
             return;
         }
         this.set(next);
+        this.hash.schedule();
+    }
+
+    /** The version of the open photo the visitor picked; the URL hash keeps it (`pv=`). */
+    setPhotoVersion(view: PhotoView): void {
+        this.set({ ...this.#state, photoVersion: view });
         this.hash.schedule();
     }
 

@@ -35,6 +35,7 @@ from release_pins import (
     PAGE_FILES,
     RELEASE_FILE,
     RELEASE_JSON,
+    RELEASE_VERSION,
     SEMVER,
     SRI_RE,
     Expected,
@@ -71,7 +72,7 @@ def release_shape_problems(release: Entry) -> list[str]:
     if set(release) != RELEASE_KEYS:
         return [f"{RELEASE_JSON}: keys {sorted(release)}, expected {sorted(RELEASE_KEYS)}"]
     version, repository = release["version"], release["repository"]
-    if not (matches(SEMVER, version) and matches(REPOSITORY_RE, repository)):
+    if not (matches(RELEASE_VERSION, version) and matches(REPOSITORY_RE, repository)):
         return [f"{RELEASE_JSON}: version {version!r} or repository {repository!r} is malformed"]
     base = f"https://cdn.jsdelivr.net/gh/{repository}@v{version}/cdn/engine/"
     return [] if release["base"] == base else [f"{RELEASE_JSON}: base {release['base']!r}, expected {base!r}"]

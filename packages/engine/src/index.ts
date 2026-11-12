@@ -25,7 +25,7 @@ import {
 export type { HistoricCityMapController } from './mount.js';
 
 /** Engine release; the IIFE build exposes it as window.HistoricCityMap.ENGINE_VERSION. */
-export const ENGINE_VERSION = '1.0.0';
+export const ENGINE_VERSION = '1.0.0-beta.1';
 
 /** Mapbox GL JS version the engine is written against; pages load exactly this one from api.mapbox.com. */
 export const MAPBOX_GL_VERSION = '3.34.1';

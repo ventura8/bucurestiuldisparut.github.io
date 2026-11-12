@@ -1,4 +1,5 @@
 import { element, renderDocument, type HtmlElement, type HtmlNode } from '../html.js';
+import { iconLinks } from '../icons.js';
 import { ADMIN_PATH, ADMIN_REDIRECT_FILE } from './admin-redirect.js';
 
 /**
@@ -62,7 +63,7 @@ function head(page: StaticPage): HtmlElement {
         element('meta', { name: 'color-scheme', content: 'light dark' }),
         element('meta', { name: 'theme-color', content: THEME_COLOR }),
         element('title', {}, [page.title]),
-        element('link', { rel: 'icon', href: 'data:,' }),
+        ...iconLinks(),
         ...(page.script === undefined ? [] : [element('script', { src: page.script })]),
         element('link', { rel: 'stylesheet', href: page.stylesheet }),
     ]);
@@ -178,7 +179,7 @@ export function renderRedirectPage(redirect: RedirectPage): string {
 
 /** `hosting.css`: system colours (light and dark follow the browser), a readable measure, links of at least 44 px. */
 export const HOSTING_STYLESHEET_SOURCE = [
-    "/* Historic City Map: the Hosting site's own pages (scripts/site/src/hosting/static-pages.ts). */",
+    "/* Historic City Map Maker: the Hosting site's own pages (scripts/site/src/hosting/static-pages.ts). */",
     ':root {',
     '    color-scheme: light dark;',
     '}',

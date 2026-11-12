@@ -158,7 +158,7 @@ function lineSeq(scope: JobScope, path: string, data: Readonly<Record<string, un
 function logLine(scope: JobScope, path: string, data: Readonly<Record<string, unknown>>, now: Date): JobLogDoc {
     lineSeq(scope, path, data);
     if (!storable(data)) {
-        throw new ApiError('apiError.invalidRequest');
+        throw new ApiError('apiError.invalidRequest', undefined, [{ path: 'data', code: 'validation.value' }]);
     }
     const result = validate(jobLogDocSchema, { ...data, updatedBy: PIPELINE_WRITER, updatedAt: at(now) });
     if (!result.ok) {

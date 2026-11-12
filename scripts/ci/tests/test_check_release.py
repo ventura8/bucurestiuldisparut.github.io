@@ -113,7 +113,41 @@ def test_bad_path_empty_notes_and_missing_engine_constant_fail(tmp_path: Path, l
     assert "docs/releases/v1.2.3_github_description.md is missing or empty" in log.text
 
 
-@pytest.mark.parametrize("tag", ["v1.2", "v01.2.3", "1.2.3", "v1.2.3-rc.1", "v1.2.3+build"])
+@pytest.mark.parametrize("version", ["1.2.3-beta.1", "1.2.3-rc.0", "1.2.3-rc.12", "0.1.0-beta.0"])
+def test_happy_path_prerelease_tags_are_released(tmp_path: Path, log: pytest.LogCaptureFixture, version: str) -> None:
+    write_release(tmp_path, version)
+    readme = tmp_path / "README.md"
+    readme.write_text(f"Run `npx create-historic-city@{version} self-host`.\n", encoding="utf-8")
+
+    assert check_release.main(["--root", str(tmp_path), "--tag", f"v{version}"], tags()) == 0
+    assert f"[release] OK: v{version} matches every version" in log.text
+
+
+def test_bad_path_prerelease_guide_pin_of_another_version_is_named(tmp_path: Path, log: pytest.LogCaptureFixture) -> None:
+    write_release(tmp_path, "1.2.3-beta.2")
+    (tmp_path / "README.md").write_text("Run `npx create-historic-city@1.2.3-beta.1 self-host`.\n", encoding="utf-8")
+
+    assert check_release.main(["--root", str(tmp_path), "--tag", "v1.2.3-beta.2"], tags()) == 1
+    assert "README.md: names create-historic-city@1.2.3-beta.1, the tag says '1.2.3-beta.2'" in log.text
+
+
+@pytest.mark.parametrize(
+    "tag",
+    [
+        "v1.2",
+        "v01.2.3",
+        "1.2.3",
+        "v1.2.3+build",
+        "v1.2.3-alpha.1",
+        "v1.2.3-beta",
+        "v1.2.3-beta.01",
+        "v1.2.3-rc.1.2",
+        "v1.2.3-RC.1",
+        "v1.2.3-beta1",
+        "v1.2.3-beta.1+build",
+        "v1.2.3-preview.1",
+    ],
+)
 def test_bad_path_tag_must_be_plain_semver(tmp_path: Path, log: pytest.LogCaptureFixture, tag: str) -> None:
     write_release(tmp_path)
 

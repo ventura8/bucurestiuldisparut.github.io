@@ -1428,7 +1428,7 @@ The owner placed points on 1966 Corona frames and hit four things; each is fixed
 
 ### What each pane shows, turning, removing a pair, editing a published version's points (2026-11-12, beta.1)
 
-The owner's requests for beta.1 (DECISIONS-for-review.md §165):
+The owner's requests for beta.1 (DECISIONS-for-review.md §172):
 
 - **The map shows**: a labelled native list above the map pane (`mapShows` in `georef-panes.ts`; a `<select>`, so the keyboard and a
   screen reader have it as it is) offers the version's references (OpenStreetMap: the base map itself; Sentinel-2: the reference

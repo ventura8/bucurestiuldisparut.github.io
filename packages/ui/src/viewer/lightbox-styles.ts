@@ -7,7 +7,8 @@
  * `minmax(0, 1fr)`, so the image's `max-block-size: 100%` resolves against the stage: with an `auto` track a landscape
  * photo on a short window (a landscape phone) overflowed the stage and was cropped instead of fitted. The title wraps
  * instead of ending in an ellipsis: with wider text spacing (WCAG 1.4.12) a phone cut it (the tour). The header is a
- * plain box, not a `header`, which would be a second page banner beside the page's own.
+ * plain box, not a `header`, which would be a second page banner beside the page's own. The versions' switch (when the
+ * photo has more than its original) sits on such a surface too, between the image and the arrows and zoom buttons.
  */
 import { css } from 'lit';
 
@@ -29,7 +30,8 @@ export const lightboxStyles = [
 
         .lightbox {
             display: grid;
-            grid-template-rows: auto 1fr auto;
+            grid-template-rows: auto 1fr auto auto;
+            grid-template-columns: minmax(0, 1fr);
             block-size: 100%;
             background: var(--md-sys-color-scrim);
             color: var(--md-sys-color-inverse-on-surface);
@@ -79,6 +81,24 @@ export const lightboxStyles = [
             border-radius: var(--md-sys-shape-corner-large);
             background: var(--md-sys-color-surface-container);
             color: var(--md-sys-color-on-surface);
+        }
+
+        /* The versions' switch and credit: a surface of their own, as the header, so they read on the dark scrim. */
+        .versions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 4px 16px;
+            padding: 8px 16px;
+            background: var(--md-sys-color-surface-container);
+            color: var(--md-sys-color-on-surface);
+        }
+
+        /* A flex item shrinks no narrower than its content by default: the switch must, so it stacks on a narrow phone. */
+        .versions hcm-segmented-button {
+            min-inline-size: 0;
+            max-inline-size: 100%;
         }
 
         .nav {
