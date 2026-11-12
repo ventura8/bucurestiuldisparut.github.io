@@ -3255,3 +3255,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: TypeScript fitted the poly2 place→pixel map on the pairs alone. A quadratic has no quadratic inverse, so well-spread scan pixels whose places lay on two lines made the reverse design singular and `fitTransform('poly2')` returned `degenerate` while the pipeline's `_inverse_grid` (15×15 forward samples) still fitted. Pairs on only two scan rows stay singular in the forward design.
     - Fix and pin: `poly2Fitter` samples the forward map for the inverse (`POLY2_INVERSE_GRID`); S-A16-HAPPY-POLY2-GRID-INVERSE / S-A16-BAD-POLY2-TWO-ROWS.
     - **When a model has no inverse in its own class, build the reverse from samples of the forward map, not from the control pairs alone.**
+
+554. **Hosting-only admin deploy wiped `/admin/install/` and broke Update the map.**
+    - Seen: 2026-11-12 overnight: after shipping 1847/georef/confirmRights via Hosting without `build:install`, `https://…/admin/install/<slug>/manifest.json` returned the admin SPA HTML; Cloud Build fetch for Update/Install could not read the bundle. Installed release stayed `1.0.0+adbb1af` while Hosting said `1.0.0+3897359`.
+    - Cause: Firebase Hosting's `/admin/**` rewrite serves `index.html` when the install files are absent from the uploaded tree. A fast Hosting upload of `dist/hosting` built with only `build:hosting` (or a stripped tree) replaces the previous release's install folder.
+    - Fix and pin: always `build:hosting && build:install` before Hosting deploy; DECISIONS §149; restored `1-0-0-3897359` and re-ran Update builds.
+    - **Never deploy Hosting without the install bundle; check `/admin/install/<slug>/manifest.json` is JSON before calling the ship done.**
