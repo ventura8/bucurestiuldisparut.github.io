@@ -209,6 +209,9 @@ tick at once never import twice: the version's id is the job's, created with `cr
   `rel="noopener noreferrer"`, 48 px), **I ordered it**; once ordered: the state chip, the next check, `lastError` in
   words, **Check now**, **Take the mark back**; `expired`: **Order again** (the same two inputs). An `available` scene
   shows M3's Import and no order card (`S-A13-BAD-ALREADY-AVAILABLE`).
+- **From a whole-city date** (M8, 2026-11-12): every paid frame of a row of Find's **Whole-city dates** has its own
+  **Buy this scan: {frame}**, a link to that frame's page and so to this card; a frame with an open order reads **Your
+  order: {frame}** with the order's chip (`packages/ui/src/admin/imagery/orders/order-list.ts`, `paidFrameList`, in the Imagery chunk: the join chunk has no room).
 - **The input budget** (`CONTENT_INPUT_BUDGETS`, done): `buyScan` 2 (Order in EarthExplorer, I ordered it; the purchase
   in EarthExplorer is the admin's own step), `checkOrderNow` 1 (never needed: the watch asks daily).
 - **States** for the tour (§7.3): `orders.order-card`, `orders.ordered`, `orders.reminder`, `orders.delivered`,

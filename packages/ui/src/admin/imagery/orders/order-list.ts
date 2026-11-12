@@ -13,6 +13,8 @@ import { contentText } from '../../shell/text.js';
 import type { ImageryContext } from '../context.js';
 import type { ImageryViewState, SceneItemPort } from '../imagery-port.js';
 import { dayText } from '../imagery-text.js';
+import { frameName } from '../join/live-join.js';
+import { withValue } from '../when.js';
 
 /** The orders the admin has to act on (and can: Order it again, or Take the mark back). */
 const NEEDS_YOU: readonly OrderState[] = ['expired'];
@@ -81,4 +83,33 @@ export function ordersGroup(context: ImageryContext): TemplateResult {
 /** How many orders Work lists (they count in its tab, with the unfinished versions: finding 54 of 2026-11-01). */
 export function openOrderCount(view: ImageryViewState): number {
     return openOrders(view).length;
+}
+
+/** The open order of a paid frame, when Work's orders know one. */
+function openOrder(context: ImageryContext, entityId: string): SceneItemPort | undefined {
+    return context.view.orders.items.find((scene) => scene.id === entityId && scene.order !== null);
+}
+
+/**
+ * One paid frame of the row (2026-11-12: only the first was linked): Buy this scan opens the frame's own page, where the
+ * order card (M4) buys it; a frame already ordered says so, with its order's chip, and opens the same page.
+ * In the Imagery chunk, beside the orders' other rows: the join's chunk has no room for it.
+ */
+function paidFrame(context: ImageryContext, entityId: string): TemplateResult {
+    const { locale } = context;
+    const ordered = openOrder(context, entityId);
+    const key = ordered === undefined ? 'adminContent.imagery.join.buyFrame' : 'adminContent.imagery.join.orderedFrame';
+    return html`<li data-paid=${entityId}>
+        <a class="external" href=${context.href(['scene', entityId])} data-state="join-buy"
+            >${contentText(locale, key, { frame: frameName(entityId) })}</a
+        >
+        ${withValue(ordered, (scene) => orderTag(locale, scene))}
+    </li>`;
+}
+
+/** Every paid frame of a whole-city date, each with its own Buy this scan (M8's row, `join-card.ts`). */
+export function paidFrameList(context: ImageryContext, entityIds: readonly string[]): TemplateResult {
+    return html`<ul class="steps" data-join-paid-frames>
+        ${entityIds.map((entityId) => paidFrame(context, entityId))}
+    </ul>`;
 }

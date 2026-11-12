@@ -210,7 +210,7 @@ is needed: they call Google's REST APIs with the metadata server's token.
 
 | Step id | Image | Does |
 | --- | --- | --- |
-| `fetch` | node | `fetch-bundle.mjs`: downloads `manifest.json` and `server.tgz` from `_ORIGIN/admin/install/_SLUG/`, checks both digests, extracts into `/workspace/server` |
+| `fetch` | node | `fetch-bundle.mjs`: downloads `manifest.json` and `server.tgz` from `_ORIGIN/admin/install/_SLUG/` (each download up to four attempts, §1.5), checks both digests, extracts into `/workspace/server` |
 | `tools` | node | `npm ci --ignore-scripts --no-audit --no-fund` in `server/tools` (the locked `firebase-tools`; npm checks each package's integrity) |
 | `packages` | node | `npm ci --omit=dev --ignore-scripts --no-audit --no-fund` in `server/functions/dist` (the functions' deploy lock; added 2026-10-31, finding 30, below) |
 | `rules` | node | `firebase deploy --only firestore,storage --project <project> --non-interactive` |
@@ -266,6 +266,7 @@ is needed: they call Google's REST APIs with the metadata server's token.
 | --- | --- | --- |
 | The admin, any Google call right after an API was enabled (Provision, the installer's submit) | `403 SERVICE_DISABLED` naming an API that this run enabled, or that Service Usage reports `ENABLED` | `API_PROPAGATION_RETRY`: after 10, 20, 40, 60 and 60 s (about 3 minutes) on the injected clock; while it waits the item says "Waiting for Google to switch on {api}…"; then `apiError.cloud.apiPropagation {api}` and Retry what failed (finding 4; server-bugs, the shared helper the installer imports) |
 | Inside the server build, `deploy-with-retry.mjs` | only the known first-deploy races, recognised in `firebase-tools`' output (`TRANSIENT_DEPLOY_PATTERNS`, with fixtures of real outputs): Eventarc's service agent still propagating ("Permission denied while using the Eventarc Service Agent", finding 12), a 429 on the per-project mutation quota, a 409 operation already in progress, a 503 | at most four attempts, waiting 60, 120 and 240 s; each retry deploys only the functions `firebase-tools` named as failed (`--only functions:<id>,…`), else the whole target; each wait prints `HCM_INSTALL {"event":"retry",…}`; any other failure fails the step at once |
+| The `fetch` step of every build (`fetch-script.ts`; 2026-11-12: one 10 s connect timeout to Hosting failed a whole Update the map) | a download of the bundle or of `project.json` that got no answer: a network error (the connect timeout), a 408, a 429 or a 5xx | at most four attempts, waiting 5, 15 and 30 s (`HCM_FETCH_WAITS`, the tests' 0); each wait prints `fetch: <file>: attempt N of 4 failed (<why>), trying again in S s`; the last failure stops the step with `fetch: <file>: no answer after 4 attempts (<why>)`; any other answer (a 404, a digest that differs) stops it at once |
 | The admin, a build that Google ended | `INTERNAL_ERROR` or `EXPIRED` (Google's side, not the build's) | resubmitted once without a click; a `FAILURE` or `TIMEOUT` never is: it shows its step and log and offers Try again (one input) |
 
 ### 1.6 What Provision adds (server-bugs, through CR-M6-2)
@@ -334,9 +335,17 @@ The state of a target, `InstallState` (`packages/shared/src/schemas/install.ts`,
   - the server's own release needs no record: `admin.session` and `setup.status` answer `serverRelease` (the functions'
     `HCM_RELEASE`).
 - **Update**: Setup's three cards and a Home tile ("An update is ready: {release}", setup-ux) when any target is
-  `updateAvailable`; **Update the map** submits, in one click, a build of every target that is behind (the server and
-  the pipeline in parallel, then the site once the server is installed). Budget `updateMap`: 1 input (plus one consent:
+  `updateAvailable`; **Update the map** submits, in one click, a build of every target that is behind (the server
+  first, then the pipeline and the site once the server is installed; a server that stopped submits neither, and their
+  cards keep offering the update). Budget `updateMap`: 1 input (plus one consent:
   in daily use there is no live token).
+
+**Addendum 2026-11-12 (the update order).** The pipeline used to be submitted beside the server. On 2026-11-09 its build
+finished first: the job `raster-pipeline` ran the new image, so `worker.image` handed it to the local worker, whose claims
+the old server refused until its own build caught up. Update the map now holds the pipeline, like the site, until the
+server it submitted has settled installed (`packages/admin/src/setup/install.ts`, `#afterServerTargets`); a stopped server
+releases neither, and each card keeps Update the map. Installing a new map (Install the server) still submits both at
+once: no worker is paired before the server exists. S-A56-HAPPY-UPDATE-AFTER-SERVER, S-A56-BAD-UPDATE-SERVER-STOPPED.
 
 **Addendum 2026-11-01 (finding 39 of `manual-test-2026-10-25.md`, `DECISIONS-for-review.md` §78a): the release order.**
 Every release of a version shares its semver (`1.0.0+<commit>`; build metadata has no precedence), so a release also

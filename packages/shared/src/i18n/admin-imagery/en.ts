@@ -56,6 +56,8 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.join.toDownload': '{count} to download',
     'adminContent.imagery.join.paidFrame': '{count} more would need ordering',
     'adminContent.imagery.join.paidFrameOne': '1 more would need ordering',
+    'adminContent.imagery.join.buyFrame': 'Buy this scan: {frame}',
+    'adminContent.imagery.join.orderedFrame': 'Your order: {frame}',
     'adminContent.imagery.join.winter': 'Winter: may need points',
     'adminContent.imagery.join.addYear': 'Add {year} to target years',
     'adminContent.imagery.join.whenFree': 'Join when it ends',

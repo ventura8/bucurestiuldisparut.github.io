@@ -3384,3 +3384,14 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: DECISIONS-for-review.md §143 moved the map's pair and suggestion markers from Mapbox sources to one badge canvas over the map (`packages/admin/src/georef/marker-overlay.ts`), so no `hcm-source-georef-suggestions` exists; the spec still read the old source, which nothing asserted was gone.
     - Fix and pin: `georefBadgesAt` (`e2e/admin/support/map.ts`) counts the places with paint on the `canvas[data-georef-badges]` near their projection; the spec reads the suggested places from the version, shows the map pane, zooms out with the map's own button until they are on screen (a badge off the view is not drawn) and expects four. S-A44-HAPPY's asserts say so.
     - **When a rendering moves from a map source to a canvas, its e2e reads move with it: assert the pixels the user sees, and grep the specs for the old source id in the same change.**
+
+577. **Update the map put the new pipeline image in front of the old server, and one Hosting timeout failed the whole update.**
+    - Seen: 2026-11-09, a live Update the map: the server's build failed at `fetch` on a 10 s connect timeout to Hosting; the pipeline's build, submitted beside it, finished, so `worker.image` named the new image and the local worker's claims were refused by the old server until it was updated.
+    - Cause: `packages/admin/src/setup/install.ts` submitted the server and the pipeline at once (only the site waited for the server), and `fetch-script.ts` downloaded each file once.
+    - Fix and pin: the pipeline waits for the server like the site, and a stopped server releases neither (S-A56-HAPPY-UPDATE-AFTER-SERVER, S-A56-BAD-UPDATE-SERVER-STOPPED); every download of `fetch` tries four times, 5, 15 and 30 s apart, on a network error, 408, 429 or 5xx (`fetch-script.test.ts`). DECISIONS-for-review.md §159.
+    - **When two deploys must agree on a protocol, order them: the side that answers first, the side that asks after it; never "in parallel" because they are independent builds.**
+
+578. **A whole-city date with two paid frames linked only the first.**
+    - Seen: 2026-11-12, Find's Whole-city dates: "2 more would need ordering" was one link to the first paid frame's page; the second could be bought only by finding it in the list.
+    - Fix and pin: each paid frame has its own Buy this scan: {frame}, or Your order: {frame} with its chip (`join-card.ts`; S-A66-HAPPY-BUY-EVERY-PAID, S-A66-BAD-PAID-ORDERED).
+    - **A count that stands for several things is not a link to one of them: list each with its own action.**

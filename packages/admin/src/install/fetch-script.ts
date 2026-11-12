@@ -13,6 +13,10 @@
  * every file the tarball's `templates.json` lists, the city page's policy among them, and takes `admin/project.json` from the live
  * site (`HCM_ADOPT_FROM`). Every other file stays byte for byte: the admin's script holds the token as this very text.
  *
+ * Every download is tried up to four times (2026-11-12: one 10 s connect timeout to Hosting failed a whole Update the map):
+ * a network error, a 408, a 429 or a 5xx waits `HCM_FETCH_WAITS` (seconds, comma-separated; 5, 15 and 30 by default) and
+ * tries again, each wait one line of the step's log; any other answer (a 404, a digest that differs) fails at once.
+ *
  * The program holds no `$`: Cloud Build substitutes `$NAME` in every argument. `fetch-script.test.ts` runs it.
  */
 export const FETCH_BUNDLE_SCRIPT = [
@@ -23,11 +27,31 @@ export const FETCH_BUNDLE_SCRIPT = [
     'const env = process.env;',
     "const fail = (message) => { process.stderr.write('fetch: ' + message + '\\n'); process.exit(1); };",
     "const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');",
-    'async function get(name) {',
-    "    const response = await fetch(new URL(name, env.HCM_BUNDLE_URL), { redirect: 'error' });",
-    "    if (!response.ok) fail(name + ': HTTP ' + response.status);",
-    '    return Buffer.from(await response.arrayBuffer());',
+    "const waits = (env.HCM_FETCH_WAITS || '5,15,30').split(',').map(Number);",
+    'const passing = (status) => status === 408 || status === 429 || status >= 500;',
+    'const pause = (seconds) => new Promise((done) => setTimeout(done, seconds * 1000));',
+    'async function attempt(url, name) {',
+    '    try {',
+    "        const response = await fetch(url, { redirect: 'error' });",
+    '        if (response.ok) return { bytes: Buffer.from(await response.arrayBuffer()) };',
+    "        if (!passing(response.status)) fail(name + ': HTTP ' + response.status);",
+    "        return { why: 'HTTP ' + response.status };",
+    '    } catch (error) {',
+    '        return { why: String(error.cause?.code ?? error.cause?.message ?? error.message) };',
+    '    }',
     '}',
+    'async function download(url, name) {',
+    '    const tries = waits.length + 1;',
+    '    for (let count = 1; ; count += 1) {',
+    '        const got = await attempt(url, name);',
+    '        if (got.bytes) return got.bytes;',
+    "        if (count === tries) fail(name + ': no answer after ' + tries + ' attempts (' + got.why + ')');",
+    "        const line = name + ': attempt ' + count + ' of ' + tries + ' failed (' + got.why + ')';",
+    "        process.stdout.write('fetch: ' + line + ', trying again in ' + waits[count - 1] + ' s\\n');",
+    '        await pause(waits[count - 1]);',
+    '    }',
+    '}',
+    'const get = (name) => download(new URL(name, env.HCM_BUNDLE_URL), name);',
     "const bundleDir = join(env.HCM_WORKSPACE || '/workspace', 'bundle');",
     'mkdirSync(bundleDir, { recursive: true });',
     "const manifestBytes = await get('manifest.json');",
@@ -67,10 +91,9 @@ export const FETCH_BUNDLE_SCRIPT = [
     '        const path = join(env.HCM_OUT, file);',
     "        writeFileSync(path, readFileSync(path, 'utf8').replaceAll('__HCM_PROJECT_ID__', env.HCM_ADOPT_PROJECT));",
     '    }',
-    "    const live = await fetch(env.HCM_ADOPT_FROM, { redirect: 'error' });",
-    "    if (!live.ok) fail('project.json: HTTP ' + live.status);",
+    "    const live = await download(env.HCM_ADOPT_FROM, 'project.json');",
     "    mkdirSync(join(env.HCM_OUT, 'public/admin'), { recursive: true });",
-    "    writeFileSync(join(env.HCM_OUT, 'public/admin/project.json'), Buffer.from(await live.arrayBuffer()));",
+    "    writeFileSync(join(env.HCM_OUT, 'public/admin/project.json'), live);",
     '}',
     "process.stdout.write('fetch: ' + main.name + ' checked and unpacked\\n');",
 ].join('\n');

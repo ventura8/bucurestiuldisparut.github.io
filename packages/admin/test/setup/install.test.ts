@@ -187,10 +187,8 @@ describe('Publish the map, Check again, Update the map', () => {
 
         await cards.updateMap('deploy');
 
-        expect(harness.installer.submit.mock.calls.map(([target]) => target).toSorted((left, right) => left.localeCompare(right))).toEqual([
-            'pipeline',
-            'server',
-        ]);
+        // The pipeline waits for the server (2026-11-12): only the server goes now.
+        expect(harness.installer.submit.mock.calls.map(([target]) => target)).toEqual(['server']);
         cards.dispose();
     });
 
@@ -202,6 +200,66 @@ describe('Publish the map, Check again, Update the map', () => {
         expect(harness.google.requests).toEqual([]);
         expect(harness.installer.submit).not.toHaveBeenCalled();
         expect(provisioned).toEqual([]);
+    });
+});
+
+describe('Update the map: the pipeline after the server (2026-11-12)', () => {
+    it('happyPath_thePipelineWaitsForTheServerTheSameUpdateInstalls', async () => {
+        // 2026-11-12: the pipeline's build finished first, so `worker.image` handed the local worker the new image while
+        // the old server still answered its claims, and refused them until the server's build caught up.
+        const { harness, ctx, cards } = setup('normal');
+        const server = { state: 'updateAvailable' as InstallState };
+        harness.installer.observe.mockImplementation((target) => {
+            if (target === 'server' && server.state === 'installed') {
+                return Promise.resolve(
+                    observed({ installed: { complete: true, release: ADMIN_RELEASE }, build: build('server', 'SUCCESS') }),
+                );
+            }
+            return Promise.resolve(observed({ installed: { complete: true, release: '0.9.0' } }));
+        });
+        harness.google.grant('cloudPlatform');
+        cards.watch(['server', 'pipeline']);
+        await flush();
+        harness.google.drop();
+
+        await cards.updateMap('deploy');
+
+        expect(harness.installer.submit.mock.calls.map(([target]) => target)).toEqual(['server']);
+        expect(ctx.state().install.pipeline.state).toBe('updateAvailable');
+        server.state = 'installed';
+        await harness.clock.advance(10_000);
+        await flush();
+        expect(harness.installer.submit.mock.calls.map(([target]) => target)).toEqual(['server', 'pipeline']);
+        cards.dispose();
+    });
+
+    it('badPath_aServerThatStoppedNeverLetsThePipelineGo_itsCardOffersTheUpdateAgain', async () => {
+        const { harness, ctx, cards } = setup('normal');
+        const server = { failed: false };
+        harness.installer.observe.mockImplementation((target) =>
+            Promise.resolve(
+                target === 'server' && server.failed
+                    ? observed({ installed: { complete: true, release: '0.9.0' }, build: build('server', 'FAILURE') })
+                    : observed({ installed: { complete: true, release: '0.9.0' } }),
+            ),
+        );
+        harness.google.grant('cloudPlatform');
+        cards.watch(['server', 'pipeline']);
+        await flush();
+        harness.google.drop();
+
+        await cards.updateMap('deploy');
+        harness.google.grant('cloudPlatform');
+        server.failed = true;
+        await harness.clock.advance(10_000);
+        await flush();
+        await harness.clock.advance(10_000);
+        await flush();
+
+        expect(ctx.state().install.server.state).toBe('failed');
+        expect(harness.installer.submit.mock.calls.map(([target]) => target)).toEqual(['server']);
+        expect(ctx.state().install.pipeline.state).toBe('updateAvailable');
+        cards.dispose();
     });
 });
 
