@@ -137,8 +137,8 @@ function dateRow(context: ImageryContext, row: DatePlanRow): TemplateResult {
 
 /** Whole-city dates: the plan's rows, the best first (the server's order). */
 export function dateRows(context: ImageryContext): TemplateResult {
-    return html`<section class="section" aria-labelledby="imagery-dates" data-join-dates>
-        <h3 id="imagery-dates">${contentText(context.locale, 'adminContent.imagery.join.datesTitle')}</h3>
+    return html`<section class="section" aria-labelledby="jd" data-join-dates>
+        <h3 id="jd">${contentText(context.locale, 'adminContent.imagery.join.datesTitle')}</h3>
         <ul class="rows">
             ${context.view.dates.map((row) => dateRow(context, row))}
         </ul>
@@ -281,8 +281,8 @@ function addFrame(context: ImageryContext, version: VersionViewPort): TemplateRe
 /** A join's page: its frames, each with its state and link; while they are not ready, that it waits for them. */
 function joinParts(context: ImageryContext, version: VersionViewPort, job: JobViewPort | null): TemplateResult {
     const { locale } = context;
-    return html`<section class="section" aria-labelledby="join-parts" data-join-parts>
-        <h3 id="join-parts">${contentText(locale, 'adminContent.imagery.origin.join')}</h3>
+    return html`<section class="section" aria-labelledby="jp" data-join-parts>
+        <h3 id="jp">${contentText(locale, 'adminContent.imagery.origin.join')}</h3>
         ${when(job?.waitReason === 'parts', () => html`<p class="note" data-state="join-waiting">${contentText(locale, 'adminContent.imagery.join.waiting')}</p>`)}
         <ul class="rows">
             ${version.parts.map((part) => partRow(context, part, version, job))}

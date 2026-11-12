@@ -1,7 +1,8 @@
 /**
  * `imagery.retry` (`functions/src/imagery/retry.ts`, `docs/research/M3-interfaces.md` §4.5): a failed raster job again
  * after what it keeps (the city crop, the segments, the delivery): a pipeline failure goes back to `queued` (the dispatcher starts it), a failure after
- * approval goes back to the publisher; never past the attempts, never while the budget guard is red.
+ * approval goes back to the publisher; never past the attempts, never while the budget guard is red. A stopped job
+ * (status `cancelled`, version `cancelled`) is retried the same way as a failed one.
  */
 import { JOB_MAX_ATTEMPTS, PUBLISH_MAX_ATTEMPTS, type JobDoc, type LayerVersionDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
@@ -166,7 +167,9 @@ describe('imagery.retry', () => {
             },
         ]);
     });
+});
 
+describe('imagery.retry: a publish retry keeps the upload', () => {
     it('happyPath_aPublishRetryKeepsTheUploadAndClearsThePublishSteps', async () => {
         const world = await readyWorld();
         await seedJob(
@@ -183,6 +186,28 @@ describe('imagery.retry', () => {
         await retry(world);
 
         expect((await readJob(world, JOB))?.steps).toEqual({ upload: { status: 'done', sha256: 'c'.repeat(64) } });
+    });
+});
+
+describe('imagery.retry: a stopped job', () => {
+    it('happyPath_aStoppedJobWithACancelledVersionIsQueuedAgain', async () => {
+        const world = await readyWorld();
+        await seedJob(world, JOB, failed({ status: 'cancelled', error: undefined }));
+        await seedVersion(world, JOB, renderedVersion({ state: 'cancelled', output: undefined, error: undefined }));
+
+        // A stopped job spent no attempt it could be blamed for: retry starts the count again (`attemptsAgain`).
+        await expect(retry(world)).resolves.toEqual({ status: 'queued', attempt: 0 });
+
+        const job = await readJob(world, JOB);
+        expect(job).toMatchObject({
+            status: 'queued',
+            attempt: 0,
+            updatedBy: 'u-admin',
+        });
+        expect(job?.error).toBeUndefined();
+        expect(job?.finishedAt).toBeUndefined();
+        expect((await readVersion(world, JOB))?.state).toBe('processing');
+        expect(world.deps.tasks.queued).toEqual([]);
     });
 });
 
@@ -246,6 +271,103 @@ describe('imagery.retry: a version that is no longer failed', () => {
         await expect(retry(world)).resolves.toMatchObject({ status: 'awaiting_approval' });
 
         expect((await readVersion(world, JOB))?.state).toBe(state);
+    });
+});
+
+describe('imagery.retry: an outdated runner spent no attempt', () => {
+    it.each([
+        ['the outdated code', { code: 'apiError.imagery.pipelineOutdated', message: 'the pipeline does not run archive-series jobs' }],
+        ['the legacy invalid request', { code: 'apiError.invalidRequest', message: 'the pipeline does not run archive-series jobs' }],
+    ])('happyPath_pastTheAttemptsAFailureOf_%s_IsQueuedAgainWithItsCountReset @S-A12-HAPPY-RETRY-OUTDATED', async (_name, error) => {
+        const world = await readyWorld();
+        await seedJob(world, JOB, failed({ attempt: JOB_MAX_ATTEMPTS, error }));
+        await seedFailedVersion(world);
+
+        await expect(retry(world)).resolves.toEqual({ status: 'queued', attempt: 0 });
+
+        expect((await readJob(world, JOB))?.attempt).toBe(0);
+    });
+
+    it('badPath_anotherInvalidRequestPastTheAttemptsIsNotTriedAgain @S-A12-BAD-RETRY-EXHAUSTED', async () => {
+        const world = await readyWorld();
+        await seedJob(
+            world,
+            JOB,
+            failed({ attempt: JOB_MAX_ATTEMPTS, error: { code: 'apiError.invalidRequest', message: 'basedOn must be an id' } }),
+        );
+        await seedFailedVersion(world);
+
+        expect(await failureOf(retry(world))).toMatchObject({ details: { code: 'apiError.imagery.attemptsExhausted' } });
+    });
+});
+
+/** An archive series (M20) as `imagery.archiveImport` queues it: its originals never leave the owner's computer. */
+const SERIES: Partial<JobDoc> = {
+    type: 'archive-series',
+    params: {
+        archiveId: 'ar-0123456789abcdef',
+        seriesId: 's-0123456789ab',
+        class: 'grid',
+        sheets: 4,
+        encoding: 'lineart',
+        order: 0,
+        referenceLayerIds: [],
+    },
+    runOn: 'local',
+    localOnly: true,
+    attempt: JOB_MAX_ATTEMPTS,
+    error: { code: 'apiError.internal', message: 'the server refused the record' },
+    steps: { gather: { status: 'done' }, place: { status: 'failed' } },
+};
+
+describe("imagery.retry: a run on the owner's computer costs no cloud compute (live report of 2026-11-12)", () => {
+    it.each([
+        ['an archive series failed in place', SERIES],
+        ['a frame run on the computer', { runOn: 'local' as const, attempt: JOB_MAX_ATTEMPTS }],
+        ['a local run the dispatcher ended at the cap', { ...SERIES, error: { code: 'apiError.imagery.attemptsExhausted', message: 'x' } }],
+    ])('happyPath_atTheCap_%s_IsQueuedAgainWithItsCountReset @S-A12-HAPPY-LOCAL-RETRY-PAST-CAP', async (_case, overrides) => {
+        const world = await readyWorld();
+        await seedJob(world, JOB, failed(overrides));
+        await seedFailedVersion(world);
+
+        await expect(retry(world)).resolves.toEqual({ status: 'queued', attempt: 0 });
+
+        const job = await readJob(world, JOB);
+        expect(job).toMatchObject({ status: 'queued', attempt: 0, runOn: 'local' });
+        expect(job?.error).toBeUndefined();
+        expect((await readVersion(world, JOB))?.state).toBe('processing');
+    });
+
+    it.each([
+        ['a cloud run', { runOn: 'cloud' as const }],
+        ['a run never placed', {}],
+    ])('badPath_%s_atTheCapIsStillRefused @S-A12-BAD-CLOUD-RETRY-AT-CAP', async (_case, overrides) => {
+        const world = await readyWorld();
+        await seedJob(world, JOB, failed({ ...overrides, attempt: JOB_MAX_ATTEMPTS, error: { code: 'apiError.internal', message: 'x' } }));
+        await seedFailedVersion(world);
+
+        expect(await failureOf(retry(world))).toMatchObject({
+            details: { code: 'apiError.imagery.attemptsExhausted', params: { attempts: String(JOB_MAX_ATTEMPTS) } },
+        });
+        expect(await readJob(world, JOB)).toMatchObject({ status: 'failed', attempt: JOB_MAX_ATTEMPTS });
+    });
+
+    it('badPath_aLocalRunsPublishKeepsItsCap_MapboxWorkIsPaid @S-A12-BAD-CLOUD-RETRY-AT-CAP', async () => {
+        const world = await readyWorld();
+        const publishFailed = { error: { code: 'apiError.imagery.mtsRefused', message: 'x' }, publishAttempts: PUBLISH_MAX_ATTEMPTS };
+        await seedJob(world, JOB, failed({ ...SERIES, ...publishFailed }));
+        await seedVersion(world, JOB, PUBLISH_FAILED);
+
+        expect(await failureOf(retry(world))).toMatchObject({ details: { code: 'apiError.imagery.attemptsExhausted' } });
+        expect(world.deps.tasks.queued).toEqual([]);
+    });
+
+    it('badPath_aLocalRunsTokenFailureIsStillNotRetried @S-A12-BAD-CLOUD-RETRY-AT-CAP', async () => {
+        const world = await readyWorld();
+        await seedJob(world, JOB, failed({ ...SERIES, error: { code: 'apiError.mapbox.tokenInvalid', message: 'x' } }));
+        await seedFailedVersion(world);
+
+        expect(await failureOf(retry(world))).toMatchObject({ details: { code: 'apiError.imagery.versionState' } });
     });
 });
 
@@ -388,7 +510,7 @@ describe('imagery.retry of a join (M8)', () => {
 
         const failure = await failureOf(retryJoin(world));
 
-        expect(failure.details).toMatchObject({ code: 'apiError.imagery.joinPartGone', params: { frame: F039 } });
+        expect(failure.details).toMatchObject({ code: 'apiError.imagery.joinPartTaken', params: { frame: F039 } });
         expect((await readJob(world, JOIN))?.status).toBe('failed');
         expect((await readVersion(world, JOIN))?.state).toBe('failed');
     });
@@ -405,7 +527,7 @@ describe('imagery.retry of a join (M8)', () => {
         });
     });
 
-    it('badPath_atPublishAFramePublishedOnItsOwnMeanwhileRefuses_nothingIsQueued', async () => {
+    it('happyPath_atPublishAFramePublishedOnItsOwnMeanwhileStillServes_thePublishIsQueued_live1980', async () => {
         const world = await readyWorld();
         const approval = { auto: false, by: 'u-admin', at: at(NOW) };
         await joinFailedOfTwo(
@@ -420,8 +542,8 @@ describe('imagery.retry of a join (M8)', () => {
             mapbox: { tilesetId: 'a.b', origin: 'mts', publishedAt: at(NOW) },
         });
 
-        expect((await failureOf(retryJoin(world))).details).toMatchObject({ code: 'apiError.imagery.joinPartGone' });
-        expect(world.deps.tasks.queued).toEqual([]);
+        await expect(retryJoin(world)).resolves.toMatchObject({ status: 'awaiting_approval' });
+        expect(world.deps.tasks.queued).toHaveLength(1);
     });
 
     it('happyPath_atPublishFramesStillWaitingGoBackToThePublisher', async () => {
@@ -438,15 +560,17 @@ describe('imagery.retry of a join (M8)', () => {
         expect((await readVersion(world, JOIN))?.state).toBe('approved');
     });
 
-    it.each(['apiError.imagery.joinSeamTooFar', 'apiError.imagery.joinNoFrames', 'apiError.imagery.joinPartMissing'] as const)(
-        'badPath_%sNoRetryCures',
-        async (code) => {
-            const world = await readyWorld();
-            await joinFailedOfTwo(world, {}, { error: { code, message: code } });
+    it.each([
+        'apiError.imagery.joinSeamTooFar',
+        'apiError.imagery.joinNoFrames',
+        'apiError.imagery.joinPartMissing',
+        'apiError.imagery.joinPartTaken',
+    ] as const)('badPath_%sNoRetryCures', async (code) => {
+        const world = await readyWorld();
+        await joinFailedOfTwo(world, {}, { error: { code, message: code } });
 
-            expect((await failureOf(retryJoin(world))).details).toMatchObject({ code: 'apiError.imagery.versionState' });
-        },
-    );
+        expect((await failureOf(retryJoin(world))).details).toMatchObject({ code: 'apiError.imagery.versionState' });
+    });
 });
 
 describe('imagery.retry of a side job (M12)', () => {

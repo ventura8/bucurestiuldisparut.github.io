@@ -4,11 +4,14 @@
  * (`docs/research/M12-own-tiles.md`): by default a layer's tiles go to the city's own public bucket, and the card says what that costs in
  * the owner's words (`image-view.ts`): no compute units, Studio steps or choices. A city that publishes through Mapbox sees those from
  * the `mapbox-choices` chunk. M8: a join's section says what it measured (`join/join-card.ts`), and M9 there too: why a frame under the
- * threshold still waits.
+ * threshold still waits. Batch 4 (`docs/research/M20-import-local.md` §5.1): a grid series placed from its sheets' names without a proof
+ * shows its seams and its checks against OpenStreetMap, and only the city's owner sees **Approve the sheet-name placement**.
+ * M25: a Landsat scene has no checkpoint error; the card says its shift from Sentinel-2 and the city's cloud.
  */
-import { recalibrationVerdict, type Locale } from '@hcm/shared';
+import { landsatClear, recalibrationVerdict, type LandsatReport, type Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
+import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
 import type { ImageryContext } from './context.js';
 import type { VersionPagePort, VersionViewPort } from './imagery-port.js';
@@ -18,6 +21,11 @@ import { lazyJoin } from './join/lazy-card.js';
 import { lazyMapboxChoices } from './lazy-approval.js';
 import type { Guard } from './mapbox-choices.js';
 import { withValue } from './when.js';
+
+/** True when the version has no rights gate, or its rights already allow a publish. */
+function rightsReady(version: VersionViewPort): boolean {
+    return !version.rights || version.rights.allowPublish;
+}
 
 /** The page is busy with another action, or nothing may be written. */
 function busy(context: ImageryContext, page: VersionPagePort): boolean {
@@ -32,12 +40,51 @@ function measured(context: ImageryContext, rmse: number): TemplateResult {
     return over ? html`<p class="alert" data-rmse="over">${text}</p>` : html`<p data-rmse="under">${text}</p>`;
 }
 
-/** The checkpoint error. M8: a join has no georeference of its own; its figure is its worst frame's. */
+/** The checkpoint error. M8: a join has no georeference of its own; its figure is its worst frame's; M20: a series' blocked figure. */
 function checkpointOf(version: VersionViewPort): number | null {
-    return version.georef?.checkpointRmseM ?? version.join?.checkpointRmseM ?? null;
+    const figures = [version.georef, version.join, version.archive].map((each) => each?.checkpointRmseM);
+    return figures.find((figure) => typeof figure === 'number') ?? null;
+}
+
+/** Batch 4: a grid series placed from its sheets' names, whose grid did not prove on the reference. */
+function byNames(version: VersionViewPort): boolean {
+    return version.archive?.method === 'grid-names';
+}
+
+/** What the placement from the names measured: its seams and its checks against OpenStreetMap. */
+function namesReport(context: ImageryContext, version: VersionViewPort): TemplateResult {
+    const { locale } = context;
+    const report = version.archive;
+    if (report?.method !== 'grid-names') {
+        return EMPTY;
+    }
+    const seam = report.seamScore === undefined ? '–' : numberText(locale, report.seamScore, 2);
+    return html`<p class="note" data-state="grid-names">
+        ${contentText(locale, 'adminContent.imagery.approval.gridNames', { seam, checks: String(report.checkpointCount) })}
+    </p>`;
+}
+
+/** M25: a Landsat scene's shift from Sentinel-2 and the city's cloud, and why it waits when it is not clear. */
+function landsatText(locale: Locale, report: LandsatReport): TemplateResult {
+    const offset =
+        report.offsetPx === undefined || report.offsetM === undefined
+            ? contentText(locale, 'adminContent.imagery.landsat.unchecked')
+            : contentText(locale, 'adminContent.imagery.landsat.offset', {
+                  pixels: numberText(locale, report.offsetPx),
+                  metres: numberText(locale, report.offsetM),
+              });
+    const clear = landsatClear(report);
+    const cloud = contentText(locale, 'adminContent.imagery.landsat.cloud', { percent: numberText(locale, report.cityCloudPct) });
+    const held = clear ? '' : html`<p class="alert">${contentText(locale, 'adminContent.imagery.landsat.held')}</p>`;
+    return html`<p data-landsat=${clear ? 'clear' : 'held'}>${offset}</p>
+        <p class="note">${cloud}</p>
+        ${held}`;
 }
 
 function rmseText(context: ImageryContext, version: VersionViewPort): TemplateResult {
+    if (version.landsat !== null) {
+        return landsatText(context.locale, version.landsat);
+    }
     const rmse = checkpointOf(version);
     return rmse === null
         ? html`<p class="note" data-rmse="unmeasured">${contentText(context.locale, 'adminContent.imagery.approval.unmeasured')}</p>`
@@ -85,20 +132,70 @@ function approve(context: ImageryContext, version: VersionViewPort): void {
     void context.intents?.approve();
 }
 
-function decision(context: ImageryContext, page: VersionPagePort, version: VersionViewPort): TemplateResult {
+/** Approve, or for a placement from sheet names the owner's own Approve; an editor is told the owner decides. */
+function approveButton(context: ImageryContext, page: VersionPagePort, version: VersionViewPort): TemplateResult {
     const { locale } = context;
-    return html`<div class="actions">
-        <hcm-button
-            variant="filled"
-            icon="approval"
-            ?disabled=${busy(context, page)}
-            @click=${() => {
-                approve(context, version);
-            }}
-            >${contentText(locale, 'adminContent.imagery.approve')}</hcm-button
-        >
-        ${deleteButton(context, page, version)}
-    </div>`;
+    const names = byNames(version);
+    if (names && context.owner !== true) {
+        return html`<p class="note" data-state="grid-names-owner">
+            ${contentText(locale, 'adminContent.imagery.approval.gridNamesOwner')}
+        </p>`;
+    }
+    return html`<hcm-button
+        variant="filled"
+        icon="approval"
+        ?disabled=${busy(context, page) || !rightsReady(version)}
+        @click=${() => {
+            approve(context, version);
+        }}
+        >${contentText(locale, names ? 'adminContent.imagery.approval.gridNamesApprove' : 'adminContent.imagery.approve')}</hcm-button
+    >`;
+}
+
+type RightsSummary = NonNullable<VersionViewPort['rights']>;
+
+function rightsNote(rights: RightsSummary): TemplateResult {
+    return rights.note === null ? EMPTY : html`<p class="note" data-rights-note>${rights.note}</p>`;
+}
+
+/** The owner's Confirm form once rights wait. */
+function rightsForm(context: ImageryContext, page: VersionPagePort, version: VersionViewPort, note: TemplateResult): TemplateResult {
+    const { locale } = context;
+    const fieldId = `rights-by-${version.id}`;
+    const confirm = (event: Event): void => {
+        const root = (event.currentTarget as HTMLElement).getRootNode() as ParentNode;
+        const input = root.querySelector<HTMLInputElement>(`#${fieldId}`);
+        void context.intents?.confirmRights(input?.value ?? '');
+    };
+    return html`${note}
+        <p class="alert" data-rights="needs-confirmation">${contentText(locale, 'adminContent.imagery.rights.needsConfirmation')}</p>
+        <div class="field">
+            <label for=${fieldId}>${contentText(locale, 'adminContent.imagery.rights.by')}</label>
+            <input id=${fieldId} ?readonly=${busy(context, page)} />
+        </div>
+        <div class="actions">
+            <hcm-button variant="tonal" icon="check" data-confirm-rights ?disabled=${busy(context, page)} @click=${confirm}
+                >${contentText(locale, 'adminContent.imagery.rights.confirm')}</hcm-button
+            >
+        </div>`;
+}
+
+/** M20 (§7): Confirm who granted the permission; only the city's owner, while rights wait. */
+function rightsBlock(context: ImageryContext, page: VersionPagePort, version: VersionViewPort): TemplateResult {
+    const rights = version.rights;
+    if (rights?.state !== 'needs-confirmation') {
+        return EMPTY;
+    }
+    const note = rightsNote(rights);
+    return context.owner === true
+        ? rightsForm(context, page, version, note)
+        : html`${note}
+              <p class="note" data-rights="owner">${contentText(context.locale, 'adminContent.imagery.rights.ownerOnly')}</p>`;
+}
+
+function decision(context: ImageryContext, page: VersionPagePort, version: VersionViewPort): TemplateResult {
+    return html`${rightsBlock(context, page, version)}
+        <div class="actions">${approveButton(context, page, version)} ${deleteButton(context, page, version)}</div>`;
 }
 
 /** The guard's verdict when it stopped the publish (null: within, or not checked yet). */
@@ -130,8 +227,8 @@ export function approvalCard(context: ImageryContext, page: VersionPagePort, ver
     const guard = guardStop(context, version);
     return html`<section class="card" aria-labelledby="approval-title" data-state=${guard === null ? 'approval' : 'guard'}>
         <h3 id="approval-title">${contentText(context.locale, 'adminContent.imagery.approval.title')}</h3>
-        ${lazyJoin(context, version, (chunk) => chunk.joinReport(context, version))} ${rmseText(context, version)}
-        ${pairsText(context.locale, version)} ${costText(context, page, version)}
+        ${lazyJoin(context, version, (chunk) => chunk.joinReport(context, version))} ${namesReport(context, version)}
+        ${rmseText(context, version)} ${pairsText(context.locale, version)} ${costText(context, page, version)}
         ${
             guard === null
                 ? decision(context, page, version)

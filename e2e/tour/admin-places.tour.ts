@@ -91,6 +91,7 @@ test(
 
         // The texts: the description's preview shows its emphasis as text, never as markup from the field.
         await page.getByRole('textbox', { name: poisText(lang, 'adminContent.pois.field.titleRo') }).fill('Strada Lipscani');
+        await page.locator('hcm-poi-editor #yearStart').fill('1890');
         const description = page.getByRole('textbox', { name: poisText(lang, 'adminContent.pois.field.descriptionRo') });
         await description.fill('**Strada** negustorilor');
         await description.press('Tab');
@@ -295,6 +296,7 @@ test(
             .toEqual(['biserica', 'cladire', 'monument', 'piata', 'strada']);
         await page.getByRole('button', { name: poisText(lang, 'adminContent.map.tool.addCentre') }).click();
         await page.getByRole('textbox', { name: poisText(lang, 'adminContent.pois.field.titleRo') }).fill('Casa Capșa');
+        await page.locator('hcm-poi-editor #yearStart').fill('1890');
         await expect(editor.locator('#save-issue')).toHaveCount(0);
         await page.getByRole('button', { name: poisText(lang, 'adminContent.common.save'), exact: true }).click();
         await expect

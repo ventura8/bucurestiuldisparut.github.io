@@ -19,6 +19,10 @@
             "types": "./src/admin/worker/define.ts",
             "default": "./src/admin/worker/define.ts"
         },
+        "./admin/archive": {
+            "types": "./src/admin/archive/define.ts",
+            "default": "./src/admin/archive/define.ts"
+        },
         "./admin/worker/local": {
             "types": "./src/admin/worker/hcm-worker-local.ts",
             "default": "./src/admin/worker/hcm-worker-local.ts"
@@ -26,6 +30,10 @@
         "./admin/areas/*": {
             "types": "./src/admin/areas/*.ts",
             "default": "./src/admin/areas/*.ts"
+        },
+        "./admin/georef/marker-badge": {
+            "types": "./src/admin/georef/marker-badge.ts",
+            "default": "./src/admin/georef/marker-badge.ts"
         },
         "./start": {
             "types": "./src/start/hcm-start-page.ts",

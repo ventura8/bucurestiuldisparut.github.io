@@ -3,7 +3,7 @@
  * the handlers will get: validation and conflicts in the DocumentStore, create-only writes in the BlobStore, task
  * deduplication, scripted failures, and the scenario credentials of the outside services.
  */
-import { adminDocSchema, inviteDocSchema, ownerDocSchema, timestampFromDate } from '@hcm/shared';
+import { adminDocSchema, inviteDocSchema, jobDocSchema, ownerDocSchema, timestampFromDate } from '@hcm/shared';
 import { GOOGLE_TOKENS, MAPBOX_TOKENS, USGS_CREDENTIALS } from '@hcm/test-support/fakes';
 import { describe, expect, it } from 'vitest';
 
@@ -87,6 +87,18 @@ describe('createFakeDocumentStore', () => {
         await expect(store.query('admins', adminDocSchema, { orderBy: ['__name__', 'desc'] })).rejects.toThrow(
             'does not support descending key scans',
         );
+    });
+
+    it('badPath_aQueryOnAFieldExemptFromIndexingIsRefusedAsFirestoreRefusesIt @S-A33-BAD-UNINDEXED-QUERY', async () => {
+        const store = createFakeDocumentStore();
+
+        await expect(store.query('cities/c/jobs', jobDocSchema, { where: [['params.layerId', '==', 'l']] })).rejects.toThrow(
+            'FAILED_PRECONDITION',
+        );
+        await expect(store.count('cities/c/jobs', [['params.layerId', '==', 'l']])).rejects.toThrow('FAILED_PRECONDITION');
+        await expect(store.query('cities/c/jobs', jobDocSchema, { where: [['status', 'in', ['queued']]] })).resolves.toMatchObject({
+            documents: [],
+        });
     });
 
     it('happyPath_aQueryFiltersOrdersLimitsAndSplitsInvalidDocuments', async () => {

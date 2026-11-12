@@ -171,10 +171,12 @@ test(
         });
         await expect(shown.getByText(use)).toBeVisible();
         await expect(shown.getByText(text(lang, 'adminWorker.meter'))).toBeVisible();
-        // Finding 81: the panel's text lines up with the filter chips above it, inside the list pane's padding.
-        const chips = await page.locator('hcm-jobs-page .list-head .chips').boundingBox();
+        // Finding 81, batch 4: the panel is a full-width card above the list; its heading lines up with the card's own title.
+        const summary = await page.locator('hcm-jobs-page details[data-computer] > summary').boundingBox();
         const title = await shown.getByRole('heading', { name: text(lang, 'adminWorker.title') }).boundingBox();
-        expect(title?.x).toBeCloseTo(chips?.x ?? Number.NaN, 0);
+        const list = await page.locator('hcm-jobs-page hcm-list-detail').boundingBox();
+        expect(title?.x).toBeCloseTo((summary?.x ?? Number.NaN) + 16, 0);
+        expect((summary?.y ?? Number.NaN) + (summary?.height ?? 0)).toBeLessThanOrEqual(list?.y ?? Number.NaN);
         await expectStateSound(page, adminVisit('worker.panel-connected', lang));
 
         // Copy puts the command on the clipboard and says so in a polite region.

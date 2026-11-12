@@ -9,7 +9,9 @@
  * `held-out` alone says little off that path. No check of it may have been dropped as gross, and its tiles must span the frame
  * (S-A17-BAD-CHECKS-DROPPED, S-A17-BAD-UNMEASURED-AREA). A missing figure never approves. Otherwise it waits for Approve. M8
  * (`docs/research/M8-join-interfaces.md` §5): a frame made for a join never approves on its own, whether that join is live or
- * ended (half a city would go public), and a join has its own conditions, every one required: it has no georeference.
+ * ended (half a city would go public), and a join has its own conditions, every one required: it has no georeference. M25
+ * (`docs/research/M25-landsat.md` §5): a Landsat scene has none either; it approves on its own within a pixel of Sentinel-2 over a
+ * clear city it covers.
  */
 import {
     AUTO_MIN_MEASURED_PCT,
@@ -19,7 +21,11 @@ import {
     estimateComputeUnits,
     imagerySettingsOf,
     jobDocSchema,
+    landsatClear,
     layerVersionDocSchema,
+    mapThresholdM,
+    rightsAllowPublish,
+    type ArchiveReport,
     precisionOf,
     timestampFromDate,
     type Georef,
@@ -92,6 +98,23 @@ function provedWhole({ calibration }: LayerVersionDoc): boolean {
     return calibration !== undefined && CALIBRATION_CONDITIONS.every((condition) => condition(calibration));
 }
 
+/**
+ * What an archive series' placement must show to publish on its own (M20 §5), each condition on its own: a placement the pipeline
+ * made (never the owner's points alone), enough held-out checks within the threshold, none dropped as gross, the rival search
+ * clean, and the agreeing checks spanning the map's own extent.
+ */
+const ARCHIVE_CONDITIONS: readonly ((report: ArchiveReport, threshold: number) => boolean)[] = [
+    // Batch 4: a grid placed from its sheets' names alone is its owner's call, never the policy's.
+    (report) => report.method !== 'gcps' && report.method !== 'grid-names',
+    (report) => report.checkpointCount >= MIN_CHECKPOINTS && report.checksDropped === 0,
+    (report, threshold) => (report.checkpointRmseM ?? Number.POSITIVE_INFINITY) <= threshold,
+    (report) => report.rivalClean && report.measuredPct >= AUTO_MIN_MEASURED_PCT,
+];
+
+function archiveWithin(report: ArchiveReport, threshold: number): boolean {
+    return ARCHIVE_CONDITIONS.every((condition) => condition(report, threshold));
+}
+
 /** A seam the pipeline measured, corrected, and found closed. */
 function seamClosed(seam: JoinSeam): boolean {
     return seam.measured && seam.applied && (seam.afterRmseM ?? Number.POSITIVE_INFINITY) <= JOIN_MAX_SEAM_M;
@@ -110,22 +133,69 @@ function joinWithin(join: JoinReport, threshold: number): boolean {
     return JOIN_CONDITIONS.every((condition) => condition(join, threshold));
 }
 
-/** A version's own evidence: its georeference, or a join's report; neither means no evidence. */
+/**
+ * A version's own evidence: its georeference, a join's report, or (M25) a Landsat scene's: within a pixel of Sentinel-2 over a clear
+ * city that it covers (public domain: no rights to confirm); none means no evidence.
+ */
 function evidenceWithin(version: Rendered, threshold: number): boolean {
-    if (version.georef !== undefined) {
-        return measuredWithin(version.georef, threshold) && provedWhole(version) && frameCoversCity(version);
+    if (version.landsat !== undefined) {
+        return landsatClear(version.landsat) && frameCoversCity(version);
     }
+    return version.georef === undefined ? joinEvidenceWithin(version, threshold) : georefEvidenceWithin(version, version.georef, threshold);
+}
+
+/** A frame's fit within the threshold, proved whole, over the city. */
+function georefEvidenceWithin(version: Rendered, georef: Georef, threshold: number): boolean {
+    return measuredWithin(georef, threshold) && provedWhole(version) && frameCoversCity(version);
+}
+
+/** A join's report within the threshold; no report is no evidence. */
+function joinEvidenceWithin(version: Rendered, threshold: number): boolean {
     return version.join !== undefined && joinWithin(version.join, threshold);
+}
+
+/**
+ * The threshold the version answers to: the city's, or (M20, `docs/research/M20-import-local.md` §5) for a drawn map of an archive,
+ * 1 mm of its paper capped by the city's `mapThresholdMaxM`, none for a map of no known scale (it never publishes itself).
+ */
+function thresholdOf(version: LayerVersionDoc, settings: ImagerySettings): number | undefined {
+    if (version.origin !== 'archive') {
+        return settings.rmseThresholdM;
+    }
+    return mapThresholdM(settings.rmseThresholdM, version.archive?.scaleDenominator, settings.mapThresholdMaxM);
 }
 
 /** True when the version may be published without anyone's click. M16: a recalibration is first seen beside the current one, always. */
 function autoApproves(version: Rendered, settings: ImagerySettings): boolean {
+    if (version.origin === 'archive') {
+        return archiveApproves(version, settings);
+    }
     return settings.autoPublish && version.recalibration === undefined && evidenceWithin(version, settings.rmseThresholdM);
 }
 
-/** The checkpoint error a version answers for: its georeference's, or the worst frame's of a join. */
+/** M20 (§5, §7): a series publishes itself only with both switches on, its rights clear and its evidence within its own threshold. */
+function archiveApproves(version: Rendered, settings: ImagerySettings): boolean {
+    const threshold = thresholdOf(version, settings);
+    const report = version.archive;
+    return archiveAllowed(version, settings) && threshold !== undefined && report !== undefined && archiveWithin(report, threshold);
+}
+
+/** Both switches on (`autoPublish`, `mapAutoPublish`) and the series' rights clear. */
+function archiveAllowed(version: Rendered, settings: ImagerySettings): boolean {
+    return settings.autoPublish && settings.mapAutoPublish && rightsAllowPublish(version.rights);
+}
+
+/**
+ * The checkpoint error a version answers for: its georeference's, the worst frame's of a join, an archive series' blocked figure, or
+ * (M25) a Landsat scene's shift from Sentinel-2.
+ */
 function measuredRmseOf(version: LayerVersionDoc): number | undefined {
-    return version.georef?.checkpointRmseM ?? version.join?.checkpointRmseM;
+    return version.georef?.checkpointRmseM ?? reportedRmseOf(version) ?? version.landsat?.offsetM;
+}
+
+/** A version of many scans: the worst frame's of a join, or an archive series' blocked figure. */
+function reportedRmseOf(version: LayerVersionDoc): number | undefined {
+    return version.join?.checkpointRmseM ?? version.archive?.checkpointRmseM;
 }
 
 /** The version approved: by the policy (`auto`, with the error and the threshold it met) or by an admin. */
@@ -135,7 +205,7 @@ export function approved(version: LayerVersionDoc, by: string, now: Date, settin
         by,
         at: timestampFromDate(now),
         checkpointRmseM: settings === undefined ? undefined : measuredRmseOf(version),
-        thresholdM: settings?.rmseThresholdM,
+        thresholdM: settings === undefined ? undefined : thresholdOf(version, settings),
     });
     return { ...version, state: 'approved', approval, ...stampOf(by, now) };
 }

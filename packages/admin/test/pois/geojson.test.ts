@@ -18,7 +18,15 @@ const CONTEXT: ImportContext = {
     existing: new Map<string, PoiValue>([
         [
             'stavropoleos',
-            { category: 'biserici', geometry: POINT, title: { ro: 'Stavropoleos' }, links: [], photoIds: [], published: true },
+            {
+                category: 'biserici',
+                geometry: POINT,
+                title: { ro: 'Stavropoleos' },
+                yearStart: 1890,
+                links: [],
+                photoIds: [],
+                published: true,
+            },
         ],
     ]),
     fallbackCategory: null,
@@ -28,6 +36,7 @@ const STAVROPOLEOS: PoiValue = {
     category: 'biserici',
     geometry: POINT,
     title: { ro: 'Stavropoleos' },
+    yearStart: 1890,
     links: [],
     photoIds: [],
     published: true,
@@ -38,8 +47,10 @@ const CATEGORIES: CategoryItem[] = [
     { id: 'parcuri', label: { ro: 'Parcuri' }, icon: 'park', color: '#1f6f43', defaultOpacity: 0.9, order: 2 },
 ];
 
+/** A feature; one whose properties name neither year gets a start year, as every place needs one. */
 function feature(properties: Record<string, unknown>, geometry: unknown = POINT, id?: string): Record<string, unknown> {
-    return { type: 'Feature', ...(id === undefined ? {} : { id }), geometry, properties };
+    const dated = 'yearStart' in properties || 'yearEnd' in properties ? properties : { yearStart: 1890, ...properties };
+    return { type: 'Feature', ...(id === undefined ? {} : { id }), geometry, properties: dated };
 }
 
 describe('GeoJSON import: the file', () => {
@@ -183,6 +194,18 @@ describe('GeoJSON import: the plan', () => {
         const plan = planImport([feature({ category: 'biserici', title: '<img src=x onerror=alert(1)>' })], CONTEXT);
 
         expect(plan.created[0]?.value.title).toEqual({ ro: '<img src=x onerror=alert(1)>' });
+    });
+});
+
+describe('GeoJSON import: the years', () => {
+    it('badPath_aFeatureWithoutAYearIsRefusedAtItsStartYear', () => {
+        const plan = planImport(
+            [feature({ category: 'biserici', title: 'Fără an', yearStart: 'demult' }), feature({ category: 'biserici', title: 'Cu an' })],
+            CONTEXT,
+        );
+
+        expect(plan.refused).toEqual([{ number: 1, title: 'Fără an', reason: 'invalid', path: 'yearStart' }]);
+        expect(plan.created.map((place) => place.value.yearStart)).toEqual([1890]);
     });
 });
 

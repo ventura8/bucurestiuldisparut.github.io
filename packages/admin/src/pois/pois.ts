@@ -105,7 +105,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
         });
         this.#map = this.#newMap();
         this.#importer = new Importer({
-            ...{ store: services.store, cityId: services.cityId },
+            ...{ store: services.store, clock: services.clock, cityId: services.cityId },
             context: () => this.#context(),
             places: () => everyPlace(services),
             changed: (importing) => {

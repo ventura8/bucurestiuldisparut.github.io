@@ -60,6 +60,5 @@ export function compareUiProps(state: ViewerState, manifest: Manifest, compare: 
         layerId: compare.layerId,
         choices: compareChoices(state, manifest),
         credit: compareCredit(state, manifest, compare.layerId),
-        compactHeight: state.compactHeight,
     };
 }

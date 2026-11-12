@@ -72,6 +72,26 @@ describe('<hcm-layers-page>: the image and geometry tools', () => {
         expect(deepAll(group(element), 'a').map((link) => link.getAttribute('href'))).toEqual(['#/imagery/replace/corona']);
     });
 
+    it('happyPath_aLayerTheJoinOfItsDateReplacedSaysSoAndLinksTheJoin @S-A65-HAPPY-PUBLISHED-FRAMES', async () => {
+        const retired = layerDoc({
+            currentVersion: 'corona-v1',
+            published: false,
+            retired: { by: 'jn-1', at: { seconds: 1, nanoseconds: 0 } },
+        });
+        const { element } = await page('layers', area(layersState({ editor: editorOf(retired) })), { params: ['corona'] });
+        const note = deep(group(element), '[data-state="retired-layer"] a');
+
+        expect(note.getAttribute('href')).toBe('#/imagery/version/jn-1');
+        expect(note.textContent).toContain('Replaced by the joined layer of its date');
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_aLayerNoJoinReplacedHasNoRetiredNote', async () => {
+        const { element } = await page('layers', area(layersState({ editor: editorOf(layerDoc()) })), { params: ['corona'] });
+
+        expect(deepAll(group(element), '[data-state="retired-layer"]')).toEqual([]);
+    });
+
     it('happyPath_theCropSaysWhatToDoAndItsButtonsCallTheirIntents', async () => {
         const layers = area(layersState({ editor: editorOf(PROCESSED), crop: crop() }));
         const { element } = await page('layers', layers, { params: ['corona'] });

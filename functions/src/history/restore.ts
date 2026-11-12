@@ -43,16 +43,15 @@ export async function waitingLayerDeletes(deps: Pick<RestoreDeps, 'documents'>, 
     if (audited.entity !== 'layer') {
         return [];
     }
-    const jobs = await deps.documents.query(FIRESTORE_PATHS.jobs(audited.cityId), jobDocSchema, {
-        where: [
-            ['type', '==', 'layer-delete'],
-            ['params.layerId', '==', audited.entityId],
-        ],
+    // `jobs.params` is exempt from indexing (`firebase/firestore.indexes.json`): ask by `type`, match the layer here (lesson 557).
+    const deletes = await deps.documents.query(FIRESTORE_PATHS.jobs(audited.cityId), jobDocSchema, {
+        where: [['type', '==', 'layer-delete']],
     });
-    if (jobs.documents.some((job) => job.data.status === 'succeeded')) {
+    const jobs = deletes.documents.filter((job) => job.data.params['layerId'] === audited.entityId);
+    if (jobs.some((job) => job.data.status === 'succeeded')) {
         throw new ApiError('apiError.history.layerGone');
     }
-    return jobs.documents.filter((job) => !FINISHED.has(job.data.status)).map((job) => job.path);
+    return jobs.filter((job) => !FINISHED.has(job.data.status)).map((job) => job.path);
 }
 
 /**

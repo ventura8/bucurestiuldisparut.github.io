@@ -161,12 +161,51 @@ describe('<hcm-timeline>', () => {
     });
 });
 
+describe('<hcm-timeline> right to left', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_rightToLeftTheHorizontalArrowsFollowTheThumb', async () => {
+        // In Arabic or Hebrew the value grows to the left: Left moves the thumb left, to a later year.
+        const element = await timeline({ value: 1966 });
+        element.dir = 'rtl';
+        const events = recordEvents(element, 'hcm-year-change');
+
+        press(element, 'ArrowLeft');
+        press(element, 'ArrowRight');
+        press(element, 'ArrowUp');
+
+        expect(events.map((event) => event.detail)).toEqual([{ year: 1977 }, { year: 1966 }, { year: 1977 }]);
+    });
+
+    it('badPath_rightToLeftTheThumbAndAPressLandOnTheirStop', async () => {
+        // The review shots at 768 px, right to left: the thumb and the stops sat a whole width beside their place.
+        const element = await timeline({ value: 1977 });
+        element.dir = 'rtl';
+        await element.updateComplete;
+        const thumb = shadowQuery(element, '.thumb');
+        thumb.style.transition = 'none';
+        const tick = shadowQueryAll(element, '.stop .tick')[1]?.getBoundingClientRect();
+        const box = thumb.getBoundingClientRect();
+        expect(Math.abs((tick?.left ?? 0) + (tick?.width ?? 0) / 2 - (box.left + box.width / 2))).toBeLessThanOrEqual(1);
+
+        const events = recordEvents(element, 'hcm-year-change');
+        const track = shadowQuery(element, '.track');
+        const rect = track.getBoundingClientRect();
+        pointer(track, 'pointerdown', rect.left + 1, rect.top + 10);
+        pointer(window, 'pointerup', rect.left + 1, rect.top + 10);
+        expect(events.map((event) => event.detail)).toEqual([{ year: null }]);
+    });
+});
+
 describe('trackRatio', () => {
     it('happyPath_horizontalAndVerticalShares', () => {
         const rect = new DOMRect(100, 200, 200, 100);
 
         expect(trackRatio(rect, { clientX: 150, clientY: 0 }, false)).toBe(0.25);
         expect(trackRatio(rect, { clientX: 0, clientY: 225 }, true)).toBe(0.75);
+        expect(trackRatio(rect, { clientX: 150, clientY: 0 }, false, true)).toBe(0.75);
     });
 
     it('badPath_outsideOrEmptyTracksClamp', () => {
@@ -203,5 +242,86 @@ describe('<hcm-timeline> size', () => {
         element.value = 1966;
         await element.updateComplete;
         await expect.poll(() => thumb.getBoundingClientRect().bottom).toBeLessThanOrEqual(box.bottom);
+    });
+});
+
+/** A city with many layer years: 1964 to 1984 and today, twenty-two stops (the review rendered such a city, 2026-11-08). */
+const MANY = [...Array.from({ length: 21 }, (_, at) => 1964 + at), null];
+
+function meets(a: DOMRect, b: DOMRect): boolean {
+    return a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+}
+
+/** The labels of the stops other than the selected one that meet the pill or another label. */
+function crowdedLabels(element: HcmTimeline): string[] {
+    const thumb = shadowQuery(element, '.thumb').getBoundingClientRect();
+    const labels = shadowQueryAll(element, '.stop:not(.selected) .label').map((label) => ({
+        text: label.textContent,
+        box: label.getBoundingClientRect(),
+    }));
+    return labels
+        .filter(({ box }, at) => meets(box, thumb) || labels.some((other, otherAt) => otherAt !== at && meets(box, other.box)))
+        .map(({ text }) => text);
+}
+
+describe('<hcm-timeline> many years', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_aFewYearsFitWithoutScrolling', async () => {
+        const element = await timeline({ value: 1977 });
+
+        expect(element.scrollWidth).toBe(element.clientWidth);
+        expect(crowdedLabels(element)).toEqual([]);
+    });
+
+    it.each(['horizontal', 'vertical'] as const)(
+        'badPath_%s_whenTheYearsDoNotFitTheCardScrollsAndKeepsTheSelectedYearInView',
+        async (orientation) => {
+            // The review, 2026-11-08: twenty-two stops squeezed 17 px apart; the pill hid its neighbours and the labels
+            // ran into one illegible row, because the stops were shares of a card that never scrolled.
+            const element = await timeline({ stops: MANY, value: 1964, orientation });
+            const vertical = orientation === 'vertical';
+            for (const part of shadowQueryAll(element, '.thumb, .active')) {
+                part.style.transition = 'none';
+            }
+
+            expect(vertical ? element.scrollHeight > element.clientHeight : element.scrollWidth > element.clientWidth).toBe(true);
+            for (const key of ['End', 'Home', 'End']) {
+                press(element, key);
+                await element.updateComplete;
+                const view = element.getBoundingClientRect();
+                const thumb = shadowQuery(element, '.thumb');
+                await expect
+                    .poll(() => {
+                        const box = thumb.getBoundingClientRect();
+                        return box.left >= view.left && box.right <= view.right && box.top >= view.top && box.bottom <= view.bottom;
+                    })
+                    .toBe(true);
+                expect(crowdedLabels(element), `labels crowded after ${key}`).toEqual([]);
+            }
+        },
+    );
+
+    it('happyPath_aDragKeepsTheCardStillAndTheReleaseCentresTheYear', async () => {
+        // Snapping while a drag is on would move the track under the finger, and the next move would select a later year.
+        const element = await timeline({ stops: MANY, value: 1964 });
+        const track = shadowQuery(element, '.track');
+        const view = element.getBoundingClientRect();
+
+        pointer(track, 'pointerdown', view.right - 60, view.top + 30);
+        pointer(window, 'pointermove', view.right - 50, view.top + 30);
+        await element.updateComplete;
+        expect(element.hasAttribute('dragging')).toBe(true);
+        expect(element.value).not.toBe(1964);
+        await new Promise((resolve) => {
+            requestAnimationFrame(resolve);
+        });
+        expect(element.scrollLeft, 'no snap while dragging').toBe(0);
+
+        pointer(window, 'pointerup', view.right - 50, view.top + 30);
+        await element.updateComplete;
+        await expect.poll(() => element.scrollLeft).toBeGreaterThan(0);
     });
 });

@@ -7,8 +7,11 @@
 import type { CallableDeps } from '../api/callable.js';
 import type { Ports } from '../ports/index.js';
 import { approveFunction, rejectFunction } from './approve.js';
+import { archiveImportFunction } from './archive-import.js';
 import { browseFunction } from './browse.js';
+import { confirmRightsFunction } from './confirm-rights.js';
 import { cropFunction } from './crop.js';
+import { deleteVersionFunction } from './delete-version.js';
 import { importFunction } from './import.js';
 import { joinFunction } from './join.js';
 import { onJobWriteFunction } from './on-job-write.js';
@@ -36,6 +39,8 @@ export function imageryFunctions(getDeps: () => ImageryFamilyDeps, bucket?: stri
         import: importFunction(getDeps),
         approve: approveFunction(getDeps),
         reject: rejectFunction(getDeps),
+        confirmRights: confirmRightsFunction(getDeps),
+        deleteVersion: deleteVersionFunction(getDeps),
         choose: chooseFunction(getDeps),
         studioDone: studioDoneFunction(getDeps),
         saveGcps: saveGcpsFunction(getDeps),
@@ -46,6 +51,7 @@ export function imageryFunctions(getDeps: () => ImageryFamilyDeps, bucket?: stri
         previewUrl: previewUrlFunction(getDeps),
         recalibrate: recalibrateFunction(getDeps),
         runOn: runOnFunction(getDeps),
+        archiveImport: archiveImportFunction(getDeps),
         probeTiles: probeTilesFunction(getDeps),
         resumeGuard: resumeGuardFunction(getDeps),
         onJobWrite: onJobWriteFunction(getDeps),

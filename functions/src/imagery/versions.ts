@@ -20,6 +20,7 @@ import {
     type LayerVersionDoc,
     type LayerVersionState,
     type RankContext,
+    type TimestampLike,
 } from '@hcm/shared';
 
 import { compact } from '../api/objects.js';
@@ -153,6 +154,11 @@ export interface NewWork {
     readonly now: Date;
     /** M8: a job born waiting (`parts`: a join until its frames rendered), so nothing may claim it before its first dispatch. */
     readonly waitReason?: JobWaitReason;
+    /** M20 (`docs/research/M20-import-local.md` §1.1): an archive series runs on the owner's computer, and only there. */
+    readonly runOn?: 'local';
+    readonly localOnly?: true;
+    /** M20 (§1.3): when it counted against the day's new layers, if not at its creation (none while it waits for `daily`). */
+    readonly countedAt?: TimestampLike;
 }
 
 /** A `queued` job of `work`, stamped by its creator. */
@@ -165,7 +171,7 @@ function queuedJob(work: NewWork): JobDoc {
         createdAt: timestampFromDate(work.now),
         layerId: work.layerId,
         versionId: work.jobId,
-        ...pickDefined(work, ['waitReason']),
+        ...pickDefined(work, ['waitReason', 'runOn', 'localOnly', 'countedAt']),
         ...stampOf(work.createdBy, work.now),
     };
 }
@@ -196,6 +202,10 @@ function processingVersion(work: NewWork, fields: VersionFields): LayerVersionDo
         recalibration: fields.recalibration,
         refining: undefined,
         join: undefined,
+        archive: undefined,
+        landsat: undefined,
+        rights: fields.rights,
+        help: undefined,
         suggestions: undefined,
         crop: fields.crop,
         output: undefined,

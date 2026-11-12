@@ -17,7 +17,7 @@ import { defineCallable, type CallableDeps } from '../api/callable.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { refuseNewRasterJob } from './limits.js';
-import { requireCity, stampOf } from './records.js';
+import { pickDefined, requireCity, stampOf } from './records.js';
 import { markNotScanned } from './scene-rank.js';
 import { requireUsgs, usgsDownloads, withUsgs } from './usgs-session.js';
 import { createWork, jobIdFor, reserveLayerId, type NewWork } from './versions.js';
@@ -133,6 +133,8 @@ export interface ImportStart {
     readonly scene: UsgsSceneDoc;
     readonly createdBy: string;
     readonly now: Date;
+    /** Where it runs when the city's choice is `local` (`Placement`, `docs/research/M7-local-worker.md` §4.5). */
+    readonly runOn?: 'local';
 }
 
 /** The `usgs-import` job of a scene: its id and parameters, under `layerId`. */
@@ -146,6 +148,7 @@ export function importWork(start: ImportStart, layerId: string): NewWork {
         layerId,
         createdBy: start.createdBy,
         now,
+        ...pickDefined(start, ['runOn']),
     };
 }
 
@@ -167,9 +170,9 @@ async function imageryImport(deps: ImportDeps, caller: VerifiedCaller, request: 
     await requireCity(deps.documents, request.cityId);
     const scene = await importableScene(deps, request);
     const now = deps.clock.now();
-    await refuseNewRasterJob(deps.documents, now, request.cityId);
+    const placement = await refuseNewRasterJob(deps.documents, now, request.cityId);
     await confirmScanned(deps, request.cityId, scene);
-    const { jobId, layerId } = await startImport(deps, { cityId: request.cityId, scene, createdBy: caller.uid, now });
+    const { jobId, layerId } = await startImport(deps, { cityId: request.cityId, scene, createdBy: caller.uid, now, ...placement });
     deps.log.info('usgs scene imported', { uid: caller.uid, cityId: request.cityId, entityId: scene.entityId, jobId, layerId });
     return { jobId, versionId: jobId, layerId };
 }

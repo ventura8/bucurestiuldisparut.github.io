@@ -21,9 +21,10 @@ export const USGS_SCENE_STATUSES = ['candidate', 'ordered', 'available', 'import
 
 /**
  * The cameras of the three datasets: `corona2` (Declass 1: KH-4, KH-4A, KH-4B Corona, KH-5 Argon), `declassii` (Declass 2: KH-7 Gambit
- * and the KH-9 Hexagon mapping camera), `declassiii` (Declass 3: the KH-9 Hexagon panoramic camera).
+ * and the KH-9 Hexagon mapping camera), `declassiii` (Declass 3: the KH-9 Hexagon panoramic camera); M25: `landsat_tm_c2_l1` (Landsat 4
+ * and 5 TM, 30 m) and `landsat_etm_c2_l1` (Landsat 7 ETM+, pan-sharpened to 15 m).
  */
-export const SENSORS = ['KH-4', 'KH-4A', 'KH-4B', 'KH-5', 'KH-7', 'KH-9-mapping', 'KH-9-pan'] as const;
+export const SENSORS = ['KH-4', 'KH-4A', 'KH-4B', 'KH-5', 'KH-7', 'KH-9-mapping', 'KH-9-pan', 'L4-TM', 'L5-TM', 'L7-ETM'] as const;
 
 export type Sensor = (typeof SENSORS)[number];
 
@@ -57,6 +58,10 @@ export const SENSOR_SPECS: Readonly<Record<Sensor, SensorSpec>> = {
         machine: 'std',
     },
     'KH-9-pan': { dataset: 'declassiii', name: 'KH-9 Hexagon', resolutionM: 1, minzoom: 10, maxzoom: 17, machine: 'xl' },
+    // M25: tiles to the zoom of the pixel (z13 for 30 m, z14 for 15 m), nothing finer.
+    'L4-TM': { dataset: 'landsat_tm_c2_l1', name: 'Landsat 4 TM', resolutionM: 30, minzoom: 8, maxzoom: 13, machine: 'std' },
+    'L5-TM': { dataset: 'landsat_tm_c2_l1', name: 'Landsat 5 TM', resolutionM: 30, minzoom: 8, maxzoom: 13, machine: 'std' },
+    'L7-ETM': { dataset: 'landsat_etm_c2_l1', name: 'Landsat 7 ETM+', resolutionM: 15, minzoom: 8, maxzoom: 14, machine: 'std' },
 };
 
 /** The attribution every USGS layer carries (public domain; the credit is courtesy). */
@@ -92,6 +97,8 @@ export const RANK_REASONS = [
     'cloud',
     'cloudUnknown',
     'resolution',
+    // M25: a Landsat scene out of the leaf-on months (June to August) {month}.
+    'season',
 ] as const;
 
 export type RankReason = (typeof RANK_REASONS)[number];
@@ -99,9 +106,10 @@ export type RankReason = (typeof RANK_REASONS)[number];
 /**
  * Bumped when the weights, the parts or the reasons change: the harvest re-ranks every scene of an older version. 2: the
  * reasons that explain a low rank come first, and a city without layers says so (CR-M3-47). 3 (M8): a frame of the same
- * date as one in progress is its join's neighbour, never "a year the city already has".
+ * date as one in progress is its join's neighbour, never "a year the city already has". 4 (M25): a Landsat scene's cloud part
+ * counts its season.
  */
-export const RANKING_VERSION = 3;
+export const RANKING_VERSION = 4;
 
 /**
  * The weight of each part of the score (they add up to 100; each part is 0 to 1): free first, then how much of the city
@@ -109,15 +117,21 @@ export const RANKING_VERSION = 3;
  */
 export const RANKING_WEIGHTS = { free: 30, coverage: 25, targetYear: 15, newYear: 10, cloud: 10, resolution: 10 } as const;
 
+/** USGS's browse server, and (M25) LandsatLook's browse of one Landsat product. */
+const BROWSE_ADDRESSES: readonly RegExp[] = [
+    /^https:\/\/ims\.cr\.usgs\.gov\/(?:browse|thumbnail)\/[\w./-]{1,300}\.(?:jpe?g|png|JPE?G|PNG)$/,
+    /^https:\/\/landsatlook\.usgs\.gov\/gen-browse\?size=(?:rrb|thumb)&type=refl&product_id=L[CETMO]0\d_\w{20,60}$/,
+];
+
 /**
  * A browse image's address at USGS (public, never signed): only `ims.cr.usgs.gov`, a browse or thumbnail path, a JPEG
- * or PNG name, no query and no `..`. The harvest fetches nothing else (no server-side request to an address from data).
+ * or PNG name, no query and no `..`; M25: or LandsatLook's browse of one Landsat product (**UNVERIFIED** shape until the first real
+ * search: `docs/research/M25-landsat.md` §7). The harvest fetches nothing else (no server-side request to an address from data).
  */
 export const usgsBrowseUrlSchema = z
     .string()
     .max(400)
-    .regex(/^https:\/\/ims\.cr\.usgs\.gov\/(?:browse|thumbnail)\/[\w./-]{1,300}\.(?:jpe?g|png|JPE?G|PNG)$/)
-    .refine((url) => !url.includes('..'), coded('validation.format'));
+    .refine((url) => BROWSE_ADDRESSES.some((address) => address.test(url)) && !url.includes('..'), coded('validation.format'));
 
 const reasonParamsSchema = z.record(z.string().regex(/^[a-z][A-Za-z]{0,19}$/), z.string().max(40));
 

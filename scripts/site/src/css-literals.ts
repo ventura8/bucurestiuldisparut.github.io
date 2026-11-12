@@ -7,9 +7,11 @@ import ts from 'typescript';
  * bundle (2026-10-18), and the line breaks and indentation left after that about 6 KB gzip (M8, 2026-11-06).
  *
  * `css`: outside quoted strings, comments go, runs of whitespace become one space, and the whitespace around `{`, `}`, `;`,
- * `,`, `>`, `/` and `!` and after `:` goes, and so does the `;` before a block's `}`; a quoted string and an escaped
- * character are kept as they are. A whitespace at a template's interpolation (`${...}`) stays, as the value there is not
- * known.
+ * `,`, `>`, `/` and `!`, after `:` and `(` and before `)` goes, and so does the `;` before a block's `}`; a number's leading
+ * zero after a colon, a parenthesis, a comma, a slash or a space goes (`0.5` is `.5`), and an attribute selector's value
+ * that is an identifier loses its quotes (`[a='b']` is `[a=b]`: the engine's IIFE was 81 bytes gzip over its budget on
+ * 2026-11-08, and these saved 50); any other quoted string and an escaped character are kept as they are. A whitespace at
+ * a template's interpolation (`${...}`) stays, as the value there is not known.
  *
  * `html`: a run of whitespace with a line break becomes one space, which reads the same in a text and between attributes,
  * and goes before a `>` (the end of a tag Prettier broke over two lines). A template with a `<pre>` or a `<textarea>`, whose
@@ -44,9 +46,12 @@ interface Piece {
     readonly escape: boolean;
 }
 
-/** Whether whitespace next to these characters has no meaning: around a brace, a semicolon, a comma, after a colon. */
+/**
+ * Whether whitespace next to these characters has no meaning: around a brace, a semicolon, a comma, after a colon, inside
+ * parentheses (not after a `)`: `:host(.a) .b` is a descendant).
+ */
 function isTight(before: string, after: string): boolean {
-    return TIGHT.has(before) || TIGHT.has(after) || before === ':';
+    return TIGHT.has(before) || TIGHT.has(after) || before === ':' || before === '(' || after === ')';
 }
 
 /** Whether whitespace between `before` and `after` can go (`before` or `after` is '' at the part's edge). */
@@ -103,12 +108,33 @@ function blankText(before: string, after: string, edge: Edge): string {
     return droppable(before, after, edge) ? '' : ' ';
 }
 
+/** A CSS identifier: what an attribute selector's value may be without quotes. */
+const IDENTIFIER = /^[A-Za-z_][\w-]*$/;
+
+/** What may stand before a number whose leading zero can go: a colon, a parenthesis, a comma, a slash or a space. */
+const BEFORE_NUMBER = /^[:(,/ ]$/;
+
+/** A quoted string: without its quotes as an attribute selector's identifier value (`[a='b']`), else as it is. */
+function stringText(raw: string, at: number, text: string, last: string): string {
+    const inner = text.slice(1, -1);
+    return last === '=' && raw.charAt(at + text.length) === ']' && IDENTIFIER.test(inner) ? inner : text;
+}
+
+/** A character, or nothing for a number's leading zero (`0.5` is `.5`) after what may stand before a number. */
+function charText(raw: string, at: number, text: string, last: string): string {
+    return text === '0' && BEFORE_NUMBER.test(last) && /^\.\d/.test(raw.slice(at + 1, at + 3)) ? '' : text;
+}
+
 /** What the piece at `at` writes, after `last` (the character written before it): see `minified`. */
 function pieceText(raw: string, at: number, piece: Piece, context: { readonly last: string; readonly edge: Edge }): string {
     if (isLastSemicolon(raw, at, context.last)) {
         return '';
     }
-    return piece.blank ? blankText(context.last, raw.charAt(at + piece.text.length), context.edge) : piece.text;
+    if (piece.blank) {
+        return blankText(context.last, raw.charAt(at + piece.text.length), context.edge);
+    }
+    const kept = isQuote(piece.text.charAt(0)) ? stringText : charText;
+    return kept(raw, at, piece.text, context.last);
 }
 
 /**

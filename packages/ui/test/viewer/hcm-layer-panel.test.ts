@@ -174,24 +174,6 @@ describe('<hcm-layer-panel>', () => {
         expect(customElements.get(HCM_LAYER_PANEL_TAG)).toBe(HcmLayerPanel);
     });
 
-    it('happyPath_theCompareButtonOpensAndClosesCompare', async () => {
-        const element = await panel({ mode: 'docked', canCompare: true });
-        const events = recordEvents(element, 'hcm-compare-toggle');
-
-        await page.getByRole('button', { name: 'Compară' }).click();
-        element.comparing = true;
-        await element.updateComplete;
-        await page.getByRole('button', { name: 'Închide comparația' }).click();
-
-        expect(events).toHaveLength(2);
-    });
-
-    it('badPath_noCompareButtonWithoutHistoricalLayersOrAMap', async () => {
-        await panel({ mode: 'docked' });
-
-        await expect.element(page.getByRole('button', { name: 'Compară' })).not.toBeInTheDocument();
-    });
-
     describe('Map labels (V31)', () => {
         const available = ['streets', 'pois'] as const;
         const shown = { streets: true, pois: false };
@@ -199,11 +181,11 @@ describe('<hcm-layer-panel>', () => {
         it('happyPath_aSwitchPerLabelTheBasemapHasWithTheirState', async () => {
             const element = await panel({ mode: 'docked', labels: { shown, available } });
 
-            expect(shadowText(element)).toContain('Etichetele hărții');
+            expect(shadowText(element)).toContain('Etichete hartă');
             expect(shadowQuery(element, '[role="group"]').getAttribute('aria-labelledby')).toBe('map-labels');
             expect(switches(element)).toEqual([
-                { label: 'Numele străzilor', checked: true },
-                { label: 'Puncte de interes', checked: false },
+                { label: 'Străzi', checked: true },
+                { label: 'POI', checked: false },
             ]);
         });
 
@@ -220,19 +202,19 @@ describe('<hcm-layer-panel>', () => {
 
         it('happyPath_theNoteTellsThemFromTheCitysPlacesOnlyWhenTheCityHasPlaces', async () => {
             const withPlaces = await panel({ mode: 'docked', locale: 'en', labels: { shown, available } });
-            expect(shadowText(withPlaces)).toContain("The Places above are this site's own");
+            expect(shadowText(withPlaces)).toContain("Places below are this site's, with their own switches");
 
             const city = testManifest();
             const without = { ...city, poiCategories: [], pois: [] };
             const element = await panel({ mode: 'docked', locale: 'en', manifest: without, labels: { shown, available } });
-            expect(shadowText(element)).toContain("Text on today's map");
+            expect(shadowText(element)).toContain("Today's map labels");
             expect(shadowText(element)).not.toContain('Places above');
         });
 
         it('happyPath_onlyTheKindTheBasemapHasGetsASwitch', async () => {
             const element = await panel({ mode: 'docked', labels: { shown, available: ['pois'] } });
 
-            expect(switches(element)).toEqual([{ label: 'Puncte de interes', checked: false }]);
+            expect(switches(element)).toEqual([{ label: 'POI', checked: false }]);
         });
 
         it('badPath_aBasemapWithoutThePropertiesOrNoMapHasNoGroup', async () => {
@@ -242,5 +224,54 @@ describe('<hcm-layer-panel>', () => {
                 expect(element.shadowRoot?.querySelector('.labels')).toBeNull();
             }
         });
+    });
+});
+
+describe('<hcm-layer-panel> pinned Compare and map labels', () => {
+    beforeAll(() => {
+        defineKitDoubles();
+        defineHcmLayerPanel();
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_theCompareButtonOpensAndClosesCompare', async () => {
+        const element = await panel({ mode: 'docked', canCompare: true });
+        const events = recordEvents(element, 'hcm-compare-toggle');
+
+        await page.getByRole('button', { name: 'Compară' }).click();
+        element.comparing = true;
+        await element.updateComplete;
+        await page.getByRole('button', { name: 'Închide comparația' }).click();
+
+        expect(events).toHaveLength(2);
+    });
+
+    it('happyPath_compareAndMapLabelsSitPinnedAboveTheOverlayList', async () => {
+        const element = await panel({
+            mode: 'docked',
+            canCompare: true,
+            labels: { shown: { streets: true, pois: true }, available: ['streets', 'pois'] },
+        });
+        const pinned = element.shadowRoot?.querySelector('.pinned');
+        const list = element.shadowRoot?.querySelector('hcm-overlay-list');
+
+        expect(pinned?.querySelector('.compare')).not.toBeNull();
+        expect(pinned?.querySelector('.labels')).not.toBeNull();
+        expect(pinned?.compareDocumentPosition(list ?? pinned) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
+    it('badPath_noCompareButtonWithoutHistoricalLayersOrAMap', async () => {
+        await panel({ mode: 'docked' });
+
+        await expect.element(page.getByRole('button', { name: 'Compară' })).not.toBeInTheDocument();
+    });
+
+    it('badPath_withoutCompareOrMapLabelsThereIsNoPinnedStrip', async () => {
+        const element = await panel({ mode: 'docked', canCompare: false, labels: null });
+
+        expect(element.shadowRoot?.querySelector('.pinned')).toBeNull();
     });
 });

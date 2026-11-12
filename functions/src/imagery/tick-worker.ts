@@ -22,9 +22,16 @@ import { stampOf, IMAGERY_WRITER, versionIdOf } from './records.js';
 
 const MINUTE_MS = 60_000;
 
-/** A local job still waiting for the computer, not yet marked, untouched for `WORKER_WAIT_MINUTES`. */
+function waitsForWorker(job: JobDoc): boolean {
+    return job.status === 'queued' && job.runOn === 'local' && job.waitReason === 'worker';
+}
+
+/**
+ * A local job still waiting for the computer, not yet marked, untouched for `WORKER_WAIT_MINUTES`. A local-only job (an archive's
+ * series, whose files are only on the computer) is never offered the cloud: `imagery.runOn` would refuse it (`localOnly`).
+ */
 function overdue(job: JobDoc, now: Date): boolean {
-    const waiting = job.status === 'queued' && job.runOn === 'local' && job.waitReason === 'worker';
+    const waiting = waitsForWorker(job) && job.localOnly !== true;
     return (
         waiting &&
         job.workerOverdueAt === undefined &&

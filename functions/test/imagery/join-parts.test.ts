@@ -109,6 +109,30 @@ describe('the dispatcher and a join', () => {
         await expect(dispatchJob(world.deps, CITY, JOIN)).resolves.toBe('started');
     });
 
+    it.each([
+        [
+            'published as its own layer',
+            { state: 'published' as const, mapbox: { tilesetId: 'a.b', origin: 'mts' as const, publishedAt: at(NOW) } },
+        ],
+        ['approved', { state: 'approved' as const, approval: { auto: false, by: 'u-admin', at: at(NOW) } }],
+        ['publishing', { state: 'publishing' as const, approval: { auto: false, by: 'u-admin', at: at(NOW) } }],
+    ])('happyPath_aFrame_%s_servesTheJoin_liveFeb1972 @S-A65-HAPPY-PUBLISHED-FRAMES', async (_name, state) => {
+        const world = await heldWorld(state);
+
+        await expect(dispatchJob(world.deps, CITY, JOIN)).resolves.toBe('started');
+    });
+
+    it('badPath_aFrameANewerJoinStampedIsTaken_notRetryable @S-A65-BAD-PART-TAKEN', async () => {
+        const world = await heldWorld({ partOf: 'jn-newer' });
+
+        await expect(dispatchJob(world.deps, CITY, JOIN)).resolves.toBe('failed');
+
+        expect(await readJob(world, JOIN)).toMatchObject({
+            status: 'failed',
+            error: { code: 'apiError.imagery.joinPartTaken', params: { frame: F039 } },
+        });
+    });
+
     it('happyPath_aJoinForTheComputerWaitsForAWorkerOnceItsFramesAreThere', async () => {
         const world = await heldWorld();
         await seedJob(world, JOIN, { ...(await requireJob(world, JOIN)), runOn: 'local' });
@@ -122,10 +146,7 @@ describe('the dispatcher and a join', () => {
         ['cancelled', { state: 'cancelled' as const, output: undefined }],
         ['failed', { state: 'failed' as const, output: undefined, error: { code: 'apiError.imagery.referenceUnavailable' as const } }],
         ['joined into another', { state: 'joined' as const }],
-        [
-            'published as its own layer',
-            { state: 'published' as const, mapbox: { tilesetId: 'a.b', origin: 'mts' as const, publishedAt: at(NOW) } },
-        ],
+        ['superseded', { state: 'superseded' as const, mapbox: { tilesetId: 'a.b', origin: 'mts' as const, publishedAt: at(NOW) } }],
     ])('badPath_aFrame_%s_failsTheJoin_namingIt @S-A65-BAD-PART-GONE', async (_name, ended) => {
         const world = await heldWorld(ended);
 

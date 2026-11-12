@@ -1,13 +1,16 @@
 /**
  * The georeferencer's lazy chunk (the admin's `georef-extras-<hash>.js`; `extras.ts` fetches it, DECISIONS-for-review.md §110): the map
  * a version publishes from its camera's lattice and, over terrain, through its RPC over its heights (M15, `terrainTransform` of
- * `@hcm/shared`), and Snap my points (M16, `snap.ts`), which most versions never need, so the `georef` chunk keeps its budget.
+ * `@hcm/shared`), Snap my points (M16, `snap.ts`), which most versions never need, and the linked views (`linked-views.ts`), fetched
+ * once a fit exists, so the `georef` chunk keeps its budget.
  */
 import { fitTransform, terrainTransform, type FittedTransform, type Gcp, type Georef } from '@hcm/shared';
 
 import type { ContentServices } from '../content/services.js';
 import type { OwnFit } from './fit-view.js';
 import { roughPointsOf, snapped, type Snapped } from './snap.js';
+
+export { ViewLink } from './linked-views.js';
 
 /** The map a lattice's nodes describe, as the warp renders it: a thin-plate spline through them. */
 function latticeOf(lattice: NonNullable<Georef['lattice']>): FittedTransform | null {

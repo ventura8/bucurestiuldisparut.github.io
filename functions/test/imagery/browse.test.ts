@@ -31,7 +31,10 @@ describe('imagery.browse', () => {
 
         expect(world.deps.blobs.object('private', COPY)?.options).toMatchObject({ contentType: 'image/jpeg', ifGenerationMatch: 0 });
         expect(await readScene(world, ENTITY)).toMatchObject({ browse: { state: 'copied', path: COPY, sourceUrl: SOURCE } });
-        expect(world.remote.recorder.argsOf('get')[0]?.[1]).toMatchObject({ allowedHosts: ['ims.cr.usgs.gov'], maxBytes: 5_000_000 });
+        expect(world.remote.recorder.argsOf('get')[0]?.[1]).toMatchObject({
+            allowedHosts: ['ims.cr.usgs.gov', 'landsatlook.usgs.gov'],
+            maxBytes: 5_000_000,
+        });
     });
 
     it('happyPath_aCopyThatExistsIsReadWithoutAskingUsgs', async () => {

@@ -21,8 +21,11 @@ import type { DocumentReader, DocumentStore, StoredDocument } from '../ports/doc
 const ENDED: ReadonlySet<LayerVersionState> = new Set(ENDED_VERSION_STATES);
 /** The states of a frame that is, or is about to be, a layer of its own. */
 export const ON_ITS_LAYER: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>(['published', 'approved', 'publishing']);
-/** The states in which a rendered frame is ready for its join. */
-const READY: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>(['awaiting_approval', 'published']);
+/**
+ * The states in which a rendered frame is ready for its join. Batch 4 (`docs/research/M8-join-interfaces.md` §5.1): a frame on its way
+ * to, or on, a layer of its own serves too; that layer is retired when the join publishes (`finalize-join.ts`).
+ */
+const READY: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>(['awaiting_approval', 'approved', 'publishing', 'published']);
 
 /** A version not ended; only such a join holds its frames. */
 function isLiveJoin(join: LayerVersionDoc | undefined): join is LayerVersionDoc {
@@ -63,24 +66,43 @@ export async function refuseHeldPart(reader: DocumentReader, cityId: string, par
     }
 }
 
-export type PartsReady = { readonly kind: 'go' } | { readonly kind: 'hold' } | { readonly kind: 'gone'; readonly frame: string };
+/** `taken`: a newer join stamped the frame (its own refusal, `apiError.imagery.joinPartTaken`); `gone`: no usable version is left. */
+export type PartsReady =
+    | { readonly kind: 'go' }
+    | { readonly kind: 'hold' }
+    | { readonly kind: 'gone'; readonly frame: string }
+    | { readonly kind: 'taken'; readonly frame: string };
 
 export const GO: PartsReady = { kind: 'go' };
 const HOLD: PartsReady = { kind: 'hold' };
 
-/** A frame that can never serve this join: ended, published as a layer other than the join's, or taken by a newer join. */
-function partGone(part: LayerVersionDoc, joinId: string, job: JobDoc): boolean {
-    if (part.partOf !== joinId) {
-        return true;
-    }
-    return part.state === 'published' ? part.layerId !== job.layerId : ENDED.has(part.state);
+/**
+ * A frame that can never serve this join: its version ended (rejected, failed, cancelled, superseded). Batch 4: published, on the
+ * join's layer or a layer of its own, it serves (live 2026-11-09: a frame approved while its join waited failed the join).
+ */
+function partGone(part: LayerVersionDoc): boolean {
+    return part.state !== 'published' && ENDED.has(part.state);
 }
 
-function partReady(part: LayerVersionDoc, joinId: string, job: JobDoc): PartsReady {
-    if (partGone(part, joinId, job)) {
+function partReady(part: LayerVersionDoc, joinId: string): PartsReady {
+    if (part.partOf !== joinId) {
+        return { kind: 'taken', frame: frameName(part) };
+    }
+    if (partGone(part)) {
         return { kind: 'gone', frame: frameName(part) };
     }
     return READY.has(part.state) && part.output !== undefined ? GO : HOLD;
+}
+
+/** A frame that can never serve the join: taken by a newer join, or without a usable version. */
+export function isRefused(ready: PartsReady): ready is Extract<PartsReady, { readonly frame: string }> {
+    return ready.kind === 'gone' || ready.kind === 'taken';
+}
+
+/** The refusal a frame that cannot serve its join answers: taken by a newer join, or without a usable version. */
+export function partRefusal(ready: Extract<PartsReady, { readonly frame: string }>): ApiError {
+    const code = ready.kind === 'taken' ? 'apiError.imagery.joinPartTaken' : 'apiError.imagery.joinPartGone';
+    return new ApiError(code, { frame: ready.frame });
 }
 
 async function partStateOf(
@@ -94,8 +116,9 @@ async function partStateOf(
 }
 
 /**
- * A join's frames: `go` once all are rendered and waiting or published, `gone` (naming the frame) as soon as one can no longer
- * serve, also because a newer join stamped it (a failed join frees its frames, and its retry must not take them back), else `hold`. Parameters that do not parse name no frame the job can ever read, which is `gone` too.
+ * A join's frames: `go` once all are rendered and waiting, approved or published, `taken` when a newer join stamped one (a failed join
+ * frees its frames, and its retry must not take them back), `gone` (naming the frame) as soon as one can no longer serve, else `hold`.
+ * Parameters that do not parse name no frame the job can ever read, which is `gone` too.
  */
 export async function partsReady(reader: DocumentReader, cityId: string, joinId: string, job: JobDoc): Promise<PartsReady> {
     const params = validate(layerJoinParamsSchema, job.params);
@@ -104,10 +127,10 @@ export async function partsReady(reader: DocumentReader, cityId: string, joinId:
     }
     const states = await Promise.all(
         params.value.parts.map(({ versionId }) =>
-            partStateOf(reader, FIRESTORE_PATHS.layerVersion(cityId, versionId), versionId, (part) => partReady(part, joinId, job)),
+            partStateOf(reader, FIRESTORE_PATHS.layerVersion(cityId, versionId), versionId, (part) => partReady(part, joinId)),
         ),
     );
-    return states.find((state) => state.kind === 'gone') ?? states.find((state) => state.kind === 'hold') ?? GO;
+    return states.find(isRefused) ?? states.find((state) => state.kind === 'hold') ?? GO;
 }
 
 /** The newest first. */

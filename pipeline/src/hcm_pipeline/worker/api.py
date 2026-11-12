@@ -28,6 +28,8 @@ STEP: Final = "worker-step"
 URLS: Final = "worker-urls"
 END: Final = "worker-end"
 PAIR: Final = "worker-pair"
+# M20 (docs/research/M20-import-local.md §2.4): a local archive's scan report.
+ARCHIVE_REPORT: Final = "worker-archiveReport"
 NOT_HOLDER: Final = "apiError.worker.notHolder"
 REFUSED: Final = "apiError.worker.refused"
 REVOKED: Final = "apiError.worker.revoked"

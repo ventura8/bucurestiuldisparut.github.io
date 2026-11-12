@@ -471,6 +471,14 @@ describe('<hcm-run-place>', () => {
         expect(await axeViolations(element)).toEqual([]);
     });
 
+    it('badPath_aLocalOnlyJobIsNeverOfferedTheCloud @S-A121-BAD-LOCAL-ONLY-CLOUD', async () => {
+        const waiting = await place(new FakeHost(view({ job: job({ runOn: 'local', waitReason: 'worker', localOnly: true }) })));
+        expect(deepText(waiting)).toContain(t('en', 'adminWorker.waitWorker'));
+        expect(deepAll(waiting, 'hcm-button')).toHaveLength(0);
+        const queued = await place(new FakeHost(view({ job: job({ runOn: 'local', waitReason: null, localOnly: true }) })));
+        expect(deepAll(queued, 'hcm-button')).toHaveLength(0);
+    });
+
     it('badPath_aRunningJobOrNoneShowsNothing', async () => {
         const host = new FakeHost(view({ job: job({ status: 'running' }) }));
         expect(deepText(await place(host))).toBe('');

@@ -18,7 +18,7 @@ import {
 import type { PictureTriangle } from '../imagery/files.js';
 
 /** The warped canvas's long side, in pixels. */
-export const WARP_MAX_SIDE = 1024;
+export const WARP_MAX_SIDE = 3072;
 
 /** Quads per side of the mesh: enough to bend through a second-order fit or a spline. */
 export const WARP_CELLS = 16;

@@ -4,7 +4,7 @@
  * footprint, coverage and rank, the best browse images copied; a failing dataset spares the others; an address outside
  * USGS's browse host is never fetched; USGS's failures become the Imagery area's codes, and the key is always logged out.
  */
-import { BROWSE_PREFETCH, FIRESTORE_PATHS, RANKING_VERSION, RASTER_PATHS, harvestStateDocSchema } from '@hcm/shared';
+import { BROWSE_PREFETCH, FIRESTORE_PATHS, RANKING_VERSION, RASTER_PATHS, USGS_DATASETS, harvestStateDocSchema } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { searchFunction } from '../../src/imagery/search.js';
@@ -172,7 +172,11 @@ describe('imagery.search', () => {
             'corona2',
             'declassii',
             'declassiii',
+            'landsat_tm_c2_l1',
+            'landsat_etm_c2_l1',
         ]);
+        // M25: a Landsat dataset is searched in its summer months under its cloud cap.
+        expect(world.scenes.recorder.argsOf('search').at(-1)?.[1]).toMatchObject({ months: [5, 6, 7, 8, 9], maxCloud: 40 });
     });
 
     it('happyPath_aSecondSearchUpdatesKeepsTheAdminsTriageAndNeverDuplicates @S-A11-HAPPY-HARVEST', async () => {
@@ -239,7 +243,7 @@ describe('imagery.search: failures', () => {
         ['every dataset failing', 'unavailable', 'apiError.usgs.unavailable'],
     ] as const)('badPath_noDatasetAnsweringIsNotAnEmptyArea_%s @S-A11-BAD-USGS-UNAVAILABLE', async (_case, failure, code) => {
         const world = await readyWorld(NOW, records());
-        for (const dataset of ['corona2', 'declassii', 'declassiii']) {
+        for (const dataset of USGS_DATASETS) {
             world.scenes.failing.set(dataset, new UpstreamError('usgs', failure, { status: 503 }));
         }
 
@@ -259,7 +263,7 @@ describe('imagery.search: failures', () => {
         ['answers nobody can read', new UpstreamError('usgs', 'invalid', { status: 500 }), 'apiError.usgs.unavailable'],
     ])('badPath_whatNoDatasetAnsweringSays_%s @S-A11-BAD-USGS-UNAVAILABLE', async (_case, error, code) => {
         const world = await readyWorld(NOW, records());
-        for (const dataset of ['corona2', 'declassii', 'declassiii']) {
+        for (const dataset of USGS_DATASETS) {
             world.scenes.failing.set(dataset, error);
         }
 

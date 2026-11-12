@@ -25,5 +25,10 @@ export const START_STATES = {
         title: 'Start your map: the provider could not be read, said apart from not yet, and the admin’s address',
         visit: 'specs/start/start.spec.ts',
     },
+    'start.privacy': {
+        title: 'Start your map: the privacy policy, Romanian then English, linked from the home page',
+        visit: 'specs/start/legal.spec.ts',
+    },
+    'start.terms': { title: 'Start your map: the terms of service, Romanian then English', visit: 'specs/start/legal.spec.ts' },
     'start.done': { title: 'Start your map: the admin is published, the address and what comes next', visit: 'specs/start/start.spec.ts' },
 } as const;

@@ -4,7 +4,8 @@
  * Find (the ranked scenes, their filters and the search), Work (the versions in progress and those waiting for the
  * admin) and Upload; the detail pane holds the page's one map (the footprints and the selected scene's browse image, or
  * a version's preview) above the open scene or version. While the budget guard pauses the raster work the list pane
- * says so, with the spend, and offers Resume processing (CR-M3-47). Reject, Dismiss, Pay, Cancel and Resume ask first.
+ * says so, with the spend, and offers Resume processing (CR-M3-47). Reject, Dismiss, Pay, Cancel, Resume and Delete this version ask
+ * first; a deleted version's page returns to the list.
  */
 import type { Locale, PublishChoice } from '@hcm/shared';
 import { html, type PropertyValues, type TemplateResult } from 'lit';
@@ -13,6 +14,7 @@ import { MAPBOX_GL_CSS_URL } from '../../map/mapbox-loader.js';
 import type { AdminRouteIdPort } from '../admin-port.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
 import { AreaPage } from '../editing/area-page.js';
+import { cityRoleOfState } from '../shell/city-role.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
 import type { ImageryContext, ImageryQuestion } from './context.js';
@@ -42,11 +44,6 @@ const QUESTIONS = {
         headline: 'adminContent.imagery.confirm.reject',
         body: 'adminContent.imagery.confirm.rejectBody',
         confirm: 'adminContent.imagery.reject',
-    },
-    dismiss: {
-        headline: 'adminContent.imagery.confirm.dismiss',
-        body: 'adminContent.imagery.confirm.dismissBody',
-        confirm: 'adminContent.imagery.dismiss',
     },
     resume: {
         headline: 'adminContent.imagery.confirm.resume',
@@ -79,6 +76,12 @@ const QUESTIONS = {
         body: 'adminContent.imagery.confirm.rejectRecalibrationBody',
         confirm: 'adminContent.imagery.reject',
     },
+    // A version that never reached the map goes for good: the question says what goes and that the originals on the owner's computer stay.
+    deleteVersion: {
+        headline: 'adminContent.imagery.confirm.deleteVersion',
+        body: 'adminContent.imagery.confirm.deleteBody',
+        confirm: 'adminContent.imagery.deleteVersion',
+    },
 } as const;
 
 class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
@@ -93,6 +96,8 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
     declare mapCss: string;
     /** The upload whose version the page opened. */
     #opened: string | null = null;
+    /** M20: the `archive` chunk's elements were asked for. */
+    #archiveAsked = false;
 
     constructor() {
         super();
@@ -109,12 +114,24 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
         this.#follow();
     }
 
-    /** A finished upload opens its version. */
+    /** A finished upload opens its version; the Upload view or an archive's report first registers the `archive` chunk's elements. */
     #follow(): void {
         const view = this.view;
         if (view !== null) {
             this.#followUpload(view.upload);
+            this.#askArchive(view);
         }
+    }
+
+    #askArchive(view: ImageryViewState): void {
+        if (!this.#archiveAsked && showsArchive(view)) {
+            this.#archiveAsked = true;
+            void this.#archiveElements().catch(() => undefined);
+        }
+    }
+
+    async #archiveElements(): Promise<void> {
+        await this.intents?.archiveElements();
     }
 
     #followUpload(upload: ImageryViewState['upload']): void {
@@ -152,6 +169,7 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
     #context(view: ImageryViewState): ImageryContext {
         return {
             ...{ locale: this.locale, view, intents: this.intents, readOnly: this.readOnly, app: this.app },
+            owner: cityRoleOfState(this.state) === 'owner',
             href: (params) => this.href(params),
             go: (params) => {
                 this.go(params);
@@ -205,7 +223,15 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
         if (view.tab === 'work') {
             return workView(context);
         }
-        return chunkTemplate(context, UPLOAD_PANEL_CHUNK, ({ uploadPanel }) =>
+        const archive = html`<hcm-archive-panel
+            class="pane"
+            .app=${context.app}
+            .locale=${context.locale}
+            @hcm-archive-arrived=${(event: Event) => {
+                context.go(['archive', (event as CustomEvent<{ id: string }>).detail.id]);
+            }}
+        ></hcm-archive-panel>`;
+        return html`${chunkTemplate(context, UPLOAD_PANEL_CHUNK, ({ uploadPanel }) =>
             uploadPanel(
                 context.locale,
                 { ...view.upload, layerId: view.upload.layerId ?? view.replaceLayer },
@@ -215,7 +241,8 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
                     readOnly: context.readOnly,
                 },
             ),
-        );
+        )}
+        ${archive}`;
     }
 
     /** The page's one map, always first in the detail pane so it stays the same element. */
@@ -245,12 +272,23 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
             ></hcm-empty-state>`;
         }
         if (detail.kind === 'scene') {
-            // M4: an ordered scene the filters hide (Free only) opens too, from Work's orders or a notification's link; any
-            // other scene they hide, or past the list's page, from its own read (a shared or bookmarked address).
-            const scenes = [...view.scenes.items, ...view.orders.items, ...(view.named.scene === null ? [] : [view.named.scene])];
-            return sceneDetail(context, scenes.find((scene) => scene.id === detail.id) ?? null);
+            return this.#scene(context, detail.id);
         }
-        return chunkTemplate(context, APPROVAL_MAP_CHUNK, ({ versionDetail }) => versionDetail(context, view.version));
+        return detail.kind === 'archive' ? archiveReport(context, detail.id) : this.#version(context);
+    }
+
+    /**
+     * M4: an ordered scene the filters hide (Free only) opens too, from Work's orders or a notification's link; any other scene they
+     * hide, or past the list's page, from its own read (a shared or bookmarked address).
+     */
+    #scene(context: ImageryContext, id: string): TemplateResult {
+        const view = context.view;
+        const scenes = [...view.scenes.items, ...view.orders.items, ...(view.named.scene === null ? [] : [view.named.scene])];
+        return sceneDetail(context, scenes.find((scene) => scene.id === id) ?? null);
+    }
+
+    #version(context: ImageryContext): TemplateResult {
+        return chunkTemplate(context, APPROVAL_MAP_CHUNK, ({ versionDetail }) => versionDetail(context, context.view.version));
     }
 
     #dialog(context: ImageryContext): TemplateResult {
@@ -258,7 +296,9 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
         const texts = QUESTIONS[question ?? 'reject'];
         const { locale } = context;
         const usd = usdOf(context.view, locale);
-        const actions = answers(context.intents);
+        const actions = answers(context.intents, () => {
+            context.go([]);
+        });
         return html`<hcm-confirm-dialog
             ?destructive=${question !== 'pay' && question !== 'resume'}
             .open=${question !== null}
@@ -280,22 +320,44 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
     }
 }
 
+/** M20: an archive's report (`#/imagery/archive/<id>`), the `archive` chunk's element. */
+function archiveReport(context: ImageryContext, archiveId: string): TemplateResult {
+    return html`<hcm-archive-report
+        .app=${context.app}
+        .locale=${context.locale}
+        archive=${archiveId}
+        ?read-only=${context.readOnly}
+    ></hcm-archive-report>`;
+}
+
+/** M20: the Upload view (Import local files) or an archive's report is on screen. */
+function showsArchive(view: ImageryViewState): boolean {
+    return view.tab === 'upload' || view.detail?.kind === 'archive';
+}
+
 /** The open version's overage cost in dollars, for the Pay question, as the Pay button writes it. */
 function usdOf(view: ImageryViewState, locale: Locale): string {
     return numberText(locale, view.version?.version.doc?.data.guard?.overageUsd ?? 0, 2);
 }
 
-/** What each question does once confirmed. */
-function answers(intents: ImageryIntentsPort | null): Readonly<Record<ImageryQuestion, () => void>> {
+/** A deleted version's page has nothing left to show: back to the Historical imagery list. */
+async function deleteAndLeave(intents: ImageryIntentsPort | null, leave: () => void): Promise<void> {
+    if ((await intents?.deleteVersion()) === true) {
+        leave();
+    }
+}
+
+/** What each question does once confirmed (`leave`: back to the list). */
+function answers(intents: ImageryIntentsPort | null, leave: () => void): Readonly<Record<ImageryQuestion, () => void>> {
     return {
         reject: () => void intents?.reject(),
-        dismiss: () => void intents?.reject(),
         pay: () => void intents?.choose('pay' satisfies PublishChoice),
         cancel: () => void intents?.cancelJob(),
         drop: () => void intents?.reject(),
         rejectRecalibration: () => void intents?.reject(),
         resume: () => void intents?.resumeGuard(),
         approveWorse: () => void intents?.approve(true),
+        deleteVersion: () => void deleteAndLeave(intents, leave),
     };
 }
 

@@ -39,6 +39,8 @@ export const ro = {
     'adminContent.common.issue.category': 'Alege o categorie',
     'adminContent.common.issue.geometry': 'Desenează locul pe hartă sau adaugă-i pozițiile',
     'adminContent.common.issue.year': 'Scrie anul ca număr, de exemplu 1966',
+    'adminContent.common.issue.placeYear': 'Scrie un an sau anii de la și până la',
+    'adminContent.common.issue.yearLate': 'Anul nu poate fi după anul viitor.',
     'adminContent.common.readOnly': 'Doar citire: accesul tău a fost retras.',
     // [end common]
     // [section map] owner: pois (the admin map, the drawing toolbar, the vertex list); keys adminContent.map.*

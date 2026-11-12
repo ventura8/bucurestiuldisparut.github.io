@@ -31,6 +31,17 @@ describe('<hcm-pois-page>: the list', () => {
         expect(await axeViolations(element)).toEqual([]);
     });
 
+    it('badPath_aPlaceStoredWithoutAYearSaysYearMissing', async () => {
+        const undated = place({ id: 'undated', title: { ro: 'Hanul cu Tei' }, yearStart: null, yearEnd: null });
+        const store = area(poisState({ list: ready([place(), undated]) }));
+        const { element } = await poisPage(store);
+
+        const rows = deepAll(element, 'a.row').map((row) => row.textContent.replace(/\s+/g, ' ').trim());
+        expect(rows).toEqual(['Stavropoleos Church Churches · from 1890 · Point', 'Hanul cu Tei Churches · Point Year missing']);
+        expect(deepAll(element, '.year-missing').map((badge) => badge.textContent)).toEqual(['Year missing']);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
     it('happyPath_filtersSearchAndSelectionGoToTheArea', async () => {
         const store = area();
         const { element } = await poisPage(store);

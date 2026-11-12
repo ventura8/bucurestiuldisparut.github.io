@@ -23,8 +23,8 @@ export const CONTENT_INPUT_BUDGETS = {
     photoReplace: { inputs: 2, how: 'Replace image in the overflow menu, choose the file' },
     // [end photos]
     // [section pois] owner: pois
-    pointPlace: { inputs: 5, how: 'Add place, Point, a click, the Romanian title, Save' },
-    polygonPlace: { inputs: 4, how: 'Add place, Area, n clicks (the last on the first vertex), the title, Save', per: 'vertex' },
+    pointPlace: { inputs: 6, how: 'Add place, Point, a click, the Romanian title, the year, Save' },
+    polygonPlace: { inputs: 5, how: 'Add place, Area, n clicks (the last on the first vertex), the title, the year, Save', per: 'vertex' },
     geojsonImport: { inputs: 3, how: 'choose the file, one category for the uncategorised features, Import' },
     // [end pois]
     // [section layers] owner: layers-settings

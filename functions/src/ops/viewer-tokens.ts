@@ -4,6 +4,7 @@ import {
     TOKEN_RETIRE_MINUTES,
     cityDocSchema,
     setupStatusDocSchema,
+    setupStatusReadSchema,
     systemWriter,
     timestampFromDate,
     type ApiErrorCode,
@@ -65,7 +66,7 @@ interface Account {
 }
 
 function readStatus(reader: Pick<Ports['documents'], 'get'>): Promise<SetupStatusDoc | undefined> {
-    return reader.get(FIRESTORE_PATHS.setupStatus, setupStatusDocSchema);
+    return reader.get(FIRESTORE_PATHS.setupStatus, setupStatusReadSchema);
 }
 
 async function storedMapbox(deps: ViewerTokenDeps): Promise<MapboxRecord | undefined> {

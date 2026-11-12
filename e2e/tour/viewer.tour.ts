@@ -81,6 +81,14 @@ test(
 );
 
 test(
+    "The zoom buttons at the city's maximum and one level out",
+    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V52-HAPPY-TOUR'] },
+    async ({ page, context, lang }) => {
+        await expectJourneySound({ page, context, lang }, journey('zoom'));
+    },
+);
+
+test(
     "A city whose basemap is a custom style, without Standard's labels",
     { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE'] },
     async ({ page, context, lang }) => {

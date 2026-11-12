@@ -1,6 +1,6 @@
 # i18n Skill
 
-**Historic City Map** speaks Romanian and English; Romanian is the default. The catalogues and helpers live in `@hcm/shared`: `packages/shared/src/i18n/ro.ts`, `packages/shared/src/i18n/en.ts`, `packages/shared/src/i18n/index.ts`.
+**Historic City Map Maker** speaks Romanian and English; Romanian is the default. The catalogues and helpers live in `@hcm/shared`: `packages/shared/src/i18n/ro.ts`, `packages/shared/src/i18n/en.ts`, `packages/shared/src/i18n/index.ts`.
 
 ## How it works
 

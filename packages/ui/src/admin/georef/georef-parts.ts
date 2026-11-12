@@ -25,6 +25,9 @@ export interface GeorefContext {
     readonly setSort: (sort: ResidualSort) => void;
     /** The keyboard's way: a pair at the scan's crosshair and the map's centre. */
     readonly addAtCentres: () => void;
+    /** M22 (§13.2): the scan and the map fill the window, the actions above them. */
+    readonly full: boolean;
+    readonly toggleFull: () => void;
 }
 
 function refusal(context: GeorefContext, reason: 'too-few' | 'degenerate'): TemplateResult {
@@ -116,6 +119,26 @@ export function transforms(context: GeorefContext): TemplateResult {
     </fieldset>`;
 }
 
+const GUIDE_STEPS = [
+    'adminContent.georef.guide.s1',
+    'adminContent.georef.guide.s2',
+    'adminContent.georef.guide.s3',
+    'adminContent.georef.guide.s4',
+    'adminContent.georef.guide.s5',
+] as const;
+
+/** How to place a map, step by step: open while the version has no pairs yet, a click away after. */
+export function guide(context: GeorefContext): TemplateResult {
+    const { locale, view } = context;
+    return html`<details class="guide" ?open=${view.pairs.length === 0}>
+        <summary>${contentText(locale, 'adminContent.georef.guide.title')}</summary>
+        <ol>
+            ${GUIDE_STEPS.map((step) => html`<li>${contentText(locale, step)}</li>`)}
+        </ol>
+        <p>${contentText(locale, 'adminContent.georef.guide.tip')}</p>
+    </details>`;
+}
+
 /** The hint under the tools: the half pair's next click, or how to add a pair. */
 function halfText(locale: Locale, view: GeorefViewState): string {
     if (view.half !== null) {
@@ -161,6 +184,15 @@ function saveButtons(context: GeorefContext): TemplateResult {
         ${snapButton(context)}
         <hcm-button
             variant="text"
+            icon="undo"
+            ?disabled=${!view.canUndo || view.saving}
+            @click=${() => {
+                intents?.undo();
+            }}
+            >${contentText(locale, 'adminContent.georef.undo')}</hcm-button
+        >
+        <hcm-button
+            variant="text"
             ?disabled=${!view.dirty || view.saving}
             @click=${() => {
                 intents?.discard();
@@ -192,6 +224,14 @@ export function tools(context: GeorefContext): TemplateResult {
             >
             <hcm-button variant="outlined" icon="my_location" ?disabled=${context.locked} @click=${context.addAtCentres}
                 >${contentText(locale, 'adminContent.georef.addAtCentres')}</hcm-button
+            >
+            <hcm-button
+                variant="outlined"
+                icon=${context.full ? 'fullscreen_exit' : 'fullscreen'}
+                .pressed=${context.full}
+                data-action="full-screen"
+                @click=${context.toggleFull}
+                >${contentText(locale, context.full ? 'adminContent.georef.leaveFullScreen' : 'adminContent.georef.fullScreen')}</hcm-button
             >
             ${saveButtons(context)}
         </div>

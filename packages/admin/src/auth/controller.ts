@@ -11,6 +11,11 @@
  *   without the anonymous probe: the missing function's 404 has no CORS headers, so the probe would only make the
  *   browser log a CORS error. Google tells the owner when the server is installed (step d), and only then is it probed.
  *
+ * - **The Contribute page** (M13 §3, `docs/research/M13-roles.md`): every state is a contributor's. The sign-in asks for no
+ *   Cloud scope; a server that does not answer is `backendDown` ("resting", Try again), a start-up deploy's or an unowned
+ *   map is `contributeClosed`; a session the server refuses is `backendDown` with its reason. Never the start-up mode,
+ *   Google's owner check, the claim or `notAdmin` there.
+ *
  * Every Google popup is the first await of the intent that opens it (popup blockers). Revocation: a callable answering
  * `apiError.notAdmin` or a denied admin read calls `accessDenied`; when the session then says the account is no admin
  * while an editor holds unsaved changes, the shell keeps the page read-only under a banner until sign-out (`revoked`,
@@ -139,7 +144,7 @@ export class AuthController {
     async signIn(): Promise<void> {
         const gate = this.#deps.shell.get().gate;
         this.#set({ auth: 'signingIn', gate: NO_GATE });
-        const outcome = await this.#consent(this.#answers ? null : 'cloudReadOnly');
+        const outcome = await this.#consent(this.#answers || this.#contributing() ? null : 'cloudReadOnly');
         if (!outcome.granted) {
             this.#set({ auth: 'signedOut', gate: { ...gate, issue: this.#deps.shell.notice(outcome.notice) } });
             return;
@@ -325,7 +330,22 @@ export class AuthController {
     async #evaluate(user: AuthUser): Promise<void> {
         this.#evaluated = user.uid;
         this.#set({ auth: 'probing', busy: false, gate: NO_GATE });
+        if (!this.#answers && this.#contributing()) {
+            this.#noServerToContribute();
+            return;
+        }
         await (this.#answers ? this.#askSession(false) : this.#classify());
+    }
+
+    /** M13 §3: no server on the Contribute page: it rests (Try again), or a start-up deploy's map is not open yet. */
+    #noServerToContribute(): void {
+        const installed = this.#deps.startUp !== true || this.#deps.serverSeen?.known() === true;
+        this.#set({ auth: installed ? 'backendDown' : 'contributeClosed', busy: false });
+    }
+
+    /** M13 §3: this page is the Contribute page (the address, or the deep link kept while signed out). */
+    #contributing(): boolean {
+        return this.#deps.contributing?.() === true;
     }
 
     async #askSession(refreshed: boolean): Promise<void> {
@@ -347,16 +367,19 @@ export class AuthController {
     async #applySession(session: SessionResponse): Promise<void> {
         if (session.admin) {
             this.#set({ auth: 'admin', mode: 'normal', role: session.role, busy: false, gate: NO_GATE, ...this.#deps.cities?.(session) });
-        } else if (this.#visiting(session)) {
-            // M13 §3: the Contribute page is for any signed-in account: no refusal, and the session stays.
-            this.#set({ auth: 'visitor', mode: 'normal', role: null, busy: false, gate: NO_GATE });
+        } else if (this.#contributing()) {
+            // M13 §3: the Contribute page is for any signed-in account (no refusal, the session stays); a map nobody
+            // set up yet is not open to contributions, and the claim is never offered there.
+            this.#set({
+                auth: session.ownerClaimed ? 'visitor' : 'contributeClosed',
+                mode: 'normal',
+                role: null,
+                busy: false,
+                gate: NO_GATE,
+            });
         } else {
             await this.#notAnAdmin(session);
         }
-    }
-
-    #visiting(session: SessionResponse): boolean {
-        return session.ownerClaimed && this.#deps.contributing?.() === true;
     }
 
     async #notAnAdmin(session: SessionResponse): Promise<void> {
@@ -403,9 +426,15 @@ export class AuthController {
     /**
      * A session the server did not give: a retryable failure is a server problem, anything else a refusal. A server older
      * than the admin (its answer in an older shape, finding 27 of 2026-10-31) cannot say who is an admin: Google's verdict
-     * decides, as in start-up mode, so its owner reaches Setup and Update the map.
+     * decides, as in start-up mode, so its owner reaches Setup and Update the map. M13 §3: on the Contribute page every
+     * failure is the contributor's Try again, with its reason unless that reason speaks to the admin (an outdated server).
      */
     async #sessionFailed(details: ApiErrorDetails): Promise<void> {
+        if (this.#contributing()) {
+            const gate = details.code === 'apiError.serverOutdated' ? NO_GATE : this.#gate(details);
+            this.#set({ auth: 'backendDown', busy: false, gate });
+            return;
+        }
         if (details.code === 'apiError.serverOutdated') {
             await this.#classify();
             return;

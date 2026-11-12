@@ -188,6 +188,25 @@ describe("the local worker feed: a version's job and the failures", () => {
         expect(feedOf(world, 'join').feed.state.job).toMatchObject({ id: 'join', waitReason: 'parts' });
     });
 
+    it('happyPath_anArchiveSeriesRunsOnThePipelineSoItsPageShowsItsPlace', () => {
+        const world = contentWorld();
+        const params = {
+            archiveId: 'ar-0123456789abcdef',
+            seriesId: 's-000000000000',
+            class: 'grid',
+            sheets: 4,
+            encoding: 'lineart',
+            order: 0,
+            referenceLayerIds: [],
+        };
+        world.store.docs.set(
+            FIRESTORE_PATHS.job(CITY, 'series'),
+            jobDoc({ type: 'archive-series', params, runOn: 'local', localOnly: true, waitReason: 'daily' }),
+        );
+
+        expect(feedOf(world, 'series').feed.state.job).toMatchObject({ id: 'series', runOn: 'local', waitReason: 'daily' });
+    });
+
     it('badPath_aJobThePipelineDoesNotRunOrNoJobAtAllHasNoPlace', async () => {
         const world = contentWorld();
         world.store.docs.set(FIRESTORE_PATHS.job(CITY, 'del'), jobDoc({ type: 'layer-delete', params: {} }));

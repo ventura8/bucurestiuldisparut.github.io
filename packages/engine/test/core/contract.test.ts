@@ -28,7 +28,7 @@ describe('engine-core contract', () => {
         expectTypeOf<ViewerStatus>().toEqualTypeOf<'idle' | 'loading' | 'ready' | 'error'>();
         expectTypeOf<ThemeMode>().toEqualTypeOf<'system' | 'light' | 'dark'>();
         expectTypeOf<SheetName>().toEqualTypeOf<
-            'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'stories' | 'about' | 'help'
+            'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'stories' | 'about' | 'help' | 'settings'
         >();
         expectTypeOf<ViewerError['code']>().toEqualTypeOf<MessageKey>();
         expectTypeOf<ViewerState['locale']>().toEqualTypeOf<Locale>();

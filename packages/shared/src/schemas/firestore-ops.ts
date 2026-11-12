@@ -31,9 +31,10 @@ export const CLIENT_JOB_TYPES = ['usgs-import', 'geotiff-import', 'regeoref', 'r
 /**
  * Every job type: the client's, `layer-delete`, which only `layers.delete` queues (CR-M2c-3), and `layer-join`, which only
  * `imagery.join` queues (M8, `docs/research/M8-join-interfaces.md` §2), and `layer-tiles`, which only `imagery.tick` queues: a version
- * rendered before M12 gets its tiles from its COG (`docs/research/M12-own-tiles.md`).
+ * rendered before M12 gets its tiles from its COG (`docs/research/M12-own-tiles.md`). M20 (`docs/research/M20-import-local.md` §4):
+ * `archive-series`, one series of a local archive, which only `imagery.archiveImport` queues, always on the owner's computer.
  */
-export const JOB_TYPES = [...CLIENT_JOB_TYPES, 'layer-delete', 'layer-join', 'layer-tiles'] as const;
+export const JOB_TYPES = [...CLIENT_JOB_TYPES, 'layer-delete', 'layer-join', 'layer-tiles', 'archive-series'] as const;
 /** The job state machine of security review §4.1. */
 export const JOB_STATUSES = [
     'queued',
@@ -63,7 +64,8 @@ export const PLACING_POINTS_HOLD_MS = 2 * 60 * 60 * 1000;
  * guard's choice, a publish deferred to next month, Mapbox processing. M7 (`docs/research/M7-local-worker.md` §3, §4): a job
  * chosen for the owner's computer waiting for a worker to claim it, a cloud run waiting for the admin's OK past Cloud
  * Run's free tier. M8 (`docs/research/M8-join-interfaces.md` §2, §5): a join waiting for its frames; it is born with this
- * reason, so no worker claims it before they are ready.
+ * reason, so no worker claims it before they are ready. M20 (`docs/research/M20-import-local.md` §1.3): an archive series beyond
+ * today's share of new layers, born with `daily`; `imagery.tick` releases it, in the archive's order, as a day's count frees.
  */
 export const JOB_WAIT_REASONS = [
     'usgs-preparing',
@@ -79,6 +81,7 @@ export const JOB_WAIT_REASONS = [
     'worker',
     'free-tier',
     'parts',
+    'daily',
 ] as const;
 /** M7 (`docs/research/M7-local-worker.md` §3): where a raster job runs, the owner's computer or Cloud Run. */
 export const RUN_PLACES = ['local', 'cloud'] as const;
@@ -265,6 +268,16 @@ export const jobDocSchema = z.strictObject({
      * within `PLACING_POINTS_HOLD_MS` of it the tick leaves the frame waiting. The only other field a client writes.
      */
     placingPoints: z.literal(true).optional(),
+    /**
+     * M20 (`docs/research/M20-import-local.md` §1.1): the job's files exist only on the owner's computer (a local archive), so
+     * `imagery.runOn` refuses to move it to the cloud (`apiError.imagery.localOnly`).
+     */
+    localOnly: z.literal(true).optional(),
+    /**
+     * M20 (§1.3): the moment the job counted against the day's new layers, when that is not its `createdAt`: an archive series
+     * born waiting (`daily`) counts on the day `imagery.tick` releases it; one still waiting has none and counts nothing yet.
+     */
+    countedAt: timestampSchema.optional(),
     ...stamp,
 });
 
@@ -380,6 +393,8 @@ export const setupStatusDocSchema = z.strictObject({
     // [end install]
     ...stamp,
 });
+
+export type SetupStatusDoc = z.infer<typeof setupStatusDocSchema>;
 
 /**
  * `admins/{uid}`: written by `admin.claim`, `admin.join`, `admins.revoke` and the bootstrap script only; M5 adds the
@@ -580,7 +595,6 @@ export const manifestStateDocSchema = z.strictObject({
 
 export type JobDoc = z.infer<typeof jobDocSchema>;
 export type JobLogDoc = z.infer<typeof jobLogDocSchema>;
-export type SetupStatusDoc = z.infer<typeof setupStatusDocSchema>;
 export type AdminDoc = z.infer<typeof adminDocSchema>;
 export type InviteDoc = z.infer<typeof inviteDocSchema>;
 export type OwnerDoc = z.infer<typeof ownerDocSchema>;

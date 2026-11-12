@@ -2,7 +2,7 @@
  * `imagery.tick`'s `relocate` part (`functions/src/imagery/relocate.ts`, M18 item 3 of `docs/research/M18-improvements.md`): a
  * frame parked for points under an older pipeline image searches again by itself, free, once per image.
  */
-import { JOB_MAX_ATTEMPTS, PLACING_POINTS_HOLD_MS, type JobDoc } from '@hcm/shared';
+import { FIRESTORE_PATHS, JOB_MAX_ATTEMPTS, PLACING_POINTS_HOLD_MS, type JobDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { relocateParked, RELOCATE_PER_TICK } from '../../src/imagery/relocate.js';
@@ -93,6 +93,24 @@ describe('relocateParked', () => {
         expect(w.deps.recording.records.find((record) => record.message === 'a parked frame was not searched again')).toMatchObject({
             level: 'warn',
         });
+    });
+
+    // Finding of 2026-11-12: a version its schema refuses sorted first and threw before any other frame was searched again.
+    it('badPath_aRecordALaterSchemaRefusesIsLoggedRememberedAndTheOthersStillSearch @S-A69-BAD-AUTO-RELOCATE-INVALID', async () => {
+        const w = await world([
+            ['a-bad', OLD],
+            ['f1', OLD],
+            ['f2', OLD],
+        ]);
+        w.deps.documents.seed(FIRESTORE_PATHS.layerVersion(CITY, 'a-bad'), { layerId: 'Not An Id!' });
+
+        await relocateParked(w.deps, CITY);
+
+        expect(await readJob(w, 'a-bad')).toMatchObject({ status: 'awaiting_gcps', searchedWith: NEW });
+        expect([(await readJob(w, 'f1'))?.status, (await readJob(w, 'f2'))?.status]).toEqual(['queued', 'queued']);
+        const warning = w.deps.recording.records.find((record) => record.message === 'a parked frame was not searched again');
+        expect(warning).toMatchObject({ level: 'warn', data: { versionId: 'a-bad' } });
+        expect(String(warning?.data?.['error'])).toContain('InvalidDocumentError');
     });
 
     it('badPath_aFailureThatIsNoRefusalFailsThePartForTheTickToLog', async () => {

@@ -88,7 +88,7 @@ export class HcmOverlayList extends LitElement {
             }
 
             h3 {
-                margin: 16px 0 4px;
+                margin: 8px 0 0;
                 color: var(--md-sys-color-primary);
                 font-size: var(--md-sys-typescale-title-small-size);
                 font-weight: var(--md-sys-typescale-title-small-weight);
@@ -98,7 +98,7 @@ export class HcmOverlayList extends LitElement {
             ul {
                 display: flex;
                 flex-direction: column;
-                gap: 4px;
+                gap: 0;
                 padding: 0;
                 margin: 0;
                 list-style: none;
@@ -107,9 +107,9 @@ export class HcmOverlayList extends LitElement {
             li {
                 display: grid;
                 grid-template-columns: auto 1fr auto;
-                gap: 0 12px;
+                gap: 0 8px;
                 align-items: center;
-                padding-block: 4px;
+                min-block-size: 40px;
             }
 
             .swatch {

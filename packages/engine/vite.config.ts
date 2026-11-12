@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vite';
 
+import { cataloguePackPlugin } from '../../scripts/site/src/catalogue-pack.js';
 import { cssLiteralsPlugin } from '../../scripts/site/src/css-literals.js';
 import { thirdPartyNoticesPlugin } from '../../scripts/site/src/notices.js';
 import { zodStandInsPlugin } from '../../scripts/site/src/zod-stand-ins.js';
@@ -23,6 +24,9 @@ import { FONT_FILES } from '../ui/src/fonts/font-files.js';
  *   (scripts/site/src/zod-stand-ins.ts; DECISIONS-for-review.md §100): about 6 KB gzip of both builds. zod's English
  *   messages, which the engine never shows (an issue reaches the visitor as its `validation.*` code), resolve to the admin's
  *   empty stand-in (§120a): about 1 KB gzip of both builds.
+ * - The viewer's message catalogues are packed by `cataloguePackPlugin` (scripts/site/src/catalogue-pack.ts,
+ *   DECISIONS-for-review.md §127a): the same objects, built from one string of keys and an array of texts, about 270 bytes
+ *   gzip of the IIFE.
  */
 export default defineConfig({
     plugins: [
@@ -31,6 +35,7 @@ export default defineConfig({
             messages: fileURLToPath(new URL('../admin/src/vendor/zod-locale-none.ts', import.meta.url)),
         }),
         cssLiteralsPlugin(),
+        cataloguePackPlugin(/[\\/]packages[\\/]shared[\\/]src[\\/]i18n[\\/]/),
         thirdPartyNoticesPlugin({
             product: 'the Historic City Map engine (engine.mjs, engine.iife.js, their chunks and fonts)',
             assets: FONT_FILES.map((font) => ({ package: font.source.package, file: `fonts/${font.file}` })),

@@ -17,6 +17,9 @@ dependencies = [
     "httpx==0.28.1",
     "google-cloud-firestore==2.34.1",
     "google-cloud-storage==3.17.1",
+    # M20 (docs/research/M20-import-local.md §3, PDFs): page images out of an archive's PDFs without re-encoding, an owner-only
+    # encrypted file (an empty user password) read, a password one skipped. qpdf is bundled in its wheel.
+    "pikepdf==10.18.0",
 ]
 
 [tool.poetry]

@@ -14,6 +14,14 @@ export {
 } from './errors.js';
 export type { ApiErrorDetails, ApiErrorSpec, FunctionsErrorStatus } from './errors.js';
 export * from './community.js';
+// By name, not `export *`: the star cost the engine's IIFE bytes of module glue it never uses (DECISIONS-for-review.md §137j).
+export {
+    imageryArchiveImportRequestSchema,
+    imageryArchiveImportResponseSchema,
+    workerArchiveReportRequestSchema,
+    workerArchiveReportResponseSchema,
+} from './archive.js';
+export type { ImageryArchiveImportRequest, WorkerArchiveReportRequest } from './archive.js';
 export { emptyRequestSchema, googleAccessTokenSchema, healthViewFields, isoTimeSchema } from './common.js';
 export {
     CLAIM_OAUTH_SCOPE,
@@ -151,6 +159,7 @@ export {
     JOB_MAX_ATTEMPTS,
     LEASE_SECONDS,
     NOT_RETRYABLE_CODES,
+    PIPELINE_OUTDATED,
     PIPELINE_RUN_ARGS,
     PROBE_LIMITS,
     PUBLISH_MAX_ATTEMPTS,
@@ -164,6 +173,9 @@ export {
     imageryBrowseResponseSchema,
     imageryChooseRequestSchema,
     imageryChooseResponseSchema,
+    imageryConfirmRightsRequestSchema,
+    imageryConfirmRightsResponseSchema,
+    imageryDeleteVersionResponseSchema,
     imageryCropRequestSchema,
     imageryCropResponseSchema,
     imageryImportRequestSchema,
@@ -187,9 +199,13 @@ export {
     imageryPreviewUrlResponseSchema,
     imageryStudioDoneResponseSchema,
     imageryVersionRequestSchema,
+    failedOutdated,
     jobRetryable,
     publishTaskSchema,
     rasterUploadMetadataSchema,
+    retryCures,
+    retryPastCap,
+    runsLocally,
 } from './imagery.js';
 export type {
     ImageryChooseRequest,

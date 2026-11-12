@@ -4,7 +4,6 @@ import { FakeMapDraw } from '@hcm/test-support/fake-map-draw';
 import { describe, expect, it } from 'vitest';
 
 import { GEOREF_MODULE } from '../../src/georef/georef.js';
-import { SUGGESTION_COLOR, SUGGESTIONS_OVERLAY_ID } from '../../src/georef/georef-map.js';
 import { confidenceLevel, suggestionsView, versionSuggestions } from '../../src/georef/suggestions.js';
 import { createMapPreview } from '../../src/map/preview.js';
 import { settle } from '../app/fakes.js';
@@ -31,15 +30,6 @@ function setup(overrides: Parameters<typeof imageryWorld>[0] = {}, doc: Record<s
     const georef = GEOREF_MODULE.create(world.services);
     georef.open([WAITING]);
     return { ...world, georef };
-}
-
-/** The suggestion overlays the map was given, as `[id, label]` lists. */
-function overlays(map: FakeMap): readonly (readonly [string, string])[][] {
-    return map.calls
-        .filter((call) => call.method === 'addVectorOverlay')
-        .map((call) => call.args[0] as { id: string; color: string; features: { properties: { id: string; title: string } }[] })
-        .filter((spec) => spec.id === SUGGESTIONS_OVERLAY_ID && spec.color === SUGGESTION_COLOR)
-        .map((spec) => spec.features.map((feature) => [feature.properties.id, feature.properties.title] as const));
 }
 
 function pendingIds(georef: ReturnType<typeof setup>['georef']): readonly string[] {
@@ -111,18 +101,9 @@ describe('the georeferencer’s suggestions (M4 §2.5)', () => {
 
         expect(selected).toBe('a003');
         expect(pendingIds(georef)).toEqual(['a2:a002', 'a3:a003', 'a4:a004']);
-        const drawn = overlays(map);
-        expect(drawn.at(-1)).toEqual([
-            ['a003', 'a3'],
-            ['a002', 'a2'],
-            ['a004', 'a4'],
-        ]);
-        expect(drawn[0]).toEqual([
-            ['a001', 'a1'],
-            ['a002', 'a2'],
-            ['a003', 'a3'],
-            ['a004', 'a4'],
-        ]);
+        // Suggestions are canvas badges (§143), not POI vector overlays; selection lives on the state.
+        expect(map.calls.filter((call) => call.method === 'addVectorOverlay')).toEqual([]);
+        expect(georef.state.suggestions.pending.map((row) => row.pair.id)).toContain('a003');
         georef.intents.selectSuggestion(null);
         expect(georef.state.suggestions.selected).toBeNull();
     });

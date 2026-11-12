@@ -123,13 +123,14 @@ describe('createSetupCloud', () => {
         const deployed = await cloud.deployment(ACCESS);
 
         expect(nothing).toMatchObject({ kind: 'forbidden', api: 'cloudfunctions.googleapis.com' });
-        // The registry's 93 functions (M4: orders' 3, assists' and notifications' 7; M5: the cities' 4, the export's 3; M6:
+        // The registry's 97 functions (M4: orders' 3, assists' and notifications' 7; M5: the cities' 4, the export's 3; M6:
         // the events probe; M7: the local worker's 5 and imagery.runOn; finding 67: worker.pair, pairCode and revoke;
         // finding 72: worker.image; finding 73: worker.starter; imagery.locateAgain; M12: imagery.previewUrl;
-        // M13: the roles' and review's 7; M16: imagery.recalibrate; M17: the stories' 2); the fake deploys a third of them.
-        expect(partial).toEqual({ ready: 31, total: 93, failed: [] });
-        expect(failed).toEqual({ ready: 92, total: 93, failed: ['admin-session'] });
-        expect(deployed).toEqual({ ready: 93, total: 93, failed: [] });
+        // M13: the roles' and review's 7; M16: imagery.recalibrate; M17: the stories' 2; M20: the local archive's 3; imagery.deleteVersion); the fake
+        // deploys a third of them.
+        expect(partial).toEqual({ ready: 32, total: 97, failed: [] });
+        expect(failed).toEqual({ ready: 96, total: 97, failed: ['admin-session'] });
+        expect(deployed).toEqual({ ready: 97, total: 97, failed: [] });
     });
 
     it('happyPath_theStreamsHistoryPageViewsAreTurnedOff', async () => {

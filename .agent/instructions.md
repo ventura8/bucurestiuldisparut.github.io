@@ -1,6 +1,6 @@
 # Agent Instructions
 
-This file is the canonical pre-task entry point for the `.agent` assets of the **Historic City Map** repository (București dispărut). `AGENTS.md` at the root holds the commands, boundaries and global rules; this file is the reading order and the execution rules; `docs/LESSONS.md` holds the defects behind them.
+This file is the canonical pre-task entry point for the `.agent` assets of the **Historic City Map Maker** repository (București dispărut). `AGENTS.md` at the root holds the commands, boundaries and global rules; this file is the reading order and the execution rules; `docs/LESSONS.md` holds the defects behind them.
 
 ## Mandatory Pre-Task Review
 
@@ -44,7 +44,7 @@ The stages, their gates and the meaning of `quality` and `all` are defined once,
 - **Cloud cost**: Mapbox map loads and MTS compute units are billed beyond the free tier, so tests never hit Mapbox, the viewer creates one map per view, and MTS publishes only after approval within the compute-unit guard. The GCP budget ($5) alarm pauses the raster pipeline and MTS, never the public site.
 - **Human-only steps**: account creation, billing and card entry, terms acceptance, passwords, Google sign-in consents and token pastes are done by the user. Claude opens the exact page, explains the step and verifies the result; it never types the credential. Every accept, submit, publish, purchase or settings change in a browser is confirmed by the user in chat first, one at a time.
 - **Secrets never leave their place**: Mapbox and USGS secrets live only in Secret Manager (written by the `setup.*` callables); `SONAR_TOKEN` is the only repository secret; GCP access from CI is keyless (Workload Identity Federation). Local secrets (`.env.local`, `.sonar-token`, `.secret.local`) are git-ignored and never opened, printed or pasted.
-- **Pre-approved config edits** (the user, 2026-10-12): an edit to a lint or tool config, a workflow or the gitleaks files that makes a gate stricter or keeps a tool working is applied, verified with the stage that covers it, and logged in `docs/research/DECISIONS-for-review.md`. Relaxing a gate, `.claude/settings.json`, deploys, payments and cloud changes stay ask-first.
+- **Pre-approved config edits** (the user, 2026-10-12): an edit to a lint or tool config, a workflow or the gitleaks files that makes a gate stricter or keeps a tool working is applied, verified with the stage that covers it, and logged in `docs/research/DECISIONS-for-review.md`. Hosting deploys and Setup's Update the map are pre-approved (the user, 2026-11-11; DECISIONS §142). Relaxing a gate, `.claude/settings.json`, payments and other cloud changes stay ask-first.
 - **Never use** a `fostulbucuresti` resource, or Mapbox Satellite as a georeferencing reference.
 
 ---
@@ -63,7 +63,7 @@ The stages, their gates and the meaning of `quality` and `all` are defined once,
 - **Scenario matrix discipline**: every behaviour has a happy and a bad row in `e2e/scenarios.json`. Change the behaviour, change the row and the test; a row without its test says `planned`.
 - **Zero inline suppressions**: relax a rule only in the tool's repository-wide configuration file, with the reason next to it.
 - **Logging standard**: TypeScript logs only through `createLogger(scope, …)` from `@hcm/shared` (secret-looking keys are redacted); Python CI scripts through `scripts/ci/cilog.py`; the raster pipeline through its own logger with the same redaction. Never `console.*` or `print`.
-- **i18n**: Romanian is the default and the key source of truth; English is typed against it, so a missing key is a compile error (`web/i18n_skill.md`).
+- **i18n**: Romanian is the default and the key source of truth; English is typed against it, so a missing key is a compile error (`web/i18n_skill.md`). That is the app's texts only: every Markdown file of the repository (docs, READMEs, skills, the kit's and the CLI's READMEs, the Markdown a generator writes) is in English only, quoting a Romanian UI label where it documents one (the owner, 2026-11-10; DECISIONS §157).
 
 ---
 

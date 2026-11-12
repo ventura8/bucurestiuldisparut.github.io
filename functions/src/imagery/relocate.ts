@@ -39,15 +39,22 @@ async function remember(deps: RelocateDeps, cityId: string, jobId: string, diges
     });
 }
 
-/** One frame searched again; a refusal is logged and remembered for this image. */
+/** What the log says of a frame that was not searched again: the refusal's code, or the error itself (an invalid record). */
+function whyNot(error: unknown): Readonly<Record<string, string>> {
+    return error instanceof ApiError ? { code: error.code } : { error: String(error) };
+}
+
+/**
+ * One frame searched again; a refusal, or any other failure (a record its schema refuses: finding of 2026-11-12), is logged with
+ * the version and remembered for this image, so one bad frame never stops the others nor is asked again each tick.
+ */
 async function relocateOne(deps: RelocateDeps, cityId: string, frame: StoredDocument<JobDoc>, digest: string): Promise<void> {
+    // A parked frame's version has its job's id (`locate-again.ts`).
+    const versionId = frame.id;
     try {
-        await locateAgain(deps, { cityId, versionId: frame.id, uid: IMAGERY_WRITER, message: MESSAGE });
+        await locateAgain(deps, { cityId, versionId, uid: IMAGERY_WRITER, message: MESSAGE });
     } catch (error) {
-        if (!(error instanceof ApiError)) {
-            throw error;
-        }
-        deps.log.warn('a parked frame was not searched again', { cityId, jobId: frame.id, code: error.code });
+        deps.log.warn('a parked frame was not searched again', { cityId, jobId: frame.id, versionId, ...whyNot(error) });
     }
     await remember(deps, cityId, frame.id, digest);
 }

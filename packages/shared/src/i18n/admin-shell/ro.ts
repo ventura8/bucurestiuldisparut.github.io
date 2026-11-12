@@ -75,6 +75,7 @@ export const ro = {
     'adminShell.account.label': 'Contul și preferințele',
     'adminShell.account.close': 'Închide',
     'adminShell.account.analytics': 'Statistici anonime de utilizare și performanță ale administrării (Google Analytics)',
+    'adminShell.account.analyticsVisitor': 'Statistici anonime de utilizare și performanță ale paginii Contribuie (Google Analytics)',
     'adminShell.notice.close': 'Închide mesajul',
     'adminShell.nav.close': 'Închide',
     'adminShell.page.unavailable': 'Pagina nu este încă disponibilă.',
@@ -162,6 +163,20 @@ export const ro = {
     'adminShell.city.role.moderator': 'Moderator',
     'adminShell.city.role.uploader': 'Contribuitor',
     'adminShell.city.notMember': 'Nu administrezi orașul cerut; s-a deschis {city}.',
+    // The Contribute page's welcome while signed out (M13 §3: a visitor is never shown the admin's sign-in).
+    // „harta orașului {city}”: correct for any city's name, which the genitive of the name itself would not be (Bucureștiului).
+    'adminShell.welcome.title': 'Contribuie la harta orașului {city}',
+    'adminShell.welcome.titleNoCity': 'Contribuie la hartă',
+    'adminShell.welcome.intro': 'Oricine poate ajuta harta să crească. Poți:',
+    'adminShell.welcome.send': 'să trimiți fotografii și povești din oraș;',
+    'adminShell.welcome.suggest': 'să propui locul în care a fost făcută o fotografie sau direcția în care privește;',
+    'adminShell.welcome.role': 'să devii contribuitor sau moderator, după ce un administrator aprobă cererea.',
+    'adminShell.welcome.signInNote': 'Contul Google îți trebuie doar ca să trimiți ceva; harta se vede fără cont.',
+    'adminShell.welcome.signIn': 'Conectează-te cu Google ca să contribui',
+    'adminShell.welcome.back': 'Înapoi la hartă',
+    'adminShell.welcome.tabTitle': 'Contribuie',
+    'adminShell.welcome.resting': 'Harta se odihnește. Încearcă din nou peste un minut.',
+    'adminShell.welcome.closed': 'Contribuțiile la această hartă nu sunt încă deschise.',
 } as const;
 
 export type AdminShellKey = keyof typeof ro;

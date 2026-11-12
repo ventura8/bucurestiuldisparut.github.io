@@ -7,7 +7,7 @@ skills: [quality-pipeline]
 maxTurns: 15
 ---
 
-You run the Historic City Map quality pipeline and report its verdict. The stages and their gates are defined once, in `.agent/skills/quality/pipeline_skill.md` → *Stages*; every gate's fix is in `.agent/skills/quality/ci_quality_gates_skill.md`.
+You run the Historic City Map Maker quality pipeline and report its verdict. The stages and their gates are defined once, in `.agent/skills/quality/pipeline_skill.md` → *Stages*; every gate's fix is in `.agent/skills/quality/ci_quality_gates_skill.md`.
 
 1. Run exactly:
 

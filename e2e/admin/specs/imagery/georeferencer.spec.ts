@@ -383,3 +383,32 @@ test(
         await expect.poll(async () => Math.min(...(await page.evaluate(warpedCornersInPage)).map(([lng]) => lng))).toBeCloseTo(west, 4);
     },
 );
+
+test(
+    'The georeferencer goes full screen and back (M22 §13.2)',
+    { tag: ['@S-A122-HAPPY-GEOREF-FULL-SCREEN', '@S-A122-BAD-GEOREF-FULL-SCREEN-LEFT'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        const imagery = await readyImagery(
+            { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
+            adminWorld.accounts.owner.uid,
+        );
+        await imagery.script({ attempts: [{ outcome: 'no-match' }] });
+        await openGeoreferencer(page, lang);
+        const enter = page.getByRole('button', { name: georefText(lang, 'adminContent.georef.fullScreen') });
+        const viewport = page.viewportSize()?.height ?? 0;
+        expect((await page.locator('.panes').boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(Math.min(420, 0.7 * viewport) - 1);
+
+        await enter.click();
+        const leave = page.getByRole('button', { name: georefText(lang, 'adminContent.georef.leaveFullScreen') });
+        await expect(leave).toBeVisible();
+        await expect(page.getByRole('button', { name: georefText(lang, 'adminContent.georef.save') })).toBeVisible();
+        await expectStateSound(page, adminVisit('georef.full-screen', lang));
+
+        // Its own button leaves it; Esc does too.
+        await leave.click();
+        await expect(enter).toBeVisible();
+        await enter.click();
+        await page.keyboard.press('Escape');
+        await expect(enter).toBeVisible();
+    },
+);

@@ -37,11 +37,44 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
 
     static override readonly styles = [
         ...editingStyles,
-        // Finding 81 of 2026-11-05: on this page's list pane the panel lines up with the filter chips above it.
+        /*
+         * Batch 4 (the owner, 2026-11-09: the worker card squeezed the list): the computer, where new jobs run and the Cloud Run meter
+         * are a full-width card above the list and the job, which it can collapse; the list and the job share the rest.
+         */
         css`
+            :host {
+                display: flex;
+                flex-direction: column;
+                min-block-size: 0;
+            }
+
+            hcm-list-detail {
+                flex: 1 1 auto;
+                min-block-size: 0;
+            }
+
+            details {
+                flex: none;
+                max-block-size: 50%;
+                overflow-y: auto;
+                margin: 16px 16px 8px;
+                border-radius: var(--md-sys-shape-corner-medium);
+                background: var(--md-sys-color-surface-container-low);
+            }
+
+            summary {
+                display: flex;
+                align-items: center;
+                min-block-size: 48px;
+                padding-inline: 16px;
+                cursor: pointer;
+                font-size: var(--md-sys-typescale-title-small-size);
+                font-weight: var(--md-sys-typescale-title-small-weight);
+            }
+
             hcm-worker-panel {
                 display: block;
-                padding: 16px;
+                padding: 0 16px 16px;
             }
         `,
     ];
@@ -53,6 +86,8 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
     declare resumeAsked: boolean;
     /** The `worker` chunk's elements were asked for. */
     #workerLoaded = false;
+    /** Batch 4: the computer's card is open (the session's choice; open at first). */
+    #computerOpen = true;
 
     constructor() {
         super();
@@ -73,7 +108,9 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
         const back = (): void => {
             this.go([]);
         };
-        return html`<hcm-list-detail
+        return html`${this.#computer(locale)}
+            <hcm-list-detail
+                split-from="large"
                 ?detail=${view.detail !== null}
                 .detailKey=${view.detail?.id ?? ''}
                 .listLabel=${contentText(locale, 'adminContent.jobs.listLabel')}
@@ -122,7 +159,6 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
                     this.resumeAsked = true;
                 },
             })}
-            ${this.#worker(locale)}
             ${listBody(
                 locale,
                 view.list,
@@ -138,13 +174,22 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
             )}`;
     }
 
-    /** M7: the local worker's panel (docs/research/M7-local-worker.md §7); its elements are the lazy `worker` chunk's. */
-    #worker(locale: Locale): TemplateResult {
+    /**
+     * M7: the local worker's panel (docs/research/M7-local-worker.md §7), its elements the lazy `worker` chunk's; batch 4: in a card above the
+     * list and the job that the admin can collapse.
+     */
+    #computer(locale: Locale): TemplateResult {
         if (!this.#workerLoaded && this.app !== null) {
             this.#workerLoaded = true;
             loadWorkerElements(this.app);
         }
-        return html`<hcm-worker-panel .app=${this.app} .locale=${locale} project=${this.state?.projectId ?? ''}></hcm-worker-panel>`;
+        const toggled = (event: Event): void => {
+            this.#computerOpen = (event.currentTarget as HTMLDetailsElement).open;
+        };
+        return html`<details ?open=${this.#computerOpen} @toggle=${toggled} data-computer>
+            <summary>${contentText(locale, 'adminContent.jobs.computerTitle')}</summary>
+            <hcm-worker-panel .app=${this.app} .locale=${locale} project=${this.state?.projectId ?? ''}></hcm-worker-panel>
+        </details>`;
     }
 
     #chip(locale: Locale, selected: JobFilterPort, filter: JobFilterPort): TemplateResult {

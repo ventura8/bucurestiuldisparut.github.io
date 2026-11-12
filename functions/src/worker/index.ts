@@ -5,6 +5,7 @@
  * attested): each call is bound to the one job the caller's worker claimed.
  */
 import type { CallableDeps } from '../api/callable.js';
+import { archiveReportFunction, type ArchiveReportDeps } from './archive-report.js';
 import { claimFunction, type ClaimDeps } from './claim.js';
 import { endFunction, type EndDeps } from './end.js';
 import { helloFunction, type HelloDeps } from './hello.js';
@@ -26,7 +27,8 @@ export type WorkerFamilyDeps = CallableDeps &
     PairCodeDeps &
     RevokeDeps &
     ImageDeps &
-    StarterDeps;
+    StarterDeps &
+    ArchiveReportDeps;
 
 /**
  * `worker.hello`, `worker.claim`, `worker.step`, `worker.urls`, `worker.end`; finding 67's pairing: `worker.pair` (the
@@ -46,5 +48,6 @@ export function workerFunctions(getDeps: () => WorkerFamilyDeps) {
         revoke: revokeFunction(getDeps),
         image: imageFunction(getDeps),
         starter: starterFunction(getDeps),
+        archiveReport: archiveReportFunction(getDeps),
     };
 }

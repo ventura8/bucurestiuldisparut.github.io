@@ -21,6 +21,18 @@ describe('<hcm-icon-button>', () => {
         expect(clicks).toHaveLength(1);
         expect(changes).toEqual([]);
         expect(shadowPart(button, 'button').hasAttribute('aria-pressed')).toBe(false);
+        expect(shadowPart(button, 'button').hasAttribute('aria-expanded')).toBe(false);
+        expect(await axeViolations(button)).toEqual([]);
+    });
+
+    it('happyPath_expandedSaysWhatTheButtonCollapses', async () => {
+        const button = await fixture<HcmIconButton>(html`<hcm-icon-button icon="chevron_left" label="Collapse layers"></hcm-icon-button>`);
+        button.expanded = true;
+        await button.updateComplete;
+
+        await expect.element(page.getByRole('button', { name: 'Collapse layers' })).toHaveAttribute('aria-expanded', 'true');
+        button.expanded = false;
+        await expect.element(page.getByRole('button', { name: 'Collapse layers' })).toHaveAttribute('aria-expanded', 'false');
         expect(await axeViolations(button)).toEqual([]);
     });
 
@@ -49,5 +61,56 @@ describe('<hcm-icon-button>', () => {
 
         expect(changes).toEqual([]);
         await expect.element(page.getByRole('button', { name: 'Layers' })).toBeDisabled();
+    });
+
+    it('badPath_aSoftDisabledButtonSaysSoKeepsTheFocusAndItsToggleNeverChanges', async () => {
+        const button = await fixture<HcmIconButton>(
+            html`<hcm-icon-button toggle soft-disabled icon="add" label="Zoom in"></hcm-icon-button>`,
+        );
+        const changes = recordEvents(button, 'hcm-change');
+        const control = page.getByRole('button', { name: 'Zoom in' });
+
+        button.focus();
+        await userEvent.keyboard('{Enter}');
+
+        await expect.element(control).toHaveAttribute('aria-disabled', 'true');
+        await expect.element(control).not.toHaveAttribute('disabled');
+        expect(button.shadowRoot?.activeElement).toBe(shadowPart(button, 'button'));
+        expect(changes).toEqual([]);
+        expect(await axeViolations(button)).toEqual([]);
+    });
+
+    // Forced colours override the color-mix dimming: the soft-disabled button turns GrayText as a disabled one does.
+    it('badPath_inForcedColoursASoftDisabledButtonIsGrayText', async () => {
+        const button = await fixture<HcmIconButton>(html`<hcm-icon-button soft-disabled icon="add" label="Zoom in"></hcm-icon-button>`);
+
+        const rules = (button.shadowRoot?.adoptedStyleSheets ?? []).flatMap((sheet) => [...sheet.cssRules]);
+        const forced = rules.filter((rule) => rule instanceof CSSMediaRule && rule.conditionText.includes('forced-colors: active'));
+        const inner = forced.flatMap((rule) => [...(rule as CSSMediaRule).cssRules]) as CSSStyleRule[];
+
+        expect(inner.find((rule) => rule.selectorText.includes('soft-disabled'))?.style.color).toBe('graytext');
+    });
+
+    it('badPath_aSoftDisabledButtonShowsNoHoverLayer', async () => {
+        const button = await fixture<HcmIconButton>(html`<hcm-icon-button soft-disabled icon="add" label="Zoom in"></hcm-icon-button>`);
+        const control = shadowPart(button, 'button');
+
+        await userEvent.hover(page.getByRole('button', { name: 'Zoom in' }));
+        await Promise.all(control.getAnimations({ subtree: true }).map((animation) => animation.finished));
+
+        expect(getComputedStyle(control, '::before').opacity).toBe('0');
+        expect(getComputedStyle(control).cursor).toBe('default');
+    });
+
+    it('happyPath_softDisabledOffHasNoAriaDisabled', async () => {
+        const button = await fixture<HcmIconButton>(html`<hcm-icon-button icon="add" label="Zoom in"></hcm-icon-button>`);
+
+        button.softDisabled = true;
+        await button.updateComplete;
+        button.softDisabled = false;
+        await button.updateComplete;
+
+        expect(shadowPart(button, 'button').hasAttribute('aria-disabled')).toBe(false);
+        expect(button.hasAttribute('soft-disabled')).toBe(false);
     });
 });

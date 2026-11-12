@@ -32,11 +32,27 @@ export const georefStyles = [
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             gap: 12px;
-            block-size: clamp(280px, 55vh, 640px);
+
+            /* M22 (§13.2): room to work, about seven tenths of the window and never under 420 px. */
+            block-size: max(420px, 70vh);
         }
 
         .panes[data-compact] {
             grid-template-columns: minmax(0, 1fr);
+            block-size: max(320px, 70dvh);
+        }
+
+        /* Full screen: the page covers the window, its actions first, the scan and the map taking the rest of its height. */
+        .page[data-full] {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            overflow-y: auto;
+            background: var(--md-sys-color-surface, Canvas);
+        }
+
+        .page[data-full] .panes {
+            block-size: max(320px, calc(100dvh - 200px));
         }
 
         /* 8 px between a pane's switch and its map or scan: the switch's 48 px target stays clear (CR-M3-35 i). */
@@ -59,6 +75,19 @@ export const georefStyles = [
             min-block-size: 0;
             border-radius: var(--md-sys-shape-corner-medium, 12px);
             overflow: hidden;
+        }
+
+        .guide {
+            max-inline-size: 72ch;
+        }
+
+        /* A 48 px touch target on a compact window (the context menu's tour state found it 19 px tall). */
+        .guide summary {
+            box-sizing: border-box;
+            min-block-size: 48px;
+            padding-block: 12px;
+            cursor: pointer;
+            font: var(--md-sys-typescale-title-small-font, 500 0.875rem/1.25rem system-ui);
         }
 
         .transforms {

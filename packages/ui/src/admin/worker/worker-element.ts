@@ -51,6 +51,11 @@ export const workerStyles = [
             overflow-wrap: anywhere;
         }
 
+        /* Batch 4 (the owner, 2026-11-09): a choice's label wraps between words, never inside one ("compute r"). */
+        hcm-segmented-button {
+            overflow-wrap: normal;
+        }
+
         .title {
             font-size: var(--md-sys-typescale-title-medium-size, 1rem);
             line-height: var(--md-sys-typescale-title-medium-line-height, 1.5rem);
