@@ -134,6 +134,15 @@ export class HcmLayerPanel extends LitElement {
                 gap: 12px;
             }
 
+            .pinned {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                padding-block-end: 4px;
+                background: var(--md-sys-color-surface-container-low);
+                box-shadow: 0 1px 0 var(--md-sys-color-outline-variant);
+            }
+
             /*
              * Pinned while the list scrolls in the docked pane only: in a modal sheet (a phone's bottom sheet, a short
              * window's side sheet) the pane is too short, and the list scrolled under it hid a focused switch (WCAG
@@ -143,15 +152,6 @@ export class HcmLayerPanel extends LitElement {
                 position: sticky;
                 inset-block-start: 0;
                 z-index: 1;
-            }
-
-            .pinned {
-                display: flex;
-                flex-direction: column;
-                gap: 4px;
-                padding-block-end: 4px;
-                background: var(--md-sys-color-surface-container-low);
-                box-shadow: 0 1px 0 var(--md-sys-color-outline-variant);
             }
 
             .empty {

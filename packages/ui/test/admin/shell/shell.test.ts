@@ -46,16 +46,6 @@ describe('<hcm-admin-shell>', () => {
         expect(deep(element, '.frame').dataset['nav']).toBe(variant);
     });
 
-    it('happyPath_theFramedScreensMarkTheShellAsAnAppShellAndThePanelsDoNot', async () => {
-        const app = new FakeAdminApp(adminState({ destinations: DESTINATIONS }));
-        const element = await shell(app);
-        expect(element.hasAttribute('data-frame')).toBe(true);
-
-        app.set({ auth: 'signedOut' });
-        await updated(element);
-        expect(element.hasAttribute('data-frame')).toBe(false);
-    });
-
     it('badPath_startUpModeShowsTheBannerAndSetupOnly', async () => {
         const app = new FakeAdminApp(adminState({ auth: 'bootstrap', mode: 'bootstrap', locale: 'ro' }));
         const element = await shell(app);
@@ -232,5 +222,21 @@ describe('<hcm-admin-shell> a newer admin', () => {
         deep(deep(banner, 'hcm-button'), 'button').click();
         expect(app.calls).toContain('reload');
         expect(await axeViolations(element)).toEqual([]);
+    });
+});
+
+/** The framed screens are an app shell whose page never scrolls (packages/admin/src/admin.css); the sign-in panels are documents. */
+describe('<hcm-admin-shell> data-frame', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_theFramedScreensMarkTheShellAsAnAppShellAndThePanelsDoNot', async () => {
+        const app = new FakeAdminApp(adminState({ destinations: DESTINATIONS }));
+        const element = await shell(app);
+        expect(element.hasAttribute('data-frame')).toBe(true);
+
+        app.set({ auth: 'signedOut' });
+        await updated(element);
+        expect(element.hasAttribute('data-frame')).toBe(false);
     });
 });
