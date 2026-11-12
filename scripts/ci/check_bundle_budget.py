@@ -115,8 +115,8 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # template with The map shows and Delete pair N, the scan pane's gestures and its tiles' holder, removing a pair with Undo and the
     # published layers the map pane shows (`GEOREF_PANE_MODULES` of `packages/admin/vite.config.ts`). It loads with the page, like
     # `georef-badges`: `georef` was at 19.9 KB with them (budget 19) and stays 19.
-    # 6.4 KB measured on 2026-11-12 with the turning and the scan pane's drawing, plus about 20 %, rounded up.
-    "georef-panes": 8,
+    # 4.2 KB measured on 2026-11-12 with the turning and the scan pane's drawing (out of `georef-badges`), plus about 20 %, rounded up.
+    "georef-panes": 6,
     "layer-geometry": 3,
     # M4's order card (`packages/ui/src/admin/imagery/orders/lazy-card.ts`), fetched the first time a scene that must be
     # bought opens, so the Imagery area stays within its budget with the buy flow: 1.7 KB measured on 2026-10-24 plus about

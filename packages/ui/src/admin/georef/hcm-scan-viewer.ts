@@ -21,7 +21,17 @@ import { defineOnce, emit } from '../../components/internal.js';
 import { adminBase } from '../shell/admin-styles.js';
 import { drawScan, type ScanMarker } from './scan-draw.js';
 import { scanViewerStyles } from './scan-viewer-styles.js';
-import { ARROW_STEPS, COMMANDS, DetailTiles, draggedView, followed, imageOf, type Gesture, type Pinch, type ScanDetailFile } from './scan-input.js';
+import {
+    ARROW_STEPS,
+    COMMANDS,
+    DetailTiles,
+    draggedView,
+    followed,
+    imageOf,
+    type Gesture,
+    type Pinch,
+    type ScanDetailFile,
+} from './scan-input.js';
 import {
     centredView,
     fitView,

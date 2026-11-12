@@ -46,7 +46,10 @@ export const COMMANDS: Readonly<Record<string, ((viewer: CommandViewer) => boole
 };
 
 /** The linked map's place for the pane: one without an angle (the panes turn apart) keeps the pane as the owner turned it. */
-export function followed<Camera extends { readonly angle?: number }>(follow: Camera, current: ScanView | null): Camera & { readonly angle: number | undefined } {
+export function followed<Camera extends { readonly angle?: number }>(
+    follow: Camera,
+    current: ScanView | null,
+): Camera & { readonly angle: number | undefined } {
     return { ...follow, angle: follow.angle ?? current?.angle };
 }
 

@@ -82,7 +82,8 @@ function turnButtons(context: GeorefContext, pane: 'scan' | 'map'): TemplateResu
         const label = contentText(locale, `adminContent.georef.turn.${name}`);
         return html`<hcm-button variant="text" data-turn=${name} @click=${turn(context, pane, direction)}>${label}</hcm-button>`;
     };
-    return html`<div class="actions turn" role="group" aria-label=${contentText(locale, `adminContent.georef.turn.${pane}`)}>
+    const group = contentText(locale, `adminContent.georef.turn.${pane}`);
+    return html`<div class="actions turn" role="group" aria-label=${group}>
         ${button(-1, 'left')} ${button(1, 'right')} ${button(0, pane === 'scan' ? 'scanUp' : 'mapUp')}
     </div>`;
 }

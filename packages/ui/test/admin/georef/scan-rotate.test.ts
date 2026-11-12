@@ -127,14 +127,18 @@ describe('the scan view under a turn', () => {
             view: { scale: 1, offset: { x: 0, y: 0 }, angle: Math.PI / 2 },
         });
         // A quarter turn: the transform's second term (the sine) is the scale, its first (the cosine) nothing.
-        expect(transforms.mock.calls.some((call) => Math.abs(Number(call[0])) < 1e-9 && Number(call[1]) > 0)).toBe(true);
+        const terms = transforms.mock.calls.map((call) => call as unknown as readonly number[]);
+        expect(terms.some(([cos = 1, sin = 0]) => Math.abs(cos) < 1e-9 && sin > 0)).toBe(true);
         vi.restoreAllMocks();
         canvas.remove();
     });
 });
 
 describe('the scan pane turns', () => {
-    afterEach(cleanup);
+    afterEach(() => {
+        cleanup();
+        vi.restoreAllMocks();
+    });
 
     it('happyPath_theKeysAndCtrlWithADragTurnTheScanAndSayItsAngle @S-A16-HAPPY-GEOREF-ROTATE', async () => {
         const element = await viewer();
@@ -161,6 +165,8 @@ describe('the scan pane turns', () => {
         // Ctrl and a drag from the right of the centre to below it: a quarter turn, and no pair is picked or moved.
         const picked: unknown[] = [];
         element.addEventListener('hcm-select', (event) => picked.push(event));
+        // A made-up pointer cannot be captured: the capture is the browser's, not the pane's.
+        vi.spyOn(Element.prototype, 'setPointerCapture').mockImplementation(() => undefined);
         const box = element.getBoundingClientRect();
         const pointer = (type: string, x: number, y: number): void => {
             canvasOf(element).dispatchEvent(
@@ -210,7 +216,8 @@ describe('the turn buttons on the page', () => {
         press('scan-pane', 'left');
         press('scan-pane', 'right');
         press('scan-pane', 'scanUp');
-        expect(turnedBy.mock.calls.map((call) => Math.round((call[0] * 180) / Math.PI))).toEqual([-15, 15]);
+        // Upright turns back by what the pane is turned (nothing here), through the same method.
+        expect(turnedBy.mock.calls.slice(0, 2).map((call) => Math.round((call[0] * 180) / Math.PI))).toEqual([-15, 15]);
         expect(upright).toHaveBeenCalledTimes(1);
 
         press('map-pane', 'left');
