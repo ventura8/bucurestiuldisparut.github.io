@@ -657,3 +657,80 @@ Tests: `pipeline/tests/unit/{test_placing_grid,test_worker_imports,test_worker_a
 `packages/admin/test/archive/{local-import,feed}.test.ts`, `packages/ui/test/admin/{archive/archive,imagery/grid-names}.test.ts`,
 `e2e/admin/specs/imagery/archive.spec.ts`; scenarios `S-A120-HAPPY-GRID-NAMES`, `S-A120-BAD-GRID-NAMES-EDITOR`, `S-P20-HAPPY-GRID-BY-NAMES`,
 `S-A121-HAPPY-LOCAL-TAB`, `S-A121-BAD-LOCAL-TAB`, `S-P20-HAPPY-ADMIN-IMPORT`, `S-P20-BAD-ADMIN-IMPORT`, `S-P20-BAD-ADMIN-IMPORT-CANCELLED`.
+
+## 19. Automatic tile stitching (track/autostitch, 2026-11-12)
+
+Why parts were left out before (the worker's "9 parts, 85 left out", "2 parts, 98 left out", "57/3", "135/9"): the atlas edges compared
+1 px ink profiles and needed a mutual best match, which pages with margins and frames almost never give; the SIFT joins found few unique
+matches on repeated hatching and tried no turn or flip; the whole canvas was kept in memory (about 1.2 GB at 20,000 px); names were read
+only beside an overview. The pipeline side of the design (part A and the contract's twins) is in `pipeline/src/hcm_pipeline/placing/`;
+the tile-import wizard (part B) and the callables are track/tilewizard's.
+
+### 19.1 The grid from the names (`sheetnames.py`)
+
+`r1c2`, `3_7` / `03-07`, a letter row and a number column (`C12`), a sheet number with an `A`-`D` quadrant (each base sheet's quarters on a
+grid twice as fine), folders as rows, else the natural order (`img003`, a PDF's pages). A scheme must read 80 % of the names, no two on one
+cell; the names it does not read are foreign (`no-join`). For names in order alone the likeliest column counts (the whole map nearest a
+square for the median sheet's shape, exact factorisations first) are each tried and the one whose seams join best is kept. The overview's
+name hint (`overview.grid_hint`) reads names through the same parser (`cell_of`).
+
+### 19.2 The working copies (`sheetwork.py`, `frame.py`)
+
+Each sheet is read reduced (at most 1024 px, smaller for a long series so all copies stay within 160 MB), in grey, cropped to its content:
+inside its frame when the frame has a paper margin around it (an outline inside the drawing, a ring of streets, is no frame), with the
+frame's line trimmed off; else with paper margins of at least 2 % trimmed (a street along the edge is content). The paper level is the
+98th percentile (a map of dark blocks has little paper). A page under 0.3 % ink is `blank`. Every copy is stretched to the series' cell
+(the median shape), which takes out scale differences; its turn and flip are one of eight variants, those its shape allows.
+
+### 19.3 The seams (`seams.py`)
+
+Only edge strips (25 % of the side) are compared. Line art (under 30 % ink) goes through a distance transform clipped at 12 px; filled
+maps are compared on their lightly smoothed grey. Overlap: the first sheet's outermost 2 %, 5 % and 10 % are each searched in the second's
+strip by normalised cross-correlation at a sub-pixel peak, and the reading whose overlap correlates best after alignment wins; its
+residual is the phase correlation (`cv2.phaseCorrelate`, Hanning window) of the aligned overlaps. Abutting pages: the edges' ink profiles,
+shifted, correlated. `strong` from 0.6, `weak` from 0.3, else `missing`. A seam below is a right seam of the sheets transposed.
+Each sheet's variant is chosen surest first: a sheet not strong as it is turns to a variant that fits strongly and gains 0.2, each checked
+again just before it turns, in two passes.
+
+### 19.4 The bundle (`bundle.py`)
+
+Least squares over every sheet's top left: each strong or weak seam weighted by its score squared, a weak grid prior (0.02) holding each
+sheet to its cell at the strong seams' median pitch, IRLS with Huber's loss (2 px). A seam still off by more than 8 px is dropped (marked
+weak); a sheet whose cell came from the order alone with no kept seam is left out (`no-seam`): a foreign sheet numbered with the pages never
+joins.
+
+### 19.5 The verdict (`quality.py`)
+
+`good` when at least 90 % of the sheets that count are placed (blank pages and `not-part` do not count), the seams' median NCC is at least
+0.5, the residuals' 95th percentile at most 3 px and no sheet moved more than a quarter cell from its prior (the thresholds are the shared
+`STITCH_GOOD_*` twins); `poor` under 50 % placed or a median under 0.25; else `check`.
+
+### 19.6 The fallback order and the windowed mosaic (`maps.py`, `autoplace.py`, `canvas_window.py`)
+
+Atlas and pieces alike: (1) the owner's layout (`help.layoutAnswer`), (2) the overview, (3) names, seams and bundle, mosaicked when `good`,
+(4) the older edges or SIFT joins when they place at least 90 % of the parts, (5) else no mosaic: a preview of the proposal and the version
+waits with `layout-check`. The mosaic is a tiled GTiff written in 2048 px windows, one sheet read at a time at the canvas's scale, each
+pixel owned by the covering sheet whose centre is nearest (a hard seam: blending line art doubles its lines); GDAL's cache is held to
+128 MB. Peak memory is one sheet and two windows.
+
+### 19.7 The files for the owner (`layout_files.py`)
+
+`help.stitched.layout` (the grid, the revision, the quality, at most 200 weakest seams) and three version files: `layout.json`
+(`layoutFileSchema`: every sheet's cell, turn, flip, why it is out, source, its similarity from its oriented pixels to the canvas; every
+seam's offset and overlap in the first sheet's oriented pixels, and for a weak seam one suggested matching point and its two strips),
+`thumbs.jpg` (128 px cells, 32 a row, not turned) and `seams.jpg` (one row per weak seam, two 256 px squares). The revision is one more
+than the version's current layout's.
+
+### 19.8 The owner's layout (`owner_layout.py`)
+
+The answer names sheets by index with their cell, turn and flip, or `not-part`; a sheet it does not name is out. A seam the owner answered
+(one point on each side) becomes a fixed seam of full weight; the rest are measured and bundled. A `preview` answer renders the layout and
+waits again (its answer kept, revision + 1); an accepted or final one is mosaicked and placed whatever its verdict.
+
+### 19.9 Targets and measurements
+
+Synthetic series (`pipeline/tests/synthetic/sheets.py` on the synthetic town): N x M grids, overlap 0-15 %, frames and margins, turns and
+flips, scale ±5 %, grey, colour and line art, every name scheme, shuffled, missing and foreign sheets, noise. Targets, all met in the tests
+(`test_placing_autostitch.py`, `test_placing_canvas_window.py`): every sheet placed at 3 % overlap or more and for named abutting atlases;
+seam error median ≤ 1.5 px and p95 ≤ 3 px; a foreign sheet never placed; noise judged `poor` (it waits, never a mosaic); peak RSS ≤ 1.5 GB
+for 100 sheets of 6000 px.

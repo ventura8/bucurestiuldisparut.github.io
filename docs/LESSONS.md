@@ -3432,3 +3432,21 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `best_of` kept the best-voted window, the first of equals, and `locate` cut the frame by it: with no votes anywhere the choice was only the order of the list.
     - Fix and pin: a frame nothing proved is cut by a guess only when it was searched whole, in time, and fits a scan shown whole; else the scan is the whole exposure shrunk (`steps/whole.py`, marked in `scan.tif`), and the owner's rough points crop the film at full resolution (`steps/recrop.py`); the KH-5 cap ends the same way (S-P06-HAPPY-WHOLE-STRIP, S-P06-BAD-WHOLE-STRIP-UNPROVED, S-P06-HAPPY-ROUGH-POINTS-CROP, S-P06-BAD-ROUGH-POINTS-OUTSIDE, S-P06-BAD-ROUGH-POINTS-FILM-GONE).
     - **When nothing is proved, never let an unproved guess decide what the person sees: show everything, coarser, and let their answer choose.**
+
+585. **A map of dark blocks was cropped by a margin it does not have.**
+    - Seen: 2026-11-12, track/autostitch's synthetic series: sheets of a grey town (blocks filled, streets paper) lost about 20 px on two sides, differently per sheet, so neighbours' overlaps no longer matched.
+    - Cause: the paper level was the 90th percentile, which on a map mostly of ink is the ink; and a ring of streets near the edge read as a frame, its "line" trimmed into the drawing.
+    - Fix and pin: the paper is the 98th percentile; a frame counts only with a paper margin outside it; its line is trimmed only while a row is 90 % ink; a margin is at least 2 % of the side (`frame.content_box`; `test_placing_sheetwork.py`, S-P20-HAPPY-STITCH-ABUTTING).
+    - **Before cropping a page to its content, prove the margin is paper: a crop that differs per sheet breaks every seam after it.**
+
+586. **A turned sheet's neighbours turned too.**
+    - Seen: 2026-11-12, track/autostitch: with three of twelve sheets turned, an upright sheet next to two turned ones was flipped (its seams to them scored better upside down by chance) and a turned one stayed.
+    - Cause: the sheets were turned one after another in file order, each judged against neighbours not yet turned back.
+    - Fix and pin: surest first: each sheet's gain is ranked, a sheet turns only to a variant that fits strongly and gains 0.2, and it is checked again just before it turns (`autostitch.orient`, S-P20-HAPPY-STITCH-TURNED).
+    - **When choices depend on each other, make the surest one first and look again before each next one.**
+
+587. **A seam's residual from chunks of a thin template measured noise.**
+    - Seen: 2026-11-12, track/autostitch: line-art seams placed within 1 px reported a residual of 3-170 px, so good series were judged `check`.
+    - Cause: thirds of a 10 px wide template were matched anywhere in the strip, and on hatching or plain blocks each third found another place.
+    - Fix and pin: the residual is the phase correlation of the two aligned overlaps (`seams._residual`); several template widths are tried and the one whose whole overlap correlates best wins (S-P20-HAPPY-STITCH-SEAMS).
+    - **A quality measure must be measured on the same area the decision used, never on a smaller piece searched again.**

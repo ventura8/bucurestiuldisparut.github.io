@@ -17377,6 +17377,94 @@
             "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_placing_pdf.py."
         },
         {
+            "id": "S-P20-HAPPY-STITCH-NAMES",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An atlas or pieces named by row and column are laid out on their own",
+            "asserts": "names r1c2, 03-07, C12, 12A quadrants or folders as rows, shuffled, overlapping 6-15 %, grey, colour or line art, framed or with margins, scale off by 5 % -> every sheet placed, seam error median <= 1.5 px and p95 <= 3 px, verdict good; mosaicked window by window and waiting for points with help.stitched.layout and layout.json, thumbs.jpg, seams.jpg",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_sheetnames.py, pipeline/tests/unit/test_placing_autostitch.py, pipeline/tests/unit/test_placing_autoplace.py, pipeline/tests/unit/test_placing_bundle.py."
+        },
+        {
+            "id": "S-P20-HAPPY-STITCH-SEAMS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Sheets named only in order get their columns from the seams",
+            "asserts": "img003 or page numbers in natural order, overlap 3 % -> the likeliest column counts are each tried and the one whose seams join best kept; every sheet placed within the seam-error targets",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_sheetnames.py, pipeline/tests/unit/test_placing_seams.py, pipeline/tests/unit/test_placing_autostitch.py."
+        },
+        {
+            "id": "S-P20-HAPPY-STITCH-TURNED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Sheets scanned turned or mirrored are turned back",
+            "asserts": "three of twelve sheets turned 90/180/270 degrees and some mirrored -> each turned back to the variant its neighbours agree with (surest first), every sheet placed within the targets",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_autostitch.py, pipeline/tests/unit/test_placing_sheetwork.py."
+        },
+        {
+            "id": "S-P20-HAPPY-STITCH-ABUTTING",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Atlas pages that abut with frames and margins are placed whole",
+            "asserts": "pages with no overlap, paper margins and a frame line -> cropped inside the frame, joined by their edges continuing; 100 % placed, verdict good",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_autostitch.py, pipeline/tests/unit/test_placing_seams.py, pipeline/tests/unit/test_placing_sheetwork.py."
+        },
+        {
+            "id": "S-P20-HAPPY-STITCH-WINDOWED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The mosaic is written in windows within the worker's memory",
+            "asserts": "100 scans of 6000 px laid out and mosaicked -> peak RSS of the process <= 1.5 GB (the 4 GB / 2-core worker), canvas <= 20,000 px, tiles pasted turned, cropped and split at the nearest centre",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_canvas_window.py, pipeline/tests/unit/test_placing_autoplace.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-GARBAGE-WAITS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A layout nothing vouches for waits for its owner, never a mosaic",
+            "asserts": "noise sheets, or a check verdict the older joins cannot hold either -> no canvas, a preview of the proposal, the version waits with help reason layout-check and its layout files (weak seams with strips and a suggested point)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_autostitch.py, pipeline/tests/unit/test_placing_autoplace.py, pipeline/tests/unit/test_placing_bundle.py, pipeline/tests/unit/test_placing_assemble.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-FOREIGN-SHEET",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A foreign sheet is never placed",
+            "asserts": "a legend among named sheets, another town's sheet numbered with the pages, missing sheets -> the foreign sheet is left out (no-join or no-seam), the others placed within the targets",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_autostitch.py, pipeline/tests/unit/test_placing_bundle.py, pipeline/tests/unit/test_placing_seams.py, pipeline/tests/unit/test_placing_sheetnames.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-NO-NAMES",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Names no scheme agrees on fall back to the order",
+            "asserts": "names like north, harbour, east, duplicates on one cell, folders of one file -> laid out in natural order and judged by their seams, never a wrong named grid",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_sheetnames.py."
+        },
+        {
             "id": "S-A65-HAPPY-JOINED-FRAME",
             "behaviour": "A65",
             "area": "admin",
