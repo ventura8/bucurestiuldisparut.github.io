@@ -25,8 +25,13 @@ function fieldOf(error: unknown, key: 'name' | 'message' | 'stack'): string {
     if (typeof error === 'string') {
         return key === 'message' ? error : '';
     }
-    const value: unknown = typeof error === 'object' && error !== null ? (error as Record<string, unknown>)[key] : undefined;
+    const value = recordOf(error)[key];
     return typeof value === 'string' ? value : '';
+}
+
+/** An object's fields, or none. */
+function recordOf(value: unknown): Readonly<Record<string, unknown>> {
+    return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
 }
 
 /** The stack's frame lines (V8's `at …` and Gecko/WebKit's `fn@url`). */
@@ -55,7 +60,7 @@ export function crashNoiseOf(error: unknown): CrashNoise | null {
 }
 
 /** The device class of a User-Agent: what a crash needs to know about the screen, nothing more. */
-export type DeviceClass = 'mobile' | 'tablet' | 'desktop';
+type DeviceClass = 'mobile' | 'tablet' | 'desktop';
 
 const BROWSERS: readonly (readonly [string, RegExp])[] = [
     ['Edge', /Edg(?:e|A|iOS)?\/(\d+)/],
@@ -63,7 +68,8 @@ const BROWSERS: readonly (readonly [string, RegExp])[] = [
     ['Opera', /(?:OPR|OPT)\/(\d+)/],
     ['Firefox', /(?:Firefox|FxiOS)\/(\d+)/],
     ['Chrome', /(?:Chrome|CriOS)\/(\d+)/],
-    ['Safari', /Version\/(\d+)[\d.]* (?:Mobile\/\S+ )?Safari\//],
+    // After Chrome: Android's web view says Version/4.0 beside Chrome/.
+    ['Safari', /Version\/(\d+)/],
 ];
 
 function deviceOf(userAgent: string): DeviceClass {
