@@ -129,14 +129,15 @@ test(
         const together = page.getByRole('button', { name: georefText(lang, 'adminContent.georef.turn.together') });
         await expect(together).toHaveAttribute('aria-pressed', 'true');
 
-        // A first move links the panes; then r turns the scan 15 degrees clockwise and the map's bearing falls by the same.
+        // A first move links the panes; then r turns the scan 15 degrees clockwise and the map turns with it: its bearing falls by
+        // about as much (the stand-in's fit stretches one axis more than the other, so not by exactly 15).
         await scanPane(page, lang).focus();
         await page.keyboard.press('+');
         await mapIdle(page);
         const bearing = (await mapFacts(page)).bearing;
         await page.keyboard.press('r');
         await expect.poll(() => scanAngle(page)).toBeCloseTo(15, 3);
-        await expect.poll(async () => turnBetween(bearing, (await mapFacts(page)).bearing)).toBeCloseTo(-15, 1);
+        await expect.poll(async () => Math.abs(turnBetween(bearing, (await mapFacts(page)).bearing) + 15)).toBeLessThan(5);
         await expectStateSound(page, adminVisit('georef.rotated', lang));
 
         // The map's own Turn left (the ground goes anticlockwise, the bearing rises): the scan turns back with it.
@@ -146,14 +147,14 @@ test(
             .getByRole('button', { name: georefText(lang, 'adminContent.georef.turn.left') })
             .click();
         await showPane(page, lang, 'scan');
-        await expect.poll(() => scanAngle(page)).toBeCloseTo(0, 1);
+        await expect.poll(async () => Math.abs(await scanAngle(page))).toBeLessThan(5);
 
         // Upright by its button: n and the button do the same.
         await page
             .getByRole('group', { name: georefText(lang, 'adminContent.georef.turn.scan') })
             .getByRole('button', { name: georefText(lang, 'adminContent.georef.turn.right') })
             .click();
-        await expect.poll(() => scanAngle(page)).toBeCloseTo(15, 1);
+        await expect.poll(async () => Math.abs((await scanAngle(page)) - 15)).toBeLessThan(5);
         await page
             .getByRole('group', { name: georefText(lang, 'adminContent.georef.turn.scan') })
             .getByRole('button', { name: georefText(lang, 'adminContent.georef.turn.scanUp') })
