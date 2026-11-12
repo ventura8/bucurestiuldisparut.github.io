@@ -6517,3 +6517,15 @@ The owner's request of 2026-11-09 ("add + and - buttons for when viewing a photo
 - **167l The shared index stays within its 400 lines** after the merge of 2026-11-12 by writing the photo versions' three names and two type exports on one line each (`type` inline); nothing re-exported through another module (lesson 591).
 - **167m The map's menu as a sanctioned popup of the tour's layout checker — APPROVED by the owner 2026-11-12 (relayed by the coordinator).** Open, the menu covers the point the visitor pressed; from the keyboard that is the map's centre, the one point the occlusion check samples on the canvas, and on a phone no place is clear of the standing timeline and the zoom group. `e2e/support/layout.ts` therefore names it chrome of kind `context-menu`, allowed over anything (`SANCTIONED_STACKINGS`, the second popup after the FAB menu; docs/TESTING.md). This relaxes a checker for one component, so it waited for the owner's yes.
 - **167n The menu is on `track/photoversions`** (2026-11-12): parked first on `track/mapmenu-wip` (the revert and its revert are in the history), merged by fast-forward once §167m was approved.
+
+## 168. The engine's bundle budgets raised for beta.1 (the owner, 2026-11-12)
+
+The owner, in chat on 2026-11-12, after every branch of beta.1 had to trim bytes to fit (the IIFE at 124.8 to 124.99 of
+125 KB; photo versions, the map's menu, the theme-following tab icon and 25 languages all land in this release): "raise
+the limits!!!". A relaxed gate, so it is the owner's decision, recorded here.
+
+- **168a** `packages/engine/dist/engine.iife.js` 125 → 150 KB gzip; `packages/engine/dist/engine.mjs` 100 → 120 KB;
+  the side-loaded `engine.extras.js` chunk 7 → 12 KB (`scripts/ci/check_bundle_budget.py`).
+- **168b** The admin's budgets, the start page's and the other chunks' stay as they were.
+- **168c** The rule stands: a budget moves only by a reviewed change with its reason; code that only some visitors need
+  still goes to the on-demand parts first (`docs/ENGINE_API.md` → *Side-loaded parts*).
