@@ -5,7 +5,7 @@ import type { Locator, Page } from '@playwright/test';
 import { siteManifestData, type Json } from '../../fixtures/manifest.js';
 import { E2E_PLAIN_STYLE_ID, E2E_ROADS_OFF_STYLE_ID, E2E_TILESET_LAYER } from '../../fixtures/world.js';
 import { compareBar, expectMapCounts } from '../../support/compare.js';
-import { mapIdle, mapLabelFlags } from '../../support/map.js';
+import { mapIdle, mapLabelFlags, mapTransitFlags } from '../../support/map.js';
 import { expect, test } from '../../support/test.js';
 import {
     callController,
@@ -20,9 +20,9 @@ import {
 
 /**
  * The basemap's own labels (behaviour V31, docs/ENGINE_API.md → Map labels): street names and points of interest, Mapbox
- * Standard's `showRoadLabels` and `showPointOfInterestLabels`. The e2e basemap is a fragment with Standard's schema and
- * draws no text, so what these specs read is what the real Mapbox GL reports it applied (`mapLabelFlags`); the map-instance
- * counter proves a switch makes no new map load. Each test that compares sets a wide window: a second map only from 600 px.
+ * Standard's `showRoadLabels` and `showPointOfInterestLabels`, with its transit stations (`showTransitLabels`). The e2e
+ * basemap is a fragment with Standard's schema and draws no text, so what these specs read is what the real Mapbox GL reports
+ * it applied (`mapLabelFlags`, `mapTransitFlags`); the map-instance counter proves a switch makes no new map load. Each test that compares sets a wide window: a second map only from 600 px.
  */
 
 const VIEW = '15/44.37000/25.97000';
@@ -255,5 +255,55 @@ test('The controller ignores what is not a label choice', { tag: '@S-V31-BAD-API
     await callController(page, 'setMapLabels');
 
     expect(await mapLabelFlags(page)).toEqual([BOTH_DRAWN]);
+    expect(await engineEvents(page, 'hcm-map-labels-change')).toEqual([]);
+});
+
+test(
+    'Points of interest off hide the tram and metro stations too, and a reload keeps them hidden',
+    { tag: '@S-V31-HAPPY-TRANSIT' },
+    async ({ page, lang }) => {
+        await openViewer(page, { lang, hash: VIEW });
+        await openLayers(page, lang);
+        expect(await mapTransitFlags(page)).toEqual([true]);
+
+        await pois(page, lang).click();
+        await expect.poll(() => mapTransitFlags(page)).toEqual([false]);
+        await expect.poll(() => hashParam(page, 'labels')).toBe('streets');
+
+        await page.reload();
+        await mapIdle(page);
+        expect(await mapTransitFlags(page)).toEqual([false]);
+        expect(await hashParam(page, 'labels')).toBe('streets');
+        await openLayers(page, lang);
+        await pois(page, lang).click();
+        await expect.poll(() => mapTransitFlags(page)).toEqual([true]);
+        await expectMapCounts(page, 1, 0);
+    },
+);
+
+test(
+    "A city's own transit choice stands when the points of interest come back",
+    { tag: '@S-V31-BAD-TRANSIT-CITY' },
+    async ({ page, lang }) => {
+        await serveManifest(page, withBasemap({ config: { showTransitLabels: false } }));
+        await openViewer(page, { lang, hash: `${VIEW}&labels=streets` });
+        await openLayers(page, lang);
+
+        await pois(page, lang).click();
+
+        await expect.poll(() => mapLabelFlags(page)).toEqual([BOTH_DRAWN]);
+        expect(await mapTransitFlags(page)).toEqual([false]);
+    },
+);
+
+test('A custom basemap is sent no transit property', { tag: '@S-V31-BAD-TRANSIT-UNKNOWN' }, async ({ page, lang }) => {
+    await serveManifest(page, withBasemap(CUSTOM_BASEMAP));
+    await openViewer(page, { lang, hash: VIEW });
+    await openLayers(page, lang);
+
+    await callController(page, 'setMapLabels', { pois: false });
+
+    await expect(pois(page, lang)).toHaveCount(0);
+    expect(await mapTransitFlags(page)).toEqual([null]);
     expect(await engineEvents(page, 'hcm-map-labels-change')).toEqual([]);
 });

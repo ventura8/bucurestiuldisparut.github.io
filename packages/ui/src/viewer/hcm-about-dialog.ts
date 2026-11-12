@@ -2,7 +2,9 @@
  * `<hcm-about-dialog>`: About, credits and the privacy notice of the city (scenario V13), the engine version and the
  * analytics consent with its withdrawal (V19), in the ui-kit's `<hcm-dialog>` (full screen on compact). The About and privacy texts are the Markdown subset walked into DOM nodes;
  * empty credits hide their section (S-V13-BAD-EMPTY-CREDITS). The dialog sits in the browser's top layer, over the
- * map's own logo and attribution, so its foot shows them (`<hcm-map-attribution>`, V18) whenever the map is there.
+ * map and its own logo and attribution: full screen the map does not show, so there is nothing to credit; a centred
+ * dialog leaves the map's corners, and Mapbox's controls, to show around it (V18; the Pixel 9 Pro review, P3, found a
+ * copy of the credits at the dialog's foot taking 40 to 80 px of Settings and About on a phone).
  *
  * Its `mode` picks what it shows: About (`about`, with the accessibility statement of docs/research/viewer-input.md §5),
  * the help panel of the keyboard and the gamepad (`help`, §2), or Settings (`settings`, the menu's Setări): the language
@@ -16,7 +18,6 @@ import { DEFAULT_LOCALE, LOCALES, resolveLocale, translate, type City, type Cred
 import { LitElement, css, html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { tabbableElements } from '../components/focus.js';
-import type { AttributionPart } from './attribution.js';
 import { EMPTY } from './empty.js';
 import { externalLink, renderMarkdown } from './markdown.js';
 import { baseStyles, detailStyles } from './shared-styles.js';
@@ -64,8 +65,6 @@ export class HcmAboutDialog extends LitElement {
         analytics: { type: Boolean },
         fullscreen: { type: Boolean },
         theme: { type: String },
-        attribution: { attribute: false },
-        mapboxCssUrl: { attribute: false },
     };
 
     static override readonly styles = [
@@ -83,10 +82,6 @@ export class HcmAboutDialog extends LitElement {
             /* Its colour is detailStyles' .supporting. */
             .engine {
                 font-size: var(--md-sys-typescale-body-small-size);
-            }
-
-            hcm-map-attribution {
-                flex: 1 1 100%;
             }
 
             hcm-switch {
@@ -111,10 +106,6 @@ export class HcmAboutDialog extends LitElement {
     declare analytics: boolean;
     declare fullscreen: boolean;
     declare theme: ThemeMode;
-    /** The map's attribution for the dialog's foot; null when there is no map to credit (or About is closed). */
-    declare attribution: readonly AttributionPart[] | null;
-    /** mapbox-gl.css, for the Mapbox logo at the foot. */
-    declare mapboxCssUrl: string;
 
     constructor() {
         super();
@@ -128,8 +119,6 @@ export class HcmAboutDialog extends LitElement {
         this.analytics = false;
         this.fullscreen = false;
         this.theme = 'system';
-        this.attribution = null;
-        this.mapboxCssUrl = '';
     }
 
     override render(): TemplateResult {
@@ -140,7 +129,7 @@ export class HcmAboutDialog extends LitElement {
             .closeLabel=${translate(locale, 'action.close')}
             ?fullscreen=${this.fullscreen}
         >
-            ${this.#body()} ${this.#legal()}
+            ${this.#body()}
         </hcm-dialog>`;
     }
 
@@ -162,17 +151,6 @@ export class HcmAboutDialog extends LitElement {
             });
         }
         return this.city === null ? EMPTY : this.#content(this.city);
-    }
-
-    #legal(): TemplateResult {
-        return this.attribution === null
-            ? EMPTY
-            : html`<hcm-map-attribution
-                  slot="actions"
-                  .parts=${this.attribution}
-                  .locale=${this.locale}
-                  .cssUrl=${this.mapboxCssUrl}
-              ></hcm-map-attribution>`;
     }
 
     #content(city: City): TemplateResult {

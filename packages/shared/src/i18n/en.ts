@@ -2,7 +2,6 @@ import type { Messages } from './ro.js';
 
 /** English catalogue: same keys as the Romanian one (a missing or extra key is a type error). */
 export const en: Messages = {
-    'hello.greeting': 'Hello, {name}!',
     'validation.required': 'A required field is missing.',
     'validation.type': 'The value has the wrong type.',
     'validation.tooSmall': 'The value is too small or too short.',
@@ -77,9 +76,6 @@ export const en: Messages = {
     'layers.photos': 'Photos',
     'layers.attribution': 'Source: {attribution}',
     'layers.empty': 'Historical layers will appear here soon.',
-    'layers.kind.satellite': 'Satellite image',
-    'layers.kind.aerial': 'Aerial photo',
-    'layers.kind.map': 'Map',
     'layers.group.historical': 'Historical layers',
     'layers.group.places': 'Places',
     'layers.opacityChanged': '{name}: opacity {percent}%',

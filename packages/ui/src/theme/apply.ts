@@ -20,6 +20,15 @@ const DARK = '(prefers-color-scheme: dark)';
 const MORE_CONTRAST = '(prefers-contrast: more)';
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 
+/**
+ * The `color-scheme` of each mode. A chosen light or dark scheme is `only`: Chrome's dark theme for sites (Android, when
+ * the system is dark) repaints every element whose used scheme is light, inverting its dark text to a light tone while it
+ * keeps a tinted background such as the primary container. The light theme's FAB and menu items read #33406D on #BAC7FD
+ * in every style the page can query, yet were painted pale lilac on lilac (the Pixel 9 Pro review, P2); `only light` tells
+ * the browser the page owns its colours. `system` declares both schemes and so is painted dark by the page itself.
+ */
+const COLOR_SCHEMES: Readonly<Record<ThemeMode, string>> = { light: 'only light', dark: 'only dark', system: 'light dark' };
+
 /** The data attribute that names a light-DOM target in the document-level sheet. */
 export const THEME_ATTRIBUTE = 'data-hcm-theme';
 
@@ -46,7 +55,7 @@ function scheme(tokens: ThemeTokens, dark: boolean, highContrast: boolean): Toke
  */
 export function themeRules(tokens: ThemeTokens, mode: ThemeMode, highContrast: boolean): ThemeRule[] {
     const dark = mode === 'dark';
-    const colorScheme = mode === 'system' ? 'light dark' : mode;
+    const colorScheme = COLOR_SCHEMES[mode];
     const base = { ...SYSTEM_TOKENS, ...scheme(tokens, dark, highContrast), 'color-scheme': colorScheme };
     const systemDark: ThemeRule[] = mode === 'system' ? [{ media: DARK, declarations: scheme(tokens, true, highContrast) }] : [];
     return [

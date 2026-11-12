@@ -110,6 +110,40 @@ describe('the map labels on a map', () => {
         expect(map.callsOf('setBasemapFlag')).toEqual([['showRoadLabels', false]]);
     });
 
+    it('happyPath_transitStationsFollowThePointsOfInterestOffAndOn', () => {
+        const map = new FakeMap({ basemapFlags: { showRoadLabels: true, showPointOfInterestLabels: true, showTransitLabels: true } });
+
+        drawMapLabels(map, { streets: true, pois: false });
+        drawMapLabels(map, { streets: true, pois: true });
+
+        expect(map.callsOf('setBasemapFlag')).toEqual([
+            ['showPointOfInterestLabels', false],
+            ['showTransitLabels', false],
+            ['showPointOfInterestLabels', true],
+            ['showTransitLabels', true],
+        ]);
+    });
+
+    it('happyPath_theCitysOwnTransitChoiceStands', () => {
+        const map = new FakeMap({ basemapFlags: { showPointOfInterestLabels: true, showTransitLabels: false } });
+
+        drawMapLabels(map, { streets: true, pois: false }, { showTransitLabels: false });
+        drawMapLabels(map, { streets: true, pois: true }, { showTransitLabels: false });
+
+        expect(map.callsOf('setBasemapFlag')).toEqual([
+            ['showPointOfInterestLabels', false],
+            ['showPointOfInterestLabels', true],
+        ]);
+    });
+
+    it('badPath_transitIsNeverWrittenWithoutThePointsOfInterest', () => {
+        const map = new FakeMap({ basemapFlags: { showRoadLabels: true, showTransitLabels: false } });
+
+        drawMapLabels(map, { streets: false, pois: true });
+
+        expect(map.callsOf('setBasemapFlag')).toEqual([['showRoadLabels', false]]);
+    });
+
     it('badPath_aPropertyTheStyleDoesNotHaveIsNeverWritten', () => {
         const map = new FakeMap({ basemapFlags: {} });
 
