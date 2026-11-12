@@ -23,7 +23,7 @@ function collection(count: number, extra: Record<string, unknown> = {}): string 
     const features = Array.from({ length: count }, (_unused, index) => ({
         type: 'Feature',
         geometry: POINT,
-        properties: { category: 'biserici', title: `Loc ${String(index)}`, ...extra },
+        properties: { category: 'biserici', title: `Loc ${String(index)}`, yearStart: 1890, ...extra },
     }));
     return JSON.stringify({ type: 'FeatureCollection', features });
 }
@@ -70,7 +70,7 @@ describe('the import dialog', () => {
             type: 'Feature',
             id: 'stavropoleos',
             geometry: POINT,
-            properties: { category: 'biserici', title: 'Nou' },
+            properties: { category: 'biserici', title: 'Nou', yearStart: 1890 },
         });
 
         await subject.choose(file(text), null);
@@ -214,8 +214,13 @@ describe('the import: what it cannot do', () => {
             changed: () => undefined,
         });
         const features = [
-            { type: 'Feature', id: 'stricat', geometry: POINT, properties: { category: 'biserici', title: 'Loc stricat' } },
-            { type: 'Feature', geometry: POINT, properties: { category: 'biserici', title: 'Loc nou' } },
+            {
+                type: 'Feature',
+                id: 'stricat',
+                geometry: POINT,
+                properties: { category: 'biserici', title: 'Loc stricat', yearStart: 1890 },
+            },
+            { type: 'Feature', geometry: POINT, properties: { category: 'biserici', title: 'Loc nou', yearStart: 1890 } },
         ];
 
         await subject.choose(file(JSON.stringify({ type: 'FeatureCollection', features })), null);

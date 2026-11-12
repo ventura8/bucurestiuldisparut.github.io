@@ -64,6 +64,7 @@ export {
     poiSchema,
 } from './schemas/poi.js';
 export type { PhotosOverlay, Poi, PoiCategory, PoiIcon } from './schemas/poi.js';
+export { hasPlaceYear, latestPlaceYear, placeYearIssues, type PlaceYears } from './schemas/place-year.js';
 export { storyDocSchema, type StoryDoc } from './schemas/firestore.js';
 export { MAX_STORIES, MAX_STORY_LINKS, MAX_STORY_TEXT, storySchema, type Story } from './schemas/story.js';
 export type {

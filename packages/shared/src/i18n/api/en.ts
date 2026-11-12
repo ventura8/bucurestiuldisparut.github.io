@@ -153,6 +153,7 @@ export const en: ApiMessages = {
     'apiError.review.licenseUnknown': 'Choose a licence for this photo before approving it.',
     'apiError.review.changed': 'This item changed while you were reading it. Check it again, then decide.',
     'apiError.review.storyEmpty': 'This story has no text yet. Approve it once its author has written it, or refuse it.',
+    'apiError.review.placeYear': 'This place has no year yet. Give it a year or its years in the editor, then approve it, or refuse it.',
     'apiError.suggestion.dailyLimit': "You have reached today's limit of {max} suggestions. Please try again tomorrow.",
     'apiError.suggestion.wrongKind': 'This photo has changed since you opened it. Reload the page.',
     'apiError.suggestion.outsideCity': "This place is outside the city's map.",

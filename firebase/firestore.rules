@@ -454,6 +454,17 @@ service cloud.firestore {
                 && stamped(data);
         }
 
+        // A place names a year at least (the owner's request of 2026-11-12; `placeYearIssues` of @hcm/shared): one year, an
+        // open start or end, or a span. Every create needs one; a place stored before the rule keeps loading, and an update
+        // that only publishes, unpublishes or moves it to another category (the list's bulk actions) passes without one.
+        function dated(data) {
+            return 'yearStart' in data || 'yearEnd' in data;
+        }
+
+        function datedOrOnlyFiled(data) {
+            return dated(data) || changedKeys().hasOnly(['published', 'category', 'updatedBy', 'updatedAt']);
+        }
+
         // ---- Stories (CLIENT_WRITES.story; M17, docs/research/M17-stories.md §1) ----------
         //
         // The body's https links and its photo figures are checked by zod (`storyDocSchema`) and the builder, as a place's
@@ -675,6 +686,7 @@ service cloud.firestore {
                     && request.resource.data.keys().hasOnly(['category', 'geometry', 'title', 'description', 'yearStart', 'yearEnd',
                         'links', 'photoIds', 'published', 'credit', 'reviewStatus', 'createdAt', 'createdBy', 'updatedBy', 'updatedAt'])
                     && validPoi(request.resource.data)
+                    && dated(request.resource.data)
                     && (isCityMember(city) || request.resource.data.published == false)
                     && created(request.resource.data);
                 allow update: if (isCityReviewer(city)
@@ -683,7 +695,8 @@ service cloud.firestore {
                             && !('published' in changedKeys())))
                     && changedKeys().hasOnly(['category', 'geometry', 'title', 'description', 'yearStart', 'yearEnd', 'links', 'photoIds',
                         'published', 'credit', 'updatedBy', 'updatedAt'])
-                    && validPoi(request.resource.data);
+                    && validPoi(request.resource.data)
+                    && datedOrOnlyFiled(request.resource.data);
                 allow delete: if isCityMember(city)
                     || (isCityUploader(city) && ownItem(resource.data) && resource.data.get('reviewStatus', '') in ['pending', 'refused']);
 

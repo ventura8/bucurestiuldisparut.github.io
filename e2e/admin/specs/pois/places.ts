@@ -51,12 +51,13 @@ export interface SeededPlace {
     readonly extra?: Readonly<Record<string, unknown>>;
 }
 
-/** A published point of the monuments (its `extra` overrides any field). */
+/** A published point of the monuments from 1890 (every place names a year; its `extra` overrides any field). */
 export async function seedPlace(world: CityWorld, place: SeededPlace, at: Date): Promise<void> {
     await world.emulators.setDocument(`cities/${world.city}/pois/${place.id}`, {
         category: 'monuments',
         geometry: { type: 'Point', point: { lat: place.at[1], lng: place.at[0] } },
         title: { ro: place.title },
+        yearStart: 1890,
         published: true,
         createdAt: at,
         createdBy: world.uid,
@@ -81,5 +82,7 @@ export function feature(
     geometry: Readonly<Record<string, unknown>>,
     properties: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> {
-    return { type: 'Feature', geometry, properties };
+    // Every place names a year: a feature that names none starts in 1890.
+    const dated = 'yearStart' in properties || 'yearEnd' in properties ? properties : { yearStart: 1890, ...properties };
+    return { type: 'Feature', geometry, properties: dated };
 }

@@ -222,6 +222,7 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.review.licenseUnknown': spec('failed-precondition'),
     'apiError.review.changed': spec('failed-precondition'),
     'apiError.review.storyEmpty': spec('failed-precondition'),
+    'apiError.review.placeYear': spec('failed-precondition'),
     'apiError.suggestion.dailyLimit': spec('resource-exhausted'),
     'apiError.suggestion.wrongKind': spec('failed-precondition'),
     'apiError.suggestion.outsideCity': spec('invalid-argument'),

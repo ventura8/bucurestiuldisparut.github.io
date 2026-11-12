@@ -14,6 +14,7 @@ import {
     savedPlace,
     shape,
     titleField,
+    yearField,
 } from '../admin/specs/pois/drawing.js';
 
 /**
@@ -45,8 +46,9 @@ test(
         await expect(coordinate(page, 'v4-lng')).toHaveCount(0);
         await expectStateSound(page, adminVisit('pois.drawing', lang));
 
-        // The title, Save: one closed ring of five positions, published (the viewer's part is drawing.spec.ts's).
+        // The title, the year, Save: one closed ring of five positions, published (the viewer's part is drawing.spec.ts's).
         await titleField(page, lang).fill('Piața Universității');
+        await yearField(page, lang).fill('1968');
         await saveButton(page, lang).click();
         const [, place] = await savedPlace(content);
         expect(place).toMatchObject({ published: true, geometry: { type: 'Polygon' } });
@@ -74,6 +76,7 @@ test(
         await expectStateSound(page, adminVisit('pois.draw-refused', lang));
 
         await titleField(page, lang).fill('Bulevardul Elisabeta');
+        await yearField(page, lang).fill('1890');
         await saveButton(page, lang).click();
         const [, place] = await savedPlace(content);
         const points = (place['geometry'] as { points: { lng: number }[] }).points;

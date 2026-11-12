@@ -5,7 +5,7 @@
  * (`setGeometry`) or from the vertex list (`editVertex`, Add at map centre); positions added before the shape exists are
  * the sketch. Every geometry is checked against the city's limits before it reaches the draft.
  */
-import { FIRESTORE_PATHS, poiDocSchema, type Geometry, type LngLat, type PoiDoc } from '@hcm/shared';
+import { FIRESTORE_PATHS, latestPlaceYear, poiDocSchema, type Geometry, type LngLat, type PoiDoc } from '@hcm/shared';
 import { checkGeometry, checkPositions, roundGeometry, roundPosition, type DrawRefusal } from '@hcm/ui/map/draw';
 
 import type { Clock } from '../app/ports.js';
@@ -101,9 +101,10 @@ export class PlaceEditor {
     }
 
     #newDraft(start: { readonly base: Stored<PoiDoc> } | { readonly value: PoiValue }): PoiDraft {
-        const { store, cityId, context, locked } = this.#deps;
+        const { store, cityId, context, locked, clock } = this.#deps;
         return new PoiDraft(this.#state.id, start, {
-            ...{ store, cityId, context },
+            // A year after next year is refused here, by the clock (`placeYearIssues`); the import checks only a missing one.
+            ...{ store, cityId, context: () => ({ ...context(), latestYear: latestPlaceYear(clock.now()) }) },
             ...(locked === undefined ? {} : { locked }),
             ...(this.#deps.reviewed === undefined ? {} : { reviewed: this.#deps.reviewed }),
             changed: (draft) => {

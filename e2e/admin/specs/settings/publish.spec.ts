@@ -192,6 +192,7 @@ test(
         await page.locator('hcm-poi-editor #category').selectOption('fantani');
         await page.getByRole('button', { name: text(lang, 'adminContent.map.tool.addCentre') }).click();
         await page.getByRole('textbox', { name: text(lang, 'adminContent.pois.field.titleRo') }).fill('Fântâna Zodiac');
+        await page.locator('hcm-poi-editor #yearStart').fill('1890');
         await saveButton(page, lang).click();
         await expect.poll(async () => Object.keys(await content.collection('pois')).length).toBe(1);
 

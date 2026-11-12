@@ -18,6 +18,7 @@ export const en: Messages = {
     'validation.duplicateId': 'The id appears twice.',
     'validation.outsideCity': 'The location is outside the city.',
     'validation.yearRange': 'The end year is before the start year.',
+    'validation.yearLate': 'The year cannot be after next year.',
     'validation.datePart': 'A month needs a year, and a day needs a month.',
     'validation.dateImpossible': 'That day does not exist in that month.',
     'validation.dateRange': 'A month or a day goes with one year: clear the end year or the month.',

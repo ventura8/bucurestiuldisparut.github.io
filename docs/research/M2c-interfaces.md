@@ -632,8 +632,8 @@ choices and key presses that commit (`S-A30-HAPPY-CONTENT`):
 | a batch of photos with EXIF, the sticky author, source and licence | 3 | drop (or choose) the files, Select all, Publish |
 | a photo without EXIF | 4 | the batch's 3, plus one drag of the pin (or Confirm place at the last pin) |
 | a photo's direction | 3 | Set direction, a click on what the camera looked at, Save |
-| a point place in the last used category | 5 | Add place, Point, a click, the Romanian title, Save |
-| a polygon place of n vertices | n + 4 | Add place, Area, n clicks (the last on the first vertex), the title, Save |
+| a point place in the last used category | 6 | Add place, Point, a click, the Romanian title, the year (every place names one since 2026-11-12), Save |
+| a polygon place of n vertices | n + 5 | Add place, Area, n clicks (the last on the first vertex), the title, the year, Save |
 | a category | 4 | Add category, the Romanian label, an icon, Save (colour, opacity and English have defaults) |
 | a layer's adjustments | moves + 1 | the sliders, Save |
 | a delete and its Undo | 3 | Delete, confirm, Undo |
@@ -721,20 +721,27 @@ removed its public files is processed again from its kept original by `history.r
 ### 7.1 The list
 
 Category chips (from `poiCategories`, with their icons and colours), Unpublished, a text search by title; each item:
-the category's icon on its colour, the title, the years, the shape (point, line, area). From expanded, the overview map
+the category's icon on its colour, the title, the years, the shape (point, line, area). A place stored before every place
+needed a year (the owner's request of 2026-11-12) shows **Year missing** under its row instead of the years. From expanded, the overview map
 draws every place in its category's overlay; a click on a shape selects it (`onPoiClick`).
 
 ### 7.2 The editor
 
 - Category (a select over the city's categories; the last used one for a new place), title and description (RO, EN
   optional; the description in the Markdown subset with the DOM preview of `hcm-markdown-field`), start and end year
-  (either open), links (at most 5), photos (`hcm-photo-picker`, a dialog listing the city's photos by title with
+  (at least one: a single year, an open start or end, or a span from and to, the end never before the start, each from
+  1800 to next year; `placeYearIssues` of `@hcm/shared`, the owner's request of 2026-11-12), links (at most 5), photos (`hcm-photo-picker`, a dialog listing the city's photos by title with
   thumbnails: at most `MAX_POI_PHOTOS`, 20), Published.
 - Geometry: drawn and edited on the map (§4.4) or in the vertex list (§4.6); the type is chosen when the place is added
   (Point, Line, Area) and changes only by redrawing ("Redraw as…" clears the geometry after the unsaved guard's
   question).
-- Save: `geometryToDoc(geometry)`, validated with `poiDocSchema` and the manifest's place rules (inside the city,
-  closed rings), then §5.3.
+- Save: `geometryToDoc(geometry)`, validated with `poiDocSchema`, the manifest's place rules (inside the city,
+  closed rings) and `placeYearIssues` (no year: `validation.required` at the start year, "Write a year, or the years from
+  and to", shown as the place opens; a year after next year by the admin's clock: `validation.yearLate`, once the field
+  is left), then §5.3. The stored schemas keep both years optional, so a place saved before the rule still loads in the
+  admin and still shows on the public map; its Save asks for a year. The Firestore rules ask the same (`dated`): every
+  create names a year, and an update without one only publishes, unpublishes or moves the place to another category
+  (the list's bulk actions). `review.decide` refuses to approve a place without one (`apiError.review.placeYear`).
 
 ### 7.3 Delete
 
@@ -751,7 +758,8 @@ Client delete with §9.5; bulk delete of a selection; places come back from Hist
 - **Import** (overflow menu, then a file): read as text (at most 5 MB, else refused before parsing: `S-A34-BAD-NOT-GEOJSON`),
   `JSON.parse` in a `try`, a `FeatureCollection` or a single `Feature`; each feature mapped field by field into a new
   object (never spread from the file) and validated with `geometrySchema`, `poiDocSchema` and the manifest's place
-  rules. The preview dialog counts **new**, **updated** (an `id` that names an existing place), **unchanged** and
+  rules, and `placeYearIssues` without the clock (a feature naming no year is refused as invalid at `yearStart`). The
+  preview dialog counts **new**, **updated** (an `id` that names an existing place), **unchanged** and
   **refused** (each with its reason: an unsupported type such as `MultiPolygon`, a position with altitude, an open ring,
   a position outside the city, an unknown category, more than 500 positions; `S-A34-BAD-INVALID-FEATURES`), and draws the
   valid ones on the page's map. Features without a known category take the one category the admin chooses in the

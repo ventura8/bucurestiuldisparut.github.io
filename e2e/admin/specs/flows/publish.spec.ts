@@ -128,7 +128,7 @@ test(
         await seedCategories(content, AT);
         await page.goto(content.address(lang, 'pois', { map: false }));
 
-        // Add place, Point, Add at centre, the position typed, the Romanian title, Save.
+        // Add place, Point, Add at centre, the position typed, the Romanian title, the year, Save.
         await page.getByRole('button', { name: flowText(lang, 'adminContent.pois.add') }).click();
         await page.getByRole('button', { name: flowText(lang, 'adminContent.pois.shape.point'), exact: true }).click();
         await page.getByRole('button', { name: flowText(lang, 'adminContent.map.tool.addCentre') }).click();
@@ -141,6 +141,7 @@ test(
             await field.press('Tab');
         }
         await page.getByRole('textbox', { name: flowText(lang, 'adminContent.pois.field.titleRo') }).fill('Statuia lui Mihai Viteazul');
+        await page.locator('hcm-poi-editor #yearStart').fill('1890');
         await saveButton(page, lang).click();
         await expect.poll(async () => Object.keys(await content.collection('pois')).length).toBe(1);
         const [placeId = ''] = Object.keys(await content.collection('pois'));

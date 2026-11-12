@@ -124,6 +124,19 @@ describe('places: the list', () => {
     });
 });
 
+describe('places: the years', () => {
+    it('badPath_aYearAfterNextYearByTheClockIsRefused', async () => {
+        const world = seededWorld();
+        const store = opened(world, ['stavropoleos']);
+        const next = new Date(world.clock.now()).getUTCFullYear() + 1;
+
+        store.intents.edit({ yearStart: next + 1 });
+        expect(await store.intents.save()).toMatchObject({ ok: false, issues: [{ path: 'yearStart', code: 'validation.yearLate' }] });
+        store.intents.edit({ yearStart: next });
+        expect(await store.intents.save()).toEqual({ ok: true });
+    });
+});
+
 describe('places: adding and editing', () => {
     it('happyPath_aNewPlaceStartsInTheLastCategoryAndSavesPublished', async () => {
         const world = seededWorld();
@@ -138,6 +151,9 @@ describe('places: adding and editing', () => {
         store.intents.edit({ title: { ro: 'Statuia' } });
         expect(store.hasUnsavedChanges()).toBe(true);
         store.intents.editVertex({ kind: 'add', index: -1, position: [26.1, 44.43] });
+        // Every place needs a year (the owner's request of 2026-11-12): Save waits for one.
+        expect(await store.intents.save()).toMatchObject({ ok: false, issues: [{ path: 'yearStart', code: 'validation.required' }] });
+        store.intents.edit({ yearStart: 1890 });
         const outcome = await store.intents.save();
 
         expect(outcome).toEqual({ ok: true });
@@ -485,7 +501,7 @@ describe('places: importing and the photos', () => {
         await settle();
         const text = JSON.stringify({
             type: 'FeatureCollection',
-            features: [{ type: 'Feature', geometry: POINT, properties: { title: 'Nou' } }],
+            features: [{ type: 'Feature', geometry: POINT, properties: { title: 'Nou', yearStart: 1890 } }],
         });
 
         await store.intents.chooseImport({ name: 'a.geojson', size: text.length, text: () => Promise.resolve(text) });

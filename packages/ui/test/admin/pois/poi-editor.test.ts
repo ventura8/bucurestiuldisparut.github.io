@@ -178,6 +178,54 @@ describe('<hcm-poi-editor>: the form', () => {
     });
 });
 
+describe('<hcm-poi-editor>: the years', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('badPath_aPlaceWithoutAYearSaysSoAtOnceAndSaveWaits', async () => {
+        const { element, store } = await mounted(
+            editor({
+                draft: draft({
+                    dirty: ['title'],
+                    issues: [{ path: 'yearStart', code: 'validation.required' }],
+                    value: VALUE,
+                }),
+            }),
+        );
+
+        // A missing year needs no focus first: a place stored without one says so as it opens.
+        const yearStart = deep(element, '#yearStart');
+        expect(yearStart.getAttribute('aria-invalid')).toBe('true');
+        expect(yearStart.getAttribute('aria-describedby')).toBe('yearStart-error years-hint');
+        expect(deep(element, '#yearStart-error').textContent).toBe('Write a year, or the years from and to');
+        expect(deep(element, '#yearEnd').hasAttribute('aria-invalid')).toBe(false);
+        const save = deep(element, 'hcm-button.save') as HTMLElement & { disabled: boolean };
+        expect(save.disabled).toBe(true);
+        expect(deepText(element)).toContain('Cannot save: write a year, or the years from and to.');
+        press(save);
+        expect(asked(store, 'save')).toEqual([]);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_aYearAfterNextYearSaysSoOnceLeft', async () => {
+        const { element } = await mounted(
+            editor({
+                draft: draft({
+                    dirty: ['yearStart'],
+                    issues: [{ path: 'yearStart', code: 'validation.yearLate' }],
+                    value: { ...VALUE, yearStart: 2099 },
+                }),
+            }),
+        );
+
+        const yearStart = deep(element, '#yearStart');
+        expect(yearStart.hasAttribute('aria-invalid')).toBe(false);
+        yearStart.dispatchEvent(new FocusEvent('focusout', { bubbles: true, composed: true }));
+        await updated(element);
+        expect(deep(element, '#yearStart-error').textContent).toBe('The year cannot be after next year.');
+    });
+});
+
 describe('<hcm-poi-editor>: actions and banners', () => {
     beforeAll(defineAll);
     afterEach(cleanup);
