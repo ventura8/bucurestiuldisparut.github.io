@@ -38,7 +38,7 @@ describe('renderSitePage', () => {
         const scripts = [...html.matchAll(/<script [^>]*>/g)].map(([tag]) => tag);
 
         expect(scripts).toEqual([
-            `<script src="${MAPBOX_GL_SCRIPT}" defer integrity="sha384-script" crossorigin="anonymous">`,
+            `<script src="${MAPBOX_GL_SCRIPT}" async integrity="sha384-script" crossorigin="anonymous">`,
             '<script src="config.js" defer>',
             // The tab icon in the visitor's theme (`tabIconSource`), after the configuration it reads.
             '<script src="tab-icon.js" defer>',
@@ -93,7 +93,7 @@ describe('renderSitePage', () => {
 
         expect([...html.matchAll(/<script [^>]*>/g)].map(([tag]) => tag)).toEqual([
             '<script src="admin-redirect.js">',
-            `<script src="${MAPBOX_GL_SCRIPT}" defer integrity="sha384-script" crossorigin="anonymous">`,
+            `<script src="${MAPBOX_GL_SCRIPT}" async integrity="sha384-script" crossorigin="anonymous">`,
             '<script src="/city/config.js" defer>',
             '<script type="module" src="/engine/engine.mjs">',
         ]);

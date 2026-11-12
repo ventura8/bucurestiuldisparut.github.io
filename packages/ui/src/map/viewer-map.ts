@@ -50,8 +50,8 @@ function readOption(map: MapboxMap | null, name: string): string | null {
     return typeof value === 'string' ? value : null;
 }
 
-/** `createMapboxPort` for the viewer and swipe compare's second map. */
-export function createViewerMapPort(gl: MapboxGl, env?: AdapterEnv): ViewerMapPort {
+/** `createMapboxPort` for the viewer and swipe compare's second map (`gl` may be on its way). */
+export function createViewerMapPort(gl: MapboxGl | Promise<MapboxGl>, env?: AdapterEnv): ViewerMapPort {
     const port = createMapboxPort(gl, env);
     const write = (name: string, value: boolean | string): void => {
         nativeMap(port)?.setConfigProperty(IMPORT_ID, name, value);

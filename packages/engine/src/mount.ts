@@ -19,7 +19,7 @@ import {
     type ViewerReady,
     type ViewerStorePort,
 } from '@hcm/ui';
-import { createViewerMapPort, type MapboxGl, type Unsubscribe, type ViewerMapPort } from '@hcm/ui/map';
+import { createViewerMapPort, type Unsubscribe, type ViewerMapPort } from '@hcm/ui/map';
 import type { GamepadSurface } from '@hcm/ui/viewer/gamepad';
 
 import { configFromAttributes, readConfig, type Result } from './config/load.js';
@@ -30,6 +30,7 @@ import type { ColorSchemeSource, ViewerDeps, ViewerLocation } from './core/deps.
 import type { PreferenceStorage } from './core/preferences.js';
 import { colorSchemeOf, locationOf, storageOf } from './core/page-sources.js';
 import { createViewerStore, type ViewerState, type ViewerStore } from './core/store.js';
+import { mapboxOf } from './mapbox-global.js';
 import { createTelemetry } from './telemetry/telemetry.js';
 import type { TelemetryPort } from './telemetry/telemetry-port.js';
 
@@ -449,15 +450,6 @@ export interface EngineRelease {
     readonly mapboxGlVersion: string;
     /** Where the engine's files (fonts) are when `config.engineBase` does not say: next to the engine script. */
     readonly engineBase: string;
-}
-
-/** The page's `mapboxgl`, which `mapbox-gl.js` from api.mapbox.com defines before the engine runs. */
-function mapboxOf(win: Window, version: string): MapboxGl {
-    const gl = (win as Window & { readonly mapboxgl?: MapboxGl }).mapboxgl;
-    if (gl === undefined) {
-        throw new Error(`mapboxgl is not defined: load https://api.mapbox.com/mapbox-gl-js/v${version}/mapbox-gl.js first`);
-    }
-    return gl;
 }
 
 function telemetryFactory(win: Window, log: Logger, release: string): MountEnvironment['createTelemetry'] {

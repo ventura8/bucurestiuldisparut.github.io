@@ -71,7 +71,9 @@ interface Session {
 }
 
 class MapboxPort implements MapPort {
-    readonly #gl: MapboxGl;
+    /** Mapbox GL once the page has it (it may load after the engine: `createMapboxPort`); the first mount waits for it. */
+    #gl: MapboxGl | null;
+    readonly #glReady: Promise<MapboxGl>;
     readonly #env: AdapterEnv;
     readonly #events = new EventListeners<MapEventMap>(ignore);
     readonly #photoClicks = new Listeners<[string]>(ignore);
@@ -84,8 +86,9 @@ class MapboxPort implements MapPort {
     #loads = 0;
     #lastView: MapView = DEFAULT_VIEW;
 
-    constructor(gl: MapboxGl, env: AdapterEnv) {
+    constructor(gl: MapboxGl | null, glReady: Promise<MapboxGl>, env: AdapterEnv) {
         this.#gl = gl;
+        this.#glReady = glReady;
         this.#env = env;
     }
 
@@ -94,14 +97,17 @@ class MapboxPort implements MapPort {
     }
 
     isWebGLSupported(): boolean {
-        return this.#gl.supported === undefined ? this.#env.probeWebGL() : this.#gl.supported();
+        const gl = this.#gl;
+        return gl?.supported === undefined ? this.#env.probeWebGL() : gl.supported();
     }
 
     async mount(container: HTMLElement, options: MapOptions): Promise<void> {
+        const gl = this.#gl ?? (await this.#glReady);
+        this.#gl = gl;
         this.#close();
         let map: MapboxMap;
         try {
-            map = new this.#gl.Map(mapboxOptions(container, options));
+            map = new gl.Map(mapboxOptions(container, options));
         } catch (error) {
             throw new Error('webgl', { cause: error });
         }
@@ -415,8 +421,12 @@ export function nativeMap(port: MapPort): MapboxMap | null {
 
 /**
  * The MapPort of the viewer (and, from M4, of swipe compare's second map). `env` defaults to the page's `window`; the node
- * tests pass fakes (`@hcm/test-support`).
+ * tests pass fakes (`@hcm/test-support`). `gl` may still be on its way (the public page loads Mapbox GL `async`, so the
+ * viewer paints before it: the cold load of 2026-11-12): `mount` waits for it, and fails as it does.
  */
-export function createMapboxPort(gl: MapboxGl, env?: AdapterEnv): MapPort {
-    return new MapboxPort(gl, env ?? browserAdapterEnv(globalThis));
+export function createMapboxPort(gl: MapboxGl | Promise<MapboxGl>, env?: AdapterEnv): MapPort {
+    const ready = Promise.resolve(gl);
+    // A Mapbox GL that never arrives fails the mount that waits for it, not the page (no unhandled rejection).
+    ready.catch(() => undefined);
+    return new MapboxPort(gl instanceof Promise ? null : gl, ready, env ?? browserAdapterEnv(globalThis));
 }

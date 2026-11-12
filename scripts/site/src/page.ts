@@ -8,8 +8,8 @@ import type { SiteSpec } from './site-spec.js';
  * `.htmlvalidate.json` proposal is approved (docs/research/DECISIONS-for-review.md §1, change request CR-3).
  *
  * The page holds no inline script or style: the meta CSP comes first, then Mapbox GL JS from api.mapbox.com (pinned,
- * with Subresource Integrity), the site's `config.js`, and the engine from the same origin as an ES module, which
- * boots from `window.HistoricCityMapConfig` into `#historic-city-map`. Without JavaScript a bilingual note explains
+ * with Subresource Integrity, `async`), the site's `config.js`, and the engine from the same origin as an ES module, which
+ * boots from `window.HistoricCityMapConfig` into `#historic-city-map` and creates the map once Mapbox GL has arrived. Without JavaScript a bilingual note explains
  * that the map needs it. The body is one `main` landmark headed by the site's title (a level-one heading, visually
  * hidden: the map fills the window), so everything the viewer draws (the timeline, toasts, the menu, the legal bar)
  * is inside a landmark (axe's `landmark-one-main`, `page-has-heading-one` and `region`, the tour).
@@ -107,7 +107,9 @@ function head(inputs: PageInputs): HtmlElement {
         element('link', { rel: 'stylesheet', href: MAPBOX_GL_STYLESHEET, ...crossOrigin(mapboxGlIntegrity.stylesheet) }),
         element('link', { rel: 'stylesheet', href: `${assets.engineFolder}${ENGINE_STYLESHEET_FILE}` }),
         element('link', { rel: 'stylesheet', href: assets.stylesheet }),
-        element('script', { src: MAPBOX_GL_SCRIPT, defer: true, ...crossOrigin(mapboxGlIntegrity.script) }),
+        // Async, not deferred: the engine (a module, run in order with the deferred scripts) paints the viewer without
+        // waiting for 526 KB of Mapbox GL, and makes the map once it is there (the cold load of 2026-11-12, mount.ts `mapboxOf`).
+        element('script', { src: MAPBOX_GL_SCRIPT, async: true, ...crossOrigin(mapboxGlIntegrity.script) }),
         element('script', { src: assets.config, defer: true }),
         ...tabIconScript(assets),
         // Module scripts run after the deferred classic scripts above, in document order.
