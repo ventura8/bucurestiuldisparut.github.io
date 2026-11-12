@@ -9925,7 +9925,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A later build of the same version is never replaced by an older admin",
-            "asserts": "functions of 1.0.0+e2e0002 with a later HCM_RELEASE_TIME than the admin's, recorded so -> card d says the server is newer than this admin, no Update, no consent note; Check again (one consent) says the same, no build is submitted, Home has no tile",
+            "asserts": "functions of 1.0.0+e2e0002 with a later HCM_RELEASE_TIME than the admin's, recorded so -> card d says the server is newer than this admin, no Update, only Install this admin's version anyway with the consent note; Check again (one consent) says the same, no build is submitted, Home has no tile",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 39; docs/research/M6-interfaces.md §1.7 addendum, DECISIONS-for-review.md §78a). Test: e2e/admin/steps/install/update.spec.ts (installer); units: packages/shared/test/install.test.ts, packages/admin/test/install/model.test.ts. The live finding of 2026-11-12 (DECISIONS-for-review.md §169): within one core a dev build (a release with +<commit>, every build without the version's tag) is placed by its build time against any build, so the untagged 1.0.0+dcfb067 is older than the later 1.0.0-beta.1+593d539, while two tagged releases follow SemVer (a tagged 1.0.0 stays newer than 1.0.0-beta.1); units: packages/shared/test/install.test.ts, scripts/site/test/admin-runtime.test.ts."

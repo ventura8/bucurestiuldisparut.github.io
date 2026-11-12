@@ -355,7 +355,7 @@ at Google (S-A55-HAPPY-UPDATE-SAME-VERSION, S-A55-HAPPY-SAME-BUILD).
 
 **Addendum 2026-11-01 (finding 40, §78b): the consent note on an install card.** It shows only while the card offers a
 button that asks Google for the token (Install, Publish, Try again, Install the pipeline, Update the map) or beside
-Continue; an install card with nothing to do (installed, under way, newer than the admin) shows none, its Check again
+Continue; an install card with nothing to do (installed, under way) shows none (a card newer than the admin offers the override of §1.7.1, which asks), its Check again
 still asking Google when the token is gone (S-A55-BAD-NOTE-NOTHING-TO-DO).
 
 #### 1.7.1 Release channels and the owner's override (the live finding of 2026-11-12, `DECISIONS-for-review.md` §169)
