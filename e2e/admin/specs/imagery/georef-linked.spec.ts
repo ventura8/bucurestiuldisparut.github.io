@@ -146,6 +146,7 @@ test(
             .getByRole('group', { name: georefText(lang, 'adminContent.georef.turn.map') })
             .getByRole('button', { name: georefText(lang, 'adminContent.georef.turn.left') })
             .click();
+        await mapIdle(page);
         await showPane(page, lang, 'scan');
         await expect.poll(async () => Math.abs(await scanAngle(page))).toBeLessThan(8);
 

@@ -145,7 +145,8 @@ export class GeorefMap {
 
     /** Turns the map by `degrees` clockwise on the screen (its bearing falls); null: north up. */
     rotateBy(degrees: number | null): void {
-        this.#handle?.port.flyTo({ bearing: degrees === null ? 0 : this.bearing - degrees });
+        // A jump, as the linked views move it: an animated turn would keep turning the scan after the owner's next press.
+        this.#handle?.port.flyTo({ bearing: degrees === null ? 0 : this.bearing - degrees }, { animate: false });
     }
 
     zoomBy(delta: number): void {

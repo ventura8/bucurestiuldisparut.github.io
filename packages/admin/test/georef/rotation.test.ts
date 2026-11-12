@@ -150,6 +150,7 @@ describe('the panes turn together through the store', () => {
         world.map.view = { ...world.map.view, bearing: 40 };
         world.georef.intents.rotateMap(15);
         expect(lastBearing(world.map)).toBe(25);
+        expect(world.map.callsOf('flyTo').at(-1)?.[1]).toEqual({ animate: false });
         world.georef.intents.rotateMap(null);
         expect(lastBearing(world.map)).toBe(0);
     });
