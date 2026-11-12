@@ -50,7 +50,7 @@ New package `pipeline/src/hcm_pipeline/calibrate/`, called from `steps/locate.py
 | --- | --- | --- | --- |
 | KH-9-pan | panoramic | 30 km | 1, 0.94 (full sweeps measured 0.915 to 0.956, short films 0.998 to 1.010: §14) |
 | KH-4, 4A, 4B | corners | 30 km | 0.85, 1, 1.15 **UNVERIFIED**: no real Corona frame has run (§14) |
-| KH-5 | corners | 30 km | 1; one real frame, which nothing proves (§14) |
+| KH-5 | corners | 30 km | 1; one real frame, which nothing proves (§14); its search is held to 10 min (`search_seconds`, 2026-11-12: an hour with no end), then the city's crop by the footprint waits for points |
 | KH-7 | corners | 30 km | 1, 1.1, each at shears 0 and ±7.5 degrees; one real frame (§14) |
 | KH-9-mapping | corners | 15 km | 1; one real frame (§14) |
 

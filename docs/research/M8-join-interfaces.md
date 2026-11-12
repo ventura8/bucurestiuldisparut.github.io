@@ -654,3 +654,12 @@ on the old join's retry, "Frame D3C1216-100235A039 ended; import or retry it". T
 
 Tests: `functions/test/imagery/{join,join-parts,join-finalize,retry}.test.ts`, `packages/ui/test/admin/imagery/join.test.ts`,
 `packages/ui/test/admin/layers/layer-geometry.test.ts`; scenarios `S-A65-HAPPY-PUBLISHED-FRAMES`, `S-A65-BAD-PART-TAKEN`.
+
+## 19. A frame joined before joins again (2026-11-12)
+
+The owner's 1980-07-16 join was refused with "Frame D3C1216-100235A039 has no usable version left": its version `im-mw819cxc` was
+`joined` (an earlier join had used it, 11.7 m at its checkpoints), which `ENDED_VERSION_STATES` holds, and the scene page offered no
+Import, so nothing could be done. `join-parts.ts` now counts `joined` with `published` as an ended state that still serves
+(`ENDED_YET_USABLE`): `isUsablePart` takes it for a new join (unless it is itself a join), `partsReady` counts it ready (it has its
+output), and only rejected, superseded, failed and cancelled frames are gone. Tests: `functions/test/imagery/{join,join-parts}.test.ts`;
+scenarios `S-A65-HAPPY-JOINED-FRAME`, `S-A65-BAD-PART-GONE`.

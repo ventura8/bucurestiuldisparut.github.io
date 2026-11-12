@@ -12,7 +12,7 @@ holds: its size, how many parts joined, which were left out and why, and the joi
 their residual, in canvas pixels).
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Final
 
@@ -36,11 +36,11 @@ PREVIEW_QUALITY: Final = 85
 # The georeferencer's scan of a stitched picture: at most this long (its pairs are in these pixels).
 SCAN_MAX_PX: Final = 8192
 REFERENCE_PX: Final = 4096
-LEFT_OUT_MAX: Final = 200
+LEFT_OUT_MAX: Final = model.STITCHED_LEFT_OUT_MAX
 NAME_MAX: Final = 200
 # Why a part is not in the stitched picture: no frame was found on it (a grid's sheet), or it shares no edge or overlap.
-NO_FRAME: Final = "no-frame"
-NO_JOIN: Final = "no-join"
+NO_FRAME: Final = model.LEFT_OUT_REASONS[0]
+NO_JOIN: Final = model.LEFT_OUT_REASONS[1]
 
 
 @dataclass(frozen=True)
@@ -65,6 +65,9 @@ class Stitched:
     left_out: tuple[tuple[str, str], ...] = ()
     metres_per_px: float | None = None
     joins: JoinQuality | None = None
+    # Canvas pixels per pixel of the version's suggested pairs: 1 when the pairs were found on this canvas (an assembled series), less
+    # when they are in a larger original's pixels (a single map's working copy is the canvas).
+    pairs_scale: float = 1.0
 
     @property
     def joined(self) -> int:
@@ -83,14 +86,29 @@ def _left_out(found: Sequence[tuple[str, str]]) -> list[dict[str, str]]:
     return [{"name": name[:NAME_MAX], "reason": reason} for name, reason in found[:LEFT_OUT_MAX]]
 
 
+def _known(stitched: Stitched) -> None:
+    """ValueError for a method or a left-out reason the server's schema does not list (`model`, the shared contract)."""
+    if stitched.method not in model.STITCH_METHODS:
+        raise ValueError(f"unknown stitch method {stitched.method!r}")
+    unknown = {reason for _name, reason in stitched.left_out} - set(model.LEFT_OUT_REASONS)
+    if unknown:
+        raise ValueError(f"unknown left-out reasons {sorted(unknown)}")
+
+
+def _measures(stitched: Stitched) -> dict[str, object]:
+    """What only some pictures have: the ground scale (a grid's mosaic) and the joins' quality."""
+    scale = {} if stitched.metres_per_px is None else {"metresPerPx": round(stitched.metres_per_px, 4)}
+    joins = {} if stitched.joins is None else {"joins": stitched.joins.as_record()}
+    return {**scale, **joins}
+
+
 def publish_stitched(ctx: JobContext, stitched: Stitched) -> dict[str, object]:
     """The canvas kept with the job's files, its preview with the version's; the record `help.stitched` keeps.
 
     A method the server's schema does not know is refused here, before any file is published: the worker's write would be refused
     after minutes of work (`overview`, harti.zip 1895, lesson 569).
     """
-    if stitched.method not in model.STITCH_METHODS:
-        raise ValueError(f"unknown stitch method {stitched.method!r}")
+    _known(stitched)
     canvas = assemble.write_canvas(ctx.local(STITCHED), stitched.canvas)
     ctx.publish(canvas, ctx.work_file(STITCHED), "image/tiff")
     small, scale = _preview(stitched.canvas)
@@ -107,20 +125,59 @@ def publish_stitched(ctx: JobContext, stitched: Stitched) -> dict[str, object]:
         "leftOut": _left_out(stitched.left_out),
         "leftOutCount": len(stitched.left_out),
     }
-    if stitched.metres_per_px is not None:
-        record["metresPerPx"] = round(stitched.metres_per_px, 4)
-    if stitched.joins is not None:
-        record["joins"] = stitched.joins.as_record()
+    record.update(_measures(stitched))
     ctx.log.info(f"stitched {stitched.joined} of {stitched.parts} parts into one {width} x {height} picture for a person", ctx.step)
-    _for_georeferencer(ctx, stitched.canvas)
+    _for_georeferencer(ctx, stitched.canvas, stitched.pairs_scale)
     return record
 
 
-def _for_georeferencer(ctx: JobContext, canvas: UInt8Array) -> None:
-    """The picture as the version's `scan` and the city window's OpenStreetMap lines as its `reference`: what the georeferencer shows."""
-    pixels, _ = _preview(canvas, SCAN_MAX_PX)
+def _moved(pair: object, factor: float, size: tuple[int, int]) -> dict[str, object] | None:
+    """One suggested pair with its pixel in the scan's pixels; None when it is no pair or falls outside the scan."""
+    record = _mapping(pair)
+    pixel = _mapping(record.get("pixel"))
+    if not pixel:
+        return None
+    x, y = float(str(pixel["x"])) * factor, float(str(pixel["y"])) * factor
+    return {**record, "pixel": {"x": round(x, 2), "y": round(y, 2)}} if _inside(x, y, size) else None
+
+
+def _mapping(value: object) -> Mapping[str, object]:
+    return value if isinstance(value, Mapping) else {}
+
+
+def _inside(x: float, y: float, size: tuple[int, int]) -> bool:
+    return 0 <= x < size[0] and 0 <= y < size[1]
+
+
+def in_scan(suggested: Mapping[str, object], factor: float, size: tuple[int, int]) -> dict[str, object]:
+    """The version's suggestions with each pair's pixel in the scan's pixels (`factor` scan pixels per suggested pixel, `size` the
+    scan's width and height); a pair that falls outside the scan is dropped (1895, 2026-11-12: 26 pairs past the 8192-px scan's edge
+    put it 10 to 27 km away)."""
+    kept = _kept(suggested.get("pairs"), factor, size)
+    tiles = _mapping(suggested.get("tiles"))
+    matched = {"tiles": {**tiles, "matched": len(kept)}} if tiles else {}
+    return {**suggested, **matched, "pairs": kept}
+
+
+def _kept(found: object, factor: float, size: tuple[int, int]) -> list[dict[str, object]]:
+    moved = [_moved(pair, factor, size) for pair in (found if isinstance(found, list) else [])]
+    return [pair for pair in moved if pair is not None]
+
+
+def _suggested(ctx: JobContext) -> Mapping[str, object] | None:
+    found = (ctx.services.store.get(ctx.version_path()) or {}).get("suggestions")
+    return found if isinstance(found, Mapping) else None
+
+
+def _for_georeferencer(ctx: JobContext, canvas: UInt8Array, pairs_scale: float = 1.0) -> None:
+    """The picture as the version's `scan` and the city window's OpenStreetMap lines as its `reference`: what the georeferencer shows.
+    The version's suggested pairs move into the scan's pixels with it (the scan is the canvas shrunk to `SCAN_MAX_PX`)."""
+    pixels, scale = _preview(canvas, SCAN_MAX_PX)
     local = assemble.write_canvas(ctx.local("scan.tif"), pixels)
     fields: dict[str, object] = {"scan": publish_scan(ctx, local, pixels).as_record()}
+    suggested = _suggested(ctx)
+    if suggested is not None:
+        fields["suggestions"] = in_scan(suggested, pairs_scale * scale, (pixels.shape[1], pixels.shape[0]))
     window = city_window(ctx)
     features = None if window is None else osm_features_cached(ctx, window)
     if window is not None and features is not None:

@@ -7,12 +7,13 @@ archive holds a complete smaller-scale overview of the same area, pieces are lai
 mosaic is the series' picture. An atlas's pages join by their edges, or by their overlaps when those join more pages (M22 §4.1). A PDF
 that needs a password waits for a person (`low-confidence`: the owner exports its pages). Pages or pieces that join nothing are left
 out: the job's log says how many, and the version's placed count leaves them out. A map or canvas that is not placed on its own is kept
-as the one stitched picture the Help calibrate wizard places (`stitched`), with the parts left out and why.
+as the one stitched picture the Help calibrate wizard places (`stitched`), with the parts left out and why. Every placer swaps a PDF for its
+pages before it reads anything, the overview search included: GDAL never opens a PDF (the 1923 plan-ghid atlas failed there, 2026-11-12).
 """
 
 import math
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Final
 
@@ -54,6 +55,14 @@ def expanded(ctx: JobContext, sheets: Sequence[Sheet]) -> list[Sheet] | None:
             return None
         found.extend(pages)
     return found
+
+
+def paged(ctx: JobContext, series: SeriesJob) -> SeriesJob | str:
+    """The series with each PDF swapped for its pages, or why it cannot be laid out (a password PDF, no page at all)."""
+    sheets = expanded(ctx, series.sheets)
+    if not sheets:
+        return PDF_LOCKED if sheets is None else NO_PAGES
+    return replace(series, sheets=tuple(sheets))
 
 
 def _drawn(ctx: JobContext, canvas: UInt8Array, name: str) -> Drawn:
@@ -98,8 +107,9 @@ class SinglePlacer:
             return wait_for_help(ctx, "low-confidence", NO_PAGES)
         result = place_map(ctx, series, drawn_of(sheets[0].path, sheets[0].name))
         if isinstance(result, Waiting):
-            picture = read_working(sheets[0].path, LARGEST_WORKING_PX).image
-            ctx.update_version({"help.stitched": publish_stitched(ctx, Stitched(picture, "single", 1))})
+            working = read_working(sheets[0].path, LARGEST_WORKING_PX)
+            stitched = Stitched(working.image, "single", 1, pairs_scale=1 / working.scale)
+            ctx.update_version({"help.stitched": publish_stitched(ctx, stitched)})
         return result
 
 
@@ -112,14 +122,13 @@ class AtlasPlacer:
     """An atlas: on an overview when the archive has one, else laid out by their edges or overlaps."""
 
     def place(self, ctx: JobContext) -> StepResult:
-        series = series_of(ctx)
+        series = paged(ctx, series_of(ctx))
+        if isinstance(series, str):
+            return wait_for_help(ctx, "low-confidence", series)
         overviewed = _try_overview(ctx, series)
         if overviewed is not None:
             return _assembled(ctx, series, overviewed)
-        sheets = expanded(ctx, series.sheets)
-        if not sheets:
-            return wait_for_help(ctx, "low-confidence", PDF_LOCKED if sheets is None else NO_PAGES)
-        return _atlas(ctx, series, sheets)
+        return _atlas(ctx, series, series.sheets)
 
 
 def _atlas(ctx: JobContext, series: SeriesJob, sheets: Sequence[Sheet]) -> StepResult:
@@ -191,7 +200,9 @@ class PiecesPlacer:
     """Overlapping pieces of one sheet: on an overview when the archive has one, else joined on their overlaps."""
 
     def place(self, ctx: JobContext) -> StepResult:
-        series = series_of(ctx)
+        series = paged(ctx, series_of(ctx))
+        if isinstance(series, str):
+            return wait_for_help(ctx, "low-confidence", series)
         overviewed = _try_overview(ctx, series)
         if overviewed is not None:
             return _assembled(ctx, series, overviewed)

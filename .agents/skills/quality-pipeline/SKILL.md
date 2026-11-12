@@ -64,6 +64,7 @@ Never suppress: no inline directive of any tool, no `.skip`/`.only`/`xfail`, no 
 
 ## Hard-won rules
 
+- Memory (the owner, 2026-11-12: lint on four workers took 12 GB of a 31 GB laptop): before a commit run `npm run lint:changed` (changed files, one worker), never the whole `npm run lint` on the laptop. The pipeline picks its parallelism from the free memory too (`scripts/ci/parallel.py`); `HCM_LOW_MEM=1` is the low-memory mode (serial gates, one lint worker, two Vitest and two Playwright workers) and `HCM_MAX_PARALLEL=<n>` caps everything. Heavy stages go to the NUC.
 - Never edit `scripts/ci/run-all-checks.sh` while it runs (bash reads it by offset). When another run may be in flight, replace it atomically: write a temporary file next to it and `mv` it over (the running bash keeps the old inode).
 - The quality image sets `LD_PRELOAD=""`: the GDAL base preloads tcmalloc and Chromium aborts under it.
 - A new workspace with registry dependencies needs a `COPY <dir>/package.json <dir>/` line in the Dockerfile's `manifests` stage, or `npm ci` fails in the image build (one whose dependencies are all workspaces needs none).

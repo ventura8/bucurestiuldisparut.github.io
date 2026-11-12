@@ -19,6 +19,7 @@ import httpx
 from hcm_pipeline import paths
 from hcm_pipeline.calibrate.ports import NullProposalMatcher, ProposalMatcher
 from hcm_pipeline.config import Config
+from hcm_pipeline.contract import Errors
 from hcm_pipeline.documents import Version
 from hcm_pipeline.joblog import JobLog
 from hcm_pipeline.model import Job, Record, Timestamp, stamp
@@ -46,6 +47,31 @@ class StepFailedError(Exception):
         # Error parameters are texts (`apiErrorParamsSchema`): a number made the job and its version unreadable in the
         # admin (finding 62 of 2026-11-02; `{bytes}`, `{count}` and `{min}` were numbers).
         self.params = {key: str(value) for key, value in (params or {}).items()}
+
+
+class StepTimeLimitError(StepFailedError):
+    """A step ran past its wall-time limit (`contract.STEP_LIMIT_SECONDS`): raised at its next checkpoint, so the job fails with one
+    clear line instead of holding the computer's queue (live 2026-11-12: an hour in `locate` on a KH-5 frame)."""
+
+    def __init__(self, step: str, limit_seconds: float) -> None:
+        minutes = max(1, round(limit_seconds / 60))
+        super().__init__(
+            Errors.STEP_TIME_LIMIT, f"the step {step} ran longer than {minutes} min and was stopped", {"step": step, "minutes": minutes}
+        )
+        self.step = step
+
+
+@dataclass(frozen=True)
+class StepDeadline:
+    """When the running step must stop: `limit_seconds` after it started, read on `clock` (seconds)."""
+
+    step: str
+    ends_at: float
+    limit_seconds: float
+    clock: Callable[[], float]
+
+    def passed(self) -> bool:
+        return self.clock() > self.ends_at
 
 
 class DeclinedError(StepFailedError):
@@ -115,6 +141,7 @@ class RunFlags:
         self.base_progress = 0.0
         self.step_weight = 0.0
         self.step_fraction = 0.0
+        self.deadline: StepDeadline | None = None
 
     def raise_flag(self, stop: type[RunStoppedError]) -> None:
         with self._lock:
@@ -138,6 +165,9 @@ class RunFlags:
         stop = self.stopping
         if stop is not None:
             raise stop(f"the run stops: {stop.__name__}")
+        deadline = self.deadline
+        if deadline is not None and deadline.passed():
+            raise StepTimeLimitError(deadline.step, deadline.limit_seconds)
 
     def gdal_progress(self, complete: float, _message: str, _data: object) -> int:
         """GDAL's progress callback: 0 makes GDAL stop (and raise) when the run must stop."""
@@ -149,9 +179,10 @@ class RunFlags:
         with self._lock:
             self.step_fraction = max(0.0, min(1.0, fraction))
 
-    def enter(self, step: str, base: float, weight: float) -> None:
+    def enter(self, step: str, base: float, weight: float, deadline: StepDeadline | None = None) -> None:
         with self._lock:
             self.step, self.base_progress, self.step_weight, self.step_fraction = step, base, weight, 0.0
+            self.deadline = deadline
 
     @property
     def progress(self) -> float:

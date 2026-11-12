@@ -169,6 +169,8 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.joinSeamTooFar': spec('failed-precondition'),
     'apiError.imagery.joinNoFrames': spec('failed-precondition'),
     'apiError.imagery.joinNoRoom': spec('failed-precondition'),
+    // A step that ran past its wall-time limit (`STEP_LIMITS_SECONDS` of the pipeline; live 2026-11-12: an hour in `locate`).
+    'apiError.imagery.stepTimeLimit': spec('failed-precondition'),
     // M16 (docs/research/M16-recalibrate.md): a refine that found nothing better, or whose proof did not hold, ends with these (the job and
     // its version cancelled, nothing else changed); Approve of a recalibration not shown better asks for the owner's choice; a join refines frame by frame.
     'apiError.imagery.notImproved': spec('failed-precondition'),

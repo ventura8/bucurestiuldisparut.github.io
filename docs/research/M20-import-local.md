@@ -208,6 +208,11 @@ These are skipped with a reason shown in the report and nothing is processed:
 - Pages are extracted with **pikepdf**, pinned in the pipeline's requirements. It takes images out without re-encoding (`/DCTDecode` streams are written as is). Each page then becomes a single or an atlas page.
 - An encrypted PDF that opens with an empty user password (owner restrictions only) is read. One that needs a password is skipped (`pdf-password`). The worker never asks for or cracks one.
 - Miorini 1923: the encryption type is **UNVERIFIED**. Its 143 pages go to the atlas path.
+- Every placer swaps a PDF for its pages before it reads anything, the overview search included (2026-11-12: the 1923 plan-ghid failed
+  with `GDAL cannot read … .pdf`: the atlas's overview search ran on the PDF itself, found a loose map beside it, and asked GDAL, whose
+  PDF driver in the pipeline image writes but cannot read, to open the PDF). A page stored in a form that cannot be written as is
+  (JBIG2, an unusual colour space) is decoded once and written as a TIFF; a PDF pikepdf cannot open fails the series with
+  `apiError.imagery.archiveCorrupt` naming the file. A page with no image at all (vector only) is still counted and left out.
 
 ### Atlases and pieces (the two assembly cases)
 
