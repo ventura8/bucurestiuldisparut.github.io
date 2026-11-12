@@ -3373,3 +3373,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `JOB_MAX_ATTEMPTS` capped every retry alike, though it exists to stop paid cloud work looping; a run on the owner's computer costs no cloud compute, and a server bug spent its three attempts.
     - Fix and pin: `retryPastCap` and `retryCures` of `@hcm/shared`, used by `jobRetryable` and `imagery.retry`: the owner's Retry of a local run (`runOn: 'local'`, `localOnly`, `archive-series`) passes the cap, its `attemptsExhausted` included, and starts the count again; a cloud run and every publish keep their caps (DECISIONS-for-review.md §158; S-A12-HAPPY-LOCAL-RETRY-PAST-CAP, S-A12-BAD-CLOUD-RETRY-AT-CAP).
     - **A limit that guards cost applies where the cost is: a manual retry that spends nothing must never be refused by it, and the client and the server read one shared predicate.**
+
+575. **Removing the starter kit's Romanian half left a test that counted two README examples.**
+    - Seen: 2026-11-12, the merge of track/englishdocs: `packages/shared/test/kit/template.test.ts` `happyPath_itsPhotoExamplesAreValidPhotosInBothLanguages` expected two JSON photo examples in `templates/starter-kit/README.md`; DECISIONS-for-review.md §157 left one. The branch ran only the functions tests it touched.
+    - Fix and pin: the test is `happyPath_itsPhotoExampleIsAValidPhoto` and expects the one English example, still parsed by `photoSchema`.
+    - **A docs-only change can break a test that reads the docs: run `vitest related` on the Markdown's readers too (`grep -rn` the file name in `**/test/`), not only on the code the branch changed.**
