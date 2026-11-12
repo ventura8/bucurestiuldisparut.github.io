@@ -109,10 +109,13 @@ def page_px(count: int) -> int:
 
 
 class AtlasPlacer:
-    """An atlas: its pages laid out by their edges (or their overlaps) and assembled, then placed as one map."""
+    """An atlas: on an overview when the archive has one, else laid out by their edges or overlaps."""
 
     def place(self, ctx: JobContext) -> StepResult:
         series = series_of(ctx)
+        overviewed = _try_overview(ctx, series)
+        if overviewed is not None:
+            return _assembled(ctx, series, overviewed)
         sheets = expanded(ctx, series.sheets)
         if not sheets:
             return wait_for_help(ctx, "low-confidence", PDF_LOCKED if sheets is None else NO_PAGES)

@@ -7515,6 +7515,28 @@
             "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
         },
         {
+            "id": "S-A33-HAPPY-DELETE-INDEXED",
+            "behaviour": "A33",
+            "area": "admin",
+            "path": "happy",
+            "title": "Deleting a layer asks Firestore only what its indexes answer",
+            "asserts": "layers.delete checks the layer's unfinished jobs by the indexed status and matches params.layerId or layerId in code -> the layer goes, its tileset deletion waits seven days",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 557 (Bucuresti actual could not be deleted, 2026-11-12). Tests: functions/test/layers/delete.test.ts."
+        },
+        {
+            "id": "S-A33-BAD-UNINDEXED-QUERY",
+            "behaviour": "A33",
+            "area": "admin",
+            "path": "bad",
+            "title": "A query on a field exempt from indexing fails in tests as it fails in Firestore",
+            "asserts": "the fake document store refuses a query or count filtering on jobs.params.* (exempt in firebase/firestore.indexes.json) with FAILED_PRECONDITION; a query on status passes",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 557: the emulator does not enforce indexes. Tests: functions/test/support/port-fakes.test.ts."
+        },
+        {
             "id": "S-A33-BAD-DELETE-FAILED-KEEPS-SCENE",
             "behaviour": "A33",
             "area": "admin",
@@ -16522,6 +16544,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Owner 2026-11-10 tile import piece 3. Tests: pipeline/tests/unit/test_placing_overview_find.py, pipeline/tests/unit/test_placing_assemble.py."
+        },
+        {
+            "id": "S-P20-HAPPY-OVERVIEW-ATLAS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An atlas whose archive holds an overview is stitched on it",
+            "asserts": "atlas pages beside a complete smaller-scale sheet -> the stitched picture is the pages on the overview (method overview, at least 3 joined)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip (2026-11-12). Tests: pipeline/tests/unit/test_placing_assemble_overview.py."
+        },
+        {
+            "id": "S-P20-BAD-OVERVIEW-ATLAS-BLANK",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An atlas with a blank overview keeps its page layout",
+            "asserts": "a blank overview beside the pages -> too few pages land on it, the atlas is laid out by its edges or overlaps (method atlas)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip (2026-11-12). Tests: pipeline/tests/unit/test_placing_assemble_overview.py."
         },
         {
             "id": "S-P20-HAPPY-OVERVIEW-SIBLING",

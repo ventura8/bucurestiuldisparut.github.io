@@ -3,6 +3,7 @@ import '../global-options.js';
 import {
     ENDED_VERSION_STATES,
     FIRESTORE_PATHS,
+    JOB_STATUSES,
     LAYER_DELETE_GRACE_DAYS,
     jobDocSchema,
     layerDocSchema,
@@ -44,25 +45,25 @@ function jobIdFor(layerId: string, now: Date): string {
     return `ld-${now.getTime().toString(36)}-${layerId.slice(0, 26)}`;
 }
 
-/**
- * Where a job names its layer: M2's jobs in their parameters, M3's raster jobs (`usgs-import`, `geotiff-import`,
- * `regeoref`, `republish`) at the top level (`docs/research/M3-interfaces.md` §2.3; CR-M3-24).
- */
-const LAYER_FIELDS = ['params.layerId', 'layerId'] as const;
-
-async function unfinishedJobOf(deps: LayerDeleteDeps, request: Request, field: (typeof LAYER_FIELDS)[number]): Promise<boolean> {
-    const jobs = await deps.documents.query(FIRESTORE_PATHS.jobs(request.cityId), jobDocSchema, {
-        where: [[field, '==', request.layerId]],
-    });
-    return jobs.documents.some((job) => !FINISHED.has(job.data.status));
+/** The job's layer: M2's jobs in their parameters, M3's raster jobs (`usgs-import`, `geotiff-import`, `regeoref`, `republish`) at the
+ * top level (`docs/research/M3-interfaces.md` §2.3; CR-M3-24). */
+function layerOfJob(job: JobDoc): unknown {
+    return job.layerId ?? job.params['layerId'];
 }
 
-/** A layer whose pipeline job is not finished, or which the pipeline is processing, is not deleted (`layers.busy`). */
+const UNFINISHED: readonly JobStatus[] = JOB_STATUSES.filter((status) => !FINISHED.has(status));
+
+/**
+ * A layer whose pipeline job is not finished, or which the pipeline is processing, is not deleted (`layers.busy`). The jobs are asked
+ * by their indexed `status` and matched to the layer here: `jobs.params` is exempt from indexing (`firebase/firestore.indexes.json`),
+ * so a query on `params.layerId` fails in Firestore (lesson 557).
+ */
 async function refuseWhileBusy(deps: LayerDeleteDeps, request: Request): Promise<void> {
-    for (const field of LAYER_FIELDS) {
-        if (await unfinishedJobOf(deps, request, field)) {
-            throw new ApiError('apiError.layers.busy');
-        }
+    const jobs = await deps.documents.query(FIRESTORE_PATHS.jobs(request.cityId), jobDocSchema, {
+        where: [['status', 'in', UNFINISHED]],
+    });
+    if (jobs.documents.some((job) => layerOfJob(job.data) === request.layerId)) {
+        throw new ApiError('apiError.layers.busy');
     }
 }
 

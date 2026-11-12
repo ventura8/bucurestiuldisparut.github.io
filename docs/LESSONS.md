@@ -3271,5 +3271,11 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
 556. **Post 1847 got a black frame once its paper was opaque.**
     - Seen: 2026-11-12, owner screenshot: the rotated 1847 plan sat in a black rectangle after `…-fix2.pmtiles`.
     - Cause: the export's COG is one grey band with its alpha kept as an internal mask; the line-art encoder read alpha only from a second band, so a one-band source was all opaque and the black outside the warp became ink.
-    - Fix and pin: `_alpha_rows` reads the band's mask (`GetMaskBand`) for a one-band source; `S-P20-BAD-ENCODING-MASK`.
+    - Fix and pin: `_alpha_rows` reads the band's mask (`GetMaskBand`) for a one-band source; `S-P20-BAD-ENCODING-MASK`. Live: the source raster was gone, so `…-fix3.pmtiles` cleared outside the paper's convex hull; manifest and Firestore point to it.
     - **A one-band raster's edge lives in its mask; read the mask band, never assume all opaque.**
+
+557. **Bucuresti actual could not be deleted: a query on a field exempt from indexing.**
+    - Seen: 2026-11-12, owner: Delete on the `bucuresti-actual-1-500` layer ended in "Something went wrong on the server"; the log said `FAILED_PRECONDITION: The query requires a COLLECTION_ASC index for collection jobs and field params.layerId`.
+    - Cause: `firebase/firestore.indexes.json` exempts `jobs.params` from indexing, yet `layers.delete` (its busy check) and `history.revert` (`waitingLayerDeletes`) filtered on `params.layerId`. The emulator does not enforce indexes, and the in-memory fake ignored the exemptions, so every test passed.
+    - Fix and pin: both ask by an indexed field (`status in` the unfinished statuses; `type == layer-delete`) and match the layer in code; the fake document store now refuses a query or count on an exempt field; `S-A33-HAPPY-DELETE-INDEXED`, `S-A33-BAD-UNINDEXED-QUERY`.
+    - **A field exempt from indexing can never be queried; the fake must refuse what Firestore refuses, since the emulator does not.**
