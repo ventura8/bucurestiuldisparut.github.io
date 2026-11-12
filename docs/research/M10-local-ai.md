@@ -51,7 +51,7 @@ New code: `pipeline/src/hcm_pipeline/matcher/` (`serve.py`, `search.py` from `re
 
 ```text
 docker run --rm --name hcm-matcher <gpu flags> --network none --cap-drop ALL \
-  --security-opt no-new-privileges --memory 6g --memory-swap 6g --shm-size 1g --pids-limit 512 \
+  --security-opt no-new-privileges --memory 4g --memory-swap 4g --cpu-shares 128 --shm-size 1g --pids-limit 512 \
   --tmpfs /tmp -u 10001:10001 -e HOME=/tmp -e HCM_AI_DEVICE=gpu|cpu -e HCM_AI_WHY=<reason> \
   -v hcm-ai-files:/ai/files:ro -v hcm-ai-box:/ai/box --entrypoint python <image> /ai/files/code/serve.py
 ```
@@ -64,10 +64,10 @@ Log lines: `local AI: graphics card through --gpus all` or `local AI: NO GRAPHIC
 
 ## Memory and budgets
 
-- 6 GB cap against 2.5 GB measured; 2,048 keypoints; pair gate 12 inliers, as Tests A and C; one run at a time.
+- 4 GB cap against 2.5 GB measured (6 GB until 2026-11-12, `reports/resource-audit.md`), a low CPU weight (`--cpu-shares 128`); 2,048 keypoints; pair gate 12 inliers, as Tests A and C; one run at a time.
 - Under `MATCHER_MIN_VRAM_GB = 2`, the CPU.
 - Each request runs in a child process that imports torch and exits, so an idle sidecar holds no VRAM.
-- CPU: half the logical threads; the first 2 orientations by votes (GPU: all), each at every scale of the sensor. Timeout per request: 10 min GPU, 45 min CPU (adapter only, injected clock).
+- CPU: the logical threads but one, niced by 10 (half of them until 2026-11-12); the first 2 orientations by votes (GPU: all), each at every scale of the sensor. Timeout per request: 10 min GPU, 45 min CPU (adapter only, injected clock).
 
 ## Failure modes
 

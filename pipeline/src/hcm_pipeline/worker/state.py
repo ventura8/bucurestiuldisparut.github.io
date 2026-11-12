@@ -13,6 +13,7 @@ from typing import Final
 from hcm_pipeline.log import get_logger
 from hcm_pipeline.worker.ai_state import AiState
 from hcm_pipeline.worker.api import REVOKED
+from hcm_pipeline.worker.pace import Pace
 from hcm_pipeline.worker.session import Session
 
 LOG = get_logger("worker.state")
@@ -23,9 +24,11 @@ DEFAULT_POLL_SECONDS: Final = 30.0
 
 @dataclass
 class Timing:
-    """`worker.hello`'s answer: the claim interval and the heartbeat's (None: the runner's own)."""
+    """`worker.hello`'s answer: the claim interval, the longest an idle worker may wait between claims (None: a server that
+    names none, asked every `poll_seconds`) and the heartbeat's (None: the runner's own)."""
 
     poll_seconds: float = DEFAULT_POLL_SECONDS
+    idle_poll_seconds: float | None = None
     heartbeat_seconds: float | None = None
 
 
@@ -42,6 +45,7 @@ class WorkerState:
         self._outdated = False
         self._ai = AiState()
         self.timing = Timing()
+        self.pace = Pace()
 
     def busy(self, job_id: str) -> None:
         with self._lock:

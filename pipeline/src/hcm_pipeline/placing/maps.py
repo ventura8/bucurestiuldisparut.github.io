@@ -64,8 +64,7 @@ def paged(ctx: JobContext, series: SeriesJob) -> SeriesJob | str:
     return replace(series, sheets=tuple(sheets))
 
 
-def _drawn(ctx: JobContext, canvas: UInt8Array, name: str) -> Drawn:
-    path = assemble.write_canvas(ctx.local(CANVAS), canvas)
+def _drawn(path: Path, canvas: UInt8Array, name: str) -> Drawn:
     return drawn_of(path, name, max(canvas.shape[:2]), framed=False)
 
 
@@ -88,9 +87,11 @@ def _assembled(ctx: JobContext, series: SeriesJob, made: Assembled) -> StepResul
     """The canvas placed as one map; when it waits for a person, its stitched picture goes with it."""
     layout = made.layout
     ctx.log.info(f"assembled {len(layout.placed)} parts, {len(layout.left_out)} left out, {layout.holes} holes", ctx.step)
-    result = place_map(ctx, series, _drawn(ctx, made.canvas, made.method), made.method, len(layout.placed))
+    # Written once: the placing reads this file, and a series that waits for a person publishes it as its stitched picture.
+    path = assemble.write_canvas(ctx.local(CANVAS), made.canvas)
+    result = place_map(ctx, series, _drawn(path, made.canvas, made.method), made.method, len(layout.placed))
     if isinstance(result, Waiting):
-        ctx.update_version({"help.stitched": publish_stitched(ctx, made.stitched())})
+        ctx.update_version({"help.stitched": publish_stitched(ctx, made.stitched(), path)})
     return result
 
 
@@ -131,9 +132,10 @@ LEGACY_SHARE: Final = 0.9
 
 @dataclass(frozen=True)
 class Parts:
-    """Parts joined by the older code: their pictures, layout and joins' quality (None when nothing joined)."""
+    """Parts joined by the older code: their canvas (composed only when it is used, a page at a time), layout and joins' quality (None
+    when nothing joined)."""
 
-    images: Sequence[UInt8Array]
+    canvas: Callable[[], UInt8Array]
     layout: assemble.Layout
     quality: JoinQuality | None = None
 
@@ -163,25 +165,26 @@ def _legacy_or_wait(
     if parts is None or len(parts.layout.placed) < LEGACY_SHARE * len(names):
         return autoplace.wait_layout(ctx, series, proposal)
     ctx.log.info(f"the {method}'s edges or overlaps place {len(parts.layout.placed)} of {len(names)} parts", ctx.step)
-    canvas = assemble.compose_canvas(parts.images, parts.layout)
-    return _assembled(ctx, series, Assembled(canvas, parts.layout, names, method, parts.quality))
+    return _assembled(ctx, series, Assembled(parts.canvas(), parts.layout, names, method, parts.quality))
 
 
 def _atlas_parts(sheets: Sequence[Sheet]) -> Parts:
     """The pages cropped to their frames and laid out on their median size by their edges, or by their overlaps when those join
     more pages."""
     pages, cell = _pages(sheets)
-    layout = assemble.atlas_layout(pages, cell)
+    layout = assemble.atlas_layout(pages.grey, cell)
     overlapping = _overlapping(sheets, len(layout.placed))
     if overlapping is not None:
-        return Parts(overlapping.images, overlapping.layout, overlapping.quality)
-    return Parts(pages, layout)
+        return _joined_parts(overlapping)
+    sizes = [(page.shape[1], page.shape[0]) for page in pages.grey]
+    return Parts(lambda: assemble.compose_parts(pages.page, sizes, pages.colour, layout), layout)
 
 
-def _pages(sheets: Sequence[Sheet]) -> tuple[list[UInt8Array], tuple[int, int]]:
-    """The pages cropped to their frames, and their median size."""
-    pages = [assemble.frame_crop(image) for image in assemble.read_parts([sheet.path for sheet in sheets], page_px(len(sheets)))]
-    return pages, (int(numpy.median([page.shape[1] for page in pages])), int(numpy.median([page.shape[0] for page in pages])))
+def _pages(sheets: Sequence[Sheet]) -> tuple[assemble.Pages, tuple[int, int]]:
+    """The pages cropped to their frames, held grey, and their median size."""
+    pages = assemble.Pages.read([sheet.path for sheet in sheets], page_px(len(sheets)))
+    widths, heights = [page.shape[1] for page in pages.grey], [page.shape[0] for page in pages.grey]
+    return pages, (int(numpy.median(widths)), int(numpy.median(heights)))
 
 
 def _overlapping(sheets: Sequence[Sheet], by_edges: int) -> joins.Joined | None:
@@ -220,9 +223,13 @@ def _try_overview(ctx: JobContext, series: SeriesJob) -> Assembled | None:
     return Assembled(canvas, _overview_layout(names, report, (canvas.shape[1], canvas.shape[0])), names, "overview", quality)
 
 
+def _joined_parts(found: joins.Joined) -> Parts:
+    return Parts(lambda: assemble.compose_canvas(found.images, found.layout), found.layout, found.quality)
+
+
 def _pieces_parts(sheets: Sequence[Sheet]) -> Parts | None:
     found = joins.joined([sheet.path for sheet in sheets])
-    return None if found is None else Parts(found.images, found.layout, found.quality)
+    return None if found is None else _joined_parts(found)
 
 
 class PiecesPlacer:

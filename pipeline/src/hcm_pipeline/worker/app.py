@@ -77,6 +77,7 @@ class PageActions:
             return refused
         tokens, answer = refused
         self._state.timing.poll_seconds = _seconds(answer, "pollSeconds") or self._state.timing.poll_seconds
+        self._state.timing.idle_poll_seconds = _seconds(answer, "idlePollSeconds")
         self._state.timing.heartbeat_seconds = _seconds(answer, "heartbeatSeconds")
         self._session.begin(tokens, keep)
         self._state.failed(None)

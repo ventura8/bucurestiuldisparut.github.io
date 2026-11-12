@@ -22,7 +22,7 @@ marked **UNVERIFIED**, each with how the first real run proves it (§11).
 
 1. **Where a job runs** is a job field, `runOn: 'local' | 'cloud'`, decided by the dispatcher the first time it sees the
    job queued (§3): the job's own choice, else the city's remembered choice (`auto` by default), and `auto` means
-   `local` when one of the city's workers was seen within `WORKER_FRESH_SECONDS` (180 s), else `cloud`. A `local` job is
+   `local` when one of the city's workers was seen within `WORKER_FRESH_SECONDS` (180 s; 570 s since 2026-11-12, when an idle worker began to ask less often), else `cloud`. A `local` job is
    never sent to Cloud Run: it waits (`waitReason: 'worker'`) until a worker claims it. The admin changes a job's place
    (and with it the city's choice) with `imagery.runOn` while the job holds no run.
 2. **The worker** is `python -m hcm_pipeline worker` in the same pipeline image (§1). It holds the owner's Firebase ID
@@ -681,3 +681,42 @@ A `layer-join` runs here as any pipeline job (`docs/research/M8-join-interfaces.
 - **Cloud Run** keeps `NullProposalMatcher`: only `worker/runtime.py` injects `LocalMatcher`, and its image gains a few KB of unimported Python and two empty folders.
 
 Security review of the additions: the box is a volume shared with a process that has no network, so what it says is untrusted. An answer is parsed as JSON, finite, at most three similarities of a scale 0.85 to 1.15, and only a proposal for the proof; a request is read with `allow_pickle=False`; weights load with `weights_only=True` after their hash. `/state` tells a local reader only the pinned image's name. The starter accepts that name only as `pytorch/pytorch` by a whole digest, with no character a shell could act on.
+
+## Addendum of 2026-11-12: memory and processor budgets (`reports/resource-audit.md`)
+
+The worker needed about 16 GB: a warp took 4.5 GB and a 60-sheet colour atlas 3.8 GB, whatever the machine. Three settings and one function, each with a budget test (`pipeline/tests/integration/test_memory_budgets.py`, a process of its own through `pipeline/tests/budget_probe.py`; S-P31-*):
+
+| What | Before | Now |
+| --- | --- | --- |
+| `GDAL_CACHEMAX`, `warpMemoryLimit` (`rasters.gdal_memory`, `warp_memory_mb`; `steps/warp.py`, `join/warping.py`) | 1,024 and 2,048 MB, fixed | a sixteenth and an eighth of what the process may use (the least of the cgroup's limit and `MemAvailable`), between 128 and 1,024 MB and between 256 and 2,048 MB: 256 and 512 MB on 4 GB, the old values from 16 GB. `HCM_GDAL_CACHE_MB` and `HCM_WARP_MEMORY_MB` override. |
+| Atlas and pieces canvas (`placing/assemble.compose_canvas`) | every part warped onto a whole canvas, the owners resized to it as int32 | each part warped into its own box, the owners read on their coarse grid as `cv2.resize` would pick them: the same pixels |
+| `locate`'s city crop (`locate.write_crop`, also `steps/recrop.py`) and a scan's preview (`common.scan_preview`; `inspect`) | the crop as one array, written, then resized; an upload read whole, band by band, for a 4,096 px preview | the crop copied out of the segments 1,024 rows at a time; the preview read by GDAL averaged down to its size |
+| Tile processes (`steps/pyramid.tile_processes`) | one a CPU (`ALL_CPUS`), about 170 MB each | the cores but one, at most what a quarter of the memory holds at 256 MB each, at most `GDAL_NUM_THREADS` when it is a number |
+
+Measured on the NUC (16 threads, 31 GB) with the audit's method and sizes, in the quality image:
+
+| What (NUC, `tests/budget_probe.py`) | Before | After |
+| --- | --- | --- |
+| `compose_canvas`, 60 colour sheets of 2222 by 1600 | 3,741 MB, 105 CPU-s | 1,659 MB, 16 CPU-s |
+| Same, 36 sheets of 1600 by 1152 (the budget test's size) | 1,161 MB, 20 CPU-s | 554 MB, 5 CPU-s |
+| Warp, 70,000 by 15,000 scan, thin plate over 289 points, all threads | 4,520 MB (cache 1,024, warp 2,048) | 1,239 MB with a 4 GB machine's settings (256, 512), 2,329 MB with an 8 GB machine's; no slower (11 s against 36 s of wall time) |
+| COG of it (JPEG 85, 512 blocks, overviews) | 1,994 MB on 16 threads | 1,246 MB on 16 threads, 671 MB on two (4 GB settings); 1,431 MB with 8 GB settings on 15 |
+| Tiles z10 to z16 | 16 processes of up to 143 MB beside a 190 MB parent: about 2.5 GB together (summed, not measured) | in a 12 GB container 12 processes: about 1.9 GB (11 measured at 155 MB each), the same 48 s; a 4 GB machine gets 4, which GDAL runs as threads of one process: 1,243 MB, 119 s |
+
+| City crop of DS1103-1058DF027 (35,664 by 8,172) out of two segments, and its preview; 4 GB settings | 574 MB: one array, written, resized | 460 MB: copied 1,024 rows at a time, the preview read averaged down (GDAL's 256 MB cache is most of what is left) |
+| Preview of a 20,000 px colour upload (`inspect`) | 2,720 MB: every band read whole, stacked, resized | 479 MB |
+| Atlas of 60 colour sheets of 2,222 by 1,600 from disk, as `placing/maps.py` makes it | 1,698 MB: every page held in colour beside the canvas | 1,301 MB: pages held grey, each read again in colour only to paste it; the canvas written once and kept as the stitched picture by a hard link |
+| The local AI's sidecar (`hcm-worker.sh`, `.bat`; `matcher/torch_backend.py`) | 6 GB cap, Docker's default CPU weight, half the threads on the processor | 4 GB cap (2.4 GB measured in M10), `--cpu-shares 128`, the threads but one, niced by 10 on the processor |
+
+The export's memory follows the threads as well as the cache, and four tile threads in one process hold more than four processes would: both stay inside a 4 GB machine, neither is as small as the audit's two-thread figures.
+
+### The worker beside its owner's work, and an idle worker's claims (2026-11-12)
+
+- **Limits** (`packages/admin/starter/hcm-worker.sh`, `hcm-worker.bat`): the worker's container runs with `--memory` and `--memory-swap` at 60 % of the memory Docker has (`docker info`'s `MemTotal`; on Docker Desktop, of its virtual machine) and `--cpu-shares 256`. An out-of-memory run now ends the job, not the desktop. `HCM_WORKER_MEMORY` (a Docker size, or `none`) and `HCM_WORKER_THREADS` in the service's environment override. The one-line command behind **Advanced** is unchanged: it has no limit of its own.
+- **Priority and threads** (`worker/command.py`): the process is niced by 10 (`HCM_WORKER_NICE`; 0: not at all) and GDAL takes the cores but one unless `GDAL_NUM_THREADS` is set. Cloud Run's jobs are not niced and keep every core.
+- **Claims** (`worker/pace.py`, `worker.hello`'s `idlePollSeconds`): awake, a claim every `pollSeconds` (30 s): for ten minutes after the worker's start, a job it ran, or the admin's page looking at it (`GET /state` from a Hosting origin). Then each idle pass waits twice as long, up to `WORKER_IDLE_POLL_SECONDS` (300 s), a tenth more or less. A month idle is about 8,640 claims, not 86,400. `WORKER_FRESH_SECONDS` goes from 180 to 570 so that the longest wait (330 s) does not disconnect the worker; a job queued while nobody looks starts up to five and a half minutes later. A server older than this image names no `idlePollSeconds` and is asked every 30 s as before, so the image may be deployed before or after the functions.
+- A starter already installed keeps running without the limits until the owner downloads it again; the priority, the threads and the claims come with the image.
+
+### The minimum machine (2026-11-12)
+
+Target: **4 GB of memory and 2 cores**, slower, never refused. What is measured (the table above, each step in a process of its own with a 4 GB machine's settings): warp 1.2 GB, COG 0.7 GB on two threads, tiles 1.2 GB on four, a 60-sheet colour atlas 1.7 GB, a 40,000 by 8,000 city crop under 0.45 GB. The budget test S-P31-HAPPY-SMALL-MACHINE holds a 60-sheet colour atlas at its real size (1.3 GB) and DF027's city crop (0.46 GB) under 60 % of 4 GB, the worker's cap there, each in a process of its own. **Not yet proved:** a whole import under a real 4 GB cgroup (the NUC's queue runs every container at 12 GB; the test reads each process's peak, not a cgroup's), and `georef`'s matcher, which still reads `scan.tif` whole before it shrinks it (a city crop: up to 0.5 GB). The local AI on the processor is outside this target (its sidecar's cap is 6 GB, a frame took 49.5 min on 8 threads).

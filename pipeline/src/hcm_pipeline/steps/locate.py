@@ -54,7 +54,8 @@ from hcm_pipeline.georef.transforms import Gcp
 from hcm_pipeline.images import UInt8Array, as_uint8, resize, seeded
 from hcm_pipeline.jobs import Done, JobContext, StepFailedError, StepResult
 from hcm_pipeline.model import UsgsImportParams
-from hcm_pipeline.rasters import GeoTiff, read_band, to_uint8, write_geotiff
+from hcm_pipeline.raster import gdal
+from hcm_pipeline.rasters import GTIFF_OPTIONS, GeoTiff, driver_of, read_band, to_uint8, write_geotiff
 from hcm_pipeline.steps.common import city_window, gdal_step, grey_reference, publish_scan, sentinel2
 from hcm_pipeline.steps.whole import POINTS_NEXT, Limits, WholeFrame, mark, offered_whole, shrink
 from hcm_pipeline.store import DELETE
@@ -67,6 +68,8 @@ USGS_RAW_PREFIX: Final = "usgs-raw/"
 # A film this share of the sensor's full aspect or longer swept the whole angle (four real KH-9 frames: 19.6 to 20.5 for 20.2).
 FULL_SWEEP_SHARE: Final = 0.9
 PERCENT: Final = 100.0
+# Rows of a crop copied at a time: at a Corona strip's 35,000 columns, about 36 MB.
+CROP_BLOCK_ROWS: Final = 1024
 
 
 def _scene(ctx: JobContext, entity: UsgsImportParams) -> Scene:
@@ -131,19 +134,29 @@ def film_limits(camera: PanoramicCamera | None, layout: FrameLayout) -> tuple[in
     )
 
 
-def crop_pixels(ctx: JobContext, layout: FrameLayout, box: Crop) -> UInt8Array:
-    """The frame's pixels in `box`, read from the segments that cover it, one at a time (a later one on top)."""
+def write_crop(ctx: JobContext, layout: FrameLayout, box: Crop, target: Path) -> Path:
+    """The frame's pixels in `box` as a GeoTIFF, copied out of the segments that cover it, one at a time (a later one on top),
+    `CROP_BLOCK_ROWS` rows at a time: the crop is never held whole (reports/resource-audit.md: a city on a KH-9 frame was 2.5 GB as
+    one array, held again for its preview)."""
+    dataset = driver_of("GTiff").Create(str(target), box.width, box.height, 1, gdal.GDT_Byte, list(GTIFF_OPTIONS))
     window = (box.left, box.top, box.width, box.height)
-    pixels = numpy.zeros((box.height, box.width), numpy.uint8)
     for placement in layout.covering(window):
-        x, y, width, height = placement.window(window) or window
-        segment = Segment(ctx.stage(placement.path))
-        part = segment.read(x - placement.x, y - placement.y, width, height)
-        pixels[y - box.top : y - box.top + height, x - box.left : x - box.left + width] = part
-        segment.close()
-        ctx.unstage(placement.path)
+        _copy_rows(ctx, placement, placement.window(window) or window, (dataset.GetRasterBand(1), box.left, box.top))
+    dataset.Close()
+    return target
+
+
+def _copy_rows(ctx: JobContext, placement: Placement, part: tuple[int, int, int, int], onto: tuple[gdal.Band, int, int]) -> None:
+    """`part` (in the frame's pixels) of one segment onto the crop's band, whose corner lies at `onto`'s column and row of the frame."""
+    x, y, width, height = part
+    band, left, top = onto
+    segment = Segment(ctx.stage(placement.path))
+    for row in range(y, y + height, CROP_BLOCK_ROWS):
+        rows = min(CROP_BLOCK_ROWS, y + height - row)
+        band.WriteArray(segment.read(x - placement.x, row - placement.y, width, rows), x - left, row - top)
         ctx.checkpoint()
-    return as_uint8(pixels)
+    segment.close()
+    ctx.unstage(placement.path)
 
 
 def delete_delivery(ctx: JobContext) -> None:
@@ -331,11 +344,11 @@ class LocateStep:
         if box is None:
             raise CityNotFoundError
         located = Crop(box[0], box[1], box[2] - box[0], box[3] - box[1], proved_gcps(mapping, box))
-        pixels = gdal_step(ctx, lambda: crop_pixels(ctx, layout, within_limits(located)), "crop the frame")
+        local = gdal_step(ctx, lambda: write_crop(ctx, layout, within_limits(located), ctx.local("scan.tif")), "crop the frame")
         camera = rad_per_px(search.sensor, layout)
         stored = StoredTiles(proved.proof.measured.rows, proved.order, box[0], box[1], window.bounds().middle_lat, camera)
         ctx.publish(stored.write(ctx.local(CALIBRATION_FILE)), ctx.work_file(CALIBRATION_FILE), "application/json")
-        scan = publish_scan(ctx, write_geotiff(ctx.local("scan.tif"), GeoTiff([pixels])), pixels)
+        scan = gdal_step(ctx, lambda: publish_scan(ctx, local), "read the crop")
         record = _calibration(ctx, found, mapping, limits)
         georef = GeorefInfo("corners", "affine", located.gcps)
         ctx.update_version({"scan": scan.as_record(), "georef": georef.as_record(), "calibration": record})
@@ -346,8 +359,8 @@ class LocateStep:
     def _not_proved(self, ctx: JobContext, search: FrameSearch, found: Found, layout: FrameLayout) -> StepResult:
         ranked = _by_votes(search.orientations, found)
         located, cut = bounded_crop(ranked, search.window, search.limits, MAX_SCAN_PIXELS)
-        pixels = gdal_step(ctx, lambda: crop_pixels(ctx, layout, within_limits(located)), "crop the frame")
-        scan = publish_scan(ctx, write_geotiff(ctx.local("scan.tif"), GeoTiff([pixels])), pixels)
+        local = gdal_step(ctx, lambda: write_crop(ctx, layout, within_limits(located), ctx.local("scan.tif")), "crop the frame")
+        scan = gdal_step(ctx, lambda: publish_scan(ctx, local), "read the crop")
         georef = GeorefInfo("corners", "affine", located.gcps, weak_corners=True)
         record = _refusal_record(found, cut)
         ctx.update_version({"scan": scan.as_record(), "georef": georef.as_record(), "calibration": record})

@@ -3433,19 +3433,37 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: a frame nothing proved is cut by a guess only when it was searched whole, in time, and fits a scan shown whole; else the scan is the whole exposure shrunk (`steps/whole.py`, marked in `scan.tif`), and the owner's rough points crop the film at full resolution (`steps/recrop.py`); the KH-5 cap ends the same way (S-P06-HAPPY-WHOLE-STRIP, S-P06-BAD-WHOLE-STRIP-UNPROVED, S-P06-HAPPY-ROUGH-POINTS-CROP, S-P06-BAD-ROUGH-POINTS-OUTSIDE, S-P06-BAD-ROUGH-POINTS-FILM-GONE).
     - **When nothing is proved, never let an unproved guess decide what the person sees: show everything, coarser, and let their answer choose.**
 
-585. **A map of dark blocks was cropped by a margin it does not have.**
+585. **The worker's memory was set for a server, not for the computer it runs on.**
+    - Seen: 2026-11-12, `reports/resource-audit.md`: a warp held 4.5 GB and a 60-sheet colour atlas 3.8 GB on a 16 GB laptop that also ran the desktop; tile cutting started one 170 MB process a CPU.
+    - Cause: `GDAL_CACHEMAX` 1,024 MB and `warpMemoryLimit` 2,048 MB were constants; `compose_canvas` warped every sheet onto a whole canvas and resized the owners' grid to it; `num-threads` was `ALL_CPUS`.
+    - Fix and pin: the settings follow the memory the process may use (`rasters.gdal_memory`), each sheet is pasted in its own box, the tile processes are capped (`pyramid.tile_processes`), a city crop is copied by rows and every preview read shrunk (`locate.write_crop`, `common.scan_preview`), an atlas's pages are held grey and read again in colour to paste (`assemble.Pages`); each has a budget test in a process of its own (S-P31-HAPPY-WARP-BUDGET, S-P31-HAPPY-CANVAS-BUDGET, S-P31-HAPPY-TILE-PROCESSES and their bad rows).
+    - **A memory setting is a share of the machine it runs on, read at run time, and every heavy call has a budget test that fails when the memory grows back.**
+
+586. **An idle worker asked for a job 86,400 times a month, and a busy one could take the whole computer.**
+    - Seen: 2026-11-12, `reports/resource-audit.md`: `hcm-worker` ran with no memory limit and nice 0 (an out-of-memory run takes the desktop with it), and `worker.claim` was called every 30 s for ever, each call with its Firestore reads.
+    - Cause: the starter's `docker run` named no limit; the poll interval was one constant, and the admin counted a worker gone after 180 s, which forbade any longer wait.
+    - Fix and pin: the starters cap the container at 60 % of Docker's memory with a low CPU weight, the worker nices itself and leaves a core; `worker/pace.py` backs the claims off to `idlePollSeconds` and wakes on a job or the admin's look, with `WORKER_FRESH_SECONDS` above the longest wait (S-P31-HAPPY-WORKER-POLITE, S-P31-BAD-WORKER-POLITE-OVERRIDE, S-P31-HAPPY-CLAIM-BACKOFF, S-P31-BAD-CLAIM-BACKOFF-OLD-SERVER).
+    - **A poll's interval and the presence window that reads it change together, and the newer side must work against the older one in either deploy order.**
+
+587. **Every memory probe started from pytest reported 2,105 MB.**
+    - Seen: 2026-11-12, `pipeline/tests/integration/test_memory_budgets.py` in the full pipeline run on the PC: four budgets failed with the same peak, which no probe reached alone.
+    - Cause: `getrusage(RUSAGE_SELF).ru_maxrss` keeps, across `exec`, the peak of the process that forked: a probe started from a pytest that had grown to 2.1 GB inherited its figure. Run alone or from a shell, the probes read right.
+    - Fix and pin: `tests/budget_probe.py` reads its own `VmHWM` from `/proc/self/status`, which starts afresh with the new program.
+    - **A child's own peak memory is `VmHWM`, never `ru_maxrss` read inside a process another large one started.**
+
+588. **A map of dark blocks was cropped by a margin it does not have.**
     - Seen: 2026-11-12, track/autostitch's synthetic series: sheets of a grey town (blocks filled, streets paper) lost about 20 px on two sides, differently per sheet, so neighbours' overlaps no longer matched.
     - Cause: the paper level was the 90th percentile, which on a map mostly of ink is the ink; and a ring of streets near the edge read as a frame, its "line" trimmed into the drawing.
     - Fix and pin: the paper is the 98th percentile; a frame counts only with a paper margin outside it; its line is trimmed only while a row is 90 % ink; a margin is at least 2 % of the side (`frame.content_box`; `test_placing_sheetwork.py`, S-P20-HAPPY-STITCH-ABUTTING).
     - **Before cropping a page to its content, prove the margin is paper: a crop that differs per sheet breaks every seam after it.**
 
-586. **A turned sheet's neighbours turned too.**
+589. **A turned sheet's neighbours turned too.**
     - Seen: 2026-11-12, track/autostitch: with three of twelve sheets turned, an upright sheet next to two turned ones was flipped (its seams to them scored better upside down by chance) and a turned one stayed.
     - Cause: the sheets were turned one after another in file order, each judged against neighbours not yet turned back.
     - Fix and pin: surest first: each sheet's gain is ranked, a sheet turns only to a variant that fits strongly and gains 0.2, and it is checked again just before it turns (`autostitch.orient`, S-P20-HAPPY-STITCH-TURNED).
     - **When choices depend on each other, make the surest one first and look again before each next one.**
 
-587. **A seam's residual from chunks of a thin template measured noise.**
+590. **A seam's residual from chunks of a thin template measured noise.**
     - Seen: 2026-11-12, track/autostitch: line-art seams placed within 1 px reported a residual of 3-170 px, so good series were judged `check`.
     - Cause: thirds of a 10 px wide template were matched anywhere in the strip, and on hatching or plain blocks each third found another place.
     - Fix and pin: the residual is the phase correlation of the two aligned overlaps (`seams._residual`); several template widths are tried and the one whose whole overlap correlates best wins (S-P20-HAPPY-STITCH-SEAMS).

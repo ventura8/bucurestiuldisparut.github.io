@@ -1016,6 +1016,13 @@
             "name": "Delete a version that never reached the map: its job, log and own files go for good, after a question that says the originals stay",
             "milestone": "M3",
             "source": "the owner, 2026-11-12: a cancelled or failed version (and an archive series waiting for points) can be deleted from its page; docs/research/M3-interfaces.md §7.1"
+        },
+        {
+            "id": "P31",
+            "area": "pipeline",
+            "name": "The pipeline and the worker on somebody's own computer stay within a memory and processor budget, and an idle worker asks rarely",
+            "milestone": "M7",
+            "source": "the owner, 2026-11-12: reports/resource-audit.md (the machines are short of memory); docs/research/M7-local-worker.md, Addendum of 2026-11-12"
         }
     ],
     "scenarios": [
@@ -10903,7 +10910,7 @@
             "area": "admin",
             "path": "happy",
             "title": "A new job goes to the computer while a worker is connected",
-            "asserts": "choice auto and a worker seen within three minutes -> the queued import gets runOn local and waits for the worker; no Cloud Run execution is asked for and no slot is taken",
+            "asserts": "choice auto and a worker seen within WORKER_FRESH_SECONDS (nine minutes ago: an idle worker asks every five) -> the queued import gets runOn local and waits for the worker; no Cloud Run execution is asked for and no slot is taken",
             "tier": "functions",
             "status": "exists",
             "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/imagery/dispatch-place.test.ts."
@@ -11002,7 +11009,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A job that may still be claimed is left alone",
-            "asserts": "a local job waiting less than 15 minutes, already marked, in the cloud, running, or a worker seen within three minutes -> nothing marked, no inbox item",
+            "asserts": "a local job waiting less than 15 minutes, already marked, in the cloud, running, or a worker seen within WORKER_FRESH_SECONDS -> nothing marked, no inbox item",
             "tier": "functions",
             "status": "exists",
             "notes": "Finding 68 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§3.1. Test: functions/test/imagery/tick-worker.test.ts."
@@ -12773,7 +12780,7 @@
             "area": "pipeline",
             "path": "happy",
             "title": "With no graphics card the processor runs, said in plain words; a silent processor run is impossible",
-            "asserts": "--gpus all and CDI both fail the probe -> the starter logs NO GRAPHICS CARD and runs HCM_AI_DEVICE=cpu with the reason; the proposer records `fallback: no-gpu`; the processor looks at the first two orientations, on half the threads; HCM_AI_DEVICE=gpu that finds no card exits 77 (76 under 2 GB) and is probed again, and HCM_AI_DEVICE=cpu with no reason is refused",
+            "asserts": "--gpus all and CDI both fail the probe -> the starter logs NO GRAPHICS CARD and runs HCM_AI_DEVICE=cpu with the reason; the proposer records `fallback: no-gpu`; the processor looks at the first two orientations, on the threads but one, niced; HCM_AI_DEVICE=gpu that finds no card exits 77 (76 under 2 GB) and is probed again, and HCM_AI_DEVICE=cpu with no reason is refused",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_matcher_serve.py, test_matcher_torch.py, test_local_matcher.py, functions/test/worker/starter-sidecar.test.ts. PowerShell: starter-windows.test.ts."
@@ -17617,6 +17624,171 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Live 2026-11-12 (harti.zip 1895, track/workerfix). Tests: pipeline/tests/unit/test_placing_assemble_stitched.py."
+        },
+        {
+            "id": "S-P31-HAPPY-GDAL-MEMORY",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "GDAL's cache and a warp's memory follow the machine",
+            "asserts": "a process that may use 4 GB -> a 256 MB cache and a 512 MB warp; 16 GB or more, or unknown -> the 1024 and 2048 MB of before; the container's limit and the free memory are read, HCM_GDAL_CACHE_MB and HCM_WARP_MEMORY_MB win",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-BAD-GDAL-MEMORY-UNKNOWN",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "No limit, a busy machine, an unreadable one or a bad override still give usable settings",
+            "asserts": "no cgroup file and no /proc/meminfo -> the large machine's settings; a limit of max -> the free memory decides; an override that is no positive number is not taken",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-WARP-BUDGET",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A warp and an export on a 4 GB machine stay within their memory budget",
+            "asserts": "a 20,000 by 5,000 scan warped (thin plate) and exported as a COG in a process of its own with a 4 GB machine's settings -> its peak memory stays under the budget measured between the old and the new settings",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-CANVAS-BUDGET",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An atlas's canvas is composed part by part within its budget, pixel for pixel as before",
+            "asserts": "36 colour sheets composed in a process of its own -> peak memory and CPU under the budget; the canvas equals the one composed on whole canvases (an atlas exactly, turned overlapping parts within two grey levels at under 1 % of the pixels)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-BAD-CANVAS-OFF-EDGE",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A part off the canvas or over its edge leaves the rest as it was",
+            "asserts": "a part placed wholly outside the canvas is skipped and one over the edge is cut at it -> the same canvas as before, the other parts untouched",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-TILE-PROCESSES",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The tiles are cut by the cores but one, at most what a quarter of the memory holds",
+            "asserts": "16 cores and 31 GB -> 15 processes; 16 cores and 4 GB -> 4; GDAL_NUM_THREADS as a number is a ceiling, never a floor",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-WINDOWED-READS",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A city crop and an upload's preview never hold the raster whole",
+            "asserts": "DS1103-1058DF027's 35,664 by 8,172 crop copied out of two segments 1,024 rows at a time and previewed by a shrunk read, and the preview of a 20,000 px colour upload, each in a process of its own -> peak memory under the budget",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-BAD-WINDOWED-READS-SMALL",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A small or grey scan's preview is the scan itself",
+            "asserts": "a scan under the preview's size is not enlarged and a grey one stays grey; a colour scan wider than the preview is averaged down band by band",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-BAD-TILE-PROCESSES-SMALL",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A one-core or nearly memoryless machine still cuts its tiles with one process",
+            "asserts": "1 core, an unknown core count or 100 MB of memory -> one process, never none",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-WORKER-POLITE",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The worker is capped in memory, light on the processor and leaves a core free",
+            "asserts": "the starter's worker container gets --memory and --memory-swap at 60 % of what Docker has and --cpu-shares 256 (POSIX run over stand-ins, the Windows text); the worker process is niced by 10 and GDAL takes the cores but one",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."
+        },
+        {
+            "id": "S-P31-BAD-WORKER-POLITE-OVERRIDE",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "The owner's own limits win",
+            "asserts": "HCM_WORKER_MEMORY (a size, or none for no limit), HCM_WORKER_THREADS and HCM_WORKER_NICE (0: not niced; not a number: 10) are taken as given; GDAL_NUM_THREADS in the environment stays the worker's thread count",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."
+        },
+        {
+            "id": "S-P31-HAPPY-CLAIM-BACKOFF",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An idle worker asks for a job less and less often, and often again after a job or the admin's look",
+            "asserts": "ten minutes after its start, its last job or the admin's last GET /state the waits double from pollSeconds up to idlePollSeconds (5 min) with a tenth of jitter; a job that ran or the admin's page looking ends a long wait; the worker still counts as connected (WORKER_FRESH_SECONDS covers the longest wait)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."
+        },
+        {
+            "id": "S-P31-BAD-CLAIM-BACKOFF-OLD-SERVER",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A server that names no idle interval is asked as before",
+            "asserts": "worker.hello without idlePollSeconds (a server older than the image) -> a claim every pollSeconds, so its three-minute presence still holds; a longest wait under the poll changes nothing",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."
+        },
+        {
+            "id": "S-P31-HAPPY-ATLAS-PAGES",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An atlas holds its pages grey and reads each in colour only to paste it",
+            "asserts": "36 colour sheets on disk composed as placing/maps.py does, in a process of its own -> peak memory under the budget; the canvas equals the one made of pages held in colour, a framed page cut the same way; the canvas is written once and published as the stitched picture",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/integration/test_memory_budgets.py, pipeline/tests/unit/test_compose_canvas.py."
+        },
+        {
+            "id": "S-P31-HAPPY-SMALL-MACHINE",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A 4 GB computer's worker assembles a 60-sheet colour atlas and crops a Corona strip",
+            "asserts": "60 colour sheets of 2,222 px and a 35,664 by 8,172 city crop, each in a process of its own -> peak memory under 60 % of 4 GB, the worker's cap there",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/integration/test_memory_budgets.py, pipeline/tests/unit/test_compose_canvas.py."
         }
     ]
 }

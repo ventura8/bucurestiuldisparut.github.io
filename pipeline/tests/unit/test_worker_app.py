@@ -11,11 +11,13 @@ import pytest
 from hcm_pipeline.contract import Errors
 from hcm_pipeline.exit_codes import ExitCode
 from hcm_pipeline.main import main
+from hcm_pipeline.raster import gdal
+from hcm_pipeline.rasters import spare_threads
 from hcm_pipeline.secrets import SecretUnavailableError
 from hcm_pipeline.steps import StepRegistry
 from hcm_pipeline.urlguard import AddressRefusedError
 from hcm_pipeline.worker.args import Endpoints, WorkerArgs
-from hcm_pipeline.worker.command import WorkerCommand
+from hcm_pipeline.worker.command import WorkerCommand, yield_processor
 from hcm_pipeline.worker.page import FIREBASE_SDK_VERSION, PageSettings, content_security_policy, render_page
 from hcm_pipeline.worker.runtime import NoSecrets, signed_client, worker_config
 from hcm_pipeline.worker.server import LocalServer, Request
@@ -62,12 +64,16 @@ def args_for(api: FakeWorkerApi, work: Path) -> WorkerArgs:
 
 
 def test_happy_path_sign_in_takes_the_hello_timing(api: FakeWorkerApi, tmp_path: Path, built: list[Worker]) -> None:
-    api.hello_answer = {"pollSeconds": 12, "heartbeatSeconds": 45}
+    api.hello_answer = {"pollSeconds": 12, "idlePollSeconds": 300, "heartbeatSeconds": 45}
     worker = worker_for(api, tmp_path, built)
+    before = worker.state.timing.idle_poll_seconds
 
     assert worker.actions.sign_in(*api.sign_in_tokens(api.clock() + 3600)) is None
 
     assert (worker.state.timing.poll_seconds, worker.state.timing.heartbeat_seconds) == (12.0, 45.0)
+    assert (before, worker.state.timing.idle_poll_seconds) == (None, 300.0)
+    # The admin's page looking at the worker is what wakes its pace (`Worker.build`).
+    assert worker.server.on_admin == worker.state.pace.wake
     assert worker.session.active is True
     assert re.fullmatch(r"w-[0-9a-f]{16}", worker.worker_id)
     assert new_worker_id() != worker.worker_id
@@ -234,7 +240,13 @@ def test_happy_path_the_admins_origin_reads_the_state_and_posts_its_code(server:
         "Access-Control-Max-Age": "600",
         "Access-Control-Allow-Private-Network": "true",
     }
+    looks: list[str] = []
+    local.on_admin = lambda: looks.append("admin")
+    # The worker's own page (and the starter's loop, which sends no origin) wake nothing: only the admin's look does.
+    assert local.answer(request(local, "GET", "/state"))[0] == 200
+    assert looks == []
     assert local.answer(state)[0] == 200
+    assert looks == ["admin"]
     assert dict(local.cors_headers(state)) == {"Access-Control-Allow-Origin": HOSTING, "Vary": "Origin"}
     assert local.answer(pair)[0] == 202
     assert app.paired == ["a" * 26]
@@ -332,10 +344,27 @@ def test_happy_path_the_worker_command_serves_until_stopped(api: FakeWorkerApi, 
         return worker
 
     argv = ["worker", "--city", "bucharest", "--project", PROJECT, "--port", "0", "--work", str(tmp_path), "--emulators"]
-    code = main(argv, env, StepRegistry((WorkerCommand(build),)), io.StringIO())
+    niced: list[int] = []
+    code = main(argv, env, StepRegistry((WorkerCommand(build, niced.append),)), io.StringIO())
 
     assert code == ExitCode.OK
     assert built[0].loop.stopping.is_set()
+    # The computer is its owner's first: the worker is niced, and GDAL's threads are the environment's when it names them.
+    assert niced == [10]
+    assert gdal.GetConfigOption("GDAL_NUM_THREADS") == "1"
+
+
+@pytest.mark.parametrize(
+    ("env", "niced"), [({}, [10]), ({"HCM_WORKER_NICE": "4"}, [4]), ({"HCM_WORKER_NICE": "0"}, []), ({"HCM_WORKER_NICE": "low"}, [10])]
+)
+def test_happy_path_the_worker_yields_the_processor_unless_told_not_to(env: dict[str, str], niced: list[int]) -> None:
+    """Scenarios: S-P31-HAPPY-WORKER-POLITE, S-P31-BAD-WORKER-POLITE-OVERRIDE"""
+    steps: list[int] = []
+
+    yield_processor(env, steps.append)
+
+    assert steps == niced
+    assert (spare_threads(16), spare_threads(2), spare_threads(1), spare_threads(None)) == ("15", "1", "1", "1")
 
 
 def test_bad_path_an_outdated_image_under_the_supervisor_exits_75(api: FakeWorkerApi, tmp_path: Path) -> None:
@@ -353,7 +382,7 @@ def test_bad_path_an_outdated_image_under_the_supervisor_exits_75(api: FakeWorke
 
     digest = "sha256:" + "e7" * 32
     argv = ["worker", "--city", "bucharest", "--project", PROJECT, "--port", "0", "--work", str(tmp_path), "--emulators"]
-    code = main([*argv, "--supervised", "--image", digest], env, StepRegistry((WorkerCommand(build),)), io.StringIO())
+    code = main([*argv, "--supervised", "--image", digest], env, StepRegistry((WorkerCommand(build, lambda _steps: None),)), io.StringIO())
 
     assert code == ExitCode.OUTDATED
     assert int(code) == 75
