@@ -129,6 +129,10 @@ interface StoreSide {
  * moved under it put a fast click 1 km off, 2026-11-12); the scan pane follows through `scanFollow`.
  */
 export function linkedPanesOf({ services, extras, frame, map, cell, transform, zoomed }: StoreSide): LinkedPanes {
+    // The bearing the map had when the link last moved either pane: only a map move that turns it from there turns the scan. On a
+    // fit that stretches one axis more than the other the two conversions are not exact inverses, so a pan or zoom must not
+    // read the angle back (it drifted a few degrees a round trip, 2026-11-13).
+    let bearing = map.bearing;
     return new LinkedPanes({
         ...{ services, extras },
         ports: {
@@ -139,9 +143,12 @@ export function linkedPanesOf({ services, extras, frame, map, cell, transform, z
             // that suits the map's bearing; turned apart, each keeps its own.
             moveMap: (camera) => {
                 map.follow(turnedMap(cell.state, camera, transform()));
+                bearing = map.bearing;
             },
             moveScan: (camera) => {
-                const scanFollow = turnedScan(cell.state, camera, transform(), map.bearing);
+                const turned = map.bearing !== bearing;
+                bearing = map.bearing;
+                const scanFollow = turned ? turnedScan(cell.state, camera, transform(), bearing) : camera;
                 cell.update({ scanFollow, scanAngle: scanFollow.angle ?? cell.state.scanAngle });
                 zoomed(scanFollow.scale);
             },

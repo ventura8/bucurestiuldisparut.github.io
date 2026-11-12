@@ -129,6 +129,13 @@ describe('the panes turn together through the store', () => {
         expect(Math.abs(((((upright - turned) % 360) + 360) % 360) - 90)).toBeLessThan(5);
         expect(world.georef.state.scanAngle).toBeCloseTo(Math.PI / 2, 9);
 
+        // A pan of the map that does not turn it reads no angle back: the scan keeps the turn the owner gave it.
+        const panned = world.map.view;
+        world.map.emit('move', { ...panned, center: [panned.center[0] + 0.001, panned.center[1]] });
+        world.flush();
+        expect(world.georef.state.scanFollow?.angle).toBeUndefined();
+        expect(world.georef.state.scanAngle).toBeCloseTo(Math.PI / 2, 9);
+
         // The owner turns the map (same centre, same zoom) by 30 degrees: the scan follows by the same angle.
         const before = world.map.view;
         world.map.emit('move', { ...before, bearing: before.bearing + 30 });
