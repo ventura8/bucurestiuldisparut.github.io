@@ -142,7 +142,9 @@ async function requireFailedWork(deps: RetryDeps, request: Request): Promise<{ j
     const path = FIRESTORE_PATHS.layerVersion(request.cityId, versionIdOf(request.jobId, job));
     const version = await deps.documents.get(path, layerVersionDocSchema);
     if (!retryable(job, version)) {
-        await refuseSetAside(deps, request, versionIdOf(request.jobId, job), version);
+        if (!isSideJob(job.type)) {
+            await refuseSetAside(deps, request, versionIdOf(request.jobId, job), version);
+        }
         throw new ApiError('apiError.imagery.versionState');
     }
     return { job, version };
