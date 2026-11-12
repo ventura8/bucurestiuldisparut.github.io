@@ -1,5 +1,5 @@
 /**
- * The cost shape (reports/resource-audit.md §4 and its budget test 5; `docs/research/M7-local-worker.md` §4.1, the reviewed table): what
+ * The cost shape (reports/resource-audit.md §4 and its budget test 5; `docs/research/M7-local-worker.md` §4.6, the reviewed table): what
  * every export asks Google for, read from the deploy manifest firebase-tools reads (`__endpoint`), as `deploy-shape.test.ts` loads it.
  * Nothing keeps an instance warm (no `minInstances`: an idle project is billed nothing), a function's memory is the default 256 MiB
  * unless the table names it, no function asks for more than 1 GiB, every timeout is the table's, and no schedule runs more often than

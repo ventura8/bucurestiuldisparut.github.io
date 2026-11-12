@@ -286,7 +286,7 @@ $0.000002 a GiB-second past the free tier; functions $0.000024 and $0.0000025); 
 | Job | Today → proposed | Why |
 | --- | --- | --- |
 | `raster-fetch` | 1 vCPU / 4 GiB → keep | a download is network-bound (finding 56); the scratch folder is memory and holds the delivery |
-| `raster-pipeline` (`std`) | 4 / 16 → **2 / 8** | GDAL's cache and a warp's memory follow the machine (`rasters.gdal_memory`, `track/stripfix`: 512 and 1,024 MB on 8 GiB; a warp of a 1 GB scan 1.2 GB, measured) and an atlas is pasted part by part (3.8 to 1.7 GB, measured); a 2,700 s phase takes 5,400 vCPU-s and 21,600 GiB-s instead of 10,800 and 43,200: **16 free runs a month, not 8**; past the free tier $0.14 a run instead of $0.28 |
+| `raster-pipeline` (`std`) | 4 / 16 → **2 / 8** | GDAL's cache and a warp's memory follow the machine (`rasters.gdal_memory` of `track/stripfix`, which merges first; until then the escalation to `xl`, today's `std`, catches a run out of memory: 512 and 1,024 MB on 8 GiB; a warp of a 1 GB scan 1.2 GB, measured) and an atlas is pasted part by part (3.8 to 1.7 GB, measured); a 2,700 s phase takes 5,400 vCPU-s and 21,600 GiB-s instead of 10,800 and 43,200: **16 free runs a month, not 8**; past the free tier $0.14 a run instead of $0.28 |
 | `raster-pipeline-xl` (`xl`) | 8 / 32 → **4 / 16** | the escalation after an out-of-memory exit and a KH-9 panoramic frame; a frame is never joined in memory (finding 57); past the free tier $0.37 an hour instead of $0.75 |
 | out-of-memory retry | keep | `fetch` → `std` → `xl`, then `apiError.imagery.outOfMemory`: the smaller defaults stay safe. Risk: a frame that needed more than 16 GiB now fails where 32 passed; **UNVERIFIED** until a real KH-9 frame runs (§11) |
 

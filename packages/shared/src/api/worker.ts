@@ -94,9 +94,10 @@ export const CLOUD_RUN_FREE_TIER = { vcpuSeconds: 180_000, gibSeconds: 360_000 }
 /**
  * The size of each Cloud Run job (`CLOUD_RUN_JOBS`), the one source of the installer's jobs (`scripts/site/src/install/steps/run-jobs.ts`)
  * and of the free-tier meter. 2026-11-12 (reports/resource-audit.md item 7, `docs/research/M7-local-worker.md` §4.6): `std` 2 vCPU / 8 GiB
- * and `xl` 4 / 16, down from 4 / 16 and 8 / 32, since GDAL's cache and a warp's memory follow the machine (`rasters.gdal_memory`: 512 and
- * 1,024 MB on 8 GiB) and a 60-sheet atlas is pasted part by part; a run out of memory still runs again on the next machine
- * (`fetch` → `std` → `xl`). A processing phase so takes half the GiB-seconds: about 16 free runs a month, not 8.
+ * and `xl` 4 / 16, down from 4 / 16 and 8 / 32, sized for GDAL's cache and a warp's memory that follow the machine (512 and 1,024 MB
+ * on 8 GiB) and a 60-sheet atlas pasted part by part, both from `track/stripfix`, which ships first (DECISIONS-for-review.md §170);
+ * a run out of memory still runs again on the next machine (`fetch` → `std` → `xl`, today's `std`). A processing phase so takes half
+ * the GiB-seconds: about 16 free runs a month, not 8.
  */
 export const JOB_MACHINE_SIZES: Readonly<Record<JobMachine, { readonly vcpu: number; readonly gib: number }>> = {
     fetch: { vcpu: 1, gib: 4 },
