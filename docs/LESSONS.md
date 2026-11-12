@@ -3461,3 +3461,19 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-12, track/favicon: `build.test.ts` reads the built `config.js` with `readConfigJs`.
     - Found by: reading the tests before the change. Fix: the tab icon's script is its own file, `tab-icon.js` (§166c).
     - **A page's new behaviour gets its own script file; `config.js` stays data.**
+
+590. **A part's build that was meant to share the engine's Lit bundled its own Lit and zod: 44 KB instead of 2.6.**
+    - Seen: 2026-11-09, track/photoversions: the first build of `engine.extras.js` measured 146 KB raw, 44 KB gzip.
+    - Cause: the plugin that turns every outside import into the engine's kit ran after Vite's own resolver, which had already resolved `lit` and `@hcm/shared` to files, so its `resolveId` never saw them.
+    - Fix and pin: `sidePartKitPlugin` has `enforce: 'pre'` (`scripts/site/src/side-part.ts`); the part measures 2.6 KB gzip within its row of `ENGINE_CHUNK_BUDGETS`, and `packages/ui/test/viewer/extras-loader.test.ts` checks that the kit names everything the part imports.
+    - **A Vite plugin that must decide how an import resolves runs with `enforce: 'pre'`; check a new build's size against what it should carry.**
+
+591. **A re-export moved to save a line of the shared index made two engine chunks without a budget.**
+    - Seen: 2026-11-12, track/photoversions after the merge: `streetViewUrl` re-exported from `text/urls.ts` (to keep `packages/shared/src/index.ts` at 400 lines) made the ES build emit `urls-<hash>.js` and `focus-<hash>.js` (the catalogues and the focus helpers, 6.6 KB), which `bundle-budget` refused.
+    - Cause: a module that re-exports another is one more module shared by the entry and the lazy chunks; the bundler moved what they share out of `engine.mjs`.
+    - Fix and pin: the index exports `streetViewUrl` from `geo/street-view.ts` itself and gains its lines back with inline `type` exports; `bundle-budget` fails on any chunk without a row.
+    - **Never route an export through an unrelated module to save a line: build and run `check_bundle_budget.py` after any change to what `@hcm/shared` exports.**
+592. **`tsc -b` on the NUC said TS6305 "has not been built from source" after a merge.**
+    - Seen: 2026-11-12: the NUC's copy keeps `.tsbuild/` between runs (the sync leaves it out), and 77 merged commits left its build info older than the files.
+    - Fix: delete `packages/*/.tsbuild`, `e2e/.tsbuild` and every `*.tsbuildinfo` on the NUC, then run `tsc -b` again.
+    - **After a large merge, clear the incremental TypeScript output of a machine that only receives the sources.**

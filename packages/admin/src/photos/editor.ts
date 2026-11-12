@@ -11,7 +11,7 @@ import { pendingSuggestions, suggestionPatch, type SuggestionField } from './aut
 import { PhotoDraft, type PhotoDraftState, type PhotoPatch, type PhotoValue } from './draft.js';
 import { publishBlock } from './model.js';
 import type { PhotosServices } from './ports.js';
-import { PhotoReplacement } from './replace.js';
+import { PhotoReplacement, type PhotoVersionKind } from './replace.js';
 import type { PhotoMemory } from './session.js';
 import type { PhotoEditorState } from './state.js';
 import type { PhotoFile } from './upload-plan.js';
@@ -68,6 +68,7 @@ export class PhotoEditor {
     readonly #deps: PhotoEditorDeps;
     readonly #draft: PhotoDraft;
     readonly #replace: PhotoReplacement;
+    readonly #versions: Readonly<Record<PhotoVersionKind, PhotoReplacement>>;
     readonly #doc: LiveDoc<PhotoDoc>;
     #picking = false;
     #state: PhotoEditorState;
@@ -97,6 +98,15 @@ export class PhotoEditor {
                 this.#emit();
             },
         });
+        const version = (kind: PhotoVersionKind): PhotoReplacement =>
+            new PhotoReplacement({
+                services,
+                version: kind,
+                changed: () => {
+                    this.#emit();
+                },
+            });
+        this.#versions = { improved: version('improved'), colorized: version('colorized') };
         this.#doc = new LiveDoc({
             store: services.store,
             clock: services.clock,
@@ -133,7 +143,9 @@ export class PhotoEditor {
     #read(doc: DocState<PhotoDoc>): void {
         if (doc.status === 'ready') {
             this.#draft.rebase(doc.doc);
-            this.#replace.snapshot(doc.doc);
+            for (const replacement of this.#all()) {
+                replacement.snapshot(doc.doc);
+            }
         } else {
             this.#emit();
         }
@@ -195,17 +207,41 @@ export class PhotoEditor {
         this.#replace.dismiss();
     }
 
+    /** The owner 2026-11-09 (A140): adds or replaces the improved or colorized version with `file`. */
+    uploadVersion(kind: PhotoVersionKind, file: PhotoFile): void {
+        const stored = this.stored;
+        if (stored !== null) {
+            this.#versions[kind].start(stored, file);
+        }
+    }
+
+    cancelVersion(kind: PhotoVersionKind): void {
+        this.#versions[kind].cancel();
+    }
+
+    dismissVersion(kind: PhotoVersionKind): void {
+        this.#versions[kind].dismiss();
+    }
+
+    #all(): readonly PhotoReplacement[] {
+        return [this.#replace, this.#versions.improved, this.#versions.colorized];
+    }
+
+    #uploading(): readonly PhotoReplacement[] {
+        return this.#all().filter((replacement) => replacement.state?.phase === 'uploading');
+    }
+
     /** An edit the admin made and has not saved, or a replacement still uploading. */
     hasUnsavedChanges(): boolean {
         const draft = this.#draft.state;
-        return (draft.touched && draft.dirty.length > 0) || this.#replace.state?.phase === 'uploading';
+        return (draft.touched && draft.dirty.length > 0) || this.#uploading().length > 0;
     }
 
     /** The route left the photo: stop listening; a replacement still uploading is cancelled (the guard asked first). */
     close(): void {
         this.#doc.stop();
-        if (this.#replace.state?.phase === 'uploading') {
-            this.#replace.cancel();
+        for (const replacement of this.#uploading()) {
+            replacement.cancel();
         }
     }
 
@@ -227,6 +263,7 @@ export class PhotoEditor {
             suggestions: suggestionsOf(photo, this.#deps.bounds()),
             picking: this.#picking,
             replace: this.#replace.state,
+            versionUploads: { improved: this.#versions.improved.state, colorized: this.#versions.colorized.state },
         };
     }
 

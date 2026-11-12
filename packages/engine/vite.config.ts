@@ -5,6 +5,7 @@ import { defineConfig } from 'vite';
 import { cataloguePackPlugin } from '../../scripts/site/src/catalogue-pack.js';
 import { cssLiteralsPlugin } from '../../scripts/site/src/css-literals.js';
 import { thirdPartyNoticesPlugin } from '../../scripts/site/src/notices.js';
+import { sidePartPlugin } from '../../scripts/site/src/side-part.js';
 import { zodStandInsPlugin } from '../../scripts/site/src/zod-stand-ins.js';
 import { FONT_FILES } from '../ui/src/fonts/font-files.js';
 
@@ -27,6 +28,10 @@ import { FONT_FILES } from '../ui/src/fonts/font-files.js';
  * - The viewer's message catalogues are packed by `cataloguePackPlugin` (scripts/site/src/catalogue-pack.ts,
  *   DECISIONS-for-review.md §127a): the same objects, built from one string of keys and an array of texts, about 270 bytes
  *   gzip of the IIFE.
+ * - dist/engine.extras.js is the side-loaded full-size view (docs/ENGINE_API.md → *Side-loaded parts*), built first by
+ *   `vite.part.config.ts` into .tsbuild/part/; `sidePartPlugin` (scripts/site/src/side-part.ts) writes its Subresource
+ *   Integrity into src/extras-part.ts, which both builds load it with, and serves it here (the owner's "Load extras on
+ *   demand", 2026-11-09: about 1.5 KB gzip out of the IIFE).
  */
 export default defineConfig({
     plugins: [
@@ -36,6 +41,11 @@ export default defineConfig({
         }),
         cssLiteralsPlugin(),
         cataloguePackPlugin(/[\\/]packages[\\/]shared[\\/]src[\\/]i18n[\\/]/),
+        sidePartPlugin({
+            built: fileURLToPath(new URL('.tsbuild/part/engine.extras.js', import.meta.url)),
+            constantModule: fileURLToPath(new URL('src/extras-part.ts', import.meta.url)),
+            fileName: 'engine.extras.js',
+        }),
         thirdPartyNoticesPlugin({
             product: 'the Historic City Map Maker engine (engine.mjs, engine.iife.js, their chunks and fonts)',
             assets: FONT_FILES.map((font) => ({ package: font.source.package, file: `fonts/${font.file}` })),

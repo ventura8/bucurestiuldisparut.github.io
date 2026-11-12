@@ -58,6 +58,7 @@ export const en: ApiMessages = {
     'apiError.photo.unreadable': 'The image could not be read.',
     'apiError.photo.duplicate': 'This photo has already been uploaded.',
     'apiError.photo.notReceived': 'Not processed: the server did not receive the upload, even sent twice (no roles/run.invoker).',
+    'apiError.photo.versionNotAllowed': 'A moderator adds a version, to a photo that does not wait for review.',
     'apiError.cityIcon.badType': 'The icon must be a PNG or WebP image (SVG, JPEG or PDF are not accepted).',
     'apiError.cityIcon.tooBig': 'The image is over {max}. Choose a smaller one.',
     'apiError.cityIcon.tooSmall': 'The image is too small: it needs at least {min} × {min} pixels.',

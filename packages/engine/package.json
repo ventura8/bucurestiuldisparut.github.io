@@ -12,7 +12,7 @@
         }
     },
     "scripts": {
-        "build": "vite build && npm run fonts:copy",
+        "build": "vite build -c vite.part.config.ts && vite build && npm run fonts:copy",
         "fonts:copy": "mkdir -p dist/fonts && cp ../ui/fonts/*.woff2 ../ui/fonts/LICENSES.md dist/fonts/"
     },
     "dependencies": {

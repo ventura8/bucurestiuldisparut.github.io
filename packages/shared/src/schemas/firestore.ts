@@ -176,6 +176,9 @@ const photoOriginalDocSchema = z.strictObject({
     sha256: sha256Schema,
 });
 
+/** An improved or colorized version (the owner 2026-11-09): its derivatives and its original, as `image` and `original` are. */
+const photoVersionDocSchema = z.strictObject({ image: photoImageDocSchema, original: photoOriginalDocSchema });
+
 /** What `photos.onUpload` read from the file (EXIF, file name); the admin accepts a suggestion with one click. */
 const photoSuggestionsSchema = z.strictObject({
     location: latLngSchema.optional(),
@@ -235,6 +238,12 @@ const photoDocObjectSchema = z
         suggested: photoSuggestionsSchema.optional(),
         original: photoOriginalDocSchema.optional(),
         replacement: photoReplacementSchema.optional(),
+        /**
+         * The improved and colorized versions, written by `photos.onUpload` from an upload whose metadata names the version; a
+         * reviewer may only remove one (`firestore.rules`). Their credits are the admin's `versionCredits`.
+         */
+        versions: z.strictObject({ improved: photoVersionDocSchema.optional(), colorized: photoVersionDocSchema.optional() }).optional(),
+        versionCredits: z.strictObject({ improved: plainText(200).optional(), colorized: plainText(200).optional() }).optional(),
         /** M13: a pending photo's derivatives, in the private bucket until `review.decide` moves them. */
         heldImage: heldImageSchema.optional(),
         ...reviewFields,

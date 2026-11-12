@@ -36,6 +36,9 @@ const PHOTO_EDITABLE = [
     'published',
     'rightsReview',
     'credit',
+    /** Who improved or colorized it; and `versions`, from which a reviewer may only remove one (`firestore.rules`). */
+    'versionCredits',
+    'versions',
 ] as const;
 
 export type PhotoEditable = (typeof PHOTO_EDITABLE)[number];

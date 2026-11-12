@@ -11,6 +11,7 @@
  */
 import { CLIENT_WRITES, STORAGE_PATHS, publicObjectUrl, type ClientCollection, type PhotoVariant } from '@hcm/shared';
 
+import { reviewedFields, versionEdits, versionFields } from './photo-fields.js';
 import { STORY_EDITS } from './stories.js';
 import { later, past, serverTime, stampedBy, systemStamp, type Data } from './world.js';
 
@@ -131,15 +132,11 @@ export function photoDoc(cityId: string, photoId: string, creator: string): Data
         },
         ...reviewedFields(creator),
         credit: 'Ion Mureșan',
+        ...versionFields(),
         createdAt: past(),
         createdBy: creator,
         ...systemStamp('photos'),
     };
-}
-
-/** M13: what a decided item carries, server-owned but for the credit. */
-function reviewedFields(reviewer: string): Data {
-    return { reviewStatus: 'approved', reviewNote: 'Bună.', reviewedBy: reviewer, reviewedAt: past() };
 }
 
 function photoText(): Data {
@@ -172,6 +169,7 @@ export function newPhoto(uid: string): Data {
         published: false,
         rightsReview: true,
         credit: 'Ion Mureșan',
+        versionCredits: { improved: 'Ana Pop' },
         processing: 'pending',
         createdAt: serverTime(),
         createdBy: uid,
@@ -657,6 +655,7 @@ export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
         published: true,
         rightsReview: true,
         credit: 'Maria Popescu',
+        ...versionEdits(),
     },
     layer: {
         label: { ro: 'București, 1966' },

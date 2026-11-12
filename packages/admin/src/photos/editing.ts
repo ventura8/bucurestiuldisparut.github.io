@@ -10,6 +10,7 @@ import type { AreaContext } from './context.js';
 import type { PhotoPatch, PhotoValue } from './draft.js';
 import { PhotoEditor } from './editor.js';
 import { writeErrorKey } from './messages.js';
+import type { PhotoVersionKind } from './replace.js';
 import type { PhotoFile } from './upload-plan.js';
 
 export interface EditingIntents {
@@ -30,6 +31,10 @@ export interface EditingIntents {
     replaceImage(file: PhotoFile): void;
     cancelReplace(): void;
     dismissReplace(): void;
+    /** A140: adds or replaces the improved or colorized version; Remove is an edit of `versions`, saved with the draft. */
+    uploadVersion(kind: PhotoVersionKind, file: PhotoFile): void;
+    cancelVersion(kind: PhotoVersionKind): void;
+    dismissVersion(kind: PhotoVersionKind): void;
 }
 
 export class PhotoEditing {
@@ -238,6 +243,9 @@ export class PhotoEditing {
             replaceImage: (file) => this.#editor?.replaceImage(file),
             cancelReplace: () => this.#editor?.cancelReplace(),
             dismissReplace: () => this.#editor?.dismissReplace(),
+            uploadVersion: (kind, file) => this.#editor?.uploadVersion(kind, file),
+            cancelVersion: (kind) => this.#editor?.cancelVersion(kind),
+            dismissVersion: (kind) => this.#editor?.dismissVersion(kind),
         };
     }
 }

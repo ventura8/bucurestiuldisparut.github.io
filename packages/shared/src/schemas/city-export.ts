@@ -66,8 +66,9 @@ function exportId(value: string): string {
 }
 
 /** `photos/<photo>/<variant>.webp`: where an exported photo's public file goes, and what `city.json` names. */
-export function exportPhotoPath(photoId: string, variant: PhotoVariant): string {
-    return `${EXPORT_LAYOUT.photosFolder}/${exportId(photoId)}/${variant}.webp`;
+export function exportPhotoPath(photoId: string, variant: PhotoVariant, version?: 'improved' | 'colorized'): string {
+    const prefix = version === undefined ? '' : version + '-';
+    return `${EXPORT_LAYOUT.photosFolder}/${exportId(photoId)}/${prefix}${variant}.webp`;
 }
 
 /** `rasters/<layer>.tif`: where a layer's Cloud-Optimized GeoTIFF goes when its rights allow it. */

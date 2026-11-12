@@ -62,6 +62,7 @@ export const ro = {
     'apiError.photo.unreadable': 'Imaginea nu a putut fi citită.',
     'apiError.photo.duplicate': 'Această fotografie a fost deja încărcată.',
     'apiError.photo.notReceived': 'Neprocesată: serverul nu a primit încărcarea, nici a doua oară (lipsește roles/run.invoker).',
+    'apiError.photo.versionNotAllowed': 'O versiune o adaugă un moderator, la o fotografie care nu așteaptă verificarea.',
     'apiError.cityIcon.badType': 'Iconița trebuie să fie o imagine PNG sau WebP (SVG, JPEG sau PDF nu sunt acceptate).',
     'apiError.cityIcon.tooBig': 'Imaginea are peste {max}. Alege una mai mică.',
     'apiError.cityIcon.tooSmall': 'Imaginea este prea mică: are nevoie de cel puțin {min} × {min} pixeli.',

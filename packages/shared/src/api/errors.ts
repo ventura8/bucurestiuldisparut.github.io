@@ -116,6 +116,7 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.photo.unreadable': spec('invalid-argument'),
     'apiError.photo.duplicate': spec('already-exists'),
     'apiError.photo.notReceived': spec('failed-precondition'),
+    'apiError.photo.versionNotAllowed': spec('permission-denied'),
     // The city's tab icon (cities.setIcon): what the bytes are, not what they are called.
     'apiError.cityIcon.badType': spec('invalid-argument'),
     'apiError.cityIcon.tooBig': spec('invalid-argument'),

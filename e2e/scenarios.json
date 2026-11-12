@@ -1044,6 +1044,34 @@
             "name": "Settings → Browser tab icon: the default drawn for every city, an upload checked from its bytes, Use the default",
             "milestone": "M18",
             "source": "the owner, 2026-11-08: the Layers map icon as the default browser tab icon, and the admin can change it; docs/research/M2-interfaces.md → The city's tab icon"
+        },
+        {
+            "id": "V60",
+            "area": "viewer",
+            "name": "The full-size view's Zoom in and Zoom out buttons, soft-disabled at the photo's size and at 4x",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-09: add + and - buttons when viewing a photo full screen; a photo has versions (original, improved, colorized)"
+        },
+        {
+            "id": "V61",
+            "area": "viewer",
+            "name": "A photo's versions: improved shown first, a switch Original / Improved / Colorized in the sheet and the full-size view, kept in the address",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-09: add + and - buttons when viewing a photo full screen; a photo has versions (original, improved, colorized)"
+        },
+        {
+            "id": "A140",
+            "area": "admin",
+            "name": "A photo's improved and colorized versions in the editor: added, replaced, removed, each with its credit",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-09: add + and - buttons when viewing a photo full screen; a photo has versions (original, improved, colorized)"
+        },
+        {
+            "id": "V62",
+            "area": "viewer",
+            "name": "The map's menu (right click, long press, ContextMenu key or Shift+F10) with Open in Google Street View, Copy coordinates and Share a link to this view; a photo's sheet links to Street View",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-09: go to Google Street View from a right-click panel (hold on a touch screen) on the map, and from a photo's details"
         }
     ],
     "scenarios": [
@@ -1361,7 +1389,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "The photos-near-the-year chip sits on the timeline at every layout",
-            "asserts": "at a year with photos near it the chip 'Fotografii din jurul anului …' sits on the timeline card: on a phone held upright 8 px under the standing card's foot, leading edges aligned; from 600 px 8 px above the lying card on its leading edge, with the Layers pane docked too; at 915x412 8 px above the lying card on its trailing edge",
+            "asserts": "at a year with photos near it the chip 'Fotografii din jurul anului …' sits on the timeline card: on a phone held upright an icon button 8 px under the standing card's foot, centred on the card; from 600 px 8 px above the lying card on its leading edge, with the Layers pane docked too; at 915x412 8 px above the lying card on its trailing edge",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-08: the chip looked like it was floating; then the vertical timeline on phones. packages/ui/src/viewer/viewer-styles.ts (.dock.chip); unit tests in packages/ui/test/viewer/kit-integration.test.ts and kit-timeline-layout.test.ts."
@@ -1376,6 +1404,28 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-08. packages/ui/src/viewer/viewer-styles.ts (.dock.chip)."
+        },
+        {
+            "id": "S-V04-HAPPY-PHONE-ICON-CHIP",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "On a phone held upright the chip is an icon button under the timeline, named in full",
+            "asserts": "at 390x844, at a year with photos near it: one button whose accessible name and tooltip are 'Fotografii din jurul anului 1966', the photo_library icon, no text in the dock, a 40 px button (48 px target) centred 8 px under the standing timeline; pressing it opens the photos near the year",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12: no wide text pill on phones. packages/ui/src/viewer/viewer-render.ts (nearYearChip), viewer-styles.ts (.dock.chip). Tests: e2e/specs/viewer/timeline.spec.ts; packages/ui/test/viewer/kit-timeline-layout.test.ts; the tour's state `year` at the phone viewports."
+        },
+        {
+            "id": "S-V04-BAD-PHONE-NO-YEAR-NO-BUTTON",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "On a phone no year, or a year without photos, shows no button; a wide window keeps the text chip",
+            "asserts": "at 390x844 at today (the year is null) there is no chip dock and no button; back at today after a year with photos the button is gone; the same year at 1024x768 shows the text chip and no icon button",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12. Tests: e2e/specs/viewer/timeline.spec.ts; packages/ui/test/viewer/kit-timeline-layout.test.ts."
         },
         {
             "id": "S-V04-HAPPY-VERTICAL-ON-PHONE",
@@ -17634,6 +17684,182 @@
             "tier": "rules",
             "status": "exists",
             "notes": "The owner's request of 2026-11-08 (docs/research/M2-interfaces.md → The city's tab icon). Test: firebase/rules-tests/test/cities.test.ts, firebase/rules-tests/test/storage.test.ts."
+        },
+        {
+            "id": "S-V60-HAPPY",
+            "behaviour": "V60",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The full-size view loads beside the engine and its buttons zoom the photo",
+            "asserts": "no engine.extras.js request before the photo opens full size, one when it does; Zoom in enlarges the image by more than 20 %, Zoom out brings it back",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+        },
+        {
+            "id": "S-V60-BAD-LIMITS",
+            "behaviour": "V60",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Zoom out is disabled at the photo size and Zoom in at the largest",
+            "asserts": "on opening Zoom out says aria-disabled; Enter pressed eight times on Zoom in -> it says aria-disabled and keeps the focus, Zoom out is enabled",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+        },
+        {
+            "id": "S-V61-HAPPY",
+            "behaviour": "V61",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A photo with versions shows the improved one, switches to colorized and keeps it",
+            "asserts": "the sheet's switch has Improved checked; Colorized -> the address says pv=colorized and \"Colorized by Ana Pop\" shows; after a reload the full-size view has Colorized checked and shows its image",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+        },
+        {
+            "id": "S-V61-BAD-UNKNOWN-VERSION",
+            "behaviour": "V61",
+            "area": "viewer",
+            "path": "bad",
+            "title": "An unknown pv= shows the original; a photo with only its original has no switch",
+            "asserts": "#photo=x&pv=sepia -> Original checked; a photo without versions -> no switch in its sheet nor in the full-size view",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167). Tests: e2e/specs/viewer/photo-versions.spec.ts."
+        },
+        {
+            "id": "S-V61-HAPPY-TOUR",
+            "behaviour": "V61",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The versions and the zoom buttons pass the layout and accessibility checks on every window class",
+            "asserts": "expectStateSound on the photo-versions journey: the sheet with Colorized picked and credited, the full-size view with its switch, zoomed in once",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167). Tests: e2e/tour/viewer.tour.ts (e2e/tour/photo-version-states.ts)."
+        },
+        {
+            "id": "S-A140-HAPPY",
+            "behaviour": "A140",
+            "area": "admin",
+            "path": "happy",
+            "title": "A colorized version is added beside the published image, credited, and reaches the public map",
+            "asserts": "Add a file in Colorized version -> photos.onUpload writes versions.colorized, the image and publication unchanged; the credit saved -> the manifest lists the version with \"Ana Pop\"; the public viewer shows the switch with two versions",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167). Tests: e2e/admin/specs/photos/replace.spec.ts."
+        },
+        {
+            "id": "S-A140-BAD-WRONG-TYPE",
+            "behaviour": "A140",
+            "area": "admin",
+            "path": "bad",
+            "title": "A file that is no photo is refused at once as a version",
+            "asserts": "note.txt chosen for Improved version -> \"The new image was refused\" with the unsupported-type reason in its section, nothing uploaded, no versions on the photo",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167). Tests: e2e/admin/specs/photos/replace.spec.ts."
+        },
+        {
+            "id": "S-V62-HAPPY-RIGHT-CLICK",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A right click opens the menu at the place, whose Street View link names it",
+            "asserts": "right click at the map centre -> the menu, its first item focused; the Street View link opens in a new tab (noopener noreferrer) at the hash centre to 3 decimals; Copy coordinates and Share a link to this view are there",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+        },
+        {
+            "id": "S-V62-HAPPY-LONG-PRESS",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A long press on a touch screen opens the menu",
+            "asserts": "a touch pointer held on the map -> the menu opens and stays when the finger lifts",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+        },
+        {
+            "id": "S-V62-HAPPY-PHOTO",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A photo's sheet links to Street View looking along its bearing",
+            "asserts": "a photo with a bearing -> Open in Google Street View names its place and &heading=<bearing>",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+        },
+        {
+            "id": "S-V62-HAPPY-KEYBOARD-COPY",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Shift+F10 on the focused map opens the menu at its centre; Copy coordinates copies the place and the focus returns",
+            "asserts": "the map's canvas focused, Shift+F10 -> the menu, its first item focused; ArrowDown, Enter on Copy coordinates -> the toast 'Coordonatele au fost copiate.', the clipboard holds the hash centre to 3 decimals, no menu, the focus back on the map",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (DECISIONS-for-review.md §167h, §167j). Tests: e2e/specs/viewer/map-menu.spec.ts; packages/ui/test/viewer/map-menu.test.ts, viewer-lightbox.test.ts."
+        },
+        {
+            "id": "S-V62-HAPPY-SHARE",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Share a link to this view copies the address of the view",
+            "asserts": "without the Web Share API: right click, Share a link to this view -> the toast of share.copied, the clipboard holds the page's address with the view in its hash, no menu",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (DECISIONS-for-review.md §167h, §167j). Tests: e2e/specs/viewer/map-menu.spec.ts; packages/ui/test/viewer/map-menu.test.ts, viewer-lightbox.test.ts."
+        },
+        {
+            "id": "S-V62-BAD-CLIPBOARD-REFUSED",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A clipboard that refuses: neither the coordinates nor the link is copied, and a toast says so",
+            "asserts": "the clipboard rejects every write: Copy coordinates -> the toast 'Coordonatele nu au putut fi copiate.'; Share a link to this view -> the toast of share.failed; the menu closed, the address unchanged",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (DECISIONS-for-review.md §167h, §167j). Tests: e2e/specs/viewer/map-menu.spec.ts; packages/ui/test/viewer/map-menu.test.ts, viewer-lightbox.test.ts."
+        },
+        {
+            "id": "S-V62-BAD-DRAG",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A right-drag rotates the map and opens no menu",
+            "asserts": "right button down, moved 120 px, released -> no menu",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+        },
+        {
+            "id": "S-V62-BAD-ESC-EDGE",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Esc closes the menu; near the edge it stays inside the map",
+            "asserts": "a right click 4 px from the right edge -> the menu lies inside the map; Esc -> no menu",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/specs/viewer/map-menu.spec.ts."
+        },
+        {
+            "id": "S-V62-HAPPY-TOUR",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The open menu passes the layout and accessibility checks on every window class",
+            "asserts": "expectStateSound on the map-menu journey's open menu",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/tour/viewer.tour.ts (e2e/tour/map-menu-states.ts)."
         }
     ]
 }

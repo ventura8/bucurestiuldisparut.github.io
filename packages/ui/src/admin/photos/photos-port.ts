@@ -106,7 +106,20 @@ export interface PhotoValuePort extends StickyPort {
     readonly published: boolean;
     readonly rightsReview?: boolean | undefined;
     readonly credit?: string | undefined;
+    /** Who improved or colorized the photo (the owner 2026-11-09, A140). */
+    readonly versionCredits?: VersionCreditsPort | undefined;
+    /** The improved and colorized versions `photos.onUpload` made; Remove drops one from the draft. */
+    readonly versions?: VersionsPort | undefined;
 }
+
+/** The versions of a photo besides its original image. */
+export type PhotoVersionKindPort = 'improved' | 'colorized';
+
+type VersionCreditsPort = Readonly<Partial<Record<PhotoVersionKindPort, string | undefined>>>;
+
+type VersionsPort = Readonly<
+    Partial<Record<PhotoVersionKindPort, { readonly image: { readonly web: string; readonly thumb: string } } | undefined>>
+>;
 
 type PhotoFieldPort = keyof PhotoValuePort;
 
@@ -151,6 +164,8 @@ export interface PhotoEditorPort {
     readonly suggestions: readonly SuggestionPort[];
     readonly picking: boolean;
     readonly replace: ReplacePort | null;
+    /** A140: each version's upload, as `replace` is the image's. */
+    readonly versionUploads: Readonly<Record<PhotoVersionKindPort, ReplacePort | null>>;
 }
 
 export type BulkKindPort = 'publish' | 'unpublish' | 'confirmRights' | 'setFields' | 'delete';
@@ -223,6 +238,9 @@ export interface PhotosIntentsPort extends AssistActionsPort {
     replaceImage(file: PhotoFilePort): void;
     cancelReplace(): void;
     dismissReplace(): void;
+    uploadVersion(kind: PhotoVersionKindPort, file: PhotoFilePort): void;
+    cancelVersion(kind: PhotoVersionKindPort): void;
+    dismissVersion(kind: PhotoVersionKindPort): void;
     requestDelete(ids?: readonly string[]): void;
     cancelConfirm(): void;
     confirmDelete(): Promise<boolean>;

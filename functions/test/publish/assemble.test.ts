@@ -280,6 +280,39 @@ describe("assembleManifest: a photo's date and source", () => {
         ]);
     });
 
+    it('happyPath_aPhotosVersionsAndTheirCreditsReachTheManifest', () => {
+        const sha256 = 'b'.repeat(64);
+        const image = {
+            web: 'https://storage.googleapis.com/p/v.webp',
+            thumb: 'https://storage.googleapis.com/p/vt.webp',
+            w: 4,
+            h: 3,
+            sha256,
+        };
+        const original = { path: 'originals/photos/x/v/b.jpg', contentType: 'image/jpeg', bytes: 9, sha256 } as const;
+        const versioned = photoDoc('versioned', {
+            versions: { improved: { image, original }, colorized: { image, original } },
+            versionCredits: { colorized: 'Ana Pop' },
+        });
+        const manifest = manifestOf(
+            assembleManifest(
+                content({
+                    photos: result([
+                        ['versioned', versioned],
+                        ['plain', photoDoc('plain')],
+                    ]),
+                }),
+                TEST_CONFIG.errorEndpoint,
+            ),
+        );
+        const shown = { web: image.web, thumb: image.thumb, w: image.w, h: image.h };
+
+        expect(manifest.photos.map(({ id, versions }) => ({ id, versions }))).toEqual([
+            { id: 'plain', versions: undefined },
+            { id: 'versioned', versions: { improved: { ...shown, credit: undefined }, colorized: { ...shown, credit: 'Ana Pop' } } },
+        ]);
+    });
+
     it('badPath_aSourceNameWithoutAnAddressStaysInTheAdmin', () => {
         const manifest = manifestOf(
             assembleManifest(content({ photos: result([['p1', photoDoc('p1', { sourceLabel: 'Arhiva' })]]) }), TEST_CONFIG.errorEndpoint),

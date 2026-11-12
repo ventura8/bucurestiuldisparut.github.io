@@ -1,3 +1,4 @@
+import { translate } from '@hcm/shared';
 import type { Page, Route } from '@playwright/test';
 
 import { expect, test } from '../../support/content-test.js';
@@ -13,7 +14,9 @@ import { photoError, photoInput, photosText, rememberPhotoChoices, servePhotoIma
  * and published; **Replace image** in its editor uploads another file into the photo's own folder while the document and
  * the public map keep the old image, then `photos.onUpload` swaps the image in one write. A refused file (HEIC) leaves the
  * photo published with its image and says why; Cancel during the upload changes nothing; the photo's own file again
- * changes nothing and says so.
+ * changes nothing and says so. The same flow adds an improved or colorized version (the owner 2026-11-09; A140): its own
+ * Add a file beside the image, its credit saved with the draft, the public map's switch; a file that is no photo is refused
+ * before anything is sent.
  */
 
 const AT = new Date('2026-10-17T09:00:00.000Z');
@@ -179,5 +182,58 @@ test(
 
         await expect(banner(page, lang, 'adminContent.photos.replace.same')).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
         expect((await content.document(`photos/${photo.id}`))?.['image']).toEqual(image);
+    },
+);
+
+/** Chooses `file` with Add a file of the improved or colorized version (A140). */
+async function addVersion(page: Page, lang: 'ro' | 'en', kind: 'improved' | 'colorized', file: string): Promise<void> {
+    const chooser = page.waitForEvent('filechooser');
+    const add = photosText(lang, 'adminContent.photos.version.add');
+    await page.locator(`hcm-admin-photo-editor [data-version="${kind}"]`).getByRole('button', { name: add }).click();
+    await (await chooser).setFiles(file);
+}
+
+test(
+    'A colorized version is added beside the published image, credited, and reaches the public map',
+    { tag: ['@S-A140-HAPPY'] },
+    async ({ page, lang, content }, testInfo) => {
+        test.setTimeout(240_000);
+        const original = await photoFile(testInfo, 'Ateneul.jpg', await jpegBytes('#8b5e3c', ATENEU));
+        const photo = await publishedPhoto(page, content, lang, original);
+
+        await addVersion(page, lang, 'colorized', await photoFile(testInfo, 'Ateneul-color.jpg', await jpegBytes('#c05030', ATENEU)));
+        const section = page.locator('hcm-admin-photo-editor [data-version="colorized"]');
+        const replaced = section.getByText(photosText(lang, 'adminContent.photos.replace.replaced'));
+        await expect(replaced).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+        await section.getByLabel(photosText(lang, 'adminContent.photos.version.credit')).fill('Ana Pop');
+        await page.getByRole('button', { name: photosText(lang, 'adminContent.photos.editor.save'), exact: true }).click();
+
+        await expect.poll(async () => (await content.document(`photos/${photo.id}`))?.['versionCredits']).toEqual({ colorized: 'Ana Pop' });
+        expect(await content.document(`photos/${photo.id}`)).toMatchObject({ published: true, image: { sha256: photo.sha256 } });
+        const manifest = await awaitManifest(content, 'lists the colorized version', (built) => {
+            const versions = entry(built, 'photos', photo.id)?.['versions'] as { colorized?: { credit?: string } } | undefined;
+            return versions?.colorized?.credit === 'Ana Pop';
+        });
+        await openPublicViewer(page, manifest, { lang, hash: `17/44.43/26.1&photo=${photo.id}` });
+        await expect(page.getByRole('radiogroup', { name: translate(lang, 'photo.versions') }).getByRole('radio')).toHaveCount(2);
+    },
+);
+
+test(
+    'A file that is no photo is refused at once as a version and nothing is sent',
+    { tag: ['@S-A140-BAD-WRONG-TYPE'] },
+    async ({ page, lang, content }, testInfo) => {
+        test.setTimeout(180_000);
+        const original = await photoFile(testInfo, 'Ateneul.jpg', await jpegBytes('#8b5e3c', ATENEU));
+        const photo = await publishedPhoto(page, content, lang, original);
+        const uploadsBefore = await content.emulators.objectNames(`uploads/photos/${content.city}/`);
+
+        await addVersion(page, lang, 'improved', await photoFile(testInfo, 'note.txt', Buffer.from('not a photo')));
+
+        const section = page.locator('hcm-admin-photo-editor [data-version="improved"]');
+        await expect(section.getByText(photosText(lang, 'adminContent.photos.replace.refused'))).toBeVisible();
+        await expect(section.getByText(photoError(lang, 'apiError.photo.unsupportedType'))).toBeVisible();
+        expect(await content.emulators.objectNames(`uploads/photos/${content.city}/`)).toEqual(uploadsBefore);
+        expect((await content.document(`photos/${photo.id}`))?.['versions']).toBeUndefined();
     },
 );

@@ -118,6 +118,15 @@ describe('photo uploads', () => {
         expect(await put('admin', photoUpload('admin'), { size })).toBe('deny');
     });
 
+    it('happyPath_anImprovedOrColorizedVersionTravelsAsMetadata', async () => {
+        expect(await put('admin', photoUpload('admin'), { metadata: { version: 'improved' } })).toBe('allow');
+        expect(await put('admin', photoUpload('admin'), { metadata: { version: 'colorized' } })).toBe('allow');
+    });
+
+    it('badPath_anUnknownVersionIsRejected', async () => {
+        expect(await put('admin', photoUpload('admin'), { metadata: { version: 'sepia' } })).toBe('deny');
+    });
+
     it('badPath_anOriginalNameOver255CharactersIsRejected', async () => {
         expect(await put('admin', photoUpload('admin'), { originalName: 'x'.repeat(256) })).toBe('deny');
     });

@@ -1,6 +1,5 @@
-export { DEFAULT_LOCALE, LOCALES, resolveLocale, translate } from './i18n/index.js';
+export { DEFAULT_LOCALE, LOCALES, resolveLocale, translate, type Locale, type MessageKey, type Messages } from './i18n/index.js';
 export { pluralOf } from './i18n/plural.js';
-export type { Locale, MessageKey, Messages } from './i18n/index.js';
 export type { Translator } from './i18n/catalogue.js';
 // The admin's own texts (docs/research/M2b-interfaces.md §1.6): separate catalogues the viewer never imports.
 export { translateAdminShell } from './i18n/admin-shell/index.js';
@@ -13,6 +12,8 @@ export type { LogData, LogLevel, LogRecord, LogSink, Logger, LoggerOptions } fro
 
 export { EARTH_RADIUS_M, MAX_MERCATOR_LAT, bearingDelta, clamp, roundTo, toDegrees, toRadians, wrapBearing } from './geo/math.js';
 export type { LngLat } from './geo/math.js';
+export { streetViewUrl } from './geo/street-view.js';
+export { PHOTO_VIEWS, type PhotoVersion, type PhotoView } from './schemas/manifest.js';
 export { bearingBetween, destinationPoint, distanceMeters } from './geo/bearing.js';
 export { DEFAULT_FOV, MAX_FOV, MIN_FOV, angularSpan, coneFromPolygon, conePolygon, findConeApex, openRing } from './geo/cone.js';
 export type { MeasuredCone, ViewCone } from './geo/cone.js';
@@ -410,8 +411,7 @@ export type {
     WebVitalName,
 } from './telemetry/field-events.js';
 export { VIEWER_EVENT_PARAMS, createViewerGuard, type ViewerEventName } from './telemetry/viewer-events.js';
-export { ADMIN_EVENT_PARAMS, createAdminGuard } from './telemetry/admin-events.js';
-export type { AdminEventName } from './telemetry/admin-events.js';
+export { ADMIN_EVENT_PARAMS, createAdminGuard, type AdminEventName } from './telemetry/admin-events.js';
 export { observeWebVitals, sanitizeTarget, shortTarget, vitalParams } from './telemetry/web-vitals.js';
 export type { FieldChunk, VitalAttribution, VitalMetric, VitalObserver, VitalOptions } from './telemetry/web-vitals.js';
 export * from './migration/index.js';
