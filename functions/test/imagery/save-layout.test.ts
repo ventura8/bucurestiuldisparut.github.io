@@ -1,5 +1,5 @@
 /**
- * The tile-import wizard's callables (`docs/research/M20-import-local.md` §16): `imagery.saveLayout` and `imagery.acceptLayout` on an
+ * The tile-import wizard's callables (`docs/research/M20-import-local.md` §19): `imagery.saveLayout` and `imagery.acceptLayout` on an
  * archive series waiting with `layout-check`; each writes `help.layoutAnswer` and runs the series again from `place`.
  */
 import type { HelpItem, JobDoc, LayerVersionDoc } from '@hcm/shared';

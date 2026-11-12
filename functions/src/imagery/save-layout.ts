@@ -8,7 +8,7 @@ import type { Ports } from '../ports/index.js';
 import { resumeWithLayout } from './layout-wait.js';
 
 /**
- * `imagery.saveLayout` (a city editor; `docs/research/M20-import-local.md` §16; S-A-*-TILE-WIZARD-*): the tile-import wizard's answer
+ * `imagery.saveLayout` (a city editor; `docs/research/M20-import-local.md` §19; S-A-*-TILE-WIZARD-*): the tile-import wizard's answer
  * on an archive series waiting with `layout-check`. A stale `revision` is refused (`apiError.imagery.layoutStale`); the owner's sheets
  * and seams become `help.layoutAnswer` and the job runs again from `place` (`layout-wait.ts`). With `preview` the pipeline makes the
  * real preview of that layout and waits again; without, it goes on to the stitched picture and points.

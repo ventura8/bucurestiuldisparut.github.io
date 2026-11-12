@@ -1,4 +1,4 @@
-/** M22 (`docs/research/M22-help-calibrate.md` §13): a waiting series' stitched picture, and its tile layout (M20 §16), for `index.test.ts`. */
+/** M22 (`docs/research/M22-help-calibrate.md` §13): a waiting series' stitched picture, and its tile layout (M20 §19), for `index.test.ts`. */
 export const M22_EXPORTS = [
     'LEFT_OUT_REASONS',
     'STITCHED_PREVIEW_MAX_PX',

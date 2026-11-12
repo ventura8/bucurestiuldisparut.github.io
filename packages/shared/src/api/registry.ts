@@ -289,7 +289,7 @@ export const ADMIN_CALLABLES = {
     'imagery.retry': cityEditor('fn-imagery', imageryRetryRequestSchema, imageryRetryResponseSchema),
     // A frame waiting for points searches again (`functions/src/imagery/locate-again.ts`): what the version page already sends, what Retry answers.
     'imagery.locateAgain': cityEditor('fn-imagery', imageryVersionRequestSchema, imageryRetryResponseSchema),
-    // The tile-import wizard (docs/research/M20-import-local.md §16): the owner's layout of a series waiting with `layout-check`.
+    // The tile-import wizard (docs/research/M20-import-local.md §19): the owner's layout of a series waiting with `layout-check`.
     'imagery.saveLayout': cityEditor('fn-imagery', imagerySaveLayoutRequestSchema, imageryLayoutResponseSchema),
     'imagery.acceptLayout': cityEditor('fn-imagery', imageryAcceptLayoutRequestSchema, imageryLayoutResponseSchema),
     // M12 (docs/research/M12-own-tiles.md): the private archive, signed for an hour, so an image is seen before it is approved.

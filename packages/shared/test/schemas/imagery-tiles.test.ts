@@ -1,5 +1,5 @@
 /**
- * The tile layout's contract (`docs/research/M20-import-local.md` §16): the golden `layout.json` the pipeline writes, the small
+ * The tile layout's contract (`docs/research/M20-import-local.md` §19): the golden `layout.json` the pipeline writes, the small
  * Firestore summary, the owner's answer and the wizard's two callables, with their limits and a strict refusal of extra fields.
  */
 import { readFileSync } from 'node:fs';

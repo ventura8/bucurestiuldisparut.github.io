@@ -314,7 +314,8 @@ export { archiveIssueSchema, archiveReportSchema, archiveSeriesParamsSchema, arc
 export { archiveSourceSchema, creditLine, gridDocSchema, helpItemSchema, layerRightsOf } from './schemas/imagery-archive.js';
 export { layerRightsSchema, mapThresholdM, opsDailyDocSchema, rightsAllowPublish, rightsSchema } from './schemas/imagery-archive.js';
 export type * from './schemas/imagery-archive.js';
-export * from './help/index.js';
+export { STITCH_METHODS, STITCHED_PREVIEW_MAX_PX, stitchedSchema, type Stitched } from './schemas/imagery-help.js';
+export * from './schemas/imagery-tiles.js';
 // M5 (docs/research/M5-interfaces.md): many cities in one project, the static export, engine releases on jsDelivr (every
 // export of these modules is public; `test/index.test.ts` lists them).
 export * from './schemas/cities.js';

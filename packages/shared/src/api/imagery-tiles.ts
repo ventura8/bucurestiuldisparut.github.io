@@ -1,5 +1,5 @@
 /**
- * The tile-import wizard's callables (`docs/research/M20-import-local.md` §16; `functions/src/imagery/save-layout.ts`,
+ * The tile-import wizard's callables (`docs/research/M20-import-local.md` §19; `functions/src/imagery/save-layout.ts`,
  * `accept-layout.ts`): an archive series that waits with `layout-check` gets the owner's layout, and then goes on to points.
  */
 import { z } from 'zod';

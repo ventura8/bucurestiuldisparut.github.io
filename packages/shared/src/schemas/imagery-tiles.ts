@@ -1,5 +1,5 @@
 /**
- * The tile layout of an archive series (`docs/research/M20-import-local.md` §16, `docs/research/M22-help-calibrate.md` §13.3): where the
+ * The tile layout of an archive series (`docs/research/M20-import-local.md` §19, `docs/research/M22-help-calibrate.md` §13.3): where the
  * pipeline put each sheet, page or piece, how well the seams between neighbours agree, and the owner's answer from the tile-import
  * wizard (`#/help/{versionId}/tiles`).
  *
@@ -23,17 +23,27 @@ import { plainText } from './primitives.js';
  */
 export const LEFT_OUT_REASONS = ['no-frame', 'no-join', 'blank', 'not-part', 'no-seam'] as const;
 
+export type LeftOutReason = (typeof LEFT_OUT_REASONS)[number];
+
 /** How a seam between two neighbours stands: measured and agreeing, measured but doubtful, not found, or given by the owner. */
 export const SEAM_STATES = ['strong', 'weak', 'missing', 'owner'] as const;
+
+export type SeamState = (typeof SEAM_STATES)[number];
 
 /** Where a sheet's cell came from: its file or folder name, the overview map, its seams, the files' order, or the owner. */
 export const SHEET_SOURCES = ['name', 'overview', 'seam', 'order', 'owner'] as const;
 
+export type SheetSource = (typeof SHEET_SOURCES)[number];
+
 /** A sheet's clockwise quarter turns, in degrees. */
 export const SHEET_TURNS = [0, 90, 180, 270] as const;
 
+export type SheetTurn = (typeof SHEET_TURNS)[number];
+
 /** The series' verdict (`placing/quality.py`): mosaicked on `good`; `check` and `poor` wait with `layout-check`. */
 export const STITCH_VERDICTS = ['good', 'check', 'poor'] as const;
+
+export type StitchVerdict = (typeof STITCH_VERDICTS)[number];
 
 /** Where sheet `b` lies from sheet `a`: one cell to the right, or one cell below. */
 export const SEAM_SIDES = ['right', 'below'] as const;
@@ -50,10 +60,13 @@ export const LAYOUT_WEAK_SEAMS_MAX = 200;
 export const LAYOUT_SHEETS_MAX = 2000;
 export const LAYOUT_SEAMS_MAX = 8000;
 
-/** `thumbs.jpg`: square cells of this many pixels (a sheet's long side), this many a row. */
+/**
+ * `thumbs.jpg`: square cells of this many pixels (a sheet's long side, the thumbnail in its cell's top left), this many a row: the
+ * sprite is `min(sheets, THUMB_SPRITE_COLS)` cells wide and `ceil(sheets / THUMB_SPRITE_COLS)` high.
+ */
 export const THUMB_CELL_PX = 128;
 export const THUMB_SPRITE_COLS = 32;
-/** `seams.jpg`: each strip's square, two a row (`a`, then `b`). */
+/** `seams.jpg`: each strip's square, two a row (`a`, then `b`): `2 · SEAM_CELL_PX` wide, one row per weak seam with a `strip`. */
 export const SEAM_CELL_PX = 256;
 
 const cellSchema = z.number().int().min(0).max(LAYOUT_SHEETS_MAX);
@@ -216,3 +229,39 @@ export const layoutAnswerSchema = z.strictObject({
 });
 
 export type LayoutAnswer = z.infer<typeof layoutAnswerSchema>;
+
+/**
+ * The Help calibrate queue (`docs/research/M22-help-calibrate.md` §1.1): computed from the versions that already exist, never stored.
+ * Today it covers the layer versions that wait for a person: an archive series whose tile layout needs the owner (`layoutCheck`, the
+ * tile-import wizard `#/help/{versionId}/tiles`) first, then every version waiting for points (`needsPoints`, the georeferencer).
+ * Here, beside the layout it reads, so that `@hcm/shared`'s index exports it without routing through another module.
+ */
+export const HELP_ITEM_CODES = ['layoutCheck', 'needsPoints'] as const;
+
+export type HelpItemCode = (typeof HELP_ITEM_CODES)[number];
+
+/** A version as the queue reads it: its id, its state and why it waits. */
+export interface HelpVersionInput {
+    readonly id: string;
+    readonly state: string;
+    readonly help?: { readonly reason: string } | undefined;
+}
+
+/** One row of the queue: the version, what it asks, and the page that answers it. */
+export interface HelpQueueItem {
+    readonly versionId: string;
+    readonly code: HelpItemCode;
+    readonly page: 'tiles' | 'georef';
+}
+
+function helpItemOf(version: HelpVersionInput): HelpQueueItem {
+    return version.help?.reason === 'layout-check'
+        ? { versionId: version.id, code: 'layoutCheck', page: 'tiles' }
+        : { versionId: version.id, code: 'needsPoints', page: 'georef' };
+}
+
+/** The versions that wait for a person, `layoutCheck` first, each group in the given order. */
+export function helpItemsOf(versions: readonly HelpVersionInput[]): readonly HelpQueueItem[] {
+    const items = versions.filter((version) => version.state === 'needs_gcps').map(helpItemOf);
+    return [...items].sort((left, right) => HELP_ITEM_CODES.indexOf(left.code) - HELP_ITEM_CODES.indexOf(right.code));
+}
