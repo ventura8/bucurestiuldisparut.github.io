@@ -3,14 +3,15 @@
  * never reached the map goes with its job, the job's log and the files only it uses; a published or approved one, one still under way,
  * one another version is built on and a caller who is not an editor are refused, and nothing is touched.
  */
-import { FIRESTORE_PATHS, jobLogDocSchema, type JobDoc, type LayerVersionDoc } from '@hcm/shared';
+import { FIRESTORE_PATHS, jobLogDocSchema, layerVersionDocSchema, type ArchiveDoc, type JobDoc, type LayerVersionDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
+import { archiveImportFunction } from '../../src/imagery/archive-import.js';
 import { deleteVersionFunction } from '../../src/imagery/delete-version.js';
 import { failureOf } from '../admin/world.js';
 import { adminCall } from '../publish/fakes.js';
 import { fakeAdmins } from '../support/fakes.js';
-import { archiveJob, archiveVersion } from './archive-world.js';
+import { ARCHIVE, archiveDoc, archiveJob, archiveVersion, readArchive, seedArchive, seriesIdOf } from './archive-world.js';
 import {
     CITY,
     NOW,
@@ -207,6 +208,25 @@ describe('imagery.deleteVersion', () => {
         expect((await readVersion(target, JOB))?.state).toBe('needs_gcps');
     });
 
+    it('badPath_aVersionDeletedMeanwhileIsNotFound', async () => {
+        const target = await world(renderedVersion({ state: 'cancelled' }), failedJob({ status: 'cancelled', error: undefined }));
+        const gone = meanwhile(target, () => target.deps.documents.delete(FIRESTORE_PATHS.layerVersion(CITY, JOB)));
+
+        await expect(failureOf(remove(target, gone))).resolves.toMatchObject({ details: { code: 'apiError.notFound' } });
+        expect(await readJob(target, JOB)).toBeDefined();
+    });
+
+    it('badPath_aVersionThatLeftItsStateMeanwhileIsAVersionState', async () => {
+        const target = await world(renderedVersion({ state: 'cancelled' }), failedJob({ status: 'cancelled', error: undefined }));
+        const path = FIRESTORE_PATHS.layerVersion(CITY, JOB);
+        const moved = meanwhile(target, () =>
+            target.deps.documents.set(path, layerVersionDocSchema, renderedVersion({ state: 'processing' })),
+        );
+
+        await expect(failureOf(remove(target, moved))).resolves.toMatchObject({ details: { code: 'apiError.imagery.versionState' } });
+        await expectUntouched(target);
+    });
+
     it('happyPath_filesTheBucketCannotListAreLeftAndTheVersionStillGoes', async () => {
         const target = await world(renderedVersion({ state: 'cancelled' }));
         const blobs = { ...target.deps.blobs, list: () => Promise.reject(new Error('storage down')) };
@@ -234,4 +254,46 @@ describe('imagery.deleteVersion', () => {
             await expectUntouched(target);
         },
     );
+});
+
+describe('imagery.deleteVersion, an archive series', () => {
+    it('happyPath_aDeletedSeriesLeavesItsArchiveRecordAndIsImportedAgain @S-A125-HAPPY-DELETE-VERSION', async () => {
+        const help = { reason: 'low-confidence', note: 'These pieces could not be placed.', at: at(NOW) } as const;
+        const version = archiveVersion({ state: 'needs_gcps', layerId: LAYER, jobId: JOB, help });
+        const target = await world(version, archiveJob({ status: 'awaiting_gcps', waitReason: 'gcps', layerId: LAYER, versionId: JOB }));
+        const jobs = { [seriesIdOf(0)]: 'ar-0', [seriesIdOf(1)]: JOB };
+        await seedArchive(target, archiveDoc(2, { jobs, importedBy: 'u-admin', importedAt: at(NOW) }));
+
+        await remove(target);
+        expect((await readArchive(target))?.jobs).toEqual({ [seriesIdOf(0)]: 'ar-0' });
+        const again = { cityId: CITY, archiveId: ARCHIVE, series: [{ seriesId: seriesIdOf(1), include: true }] };
+        const imported = await archiveImportFunction(() => target.deps).run(adminCall(again));
+
+        const record = (await readArchive(target))?.jobs;
+        expect(record?.[seriesIdOf(0)]).toBe('ar-0');
+        expect(record?.[seriesIdOf(1)]).toBe(imported.jobs[0]?.jobId);
+    });
+
+    it('happyPath_theLastSeriesDeletedLeavesTheArchiveUnimported @S-A125-HAPPY-DELETE-VERSION', async () => {
+        const target = await world(archiveVersion({ state: 'cancelled', layerId: LAYER, jobId: JOB }), null);
+        await seedArchive(target, archiveDoc(2, { jobs: { [seriesIdOf(1)]: JOB }, importedBy: 'u-admin', importedAt: at(NOW) }));
+
+        await remove(target);
+
+        const archive = await readArchive(target);
+        expect([archive?.jobs, archive?.importedBy, archive?.importedAt]).toEqual([undefined, undefined, undefined]);
+    });
+
+    it.each<[string, Partial<ArchiveDoc>]>([
+        ['naming another job', { jobs: { [seriesIdOf(1)]: 'ar-newer' }, importedBy: 'u-admin', importedAt: at(NOW) }],
+        ['naming no job', {}],
+    ])('happyPath_anArchiveRecord%sIsLeftAsItIs', async (_name, record) => {
+        const target = await world(archiveVersion({ state: 'cancelled', layerId: LAYER, jobId: JOB }), null);
+        await seedArchive(target, archiveDoc(2, record));
+
+        await remove(target);
+
+        expect((await readArchive(target))?.jobs).toEqual(record.jobs);
+        expect(await readVersion(target, JOB)).toBeUndefined();
+    });
 });

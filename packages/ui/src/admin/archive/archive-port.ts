@@ -30,6 +30,8 @@ export interface OpenArchivePort {
         readonly series: readonly ArchiveSeries[];
         readonly skipped: readonly (readonly [reason: string, count: number])[];
         readonly imported: boolean;
+        /** The series the archive's record names (imported); the others may be imported later (left out, or started over). */
+        readonly importedSeries: readonly string[];
     } | null;
 }
 

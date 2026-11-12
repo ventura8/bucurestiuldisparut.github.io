@@ -87,6 +87,7 @@ export function versionItem(overrides: Partial<VersionItemPort> = {}): VersionIt
             checkpointRmseM: 7.2,
             partOf: null,
             entityIds: [],
+            basedOn: null,
             thumbPath: null,
         },
         ...overrides,

@@ -756,12 +756,17 @@ version's own folder of the private bucket (`rasters/{city}/{layer}/{version}/`)
 regeoref's scan lies in its base's), a USGS delivery (`usgs-raw/`, any city's), an upload's original and an archive's originals, which
 stay on the owner's computer. Refused: `approved`, `publishing`, `published`, `superseded` or `joined` →
 `apiError.imagery.deletePublished` (delete the layer, §7.6); a job still queued, running or waiting → `apiError.imagery.deleteRunning`
-(Cancel first); a version another one is `basedOn` → `apiError.imagery.deleteInUse`; a frame a live join holds →
+(Cancel first); a version another one is `basedOn` → `apiError.imagery.deleteInUse`; a version the transaction finds gone →
+`apiError.notFound`, one that left its deletable state meanwhile → `apiError.imagery.versionState`; a frame a live join holds →
 `apiError.imagery.joinPartHeld`; any other state → `apiError.imagery.versionState`. Layer versions are not audited documents (no
 `history` subcollection): the deletion is the structured log line `layer version deleted` with the caller's uid, as every version
-decision writes. The version page offers **Delete this version** (asked first: what goes, and that the map and the originals on the
-owner's computer stay) for a `cancelled` or `rejected` version and for a parked archive series (whose Cancel-area Delete it replaces);
-a failed version is dismissed first, so the page never shows two Deletes. Once deleted the page returns to the Historical imagery list.
+decision writes. An archive series also leaves its archive's record of jobs (`archives/{a}.jobs`) in the same transaction, so the
+archive page offers it again and `imagery.archiveImport` takes it (that callable refuses only a series the record still names); the
+last series deleted leaves the archive unimported (`jobs`, `importedBy`, `importedAt` gone). The version page offers **Delete this
+version** (asked first: what goes, and that the map and the originals on the owner's computer stay) for a `failed`, `cancelled` or
+`rejected` version whose job is finished and for a parked archive series (whose Cancel-area Delete it replaces), never for one
+another version of the list is `basedOn`; a failed version has no Dismiss beside it any more, so the page never shows two Deletes
+(the server's `imagery.reject` still dismisses a failed version). Once deleted the page returns to the Historical imagery list.
 
 ### 7.2 The compute-unit guard (done: the functions; the transaction: fn-imagery)
 

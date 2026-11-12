@@ -99,6 +99,8 @@ export interface VersionItemPort {
     readonly checkpointRmseM: number | null;
     readonly partOf: string | null;
     readonly entityIds: readonly string[];
+    /** The version it was made from: that one is not deleted while this one is there. */
+    readonly basedOn: string | null;
     /** M12: the small picture of a waiting row. */
     readonly thumbPath: string | null;
 }

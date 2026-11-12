@@ -54,7 +54,22 @@ interface OpenArchive {
         readonly series: ArchiveDoc['series'];
         readonly skipped: readonly (readonly [reason: string, count: number])[];
         readonly imported: boolean;
+        /** The series the archive's record names (imported); the others may be imported later (left out, or started over). */
+        readonly importedSeries: readonly string[];
     } | null;
+}
+
+/** The routed archive's report as the page reads it. */
+function reportOf(archive: ArchiveDoc): NonNullable<OpenArchive['report']> {
+    return {
+        name: archive.name,
+        files: archive.fileCount,
+        bytes: archive.bytes,
+        series: archive.series,
+        skipped: skippedOf(archive),
+        imported: archive.jobs !== undefined,
+        importedSeries: Object.keys(archive.jobs ?? {}),
+    };
 }
 
 export interface ArchiveState {
@@ -267,17 +282,7 @@ export class ArchiveFeed {
             return;
         }
         const archive = state.doc?.data;
-        const report =
-            archive === undefined
-                ? null
-                : {
-                      name: archive.name,
-                      files: archive.fileCount,
-                      bytes: archive.bytes,
-                      series: archive.series,
-                      skipped: skippedOf(archive),
-                      imported: archive.jobs !== undefined,
-                  };
+        const report = archive === undefined ? null : reportOf(archive);
         const edits = archive === undefined ? {} : editsOf(archive, this.#cell.state.edits);
         this.#cell.update({ open: { id: open.id, status: state.status, report }, edits });
     }

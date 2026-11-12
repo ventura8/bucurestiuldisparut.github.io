@@ -2,11 +2,11 @@
  * A version's page (`#/imagery/version/<versionId>`, `docs/research/M3-interfaces.md` §2.2–§2.4, §10.2; behaviours A12,
  * A14, A17, A18, A42): its state, its job's progress and steps (live), why it waits, its error with what cures it (CR-M3-47:
  * **Try again** when a retry can, Setup's Mapbox step for a token or its scopes, **Upload another file** for an upload the
- * server refused, **Dismiss** for a failed version), **Locate again** for a frame waiting for points, the georeferencer, the approval card once it is rendered, the
+ * server refused), **Locate again** for a frame waiting for points, the georeferencer, the approval card once it is rendered, the
  * preview's opacity on the map, the job's log as text, and **Cancel** while it runs (asked first; once Mapbox was asked
  * to publish, its processing cannot be stopped). M8: a join's frames, and a frame's offer to join its date's others. M9: how the
  * frame was found, or that it was not (`calibration-card.ts`). **Delete this version** for a version that never reached the map
- * (cancelled or rejected) or an archive series waiting for points (`imagery.deleteVersion`, asked first; the page then returns to the list). M12: what the map shows of it, its share of the city, Actual pixels and See
+ * (failed, cancelled or rejected) or an archive series waiting for points (`imagery.deleteVersion`, asked first; the page then returns to the list). M12: what the map shows of it, its share of the city, Actual pixels and See
  * the image (`image-view.ts`). M16: Calibrate again, and a recalibration's figures (`recalibrate/`).
  */
 import { JOB_MAX_ATTEMPTS, type AdminContentKey, type Locale } from '@hcm/shared';
@@ -216,17 +216,11 @@ function mapboxSetupLink({ context, version, job }: Shown): TemplateResult {
     );
 }
 
-/** A failed version leaves "Waiting for you" (`imagery.reject` dismisses it; asked first). */
-function dismissButton(shown: Shown): TemplateResult {
-    const { context, version } = shown;
-    const offered = version?.state === 'failed';
-    return action(shown, { offered, icon: 'close', label: 'adminContent.imagery.dismiss', variant: 'outlined' }, () => {
-        context.ask('dismiss');
-    });
-}
-
-/** Ended without reaching the map: cancelled, or rejected (a failed one is dismissed first, so the page offers one Delete). */
-const NEVER_SHOWN: ReadonlySet<VersionViewPort['state']> = new Set(['cancelled', 'rejected']);
+/**
+ * Ended without reaching the map: failed, cancelled or rejected. A failed one offers Delete this version in place of the old
+ * Dismiss (`imagery.reject`, which only took it out of "Waiting for you"): one Delete on the page, and it deletes.
+ */
+const NEVER_SHOWN: ReadonlySet<VersionViewPort['state']> = new Set(['failed', 'cancelled', 'rejected']);
 
 /** An archive series waiting for points, which the owner may start over. */
 function parkedSeries(version: VersionViewPort | null, job: JobViewPort | null): boolean {
@@ -238,10 +232,18 @@ function neverShown(version: VersionViewPort, job: JobViewPort | null): boolean 
     return NEVER_SHOWN.has(version.state) && job?.finished !== false;
 }
 
-/** `imagery.deleteVersion` takes it: never on the map and nothing running for it, or a parked series; never a frame a live join holds. */
+/** Another version of the list was made from this one (`basedOn`): the server refuses its deletion (`apiError.imagery.deleteInUse`). */
+function builtOn({ context }: Shown, version: VersionViewPort): boolean {
+    return context.view.versions.items.some((item) => item.basedOn === version.id);
+}
+
+/**
+ * `imagery.deleteVersion` takes it: never on the map and nothing running for it, or a parked series; never a frame a live join
+ * holds, nor a version another one is built on.
+ */
 function deletable(shown: Shown): boolean {
     const { version, job } = shown;
-    if (version === null || heldByJoin(shown)) {
+    if (version === null || heldByJoin(shown) || builtOn(shown, version)) {
         return false;
     }
     return parkedSeries(version, job) || neverShown(version, job);
@@ -439,7 +441,7 @@ function body(shown: Shown): TemplateResult {
         ${heading(shown)} ${reconnectingStatus(locale, reconnecting)} ${progress(locale, job)} ${failure(shown)}
         <div class="actions">
             ${retryButton(shown)} ${locateButton(shown)} ${uploadAnother(shown)} ${mapboxSetupLink(shown)} ${georefLink(shown)}
-            ${dismissButton(shown)} ${deleteVersionButton(shown)}
+            ${deleteVersionButton(shown)}
         </div>
         ${runPlace(shown)} ${refusal(shown)}
         ${withValue(version, (known) => lazyJoin(context, known, (chunk) => chunk.versionJoin(context, known, job)))} ${imageView(shown)}

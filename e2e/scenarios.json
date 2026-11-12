@@ -5259,8 +5259,8 @@
             "behaviour": "A12",
             "area": "admin",
             "path": "bad",
-            "title": "A failed version is dismissed, asked first",
-            "asserts": "Dismiss asks first; confirmed, the version is rejected (its job stays failed) and leaves Waiting for you; a version that left failed meanwhile is not dismissed",
+            "title": "A failed version is deleted, asked first",
+            "asserts": "the page offers Delete this version (no Dismiss beside it, since 2026-11-12) and asks first; confirmed, the version and its job go and the page shows the list; imagery.reject still dismisses a failed version (rejected, its job stays failed) and a version that left failed meanwhile is not dismissed",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
@@ -5303,8 +5303,8 @@
             "behaviour": "A12",
             "area": "admin",
             "path": "happy",
-            "title": "A dismissed failed import can be imported again",
-            "asserts": "a version that failed in the pipeline, dismissed -> its scene is a candidate again, its reserved layer id freed, and its page offers Import; a scene an earlier release left reserved is freed by the next tick",
+            "title": "A deleted or dismissed failed import can be imported again",
+            "asserts": "a version that failed in the pipeline, deleted (or dismissed) -> its scene is a candidate again, its reserved layer id freed, and its page offers Import; a scene an earlier release left reserved is freed by the next tick",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Finding 85 of docs/research/manual-test-2026-10-25.md (2026-11-05). In e2e/admin/specs/imagery/import.spec.ts and functions/test/imagery/approve.test.ts."
@@ -14951,7 +14951,7 @@
             "area": "admin",
             "path": "happy",
             "title": "An image is deleted with one word and one question at every stage",
-            "asserts": "waiting for points, waiting for approval, approved but stopped at the guard, failed -> the button says Delete and the dialog Delete this image? with Delete, each by imagery.reject, so the version then reads Deleted (never Cancelled); published (Layers) -> Delete this image? (its name)",
+            "asserts": "waiting for points, waiting for approval, approved but stopped at the guard -> the button says Delete and the dialog Delete this image? with Delete, each by imagery.reject, so the version then reads Deleted (never Cancelled); failed -> one Delete this version (imagery.deleteVersion, S-A125), never a second Delete; published (Layers) -> Delete this image? (its name)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M18 (docs/research/M18-improvements.md item 5, the owner 2026-11-08); review of 2026-11-08: the waiting frame was cancelled (Cancelled) and the guard offered no Delete. Tests: e2e/admin/specs/imagery/import.spec.ts (failed), packages/ui/test/admin/imagery/imagery-detail.test.ts (waiting for points, approval, guard), packages/ui/test/admin/layers/layers-page.test.ts (published)."
@@ -16942,10 +16942,10 @@
             "area": "admin",
             "path": "happy",
             "title": "Delete this version removes a version that never reached the map, after a question, and returns to the list",
-            "asserts": "a cancelled, rejected or failed version, or an archive series waiting for points (ended first), goes with its job, the job's log, its scratch files and its own private folder; another version's folder, a USGS delivery and an upload's original stay; a failed first import's scene is free again; the page asks first (what goes, the originals on the computer stay) and then shows the Historical imagery list",
-            "tier": "functions",
+            "asserts": "a cancelled, rejected or failed version, or an archive series waiting for points (ended first), goes with its job, the job's log, its scratch files and its own private folder; another version's folder, a USGS delivery and an upload's original stay; a failed first import's scene is free again; an archive series leaves its archive's record of jobs, so the archive page offers it again and imagery.archiveImport takes it (the last one leaves the archive unimported); a failed version's page offers this one Delete; the page asks first (what goes, the originals on the computer stay) and then shows the Historical imagery list",
+            "tier": "e2e-admin",
             "status": "exists",
-            "notes": "M3 (docs/research/M3-interfaces.md §7.1, §10.2; DECISIONS §151). Tests: functions/test/imagery/delete-version.test.ts, packages/admin/test/imagery/version-delete.test.ts, packages/ui/test/admin/imagery/delete-version.test.ts."
+            "notes": "M3 (docs/research/M3-interfaces.md §7.1, §10.2; DECISIONS §151). Tests: e2e/admin/specs/imagery/import.spec.ts (a failed import deleted end to end, the question in the tour as imagery.version-delete), functions/test/imagery/delete-version.test.ts, packages/admin/test/imagery/version-delete.test.ts, packages/admin/test/archive/model.test.ts, packages/ui/test/admin/imagery/delete-version.test.ts, packages/ui/test/admin/imagery/imagery-cures.test.ts, packages/ui/test/admin/archive/archive.test.ts."
         },
         {
             "id": "S-A125-BAD-DELETE-PUBLISHED",
@@ -16953,7 +16953,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A version on the map, or approved for it, is never deleted from its page",
-            "asserts": "imagery.deleteVersion on published, approved, publishing, superseded or joined -> apiError.imagery.deletePublished and nothing changes; the page offers no Delete this version for a published, waiting, processing or failed version (a failed one is dismissed first)",
+            "asserts": "imagery.deleteVersion on published, approved, publishing, superseded or joined -> apiError.imagery.deletePublished and nothing changes; the page offers no Delete this version for a published, waiting or processing version, nor while a job still runs",
             "tier": "functions",
             "status": "exists",
             "notes": "M3 (docs/research/M3-interfaces.md §7.1, §10.2; DECISIONS §151). Tests: functions/test/imagery/delete-version.test.ts, packages/admin/test/imagery/version-delete.test.ts, packages/ui/test/admin/imagery/delete-version.test.ts."
@@ -16964,7 +16964,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A version still under way, one another is built on, or a caller who is not an editor cannot delete",
-            "asserts": "a queued, running or waiting job -> apiError.imagery.deleteRunning (also when a Retry lands between the check and the deletion); a version another one is based on -> apiError.imagery.deleteInUse; a moderator or an uploader -> apiError.city.notEditor; nothing is deleted and a refusal stays on the page, which does not leave",
+            "asserts": "a queued, running or waiting job -> apiError.imagery.deleteRunning (also when a Retry lands between the check and the deletion); a version another one is based on -> apiError.imagery.deleteInUse (its page offers no Delete this version); a version deleted meanwhile -> apiError.notFound, one that left its state meanwhile -> apiError.imagery.versionState; a moderator or an uploader -> apiError.city.notEditor; nothing is deleted and a refusal stays on the page, which does not leave",
             "tier": "functions",
             "status": "exists",
             "notes": "M3 (docs/research/M3-interfaces.md §7.1, §10.2; DECISIONS §151). Tests: functions/test/imagery/delete-version.test.ts, packages/admin/test/imagery/version-delete.test.ts, packages/ui/test/admin/imagery/delete-version.test.ts."

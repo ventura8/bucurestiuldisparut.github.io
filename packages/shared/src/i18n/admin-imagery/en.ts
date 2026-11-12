@@ -149,7 +149,6 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.previewOpacity': "The preview's opacity on the map",
     'adminContent.imagery.approve': 'Approve and publish',
     'adminContent.imagery.reject': 'Delete',
-    'adminContent.imagery.dismiss': 'Delete',
     'adminContent.imagery.deleteVersion': 'Delete this version',
     'adminContent.imagery.locateAgain': 'Locate again',
     // M9 (docs/research/M9-calibration.md §8)
@@ -226,7 +225,6 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.confirm.pay': 'Pay to publish?',
     'adminContent.imagery.confirm.payBody': 'Mapbox bills about {usd} USD beyond the free plan this month.',
     'adminContent.imagery.confirm.payConfirm': 'Publish for about {usd} USD',
-    'adminContent.imagery.confirm.dismiss': 'Delete this image?',
     'adminContent.imagery.confirm.dismissBody': 'It leaves “Waiting for you” unpublished; the layer stays; you can import it again.',
     'adminContent.imagery.confirm.deleteVersion': 'Delete this version for good?',
     'adminContent.imagery.confirm.deleteBody': "Its job, log and server files go for good. The map and your computer's originals stay.",

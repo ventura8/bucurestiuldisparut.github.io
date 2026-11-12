@@ -4,9 +4,11 @@ import {
     FINISHED_JOB_STATUSES,
     FIRESTORE_PATHS,
     RASTER_PATHS,
+    archiveDocSchema,
     jobDocSchema,
     jobLogDocSchema,
     layerVersionDocSchema,
+    type ArchiveDoc,
     type CallableRequest,
     type CallableResponse,
     type JobDoc,
@@ -18,11 +20,13 @@ import {
 import type { VerifiedCaller } from '../api/access.js';
 import { ApiError } from '../api/api-error.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
+import { omit } from '../api/objects.js';
+import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { endWork } from './end.js';
 import { refuseHeldPart } from './join-parts.js';
 import { deleteVersionTiles } from './own-tiles-clean.js';
-import { requireVersion } from './records.js';
+import { requireVersion, stampOf } from './records.js';
 import { releaseScene } from './release-scene.js';
 import { deleteWorkFiles } from './work-files.js';
 
@@ -36,7 +40,10 @@ import { deleteWorkFiles } from './work-files.js';
  * Refused: a version that is or was on the map (`apiError.imagery.deletePublished`), one whose job is under way
  * (`apiError.imagery.deleteRunning`: Cancel first), one another version is built on (`apiError.imagery.deleteInUse`) and a frame a
  * live join holds (`apiError.imagery.joinPartHeld`). The two documents are deleted in a transaction that reads them again, so a
- * Retry clicked meanwhile is never deleted under its run. Layer versions are not audited documents (no `history` subcollection);
+ * Retry clicked meanwhile is never deleted under its run (a version gone meanwhile is `apiError.notFound`, one that left its
+ * deletable state `apiError.imagery.versionState`). An archive series also leaves its archive's record of jobs in the same
+ * transaction, so `imagery.archiveImport` takes it again: the owner starts it over (the import's stamp goes with the last series).
+ * Layer versions are not audited documents (no `history` subcollection);
  * the deletion is recorded as the structured log line every version decision writes, with the caller's uid.
  */
 type Request = CallableRequest<'imagery.deleteVersion'>;
@@ -119,18 +126,85 @@ async function endParked(deps: DeleteVersionDeps, caller: VerifiedCaller, reques
     }
 }
 
-/** The version and its job deleted together, both read again first: still never shown, the job still done. */
-async function deleteDocuments(deps: DeleteVersionDeps, request: Request, jobId: string): Promise<void> {
+/** The re-read version may still go: `apiError.notFound` once gone, `versionState` once it left, `deleteRunning` while its job runs. */
+function refuseChanged(version: LayerVersionDoc | undefined, job: JobDoc | undefined): void {
+    if (version === undefined) {
+        throw new ApiError('apiError.notFound');
+    }
+    if (!NEVER_SHOWN.has(version.state)) {
+        throw new ApiError('apiError.imagery.versionState');
+    }
+    if (!jobDone(job)) {
+        throw new ApiError('apiError.imagery.deleteRunning');
+    }
+}
+
+/** An archive series' record and the series it names, or null for any other version. */
+interface SeriesRecord {
+    readonly path: string;
+    readonly seriesId: string;
+}
+
+function seriesRecordOf(cityId: string, version: LayerVersionDoc): SeriesRecord | null {
+    const source = version.source;
+    return source?.kind === 'archive' ? { path: FIRESTORE_PATHS.archive(cityId, source.archiveId), seriesId: source.seriesId } : null;
+}
+
+/** Who deletes, and when, for the archive record's stamp. */
+interface Deleter {
+    readonly uid: string;
+    readonly now: Date;
+}
+
+/**
+ * The archive's record without this series' job, so `imagery.archiveImport` takes the series again; with no series left, the
+ * record reads as never imported. Null when the record names no job, or another job, for it (nothing to change).
+ */
+export function withoutSeries(archive: ArchiveDoc, seriesId: string, jobId: string, by: Deleter): ArchiveDoc | null {
+    if (archive.jobs?.[seriesId] !== jobId) {
+        return null;
+    }
+    const jobs = Object.fromEntries(Object.entries(archive.jobs).filter(([id]) => id !== seriesId));
+    const stamp = stampOf(by.uid, by.now);
+    if (Object.keys(jobs).length > 0) {
+        return { ...archive, jobs, ...stamp };
+    }
+    return { ...omit(archive, ['jobs', 'importedBy', 'importedAt']), ...stamp };
+}
+
+/** The archive record as it should be written, or null when there is none or it does not name this version's job. */
+async function keptRecord(
+    transaction: DocumentTransaction,
+    record: SeriesRecord | null,
+    known: LayerVersionDoc,
+    by: Deleter,
+): Promise<{ readonly path: string; readonly archive: ArchiveDoc } | null> {
+    if (record === null) {
+        return null;
+    }
+    const stored = await transaction.get(record.path, archiveDocSchema);
+    const archive = stored === undefined ? null : withoutSeries(stored, record.seriesId, known.jobId, by);
+    return archive === null ? null : { path: record.path, archive };
+}
+
+/**
+ * The version and its job deleted together, both read again first: still never shown, the job still done; an archive series
+ * leaves its archive's record of jobs in the same transaction.
+ */
+async function deleteDocuments(deps: DeleteVersionDeps, caller: VerifiedCaller, request: Request, known: LayerVersionDoc): Promise<void> {
     const versionPath = FIRESTORE_PATHS.layerVersion(request.cityId, request.versionId);
-    const jobPath = FIRESTORE_PATHS.job(request.cityId, jobId);
+    const jobPath = FIRESTORE_PATHS.job(request.cityId, known.jobId);
+    const record = seriesRecordOf(request.cityId, known);
     await deps.documents.transaction(async (transaction) => {
         const version = await transaction.get(versionPath, layerVersionDocSchema);
         const job = await transaction.get(jobPath, jobDocSchema);
-        if (version === undefined || !NEVER_SHOWN.has(version.state) || !jobDone(job)) {
-            throw new ApiError('apiError.imagery.deleteRunning');
-        }
+        const kept = await keptRecord(transaction, record, known, { uid: caller.uid, now: deps.clock.now() });
+        refuseChanged(version, job);
         await transaction.delete(jobPath);
         await transaction.delete(versionPath);
+        if (kept !== null) {
+            await transaction.set(kept.path, archiveDocSchema, kept.archive);
+        }
     });
 }
 
@@ -173,7 +247,7 @@ async function imageryDeleteVersion(
 ): Promise<CallableResponse<'imagery.deleteVersion'>> {
     const version = await requireDeletable(deps, request);
     await endParked(deps, caller, request, version);
-    await deleteDocuments(deps, request, version.jobId);
+    await deleteDocuments(deps, caller, request, version);
     await freeScene(deps, request.cityId, version);
     await deleteLogs(deps, request.cityId, version.jobId);
     await deleteFiles(deps, request.cityId, request.versionId, version);

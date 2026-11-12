@@ -151,7 +151,6 @@ export const ro = {
     'adminContent.imagery.previewOpacity': 'Opacitatea previzualizării pe hartă',
     'adminContent.imagery.approve': 'Aprobă și publică',
     'adminContent.imagery.reject': 'Șterge',
-    'adminContent.imagery.dismiss': 'Șterge',
     'adminContent.imagery.deleteVersion': 'Șterge această versiune',
     'adminContent.imagery.locateAgain': 'Localizează din nou',
     // M9 (docs/research/M9-calibration.md §8)
@@ -228,7 +227,6 @@ export const ro = {
     'adminContent.imagery.confirm.pay': 'Plătești pentru publicare?',
     'adminContent.imagery.confirm.payBody': 'Mapbox facturează luna aceasta circa {usd} USD peste planul gratuit.',
     'adminContent.imagery.confirm.payConfirm': 'Publică pentru circa {usd} USD',
-    'adminContent.imagery.confirm.dismiss': 'Ștergi această imagine?',
     'adminContent.imagery.confirm.dismissBody': 'Iese din „Așteaptă după tine” nepublicată; stratul rămâne cum este; o poți importa iar.',
     'adminContent.imagery.confirm.deleteVersion': 'Ștergi definitiv această versiune?',
     'adminContent.imagery.confirm.deleteBody': 'Sarcina, jurnalul și fișierele de pe server dispar. Harta și originalele tale rămân.',

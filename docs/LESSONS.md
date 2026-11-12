@@ -3273,3 +3273,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the export's COG is one grey band with its alpha kept as an internal mask; the line-art encoder read alpha only from a second band, so a one-band source was all opaque and the black outside the warp became ink.
     - Fix and pin: `_alpha_rows` reads the band's mask (`GetMaskBand`) for a one-band source; `S-P20-BAD-ENCODING-MASK`.
     - **A one-band raster's edge lives in its mask; read the mask band, never assume all opaque.**
+
+557. **A deleted archive series could never be imported again, and a failed version showed a Delete that did not delete.**
+    - Seen: 2026-11-12, review of `imagery.deleteVersion` (S-A125): the archive's record still named the deleted series' job, so `imagery.archiveImport` refused it (`archiveImported`) and the archive page showed it with no progress; a failed version kept Dismiss, labelled Delete but only `imagery.reject`, beside the new Delete this version.
+    - Cause: the deletion cleaned the version's own documents and files but not the records that point at them (`archives/{a}.jobs`), and the UI's deletable states were narrowed to dodge a substring locator in an e2e test.
+    - Fix and pin: the delete transaction drops the series from `archives/{a}.jobs` and the import refuses only a series still named; the archive page plans the series not imported yet; a failed version offers Delete this version alone, the e2e locators match exactly; `S-A125-HAPPY-DELETE-VERSION`.
+    - **A deletion also clears every record that names what it deleted; never narrow a behaviour to suit a test's locator, fix the locator.**

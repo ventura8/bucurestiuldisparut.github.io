@@ -45,11 +45,6 @@ const QUESTIONS = {
         body: 'adminContent.imagery.confirm.rejectBody',
         confirm: 'adminContent.imagery.reject',
     },
-    dismiss: {
-        headline: 'adminContent.imagery.confirm.dismiss',
-        body: 'adminContent.imagery.confirm.dismissBody',
-        confirm: 'adminContent.imagery.dismiss',
-    },
     resume: {
         headline: 'adminContent.imagery.confirm.resume',
         body: 'adminContent.imagery.confirm.resumeBody',
@@ -356,7 +351,6 @@ async function deleteAndLeave(intents: ImageryIntentsPort | null, leave: () => v
 function answers(intents: ImageryIntentsPort | null, leave: () => void): Readonly<Record<ImageryQuestion, () => void>> {
     return {
         reject: () => void intents?.reject(),
-        dismiss: () => void intents?.reject(),
         pay: () => void intents?.choose('pay' satisfies PublishChoice),
         cancel: () => void intents?.cancelJob(),
         drop: () => void intents?.reject(),
