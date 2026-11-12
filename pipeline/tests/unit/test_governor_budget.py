@@ -83,7 +83,10 @@ def test_with_their_images_rocm_openvino_and_the_npu_are_chosen_in_order() -> No
 
 
 def test_a_busy_card_yields_to_the_processor() -> None:
-    """The laptop on 2026-11-12: someone else's work held 6.4 of its 8 GB."""
+    """The laptop on 2026-11-12: someone else's work held 6.4 of its 8 GB.
+
+    Scenarios: S-A132-BAD-NO-GPU
+    """
     busy = replace(LINUX_NVIDIA_CDI.gpus[0], others_mb=6400)
     signals = replace(LINUX_NVIDIA_CDI, gpus=(busy,))
     assert choose(signals, budget_for("full", signals)) == Backend("cpu", "gpu-busy")

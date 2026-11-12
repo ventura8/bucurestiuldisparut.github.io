@@ -19,11 +19,19 @@
  * - **Advanced.** The copyable command of finding 66, with its own one-time code (minted when Advanced is opened, renewed
  *   a minute before it expires).
  */
-import { WORKER_PAIR_SECONDS, WORKER_PORT, WORKER_STARTER_FILE_NAMES, type WorkerOs, type WorkerStarterAction } from '@hcm/shared';
+import {
+    WORKER_PAIR_SECONDS,
+    WORKER_PORT,
+    WORKER_STARTER_FILE_NAMES,
+    type WorkerOs,
+    type WorkerProfileChoice,
+    type WorkerStarterAction,
+} from '@hcm/shared';
 
 import type { ContentServices } from '../content/services.js';
 import { Store } from '../state/store.js';
 import { LOCAL_KEY } from './local-key.js';
+import { UNKNOWN_MACHINE, machineOf, postProfile, type MachineView } from './machine.js';
 
 export { LOCAL_KEY } from './local-key.js';
 
@@ -54,6 +62,8 @@ export interface LocalState {
     readonly starter: boolean | null;
     /** The starter file and the removal file for `os`. */
     readonly files: Readonly<Record<WorkerStarterAction, StarterLink>>;
+    /** M26: what the worker says of this computer (`machine.ts`). */
+    readonly machine: MachineView;
 }
 
 export interface LocalIntents {
@@ -66,6 +76,8 @@ export interface LocalIntents {
     stop(): Promise<void>;
     /** A one-time code for the Advanced command, renewed while the panel is shown. */
     command(): Promise<void>;
+    /** M26: the owner's profile for this computer, posted to its worker. */
+    profile(choice: WorkerProfileChoice): Promise<void>;
 }
 
 /** What the worker's `GET /state` answers that matters here. */
@@ -75,6 +87,7 @@ interface LocalAnswer {
     readonly pairable: boolean;
     readonly city: string;
     readonly project: string;
+    readonly machine: MachineView;
 }
 
 type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
@@ -105,7 +118,7 @@ export function starterLinks(functionsBase: string, city: string, os: WorkerOs):
 function answerOf(value: unknown): LocalAnswer | null {
     const answer = value as Partial<LocalAnswer> | null;
     const fields = [answer?.workerId, answer?.city, answer?.project];
-    return fields.every((field) => typeof field === 'string') ? (answer as LocalAnswer) : null;
+    return fields.every((field) => typeof field === 'string') ? { ...(answer as LocalAnswer), machine: machineOf(value) } : null;
 }
 
 /** What the class is made with besides the area's services. */
@@ -137,7 +150,8 @@ export class LocalComputer {
         const os = osOf(options.userAgent);
         // After a reload nothing says the file was just saved: it looks, and the first answer says the rest.
         const phase = this.#remembered() ? 'looking' : 'none';
-        this.#cell = new Store<LocalState>({ os, phase, code: null, starter: null, files: this.#files(os) }, services.log);
+        const initial: LocalState = { os, phase, code: null, starter: null, files: this.#files(os), machine: UNKNOWN_MACHINE };
+        this.#cell = new Store<LocalState>(initial, services.log);
         this.intents = {
             setOs: (next) => {
                 this.#cell.update({ os: next, files: this.#files(next) });
@@ -150,6 +164,7 @@ export class LocalComputer {
             },
             stop: () => this.#stop(),
             command: () => this.#mint(),
+            profile: (choice) => this.#profile(choice),
         };
     }
 
@@ -270,7 +285,7 @@ export class LocalComputer {
         }
         this.#workerId = answer.workerId;
         if (answer.signedIn) {
-            this.#cell.update({ phase: 'connected' });
+            this.#cell.update({ phase: 'connected', machine: answer.machine });
             return;
         }
         if (!answer.pairable) {
@@ -308,6 +323,18 @@ export class LocalComputer {
             });
         } catch (error) {
             this.#services.log.warn('pairing failed', { error: String(error) });
+        }
+    }
+
+    /** M26: the owner's profile posted to this computer's worker; its answer is the card's at once, a refusal is said on the card. */
+    async #profile(choice: WorkerProfileChoice): Promise<void> {
+        const answered = await postProfile(this.#options.fetch, LOCAL_WORKER, choice);
+        const machine = this.#cell.state.machine;
+        if (answered !== null) {
+            this.#cell.update({ machine: answered });
+        } else if (machine.kind === 'known') {
+            this.#services.log.warn('the worker did not take the profile', { choice });
+            this.#cell.update({ machine: { ...machine, failed: true } });
         }
     }
 

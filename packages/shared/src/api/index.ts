@@ -310,6 +310,18 @@ export {
     workerRevokeResponseSchema,
 } from './worker.js';
 export type { WorkerOs, WorkerStarterAction } from './worker.js';
+// M26: what the worker says of its computer (`machine` on its `/state`), and the owner's profile.
+export {
+    WORKER_ACCELERATOR_VIAS,
+    WORKER_MATCHERS,
+    WORKER_POWER_SOURCES,
+    WORKER_PROFILES,
+    WORKER_PROFILE_CHOICES,
+    WORKER_PROFILE_WHYS,
+    workerMachineSchema,
+    workerProfileRequestSchema,
+} from './worker-machine.js';
+export type { WorkerMachine, WorkerProfileChoice, WorkerProfileRequest } from './worker-machine.js';
 export {
     ADMIN_CALLABLES,
     BACKGROUND_FUNCTIONS,

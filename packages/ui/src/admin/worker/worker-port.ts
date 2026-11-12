@@ -4,7 +4,7 @@
  * time). The elements get their feed from the Jobs area's store (`JobsIntentsPort.worker`), which the page they sit on
  * loads through the app (`WorkerHostPort`: the Jobs page, the pipeline card, a version's page).
  */
-import type { JobStatus, JobWaitReason, RunChoice, RunPlace, WorkerAi } from '@hcm/shared';
+import type { JobStatus, JobWaitReason, RunChoice, RunPlace, WorkerAi, WorkerMachine, WorkerProfileChoice } from '@hcm/shared';
 
 import type { LoadStatusPort, StoreFailurePort } from '../area-port.js';
 import type { AdminNoticeInputPort } from '../notice-port.js';
@@ -63,6 +63,12 @@ export interface StarterLinkPort {
     readonly name: string;
 }
 
+/** M26's "This computer" (`packages/admin/src/worker/machine.ts`): nothing heard yet, a worker older than the governor, or its word. */
+export type MachineViewPort =
+    | { readonly kind: 'unknown' }
+    | { readonly kind: 'old' }
+    | { readonly kind: 'known'; readonly machine: WorkerMachine; readonly failed: boolean };
+
 /** "Use this computer" as `packages/admin/src/worker/local.ts` keeps it (finding 72 of 2026-11-02). */
 export interface LocalViewPort {
     readonly os: WorkerOsPort;
@@ -73,6 +79,8 @@ export interface LocalViewPort {
     readonly starter: boolean | null;
     /** The starter file and the removal file for `os`. */
     readonly files: { readonly install: StarterLinkPort; readonly uninstall: StarterLinkPort };
+    /** M26: what the worker says of this computer. */
+    readonly machine: MachineViewPort;
 }
 
 /** This computer's part of the panel: the starter file, the auto-pair, Stop using this computer, the Advanced command. */
@@ -85,6 +93,7 @@ export interface LocalPort {
         find(): void;
         stop(): Promise<void>;
         command(): Promise<void>;
+        profile(choice: WorkerProfileChoice): Promise<void>;
     };
     start(): void;
     stop(): void;

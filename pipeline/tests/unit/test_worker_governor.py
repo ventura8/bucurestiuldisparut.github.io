@@ -55,7 +55,7 @@ def worker(api: FakeWorkerApi, tmp_path: Path) -> Iterator[Worker]:
 
 
 def test_happy_path_the_admin_chooses_the_profile_of_this_computer(server: tuple[LocalServer, App]) -> None:
-    """Scenarios: S-A90-HAPPY"""
+    """Scenarios: S-A132-HAPPY"""
     local, app = server
     preflight = from_admin(local, "OPTIONS", "/profile")
     chosen = from_admin(local, "POST", "/profile", json.dumps({"profile": "quiet", "batteryAllowed": True}).encode())
@@ -67,7 +67,7 @@ def test_happy_path_the_admin_chooses_the_profile_of_this_computer(server: tuple
 
 
 def test_bad_path_a_stranger_or_a_bad_profile_changes_nothing(server: tuple[LocalServer, App]) -> None:
-    """Scenarios: S-A90-BAD-OLD-WORKER"""
+    """Scenarios: S-A132-BAD-OLD-WORKER"""
     local, app = server
     stranger = {"origin": "https://attacker.example"}
     answers = {
@@ -146,6 +146,7 @@ def test_happy_path_the_matcher_request_carries_its_budget(tmp_path: Path) -> No
 
 
 def test_bad_path_a_paused_computer_holds_the_step_and_moves_its_time_limit() -> None:
+    """Scenarios: S-A132-BAD-BATTERY"""
     gate = Gate(iter([0.0, 30.0, 30.0, 30.0]).__next__)
     flags = RunFlags(hold=gate.hold)
     flags.deadline = StepDeadline("warp", 100.0, 100.0, lambda: 110.0)

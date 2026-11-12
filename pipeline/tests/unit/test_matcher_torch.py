@@ -311,7 +311,10 @@ def test_happy_path_the_weights_pins_are_read_from_pins_json(tmp_path: Path, mon
 
 
 def test_happy_path_the_governors_budget_caps_the_card_and_its_keypoints(world: World) -> None:
-    """Scenarios: S-P07-HAPPY-GPU (docs/research/M26-governor.md §4)"""
+    """The governor's budget (docs/research/M26-governor.md §4).
+
+    Scenarios: S-P07-HAPPY-GPU, S-A132-HAPPY
+    """
     path = request_in(world.box, MatcherBudget(0, 1024, 0.4))
 
     assert world.child.main(["run", str(path), "gpu", ""], {"HCM_AI_ROOT": str(world.root)}) == 0
@@ -320,7 +323,10 @@ def test_happy_path_the_governors_budget_caps_the_card_and_its_keypoints(world: 
 
 
 def test_bad_path_a_card_others_hold_sends_the_request_to_the_processor_and_says_so(world: World) -> None:
-    """Scenarios: S-P07-HAPPY-CPU-FALLBACK (the governor's yield, docs/research/M26-governor.md §5)"""
+    """The governor's yield (docs/research/M26-governor.md §5).
+
+    Scenarios: S-P07-HAPPY-CPU-FALLBACK, S-A132-BAD-NO-GPU
+    """
     path = request_in(world.box, MatcherBudget(3, 1024, 0.0, yield_gpu=True))
 
     assert world.child.main(["run", str(path), "gpu", ""], {"HCM_AI_ROOT": str(world.root)}) == 0

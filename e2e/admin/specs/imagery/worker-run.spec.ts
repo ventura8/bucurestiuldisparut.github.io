@@ -78,6 +78,12 @@ async function stateOnce(request: APIRequestContext, origin: string, field: stri
     return state;
 }
 
+/** M26: the profile the owner chose, as the worker's `/state` says it. */
+function chosenOf(state: Record<string, unknown>): unknown {
+    const machine = state['machine'] as { readonly profile?: { readonly chosen?: unknown } } | null | undefined;
+    return machine?.profile?.chosen;
+}
+
 /** The files under `folder` (relative to it), or none when it does not exist. */
 function filesUnder(folder: string): string[] {
     return existsSync(folder) ? readdirSync(folder, { recursive: true, encoding: 'utf8' }) : [];
@@ -188,6 +194,16 @@ test(
             expect(signedIn).toMatchObject({ city: imagery.city, lastError: null, outdated: false, pairable: false });
             await expect(shown.locator('hcm-worker-local pre')).not.toContainText('--pair');
             await expectStateSound(page, adminVisit('worker.local-connected', lang));
+            // M26 (S-A132-HAPPY): This computer's card, and the owner's Quiet kept by the worker on this computer.
+            const card = shown.locator('hcm-worker-machine');
+            await card
+                .getByRole('radio', { name: local(lang, 'adminWorkerLocal.machine.choice.quiet') })
+                .click({ timeout: FUNCTIONS_TIMEOUT_MS });
+            await expect
+                .poll(async () => chosenOf(await stateOnce(request, origin, 'signedIn', true)), { timeout: FUNCTIONS_TIMEOUT_MS })
+                .toBe('quiet');
+            await expect(card.locator('[data-machine]')).toContainText(local(lang, 'adminWorkerLocal.machine.why.owner'));
+            await expectStateSound(page, adminVisit('worker.local-machine', lang));
             // The session is kept in the work folder (the named volume), readable by the worker's user only.
             expect(filesUnder(work).filter((name) => name.startsWith('.hcm-session-'))).toEqual([`.hcm-session-${imagery.city}.json`]);
             await page.goto(versionUrl);

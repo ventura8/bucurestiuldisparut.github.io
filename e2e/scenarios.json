@@ -990,6 +990,13 @@
             "source": "the owner, 2026-11-12: Undo does not keep 50 commands; DECISIONS §143/lesson 547"
         },
         {
+            "id": "A132",
+            "area": "admin",
+            "name": "This computer: the worker says how much of the computer it uses, and the owner chooses Automatic, Quiet or Full",
+            "milestone": "M26",
+            "source": "docs/research/M26-governor.md (the owner, 2026-11-12: runs on modest hardware; nobody upgrades for us)"
+        },
+        {
             "id": "P30",
             "area": "pipeline",
             "name": "A Landsat scene is composed on the tile grid, pan-sharpened for ETM+, and checked against Sentinel-2 instead of georeferenced",
@@ -17353,6 +17360,50 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Lesson 547. Tests: packages/admin/test/georef/georef.test.ts (happyPath_undoTakesBackTheLastEditsOneByOneAndNothingMoreAfterDiscard)."
+        },
+        {
+            "id": "S-A132-HAPPY",
+            "behaviour": "A132",
+            "area": "admin",
+            "path": "happy",
+            "title": "The connected computer's card says its size and profile, and the owner's Quiet is kept by the worker",
+            "asserts": "the worker's /state carries machine (cores, memory, power, cards, the matcher's place, the profile and why, the budget); the card under This computer is connected shows the cores and memory, Automatic / Quiet / Full, the profile in force with its threads and GB and why, and where the local AI runs; choosing Quiet posts POST /profile from the Hosting origin and the worker's state says chosen quiet, why owner; ro and en",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M26. Tests: e2e/admin/specs/imagery/worker-run.spec.ts (tour state worker.local-machine), packages/ui/test/admin/worker/machine.test.ts, packages/admin/test/worker/machine.test.ts, pipeline/tests/unit/test_worker_governor.py, test_governor_loop.py."
+        },
+        {
+            "id": "S-A132-BAD-OLD-WORKER",
+            "behaviour": "A132",
+            "area": "admin",
+            "path": "bad",
+            "title": "A worker older than the governor asks to be updated; a stranger or a bad profile changes nothing",
+            "asserts": "a /state with no machine -> the card says update the worker and offers no choice; a machine this admin cannot read counts as old; POST /profile from another origin, as a form or too large -> 403, an unknown profile -> 400, and the choice stays; a refused choice is said on the card",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M26. Tests: packages/ui/test/admin/worker/machine.test.ts, packages/admin/test/worker/machine.test.ts, pipeline/tests/unit/test_worker_governor.py."
+        },
+        {
+            "id": "S-A132-BAD-NO-GPU",
+            "behaviour": "A132",
+            "area": "admin",
+            "path": "bad",
+            "title": "No graphics card reachable, or one other programs hold: the local AI runs on the processor and the card says why",
+            "asserts": "no card (or none this release has a sidecar image for, or one Docker cannot pass in: Windows on ARM, macOS) -> matcher cpu with why no-gpu / no-image / no-passthrough and the card's no-graphics-card line; a card whose free memory after other programs' is under 2 GB -> why gpu-busy, each matcher request runs on the processor with fallback gpu-busy",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M26. Tests: pipeline/tests/unit/test_governor_budget.py, test_matcher_torch.py, packages/ui/test/admin/worker/machine.test.ts."
+        },
+        {
+            "id": "S-A132-BAD-BATTERY",
+            "behaviour": "A132",
+            "area": "admin",
+            "path": "bad",
+            "title": "On a low battery the worker pauses; a hot computer steps down; the user at the keyboard gets the computer back",
+            "asserts": "on battery -> quiet; under 30 % -> paused (unless allowed), the running step waits at its next checkpoint with its time limit moved, the local AI off; at 90 C on the processor or 83 C on the card one level down, back 10 C below; input on the host or other programs over 40 % -> quiet within one tick, full again only after 120 s calm; the hysteresis never flaps (property test)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M26. Tests: pipeline/tests/unit/test_governor_policy.py, test_governor_loop.py, test_worker_governor.py, packages/ui/test/admin/worker/machine.test.ts."
         },
         {
             "id": "S-P20-HAPPY-PDF-ATLAS",

@@ -43,6 +43,7 @@ def test_the_owners_choice_wins_over_activity() -> None:
 
 
 def test_on_battery_it_is_quiet_and_pauses_low_unless_allowed() -> None:
+    """Scenarios: S-A132-BAD-BATTERY"""
     battery = replace(LINUX_NVIDIA_CDI, power=Power("battery", 60))
     assert effective(decide(battery, AUTO, PolicyState(), 0.0)) == ("quiet", "battery")
     low = replace(battery, power=Power("battery", 20))
