@@ -102,3 +102,99 @@ test(
         expect(await mapZoom(page)).toBe(before);
     },
 );
+
+/** How far the scan pane is turned, in degrees clockwise. */
+async function scanAngle(page: Parameters<typeof mapFacts>[0]): Promise<number> {
+    const radians = await page
+        .locator('hcm-scan-viewer')
+        .evaluate((viewer) => (viewer as unknown as { view: { angle?: number } }).view.angle ?? 0);
+    return (radians * 180) / Math.PI;
+}
+
+/** The difference of two bearings in degrees, within -180 … 180. */
+function turnBetween(from: number, to: number): number {
+    return ((((to - from + 180) % 360) + 360) % 360) - 180;
+}
+
+test(
+    'Each pane turns on its own and, with a fit, the other turns with it',
+    { tag: '@S-A16-HAPPY-GEOREF-ROTATE' },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        const imagery = await readyImagery(
+            { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
+            adminWorld.accounts.owner.uid,
+        );
+        await imagery.script({ attempts: [{ outcome: 'no-match' }] });
+        await openGeoreferencer(page, lang, { linked: true });
+        const together = page.getByRole('button', { name: georefText(lang, 'adminContent.georef.turn.together') });
+        await expect(together).toHaveAttribute('aria-pressed', 'true');
+
+        // A first move links the panes; then r turns the scan 15 degrees clockwise and the map turns with it: its bearing falls by
+        // about as much (the stand-in's fit stretches one axis more than the other, so not by exactly 15).
+        await scanPane(page, lang).focus();
+        await page.keyboard.press('+');
+        await mapIdle(page);
+        const bearing = (await mapFacts(page)).bearing;
+        await page.keyboard.press('r');
+        await expect.poll(() => scanAngle(page)).toBeCloseTo(15, 3);
+        await expect.poll(async () => Math.abs(turnBetween(bearing, (await mapFacts(page)).bearing) + 15)).toBeLessThan(8);
+        await expectStateSound(page, adminVisit('georef.rotated', lang));
+
+        // The map's own Turn left (the ground goes anticlockwise, the bearing rises): the scan turns back with it.
+        await showPane(page, lang, 'map');
+        await page
+            .getByRole('group', { name: georefText(lang, 'adminContent.georef.turn.map') })
+            .getByRole('button', { name: georefText(lang, 'adminContent.georef.turn.left') })
+            .click();
+        await showPane(page, lang, 'scan');
+        await expect.poll(async () => Math.abs(await scanAngle(page))).toBeLessThan(8);
+
+        // Upright by its button: n and the button do the same.
+        await page
+            .getByRole('group', { name: georefText(lang, 'adminContent.georef.turn.scan') })
+            .getByRole('button', { name: georefText(lang, 'adminContent.georef.turn.right') })
+            .click();
+        await expect.poll(async () => Math.abs((await scanAngle(page)) - 15)).toBeLessThan(8);
+        await page
+            .getByRole('group', { name: georefText(lang, 'adminContent.georef.turn.scan') })
+            .getByRole('button', { name: georefText(lang, 'adminContent.georef.turn.scanUp') })
+            .click();
+        await expect.poll(() => scanAngle(page)).toBeCloseTo(0, 3);
+    },
+);
+
+test(
+    'Turned apart, or without a fit, a pane turns alone',
+    { tag: '@S-A16-BAD-GEOREF-ROTATE-APART' },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        const imagery = await readyImagery(
+            { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
+            adminWorld.accounts.owner.uid,
+        );
+        await imagery.script({ attempts: [{ outcome: 'no-match' }] });
+        await openGeoreferencer(page, lang, { linked: true });
+        const together = page.getByRole('button', { name: georefText(lang, 'adminContent.georef.turn.together') });
+        await scanPane(page, lang).focus();
+        await page.keyboard.press('+');
+        await mapIdle(page);
+
+        // Turned apart: the scan turns, the map keeps its bearing.
+        await together.click();
+        await expect(together).toHaveAttribute('aria-pressed', 'false');
+        const bearing = (await mapFacts(page)).bearing;
+        await scanPane(page, lang).focus();
+        await page.keyboard.press('r');
+        await expect.poll(() => scanAngle(page)).toBeCloseTo(15, 3);
+        await mapIdle(page);
+        expect(turnBetween(bearing, (await mapFacts(page)).bearing)).toBeCloseTo(0, 3);
+
+        // No fit: the toggle is off and cannot be pressed; the scan still turns by itself.
+        await removePair(page, lang, 4);
+        await removePair(page, lang, 3);
+        await expect(pairRows(page, lang)).toHaveCount(2);
+        await expect(together).toBeDisabled();
+        await scanPane(page, lang).focus();
+        await page.keyboard.press('n');
+        await expect.poll(() => scanAngle(page)).toBeCloseTo(0, 3);
+    },
+);

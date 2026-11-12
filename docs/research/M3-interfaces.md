@@ -216,7 +216,7 @@ Everything lives in the private bucket; tiles live at Mapbox; nothing of M3 is w
 | USGS delivery | `usgs-raw/{dataset}/{entityId}/{file}` (shared by every city) | 30 days (USGS is the archive; paid scans move to ARCHIVE in M4) |
 | browse copy | `usgs-browse/{dataset}/{entityId}.jpg` | kept |
 | a job's scratch | `work/{city}/{job}/{name}` (one or two segments: `segments/a.tif`, `frame.tif`, `fetch.checkpoint.json`, `warped.tif`) | 14 days; deleted on success and on cancel |
-| a version's files | `rasters/{city}/{layer}/{version}/{scan.tif, scan-preview.jpg, reference-osm.png, reference-s2.jpg, cog.tif, preview.png, studio.tif, align.tif}` (`align.tif`: a proved frame at 5 ground metres, M15 *Joint solve*) | kept while the version is current or pending; `imagery.tick` deletes those of versions rejected, cancelled, failed or superseded more than 30 days ago |
+| a version's files | `rasters/{city}/{layer}/{version}/{scan.tif, scan-preview.jpg, scan-tiles.bin, reference-osm.png, reference-s2.jpg, cog.tif, preview.png, studio.tif, align.tif}` (`align.tif`: a proved frame at 5 ground metres, M15 *Joint solve*) | kept while the version is current or pending; `imagery.tick` deletes those of versions rejected, cancelled, failed or superseded more than 30 days ago |
 | reference cache | `reference/{city}/s2/{key}.tif`, `reference/{city}/osm/{key}.geojson`, `reference/{city}/dem/{key}.tif` (M15 *Terrain*: the window's Copernicus DEM GLO-30, 30 m, averaged over 900 m) | 90 days |
 
 The pipeline spells the same paths (`hcm_pipeline.paths`), held equal by `pipeline/tests/contracts/paths.json` (done). The
@@ -1252,7 +1252,7 @@ owner (or the integrator) applies it. Ids are `CR-M3-<n>`; status `open`, `accep
 | CR-M3-4 | contracts | fn-imagery (from fn-setup's `adapters/mapbox.ts`) | `MapboxTilesetsApi` moves to `adapters/mapbox-tilesets.ts` implementing `MapboxTilesets` (upload, upsert, publish, job, TileJSON, deletes); this closes CR-M2-15 (a) | the publisher's port | done (fn-imagery, 2026-10-23: `listTilesets` and its tests moved out of `adapters/mapbox.ts`) |
 | CR-M3-5 | contracts | admin-imagery (the M2c Jobs page) | Step names for `extract`, `stitch`, `inspect`, `reference`, `register`, `guard`, `upload`, `tiles`, `finalize`; the wait reasons; Retry (`imagery.retry`) on a failed raster job; Open georeferencer on `awaiting_gcps` | §10.6 | done (admin-imagery, 2026-10-23: `packages/admin/src/jobs/raster.ts` (wait reason, `retryAt`, `versionId`, Retry only for a failed pipeline or publish job under `JOB_MAX_ATTEMPTS`), `jobs.ts` `retrying` and `retryJob`; `packages/ui/src/admin/jobs/raster-parts.ts` (the wait in words, **Run it again**, the georeferencer link on `awaiting_gcps`), the nine step names in `admin-ops`; tests `packages/admin/test/jobs/raster.test.ts`, `packages/ui/test/admin/ops/jobs-raster.test.ts`; the ops fixtures gained the four fields) |
 | CR-M3-6 | contracts | admin-imagery (the provisioner, `packages/admin/src/provision/**`) | `bucket-lifecycle` from `PRIVATE_BUCKET_LIFECYCLE`; `run.googleapis.com` and `artifactregistry.googleapis.com` in `apis`; §9.4's roles in `iam` (no Mapbox secret for `job-raster@`) | §2.7, §9.4 | done (admin-imagery, 2026-10-23: `bucket-lifecycle` is `PRIVATE_BUCKET_LIFECYCLE`'s five prefixes; `run` and `artifactregistry` were already in `REQUIRED_APIS`; `iam`: `job-raster@` reads `usgs-username` and `usgs-app-token` only, `fn-events@` gains `roles/run.jobsExecutorWithOverrides` and `roles/run.viewer` **on the project**, not on the two job definitions (the provisioner has no Cloud Run resource policy kind and the definitions are deployed after it runs; narrowing them is a follow-up); tests in `packages/admin/test/provision/`) |
-| CR-M3-7 | contracts | admin-imagery (the M2c layers area) | The layer editor's Replace image, Re-georeference, Crop and the pending version's chip through the `layer-geometry` chunk; the empty state's text (imports arrive from Imagery) | §10.5 | done (admin-imagery, 2026-10-23: `packages/ui/src/admin/layers/geometry-group.ts` (the pending version's chip, **Replace the image** = `#/imagery/replace/<layerId>`, the Imagery upload in replace mode, so no upload code joins the layers or `layer-geometry` chunks; **Georeference again** = `#/georef/<currentVersion>`, a linked layer says `apiError.imagery.noScan`; **Crop**); the `layer-geometry` chunk is `packages/admin/src/pages/layer-geometry.ts`: `<hcm-layer-crop>` and the crop tool (`packages/admin/src/layers/geometry/`), loaded by `ContentServices.layerCrop` (`../layers/crop-chunk.ts`) through `CropSlot` (`../layers/crop-slot.ts`); the polygon is drawn with the drawing tools on the editor's map (`AreaMap.drawing()` added to `layers/map-session.ts`), or corner by corner at the map's centre from the keyboard; `LayersState.crop`, five intents; the empty state's and the geometry note's texts changed in both languages) |
+| CR-M3-7 | contracts | admin-imagery (the M2c layers area) | The layer editor's Replace image, Re-georeference, Crop and the pending version's chip through the `layer-geometry` chunk; the empty state's text (imports arrive from Imagery) | §10.5 | done (admin-imagery, 2026-10-23: `packages/ui/src/admin/layers/geometry-group.ts` (the pending version's chip, **Replace the image** = `#/imagery/replace/<layerId>`, the Imagery upload in replace mode, so no upload code joins the layers or `layer-geometry` chunks; **Edit points** = `#/georef/<currentVersion>`, a linked layer says `apiError.imagery.noScan`; **Crop**); the `layer-geometry` chunk is `packages/admin/src/pages/layer-geometry.ts`: `<hcm-layer-crop>` and the crop tool (`packages/admin/src/layers/geometry/`), loaded by `ContentServices.layerCrop` (`../layers/crop-chunk.ts`) through `CropSlot` (`../layers/crop-slot.ts`); the polygon is drawn with the drawing tools on the editor's map (`AreaMap.drawing()` added to `layers/map-session.ts`), or corner by corner at the map's centre from the keyboard; `LayersState.crop`, five intents; the empty state's and the geometry note's texts changed in both languages) |
 | CR-M3-8 | contracts | admin-imagery (the M2c settings area; the legacy Bucharest import) | The `imagery` section of Settings; the Bucharest import writes `imagery.targetYears` [1966, 1976, 1977, 1978, 1980] | §1, §10.7 | done (admin-imagery, 2026-10-23: the Settings section; the Bucharest import's `imagery.targetYears` through CR-M3-28, M8, 2026-11-06) |
 | CR-M3-9 | contracts | admin-imagery (the shell's routes, `AREA_CHUNKS`, `CONTENT_AREAS`, `ContentPort`, `UI_ICONS` and the font subset, `links.json`, `ADMIN_CHUNK_BUDGETS`, `CONTENT_INPUT_BUDGETS`) | §10.1, §10.8, §1's budgets; `mapbox.studioTilesets` in `links.json` after the weekly probe | the area and its chunks | done except `links.json` (admin-imagery, 2026-10-23: routes `imagery` and `georef` (`inNavigation: false`), `AREA_CHUNKS`, `CONTENT_AREAS`, `ContentPort`, ten icons and the font subset, `CONTENT_INPUT_BUDGETS` section `imagery` (six flows), `ADMIN_CHUNK_BUDGETS` `imagery` 18, `georef` 17, `layer-geometry` 3 (`DECISIONS-for-review.md` §47); `mapbox.studioTilesets` stays out of `links.json` until the weekly probe verifies it: the approval card's `MAPBOX_STUDIO_TILESETS_URL` (`packages/ui/src/admin/imagery/approval-card.ts`) moves there then) |
 | CR-M3-10 | contracts | e2e-fakes (`packages/test-support`, `e2e/mock-apis`) | §13 | the specs and the stand-in runner | done (e2e-fakes, 2026-10-24: §13.1) (integrator, 2026-10-24) |
@@ -1388,3 +1388,87 @@ first pane move once a fit exists (`link.ts`; the latest move made while it load
 helpers and full screen's cover moved into the static `georef-badges` group so `georef` stays within its 19 KB (DECISIONS-for-review.md
 §156). Rows: S-A16-HAPPY-GEOREF-LINKED, S-A16-BAD-GEOREF-LINKED-NO-FIT; tour state `georef.linked`. The e2e specs other than
 `georef-linked.spec.ts` open the georeferencer with the link off (`georeferencerReady`), as their clicks read the scan shown whole.
+
+## Addendum of 2026-11-12: the kept zoom, the ghost and the sharper scan
+
+The owner placed points on 1966 Corona frames and hit four things; each is fixed as follows.
+
+- **The kept zoom**: the scan pane fitted the whole strip again whenever its size changed, and adding a pair below it (the residual
+  table growing, a scrollbar coming) changed it. A shown pane now keeps its zoom and the same pixel at its centre across a size
+  change (`resizedView` in `packages/ui/src/admin/georef/scan-view.ts`); a pane never zoomed, or never shown, fits the whole frame
+  again. Rows: S-A16-HAPPY-GEOREF-KEEP-ZOOM, S-A16-BAD-GEOREF-KEEP-ZOOM-NEVER-SHOWN.
+- **No pane moves while a pair waits**: the linked views pause while a half pair exists (`linkedPanesOf`: `active` also needs
+  `half === null`), so a scan zoom made between the two clicks no longer moves the map under the second one (a pin had landed 1 km
+  off). Instead the state's `ghost` is the place the pairs so far expect for the other end: a dashed double ring with a dot
+  (`paintGhostBadge`), on the map's badge canvas for a pair begun on the scan, on the scan for one begun on the map. It takes no click
+  (a click there is the pair's place, as anywhere) and the hint names it (`adminContent.georef.halfOnScanGhost` /
+  `halfOnMapGhost`). Through the store's fit when there is one; with no fit and two or more enabled pairs, through the similarity
+  (shift, turn and one scale, in Web Mercator with north up) that carries the two latest enabled pairs' pixels onto their places
+  (`packages/admin/src/georef/ghost.ts`, in the lazy `georef-extras` chunk; `ghosts.ts` fetches it only when a ghost can exist).
+  Rows: S-A16-HAPPY-GEOREF-GHOST, S-A16-BAD-GEOREF-GHOST-NO-PAIRS; tour state `georef.ghost`.
+- **The sharper scan**: `publish_scan` writes `scan-tiles.bin` beside `scan-preview.jpg` when the scan is longer than the preview:
+  the scan at up to `SCAN_DETAIL_MAX_PX` = 16,384 px long and `SCAN_DETAIL_MAX_PIXELS` = 64 million pixels in all (a near-square
+  20,000 px upload gets 8,000 × 8,000, never less than about twice the preview), cut into JPEG tiles of `SCAN_TILE_PX` = 1,024 px
+  and packed in one object (a `VERSION_FILES` member, so no path, rule or allow-list changes). A browser decodes a JPEG whole
+  (16,384 px a side is about 1 GiB of RGBA), so the picture is never one JPEG. The file, little-endian
+  (`pipeline/src/hcm_pipeline/scan_tiles.py`, read by `packages/ui/src/admin/georef/scan-tiles.ts`): `HCMT`, five `uint32` (format
+  version 1, tile side, width, height, tile count), one `uint32` per tile plus one (each tile's first byte, row by row, then the
+  file's length), the tiles. The version's `scan` records `detailPath` and `detailScale`
+  (optional: a short scan and a version parked before have none). The store reads the file once (a `Blob`, `scanDetail`) when
+  the scan pane shows more than one device pixel per preview pixel (CSS pixels × `devicePixelRatio`: a HiDPI screen upscales the
+  preview from half the zoom), by the owner's zoom or the linked map's. The pane (`detailScene`) then draws the preview and, over
+  it, the tiles in view: each is decoded once (`createImageBitmap` of the tile's slice of the `Blob`), at most `SCAN_TILES_KEPT` = 32
+  stay decoded (4 MiB each, about 128 MiB; with a 4,096 px preview under 200 MiB in all), the least recently shown out of view are
+  closed, and a view that would need more than 32 tiles keeps the preview until the owner zooms further. A tile that does not
+  decode is not asked for again; a file that is not a tiles file, a missing file, or a late answer after the page closed, leaves
+  the preview, with no error. A USGS frame parked before gets its tiles when the `relocate` tick searches it again after the
+  pipeline update (or Locate again). The
+  warped map preview is drawn `WARP_MAX_SIDE` = 4,096 px across (3,072 before; `WARP_SMALL_SIDE` = 2,048 px on a window under 840 CSS px), its mesh code in a lazy chunk of its own
+  (`georef-warp.ts`, fetched when a version opens). Rows: S-A16-HAPPY-GEOREF-FULL-RES, S-A16-BAD-GEOREF-FULL-RES-NONE.
+
+### What each pane shows, turning, removing a pair, editing a published version's points (2026-11-12, beta.1)
+
+The owner's requests for beta.1 (DECISIONS-for-review.md §173):
+
+- **The map shows**: a labelled native list above the map pane (`mapShows` in `georef-panes.ts`; a `<select>`, so the keyboard and a
+  screen reader have it as it is) offers the version's references (OpenStreetMap: the base map itself; Sentinel-2: the reference
+  picture) and the city's **published layers**, by name and year, oldest first (`base-layers.ts`: a `LiveList` of
+  `cities/{city}/layers`, `published` only). A layer chosen is drawn opaque through the map's own `preview.show({ layers })`
+  (`GeorefMap.showBase`): the page's **one map**, no second instance, and never Mapbox Satellite. It goes on before the pictures when
+  the map is made and the warped preview is drawn again above it when it is chosen later. The reference the pipeline's automatic
+  steps use does not change (OSM and Sentinel-2). `GeorefState.base` (a layer id, null: the reference alone) is kept over `close()`
+  like `linked`, so the next version opens on the same layer while the admin is open; a layer that stops being published goes back
+  to the reference. The scan pane keeps the scan; its warped preview's switch and opacity stay where they were (below the panes).
+  Rows: S-A16-HAPPY-GEOREF-MAP-SHOWS, S-A16-BAD-GEOREF-MAP-SHOWS-GONE; tour state `georef.map-shows`.
+- **Removing a pair** (`removing.ts`): each row's Delete, **Delete pair N** beside the panes while a pair is chosen
+  (`data-action="delete-selected"`), Delete or Backspace on the scan pane and now on the map pane (`hcm-map-delete` from
+  `<hcm-admin-map>`), and the context menu. The pair goes in one Undo step and the snackbar says **Pair N was removed** with **Undo**
+  for ten seconds, which puts that very pair back at its place in the list (`withRestored`), whatever was edited since.
+  Rows: S-A16-HAPPY-GEOREF-REMOVE-UNDO, S-A16-BAD-GEOREF-REMOVE-NOTHING; tour state `georef.pair-removed`.
+- **Edit points after approval**: nothing was missing on the server. `imagery.saveGcps` on a `published` version starts a `regeoref`
+  job and a new version of the same layer (`regeoref.ts`); the layer keeps `currentVersion` and its tiles and shows `pendingVersion`
+  until the new one is approved and published (S-A16-HAPPY-REGEOREF-LAYER). The entry points are named **Edit points** now (the
+  layer editor's link, `adminContent.imagery.layer.regeoref`; a published version's page, `adminContent.imagery.editPoints`), and
+  the georeferencer on a published version says what saving does (`data-state="published-note"`). A version that is `approved`,
+  `publishing` or ended takes no points. Rows: S-A16-HAPPY-EDIT-POINTS-PUBLISHED, S-A16-BAD-EDIT-POINTS-ENDED; tour state
+  `georef.edit-published`.
+- **Turning the panes**: each pane turns on its own. The scan pane's view has an angle (`ScanView.angle`, radians clockwise about
+  the scan's origin; `scan-view.ts`: `scanToPane`, `paneToScan`, `centredView` and `rotateView` all carry it, so pairs, the ghost,
+  clicks, hit tests and the sharper tiles in view, the bounding box of the turned pane's corners, follow the turn). It turns by the
+  buttons under it (**Turn left**, **Turn right**, **Upright**: a `role="group"` named **Turn the scan**, 15 degrees a press), by
+  `r`, `R` and `n` on the pane, and by Ctrl with a drag about the pane's centre (`draggedView`); `hcm-view` says the angle. The map
+  turns by its own group (**Turn left**, **Turn right**, **North up**: `intents.rotateMap(degrees | null)` →
+  `GeorefMap.rotateBy`, a `flyTo` of the bearing) and by Mapbox's own gestures. **Turn the panes together**
+  (`GeorefState.rotateLinked`, on by default, off and disabled without a fit, kept over `close()`): the linked views' ports
+  (`link.ts`) give the map the bearing that suits the scan's angle and the scan the angle that suits the map's bearing
+  (`rotation.ts`: `fitAngle` is the direction of the scan's x axis on a north-up map under the fit; the scan's angle is
+  `fitAngle − bearing`), so the scan is shown as the map shows the same ground; `MapCamera.bearing` joins `sameCamera`, so a turn
+  of the map alone is a move. Turned apart, the places still follow and each pane keeps its own turn. No fit, a pending pair or a
+  dragged point: nothing links, as before.
+  Rows: S-A16-HAPPY-GEOREF-ROTATE, S-A16-BAD-GEOREF-ROTATE-APART; tour state `georef.rotated`.
+- **The chunk**: the panes' template, the scan pane's gestures and view arithmetic, pair removal, the map pane's layers and the
+  turning live in the eager group `georef-panes` (`GEOREF_PANE_MODULES` of `packages/admin/vite.config.ts`, its own budget row),
+  beside `georef` (19 KB, not raised) and `georef-badges`; the sharper scan's reader is the lazy chunk `scan-tiles`.
+
+Budgets: `georef` 18.8 KB of 19 (19.5 KB before the warp moved out), `georef-warp` 1.0 of 2 (new), `georef-extras` 1.9 of 2,
+`georef-badges` 2.9 of 3 (DECISIONS-for-review.md, *The georeferencer's kept zoom, ghost and sharper scan*).

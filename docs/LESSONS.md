@@ -3489,3 +3489,45 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `compareRelease` ordered by SemVer first; every build before the bump had called itself `1.0.0` though no `v1.0.0` tag existed, so it outranked every pre-release of 1.0.0.
     - Fix and pin: a release names its channel (a tagged build the version alone, any other `+<commit>`: `dev`); within one core a dev build is placed by its build time, two tagged releases by SemVer; a confirmed override installs over a newer release (`happyPath_aDevBuildIsOlderThanALaterPrereleaseOfItsCore`, `badPath_aTaggedReleaseIsNewerThanAnOlderPrerelease_theDowngradeGuard`, S-A55-HAPPY-INSTALL-OVER).
     - **A version that was never released must not outrank one that was: say in the build whether it is a tagged release, and give every guard an owner's way past it.**
+
+595. **The scan pane threw the owner's zoom away whenever its box changed size.**
+    - Seen: 2026-11-12, the owner placing points on 1966 Corona frames: after a pair was added, the scan sometimes showed the whole strip again.
+    - Cause: `<hcm-scan-viewer>` set its view back to "fit" whenever its measured size changed (`#currentView` → `#measure`), and adding a pair changes the page below the panes (the residual table grows, a scrollbar comes, a status line wraps), which narrows the pane by a few pixels.
+    - Fix and pin: `resizedView` keeps the zoom and the pixel at the centre over a size change and fits again only a pane never zoomed or never shown (`packages/ui/test/admin/georef/scan-viewer-keep.test.ts`, `e2e/admin/specs/imagery/georef-ghost.spec.ts`: S-A16-HAPPY-GEOREF-KEEP-ZOOM).
+    - **A view the user chose survives a layout change: re-centre it, never reset it, and test it by resizing the box.**
+
+596. **The linked map moved between the two clicks of a pair, so a fast second click landed 1 km off.**
+    - Seen: 2026-11-12, the same session: with a fit, a scan zoom (or the wheel's trailing events) after the scan click moved the map to the fit's place of the scan centre while the owner aimed at the map.
+    - Cause: the linked views (§156) applied every scan move to the map, a half pair pending or not.
+    - Fix and pin: the link pauses while a half pair exists; the expected place is shown as a dashed ring instead (`ghost.ts`, `ghosts.ts`; S-A16-HAPPY-GEOREF-GHOST).
+    - **Never move the target a user is about to click: show where you expect it instead.**
+
+597. **The sharper scan was capped by its long side only, and switched on in CSS pixels.**
+    - Seen: 2026-11-12, review of the georeferencer's sharper scan (§170): a near-square upload (20,000 px a side) would have written a 16,384 × 16,384 `scan-detail.jpg`, about 1 GiB of RGBA once the browser decodes it; and on a screen of two device pixels a CSS pixel the 4,096 px preview was already upscaled (blurry) from half the zoom that fetched the sharper one.
+    - Cause: `publish_scan` sized the detail like the preview (one long-side cap, right for a long Corona strip), and the pane compared `view.scale` with 1 in CSS pixels, ignoring `devicePixelRatio`.
+    - Fix and pin: `detail_scale` also caps the area (`SCAN_DETAIL_MAX_PIXELS` = 64 million, both sides of the contract; `pipeline/tests/unit/test_publish_scan.py`); the pane and the store compare `scale × devicePixelRatio` (`scan-draw.ts` `pictureOf`, `georef-pictures.ts` `zoomed`; `scan-viewer-keep.test.ts`, `georef-pictures.test.ts`, `georef-ghost.spec.ts`: S-A16-HAPPY-GEOREF-FULL-RES).
+    - **An image a browser decodes whole is capped by its area, not only its side; a "past native resolution" test counts device pixels.**
+
+598. **A map click right after a pair was made moved that pair to the click as well as starting the next one.**
+    - Seen: 2026-11-12, the ghost spec once it checked the ring's place (review of §170): with Add pairs on, the click on the map that began pair 6 also moved pair 5 there (its fit error jumped to kilometres); a likely part of the owner's "pin landed 1 km off".
+    - Cause: completing a pair selects it, and `GeorefMap` handed the selection to the drawing tools; the Terra Draw adapter's `select` switches the tools to `select` mode, in which a map click moves the selected point (the single-pointer way to place a pin, WCAG 2.5.7). The `static` mode that Add pairs had set was undone silently.
+    - Fix and pin: while adding, `GeorefMap` does not select in the tools (the badges show the selection) and selects again when adding ends (`packages/admin/test/georef/georef-map.test.ts`; `e2e/admin/specs/imagery/georef-ghost.spec.ts`: the pair made before keeps its place).
+    - **A port call can change a mode as a side effect: after it, assert the mode the feature relies on, and test the click after the edit, not only the edit.**
+
+599. **A cap on a picture's area still left one JPEG of a quarter gigabyte decoded.**
+    - Seen: 2026-11-12, audit of the georeferencer's sharper scan: capped at 64 million pixels it still decoded to 256 MiB of RGBA in one piece (more for a 2:1 frame), on laptops short of memory.
+    - Cause: an `<img>` decodes the whole file whatever part the canvas draws; a cap only moves the number.
+    - Fix and pin: the sharper scan is JPEG tiles in one file (`scan-tiles.bin`, `scan_tiles.py`); the pane decodes the tiles in view and keeps at most 32 (`scan-tiles.ts`; `scan-tiles.test.ts` pans a 16,384 px scan and counts; `test_publish_scan.py` reads every tile's size; DECISIONS §172).
+    - **A picture larger than the screen is shown in pieces: budget the decoded bytes, and test the count and size of the pieces asked for.**
+
+600. **Turning the map by the scan's angle minus the fit's rotation was 2 degrees off on the stand-in's frame.**
+    - Seen: 2026-11-12, `georef-linked.spec.ts` (S-A16-HAPPY-GEOREF-ROTATE): the scan turned 15 degrees, the map 12.9.
+    - Cause: an affine fit that stretches one axis more than the other turns different scan directions by different angles; the first version read the rotation of the scan's x axis only and subtracted angles.
+    - Fix and pin: `rotation.ts` carries the very direction the pane shows along its x axis through the fit (`fitAngle` with an angle) and, the other way, a step of the map's x axis back through the inverse fit (`angleFor`); `rotation.test.ts`, the e2e within a few degrees of the stand-in's oblique fit.
+    - **A rotation read from a fit is the rotation of one direction: carry the direction you show, not the scan's axis.**
+
+601. **A tour state with a snackbar failed the scroll sweep on Mapbox's logo.**
+    - Seen: 2026-11-12, `georef.pair-removed`: scrolled to 675 px, the map's clipped Mapbox logo lay within 12 px of the snackbar's Undo, which floats over the page at a large window.
+    - Cause: the sweep scrolls the page under fixed elements; a notice that stays ten seconds meets whatever scrolls beneath it.
+    - Fix and pin: the state is checked once the notice is gone (after its Undo); the notice itself is checked in the shell's own states.
+    - **Check a page's state without a transient overlay over it, or the sweep reports the overlay's meeting with scrolled content.**

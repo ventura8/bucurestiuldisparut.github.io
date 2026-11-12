@@ -320,3 +320,18 @@ describe('<hcm-vertex-list>', () => {
         expect(coordinateOf('-181', 180)).toBeNull();
     });
 });
+
+describe('<hcm-admin-map>: removing the chosen point', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_deleteAndBackspaceAskThePageToRemoveItsChosenPointAndOtherKeysAskNothing @S-A16-HAPPY-GEOREF-REMOVE-UNDO', async () => {
+        const element = await mount<HcmAdminMap>(html`<hcm-admin-map css-url="" .status=${'ready'}></hcm-admin-map>`, 600);
+        const removals = events<Record<string, never>>(element, 'hcm-map-delete');
+        for (const key of ['Delete', 'Backspace', 'Enter', 'a']) {
+            element.container?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+        }
+
+        expect(removals).toHaveLength(2);
+    });
+});

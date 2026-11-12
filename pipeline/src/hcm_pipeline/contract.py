@@ -112,6 +112,7 @@ VERSION_FILES: Final = (
     "thumb.webp",
     "align.tif",
     "stitched.jpg",
+    "scan-tiles.bin",
 )
 LEASE_SECONDS: Final = 600
 HEARTBEAT_SECONDS: Final = 60
@@ -121,6 +122,13 @@ DEFAULT_STEP_LIMIT_SECONDS: Final = 3 * 3600
 STEP_LIMIT_SECONDS: Final[Mapping[str, int]] = {"locate": 45 * 60, "place": 4 * 3600, "align": 4 * 3600, "merge": 4 * 3600}
 USGS_BACKOFF_MINUTES: Final = (30, 60, 120, 240, 480, 720)
 SCAN_PREVIEW_MAX_PX: Final = 4096
+# The georeferencer's sharper scan (`scan-tiles.bin`): its long side at most this, written when the scan is longer than its preview.
+SCAN_DETAIL_MAX_PX: Final = 16384
+# ... and at most this many pixels in all (the file's size: about 15 MB of JPEG). A detail at this area is never less than 8000 px
+# long, about twice the preview's 4096, so it is always worth fetching.
+SCAN_DETAIL_MAX_PIXELS: Final = 64_000_000
+# The sharper scan is cut into JPEG tiles of this side (`scan_tiles`): a browser decodes a JPEG whole, about 1 GiB at 16384 px a side.
+SCAN_TILE_PX: Final = 1024
 STUDIO_MAX_BYTES: Final = 300_000_000
 # At most this many GCPs per georeferencing (`MAX_GCPS`), the largest scan side (`MAX_SCAN_PIXELS`), log lines per job.
 MAX_GCPS: Final = 300
