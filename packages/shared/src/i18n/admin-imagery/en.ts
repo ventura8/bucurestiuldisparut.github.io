@@ -403,5 +403,13 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.georef.guide.s5': 'Save and georeference, check the preview, then approve.',
     'adminContent.georef.guide.tip': '6 pairs allow the curved fit, 10 the flexible one.',
     'adminContent.georef.undo': 'Undo',
+    'adminContent.georef.menu.label': 'Point actions',
+    'adminContent.georef.menu.add': 'Add a point here',
+    'adminContent.georef.menu.move': 'Move this point',
+    'adminContent.georef.menu.delete': 'Delete this point',
+    'adminContent.georef.menu.undo': 'Undo',
+    'adminContent.georef.menu.readOnly': 'This version takes no points: nothing to change here',
+    'adminContent.georef.menu.moving.scan': 'Moving point {number}: click its new place on the scan. Esc puts it back.',
+    'adminContent.georef.menu.moving.map': 'Moving point {number}: click its new place on the map. Esc puts it back.',
     // [end georef]
 };

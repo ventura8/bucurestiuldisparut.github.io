@@ -258,6 +258,7 @@ export function georefState(overrides: Partial<GeorefViewState> = {}): GeorefVie
             reference: 'osm',
             adding: false,
             half: null,
+            moving: null,
             selected: null,
             transform: 'affine',
         },
@@ -356,8 +357,9 @@ export function imageryPage(
 export function georefPage(
     state: GeorefViewState = georefState(),
     options: Parameters<typeof mountPage>[3] = {},
+    answers: Partial<Record<keyof GeorefIntentsPort, unknown>> = {},
 ): Promise<Mounted<GeorefViewState, GeorefIntentsPort>> {
-    const area = new FakeArea<GeorefViewState, GeorefIntentsPort>(state, { save: Promise.resolve(true) });
+    const area = new FakeArea<GeorefViewState, GeorefIntentsPort>(state, { save: Promise.resolve(true), ...answers });
     return mountPage('hcm-georef-page', 'georef', area, { params: ['job-1966'], ...options });
 }
 

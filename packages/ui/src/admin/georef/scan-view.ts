@@ -5,6 +5,8 @@
  */
 import { clamp } from '@hcm/shared';
 
+import { PAIR_HIT_RADIUS } from './marker-badge.js';
+
 export interface Point {
     readonly x: number;
     readonly y: number;
@@ -17,9 +19,6 @@ export interface Size {
 
 /** How far the admin may zoom in, beyond the scale that fits the whole preview. */
 export const MAX_ZOOM = 32;
-
-/** A marker answers a pointer this close to it (CSS pixels): a 48 px target. */
-const HIT_RADIUS = 24;
 
 export interface ScanView {
     /** CSS pixels per preview pixel. */
@@ -63,7 +62,7 @@ export function hitPair<P extends { readonly id: string; readonly pixel: Point }
     previewScale: number,
 ): P | null {
     let best: P | null = null;
-    let distance = HIT_RADIUS;
+    let distance = PAIR_HIT_RADIUS;
     for (const pair of pairs) {
         const point = scanToPane(view, pair.pixel, previewScale);
         const here = Math.hypot(point.x - at.x, point.y - at.y);

@@ -1302,3 +1302,22 @@ lifecycle stays as the backstop; a local worker's stays in its work folder until
 gone with it. A layer's deletion frees its scene only once it succeeded: one failed for good keeps the scene `imported` and the id
 taken, as the tileset is still at Mapbox and a revert can bring the layer back (`deletionsPending`, S-A33-BAD-DELETE-FAILED-KEEPS-SCENE).
 An invalid job's version fails with it when it can be read (S-A12-BAD-STRANDED-VERSION).
+
+## Addendum of 2026-11-12: the georeferencer's context menu
+
+The owner's request of 2026-11-12. On both panes a right-click, a touch held still for 500 ms (drifting 8 CSS px or a second
+finger ends it) or, from the keyboard, the ContextMenu key or Shift+F10 at the focused pane's centre opens `<hcm-georef-menu>`,
+a `role="menu"` in the top layer with its first `menuitem` focused (the arrow keys wrap, Home and End; Esc, Tab, a press outside
+or the focus leaving closes it, and the focus goes back where it was). Its items:
+
+- **Add a point here**: `addAt(end)`, Add pairs turned on first, then that end of a pair exactly as a click there (it starts or
+  completes the pair); on the map the place comes from `mapTarget(point)`, which the store answers with the map's projection.
+- **Move this point** and **Delete this point**, only on a pair within `PAIR_HIT_RADIUS` (24 CSS px, `marker-badge.ts`, the
+  scan's and the map's alike): `pickUp(id, pane)` sets `moving`, the next click on that pane drops the pair's end there (one
+  Undo step), one on the other pane or Esc puts it back; Delete is `remove(id)`, which Undo takes back.
+- **Undo** when there is a step (`canUndo`).
+
+A version that takes no points (or a read-only admin) gets one disabled line instead, `adminContent.georef.menu.readOnly`. A
+long press is no click (the scan forgets the press, the map's click after it is swallowed), and the scan's right button picks
+nothing (lesson 562). The element and its gestures are the lazy `georef-menu` chunk, fetched at the page's first render
+(DECISIONS-for-review.md §152). Rows: S-A16-HAPPY-GEOREF-MENU, S-A16-BAD-GEOREF-MENU-READONLY; tour state `georef.context-menu`.

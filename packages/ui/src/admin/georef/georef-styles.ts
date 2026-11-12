@@ -81,7 +81,11 @@ export const georefStyles = [
             max-inline-size: 72ch;
         }
 
+        /* A 48 px touch target on a compact window (the context menu's tour state found it 19 px tall). */
         .guide summary {
+            box-sizing: border-box;
+            min-block-size: 48px;
+            padding-block: 12px;
             cursor: pointer;
             font: var(--md-sys-typescale-title-small-font, 500 0.875rem/1.25rem system-ui);
         }

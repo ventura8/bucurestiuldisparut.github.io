@@ -16,7 +16,7 @@ import {
     type Locale,
     type Logger,
 } from '@hcm/shared';
-import type { BadgeTone } from '@hcm/ui/admin/georef/marker-badge';
+import { PAIR_HIT_RADIUS, type BadgeTone } from '@hcm/ui/admin/georef/marker-badge';
 import type { Unsubscribe } from '@hcm/ui/map';
 import type { DrawChange, MapDrawPort } from '@hcm/ui/map/draw';
 
@@ -26,7 +26,7 @@ import type { AdminMapFactory, AdminMapHandle, AdminMapResult } from '../map/fac
 import type { ProjectableMapPort } from '../map/projection.js';
 import { DRAW_HIT_COLOR, GeorefMarkerOverlay } from './marker-overlay.js';
 import { roundGeo, type GeoPosition } from './pairs.js';
-import type { GeorefVersion } from './state.js';
+import type { GeorefVersion, MapTarget } from './state.js';
 import type { SuggestionRow } from './suggestions.js';
 
 /** The reference's box as the map's frame. */
@@ -94,6 +94,32 @@ export class GeorefMap {
     get centre(): GeoPosition | null {
         const view = this.#handle?.port.getView();
         return view === undefined ? null : { lat: view.center[1], lng: view.center[0] };
+    }
+
+    /** The place under a point of the map's box (CSS px) and the pair drawn within the panes' hit radius; null without a map. */
+    targetAt(point: { readonly x: number; readonly y: number }): MapTarget | null {
+        const port = this.#handle?.port;
+        return port === undefined ? null : this.#targetOn(port, point);
+    }
+
+    #targetOn(port: ProjectableMapPort, point: { readonly x: number; readonly y: number }): MapTarget | null {
+        const at = port.unproject(point);
+        return at === null ? null : { geo: { lat: at[1], lng: at[0] }, hit: this.#hitAt(port, point) };
+    }
+
+    /** The nearest pair drawn within `PAIR_HIT_RADIUS` of `point`, or null. */
+    #hitAt(port: ProjectableMapPort, point: { readonly x: number; readonly y: number }): string | null {
+        let best: string | null = null;
+        let distance = PAIR_HIT_RADIUS;
+        for (const pair of this.#pairs) {
+            const drawn = port.project([pair.geo.lng, pair.geo.lat]);
+            const here = drawn === null ? Number.POSITIVE_INFINITY : Math.hypot(drawn.x - point.x, drawn.y - point.y);
+            if (here <= distance) {
+                best = pair.id;
+                distance = here;
+            }
+        }
+        return best;
     }
 
     zoomBy(delta: number): void {

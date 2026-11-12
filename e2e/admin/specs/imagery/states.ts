@@ -221,6 +221,10 @@ export const IMAGERY_STATES = {
         title: 'Georeferencer: pairs in a line refused, Save off',
         visit: 'specs/imagery/georeferencer.spec.ts',
     },
+    'georef.context-menu': {
+        title: 'Georeferencer: the context menu on the scan, Add a point here focused',
+        visit: 'specs/imagery/georef-menu.spec.ts',
+    },
     'georef.refitted': {
         title: "Georeferencer: a fitted version's pairs edited, the figures said to be a refit",
         visit: 'specs/imagery/georeferencer.spec.ts',
