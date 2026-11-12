@@ -6529,3 +6529,21 @@ the limits!!!". A relaxed gate, so it is the owner's decision, recorded here.
 - **168b** The admin's budgets, the start page's and the other chunks' stay as they were.
 - **168c** The rule stands: a budget moves only by a reviewed change with its reason; code that only some visitors need
   still goes to the on-demand parts first (`docs/ENGINE_API.md` → *Side-loaded parts*).
+
+## 169. The tile layout's contract and the tile-import wizard (track/tilewizard, 2026-11-12)
+
+The design of automatic tile stitching and the tile-import wizard (docs/research/M20-import-local.md §19), contract and admin half.
+
+- **169a** The contract is as designed, with these precisions for the pipeline track: the enums' types (`LeftOutReason`,
+  `SeamState`, `SheetSource`, `SheetTurn`, `StitchVerdict`) and `SEAM_SIDES` (`right`, `below`); `layout.json` carries each sheet's
+  oriented `width` and `height`, the canvas size, and each seam's `overlapPx` and, for a weak seam, its `strip` (its row of
+  `seams.jpg` and the two rectangles); `thumbs.jpg` is `min(n, 32)` cells of 128 px wide; `seams.jpg` is 512 px wide, one 256 px row
+  per weak seam with a strip.
+- **169b** The answer holds every sheet in the grid and every sheet the owner took out (`not-part`), so `owner_layout.py` fixes the
+  whole layout the owner saw; `imagery.acceptLayout` keeps the earlier answer and marks it `accepted`.
+- **169c** A new route `help` (`#/help/<versionId>/tiles`), not in the navigation, and its own lazy chunk with its own catalogue
+  `@hcm/shared/admin-tiles` (as `@hcm/shared/admin-archive`), so no other page carries the wizard's texts.
+- **169d** `helpItemsOf` lives in `schemas/imagery-tiles.ts` and `@hcm/shared`'s index exports it directly: a first draft routed
+  the exports through a `help/index.ts` barrel, which lesson 591 forbids; the index gained its lines back by an inline `type` export.
+- **169e** The Help calibrate queue page of M22 §1.1 is not built: the queue's `layoutCheck` item is computed (`helpItemsOf`) and
+  shown on the series' page as **Arrange the tiles**; the meter is the wizard's own (`role="meter"` per figure of `placing/quality.py`).

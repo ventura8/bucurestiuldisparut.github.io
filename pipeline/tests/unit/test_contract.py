@@ -63,7 +63,7 @@ def test_happy_path_the_constants_equal_the_shared_copy() -> None:
         "RIGHTS_LICENCES": list(model.RIGHTS_LICENCES),
         "RIGHTS_STATES": list(model.RIGHTS_STATES),
         "HELP_REASONS": list(model.HELP_REASONS),
-        # The tile layout (docs/research/M20-import-local.md §16).
+        # The tile layout (docs/research/M20-import-local.md §19).
         "SEAM_STATES": list(model.SEAM_STATES),
         "SHEET_SOURCES": list(model.SHEET_SOURCES),
         "SHEET_TURNS": list(model.SHEET_TURNS),

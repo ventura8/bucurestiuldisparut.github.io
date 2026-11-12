@@ -657,3 +657,47 @@ Tests: `pipeline/tests/unit/{test_placing_grid,test_worker_imports,test_worker_a
 `packages/admin/test/archive/{local-import,feed}.test.ts`, `packages/ui/test/admin/{archive/archive,imagery/grid-names}.test.ts`,
 `e2e/admin/specs/imagery/archive.spec.ts`; scenarios `S-A120-HAPPY-GRID-NAMES`, `S-A120-BAD-GRID-NAMES-EDITOR`, `S-P20-HAPPY-GRID-BY-NAMES`,
 `S-A121-HAPPY-LOCAL-TAB`, `S-A121-BAD-LOCAL-TAB`, `S-P20-HAPPY-ADMIN-IMPORT`, `S-P20-BAD-ADMIN-IMPORT`, `S-P20-BAD-ADMIN-IMPORT-CANCELLED`.
+
+## 19. Tile stitching and the tile-import wizard (track/tilewizard, 2026-11-12)
+
+The owner's worker log said "9 parts, 85 left out" for the 94-page atlas: 1 px edge profiles, SIFT on line art and a whole canvas in
+memory leave most pages out. The design (names grid, seams by phase correlation, a bundle adjustment, a quality verdict, windowed
+canvas) is the pipeline track's; this section is the contract both tracks build on and the admin's half. DECISIONS-for-review.md §169.
+
+### 19.1 The contract
+
+| What | Where | Shape |
+| --- | --- | --- |
+| The layout's summary | `help.stitched.layout` (`stitchLayoutSchema`, `packages/shared/src/schemas/imagery-tiles.ts`) | `rows`, `cols`, `revision` (grows by one each time the pipeline writes a layout), `quality {placedPct, seamMedian, seamRmsPx, verdict}`, `weakSeams` (at most 200: `a`, `b`, `side`, `score`). The Firestore document stays small. |
+| Every sheet and seam | `layout.json`, a version file (`layoutFileSchema`) | `sheets` (name, row, col, turn 0/90/180/270, flip after the turn, `out` reason, `source`, a similarity `matrix` into the canvas, the oriented size) and `seams` (`a`, `b`, `side` right or below, `dx`, `dy`, `score`, `rmsPx`, `overlapPx`, `state`, a weak seam's `suggestion` and its `strip` in `seams.jpg`). Golden file: `pipeline/tests/contracts/layout.sample.json`. |
+| Thumbnails | `thumbs.jpg` | 128 px cells, 32 a row, `min(n, 32)` cells wide; cell `i` is `sheets[i]` as stored (no turn, no flip), its long side 128 px from the cell's top left. |
+| Weak seams' strips | `seams.jpg` | One row of 256 px per weak seam with a `strip`: sheet `a`'s strip in the left square, `b`'s in the right, each scaled into its square from the top left. |
+| The owner's answer | `help.layoutAnswer` (`layoutAnswerSchema`) | `revision`, `sheets` (every sheet in the grid with its cell, turn and mirror, and the sheets the owner took out as `not-part`), `seams` (one matching point on each side), `preview`, `accepted`, `by`, `at`. |
+| Enums | `imagery-tiles.ts`, twins in `pipeline/src/hcm_pipeline/archive/model.py` and `pipeline/tests/contracts/enums.json` | `STITCH_METHODS` + `names`, `owner`; `LEFT_OUT_REASONS` + `blank`, `not-part`, `no-seam`; `HELP_REASONS` + `layout-check`; `SEAM_STATES`, `SHEET_SOURCES`, `SHEET_TURNS`, `STITCH_VERDICTS`, `SEAM_SIDES`; the verdict's thresholds (`STITCH_GOOD_*`, `STITCH_MAX_MOVE_CELL`) and the files' limits. |
+| Callables | `functions/src/imagery/save-layout.ts`, `accept-layout.ts`, `layout-wait.ts`; schemas `packages/shared/src/api/imagery-tiles.ts` | `imagery.saveLayout({cityId, versionId, revision, sheets, seams, preview})` (a city editor): refused on a series that is not parked with `layout-check` (`apiError.imagery.versionState`) or on an older revision (`apiError.imagery.layoutStale`); writes `help.layoutAnswer`, the version `processing`, the job `queued` from `place` (as `imagery.saveGcps`). `imagery.acceptLayout({cityId, versionId, revision})`: the earlier answer kept, `accepted: true`, `preview: false`, the same resume. The worker's `place` reads the answer (`placing/owner_layout.py`, the pipeline track). |
+
+No rule changed: the version's files are under `rasters/{city}/`, which a city member reads (`firebase/storage.rules`); the version
+document is written by the functions only.
+
+### 19.2 The wizard
+
+`#/help/<versionId>/tiles` (route `help`, never a navigation destination; its own lazy chunk `help` with its texts
+`@hcm/shared/admin-tiles`). It opens from a series' page (**Arrange the tiles**, `layoutCheck` of `helpItemsOf`) and reads the
+version live, `layout.json` and the three pictures from the private bucket (`packages/admin/src/tiles/`).
+
+| Step | Element | Behaviour |
+| --- | --- | --- |
+| 1 Order | `packages/ui/src/admin/tiles/tile-grid.ts` | The thumbnails in the grid, each with its source as a badge; drag a sheet onto a cell (the sheet there swaps), or a roving tabindex: the arrows choose a cell, Shift and the arrows move its sheet, R turns, F mirrors, X takes it out of the map; the left-out sheets with **Put back**. The grid pans in its own frame on a phone. |
+| 2 Seams | `seam-pair.ts` | Each weak seam's two strips with the guess as a dot; **Accept the guess** (Enter on the pair) or one click on each strip; **Next seam** (N). |
+| 3 Preview | `tile-preview.ts` | The layout from the thumbnails at once; **Make the real preview** sends the answer with `preview` and waits for the next revision; the joined picture and the meter (`role="meter"` per figure the verdict reads, with its words) and an alert on a poor layout. |
+| 4 Points | `hcm-tiles-page.ts` | **Place it on the map**: `imagery.acceptLayout` when nothing changed, `imagery.saveLayout` without `preview` otherwise; then **Open the georeferencer**. Off while every sheet is out. |
+
+A draft the owner is changing is kept when the pipeline writes a newer revision; sending it is then refused as stale, the page says
+so and shows the newer layout. Back and Next sit in a bar at the bottom of the window on a phone. Loading, an address with no
+series, a series that waits for nothing any more and a `layout.json` that cannot be read each say so.
+
+Tests: `functions/test/imagery/save-layout.test.ts`, `packages/shared/test/schemas/{imagery-tiles,help-queue,pipeline-contract}.test.ts`,
+`packages/admin/test/tiles/`, `packages/ui/test/admin/tiles/`, `packages/ui/test/admin/imagery/tiles-link.test.ts`,
+`e2e/admin/specs/imagery/tiles.spec.ts` (tour states `tiles.*`); scenarios `S-A-HAPPY-TILE-WIZARD-{ORDER,KEYBOARD,SEAM,PREVIEW,HANDOFF}`,
+`S-A-BAD-TILE-WIZARD-{STALE-REVISION,ALL-OUT,PREVIEW-POOR,UNREADABLE}` (behaviour A141). The pipeline's stitching, its scenarios
+`S-P20-*-STITCH-*` and the dry run on `harti.zip` (§15.1) are the pipeline track's.

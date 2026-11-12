@@ -36,7 +36,7 @@ STITCHED_LEFT_OUT_MAX: Final = 200
 RIGHTS_LICENCES: Final = ("PD", "CC0", "CC-BY-4.0", "CC-BY-SA-4.0", "permission", "unknown")
 RIGHTS_STATES: Final = ("clear", "needs-confirmation", "do-not-publish")
 HELP_REASONS: Final = ("no-path", "low-confidence", "frame-not-found", "no-scale", "archive-missing", "layout-check")
-# The tile layout (`imagery-tiles.ts` of @hcm/shared; docs/research/M20-import-local.md §16): seams' states, where a sheet's cell came
+# The tile layout (`imagery-tiles.ts` of @hcm/shared; docs/research/M20-import-local.md §19): seams' states, where a sheet's cell came
 # from, its quarter turns, the series' verdict, the seams' sides, the verdict's thresholds and the files' limits and sprite cells.
 SEAM_STATES: Final = ("strong", "weak", "missing", "owner")
 SHEET_SOURCES: Final = ("name", "overview", "seam", "order", "owner")
