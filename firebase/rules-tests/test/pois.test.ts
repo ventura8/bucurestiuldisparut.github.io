@@ -105,10 +105,7 @@ describe('POI geometry', () => {
 
 describe('POI fields', () => {
     it.each([
-        [
-            'only the required fields',
-            { description: deleted(), yearStart: deleted(), yearEnd: deleted(), links: deleted(), photoIds: deleted() },
-        ],
+        ['only the required fields and a year', { description: deleted(), yearEnd: deleted(), links: deleted(), photoIds: deleted() }],
         ['a start year only', { yearEnd: deleted() }],
         ['an end year only (built before records began)', { yearStart: deleted() }],
         [`${String(MAX_POI_PHOTOS)} photos`, { photoIds: Array.from({ length: MAX_POI_PHOTOS }, (_, index) => `p${String(index)}`) }],
@@ -155,6 +152,70 @@ describe('POI fields', () => {
         ['a removed creator', { createdBy: deleted() }],
     ])('badPath_editsAreValidatedLikeCreates_%s', async (_label, changes) => {
         expect(await editPoi(changes)).toBe('deny');
+    });
+});
+
+/** A place stored before every place needed a year (the owner's request of 2026-11-12). */
+async function seedUndated(): Promise<string> {
+    const path = FIRESTORE_PATHS.poi(CITY_ID, nextId());
+    await world.seed(path, withChanges(poiDoc(world.uid('admin')), { yearStart: deleted(), yearEnd: deleted() }));
+    return path;
+}
+
+async function editUndated(changes: Data): Promise<Verdict> {
+    const path = await seedUndated();
+    return verdict(
+        world
+            .db('admin')
+            .doc(path)
+            .update({ ...stampedBy(world.uid('admin')), ...changes }),
+    );
+}
+
+describe('POI years @S-A32-HAPPY-PLACE-YEAR @S-A32-BAD-PLACE-YEAR', () => {
+    it.each([
+        ['one year', { yearEnd: deleted() }],
+        ['an end year only', { yearStart: deleted() }],
+        ['a span', {}],
+    ])('happyPath_aPlaceIsCreatedWith_%s', async (_label, changes) => {
+        expect(await createPoi(changes)).toBe('allow');
+    });
+
+    it('badPath_aPlaceWithoutAYearIsNotCreated', async () => {
+        expect(await createPoi({ yearStart: deleted(), yearEnd: deleted() })).toBe('deny');
+    });
+
+    // 2100 is a stored year (`isYear`) but after next year until 2099: refused by the server's clock, not the test's.
+    it.each([
+        ['starting', { yearStart: 2100, yearEnd: deleted() }],
+        ['ending', { yearStart: deleted(), yearEnd: 2100 }],
+    ])('badPath_aPlace_%s_afterNextYearIsNotCreated', async (_label, changes) => {
+        expect(await createPoi(changes)).toBe('deny');
+    });
+
+    it.each([
+        ['unpublished', { published: false }],
+        ['moved to another category', { category: 'strazi' }],
+        ['given a year', { yearStart: 1890 }],
+        ['retitled with its years', { title: { ro: 'Biserica Enei' }, yearStart: 1850, yearEnd: 1977 }],
+    ])('happyPath_aStoredPlaceWithoutAYearIs_%s', async (_label, changes) => {
+        expect(await editUndated(changes)).toBe('allow');
+    });
+
+    it.each([
+        ['retitled', { title: { ro: 'Biserica Enei (demolată)' } }],
+        ['redrawn', { geometry: { type: 'LineString', points: line(3) } }],
+    ])('badPath_aStoredPlaceWithoutAYearIsNot_%s_withoutOne', async (_label, changes) => {
+        expect(await editUndated(changes)).toBe('deny');
+    });
+
+    it('badPath_aDatedPlaceCannotLoseItsYears', async () => {
+        expect(await editPoi({ yearStart: deleted(), yearEnd: deleted() })).toBe('deny');
+    });
+
+    it('happyPath_aStoredPlaceWithoutAYearStillReads', async () => {
+        const path = await seedUndated();
+        expect(await verdict(world.db('admin').doc(path).get())).toBe('allow');
     });
 });
 

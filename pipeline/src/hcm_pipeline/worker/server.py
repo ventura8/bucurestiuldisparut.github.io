@@ -19,6 +19,9 @@ origins, answer CORS (`Access-Control-Allow-Origin: <origin>`, `Vary: Origin`) a
 | `DELETE /session` | sign out |
 | `OPTIONS /state`, `OPTIONS /pair` from a Hosting origin | 204, the CORS preflight (403 from any other origin) |
 | `POST /pair` `{code}` from a Hosting origin | 202 and the state: the worker pairs with the code at its loop's next pass |
+| `GET /import`, `POST /import/...` | M20's import of a local archive (`imports.py`, docs/research/M20-import-local.md §2.1) |
+| `POST /import/session` `{city}` from a Hosting origin | 201 `{token}` while signed in for that city, else 409 |
+| `OPTIONS /import/...` from a Hosting origin | 204, the preflight of the admin's own import (batch 4) |
 | anything else | 404, or 405 for another method |
 
 `POST` and `DELETE` answer 403 unless `Origin` is the page's, the body is JSON (`Content-Type: application/json`, which a
@@ -26,6 +29,11 @@ cross-site form cannot send without a preflight nobody answers) and `X-HCM-Worke
 per process, written only into the page). `POST /pair` has no CSRF token (the admin's page cannot know it): its guard is
 the Origin allow-list (a page of another site cannot send one of the project's origins, and its JSON body needs a
 preflight only those origins pass) and the code itself, single-use and minted by a city editor minutes before.
+
+Batch 4 (the owner, 2026-11-09: no new tab): the admin's Import local files sends the import's requests itself, from a Hosting origin.
+It first asks `POST /import/session` for a token, which the worker gives only while it is paired and signed in for the city the admin
+names (the Hosting origins are the project's own; 32 random bytes, for this process). Every import request then carries it as
+`X-HCM-Session` in place of the page's CSRF header, and CORS and Private Network Access answer those paths for the Hosting origins only.
 """
 
 import hmac
@@ -36,11 +44,13 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from http import HTTPStatus
 from socketserver import ThreadingMixIn
-from typing import Any, Final, Protocol
+from typing import Any, BinaryIO, Final, Protocol
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 from wsgiref.types import StartResponse, WSGIEnvironment
 
 from hcm_pipeline.log import get_logger
+from hcm_pipeline.worker.import_page import render_import_page
+from hcm_pipeline.worker.imports import IMPORT_STATIC, ImportRoutes
 from hcm_pipeline.worker.page import PAGE_CSS, PAGE_JS, PageSettings, render_page
 
 LOG = get_logger("worker.server")
@@ -51,15 +61,19 @@ JSON_TYPE: Final = "application/json"
 POLL_SECONDS: Final = 0.2
 # The paths the admin reads and posts to from its Hosting origin (auto-pair), and the preflight's fixed answers.
 CORS_PATHS: Final = ("/state", "/pair")
+SESSION_HEADER: Final = "x-hcm-session"
 PREFLIGHT_HEADERS: Final = (
     ("Access-Control-Allow-Methods", "GET, POST"),
-    ("Access-Control-Allow-Headers", "content-type"),
+    ("Access-Control-Allow-Headers", "content-type, x-hcm-path, x-hcm-session"),
     ("Access-Control-Max-Age", "600"),
 )
 _STATIC: Final = {
     "/page.js": (PAGE_JS.encode("utf-8"), "text/javascript; charset=utf-8"),
     "/page.css": (PAGE_CSS.encode("utf-8"), "text/css; charset=utf-8"),
+    **IMPORT_STATIC,
 }
+IMPORT_PREFIX: Final = "/import/"
+UPLOAD_SUFFIX: Final = "/file"
 
 
 class WorkerApp(Protocol):
@@ -98,9 +112,23 @@ def _headers(environ: WSGIEnvironment) -> dict[str, str]:
     return {**found, "content-type": str(environ.get("CONTENT_TYPE") or "")}
 
 
+def _length(environ: WSGIEnvironment) -> int:
+    try:
+        return int(environ.get("CONTENT_LENGTH") or 0)
+    except ValueError:
+        return -1
+
+
 def _body(environ: WSGIEnvironment) -> bytes | None:
-    size = int(environ.get("CONTENT_LENGTH") or 0)
+    size = _length(environ)
     return environ["wsgi.input"].read(size) if 0 <= size <= MAX_BODY_BYTES else None
+
+
+def _upload_of(method: str, path: str) -> str | None:
+    """The archive id of `POST /import/<id>/file` (a streamed body), else None."""
+    if method != "POST" or not (path.startswith(IMPORT_PREFIX) and path.endswith(UPLOAD_SUFFIX)):
+        return None
+    return path.removeprefix(IMPORT_PREFIX).removesuffix(UPLOAD_SUFFIX)
 
 
 class _QuietHandler(WSGIRequestHandler):
@@ -124,8 +152,10 @@ class LocalServer:
         cors_origins: Iterable[str] = (),
     ) -> None:
         self._app = app
+        self._imports: ImportRoutes | None = None
         self._settings = settings
         self._cors_origins = frozenset(cors_origins)
+        self._sessions: set[str] = set()
         self._httpd = make_server(bind[0], bind[1], self._wsgi, server_class=_ThreadingServer, handler_class=_QuietHandler)
         self._thread = threading.Thread(target=self._httpd.serve_forever, kwargs={"poll_interval": POLL_SECONDS}, daemon=True)
         self.headers: Mapping[str, str] = {
@@ -136,9 +166,14 @@ class LocalServer:
         }
 
     def _wsgi(self, environ: WSGIEnvironment, start_response: StartResponse) -> Iterable[bytes]:
-        method = str(environ["REQUEST_METHOD"])
-        request = Request(method, str(environ.get("PATH_INFO") or "/"), _headers(environ), _body(environ))
-        status, body, content_type = self.answer(request)
+        method, path = str(environ["REQUEST_METHOD"]), str(environ.get("PATH_INFO") or "/")
+        upload = _upload_of(method, path)
+        if upload is not None:
+            request = Request(method, path, _headers(environ), b"")
+            status, body, content_type = self.upload(request, upload, environ["wsgi.input"], _length(environ))
+        else:
+            request = Request(method, path, _headers(environ), _body(environ))
+            status, body, content_type = self.answer(request)
         headers = [*self.headers.items(), *self.cors_headers(request), ("Content-Type", content_type), ("Content-Length", str(len(body)))]
         start_response(f"{status} {HTTPStatus(status).phrase}", headers)
         return [body]
@@ -149,6 +184,10 @@ class LocalServer:
             return _json(HTTPStatus.MISDIRECTED_REQUEST, {})
         route = {"GET": self.get, "POST": self.post, "DELETE": self.delete, "OPTIONS": self.preflight}.get(request.method)
         return route(request) if route is not None else _json(HTTPStatus.METHOD_NOT_ALLOWED, {})
+
+    def serve_imports(self, imports: ImportRoutes) -> None:
+        """M20: the import routes (`imports.py`); without them every import path answers 403 or 404."""
+        self._imports = imports
 
     @staticmethod
     def new_csrf_token() -> str:
@@ -210,11 +249,71 @@ class LocalServer:
 
     def get(self, request: Request) -> Reply:
         path = request.path
-        routes: dict[str, Callable[[Request], Reply]] = {"/": self._page, "/config": self._config, "/state": self._state}
+        routes: dict[str, Callable[[Request], Reply]] = {
+            "/": self._page,
+            "/config": self._config,
+            "/state": self._state,
+            "/import": self._import_page,
+        }
         if path in _STATIC:
             return HTTPStatus.OK, *_STATIC[path]
         route = routes.get(path)
-        return route(request) if route is not None else _json(HTTPStatus.NOT_FOUND, {})
+        if route is not None:
+            return route(request)
+        found = self._imports.get(path) if self._imports is not None else None
+        return found if found is not None else _json(HTTPStatus.NOT_FOUND, {})
+
+    def _import_page(self, _request: Request) -> Reply:
+        return HTTPStatus.OK, render_import_page(self._settings.json()), "text/html; charset=utf-8"
+
+    # --- M20's import (imports.py) ------------------------------------------------------------------------------
+
+    def _import_allowed(self, request: Request) -> bool:
+        """The page's origin and its CSRF token (a file's body is not JSON: the type is not asked of an upload), or the admin's session."""
+        token = request.headers.get(CSRF_HEADER, "").encode("utf-8")
+        own = self._origin_allowed(request.headers.get("origin")) and hmac.compare_digest(token, self._settings.csrf.encode("utf-8"))
+        return own or self._session_allowed(request)
+
+    def _session_allowed(self, request: Request) -> bool:
+        """Batch 4: a Hosting origin with a token `POST /import/session` gave (compared in constant time)."""
+        token = request.headers.get(SESSION_HEADER, "").encode("utf-8")
+        known = any(hmac.compare_digest(token, each.encode("utf-8")) for each in self._sessions)
+        return self.cors_allowed(request.headers.get("origin")) and known
+
+    def _import_session(self, request: Request) -> Reply:
+        """A token for the admin's import, while this worker is signed in for the city it names."""
+        if not self._pair_allowed(request) or request.body is None:
+            return _json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
+        body, state = _parsed(request.body), self._app.state()
+        # The Hosting origins are the project's own, so the city is what is left to match.
+        paired = state.get("signedIn") is True and state.get("city") == body.get("city")
+        if not paired:
+            return _json(HTTPStatus.CONFLICT, {"error": "notPaired"})
+        token = secrets.token_hex(32)
+        self._sessions.add(token)
+        return _json(HTTPStatus.CREATED, {"token": token})
+
+    def upload(self, request: Request, archive_id: str, stream: BinaryIO, length: int) -> Reply:
+        """`POST /import/<id>/file`: the body streamed into the archive, every guard first."""
+        if not self.host_allowed(request.headers.get("host")):
+            return _json(HTTPStatus.MISDIRECTED_REQUEST, {})
+        if self._imports is None or not self._import_allowed(request) or length < 0:
+            return _json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
+        return self._imports.upload(archive_id, request.headers, stream, length)
+
+    def _import_post_allowed(self, request: Request) -> bool:
+        """The page's origin, JSON and token, or (batch 4) JSON from a Hosting origin with the admin's session."""
+        return self._state_change_allowed(request) or (self._json_body(request) and self._session_allowed(request))
+
+    def _import_post(self, request: Request) -> Reply:
+        """`POST /import/new`, `<id>/zip`, `<id>/scan`, `<id>/cancel`: JSON, the page's origin and token, or the admin's session."""
+        if request.path == "/import/session":
+            return self._import_session(request)
+        if self._imports is None or not self._import_post_allowed(request):
+            return _json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
+        if request.body is None:
+            return _json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {})
+        return _import_route(self._imports, request.path.removeprefix(IMPORT_PREFIX), _parsed(request.body))
 
     def _page(self, _request: Request) -> Reply:
         return HTTPStatus.OK, render_page(self._settings), "text/html; charset=utf-8"
@@ -230,8 +329,9 @@ class LocalServer:
         return _json(HTTPStatus.OK, self._app.state())
 
     def preflight(self, request: Request) -> Reply:
-        """The CORS (and Private Network Access) preflight of the admin's `GET /state` and `POST /pair`."""
-        allowed = request.path in CORS_PATHS and self.cors_allowed(request.headers.get("origin"))
+        """The CORS (and Private Network Access) preflight of the admin's `GET /state`, `POST /pair` and (batch 4) its import."""
+        cors_path = request.path in CORS_PATHS or request.path.startswith(IMPORT_PREFIX)
+        allowed = cors_path and self.cors_allowed(request.headers.get("origin"))
         return (HTTPStatus.NO_CONTENT, b"", "text/plain") if allowed else _json(HTTPStatus.FORBIDDEN, {})
 
     def _guarded(self, request: Request, action: Callable[[Mapping[str, object]], Reply]) -> Reply:
@@ -243,6 +343,8 @@ class LocalServer:
         return action(_parsed(body)) if body is not None else _json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {})
 
     def post(self, request: Request) -> Reply:
+        if request.path.startswith(IMPORT_PREFIX):
+            return self._import_post(request)
         return self._pair(request) if request.path == "/pair" else self._guarded(request, self._sign_in)
 
     def _pair(self, request: Request) -> Reply:
@@ -265,6 +367,16 @@ class LocalServer:
     def _sign_out(self, _body: Mapping[str, object]) -> Reply:
         self._app.sign_out()
         return _json(HTTPStatus.OK, self._app.state())
+
+
+def _import_route(imports: ImportRoutes, rest: str, body: Mapping[str, object]) -> Reply:
+    """`new`, `<id>/zip` or `<id>/scan`; 404 for anything else."""
+    if rest == "new":
+        return imports.new()
+    archive_id, _, action = rest.partition("/")
+    routes = {"zip": imports.unzip, "scan": imports.scan, "cancel": imports.cancel}
+    route = routes.get(action)
+    return route(archive_id, body) if route is not None else _json(HTTPStatus.NOT_FOUND, {})
 
 
 def _parsed(body: bytes) -> Mapping[str, object]:

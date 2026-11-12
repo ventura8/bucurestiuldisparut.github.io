@@ -632,8 +632,8 @@ choices and key presses that commit (`S-A30-HAPPY-CONTENT`):
 | a batch of photos with EXIF, the sticky author, source and licence | 3 | drop (or choose) the files, Select all, Publish |
 | a photo without EXIF | 4 | the batch's 3, plus one drag of the pin (or Confirm place at the last pin) |
 | a photo's direction | 3 | Set direction, a click on what the camera looked at, Save |
-| a point place in the last used category | 5 | Add place, Point, a click, the Romanian title, Save |
-| a polygon place of n vertices | n + 4 | Add place, Area, n clicks (the last on the first vertex), the title, Save |
+| a point place in the last used category | 6 | Add place, Point, a click, the Romanian title, the year (every place names one since 2026-11-12), Save |
+| a polygon place of n vertices | n + 5 | Add place, Area, n clicks (the last on the first vertex), the title, the year, Save |
 | a category | 4 | Add category, the Romanian label, an icon, Save (colour, opacity and English have defaults) |
 | a layer's adjustments | moves + 1 | the sliders, Save |
 | a delete and its Undo | 3 | Delete, confirm, Undo |
@@ -721,20 +721,30 @@ removed its public files is processed again from its kept original by `history.r
 ### 7.1 The list
 
 Category chips (from `poiCategories`, with their icons and colours), Unpublished, a text search by title; each item:
-the category's icon on its colour, the title, the years, the shape (point, line, area). From expanded, the overview map
+the category's icon on its colour, the title, the years, the shape (point, line, area). A place stored before every place
+needed a year (the owner's request of 2026-11-12) shows **Year missing** under its row instead of the years. From expanded, the overview map
 draws every place in its category's overlay; a click on a shape selects it (`onPoiClick`).
 
 ### 7.2 The editor
 
 - Category (a select over the city's categories; the last used one for a new place), title and description (RO, EN
   optional; the description in the Markdown subset with the DOM preview of `hcm-markdown-field`), start and end year
-  (either open), links (at most 5), photos (`hcm-photo-picker`, a dialog listing the city's photos by title with
+  (at least one: a single year, an open start or end, or a span from and to, the end never before the start, each from
+  1800 to next year; `placeYearIssues` of `@hcm/shared`, the owner's request of 2026-11-12), links (at most 5), photos (`hcm-photo-picker`, a dialog listing the city's photos by title with
   thumbnails: at most `MAX_POI_PHOTOS`, 20), Published.
 - Geometry: drawn and edited on the map (§4.4) or in the vertex list (§4.6); the type is chosen when the place is added
   (Point, Line, Area) and changes only by redrawing ("Redraw as…" clears the geometry after the unsaved guard's
   question).
-- Save: `geometryToDoc(geometry)`, validated with `poiDocSchema` and the manifest's place rules (inside the city,
-  closed rings), then §5.3.
+- Save: `geometryToDoc(geometry)`, validated with `poiDocSchema`, the manifest's place rules (inside the city,
+  closed rings) and `placeYearIssues` (no year: `validation.required` at the start year, "Write a year, or the years from
+  and to", shown as the place opens; a year after next year by the admin's clock: `validation.tooBig`, "The year cannot be after next year" in the editor's
+  own words (`issue-text.ts`, an admin text, so the viewer's catalogue does not carry it), once the field is left), then §5.3. The stored schemas keep both years optional, so a place saved before the rule still loads in the
+  admin and still shows on the public map; its Save asks for a year. The Firestore rules ask the same (`dated`): every
+  create names a year, and an update without one only publishes, unpublishes or moves the place to another category
+  (the list's bulk actions); no year may be after next year by the server's clock (`request.time`). The GeoJSON import
+  checks both, by the admin's clock, as Save does. `review.decide` refuses to approve a place without one
+  (`apiError.review.placeYear`), and `history.revert` does not restore a version without a year over a place that names
+  one (`apiError.history.placeYear`); an Undo of a delete and a place that never had a year restore as before.
 
 ### 7.3 Delete
 
@@ -751,7 +761,8 @@ Client delete with §9.5; bulk delete of a selection; places come back from Hist
 - **Import** (overflow menu, then a file): read as text (at most 5 MB, else refused before parsing: `S-A34-BAD-NOT-GEOJSON`),
   `JSON.parse` in a `try`, a `FeatureCollection` or a single `Feature`; each feature mapped field by field into a new
   object (never spread from the file) and validated with `geometrySchema`, `poiDocSchema` and the manifest's place
-  rules. The preview dialog counts **new**, **updated** (an `id` that names an existing place), **unchanged** and
+  rules, and `placeYearIssues` without the clock (a feature naming no year is refused as invalid at `yearStart`). The
+  preview dialog counts **new**, **updated** (an `id` that names an existing place), **unchanged** and
   **refused** (each with its reason: an unsupported type such as `MultiPolygon`, a position with altitude, an open ring,
   a position outside the city, an unknown category, more than 500 positions; `S-A34-BAD-INVALID-FEATURES`), and draws the
   valid ones on the page's map. Features without a known category take the one category the admin chooses in the
@@ -873,7 +884,8 @@ callables are M2's (`admins.list`, `admins.invite`, `admins.revoke`, **done**); 
 - `#/history/<entity>/<id>`: the document's entries; the selected entry shows each changed field before and after, as
   text (a geometry as its type and position count, adjustments as percentages, a theme as its seed colour).
 - **Revert** (and **Restore**) asks first, then calls `history.revert` (**done**); a refusal shows its code as an alert
-  (`apiError.history.invalidSnapshot` with the count, `nothingToRestore`, the new `layerGone`) and changes nothing
+  (`apiError.history.invalidSnapshot` with the count, `nothingToRestore`, the new `layerGone`, `placeYear` for a place's
+  version without a year over a dated place, §7.2) and changes nothing
   (`S-A23-BAD-REFUSED-SHOWN`). A creation entry offers no Revert.
 
 ### 9.3 Jobs (A18)
@@ -1119,7 +1131,7 @@ owner (or the integrator) applies it. Ids are `CR-M2c-<n>`; status `open`, `acce
 | CR-M2c-9 | contracts | ops-screens (`packages/ui/src/icons.ts`, the font subset) | The icons of §10.2, all in one change, `fonts:check` green | an unbundled icon draws nothing | done (ops-screens, 2026-10-18: `packages/ui/src/icons.ts` and the rebuilt subset, `fonts:check` up to date with 115 icons) |
 | CR-M2c-10 | contracts | layers-settings (`packages/ui/src/components/overlay-list.ts`) | `hcm-overlay-list` items gain an optional `toggleable` (default true): without it the row has no switch; the viewer's rows are unchanged | the photos overlay and the categories have no "shown at start" | done (layers-settings, 2026-10-18: `packages/ui/src/components/overlay-list.ts`, tests in `packages/ui/test/components/overlay-list.test.ts`) |
 | CR-M2c-11 | contracts | ops-screens (`packages/admin/package.json` `exports`) | `./content/budgets` exported like `./setup/steps` (CR-M2b-10), so the e2e tier reads `CONTENT_INPUT_BUDGETS` | the budgets of §5.6 are code | done (ops-screens, 2026-10-18) |
-| CR-M2c-12 | each workstream | integrator (docs, skills and mirrors, `docs/LESSONS.md`, the admin guides) | What each workstream built and learned, reported as a row here at its end | docs follow the code | done (integrator, 2026-10-18: the four reports, CR-M2c-19, -23, -26 and -30, are in `docs/ADMIN_GUIDE.ro.md` and `.en.md` (daily work, troubleshooting), `docs/ARCHITECTURE.md`, `docs/TESTING.md`, `docs/LESSONS.md` 71–80, the skills and `DECISIONS-for-review.md` §35) |
+| CR-M2c-12 | each workstream | integrator (docs, skills and mirrors, `docs/LESSONS.md`, the admin guides) | What each workstream built and learned, reported as a row here at its end | docs follow the code | done (integrator, 2026-10-18: the four reports, CR-M2c-19, -23, -26 and -30, are in the admin guides (today `docs/ADMIN_GUIDE.en.md` alone, DECISIONS §157) (daily work, troubleshooting), `docs/ARCHITECTURE.md`, `docs/TESTING.md`, `docs/LESSONS.md` 71–80, the skills and `DECISIONS-for-review.md` §35) |
 | CR-M2c-13 | contracts | M3 (the dispatcher and the raster pipeline) | Run `layer-delete` jobs after `dispatchAt`: skip (`cancelled`) when the layer exists again; else delete the Mapbox tileset and source with tombstone retries, then the layer's objects in our buckets | §8.4 | open |
 | CR-M2c-14 | contracts | M5 (multi-city) | `cityId` on history entries, so the recent changes need no path filter | §9.2 keeps to one city's path in the page meanwhile | done (2026-10-23, brought forward from M5: the page-side filter let other tests' cities decide which of the city's entries made the page of 50 and removed a row during the tour's Tab round, `docs/LESSONS.md` 149. `historyEntryDocSchema` gains an optional `cityId`, which the history triggers (`functions/src/history/record.ts`) and `history.revert` (`revert.ts`) write; `recentQuery(cityId, filter)` asks `cityId ==` first and the page-side `inCity` went; the collection-group indexes start with `cityId` and the `updatedAt` override's collection-group order went (`firebase/firestore.indexes.json`); the rules are unchanged (admins list the collection group) and `firebase/rules-tests/test/history.test.ts` checks that only the city's entries answer; no migration: no history trigger was ever deployed, so the live project holds no entry; `S-A23-BAD-OTHER-CITY`; `DECISIONS-for-review.md` §45) |
 | CR-M2c-15 | ops-screens | integrator (weekly `contract.yml`, ask first for the probe) | Verify Error Reporting's group page address and add it to `packages/admin/src/setup/links.json` | the crash detail's deep link must be a verified one | done (follow-ups, 2026-10-18: `gcp.errorGroup` = `https://console.cloud.google.com/errors/detail/{groupId}?project={projectId}` in `links.json` and `links.ts`, which the weekly contract run probes (not dispatched: ask first); the crash detail links the group through `errorGroupUrl` of `@hcm/ui/admin`, which `packages/admin/test/setup/links.test.ts` keeps equal to it) |

@@ -13,7 +13,7 @@ Read the change with `git status` and `git diff` (Bash is for those two commands
 - a new or changed gate or stage appears in `scripts/ci/pipeline.py`, `.agent/skills/quality/pipeline_skill.md` → *Stages*, `.agent/skills/quality/ci_quality_gates_skill.md` and `docs/CI_PIPELINE.md`;
 - a dependency bump or hold appears in `docs/CI_PIPELINE.md` and `.agent/skills/quality/pipeline_skill.md`;
 - a user-visible behaviour change has its rows in `e2e/scenarios.json`;
-- a new UI string is in both `packages/shared/src/i18n/ro.ts` and `packages/shared/src/i18n/en.ts`; an admin-facing change is in both `docs/ADMIN_GUIDE.ro.md` and `docs/ADMIN_GUIDE.en.md`;
+- a new UI string is in both `packages/shared/src/i18n/ro.ts` and `packages/shared/src/i18n/en.ts`; an admin-facing change is in `docs/ADMIN_GUIDE.en.md`; every Markdown change is in English only (no Romanian file or section; quoted Romanian UI labels excepted);
 - every back-ticked repository path in the changed docs exists or is listed under *Planned paths* in `docs/research/M0-handoff.md`, and a planned path that now exists has been removed from that list;
 - `AGENTS.md` is at most 24,000 bytes and every skill at most 500 lines.
 

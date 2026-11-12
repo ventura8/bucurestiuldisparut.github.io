@@ -14,6 +14,7 @@ from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
 from types import SimpleNamespace
 
+import httpx
 import pytest
 from hcm_pipeline.calibrate import chain
 from hcm_pipeline.contract import Errors
@@ -29,8 +30,20 @@ from hcm_pipeline.worker.worker import Worker
 from tests.contracts_loader import record
 from tests.fakes.http import FakeHttpServer, Reply
 from tests.fakes.sidecar import BoxSidecar
-from tests.fakes.worker_api import PROJECT, FakeWorkerApi
-from tests.fakes.world import CITY, ENTITY_ID, JOB_ID, LAYER_ID, OVERPASS_PATH, STAC_PATH, FakeClock, PipelineWorld, dig, small_city
+from tests.fakes.worker_api import PROJECT, FakeWorkerApi, StoredObject
+from tests.fakes.world import (
+    CITY,
+    ENTITY_ID,
+    JOB_ID,
+    LAYER_ID,
+    OVERPASS_PATH,
+    STAC_PATH,
+    FakeClock,
+    PipelineWorld,
+    city_bounds,
+    dig,
+    small_city,
+)
 
 STEPS = ("fetch", "extract", "stitch", "locate", "reference", "georef", "warp", "export", "pyramid", "register")
 # A city on Mapbox's path (the world's `seed_city`): the COG and the Studio file, since M12 the archive and its thumbnail, and since
@@ -294,3 +307,85 @@ def test_bad_path_a_worker_under_an_old_starter_goes_to_points_and_says_so(
 
     assert record(world.version()["calibration"])["how"] == "none"
     assert any("local AI unavailable (old-starter)" in line for line in world.log_lines())
+
+
+def test_bad_path_an_older_version_the_server_cannot_read_never_fails_the_import(
+    world: PipelineWorld, api: FakeWorkerApi, tmp_path: Path, built: list[Worker]
+) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE
+    Live 2026-11-08: a same-date frame failed in georef on another version's read."""
+    local_import(world)
+    broken = world.version_path("v-older")
+    world.store.seed(broken, {**world.version(), "jobId": "v-older", "state": "published"})
+    api.unreadable.add(broken)
+    worker = signed_in_worker(world, api, tmp_path / "work", built)
+
+    assert worker.loop.run_once() is Pass.RAN
+
+    job = world.job()
+    assert (job["status"], job["waitReason"]) == ("awaiting_approval", "approval")
+    assert {"op": "get", "path": broken} in step_requests(api)
+    assert any(line.startswith("1 other frames could not be read") and "v-older" in line for line in world.log_lines())
+    assert "alignment" not in record(world.version()["calibration"])
+    assert api.ended()[-1]["outcome"] == "done"
+
+
+def test_bad_path_a_partner_the_server_left_out_or_cannot_be_measured_never_fails_the_import(
+    world: PipelineWorld, api: FakeWorkerApi, tmp_path: Path, built: list[Worker]
+) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE
+    The review of 0421875: an invalid version the server leaves out of its list is counted, and an accepted frame whose `align.tif`
+    GDAL cannot read is left out by name; the frame is fitted alone and the import goes on."""
+    local_import(world)
+    accepted = {"state": "published", "output": {"bounds": city_bounds()}, "calibration": {"how": "votes"}, "georef": {"method": "auto"}}
+    world.store.seed(world.version_path("v-invalid"), {**world.version(), "jobId": "v-invalid", "year": "nineteen sixty"})
+    api.invalid.add(world.version_path("v-invalid"))
+    world.store.seed(world.version_path("v-corrupt"), {**world.version(), **accepted, "jobId": "v-corrupt", "year": 1966})
+    api.objects[f"rasters/{CITY}/{LAYER_ID}/v-corrupt/align.tif"] = StoredObject(b"not a GeoTIFF", next(api.generations))
+    worker = signed_in_worker(world, api, tmp_path / "work", built)
+
+    assert worker.loop.run_once() is Pass.RAN
+
+    job = world.job()
+    assert (job["status"], job["waitReason"]) == ("awaiting_approval", "approval")
+    lines = world.log_lines()
+    assert "1 of the city's frames could not be read and were left out" in lines
+    assert "the accepted frame v-corrupt could not be measured: fitted without it" in lines
+    assert {"op": "get", "path": world.version_path("v-invalid")} not in step_requests(api)
+    assert "alignment" not in record(world.version()["calibration"])
+    assert api.ended()[-1]["outcome"] == "done"
+
+
+def test_bad_path_a_partner_whose_download_the_network_cuts_midway_is_left_out_and_the_import_awaits_approval(
+    world: PipelineWorld, api: FakeWorkerApi, tmp_path: Path, built: list[Worker], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE
+    The review of a6750294: httpx's `ReadError` from a signed download escaped `PARTNER_FAILURES` and failed the import as `internal`,
+    naming no frame; the connection reset after the partner's first block now leaves that partner out by name."""
+    local_import(world)
+    accepted = {"state": "published", "output": {"bounds": city_bounds()}, "calibration": {"how": "votes"}, "georef": {"method": "auto"}}
+    world.store.seed(world.version_path("v-cut"), {**world.version(), **accepted, "jobId": "v-cut", "year": 1966})
+    api.objects[f"rasters/{CITY}/{LAYER_ID}/v-cut/align.tif"] = StoredObject(b"II*\x00 the partner's image", next(api.generations))
+    read = httpx.Response.iter_bytes
+    cut: list[str] = []
+
+    def reset(response: httpx.Response, chunk_size: int | None = None) -> Iterator[bytes]:
+        blocks = read(response, chunk_size)
+        if "/v-cut/align.tif" not in response.request.url.path:
+            yield from blocks
+            return
+        yield next(blocks)
+        cut.append(response.request.url.path)
+        raise httpx.ReadError("connection reset by peer", request=response.request)
+
+    monkeypatch.setattr(httpx.Response, "iter_bytes", reset)
+    worker = signed_in_worker(world, api, tmp_path / "work", built)
+
+    assert worker.loop.run_once() is Pass.RAN
+
+    job = world.job()
+    assert (job["status"], job["waitReason"]) == ("awaiting_approval", "approval")
+    assert cut == [f"/signed/rasters/{CITY}/{LAYER_ID}/v-cut/align.tif"]
+    assert "the accepted frame v-cut could not be measured: fitted without it" in world.log_lines()
+    assert "alignment" not in record(world.version()["calibration"])
+    assert api.ended()[-1]["outcome"] == "done"

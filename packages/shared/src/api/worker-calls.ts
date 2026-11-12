@@ -10,6 +10,7 @@ import { idSchema } from '../schemas/primitives.js';
 import { cityIdSchema } from '../schemas/paths.js';
 import { workerAiSchema } from '../schemas/worker.js';
 import { JOB_STATUSES, WORKER_ID_PATTERN } from '../schemas/firestore-ops.js';
+import { workerArchiveReportRequestSchema, workerArchiveReportResponseSchema } from './archive.js';
 import { isoTimeSchema } from './common.js';
 import type { CallableSpec, WorkerCallableName } from './registry.js';
 import { WORKER_PAIR_CODE_PATTERN, WORKER_PAIR_ID_PATTERN, WORKER_URLS_MAX, WORKER_USGS_ENDPOINTS } from './worker.js';
@@ -54,8 +55,19 @@ export const workerHelloResponseSchema = z.strictObject({
     outdated: z.boolean().optional(),
 });
 
-/** `worker.claim`: the oldest due local job of the city, leased to this worker, or none. */
-export const workerClaimRequestSchema = z.strictObject({ cityId: cityIdSchema, workerId: workerIdSchema });
+/**
+ * `worker.claim`: the oldest due local job of the city, leased to this worker, or none. `types`: the job types the worker's
+ * pipeline runs (an older image leaves a newer type queued for an updated one); absent, every type (a worker before it).
+ * Free text of a type's shape, not the enum: a newer worker may name a type this server does not know yet.
+ */
+export const workerClaimRequestSchema = z.strictObject({
+    cityId: cityIdSchema,
+    workerId: workerIdSchema,
+    types: z
+        .array(z.string().regex(/^[a-z][a-z-]{0,39}$/))
+        .max(20)
+        .optional(),
+});
 export const workerClaimResponseSchema = z.strictObject({
     job: z.strictObject({ jobId: idSchema }).nullable(),
     /** True when the worker's image is not the installed one (no job is given to it). */
@@ -102,6 +114,8 @@ export const workerStepResponseSchema = z.strictObject({
     ok: z.boolean().optional(),
     created: z.boolean().optional(),
     ids: z.array(idSchema).max(1000).optional(),
+    /** A list of the city's versions (M15): how many it left out because they fail their schema (an older server sends none). */
+    skipped: z.number().int().min(0).max(1000).optional(),
 });
 
 /** `worker.urls`: signed URLs of the job's objects, or one M2M call made with the server's USGS key. */
@@ -171,6 +185,8 @@ export const WORKER_CALLABLES = {
     'worker.step': workerCallable(workerStepRequestSchema, workerStepResponseSchema),
     'worker.urls': workerCallable(workerUrlsRequestSchema, workerUrlsResponseSchema),
     'worker.end': workerCallable(workerEndRequestSchema, workerEndResponseSchema),
+    // M20 (docs/research/M20-import-local.md §2.4): a local archive's scan report; bound to the worker, not to a job.
+    'worker.archiveReport': workerCallable(workerArchiveReportRequestSchema, workerArchiveReportResponseSchema),
     // Finding 67: no sign-in; the one-time code is the credential, the attempts are limited per city.
     'worker.pair': {
         access: 'none',

@@ -13,7 +13,7 @@ import {
     FIRESTORE_PATHS,
     isSideJob,
     jobDocSchema,
-    layerVersionDocSchema,
+    layerVersionReadSchema,
     type JobDoc,
     type JobStatus,
 } from '@hcm/shared';
@@ -57,7 +57,7 @@ async function heldByAJoin(deps: CancelDeps, cityId: string, jobId: string, job:
     if (isSideJob(job.type)) {
         return false;
     }
-    const version = await deps.documents.get(FIRESTORE_PATHS.layerVersion(cityId, versionIdOf(jobId, job)), layerVersionDocSchema);
+    const version = await deps.documents.get(FIRESTORE_PATHS.layerVersion(cityId, versionIdOf(jobId, job)), layerVersionReadSchema);
     return version !== undefined && (await liveJoinOf(deps.documents, cityId, version)) !== undefined;
 }
 

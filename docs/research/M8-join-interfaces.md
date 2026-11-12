@@ -225,7 +225,7 @@ Other behaviours:
 
 1. `requireCity`, read the scenes, require one date and one sensor.
 2. For an imported scene, the part is found with `layerVersions where layerId == scene.layerId`: not ended, or published, newest. `failed` or `rejected` raises `joinPartGone`.
-3. A new `refuseRasterJobs(documents, now, cityId, count)` in `limits.ts`, with count = missing frames + 1.
+3. A new `refuseRasterJobs(documents, now, cityId, count)` in `limits.ts`, with count = missing frames + 1. For a city whose choice is `local` it asks only the budget guard and every job of the join is created `runOn: 'local'` (2026-11-12, `docs/research/M7-local-worker.md` §4.5).
 4. For a missing frame, require `downloadAvailable` and `requireUsgs`, then `confirmScanned`.
 5. `reserveLayerIds`. With one published part, the join becomes a new version of **that** layer (`refuseBusyLayer`), so tileset and presentation stay and `supersede` handles the old version. Otherwise it gets a new id.
 6. One transaction, all reads first:
@@ -637,3 +637,20 @@ New rows: `S-P05-HAPPY-OFF-NADIR`, `S-A65-BAD-NO-SEAMS`, `S-A65-BAD-SEAM-REFUSED
 - Bundle margin: D measured 627.8 of 630 KB in production; E read 629.4 on a dist that may be the e2e build. The `build` stage decides.
 - A seam can bend along a frame's own edge (§13): left as it is, worth looking at in the rehearsal.
 - The local stack seeds no frames of one date (`e2e/stack/seed-content.ts` is unchanged), so a join is not walked LOCAL by hand: the specs walk it, and `docs/MANUAL_TEST_PLAN.md` J is LIVE.
+
+## 18. Batch 4: frames that already are layers (2026-11-09)
+
+The owner's live joins (2 February 1972: F039 and F040 each published as their own layer, `kh-9-hexagon-2-februarie-1972` and `-2`;
+1980: A038 published, A039 awaiting approval) were refused with "Two of these frames are already published: delete one layer first" and,
+on the old join's retry, "Frame D3C1216-100235A039 ended; import or retry it". The rules now (DECISIONS-for-review.md §138a–c):
+
+| What | Where | Behaviour |
+| --- | --- | --- |
+| Which frames serve | `functions/src/imagery/join.ts`, `join-write.ts`, `join-parts.ts` | Any frame with a usable version: awaiting approval, approved, publishing or published (as a layer of its own or the join's). Only a frame with no usable version left refuses (`apiError.imagery.joinPartGone`, new words). The transaction no longer refuses a frame the policy approved meanwhile. |
+| The join's layer | `join.ts` `publishedFrame` | With frames on layers, the join is a new version of the first published one's layer (else the first on its way to one); `apiError.imagery.joinTwoPublished` is gone. |
+| The dispatcher and a retry | `join-parts.ts` `partsReady`, `dispatch.ts`, `retry.ts` | A frame published on another layer, approved or publishing is ready. A frame a newer join stamped is `taken`: `apiError.imagery.joinPartTaken` (not retryable: `NOT_RETRYABLE_CODES`), so the old join's card offers no Try again and names the newer join's frame. |
+| Retiring the date's layers | `finalize-join.ts` (`readFrame`, `layerWrite`, `retiredByJoin`), `finalize.ts` | When the join publishes, each frame's own layer other than the join's leaves the manifest (`published: false`) with `retired: {by: <join version>, at}`; its tiles, versions and files stay (the history trigger records the change). A frame that publishes alone after its join published gets the same at birth. Nothing is deleted. |
+| The admin | `packages/ui/src/admin/imagery/scene-list.ts` (`replacesNote`, in the Imagery chunk: `join-card` has no bytes left), `layers/geometry-group.ts` | Under Whole-city dates, while a date has a published frame: "A join of this date replaces its frames' own published layers once you approve it…". A retired layer's editor says **Replaced by the joined layer of its date** and links the join. |
+
+Tests: `functions/test/imagery/{join,join-parts,join-finalize,retry}.test.ts`, `packages/ui/test/admin/imagery/join.test.ts`,
+`packages/ui/test/admin/layers/layer-geometry.test.ts`; scenarios `S-A65-HAPPY-PUBLISHED-FRAMES`, `S-A65-BAD-PART-TAKEN`.

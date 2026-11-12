@@ -42,10 +42,10 @@ export class HcmMapAttribution extends LitElement {
                 column-gap: 16px;
                 box-sizing: border-box;
                 min-block-size: 48px;
-                color: var(--md-sys-color-on-surface-variant, CanvasText);
-                font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
-                line-height: var(--md-sys-typescale-body-small-line-height, 1rem);
-                letter-spacing: var(--md-sys-typescale-body-small-tracking, 0.025rem);
+                color: var(--md-sys-color-on-surface-variant);
+                font-size: var(--md-sys-typescale-body-small-size);
+                line-height: var(--md-sys-typescale-body-small-line-height);
+                letter-spacing: var(--md-sys-typescale-body-small-tracking);
             }
 
             /* Mapbox's wordmark (88 x 23, from mapbox-gl.css) centred in a 48 px tall touch target. */

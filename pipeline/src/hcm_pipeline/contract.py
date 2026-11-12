@@ -37,14 +37,20 @@ JOB_WAIT_REASONS: Final = (
     "worker",
     "free-tier",
     "parts",
+    # M20: an archive series waiting for a later day's share of new layers.
+    "daily",
 )
 JOB_STEP_STATES: Final = ("pending", "running", "done", "failed", "skipped")
 PIPELINE_STEPS: Final = (
+    # M20 (docs/research/M20-import-local.md §4): an archive series' originals checked on the owner's computer.
+    "gather",
     "fetch",
     "extract",
     "stitch",
     "inspect",
     "locate",
+    # M20: an archive series placed by the path of its class, or parked for points with a one-line reason.
+    "place",
     "reference",
     "georef",
     "align",
@@ -70,6 +76,8 @@ JOB_STEPS: Final[Mapping[str, tuple[str, ...]]] = {
     "layer-join": ("align", "merge", "export", "pyramid", "register", *PUBLISH_STEPS),
     # M12: tiles for a version rendered before them; the version keeps its state, whatever this job does.
     "layer-tiles": ("pyramid",),
+    # M20: the originals never leave the computer; `place` writes the `warped.tif` the shared tail reads.
+    "archive-series": ("gather", "place", "export", "pyramid", "register", *PUBLISH_STEPS),
 }
 # The job types that work beside a version and never decide its state (`SIDE_JOB_TYPES`).
 SIDE_JOB_TYPES: Final = frozenset({"layer-tiles"})
@@ -86,7 +94,9 @@ LAYER_VERSION_STATES: Final = (
     "cancelled",
     "joined",
 )
-USGS_DATASETS: Final = ("corona2", "declassii", "declassiii")
+# M25 (docs/research/M25-landsat.md): Landsat 4-5 TM and Landsat 7 ETM+ Collection 2 Level-1, already georeferenced.
+LANDSAT_DATASETS: Final = ("landsat_tm_c2_l1", "landsat_etm_c2_l1")
+USGS_DATASETS: Final = ("corona2", "declassii", "declassiii", *LANDSAT_DATASETS)
 GEOREF_TRANSFORMS: Final = ("affine", "poly2", "tps")
 MIN_GCPS: Final[Mapping[str, int]] = {"affine": 3, "poly2": 6, "tps": 10}
 GCP_ORIGINS: Final = ("corner", "auto", "manual")
@@ -101,6 +111,7 @@ VERSION_FILES: Final = (
     "tiles.pmtiles",
     "thumb.webp",
     "align.tif",
+    "stitched.jpg",
 )
 LEASE_SECONDS: Final = 600
 HEARTBEAT_SECONDS: Final = 60
@@ -158,6 +169,8 @@ class SensorSpec:
     half_angle_deg: float | None = None
     full_aspect: float | None = None
     search: SearchRange = SearchRange(30_000.0, (1.0,))
+    # A panoramic strip with no camera model: `locate` searches it window by window along its length (`calibrate/strip.py`).
+    strip: bool = False
 
     def as_contract(self) -> dict[str, object]:
         """The camelCase record of `enums.json` (the TypeScript `SensorSpec`)."""
@@ -172,11 +185,12 @@ class SensorSpec:
 
 
 _CORONA_SEARCH: Final = SearchRange(30_000.0, (0.85, 1.0, 1.15))
-# Corona is panoramic too, but **UNVERIFIED**: it keeps the corner homography until a real run measures its half angle.
+# Corona is panoramic too, but **UNVERIFIED**: it keeps the corner homography until a real run measures its half angle, fitted
+# locally along the strip around the city (`strip`, M9 §16).
 SENSOR_SPECS: Final[Mapping[str, SensorSpec]] = {
-    "KH-4": SensorSpec("corona2", "KH-4 Corona", 7.5, 10, 15, "std", search=_CORONA_SEARCH),
-    "KH-4A": SensorSpec("corona2", "KH-4A Corona", 2.75, 10, 16, "std", search=_CORONA_SEARCH),
-    "KH-4B": SensorSpec("corona2", "KH-4B Corona", 1.8, 10, 16, "std", search=_CORONA_SEARCH),
+    "KH-4": SensorSpec("corona2", "KH-4 Corona", 7.5, 10, 15, "std", search=_CORONA_SEARCH, strip=True),
+    "KH-4A": SensorSpec("corona2", "KH-4A Corona", 2.75, 10, 16, "std", search=_CORONA_SEARCH, strip=True),
+    "KH-4B": SensorSpec("corona2", "KH-4B Corona", 1.8, 10, 16, "std", search=_CORONA_SEARCH, strip=True),
     # The Argon mapping camera: a frame 550 km across at 34 m a pixel, 140 m on the ground. DS09065A089MC039 (1964) was read as KH-4A. Its
     # true place is 20 km from its footprint's, and nothing proves it: no vote agrees, and the proof reaches 14 tiles at most (M9 §14).
     "KH-5": SensorSpec("corona2", "KH-5 Argon", 140, 8, 12, "std", search=SearchRange(30_000.0, (1.0,))),
@@ -190,16 +204,22 @@ SENSOR_SPECS: Final[Mapping[str, SensorSpec]] = {
     # F007 0.92, F039 0.956; five more full sweeps 0.915 to 0.950), but a short film's is about right (0.998 to 1.010; A015, 1983, is found
     # only there): the model's own scale first, one warp set more for a full sweep, which agrees at either (M9 §14).
     "KH-9-pan": SensorSpec("declassiii", "KH-9 Hexagon", 1, 10, 17, "xl", 60.5, 20.2, SearchRange(30_000.0, (1.0, 0.94))),
+    # M25: tiles to the pixel's zoom (z13 for 30 m, z14 for 15 m); `locate` never runs for them (already georeferenced).
+    "L4-TM": SensorSpec("landsat_tm_c2_l1", "Landsat 4 TM", 30, 8, 13, "std"),
+    "L5-TM": SensorSpec("landsat_tm_c2_l1", "Landsat 5 TM", 30, 8, 13, "std"),
+    "L7-ETM": SensorSpec("landsat_etm_c2_l1", "Landsat 7 ETM+", 15, 8, 14, "std"),
 }
 
 # The share of a job's progress each pipeline step stands for (`usgs-import`'s weights add up to 1; other job
 # types scale the weights of their own steps to 1, docs/research/M3-interfaces.md §4.4).
 STEP_WEIGHTS: Final[Mapping[str, float]] = {
+    "gather": 0.05,
     "fetch": 0.25,
     "extract": 0.05,
     "stitch": 0.10,
     "inspect": 0.10,
     "locate": 0.05,
+    "place": 0.60,
     "reference": 0.05,
     "georef": 0.20,
     "align": 0.15,
@@ -245,6 +265,12 @@ class Errors:
     REFINE_REFUSED: Final = "apiError.imagery.refineRefused"
     # Too few held-out checks to compare the two fits: the tiles agreed, only the comparison was impossible.
     REFINE_UNMEASURED: Final = "apiError.imagery.refineUnmeasured"
+    # M20: an archive series' originals are not on this computer, or are no longer the files its scan read.
+    ARCHIVE_MISSING: Final = "apiError.imagery.archiveMissing"
+    # M25: a Landsat delivery without a band the true colour needs.
+    MISSING_BAND: Final = "apiError.imagery.missingBand"
+    # A job type this image does not run: the worker's pipeline is older than the job; an updated one runs it (retryable).
+    PIPELINE_OUTDATED: Final = "apiError.imagery.pipelineOutdated"
 
 
 def pipeline_steps_of(job_type: str) -> tuple[str, ...]:

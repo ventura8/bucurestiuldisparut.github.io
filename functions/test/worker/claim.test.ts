@@ -27,6 +27,16 @@ import {
     type WorkerWorld,
 } from './world.js';
 
+const ARCHIVE_PARAMS = {
+    archiveId: 'ar-0123456789abcdef',
+    seriesId: 's-0123456789ab',
+    class: 'grid',
+    sheets: 4,
+    encoding: 'lineart',
+    order: 0,
+    referenceLayerIds: [],
+};
+
 function claim(world: WorkerWorld, workerId = WORKER, uid?: string) {
     return callAs(world, claimFunction, { workerId }, uid);
 }
@@ -111,6 +121,23 @@ describe('worker.claim', () => {
 
         await expect(claim(world)).resolves.toEqual({ job: null });
         await expect(readJob(world, 'j-1')).resolves.toEqual(job);
+    });
+
+    it('happyPath_aWorkerTakesOnlyTheTypesItsPipelineRuns_theOtherStaysQueued @S-A12-HAPPY-RETRY-OUTDATED', async () => {
+        const world = await queuedWorld();
+        await seedJob(world, 'j-archive', localJob({ type: 'archive-series', params: ARCHIVE_PARAMS, createdAt: minutes(-200) }));
+
+        await expect(callAs(world, claimFunction, { workerId: WORKER, types: ['usgs-import'] })).resolves.toEqual({
+            job: { jobId: 'j-old' },
+        });
+
+        await expect(readJob(world, 'j-archive')).resolves.toMatchObject({ status: 'queued' });
+    });
+
+    it('badPath_aWorkerWhosePipelineRunsNoneOfTheQueuedTypesTakesNothing @S-A12-HAPPY-RETRY-OUTDATED', async () => {
+        const world = await queuedWorld();
+
+        await expect(callAs(world, claimFunction, { workerId: WORKER, types: ['layer-tiles'] })).resolves.toEqual({ job: null });
     });
 
     it('badPath_aJobAnotherWorkerTookFirstIsNotTakenAgain', async () => {

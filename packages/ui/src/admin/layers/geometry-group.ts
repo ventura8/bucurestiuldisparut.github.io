@@ -3,7 +3,8 @@
  * version under way (its page), **Replace the image** (the Imagery area's upload for this layer), **Georeference again**
  * (the georeferencer on the current version; a linked layer has no scan, and says so), and **Crop**, whose tool comes in
  * the lazy `layer-geometry` chunk (`<hcm-layer-crop>`) on the first click. M8 (`docs/research/M8-join-interfaces.md` §9): a joined
- * layer has neither: it has no scan of its own, so it says to delete it and join again.
+ * layer has neither: it has no scan of its own, so it says to delete it and join again. Batch 4 (§5.1): a frame's layer a published join
+ * of its date replaced says so, with the way to that join.
  */
 import type { LayerDoc, Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
@@ -28,6 +29,19 @@ function pendingChip(locale: Locale, layer: LayerDoc): TemplateResult {
             html`<p>
                 <a class="tag touch-target" data-tone="wait" href=${['#/imagery/version', version].join('/')}
                     >${contentText(locale, 'adminContent.imagery.layer.pending')}</a
+                >
+            </p>`,
+    );
+}
+
+/** A layer the join of its date replaced: off the public map, kept; the link opens that join. */
+function retiredChip(locale: Locale, layer: LayerDoc): TemplateResult {
+    return withValue(
+        layer.retired,
+        ({ by }) =>
+            html`<p class="note" data-state="retired-layer">
+                <a class="external" href=${['#/imagery/version', by].join('/')}
+                    >${contentText(locale, 'adminContent.imagery.layer.retired')}</a
                 >
             </p>`,
     );
@@ -87,7 +101,7 @@ export function geometryGroup(context: GeometryContext, id: string, layer: Layer
     return html`<section class="group" data-group="geometry">
         <h3>${contentText(locale, 'adminContent.layers.geometry')}</h3>
         <p class="note">${contentText(locale, 'adminContent.layers.geometryNote')}</p>
-        ${pendingChip(locale, layer)}
+        ${retiredChip(locale, layer)} ${pendingChip(locale, layer)}
         <ul class="links">
             <li>
                 <a class="external" href=${['#/imagery/replace', id].join('/')}

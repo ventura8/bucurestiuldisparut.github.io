@@ -29,11 +29,14 @@ function actingOn(host: HandlerHost): On {
     };
 }
 
-/** The Layers panel's Map labels, the help panel's switch, and About's button to the panel. */
-function inputHandlers(on: On): Pick<ViewerHandlers, 'onMapLabel' | 'onShortcuts' | 'onHelpOpen'> {
+/** The Layers panel's Map labels and its rail, the help panel's switch, and About's button to the panel. */
+function inputHandlers(on: On): Pick<ViewerHandlers, 'onMapLabel' | 'onLayersMinimize' | 'onShortcuts' | 'onHelpOpen'> {
     return {
         onMapLabel: on((store, event) => {
             store.setMapLabels({ [event.detail.kind]: event.detail.visible });
+        }),
+        onLayersMinimize: on((store, event) => {
+            store.setLayersHidden(event.detail.minimized);
         }),
         onShortcuts: on((store, event) => {
             store.setShortcuts(event.detail.enabled);
@@ -79,6 +82,17 @@ function storyHandlers(on: On): Pick<ViewerHandlers, 'onStorySelect' | 'onPoiSel
     };
 }
 
+/** The zoom buttons (V52): one level in (1) or out (-1); a click is no event of a part, nothing to stop. */
+function zoomHandler(host: HandlerHost): Pick<ViewerHandlers, 'onZoom'> {
+    return {
+        onZoom: (step) => {
+            host.act(null, (store) => {
+                store.zoomBy(step);
+            });
+        },
+    };
+}
+
 export function createHandlers(host: HandlerHost): ViewerHandlers {
     const on = actingOn(host);
     return {
@@ -112,6 +126,7 @@ export function createHandlers(host: HandlerHost): ViewerHandlers {
             void store.retry();
         }),
         onCompareToggle: on(toggleCompare),
+        ...zoomHandler(host),
         onToastDismiss: on((store) => {
             store.dismissToast();
         }),

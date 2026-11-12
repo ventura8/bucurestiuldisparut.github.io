@@ -25,6 +25,7 @@ import {
     themeSchema,
     LAYER_KINDS,
 } from './manifest.js';
+import { ARCHIVE_PLACE_METHODS, layerRightsSchema } from './imagery-archive.js';
 import { iconNameSchema, MAX_POI_PHOTOS, photosOverlaySchema } from './poi.js';
 import { heldImageSchema, reviewFields } from './review.js';
 import { localizedStorySchema, storyFields } from './story.js';
@@ -58,7 +59,14 @@ import { daySchema, monthSchema, withPhotoDate } from './photo-date.js';
 export const FIRESTORE_LICENSES = [...LICENSES, 'unknown'] as const;
 export const PROCESSING_STATES = ['pending', 'done', 'failed'] as const;
 export const LAYER_STATUSES = ['draft', 'processing', 'awaiting_approval', 'ready', 'failed'] as const;
-export const USGS_DATASETS = ['corona2', 'declassii', 'declassiii'] as const;
+/** The declassified datasets (Declass 1, 2 and 3): scans of film, georeferenced by the pipeline. */
+export const DECLASS_DATASETS = ['corona2', 'declassii', 'declassiii'] as const;
+/**
+ * M25 (`docs/research/M25-landsat.md`): Landsat Collection 2 Level-1 over the same M2M API: Landsat 4-5 TM (30 m, 1982-2013) and
+ * Landsat 7 ETM+ (15 m panchromatic, from 1999), already georeferenced and public domain.
+ */
+export const LANDSAT_DATASETS = ['landsat_tm_c2_l1', 'landsat_etm_c2_l1'] as const;
+export const USGS_DATASETS = [...DECLASS_DATASETS, ...LANDSAT_DATASETS] as const;
 /** How a layer was georeferenced: the scene's corners, the admin's points, the automatic matcher, or an upload's own (M3). */
 export const GEOREF_METHODS = ['corners', 'gcps', 'auto', 'embedded'] as const;
 /**
@@ -245,6 +253,8 @@ export const layerDocSchema = z.strictObject({
     opacity: opacitySchema,
     defaultVisible: z.boolean(),
     adjustments: layerAdjustmentsSchema.optional(),
+    /** M20 (`docs/research/M20-import-local.md` §7): an archive map's licence, author and source, copied into the manifest. */
+    rights: layerRightsSchema.optional(),
     status: z.enum(LAYER_STATUSES),
     published: z.boolean(),
     provenance: z
@@ -260,6 +270,8 @@ export const layerDocSchema = z.strictObject({
                     checkpointRmseM: z.number().min(0).optional(),
                 })
                 .optional(),
+            /** Batch 4: how an archive series was placed; `grid-names` with `approvedBy: 'owner'` when its owner approved it by hand. */
+            archive: z.strictObject({ method: z.enum(ARCHIVE_PLACE_METHODS), approvedBy: z.literal('owner').optional() }).optional(),
         })
         .optional(),
     mapbox: z
@@ -275,6 +287,11 @@ export const layerDocSchema = z.strictObject({
     currentVersion: idSchema.optional(),
     /** M3: a newer version under way or waiting for approval; the layer keeps its tiles until that one is published. */
     pendingVersion: idSchema.optional(),
+    /**
+     * Batch 4 (`docs/research/M8-join-interfaces.md` §5.1): the published join of its date that replaced this frame's layer (`by`, its
+     * version) and when; the layer left the manifest, its tiles and versions are kept until the owner deletes it.
+     */
+    retired: z.strictObject({ by: idSchema, at: timestampSchema }).optional(),
     createdAt: timestampSchema.optional(),
     ...stamp,
 });

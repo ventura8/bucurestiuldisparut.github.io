@@ -149,6 +149,7 @@ export function placeDoc(world: Pick<ContentWorld, 'store'>, extra: Record<strin
         category: 'biserici',
         geometry: geometryToDoc(POINT),
         title: { ro: 'Stavropoleos', en: 'Stavropoleos Church' },
+        yearStart: 1890,
         links: [],
         photoIds: [],
         published: true,

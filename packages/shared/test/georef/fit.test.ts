@@ -195,6 +195,43 @@ describe('fitTransform: refusals', () => {
         expect(fitTransform('poly2', pairs)).toEqual({ ok: false, reason: 'degenerate' });
         expect(fitTransform('affine', pairs).ok).toBe(true);
     });
+
+    it('badPath_pixelsOnOnlyTwoRowsLeaveTheSecondOrderFitSingular @S-A16-BAD-POLY2-TWO-ROWS', () => {
+        const pairs = [0, 1, 2].flatMap((col) => [gcp(`t${String(col)}`, col * 4500, 0), gcp(`b${String(col)}`, col * 4500, 7000)]);
+
+        expect(fitTransform('poly2', pairs)).toEqual({ ok: false, reason: 'degenerate' });
+        expect(fitTransform('affine', pairs).ok).toBe(true);
+    });
+});
+
+describe('fitTransform: poly2 inverse through a forward grid', () => {
+    /** Well-spread scan pixels whose places lie on two latitudes (two streets): reverse-on-pairs was singular. */
+    function twoStreetPairs(): Gcp[] {
+        const pixels = [
+            [0, 0],
+            [9000, 0],
+            [9000, 7000],
+            [0, 7000],
+            [4500, 3500],
+            [2000, 5000],
+        ] as const;
+        return pixels.map(([x, y], index) => ({
+            id: `s${String(index)}`,
+            pixel: { x, y },
+            geo: index % 2 === 0 ? { lat: 44.55, lng: 26 + index * 0.015 } : { lat: 44.5, lng: 26 + index * 0.015 },
+            enabled: true,
+            origin: 'manual' as const,
+        }));
+    }
+
+    it('happyPath_placesOnTwoStreetsStillFitWhenTheInverseIsSampledOnTheForwardGrid @S-A16-HAPPY-POLY2-GRID-INVERSE', () => {
+        const pairs = twoStreetPairs();
+        const fitted = ok(fitTransform('poly2', pairs));
+
+        expect(fitted.fitRmseM).toBeLessThan(0.01);
+        expect(fitted.transform.kind).toBe('poly2');
+        expect(fitTransform('affine', pairs).ok).toBe(true);
+    });
 });
 
 describe('distanceFromFit', () => {

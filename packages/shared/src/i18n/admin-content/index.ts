@@ -2,6 +2,8 @@ import { en as citiesEn } from '../admin-cities/en.js';
 import { ro as citiesRo, type AdminCitiesKey } from '../admin-cities/ro.js';
 import { en as exportEn } from '../admin-export/en.js';
 import { ro as exportRo, type AdminExportKey } from '../admin-export/ro.js';
+import { en as georefEn } from '../admin-georef/en.js';
+import { ro as georefRo, type AdminGeorefKey } from '../admin-georef/ro.js';
 import { en as imageryEn } from '../admin-imagery/en.js';
 import { ro as imageryRo, type AdminImageryKey } from '../admin-imagery/ro.js';
 import { en as layersEn } from '../admin-layers/en.js';
@@ -35,6 +37,7 @@ export type AdminContentKey =
     | AdminSettingsKey
     | AdminOpsKey
     | AdminImageryKey
+    | AdminGeorefKey
     | AdminOrdersKey
     | AdminNotifyKey
     | AdminCitiesKey
@@ -60,6 +63,7 @@ export const ADMIN_CONTENT_CATALOGUES: Readonly<Record<'ro' | 'en', AdminContent
         ...settingsRo,
         ...opsRo,
         ...imageryRo,
+        ...georefRo,
         ...ordersRo,
         ...notifyRo,
         ...citiesRo,
@@ -75,6 +79,7 @@ export const ADMIN_CONTENT_CATALOGUES: Readonly<Record<'ro' | 'en', AdminContent
         ...settingsEn,
         ...opsEn,
         ...imageryEn,
+        ...georefEn,
         ...ordersEn,
         ...notifyEn,
         ...citiesEn,

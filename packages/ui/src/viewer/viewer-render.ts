@@ -16,7 +16,7 @@ import type { CameraOffset } from '../map/mapbox-types.js';
 import type { AttributionPart } from './attribution.js';
 import { EMPTY } from './empty.js';
 import type { MapLabelDetail } from './hcm-layer-panel.js';
-import { isDialogSheet } from './input-commands.js';
+import { dialogMode, isDialogSheet } from './input-commands.js';
 import { DOCKED_OPEN, type Placement, type SheetMode, type ViewerLayout } from './layout.js';
 import { renderSheetFrame } from './sheet-frame.js';
 import type { ViewerError, ViewerState } from './store-port.js';
@@ -24,6 +24,7 @@ import { photosNearYear, type TimelineStop } from './timeline-model.js';
 import { menuActions, menuItem } from './viewer-menu.js';
 import { storiesSheet } from './viewer-stories.js';
 import { unplacedSheet } from './viewer-unplaced.js';
+import { zoomButtons, type MapSize } from './viewer-zoom.js';
 import { legalMirror, modalOpen, renderConsentBanner, renderLegalBar, type LegalMirror } from './viewer-legal.js';
 
 /** What one render needs, derived from the store state by the element. */
@@ -38,6 +39,8 @@ export interface ViewerView {
     readonly mapboxCssUrl: string;
     /** The map's attribution as Mapbox GL shows it (`watchAttribution`), for the legal bar and About. */
     readonly attribution: readonly AttributionPart[];
+    /** The map container's box (null before the first render): Zoom out's limit (`viewer-zoom.ts`). */
+    readonly mapSize: MapSize | null;
 }
 
 /** `hcm-photo-locate` of `<hcm-photo-sheet>`: the photo, and its place's offset from the map's centre (`locateOffset`). */
@@ -78,7 +81,11 @@ export interface ViewerHandlers {
     readonly onCompareToggle: (event: Event) => void;
     /** The Layers panel's Map labels switches (V31). */
     readonly onMapLabel: (event: CustomEvent<MapLabelDetail>) => void;
+    /** The extra-large Layers pane minimized to its rail, or restored (V03). */
+    readonly onLayersMinimize: (event: CustomEvent<{ readonly minimized: boolean }>) => void;
     readonly onToastDismiss: (event: Event) => void;
+    /** The zoom buttons: one level in (1) or out (-1). */
+    readonly onZoom: (step: number) => void;
     /** The help panel's switch of the single-key shortcuts. */
     readonly onShortcuts: (event: CustomEvent<{ readonly enabled: boolean }>) => void;
     /** About's button to the help panel. */
@@ -153,7 +160,7 @@ export function renderViewer(view: ViewerView, handlers: ViewerHandlers): Templa
                 class="frame"
                 data-panes=${panes(view, ready)}
                 ?data-compact-height=${view.state?.compactHeight === true}
-                ?data-timeline=${hasTimeline(view, ready)}
+                data-timeline=${hasTimeline(view, ready) ? view.layout.timeline : nothing}
                 ?data-legal-mirror=${legal !== 'none'}
                 ?inert=${modalOpen(view.state, view.layout.sheetMode)}
             >
@@ -194,7 +201,7 @@ function skipLink(view: ViewerView, ready: Ready | null, handlers: ViewerHandler
 
 function leadingPane(view: ViewerView, ready: Ready | null, handlers: ViewerHandlers): TemplateResult {
     return ready !== null && view.layout.layersDocked
-        ? html`<div class="pane leading">${layerPanel(view, ready, { ...DOCKED_OPEN, closable: false }, handlers)}</div>`
+        ? html`<div class="pane leading">${layerPanel(view, ready, { ...DOCKED_OPEN, minimizable: true }, handlers)}</div>`
         : EMPTY;
 }
 
@@ -274,6 +281,7 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
                 @hcm-select=${handlers.onMenuSelect}
             ></hcm-fab-menu>
         </div>
+        ${state.webgl ? zoomButtons(view, state.view, manifest, handlers.onZoom) : nothing}
         ${consent ? renderConsentBanner(view.locale, handlers.onConsent) : nothing} ${toast(view, state, handlers)}`;
 }
 
@@ -328,7 +336,8 @@ function layerPanel(view: ViewerView, ready: Ready, placement: Placement, handle
         .locale=${view.locale}
         .mode=${placement.mode}
         .open=${placement.open}
-        .closable=${placement.closable !== false}
+        .minimizable=${placement.minimizable === true}
+        .minimized=${ready.state.layersHidden}
         .canCompare=${ready.state.webgl && ready.manifest.layers.length > 0}
         .comparing=${ready.state.compare !== null}
         .labels=${ready.state.webgl ? ready.state.mapLabels : null}
@@ -338,6 +347,7 @@ function layerPanel(view: ViewerView, ready: Ready, placement: Placement, handle
         @hcm-overlay-opacity=${handlers.onOverlayOpacity}
         @hcm-compare-toggle=${handlers.onCompareToggle}
         @hcm-map-label=${handlers.onMapLabel}
+        @hcm-layers-minimize=${handlers.onLayersMinimize}
     ></hcm-layer-panel>`;
 }
 
@@ -378,8 +388,10 @@ function photoSheet(view: ViewerView, ready: Ready, placement: Placement, handle
         .contributeUrl=${ready.manifest.contributeUrl ?? null}
         .stories=${ready.manifest.stories ?? []}
         .canLocate=${ready.state.webgl}
+        .years=${view.stops}
         ?inert=${placement.inert === true}
         @hcm-close=${handlers.onSheetClose}
+        @hcm-year-change=${handlers.onYearChange}
         @hcm-photo-locate=${handlers.onPhotoLocate}
         @hcm-photo-select=${handlers.onPhotoSelect}
         @hcm-story-select=${handlers.onStorySelect}
@@ -429,7 +441,7 @@ function overlays(view: ViewerView, ready: Ready, legal: LegalMirror, handlers: 
     return html`${modal}
         <hcm-about-dialog
             .open=${isDialogSheet(state.sheet)}
-            .help=${state.sheet === 'help'}
+            .mode=${dialogMode(state.sheet)}
             .shortcuts=${state.shortcuts}
             .city=${manifest.city}
             .locale=${view.locale}

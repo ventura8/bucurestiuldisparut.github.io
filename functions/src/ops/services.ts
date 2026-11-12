@@ -8,6 +8,7 @@ import {
     FIRESTORE_PATHS,
     USGS_RECHECK_HOURS,
     setupStatusDocSchema,
+    setupStatusReadSchema,
     systemWriter,
     timestampFromDate,
     timestampToDate,
@@ -159,7 +160,7 @@ function withUsgs(area: UsgsArea | undefined, health: UsgsHealth | undefined, no
 /** Rewrites `setup/status` inside a transaction (a `setup.*` callable may be writing it), stamped `system:ops`. */
 async function updateStatus(deps: ServicesDeps, now: Date, change: (current: SetupStatusDoc) => Partial<SetupStatusDoc>): Promise<void> {
     await deps.documents.transaction(async (transaction) => {
-        const current = await transaction.get(FIRESTORE_PATHS.setupStatus, setupStatusDocSchema);
+        const current = await transaction.get(FIRESTORE_PATHS.setupStatus, setupStatusReadSchema);
         if (current !== undefined) {
             await transaction.set(FIRESTORE_PATHS.setupStatus, setupStatusDocSchema, {
                 ...current,
@@ -204,7 +205,7 @@ function approvedNow(before: SetupStatusDoc | undefined, usgs: UsgsHealth | unde
 
 /** The `health` step: checks what is due and records each result on its area. */
 export async function checkServices(deps: ServicesDeps, now: Date): Promise<void> {
-    const status = await deps.documents.get(FIRESTORE_PATHS.setupStatus, setupStatusDocSchema);
+    const status = await deps.documents.get(FIRESTORE_PATHS.setupStatus, setupStatusReadSchema);
     const checks = await runDueChecks(deps, status, now);
     if (checks.mapbox === undefined && checks.usgs === undefined) {
         return;
@@ -261,7 +262,7 @@ async function credentials(
  * or the Mapbox user it fails with `apiError.mapbox.notConfigured`.
  */
 export async function retireTokens(deps: ServicesDeps, now: Date): Promise<void> {
-    const mapbox = (await deps.documents.get(FIRESTORE_PATHS.setupStatus, setupStatusDocSchema))?.mapbox;
+    const mapbox = (await deps.documents.get(FIRESTORE_PATHS.setupStatus, setupStatusReadSchema))?.mapbox;
     const due = dueTokens(mapbox, now);
     if (due.length === 0) {
         return;

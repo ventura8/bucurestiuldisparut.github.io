@@ -1,6 +1,6 @@
 # Agent Asset Maintenance Skill
 
-This skill governs the agent assets of **Historic City Map**: `AGENTS.md` (imported by `CLAUDE.md`), `.agent/` (instructions, skills, workflows), `.agents/skills/`, its byte mirror `.claude/skills/`, the subagents in `.claude/agents/`, and `docs/LESSONS.md`.
+This skill governs the agent assets of **Historic City Map Maker**: `AGENTS.md` (imported by `CLAUDE.md`), `.agent/` (instructions, skills, workflows), `.agents/skills/`, its byte mirror `.claude/skills/`, the subagents in `.claude/agents/`, and `docs/LESSONS.md`.
 
 ## Purpose
 
@@ -67,7 +67,7 @@ Whatever a task established that these files do not already say is written down 
 | A Vitest, Playwright, Lit, msw or emulator gotcha | `quality/testing_strategy_skill.md`, `docs/TESTING.md` |
 | A bug a test, an analyser or a crash report caught, and the scenario that pins it | `docs/LESSONS.md` → *Lessons from this repository*, the row in `e2e/scenarios.json` |
 | A Mapbox GL, viewer or URL-state fact | `web/engine_viewer_skill.md` |
-| A Setup Assistant, deep link or console fact (Google Cloud, Mapbox, USGS) | `web/admin_setup_assistant_skill.md`, `workflow/human_steps_and_consent_skill.md`, `.agents/skills/setup-assistant/SKILL.md` (+ mirror), `docs/ADMIN_GUIDE.ro.md` and `docs/ADMIN_GUIDE.en.md` |
+| A Setup Assistant, deep link or console fact (Google Cloud, Mapbox, USGS) | `web/admin_setup_assistant_skill.md`, `workflow/human_steps_and_consent_skill.md`, `.agents/skills/setup-assistant/SKILL.md` (+ mirror), `docs/ADMIN_GUIDE.en.md` |
 | A Material 3, layout or accessibility finding | `web/ui_m3_adaptive_skill.md` |
 | A translation gotcha | `web/i18n_skill.md` |
 | A security finding (XSS sink, CSP, token scope, rules gap) | `web/web_security_skill.md`, `firebase/rules_and_emulators_skill.md` |

@@ -5,8 +5,9 @@
  * follows its camera, so the visitor drags, zooms and clicks either side alike, and Mapbox's logo and attribution of the
  * viewer's map (z-index 2 in mapbox-gl.css) stay on top of both sides at every divider position (the second map's own are
  * hidden: one logo and one attribution, Mapbox terms). The bar and the handle keep clear of the viewer's floating controls
- * through the custom properties the viewer defines (`--hcm-gutter`, `--hcm-map-chrome`, `--hcm-timeline-inline`,
- * `--hcm-dock-gap`), which reach this shadow root by inheritance; they sit below the viewer's docks (z-index 10 and up).
+ * through the custom properties the viewer defines (`--hcm-gutter`, `--hcm-map-chrome`, `--hcm-timeline-block`,
+ * `--hcm-dock-gap`, and `--hcm-top-start` where the timeline stands on the leading edge), which reach this shadow root by
+ * inheritance; they sit below the viewer's docks (z-index 10 and up).
  */
 import { css } from 'lit';
 
@@ -20,11 +21,6 @@ export const compareStyles = css`
         inset: 0;
         display: block;
         pointer-events: none;
-    }
-
-    /* A phone held landscape: the timeline stands on the trailing edge, from the top gutter down to the legal strip. */
-    :host([compact-height]) {
-        --hcm-compare-end: calc(var(--hcm-gutter, 16px) + var(--hcm-timeline-inline, 112px) + var(--hcm-dock-gap, 8px) + 48px);
     }
 
     .second {
@@ -49,29 +45,31 @@ export const compareStyles = css`
         inset-block: 0 var(--hcm-map-chrome, 42px);
         inset-inline-start: clamp(0px, calc(var(--hcm-compare-at, 50%) - 2px), calc(100% - 4px));
         inline-size: 4px;
-        background: var(--md-sys-color-surface-container-lowest, Canvas);
-        box-shadow: 0 0 0 1px var(--md-sys-color-outline, GrayText);
+        background: var(--md-sys-color-surface-container-lowest);
+        box-shadow: 0 0 0 1px var(--md-sys-color-outline);
     }
 
     /*
-     * Below the middle of the map: its centre stays the map's (a tap there is a tap on the map), and the handle clears the
-     * bottom controls on a phone held landscape (412 px: the handle ends 20 px above the menu button).
+     * Above the middle of the map, ending 16 px before it: its centre stays the map's (a tap there is a tap on the map),
+     * and the handle keeps clear of what lies at the map's foot. Below the middle it touched the timeline lying there on
+     * a phone held landscape (412 px), lifted out of its way it reached the centre or the chip, and 32 px above the
+     * middle the bar, two rows tall under the tour's text spacing, reached it (the tour).
      */
     .handle {
         position: absolute;
         z-index: 3;
-        inset-block-start: calc(50% + 32px);
+        inset-block-start: calc(50% - 64px);
         inset-inline-start: clamp(var(--hcm-compare-start), calc(var(--hcm-compare-at, 50%) - 24px), calc(100% - var(--hcm-compare-end)));
         display: grid;
         place-items: center;
         box-sizing: border-box;
         inline-size: 48px;
         block-size: 48px;
-        border: 1px solid var(--md-sys-color-outline, GrayText);
-        border-radius: var(--md-sys-shape-corner-full, 9999px);
-        background: var(--md-sys-color-primary-container, Canvas);
-        color: var(--md-sys-color-on-primary-container, CanvasText);
-        box-shadow: var(--md-sys-elevation-level3, 0 4px 8px rgb(0 0 0 / 30%));
+        border: 1px solid var(--md-sys-color-outline);
+        border-radius: var(--md-sys-shape-corner-full);
+        background: var(--md-sys-color-primary-container);
+        color: var(--md-sys-color-on-primary-container);
+        box-shadow: var(--md-sys-elevation-level3);
         cursor: ew-resize;
         pointer-events: auto;
         touch-action: none;
@@ -81,7 +79,7 @@ export const compareStyles = css`
         position: absolute;
         z-index: 4;
         inset-block-start: calc(var(--hcm-gutter, 16px) + env(safe-area-inset-top, 0px));
-        inset-inline: var(--hcm-gutter, 16px);
+        inset-inline: var(--hcm-top-start, var(--hcm-gutter, 16px)) var(--hcm-gutter, 16px);
         display: flex;
         flex-wrap: wrap;
         align-items: center;
@@ -92,15 +90,11 @@ export const compareStyles = css`
         min-block-size: 56px;
         margin-inline: auto;
         padding: 4px 4px 4px 16px;
-        border-radius: var(--md-sys-shape-corner-extra-large, 28px);
-        background: var(--md-sys-color-surface-container, Canvas);
-        color: var(--md-sys-color-on-surface, CanvasText);
-        box-shadow: var(--md-sys-elevation-level2, 0 2px 6px rgb(0 0 0 / 30%));
+        border-radius: var(--md-sys-shape-corner-extra-large);
+        background: var(--md-sys-color-surface-container);
+        color: var(--md-sys-color-on-surface);
+        box-shadow: var(--md-sys-elevation-level2);
         pointer-events: auto;
-    }
-
-    :host([compact-height]) .bar {
-        inset-inline-end: calc(var(--hcm-gutter, 16px) + var(--hcm-timeline-inline, 112px) + var(--hcm-dock-gap, 8px));
     }
 
     /* A compact window: the bar spans the map between the gutters, the toggle on its own row above the chooser. */
@@ -114,9 +108,9 @@ export const compareStyles = css`
     }
 
     .side {
-        font-size: var(--md-sys-typescale-label-large-size, 0.875rem);
-        font-weight: var(--md-sys-typescale-label-large-weight, 500);
-        line-height: var(--md-sys-typescale-label-large-line-height, 1.25rem);
+        font-size: var(--md-sys-typescale-label-large-size);
+        font-weight: var(--md-sys-typescale-label-large-weight);
+        line-height: var(--md-sys-typescale-label-large-line-height);
         overflow-wrap: anywhere;
     }
 
@@ -132,12 +126,12 @@ export const compareStyles = css`
         min-block-size: 48px;
         max-inline-size: 100%;
         padding-inline: 12px;
-        border: 1px solid var(--md-sys-color-outline, GrayText);
-        border-radius: var(--md-sys-shape-corner-small, 8px);
-        background: var(--md-sys-color-surface-container-highest, Canvas);
-        color: var(--md-sys-color-on-surface, CanvasText);
+        border: 1px solid var(--md-sys-color-outline);
+        border-radius: var(--md-sys-shape-corner-small);
+        background: var(--md-sys-color-surface-container-highest);
+        color: var(--md-sys-color-on-surface);
         font: inherit;
-        font-size: var(--md-sys-typescale-body-large-size, 1rem);
+        font-size: var(--md-sys-typescale-body-large-size);
     }
 
     .credit {
@@ -145,9 +139,9 @@ export const compareStyles = css`
         margin: 0;
         padding-block-end: 8px;
         padding-inline-end: 16px;
-        color: var(--md-sys-color-on-surface-variant, CanvasText);
-        font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
-        line-height: var(--md-sys-typescale-body-small-line-height, 1rem);
+        color: var(--md-sys-color-on-surface-variant);
+        font-size: var(--md-sys-typescale-body-small-size);
+        line-height: var(--md-sys-typescale-body-small-line-height);
     }
 
     :host([mode='toggle']) .credit {

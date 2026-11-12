@@ -8,7 +8,7 @@
  * not granted `roles/run.viewer` yet) does the record `setup/status.install.pipeline` answer. A release name is never
  * paired with another digest: the record's release is taken only for the digest the record names.
  */
-import { CLOUD_RUN_JOBS, FIRESTORE_PATHS, pipelineImageDigest, releaseOfSlug, setupStatusDocSchema } from '@hcm/shared';
+import { CLOUD_RUN_JOBS, FIRESTORE_PATHS, pipelineImageDigest, releaseOfSlug, setupStatusReadSchema } from '@hcm/shared';
 
 import type { JobDescription } from '../ports/cloud-run-jobs.js';
 import type { DocumentReader } from '../ports/documents.js';
@@ -71,7 +71,7 @@ async function jobImage(deps: InstalledImageDeps): Promise<JobImage | null> {
 
 /** The recorded image (`setup/status.install.pipeline.image`) with its recorded release. */
 async function recordedImage(reader: DocumentReader): Promise<JobImage | undefined> {
-    const pipeline = (await reader.get(FIRESTORE_PATHS.setupStatus, setupStatusDocSchema).catch(() => undefined))?.install?.pipeline;
+    const pipeline = (await reader.get(FIRESTORE_PATHS.setupStatus, setupStatusReadSchema).catch(() => undefined))?.install?.pipeline;
     if (pipeline?.image === undefined) {
         return undefined;
     }

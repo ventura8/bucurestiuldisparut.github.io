@@ -40,6 +40,7 @@ export function idleState(): ViewerState {
         selectedStoryId: null,
         lightbox: false,
         sheet: 'none',
+        layersHidden: false,
         windowClass: 'compact',
         compactHeight: false,
         theme: 'system',
@@ -164,6 +165,11 @@ export class FakeStore implements ViewerStorePort {
         this.set({ sheet });
     }
 
+    setLayersHidden(hidden: boolean): void {
+        this.#record('setLayersHidden', hidden);
+        this.set({ layersHidden: hidden });
+    }
+
     setView(view: MapView): void {
         this.#record('setView', view);
         this.set({ view });
@@ -172,6 +178,10 @@ export class FakeStore implements ViewerStorePort {
     flyTo(view: MapView): void {
         this.#record('flyTo', view);
         this.set({ view });
+    }
+
+    zoomBy(step: number): void {
+        this.#record('zoomBy', step);
     }
 
     setShortcuts(enabled: boolean): void {

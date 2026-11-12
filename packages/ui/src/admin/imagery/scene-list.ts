@@ -32,15 +32,33 @@ function chip(label: string, selected: boolean, change: (selected: boolean) => v
     ></hcm-chip>`;
 }
 
+/** M25: one chip per declassified dataset, and one for Landsat's two (Landsat 4-5 TM and Landsat 7 ETM+ together). */
+const LANDSAT = (dataset: UsgsDataset): boolean => dataset.startsWith('landsat_');
+const CHIP_SOURCES: readonly (readonly UsgsDataset[])[] = [
+    ...USGS_DATASETS.filter((dataset) => !LANDSAT(dataset)).map((dataset) => [dataset]),
+    USGS_DATASETS.filter(LANDSAT),
+];
+
+function sourceLabel(locale: Locale, source: readonly UsgsDataset[]): string {
+    const [only] = source;
+    return source.length === 1 && only !== undefined
+        ? datasetText(locale, only)
+        : contentText(locale, 'adminContent.imagery.filter.landsat');
+}
+
 function datasetChips(context: ImageryContext): TemplateResult[] {
     const { locale, view, intents } = context;
     const chosen = view.filters.datasets;
-    const toggle = (dataset: UsgsDataset, on: boolean): readonly UsgsDataset[] =>
-        on ? [...chosen, dataset] : chosen.filter((candidate) => candidate !== dataset);
-    return USGS_DATASETS.map((dataset) =>
-        chip(datasetText(locale, dataset), chosen.includes(dataset), (on) => {
-            intents?.setFilters({ datasets: toggle(dataset, on) });
-        }),
+    const toggle = (source: readonly UsgsDataset[], on: boolean): readonly UsgsDataset[] =>
+        on ? [...chosen.filter((dataset) => !source.includes(dataset)), ...source] : chosen.filter((dataset) => !source.includes(dataset));
+    return CHIP_SOURCES.map((source) =>
+        chip(
+            sourceLabel(locale, source),
+            source.every((dataset) => chosen.includes(dataset)),
+            (on) => {
+                intents?.setFilters({ datasets: toggle(source, on) });
+            },
+        ),
     );
 }
 
@@ -332,6 +350,18 @@ function downloadsPending(context: ImageryContext): TemplateResult {
     );
 }
 
+/**
+ * Batch 4 (`docs/research/M8-join-interfaces.md` §5.1): under Whole-city dates, before a join starts, that a join replaces its date's
+ * frames published as layers of their own once approved, deleting nothing (here, not in the `join-card` chunk, which has no bytes left).
+ */
+function replacesNote(context: ImageryContext): TemplateResult {
+    const published = context.view.dates.some((row) => row.frames.some((frame) => frame.state === 'published'));
+    return when(
+        published,
+        () => html`<p class="note" data-join-replaces>${contentText(context.locale, 'adminContent.imagery.join.replaces')}</p>`,
+    );
+}
+
 export function findView(context: ImageryContext): TemplateResult {
     const usgs = context.view.usgs;
     if (usgs === 'missing' || usgs === 'invalid') {
@@ -340,5 +370,5 @@ export function findView(context: ImageryContext): TemplateResult {
     return html`<div class="pane" data-view="find">
             ${searchButton(context)} ${searchStatus(context)} ${downloadsPending(context)} ${filters(context)}
         </div>
-        ${lazyJoin(context, null, (chunk) => chunk.dateRows(context))} ${sceneRows(context)}`;
+        ${lazyJoin(context, null, (chunk) => chunk.dateRows(context))} ${replacesNote(context)} ${sceneRows(context)}`;
 }

@@ -6,7 +6,17 @@ import { isOnTop, overlaps, visibleBoxes } from '../../support/layout.js';
 import { blend, expectColourAt, mapFraction, mapIdle, renderedFeatureIds } from '../../support/map.js';
 import { sitePath } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
-import { callController, hashParam, menuButton, openViewer, serveManifest, t, viewer, waitForEngineEvent } from '../../support/viewer.js';
+import {
+    callController,
+    hashParam,
+    menuButton,
+    openLayers,
+    openViewer,
+    serveManifest,
+    t,
+    viewer,
+    waitForEngineEvent,
+} from '../../support/viewer.js';
 
 /**
  * The timeline (behaviour V04): its stops are the layer years plus "today"; choosing a stop shows that year's layer
@@ -74,11 +84,12 @@ test('A year without a layer snaps to the nearest stop', { tag: '@S-V04-BAD-YEAR
     await expect(slider).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: '1980' }));
     await expect.poll(() => hashParam(page, 'layers')).toBe(E2E_XYZ_LAYER.id);
 
-    // A tap between two stops on the track lands on the nearer one.
+    // A tap between two stops on the track lands on the nearer one (a fifth of the way from 1966: up a phone's standing one).
     const track = viewer(page).locator('hcm-timeline .track');
-    const box = await track.boundingBox();
-    expect(box).not.toBeNull();
-    await page.mouse.click((box?.x ?? 0) + (box?.width ?? 0) * 0.2, (box?.y ?? 0) + (box?.height ?? 0) / 2);
+    const box = (await track.boundingBox()) ?? EMPTY_BOX;
+    expect(box.width).toBeGreaterThan(0);
+    const standing = box.height > box.width;
+    await page.mouse.click(box.x + box.width * (standing ? 0.5 : 0.2), box.y + box.height * (standing ? 0.8 : 0.5));
     await expect(slider).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: '1966' }));
     await expect(slider).toHaveAttribute('aria-valuemax', '2');
 });
@@ -108,6 +119,112 @@ test(
         await slider.focus();
         await slider.press('End');
         await expect(page.getByRole('button', { name: t(lang, 'photos.nearYear', { year: '1966' }) })).toHaveCount(0);
+    },
+);
+
+/** The boxes of the photos-near-the-year chip and of the timeline card, both visible. */
+async function chipAndTimeline(page: Page): Promise<{ chip: Box; timeline: Box }> {
+    const chip = await viewer(page).locator('.dock.chip hcm-button').boundingBox();
+    const timeline = await viewer(page).locator('hcm-timeline').boundingBox();
+    expect(chip, 'the chip is shown').not.toBeNull();
+    expect(timeline, 'the timeline is shown').not.toBeNull();
+    return { chip: chip ?? EMPTY_BOX, timeline: timeline ?? EMPTY_BOX };
+}
+
+interface Box {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+}
+
+const EMPTY_BOX: Box = { x: 0, y: 0, width: 0, height: 0 };
+
+/**
+ * The chip is part of the timeline (the owner, 2026-11-08: "it looks like it is floating around"): on a phone held
+ * upright 8 px under the standing card's foot, its leading edges aligned; elsewhere 8 px above the lying card, on its
+ * leading edge, or its trailing one on a short window, whose menu opens on the leading side.
+ */
+async function expectChipOnTheTimeline(page: Page): Promise<void> {
+    const { chip, timeline } = await chipAndTimeline(page);
+    if (timeline.height > timeline.width) {
+        expect(Math.abs(chip.x - timeline.x), "on the standing timeline's leading edge").toBeLessThanOrEqual(1);
+        expect(Math.abs(chip.y - (timeline.y + timeline.height) - 8), '8 px under its foot').toBeLessThanOrEqual(1);
+        return;
+    }
+    if ((page.viewportSize()?.height ?? 0) < 480) {
+        expect(Math.abs(chip.x + chip.width - (timeline.x + timeline.width)), "on the timeline's trailing edge").toBeLessThanOrEqual(1);
+    } else {
+        expect(Math.abs(chip.x - timeline.x), "on the timeline's leading edge").toBeLessThanOrEqual(1);
+    }
+    expect(Math.abs(timeline.y - (chip.y + chip.height) - 8), 'right above the timeline').toBeLessThanOrEqual(1);
+}
+
+/** The owner's screenshot: with a pane docked the map is narrower and the card centred in what is left. */
+async function openLayersWhereDocked(page: Page, lang: 'ro' | 'en'): Promise<void> {
+    if (viewportIsDocked(page)) {
+        await openLayers(page, lang);
+    }
+}
+
+/**
+ * The open menu leaves the chip uncovered: from 600 px its items end 8 px above the lying timeline; on a phone held upright
+ * they begin above the chip's row (the owner's phone: the last item covered the chip's end).
+ */
+async function expectOpenMenuLeavesTheChip(page: Page, lang: 'ro' | 'en'): Promise<void> {
+    await menuButton(page, lang).click();
+    await expect(page.getByRole('menu', { name: t(lang, 'action.menu') })).toBeVisible();
+    await expect(isOnTop(viewer(page).locator('.dock.chip hcm-button'))).resolves.toBe(true);
+}
+
+test(
+    'The photos-near-the-year chip sits on the timeline at every layout',
+    { tag: '@S-V04-HAPPY-CHIP-ON-TIMELINE' },
+    async ({ page, lang }) => {
+        await openViewer(page, { lang, hash: OBOR_VIEW });
+        await timelineSlider(page, lang).focus();
+        await timelineSlider(page, lang).press('Home');
+        await expect(page.getByRole('button', { name: t(lang, 'photos.nearYear', { year: '1966' }) })).toBeVisible();
+        await openLayersWhereDocked(page, lang);
+        await expectChipOnTheTimeline(page);
+
+        await page.setViewportSize({ width: 915, height: 412 });
+        // The viewer measures its own box: wait for the short window's layout before measuring the chip.
+        await expect(viewer(page).locator('.frame')).toHaveAttribute('data-compact-height', '');
+        await expect(viewer(page).locator('hcm-timeline')).toHaveAttribute('orientation', 'horizontal');
+        // A docked Layers pane becomes a modal side sheet there: the map pane widens while the sheet slides in.
+        await expect(async () => {
+            await expectChipOnTheTimeline(page);
+        }).toPass();
+    },
+);
+
+test(
+    'The chip never floats alone: none at today or at a year without photos, and the open menu leaves it uncovered',
+    { tag: '@S-V04-BAD-CHIP-NEVER-ALONE' },
+    async ({ page, lang }) => {
+        // The photos taken within 10 years of 1980 move to 1930, near no stop (removing them would orphan the places' links).
+        const manifest = siteManifestData();
+        const photos = manifest['photos'] as { year?: number }[];
+        manifest['photos'] = photos.map((photo) =>
+            photo.year !== undefined && Math.abs(photo.year - 1980) <= 10 ? { ...photo, year: 1930 } : photo,
+        );
+        await serveManifest(page, manifest);
+        await openViewer(page, { lang, hash: OBOR_VIEW });
+        const chip = viewer(page).locator('.dock.chip');
+        await expect(chip).toHaveCount(0);
+
+        const slider = timelineSlider(page, lang);
+        await slider.focus();
+        await slider.press('Home');
+        await slider.press('ArrowRight');
+        await expect(slider).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: '1980' }));
+        await expect(chip).toHaveCount(0);
+
+        await slider.press('Home');
+        await expect(chip).toHaveCount(1);
+        await expectChipOnTheTimeline(page);
+        await expectOpenMenuLeavesTheChip(page, lang);
     },
 );
 

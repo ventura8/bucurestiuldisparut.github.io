@@ -2,13 +2,13 @@
  * A historical layer's tiles from one PMTiles v3 archive (`docs/research/M12-own-tiles.md`), drawn through Mapbox GL's documented
  * `type: 'custom'` raster source: no tileset, no compute units, no token, and no library (about 1 KB gzip). A bare `.pmtiles` URL would
  * make Mapbox GL fetch a provider script from its own host, and our CSP refuses it. Each tile is one `Range` request, which needs no
- * preflight; a tile the archive leaves out (a corner the frame does not reach) is answered from its directory, with no request at all.
+ * preflight; a tile the archive leaves out (a corner the frame does not reach) is answered from its directory, with no request at all,
+ * as a transparent picture: never `null`, which Mapbox GL 3.34.1 draws with a recycled texture of an earlier tile (`HOLE`).
  * The address may be a signed one (the admin's private preview): it is never logged, and no message here carries it.
  *
  * A server that answers without honouring `Range` would send the whole file, a hundred megabytes for each tile: its body is cancelled
  * at once and every later tile fails without asking again (`S-V32-BAD-NO-RANGE`). The map reports the layer's error; it never breaks.
  */
-import type { RasterLayerSpec } from './map-port.js';
 
 /** The specification's rule: the first 16 KiB hold the header and the root directory, so one read answers both. */
 const FIRST_READ_BYTES = 16384;
@@ -21,6 +21,14 @@ const MAX_DEPTH = 3;
 const PARTIAL_CONTENT = 206;
 /** The tiles of a historical layer are 256 px (M12: a phone downloads 42 % less than at 512 px). */
 const TILE_SIZE = 256;
+
+/**
+ * What a hole draws: one transparent picture of a tile's size, shared by every hole. Mapbox GL turns a `null` tile into `{data: null}`
+ * (`CustomSource.loadTile`), gives it a texture from the painter's pool, which every tile that leaves its cache puts back with its
+ * picture (`saveTileTexture`), and uploads nothing to it (`Texture.update` needs `data`): the hole showed an earlier tile of another
+ * place and zoom (the owner's screenshot of 2026-11-08, `docs/LESSONS.md`). Made on first use: the module also loads outside a page.
+ */
+let hole: ImageData | undefined;
 
 /** The answer is definite, and asking again cannot change it: what `#open` keeps instead of asking for every tile. */
 export class PmtilesRefusal extends Error {
@@ -251,29 +259,34 @@ export interface PmtilesCustomSource extends Readonly<Record<string, unknown>> {
     loadTile(
         tile: { readonly x: number; readonly y: number; readonly z: number },
         options: { readonly signal: AbortSignal },
-    ): Promise<ImageBitmap | null>;
+    ): Promise<ImageBitmap | ImageData>;
+}
+
+/** What every raster source of a layer tells Mapbox GL (`rasters.ts`): its zooms, its attribution as text, its bounds flat. */
+export interface RasterSourceFields {
+    readonly minzoom: number;
+    readonly maxzoom: number;
+    readonly attribution: string;
+    readonly bounds?: readonly number[];
 }
 
 /** Mapbox GL's source for a layer on an archive, with its own reader: a new source starts clean. */
-export function pmtilesSource(
-    id: string,
-    url: string,
-    spec: Pick<RasterLayerSpec, 'minzoom' | 'maxzoom' | 'bounds'> & { readonly attribution: string },
-): PmtilesCustomSource {
+export function pmtilesSource(id: string, url: string, fields: RasterSourceFields): PmtilesCustomSource {
     const reader = new PmtilesReader(url);
     return {
         id,
         type: 'custom',
         dataType: 'raster',
         tileSize: TILE_SIZE,
-        minzoom: spec.minzoom,
-        maxzoom: spec.maxzoom,
-        attribution: spec.attribution,
-        ...(spec.bounds === undefined ? {} : { bounds: [...spec.bounds[0], ...spec.bounds[1]] }),
+        ...fields,
         loadTile: async ({ z, x, y }, { signal }) => {
             const bytes = await reader.tile(z, x, y, signal);
+            if (bytes === null) {
+                hole ??= new ImageData(TILE_SIZE, TILE_SIZE);
+                return hole;
+            }
             // The picture says what it is: a blob with no type decodes all the same, as WebP or as a kit city's PNG.
-            return bytes === null ? null : createImageBitmap(new Blob([bytes]));
+            return createImageBitmap(new Blob([bytes]));
         },
     };
 }

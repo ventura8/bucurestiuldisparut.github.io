@@ -41,7 +41,7 @@ describe('transitLabels', () => {
 
 describe('translateMapLabels', () => {
     it('happyPath_bothLanguages', () => {
-        expect(translateMapLabels('ro', 'mapLabels.streets')).toBe('Numele străzilor');
+        expect(translateMapLabels('ro', 'mapLabels.streets')).toBe('Străzi');
         expect(translateMapLabels('en', 'mapLabels.streets')).toBe(en['mapLabels.streets']);
     });
 });

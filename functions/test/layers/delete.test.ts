@@ -19,7 +19,7 @@ function remove(deps: ContentDeps, data: unknown, uid = 'u-admin') {
 }
 
 describe('layers.delete', () => {
-    it('happyPath_theLayerGoesAndItsTilesetDeletionWaitsSevenDays', async () => {
+    it('happyPath_theLayerGoesAndItsTilesetDeletionWaitsSevenDays @S-A33-HAPPY-DELETE-INDEXED', async () => {
         const deps = contentDeps(NOW);
         await seedLayer(deps, 'corona-1968');
         await seedJob(deps, 'old', { status: 'succeeded' });

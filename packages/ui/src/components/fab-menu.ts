@@ -26,8 +26,8 @@ const MOVE_KEYS: Readonly<Record<string, number>> = { ArrowDown: 1, ArrowUp: -1 
  * wrapped, wider menu never moves the FAB from under the finger). Opening focuses the first item; the arrow keys
  * (wrapping), Home and End move between items; Esc or a focus leaving the menu closes it, Esc returning the focus to
  * the FAB. The items end `--hcm-fab-menu-gap` (8 px) above the FAB; an app whose FAB sits beside a taller control sets
- * more, so the menu clears it. Choosing an item fires `hcm-select` with `{value}` and closes the menu; every open or close fires
- * `hcm-toggle` with `{open}`. Only the FAB and the items take the pointer: the rest of the element's box (beside the
+ * more, so the menu clears it. Narrowed by its dock, an item wraps its label and grows taller (at least 56 px). Choosing
+ * an item fires `hcm-select` with `{value}` and closes the menu; every open or close fires `hcm-toggle` with `{open}`. Only the FAB and the items take the pointer: the rest of the element's box (beside the
  * FAB under a wide menu, the gaps between items) lets taps through to what is beneath it.
  */
 export class HcmFabMenu extends LitElement {
@@ -77,7 +77,7 @@ export class HcmFabMenu extends LitElement {
                 display: inline-flex;
                 align-items: center;
                 box-sizing: border-box;
-                height: 56px;
+                min-height: 56px;
                 margin: 0;
                 border: none;
                 border-radius: var(--md-sys-shape-corner-full);

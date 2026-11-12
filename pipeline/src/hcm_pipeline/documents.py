@@ -38,7 +38,8 @@ from hcm_pipeline.model import (
 )
 
 GEOREF_METHODS: Final = ("corners", "gcps", "auto", "embedded")
-VERSION_ORIGINS: Final = ("usgs", "upload", "regeoref", "crop", "join")
+# Held equal to `@hcm/shared` by `enums.json` (M20 added `archive`, which this copy missed: docs/LESSONS.md 527).
+VERSION_ORIGINS: Final = ("usgs", "upload", "regeoref", "crop", "join", "archive")
 LOG_LEVELS: Final = ("info", "warn", "error")
 LOG_MESSAGE_MAX: Final = 2000
 LatLng = tuple[float, float]

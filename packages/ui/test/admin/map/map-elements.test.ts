@@ -53,19 +53,44 @@ describe('<hcm-admin-map>', () => {
 
     it('happyPath_theCrosshairShowsWhileTheMapHasTheFocusAndTheStylesheetIsLinked', async () => {
         const element = await mount<HcmAdminMap>(html`<hcm-admin-map></hcm-admin-map>`, 600);
-        const canvas = document.createElement('button');
-        element.container?.append(canvas);
+        const focuses = events<{ focused: boolean }>(element, 'hcm-map-focus');
+        const canvas = element.container;
+        expect(canvas).not.toBeNull();
 
-        canvas.focus();
+        canvas?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
         await updated(element);
         expect(element.renderRoot.querySelector('.crosshair')).not.toBeNull();
-        canvas.blur();
+        canvas?.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
         await updated(element);
 
         expect(element.renderRoot.querySelector('.crosshair')).toBeNull();
+        expect(focuses).toEqual([{ focused: true }, { focused: false }]);
         expect(element.renderRoot.querySelector('link')?.getAttribute('href')).toBe(
             'https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css',
         );
+    });
+
+    it('happyPath_arrowKeysNudgeOneCssPixelAndTenWithShift', async () => {
+        const element = await mount<HcmAdminMap>(html`<hcm-admin-map css-url="" .status=${'ready'}></hcm-admin-map>`, 600);
+        const nudges = events<{ dx: number; dy: number }>(element, 'hcm-map-nudge');
+        const canvas = element.container;
+        expect(canvas).not.toBeNull();
+        const key = (name: string, shiftKey = false): void => {
+            canvas?.dispatchEvent(new KeyboardEvent('keydown', { key: name, shiftKey, bubbles: true, cancelable: true }));
+        };
+
+        key('ArrowLeft');
+        key('ArrowRight');
+        key('ArrowUp');
+        key('ArrowDown', true);
+        key('Enter');
+
+        expect(nudges).toEqual([
+            { dx: -1, dy: 0 },
+            { dx: 1, dy: 0 },
+            { dx: 0, dy: -1 },
+            { dx: 0, dy: 10 },
+        ]);
     });
 
     it('badPath_underAModalDialogTheMapHidesWithItsLegalLine', async () => {

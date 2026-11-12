@@ -191,6 +191,7 @@ import usgsSceneSearchCorona2 from './usgs/scene-search.corona2.json' with { typ
 import usgsSceneSearchDeclassii from './usgs/scene-search.declassii.json' with { type: 'json' };
 import usgsSceneSearchDeclassiii from './usgs/scene-search.declassiii.json' with { type: 'json' };
 import usgsSceneSearchEmpty from './usgs/scene-search.empty.json' with { type: 'json' };
+import usgsSceneSearchLandsat from './usgs/scene-search.landsat.json' with { type: 'json' };
 import usgsSceneSearchTwoScenes from './usgs/scene-search.two-scenes.json' with { type: 'json' };
 import vertexAiCountTokensOk from './vertex-ai/count-tokens.ok.json' with { type: 'json' };
 import vertexAiGenerateOk from './vertex-ai/generate.ok.json' with { type: 'json' };
@@ -394,6 +395,7 @@ export const RAW_FIXTURES = catalogue({
     'usgs/scene-search.declassii': usgsSceneSearchDeclassii,
     'usgs/scene-search.declassiii': usgsSceneSearchDeclassiii,
     'usgs/scene-search.empty': usgsSceneSearchEmpty,
+    'usgs/scene-search.landsat': usgsSceneSearchLandsat,
     'usgs/scene-search.two-scenes': usgsSceneSearchTwoScenes,
     'vertex-ai/count-tokens.ok': vertexAiCountTokensOk,
     'vertex-ai/generate.ok': vertexAiGenerateOk,

@@ -195,6 +195,8 @@ export function layerDoc(): Data {
         opacity: 0.8,
         defaultVisible: true,
         adjustments: { brightnessMin: 0.1, brightnessMax: 0.9, contrast: 0.2, saturation: -0.5 },
+        // M20 (docs/research/M20-import-local.md §7): a drawn map's licence, author and source, written by finalize.
+        rights: { licence: 'PD', author: 'IGA', source: { label: 'Idei Urbane – DocuBucurești', url: 'https://ideiurbane.ro/' } },
         status: 'ready',
         published: true,
         provenance: {
@@ -205,6 +207,7 @@ export function layerDoc(): Data {
         mapbox: { tilesetId: 'hcm-test.corona-1966', publishedSourceSha: SHA, sourceId: 'corona-1966', origin: 'mts' },
         currentVersion: 'v-1966',
         pendingVersion: 'v-1966-crop',
+        retired: { by: 'jn-1966', at: past() },
         createdAt: past(),
         ...systemStamp('imagery'),
     };
@@ -310,6 +313,9 @@ export function jobDoc(creator: string, status = 'running'): Data {
         searchedWith: `sha256:${'ab'.repeat(32)}`,
         // Review of M18 item 3: an editor placing points on the parked frame (the georeferencer's mark).
         placingPoints: true,
+        // M20 (docs/research/M20-import-local.md §1.1, §1.3): an archive series' originals on the computer, and the day it counted.
+        localOnly: true,
+        countedAt: past(),
         ...systemStamp('pipeline'),
     };
 }

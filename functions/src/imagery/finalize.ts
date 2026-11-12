@@ -15,17 +15,18 @@ import {
     FIRESTORE_PATHS,
     MAPBOX_FREE_COMPUTE_UNITS,
     SENSOR_SPECS,
+    LANDSAT_ATTRIBUTION,
     USGS_ATTRIBUTION,
-    enabledGcps,
+    isLandsatDataset,
+    creditLine,
+    layerRightsOf,
     jobDocSchema,
     layerDocSchema,
     layerVersionDocSchema,
     timestampToDate,
     usageDocSchema,
     usageMonth,
-    type Georef,
     type JobDoc,
-    type JoinPart,
     type LayerDoc,
     type LayerVersionDoc,
     type MtsPrecision,
@@ -36,7 +37,8 @@ import {
 import { compact, omit } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
-import { joinFrameWrites, readJoinFrames } from './finalize-join.js';
+import { joinFrameWrites, readJoinFrames, retiredByJoin, retiredLayer } from './finalize-join.js';
+import { provenanceOf } from './finalize-provenance.js';
 import { IMAGERY_WRITER, stampOf, withStep, type Stamp } from './records.js';
 
 export type FinalizeDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
@@ -66,9 +68,9 @@ interface OwnFinish extends FinishedVersion {
 export type Finish = MapboxFinish | OwnFinish;
 
 type Output = NonNullable<LayerVersionDoc['output']>;
-type Provenance = NonNullable<LayerDoc['provenance']>;
 
 /** A file name or label that says it shows a plan or a map (else an aerial photograph). */
+const MAP_OPACITY = 0.85;
 const MAP_WORDS = /\b(?:plan|planul|harta|hart[aă]|map)\b/i;
 
 type Apply = (transaction: DocumentTransaction) => Promise<void>;
@@ -82,50 +84,37 @@ function nameOf(version: LayerVersionDoc): string {
     return version.source?.kind === 'upload' ? (version.source.originalName ?? version.label.ro) : version.label.ro;
 }
 
-function kindOf(version: LayerVersionDoc): LayerDoc['kind'] {
+/** A USGS frame is a satellite layer; M20: an archive series is a map (`docs/research/M20-import-local.md` §9). */
+function knownKindOf(version: LayerVersionDoc): LayerDoc['kind'] | undefined {
     if (version.source?.kind === 'usgs' || version.sensor !== undefined) {
         return 'satellite';
     }
-    return MAP_WORDS.test(nameOf(version)) ? 'map' : 'aerial';
+    return version.origin === 'archive' ? 'map' : undefined;
+}
+
+function kindOf(version: LayerVersionDoc): LayerDoc['kind'] {
+    return knownKindOf(version) ?? (MAP_WORDS.test(nameOf(version)) ? 'map' : 'aerial');
+}
+
+/** M20 (§9): a drawn map starts at 0.85, so the streets beneath it show; every other layer at 1. */
+function opacityOf(version: LayerVersionDoc): number {
+    return version.origin === 'archive' ? MAP_OPACITY : 1;
 }
 
 /** USGS's courtesy credit, or an upload's own name until the admin writes one; a frame fitted over terrain adds the DEM's notice (M15). */
 function attributionOf(version: LayerVersionDoc): string {
-    const own = version.source?.kind === 'upload' ? nameOf(version).slice(0, 500) : USGS_ATTRIBUTION;
+    // M20 (docs/research/M20-import-local.md §7): an archive series credits its author, title, year, licence and the scan's source.
+    return version.rights === undefined ? ownAttribution(version) : creditLine(version.rights, version.label.ro);
+}
+
+function ownAttribution(version: LayerVersionDoc): string {
+    const own = version.source?.kind === 'upload' ? nameOf(version).slice(0, 500) : usgsCredit(version);
     return version.georef?.terrain === undefined ? own : `${own}; ${DEM_ATTRIBUTION}`.slice(0, 500);
 }
 
-function georefProvenance(georef: Georef): NonNullable<Provenance['georef']> {
-    return compact<NonNullable<Provenance['georef']>>({
-        method: georef.method,
-        gcpCount: georef.method === 'embedded' ? undefined : enabledGcps(georef.gcps),
-        checkpointRmseM: georef.checkpointRmseM,
-    });
-}
-
-type UsgsProvenance = Pick<Provenance, 'usgsEntityId' | 'usgsDataset' | 'usgsParts'>;
-
-/** M8: a join's first frame stands for it (`rasterExportable` reads `usgsEntityId`), with every frame in `usgsParts`. */
-function joinProvenance([first, ...rest]: readonly JoinPart[]): UsgsProvenance {
-    if (first === undefined) {
-        return {};
-    }
-    return { usgsEntityId: first.entityId, usgsDataset: first.dataset, usgsParts: [first, ...rest].map((part) => part.entityId) };
-}
-
-function usgsProvenance(version: LayerVersionDoc): UsgsProvenance {
-    const source = version.source;
-    if (source?.kind === 'join') {
-        return joinProvenance(source.parts);
-    }
-    return source?.kind === 'usgs' ? { usgsEntityId: source.entityId, usgsDataset: source.dataset } : {};
-}
-
-/** Where the tiles came from, kept on the layer: the USGS frame (the layer's own when the version has no source). */
-function provenanceOf(version: LayerVersionDoc, before: LayerDoc | undefined): Provenance {
-    const kept = omit(before?.provenance ?? {}, ['georef']);
-    const georef = version.georef === undefined ? {} : { georef: georefProvenance(version.georef) };
-    return { ...kept, ...usgsProvenance(version), ...georef };
+/** M25: a Landsat scene credits NASA and USGS as they ask; a declassified frame USGS EROS. */
+function usgsCredit(version: LayerVersionDoc): string {
+    return version.source?.kind === 'usgs' && isLandsatDataset(version.source.dataset) ? LANDSAT_ATTRIBUTION : USGS_ATTRIBUTION;
 }
 
 function mapboxOf(finish: MapboxFinish, output: Output): NonNullable<LayerDoc['mapbox']> {
@@ -158,14 +147,16 @@ function newLayer(version: LayerVersionDoc, order: number, stamp: Stamp): Omit<L
         attribution: attributionOf(version),
         bounds: undefined,
         order,
-        opacity: 1,
+        opacity: opacityOf(version),
         defaultVisible: false,
         adjustments: undefined,
+        rights: version.rights === undefined ? undefined : layerRightsOf(version.rights),
         published: true,
         provenance: undefined,
         mapbox: undefined,
         currentVersion: undefined,
         pendingVersion: undefined,
+        retired: undefined,
         createdAt: stamp.updatedAt,
         ...stamp,
     });
@@ -356,9 +347,11 @@ export async function finalizeVersion(deps: FinalizeDeps, finish: Finish): Promi
             return false;
         }
         const frames = await readJoinFrames(transaction, finish.cityId, held.version);
+        const retiredBy = await retiredByJoin(transaction, finish.cityId, held.version);
+        const layer = retiredLayer(layerAfter(held, finish, order, stamp), retiredBy, stamp);
         const writes = [
-            ...joinFrameWrites(frames, held.version.layerId, stamp),
-            setting(FIRESTORE_PATHS.layer(finish.cityId, held.version.layerId), layerDocSchema, layerAfter(held, finish, order, stamp)),
+            ...joinFrameWrites(frames, held.version.layerId, finish.versionId, stamp),
+            setting(FIRESTORE_PATHS.layer(finish.cityId, held.version.layerId), layerDocSchema, layer),
             supersede(held, finish, stamp),
             setting(
                 FIRESTORE_PATHS.layerVersion(finish.cityId, finish.versionId),

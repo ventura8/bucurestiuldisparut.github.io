@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { validate, type Schema } from '@hcm/shared';
 
 import type { DocumentStore } from '../../src/ports/documents.js';
@@ -10,8 +12,38 @@ import { PortRecorder, promised } from './recorder.js';
  * (`UpstreamError` `conflict`); a query reads one collection's direct children and splits valid from invalid
  * documents; a transaction buffers its writes, applies them only when `work` resolves, and refuses a read after a
  * write as Firestore does. `contend(n)` makes the next transaction run `work` n extra times first and throw their
- * writes away, which proves a handler's transaction has no side effects outside it.
+ * writes away, which proves a handler's transaction has no side effects outside it. A query that filters or orders on a field
+ * `firebase/firestore.indexes.json` exempts from indexing throws as Firestore's `FAILED_PRECONDITION` does (the emulator does
+ * not enforce indexes: `layers.delete` on `jobs.params.layerId`, lesson 557).
  */
+
+interface FieldOverride {
+    readonly collectionGroup: string;
+    readonly fieldPath: string;
+    readonly indexes: readonly unknown[];
+}
+
+const EXEMPT: readonly FieldOverride[] = (
+    JSON.parse(readFileSync(new URL('../../../firebase/firestore.indexes.json', import.meta.url), 'utf8')) as {
+        readonly fieldOverrides: readonly FieldOverride[];
+    }
+).fieldOverrides.filter((override) => override.indexes.length === 0);
+
+function exemptField(collectionPath: string, field: string): boolean {
+    const group = collectionPath.split('/').at(-1);
+    return EXEMPT.some(
+        (override) => override.collectionGroup === group && (field === override.fieldPath || field.startsWith(`${override.fieldPath}.`)),
+    );
+}
+
+/** Firestore refuses a query on a field without an index; the fake does too. */
+function refuseUnindexed(collectionPath: string, options: QueryOptions): void {
+    const fields = [...(options.where ?? []).map(([field]) => field), ...(options.orderBy === undefined ? [] : [options.orderBy[0]])];
+    const unindexed = fields.find((field) => exemptField(collectionPath, field));
+    if (unindexed !== undefined) {
+        throw new Error(`9 FAILED_PRECONDITION: the query requires an index for ${collectionPath} and field ${unindexed}`);
+    }
+}
 
 type QueryOptions = NonNullable<Parameters<DocumentStore['query']>[2]>;
 type WhereClause = NonNullable<QueryOptions['where']>[number];
@@ -204,6 +236,7 @@ export function createFakeDocumentStore(): FakeDocumentStore {
         query: <T>(collectionPath: string, schema: Schema<T>, options: QueryOptions = {}) =>
             promised(() => {
                 recorder.enter('query', [collectionPath, options]);
+                refuseUnindexed(collectionPath, options);
                 const children = [...docs.entries()].filter(
                     ([path, data]) => isChildOf(path, collectionPath) && matches(data, options.where),
                 );
@@ -221,6 +254,7 @@ export function createFakeDocumentStore(): FakeDocumentStore {
         count: (collectionPath: string, where?: QueryOptions['where']) =>
             promised(() => {
                 recorder.enter('count', [collectionPath, where ?? []]);
+                refuseUnindexed(collectionPath, where === undefined ? {} : { where });
                 return [...docs.entries()].filter(([path, data]) => isChildOf(path, collectionPath) && matches(data, where)).length;
             }),
         transaction: async <R>(work: (transaction: Transaction) => Promise<R>) => {

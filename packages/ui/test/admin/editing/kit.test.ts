@@ -317,5 +317,7 @@ describe('<hcm-list-detail> on a landscape phone', () => {
         expect(chrome).toEqual(['editor']);
         expect(splitsAt({ widthClass: 'expanded', heightClass: 'medium' })).toBe(true);
         expect(splitsAt({ widthClass: 'expanded', heightClass: 'compact' })).toBe(false);
+        expect(splitsAt({ widthClass: 'large', heightClass: 'compact' }, 'large')).toBe(true);
+        expect(splitsAt({ widthClass: 'expanded', heightClass: 'medium' }, 'large')).toBe(false);
     });
 });

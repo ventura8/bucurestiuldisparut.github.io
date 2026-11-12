@@ -1,6 +1,6 @@
 # Git and Pull Request Skill
 
-Branches, commits, pushes and reviews for **Historic City Map** (`ventura8/bucurestiuldisparut.github.io`, public). The default branch is **`master`** (served by GitHub Pages); the rewrite happens on `feat/engine-rewrite`; Linux only.
+Branches, commits, pushes and reviews for **Historic City Map Maker** (`ventura8/historic-city-map-maker`, public). The default branch is **`master`** (served by GitHub Pages); the rewrite happens on `feat/engine-rewrite`; Linux only.
 
 ## Commits
 

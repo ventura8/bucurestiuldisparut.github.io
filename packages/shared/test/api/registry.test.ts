@@ -73,7 +73,15 @@ describe('the function registry', () => {
 
         // Finding 72: `worker.image` too, which the starter file's supervisor asks (it reads one record, writes nothing).
         expect(none.map(([name]) => name)).toEqual(['worker.pair', 'worker.image']);
-        expect(paired.map(([name]) => name)).toEqual(['worker.hello', 'worker.claim', 'worker.step', 'worker.urls', 'worker.end']);
+        // M20: the scan's report, which the paired worker sends for its archive.
+        expect(paired.map(([name]) => name)).toEqual([
+            'worker.hello',
+            'worker.claim',
+            'worker.step',
+            'worker.urls',
+            'worker.end',
+            'worker.archiveReport',
+        ]);
     });
 
     it('badPath_everySecretPasteLayerDeletePaidOverageAndGuardResumeConsumesItsAppCheckToken', () => {
@@ -145,6 +153,7 @@ describe('the M5 access of each callable (docs/research/M5-interfaces.md §1.3)'
             'admins.invite',
             'admins.revoke',
             'setup.rotatePublicToken',
+            'imagery.confirmRights',
             'admins.setRole',
             'export.start',
             'export.download',

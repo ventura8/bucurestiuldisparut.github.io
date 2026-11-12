@@ -75,7 +75,11 @@ describe('review.decide', () => {
     it('happyPath_aPlaceIsApprovedAndRefused', async () => {
         const world = await communityWorld();
         const seed = (id: string) =>
-            world.documents.set(FIRESTORE_PATHS.poi(CITY_ID, id), poiDocSchema, poiDoc({ published: false, reviewStatus: 'pending' }));
+            world.documents.set(
+                FIRESTORE_PATHS.poi(CITY_ID, id),
+                poiDocSchema,
+                poiDoc({ published: false, reviewStatus: 'pending', yearStart: 1850 }),
+            );
         await seed('a');
         await seed('b');
         await decide(world, 'u-owner', { entity: 'poi', id: 'a' });
@@ -88,6 +92,15 @@ describe('review.decide', () => {
             published: false,
             reviewStatus: 'refused',
         });
+    });
+
+    it('badPath_aPlaceWithoutAYearIsNotApprovedButCanBeRefused @S-A90-BAD-PLACE-YEAR', async () => {
+        const world = await communityWorld();
+        const path = FIRESTORE_PATHS.poi(CITY_ID, 'a');
+        await world.documents.set(path, poiDocSchema, poiDoc({ published: false, reviewStatus: 'pending' }));
+        expect(await refusal(decide(world, 'u-owner', { entity: 'poi', id: 'a' }))).toBe('apiError.review.placeYear');
+        expect(await world.documents.get(path, poiDocSchema)).toMatchObject({ published: false, reviewStatus: 'pending' });
+        await expect(decide(world, 'u-owner', { entity: 'poi', id: 'a', decision: 'refuse' })).resolves.toEqual({ status: 'refused' });
     });
 });
 
@@ -151,7 +164,7 @@ describe('review.decide: what the reviewer saw, and the public bucket', () => {
         await world.documents.set(
             FIRESTORE_PATHS.poi(CITY_ID, 'a'),
             poiDocSchema,
-            poiDoc({ published: false, reviewStatus: 'pending', updatedAt: later }),
+            poiDoc({ published: false, reviewStatus: 'pending', yearStart: 1850, updatedAt: later }),
         );
         expect(await refusal(decide(world, 'u-owner', { entity: 'poi', id: 'a' }))).toBe('apiError.review.changed');
     });

@@ -27,8 +27,6 @@ export interface CompareUiProps {
     readonly choices: readonly CompareChoice[];
     /** The compared layer's source ("Sursa: USGS EROS"), `''` for today: the second map's own attribution is hidden. */
     readonly credit: string;
-    /** A phone held landscape: the timeline stands on the trailing edge, which the bar and the handle keep clear of. */
-    readonly compactHeight: boolean;
 }
 
 /** What the visitor did on compare's surface. */

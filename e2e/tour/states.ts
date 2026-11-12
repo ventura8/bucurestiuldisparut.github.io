@@ -1,5 +1,5 @@
 import type { Locale } from '@hcm/shared';
-import { expect, type BrowserContext, type Locator, type Page, type Route } from '@playwright/test';
+import { expect, type BrowserContext, type Page, type Route } from '@playwright/test';
 
 import { IMAGERY_STATES } from '../admin/specs/imagery/states.js';
 import { ADMIN_SECTION_STATES } from './admin-sections.js';
@@ -9,8 +9,10 @@ import { STORY_JOURNEY, storyStates } from './story-states.js';
 import { INPUT_JOURNEY, INPUT_STATES } from './input-states.js';
 import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
 import { MY_LOCATION_STATES } from './my-location-states.js';
+import { ZOOM_JOURNEY, ZOOM_STATES } from './zoom-states.js';
 import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
-import { hasBottomSheets, toDetent } from './sheets.js';
+import { SETTINGS_STATES } from './settings-states.js';
+import { hasBottomSheets, scrollToEnd, toDetent } from './sheets.js';
 import { OPS_STATES } from '../admin/specs/ops/states.js';
 import { POIS_STATES } from '../admin/specs/pois/states.js';
 import { SITE_ORIGIN } from '../fixtures/world.js';
@@ -24,7 +26,6 @@ import {
     BUCHAREST_MANIFEST,
     callController,
     chooseMenuItem,
-    dismissToast,
     holdToast,
     menuButton,
     openLayers,
@@ -68,7 +69,7 @@ interface ViewerState {
     readonly announcements?: (lang: Locale) => readonly string[];
     /** Esc closes the state's popup (the focus goes back to the control of this name); only where it is a popup. */
     readonly escape?: (tour: TourContext) => { readonly opener: string | null } | null;
-    /** The language the page shows (the language item of the menu switches to the other one). */
+    /** The language the page shows (the language chosen in Settings switches to the other one). */
     readonly shows?: (lang: Locale) => Locale;
 }
 
@@ -93,23 +94,6 @@ function leadOf(lang: Locale, key: Parameters<typeof t>[1], params: Readonly<Rec
     return t(lang, key, { ...params, [varying]: '\u0000' }).split('\u0000')[0] ?? '';
 }
 
-/** Scrolls the scrolling part of `host`'s dialog to its end (About is taller than a phone). */
-async function scrollToEnd(host: Locator): Promise<void> {
-    await host.evaluate((element) => {
-        const visit = (root: Element | ShadowRoot): void => {
-            for (const node of Array.from(root.querySelectorAll('*'))) {
-                if (node.scrollHeight > node.clientHeight + 1 && ['auto', 'scroll'].includes(getComputedStyle(node).overflowY)) {
-                    node.scrollTop = node.scrollHeight;
-                }
-                if (node.shadowRoot !== null) {
-                    visit(node.shadowRoot);
-                }
-            }
-        };
-        visit(element.shadowRoot ?? element);
-    });
-}
-
 /** The photo the photo states open, and a view near it. */
 const PHOTO = 'strandul-opereta-1976';
 const PHOTO_TITLE = 'Ștrandul Operetă';
@@ -120,6 +104,8 @@ const POI = 'fixture-cladire';
 const VIEWER_STATES = {
     ...INPUT_STATES,
     ...MY_LOCATION_STATES,
+    ...ZOOM_STATES,
+    ...SETTINGS_STATES,
     'skip-link': {
         title: 'The first Tab: the skip link shows over the map with a focus ring',
         enter: async ({ page, lang }) => {
@@ -159,18 +145,6 @@ const VIEWER_STATES = {
             await holdToast(page, t(lang, 'error.geolocate.denied'));
         },
         announcements: (lang) => [t(lang, 'error.geolocate.denied')],
-    },
-    language: {
-        title: 'The menu switched the language: the whole viewer in the other language',
-        enter: async ({ page, lang }) => {
-            const other = lang === 'ro' ? 'en' : 'ro';
-            // The previous state's toast is closed first: re-worded in the other language, its timer starts again and it
-            // went mid-check on a slow machine (the Tab round then never reached its Close).
-            await dismissToast(page, lang);
-            await chooseMenuItem(page, lang, t(lang, `language.${other}`));
-            await expect(menuButton(page, other)).toBeVisible();
-        },
-        shows: (lang) => (lang === 'ro' ? 'en' : 'ro'),
     },
     year: {
         title: 'A historical year: its layer, the photos-near-this-year chip',
@@ -233,6 +207,15 @@ const VIEWER_STATES = {
             await expect(page.getByRole('heading', { name: PHOTO_TITLE })).toBeVisible();
         },
     },
+    'photo-map-year': {
+        title: "A photo's sheet after its chip of a near layer year: the map of 1980 behind it, the sheet still open",
+        enter: async ({ page, lang }) => {
+            await page.getByRole('button', { name: t(lang, 'photo.mapOf', { year: '1980' }), exact: true }).click();
+            // The timeline may sit behind a modal sheet (inert): the hash says the map moved to 1980.
+            await page.waitForFunction(() => location.hash.includes('layers=e2e-1980'));
+            await page.getByRole('heading', { name: PHOTO_TITLE }).waitFor();
+        },
+    },
     'photo-peek': {
         title: "A photo's sheet at its lowest height",
         enter: ({ page, lang }) => toDetent(page, lang, 'peek'),
@@ -287,7 +270,7 @@ const VIEWER_STATES = {
         },
     },
     'about-end': {
-        title: 'About scrolled to its end: privacy, the theme, the credits and the map attribution',
+        title: 'About scrolled to its end: the accessibility statement, privacy and the map attribution',
         enter: async ({ page }) => {
             await scrollToEnd(viewer(page).locator('hcm-about-dialog'));
         },
@@ -427,7 +410,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
             await expectFrame(tour, true);
             await expectMapboxControls(tour);
         },
-        states: ['skip-link', 'home', 'menu-open', 'share-toast', 'locate-toast', 'my-location', 'language'],
+        states: ['skip-link', 'home', 'menu-open', 'share-toast', 'locate-toast', 'my-location', 'settings', 'language'],
     },
     {
         title: 'A historical year, the timeline and the Layers panel',
@@ -442,6 +425,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
             'layers-peek',
             'layers-full',
             'layers-opacity',
+            'layers-minimized',
         ],
     },
     MAP_LABEL_JOURNEY,
@@ -450,7 +434,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
         title: 'A photo at every height, shown on the map, its lightbox, and the photo list',
         id: 'photo',
         boot: ({ page, lang }) => openViewer(page, { lang, hash: `18/44.42955/26.09560&photo=${PHOTO}` }),
-        states: ['photo', 'photo-located', 'photo-peek', 'photo-full', 'lightbox', 'photo-list'],
+        states: ['photo', 'photo-map-year', 'photo-located', 'photo-peek', 'photo-full', 'lightbox', 'photo-list'],
     },
     {
         title: 'A point of interest at every height, and About from top to end',
@@ -459,6 +443,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
         states: ['poi', 'poi-peek', 'poi-full', 'about', 'about-end'],
     },
     INPUT_JOURNEY,
+    ZOOM_JOURNEY,
     {
         title: 'Swipe compare: the divider at 50 % and at both edges, from the keyboard; the toggle of a compact window; the chooser',
         id: 'compare',

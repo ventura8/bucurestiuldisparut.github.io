@@ -13,8 +13,8 @@ import { timestampSchema } from './firestore-common.js';
 import { gcpSchema, MAX_GCPS, type Gcp } from './georef.js';
 import { coded } from './primitives.js';
 
-/** The feature matcher that produced the suggestions: SIFT, or ORB when SIFT found too few keypoints. */
-export const AUTO_GCP_METHODS = ['sift', 'orb'] as const;
+/** The feature matcher that produced the suggestions: SIFT, or ORB when SIFT found too few keypoints; `junctions` for a drawn map's street junctions (M20 §3 c). */
+export const AUTO_GCP_METHODS = ['sift', 'orb', 'junctions'] as const;
 
 /** What the scan was matched against: Sentinel-2 L2A true colour, OpenStreetMap's lines as a distance field. */
 export const MATCH_CHANNELS = ['s2', 'osm'] as const;

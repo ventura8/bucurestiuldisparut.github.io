@@ -69,6 +69,24 @@ export async function solidArchive(spec: SolidArchive): Promise<Buffer> {
     return Buffer.from(await pmtilesArchive(tiles, spec));
 }
 
+/**
+ * A frame that covers only part of the view, as one USGS frame covers part of a city: every tile of `bounds` from `minzoom` to
+ * `maxzoom`, none anywhere else, and no square kept around the middle (a test walks across hundreds of them).
+ */
+export async function frameArchive(spec: SolidArchive): Promise<Buffer> {
+    const data = new Uint8Array(await solidWebp(spec.colour));
+    const [west, south, east, north] = spec.bounds;
+    const tiles: ArchiveTile[] = [];
+    for (let z = spec.minzoom; z <= spec.maxzoom; z += 1) {
+        for (let x = tileX(west, z); x <= tileX(east, z); x += 1) {
+            for (let y = tileY(north, z); y <= tileY(south, z); y += 1) {
+                tiles.push({ z, x, y, data });
+            }
+        }
+    }
+    return Buffer.from(await pmtilesArchive(tiles, spec));
+}
+
 /** What a page route of an archive saw. */
 export interface ArchiveReads {
     /** Every `Range` header asked (null: none). */

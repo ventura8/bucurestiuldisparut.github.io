@@ -180,6 +180,14 @@ function acquisitionFilter(request: SceneSearch): { acquisitionFilter?: { start:
     return { acquisitionFilter: { start: request.from ?? '1950-01-01', end: request.to ?? '2100-12-31' } };
 }
 
+/** M25: a Landsat search's months (`seasonalFilter`) and cloud cap (`cloudCoverFilter`), when it has them. */
+function landsatFilters(request: SceneSearch): Record<string, unknown> {
+    return {
+        ...(request.months === undefined ? {} : { seasonalFilter: [...request.months] }),
+        ...(request.maxCloud === undefined ? {} : { cloudCoverFilter: { min: 0, max: request.maxCloud, includeUnknown: false } }),
+    };
+}
+
 function sceneSearchBody(request: SceneSearch): unknown {
     const { west, south, east, north } = request.bounds;
     return {
@@ -191,6 +199,7 @@ function sceneSearchBody(request: SceneSearch): unknown {
                 upperRight: { latitude: north, longitude: east },
             },
             ...acquisitionFilter(request),
+            ...landsatFilters(request),
         },
         metadataType: 'full',
         maxResults: request.maxResults,

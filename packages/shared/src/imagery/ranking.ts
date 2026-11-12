@@ -5,10 +5,12 @@
  * largest contributions. Shared, so the
  * harvest (functions) stores it and the admin re-ranks live when a filter or a layer changes.
  */
+import { isLandsatDataset, LANDSAT_AUTO_MAX_CLOUD, LEAF_ON_MONTHS } from '../schemas/landsat.js';
 import { RANKING_VERSION, RANKING_WEIGHTS, type RankReason, type RankReasonEntry, type UsgsSceneDoc } from '../schemas/usgs-scene.js';
 
-/** What a rank reads of a scene. */
-export type RankedScene = Pick<UsgsSceneDoc, 'downloadAvailable' | 'coverage' | 'acquisitionDate' | 'cloudCover' | 'resolutionM'>;
+/** What a rank reads of a scene (M25: its dataset, when known, says whether the season counts). */
+export type RankedScene = Pick<UsgsSceneDoc, 'downloadAvailable' | 'coverage' | 'acquisitionDate' | 'cloudCover' | 'resolutionM'> &
+    Partial<Pick<UsgsSceneDoc, 'dataset'>>;
 
 export interface RankContext {
     /** The city's target years (`cities/{city}.imagery.targetYears`). */
@@ -39,6 +41,8 @@ const NEAR_TARGET_YEARS = 1;
 const NEW_YEAR_SPAN = 10;
 /** Cloud cover at which the cloud part reaches 0, in percent. */
 const CLOUDY_PERCENT = 50;
+/** M25: a Landsat scene's cloud part out of the leaf-on months (May and September: bare fields, low sun). */
+const OFF_SEASON_SHARE = 0.5;
 
 function reason(code: RankReason, params?: Readonly<Record<string, string>>): RankReasonEntry {
     return params === undefined ? { code } : { code, params };
@@ -98,12 +102,28 @@ function newYear(scene: RankedScene, context: RankContext): Scored {
     };
 }
 
+/** M25: a Landsat scene of a month out of June to August, its month; else undefined (any declassified frame too). */
+function offSeasonMonth(scene: RankedScene): number | undefined {
+    const month = Number(scene.acquisitionDate.slice(5, 7));
+    return scene.dataset !== undefined && isLandsatDataset(scene.dataset) && !LEAF_ON_MONTHS.includes(month) ? month : undefined;
+}
+
 function cloud(scene: RankedScene): Scored {
+    const month = offSeasonMonth(scene);
+    if (month !== undefined) {
+        const clear = scene.cloudCover === undefined ? 0.5 : Math.max(0, 1 - scene.cloudCover / CLOUDY_PERCENT);
+        return { part: 'cloud', value: clear * OFF_SEASON_SHARE, reason: reason('season', { month: String(month) }), always: true };
+    }
     if (scene.cloudCover === undefined) {
         return { part: 'cloud', value: 0.5, reason: reason('cloudUnknown') };
     }
     const value = Math.max(0, 1 - scene.cloudCover / CLOUDY_PERCENT);
-    return { part: 'cloud', value, reason: reason('cloud', { percent: String(Math.round(scene.cloudCover)) }) };
+    return { part: 'cloud', value, reason: reason('cloud', { percent: String(Math.round(scene.cloudCover)) }), always: tooCloudy(scene) };
+}
+
+/** M25: a Landsat scene too cloudy for the tick to import says so first (a declassified frame's cloud is one reason among others). */
+function tooCloudy(scene: RankedScene): boolean {
+    return scene.dataset !== undefined && isLandsatDataset(scene.dataset) && (scene.cloudCover ?? 0) > LANDSAT_AUTO_MAX_CLOUD;
 }
 
 function resolution(scene: RankedScene): Scored {

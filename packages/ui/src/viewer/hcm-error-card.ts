@@ -52,29 +52,29 @@ export class HcmErrorCard extends LitElement {
                 align-items: flex-start;
                 gap: 16px;
                 padding: 24px;
-                border-radius: var(--md-sys-shape-corner-large, 16px);
-                background: var(--md-sys-color-error-container, Canvas);
-                color: var(--md-sys-color-on-error-container, CanvasText);
+                border-radius: var(--md-sys-shape-corner-large);
+                background: var(--md-sys-color-error-container);
+                color: var(--md-sys-color-on-error-container);
                 overflow-wrap: anywhere;
 
                 /* Secondary on the error container measured 2.38:1 (the tour): Retry's ring takes the container's text colour. */
-                --hcm-focus-ring-color: var(--md-sys-color-on-error-container, CanvasText);
+                --hcm-focus-ring-color: var(--md-sys-color-on-error-container);
             }
 
             .card p {
                 margin: 0;
-                font-size: var(--md-sys-typescale-body-large-size, 1rem);
-                line-height: var(--md-sys-typescale-body-large-line-height, 1.5rem);
+                font-size: var(--md-sys-typescale-body-large-size);
+                line-height: var(--md-sys-typescale-body-large-line-height);
             }
 
             .card hcm-icon {
-                color: var(--md-sys-color-on-error-container, CanvasText);
+                color: var(--md-sys-color-on-error-container);
             }
 
             .card .issue {
                 font-family: var(--hcm-font-mono, ui-monospace, monospace);
-                font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
-                line-height: var(--md-sys-typescale-body-small-line-height, 1rem);
+                font-size: var(--md-sys-typescale-body-small-size);
+                line-height: var(--md-sys-typescale-body-small-line-height);
             }
         `,
     ];

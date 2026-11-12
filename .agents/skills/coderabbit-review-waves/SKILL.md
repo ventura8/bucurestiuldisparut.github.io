@@ -1,6 +1,6 @@
 ---
 name: coderabbit-review-waves
-description: Triage and resolve batches of CodeRabbit (or other automated) PR review findings on Historic City Map's TypeScript, Lit, Firebase, Python and docs changes without breaking the gates, the 90 percent per-file coverage, the scenario registry or the zero-inline-suppression rule. Use whenever the user pastes a wave of review findings or asks to work through a PR's review comments.
+description: Triage and resolve batches of CodeRabbit (or other automated) PR review findings on Historic City Map Maker's TypeScript, Lit, Firebase, Python and docs changes without breaking the gates, the 90 percent per-file coverage, the scenario registry or the zero-inline-suppression rule. Use whenever the user pastes a wave of review findings or asks to work through a PR's review comments.
 ---
 
 # CodeRabbit Review Waves Skill

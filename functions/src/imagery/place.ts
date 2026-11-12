@@ -17,7 +17,7 @@ import {
 import type { DocumentStore } from '../ports/documents.js';
 
 /** The city's remembered choice (`auto` when it never made one). */
-async function runChoiceOf(documents: DocumentStore, cityId: string): Promise<RunChoice> {
+export async function runChoiceOf(documents: DocumentStore, cityId: string): Promise<RunChoice> {
     return (await documents.get(FIRESTORE_PATHS.runChoice(cityId), runChoiceDocSchema))?.choice ?? 'auto';
 }
 

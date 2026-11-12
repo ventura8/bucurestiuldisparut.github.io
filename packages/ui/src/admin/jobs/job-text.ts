@@ -16,6 +16,8 @@ const TYPES: Readonly<Record<string, AdminContentKey>> = {
     'layer-delete': 'adminContent.jobs.type.layerDelete',
     'layer-join': 'adminContent.jobs.type.layerJoin',
     'layer-tiles': 'adminContent.jobs.type.layerTiles',
+    // M20: one series of a local archive (it read "Job" before, 2026-11-09).
+    'archive-series': 'adminContent.jobs.type.archiveSeries',
 };
 
 const STATUSES: Readonly<Record<JobStatusPort, AdminContentKey>> = {

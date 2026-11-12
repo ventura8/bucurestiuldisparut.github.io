@@ -7,6 +7,7 @@ import { runAs } from '../global-options.js';
 import type { Ports } from '../ports/index.js';
 import { cityIds } from './limits.js';
 import { backfillCloudUsage } from './cloud-usage-backfill.js';
+import { importLandsat } from './landsat-auto.js';
 import { guardIsRed } from './records.js';
 import { watchOrders } from './orders/watch.js';
 import { ensureDatePlan } from './join-plan.js';
@@ -22,7 +23,7 @@ import { relocateParked } from './relocate.js';
  * `imagery.tick` (every 5 minutes, one instance; `docs/research/M3-interfaces.md` §4.6): the raster work's clock. For
  * every city, each part on its own (a failure is logged and the next part runs): dispatch, lost executions, the
  * cancellations and approvals a lost event left, MTS polls gone missing, deferred publishes, due layer deletions, the
- * files of long-ended versions, the monthly harvest and (M4) the order watch. While the budget guard is red only the
+ * files of long-ended versions, the monthly harvest, (M25) the Landsat imports and (M4) the order watch. While the budget guard is red only the
  * parts that end or recover work run (lost executions, cancellations) and the order watch, which asks USGS and reminds
  * but imports nothing; nothing new starts, and the public site is never touched. Finding 64 of 2026-11-02: first, once a
  * month, the cloud runs that ended before they were counted are added to Cloud Run's free-tier meter (`backfill`).
@@ -52,6 +53,8 @@ const PARTS: readonly (readonly [name: string, part: Part, whileRed: boolean])[]
     ['deletions', runDeletions, false],
     ['sweep', sweepEnded, false],
     ['harvest', monthlyHarvest, false],
+    // M25 (docs/research/M25-landsat.md §4): the best Landsat scene of a wanted year, imported on its own within the daily cap.
+    ['landsat', importLandsat, false],
     // M4 (docs/research/M4-interfaces.md §1.5): the order watch asks USGS and reminds while the guard is red; its import waits.
     ['orders', watchOrders, true],
     // Finding 85: a scene an ended import left reserved can be imported again.

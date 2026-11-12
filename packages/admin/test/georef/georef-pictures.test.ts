@@ -69,8 +69,8 @@ describe('the georeferencer pictures', () => {
     it('happyPath_theScanThenTheReferenceThenTheWarpedPreviewOncePerFrame', async () => {
         const { shown, clock, scans, overlays, native, pictures } = await setup();
 
-        shown.load(version(), null);
-        shown.load(version(), null);
+        shown.load(version(), 's2');
+        shown.load(version(), 's2');
         await settle();
         shown.warp(fitted(), SCAN, 0.6);
         shown.warp(fitted(), SCAN, 0.7);
@@ -80,11 +80,20 @@ describe('the georeferencer pictures', () => {
         shown.setOpacity(0.3);
 
         expect(scans).toEqual([{ status: 'loading' }, { status: 'ready', url: `blob:${SCAN.previewPath}` }]);
-        expect(shown.reference).toBe('osm');
+        expect(shown.reference).toBe('s2');
         expect([overlays.has(REFERENCE_PICTURE), overlays.has(WARPED_PICTURE)]).toEqual([true, true]);
         expect(pictures?.drawn).toHaveLength(2);
         expect(pictures?.drawn[0]?.target).toBe(pictures?.drawn[1]?.target);
         expect(native.paint.get('hcm-picture-layer-warped')?.['raster-opacity']).toBeCloseTo(0.3, 9);
+    });
+
+    it('happyPath_theOpenStreetMapLinesAreNotDrawnOverTheBaseMap', async () => {
+        const { shown, overlays } = await setup();
+
+        shown.load(version(), 'osm');
+        await settle();
+
+        expect([shown.reference, overlays.has(REFERENCE_PICTURE)]).toEqual(['osm', false]);
     });
 
     it('happyPath_switchingTheReferenceAndARefusedFitTakeThePreviewOff', async () => {
@@ -136,10 +145,10 @@ describe('the georeferencer pictures', () => {
         const files = new FakeFiles();
         const clock = new FakeClock();
         const shown = new GeorefPictures({ files, pictures: new FakePictures(), clock, overlays, scan: () => undefined });
-        for (const path of [SCAN.previewPath, REFERENCE.osmPath]) {
+        for (const path of [SCAN.previewPath, REFERENCE.s2Path]) {
             files.put(path);
         }
-        shown.load(version(), null);
+        shown.load(version(), 's2');
         shown.warp(fitted(), SCAN, 0.7);
         clock.advance(WARP_DELAY_MS);
         await settle();

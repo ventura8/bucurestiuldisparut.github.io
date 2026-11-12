@@ -240,6 +240,7 @@ export const SERVER_ONLY_HOSTS: readonly string[] = [
     'm2m.cr.usgs.gov',
     'dds.cr.usgs.gov',
     'ims.cr.usgs.gov',
+    'landsatlook.usgs.gov',
     'earth-search.aws.element84.com',
     'sentinel-cogs.s3.us-west-2.amazonaws.com',
     'overpass-api.de',

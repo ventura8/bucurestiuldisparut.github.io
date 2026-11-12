@@ -223,13 +223,39 @@ function hasManualPoints(run: Run): boolean {
     return georef?.method === 'gcps';
 }
 
+/** M25: a Landsat scene's import (its dataset says so): no stitch, locate or georef; `warp` composes and checks it. */
+function isLandsat(run: Run): boolean {
+    const params = run.job['params'] as { dataset?: unknown } | undefined;
+    return typeof params?.dataset === 'string' && params.dataset.startsWith('landsat_');
+}
+
+/** A step a Landsat scene skips (already georeferenced), else `play`. */
+function unlessLandsat(step: 'stitch' | 'locate' | 'georef', play: (run: Run) => Promise<StepResult>) {
+    return async (run: Run): Promise<StepResult> => {
+        if (!isLandsat(run)) {
+            return play(run);
+        }
+        await run.stepEnded(step, 'skipped');
+        return 'next';
+    };
+}
+
+/** M25: `warp` of a Landsat scene: its report (within a pixel, a clear city, unless the script says otherwise), then its image. */
+async function composeLandsat(run: Run): Promise<StepResult> {
+    const sensor = sensorOf(run);
+    const resolutionM = sensor === undefined ? 30 : SENSOR_SPECS[sensor].resolutionM;
+    const report = { checked: true, offsetPx: 0.4, offsetM: 12, cityCloudPct: 1, resolutionM, pansharpened: resolutionM < 30 };
+    await run.writeVersion({ landsat: { ...report, ...run.attempt.landsat } });
+    return writeWarped(run, 'warp');
+}
+
 function isEmbedded(run: Run): boolean {
     const georef = run.version['georef'] as { method?: string } | undefined;
     return georef?.method === 'embedded';
 }
 
 /** `warp`, and a join's `merge`: what `export` reads next. */
-async function writeWarped(run: Run, step: 'warp' | 'merge'): Promise<StepResult> {
+async function writeWarped(run: Run, step: 'warp' | 'merge' | 'place'): Promise<StepResult> {
     const warped = await uploadObject(
         RASTER_PATHS.work(run.city, run.jobId, 'warped.tif'),
         new Uint8Array(await smallTiff(130)),
@@ -289,7 +315,7 @@ const STEPS: Readonly<Record<PipelineStep, (run: Run) => Promise<StepResult>>> =
         await run.stepEnded('extract', 'done', recorded(segment));
         return 'next';
     },
-    stitch: async (run) => {
+    stitch: unlessLandsat('stitch', async (run) => {
         const frame = await uploadObject(
             RASTER_PATHS.work(run.city, run.jobId, 'frame.tif'),
             new Uint8Array(await smallTiff(125)),
@@ -297,7 +323,7 @@ const STEPS: Readonly<Record<PipelineStep, (run: Run) => Promise<StepResult>>> =
         );
         await run.stepEnded('stitch', 'done', recorded(frame));
         return 'next';
-    },
+    }),
     inspect: async (run) => {
         const scan = await writeScan(run);
         if (run.attempt.outcome !== 'scan') {
@@ -306,7 +332,7 @@ const STEPS: Readonly<Record<PipelineStep, (run: Run) => Promise<StepResult>>> =
         await run.stepEnded('inspect', 'done', recorded(scan));
         return 'next';
     },
-    locate: async (run) => {
+    locate: unlessLandsat('locate', async (run) => {
         const scan = await writeScan(run);
         const { calibration } = run.attempt;
         await run.writeVersion({
@@ -315,12 +341,12 @@ const STEPS: Readonly<Record<PipelineStep, (run: Run) => Promise<StepResult>>> =
         });
         await run.stepEnded('locate', 'done', recorded(scan));
         return 'next';
-    },
+    }),
     reference: async (run) => {
         await (isEmbedded(run) ? run.stepEnded('reference', 'skipped') : writeReferences(run));
         return 'next';
     },
-    georef: (run) => georeference(run),
+    georef: unlessLandsat('georef', (run) => georeference(run)),
     align: async (run) => {
         await run.stepEnded('align', 'done');
         return 'next';
@@ -329,7 +355,13 @@ const STEPS: Readonly<Record<PipelineStep, (run: Run) => Promise<StepResult>>> =
         await run.writeVersion({ join: joinReportOf(run, checkpointRmse(run)) });
         return writeWarped(run, 'merge');
     },
-    warp: (run) => writeWarped(run, 'warp'),
+    warp: (run) => (isLandsat(run) ? composeLandsat(run) : writeWarped(run, 'warp')),
+    // M20 (docs/research/M20-import-local.md §4): an archive series' originals checked, then placed by its class.
+    gather: async (run) => {
+        await run.stepEnded('gather', 'done');
+        return 'next';
+    },
+    place: (run) => writeWarped(run, 'place'),
     export: async (run) => {
         const cog = await store(run, 'cog.tif', await smallTiff(150), 'image/tiff');
         await store(run, 'preview.png', await warpedPreviewPng(outputBounds(run)), 'image/png');
@@ -418,7 +450,7 @@ function outputBounds(run: Run): Bounds {
     if (crop !== undefined) {
         return boundsOf(crop);
     }
-    return isEmbedded(run) ? run.bounds : boundsOf(scanCorners(run.bounds));
+    return isEmbedded(run) || isLandsat(run) ? run.bounds : boundsOf(scanCorners(run.bounds));
 }
 
 /** The share of the city the render's box holds, as `export` measures it on the alpha (M9: `output.coveragePct`). */

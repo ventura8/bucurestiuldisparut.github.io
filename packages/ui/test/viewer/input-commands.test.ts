@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { commandAllowed, isDialogSheet, runInputCommand, wrapped } from '../../src/viewer/input-commands.js';
+import { commandAllowed, dialogMode, isDialogSheet, runInputCommand, wrapped } from '../../src/viewer/input-commands.js';
 import { FakeStore, idleState, readyState } from './fake-store.js';
 import { testManifest } from './fixtures.js';
 
@@ -46,13 +46,15 @@ describe('commandAllowed', () => {
     });
 
     it('badPath_aDialogKeepsHelpAndClose', () => {
-        for (const sheet of ['about', 'help'] as const) {
+        for (const sheet of ['about', 'help', 'settings'] as const) {
             const state = readyState(layered(), { sheet });
 
             expect(isDialogSheet(sheet)).toBe(true);
+            expect(dialogMode(sheet)).toBe(sheet);
             expect(commandAllowed(state, 'help')).toBe(true);
             expect(commandAllowed(state, 'photo-next')).toBe(false);
         }
+        expect([isDialogSheet('layers'), dialogMode('layers')]).toEqual([false, 'about']);
     });
 
     it('badPath_noMapCommandsWithoutWebgl', () => {

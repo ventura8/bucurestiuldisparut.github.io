@@ -348,8 +348,8 @@ test(
 
         // Reject: only the join ends. Its frames wait for approval again and their scenes stay imported.
         const reject = imageryText(lang, 'adminContent.imagery.reject');
-        await detail(page).getByRole('button', { name: reject }).click();
-        await page.locator('hcm-dialog[open]').getByRole('button', { name: reject }).click();
+        await detail(page).getByRole('button', { name: reject, exact: true }).click();
+        await page.locator('hcm-dialog[open]').getByRole('button', { name: reject, exact: true }).click();
         await expect(versionState(page, lang, 'adminContent.imagery.version.rejected')).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
         const [part] = await partsOf(imagery, join);
         expect((await imagery.version(part?.versionId ?? ''))?.['state']).toBe('awaiting_approval');

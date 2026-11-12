@@ -2,9 +2,9 @@
  * The viewer's adaptive layout per M3 window class (docs/research/material3-research.json → adaptive_layout),
  * measured on the viewer's own box (the store's `windowClass` and `compactHeight`), never on the browser window:
  *
- * - compact: full-bleed map, floating timeline at the bottom, FAB menu; layers, photo and POI details in modal
- *   bottom sheets; About as a full-screen dialog;
- * - compact height (landscape phones, any width): vertical timeline on the trailing edge, modal side sheets;
+ * - compact: full-bleed map, a vertical timeline on the leading edge (the owner, 2026-11-08), FAB menu; layers, photo
+ *   and POI details in modal bottom sheets; About as a full-screen dialog;
+ * - compact height (landscape phones, any width): the timeline lies at the bottom, too short to stand; modal side sheets;
  * - medium: floating timeline bottom-centre; layers and details in modal side sheets;
  * - expanded and large: one docked supporting pane (standard side sheet, 360 / 412 px) for layers or details;
  * - extra-large: up to three panes, the layers panel always docked on the leading side.
@@ -23,11 +23,11 @@ export interface ViewerLayout {
     readonly aboutFullscreen: boolean;
 }
 
-const COMPACT: ViewerLayout = { sheetMode: 'bottom', layersDocked: false, timeline: 'horizontal', aboutFullscreen: true };
+const COMPACT: ViewerLayout = { sheetMode: 'bottom', layersDocked: false, timeline: 'vertical', aboutFullscreen: true };
 const MEDIUM: ViewerLayout = { sheetMode: 'side', layersDocked: false, timeline: 'horizontal', aboutFullscreen: false };
 const SUPPORTING_PANE: ViewerLayout = { sheetMode: 'docked', layersDocked: false, timeline: 'horizontal', aboutFullscreen: false };
 const THREE_PANES: ViewerLayout = { sheetMode: 'docked', layersDocked: true, timeline: 'horizontal', aboutFullscreen: false };
-const COMPACT_HEIGHT: ViewerLayout = { sheetMode: 'side', layersDocked: false, timeline: 'vertical', aboutFullscreen: true };
+const COMPACT_HEIGHT: ViewerLayout = { sheetMode: 'side', layersDocked: false, timeline: 'horizontal', aboutFullscreen: true };
 
 const BY_CLASS: Readonly<Record<WindowClass, ViewerLayout>> = {
     compact: COMPACT,
@@ -42,13 +42,13 @@ export function layoutFor(windowClass: WindowClass, compactHeight: boolean): Vie
 }
 
 /**
- * Where a sheet shows, whether it is open, whether it can be closed (the always-docked layers pane cannot) and whether
- * a modal surface above it (the lightbox over a modal sheet) makes it inert.
+ * Where a sheet shows, whether it is open, whether its close button minimizes it (the always-docked layers pane) and
+ * whether a modal surface above it (the lightbox over a modal sheet) makes it inert.
  */
 export interface Placement {
     readonly mode: SheetMode;
     readonly open: boolean;
-    readonly closable?: boolean;
+    readonly minimizable?: boolean;
     readonly inert?: boolean;
 }
 

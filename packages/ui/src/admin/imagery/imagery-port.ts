@@ -4,6 +4,7 @@
  * `packages/admin/test/app/admin-port.test.ts` checks that the real store satisfies it.
  */
 import type {
+    ArchiveReport,
     ApiErrorCode,
     BBox,
     Calibration,
@@ -15,6 +16,7 @@ import type {
     JobWaitReason,
     JoinPart,
     JoinReport,
+    LandsatReport,
     LayerVersionState,
     LngLat,
     OrderState,
@@ -26,7 +28,9 @@ import type {
     ServiceState,
     UsgsDataset,
 } from '@hcm/shared';
+import type { Rights } from '@hcm/shared';
 
+import type { ArchiveFeedPort } from '../archive/archive-port.js';
 import type { DocStatePort, ListStatePort, StoreFailurePort } from '../area-port.js';
 import type { AdminNoticeInputPort } from '../notice-port.js';
 import type { GuardPort } from './guard-port.js';
@@ -88,13 +92,15 @@ export interface VersionItemPort {
     readonly layerId: string;
     readonly label: { readonly ro: string; readonly en?: string | undefined };
     readonly year: number;
-    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop' | 'join';
+    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop' | 'join' | 'archive';
     readonly state: LayerVersionState;
     readonly updatedAt: string;
     readonly needsYou: boolean;
     readonly checkpointRmseM: number | null;
     readonly partOf: string | null;
     readonly entityIds: readonly string[];
+    /** The version it was made from: that one is not deleted while this one is there. */
+    readonly basedOn: string | null;
     /** M12: the small picture of a waiting row. */
     readonly thumbPath: string | null;
 }
@@ -136,7 +142,7 @@ export interface VersionViewPort {
     readonly year: number;
     readonly date: string | null;
     readonly sensor: Sensor | null;
-    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop' | 'join';
+    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop' | 'join' | 'archive';
     readonly state: LayerVersionState;
     readonly georef: {
         readonly method: string;
@@ -149,6 +155,8 @@ export interface VersionViewPort {
     } | null;
     /** M9: how the frame was found and what proved it (`calibration-card.ts`). */
     readonly calibration: Calibration | null;
+    /** M25: what the pipeline measured of a Landsat scene (`approval-card.ts` says it instead of a checkpoint error). */
+    readonly landsat: LandsatReport | null;
     readonly output: {
         readonly bounds: BBox;
         readonly minzoom: number;
@@ -185,6 +193,20 @@ export interface VersionViewPort {
     readonly basedOn: string | null;
     readonly recalibration: Recalibration | null;
     readonly publicUrl: string | null;
+    /** M20, batch 4: what an archive series' placement measured (`grid-names`: placed from its sheets' names, its owner approves). */
+    readonly archive?: ArchiveReport | null;
+    /**
+     * M20 (§7): rights summary for the approval card (null: none). Approve stays off until `allowPublish`; Confirm when
+     * `state` is `needs-confirmation`.
+     */
+    readonly rights?: {
+        readonly state: Rights['state'];
+        readonly licence: Rights['licence'];
+        readonly year: string;
+        readonly note: string | null;
+        readonly confirmedBy: string | null;
+        readonly allowPublish: boolean;
+    } | null;
 }
 
 export interface JobViewPort {
@@ -229,7 +251,18 @@ interface UsagePort {
     readonly reservations: Readonly<Record<string, { readonly computeUnits: number }>>;
 }
 
-type VersionActionPort = 'approve' | 'reject' | 'choose' | 'studioDone' | 'download' | 'retry' | 'locate' | 'cancel' | 'recalibrate';
+type VersionActionPort =
+    | 'approve'
+    | 'reject'
+    | 'confirmRights'
+    | 'deleteVersion'
+    | 'choose'
+    | 'studioDone'
+    | 'download'
+    | 'retry'
+    | 'locate'
+    | 'cancel'
+    | 'recalibrate';
 
 export interface VersionPagePort {
     readonly id: string;
@@ -266,7 +299,7 @@ export interface ImageryViewState {
     readonly browse: Readonly<Record<string, BrowseImagePort>>;
     readonly versions: ListStatePort<VersionItemPort>;
     readonly jobs: Readonly<Record<string, JobProgressPort>>;
-    readonly detail: { readonly kind: 'scene' | 'version'; readonly id: string } | null;
+    readonly detail: { readonly kind: 'scene' | 'version' | 'archive'; readonly id: string } | null;
     readonly version: VersionPagePort | null;
     readonly importing: string | null;
     readonly importRefusal: { readonly id: string; readonly notice: AdminNoticeInputPort } | null;
@@ -313,6 +346,10 @@ export interface ImageryIntentsPort {
     /** M16: `acceptWorse`: the owner chose a recalibration not shown better. */
     approve(acceptWorse?: boolean): Promise<boolean>;
     reject(): Promise<boolean>;
+    /** M20 (§7): the city's owner confirms who granted the permission (`imagery.confirmRights`). */
+    confirmRights(confirmedBy: string): Promise<boolean>;
+    /** A version that never reached the map, deleted for good (`imagery.deleteVersion`); true once it is gone. */
+    deleteVersion(): Promise<boolean>;
     /** M16: Refine automatically (the new version's id, or null when refused), and the map between the new version and the current one. */
     recalibrate(): Promise<string | null>;
     toggleCurrent(): void;
@@ -341,4 +378,7 @@ export interface ImageryIntentsPort {
     /** M8: Join frames (the new join's version id, or null when refused) and Add {year} to target years. */
     joinFrames(entityIds: readonly string[]): Promise<string | null>;
     addTargetYear(year: number): Promise<boolean>;
+    /** M20 (`docs/research/M20-import-local.md` §8): Import local files' feed and elements, from the lazy `archive` chunk. */
+    archive(): Promise<ArchiveFeedPort>;
+    archiveElements(): Promise<void>;
 }

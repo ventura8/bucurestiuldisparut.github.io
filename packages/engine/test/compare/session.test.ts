@@ -140,7 +140,6 @@ describe('swipe compare session', () => {
             position: 0.5,
             layerId: 'kh9-1980',
             mainLabel: 'Azi',
-            compactHeight: false,
         });
         expect(compare.maps).toHaveLength(1);
         expect(compare.map.mapLoadCount).toBe(1);

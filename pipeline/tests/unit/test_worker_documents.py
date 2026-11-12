@@ -12,6 +12,7 @@ from hcm_pipeline.worker.documents import ApiDocumentStore, JobIds, from_api, to
 
 IDS = JobIds("bucharest", "w-0123456789abcdef", "job-1")
 JOB = "cities/bucharest/jobs/job-1"
+VERSIONS = "cities/bucharest/layerVersions"
 
 
 class StepServer:
@@ -32,8 +33,13 @@ class StepServer:
         if operation["op"] == "get":
             return {"data": self.document, "updateTime": f"{self.version}.000000000" if self.document else None}
         if operation["op"] == "list":
-            return {"ids": ["000000", "000001"] if operation["collection"] == f"{JOB}/logs" else None}
+            return self._list(str(operation["collection"]))
         return self._write(operation)
+
+    def _list(self, collection: str) -> dict[str, object]:
+        if collection == VERSIONS:
+            return {"ids": ["v-1972"], "skipped": 2}
+        return {"ids": ["000000", "000001"] if collection == f"{JOB}/logs" else None}
 
     def _write(self, operation: dict[str, object]) -> dict[str, object]:
         if operation["op"] == "create":
@@ -112,3 +118,15 @@ def test_bad_path_a_transaction_that_always_loses_raises_and_one_that_changes_no
     missing = StepServer(None)
     assert store(missing).transact(JOB, lambda record: None if record is None else {"x": 1}) is None
     assert [request["op"] for request in missing.requests] == ["get"]
+
+
+def test_happy_path_a_list_keeps_the_count_of_documents_the_server_left_out_and_an_old_server_counts_none() -> None:
+    """Scenarios: S-P06-BAD-JOINT-UNREADABLE
+    The server lists only the city's versions that pass their schema and says how many it left out; one before it says nothing."""
+    documents = store(StepServer(None))
+
+    assert documents.skipped(VERSIONS) == 0
+    assert documents.list_ids(VERSIONS) == ["v-1972"]
+    assert documents.skipped(VERSIONS) == 2
+    assert documents.list_ids(f"{JOB}/logs") == ["000000", "000001"]
+    assert documents.skipped(f"{JOB}/logs") == 0

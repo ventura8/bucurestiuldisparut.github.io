@@ -12,8 +12,8 @@ Everything that checks, tests or builds this repository runs in Docker. The host
 ## First run
 
 ```bash
-git clone https://github.com/ventura8/bucurestiuldisparut.github.io.git
-cd bucurestiuldisparut.github.io
+git clone https://github.com/ventura8/historic-city-map-maker.git
+cd historic-city-map-maker
 git switch feat/engine-rewrite
 PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh
 ```
@@ -162,7 +162,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -e HCM_ADMIN_START_
 - `dist/hosting-public/` is always the **public** variant: the first city's site at `/` (with `admin-redirect.js`: an old admin address `/#/<route>` goes to `/admin/#/<route>`), every other committed city at its `pagesPath`, the generic city page at `/city/` (Hosting rewrites any other city id to it), the admin at `/admin/`, `release.json` (`{release, variant}`), the bilingual `404.html`. The installer's `hosting.tgz` is made from it (without the old photos' originals, which travel in `legacy.tgz`: DECISIONS-for-review.md §73k), and the admin's **Publish the map** releases it, with the originals while the legacy import is not complete.
 - `dist/hosting/` (`firebase.json` → `hosting.public`) is what this deploy publishes: the **start-up** variant with `HCM_ADMIN_START_UP=1` (a bilingual "this map is being set up" page at `/`, no engine and no Mapbox, the admin's `runtime.json` with `startUp: true`), else the public one.
 - `firebase.json`'s Hosting rules are read by `scripts/site/src/admin/hosting.ts` exactly as Hosting's engine reads them, so the e2e Hosting server (`e2e/mock-apis/admin-server.ts`, `127.0.0.1:4312`, every e2e run) serves the e2e build's tree (`dist/e2e-hosting`, the start-up variant `dist/e2e-hosting-start-up` to a browser with the cookie `hcm-e2e-variant=start-up`) with the same redirects, rewrites and headers. The admin's CSP is a header on `/admin/**` only; each viewer page keeps its own meta policy.
-- To retire the old GitHub Pages site without breaking its links: `npm run build:site` also writes `dist/pages-redirect` (its `--pages-redirect` option), a tree whose every page sends the visitor to the same page on `https://<projectId>.web.app/` with the same hash (publishing it instead of the old site is a workflow line, DECISIONS-for-review.md §67c, ask first). The e2e build writes it to `dist/e2e-site/pages-redirect/`, pointed at the e2e Hosting server.
+- To retire the old GitHub Pages site without breaking its links: `npm run build:site` also writes `dist/pages-redirect` (its `--pages-redirect` option), a tree whose every page sends the visitor to the same page on `https://<projectId>.web.app/` with the same hash (publishing it instead of the old site is a workflow line, DECISIONS-for-review.md §67c, ask first). The e2e build writes it to `dist/e2e-site/pages-redirect/`, pointed at the e2e Hosting server. The owner retired the old site with v1.0.0-beta.1 (DECISIONS-for-review.md §161): merging the rewrite into `master` deletes its files and the owner turns GitHub Pages off; the live map is `https://bucurestiul-disparut.web.app/`.
 
 ## The starter kit and create-historic-city
 
@@ -177,7 +177,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "
   bash -c 'mkdir -p $HOME && cd /tmp && node '"$PWD"'/packages/create-historic-city/dist/cli.mjs my-city --yes --dry-run'
 ```
 
-- The start site (`npm run build:start`, after `build:hosting`; its `start-build` gate; `HCM_START_OAUTH_CLIENT_ID` opens it): `dist/start/`, deployed apart (`docs/research/M14-start-your-map.md` §5).
+- The start site (`npm run build:start`, after `build:hosting`; its `start-build` gate; `HCM_START_OAUTH_CLIENT_ID` opens it; `HCM_START_SITE_VERIFICATION`, Search Console's `google<hex>.html`, writes that file at the root): `dist/start/` with `privacy.html` and `terms.html`, deployed apart (`docs/research/M14-start-your-map.md` §5).
 - The self-host bundle (`npm run build:self-host`, which builds the admin and the functions for production first; the `release` stage's `self-host-bundle` gate assembles it before `release-pack`) is the admin's production build without Bucharest's legacy import, the functions' artifact, the rules and a `firebase.json` template; a release's CLI carries it, and the admin's e2e build is refused. Without it, `self-host` stops at step 6 and names a released version. Until CR-M5-7, `self-host` and `deploy` run only with `--experimental` ([SELF_HOST.md](SELF_HOST.md)).
 - Never run `self-host` or `deploy` against a real project from an agent: they run the owner's own `firebase` and `gcloud`, which create cloud resources (ask first; the user runs them in their own terminal). The e2e rows S-V29-* run the built CLI with fake tools only.
 

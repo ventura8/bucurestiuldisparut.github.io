@@ -180,6 +180,32 @@ describe('the start site', () => {
     });
 });
 
+describe('the start site for Google verification', () => {
+    it('happyPath_theLegalPagesAndTheVerificationFileJoinTheSite', () => {
+        const { files } = world();
+        buildStartSite(OPTIONS, { files, env: { ...ENV, HCM_START_SITE_VERIFICATION: 'google0123abcd.html' } }, STEPS);
+        expect(files.readText('dist/start/google0123abcd.html')).toBe('google-site-verification: google0123abcd.html');
+        expect(files.readText('dist/start/privacy.html')).toContain('Limited Use');
+        expect(files.isFile('dist/start/terms.html')).toBe(true);
+        expect(files.readText('dist/start/index.html')).toContain('href="privacy.html"');
+    });
+
+    it('badPath_anInvalidVerificationNameStopsTheBuild', async () => {
+        const { files } = world();
+        const { log } = recordingLogger();
+        const env = { ...ENV, HCM_START_SITE_VERIFICATION: 'evil.html' };
+        let stepsRead = false;
+        const steps = (): Promise<typeof STEPS> => {
+            stepsRead = true;
+            return Promise.resolve(STEPS);
+        };
+        const args = ['--public-tree', OPTIONS.publicTree, '--app', OPTIONS.appDir, '--functions', OPTIONS.functionsDir];
+        expect(await runStartCli(args, { files, log, env, steps })).toBe(EXIT_INVALID);
+        expect(stepsRead).toBe(false);
+        expect(files.isFile('dist/start/evil.html')).toBe(false);
+    });
+});
+
 describe('the root of a map made from the start page', () => {
     it('happyPath_itLoadsItsScriptAndKeepsALinkForNoScript', () => {
         const page = renderFirstCityPage();

@@ -5,11 +5,12 @@
  */
 import type { Locale } from '@hcm/shared';
 
+import type { ArchiveHostPort } from '../archive/archive-port.js';
 import type { WorkerHostPort } from '../worker/worker-port.js';
 import type { ImageryIntentsPort, ImageryViewState } from './imagery-port.js';
 
 /** The questions the page asks before an action that cannot be taken back or costs money. */
-export type ImageryQuestion = 'reject' | 'dismiss' | 'pay' | 'cancel' | 'resume' | 'drop' | 'approveWorse' | 'rejectRecalibration';
+export type ImageryQuestion = 'reject' | 'pay' | 'cancel' | 'resume' | 'drop' | 'approveWorse' | 'rejectRecalibration' | 'deleteVersion';
 
 export interface ImageryContext {
     readonly locale: Locale;
@@ -20,6 +21,8 @@ export interface ImageryContext {
     readonly go: (params: readonly string[]) => void;
     /** A revoked admin's page: nothing writes. */
     readonly readOnly: boolean;
+    /** Batch 4: the signed-in admin owns the city (Approve the sheet-name placement is the owner's alone). */
+    readonly owner?: boolean;
     readonly ask: (question: ImageryQuestion) => void;
     /** Renders the page again: a chunk it fetched on first need settled (`orders/lazy-card.ts`). */
     readonly refresh: () => void;
@@ -31,5 +34,5 @@ export interface ImageryContext {
     /** M12: brings the page's one map into view (a phone's approval card lies below it). */
     readonly showMap: () => void;
     /** M7: the admin app, which hands a version's `<hcm-run-place>` its feed (absent: no place shown). */
-    readonly app?: WorkerHostPort | null;
+    readonly app?: (WorkerHostPort & ArchiveHostPort) | null;
 }

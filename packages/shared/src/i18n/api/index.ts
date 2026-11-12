@@ -16,7 +16,16 @@ export function isApiErrorCode(value: unknown): value is ApiErrorCode {
     return typeof value === 'string' && Object.hasOwn(ro, value);
 }
 
-/** The localized message of a backend error code, `{name}` placeholders filled from `params` (unknown ones stay visible). */
+/** A parenthesised aside around one placeholder, with the space before it: ` (problems found: {count})`. */
+const ASIDE = / ?\([^(){}]*\{(\w+)\}[^(){}]*\)/g;
+
+/**
+ * The localized message of a backend error code, `{name}` placeholders filled from `params`. An aside whose placeholder has
+ * no value is dropped (a pipeline's `apiError.invalidRequest` has no count: the banner showed a literal `{count}`,
+ * 2026-11-09); any other unknown placeholder stays visible.
+ */
 export function translateApiError(locale: Locale, code: ApiErrorCode, params: Readonly<Record<string, string>> = {}): string {
-    return CATALOGUES[locale][code].replace(PLACEHOLDER, (placeholder: string, name: string) => params[name] ?? placeholder);
+    return CATALOGUES[locale][code]
+        .replace(ASIDE, (aside: string, name: string) => (params[name] === undefined ? '' : aside))
+        .replace(PLACEHOLDER, (placeholder: string, name: string) => params[name] ?? placeholder);
 }

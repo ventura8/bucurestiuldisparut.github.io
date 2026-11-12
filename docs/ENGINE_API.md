@@ -1,6 +1,6 @@
 # Engine API v1
 
-The public contract of the **Historic City Map** viewer engine (`@hcm/engine`) for city owners who embed it and for the agents who build it. It covers the embed configuration (`config.js`), the `<hcm-map-viewer>` element, the JavaScript API, the URL hash, the City Manifest v1 and the versioning rules. The exact TypeScript interfaces behind it, and who owns which module, are in [research/M1-interfaces.md](research/M1-interfaces.md); the architecture is in [ARCHITECTURE.md](ARCHITECTURE.md).
+The public contract of the **Historic City Map Maker** viewer engine (`@hcm/engine`) for city owners who embed it and for the agents who build it. It covers the embed configuration (`config.js`), the `<hcm-map-viewer>` element, the JavaScript API, the URL hash, the City Manifest v1 and the versioning rules. The exact TypeScript interfaces behind it, and who owns which module, are in [research/M1-interfaces.md](research/M1-interfaces.md); the architecture is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Status (M1): the manifest (with the POIs and overlay defaults of PLAN Addendum 3), configuration, URL hash, validation and overlay-model contracts are implemented and tested in `@hcm/shared` (`packages/shared/src/schemas/`, `packages/shared/src/url/hash.ts`, `packages/shared/src/overlays/`). The element, the JavaScript API and the auto-boot are implemented in `@hcm/engine` (`packages/engine/src/index.ts`, `packages/engine/src/mount.ts`) and `@hcm/ui` (`packages/ui/src/viewer/`) and boot the built Bucharest site in the e2e smoke (scenario S-V16-HAPPY).
 
@@ -49,13 +49,13 @@ The manifest is the one the admin publishes to the project's public bucket. A si
 
 ## The starter kit
 
-A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](research/M5-interfaces.md) §3), or runs `npx create-historic-city@1.0.0 <folder>`, which writes the same three files with its name, rectangle, start view and theme ([SELF_HOST.md](SELF_HOST.md)). There is no `config.js`: the element's attributes are the configuration.
+A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](research/M5-interfaces.md) §3), or runs `npx create-historic-city@1.0.0-beta.1 <folder>`, which writes the same three files with its name, rectangle, start view and theme ([SELF_HOST.md](SELF_HOST.md)). There is no `config.js`: the element's attributes are the configuration.
 
 | File | Role |
 | --- | --- |
 | `index.html` | the page: the meta CSP first, Mapbox GL JS 3.34.1 from `api.mapbox.com` and the engine's `engine.css` and `engine.iife.js` from a pinned jsDelivr folder, each with `integrity` and `crossorigin`, and `<hcm-map-viewer manifest-url="city.json" lang="ro">` |
 | `city.json` | a City Manifest v1: an example city with one place category and three places (a point, a line, an area), no photos and no layers, and the placeholder token `pk.replace-with-your-token`, which Mapbox refuses until the owner puts their own URL-restricted public token in |
-| `README.md` | the steps, in Romanian then English |
+| `README.md` | the steps, in English |
 
 ```html
 <body class="hcm-fullpage">
@@ -95,7 +95,7 @@ A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](rese
 - absent while `#historic-city-map` exists: the error card shows `error.config.missing` (scenario V17);
 - absent and no default container: nothing happens (the page uses `<hcm-map-viewer>` or `HistoricCityMap.mount` itself).
 
-**Language** is resolved in this order: the URL (`#…&lang=` or `?lang=`), the visitor's stored choice, `config.lang`, then Romanian. `<html lang>` follows the result (scenario V11). An error card shown before any manifest (a missing or invalid `config.js`) follows the URL, then `config.lang`. The visitor switches it in the menu (the item names the other language) and in About; the theme (system, light, dark) is in About. `setLang` accepts any tag and resolves it like `config.lang`.
+**Language** is resolved in this order: the URL (`#…&lang=` or `?lang=`), the visitor's stored choice, `config.lang`, then Romanian. `<html lang>` follows the result (scenario V11). An error card shown before any manifest (a missing or invalid `config.js`) follows the URL, then `config.lang`. The visitor switches it, and the theme (system, light, dark), in the menu's **Settings** (Setări), a dialog of its own; About holds neither (the owner, 2026-11-08). `setLang` accepts any tag and resolves it like `config.lang`. On an extra-large window (1600 px and wider) the Layers pane, always docked there, minimizes with its collapse button (**Restrânge straturile** / **Collapse layers**, `aria-expanded="true"`, where narrower windows have a close) to one floating button on the map's leading edge, at its gutter (**Straturi**, a layers icon, `aria-expanded="false"`, or the `l` key's focus on it), which brings it back; there is no rail, and the map takes the whole width (the owner, 2026-11-09). The minimized pane lasts for the session, also when the window leaves the extra-large layout and comes back: it is not in the URL hash, and the switches and sliders keep their values.
 
 ## `<hcm-map-viewer>`
 
@@ -143,7 +143,10 @@ interface HistoricCityMapController {
     readonly ready: Promise<{ readonly ok: true; readonly cityId: string } | { readonly ok: false; readonly code: MessageKey }>;
     /** Shows the layers of `year` (null: today, no historical layer). */
     setYear(year: number | null): void;
-    /** Shows or hides an overlay (a layer id, `photos` or a POI category id); without `visible` it toggles. */
+    /**
+     * Shows or hides an overlay (a layer id, `photos` or a POI category id); without `visible` it toggles. A historical layer
+     * switched on moves the timeline to its year (the other visible layers stay); switching layers off leaves the timeline.
+     */
     toggleLayer(layerId: string, visible?: boolean): void;
     /** Sets an overlay's opacity (0 to 1, clamped) live; an unknown id is ignored. */
     setOverlayOpacity(overlayId: string, opacity: number): void;
@@ -222,7 +225,7 @@ Code: `packages/engine/src/core/map-labels.ts`, `packages/shared/src/overlays/ma
 
 Status (2026-11-07): the owner's request; scenario rows V36 and V37, `e2e/specs/viewer/input.spec.ts`, the tour's journey `input`; the contract is [research/viewer-input.md](research/viewer-input.md). Additive within v1: no property, event or method for a page to set.
 
-Single keys, listed by the help panel (`?`, or About's button): `.` and `,` later and earlier year; `o` and `i` more and less opacity of the current layer; `n` and `p` next and previous photo; `l` Layers; `?` the panel.
+Single keys, listed by the help panel (`?`, or About's button): `.` and `,` later and earlier year; `o` and `i` more and less opacity of the current layer; `n` and `p` next and previous photo; `l` Layers (on an extra-large window, the focus into its pane, or onto its floating button while minimized); `?` the panel.
 
 - **They take a key only from the viewer**, or from the page's body for the page's first viewer, and never from a field, a text-like role, an open menu, or with Ctrl, Alt or Meta. Arrows, `+`, `-` and `=` stay Mapbox's, the timeline's and the lightbox's.
 - **A visitor can turn them off**, in the help panel's switch (WCAG 2.1.4). The choice is stored per city as `hcm:<cityId>:shortcuts` in localStorage, like language and theme; it is no cookie.
@@ -258,6 +261,20 @@ A photo's details have a tonal **Show on map** button ("Arată pe hartă", the `
 - **No JavaScript API**: `openPhoto` stays what it is; the place's offset depends on the sheet the viewer renders, so a page that wants the camera at a photo moves it with the hash.
 
 Code: `HcmPhotoSheet` and `locateOffset` (`packages/ui/src/viewer/hcm-photo-sheet.ts`, the event `hcm-photo-locate` inside the viewer), `locatePhoto` in `packages/engine/src/core/store.ts` (its target `locateTarget` in `state.ts`, the ring `photoMark` drawn by `map-sync.ts`), `MapPort.flyTo`'s `offset` (`packages/ui/src/map/camera.ts`) and `ViewerMapPort.markPhoto` (`packages/ui/src/map/my-location.ts`). The bytes: the engine's IIFE was 53 bytes under its 125,000; zod's English messages, which the engine never shows (an issue reaches the visitor as its `validation.*` code), now resolve to the admin's empty stand-in in the engine's build too, 1,010 bytes gzip; with the button the IIFE measured 124,374 bytes, and 124,749 after the review's fixes (115g).
+
+## Zoom buttons
+
+Status (2026-11-08): the owner's request ("add zoom in and out buttons to the map"); scenario rows V52, `e2e/specs/viewer/zoom.spec.ts`, the tour's journey `zoom`. Additive within v1: no property, event or method for a page to set.
+
+**Zoom in** and **Zoom out** ("Mărește harta", "Micșorează harta", as in the admin's map) are two 48 px icon buttons in one rounded group over the map, with their names as tooltips.
+
+- **Where**: on the map's trailing edge (the left in a right-to-left page), centred over the menu button and 8 px above it; on a phone held upright, where the timeline stands on the leading edge, above the row of the "photos from around" chip, which can be as wide as the map, the group's foot level with the timeline's; on a short window (a phone held landscape), where the menu button is on the leading side and the lying timeline and the chip take the trailing one, over the menu button on the leading side. They keep the bottom 42 px free for the Mapbox logo and attribution like every floating control, and the tour checks them against the menu, the timeline, the chip, the sheets and the legal line at every window size. While the menu is open, which grows over them, they are hidden.
+- **What**: one zoom level from the camera's current zoom, animated as the map's own moves (a jump under reduced motion); the URL hash follows when the camera stops. Without WebGL there is no map and no buttons.
+- **At the city's limits** (`city.maxZoom`; for Zoom out the higher of `city.minZoom` and the zoom at which `city.bounds` just cover the map, where Mapbox stops because it keeps the view inside the bounds: for Bucharest about 10.8 on a phone and 11.6 at 1440 px) the button is **soft-disabled**: dimmed and `aria-disabled="true"`, but it keeps the focus and its place in the Tab order (a disabled button would drop the focus of a visitor pressing Enter), and a press changes nothing: the button drops its click listener, so the map does not move and the address keeps what it says. It shows no hover or pressed layer, and in forced colours it turns `GrayText` like a disabled button. The gamepad's zoom, the wheel, a pinch or a typed hash that reach a limit disable it too.
+- **Compare**: the second map follows the first, so the one pair zooms both.
+- **Our own buttons, not Mapbox's `NavigationControl`**: the control costs no bundle bytes (`mapbox-gl` is external) but brings 29 px targets, a compass and its own look and texts; ours use the kit's icon button (`soft-disabled` is new there), the city's theme and both languages. They cost about 650 bytes gzip of the IIFE, paid by a smaller baseline theme (`packages/ui/src/theme/baseline.ts`, about 630 bytes, the same tokens; the IIFE measures 124,993 of its 125,000 bytes): DECISIONS-for-review.md §128.
+
+Code: `packages/ui/src/viewer/viewer-zoom.ts` (the group), `zoomBy` in `packages/engine/src/core/store.ts` (one level within the range), `packages/ui/src/components/icon-button.ts` (`softDisabled`).
 
 ## City Manifest v1
 
@@ -305,7 +322,7 @@ Common rules:
 | `source` | object | `{type: 'mapbox', tilesetId: '<owner>.<id>'}`, `{type: 'xyz', tiles: [https template with {z} {x} {y}], tileSize: 256 or 512}` or `{type: 'pmtiles', url}` (M12, `docs/research/M12-own-tiles.md`: one PMTiles v3 archive of 256 px WebP tiles with alpha, what the project's own bucket holds; the address may be relative to the manifest in a static export; the engine reads it itself with one `Range` request a tile through Mapbox GL's custom source, so no tileset, compute unit or token, and a server without `Range` fails that layer only, naming it in a toast). The admin links a `mapbox` tileset of the city's own Mapbox account only, and never an address carrying a key or a token (`layers.link`, which refuses them as `apiError.layers.foreignTileset` and `apiError.layers.secretInAddress`); an `xyz` or `pmtiles` host must also be in the page's CSP (`img-src`, `connect-src`; the public bucket's already is) |
 | `minzoom`, `maxzoom` | number | 0 to 24, `minzoom` ≤ `maxzoom` |
 | `bounds?` | `[[w, s], [e, n]]` | where tiles exist |
-| `order` | integer | drawing order (higher on top) in the Standard style's `middle` slot |
+| `order` | integer | the Layers panel's order within a year (higher first). The map stacks the historical layers by date, the newest on top, whatever their `order` (the owner, 2026-11-09), on the main map and in compare |
 | `defaultVisible`, `opacity` | boolean, 0 to 1 | initial state |
 | `adjustments?` | `{brightnessMin?, brightnessMax?, contrast?, saturation?}` | Mapbox `raster-brightness-min`, `raster-brightness-max`, `raster-contrast`, `raster-saturation` (brightness 0 to 1, min ≤ max; contrast and saturation -1 to 1; ranges and neutral values in `LAYER_ADJUSTMENT_RANGES`), applied live without reprocessing (PLAN Addendum 3). An absent adjustment is neutral; `rasterAdjustmentPaint` clamps live slider values and never lets the minimum pass the maximum. Mapbox has no gamma property: the brightness range is the levels control |
 
@@ -379,7 +396,7 @@ At most 1,000 stories. Nothing in a story is rendered as HTML: the engine parses
 
 ### Overlays
 
-The viewer's Layers panel lists one **overlay** per historical layer, one for the photos (markers and view cones, id `photos`) and one per POI category, each with a switch and a 0–100 % slider that updates the map live. Layer ids, `photos` and category ids are one namespace (a clash is `validation.duplicateId`), because the URL hash's `op=` names overlays by id. Order: historical layers by year (the higher `order` first within a year), the photos, then the categories in manifest order.
+The viewer's Layers panel lists one **overlay** per historical layer, one for the photos (markers and view cones, id `photos`) and one per POI category, each with a switch and a 0–100 % slider that updates the map live. Layer ids, `photos` and category ids are one namespace (a clash is `validation.duplicateId`), because the URL hash's `op=` names overlays by id. Order: historical layers by year (the higher `order` first within a year), the photos, then the categories in manifest order. Switching a historical layer on moves the timeline to its year, so it always shows (with several on, the timeline follows the last one switched on; switching layers off leaves it), and the hash names the visible layers; a shared link's year is still the newest of its layers. In a photo's sheet, with a map, a date that holds a layer's year is a button (named by the date and **Harta din 1966** / **Map of 1966**) that shows the map at that year with its layers, the photo staying open; otherwise up to three chips name the layer years within ten years of the photo's, nearest first.
 
 | Kind | Starts | Opacity paint (`overlayOpacityPaint`) |
 | --- | --- | --- |
@@ -403,6 +420,7 @@ A fetch that returns 404 shows `error.manifest.notFound`, a network failure `err
 
 - **Engine releases follow SemVer.** jsDelivr's `@1` follows every 1.x release; Bucharest ships the exact build of its commit. The first release is **v1.0.0**: everything this document describes, the M4 compare additions included, is its baseline ([Releases on jsDelivr](#releases-on-jsdelivr)).
 - **What a level means for a city.** A patch fixes behaviour behind the same surface; a minor adds an optional manifest field or a new name of the API, element or hash (a manifest that uses it sets `city.engine.minVersion`); a major (manifest v2, a removed name) documents its migration in its release notes.
+- **Pre-releases** (`1.0.0-beta.1`, `1.0.0-rc.1`; only `-beta.N` and `-rc.N`) come before their release (`1.0.0-beta.1` < `1.0.0-rc.1` < `1.0.0`): jsDelivr serves one only at its full version (`@v1.0.0-beta.1`), a range such as `@1` never resolves to it, and `create-historic-city` publishes one under the dist-tag `beta` or `rc`. A manifest whose `city.engine.minVersion` is `1.0.0` refuses a 1.0.0 beta engine. The first pre-release is **v1.0.0-beta.1** (`docs/releases/v1.0.0-beta.1.md`).
 - **The manifest has its own generation number** (`version: 1`). Engine 1.x reads only manifest v1.
 - **Within v1 a field is only ever added, and only as optional**, in a minor engine release. A manifest that uses a new field sets `city.engine.minVersion` to that release, so an older engine shows "this map needs engine X" instead of rejecting the unknown key. The manifest builder sets `minVersion` automatically.
 - **Removing, renaming or changing the meaning of a field** makes manifest v2 and engine 2.0; the builder can then write both generations side by side during the transition.
@@ -420,9 +438,9 @@ A release is a tag `vX.Y.Z` of this repository ([releases/README.md](releases/RE
 
 | Use | Address | Integrity |
 | --- | --- | --- |
-| A page that pins the release (the starter kit, and every city that copies it) | `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@vX.Y.Z/cdn/engine/engine.iife.js` and `engine.css` | yes: the values of that release's `release.json`, also in the GitHub Release body |
+| A page that pins the release (the starter kit, and every city that copies it) | `https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@vX.Y.Z/cdn/engine/engine.iife.js` and `engine.css` | yes: the values of that release's `release.json`, also in the GitHub Release body |
 | The engine's fonts and chunks | the same folder: `engineBase` defaults to the folder of the engine script | not needed: the IIFE carries the chunks inline, and fonts are not scripts |
-| A page that follows the 1.x line | `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@1/cdn/engine/engine.iife.js` | never: the files change under it with every 1.x release |
+| A page that follows the 1.x line | `https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@1/cdn/engine/engine.iife.js` | never: the files change under it with every 1.x release |
 
 - **`release.json`** (`engineReleaseSchema` in `packages/shared/src/schemas/engine-release.ts`): `version`; `repository`; `base`, the pinned folder above; `mapboxGl`, the Mapbox GL JS release the engine is written against with the address and integrity of its script and stylesheet on api.mapbox.com; `files`, every file of the folder (never `release.json` itself) with its size in bytes and its `sha384-` integrity. Its address is `<base>release.json`.
 - **Pinning a page.** Load Mapbox GL JS's stylesheet and deferred script, then the engine's `engine.css` and deferred `engine.iife.js` from the pinned folder, each with `integrity` and `crossorigin="anonymous"`, and let the page's Content Security Policy name the folder in `script-src`, `style-src` and `font-src`. Pin the IIFE, not `engine.mjs`: the module build fetches its chunks with dynamic imports that carry no integrity.

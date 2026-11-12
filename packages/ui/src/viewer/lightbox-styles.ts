@@ -31,8 +31,8 @@ export const lightboxStyles = [
             display: grid;
             grid-template-rows: auto 1fr auto;
             block-size: 100%;
-            background: var(--md-sys-color-scrim, CanvasText);
-            color: var(--md-sys-color-inverse-on-surface, Canvas);
+            background: var(--md-sys-color-scrim);
+            color: var(--md-sys-color-inverse-on-surface);
         }
 
         .header {
@@ -41,8 +41,8 @@ export const lightboxStyles = [
             gap: 16px;
             padding-block: 8px;
             padding-inline: 16px 8px;
-            background: var(--md-sys-color-surface-container, Canvas);
-            color: var(--md-sys-color-on-surface, CanvasText);
+            background: var(--md-sys-color-surface-container);
+            color: var(--md-sys-color-on-surface);
         }
 
         .title {
@@ -76,9 +76,9 @@ export const lightboxStyles = [
             align-items: center;
             gap: 8px;
             padding: 16px 24px;
-            border-radius: var(--md-sys-shape-corner-large, 16px);
-            background: var(--md-sys-color-surface-container, Canvas);
-            color: var(--md-sys-color-on-surface, CanvasText);
+            border-radius: var(--md-sys-shape-corner-large);
+            background: var(--md-sys-color-surface-container);
+            color: var(--md-sys-color-on-surface);
         }
 
         .nav {

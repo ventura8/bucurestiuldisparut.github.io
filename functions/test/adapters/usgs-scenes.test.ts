@@ -117,6 +117,19 @@ describe('search', () => {
         });
     });
 
+    it('happyPath_aLandsatSearchSendsItsMonthsAndItsCloudCap @S-A130-HAPPY', async () => {
+        const { upstream, scenes: usgs } = scenes('scene-search', () => m2m({ results: [] }));
+
+        await usgs.search(KEY, { dataset: 'landsat_tm_c2_l1', bounds: BOUNDS, maxResults: 100, months: [6, 7, 8], maxCloud: 40 });
+        await usgs.search(KEY, { dataset: 'corona2', bounds: BOUNDS, maxResults: 100 });
+
+        const [landsat, corona] = upstream.calls.map(
+            (call) => (JSON.parse(call.body) as { sceneFilter: Record<string, unknown> }).sceneFilter,
+        );
+        expect(landsat).toMatchObject({ seasonalFilter: [6, 7, 8], cloudCoverFilter: { min: 0, max: 40, includeUnknown: false } });
+        expect(Object.keys(corona ?? {})).toEqual(['spatialFilter']);
+    });
+
     it('happyPath_aWindowWithOnlyItsEnd', async () => {
         const { upstream, scenes: usgs } = scenes('scene-search', () => m2m({ results: [] }));
 

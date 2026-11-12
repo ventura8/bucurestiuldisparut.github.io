@@ -143,6 +143,7 @@ describe('the georeferencer shows the version as published', () => {
         expect(georef.state.fit).toEqual(shown);
     });
 
+    // Lattice + terrain open builds a 17×17 map and warps under the suite's load; idle runs finish in ~0.5 s, busy ones need more than Vitest's 5 s (lesson 548).
     it('happyPath_aCameraMappedVersionPreviewsItsLatticeNotThePairsPolynomial', async () => {
         const { georef, map, clock } = await opened(true);
         const shown = previewWest(map);
@@ -154,7 +155,7 @@ describe('the georeferencer shows the version as published', () => {
         expect(shown).toBeCloseTo(refitWest(CAMERA_EAST_M), 4);
         expect(edited).not.toBeCloseTo(refitWest(CAMERA_EAST_M), 3);
         expect(georef.state.fit.refitted).toBe(true);
-    });
+    }, 20_000);
 
     it('happyPath_aVersionOverTerrainPreviewsItsRpcOverItsHeights', async () => {
         const { georef, pictures, map } = await opened(true, true);
@@ -177,7 +178,7 @@ describe('the georeferencer shows the version as published', () => {
         expect(drawn?.triangles).toEqual(through(over));
         expect(drawn?.triangles).not.toEqual(through({ ...over, heights: { ...over.heights, baseDm: 0 } }));
         expect(georef.state.fit).toMatchObject({ fitRmseM: 6.1, checkpointRmseM: 8.9, refitted: false });
-    });
+    }, 20_000);
 
     it('badPath_aChunkThatFailsToLoadSaysSoAndPreviewsThePairsFit @S-A16-BAD-TERRAIN-CHUNK', async () => {
         const { georef, map, notices } = await opened(true, true, OFFLINE);

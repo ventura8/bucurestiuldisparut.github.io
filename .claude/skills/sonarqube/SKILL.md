@@ -1,6 +1,6 @@
 ---
 name: sonarqube
-description: Run and act on the Historic City Map SonarQube Cloud analysis (organisation ventura8, project ventura8_bucurestiuldisparut.github.io) - the CI job, the local sonar stage in all, the strict verdict of sonar_report.py (gate OK, zero issues, zero hotspots, zero duplications, coverage at least 90), the scope in sonar-project.properties shared with the per-file coverage gate, and the token rules. Use when the sonar stage or job skips or fails, when a SonarCloud finding has to be fixed, or when the Sonar wiring changes.
+description: Run and act on the Historic City Map Maker SonarQube Cloud analysis (organisation ventura8, project ventura8_bucurestiuldisparut.github.io) - the CI job, the local sonar stage in all, the strict verdict of sonar_report.py (gate OK, zero issues, zero hotspots, zero duplications, coverage at least 90), the scope in sonar-project.properties shared with the per-file coverage gate, and the token rules. Use when the sonar stage or job skips or fails, when a SonarCloud finding has to be fixed, or when the Sonar wiring changes.
 ---
 
 # SonarQube Skill
