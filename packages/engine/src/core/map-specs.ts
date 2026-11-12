@@ -21,6 +21,7 @@ import {
     type Poi,
     type PoiCategory,
 } from '@hcm/shared';
+import { localizedCredit } from '@hcm/shared/credits';
 import { basemapLabels, MAP_LABEL_CONFIG, MAP_LABEL_KINDS, type MapLabels } from '@hcm/shared/map-labels';
 import type {
     MapOptions,
@@ -63,8 +64,11 @@ function rasterExtras(layer: Layer): Pick<RasterLayerSpec, 'bounds' | 'adjustmen
     return layer.adjustments === undefined ? bounds : { ...bounds, adjustments: layer.adjustments };
 }
 
-/** A layer as its overlay shows it now (the manifest defaults without one). */
-export function rasterSpec(layer: Layer, overlay: Overlay | undefined, base: string | undefined): RasterLayerSpec {
+/**
+ * A layer as its overlay shows it now (the manifest defaults without one); its credit in `locale` when given (Mapbox GL's
+ * attribution line, which draws each distinct credit once: `localizedCredit`).
+ */
+export function rasterSpec(layer: Layer, overlay: Overlay | undefined, base: string | undefined, locale?: Locale): RasterLayerSpec {
     const state = overlay ?? { visible: layer.defaultVisible, opacity: layer.opacity };
     return {
         id: layer.id,
@@ -75,7 +79,7 @@ export function rasterSpec(layer: Layer, overlay: Overlay | undefined, base: str
         opacity: state.opacity,
         // Layers stack by date, the newest on top, whatever the admin's `order` (the owner 2026-11-09).
         order: layer.year,
-        attribution: layer.attribution,
+        attribution: locale === undefined ? layer.attribution : localizedCredit(layer.attribution, locale),
         ...rasterExtras(layer),
     };
 }

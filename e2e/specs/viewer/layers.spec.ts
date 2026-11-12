@@ -1,8 +1,15 @@
-import type { Locale } from '@hcm/shared';
+import { USGS_ATTRIBUTION, type Locale } from '@hcm/shared';
 import type { Page } from '@playwright/test';
 
 import { siteManifestData, type Json } from '../../fixtures/manifest.js';
-import { BASEMAP_BACKGROUND, E2E_BROKEN_TILESET, E2E_PLAIN_STYLE_ID, E2E_TILESET_LAYER, type Rgb } from '../../fixtures/world.js';
+import {
+    BASEMAP_BACKGROUND,
+    E2E_BROKEN_TILESET,
+    E2E_PLAIN_STYLE_ID,
+    E2E_TILESET_LAYER,
+    E2E_XYZ_LAYER,
+    type Rgb,
+} from '../../fixtures/world.js';
 import { colourDistance, expectColourAt, mapFacts, mapFraction, probeArea } from '../../support/map.js';
 import { sitePath } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
@@ -173,6 +180,26 @@ test(
         await expect(attribution.locator('a[href="https://example.org/e2e"], b')).toHaveCount(0);
         await openLayers(page, lang);
         await expect(page.getByText(t(lang, 'layers.attribution', { attribution: markup }))).toBeVisible();
+    },
+);
+
+test(
+    "Two layers with the same USGS credit name their source once, in the visitor's language, in the panel and on the map",
+    { tag: '@S-V03-BAD-ATTRIBUTION-REPEATED' },
+    async ({ page, lang }) => {
+        // The Pixel Tablet, 2026-11-12: "Sursa: USGS EROS, declassified imagery (public domain)" once per layer, in English.
+        const manifest = siteManifestData();
+        for (const layer of manifest['layers'] as Json[]) {
+            layer['attribution'] = USGS_ATTRIBUTION;
+        }
+        await serveManifest(page, manifest);
+        await openViewer(page, { lang, hash: `${EMPTY_VIEW}&layers=${E2E_TILESET_LAYER.id},${E2E_XYZ_LAYER.id}` });
+        const credit = t(lang, 'layers.attribution.usgs');
+
+        await expect(viewer(page).locator('.mapboxgl-ctrl-attrib-inner')).toContainText(credit);
+        await openLayers(page, lang);
+        await expect(page.getByText(t(lang, 'layers.attribution', { attribution: credit }), { exact: true })).toHaveCount(1);
+        await expect(page.getByText(t('en', 'layers.attribution.usgs'))).toHaveCount({ ro: 0, en: 1 }[lang]);
     },
 );
 

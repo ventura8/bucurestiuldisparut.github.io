@@ -103,6 +103,21 @@ describe('map specs', () => {
         ).not.toHaveProperty('adjustments');
     });
 
+    it('happyPath_theMapCreditsAKnownSourceInTheVisitorsLanguage', () => {
+        // The Pixel Tablet, 2026-11-12: the Romanian map's attribution line credited the USGS layers in English.
+        const usgs = layer({ attribution: 'USGS EROS, declassified imagery (public domain)' });
+
+        expect(rasterSpec(usgs, undefined, undefined, 'ro').attribution).toBe('USGS EROS, imagini desecretizate (domeniu public)');
+        expect(rasterSpec(usgs, undefined, undefined, 'en').attribution).toBe('USGS EROS, declassified imagery (public domain)');
+    });
+
+    it('badPath_anUnknownCreditOrNoLanguageKeepsTheStoredText', () => {
+        expect(rasterSpec(layer({ attribution: 'Arhiva' }), undefined, undefined, 'en').attribution).toBe('Arhiva');
+        expect(
+            rasterSpec(layer({ attribution: 'USGS EROS, declassified imagery (public domain)' }), undefined, undefined).attribution,
+        ).toBe('USGS EROS, declassified imagery (public domain)');
+    });
+
     it('happyPath_aPmtilesArchiveResolvesAgainstTheManifest', () => {
         const spec = rasterSpec(
             layer({ source: { type: 'pmtiles', url: 'tiles/kh4.pmtiles' } }),

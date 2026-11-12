@@ -6,6 +6,7 @@
  * open in a new tab and only https addresses become links.
  */
 import { DEFAULT_LOCALE, translate, type Locale } from '@hcm/shared';
+import { localizedCredit } from '@hcm/shared/credits';
 import { LitElement, css, html, type TemplateResult } from 'lit';
 
 import { BASEMAP_ATTRIBUTION, MAPBOX_HOME, type AttributionPart } from './attribution.js';
@@ -20,9 +21,11 @@ function stylesheet(url: string): TemplateResult {
     return url === '' ? EMPTY : html`<link rel="stylesheet" href=${url} />`;
 }
 
-function partTemplate(part: AttributionPart, index: number): TemplateResult {
+/** One credit; a known one in `locale` (Mapbox GL drew it in the language of the page's first load: `localizedCredit`). */
+function partTemplate(part: AttributionPart, index: number, locale: Locale): TemplateResult {
     const separator = index === 0 ? '' : ' ';
-    return part.href === undefined ? html`${separator}${part.text}` : html`${separator}${externalLink(part.href, part.text)}`;
+    const text = localizedCredit(part.text, locale);
+    return part.href === undefined ? html`${separator}${text}` : html`${separator}${externalLink(part.href, text)}`;
 }
 
 export class HcmMapAttribution extends LitElement {
@@ -95,7 +98,9 @@ export class HcmMapAttribution extends LitElement {
                 rel="noopener nofollow"
                 aria-label=${translate(this.locale, 'map.logo')}
             ></a>
-            <p class="attribution" data-layout-check="map-attribution">${parts.map(partTemplate)}</p>`;
+            <p class="attribution" data-layout-check="map-attribution">
+                ${parts.map((part, index) => partTemplate(part, index, this.locale))}
+            </p>`;
     }
 }
 

@@ -71,6 +71,20 @@ describe('overlay list data', () => {
         ]);
     });
 
+    it('badPath_theSameCreditOfManyLayersShowsOnceInTheVisitorsLanguage', () => {
+        // The Pixel Tablet, 2026-11-12: "Sursa: USGS EROS, declassified imagery (public domain)" once per layer, in English.
+        const usgs = 'USGS EROS, declassified imagery (public domain)';
+        const both = testManifest((raw) => {
+            for (const layer of raw['layers'] as Record<string, unknown>[]) {
+                layer['attribution'] = usgs;
+            }
+        });
+        const shown = withOverlayVisibility(overlaysFromManifest(both), 'kh9-1977', true);
+
+        expect(attributionLines(shown, both, 'ro')).toEqual(['Sursa: USGS EROS, imagini desecretizate (domeniu public)']);
+        expect(attributionLines(shown, both, 'en')).toEqual([`Source: ${usgs}`]);
+    });
+
     it('badPath_noCategoriesMeansNoPlacesGroup', () => {
         const plain = testManifest((raw) => {
             delete raw['poiCategories'];

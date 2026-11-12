@@ -18,6 +18,7 @@
  * minimizing loses none of them. The focus follows: to the rail's button, then back to the panel's close button.
  */
 import { DEFAULT_LOCALE, overlayLabel, poiIcon, translate, type Locale, type Manifest, type Overlay } from '@hcm/shared';
+import { creditParts } from '@hcm/shared/credits';
 import { translateMapLabels, type MapLabelKind, type MapLabels, type MapLabelsKey } from '@hcm/shared/map-labels';
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 
@@ -68,15 +69,16 @@ export function overlayGroups(manifest: Manifest, locale: Locale): readonly Over
     return hasPlaces ? [historical, { kind: 'poi', label: translate(locale, 'layers.group.places') }] : [historical];
 }
 
-/** `Sursa: USGS EROS` for every visible historical layer, in list order. */
+/**
+ * `Sursa: USGS EROS, …` once per credit of the visible historical layers, in list order and in `locale` (the Pixel Tablet
+ * found the same English line once per layer: `creditParts`).
+ */
 export function attributionLines(overlays: readonly Overlay[], manifest: Manifest, locale: Locale): readonly string[] {
     const layers = new Map(manifest.layers.map((layer) => [layer.id, layer]));
-    return overlays
+    const credits = overlays
         .filter((overlay) => overlay.kind === 'raster' && overlay.visible)
-        .flatMap((overlay) => {
-            const layer = layers.get(overlay.id);
-            return layer === undefined ? [] : [translate(locale, 'layers.attribution', { attribution: layer.attribution })];
-        });
+        .flatMap((overlay) => layers.get(overlay.id)?.attribution ?? []);
+    return creditParts(credits, locale).map((attribution) => translate(locale, 'layers.attribution', { attribution }));
 }
 
 /** The note below the switches: what they are, and how they differ from the city's own places when it has some. */

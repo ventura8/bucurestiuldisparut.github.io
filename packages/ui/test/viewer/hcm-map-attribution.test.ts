@@ -33,6 +33,17 @@ describe('<hcm-map-attribution>', () => {
         expect(shadowQuery(element, 'a.mapboxgl-ctrl-logo').getBoundingClientRect().height).toBe(48);
     });
 
+    it('happyPath_aKnownCreditDrawnInTheFirstLanguageFollowsTheVisitors', async () => {
+        // The Pixel Tablet, 2026-11-12: the USGS credit stayed English on the Romanian map; Mapbox draws it once, at load.
+        const element = await mountElement<HcmMapAttribution>(HCM_MAP_ATTRIBUTION_TAG, {
+            parts: [{ text: '© Mapbox' }, { text: 'USGS EROS, imagini desecretizate (domeniu public)' }],
+            locale: 'en',
+            cssUrl: CSS_URL,
+        });
+
+        expect(shadowText(element)).toBe('© Mapbox USGS EROS, declassified imagery (public domain)');
+    });
+
     it('badPath_beforeTheMapHasCreditsTheBasemapsAreShownInEnglishToo', async () => {
         const element = await mountElement<HcmMapAttribution>(HCM_MAP_ATTRIBUTION_TAG, { locale: 'en' });
 

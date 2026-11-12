@@ -81,6 +81,8 @@ export const ro = {
     'layers.opacityValue': '{percent} %',
     'layers.photos': 'Fotografii',
     'layers.attribution': 'Sursa: {attribution}',
+    'layers.attribution.usgs': 'USGS EROS, imagini desecretizate (domeniu public)',
+    'layers.attribution.landsat': 'Imagini Landsat prin amabilitatea NASA Goddard Space Flight Center și U.S. Geological Survey',
     'layers.empty': 'Straturile istorice vor apărea aici în curând.',
     'layers.kind.satellite': 'Imagine satelitară',
     'layers.kind.aerial': 'Fotografie aeriană',

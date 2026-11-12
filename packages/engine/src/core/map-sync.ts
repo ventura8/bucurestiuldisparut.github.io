@@ -39,7 +39,7 @@ export class MapSync {
         }
         const overlays = displayedOverlays(state);
         for (const layer of manifest.layers) {
-            this.#map.addRasterLayer(rasterSpec(layer, findOverlay(overlays, layer.id), this.#assetBase), 'middle');
+            this.#map.addRasterLayer(rasterSpec(layer, findOverlay(overlays, layer.id), this.#assetBase, state.locale), 'middle');
             this.#map.setLayerPaint(layer.id, rasterAdjustmentPaint(layer.adjustments));
         }
         const photos = findOverlay(state.overlays, PHOTOS_OVERLAY_ID);
