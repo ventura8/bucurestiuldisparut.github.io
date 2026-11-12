@@ -30,7 +30,10 @@ function hostOf(
     return world;
 }
 
-const THREE = [pair('g1', 0, 0), pair('g2', 100, 0), pair('g3', 0, 100)];
+const G1 = pair('g1', 0, 0);
+const G2 = pair('g2', 100, 0);
+const G3 = pair('g3', 0, 100);
+const THREE = [G1, G2, G3];
 
 describe('removing a pair', () => {
     it('happyPath_thePairGoesAndTheNoticesUndoPutsItBackWhereItWas @S-A16-HAPPY-GEOREF-REMOVE-UNDO', () => {
@@ -46,12 +49,12 @@ describe('removing a pair', () => {
         world.pairs = [...world.pairs, pair('g4', 50, 50)];
         world.notices[0]?.action?.run();
         expect(world.pairs.map((item) => item.id)).toEqual(['g1', 'g2', 'g3', 'g4']);
-        expect(world.pairs[1]).toEqual(THREE[1]);
+        expect(world.pairs[1]).toEqual(G2);
         // Undo twice (the notice clicked again, or the page's own Undo first): the pair is there once.
         world.notices[0]?.action?.run();
         expect(world.pairs).toHaveLength(4);
         // A list that got shorter meanwhile takes it at its end.
-        expect(withRestored([THREE[0] as Gcp], THREE[2] as Gcp, 2).map((item) => item.id)).toEqual(['g1', 'g3']);
+        expect(withRestored([G1], G3, 2).map((item) => item.id)).toEqual(['g1', 'g3']);
     });
 
     it('badPath_aPairThatIsNotThereOrAnAdminWhoMayNotEditRemovesNothing @S-A16-BAD-GEOREF-REMOVE-NOTHING', () => {

@@ -4,6 +4,7 @@
 import { clamp, type Gcp, type GeorefTransform, type LayerVersionDoc } from '@hcm/shared';
 
 import type { LiveDoc } from '../content/doc.js';
+import type { BaseLayers } from './base-layers.js';
 import type { Store } from '../state/store.js';
 import type { GeorefMap } from './georef-map.js';
 import type { GeorefPictures } from './georef-pictures.js';
@@ -11,11 +12,15 @@ import type { PairHistory } from './history.js';
 import type { LinkedPanes } from './link.js';
 import { moveGeo, togglePair, type GeoPosition, type PixelPosition } from './pairs.js';
 import type { PersistBase } from './persist.js';
+import { removePair, type RemovingHost } from './removing.js';
 import type { GeorefIntents, GeorefState, ReferenceKind } from './state.js';
 import type { Suggestions } from './suggestions.js';
 
 /** Collaborators and actions the store exposes to build its intents object. */
 export interface GeorefIntentActions {
+    readonly services: RemovingHost['services'];
+    /** What the map pane shows under the pairs (`./base-layers.ts`). */
+    readonly bases: Pick<BaseLayers, 'choose'>;
     readonly cell: Store<GeorefState>;
     readonly map: GeorefMap;
     readonly pictures: GeorefPictures;
@@ -35,11 +40,8 @@ export interface GeorefIntentActions {
     addAtCentres(pixel: PixelPosition): void;
     movePixel(id: string, pixel: PixelPosition): void;
     select(id: string | null): void;
-    /** Removes a pair and says so, with Undo (`./removing.ts`). */
-    remove(id: string): void;
     escape(): void;
     setReference(kind: ReferenceKind): void;
-    setBase(id: string | null): void;
     warp(): void;
     showSuggestions(): void;
     save(): Promise<boolean>;
@@ -122,7 +124,7 @@ function pairIntents(
             actions.select(id);
         },
         remove: (id) => {
-            actions.remove(id);
+            removePair({ services: actions.services, pairs, edit: actions.edit }, id);
         },
         toggle: (id) => {
             actions.edit(togglePair(pairs(), id));
@@ -180,7 +182,7 @@ function pageIntents(actions: GeorefIntentActions): Pick<GeorefIntents, PageInte
             actions.setReference(kind);
         },
         setBase: (id) => {
-            actions.setBase(id);
+            actions.bases.choose(id);
         },
         setPreviewOpacity: (percent) => {
             const previewOpacity = clamp(Math.round(percent), 0, 100) / 100;

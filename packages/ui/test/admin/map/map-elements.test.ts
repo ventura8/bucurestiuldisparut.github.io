@@ -84,12 +84,6 @@ describe('<hcm-admin-map>', () => {
         key('ArrowUp');
         key('ArrowDown', true);
         key('Enter');
-        // Delete and Backspace ask the page to remove its chosen point; any other key asks nothing.
-        const removals = events<Record<string, never>>(element, 'hcm-map-delete');
-        key('Delete');
-        key('Backspace');
-        key('Enter');
-        expect(removals).toHaveLength(2);
 
         expect(nudges).toEqual([
             { dx: -1, dy: 0 },
@@ -324,5 +318,20 @@ describe('<hcm-vertex-list>', () => {
         expect(coordinateOf('', 90)).toBeNull();
         expect(coordinateOf('x', 90)).toBeNull();
         expect(coordinateOf('-181', 180)).toBeNull();
+    });
+});
+
+describe('<hcm-admin-map>: removing the chosen point', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_deleteAndBackspaceAskThePageToRemoveItsChosenPointAndOtherKeysAskNothing @S-A16-HAPPY-GEOREF-REMOVE-UNDO', async () => {
+        const element = await mount<HcmAdminMap>(html`<hcm-admin-map css-url="" .status=${'ready'}></hcm-admin-map>`, 600);
+        const removals = events<Record<string, never>>(element, 'hcm-map-delete');
+        for (const key of ['Delete', 'Backspace', 'Enter', 'a']) {
+            element.container?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+        }
+
+        expect(removals).toHaveLength(2);
     });
 });

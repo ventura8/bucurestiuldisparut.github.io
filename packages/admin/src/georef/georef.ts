@@ -24,7 +24,6 @@ import { GeorefMap, referenceFrame } from './georef-map.js';
 import { deviceRatio, georefPicturesOf, type GeorefPictures } from './georef-pictures.js';
 import { showGhost, type GhostDeps } from './ghosts.js';
 import { PairHistory } from './history.js';
-import { removePair, type RemovingHost } from './removing.js';
 import { moveGeo, movePixel, roundPixel, samePairs, withPair, type GeoPosition, type PixelPosition } from './pairs.js';
 import { georefIntentsOf, type GeorefIntentActions } from './intents.js';
 import { ANIMATION_FRAME, linkedPanesOf, type FrameScheduler, type LinkedPanes } from './link.js';
@@ -51,7 +50,6 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     readonly #link: LinkedPanes;
     readonly #ghost: GhostDeps;
     readonly #moving: MovingHost;
-    readonly #removing: RemovingHost;
     readonly #bases: BaseLayers;
     #base: { readonly pairs: readonly Gcp[]; readonly transform: GeorefTransform } = { pairs: [], transform: 'affine' };
     readonly #history = new PairHistory();
@@ -122,11 +120,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
                 this.#edit(pairs);
             },
         };
-        this.#removing = { services, pairs: () => this.#cell.state.pairs, edit: this.#moving.edit };
-        const raised = (): void => {
-            this.#warp();
-        };
-        this.#bases = new BaseLayers({ services, cell: this.#cell, map: this.#map, raised });
+        this.#bases = new BaseLayers({ services, cell: this.#cell, map: this.#map, raised: this.#warp });
         this.intents = georefIntentsOf(this.#intentActions());
     }
 
@@ -180,6 +174,8 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
 
     #intentActions(): GeorefIntentActions {
         return {
+            services: this.#services,
+            bases: this.#bases,
             cell: this.#cell,
             map: this.#map,
             pictures: this.#pictures,
@@ -213,17 +209,11 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
             select: (id) => {
                 this.#select(id);
             },
-            remove: (id) => {
-                removePair(this.#removing, id);
-            },
             escape: () => {
                 this.#escape();
             },
             setReference: (kind) => {
                 this.#setReference(kind);
-            },
-            setBase: (id) => {
-                this.#bases.choose(id);
             },
             warp: () => {
                 this.#warp();
@@ -399,10 +389,10 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         this.#map.showSuggestions(suggestions.pending, suggestions.selected);
     }
 
-    #warp(): void {
+    readonly #warp = (): void => {
         const { version, showPreview, previewOpacity } = this.#cell.state;
         this.#pictures.warp(showPreview ? this.#transform : null, version?.scan ?? null, previewOpacity);
-    }
+    };
 
     #setReference(kind: ReferenceKind): void {
         const version = this.#cell.state.version;
