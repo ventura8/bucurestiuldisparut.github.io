@@ -10,7 +10,7 @@ import { DEFAULT_CONTAINER_SELECTOR, resolveLocale, translate, type EngineConfig
 import type { MapLabels } from '@hcm/shared/map-labels';
 import {
     installFonts,
-    sideLoadLightbox,
+    sideLoadExtras,
     watchGamepads,
     type HcmMapViewer,
     type ViewerBootstrap,
@@ -23,7 +23,7 @@ import { createViewerMapPort, type MapboxGl, type Unsubscribe, type ViewerMapPor
 import type { GamepadSurface } from '@hcm/ui/viewer/gamepad';
 
 import { configFromAttributes, readConfig, type Result } from './config/load.js';
-import { LIGHTBOX_PART_FILE, LIGHTBOX_PART_INTEGRITY } from './lightbox-part.js';
+import { EXTRAS_PART_FILE, EXTRAS_PART_INTEGRITY } from './extras-part.js';
 import { urlLocaleOf } from './core/boot.js';
 import type { CompareModule } from './core/compare-port.js';
 import type { ColorSchemeSource, ViewerDeps, ViewerLocation } from './core/deps.js';
@@ -236,8 +236,8 @@ export interface MountEnvironment {
     readonly colorScheme?: ColorSchemeSource;
     /** Listens for a gamepad, whose lazy chunk comes only once one connects; returns the function that stops it. */
     readonly watchGamepads?: (surface: GamepadSurface, map: ViewerMapPort) => () => void;
-    /** Side-loads the full-size view from `<engineBase>engine.lightbox.js` (`config.engineBase`, else next to the engine). */
-    readonly loadLightbox?: (engineBase: string | undefined) => Promise<void>;
+    /** Side-loads the full-size view from `<engineBase>engine.extras.js` (`config.engineBase`, else next to the engine). */
+    readonly loadExtras?: (engineBase: string | undefined) => Promise<void>;
 }
 
 /** What `window.HistoricCityMapConfig` may name before it is validated: only its container is read early. */
@@ -284,9 +284,9 @@ function createMap(env: MountEnvironment): ViewerMapPort | null {
 }
 
 /** The viewer side-loads the full-size view from the engine's folder (`config.engineBase`, else next to the engine). */
-function withLightbox(viewer: HcmMapViewer, load: MountEnvironment['loadLightbox'], engineBase: string | undefined): void {
+function withLightbox(viewer: HcmMapViewer, load: MountEnvironment['loadExtras'], engineBase: string | undefined): void {
     if (load !== undefined) {
-        viewer.services = { ...viewer.services, loadLightbox: () => load(engineBase) };
+        viewer.services = { ...viewer.services, loadExtras: () => load(engineBase) };
     }
 }
 
@@ -300,7 +300,7 @@ function start(viewer: HcmMapViewer, config: EngineConfig, env: MountEnvironment
     viewer.engineVersion = env.engineVersion;
     viewer.mapboxCssUrl = env.mapboxCssUrl;
     env.installFonts(config.engineBase);
-    withLightbox(viewer, env.loadLightbox, config.engineBase);
+    withLightbox(viewer, env.loadExtras, config.engineBase);
     const store = env.createStore({
         config,
         fetch: env.fetch,
@@ -497,12 +497,12 @@ export function browserEnvironment(
         colorScheme: colorSchemeOf(win),
         watchGamepads: (surface, map) =>
             watchGamepads(win, () => import('@hcm/ui/viewer/gamepad'), { surface, map, log: log.child('gamepad') }),
-        loadLightbox: (engineBase) =>
-            sideLoadLightbox(
+        loadExtras: (engineBase) =>
+            sideLoadExtras(
                 win.document,
                 {
-                    url: `${engineBase ?? release.engineBase}${LIGHTBOX_PART_FILE}`,
-                    integrity: LIGHTBOX_PART_INTEGRITY,
+                    url: `${engineBase ?? release.engineBase}${EXTRAS_PART_FILE}`,
+                    integrity: EXTRAS_PART_INTEGRITY,
                 },
                 win.customElements,
             ),

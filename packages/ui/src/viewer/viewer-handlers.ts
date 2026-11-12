@@ -3,6 +3,7 @@
  * bubbles out of one) to a store action. `act` stops the event first, so none of them leaves the viewer: the page
  * sees only the public events of docs/ENGINE_API.md.
  */
+import type { MenuPoint } from './map-menu-trigger.js';
 import type { ViewerServices } from './services.js';
 import type { ViewerStorePort } from './store-port.js';
 import { closeSheet, isMenuAction, menuAction, selectPhoto, toggleCompare } from './viewer-actions.js';
@@ -16,6 +17,8 @@ export interface HandlerHost {
     setOpacity(store: ViewerStorePort, detail: OverlayOpacityDetail): void;
     services(): ViewerServices;
     focusTimeline(): void;
+    /** Opens the map's menu at a point, or closes it (null). */
+    mapMenu(point: MenuPoint | null): void;
 }
 
 /** A handler that stops its event and runs `action` on the store. */
@@ -88,6 +91,25 @@ function storyHandlers(on: On): Pick<ViewerHandlers, 'onStorySelect' | 'onPoiSel
     };
 }
 
+/** The map's menu (V62): its close, and Copy coordinates through the clipboard service, said by a toast. */
+function mapMenuHandlers(host: HandlerHost): Pick<ViewerHandlers, 'onMapMenuClose' | 'onMapMenuCopy'> {
+    return {
+        onMapMenuClose: () => {
+            host.mapMenu(null);
+        },
+        onMapMenuCopy: (event) => {
+            void host
+                .services()
+                .copyText(event.detail.text)
+                .then(() => {
+                    host.act(null, (store) => {
+                        store.showToast('mapMenu.copied');
+                    });
+                });
+        },
+    };
+}
+
 /** The zoom buttons (V52): one level in (1) or out (-1); a click is no event of a part, nothing to stop. */
 function zoomHandler(host: HandlerHost): Pick<ViewerHandlers, 'onZoom'> {
     return {
@@ -133,6 +155,7 @@ export function createHandlers(host: HandlerHost): ViewerHandlers {
         }),
         onCompareToggle: on(toggleCompare),
         ...zoomHandler(host),
+        ...mapMenuHandlers(host),
         onToastDismiss: on((store) => {
             store.dismissToast();
         }),

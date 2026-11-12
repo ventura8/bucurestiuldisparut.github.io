@@ -3391,9 +3391,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: jobs on the computer (`runOn: 'local'`) never count; a `local` city's new jobs are created `runOn: 'local'` and pass the cap; a move to the cloud asks the cap then and counts on that day (DECISIONS-for-review.md §159; S-A12-HAPPY-LOCAL-PAST-DAILY-CAP, S-A12-BAD-RUNON-CLOUD-PAST-CAP).
     - **A cost cap counts only the work that costs: decide where a job runs when it is created, record it on the job, and check the cap again on every path that moves it to the paid place.**
 578. **A part's build that was meant to share the engine's Lit bundled its own Lit and zod: 44 KB instead of 2.6.**
-    - Seen: 2026-11-09, track/photoversions: the first build of `engine.lightbox.js` measured 146 KB raw, 44 KB gzip.
+    - Seen: 2026-11-09, track/photoversions: the first build of `engine.extras.js` measured 146 KB raw, 44 KB gzip.
     - Cause: the plugin that turns every outside import into the engine's kit ran after Vite's own resolver, which had already resolved `lit` and `@hcm/shared` to files, so its `resolveId` never saw them.
-    - Fix and pin: `sidePartKitPlugin` has `enforce: 'pre'` (`scripts/site/src/side-part.ts`); the part measures 2.6 KB gzip within its row of `ENGINE_CHUNK_BUDGETS`, and `packages/ui/test/viewer/lightbox-loader.test.ts` checks that the kit names everything the part imports.
+    - Fix and pin: `sidePartKitPlugin` has `enforce: 'pre'` (`scripts/site/src/side-part.ts`); the part measures 2.6 KB gzip within its row of `ENGINE_CHUNK_BUDGETS`, and `packages/ui/test/viewer/extras-loader.test.ts` checks that the kit names everything the part imports.
     - **A Vite plugin that must decide how an import resolves runs with `enforce: 'pre'`; check a new build's size against what it should carry.**
 
 579. **A re-export moved to save a line of the shared index made two engine chunks without a budget.**
