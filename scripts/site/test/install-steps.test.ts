@@ -219,8 +219,13 @@ describe('run-jobs', () => {
                 PIPELINE_JOBS[1],
             ),
         );
-        // Finding 56: the small download job is made (here replaced) first, at 1 vCPU and 4 GiB.
-        expect(PIPELINE_JOBS[0]).toEqual({ name: 'raster-fetch', cpu: '1', memory: '4Gi' });
+        // Finding 56: the small download job is made (here replaced) first, at 1 vCPU and 4 GiB; 2026-11-12 (resource audit item 7):
+        // the processing jobs at 2 vCPU / 8 GiB and 4 / 16, the free-tier meter's own sizes.
+        expect(PIPELINE_JOBS).toEqual([
+            { name: 'raster-fetch', cpu: '1', memory: '4Gi' },
+            { name: 'raster-pipeline', cpu: '2', memory: '8Gi' },
+            { name: 'raster-pipeline-xl', cpu: '4', memory: '16Gi' },
+        ]);
         expect(world.calls.map((call) => call.operation).slice(0, 2)).toEqual(['get-fetch', 'patch-fetch']);
         // Finding 39 of 2026-11-01: the build time labels the job next to the release's slug.
         expect(JSON.parse(create?.body ?? '{}')).toMatchObject({
@@ -248,7 +253,7 @@ describe('run-jobs', () => {
                     serviceAccount: 'job-raster@demo-hcm.iam.gserviceaccount.com',
                     timeout: '21600s',
                     maxRetries: 0,
-                    containers: [{ image: IMAGE, args: ['run'], resources: { limits: { cpu: '8', memory: '32Gi' } } }],
+                    containers: [{ image: IMAGE, args: ['run'], resources: { limits: { cpu: '4', memory: '16Gi' } } }],
                 },
             },
         });

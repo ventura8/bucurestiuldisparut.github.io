@@ -91,11 +91,17 @@ export const WORKER_USGS_ENDPOINTS = ['download-options', 'download-request', 'd
  * 240,000 vCPU-seconds and 450,000 GiB-seconds instead: UNVERIFIED, these lower figures are the conservative ones).
  */
 export const CLOUD_RUN_FREE_TIER = { vcpuSeconds: 180_000, gibSeconds: 360_000 } as const;
-/** The size of each Cloud Run job (`CLOUD_RUN_JOBS`). */
+/**
+ * The size of each Cloud Run job (`CLOUD_RUN_JOBS`), the one source of the installer's jobs (`scripts/site/src/install/steps/run-jobs.ts`)
+ * and of the free-tier meter. 2026-11-12 (reports/resource-audit.md item 7, `docs/research/M7-local-worker.md` §4.6): `std` 2 vCPU / 8 GiB
+ * and `xl` 4 / 16, down from 4 / 16 and 8 / 32, since GDAL's cache and a warp's memory follow the machine (`rasters.gdal_memory`: 512 and
+ * 1,024 MB on 8 GiB) and a 60-sheet atlas is pasted part by part; a run out of memory still runs again on the next machine
+ * (`fetch` → `std` → `xl`). A processing phase so takes half the GiB-seconds: about 16 free runs a month, not 8.
+ */
 export const JOB_MACHINE_SIZES: Readonly<Record<JobMachine, { readonly vcpu: number; readonly gib: number }>> = {
     fetch: { vcpu: 1, gib: 4 },
-    std: { vcpu: 4, gib: 16 },
-    xl: { vcpu: 8, gib: 32 },
+    std: { vcpu: 2, gib: 8 },
+    xl: { vcpu: 4, gib: 16 },
 };
 /** The estimate of one phase's run on each machine, in seconds: a download on `fetch`, a processing on `std` or `xl`. */
 export const CLOUD_RUN_ESTIMATE_SECONDS: Readonly<Record<JobMachine, number>> = { fetch: 1800, std: 2700, xl: 3600 };
