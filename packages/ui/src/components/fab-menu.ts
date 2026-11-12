@@ -21,7 +21,12 @@ const MOVE_KEYS: Readonly<Record<string, number>> = { ArrowDown: 1, ArrowUp: -1 
 /**
  * The M3 Expressive FAB menu: a FAB (`aria-haspopup="menu"`, `aria-expanded`, named `label`) that opens a short menu of
  * actions above it and turns into a close button (`closeLabel`). The menu is at most `--hcm-fab-menu-max-block-size`
- * tall; beyond it the items continue in a second column (a landscape phone). The FAB and the items line up on the
+ * tall and never wider than the element's box; beyond it the items continue in a second column, or, where the app sets
+ * `--hcm-fab-menu-flow: row wrap-reverse` (a landscape phone), in rows that stack upwards from the FAB across the width
+ * the app gives the element (the Pixel 9 Pro review, P1: seven items in one row ran 263 px off an 884 px screen). Where
+ * even that is too tall the app sets `--hcm-fab-menu-overflow: auto` and the menu scrolls; the arrow keys move the focus,
+ * which scrolls the focused item into view. `--hcm-fab-menu-item-height` (56 px) and `--hcm-fab-menu-item-padding` (24 px)
+ * make the items more compact, never under 48 px. The FAB and the items line up on the
  * inline end, or on the side `--hcm-fab-menu-align` names (`flex-start` for a menu docked on the leading edge, so a
  * wrapped, wider menu never moves the FAB from under the finger). Opening focuses the first item; the arrow keys
  * (wrapping), Home and End move between items; Esc or a focus leaving the menu closes it, Esc returning the focus to
@@ -63,13 +68,17 @@ export class HcmFabMenu extends LitElement {
              */
             [role='menu'] {
                 display: flex;
-                flex-flow: column wrap;
+                flex-flow: var(--hcm-fab-menu-flow, column wrap);
                 gap: 4px;
                 align-items: var(--hcm-fab-menu-align, flex-end);
-                align-content: flex-start;
+                place-content: flex-start var(--hcm-fab-menu-justify, flex-start);
+                box-sizing: border-box;
                 max-block-size: var(--hcm-fab-menu-max-block-size, none);
-                padding: 0;
+                max-inline-size: 100%;
+                padding: var(--hcm-fab-menu-padding, 0);
                 margin: 0;
+                overflow-y: var(--hcm-fab-menu-overflow, visible);
+                overscroll-behavior: contain;
             }
 
             .item,
@@ -77,7 +86,7 @@ export class HcmFabMenu extends LitElement {
                 display: inline-flex;
                 align-items: center;
                 box-sizing: border-box;
-                min-height: 56px;
+                min-height: var(--hcm-fab-menu-item-height, 56px);
                 margin: 0;
                 border: none;
                 border-radius: var(--md-sys-shape-corner-full);
@@ -89,7 +98,7 @@ export class HcmFabMenu extends LitElement {
             .item {
                 flex: none;
                 gap: 8px;
-                padding-inline: 24px;
+                padding-inline: var(--hcm-fab-menu-item-padding, 24px);
             }
 
             .fab {

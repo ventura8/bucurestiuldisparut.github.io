@@ -245,8 +245,10 @@ describe('<hcm-map-viewer> the photos-near-the-year chip on the vertical timelin
         const items = await menuItems(element);
         const menu = boxOf(element, 'hcm-fab-menu', '[role="menu"]');
 
-        expect(apart(menu, chip), 'the menu clear of the chip').toBe(true);
-        expect(apart(menu, timeline), 'the menu clear of the timeline').toBe(true);
+        // On a short window the open menu spans the map and the card and the chip step aside (the Pixel 9 Pro review, P1).
+        const aside = (selector: string): boolean => getComputedStyle(partOf(element, selector)).visibility === 'hidden';
+        expect(apart(menu, chip) || aside('.dock.chip'), 'the menu clear of the chip').toBe(true);
+        expect(apart(menu, timeline) || aside('.dock.timeline'), 'the menu clear of the timeline').toBe(true);
         for (const item of items) {
             expect(item.top).toBeGreaterThanOrEqual(frame.top);
             expect(item.left).toBeGreaterThanOrEqual(frame.left);

@@ -61,17 +61,9 @@ describe('<hcm-about-dialog>', () => {
         expect(shadowQuery(element, 'hcm-dialog').hasAttribute('fullscreen')).toBe(true);
     });
 
-    it('happyPath_itsFootShowsTheMapboxLogoAndTheMapsAttribution', async () => {
-        const parts = [{ text: '© Mapbox', href: 'https://www.mapbox.com/about/maps/' }];
-        const element = await about({ attribution: parts, mapboxCssUrl: 'data:text/css,' });
-
-        const legal = shadowQuery(element, 'hcm-map-attribution') as HTMLElement & { parts: unknown; cssUrl: string; locale: string };
-        expect(legal.slot).toBe('actions');
-        expect([legal.parts, legal.cssUrl, legal.locale]).toEqual([parts, 'data:text/css,', 'ro']);
-    });
-
-    it('badPath_withoutAMapToCreditTheFootIsEmpty', async () => {
-        const element = await about();
+    it('badPath_itsFootCarriesNoCopyOfTheMapsCredits', async () => {
+        // The Pixel 9 Pro review (P3): the copy took 40 to 80 px of About and Settings on a phone; full screen, no map shows.
+        const element = await about({ fullscreen: true });
 
         expect(element.shadowRoot?.querySelector('hcm-map-attribution')).toBeNull();
     });

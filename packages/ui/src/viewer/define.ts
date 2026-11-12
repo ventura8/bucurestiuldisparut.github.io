@@ -6,7 +6,6 @@
  */
 import { defineHcmErrorCard, HCM_ERROR_CARD_TAG } from './hcm-error-card.js';
 import { defineHcmLayerPanel, HCM_LAYER_PANEL_TAG } from './hcm-layer-panel.js';
-import { defineHcmMapAttribution, HCM_MAP_ATTRIBUTION_TAG } from './hcm-map-attribution.js';
 import { defineHcmMapViewer, HCM_MAP_VIEWER_TAG } from './hcm-map-viewer.js';
 import { defineHcmPhotoList, HCM_PHOTO_LIST_TAG } from './hcm-photo-list.js';
 import { defineHcmPhotoSheet, HCM_PHOTO_SHEET_TAG } from './hcm-photo-sheet.js';
@@ -26,7 +25,6 @@ export const VIEWER_TAGS = [
     HCM_UNPLACED_GALLERY_TAG,
     HCM_STORIES_TAG,
     HCM_ERROR_CARD_TAG,
-    HCM_MAP_ATTRIBUTION_TAG,
 ] as const;
 
 const DEFINERS: readonly ((registry: CustomElementRegistry) => void)[] = [
@@ -39,7 +37,6 @@ const DEFINERS: readonly ((registry: CustomElementRegistry) => void)[] = [
     defineHcmUnplacedGallery,
     defineHcmStories,
     defineHcmErrorCard,
-    defineHcmMapAttribution,
 ];
 
 /** Registers the viewer elements in `registry`; calling it again is a no-op. */

@@ -922,7 +922,9 @@ the rest: `DECISIONS-for-review.md` §21, change requests CR-M2-36 to CR-M2-38 (
 - **Mapbox logo and attribution in every state**: while a modal sheet, the lightbox or About covers the map, Mapbox's
   own bottom controls are hidden and `<hcm-map-attribution>` shows the logo and the attribution read from Mapbox's
   control (a `MutationObserver`, `attribution.ts`) in a legal bar under the modal layer, or at the foot of About. The
-  viewer's layout moved into an inner grid `.viewer`: a page may set the element's own `display`.
+  viewer's layout moved into an inner grid `.viewer`: a page may set the element's own `display`. (Replaced on
+  2026-11-12 after the Pixel 9 Pro review, P3: the surfaces draw above Mapbox's controls, which move out from under a
+  modal sheet, `legal-lift.ts`; the bar and `<hcm-map-attribution>` are gone; DECISIONS-for-review.md §174.)
 - **Privacy**: no Performance Monitoring in the public viewer (the Firebase chunk is app and analytics only); GA4 gets
   the page without its hash on its configuration and on every event; a withdrawal expires `_ga` and `_ga_*`.
 - **CR-M2-4** applied: the error reporter uses `redactText` and `ErrorReport` of `@hcm/shared`.
