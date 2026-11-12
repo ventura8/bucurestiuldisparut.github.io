@@ -9848,10 +9848,32 @@
             "area": "admin",
             "path": "bad",
             "title": "An admin older than the installed server never installs over it",
-            "asserts": "functions with a newer HCM_RELEASE than the admin's -> the card says the server is newer and asks to reload the admin; no build submitted (--force would delete the newer functions)",
+            "asserts": "functions with a newer HCM_RELEASE than the admin's -> the card says the server is newer and asks to reload the admin; no Install, no Update, no build submitted (--force would delete the newer functions); only the confirmed override of S-A55-HAPPY-INSTALL-OVER installs over it",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.4.1, §1.7; owner: installer). Finding 9 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/server.spec.ts (installer)."
+        },
+        {
+            "id": "S-A55-HAPPY-INSTALL-OVER",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner installs this admin's release over a newer server after a confirmation",
+            "asserts": "functions with a newer HCM_RELEASE than the admin's -> card d says the server is newer, no Update -> Install this admin's version anyway opens a confirmation naming the newer release and the admin's older one (a rollback) -> Install <release> (two inputs in all, no consent within the hour) -> one server build of the admin's release tagged hcm-over",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Source: the live finding of 2026-11-12: the server 1.0.0+dcfb067, an untagged build of before the bump, read newer than the admin 1.0.0-beta.1+593d539 and Setup offered nothing (docs/research/M6-interfaces.md §1.7.1; DECISIONS-for-review.md §169; docs/LESSONS.md). Test: e2e/admin/steps/install/server.spec.ts; units: packages/admin/test/install/install-flow.test.ts, packages/admin/test/setup/install.test.ts, packages/admin/test/install/build-spec.test.ts, packages/ui/test/admin/setup/install-cards.test.ts; tour state setup.install-over-dialog."
+        },
+        {
+            "id": "S-A55-BAD-INSTALL-OVER-KEPT",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "Keeping the newer server in the confirmation installs nothing",
+            "asserts": "a server newer than the admin -> Install this admin's version anyway -> the confirmation (the tour's checkers pass on it) -> Keep <installed> closes it; no build is submitted and the card still offers no Update",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Source: the live finding of 2026-11-12: the server 1.0.0+dcfb067, an untagged build of before the bump, read newer than the admin 1.0.0-beta.1+593d539 and Setup offered nothing (docs/research/M6-interfaces.md §1.7.1; DECISIONS-for-review.md §169; docs/LESSONS.md). Test: e2e/admin/specs/install/states.spec.ts (setup.install-newer, setup.install-over-dialog); units: packages/ui/test/admin/setup/install-cards.test.ts."
         },
         {
             "id": "S-A55-BAD-SECOND-BUILD",
@@ -9939,7 +9961,7 @@
             "asserts": "functions of 1.0.0+e2e0000 without HCM_RELEASE_TIME, recorded installed by the older admin; the admin 1.0.0+e2e0001 with its build time -> Home's tile and card d say an update is ready before any look, with the consent note -> Update the map (one click, one consent) -> a server build whose _RELEASE_TIME is the admin's -> installed, and setup/status records the release with its build time",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 39; docs/research/M6-interfaces.md §1.7 addendum, DECISIONS-for-review.md §78a). Test: e2e/admin/steps/install/update.spec.ts (installer); units: packages/shared/test/install.test.ts, packages/admin/test/install/model.test.ts."
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 39; docs/research/M6-interfaces.md §1.7 addendum, DECISIONS-for-review.md §78a). Test: e2e/admin/steps/install/update.spec.ts (installer); units: packages/shared/test/install.test.ts, packages/admin/test/install/model.test.ts. The live finding of 2026-11-12 (DECISIONS-for-review.md §169): within one core a dev build (a release with +<commit>, every build without the version's tag) is placed by its build time against any build, so the untagged 1.0.0+dcfb067 is older than the later 1.0.0-beta.1+593d539, while two tagged releases follow SemVer (a tagged 1.0.0 stays newer than 1.0.0-beta.1); units: packages/shared/test/install.test.ts, scripts/site/test/admin-runtime.test.ts."
         },
         {
             "id": "S-A55-BAD-DOWNGRADE-SAME-VERSION",
@@ -9947,10 +9969,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A later build of the same version is never replaced by an older admin",
-            "asserts": "functions of 1.0.0+e2e0002 with a later HCM_RELEASE_TIME than the admin's, recorded so -> card d says the server is newer than this admin, no Update, no consent note; Check again (one consent) says the same, no build is submitted, Home has no tile",
+            "asserts": "functions of 1.0.0+e2e0002 with a later HCM_RELEASE_TIME than the admin's, recorded so -> card d says the server is newer than this admin, no Update, only Install this admin's version anyway with the consent note; Check again (one consent) says the same, no build is submitted, Home has no tile",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 39; docs/research/M6-interfaces.md §1.7 addendum, DECISIONS-for-review.md §78a). Test: e2e/admin/steps/install/update.spec.ts (installer); units: packages/shared/test/install.test.ts, packages/admin/test/install/model.test.ts."
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 39; docs/research/M6-interfaces.md §1.7 addendum, DECISIONS-for-review.md §78a). Test: e2e/admin/steps/install/update.spec.ts (installer); units: packages/shared/test/install.test.ts, packages/admin/test/install/model.test.ts. The live finding of 2026-11-12 (DECISIONS-for-review.md §169): within one core a dev build (a release with +<commit>, every build without the version's tag) is placed by its build time against any build, so the untagged 1.0.0+dcfb067 is older than the later 1.0.0-beta.1+593d539, while two tagged releases follow SemVer (a tagged 1.0.0 stays newer than 1.0.0-beta.1); units: packages/shared/test/install.test.ts, scripts/site/test/admin-runtime.test.ts."
         },
         {
             "id": "S-A55-HAPPY-SAME-BUILD",

@@ -308,6 +308,8 @@ export interface SetupIntentsPort {
     install(target: InstallTarget): void;
     /** Update the map, counted on `step`'s card. */
     updateMap(step: SetupStepId): void;
+    /** "Install this admin's version anyway" on the card of a target newer than the admin, after its confirmation. */
+    installOver(target: InstallTarget): void;
     // [end install]
 }
 

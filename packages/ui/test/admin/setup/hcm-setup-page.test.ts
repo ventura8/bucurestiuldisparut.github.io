@@ -260,7 +260,8 @@ describe('<hcm-setup-page> the consent note on an install card (finding 40 of 20
         cleanup();
         expect(await deployNote({ server: { state: 'working', checkedAt: '2026-11-01T09:00:00Z' } })).toBeNull();
         cleanup();
-        expect(await deployNote({ server: { state: 'newerInstalled', checkedAt: '2026-11-01T09:00:00Z' } })).toBeNull();
+        // The live finding of 2026-11-12: a newer server offers Install this admin's version anyway, which asks Google.
+        expect(await deployNote({ server: { state: 'newerInstalled', checkedAt: '2026-11-01T09:00:00Z' } })).not.toBeNull();
     });
 
     it('happyPath_theNoteComesWithUpdateTheMap_TryAgain_AFirstInstall_orContinue', async () => {

@@ -8,6 +8,7 @@ import { LitElement, html, type TemplateResult } from 'lit';
 
 import { defineHcmIconButton } from '../../components/icon-button.js';
 import { EMPTY } from '../shell/empty.js';
+import { defineHcmInstallOver } from './hcm-install-over.js';
 import type { SetupIntentsPort, SetupStepId, SetupStepView, SetupViewState } from './setup-port.js';
 import { setupLabel } from './setup-text.js';
 
@@ -88,4 +89,5 @@ export abstract class SetupBody extends LitElement {
 /** Registers what every body renders. */
 export function defineSetupBodyParts(registry: CustomElementRegistry): void {
     defineHcmIconButton(registry);
+    defineHcmInstallOver(registry);
 }
