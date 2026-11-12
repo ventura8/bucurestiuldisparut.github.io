@@ -26,6 +26,8 @@ LINT_GROUPS=(
 )
 # A group's programs can outgrow V8's default heap on a small machine: a ceiling, not a reservation.
 HEAP_MB=6144
+# The groups' logs; global, as the EXIT trap that removes it runs after main has returned.
+LINT_OUT=""
 
 eslint_group() {
 	local -a paths folders ignores=()
@@ -47,14 +49,14 @@ eslint_group() {
 }
 
 main() {
-	local workers out status=0 index running=0
+	local workers status=0 index running=0
 	workers="${HCM_LINT_WORKERS:-$(python3 scripts/ci/parallel.py lint)}"
 	if [[ "${NODE_OPTIONS:-}" != *max-old-space-size* ]]; then
 		export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=$HEAP_MB"
 	fi
 	local -a all=("${LINT_GROUPS[@]}" .)
-	out="$(mktemp -d)"
-	trap 'rm -rf "$out"' EXIT
+	LINT_OUT="$(mktemp -d)"
+	trap 'rm -rf "$LINT_OUT"' EXIT
 	echo "[lint] ${#all[@]} groups, $workers at a time"
 	for index in "${!all[@]}"; do
 		if ((running >= workers)); then
@@ -63,15 +65,15 @@ main() {
 		fi
 		{
 			local rc=0
-			eslint_group "${all[$index]}" "$@" >"$out/$index.log" 2>&1 || rc=$?
-			echo "$rc" >"$out/$index.rc"
+			eslint_group "${all[$index]}" "$@" >"$LINT_OUT/$index.log" 2>&1 || rc=$?
+			echo "$rc" >"$LINT_OUT/$index.rc"
 		} &
 		running=$((running + 1))
 	done
 	wait
 	for index in "${!all[@]}"; do
-		cat "$out/$index.log"
-		if [[ "$(cat "$out/$index.rc")" != "0" ]]; then
+		cat "$LINT_OUT/$index.log"
+		if [[ "$(cat "$LINT_OUT/$index.rc")" != "0" ]]; then
 			status=1
 			echo "[lint] group '${all[$index]}' failed"
 		fi
