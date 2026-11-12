@@ -4,12 +4,12 @@ import {
     FIRESTORE_PATHS,
     JOB_MAX_ATTEMPTS,
     JOB_STEPS,
-    NOT_RETRYABLE_CODES,
     PUBLISH_MAX_ATTEMPTS,
-    failedOutdated,
     isSideJob,
     jobDocSchema,
     layerVersionDocSchema,
+    retryCures,
+    retryPastCap,
     type CallableRequest,
     type CallableResponse,
     type JobDoc,
@@ -42,7 +42,10 @@ import { guardIsRed, requireJob, stampOf, versionIdOf, type Stamp } from './reco
  * (S-A12-BAD-STRANDED-VERSION). A stopped job (status `cancelled`, version `cancelled`) is retried the same way as a failed one,
  * without the Stop that ended it (`cancelRequested`), and its version keeps what the owner gave it: an archive series with saved
  * pairs (`georef`, `method: 'gcps'`) places itself from them again (`placing/owner.py`; S-A12-HAPPY-RETRY-STOPPED-PAIRS).
- * Checked again in the transaction that retries. M8 (`docs/research/M8-join-interfaces.md` §5): a
+ * A manual retry of a run on the owner's computer (`runOn: 'local'`, an archive series) is allowed past `JOB_MAX_ATTEMPTS` and
+ * starts the count again: it costs no cloud compute (`retryPastCap`; live report of 2026-11-12, S-A12-HAPPY-LOCAL-RETRY-PAST-CAP);
+ * a cloud run's cap and every publish cap stay (S-A12-BAD-CLOUD-RETRY-AT-CAP). Checked again in the transaction that retries.
+ * M8 (`docs/research/M8-join-interfaces.md` §5): a
  * failed join freed its frames, so its retry asks whether they are still its own (a newer join, new points or a publish of its
  * own may have taken one: `apiError.imagery.joinPartGone`), and it goes back waiting for them, so no worker can claim it before the
  * dispatcher looked; a publish retry needs them all still there.
@@ -51,9 +54,6 @@ export type RetryDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'tasks'>;
 
 type Request = CallableRequest<'imagery.retry'>;
 
-/** Failures no retry cures: the admin fixes the cause first (Setup's Mapbox step), or the frame cannot be processed. */
-const NOT_RETRYABLE: ReadonlySet<string> = new Set(NOT_RETRYABLE_CODES);
-
 /** A version that was approved failed while publishing: the retry is the publisher's. */
 function failedAtPublish(job: JobDoc, version: LayerVersionDoc | undefined): boolean {
     return !isSideJob(job.type) && (job.type === 'republish' || version?.approval !== undefined);
@@ -61,7 +61,8 @@ function failedAtPublish(job: JobDoc, version: LayerVersionDoc | undefined): boo
 
 /**
  * The attempts a retry would add to: the publish starts after approval, the executions before. A failure of a runner whose
- * pipeline was older than the job's type spent no real attempt (`failedOutdated`): its retry is allowed whatever the count.
+ * pipeline was older than the job's type spent no real attempt, and a run on the owner's computer costs no cloud compute
+ * (`retryPastCap`, shared with the admin's `jobRetryable`): its retry is allowed whatever the count (`uncapped`).
  */
 function requireAttemptsLeft(job: JobDoc, version: LayerVersionDoc): void {
     // A job the owner stopped spent no attempt it could be blamed for: its retry starts the count again.
@@ -80,9 +81,14 @@ function requireCounted(job: JobDoc, version: LayerVersionDoc): void {
     }
 }
 
-/** A failure a retry may cure (none recorded counts as one). */
-function curable(job: JobDoc): boolean {
-    return job.error === undefined || !NOT_RETRYABLE.has(job.error.code);
+/** A failure a retry may cure (`retryCures`: never one of `NOT_RETRYABLE_CODES`, but a local run's exhausted attempts). */
+function curable(job: JobDoc, version: LayerVersionDoc | undefined): boolean {
+    return retryCures(job, failedAtPublish(job, version));
+}
+
+/** The retry may pass the attempt cap and start the count again: an outdated runner's failure, or a local run's (not a publish). */
+function uncapped(job: JobDoc, version: LayerVersionDoc | undefined): boolean {
+    return retryPastCap(job, failedAtPublish(job, version));
 }
 
 /**
@@ -111,7 +117,7 @@ function revivable(job: JobDoc, version: LayerVersionDoc | undefined): version i
 
 /** A failed raster job whose failure a retry may cure. */
 function failedRetryable(job: JobDoc, version: LayerVersionDoc | undefined): version is LayerVersionDoc {
-    return job.status === 'failed' && revivable(job, version) && curable(job);
+    return job.status === 'failed' && revivable(job, version) && curable(job, version);
 }
 
 /** A stopped job's version must still be cancelled. */
@@ -144,7 +150,7 @@ async function requireFailedWork(deps: RetryDeps, request: Request): Promise<{ j
 /** The job may be retried: failed or stopped with its version, a raster type, a curable failure, attempts left, the guard green. */
 async function requireRetryable(deps: RetryDeps, request: Request): Promise<JobDoc> {
     const { job, version } = await requireFailedWork(deps, request);
-    if (!failedOutdated(job)) {
+    if (!uncapped(job, version)) {
         requireAttemptsLeft(job, version);
     }
     if (await guardIsRed(deps.documents)) {
@@ -199,9 +205,12 @@ function queuedAgain(job: JobDoc): Pick<JobDoc, 'waitReason'> {
     return job.type === 'layer-join' ? { waitReason: 'parts' } : {};
 }
 
-/** An outdated runner's failure starts the count again: an updated runner gets every attempt. */
-function attemptsAgain(job: JobDoc): Pick<JobDoc, 'attempt'> {
-    return failedOutdated(job) || job.status === 'cancelled' ? { attempt: 0 } : {};
+/**
+ * A retry past the cap (`retryPastCap`: an outdated runner's failure, a local run's) or of a stopped job starts the count again:
+ * the run gets every attempt (the worker claims only a job with attempts left).
+ */
+function attemptsAgain(job: JobDoc, atPublish: boolean): Pick<JobDoc, 'attempt'> {
+    return retryPastCap(job, atPublish) || job.status === 'cancelled' ? { attempt: 0 } : {};
 }
 
 /**
@@ -224,7 +233,7 @@ const LEFT_BY_THE_RUN = [
 ] as const;
 
 function retriedJob(job: JobDoc, atPublish: boolean, stamp: Stamp): JobDoc {
-    const kept = { ...omit(job, LEFT_BY_THE_RUN), ...attemptsAgain(job) };
+    const kept = { ...omit(job, LEFT_BY_THE_RUN), ...attemptsAgain(job, atPublish) };
     if (atPublish) {
         return { ...kept, status: 'awaiting_approval', waitReason: 'approval', ...publishReopened(job), ...stamp };
     }

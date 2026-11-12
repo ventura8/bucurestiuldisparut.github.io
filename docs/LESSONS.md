@@ -3346,3 +3346,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the pipeline writes `help.stitched.method: "overview"` (and `archive.method: "overview"` once placed), but `STITCH_METHODS` and `ARCHIVE_PLACE_METHODS` of `@hcm/shared` did not list it. The pipeline's fakes do not validate against the server's schemas, and `STITCH_METHODS` was not in the shared contract `pipeline/tests/contracts/enums.json`.
     - Fix and pin: `overview` in both lists on both sides; `STITCH_METHODS` joins the contract (both contract tests); `publish_stitched` and the placed record refuse a method outside the lists before publishing; `S-P20-BAD-STITCH-METHOD-UNKNOWN`.
     - **Every enum value the pipeline writes into a server document belongs to the shared contract; a new value goes into both languages in the same change.**
+
+570. **A local series at its attempt cap could only be deleted.**
+    - Seen: 2026-11-12, the 1895 archive series of lesson 569: after the server fix was deployed its version page offered only Delete this version (`attempt: 3`, `apiError.internal`).
+    - Cause: `JOB_MAX_ATTEMPTS` capped every retry alike, though it exists to stop paid cloud work looping; a run on the owner's computer costs no cloud compute, and a server bug spent its three attempts.
+    - Fix and pin: `retryPastCap` and `retryCures` of `@hcm/shared`, used by `jobRetryable` and `imagery.retry`: the owner's Retry of a local run (`runOn: 'local'`, `localOnly`, `archive-series`) passes the cap, its `attemptsExhausted` included, and starts the count again; a cloud run and every publish keep their caps (DECISIONS-for-review.md §156; S-A12-HAPPY-LOCAL-RETRY-PAST-CAP, S-A12-BAD-CLOUD-RETRY-AT-CAP).
+    - **A limit that guards cost applies where the cost is: a manual retry that spends nothing must never be refused by it, and the client and the server read one shared predicate.**

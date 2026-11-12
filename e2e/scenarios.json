@@ -5266,6 +5266,28 @@
             "notes": "Live report of 2026-11-09. Test: e2e/admin/specs/imagery/jobs.spec.ts."
         },
         {
+            "id": "S-A12-HAPPY-LOCAL-RETRY-PAST-CAP",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A run on the owner's computer offers Try again past its attempts",
+            "asserts": "an archive series (runOn local, localOnly) failed three times in place on a server bug, or ended by the dispatcher with apiError.imagery.attemptsExhausted -> its version page and the Jobs page offer Try again; imagery.retry queues it again on the computer with its attempts back to 0 (a local run costs no cloud compute)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live report of 2026-11-12 (archive series ar-mw993zri-s-4054e55659a3 left with only Delete this version). One shared rule: retryPastCap and retryCures of @hcm/shared, used by jobRetryable and imagery.retry."
+        },
+        {
+            "id": "S-A12-BAD-CLOUD-RETRY-AT-CAP",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A cloud run or a publish at its cap still offers no Try again",
+            "asserts": "a failed job run in Google Cloud (or never placed) at JOB_MAX_ATTEMPTS, a local run whose publish used its starts, a local run whose Mapbox token was refused and a dismissed local run offer no Try again; imagery.retry refuses the cloud run and the publish with apiError.imagery.attemptsExhausted and the token failure with apiError.imagery.versionState",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live report of 2026-11-12: the cap that stops paid work looping stays for the cloud and for Mapbox."
+        },
+        {
             "id": "S-A12-HAPPY-OUT-OF-MEMORY-RETRY",
             "behaviour": "A12",
             "area": "admin",

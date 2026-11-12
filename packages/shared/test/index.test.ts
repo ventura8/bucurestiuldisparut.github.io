@@ -449,6 +449,9 @@ const EXPORTS = {
         'jobRetryable',
         'publishTaskSchema',
         'rasterUploadMetadataSchema',
+        'retryCures',
+        'retryPastCap',
+        'runsLocally',
     ],
     imageryHelpers: [
         'MAX_FOOTPRINT_VERTICES',

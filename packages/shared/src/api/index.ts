@@ -203,6 +203,9 @@ export {
     jobRetryable,
     publishTaskSchema,
     rasterUploadMetadataSchema,
+    retryCures,
+    retryPastCap,
+    runsLocally,
 } from './imagery.js';
 export type {
     ImageryChooseRequest,
