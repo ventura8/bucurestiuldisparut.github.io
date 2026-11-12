@@ -62,6 +62,8 @@ function labelledContainer(): { readonly container: HTMLElement; readonly labels
     const container = {
         querySelectorAll: (selector: string) => [
             {
+                nodeType: 1,
+                childNodes: [],
                 setAttribute: (attribute: string, value: string) => {
                     labels.set(`${selector} ${attribute}`, value);
                 },
@@ -522,6 +524,28 @@ describe('Mapbox adapter: events and lifecycle', () => {
             '.mapboxgl-ctrl-attrib-button aria-label': 'Arată sau ascunde sursele hărții',
             '.mapboxgl-ctrl-attrib-button .mapboxgl-ctrl-icon title': 'Arată sau ascunde sursele hărții',
         });
+    });
+
+    it('happyPath_aLanguageSwitchTranslatesTheLayersCreditsAndKeepsTheLinks', async () => {
+        // The Pixel Tablet, 2026-11-12: the USGS credit stayed in the language of the first load.
+        const gl = new FakeMapboxGl();
+        const port = createMapboxPort(gl, fakeAdapterEnv());
+        const container = document.createElement('div');
+        const line = document.createElement('div');
+        line.className = 'mapboxgl-ctrl-attrib-inner';
+        const link = document.createElement('a');
+        link.href = 'https://www.mapbox.com/about/maps/';
+        link.textContent = '© Mapbox';
+        line.append(link, ' | USGS EROS, declassified imagery (public domain)');
+        container.append(line);
+        const mounting = port.mount(container, OPTIONS);
+        gl.map.fire('load');
+        await mounting;
+
+        port.setLocale('ro');
+
+        expect(line.textContent).toBe('© Mapbox | USGS EROS, imagini desecretizate (domeniu public)');
+        expect(line.querySelector('a')?.href).toBe('https://www.mapbox.com/about/maps/');
     });
 
     it('badPath_aLanguageSwitchWithoutAMapChangesNothing', async () => {
