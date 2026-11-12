@@ -327,6 +327,24 @@ describe('the georeferencer context menu: the keyboard, closing and read-only', 
         expect(await axeViolations(page.element)).toEqual([]);
     });
 
+    it('badPath_aMenuChunkThatDoesNotLoadIsLoggedAndTheBrowsersMenuStays', async () => {
+        const prototype = customElements.get('hcm-georef-page')?.prototype as { menuChunk: () => Promise<unknown> };
+        const chunk = vi.spyOn(prototype, 'menuChunk').mockRejectedValue(new Error('chunk 404'));
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const page = await georefPage(georefState());
+        await vi.waitFor(() => {
+            expect(warn).toHaveBeenCalled();
+        });
+
+        const event = rightClick(canvasOf(page), scanPoint(page, { x: 600, y: 400 }));
+        const logged = warn.mock.calls[0];
+        chunk.mockRestore();
+        warn.mockRestore();
+
+        expect(logged).toEqual(['[georef-page] the context menu did not load', { error: 'Error: chunk 404' }]);
+        expect([event.defaultPrevented, menuShown(page)]).toEqual([false, false]);
+    });
+
     it('happyPath_aPickedUpPointSaysWhereToClickAndTheScanPicks', async () => {
         const page = await menuPage(georefState({ moving: { id: 'g2', pane: 'map' } }));
 

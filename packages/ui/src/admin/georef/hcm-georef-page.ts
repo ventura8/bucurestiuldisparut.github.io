@@ -8,6 +8,7 @@
  * ContextMenu key on either pane opens the context menu (`./georef-menu-host.ts`): Add a point here, Move and Delete this
  * point, Undo; nothing that edits on a read-only version.
  */
+import { createLogger } from '@hcm/shared';
 import { html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { deepActiveElement } from '../../components/focus.js';
@@ -22,6 +23,7 @@ import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
 import { FullScreenInert } from './full-screen.js';
 import type { GeorefMenuOpen } from './georef-menu-host.js';
+import type * as GeorefMenuChunk from './georef-menu.js';
 import { panes } from './georef-panes.js';
 import { guide, previewControls, summary, tools, transforms, type GeorefContext } from './georef-parts.js';
 import type { GeorefIntentsPort, GeorefVersionPort, GeorefViewState } from './georef-port.js';
@@ -31,6 +33,8 @@ import { residualTable, type ResidualSort } from './residual-table.js';
 import { SUGGESTIONS_HEADING_ID, suggestionsPanel, suggestionsStyles, type SuggestionDecision } from './suggestions-panel.js';
 
 export const HCM_GEOREF_PAGE_TAG = 'hcm-georef-page';
+
+const log = createLogger('georef-page');
 
 class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
     static override readonly fillsPage: boolean = true;
@@ -87,12 +91,22 @@ class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
 
     /** The context menu's chunk: its element, and its gestures listening on both panes from now on. */
     protected override firstUpdated(): void {
-        void import('./georef-menu.js').then((chunk) => {
-            chunk.defineHcmGeorefMenu();
-            new chunk.MenuGestures((pane, at) => {
-                this.#openMenu((always) => chunk.menuAt(pane, at, this.intents, always));
-            }).attach(this.renderRoot);
-        });
+        this.menuChunk()
+            .then((chunk) => {
+                chunk.defineHcmGeorefMenu();
+                new chunk.MenuGestures((pane, at) => {
+                    this.#openMenu((always) => chunk.menuAt(pane, at, this.intents, always));
+                }).attach(this.renderRoot);
+            })
+            .catch((error: unknown) => {
+                // Offline, or a deploy swapped the hashes: the browser's own menu stays, and the cause is in the log.
+                log.warn('the context menu did not load', { error: String(error) });
+            });
+    }
+
+    /** The lazy chunk of the context menu (a seam for the test of a chunk that does not load). */
+    protected menuChunk(): Promise<typeof GeorefMenuChunk> {
+        return import('./georef-menu.js');
     }
 
     protected override updated(changed: PropertyValues<this>): void {

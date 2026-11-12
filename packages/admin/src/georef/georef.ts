@@ -306,6 +306,14 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         this.#map.setAdding(this.#cell.state.adding);
     }
 
+    /** A picked-up point whose pair went away (deleted, undone) waits for nothing: the panes go back to their modes. */
+    #dropGone(pairs: readonly Gcp[]): void {
+        const moving = this.#cell.state.moving;
+        if (moving !== null && !pairs.some((pair) => pair.id === moving.id)) {
+            this.#putBack();
+        }
+    }
+
     #escape(): void {
         if (this.#cell.state.moving !== null) {
             this.#putBack();
@@ -353,6 +361,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         const fitted = shownFit(fitOf(transform, pairs, thresholdM), this.#own, dirty, thresholdM);
         this.#transform = fitted.transform;
         this.#cell.update({ pairs, transform, fit: fitted.view, dirty, canUndo: this.#history.canUndo, refusal: null });
+        this.#dropGone(pairs);
         this.#map.showPairs(pairs, this.#cell.state.selected);
         this.#map.setTones(tonesOf(fitted.view.residuals, thresholdM));
         this.#syncHalf();

@@ -91,7 +91,8 @@ function pairIntents(
     const pairs = (): GeorefState['pairs'] => actions.cell.state.pairs;
     return {
         setAdding: (adding) => {
-            actions.cell.update({ adding, half: null });
+            // A picked-up point is put back: both panes take the new mode together.
+            actions.cell.update({ adding, half: null, moving: null });
             actions.map.setAdding(adding);
         },
         pickScan: (pixel) => {

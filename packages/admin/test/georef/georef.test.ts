@@ -246,6 +246,48 @@ describe('the georeferencer: the context menu', () => {
     });
 });
 
+describe('the georeferencer: a picked-up point whose pair changes', () => {
+    it('badPath_aPickedUpPointWhosePairGoesAwayIsPutBack', async () => {
+        const { draw, map, maps } = mapWorld();
+        const { georef } = setup({ maps });
+        georef.open([RENDERED]);
+        georef.intents.attachMap(host());
+        await settle();
+        const id = georef.state.pairs[0]?.id ?? '';
+
+        georef.intents.pickUp(id, 'scan');
+        georef.intents.remove(id);
+        const afterRemove = [georef.state.moving, draw.mode];
+        georef.intents.undo();
+        const restored = georef.state.pairs;
+        georef.intents.addAt({ pixel: { x: 120, y: 80 } });
+        georef.intents.addAt({ geo: { lat: 44.41, lng: 26.11 } });
+        georef.intents.pickUp(georef.state.pairs.at(-1)?.id ?? '', 'map');
+        georef.intents.undo();
+        const afterUndo = georef.state.moving;
+        map.clickMap([26.12, 44.42]);
+
+        expect(afterRemove).toEqual([null, 'select']);
+        expect(afterUndo).toBeNull();
+        expect(georef.state.pairs).toEqual(restored);
+    });
+
+    it('badPath_turningAddPairsOffPutsAPickedUpPointBackSoBothPanesAgree', async () => {
+        const { draw, maps } = mapWorld();
+        const { georef } = setup({ maps });
+        georef.open([RENDERED]);
+        georef.intents.attachMap(host());
+        await settle();
+        const pairs = georef.state.pairs;
+
+        georef.intents.pickUp(pairs[0]?.id ?? '', 'map');
+        georef.intents.setAdding(false);
+
+        expect([georef.state.moving, georef.state.adding, draw.mode]).toEqual([null, false, 'select']);
+        expect(georef.state.pairs).toEqual(pairs);
+    });
+});
+
 describe('the georeferencer: the fit and saving', () => {
     it('happyPath_theTransformChangesTheFitAndDiscardReturnsToTheSavedOnes', () => {
         const { georef } = setup();
