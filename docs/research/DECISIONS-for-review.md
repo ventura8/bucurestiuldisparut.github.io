@@ -6668,7 +6668,15 @@ leftovers of §164. Every figure is the container's cgroup `memory.peak` (page c
   a `.part` file that a short body never replaces; `check` drops each evaluated value as it parses it (an object hook),
   1.69 GB and 3.4 s instead of 2.2 GB. Every expression and every condition is checked as before (0 problems on the same
   report). No rule, condition or gate dropped; the emulator offers no smaller or streamed report.
-- **178f Left**: under a cap the `vitest` gate gets fewer workers (178b), and with `--coverage` and 5 workers the six `create-historic-city` files fail to import `@material/material-color-utilities` ("Cannot find module …/dynamic_color"): reproduced on `origin/feat/engine-rewrite` as it is, so not this branch's, but this branch makes a capped run meet it; `scripts/site/test/admin-build.test.ts` fails two tests on origin too (the runtime file's new `channel`, §169a). The Functions emulator's workers (178c) are the largest consumer of the e2e tier and the dev stack;
+- **178h The colour library is inlined in every Vitest project** (`vitest.config.ts`, a config edit of the pre-approved
+  class: it keeps a tool working, no threshold or file excluded). `@material/material-color-utilities` imports without
+  file extensions, which Node refuses; only `create-historic-city` had it in `server.deps.inline`. With fewer workers
+  (a capped container, 178b) a worker that had run `admin` files (`isolate: false`, which also reach the library through
+  `@hcm/ui/dynamic-color`) went on to the CLI's files, and all six failed with "Cannot find module …/dynamic_color";
+  `admin` + `create-historic-city` on 5 workers failed every time, with or without `--coverage`. The option now sits in the
+  root `test` config that every project extends: the same command passes 230 files. Found while it, the shared API's
+  fixture lacked the governor's eight exports (§176): added to `exports-m7.ts`.
+- **178f Left**: The Functions emulator's workers (178c) are the largest consumer of the e2e tier and the dev stack;
   `--inspect-functions` runs them all in one worker but serialises every call and turns off their timeouts, so it needs a
   full e2e run of its own before it is adopted. The e2e stage's peak after 178d was not measured, as it cannot finish
   under the 12 GB slot before that.
