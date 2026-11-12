@@ -66,7 +66,7 @@ with how the first real run proves it (§10).
 6. **Ownership** (§6): four workstreams; release is also the integrator (docs, the agent assets, the status file, the
    prepared release) and works last; the shared files' marked sections; the order of work; the change-request process.
 
-Done by this contract (CR-M5-1): the shared schemas and pure helpers `packages/shared/src/schemas/cities.ts`,
+Done by this contract (CR-M5-1): the shared schemas and pure helpers `packages/shared/src/schemas/cities.ts` (a city id's checks and rectangle since 2026-11-12 in `city-id.ts`, which imports no schema, re-exported: docs/LESSONS.md 593),
 `city-export.ts` and `engine-release.ts`; the API schemas `packages/shared/src/api/cities.ts` and `city-export.ts`; the
 paths `FIRESTORE_PATHS.cityUsage`, `.cityExports`, `.cityExport` and `STORAGE_PATHS.cityExport`; the system writers
 `cities` and `export`; thirteen error codes in both languages (`apiError.city.*`, `apiError.export.*`); the catalogue

@@ -1,9 +1,17 @@
 /** Fields of a photo the documents' fixtures share: a decided review (M13) and the improved and colorized versions. */
-import { STORAGE_PATHS, publicObjectUrl } from '@hcm/shared';
+import { STORAGE_PATHS, publicObjectUrl, type PhotoVariant } from '@hcm/shared';
 
 import { past, type Data } from './world.js';
 
 const SHA = 'cd'.repeat(32);
+
+/** The hash of every test photo's own image (the documents' own `SHA`). */
+const PHOTO_SHA = 'ab'.repeat(32);
+
+/** The public address of one derivative of a photo's own image. */
+export function derivative(cityId: string, photoId: string, variant: PhotoVariant): string {
+    return publicObjectUrl('demo-hcm-public', STORAGE_PATHS.photoDerivative(cityId, photoId, PHOTO_SHA, variant));
+}
 
 /** M13: what a decided item carries, server-owned but for the credit. */
 export function reviewedFields(reviewer: string): Data {

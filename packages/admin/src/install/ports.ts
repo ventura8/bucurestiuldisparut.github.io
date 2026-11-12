@@ -33,10 +33,19 @@ export interface TargetObservation {
     readonly blocker: InstallMessage | null;
 }
 
+/** How a build is submitted. */
+export interface SubmitOptions {
+    /**
+     * The owner confirmed "Install this admin's version anyway" over a newer release (a rollback, the live finding of
+     * 2026-11-12): the build carries the tag `hcm-over`, so Cloud Build's history says so.
+     */
+    readonly over?: boolean;
+}
+
 export interface InstallerPort {
     observe(target: InstallTarget, access: InstallAccess): Promise<TargetObservation>;
     /** Submits the target's build of the admin's own bundle (rejects with a `GoogleApiError` or an `InstallBundleError`). */
-    submit(target: InstallTarget, access: InstallAccess): Promise<CloudBuild>;
+    submit(target: InstallTarget, access: InstallAccess, options?: SubmitOptions): Promise<CloudBuild>;
     /** The build's log lines, oldest first, redacted. */
     buildLog(buildId: string, access: InstallAccess): Promise<readonly BuildLogLine[]>;
     /** The Google Cloud console's page of a build. */

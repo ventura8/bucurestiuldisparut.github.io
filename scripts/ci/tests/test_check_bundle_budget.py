@@ -46,8 +46,8 @@ def test_happy_path_small_bundles_pass(tmp_path: Path, caplog: pytest.LogCapture
     # The rows by path: the start page's module (M14) sorts before the engine's two builds.
     assert lines[1:4] == [
         "  dist/start-app/start.mjs: 0.1 KB gzip (budget 72 KB)",
-        "  packages/engine/dist/engine.iife.js: 0.1 KB gzip (budget 125 KB)",
-        "  packages/engine/dist/engine.mjs: 0.1 KB gzip (budget 100 KB)",
+        "  packages/engine/dist/engine.iife.js: 0.1 KB gzip (budget 150 KB)",
+        "  packages/engine/dist/engine.mjs: 0.1 KB gzip (budget 120 KB)",
     ]
     # The entry counts what it imports statically, transitively; the lazy chunks each against their own budget.
     assert lines[4].startswith(f"  {ADMIN}/admin.mjs with 2 static chunk(s): 0.")

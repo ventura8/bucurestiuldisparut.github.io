@@ -3477,12 +3477,25 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-12: the NUC's copy keeps `.tsbuild/` between runs (the sync leaves it out), and 77 merged commits left its build info older than the files.
     - Fix: delete `packages/*/.tsbuild`, `e2e/.tsbuild` and every `*.tsbuildinfo` on the NUC, then run `tsc -b` again.
     - **After a large merge, clear the incremental TypeScript output of a machine that only receives the sources.**
-593. **A visually hidden caption far down a scrolled page made the whole admin scroll into blank space.**
+
+593. **Three branches, each under the start page's budget, went over it together: the page carried every Firestore schema and the API catalogue.**
+    - Seen: 2026-11-12, the merge of track/workerfix, track/favicon and track/photoversions: `dist/start-app/start.mjs` measured 72.9 KB gzip of 72 (each branch alone 71.7 to 71.9), and `firebase/rules-tests/test/support/documents.ts` reached 601 lines of 600.
+    - Cause: the start page needs a city id's pattern and three checks (`isUsableCityId`, `suggestCityId`, `cityBoundsProblem`); they lived in `schemas/paths.ts` and `schemas/cities.ts`, whose imports (`firestore.ts`, the API's limits) are zod schemas built at module level, which no bundler drops. So every new field, error text or schema of any branch grew the start page.
+    - Fix and pin: `CITY_ID_PATTERN` is in `schemas/primitives.ts` and the checks in `schemas/city-id.ts` (`paths.ts` and `cities.ts` re-export them): 60.4 KB gzip, no `apiError.*` text in the page, no budget raised (`bundle-budget`). The photo's `derivative` helper moved to `photo-fields.ts`. The same full run found two gaps the branches' targeted runs had not measured: `placing/maps.py` at 88 % of its branches (no test of an atlas or of pieces whose PDF needs a password: added in `test_placing_pdf.py`) and `issue-text.ts` at 87.5 % (two branches nothing reaches, removed).
+    - **A check a small page needs lives in a module that imports no schema; when a budget is within 1 % on several branches, measure the merge, not the branches, and read which modules the bundle holds before cutting bytes.**
+
+594. **An untagged dev build of `1.0.0` blocked every `1.0.0-beta.1`: by SemVer the pre-release is older.**
+    - Seen: 2026-11-12, live: the admin `1.0.0-beta.1+593d539` (the release prep's bump) against the server `1.0.0+dcfb067`, an untagged build of before the bump; step d said "Installed 1.0.0+dcfb067, newer than this admin: reload the page" and offered no Update.
+    - Cause: `compareRelease` ordered by SemVer first; every build before the bump had called itself `1.0.0` though no `v1.0.0` tag existed, so it outranked every pre-release of 1.0.0.
+    - Fix and pin: a release names its channel (a tagged build the version alone, any other `+<commit>`: `dev`); within one core a dev build is placed by its build time, two tagged releases by SemVer; a confirmed override installs over a newer release (`happyPath_aDevBuildIsOlderThanALaterPrereleaseOfItsCore`, `badPath_aTaggedReleaseIsNewerThanAnOlderPrerelease_theDowngradeGuard`, S-A55-HAPPY-INSTALL-OVER).
+    - **A version that was never released must not outrank one that was: say in the build whether it is a tagged release, and give every guard an owner's way past it.**
+
+595. **A visually hidden caption far down a scrolled page made the whole admin scroll into blank space.**
     - Seen: 2026-11-12, the tour's new `no-blank-scroll` checker: the Historical imagery, orders and georeferencer pages and the overlays settings scrolled 639 to 900 px of nothing under the shell (the owner's black area of 2026-11-09).
     - Cause: an absolutely positioned element is clipped only by ancestors between it and its containing block; the page's scroller is not positioned, so the `.visually-hidden` captions and labels took the frame as their containing block, escaped the scroller and stretched the document.
     - Fix and pin: the page's scroller is positioned, so it is their containing block and clips them (an `overflow: clip` on the frame, then the root's own `overflow: hidden`, cut the bottom bar's focus rings at the window's edge: the bar's rings are drawn inside their items, as the rail's were), the framed admin's root hides its overflow and overscroll (`<hcm-admin-shell data-frame>`), and every tour state runs `no-blank-scroll` (S-A31-HAPPY/BAD-NO-BLANK-SCROLL).
     - **An app shell hides the root's overflow, and a scroller that holds absolute elements is positioned, so it clips them.**
-594. **A sticky strip in a short sheet hid the controls scrolled under it.**
+596. **A sticky strip in a short sheet hid the controls scrolled under it.**
     - Seen: 2026-11-12, the viewer tour at 360 × 800 and 915 × 412: the Layers strip pinned on 2026-11-10 covered the overlay switches and sliders the list scrolled under it (focus obscured, targets of 52 × 32 and 4 × 44), and at peek height Tab reached the strip's switches where nobody could see them; the overlay rows' 48 px rings also overlapped one another (52 × 40).
     - Fix and pin: the strip is sticky in the docked pane only; the overlay rows and the map-label rows are 48 px each (`packages/ui/test/viewer/hcm-layer-panel.test.ts`, the tour's Layers states).
     - **Pin a strip only where the pane is tall enough; a modal sheet's content scrolls whole, and rows of 48 px targets are 48 px apart.**

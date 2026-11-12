@@ -180,8 +180,9 @@ test(
         const newer = setupText(lang, 'adminSetup.install.newer', { release: NEWER_BUILD_RELEASE });
         await expect(deploy.getByText(newer)).toBeVisible();
         await expect(deploy.getByRole('button', { name: setupText(lang, 'adminSetup.install.updateAction') })).toHaveCount(0);
-        // Nothing to do: Google's consent note is not shown (finding 40).
-        await expect(deploy.locator('hcm-consent-note')).toHaveCount(0);
+        // The live finding of 2026-11-12: only the override is offered, which asks Google, so the consent note shows.
+        await expect(deploy.getByRole('button', { name: setupText(lang, 'adminSetup.install.over.action') })).toBeVisible();
+        await expect(deploy.locator('hcm-consent-note')).toHaveCount(1);
 
         // A look at Google says the same: the downgrade guard holds with the build times.
         await withConsent(

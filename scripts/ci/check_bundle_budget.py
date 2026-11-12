@@ -53,12 +53,14 @@ BUDGETS: Mapping[str, int] = {
     # Viewer engine, ES module: what the city pages load (Lit, the M3 kit, zod, the viewer), minified since
     # DECISIONS-for-review.md §17a (92.7 KB on 2026-10-12, 101.0 KB before). The Firebase SDK is its lazy
     # `firebase-sdk-<hash>.js` chunk, fetched only after consent.
-    "packages/engine/dist/engine.mjs": 100,
+    # 100 until 2026-11-12, raised to 120 by the owner for beta.1 (DECISIONS-for-review.md §168).
+    "packages/engine/dist/engine.mjs": 120,
     # Viewer engine, IIFE: the same plus the inlined Firebase SDK (no code splitting in IIFE builds,
-    # DECISIONS-for-review.md §13a; 112.0 KB in M1).
-    "packages/engine/dist/engine.iife.js": 125,
+    # DECISIONS-for-review.md §13a; 112.0 KB in M1). 125 until 2026-11-12, raised to 150 by the owner for beta.1 (§168).
+    "packages/engine/dist/engine.iife.js": 150,
     # M14 (docs/research/M14-start-your-map.md): the start page, one module (Lit, zod, the `start.*` texts, the transport).
-    # Apart from the admin's folder and its totals: 69.0 KB measured on 2026-11-07, a new row just above it.
+    # Apart from the admin's folder and its totals: 69.0 KB measured on 2026-11-07, a new row just above it; 60.4 KB since
+    # 2026-11-12, when its city-id checks left the modules that import the Firestore schemas (docs/LESSONS.md 593).
     "dist/start-app/start.mjs": 72,
 }
 
@@ -75,8 +77,9 @@ ENGINE_CHUNK_BUDGETS: Mapping[str, int] = {
     "gamepad": 2,
     # The side-loaded extras (the owner's "Load extras on demand", 2026-11-09; docs/ENGINE_API.md -> Side-loaded parts):
     # `engine.extras.js`, one IIFE beside both builds with its own integrity, added the first time a visitor opens a photo
-    # full size, About or the map's menu; it reads Lit and the texts from the engine's kit. 5.3 KB on 2026-11-09.
-    "engine.extras.js": 7,
+    # full size, About or the map's menu; it reads Lit and the texts from the engine's kit. 5.3 KB on 2026-11-09; 7 until
+    # 2026-11-12, raised to 12 by the owner for beta.1 (DECISIONS-for-review.md §168).
+    "engine.extras.js": 12,
     # firebase/app and firebase/analytics, fetched only after the visitor's consent: 13.3 KB on 2026-10-24.
     "firebase-sdk": 16,
     # The field chunk (DECISIONS-for-review.md §76): Google's web-vitals (attribution build, 5.4 KB of it) and the event

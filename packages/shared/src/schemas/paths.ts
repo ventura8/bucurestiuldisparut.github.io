@@ -7,10 +7,9 @@
 import { z } from 'zod';
 
 import { HISTORY_ENTITIES, type HistoryEntity, type PhotoContentType } from './firestore.js';
-import { isId } from './primitives.js';
+import { CITY_ID_PATTERN, isId } from './primitives.js';
 
-/** City ids are lowercase: they name Storage folders, which `firebase/storage.rules` matches with `[a-z0-9-]{2,32}`. */
-export const CITY_ID_PATTERN = /^[a-z0-9-]{2,32}$/;
+export { CITY_ID_PATTERN };
 
 export const cityIdSchema = z.string().regex(CITY_ID_PATTERN);
 
