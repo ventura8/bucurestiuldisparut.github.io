@@ -3297,3 +3297,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `relocateOne` re-threw any error that was not an `ApiError`, so the invalid record above, sorting first, threw before `remember` and before any other frame.
     - Fix and pin: every failure is logged with the version and remembered, and the loop goes on; S-A69-BAD-AUTO-RELOCATE-INVALID.
     - **A per-item loop in a tick catches every error per item; only the item's own refusal codes differ in the log.**
+
+561. **"Import every direction from the old site" was already done: the 10 photos without one have no cone there either.**
+    - Seen: 2026-11-12, the owner: *only one photo near Gara Obor has a direction in our app; on the old site they all have*.
+    - Cause: none in the code. Compared with the old site's live `geojson/photos.json` (56 points, 47 cones), 47 of our 57 photos have a cone there and live Firestore has all 47 directions (0 differences), and the 9 photos at Gara Obor without one are pins without a cone on the old site as well; the viewer's year filter leaves one cone (Parc Ferdinand, 1930) at the 1930s. Local `master` is not the old live site (44 points): the live data is `bucurestiuldisparut/bucurestiuldisparut.github.io` (`docs/research/M5-interfaces.md` → *Directions from the old site*).
+    - Fix and pin: none needed; S-A28-HAPPY-DIRECTIONS / S-A28-BAD-OWNER-DIRECTION-KEPT already pin the import, and `legacy-corrections.mjs` reproduces `corrections.json` unchanged.
+    - **Before re-importing "missing" legacy data, diff the live store against the old site's live file: a gap both share is the owner's to fill, not an import bug.**
