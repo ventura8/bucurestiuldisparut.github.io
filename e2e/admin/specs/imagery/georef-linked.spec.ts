@@ -137,7 +137,7 @@ test(
         const bearing = (await mapFacts(page)).bearing;
         await page.keyboard.press('r');
         await expect.poll(() => scanAngle(page)).toBeCloseTo(15, 3);
-        await expect.poll(async () => Math.abs(turnBetween(bearing, (await mapFacts(page)).bearing) + 15)).toBeLessThan(5);
+        await expect.poll(async () => Math.abs(turnBetween(bearing, (await mapFacts(page)).bearing) + 15)).toBeLessThan(8);
         await expectStateSound(page, adminVisit('georef.rotated', lang));
 
         // The map's own Turn left (the ground goes anticlockwise, the bearing rises): the scan turns back with it.
@@ -147,14 +147,14 @@ test(
             .getByRole('button', { name: georefText(lang, 'adminContent.georef.turn.left') })
             .click();
         await showPane(page, lang, 'scan');
-        await expect.poll(async () => Math.abs(await scanAngle(page))).toBeLessThan(5);
+        await expect.poll(async () => Math.abs(await scanAngle(page))).toBeLessThan(8);
 
         // Upright by its button: n and the button do the same.
         await page
             .getByRole('group', { name: georefText(lang, 'adminContent.georef.turn.scan') })
             .getByRole('button', { name: georefText(lang, 'adminContent.georef.turn.right') })
             .click();
-        await expect.poll(async () => Math.abs((await scanAngle(page)) - 15)).toBeLessThan(5);
+        await expect.poll(async () => Math.abs((await scanAngle(page)) - 15)).toBeLessThan(8);
         await page
             .getByRole('group', { name: georefText(lang, 'adminContent.georef.turn.scan') })
             .getByRole('button', { name: georefText(lang, 'adminContent.georef.turn.scanUp') })

@@ -390,6 +390,8 @@ test(
                 .locator('hcm-snackbar')
                 .filter({ hasText: georefText(lang, 'adminContent.georef.pairRemoved', { number: String(number) }) });
 
+        // Add pairs on, as while placing points (its hint also keeps Mapbox's logo clear of the page's top edge in the scroll sweep).
+        await addingPairs(page, lang);
         // Pair 2 chosen in the table: its Delete button is beside the panes.
         await page.getByRole('button', { name: pairName(2), exact: true }).click();
         // Named as the row's own Delete: found by what it is.
