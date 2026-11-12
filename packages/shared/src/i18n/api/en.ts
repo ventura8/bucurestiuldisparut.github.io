@@ -124,7 +124,8 @@ export const en: ApiMessages = {
     'apiError.imagery.joinRecalibrate': 'A joined layer cannot be calibrated again yet: it has no scan of its own. The current one stays.',
     'apiError.imagery.localOnly': 'This series’ files are only on your computer, so it cannot run in Google Cloud.',
     'apiError.imagery.rightsUnconfirmed': 'Confirm this map’s rights before it is published.',
-    'apiError.imagery.archiveMissing': 'This computer lacks the archive’s files, or they changed. Open the starter file on the computer that scanned it.',
+    'apiError.imagery.archiveMissing':
+        'This computer lacks the archive’s files, or they changed. Open the starter file on the computer that scanned it.',
     'apiError.imagery.archiveImported': 'This archive was already imported.',
     'apiError.imagery.archiveYear': 'Type this map’s year first. Maps from before 1800 cannot be imported yet.',
     'apiError.imagery.missingBand': 'The Landsat delivery lacks band {band}: no colour image. Try another scene of that year.',

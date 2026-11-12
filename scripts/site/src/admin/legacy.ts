@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import {
     applyLegacyCorrections,
     cityImagerySchema,
@@ -104,19 +105,23 @@ function cityFile(files: SiteFileSystem): Readonly<Record<string, unknown>> {
 /** The texts a visitor reads that the city file holds today; the seed manifest keeps the ones it was migrated with. */
 const TEXT_FIELDS = ['about', 'credits', 'privacy'] as const;
 
-type CityTexts = Partial<Pick<City, (typeof TEXT_FIELDS)[number]>>;
+type CityTexts = Pick<City, (typeof TEXT_FIELDS)[number]>;
 
-/** The city file's About, credits and privacy, each validated as the city schema has it; none it does not hold. */
-function seedTexts(file: Readonly<Record<string, unknown>>): CityTexts {
-    const texts: Record<string, unknown> = {};
-    for (const field of TEXT_FIELDS.filter((name) => file[name] !== undefined)) {
-        const result = validate(citySchema.shape[field], file[field]);
-        if (!result.ok) {
-            throw new SiteBuildError(`${CITY_SEED_FILE}: invalid ${field}\n${issuesText(result.issues)}`);
-        }
-        texts[field] = result.value;
+/** Those texts as the city schema has them (the city schema's refinements forbid `pick`). */
+const cityTextsSchema: z.ZodType<CityTexts> = z.object({
+    about: citySchema.shape.about,
+    credits: citySchema.shape.credits,
+    privacy: citySchema.shape.privacy,
+});
+
+/** The migrated city's About, credits and privacy, each replaced by the city file's when it holds one, validated. */
+function seedTexts(migrated: City, file: Readonly<Record<string, unknown>>): CityTexts {
+    const held = Object.fromEntries(TEXT_FIELDS.filter((name) => file[name] !== undefined).map((name) => [name, file[name]]));
+    const result = validate(cityTextsSchema, { about: migrated.about, credits: migrated.credits, privacy: migrated.privacy, ...held });
+    if (!result.ok) {
+        throw new SiteBuildError(`${CITY_SEED_FILE}: invalid texts\n${issuesText(result.issues)}`);
     }
-    return texts as CityTexts;
+    return result.value;
 }
 
 /** The city file's imagery settings; none when it holds none. */
@@ -140,8 +145,8 @@ function legacyCity(files: SiteFileSystem, seedDir: string): { readonly city: Bu
         throw new SiteBuildError(`${path}: invalid manifest\n${issuesText(result.issues)}`);
     }
     const file = cityFile(files);
-    const texts = seedTexts(file);
-    return { city: { ...cityFields(result.value.city), ...texts, ...seedImagery(file) }, fileCredits: texts.credits !== undefined };
+    const texts = seedTexts(result.value.city, file);
+    return { city: { ...cityFields(result.value.city), ...texts, ...seedImagery(file) }, fileCredits: file['credits'] !== undefined };
 }
 
 /** The credits naming every author: the migrated list completes its authors' line; the city file's gets one, first. */
