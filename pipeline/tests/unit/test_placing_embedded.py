@@ -9,7 +9,7 @@ from hcm_pipeline.archive.classify import classify
 from hcm_pipeline.archive.model import FileRow, Probe
 from hcm_pipeline.geo import MercatorBox, to_mercator
 from hcm_pipeline.jobs import Done, Waiting
-from hcm_pipeline.placing import embedded, reference
+from hcm_pipeline.placing import embedded, ladder, reference
 from hcm_pipeline.placing.checks import Checked
 from hcm_pipeline.placing.output import Placement, resolution_of, suggestions
 from hcm_pipeline.placing.raster_io import Pair, dpi_of
@@ -19,10 +19,10 @@ from hcm_pipeline.rasters import GeoTiff, srs_wkt, write_geotiff
 from hcm_pipeline.steps.gather import SHEETS
 from hcm_pipeline.steps.place import PlaceStep
 
-from tests.fakes.world import CITY, LAYER_ID, PipelineWorld
+from tests.fakes.world import CITY, PipelineWorld
 from tests.synthetic.scenes import CENTRE
 from tests.synthetic.town import Drawing, draw_map, town_lines
-from tests.unit.placing_support import originals, series_context
+from tests.unit.placing_support import originals, publish_layer, series_context, serve_public
 
 METRES_PER_PX = 5.0
 SIZE = (1000, 1000)
@@ -128,21 +128,23 @@ def test_happy_path_a_ruler_without_openstreetmap_reports_no_figure(world: Pipel
     assert report["checkpointCount"] == 0
 
 
-def test_happy_path_a_calibrated_layer_is_a_rung_of_the_ladder_with_its_own_error(world: PipelineWorld, tmp_path: Path) -> None:
+def test_happy_path_a_published_layer_is_a_rung_of_the_ladder_with_its_own_error(
+    world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Scenarios: S-P20-HAPPY-LADDER"""
-    ctx = series_context(world, tmp_path, ["map.tif"], {"class": "single", "encoding": "grey", "referenceLayerIds": [LAYER_ID]})
-    cog = town_geotiff(tmp_path / "cog.tif")
-    world.store.seed(f"cities/{CITY}/layers/{LAYER_ID}", {"currentVersion": "v-ladder"})
-    world.store.seed(f"cities/{CITY}/layerVersions/v-ladder", {"archive": {"checkpointRmseM": 4.0}})
-    ctx.services.objects.upload_file(cog, f"rasters/{CITY}/{LAYER_ID}/v-ladder/cog.tif", "image/tiff")
+    ctx = series_context(world, tmp_path, ["map.tif"], {"class": "single", "encoding": "grey"})
+    serve_public(world, monkeypatch)
+    publish_layer(world, tmp_path, "plan-1911", 1911, archive={"checkpointRmseM": 4.0})
     window = reference.city_window(ctx)
     assert window is not None
 
-    rungs = reference.references(ctx, [LAYER_ID, "no-such-layer"], window, 20.0)
+    rungs = reference.references(ctx, ladder.rungs(ctx), window, 20.0)
 
-    assert [rung.label for rung in rungs] == [f"layer:{LAYER_ID}", "osm"]
+    assert [rung.label for rung in rungs] == ["layer:plan-1911", "osm"]
     assert rungs[0].error_m == 4.0
     assert len(rungs[0].places) > 50
+    gaps = numpy.hypot(*(rungs[0].places[:, None, :] - rungs[1].places[None, :, :]).transpose(2, 0, 1)).min(axis=1)
+    assert float(numpy.median(gaps)) < 30.0
     assert reference.window_resolution(MercatorBox(0, 0, 1500, 900), 1000) == 2.0
 
 

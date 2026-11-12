@@ -58,7 +58,7 @@ class References:
     def channels(self) -> tuple[str, ...]:
         """The channels that can run: `s2` with an image, `osm` with at least one line."""
         present = {"s2": self.s2 is not None, "osm": self.osm is not None and bool(self.osm.any())}
-        return tuple(channel for channel in MATCH_CHANNELS if present[channel])
+        return tuple(channel for channel in MATCH_CHANNELS if present.get(channel, False))
 
 
 @dataclass

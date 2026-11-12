@@ -1,5 +1,6 @@
 """Class c, a drawn map placed by its streets (docs/research/M20-import-local.md §3 c): found, refused, or parked with pairs."""
 
+import math
 import shutil
 from collections.abc import Sequence
 from pathlib import Path
@@ -8,7 +9,8 @@ import numpy
 import pytest
 from hcm_pipeline.geo import to_mercator
 from hcm_pipeline.jobs import Done, JobContext, Waiting
-from hcm_pipeline.placing import fine, single
+from hcm_pipeline.placing import fine, single, suggest
+from hcm_pipeline.placing.geometry import apply, invert
 from hcm_pipeline.placing.raster_io import Pair, WarpPlan, dpi_of, read_working, warp_by_pairs
 from hcm_pipeline.placing.series import series_of
 from hcm_pipeline.raster import gdal
@@ -29,6 +31,18 @@ def drawn_map(ctx: JobContext, name: str, drawing: Drawing, dpi: int | None = No
     target.parent.mkdir(parents=True, exist_ok=True)
     write_map(target, image, grey=drawing.style != "colour", dpi=dpi)
     return name
+
+
+def off_the_ground(pairs: Sequence[object], truth: numpy.ndarray) -> numpy.ndarray:
+    """Ground metres between each offered pair's place and where the map's true placement puts its pixel."""
+    back = invert(truth)
+    gaps = []
+    for pair in pairs:
+        assert isinstance(pair, dict)
+        x, y = to_mercator(pair["geo"]["lng"], pair["geo"]["lat"])
+        expected = apply(back, numpy.array([[pair["pixel"]["x"], pair["pixel"]["y"]]]))[0]
+        gaps.append(math.hypot(expected[0] - x, expected[1] - y) * fine.ground_of(pair["geo"]["lat"]))
+    return numpy.array(gaps)
 
 
 def town_drawing(rotation: float = 3.0, style: str = "grey", metres_per_px: float = 5.2) -> Drawing:
@@ -80,6 +94,9 @@ def test_bad_path_a_map_of_another_town_is_never_placed(world: PipelineWorld, tm
     version = world.version()
     assert "archive" not in version
     assert version["state"] == "needs_gcps"
+    suggestions = version["suggestions"]
+    assert isinstance(suggestions, dict)
+    assert suggestions["pairs"] == []
 
 
 def test_bad_path_a_map_with_no_scale_that_does_not_place_waits_with_suggested_pairs(world: PipelineWorld, tmp_path: Path) -> None:
@@ -97,7 +114,11 @@ def test_bad_path_a_map_with_no_scale_that_does_not_place_waits_with_suggested_p
     suggestions = version["suggestions"]
     assert isinstance(suggestions, dict)
     assert suggestions["method"] == "junctions"
-    assert 0 < len(suggestions["pairs"]) <= 100
+    pairs = suggestions["pairs"]
+    assert isinstance(pairs, list)
+    # None rather than bad ones: whatever is offered lies on the ground (a wobbled drawing may offer nothing at all).
+    assert len(pairs) <= suggest.MAX_OFFERED
+    assert all(gap < 80.0 for gap in off_the_ground(pairs, placement(5.2, 3.0, (550, 500))))
 
 
 def test_bad_path_with_no_city_bounds_or_no_reference_the_map_waits(world: PipelineWorld, tmp_path: Path) -> None:

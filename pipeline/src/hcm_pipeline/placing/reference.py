@@ -2,32 +2,34 @@
 
 OpenStreetMap is asked once for the city's whole window (cached beside this computer's jobs) and drawn on any box inside it.
 A reference is street centre lines on a north-up EPSG:3857 grid: their skeleton, its junctions in Mercator metres, and a closeness image
-(1 on a line, falling off over a few pixels) the coarse search scores against. The ladder's rung is a calibrated layer of the city (the
-job's `referenceLayerIds`, an older or newer map already placed): its own street network, read from its COG through the same classical
-path as the map's, and its own checkpoint error, which is added in quadrature to the figure of every map placed on it. OpenStreetMap's
-highways (Overpass, cached beside the job) are the last rung. Mapbox Satellite is never a reference (its terms).
+(1 on a line, falling off over a few pixels) the coarse search scores against. The ladder's rung is a published layer of the city, an
+older or newer map already placed (`ladder`: the nearest year of the same kind, or the job's `referenceLayerIds`): its own street
+network, read from its own public tiles (`tiles/{city}/{layer}/{version}.pmtiles`, only the tiles over the box, by range) through the
+same classical path as the map's, and its own checkpoint error, which is added in quadrature to the figure of every map placed on it.
+OpenStreetMap's highways (Overpass, cached beside the job) are the last rung. Mapbox Satellite is never a reference (its terms).
 """
 
 import json
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Final
 
 import cv2
+import httpx
 import numpy
 from numpy.typing import NDArray
 
-from hcm_pipeline import paths
 from hcm_pipeline.documents import city_bounds
-from hcm_pipeline.geo import Grid, MercatorBox
+from hcm_pipeline.geo import Grid, MercatorBox, zoom_resolution
 from hcm_pipeline.jobs import JobContext
+from hcm_pipeline.objects import GCS_BASE_URL
 from hcm_pipeline.osm import draw
 from hcm_pipeline.placing.geometry import FloatArray
+from hcm_pipeline.placing.ladder import Rung
 from hcm_pipeline.placing.streets import BoolArray, UInt8Array, junctions, line_skeleton, street_skeleton
-from hcm_pipeline.raster import gdal
-from hcm_pipeline.rasters import WEB_MERCATOR, srs_wkt
 from hcm_pipeline.stac import ReferenceUnavailableError
+from hcm_pipeline.tiles import read
 
 # The closeness image falls to 1/e this many pixels from a line.
 CLOSENESS_PX: Final = 2.0
@@ -35,6 +37,15 @@ CLOSENESS_PX: Final = 2.0
 FAR_REACHES: Final = 10.0
 # How much wider than the city a map may reach (a regional map shows the city's surroundings).
 CITY_MARGIN: Final = 0.5
+TILE_PX: Final = 256
+PAPER: Final = 255
+GREY_DIMS: Final = 2
+RGBA_BANDS: Final = 4
+HALF_WORLD_M: Final = 20037508.342789244
+# A rung is read from at most this many tiles: a coarser zoom when a box would need more.
+MAX_TILES: Final = 400
+# Where a public object is read from (the published layers' tiles).
+PUBLIC_BASE_URL = GCS_BASE_URL
 
 
 @dataclass(frozen=True)
@@ -108,42 +119,99 @@ def osm_reference(ctx: JobContext, box: MercatorBox, resolution: float) -> Refer
     return reference_of(line_skeleton(draw(features, grid)), grid, "osm")
 
 
-def _number(record: Mapping[str, object] | None, *keys: str) -> float | None:
-    value: object = record
-    for key in keys:
-        value = value.get(key) if isinstance(value, dict) else None
-    return float(value) if isinstance(value, int | float) else None
+def tile_zoom(resolution: float, minzoom: int, maxzoom: int) -> int:
+    """The coarsest zoom whose pixels are at least as fine as `resolution`, within the archive's zooms."""
+    for zoom in range(minzoom, maxzoom + 1):
+        if zoom_resolution(zoom) <= resolution:
+            return zoom
+    return maxzoom
 
 
-def _layer_error(version: Mapping[str, object] | None) -> float | None:
-    return _number(version, "archive", "checkpointRmseM") or _number(version, "georef", "checkpointRmseM")
+def tile_span(box: MercatorBox, zoom: int) -> tuple[int, int, int, int]:
+    """The tiles at `zoom` that cover `box`: first and last column, first and last row."""
+    size = TILE_PX * zoom_resolution(zoom)
+    last = (1 << zoom) - 1
+    column = (int((box.left + HALF_WORLD_M) // size), int((box.right + HALF_WORLD_M) // size))
+    row = (int((HALF_WORLD_M - box.top) // size), int((HALF_WORLD_M - box.bottom) // size))
+    return max(0, column[0]), min(last, column[1]), max(0, row[0]), min(last, row[1])
 
 
-def _read_on_grid(source: str, grid: Grid) -> UInt8Array:
-    left, bottom, right, top = (grid.left, grid.top - grid.height * grid.resolution, grid.left + grid.width * grid.resolution, grid.top)
-    options = {"dstSRS": srs_wkt(WEB_MERCATOR), "outputBounds": (left, bottom, right, top), "width": grid.width, "height": grid.height}
-    warped = gdal.Warp("", source, format="MEM", resampleAlg="average", **options)
-    image = numpy.asarray(warped.GetRasterBand(1).ReadAsArray(), numpy.uint8)
-    warped.Close()
-    return image
+def _grey_tile(data: bytes | None) -> UInt8Array:
+    """A tile as grey with its transparent parts white (paper), or all white when the archive does not hold it."""
+    image = None if data is None else cv2.imdecode(numpy.frombuffer(data, numpy.uint8), cv2.IMREAD_UNCHANGED)
+    if image is None:
+        return numpy.full((TILE_PX, TILE_PX), PAPER, numpy.uint8)
+    return numpy.asarray(cv2.resize(_on_paper(numpy.asarray(image, numpy.uint8)), (TILE_PX, TILE_PX)), numpy.uint8)
 
 
-def ladder_reference(ctx: JobContext, layer_id: str, box: MercatorBox, resolution: float) -> Reference | None:
-    """A calibrated layer's own street network over `box`, with its own error; None when it has no rendered version."""
-    layer = ctx.read(f"cities/{ctx.city}/layers/{layer_id}")
-    version_id = layer.get("currentVersion") if layer else None
-    if not isinstance(version_id, str):
+def _on_paper(image: UInt8Array) -> UInt8Array:
+    """A decoded tile in grey, its transparent pixels white."""
+    if image.ndim == GREY_DIMS:
+        return image
+    grey = numpy.asarray(cv2.cvtColor(image[:, :, :3], cv2.COLOR_BGR2GRAY), numpy.uint8)
+    if image.shape[2] < RGBA_BANDS:
+        return grey
+    return numpy.where(image[:, :, 3] > 0, grey, PAPER).astype(numpy.uint8)
+
+
+def _row(archive: read.Archive, zoom: int, columns: tuple[int, int], y: int) -> UInt8Array:
+    return numpy.hstack([_grey_tile(read.tile(archive, zoom, x, y)) for x in range(columns[0], columns[1] + 1)])
+
+
+def mosaic(archive: read.Archive, box: MercatorBox, grid: Grid) -> UInt8Array:
+    """The archive's tiles over `box` resampled onto `grid` (both north-up Web Mercator: a crop and a resize)."""
+    zoom = tile_zoom(grid.resolution, archive.minzoom, archive.maxzoom)
+    while zoom > archive.minzoom and _count(tile_span(box, zoom)) > MAX_TILES:
+        zoom -= 1
+    first_col, last_col, first_row, last_row = tile_span(box, zoom)
+    rows = [_row(archive, zoom, (first_col, last_col), y) for y in range(first_row, last_row + 1)]
+    image = numpy.vstack(rows)
+    size = zoom_resolution(zoom)
+    factor = size / grid.resolution
+    small = cv2.resize(
+        image, (max(1, round(image.shape[1] * factor)), max(1, round(image.shape[0] * factor))), interpolation=cv2.INTER_AREA
+    )
+    left = first_col * TILE_PX * size - HALF_WORLD_M
+    top = HALF_WORLD_M - first_row * TILE_PX * size
+    shift = numpy.array([[1.0, 0.0, (grid.left - left) / grid.resolution], [0.0, 1.0, (top - grid.top) / grid.resolution]])
+    placed = cv2.warpAffine(small, shift, (grid.width, grid.height), flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP, borderValue=255)
+    return numpy.asarray(placed, numpy.uint8)
+
+
+def _count(span: tuple[int, int, int, int]) -> int:
+    return (span[1] - span[0] + 1) * (span[3] - span[2] + 1)
+
+
+def public_fetch(ctx: JobContext, path: str) -> read.Fetch:
+    """`fetch(offset, length)` of a public object: one HTTP `Range` request each."""
+    url = f"{PUBLIC_BASE_URL}/{ctx.config.public_bucket}/{path}"
+
+    def fetch(offset: int, length: int) -> bytes:
+        reply = ctx.services.downloads.get(url, headers={"Range": f"bytes={offset}-{offset + length - 1}"})
+        reply.raise_for_status()
+        return reply.content
+
+    return fetch
+
+
+def tiles_reference(ctx: JobContext, rung: Rung, box: MercatorBox, resolution: float) -> Reference | None:
+    """A published layer's own street network over `box`, read from its public tiles, with its own error; None when its tiles
+    cannot be read or show nothing there."""
+    path = f"tiles/{ctx.city}/{rung.layer_id}/{rung.version_id}.pmtiles"
+    try:
+        archive = read.open_archive(public_fetch(ctx, path))
+        grid = Grid.over(box, resolution)
+        image = mosaic(archive, box, grid)
+    except (httpx.HTTPError, read.ArchiveError) as error:
+        ctx.log.warn(f"the {rung.year} map could not be read as a reference: {error}", ctx.step)
         return None
-    version = ctx.read(ctx.version_path(version_id))
-    local = ctx.stage(paths.version(ctx.city, layer_id, version_id, "cog.tif"), f"ladder-{layer_id}.tif")
-    grid = Grid.over(box, resolution)
-    image = _read_on_grid(str(local), grid)
-    return reference_of(street_skeleton(image), grid, f"layer:{layer_id}", _layer_error(version))
+    skeleton = street_skeleton(image)
+    return reference_of(skeleton, grid, rung.label, rung.error_m) if skeleton.any() else None
 
 
-def references(ctx: JobContext, layer_ids: Sequence[str], box: MercatorBox, resolution: float) -> list[Reference]:
+def references(ctx: JobContext, ladder: Sequence[Rung], box: MercatorBox, resolution: float) -> list[Reference]:
     """The ladder's rungs in order, then OpenStreetMap: each that could be read."""
-    rungs = [ladder_reference(ctx, layer_id, box, resolution) for layer_id in layer_ids]
+    rungs = [tiles_reference(ctx, rung, box, resolution) for rung in ladder]
     found = [*rungs, osm_reference(ctx, box, resolution)]
     return [reference for reference in found if reference is not None]
 

@@ -24,7 +24,9 @@ from hcm_pipeline.georef.transforms import Fit, Gcp, enabled_gcps, fit, residual
 from hcm_pipeline.model import Record, Timestamp
 
 AUTO_GCP_METHODS: Final = ("sift", "orb", "junctions")
-MATCH_CHANNELS: Final = ("s2", "osm")
+# `layer`: a published layer of the city (an older or newer map), which the suggestion's `reference` names.
+LAYER_CHANNEL: Final = "layer"
+MATCH_CHANNELS: Final = ("s2", "osm", LAYER_CHANNEL)
 AUTO_GCP_MIN_CONFIDENCE: Final = 0.6
 AUTO_GCP_SUGGEST_MIN: Final = 0.3
 AUTO_GCP_CHECKPOINT_SHARE: Final = 0.2
@@ -48,6 +50,17 @@ class AutoPair:
 
 
 @dataclass(frozen=True)
+class SuggestionReference:
+    """The published layer the suggestions were found on: its id and its year."""
+
+    layer_id: str
+    year: int
+
+    def as_record(self) -> Record:
+        return {"layerId": self.layer_id, "year": self.year}
+
+
+@dataclass(frozen=True)
 class GcpSuggestions:
     """`layerVersion.suggestions` (`gcpSuggestionsSchema` of `@hcm/shared`)."""
 
@@ -57,10 +70,12 @@ class GcpSuggestions:
     tiles: tuple[int, int]
     pairs: tuple[Gcp, ...]
     min_confidence: float = AUTO_GCP_MIN_CONFIDENCE
+    reference: SuggestionReference | None = None
 
     def as_record(self) -> Record:
         matched, total = self.tiles
-        return {
+        found = {} if self.reference is None else {"reference": self.reference.as_record()}
+        return found | {
             "method": self.method,
             "channels": list(self.channels),
             "generatedAt": self.generated_at,

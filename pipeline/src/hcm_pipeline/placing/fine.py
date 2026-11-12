@@ -165,17 +165,5 @@ def fit(problem: Problem, start: FloatArray, reach: float) -> Fine | None:
     return Fine(transform, source, target, checked(errors, places, names, problem.extent, problem.gross_m), len(training))
 
 
-def suggestion_pairs(
-    points: FloatArray, places: FloatArray, matrix: FloatArray, reach: float
-) -> tuple[FloatArray, FloatArray, list[float]]:
-    """A placement that did not hold: its closest pairs as suggestions, each scored by how close (1 on the spot, 0 at `reach`)."""
-    if len(points) == 0 or len(places) < CANDIDATES:
-        return numpy.zeros((0, 2)), numpy.zeros((0, 2)), []
-    index, gap = nearest(apply(matrix, points), places, 1)
-    close = gap[:, 0] <= reach
-    scores = [round(1.0 - float(value) / reach, 3) for value in gap[close, 0]]
-    return points[close], places[index[close, 0]], scores
-
-
 def ground_of(latitude: float) -> float:
     return math.cos(math.radians(latitude))

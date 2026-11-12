@@ -13,6 +13,7 @@ from typing import Final
 
 from hcm_pipeline.archive.intake import ArchiveStore
 from hcm_pipeline.jobs import JobContext
+from hcm_pipeline.placing.ladder import Rung
 from hcm_pipeline.placing.output import param_int
 from hcm_pipeline.steps.gather import SHEETS, store_of, text_param
 
@@ -39,6 +40,8 @@ class SeriesJob:
     paper_transparent: bool
     reference_layers: tuple[str, ...]
     grid_id: str | None
+    # The published versions it is matched against before OpenStreetMap (`ladder.rungs`, filled when it is placed).
+    ladder: tuple[Rung, ...] = ()
 
     @property
     def nearest(self) -> bool:

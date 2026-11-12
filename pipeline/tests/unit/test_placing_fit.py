@@ -37,7 +37,6 @@ def test_bad_path_a_fit_with_nothing_to_pair_or_that_drifts_is_refused() -> None
     swollen = geometry.compose(matrix, numpy.array([[1.25, 0.0, -75.0], [0.0, 1.25, -75.0]]))
 
     assert len(fine.candidates(empty, two, matrix, 10.0)[0]) == 0
-    assert fine.suggestion_pairs(empty, two, matrix, 10.0)[2] == []
     held = fine.fit(problem, matrix, 20.0)
     assert held is not None
     assert len(fine.check_errors(problem, held.transform, numpy.zeros(len(grid), numpy.bool_))[0]) == 0

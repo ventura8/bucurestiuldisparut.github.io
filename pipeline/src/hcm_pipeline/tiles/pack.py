@@ -33,7 +33,7 @@ E7: Final = 10_000_000
 GZIP_LEVEL: Final = 9
 COPY_BYTES: Final = 1024 * 1024
 TILE_SUFFIX: Final = ".webp"
-_HEADER: Final = struct.Struct("<7sBQQQQQQQQQQQBBBBBBiiiiBii")
+HEADER: Final = struct.Struct("<7sBQQQQQQQQQQQBBBBBBiiiiBii")
 
 
 class PackError(RuntimeError):
@@ -188,7 +188,7 @@ def _header(info: ArchiveInfo, root: bytes, metadata: bytes, leaves: bytes, tile
     size, count = sum(tile.size for tile in tiles), len(tiles)
     west, south, east, north = (round(value * E7) for value in info.bounds.values())
     centre_lng, centre_lat = (west + east) // 2, (south + north) // 2
-    return _HEADER.pack(
+    return HEADER.pack(
         *(b"PMTiles", 3),
         *(HEADER_BYTES, len(root), metadata_at, len(metadata), leaves_at, len(leaves), tiles_at, size),
         *(count, count, count),

@@ -13,10 +13,11 @@ from typing import Final
 
 from hcm_pipeline.archive import model
 from hcm_pipeline.geo import to_lnglat, zoom_resolution
-from hcm_pipeline.georef.autogcp import MAX_SUGGESTIONS, GcpSuggestions
+from hcm_pipeline.georef.autogcp import LAYER_CHANNEL, MAX_SUGGESTIONS, GcpSuggestions, SuggestionReference
 from hcm_pipeline.georef.transforms import Gcp
 from hcm_pipeline.jobs import Done, JobContext, Waiting
 from hcm_pipeline.placing.checks import Checked
+from hcm_pipeline.placing.ladder import Rung
 from hcm_pipeline.placing.raster_io import Pair
 
 DEFAULT_MAXZOOM: Final = 18
@@ -110,9 +111,13 @@ def _gcp(index: int, pair: Pair, score: float) -> Gcp:
     return Gcp(f"j{index:03d}", pair.px, pair.py, lat, lng, True, "auto", max(0.0, min(1.0, score)))
 
 
-def suggestions(ctx: JobContext, pairs: Sequence[Pair], scores: Sequence[float], tried: int) -> dict[str, object]:
-    """The best pairs (at most 100) as the version's suggestions, for the georeferencer to open with."""
+def suggestions(ctx: JobContext, pairs: Sequence[Pair], scores: Sequence[float], tried: int, rung: Rung | None = None) -> dict[str, object]:
+    """The best pairs (at most 100) as the version's suggestions, for the georeferencer to open with; found on `rung`, a published
+    layer of the city (its layer and year, so the page says "from the 1911 map" and shows it), or on OpenStreetMap without one.
+    An empty list replaces older suggestions: none rather than stale ones."""
     ranked = sorted(zip(pairs, scores, strict=True), key=lambda item: -item[1])[:MAX_SUGGESTIONS]
     gcps = tuple(_gcp(index, pair, score) for index, (pair, score) in enumerate(ranked))
-    record = GcpSuggestions(JUNCTIONS, ("osm",), ctx.now(), (len(gcps), max(tried, len(gcps))), gcps, 0.0).as_record()
+    channel = ("osm",) if rung is None else (LAYER_CHANNEL,)
+    found = None if rung is None else SuggestionReference(rung.layer_id, rung.year)
+    record = GcpSuggestions(JUNCTIONS, channel, ctx.now(), (len(gcps), max(tried, len(gcps))), gcps, 0.0, found).as_record()
     return {"suggestions": record}

@@ -55,6 +55,13 @@ The scenario rows are `S-A120-*` (functions) and `S-P20-*` (pipeline) in `e2e/sc
    - Borroczyn → 1770–1799.
    A reference that is not published (IPB, for rights) is still used privately. Only its derived transform and its vector junctions are used.
 
+   **As built (2026-11-13, the owner: "compare with other years than today"):** a series that names no `referenceLayerIds` gets its
+   rungs on its own (`placing/ladder.py`): the city's published versions of other layers that have their own tiles and a year, the same
+   kind first (a drawn map against drawn maps, a frame against frames and joins), then the nearest year, then the widest outline over the
+   city; at most two, then OpenStreetMap. A rung is read from its public tiles (`tiles/{city}/{layer}/{version}.pmtiles`, only the tiles
+   over the box, by HTTP range: `tiles/read.py`), never from Mapbox; a rung that cannot be read is left out with a warning. The worker
+   reads the city's versions (allowed since M15), not its layers.
+
 ## 2. Intake and scan (the worker)
 
 ### 2.1 Getting the files to the worker
@@ -185,6 +192,16 @@ Calibrating a drawn map automatically is hard: it has drafting error, generalisa
    - `CHECK_GROSS_M` scaled to the map (5 mm on paper × the scale, at least 100 m). Any dropped check blocks auto-publish (M9 §11).
    - The coverage rule is relative to **the map's own extent**, not the city's (§5).
 7. **Low confidence.** `awaiting_gcps`. The surviving correspondences are saved as **suggested pairs** (`auto`, disabled), and the georeferencer opens with them (M4's suggestions). After about 4 points from the admin, the same chain runs seeded (M9's "admin's points seed the same step").
+
+   **None rather than bad ones (2026-11-13, `placing/suggest.py`).** The first version paired every junction with its nearest
+   reference junction under the placement that had *not* held, and scored each by that closeness alone: on the owner's maps of 1886
+   to 1921 the 62 to 100 pairs offered lay a median 13 to 24 km from where the owner's own points put them, none within 150 m, each
+   scored above 0.9. Now, for each rung's placement (and its rivals), against that rung read finely over where the placement puts the
+   map: the nearest pairs within 40 map pixels; a seeded RANSAC similarity, then an affine, keeps those within a third of that, one to
+   one; the same count with the placement moved four reaches in eight directions is what chance gives; the pairs are offered only when
+   at least 6 and at least twice chance, at most 2 per cell of a 4 x 4 grid, at most 24, the closest first. The confidence is the lift
+   over chance times the closeness (0.6 and over reads "likely right"); the record names the rung it came from (`reference`:
+   `{layerId, year}`, channel `layer`), and an empty list replaces older suggestions.
 
 ### (d) Non-map pages and duplicates
 

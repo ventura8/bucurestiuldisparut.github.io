@@ -9,18 +9,26 @@ from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from pathlib import Path
 
+import cv2
+import numpy
+import pytest
 from hcm_pipeline.archive.intake import ArchiveStore
 from hcm_pipeline.archive.model import Probe
 from hcm_pipeline.documents import Version
+from hcm_pipeline.geo import Bounds, to_mercator, zoom_resolution
 from hcm_pipeline.joblog import JobLog
 from hcm_pipeline.jobs import JobContext, RunFlags
 from hcm_pipeline.log import get_logger
 from hcm_pipeline.model import Job
+from hcm_pipeline.placing import reference
+from hcm_pipeline.placing.reference import HALF_WORLD_M, TILE_PX
 from hcm_pipeline.steps.gather import SHEETS
+from hcm_pipeline.tiles.pack import ArchiveInfo, pack
 
 from tests.fakes.http import Reply
-from tests.fakes.world import JOB_ID, OVERPASS_PATH, PipelineWorld
-from tests.synthetic.town import Line, overpass_of, town_lines
+from tests.fakes.world import CITY, JOB_ID, OVERPASS_PATH, PipelineWorld
+from tests.synthetic.scenes import CENTRE
+from tests.synthetic.town import DEFAULT_TOWN, Drawing, Line, draw_map, overpass_of, town_lines
 
 SERIES_ID = "s-0123456789ab"
 
@@ -64,3 +72,51 @@ def originals(ctx: JobContext) -> Path:
     folder = ArchiveStore(root).files(str(ctx.job.params["archiveId"]))
     folder.mkdir(parents=True, exist_ok=True)
     return folder
+
+
+LADDER_ZOOM = 15
+
+
+def town_tiles(tree: Path, zoom: int = LADDER_ZOOM, shift_m: float = 0.0) -> Path:
+    """The synthetic town drawn as a published layer's `{z}/{x}/{y}.webp` tiles at `zoom` (grey blocks, paper streets), moved `shift_m`
+    east."""
+    size = TILE_PX * zoom_resolution(zoom)
+    cx, cy = to_mercator(*CENTRE)
+    reach = DEFAULT_TOWN.half_m + 400
+    first, last = int((cx - reach + HALF_WORLD_M) // size), int((cx + reach + HALF_WORLD_M) // size)
+    top, bottom = int((HALF_WORLD_M - cy - reach) // size), int((HALF_WORLD_M - cy + reach) // size)
+    for x in range(first, last + 1):
+        for y in range(top, bottom + 1):
+            left, upper = x * size - HALF_WORLD_M + shift_m, HALF_WORLD_M - y * size
+            step = zoom_resolution(zoom)
+            to_pixels = numpy.array([[1 / step, 0.0, -left / step], [0.0, -1 / step, upper / step]])
+            image = draw_map(town_lines(), Drawing(to_pixels, (TILE_PX, TILE_PX), "grey", street_px=5, margin_px=0))
+            target = tree / str(zoom) / str(x) / f"{y}.webp"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(str(target), image)
+    return tree
+
+
+def serve_public(world: PipelineWorld, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The public bucket's host is the fake HTTP server (the published layers' tiles)."""
+    monkeypatch.setattr(reference, "PUBLIC_BASE_URL", world.http.root_url)
+
+
+def publish_layer(world: PipelineWorld, tmp_path: Path, layer: str, year: int, shift_m: float = 0.0, **fields: object) -> str:
+    """A published version of `layer` with the town as its public tiles (served by range), its year and its `fields`; its id."""
+    version = f"v-{layer}"
+    archive = tmp_path / f"{layer}.pmtiles"
+    tree = town_tiles(tmp_path / f"tree-{layer}", shift_m=shift_m)
+    pack(tree, archive, ArchiveInfo(layer, Bounds(26.0, 44.3, 26.2, 44.5), LADDER_ZOOM, LADDER_ZOOM))
+    path = f"/{world.config.public_bucket}/tiles/{CITY}/{layer}/{version}.pmtiles"
+    world.http.serve(path, archive.read_bytes(), content_type="application/octet-stream")
+    outline = [{"lat": 44.3, "lng": 26.0}, {"lat": 44.5, "lng": 26.2}]
+    record = {
+        "state": "published",
+        "layerId": layer,
+        "year": year,
+        "origin": "archive",
+        "output": {"tiles": {"path": "x"}, "outline": outline},
+    }
+    world.store.seed(f"cities/{CITY}/layerVersions/{version}", {**record, **fields})
+    return version
