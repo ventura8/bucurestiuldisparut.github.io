@@ -1,6 +1,6 @@
 # Engine API v1
 
-The public contract of the **Historic City Map** viewer engine (`@hcm/engine`) for city owners who embed it and for the agents who build it. It covers the embed configuration (`config.js`), the `<hcm-map-viewer>` element, the JavaScript API, the URL hash, the City Manifest v1 and the versioning rules. The exact TypeScript interfaces behind it, and who owns which module, are in [research/M1-interfaces.md](research/M1-interfaces.md); the architecture is in [ARCHITECTURE.md](ARCHITECTURE.md).
+The public contract of the **Historic City Map Maker** viewer engine (`@hcm/engine`) for city owners who embed it and for the agents who build it. It covers the embed configuration (`config.js`), the `<hcm-map-viewer>` element, the JavaScript API, the URL hash, the City Manifest v1 and the versioning rules. The exact TypeScript interfaces behind it, and who owns which module, are in [research/M1-interfaces.md](research/M1-interfaces.md); the architecture is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Status (M1): the manifest (with the POIs and overlay defaults of PLAN Addendum 3), configuration, URL hash, validation and overlay-model contracts are implemented and tested in `@hcm/shared` (`packages/shared/src/schemas/`, `packages/shared/src/url/hash.ts`, `packages/shared/src/overlays/`). The element, the JavaScript API and the auto-boot are implemented in `@hcm/engine` (`packages/engine/src/index.ts`, `packages/engine/src/mount.ts`) and `@hcm/ui` (`packages/ui/src/viewer/`) and boot the built Bucharest site in the e2e smoke (scenario S-V16-HAPPY).
 
@@ -49,7 +49,7 @@ The manifest is the one the admin publishes to the project's public bucket. A si
 
 ## The starter kit
 
-A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](research/M5-interfaces.md) §3), or runs `npx create-historic-city@1.0.0 <folder>`, which writes the same three files with its name, rectangle, start view and theme ([SELF_HOST.md](SELF_HOST.md)). There is no `config.js`: the element's attributes are the configuration.
+A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](research/M5-interfaces.md) §3), or runs `npx create-historic-city@1.0.0-beta.1 <folder>`, which writes the same three files with its name, rectangle, start view and theme ([SELF_HOST.md](SELF_HOST.md)). There is no `config.js`: the element's attributes are the configuration.
 
 | File | Role |
 | --- | --- |
@@ -420,6 +420,7 @@ A fetch that returns 404 shows `error.manifest.notFound`, a network failure `err
 
 - **Engine releases follow SemVer.** jsDelivr's `@1` follows every 1.x release; Bucharest ships the exact build of its commit. The first release is **v1.0.0**: everything this document describes, the M4 compare additions included, is its baseline ([Releases on jsDelivr](#releases-on-jsdelivr)).
 - **What a level means for a city.** A patch fixes behaviour behind the same surface; a minor adds an optional manifest field or a new name of the API, element or hash (a manifest that uses it sets `city.engine.minVersion`); a major (manifest v2, a removed name) documents its migration in its release notes.
+- **Pre-releases** (`1.0.0-beta.1`, `1.0.0-rc.1`; only `-beta.N` and `-rc.N`) come before their release (`1.0.0-beta.1` < `1.0.0-rc.1` < `1.0.0`): jsDelivr serves one only at its full version (`@v1.0.0-beta.1`), a range such as `@1` never resolves to it, and `create-historic-city` publishes one under the dist-tag `beta` or `rc`. A manifest whose `city.engine.minVersion` is `1.0.0` refuses a 1.0.0 beta engine. The first pre-release is **v1.0.0-beta.1** (`docs/releases/v1.0.0-beta.1.md`).
 - **The manifest has its own generation number** (`version: 1`). Engine 1.x reads only manifest v1.
 - **Within v1 a field is only ever added, and only as optional**, in a minor engine release. A manifest that uses a new field sets `city.engine.minVersion` to that release, so an older engine shows "this map needs engine X" instead of rejecting the unknown key. The manifest builder sets `minVersion` automatically.
 - **Removing, renaming or changing the meaning of a field** makes manifest v2 and engine 2.0; the builder can then write both generations side by side during the transition.
@@ -437,9 +438,9 @@ A release is a tag `vX.Y.Z` of this repository ([releases/README.md](releases/RE
 
 | Use | Address | Integrity |
 | --- | --- | --- |
-| A page that pins the release (the starter kit, and every city that copies it) | `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@vX.Y.Z/cdn/engine/engine.iife.js` and `engine.css` | yes: the values of that release's `release.json`, also in the GitHub Release body |
+| A page that pins the release (the starter kit, and every city that copies it) | `https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@vX.Y.Z/cdn/engine/engine.iife.js` and `engine.css` | yes: the values of that release's `release.json`, also in the GitHub Release body |
 | The engine's fonts and chunks | the same folder: `engineBase` defaults to the folder of the engine script | not needed: the IIFE carries the chunks inline, and fonts are not scripts |
-| A page that follows the 1.x line | `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@1/cdn/engine/engine.iife.js` | never: the files change under it with every 1.x release |
+| A page that follows the 1.x line | `https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@1/cdn/engine/engine.iife.js` | never: the files change under it with every 1.x release |
 
 - **`release.json`** (`engineReleaseSchema` in `packages/shared/src/schemas/engine-release.ts`): `version`; `repository`; `base`, the pinned folder above; `mapboxGl`, the Mapbox GL JS release the engine is written against with the address and integrity of its script and stylesheet on api.mapbox.com; `files`, every file of the folder (never `release.json` itself) with its size in bytes and its `sha384-` integrity. Its address is `<base>release.json`.
 - **Pinning a page.** Load Mapbox GL JS's stylesheet and deferred script, then the engine's `engine.css` and deferred `engine.iife.js` from the pinned folder, each with `integrity` and `crossorigin="anonymous"`, and let the page's Content Security Policy name the folder in `script-src`, `style-src` and `font-src`. Pin the IIFE, not `engine.mjs`: the module build fetches its chunks with dynamic imports that carry no integrity.

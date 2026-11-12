@@ -1,6 +1,6 @@
 # CI Quality Gates Skill
 
-Every gate of **Historic City Map**, in the order the pipeline runs it: the command (as registered in `scripts/ci/pipeline.py`), its configuration, what it fails on, and how to fix a failure **without an inline suppression**. Which gates make up which stage, and what `quality` and `all` mean, is defined only in `quality/pipeline_skill.md` → *Stages*.
+Every gate of **Historic City Map Maker**, in the order the pipeline runs it: the command (as registered in `scripts/ci/pipeline.py`), its configuration, what it fails on, and how to fix a failure **without an inline suppression**. Which gates make up which stage, and what `quality` and `all` mean, is defined only in `quality/pipeline_skill.md` → *Stages*.
 
 ```mermaid
 flowchart LR

@@ -1,6 +1,6 @@
 # SonarQube Skill
 
-**Historic City Map** is analysed by SonarQube Cloud: organisation `ventura8`, project key `ventura8_bucurestiuldisparut.github.io`. The repository is public, so analysis runs both in CI (free) and locally in the `sonar` stage, which is part of `all` (`quality/pipeline_skill.md` → *Stages*). Status today: `sonar-project.properties`, `scripts/ci/sonar_scan.sh`, `scripts/ci/sonar_report.py`, the CI job `sonarqube` and the `sonar` gate of the pipeline (`Gate("sonar", ("bash", "scripts/ci/sonar_scan.sh"))`, the scanner copied into `docker/Dockerfile.quality` from the pinned scanner image) exist; `scripts/ci/sonar_setup.py` is planned. Without a token the stage skips with a notice and passes.
+**Historic City Map Maker** is analysed by SonarQube Cloud: organisation `ventura8`, project key `ventura8_bucurestiuldisparut.github.io`. The repository is public, so analysis runs both in CI (free) and locally in the `sonar` stage, which is part of `all` (`quality/pipeline_skill.md` → *Stages*). Status today: `sonar-project.properties`, `scripts/ci/sonar_scan.sh`, `scripts/ci/sonar_report.py`, the CI job `sonarqube` and the `sonar` gate of the pipeline (`Gate("sonar", ("bash", "scripts/ci/sonar_scan.sh"))`, the scanner copied into `docker/Dockerfile.quality` from the pinned scanner image) exist; `scripts/ci/sonar_setup.py` is planned. Without a token the stage skips with a notice and passes.
 
 ## Scope (`sonar-project.properties`)
 

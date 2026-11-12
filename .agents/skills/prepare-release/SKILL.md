@@ -1,15 +1,15 @@
 ---
 name: prepare-release
-description: Prepare a Historic City Map release vX.Y.Z - pick the semantic version of the engine surface, align every package.json version and ENGINE_VERSION, write the two release-note files in docs/releases, sync docs, run the full pipeline to a green all, then ask before pushing and tagging; CI builds the GitHub Release and the jsDelivr engine. Use whenever the user asks for a release, a tag, release notes or a version bump.
+description: Prepare a Historic City Map Maker release vX.Y.Z or a pre-release vX.Y.Z-beta.N / -rc.N - pick the semantic version of the engine surface, align every package.json version and ENGINE_VERSION, write the two release-note files in docs/releases, sync docs, run the full pipeline to a green all, then ask before pushing and tagging; CI builds the GitHub Release and the jsDelivr engine. Use whenever the user asks for a release, a tag, release notes or a version bump.
 ---
 
 # Prepare Release Skill
 
-Working notes: `.agent/skills/quality/prepare_release_skill.md`; file rules: `docs/releases/README.md`; contract: `docs/research/M5-interfaces.md` §2. The first release is v1.0.0: its versions are bumped, `cdn/engine/` and the kit's pins wait for the user's answer on `docs/research/DECISIONS-for-review.md` §59c (§63c).
+Working notes: `.agent/skills/quality/prepare_release_skill.md`; file rules: `docs/releases/README.md`; contract: `docs/research/M5-interfaces.md` §2. The first release is the pre-release v1.0.0-beta.1 (`docs/research/DECISIONS-for-review.md` §160, §161): `cdn/engine/` is committed with no EditorConfig exception, since the release transform writes lit-html's whitespace class with escapes (§59c is answered that way).
 
 ## Steps
 
-1. Version `X.Y.Z` (tag `vX.Y.Z`, must match `^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`); a breaking change of the manifest, `config.js`, the element or the `HistoricCityMap` global is a major version.
+1. Version `X.Y.Z` or a pre-release `X.Y.Z-beta.N` / `X.Y.Z-rc.N` (tag `v<version>`, must match `^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(beta|rc)\.(0|[1-9][0-9]*))?$`; no other suffix). A pre-release becomes a GitHub pre-release never marked latest, is pinned on jsDelivr only at its full version (no `@1` line, no purge), and goes to npm under the dist-tag `beta` or `rc`, never `latest` (`releaseDistTag` of `@hcm/shared`); a breaking change of the manifest, `config.js`, the element or the `HistoricCityMap` global is a major version.
 2. In the quality image, in order:
 
    ```bash

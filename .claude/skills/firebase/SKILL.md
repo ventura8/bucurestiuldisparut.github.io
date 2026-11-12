@@ -1,6 +1,6 @@
 ---
 name: firebase
-description: Work with the Historic City Map Firebase side - project bucurestiul-disparut (web config never committed), the demo-hcm emulator project, Cloud Functions v2 as pure handlers with ports and REST adapters tested through run(), default-deny Firestore and Storage rules with the allow/deny matrix and rule coverage, App Check, secrets read at runtime from Secret Manager, consent-gated analytics and Cloud Error Reporting, and the ask-first rule for deploys and project-changing MCP actions. Use for any functions, rules, emulator, Hosting, analytics or crash-reporting task.
+description: Work with the Historic City Map Maker Firebase side - project bucurestiul-disparut (web config never committed), the demo-hcm emulator project, Cloud Functions v2 as pure handlers with ports and REST adapters tested through run(), default-deny Firestore and Storage rules with the allow/deny matrix and rule coverage, App Check, secrets read at runtime from Secret Manager, consent-gated analytics and Cloud Error Reporting, and the ask-first rule for deploys and project-changing MCP actions. Use for any functions, rules, emulator, Hosting, analytics or crash-reporting task.
 ---
 
 # Firebase Skill

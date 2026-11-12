@@ -8,10 +8,10 @@ Without a terminal: the [start page](research/M14-start-your-map.md) does the sa
 
 | Road | Command | What you get |
 | --- | --- | --- |
-| The map only (static) | `npx create-historic-city@1.0.0 my-city` | `index.html`, `city.json`, `README.md` in a new folder: the map on GitHub Pages or any static host, no Firebase. You edit `city.json` by hand (the kit's README says how). |
-| The map with the admin | after the first command, `npx create-historic-city@1.0.0 self-host my-city --project <id>` | The same folder (`self-host` needs it: create the city first), plus a Firebase project of your own with the admin app, at `https://<id>.web.app/`. |
+| The map only (static) | `npx create-historic-city@1.0.0-beta.1 my-city` | `index.html`, `city.json`, `README.md` in a new folder: the map on GitHub Pages or any static host, no Firebase. You edit `city.json` by hand (the kit's README says how). |
+| The map with the admin | after the first command, `npx create-historic-city@1.0.0-beta.1 self-host my-city --project <id>` | The same folder (`self-host` needs it: create the city first), plus a Firebase project of your own with the admin app, at `https://<id>.web.app/`. |
 
-`npm create historic-city@1.0.0 my-city` is the same as the first command. The commands name the exact release: `@1` would run whatever release carries the name on the day you read this.
+`npm create historic-city@1.0.0-beta.1 my-city` is the same as the first command. The commands name the exact release: `@1` would run whatever release carries the name on the day you read this.
 
 ## The kit (minimum questions)
 
@@ -56,9 +56,9 @@ A "no" stops the command at that step and lists the steps left (exit status 0). 
 
 ## Later
 
-- `npx create-historic-city@1.0.0 deploy <folder> --project <id>`: the server alone (steps 1, 8 and 9), once billing is linked;
-- `npx create-historic-city@1.0.0 doctor <folder>`: Node, the tools, `city.json` (valid, with your token) and the engine release in `index.html`;
-- `npx create-historic-city@1.0.0 theme <folder> --seed '#1b6c4a'`: the map's colours from one colour (the four schemes of `city.json`, which the map reads, and the page's colour);
+- `npx create-historic-city@1.0.0-beta.1 deploy <folder> --project <id>`: the server alone (steps 1, 8 and 9), once billing is linked;
+- `npx create-historic-city@1.0.0-beta.1 doctor <folder>`: Node, the tools, `city.json` (valid, with your token) and the engine release in `index.html`;
+- `npx create-historic-city@1.0.0-beta.1 theme <folder> --seed '#1b6c4a'`: the map's colours from one colour (the four schemes of `city.json`, which the map reads, and the page's colour);
 - `npx create-historic-city@<version> upgrade <folder>`: rewrites only the engine block of `index.html` at that CLI's release; the page's security policy keeps the sources you added.
 
 ## What it never does

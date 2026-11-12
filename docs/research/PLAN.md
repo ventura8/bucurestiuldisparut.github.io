@@ -2,7 +2,7 @@
 
 ## Context
 
-The repo `ventura8/bucurestiuldisparut.github.io` is public, forked from `fostulbucuresti`, and served by GitHub Pages from `master`. Today it is a 2015–2022 hand-written Mapbox GL v2.6 page:
+The repo `ventura8/bucurestiuldisparut.github.io` (renamed `ventura8/historic-city-map-maker` on 2026-11-12, `DECISIONS-for-review.md` §161) is public, forked from `fostulbucuresti`, and served by GitHub Pages from `master`. Today it is a 2015–2022 hand-written Mapbox GL v2.6 page:
 
 - 9 hard-coded historical layers, all owned by the `fostulbucuresti` Mapbox account
 - a destroyed-streets tileset

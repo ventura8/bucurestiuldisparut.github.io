@@ -1,6 +1,6 @@
 ---
 name: setup-assistant
-description: Build or operate the Historic City Map admin Setup Assistant and the human-only steps around it - Google Cloud billing and Blaze, the Provision cloud step, Mapbox (demo exit, secret token paste, auto-minted URL-restricted public tokens), USGS (ERS, M2M request, 60 second application token, approval polling), Analytics and crash reporting - with minimum admin input, verified deep links, and what Claude may and may not do (never type credentials, pay or create accounts; consent per action). Use for any setup card, deep link, console walkthrough or browser task in Mapbox, Google Cloud, USGS or SonarCloud.
+description: Build or operate the Historic City Map Maker admin Setup Assistant and the human-only steps around it - Google Cloud billing and Blaze, the Provision cloud step, Mapbox (demo exit, secret token paste, auto-minted URL-restricted public tokens), USGS (ERS, M2M request, 60 second application token, approval polling), Analytics and crash reporting - with minimum admin input, verified deep links, and what Claude may and may not do (never type credentials, pay or create accounts; consent per action). Use for any setup card, deep link, console walkthrough or browser task in Mapbox, Google Cloud, USGS or SonarCloud.
 ---
 
 # Setup Assistant Skill

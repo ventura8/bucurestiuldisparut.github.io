@@ -1,6 +1,6 @@
 # Testing Strategy Skill
 
-How every file of **Historic City Map** reaches 90 % or more per file (lines and branches), and how behaviour is proven from the outside. Background: `docs/research/design-review-testability.md` §3–§4; how to run the tiers: `docs/TESTING.md`.
+How every file of **Historic City Map Maker** reaches 90 % or more per file (lines and branches), and how behaviour is proven from the outside. Background: `docs/research/design-review-testability.md` §3–§4; how to run the tiers: `docs/TESTING.md`.
 
 ## Tiers
 
