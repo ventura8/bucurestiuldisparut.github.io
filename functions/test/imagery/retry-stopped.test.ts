@@ -115,7 +115,7 @@ describe('imagery.retry: a stopped archive series with the owner pairs (2026-11-
         const version = await readVersion(world, SERIES);
         await seedVersion(world, SERIES, { ...parkedVersion(), ...version, state: 'rejected' });
 
-        expect(await failureOf(retry(world))).toMatchObject({ details: { code: 'apiError.imagery.versionState' } });
+        expect(await failureOf(retry(world))).toMatchObject({ details: { code: 'apiError.imagery.versionRejected' } });
 
         expect(await readJob(world, SERIES)).toMatchObject({ status: 'cancelled', cancelRequested: true });
         expect((await readVersion(world, SERIES))?.state).toBe('rejected');
