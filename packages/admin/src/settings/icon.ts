@@ -21,7 +21,7 @@ export interface IconSectionState {
 export const NO_ICON_SECTION: IconSectionState = { busy: false, error: null };
 
 /** What the card asks for: the chosen file as base64, or the default; the store adds the city. */
-export type IconChange = { readonly kind: 'upload'; readonly image: string } | { readonly kind: 'reset' };
+type IconChange = { readonly kind: 'upload'; readonly image: string } | { readonly kind: 'reset' };
 
 export interface IconIntents {
     /**

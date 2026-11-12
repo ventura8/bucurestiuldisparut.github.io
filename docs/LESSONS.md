@@ -3419,4 +3419,3 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-12, track/favicon: `build.test.ts` reads the built `config.js` with `readConfigJs`.
     - Found by: reading the tests before the change. Fix: the tab icon's script is its own file, `tab-icon.js` (§163c).
     - **A page's new behaviour gets its own script file; `config.js` stays data.**
-

@@ -58,6 +58,57 @@ Every page has a tab icon: by default the Layers panel's map glyph (Material Sym
 
 The default's outline is `MAP_GLYPH_PATH` (`packages/shared/src/kit/map-icon.ts`), checked against the kit's font subset by the static stage's `fonts` gate; `functions/test/cities/map-icon.test.ts` draws the three inlined PNGs again with sharp and compares the pixels.
 
+## The starter kit
+
+A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](research/M5-interfaces.md) §3), or runs `npx create-historic-city@1.0.0-beta.1 <folder>`, which writes the same three files with its name, rectangle, start view and theme ([SELF_HOST.md](SELF_HOST.md)). There is no `config.js`: the element's attributes are the configuration.
+
+| File | Role |
+| --- | --- |
+| `index.html` | the page: the meta CSP first, Mapbox GL JS 3.34.1 from `api.mapbox.com` and the engine's `engine.css` and `engine.iife.js` from a pinned jsDelivr folder, each with `integrity` and `crossorigin`, and `<hcm-map-viewer manifest-url="city.json" lang="ro">` |
+| `city.json` | a City Manifest v1: an example city with one place category and three places (a point, a line, an area), no photos and no layers, and the placeholder token `pk.replace-with-your-token`, which Mapbox refuses until the owner puts their own URL-restricted public token in |
+| `README.md` | the steps, in English |
+
+```html
+<body class="hcm-fullpage">
+    <main>
+        <h1 class="hcm-visually-hidden">Orașul meu</h1>
+        <hcm-map-viewer manifest-url="city.json" lang="ro">
+            <p class="hcm-note" lang="ro">Harta se încarcă. …</p>
+            <p class="hcm-note" lang="en">The map is loading. …</p>
+        </hcm-map-viewer>
+    </main>
+</body>
+```
+
+- **The page frame lives in `engine.css`**, since the kit has no fourth file: `.hcm-fullpage` (on `<body>`: no margin, the system's background and text colours, the viewer filling the window in `dvh`) and `.hcm-note` (a readable line length and size for the notes). A page of its own may use them too.
+- **The note**: an element the engine has not defined shows its children; once the engine defines `<hcm-map-viewer>`, its shadow root (which has no slot) hides them. The bilingual note therefore stays only when the engine was refused (a wrong `integrity`, a version that does not exist) or never came, and it names the README's check. Without JavaScript, `<noscript>` says the map needs it.
+- **The engine block** sits between `<!-- hcm:engine -->` and `<!-- /hcm:engine -->`. `fillKitPage(template, values)` (`@hcm/shared`, `packages/shared/src/kit/page.ts`) replaces only the page's slots: the `lang` of `<html>` and of the element, the title, the description and theme-colour metas, the level-one heading, the element's `manifest-url`, the CSP (always recomputed from the engine's source: `kitContentSecurityPolicy`) and the engine block, either `{kind: 'cdn', release}` (the release's folder, with the integrity `release.json` publishes) or `{kind: 'local'}` (`engine/` beside the page, the static export's). A template without one of these slots, or with one twice, throws `KitPageError`. The release pins the committed template this way; `create-historic-city upgrade` carries a newer release's pins into an existing page.
+- **The tab icon** is the default map glyph, inlined (see [The page's tab icon](#the-pages-tab-icon)); `fillKitPage`'s optional `icon` (a PNG as a `data:` address) replaces it, which the static export does with its city's own. The owner may put any other icon there.
+- **The CSP** is the one table of every engine page (`packages/shared/src/kit/csp.ts`): with the engine from jsDelivr, `script-src`, `style-src` and `font-src` name the pinned folder instead of `'self'`; `connect-src` and `img-src` keep `'self'` for `city.json` and the photos beside it. A manifest that names tiles or photos on another host needs that origin in `img-src` and `connect-src` (the README says so).
+- **Updating the engine** changes the version and both `integrity` values of the engine block together (the new release's `release.json`); a page pinned with integrity never follows a range such as `@1`.
+
+## config.js
+
+`window.HistoricCityMapConfig` is validated with `engineConfigSchema` (`packages/shared/src/schemas/config.ts`); every object is strict, so an unknown key is an error.
+
+| Field | Type | Default | Rule |
+| --- | --- | --- | --- |
+| `manifestUrl` | string | none | https, or relative to the page (no `..`, no `//host`). Exactly one of `manifestUrl` and `manifest`. |
+| `manifest` | object | none | An inline City Manifest v1 (the starter kit's static mode, no backend). Validated like a fetched one. |
+| `cityId` | string | none | `^[A-Za-z0-9_-]{1,40}$`. When present it must equal `manifest.city.id` (else `error.config.cityMismatch`); it also namespaces the stored preferences. |
+| `container` | string | `#historic-city-map` | CSS selector of the element to mount into (auto-boot only). |
+| `lang` | string | `ro` | A BCP 47 tag; anything that is not English resolves to Romanian. |
+| `engineBase` | string | the folder of the engine script | https or relative, ending with `/`: where the engine's own files live (`fonts/`: the self-hosted Roboto Flex and Material Symbols subset). |
+
+**Auto-boot.** When either build runs (the ES module or the IIFE), it registers the elements and, once the document is parsed, reads `window.HistoricCityMapConfig`:
+
+- present and valid: it mounts into `container`; a missing element shows `error.config.container` in the console log and nothing on the page (there is nowhere to draw);
+- present and invalid: the error card in `container` shows `error.config.invalid` with the first issue (`path` and the localized `validation.*` message), so the city owner sees what to fix;
+- absent while `#historic-city-map` exists: the error card shows `error.config.missing` (scenario V17);
+- absent and no default container: nothing happens (the page uses `<hcm-map-viewer>` or `HistoricCityMap.mount` itself).
+
+**Language** is resolved in this order: the URL (`#…&lang=` or `?lang=`), the visitor's stored choice, `config.lang`, then Romanian. `<html lang>` follows the result (scenario V11). An error card shown before any manifest (a missing or invalid `config.js`) follows the URL, then `config.lang`. The visitor switches it, and the theme (system, light, dark), in the menu's **Settings** (Setări), a dialog of its own; About holds neither (the owner, 2026-11-08). `setLang` accepts any tag and resolves it like `config.lang`. On an extra-large window (1600 px and wider) the Layers pane, always docked there, minimizes with its collapse button (**Restrânge straturile** / **Collapse layers**, `aria-expanded="true"`, where narrower windows have a close) to one floating button on the map's leading edge, at its gutter (**Straturi**, a layers icon, `aria-expanded="false"`, or the `l` key's focus on it), which brings it back; there is no rail, and the map takes the whole width (the owner, 2026-11-09). The minimized pane lasts for the session, also when the window leaves the extra-large layout and comes back: it is not in the URL hash, and the switches and sliders keep their values.
+
 ## `<hcm-map-viewer>`
 
 The engine's custom element (Lit, registered by the engine; the tag never changes within v1). It fills its box: give it, or its container, a height.
