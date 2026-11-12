@@ -241,6 +241,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         this.#own = ownFitOf(doc.georef);
         void this.#published(this.#own);
         this.#suggestions.load(doc);
+        this.#bases.suggest(this.#suggestions.fromLayer);
         this.#frame();
         this.#pictures.load(version, this.#cell.state.reference);
         this.#cell.update({ reference: this.#pictures.reference });

@@ -8814,10 +8814,10 @@
             "area": "admin",
             "path": "happy",
             "title": "Suggestions found on a published map say which year",
-            "asserts": "suggestions found on the city's 1911 map -> the panel says it found them by comparing with the 1911 map; confidence in words (likely right, check this)",
+            "asserts": "suggestions found on the city's 1911 map -> the panel says it found them by comparing with the 1911 map and the map pane opens on the 1911 map until the owner chooses another; confidence in words (likely right, check this)",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Owner, 2026-11-13 (docs/research/M4-interfaces.md §2.5). Test: e2e/admin/specs/imagery/suggestions.spec.ts."
+            "notes": "Owner, 2026-11-13 (docs/research/M4-interfaces.md §2.5). Tests: e2e/admin/specs/imagery/suggestions.spec.ts; the map pane's part: packages/admin/test/georef/base-layers.test.ts."
         },
         {
             "id": "S-A44-BAD-REJECTED-NEVER-SAVED",

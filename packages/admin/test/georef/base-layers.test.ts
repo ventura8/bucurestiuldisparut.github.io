@@ -99,4 +99,23 @@ describe('what the map pane shows', () => {
         georef.intents.setBase('nowhere');
         expect(drawn(map).at(-1)).toBe('corona-1968');
     });
+
+    it('happyPath_theMapPaneOpensOnTheMapTheSuggestionsWereFoundOnUntilTheOwnerChooses @S-A44-HAPPY-FROM-MAP', async () => {
+        const { georef, map, store } = setup();
+        const suggested = golden('version.needs-gcps.suggestions.json');
+        const found = { ...(suggested['suggestions'] as object), channels: ['layer'], reference: { layerId: 'plan-1911', year: 1911 } };
+        store.docs.set(VERSIONS(UPLOAD), { ...suggested, suggestions: found });
+        georef.open([UPLOAD]);
+        georef.intents.attachMap(host());
+        await settle();
+
+        expect(georef.state.base).toBe('plan-1911');
+        expect(drawn(map).at(-1)).toBe('plan-1911');
+
+        // The owner's choice stands, even the reference alone, when the version is read again.
+        georef.intents.setBase(null);
+        store.put(VERSIONS(UPLOAD), { ...suggested, suggestions: found });
+        await settle();
+        expect(georef.state.base).toBeNull();
+    });
 });

@@ -297,8 +297,8 @@ against Sentinel-2 (M3 §5.6, §5.9). M4 extends the same step; inputs and outpu
   another scan) is never pending; once the page has a fit, neither is one more than `FAR_FROM_FIT_M` (300 m) from it
   (`S-A44-BAD-OFF-SCAN`). The confidence reads in plain words: "Likely right" from `AUTO_GCP_MIN_CONFIDENCE`, else
   "Check this" or "Check this carefully", with the percentage. Suggestions found on a published map of the city
-  (`suggestions.reference`, channel `layer`: M20 §1.7's ladder) say so: "Found by comparing with the 1911 map."
-  (`S-A44-HAPPY-FROM-MAP`).
+  (`suggestions.reference`, channel `layer`: M20 §1.7's ladder) say so: "Found by comparing with the 1911 map.", and the map pane ("The map shows") opens on that map
+  until the owner chooses another (`base-layers.ts`, `S-A44-HAPPY-FROM-MAP`).
 - **Input budget** (done): `acceptSuggestions` 2 (Accept all, Save).
 - **States** (§7.3): `georef.suggestions`, `georef.suggestions-accepted`, `georef.no-suggestions`.
 
