@@ -18,7 +18,8 @@ import { ReleaseError, jsonText, readJsonObject, type ReleaseFiles } from './fil
  * The engine in the tree (`docs/research/M5-interfaces.md` §2.3): jsDelivr's GitHub route serves only what a tag holds,
  * and `dist/` is ignored, so the release commit carries the built engine in `cdn/engine/`: every file of
  * `packages/engine/dist` but the source maps (the GitHub Release attaches those), each file's last
- * `//# sourceMappingURL=` line removed and every text file ending in a newline (`.editorconfig`), with `release.json`
+ * `//# sourceMappingURL=` line removed, lit-html's whitespace class written with escapes and every text file ending in a
+ * newline (`.editorconfig`), with `release.json`
  * (`engineReleaseSchema`): the version, the pinned jsDelivr folder, Mapbox GL JS's integrity (from the pinned npm
  * release, as the site build computes it) and the size and SHA-384 integrity of every file. The `release-cdn` gate
  * rebuilds the folder from a fresh build and requires it byte for byte (`npm run release:cdn -- --check`).
@@ -33,6 +34,14 @@ const SOURCE_MAP = '.map';
 const TEXT_SUFFIXES = ['.js', '.mjs', '.css', '.txt', '.md', '.json'];
 /** The last line of a built file that names its source map: `//# sourceMappingURL=…` or `/*# sourceMappingURL=… *\/`. */
 const SOURCE_MAP_LINE = /\n(?:\/\/# sourceMappingURL=[^\n]*|\/\*# sourceMappingURL=[^\n]*\*\/)\n?$/;
+/**
+ * lit-html's whitespace class `[ \t\n\f\r]` as the minifier writes it: an untagged template literal holding a real tab
+ * and a real line break, so the line ends in a space and a tab (trailing whitespace for `.editorconfig`). Written back
+ * with escapes, the literal's value is the same string, byte for byte (`docs/research/DECISIONS-for-review.md` §160).
+ */
+const LIT_WHITESPACE_RAW = '`[ \t\n\\f\\r]`';
+const LIT_WHITESPACE_ESCAPED = '`[ \\t\\n\\f\\r]`';
+const SCRIPT_SUFFIXES = ['.js', '.mjs'];
 const decoder = new TextDecoder('utf-8', { fatal: true });
 const encoder = new TextEncoder();
 
@@ -56,7 +65,9 @@ export function releasedBytes(path: string, content: Uint8Array): Uint8Array {
     if (!isText(path)) {
         return content;
     }
-    const text = decoder.decode(content).replace(SOURCE_MAP_LINE, '\n');
+    const decoded = decoder.decode(content).replace(SOURCE_MAP_LINE, '\n');
+    const script = SCRIPT_SUFFIXES.some((suffix) => path.endsWith(suffix));
+    const text = script ? decoded.replaceAll(LIT_WHITESPACE_RAW, LIT_WHITESPACE_ESCAPED) : decoded;
     return encoder.encode(text === '' || text.endsWith('\n') ? text : `${text}\n`);
 }
 

@@ -178,7 +178,7 @@ export function renderRedirectPage(redirect: RedirectPage): string {
 
 /** `hosting.css`: system colours (light and dark follow the browser), a readable measure, links of at least 44 px. */
 export const HOSTING_STYLESHEET_SOURCE = [
-    "/* Historic City Map: the Hosting site's own pages (scripts/site/src/hosting/static-pages.ts). */",
+    "/* Historic City Map Maker: the Hosting site's own pages (scripts/site/src/hosting/static-pages.ts). */",
     ':root {',
     '    color-scheme: light dark;',
     '}',

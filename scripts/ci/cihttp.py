@@ -19,7 +19,7 @@ from cilog import get_logger
 
 LOG = get_logger("http")
 
-USER_AGENT = "historic-city-map-ci (+https://github.com/ventura8/bucurestiuldisparut.github.io)"
+USER_AGENT = "historic-city-map-ci (+https://github.com/ventura8/historic-city-map-maker)"
 TIMEOUT_SECONDS = 30.0
 MAX_REDIRECTS = 10
 MAX_BODY_BYTES = 4 << 20

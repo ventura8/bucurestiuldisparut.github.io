@@ -91,7 +91,7 @@ function siteLinks(): HtmlElement {
 export function startFooter(): HtmlElement {
     return element('footer', { class: 'start-footer' }, [
         element('p', {}, [
-            'Historic City Map: pornește-ți propria hartă istorică, într-un proiect Google al tău. ',
+            'Historic City Map Maker: pornește-ți propria hartă istorică, într-un proiect Google al tău. ',
             element('span', { lang: 'en' }, ['Start your own historical map, in a Google project of your own.']),
         ]),
         element('nav', { 'aria-label': 'Pagini / Pages' }, [siteLinks()]),
@@ -123,7 +123,7 @@ export function renderLegalPage(page: LegalPage): string {
 
 /** `start-site.css`: system colours (light and dark follow the browser), a readable measure, links of at least 44 px. */
 const START_SITE_STYLESHEET_SOURCE = [
-    "/* Historic City Map: the start site's own pages and the home page's footer (scripts/site/src/start/legal.ts). */",
+    "/* Historic City Map Maker: the start site's own pages and the home page's footer (scripts/site/src/start/legal.ts). */",
     ':root {',
     '    color-scheme: light dark;',
     '}',

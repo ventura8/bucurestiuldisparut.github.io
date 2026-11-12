@@ -161,7 +161,7 @@ export function renderStartPage(): string {
         element('meta', { name: 'viewport', content: 'width=device-width, initial-scale=1' }),
         element('meta', { name: 'description', content: 'Pornește-ți propria hartă istorică. Start your own historical map.' }),
         element('meta', { name: 'color-scheme', content: 'light dark' }),
-        element('title', {}, ['Pornește-ți harta / Start your map']),
+        element('title', {}, ['Pornește-ți harta / Start your map · Historic City Map Maker']),
         element('link', { rel: 'icon', href: 'data:,' }),
         element('link', { rel: 'stylesheet', href: `./${START_SITE_STYLESHEET_FILE}` }),
         element('script', { type: 'module', src: './start.mjs' }),

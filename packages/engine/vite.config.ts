@@ -37,7 +37,7 @@ export default defineConfig({
         cssLiteralsPlugin(),
         cataloguePackPlugin(/[\\/]packages[\\/]shared[\\/]src[\\/]i18n[\\/]/),
         thirdPartyNoticesPlugin({
-            product: 'the Historic City Map engine (engine.mjs, engine.iife.js, their chunks and fonts)',
+            product: 'the Historic City Map Maker engine (engine.mjs, engine.iife.js, their chunks and fonts)',
             assets: FONT_FILES.map((font) => ({ package: font.source.package, file: `fonts/${font.file}` })),
         }),
     ],

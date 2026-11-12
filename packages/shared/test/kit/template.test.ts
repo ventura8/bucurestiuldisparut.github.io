@@ -80,7 +80,7 @@ describe('the template index.html', () => {
 
         expect(engine.kind).toBe('cdn');
         expect(engine.kind === 'cdn' ? engine.release.base : '').toMatch(
-            /^https:\/\/cdn\.jsdelivr\.net\/gh\/ventura8\/bucurestiuldisparut\.github\.io@v\d+\.\d+\.\d+\/cdn\/engine\/$/,
+            /^https:\/\/cdn\.jsdelivr\.net\/gh\/ventura8\/historic-city-map-maker@v\d+\.\d+\.\d+(?:-(?:beta|rc)\.\d+)?\/cdn\/engine\/$/,
         );
     });
 

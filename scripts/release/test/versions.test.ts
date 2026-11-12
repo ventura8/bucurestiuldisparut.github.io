@@ -67,13 +67,16 @@ describe('the release scripts’ files', () => {
 });
 
 describe('release versions and workspaces', () => {
-    it.each(['1.0.0', '0.0.0', '10.20.30'])('happyPath_%s_isAReleaseVersion', (version) => {
+    it.each(['1.0.0', '0.0.0', '10.20.30', '1.0.0-beta.1', '1.0.0-rc.0', '2.0.0-rc.10'])('happyPath_%s_isAReleaseVersion', (version) => {
         expect(isReleaseVersion(version)).toBe(true);
     });
 
-    it.each(['v1.0.0', '1.0', '01.0.0', '1.0.0-rc.1', '1.0.0+build', ''])('badPath_%s_isNoReleaseVersion', (version) => {
-        expect(isReleaseVersion(version)).toBe(false);
-    });
+    it.each(['v1.0.0', '1.0', '01.0.0', '1.0.0+build', '1.0.0-alpha.1', '1.0.0-beta', '1.0.0-beta.01', '1.0.0-rc.1+build', ''])(
+        'badPath_%s_isNoReleaseVersion',
+        (version) => {
+            expect(isReleaseVersion(version)).toBe(false);
+        },
+    );
 
     it('happyPath_expandsFoldersAndOneLevelGlobsToTheFoldersWithAManifest', () => {
         const { files } = fakeRepository();
@@ -220,7 +223,19 @@ describe('planBump', () => {
         );
     });
 
-    it.each(['v1.0.0', '1.0', 'next'])('badPath_%s_isRefusedBeforeAnythingIsRead', (version) => {
+    it('happyPath_aPreReleaseIsBumpedEverywhereAndItsGuidesNameIt', () => {
+        const { files } = fakeRepository('1.0.0');
+        const guide = PINNED_DOCS[0];
+        files.write(guide, '`npx create-historic-city@1.0.0 x`\n');
+
+        const planned = planBump(files, '1.0.0-beta.1');
+
+        expect(planned.find((change) => change.path === guide)?.text).toBe('`npx create-historic-city@1.0.0-beta.1 x`\n');
+        expect(planned.find((change) => change.path === ENGINE_INDEX)?.text).toContain("ENGINE_VERSION = '1.0.0-beta.1';");
+        expect(bumpDocPins('`npx create-historic-city@1.0.0-beta.1 x`', '1.0.0-rc.1')).toBe('`npx create-historic-city@1.0.0-rc.1 x`');
+    });
+
+    it.each(['v1.0.0', '1.0', 'next', '1.0.0-alpha.1', '1.0.0-beta'])('badPath_%s_isRefusedBeforeAnythingIsRead', (version) => {
         const { files } = fakeRepository();
 
         expect(() => planBump(files, version)).toThrow(/is not a release version/);

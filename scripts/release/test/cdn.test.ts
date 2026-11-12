@@ -44,6 +44,16 @@ describe('releasedBytes', () => {
         expect(text(releasedBytes('a.js', bytes(input)))).toBe(input);
     });
 
+    it('happyPath_litHtmlsWhitespaceClassLosesItsTrailingWhitespace', () => {
+        // DECISIONS-for-review.md §160: the minifier writes lit-html's `[ \t\n\f\r]` with a real tab and line break.
+        const raw = 'gf=`[ \t\n\\f\\r]`,_f=1;\n';
+        const released = text(releasedBytes('engine.mjs', bytes(raw)));
+
+        expect(released).toBe('gf=`[ \\t\\n\\f\\r]`,_f=1;\n');
+        expect(released.split('\n').some((line) => /[ \t]$/.test(line))).toBe(false);
+        expect(text(releasedBytes('engine.css', bytes(raw)))).toBe(raw);
+    });
+
     it('happyPath_binaryFilesAreCopiedAsTheyAre', () => {
         const font = new Uint8Array([0x77, 0x4f, 0x46, 0x32, 0x0a, 0x20]);
 
@@ -107,7 +117,7 @@ describe('the release folder', () => {
         expect(validate(engineReleaseSchema, release).ok).toBe(true);
         expect(release.version).toBe('1.0.0');
         expect(release.repository).toBe(ENGINE_REPOSITORY);
-        expect(release.base).toBe('https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@v1.0.0/cdn/engine/');
+        expect(release.base).toBe('https://cdn.jsdelivr.net/gh/ventura8/historic-city-map-maker@v1.0.0/cdn/engine/');
         const css = '.hcm-engine-root{display:block}\n/*$vite$:1*/\n';
         expect(release.files.find((file) => file.path === 'engine.css')).toEqual({
             path: 'engine.css',

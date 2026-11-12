@@ -74,6 +74,7 @@ if (role === 'mock') {
         hostingDir: E2E_HOSTING_DIR,
         startUpDir: E2E_HOSTING_START_UP_DIR,
         startDir: E2E_START_DIR,
+        landingDir: 'sites/landing',
         releasedDir: E2E_RELEASED_DIR,
         hosting: parseHostingConfig(readFileSync('firebase.json', 'utf8')),
         connect: ADMIN_CONNECT_ORIGINS,

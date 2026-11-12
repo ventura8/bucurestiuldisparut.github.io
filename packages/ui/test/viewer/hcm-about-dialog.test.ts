@@ -39,7 +39,7 @@ describe('<hcm-about-dialog>', () => {
         expect(text).toContain('Mulțumiri');
         expect(text).toContain('Fotografii: arhiva A');
         expect(text).toContain('Fără cookie-uri fără acord.');
-        expect(text).toContain('Motor: Historic City Map 1.4.2');
+        expect(text).toContain('Motor: Historic City Map Maker 1.4.2');
         expect(element.shadowRoot?.querySelector('strong')?.textContent).toBe('Despre');
         await expect.element(page.getByRole('link', { name: 'OpenStreetMap' })).toHaveAttribute('rel', 'noopener noreferrer nofollow ugc');
     });
@@ -163,7 +163,7 @@ describe('<hcm-about-dialog>: the statement and the help panel', () => {
         const label = translate(element.locale, 'about.a11yReport');
         const link = shadowQueryAll(element, 'a').find((anchor) => anchor.textContent === label) as HTMLAnchorElement | undefined;
 
-        expect(link?.href).toBe('https://github.com/ventura8/bucurestiuldisparut.github.io/issues');
+        expect(link?.href).toBe('https://github.com/ventura8/historic-city-map-maker/issues');
     });
 
     it('happyPath_theStatementSaysWhatWorksWhatIsMissingAndHowToReport', async () => {

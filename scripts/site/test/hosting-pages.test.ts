@@ -156,7 +156,7 @@ describe('admin-redirect.js', () => {
         expect(result.diagnostics).toEqual([]);
         expect(result.stdout.trimEnd().endsWith(`})(window, "${ADMIN_PATH}");`)).toBe(true);
         expect(result.stdout).not.toContain('RedirectScope');
-        expect(ADMIN_REDIRECT_SOURCE).toMatch(/^\/\/ Historic City Map: an old admin address/);
+        expect(ADMIN_REDIRECT_SOURCE).toMatch(/^\/\/ Historic City Map Maker: an old admin address/);
     });
 });
 
@@ -276,7 +276,7 @@ describe('the GitHub Pages redirect tree', () => {
     it('happyPath_theTargetComesFromTheCommittedProjectFile', () => {
         expect(pagesRedirectTarget(nodeFileSystem(ROOT))).toEqual({
             origin: 'https://bucurestiul-disparut.web.app',
-            base: '/bucurestiuldisparut.github.io/',
+            base: '/historic-city-map-maker/',
         });
         expect(pagesBase({ owner: 'Ventura8', repo: 'ventura8.github.io' })).toBe('/');
     });

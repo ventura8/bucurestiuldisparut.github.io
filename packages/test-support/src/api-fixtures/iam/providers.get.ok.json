@@ -9,7 +9,7 @@
             "google.subject": "assertion.sub",
             "attribute.repository": "assertion.repository"
         },
-        "attributeCondition": "assertion.repository == 'ventura8/bucurestiuldisparut.github.io'",
+        "attributeCondition": "assertion.repository == 'ventura8/historic-city-map-maker'",
         "oidc": {
             "issuerUri": "https://token.actions.githubusercontent.com"
         }

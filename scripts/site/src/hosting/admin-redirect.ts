@@ -46,7 +46,7 @@ export function forwardOldAdminAddress(scope: RedirectScope, adminPath: string):
 
 /** `admin-redirect.js`: `forwardOldAdminAddress`'s source called on the page's `window`. */
 export const ADMIN_REDIRECT_SOURCE = [
-    '// Historic City Map: an old admin address on the root goes to /admin/ (docs/research/M6-interfaces.md §2.7),',
+    '// Historic City Map Maker: an old admin address on the root goes to /admin/ (docs/research/M6-interfaces.md §2.7),',
     '// from scripts/site/src/hosting/admin-redirect.ts.',
     "'use strict';",
     `(${forwardOldAdminAddress.toString()})(window, ${JSON.stringify(ADMIN_PATH)});`,

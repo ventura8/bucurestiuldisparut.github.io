@@ -143,7 +143,7 @@ export const en: Messages = {
     'about.title': 'About',
     'about.credits': 'Credits',
     'about.privacy': 'Privacy',
-    'about.engine': 'Engine: Historic City Map {version}',
+    'about.engine': 'Engine: Historic City Map Maker {version}',
     'about.accessibility': 'Accessibility',
     'about.a11yWorks': 'Works: keyboard focus, any window, light, dark, high contrast, reduced motion.',
     'about.a11yMissing': 'Missing: a text alternative for the map; a test with screen readers.',

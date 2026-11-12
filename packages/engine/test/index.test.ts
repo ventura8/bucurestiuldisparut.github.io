@@ -29,7 +29,7 @@ describe('@hcm/engine public API', () => {
     });
 
     it('happyPath_pinsTheVersions', () => {
-        expect(ENGINE_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
+        expect(ENGINE_VERSION).toMatch(/^\d+\.\d+\.\d+(?:-(?:beta|rc)\.\d+)?$/);
         expect(MAPBOX_GL_VERSION).toBe('3.34.1');
     });
 

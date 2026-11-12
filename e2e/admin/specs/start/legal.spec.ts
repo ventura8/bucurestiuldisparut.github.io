@@ -28,7 +28,7 @@ test(
         await page.goto(`${START_URL}?test=${encodeURIComponent(testIdOf(testInfo))}&lang=${lang}`);
         await expect(startPage(page).getByRole('heading', { level: 1 })).toBeVisible();
         const footer = page.getByRole('contentinfo');
-        await expect(footer).toContainText('Historic City Map');
+        await expect(footer).toContainText('Historic City Map Maker');
         for (const legal of PAGES) {
             await footer.getByRole('link', { name: legal.link }).click();
             await expect(page.getByRole('heading', { level: 1, name: legal.ro })).toBeVisible();

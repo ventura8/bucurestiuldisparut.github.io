@@ -152,8 +152,11 @@ export function transientDeployReason(output: string): TransientDeployReason | n
     return TRANSIENT_DEPLOY_PATTERNS.find((entry) => entry.pattern.test(output))?.id ?? null;
 }
 
-/** `<major>.<minor>.<patch>` and, after `+`, the build's short commit (`1.0.0+abc1234`); a build outside git has none. */
-export const RELEASE_PATTERN = /^\d{1,4}\.\d{1,4}\.\d{1,6}(?:\+[0-9a-z]{1,40})?$/;
+/**
+ * `<major>.<minor>.<patch>`, for a pre-release `-beta.N` or `-rc.N`, and, after `+`, the build's short commit
+ * (`1.0.0+abc1234`, `1.0.0-beta.1+abc1234`); a build outside git has none.
+ */
+export const RELEASE_PATTERN = /^\d{1,4}\.\d{1,4}\.\d{1,6}(?:-(?:beta|rc)\.(?:0|[1-9]\d{0,5}))?(?:\+[0-9a-z]{1,40})?$/;
 
 /** A Cloud Build tag, a path segment and a Cloud Run label value at once: lowercase letters, digits and hyphens. */
 export const INSTALL_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;

@@ -1,6 +1,6 @@
 {
     "name": "@hcm/engine",
-    "version": "1.0.0",
+    "version": "1.0.0-beta.1",
     "private": true,
     "description": "Public viewer engine: builds dist/engine.{iife.js,mjs,css} (global window.HistoricCityMap) and copies the kit's self-hosted fonts to dist/fonts/. Mapbox GL is external (global mapboxgl from api.mapbox.com v3.34.1).",
     "license": "UNLICENSED",
@@ -16,12 +16,12 @@
         "fonts:copy": "mkdir -p dist/fonts && cp ../ui/fonts/*.woff2 ../ui/fonts/LICENSES.md dist/fonts/"
     },
     "dependencies": {
-        "@hcm/shared": "1.0.0",
-        "@hcm/ui": "1.0.0",
+        "@hcm/shared": "1.0.0-beta.1",
+        "@hcm/ui": "1.0.0-beta.1",
         "firebase": "13.1.0",
         "web-vitals": "6.2.3"
     },
     "devDependencies": {
-        "@hcm/test-support": "1.0.0"
+        "@hcm/test-support": "1.0.0-beta.1"
     }
 }

@@ -15,8 +15,8 @@
             [26.25, 44.55]
         ],
         "about": {
-            "ro": "**Orașul meu** este un exemplu de hartă istorică făcută cu trusa de pornire Historic City Map.\n\nÎnlocuiește acest text, fotografiile din folderul data/media și lista photos din data/manifest.json cu ale tale. Cele două fotografii de exemplu vin din arhiva [București dispărut](https://github.com/ventura8/bucurestiuldisparut.github.io) și nu pot fi republicate în alt site.",
-            "en": "**My city** is an example of a historical map made with the Historic City Map starter kit.\n\nReplace this text, the photos in the data/media folder and the photos list in data/manifest.json with your own. The two example photos come from the [Lost Bucharest](https://github.com/ventura8/bucurestiuldisparut.github.io) archive and may not be republished on another site."
+            "ro": "**Orașul meu** este un exemplu de hartă istorică făcută cu trusa de pornire Historic City Map Maker.\n\nÎnlocuiește acest text, fotografiile din folderul data/media și lista photos din data/manifest.json cu ale tale. Cele două fotografii de exemplu vin din arhiva [București dispărut](https://github.com/ventura8/historic-city-map-maker) și nu pot fi republicate în alt site.",
+            "en": "**My city** is an example of a historical map made with the Historic City Map Maker starter kit.\n\nReplace this text, the photos in the data/media folder and the photos list in data/manifest.json with your own. The two example photos come from the [Lost Bucharest](https://github.com/ventura8/historic-city-map-maker) archive and may not be republished on another site."
         },
         "credits": [
             {
@@ -24,7 +24,7 @@
                     "ro": "Fotografii de exemplu: arhiva București dispărut",
                     "en": "Example photos: the Lost Bucharest archive"
                 },
-                "url": "https://github.com/ventura8/bucurestiuldisparut.github.io"
+                "url": "https://github.com/ventura8/historic-city-map-maker"
             }
         ],
         "privacy": {

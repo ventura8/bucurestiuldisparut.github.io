@@ -26,7 +26,7 @@ import type { ConsentState, ThemeMode } from './store-port.js';
 export const HCM_ABOUT_DIALOG_TAG = 'hcm-about-dialog';
 
 /** Where anyone reports a problem of the viewer, on every city: the manifest has no contact field (docs/research/viewer-input.md §5). */
-const REPORT_URL = 'https://github.com/ventura8/bucurestiuldisparut.github.io/issues';
+const REPORT_URL = 'https://github.com/ventura8/historic-city-map-maker/issues';
 
 const THEMES: readonly ThemeMode[] = ['system', 'light', 'dark'];
 

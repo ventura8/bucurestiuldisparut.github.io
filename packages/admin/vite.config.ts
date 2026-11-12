@@ -119,7 +119,7 @@ export default defineConfig({
         zodStandInsPlugin(ZOD_STAND_INS),
         cssLiteralsPlugin(),
         thirdPartyNoticesPlugin({
-            product: 'the Historic City Map admin (admin.mjs, its chunks and fonts)',
+            product: 'the Historic City Map Maker admin (admin.mjs, its chunks and fonts)',
             assets: FONT_FILES.map((font) => ({ package: font.source.package, file: `fonts/${font.file}` })),
         }),
     ],

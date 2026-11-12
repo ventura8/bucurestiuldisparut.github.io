@@ -63,7 +63,7 @@ describe('cities.create', () => {
             updatedBy: OWNER,
         });
         expect(city?.about?.en).toBe(
-            '**Cluj-Napoca** on a historical map: old photos, places and historical layers, made with Historic City Map.',
+            '**Cluj-Napoca** on a historical map: old photos, places and historical layers, made with Historic City Map Maker.',
         );
         expect(city?.privacy?.ro).toContain('Mapbox');
         await expect(world.documents.get(FIRESTORE_PATHS.admin(OWNER), adminDocSchema)).resolves.toMatchObject({

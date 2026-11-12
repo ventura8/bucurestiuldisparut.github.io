@@ -348,8 +348,8 @@ export {
 export type { AuditedDocument, PhotoUpload, PhotoVariant } from './schemas/paths.js';
 export { formatPath, isValidationCode, parseManifestJson, toValidationIssues, validate, validateManifest } from './schemas/validation.js';
 export type { Schema, ValidationIssue, ValidationResult } from './schemas/validation.js';
-export { checkManifestCompat, compareVersions, parseVersion } from './schemas/compat.js';
-export type { ManifestCompat } from './schemas/compat.js';
+export { checkManifestCompat, compareVersions, parseReleaseVersion, parseVersion, PRERELEASE_CHANNELS } from './schemas/compat.js';
+export type { ManifestCompat, PrereleaseChannel, ReleaseVersionParts } from './schemas/compat.js';
 
 export {
     DEFAULT_PHOTOS_OPACITY,

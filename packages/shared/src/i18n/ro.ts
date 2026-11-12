@@ -148,7 +148,7 @@ export const ro = {
     'about.title': 'Despre',
     'about.credits': 'Mulțumiri',
     'about.privacy': 'Confidențialitate',
-    'about.engine': 'Motor: Historic City Map {version}',
+    'about.engine': 'Motor: Historic City Map Maker {version}',
     'about.accessibility': 'Accesibilitate',
     'about.a11yWorks': 'Merg: focusul tastaturii, orice fereastră, tema deschisă, închisă, contrast mare, mișcare redusă.',
     'about.a11yMissing': 'Lipsesc: o alternativă text pentru hartă; un test cu cititoare de ecran.',

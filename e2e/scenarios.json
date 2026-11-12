@@ -1016,6 +1016,13 @@
             "name": "Delete a version that never reached the map: its job, log and own files go for good, after a question that says the originals stay",
             "milestone": "M3",
             "source": "the owner, 2026-11-12: a cancelled or failed version (and an archive series waiting for points) can be deleted from its page; docs/research/M3-interfaces.md §7.1"
+        },
+        {
+            "id": "A132",
+            "area": "admin",
+            "name": "The project’s landing page on GitHub Pages: what Historic City Map Maker is, the start page, the terminal road, the example and the links, in English and Romanian",
+            "milestone": "M14",
+            "source": "the owner, 2026-11-12: GitHub Pages becomes the landing page for whoever wants to start their own map (DECISIONS §162)"
         }
     ],
     "scenarios": [
@@ -15061,7 +15068,7 @@
             "area": "admin",
             "path": "happy",
             "title": "The start page names the app and links its privacy policy and terms, in both languages",
-            "asserts": "the home page's footer, plain HTML below the page, names Historic City Map and links privacy.html and terms.html; each opens with its Romanian heading and its English section, and links back; Search Console's file is served with its one line",
+            "asserts": "the home page's footer, plain HTML below the page, names Historic City Map Maker and links privacy.html and terms.html; each opens with its Romanian heading and its English section, and links back; Search Console's file is served with its one line",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The owner's request of 2026-11-09: Google's OAuth verification (docs/research/M14-start-your-map.md §10). Test: e2e/admin/specs/start/legal.spec.ts."
@@ -15076,6 +15083,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The owner's request of 2026-11-09. Test: e2e/admin/specs/start/legal.spec.ts."
+        },
+        {
+            "id": "S-A132-HAPPY-LANDING",
+            "behaviour": "A132",
+            "area": "admin",
+            "path": "happy",
+            "title": "The landing page names the product and links the start page, the example and the other language",
+            "asserts": "index.html (English): the H1 Historic City Map Maker, Start your map links `https://start-historic-city.web.app/`, the terminal road names `npx create-historic-city@<this release> self-host` (never `@1`), the example links `https://bucurestiul-disparut.web.app/`; Română opens ro.html with the Romanian words and English leads back; both pass the tour's checkers",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12 (DECISIONS §162). Test: e2e/admin/specs/start/landing.spec.ts."
+        },
+        {
+            "id": "S-A132-BAD-LANDING-MISSING-KEY",
+            "behaviour": "A132",
+            "area": "admin",
+            "path": "bad",
+            "title": "A word missing from one language stops the landing build before anything is written",
+            "asserts": "a Romanian catalogue without its title and an English footer of spaces -> exit 1 naming 'en: footer, ro: title', the output folder not written",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-12 (DECISIONS §162). Test: e2e/admin/specs/start/landing.spec.ts."
         },
         {
             "id": "S-A61-HAPPY-SELF-RELOAD",

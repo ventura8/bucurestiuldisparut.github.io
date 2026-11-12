@@ -9,9 +9,10 @@
 import { z } from 'zod';
 
 import { apiErrorCodeSchema, apiErrorParamsSchema } from '../api/errors.js';
+import { releaseVersionSchema } from './engine-release.js';
 import { sha256Schema, stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import type { PhotoVariant } from './paths.js';
-import { isId, versionSchema } from './primitives.js';
+import { isId } from './primitives.js';
 
 /**
  * Where an export stands: `queued` (the task is enqueued), `building` (the zip is being written), `ready` (it can be
@@ -109,7 +110,7 @@ export const cityExportDocSchema = z.strictObject({
     /** The layers' scans were asked for (`rasterExportable` ones only). */
     rasters: z.boolean(),
     /** The engine release the zip carries (`ENGINE_VERSION` of the deployed functions' build). */
-    engineVersion: versionSchema,
+    engineVersion: releaseVersionSchema,
     createdAt: timestampSchema,
     startedAt: timestampSchema.optional(),
     finishedAt: timestampSchema.optional(),
