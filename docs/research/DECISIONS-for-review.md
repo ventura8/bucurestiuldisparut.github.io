@@ -6444,7 +6444,6 @@ The owner's request of 2026-11-09 ("import the landsat, add it to our sources, a
 - **The legacy site is retired**: master's GitHub Pages site (`build_type: legacy`, source `master` `/`, now at `https://ventura8.github.io/historic-city-map-maker/`) is the 2015–2022 hand-written page: 104 files (`index.html`, `index-l.html`, `interactiv.html`, `.nojekyll`, `geojson/`, `images/`, `photos/`, `thumbnails/`, `scripts/leaflet*`). None of them is on `feat/engine-rewrite`, and `origin/master` is an ancestor of it, so the merge deletes all 104 (`git diff --name-status origin/master HEAD` lists them all as `D`); no file exists only on master. After the merge the legacy Pages build would publish the monorepo's root (Jekyll rendering `README.md`), so the owner disables Pages (the coordinator's step, never Claude's); the live map is `https://bucurestiul-disparut.web.app/`. The redirect tree (`npm run build:site -- --pages-redirect`) remains the alternative for keeping the old links working on Pages.
 - **Verify**: `PIPELINE_STAGE=all`; `python3 scripts/ci/check_release.py --tag v1.0.0-beta.1`.
 
-
 ## 166. Production copy without developer words, and the `copy` gate (track/copy, 2026-11-09; merged 2026-11-12, numbered §125 and lesson 501 on the track) — APPLIED, no budget raised
 
 The owner's report: "this kind of text should not be in production text", for the viewer's "Gamepad standard (încercat doar simulat)" (lesson 578).
