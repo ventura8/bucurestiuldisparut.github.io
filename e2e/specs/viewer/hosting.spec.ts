@@ -175,13 +175,20 @@ test(
 
         await expect(page.getByRole('alert')).toContainText(t(lang, 'error.manifest.notFound'));
         expect((await instrumentation.read(page)).mapsCreated).toBe(0);
-        // The page also looked for the city's tab icon (V52): none, so the default stays.
-        expect([...asked].sort((a, b) => a.localeCompare(b))).toEqual([
-            `${bucketFolder(UNPUBLISHED_CITY)}icon-32.png`,
-            `${bucketFolder(UNPUBLISHED_CITY)}manifest.json`,
-        ]);
+        // The page also looks for the city's tab icon (V52; an image, which the browser may ask after the manifest): none,
+        // so the default stays, and each 404 is one console line.
+        await expect
+            .poll(() => [...asked].sort((a, b) => a.localeCompare(b)))
+            .toEqual([`${bucketFolder(UNPUBLISHED_CITY)}icon-32.png`, `${bucketFolder(UNPUBLISHED_CITY)}manifest.json`]);
+        const errors: string[] = [];
+        await expect
+            .poll(() => {
+                errors.push(...consoleErrors.take());
+                return errors.length;
+            })
+            .toBe(2);
+        expect(errors).toEqual([expect.stringContaining('404'), expect.stringContaining('404')]);
         expect(await iconLinks(page)).toEqual({ icon: DEFAULT_FAVICON_DATA_URL, touch: null });
-        expect(consoleErrors.take()).toEqual([expect.stringContaining('404'), expect.stringContaining('404')]);
 
         const answer = await page.goto(hostingUrl('/Not_A_City/'));
 

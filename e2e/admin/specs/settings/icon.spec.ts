@@ -108,7 +108,7 @@ test(
 test(
     'An SVG and a tiny image are refused with a plain message, and the icon stays as it was',
     { tag: ['@S-A101-BAD-SVG', '@S-A101-BAD-SMALL'] },
-    async ({ page, lang, content }) => {
+    async ({ page, lang, content, consoleErrors }) => {
         await seedPublicCity(content, AT);
         await serveIcons(page, content);
         await page.goto(content.address(lang, 'settings/icon', { map: false }));
@@ -123,6 +123,8 @@ test(
         // A PNG of 64 pixels: the server measures it and refuses it.
         await choose(page, { name: 'mica.png', mimeType: 'image/png', buffer: await png(64, '#1d4e89') });
         await expect(card(page).locator('[data-icon-error]')).toHaveText(refusal(lang, 'apiError.cityIcon.tooSmall', { min: '192' }));
+        // The callable's refusal is a 400 the browser logs: the only console line of the test.
+        expect(consoleErrors.take()).toEqual([expect.stringMatching(/status of 400 .*cities-setIcon/)]);
 
         // Nothing changed: no upload became the city's icon (the build may have drawn the default meanwhile).
         expect((await iconRecord(content))?.['source']).not.toBe('custom');
