@@ -97,7 +97,10 @@ describe('the scan pane holds its sharper scan', () => {
         const changed = (): void => {
             changes += 1;
         };
-        const tiles = (): { file: Blob; scale: number } => ({ file: fileOf([MAGIC, 1, 1024, 2500, 1100, 6], [1, 1, 1, 1, 1, 1]), scale: 1 });
+        const tiles = (): { file: Blob; scale: number } => ({
+            file: fileOf([MAGIC, 1, 1024, 2500, 1100, 6], [1, 1, 1, 1, 1, 1]),
+            scale: 1,
+        });
 
         // Replaced while it opens: the first is closed when it arrives, the second is the pane's.
         holder.load(tiles(), changed);

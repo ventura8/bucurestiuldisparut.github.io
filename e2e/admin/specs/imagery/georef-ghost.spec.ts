@@ -352,10 +352,10 @@ test(
         expect(Math.max(...sizes.flat())).toBeLessThanOrEqual(SCAN_TILE);
         // The page's JavaScript heap with the sharper scan zoomed in: within the georeferencer's 300 MB budget (the resource audit).
         const session = await page.context().newCDPSession(page);
+        await session.send('Performance.enable');
         const { metrics } = await session.send('Performance.getMetrics');
         const heap = metrics.find((metric) => metric.name === 'JSHeapUsedSize')?.value ?? Number.POSITIVE_INFINITY;
         expect(heap).toBeLessThan(HEAP_BUDGET_BYTES);
-        process.stdout.write(`HEAP-MEASURED ${String(Math.round(heap / 1048576))} MiB\n`);
         expect(asked).toHaveLength(1);
     },
 );

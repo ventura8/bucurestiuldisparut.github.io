@@ -36,7 +36,10 @@ async function stripFile(): Promise<Blob> {
     const count = (WIDTH / TILE) * (HEIGHT / TILE);
     const first = 24 + 4 * (count + 1);
     const offsets = Array.from({ length: count + 1 }, (_, index) => first + index * piece.size);
-    return new Blob([new Uint32Array([0x544d4348, 1, TILE, WIDTH, HEIGHT, count, ...offsets]), ...Array.from({ length: count }, () => piece)]);
+    return new Blob([
+        new Uint32Array([0x544d4348, 1, TILE, WIDTH, HEIGHT, count, ...offsets]),
+        ...Array.from({ length: count }, () => piece),
+    ]);
 }
 
 /** The JavaScript heap in use, in bytes (Chromium's `performance.memory`; 0 where the browser has none). */
@@ -54,19 +57,23 @@ describe('the scan pane within its memory budget', () => {
         // Every bitmap the page decodes and every one it closes: what is live is the difference.
         const live = new Set<ImageBitmap>();
         const sizes: number[] = [];
+        /** Each bitmap with its decoded bytes, read while it is open (a closed bitmap's size is 0). */
+        const made: [ImageBitmap, number][] = [];
         const native = globalThis.createImageBitmap.bind(globalThis);
         vi.spyOn(globalThis, 'createImageBitmap').mockImplementation(async (...args: Parameters<typeof native>) => {
             const bitmap = await native(...args);
             live.add(bitmap);
             sizes.push(bitmap.width * bitmap.height);
+            made.push([bitmap, bitmap.width * bitmap.height * 4]);
             return bitmap;
         });
-        const close = ImageBitmap.prototype.close;
-        vi.spyOn(ImageBitmap.prototype, 'close').mockImplementation(function closed(this: ImageBitmap) {
-            live.delete(this);
-            close.call(this);
-        });
-        const liveBytes = (): number => [...live].reduce((sum, bitmap) => sum + bitmap.width * bitmap.height * 4, 0);
+        const closed = vi.spyOn(ImageBitmap.prototype, 'close');
+        /** The bitmaps decoded and not closed since. */
+        const open = (): ImageBitmap[] => {
+            const gone = new Set<unknown>(closed.mock.contexts);
+            return [...live].filter((bitmap) => !gone.has(bitmap));
+        };
+        const liveBytes = (): number => made.reduce((sum, [bitmap, bytes]) => sum + (open().includes(bitmap) ? bytes : 0), 0);
 
         // A laptop's half window: 960 × 600 CSS px; the preview is a quarter of the scan (4,096 px long).
         const element = await mount<HcmScanViewer>(
@@ -89,14 +96,19 @@ describe('the scan pane within its memory budget', () => {
         };
         let most = 0;
 
-        // Three zooms (just past the preview, the sharper scan's own pixels, four times that), each panned from end to end.
-        for (const scale of [0.3, 1, 4]) {
+        // Three zooms (just past the preview, the sharper scan's own pixels, four times that), panned from end to end along both halves.
+        for (const [scale, y] of [
+            [0.3, 1000],
+            [0.3, 3100],
+            [1, 1000],
+            [4, 3100],
+        ] as const) {
             for (let x = 480; x < WIDTH; x += 900) {
-                element.follow = { centre: { x, y: HEIGHT / 2 }, scale };
+                element.follow = { centre: { x, y }, scale };
                 await updated(element);
                 await settle();
                 most = Math.max(most, liveBytes());
-                expect(live.size).toBeLessThanOrEqual(SCAN_TILES_KEPT);
+                expect(open().length).toBeLessThanOrEqual(SCAN_TILES_KEPT);
             }
         }
 
@@ -113,6 +125,6 @@ describe('the scan pane within its memory budget', () => {
 
         // The pane leaves the page: nothing stays decoded.
         element.remove();
-        expect(live.size).toBe(0);
+        expect(open()).toEqual([]);
     });
 });
