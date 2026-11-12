@@ -40,7 +40,7 @@ export const ro = {
     'adminShell.session.continue': 'Continuă',
     'adminShell.backend.down': 'Serverul hărții nu răspunde acum. Încearcă din nou peste un minut.',
     'adminShell.backend.retry': 'Încearcă din nou',
-    'adminShell.config.missing': 'Configurația Firebase a site-ului nu a putut fi citită. Reîncarcă pagina.',
+    'adminShell.config.missing': 'Pagina nu s-a încărcat complet. Reîncarc-o.',
     // Finding 29 of 2026-10-31: a tab left open across a redeploy runs the old admin; it offers the new one.
     'adminShell.update.ready': 'O versiune nouă a administrării este gata. Reîncarcă pagina ca s-o folosești; rămâi conectat.',
     'adminShell.update.reload': 'Reîncarcă',
@@ -162,7 +162,7 @@ export const ro = {
     'adminShell.route.notAllowed': 'Rolul tău nu include acea pagină.',
     'adminShell.city.role.moderator': 'Moderator',
     'adminShell.city.role.uploader': 'Contribuitor',
-    'adminShell.city.notMember': 'Nu administrezi orașul {cityId}; s-a deschis {city}.',
+    'adminShell.city.notMember': 'Nu administrezi orașul cerut; s-a deschis {city}.',
     // The Contribute page's welcome while signed out (M13 §3: a visitor is never shown the admin's sign-in).
     // „harta orașului {city}”: correct for any city's name, which the genitive of the name itself would not be (Bucureștiului).
     'adminShell.welcome.title': 'Contribuie la harta orașului {city}',

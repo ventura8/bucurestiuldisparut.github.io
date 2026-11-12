@@ -169,8 +169,8 @@ describe('<hcm-about-dialog>: the statement and the help panel', () => {
     it('happyPath_theStatementSaysWhatWorksWhatIsMissingAndHowToReport', async () => {
         const text = shadowText(await about());
         expect(text).toContain('Accesibilitate');
-        expect(text).toContain('Lipsesc: o alternativă text');
-        expect(text).toContain('Raportați o problemă pe GitHub');
+        expect(text).toContain('Lipsește încă o descriere text a hărții.');
+        expect(text).toContain('Raportează o problemă pe GitHub');
 
         expect(shadowText(await about({ locale: 'en' }))).toContain('Report problems');
     });

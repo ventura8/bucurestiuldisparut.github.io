@@ -1,0 +1,116 @@
+# The production copy gate (scripts/ci/check_copy.py): words that tell how the app was built or tested, never
+# what a visitor, an owner or an editor sees. Every i18n catalogue value (packages/*/src/i18n, ro and en) is
+# scanned, plus the sources below. A term matches as a whole word (no letter, digit or underscore around it).
+# An exception goes in [[allow]] with the reason; never widen a term's scope to pass the gate.
+
+# ---------------------------------------------------------------------------------------------------------------
+# Terms. `pattern` is a Python regular expression, wrapped in word boundaries; `ignore_case` defaults to true;
+# `locales` (catalogues only) limits a term to those catalogues: an English word inside Romanian text.
+
+[[term]]
+pattern = 'simulat\w*|simulated|simulation'
+why = "how a feature was tried (the gamepad's 'tried only simulated')"
+
+[[term]]
+pattern = 'mock\w*|fakes?|stubs?|stubbed|fixtures?'
+why = 'test doubles'
+
+[[term]]
+pattern = 'emulators?|emulatorul\w*'
+why = 'the Firebase emulators the tests run on'
+
+[[term]]
+pattern = 'playwright|vitest|pytest|e2e'
+why = 'test runners and tiers'
+
+[[term]]
+pattern = 'todo|fixme|xxx|lorem'
+why = 'unfinished work'
+
+[[term]]
+pattern = 'M\d+'
+ignore_case = false
+why = "a milestone (M5's kit); M2M, USGS's API, is one word and does not match"
+
+[[term]]
+pattern = 'CR-M\d+\w*|DECISIONS|LESSONS'
+ignore_case = false
+why = "change requests and the repository's decision and lesson logs"
+
+[[term]]
+pattern = 'lessons?|docs/research'
+why = 'the lesson log and the research notes'
+
+[[term]]
+pattern = '§'
+why = 'a section of a design note'
+
+[[term]]
+pattern = 'roles/\w[\w.]*'
+why = "a raw IAM role id: say which permission is missing and where to fix it"
+
+[[term]]
+pattern = 'service[ -]?worker\w*'
+why = "the browser's internals: say what failed for the user"
+
+[[term]]
+pattern = 'unverified'
+why = 'a note to the developers'
+
+[[term]]
+pattern = 'pipeline\w*|tile-\w+'
+locales = ['ro']
+why = "English inside Romanian: 'fluxul de imagini', 'procesarea', 'dalele'"
+
+# ---------------------------------------------------------------------------------------------------------------
+# Sources besides the catalogues. `kind`: `html` (the text and attributes a visitor sees, comments left out),
+# `json` (every string value), `text` (the whole file), `say` (only the messages a script prints: the
+# argument of `say` or `Write-Host`), `strings` (the quoted string literals of a TypeScript file).
+
+[[source]]
+path = 'templates/starter-kit/index.html'
+kind = 'html'
+
+[[source]]
+path = 'templates/starter-kit/city.json'
+kind = 'json'
+
+[[source]]
+path = 'templates/starter-kit/README.md'
+kind = 'text'
+
+[[source]]
+path = 'starter-kit/README.md'
+kind = 'text'
+
+[[source]]
+path = 'starter-kit/data/manifest.json'
+kind = 'json'
+
+[[source]]
+path = 'sites/bucharest/site.json'
+kind = 'json'
+
+[[source]]
+path = 'packages/admin/starter/hcm-worker.sh'
+kind = 'say'
+
+[[source]]
+path = 'packages/admin/starter/hcm-worker.bat'
+kind = 'say'
+
+[[source]]
+path = 'functions/src/export/documents.ts'
+kind = 'strings'
+
+[[source]]
+path = 'functions/src/imagery/relocate.ts'
+kind = 'strings'
+
+# The start page's privacy policy and terms (the consent screen links to them): prose a visitor reads, kept outside the catalogues.
+[[source]]
+path = 'scripts/site/src/start/legal-text.ts'
+kind = 'strings'
+
+# ---------------------------------------------------------------------------------------------------------------
+# Allowed uses. `where` is a catalogue key or a source path; `term` the exact text matched (any case).

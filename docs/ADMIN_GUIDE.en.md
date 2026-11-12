@@ -57,7 +57,7 @@ The whole assistant takes at most eleven clicks or fields and four Google permis
 - If the admin itself was updated while this tab was open, a banner above the page says "A new version of the admin is ready" with **Reload** (you stay signed in); until you reload, an installation refuses to start and asks for the reload.
 - A stopped installation says at which step, shows the last lines of its log (secrets removed) and a link to the build in the Google Cloud console; **Try again** starts one new installation, also for an update that stopped once Setup is done. A server newer than this admin is never replaced, even with a function missing: the card asks you to reload the page.
 - The card turns green by itself once every function is installed and answers. When this admin is newer than what is installed, or the server is only partly there (one from before this release), the cards and Home say "An update is ready" with **Update the map**: one click updates the server, then the imagery pipeline and the public map. Setup stays done while an update runs, and taking over the map (d2) is never asked again. Every build of the admin is an update over an earlier build, even when the version number is the same (1.0.0 and 1.0.0): the app orders builds by the time of the code they were built from, and it never replaces a server built later than itself with an older admin (it says the server is newer and asks you to reload instead). Google's note about the access it asks for appears only beside a button that needs it (Install, Publish, Try again, Update the map, Continue); a card with nothing to do shows none.
-- **Optional: install from GitHub Actions** (collapsed): the repository variables, each with a copy button, for an owner who wants every release installed by GitHub instead.
+- **For developers: install from GitHub Actions** (collapsed): the repository variables, each with a copy button, for an owner who wants every release installed by GitHub instead.
 
 ### d3. The imagery pipeline (optional)
 
@@ -118,7 +118,7 @@ The whole assistant takes at most eleven clicks or fields and four Google permis
 | "This billing account already has the most projects it may have. …" | Google's limit of projects per billing account | choose another account, or ask Google for more |
 | "No new billing account in 30 minutes. …" | the account was not created yet | create it, then **Check again** |
 | "The organisation's policy … blocks this item." | a rule of your Google organisation | the guide of that rule; changing it is your decision |
-| "The server account lacks the role … in the project." | a role is missing for the account that made the call | grant the named role, then **Retry what failed** or **Check again** |
+| "The server account lacks a permission in the project: retry “Prepare the project”." | a role is missing for the account that made the call | in **Prepare the Google Cloud project**, **Retry what failed** or **Check again** |
 | "The function … was not installed. Run the installation again." | a function failed to deploy | **Try again** on the server's card |
 | "Still not installed after two hours. …" | the installation did not run | **Install the server** (or GitHub Actions, if you turned it on), then **Check again** |
 | "Stopped at the step: …" with the log's last lines | an installation (server, pipeline or map) stopped | read the log's lines; **Try again** (one click); the console link shows the whole build |
@@ -240,7 +240,7 @@ Declassified USGS satellite frames (Corona, Gambit, Hexagon; 1960–1984) become
 - **Before USGS approves your downloads** (24–48 business hours after the M2M request): the ranked results show, Import is off, and the page says why with the way to Setup's USGS step. A token USGS refuses links to the same step.
 - **Work (n)** counts everything Work lists, live: the imports running, the versions waiting for you and the open orders.
 - Limits: 10 imports a day and 2 running at once, per project.
-- **Paused by the budget guard**: when the month's Google Cloud cost reaches the budget, imports, retries, the georeferencer's saves, crops and publishes stop (the public map never does). **Historical imagery** and **Jobs** say so with the cost and the budget, and **Resume processing** (asked first) starts them again for the rest of the month; next month's alert pauses them again.
+- **Paused: the monthly budget was reached**: when the month's Google Cloud cost reaches the budget, imports, retries, the georeferencer's saves, crops and publishes stop (the public map never does). **Historical imagery** and **Jobs** say so with the cost and the budget, and **Resume processing** (asked first) starts them again for the rest of the month; next month's alert pauses them again.
 
 ### Landsat (M25)
 
@@ -349,7 +349,7 @@ The message shown, its cause and what to do, screen by screen.
 | "Mapbox refused the token: it is invalid or has been revoked." / "The token lacks these scopes: …" | the Mapbox secret token changed | **Open the Mapbox step of Setup** and paste a token with the named scopes |
 | "Does not fit this month's Mapbox budget: choose how to go on" | the publish costs more compute units than are left | the free Studio upload, next month, or pay |
 | "The file is not a GeoTIFF. Upload a .tif file." | the chosen file is another kind of image | export it as a GeoTIFF first |
-| "The source has no tiles at this address (404)." / "The address does not answer with an image." / "The tile server is not responding." | **Check** of a tile address in **Link a layer** | correct the address (it must hold `{z}`, `{x}`, `{y}`) or try again later |
+| "The source has no tiles at this address." / "The address does not answer with an image." / "The tile server is not responding." | **Check** of a tile address in **Link a layer** | correct the address (it must hold `{z}`, `{x}`, `{y}`) or try again later |
 
 ### Joining frames (since M8)
 
@@ -386,12 +386,12 @@ The message shown, its cause and what to do, screen by screen.
 
 | Message | Cause | What to do |
 | --- | --- | --- |
-| "You do not administer the city X; Y was opened instead." | a link to a city your account does not administer | ask that city's owner for an invitation |
+| "You do not administer the city you asked for; Y was opened instead." | a link to a city your account does not administer | ask that city's owner for an invitation |
 | "Your account does not administer any city yet. …" | your last city's owner removed your access | ask a city's owner for an invitation |
 | "The id X is already used by another city. Choose another, for example X-2." | another city has this id | keep the suggestion, or type another id |
 | "The area is too small: …" / "The area is too large: …" | the rectangle is under 0.01° or over 2° on a side | drag the rectangle again |
 | "The project already has 20 cities, the most it allows." | the project's limit | none: a project holds at most 20 cities |
-| "Only the owners of X can do this." / "Only the project's owner can do this." | an editor inviting, exporting or changing roles; a city owner setting budgets or creating a city | ask the city's owner, or the project's |
+| "Only the owners of this city can do this." / "Only the project's owner can do this." | an editor inviting, exporting or changing roles; a city owner setting budgets or creating a city | ask the city's owner, or the project's |
 | "The city must keep at least one owner." | the last owner made an editor | make another admin owner first |
 | "Compute units this publish needs: N; the city has M left this month." | the city's share of Mapbox's compute units | the free Studio upload, next month, or ask the project's owner to raise the city's budget |
 | "An export of this city is already under way. …" | another export is being prepared | wait for it, then download it |
@@ -408,7 +408,7 @@ The message shown, its cause and what to do, screen by screen.
 | **No computer connected** | the worker is not running, or has not been seen for three minutes | **Use this computer** and open the file again (it starts the service again) |
 | **Waiting for your computer** | the job is chosen for your computer and no worker took it | start the worker, or **Run in Google Cloud** |
 | "Your computer has not picked it up in 15 minutes." | no computer was seen while the job waited (a notification says so too) | **Run in Google Cloud instead**, or start the worker |
-| "Your computer runs an older pipeline: no jobs until it updates" | the imagery pipeline was updated | nothing, when set up with the file (it updates within minutes); with Advanced's command, copy it again and run it |
+| "This computer runs an older version of the processing: no jobs until it updates" | the imagery pipeline was updated | nothing, when set up with the file (it updates within minutes); with Advanced's command, copy it again and run it |
 | "The file could not be prepared: try again." | the admin could not read the file's template from the site | try again; if it persists, reload the admin (the site may be mid-update) |
 | "The map's server does not give the file yet" instead of **Use this computer** | the map's server is older than the admin | **Update the map** in Setup, then open **Jobs** again |
 | **Use this computer** clicked, but no file in Downloads | the browser kept it aside as a file to confirm | open the browser's downloads (Ctrl+J) and choose **Keep** |
@@ -435,7 +435,7 @@ When the city page cannot show the map, it shows a card with the message below i
 | --- | --- | --- |
 | "The map could not be found. Please try again later." | the page found no `manifest.json` at the address in `config.js` | publish the city (Settings → **Publishing**) and the map (Setup i), or correct `manifestUrl` in `config.js` |
 | "The map data is invalid (problems found: N)." followed by `field: rule` | the manifest breaks a rule of City Manifest v1; the card names the first field and the rule | correct that field (in the admin from M2; in a starter-kit site, in `data/manifest.json`) |
-| "config.js is missing" / "config.js is invalid: …" | the page has no `window.HistoricCityMapConfig`, or a field in it is unknown or wrong | compare `config.js` with the starter kit's (`starter-kit/README.md`) |
+| "The map is not set up: config.js is missing." / "config.js is invalid: …" | the page has no `window.HistoricCityMapConfig`, or a field in it is unknown or wrong | compare `config.js` with the starter kit's (`starter-kit/README.md`) |
 | "The cityId in config.js (…) does not match the map (…)." | `config.js` points at another city's manifest | make `cityId` and the manifest's city the same; the Bucharest site names the project's city `bucharest`, as every manifest the server builds does (the old seed's `bucuresti` is renamed by the site build, `docs/research/DECISIONS-for-review.md` §35b) |
 | "This map needs a newer version of this page (X). Please reload the page later." | the manifest asks for a newer engine than the page loads | load the engine version the message names |
 | "Your browser cannot show the interactive map. The photo list is still available." | the visitor's browser has no WebGL | nothing: the visitor still gets the photo list |

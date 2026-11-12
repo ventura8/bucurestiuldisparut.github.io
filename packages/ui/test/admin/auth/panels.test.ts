@@ -161,7 +161,7 @@ describe('<hcm-blocked-panel>', () => {
 
         button(panel, 'Reload the page').click();
 
-        expect(deepText(panel)).toContain("The site's Firebase configuration could not be read.");
+        expect(deepText(panel)).toContain('The page did not load fully. Reload it.');
         expect(deepAll(panel, 'hcm-button')).toHaveLength(1);
         expect(app.named('reload')).toHaveLength(1);
         expect(await axeViolations(panel)).toEqual([]);

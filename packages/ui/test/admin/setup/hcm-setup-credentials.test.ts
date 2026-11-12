@@ -48,7 +48,7 @@ describe('<hcm-setup-deploy>', () => {
         const element = await deploy();
 
         // M6: the GitHub variables are the optional path, collapsed under their summary.
-        await page.getByText('Optional: install from GitHub Actions instead').click();
+        await page.getByText('For developers: install from GitHub Actions').click();
         await page.getByRole('button', { name: 'Copy GCP_PROJECT_ID' }).click();
 
         expect(writeText).toHaveBeenCalledWith('demo-hcm');
@@ -77,7 +77,7 @@ describe('<hcm-setup-deploy>', () => {
         vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'));
         const element = await deploy();
 
-        await page.getByText('Optional: install from GitHub Actions instead').click();
+        await page.getByText('For developers: install from GitHub Actions').click();
         await page.getByRole('button', { name: 'Copy DEPLOY_ENABLED' }).click();
 
         await expect.poll(() => element.copied).toBeNull();

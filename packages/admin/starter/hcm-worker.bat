@@ -126,7 +126,12 @@ function Set-AiImageNote($Wanted) {
 function Test-AiGpu($Image, $Flags) {
     & docker run --rm @Flags @SidecarFlags $Image -m matcher.child probe gpu none *> $null
     $code = $LASTEXITCODE
-    if ($code -ne 0) { Write-Host "local AI: the look at the graphics card ($Flags) ended with $code (77: none seen, 76: under 2 GB, else Docker or the driver refused)" }
+    switch ($code) {
+        0 {}
+        77 { Write-Host 'local AI: no graphics card seen' }
+        76 { Write-Host 'local AI: the graphics card has under 2 GB of memory' }
+        default { Write-Host "local AI: Docker or the graphics driver refused the graphics card (code $code)" }
+    }
     return $code -eq 0
 }
 
@@ -162,13 +167,13 @@ function Update-Sidecar($Image) {
 # silent processor run is impossible: the sidecar refuses HCM_AI_DEVICE=cpu without a reason.
 function Start-Matcher($Image) {
     if (Test-AiGpu $Image @('--gpus', 'all')) {
-        Write-Host 'local AI: graphics card through --gpus all'
+        Write-Host 'local AI: graphics card found'
         Start-Sidecar $Image 'gpu' '' @('--gpus', 'all')
     } elseif (((& docker info 2> $null) -match 'nvidia\.com/gpu') -and (Test-AiGpu $Image @('--device', 'nvidia.com/gpu=all'))) {
-        Write-Host 'local AI: graphics card through --device nvidia.com/gpu=all'
+        Write-Host 'local AI: graphics card found'
         Start-Sidecar $Image 'gpu' '' @('--device', 'nvidia.com/gpu=all')
     } else {
-        Write-Host 'local AI: NO GRAPHICS CARD (tried --gpus all, CDI); falling back to the processor'
+        Write-Host 'local AI: no usable graphics card; using the processor (slower)'
         Start-Sidecar $Image 'cpu' 'no-gpu' @()
     }
 }
@@ -194,7 +199,7 @@ function Start-MatcherLoop($Supervisor) {
             $wanted = [string]$state.ai.image
             $workerImage = & docker inspect --format '{{.Config.Image}}' $Name 2> $null
             if ($wanted -cnotmatch $AiImagePattern) {
-                Write-Host 'local AI: the worker named an image that is not pytorch/pytorch by digest: refused'
+                Write-Host 'local AI: refused an unexpected program image'
             } elseif ($workerImage) {
                 if ($pulled -ne $wanted -and (Get-AiImage $workerImage $wanted)) { $pulled = $wanted }
                 if ($pulled -eq $wanted -and $state.ai.files) { Update-Sidecar $wanted }

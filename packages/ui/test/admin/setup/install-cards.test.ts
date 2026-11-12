@@ -75,8 +75,9 @@ describe('<hcm-setup-deploy>: Install the server', () => {
         const { port, element } = await card('deploy', { server: { blocker } }, { steps: { deploy: { state: 'missing' } } });
 
         await expect.element(page.getByRole('button', { name: 'Install the server' })).toBeDisabled();
-        expect(shadowPart(element, '.blocker').textContent).toContain('hcm-installer@demo-hcm.iam.gserviceaccount.com');
-        await page.getByRole('button', { name: 'Open step c' }).click();
+        expect(shadowPart(element, '.blocker').textContent).toContain('An account is missing');
+        expect(shadowPart(element, '.blocker').textContent).not.toContain('hcm-installer@');
+        await page.getByRole('button', { name: 'Open “Prepare the Google Cloud project”' }).click();
         expect(port.calls).toEqual([['open', 'provision']]);
     });
 
@@ -199,8 +200,10 @@ describe('<hcm-setup-deploy>: a permission of step c (finding 28 of 2026-10-31)'
         } as const;
         const { port, element } = await card('deploy', { server }, { steps: { deploy: { state: 'pending' } } }, 'ro');
 
-        expect(shadowPart(element, '[data-fix="provision"]').textContent).toContain('Lipsește o permisiune dată de pasul c');
-        await page.getByRole('button', { name: 'Reia ce nu a reușit în pasul c' }).click();
+        expect(shadowPart(element, '[data-fix="provision"]').textContent).toContain(
+            'Lipsește o permisiune: reia ce nu a reușit la „Pregătirea proiectului Google Cloud”.',
+        );
+        await page.getByRole('button', { name: 'Reia ce nu a reușit la „Pregătirea proiectului Google Cloud”' }).click();
         expect(port.calls).toEqual([['provision']]);
         await expect.element(page.getByRole('button', { name: 'Încearcă din nou' })).toBeEnabled();
         expect(await axeViolations(element)).toEqual([]);
@@ -213,7 +216,9 @@ describe('<hcm-setup-pipeline>', () => {
     it('happyPath_beforeTheServersClickItSaysWhenItStarts', async () => {
         const { element } = await card('pipeline', {});
 
-        expect(shadowPart(element, '.body').textContent).toContain('It starts when you choose “Install the server” in step d.');
+        expect(shadowPart(element, '.body').textContent).toContain(
+            "It starts when you choose “Install the server” in “Install the map's server”.",
+        );
         expect(element.renderRoot.querySelector('hcm-button')).toBeNull();
         expect(await axeViolations(element)).toEqual([]);
     });
@@ -230,7 +235,7 @@ describe('<hcm-setup-pipeline>', () => {
         const blocked = await card('pipeline', {
             pipeline: { blocker: { key: 'apiError.install.noRepository', params: { repository: 'hcm' } } },
         });
-        expect(shadowPart(blocked.element, '.blocker').textContent).toContain('The image repository hcm is missing');
+        expect(shadowPart(blocked.element, '.blocker').textContent).toContain('The image repository is missing');
     });
 
     it('badPath_aBuildStoppedForAQuotaNamesItAndLinksItsQuotasPage', async () => {
@@ -286,7 +291,7 @@ describe('<hcm-setup-pipeline>', () => {
 
         const reason = shadowPart(element, '.blocker').textContent;
         expect(reason).toContain('Not available yet:');
-        expect(reason).toContain('Installing this part from the app comes with a later release; the map works without it.');
+        expect(reason).toContain('This part cannot be installed from here yet; the map works without it.');
         expect(element.renderRoot.querySelector('hcm-button')).toBeNull();
         expect(shadowPart(element, '.body').textContent).not.toContain('It starts when');
         expect(await axeViolations(element)).toEqual([]);

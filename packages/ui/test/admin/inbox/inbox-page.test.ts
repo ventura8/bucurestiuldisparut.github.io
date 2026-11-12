@@ -175,9 +175,7 @@ describe('<hcm-inbox-page>', () => {
         const reason = { key: 'adminContent.notify.push.reason.fcmRefused', params: { code: 'fcm/UNREGISTERED' } } as const;
         const { element } = await inboxPage(inboxState({ push: { device: 'failed', failure, reason, testing: false } }));
 
-        expect(deep(element, '.reason').textContent).toBe(
-            "Why: Google's messaging service refused this browser, also registered anew (fcm/UNREGISTERED).",
-        );
+        expect(deep(element, '.reason').textContent).toBe("Why: Google's messaging service refused this browser, even registered again.");
         expect(await axeViolations(element)).toEqual([]);
     });
 

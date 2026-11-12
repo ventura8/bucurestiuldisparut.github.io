@@ -379,7 +379,7 @@ describe('<hcm-layers-page> link dialog', () => {
 
         const text = deepText(element);
         expect(text).toContain('The tileset belongs to the Mapbox account “anotheraccount”.');
-        expect(text).toContain('Tiles from https://tiles.example.test show publicly');
+        expect(text).toContain('Tiles from https://tiles.example.test do not show on the public map yet');
         expect(deep(element, '#link-label-ro, #link-labelRo').getAttribute('aria-invalid')).toBe('true');
         await userEvent.type(deep(element, '#link-labelRo'), 'P');
         (deep(element, '#link-kind') as HTMLSelectElement).value = 'aerial';
@@ -470,7 +470,7 @@ describe('<hcm-layers-page> link dialog: Check (M3)', () => {
 
         expect(calls(layers)).toEqual(['checkLink']);
         expect(checking).toEqual([expect.stringContaining('Asking for one tile…'), true]);
-        expect(deep(element, '[data-probe="ok"]').textContent).toContain('Tiles answer (image/png).');
+        expect(deep(element, '[data-probe="ok"]').textContent).toContain('The tiles answer.');
         expect(linkButton(element).disabled).toBe(false);
         expect(await axeViolations(element)).toEqual([]);
     });
@@ -481,7 +481,7 @@ describe('<hcm-layers-page> link dialog: Check (M3)', () => {
         const { element } = await page('layers', layers);
 
         expect(deep(element, '[data-probe="failed"]').getAttribute('role')).toBe('alert');
-        expect(deep(element, '[data-probe="failed"]').textContent).toContain('The source has no tiles at this address (404).');
+        expect(deep(element, '[data-probe="failed"]').textContent).toContain('The source has no tiles at this address.');
         expect(linkButton(element).disabled).toBe(true);
     });
 });

@@ -174,7 +174,7 @@ describe('lazyOrderCard', () => {
         fetches[0]?.reject(new Error('offline'));
         await settle();
 
-        expect(deep(root, '[role="alert"]').textContent).toContain('This could not be read (network). Try again.');
+        expect(deep(root, '[role="alert"]').textContent).toContain('This could not be read. Try again.');
         deep(root, 'hcm-button').click();
         expect(deep(root, '[role="status"]').textContent).toContain('Loading');
         fetches[1]?.resolve({ orderCard });

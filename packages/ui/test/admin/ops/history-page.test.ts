@@ -248,7 +248,7 @@ describe('<hcm-history-page>: its other states and the values as text', () => {
         expect(describeValue('en', 'geometry', { type: 'MultiPoint' })).toBe('MultiPoint, positions: 0');
         expect(describeValue('en', 'adjustments', { contrast: 0.2, saturation: 'x' })).toBe('contrast 20%, saturation ?');
         expect(describeValue('en', 'adjustments', {})).toBe('(none)');
-        expect(describeValue('en', 'theme', { seedColor: '#6750a4' })).toBe('seed colour #6750a4');
+        expect(describeValue('en', 'theme', { seedColor: '#6750a4' })).toBe('city colour #6750a4');
         expect(describeValue('en', 'location', { lat: 44.4268, lng: 26.1025 })).toBe('44.4268, 26.1025');
         expect(describeValue('en', 'links', [1, 2])).toBe('items: 2');
         expect(describeValue('en', 'bounds', { south: 1 })).toBe('{"south":1}');

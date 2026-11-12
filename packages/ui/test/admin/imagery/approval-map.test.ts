@@ -99,7 +99,7 @@ describe('<hcm-imagery-page>: what the owner approves', () => {
         );
 
         expect(deepAll(element, '[data-own-cost]')).toHaveLength(0);
-        expect(deep(element, '[data-image="small"]').textContent).toContain('small picture');
+        expect(deep(element, '[data-image="small"]').textContent).toContain('a small version shows until then');
     });
 
     it('happyPath_theShareOfTheCityActualPixelsAndSeeTheImage @S-A74-HAPPY-COVERAGE', async () => {
@@ -169,8 +169,7 @@ describe('<hcm-imagery-page>: why only a small picture', () => {
             return deep(element, '[data-image="small"]').textContent;
         };
 
-        expect(await noteOf('awaiting_approval', false)).toContain('Full detail is made on its own');
-        expect(await noteOf('awaiting_approval', false)).toContain('If it never comes, Jobs has its Retry.');
+        expect(await noteOf('awaiting_approval', false)).toBe('The full-resolution image is on its way; a small version shows until then.');
         expect(await noteOf('published', false)).toContain('No full detail will be made');
         expect(await noteOf('superseded', false)).toContain('No full detail will be made');
         expect(await noteOf('approved', true)).toContain('No full detail will be made');

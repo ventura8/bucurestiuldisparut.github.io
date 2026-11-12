@@ -37,7 +37,7 @@ export const en: AdminShellMessages = {
     'adminShell.session.continue': 'Continue',
     'adminShell.backend.down': "The map's server is not answering right now. Try again in a minute.",
     'adminShell.backend.retry': 'Try again',
-    'adminShell.config.missing': "The site's Firebase configuration could not be read. Reload the page.",
+    'adminShell.config.missing': 'The page did not load fully. Reload it.',
     // Finding 29 of 2026-10-31: a tab left open across a redeploy runs the old admin; it offers the new one.
     'adminShell.update.ready': 'A new version of the admin is ready. Reload the page to use it; you stay signed in.',
     'adminShell.update.reload': 'Reload',
@@ -159,7 +159,7 @@ export const en: AdminShellMessages = {
     'adminShell.route.notAllowed': 'Your role does not include that page.',
     'adminShell.city.role.moderator': 'Moderator',
     'adminShell.city.role.uploader': 'Contributor',
-    'adminShell.city.notMember': 'You do not administer the city {cityId}; {city} was opened instead.',
+    'adminShell.city.notMember': 'You do not administer the city you asked for; {city} was opened instead.',
     'adminShell.welcome.title': 'Contribute to the map of {city}',
     'adminShell.welcome.titleNoCity': 'Contribute to the map',
     'adminShell.welcome.intro': 'Anyone can help the map grow. You can:',

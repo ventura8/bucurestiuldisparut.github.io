@@ -200,7 +200,7 @@ describe('<hcm-worker-panel>', () => {
         expect([local.image, local.city, local.project]).toEqual([DIGEST, 'bucharest', 'demo-hcm']);
         expect(host.feed.locals[0]?.calls).toEqual(['start']);
         expect(text).not.toContain('mkdir');
-        expect(text).toContain('12,345 of 180,000 vCPU-seconds · 45,678 of 360,000 GiB-seconds');
+        expect(text).toContain('Processor: 12,345 of 180,000 free seconds · memory: 45,678 of 360,000 free GiB-seconds');
         // The bar shows the larger share: 45,678 of 360,000 GiB-seconds is more than 12,345 of 180,000 vCPU-seconds.
         expect((deepAll(element, 'hcm-progress').at(-1) as LitElement & { value: number }).value).toBeCloseTo(45_678 / 360_000);
         expect(await axeViolations(element)).toEqual([]);
@@ -234,7 +234,7 @@ describe('<hcm-worker-panel>', () => {
         segments[2]?.click();
         await updated(element);
         expect(host.feed.calls).toContain('setChoice cloud');
-        expect(deepText(element)).toContain('12.345 din 180.000 vCPU-secunde');
+        expect(deepText(element)).toContain('Procesor: 12.345 din 180.000 secunde gratuite');
     });
 
     it('badPath_noComputerAStaleOneABusyOneAndAFailedLastJob', async () => {
