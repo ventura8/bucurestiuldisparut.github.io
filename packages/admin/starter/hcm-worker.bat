@@ -1,5 +1,5 @@
 @echo off
-rem Historic City Map: use this computer for the imagery pipeline's jobs (docs/research/M7-local-worker.md section 1.5).
+rem Historic City Map Maker: use this computer for the imagery pipeline's jobs (docs/research/M7-local-worker.md section 1.5).
 rem The admin's "Use this computer" fills the three values below; the file holds no secret (the admin pairs this computer
 rem by itself once the worker runs). Double-click it once: it checks Docker, writes its PowerShell part to a folder of
 rem yours and registers a task of your user at logon (no administrator rights), which runs the worker in the background:

@@ -1,8 +1,8 @@
 # Admin Guide
 
-Guide for the administrator of a city in **Historic City Map Maker** (first city: **București dispărut**, Bucharest). This is the outline of the guide: sections are filled in together with the features, in milestones M2–M5. The guide is in English only, like all of the project's Markdown; the app itself speaks Romanian and English.
+Guide for the administrator of a city in **Historic City Map Maker** (the example city: **București dispărut**, Bucharest). The guide is in English, like all of the project's Markdown; the app itself speaks Romanian and English.
 
-> Status (M6): sign-in, the Setup Assistant, the daily editors below (Home, photos, places, layers, settings, history, jobs, admins and crash reports), the historical imagery (search USGS, import a free frame, the automatic georeferencing with its suggested pairs, Approve, the compute-unit guard, the free Studio upload, a GeoTIFF upload, the georeferencer, crop, replace), buying a scan (the order card, I ordered it, the daily watch, the reminders and the import on delivery), the notifications (the inbox, and push on a device you turn it on for) and the editors' assists (title suggestions from OpenStreetMap, Romanian and English drafts) work end to end against the Firebase emulators and the fake Google, Mapbox, USGS, OpenStreetMap and Vertex AI services of the tests, and what is published reaches the public viewer, whose swipe compare shows two layers side by side; the raster pipeline itself was run against the same fakes on a synthetic frame. Since M5 one project holds several cities (the city menu, New city, Publishing, roles per city, each city's budget and its static export), each closed to the admins of the others, and a city made in the admin gets its own public site; the tests take a new city from New city to its public site and to an export that runs with no Firebase. On the real cloud it waits for the server's deploy, Provision turning on the Vertex AI and FCM APIs, and your first real scan purchase (`docs/research/M4-status.md`, `docs/research/M5-status.md`). The first real project is set up with Claude, with your yes at each step. Since M6 the Setup Assistant needs no terminal and no Claude after the admin's first deploy: **Install the server**, the imagery pipeline and **Publish the map** are buttons, run by Google Cloud Build in your project with your Google permission; the public map is at `https://<project>.web.app/` and the admin at `https://<project>.web.app/admin/` (`docs/research/M6-status.md`).
+> What the admin does today: sign-in and the Setup Assistant (no terminal: **Install the server**, the imagery pipeline, **Publish the map** and later **Update the map** are buttons, run by Google Cloud Build in your project with your Google permission), the daily editors below (Home, photos, places, stories, layers, settings, history, jobs, admins and crash reports), the historical imagery (search USGS, import a free frame, the automatic georeferencing with its suggested pairs, Approve, the compute-unit guard, a GeoTIFF upload, the georeferencer, crop, replace, joins of one date's frames, Landsat, local archives), buying a scan (the order card, the daily watch, the reminders and the import on delivery), the notifications, the editors' assists, several cities in one project (the city menu, New city, Publishing, roles per city, each city's budget and its static export) and Run on my computer. The public map is at `https://<project>.web.app/` and the admin at `https://<project>.web.app/admin/`.
 
 ## What you do and what the app does
 
@@ -173,7 +173,7 @@ What the city holds and what waits for you (photos whose rights are to be checke
 
 ### Historical layers
 
-- Layers are made by the raster pipeline (M3); until then the page says so. The list shows them in drawing order (the first is drawn on top), with their state and Published; drag one, or use **Move up** and **Move down**.
+- Layers come from **Historical imagery**; while there is none, the page says where to start. The list shows them in drawing order (the first is drawn on top), with their state and Published; drag one, or use **Move up** and **Move down**.
 - **The layer editor**: the label and description (Romanian, English optional), the attribution, year and date, **Shown when the map opens**, **Default opacity**, and four image adjustments, **Black level**, **White level**, **Contrast** and **Saturation**, each read as a signed percentage, with **Reset the adjustments**. Every slider changes the page's map at once; Save publishes the values, and visitors see exactly what you saw. The black level never passes the white level.
 - **Link a layer**: a tileset of the city's own Mapbox account, or the https address of a tile server. Another account's tileset (Mapbox's own included) and an address with a key in it are refused before anything is sent. **Check** asks the server for one tile of the city's centre and says what answered ("Tiles answer (image/png)."), or why nothing did (no tiles at this address, not an image, the server not responding); after a failed Check, Link stays off until the address changes. A linked layer starts unpublished and hidden at start. A tile server's address must also be allowed in the site's and the admin's content security policy: the dialog names it.
 - **Delete the layer** asks first: the layer leaves the public map within a minute, and its Mapbox tileset is deleted seven days later unless you restore the layer from History meanwhile (the waiting job is on the Jobs page).
@@ -213,9 +213,9 @@ The errors visitors and admins ran into, grouped, over 24 hours, 7 days or 30 da
 
 ### From your Save to the visitors' map
 
-Every Save of something published asks the server to rebuild the public map's data (the manifest), at most once a minute; visitors see the change on their next visit. The end-to-end tests check the whole chain on the emulators: a photo published, renamed, reverted and unpublished; a place added from the keyboard; a layer's default opacity, shown-at-start switch and adjustments; each reaches the built viewer exactly as saved (scenarios S-A41-*).
+Every Save of something published asks the server to rebuild the public map's data (the manifest), at most once a minute; visitors see the change on their next visit.
 
-### Historical imagery (M3)
+### Historical imagery
 
 Declassified USGS satellite frames (Corona, Gambit, Hexagon; 1960–1984) become historical layers of the map. The usual way is one click: **Import (free)**, and the server does the rest.
 
@@ -242,7 +242,7 @@ Declassified USGS satellite frames (Corona, Gambit, Hexagon; 1960–1984) become
 - Limits: 10 imports a day and 2 running at once, per project.
 - **Paused: the monthly budget was reached**: when the month's Google Cloud cost reaches the budget, imports, retries, the georeferencer's saves, crops and publishes stop (the public map never does). **Historical imagery** and **Jobs** say so with the cost and the budget, and **Resume processing** (asked first) starts them again for the rest of the month; next month's alert pauses them again.
 
-### Landsat (M25)
+### Landsat
 
 Landsat satellite images (1982 to 2013, public domain) come through the same USGS account as the declassified frames, already placed on the map: no points, no calibration.
 
@@ -251,7 +251,7 @@ Landsat satellite images (1982 to 2013, public domain) come through the same USG
 - **What it checks**: the image must lie within one Landsat pixel (30 m, 15 m for Landsat 7) of today's Sentinel-2 picture, with at most a tenth of the city under clouds; then it goes on the map by itself, credited "Landsat imagery courtesy of NASA Goddard Space Flight Center and U.S. Geological Survey". Otherwise it waits for **Approve**, and says how far off it is and how cloudy the city is.
 - A delivery that lacks a colour band stops with "The Landsat delivery lacks band B3…": choose another scene of that year.
 
-### A whole-city layer from one date's frames (M8)
+### A whole-city layer from one date's frames
 
 A KH-9 frame often holds only part of the city. Frames of one date, from one camera, can be joined into one layer. The design: `docs/research/M8-join-interfaces.md`.
 
@@ -266,7 +266,7 @@ A KH-9 frame often holds only part of the city. Frames of one date, from one cam
 - **Limits**: a join counts as one job plus one for each frame still to import, against the 10 a day. At most 8 frames, one date, one camera. A joined layer cannot be cropped or re-georeferenced, and a published join cannot take another frame: delete the layer and start again. To go on without a frame, cancel the join and join the rest.
 - **The computer it runs on**: a join reads each frame's whole scan, so it needs disk room and memory; **Run on my computer** may be the only practical place for a whole-city join. How long it takes on real frames has yet to be measured.
 
-### Buying a scan, suggestions, assists and notifications (M4)
+### Buying a scan, suggestions, assists and notifications
 
 - **A frame USGS has not scanned yet** (Free only off, chip **Must be ordered from USGS**) has the **Buy this scan** card on its page: the cost (35 USD for one frame: 30 USD a frame and 5 USD an order, paid to USGS directly, never through this app), the four steps in EarthExplorer and **Order in EarthExplorer**, which opens the scene's own page there in a new tab. Buy it there: sign in (**Login**, top right), click **Order** at the bottom of the page, keep On-Demand on the order page, choose **7 Micron** and click **Submit Product Selections**, then fill in USGS's form and pay 35 USD by card on pay.gov (keep the confirmation number USGS shows at the end); come back and click **I ordered it**: that is the flow's second and last input (the message after it offers **Take the mark back**). A frame USGS already offers cannot be marked ("This frame is already scanned: import it for free, no order needed."); one USGS scanned while you were buying turns free on its page, and a message says so. Until USGS approves your account's downloads, both cards say the daily check waits for that approval, with a link to Setup's USGS step.
 - **After I ordered it, nothing is asked of you**: the server asks USGS once a day (**Check now** asks at once, at most once a minute), reminds you on days 7 and 12 to pay if you have not (USGS deletes unpaid orders after 14 days), imports the scan the moment USGS delivers it (delivery takes three to four weeks after payment), georeferences it and publishes it under the city's threshold, exactly like a free import. An order not delivered within 90 days becomes **Never delivered**, with **Order it again** and **Take the mark back** (if you no longer want it). **Take the mark back** also undoes a mark made by mistake. The times of the checks are in your own time zone. The scene's card shows a short chip (Ordered, Ordered: paid?, Delivered, Importing, Never delivered), and **Work** lists the open orders, the one that needs you first: only an order never delivered counts there (a reminder to pay, once sent, asks nothing more of you if you have paid).
@@ -276,19 +276,19 @@ A KH-9 frame often holds only part of the city. Frames of one date, from one cam
 - **Notifications**: what the server did that concerns you (a scan delivered, imported, an order to pay or never delivered, a failed processing, a layer waiting for approval or for points, the budget pausing the processing, a burst of crash reports, USGS approving downloads) reaches every admin's **Notifications** page, newest first, unread ones marked; a click opens the page it is about and marks it read; **Mark all as read** marks the rest. **Notifications on this device** turns on push notifications for this browser (the browser asks you first; refused, the inbox still works); on a computer you share, it belongs to whoever turned it on last, and signing out turns it off for you (so does being removed as an admin). Turning it off when the server cannot be reached leaves it on and says why. **Send a test notification** tries it, and **Notifications on devices** chooses which kinds also show on your devices. No e-mail is sent (it would need a new provider: `docs/research/DECISIONS-for-review.md` §54i).
 - **The visitors' swipe compare** (on the public map): the Layers panel's **Compare** opens a second map beside the first, with a divider to drag (or move with the arrow keys); **Compare with** chooses the other side (another historical layer or today's map), and each side keeps its layer's opacity. On a window narrower than 600 px a toggle switches between the two sides of one map. A link copied while comparing reopens the comparison.
 
-### Several cities: the city menu, New city, publishing, roles, budgets and the export (M5)
+### Several cities: the city menu, New city, publishing, roles, budgets and the export
 
 One project can hold up to 20 cities, each with its own photos, places, layers, settings, admins, budget and public map. An admin of one city sees and changes nothing of another, whatever they try: the rules and every function check the city.
 
 - **The city menu**: an admin of two cities or more, and the project's owner, sees the open city's name in the top bar (on a phone, in the account menu). The menu lists your cities, each with your role in it (**Owner**, **Editor**), the open one marked; choosing another opens it (the page loads again, into its Home). The address names the city (`#/c/<city>/...`), so a copied link opens the same city; an admin of one city sees no menu and no city in the address. A link to a city you do not administer opens your own, with a message saying so. With unsaved changes, the admin asks first.
-- **New city** (the project's owner: **New city** at the end of the city menu): the name in Romanian (the id follows it: lower-case letters, digits and hyphens, the city's address on the public site), then **Create the city**: two inputs. Once you stop typing, the app finds the city on OpenStreetMap, draws its rectangle and moves the map there ("Found on OpenStreetMap: …"); adjust it if the city is larger or smaller. A name OpenStreetMap does not know leaves the rectangle to you: drag it over the city on the map (or **Draw the area** and click two corners, or type the four edges: the rectangle appears once all four are there), then **Create the city**. The map's **Zoom in** and **Zoom out** buttons and two fingers on a phone move the map. The rest fills itself in and changes any time in Settings: the start view, a theme colour, the city's budget, the viewer's token (once Mapbox is set up), and once USGS is set up the first search for historical imagery of the area runs within minutes. An id no city may take (a reserved word such as engine) is said at its field, and an id another city has is refused with a free one in it; an area under 0.01° or over 2° on a side keeps Create off, with the reason beside the map. The done screen links Photos, Places and Historical imagery, and the address of its public map once published, `https://<project>.web.app/<id>/`, as a link: no repository step is needed (M6); **Export the city** also gives a copy that runs on any static host.
+- **New city** (the project's owner: **New city** at the end of the city menu): the name in Romanian (the id follows it: lower-case letters, digits and hyphens, the city's address on the public site), then **Create the city**: two inputs. Once you stop typing, the app finds the city on OpenStreetMap, draws its rectangle and moves the map there ("Found on OpenStreetMap: …"); adjust it if the city is larger or smaller. A name OpenStreetMap does not know leaves the rectangle to you: drag it over the city on the map (or **Draw the area** and click two corners, or type the four edges: the rectangle appears once all four are there), then **Create the city**. The map's **Zoom in** and **Zoom out** buttons and two fingers on a phone move the map. The rest fills itself in and changes any time in Settings: the start view, a theme colour, the city's budget, the viewer's token (once Mapbox is set up), and once USGS is set up the first search for historical imagery of the area runs within minutes. An id no city may take (a reserved word such as engine) is said at its field, and an id another city has is refused with a free one in it; an area under 0.01° or over 2° on a side keeps Create off, with the reason beside the map. The done screen links Photos, Places and Historical imagery, and the address of its public map once published, `https://<project>.web.app/<id>/`, as a link: no repository step is needed; **Export the city** also gives a copy that runs on any static host.
 - **Publishing** (Settings → **Publishing**): a new city is not public yet. Switch **The city is public** on and **Save**: within about a minute the server builds the city's public map data; switched off and saved, it takes it down. The section names the city's public address, `https://<project>.web.app/<id>/`, beside the first city at the root, once the map is published (Setup i): the site's generic city page reads any published city, with no repository step. A city's own site on GitHub Pages (`npm run site:add`, a developer's step) stays optional.
 - **Admins per city**: Admins lists the open city's admins and invitations, each with its role. A city's owner invites (the address, then the role: **Editor** unless changed; the link is copied at once), removes access, and changes a role (**Make … owner of …?**, then **Change the role**); an editor sees the list only, and why. The project's owner is named as such. A city always keeps at least one owner.
-- **Contributors** (M13, `docs/research/M13-roles.md` §3): the public map's **Contribute** link opens the admin's Contribute page in the map's language. A visitor who is not signed in sees a welcome, not the admin's sign-in: the city's name, what contributing means (send photos and stories, suggest where a photo was taken or the direction it looks, become a contributor or a moderator once an admin approves), that a Google account is needed only to send something, **Sign in with Google to contribute** and **Back to the map**. After signing in, an account with no role stays on the Contribute page; it never sees the admin's screens. When the map's server does not answer, the page says the map is resting, with **Try again** and **Back to the map**; on a map not set up yet it says contributions are not open yet. Requests wait in **Review**.
-- **The city's budget** (Settings → **The city's budget**): the city's share of the project's budgets, each with what was used so far in its period: Mapbox compute units a month, imagery processing jobs a day, automatic translations a month, title suggestions a day, exports a day. Only the project's owner changes them (one Save for the fields moved); the project's own limits still hold for every city. A new city gets a quarter of the free compute units, three imagery jobs a day, 100 translations a month, 100 title suggestions a day and three exports a day. Bucharest, from before M5, has only the project's limits: the card says so and shows its fields empty, and a field you leave empty saves at its maximum, so the one limit you set is the only one.
+- **Contributors** (`docs/research/M13-roles.md` §3): the public map's **Contribute** link opens the admin's Contribute page in the map's language. A visitor who is not signed in sees a welcome, not the admin's sign-in: the city's name, what contributing means (send photos and stories, suggest where a photo was taken or the direction it looks, become a contributor or a moderator once an admin approves), that a Google account is needed only to send something, **Sign in with Google to contribute** and **Back to the map**. After signing in, an account with no role stays on the Contribute page; it never sees the admin's screens. When the map's server does not answer, the page says the map is resting, with **Try again** and **Back to the map**; on a map not set up yet it says contributions are not open yet. Requests wait in **Review**.
+- **The city's budget** (Settings → **The city's budget**): the city's share of the project's budgets, each with what was used so far in its period: Mapbox compute units a month, imagery processing jobs a day, automatic translations a month, title suggestions a day, exports a day. Only the project's owner changes them (one Save for the fields moved); the project's own limits still hold for every city. A new city gets a quarter of the free compute units, three imagery jobs a day, 100 translations a month, 100 title suggestions a day and three exports a day. Bucharest, the first city, has only the project's limits: the card says so and shows its fields empty, and a field you leave empty saves at its maximum, so the one limit you set is the only one.
 - **Export the city** (Settings → **Export the city**, a city's owners): **Export**, then **Download** once the archive is ready (two inputs): a `.zip` with everything the city needs to run on any static host, without Firebase: the page, the engine, `city.json` (the published map, without the project's analytics ids), the photos, a README and `RIGHTS.md`. **Include the USGS scans** adds the scans of the USGS layers (public domain); other layers keep their tile references. The card names how many photos are licensed for this map only (`RIGHTS.md` lists them: ask their rights holders before you publish the copy elsewhere), the archive's size and SHA-256, and until when it can be downloaded (seven days). Publish the city first; an editor sees the card read-only.
 
-### Run on my computer and the free tiers (M7)
+### Run on my computer and the free tiers
 
 Imagery jobs can run on your own computer instead of Google Cloud, which costs nothing but your computer's time and Docker. The design and its security review: `docs/research/M7-local-worker.md`.
 
@@ -307,19 +307,19 @@ Imagery jobs can run on your own computer instead of Google Cloud, which costs n
 
 ## Costs
 
-- Google Cloud: about $0.5–2 per month; an installation or update uses Cloud Build minutes (the card names them; a month's releases stay within the free minutes) and the imagery pipeline's image about $0.10 a month; an import downloads on 1 vCPU (about $0.09 an hour) and is processed on 4 vCPU (about $0.37 an hour; 8 vCPU, about $0.75, for a KH-9 panoramic frame), mostly within Cloud Run's monthly free tier; Firebase Hosting is free up to 10 GB stored and 360 MB a day; the $5 budget automatically pauses image processing (never the site), and **Resume processing** in Historical imagery or Jobs starts it again for the rest of the month. An imagery job run on your own computer (M7) costs no Cloud Run time at all; the Jobs page shows the month's Cloud Run use against the free tier and asks before a run would pass it.
-- Your public bucket (M12, the default): each published layer is one file of about 175 MB (publishing moves it there: it is not kept twice), about half a cent a month at Google's standard price, and visitors' traffic past Google's free allowance is billed by Google. Nothing stops the site if a month goes viral: the budget alarm only pauses processing, so watch your Google Cloud bill.
-- Mapbox: free up to 50,000 map loads per month, the basemap's; with **Publish through Mapbox** on, publishing a historical layer costs compute units by its area and zoom, and the app keeps to the month's free 20, otherwise it offers the free Studio upload, waiting for next month, or paying about the amount it names. Since M7 a layer file of at most 300 MB is published through the Uploads API instead, with no compute units (10,000 MB a month free).
+- Google Cloud: about $0.5–2 per month; an installation or update uses Cloud Build minutes (the card names them; a month's releases stay within the free minutes) and the imagery pipeline's image about $0.10 a month; an import downloads on 1 vCPU (about $0.09 an hour) and is processed on 4 vCPU (about $0.37 an hour; 8 vCPU, about $0.75, for a KH-9 panoramic frame), mostly within Cloud Run's monthly free tier; Firebase Hosting is free up to 10 GB stored and 360 MB a day; the $5 budget automatically pauses image processing (never the site), and **Resume processing** in Historical imagery or Jobs starts it again for the rest of the month. An imagery job run on your own computer costs no Cloud Run time at all; the Jobs page shows the month's Cloud Run use against the free tier and asks before a run would pass it.
+- Your public bucket (the default): each published layer is one file of about 175 MB (publishing moves it there: it is not kept twice), about half a cent a month at Google's standard price, and visitors' traffic past Google's free allowance is billed by Google. Nothing stops the site if a month goes viral: the budget alarm only pauses processing, so watch your Google Cloud bill.
+- Mapbox: free up to 50,000 map loads per month, the basemap's; with **Publish through Mapbox** on, publishing a historical layer costs compute units by its area and zoom, and the app keeps to the month's free 20, otherwise it offers the free Studio upload, waiting for next month, or paying about the amount it names. A layer file of at most 300 MB is published through the Uploads API instead, with no compute units (10,000 MB a month free).
 - USGS: scanned frames are free; a new scan costs $30 per frame plus $5 per order, paid by you to USGS in EarthExplorer.
 - Vertex AI (the Romanian and English drafts): under $0.05 a month at the expected use, and never more than 0.50 USD a month (the app's cap); the budget guard pauses it with the image processing.
 - OpenStreetMap's Nominatim (title suggestions) and the notifications: free.
-- Another city (M5): its own Firestore documents and photos, its visitors' Mapbox map loads, and one USGS search a month, within its share of the project's budgets; jsDelivr, which serves the engine to a city's own site, and GitHub Pages are free. An export: the task's few minutes of server time and seven days of its archive in the private bucket.
+- Another city: its own Firestore documents and photos, its visitors' Mapbox map loads, and one USGS search a month, within its share of the project's budgets; jsDelivr, which serves the engine to a city's own site, and GitHub Pages are free. An export: the task's few minutes of server time and seven days of its archive in the private bucket.
 
 ## Troubleshooting
 
 The message shown, its cause and what to do, screen by screen.
 
-### The editors (since M2c)
+### The editors
 
 | Message | Cause | What to do |
 | --- | --- | --- |
@@ -332,7 +332,7 @@ The message shown, its cause and what to do, screen by screen.
 | the tileset belongs to another Mapbox account | **Link a layer** with another account's tileset | link a tileset of the city's own Mapbox account |
 | a category cannot be deleted | places still use it | choose the category its places move to, then Delete |
 
-### Historical imagery (since M3)
+### Historical imagery
 
 | Message | Cause | What to do |
 | --- | --- | --- |
@@ -351,7 +351,7 @@ The message shown, its cause and what to do, screen by screen.
 | "The file is not a GeoTIFF. Upload a .tif file." | the chosen file is another kind of image | export it as a GeoTIFF first |
 | "The source has no tiles at this address." / "The address does not answer with an image." / "The tile server is not responding." | **Check** of a tile address in **Link a layer** | correct the address (it must hold `{z}`, `{x}`, `{y}`) or try again later |
 
-### Joining frames (since M8)
+### Joining frames
 
 | Message | Cause | What to do |
 | --- | --- | --- |
@@ -365,7 +365,7 @@ The message shown, its cause and what to do, screen by screen.
 | "Not enough disk space for this join; free some and retry." | the computer running the join lacks the room | free some disk, **Try again** |
 | "Seam … and … could not be measured" on the approval card | too little matches across the seam (no overlap, flat land, snow) | look at the seam in the preview: Approve if it is good enough, else Reject and choose another date |
 
-### Orders, assists and notifications (since M4)
+### Orders, assists and notifications
 
 | Message | Cause | What to do |
 | --- | --- | --- |
@@ -382,7 +382,7 @@ The message shown, its cause and what to do, screen by screen.
 | "The browser refused notifications (the site settings can allow them). …" | the browser's own prompt was refused | allow notifications for the admin's site in the browser's settings, or use the inbox |
 | "This browser could not be registered for notifications. …" | the browser's push registration failed | try again, or use the inbox |
 
-### Cities, publishing and the export (since M5)
+### Cities, publishing and the export
 
 | Message | Cause | What to do |
 | --- | --- | --- |
@@ -401,7 +401,7 @@ The message shown, its cause and what to do, screen by screen.
 | "Publish the city before you export it." / "The city has not been published yet: …" | the city is not public | Settings → **Publishing**, then Save |
 | the city's public site says "The map could not be found. …" | the city is not published, or was switched off | Settings → **Publishing** |
 
-### Run on my computer (since M7)
+### Run on my computer
 
 | Message | Cause | What to do |
 | --- | --- | --- |
@@ -427,14 +427,14 @@ The message shown, its cause and what to do, screen by screen.
 | **Local AI: processor only** | no graphics card reached the sidecar | it still works, much slower; install the NVIDIA driver and `nvidia-container-toolkit`, and the next frame finds the card |
 | A version waits with the Cloud Run estimate | its run in Google Cloud would pass this month's free tier | **Run in Google Cloud anyway** (it is billed past the free tier) or **Run on my computer** |
 
-### The public map (since M1)
+### The public map
 
 When the city page cannot show the map, it shows a card with the message below in the visitor's language. The ones a city owner can fix:
 
 | Message | Cause | What to do |
 | --- | --- | --- |
 | "The map could not be found. Please try again later." | the page found no `manifest.json` at the address in `config.js` | publish the city (Settings → **Publishing**) and the map (Setup i), or correct `manifestUrl` in `config.js` |
-| "The map data is invalid (problems found: N)." followed by `field: rule` | the manifest breaks a rule of City Manifest v1; the card names the first field and the rule | correct that field (in the admin from M2; in a starter-kit site, in `data/manifest.json`) |
+| "The map data is invalid (problems found: N)." followed by `field: rule` | the manifest breaks a rule of City Manifest v1; the card names the first field and the rule | correct that field (in the admin; in a starter-kit site, in `data/manifest.json`) |
 | "The map is not set up: config.js is missing." / "config.js is invalid: …" | the page has no `window.HistoricCityMapConfig`, or a field in it is unknown or wrong | compare `config.js` with the starter kit's (`starter-kit/README.md`) |
 | "The cityId in config.js (…) does not match the map (…)." | `config.js` points at another city's manifest | make `cityId` and the manifest's city the same; the Bucharest site names the project's city `bucharest`, as every manifest the server builds does (the old seed's `bucuresti` is renamed by the site build, `docs/research/DECISIONS-for-review.md` §35b) |
 | "This map needs a newer version of this page (X). Please reload the page later." | the manifest asks for a newer engine than the page loads | load the engine version the message names |

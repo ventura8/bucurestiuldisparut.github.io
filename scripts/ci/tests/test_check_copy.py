@@ -40,6 +40,26 @@ why = 'English inside Romanian'
 pattern = 'roles/\\w[\\w.]*'
 why = 'a raw role'
 """
+RATE_LIMITED = "\n    'adminContent.imagery.wait.rateLimited': 'Prea multe cereri; reîncercăm în curând'"
+STALE = """
+[[term]]
+pattern = 'coming soon|în curând|wip|dummy|debug\\w*|placeholder'
+why = 'a promise or a stand-in'
+
+[[term]]
+pattern = 'GitHub Pages'
+ignore_case = false
+why = 'the map is on Firebase Hosting'
+
+[[term]]
+pattern = 'https?://\\S*bucurestiuldisparut\\S*'
+why = 'the old repository'
+
+[[term]]
+pattern = 'Historic City Map(?! Maker)'
+ignore_case = false
+why = 'the old name'
+"""
 
 
 def config(extra: str = "") -> dict[str, Any]:
@@ -151,25 +171,36 @@ def test_bad_path_main_reports_and_fails(tmp_path: Path, caplog: pytest.LogCaptu
 def test_happy_path_the_repository_config_reads_and_the_script_entry_point_exits_with_main_status(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    catalogues(tmp_path)
+    catalogues(tmp_path, ro=RO.replace("'Deschide Configurarea'", "'Deschide Configurarea'," + RATE_LIMITED))
     page, data, say, code = (
         "<p>Harta se încarcă.</p>",
         '{"title": "București dispărut"}',
         "say 'graphics card found'",
         "const M = 'Searched again';",
     )
+    on_pages = "Publish it on GitHub Pages."
     sources = {
         "templates/starter-kit/index.html": page,
-        "templates/starter-kit/README.md": page,
-        "starter-kit/README.md": page,
+        "templates/starter-kit/README.md": on_pages,
+        "starter-kit/README.md": on_pages,
         "templates/starter-kit/city.json": data,
         "starter-kit/data/manifest.json": data,
         "sites/bucharest/site.json": data,
+        "scripts/seed/bucharest.city.json": data,
+        "sites/landing/index.html": page,
+        "sites/landing/ro.html": page,
         "packages/admin/starter/hcm-worker.sh": say,
         "packages/admin/starter/hcm-worker.bat": say,
-        "functions/src/export/documents.ts": code,
+        "functions/src/export/documents.ts": "const step = 'GitHub Pages or any static host';",
         "functions/src/imagery/relocate.ts": code,
+        "functions/src/cities/texts.ts": code,
         "scripts/site/src/start/legal-text.ts": code,
+        "scripts/site/src/start/legal.ts": code,
+        "scripts/site/src/start/tree.ts": code,
+        "scripts/site/src/hosting/static-pages.ts": code,
+        "scripts/site/src/admin/page.ts": code,
+        "pipeline/src/hcm_pipeline/worker/page.py": "doc = 'the Auth emulator under --emulators'",
+        "pipeline/src/hcm_pipeline/worker/import_page.py": code,
     }
     list(map(lambda item: write(tmp_path, *item), sources.items()))
     monkeypatch.setattr(sys, "argv", [str(SCRIPT), "--root", str(tmp_path)])
@@ -178,4 +209,36 @@ def test_happy_path_the_repository_config_reads_and_the_script_entry_point_exits
         runpy.run_path(str(SCRIPT), run_name="__main__")
 
     assert exit_info.value.code == 0
-    assert caplog.messages == ["[copy] OK: 15 texts, no developer or test words"]
+    assert caplog.messages == ["[copy] OK: 26 texts, no developer or test words"]
+
+
+def test_bad_path_stale_promises_old_hosting_old_repository_and_old_name_are_refused(tmp_path: Path) -> None:
+    catalogues(tmp_path, en=EN.replace("'Standard gamepad'", "'Historical layers coming soon'"))
+    seed = (
+        '{"about": "[Issues](https://github.com/ventura8/bucurestiuldisparut.github.io/issues)",'
+        ' "privacy": "Hosted by GitHub Pages.", "credits": ["USGS (în curând)"]}'
+    )
+    write(tmp_path, "seed/city.json", seed)
+    write(tmp_path, "worker/page.py", "title = 'Historic City Map: this computer'")
+
+    problems, _ = copy.check(tmp_path, tomllib.loads(STALE + source("seed/city.json", "json") + source("worker/page.py", "strings")))
+
+    assert problems == [
+        "packages/shared/src/i18n/en.ts: input.padTitle: 'coming soon' (a promise or a stand-in): Historical layers coming soon",
+        "seed/city.json: a string value: 'https://github.com/ventura8/bucurestiuldisparut.github.io/issues)' (the old repository): "
+        "[Issues](https://github.com/ventura8/bucurestiuldisparut.github.io/issues)",
+        "seed/city.json: a string value: 'GitHub Pages' (the map is on Firebase Hosting): Hosted by GitHub Pages.",
+        "seed/city.json: a string value: 'în curând' (a promise or a stand-in): USGS (în curând)",
+        "worker/page.py: line 1: 'Historic City Map' (the old name): 'Historic City Map: this computer'",
+    ]
+
+
+def test_happy_path_todays_wording_and_the_full_name_pass_the_stale_terms(tmp_path: Path) -> None:
+    catalogues(tmp_path, en=EN.replace("'Standard gamepad'", "'No historical layers on this map'"))
+    seed = '{"about": "https://github.com/ventura8/historic-city-map-maker/issues", "privacy": "Hosted by Firebase Hosting."}'
+    write(tmp_path, "seed/city.json", seed)
+    write(tmp_path, "worker/page.py", "title = 'Historic City Map Maker: this computer'")
+
+    problems, _ = copy.check(tmp_path, tomllib.loads(STALE + source("seed/city.json", "json") + source("worker/page.py", "strings")))
+
+    assert problems == []

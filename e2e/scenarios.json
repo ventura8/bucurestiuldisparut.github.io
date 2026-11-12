@@ -1487,8 +1487,8 @@
             "behaviour": "V04",
             "area": "viewer",
             "path": "happy",
-            "title": "A city without historical layers says they are coming instead of showing a timeline",
-            "asserts": "no timeline slider; the note 'Straturile istorice vin în curând' (EN 'Historical layers coming soon') is visible above the map chrome, clear of the menu button",
+            "title": "A city without historical layers says so instead of showing a timeline",
+            "asserts": "no timeline slider; the note 'Harta nu are straturi istorice' (EN 'No historical layers on this map') is visible above the map chrome, clear of the menu button",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1. Integrator: packages/ui/src/viewer/viewer-render.ts (unit tests in packages/ui/test/viewer/hcm-map-viewer.test.ts); Bucharest has no layers until M3."
@@ -11509,7 +11509,7 @@
             "area": "pipeline",
             "path": "bad",
             "title": "The page's fallback Google sign-in gives up with a clear message",
-            "asserts": "Sign in with Google whose popup never comes back -> after 90 seconds the page says the sign-in did not finish and to use the command from the admin; the state polls keep the message",
+            "asserts": "Sign in with Google whose popup never comes back -> after 90 seconds the page says the sign-in did not finish and to choose Use this computer in the admin; the state polls keep the message",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Finding 69 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§2.1. Test: e2e/admin/specs/imagery/worker-run.spec.ts."

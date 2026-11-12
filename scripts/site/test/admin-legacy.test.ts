@@ -77,9 +77,13 @@ describe('planLegacyBundle', () => {
         const corrections = JSON.parse(generated(bundle.files, `${LEGACY_FOLDER}/corrections.json`)) as Record<string, unknown>;
         expect(corrections).toEqual(readRepositoryJson('seed/bucharest-2023/corrections.json'));
         expect(Object.keys(corrections)).toEqual(['parcul-ferdinand-1930']);
-        // The credits name the additions' author too.
+        // The credits name the additions' author too, first; the rest, the About and the privacy are today's, from the city file.
         const credits = city['credits'] as { label: { ro: string; en: string } }[];
         expect(credits[0]?.label.ro).toMatch(/^Fotografii: Dan Perry, .*Studiourile Buftea$/);
+        const today = readRepositoryJson(CITY_SEED_FILE) as Record<string, unknown>;
+        expect(credits.slice(1)).toEqual(today['credits']);
+        expect([city['about'], city['privacy']]).toEqual([today['about'], today['privacy']]);
+        expect(JSON.stringify(city)).not.toMatch(/în curând|coming soon|GitHub Pages/);
     });
 
     it('happyPath_theViewerTokenAndTheAnalyticsIdsNeverTravel', () => {
@@ -112,6 +116,28 @@ describe('planLegacyBundle', () => {
         expect(city()).not.toHaveProperty('imagery');
         files.write(CITY_SEED_FILE, JSON.stringify({ id: 'x' }));
         expect(city()).not.toHaveProperty('imagery');
+    });
+
+    it('happyPath_aCityFileWithoutTextsKeepsTheMigratedOnesAndItsTextsReplaceThem', () => {
+        const files = syntheticSeed([point('A.jpg', 26.08)], ['A.jpg']);
+        const migrated = (readRepositoryJson('seed/bucharest/manifest.static.json') as { city: Record<string, unknown> }).city;
+        const city = (): Record<string, unknown> =>
+            JSON.parse(generated(planLegacyBundle(files, 'seed/x').files, `${LEGACY_FOLDER}/city.json`)) as Record<string, unknown>;
+
+        files.write(CITY_SEED_FILE, JSON.stringify({ id: 'x' }));
+        expect([city()['about'], city()['privacy']]).toEqual([migrated['about'], migrated['privacy']]);
+        const credit = { label: { ro: 'Imagini: USGS EROS', en: 'Imagery: USGS EROS' } };
+        files.write(CITY_SEED_FILE, JSON.stringify({ about: { ro: 'Azi', en: 'Today' }, credits: [credit] }));
+        expect(city()['about']).toEqual({ ro: 'Azi', en: 'Today' });
+        expect(city()['credits']).toEqual([{ label: { ro: 'Fotografii: E2E', en: 'Photos: E2E' } }, credit]);
+        expect(city()['privacy']).toEqual(migrated['privacy']);
+    });
+
+    it('badPath_invalidTextsInTheCityFileStopTheBuild', () => {
+        const files = syntheticSeed([point('A.jpg', 26.08)], ['A.jpg']);
+        files.write(CITY_SEED_FILE, JSON.stringify({ privacy: { ro: 'Fără [link](http://x.example)', en: 'x' } }));
+
+        expect(() => planLegacyBundle(files, 'seed/x')).toThrow(/invalid privacy/);
     });
 
     it('badPath_invalidImagerySettingsStopTheBuild', () => {

@@ -313,7 +313,7 @@ test(
     { tag: ['@S-P04-BAD-POPUP-TIMEOUT'] },
     async ({ page }, testInfo) => {
         // Finding 69 of 2026-11-02: on the live project the popup completed but the page stayed "Not signed in", without a
-        // word. The page now gives up after 90 seconds and says to use the command from the admin, which pairs the computer.
+        // word. The page now gives up after 90 seconds and says to choose Use this computer in the admin, which pairs the computer.
         const work = testInfo.outputPath('work');
         mkdirSync(work, { recursive: true });
         const worker = LocalWorker.start('bucharest', work);
@@ -331,9 +331,7 @@ test(
             await expect(error).toHaveText('');
 
             await page.clock.fastForward(31_000);
-            await expect(error).toHaveText(
-                /did not finish: use the command from the admin|nu s-a încheiat: folosește comanda din administrare/,
-            );
+            await expect(error).toHaveText(/did not finish: choose Use this computer|nu s-a încheiat: alege Folosește acest calculator/);
             // The state polls that follow keep the message (the worker itself has no error to say).
             await page.clock.fastForward(6_000);
             await expect(error).toHaveText(/did not finish|nu s-a încheiat/);

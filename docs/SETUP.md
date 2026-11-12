@@ -150,7 +150,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -e HCM_PUBLIC_BUCKE
 
 ## The Firebase Hosting site (M6)
 
-Since M6 the public map lives on Firebase Hosting at the project's own address, with the admin under `/admin/` ([research/M6-interfaces.md](research/M6-interfaces.md) §2): `npm run build:hosting` (Hosting's `predeploy`) builds the admin and the engine, then every committed city site for Hosting (each reading the public bucket `<projectId>-public`, or `HCM_PUBLIC_BUCKET`), the generic city page that serves every city made in the admin (no `site:add` needed for Hosting), and assembles the tree:
+The public map lives on Firebase Hosting at the project's own address, with the admin under `/admin/` ([research/M6-interfaces.md](research/M6-interfaces.md) §2): `npm run build:hosting` (Hosting's `predeploy`) builds the admin and the engine, then every committed city site for Hosting (each reading the public bucket `<projectId>-public`, or `HCM_PUBLIC_BUCKET`), the generic city page that serves every city made in the admin (no `site:add` needed for Hosting), and assembles the tree:
 
 ```bash
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "$PWD" hcm-quality:local \
@@ -179,7 +179,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "
 
 - The start site (`npm run build:start`, after `build:hosting`; its `start-build` gate; `HCM_START_OAUTH_CLIENT_ID` opens it, for the live site the Web client of the Google Cloud project `start-historic-city`, M14 §10; `HCM_START_SITE_VERIFICATION`, Search Console's `google<hex>.html`, writes that file at the root): `dist/start/` with `privacy.html` and `terms.html`, deployed apart (`docs/research/M14-start-your-map.md` §5).
 - The landing page GitHub Pages serves (`npm run build:landing` writes `sites/landing/`, which is committed; the static `landing` gate holds it to the build, and `.github/workflows/pages.yml` publishes it on a push to `master`; DECISIONS-for-review.md §162). Run it after `npm run release:bump`, since the page names the CLI at the release.
-- The self-host bundle (`npm run build:self-host`, which builds the admin and the functions for production first; the `release` stage's `self-host-bundle` gate assembles it before `release-pack`) is the admin's production build without Bucharest's legacy import, the functions' artifact, the rules and a `firebase.json` template; a release's CLI carries it, and the admin's e2e build is refused. Without it, `self-host` stops at step 6 and names a released version. Until CR-M5-7, `self-host` and `deploy` run only with `--experimental` ([SELF_HOST.md](SELF_HOST.md)).
+- The self-host bundle (`npm run build:self-host`, which builds the admin and the functions for production first; the `release` stage's `self-host-bundle` gate assembles it before `release-pack`) is the admin's production build without Bucharest's legacy import, the functions' artifact, the rules and a `firebase.json` template; a release's CLI carries it, and the admin's e2e build is refused. Without it, `self-host` stops at step 6 and names a released version. `--experimental`, from older command lines, is accepted and changes nothing ([SELF_HOST.md](SELF_HOST.md)).
 - Never run `self-host` or `deploy` against a real project from an agent: they run the owner's own `firebase` and `gcloud`, which create cloud resources (ask first; the user runs them in their own terminal). The e2e rows S-V29-* run the built CLI with fake tools only.
 
 ## SonarQube Cloud token (the user, once)

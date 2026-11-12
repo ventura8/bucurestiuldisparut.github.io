@@ -298,11 +298,11 @@ describe('<hcm-map-viewer>: store wiring', () => {
 
         expect(element.shadowRoot?.querySelector('hcm-timeline')).toBeNull();
         expect(shadowQuery(element, '.frame').hasAttribute('data-timeline')).toBe(false);
-        await expect.element(page.getByText('Straturile istorice vin în curând')).toBeVisible();
+        await expect.element(page.getByText('Harta nu are straturi istorice')).toBeVisible();
 
         store.set({ locale: 'en' });
         await element.updateComplete;
-        expect(shadowQuery(element, '.timeline-note').textContent).toContain('Historical layers coming soon');
+        expect(shadowQuery(element, '.timeline-note').textContent).toContain('No historical layers on this map');
         expect(layoutChecked(element)).toEqual(['consent', 'menu', 'timeline-note', 'zoom']);
     });
 

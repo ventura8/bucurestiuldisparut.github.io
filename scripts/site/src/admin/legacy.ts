@@ -1,10 +1,12 @@
 import {
     applyLegacyCorrections,
     cityImagerySchema,
+    citySchema,
     creditsNamingAuthors,
     KNOWN_HTTPS_HOSTS,
     legacyCorrectionsSchema,
     migrateLegacyPhotos,
+    photoAuthorsCredit,
     validate,
     validateManifest,
     type City,
@@ -23,7 +25,9 @@ import type { SiteFileSystem } from '../files.js';
  * ```text
  * legacy/bucharest/city.json              the seed manifest's city, without its Mapbox token and analytics ids
  *                                         (the fields `setup.createCity` takes, CR-M2b-1), plus the imagery settings of
- *                                         scripts/seed/bucharest.city.json: the manifest is the viewer's, it holds none (M8)
+ *                                         scripts/seed/bucharest.city.json: the manifest is the viewer's, it holds none (M8);
+ *                                         that file's About, credits and privacy replace the migrated ones, which
+ *                                         `seed/bucharest/` keeps as they were (they said "coming soon" and GitHub Pages)
  * legacy/bucharest/photos.json            migrateLegacyPhotos(photos.legacy.geojson): [{sourceFile, legacyId?, photo}], the
  *                                         seed's records first, then each addition's (SEED_ADDITIONS), each corrected by
  *                                         the additions' corrections.json (the old site's later place and direction)
@@ -92,9 +96,32 @@ function readJson(files: SiteFileSystem, path: string): unknown {
     }
 }
 
-/** The city file's imagery settings; none without the file (a seed outside this repository). */
-function seedImagery(files: SiteFileSystem): { readonly imagery?: CityImagery } {
-    const { imagery } = (files.isFile(CITY_SEED_FILE) ? readJson(files, CITY_SEED_FILE) : {}) as { readonly imagery?: unknown };
+/** The city file, or an empty one without it (a seed outside this repository). */
+function cityFile(files: SiteFileSystem): Readonly<Record<string, unknown>> {
+    return (files.isFile(CITY_SEED_FILE) ? readJson(files, CITY_SEED_FILE) : {}) as Readonly<Record<string, unknown>>;
+}
+
+/** The texts a visitor reads that the city file holds today; the seed manifest keeps the ones it was migrated with. */
+const TEXT_FIELDS = ['about', 'credits', 'privacy'] as const;
+
+type CityTexts = Partial<Pick<City, (typeof TEXT_FIELDS)[number]>>;
+
+/** The city file's About, credits and privacy, each validated as the city schema has it; none it does not hold. */
+function seedTexts(file: Readonly<Record<string, unknown>>): CityTexts {
+    const texts: Record<string, unknown> = {};
+    for (const field of TEXT_FIELDS.filter((name) => file[name] !== undefined)) {
+        const result = validate(citySchema.shape[field], file[field]);
+        if (!result.ok) {
+            throw new SiteBuildError(`${CITY_SEED_FILE}: invalid ${field}\n${issuesText(result.issues)}`);
+        }
+        texts[field] = result.value;
+    }
+    return texts as CityTexts;
+}
+
+/** The city file's imagery settings; none when it holds none. */
+function seedImagery(file: Readonly<Record<string, unknown>>): { readonly imagery?: CityImagery } {
+    const { imagery } = file;
     if (imagery === undefined) {
         return {};
     }
@@ -105,13 +132,23 @@ function seedImagery(files: SiteFileSystem): { readonly imagery?: CityImagery } 
     return { imagery: result.value };
 }
 
-function legacyCity(files: SiteFileSystem, seedDir: string): BundledCity {
+/** The bundled city and whether its credits are the city file's (they hold no authors' line: the bundle puts it first). */
+function legacyCity(files: SiteFileSystem, seedDir: string): { readonly city: BundledCity; readonly fileCredits: boolean } {
     const path = `${seedDir}/manifest.static.json`;
     const result = validateManifest(readJson(files, path));
     if (!result.ok) {
         throw new SiteBuildError(`${path}: invalid manifest\n${issuesText(result.issues)}`);
     }
-    return { ...cityFields(result.value.city), ...seedImagery(files) };
+    const file = cityFile(files);
+    const texts = seedTexts(file);
+    return { city: { ...cityFields(result.value.city), ...texts, ...seedImagery(file) }, fileCredits: texts.credits !== undefined };
+}
+
+/** The credits naming every author: the migrated list completes its authors' line; the city file's gets one, first. */
+function bundledCredits(credits: City['credits'], photos: readonly MigratedPhoto[], fileCredits: boolean): City['credits'] {
+    const shown = photos.map((record) => record.photo);
+    const authors = fileCredits ? photoAuthorsCredit(shown) : null;
+    return authors === null ? creditsNamingAuthors(credits, shown) : [authors, ...credits];
 }
 
 /** One seed folder's migrated records. */
@@ -176,20 +213,14 @@ export function planLegacyBundle(
     seedDir = DEFAULT_SEED_DIR,
     additions: readonly string[] = seedDir === DEFAULT_SEED_DIR ? SEED_ADDITIONS : [],
 ): LegacyBundle {
-    const seedCity = legacyCity(files, seedDir);
+    const { city: seedCity, fileCredits } = legacyCity(files, seedDir);
     const seeds = migrateSeeds(files, [seedDir, ...additions]);
     const corrections = correctionsOf(files, additions);
     const photos = applyLegacyCorrections(
         seeds.flatMap((seed) => seed.photos),
         corrections,
     );
-    const city = {
-        ...seedCity,
-        credits: creditsNamingAuthors(
-            seedCity.credits,
-            photos.map((record) => record.photo),
-        ),
-    };
+    const city = { ...seedCity, credits: bundledCredits(seedCity.credits, photos, fileCredits) };
     const copies = originals(files, seeds);
     return {
         files: [

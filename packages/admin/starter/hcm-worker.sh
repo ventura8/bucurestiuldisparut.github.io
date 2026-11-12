@@ -1,5 +1,5 @@
 #!/bin/sh
-# Historic City Map: use this computer for the imagery pipeline's jobs (docs/research/M7-local-worker.md, section 1.5).
+# Historic City Map Maker: use this computer for the imagery pipeline's jobs (docs/research/M7-local-worker.md, section 1.5).
 #
 # The admin's "Use this computer" fills the three values below and gives this file a name (hcm-worker.sh on Linux,
 # hcm-worker.command on macOS). It holds no secret: the admin pairs this computer by itself once the worker runs.
@@ -337,7 +337,7 @@ install_linux() {
 	mkdir -p "$unit_dir"
 	{
 		say '[Unit]'
-		say 'Description=Historic City Map worker (the imagery pipeline on this computer)'
+		say 'Description=Historic City Map Maker worker (the imagery pipeline on this computer)'
 		say 'After=network-online.target'
 		say '[Service]'
 		say "Environment=\"PATH=$PATH\""
@@ -362,7 +362,7 @@ install_autostart() {
 	{
 		say '[Desktop Entry]'
 		say 'Type=Application'
-		say 'Name=Historic City Map worker'
+		say 'Name=Historic City Map Maker worker'
 		say "Exec=sh \"$1\" run"
 		say 'NoDisplay=true'
 	} >"$autostart/$NAME.desktop"

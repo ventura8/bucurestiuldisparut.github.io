@@ -32,7 +32,7 @@ export interface ArtifactRegistryClient {
 export function pipelineRepositorySpec(): Readonly<Record<string, unknown>> {
     return {
         format: 'DOCKER',
-        description: `Historic City Map: the raster pipeline's image (${PIPELINE_REPOSITORY})`,
+        description: `Historic City Map Maker: the raster pipeline's image (${PIPELINE_REPOSITORY})`,
         cleanupPolicyDryRun: false,
         cleanupPolicies: {
             'keep-two-newest': { id: 'keep-two-newest', action: 'KEEP', mostRecentVersions: { keepCount: 2 } },
