@@ -101,9 +101,8 @@ describe('buildSite (the committed sites)', () => {
         buildSite({ siteDir: 'starter-kit', outDir: 'dist/site/starter-kit', token: TOKEN, engineDir: 'dist/engine' }, files);
 
         const html = dist.readText('dist/site/starter-kit/index.html');
-        for (const file of ['mapbox-gl.js', 'mapbox-gl.css']) {
-            expect(html).toContain(`integrity="${subresourceIntegrity(readFileSync(join(ROOT, 'node_modules/mapbox-gl/dist', file)))}"`);
-        }
+        expect(html).toContain(`integrity="${subresourceIntegrity(readFileSync(join(ROOT, 'node_modules/mapbox-gl/dist/mapbox-gl.js')))}"`);
+        expect(html).not.toContain('mapbox-gl.css');
         expect(html).toContain('<title>Orașul meu</title>');
     });
 

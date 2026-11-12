@@ -92,11 +92,8 @@ function hostingSites(): (SiteBuildOptions & { readonly path: string })[] {
     ];
 }
 
-function mapboxGlIntegrity(fs: SiteFileSystem): { script: string; stylesheet: string } {
-    return {
-        script: subresourceIntegrity(fs.readBytes('node_modules/mapbox-gl/dist/mapbox-gl.js')),
-        stylesheet: subresourceIntegrity(fs.readBytes('node_modules/mapbox-gl/dist/mapbox-gl.css')),
-    };
+function mapboxGlIntegrity(fs: SiteFileSystem): { script: string } {
+    return { script: subresourceIntegrity(fs.readBytes('node_modules/mapbox-gl/dist/mapbox-gl.js')) };
 }
 
 /** The e2e Hosting tree, both variants, from the admin's build and the cities built for Hosting. */

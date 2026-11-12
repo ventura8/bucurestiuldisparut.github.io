@@ -17,7 +17,8 @@ import { expect, test } from '../../support/test.js';
  * trips) and the file's gzip bytes at the same throughput. Mapbox GL JS is 1.9 MB (526 KB gzip): before the fix the
  * engine, a module script, waited for it as for any deferred script, and nothing was painted until both had run.
  * Now Mapbox GL loads `async` and the engine renders the viewer at once, creating the map when `mapboxgl` is there
- * (packages/engine/src/mount.ts `mapboxOf`, scripts/site/src/page.ts).
+ * (packages/engine/src/mount.ts `mapboxOf`, scripts/site/src/page.ts). With the CDN two seconds slower, the page's own
+ * `mapbox-gl.css` in the head held the first paint at 2.9 s; the page links none now (the viewer's shadow root does).
  */
 
 /** Chrome DevTools' "Fast 4G" (front_end/core/sdk/NetworkManager.ts), in bytes per second. */

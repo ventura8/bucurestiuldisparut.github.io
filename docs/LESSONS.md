@@ -3571,4 +3571,5 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-12, the Pixel Tablet: cold first paint 5,376 ms against 764 ms warm.
     - Found by: a throttled cold load (CDP Fast 4G, 4x CPU) with Mapbox's files given their CDN time: the first paint came after `mapbox-gl.js`'s end every time.
     - Fix and pin: Mapbox GL loads `async` and the map adapter takes a promise of it (§175f); `S-V01-BAD-SLOW-MAPBOX-FIRST-PAINT`.
-    - **A third-party script the first paint does not need is `async`, and the code that needs it waits for it, not the page.**
+    - Then: with Mapbox's CDN two seconds slower the first paint still came at 2.9 s: `mapbox-gl.css` in the page's head was render-blocking, and unused (the viewer links it in its shadow root). The pages link none now.
+    - **A third-party script or stylesheet the first paint does not need is `async` or absent, and the code that needs it waits for it, not the page; measure with the third party slow, not only cold.**

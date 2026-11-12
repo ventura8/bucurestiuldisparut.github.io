@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { contentSecurityPolicy } from '../src/csp.js';
-import { MAPBOX_GL_SCRIPT, MAPBOX_GL_STYLESHEET, MAPBOX_GL_VERSION, renderSitePage } from '../src/page.js';
+import { MAPBOX_GL_SCRIPT, MAPBOX_GL_VERSION, renderSitePage } from '../src/page.js';
 import { parseSiteSpec } from '../src/site-spec.js';
 import { subresourceIntegrity } from '../src/sri.js';
 import { ROOT, htmlValidateMessages } from './support.js';
@@ -13,7 +13,7 @@ function bucharestPage(): string {
     return renderSitePage({
         spec: parseSiteSpec(readFileSync(join(ROOT, 'sites/bucharest/site.json'), 'utf8')),
         csp: contentSecurityPolicy({ connect: ['https://telemetry.example'], images: [] }),
-        mapboxGlIntegrity: { script: 'sha384-script', stylesheet: 'sha384-style' },
+        mapboxGlIntegrity: { script: 'sha384-script' },
     });
 }
 
@@ -44,7 +44,11 @@ describe('renderSitePage', () => {
             '<script src="tab-icon.js" defer>',
             '<script type="module" src="engine/engine.mjs">',
         ]);
-        expect(html).toContain(`<link rel="stylesheet" href="${MAPBOX_GL_STYLESHEET}" integrity="sha384-style" crossorigin="anonymous">`);
+        // No stylesheet from another origin holds back the first paint (the viewer links mapbox-gl.css in its shadow root).
+        expect([...html.matchAll(/<link rel="stylesheet" href="([^"]*)"/g)].map(([, href]) => href)).toEqual([
+            'engine/engine.css',
+            'site.css',
+        ]);
         expect(html).toContain('<link rel="stylesheet" href="engine/engine.css">');
         expect(html).toContain('<meta name="referrer" content="strict-origin-when-cross-origin">');
     });
@@ -81,7 +85,7 @@ describe('renderSitePage', () => {
         // M6 (docs/research/M6-interfaces.md §2.4, §2.7): the root's admin-redirect.js before anything loads; the generic
         // city page served at /<city>/ with absolute addresses.
         const spec = parseSiteSpec(readFileSync(join(ROOT, 'sites/bucharest/site.json'), 'utf8'));
-        const integrity = { script: 'sha384-script', stylesheet: 'sha384-style' };
+        const integrity = { script: 'sha384-script' };
         const assets = { engineFolder: '/engine/', config: '/city/config.js', stylesheet: '/site.css', redirect: 'admin-redirect.js' };
 
         const html = renderSitePage({

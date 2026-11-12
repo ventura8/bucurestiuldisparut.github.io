@@ -1150,7 +1150,7 @@
             "asserts": "the same profile with two more seconds on Mapbox GL JS -> at 412x915 and 800x1280 the first contentful paint comes before mapbox-gl.js has arrived (resource timing) and within the budget",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Before the fix the engine, a module script, ran only after the deferred mapbox-gl.js (526 KB gzip): the first paint waited for it. Unit tests in packages/engine/test/mount-browser.test.ts, packages/ui/test/map/mapbox-adapter-pending.test.ts, scripts/site/test/page.test.ts."
+            "notes": "Before the fix the engine, a module script, ran only after the deferred mapbox-gl.js (526 KB gzip): the first paint waited for it; then, with the CDN slow, the page's render-blocking mapbox-gl.css (2.9 s; the viewer links its own in the shadow root). Unit tests in packages/engine/test/mount-browser.test.ts, packages/ui/test/map/mapbox-adapter-pending.test.ts, scripts/site/test/page.test.ts."
         },
         {
             "id": "S-V01-BAD-MANIFEST404",

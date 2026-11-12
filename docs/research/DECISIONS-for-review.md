@@ -6637,7 +6637,12 @@ relaxed; one new e2e budget.
   script, which runs in document order after the deferred `mapbox-gl.js` (1.9 MB, 526 KB gzip, from a new origin), so
   nothing was painted before Mapbox GL had arrived and run. The page now loads Mapbox GL `async`; the engine renders the
   viewer at once and `mapboxOf` hands the map adapter a promise of `mapboxgl` when the script is still loading (no global
-  and no loading script: the old error). The e2e budget `S-V01-HAPPY-COLD-FIRST-PAINT` (FCP under 1,800 ms at a phone
+  and no loading script: the old error). The same trace with Mapbox's CDN two seconds slower found the second cause: the
+  page's `<link rel="stylesheet">` of `mapbox-gl.css` in the head blocked the first paint (2.9 s) until api.mapbox.com had
+  answered, and no one needed it: the viewer links that stylesheet inside its shadow root, where the head's copy cannot
+  reach. The city pages now link none (`scripts/site/src/page.ts`; only mapbox-gl.js keeps its SRI hash). Measured on the
+  local build at the phone size, three runs each: FCP 1,408–1,668 ms before (deferred script), 760–796 ms after. The e2e
+  budget `S-V01-HAPPY-COLD-FIRST-PAINT` (FCP under 1,800 ms at a phone
   and a tablet) and `S-V01-BAD-SLOW-MAPBOX-FIRST-PAINT` (the viewer paints before Mapbox GL arrives) measure it with the
   same method; Mapbox's files are answered by the firewall (`route.fulfill`, out of the throttling's reach), so the test
   gives them a modelled cold CDN time (three round trips and their gzip bytes at Fast 4G) — the only timed wait in the

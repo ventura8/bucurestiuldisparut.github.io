@@ -8,9 +8,10 @@ import type { SiteSpec } from './site-spec.js';
  * `.htmlvalidate.json` proposal is approved (docs/research/DECISIONS-for-review.md §1, change request CR-3).
  *
  * The page holds no inline script or style: the meta CSP comes first, then Mapbox GL JS from api.mapbox.com (pinned,
- * with Subresource Integrity, `async`), the site's `config.js`, and the engine from the same origin as an ES module, which
- * boots from `window.HistoricCityMapConfig` into `#historic-city-map` and creates the map once Mapbox GL has arrived. Without JavaScript a bilingual note explains
- * that the map needs it. The body is one `main` landmark headed by the site's title (a level-one heading, visually
+ * with Subresource Integrity, `async`), the site's `config.js`, and the engine from the same origin as an ES module,
+ * which boots from `window.HistoricCityMapConfig` into `#historic-city-map` and creates the map once Mapbox GL has
+ * arrived. Nothing from another origin blocks the first paint. Without JavaScript a bilingual note explains that the
+ * map needs it. The body is one `main` landmark headed by the site's title (a level-one heading, visually
  * hidden: the map fills the window), so everything the viewer draws (the timeline, toasts, the menu, the legal bar)
  * is inside a landmark (axe's `landmark-one-main`, `page-has-heading-one` and `region`, the tour).
  */
@@ -19,6 +20,7 @@ import type { SiteSpec } from './site-spec.js';
 export const MAPBOX_GL_VERSION = '3.34.1';
 
 export const MAPBOX_GL_SCRIPT = `https://api.mapbox.com/mapbox-gl-js/v${MAPBOX_GL_VERSION}/mapbox-gl.js`;
+/** For pages that embed a release (`scripts/release`): the city sites' own pages leave it to the viewer's shadow root. */
 export const MAPBOX_GL_STYLESHEET = `https://api.mapbox.com/mapbox-gl-js/v${MAPBOX_GL_VERSION}/mapbox-gl.css`;
 
 /** Where the build copies the engine (`packages/engine/dist`), relative to the page, and the two files the page loads. */
@@ -68,8 +70,12 @@ export interface PageInputs {
     readonly spec: SiteSpec;
     /** The `content` of the meta CSP (`contentSecurityPolicy`). */
     readonly csp: string;
-    /** `sha384-…` of the pinned mapbox-gl.js and mapbox-gl.css (`subresourceIntegrity`). */
-    readonly mapboxGlIntegrity: { readonly script: string; readonly stylesheet: string };
+    /**
+     * `sha384-…` of the pinned mapbox-gl.js (`subresourceIntegrity`). The page links no mapbox-gl.css: the viewer links it
+     * inside its shadow root, where a copy in the page's head cannot reach, and one in the head held back the first paint
+     * until a new origin had answered (the cold load of 2026-11-12, DECISIONS-for-review.md §175f).
+     */
+    readonly mapboxGlIntegrity: { readonly script: string };
     /** Where the page's files are; `RELATIVE_ASSETS` by default. */
     readonly assets?: PageAssets;
 }
@@ -104,7 +110,6 @@ function head(inputs: PageInputs): HtmlElement {
         element('title', {}, [spec.title]),
         ...iconLinks(),
         ...redirectScript(assets),
-        element('link', { rel: 'stylesheet', href: MAPBOX_GL_STYLESHEET, ...crossOrigin(mapboxGlIntegrity.stylesheet) }),
         element('link', { rel: 'stylesheet', href: `${assets.engineFolder}${ENGINE_STYLESHEET_FILE}` }),
         element('link', { rel: 'stylesheet', href: assets.stylesheet }),
         // Async, not deferred: the engine (a module, run in order with the deferred scripts) paints the viewer without
