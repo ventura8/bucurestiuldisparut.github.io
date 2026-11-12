@@ -1426,7 +1426,7 @@ The owner placed points on 1966 Corona frames and hit four things; each is fixed
   warped map preview is drawn `WARP_MAX_SIDE` = 4,096 px across (3,072 before; `WARP_SMALL_SIDE` = 2,048 px on a window under 840 CSS px), its mesh code in a lazy chunk of its own
   (`georef-warp.ts`, fetched when a version opens). Rows: S-A16-HAPPY-GEOREF-FULL-RES, S-A16-BAD-GEOREF-FULL-RES-NONE.
 
-#### What each pane shows, removing a pair, editing a published version's points (2026-11-12, beta.1)
+### What each pane shows, turning, removing a pair, editing a published version's points (2026-11-12, beta.1)
 
 The owner's requests for beta.1 (DECISIONS-for-review.md §165):
 

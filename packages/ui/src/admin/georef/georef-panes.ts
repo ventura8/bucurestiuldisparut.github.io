@@ -79,10 +79,10 @@ function turn(context: GeorefContext, pane: 'scan' | 'map', direction: -1 | 0 | 
 /** Turn left, Turn right and Upright (the scan) or North up (the map): each pane turns on its own, by button and by keyboard. */
 function turnButtons(context: GeorefContext, pane: 'scan' | 'map'): TemplateResult {
     const { locale } = context;
-    const button = (direction: -1 | 0 | 1, name: 'left' | 'right' | 'scanUp' | 'mapUp'): TemplateResult =>
-        html`<hcm-button variant="text" data-turn=${name} @click=${turn(context, pane, direction)}
-            >${contentText(locale, `adminContent.georef.turn.${name}`)}</hcm-button
-        >`;
+    const button = (direction: -1 | 0 | 1, name: 'left' | 'right' | 'scanUp' | 'mapUp'): TemplateResult => {
+        const label = contentText(locale, `adminContent.georef.turn.${name}`);
+        return html`<hcm-button variant="text" data-turn=${name} @click=${turn(context, pane, direction)}>${label}</hcm-button>`;
+    };
     return html`<div class="actions turn" role="group" aria-label=${contentText(locale, `adminContent.georef.turn.${pane}`)}>
         ${button(-1, 'left')} ${button(1, 'right')} ${button(0, pane === 'scan' ? 'scanUp' : 'mapUp')}
     </div>`;

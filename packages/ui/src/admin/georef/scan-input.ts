@@ -2,6 +2,7 @@
  * What `<hcm-scan-viewer>` (`./hcm-scan-viewer.ts`) keeps of a pointer, a pinch and an arrow key, and how it loads a picture: out of the
  * element, which keeps its 400 lines with the ghost and the sharper scan (2026-11-12); and the holder of the sharper scan's tiles.
  */
+import { emit } from '../../components/internal.js';
 import type { ScanMarker } from './scan-draw.js';
 import type { OpenDetail, ScanDetailScene } from './scan-tiles.js';
 import { panView, rotateView, type Point, type ScanView, type Size } from './scan-view.js';
@@ -20,6 +21,34 @@ export interface Gesture {
 
 /** One press of a turn button or key: 15 degrees. */
 export const TURN_STEP = Math.PI / 12;
+
+/** What the keys that act at once need of the scan pane. */
+interface CommandViewer extends HTMLElement {
+    pickCentre(): boolean;
+    deleteSelected(): boolean;
+    rotateBy(delta: number): boolean;
+    upright(): boolean;
+}
+
+/** The keys that act at once, and what they do (true: handled). */
+export const COMMANDS: Readonly<Record<string, ((viewer: CommandViewer) => boolean) | undefined>> = {
+    Enter: (viewer) => viewer.pickCentre(),
+    Delete: (viewer) => viewer.deleteSelected(),
+    Backspace: (viewer) => viewer.deleteSelected(),
+    Escape: (viewer) => {
+        emit(viewer, 'hcm-escape', {});
+        return true;
+    },
+    // Turning the scan: r to the right, R (Shift) to the left, n upright again.
+    r: (viewer) => viewer.rotateBy(TURN_STEP),
+    R: (viewer) => viewer.rotateBy(-TURN_STEP),
+    n: (viewer) => viewer.upright(),
+};
+
+/** The linked map's place for the pane: one without an angle (the panes turn apart) keeps the pane as the owner turned it. */
+export function followed<Camera extends { readonly angle?: number }>(follow: Camera, current: ScanView | null): Camera & { readonly angle: number | undefined } {
+    return { ...follow, angle: follow.angle ?? current?.angle };
+}
 
 /** The view a drag without a marker leaves: panned by the drag, or (Ctrl) turned about the pane's centre by the angle it swept. */
 export function draggedView(gesture: Gesture, at: Point, pane: Size): ScanView {

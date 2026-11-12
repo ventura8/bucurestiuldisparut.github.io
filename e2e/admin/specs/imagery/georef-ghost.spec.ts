@@ -393,7 +393,9 @@ test(
         // Pair 2 chosen in the table: its Delete button is beside the panes.
         await page.getByRole('button', { name: pairName(2), exact: true }).click();
         // Named as the row's own Delete: found by what it is.
-        await expect(page.locator('[data-action="delete-selected"]')).toHaveText(georefText(lang, 'adminContent.georef.deleteSelected', { number: '2' }));
+        await expect(page.locator('[data-action="delete-selected"]')).toHaveText(
+            georefText(lang, 'adminContent.georef.deleteSelected', { number: '2' }),
+        );
         await page.locator('[data-action="delete-selected"]').click();
         await expect(pairRows(page, lang)).toHaveCount(3);
         await expect(removed(2)).toBeVisible();

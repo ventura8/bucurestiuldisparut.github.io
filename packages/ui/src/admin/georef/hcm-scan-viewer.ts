@@ -21,7 +21,7 @@ import { defineOnce, emit } from '../../components/internal.js';
 import { adminBase } from '../shell/admin-styles.js';
 import { drawScan, type ScanMarker } from './scan-draw.js';
 import { scanViewerStyles } from './scan-viewer-styles.js';
-import { ARROW_STEPS, DetailTiles, draggedView, imageOf, TURN_STEP, type Gesture, type Pinch, type ScanDetailFile } from './scan-input.js';
+import { ARROW_STEPS, COMMANDS, DetailTiles, draggedView, followed, imageOf, type Gesture, type Pinch, type ScanDetailFile } from './scan-input.js';
 import {
     centredView,
     fitView,
@@ -41,21 +41,6 @@ const HCM_SCAN_VIEWER_TAG = 'hcm-scan-viewer';
 const CLICK_SLOP = 4;
 const PAN_STEP = 40;
 const KEY_ZOOM = 1.5;
-
-/** The keys that act at once, and what they do (true: handled). */
-const COMMANDS: Readonly<Record<string, ((viewer: HcmScanViewer) => boolean) | undefined>> = {
-    Enter: (viewer) => viewer.pickCentre(),
-    Delete: (viewer) => viewer.deleteSelected(),
-    Backspace: (viewer) => viewer.deleteSelected(),
-    Escape: (viewer) => {
-        emit(viewer, 'hcm-escape', {});
-        return true;
-    },
-    // Turning the scan: r to the right, R (Shift) to the left, n upright again.
-    r: (viewer) => viewer.rotateBy(TURN_STEP),
-    R: (viewer) => viewer.rotateBy(-TURN_STEP),
-    n: (viewer) => viewer.upright(),
-};
 
 export class HcmScanViewer extends LitElement {
     static override readonly properties = {
@@ -209,9 +194,7 @@ export class HcmScanViewer extends LitElement {
         if (follow === null || this.#pointers.size > 0 || this.#pane.width === 0) {
             return;
         }
-        // A follow without an angle (the panes turn apart) keeps the pane as the owner turned it.
-        const angle = follow.angle ?? this.#view?.angle;
-        this.#view = centredView(this.#pane, { ...follow, angle }, this.previewScale, this.#fitted());
+        this.#view = centredView(this.#pane, followed(follow, this.#view), this.previewScale, this.#fitted());
     }
 
     /** The admin panned or zoomed: drawn, and said (the linked map follows). */
