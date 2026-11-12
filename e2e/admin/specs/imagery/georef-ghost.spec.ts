@@ -401,12 +401,15 @@ test(
         await page.locator('[data-action="delete-selected"]').click();
         await expect(pairRows(page, lang)).toHaveCount(3);
         await expect(removed(2)).toBeVisible();
-        await expectStateSound(page, adminVisit('georef.pair-removed', lang));
         // Undo in the notice: the pair is back, second in the list, and nothing is left to save.
         await removed(2)
             .getByRole('button', { name: georefText(lang, 'adminContent.georef.pairRemovedUndo') })
             .click();
         await expect(pairRows(page, lang)).toHaveCount(4);
+        // Checked once the notice is gone: the snackbar floats over the page, and the scroll sweep would slide the map's
+        // Mapbox logo under its Undo (a meeting of a fixed notice and scrolled content, not of the page's own layout).
+        await expect(removed(2)).toHaveCount(0);
+        await expectStateSound(page, adminVisit('georef.pair-removed', lang));
 
         // Delete on the map pane removes the chosen pair too.
         await page.getByRole('button', { name: pairName(3), exact: true }).click();

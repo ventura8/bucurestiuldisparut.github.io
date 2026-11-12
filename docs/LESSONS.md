@@ -3420,3 +3420,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: an `<img>` decodes the whole file whatever part the canvas draws; a cap only moves the number.
     - Fix and pin: the sharper scan is JPEG tiles in one file (`scan-tiles.bin`, `scan_tiles.py`); the pane decodes the tiles in view and keeps at most 32 (`scan-tiles.ts`; `scan-tiles.test.ts` pans a 16,384 px scan and counts; `test_publish_scan.py` reads every tile's size; DECISIONS §164).
     - **A picture larger than the screen is shown in pieces: budget the decoded bytes, and test the count and size of the pieces asked for.**
+
+583. **Turning the map by the scan's angle minus the fit's rotation was 2 degrees off on the stand-in's frame.**
+    - Seen: 2026-11-12, `georef-linked.spec.ts` (S-A16-HAPPY-GEOREF-ROTATE): the scan turned 15 degrees, the map 12.9.
+    - Cause: an affine fit that stretches one axis more than the other turns different scan directions by different angles; the first version read the rotation of the scan's x axis only and subtracted angles.
+    - Fix and pin: `rotation.ts` carries the very direction the pane shows along its x axis through the fit (`fitAngle` with an angle) and, the other way, a step of the map's x axis back through the inverse fit (`angleFor`); `rotation.test.ts`, the e2e within a few degrees of the stand-in's oblique fit.
+    - **A rotation read from a fit is the rotation of one direction: carry the direction you show, not the scan's axis.**
+
+584. **A tour state with a snackbar failed the scroll sweep on Mapbox's logo.**
+    - Seen: 2026-11-12, `georef.pair-removed`: scrolled to 675 px, the map's clipped Mapbox logo lay within 12 px of the snackbar's Undo, which floats over the page at a large window.
+    - Cause: the sweep scrolls the page under fixed elements; a notice that stays ten seconds meets whatever scrolls beneath it.
+    - Fix and pin: the state is checked once the notice is gone (after its Undo); the notice itself is checked in the shell's own states.
+    - **Check a page's state without a transient overlay over it, or the sweep reports the overlay's meeting with scrolled content.**

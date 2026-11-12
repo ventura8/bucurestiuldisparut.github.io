@@ -234,7 +234,7 @@ export const IMAGERY_STATES = {
         visit: 'specs/imagery/georef-ghost.spec.ts',
     },
     'georef.pair-removed': {
-        title: 'Georeferencer: the chosen pair removed with the button beside the panes, the notice with Undo',
+        title: "Georeferencer: a chosen pair removed with the button beside the panes and put back by the notice's Undo",
         visit: 'specs/imagery/georef-ghost.spec.ts',
     },
     'georef.edit-published': {
