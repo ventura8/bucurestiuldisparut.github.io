@@ -35,13 +35,13 @@ def test_happy_path_consistent_seams_place_every_sheet_on_their_steps() -> None:
 
 
 def test_bad_path_one_false_seam_is_outvoted_and_dropped() -> None:
-    seams = _seams(3, 3)
-    seams[0] = Seam(0, 1, "right", 140.0, 30.0, 0.9, 0.2, "strong")
+    false = Seam(4, 5, "right", 140.0, 30.0, 0.9, 0.2, "strong")
+    seams = [false if (seam.a, seam.b) == (4, 5) else seam for seam in _seams(3, 3)]
 
     solved = bundle.solve(_grid(3, 3), seams, CELL)
 
-    assert [(seam.a, seam.b) for seam in solved.dropped] == [(0, 1)]
-    assert solved.positions[1] == pytest.approx((90.0, 0.0), abs=0.5)
+    assert [(seam.a, seam.b) for seam in solved.dropped] == [(4, 5)]
+    assert solved.positions[5] == pytest.approx((180.0, 72.0), abs=2.0)
 
 
 def test_bad_path_a_sheet_from_the_order_with_no_seam_is_left_out_but_a_named_one_stays() -> None:

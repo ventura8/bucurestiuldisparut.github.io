@@ -137,11 +137,10 @@ def test_happy_path_an_answer_with_no_sheets_takes_the_proposal_as_it_is(world: 
     ctx, staging = _series(world, tmp_path, SheetsSpec(rows=1, cols=2, overlap=0.08, names="rc"))
     answer = owner_layout.Answer(0, (), (), False, {})
 
-    proposal = owner_layout.owner_proposal(staging.named, answer)
+    proposal = owner_layout.owner_proposal([(name, originals(ctx) / name) for name, _path in staging.named], answer)
 
     assert len(proposal.solved.positions) == 2
     assert proposal.grid.source == "name"
-    assert ctx is not None
 
 
 def test_bad_path_a_malformed_answer_leaves_its_sheets_out_and_reads_zeroes() -> None:

@@ -6,7 +6,7 @@ is kept as the stitched one with the layout's files. `wait_layout` does not mosa
 """
 
 from collections.abc import Sequence
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Final
 
 from hcm_pipeline.jobs import JobContext, StepResult, Waiting
@@ -48,7 +48,7 @@ def _revision(ctx: JobContext, revision: int | None) -> int:
 def _stitched(ctx: JobContext, proposal: Proposal, canvas: Path, method: str, revision: int | None) -> Stitched:
     working = read_working(canvas, SCAN_MAX_PX)
     parts = proposal.plan.parts
-    left = tuple((parts[index].name, reason) for index, reason in sorted(proposal.left_out.items()))
+    left = tuple((PurePosixPath(parts[index].name).name, reason) for index, reason in sorted(proposal.left_out.items()))
     layout = publish_layout(ctx, proposal, _revision(ctx, revision))
     return Stitched(working.image, method, len(parts), left, pairs_scale=1 / working.scale, layout=layout)
 

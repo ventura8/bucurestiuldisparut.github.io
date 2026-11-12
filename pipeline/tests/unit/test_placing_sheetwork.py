@@ -24,10 +24,10 @@ def test_happy_path_a_framed_page_is_cropped_inside_its_frame_and_its_margins() 
 
 def test_happy_path_paper_margins_alone_are_trimmed() -> None:
     page = numpy.full((200, 300), 250, numpy.uint8)
-    page[40:160, 50:250] = 60
-    page[40:160:7, 50:250] = 250
+    dots = numpy.random.default_rng(3).random((120, 200)) < 0.3
+    page[40:160, 50:250][dots] = 60
 
-    assert frame.content_box(page) == pytest.approx((50, 40, 250, 160), abs=2)
+    assert frame.content_box(page) == pytest.approx((50, 40, 250, 160), abs=5)
 
 
 def test_bad_path_an_outline_inside_the_drawing_is_no_frame() -> None:

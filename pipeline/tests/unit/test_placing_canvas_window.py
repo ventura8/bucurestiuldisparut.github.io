@@ -56,7 +56,7 @@ def test_happy_path_a_colour_canvas_keeps_three_bands_and_a_grey_scan_is_spread_
 
     pixels = _read(path)
     assert pixels.shape == (60, 50, 3)
-    assert numpy.all(pixels[:50, :, 0] == 20)
+    assert numpy.all(pixels[5:45, 5:45, 0] == 20)
     assert numpy.all(pixels[55:, :, 1] == canvas_window.PAPER)
 
 

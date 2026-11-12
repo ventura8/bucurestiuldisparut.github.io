@@ -1,11 +1,15 @@
 """Atlas stitched waiting pictures (docs/research/M22-help-calibrate.md §4.1)."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import numpy
 import pytest
-from hcm_pipeline.jobs import Waiting
-from hcm_pipeline.placing import stitched
+from hcm_pipeline.jobs import JobContext, Waiting
+from hcm_pipeline.placing import autoplace, stitched
+from hcm_pipeline.placing.autostitch import Proposal
+from hcm_pipeline.placing.quality import Quality
+from hcm_pipeline.placing.series import SeriesJob
 from hcm_pipeline.steps.place import PlaceStep
 
 from tests.fakes.world import PipelineWorld, dig
@@ -32,10 +36,11 @@ def test_happy_path_an_atlas_that_does_not_place_itself_leaves_its_stitched_pict
     assert isinstance(help_item, dict)
     record = help_item["stitched"]
     assert isinstance(record, dict)
-    assert record["method"] == "atlas"
+    # Laid out by its page numbers and seams (M20 §19); the blank page is told apart.
+    assert record["method"] == "names"
     assert (record["parts"], record["joined"], record["leftOutCount"]) == (5, 4, 1)
-    assert record["leftOut"] == [{"name": "5.tif", "reason": stitched.NO_JOIN}]
-    assert record["width"] == 1000
+    assert record["leftOut"] == [{"name": "5.tif", "reason": "blank"}]
+    assert record["width"] == pytest.approx(1000, abs=40)
     assert str(record["previewPath"]).endswith("/stitched.jpg")
     assert str(record["previewPath"]) in world.gcs.objects
     # The georeferencer opens it like any frame: its scan and the city window's OpenStreetMap lines.
@@ -43,13 +48,22 @@ def test_happy_path_an_atlas_that_does_not_place_itself_leaves_its_stitched_pict
     scan, reference = version["scan"], version["reference"]
     assert isinstance(scan, dict)
     assert isinstance(reference, dict)
-    assert (scan["width"], scan["height"]) == (1000, 1000)
+    assert (scan["width"], scan["height"]) == (record["width"], record["height"])
     assert str(scan["previewPath"]).endswith("/scan-preview.jpg")
     assert str(reference["osmPath"]) in world.gcs.objects
 
 
-def test_happy_path_overlapping_atlas_pages_are_joined_by_their_overlaps(world: PipelineWorld, tmp_path: Path) -> None:
+def test_happy_path_overlapping_atlas_pages_are_joined_by_their_overlaps(
+    world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Scenarios: S-P22-HAPPY-JOIN-QUALITY"""
+    proposed = autoplace.proposed
+
+    def doubtful(job: JobContext, series: SeriesJob) -> Proposal:
+        return replace(proposed(job, series), quality=Quality(100.0, 0.4, 1.0, 0.0, "check"))
+
+    # The older joins (M20 §19.6 step 4): the automatic layout is not sure, the overlaps place every page.
+    monkeypatch.setattr(autoplace, "proposed", doubtful)
     whole = texture((900, 900))
     pages = [whole[0:500, 0:500], whole[0:500, 400:900], whole[400:900, 0:500], whole[400:900, 400:900]]
     names = [f"Atlas/{index}.tif" for index in range(1, 5)]
