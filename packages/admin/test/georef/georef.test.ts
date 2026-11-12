@@ -405,3 +405,36 @@ describe('the georeferencer: the version read', () => {
         expect(georef.state.version).toBeNull();
     });
 });
+
+describe('the georeferencer: an archive series (docs/LESSONS.md 557)', () => {
+    const SERIES = 'ar-socec1914-s-0123456789ab';
+
+    function seriesDoc(state: string) {
+        const doc = golden('version.needs-gcps.json');
+        const pairs = [pair('g1', 10, 10), pair('g2', 7000, 40), pair('g3', 3000, 5000), pair('g4', 6000, 5800)];
+        const source = { kind: 'archive', archiveId: 'ar-0123456789abcdef', seriesId: 's-0123456789ab', sheetCount: 4 };
+        const help = { reason: 'no-scale', note: 'The map states no scale.', at: doc['updatedAt'] };
+        return { ...doc, origin: 'archive', state, source, help, georef: { method: 'gcps', transform: 'affine', gcps: pairs } };
+    }
+
+    it('happyPath_aSeriesParkedWithTheOwnersPairsOpensEditableWithThem @S-A12-HAPPY-RETRY-STOPPED-PAIRS', async () => {
+        const { georef, store } = setup();
+        store.docs.set(VERSIONS(SERIES), seriesDoc('needs_gcps'));
+
+        georef.open([SERIES]);
+        await settle();
+
+        expect(georef.state.version).toMatchObject({ id: SERIES, state: 'needs_gcps', editable: true });
+        expect(georef.state.pairs.map((each) => each.id)).toEqual(['g1', 'g2', 'g3', 'g4']);
+    });
+
+    it('badPath_aRetriedSeriesStillPlacingItselfIsReadOnly @S-A12-BAD-RETRY-STOPPED-PLACING', async () => {
+        const { georef, store } = setup();
+        store.docs.set(VERSIONS(SERIES), seriesDoc('processing'));
+
+        georef.open([SERIES]);
+        await settle();
+
+        expect(georef.state.version).toMatchObject({ state: 'processing', editable: false });
+    });
+});

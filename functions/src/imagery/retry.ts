@@ -39,7 +39,9 @@ import { guardIsRed, requireJob, stampOf, versionIdOf, type Stamp } from './reco
  * that ended otherwise: a dismissed one gave its scene and its scratch files back, and a retry would make a layer no scene
  * knows (finding of 2026-11-06; S-A12-BAD-RETRY-DISMISSED). A version still `processing` under a failed job is a stranded run
  * (the runner's second write did not arrive): the retry is the way out, as neither Dismiss nor Cancel takes it
- * (S-A12-BAD-STRANDED-VERSION). A stopped job (status `cancelled`, version `cancelled`) is retried the same way as a failed one.
+ * (S-A12-BAD-STRANDED-VERSION). A stopped job (status `cancelled`, version `cancelled`) is retried the same way as a failed one,
+ * without the Stop that ended it (`cancelRequested`), and its version keeps what the owner gave it: an archive series with saved
+ * pairs (`georef`, `method: 'gcps'`) places itself from them again (`placing/owner.py`; S-A12-HAPPY-RETRY-STOPPED-PAIRS).
  * Checked again in the transaction that retries. M8 (`docs/research/M8-join-interfaces.md` §5): a
  * failed join freed its frames, so its retry asks whether they are still its own (a newer join, new points or a publish of its
  * own may have taken one: `apiError.imagery.joinPartGone`), and it goes back waiting for them, so no worker can claim it before the
@@ -202,8 +204,25 @@ function attemptsAgain(job: JobDoc): Pick<JobDoc, 'attempt'> {
     return failedOutdated(job) || job.status === 'cancelled' ? { attempt: 0 } : {};
 }
 
+/**
+ * What a run left that the retried job must not carry (docs/LESSONS.md 557): its error, its end, its lease and execution, its MTS
+ * job, why it waited, an editor's placing mark, and the owner's Stop (`cancelRequested`). A Stop stays on the job it ended; kept on
+ * the retried one, the dispatcher and every worker's claim pass the job over and `imagery.tick` cancels it again.
+ */
+const LEFT_BY_THE_RUN = [
+    'error',
+    'finishedAt',
+    'lease',
+    'retryAt',
+    'executionName',
+    'mapboxJobId',
+    'waitReason',
+    'placingPoints',
+    'cancelRequested',
+] as const;
+
 function retriedJob(job: JobDoc, atPublish: boolean, stamp: Stamp): JobDoc {
-    const kept = { ...omit(job, ['error', 'finishedAt', 'lease', 'retryAt', 'executionName', 'mapboxJobId']), ...attemptsAgain(job) };
+    const kept = { ...omit(job, LEFT_BY_THE_RUN), ...attemptsAgain(job) };
     if (atPublish) {
         return { ...kept, status: 'awaiting_approval', waitReason: 'approval', ...publishReopened(job), ...stamp };
     }
