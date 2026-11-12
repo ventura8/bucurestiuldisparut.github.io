@@ -1,11 +1,15 @@
 """Pieces and atlases overview mosaic and page-size helpers (docs/research/M20-import-local.md)."""
 
 from pathlib import Path
+from typing import cast
 
 import cv2
 import numpy
-from hcm_pipeline.jobs import Done, Waiting
+import pytest
+from hcm_pipeline.archive import model
+from hcm_pipeline.jobs import Done, JobContext, Waiting
 from hcm_pipeline.placing import assemble, maps
+from hcm_pipeline.placing.stitched import Stitched, publish_stitched
 from hcm_pipeline.steps.place import PlaceStep
 
 from tests.fakes.world import PipelineWorld
@@ -35,6 +39,8 @@ def test_happy_path_pieces_with_an_overview_use_it_as_the_series_picture(world: 
     record = help_item["stitched"]
     assert isinstance(record, dict)
     assert record["method"] == "overview"
+    assert record["method"] in model.STITCH_METHODS
+    assert "overview" in model.ARCHIVE_PLACE_METHODS
     assert record["joined"] >= 3
 
 
@@ -111,3 +117,12 @@ def test_happy_path_a_pages_frame_is_cropped_and_the_page_size_follows_the_count
     assert assemble.frame_crop(numpy.full((50, 50), 250, numpy.uint8)).shape == (50, 50)
     assert maps.page_px(95) == assemble.CANVAS_MAX_PX // 11
     assert maps.page_px(10_000) == assemble.PAGE_PX
+
+
+def test_bad_path_a_stitch_method_the_server_does_not_know_is_refused_before_publishing(tmp_path: Path) -> None:
+    """Scenarios: S-P20-BAD-STITCH-METHOD-UNKNOWN"""
+    # harti.zip 1895: `overview` was missing from the server's list, so the worker's write was refused after the work (lesson 562).
+    stitched = Stitched(numpy.zeros((4, 4), numpy.uint8), "made-up", 1)
+
+    with pytest.raises(ValueError, match="unknown stitch method"):
+        publish_stitched(cast(JobContext, None), stitched)

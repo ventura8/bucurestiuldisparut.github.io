@@ -16601,6 +16601,17 @@
             "notes": "Owner 2026-11-10 tile import piece 3. Tests: pipeline/tests/unit/test_placing_overview_find.py, pipeline/tests/unit/test_placing_assemble.py."
         },
         {
+            "id": "S-P20-BAD-STITCH-METHOD-UNKNOWN",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A stitch or place method the server does not know never leaves the worker",
+            "asserts": "publish_stitched with a method outside STITCH_METHODS -> ValueError before any file is published; the overview method is in STITCH_METHODS and ARCHIVE_PLACE_METHODS on both sides of the contract (enums.json)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895: the worker's write of help.stitched (method overview) was refused as apiError.invalidRequest after 10 minutes of work (lesson 562). Tests: pipeline/tests/unit/test_placing_assemble_overview.py, pipeline/tests/unit/test_contract.py, packages/shared/test/schemas/pipeline-contract.test.ts."
+        },
+        {
             "id": "S-P20-HAPPY-OVERVIEW-ATLAS",
             "behaviour": "P20",
             "area": "pipeline",

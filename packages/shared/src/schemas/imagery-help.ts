@@ -8,8 +8,9 @@ import { z } from 'zod';
 
 import { plainText } from './primitives.js';
 
-/** How the parts were joined: a grid's names and frames, an atlas's edges or overlaps, pieces' overlaps, or one map alone. */
-export const STITCH_METHODS = ['grid', 'atlas', 'pieces', 'single'] as const;
+/** How the parts were joined: a grid's names and frames, an atlas's edges or overlaps, pieces' overlaps, one map alone, or the parts laid on
+ * the archive's complete overview map (harti.zip, 2026-11-12). */
+export const STITCH_METHODS = ['grid', 'atlas', 'pieces', 'single', 'overview'] as const;
 
 /** Why a part is not in the stitched picture: no frame on the sheet, or no edge or overlap shared with the others. */
 export const LEFT_OUT_REASONS = ['no-frame', 'no-join'] as const;
