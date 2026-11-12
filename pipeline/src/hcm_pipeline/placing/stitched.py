@@ -9,7 +9,7 @@ over the map. The georeferencer gets it too, as it gets a frame's: the picture a
 `SCAN_MAX_PX` long, and `scan-preview.jpg`) and the city window's OpenStreetMap lines as its `reference` (`reference-osm.png`), so an
 archive series waiting for points opens there like any frame (never Mapbox Satellite). The version's `help.stitched` says what it
 holds: its size, how many parts joined, which were left out and why, and the joins' quality (the matched overlaps' inliers and
-their residual, in canvas pixels).
+their residual, in canvas pixels), and for an automatic layout its summary (`layout`, M20 §19).
 """
 
 from collections.abc import Mapping, Sequence
@@ -68,6 +68,8 @@ class Stitched:
     # Canvas pixels per pixel of the version's suggested pairs: 1 when the pairs were found on this canvas (an assembled series), less
     # when they are in a larger original's pixels (a single map's working copy is the canvas).
     pairs_scale: float = 1.0
+    # M20 §19: the automatic layout's summary (`help.stitched.layout`), when the picture is its proposal.
+    layout: Mapping[str, object] | None = None
 
     @property
     def joined(self) -> int:
@@ -99,7 +101,8 @@ def _measures(stitched: Stitched) -> dict[str, object]:
     """What only some pictures have: the ground scale (a grid's mosaic) and the joins' quality."""
     scale = {} if stitched.metres_per_px is None else {"metresPerPx": round(stitched.metres_per_px, 4)}
     joins = {} if stitched.joins is None else {"joins": stitched.joins.as_record()}
-    return {**scale, **joins}
+    layout = {} if stitched.layout is None else {"layout": dict(stitched.layout)}
+    return {**scale, **joins, **layout}
 
 
 def publish_stitched(ctx: JobContext, stitched: Stitched) -> dict[str, object]:
