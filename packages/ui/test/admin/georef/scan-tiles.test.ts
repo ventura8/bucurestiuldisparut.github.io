@@ -2,6 +2,7 @@
 // keeps at most `SCAN_TILES_KEPT` (S-A16-HAPPY-GEOREF-FULL-RES, S-A16-BAD-GEOREF-FULL-RES-NONE).
 import { describe, expect, it } from 'vitest';
 
+import { DetailTiles } from '../../../src/admin/georef/scan-input.js';
 import {
     detailScene,
     openDetail,
@@ -84,6 +85,35 @@ describe('an opened sharper scan', () => {
         opened?.dispose();
 
         expect(await openDetail({ file: new Blob(['short']), scale: 1 }, () => undefined)).toBeNull();
+    });
+});
+
+describe('the pane's holder of its sharper scan', () => {
+    it('badPath_aDetailReplacedDroppedOrNotTilesWhileItOpensIsNeverDrawn @S-A16-BAD-GEOREF-FULL-RES-NONE', async () => {
+        const holder = new DetailTiles();
+        const view = { scale: 4, offset: { x: 0, y: 0 } };
+        const pane = { width: 200, height: 100 };
+        let changes = 0;
+        const changed = (): void => {
+            changes += 1;
+        };
+        const tiles = (): { file: Blob; scale: number } => ({ file: fileOf([MAGIC, 1, 1024, 2500, 1100, 6], [1, 1, 1, 1, 1, 1]), scale: 1 });
+
+        // Replaced while it opens: the first is closed when it arrives, the second is the pane's.
+        holder.load(tiles(), changed);
+        holder.load(tiles(), changed);
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(holder.scene(view, pane, 0.25)).toEqual({ scale: 1, pieces: [] });
+        // Not a tiles file: nothing to draw. Dropped while it opens: closed when it arrives.
+        holder.load({ file: new Blob(['short']), scale: 1 }, changed);
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(holder.scene(view, pane, 0.25)).toBeNull();
+        holder.load(tiles(), changed);
+        holder.drop();
+        holder.load(null, changed);
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(holder.scene(view, pane, 0.25)).toBeNull();
+        expect(changes).toBe(4);
     });
 });
 

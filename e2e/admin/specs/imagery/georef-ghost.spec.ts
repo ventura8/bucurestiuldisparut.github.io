@@ -332,6 +332,7 @@ test(
         await opened({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, adminWorld.accounts.owner.uid, page, lang);
         expect(asked, 'the whole frame needs only the preview').toEqual([]);
 
+        await countDecodes(page);
         // Zoomed in until a preview pixel covers more than one device pixel (a phone's two device px a CSS px: sooner).
         const pixel = scanPixelOf(landmark(0));
         await zoomPastPreview(page, pixel);
@@ -339,13 +340,12 @@ test(
         await expect.poll(async () => (await paneDetail(page))?.scale).toBe(1);
         expect((await paneDetail(page))?.bytes).toBeGreaterThan(1000);
 
-        // Zoomed in further: fetched once a version, and only the tiles under the pane are decoded, none larger than a tile
-        // (the 1600 × 1200 sharper scan is twelve tiles of 400 px; the whole of it is never one picture).
-        await countDecodes(page);
-        await zoomScanAt(page, pixel, -900);
+        // Only tiles are decoded, none larger than a tile: the 1600 × 1200 sharper scan is twelve tiles of 400 px, never one picture.
         await expect.poll(async () => (await decodes(page)).length).toBeGreaterThan(0);
+        // Zoomed in further: fetched once a version; the tiles already decoded are drawn again, no tile twice.
+        await zoomScanAt(page, pixel, -900);
         const sizes = await decodes(page);
-        expect(sizes.length).toBeLessThan(12);
+        expect(sizes.length).toBeLessThanOrEqual(12);
         expect(Math.max(...sizes.flat())).toBeLessThanOrEqual(SCAN_TILE);
         expect(asked).toHaveLength(1);
     },
