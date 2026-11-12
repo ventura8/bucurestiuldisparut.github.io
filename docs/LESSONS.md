@@ -3367,3 +3367,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-12, the merge of track/colourstitch: `pipeline-radon` failed `pipeline/tests/unit/test_placing_overview_find.py - B (13.83)` after the colour series' three tests and two helpers joined its 290 lines; the branch had run pytest, ruff and mypy but not the `static` stage.
     - Fix and pin: the colour tests (S-P20-HAPPY-OVERVIEW-COLOUR, S-P20-BAD-OVERVIEW-GREY-STAYS-GREY) moved into their own `pipeline/tests/unit/test_placing_overview_colour.py`; the scenario notes follow.
     - **Radon grades whole files, tests included: a branch that adds tests to a long test file runs `pipeline-radon` (or the whole `static` stage) before it is called done, and splits by behaviour rather than appending.**
+
+574. **A local series at its attempt cap could only be deleted.**
+    - Seen: 2026-11-12, the 1895 archive series of lesson 569: after the server fix was deployed its version page offered only Delete this version (`attempt: 3`, `apiError.internal`).
+    - Cause: `JOB_MAX_ATTEMPTS` capped every retry alike, though it exists to stop paid cloud work looping; a run on the owner's computer costs no cloud compute, and a server bug spent its three attempts.
+    - Fix and pin: `retryPastCap` and `retryCures` of `@hcm/shared`, used by `jobRetryable` and `imagery.retry`: the owner's Retry of a local run (`runOn: 'local'`, `localOnly`, `archive-series`) passes the cap, its `attemptsExhausted` included, and starts the count again; a cloud run and every publish keep their caps (DECISIONS-for-review.md §158; S-A12-HAPPY-LOCAL-RETRY-PAST-CAP, S-A12-BAD-CLOUD-RETRY-AT-CAP).
+    - **A limit that guards cost applies where the cost is: a manual retry that spends nothing must never be refused by it, and the client and the server read one shared predicate.**

@@ -429,3 +429,14 @@ describe('what calibration measured, as the page reads it (M9)', () => {
         expect(versionViewOf(stored(ID, { ...base, calibration: undefined })).calibration).toBeNull();
     });
 });
+
+describe('a job view at its attempt cap (live report of 2026-11-12)', () => {
+    it('happyPath_aLocalRunAtItsCapOffersTryAgain_aCloudRunDoesNot @S-A12-HAPPY-LOCAL-RETRY-PAST-CAP @S-A12-BAD-CLOUD-RETRY-AT-CAP', () => {
+        const view = (overrides: Record<string, unknown>) => jobViewOf(stored(ID, jobDocSchema.parse(jobDoc(overrides))));
+        const atCap = { status: 'failed', layerId: 'kh-4a-corona-1966', attempt: 3, error: { code: 'apiError.internal', message: 'x' } };
+
+        expect(view({ ...atCap, runOn: 'local' }).retryable).toBe(true);
+        expect(view({ ...atCap, runOn: 'cloud' }).retryable).toBe(false);
+        expect(view(atCap).retryable).toBe(false);
+    });
+});

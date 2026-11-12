@@ -215,7 +215,10 @@ export const NOT_RETRYABLE_CODES = [
 
 const NOT_RETRYABLE: ReadonlySet<string> = new Set(NOT_RETRYABLE_CODES);
 
-type RetriedJob = Pick<JobDoc, 'status' | 'type' | 'layerId' | 'attempt' | 'publishAttempts' | 'error' | 'steps' | 'cancelRequested'>;
+type RetriedJob = Pick<
+    JobDoc,
+    'status' | 'type' | 'layerId' | 'attempt' | 'publishAttempts' | 'error' | 'steps' | 'cancelRequested' | 'runOn' | 'localOnly'
+>;
 
 /**
  * The job reached the publisher's guard: a retry starts the publish again, not a run. A guard still `pending` was not
@@ -229,11 +232,6 @@ function atPublish(job: RetriedJob): boolean {
 /** The attempts a retry would add to: the publish starts once the job reached the publisher's guard, else the runs. */
 function attemptsLeft(job: RetriedJob): boolean {
     return atPublish(job) ? (job.publishAttempts ?? 0) < PUBLISH_MAX_ATTEMPTS : (job.attempt ?? 0) < JOB_MAX_ATTEMPTS;
-}
-
-/** A failure a retry may cure (none recorded counts as one). */
-function curable(job: RetriedJob): boolean {
-    return job.error === undefined || !NOT_RETRYABLE.has(job.error.code);
 }
 
 /**
@@ -273,12 +271,48 @@ export function failedOutdated(job: Pick<JobDoc, 'error'>): boolean {
     return error.code === PIPELINE_OUTDATED || (error.code === 'apiError.invalidRequest' && OUTDATED_DETAIL.test(error.message));
 }
 
-/** A failed or stopped raster job a Retry may run again: a curable failure with attempts left, or an outdated runner's (`imagery.retry` decides). */
+type CappedJob = Pick<JobDoc, 'type' | 'runOn' | 'localOnly' | 'error'>;
+
+/**
+ * M7: the job runs on the owner's own computer: chosen so (`runOn: 'local'`), or its files exist only there (`localOnly`, an
+ * archive series: its originals never leave the computer).
+ */
+export function runsLocally(job: Pick<JobDoc, 'type' | 'runOn' | 'localOnly'>): boolean {
+    return job.runOn === 'local' || job.localOnly === true || job.type === 'archive-series';
+}
+
+/**
+ * A manual retry past the attempt cap, which then starts the count again (live report of 2026-11-12: an archive series failed
+ * three times on a server bug, fixed since, and could only be deleted). The cap stops paid cloud work looping; an outdated
+ * runner's failure spent no attempt, and a run on the owner's computer costs no cloud compute. A publish (`publishing`) is
+ * Mapbox's paid work wherever the run was: its cap stays.
+ */
+export function retryPastCap(job: CappedJob, publishing: boolean): boolean {
+    return failedOutdated(job) || (!publishing && runsLocally(job));
+}
+
+/**
+ * A failure a retry may cure (none recorded counts as one); never one of `NOT_RETRYABLE_CODES`, except a local run's
+ * `attemptsExhausted`: the cap a manual retry of it lifts (`retryPastCap`). Shared by `jobRetryable` and `imagery.retry`.
+ */
+export function retryCures(job: CappedJob, publishing: boolean): boolean {
+    const code = job.error?.code;
+    if (code === undefined || !NOT_RETRYABLE.has(code)) {
+        return true;
+    }
+    return code === 'apiError.imagery.attemptsExhausted' && retryPastCap(job, publishing);
+}
+
+/**
+ * A failed or stopped raster job a Retry may run again: a curable failure with attempts left, or one a retry may take past
+ * the cap (`retryPastCap`: an outdated runner's, a local run's) (`imagery.retry` decides).
+ */
 export function jobRetryable(job: RetriedJob): boolean {
     if (cancelledWork(job)) {
         return true;
     }
-    return failedWork(job) && curable(job) && (attemptsLeft(job) || failedOutdated(job));
+    const publishing = atPublish(job);
+    return failedWork(job) && retryCures(job, publishing) && (attemptsLeft(job) || retryPastCap(job, publishing));
 }
 
 /**

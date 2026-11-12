@@ -22,7 +22,8 @@ describe('jobRetryable: a dismissed job', () => {
 });
 
 describe('jobRetryable: a runner older than the job', () => {
-    const EXHAUSTED = { ...FAILED, type: 'archive-series', attempt: JOB_MAX_ATTEMPTS } as const;
+    // A cloud run: a run on the owner's computer passes the cap anyway (`retryPastCap`, S-A12-HAPPY-LOCAL-RETRY-PAST-CAP).
+    const EXHAUSTED = { ...FAILED, runOn: 'cloud', attempt: JOB_MAX_ATTEMPTS } as const;
     const LEGACY = { code: 'apiError.invalidRequest', message: 'the pipeline does not run archive-series jobs' };
 
     it('happyPath_anOutdatedRunnersFailureOffersRetryPastTheAttempts', () => {

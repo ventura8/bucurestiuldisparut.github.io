@@ -425,6 +425,12 @@ belong to the dispatcher and the lease, so an execution never races its own retr
   week. A failure at a publish step goes back to the publisher, not to Cloud Run. A failure of a runner older than the
   job's type (`apiError.imagery.pipelineOutdated`, or the legacy `apiError.invalidRequest` "the pipeline does not run <type> jobs":
   `failedOutdated`) spent no real attempt: its retry is allowed whatever `attempt` is, and sets it back to 0 (2026-11-09).
+  A run on the owner's own computer (`runOn: 'local'`, `localOnly`, or an `archive-series`, whose originals never leave the
+  computer) costs no cloud compute: the owner's manual Retry of it is allowed whatever `attempt` is, its
+  `apiError.imagery.attemptsExhausted` included, and sets it back to 0 (live report of 2026-11-12). A cloud run's cap and every
+  publish cap (`PUBLISH_MAX_ATTEMPTS`, Mapbox's paid work) stay, and automatic retries keep `JOB_MAX_ATTEMPTS` everywhere. One
+  rule on both sides: `retryPastCap` and `retryCures` of `@hcm/shared`, used by the admin's `jobRetryable` and by `imagery.retry`
+  (S-A12-HAPPY-LOCAL-RETRY-PAST-CAP, S-A12-BAD-CLOUD-RETRY-AT-CAP).
   A job the owner stopped (`cancelled`, its version `cancelled`) is retried the same way, its `attempt` back to 0, and the retried
   job carries nothing the run or the Stop left: no `cancelRequested` (kept, the dispatcher and every worker's claim pass the job over
   and the tick cancels it again), no `waitReason`, no `placingPoints`, no `workerOverdueAt` (`docs/LESSONS.md` 565, the 1914 SOCEC series). The version

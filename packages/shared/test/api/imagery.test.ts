@@ -12,6 +12,8 @@ import {
     jobRetryable,
     publishTaskSchema,
     rasterUploadMetadataSchema,
+    retryCures,
+    runsLocally,
     USGS_BACKOFF_MINUTES,
 } from '../../src/api/imagery.js';
 import { API_ERRORS } from '../../src/api/errors.js';
@@ -102,5 +104,50 @@ describe('what a retry can cure (CR-M3-47)', () => {
         ['publish starts used up', { ...failed, steps: { guard: { status: 'done' as const } }, publishAttempts: PUBLISH_MAX_ATTEMPTS }],
     ])('badPath_noRetry_%s', (_case, job) => {
         expect(jobRetryable(job)).toBe(false);
+    });
+});
+
+describe("a manual retry of a run on the owner's computer passes the cap (live report of 2026-11-12)", () => {
+    const atCap = { status: 'failed', type: 'usgs-import', layerId: 'plan-1911', attempt: JOB_MAX_ATTEMPTS } as const;
+    const internal = { code: 'apiError.internal', message: 'record refused' };
+    const series = { ...atCap, type: 'archive-series', localOnly: true, runOn: 'local', error: internal } as const;
+
+    it.each([
+        ['an archive series failed in place', series],
+        ['a frame run on the computer', { ...atCap, runOn: 'local' as const, error: internal }],
+        ['an archive series with no place recorded', { ...atCap, type: 'archive-series' as const }],
+        ['a local run the dispatcher ended at the cap', { ...series, error: { code: 'apiError.imagery.attemptsExhausted', message: 'x' } }],
+    ])('happyPath_tryAgainIsOffered_%s @S-A12-HAPPY-LOCAL-RETRY-PAST-CAP', (_case, job) => {
+        expect(runsLocally(job)).toBe(true);
+        expect(jobRetryable(job)).toBe(true);
+    });
+
+    it.each([
+        ['a cloud run at the cap', { ...atCap, runOn: 'cloud' as const, error: internal }],
+        ['a run never placed, at the cap', { ...atCap, error: internal }],
+        ['a cloud run the dispatcher ended at the cap', { ...atCap, error: { code: 'apiError.imagery.attemptsExhausted', message: 'x' } }],
+        ['a local run whose Mapbox token was refused', { ...series, error: { code: 'apiError.mapbox.tokenInvalid', message: 'x' } }],
+        ['a dismissed local run', { ...series, cancelRequested: true as const }],
+        [
+            'a local run whose publish starts are used up',
+            { ...series, steps: { guard: { status: 'done' as const } }, publishAttempts: PUBLISH_MAX_ATTEMPTS },
+        ],
+        [
+            'a local run whose publish ran out of starts',
+            {
+                ...series,
+                steps: { guard: { status: 'done' as const } },
+                error: { code: 'apiError.imagery.attemptsExhausted', message: 'x' },
+            },
+        ],
+    ])('badPath_noTryAgain_%s @S-A12-BAD-CLOUD-RETRY-AT-CAP', (_case, job) => {
+        expect(jobRetryable(job)).toBe(false);
+    });
+
+    it('badPath_aLocalPublishsExhaustedStartsAreNoCure', () => {
+        const exhausted = { ...series, error: { code: 'apiError.imagery.attemptsExhausted', message: 'x' } };
+        expect(retryCures(exhausted, false)).toBe(true);
+        expect(retryCures(exhausted, true)).toBe(false);
+        expect(retryCures({ type: 'usgs-import', error: exhausted.error }, false)).toBe(false);
     });
 });
