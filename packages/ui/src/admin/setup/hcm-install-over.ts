@@ -14,9 +14,9 @@ import { defineHcmConfirmDialog } from '../editing/hcm-confirm-dialog.js';
 import type { SetupIntentsPort } from './setup-port.js';
 import { setupLabel } from './setup-text.js';
 
-export const HCM_INSTALL_OVER_TAG = 'hcm-install-over';
+const HCM_INSTALL_OVER_TAG = 'hcm-install-over';
 
-export class HcmInstallOver extends LitElement {
+class HcmInstallOver extends LitElement {
     static override readonly properties = {
         target: { type: String },
         locale: { type: String },

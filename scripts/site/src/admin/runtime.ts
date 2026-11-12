@@ -93,7 +93,7 @@ export function releaseChannelOf(release: string): BuildChannel {
 }
 
 /** The build is the version's tagged release: CI's tag ref is `refs/tags/v<version>`, or the commit carries that tag. */
-export function taggedBuild(version: string, commit: string, env: BuildEnvironment, tags: CommitTags): boolean {
+function taggedBuild(version: string, commit: string, env: BuildEnvironment, tags: CommitTags): boolean {
     const tag = `v${version}`;
     return env['GITHUB_REF'] === `refs/tags/${tag}` || tags(commit).includes(tag);
 }

@@ -297,9 +297,10 @@ test.describe("Install the server: the owner's override over a newer server (the
 
             await over.click(deploy.getByRole('button', { name: setupText(lang, 'adminSetup.install.over.action') }));
             const dialog = page.getByRole('dialog', { name: setupText(lang, 'adminSetup.install.over.title') });
+            await expect(dialog).toBeVisible();
             const params = { installed: NEWER_SERVER_RELEASE, release: INSTALL_RELEASE };
-            await expect(dialog.getByText(setupText(lang, 'adminSetup.install.over.body', params))).toBeVisible();
-            await over.click(dialog.getByRole('button', { name: setupText(lang, 'adminSetup.install.over.confirm', params) }));
+            await expect(page.getByText(setupText(lang, 'adminSetup.install.over.body', params))).toBeVisible();
+            await over.click(page.getByRole('button', { name: setupText(lang, 'adminSetup.install.over.confirm', params) }));
 
             await expect.poll(async () => (await serverBuilds(upstream)).map((build) => build.tags.includes('hcm-over'))).toEqual([true]);
             serverDeployment.claimErrors();

@@ -188,7 +188,7 @@ test(
         await expect(dialog).toBeVisible();
         await expectStateSound(page, adminVisit('setup.install-over-dialog', lang));
         const params = { installed: NEWER_SERVER_RELEASE, release: INSTALL_RELEASE };
-        await inputs.clicks.click(dialog.getByRole('button', { name: setupText(lang, 'adminSetup.install.over.cancel', params) }));
+        await inputs.clicks.click(page.getByRole('button', { name: setupText(lang, 'adminSetup.install.over.cancel', params) }));
         await expect(dialog).toBeHidden();
         expect(await buildCount(upstream, 'server')).toBe(0);
     },
