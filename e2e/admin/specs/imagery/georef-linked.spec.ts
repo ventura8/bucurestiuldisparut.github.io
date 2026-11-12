@@ -149,12 +149,14 @@ test(
         await showPane(page, lang, 'scan');
         await expect.poll(async () => Math.abs(await scanAngle(page))).toBeLessThan(8);
 
-        // Upright by its button: n and the button do the same.
+        // Turn right by its button: 15 degrees from where the map left it (linked, the map's answer may settle it a few degrees
+        // on the stand-in's oblique fit); then Upright, as n does.
+        const before = await scanAngle(page);
         await page
             .getByRole('group', { name: georefText(lang, 'adminContent.georef.turn.scan') })
             .getByRole('button', { name: georefText(lang, 'adminContent.georef.turn.right') })
             .click();
-        await expect.poll(async () => Math.abs((await scanAngle(page)) - 15)).toBeLessThan(8);
+        await expect.poll(async () => Math.abs((await scanAngle(page)) - before - 15)).toBeLessThan(8);
         await page
             .getByRole('group', { name: georefText(lang, 'adminContent.georef.turn.scan') })
             .getByRole('button', { name: georefText(lang, 'adminContent.georef.turn.scanUp') })
