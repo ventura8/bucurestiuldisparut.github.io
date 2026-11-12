@@ -720,3 +720,15 @@ The export's memory follows the threads as well as the cache, and four tile thre
 ### The minimum machine (2026-11-12)
 
 Target: **4 GB of memory and 2 cores**, slower, never refused. What is measured (the table above, each step in a process of its own with a 4 GB machine's settings): warp 1.2 GB, COG 0.7 GB on two threads, tiles 1.2 GB on four, a 60-sheet colour atlas 1.7 GB, a 40,000 by 8,000 city crop under 0.45 GB. The budget test S-P31-HAPPY-SMALL-MACHINE holds a 60-sheet colour atlas at its real size (1.3 GB) and DF027's city crop (0.46 GB) under 60 % of 4 GB, the worker's cap there, each in a process of its own. **Not yet proved:** a whole import under a real 4 GB cgroup (the NUC's queue runs every container at 12 GB; the test reads each process's peak, not a cgroup's), and `georef`'s matcher, which still reads `scan.tif` whole before it shrinks it (a city crop: up to 0.5 GB). The local AI on the processor is outside this target (its sidecar's cap is 6 GB, a frame took 49.5 min on 8 threads).
+
+## Addendum of 2026-11-12: the governor (M26)
+
+The worker's share of the computer is the governor's (`docs/research/M26-governor.md`), inside the budgets of the
+addendum above: the command nices the process (`HCM_WORKER_NICE`), `Worker.govern` adds the idle I/O class and ticks
+every 5 s, sizing GDAL's threads, cache and warp memory and OpenCV's threads to the profile, never above the measured caps; `GET /state` carries `machine`; `POST /profile` (under `/pair`'s rules)
+takes the owner's Automatic, Quiet or Full, kept in the volume's `governor.json`. The starter (§1.5) runs a third loop
+beside the supervisor and the sidecar's, `run_governor` (`sh hcm-worker.sh governor` alone; Windows: `Start-GovernorLoop`
+in its own hidden process): every 5 s it writes the host's hints (input idle time, the battery a VM cannot see, the
+cards and NPUs Docker could pass) into the volume through `docker exec` into the worker's container, and runs
+`docker update --cpus <threads> hcm-worker` when the budget's threads change. A paused worker holds its step at the next
+checkpoint (its time limit moved by the wait). Behaviour A141.

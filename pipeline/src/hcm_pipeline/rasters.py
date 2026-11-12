@@ -31,6 +31,8 @@ DEFAULT_SETTINGS: Final = {
 ENV_THREADS: Final = "GDAL_NUM_THREADS"
 ENV_CACHE_MB: Final = "HCM_GDAL_CACHE_MB"
 ENV_WARP_MB: Final = "HCM_WARP_MEMORY_MB"
+# The local worker's governor (docs/research/M26-governor.md §4): the warp memory of the profile in force, never above the machine's own.
+GOVERNED_WARP_OPTION: Final = "HCM_GOVERNED_WARP_MB"
 # GDAL's block cache and a warp's working memory: a share of the memory the process may use, between a floor and what a large
 # machine gets. On 4 GB: 256 and 512 MB, with which a 1 GB scan warps in 1.2 GB and exports in 0.7 GB (reports/resource-audit.md).
 CACHE_SHARE: Final = 1 / 16
@@ -99,8 +101,10 @@ def gdal_memory(memory_mb: int | None) -> GdalMemory:
 
 
 def warp_memory_mb() -> int:
-    """`warpMemoryLimit` of a warp that starts now."""
-    return gdal_memory(machine_memory_mb()).warp_mb
+    """`warpMemoryLimit` of a warp that starts now: the machine's share, within the governor's when one runs."""
+    own = gdal_memory(machine_memory_mb()).warp_mb
+    governed = gdal.GetConfigOption(GOVERNED_WARP_OPTION) or ""
+    return min(own, int(governed)) if governed.isdigit() and int(governed) > 0 else own
 
 
 def spare_threads(cores: int | None) -> str:

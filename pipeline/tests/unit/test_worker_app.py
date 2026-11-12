@@ -141,6 +141,7 @@ class App:
         self.signed_in: list[tuple[object, object]] = []
         self.paired: list[object] = []
         self.pair_refusal: str | None = None
+        self.profiles: list[tuple[object, object]] = []
 
     def web_config(self) -> Mapping[str, str] | None:
         return None
@@ -158,6 +159,10 @@ class App:
     def pair(self, code: object) -> str | None:
         self.paired.append(code)
         return self.pair_refusal
+
+    def profile(self, chosen: object, battery_allowed: object) -> bool:
+        self.profiles.append((chosen, battery_allowed))
+        return chosen in {"auto", "quiet", "full"}
 
 
 HOSTING = f"https://{PROJECT}.web.app"
@@ -334,7 +339,7 @@ def test_bad_path_a_signed_url_off_the_guard_is_never_requested() -> None:
 
 def test_happy_path_the_worker_command_serves_until_stopped(api: FakeWorkerApi, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GDAL_NUM_THREADS", "1")
-    env = {**api.env(), "HCM_STAC_URL": "http://127.0.0.1:1/stac", "HCM_OVERPASS_URL": "http://127.0.0.1:1/overpass"}
+    env = {**api.env(), "HCM_STAC_URL": "http://127.0.0.1:1/stac", "HCM_OVERPASS_URL": "http://127.0.0.1:1/overpass", "HCM_GOVERNOR": "off"}
     built: list[Worker] = []
 
     def build(args: WorkerArgs) -> Worker:
@@ -370,7 +375,7 @@ def test_happy_path_the_worker_yields_the_processor_unless_told_not_to(env: dict
 def test_bad_path_an_outdated_image_under_the_supervisor_exits_75(api: FakeWorkerApi, tmp_path: Path) -> None:
     """Scenarios: S-P04-BAD-SUPERVISED-OUTDATED"""
     # Finding 72: the starter's supervisor reads the exit and pulls the installed image.
-    env = {**api.env(), "HCM_STAC_URL": "http://127.0.0.1:1/stac", "HCM_OVERPASS_URL": "http://127.0.0.1:1/overpass"}
+    env = {**api.env(), "HCM_STAC_URL": "http://127.0.0.1:1/stac", "HCM_OVERPASS_URL": "http://127.0.0.1:1/overpass", "HCM_GOVERNOR": "off"}
     built: list[Worker] = []
 
     def build(args: WorkerArgs) -> Worker:

@@ -18,6 +18,7 @@ import httpx
 from hcm_pipeline import paths
 from hcm_pipeline.config import DEFAULT_M2M_BASE_URL, Config
 from hcm_pipeline.jobs import M2MConnection, Services
+from hcm_pipeline.matcher.box import MatcherBudget
 from hcm_pipeline.osm import OverpassClient
 from hcm_pipeline.runner import JobRunner, JobStep, RunOutcome, RunSettings
 from hcm_pipeline.secrets import SecretUnavailableError
@@ -85,6 +86,8 @@ class WorkerRuntime:
         self.ai_root = AI_ROOT
         self.announce_ai: Callable[[AiState], None] = state.set_ai
         self.ai_sleep: Callable[[float], None] = time.sleep
+        # The governor's word on each matcher request (`Governor.matcher_budget`, docs/research/M26-governor.md §4).
+        self.matcher_budget: Callable[[], MatcherBudget] = MatcherBudget
         self._args = args
         self._api = api
         self._worker_id = worker_id
@@ -120,7 +123,15 @@ class WorkerRuntime:
         """Only here does a run get a matcher: Cloud Run's `services.build` keeps `NullProposalMatcher` (M10)."""
         files = AiFiles(self.ai_root / "files", self._ai_client)
         return LocalMatcher(
-            Ports(self.ai_root / "box", files, self.announce_ai, os.environ, sleep=self.ai_sleep, patience=self._ai_patience)
+            Ports(
+                self.ai_root / "box",
+                files,
+                self.announce_ai,
+                os.environ,
+                sleep=self.ai_sleep,
+                patience=self._ai_patience,
+                budget=self.matcher_budget,
+            )
         )
 
     def sweep(self, claimed_job: str | None) -> None:

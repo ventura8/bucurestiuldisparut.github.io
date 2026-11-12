@@ -55,11 +55,13 @@ def gpu_exit() -> int:
     return 0 if torch.cuda.get_device_properties(0).total_memory >= MATCHER_MIN_VRAM_GB * BYTES_PER_GB else SMALL_GPU
 
 
-def device_for(kind: str) -> Device:
-    """The device asked for; for the graphics card, `SystemExit` with `NO_GPU` or `SMALL_GPU` when there is none to use."""
+def device_for(kind: str, threads: int = 0) -> Device:
+    """The device asked for (on the processor, the governor's `threads`, else the cores but one); for the graphics card, `SystemExit`
+    with `NO_GPU` or `SMALL_GPU` when there is none to use."""
     if kind == "cpu":
-        # The cores but one, below the owner's own programs: the computer stays usable for the hour a frame may take.
-        threads = max(1, (os.cpu_count() or 2) - 1)
+        # The governor's threads, else the cores but one, below the owner's own programs: the computer stays usable for the hour a
+        # frame may take.
+        threads = threads or max(1, (os.cpu_count() or 2) - 1)
         torch.set_num_threads(threads)
         os.nice(CPU_NICE)
         LOG.info("local AI: running on the processor, on %d threads, below the computer's other programs", threads)
@@ -69,6 +71,13 @@ def device_for(kind: str) -> Device:
         LOG.error("local AI: told to use the graphics card, and PyTorch finds none it can use: exiting so the starter probes again")
         raise SystemExit(code)
     return Device("gpu", "cuda", torch.cuda.get_device_name(0))
+
+
+def cap_gpu(fraction: float) -> None:
+    """The governor's share of the card's memory for this process (docs/research/M26-governor.md §4); 0 leaves it uncapped."""
+    if fraction > 0:
+        torch.cuda.set_per_process_memory_fraction(fraction, 0)
+        LOG.info("local AI: at most %d %% of the graphics card's memory", round(fraction * 100))
 
 
 def checked_load(path: Path, pin: str) -> object:
@@ -105,12 +114,16 @@ class Local:
 class AlikedLightGlue:
     """The two networks, in evaluation mode, on one device."""
 
-    def __init__(self, device: Device, weights: Path, pins: Mapping[str, str]) -> None:
+    def __init__(self, device: Device, weights: Path, pins: Mapping[str, str], keypoints: int = MAX_KEYPOINTS) -> None:
         # Only the sidecar's path holds it (`hcm-ai-files`, our own `__init__.py`, never upstream's: `docs/research/M10-local-ai.md`).
         lightglue = importlib.import_module("lightglue")
         self.device = device
         with Local(weights, pins):
-            options = {"max_num_keypoints": MAX_KEYPOINTS, "detection_threshold": DETECTION_THRESHOLD, "nms_radius": NMS_RADIUS}
+            options = {
+                "max_num_keypoints": min(keypoints, MAX_KEYPOINTS),
+                "detection_threshold": DETECTION_THRESHOLD,
+                "nms_radius": NMS_RADIUS,
+            }
             self._extractor = lightglue.ALIKED(**options).eval().to(device.torch_name)
             self._matcher = lightglue.LightGlue(features="aliked").eval().to(device.torch_name)
 

@@ -20,6 +20,7 @@ import { defineOnce } from '../../components/internal.js';
 import { copyToClipboard } from '../setup/setup-body.js';
 import { workerStyles } from './worker-element.js';
 import { linkButtonStyles } from '../setup/setup-styles.js';
+import { defineWorkerMachine } from './hcm-worker-machine.js';
 import type { LocalPort, LocalViewPort, StarterLinkPort, WorkerOsPort } from './worker-port.js';
 
 export const HCM_WORKER_LOCAL_TAG = 'hcm-worker-local';
@@ -202,8 +203,8 @@ export class HcmWorkerLocal extends LitElement {
             ></hcm-segmented-button>
             ${this.#use(view)} ${view.phase === 'none' ? this.#find() : nothing}
             <p class="note" role="status" data-local=${view.phase}>${this.#phase(view)}</p>
-            ${view.phase === 'downloaded' ? this.#open(view) : nothing} ${view.phase.startsWith('connect') ? nothing : this.#noDocker()}
-            ${this.#stopUsing(view)}
+            ${this.#machine(view)} ${view.phase === 'downloaded' ? this.#open(view) : nothing}
+            ${view.phase.startsWith('connect') ? nothing : this.#noDocker()} ${this.#stopUsing(view)}
             <details
                 @toggle=${(event: Event) => {
                     this.#advanced(event);
@@ -264,6 +265,13 @@ export class HcmWorkerLocal extends LitElement {
                 ><hcm-icon name=${icon} aria-hidden="true"></hcm-icon>${this.#t(label)}</a
             >
         </div>`;
+    }
+
+    /** M26: the connected computer's card. */
+    #machine(view: LocalViewPort): TemplateResult | typeof nothing {
+        return view.phase === 'connected'
+            ? html`<hcm-worker-machine .local=${this.local} .locale=${this.locale}></hcm-worker-machine>`
+            : nothing;
     }
 
     /** The phase's words: after the click, that the browser may ask to keep the file and where it is saved. */
@@ -332,6 +340,7 @@ export class HcmWorkerLocal extends LitElement {
 
 /** Registers `<hcm-worker-local>` (its kit elements are the panel's, registered with it); again, a no-op. */
 export function defineWorkerLocal(registry: CustomElementRegistry = customElements): void {
+    defineWorkerMachine(registry);
     defineOnce(registry, HCM_WORKER_LOCAL_TAG, HcmWorkerLocal);
 }
 

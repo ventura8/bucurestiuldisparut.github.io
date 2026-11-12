@@ -11,6 +11,7 @@
 #                               runs the worker, and when the worker ends (an update, a crash) waits and starts again;
 #                               beside it, while a frame needs the local AI, the sidecar on this computer's graphics card
 #   sh hcm-worker.sh matcher    that sidecar's loop alone
+#   sh hcm-worker.sh governor   the governor's loop alone: host hints and the worker's CPU quota (docs/research/M26-governor.md)
 #   sh hcm-worker.sh uninstall  removes the service, the worker, the sidecar, their Docker volumes and the sidecar's image
 #                               (the admin's "Stop using this computer" gives this file with uninstall already chosen)
 #
@@ -40,6 +41,9 @@ AI_FILES=hcm-ai-files
 AI_BOX=hcm-ai-box
 AI_MIN_FREE_KB=31457280
 AI_SECONDS=20
+# The governor (docs/research/M26-governor.md): what only the host can say, every few seconds, and the worker's CPU quota.
+GOVERN_SECONDS=5
+HINTS=/work/host-hints.json
 # The worker's share of the memory Docker has, and its weight against other containers (Docker's default is 1024).
 WORKER_MEMORY_PCT=60
 WORKER_CPU_SHARES=256
@@ -299,6 +303,94 @@ matcher_pass() {
 	esac
 }
 
+# Seconds since the last keyboard or mouse input on this computer; nothing when it cannot be read (the governor then never says active).
+# GNOME's idle monitor (Wayland and X11), xprintidle, then logind's IdleHint (set only after the desktop's own idle delay); macOS's HID.
+idle_seconds() {
+	if is_mac; then
+		ioreg -c IOHIDSystem 2>/dev/null | awk '/HIDIdleTime/ { print int($NF / 1000000000); exit }'
+		return
+	fi
+	ms=$(gdbus call --session --dest org.gnome.Mutter.IdleMonitor --object-path /org/gnome/Mutter/IdleMonitor/Core \
+		--method org.gnome.Mutter.IdleMonitor.GetIdletime 2>/dev/null | sed -n 's/^(uint64 \([0-9]*\),)$/\1/p')
+	[ -n "$ms" ] || ms=$(xprintidle 2>/dev/null)
+	if [ -n "$ms" ]; then
+		printf '%s' $((ms / 1000))
+		return
+	fi
+	logind_idle
+}
+
+logind_idle() {
+	session=${XDG_SESSION_ID:-$(loginctl list-sessions --no-legend 2>/dev/null | awk -v u="$(id -un)" '$3 == u { print $1; exit }')}
+	[ -n "$session" ] || return 0
+	case "$(loginctl show-session "$session" -p IdleHint --value 2>/dev/null)" in
+	no) printf '0' ;;
+	yes)
+		since=$(loginctl show-session "$session" -p IdleSinceHint --value 2>/dev/null)
+		[ -n "$since" ] && [ "$since" -gt 0 ] && printf '%s' $(($(date +%s) - since / 1000000))
+		;;
+	esac
+}
+
+# The graphics cards and NPUs Docker could pass to the sidecar, as JSON fields: NVIDIA's (nvidia-smi: memory, use, heat; CUDA when
+# Docker has the NVIDIA runtime or CDI), Intel's and AMD's render nodes (OpenVINO, ROCm), Intel's NPU (/dev/accel). Never on macOS.
+host_gpus() {
+	via=null
+	if docker info 2>/dev/null | grep -qi 'nvidia'; then
+		via='"cuda"'
+	fi
+	nvidia-smi --query-gpu=name,memory.total,memory.used,utilization.gpu,temperature.gpu --format=csv,noheader,nounits 2>/dev/null |
+		awk -F', *' -v via="$via" '{ printf "%s{\"vendor\":\"nvidia\",\"name\":\"%s\",\"vramMb\":%d,\"othersMb\":%d,\"busyPct\":%d,\"tempC\":%d,\"via\":%s}", \
+			(NR > 1 ? "," : ""), $1, $2, $3, $4, $5, via }'
+	for vendor in /sys/class/drm/card*/device/vendor; do
+		case "$(cat "$vendor" 2>/dev/null)" in
+		0x8086) [ -e /dev/dri ] && printf '%s' ',{"vendor":"intel","name":"Intel graphics","vramMb":0,"via":"openvino"}' ;;
+		0x1002) [ -e /dev/kfd ] && printf '%s' ',{"vendor":"amd","name":"AMD graphics","vramMb":0,"via":"rocm"}' ;;
+		esac
+	done
+}
+
+host_npus() {
+	if [ -e /dev/accel/accel0 ]; then
+		printf '%s' '{"vendor":"intel","name":"NPU","via":"openvino"}'
+	fi
+}
+
+# macOS's battery (a Linux container reads its own from /sys).
+host_power() {
+	is_mac || return 0
+	pmset -g batt 2>/dev/null | awk '/Battery Power/ { b = 1 } /AC Power/ { b = 0 } /[0-9]+%/ { match($0, /[0-9]+%/); p = substr($0, RSTART, RLENGTH - 1) }
+		END { printf ",\"power\":{\"source\":\"%s\",\"percent\":%d}", (b ? "battery" : "ac"), p }'
+}
+
+# The hints in the worker's volume, by a rename, through the worker's own container (this file never mounts its volume).
+write_hints() {
+	idle=$(idle_seconds)
+	gpus=$(host_gpus | sed 's/^,//')
+	json=$(printf '{"at":%s,"idleS":%s,"gpus":[%s],"npus":[%s]%s}' "$(date +%s)" "${idle:-null}" "$gpus" "$(host_npus)" "$(host_power)")
+	printf '%s' "$json" | docker exec -i "$NAME" sh -c "cat > $HINTS.part && mv $HINTS.part $HINTS" >/dev/null 2>&1 || true
+}
+
+# The budget's threads as the worker's CPU quota: `docker update --cpus`, only when they change (a pause keeps the last quota: the step
+# waits at the gate). The worker reads the quota back from its cgroup's cpu.max.
+govern_pass() {
+	write_hints
+	threads=$(printf '%s' "$1" | sed -n 's/.*"budget": *{"threads": *\([0-9]*\).*/\1/p')
+	if [ -n "$threads" ] && [ "$threads" -gt 0 ] && [ "$threads" != "$quota" ]; then
+		docker update --cpus "$threads" "$NAME" >/dev/null 2>&1 && quota=$threads && say "governor: the worker may use $threads cores"
+	fi
+}
+
+# Beside the worker, for as long as the supervisor lives: the host's hints and the quota, every GOVERN_SECONDS.
+run_governor() {
+	quota=''
+	supervisor=$$
+	while kill -0 "$supervisor" 2>/dev/null; do
+		state=$(curl -fsS -m 3 "http://127.0.0.1:$PORT/state" 2>/dev/null) && govern_pass "$state"
+		sleep "$GOVERN_SECONDS"
+	done
+}
+
 # The machine Docker runs on, whatever an emulated image reads from inside (the worker refuses the AI on arm64).
 docker_arch() {
 	docker version --format '{{.Server.Arch}}' 2>/dev/null
@@ -344,6 +436,7 @@ start_worker() {
 # that is said once in the log, and the supervisor asks again every five minutes until the map is updated.
 run_worker() {
 	run_matcher &
+	run_governor &
 	wait_seconds=10
 	refused=0
 	while :; do
@@ -472,6 +565,7 @@ uninstall_worker() {
 case "${1:-$HCM_ACTION}" in
 run) run_worker ;;
 matcher) run_matcher ;;
+governor) run_governor ;;
 uninstall)
 	uninstall_worker
 	pause

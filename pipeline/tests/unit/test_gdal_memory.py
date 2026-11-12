@@ -49,6 +49,11 @@ def test_happy_path_a_small_container_gets_small_settings_and_the_environment_ov
 
     assert machine_memory_mb() == 4096
     assert warp_memory_mb() == 512
+    # A governor's warp memory (M26) is taken when it is less, never when it is more.
+    for governed, expected in (("300", 300), ("9000", 512), ("x", 512)):
+        gdal.SetConfigOption("HCM_GOVERNED_WARP_MB", governed)
+        assert warp_memory_mb() == expected
+    gdal.SetConfigOption("HCM_GOVERNED_WARP_MB", None)
     configure_gdal("1")
     assert gdal.GetConfigOption("GDAL_CACHEMAX") == "256"
 

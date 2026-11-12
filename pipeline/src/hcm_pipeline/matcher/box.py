@@ -14,7 +14,7 @@ import re
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
+from typing import Final, Self
 
 import numpy
 from numpy.typing import NDArray
@@ -36,7 +36,10 @@ DEVICES: Final = frozenset({"gpu", "cpu"})
 # What a failed answer may say, beyond a number: a weights file that no longer matches its pin. Anything else reads as a bad answer.
 TAMPERED: Final = "tampered"
 GARBAGE: Final = "garbage"
-FALLBACKS: Final = frozenset({None, "no-gpu", "out-of-memory"})
+# `gpu-busy`: the governor kept the request off a card other programs held (docs/research/M26-governor.md §5).
+FALLBACKS: Final = frozenset({None, "no-gpu", "out-of-memory", "gpu-busy"})
+DEFAULT_KEYPOINTS: Final = 2048
+BUDGET_FIELDS: Final = 4
 FloatArray = NDArray[numpy.float64]
 UInt8Array = NDArray[numpy.uint8]
 
@@ -50,6 +53,28 @@ class BadAnswerError(ValueError):
 
 
 @dataclass(frozen=True)
+class MatcherBudget:
+    """The governor's word on one request (docs/research/M26-governor.md §4): processor threads (0: the child's own), keypoints per
+    tile, the card's memory share (0: no cap), and whether the card must be left to other programs (the request runs on the processor)."""
+
+    threads: int = 0
+    keypoints: int = DEFAULT_KEYPOINTS
+    gpu_fraction: float = 0.0
+    yield_gpu: bool = False
+
+    def as_array(self) -> FloatArray:
+        return numpy.array([self.threads, self.keypoints, self.gpu_fraction, float(self.yield_gpu)], numpy.float64)
+
+    @classmethod
+    def of_array(cls, values: FloatArray) -> Self:
+        """A stored budget; one of another shape reads as the default."""
+        if values.shape != (BUDGET_FIELDS,):
+            return cls()
+        threads, keypoints, fraction, held = (float(each) for each in values)
+        return cls(max(0, int(threads)), max(1, int(keypoints)), min(1.0, max(0.0, fraction)), held > 0)
+
+
+@dataclass(frozen=True)
 class Request:
     """One orientation for the matcher: the film warped through its start, the reference, both grids (pixel to EPSG:3857 metres)."""
 
@@ -58,6 +83,7 @@ class Request:
     film_grid: FloatArray
     reference_grid: FloatArray
     ground: float
+    budget: MatcherBudget = MatcherBudget()
 
 
 @dataclass(frozen=True)
@@ -164,6 +190,7 @@ def write_request(box: Path, request_id: str, request: Request) -> Path:
         film_grid=request.film_grid,
         reference_grid=request.reference_grid,
         ground=numpy.array(request.ground),
+        budget=request.budget.as_array(),
     )
     os.replace(part, path)
     return path
@@ -172,7 +199,9 @@ def write_request(box: Path, request_id: str, request: Request) -> Path:
 def read_request(path: Path) -> Request:
     """A request, read with no pickle."""
     with numpy.load(path, allow_pickle=False) as stored:
-        return Request(stored["film"], stored["reference"], stored["film_grid"], stored["reference_grid"], float(stored["ground"].item()))
+        film, reference, film_grid, reference_grid = (stored[key] for key in ("film", "reference", "film_grid", "reference_grid"))
+        budget = MatcherBudget.of_array(stored["budget"]) if "budget" in stored.files else MatcherBudget()
+        return Request(film, reference, film_grid, reference_grid, float(stored["ground"].item()), budget)
 
 
 def request_id_of(path: Path) -> str:

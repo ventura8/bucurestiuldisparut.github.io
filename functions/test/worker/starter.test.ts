@@ -183,7 +183,7 @@ async function supervise(
         // Docker says it has 8 GB; each worker's `run` is kept with its arguments.
         docker: `[ "$1" = info ] && { echo 8000000000; exit 0; }\n[ "$1" = run ] && { echo run >>"${log}"; echo "$*" >>"${runs}"; exit ${String(code)}; }\nexit 0`,
         // The fourth wait ends the supervisor (its parent shell), as a stop of the service would; the sidecar's loop beside it waits apart.
-        sleep: `[ "$1" = 20 ] && exec /bin/sleep 0.05\necho "sleep $1" >>"${log}"\n[ "$(grep -c sleep "${log}")" -ge 4 ] && kill -9 "$PPID"\nexit 0`,
+        sleep: `case "$1" in 20 | 5) exec /bin/sleep 0.05 ;; esac\necho "sleep $1" >>"${log}"\n[ "$(grep -c sleep "${log}")" -ge 4 ] && kill -9 "$PPID"\nexit 0`,
     };
     for (const [name, body] of Object.entries(tools)) {
         writeFileSync(join(bin, name), `#!/bin/sh\n${body}\n`);
