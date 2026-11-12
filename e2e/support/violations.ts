@@ -28,6 +28,7 @@ type Check =
     | 'keyboard-trap'
     | 'modal-escape-key'
     | 'non-text-contrast'
+    | 'rendered-contrast'
     | 'landmark'
     | 'live-region';
 

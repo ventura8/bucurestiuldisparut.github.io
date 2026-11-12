@@ -341,13 +341,6 @@ jobs:
                   if-no-files-found: error
                   retention-days: 7
 
-            # The Bucharest site, built by the site-build gate (scripts/site), is what GitHub Pages serves.
-            - name: Upload the GitHub Pages artifact
-              if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.DEPLOY_ENABLED == 'true'
-              uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-              with:
-                  path: dist/site/bucharest
-
     sonarqube:
         name: SonarQube Cloud Analysis
         needs: tests
@@ -426,26 +419,6 @@ jobs:
                   docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp --env SONAR_TOKEN
                   --volume "$PWD:$PWD" --workdir "$PWD" "$HCM_IMAGE"
                   python3 scripts/ci/sonar_report.py --report-task .scannerwork/report-task.txt --min-coverage 90
-
-    deploy-pages:
-        name: Deploy to GitHub Pages
-        needs: [static, tests, e2e, build, sonarqube]
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.DEPLOY_ENABLED == 'true'
-        runs-on: ubuntu-24.04
-        timeout-minutes: 15
-        permissions:
-            pages: write
-            id-token: write
-        environment:
-            name: github-pages
-            url: ${{ steps.deployment.outputs.page_url }}
-        steps:
-            - name: Configure GitHub Pages
-              uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
-
-            - name: Deploy
-              id: deployment
-              uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
     deploy-firebase:
         name: Deploy Firebase (rules, indexes, functions, admin hosting)

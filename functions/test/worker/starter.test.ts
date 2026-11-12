@@ -169,14 +169,19 @@ describe('worker.starter', () => {
 });
 
 /** The filled POSIX file run as its supervisor (`sh hcm-worker.sh run`) over stand-ins that exit the worker with `code`. */
-async function supervise(code: number): Promise<{ readonly output: string; readonly log: readonly string[] }> {
+async function supervise(
+    code: number,
+    environment: Readonly<Record<string, string>> = {},
+): Promise<{ readonly output: string; readonly log: readonly string[]; readonly runs: readonly string[] }> {
     const folder = mkdtempSync(join(tmpdir(), 'hcm-supervisor-'));
     const bin = join(folder, 'bin');
     const log = join(folder, 'calls.log');
+    const runs = join(folder, 'runs.log');
     mkdirSync(bin);
     const tools: Readonly<Record<string, string>> = {
         curl: `printf '%s' '{"result":{"image":"us-central1-docker.pkg.dev/demo-hcm/hcm/pipeline@sha256:${DIGEST}"}}'`,
-        docker: `[ "$1" = run ] && { echo run >>"${log}"; exit ${String(code)}; }\nexit 0`,
+        // Docker says it has 8 GB; each worker's `run` is kept with its arguments.
+        docker: `[ "$1" = info ] && { echo 8000000000; exit 0; }\n[ "$1" = run ] && { echo run >>"${log}"; echo "$*" >>"${runs}"; exit ${String(code)}; }\nexit 0`,
         // The fourth wait ends the supervisor (its parent shell), as a stop of the service would; the sidecar's loop beside it waits apart.
         sleep: `case "$1" in 20 | 5) exec /bin/sleep 0.05 ;; esac\necho "sleep $1" >>"${log}"\n[ "$(grep -c sleep "${log}")" -ge 4 ] && kill -9 "$PPID"\nexit 0`,
     };
@@ -188,10 +193,15 @@ async function supervise(code: number): Promise<{ readonly output: string; reado
     writeFileSync(script, (await file('linux', 'install')).body);
     const run = spawnSync('/bin/sh', [script, 'run'], {
         encoding: 'utf8',
-        env: { PATH: `${bin}:/usr/bin:/bin`, HOME: folder },
+        env: { PATH: `${bin}:/usr/bin:/bin`, HOME: folder, ...environment },
         timeout: 20_000,
     });
-    return { output: run.stdout, log: readFileSync(log, 'utf8').trim().split('\n') };
+    const started = readFileSync(runs, 'utf8').trim().split('\n');
+    return {
+        output: run.stdout,
+        log: readFileSync(log, 'utf8').trim().split('\n'),
+        runs: started.filter((line) => line.includes(' worker ')),
+    };
 }
 
 describe('the supervisor (finding 74 of 2026-11-03)', () => {
@@ -200,6 +210,26 @@ describe('the supervisor (finding 74 of 2026-11-03)', () => {
 
         expect(output.match(/does not support this computer's starter: update the map/g)).toHaveLength(1);
         expect(log).toEqual(['run', 'sleep 10', 'run', 'sleep 30', 'run', 'sleep 300', 'run', 'sleep 300']);
+    });
+
+    it('happyPath_theWorkerIsCappedAtSixtyPercentOfDockersMemoryAndLightAgainstOtherContainers @S-P31-HAPPY-WORKER-POLITE', async () => {
+        const { runs } = await supervise(WORKER_OUTDATED_EXIT);
+
+        // 60 % of the 8 GB Docker has, with no swap beyond it: an out-of-memory run ends the job, not the desktop.
+        expect(runs[0]).toContain(
+            '--rm --name hcm-worker --cpu-shares 256 --memory 4800000000 --memory-swap 4800000000 -p 127.0.0.1:8765:8765',
+        );
+        expect(runs[0]).not.toContain('GDAL_NUM_THREADS');
+        expect(runs[0]).toContain(`worker --city ${CITY} --project demo-hcm --supervised --image sha256:${DIGEST}`);
+    });
+
+    it('badPath_theOwnersOwnLimitsWinAndNoneLeavesTheMemoryFree @S-P31-BAD-WORKER-POLITE-OVERRIDE', async () => {
+        const own = await supervise(WORKER_OUTDATED_EXIT, { HCM_WORKER_MEMORY: '3g', HCM_WORKER_THREADS: '2' });
+        const free = await supervise(WORKER_OUTDATED_EXIT, { HCM_WORKER_MEMORY: 'none' });
+
+        expect(own.runs[0]).toContain('--cpu-shares 256 --memory 3g --memory-swap 3g -e GDAL_NUM_THREADS=2 -p 127.0.0.1');
+        expect(free.runs[0]).toContain('--name hcm-worker --cpu-shares 256 -p 127.0.0.1');
+        expect(free.runs[0]).not.toContain('--memory');
     });
 
     it('happyPath_anOutdatedWorkerIsStartedAgainAtOnceAndNothingIsSaid', async () => {

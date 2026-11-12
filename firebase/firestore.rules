@@ -340,6 +340,21 @@ service cloud.firestore {
                     || (data.day is int && 'month' in data && data.day >= 1 && data.day <= daysInMonth(data.year, data.month)));
         }
 
+        // zod `versionCredits`: who improved or colorized the photo, each at most 200 characters.
+        function validVersionCredits(credits) {
+            return credits is map
+                && credits.keys().hasOnly(['improved', 'colorized'])
+                && credits.get('improved', 'x').matches('[\\s\\S]{1,200}')
+                && credits.get('colorized', 'x').matches('[\\s\\S]{1,200}');
+        }
+
+        // A reviewer may remove an improved or colorized version; only photos.onUpload adds or changes one.
+        function versionsOnlyRemoved(before, after) {
+            return after is map
+                && after.diff(before).addedKeys().size() == 0
+                && after.diff(before).changedKeys().size() == 0;
+        }
+
         // The photo as an admin leaves it; image, exif, processing, processingError, duplicateOf,
         // suggested and original belong to photos.onUpload, createdAt and createdBy to the create.
         // The location is checked by the caller (against the city only when it changes).
@@ -358,6 +373,7 @@ service cloud.firestore {
                 && data.get('permissionNote', 'x').matches(upTo2000())
                 && data.get('legacyId', 'x').matches('[\\s\\S]{1,64}')
                 && data.get('credit', 'x').matches('[\\s\\S]{1,100}')
+                && validVersionCredits(data.get('versionCredits', {}))
                 && validLinks(data.get('links', []))
                 && data.get('bearing', 0) >= 0 && data.get('bearing', 0) <= 360
                 && data.get('fov', 1) >= 1 && data.get('fov', 1) <= 180
@@ -636,8 +652,8 @@ service cloud.firestore {
                     && isId(photo)
                     && request.resource.data.keys().hasOnly(['title', 'description', 'year', 'yearEnd', 'month', 'day', 'dateText', 'author', 'license',
                         'rightsHolder', 'sourceUrl', 'sourceLabel', 'permissionNote', 'legacyId', 'links', 'location', 'bearing', 'fov',
-                        'published', 'rightsReview', 'credit', 'reviewStatus', 'processing', 'createdAt', 'createdBy', 'updatedBy',
-                        'updatedAt'])
+                        'published', 'rightsReview', 'credit', 'versionCredits', 'reviewStatus', 'processing', 'createdAt', 'createdBy',
+                        'updatedBy', 'updatedAt'])
                     && validPhoto(request.resource.data)
                     && ('location' in request.resource.data
                         ? inCity(request.resource.data.location, city)
@@ -651,7 +667,10 @@ service cloud.firestore {
                             && !changedKeys().hasAny(['published', 'legacyId', 'rightsReview'])))
                     && changedKeys().hasOnly(['title', 'description', 'year', 'yearEnd', 'month', 'day', 'dateText', 'author', 'license',
                         'rightsHolder', 'sourceUrl', 'sourceLabel', 'permissionNote', 'legacyId', 'links', 'location', 'bearing', 'fov', 'published',
-                        'rightsReview', 'credit', 'updatedBy', 'updatedAt'])
+                        'rightsReview', 'credit', 'versionCredits', 'versions', 'updatedBy', 'updatedAt'])
+                    && (!('versions' in changedKeys())
+                        || (isCityReviewer(city)
+                            && versionsOnlyRemoved(resource.data.get('versions', {}), request.resource.data.get('versions', {}))))
                     && validPhoto(request.resource.data)
                     && (!('location' in changedKeys()) || inCity(request.resource.data.location, city))
                     // zod `aimedOnlyIfPlaced`, as on create: a document the server's schema refuses gets stuck in every callable.

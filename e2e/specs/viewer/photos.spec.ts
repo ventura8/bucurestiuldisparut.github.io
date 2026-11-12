@@ -338,6 +338,93 @@ test(
     },
 );
 
+/** The fixture's photos dated within ten years of `year` (the photo list's "near the year"), in manifest order. */
+function photosNear(year: number): string[] {
+    const dated = siteManifestData()['photos'] as { id: string; year?: number; yearEnd?: number }[];
+    return dated
+        .filter((entry) => entry.year !== undefined && entry.year <= year + 10 && (entry.yearEnd ?? entry.year) >= year - 10)
+        .map((entry) => entry.id);
+}
+
+test(
+    'A double tap zooms the photo in at the tapped point, and a second one zooms back out',
+    { tag: '@S-V08-HAPPY-DOUBLE-TAP' },
+    async ({ page, lang }) => {
+        await openViewer(page, { lang, hash: `${LONE_VIEW}&photo=${LONE}` });
+        await page.getByRole('button', { name: t(lang, 'photo.openLightbox') }).click();
+        const image = page.getByRole('dialog', { name: t(lang, 'lightbox.label') }).getByRole('img', { name: titleOf(LONE, lang) });
+        await expect.poll(() => image.evaluate((element) => element instanceof HTMLImageElement && element.naturalWidth > 0)).toBe(true);
+        const before = (await image.boundingBox()) ?? { x: 0, y: 0, width: 0, height: 0 };
+        const at = { x: before.width * 0.75, y: before.height * 0.5 };
+
+        await image.dblclick({ position: at });
+        await expect.poll(async () => (await image.boundingBox())?.width ?? 0, { message: 'zoomed in' }).toBeGreaterThan(before.width * 2);
+        const zoomed = (await image.boundingBox()) ?? before;
+        const share = (before.x + at.x - zoomed.x) / zoomed.width;
+        expect(share, 'the tapped point of the photo stays under the finger').toBeCloseTo(0.75, 1);
+
+        await image.dblclick({ position: { x: before.x + at.x - zoomed.x, y: before.y + at.y - zoomed.y } });
+        await expect
+            .poll(async () => (await image.boundingBox())?.width ?? 0, { message: 'back to the whole photo' })
+            .toBeCloseTo(before.width, 0);
+    },
+);
+
+test(
+    'Two clicks far apart on the photo are no double tap: the photo keeps its size',
+    { tag: '@S-V08-BAD-DOUBLE-TAP-APART' },
+    async ({ page, lang }) => {
+        await openViewer(page, { lang, hash: `${LONE_VIEW}&photo=${LONE}` });
+        await page.getByRole('button', { name: t(lang, 'photo.openLightbox') }).click();
+        const image = page.getByRole('dialog', { name: t(lang, 'lightbox.label') }).getByRole('img', { name: titleOf(LONE, lang) });
+        await expect.poll(() => image.evaluate((element) => element instanceof HTMLImageElement && element.naturalWidth > 0)).toBe(true);
+        const before = (await image.boundingBox()) ?? { x: 0, y: 0, width: 0, height: 0 };
+
+        await image.click({ position: { x: before.width * 0.2, y: before.height * 0.5 } });
+        await image.click({ position: { x: before.width * 0.8, y: before.height * 0.5 } });
+
+        await expect(image).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
+        expect((await image.boundingBox())?.width ?? 0).toBeCloseTo(before.width, 0);
+    },
+);
+
+test(
+    'The lightbox counts and pages through the list it was opened from: the photos near the year',
+    { tag: '@S-V08-HAPPY-OPENED-LIST' },
+    async ({ page, lang }) => {
+        const near = photosNear(1966);
+        expect(near.length, 'the fixture has photos near 1966 and others').toBeLessThan(PHOTOS.length);
+        await openViewer(page, { lang, hash: `${LONE_VIEW}&layers=e2e-1966&photo=${LONE}` });
+        await page.getByRole('button', { name: t(lang, 'photo.openLightbox') }).click();
+        const lightbox = page.getByRole('dialog', { name: t(lang, 'lightbox.label') });
+        const position = (index: number): string => t(lang, 'lightbox.position', { index: String(index + 1), total: String(near.length) });
+
+        await expect(lightbox.getByText(position(near.indexOf(LONE)))).toBeVisible();
+        for (let step = near.indexOf(LONE); step < near.length - 1; step += 1) {
+            await page.keyboard.press('ArrowRight');
+        }
+        await expect(lightbox.getByText(position(near.length - 1))).toBeVisible();
+        await expect(lightbox.getByRole('button', { name: t(lang, 'action.next') })).toBeDisabled();
+    },
+);
+
+test(
+    'A photo far from the year (a link to it) pages through all the photos',
+    { tag: '@S-V08-BAD-PHOTO-OUTSIDE-LIST' },
+    async ({ page, lang }) => {
+        const far = PHOTOS.find((entry) => !photosNear(1966).includes(entry.id))?.id ?? '';
+        const [lng, lat] = lngLatOf(far);
+        await openViewer(page, { lang, hash: `18/${lat.toFixed(5)}/${lng.toFixed(5)}&layers=e2e-1966&photo=${far}` });
+        await page.getByRole('button', { name: t(lang, 'photo.openLightbox') }).click();
+
+        const total = t(lang, 'lightbox.position', {
+            index: String(PHOTOS.findIndex((entry) => entry.id === far) + 1),
+            total: String(PHOTOS.length),
+        });
+        await expect(page.getByRole('dialog', { name: t(lang, 'lightbox.label') }).getByText(total)).toBeVisible();
+    },
+);
+
 test(
     'Stepping to the last photo with the Next button keeps the focus in the lightbox, and Tab stays inside it',
     { tag: '@S-V08-BAD-FOCUS-AT-LAST-PHOTO' },
@@ -361,8 +448,9 @@ test(
         await expect(next).toBeDisabled();
         await expect(lightbox).toBeFocused();
 
+        // The last control before the disabled Next is Zoom in (V60), between the arrows.
         await page.keyboard.press('Shift+Tab');
-        await expect(lightbox.getByRole('button', { name: t(lang, 'action.previous') })).toBeFocused();
+        await expect(lightbox.getByRole('button', { name: t(lang, 'lightbox.zoomIn'), exact: true })).toBeFocused();
         await page.keyboard.press('Tab');
         await expect(lightbox.getByRole('button', { name: t(lang, 'action.close') })).toBeFocused();
         await page.keyboard.press('Escape');

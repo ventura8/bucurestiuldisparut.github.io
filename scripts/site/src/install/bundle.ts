@@ -42,7 +42,7 @@ import {
     type InstallTarget,
 } from '@hcm/shared';
 
-import { adminRelease, releaseTime, type BuildEnvironment, type CommitClock } from '../admin/runtime.js';
+import { adminRelease, releaseChannelOf, releaseTime, type BuildEnvironment, type CommitClock } from '../admin/runtime.js';
 import { SiteBuildError } from '../errors.js';
 import type { SiteFileSystem } from '../files.js';
 import { tgz, type TarEntry } from './tar.js';
@@ -288,6 +288,7 @@ function manifestOf(
         format: INSTALL_FORMAT,
         release,
         releaseTime: stamp.releaseTime,
+        channel: releaseChannelOf(release),
         slug: installReleaseSlug(release),
         projectId,
         files: {

@@ -39,8 +39,8 @@ const OWN_WORDS: Readonly<Record<string, readonly OwnWords[]>> = {
 
 /** The key of the field's own words for this problem, or null when the validation words say it. */
 function ownKey(issue: ValidationIssue): AdminContentKey | null {
-    const options = Object.hasOwn(OWN_WORDS, issue.path) ? (OWN_WORDS[issue.path] ?? []) : [];
-    const words = options.find((option) => option.codes === null || option.codes.includes(issue.code));
+    const options = Object.hasOwn(OWN_WORDS, issue.path) ? OWN_WORDS[issue.path] : undefined;
+    const words = options?.find((option) => option.codes === null || option.codes.includes(issue.code));
     return words === undefined ? null : words.key;
 }
 
@@ -58,7 +58,8 @@ function inSentence(locale: Locale, text: string): string {
 
 /** The document field an issue's path starts with (`links[0].url` is `links`). */
 function topField(path: string): string {
-    return path.split(/[.[]/)[0] ?? path;
+    const end = path.search(/[.[]/);
+    return end === -1 ? path : path.slice(0, end);
 }
 
 /** One problem as Save's note lists it: the field's own words, or its name and the validation words. */

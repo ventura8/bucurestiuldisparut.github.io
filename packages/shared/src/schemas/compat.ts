@@ -6,6 +6,18 @@
 import { MANIFEST_VERSION } from './manifest.js';
 
 const VERSION = /^(\d{1,4})\.(\d{1,4})\.(\d{1,6})$/;
+/** `major.minor.patch` and, for a pre-release, `-beta.N` or `-rc.N` (`docs/releases/README.md`); nothing else. */
+const RELEASE_VERSION = /^(\d{1,4}\.\d{1,4}\.\d{1,6})(?:-(beta|rc)\.(0|[1-9]\d{0,5}))?$/;
+
+/** The pre-release channels a release may carry, in SemVer order: a beta comes before a release candidate. */
+export const PRERELEASE_CHANNELS = ['beta', 'rc'] as const;
+export type PrereleaseChannel = (typeof PRERELEASE_CHANNELS)[number];
+
+/** A version split into its three numbers and, for a pre-release, its channel and number. */
+export interface ReleaseVersionParts {
+    readonly core: readonly [number, number, number];
+    readonly prerelease: { readonly channel: PrereleaseChannel; readonly number: number } | null;
+}
 
 /** The three numbers of `major.minor.patch`, or null for anything else. */
 export function parseVersion(version: string): readonly [number, number, number] | null {
@@ -13,14 +25,36 @@ export function parseVersion(version: string): readonly [number, number, number]
     return match === null ? null : [Number(match[1]), Number(match[2]), Number(match[3])];
 }
 
-/** Negative when `a` is older than `b`, 0 when equal, positive when newer; null if either is not `x.y.z`. */
+/** `1.0.0` or `1.0.0-beta.1` / `1.0.0-rc.2` split into its parts, or null for anything else. */
+export function parseReleaseVersion(version: string): ReleaseVersionParts | null {
+    const match = RELEASE_VERSION.exec(version);
+    const core = match === null ? null : parseVersion(String(match[1]));
+    if (match === null || core === null) {
+        return null;
+    }
+    const channel = match[2] as PrereleaseChannel | undefined;
+    return { core, prerelease: channel === undefined ? null : { channel, number: Number(match[3]) } };
+}
+
+/** A pre-release's place after its core: every beta, then every rc, then the release itself. */
+function prereleaseRank(parts: ReleaseVersionParts): readonly [number, number] {
+    const pre = parts.prerelease;
+    return pre === null ? [PRERELEASE_CHANNELS.length, 0] : [PRERELEASE_CHANNELS.indexOf(pre.channel), pre.number];
+}
+
+/**
+ * Negative when `a` is older than `b`, 0 when equal, positive when newer, in SemVer order (`1.0.0-beta.1` <
+ * `1.0.0-rc.1` < `1.0.0`); null if either is not `x.y.z` or `x.y.z-beta.N` / `x.y.z-rc.N`.
+ */
 export function compareVersions(a: string, b: string): number | null {
-    const left = parseVersion(a);
-    const right = parseVersion(b);
+    const left = parseReleaseVersion(a);
+    const right = parseReleaseVersion(b);
     if (left === null || right === null) {
         return null;
     }
-    return left[0] - right[0] || left[1] - right[1] || left[2] - right[2];
+    const l = [...left.core, ...prereleaseRank(left)];
+    const r = [...right.core, ...prereleaseRank(right)];
+    return l.map((part, index) => part - Number(r[index])).find((difference) => difference !== 0) ?? 0;
 }
 
 export type ManifestCompat =

@@ -24,6 +24,7 @@ from typing import Final
 
 import numpy
 from hcm_pipeline.governor.actuate import Actuators, lower_priority
+from hcm_pipeline.governor.budget import Budget
 from hcm_pipeline.governor.governor import Governor
 from hcm_pipeline.governor.probe import HINTS_FILE
 from hcm_pipeline.governor.probe_linux import LinuxProbe
@@ -65,19 +66,30 @@ def _counter(out: Path, until: float) -> None:
     _count(lambda: time.time() >= until, out)
 
 
-def user(folder: Path, seconds: float, tag: str) -> dict[str, float]:
-    """The user's two busy processes and its timer, for `seconds`: counts per second and the timer's lateness."""
-    until = time.time() + seconds
-    outs = [folder / f"user-{tag}-{index}" for index in range(USER_PROCESSES)]
-    context = multiprocessing.get_context("spawn")
-    processes = [context.Process(target=_counter, args=(out, until)) for out in outs]
-    for process in processes:
-        process.start()
+def _late_ms(until: float) -> list[float]:
+    """The timer's lateness, in ms, every `TIMER_S` until `until`."""
     late: list[float] = []
     while time.time() < until:
         asked = time.perf_counter()
         time.sleep(TIMER_S)
         late.append((time.perf_counter() - asked - TIMER_S) * MS)
+    return late
+
+
+def _started(outs: Sequence[Path], until: float) -> Sequence[multiprocessing.process.BaseProcess]:
+    context = multiprocessing.get_context("spawn")
+    processes = [context.Process(target=_counter, args=(out, until)) for out in outs]
+    for process in processes:
+        process.start()
+    return processes
+
+
+def user(folder: Path, seconds: float, tag: str) -> dict[str, float]:
+    """The user's two busy processes and its timer, for `seconds`: counts per second and the timer's lateness."""
+    until = time.time() + seconds
+    outs = [folder / f"user-{tag}-{index}" for index in range(USER_PROCESSES)]
+    processes = _started(outs, until)
+    late = _late_ms(until)
     for process in processes:
         process.join()
     counts = sum(int(out.read_text(encoding="utf-8")) for out in outs)
@@ -108,6 +120,14 @@ def _governed(folder: Path, stop: threading.Event) -> Governor:
     return governor
 
 
+def _row(budget: Budget | None) -> dict[str, object]:
+    """One pass of the worker: the budget in force (none for the control), its memory and its processor time."""
+    said: dict[str, object] = {"profile": None, "threads": None, "memoryMb": None}
+    if budget is not None:
+        said = {"profile": budget.profile, "threads": budget.threads, "memoryMb": budget.memory_mb}
+    return {"at": time.time(), **said, "rssMb": _rss_mb(), "cpuS": sum(os.times()[:2])}
+
+
 def worker(folder: Path, seconds: float, governed: bool) -> None:
     """The worker's process: warping and compressing until `seconds` pass, one line of its state each pass; governed (lowered, its
     threads and cache from the budget) or, for the control, as before M26 (every core, normal priority)."""
@@ -119,17 +139,7 @@ def worker(folder: Path, seconds: float, governed: bool) -> None:
     while time.time() < until:
         warped = gdal.Warp("", source, format="MEM", dstSRS=f"EPSG:{WEB_MERCATOR}", multithread=True, resampleAlg="cubic")
         gdal.Translate(f"/vsimem/{os.getpid()}.tif", warped, creationOptions=["COMPRESS=DEFLATE", "NUM_THREADS=ALL_CPUS", "TILED=YES"])
-        budget = governor.budget if governor else None
-        rows.append(
-            {
-                "at": time.time(),
-                "profile": budget.profile if budget else None,
-                "threads": budget.threads if budget else None,
-                "memoryMb": budget.memory_mb if budget else None,
-                "rssMb": _rss_mb(),
-                "cpuS": sum(os.times()[:2]),
-            }
-        )
+        rows.append(_row(governor.budget if governor else None))
     stop.set()
     (folder / f"worker-{governed}.json").write_text(json.dumps(rows), encoding="utf-8")
 
@@ -189,13 +199,33 @@ def _hint_active(folder: Path, stop: threading.Event) -> None:
         stop.wait(1.0)
 
 
+def _first(rows: Sequence[dict[str, object]], key: str) -> object:
+    return rows[0][key] if rows else None
+
+
+def _over_memory(rows: Sequence[dict[str, object]]) -> int:
+    """Passes whose memory went above the budget's."""
+    return sum(1 for row in rows if isinstance(row["memoryMb"], int) and int(str(row["rssMb"])) > int(str(row["memoryMb"])))
+
+
+def _passed(share: float, loaded: dict[str, float], quiet_after: float | None, over_memory: int) -> bool:
+    quiet_in_time = quiet_after is not None and quiet_after <= QUIET_WITHIN_S
+    return share >= USER_SHARE_MIN and loaded["lateP99Ms"] < LATE_P99_MAX_MS and quiet_in_time and not over_memory
+
+
+def _of(rows: Sequence[dict[str, object]], profile: str) -> list[dict[str, object]]:
+    return [row for row in rows if row["profile"] == profile]
+
+
+def _max_rss(rows: Sequence[dict[str, object]]) -> int:
+    return max(int(str(row["rssMb"])) for row in rows)
+
+
 def _report(baseline: dict[str, float], loaded: dict[str, float], rows: list[dict[str, object]], started: float) -> dict[str, object]:
     quiet_after = _quiet_after(rows, started)
-    full = [row for row in rows if row["profile"] == "full"]
-    quiet = [row for row in rows if row["profile"] == "quiet"]
+    full, quiet = _of(rows, "full"), _of(rows, "quiet")
     share = loaded["rate"] / baseline["rate"]
-    over_memory = [row for row in rows if isinstance(row["memoryMb"], int) and int(str(row["rssMb"])) > int(str(row["memoryMb"]))]
-    passed = share >= USER_SHARE_MIN and loaded["lateP99Ms"] < LATE_P99_MAX_MS and quiet_after is not None and quiet_after <= QUIET_WITHIN_S
+    over_memory = _over_memory(rows)
     return {
         "cores": os.cpu_count(),
         "baseline": baseline,
@@ -204,11 +234,11 @@ def _report(baseline: dict[str, float], loaded: dict[str, float], rows: list[dic
         "quietAfterS": quiet_after,
         "warpsFull": len(full),
         "warpsQuiet": len(quiet),
-        "threads": {"full": full[0]["threads"] if full else None, "quiet": quiet[0]["threads"] if quiet else None},
+        "threads": {"full": _first(full, "threads"), "quiet": _first(quiet, "threads")},
         "workerCores": {"full": _worker_cores(full), "quiet": _worker_cores(quiet)},
-        "maxRssMb": max(int(str(row["rssMb"])) for row in rows),
-        "overMemory": len(over_memory),
-        "passed": passed and not over_memory,
+        "maxRssMb": _max_rss(rows),
+        "overMemory": over_memory,
+        "passed": _passed(share, loaded, quiet_after, over_memory),
     }
 
 

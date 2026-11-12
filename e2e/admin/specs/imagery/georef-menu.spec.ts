@@ -5,7 +5,17 @@ import { adminVisit } from '../../../tour/states.js';
 import { scanPixelOf } from '../../support/imagery-geometry.js';
 import { FUNCTIONS_TIMEOUT_MS } from '../../support/emulators.js';
 import { ADMIN_LOCK, expect, test } from '../../support/test.js';
-import { georefText, landmark, openGeoreferencer, pairRows, pointInView, scanPane, scanPointOf, showPane } from './georef.js';
+import {
+    georefText,
+    halfOnScanHint,
+    landmark,
+    openGeoreferencer,
+    pairRows,
+    pointInView,
+    scanPane,
+    scanPointOf,
+    showPane,
+} from './georef.js';
 import { errorText, detail, importFromList, readyImagery, versionState } from './world.js';
 
 // One admin test at a time: the import that needs points runs in the server's world and reads setup/status.
@@ -56,7 +66,7 @@ test(
         await page.mouse.click(onScan.x, onScan.y, { button: 'right' });
         await item(page, lang, 'add').click();
         await expect(menu(page, lang)).toHaveCount(0);
-        await expect(page.getByText(georefText(lang, 'adminContent.georef.halfOnScan'))).toBeVisible();
+        await expect(halfOnScanHint(page, lang)).toBeVisible();
 
         // The same on the map completes it.
         await showPane(page, lang, 'map');

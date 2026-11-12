@@ -54,12 +54,14 @@ describe('buildInstallBundle', () => {
 
         const folder = `dist/hosting/admin/install/${report.slug}`;
         const manifest = installManifestSchema.parse(JSON.parse(files.readText(`${folder}/manifest.json`)));
-        expect(report.release).toMatch(/^\d+\.\d+\.\d+\+aaaaaaa$/);
+        expect(report.release).toMatch(/^\d+\.\d+\.\d+(?:-(?:beta|rc)\.\d+)?\+aaaaaaa$/);
         expect(manifest).toMatchObject({
             format: 1,
             release: report.release,
             // Finding 39 of 2026-11-01: the build time, here SOURCE_DATE_EPOCH's.
             releaseTime: 1_700_000_000,
+            // The live finding of 2026-11-12: an untagged build is a dev build.
+            channel: 'dev',
             projectId: 'bucurestiul-disparut',
             // §67e: the pipeline's Docker builder by digest, so the admin offers Install the pipeline.
             tools: { node: NODE_STEP_IMAGE, docker: DOCKER_BUILDER_IMAGE },
@@ -282,7 +284,9 @@ describe('runInstallCli', () => {
         });
 
         expect(status).toBe(EXIT_OK);
-        expect(records.find((record) => record.message === 'install bundle built')?.data?.['slug']).toMatch(/^\d+-\d+-\d+-aaaaaaa$/);
+        expect(records.find((record) => record.message === 'install bundle built')?.data?.['slug']).toMatch(
+            /^\d+-\d+-\d+(?:-(?:beta|rc)-\d+)?-aaaaaaa$/,
+        );
     });
 
     it('badPath_aWrongArgumentIsUsage_aMissingInputIsInvalid', async () => {

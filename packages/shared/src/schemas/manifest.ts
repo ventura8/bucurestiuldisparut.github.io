@@ -189,6 +189,15 @@ const photoImageSchema = z.strictObject({
     h: z.number().int().min(1).max(20_000),
 });
 
+/**
+ * The ways a photo can be shown (the owner 2026-11-09): `original` is `image`; `improved` (restored) and `colorized` are
+ * optional `versions`, each with the credit of whoever made it. The viewer shows `improved` when there is one, else the
+ * original; `colorized` only when the visitor picks it (`pv=` in the URL hash).
+ */
+export const PHOTO_VIEWS = ['original', 'improved', 'colorized'] as const;
+
+const photoVersionSchema = photoImageSchema.extend({ credit: plainText(200).optional() });
+
 /** Where the photo comes from: an https address and, optionally, its name. */
 const photoSourceSchema = z.strictObject({ url: httpsUrlSchema, label: plainText(200).optional() });
 
@@ -214,6 +223,8 @@ const photoFields = {
     credit: plainText(100).optional(),
     links: z.array(linkSchema).max(MAX_LINKS),
     image: photoImageSchema,
+    /** The improved and colorized versions; absent on a photo that has only its original. */
+    versions: z.strictObject({ improved: photoVersionSchema.optional(), colorized: photoVersionSchema.optional() }).optional(),
 };
 
 const photoObjectSchema = z
@@ -269,5 +280,7 @@ export type LayerAdjustments = z.infer<typeof layerAdjustmentsSchema>;
 export type Photo = z.infer<typeof photoSchema>;
 export type UnplacedPhoto = z.infer<typeof unplacedPhotoSchema>;
 export type PhotoImage = z.infer<typeof photoImageSchema>;
+export type PhotoView = (typeof PHOTO_VIEWS)[number];
+export type PhotoVersion = z.infer<typeof photoVersionSchema>;
 export type PhotoLink = z.infer<typeof linkSchema>;
 export type License = (typeof LICENSES)[number];

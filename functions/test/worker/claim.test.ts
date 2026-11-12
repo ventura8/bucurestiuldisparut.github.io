@@ -3,7 +3,16 @@
  * §2.4): a worker introduces itself, then takes the oldest due queued job of its city chosen for the owner's computer,
  * leased to it in one transaction; nothing else (a cloud job, a job not due, cancelled or out of attempts) is ever taken.
  */
-import { FIRESTORE_PATHS, HEARTBEAT_SECONDS, JOB_MAX_ATTEMPTS, LEASE_SECONDS, WORKER_POLL_SECONDS, jobDocSchema } from '@hcm/shared';
+import {
+    FIRESTORE_PATHS,
+    HEARTBEAT_SECONDS,
+    JOB_MAX_ATTEMPTS,
+    LEASE_SECONDS,
+    WORKER_FRESH_SECONDS,
+    WORKER_IDLE_POLL_SECONDS,
+    WORKER_POLL_SECONDS,
+    jobDocSchema,
+} from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { omit } from '../../src/api/objects.js';
@@ -178,11 +187,21 @@ describe('worker.claim', () => {
 });
 
 describe('worker.hello', () => {
+    it('happyPath_anIdleWorkersLongestWaitWithItsJitterKeepsItConnected @S-P31-HAPPY-CLAIM-BACKOFF', () => {
+        // The worker waits up to a tenth more than `idlePollSeconds` (`pipeline/src/hcm_pipeline/worker/pace.py`): it must be seen again
+        // well within the time it counts as connected.
+        expect(WORKER_IDLE_POLL_SECONDS * 1.1 + 2 * WORKER_POLL_SECONDS).toBeLessThan(WORKER_FRESH_SECONDS);
+        // A new job never waits more than a minute (the owner, 2026-11-13).
+        expect(WORKER_IDLE_POLL_SECONDS).toBeLessThanOrEqual(60);
+    });
+
     it('happyPath_aNewWorkerIsRecordedIdleAndToldItsIntervals', async () => {
         const world = await workerWorld();
 
         await expect(hello(world)).resolves.toEqual({
             pollSeconds: WORKER_POLL_SECONDS,
+            // An idle worker may ask less often, but never so rarely that one wait (a tenth longer with its jitter) disconnects it.
+            idlePollSeconds: WORKER_IDLE_POLL_SECONDS,
             heartbeatSeconds: HEARTBEAT_SECONDS,
             outdated: false,
         });

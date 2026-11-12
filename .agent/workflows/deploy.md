@@ -11,7 +11,7 @@ Nothing in this workflow runs without the user's explicit yes **for that action*
 | Target | What | How | Trigger |
 | --- | --- | --- | --- |
 | Public map and admin (M6) | `dist/hosting` on Firebase Hosting (`<proj>.web.app`: the viewer of the first city at `/`, every other city at `/<city>/` or through the generic city page, the admin at `/admin/`; `npm run build:hosting`, `firebase.json` → `hosting`: the admin's CSP header on `/admin/**` only, each viewer page its own meta policy; docs/research/M6-interfaces.md §2) | the admin's **Publish the map** (a Cloud Build build as `hcm-installer@`, the installer's workstream), or `firebase deploy --only hosting` in the `deploy-firebase` job of `ci.yml` through WIF (optional), or D1 from the terminal (the start-up variant, `HCM_ADMIN_START_UP=1`) | the owner's click; green CI on `master`; D1 once |
-| GitHub Pages (optional since M6) | `dist/site/bucharest`, or `dist/pages` (§62g), or the redirect tree `dist/pages-redirect` that sends every old link to Hosting (`npm run build:site -- --pages-redirect dist/pages-redirect`, §67c) | `actions/deploy-pages` in `ci.yml` (the `build` job uploads the Pages artifact; which tree is a workflow line, ask first) | push to `master` after every job is green |
+| GitHub Pages: the project's landing page (DECISIONS-for-review.md §162) | `sites/landing/` as committed (`npm run build:landing`, held by the static `landing` gate) | `.github/workflows/pages.yml` (`actions/deploy-pages`; the repository's Pages source must be GitHub Actions, the owner's setting) | push to `master` touching `sites/landing/**`, or a manual dispatch |
 | Rules and indexes | Firestore and Storage rules, Firestore indexes | `firebase deploy --only firestore,storage` through WIF | green CI on `master` |
 | Functions | `functions/dist/` (the same artifact the e2e emulator ran, with the locked tree of `functions/deploy-lock/` and `.env.<project>` from `functions/deploy-env.json`) | `firebase deploy --only functions` through WIF (the job installs before it authenticates) | green CI on `master` |
 | Raster pipeline | the `pipeline/Dockerfile` `runtime` image | the `deploy-pipeline-image` job pushes it to Artifact Registry; `gcloud run jobs update` joins with M3 | green CI on `master` |
@@ -21,7 +21,7 @@ After a deploy: `setup.selfTest` all green (IAM, secrets, Cloud Run, MTS); `http
 
 ## Identity and secrets
 
-- CI authenticates to Google Cloud **keylessly** through Workload Identity Federation as `gh-deployer@`, restricted to `ventura8/bucurestiuldisparut.github.io` on `refs/heads/master`. No service-account key exists anywhere.
+- CI authenticates to Google Cloud **keylessly** through Workload Identity Federation as `gh-deployer@`, restricted to `ventura8/historic-city-map-maker` on `refs/heads/master`. No service-account key exists anywhere.
 - `SONAR_TOKEN` is the only repository secret. Mapbox and USGS secrets live only in Secret Manager, written by the Setup Assistant.
 - The Firebase web config is not committed: the admin reads `/__/firebase/init.json` on Hosting.
 

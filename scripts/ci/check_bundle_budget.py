@@ -53,12 +53,14 @@ BUDGETS: Mapping[str, int] = {
     # Viewer engine, ES module: what the city pages load (Lit, the M3 kit, zod, the viewer), minified since
     # DECISIONS-for-review.md §17a (92.7 KB on 2026-10-12, 101.0 KB before). The Firebase SDK is its lazy
     # `firebase-sdk-<hash>.js` chunk, fetched only after consent.
-    "packages/engine/dist/engine.mjs": 100,
+    # 100 until 2026-11-12, raised to 120 by the owner for beta.1 (DECISIONS-for-review.md §168).
+    "packages/engine/dist/engine.mjs": 120,
     # Viewer engine, IIFE: the same plus the inlined Firebase SDK (no code splitting in IIFE builds,
-    # DECISIONS-for-review.md §13a; 112.0 KB in M1).
-    "packages/engine/dist/engine.iife.js": 125,
+    # DECISIONS-for-review.md §13a; 112.0 KB in M1). 125 until 2026-11-12, raised to 150 by the owner for beta.1 (§168).
+    "packages/engine/dist/engine.iife.js": 150,
     # M14 (docs/research/M14-start-your-map.md): the start page, one module (Lit, zod, the `start.*` texts, the transport).
-    # Apart from the admin's folder and its totals: 69.0 KB measured on 2026-11-07, a new row just above it.
+    # Apart from the admin's folder and its totals: 69.0 KB measured on 2026-11-07, a new row just above it; 60.4 KB since
+    # 2026-11-12, when its city-id checks left the modules that import the Firestore schemas (docs/LESSONS.md 593).
     "dist/start-app/start.mjs": 72,
 }
 
@@ -73,6 +75,11 @@ ENGINE_CHUNK_BUDGETS: Mapping[str, int] = {
     "compare": 5,
     # The gamepad (docs/research/viewer-input.md §3), fetched only once a pad connects: 1.6 KB on 2026-11-07.
     "gamepad": 2,
+    # The side-loaded extras (the owner's "Load extras on demand", 2026-11-09; docs/ENGINE_API.md -> Side-loaded parts):
+    # `engine.extras.js`, one IIFE beside both builds with its own integrity, added the first time a visitor opens a photo
+    # full size, About or the map's menu; it reads Lit and the texts from the engine's kit. 5.3 KB on 2026-11-09; 7 until
+    # 2026-11-12, raised to 12 by the owner for beta.1 (DECISIONS-for-review.md §168).
+    "engine.extras.js": 12,
     # firebase/app and firebase/analytics, fetched only after the visitor's consent: 13.3 KB on 2026-10-24.
     "firebase-sdk": 16,
     # The field chunk (DECISIONS-for-review.md §76): Google's web-vitals (attribution build, 5.4 KB of it) and the event
@@ -111,6 +118,12 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # Shared badge painters + map canvas overlay (DECISIONS-for-review.md §146): 1.9 KB measured, out of `georef` (stays 19); with the
     # pairs' leaf helpers and full screen's cover moved in for the linked views (§156), 2.7 KB measured on 2026-11-12. No row rose.
     "georef-badges": 3,
+    # The georeferencer's panes and the beta.1 requests beside them (2026-11-12; DECISIONS-for-review.md §172, §173): the panes'
+    # template with The map shows and Delete pair N, the scan pane's gestures and its tiles' holder, removing a pair with Undo and the
+    # published layers the map pane shows (`GEOREF_PANE_MODULES` of `packages/admin/vite.config.ts`). It loads with the page, like
+    # `georef-badges`: `georef` was at 19.9 KB with them (budget 19) and stays 19.
+    # 4.2 KB measured on 2026-11-12 with the turning and the scan pane's drawing (out of `georef-badges`), plus about 20 %, rounded up.
+    "georef-panes": 6,
     "layer-geometry": 3,
     # M4's order card (`packages/ui/src/admin/imagery/orders/lazy-card.ts`), fetched the first time a scene that must be
     # bought opens, so the Imagery area stays within its budget with the buy flow: 1.7 KB measured on 2026-10-24 plus about
@@ -169,6 +182,10 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # editor needs them from: 0.5 KB measured on 2026-11-07, rounded up (DECISIONS-for-review.md §97h).
     "proposal-fields": 1,
     "city-budget": 2,
+    # Settings -> Browser tab icon (track/favicon, DECISIONS-for-review.md §165l): the card and the browser's checks of a
+    # chosen file, fetched the first time its section opens, so the settings chunk stays within its 20 KB (19.8 KB with the
+    # card's state): 1.3 KB measured on 2026-11-08 plus about 20 %, rounded up.
+    "icon-section": 2,
     # Step (g)'s Create the measurement reports (`packages/admin/src/google/analytics-reports.ts`: the GA4 property found
     # from the measurement id and the field measurements' custom definitions), fetched on its button's click only: 0.8 KB
     # measured on 2026-11-01 plus about 20 %, rounded up (DECISIONS-for-review.md §76f).
@@ -211,6 +228,15 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # (`packages/ui/src/admin/georef/georef-menu.ts` with `georef-menu-host.ts`), fetched at the page's first render, out of the `georef`
     # chunk (19 KB): 2.4 KB measured on 2026-11-12 plus about 20 %, rounded up.
     "georef-menu": 3,
+    # The georeferencer's warped preview (2026-11-12; DECISIONS-for-review.md, *The georeferencer's ghost and sharper scan*): the mesh
+    # and triangles (`packages/admin/src/georef/georef-warp.ts` over `warp.ts`, with `@hcm/shared`'s `previewMesh`, `scanBounds` and
+    # `triangleTransform`), fetched when a version opens, out of the `georef` chunk (19 KB, which the ghost and the sharper scan had
+    # taken to 19.5 KB; 18.2 KB after): 0.9 KB measured on 2026-11-12 plus about 20 %, rounded up.
+    "georef-warp": 2,
+    # The sharper scan's tiles (2026-11-12; DECISIONS-for-review.md §172): the reader of `scan-tiles.bin`, the tiles in view and the cache
+    # of decoded ones (`packages/ui/src/admin/georef/scan-tiles.ts`), fetched when a version's sharper scan first arrives (the pane zoomed
+    # past the preview), out of the `georef` chunk: 1.2 KB measured on 2026-11-12 plus about 20 %, rounded up.
+    "scan-tiles": 2,
     # The tolerant reads of an older release's records (`packages/shared/src/schemas/legacy-reads.ts`), which Home, the Imagery lists
     # and a version's page share: out of `editor-shared` (13.05 KB with them, budget 13): 0.5 KB measured on 2026-11-12, a row of
     # 1 KB, the smallest whole budget (DECISIONS-for-review.md §155).
@@ -236,7 +262,9 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
 # 700 since 2026-11-08, the owner's decision (§105): the merge of stories, recalibration and the improvements reached
 # 653.8 KB with no saving left that was worth its risk, and the 16 languages come next; the entry's 450 KB still caps what
 # an admin waits for.
-ADMIN_TOTAL_KB = 700
+# 750 since 2026-11-12, the owner's decision (§168d): the georeferencer's panes and its sharper scan's tiles (`georef-panes`,
+# `scan-tiles`) took the total to 701.8 KB; both load only with the georeferencer, and the entry's 450 KB is unchanged.
+ADMIN_TOTAL_KB = 750
 
 # M6: the install bundle's folder in the deployed Hosting tree, and each tarball's budget in KB as served (it is gzip
 # already): the contract's ceilings (docs/research/M6-interfaces.md §1.3; DECISIONS-for-review.md §71). Since §73k

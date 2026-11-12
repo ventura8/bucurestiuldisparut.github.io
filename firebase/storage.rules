@@ -93,6 +93,9 @@ service firebase.storage {
                 && request.resource.size < 60 * 1024 * 1024
                 && request.resource.contentType.matches('image/(jpeg|png|webp|tiff|heic|heif)')
                 && request.resource.metadata.get('originalName', '').size() <= 255
+                // The owner 2026-11-09: an improved or colorized version of the photo is a reviewer's (photos.onUpload reads it).
+                && (request.resource.metadata.get('version', '') == ''
+                    || (isCityReviewer(city) && request.resource.metadata.version in ['improved', 'colorized']))
                 && firestore.exists(/databases/(default)/documents/cities/$(city)/photos/$(photo));
             allow read, delete: if isCityReviewer(city) || (isCityUploader(city) && request.auth.uid == uid);
         }

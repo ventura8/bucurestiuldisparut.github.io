@@ -16,6 +16,7 @@ import type { AreaNumberField } from './area.js';
 import type { CategoryItem } from './categories.js';
 import type { CategoryDeletionState } from './category-deletion.js';
 import type { CategoryIntents } from './category-area.js';
+import type { IconIntents, IconSectionState } from './icon.js';
 import type { CategoryEditorState } from './category-editor.js';
 import type { CitySectionState } from './city-sections.js';
 import type { OverlayDefaultsState } from './overlay-defaults.js';
@@ -50,9 +51,11 @@ export interface SettingsState {
     readonly export: ExportSectionState;
     /** M5 (owner: multi-city): the city's budget, followed while its section shows. */
     readonly budget: BudgetSectionState;
+    /** The browser tab icon's card (`./icon.ts`). */
+    readonly icon: IconSectionState;
 }
 
-export interface SettingsIntents extends CategoryIntents, ExportIntents, BudgetIntents {
+export interface SettingsIntents extends CategoryIntents, ExportIntents, BudgetIntents, IconIntents {
     retry(): void;
     /** A field of the open city section (`bounds`, `center`, `zoom`, `minZoom`, `maxZoom`, `basemap`, ...). */
     editCity(patch: Partial<CityDoc>): void;

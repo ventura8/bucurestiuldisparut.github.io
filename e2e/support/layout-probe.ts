@@ -37,7 +37,7 @@ export interface ChromeSource {
 
 export interface ProbeOptions {
     readonly chrome: readonly ChromeSource[];
-    /** The map canvas, and the Mapbox logo and attribution (Mapbox's own controls or the viewer's copy). */
+    /** The map canvas, and Mapbox's own logo and attribution. */
     readonly legal: { readonly map: string; readonly logo: string; readonly attribution: string };
     /** Elements the app roots render everything into (their shadow root is not one component). */
     readonly appRoots: readonly string[];
@@ -150,8 +150,9 @@ export interface LayoutSnapshot {
     /** The animated graphics drawn in the page (the loading indicators' shapes). */
     readonly graphics: readonly GraphicInfo[];
     /**
-     * `map`: a drawn map shows a strip of its foot that reaches a legal control; `owes`: which of the two the strip reaches
-     * (a control drawn above the strip cannot show, so it is not owed); the visible logos and attributions.
+     * `map`: a drawn map shows a strip of its foot that reaches a legal control, and some of it is in view (not all under
+     * the lightbox or a full-screen dialog); `owes`: which of the two the strip reaches (a control drawn above the strip
+     * cannot show, so it is not owed); the visible logos and attributions.
      */
     readonly legal: {
         readonly map: boolean;
@@ -593,10 +594,40 @@ function legalGap(canvas: Element, legal: string): number {
     return bottoms.length === 0 ? 0 : foot - Math.max(...bottoms);
 }
 
+/**
+ * The visible legal items of `selector`, each with its sampled points. A point seen through a modal sheet's scrim (a
+ * translucent layer, `showsThrough`) counts as uncovered: the map shows there, dimmed, and so do Mapbox's credits on it
+ * (V18; the Pixel 9 Pro review, P3).
+ */
 function probeLegal(registry: Registry, selector: string): LegalItem[] {
     return deepQuery(selector)
         .filter((element) => isDrawn(element) && visibleBoxOf(element) !== null)
-        .map((element) => ({ node: idOf(registry, element), samples: sampleElement(registry, element, false) }));
+        .map((element) => ({
+            node: idOf(registry, element),
+            samples: sampleElement(registry, element, false).map((sample) => ({
+                ...sample,
+                ok: sample.ok || showsThrough(element, deepHit(sample.x, sample.y)),
+            })),
+        }));
+}
+
+/**
+ * Whether any of a map canvas shows: a 5 x 5 grid over its visible box, a point seen when the pointer hits the canvas,
+ * one of its own controls, or something translucent over them (a sheet's scrim). Under the lightbox or a full-screen
+ * dialog no point shows, so the map owes no credit there (Mapbox terms ask for one where the map is displayed).
+ */
+function mapSeen(canvas: Element): boolean {
+    const box = visibleBoxOf(canvas);
+    if (box === null) {
+        return false;
+    }
+    const steps = [0.1, 0.3, 0.5, 0.7, 0.9];
+    return steps.some((fx) =>
+        steps.some((fy) => {
+            const hit = deepHit(box.x + box.width * fx, box.y + box.height * fy);
+            return ownMapControl(canvas, hit) || showsThrough(canvas, hit);
+        }),
+    );
 }
 
 /** Every registered element as a `NodeInfo` (registered last, so the hit elements of every sample are named too). */
@@ -626,7 +657,7 @@ export function probeLayout(options: ProbeOptions): LayoutSnapshot {
     const sideways = probeSideways(registry);
     const graphics = probeGraphics(registry);
     const reaches = (legalSelector: string): boolean =>
-        deepQuery(options.legal.map).some((canvas) => isDrawn(canvas) && showsItsFoot(canvas, legalSelector));
+        deepQuery(options.legal.map).some((canvas) => isDrawn(canvas) && showsItsFoot(canvas, legalSelector) && mapSeen(canvas));
     const legal = {
         map: reaches(`${options.legal.logo}, ${options.legal.attribution}`),
         owes: { logo: reaches(options.legal.logo), attribution: reaches(options.legal.attribution) },
@@ -697,6 +728,7 @@ export const LAYOUT_PROBE = [
     showsItsFoot,
     legalGap,
     probeLegal,
+    mapSeen,
     describeNodes,
     probeLayout,
 ] as const;

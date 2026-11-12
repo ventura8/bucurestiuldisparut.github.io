@@ -133,6 +133,21 @@ export const cityDocSchema = z.strictObject({
             exportsPerDay: z.number().int().min(0),
         })
         .optional(),
+    /**
+     * The city's tab icon (`docs/research/M2-interfaces.md` → *The city's tab icon*), server-owned: written by
+     * `cities.setIcon` and the manifest's build (the default, in the city's seed colour, `seedColor`), never by a client.
+     * The files are `STORAGE_PATHS.cityIcon`; `url` is the 180 px one (the admin's preview), `sha256` the source's (the
+     * upload's bytes, or the default's SVG).
+     */
+    icon: z
+        .strictObject({
+            source: z.enum(['default', 'custom']),
+            seedColor: hexColorSchema.optional(),
+            url: httpsUrlSchema,
+            sha256: sha256Schema,
+            ...stamp,
+        })
+        .optional(),
     published: z.boolean(),
     createdAt: timestampSchema.optional(),
     ...stamp,
@@ -160,6 +175,9 @@ const photoOriginalDocSchema = z.strictObject({
     bytes: z.number().int().min(1),
     sha256: sha256Schema,
 });
+
+/** An improved or colorized version (the owner 2026-11-09): its derivatives and its original, as `image` and `original` are. */
+const photoVersionDocSchema = z.strictObject({ image: photoImageDocSchema, original: photoOriginalDocSchema });
 
 /** What `photos.onUpload` read from the file (EXIF, file name); the admin accepts a suggestion with one click. */
 const photoSuggestionsSchema = z.strictObject({
@@ -220,6 +238,12 @@ const photoDocObjectSchema = z
         suggested: photoSuggestionsSchema.optional(),
         original: photoOriginalDocSchema.optional(),
         replacement: photoReplacementSchema.optional(),
+        /**
+         * The improved and colorized versions, written by `photos.onUpload` from an upload whose metadata names the version; a
+         * reviewer may only remove one (`firestore.rules`). Their credits are the admin's `versionCredits`.
+         */
+        versions: z.strictObject({ improved: photoVersionDocSchema.optional(), colorized: photoVersionDocSchema.optional() }).optional(),
+        versionCredits: z.strictObject({ improved: plainText(200).optional(), colorized: plainText(200).optional() }).optional(),
         /** M13: a pending photo's derivatives, in the private bucket until `review.decide` moves them. */
         heldImage: heldImageSchema.optional(),
         ...reviewFields,

@@ -179,10 +179,15 @@ class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
             !version.editable,
             () => html`<p class="note" data-state="read-only">${contentText(locale, 'adminContent.georef.notEditable')}</p>`,
         );
+        // Edit points on the version the map shows: saving makes a new version, this one stays on the map until that one is approved.
+        const publishedNote = when(
+            version.editable && version.state === 'published',
+            () => html`<p class="note" data-state="published-note">${contentText(locale, 'adminContent.georef.publishedNote')}</p>`,
+        );
         return html`<div class="page" data-state=${view.adding ? 'adding' : 'editing'} ?data-full=${context.full}>
             ${heading}
             <h2 tabindex="-1" data-detail-heading>${title}</h2>
-            ${reconnectingStatus(locale, view.doc.reconnecting)} ${readOnlyNote} ${summary(context)} ${guide(context)}
+            ${reconnectingStatus(locale, view.doc.reconnecting)} ${readOnlyNote} ${publishedNote} ${summary(context)} ${guide(context)}
             ${transforms(context)} ${tools(context)} ${panes(context)} ${previewControls(context)} ${this.#suggestions(context)}
             ${this.#menuTemplate(context)}
             <h3>${contentText(locale, 'adminContent.georef.pairs')}</h3>

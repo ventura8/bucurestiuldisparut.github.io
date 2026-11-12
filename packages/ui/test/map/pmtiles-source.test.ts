@@ -5,7 +5,9 @@ import golden from '../../../../pipeline/tests/contracts/pmtiles-archive.json';
 import {
     entryFor,
     parseDirectory,
+    LEAVES_KEPT,
     PmtilesReader,
+    Recent,
     PmtilesRefusal,
     pmtilesSource,
     rangeRequest,
@@ -325,5 +327,34 @@ describe('a range request', () => {
 
         expect(request.url).toBe(signed);
         expect(request.init.cache).toBe('no-store');
+    });
+});
+
+describe('the leaf directories a reader keeps', () => {
+    it('happyPath_theMostRecentlyReadStayAndTheOldestAreDropped', () => {
+        const recent = new Recent<number, string>(LEAVES_KEPT);
+        for (let offset = 0; offset < LEAVES_KEPT; offset += 1) {
+            recent.set(offset, `leaf ${String(offset)}`);
+        }
+        // The first is read again, then two more arrive: the second and third go, the first stays.
+        expect(recent.get(0)).toBe('leaf 0');
+        recent.set(100, 'leaf 100');
+        recent.set(101, 'leaf 101');
+
+        expect(recent.size).toBe(LEAVES_KEPT);
+        expect([recent.get(0), recent.get(1), recent.get(2), recent.get(3), recent.get(101)]).toEqual([
+            'leaf 0',
+            undefined,
+            undefined,
+            'leaf 3',
+            'leaf 101',
+        ]);
+    });
+
+    it('badPath_aLeafThatFailedIsForgottenAndAMissingOneIsNotThere', () => {
+        const recent = new Recent<number, string>(2);
+        recent.set(1, 'a');
+
+        expect([recent.delete(1), recent.delete(1), recent.get(1), recent.size]).toEqual([true, false, undefined, 0]);
     });
 });

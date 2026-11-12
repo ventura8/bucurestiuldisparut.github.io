@@ -9,7 +9,7 @@ import { PortRecorder, promised } from './recorder.js';
  * `fakeImage({...})` (a marker plus JSON: its type, size and EXIF), and the fake reads them back as `inspect` would read
  * a real file. Bytes without the marker are not an accepted photo (`contentType` undefined, like an SVG or a PDF);
  * `UNREADABLE_IMAGE` and an image over `maxInputPixels` reject with `UpstreamError` `invalid`, as the adapter does. The
- * WebP derivatives are fake bytes that name their size. The adapter itself is tested with generated images and sharp.
+ * WebP derivatives and the icon's PNGs are fake bytes that name their size. The adapter itself is tested with generated images and sharp.
  */
 
 type Inspection = Awaited<ReturnType<ImageProcessor['inspect']>>;
@@ -47,7 +47,7 @@ function inspectBytes(bytes: Uint8Array, maxInputPixels: number): Inspection {
 
 /** The fake; `maxInputPixels` mirrors `PHOTO_LIMITS.maxInputPixels` (200 MP). */
 export function createFakeImageProcessor(maxInputPixels = 200_000_000) {
-    const recorder = new PortRecorder<'inspect' | 'webp'>();
+    const recorder = new PortRecorder<'inspect' | 'webp' | 'iconPng'>();
     const images: ImageProcessor = {
         inspect: (bytes) =>
             promised(() => {
@@ -66,6 +66,11 @@ export function createFakeImageProcessor(maxInputPixels = 200_000_000) {
                     width,
                     height,
                 };
+            }),
+        iconPng: (source, size) =>
+            promised(() => {
+                recorder.enter('iconPng', ['upload' in source ? 'upload' : 'ownSvg', size]);
+                return encoder.encode(`HCM-FAKE-PNG:${String(size)}`);
             }),
     };
     return { images, recorder };

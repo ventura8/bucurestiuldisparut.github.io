@@ -3,6 +3,7 @@ import { SiteBuildError } from '../errors.js';
 import type { SiteFileSystem } from '../files.js';
 import { staticPagePolicy } from '../hosting/static-pages.js';
 import { element, renderDocument, type HtmlElement, type HtmlNode } from '../html.js';
+import { iconLinks } from '../icons.js';
 import {
     PRIVACY_FILE,
     PRIVACY_PAGE,
@@ -91,7 +92,7 @@ function siteLinks(): HtmlElement {
 export function startFooter(): HtmlElement {
     return element('footer', { class: 'start-footer' }, [
         element('p', {}, [
-            'Historic City Map: pornește-ți propria hartă istorică, într-un proiect Google al tău. ',
+            'Historic City Map Maker: pornește-ți propria hartă istorică, într-un proiect Google al tău. ',
             element('span', { lang: 'en' }, ['Start your own historical map, in a Google project of your own.']),
         ]),
         element('nav', { 'aria-label': 'Pagini / Pages' }, [siteLinks()]),
@@ -107,7 +108,7 @@ export function renderLegalPage(page: LegalPage): string {
         element('meta', { name: 'description', content: page.description }),
         element('meta', { name: 'color-scheme', content: 'light dark' }),
         element('title', {}, [`${page.ro.title} · ${page.en.title}`]),
-        element('link', { rel: 'icon', href: 'data:,' }),
+        ...iconLinks(),
         element('link', { rel: 'stylesheet', href: START_SITE_STYLESHEET_FILE }),
     ]);
     const body = element('body', { class: 'start-legal-body' }, [
@@ -121,9 +122,9 @@ export function renderLegalPage(page: LegalPage): string {
     return renderDocument(element('html', { lang: 'ro' }, [head, body]));
 }
 
-/** `start-site.css`: system colours (light and dark follow the browser), a readable measure, links of at least 44 px. */
+/** `start-site.css`: system colours (light and dark follow the browser), a readable measure, links of at least 48 px (M3's touch target). */
 const START_SITE_STYLESHEET_SOURCE = [
-    "/* Historic City Map: the start site's own pages and the home page's footer (scripts/site/src/start/legal.ts). */",
+    "/* Historic City Map Maker: the start site's own pages and the home page's footer (scripts/site/src/start/legal.ts). */",
     ':root {',
     '    color-scheme: light dark;',
     '}',
@@ -186,8 +187,8 @@ const START_SITE_STYLESHEET_SOURCE = [
     '.start-site-link {',
     '    display: inline-block;',
     '    box-sizing: border-box;',
-    '    min-block-size: 2.75rem;',
-    '    padding-block: 0.625rem;',
+    '    min-block-size: 3rem;',
+    '    padding-block: 0.75rem;',
     '}',
     '',
     '.start-legal a:focus-visible,',

@@ -14,6 +14,11 @@
 #   sh hcm-worker.sh governor   the governor's loop alone: host hints and the worker's CPU quota (docs/research/M26-governor.md)
 #   sh hcm-worker.sh uninstall  removes the service, the worker, the sidecar, their Docker volumes and the sidecar's image
 #                               (the admin's "Stop using this computer" gives this file with uninstall already chosen)
+#
+# The worker leaves this computer usable (reports/resource-audit.md): it may hold at most 60 % of the memory Docker has
+# (an out-of-memory run ends the job, not the desktop) and yields the processor to everything else. To change that, set
+# in the service's environment: HCM_WORKER_MEMORY (a Docker size as 8g, or none for no limit) and HCM_WORKER_THREADS
+# (how many threads GDAL uses; the worker's own choice is the cores but one).
 set -u
 
 HCM_PROJECT='__HCM_PROJECT__'
@@ -39,6 +44,9 @@ AI_SECONDS=20
 # The governor (docs/research/M26-governor.md): what only the host can say, every few seconds, and the worker's CPU quota.
 GOVERN_SECONDS=5
 HINTS=/work/host-hints.json
+# The worker's share of the memory Docker has, and its weight against other containers (Docker's default is 1024).
+WORKER_MEMORY_PCT=60
+WORKER_CPU_SHARES=256
 
 say() {
 	printf '%s\n' "$*"
@@ -198,7 +206,7 @@ ai_run() {
 	shift 3
 	docker rm -f "$MATCHER" >/dev/null 2>&1 || true
 	docker run --rm --name "$MATCHER" "$@" --network none --cap-drop ALL \
-		--security-opt no-new-privileges --memory 6g --memory-swap 6g --shm-size 1g --pids-limit 512 \
+		--security-opt no-new-privileges --memory 4g --memory-swap 4g --cpu-shares 128 --shm-size 1g --pids-limit 512 \
 		--tmpfs /tmp -u 10001:10001 -e HOME=/tmp -e HCM_AI_ROOT=/ai -e PYTHONPATH=/ai/files/code:/ai/files/lib \
 		-e HCM_AI_DEVICE="$device" -e HCM_AI_WHY="$why" \
 		-v "$AI_FILES:/ai/files:ro" -v "$AI_BOX:/ai/box" --entrypoint python "$image" -m matcher.serve &
@@ -388,6 +396,40 @@ docker_arch() {
 	docker version --format '{{.Server.Arch}}' 2>/dev/null
 }
 
+# The worker's memory limit in bytes: HCM_WORKER_MEMORY as given (none: no limit), else WORKER_MEMORY_PCT of what Docker
+# has (on Docker Desktop, of its virtual machine); nothing when Docker does not say.
+worker_memory() {
+	case "${HCM_WORKER_MEMORY:-}" in
+	none) return ;;
+	'') ;;
+	*)
+		printf '%s' "$HCM_WORKER_MEMORY"
+		return
+		;;
+	esac
+	total=$(docker info --format '{{.MemTotal}}' 2>/dev/null)
+	case "$total" in
+	'' | *[!0-9]*) return ;;
+	esac
+	printf '%s' "$((total * WORKER_MEMORY_PCT / 100))"
+}
+
+# The worker in the foreground, from the image $1: capped in memory (no swap beyond it), light against other containers.
+start_worker() {
+	image=$1
+	set -- --cpu-shares "$WORKER_CPU_SHARES"
+	memory=$(worker_memory)
+	if [ -n "$memory" ]; then
+		set -- "$@" --memory "$memory" --memory-swap "$memory"
+	fi
+	if [ -n "${HCM_WORKER_THREADS:-}" ]; then
+		set -- "$@" -e "GDAL_NUM_THREADS=$HCM_WORKER_THREADS"
+	fi
+	docker run --rm --name "$NAME" "$@" -p "127.0.0.1:$PORT:$PORT" -v "$NAME:/work" \
+		-v "$AI_FILES:/ai/files" -v "$AI_BOX:/ai/box" -e HCM_STARTER=2 -e HCM_DOCKER_ARCH="$(docker_arch)" "$image" \
+		worker --city "$HCM_CITY" --project "$HCM_PROJECT" --supervised --image "sha256:${image##*@sha256:}"
+}
+
 # The supervisor: the worker in the foreground, started again whenever it ends: at once after an outdated image (75),
 # else after a wait that grows to five minutes while it keeps failing (and starts small again after a long run). A worker
 # that refuses the supervisor's arguments (usage error 2) three times in a row runs an image older than this starter:
@@ -401,9 +443,7 @@ run_worker() {
 		if image=$(current_image) && docker pull "$image" >/dev/null; then
 			docker rm -f "$NAME" >/dev/null 2>&1 || true
 			started=$(date +%s)
-			docker run --rm --name "$NAME" -p "127.0.0.1:$PORT:$PORT" -v "$NAME:/work" \
-				-v "$AI_FILES:/ai/files" -v "$AI_BOX:/ai/box" -e HCM_STARTER=2 -e HCM_DOCKER_ARCH="$(docker_arch)" "$image" \
-				worker --city "$HCM_CITY" --project "$HCM_PROJECT" --supervised --image "sha256:${image##*@sha256:}"
+			start_worker "$image"
 			code=$?
 			if [ "$code" -eq "$OUTDATED" ] || [ $(($(date +%s) - started)) -gt 600 ]; then
 				wait_seconds=0

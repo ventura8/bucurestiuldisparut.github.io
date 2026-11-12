@@ -70,6 +70,21 @@ function actionOf(change: DocumentChange): HistoryAction | undefined {
     return change.after === undefined ? 'delete' : 'update';
 }
 
+/**
+ * Server records that are no version of the document an editor would restore: the city's tab icon (its files are
+ * replaced in place; a revert keeps the current one anyway, being server-owned). A write that changes only these is
+ * not listed.
+ */
+const UNLISTED_FIELDS: ReadonlySet<string> = new Set(['icon']);
+
+function unlisted(change: DocumentChange): boolean {
+    if (change.before === undefined || change.after === undefined) {
+        return false;
+    }
+    const changed = changedKeys(change.before, change.after);
+    return changed.length > 0 && changed.every((key) => UNLISTED_FIELDS.has(key));
+}
+
 function isWriter(value: unknown): value is string {
     return typeof value === 'string' && value.length > 0 && value.length <= MAX_WRITER;
 }
@@ -149,7 +164,8 @@ async function tellReviewers(deps: RecordDeps, audited: AuditedDocument, change:
  * the same entry), `cityId` = the document's city (the admin's recent changes ask one city's entries, CR-M2c-14),
  * `previous` = the whole version before the change (none for a create), `changedFields` = the
  * top-level keys that differ, the stamp = the change's own. A write `history.revert` made (a `revert` entry with the
- * same `updatedAt` is listed) is skipped; afterwards the entries beyond `HISTORY_KEEP` are deleted.
+ * same `updatedAt` is listed) is skipped, as is one that changes only the city's tab icon (`UNLISTED_FIELDS`);
+ * afterwards the entries beyond `HISTORY_KEEP` are deleted.
  */
 export async function recordHistory(deps: RecordDeps, change: DocumentChange): Promise<HistoryOutcome> {
     const audited = parseAuditedDocumentPath(change.document);
@@ -157,6 +173,9 @@ export async function recordHistory(deps: RecordDeps, change: DocumentChange): P
     if (audited === undefined || action === undefined) {
         deps.log.warn('history: not an audited write', { document: change.document });
         return 'ignored';
+    }
+    if (unlisted(change)) {
+        return 'skipped';
     }
     const history = FIRESTORE_PATHS.history(audited);
     const listed = await deps.documents.query(history, historyEntryDocSchema, { orderBy: NEWEST_FIRST, limit: HISTORY_KEEP + TRIM_BATCH });

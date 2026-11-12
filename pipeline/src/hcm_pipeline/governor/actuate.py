@@ -1,7 +1,9 @@
 """The budget applied (docs/research/M26-governor.md §4): inside the worker's process; the starter applies the container's CPU quota.
 
-- At start, `lower_priority`: nice 10 and the idle I/O class, so the person's programs always go first, whatever the budget.
-- At each change, `apply_gdal`: GDAL's thread count (also the tile step's `num-threads`) and its block cache.
+- At start, `idle_io`: the idle I/O class; the worker's command has niced the process already (`HCM_WORKER_NICE`, 10), so the
+  person's programs always go first, whatever the budget. `lower_priority` does both, for a process nothing niced (the load test).
+- At each change, `apply_budget`: GDAL's thread count (also the tile step's `num-threads` and the rim's compression), its block cache
+  and the warp's memory (`rasters.warp_memory_mb` takes the least of it and the machine's), and OpenCV's threads.
 - `Gate`: paused, a running step's next checkpoint or GDAL progress call waits until the profile allows work again. Its memory stays
   held, its processor time drops to nothing, and the time it waited is added to the step's time limit (`jobs.RunFlags`).
 - Outside: the starter (`hcm-worker.sh`, `.bat`) runs `docker update --cpus <threads>` when the budget's threads change; the cgroup's
@@ -26,6 +28,17 @@ IDLE_IO_CLASS: Final = "3"
 WAIT_S: Final = 1.0
 THREADS_OPTION: Final = "GDAL_NUM_THREADS"
 CACHE_OPTION: Final = "GDAL_CACHEMAX"
+WARP_OPTION: Final = "HCM_GOVERNED_WARP_MB"
+
+
+def idle_io(
+    run: Callable[[list[str]], object] = lambda command: subprocess.run(command, check=False, capture_output=True),
+    which: Callable[[str], str | None] = shutil.which,
+) -> None:
+    """The idle I/O class when `ionice` is there (a priority only: nothing fails without it)."""
+    ionice = which("ionice")
+    if ionice is not None:
+        run([ionice, "-c", IDLE_IO_CLASS, "-p", str(os.getpid())])
 
 
 def lower_priority(
@@ -33,14 +46,12 @@ def lower_priority(
     run: Callable[[list[str]], object] = lambda command: subprocess.run(command, check=False, capture_output=True),
     which: Callable[[str], str | None] = shutil.which,
 ) -> None:
-    """Nice 10, and the idle I/O class when `ionice` is there (a priority only: nothing fails without it)."""
+    """Nice 10 and the idle I/O class: a process the worker's command did not nice already (the load test's)."""
     try:
         nice(NICENESS)
     except OSError as error:
         LOG.warning("the worker could not lower its priority: %s", error)
-    ionice = which("ionice")
-    if ionice is not None:
-        run([ionice, "-c", IDLE_IO_CLASS, "-p", str(os.getpid())])
+    idle_io(run, which)
 
 
 def apply_gdal(budget: Budget, set_option: Callable[[str, str], None]) -> None:
@@ -49,6 +60,14 @@ def apply_gdal(budget: Budget, set_option: Callable[[str, str], None]) -> None:
         return
     set_option(THREADS_OPTION, str(budget.threads))
     set_option(CACHE_OPTION, str(budget.gdal_cache_mb))
+    set_option(WARP_OPTION, str(budget.warp_mb))
+
+
+def apply_budget(budget: Budget, actuators: Actuators) -> None:
+    """GDAL's settings and OpenCV's threads under the budget; a paused one leaves them."""
+    apply_gdal(budget, actuators.set_option)
+    if budget.threads:
+        actuators.set_threads(budget.threads)
 
 
 class Gate:
@@ -87,7 +106,8 @@ GATE: Final = Gate()
 
 @dataclass(frozen=True)
 class Actuators:
-    """Where the budget goes: GDAL's settings and the process's gate."""
+    """Where the budget goes: GDAL's settings, OpenCV's threads (`cv2.setNumThreads`) and the process's gate."""
 
     set_option: Callable[[str, str], None]
     gate: Gate = GATE
+    set_threads: Callable[[int], None] = lambda _threads: None

@@ -25,8 +25,9 @@ PROFILES: tuple[Profile, ...] = ("full", "quiet", "paused")
 def test_the_laptop_full_and_quiet() -> None:
     full = budget_for("full", LINUX_NVIDIA_CDI)
     assert (full.threads, full.memory_mb, full.gpu_fraction, full.keypoints) == (14, 13_824, 0.7, 2048)
-    assert full.gdal_cache_mb == full.warp_mb == 3456
-    assert full.tile_processes == 14
+    # The stripfix's bounds (reports/resource-audit.md): a sixteenth and an eighth of the budget, at most 1,024 and 2,048 MB.
+    assert (full.gdal_cache_mb, full.warp_mb) == (864, 1728)
+    assert full.tile_processes == 13
     quiet = budget_for("quiet", LINUX_NVIDIA_CDI)
     assert (quiet.threads, quiet.gpu_fraction, quiet.keypoints) == (4, 0.4, 1024)
     assert budget_for("paused", LINUX_NVIDIA_CDI).as_record() == {"threads": 0, "memoryMb": 0, "gpuFraction": 0.0}
@@ -35,6 +36,7 @@ def test_the_laptop_full_and_quiet() -> None:
 def test_a_small_computer_keeps_one_core_and_few_tile_processes() -> None:
     full = budget_for("full", SMALL_NO_GPU)
     assert (full.threads, full.memory_mb, full.tile_processes) == (1, 1843, 1)
+    assert (full.gdal_cache_mb, full.warp_mb) == (128, 256)
     assert budget_for("quiet", SMALL_NO_GPU).threads == 1
 
 
@@ -85,7 +87,7 @@ def test_with_their_images_rocm_openvino_and_the_npu_are_chosen_in_order() -> No
 def test_a_busy_card_yields_to_the_processor() -> None:
     """The laptop on 2026-11-12: someone else's work held 6.4 of its 8 GB.
 
-    Scenarios: S-A132-BAD-NO-GPU
+    Scenarios: S-A141-BAD-NO-GPU
     """
     busy = replace(LINUX_NVIDIA_CDI.gpus[0], others_mb=6400)
     signals = replace(LINUX_NVIDIA_CDI, gpus=(busy,))
@@ -100,3 +102,9 @@ def test_quiet_takes_less_of_the_card_and_paused_none() -> None:
     assert gpu_room(small, 0.7)
     assert choose(LINUX_NVIDIA_CDI, budget_for("paused", LINUX_NVIDIA_CDI)) == Backend("off", "paused")
     assert Backend("cuda").as_record() == {"matcher": "cuda"}
+
+
+def test_a_large_machine_never_gets_more_gdal_memory_than_the_measured_caps() -> None:
+    """Scenarios: S-A141-HAPPY"""
+    big = budget_for("full", replace(LINUX_NVIDIA_CDI, memory=replace(LINUX_NVIDIA_CDI.memory, total_mb=262_144, available_mb=200_000)))
+    assert (big.gdal_cache_mb, big.warp_mb) == (1024, 2048)

@@ -15,16 +15,16 @@
             [26.25, 44.55]
         ],
         "about": {
-            "ro": "**Orașul meu** este un exemplu de hartă istorică făcută cu trusa de pornire Historic City Map.\n\nÎnlocuiește în city.json numele orașului, limitele și vederea de start, acest text, textul despre confidențialitate, creditele și locurile de exemplu cu ale tale, apoi adaugă fotografiile și straturile istorice (pașii sunt în README.md).",
-            "en": "**My city** is an example of a historical map made with the Historic City Map starter kit.\n\nIn city.json, replace the name of the city, its bounds and start view, this text, the privacy text, the credits and the example places with your own, then add your photos and historical layers (the steps are in README.md)."
+            "ro": "**Orașul meu** este un exemplu de hartă istorică făcută cu trusa de pornire Historic City Map Maker.\n\nÎnlocuiește în city.json numele orașului, limitele și vederea de start, acest text, textul despre confidențialitate, creditele și locurile de exemplu cu ale tale, apoi adaugă fotografiile și straturile istorice (pașii sunt în README.md).",
+            "en": "**My city** is an example of a historical map made with the Historic City Map Maker starter kit.\n\nIn city.json, replace the name of the city, its bounds and start view, this text, the privacy text, the credits and the example places with your own, then add your photos and historical layers (the steps are in README.md)."
         },
         "credits": [
             {
                 "label": {
-                    "ro": "Făcută cu Historic City Map",
-                    "en": "Made with Historic City Map"
+                    "ro": "Făcută cu Historic City Map Maker",
+                    "en": "Made with Historic City Map Maker"
                 },
-                "url": "https://github.com/ventura8/bucurestiuldisparut.github.io"
+                "url": "https://github.com/ventura8/historic-city-map-maker"
             }
         ],
         "privacy": {

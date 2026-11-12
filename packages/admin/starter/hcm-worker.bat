@@ -136,7 +136,7 @@ function Test-AiGpu($Image, $Flags) {
 # The sidecar itself, detached: this loop keeps reading /state.
 function Start-Sidecar($Image, $Device, $Why, $Flags) {
     & docker rm -f $Matcher *> $null
-    $limits = @('--memory', '6g', '--memory-swap', '6g', '--shm-size', '1g', '--pids-limit', '512')
+    $limits = @('--memory', '4g', '--memory-swap', '4g', '--cpu-shares', '128', '--shm-size', '1g', '--pids-limit', '512')
     & docker run -d --rm --name $Matcher @Flags @limits -e "HCM_AI_DEVICE=$Device" -e "HCM_AI_WHY=$Why" @SidecarFlags $Image -m matcher.serve *> $null
 }
 
@@ -268,6 +268,24 @@ function Start-GovernorLoop($Supervisor) {
     }
 }
 
+# What the worker may use of this computer (reports/resource-audit.md): at most 60 % of the memory Docker has, and a light
+# weight against other containers. HCM_WORKER_MEMORY (a Docker size as 8g, or none) and HCM_WORKER_THREADS (GDAL's threads)
+# in the environment change that.
+function Get-WorkerLimits {
+    $limits = @('--cpu-shares', '256')
+    $memory = $env:HCM_WORKER_MEMORY
+    if (-not $memory) {
+        $said = & docker info --format '{{.MemTotal}}' 2> $null
+        $total = [int64]0
+        if ([int64]::TryParse([string]$said, [ref]$total) -and $total -gt 0) {
+            $memory = [string]([int64][math]::Floor($total / 100) * 60)
+        }
+    }
+    if ($memory -and $memory -ne 'none') { $limits += @('--memory', $memory, '--memory-swap', $memory) }
+    if ($env:HCM_WORKER_THREADS) { $limits += @('-e', "GDAL_NUM_THREADS=$($env:HCM_WORKER_THREADS)") }
+    return $limits
+}
+
 # The supervisor: the worker in the foreground, started again whenever it ends: at once after an outdated image (75), else
 # after a wait that grows to five minutes while it keeps failing (and starts small again after a long run). A worker that
 # refuses the supervisor's arguments (usage error 2) three times in a row runs an image older than this starter: that is
@@ -287,7 +305,7 @@ function Start-Supervisor {
                 & docker rm -f $Name *> $null
                 $started = Get-Date
                 $digest = 'sha256:' + $image.Split('@')[1].Substring(7)
-                $arguments = @('run', '--rm', '--name', $Name, '-p', "127.0.0.1:${Port}:${Port}", '-v', "${Name}:/work")
+                $arguments = @('run', '--rm', '--name', $Name) + (Get-WorkerLimits) + @('-p', "127.0.0.1:${Port}:${Port}", '-v', "${Name}:/work")
                 $arch = & docker version --format '{{.Server.Arch}}' 2> $null
                 $arguments += @('-v', "${AiFiles}:/ai/files", '-v', "${AiBox}:/ai/box", '-e', 'HCM_STARTER=2', '-e', "HCM_DOCKER_ARCH=$arch", $image)
                 $arguments += @('worker', '--city', $City, '--project', $Project, '--supervised', '--image', $digest)

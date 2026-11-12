@@ -71,9 +71,11 @@ const TILEJSON_PATH = /^\/v4\/([\w-]+\.[\w-]+)\.json$/;
 const TILE_PATH = /^\/v4\/([\w-]+\.[\w-]+)\/(\d+)\/(\d+)\/(\d+)(@2x)?\.(png|webp)$/;
 const XYZ_PATH = /^\/xyz\/([\w-]+)\/(\d+)\/(\d+)\/(\d+)\.png$/;
 const ENGINE_CDN_PATH = /^\/(?:npm\/@hcm\/engine@[\w.-]+\/dist|gh\/[\w.-]+\/[\w.-]+@[\w.-]+\/packages\/engine\/dist)\/([\w.-]+)$/;
-/** M5: a release's folder on jsDelivr, pinned (`@v1.0.0`) or following a major line (`@1`); one folder level (`fonts/`). */
-const RELEASE_CDN_PATH =
-    /^\/gh\/ventura8\/bucurestiuldisparut\.github\.io@(?:v\d+\.\d+\.\d+|\d+)\/cdn\/engine\/((?:[\w-][\w.-]*\/)?[\w-][\w.-]*)$/;
+/**
+ * M5: a release's folder on jsDelivr, pinned (`@v1.0.0`, a pre-release `@v1.0.0-beta.1` / `@v1.0.0-rc.1`) or following a
+ * major line (`@1`); one folder level (`fonts/`).
+ */
+const RELEASE_CDN_PATH = /^\/gh\/ventura8\/historic-city-map-maker@(?:v[\w.-]+|\d+)\/cdn\/engine\/((?:[\w-][\w.-]*\/)?[\w-][\w.-]*)$/;
 
 const NOT_FOUND: MockResponse = { status: 404, type: 'text/plain', body: 'not mocked' };
 const NO_CONTENT: MockResponse = { status: 204 };

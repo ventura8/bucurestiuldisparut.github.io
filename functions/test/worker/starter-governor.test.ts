@@ -81,7 +81,7 @@ function updates(calls: readonly string[]): readonly string[] {
 }
 
 describe("the governor's loop in the starter (M26)", () => {
-    it('happyPath_theQuotaFollowsTheBudgetOnlyWhenItChangesAndTheHintsReachTheVolume @S-A132-HAPPY', async () => {
+    it('happyPath_theQuotaFollowsTheBudgetOnlyWhenItChangesAndTheHintsReachTheVolume @S-A141-HAPPY', async () => {
         const { calls, hints, output } = await governorLoop({ threads: [14, 14, 4], info: 'Runtimes: runc nvidia', nvidia: true });
 
         expect(updates(calls)).toEqual(['update --cpus 14 hcm-worker', 'update --cpus 4 hcm-worker']);
@@ -108,14 +108,14 @@ describe("the governor's loop in the starter (M26)", () => {
         expect(typeof (hints as { at?: unknown }).at).toBe('number');
     });
 
-    it('badPath_anOlderWorkerOrAPauseLeavesTheQuotaAndACardDockerCannotReachHasNoRuntime @S-A132-BAD-NO-GPU', async () => {
+    it('badPath_anOlderWorkerOrAPauseLeavesTheQuotaAndACardDockerCannotReachHasNoRuntime @S-A141-BAD-NO-GPU', async () => {
         const { calls, hints } = await governorLoop({ threads: [null, 0, 6], nvidia: true });
 
         expect(updates(calls)).toEqual(['update --cpus 6 hcm-worker']);
         expect(hints).toMatchObject({ gpus: [{ vendor: 'nvidia', via: null }] });
     });
 
-    it('badPath_noCardNoHintsOfOne @S-A132-BAD-NO-GPU', async () => {
+    it('badPath_noCardNoHintsOfOne @S-A141-BAD-NO-GPU', async () => {
         const { hints } = await governorLoop({ threads: [2] });
 
         expect(hints).toMatchObject({ gpus: [], npus: [] });

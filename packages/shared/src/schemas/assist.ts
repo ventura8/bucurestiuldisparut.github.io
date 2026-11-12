@@ -19,7 +19,7 @@ export const NOMINATIM_REVERSE_URL = 'https://nominatim.openstreetmap.org/revers
 /** Nominatim's search, beside the reverse geocoder (M5: New city finds a city by its name, `cities.locate`). */
 export const NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search';
 /** The policy asks for an application's own User-Agent; a library's default is refused. */
-export const NOMINATIM_USER_AGENT = 'historic-city-map/1 (+https://github.com/ventura8/bucurestiuldisparut.github.io)';
+export const NOMINATIM_USER_AGENT = 'historic-city-map/1 (+https://github.com/ventura8/historic-city-map-maker)';
 /** Shown under every suggestion (the ODbL): Nominatim's own licence line. */
 export const NOMINATIM_ATTRIBUTION = 'Data © OpenStreetMap contributors, ODbL 1.0. https://osm.org/copyright';
 /** The task queue that keeps the whole project at one Nominatim request a second (`assist.geocode`). */

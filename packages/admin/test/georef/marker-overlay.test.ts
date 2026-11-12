@@ -123,6 +123,7 @@ describe('the georeferencer map badge overlay', () => {
             suggestions: [suggestion('a1', 'a1'), suggestion('a2', 'a2')],
             selectedSuggestion: 'a1',
             half: { lat: 44.46, lng: 26.12 },
+            ghost: { lat: 44.455, lng: 26.11 },
             crosshair: true,
             tones: { g1: 'ok', g2: 'bad' },
         });
@@ -140,6 +141,7 @@ describe('the georeferencer map badge overlay', () => {
             suggestions: [],
             selectedSuggestion: null,
             half: null,
+            ghost: null,
             crosshair: false,
             tones: {},
         });
@@ -162,6 +164,7 @@ describe('the georeferencer map badge overlay', () => {
             suggestions: [suggestion('a1', 'a1')],
             selectedSuggestion: null,
             half: { lat: 44.45, lng: 26.1 },
+            ghost: null,
             crosshair: true,
             tones: { g1: 'warn' },
         });
@@ -179,6 +182,7 @@ describe('the georeferencer map badge overlay', () => {
             suggestions: [suggestion('a1', 'a1')],
             selectedSuggestion: null,
             half: { lat: 44.45, lng: 26.1 },
+            ghost: null,
             crosshair: true,
             tones: {},
         });
@@ -193,6 +197,7 @@ describe('the georeferencer map badge overlay', () => {
             suggestions: [suggestion('a1', 'a1')],
             selectedSuggestion: null,
             half: { lat: 44.45, lng: 26.1 },
+            ghost: null,
             crosshair: true,
             tones: {},
         });
@@ -218,6 +223,7 @@ describe('the georeferencer map badge overlay', () => {
             suggestions: [],
             selectedSuggestion: null,
             half: null,
+            ghost: null,
             crosshair: false,
             tones: {},
         });

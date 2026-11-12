@@ -75,6 +75,8 @@ interface SetupIntents {
     install(target: InstallTarget): Promise<void>;
     /** Update the map: one click (one consent without a live token), counted on `step`'s card. */
     updateMap(step: SetupStepId): Promise<void>;
+    /** "Install this admin's version anyway", confirmed, on the card of a target newer than the admin (a rollback). */
+    installOver(target: InstallTarget): Promise<void>;
     // [end install]
 }
 
@@ -463,6 +465,7 @@ class Controller implements SetupController {
             },
             install: (target) => this.flows.install.install(target),
             updateMap: (step) => this.flows.install.updateMap(step),
+            installOver: (target) => this.flows.install.installOver(target),
         };
     }
 }

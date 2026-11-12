@@ -9,12 +9,12 @@ import json
 import math
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Final
 
-from hcm_pipeline.governor.actuate import Actuators, apply_gdal
+from hcm_pipeline.governor.actuate import Actuators, apply_budget
 from hcm_pipeline.governor.backends import IMAGES, Backend, Matcher, choose
 from hcm_pipeline.governor.budget import Budget, budget_for
 from hcm_pipeline.governor.policy import TICK_S, Choice, PolicyState, decide, effective
@@ -27,6 +27,14 @@ from hcm_pipeline.matcher.box import MatcherBudget
 LOG = get_logger("governor")
 CHOICE_FILE: Final = "governor.json"
 CHOICES: Final[dict[object, Chosen]] = {"auto": "auto", "quiet": "quiet", "full": "full"}
+# The owner's own thread count (the starter's `HCM_WORKER_THREADS`, passed as `GDAL_NUM_THREADS`): no profile goes above it.
+THREADS_ENV: Final = "GDAL_NUM_THREADS"
+
+
+def owner_threads(env: Mapping[str, str]) -> int | None:
+    """The threads the owner set for the worker (a positive number), else None."""
+    text = env.get(THREADS_ENV, "")
+    return int(text) if text.isdigit() and int(text) > 0 else None
 
 
 def load_choice(volume: Path) -> Choice:
@@ -52,8 +60,16 @@ class Reading:
 
 
 class Governor:
-    def __init__(self, probe: Probe, volume: Path, actuators: Actuators, clock: Callable[[], float] = time.monotonic) -> None:
+    def __init__(
+        self,
+        probe: Probe,
+        volume: Path,
+        actuators: Actuators,
+        max_threads: int | None = None,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
         self._probe, self._volume, self._actuators, self._clock = probe, volume, actuators, clock
+        self._max_threads = max_threads
         self._lock = threading.Lock()
         self._choice = load_choice(volume)
         self._reading: Reading | None = None
@@ -92,11 +108,18 @@ class Governor:
         cores = max(1, min(signals.cpu.cores, math.floor(self._cap)))
         return replace(signals, cpu=replace(signals.cpu, cores=cores))
 
+    def _owners(self, budget: Budget) -> Budget:
+        """The budget within the owner's own thread count, when there is one."""
+        cap = self._max_threads
+        if cap is None or budget.threads <= cap:
+            return budget
+        return replace(budget, threads=cap, tile_processes=min(budget.tile_processes, cap))
+
     def _read(self, before: PolicyState) -> Reading:
         signals = self._capped(self._probe.read())
         policy = decide(signals, self.choice, before, self._clock())
         profile, why = effective(policy)
-        budget = budget_for(profile, signals)
+        budget = self._owners(budget_for(profile, signals))
         backend = choose(signals, budget, self.images)
         return Reading(signals, policy, "gpu-busy" if why == "idle" and backend.why == "gpu-busy" else why, budget, backend)
 
@@ -113,7 +136,7 @@ class Governor:
                 reading.budget.threads,
                 reading.budget.memory_mb,
             )
-            apply_gdal(reading.budget, self._actuators.set_option)
+            apply_budget(reading.budget, self._actuators)
         self._gate(reading.budget.profile == "paused")
         with self._lock:
             self._reading = reading

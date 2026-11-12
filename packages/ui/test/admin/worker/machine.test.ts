@@ -51,7 +51,7 @@ function card(element: LitElement): LitElement {
 describe('<hcm-worker-machine>', () => {
     afterEach(cleanup);
 
-    it('happyPath_theConnectedComputerSaysItsSizeItsProfileAndTheOwnerChoosesQuiet @S-A132-HAPPY', async () => {
+    it('happyPath_theConnectedComputerSaysItsSizeItsProfileAndTheOwnerChoosesQuiet @S-A141-HAPPY', async () => {
         const local = new FakeLocal();
         local.set({ phase: 'connected', machine: { kind: 'known', machine: LAPTOP, failed: false } });
         const element = await shown(local);
@@ -89,7 +89,7 @@ describe('<hcm-worker-machine>', () => {
         expect(text).toContain(t('ro', 'adminWorkerLocal.machine.failed'));
     });
 
-    it('badPath_anOlderWorkerAsksToBeUpdatedAndNothingShowsBeforeTheComputerIsConnected @S-A132-BAD-OLD-WORKER', async () => {
+    it('badPath_anOlderWorkerAsksToBeUpdatedAndNothingShowsBeforeTheComputerIsConnected @S-A141-BAD-OLD-WORKER', async () => {
         const local = new FakeLocal();
         const element = await shown(local);
         expect(deepAll(element, 'hcm-worker-machine')).toEqual([]);

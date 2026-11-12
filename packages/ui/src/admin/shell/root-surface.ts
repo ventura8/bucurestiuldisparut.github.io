@@ -10,6 +10,8 @@ import type { ThemeTokens } from '@hcm/shared';
 
 import { applyTheme, clearTheme, type ThemeMode } from '../../theme/apply.js';
 
+import { paintAdminTabIcon } from './tab-icon.js';
+
 const SURFACES = new WeakMap<Document, CSSStyleSheet>();
 
 /** Gives `document`'s root the theme and paints it with the theme's surface (again: the theme is replaced in place). */
@@ -21,6 +23,8 @@ export function paintRoot(document: Document, tokens: ThemeTokens, mode: ThemeMo
         document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
         SURFACES.set(document, sheet);
     }
+    // The tab's icon wears the same theme (`tab-icon.ts`).
+    paintAdminTabIcon(document);
 }
 
 /** Takes the root's theme and paint away (the shell left the page). */

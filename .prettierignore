@@ -12,3 +12,6 @@ vendor/
 # The released engine (docs/research/M5-interfaces.md §2.3): the minified engine build a release commits for jsDelivr,
 # written by `npm run release:cdn` and held byte for byte to a fresh build by the release-cdn gate; never hand-formatted.
 cdn/engine/
+# The landing page GitHub Pages publishes (DECISIONS-for-review.md §162): written by `npm run build:landing` and held byte
+# for byte to that build by the `landing` gate; never hand-formatted.
+sites/landing/

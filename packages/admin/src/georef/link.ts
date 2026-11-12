@@ -12,6 +12,7 @@ import type { Store } from '../state/store.js';
 import { chunkOf, type ExtrasLoader } from './extras.js';
 import type { GeorefMap } from './georef-map.js';
 import type { LinkPorts, MapCamera, ScanCamera, ViewLink } from './linked-views.js';
+import { angleFor, bearingFor } from './rotation.js';
 import type { GeorefState } from './state.js';
 
 /** Runs a callback at the next animation frame (a seam for the tests). */
@@ -91,6 +92,26 @@ export class LinkedPanes {
     }
 }
 
+type Turning = Pick<GeorefState, 'rotateLinked' | 'scanAngle'>;
+
+/** The map's camera with the bearing that suits the scan as it is turned now (as it is: turned apart, no fit, no place). */
+function turnedMap(state: Turning, camera: MapCamera, transform: FittedTransform | null): MapCamera {
+    if (!state.rotateLinked || transform === null) {
+        return camera;
+    }
+    const bearing = bearingFor(transform, transform.toPixel({ lng: camera.center[0], lat: camera.center[1] }), state.scanAngle);
+    return bearing === null ? camera : { ...camera, bearing };
+}
+
+/** The scan's camera with the angle that suits the map's bearing (as it is: turned apart, no fit, no place). */
+function turnedScan(state: Turning, camera: ScanCamera, transform: FittedTransform | null, bearing: number): ScanCamera {
+    if (!state.rotateLinked || transform === null) {
+        return camera;
+    }
+    const angle = angleFor(transform, camera.centre, bearing);
+    return angle === null ? camera : { ...camera, angle };
+}
+
 interface StoreSide {
     readonly services: LinkDeps['services'];
     readonly extras: ExtrasLoader;
@@ -99,20 +120,37 @@ interface StoreSide {
     readonly cell: Store<GeorefState>;
     /** The store's fit now (null: none). */
     readonly transform: () => FittedTransform | null;
+    /** The scan pane shows this many CSS px a scan pixel (the sharper scan past the preview's own). */
+    readonly zoomed: (scale: number) => void;
 }
 
-/** The georeferencer store's linked panes: on while `linked` and no map point is dragged; the scan pane follows through `scanFollow`. */
-export function linkedPanesOf({ services, extras, frame, map, cell, transform }: StoreSide): LinkedPanes {
+/**
+ * The georeferencer store's linked panes: on while `linked`, no map point is dragged and no pair waits for its second click (a pane that
+ * moved under it put a fast click 1 km off, 2026-11-12); the scan pane follows through `scanFollow`.
+ */
+export function linkedPanesOf({ services, extras, frame, map, cell, transform, zoomed }: StoreSide): LinkedPanes {
+    // The bearing the map had when the link last moved either pane: only a map move that turns it from there turns the scan. On a
+    // fit that stretches one axis more than the other the two conversions are not exact inverses, so a pan or zoom must not
+    // read the angle back (it drifted a few degrees a round trip, 2026-11-13).
+    let bearing = map.bearing;
     return new LinkedPanes({
         ...{ services, extras },
         ports: {
             transform,
-            active: () => cell.state.linked && !map.dragging,
+            // A pair waiting for its second click stops both panes: the other one stays where the owner looks (`./ghost.ts`).
+            active: () => cell.state.linked && !map.dragging && cell.state.half === null,
+            // The panes turn together (`./rotation.ts`): the map takes the bearing that suits the scan's angle, the scan the angle
+            // that suits the map's bearing; turned apart, each keeps its own.
             moveMap: (camera) => {
-                map.follow(camera);
+                map.follow(turnedMap(cell.state, camera, transform()));
+                bearing = map.bearing;
             },
-            moveScan: (scanFollow) => {
-                cell.update({ scanFollow });
+            moveScan: (camera) => {
+                const turned = map.bearing !== bearing;
+                bearing = map.bearing;
+                const scanFollow = turned ? turnedScan(cell.state, camera, transform(), bearing) : camera;
+                cell.update({ scanFollow, scanAngle: scanFollow.angle ?? cell.state.scanAngle });
+                zoomed(scanFollow.scale);
             },
             frame,
         },

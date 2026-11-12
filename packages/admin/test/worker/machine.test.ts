@@ -32,7 +32,7 @@ async function settle(): Promise<void> {
 }
 
 describe("this computer's machine (M26)", () => {
-    it('happyPath_theStateSaysTheMachineAndTheOwnersProfileIsPosted @S-A132-HAPPY', async () => {
+    it('happyPath_theStateSaysTheMachineAndTheOwnersProfileIsPosted @S-A141-HAPPY', async () => {
         const world = contentWorld();
         const posted: string[] = [];
         let answer = state(MACHINE);
@@ -61,7 +61,7 @@ describe("this computer's machine (M26)", () => {
         local.stop();
     });
 
-    it('badPath_aRefusedProfileIsSaidOnTheCardAndAnOldWorkerSaysNone @S-A132-BAD-OLD-WORKER', async () => {
+    it('badPath_aRefusedProfileIsSaidOnTheCardAndAnOldWorkerSaysNone @S-A141-BAD-OLD-WORKER', async () => {
         const world = contentWorld();
         let refuse = false;
         const fetch = (url: string): Promise<Response> =>

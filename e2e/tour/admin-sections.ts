@@ -7,7 +7,7 @@ import { ORDERS_STATES } from '../admin/specs/imagery/orders-states.js';
 import { SUGGESTIONS_STATES } from '../admin/specs/imagery/suggestions-states.js';
 import { INSTALL_STATES } from '../admin/specs/install/states.js';
 import { NOTIFY_STATES } from '../admin/specs/notify/states.js';
-import { SETTINGS_STARTER_STATES } from '../admin/specs/settings/states.js';
+import { SETTINGS_ICON_STATES, SETTINGS_STARTER_STATES } from '../admin/specs/settings/states.js';
 import { SETUP_UX_STATES } from '../admin/specs/shell/setup-ux-states.js';
 import { START_STATES } from '../admin/specs/start/states.js';
 import { STORIES_STATES } from '../admin/specs/stories/states.js';
@@ -55,6 +55,8 @@ export const ADMIN_SECTION_STATES = {
     // [end install]
     // [section starters] owner: settings (Settings → Place categories, Add the starter categories: finding 41 of 2026-11-01)
     ...SETTINGS_STARTER_STATES,
+    // Settings → Browser tab icon (behaviour A101).
+    ...SETTINGS_ICON_STATES,
     // [end starters]
     // M7 (docs/research/M7-local-worker.md §7): ids 'worker.<state>', the local worker's panel and a version's place.
     // [section worker] owner: admin (M7)

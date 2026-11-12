@@ -301,6 +301,14 @@ describe('submit', () => {
         expect(call?.headers['authorization']).toBe(`Bearer ${ACCESS.token}`);
     });
 
+    it('happyPath_anOverrideBuildCarriesTheOverTag', async () => {
+        const world = await installWorld();
+
+        const build = await world.installer.submit('server', ACCESS, { over: true });
+
+        expect(build.tags).toEqual(['hcm-install', 'hcm-server', 'hcm-r-1-0-0-abc1234', 'hcm-over']);
+    });
+
     it('happyPath_theNewestBuildIsFoundByItsTargetsTag', async () => {
         const world = await installWorld();
         await world.installer.submit('server', ACCESS);

@@ -4,6 +4,7 @@
  */
 import {
     FIRESTORE_PATHS,
+    STORAGE_PATHS,
     cityDocSchema,
     layerDocSchema,
     photoDocSchema,
@@ -113,8 +114,17 @@ export function storyDoc(overrides: Partial<StoryDoc> = {}): StoryDoc {
 }
 
 /** The city document, one layer, two photos, one category and one POI. */
+/** The city's tab icon as the build left it: the default in the city's colour, so a build draws none (`../publish/icon.test.ts`). */
+const CURRENT_ICON: NonNullable<CityDoc['icon']> = {
+    source: 'default',
+    seedColor: '#8B5E3C',
+    url: publicUrl(STORAGE_PATHS.cityIcon(CITY_ID, 180)),
+    sha256: 'b'.repeat(64),
+    ...stamp,
+};
+
 export async function seedCity(deps: ContentDeps, city: Partial<CityDoc> = {}): Promise<void> {
-    await deps.documents.set(FIRESTORE_PATHS.city(CITY_ID), cityDocSchema, cityDoc(city));
+    await deps.documents.set(FIRESTORE_PATHS.city(CITY_ID), cityDocSchema, cityDoc({ icon: CURRENT_ICON, ...city }));
     await deps.documents.set(FIRESTORE_PATHS.layer(CITY_ID, 'flight-1940'), layerDocSchema, layerDoc());
     await deps.documents.set(FIRESTORE_PATHS.photo(CITY_ID, 'p2'), photoDocSchema, photoDoc('p2'));
     await deps.documents.set(FIRESTORE_PATHS.photo(CITY_ID, 'p1'), photoDocSchema, photoDoc('p1', { title: { ro: 'Unu', en: 'One' } }));

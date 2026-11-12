@@ -186,6 +186,36 @@ describe('installing', () => {
         flow.dispose();
     });
 
+    it('happyPath_theOwnersOverrideInstallsTheAdminsReleaseOverANewerOne', async () => {
+        // The live finding of 2026-11-12: "Install this admin's version anyway", confirmed, is a rollback with its tag.
+        const { install, flow, latest } = await world();
+        install.fakes.scenario('cloud-functions.deployedNewerRelease');
+
+        await flow.installOver(ACCESS);
+
+        const calls = install.fakes.callsTo('cloud-build.builds.create');
+        expect(calls).toHaveLength(1);
+        expect((JSON.parse(calls[0]?.body ?? '{}') as { tags: string[] }).tags).toContain('hcm-over');
+        expect(latest().state).toBe('queued');
+        flow.dispose();
+    });
+
+    it('badPath_theOverrideOverAnOlderServerIsAPlainUpdate_andOverOneInPlaceSubmitsNothing', async () => {
+        const older = await world();
+        older.install.fakes.scenario('cloud-functions.deployedOlderRelease');
+        await older.flow.installOver(ACCESS);
+        const calls = older.install.fakes.callsTo('cloud-build.builds.create');
+        expect(calls).toHaveLength(1);
+        expect((JSON.parse(calls[0]?.body ?? '{}') as { tags: string[] }).tags).not.toContain('hcm-over');
+        older.flow.dispose();
+
+        const queued = await world();
+        queued.install.fakes.scenario('cloud-build.serverQueuedElsewhere');
+        await queued.flow.installOver(ACCESS);
+        expect(queued.install.fakes.callsTo('cloud-build.builds.create')).toHaveLength(0);
+        queued.flow.dispose();
+    });
+
     it('badPath_aBlockedTargetSubmitsNothing', async () => {
         const { install, flow, latest } = await world('pipeline');
         install.fakes.state.artifactRegistry.repositories.clear();

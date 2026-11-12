@@ -120,12 +120,22 @@ async function travellingOf(deps: ExportBuildDeps, cityId: string, manifest: Man
     return { rasters: rasters.flat(), archives: archives.flat() };
 }
 
+/**
+ * The city's own tab icon at 32 px as a `data:` address for the page, or undefined (none yet, or unreadable): the page
+ * then keeps the kit's default, the Layers panel's map glyph.
+ */
+async function cityIcon(deps: ExportBuildDeps, cityId: string): Promise<string | undefined> {
+    const bytes = await deps.blobs.read('public', STORAGE_PATHS.cityIcon(cityId, 32)).catch(() => undefined);
+    return bytes === undefined ? undefined : `data:image/png;base64,${Buffer.from(bytes).toString('base64')}`;
+}
+
 async function prepare(deps: ExportBuildDeps, task: ExportTask, record: CityExportDoc): Promise<ExportPlan> {
     const manifest = await publishedManifest(deps, task.cityId);
-    const [travelling, texts, engine] = await Promise.all([
+    const [travelling, texts, engine, icon] = await Promise.all([
         travellingOf(deps, task.cityId, manifest, record.rasters),
         deps.kit.texts(),
         deps.kit.engineFiles(),
+        cityIcon(deps, task.cityId),
     ]);
     return planExport({
         manifest,
@@ -135,6 +145,7 @@ async function prepare(deps: ExportBuildDeps, task: ExportTask, record: CityExpo
         kitReadme: texts.readme,
         engine,
         madeAt: deps.clock.now(),
+        ...(icon === undefined ? {} : { icon }),
     });
 }
 

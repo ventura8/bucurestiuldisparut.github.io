@@ -101,6 +101,57 @@ test("A language switch also relabels the map's own controls", { tag: '@S-V11-BA
     expect(await i18nLeaks(page, 'ro'), 'no English-only text is left').toEqual([]);
 });
 
+/** The page's tab icon links, and the colour of the first one's square (read from its pixels, above the glyph). */
+async function tabIcon(page: Page): Promise<{ readonly links: number; readonly colour: string }> {
+    return page.evaluate(async () => {
+        const links = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="icon"]')).filter((link) => link.media === '');
+        const image = new Image();
+        image.src = links[0]?.href ?? '';
+        await image.decode().catch(() => undefined);
+        const canvas = document.createElement('canvas');
+        canvas.width = 32;
+        canvas.height = 32;
+        const context = canvas.getContext('2d');
+        context?.drawImage(image, 0, 0);
+        const [red = 0, green = 0, blue = 0] = context?.getImageData(16, 2, 1, 1).data ?? [];
+        return { links: links.length, colour: `#${[red, green, blue].map((value) => value.toString(16).padStart(2, '0')).join('')}` };
+    });
+}
+
+test(
+    "The default tab icon wears the visitor's theme: the system's, then the one chosen",
+    { tag: '@S-V55-HAPPY' },
+    async ({ page, lang }) => {
+        await page.emulateMedia({ colorScheme: 'dark' });
+        await openViewer(page, { lang });
+        // One link without a scheme of its own: the glyph drawn in the city's dark primary.
+        await expect.poll(() => tabIcon(page)).toEqual({ links: 1, colour: TOKENS['dark']?.[PRIMARY]?.toLowerCase() });
+
+        await chooseSetting(page, lang, t(lang, 'theme.light'));
+        await expect.poll(() => tabIcon(page)).toEqual({ links: 1, colour: TOKENS['light']?.[PRIMARY]?.toLowerCase() });
+
+        // The stored choice wins over the system at the next load.
+        await page.reload();
+        await waitForEngineEvent(page, 'hcm-ready');
+        await expect.poll(() => tabIcon(page)).toEqual({ links: 1, colour: TOKENS['light']?.[PRIMARY]?.toLowerCase() });
+    },
+);
+
+test(
+    "A stored theme that is no theme leaves the tab icon in the system's scheme",
+    { tag: '@S-V55-BAD-UNKNOWN-THEME' },
+    async ({ page, lang }) => {
+        await page.addInitScript(() => {
+            localStorage.setItem('hcm:bucharest:theme', 'sepia');
+        });
+        await page.emulateMedia({ colorScheme: 'dark' });
+        await openViewer(page, { lang });
+
+        await expect.poll(() => hostToken(page, PRIMARY)).toBe(TOKENS['dark']?.[PRIMARY]?.toLowerCase());
+        await expect.poll(() => tabIcon(page)).toEqual({ links: 1, colour: TOKENS['dark']?.[PRIMARY]?.toLowerCase() });
+    },
+);
+
 test('The city theme follows the system, and the visitor choice persists', { tag: '@S-V12-HAPPY' }, async ({ page, lang }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
     await openViewer(page, { lang });

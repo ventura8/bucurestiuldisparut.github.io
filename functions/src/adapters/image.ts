@@ -2,7 +2,7 @@ import { PHOTO_LIMITS, type PhotoContentType } from '@hcm/shared';
 import type sharp from 'sharp';
 
 import { UpstreamError } from '../ports/errors.js';
-import type { ImageInspection, ImageProcessor } from '../ports/image-processor.js';
+import type { IconSource, ImageInspection, ImageProcessor } from '../ports/image-processor.js';
 import { readExif } from './image-exif.js';
 
 type Sniffer = (bytes: Uint8Array) => boolean;
@@ -66,7 +66,26 @@ async function inspectDecodable(bytes: Uint8Array, contentType: PhotoContentType
             throw unreadable();
         });
     const size = metadata.autoOrient;
-    return { contentType, width: size.width, height: size.height, exif: readExif(metadata.exif) };
+    const frames = metadata.pages ?? 1;
+    return { contentType, width: size.width, height: size.height, exif: readExif(metadata.exif), ...(frames > 1 ? { frames } : {}) };
+}
+
+/** The input sharp decodes for an icon: the upload's bytes, or our own SVG text (never a user's). */
+function iconInput(source: IconSource): Buffer {
+    return 'upload' in source ? Buffer.from(source.upload) : Buffer.from(source.ownSvg, 'utf8');
+}
+
+/** One PNG of `source` fitted inside a `size` square, transparent around it, no metadata. */
+async function iconPng(source: IconSource, size: number): Promise<Uint8Array> {
+    const decoder = await loadSharp();
+    const output = await decoder(iconInput(source), { limitInputPixels: PHOTO_LIMITS.maxInputPixels })
+        .resize({ width: size, height: size, fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .png({ compressionLevel: 9 })
+        .toBuffer()
+        .catch(() => {
+            throw unreadable();
+        });
+    return new Uint8Array(output);
 }
 
 /**
@@ -96,5 +115,6 @@ export function createSharpImageProcessor(): ImageProcessor {
                 });
             return { bytes: new Uint8Array(output.data), width: output.info.width, height: output.info.height };
         },
+        iconPng,
     };
 }

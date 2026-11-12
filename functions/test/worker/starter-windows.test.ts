@@ -124,6 +124,17 @@ describe('the Windows starter under Windows PowerShell 5.1', () => {
         expect(text).toContain('if ($script:SidecarImage -eq $Image -and (Test-SidecarUp)) { return }');
     });
 
+    it('happyPath_theWorkerIsCappedAndLightAsUnderThePosixStarter @S-P31-HAPPY-WORKER-POLITE', async () => {
+        const text = await powerShell();
+
+        expect(text).toContain("$limits = @('--cpu-shares', '256')");
+        expect(text).toContain("$said = & docker info --format '{{.MemTotal}}' 2> $null");
+        expect(text).toContain('$memory = [string]([int64][math]::Floor($total / 100) * 60)');
+        expect(text).toContain("if ($memory -and $memory -ne 'none') { $limits += @('--memory', $memory, '--memory-swap', $memory) }");
+        expect(text).toContain('if ($env:HCM_WORKER_THREADS) { $limits += @(\'-e\', "GDAL_NUM_THREADS=$($env:HCM_WORKER_THREADS)") }');
+        expect(text).toContain("$arguments = @('run', '--rm', '--name', $Name) + (Get-WorkerLimits) + @('-p',");
+    });
+
     it('happyPath_theWorkerIsToldWhatDockerRunsOn @S-P07-BAD-ARM-HOST', async () => {
         const text = await powerShell();
 

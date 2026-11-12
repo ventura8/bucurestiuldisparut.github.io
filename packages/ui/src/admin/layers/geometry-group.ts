@@ -1,6 +1,6 @@
 /**
  * The layer editor's Image and geometry group (`docs/research/M3-interfaces.md` §10.5; CR-M3-7): the chip of a newer
- * version under way (its page), **Replace the image** (the Imagery area's upload for this layer), **Georeference again**
+ * version under way (its page), **Replace the image** (the Imagery area's upload for this layer), **Edit points**
  * (the georeferencer on the current version; a linked layer has no scan, and says so), and **Crop**, whose tool comes in
  * the lazy `layer-geometry` chunk (`<hcm-layer-crop>`) on the first click. M8 (`docs/research/M8-join-interfaces.md` §9): a joined
  * layer has neither: it has no scan of its own, so it says to delete it and join again. Batch 4 (§5.1): a frame's layer a published join

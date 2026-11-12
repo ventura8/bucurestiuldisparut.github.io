@@ -30,10 +30,11 @@ import {
     type SectionInput,
 } from './editor-sections.js';
 import { imageSection, placeSection } from './editor-place.js';
+import { versionsSection } from './editor-versions.js';
 import { PHOTO_ACCEPT, photoFiles } from './hcm-admin-photo-list.js';
 import { historyHref, localized, photoText } from './photo-text.js';
 import { photoStyles } from './photo-styles.js';
-import type { PhotoEditorPort, PhotosIntentsPort, PhotoValuePort } from './photos-port.js';
+import type { PhotoEditorPort, PhotosIntentsPort, PhotoValuePort, PhotoVersionKindPort } from './photos-port.js';
 
 export const HCM_ADMIN_PHOTO_EDITOR_TAG = 'hcm-admin-photo-editor';
 
@@ -160,9 +161,11 @@ export class HcmAdminPhotoEditor extends LitElement {
         };
         return html`<div class="pane form">
             ${this.#head(locale, editor, value)} ${this.#banners(locale, editor)} ${reconnectingStatus(locale, editor.reconnecting)}
-            ${imageSection(place, this.#choose)} ${textsSection(input)} ${datesSection(input)} ${creditsSection(input)}
-            ${sourceSection(input)} ${linksSection(input)} ${placeSection(place)} ${publishingSection(input, editor)}
+            ${imageSection(place, this.#choose)} ${versionsSection({ ...place, edit: input.edit }, this.#chooseVersion)}
+            ${textsSection(input)} ${datesSection(input)} ${creditsSection(input)} ${sourceSection(input)} ${linksSection(input)}
+            ${placeSection(place)} ${publishingSection(input, editor)}
             <input class="file-input" type="file" accept=${PHOTO_ACCEPT} hidden @change=${this.#chosen} />
+            <input class="version-input" type="file" accept=${PHOTO_ACCEPT} hidden @change=${this.#chosenVersion} />
         </div>`;
     }
 
@@ -238,6 +241,23 @@ export class HcmAdminPhotoEditor extends LitElement {
 
     readonly #choose = (): void => {
         this.renderRoot.querySelector<HTMLInputElement>('.file-input')?.click();
+    };
+
+    /** The version the next chosen file is for (A140). */
+    #version: PhotoVersionKindPort = 'improved';
+
+    readonly #chooseVersion = (kind: PhotoVersionKindPort): void => {
+        this.#version = kind;
+        this.renderRoot.querySelector<HTMLInputElement>('.version-input')?.click();
+    };
+
+    readonly #chosenVersion = (event: Event): void => {
+        const input = event.currentTarget as HTMLInputElement;
+        const [file] = photoFiles(input.files);
+        input.value = '';
+        if (file !== undefined) {
+            this.intents?.uploadVersion(this.#version, file);
+        }
     };
 
     readonly #chosen = (event: Event): void => {

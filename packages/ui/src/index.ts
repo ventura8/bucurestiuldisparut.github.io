@@ -1,4 +1,3 @@
-export { HCM_HELLO_TAG, HcmHello, defineHcmHello } from './hcm-hello.js';
 export { COMPACT_HEIGHT_MAX_PX, TOUCH_TARGET_MIN_PX, WINDOW_CLASS_BREAKPOINTS, isCompactHeight, windowClassFor } from './theme/tokens.js';
 export type { WindowClass } from './theme/tokens.js';
 
@@ -41,7 +40,8 @@ export { fontUrl, installFonts, loadIconFont } from './fonts/font-faces.js';
 export type { FontFaceConstructor } from './fonts/font-faces.js';
 export { FONT_FILES, ICON_FONT_AXES, ICON_FONT_FAMILY, TEXT_FONT_FAMILY, TEXT_FONT_STACK } from './fonts/font-files.js';
 export type { FontFile, FontSource } from './fonts/font-files.js';
-export { ICONS, UI_ICONS, isBundledIcon } from './icons.js';
+export { UI_ICONS, isBundledIcon } from './icons.js';
+export { ICONS } from './icons-sorted.js';
 export {
     HEIGHT_CLASS_BREAKPOINTS,
     WindowClassController,

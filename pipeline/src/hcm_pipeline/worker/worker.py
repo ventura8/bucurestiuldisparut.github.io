@@ -13,11 +13,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
+import cv2
 import httpx
 
 from hcm_pipeline.archive.intake import ArchiveStore
-from hcm_pipeline.governor.actuate import Actuators, lower_priority
-from hcm_pipeline.governor.governor import Governor
+from hcm_pipeline.governor.actuate import Actuators, idle_io
+from hcm_pipeline.governor.governor import Governor, owner_threads
 from hcm_pipeline.governor.probe_linux import LinuxProbe
 from hcm_pipeline.log import get_logger
 from hcm_pipeline.raster import gdal
@@ -92,6 +93,7 @@ class Worker:
         imports = ImportRoutes(ArchiveStore(args.work), lambda body: api.call(ARCHIVE_REPORT, {**ids, **body}))
         server = LocalServer(actions, settings, (bind_host, args.port), policy, args.endpoints.hosting_origins)
         server.serve_imports(imports)
+        server.on_admin = state.pace.wake
         runtime = WorkerRuntime(args, api, worker_id, state, steps)
         runtime.clock = clock
         runtime.announce_ai = actions.announce_ai
@@ -100,7 +102,12 @@ class Worker:
         connector = Connector(pairing, session_file, Signer(session, actions, state.failed, loop.stop), args.pair, clock)
         actions.accept_pairing(connector.offer)
         # M26 (docs/research/M26-governor.md): how much of this computer the worker may use; `govern` starts it.
-        governor = Governor(LinuxProbe(HOST_ROOT, args.work, clock), args.work, Actuators(gdal.SetConfigOption))
+        governor = Governor(
+            LinuxProbe(HOST_ROOT, args.work, clock),
+            args.work,
+            Actuators(gdal.SetConfigOption, set_threads=cv2.setNumThreads),
+            owner_threads(os.environ),
+        )
         state.machine = governor.machine
         runtime.matcher_budget = governor.matcher_budget
         actions.choose_profile = governor.choose
@@ -109,8 +116,9 @@ class Worker:
         loop.supervised = args.supervised
         return cls(session, api, state, actions, server, loop, runtime, client, worker_id, connector, governor, threading.Event())
 
-    def govern(self, lower: Callable[[], None] = lower_priority) -> None:
-        """The person at the computer first: a lower priority, then the governor's ticks in a thread until `close`."""
+    def govern(self, lower: Callable[[], None] = idle_io) -> None:
+        """The person at the computer first: the idle I/O class (the command niced the process), then the governor's ticks in a thread
+        until `close`."""
         lower()
         self.governor.tick()
         threading.Thread(target=self.governor.run, args=(self.governing,), name="governor", daemon=True).start()

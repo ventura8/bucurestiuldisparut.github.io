@@ -2,7 +2,7 @@
  * The M6 installer's states of the tour inventory (docs/research/M6-interfaces.md §6.3; `ADMIN_STATES` of
  * e2e/tour/states.ts spreads them through e2e/tour/admin-sections.ts, section `install`): Install the server (d) ready,
  * at work with its steps and the functions' count, waiting on a retry, stopped with its log, offering an update and
- * newer than the admin, stopped at a permission of step c (finding 28 of 2026-10-31); a server record older than the
+ * newer than the admin with the confirmation of its override (the live finding of 2026-11-12), stopped at a permission of step c (finding 28 of 2026-10-31); a server record older than the
  * admin (finding 27); an older build of the same version recorded installed, offered as an update, and the admin's own
  * release with nothing to do and no consent note (findings 39 and 40 of 2026-11-01); the imagery pipeline (d3) at work,
  * stopped, installing on its own and not available from this admin's bundle (finding 43); Publish the map (i) off with its reason, ready and published; Home's tile of an
@@ -26,7 +26,15 @@ export const INSTALL_STATES = {
         title: "Setup, a server older than the admin's release: An update is ready, with Update the map",
         visit: VISIT,
     },
-    'setup.install-newer': { title: 'Setup, a server newer than this admin: reload the page, nothing offered', visit: VISIT },
+    'setup.install-newer': {
+        title: "Setup, a server newer than this admin: reload the page, no Update, Install this admin's version anyway",
+        visit: VISIT,
+    },
+    // The live finding of 2026-11-12: the owner's override over a newer server asks first.
+    'setup.install-over-dialog': {
+        title: 'Setup, the confirmation before installing over a newer server: what it replaces, Keep or Install',
+        visit: VISIT,
+    },
     // Findings 39 and 40 of 2026-11-01.
     'setup.install-update-recorded': {
         title: 'Setup, an older build of the same version recorded installed: Update the map, with the consent note',

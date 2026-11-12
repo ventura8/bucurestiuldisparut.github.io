@@ -194,7 +194,7 @@ test(
             expect(signedIn).toMatchObject({ city: imagery.city, lastError: null, outdated: false, pairable: false });
             await expect(shown.locator('hcm-worker-local pre')).not.toContainText('--pair');
             await expectStateSound(page, adminVisit('worker.local-connected', lang));
-            // M26 (S-A132-HAPPY): This computer's card, and the owner's Quiet kept by the worker on this computer.
+            // M26 (S-A141-HAPPY): This computer's card, and the owner's Quiet kept by the worker on this computer.
             const card = shown.locator('hcm-worker-machine');
             await card
                 .getByRole('radio', { name: local(lang, 'adminWorkerLocal.machine.choice.quiet') })

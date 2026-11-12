@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from hcm_pipeline.governor.actuate import Actuators, Gate, apply_gdal, lower_priority
 from hcm_pipeline.governor.budget import budget_for
-from hcm_pipeline.governor.governor import CHOICE_FILE, Governor, load_choice
+from hcm_pipeline.governor.governor import CHOICE_FILE, Governor, load_choice, owner_threads
 from hcm_pipeline.governor.policy import Choice
 from hcm_pipeline.governor.signals import Cpu, Power, Signals
 from hcm_pipeline.matcher.box import MatcherBudget
@@ -38,7 +38,7 @@ class Options:
 
 def _governor(tmp_path: Path, signals: Signals, clock: FakeClock | None = None) -> tuple[Governor, FakeProbe, Options, Gate]:
     probe, options, gate = FakeProbe(signals), Options(), Gate()
-    return Governor(probe, tmp_path, Actuators(options, gate), clock or FakeClock()), probe, options, gate
+    return Governor(probe, tmp_path, Actuators(options, gate), clock=clock or FakeClock()), probe, options, gate
 
 
 def test_a_tick_applies_the_budget_and_says_the_machine(tmp_path: Path) -> None:
@@ -53,12 +53,12 @@ def test_a_tick_applies_the_budget_and_says_the_machine(tmp_path: Path) -> None:
     governor.tick()
     probe.signals = replace(LINUX_NVIDIA_CDI, idle_s=0.0)
     governor.tick()
-    assert options.set == {"GDAL_NUM_THREADS": "4", "GDAL_CACHEMAX": "2015"}
+    assert options.set == {"GDAL_NUM_THREADS": "4", "GDAL_CACHEMAX": "504", "HCM_GOVERNED_WARP_MB": "1008"}
     probe.signals = LINUX_NVIDIA_CDI
     governor.tick()
     clock.now += 1000.0
     governor.tick()
-    assert options.set == {"GDAL_NUM_THREADS": "14", "GDAL_CACHEMAX": "3456"}
+    assert options.set == {"GDAL_NUM_THREADS": "14", "GDAL_CACHEMAX": "864", "HCM_GOVERNED_WARP_MB": "1728"}
     assert governor.machine() == {
         "cpu": {"cores": 16},
         "memory": {"totalMb": 30_720, "availableMb": 23_040},
@@ -151,7 +151,7 @@ class StoppingProbe:
 def test_the_loop_ticks_until_stopped_and_survives_a_fault(tmp_path: Path) -> None:
     stop = threading.Event()
     probe = StoppingProbe(stop)
-    governor = Governor(probe, tmp_path, Actuators(Options(), Gate()), lambda: 0.0)
+    governor = Governor(probe, tmp_path, Actuators(Options(), Gate()), clock=lambda: 0.0)
     governor.tick_s = 0.0
     governor.run(stop)
     assert probe.reads == 2
@@ -188,3 +188,23 @@ def test_priority_and_gdal_settings() -> None:
     options = Options()
     apply_gdal(budget_for("paused", SMALL_NO_GPU), options)
     assert options.set == {}
+
+
+def test_the_owners_thread_count_caps_every_profile(tmp_path: Path) -> None:
+    """`HCM_WORKER_THREADS` (as `GDAL_NUM_THREADS`) stays the most the worker uses; anything else is no cap.
+
+    Scenarios: S-A141-HAPPY
+    """
+    assert owner_threads({"GDAL_NUM_THREADS": "3"}) == 3
+    assert owner_threads({"GDAL_NUM_THREADS": "ALL_CPUS"}) is None
+    assert owner_threads({"GDAL_NUM_THREADS": "0"}) is None
+    assert owner_threads({}) is None
+    options = Options()
+    threads: list[int] = []
+    governor = Governor(FakeProbe(LINUX_NVIDIA_CDI), tmp_path, Actuators(options, Gate(), threads.append), 3, clock=FakeClock())
+    governor.tick()
+    assert options.set["GDAL_NUM_THREADS"] == "3"
+    assert threads == [3]
+    assert governor.matcher_budget().threads == 3
+    roomy = Governor(FakeProbe(SMALL_NO_GPU), tmp_path, Actuators(Options(), Gate()), 3, clock=FakeClock())
+    assert roomy.tick().budget.threads == 1

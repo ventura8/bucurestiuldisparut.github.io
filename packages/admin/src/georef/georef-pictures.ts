@@ -7,11 +7,13 @@
 import type { BBox, FittedTransform } from '@hcm/shared';
 
 import type { Clock } from '../app/ports.js';
-import type { FilePort, Picture, PicturePort } from '../imagery/files.js';
+import type { ContentServices } from '../content/services.js';
+import { NO_FILES, type FilePort, type Picture, type PicturePort } from '../imagery/files.js';
 import { cornersOfBox, type PictureOverlays } from '../imagery/overlay.js';
 import type { MapStatus } from '../layers/map-session.js';
-import type { GeorefVersion, ReferenceKind, ScanImage } from './state.js';
-import { warpFrame, warpTriangles } from './warp.js';
+import type { Store } from '../state/store.js';
+import type { GeorefState, GeorefVersion, ReferenceKind, ScanDetail, ScanImage } from './state.js';
+import type * as WarpChunk from './georef-warp.js';
 
 /** The overlays' ids on the map. */
 export const REFERENCE_PICTURE = 'reference';
@@ -20,8 +22,19 @@ export const WARPED_PICTURE = 'warped';
 /** The warped preview is drawn again this long after the last change (one frame). */
 export const WARP_DELAY_MS = 16;
 
+/** The warp's code (`./georef-warp.ts`, a lazy chunk). */
+export type WarpLoader = () => Promise<typeof WarpChunk>;
+
+/** The warp chunk's one dynamic `import()`. */
+export const loadWarp: WarpLoader = async () => import('./georef-warp.js');
+
 /** The scan and the reference are decoded at most this long (a canvas texture). */
 const DECODE_MAX_SIDE = 4096;
+
+/** The screen's device pixels a CSS pixel, at least 1 (1 where there is no screen, as in a worker or a test under Node). */
+export function deviceRatio(): number {
+    return Math.max(1, ...[globalThis.devicePixelRatio].filter(Number.isFinite));
+}
 
 export interface GeorefPicturesDeps {
     readonly files: FilePort;
@@ -30,6 +43,10 @@ export interface GeorefPicturesDeps {
     readonly overlays: PictureOverlays;
     /** The scan pane's image. */
     readonly scan: (image: ScanImage) => void;
+    /** The sharper scan, once fetched (null: none). */
+    readonly detail: (detail: ScanDetail | null) => void;
+    /** The warp chunk's fetch (`loadWarp` by default; a seam for the tests). */
+    readonly warp?: WarpLoader;
 }
 
 type Scan = NonNullable<GeorefVersion['scan']>;
@@ -78,12 +95,17 @@ export class GeorefPictures {
     readonly #deps: GeorefPicturesDeps;
     #versionId: string | null = null;
     #scanUrl: string | null = null;
+    /** The sharper scan asked for (once a version). */
+    #detailAsked = false;
     #scanPicture: Decoded | null = null;
     #target: Picture | null = null;
     #reference: ReferenceKind | null = null;
     #choice: ReferenceChoice | null = null;
     #timer: unknown = null;
     #next: WarpInput | null = null;
+    /** The warp chunk once in (null: not yet), and whether it is being fetched. */
+    #warpChunk: typeof WarpChunk | null = null;
+    #warpAsked = false;
     /** Bumped by `clear`: a decode that ends after it is dropped. */
     #generation = 0;
 
@@ -97,6 +119,7 @@ export class GeorefPictures {
 
     /** A version's scan (once per version) and the reference asked for. */
     load(version: GeorefVersion, wanted: ReferenceKind | null): void {
+        void this.#warpCode();
         if (version.id !== this.#versionId) {
             this.#versionId = version.id;
             void this.#loadScan(version.scan);
@@ -108,6 +131,28 @@ export class GeorefPictures {
             this.#choice = choice;
             this.#deps.overlays.remove(REFERENCE_PICTURE);
             void this.#showReference(choice);
+        }
+    }
+
+    /**
+     * The scan pane shows `scale` CSS px a scan pixel on a screen of `ratio` device px a CSS px: once a preview pixel covers more than
+     * one device pixel, the version's sharper scan is fetched (once a version; a failed fetch leaves the preview, as a version without
+     * one does): the file of its tiles (`scan-tiles.bin`), of which the pane decodes only the ones it shows, from the same threshold
+     * (`packages/ui/src/admin/georef/scan-tiles.ts` `detailScene`).
+     */
+    zoomed(scan: Scan | null, scale: number, ratio: number): void {
+        const detail = scan !== null && scale * ratio > scan.previewScale ? scan.detail : null;
+        if (detail !== null && !this.#detailAsked) {
+            this.#detailAsked = true;
+            void this.#loadDetail(detail);
+        }
+    }
+
+    async #loadDetail({ path, scale }: NonNullable<Scan['detail']>): Promise<void> {
+        const generation = this.#generation;
+        const file = await this.#deps.files.read(path);
+        if (generation === this.#generation && file !== null) {
+            this.#deps.detail({ file, scale });
         }
     }
 
@@ -147,6 +192,7 @@ export class GeorefPictures {
             this.#deps.files.release(this.#scanUrl);
         }
         this.#scanUrl = null;
+        this.#detailAsked = false;
         this.#scanPicture = null;
         this.#target = null;
         this.#versionId = null;
@@ -154,6 +200,7 @@ export class GeorefPictures {
         this.#choice = null;
         this.#next = null;
         this.#deps.scan({ status: 'none' });
+        this.#deps.detail(null);
     }
 
     async #loadScan(scan: Scan | null): Promise<void> {
@@ -210,7 +257,25 @@ export class GeorefPictures {
             this.#deps.overlays.remove(WARPED_PICTURE);
             return;
         }
-        this.#draw(input);
+        if (this.#warpChunk === null) {
+            void this.#warpCode();
+            return;
+        }
+        this.#draw(this.#warpChunk, input);
+    }
+
+    /** The warp chunk, fetched once (asked for when a version opens); a failed fetch is asked for again at the next draw. */
+    async #warpCode(): Promise<void> {
+        if (this.#warpAsked) {
+            return;
+        }
+        this.#warpAsked = true;
+        try {
+            this.#warpChunk = await (this.#deps.warp ?? loadWarp)();
+            this.#render();
+        } catch {
+            this.#warpAsked = false;
+        }
     }
 
     /** The scan decoded and a fit to draw it through, or null (the preview is then taken off the map). */
@@ -224,9 +289,10 @@ export class GeorefPictures {
         return transform === null || scan === null ? null : { source, transform, scan, opacity };
     }
 
-    #draw(input: ReadyWarp): void {
+    #draw({ warpFrame, warpSideFor, warpTriangles }: typeof WarpChunk, input: ReadyWarp): void {
         const { pictures, picture } = input.source;
-        const frame = warpFrame(input.transform, input.scan);
+        // A phone-sized window draws the preview half as long: a quarter of the canvas's memory (the resource audit, 2026-11-12).
+        const frame = warpFrame(input.transform, input.scan, warpSideFor((globalThis as { innerWidth?: number }).innerWidth));
         const target = this.#targetOf(pictures, frame.width, frame.height);
         pictures.draw(target, picture, warpTriangles(input.transform, frame, input.scan, picture));
         this.#deps.overlays.show({ id: WARPED_PICTURE, picture: target, corners: cornersOfBox(frame.bounds), opacity: input.opacity });
@@ -239,4 +305,21 @@ export class GeorefPictures {
         this.#target = target;
         return target;
     }
+}
+
+/** The georeferencer store's pictures: the scan and the sharper scan go to its state. */
+export function georefPicturesOf(
+    services: Pick<ContentServices, 'files' | 'pictures' | 'clock'>,
+    overlays: PictureOverlays,
+    cell: Store<GeorefState>,
+): GeorefPictures {
+    return new GeorefPictures({
+        ...{ files: services.files ?? NO_FILES, pictures: services.pictures ?? null, clock: services.clock, overlays },
+        scan: (scan) => {
+            cell.update({ scan });
+        },
+        detail: (scanDetail) => {
+            cell.update({ scanDetail });
+        },
+    });
 }

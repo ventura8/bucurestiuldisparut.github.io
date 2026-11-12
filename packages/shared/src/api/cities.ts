@@ -7,7 +7,8 @@
  */
 import { z } from 'zod';
 
-import { CITY_ROLES, cityBoundsProblem, cityLimitsSchema, isUsableCityId, MAX_CITIES } from '../schemas/cities.js';
+import { CITY_ROLES, cityLimitsSchema, MAX_CITIES } from '../schemas/cities.js';
+import { cityBoundsProblem, isUsableCityId } from '../schemas/city-id.js';
 import { sha256Schema, uidSchema } from '../schemas/firestore-common.js';
 import { themeSchema } from '../schemas/manifest.js';
 import { cityIdSchema } from '../schemas/paths.js';

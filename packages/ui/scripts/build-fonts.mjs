@@ -3,9 +3,10 @@
 // * Roboto Flex (OFL-1.1): the weight-axis files of @fontsource-variable/roboto-flex for the `latin` and `latin-ext`
 //   ranges (Romanian needs both: ă ș ț live in latin-ext), copied as they are;
 // * Material Symbols Rounded (Apache-2.0): a subset of the 5 MB variable font of `material-symbols` that keeps only the
-//   ligatures of ICONS (packages/ui/src/icons.ts) and the letters they are typed with, instanced at wght 400, GRAD 0,
-//   opsz 24 with the FILL axis kept (filled icons for selected states). HarfBuzz shapes every name to find its glyph,
-//   then subsets with "no layout closure", so GSUB keeps exactly those ligatures; wawoff2 decodes and encodes WOFF2.
+//   ligatures of ICONS (packages/ui/src/icons-sorted.ts, from the lists of icons.ts) and the letters they are typed with,
+//   instanced at wght 400, GRAD 0, opsz 24 with the FILL axis kept (filled icons for selected states). HarfBuzz shapes
+//   every name to find its glyph, then subsets with "no layout closure", so GSUB keeps exactly those ligatures; wawoff2
+//   decodes and encodes WOFF2.
 //
 // Run with Node 24 in the quality image:
 //
@@ -13,7 +14,9 @@
 //     node packages/ui/scripts/build-fonts.mjs --check   # verify the committed fonts (exit 1 when stale or incomplete)
 //
 // The output is deterministic, so --check rebuilds in memory and compares bytes, also shapes every icon name with the
-// committed subset, and refuses an icon the sources use that is not listed. Exit status: 0 ok, 1 stale or an icon missing, 2 usage.
+// committed subset, refuses an icon the sources use that is not listed, and checks that the tab icon's glyph
+// (MAP_GLYPH_PATH, packages/shared/src/kit/map-icon.ts) is still the subset's `map`. Exit status: 0 ok, 1 stale, an icon
+// missing or the glyph changed, 2 usage.
 import { Buffer } from 'node:buffer';
 import { glob, readFile, writeFile } from 'node:fs/promises';
 import { createRequire, registerHooks } from 'node:module';
@@ -40,9 +43,10 @@ registerHooks({
 });
 
 const { createLogger } = await import('../../shared/src/log.ts');
-const { ICONS } = await import('../src/icons.ts');
+const { ICONS } = await import('../src/icons-sorted.ts');
 const { FONT_FILES, ICON_FONT_AXES } = await import('../src/fonts/font-files.ts');
 const { iconNamesIn } = await import('../src/fonts/icon-scan.ts');
+const { MAP_GLYPH_PATH } = await import('../../shared/src/kit/map-icon.ts');
 
 const log = createLogger('build-fonts');
 const require = createRequire(import.meta.url);
@@ -169,14 +173,35 @@ async function unbundledIcons() {
     return unbundled;
 }
 
-/** `--check`: the sources' icons first, then the committed fonts. */
+/** The outline HarfBuzz draws for the `map` ligature of the committed subset (its default instance: FILL 0). */
+function mapGlyphPath(ttf) {
+    const font = new hb.Font(new hb.Face(new hb.Blob(ttf), 0));
+    const [id] = shapeAll(ttf, ['map']).get('map');
+    return font.glyphToPath(id);
+}
+
+/**
+ * The tab icon's glyph (`MAP_GLYPH_PATH` of packages/shared/src/kit/map-icon.ts, the owner's 2026-11-08 request) is still the
+ * font's `map`: the icon a city's tab shows and the one beside each layer in Layers never part.
+ */
+async function checkMapGlyph() {
+    const committed = await readOrEmpty(path.join(OUT_DIR, FONT_FILES.find((font) => font.subset).file));
+    const drawn = committed.length === 0 ? '' : mapGlyphPath(await wawoff2.decompress(committed));
+    if (drawn !== MAP_GLYPH_PATH) {
+        log.error("MAP_GLYPH_PATH is not the font's map glyph: copy the path below into packages/shared/src/kit/map-icon.ts", { drawn });
+        return 1;
+    }
+    return 0;
+}
+
+/** `--check`: the sources' icons first, then the committed fonts and the tab icon's glyph. */
 async function checkAll(outputs) {
     const unbundled = await unbundledIcons();
     if (unbundled.length > 0) {
         log.error('icons the sources use are not listed in packages/ui/src/icons.ts', { unbundled });
         return 1;
     }
-    return check(outputs);
+    return (await check(outputs)) || checkMapGlyph();
 }
 
 async function check(outputs) {

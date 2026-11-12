@@ -50,7 +50,9 @@ _WINDOW_PX: Final = 3
 _OFFSETS: Final = tuple((dy, dx) for dy in range(-_WINDOW_PX, _WINDOW_PX + 1) for dx in range(-_WINDOW_PX, _WINDOW_PX + 1))
 #: The shells a profile is read in, as distances from the edge less the pixel's own: two pixels nearer, one nearer, its own, one farther.
 _SHELLS: Final = ((-2.5, -1.5), (-1.5, -0.5), (-0.5, 0.5), (0.5, 1.5))
-_TRIMMED_OPTIONS: Final = ("TILED=YES", "COMPRESS=DEFLATE", "NUM_THREADS=ALL_CPUS")
+_TRIMMED_OPTIONS: Final = ("TILED=YES", "COMPRESS=DEFLATE")
+# The compression's threads are GDAL's (the governor's budget on a local worker, docs/research/M26-governor.md §4), never every core.
+_THREADS_OPTION: Final = "GDAL_NUM_THREADS"
 
 
 @dataclass(frozen=True)
@@ -221,7 +223,8 @@ def trimmed_alpha(source: Path, alpha: str, rim: Rim, target: Path) -> Path:
     band.SetMetadataItem("source_0", _source(source, "mask,1" if alpha == "mask" else alpha), "new_vrt_sources")
     band.SetMetadataItem("source_1", _source(rim.path, "1", _rects(rim, width, height), ' resampling="bilinear"'), "new_vrt_sources")
     plan.Close()
-    written = gdal.Translate(str(target), str(derived), format="GTiff", creationOptions=list(_TRIMMED_OPTIONS))
+    threads = gdal.GetConfigOption(_THREADS_OPTION) or "ALL_CPUS"
+    written = gdal.Translate(str(target), str(derived), format="GTiff", creationOptions=[*_TRIMMED_OPTIONS, f"NUM_THREADS={threads}"])
     if factors:
         written.BuildOverviews("AVERAGE", factors)
     written.Close()

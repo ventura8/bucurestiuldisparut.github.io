@@ -276,6 +276,26 @@ describe('many cities (M5, docs/research/M5-interfaces.md §1.4)', () => {
 
         expect(results).toEqual({ limits: 'deny', usage: 'deny', newUsage: 'deny', readUsage: 'allow', outsiderReadsUsage: 'deny' });
     });
+
+    it('badPath_noClientWritesTheCitysTabIcon @S-A101-BAD-CLIENT-WRITE', async () => {
+        const path = await seededCity();
+        const icon = {
+            source: 'custom',
+            url: 'https://storage.googleapis.com/demo-hcm-public/cities/x/icon-180.png',
+            sha256: 'a'.repeat(64),
+            updatedBy: world.uid('admin'),
+            updatedAt: past(),
+        };
+
+        const result = await verdict(
+            world
+                .db('admin')
+                .doc(path)
+                .update({ icon, ...OTHER_STAMP('admin') }),
+        );
+
+        expect(result).toBe('deny');
+    });
 });
 
 describe('static exports (M5, docs/research/M5-interfaces.md §5.3, CR-M5-11)', () => {

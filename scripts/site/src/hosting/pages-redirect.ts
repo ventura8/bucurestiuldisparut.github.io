@@ -42,7 +42,7 @@ export function followTheMap(scope: FollowScope): boolean {
 
 /** `pages-redirect.js`. */
 export const PAGES_REDIRECT_SOURCE = [
-    '// Historic City Map: the map moved to Firebase Hosting (docs/research/M6-interfaces.md §2.7),',
+    '// Historic City Map Maker: the map moved to Firebase Hosting (docs/research/M6-interfaces.md §2.7),',
     '// from scripts/site/src/hosting/pages-redirect.ts.',
     "'use strict';",
     `(${followTheMap.toString()})(window);`,

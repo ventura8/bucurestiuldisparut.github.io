@@ -68,8 +68,9 @@ One pure function, `decide(signals, choice, before, now) -> PolicyState`, and `e
 | --- | --- | --- | --- |
 | Threads (reserve 1 core; 2 from 8 cores) | max(1, cores − reserve) | max(1, cores ÷ 4) | 0 |
 | Memory | 60 % of what is free to us | 35 % | 0 |
-| GDAL cache, warp memory | a quarter of the memory each (at least 64 MB) | the same | unchanged |
-| Tile processes | min(threads, memory ÷ 512 MB) | the same | 0 |
+| GDAL cache, warp memory | `rasters.gdal_memory` of the budget: a sixteenth and an eighth (128 to 1,024 MB, 256 to 2,048 MB) | the same | unchanged |
+| Tile processes | min(threads, memory ÷ 4 ÷ 256 MB) | the same | 0 |
+| OpenCV's threads | the threads | the threads | unchanged |
 | Matcher keypoints | 2048 | 1024 | — |
 | Card's memory share (`gpuFraction`) | ≤ 0.7 | ≤ 0.4 | 0 |
 | A running step | runs | runs | waits at its next checkpoint |
@@ -81,9 +82,12 @@ first quota read is the cap, never one of ours.
 
 Actuators:
 
-- `lower_priority()` at the worker's start (`Worker.govern`): `nice 10` and `ionice -c 3` (idle I/O). The person's
-  programs always go first, whatever the budget.
-- `apply_gdal` on every change: `GDAL_NUM_THREADS` (also the tile step's `num-threads`) and `GDAL_CACHEMAX`.
+- At the worker's start the command nices the process (`HCM_WORKER_NICE`, 10; stripfix's `yield_processor`) and
+  `Worker.govern` adds `ionice -c 3` (`idle_io`, idle I/O): niced once, not twice. The person's programs always go first,
+  whatever the budget. `lower_priority` does both, for the load test's process.
+- `apply_budget` on every change: `GDAL_NUM_THREADS` (also the tile step's `num-threads` and the rim's compression), `GDAL_CACHEMAX`,
+  `HCM_GOVERNED_WARP_MB` (`rasters.warp_memory_mb` takes the least of it and the machine's own share) and `cv2.setNumThreads`.
+  The owner's `HCM_WORKER_THREADS` (the starter passes it as `GDAL_NUM_THREADS`) caps every profile's threads.
 - `Gate`: paused, `RunFlags.check()` and `RunFlags.gdal_progress()` wait (a GDAL call blocks inside its own progress
   callback: memory kept, no processor time used); the time waited moves the step's time limit, and a cancel or a
   SIGTERM still ends the wait at once.
@@ -131,19 +135,22 @@ The admin's card, "This computer" (`packages/ui/src/admin/worker/hcm-worker-mach
 `packages/admin/src/worker/machine.ts`, strings `adminWorkerLocal.machine.*` in ro and en, in the lazy `worker-local`
 chunk), shows under "This computer is connected": the cores and memory, Automatic / Quiet / Full, the profile in force
 with its threads and GB and why, where the local AI runs, and a line when no card can be reached. A worker older than
-M26 has no `machine`: the card asks to update it. Scenarios: A132 (`S-A132-HAPPY`, `S-A132-BAD-OLD-WORKER`,
-`S-A132-BAD-NO-GPU`, `S-A132-BAD-BATTERY`); tour state `worker.local-machine`.
+M26 has no `machine`: the card asks to update it. Scenarios: A141 (`S-A141-HAPPY`, `S-A141-BAD-OLD-WORKER`,
+`S-A141-BAD-NO-GPU`, `S-A141-BAD-BATTERY`); tour state `worker.local-machine`.
 
 `HCM_GOVERNOR=off` leaves a worker ungoverned: only the tests' own process uses it (a governed test would renice pytest
 and set GDAL's options for every later test).
 
 ## 7. What this builds on
 
-`track/stripfix` (another agent, 2026-11-12) adds GDAL memory sized to the machine (`rasters.py` `gdal_memory`), a cap
-on tile processes (`pyramid.py` `tile_processes`), claim back-off (`worker/pace.py`) and the starter's memory cap (60 %)
-with `--cpu-shares 256`. At the time of this work that branch's resource changes were **not committed** (its pushed
-head was `0a74888c`), so M26 is built on `origin/track/stripfix` at `0a74888c` and leaves those functions to be read from
-the governor's budget when the two meet: `Budget.gdal_cache_mb`, `warp_mb` and `tile_processes` are those numbers.
+`track/stripfix` (another agent, 2026-11-12, merged into `feat/engine-rewrite` at `8c794234`) added GDAL memory sized to the
+machine (`rasters.py` `gdal_memory`), a cap on tile processes (`pyramid.py` `tile_processes`), claim back-off
+(`worker/pace.py`, 60 s idle), the starter's memory cap (60 %) with `--cpu-shares 256`, the worker niced by 10 and the
+sidecar's 4 GB cap with `--cpu-shares 128`. M26 was built on its older head `0a74888c`; the merge of 2026-11-13 keeps every
+one of those numbers and puts the governor inside them: the budget's cache and warp memory are `gdal_memory` of the
+budget (never more than the 1,024 and 2,048 MB caps), the tile processes follow `GDAL_NUM_THREADS` (the budget's
+threads) within `tile_processes`'s own caps, the processor matcher takes the budget's threads (else the cores but one) and
+is niced by 10, and the starter's `docker update --cpus` sits beside the memory cap and the CPU weight.
 
 ## 8. Tests and what is proved
 
@@ -173,6 +180,6 @@ See the addendum below (filled from the NUC run).
   the reference's inliers); that needs the pinned packages downloaded and measured, which this run did not do. Until
   then `IMAGES` is `{cuda, cpu}` and an Intel or AMD card reads `no-image`; the starter still passes only `--gpus all`
   or CDI to the sidecar.
-- The sidecar's memory (`--memory 6g`) and the worker's own memory cap stay the starter's fixed numbers (stripfix's 60 %).
+- The sidecar's memory (`--memory 4g`) and the worker's own memory cap stay the starter's fixed numbers (stripfix's 60 %).
 - The ours/others split of a card's memory counts our own sidecar as "others" while a request runs (nvidia-smi on the
   host cannot tell the container's processes apart); the yield is decided before a request starts, when ours is 0.

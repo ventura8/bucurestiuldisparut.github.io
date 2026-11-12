@@ -27,13 +27,12 @@ from hcm_pipeline.georef.transforms import enabled_gcps, fit_transform
 from hcm_pipeline.jobs import Done, JobContext, StepFailedError, StepResult
 from hcm_pipeline.join.canvas import aligned_box
 from hcm_pipeline.raster import gdal
-from hcm_pipeline.rasters import GTIFF_OPTIONS
+from hcm_pipeline.rasters import GTIFF_OPTIONS, warp_memory_mb
 from hcm_pipeline.steps.common import city_window, gdal_step
 from hcm_pipeline.surface import write_heights
 
 DEFAULT_MINZOOM: Final = 10
 MAX_UPLOAD_ZOOM: Final = 18
-WARP_MEMORY_MB: Final = 2048
 FLAT_GROUND: Final = 0.0
 # GDAL's RPC transformer over the surface model: its heights as they are (no geoid shift), read bilinearly.
 RPC_OPTIONS: Final = ("RPC_DEM_APPLY_VDATUM_SHIFT=FALSE", "RPC_DEMINTERPOLATION=bilinear")
@@ -161,7 +160,7 @@ class WarpStep:
             "resampleAlg": "bilinear",
             "dstAlpha": True,
             "multithread": True,
-            "warpMemoryLimit": WARP_MEMORY_MB,
+            "warpMemoryLimit": warp_memory_mb(),
             "creationOptions": list(GTIFF_OPTIONS),
             "callback": ctx.flags.gdal_progress,
             **method,

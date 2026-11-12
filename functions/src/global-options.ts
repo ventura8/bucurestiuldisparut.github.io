@@ -96,6 +96,7 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'cities.create': 'fn-admin',
     'cities.locate': 'fn-admin',
     'cities.setLimits': 'fn-admin',
+    'cities.setIcon': 'fn-admin',
     'admins.setRole': 'fn-admin',
     // M13 (docs/research/M13-roles.md).
     'contribute.context': 'fn-admin',

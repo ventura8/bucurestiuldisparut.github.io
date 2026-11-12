@@ -31,6 +31,8 @@ DETECTION_THRESHOLD: Final = 0.05
 NMS_RADIUS: Final = 2
 HASH_CHUNK: Final = 1024 * 1024
 FULL: Final = 255.0
+# Niceness of a processor run (the graphics card's needs none: the processor only feeds it).
+CPU_NICE: Final = 10
 
 
 class TamperedWeightsError(RuntimeError):
@@ -54,12 +56,15 @@ def gpu_exit() -> int:
 
 
 def device_for(kind: str, threads: int = 0) -> Device:
-    """The device asked for (on the processor, the governor's `threads`, else half the cores); for the graphics card, `SystemExit` with
-    `NO_GPU` or `SMALL_GPU` when there is none to use."""
+    """The device asked for (on the processor, the governor's `threads`, else the cores but one); for the graphics card, `SystemExit`
+    with `NO_GPU` or `SMALL_GPU` when there is none to use."""
     if kind == "cpu":
-        threads = threads or max(1, (os.cpu_count() or 2) // 2)
+        # The governor's threads, else the cores but one, below the owner's own programs: the computer stays usable for the hour a
+        # frame may take.
+        threads = threads or max(1, (os.cpu_count() or 2) - 1)
         torch.set_num_threads(threads)
-        LOG.info("local AI: running on the processor, on %d threads", threads)
+        os.nice(CPU_NICE)
+        LOG.info("local AI: running on the processor, on %d threads, below the computer's other programs", threads)
         return Device("cpu", "cpu", None)
     code = gpu_exit()
     if code:

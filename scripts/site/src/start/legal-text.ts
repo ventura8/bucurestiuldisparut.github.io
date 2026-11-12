@@ -35,8 +35,8 @@ export interface LegalPage {
 /** The day the words last changed. */
 const LEGAL_UPDATED = '2026-11-09';
 const START_SITE_ORIGIN = 'https://start-historic-city.web.app';
-const ISSUES_URL = 'https://github.com/ventura8/bucurestiuldisparut.github.io/issues';
-export const SOURCE_URL = 'https://github.com/ventura8/bucurestiuldisparut.github.io';
+const ISSUES_URL = 'https://github.com/ventura8/historic-city-map-maker/issues';
+export const SOURCE_URL = 'https://github.com/ventura8/historic-city-map-maker';
 export const PERMISSIONS_URL = 'https://myaccount.google.com/permissions';
 export const USER_DATA_POLICY_URL = 'https://developers.google.com/terms/api-services-user-data-policy';
 export const PRIVACY_FILE = 'privacy.html';
@@ -55,9 +55,9 @@ export const PRIVACY_PAGE: LegalPage = {
         title: 'Politica de confidențialitate',
         updated: `Ultima actualizare: ${LEGAL_UPDATED}`,
         intro: [
-            'Această politică privește pagina de pornire a Historic City Map, ',
+            'Această politică privește pagina de pornire a Historic City Map Maker, ',
             { href: START_SITE_ORIGIN, text: START_SITE_ORIGIN },
-            ' („pagina”). Historic City Map este un proiect cu sursă deschisă; pagina creează o hartă istorică a unui oraș într-un proiect Google al tău.',
+            ' („pagina”). Historic City Map Maker este un proiect cu sursă deschisă; pagina creează o hartă istorică a unui oraș într-un proiect Google al tău.',
         ],
         sections: [
             {
@@ -117,9 +117,9 @@ export const PRIVACY_PAGE: LegalPage = {
         title: 'Privacy policy',
         updated: `Last updated: ${LEGAL_UPDATED}`,
         intro: [
-            'This policy covers the start page of Historic City Map, ',
+            'This policy covers the start page of Historic City Map Maker, ',
             { href: START_SITE_ORIGIN, text: START_SITE_ORIGIN },
-            ' ("the page"). Historic City Map is an open-source project; the page creates a historical map of a city in a Google project of your own.',
+            ' ("the page"). Historic City Map Maker is an open-source project; the page creates a historical map of a city in a Google project of your own.',
         ],
         sections: [
             {
@@ -185,7 +185,7 @@ export const TERMS_PAGE: LegalPage = {
     ro: {
         title: 'Condiții de utilizare',
         updated: `Ultima actualizare: ${LEGAL_UPDATED}`,
-        intro: 'Aceste condiții privesc pagina de pornire a Historic City Map. Folosind pagina, le accepți.',
+        intro: 'Aceste condiții privesc pagina de pornire a Historic City Map Maker. Folosind pagina, le accepți.',
         sections: [
             {
                 heading: 'Serviciul',
@@ -228,7 +228,7 @@ export const TERMS_PAGE: LegalPage = {
     en: {
         title: 'Terms of service',
         updated: `Last updated: ${LEGAL_UPDATED}`,
-        intro: 'These terms cover the start page of Historic City Map. By using the page, you accept them.',
+        intro: 'These terms cover the start page of Historic City Map Maker. By using the page, you accept them.',
         sections: [
             {
                 heading: 'The service',

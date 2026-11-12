@@ -20,6 +20,12 @@ z.config({ jitless: true });
 /** The localized error codes the validation helpers return: every `validation.*` catalogue key. */
 export type ValidationCode = Extract<MessageKey, `validation.${string}`>;
 
+/**
+ * City ids are lowercase: they name Storage folders, which `firebase/storage.rules` matches with `[a-z0-9-]{2,32}`. Here, not
+ * in `paths.ts`, whose Firestore schemas a page that only checks a city id (the start page) must not carry (docs/LESSONS.md 593).
+ */
+export const CITY_ID_PATTERN = /^[a-z0-9-]{2,32}$/;
+
 /** Ids of cities, layers, photos and overlays; also what a URL hash may carry (never a selector). */
 export const ID_PATTERN = /^[A-Za-z0-9_-]{1,40}$/;
 

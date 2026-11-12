@@ -8,6 +8,7 @@ for the georeferencer and `georef` matches against the first.
 """
 
 import json
+import math
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,9 +16,9 @@ from typing import Final
 
 import numpy
 
-from hcm_pipeline import paths
+from hcm_pipeline import paths, scan_tiles
 from hcm_pipeline.agreement import AGREED, REJECT_M, Agreement, Candidate, Patch, candidates, decide, read_patch, readings
-from hcm_pipeline.contract import SCAN_PREVIEW_MAX_PX, Errors
+from hcm_pipeline.contract import SCAN_DETAIL_MAX_PIXELS, SCAN_DETAIL_MAX_PX, SCAN_PREVIEW_MAX_PX, SCAN_TILE_PX, Errors
 from hcm_pipeline.documents import ScanInfo, city_bounds
 from hcm_pipeline.geo import Bounds, Grid, MercatorBox, fnv1a
 from hcm_pipeline.images import UInt8Array, resize, write_jpeg
@@ -25,11 +26,12 @@ from hcm_pipeline.jobs import JobContext, StepFailedError
 from hcm_pipeline.model import Record
 from hcm_pipeline.objects import ObjectInfo, sha256_of
 from hcm_pipeline.raster import gdal
-from hcm_pipeline.rasters import GTIFF_OPTIONS, RasterError, read_band
+from hcm_pipeline.rasters import GTIFF_OPTIONS, RasterError, open_raster, read_band
 from hcm_pipeline.stac import ReferenceUnavailableError, StacItem
 from hcm_pipeline.urlguard import AddressRefusedError, check_data_url, check_emulated_url
 
 REFERENCE_RESOLUTION_M: Final = 10.0
+RGB_BANDS: Final = 3
 # The reference guard's verdict, kept in the cached window's metadata so `locate` and `reference` measure it once.
 CHECK_METADATA: Final = "HCM_S2_CHECK"
 LOOPBACK_PREFIXES: Final = ("http://127.0.0.1", "http://localhost", "http://[::1]")
@@ -215,12 +217,75 @@ def grey_reference(source: Sentinel2) -> UInt8Array:
     return numpy.asarray(numpy.asarray(total) / 3, numpy.uint8)
 
 
-def publish_scan(ctx: JobContext, local: Path, pixels: UInt8Array) -> ScanInfo:
-    """`scan.tif` and its preview (long side at most `SCAN_PREVIEW_MAX_PX`) as the version's files."""
-    height, width = pixels.shape[:2]
-    scale = min(1.0, SCAN_PREVIEW_MAX_PX / max(width, height))
-    preview = write_jpeg(ctx.local("scan-preview.jpg"), resize(pixels, (max(1, round(width * scale)), max(1, round(height * scale)))))
+def detail_scale(width: int, height: int) -> float:
+    """The sharper scan's pixels per scan pixel: its long side at most `SCAN_DETAIL_MAX_PX`, its area at most `SCAN_DETAIL_MAX_PIXELS`."""
+    return min(1.0, SCAN_DETAIL_MAX_PX / max(width, height), math.sqrt(SCAN_DETAIL_MAX_PIXELS / (width * height)))
+
+
+def _scaled(pixels: UInt8Array, scale: float) -> UInt8Array:
+    """`pixels` shrunk by `scale` (its pixels per scan pixel)."""
+    height, width = (int(side) for side in pixels.shape[:2])
+    return resize(pixels, (max(1, round(width * scale)), max(1, round(height * scale))))
+
+
+def _read_scaled(local: Path, scale: float) -> UInt8Array:
+    """The scan in `local` (grey, or RGB of a colour scan) read by GDAL averaged down by `scale`: the scan itself is never held
+    (reports/resource-audit.md: a 20,000 px colour upload read whole was 2.4 GB)."""
+    dataset = open_raster(local)
+    width, height = dataset.RasterXSize, dataset.RasterYSize
+    size = (max(1, round(width * scale)), max(1, round(height * scale)))
+    count = RGB_BANDS if dataset.RasterCount >= RGB_BANDS else 1
+    bands = [
+        numpy.asarray(dataset.GetRasterBand(band).ReadAsArray(0, 0, width, height, size[0], size[1], resample_alg=gdal.GRIORA_Average))
+        for band in range(1, count + 1)
+    ]
+    dataset.Close()
+    return numpy.asarray(bands[0] if count == 1 else numpy.dstack(bands), numpy.uint8)
+
+
+def _size_of(local: Path) -> tuple[int, int]:
+    dataset = open_raster(local)
+    size = int(dataset.RasterXSize), int(dataset.RasterYSize)
+    dataset.Close()
+    return size
+
+
+def _preview_scale(width: int, height: int) -> float:
+    return min(1.0, SCAN_PREVIEW_MAX_PX / max(width, height))
+
+
+def scan_preview(local: Path) -> tuple[UInt8Array, tuple[int, int]]:
+    """The preview of the scan in `local`, read shrunk out of the file, and the scan's size."""
+    width, height = _size_of(local)
+    return _read_scaled(local, _preview_scale(width, height)), (width, height)
+
+
+def _publish_tiles(ctx: JobContext, detail: UInt8Array) -> str:
+    """The sharper scan as `scan-tiles.bin`: JPEG tiles of `SCAN_TILE_PX` in one object (`scan_tiles`); its path."""
+    encoded = [write_jpeg(ctx.local("scan-tile.jpg"), tile).read_bytes() for tile in scan_tiles.cut(detail, SCAN_TILE_PX)]
+    local = ctx.local("scan-tiles.bin")
+    local.write_bytes(scan_tiles.pack(encoded, (int(detail.shape[1]), int(detail.shape[0])), SCAN_TILE_PX))
+    return ctx.publish(local, ctx.version_file("scan-tiles.bin"), "application/octet-stream").path
+
+
+def publish_scan(ctx: JobContext, local: Path, pixels: UInt8Array | None = None) -> ScanInfo:
+    """`scan.tif`, its preview (long side at most `SCAN_PREVIEW_MAX_PX`) and, for a longer scan, its sharper `scan-tiles.bin`.
+
+    The detail (long side at most `SCAN_DETAIL_MAX_PX`, area at most `SCAN_DETAIL_MAX_PIXELS`) is what the georeferencer draws once
+    the owner zooms past the preview's own pixels (a 1966 Corona frame was a blur at high zoom, 2026-11-12). It is written as tiles
+    of `SCAN_TILE_PX`, so the browser decodes only the ones the pane shows; a scan no longer than its preview needs none. Both are
+    shrunk from `pixels` when the caller holds the scan anyway, else read shrunk out of the file.
+    """
+    width, height = _size_of(local) if pixels is None else (int(pixels.shape[1]), int(pixels.shape[0]))
+
+    def shrunk(scale: float) -> UInt8Array:
+        return _read_scaled(local, scale) if pixels is None else _scaled(pixels, scale)
+
+    scale = _preview_scale(width, height)
+    preview = write_jpeg(ctx.local("scan-preview.jpg"), shrunk(scale))
+    ctx.publish(preview, ctx.version_file("scan-preview.jpg"), "image/jpeg")
+    detail = None if scale >= 1.0 else detail_scale(width, height)
+    detail_path = None if detail is None else _publish_tiles(ctx, shrunk(detail))
     sha256 = sha256_of(local)
     scan = ctx.publish(local, ctx.version_file("scan.tif"), "image/tiff")
-    ctx.publish(preview, ctx.version_file("scan-preview.jpg"), "image/jpeg")
-    return ScanInfo(scan.path, width, height, sha256, ctx.version_file("scan-preview.jpg"), scale)
+    return ScanInfo(scan.path, width, height, sha256, ctx.version_file("scan-preview.jpg"), scale, detail_path, detail)

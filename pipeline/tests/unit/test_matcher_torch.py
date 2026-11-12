@@ -199,15 +199,18 @@ def test_bad_path_no_graphics_card_exits_77_and_small_one_76_so_a_silent_process
     assert read_status(world.box) is None
 
 
-def test_happy_path_the_processor_runs_only_when_told_with_half_the_threads_and_says_why(
+def test_happy_path_the_processor_runs_only_when_told_on_the_cores_but_one_niced_and_says_why(
     world: World, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """Scenarios: S-P07-HAPPY-CPU-FALLBACK"""
+    """Scenarios: S-P07-HAPPY-CPU-FALLBACK, S-P31-HAPPY-WORKER-POLITE"""
     monkeypatch.setattr(world.backend.os, "cpu_count", lambda: 8)
+    niced: list[int] = []
+    monkeypatch.setattr(world.backend.os, "nice", niced.append)
 
     assert world.child.main(["probe", "cpu", "no-gpu"], {"HCM_AI_ROOT": str(world.root)}) == 0
 
-    assert world.fake.threads == [4]
+    assert world.fake.threads == [7]
+    assert niced == [10]
     status = read_status(world.box)
     assert status is not None
     assert (status.device, status.fallback) == ("cpu", "no-gpu")
@@ -313,7 +316,7 @@ def test_happy_path_the_weights_pins_are_read_from_pins_json(tmp_path: Path, mon
 def test_happy_path_the_governors_budget_caps_the_card_and_its_keypoints(world: World) -> None:
     """The governor's budget (docs/research/M26-governor.md §4).
 
-    Scenarios: S-P07-HAPPY-GPU, S-A132-HAPPY
+    Scenarios: S-P07-HAPPY-GPU, S-A141-HAPPY
     """
     path = request_in(world.box, MatcherBudget(0, 1024, 0.4))
 
@@ -322,15 +325,18 @@ def test_happy_path_the_governors_budget_caps_the_card_and_its_keypoints(world: 
     assert read_answer(world.box / f"r001{ANSWER_SUFFIX}").device == "gpu"
 
 
-def test_bad_path_a_card_others_hold_sends_the_request_to_the_processor_and_says_so(world: World) -> None:
-    """The governor's yield (docs/research/M26-governor.md §5).
+def test_bad_path_a_card_others_hold_sends_the_request_to_the_processor_and_says_so(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The governor's yield (docs/research/M26-governor.md §5): on the processor, the budget's threads, niced as any processor run.
 
-    Scenarios: S-P07-HAPPY-CPU-FALLBACK, S-A132-BAD-NO-GPU
+    Scenarios: S-P07-HAPPY-CPU-FALLBACK, S-A141-BAD-NO-GPU
     """
+    niced: list[int] = []
+    monkeypatch.setattr(world.backend.os, "nice", niced.append)
     path = request_in(world.box, MatcherBudget(3, 1024, 0.0, yield_gpu=True))
 
     assert world.child.main(["run", str(path), "gpu", ""], {"HCM_AI_ROOT": str(world.root)}) == 0
     answer = read_answer(world.box / f"r001{ANSWER_SUFFIX}")
     assert (answer.device, answer.fallback) == ("cpu", "gpu-busy")
     assert world.fake.threads == [3]
+    assert niced == [10]
     assert world.fake.fractions == []

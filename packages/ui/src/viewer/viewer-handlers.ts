@@ -3,9 +3,10 @@
  * bubbles out of one) to a store action. `act` stops the event first, so none of them leaves the viewer: the page
  * sees only the public events of docs/ENGINE_API.md.
  */
+import type { MenuPoint } from './map-menu-trigger.js';
 import type { ViewerServices } from './services.js';
 import type { ViewerStorePort } from './store-port.js';
-import { closeSheet, isMenuAction, menuAction, selectPhoto, toggleCompare } from './viewer-actions.js';
+import { closeSheet, isMenuAction, menuAction, selectPhoto, shareViewer, toggleCompare } from './viewer-actions.js';
 import type { OverlayOpacityDetail, ViewerHandlers } from './viewer-render.js';
 
 /** What the handlers need from the element. */
@@ -16,6 +17,8 @@ export interface HandlerHost {
     setOpacity(store: ViewerStorePort, detail: OverlayOpacityDetail): void;
     services(): ViewerServices;
     focusTimeline(): void;
+    /** Opens the map's menu at a point, or closes it (null). */
+    mapMenu(point: MenuPoint | null): void;
 }
 
 /** A handler that stops its event and runs `action` on the store. */
@@ -48,7 +51,10 @@ function inputHandlers(on: On): Pick<ViewerHandlers, 'onMapLabel' | 'onLayersMin
 }
 
 /** A photo to open, to show on the map (V51) or full size, and its thumbnail on screen. */
-type PhotoHandlers = Pick<ViewerHandlers, 'onPhotoSelect' | 'onPhotoLocate' | 'onLightboxOpen' | 'onPhotoShown' | 'onLightboxClose'>;
+type PhotoHandlers = Pick<
+    ViewerHandlers,
+    'onPhotoSelect' | 'onPhotoLocate' | 'onLightboxOpen' | 'onPhotoShown' | 'onPhotoVersion' | 'onLightboxClose'
+>;
 
 function photoHandlers(on: On): PhotoHandlers {
     return {
@@ -63,6 +69,9 @@ function photoHandlers(on: On): PhotoHandlers {
         }),
         onPhotoShown: on((store, event) => {
             store.photoShown?.(event.detail.ok);
+        }),
+        onPhotoVersion: on((store, event) => {
+            store.setPhotoVersion(event.detail.view);
         }),
         onLightboxClose: on((store) => {
             store.setLightbox(false);
@@ -79,6 +88,32 @@ function storyHandlers(on: On): Pick<ViewerHandlers, 'onStorySelect' | 'onPoiSel
         onPoiSelect: on((store, event) => {
             store.openPoi(event.detail.poiId);
         }),
+    };
+}
+
+/**
+ * The map's menu (V62): its close, Copy coordinates through the clipboard service, said by a toast whether it worked or
+ * not, and Share a link to this view, the menu's Share (the page's address carries the view).
+ */
+function mapMenuHandlers(host: HandlerHost): Pick<ViewerHandlers, 'onMapMenuClose' | 'onMapMenuCopy' | 'onMapMenuShare'> {
+    const say = (key: 'mapMenu.copied' | 'mapMenu.copyFailed') => (): void => {
+        host.act(null, (store) => {
+            store.showToast(key);
+        });
+    };
+    return {
+        onMapMenuClose: () => {
+            host.mapMenu(null);
+        },
+        onMapMenuCopy: (event) => {
+            event.stopPropagation();
+            void host.services().copyText(event.detail.text).then(say('mapMenu.copied'), say('mapMenu.copyFailed'));
+        },
+        onMapMenuShare: (event) => {
+            host.act(event, (store) => {
+                void shareViewer(store, host.services());
+            });
+        },
     };
 }
 
@@ -127,6 +162,7 @@ export function createHandlers(host: HandlerHost): ViewerHandlers {
         }),
         onCompareToggle: on(toggleCompare),
         ...zoomHandler(host),
+        ...mapMenuHandlers(host),
         onToastDismiss: on((store) => {
             store.dismissToast();
         }),

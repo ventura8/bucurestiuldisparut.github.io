@@ -6,6 +6,7 @@ import json
 from collections.abc import Iterator
 from pathlib import Path
 
+import cv2
 import numpy
 import pytest
 from hcm_pipeline.exit_codes import ExitCode
@@ -55,7 +56,7 @@ def worker(api: FakeWorkerApi, tmp_path: Path) -> Iterator[Worker]:
 
 
 def test_happy_path_the_admin_chooses_the_profile_of_this_computer(server: tuple[LocalServer, App]) -> None:
-    """Scenarios: S-A132-HAPPY"""
+    """Scenarios: S-A141-HAPPY"""
     local, app = server
     preflight = from_admin(local, "OPTIONS", "/profile")
     chosen = from_admin(local, "POST", "/profile", json.dumps({"profile": "quiet", "batteryAllowed": True}).encode())
@@ -67,7 +68,7 @@ def test_happy_path_the_admin_chooses_the_profile_of_this_computer(server: tuple
 
 
 def test_bad_path_a_stranger_or_a_bad_profile_changes_nothing(server: tuple[LocalServer, App]) -> None:
-    """Scenarios: S-A132-BAD-OLD-WORKER"""
+    """Scenarios: S-A141-BAD-OLD-WORKER"""
     local, app = server
     stranger = {"origin": "https://attacker.example"}
     answers = {
@@ -87,11 +88,13 @@ def test_bad_path_a_stranger_or_a_bad_profile_changes_nothing(server: tuple[Loca
 
 @pytest.fixture
 def gdal_settings() -> Iterator[None]:
-    """GDAL's settings as they were: the governor sets them for the whole process."""
-    kept = {key: gdal.GetConfigOption(key) for key in ("GDAL_NUM_THREADS", "GDAL_CACHEMAX")}
+    """GDAL's settings and OpenCV's threads as they were: the governor sets them for the whole process."""
+    kept = {key: gdal.GetConfigOption(key) for key in ("GDAL_NUM_THREADS", "GDAL_CACHEMAX", "HCM_GOVERNED_WARP_MB")}
+    threads = cv2.getNumThreads()
     yield
     for key, value in kept.items():
         gdal.SetConfigOption(key, value)
+    cv2.setNumThreads(threads)
 
 
 @pytest.mark.usefixtures("gdal_settings")
@@ -127,7 +130,7 @@ def test_happy_path_the_command_governs_unless_told_not_to(api: FakeWorkerApi, t
         return built
 
     argv = ["worker", "--city", "bucharest", "--project", PROJECT, "--port", "0", "--work", str(tmp_path), "--emulators"]
-    assert main(argv, env, StepRegistry((WorkerCommand(build),)), io.StringIO()) == ExitCode.OK
+    assert main(argv, env, StepRegistry((WorkerCommand(build, lambda _steps: None),)), io.StringIO()) == ExitCode.OK
     assert len(governed) == 1
 
 
@@ -146,7 +149,7 @@ def test_happy_path_the_matcher_request_carries_its_budget(tmp_path: Path) -> No
 
 
 def test_bad_path_a_paused_computer_holds_the_step_and_moves_its_time_limit() -> None:
-    """Scenarios: S-A132-BAD-BATTERY"""
+    """Scenarios: S-A141-BAD-BATTERY"""
     gate = Gate(iter([0.0, 30.0, 30.0, 30.0]).__next__)
     flags = RunFlags(hold=gate.hold)
     flags.deadline = StepDeadline("warp", 100.0, 100.0, lambda: 110.0)

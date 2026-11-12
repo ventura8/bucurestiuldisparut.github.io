@@ -1,8 +1,8 @@
 /**
  * The template of `<hcm-map-viewer>`, split by region: the frame (panes per window class), the map pane with its
  * status layer (skeleton, error card, no-WebGL fallback) and floating controls, the modal layer (the modal sheets, the
- * About dialog and the lightbox) and, while a modal surface covers the map, the legal bar with the Mapbox logo and
- * attribution (scenario V18: Mapbox's own controls are hidden then, never covered). Every floating control carries
+ * About dialog and the lightbox), above the map and Mapbox's own logo and attribution, which move into the part of
+ * the map a modal sheet leaves in view (scenario V18, `viewer-legal.ts`). Every floating control carries
  * `data-layout-check` (its name): the e2e tour checks that no two of them overlap at any viewport
  * (docs/research/design-review-testability.md §4.3). Every function takes the view (state plus derived values) and
  * the element's handlers; none keeps state. The map container is the one static `<div class="map">`: Lit never
@@ -12,20 +12,24 @@ import { translate, type Locale, type Manifest, type Photo, type Poi, type PoiCa
 import { html, nothing, type TemplateResult } from 'lit';
 import { keyed } from 'lit/directives/keyed.js';
 
+import { cssProperties, type CssPropertyValues } from '../components/css-properties.js';
 import type { CameraOffset } from '../map/mapbox-types.js';
-import type { AttributionPart } from './attribution.js';
 import { EMPTY } from './empty.js';
 import type { MapLabelDetail } from './hcm-layer-panel.js';
 import { dialogMode, isDialogSheet } from './input-commands.js';
 import { DOCKED_OPEN, type Placement, type SheetMode, type ViewerLayout } from './layout.js';
+import type { LegalLift } from './legal-lift.js';
 import { renderSheetFrame } from './sheet-frame.js';
 import type { ViewerError, ViewerState } from './store-port.js';
 import { photosNearYear, type TimelineStop } from './timeline-model.js';
+import type { MenuPoint } from './map-menu-trigger.js';
+import { lightbox, mapMenu, type LightboxHandlers, type MapMenuHandlers } from './viewer-lightbox.js';
 import { menuActions, menuItem } from './viewer-menu.js';
+import { nearYearChip } from './viewer-near-year.js';
 import { storiesSheet } from './viewer-stories.js';
 import { unplacedSheet } from './viewer-unplaced.js';
 import { zoomButtons, type MapSize } from './viewer-zoom.js';
-import { legalMirror, modalOpen, renderConsentBanner, renderLegalBar, type LegalMirror } from './viewer-legal.js';
+import { modalOpen, renderConsentBanner } from './viewer-legal.js';
 
 /** What one render needs, derived from the store state by the element. */
 export interface ViewerView {
@@ -37,10 +41,12 @@ export interface ViewerView {
     readonly manifestUrl: string;
     readonly engineVersion: string;
     readonly mapboxCssUrl: string;
-    /** The map's attribution as Mapbox GL shows it (`watchAttribution`), for the legal bar and About. */
-    readonly attribution: readonly AttributionPart[];
     /** The map container's box (null before the first render): Zoom out's limit (`viewer-zoom.ts`). */
     readonly mapSize: MapSize | null;
+    /** Where the map's menu is open (V62); null: closed. */
+    readonly mapMenu: MenuPoint | null;
+    /** How far Mapbox's bottom corners move out from under the open modal sheet (V18, `legal-lift.ts`). */
+    readonly legalLift: LegalLift;
 }
 
 /** `hcm-photo-locate` of `<hcm-photo-sheet>`: the photo, and its place's offset from the map's centre (`locateOffset`). */
@@ -57,12 +63,11 @@ export interface OverlayOpacityDetail {
 }
 
 /** The element's event handlers, bound once. */
-export interface ViewerHandlers {
+export interface ViewerHandlers extends LightboxHandlers, MapMenuHandlers {
     readonly onYearChange: (event: CustomEvent<{ readonly year: number | null }>) => void;
     readonly onOverlayVisibility: (event: CustomEvent<{ readonly id: string; readonly visible: boolean }>) => void;
     readonly onOverlayOpacity: (event: CustomEvent<OverlayOpacityDetail>) => void;
     readonly onSheetClose: (event: Event) => void;
-    readonly onPhotoSelect: (event: CustomEvent<{ readonly photoId: string }>) => void;
     /** The photo sheet's "Show on map" (V51). */
     readonly onPhotoLocate: (event: CustomEvent<PhotoLocateDetail>) => void;
     /** M17: a story to open (null: their list), and a place a story names. */
@@ -71,7 +76,6 @@ export interface ViewerHandlers {
     readonly onLightboxOpen: (event: Event) => void;
     /** The photo sheet's thumbnail was decoded (or failed): the `photo_timing` field measurement. */
     readonly onPhotoShown: (event: CustomEvent<{ readonly ok: boolean }>) => void;
-    readonly onLightboxClose: (event: Event) => void;
     readonly onMenuSelect: (event: CustomEvent<{ readonly value: string }>) => void;
     readonly onLocaleChange: (event: CustomEvent<{ readonly locale: Locale }>) => void;
     readonly onThemeChange: (event: CustomEvent<{ readonly theme: ViewerState['theme'] }>) => void;
@@ -151,9 +155,14 @@ function timelineNote(locale: Locale): TemplateResult {
     </div>`;
 }
 
+/** The lift as the properties the styles move Mapbox's bottom corners by (`viewer-styles.ts`); none without a sheet. */
+function liftProperties(lift: LegalLift): CssPropertyValues {
+    const px = (value: number): string | undefined => (value === 0 ? undefined : `${String(value)}px`);
+    return { '--hcm-legal-lift-bottom': px(lift.bottom), '--hcm-legal-lift-left': px(lift.left), '--hcm-legal-lift-right': px(lift.right) };
+}
+
 export function renderViewer(view: ViewerView, handlers: ViewerHandlers): TemplateResult {
     const ready = readyOf(view);
-    const legal = legalMirror(view.state, view.layout.sheetMode);
     return html`${stylesheet(view)}
         <div class="viewer">
             <div
@@ -161,8 +170,8 @@ export function renderViewer(view: ViewerView, handlers: ViewerHandlers): Templa
                 data-panes=${panes(view, ready)}
                 ?data-compact-height=${view.state?.compactHeight === true}
                 data-timeline=${hasTimeline(view, ready) ? view.layout.timeline : nothing}
-                ?data-legal-mirror=${legal !== 'none'}
                 ?inert=${modalOpen(view.state, view.layout.sheetMode)}
+                ${cssProperties(liftProperties(view.legalLift))}
             >
                 ${skipLink(view, ready, handlers)} ${leadingPane(view, ready, handlers)}
                 <div class="map-pane">
@@ -171,17 +180,8 @@ export function renderViewer(view: ViewerView, handlers: ViewerHandlers): Templa
                 </div>
                 ${trailingPane(view, ready, handlers)}
             </div>
-            ${ready === null ? nothing : modalLayer(view, ready, legal, handlers)}
+            ${ready === null ? nothing : html`<div class="modal-layer">${overlays(view, ready, handlers)}</div>`}
         </div>`;
-}
-
-/**
- * The modal surfaces in their own grid row, which ends where the legal bar begins: a sheet, its scrim or the lightbox
- * never covers the logo and the attribution (the frame, and so the map, keeps the whole height).
- */
-function modalLayer(view: ViewerView, ready: Ready, legal: LegalMirror, handlers: ViewerHandlers): TemplateResult {
-    return html`<div class="modal-layer">${overlays(view, ready, legal, handlers)}</div>
-        ${legal === 'bar' ? renderLegalBar(view.attribution, view.locale, view.mapboxCssUrl) : nothing}`;
 }
 
 /** mapbox-gl.css inside the shadow root (the page's copy cannot reach it); the browser reuses its cached file. */
@@ -270,7 +270,7 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
     const items = menuActions({ webgl: state.webgl, layersDocked: view.layout.layersDocked, manifest }).map((action) =>
         menuItem(action, view.locale, state.myLocation !== null),
     );
-    return html`${timelineArea(view, ready, handlers)} ${nearYearChip(view, ready, handlers)}
+    return html`${timelineArea(view, ready, handlers)} ${nearYearChip(view, ready.state.year, ready.manifest.photos, handlers.onNearYear)}
         <div class="dock menu">
             <hcm-fab-menu
                 data-layout-check="menu"
@@ -282,7 +282,8 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
             ></hcm-fab-menu>
         </div>
         ${state.webgl ? zoomButtons(view, state.view, manifest, handlers.onZoom) : nothing}
-        ${consent ? renderConsentBanner(view.locale, handlers.onConsent) : nothing} ${toast(view, state, handlers)}`;
+        ${consent ? renderConsentBanner(view.locale, handlers.onConsent) : nothing} ${toast(view, state, handlers)}
+        ${mapMenu(view, state, handlers)}`;
 }
 
 function timeline(view: ViewerView, state: ViewerState, handlers: ViewerHandlers): TemplateResult {
@@ -296,18 +297,6 @@ function timeline(view: ViewerView, state: ViewerState, handlers: ViewerHandlers
             .orientation=${view.layout.timeline}
             @hcm-year-change=${handlers.onYearChange}
         ></hcm-timeline>
-    </div>`;
-}
-
-function nearYearChip(view: ViewerView, ready: Ready, handlers: ViewerHandlers): TemplateResult {
-    const year = ready.state.year;
-    if (year === null || photosNearYear(ready.manifest.photos, year).length === 0) {
-        return EMPTY;
-    }
-    return html`<div class="dock chip">
-        <hcm-button variant="tonal" icon="photo_library" data-layout-check="near-year" @click=${handlers.onNearYear}
-            >${translate(view.locale, 'photos.nearYear', { year: String(year) })}</hcm-button
-        >
     </div>`;
 }
 
@@ -389,6 +378,7 @@ function photoSheet(view: ViewerView, ready: Ready, placement: Placement, handle
         .stories=${ready.manifest.stories ?? []}
         .canLocate=${ready.state.webgl}
         .years=${view.stops}
+        .photoVersion=${ready.state.photoVersion}
         ?inert=${placement.inert === true}
         @hcm-close=${handlers.onSheetClose}
         @hcm-year-change=${handlers.onYearChange}
@@ -397,6 +387,7 @@ function photoSheet(view: ViewerView, ready: Ready, placement: Placement, handle
         @hcm-story-select=${handlers.onStorySelect}
         @hcm-lightbox-open=${handlers.onLightboxOpen}
         @hcm-photo-shown=${handlers.onPhotoShown}
+        @hcm-photo-version=${handlers.onPhotoVersion}
     ></hcm-photo-sheet>`;
 }
 
@@ -434,7 +425,7 @@ function trailingPane(view: ViewerView, ready: Ready | null, handlers: ViewerHan
     return html`<div class="pane trailing">${content()}</div>`;
 }
 
-function overlays(view: ViewerView, ready: Ready, legal: LegalMirror, handlers: ViewerHandlers): TemplateResult {
+function overlays(view: ViewerView, ready: Ready, handlers: ViewerHandlers): TemplateResult {
     const { state, manifest } = ready;
     const mode = view.layout.sheetMode;
     const modal = mode === 'docked' ? nothing : modalSheets(view, ready, mode, handlers);
@@ -448,8 +439,6 @@ function overlays(view: ViewerView, ready: Ready, legal: LegalMirror, handlers: 
             .engineVersion=${view.engineVersion}
             .consent=${state.consent}
             .analytics=${manifest.city.analytics.measurementId !== undefined}
-            .attribution=${legal === 'about' ? view.attribution : null}
-            .mapboxCssUrl=${view.mapboxCssUrl}
             ?fullscreen=${view.layout.aboutFullscreen}
             @hcm-close=${handlers.onSheetClose}
             .theme=${state.theme}
@@ -459,15 +448,7 @@ function overlays(view: ViewerView, ready: Ready, legal: LegalMirror, handlers: 
             @hcm-shortcuts-change=${handlers.onShortcuts}
             @hcm-help-open=${handlers.onHelpOpen}
         ></hcm-about-dialog>
-        <hcm-lightbox
-            .open=${state.lightbox && state.selectedPhotoId !== null}
-            .photos=${manifest.photos}
-            .photoId=${state.selectedPhotoId}
-            .locale=${view.locale}
-            .manifestUrl=${view.manifestUrl}
-            @hcm-close=${handlers.onLightboxClose}
-            @hcm-photo-select=${handlers.onPhotoSelect}
-        ></hcm-lightbox>`;
+        ${lightbox(state, manifest.photos, view, handlers)}`;
 }
 
 /**

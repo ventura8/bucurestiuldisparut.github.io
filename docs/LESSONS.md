@@ -3418,7 +3418,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
 582. **A KH-5 Argon frame searched an hour with no end.**
     - Seen: 2026-11-12, DS09065A089MC039 (1964-06-18): `locate` ran about an hour with no log line until it was cancelled.
     - Cause: the frame is about 550 km across at 140 m on the ground, so the city is a small patch of it; the vote search had no time bound, and nothing proves a KH-5 frame yet (M9 §14).
-    - Fix and pin: `SensorSpec.search_seconds` (35 min, KH-5 10 min) bounds the search (`SearchBudget`): past it the windows left are not searched and the frame, not proved, waits for points (S-P06-HAPPY-SEARCH-BUDGET, S-P06-BAD-SEARCH-BUDGET); since lesson 584 as the whole frame shrunk, not as a crop by its footprint.
+    - Fix and pin: `SensorSpec.search_seconds` (35 min, KH-5 10 min) bounds the search (`SearchBudget`): past it the windows left are not searched and the frame, not proved, waits for points (S-P06-HAPPY-SEARCH-BUDGET, S-P06-BAD-SEARCH-BUDGET); since lesson 607 as the whole frame shrunk, not as a crop by its footprint.
     - **Every search over an unknown space gets a time budget whose end is a result (not found, ask a person), not a failure.**
 
 583. **The 1895 series offered 26 suggested pairs off its own scan.**
@@ -3427,13 +3427,166 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: `stitched.in_scan` moves the version's suggestions into the scan's pixels (`Stitched.pairs_scale` times the scan's shrink) and drops a pair outside the scan (S-P22-HAPPY-PAIRS-IN-SCAN, S-P22-BAD-PAIRS-OUTSIDE-SCAN).
     - **Every pixel coordinate written beside a picture names the picture it belongs to; when the picture is resized for the reader, its coordinates move in the same write.**
 
-584. **A Corona strip nothing proved showed the owner farmland.**
+584. **The start site's footer links and the landing page's links were 44 px touch targets, and the English landing page was checked as a Romanian page.**
+    - Seen: 2026-11-12, the first run of `e2e/admin/specs/start` at every admin project after the merge of the release: 15 failures at `admin-c360-ro` and `admin-m768-ro` (`[target-size]` on `a.start-site-link` and `a.landing-link`, 44 px under M3's 48) and at every Romanian project (`Language`, the English page's switch label, reported as English in a Romanian page).
+    - Cause: `start-site.css` and `landing.css` gave their links `min-block-size: 2.75rem`; `landing.spec.ts` passed the project's language to `adminVisit` for a page whose language is its own (`index.html` English, `ro.html` Romanian). The specs had been run at `admin-l1440-ro` only.
+    - Fix and pin: both link classes are `3rem` high; the landing visits name the page's own language (S-A132-HAPPY-LANDING, S-A76-HAPPY-LEGAL at every admin project).
+    - **A link that stands alone (a footer, a list, a switch) is a touch target of 48 px; a page with its own language is checked in that language, not the project's; a new spec is run at the compact and the medium project before it is called green.**
+
+585. **A new server-owned field the complete rules fixture lacks makes its "never removed" row pass for nothing.**
+    - Seen: 2026-11-08, track/favicon: `client-writes.test.ts` found that a client could "remove" `cities/{city}.icon`, the tab icon's record; removing a field the seeded city did not have changes nothing, so the rule allowed it.
+    - Cause: the field was added to `cityDocSchema` and the server, but not to `firebase/rules-tests/test/support/documents.ts`'s complete city, which every server-owned row seeds.
+    - Found by: the `tests` stage (`documents.test.ts` compares the fixture's keys with the schema's, `client-writes.test.ts` the removal). Fix: the fixture carries `icon`; the rule was right all along.
+    - **A field added to a document schema joins the rules' complete fixture in the same change, server-owned or not.**
+
+586. **A request limit equal to the size limit's base64 hides the size message behind "invalid request".**
+    - Seen: 2026-11-08, track/favicon: a 1,000,003-byte PNG sent to `cities.setIcon` came back `apiError.invalidRequest`, not `apiError.cityIcon.tooBig`, because its base64 was longer than the schema's `maxBase64Chars`.
+    - Cause: the schema's cap (base64 of exactly 1 MB) refuses everything above it before the handler measures the bytes.
+    - Found by: `functions/test/cities/set-icon.test.ts`. Fix: the admin checks the size in the browser first (`browserProblem`), so an editor always reads the size message; the server's cap stays as the request's own limit.
+    - **When a schema caps a payload that the handler also measures, the client says the plain reason before sending.**
+
+587. **A card added to an area chunk at its budget pushes the chunk over it.**
+    - Seen: 2026-11-08, track/favicon: Settings → Browser tab icon took the `settings` chunk to 20.6 KB of its 20 KB.
+    - Cause: the settings chunk had about 0.5 KB left, and a card's view, its CSS and its file checks weigh more.
+    - Found by: the `build` stage's `bundle-budget` on the NUC. Fix: the card is a chunk of its own fetched when its section first opens (`lazy-icon.ts`), the file checks went with it, its CSS went (the page's own classes do), and the new chunk got its row (DECISIONS-for-review.md §165l); no budget raised.
+    - **A new Settings card starts as a lazy chunk when the settings chunk is within 1 KB of its budget; measure before the review, not after.**
+
+588. **A page that links a file the server has not written yet shows nothing until the server is updated.**
+    - Seen: 2026-11-12, track/favicon: the Hosting root linked `cities/bucharest/icon-32.png` in the public bucket, which only the new functions draw; a Hosting deploy alone would have left the live tab without an icon until Update the map.
+    - Cause: the default was made to depend on a server-written object, though the page could inline it.
+    - Found by: comparing the built page with the live bucket (a 404) before the deploy. Fix: every page inlines the default and a script swaps in the bucket's file once it has loaded (DECISIONS-for-review.md §166d).
+    - **A default never depends on another deploy: inline it, and treat the server's file as the upgrade.**
+
+589. **Lines appended to a served `config.js` break every reader that expects one literal assignment.**
+    - Seen: 2026-11-12, track/favicon: `build.test.ts` reads the built `config.js` with `readConfigJs`.
+    - Found by: reading the tests before the change. Fix: the tab icon's script is its own file, `tab-icon.js` (§166c).
+    - **A page's new behaviour gets its own script file; `config.js` stays data.**
+
+590. **A part's build that was meant to share the engine's Lit bundled its own Lit and zod: 44 KB instead of 2.6.**
+    - Seen: 2026-11-09, track/photoversions: the first build of `engine.extras.js` measured 146 KB raw, 44 KB gzip.
+    - Cause: the plugin that turns every outside import into the engine's kit ran after Vite's own resolver, which had already resolved `lit` and `@hcm/shared` to files, so its `resolveId` never saw them.
+    - Fix and pin: `sidePartKitPlugin` has `enforce: 'pre'` (`scripts/site/src/side-part.ts`); the part measures 2.6 KB gzip within its row of `ENGINE_CHUNK_BUDGETS`, and `packages/ui/test/viewer/extras-loader.test.ts` checks that the kit names everything the part imports.
+    - **A Vite plugin that must decide how an import resolves runs with `enforce: 'pre'`; check a new build's size against what it should carry.**
+
+591. **A re-export moved to save a line of the shared index made two engine chunks without a budget.**
+    - Seen: 2026-11-12, track/photoversions after the merge: `streetViewUrl` re-exported from `text/urls.ts` (to keep `packages/shared/src/index.ts` at 400 lines) made the ES build emit `urls-<hash>.js` and `focus-<hash>.js` (the catalogues and the focus helpers, 6.6 KB), which `bundle-budget` refused.
+    - Cause: a module that re-exports another is one more module shared by the entry and the lazy chunks; the bundler moved what they share out of `engine.mjs`.
+    - Fix and pin: the index exports `streetViewUrl` from `geo/street-view.ts` itself and gains its lines back with inline `type` exports; `bundle-budget` fails on any chunk without a row.
+    - **Never route an export through an unrelated module to save a line: build and run `check_bundle_budget.py` after any change to what `@hcm/shared` exports.**
+592. **`tsc -b` on the NUC said TS6305 "has not been built from source" after a merge.**
+    - Seen: 2026-11-12: the NUC's copy keeps `.tsbuild/` between runs (the sync leaves it out), and 77 merged commits left its build info older than the files.
+    - Fix: delete `packages/*/.tsbuild`, `e2e/.tsbuild` and every `*.tsbuildinfo` on the NUC, then run `tsc -b` again.
+    - **After a large merge, clear the incremental TypeScript output of a machine that only receives the sources.**
+
+593. **Three branches, each under the start page's budget, went over it together: the page carried every Firestore schema and the API catalogue.**
+    - Seen: 2026-11-12, the merge of track/workerfix, track/favicon and track/photoversions: `dist/start-app/start.mjs` measured 72.9 KB gzip of 72 (each branch alone 71.7 to 71.9), and `firebase/rules-tests/test/support/documents.ts` reached 601 lines of 600.
+    - Cause: the start page needs a city id's pattern and three checks (`isUsableCityId`, `suggestCityId`, `cityBoundsProblem`); they lived in `schemas/paths.ts` and `schemas/cities.ts`, whose imports (`firestore.ts`, the API's limits) are zod schemas built at module level, which no bundler drops. So every new field, error text or schema of any branch grew the start page.
+    - Fix and pin: `CITY_ID_PATTERN` is in `schemas/primitives.ts` and the checks in `schemas/city-id.ts` (`paths.ts` and `cities.ts` re-export them): 60.4 KB gzip, no `apiError.*` text in the page, no budget raised (`bundle-budget`). The photo's `derivative` helper moved to `photo-fields.ts`. The same full run found two gaps the branches' targeted runs had not measured: `placing/maps.py` at 88 % of its branches (no test of an atlas or of pieces whose PDF needs a password: added in `test_placing_pdf.py`) and `issue-text.ts` at 87.5 % (two branches nothing reaches, removed).
+    - **A check a small page needs lives in a module that imports no schema; when a budget is within 1 % on several branches, measure the merge, not the branches, and read which modules the bundle holds before cutting bytes.**
+
+594. **An untagged dev build of `1.0.0` blocked every `1.0.0-beta.1`: by SemVer the pre-release is older.**
+    - Seen: 2026-11-12, live: the admin `1.0.0-beta.1+593d539` (the release prep's bump) against the server `1.0.0+dcfb067`, an untagged build of before the bump; step d said "Installed 1.0.0+dcfb067, newer than this admin: reload the page" and offered no Update.
+    - Cause: `compareRelease` ordered by SemVer first; every build before the bump had called itself `1.0.0` though no `v1.0.0` tag existed, so it outranked every pre-release of 1.0.0.
+    - Fix and pin: a release names its channel (a tagged build the version alone, any other `+<commit>`: `dev`); within one core a dev build is placed by its build time, two tagged releases by SemVer; a confirmed override installs over a newer release (`happyPath_aDevBuildIsOlderThanALaterPrereleaseOfItsCore`, `badPath_aTaggedReleaseIsNewerThanAnOlderPrerelease_theDowngradeGuard`, S-A55-HAPPY-INSTALL-OVER).
+    - **A version that was never released must not outrank one that was: say in the build whether it is a tagged release, and give every guard an owner's way past it.**
+
+595. **The scan pane threw the owner's zoom away whenever its box changed size.**
+    - Seen: 2026-11-12, the owner placing points on 1966 Corona frames: after a pair was added, the scan sometimes showed the whole strip again.
+    - Cause: `<hcm-scan-viewer>` set its view back to "fit" whenever its measured size changed (`#currentView` → `#measure`), and adding a pair changes the page below the panes (the residual table grows, a scrollbar comes, a status line wraps), which narrows the pane by a few pixels.
+    - Fix and pin: `resizedView` keeps the zoom and the pixel at the centre over a size change and fits again only a pane never zoomed or never shown (`packages/ui/test/admin/georef/scan-viewer-keep.test.ts`, `e2e/admin/specs/imagery/georef-ghost.spec.ts`: S-A16-HAPPY-GEOREF-KEEP-ZOOM).
+    - **A view the user chose survives a layout change: re-centre it, never reset it, and test it by resizing the box.**
+
+596. **The linked map moved between the two clicks of a pair, so a fast second click landed 1 km off.**
+    - Seen: 2026-11-12, the same session: with a fit, a scan zoom (or the wheel's trailing events) after the scan click moved the map to the fit's place of the scan centre while the owner aimed at the map.
+    - Cause: the linked views (§156) applied every scan move to the map, a half pair pending or not.
+    - Fix and pin: the link pauses while a half pair exists; the expected place is shown as a dashed ring instead (`ghost.ts`, `ghosts.ts`; S-A16-HAPPY-GEOREF-GHOST).
+    - **Never move the target a user is about to click: show where you expect it instead.**
+
+597. **The sharper scan was capped by its long side only, and switched on in CSS pixels.**
+    - Seen: 2026-11-12, review of the georeferencer's sharper scan (§170): a near-square upload (20,000 px a side) would have written a 16,384 × 16,384 `scan-detail.jpg`, about 1 GiB of RGBA once the browser decodes it; and on a screen of two device pixels a CSS pixel the 4,096 px preview was already upscaled (blurry) from half the zoom that fetched the sharper one.
+    - Cause: `publish_scan` sized the detail like the preview (one long-side cap, right for a long Corona strip), and the pane compared `view.scale` with 1 in CSS pixels, ignoring `devicePixelRatio`.
+    - Fix and pin: `detail_scale` also caps the area (`SCAN_DETAIL_MAX_PIXELS` = 64 million, both sides of the contract; `pipeline/tests/unit/test_publish_scan.py`); the pane and the store compare `scale × devicePixelRatio` (`scan-draw.ts` `pictureOf`, `georef-pictures.ts` `zoomed`; `scan-viewer-keep.test.ts`, `georef-pictures.test.ts`, `georef-ghost.spec.ts`: S-A16-HAPPY-GEOREF-FULL-RES).
+    - **An image a browser decodes whole is capped by its area, not only its side; a "past native resolution" test counts device pixels.**
+
+598. **A map click right after a pair was made moved that pair to the click as well as starting the next one.**
+    - Seen: 2026-11-12, the ghost spec once it checked the ring's place (review of §170): with Add pairs on, the click on the map that began pair 6 also moved pair 5 there (its fit error jumped to kilometres); a likely part of the owner's "pin landed 1 km off".
+    - Cause: completing a pair selects it, and `GeorefMap` handed the selection to the drawing tools; the Terra Draw adapter's `select` switches the tools to `select` mode, in which a map click moves the selected point (the single-pointer way to place a pin, WCAG 2.5.7). The `static` mode that Add pairs had set was undone silently.
+    - Fix and pin: while adding, `GeorefMap` does not select in the tools (the badges show the selection) and selects again when adding ends (`packages/admin/test/georef/georef-map.test.ts`; `e2e/admin/specs/imagery/georef-ghost.spec.ts`: the pair made before keeps its place).
+    - **A port call can change a mode as a side effect: after it, assert the mode the feature relies on, and test the click after the edit, not only the edit.**
+
+599. **A cap on a picture's area still left one JPEG of a quarter gigabyte decoded.**
+    - Seen: 2026-11-12, audit of the georeferencer's sharper scan: capped at 64 million pixels it still decoded to 256 MiB of RGBA in one piece (more for a 2:1 frame), on laptops short of memory.
+    - Cause: an `<img>` decodes the whole file whatever part the canvas draws; a cap only moves the number.
+    - Fix and pin: the sharper scan is JPEG tiles in one file (`scan-tiles.bin`, `scan_tiles.py`); the pane decodes the tiles in view and keeps at most 32 (`scan-tiles.ts`; `scan-tiles.test.ts` pans a 16,384 px scan and counts; `test_publish_scan.py` reads every tile's size; DECISIONS §172).
+    - **A picture larger than the screen is shown in pieces: budget the decoded bytes, and test the count and size of the pieces asked for.**
+
+600. **Turning the map by the scan's angle minus the fit's rotation was 2 degrees off on the stand-in's frame.**
+    - Seen: 2026-11-12, `georef-linked.spec.ts` (S-A16-HAPPY-GEOREF-ROTATE): the scan turned 15 degrees, the map 12.9.
+    - Cause: an affine fit that stretches one axis more than the other turns different scan directions by different angles; the first version read the rotation of the scan's x axis only and subtracted angles.
+    - Fix and pin: `rotation.ts` carries the very direction the pane shows along its x axis through the fit (`fitAngle` with an angle) and, the other way, a step of the map's x axis back through the inverse fit (`angleFor`); `rotation.test.ts`, the e2e within a few degrees of the stand-in's oblique fit.
+    - **A rotation read from a fit is the rotation of one direction: carry the direction you show, not the scan's axis.**
+
+601. **A tour state with a snackbar failed the scroll sweep on Mapbox's logo.**
+    - Seen: 2026-11-12, `georef.pair-removed`: scrolled to 675 px, the map's clipped Mapbox logo lay within 12 px of the snackbar's Undo, which floats over the page at a large window.
+    - Cause: the sweep scrolls the page under fixed elements; a notice that stays ten seconds meets whatever scrolls beneath it.
+    - Fix and pin: the state is checked once the notice is gone (after its Undo); the notice itself is checked in the shell's own states.
+    - **Check a page's state without a transient overlay over it, or the sweep reports the overlay's meeting with scrolled content.**
+
+602. **The linked scan drifted a few degrees after the map's turn buttons, one run in four.**
+    - Seen: 2026-11-13, `georef-linked.spec.ts` repeated three times at two projects: the scan's next turn was undone, or Upright ended at 4 degrees.
+    - Cause: the map's buttons turned it with an animation, whose `move` events kept turning the scan after the owner's next press; and every map move read the scan's angle back through an oblique fit, whose two conversions are not exact inverses.
+    - Fix and pin: the map's turn is a jump (`GeorefMap.rotateBy`), and only a move that changes the map's bearing turns the scan (`linkedPanesOf`; `rotation.test.ts`).
+    - **Run a test of linked motion several times before trusting it; an animation is a second actor.**
+
+603. **The light theme's FAB and menu labels were painted nearly invisible on Android, while every checker measured 6.9:1.**
+    - Seen: 2026-11-12, the Pixel 9 Pro review (P2): #33406D on #BAC7FD in the computed styles, pale lilac on lilac on the screen.
+    - Cause: the theme's light mode declared `color-scheme: light`. Chrome's dark theme for sites (on by default on Android with a dark system) repaints every element whose used scheme is light: it lightened the dark text and kept the tinted fill. Axe and the tour's non-text contrast read computed styles, which the repaint never touches, and no e2e browser ran with it.
+    - Fix and pin: a chosen mode is `only light` / `only dark` (`packages/ui/src/theme/apply.ts`); the dark tours run Chromium with `--blink-settings=forceDarkModeEnabled=true`, the state `other-theme-menu` picks the other theme and opens the menu, and `e2e/support/rendered-contrast.ts` reads the FAB menu's contrast from pixels (`S-V12-HAPPY-ONLY-LIGHT`, `S-V12-BAD-FORCED-DARK-SYSTEM`).
+    - **A colour check that reads styles cannot see a browser's repaint: measure pixels where it matters, and run a tour with the repaints real phones apply.**
+
+604. **Mapbox's credits drew over the lightbox, and a copy of them took the foot of every sheet, About and Settings on a phone.**
+    - Seen: 2026-11-12, the Pixel 9 Pro review (P3).
+    - Cause: the legal bar (§21c) was a design the tour enforced: its rule asked for one logo and one attribution on top in every state, so a bar eating 40 to 80 px of a full-screen surface passed, and the legal controls were exempt from the modal checks. Mapbox's corners carry z-index 2 in the frame's stacking context, above the modal layer's auto.
+    - Fix and pin: the modal layer has z-index 30; Mapbox's corners move out from under an open modal sheet (`legal-lift.ts`); no credit is owed where no map shows (`mapSeen` in `e2e/support/layout-probe.ts`), and a point seen through a scrim counts as uncovered (`S-V18-HAPPY-MODAL-STATES`, `S-V18-BAD-FULL-SHEET`, `packages/ui/test/viewer/legal-lift.test.ts`).
+    - **A checker that encodes a design passes that design's defects: ask what the surface loses, not only whether the rule's element shows.**
+
+605. **The FAB menu of a landscape phone ran seven items in one row off the screen.**
+    - Seen: 2026-11-12, the Pixel 9 Pro at 884 × 322 with Chrome's bars (P1): "Setări" began at x 888.
+    - Cause: the menu's columns were capped at the height left above the timeline and the chip; with Chrome's bars that was under one item, so each item made a column, and nothing capped the width. The tour's landscape viewport (915 × 412) was tall enough for two rows.
+    - Fix and pin: rows that stack upwards across the map's width, 48 px items, the card and the chip hidden while the menu is open, a scroll as the last resort (`dock-styles.ts`, `fab-menu.ts`); the tour's journey `short-landscape` resizes every tour project to 884 × 322 and 568 × 270 and opens the menu (`e2e/tour/settings-states.ts`); `packages/ui/test/viewer/landscape-menu.test.ts` at 884 × 290 and 568 × 270.
+    - **Test the shortest window a real phone gives, bars included, not only the nominal landscape size.**
+
+606. **Points of interest off still drew tram and metro stations.**
+    - Seen: 2026-11-08, the owner on the live map: the Layers panel's Points of interest switch off, the stations stayed.
+    - Cause: Mapbox Standard splits what a visitor calls points of interest across `showPointOfInterestLabels` and `showTransitLabels`; the switch wrote only the first (DECISIONS-for-review.md §92b left transit the city's), and the e2e style draws no text, so every test passed on the property the code wrote.
+    - Fix and pin: the switch drives `showTransitLabels` too, live, in the mount `config` and on swipe compare's map, with an explicit city `basemap.config` value standing (`transitLabels`; DECISIONS §175); `happyPath_transitStationsFollowThePointsOfInterestOffAndOn`, `happyPath_bothSidesHideTransitStationsWithThePointsOfInterest`, `S-V31-HAPPY-TRANSIT`, `S-V31-BAD-TRANSIT-CITY`, `S-V31-BAD-TRANSIT-UNKNOWN`.
+    - **A switch named for what a visitor sees maps to every style property that draws it: read the style's whole configuration list against the switch's name, not only the property whose name matches.**
+
+607. **A Corona strip nothing proved showed the owner farmland.**
     - Seen: 2026-11-12, DS1103-1058DF027 (1968-05-05, 131,443 px wide): two footprint windows, no AI proposal in either, then `not proved (no-votes): crop 35664 x 8172 px, delivery kept`; the georeferencer showed the first window, countryside, and no point could be placed on București.
     - Cause: `best_of` kept the best-voted window, the first of equals, and `locate` cut the frame by it: with no votes anywhere the choice was only the order of the list.
     - Fix and pin: a frame nothing proved is cut by a guess only when it was searched whole, in time, and fits a scan shown whole; else the scan is the whole exposure shrunk (`steps/whole.py`, marked in `scan.tif`), and the owner's rough points crop the film at full resolution (`steps/recrop.py`); the KH-5 cap ends the same way (S-P06-HAPPY-WHOLE-STRIP, S-P06-BAD-WHOLE-STRIP-UNPROVED, S-P06-HAPPY-ROUGH-POINTS-CROP, S-P06-BAD-ROUGH-POINTS-OUTSIDE, S-P06-BAD-ROUGH-POINTS-FILM-GONE).
     - **When nothing is proved, never let an unproved guess decide what the person sees: show everything, coarser, and let their answer choose.**
 
-585. **A request file's fields read in a new order raised a different error.**
+608. **The worker's memory was set for a server, not for the computer it runs on.**
+    - Seen: 2026-11-12, `reports/resource-audit.md`: a warp held 4.5 GB and a 60-sheet colour atlas 3.8 GB on a 16 GB laptop that also ran the desktop; tile cutting started one 170 MB process a CPU.
+    - Cause: `GDAL_CACHEMAX` 1,024 MB and `warpMemoryLimit` 2,048 MB were constants; `compose_canvas` warped every sheet onto a whole canvas and resized the owners' grid to it; `num-threads` was `ALL_CPUS`.
+    - Fix and pin: the settings follow the memory the process may use (`rasters.gdal_memory`), each sheet is pasted in its own box, the tile processes are capped (`pyramid.tile_processes`), a city crop is copied by rows and every preview read shrunk (`locate.write_crop`, `common.scan_preview`), an atlas's pages are held grey and read again in colour to paste (`assemble.Pages`); each has a budget test in a process of its own (S-P31-HAPPY-WARP-BUDGET, S-P31-HAPPY-CANVAS-BUDGET, S-P31-HAPPY-TILE-PROCESSES and their bad rows).
+    - **A memory setting is a share of the machine it runs on, read at run time, and every heavy call has a budget test that fails when the memory grows back.**
+
+609. **An idle worker asked for a job 86,400 times a month, and a busy one could take the whole computer.**
+    - Seen: 2026-11-12, `reports/resource-audit.md`: `hcm-worker` ran with no memory limit and nice 0 (an out-of-memory run takes the desktop with it), and `worker.claim` was called every 30 s for ever, each call with its Firestore reads.
+    - Cause: the starter's `docker run` named no limit; the poll interval was one constant, and the admin counted a worker gone after 180 s, which forbade any longer wait.
+    - Fix and pin: the starters cap the container at 60 % of Docker's memory with a low CPU weight, the worker nices itself and leaves a core; `worker/pace.py` backs the claims off to `idlePollSeconds` (60 s: the owner refused a five-minute wait for a new job) and wakes on a job or the admin's look, with `WORKER_FRESH_SECONDS` above the longest wait (S-P31-HAPPY-WORKER-POLITE, S-P31-BAD-WORKER-POLITE-OVERRIDE, S-P31-HAPPY-CLAIM-BACKOFF, S-P31-BAD-CLAIM-BACKOFF-OLD-SERVER).
+    - **A poll's interval and the presence window that reads it change together, and the newer side must work against the older one in either deploy order.**
+
+610. **Every memory probe started from pytest reported 2,105 MB.**
+    - Seen: 2026-11-12, `pipeline/tests/integration/test_memory_budgets.py` in the full pipeline run on the PC: four budgets failed with the same peak, which no probe reached alone.
+    - Cause: `getrusage(RUSAGE_SELF).ru_maxrss` keeps, across `exec`, the peak of the process that forked: a probe started from a pytest that had grown to 2.1 GB inherited its figure. Run alone or from a shell, the probes read right.
+    - Fix and pin: `tests/budget_probe.py` reads its own `VmHWM` from `/proc/self/status`, which starts afresh with the new program.
+    - **A child's own peak memory is `VmHWM`, never `ru_maxrss` read inside a process another large one started.**
+
+611. **A request file's fields read in a new order raised a different error.**
     - Seen: 2026-11-12, M26: `read_request` read `ground` before `film` once the governor's budget was added, and a request holding a pickle in `film` raised `KeyError` for `ground` instead of the refusal of the pickle (`test_bad_path_a_request_holding_a_pickle_does_not_run`).
     - Cause: `numpy.load(allow_pickle=False)` refuses lazily, field by field; the order of reads decides which fault is seen first.
     - Fix and pin: the film's arrays are read first, as before, and the new `budget` only when it is present (an old request reads as the default budget).

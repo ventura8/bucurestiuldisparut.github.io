@@ -147,6 +147,9 @@ GATES: dict[str, Gate] = {
         # The released engine (cdn/engine/ and its release.json: every file's size and SHA-384) and the starter kit's page
         # (templates/starter-kit/index.html) pin each other exactly; before the first release, the page's pins in shape.
         Gate("kit-pins", ("python3", "scripts/ci/check_kit_pins.py")),
+        # The landing page GitHub Pages publishes (sites/landing/, DECISIONS-for-review.md §162) is exactly what
+        # `npm run build:landing` writes: both languages complete, the terminal road pinned to this release.
+        Gate("landing", (*NPM_RUN, "build:landing", "--", "--check")),
         Gate("firebase-schema", FIREBASE_SCHEMA, files=(":(glob)**/firebase.json",)),
         Gate("editorconfig", ("python3", "scripts/ci/check_editorconfig.py")),
         Gate("e2e-matrix", ("python3", "scripts/ci/check_e2e_matrix.py", "check")),
@@ -261,6 +264,7 @@ STAGES: dict[str, tuple[str, ...]] = {
         "agent-assets",
         "data-files",
         "kit-pins",
+        "landing",
         "firebase-schema",
         "editorconfig",
         "e2e-matrix",

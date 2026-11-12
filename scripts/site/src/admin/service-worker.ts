@@ -79,7 +79,7 @@ export function installPushWorker(scope: PushWorkerScope): void {
 
 /** The worker file: `installPushWorker`'s source called on the worker's own scope. */
 export const PUSH_SERVICE_WORKER_SOURCE = [
-    '// Historic City Map admin: web push (docs/research/M4-interfaces.md §5.4), from scripts/site/src/admin/service-worker.ts.',
+    '// Historic City Map Maker admin: web push (docs/research/M4-interfaces.md §5.4), from scripts/site/src/admin/service-worker.ts.',
     "'use strict';",
     `(${installPushWorker.toString()})(self);`,
     '',
