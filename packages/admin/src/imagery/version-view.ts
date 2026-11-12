@@ -7,6 +7,7 @@
 import {
     availableComputeUnits,
     bboxFromRecord,
+    helpItemsOf,
     estimateComputeUnits,
     isApiErrorCode,
     JOB_STEPS,
@@ -100,6 +101,8 @@ export interface VersionView {
     readonly publicUrl: string | null;
     /** Batch 4: an archive series' placement report. */
     readonly archive: ArchiveReport | null;
+    /** An archive series waiting with `layout-check`: the tile-import wizard opens it (`helpItemsOf`, M20 §19). */
+    readonly layoutCheck: boolean;
     /**
      * M20 (§7): the series' rights as the approval card shows them (null: no rights, USGS and uploads). Approve waits
      * until `allowPublish` (Confirm the rights when `state` is `needs-confirmation`).
@@ -221,6 +224,7 @@ export function versionViewOf(doc: Stored<LayerVersionDoc>): VersionView {
         ...{ ...sourceOf(version.source), partOf: orNull(version.partOf), join: orNull(version.join) },
         ...{ basedOn: orNull(version.basedOn), recalibration: orNull(version.recalibration), publicUrl: publicUrlOf(version.own) },
         archive: orNull(version.archive),
+        layoutCheck: helpItemsOf([{ id: doc.id, state: version.state, help: version.help }])[0]?.page === 'tiles',
         rights: rightsOf(version.rights),
     };
 }

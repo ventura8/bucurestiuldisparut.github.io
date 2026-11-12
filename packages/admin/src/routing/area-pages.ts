@@ -24,6 +24,7 @@ export const AREA_CHUNKS: AreaChunkLoaders = {
     home: async () => (await import('../pages/home.js')).AREA,
     imagery: async () => (await import('../pages/imagery.js')).AREA,
     georef: async () => (await import('../pages/georef.js')).AREA,
+    help: async () => (await import('../pages/help.js')).AREA,
     inbox: async () => (await import('../pages/inbox.js')).AREA,
     cities: async () => (await import('../pages/cities.js')).AREA,
     review: async () => (await import('../pages/review.js')).AREA,

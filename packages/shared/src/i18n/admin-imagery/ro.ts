@@ -147,6 +147,7 @@ export const ro = {
     'adminContent.imagery.versionNotFound': 'Versiunea nu există',
     'adminContent.imagery.versionChecking': 'Fișierul încărcat',
     'adminContent.imagery.openGeoref': 'Deschide georeferențiatorul',
+    'adminContent.imagery.openTiles': 'Așază foile',
     'adminContent.imagery.openLayer': 'Deschide stratul publicat',
     'adminContent.imagery.previewOpacity': 'Opacitatea previzualizării pe hartă',
     'adminContent.imagery.approve': 'Aprobă și publică',

@@ -26,6 +26,7 @@ import type { PhotosIntentsPort, PhotosViewState } from './photos/photos-port.js
 import type { PoisIntentsPort, PoisViewState } from './pois/pois-port.js';
 import type { SettingsIntentsPort, SettingsViewState } from './settings/settings-port.js';
 import type { StoriesIntentsPort, StoriesViewState } from './stories/stories-port.js';
+import type { TilesIntentsPort, TilesViewState } from './tiles/tiles-port.js';
 
 export type { AreaPort, DocStatePort, ListStatePort, LoadStatusPort, StoredPort, StoreFailurePort } from './area-port.js';
 
@@ -63,6 +64,9 @@ export interface ContentPort {
     // [section stories] owner: stories (docs/research/M17-stories.md §6)
     readonly stories: AreaPort<StoriesViewState, StoriesIntentsPort> | null;
     // [end stories]
+    // [section help] owner: tilewizard (docs/research/M20-import-local.md §19)
+    readonly help: AreaPort<TilesViewState, TilesIntentsPort> | null;
+    // [end help]
     // [section cities] owner: multi-city (docs/research/M5-interfaces.md §1.6)
     readonly cities: AreaPort<NewCityViewState, NewCityIntentsPort> | null;
     // [end cities]

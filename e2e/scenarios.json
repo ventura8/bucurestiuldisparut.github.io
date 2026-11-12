@@ -1072,6 +1072,13 @@
             "name": "The map's menu (right click, long press, ContextMenu key or Shift+F10) with Open in Google Street View, Copy coordinates and Share a link to this view; a photo's sheet links to Street View",
             "milestone": "M17",
             "source": "the owner, 2026-11-09: go to Google Street View from a right-click panel (hold on a touch screen) on the map, and from a photo's details"
+        },
+        {
+            "id": "A141",
+            "area": "admin",
+            "name": "The tile-import wizard: an archive series waiting with layout-check, its sheets arranged, its weak seams answered, its preview and quality meter, and the hand-off to the georeferencer",
+            "milestone": "M20",
+            "source": "the owner, 2026-11-12: automatic tile stitching and a tile-import wizard (docs/research/M20-import-local.md §19)"
         }
     ],
     "scenarios": [
@@ -17860,6 +17867,105 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/tour/viewer.tour.ts (e2e/tour/map-menu-states.ts)."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-ORDER",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner opens the wizard from the series' page and moves a sheet with the pointer",
+            "asserts": "the series' page links #/help/<id>/tiles; the grid names every sheet with its source; a drag swaps two sheets",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-KEYBOARD",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner arranges the sheets with the keyboard",
+            "asserts": "the arrows choose a cell (roving tabindex), Shift and the arrows move the sheet, R turns it, F mirrors it, and the focus follows",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-SEAM",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner accepts a weak seam's guess",
+            "asserts": "the two strips show with the guess; Enter answers the seam; the answer is sent with the layout",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-PREVIEW",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner asks for the real preview and sees the pipeline's answer",
+            "asserts": "imagery.saveLayout with preview writes help.layoutAnswer and resets place; the newer revision shows the joined picture and the meter says good",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; functions/test/imagery/save-layout.test.ts."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-HANDOFF",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner sends the series on to points",
+            "asserts": "imagery.acceptLayout marks the answer accepted and queues the job; the page links the georeferencer",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; functions/test/imagery/save-layout.test.ts."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-STALE-REVISION",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A layout the pipeline wrote again while the owner worked is refused",
+            "asserts": "imagery.saveLayout refuses an older revision with apiError.imagery.layoutStale; the page says so and shows the newer layout",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; functions/test/imagery/save-layout.test.ts."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-ALL-OUT",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "Every sheet taken out of the map",
+            "asserts": "the page says to keep at least one sheet and Place it on the map is off",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-PREVIEW-POOR",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A poor layout",
+            "asserts": "the meter's lines say needs a look and an alert asks to look at the order and the seams again",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-UNREADABLE",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A wrong address, and a layout the bucket cannot give",
+            "asserts": "the page says no series is there; a missing layout.json says it cannot be read, with Try again",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
         }
     ]
 }

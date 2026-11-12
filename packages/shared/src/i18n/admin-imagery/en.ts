@@ -145,6 +145,7 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.versionNotFound': 'No such version',
     'adminContent.imagery.versionChecking': 'The uploaded file',
     'adminContent.imagery.openGeoref': 'Open the georeferencer',
+    'adminContent.imagery.openTiles': 'Arrange the tiles',
     'adminContent.imagery.openLayer': 'Open the published layer',
     'adminContent.imagery.previewOpacity': "The preview's opacity on the map",
     'adminContent.imagery.approve': 'Approve and publish',
