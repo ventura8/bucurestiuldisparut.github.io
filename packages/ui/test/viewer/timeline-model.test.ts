@@ -1,7 +1,7 @@
 import { PHOTO_YEAR_WINDOW } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
-import { photosNearYear, stopIndex, timelineStops } from '../../src/viewer/timeline-model.js';
+import { labelShown, photosNearYear, stopIndex, timelineDensity, timelineStops } from '../../src/viewer/timeline-model.js';
 
 describe('timelineStops', () => {
     it('happyPath_layerYearsAscendingWithoutDuplicatesThenToday', () => {
@@ -54,5 +54,31 @@ describe('photosNearYear', () => {
 
     it('happyPath_customWindow', () => {
         expect(photosNearYear(photos, 1966, 0)).toEqual([]);
+    });
+});
+
+describe('timelineDensity and labelShown', () => {
+    it('happyPath_theGapBetweenStopsPicksHowTheYearsFit', () => {
+        expect(timelineDensity(Number.POSITIVE_INFINITY)).toBe('roomy');
+        expect(timelineDensity(30)).toBe('roomy');
+        expect(timelineDensity(29.9)).toBe('dense');
+        expect(timelineDensity(14)).toBe('dense');
+        expect(timelineDensity(13.9)).toBe('scroll');
+    });
+
+    it('happyPath_roomyNamesEveryYearDenseEveryOtherAndTheEnds', () => {
+        const named = (count: number, density: 'roomy' | 'dense') =>
+            Array.from({ length: count }, (_, at) => at).filter((at) => labelShown(at, count, density));
+
+        expect(named(5, 'roomy')).toEqual([0, 1, 2, 3, 4]);
+        expect(named(5, 'dense')).toEqual([0, 2, 4]);
+    });
+
+    it('badPath_theYearJustBeforeTheLastIsNotNamedBesideIt', () => {
+        // Twenty-two stops: 20 is even, but one gap from today's label.
+        const named = Array.from({ length: 22 }, (_, at) => at).filter((at) => labelShown(at, 22, 'dense'));
+
+        expect(named.slice(-3)).toEqual([16, 18, 21]);
+        expect(labelShown(1, 2, 'scroll')).toBe(true);
     });
 });

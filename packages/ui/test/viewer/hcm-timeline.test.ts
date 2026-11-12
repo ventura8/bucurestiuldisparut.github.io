@@ -6,12 +6,27 @@ import { mountElement, recordEvents, shadowQuery, shadowQueryAll } from './doubl
 
 const STOPS = [1966, 1977, null];
 
-async function timeline(properties: Partial<HcmTimeline> = {}): Promise<HcmTimeline> {
+function frame(): Promise<void> {
+    return new Promise((resolve) => {
+        requestAnimationFrame(() => {
+            resolve();
+        });
+    });
+}
+
+/** Waits for the card's size to reach the timeline (its ResizeObserver) and for the render that follows. */
+async function settled(element: HcmTimeline): Promise<void> {
+    await frame();
+    await frame();
+    await element.updateComplete;
+}
+
+async function timeline(properties: Partial<HcmTimeline> = {}, size = { inline: 400, block: 300 }): Promise<HcmTimeline> {
     defineHcmTimeline();
     const element = await mountElement<HcmTimeline>(HCM_TIMELINE_TAG, { stops: STOPS, value: null, ...properties });
-    element.style.inlineSize = '400px';
-    element.style.blockSize = properties.orientation === 'vertical' ? '300px' : '';
-    await element.updateComplete;
+    element.style.inlineSize = `${String(size.inline)}px`;
+    element.style.blockSize = properties.orientation === 'vertical' ? `${String(size.block)}px` : '';
+    await settled(element);
     return element;
 }
 
@@ -23,6 +38,11 @@ function press(element: HcmTimeline, key: string): KeyboardEvent {
 
 function pointer(target: EventTarget, type: string, x: number, y: number, button = 0): void {
     target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button, bubbles: true, cancelable: true, composed: true }));
+}
+
+function touch(target: EventTarget, type: string, x: number, y: number): void {
+    const init = { clientX: x, clientY: y, button: 0, pointerType: 'touch', bubbles: true, cancelable: true, composed: true };
+    target.dispatchEvent(new PointerEvent(type, init));
 }
 
 describe('<hcm-timeline>', () => {
@@ -247,21 +267,43 @@ describe('<hcm-timeline> size', () => {
 
 /** A city with many layer years: 1964 to 1984 and today, twenty-two stops (the review rendered such a city, 2026-11-08). */
 const MANY = [...Array.from({ length: 21 }, (_, at) => 1964 + at), null];
+/** Sixty-one years and today: too many for a phone's card even every other one labelled. */
+const VERY_MANY = [...Array.from({ length: 61 }, (_, at) => 1924 + at), null];
 
 function meets(a: DOMRect, b: DOMRect): boolean {
     return a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
 }
 
-/** The labels of the stops other than the selected one that meet the pill or another label. */
-function crowdedLabels(element: HcmTimeline): string[] {
-    const thumb = shadowQuery(element, '.thumb').getBoundingClientRect();
-    const labels = shadowQueryAll(element, '.stop:not(.selected) .label').map((label) => ({
+/** The labels shown, other than the selected one (the pill names it). */
+function shownLabels(element: HcmTimeline): { readonly text: string; readonly box: DOMRect }[] {
+    return shadowQueryAll(element, '.stop:not(.selected):not(.minor) .label').map((label) => ({
         text: label.textContent,
         box: label.getBoundingClientRect(),
     }));
+}
+
+/** The labels shown that meet the pill or another label. */
+function crowdedLabels(element: HcmTimeline): string[] {
+    const thumb = shadowQuery(element, '.thumb').getBoundingClientRect();
+    const labels = shownLabels(element);
     return labels
         .filter(({ box }, at) => meets(box, thumb) || labels.some((other, otherAt) => otherAt !== at && meets(box, other.box)))
         .map(({ text }) => text);
+}
+
+function scroller(element: HcmTimeline): HTMLElement {
+    return shadowQuery(element, '.scroller');
+}
+
+function scrolls(element: HcmTimeline): boolean {
+    const box = scroller(element);
+    return box.scrollWidth > box.clientWidth || box.scrollHeight > box.clientHeight;
+}
+
+function stillThumb(element: HcmTimeline): void {
+    for (const part of shadowQueryAll(element, '.thumb, .active')) {
+        part.style.transition = 'none';
+    }
 }
 
 describe('<hcm-timeline> many years', () => {
@@ -269,26 +311,58 @@ describe('<hcm-timeline> many years', () => {
         document.body.replaceChildren();
     });
 
-    it('happyPath_aFewYearsFitWithoutScrolling', async () => {
+    it('happyPath_aFewYearsFitWithEveryLabel', async () => {
         const element = await timeline({ value: 1977 });
 
-        expect(element.scrollWidth).toBe(element.clientWidth);
+        expect(element.getAttribute('density')).toBe('roomy');
+        expect(scrolls(element)).toBe(false);
+        expect(shadowQueryAll(element, '.stop.minor')).toEqual([]);
         expect(crowdedLabels(element)).toEqual([]);
     });
 
-    it.each(['horizontal', 'vertical'] as const)(
-        'badPath_%s_whenTheYearsDoNotFitTheCardScrollsAndKeepsTheSelectedYearInView',
-        async (orientation) => {
-            // The review, 2026-11-08: twenty-two stops squeezed 17 px apart; the pill hid its neighbours and the labels
-            // ran into one illegible row, because the stops were shares of a card that never scrolled.
-            const element = await timeline({ stops: MANY, value: 1964, orientation });
-            const vertical = orientation === 'vertical';
-            for (const part of shadowQueryAll(element, '.thumb, .active')) {
-                part.style.transition = 'none';
-            }
+    it.each(['horizontal', 'vertical'] as const)('badPath_%s_twentyTwoYearsFitTheCardEveryOtherOneLabelled', async (orientation) => {
+        // The Pixel Tablet, 2026-11-12: at 30 px per gap the track overflowed the card and 1847 showed as "7".
+        const element = await timeline({ stops: MANY, value: 1964, orientation }, { inline: 420, block: 380 });
+        stillThumb(element);
 
-            expect(vertical ? element.scrollHeight > element.clientHeight : element.scrollWidth > element.clientWidth).toBe(true);
+        expect(element.getAttribute('density')).toBe('dense');
+        expect(scrolls(element)).toBe(false);
+        const card = element.getBoundingClientRect();
+        for (const key of ['Home', 'End', 'ArrowLeft', 'Home', 'ArrowRight']) {
+            press(element, key);
+            await element.updateComplete;
+            const labels = shownLabels(element);
+            expect(crowdedLabels(element), `crowded after ${key}`).toEqual([]);
+            expect(
+                labels.filter(
+                    ({ box }) => box.left < card.left || box.right > card.right || box.top < card.top || box.bottom > card.bottom,
+                ),
+                `clipped after ${key}`,
+            ).toEqual([]);
+            expect(labels.length, `labelled after ${key}`).toBeGreaterThanOrEqual(8);
+        }
+        // Standing, the pill names the selected year and hides a label next to it: the ends are named whenever it is away.
+        press(element, 'Home');
+        await element.updateComplete;
+        const texts = shadowQueryAll(element, '.stop:not(.minor) .label').map((label) => label.textContent);
+        expect(texts, 'the ends are always named').toEqual(expect.arrayContaining(['1964', 'Azi']));
+    });
+
+    it.each(['horizontal', 'vertical'] as const)(
+        'badPath_%s_whenTheYearsDoNotFitTheCardScrollsFadesItsEdgeAndKeepsTheSelectedYearInView',
+        async (orientation) => {
+            // The review, 2026-11-08: twenty-two stops squeezed 17 px apart; the device test: no finger could scroll the card.
+            const element = await timeline({ stops: VERY_MANY, value: 1924, orientation }, { inline: 320, block: 360 });
+            const vertical = orientation === 'vertical';
+            stillThumb(element);
+
+            expect(element.getAttribute('density')).toBe('scroll');
+            expect(scrolls(element)).toBe(true);
+            expect(getComputedStyle(element).touchAction).toBe(vertical ? 'pan-y' : 'pan-x');
+            expect(getComputedStyle(shadowQuery(element, '.thumb')).touchAction).toBe('none');
             for (const key of ['End', 'Home', 'End']) {
+                // The scroll starts at the leading edge lying and at the top (today) standing: the far years fade there.
+                const faded = (key === 'End') === vertical ? '--hcm-fade-end' : '--hcm-fade-start';
                 press(element, key);
                 await element.updateComplete;
                 const view = element.getBoundingClientRect();
@@ -299,14 +373,15 @@ describe('<hcm-timeline> many years', () => {
                         return box.left >= view.left && box.right <= view.right && box.top >= view.top && box.bottom <= view.bottom;
                     })
                     .toBe(true);
+                await expect.poll(() => scroller(element).style.getPropertyValue(faded), { message: `${faded} after ${key}` }).toBe('24px');
                 expect(crowdedLabels(element), `labels crowded after ${key}`).toEqual([]);
             }
         },
     );
 
     it('happyPath_aDragKeepsTheCardStillAndTheReleaseCentresTheYear', async () => {
-        // Snapping while a drag is on would move the track under the finger, and the next move would select a later year.
-        const element = await timeline({ stops: MANY, value: 1964 });
+        // Moving the card while a drag is on would move the track under the finger, and the next move would select a later year.
+        const element = await timeline({ stops: VERY_MANY, value: 1924 }, { inline: 320, block: 300 });
         const track = shadowQuery(element, '.track');
         const view = element.getBoundingClientRect();
 
@@ -314,14 +389,79 @@ describe('<hcm-timeline> many years', () => {
         pointer(window, 'pointermove', view.right - 50, view.top + 30);
         await element.updateComplete;
         expect(element.hasAttribute('dragging')).toBe(true);
-        expect(element.value).not.toBe(1964);
-        await new Promise((resolve) => {
-            requestAnimationFrame(resolve);
-        });
-        expect(element.scrollLeft, 'no snap while dragging').toBe(0);
+        expect(element.value).not.toBe(1924);
+        await frame();
+        expect(scroller(element).scrollLeft, 'no scroll while dragging').toBe(0);
 
         pointer(window, 'pointerup', view.right - 50, view.top + 30);
         await element.updateComplete;
-        await expect.poll(() => element.scrollLeft).toBeGreaterThan(0);
+        await expect.poll(() => scroller(element).scrollLeft).toBeGreaterThan(0);
+    });
+});
+
+describe('<hcm-timeline> many years under a finger', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_aFingerTapOnAScrollingTrackSelectsTheYearThere', async () => {
+        const element = await timeline({ stops: VERY_MANY, value: 1924 }, { inline: 320, block: 300 });
+        const track = shadowQuery(element, '.track');
+        const view = element.getBoundingClientRect();
+        const events = recordEvents(element, 'hcm-year-change');
+
+        touch(track, 'pointerdown', view.left + 200, view.top + 30);
+        expect(element.hasAttribute('dragging'), 'a finger on the track does not drag: the card may scroll').toBe(false);
+        touch(window, 'pointerup', view.left + 203, view.top + 31);
+        await element.updateComplete;
+
+        expect(events).toHaveLength(1);
+        expect(element.value).not.toBe(1924);
+    });
+
+    it('badPath_aFingerThatScrollsTheTrackSelectsNothing', async () => {
+        const element = await timeline({ stops: VERY_MANY, value: 1924 }, { inline: 320, block: 300 });
+        const track = shadowQuery(element, '.track');
+        const view = element.getBoundingClientRect();
+        const events = recordEvents(element, 'hcm-year-change');
+
+        touch(track, 'pointerdown', view.left + 200, view.top + 30);
+        touch(window, 'pointerup', view.left + 120, view.top + 30);
+        touch(track, 'pointerdown', view.left + 200, view.top + 30);
+        touch(window, 'pointercancel', view.left + 200, view.top + 30);
+        touch(window, 'pointerup', view.left + 200, view.top + 30);
+        await element.updateComplete;
+
+        expect(events).toHaveLength(0);
+        expect(element.value).toBe(1924);
+    });
+
+    it('happyPath_aFingerOnTheThumbDragsAScrollingTrack', async () => {
+        const element = await timeline({ stops: VERY_MANY, value: 1924 }, { inline: 320, block: 300 });
+        const thumb = shadowQuery(element, '.thumb').getBoundingClientRect();
+
+        touch(shadowQuery(element, '.thumb-label'), 'pointerdown', thumb.left + thumb.width / 2, thumb.top + 20);
+        touch(window, 'pointermove', thumb.left + thumb.width / 2 + 40, thumb.top + 20);
+        await element.updateComplete;
+
+        expect(element.hasAttribute('dragging')).toBe(true);
+        expect(element.value).not.toBe(1924);
+        touch(window, 'pointerup', thumb.left + thumb.width / 2 + 40, thumb.top + 20);
+        await element.updateComplete;
+        expect(element.hasAttribute('dragging')).toBe(false);
+    });
+
+    it('badPath_aResizedCardChangesItsDensity', async () => {
+        const element = await timeline({ stops: MANY, value: 1964 }, { inline: 1200, block: 300 });
+        expect(element.getAttribute('density')).toBe('roomy');
+
+        element.style.inlineSize = '260px';
+        await settled(element);
+        expect(element.getAttribute('density')).toBe('scroll');
+
+        element.remove();
+        element.style.inlineSize = '1200px';
+        await settled(element);
+        expect(element.getAttribute('density'), 'a removed card is no longer measured').toBe('scroll');
     });
 });

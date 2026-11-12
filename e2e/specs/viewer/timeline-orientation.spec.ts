@@ -187,42 +187,77 @@ test(
     },
 );
 
-/** In the page: whether the selected stop is inside the timeline's card, and the labels that meet another one. */
-async function scrolledView(page: Page): Promise<{ inView: boolean; crowded: string[]; scrolls: boolean }> {
+interface CardView {
+    /** The thumb is inside the card. */
+    readonly inView: boolean;
+    /** The labels shown that meet the pill or another label. */
+    readonly crowded: readonly string[];
+    /** The labels shown that stick out of the card (the Pixel Tablet: 1847 clipped to "7"). */
+    readonly clipped: readonly string[];
+    readonly labelled: number;
+    readonly scrolls: boolean;
+    readonly density: string;
+    readonly touchAction: string;
+    readonly fade: { readonly start: string; readonly end: string };
+}
+
+/** In the page: the timeline's card as a visitor sees it. */
+async function cardView(page: Page): Promise<CardView> {
     return viewer(page)
         .locator('hcm-timeline')
         .evaluate((element) => {
             const meets = (a: DOMRect, b: DOMRect) =>
                 a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+            const inside = (a: DOMRect, b: DOMRect) => a.left >= b.left && a.right <= b.right && a.top >= b.top && a.bottom <= b.bottom;
+            const root = element.shadowRoot;
             const view = element.getBoundingClientRect();
-            const thumb = element.shadowRoot?.querySelector('.thumb')?.getBoundingClientRect() ?? view;
-            const labels = [...(element.shadowRoot?.querySelectorAll('.stop:not(.selected) .label') ?? [])].map((label) => ({
+            const thumb = root?.querySelector('.thumb')?.getBoundingClientRect() ?? view;
+            const scroller = root?.querySelector<HTMLElement>('.scroller') ?? element;
+            const shown = [...(root?.querySelectorAll('.stop:not(.selected):not(.minor) .label') ?? [])].map((label) => ({
                 text: label.textContent,
                 box: label.getBoundingClientRect(),
             }));
-            const crowded = labels.filter(
-                ({ box }, at) => meets(box, thumb) || labels.some((other, otherAt) => otherAt !== at && meets(box, other.box)),
+            const scrollerBox = scroller.getBoundingClientRect();
+            const crowded = shown.filter(
+                ({ box }, at) => meets(box, thumb) || shown.some((other, otherAt) => otherAt !== at && meets(box, other.box)),
             );
+            const scrolls = scroller.scrollWidth > scroller.clientWidth || scroller.scrollHeight > scroller.clientHeight;
             return {
-                inView: thumb.left >= view.left && thumb.right <= view.right && thumb.top >= view.top && thumb.bottom <= view.bottom,
+                inView: inside(thumb, view),
                 crowded: crowded.map(({ text }) => text),
-                scrolls: element.scrollWidth > element.clientWidth || element.scrollHeight > element.clientHeight,
+                // A scrolling card hides what lies beyond its edges on purpose: only the labels in view count there.
+                clipped: shown.filter(({ box }) => meets(box, scrollerBox) && !inside(box, view)).map(({ text }) => text),
+                labelled: shown.length,
+                scrolls,
+                density: element.getAttribute('density') ?? '',
+                touchAction: getComputedStyle(element).touchAction,
+                fade: {
+                    start: scroller.style.getPropertyValue('--hcm-fade-start'),
+                    end: scroller.style.getPropertyValue('--hcm-fade-end'),
+                },
             };
         });
 }
 
+/** Phones upright and on their side (the Pixel 9 Pro's own: P5, "Azi" off the right edge), the tablet both ways, a desktop. */
+const CARD_SIZES = [
+    { width: 360, height: 800 },
+    { width: 426, height: 803 },
+    { width: 568, height: 320 },
+    { width: 884, height: 322 },
+    { width: 800, height: 1280 },
+    { width: 1280, height: 800 },
+    { width: 1440, height: 900 },
+] as const;
+
 test(
-    'With more years than the card holds the timeline scrolls, its labels legible and the selected year in view',
-    { tag: '@S-V04-BAD-MANY-YEARS-SCROLL' },
+    'Twenty-two years fit the card, every other one labelled and none clipped, on a phone, a tablet and a desktop',
+    { tag: '@S-V04-BAD-MANY-YEARS-FIT' },
     async ({ page, lang }) => {
-        // The review, 2026-11-08: twenty-two stops squeezed 17 px apart, the pill over its neighbours, the labels one row.
+        // The Pixel Tablet, 2026-11-12: at 30 px per gap twenty-two stops overflowed the card and 1847 showed as "7".
         await page.emulateMedia({ reducedMotion: 'reduce' });
         await serveManifest(page, manifestOf(Array.from({ length: 21 }, (_, at) => 1964 + at)));
-        for (const size of [
-            { width: 320, height: 568 },
-            { width: 568, height: 320 },
-            { width: 768, height: 1024 },
-        ]) {
+        for (const size of CARD_SIZES) {
             await page.setViewportSize(size);
             await openViewer(page, { lang, hash: OBOR_VIEW });
             const thumb = slider(page, lang);
@@ -231,14 +266,60 @@ test(
             for (const [key, index] of [
                 ['Home', '0'],
                 ['End', '21'],
-                ['Home', '0'],
             ] as const) {
                 await thumb.press(key);
                 await expect(thumb).toHaveAttribute('aria-valuenow', index);
                 const where = `${String(size.width)}x${String(size.height)} after ${key}`;
-                await expect.poll(async () => (await scrolledView(page)).inView, `${where}: the thumb in view`).toBe(true);
-                const view = await scrolledView(page);
+                const view = await cardView(page);
+                expect(view.scrolls, `${where}: the track fits the card`).toBe(false);
+                expect(view.density, where).not.toBe('scroll');
+                expect(view.inView, `${where}: the thumb in view`).toBe(true);
+                expect(view.clipped, `${where}: clipped labels`).toEqual([]);
+                expect(view.crowded, `${where}: crowded labels`).toEqual([]);
+                expect(view.labelled, `${where}: the years named`).toBeGreaterThanOrEqual(8);
+            }
+        }
+    },
+);
+
+/**
+ * How a scrolling card lies or stands: the scroll starts at the leading edge lying and at the top (today) standing, so
+ * after Home or End the far years fade at that end; a finger scrolls it along the timeline.
+ */
+const LYING = { faded: { Home: 'end', End: 'start' }, touchAction: 'pan-x' } as const;
+const STANDING = { faded: { Home: 'start', End: 'end' }, touchAction: 'pan-y' } as const;
+
+test(
+    'With more years than the card holds the timeline scrolls under a finger, its edge fades and the selected year stays in view',
+    { tag: '@S-V04-BAD-MANY-YEARS-SCROLL' },
+    async ({ page, lang }) => {
+        // The review, 2026-11-08: stops squeezed 17 px apart; the device test, 2026-11-12: the track could not be scrolled by finger.
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await serveManifest(page, manifestOf(Array.from({ length: 61 }, (_, at) => 1924 + at)));
+        for (const { pose, ...size } of [
+            { width: 320, height: 568, pose: STANDING },
+            { width: 568, height: 320, pose: LYING },
+            { width: 768, height: 1024, pose: LYING },
+        ]) {
+            await page.setViewportSize(size);
+            await openViewer(page, { lang, hash: OBOR_VIEW });
+            const thumb = slider(page, lang);
+            await expect(thumb).toHaveAttribute('aria-valuemax', '61');
+            await thumb.focus();
+            for (const [key, index] of [
+                ['Home', '0'],
+                ['End', '61'],
+                ['Home', '0'],
+            ] as const) {
+                const faded = pose.faded[key];
+                await thumb.press(key);
+                await expect(thumb).toHaveAttribute('aria-valuenow', index);
+                const where = `${String(size.width)}x${String(size.height)} after ${key}`;
+                await expect.poll(async () => (await cardView(page)).inView, `${where}: the thumb in view`).toBe(true);
+                await expect.poll(async () => (await cardView(page)).fade[faded], `${where}: the ${faded} fades`).toBe('24px');
+                const view = await cardView(page);
                 expect(view.scrolls, `${where}: the card scrolls`).toBe(true);
+                expect(view.touchAction, `${where}: a finger scrolls it`).toBe(pose.touchAction);
                 expect(view.crowded, `${where}: crowded labels`).toEqual([]);
             }
         }
