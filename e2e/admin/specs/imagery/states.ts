@@ -148,8 +148,8 @@ export const IMAGERY_STATES = {
         title: 'Historical imagery: a failed import, its error, the failed step and Retry',
         visit: 'specs/imagery/import.spec.ts',
     },
-    'imagery.version-dismiss': {
-        title: 'Historical imagery: a failure no retry cures, no Try again, and Dismiss asked first',
+    'imagery.version-delete': {
+        title: 'Historical imagery: a failure no retry cures, no Try again, and Delete this version asked first',
         visit: 'specs/imagery/import.spec.ts',
     },
     'imagery.version-usgs-wait': {

@@ -114,6 +114,14 @@ export const imageryConfirmRightsResponseSchema = z.strictObject({
     confirmedAt: isoTimeSchema,
 });
 
+/**
+ * `imagery.deleteVersion` (an editor or the owner; `docs/research/M3-interfaces.md` §7.1; S-A125-*): a version that never reached the
+ * map (failed, cancelled or rejected, or an archive series waiting for points that the owner starts over) goes with its job, the job's
+ * log and the files only it uses. Published or approved versions (`apiError.imagery.deletePublished`), a job still under way
+ * (`apiError.imagery.deleteRunning`) and a version another one is built on (`apiError.imagery.deleteInUse`) are refused.
+ */
+export const imageryDeleteVersionResponseSchema = z.strictObject({ deleted: z.literal(true) });
+
 /** `imagery.choose` (admin; App Check consume for `pay`): the way out of a publish that does not fit the month. */
 export const imageryChooseRequestSchema = z.strictObject({ ...versionIdField, choice: z.enum(PUBLISH_CHOICES) });
 export const imageryChooseResponseSchema = z.strictObject({

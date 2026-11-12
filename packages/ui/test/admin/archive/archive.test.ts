@@ -70,7 +70,15 @@ function view(changes: Partial<ArchiveViewPort> = {}): ArchiveViewPort {
         open: {
             id: ARCHIVE,
             status: 'ready',
-            report: { name: 'harti.zip', files: 5703, bytes: 9_000_000_000, series: SERIES, skipped: [['not-a-map', 50]], imported: false },
+            report: {
+                name: 'harti.zip',
+                files: 5703,
+                bytes: 9_000_000_000,
+                series: SERIES,
+                skipped: [['not-a-map', 50]],
+                imported: false,
+                importedSeries: [],
+            },
         },
         edits: {
             [SERIES[0]?.seriesId ?? '']: { include: true, title: 'Plan 0', year: '1911', confirmedBy: null },
@@ -386,7 +394,11 @@ describe('<hcm-archive-report>', () => {
             ...base.open,
             id: ARCHIVE,
             status: 'ready' as const,
-            report: { ...base.open?.report, name: 'harti.zip', files: 1, bytes: 1, series: SERIES, skipped: [], imported: true },
+            report: {
+                ...base.open?.report,
+                ...{ name: 'harti.zip', files: 1, bytes: 1, series: SERIES, skipped: [], imported: true },
+                importedSeries: [SERIES[0]?.seriesId ?? '', SERIES[1]?.seriesId ?? ''],
+            },
         };
         const host = new FakeHost(
             view({
@@ -403,6 +415,7 @@ describe('<hcm-archive-report>', () => {
         const element = await report(host);
 
         expect(deepAll(element, '[data-progress]')).toHaveLength(2);
+        expect(deepAll(element, '[data-import]')).toHaveLength(0);
         expect(deep(element, '[data-overall]').textContent).toBe(t('adminArchive.local.overall', { percent: '100' }));
         expect(deepText(element)).toContain(t('adminArchive.state.approval', { error: '4.2', threshold: '15' }));
         expect(deepText(element)).toContain(t('adminArchive.state.points', { note: t('adminArchive.help.frame-not-found') }));
@@ -430,11 +443,35 @@ describe('<hcm-archive-report>', () => {
 describe('<hcm-archive-report>, the rest', () => {
     afterEach(cleanup);
 
+    it('happyPath_aSeriesStartedOverIsOfferedAgainBelowTheOthersProgress @S-A125-HAPPY-DELETE-VERSION', async () => {
+        const base = view();
+        const first = SERIES[0]?.seriesId ?? '';
+        const open = {
+            ...base.open,
+            id: ARCHIVE,
+            status: 'ready' as const,
+            report: {
+                ...{ name: 'harti.zip', files: 1, bytes: 1, series: SERIES, skipped: [], imported: true },
+                importedSeries: [first],
+            },
+        };
+        const host = new FakeHost(view({ open, progress: { [first]: progress({ state: 'awaiting_approval' }) } }));
+        const element = await report(host);
+
+        expect(deepAll(element, '[data-progress]').map((row) => row.getAttribute('data-progress'))).toEqual([first]);
+        expect(deepAll(element, '[data-series]').map((row) => row.getAttribute('data-series'))).toEqual([
+            SERIES[1]?.seriesId,
+            SERIES[2]?.seriesId,
+        ]);
+        expect(deepAll(element, '[data-import]')).toHaveLength(1);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
     it('badPath_noAppNoArchiveNoSkippedFilesASeriesWithoutEditAndAProgressWithoutVersion', async () => {
         const alone = await settled(await fixture<LitElement>(html`<hcm-archive-report locale="en"></hcm-archive-report>`));
         expect(deepAll(alone, 'hcm-loading-indicator')).toHaveLength(1);
 
-        const report = { name: 'harti.zip', files: 1, bytes: 1, series: SERIES, skipped: [], imported: false };
+        const report = { name: 'harti.zip', files: 1, bytes: 1, series: SERIES, skipped: [], imported: false, importedSeries: [] };
         const host = new FakeHost(view({ open: { id: ARCHIVE, status: 'ready', report }, edits: {} }));
         const element = await settled(await fixture<LitElement>(html`<hcm-archive-report .app=${host} locale="en"></hcm-archive-report>`));
         expect(host.feed.calls).toEqual(['start', 'open null']);

@@ -99,6 +99,8 @@ export interface VersionItemPort {
     readonly checkpointRmseM: number | null;
     readonly partOf: string | null;
     readonly entityIds: readonly string[];
+    /** The version it was made from: that one is not deleted while this one is there. */
+    readonly basedOn: string | null;
     /** M12: the small picture of a waiting row. */
     readonly thumbPath: string | null;
 }
@@ -250,7 +252,17 @@ interface UsagePort {
 }
 
 type VersionActionPort =
-    'approve' | 'reject' | 'confirmRights' | 'choose' | 'studioDone' | 'download' | 'retry' | 'locate' | 'cancel' | 'recalibrate';
+    | 'approve'
+    | 'reject'
+    | 'confirmRights'
+    | 'deleteVersion'
+    | 'choose'
+    | 'studioDone'
+    | 'download'
+    | 'retry'
+    | 'locate'
+    | 'cancel'
+    | 'recalibrate';
 
 export interface VersionPagePort {
     readonly id: string;
@@ -336,6 +348,8 @@ export interface ImageryIntentsPort {
     reject(): Promise<boolean>;
     /** M20 (§7): the city's owner confirms who granted the permission (`imagery.confirmRights`). */
     confirmRights(confirmedBy: string): Promise<boolean>;
+    /** A version that never reached the map, deleted for good (`imagery.deleteVersion`); true once it is gone. */
+    deleteVersion(): Promise<boolean>;
     /** M16: Refine automatically (the new version's id, or null when refused), and the map between the new version and the current one. */
     recalibrate(): Promise<string | null>;
     toggleCurrent(): void;

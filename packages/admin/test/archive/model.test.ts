@@ -49,6 +49,17 @@ describe('the archive model', () => {
         ]);
     });
 
+    it('happyPath_anImportedSeriesIsNeverChosenAgainAndOneStartedOverIsTheOwnersToChoose @S-A125-HAPPY-DELETE-VERSION', () => {
+        const other = { ...SERIES, seriesId: 's-000000000001' };
+        const archive = { series: [SERIES, other], jobs: { [SERIES.seriesId]: 'ar-0' } } as unknown as ArchiveDoc;
+        const kept = { [SERIES.seriesId]: { include: true, title: 'Plan 1911', year: '1911', confirmedBy: null } };
+
+        const edits = editsOf(archive, kept);
+
+        expect([edits[SERIES.seriesId]?.include, edits[other.seriesId]?.include]).toEqual([false, true]);
+        expect(choicesOf(archive, edits)).toEqual([{ seriesId: other.seriesId, include: true }]);
+    });
+
     it('badPath_versionsOfOtherOriginsAndAReportWithoutAFigureNorACityShowNoError', () => {
         const usgs = stored('u', { state: 'processing', source: { kind: 'usgs' } } as unknown as LayerVersionDoc);
         const archive = { kind: 'archive', archiveId: 'ar-0123456789abcdef', seriesId: SERIES.seriesId, sheetCount: 1 };

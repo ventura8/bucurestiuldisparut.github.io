@@ -175,6 +175,7 @@ export {
     imageryChooseResponseSchema,
     imageryConfirmRightsRequestSchema,
     imageryConfirmRightsResponseSchema,
+    imageryDeleteVersionResponseSchema,
     imageryCropRequestSchema,
     imageryCropResponseSchema,
     imageryImportRequestSchema,

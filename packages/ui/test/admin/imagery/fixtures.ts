@@ -87,6 +87,7 @@ export function versionItem(overrides: Partial<VersionItemPort> = {}): VersionIt
             checkpointRmseM: 7.2,
             partOf: null,
             entityIds: [],
+            basedOn: null,
             thumbPath: null,
         },
         ...overrides,
@@ -339,6 +340,7 @@ export function imageryPage(
             approve: Promise.resolve(true),
             reject: Promise.resolve(true),
             confirmRights: Promise.resolve(true),
+            deleteVersion: Promise.resolve(true),
         },
         ...{
             choose: Promise.resolve(true),

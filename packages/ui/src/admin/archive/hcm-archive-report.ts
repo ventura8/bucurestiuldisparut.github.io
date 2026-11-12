@@ -4,7 +4,8 @@
  * (what will happen to it, its chance to calibrate itself, its rights, the estimated zoom, bytes and minutes; Import this series,
  * its title and year; a series whose rights wait asks who granted them), the total (series, bytes, days at the city's share) and
  * the one Import click. Once imported, each series' progress: waiting for its day, at work, waiting for points and why, waiting
- * for approval with its error against its threshold, published, each opening its version's page.
+ * for approval with its error against its threshold, published, each opening its version's page; below it, the plan of the series
+ * still to import (left out, or started over by deleting its version: `imagery.deleteVersion`), when one of them can be.
  */
 import type { ArchiveSeries } from '@hcm/shared';
 import { html, type PropertyValues, type TemplateResult } from 'lit';
@@ -19,6 +20,11 @@ import { actionText, chosenOf, estimateText, overallPercent, stateText, totalTex
 export const HCM_ARCHIVE_REPORT_TAG = 'hcm-archive-report';
 
 type Report = NonNullable<OpenArchivePort['report']>;
+
+/** A series the import takes: proposed, or skipped only as too small (the owner insists). */
+function importable(series: ArchiveSeries): boolean {
+    return series.action === 'import' || series.reason === 'too-small';
+}
 
 const RIGHTS_TONE = { clear: 'good', 'needs-confirmation': 'wait', 'do-not-publish': 'error' } as const;
 
@@ -83,7 +89,7 @@ export class HcmArchiveReport extends ArchiveElement {
         return html`<section class="pane" data-archive-report data-imported=${String(report.imported)}>
             <h2 data-detail-heading tabindex="-1">${report.name}</h2>
             <p>${summary}</p>
-            ${this.#skipped(report)} ${report.imported ? this.#progress(view, report) : this.#plan(view, report)}
+            ${this.#skipped(report)} ${report.imported ? this.#progress(view, report) : EMPTY} ${this.#rest(view, report)}
             <p class="note" role="status" data-result>${this.#result(view)}</p>
             <div role="alert">${view.refusal === null ? EMPTY : html`<p class="alert">${noticeOf(locale, view.refusal)}</p>`}</div>
         </section>`;
@@ -108,10 +114,20 @@ export class HcmArchiveReport extends ArchiveElement {
             </ul>`;
     }
 
-    #plan(view: ArchiveViewPort, report: Report): TemplateResult {
-        const chosen = chosenOf(report.series, view.edits);
+    /**
+     * The plan of the series not imported yet: every series before the first import; after it, the ones left out or started over
+     * (their version deleted), when one of them can still be imported.
+     */
+    #rest(view: ArchiveViewPort, report: Report): TemplateResult {
+        const rest = report.series.filter((series) => !report.importedSeries.includes(series.seriesId));
+        const open = !report.imported || rest.some(importable);
+        return open ? this.#plan(view, rest) : EMPTY;
+    }
+
+    #plan(view: ArchiveViewPort, rest: readonly ArchiveSeries[]): TemplateResult {
+        const chosen = chosenOf(rest, view.edits);
         const valid = chosen.length > 0 && chosen.every((series) => yearShown(view.edits[series.seriesId]?.year ?? ''));
-        return html`${report.series.map((series) => this.#series(view, series))}
+        return html`${rest.map((series) => this.#series(view, series))}
             <p data-total>${totalText(this.locale, chosen)}</p>
             <div class="actions">
                 <hcm-button
@@ -127,14 +143,14 @@ export class HcmArchiveReport extends ArchiveElement {
 
     #series(view: ArchiveViewPort, series: ArchiveSeries): TemplateResult {
         const edit = view.edits[series.seriesId];
-        const importable = series.action === 'import' || series.reason === 'too-small';
+        const takes = importable(series);
         const titled = `${series.title}, ${series.yearLabel ?? String(series.year)}`;
-        return html`<div class="series" data-series=${series.seriesId} ?data-skip=${!importable}>
+        return html`<div class="series" data-series=${series.seriesId} ?data-skip=${!takes}>
             <p class="row-title">${titled}</p>
             <p class="row-detail">${actionText(this.locale, series)}</p>
             ${this.#tags(series)}
             <p class="row-detail">${estimateText(this.locale, series)}</p>
-            ${importable && edit !== undefined ? this.#choice(series, edit) : EMPTY}
+            ${takes && edit !== undefined ? this.#choice(series, edit) : EMPTY}
         </div>`;
     }
 

@@ -247,8 +247,8 @@ test(
         // Rejected, nothing will make its tiles: the note no longer says they are on their way (docs/LESSONS.md).
         await page.goto(address);
         const reject = imageryText(lang, 'adminContent.imagery.reject');
-        await detail(page).getByRole('button', { name: reject }).click();
-        await page.locator('hcm-dialog[open]').getByRole('button', { name: reject }).click();
+        await detail(page).getByRole('button', { name: reject, exact: true }).click();
+        await page.locator('hcm-dialog[open]').getByRole('button', { name: reject, exact: true }).click();
         await expect(versionState(page, lang, 'adminContent.imagery.version.rejected')).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
         await expect(detail(page).locator('[data-image="small"]')).toHaveText(imageryText(lang, 'adminContent.imagery.view.smallGone'));
         await adminMapReady(page);

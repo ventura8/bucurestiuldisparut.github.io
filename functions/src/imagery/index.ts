@@ -11,6 +11,7 @@ import { archiveImportFunction } from './archive-import.js';
 import { browseFunction } from './browse.js';
 import { confirmRightsFunction } from './confirm-rights.js';
 import { cropFunction } from './crop.js';
+import { deleteVersionFunction } from './delete-version.js';
 import { importFunction } from './import.js';
 import { joinFunction } from './join.js';
 import { onJobWriteFunction } from './on-job-write.js';
@@ -39,6 +40,7 @@ export function imageryFunctions(getDeps: () => ImageryFamilyDeps, bucket?: stri
         approve: approveFunction(getDeps),
         reject: rejectFunction(getDeps),
         confirmRights: confirmRightsFunction(getDeps),
+        deleteVersion: deleteVersionFunction(getDeps),
         choose: chooseFunction(getDeps),
         studioDone: studioDoneFunction(getDeps),
         saveGcps: saveGcpsFunction(getDeps),

@@ -751,6 +751,29 @@ upload's own georeference waits (`S-A17-BAD-EMBEDDED-GEOREF`);
 version waits for `imagery.approve` (admin; any state but `awaiting_approval` → `apiError.imagery.versionState`) or
 `imagery.reject` (the version `rejected`, the job `cancelled`, the reserved id free again, `pendingVersion` cleared).
 
+A version that never reached the map is deleted for good by `imagery.deleteVersion` (an editor or the owner; S-A125-*;
+`functions/src/imagery/delete-version.ts`): a `failed`, `cancelled` or `rejected` one whose job is finished (or gone), or an archive
+series waiting for points (`needs_gcps`, its job `awaiting_gcps`) that the owner starts over, whose job is first ended as Cancel ends it
+(`endWork`, so whatever it held is released). The version and its job go in one transaction that reads both again (a Retry clicked
+meanwhile is never deleted under its run), then the job's `logs`, its scratch files (`work/{city}/{job}/`, `work-files.ts`) and the
+version's own folder of the private bucket (`rasters/{city}/{layer}/{version}/`) with a public copy a dead publish left
+(`deleteVersionTiles`); a failed first import's scene is freed as Dismiss frees it. Never touched: another version's folder (a
+regeoref's scan lies in its base's), a USGS delivery (`usgs-raw/`, any city's), an upload's original and an archive's originals, which
+stay on the owner's computer. Refused: `approved`, `publishing`, `published`, `superseded` or `joined` →
+`apiError.imagery.deletePublished` (delete the layer, §7.6); a job still queued, running or waiting → `apiError.imagery.deleteRunning`
+(Cancel first); a version another one is `basedOn` → `apiError.imagery.deleteInUse`; a version the transaction finds gone →
+`apiError.notFound`, one that left its deletable state meanwhile → `apiError.imagery.versionState`; a frame a live join holds →
+`apiError.imagery.joinPartHeld`; any other state → `apiError.imagery.versionState`. Layer versions are not audited documents (no
+`history` subcollection): the deletion is the structured log line `layer version deleted` with the caller's uid, as every version
+decision writes. The version is read as an ending reads it (`layerVersionReadSchema`), so a record an older release stored with
+fields today's schema refuses is deleted too. An archive series also leaves its archive's record of jobs (`archives/{a}.jobs`) in the same transaction, so the
+archive page offers it again and `imagery.archiveImport` takes it (that callable refuses only a series the record still names); the
+last series deleted leaves the archive unimported (`jobs`, `importedBy`, `importedAt` gone). The version page offers **Delete this
+version** (asked first: what goes, and that the map and the originals on the owner's computer stay) for a `failed`, `cancelled` or
+`rejected` version whose job is finished and for a parked archive series (whose Cancel-area Delete it replaces), never for one
+another version of the list is `basedOn`; a failed version has no Dismiss beside it any more, so the page never shows two Deletes
+(the server's `imagery.reject` still dismisses a failed version). Once deleted the page returns to the Historical imagery list.
+
 ### 7.2 The compute-unit guard (done: the functions; the transaction: fn-imagery)
 
 The publish task's `guard` step, in one transaction on `usage/mapbox-{usageMonth(now)}` (created with
@@ -872,6 +895,7 @@ implementation, `maxInstances` 3, as `fn-admin@`; the schemas are done (`package
 | `imagery.import` | enforce | `{cityId, entityId}` → `{jobId, versionId, layerId}` | `notFound`, `usgs.notConfigured`, `usgs.accessPending`, `imagery.notScanned`, `imagery.alreadyImported`, `imagery.dailyLimit`, `guardPaused` |
 | `imagery.approve` | enforce | `{cityId, versionId}` → `{state, jobId}` | `notFound`, `imagery.versionState` |
 | `imagery.reject` | enforce | `{cityId, versionId}` → `{state: 'rejected'}` | `notFound`, `imagery.versionState` |
+| `imagery.deleteVersion` | enforce | `{cityId, versionId}` → `{deleted: true}` | `notFound`, `imagery.deletePublished`, `imagery.deleteRunning`, `imagery.deleteInUse`, `imagery.joinPartHeld`, `imagery.versionState`, `city.notEditor` |
 | `imagery.choose` | consume | `{cityId, versionId, choice}` → `{state, deferUntil?, studioPath?}` | `notFound`, `imagery.versionState`, `imagery.tilesetLimit` (for `pay`) |
 | `imagery.studioDone` | enforce | `{cityId, versionId}` → `{tilesetId, layerId}` | `imagery.studioNotFound`, `imagery.versionState`, `mapbox.notConfigured` |
 | `imagery.saveGcps` | enforce | `imagerySaveGcpsRequestSchema` → `{jobId, versionId, resumed}` | `invalidRequest`, `imagery.tooFewGcps`, `imagery.degenerateGcps`, `imagery.gcpOutside`, `imagery.versionState`, `imagery.dailyLimit`, `guardPaused`, `layers.busy` |
