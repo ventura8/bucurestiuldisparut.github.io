@@ -15,8 +15,8 @@ import {
     FIRESTORE_PATHS,
     imagerySettingsOf,
     jobDocSchema,
-    layerVersionDocSchema,
-    setupStatusDocSchema,
+    layerVersionReadSchema,
+    setupStatusReadSchema,
     usgsSceneDocSchema,
     type CityDoc,
     type DatePlanDoc,
@@ -154,7 +154,7 @@ export class ImageryFeeds {
         const base = { store, clock, denied };
         this.#setup = new LiveDoc({
             ...base,
-            schema: setupStatusDocSchema,
+            schema: setupStatusReadSchema,
             changed: (state) => {
                 changed({ usgs: usgsOf(state) });
             },
@@ -188,7 +188,7 @@ export class ImageryFeeds {
         });
         this.#named = namedSceneDoc(base, changed);
         this.#versions = new LiveList({
-            ...{ ...base, collection: FIRESTORE_PATHS.layerVersions(cityId), schema: layerVersionDocSchema, map: versionItemOf },
+            ...{ ...base, collection: FIRESTORE_PATHS.layerVersions(cityId), schema: layerVersionReadSchema, map: versionItemOf },
             changed: (list) => {
                 changed({ versions: list });
             },

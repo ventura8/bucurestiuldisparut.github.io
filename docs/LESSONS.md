@@ -3279,3 +3279,21 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `firebase/firestore.indexes.json` exempts `jobs.params` from indexing, yet `layers.delete` (its busy check) and `history.revert` (`waitingLayerDeletes`) filtered on `params.layerId`. The emulator does not enforce indexes, and the in-memory fake ignored the exemptions, so every test passed.
     - Fix and pin: both ask by an indexed field (`status in` the unfinished statuses; `type == layer-delete`) and match the layer in code; the fake document store now refuses a query or count on an exempt field; `S-A33-HAPPY-DELETE-INDEXED`, `S-A33-BAD-UNINDEXED-QUERY`.
     - **A field exempt from indexing can never be queried; the fake must refuse what Firestore refuses, since the emulator does not.**
+
+558. **One malformed `setup/status` area hid USGS from Imagery and failed every Setup write.**
+    - Seen: 2026-11-12, live: Historical imagery → Find said "Connect USGS" while Setup showed USGS done; `setup.recordCloud` and `ops.tick`'s `health` and `tokens` steps logged `InvalidDocumentError: setup/status … (3 issues)`.
+    - Cause: an out-of-band write (`updatedBy: u-overnight`, 2026-11-12 05:45 UTC) stored `install.{server,pipeline,site}.checkedAt` as Firestore timestamps where the schema wants ISO strings. Setup's screen reads each area leniently (`toSetupStatusView`), but the admin's Imagery feed, Home and every server writer read the whole document strictly, so the USGS record was never seen (`usgsOf` of a failed read is `missing`) and no write could build on the document.
+    - Fix and pin: `setupStatusReadSchema` (an area its schema refuses reads as absent; the next write replaces it) for every reader; S-A11-HAPPY-USGS-BESIDE-BAD-AREA / S-A11-BAD-USGS-RECORD-MALFORMED.
+    - **Read a multi-area status document per area: one broken area must not hide the others or block their writers.**
+
+559. **A version stored with a scan over `MAX_SCAN_PIXELS` could never be ended.**
+    - Seen: 2026-11-12, live `cities/bucharest/layerVersions/im-mvya873z-D3C1202-200149F039` (`scan.width` 258,271): Reject and Cancel answered `apiError.internal`, the admin did not list it, and its `awaiting_gcps` job made the 1972-02-02 join `joinLayerBusy` for ever.
+    - Cause: the KH-9 import of 2026-11-02 wrote its version straight to Firestore with a scan side over `MAX_SCAN_PIXELS` (200,000 since M3; finding 62, lessons 332 and 493, which left it to the owner to delete). Every ending path read the version with the strict schema, and the store validates whole documents on write, so the record could not even be written back ended; the admin's list dropped it and its page failed.
+    - Fix and pin: `layerVersionReadSchema` / `salvageLayerVersion` (the top-level fields the schema refuses left out, the state rule skipped) in Reject, Cancel, `endWork` and the admin's list and version page; the ended version is written back valid; S-A12-HAPPY-LEGACY-VERSION-ENDS / S-A12-BAD-LEGACY-VERSION-UNREADABLE.
+    - **A record its schema refuses (an older shape, or a writer that skipped validation) must stay endable by its owner: read it for its ending without the refused fields.**
+
+560. **One invalid parked frame stopped the automatic search of every other one.**
+    - Seen: 2026-11-12, live log "imagery tick part failed … InvalidDocumentError … im-mvya873z" after each pipeline update.
+    - Cause: `relocateOne` re-threw any error that was not an `ApiError`, so the invalid record above, sorting first, threw before `remember` and before any other frame.
+    - Fix and pin: every failure is logged with the version and remembered, and the loop goes on; S-A69-BAD-AUTO-RELOCATE-INVALID.
+    - **A per-item loop in a tick catches every error per item; only the item's own refusal codes differ in the log.**

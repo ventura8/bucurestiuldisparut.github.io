@@ -394,6 +394,8 @@ export const setupStatusDocSchema = z.strictObject({
     ...stamp,
 });
 
+export type SetupStatusDoc = z.infer<typeof setupStatusDocSchema>;
+
 /**
  * `admins/{uid}`: written by `admin.claim`, `admin.join`, `admins.revoke` and the bootstrap script only; M5 adds the
  * cities callables (`cities.create`, `admins.setRole`), `admin.session` and `ops.tick` (the migration of `cities`).
@@ -593,7 +595,6 @@ export const manifestStateDocSchema = z.strictObject({
 
 export type JobDoc = z.infer<typeof jobDocSchema>;
 export type JobLogDoc = z.infer<typeof jobLogDocSchema>;
-export type SetupStatusDoc = z.infer<typeof setupStatusDocSchema>;
 export type AdminDoc = z.infer<typeof adminDocSchema>;
 export type InviteDoc = z.infer<typeof inviteDocSchema>;
 export type OwnerDoc = z.infer<typeof ownerDocSchema>;

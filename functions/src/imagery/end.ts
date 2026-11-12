@@ -15,6 +15,7 @@ import {
     jobDocSchema,
     layerDocSchema,
     layerVersionDocSchema,
+    layerVersionReadSchema,
     timestampToDate,
     usageDocSchema,
     usageMonth,
@@ -116,7 +117,7 @@ function placesOf({ cityId, jobId, now }: Subject, job: JobDoc, version: LayerVe
 /** True when one of `siblings` (re-read in the transaction) is a version that holds the same layer id. */
 async function siblingHolds(transaction: DocumentTransaction, subject: Subject, layerId: string | undefined): Promise<boolean> {
     for (const id of subject.siblings) {
-        const sibling = await transaction.get(FIRESTORE_PATHS.layerVersion(subject.cityId, id), layerVersionDocSchema);
+        const sibling = await transaction.get(FIRESTORE_PATHS.layerVersion(subject.cityId, id), layerVersionReadSchema);
         if (sibling !== undefined && sibling.layerId === layerId && holdsLayerId(sibling.state)) {
             return true;
         }
@@ -130,7 +131,7 @@ async function readRest(transaction: DocumentTransaction, subject: Subject, job:
     // M12: a side job works beside its version: its ending holds nothing of the version's.
     const version = isSideJob(job.type)
         ? undefined
-        : await transaction.get(FIRESTORE_PATHS.layerVersion(cityId, versionIdOf(jobId, job)), layerVersionDocSchema);
+        : await transaction.get(FIRESTORE_PATHS.layerVersion(cityId, versionIdOf(jobId, job)), layerVersionReadSchema);
     const places = placesOf(subject, job, version);
     const read = <T>(path: string | undefined, schema: Schema<T>) => (path === undefined ? undefined : transaction.get(path, schema));
     const layer = await read(places.layer, layerDocSchema);
@@ -144,11 +145,11 @@ async function readRest(transaction: DocumentTransaction, subject: Subject, job:
 async function siblingsOf(deps: EndDeps, cityId: string, jobId: string): Promise<readonly string[]> {
     const job = await deps.documents.get(FIRESTORE_PATHS.job(cityId, jobId), jobDocSchema);
     const versionId = versionIdOf(jobId, job ?? {});
-    const version = await deps.documents.get(FIRESTORE_PATHS.layerVersion(cityId, versionId), layerVersionDocSchema);
+    const version = await deps.documents.get(FIRESTORE_PATHS.layerVersion(cityId, versionId), layerVersionReadSchema);
     if (job?.type !== 'usgs-import' || version === undefined) {
         return [];
     }
-    const versions = await deps.documents.query(FIRESTORE_PATHS.layerVersions(cityId), layerVersionDocSchema, {
+    const versions = await deps.documents.query(FIRESTORE_PATHS.layerVersions(cityId), layerVersionReadSchema, {
         where: [['layerId', '==', version.layerId]],
     });
     return versions.documents.map((sibling) => sibling.id).filter((id) => id !== versionId);

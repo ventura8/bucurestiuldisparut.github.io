@@ -299,6 +299,7 @@ export * from './schemas/worker.js';
 export * from './schemas/imagery-calibration.js';
 export * from './schemas/imagery-recalibration.js';
 export * from './schemas/imagery-join.js';
+export * from './schemas/legacy-reads.js';
 export * from './schemas/imagery-plan.js';
 // M20 (docs/research/M20-import-local.md): a local archive's report, its series, rights, the map threshold. By name, not
 // `export *`: the star cost the engine's IIFE 19 bytes gzip of module glue it never uses (DECISIONS-for-review.md §137j).
