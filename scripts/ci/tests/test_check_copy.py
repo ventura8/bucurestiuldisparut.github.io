@@ -169,6 +169,7 @@ def test_happy_path_the_repository_config_reads_and_the_script_entry_point_exits
         "packages/admin/starter/hcm-worker.bat": say,
         "functions/src/export/documents.ts": code,
         "functions/src/imagery/relocate.ts": code,
+        "scripts/site/src/start/legal-text.ts": code,
     }
     list(map(lambda item: write(tmp_path, *item), sources.items()))
     monkeypatch.setattr(sys, "argv", [str(SCRIPT), "--root", str(tmp_path)])
@@ -177,4 +178,4 @@ def test_happy_path_the_repository_config_reads_and_the_script_entry_point_exits
         runpy.run_path(str(SCRIPT), run_name="__main__")
 
     assert exit_info.value.code == 0
-    assert caplog.messages == ["[copy] OK: 14 texts, no developer or test words"]
+    assert caplog.messages == ["[copy] OK: 15 texts, no developer or test words"]
