@@ -2,7 +2,15 @@
 // keeps at most `SCAN_TILES_KEPT` (S-A16-HAPPY-GEOREF-FULL-RES, S-A16-BAD-GEOREF-FULL-RES-NONE).
 import { describe, expect, it } from 'vitest';
 
-import { detailScene, readScanTiles, SCAN_TILES_KEPT, TileCache, tilesIn, type ScanTiles } from '../../../src/admin/georef/scan-tiles.js';
+import {
+    detailScene,
+    openDetail,
+    readScanTiles,
+    SCAN_TILES_KEPT,
+    TileCache,
+    tilesIn,
+    type ScanTiles,
+} from '../../../src/admin/georef/scan-tiles.js';
 
 const MAGIC = 0x544d4348;
 

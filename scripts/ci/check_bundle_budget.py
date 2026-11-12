@@ -111,6 +111,11 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # Shared badge painters + map canvas overlay (DECISIONS-for-review.md §146): 1.9 KB measured, out of `georef` (stays 19); with the
     # pairs' leaf helpers and full screen's cover moved in for the linked views (§156), 2.7 KB measured on 2026-11-12. No row rose.
     "georef-badges": 3,
+    # The georeferencer's panes and the beta.1 requests beside them (2026-11-12; DECISIONS-for-review.md §164, §165): the panes'
+    # template with The map shows and Delete pair N, the scan pane's gestures and its tiles' holder, removing a pair with Undo and the
+    # published layers the map pane shows (`GEOREF_PANE_MODULES` of `packages/admin/vite.config.ts`). It loads with the page, like
+    # `georef-badges`: `georef` was at 19.9 KB with them (budget 19) and stays 19.
+    "georef-panes": 4,
     "layer-geometry": 3,
     # M4's order card (`packages/ui/src/admin/imagery/orders/lazy-card.ts`), fetched the first time a scene that must be
     # bought opens, so the Imagery area stays within its budget with the buy flow: 1.7 KB measured on 2026-10-24 plus about
