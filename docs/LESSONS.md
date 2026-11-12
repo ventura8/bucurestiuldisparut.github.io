@@ -3362,3 +3362,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `overview_canvas` read every piece through `_read_grey` for ORB and pasted those same grey arrays on a one-band canvas, so the colour was gone before the canvas was written; `canvas.tif`, `stitched.tif`, the georeferencer's `scan.tif` and the warped output all inherited one band. The other assemblies (`compose_canvas`) already kept colour.
     - Fix and pin: `CanvasOpts.colour` (from `SeriesJob.colour`) keeps fitting on grey and pastes each piece re-read in its own colour, one at a time, by the same matrix on a three-band canvas; grey and line-art series stay one band. S-P20-HAPPY-OVERVIEW-COLOUR / S-P20-BAD-OVERVIEW-GREY-STAYS-GREY.
     - **Features want grey, pictures want the source's bands: keep the two reads apart instead of reusing the matcher's input as the picture.**
+
+573. **A pipeline test file grew past radon's maintainability grade A on its branch, and only the merge's `static` run saw it.**
+    - Seen: 2026-11-12, the merge of track/colourstitch: `pipeline-radon` failed `pipeline/tests/unit/test_placing_overview_find.py - B (13.83)` after the colour series' three tests and two helpers joined its 290 lines; the branch had run pytest, ruff and mypy but not the `static` stage.
+    - Fix and pin: the colour tests (S-P20-HAPPY-OVERVIEW-COLOUR, S-P20-BAD-OVERVIEW-GREY-STAYS-GREY) moved into their own `pipeline/tests/unit/test_placing_overview_colour.py`; the scenario notes follow.
+    - **Radon grades whole files, tests included: a branch that adds tests to a long test file runs `pipeline-radon` (or the whole `static` stage) before it is called done, and splits by behaviour rather than appending.**

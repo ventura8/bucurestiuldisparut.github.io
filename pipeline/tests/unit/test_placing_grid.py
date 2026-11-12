@@ -21,7 +21,7 @@ from tests.synthetic.scenes import CENTRE
 from tests.synthetic.town import Drawing, Line, TownSpec, draw_map, town_lines, write_map
 from tests.unit.placing_support import answer_with, originals, series_context
 from tests.unit.test_placing_overview import _make_overview, _make_tile
-from tests.unit.test_placing_overview_find import _tinted
+from tests.unit.test_placing_overview_colour import _tinted
 
 LETTERS = "ABCD"
 TRUE_ORDER = 3

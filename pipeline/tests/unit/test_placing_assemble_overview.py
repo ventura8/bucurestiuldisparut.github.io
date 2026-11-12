@@ -26,7 +26,7 @@ from tests.synthetic.town import TownSpec, town_lines, write_map
 from tests.unit.placing_support import originals, series_context
 from tests.unit.test_placing_assemble import town_map
 from tests.unit.test_placing_overview import _make_overview, _make_tile
-from tests.unit.test_placing_overview_find import _tinted
+from tests.unit.test_placing_overview_colour import _tinted
 
 
 def test_happy_path_pieces_with_an_overview_use_it_as_the_series_picture(world: PipelineWorld, tmp_path: Path) -> None:

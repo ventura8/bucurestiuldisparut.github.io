@@ -13,7 +13,7 @@ The Python + GDAL pipeline that turns declassified USGS film scans (Corona KH-4,
 - Poetry 2.5.1 (its own venv, `pipeline/requirements-poetry.txt`) and the project `pipeline/pyproject.toml` with `poetry.lock`; the venv uses `--system-site-packages` so `osgeo` is visible, and `--without-pip` (the seeded pip had advisories). numpy and opencv-headless for image work.
 - `pipeline/Dockerfile` (build context `pipeline/`) stages: `base` (GDAL image), `deps` (Poetry, locked runtime dependencies in `/opt/venv`), `test` (adds the dev group and the tests; its command runs pytest), `runtime` (uid 10001, the venv and the package only; default command `doctor`). The runtime image keeps GDAL's tcmalloc preload; only the quality image clears it.
 - GDAL is imported only through `hcm_pipeline.raster` (exceptions enabled). Exit codes (`hcm_pipeline.exit_codes.ExitCode`): 0 done or waiting, 1 failed, 2 usage, 3 configuration.
-- Lint like every Python here: ruff (complexity 5), mypy strict with stubs for the GDAL API we use in `pipeline/typings/osgeo/`, radon grade A, bandit; logging through the pipeline's logger with secret and signed-URL redaction, never `print`.
+- Lint like every Python here: ruff (complexity 5), mypy strict with stubs for the GDAL API we use in `pipeline/typings/osgeo/`, radon grade A (complexity and maintainability, over `pipeline/tests` too: a long test file grows past A, so split it by behaviour; lesson 573), bandit; logging through the pipeline's logger with secret and signed-URL redaction, never `print`.
 
 ## Steps (short, idempotent, resumable)
 

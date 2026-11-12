@@ -16846,7 +16846,7 @@
             "asserts": "overview_canvas with colour fits on grey features but pastes each piece in its own colour (three bands, each within a small mean error of the source); a grey piece fills every band; the canvas, stitched.tif and the georeferencer's scan.tif of a colour pieces series stay three-band, its warped output from the owner's pairs keeps red, green and blue bands, and a colour grid series' overview wait picture is three-band",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "harti.zip 1895-1899 coloured map shown grey in the georeferencer (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_find.py, pipeline/tests/unit/test_placing_assemble_overview.py, pipeline/tests/unit/test_placing_grid.py."
+            "notes": "harti.zip 1895-1899 coloured map shown grey in the georeferencer (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_colour.py, pipeline/tests/unit/test_placing_assemble_overview.py, pipeline/tests/unit/test_placing_grid.py."
         },
         {
             "id": "S-P20-BAD-OVERVIEW-GREY-STAYS-GREY",
@@ -16857,7 +16857,7 @@
             "asserts": "overview_canvas without colour returns a single-band canvas from three-band pieces, the pieces placed as before; a grey grid series' overview wait picture stays one band",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "harti.zip 1895-1899 coloured map shown grey in the georeferencer (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_find.py, pipeline/tests/unit/test_placing_grid.py."
+            "notes": "harti.zip 1895-1899 coloured map shown grey in the georeferencer (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_colour.py, pipeline/tests/unit/test_placing_grid.py."
         },
         {
             "id": "S-P20-HAPPY-ATLAS",
