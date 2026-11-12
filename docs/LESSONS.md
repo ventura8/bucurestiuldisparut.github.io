@@ -3432,3 +3432,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `best_of` kept the best-voted window, the first of equals, and `locate` cut the frame by it: with no votes anywhere the choice was only the order of the list.
     - Fix and pin: a frame nothing proved is cut by a guess only when it was searched whole, in time, and fits a scan shown whole; else the scan is the whole exposure shrunk (`steps/whole.py`, marked in `scan.tif`), and the owner's rough points crop the film at full resolution (`steps/recrop.py`); the KH-5 cap ends the same way (S-P06-HAPPY-WHOLE-STRIP, S-P06-BAD-WHOLE-STRIP-UNPROVED, S-P06-HAPPY-ROUGH-POINTS-CROP, S-P06-BAD-ROUGH-POINTS-OUTSIDE, S-P06-BAD-ROUGH-POINTS-FILM-GONE).
     - **When nothing is proved, never let an unproved guess decide what the person sees: show everything, coarser, and let their answer choose.**
+
+585. **A request file's fields read in a new order raised a different error.**
+    - Seen: 2026-11-12, M26: `read_request` read `ground` before `film` once the governor's budget was added, and a request holding a pickle in `film` raised `KeyError` for `ground` instead of the refusal of the pickle (`test_bad_path_a_request_holding_a_pickle_does_not_run`).
+    - Cause: `numpy.load(allow_pickle=False)` refuses lazily, field by field; the order of reads decides which fault is seen first.
+    - Fix and pin: the film's arrays are read first, as before, and the new `budget` only when it is present (an old request reads as the default budget).
+    - **When a file is checked lazily by its reader, read the fields that carry the risk first, and add new fields as optional so an old file keeps its meaning.**

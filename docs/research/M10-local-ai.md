@@ -305,3 +305,12 @@ The three maps agree with gate R1's over the film: GPU median 0.4 m, largest 4.2
 ### Licences, read
 
 ALIKED's own `LICENSE` at the pinned commit is BSD-3-Clause; kornia, kornia_rs and OpenCV are Apache-2.0 by their wheels' metadata (`matcher/NOTICE.md`). OpenCV's wheel bundles FFmpeg's libraries under LGPL-2.1, listed in its `LICENSE-3RD-PARTY.txt`, which is unpacked with it. **Still unread:** the CUDA library terms in the PyTorch image, which is why it stays on Docker Hub and is never re-hosted.
+
+## Addendum of 2026-11-12: the governor's budget per request (M26)
+
+Each request carries a `MatcherBudget` (`matcher/box.py`; an optional `budget` array in the `.npz`, a request without
+one reads as the old defaults): processor threads (in place of half the cores), keypoints (2048 full, 1024 quiet), the
+card's memory share (`torch.cuda.set_per_process_memory_fraction`, ≤ 0.7 full, ≤ 0.4 quiet) and `yield_gpu`: when other
+programs leave the card less than the matcher's 2 GB, the child runs that request on the processor and says
+`fallback: gpu-busy` (never a silent processor run: the reason is in the answer and in the proposer's record).
+`docs/research/M26-governor.md` §4–§5.

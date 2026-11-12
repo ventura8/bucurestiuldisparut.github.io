@@ -681,3 +681,14 @@ A `layer-join` runs here as any pipeline job (`docs/research/M8-join-interfaces.
 - **Cloud Run** keeps `NullProposalMatcher`: only `worker/runtime.py` injects `LocalMatcher`, and its image gains a few KB of unimported Python and two empty folders.
 
 Security review of the additions: the box is a volume shared with a process that has no network, so what it says is untrusted. An answer is parsed as JSON, finite, at most three similarities of a scale 0.85 to 1.15, and only a proposal for the proof; a request is read with `allow_pickle=False`; weights load with `weights_only=True` after their hash. `/state` tells a local reader only the pinned image's name. The starter accepts that name only as `pytorch/pytorch` by a whole digest, with no character a shell could act on.
+
+## Addendum of 2026-11-12: the governor (M26)
+
+The worker's share of the computer is the governor's (`docs/research/M26-governor.md`): `Worker.govern` lowers the
+process (nice 10, idle I/O) and ticks every 5 s; `GET /state` carries `machine`; `POST /profile` (under `/pair`'s rules)
+takes the owner's Automatic, Quiet or Full, kept in the volume's `governor.json`. The starter (§1.5) runs a third loop
+beside the supervisor and the sidecar's, `run_governor` (`sh hcm-worker.sh governor` alone; Windows: `Start-GovernorLoop`
+in its own hidden process): every 5 s it writes the host's hints (input idle time, the battery a VM cannot see, the
+cards and NPUs Docker could pass) into the volume through `docker exec` into the worker's container, and runs
+`docker update --cpus <threads> hcm-worker` when the budget's threads change. A paused worker holds its step at the next
+checkpoint (its time limit moved by the wait). Behaviour A132.
