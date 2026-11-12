@@ -7,19 +7,18 @@
  *
  * It never touches the map or the URL hash: the store does. The map container is a stable `<div>` in the shadow root
  * (`mapContainer`); mapbox-gl.css is linked inside the shadow root (`mapboxCssUrl`), the city theme is adopted on the
- * host (`applyTheme`). It reads Mapbox GL's attribution from that container (`watchAttribution`) to show it in its
- * legal bar or in About while a modal surface covers the map (scenario V18).
+ * host (`applyTheme`). It listens on that container for what opens the map's menu (`watchMapMenu`).
  */
 import { resolveLocale, type MessageKey, type ThemeTokens } from '@hcm/shared';
 import { LitElement, type TemplateResult } from 'lit';
 
 import { deepActiveElement, restoreFocus, tabbableElements } from '../components/focus.js';
 import { applyTheme } from '../theme/apply.js';
-import { watchAttribution, type AttributionPart } from './attribution.js';
 import { OverlayChangeTracker, overlayEvents, viewerEvents, type PublicEvent } from './events.js';
 import type { HcmTimeline } from './hcm-timeline.js';
 import { commandAllowed, isDialogSheet, runInputCommand, type InputCommand } from './input-commands.js';
 import { layoutFor, type ViewerLayout } from './layout.js';
+import { LegalLiftWatcher, NO_LIFT, sameLift, type LegalLift } from './legal-lift.js';
 import { watchMapMenu, type MenuPoint } from './map-menu-trigger.js';
 import { stopMyLocation } from './my-location.js';
 import { browserServices, type ViewerServices } from './services.js';
@@ -86,11 +85,6 @@ function closeExtras(store: ViewerStorePort): void {
     }
 }
 
-/** A new attribution re-renders only when its text or links changed (Mapbox rewrites it on every source change). */
-function attributionChanged(next: readonly AttributionPart[], previous: readonly AttributionPart[] | undefined): boolean {
-    return JSON.stringify(next) !== JSON.stringify(previous);
-}
-
 export class HcmMapViewer extends LitElement {
     static override readonly properties = {
         manifestUrl: { type: String, attribute: 'manifest-url' },
@@ -103,7 +97,10 @@ export class HcmMapViewer extends LitElement {
         engineVersion: { attribute: false },
         viewState: { state: true },
         mapMenu: { state: true },
-        attribution: { state: true, hasChanged: attributionChanged },
+        legalLift: {
+            state: true,
+            hasChanged: (next: LegalLift, previous?: LegalLift) => previous === undefined || !sameLift(next, previous),
+        },
     };
 
     static override readonly styles = viewerStyles;
@@ -126,13 +123,20 @@ export class HcmMapViewer extends LitElement {
     declare viewState: ViewerState | null;
     /** Where the map's menu is open (V62), in the map's px; null: closed. */
     declare mapMenu: MenuPoint | null;
-    /** What Mapbox GL's attribution control shows (empty until the map has drawn it). */
-    declare attribution: readonly AttributionPart[];
+    /** How far Mapbox's bottom corners move out from under the open modal sheet (V18, `legal-lift.ts`). */
+    declare legalLift: LegalLift;
 
     #store: ViewerStorePort | null = null;
     #controller: ViewerController | null = null;
     #unsubscribe: Unsubscribe = () => undefined;
-    #stopAttribution: () => void = () => undefined;
+    #stopWatching: () => void = () => undefined;
+    readonly #lift = new LegalLiftWatcher(
+        () => this.shadowRoot,
+        () => this.getBoundingClientRect(),
+        (lift) => {
+            this.legalLift = lift;
+        },
+    );
     readonly #tracker = new OverlayChangeTracker();
     readonly #openers: Record<Opener, Element | null> = { sheet: null, lightbox: null };
     readonly #resizeObserver = new ResizeObserver((entries) => {
@@ -182,7 +186,7 @@ export class HcmMapViewer extends LitElement {
         this.engineVersion = '';
         this.viewState = null;
         this.mapMenu = null;
-        this.attribution = [];
+        this.legalLift = NO_LIFT;
     }
 
     /** The controller `mount` returned for this element; null before the engine attached one. */
@@ -254,7 +258,7 @@ export class HcmMapViewer extends LitElement {
         this.ownerDocument.addEventListener('visibilitychange', this.#onVisibility);
         this.#applyTheme(this.viewState);
         this.#subscribe();
-        this.#watchAttribution();
+        this.#watchMapContainer();
         if (this.#store === null && this.bootError === null) {
             bootstrap?.(this);
         }
@@ -267,13 +271,24 @@ export class HcmMapViewer extends LitElement {
         this.#stopMyLocation();
         this.#unsubscribe();
         this.#unsubscribe = () => undefined;
-        this.#stopAttribution();
+        this.#stopWatching();
+        this.#lift.stop();
         super.disconnectedCallback();
     }
 
-    /** The map container exists from the first render on: its attribution is watched from then until disconnect. */
+    /** The map container exists from the first render on: it is watched from then until disconnect. */
     protected override firstUpdated(): void {
-        this.#watchAttribution();
+        this.#watchMapContainer();
+    }
+
+    /**
+     * A modal sheet may have opened, closed or changed: Mapbox's corners follow the open one. The Layers panel and the photo
+     * sheet render their sheets in their own shadow roots, after this element's update: the next frame sees them.
+     */
+    protected override updated(): void {
+        requestAnimationFrame(() => {
+            this.#lift.refresh();
+        });
     }
 
     override attributeChangedCallback(name: string, old: string | null, value: string | null): void {
@@ -296,25 +311,18 @@ export class HcmMapViewer extends LitElement {
             manifestUrl: this.manifestUrl,
             engineVersion: this.engineVersion,
             mapboxCssUrl: this.mapboxCssUrl,
-            attribution: this.attribution,
             mapSize: sizeOf(this.mapContainer),
             mapMenu: this.mapMenu,
+            legalLift: this.legalLift,
         };
         return renderViewer(view, this.#handlers);
     }
 
-    #watchAttribution(): void {
-        this.#stopAttribution();
+    #watchMapContainer(): void {
+        this.#stopWatching();
         const container = this.mapContainer;
         if (container !== null) {
-            const stopAttribution = watchAttribution(container, (parts) => {
-                this.attribution = parts;
-            });
-            const stopMenu = watchMapMenu(container, this.#openMapMenu);
-            this.#stopAttribution = () => {
-                stopAttribution();
-                stopMenu();
-            };
+            this.#stopWatching = watchMapMenu(container, this.#openMapMenu);
         }
     }
 

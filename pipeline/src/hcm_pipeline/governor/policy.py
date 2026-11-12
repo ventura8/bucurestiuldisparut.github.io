@@ -1,0 +1,108 @@
+"""Signals to a profile, with hysteresis (docs/research/M26-governor.md §3). One pure function, `decide`, and its small helpers.
+
+- The owner's choice wins over the user's activity: Quiet is always quiet, Full is full while the user works. Auto goes quiet within one
+  tick of input on the host (`idle_s` under `ACTIVE_IDLE_S`), of other processes using more than `OTHERS_BUSY_PCT` of the machine, or
+  of a switch to battery; it returns to full only after `CALM_S` with none of those.
+- Below `LOW_BATTERY_PCT` on battery it pauses, unless the owner allowed work on battery.
+- Thermal: at `CPU_HOT_C` on the processor or `GPU_HOT_C` on a graphics card it steps down one level (full to quiet, quiet to paused),
+  and steps back up only `COOL_MARGIN_C` below both.
+"""
+
+from dataclasses import dataclass, replace
+from typing import Final
+
+from hcm_pipeline.governor.signals import Chosen, Profile, Signals, Why
+
+TICK_S: Final = 5.0
+ACTIVE_IDLE_S: Final = 2 * TICK_S
+CALM_S: Final = 120.0
+OTHERS_BUSY_PCT: Final = 40.0
+LOW_BATTERY_PCT: Final = 30
+CPU_HOT_C: Final = 90.0
+GPU_HOT_C: Final = 83.0
+COOL_MARGIN_C: Final = 10.0
+STEP_DOWN: Final[dict[Profile, Profile]] = {"full": "quiet", "quiet": "paused", "paused": "paused"}
+
+
+@dataclass(frozen=True)
+class Choice:
+    """The owner's: the profile they chose in the admin's card, and whether work on a low battery is allowed."""
+
+    chosen: Chosen = "auto"
+    battery_allowed: bool = False
+
+
+@dataclass(frozen=True)
+class PolicyState:
+    """The profile in force and why, when the last pressure ended (None: under pressure, or never was), and whether it runs hot."""
+
+    active: Profile = "full"
+    why: Why = "idle"
+    calm_since: float | None = None
+    hot: bool = False
+
+
+def _hottest_gpu(signals: Signals) -> float:
+    return max((gpu.temp_c for gpu in signals.gpus if gpu.temp_c is not None), default=0.0)
+
+
+def is_hot(signals: Signals, was_hot: bool) -> bool:
+    """Hot at the limits; once hot, until `COOL_MARGIN_C` below both."""
+    cpu, gpu = signals.cpu.temp_c or 0.0, _hottest_gpu(signals)
+    if was_hot:
+        return cpu > CPU_HOT_C - COOL_MARGIN_C or gpu > GPU_HOT_C - COOL_MARGIN_C
+    return cpu >= CPU_HOT_C or gpu >= GPU_HOT_C
+
+
+def pressure(signals: Signals) -> Why | None:
+    """Why auto must be quiet now, or None."""
+    if signals.power.source == "battery":
+        return "battery"
+    if signals.idle_s is not None and signals.idle_s < ACTIVE_IDLE_S:
+        return "user-active"
+    return "others-busy" if signals.usage.others_cpu_pct > OTHERS_BUSY_PCT else None
+
+
+def _auto(signals: Signals, before: PolicyState, now: float) -> PolicyState:
+    why = pressure(signals)
+    if why is not None:
+        return replace(before, active="quiet", why=why, calm_since=None)
+    if before.active == "full":
+        return replace(before, why="idle", calm_since=None)
+    return _calming(before, now)
+
+
+def _calming(before: PolicyState, now: float) -> PolicyState:
+    """No pressure after some: quiet (a pause lifts to quiet) until `CALM_S` have passed, then full."""
+    calm_since = now if before.calm_since is None else before.calm_since
+    if now - calm_since >= CALM_S:
+        return replace(before, active="full", why="idle", calm_since=None)
+    return replace(before, active="quiet", calm_since=calm_since)
+
+
+def _chosen(signals: Signals, choice: Choice, before: PolicyState, now: float) -> PolicyState:
+    if choice.chosen == "auto":
+        return _auto(signals, before, now)
+    return replace(before, active=choice.chosen, why="owner", calm_since=None)
+
+
+def _battery_low(signals: Signals, choice: Choice) -> bool:
+    power = signals.power
+    low = power.source == "battery" and power.percent is not None and power.percent < LOW_BATTERY_PCT
+    return low and not choice.battery_allowed
+
+
+def decide(signals: Signals, choice: Choice, before: PolicyState, now: float) -> PolicyState:
+    """The profile for this tick. `before` is the last tick's answer (its `active` excludes the thermal step, kept in `hot`)."""
+    hot = is_hot(signals, before.hot)
+    state = replace(_chosen(signals, choice, before, now), hot=hot)
+    if _battery_low(signals, choice):
+        return replace(state, active="paused", why="battery")
+    return state
+
+
+def effective(state: PolicyState) -> tuple[Profile, Why]:
+    """The profile in force: one level lower while hot."""
+    if state.hot:
+        return STEP_DOWN[state.active], "thermal"
+    return state.active, state.why

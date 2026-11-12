@@ -122,4 +122,4 @@ def test_bad_path_a_search_past_its_budget_ends_not_found_and_searches_no_more_w
     assert second.proof is None
     assert first.votes == (0, 0)
     assert calls == [1]
-    assert said == ["the search ran out of its 10 min: the city is cropped by the footprint, points are next"]
+    assert said == ["the search ran out of its 10 min: the whole frame is offered, points are next"]

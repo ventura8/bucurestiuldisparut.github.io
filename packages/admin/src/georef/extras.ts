@@ -8,7 +8,7 @@ import type { Gcp } from '@hcm/shared';
 
 import type { ContentServices } from '../content/services.js';
 import type { OwnFit } from './fit-view.js';
-import type { publishedMap, snapPoints, ViewLink } from './georef-extras.js';
+import type { ghostOf, publishedMap, snapPoints, ViewLink } from './georef-extras.js';
 import type { Snapped } from './snap.js';
 
 /** What the chunk gives the georeferencer. */
@@ -16,6 +16,7 @@ interface GeorefExtrasChunk {
     readonly publishedMap: typeof publishedMap;
     readonly snapPoints: typeof snapPoints;
     readonly ViewLink: typeof ViewLink;
+    readonly ghostOf: typeof ghostOf;
 }
 
 export type ExtrasLoader = () => Promise<GeorefExtrasChunk>;

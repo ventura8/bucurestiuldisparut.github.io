@@ -23,7 +23,9 @@
         "height": 16384,
         "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "previewPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan-preview.jpg",
-        "previewScale": 0.2
+        "previewScale": 0.2,
+        "detailPath": "rasters/bucharest/kh-4a-corona-1966/job-1966-0712/scan-tiles.bin",
+        "detailScale": 0.8
     },
     "reference": {
         "bounds": {

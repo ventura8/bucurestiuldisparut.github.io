@@ -57,8 +57,8 @@ export const calibrationProposerSchema = z.strictObject({
     deviceName: z.string().min(1).max(120).optional(),
     seconds: metres,
     support: count,
-    /** Why not the graphics card: there is none, or it ran out of memory and this request ran again on the processor. */
-    fallback: z.enum(['no-gpu', 'out-of-memory']).optional(),
+    /** Why not the graphics card: there is none, it ran out of memory and this request ran again on the processor, or (M26) other programs held it. */
+    fallback: z.enum(['no-gpu', 'out-of-memory', 'gpu-busy']).optional(),
 });
 
 /**

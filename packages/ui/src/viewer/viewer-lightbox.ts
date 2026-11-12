@@ -8,6 +8,7 @@ import { html, type TemplateResult } from 'lit';
 
 import type { MenuPoint } from './map-menu-trigger.js';
 import type { ViewerState } from './store-port.js';
+import { photosNearYear, type TimelineStop } from './timeline-model.js';
 
 /** The map's menu's events (V62). */
 export interface MapMenuHandlers {
@@ -41,15 +42,29 @@ export interface LightboxHandlers {
     readonly onLightboxClose: (event: Event) => void;
 }
 
+/**
+ * The list the full-size view counts and pages through: the one it was opened from, the photo list's (the photos near the
+ * year, all of them at "today"), which the map's markers show too. A photo outside it (a link to a photo far from the
+ * year) pages through all of them. The Pixel 9 Pro review (P6) found "1 of 57" over a list of 11 photos.
+ */
+export function lightboxPhotos<P extends Pick<Photo, 'id' | 'year' | 'yearEnd'>>(
+    all: readonly P[],
+    year: TimelineStop,
+    photoId: string | null,
+): readonly P[] {
+    const near = year === null ? all : photosNearYear(all, year);
+    return near.some((photo) => photo.id === photoId) ? near : all;
+}
+
 export function lightbox(
     state: ViewerState,
-    photos: readonly Photo[],
+    all: readonly Photo[],
     view: { readonly locale: Locale; readonly manifestUrl: string },
     handlers: LightboxHandlers,
 ): TemplateResult {
     return html`<hcm-lightbox
         .open=${state.lightbox && state.selectedPhotoId !== null}
-        .photos=${photos}
+        .photos=${lightboxPhotos(all, state.year, state.selectedPhotoId)}
         .photoId=${state.selectedPhotoId}
         .photoVersion=${state.photoVersion}
         .locale=${view.locale}

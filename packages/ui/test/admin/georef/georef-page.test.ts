@@ -11,15 +11,6 @@ function calls(area: FakeArea<GeorefViewState, GeorefIntentsPort>): readonly str
     return area.calls.filter((call) => !call.startsWith('open [') && !call.startsWith('attachMap') && call !== 'close');
 }
 
-/** The segmented button labelled `label`. */
-function segmented(root: HTMLElement, label: string): HTMLElement {
-    const found = deepAll(root, 'hcm-segmented-button').find((candidate) => (candidate as HTMLElement & { label: string }).label === label);
-    if (found === undefined) {
-        throw new Error(`no segmented button ${label}`);
-    }
-    return found;
-}
-
 describe('<hcm-georef-page>', () => {
     beforeAll(defineImagery);
     afterEach(cleanup);
@@ -65,7 +56,9 @@ describe('<hcm-georef-page>', () => {
         deepAll(element, 'button.pair')[1]?.click();
         (deepAll(element, '.use input')[0] as HTMLInputElement).click();
         click(nth(element, 'table.residuals hcm-icon-button', 2));
-        deepAll(segmented(element, 'Reference image'), 'button')[1]?.click();
+        const shows = deep(element, 'select#map-shows') as HTMLSelectElement;
+        shows.value = 'reference:s2';
+        shows.dispatchEvent(new Event('change'));
         (deepAll(element, '.transforms input')[0] as HTMLInputElement).dispatchEvent(new Event('change'));
         const toggle = deep(element, 'hcm-switch');
         toggle.dispatchEvent(new CustomEvent('hcm-change', { detail: { checked: false } }));
@@ -81,6 +74,7 @@ describe('<hcm-georef-page>', () => {
             'select "g2"',
             'toggle "g1"',
             'remove "g3"',
+            'setBase null',
             'setReference "s2"',
             'setTransform "affine"',
             'togglePreview false',

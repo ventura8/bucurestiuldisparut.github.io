@@ -7,7 +7,6 @@
  * the rest one family per viewer feature. Keep one entry per line (scripts/ci/check_i18n.py).
  */
 export const ro = {
-    'hello.greeting': 'Salut, {name}!',
     'validation.required': 'Lipsește un câmp obligatoriu.',
     'validation.type': 'Valoarea are un tip greșit.',
     'validation.tooSmall': 'Valoarea este prea mică sau prea scurtă.',
@@ -82,9 +81,6 @@ export const ro = {
     'layers.photos': 'Fotografii',
     'layers.attribution': 'Sursa: {attribution}',
     'layers.empty': 'Straturile istorice vor apărea aici în curând.',
-    'layers.kind.satellite': 'Imagine satelitară',
-    'layers.kind.aerial': 'Fotografie aeriană',
-    'layers.kind.map': 'Hartă',
     'layers.group.historical': 'Straturi istorice',
     'layers.group.places': 'Locuri',
     'layers.opacityChanged': '{name}: opacitate {percent} %',

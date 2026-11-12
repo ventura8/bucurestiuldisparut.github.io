@@ -18,8 +18,16 @@ import { isoTimeSchema } from './common.js';
 export const WORKER_PORT = 8765;
 /** A worker seen this recently counts as connected (`auto` sends new jobs to the computer). */
 export const WORKER_FRESH_SECONDS = 180;
-/** How often an idle worker asks for a job (`worker.claim` also refreshes its `lastSeenAt`). */
+/** How often a worker asks for a job while awake (`worker.claim` also refreshes its `lastSeenAt`). */
 export const WORKER_POLL_SECONDS = 30;
+/**
+ * The longest an idle worker waits between two claims (`worker.hello`'s `idlePollSeconds`; `pipeline/src/hcm_pipeline/worker/pace.py`):
+ * ten minutes after its last job or the admin's last look it asks at most this rarely, so a new job starts within a minute. Not a
+ * listener: the worker reaches the project only through its callables (no Firestore SDK, and no rule lets it read the jobs), and a
+ * long-poll would hold a function instance for every idle minute. 43,200 calls a month a worker instead of 86,400
+ * (`reports/resource-audit.md` §4); the longest wait with its jitter stays well inside `WORKER_FRESH_SECONDS`.
+ */
+export const WORKER_IDLE_POLL_SECONDS = 60;
 /** How long a signed URL of `worker.urls` works. */
 export const WORKER_URL_SECONDS = 900;
 /** At most this many objects per `worker.urls` call. */
@@ -95,7 +103,7 @@ export const CLOUD_RUN_FREE_TIER = { vcpuSeconds: 180_000, gibSeconds: 360_000 }
  * The size of each Cloud Run job (`CLOUD_RUN_JOBS`), the one source of the installer's jobs (`scripts/site/src/install/steps/run-jobs.ts`)
  * and of the free-tier meter. 2026-11-12 (reports/resource-audit.md item 7, `docs/research/M7-local-worker.md` §4.6): `std` 2 vCPU / 8 GiB
  * and `xl` 4 / 16, down from 4 / 16 and 8 / 32, sized for GDAL's cache and a warp's memory that follow the machine (512 and 1,024 MB
- * on 8 GiB) and a 60-sheet atlas pasted part by part, both from `track/stripfix`, which ships first (DECISIONS-for-review.md §170);
+ * on 8 GiB) and a 60-sheet atlas pasted part by part, both from `track/stripfix`, which ships first (DECISIONS-for-review.md §177);
  * a run out of memory still runs again on the next machine (`fetch` → `std` → `xl`, today's `std`). A processing phase so takes half
  * the GiB-seconds: about 16 free runs a month, not 8.
  */

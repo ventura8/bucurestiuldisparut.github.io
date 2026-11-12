@@ -990,6 +990,13 @@
             "source": "the owner, 2026-11-12: Undo does not keep 50 commands; DECISIONS §143/lesson 547"
         },
         {
+            "id": "A141",
+            "area": "admin",
+            "name": "This computer: the worker says how much of the computer it uses, and the owner chooses Automatic, Quiet or Full",
+            "milestone": "M26",
+            "source": "docs/research/M26-governor.md (the owner, 2026-11-12: runs on modest hardware; nobody upgrades for us)"
+        },
+        {
             "id": "P30",
             "area": "pipeline",
             "name": "A Landsat scene is composed on the tile grid, pan-sharpened for ETM+, and checked against Sentinel-2 instead of georeferenced",
@@ -1072,6 +1079,13 @@
             "name": "The map's menu (right click, long press, ContextMenu key or Shift+F10) with Open in Google Street View, Copy coordinates and Share a link to this view; a photo's sheet links to Street View",
             "milestone": "M17",
             "source": "the owner, 2026-11-09: go to Google Street View from a right-click panel (hold on a touch screen) on the map, and from a photo's details"
+        },
+        {
+            "id": "P31",
+            "area": "pipeline",
+            "name": "The pipeline and the worker on somebody's own computer stay within a memory and processor budget, and an idle worker asks rarely",
+            "milestone": "M7",
+            "source": "the owner, 2026-11-12: reports/resource-audit.md (the machines are short of memory); docs/research/M7-local-worker.md, Addendum of 2026-11-12"
         }
     ],
     "scenarios": [
@@ -1703,6 +1717,50 @@
             "notes": "Milestone M1."
         },
         {
+            "id": "S-V08-HAPPY-DOUBLE-TAP",
+            "behaviour": "V08",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A double tap zooms the photo in at the tapped point, and a second one zooms back out",
+            "asserts": "double click at 3/4 of the photo's width -> the photo more than twice as wide, the tapped point of the photo still under the pointer (to 0.1 of its width); a second double click there -> the whole photo again",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P6). Tests: e2e/specs/viewer/photos.spec.ts; packages/ui/test/viewer/hcm-lightbox.test.ts, zoom.test.ts, viewer-lightbox.test.ts."
+        },
+        {
+            "id": "S-V08-BAD-DOUBLE-TAP-APART",
+            "behaviour": "V08",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Two clicks far apart on the photo are no double tap: the photo keeps its size",
+            "asserts": "a click at 20 % and one at 80 % of the photo's width -> the identity transform, the same width",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P6). Tests: e2e/specs/viewer/photos.spec.ts; packages/ui/test/viewer/hcm-lightbox.test.ts, zoom.test.ts, viewer-lightbox.test.ts."
+        },
+        {
+            "id": "S-V08-HAPPY-OPENED-LIST",
+            "behaviour": "V08",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The lightbox counts and pages through the list it was opened from: the photos near the year",
+            "asserts": "the 1966 layer on, a photo near 1966 opened full size -> 'k din n' with n the photos within ten years of 1966 (fewer than all); the arrows stop at its last one",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P6). Tests: e2e/specs/viewer/photos.spec.ts; packages/ui/test/viewer/hcm-lightbox.test.ts, zoom.test.ts, viewer-lightbox.test.ts."
+        },
+        {
+            "id": "S-V08-BAD-PHOTO-OUTSIDE-LIST",
+            "behaviour": "V08",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A photo far from the year (a link to it) pages through all the photos",
+            "asserts": "the 1966 layer on, a link to a photo far from 1966 opened full size -> its position among all the photos",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P6). Tests: e2e/specs/viewer/photos.spec.ts; packages/ui/test/viewer/hcm-lightbox.test.ts, zoom.test.ts, viewer-lightbox.test.ts."
+        },
+        {
             "id": "S-V08-BAD-BROKEN-IMAGE",
             "behaviour": "V08",
             "area": "viewer",
@@ -1934,6 +1992,28 @@
             "notes": "Milestone M1."
         },
         {
+            "id": "S-V12-HAPPY-ONLY-LIGHT",
+            "behaviour": "V12",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The light theme under a dark system keeps its own colours: the FAB and the menu's labels are painted with their contrast",
+            "asserts": "a dark system with Chrome's dark theme for sites, Settings -> Luminoasă: the viewer's color-scheme is 'only light'; the FAB's icon painted at 3:1 or more on its fill, read from the screen's pixels; the open menu's labels at 4.5:1 or more",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P2). Tests: e2e/specs/viewer/dark-theme-for-sites.spec.ts (its own Chromium with --blink-settings=forceDarkModeEnabled=true); the tour's rendered contrast (e2e/support/rendered-contrast.ts) at the dark tours, state other-theme-menu; packages/ui/test/theme/apply.test.ts."
+        },
+        {
+            "id": "S-V12-BAD-FORCED-DARK-SYSTEM",
+            "behaviour": "V12",
+            "area": "viewer",
+            "path": "bad",
+            "title": "The dark theme chosen, or the system's, is the viewer's own dark, which Chrome's dark theme for sites leaves alone",
+            "asserts": "a dark system with Chrome's dark theme for sites: the system theme is 'light dark' and the open menu painted with its contrast; Settings -> Întunecată: 'only dark', the same",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P2). Tests: e2e/specs/viewer/dark-theme-for-sites.spec.ts (its own Chromium with --blink-settings=forceDarkModeEnabled=true); the tour's rendered contrast (e2e/support/rendered-contrast.ts) at the dark tours, state other-theme-menu; packages/ui/test/theme/apply.test.ts."
+        },
+        {
             "id": "S-V12-BAD-ABOUT-NO-PREFERENCES",
             "behaviour": "V12",
             "area": "viewer",
@@ -2093,7 +2173,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "Every viewer state passes the generic accessibility checker at every viewport",
-            "asserts": "tour, every state of the inventory at all 11 viewports, light and dark, RO and EN: axe (WCAG 2.0, 2.1 and 2.2 A and AA plus best practices) passes; pointer targets at least 24 px or spaced (WCAG 2.5.8) and 48 px on compact and medium; one full Tab round reaches every control once, never climbing back up inside a component, each with a focus ring of 3:1, uncovered, without a trap and never out of an open modal; Esc closes a popup and the focus returns to its opener; switches, sliders, fields and icon buttons reach 3:1 in the page's scheme and in high contrast; landmarks are named and distinct; the slider's new opacity is announced",
+            "asserts": "tour, every state of the inventory at all 11 viewports, light and dark, RO and EN: axe (WCAG 2.0, 2.1 and 2.2 A and AA plus best practices) passes; pointer targets at least 24 px or spaced (WCAG 2.5.8) and 48 px on compact and medium; one full Tab round reaches every control once, never climbing back up inside a component, each with a focus ring of 3:1, uncovered, without a trap and never out of an open modal; Esc closes a popup and the focus returns to its opener; switches, sliders, fields and icon buttons reach 3:1 in the page's scheme and in high contrast; the FAB and the open menu's items are painted at 3:1 (icon) and 4.5:1 (label), read from the screen's pixels (the dark tours run with Chrome's dark theme for sites); landmarks are named and distinct; the slider's new opacity is announced",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Since 2026-10-17. The user's request of 2026-10-12 ('in the phone screens the menu button sometimes overlaps with other elements. we should have tests for overlapping elements!!! also for accessibility!!'): the generic checkers of e2e/support/layout.ts and e2e/support/a11y.ts over the state inventory e2e/tour/states.ts (docs/TESTING.md, The tour's checkers)."
@@ -2196,6 +2276,17 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Since 2026-10-17. The 320 px projects of the tour matrix check it natively; the other upright phones narrow to 320 and back. The user's request of 2026-10-12 ('in the phone screens the menu button sometimes overlaps with other elements. we should have tests for overlapping elements!!! also for accessibility!!'): the generic checkers of e2e/support/layout.ts and e2e/support/a11y.ts over the state inventory e2e/tour/states.ts (docs/TESTING.md, The tour's checkers)."
+        },
+        {
+            "id": "S-V15-BAD-SHORT-LANDSCAPE-MENU",
+            "behaviour": "V15",
+            "area": "viewer",
+            "path": "bad",
+            "title": "On a short landscape phone the open FAB menu keeps every item on screen, in rows above the FAB",
+            "asserts": "tour journey short-landscape in every tour project: the window at 884 x 322 and at 568 x 270, the FAB menu open -> the generic layout and accessibility checks pass (no item off screen, nothing overlapping, 48 px targets), Esc closes it and the focus returns to the FAB; unit: at 884 x 290 every item inside the viewer above the FAB, the card hidden, items 48 px tall; at 568 x 270 the menu scrolls and End brings its last item into view",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P1: at 884 x 322 with Chrome's bars seven items lay in one row, 263 px off the screen). Tests: e2e/tour/viewer.tour.ts (e2e/tour/settings-states.ts); packages/ui/test/viewer/landscape-menu.test.ts."
         },
         {
             "id": "S-V16-HAPPY",
@@ -2312,22 +2403,22 @@
             "behaviour": "V18",
             "area": "viewer",
             "path": "happy",
-            "title": "With a sheet, the lightbox or About open the Mapbox logo and attribution stay visible and uncovered",
-            "asserts": "tour, every state at all 11 viewports: exactly one visible Mapbox logo and one attribution, on top (Mapbox's own on the map; the viewer's legal bar below a modal sheet or the lightbox; the foot of About); the usable floating controls stay apart",
+            "title": "With a sheet, the lightbox or a dialog open, the surface sits above the map and its credits, which stay visible wherever the map shows",
+            "asserts": "tour, every state at all 11 viewports: with any of the map in view, exactly one visible Mapbox logo and one attribution, uncovered or under nothing but a sheet's translucent scrim (Mapbox's own controls, moved above a bottom sheet or beside a side sheet); none owed where the lightbox or a full-screen dialog hides the whole map; no copy of the credits at the foot of a sheet, the lightbox, About or Settings; the usable floating controls stay apart",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o). packages/ui/src/viewer/attribution.ts, viewer-legal.ts, hcm-map-attribution.ts; the tour (e2e/tour/viewer.tour.ts)."
+            "notes": "M1 follow-up, delivered with M2; redesigned after the Pixel 9 Pro review, 2026-11-12 (P3: the legal bar and About's copy took 40 to 80 px of every surface on a phone). packages/ui/src/viewer/legal-lift.ts, viewer-legal.ts, viewer-styles.ts; the tour (e2e/tour/viewer.tour.ts, e2e/support/layout-probe.ts mapSeen and probeLegal); packages/ui/test/viewer/legal-lift.test.ts."
         },
         {
             "id": "S-V18-BAD-FULL-SHEET",
             "behaviour": "V18",
             "area": "viewer",
             "path": "bad",
-            "title": "A full-height sheet on a phone ends above the legal bar, which keeps the logo and the credits of a layer switched on",
-            "asserts": "360 x 800, the Layers sheet at full height -> the sheet ends where the legal bar begins; the bar's logo and attribution are on top and Mapbox's own controls hidden; switching on the 1966 layer adds USGS (e2e) to the bar; its links are https",
+            "title": "A full-height sheet on a phone reaches the viewer's foot; Mapbox's logo and credits, a layer's among them, rise above it",
+            "asserts": "360 x 800, the Layers sheet at full height -> the sheet ends at the viewer's foot, no legal bar; Mapbox's own logo and attribution are visible and end above the sheet's top edge, in the 72 px of map it leaves; switching on the 1966 layer adds USGS (e2e) to Mapbox's attribution; its links are https",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o)."
+            "notes": "M1 follow-up, delivered with M2; redesigned after the Pixel 9 Pro review, 2026-11-12 (P3). Tests: e2e/specs/viewer/responsive.spec.ts; packages/ui/test/viewer/legal-lift.test.ts."
         },
         {
             "id": "S-V19-HAPPY",
@@ -3186,6 +3277,39 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Code review of 2026-11-07. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts."
+        },
+        {
+            "id": "S-V31-HAPPY-TRANSIT",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Points of interest off hide the tram and metro stations too, and a reload keeps them hidden",
+            "asserts": "the points of interest switch off -> Mapbox GL reports showTransitLabels false on the basemap import and the hash names labels=streets; a reload mounts with them hidden; the switch on shows them again; one map",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-08: tram and metro stations stayed after the points of interest were turned off. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts, packages/engine/test/compare/session.test.ts."
+        },
+        {
+            "id": "S-V31-BAD-TRANSIT-CITY",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A city's own transit choice stands when the points of interest come back",
+            "asserts": "basemap.config showTransitLabels false and labels=streets -> the points of interest switch on draws them, and Mapbox GL still reports showTransitLabels false",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-08. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts, packages/shared/test/overlays/map-labels.test.ts."
+        },
+        {
+            "id": "S-V31-BAD-TRANSIT-UNKNOWN",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A custom basemap is sent no transit property",
+            "asserts": "a custom style without the basemap import -> no points of interest switch; setMapLabels({pois: false}) writes nothing (Mapbox GL reports no showTransitLabels) and fires nothing",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-08. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts, packages/engine/test/core/map-specs.test.ts."
         },
         {
             "id": "S-V03-HAPPY-LAYERS-PINNED",
@@ -6189,6 +6313,160 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The owner, 2026-11-12. Tests: e2e/admin/specs/imagery/georef-linked.spec.ts, packages/admin/test/georef/linked-views.test.ts, packages/admin/test/georef/georef-linked.test.ts, packages/ui/test/admin/georef/scan-viewer-linked.test.ts, packages/ui/test/admin/georef/georef-linked-page.test.ts."
+        },
+        {
+            "id": "S-A16-HAPPY-GEOREF-KEEP-ZOOM",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "The scan keeps the owner's zoom and centre when a pair is added and when its pane changes size",
+            "asserts": "the scan zoomed in on a landmark: a pair added there (a click on the scan, one on the map) leaves the scan at the same zoom with the same pixel in the middle; a window a scrollbar's width narrower (the page grown taller below) keeps that zoom and centre too, the pane only re-centred",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's 1966 Corona frames, 2026-11-12 (DECISIONS-for-review.md, the section on the georeferencer's ghost and sharper scan). Root cause: the scan pane fitted the whole strip again whenever its size changed. Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts, packages/ui/test/admin/georef/scan-viewer-keep.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-GEOREF-KEEP-ZOOM-NEVER-SHOWN",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "A scan never zoomed, or never shown, fits the whole frame again when its pane changes size",
+            "asserts": "the scan showing the whole frame: a narrower window shows the whole frame at the new pane's scale with its middle at the centre; a pane that had no size (hidden on a compact window) fits the frame when it first shows",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's 1966 Corona frames, 2026-11-12 (DECISIONS-for-review.md, the section on the georeferencer's ghost and sharper scan). Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts, packages/ui/test/admin/georef/scan-viewer-keep.test.ts."
+        },
+        {
+            "id": "S-A16-HAPPY-GEOREF-GHOST",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "While a pair waits for its second click the panes stand still and a dashed ring shows where the pairs expect it",
+            "asserts": "Add pairs, a click on the scan: the hint says to click the same place on the map and that the dashed ring is where it is expected (where the pairs so far put it); zooming the scan meanwhile leaves the map where it is even with the views linked; the ring is where the fit puts the clicked scan pixel (within 60 m of the landmark) and takes no click: a click on its centre makes the pair there; map first, the ring is on the scan at the pixel showing the clicked place (within 3 px), as the scan pane draws it, and the scan stays still while the map zooms; with a fit the ring is the fit's place, with exactly two pairs it comes from the shift, turn and scale that carry the one onto the other; Esc or Add pairs off takes it away",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's 1966 Corona frames, 2026-11-12 (DECISIONS-for-review.md, the section on the georeferencer's ghost and sharper scan). A fast second click had landed 1 km off when the linked map moved to the fit's place. The arithmetic is in the lazy georef-extras chunk. Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts (state georef.ghost), packages/admin/test/georef/ghost.test.ts, packages/admin/test/georef/georef-ghost.test.ts, packages/ui/test/admin/georef/georef-ghost-page.test.ts, packages/ui/test/admin/georef/scan-viewer-keep.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-GEOREF-GHOST-NO-PAIRS",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "With fewer than two pairs and no fit there is no ghost, and only the plain hint",
+            "asserts": "one pair (or none) and no fit: a click on the scan shows the plain hint to click the same place on the map and no dashed ring, and the lazy chunk is not fetched for it; two pairs at one pixel or at one place, or a place the mapping cannot give, show no ring either",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's 1966 Corona frames, 2026-11-12 (DECISIONS-for-review.md, the section on the georeferencer's ghost and sharper scan). Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts, packages/admin/test/georef/ghost.test.ts, packages/admin/test/georef/georef-ghost.test.ts, packages/ui/test/admin/georef/georef-ghost-page.test.ts."
+        },
+        {
+            "id": "S-A16-HAPPY-GEOREF-FULL-RES",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "Zoomed past the preview's own pixels, the scan pane draws the sharper scan",
+            "asserts": "a scan longer than its 4096 px preview gets a sharper copy as JPEG tiles of 1024 px in one file (scan-tiles.bin, at most 16384 px long and 64 million pixels, so a near-square upload gets 8000 x 8000) when the pipeline parks it; zoomed past the preview's own device pixels (CSS px x devicePixelRatio: a phone sooner), by the owner or by the linked map, the page fetches the file once and the pane decodes only the tiles it shows, none larger than a tile, draws them over the preview at the same place and scale and keeps at most 32 decoded (about 128 MiB), closing the rest; leaving the page closes them; the warped map preview is drawn 4096 px across (3072 before)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's 1966 Corona frames, 2026-11-12 (DECISIONS-for-review.md, the section on the georeferencer's ghost and sharper scan). Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts, pipeline/tests/unit/test_publish_scan.py, packages/admin/test/georef/georef-pictures.test.ts, packages/admin/test/georef/georef-ghost.test.ts, packages/ui/test/admin/georef/scan-viewer-keep.test.ts, packages/ui/test/admin/georef/scan-tiles.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-GEOREF-FULL-RES-NONE",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without a sharper scan, or while it loads, the pane keeps the preview and says nothing",
+            "asserts": "a scan no longer than its preview gets no sharper copy and the version records none; a version parked before has none either; a scan shown whole (never zoomed past the preview's device pixels) fetches none and the pane gets none; a sharper scan missing from the bucket, still loading or arriving after the page closed leaves the preview drawn, with no error",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's 1966 Corona frames, 2026-11-12 (DECISIONS-for-review.md, the section on the georeferencer's ghost and sharper scan). Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts, pipeline/tests/unit/test_publish_scan.py, packages/admin/test/georef/georef-pictures.test.ts, packages/ui/test/admin/georef/scan-viewer-keep.test.ts."
+        },
+        {
+            "id": "S-A16-HAPPY-GEOREF-REMOVE-UNDO",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "A chosen pair is removed from beside the panes or with Delete on either pane, and the notice's Undo puts it back",
+            "asserts": "a pair chosen in the table shows Delete pair N beside the panes; pressing it, or Delete or Backspace on the map pane (as on the scan), removes the pair in one Undo step and a notice says Pair N was removed with Undo for ten seconds; Undo puts that very pair back at its place in the list, whatever was edited since, and nothing is left to save",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §173). Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts (state georef.pair-removed), packages/admin/test/georef/removing.test.ts, packages/ui/test/admin/georef/georef-remove-page.test.ts, packages/ui/test/admin/map/map-elements.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-GEOREF-REMOVE-NOTHING",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "With no pair chosen, or on a version that takes no points, nothing is removed",
+            "asserts": "no pair chosen: no Delete button beside the panes, Delete and Backspace on the map remove nothing and no notice shows; a pair that is no longer there, a version that takes no points and an admin whose access was removed remove nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §173). Tests: e2e/admin/specs/imagery/georef-ghost.spec.ts, packages/admin/test/georef/removing.test.ts, packages/ui/test/admin/georef/georef-remove-page.test.ts."
+        },
+        {
+            "id": "S-A16-HAPPY-GEOREF-MAP-SHOWS",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "The map pane shows OpenStreetMap, Sentinel-2 or one of the city's published layers under the pairs",
+            "asserts": "The map shows, a labelled native list above the map, offers the version's references and the city's published layers by name and year, oldest first; choosing a layer draws it opaque under the pairs and the warped preview on the page's one map and credits it below; choosing a reference takes it off; the choice is kept for the next version opened while the admin is open; Mapbox Satellite is never offered",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §173). Tests: e2e/admin/specs/imagery/layer-geometry.spec.ts (state georef.map-shows), packages/admin/test/georef/base-layers.test.ts, packages/ui/test/admin/georef/georef-map-shows.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-GEOREF-MAP-SHOWS-GONE",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "A layer that is no longer published leaves the map pane, and one thing to show offers no list",
+            "asserts": "a draft layer is not offered; a layer shown that stops being published goes off the map and the pane is back on the reference; a layer id that does not exist draws nothing; with one reference and no published layer there is no list",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §173). Tests: packages/admin/test/georef/base-layers.test.ts, packages/ui/test/admin/georef/georef-map-shows.test.ts."
+        },
+        {
+            "id": "S-A16-HAPPY-EDIT-POINTS-PUBLISHED",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "Edit points on a version the map shows opens its pairs and says that saving makes a new version",
+            "asserts": "a published version's page and its layer's editor offer Edit points; the georeferencer opens on that version's pairs, editable, and says the version is on the map, that saving makes a new version and that this one stays until the new one is approved; saving starts a regeoref version of the same layer, which keeps its tiles until that one is published",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §173). The server side is S-A16-HAPPY-REGEOREF-LAYER's (imagery.saveGcps, regeoref.ts): nothing was missing. Tests: e2e/admin/specs/imagery/layer-geometry.spec.ts (state georef.edit-published), packages/admin/test/georef/edit-points.test.ts, packages/ui/test/admin/georef/georef-edit-points.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-EDIT-POINTS-ENDED",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version that ended or is on its way to the map offers no Edit points",
+            "asserts": "a superseded, approved or publishing version takes no points: its page has no link to the georeferencer, the georeferencer opened on it says it takes no points and says nothing about a new version; a version still waiting for its first points offers Open the georeferencer, not Edit points",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §173). Tests: packages/admin/test/georef/edit-points.test.ts, packages/ui/test/admin/georef/georef-edit-points.test.ts."
+        },
+        {
+            "id": "S-A16-HAPPY-GEOREF-ROTATE",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "Each pane turns on its own and, once the pairs give a fit, the two turn together",
+            "asserts": "under each pane a group of buttons turns it: Turn left, Turn right and Upright (the scan) or North up (the map), 15 degrees a press; on the scan r and R turn it, n sets it upright and Ctrl with a drag turns it about the pane's centre, what is at the centre staying there; pairs, the ghost, clicks and the sharper tiles follow the turn; with a fit and Turn the panes together on (the default, kept while the admin is open) the map takes the bearing that shows the ground as the turned scan does and the scan the angle that suits the map's bearing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §173). Tests: e2e/admin/specs/imagery/georef-linked.spec.ts (state georef.rotated), packages/admin/test/georef/rotation.test.ts, packages/ui/test/admin/georef/scan-rotate.test.ts."
+        },
+        {
+            "id": "S-A16-BAD-GEOREF-ROTATE-APART",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "Turned apart, or without a fit, a pane's turn leaves the other as it is",
+            "asserts": "Turn the panes together off: the scan turns and the map keeps its bearing, the map turns and the scan keeps its angle, while their places still follow each other; without a fit the toggle is off and disabled and each pane still turns alone; a fit with no place at the pane's centre turns nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's requests for beta.1, 2026-11-12 (DECISIONS-for-review.md §173). Tests: e2e/admin/specs/imagery/georef-linked.spec.ts, packages/admin/test/georef/rotation.test.ts, packages/ui/test/admin/georef/scan-rotate.test.ts."
         },
         {
             "id": "S-A17-HAPPY",
@@ -12917,7 +13195,7 @@
             "area": "pipeline",
             "path": "happy",
             "title": "With no graphics card the processor runs, said in plain words; a silent processor run is impossible",
-            "asserts": "--gpus all and CDI both fail the probe -> the starter logs NO GRAPHICS CARD and runs HCM_AI_DEVICE=cpu with the reason; the proposer records `fallback: no-gpu`; the processor looks at the first two orientations, on half the threads; HCM_AI_DEVICE=gpu that finds no card exits 77 (76 under 2 GB) and is probed again, and HCM_AI_DEVICE=cpu with no reason is refused",
+            "asserts": "--gpus all and CDI both fail the probe -> the starter logs NO GRAPHICS CARD and runs HCM_AI_DEVICE=cpu with the reason; the proposer records `fallback: no-gpu`; the processor looks at the first two orientations, on the threads but one, niced; HCM_AI_DEVICE=gpu that finds no card exits 77 (76 under 2 GB) and is probed again, and HCM_AI_DEVICE=cpu with no reason is refused",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_matcher_serve.py, test_matcher_torch.py, test_local_matcher.py, functions/test/worker/starter-sidecar.test.ts. PowerShell: starter-windows.test.ts."
@@ -17521,6 +17799,50 @@
             "notes": "Lesson 547. Tests: packages/admin/test/georef/georef.test.ts (happyPath_undoTakesBackTheLastEditsOneByOneAndNothingMoreAfterDiscard)."
         },
         {
+            "id": "S-A141-HAPPY",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The connected computer's card says its size and profile, and the owner's Quiet is kept by the worker",
+            "asserts": "the worker's /state carries machine (cores, memory, power, cards, the matcher's place, the profile and why, the budget); the card under This computer is connected shows the cores and memory, Automatic / Quiet / Full, the profile in force with its threads and GB and why, and where the local AI runs; choosing Quiet posts POST /profile from the Hosting origin and the worker's state says chosen quiet, why owner; ro and en",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M26. Tests: e2e/admin/specs/imagery/worker-run.spec.ts (tour state worker.local-machine), packages/ui/test/admin/worker/machine.test.ts, packages/admin/test/worker/machine.test.ts, pipeline/tests/unit/test_worker_governor.py, test_governor_loop.py."
+        },
+        {
+            "id": "S-A141-BAD-OLD-WORKER",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A worker older than the governor asks to be updated; a stranger or a bad profile changes nothing",
+            "asserts": "a /state with no machine -> the card says update the worker and offers no choice; a machine this admin cannot read counts as old; POST /profile from another origin, as a form or too large -> 403, an unknown profile -> 400, and the choice stays; a refused choice is said on the card",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M26. Tests: packages/ui/test/admin/worker/machine.test.ts, packages/admin/test/worker/machine.test.ts, pipeline/tests/unit/test_worker_governor.py."
+        },
+        {
+            "id": "S-A141-BAD-NO-GPU",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "No graphics card reachable, or one other programs hold: the local AI runs on the processor and the card says why",
+            "asserts": "no card (or none this release has a sidecar image for, or one Docker cannot pass in: Windows on ARM, macOS) -> matcher cpu with why no-gpu / no-image / no-passthrough and the card's no-graphics-card line; a card whose free memory after other programs' is under 2 GB -> why gpu-busy, each matcher request runs on the processor with fallback gpu-busy",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M26. Tests: pipeline/tests/unit/test_governor_budget.py, test_matcher_torch.py, packages/ui/test/admin/worker/machine.test.ts."
+        },
+        {
+            "id": "S-A141-BAD-BATTERY",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "On a low battery the worker pauses; a hot computer steps down; the user at the keyboard gets the computer back",
+            "asserts": "on battery -> quiet; under 30 % -> paused (unless allowed), the running step waits at its next checkpoint with its time limit moved, the local AI off; at 90 C on the processor or 83 C on the card one level down, back 10 C below; input on the host or other programs over 40 % -> quiet within one tick, full again only after 120 s calm; the hysteresis never flaps (property test)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M26. Tests: pipeline/tests/unit/test_governor_policy.py, test_governor_loop.py, test_worker_governor.py, packages/ui/test/admin/worker/machine.test.ts."
+        },
+        {
             "id": "S-P20-HAPPY-PDF-ATLAS",
             "behaviour": "P20",
             "area": "pipeline",
@@ -17613,11 +17935,66 @@
             "behaviour": "P06",
             "area": "pipeline",
             "path": "bad",
-            "title": "A frame's search past its budget crops by the footprint and waits for points",
-            "asserts": "a KH-5 Argon search still running after 10 min -> it stops, the windows left are not searched, the frame is not proved and its city crop by the footprint waits for points (never an hour with no end)",
+            "title": "A frame's search past its budget offers the whole frame and waits for points",
+            "asserts": "a KH-5 Argon search still running after 10 min -> it stops, the windows left are not searched, the frame is not proved and waits for points as the whole frame shrunk (never an hour with no end, never a crop by an unproved footprint)",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_step_limits.py."
+        },
+        {
+            "id": "S-P06-HAPPY-WHOLE-STRIP",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A strip no window of which is proved is offered whole",
+            "asserts": "a Corona strip whose footprint windows prove nothing -> the scan is the whole exposure shrunk to the preview budget and marked so, no corner pairs, the delivery kept, the job waits for rough points anywhere on the strip",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
+        },
+        {
+            "id": "S-P06-BAD-WHOLE-STRIP-UNPROVED",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "No unproved window, timed-out search or oversized frame is cut by a guess",
+            "asserts": "nothing proved and the search held a window, ran out of time or the frame is over the budget -> never the first window's crop; only a small frame searched whole and in time keeps the bounded crop",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
+        },
+        {
+            "id": "S-P06-HAPPY-ROUGH-POINTS-CROP",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Rough points on the whole strip crop it at full resolution",
+            "asserts": "the owner's rough points on the shrunk strip -> the film is cut around them with the city window's margin at full resolution, the points move into the crop, and the job goes on to approval",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
+        },
+        {
+            "id": "S-P06-BAD-ROUGH-POINTS-OUTSIDE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Rough points outside the strip are refused",
+            "asserts": "a point off the shrunk scan -> gcpOutside naming it, the scan stays the whole strip; points on one place give no scale; points at the strip's end keep the crop on the film",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
+        },
+        {
+            "id": "S-P06-BAD-ROUGH-POINTS-FILM-GONE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Rough points on a strip whose film is gone ask for the import again",
+            "asserts": "frame.json or a segment no longer stored -> the step fails saying to use Locate again while the delivery is kept, else to import the frame again; nothing is cropped",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live 2026-11-12 (DS1103-1058DF027, track/stripfix); docs/research/M9-calibration.md §17. Tests: pipeline/tests/unit/test_whole.py, pipeline/tests/integration/test_whole_frame.py."
         },
         {
             "id": "S-P22-HAPPY-PAIRS-IN-SCAN",
@@ -17851,6 +18228,28 @@
             "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/specs/viewer/map-menu.spec.ts."
         },
         {
+            "id": "S-V62-HAPPY-NO-SELECTION",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A long press on the map selects no text and offers no touch callout; the menu alone answers",
+            "asserts": "a touch pointer held on the map -> selectstart under it is cancelled, the menu opens, selectstart on the credits after it is cancelled too; the map is user-select: none (and -webkit-touch-callout: none for Safari); nothing is selected",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P4: Chrome on Android began a text selection and Touch to Search under the long press). Tests: e2e/specs/viewer/map-menu.spec.ts; packages/ui/test/viewer/map-menu.test.ts."
+        },
+        {
+            "id": "S-V62-BAD-SHORT-TAP",
+            "behaviour": "V62",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A short tap on the map lets the browser select again once the finger lifts, and opens no menu",
+            "asserts": "a touch pointer down and up at once -> no menu; selectstart is no longer cancelled",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The Pixel 9 Pro review, 2026-11-12 (P4: Chrome on Android began a text selection and Touch to Search under the long press). Tests: e2e/specs/viewer/map-menu.spec.ts; packages/ui/test/viewer/map-menu.test.ts."
+        },
+        {
             "id": "S-V62-HAPPY-PHOTO",
             "behaviour": "V62",
             "area": "viewer",
@@ -17926,6 +18325,171 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/tour/viewer.tour.ts (e2e/tour/map-menu-states.ts)."
+        },
+        {
+            "id": "S-P31-HAPPY-GDAL-MEMORY",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "GDAL's cache and a warp's memory follow the machine",
+            "asserts": "a process that may use 4 GB -> a 256 MB cache and a 512 MB warp; 16 GB or more, or unknown -> the 1024 and 2048 MB of before; the container's limit and the free memory are read, HCM_GDAL_CACHE_MB and HCM_WARP_MEMORY_MB win",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-BAD-GDAL-MEMORY-UNKNOWN",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "No limit, a busy machine, an unreadable one or a bad override still give usable settings",
+            "asserts": "no cgroup file and no /proc/meminfo -> the large machine's settings; a limit of max -> the free memory decides; an override that is no positive number is not taken",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-WARP-BUDGET",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A warp and an export on a 4 GB machine stay within their memory budget",
+            "asserts": "a 20,000 by 5,000 scan warped (thin plate) and exported as a COG in a process of its own with a 4 GB machine's settings -> its peak memory stays under the budget measured between the old and the new settings",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-CANVAS-BUDGET",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An atlas's canvas is composed part by part within its budget, pixel for pixel as before",
+            "asserts": "36 colour sheets composed in a process of its own -> peak memory and CPU under the budget; the canvas equals the one composed on whole canvases (an atlas exactly, turned overlapping parts within two grey levels at under 1 % of the pixels)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-BAD-CANVAS-OFF-EDGE",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A part off the canvas or over its edge leaves the rest as it was",
+            "asserts": "a part placed wholly outside the canvas is skipped and one over the edge is cut at it -> the same canvas as before, the other parts untouched",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-TILE-PROCESSES",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The tiles are cut by the cores but one, at most what a quarter of the memory holds",
+            "asserts": "16 cores and 31 GB -> 15 processes; 16 cores and 4 GB -> 4; GDAL_NUM_THREADS as a number is a ceiling, never a floor",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-WINDOWED-READS",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A city crop and an upload's preview never hold the raster whole",
+            "asserts": "DS1103-1058DF027's 35,664 by 8,172 crop copied out of two segments 1,024 rows at a time and previewed by a shrunk read, and the preview of a 20,000 px colour upload, each in a process of its own -> peak memory under the budget",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-BAD-WINDOWED-READS-SMALL",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A small or grey scan's preview is the scan itself",
+            "asserts": "a scan under the preview's size is not enlarged and a grey one stays grey; a colour scan wider than the preview is averaged down band by band",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-BAD-TILE-PROCESSES-SMALL",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A one-core or nearly memoryless machine still cuts its tiles with one process",
+            "asserts": "1 core, an unknown core count or 100 MB of memory -> one process, never none",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
+        },
+        {
+            "id": "S-P31-HAPPY-WORKER-POLITE",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The worker is capped in memory, light on the processor and leaves a core free",
+            "asserts": "the starter's worker container gets --memory and --memory-swap at 60 % of what Docker has and --cpu-shares 256 (POSIX run over stand-ins, the Windows text); the worker process is niced by 10 and GDAL takes the cores but one",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."
+        },
+        {
+            "id": "S-P31-BAD-WORKER-POLITE-OVERRIDE",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "The owner's own limits win",
+            "asserts": "HCM_WORKER_MEMORY (a size, or none for no limit), HCM_WORKER_THREADS and HCM_WORKER_NICE (0: not niced; not a number: 10) are taken as given; GDAL_NUM_THREADS in the environment stays the worker's thread count",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."
+        },
+        {
+            "id": "S-P31-HAPPY-CLAIM-BACKOFF",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An idle worker asks for a job less and less often, and often again after a job or the admin's look",
+            "asserts": "ten minutes after its start, its last job or the admin's last GET /state the waits grow from pollSeconds up to idlePollSeconds (60 s, so a new job starts within a minute) with a tenth of jitter; a job that ran or the admin's page looking ends a long wait; the worker still counts as connected (WORKER_FRESH_SECONDS covers the longest wait)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."
+        },
+        {
+            "id": "S-P31-BAD-CLAIM-BACKOFF-OLD-SERVER",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A server that names no idle interval is asked as before",
+            "asserts": "worker.hello without idlePollSeconds (a server older than the image) -> a claim every pollSeconds, so its three-minute presence still holds; a longest wait under the poll changes nothing",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."
+        },
+        {
+            "id": "S-P31-HAPPY-ATLAS-PAGES",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An atlas holds its pages grey and reads each in colour only to paste it",
+            "asserts": "36 colour sheets on disk composed as placing/maps.py does, in a process of its own -> peak memory under the budget; the canvas equals the one made of pages held in colour, a framed page cut the same way; the canvas is written once and published as the stitched picture",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/integration/test_memory_budgets.py, pipeline/tests/unit/test_compose_canvas.py."
+        },
+        {
+            "id": "S-P31-HAPPY-SMALL-MACHINE",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A 4 GB computer's worker assembles a 60-sheet colour atlas and crops a Corona strip",
+            "asserts": "60 colour sheets of 2,222 px and a 35,664 by 8,172 city crop, each in a process of its own -> peak memory under 60 % of 4 GB, the worker's cap there",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/integration/test_memory_budgets.py, pipeline/tests/unit/test_compose_canvas.py."
         }
     ]
 }

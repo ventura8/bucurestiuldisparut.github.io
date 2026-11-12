@@ -118,6 +118,12 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # Shared badge painters + map canvas overlay (DECISIONS-for-review.md §146): 1.9 KB measured, out of `georef` (stays 19); with the
     # pairs' leaf helpers and full screen's cover moved in for the linked views (§156), 2.7 KB measured on 2026-11-12. No row rose.
     "georef-badges": 3,
+    # The georeferencer's panes and the beta.1 requests beside them (2026-11-12; DECISIONS-for-review.md §172, §173): the panes'
+    # template with The map shows and Delete pair N, the scan pane's gestures and its tiles' holder, removing a pair with Undo and the
+    # published layers the map pane shows (`GEOREF_PANE_MODULES` of `packages/admin/vite.config.ts`). It loads with the page, like
+    # `georef-badges`: `georef` was at 19.9 KB with them (budget 19) and stays 19.
+    # 4.2 KB measured on 2026-11-12 with the turning and the scan pane's drawing (out of `georef-badges`), plus about 20 %, rounded up.
+    "georef-panes": 6,
     "layer-geometry": 3,
     # M4's order card (`packages/ui/src/admin/imagery/orders/lazy-card.ts`), fetched the first time a scene that must be
     # bought opens, so the Imagery area stays within its budget with the buy flow: 1.7 KB measured on 2026-10-24 plus about
@@ -222,6 +228,15 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # (`packages/ui/src/admin/georef/georef-menu.ts` with `georef-menu-host.ts`), fetched at the page's first render, out of the `georef`
     # chunk (19 KB): 2.4 KB measured on 2026-11-12 plus about 20 %, rounded up.
     "georef-menu": 3,
+    # The georeferencer's warped preview (2026-11-12; DECISIONS-for-review.md, *The georeferencer's ghost and sharper scan*): the mesh
+    # and triangles (`packages/admin/src/georef/georef-warp.ts` over `warp.ts`, with `@hcm/shared`'s `previewMesh`, `scanBounds` and
+    # `triangleTransform`), fetched when a version opens, out of the `georef` chunk (19 KB, which the ghost and the sharper scan had
+    # taken to 19.5 KB; 18.2 KB after): 0.9 KB measured on 2026-11-12 plus about 20 %, rounded up.
+    "georef-warp": 2,
+    # The sharper scan's tiles (2026-11-12; DECISIONS-for-review.md §172): the reader of `scan-tiles.bin`, the tiles in view and the cache
+    # of decoded ones (`packages/ui/src/admin/georef/scan-tiles.ts`), fetched when a version's sharper scan first arrives (the pane zoomed
+    # past the preview), out of the `georef` chunk: 1.2 KB measured on 2026-11-12 plus about 20 %, rounded up.
+    "scan-tiles": 2,
     # The tolerant reads of an older release's records (`packages/shared/src/schemas/legacy-reads.ts`), which Home, the Imagery lists
     # and a version's page share: out of `editor-shared` (13.05 KB with them, budget 13): 0.5 KB measured on 2026-11-12, a row of
     # 1 KB, the smallest whole budget (DECISIONS-for-review.md §155).
@@ -247,7 +262,9 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
 # 700 since 2026-11-08, the owner's decision (§105): the merge of stories, recalibration and the improvements reached
 # 653.8 KB with no saving left that was worth its risk, and the 16 languages come next; the entry's 450 KB still caps what
 # an admin waits for.
-ADMIN_TOTAL_KB = 700
+# 750 since 2026-11-12, the owner's decision (§168d): the georeferencer's panes and its sharper scan's tiles (`georef-panes`,
+# `scan-tiles`) took the total to 701.8 KB; both load only with the georeferencer, and the entry's 450 KB is unchanged.
+ADMIN_TOTAL_KB = 750
 
 # M6: the install bundle's folder in the deployed Hosting tree, and each tarball's budget in KB as served (it is gzip
 # already): the contract's ceilings (docs/research/M6-interfaces.md §1.3; DECISIONS-for-review.md §71). Since §73k

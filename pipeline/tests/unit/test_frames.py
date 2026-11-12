@@ -12,10 +12,10 @@ from hcm_pipeline.georef.corners import Crop
 from hcm_pipeline.jobs import JobContext
 from hcm_pipeline.objects import ObjectInfo
 from hcm_pipeline.raster import gdal
-from hcm_pipeline.rasters import GeoTiff, write_geotiff
+from hcm_pipeline.rasters import GeoTiff, read_band, write_geotiff
 from hcm_pipeline.runner import RunOutcome
 from hcm_pipeline.steps import stitch
-from hcm_pipeline.steps.locate import camera_of, crop_pixels, film_limits, scoring_frame
+from hcm_pipeline.steps.locate import camera_of, film_limits, scoring_frame, write_crop
 
 from tests.fakes.world import CITY, JOB_ID, PipelineWorld
 
@@ -284,7 +284,7 @@ def test_happy_path_only_a_camera_with_a_half_angle_has_a_panoramic_model() -> N
 
 
 class Staging:
-    """What `crop_pixels` asks of a run: each segment staged on demand and let go."""
+    """What `write_crop` asks of a run: each segment staged on demand and let go."""
 
     def __init__(self, files: dict[str, Path]) -> None:
         self.files = files
@@ -316,8 +316,8 @@ def test_bad_path_a_crop_across_two_segments_reads_both_and_one_past_them_stays_
     layout = FrameLayout(60, 40, 1, (Placement("a", 0, 0, 36, 40), Placement("b", 30, 0, 30, 40)))
     staging = Staging(files)
 
-    across = crop_pixels(cast(JobContext, staging), layout, Crop(20, 5, 20, 10, ()))
-    beyond = crop_pixels(cast(JobContext, staging), layout, Crop(60, 0, 4, 4, ()))
+    across = read_band(write_crop(cast(JobContext, staging), layout, Crop(20, 5, 20, 10, ()), tmp_path / "across.tif"))
+    beyond = read_band(write_crop(cast(JobContext, staging), layout, Crop(60, 0, 4, 4, ()), tmp_path / "beyond.tif"))
 
     stretched = Segment(files["b"]).read(0, 5, 10, 10)
     assert numpy.array_equal(across[:, :10], left.astype(numpy.uint8)[5:15, 20:30])

@@ -14,6 +14,7 @@ from hcm_pipeline.model import RUN_JOB_TYPES
 from hcm_pipeline.runner import RunOutcome
 from hcm_pipeline.worker.api import WorkerApi
 from hcm_pipeline.worker.loop import Pass, WorkerLoop
+from hcm_pipeline.worker.pace import AWAKE_SECONDS, MAX_PASSES, Pace
 from hcm_pipeline.worker.session import Session, SessionEndedError, Tokens
 from hcm_pipeline.worker.state import WorkerState
 
@@ -252,6 +253,45 @@ def test_happy_path_a_signal_during_a_run_asks_the_run_to_stop_and_ends_the_loop
 
     assert asked == [True]
     assert loop.stopping.is_set()
+    session.end("signedOut")
+
+
+def test_happy_path_a_worker_idle_for_long_waits_longer_and_a_wake_ends_the_long_wait() -> None:
+    """Scenarios: S-P31-HAPPY-CLAIM-BACKOFF"""
+    server = Server()
+    loop, state, _session = loop_with(server, Runtime(), kind=CountingLoop)
+    now = [0.0]
+    state.pace = Pace(lambda: now[0], lambda: 0.0)
+    state.timing.poll_seconds, state.timing.idle_poll_seconds = 0.01, 3600.0
+    now[0] = AWAKE_SECONDS + 1
+    for _ in range(MAX_PASSES):
+        state.pace.idle_pass()
+    assert state.pace.wait(0.01, 3600.0) > 600
+    # Idle for long, the next wait is over ten minutes: the admin's look, a moment later, ends it.
+    waker = threading.Timer(0.3, state.pace.wake)
+    waker.start()
+
+    loop.run()
+    waker.join()
+
+    assert isinstance(loop, CountingLoop)
+    assert loop.passes == [Pass.IDLE, Pass.IDLE]
+    assert state.pace.awake
+
+
+def test_happy_path_a_job_that_ran_wakes_the_pace() -> None:
+    """Scenarios: S-P31-HAPPY-CLAIM-BACKOFF"""
+    server = Server("job-1")
+    loop, state, session = loop_with(server, Runtime(), kind=CountingLoop)
+    now = [AWAKE_SECONDS + 1]
+    state.pace = Pace(lambda: now[0], lambda: 0.0)
+    now[0] += AWAKE_SECONDS
+    asleep = not state.pace.awake
+
+    loop.run()
+
+    assert asleep
+    assert state.pace.awake
     session.end("signedOut")
 
 

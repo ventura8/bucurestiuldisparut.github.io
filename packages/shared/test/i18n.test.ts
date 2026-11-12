@@ -47,11 +47,11 @@ describe('translate', () => {
     });
 
     it('happyPath_fillsPlaceholders', () => {
-        expect(translate('ro', 'hello.greeting', { name: 'București' })).toBe('Salut, București!');
+        expect(translate('ro', 'error.config.invalid', { detail: 'lang' })).toBe('config.js este nevalid: lang');
     });
 
     it('badPath_missingParameterLeavesThePlaceholderVisible', () => {
-        expect(translate('en', 'hello.greeting')).toBe('Hello, {name}!');
+        expect(translate('en', 'error.config.invalid')).toBe('config.js is invalid: {detail}');
     });
 });
 

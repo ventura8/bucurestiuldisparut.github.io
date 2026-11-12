@@ -4,6 +4,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { lightboxPhotos } from '../../src/viewer/viewer-lightbox.js';
 import { fireKitEvent, shadowQuery } from './doubles.js';
 import { idleState, readyState } from './fake-store.js';
 import { fakeServices, mountViewer } from './viewer-harness.js';
@@ -135,5 +136,24 @@ describe('the viewer and the full-size view', () => {
         await element.updateComplete;
 
         expect(element.mapMenu).toBeNull();
+    });
+});
+
+describe('lightboxPhotos', () => {
+    const PHOTOS = [
+        { id: 'a', year: 1935 },
+        { id: 'b', year: 1941 },
+        { id: 'c', year: 1980 },
+        { id: 'd', year: undefined },
+    ];
+
+    it('happyPath_itCountsTheListItWasOpenedFromThePhotosNearTheYearOrAllAtToday', () => {
+        expect(lightboxPhotos(PHOTOS, 1939, 'b').map((photo) => photo.id)).toEqual(['a', 'b']);
+        expect(lightboxPhotos(PHOTOS, null, 'c')).toBe(PHOTOS);
+    });
+
+    it('badPath_aPhotoFarFromTheYearPagesThroughAllOfThem', () => {
+        expect(lightboxPhotos(PHOTOS, 1939, 'c')).toBe(PHOTOS);
+        expect(lightboxPhotos(PHOTOS, 1939, null)).toBe(PHOTOS);
     });
 });

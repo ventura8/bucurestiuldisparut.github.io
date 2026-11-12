@@ -26,6 +26,7 @@ import { COLOUR } from './colour.js';
 import { DOM_WALK } from './dom-walk.js';
 import { callInPage, layoutViolationsOf } from './layout.js';
 import { LAYOUT_PROBE, type LayoutSnapshot } from './layout-probe.js';
+import { renderedContrastViolations } from './rendered-contrast.js';
 import { windowClassOf } from './layout-rules.js';
 import { takeLiveLog, type LiveEntry } from './live-regions.js';
 import type { PageFunction } from './page-script.js';
@@ -218,10 +219,16 @@ async function focusRound(page: Page, modalOpen: boolean): Promise<Violation[]> 
     return focusViolations(walk, expected, modalOpen);
 }
 
-/** Non-text contrast in the page's scheme and, unless colours are forced, in its high-contrast scheme. */
+/**
+ * Non-text contrast in the page's scheme and, unless colours are forced, in its high-contrast scheme; and the contrast
+ * the FAB menu's controls are painted with, read from the screen (`rendered-contrast.ts`).
+ */
 export async function contrastChecks(page: Page): Promise<Violation[]> {
     const scheme = (await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)) ? 'dark' : 'light';
-    const found = contrastViolations(await run<ControlContrast[]>(page, controlContrasts), scheme);
+    const found = [
+        ...contrastViolations(await run<ControlContrast[]>(page, controlContrasts), scheme),
+        ...(await renderedContrastViolations(page, scheme)),
+    ];
     if (await page.evaluate(() => matchMedia('(forced-colors: active)').matches)) {
         return found;
     }

@@ -26,6 +26,8 @@ interface GeoPositionPort {
 export interface ScanCameraPort {
     readonly centre: PixelPositionPort;
     readonly scale: number;
+    /** How far the scan is turned in its pane, radians clockwise (absent: as it is). */
+    readonly angle?: number;
 }
 
 export type HalfPairPort = { readonly pixel: PixelPositionPort } | { readonly geo: GeoPositionPort };
@@ -76,10 +78,17 @@ export interface GeorefViewState {
     readonly notFound: boolean;
     readonly version: GeorefVersionPort | null;
     readonly scan: ScanImagePort;
+    /** The sharper scan once the pane zoomed past the preview: its tiles' file and its pixels per scan pixel. */
+    /** The city's published layers, oldest first, and the one the map pane shows under the pairs (null: the reference alone). */
+    readonly baseLayers: readonly { readonly id: string; readonly label: GeorefVersionPort['label']; readonly year: number }[];
+    readonly base: string | null;
+    readonly scanDetail: { readonly file: Blob; readonly scale: number } | null;
     readonly reference: ReferenceKindPort | null;
     readonly pairs: readonly Gcp[];
     readonly adding: boolean;
     readonly half: HalfPairPort | null;
+    /** Where the pairs so far expect the half pair's other end (a dashed ring on the other pane). */
+    readonly ghost: HalfPairPort | null;
     /** The context menu's Move this point: the pair whose end the next click drops (Esc cancels). */
     readonly moving: MovingPort | null;
     readonly selected: string | null;
@@ -102,6 +111,8 @@ export interface GeorefViewState {
     readonly linked: boolean;
     /** Where the linked map last put the scan pane. */
     readonly scanFollow: ScanCameraPort | null;
+    /** The panes turn together once a fit exists. */
+    readonly rotateLinked: boolean;
 }
 
 export interface GeorefIntentsPort {
@@ -113,6 +124,12 @@ export interface GeorefIntentsPort {
     moveGeo(id: string, geo: GeoPositionPort): void;
     select(id: string | null): void;
     remove(id: string): void;
+    /** The map pane shows a published layer under the pairs (null: the reference alone). */
+    setBase(id: string | null): void;
+    /** The panes turn together, or each on its own. */
+    setRotateLinked(linked: boolean): void;
+    /** Turns the map by `degrees` clockwise on the screen; null: north up. */
+    rotateMap(degrees: number | null): void;
     toggle(id: string): void;
     cancelHalf(): void;
     /** The context menu's Add a point here: Add pairs on, then that end exactly as a click there. */

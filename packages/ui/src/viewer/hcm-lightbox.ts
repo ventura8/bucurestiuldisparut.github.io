@@ -6,7 +6,9 @@
  * if that arrow had the focus, the focus moves to the dialog, so Esc and the arrow keys keep working. A broken image shows
  * an error state and closing still works (S-V08-BAD-BROKEN-IMAGE). Zoom in and Zoom out (V60) are tonal icon buttons
  * between the arrows: each multiplies or divides the scale by `KEY_ZOOM_STEP` around the centre, and at `MAX_SCALE` or
- * `MIN_SCALE` it is soft-disabled (it says so and keeps the focus). A photo with an improved or colorized version shows the
+ * `MIN_SCALE` it is soft-disabled (it says so and keeps the focus). A double tap (or double click) zooms in at the tapped
+ * point, and back out to the whole photo when it was zoomed (the Pixel 9 Pro review, P6). `photos` is the list it was opened
+ * from (`lightboxPhotos` of `viewer-lightbox.ts`): the position counts it and the arrows page through it. A photo with an improved or colorized version shows the
  * version `photoVersion` picks and a switch between them above the arrows (V61, `photo-version.ts`).
  *
  * It is not in the engine's script: the engine side-loads it, with its Subresource Integrity, the first time a visitor opens
@@ -29,6 +31,9 @@ import { closeEvent } from './sheet-frame.js';
 import { localizedText } from './text.js';
 import {
     distance,
+    doubleTapZoom,
+    isDoubleTap,
+    isTap,
     KEY_ZOOM_STEP,
     MAX_SCALE,
     MIN_SCALE,
@@ -38,6 +43,7 @@ import {
     zoomTo,
     ZOOM_RESET,
     type Point,
+    type Tap,
     type ZoomState,
 } from './zoom.js';
 
@@ -75,7 +81,11 @@ export class HcmLightbox extends LitElement {
 
     /** Active pointers on the image (two make a pinch). */
     readonly #pointers = new Map<number, Point>();
+    /** Where each active pointer went down: a release near it is a tap. */
+    readonly #starts = new Map<number, Point>();
     #pinch: Pinch | null = null;
+    /** The last tap, which a second one soon after and near it makes a double tap. */
+    #lastTap: Tap | null = null;
 
     constructor() {
         super();
@@ -94,7 +104,9 @@ export class HcmLightbox extends LitElement {
             this.zoom = ZOOM_RESET;
             this.failed = false;
             this.#pointers.clear();
+            this.#starts.clear();
             this.#pinch = null;
+            this.#lastTap = null;
         }
     }
 
@@ -294,6 +306,7 @@ export class HcmLightbox extends LitElement {
 
     readonly #onPointerDown = (event: PointerEvent): void => {
         this.#pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        this.#starts.set(event.pointerId, { x: event.clientX, y: event.clientY });
         const [first, second] = [...this.#pointers.values()];
         this.#pinch =
             first !== undefined && second !== undefined ? { startDistance: distance(first, second), startScale: this.zoom.scale } : null;
@@ -321,9 +334,40 @@ export class HcmLightbox extends LitElement {
     }
 
     readonly #onPointerUp = (event: PointerEvent): void => {
+        const tap = this.#tapOf(event);
         this.#pointers.delete(event.pointerId);
+        this.#starts.delete(event.pointerId);
         this.#pinch = null;
+        if (tap === null) {
+            this.#lastTap = null;
+            return;
+        }
+        this.#onTap(tap, event.currentTarget as HTMLElement);
     };
+
+    /** The tap a release ends: one finger, not cancelled, released where it went down; null for anything else. */
+    #tapOf(event: PointerEvent): Tap | null {
+        const start = this.#starts.get(event.pointerId);
+        const tap = { x: event.clientX, y: event.clientY, time: event.timeStamp };
+        return event.type === 'pointerup' && this.#alone() && start !== undefined && isTap(start, tap) ? tap : null;
+    }
+
+    /** One finger on the image and no pinch going on. */
+    #alone(): boolean {
+        return this.#pointers.size === 1 && this.#pinch === null;
+    }
+
+    /** The second tap of a double tap zooms at its point (from the centre of the stage, the image's transform origin). */
+    #onTap(tap: Tap, stage: HTMLElement): void {
+        if (!isDoubleTap(this.#lastTap, tap)) {
+            this.#lastTap = tap;
+            return;
+        }
+        this.#lastTap = null;
+        const box = stage.getBoundingClientRect();
+        const at = { x: tap.x - (box.left + box.width / 2), y: tap.y - (box.top + box.height / 2) };
+        this.zoom = doubleTapZoom(this.zoom, at, this.#box);
+    }
 }
 
 /** Registers `<hcm-lightbox>` once; calling it again is a no-op. */

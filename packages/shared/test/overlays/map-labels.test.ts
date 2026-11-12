@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { en } from '../../src/i18n/map-labels/en.js';
-import { basemapLabels, translateMapLabels } from '../../src/i18n/map-labels/index.js';
+import { basemapLabels, transitLabels, translateMapLabels } from '../../src/i18n/map-labels/index.js';
 
 describe('basemapLabels', () => {
     it('happyPath_aKindTheConfigDoesNotSetIsDrawn', () => {
@@ -16,6 +16,26 @@ describe('basemapLabels', () => {
 
     it('badPath_aValueThatIsNotABooleanFalseChangesNothing', () => {
         expect(basemapLabels({ config: { showRoadLabels: 'false', showPointOfInterestLabels: 0 } })).toEqual({ streets: true, pois: true });
+    });
+});
+
+describe('transitLabels', () => {
+    it('happyPath_transitStationsFollowThePointsOfInterest', () => {
+        expect(transitLabels(undefined, false)).toBe(false);
+        expect(transitLabels(undefined, true)).toBe(true);
+        expect(transitLabels({ showPointOfInterestLabels: false }, false)).toBe(false);
+        expect(transitLabels({ showPointOfInterestLabels: false }, true)).toBe(true);
+    });
+
+    it('happyPath_theCitysExplicitChoiceStandsAtItsDefault', () => {
+        expect(transitLabels({ showTransitLabels: false }, true)).toBe(false);
+        expect(transitLabels({ showPointOfInterestLabels: false, showTransitLabels: true }, false)).toBe(true);
+        expect(transitLabels({ showTransitLabels: true }, true)).toBe(true);
+    });
+
+    it('badPath_aTurnedOffSwitchHidesThemEvenWhereTheCityShowsThem', () => {
+        expect(transitLabels({ showTransitLabels: true }, false)).toBe(false);
+        expect(transitLabels({ showTransitLabels: 'yes', showPointOfInterestLabels: 0 }, false)).toBe(false);
     });
 });
 
