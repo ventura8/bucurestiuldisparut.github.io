@@ -3391,7 +3391,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: jobs on the computer (`runOn: 'local'`) never count; a `local` city's new jobs are created `runOn: 'local'` and pass the cap; a move to the cloud asks the cap then and counts on that day (DECISIONS-for-review.md §159; S-A12-HAPPY-LOCAL-PAST-DAILY-CAP, S-A12-BAD-RUNON-CLOUD-PAST-CAP).
     - **A cost cap counts only the work that costs: decide where a job runs when it is created, record it on the job, and check the cap again on every path that moves it to the paid place.**
 
-585. **Points of interest off still drew tram and metro stations.**
+578. **Points of interest off still drew tram and metro stations.**
     - Seen: 2026-11-08, the owner on the live map: the Layers panel's Points of interest switch off, the stations stayed.
     - Cause: Mapbox Standard splits what a visitor calls points of interest across `showPointOfInterestLabels` and `showTransitLabels`; the switch wrote only the first (DECISIONS-for-review.md §92b left transit the city's), and the e2e style draws no text, so every test passed on the property the code wrote.
     - Fix and pin: the switch drives `showTransitLabels` too, live, in the mount `config` and on swipe compare's map, with an explicit city `basemap.config` value standing (`transitLabels`; DECISIONS §165); `happyPath_transitStationsFollowThePointsOfInterestOffAndOn`, `happyPath_bothSidesHideTransitStationsWithThePointsOfInterest`, `S-V31-HAPPY-TRANSIT`, `S-V31-BAD-TRANSIT-CITY`, `S-V31-BAD-TRANSIT-UNKNOWN`.
