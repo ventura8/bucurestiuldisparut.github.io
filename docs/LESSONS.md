@@ -3384,3 +3384,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: DECISIONS-for-review.md §143 moved the map's pair and suggestion markers from Mapbox sources to one badge canvas over the map (`packages/admin/src/georef/marker-overlay.ts`), so no `hcm-source-georef-suggestions` exists; the spec still read the old source, which nothing asserted was gone.
     - Fix and pin: `georefBadgesAt` (`e2e/admin/support/map.ts`) counts the places with paint on the `canvas[data-georef-badges]` near their projection; the spec reads the suggested places from the version, shows the map pane, zooms out with the map's own button until they are on screen (a badge off the view is not drawn) and expects four. S-A44-HAPPY's asserts say so.
     - **When a rendering moves from a map source to a canvas, its e2e reads move with it: assert the pixels the user sees, and grep the specs for the old source id in the same change.**
+
+577. **A local city's join was refused by the cloud's daily cap.**
+    - Seen: 2026-11-12, Bucharest (worker choice `local`): `imagery.join` of free USGS frames answered `apiError.imagery.dailyLimit` after ten jobs that day, though none of them would run on Cloud Run.
+    - Cause: `limits.ts` counted every `usgs-import`, `geotiff-import` and `layer-join` except `localOnly` archive series; where a job would run was decided only at its first dispatch, after the cap.
+    - Fix and pin: jobs on the computer (`runOn: 'local'`) never count; a `local` city's new jobs are created `runOn: 'local'` and pass the cap; a move to the cloud asks the cap then and counts on that day (DECISIONS-for-review.md §159; S-A12-HAPPY-LOCAL-PAST-DAILY-CAP, S-A12-BAD-RUNON-CLOUD-PAST-CAP).
+    - **A cost cap counts only the work that costs: decide where a job runs when it is created, record it on the job, and check the cap again on every path that moves it to the paid place.**

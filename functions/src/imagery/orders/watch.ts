@@ -20,7 +20,7 @@ import {
 } from '@hcm/shared';
 
 import { startImport } from '../import.js';
-import { refuseNewRasterJob } from '../limits.js';
+import { refuseNewRasterJob, type Placement } from '../limits.js';
 import { IMAGERY_WRITER, usgsRecord } from '../records.js';
 import { usgsDownloads } from '../usgs-session.js';
 import { checkOrders, type CheckDeps } from './check.js';
@@ -86,14 +86,13 @@ async function remindOrExpire(deps: OrderWatchDeps, cityId: string, scene: Order
     }
 }
 
-/** True when a new raster job may start now (the budget guard green, today's jobs under the caps); else it waits. */
-async function importAllowed(deps: OrderWatchDeps, now: Date, cityId: string): Promise<boolean> {
+/** Where a new raster job runs when it may start now (the budget guard green, today's jobs under the caps); else it waits. */
+async function importAllowed(deps: OrderWatchDeps, now: Date, cityId: string): Promise<Placement | undefined> {
     try {
-        await refuseNewRasterJob(deps.documents, now, cityId);
-        return true;
+        return await refuseNewRasterJob(deps.documents, now, cityId);
     } catch (error) {
         deps.log.info('a delivered order waits for its import', { reason: String(error) });
-        return false;
+        return undefined;
     }
 }
 
@@ -102,10 +101,11 @@ async function importAllowed(deps: OrderWatchDeps, now: Date, cityId: string): P
  * order becomes `importing` in the same transaction. Returns the import's job id, or undefined while it waits.
  */
 export async function importDelivered(deps: OrderWatchDeps, cityId: string, scene: OrderedScene, now: Date): Promise<string | undefined> {
-    if (!(await importAllowed(deps, now, cityId))) {
+    const placement = await importAllowed(deps, now, cityId);
+    if (placement === undefined) {
         return undefined;
     }
-    const { jobId } = await startImport(deps, { cityId, scene, createdBy: scene.order.orderedBy, now });
+    const { jobId } = await startImport(deps, { cityId, scene, createdBy: scene.order.orderedBy, now, ...placement });
     deps.log.info('a delivered order is importing', { cityId, entityId: scene.entityId, jobId });
     return jobId;
 }

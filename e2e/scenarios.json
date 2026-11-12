@@ -5145,6 +5145,28 @@
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/import.test.ts (fn-imagery, 2026-10-23)."
         },
         {
+            "id": "S-A12-HAPPY-LOCAL-PAST-DAILY-CAP",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A city that runs its jobs on the owner's computer imports and joins past the daily cap",
+            "asserts": "with ten cloud imports today and the city's choice local, an import and a join of two missing frames start, every new job recorded runOn local; ten jobs on the computer today do not fill a cloud city's cap",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (docs/research/M7-local-worker.md §4.5). Test: functions/test/imagery/local-daily-cap.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-RUNON-CLOUD-PAST-CAP",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A job on the computer moved to the cloud past the daily cap is refused",
+            "asserts": "imagery.runOn cloud of a local import with ten cloud imports today -> apiError.imagery.dailyLimit {limit: 10}, the job unchanged; under the cap the move stamps countedAt today and the next import is refused",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (docs/research/M7-local-worker.md §4.5). Test: functions/test/imagery/local-daily-cap.test.ts."
+        },
+        {
             "id": "S-A12-HAPPY-DISPATCH",
             "behaviour": "A12",
             "area": "admin",

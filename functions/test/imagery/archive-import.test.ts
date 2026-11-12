@@ -249,7 +249,7 @@ describe('imagery.archiveImport and the daily cap', () => {
         await seedJob(world, 'ar-1', counted);
         await seedJob(world, 'ar-2', counted);
 
-        await expect(refuseNewRasterJob(world.deps.documents, new Date(NOW), CITY)).resolves.toBeUndefined();
+        await expect(refuseNewRasterJob(world.deps.documents, new Date(NOW), CITY)).resolves.toEqual({});
         await seedJob(world, 'gt-1', { ...waitingJob(), type: 'geotiff-import', params: { uploadPath: 'u.tif', replaces: false } });
         expect(await failureOf(refuseNewRasterJob(world.deps.documents, new Date(NOW), CITY))).toMatchObject({
             code: 'apiError.imagery.dailyLimit',
@@ -372,8 +372,9 @@ describe('the daily release', () => {
     it('badPath_aRetriedReleaseCountsTodaysRoomAgain_aRetriedImportStartsEverySeriesOnce @S-A120-BAD-DAILY-RACE', async () => {
         const world = await readyWorld();
         await shareOf(world, 1);
-        await seedJob(world, 'held-1', { ...waitingJob(), runOn: 'local', waitReason: 'daily' });
-        await seedJob(world, 'held-2', { ...waitingJob(), runOn: 'local', waitReason: 'daily', createdAt: at(TOMORROW) });
+        // Jobs that may run in the cloud: one on the computer (`runOn: 'local'`) never counts (2026-11-12).
+        await seedJob(world, 'held-1', { ...waitingJob(), runOn: 'cloud', waitReason: 'daily' });
+        await seedJob(world, 'held-2', { ...waitingJob(), runOn: 'cloud', waitReason: 'daily', createdAt: at(TOMORROW) });
         world.deps.documents.contend(1);
 
         await expect(releaseDaily(world.deps, CITY, new Date(NOW))).resolves.toBe(1);
