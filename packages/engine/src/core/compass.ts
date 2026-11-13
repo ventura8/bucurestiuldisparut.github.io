@@ -17,7 +17,7 @@ export interface MapCamera {
 const NORTH_TOLERANCE = 0.05;
 
 /** The camera of `map` (its `view` when a `move` already carries it). */
-export function cameraOf(map: ViewerMapPort, view: MapView = map.getView()): MapCamera {
+function cameraOf(map: ViewerMapPort, view: MapView = map.getView()): MapCamera {
     return { bearing: view.bearing, pitch: map.getPitch() };
 }
 

@@ -18742,7 +18742,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "The compass passes the layout and accessibility checks on every window class",
-            "asserts": "expectStateSound on the compass journey (turned 45° and focused, north up again after Enter with the focus kept) and on every other map state, which shows it at the head of the zoom group",
+            "asserts": "expectStateSound on the compass journey (turned 45° and focused, north up again after Enter with the focus kept) and on every other map state, which shows it by the zoom group",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: e2e/tour/viewer.tour.ts (e2e/tour/compass-states.ts)."

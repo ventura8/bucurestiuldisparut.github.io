@@ -7,7 +7,7 @@ import { currentHash, openViewer, t } from '../support/viewer.js';
 /**
  * The compass's states in the tour's inventory (behaviour V64), visited by the journey `compass` of e2e/tour/states.ts
  * at every viewer viewport: the map turned 45°, the compass coloured and focused from the keyboard, then north up again
- * after Enter, the compass quiet with the focus kept. The compass heads the zoom group, so every other map state checks
+ * after Enter, the compass quiet with the focus kept. The compass sits by the zoom group, so every other map state checks
  * it against the menu, the timeline, the chip, the sheets and the legal line as well.
  */
 

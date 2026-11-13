@@ -9,7 +9,7 @@ import { currentHash, openViewer, t, viewer, waitForEngineEvent } from '../../su
 
 /**
  * The compass (behaviour V64, the owner on 2026-11-13: "i want us to have a compass for the viewer. (and clicking on it
- * resets to north up)"): an icon button at the head of the zoom group whose needle turns with the map, and whose press,
+ * resets to north up)"): an icon button by the zoom group whose needle turns with the map, and whose press,
  * Enter or Space turns the map back to north up and level, animated (a jump under reduced motion); the address drops its
  * bearing. North up it stays, quiet; a press there changes nothing. In swipe compare both maps turn back. Where it sits
  * at every window size is the tour's (viewer.tour.ts, journey `compass`).

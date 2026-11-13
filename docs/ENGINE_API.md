@@ -292,7 +292,7 @@ Code: `packages/ui/src/viewer/viewer-zoom.ts` (the group), `zoomBy` in `packages
 
 Status (2026-11-13, beta.1): the owner's request ("i want us to have a compass for the viewer. (and clicking on it resets to north up)"); scenario rows V64, `e2e/specs/viewer/compass.spec.ts`, the tour's journey `compass`. Additive within v1: no property, event or method for a page to set.
 
-**Busolă: orientează harta spre nord** / **Compass: turn the map north up** is a 48 px icon button at the head of the zoom group (above Zoom in, so it goes wherever the group goes, at every window size), its name its tooltip.
+**Busolă: orientează harta spre nord** / **Compass: turn the map north up** is a 48 px icon button in its own pill beside the zoom group, its name its tooltip: 8 px above the group wherever the group goes; on a map shorter than 600 px (a phone held landscape, a 320 × 568 phone), where that would reach the band swipe compare's divider handle sweeps or the compare bar, beside the group's Zoom in, on the side towards the map. While the menu is open, which grows over it, it is hidden like the group.
 
 - **The needle** turns with the map's bearing on every frame the camera moves (a drag, Mapbox's own rotate gestures, a flight, compare's sync) and leans back as the map tilts. Only the compass repaints on those frames, not the viewer.
 - **North up and level** it stays, quiet: the needle in the surface's text colour. Turned or tilted, its north point takes the primary colour. Its description (`aria-describedby`) says where the map points ("The map is turned 45° from north.", "… and tilted 30°.", "The map faces north."), in whole degrees; it is no live region, so a turning map never floods a screen reader.

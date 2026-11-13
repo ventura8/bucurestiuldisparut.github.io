@@ -1,7 +1,7 @@
 /**
  * `<hcm-compass>`: the map's compass (the owner, 2026-11-13: "i want us to have a compass for the viewer. (and clicking on
- * it resets to north up)"; scenario V64, docs/ENGINE_API.md → *Compass*). An M3 icon button (40 px in a 48 px target) at
- * the head of the zoom group whose needle turns with the map's bearing on every frame the camera moves and leans with
+ * it resets to north up)"; scenario V64, docs/ENGINE_API.md → *Compass*). An M3 icon button (40 px in a 48 px target) in
+ * its own pill by the zoom group whose needle turns with the map's bearing on every frame the camera moves and leans with
  * its tilt; a press fires the native `click`, which the viewer turns into the store's `resetNorth`. It is always shown:
  * north up and level it is quiet (the needle in the surface's text colour), turned or tilted its north point takes the
  * primary colour. Its name says what it does; the bearing and the tilt are its description (`aria-describedby`), never a

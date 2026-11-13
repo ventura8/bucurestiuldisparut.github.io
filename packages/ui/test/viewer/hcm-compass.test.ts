@@ -9,7 +9,7 @@ import { testManifest } from './fixtures.js';
 import { LANDSCAPE_PHONE, MEDIUM, mountViewer, part } from './viewer-harness.js';
 
 /**
- * The compass (scenario V64): an icon button at the head of the zoom group whose needle follows the camera's bearing and
+ * The compass (scenario V64): an icon button by the zoom group whose needle follows the camera's bearing and
  * tilt frame by frame, quiet when the map is north up and level, and whose press asks the store for north up.
  */
 beforeAll(() => {
