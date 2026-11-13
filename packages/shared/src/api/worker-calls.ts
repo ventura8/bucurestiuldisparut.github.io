@@ -8,7 +8,7 @@ import { z } from 'zod';
 
 import { idSchema } from '../schemas/primitives.js';
 import { cityIdSchema } from '../schemas/paths.js';
-import { workerAiSchema } from '../schemas/worker.js';
+import { WORKER_HOST_PATTERN, WORKER_REMOVAL_WHYS, workerAiSchema, workerShareSchema } from '../schemas/worker.js';
 import { JOB_STATUSES, WORKER_ID_PATTERN } from '../schemas/firestore-ops.js';
 import { workerArchiveReportRequestSchema, workerArchiveReportResponseSchema } from './archive.js';
 import { isoTimeSchema } from './common.js';
@@ -45,6 +45,17 @@ export const workerHelloRequestSchema = z.strictObject({
     image: digestSchema.optional(),
     /** Its local AI's state (M10): said again whenever it changes. */
     ai: workerAiSchema.optional(),
+    /** W5 (household computers): the computer's own name and the starter's version, as the starter passed them on. */
+    host: z
+        .strictObject({
+            name: z.string().regex(WORKER_HOST_PATTERN).optional(),
+            os: z.enum(['linux', 'mac', 'windows']).optional(),
+            starter: z
+                .string()
+                .regex(/^[0-9a-f]{12}$/)
+                .optional(),
+        })
+        .optional(),
 });
 export const workerHelloResponseSchema = z.strictObject({
     pollSeconds: z.number().int().min(1),
@@ -69,9 +80,28 @@ export const workerClaimRequestSchema = z.strictObject({
         .array(z.string().regex(/^[a-z][a-z-]{0,39}$/))
         .max(20)
         .optional(),
+    /** W5: the computer's share as its governor says it now; a computer whose person is busy leaves jobs to a calm one. */
+    share: workerShareSchema.optional(),
+    /**
+     * W5, Remove this computer: the worker's word on the removal its last claim gave it (`accepted`; `done` once its supervisor
+     * cleaned the computer up, after which the server disconnects it; `failed` and why). Such a claim takes no job.
+     */
+    removal: z
+        .strictObject({
+            step: z.enum(['accepted', 'done', 'failed']),
+            why: z.enum(WORKER_REMOVAL_WHYS).optional(),
+            dockerLeft: z.boolean().optional(),
+        })
+        .optional(),
 });
 export const workerClaimResponseSchema = z.strictObject({
     job: z.strictObject({ jobId: idSchema }).nullable(),
+    /** W5: Remove this computer was asked: clean up (with Docker when `docker`, keeping the scanned maps when `keep`), then say done. */
+    remove: z.strictObject({ docker: z.boolean(), keep: z.boolean() }).optional(),
+    /** W5: paused in the admin's list of computers (no job until Resume). */
+    paused: z.boolean().optional(),
+    /** W5: this computer's person is busy (or it runs hot) and another computer of the city is free: the job is left to it. */
+    yielded: z.boolean().optional(),
     /** True when the worker's image is not the installed one (no job is given to it). */
     outdated: z.boolean().optional(),
 });

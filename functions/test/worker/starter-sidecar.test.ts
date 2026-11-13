@@ -248,7 +248,8 @@ describe('the local AI in the starter (docs/research/M10-local-ai.md)', () => {
     it('happyPath_theRemovalTakesTheVolumesAndOnlyTheImageItPulled', async () => {
         const text = (await file('linux', 'uninstall')).body;
 
-        expect(text).toContain('docker volume rm "$NAME" "$AI_FILES" "$AI_BOX"');
+        expect(text).toContain('docker volume rm "$AI_FILES" "$AI_BOX"');
+        expect(text).toContain('docker volume rm "$NAME"');
         expect(text).toContain('done <"$(home_dir)/ai-image"');
         const windows = (await file('windows', 'uninstall')).body;
         expect(windows).toContain('docker volume rm $Name $AiFiles $AiBox');
@@ -379,7 +380,9 @@ describe('the sidecar lives only while a frame wants it', () => {
         spawnSync('/bin/sh', [script, 'run'], { encoding: 'utf8', env: { PATH: `${bin}:/usr/bin:/bin`, HOME: folder }, timeout: 20_000 });
 
         expect(readFileSync(log, 'utf8')).toMatch(
-            new RegExp(`-e HCM_DOCKER_ARCH=${said} -e HCM_AI_VARIANT=(cpu|gpu) ${pipeline.replaceAll('.', '\\.')} worker`),
+            new RegExp(
+                `-e HCM_DOCKER_ARCH=${said} -e HCM_AI_VARIANT=(cpu|gpu) -e HCM_HOST_NAME=\\S* -e HCM_HOST_OS=linux -e HCM_REMOVABLE=1 ${pipeline.replaceAll('.', '\\.')} worker`,
+            ),
         );
     });
 });

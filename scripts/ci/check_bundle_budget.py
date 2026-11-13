@@ -216,6 +216,10 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # took it to 8.7 KB, of which the two languages' texts are 3.9 KB; every part is shown with the computer's panel, so
     # nothing was left to split: the measurement plus about 15 %, rounded up.
     "worker-local": 10,
+    # W5, household computers (`packages/admin/src/worker/worker-household.ts`, the feed's other dynamic import, DECISIONS-for-review.md
+    # §207): the city's computers, Add another computer and Remove this computer, `<hcm-worker-household>` and its texts
+    # (`@hcm/shared/admin-worker-household`), fetched with the computer's part; a new chunk, so nothing else grew.
+    "worker-household": 7,
     # M8 (docs/research/M8-join-interfaces.md §6): the join's screens (`packages/ui/src/admin/imagery/join/join-card.ts`), fetched
     # when the city has a plan of its dates or a join opens, 2.4 KB measured on 2026-11-06 plus about 20 %, rounded up; and the
     # Upload view (`packages/ui/src/admin/imagery/upload-panel.ts`), out of the Imagery chunk to make room for the plan's feed

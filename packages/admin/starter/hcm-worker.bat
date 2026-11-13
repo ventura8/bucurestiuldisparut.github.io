@@ -21,7 +21,7 @@ exit /b
 $Project = $env:HCM_PROJECT
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-$StarterVersion = '881afefcef25'
+$StarterVersion = 'b86e482db542'
 $City = $env:HCM_CITY
 $Action = $env:HCM_ACTION
 $Name = 'hcm-worker'
@@ -421,6 +421,8 @@ function Start-Supervisor {
                 $arch = & docker version --format '{{.Server.Arch}}' 2> $null
                 $arguments += @('-v', "${AiFiles}:/ai/files", '-v', "${AiBox}:/ai/box", '-e', "HCM_STARTER=$StarterVersion")
                 $arguments += @('-e', "HCM_STARTER_UPDATE=$($script:UpdateSaid)", '-e', "HCM_DOCKER_ARCH=$arch")
+                # W5: this computer's name and system for the admin's list of the city's computers.
+                $arguments += @('-e', "HCM_HOST_NAME=$($env:COMPUTERNAME -replace '[^A-Za-z0-9._-]', '')", '-e', 'HCM_HOST_OS=windows')
                 $arguments += @('-e', "HCM_AI_VARIANT=$(Get-AiVariant)", $image)
                 $arguments += @('worker', '--city', $City, '--project', $Project, '--supervised', '--image', $digest)
                 & docker @arguments

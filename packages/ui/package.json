@@ -27,6 +27,10 @@
             "types": "./src/admin/worker/hcm-worker-local.ts",
             "default": "./src/admin/worker/hcm-worker-local.ts"
         },
+        "./admin/worker/household": {
+            "types": "./src/admin/worker/hcm-worker-household.ts",
+            "default": "./src/admin/worker/hcm-worker-household.ts"
+        },
         "./admin/areas/*": {
             "types": "./src/admin/areas/*.ts",
             "default": "./src/admin/areas/*.ts"

@@ -12,6 +12,7 @@ import {
     type CallableResponse,
     type JobDoc,
     type WorkerDoc,
+    type WorkerShare,
 } from '@hcm/shared';
 
 import type { VerifiedCaller } from '../api/access.js';
@@ -20,7 +21,9 @@ import { omit } from '../api/objects.js';
 import { IMAGERY_WRITER } from '../imagery/records.js';
 import type { Ports } from '../ports/index.js';
 import { at, leaseOwnerOf, requireGreen, requireWorker, type WorkerCall } from './holder.js';
+import { holdBack, type HoldBack } from './household.js';
 import { imageState, paired } from './pairing.js';
+import { removalOrder, reportRemoval } from './removal.js';
 
 export type ClaimDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'jobs'>;
 
@@ -42,8 +45,8 @@ const CLAIM_RULES: readonly ((job: JobDoc, now: Date) => boolean)[] = [
 /** The types the worker's pipeline runs, when it named them: an older image leaves a newer type queued for an updated one. */
 type Runs = readonly string[] | undefined;
 
-/** The worker's call with the types it runs. */
-type Claim = WorkerCall & { readonly runs: Runs };
+/** The worker's call with the types it runs and (W5) its governor's share now. */
+type Claim = WorkerCall & { readonly runs: Runs; readonly share?: WorkerShare };
 
 function claimable(job: JobDoc | undefined, now: Date, runs: Runs): job is JobDoc {
     return job !== undefined && CLAIM_RULES.every((rule) => rule(job, now)) && (runs === undefined || runs.includes(job.type));
@@ -64,9 +67,10 @@ function claimed(job: JobDoc, call: WorkerCall, now: Date): JobDoc {
 }
 
 /** The worker's document as last seen now: busy with `jobId`, or idle. */
-function seen(worker: WorkerDoc, call: WorkerCall, now: Date, jobId?: string): WorkerDoc {
+function seen(worker: WorkerDoc, call: WorkerCall & { readonly share?: WorkerShare }, now: Date, jobId?: string): WorkerDoc {
     const state = jobId === undefined ? { state: 'idle' as const } : { state: 'busy' as const, jobId };
-    return { ...omit(worker, ['jobId']), ...state, lastSeenAt: at(now), updatedBy: call.uid, updatedAt: at(now) };
+    const share = call.share === undefined ? {} : { share: call.share };
+    return { ...omit(worker, ['jobId']), ...share, ...state, lastSeenAt: at(now), updatedBy: call.uid, updatedAt: at(now) };
 }
 
 /** The first of the city's claimable jobs this worker takes, or null. */
@@ -113,24 +117,61 @@ async function candidates(deps: ClaimDeps, cityId: string, now: Date, runs: Runs
  * naming this worker, no Cloud Run machine or wait), or none, of the types the worker said its pipeline runs (an older image
  * leaves a newer type queued; 2026-11-09); either way the worker is seen now. Finding 67: a paired
  * worker whose image is no longer the installed pipeline's takes nothing (`outdated`) until the owner runs the new command.
+ * W5 (household computers, `household.ts`): the claim records the computer's share; a computer paused in the admin's list
+ * takes nothing (`paused`), and one whose person is busy leaves the job to a calm computer of the city (`yielded`); Remove this
+ * computer is answered `remove` instead of a job, and the worker's word on it is a claim with `removal` (`removal.ts`).
  */
 async function workerClaim(
     deps: ClaimDeps,
     caller: VerifiedCaller,
     request: CallableRequest<'worker.claim'>,
 ): Promise<CallableResponse<'worker.claim'>> {
-    await requireGreen(deps.documents);
     const call = { cityId: request.cityId, workerId: request.workerId, uid: caller.uid };
+    // W5: the worker's word on its removal is taken whatever the guard says (removal.ts).
+    if (request.removal !== undefined) {
+        return reportRemoval(deps, call, request.removal);
+    }
+    await requireGreen(deps.documents);
+    return claimFor(deps, caller, { ...call, runs: request.types, ...(request.share === undefined ? {} : { share: request.share }) });
+}
+
+/** The claim of a worker in good standing: the removal's order, else a job, else why none. */
+async function claimFor(deps: ClaimDeps, caller: VerifiedCaller, claim: Claim): Promise<CallableResponse<'worker.claim'>> {
     const now = deps.clock.now();
-    const worker = await requireWorker(deps.documents, call);
-    // Finding 72: the image `worker.hello` recorded (the supervisor's), else the pairing's.
-    const { outdated } = await imageState(deps, caller, call.cityId, worker.image);
-    const jobId = outdated ? null : await takeFirst(deps, { ...call, runs: request.types }, now);
+    const worker = await requireWorker(deps.documents, claim);
+    const path = FIRESTORE_PATHS.worker(claim.cityId, claim.workerId);
+    const order = removalOrder(worker);
+    if (order !== undefined) {
+        await deps.documents.set(path, workerDocSchema, seen(worker, claim, now));
+        return order;
+    }
+    const { outdated, held } = await whyNot(deps, caller, { claim, worker: seen(worker, claim, now), now });
+    const jobId = outdated || held !== null ? null : await takeFirst(deps, claim, now);
     if (jobId !== null) {
-        deps.log.info('worker claimed a job', { cityId: call.cityId, workerId: call.workerId, jobId });
+        deps.log.info('worker claimed a job', { cityId: claim.cityId, workerId: claim.workerId, jobId });
         return { job: { jobId } };
     }
-    await deps.documents.set(FIRESTORE_PATHS.worker(call.cityId, call.workerId), workerDocSchema, { ...seen(worker, call, now), outdated });
+    await deps.documents.set(path, workerDocSchema, { ...seen(worker, claim, now), outdated });
+    return noJob(deps, claim, outdated, held);
+}
+
+/** Why the worker takes no job now: its image is outdated, or it is held back (paused, yielded); neither when it may. */
+async function whyNot(
+    deps: ClaimDeps,
+    caller: VerifiedCaller,
+    { claim, worker, now }: { readonly claim: Claim; readonly worker: WorkerDoc; readonly now: Date },
+): Promise<{ readonly outdated: boolean; readonly held: HoldBack | null }> {
+    // Finding 72: the image `worker.hello` recorded (the supervisor's), else the pairing's.
+    const { outdated } = await imageState(deps, caller, claim.cityId, worker.image);
+    return { outdated, held: outdated ? null : await holdBack(deps.documents, claim, worker, now) };
+}
+
+/** The answer of a claim that took no job: held back (paused, yielded), outdated, or nothing to do. */
+function noJob(deps: ClaimDeps, claim: Claim, outdated: boolean, held: HoldBack | null): CallableResponse<'worker.claim'> {
+    if (held !== null) {
+        deps.log.info('worker holds back', { cityId: claim.cityId, workerId: claim.workerId, why: held });
+        return { job: null, [held]: true };
+    }
     return outdated ? { job: null, outdated } : { job: null };
 }
 

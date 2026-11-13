@@ -13,6 +13,7 @@ Finding 67 of 2026-11-02: without a session each pass first lets the connector t
 session kept in the work folder); a call answered `apiError.worker.revoked` (Disconnect this computer) ends the session
 and deletes the kept one; a claim answered `outdated` (the pipeline was updated in the admin) is said on the page.
 A claim names the job types this image runs (`RUN_JOB_TYPES`): a newer type stays queued for an updated worker, not failed here.
+W5 (household computers): a claim also says the governor's share (`share`), so the server leaves a job to a calmer computer.
 Finding 72 (the starter file, M7 §1.5): under the starter's supervisor (`supervised`) an outdated claim ends the loop
 instead (`outdated_exit`), and the command exits with `ExitCode.OUTDATED`, so the supervisor pulls the installed image.
 Each pass that holds a session sweeps the work folder after its claim (`sweep`, `runtime.py`), told the job it claimed.
@@ -36,6 +37,7 @@ from hcm_pipeline.model import RUN_JOB_TYPES
 from hcm_pipeline.paths import ID
 from hcm_pipeline.runner import STOP_SIGNALS, RunOutcome
 from hcm_pipeline.worker.api import CLAIM, END, REVOKED, RevokedError, WorkerApi, WorkerApiError
+from hcm_pipeline.worker.household import Removal
 from hcm_pipeline.worker.session import RefreshUnavailableError, Session
 from hcm_pipeline.worker.state import WorkerState
 
@@ -121,6 +123,11 @@ class WorkerLoop:
         # Finding 72: under the starter's supervisor an outdated image ends the loop (the supervisor updates it).
         self.supervised = False
         self.outdated_exit = False
+        # W5 (household computers): the governor's share, said with each claim (None: not known yet, nothing said).
+        self.share: Callable[[], Mapping[str, object] | None] = lambda: None
+        # W5, Remove this computer: whether the starter cleans the computer up (`HCM_REMOVABLE`), and the order once accepted.
+        self.removable = False
+        self.removal: Removal | None = None
 
     def connect_with(self, connector: Connecting) -> None:
         """The connector each pass without a session lets try first (finding 67: pairing, the kept session)."""
@@ -197,13 +204,43 @@ class WorkerLoop:
     def _claim(self) -> str | None:
         try:
             # Only the types this image runs: a newer type stays queued for an updated worker, never failed here.
-            answer = self._api.call(CLAIM, {**self._ids, "types": list(RUN_JOB_TYPES)})
+            share = self.share()
+            said = {} if share is None else {"share": share}
+            answer = self._api.call(CLAIM, {**self._ids, "types": list(RUN_JOB_TYPES), **said})
         except CALL_ERRORS as error:
             LOG.warning("worker.claim failed: %s", error)
             self._refused(error)
             return None
+        removal = Removal.of(answer)
+        if removal is not None:
+            self._remove(removal)
+            return None
         self._state.outdated(answer.get("outdated") is True)
         return None if self._ends_outdated() else _job_of(answer)
+
+    def _remove(self, removal: Removal) -> None:
+        """W5: Remove this computer. Under a starter that cleans up, `accepted` and the loop ends (the command exits with the order's
+        code); a worker with no such starter says it cannot (`no-starter`), and the admin offers Disconnect now anyway."""
+        word = {"step": "accepted"} if self.removable else {"step": "failed", "why": "no-starter"}
+        LOG.warning("the admin asked to remove this computer: %s", word["step"])
+        self.say_removal(word)
+        if self.removable:
+            self.removal = removal
+            self.stop()
+
+    def say_removal(self, word: Mapping[str, object]) -> bool:
+        """The worker's word on its removal (a claim that takes no job); the starter's last run says `done` with the kept session."""
+        if not self._session.active:
+            self._connector.attempt()
+        if not self._session.active:
+            LOG.warning("the removal's word cannot be sent: no session")
+            return False
+        try:
+            self._api.call(CLAIM, {**self._ids, "removal": dict(word)})
+        except CALL_ERRORS as error:
+            LOG.warning("the removal's word was not taken: %s", error)
+            return False
+        return True
 
     def _ends_outdated(self) -> bool:
         """Under the starter's supervisor, an outdated image ends the loop (finding 72); true when it did."""

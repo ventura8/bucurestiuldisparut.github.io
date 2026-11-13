@@ -34,7 +34,11 @@ describe('the function registry', () => {
         const workers = Object.keys(CALLABLES).filter((name) => name.startsWith('worker.') && !(name in ADMIN_CALLABLES));
 
         expect(workers).toEqual([...WORKER_CALLABLE_NAMES]);
-        expect(Object.keys(ADMIN_CALLABLES).filter((name) => name.startsWith('worker.'))).toEqual(['worker.pairCode', 'worker.revoke']);
+        expect(Object.keys(ADMIN_CALLABLES).filter((name) => name.startsWith('worker.'))).toEqual([
+            'worker.pairCode',
+            'worker.revoke',
+            'worker.manage',
+        ]);
         expect(Object.keys(ADMIN_CALLABLES)).toEqual(Object.keys(CALLABLES).filter((name) => !workers.includes(name)));
         expect(new Set(CALLABLE_NAMES)).toEqual(new Set(Object.keys(CALLABLES)));
         expect(CALLABLE_NAMES).toHaveLength(Object.keys(CALLABLES).length);

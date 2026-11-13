@@ -848,3 +848,101 @@ origin the owner downloaded the first file from; a file whose hash or version is
 The file still holds no secret, and the update never runs a downloaded file before it is checked.
 
 Scenarios `S-A142-HAPPY-VERSIONS`, `S-A142-BAD-OLD-STARTER`, `S-A142-HAPPY-SELF-UPDATE`, `S-A142-BAD-SELF-UPDATE`.
+
+## Addendum of 2026-11-13: household computers (W5)
+
+The owner (beta.1, W5 of `reports/OPEN-ISSUES-beta1.md`): "Make it easy for users to use not only their own computer but also the
+other computers in their household, with minimum input from them. What we did here today for us must be available to our users."
+What was done by hand that day, and what replaces it: on the NUC (Linux, no screen) the starter copied over SSH, `loginctl
+enable-linger` typed, and the pairing made by stopping the laptop's worker and tunnelling the NUC's `127.0.0.1:8765` to the laptop,
+so the admin's auto-pair could reach it; on the Windows PC the same inside WSL, plus a Startup-folder VBS that keeps WSL alive.
+`DECISIONS-for-review.md` §207. Scenarios `S-A143-*` (behaviour A143).
+
+**The list of the city's computers** (`<hcm-worker-household>`, the lazy `worker-household` chunk, `packages/admin/src/worker/household.ts`):
+every `cities/{city}/workers/*` document, live, with the owner's name (`name`, `worker.manage` `rename`) else the computer's own
+(`host`: the starter passes `HCM_HOST_NAME` from `uname -n` or `%COMPUTERNAME%`, since a container's host name is its id), on or off
+(`WORKER_FRESH_SECONDS`), what it does, its share (`share`, below), its system (`os`, `HCM_HOST_OS`) and its helper's version
+(`starter`, `HCM_STARTER`) beside the release's. `worker.hello` takes `host {name?, os?, starter?}`, each only of its shape. Pause
+(`worker.manage` `pause`, `pausedAt`) makes `worker.claim` answer `{job: null, paused: true}` until Resume. A computer disconnected
+more than a day ago leaves the list.
+
+**Add another computer, with a screen**: the admin's own address (`…/admin/#/jobs`) with Copy; on that computer the owner signs in
+with Google and presses Use this computer, and the auto-pair of §2.7 does the rest (the browser there reaches its own loopback).
+Nothing new is trusted.
+
+**Add another computer, without a screen** (the tunnel retired): the wizard mints a code with `worker.pairCode {household: true}`
+(`WORKER_HOUSEHOLD_PAIR_SECONDS`, 45 minutes: the computer may first install Docker and pull the pipeline; still one use, bound to the
+owner and the city) and shows one line:
+
+```text
+curl -fsSL '<worker.starter, linux, install>' -o ~/hcm-worker.sh && echo <code> | sh ~/hcm-worker.sh
+```
+
+The starter reads the code from `HCM_PAIR_CODE` or one line of standard input (checked: 26 base32 characters, else ignored), clears
+the variable at once, installs as before, enables linger where there is no graphical session (`loginctl enable-linger`, else with
+sudo, else the exact command to type), then waits up to 45 minutes for the worker's `GET /state` to say `pairable` and posts the code
+to `POST /pair` itself, with the project's Hosting origin and the JSON body from standard input (`curl --data-binary @-`), exactly as
+the admin's auto-pair does from a browser. It says "This computer is connected. The admin lists it as <name>.", or why not and the fix
+(the code refused: a new line skips the download; no start in 45 minutes: is Docker running, is there room).
+
+**Docker installed when it is missing (Linux)**: the system's own packages, which its distribution signs (`apt-get install docker.io`,
+`dnf install moby-engine`, `zypper install docker`, `pacman -S docker`), with one sudo; never a downloaded script. Before it: 10 GB
+free on `/var`, else how much there is and what to free. Each step says what it does, how long and how much disk ("Step 1 of 3 …").
+A refused password or a blocked work computer says who to ask and Docker's install page; an unknown package manager gives the link.
+Then `systemctl enable --now docker` and `usermod -aG docker`; the new group only counts at a new login, so the service runs under
+`sg docker -c` until then. The note `installed-docker` (the package manager's name) in the helper's folder records that the helper
+installed Docker. Re-running keeps what is there.
+
+**Remove this computer: clean up first, disconnect second, no command** (the owner's order of 2026-11-13). `worker.manage {action:
+'remove', docker, keep}` records `removal {step: 'asked', askedAt, docker, keep}`; the worker's next claim is answered `{job: null,
+remove: {docker, keep}}` (a computer that is off gets it when it next claims). A worker under a starter that cleans up
+(`HCM_REMOVABLE=1`) says `accepted` (a claim with `removal`, taken whatever the guard says) and exits `76 + docker + 2·keep`
+(`ExitCode.REMOVE` … `REMOVE_KEEP_DOCKER`); its supervisor stops the loops beside it, removes the sidecar, its volumes and the images it
+pulled, then runs the worker once more with `HCM_REMOVAL=done` (the kept session in the volume signs it in; it says `done`, and the
+server revokes the worker and its pairing in one transaction), then removes the worker's container, its volume (or, keeping the
+scanned maps, only the `.hcm-session-*` sign-in in it), the pipeline's images, the helper's folder and last the service. Docker goes
+only when asked and the note says the helper installed it, through `sudo -n`; with no password to give there it stays, and the done
+says `dockerLeft` (the admin says so and how). A worker with no such starter (a command, an older starter, Windows until its
+increment) says `failed` `no-starter` and keeps working. The admin shows each step in plain words; **Disconnect now anyway**
+(`worker.revoke`) is offered only for a removal that waits on a computer that is off or failed, and only after it the line or file
+that cleans the computer up by hand (`worker.starter` `uninstall` for the computer's `os`). By hand (`sh hcm-worker.sh uninstall`)
+the same cleanup runs and asks, on a terminal, before removing a Docker the helper installed.
+
+**The governor across computers**: each claim carries `share {profile, why, cores, threads, memoryMb}` from the governor's record
+(`hcm_pipeline/worker/household.py`); `worker.claim` records it and, when the claimer is held back for its person (`profile` not
+`full` and `why` one of `user-active`, `others-busy`, `battery`, `thermal`, `gpu-busy`), answers `{job: null, yielded: true}` while
+another computer of the city is on, idle, not paused or removed and at `full` (`functions/src/worker/household.ts`). With no calm
+computer it takes the job at its quiet pace: nothing waits for a computer that is not there. The owner's own Quiet (`why: owner`) is
+no pressure.
+
+**Increments**: this one (the list, headless pairing, Docker on Linux, the remote removal by the POSIX starter, the governor). Next,
+the Windows starter (WSL2 and Docker Engine inside it with one elevation and a resume after the reboot, the keep-alive, the removal);
+then macOS (Colima through Homebrew, launchd). Until then a Windows or Mac computer joins through Add another computer with a screen.
+
+### §10, the security review of household computers (added)
+
+1. **The code of the headless line (§10.23).** Same entropy and storage as §10.8 (130 bits, stored as its SHA-256 prefix, one use);
+   45 minutes instead of 10, because the computer may install Docker and pull about 3 GB first. It never is an argument of a program
+   (`echo` is the shell's built-in; the starter reads standard input; `curl` reads the JSON body from standard input), so `ps` on a
+   shared computer never shows it; it is never written to a file by us (the shell's own history may keep the pasted line: spent at the
+   first start, useless after 45 minutes). `HCM_PAIR_CODE` is cleared as soon as it is read, so the service and every process the
+   starter starts never inherit it. A stolen line pairs a computer to the owner's account for this city only, with the worker's
+   scope of §10.9, and the list shows it by name: Remove disconnects it.
+2. **Why not the reverse (the computer shows a code the owner types).** A device-code flow keeps the secret on the computer, but it
+   asks the owner to read a code on the other computer and type it back (two transfers instead of one paste), and it opens the known
+   device-code phishing path (someone gets the owner to type their code into the admin). The minted line is simpler and binds the
+   code to the owner who minted it in a signed-in admin with App Check.
+3. **The starter posts to its own worker's page (§10.24).** `POST /pair` with the Hosting origin from a local process is what §10.16
+   already allows a process of the same user; nothing is widened. The tunnel is gone: no port of one computer is exposed to another.
+4. **Installing Docker (§10.25).** Only the distribution's own signed packages through its package manager, which verifies them; no
+   script is downloaded and piped to a shell. sudo asks on the terminal; the starter holds no password. The docker group gives the
+   account root-equivalent power over Docker, as Docker's own post-install steps do; the owner is told in the line's description.
+5. **Remote removal (§10.26).** Only the city's editors can ask it (`worker.manage`, `cityEditor`, App Check); the order reaches only
+   that worker through its own claim; it only deletes what the helper made (by name and by the repository's prefix) and Docker only by
+   the helper's note, never with a password typed by anyone. The last `done` is the worker's own sign-in, which can only revoke itself.
+6. **The share and the names (§10.27).** Written only by the functions from the worker's own calls; read by the city's members, as the
+   worker documents already were. A host name is limited to `[A-Za-z0-9._-]` and rendered as text.
+
+**UNVERIFIED** (§11, added): `loginctl enable-linger` without sudo over SSH on each distribution (polkit's `set-self-linger`), `sg`
+in a user service on each distribution, `apt-get install docker.io` on Debian and Ubuntu releases older than 22.04, and the remote
+removal's last run on a computer whose Docker was just removed. The first headless computer of a real owner proves the line.
