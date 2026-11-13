@@ -33,12 +33,15 @@ const MAX_WIDTH = 280;
 
 type Box = DatesOpenDetail['anchor'];
 
+/** The side of the timeline the menu opens on: above a lying one, past or before a standing one. */
+type Side = 'above' | 'end' | 'start';
+
 /** Where the menu's corner goes in the viewer (px from its top-left): beside the anchor, moved back inside when it would leave. */
 export function dateMenuOrigin(
     anchor: Box,
     menu: { readonly width: number; readonly height: number },
     room: { readonly width: number; readonly height: number },
-    side: 'above' | 'end' | 'start',
+    side: Side,
 ): { readonly x: number; readonly y: number } {
     const centreX = anchor.x + anchor.width / 2 - menu.width / 2;
     const centreY = anchor.y + anchor.height / 2 - menu.height / 2;
@@ -57,7 +60,7 @@ function contains(rect: DOMRect, x: number, y: number): boolean {
 }
 
 /** The widest the menu may be (px) beside a standing timeline (the room past it), or above a lying one (the viewer). */
-export function sideRoom(anchor: Box, width: number, side: 'above' | 'end' | 'start'): number {
+export function sideRoom(anchor: Box, width: number, side: Side): number {
     const room = { above: width, end: width - (anchor.x + anchor.width), start: anchor.x }[side] - 2 * EDGE;
     return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, room));
 }
@@ -260,7 +263,7 @@ export class HcmDateMenu extends LitElement {
         menu.style.setProperty('top', `${String(origin.y)}px`);
     }
 
-    #side(): 'above' | 'end' | 'start' {
+    #side(): Side {
         if (!this.vertical) {
             return 'above';
         }
