@@ -16764,15 +16764,26 @@
             "notes": "The owner's request of 2026-11-09 (docs/research/DECISIONS-for-review.md §133). Test: e2e/specs/viewer/layer-year.spec.ts."
         },
         {
-            "id": "S-V03-BAD-STACK-SWITCHED-LAST",
+            "id": "S-V03-HAPPY-CHOSEN-LAYER-FRONT",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The older layer switched on last comes to the front, above an opaque newer one, and its link keeps it there",
+            "asserts": "1980 switched on, then 1966 -> the timeline at 1966, the probe reads the 1966 tiles, layers=1980,1966 (the front last); the link reopened -> 1966 again on top; unit: packages/engine/test/core/stack.test.ts, store-layer-year.test.ts, map-sync.test.ts",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's decision of 2026-11-13 (V15, docs/research/DECISIONS-for-review.md §191). Test: e2e/specs/viewer/layer-year.spec.ts."
+        },
+        {
+            "id": "S-V03-BAD-FRONT-SWITCHED-OFF",
             "behaviour": "V03",
             "area": "viewer",
             "path": "bad",
-            "title": "The older layer switched on last still draws below the newer one",
-            "asserts": "1980 switched on, then 1966 -> the timeline at 1966, the probe still reads the 1980 tiles on top",
+            "title": "The front layer switched off leaves the newer one showing and the timeline where it was",
+            "asserts": "a link with 1966 on top of 1980; 1966 switched off -> the probe reads the 1980 tiles, the timeline stays at 1966, layers=1980",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner's request of 2026-11-09 (docs/research/DECISIONS-for-review.md §133). Test: e2e/specs/viewer/layer-year.spec.ts."
+            "notes": "The owner's decision of 2026-11-13 (V15, docs/research/DECISIONS-for-review.md §191). Test: e2e/specs/viewer/layer-year.spec.ts."
         },
         {
             "id": "S-V07-HAPPY-MAP-OF-YEAR",

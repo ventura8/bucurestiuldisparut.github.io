@@ -146,6 +146,10 @@ export class FakeMap implements ViewerMapPort {
         this.#record('setLayerPaint', layerId, paint);
     }
 
+    setLayerOrder(layerId: string, order: number): void {
+        this.#record('setLayerOrder', layerId, order);
+    }
+
     removeLayer(layerId: string): void {
         this.#record('removeLayer', layerId);
     }
@@ -473,6 +477,18 @@ export class FakeMapboxMap implements MapboxMap {
         this.#record('removeLayer', id);
         this.layers.delete(id);
         this.layerOrder.splice(this.layerOrder.indexOf(id), 1);
+        return this;
+    }
+
+    moveLayer(id: string, beforeId?: string): this {
+        this.#record('moveLayer', id, beforeId);
+        const at = this.layerOrder.indexOf(id);
+        if (at < 0) {
+            return this;
+        }
+        this.layerOrder.splice(at, 1);
+        const index = beforeId === undefined ? -1 : this.layerOrder.indexOf(beforeId);
+        this.layerOrder.splice(index < 0 ? this.layerOrder.length : index, 0, id);
         return this;
     }
 

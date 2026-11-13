@@ -90,6 +90,7 @@ export interface MapboxMap {
     addLayer(layer: Readonly<Record<string, unknown>>, beforeId?: string): unknown;
     getLayer(id: string): unknown;
     removeLayer(id: string): unknown;
+    moveLayer(id: string, beforeId?: string): unknown;
     setLayoutProperty(layerId: string, name: string, value: unknown): unknown;
     setPaintProperty(layerId: string, name: string, value: unknown): unknown;
     getConfigProperty(importId: string, name: string): unknown;

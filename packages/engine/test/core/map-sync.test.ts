@@ -156,3 +156,38 @@ describe('MapSync', () => {
         expect(map.callsOf('setPhotosData')).toHaveLength(1);
     });
 });
+
+describe('MapSync: the stack (V15)', () => {
+    const loaded = withManifest(
+        initialState('ro', 'system', 'unknown'),
+        manifest({ layers: [layer(), layer({ id: 'kh9-1980', year: 1980, order: 2 })] }),
+    );
+
+    it('happyPath_theLayerSwitchedOnLastMovesToTheFrontAndTheTimelinesStopRestacks', () => {
+        const map = new FakeMap();
+        const sync = new MapSync(map, undefined);
+        const both = {
+            ...loaded,
+            overlays: withOverlayVisibility(withOverlayVisibility(loaded.overlays, 'kh4-1966', true), 'kh9-1980', true),
+        };
+        const newer = { ...both, year: 1980, front: 'kh9-1980' };
+        const older = { ...both, year: 1966, front: 'kh4-1966' };
+
+        sync.update(newer, older);
+        sync.update(older, older);
+
+        const orders = new Map(map.callsOf('setLayerOrder') as [string, number][]);
+        expect(orders.get('kh4-1966')).toBeGreaterThan(orders.get('kh9-1980') ?? Infinity);
+        expect(map.callsOf('setLayerOrder')).toHaveLength(2);
+    });
+
+    it('badPath_aRenderedStackStartsByDateWithoutAFront', () => {
+        const map = new FakeMap();
+
+        new MapSync(map, undefined).render(loaded);
+
+        const specs = map.callsOf('addRasterLayer').map(([spec]) => spec as RasterLayerSpec);
+        expect(specs.map((spec) => spec.order)).toEqual([1966, 1980]);
+        expect(map.callsOf('setLayerOrder')).toEqual([]);
+    });
+});

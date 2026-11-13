@@ -27,7 +27,7 @@ export interface RasterLayerSpec {
     readonly opacity: number;
     /** Applied as `rasterAdjustmentPaint(adjustments)` (all four `raster-*` values, absent ones neutral). */
     readonly adjustments?: LayerAdjustments;
-    /** Higher draws on top of lower within the slot: the viewer passes the layer's year, so the newest is on top. */
+    /** Higher draws on top of lower within the slot: the viewer passes the layer's place in its stack (the timeline's on top, then by year). */
     readonly order: number;
     /** Added to the attribution control while the layer is visible. */
     readonly attribution: string;
@@ -163,6 +163,8 @@ export interface MapPort {
     setOverlayOpacity(overlayId: string, opacity: number): void;
     /** Live raster image adjustments (the admin's preview, the viewer on load); an unknown layer id is ignored. */
     setLayerPaint(layerId: string, paint: RasterAdjustmentPaint): void;
+    /** Moves a raster layer to `order` in its slot (`RasterLayerSpec.order`), its tiles kept; an unknown id is ignored. */
+    setLayerOrder(layerId: string, order: number): void;
     /** A raster layer or vector overlay id. */
     removeLayer(layerId: string): void;
     /** Replaces every photo marker and cone. */

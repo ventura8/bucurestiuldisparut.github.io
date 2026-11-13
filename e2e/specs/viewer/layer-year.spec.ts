@@ -8,8 +8,9 @@ import { expect, test } from '../../support/test.js';
 import { hashParam, openLayers, openViewer, serveManifest, t, visibilitySwitch } from '../../support/viewer.js';
 
 /**
- * The owner's requests of 2026-11-09 (behaviours V03 and V07): a historical layer switched on moves the timeline to its
- * year, so it always shows; several layers on stack by date, the newest on top, whatever the admin's `order`; a photo's
+ * The owner's requests of 2026-11-09 and 2026-11-13 (behaviours V03 and V07): a historical layer switched on moves the
+ * timeline to its year and comes to the front, above a newer opaque one too (V15); the other layers stack by date, the
+ * newest on top, whatever the admin's `order`; a photo's
  * date leads to the map of its layer year, or its chips to the near ones, the photo staying open. Pixel probes read the
  * synthetic tile colours in an empty corner of the city.
  */
@@ -86,8 +87,8 @@ test('Layers stack by date, the newest on top, whatever their order', { tag: '@S
 });
 
 test(
-    'The older layer switched on last still draws below the newer one',
-    { tag: '@S-V03-BAD-STACK-SWITCHED-LAST' },
+    'The older layer switched on last comes to the front, and its link keeps it there',
+    { tag: '@S-V03-HAPPY-CHOSEN-LAYER-FRONT' },
     async ({ page, lang }) => {
         await serveManifest(page, withOrderAgainstDates());
         await openViewer(page, { lang, hash: EMPTY_VIEW });
@@ -98,7 +99,32 @@ test(
         await closePanel(page, lang);
 
         await expect(timelineSlider(page, lang)).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: '1966' }));
-        await expectColourAt(page, await mapFraction(page, 0.5, 0.3), E2E_XYZ_LAYER.colour, 'the 1980 tiles stay on top');
+        const probe = await mapFraction(page, 0.5, 0.3);
+        await expectColourAt(page, probe, E2E_TILESET_LAYER.colour, 'the 1966 tiles over the opaque 1980 ones');
+        await expect.poll(() => hashParam(page, 'layers')).toBe(`${E2E_XYZ_LAYER.id},${E2E_TILESET_LAYER.id}`);
+
+        await openViewer(page, { lang, hash: `${EMPTY_VIEW}&layers=${E2E_XYZ_LAYER.id},${E2E_TILESET_LAYER.id}` });
+        await expect(timelineSlider(page, lang)).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: '1966' }));
+        await expectColourAt(page, await mapFraction(page, 0.5, 0.3), E2E_TILESET_LAYER.colour, 'the link keeps 1966 on top');
+    },
+);
+
+test(
+    'The front layer switched off leaves the newer one showing, the timeline where it was',
+    { tag: '@S-V03-BAD-FRONT-SWITCHED-OFF' },
+    async ({ page, lang }) => {
+        await serveManifest(page, withOrderAgainstDates());
+        await openViewer(page, { lang, hash: `${EMPTY_VIEW}&layers=${E2E_XYZ_LAYER.id},${E2E_TILESET_LAYER.id}` });
+        const probe = await mapFraction(page, 0.5, 0.3);
+        await expectColourAt(page, probe, E2E_TILESET_LAYER.colour, 'the 1966 tiles on top');
+
+        await openLayers(page, lang);
+        await visibilitySwitch(page, lang, LABEL_1966).click();
+        await closePanel(page, lang);
+
+        await expectColourAt(page, probe, E2E_XYZ_LAYER.colour, 'the 1980 tiles once 1966 is off');
+        await expect(timelineSlider(page, lang)).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: '1966' }));
+        await expect.poll(() => hashParam(page, 'layers')).toBe(E2E_XYZ_LAYER.id);
     },
 );
 
