@@ -38,41 +38,8 @@ import {
 import firebase from 'firebase/compat/app';
 import { describe, expect, it } from 'vitest';
 
-import {
-    EDITS,
-    adminDoc,
-    aiUsageDoc,
-    geocodeCellDoc,
-    inboxItemDoc,
-    newNotifySettings,
-    notificationEventDoc,
-    notifySettingsDoc,
-    pushDeviceDoc,
-    runChoiceDoc,
-    workerDoc,
-    cityDoc,
-    editableFields,
-    harvestStateDoc,
-    historyEntryDoc,
-    inviteDoc,
-    jobDoc,
-    jobLogDoc,
-    layerDoc,
-    layerVersionDoc,
-    manifestStateDoc,
-    newPhoto,
-    newPoi,
-    newPoiCategory,
-    opsDispatchDoc,
-    opsGuardDoc,
-    ownerDoc,
-    photoDoc,
-    poiCategoryDoc,
-    poiDoc,
-    setupStatusDoc,
-    usageDoc,
-    usgsSceneDoc,
-} from './support/documents.js';
+import { EDITS, adminDoc, aiUsageDoc, geocodeCellDoc, inboxItemDoc, newNotifySettings, notificationEventDoc, notifySettingsDoc, pushDeviceDoc, runChoiceDoc, workerDoc, cityDoc, editableFields, harvestStateDoc, historyEntryDoc, inviteDoc, jobDoc, jobLogDoc, layerDoc, layerVersionDoc, manifestStateDoc, newPhoto, newPoi, opsDispatchDoc, opsGuardDoc, ownerDoc, photoDoc, poiDoc, setupStatusDoc, usageDoc, usgsSceneDoc } from './support/documents.js';
+import { newPoiCategory, poiCategoryDoc } from './support/poi-categories.js';
 import { past, type Data } from './support/world.js';
 
 /** What the tests need of a zod object schema. */

@@ -7,39 +7,8 @@
 import { FIRESTORE_PATHS, type AuditedDocument } from '@hcm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import {
-    adminDoc,
-    aiUsageDoc,
-    cityDoc,
-    geocodeCellDoc,
-    harvestStateDoc,
-    historyEntryDoc,
-    inboxItemDoc,
-    inviteDoc,
-    jobDoc,
-    jobLogDoc,
-    layerDoc,
-    layerVersionDoc,
-    manifestStateDoc,
-    notificationEventDoc,
-    notifySettingsDoc,
-    newJob,
-    newNotifySettings,
-    newPhoto,
-    newPoi,
-    newPoiCategory,
-    opsDispatchDoc,
-    opsGuardDoc,
-    ownerDoc,
-    photoDoc,
-    poiCategoryDoc,
-    poiDoc,
-    pushDeviceDoc,
-    setupStatusDoc,
-    usageDoc,
-    usgsSceneDoc,
-    workerDoc,
-} from './support/documents.js';
+import { adminDoc, aiUsageDoc, cityDoc, geocodeCellDoc, harvestStateDoc, historyEntryDoc, inboxItemDoc, inviteDoc, jobDoc, jobLogDoc, layerDoc, layerVersionDoc, manifestStateDoc, notificationEventDoc, notifySettingsDoc, newJob, newNotifySettings, newPhoto, newPoi, opsDispatchDoc, opsGuardDoc, ownerDoc, photoDoc, poiDoc, pushDeviceDoc, setupStatusDoc, usageDoc, usgsSceneDoc, workerDoc } from './support/documents.js';
+import { newPoiCategory, poiCategoryDoc } from './support/poi-categories.js';
 import {
     ADMIN_ONLY,
     ANY_ADMIN,

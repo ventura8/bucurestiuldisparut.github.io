@@ -162,6 +162,17 @@ describe('the estimate recorded by imagery.browse', () => {
         expect(world.deps.blobs.recorder.argsOf('read')).toHaveLength(1);
     });
 
+    it('badPath_aFrameBesideTheCityIsLeftUnmeasured_theCopyStands', async () => {
+        const world = await readyWorld();
+        const path = RASTER_PATHS.browse('declassiii', F039);
+        const beside = OVER_THE_CITY.footprint.map((point) => ({ lat: point.lat + 1, lng: point.lng }));
+        await seedScene(world, F039, frameFields({ footprint: beside, browse: { state: 'copied', path } }));
+        world.deps.blobs.put('private', path, await jpegOf(greyImage(() => true)), { contentType: 'image/jpeg' });
+
+        await expect(browse(world, F039)).resolves.toEqual({ path, contentType: 'image/jpeg' });
+        expect(await readScene(world, F039)).not.toHaveProperty('cloudEstimate');
+    });
+
     it('badPath_anUnreadableBrowseImageLeavesTheSceneUnmeasured_theCopyStands', async () => {
         const world = await readyWorld();
         const path = RASTER_PATHS.browse('declassiii', F039);

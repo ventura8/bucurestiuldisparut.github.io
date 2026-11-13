@@ -13,6 +13,7 @@ import { CLIENT_WRITES, STORAGE_PATHS, publicObjectUrl, type ClientCollection } 
 
 import { archiveJobFields } from './archive-fields.js';
 import { derivative, reviewedFields, versionEdits, versionFields } from './photo-fields.js';
+import { POI_CATEGORY_EDITS } from './poi-categories.js';
 import { STORY_EDITS } from './stories.js';
 import { later, past, serverTime, stampedBy, systemStamp, type Data } from './world.js';
 
@@ -245,36 +246,6 @@ export function newPoi(uid: string): Data {
         sourceLayer: 'plan-1911',
         createdAt: serverTime(),
         createdBy: uid,
-        ...stampedBy(uid),
-    };
-}
-
-export function poiCategoryDoc(): Data {
-    return {
-        label: { ro: 'Clădiri', en: 'Buildings' },
-        icon: 'church',
-        color: '#875329',
-        defaultOpacity: 0.8,
-        order: 1,
-        defaultVisible: true,
-        pinned: false,
-        attribution: 'OpenHistoricalMap (CC0)',
-        createdAt: past(),
-        ...systemStamp('bootstrap'),
-    };
-}
-
-export function newPoiCategory(uid: string): Data {
-    return {
-        label: { ro: 'Străzi dispărute' },
-        icon: 'add_road',
-        color: '#3366AA',
-        defaultOpacity: 1,
-        order: 2,
-        defaultVisible: true,
-        pinned: true,
-        attribution: 'OpenHistoricalMap (CC0)',
-        createdAt: serverTime(),
         ...stampedBy(uid),
     };
 }
@@ -689,16 +660,7 @@ export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
         credit: 'Maria Popescu',
         sourceLayer: 'plan-1846',
     },
-    poiCategory: {
-        label: { ro: 'Biserici', en: 'Churches' },
-        icon: 'mosque',
-        color: '#aa00ff',
-        defaultOpacity: 0,
-        order: -1,
-        defaultVisible: false,
-        pinned: true,
-        attribution: 'OpenStreetMap (ODbL)',
-    },
+    poiCategory: POI_CATEGORY_EDITS,
     story: STORY_EDITS,
     job: { cancelRequested: true, placingPoints: true },
     usgsScene: { status: 'rejected', note: 'Nori peste oraș.' },

@@ -8,7 +8,8 @@ import { FIRESTORE_PATHS } from '@hcm/shared';
 import firebase from 'firebase/compat/app';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { cityDoc, layerDoc, newPhoto, newPoi, photoDoc, poiCategoryDoc, poiDoc } from './support/documents.js';
+import { cityDoc, layerDoc, newPhoto, newPoi, photoDoc, poiDoc } from './support/documents.js';
+import { poiCategoryDoc } from './support/poi-categories.js';
 import { createWorld, past, serverTime, stampedBy, type Data, type World } from './support/world.js';
 
 const SCOPE = 'roles';
