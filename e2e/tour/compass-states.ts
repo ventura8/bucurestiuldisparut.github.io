@@ -22,6 +22,14 @@ function compass(page: Page, lang: Locale): Locator {
     return page.getByRole('button', { name: t(lang, 'viewer.compass'), exact: true });
 }
 
+/** Waits until the address drops its bearing and the map is idle: the compass quiet, the focus still on it. */
+async function settledNorth(page: Page, lang: Locale): Promise<void> {
+    await expect.poll(async () => (await currentHash(page)).split('&')[0]).toBe('16/44.42704/26.0853');
+    await mapIdle(page);
+    await expect(page.locator('hcm-compass')).toHaveAttribute('north');
+    await expect(compass(page, lang)).toBeFocused();
+}
+
 export const COMPASS_STATES = {
     'compass-turned': {
         title: 'The map turned 45°: the compass coloured, focused from the keyboard',
@@ -34,10 +42,7 @@ export const COMPASS_STATES = {
         title: 'Enter on the compass: north up again, the compass quiet, the focus kept',
         enter: async ({ page, lang }: CompassTour) => {
             await page.keyboard.press('Enter');
-            await expect.poll(async () => (await currentHash(page)).split('&')[0]).toBe('16/44.42704/26.0853');
-            await mapIdle(page);
-            await expect(page.locator('hcm-compass')).toHaveAttribute('north');
-            await expect(compass(page, lang)).toBeFocused();
+            await settledNorth(page, lang);
         },
     },
 } as const;
