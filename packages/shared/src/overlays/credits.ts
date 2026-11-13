@@ -7,8 +7,18 @@
  */
 import { VIEWER_LOCALES, hasCatalogue, translate, type MessageKey, type ViewerLocale } from '../i18n/index.js';
 
-/** The credits the pipeline writes, as text keys; their English text is the stored constant (a test holds them equal). */
-const CREDIT_KEYS: readonly MessageKey[] = ['layers.attribution.usgs', 'layers.attribution.landsat'];
+/**
+ * The credits the pipeline writes, as text keys, each with its stored English text (`USGS_ATTRIBUTION`,
+ * `LANDSAT_ATTRIBUTION`; a test holds them equal to those and to the English catalogue). Spelt here, not read from the
+ * English catalogue: the engine fetches only the page's language, so on any other page English is not here
+ * (`docs/LESSONS.md` 655), and not imported from the schemas, whose zod the engine's bundle would then carry.
+ */
+export const STORED_CREDITS: Readonly<Partial<Record<MessageKey, string>>> = {
+    'layers.attribution.usgs': 'USGS EROS, declassified imagery (public domain)',
+    'layers.attribution.landsat': 'Landsat imagery courtesy of NASA Goddard Space Flight Center and U.S. Geological Survey',
+};
+
+const CREDIT_KEYS = Object.keys(STORED_CREDITS) as readonly MessageKey[];
 
 /** What separates the credits of one layer (`finalize.ts` joins the DEM's notice so). */
 const CREDIT_SEPARATOR = '; ';
@@ -18,12 +28,12 @@ const CREDIT_SEPARATOR = '; ';
  * line, which Mapbox GL drew in the language of the page's first load.
  */
 export function localizedCredit(text: string, locale: ViewerLocale): string {
-    // Only the languages whose texts are here: one not fetched would read as English, which the loop covers already.
+    // The stored English, then every language whose texts are here (one not fetched gives an empty text, never matched).
     const known = VIEWER_LOCALES.filter((other) => hasCatalogue(other));
-    return CREDIT_KEYS.reduce(
-        (out, key) => known.reduce((acc, other) => acc.replaceAll(translate(other, key), translate(locale, key)), out),
-        text,
-    );
+    return CREDIT_KEYS.reduce((out, key) => {
+        const spellings = [STORED_CREDITS[key] ?? '', ...known.map((other) => translate(other, key))].filter((credit) => credit !== '');
+        return spellings.reduce((acc, credit) => acc.replaceAll(credit, translate(locale, key)), out);
+    }, text);
 }
 
 /**

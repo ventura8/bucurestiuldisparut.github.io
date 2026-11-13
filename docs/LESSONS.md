@@ -3847,3 +3847,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: `admin.shell.language-rtl` once its leak check used the page's real language.
     - Fix and pin: the check walks up through shadow hosts (`markedOf` in `e2e/support/i18n.ts`); the same state and `admin.start.language-rtl` pass read as Arabic and Urdu. The start page's footer marks its Romanian link texts `lang="ro"` too.
     - **A checker that reads the DOM must read it as assistive technology does: across shadow boundaries.**
+655. **After the languages left the engine's bundle, the Romanian map credited USGS in English again.**
+    - Seen: 2026-11-13, the merge queue's languages after origin's merge: `layers.spec`'s S-V03-BAD-ATTRIBUTION-REPEATED failed on the Romanian page, the map's line and the Layers panel keeping "USGS EROS, declassified imagery (public domain)".
+    - Cause: `localizedCredit` (`packages/shared/src/overlays/credits.ts`, origin's Pixel Tablet fix) found the stored English credit through the English catalogue, which the tests bundle but the engine fetches only for an English page or a language that falls back to it (`docs/research/DECISIONS-for-review.md` §192). Each branch passed alone; only the merged engine lacked English.
+    - Found by: the e2e only: Vitest's `@hcm/shared` always bundles Romanian and English.
+    - Fix and pin: the stored English is spelt beside the keys (`STORED_CREDITS`, held equal to `USGS_ATTRIBUTION`, `LANDSAT_ATTRIBUTION` and the English catalogue by `credits.test.ts`) and matched first; the fetched languages after it.
+    - **Code that runs in the engine never needs a catalogue other than the page's own: English is not there unless the page is English or falls back to it.**
