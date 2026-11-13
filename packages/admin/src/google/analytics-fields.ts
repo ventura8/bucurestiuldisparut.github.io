@@ -29,7 +29,7 @@ const DATA_API = 'https://analyticsdata.googleapis.com/v1beta';
 const CUSTOM_FIELD = /^(?:average|count)?[cC]ustomEvent:(\w+)$/;
 
 /** The parameter of a custom field (`customEvent:step_id`, `averageCustomEvent:duration_ms`), else undefined. */
-export function parameterOf(field: string): string | undefined {
+function parameterOf(field: string): string | undefined {
     return CUSTOM_FIELD.exec(field)?.[1];
 }
 
