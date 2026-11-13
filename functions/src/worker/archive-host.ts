@@ -28,7 +28,7 @@ export function archiveOf(job: JobDoc): string | undefined {
 }
 
 /** The worker whose scan reported the archive, or undefined when the archive has no record. */
-export async function reporterOf(reader: DocumentReader, cityId: string, archiveId: string): Promise<string | undefined> {
+async function reporterOf(reader: DocumentReader, cityId: string, archiveId: string): Promise<string | undefined> {
     return (await reader.get(FIRESTORE_PATHS.archive(cityId, archiveId), archiveDocSchema))?.workerId;
 }
 

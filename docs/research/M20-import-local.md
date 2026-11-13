@@ -844,10 +844,11 @@ computer works on every job, so the archive is copied, not pinned to one compute
 | The holder's duty (`worker.claim`) | A claim names the archives the computer holds whole (`archives`: `ArchiveStore.held`, never a partial copy). A job waiting `archive-copy` is claimable by nobody; a claim of a worker naming its archive is answered `copy: {jobId, archiveId, seriesId}` before any job. |
 | The copy (`worker.archiveCopy`, new callable, `functions/src/worker/archive-copy.ts`) | `objects`: signed PUT/GET of the job's copy files only (`ARCHIVE_COPY_FILE`: 64 hex or `manifest.json`), only while the job waits `archive-copy`, never while the budget guard is red. `done` with `bytes` (at most `ARCHIVE_COPY_MAX_BYTES`, 8 GiB): the job goes back to `waitReason: 'worker'`, `archiveCopy: {by, at, bytes}`, and the bytes are logged. |
 | Cost | `tmp/` is deleted by the bucket's lifecycle after one day (`PRIVATE_BUCKET_LIFECYCLE`); a copy is only one series' sheets, sent once per job that needs it; downloads to the owner's home network are the only traffic billed. |
-| What the owner reads | `adminContent.imagery.wait.archiveCopy`: "Waiting for the computer the scanned maps were imported on to send a copy of this map's sheets: only it has the files. Turn it on and keep it connected (Jobs → Your computer)." |
+| What the owner reads | `adminContent.imagery.wait.archiveCopy`: "Waiting for the computer that has these scanned maps: turn it on, it sends a copy." (Jobs → Your computer shows whether it is connected) |
 
 A worker older than this change still claims a series and fails it at `gather`: the workers update themselves to the installed
-release. A failed series is retried from Jobs; a local job's retry starts its attempts again (`retryPastCap`).
+release. A failed series is retried from Jobs; a local job's retry starts its attempts again (`retryPastCap`) and its hand-backs
+too (`imagery.retry` drops `archiveReturns` and `archiveCopy`).
 
 Tests: `functions/test/worker/archive-host.test.ts`, `pipeline/tests/unit/{test_archive_copy,test_worker_copying,test_worker_loop}.py`;
 scenarios `S-A120-HAPPY-ARCHIVE-COPY`, `S-A120-BAD-ARCHIVE-COPY`, `S-P20-HAPPY-ARCHIVE-COPY`, `S-P20-BAD-ARCHIVE-COPY`.
