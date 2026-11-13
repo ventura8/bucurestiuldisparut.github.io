@@ -119,7 +119,8 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # M3 (docs/research/M3-interfaces.md §10.1, DECISIONS-for-review.md §47): the Imagery area (15.2 KB measured on
     # 2026-10-23), the georeferencer (14.0 KB) and the layer editor's Crop (`layer-geometry`, 1.9 KB), each the measurement
     # plus about 20 %, under the contract's ceilings of 30, 30 and 8 KB.
-    "imagery": 18,
+    # 20 since 2026-11-13 (§215, the owner's raise for beta.1): 18.0 KB measured.
+    "imagery": 20,
     # The georeferencer: 17 until 2026-11-08, 18 until 2026-11-10, 19 since, the owner's decisions (DECISIONS-for-review.md §110 and
     # §141): M15's terrain map and the merge of the accuracy track into M16 measured 17,160 bytes gzip; the zoom buttons, Undo, the
     # placing guide and the map's pair numbers (2026-11-10) took it to about 18,030, with Snap my points and the published maps
