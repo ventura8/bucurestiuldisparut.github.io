@@ -195,6 +195,8 @@ export interface VersionViewPort {
     readonly publicUrl: string | null;
     /** M20, batch 4: what an archive series' placement measured (`grid-names`: placed from its sheets' names, its owner approves). */
     readonly archive?: ArchiveReport | null;
+    /** An archive series waiting with `layout-check`: its tiles wait for the tile-import wizard (`#/help/<id>/tiles`). */
+    readonly layoutCheck?: boolean;
     /**
      * M20 (§7): rights summary for the approval card (null: none). Approve stays off until `allowPublish`; Confirm when
      * `state` is `needs-confirmation`.

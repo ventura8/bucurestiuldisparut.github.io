@@ -89,5 +89,6 @@ export const en: Readonly<Record<AdminArchiveKey, string>> = {
     'adminArchive.help.frame-not-found': "the sheets' frame was not found",
     'adminArchive.help.no-scale': 'the map has no scale',
     'adminArchive.help.archive-missing': 'the computer no longer finds the files',
+    'adminArchive.help.layout-check': 'the tiles wait for you to arrange them',
     'adminArchive.openVersion': 'Open {title}',
 } as const;

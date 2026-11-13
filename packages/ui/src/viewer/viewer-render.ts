@@ -29,6 +29,7 @@ import { nearYearChip, textChip } from './viewer-near-year.js';
 import { storiesSheet } from './viewer-stories.js';
 import { unplacedSheet } from './viewer-unplaced.js';
 import { statusOrCard } from './viewer-wordless.js';
+import type { CameraSource } from './hcm-compass.js';
 import { zoomButtons, type MapSize } from './viewer-zoom.js';
 import { modalOpen, renderConsentBanner } from './viewer-legal.js';
 
@@ -44,6 +45,8 @@ export interface ViewerView {
     readonly mapboxCssUrl: string;
     /** The map container's box (null before the first render): Zoom out's limit (`viewer-zoom.ts`). */
     readonly mapSize: MapSize | null;
+    /** The compass's camera (V64): the attached store, null before one is. */
+    readonly camera: CameraSource | null;
     /** Where the map's menu is open (V62); null: closed. */
     readonly mapMenu: MenuPoint | null;
     /** How far Mapbox's bottom corners move out from under the open modal sheet (V18, `legal-lift.ts`). */
@@ -93,6 +96,8 @@ export interface ViewerHandlers extends LightboxHandlers, MapMenuHandlers {
     readonly onToastDismiss: (event: Event) => void;
     /** The zoom buttons: one level in (1) or out (-1). */
     readonly onZoom: (step: number) => void;
+    /** The compass (V64): the map back to north up and level. */
+    readonly onCompass: () => void;
     /** The help panel's switch of the single-key shortcuts. */
     readonly onShortcuts: (event: CustomEvent<{ readonly enabled: boolean }>) => void;
     /** About's button to the help panel. */
@@ -290,7 +295,7 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
                 @hcm-select=${handlers.onMenuSelect}
             ></hcm-fab-menu>
         </div>
-        ${state.webgl ? zoomButtons(view, state.view, manifest, handlers.onZoom) : nothing}
+        ${state.webgl ? zoomButtons(view, state.view, manifest, handlers) : nothing}
         ${consent ? renderConsentBanner(view.locale, handlers.onConsent) : nothing} ${toast(view, state, handlers)}
         ${mapMenu(view, state, handlers)}`;
 }

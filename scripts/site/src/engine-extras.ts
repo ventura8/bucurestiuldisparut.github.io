@@ -5,7 +5,7 @@ import { build, parseSync, type ESTree, type InlineConfig, type PluginOption, ty
 import { subresourceIntegrity } from './sri.js';
 
 /**
- * The engine's extras, loaded on demand (docs/ENGINE_API.md → *Extras on demand*, DECISIONS-for-review.md §183): code no
+ * The engine's extras, loaded on demand (docs/ENGINE_API.md → *Extras on demand*, DECISIONS-for-review.md §186): code no
  * first paint needs is not part of `engine.iife.js` or `engine.mjs` but a classic script beside them,
  * `extra-<name>-<hash>.js`, that the engine adds with its Subresource Integrity the first time it is wanted
  * (`packages/engine/src/extras/loader.ts`). An IIFE has no code splitting, so before this the IIFE carried every lazy

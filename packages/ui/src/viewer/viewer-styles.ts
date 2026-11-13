@@ -47,7 +47,9 @@ export const viewerStyles = [
             box-sizing: border-box;
             inline-size: 100%;
             block-size: 100%;
-            min-block-size: 320px;
+
+            /* The shortest landscape phone with its bars is 270 px tall: a page that never scrolls (an app shell) shows it whole. */
+            min-block-size: 240px;
             overflow: hidden;
             container: hcm-viewer / size;
             background: var(--md-sys-color-surface);

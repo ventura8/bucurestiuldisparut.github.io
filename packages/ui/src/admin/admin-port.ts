@@ -45,6 +45,7 @@ export type AdminRouteIdPort =
     | 'history'
     | 'crashes'
     | 'georef'
+    | 'help'
     | 'cities'
     | 'review'
     | 'contribute';

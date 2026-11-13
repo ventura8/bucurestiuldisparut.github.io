@@ -938,7 +938,7 @@
             "area": "viewer",
             "name": "The IIFE loads its extras (swipe compare, the gamepad, the consented Firebase SDK and field chunk) beside it on first use, each with its integrity, and says to try again when one does not arrive",
             "milestone": "M5",
-            "source": "the owner, 2026-11-12: the IIFE at 124.9 KB of its 125 KB budget left no room for photo versions, the map's context menu and numbered dots; DECISIONS-for-review.md §183, docs/ENGINE_API.md → Extras on demand"
+            "source": "the owner, 2026-11-12: the IIFE at 124.9 KB of its 125 KB budget left no room for photo versions, the map's context menu and numbered dots; DECISIONS-for-review.md §186, docs/ENGINE_API.md → Extras on demand"
         },
         {
             "id": "A100",
@@ -1093,6 +1093,13 @@
             "name": "The map's menu (right click, long press, ContextMenu key or Shift+F10) with Open in Google Street View, Copy coordinates and Share a link to this view; a photo's sheet links to Street View",
             "milestone": "M17",
             "source": "the owner, 2026-11-09: go to Google Street View from a right-click panel (hold on a touch screen) on the map, and from a photo's details"
+        },
+        {
+            "id": "V64",
+            "area": "viewer",
+            "name": "The compass: its needle turns with the map, and a press, Enter or Space turns the map back to north up and level",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-13 (beta.1): i want us to have a compass for the viewer (and clicking on it resets to north up)"
         },
         {
             "id": "P31",
@@ -2065,7 +2072,7 @@
             "asserts": "Settings' list shows the 16 languages by their own names, each with its lang, the current one checked; German, Arabic and Japanese chosen in turn relabel the whole viewer with no text of another language, the hash keeps lang=<code> and a reload keeps the last; each language's file is fetched once; every other language boots from ?lang=",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/specs/viewer/languages.spec.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §192). Test: e2e/specs/viewer/languages.spec.ts."
         },
         {
             "id": "S-V11-HAPPY-RTL",
@@ -2076,7 +2083,7 @@
             "asserts": "?lang=ar: html and the viewer dir=rtl, the map container left to right, the timeline's today on the left, no text of another language",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/specs/viewer/languages.spec.ts, packages/ui/test/viewer/languages.test.ts, packages/ui/test/components/rtl.test.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §192). Test: e2e/specs/viewer/languages.spec.ts, packages/ui/test/viewer/languages.test.ts, packages/ui/test/components/rtl.test.ts."
         },
         {
             "id": "S-V11-HAPPY-FALLBACK-TEXT",
@@ -2087,7 +2094,7 @@
             "asserts": "German viewer, a photo whose title is only in Romanian: the Romanian title and the note 'Sprache des Textes: Română (noch nicht übersetzt)'; a text with English shows the English one with lang=en (unit: languages.test.ts)",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/specs/viewer/languages.spec.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §192). Test: e2e/specs/viewer/languages.spec.ts."
         },
         {
             "id": "S-V11-HAPPY-TRANSLATING-FALLS-BACK",
@@ -2098,7 +2105,7 @@
             "asserts": "the Settings list names the 25 languages (LANGUAGE_NAMES); Persian chosen: html and the viewer dir=rtl, fa.json and en.json fetched (the file says fallback: en), the menu and the timeline named in English, no text of a third language",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner, 2026-11-12 (track/langs25; docs/I18N.md -> Fallback, DECISIONS-for-review.md §186). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts, packages/shared/test/i18n-viewer.test.ts."
+            "notes": "The owner, 2026-11-12 (track/langs25; docs/I18N.md -> Fallback, DECISIONS-for-review.md §193). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts, packages/shared/test/i18n-viewer.test.ts."
         },
         {
             "id": "S-V11-BAD-MISSING-KEY-FALLS-BACK",
@@ -2120,7 +2127,7 @@
             "asserts": "tour: a photo, home and the language list in Arabic, right to left, through the layout, accessibility and i18n checkers at the phone, the phone held landscape, the laptop and the 4K screen",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §192). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
         },
         {
             "id": "S-V11-HAPPY-CJK-TOUR",
@@ -2131,7 +2138,7 @@
             "asserts": "tour: home and the Layers panel in Japanese, in the system's Japanese font, through the layout, accessibility and i18n checkers at the per-push viewports",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §192). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
         },
         {
             "id": "S-V11-BAD-CATALOGUE-404",
@@ -2142,7 +2149,7 @@
             "asserts": "i18n/ko.json answers 404: Korean chosen from the list leaves the page in its language, the list's selection back on it, the hash without lang=ko, and the snackbar says the language could not be loaded",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/store-language.test.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §192). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/store-language.test.ts."
         },
         {
             "id": "S-V11-BAD-CATALOGUE-STALE",
@@ -2153,7 +2160,7 @@
             "asserts": "i18n/fr.json names engine 0.0.1: French is refused like a missing file, with the same message",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §192). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts."
         },
         {
             "id": "S-V11-BAD-BOOT-CATALOGUE",
@@ -2164,7 +2171,7 @@
             "asserts": "?lang=hi with i18n/hi.json refused: the viewer boots in Romanian and says the language could not be loaded; every file refused: the engine's one bilingual card (Romanian and English lines, each with its lang) and a Retry that reloads",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §192). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
         },
         {
             "id": "S-V11-BAD-UNKNOWN-HASH-LANG",
@@ -2175,7 +2182,7 @@
             "asserts": "#…&lang=xx -> Romanian, the hash's view still applied; setLang('xx') is ignored too",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §185). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §192). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
         },
         {
             "id": "S-V12-HAPPY",
@@ -16563,7 +16570,7 @@
             "asserts": "a page with engine.iife.js mounts the viewer and requests no extra-*.js; openCompare(null) adds one head script extra-compare-<hash>.js with integrity sha384-… and crossorigin anonymous, the compare bar shows and the second map is created (2 made, 0 removed); closing and comparing again requests nothing more",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §183. Tests: e2e/specs/viewer/extras.spec.ts; the loader in packages/engine/test/extras/loader.test.ts, the build in scripts/site/test/engine-extras.test.ts."
+            "notes": "DECISIONS-for-review.md §186. Tests: e2e/specs/viewer/extras.spec.ts; the loader in packages/engine/test/extras/loader.test.ts, the build in scripts/site/test/engine-extras.test.ts."
         },
         {
             "id": "S-V63-HAPPY-EXTRAS-CONSENT-AND-PAD",
@@ -16574,7 +16581,7 @@
             "asserts": "a page with engine.iife.js and a city with GA4 requests no extra-*.js before an answer; after Accept it requests extra-firebase-sdk-<hash>.js and extra-field-sdk-<hash>.js once each, as head scripts with integrity sha384-… and crossorigin anonymous, and GA4 receives viewer_timing; a connected pad adds extra-gamepad-<hash>.js once the same way and the toast 'gamepad.ready' shows",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §183. Tests: e2e/specs/viewer/extras.spec.ts; a release's own entry on the host and the ready mark in packages/engine/test/extras/."
+            "notes": "DECISIONS-for-review.md §186. Tests: e2e/specs/viewer/extras.spec.ts; a release's own entry on the host and the ready mark in packages/engine/test/extras/."
         },
         {
             "id": "S-V63-BAD-EXTRAS-CHUNK-FAILS",
@@ -16585,7 +16592,7 @@
             "asserts": "extra-compare-<hash>.js refused -> a toast 'error.extraLoad', no compare bar, no extra script left in head, one map only and the map still shown; once the file is served again, Compare requests it a second time and opens with the second map",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §183. Tests: e2e/specs/viewer/extras.spec.ts; packages/engine/test/extras/loader.test.ts (a failing chunk is logged, removed and retried) and packages/engine/test/compare/session.test.ts."
+            "notes": "DECISIONS-for-review.md §186. Tests: e2e/specs/viewer/extras.spec.ts; packages/engine/test/extras/loader.test.ts (a failing chunk is logged, removed and retried) and packages/engine/test/compare/session.test.ts."
         },
         {
             "id": "S-A100-BAD-REVIEW-EMPTY",
@@ -16885,15 +16892,26 @@
             "notes": "The owner's request of 2026-11-09 (docs/research/DECISIONS-for-review.md §133). Test: e2e/specs/viewer/layer-year.spec.ts."
         },
         {
-            "id": "S-V03-BAD-STACK-SWITCHED-LAST",
+            "id": "S-V03-HAPPY-CHOSEN-LAYER-FRONT",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The older layer switched on last comes to the front, above an opaque newer one, and its link keeps it there",
+            "asserts": "1980 switched on, then 1966 -> the timeline at 1966, the probe reads the 1966 tiles, layers=1980,1966 (the front last); the link reopened -> 1966 again on top; unit: packages/engine/test/core/stack.test.ts, store-layer-year.test.ts, map-sync.test.ts",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's decision of 2026-11-13 (V15, docs/research/DECISIONS-for-review.md §191). Test: e2e/specs/viewer/layer-year.spec.ts."
+        },
+        {
+            "id": "S-V03-BAD-FRONT-SWITCHED-OFF",
             "behaviour": "V03",
             "area": "viewer",
             "path": "bad",
-            "title": "The older layer switched on last still draws below the newer one",
-            "asserts": "1980 switched on, then 1966 -> the timeline at 1966, the probe still reads the 1980 tiles on top",
+            "title": "The front layer switched off leaves the newer one showing and the timeline where it was",
+            "asserts": "a link with 1966 on top of 1980; 1966 switched off -> the probe reads the 1980 tiles, the timeline stays at 1966, layers=1980",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "The owner's request of 2026-11-09 (docs/research/DECISIONS-for-review.md §133). Test: e2e/specs/viewer/layer-year.spec.ts."
+            "notes": "The owner's decision of 2026-11-13 (V15, docs/research/DECISIONS-for-review.md §191). Test: e2e/specs/viewer/layer-year.spec.ts."
         },
         {
             "id": "S-V07-HAPPY-MAP-OF-YEAR",
@@ -18326,6 +18344,149 @@
             "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_placing_pdf.py."
         },
         {
+            "id": "S-P20-HAPPY-STITCH-NAMES",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An atlas or pieces named by row and column are laid out on their own",
+            "asserts": "names r1c2, 03-07, C12, 12A quadrants or folders as rows, shuffled, overlapping 6-15 %, grey, colour or line art, framed or with margins, scale off by 5 % -> every sheet placed, seam error median <= 1.5 px and p95 <= 3 px, verdict good; mosaicked window by window and waiting for points with help.stitched.layout and layout.json, thumbs.jpg, seams.jpg",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_sheetnames.py, pipeline/tests/unit/test_placing_autostitch.py, pipeline/tests/unit/test_placing_autoplace.py, pipeline/tests/unit/test_placing_bundle.py."
+        },
+        {
+            "id": "S-P20-HAPPY-STITCH-SEAMS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Sheets named only in order get their columns from the seams",
+            "asserts": "img003 or page numbers in natural order, overlap 3 % -> the likeliest column counts are each tried and the one whose seams join best kept; every sheet placed within the seam-error targets",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_sheetnames.py, pipeline/tests/unit/test_placing_seams.py, pipeline/tests/unit/test_placing_autostitch.py."
+        },
+        {
+            "id": "S-P20-HAPPY-STITCH-TURNED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Sheets scanned turned or mirrored are turned back",
+            "asserts": "three of twelve sheets turned 90/180/270 degrees and some mirrored -> each turned back to the variant its neighbours agree with (surest first), every sheet placed within the targets",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_autostitch.py, pipeline/tests/unit/test_placing_sheetwork.py."
+        },
+        {
+            "id": "S-P20-HAPPY-STITCH-ABUTTING",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Atlas pages that abut with frames and margins are placed whole",
+            "asserts": "pages with no overlap, paper margins and a frame line -> cropped inside the frame, joined by their edges continuing; 100 % placed, verdict good",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_autostitch.py, pipeline/tests/unit/test_placing_seams.py, pipeline/tests/unit/test_placing_sheetwork.py."
+        },
+        {
+            "id": "S-P20-HAPPY-STITCH-WINDOWED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The mosaic is written in windows within the worker's memory",
+            "asserts": "100 scans of 6000 px laid out and mosaicked -> peak RSS of the process <= 1.5 GB (the 4 GB / 2-core worker), canvas <= 20,000 px, tiles pasted turned, cropped and split at the nearest centre",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_canvas_window.py, pipeline/tests/unit/test_placing_autoplace.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-GARBAGE-WAITS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A layout nothing vouches for waits for its owner, never a mosaic",
+            "asserts": "noise sheets, or a check verdict the older joins cannot hold either -> no canvas, a preview of the proposal, the version waits with help reason layout-check and its layout files (weak seams with strips and a suggested point)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_autostitch.py, pipeline/tests/unit/test_placing_autoplace.py, pipeline/tests/unit/test_placing_bundle.py, pipeline/tests/unit/test_placing_assemble.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-FOREIGN-SHEET",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A foreign sheet is never placed",
+            "asserts": "a legend among named sheets, another town's sheet numbered with the pages, missing sheets -> the foreign sheet is left out (no-join or no-seam), the others placed within the targets",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_autostitch.py, pipeline/tests/unit/test_placing_bundle.py, pipeline/tests/unit/test_placing_seams.py, pipeline/tests/unit/test_placing_sheetnames.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-NO-NAMES",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Names no scheme agrees on fall back to the order",
+            "asserts": "names like north, harbour, east, duplicates on one cell, folders of one file -> laid out in natural order and judged by their seams, never a wrong named grid",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_sheetnames.py."
+        },
+        {
+            "id": "S-P20-HAPPY-STITCH-OWNER",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The owner's tile layout is fixed as given and kept for a retry",
+            "asserts": "help.layoutAnswer with cells, turns, flips, an X and an answered seam -> a preview waits again with layout-check and revision + 1; an accepted answer is mosaicked with the owner's seam (state owner); sheets not named keep their automatic reason (no-seam), only the X is not-part; a turn the cell refuses goes back a quarter; the answer stays in help after the mosaic's wait for points",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_autoplace.py, pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-OWNER-MALFORMED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A malformed or outdated owner answer never fixes a seam",
+            "asserts": "points that are not two finite numbers, a seam between sheets no longer neighbours on its side, a broken answer -> no fixed seam (never one at 0, 0), zeroes for malformed numbers, the rest of the layout measured as usual",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_autoplace.py, pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-NAMES-NO-SEAMS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Names read right over seams that say nothing are never judged good",
+            "asserts": "a 2 x 3 rc series whose pictures are swapped (quadrants read in the wrong order) or noise -> grid source name, verdict check or poor, so it waits for its owner instead of a mosaic",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-LEGACY-LOOSE",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "The older joins never mosaic a layout nothing vouches for",
+            "asserts": "a poor proposal with pages joined by edges alone, or a check or poor proposal whose older joins place every part with a 9 px residual -> no mosaic, the version waits with layout-check",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-TOO-MANY",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A series larger than the tile wizard can open waits before any layout",
+            "asserts": "more files than LAYOUT_SHEETS_MAX -> help reason no-path with the note to import smaller series, no layout.json written",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
             "id": "S-A65-HAPPY-JOINED-FRAME",
             "behaviour": "A65",
             "area": "admin",
@@ -18810,6 +18971,83 @@
             "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/tour/viewer.tour.ts (e2e/tour/map-menu-states.ts)."
         },
         {
+            "id": "S-V64-HAPPY-COMPASS-RESET",
+            "behaviour": "V64",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A click on the compass turns a turned map back to north up and the address drops its bearing",
+            "asserts": "#16/.../45 -> the compass not north, described 'turned 45° from north'; a click -> the address 16/lat/lng without a bearing, the camera's bearing 0 at rest, the compass north and described 'faces north'",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: e2e/specs/viewer/compass.spec.ts, packages/engine/test/core/store-compass.test.ts, packages/ui/test/viewer/hcm-compass.test.ts."
+        },
+        {
+            "id": "S-V64-HAPPY-NEEDLE-FOLLOWS",
+            "behaviour": "V64",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The needle follows the map's own rotate gesture, and Space levels a turned and tilted map",
+            "asserts": "a right-drag over the map turns it more than 1° and tilts it -> the compass leaves north; Space on the focused compass -> bearing 0 and pitch 0, the compass north, the focus kept",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: e2e/specs/viewer/compass.spec.ts, packages/ui/test/viewer/hcm-compass.test.ts."
+        },
+        {
+            "id": "S-V64-HAPPY-COMPARE",
+            "behaviour": "V64",
+            "area": "viewer",
+            "path": "happy",
+            "title": "In swipe compare the compass turns both maps north",
+            "asserts": "#15/.../90 in compare, a click on the compass -> every live map ends at bearing 0, at rest on one camera; the address drops its bearing",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: e2e/specs/viewer/compass.spec.ts, packages/engine/test/compare/session.test.ts."
+        },
+        {
+            "id": "S-V64-HAPPY-TOUR",
+            "behaviour": "V64",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The compass passes the layout and accessibility checks on every window class",
+            "asserts": "expectStateSound on the compass journey (turned 45° and focused, north up again after Enter with the focus kept) and on every other map state, which shows it by the zoom group",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: e2e/tour/viewer.tour.ts (e2e/tour/compass-states.ts)."
+        },
+        {
+            "id": "S-V64-BAD-ALREADY-NORTH",
+            "behaviour": "V64",
+            "area": "viewer",
+            "path": "bad",
+            "title": "North up already, the compass stays, quiet, and a press or Enter changes nothing",
+            "asserts": "#16/... north up -> the compass visible with the north attribute; a click and Enter fire no map move, leave the address and the camera unchanged, the focus on the compass",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: e2e/specs/viewer/compass.spec.ts, packages/engine/test/core/store-compass.test.ts."
+        },
+        {
+            "id": "S-V64-BAD-REDUCED-MOTION",
+            "behaviour": "V64",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Under reduced motion the compass jumps north instead of turning",
+            "asserts": "prefers-reduced-motion: reduce, #16/.../200, a click -> the address drops its bearing after at most 2 map moves (a jump, not a turn), bearing 0, the compass north",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: e2e/specs/viewer/compass.spec.ts, packages/engine/test/core/store-compass.test.ts."
+        },
+        {
+            "id": "S-V64-BAD-NO-WEBGL",
+            "behaviour": "V64",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Without WebGL there is no map and no compass",
+            "asserts": "webgl false -> no hcm-compass in the viewer",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: packages/ui/test/viewer/hcm-compass.test.ts, e2e/specs/viewer/no-webgl.spec.ts."
+        },
+        {
             "id": "S-P31-HAPPY-GDAL-MEMORY",
             "behaviour": "P31",
             "area": "pipeline",
@@ -19028,6 +19266,149 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-ORDER",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner opens the wizard from the series' page and moves a sheet with the pointer",
+            "asserts": "the series' page links #/help/<id>/tiles; the grid names every sheet with its source; a drag swaps two sheets",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-KEYBOARD",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner arranges the sheets with the keyboard",
+            "asserts": "the arrows choose a cell (roving tabindex), Shift and the arrows move the sheet, R turns it, F mirrors it, and the focus follows",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-SEAM",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner accepts a weak seam's guess",
+            "asserts": "the two strips show with the guess; Enter answers the seam; the answer is sent with the layout",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-PREVIEW",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner asks for the real preview and sees the pipeline's answer",
+            "asserts": "imagery.saveLayout with preview writes help.layoutAnswer and resets place; the newer revision shows the joined picture and the meter says good",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; functions/test/imagery/save-layout.test.ts."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-HANDOFF",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner sends the series on to points",
+            "asserts": "imagery.acceptLayout marks the answer accepted and queues the job; the page links the georeferencer",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; functions/test/imagery/save-layout.test.ts."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-STALE-REVISION",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A layout the pipeline wrote again while the owner worked is refused",
+            "asserts": "imagery.saveLayout refuses an older revision with apiError.imagery.layoutStale; the page says so and shows the newer layout",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; functions/test/imagery/save-layout.test.ts."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-ALL-OUT",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "Every sheet taken out of the map",
+            "asserts": "the page says to keep at least one sheet and Place it on the map is off",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-PREVIEW-POOR",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A poor layout",
+            "asserts": "the meter's lines say needs a look and an alert asks to look at the order and the seams again",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-UNREADABLE",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A wrong address, and a layout the bucket cannot give",
+            "asserts": "the page says no series is there; a missing layout.json says it cannot be read, with Try again",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-MOVE",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner moves a sheet with one pointer and no drag, and hears each change",
+            "asserts": "a touch on the grid pans it (touch-action pan-x pan-y, a touch starts no drag); Move then a tap on a cell moves the chosen sheet; a live region says the move, a turn, a mirror and a take-out",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-13 (W2, W3, W4; WCAG 2.5.7). Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/ui/test/admin/tiles/tiles-moves.test.ts."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-SEAM-KEYS",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner answers a seam the app did not find with the keyboard",
+            "asserts": "a missing seam is asked like a weak one, says it has no guess and offers no Accept; on a focused strip the arrows move a cross and Space or Enter picks the point, said in a live region; the answer is sent with the layout",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-13 (contract 1, W5; WCAG 2.1.1). Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/tiles-moves.test.ts."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-SEAM-RESET",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A seam answered before one of its sheets is moved, turned, mirrored or taken out",
+            "asserts": "the seam is dropped from step 2 and from the answer (its strips and points belong to the old orientation; the next preview asks it again)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-13 (contract 3). Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-POINTS-FIRST",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "Points on the doubtful preview of a series whose tiles wait",
+            "asserts": "the series' page links the wizard and not the georeferencer; imagery.saveGcps refuses a version waiting with layout-check with apiError.imagery.layoutWaits and the job keeps waiting",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-13 (W1). Test: e2e/admin/specs/imagery/tiles.spec.ts; functions/test/imagery/save-gcps.test.ts; Vitest packages/ui/test/admin/imagery/tiles-link.test.ts."
         }
     ]
 }

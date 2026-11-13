@@ -1,5 +1,5 @@
 /**
- * The store's language switch (V11; docs/ENGINE_API.md → Language, docs/research/DECISIONS-for-review.md §185): the
+ * The store's language switch (V11; docs/ENGINE_API.md → Language, docs/research/DECISIONS-for-review.md §192): the
  * visitor's language shows once its texts are here (at once when they are); the latest choice wins over one still
  * loading; a language that cannot be fetched leaves the page as it was, with `language.unavailable` in its language.
  */

@@ -41,6 +41,12 @@ export interface MyLocationFix {
     readonly heading: number | null;
 }
 
+/** The compass's camera (`MapCamera` of the engine): degrees clockwise from north, `[0, 360)`, and the tilt in degrees. */
+export interface MapCamera {
+    readonly bearing: number;
+    readonly pitch: number;
+}
+
 /** "Show my location" (V10): off, on and waiting for the first position, or the latest position (memory only). */
 export type MyLocationState = MyLocationFix | 'waiting' | null;
 
@@ -119,6 +125,10 @@ export interface ViewerStorePort {
     flyTo(view: MapView): void;
     /** The zoom buttons: one level in (1) or out (-1), within the city's zoom range (the hash follows the camera). */
     zoomBy(step: number): void;
+    /** The compass (V64): back to north up and level, animated unless reduced motion; already there, nothing moves. */
+    resetNorth(): void;
+    /** The compass's needle: the camera now and on every frame it moves; the result stops it. */
+    watchCamera(listener: (camera: MapCamera) => void): Unsubscribe;
     /** Logs the `share` analytics event after the page was shared or its link copied. */
     logShare(): void;
     setWindowSize(width: number, height: number): void;

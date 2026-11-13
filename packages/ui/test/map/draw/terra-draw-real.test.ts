@@ -85,7 +85,7 @@ class PointerMap extends FakeMapboxMap {
         return { lng: WEST + x / SCALE, lat: NORTH - y / SCALE };
     }
 
-    moveLayer(): this {
+    override moveLayer(): this {
         return this;
     }
 }

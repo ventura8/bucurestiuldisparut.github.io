@@ -24,6 +24,7 @@ import { Listeners, type CameraOffset, type Unsubscribe } from '@hcm/ui/map';
 import type { Measurement } from '../telemetry/telemetry-port.js';
 import { Boot, type BootHost } from './boot.js';
 import { CompareDriver, type CompareDriverHost } from './compare-driver.js';
+import { resetNorth, watchCamera, type CompassActions } from './compass.js';
 import type { MountedMap } from './compare-port.js';
 import type { ViewerDeps } from './deps.js';
 import { LocaleSwitch } from './locale-switch.js';
@@ -126,7 +127,7 @@ export interface ViewerActions {
     setMyLocation(myLocation: MyLocationState): void;
 }
 
-export interface ViewerStore extends ViewerActions {
+export interface ViewerStore extends ViewerActions, CompassActions {
     getState(): ViewerState;
     subscribe(listener: (state: ViewerState, previous: ViewerState) => void): Unsubscribe;
     destroy(): void;
@@ -385,6 +386,9 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         this.#flying = true;
         this.#boot.flyMap(view);
     }
+
+    readonly resetNorth: CompassActions['resetNorth'] = () => resetNorth(this.deps.map, this.#boot);
+    readonly watchCamera: CompassActions['watchCamera'] = (listener) => watchCamera(this.deps.map, listener);
 
     zoomBy(step: number): void {
         const city = this.#state.manifest?.city;

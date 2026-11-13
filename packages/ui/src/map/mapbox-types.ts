@@ -48,6 +48,8 @@ export interface MapboxCameraOptions {
     readonly center?: LngLat;
     readonly zoom?: number;
     readonly bearing?: number;
+    /** The tilt in degrees (0 looks straight down). */
+    readonly pitch?: number;
     /** Where the target ends, in px from the container's centre (the viewer's Locate, beside a sheet). */
     readonly offset?: CameraOffset;
     /** `easeTo` only: 0 jumps (`jumpTo` takes no offset). */
@@ -88,6 +90,7 @@ export interface MapboxMap {
     addLayer(layer: Readonly<Record<string, unknown>>, beforeId?: string): unknown;
     getLayer(id: string): unknown;
     removeLayer(id: string): unknown;
+    moveLayer(id: string, beforeId?: string): unknown;
     setLayoutProperty(layerId: string, name: string, value: unknown): unknown;
     setPaintProperty(layerId: string, name: string, value: unknown): unknown;
     getConfigProperty(importId: string, name: string): unknown;
@@ -105,6 +108,7 @@ export interface MapboxMap {
     getCenter(): { readonly lng: number; readonly lat: number };
     getZoom(): number;
     getBearing(): number;
+    getPitch(): number;
     /** Screen CSS px of a lon/lat (admin projection helper, Terra Draw). */
     project(lngLat: { readonly lng: number; readonly lat: number }): MapPoint;
     unproject(point: MapPoint): { readonly lng: number; readonly lat: number };

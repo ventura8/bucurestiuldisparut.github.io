@@ -326,6 +326,7 @@ export class HcmMapViewer extends LitElement {
             engineVersion: this.engineVersion,
             mapboxCssUrl: this.mapboxCssUrl,
             mapSize: sizeOf(this.mapContainer),
+            camera: this.#store,
             mapMenu: this.mapMenu,
             legalLift: this.legalLift,
             finePointer: this.finePointer,

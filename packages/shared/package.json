@@ -19,6 +19,10 @@
             "types": "./src/i18n/admin-archive/index.ts",
             "default": "./src/i18n/admin-archive/index.ts"
         },
+        "./admin-tiles": {
+            "types": "./src/i18n/admin-tiles/index.ts",
+            "default": "./src/i18n/admin-tiles/index.ts"
+        },
         "./admin-worker-local": {
             "types": "./src/i18n/admin-worker-local/index.ts",
             "default": "./src/i18n/admin-worker-local/index.ts"

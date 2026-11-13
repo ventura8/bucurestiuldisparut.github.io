@@ -1,5 +1,5 @@
 /**
- * The engine's extras (scripts/site/src/engine-extras.ts; DECISIONS-for-review.md §183): each built on its own as a classic
+ * The engine's extras (scripts/site/src/engine-extras.ts; DECISIONS-for-review.md §186): each built on its own as a classic
  * script with its integrity, checked against the host, and the engine's `imports.ts` replaced by calls to the loader.
  */
 import { join } from 'node:path';

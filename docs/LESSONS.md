@@ -3664,144 +3664,186 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: the import test asks the version whether a sharper scan was written; the fixture names the exports (`exports-m7.ts`); `controller-intents.test.ts` drives the install cards' intents. The same run found the colour library's inline option missing in all but one project (§180h).
     - **After merging branches that each passed alone, run the full `tests` stage on the merge before pushing it.**
 
-624. **"Import every direction from the old site" was already done: the 10 photos without one have no cone there either.**
+624. **A map of dark blocks was cropped by a margin it does not have.**
+    - Seen: 2026-11-12, track/autostitch's synthetic series: sheets of a grey town (blocks filled, streets paper) lost about 20 px on two sides, differently per sheet, so neighbours' overlaps no longer matched.
+    - Cause: the paper level was the 90th percentile, which on a map mostly of ink is the ink; and a ring of streets near the edge read as a frame, its "line" trimmed into the drawing.
+    - Fix and pin: the paper is the 98th percentile; a frame counts only with a paper margin outside it; its line is trimmed only while a row is 90 % ink; a margin is at least 2 % of the side (`frame.content_box`; `test_placing_sheetwork.py`, S-P20-HAPPY-STITCH-ABUTTING).
+    - **Before cropping a page to its content, prove the margin is paper: a crop that differs per sheet breaks every seam after it.**
+
+625. **A turned sheet's neighbours turned too.**
+    - Seen: 2026-11-12, track/autostitch: with three of twelve sheets turned, an upright sheet next to two turned ones was flipped (its seams to them scored better upside down by chance) and a turned one stayed.
+    - Cause: the sheets were turned one after another in file order, each judged against neighbours not yet turned back.
+    - Fix and pin: surest first: each sheet's gain is ranked, a sheet turns only to a variant that fits strongly and gains 0.2, and it is checked again just before it turns (`autostitch.orient`, S-P20-HAPPY-STITCH-TURNED).
+    - **When choices depend on each other, make the surest one first and look again before each next one.**
+
+626. **A seam's residual from chunks of a thin template measured noise.**
+    - Seen: 2026-11-12, track/autostitch: line-art seams placed within 1 px reported a residual of 3-170 px, so good series were judged `check`.
+    - Cause: thirds of a 10 px wide template were matched anywhere in the strip, and on hatching or plain blocks each third found another place.
+    - Fix and pin: the residual is the phase correlation of the two aligned overlaps (`seams._residual`); several template widths are tried and the one whose whole overlap correlates best wins (S-P20-HAPPY-STITCH-SEAMS).
+    - **A quality measure must be measured on the same area the decision used, never on a smaller piece searched again.**
+
+627. **A grid prior made silent seams look like a good layout.**
+    - Seen: 2026-11-13, the adversarial review of track/autostitch: on a named grid a sheet whose seams were all missing still sat at its prior cell, counted as placed and added nothing to the median, so 2 strong seams of 20 gave `good` and a misread grid would have been mosaicked; the older joins then mosaicked even `poor` layouts with no quality bar.
+    - Cause: the measures were taken over the kept seams alone, and a sheet held only by the prior counted as placed.
+    - Fix and pin: a sheet counts as placed only when a kept seam touches it, every seam not kept scores 0, and the older joins need their own matches to meet the bar (S-P20-BAD-STITCH-NAMES-NO-SEAMS, S-P20-BAD-STITCH-LEGACY-LOOSE).
+    - **A verdict must count what was not measured as a failure, never leave it out of the average.**
+
+628. **The tile wizard and the pipeline agreed on every field name and still disagreed on what the fields meant.**
+    - Seen: 2026-11-13, an adversarial review of track/tilewizard against track/autostitch: the wizard showed only `weak` seams while the pipeline ranked `missing` ones lowest; the answer left out `no-seam` sheets, which the pipeline then marked `not-part` for good; a seam answer survived a turn of its sheet. The grid's `touch-action: none` also kept a phone from panning it.
+    - Found by: reading both sides' code paths for the same document; every contract test was green, because they compare enums and shapes against a hand-written sample, and Playwright's mouse never pans.
+    - Fix and pin: M20 §19.12; `S-A-HAPPY-TILE-WIZARD-{MOVE,SEAM-KEYS}`, `S-A-BAD-TILE-WIZARD-{SEAM-RESET,POINTS-FIRST}`, `happyPath_aSheetLeftOutForNoSeamIsTriedAgainAtItsFreeCell`.
+    - **A cross-track contract test pins behaviour, not only names: for each enum value, write down what each side does with it, and test the reader against a file the writer produced.**
+
+629. **A memory budget passed alone and failed in the full run: the child inherited the run's environment.**
+    - Seen: 2026-11-13, merging track/autostitch: the colour memory-budget test failed in the full pipeline pytest and passed alone. Measured on the NUC, the two-sheet 12,000 px colour mosaic peaks at 617 MB with GDAL's default threads and at 852 MB with `GDAL_NUM_THREADS=2` (the bound is 800 MB).
+    - Cause: the budget children (`tests/budget_probe.py`, `test_placing_canvas_window.py`'s child) took `os.environ` whole, so any GDAL, OpenCV, BLAS or `HCM_` setting present in the run sized them differently from the measurement.
+    - Fix and pin: both start without any `GDAL_`, `CPL_`, `VSI_`, `OGR_`, `OPENCV_`, `OMP_`, `OPENBLAS_`, `MKL_`, `HCM_` or `MALLOC_` variable (`test_memory_budgets.probe_env`, `test_bad_path_settings_an_earlier_test_left_behind_never_reach_a_probe`); no budget changed. Open: a worker that sets `GDAL_NUM_THREADS` above 1 needs about 850 MB for two such colour sheets, over the 800 MB the windowed mosaic promises.
+    - **A budget measured in a child process is measured in a known environment: strip every tuning variable, never inherit the test run's.**
+
+630. **"Import every direction from the old site" was already done: the 10 photos without one have no cone there either.**
     - Seen: 2026-11-12, the owner: *only one photo near Gara Obor has a direction in our app; on the old site they all have*.
     - Cause: none in the code. Compared with the old site's live `geojson/photos.json` (56 points, 47 cones), 47 of our 57 photos have a cone there and live Firestore has all 47 directions (0 differences), and the 9 photos at Gara Obor without one are pins without a cone on the old site as well; the viewer's year filter leaves one cone (Parc Ferdinand, 1930) at the 1930s. Local `master` is not the old live site (44 points): the live data is `bucurestiuldisparut/bucurestiuldisparut.github.io` (`docs/research/M5-interfaces.md` → *Directions from the old site*).
     - Fix and pin: none needed; S-A28-HAPPY-DIRECTIONS / S-A28-BAD-OWNER-DIRECTION-KEPT already pin the import, and `legacy-corrections.mjs` reproduces `corrections.json` unchanged.
     - **Before re-importing "missing" legacy data, diff the live store against the old site's live file: a gap both share is the owner's to fill, not an import bug.**
 
-625. **The viewer told every visitor how the gamepad was tested: "Standard gamepad (tried only simulated)".**
+631. **The viewer told every visitor how the gamepad was tested: "Standard gamepad (tried only simulated)".**
     - Seen: 2026-11-09, the owner, in the viewer's input list (`input.padTitle`). A sweep of every catalogue and user-facing file then found more of the kind: raw IAM role ids (`roles/run.invoker`), HTTP codes ("(404)"), MIME types, model ids, Firebase uids, "pipeline" and "service worker" inside Romanian, step letters screen readers never hear ("pasul c"), milestone names in an owner's README ("the M5 kit"), and a starter-kit note asking visitors to check the page's integrity hash.
     - Found by: the owner. Every tier was green: the tests assert the catalogue's own text, so a sentence that is correct but written for the developers passes them all, and the tour's leak check looks only for untranslated text and raw message ids.
-    - Fix and pin: the texts reworded (`docs/research/DECISIONS-for-review.md` §181); the static gate `copy` (`scripts/ci/check_copy.py`, its terms, sources and allowed uses in `scripts/ci/check_copy.toml`, tests in `scripts/ci/tests/test_check_copy.py`) refuses test, build and milestone words in every catalogue value, the starter kit's page and data, the worker starter's messages and the export's README.
+    - Fix and pin: the texts reworded (`docs/research/DECISIONS-for-review.md` §184); the static gate `copy` (`scripts/ci/check_copy.py`, its terms, sources and allowed uses in `scripts/ci/check_copy.toml`, tests in `scripts/ci/tests/test_check_copy.py`) refuses test, build and milestone words in every catalogue value, the starter kit's page and data, the worker starter's messages and the export's README.
     - **Production copy says what the reader can do, never how the app was built or tested; a word list in a gate keeps it so, because no behaviour test can tell a developer's note from a user's sentence.**
 
-626. **The live map told visitors its historical layers were "coming soon" and that it was hosted on GitHub Pages, months after both stopped being true.**
+632. **The live map told visitors its historical layers were "coming soon" and that it was hosted on GitHub Pages, months after both stopped being true.**
     - Seen: 2026-11-12, the owner ("make sure we don't have any dev text or old text anywhere"). The Bucharest city's About, credits and privacy came from `scripts/seed/bucharest.city.json` and the legacy manifest, written before the KH-9 and Corona layers went live and before the move to Firebase Hosting; the viewer's empty-state texts promised layers "soon" on every map without any; the worker's local pages still said "Historic City Map" and "copy the command from the admin" after the starter file replaced the command; the owner's guide and the README carried milestone notes, a test log and a self-host limit lifted since.
-    - Found by: the owner, reading the live map. The `copy` gate of lesson 625 looked for test and build words only, and only in the catalogues and a few kit files: a sentence that was true when written passes every test that asserts it.
-    - Fix and pin: the texts reworded (`docs/research/DECISIONS-for-review.md` §182); the `copy` gate gained the old-text terms ("coming soon" / "în curând", WIP, dummy, debug, placeholder, "GitHub Pages", the old repository's address, the old name) and the sources that carry them (the city seed, a new city's default texts, the landing page, the Hosting and start pages, the worker's local pages); the admin's legacy bundle takes the About, credits and privacy from the city file, so `seed/bucharest/` stays as migrated; `reports/stale-text-live.md` lists the texts a deploy never rewrites, for the owner's Texts editor.
+    - Found by: the owner, reading the live map. The `copy` gate of lesson 631 looked for test and build words only, and only in the catalogues and a few kit files: a sentence that was true when written passes every test that asserts it.
+    - Fix and pin: the texts reworded (`docs/research/DECISIONS-for-review.md` §185); the `copy` gate gained the old-text terms ("coming soon" / "în curând", WIP, dummy, debug, placeholder, "GitHub Pages", the old repository's address, the old name) and the sources that carry them (the city seed, a new city's default texts, the landing page, the Hosting and start pages, the worker's local pages); the admin's legacy bundle takes the About, credits and privacy from the city file, so `seed/bucharest/` stays as migrated; `reports/stale-text-live.md` lists the texts a deploy never rewrites, for the owner's Texts editor.
     - **A text that states a fact about the product (where it is hosted, what is coming, what a button is called) goes stale silently: keep such facts out of data where possible, gate the known stale phrases, and remember that Firestore copies of seed texts need a hand edit after the seed changes.**
 
-627. **An extra that threw while it ran would have been kept, half registered, for the whole visit.**
-    - Seen: 2026-11-12, review of track/extras (DECISIONS-for-review.md §183): each extra's IIFE header creates `__hcmEngineHost.extras.<global>` before its body runs, so the loader's "registered nothing" check could never fire; a script that downloaded with a valid integrity and then threw resolved with `{}`, cached for good, and Compare failed with `error.mapLoad` at every try. Two engine releases on one page also shared the first one's host: Lit, `@hcm/shared` and the extras of another build.
+633. **An extra that threw while it ran would have been kept, half registered, for the whole visit.**
+    - Seen: 2026-11-12, review of track/extras (DECISIONS-for-review.md §186): each extra's IIFE header creates `__hcmEngineHost.extras.<global>` before its body runs, so the loader's "registered nothing" check could never fire; a script that downloaded with a valid integrity and then threw resolved with `{}`, cached for good, and Compare failed with `error.mapLoad` at every try. Two engine releases on one page also shared the first one's host: Lit, `@hcm/shared` and the extras of another build.
     - Found by: code review; the unit test faked a case the real build cannot produce (an empty registry after `load`), and no Playwright spec loaded the analytics or gamepad extras through the IIFE.
     - Fix and pin: each extra ends with a ready mark (`<entry>.ready.<global>`, the build's `footer`), the loader uses only a marked extra, drops the half-filled entry and retries; the host has one entry per release (`__hcmEngineHost.v1_0_0`). Pinned by `packages/engine/test/extras/loader.test.ts` (`badPath_aScriptThatThrowsWhileItRunsFailsAndIsRetriedWhole`), `host.test.ts`, `scripts/site/test/engine-extras.test.ts` (the footer is the script's last statement) and S-V63-HAPPY-EXTRAS-CONSENT-AND-PAD.
     - **A loader's success test must check something only the end of the loaded code writes; a test's fake must do what the real artefact does, and a global shared across builds is keyed by the build.**
 
-628. **Update the map put the new pipeline image in front of the old server, and one Hosting timeout failed the whole update.**
+634. **Update the map put the new pipeline image in front of the old server, and one Hosting timeout failed the whole update.**
     - Seen: 2026-11-09, a live Update the map: the server's build failed at `fetch` on a 10 s connect timeout to Hosting; the pipeline's build, submitted beside it, finished, so `worker.image` named the new image and the local worker's claims were refused by the old server until it was updated.
     - Cause: `packages/admin/src/setup/install.ts` submitted the server and the pipeline at once (only the site waited for the server), and `fetch-script.ts` downloaded each file once.
-    - Fix and pin: the pipeline waits for the server like the site, and a stopped server releases neither (S-A56-HAPPY-UPDATE-AFTER-SERVER, S-A56-BAD-UPDATE-SERVER-STOPPED); every download of `fetch` tries four times, 5, 15 and 30 s apart, on a network error, 408, 429 or 5xx (`fetch-script.test.ts`). DECISIONS-for-review.md §184.
+    - Fix and pin: the pipeline waits for the server like the site, and a stopped server releases neither (S-A56-HAPPY-UPDATE-AFTER-SERVER, S-A56-BAD-UPDATE-SERVER-STOPPED); every download of `fetch` tries four times, 5, 15 and 30 s apart, on a network error, 408, 429 or 5xx (`fetch-script.test.ts`). DECISIONS-for-review.md §187.
     - **When two deploys must agree on a protocol, order them: the side that answers first, the side that asks after it; never "in parallel" because they are independent builds.**
 
-629. **A whole-city date with two paid frames linked only the first.**
+635. **A whole-city date with two paid frames linked only the first.**
     - Seen: 2026-11-12, Find's Whole-city dates: "2 more would need ordering" was one link to the first paid frame's page; the second could be bought only by finding it in the list.
     - Fix and pin: each paid frame has its own Buy this scan: {frame}, or Your order: {frame} with its chip while the order is open, Order it again: {frame} once it expired (`paidFrameList` in `packages/ui/src/admin/imagery/orders/order-list.ts`, rendered by `join-card.ts`; `packages/ui/test/admin/imagery/join-paid.test.ts`; S-A66-HAPPY-BUY-EVERY-PAID, S-A66-BAD-PAID-ORDERED).
     - **A count that stands for several things is not a link to one of them: list each with its own action.**
 
-630. **The engine's build emptied the Romanian catalogue, and one module that read it as it loaded broke every page.**
+636. **A visually hidden caption far down a scrolled page made the whole admin scroll into blank space.**
+    - Seen: 2026-11-12, the tour's new `no-blank-scroll` checker: the Historical imagery, orders and georeferencer pages and the overlays settings scrolled 639 to 900 px of nothing under the shell (the owner's black area of 2026-11-09).
+    - Cause: an absolutely positioned element is clipped only by ancestors between it and its containing block; the page's scroller is not positioned, so the `.visually-hidden` captions and labels took the frame as their containing block, escaped the scroller and stretched the document.
+    - Fix and pin: the page's scroller is positioned, so it is their containing block and clips them (an `overflow: clip` on the frame, then the root's own `overflow: hidden`, cut the bottom bar's focus rings at the window's edge: the bar's rings are drawn inside their items, as the rail's were), the framed admin's root hides its overflow and overscroll (`<hcm-admin-shell data-frame>`), and every tour state runs `no-blank-scroll` (S-A31-HAPPY/BAD-NO-BLANK-SCROLL).
+    - **An app shell hides the root's overflow, and a scroller that holds absolute elements is positioned, so it clips them.**
+637. **A sticky strip in a short sheet hid the controls scrolled under it.**
+    - Seen: 2026-11-12, the viewer tour at 360 × 800 and 915 × 412: the Layers strip pinned on 2026-11-10 covered the overlay switches and sliders the list scrolled under it (focus obscured, targets of 52 × 32 and 4 × 44), and at peek height Tab reached the strip's switches where nobody could see them; the overlay rows' 48 px rings also overlapped one another (52 × 40).
+    - Fix and pin: the strip is sticky in the docked pane only; the overlay rows and the map-label rows are 48 px each (`packages/ui/test/viewer/hcm-layer-panel.test.ts`, the tour's Layers states).
+    - **Pin a strip only where the pane is tall enough; a modal sheet's content scrolls whole, and rows of 48 px targets are 48 px apart.**
+
+638. **A track that moved code into a lazily loaded part left the part asking for a binding its host never gave.**
+    - Seen: 2026-11-13, the merge queue (track/mergequeue): after track/extras the engine's build refused swipe compare's extra (`compare carries packages/shared/src/i18n/...: it must take it from the host`).
+    - Cause: track/extras listed the host's bindings for the code compare had when it branched; `feat/engine-rewrite` then gave compare `localizedCredit` from `@hcm/shared/credits`, a subpath the host did not map.
+    - Found by: the extras' own build check (`scripts/site/src/engine-extras.ts`). Fix: `@hcm/shared/credits` maps to the same host entry and `host-shared.ts` exports `localizedCredit`; the side part's kit test (`packages/ui/test/viewer/extras-loader.test.ts`) guards the other lazily loaded part the same way.
+    - **After merging branches that touch a lazily loaded part or what it imports, build the engine and run the part's kit test before anything else: its binding lists are written by hand and go stale silently.**
+
+639. **A merge of tracks that renumbered the same lessons and decisions moved some references and missed others.**
+    - Seen: 2026-11-13, the merge queue: stale-text's lessons became 621 and 622, but `.agent/skills/web/i18n_skill.md` and `ci_quality_gates_skill.md` still cited `LESSONS.md` 594, 595 (an unrelated release-channel lesson).
+    - Cause: the renumbering matched `lesson N` and `§N` only, not `` `docs/LESSONS.md` N ``.
+    - Fix and pin: every reference a merged track added is renumbered by the lines that track added, in each of the forms `lesson N`, `lessons N, M`, `` LESSONS.md` N ``, `§N` and `DECISIONS §N`; the merge note under each renumbered decision says the old and new numbers.
+    - **When a merge renumbers a lesson or a decision, search the track's own added lines for every way the repository cites one, not only the common one.**
+
+640. **Two merged fixes each passed their own tour and failed each other's: an app shell cut a 320 px viewer, and a reworded note broke the test that read the old one.**
+    - Seen: 2026-11-13, the merge queue's viewer tour at c360, m768 and l1440: `viewer.menu-shortest-landscape` (568 × 270, from `feat/engine-rewrite`) found the map cut off by the body (`[edge]`, `[focus-ring]`), and `kit.loading-note` looked for "README.md" in the starter kit's late note.
+    - Cause: track/layout made the city pages app shells (`overflow: hidden` on the root) while the viewer kept `min-block-size: 320px`, taller than the window; track/stale-text reworded the kit's late note to "Reload the page." but `e2e/tour/kit-states.ts` still read the old sentence.
+    - Fix and pin: the viewer's least height is 240 px (`viewer-styles.ts`), so a 270 px window shows it whole; the kit state reads the new advice in both languages; cdn/engine rebuilt.
+    - **After merging tracks, run the tour on the merged tree before calling it green: a track's own green tour never saw the other track's states or copy.**
+
+641. **The engine's build emptied the Romanian catalogue, and one module that read it as it loaded broke every page.**
     - Seen: 2026-11-09 (track/langs), the first e2e run after the catalogues left the bundle: every viewer test failed on "uncaught TypeError: Cannot convert undefined or null to object" before `hcm-ready`.
     - Cause: `schemas/validation.ts` built its set of `validation.*` codes from `Object.keys(ro)` at load; the engine's build resolves `ro.ts` to `export const ro = undefined`.
     - Found by: the e2e suite only: Vitest imports the real catalogues, so every unit test passed.
     - Fix and pin: the codes are listed by name (`validation.test.ts` checks every catalogue key is one, and a near miss is not); every page boots in the e2e runs.
     - **Code the engine bundles never reads a catalogue object as it loads: a catalogue is data the engine fetches, read only through `translate` once registered.**
-631. **A language's texts arrived after the skeleton had rendered, and nothing rendered again.**
+642. **A language's texts arrived after the skeleton had rendered, and nothing rendered again.**
     - Seen: 2026-11-09 (track/langs), while wiring the boot: the loading view rendered before its catalogue, with an empty "Loading the map…" and a progress indicator without a name, until the manifest changed the state.
     - Cause: the catalogue lives in a registry outside the store's state, so its arrival changed nothing a Lit element observes.
     - Found by: reading the boot path against the tour's `loading` state (manifest held, catalogue free).
     - Fix and pin: the boot sets the state again once the texts arrive (`#textsArrived`); the tour's `loading` state checks the named indicator.
     - **State kept outside the store (a registry, a cache) must announce its change through the store, or the view never learns of it.**
-632. **The leak check called a city's English text, rightly shown in an Arabic page, a leak.**
+643. **The leak check called a city's English text, rightly shown in an Arabic page, a leak.**
     - Seen: 2026-11-09 (track/langs), the tour's `rtl-languages`: "Anonymous statistics", the fixture's English privacy heading, matched the English catalogue.
     - Cause: the check, generalised from Romanian pages to sixteen languages, compared every visible text, including data shown in its fallback language.
     - Found by: the tour's i18n check in the new Arabic journey.
     - Fix and pin: a city's text names its language (`lang`, WCAG 3.1.2), and the check skips what is marked as another language (`e2e/support/i18n.ts`).
     - **Mark text by its language where it is shown; a check of "the page's language" then reads the marks instead of guessing.**
-633. **Right to left, the mirrored Mapbox attribution put its two links side by side and failed the target size.**
+644. **Right to left, the mirrored Mapbox attribution put its two links side by side and failed the target size.**
     - Seen: 2026-11-09 (track/langs), the tour's `rtl-photo` at 360 px: axe target-size (serious) on the legal bar's two links.
     - Cause: the bidi algorithm reordered the attribution's Latin runs and its separators inside an Arabic paragraph.
     - Found by: the tour's accessibility checker in the new Arabic journey.
     - Fix and pin: the attribution is `dir="ltr"`, as the map's own control is (`hcm-map-attribution.ts`); the tour's Arabic journey passes at every per-push viewport.
     - **Legal and third-party text in a right-to-left page keeps its own direction: mark it `dir="ltr"`, as the map's container is.**
-634. **A language that could not be fetched stayed checked in the list.**
+645. **A language that could not be fetched stayed checked in the list.**
     - Seen: 2026-11-09 (track/langs), S-V11-BAD-CATALOGUE-404: the page stayed Romanian, the snackbar said so, the list showed Korean checked.
     - Cause: the kit's segmented button checks a choice at once; the dialog's value had not changed, so Lit never set it back (`live` only acts on a render).
     - Found by: the e2e row.
     - Fix and pin: the list is controlled: it shows the page's language until the store has switched (`hcm-about-dialog.ts`; `languages.test.ts`, S-V11-BAD-CATALOGUE-404).
     - **A choice whose effect can fail is controlled by its outcome, never by the click.**
-635. **One translator removed a folder it had made and took another's catalogue with it.**
+646. **One translator removed a folder it had made and took another's catalogue with it.**
     - Seen: 2026-11-09 (track/langs): the Simplified Chinese catalogue, written to `i18n/viewer/zh.ts`, was gone; the Korean translator had created and then removed `i18n/viewer/`.
     - Cause: parallel agents in one worktree, two layouts in the brief and the design, and a clean-up of a folder that was no longer only its own.
     - Found by: the integration's key check (fifteen catalogues where sixteen were expected).
     - Fix and pin: re-translated in the agreed layout; the gate requires all sixteen files.
     - **Parallel writers agree on the paths first and never delete what they did not create alone.**
-636. **The merge of the viewer's languages left two of its tests looking for the language list where it no longer was.**
+647. **The merge of the viewer's languages left two of its tests looking for the language list where it no longer was.**
     - Seen: 2026-11-12 (track/langs25), the first `ui` run after merging track/langs into the branch: `languages.test.ts` failed "no hcm-segmented-button in <hcm-about-dialog>".
     - Cause: track/settings had moved the language list into the dialog's `settings` mode while track/langs was apart; its tests mounted the dialog in its default `about` mode. The merge had only Markdown conflicts, so nothing flagged the TypeScript.
     - Found by: the `ui` project's run of the merged branch.
     - Fix and pin: the tests open the dialog in `mode: 'settings'` (`packages/ui/test/viewer/languages.test.ts`).
     - **A merge with no conflict in code still changes code: run the tests of both branches' areas before building on it.**
-637. **The same merge took `packages/shared/test/index.test.ts` past ESLint's 600 lines.**
+648. **The same merge took `packages/shared/test/index.test.ts` past ESLint's 600 lines.**
     - Seen: 2026-11-12 (track/langs25), ESLint on the changed files: 612 counted lines before any new export was listed.
     - Cause: each branch stayed under the limit; together they did not.
     - Found by: ESLint on the merged file.
     - Fix and pin: the i18n exports' lists moved to `packages/shared/test/fixtures/exports-ui-i18n.ts`, as the milestones' lists are.
     - **After a merge, lint the files both sides grew, not only the ones you touch.**
-638. **A shared fallback put the viewer's catalogue into the start page's bundle.**
+649. **A shared fallback put the viewer's catalogue into the start page's bundle.**
     - Seen: 2026-11-12 (track/langs25), the bundle budget: `start.mjs` 75.9 KB of its 72 after the per-key fallback.
     - Cause: the fallback lived in `i18n/index.ts` beside the viewer's bundled `{ro, en}`; the start page's translator imported it and the bundler kept the module's catalogue object the fallback read.
     - Found by: `check_bundle_budget.py` after `npm run build`.
     - Fix and pin: the registry of fetched files and the fallback are a module with no catalogue (`packages/shared/src/i18n/registry.ts`); the start page measures 70.4 KB.
     - **A helper every family uses lives in a module that imports no family: what it reads, every page that uses it bundles.**
-639. **French translations run past 140 columns, and Prettier's wrap made the gate reject them.**
+650. **French translations run past 140 columns, and Prettier's wrap made the gate reject them.**
     - Seen: 2026-11-12 (track/langs25), the first import of the model's French: Prettier wrapped 40 entries after their key, which `check_i18n.py` read as "not a one-line entry".
     - Cause: Romanian and English are written to fit the line; a translation is longer and nobody shortens a model's text.
     - Found by: `prettier --check` on the imported files, then the gate.
     - Fix and pin: the gate and the build read a translation's wrapped entry as one (`unwrapped`, `catalogueEntries`); `ro` and `en` stay one line per entry (`test_bad_path_romanian_and_english_never_wrap`).
     - **A format rule written for hand-made files must say what it does with generated ones before the first import.**
-640. **The start page's footer links were 44 px tall, under M3's 48 on a phone, and no tour state had scrolled a phone to them.**
+651. **The start page's footer links were 44 px tall, under M3's 48 on a phone, and no tour state had scrolled a phone to them.**
     - Seen: 2026-11-12 (track/langs25), the new `admin.start.language-rtl` state at `admin-c360-ro`: four target-size findings on `a.start-site-link` once the sweep scrolled to the footer.
     - Cause: `.start-site-link` had `min-block-size: 2.75rem` (WCAG's 44 px), and the start page's states were visited only where the footer fit or was never scrolled to.
     - Found by: the tour's checkers in the new right-to-left state, on a compact window.
     - Fix and pin: `min-block-size: 3rem` with `padding-block: 0.75rem` (`scripts/site/src/start/legal.ts`); the state stays in the inventory at every admin project.
     - **A new state on a page re-checks the whole page: let it, and fix what it finds rather than narrowing the state.**
-641. **The i18n gate's strict mode checked less than its default mode.**
+652. **The i18n gate's strict mode checked less than its default mode.**
     - Seen: 2026-11-12 (track/langs25), review: a leading space in a copy of `de.ts` failed the default run and passed `--strict`.
     - Cause: strict replaced the folder's languages with all 25, which switched off the viewer's checks (`viewer=locales == VIEWER_LOCALES`) and the shape checks that ran only on optional languages.
     - Found by: the review of the branch, reproduced on a copy of the catalogues.
     - Fix and pin: strict keeps every check and adds completeness (`check_folder`, `translations_problems`); `test_bad_path_strict_rejects_everything_the_default_mode_rejects`.
     - **A stricter mode is the default mode plus rules: build it by adding, and test that it rejects everything the default rejects.**
-642. **A slow language file undid a later choice.**
+653. **A slow language file undid a later choice.**
     - Seen: 2026-11-12 (track/langs25), review: in the admin and on the start page, French chosen on a slow network then English: the French file's arrival switched the page to French and stored it.
-    - Cause: `switchLanguage` applied whatever resolved, with no notion of the latest request; the viewer's store had one (§185b), the admin's copy did not.
+    - Cause: `switchLanguage` applied whatever resolved, with no notion of the latest request; the viewer's store had one (§192b), the admin's copy did not.
     - Found by: the review of the branch.
     - Fix and pin: `latestLanguage` (one switch per page; a superseded switch shows, stores and reports nothing); `happyPath_aSlowLanguageThenEnglishEndsInEnglishAndStoresEnglish`, `badPath_theBootsFetchResolvingAfterAMenuChoiceNeverUndoesIt` and the start controller's equivalents.
     - **Every asynchronous switch driven by a person's choices needs "the latest wins" before it ships, wherever it is copied.**
-643. **The tour's i18n leak check stopped at shadow roots, so a `lang` on a shadow host did not count.**
+654. **The tour's i18n leak check stopped at shadow roots, so a `lang` on a shadow host did not count.**
     - Seen: 2026-11-12 (track/langs25), the admin's Arabic state read as Arabic: the photos page's English texts, inside the shell's `lang="en"` area, were reported as leaks.
     - Cause: `textsInPage` asked `element.closest('[lang]')`, which ends at the shadow root; the browser and a screen reader inherit `lang` through the composed tree.
     - Found by: `admin.shell.language-rtl` once its leak check used the page's real language.
     - Fix and pin: the check walks up through shadow hosts (`markedOf` in `e2e/support/i18n.ts`); the same state and `admin.start.language-rtl` pass read as Arabic and Urdu. The start page's footer marks its Romanian link texts `lang="ro"` too.
     - **A checker that reads the DOM must read it as assistive technology does: across shadow boundaries.**
-
-644. **A visually hidden caption far down a scrolled page made the whole admin scroll into blank space.**
-    - Seen: 2026-11-12, the tour's new `no-blank-scroll` checker: the Historical imagery, orders and georeferencer pages and the overlays settings scrolled 639 to 900 px of nothing under the shell (the owner's black area of 2026-11-09).
-    - Cause: an absolutely positioned element is clipped only by ancestors between it and its containing block; the page's scroller is not positioned, so the `.visually-hidden` captions and labels took the frame as their containing block, escaped the scroller and stretched the document.
-    - Fix and pin: the page's scroller is positioned, so it is their containing block and clips them (an `overflow: clip` on the frame, then the root's own `overflow: hidden`, cut the bottom bar's focus rings at the window's edge: the bar's rings are drawn inside their items, as the rail's were), the framed admin's root hides its overflow and overscroll (`<hcm-admin-shell data-frame>`), and every tour state runs `no-blank-scroll` (S-A31-HAPPY/BAD-NO-BLANK-SCROLL).
-    - **An app shell hides the root's overflow, and a scroller that holds absolute elements is positioned, so it clips them.**
-645. **A sticky strip in a short sheet hid the controls scrolled under it.**
-    - Seen: 2026-11-12, the viewer tour at 360 × 800 and 915 × 412: the Layers strip pinned on 2026-11-10 covered the overlay switches and sliders the list scrolled under it (focus obscured, targets of 52 × 32 and 4 × 44), and at peek height Tab reached the strip's switches where nobody could see them; the overlay rows' 48 px rings also overlapped one another (52 × 40).
-    - Fix and pin: the strip is sticky in the docked pane only; the overlay rows and the map-label rows are 48 px each (`packages/ui/test/viewer/hcm-layer-panel.test.ts`, the tour's Layers states).
-    - **Pin a strip only where the pane is tall enough; a modal sheet's content scrolls whole, and rows of 48 px targets are 48 px apart.**
-
-646. **Two tracks that each moved code into a lazily loaded part left the part asking for bindings its host never gave.**
-    - Seen: 2026-11-13, the merge queue (track/mergequeue): after track/extras, then track/langs25, the engine's build refused swipe compare's extra (`compare carries packages/shared/src/i18n/...`, then `compare imports localized from @hcm/shared: the host does not export it`), and the full-size view's side part imported `live`, `logicalKey`, `fallbackNote`, `LANGUAGE_NAMES`, `localized`, `resolveViewerLocale` and `shownLanguage`, which its kit did not hold.
-    - Cause: track/extras listed the host's bindings for the code compare had when it branched; `feat/engine-rewrite` then gave compare `@hcm/shared/credits` and `overlayLabel`, and track/langs25 gave the viewer's components new helpers, none of which either list knew.
-    - Found by: the extras' own build check (`scripts/site/src/engine-extras.ts`) for compare; for the side part, a script over its imports before the release build (`packages/ui/test/viewer/extras-loader.test.ts`, *every name the part imports is in the kit*, pins it). Fix: `@hcm/shared/credits` maps to the same host entry, `host-shared.ts` and `extras-kit.ts` export the new names.
-    - **After merging branches that touch a lazily loaded part or what it imports, build the engine and run the part's kit test before anything else: its binding lists are written by hand and go stale silently.**
-
-647. **A merge of three tracks that renumbered the same lessons and decisions moved some references and missed others.**
-    - Seen: 2026-11-13, the merge queue: stale-text's lessons 594 and 595 became 621 and 622, but `.agent/skills/web/i18n_skill.md` and `ci_quality_gates_skill.md` still cited `LESSONS.md` 594, 595 (now an unrelated release-channel lesson).
-    - Cause: the renumbering matched `lesson N` and `§N` only, not `` `docs/LESSONS.md` N ``.
-    - Fix and pin: every reference a merged track added is renumbered by the lines that track added, in each of the forms `lesson N`, `lessons N, M`, `` LESSONS.md` N ``, `§N` and `DECISIONS §N`; the merge note under each renumbered decision says the old and new numbers.
-    - **When a merge renumbers a lesson or a decision, search the track's own added lines for every way the repository cites one, not only the common one.**

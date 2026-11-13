@@ -1,5 +1,5 @@
 /**
- * The extras' loader (packages/engine/src/extras/loader.ts; DECISIONS-for-review.md §183): the IIFE's extras are scripts
+ * The extras' loader (packages/engine/src/extras/loader.ts; DECISIONS-for-review.md §186): the IIFE's extras are scripts
  * beside it, added with their integrity once each, and one that fails is logged, removed and fetched afresh next time.
  */
 import { describe, expect, it } from 'vitest';

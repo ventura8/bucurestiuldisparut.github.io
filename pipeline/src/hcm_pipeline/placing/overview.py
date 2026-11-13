@@ -1,18 +1,19 @@
 """Place tiles on their overview map using ORB feature matching (docs/research/M20-import-local.md, *Atlases and pieces*).
 
-Each tile is located on the smaller-scale overview by ORB features and an affine transform (tile -> overview pixels); a helper
-parses the tile's row/column from its file name for a positional hint.
+Each tile is located on the smaller-scale overview by ORB features and an affine transform (tile -> overview pixels); its row and
+column, read from its file name by `sheetnames.cell_of` (the one name parser, M20 §19.1), give a positional hint.
 """
 
 from __future__ import annotations
 
-import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
 import cv2
 import numpy as np
+
+from hcm_pipeline.placing.sheetnames import cell_of
 
 _MIN_MATCHES = 4
 _MIN_KEYPOINTS = 10
@@ -265,44 +266,6 @@ def detail_of(fits: Sequence[TileFit | None]) -> float | None:
     return 1.0 / float(np.median(scales)) if scales else None
 
 
-def _parse_rc(name: str, rows: int, cols: int) -> tuple[int, int] | None:
-    """Parse row/col from a tile file name.  Returns 0-indexed (row, col)."""
-    patterns = (
-        (r"r(\d+)c(\d+)", re.IGNORECASE),
-        (r"(\d+)_(\d+)", 0),
-        (r"(\d+)-(\d+)", 0),
-    )
-    for pat, flags in patterns:
-        m = re.search(pat, name, flags)
-        if m is not None:
-            return int(m.group(1)) - 1, int(m.group(2)) - 1
-    letter = _parse_letter(name)
-    if letter is not None:
-        return letter
-    return _parse_sheet(name, rows, cols)
-
-
-def _parse_letter(name: str) -> tuple[int, int] | None:
-    """Parse a letter+number pattern like A3 or C12 (letter = row)."""
-    m = re.search(r"([A-Z])(\d+)", name)
-    if m is None:
-        return None
-    row = ord(m.group(1).upper()) - ord("A")
-    return row, int(m.group(2)) - 1
-
-
-def _parse_sheet(name: str, rows: int, cols: int) -> tuple[int, int] | None:
-    """Parse a sheet number and convert to row/col (row-major, 1-indexed)."""
-    m = re.search(r"(\d+)", name)
-    if m is None:
-        return None
-    sheet = int(m.group(1))
-    if not (1 <= sheet <= rows * cols):
-        return None
-    idx = sheet - 1
-    return idx // cols, idx % cols
-
-
 def grid_hint(
     name: str,
     rows: int,
@@ -322,7 +285,7 @@ def grid_hint(
     Returns ``(cx, cy)`` in overview pixels, or ``None`` if the name
     does not contain a recognisable pattern.
     """
-    rc = _parse_rc(name, rows, cols)
+    rc = cell_of(name, rows, cols)
     if rc is None:
         return None
     r, c = rc

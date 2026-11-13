@@ -73,7 +73,8 @@ export function rasterSpec(layer: Layer, overlay: Overlay | undefined, base: str
         maxzoom: layer.maxzoom,
         visible: state.visible,
         opacity: state.opacity,
-        // Layers stack by date, the newest on top, whatever the admin's `order` (the owner 2026-11-09).
+        // Layers stack by date, the newest on top, whatever the admin's `order` (the owner 2026-11-09); `MapSync` lifts the
+        // timeline's layer above them (V15, `stack.ts`).
         order: layer.year,
         attribution: locale === undefined ? layer.attribution : localizedCredit(layer.attribution, locale),
         ...rasterExtras(layer),

@@ -165,6 +165,7 @@ describe('Mapbox adapter', () => {
         port.setOverlayVisibility('photos', false);
         port.setOverlayOpacity('photos', 0.2);
         port.setLayerPaint('kh4-1966', rasterAdjustmentPaint());
+        port.setLayerOrder('kh4-1966', 4);
         port.removeLayer('kh4-1966');
         port.setPhotosData({ type: 'FeatureCollection', features: [] });
 
@@ -188,6 +189,29 @@ describe('Mapbox adapter: overlays', () => {
         port.setOverlayVisibility('kh4-1966', false);
         port.setOverlayVisibility('nope', true);
         expect(map.callsOf('setConfigProperty')).toHaveLength(2);
+    });
+
+    it('happyPath_aRasterMovesInTheStackWithItsTilesKept', async () => {
+        const { port, map } = await mounted();
+        port.addRasterLayer(RASTER, 'middle');
+        port.addRasterLayer({ ...RASTER, id: 'kh9-1980', order: 5 }, 'middle');
+
+        port.setLayerOrder('kh4-1966', 9);
+
+        expect(map.layerOrder.slice(-2)).toEqual(['hcm-raster-kh9-1980', 'hcm-raster-kh4-1966']);
+        port.setLayerOrder('kh4-1966', 1);
+        expect(map.layerOrder.slice(-2)).toEqual(['hcm-raster-kh4-1966', 'hcm-raster-kh9-1980']);
+        expect(map.callsOf('removeSource')).toEqual([]);
+    });
+
+    it('badPath_anUnknownOrUnmovedRasterIsNotMoved', async () => {
+        const { port, map } = await mounted();
+        port.addRasterLayer(RASTER, 'middle');
+
+        port.setLayerOrder('nope', 3);
+        port.setLayerOrder('kh4-1966', RASTER.order);
+
+        expect(map.callsOf('moveLayer')).toEqual([]);
     });
 
     it('happyPath_aRasterAddedAgainIsReplaced', async () => {

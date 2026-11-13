@@ -8,7 +8,7 @@ loaded from api.mapbox.com as the global `mapboxgl`, never bundled), which is ex
 sudden jump here would reveal.
 
 The engine's ES module build has lazy chunks too (swipe compare, the consented Firebase SDK), and its IIFE build loads the
-same code as extras beside it (`extra-<name>-<hash>.js`, DECISIONS-for-review.md §183): each has its own budget in
+same code as extras beside it (`extra-<name>-<hash>.js`, DECISIONS-for-review.md §186): each has its own budget in
 `ENGINE_CHUNK_BUDGETS`, and a chunk without one fails.
 
 The admin is an ES module entry with lazy chunks (DECISIONS-for-review.md §34b): each editor area,
@@ -57,7 +57,7 @@ BUDGETS: Mapping[str, int] = {
     # 100 until 2026-11-12, raised to 120 by the owner for beta.1 (DECISIONS-for-review.md §168).
     "packages/engine/dist/engine.mjs": 120,
     # Viewer engine, IIFE: the same (no code splitting in IIFE builds, DECISIONS-for-review.md §13a; 112.0 KB in M1). It
-    # inlined the lazy chunks (124.9 KB on 2026-11-12) until they became its extras (§183). 125 until 2026-11-12, raised to
+    # inlined the lazy chunks (124.9 KB on 2026-11-12) until they became its extras (§186). 125 until 2026-11-12, raised to
     # 150 by the owner for beta.1 (§168).
     "packages/engine/dist/engine.iife.js": 150,
     # M14 (docs/research/M14-start-your-map.md): the start page, one module (Lit, zod, the `start.*` texts, the transport).
@@ -68,7 +68,7 @@ BUDGETS: Mapping[str, int] = {
 
 # The engine's build folder, its two entries (BUDGETS above) and its lazy chunks of the ES module build, each by its name
 # without the content hash -> gzip budget in KB, the measurement plus about 20 %; a chunk without a budget fails, as the
-# admin's do (a new chunk is a reviewed decision). The IIFE inlined them (DECISIONS-for-review.md §13a) until its extras (§183).
+# admin's do (a new chunk is a reviewed decision). The IIFE inlined them (DECISIONS-for-review.md §13a) until its extras (§186).
 ENGINE_DIR = "packages/engine/dist"
 ENGINE_ENTRIES = frozenset({"engine.mjs", "engine.iife.js"})
 ENGINE_CHUNK_BUDGETS: Mapping[str, int] = {
@@ -87,7 +87,7 @@ ENGINE_CHUNK_BUDGETS: Mapping[str, int] = {
     # The field chunk (DECISIONS-for-review.md §76): Google's web-vitals (attribution build, 5.4 KB of it) and the event
     # guard of @hcm/shared, fetched with the Firebase SDK after the visitor's consent: 7.3 KB on 2026-10-31.
     "field-sdk": 9,
-    # The IIFE's extras (DECISIONS-for-review.md §183), the same code as the four chunks above as classic scripts that the
+    # The IIFE's extras (DECISIONS-for-review.md §186), the same code as the four chunks above as classic scripts that the
     # IIFE loads with their integrity, each the measurement of 2026-11-12 plus about 20 %. Swipe compare carries its own copy
     # of the engine's map helpers it shares with the entry (6.4 KB); the field chunk takes the event guard from the IIFE
     # (5.5 KB); the gamepad 1.9 KB, the Firebase SDK 13.4 KB.
@@ -135,6 +135,9 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # 4.2 KB measured on 2026-11-12 with the turning and the scan pane's drawing (out of `georef-badges`), plus about 20 %, rounded up.
     "georef-panes": 6,
     "layer-geometry": 3,
+    # M20 §19.11: the tile-import wizard's route `#/help/<versionId>/tiles` (`packages/admin/src/tiles/`), its own lazy chunk:
+    # 11.6 KB measured on 2026-11-13 when track/tilewizard merged, plus about 15 %, rounded up (DECISIONS-for-review.md §183).
+    "help": 14,
     # M4's order card (`packages/ui/src/admin/imagery/orders/lazy-card.ts`), fetched the first time a scene that must be
     # bought opens, so the Imagery area stays within its budget with the buy flow: 1.7 KB measured on 2026-10-24 plus about
     # 20 % (DECISIONS-for-review.md §56b).

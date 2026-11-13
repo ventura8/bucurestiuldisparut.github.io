@@ -61,6 +61,8 @@ export class FakeMap implements ViewerMapPort {
     webgl: boolean;
     mountError: Error | undefined;
     view: MapView = { center: [0, 0], zoom: 0, bearing: 0 };
+    /** The camera's tilt (`getPitch`); a `flyTo` with `pitch` sets it. */
+    pitch = 0;
     mounted = false;
     #loads = 0;
     readonly #flags: Map<string, boolean>;
@@ -144,6 +146,10 @@ export class FakeMap implements ViewerMapPort {
         this.#record('setLayerPaint', layerId, paint);
     }
 
+    setLayerOrder(layerId: string, order: number): void {
+        this.#record('setLayerOrder', layerId, order);
+    }
+
     removeLayer(layerId: string): void {
         this.#record('removeLayer', layerId);
     }
@@ -171,6 +177,7 @@ export class FakeMap implements ViewerMapPort {
     flyTo(view: Partial<MapView>, options?: FlyOptions): void {
         this.#record('flyTo', view, options);
         this.view = { ...this.view, ...view };
+        this.pitch = options?.pitch ?? this.pitch;
         this.emit('move', this.view);
     }
 
@@ -241,6 +248,10 @@ export class FakeMap implements ViewerMapPort {
 
     setMyLocation(fix: MyLocationFix | null): void {
         this.#record('setMyLocation', fix);
+    }
+
+    getPitch(): number {
+        return this.pitch;
     }
 
     markPhoto(center: LngLat | null): void {
@@ -380,6 +391,7 @@ export class FakeMapboxMap implements MapboxMap {
     center = { lng: 0, lat: 0 };
     zoom = 0;
     bearing = 0;
+    pitch = 0;
     removed = false;
     readonly #listeners = new Map<string, Set<MapboxListener>>();
 
@@ -468,6 +480,18 @@ export class FakeMapboxMap implements MapboxMap {
         return this;
     }
 
+    moveLayer(id: string, beforeId?: string): this {
+        this.#record('moveLayer', id, beforeId);
+        const at = this.layerOrder.indexOf(id);
+        if (at < 0) {
+            return this;
+        }
+        this.layerOrder.splice(at, 1);
+        const index = beforeId === undefined ? -1 : this.layerOrder.indexOf(beforeId);
+        this.layerOrder.splice(index < 0 ? this.layerOrder.length : index, 0, id);
+        return this;
+    }
+
     setLayoutProperty(layerId: string, name: string, value: unknown): this {
         this.#record('setLayoutProperty', layerId, name, value);
         this.layout.set(layerId, { ...this.layout.get(layerId), [name]: value });
@@ -543,6 +567,7 @@ export class FakeMapboxMap implements MapboxMap {
         this.center = options.center === undefined ? this.center : { lng: options.center[0], lat: options.center[1] };
         this.zoom = options.zoom ?? this.zoom;
         this.bearing = options.bearing ?? this.bearing;
+        this.pitch = options.pitch ?? this.pitch;
         return this;
     }
 
@@ -556,6 +581,10 @@ export class FakeMapboxMap implements MapboxMap {
 
     getBearing(): number {
         return this.bearing;
+    }
+
+    getPitch(): number {
+        return this.pitch;
     }
 
     project(lngLat: { readonly lng: number; readonly lat: number }): MapPoint {

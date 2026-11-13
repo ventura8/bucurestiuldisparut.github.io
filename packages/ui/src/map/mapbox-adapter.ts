@@ -12,7 +12,7 @@
 import { wrapBearing, type BBox, type LngLat, type ViewerLocale, type MapView, type RasterAdjustmentPaint } from '@hcm/shared';
 
 import { Basemap3dObjects } from './basemap.js';
-import { animates, fitCamera, moveCamera } from './camera.js';
+import { animates, cameraMove, fitCamera, moveCamera } from './camera.js';
 import { browserAdapterEnv, type AdapterEnv } from './env.js';
 import { ensureIcon, PHOTO_CAMERA_ICON, PHOTO_CLUSTER_ICON, PHOTO_DIRECTION_ICON, poiIconId } from './icons.js';
 import { EventListeners, Listeners } from './listeners.js';
@@ -309,6 +309,17 @@ class MapboxPort implements MapPort {
         }
     }
 
+    setLayerOrder(layerId: string, order: number): void {
+        const session = this.#ready();
+        const current = session?.orders.get(layerId);
+        if (session === null || current === undefined || current === order) {
+            return;
+        }
+        session.orders.delete(layerId);
+        session.map.moveLayer(rasterLayerId(layerId), rasterBeforeId(session.orders, order));
+        session.orders.set(layerId, order);
+    }
+
     removeLayer(layerId: string): void {
         const session = this.#ready();
         if (session === null || layerId === PHOTOS_OVERLAY_ID) {
@@ -345,8 +356,7 @@ class MapboxPort implements MapPort {
     flyTo(view: Partial<MapView>, options?: FlyOptions): void {
         const session = this.#session;
         if (session !== null) {
-            const animate = animates(options, session.options.reducedMotion);
-            moveCamera(session.map, view, { animate, essential: options?.animate === true, offset: options?.offset });
+            moveCamera(session.map, view, cameraMove(options, session.options.reducedMotion));
         }
     }
 

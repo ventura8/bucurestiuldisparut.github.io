@@ -28,14 +28,31 @@ ARCHIVE_ENCODINGS: Final = ("lineart", "grey", "colour")
 ARCHIVE_AUTO_LIKELIHOODS: Final = ("likely", "possible", "points")
 ARCHIVE_PLACE_METHODS: Final = ("embedded", "grid", "atlas", "pieces", "match", "gcps", "grid-names", "overview")
 # How a series' parts were joined into one picture (`help.stitched.method`; `STITCH_METHODS` of @hcm/shared).
-STITCH_METHODS: Final = ("grid", "atlas", "pieces", "single", "overview")
+STITCH_METHODS: Final = ("grid", "atlas", "pieces", "single", "overview", "names", "owner")
 # Why a part is left out of the stitched picture, and how many of them `help.stitched.leftOut` names (`LEFT_OUT_REASONS`,
 # `STITCHED_LEFT_OUT_MAX` of @hcm/shared; the shared contract since 2026-11-12, lesson 579).
-LEFT_OUT_REASONS: Final = ("no-frame", "no-join")
+LEFT_OUT_REASONS: Final = ("no-frame", "no-join", "blank", "not-part", "no-seam")
 STITCHED_LEFT_OUT_MAX: Final = 200
 RIGHTS_LICENCES: Final = ("PD", "CC0", "CC-BY-4.0", "CC-BY-SA-4.0", "permission", "unknown")
 RIGHTS_STATES: Final = ("clear", "needs-confirmation", "do-not-publish")
-HELP_REASONS: Final = ("no-path", "low-confidence", "frame-not-found", "no-scale", "archive-missing")
+HELP_REASONS: Final = ("no-path", "low-confidence", "frame-not-found", "no-scale", "archive-missing", "layout-check")
+# The tile layout (`imagery-tiles.ts` of @hcm/shared; docs/research/M20-import-local.md §19): seams' states, where a sheet's cell came
+# from, its quarter turns, the series' verdict, the seams' sides, the verdict's thresholds and the files' limits and sprite cells.
+SEAM_STATES: Final = ("strong", "weak", "missing", "owner")
+SHEET_SOURCES: Final = ("name", "overview", "seam", "order", "owner")
+SHEET_TURNS: Final = (0, 90, 180, 270)
+STITCH_VERDICTS: Final = ("good", "check", "poor")
+SEAM_SIDES: Final = ("right", "below")
+STITCH_GOOD_PLACED_PCT: Final = 90
+STITCH_GOOD_SEAM_NCC: Final = 0.5
+STITCH_GOOD_RMS_PX: Final = 3
+STITCH_MAX_MOVE_CELL: Final = 0.25
+LAYOUT_WEAK_SEAMS_MAX: Final = 200
+LAYOUT_SHEETS_MAX: Final = 2000
+LAYOUT_SEAMS_MAX: Final = 8000
+THUMB_CELL_PX: Final = 128
+THUMB_SPRITE_COLS: Final = 32
+SEAM_CELL_PX: Final = 256
 ARCHIVE_MAX_SERIES: Final = 200
 ARCHIVE_ISSUES_MAX: Final = 500
 ARCHIVE_SERIES_MAX_BYTES: Final = 2_000_000_000

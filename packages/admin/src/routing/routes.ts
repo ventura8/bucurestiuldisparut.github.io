@@ -24,6 +24,8 @@ export const ADMIN_ROUTES = [
     'history',
     'crashes',
     'georef',
+    /** The tile-import wizard (`#/help/<versionId>/tiles`, docs/research/M20-import-local.md §19.11): from a series' page. */
+    'help',
     'cities',
     /** M13 (`docs/research/M13-roles.md` §8): the review queue. */
     'review',
@@ -77,6 +79,15 @@ export const ADMIN_ROUTE_SPECS: Readonly<Record<AdminRouteId, AdminRouteSpec>> =
     /** The georeferencer: opened from a version or a layer (`#/georef/<versionId>`), never from the navigation. */
     georef: {
         icon: 'add_location_alt',
+        needsBackend: true,
+        inCompactBar: false,
+        inCompactBarOnceSetUp: false,
+        inNavigation: false,
+        scope: 'city',
+    },
+    /** The tile-import wizard: opened from an archive series waiting with `layout-check`, never from the navigation. */
+    help: {
+        icon: 'crop_free',
         needsBackend: true,
         inCompactBar: false,
         inCompactBarOnceSetUp: false,

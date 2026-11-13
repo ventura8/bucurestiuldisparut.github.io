@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Final
 
+import pytest
+
 PIPELINE: Final = Path(__file__).resolve().parents[2]
 # 36 colour pages of 1600 by 1152 on a canvas of 9600 by 6912.
 # Measured on the NUC, 2026-11-12: 1,161 MB and 20 CPU-seconds on whole canvases, 554 MB and 5 s part by part.
@@ -32,8 +34,20 @@ CROP_BUDGET_MB: Final = 520
 PREVIEW_BUDGET_MB: Final = 1000
 
 
+# The environment variables that tune GDAL, OpenCV, the BLAS and the pipeline: a probe starts without any of them. A full run's
+# earlier tests (the governor's, the worker's, the archive probe's) may leave such settings behind; the budgets were measured
+# without them (the colour canvas passed alone and failed in a full run, 2026-11-13).
+SETTING_PREFIXES: Final = ("GDAL_", "CPL_", "VSI_", "OGR_", "OPENCV_", "OMP_", "OPENBLAS_", "MKL_", "HCM_", "MALLOC_")
+
+
+def probe_env() -> dict[str, str]:
+    """The probe's environment: the test run's without any setting of GDAL, OpenCV, the BLAS or the pipeline, plus the import path."""
+    kept = {name: value for name, value in os.environ.items() if not name.startswith(SETTING_PREFIXES)}
+    return {**kept, "PYTHONPATH": os.pathsep.join((str(PIPELINE / "src"), str(PIPELINE)))}
+
+
 def probe(*arguments: str) -> dict[str, float]:
-    env = {**os.environ, "PYTHONPATH": os.pathsep.join((str(PIPELINE / "src"), str(PIPELINE)))}
+    env = probe_env()
     command = [sys.executable, "-m", "tests.budget_probe", *arguments]
     done = subprocess.run(command, cwd=PIPELINE, env=env, capture_output=True, text=True, check=True, timeout=600)
     cost: dict[str, float] = json.loads(done.stdout.splitlines()[-1])
@@ -82,3 +96,18 @@ def test_happy_path_a_4_gb_computer_assembles_a_60_sheet_colour_atlas_and_crops_
 
     assert atlas["peakMb"] < SMALL_MACHINE_MB
     assert strip["peakMb"] < SMALL_MACHINE_MB
+
+
+def test_bad_path_settings_an_earlier_test_left_behind_never_reach_a_probe(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Scenarios: S-P31-BAD-GDAL-MEMORY-UNKNOWN"""
+    # The colour canvas passed alone and failed in a full run (2026-11-13): a probe now starts from a known environment.
+    monkeypatch.setenv("GDAL_CACHEMAX", "8000")
+    monkeypatch.setenv("HCM_GDAL_CACHE_MB", "8000")
+    monkeypatch.setenv("GDAL_NUM_THREADS", "ALL_CPUS")
+
+    env = probe_env()
+
+    assert "GDAL_CACHEMAX" not in env
+    assert "HCM_GDAL_CACHE_MB" not in env
+    assert "GDAL_NUM_THREADS" not in env
+    assert env["PYTHONPATH"].endswith("pipeline")

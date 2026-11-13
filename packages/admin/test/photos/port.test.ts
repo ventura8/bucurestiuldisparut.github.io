@@ -28,6 +28,7 @@ const MODULE_TYPED: Assignable<
     | 'home'
     | 'imagery'
     | 'georef'
+    | 'help'
     | 'inbox'
     | 'cities'
 > = true;

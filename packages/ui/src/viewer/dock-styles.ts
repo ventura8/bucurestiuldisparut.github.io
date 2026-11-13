@@ -50,7 +50,8 @@ export const dockStyles = css`
     }
 
     .note,
-    .dock.zoom {
+    .dock.zoom,
+    .dock.compass {
         display: inline-flex;
         align-items: center;
         gap: 8px;
@@ -100,23 +101,35 @@ export const dockStyles = css`
      * The zoom buttons (V52): a vertical group (4 px around two 40 px buttons: 48 px targets) centred over the FAB on
      * the trailing edge, 8 px above it.
      */
-    .dock.zoom {
+    .frame {
+        --hcm-zoom-end: calc(var(--hcm-map-chrome) + var(--hcm-fab-size) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px));
+    }
+
+    .dock.zoom,
+    .dock.compass {
         inset-inline-end: calc(var(--hcm-gutter) + 4px);
-        inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-fab-size) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px));
+        inset-block-end: var(--hcm-zoom-end);
         flex-direction: column;
         padding: 4px;
     }
 
     /*
-     * Beside a standing timeline, above the chip's row: the group's foot is level with the card's. The chip there is a
-     * 40 px icon button (the owner, 2026-11-12) centred under the 68 px card, a row above the FAB: 14 px in.
+     * The compass (V64): its own 48 px pill 8 px over the 96 px group. On a short map (under 600 px) that would reach the
+     * band compare's divider handle sweeps (64 to 16 px above the middle) or the compare bar: it sits beside the group's
+     * Zoom in instead, on the side towards the map (the tour at 320 x 568 and 915 x 412).
      */
-    .frame[data-timeline='vertical'] .dock.zoom {
-        inset-block-end: calc(
-            var(--hcm-map-chrome) + var(--hcm-fab-size) + 40px + 2 * var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px)
-        );
+    .dock.compass {
+        inset-block-end: calc(var(--hcm-zoom-end) + 96px + var(--hcm-dock-gap));
     }
 
+    @container hcm-viewer (height < 600px) {
+        .dock.compass {
+            inset-inline-end: calc(var(--hcm-gutter) + 4px + 48px + var(--hcm-dock-gap));
+            inset-block-end: calc(var(--hcm-zoom-end) + 48px);
+        }
+    }
+
+    /* Beside a standing timeline the chip there is a 40 px icon button (the owner, 2026-11-12) centred under the 68 px card: 14 px in. */
     .frame[data-timeline='vertical'] .dock.chip {
         inset-inline-start: calc(var(--hcm-gutter) + 14px);
         inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-fab-size) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px));
@@ -147,10 +160,14 @@ export const dockStyles = css`
 
     /*
      * The top docks, compare's bar, the skip link and the menu's dock begin 8 px after the standing timeline, 68 px wide
-     * (the tour found the toast's dock, then the focused skip link, over the thumb of a vertical timeline).
+     * (the tour found the toast's dock, then the focused skip link, over the thumb of a vertical timeline). The zoom
+     * group and the compass sit above the chip's row there, the group's foot level with the card's, a row above the FAB.
      */
     .frame[data-timeline='vertical'] {
         --hcm-top-start: calc(var(--hcm-gutter) + 76px);
+        --hcm-zoom-end: calc(
+            var(--hcm-map-chrome) + var(--hcm-fab-size) + 40px + 2 * var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px)
+        );
     }
 
     @container hcm-viewer (width >= 600px) {
@@ -215,13 +232,18 @@ export const dockStyles = css`
         inset-inline: calc(var(--hcm-gutter) + 4px) auto;
     }
 
+    /* There the compass is beside the group's Zoom in on its trailing side, towards the map (a short map: under 600 px). */
+    .frame[data-compact-height] .dock.compass {
+        inset-inline: calc(var(--hcm-gutter) + 4px + 48px + var(--hcm-dock-gap)) auto;
+    }
+
     /* Upright, the items begin above the chip's row (the owner's phone: the last item covered the chip's end). */
     .frame[data-timeline='vertical'] .dock.chip ~ .dock.menu {
         --hcm-fab-menu-gap: calc(40px + 2 * var(--hcm-dock-gap));
     }
 
-    /* The open menu grows over the group: the group steps aside until it closes (the tour's overlap check). */
-    .dock.menu:has(> [open]) + .dock.zoom {
+    /* The open menu grows over the group and the compass: they step aside until it closes (the tour's overlap check). */
+    .dock.menu:has(> [open]) ~ :is(.dock.zoom, .dock.compass) {
         visibility: hidden;
     }
 `;
