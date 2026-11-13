@@ -52,6 +52,18 @@ describe('overlaysFromManifest', () => {
         ]);
     });
 
+    it('happyPath_aCategoryHiddenAtStartStartsHiddenAndResetsHidden (M27)', () => {
+        const overlays = overlaysFromManifest(
+            manifestWith({ poiCategories: [{ ...validPoiCategory(), defaultVisible: false, pinned: true }] }),
+        );
+        const category = overlays.find((overlay) => overlay.kind === 'poi');
+
+        expect(category).toMatchObject({ visible: false, defaultVisible: false });
+        expect(
+            resetOverlays(withOverlayVisibility(overlays, category?.id ?? '', true)).find((overlay) => overlay.kind === 'poi')?.visible,
+        ).toBe(false);
+    });
+
     it('happyPath_defaultsComeFromTheManifest', () => {
         const overlays = sample();
 

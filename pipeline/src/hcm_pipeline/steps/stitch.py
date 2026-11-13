@@ -36,7 +36,7 @@ COARSE_ROWS: Final = 2048
 TEMPLATE_PX: Final = 160
 MIN_TEMPLATE_PX: Final = 8
 # The coarse search's reach, as a share of the segment's height, when less than `MAX_OVERLAP_SHARE` of its width: on a segment wider
-# than about 3 times its height (a Corona's), 35 % would search further than any overlap USGS leaves. Lesson 671: a fixed 1200
+# than about 3 times its height (a Corona's), 35 % would search further than any overlap USGS leaves. Lesson 674: a fixed 1200
 # shrunk pixels (0.53 of the 1968 Corona's 11 374-row segments shrunk 5 times) stopped short of their 23 % overlaps, every pair
 # matched a wrong place, and the frame repeated a third of itself.
 SEARCH_HEIGHT_SHARE: Final = 1.0

@@ -12,6 +12,8 @@ import type {
     WorkerAi,
     WorkerMachine,
     WorkerProfileChoice,
+    WorkerRemoval,
+    WorkerShare,
     WorkerStarterUpdate,
 } from '@hcm/shared';
 
@@ -122,6 +124,60 @@ export interface LocalPort {
     stop(): void;
 }
 
+/** W5: one of the city's computers (`packages/admin/src/worker/household.ts`). */
+export interface ComputerViewPort {
+    readonly id: string;
+    readonly name: string | null;
+    readonly online: boolean;
+    readonly state: 'idle' | 'busy';
+    readonly jobId: string | null;
+    readonly paused: boolean;
+    readonly share: WorkerShare | null;
+    readonly os: WorkerOsPort;
+    readonly starter: string | null;
+    readonly starterCurrent: boolean;
+    readonly version: string;
+    readonly outdated: boolean;
+    readonly seenAt: string;
+    readonly removal: Omit<WorkerRemoval, 'askedAt'> | null;
+    readonly revoked: boolean;
+}
+
+export type AddKindPort = WorkerOsPort | 'headless';
+
+export interface HouseholdViewPort {
+    readonly status: LoadStatusPort;
+    readonly failure: StoreFailurePort | null;
+    readonly computers: readonly ComputerViewPort[];
+    readonly adding: AddKindPort | null;
+    readonly code: string | null;
+    readonly expiresAt: string | null;
+    readonly codeFailed: boolean;
+    readonly line: string | null;
+    readonly link: string;
+    readonly acting: string | null;
+    readonly refusal: AdminNoticeInputPort | null;
+}
+
+/** W5: the city's computers, Add another computer and Remove this computer. */
+export interface HouseholdPort {
+    readonly state: HouseholdViewPort;
+    cleanup(os: WorkerOsPort): string;
+    subscribe(listener: (state: HouseholdViewPort) => void): () => void;
+    readonly intents: {
+        add(kind: AddKindPort | null): void;
+        mint(): Promise<void>;
+        rename(id: string, name: string): Promise<boolean>;
+        pause(id: string): Promise<boolean>;
+        resume(id: string): Promise<boolean>;
+        remove(id: string, options: { readonly docker: boolean; readonly keep: boolean }): Promise<boolean>;
+        disconnect(id: string): Promise<boolean>;
+        retry(): void;
+    };
+    start(): void;
+    stop(): void;
+}
+
 interface WorkerIntentsPort {
     setChoice(choice: RunChoice): Promise<boolean>;
     runJob(runOn: RunPlace, freeTierOk: boolean): Promise<boolean>;
@@ -129,6 +185,8 @@ interface WorkerIntentsPort {
     disconnect(): Promise<boolean>;
     /** Finding 72: this computer's part, from the lazy `worker-local` chunk (its element registered first). */
     local(project: string): Promise<LocalPort>;
+    /** W5: the city's computers, from the lazy `worker-household` chunk (its element registered first). */
+    household(project: string): Promise<HouseholdPort>;
 }
 
 /** One element's feed: started when it connects (with its version's job, if any), stopped when it goes. */

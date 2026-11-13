@@ -104,6 +104,7 @@ PAGE_HTML: Final = f"""<!doctype html>
 <p>
 <button id="sign-in" type="button" data-text="signIn">Sign in with Google</button>
 <button id="sign-out" type="button" data-text="signOut" hidden>Sign out</button>
+<button id="remove" type="button" data-text="remove">Stop using this computer</button>
 </p>
 </main>
 </body>
@@ -158,6 +159,10 @@ const TEXTS = {
         'apiError.city.notMember': 'This account is not an editor of this city',
         signInTimeout: 'The sign-in did not finish: choose Use this computer in the admin, which connects this computer',
         outdated: 'The imagery pipeline was updated: choose Use this computer in the admin and open the new file',
+        remove: 'Stop using this computer',
+        removeConfirm: 'Remove the helper, its work and its files from this computer? It is then disconnected from the map.',
+        removing: 'Removing the helper from this computer: this page closes in a minute.',
+        'no-starter': 'A command started this worker: run docker rm -f hcm-worker, then docker volume rm hcm-worker.',
     },
     ro: {
         title: 'Harta istorică a orașului: lucrătorul acestui calculator',
@@ -183,6 +188,10 @@ const TEXTS = {
         'apiError.city.notMember': 'Acest cont nu este editor al acestui oraș',
         signInTimeout: 'Conectarea nu s-a încheiat: alege Folosește acest calculator în administrare, care îl conectează',
         outdated: 'Fluxul de imagini s-a actualizat: alege Folosește acest calculator în administrare și deschide fișierul nou',
+        remove: 'Nu mai folosi acest calculator',
+        removeConfirm: 'Ștergi ajutorul, lucrul și fișierele lui de pe acest calculator? Apoi e deconectat de la hartă.',
+        removing: 'Se șterge ajutorul de pe acest calculator: pagina se închide într-un minut.',
+        'no-starter': 'O comandă a pornit acest lucrător: rulează docker rm -f hcm-worker, apoi docker volume rm hcm-worker.',
     },
 };
 const lang = (navigator.language || 'en').toLowerCase().startsWith('ro') ? 'ro' : 'en';
@@ -193,8 +202,8 @@ for (const node of document.querySelectorAll('[data-text]')) {
     node.textContent = text(node.dataset.text);
 }
 
-async function session(method, body) {
-    const response = await fetch('/session', {
+async function session(method, body, path = '/session') {
+    const response = await fetch(path, {
         method,
         headers: { 'Content-Type': 'application/json', 'X-HCM-Worker': settings.csrf },
         body: JSON.stringify(body ?? {}),
@@ -270,6 +279,20 @@ byId('sign-out').addEventListener('click', async () => {
         byId('error').textContent = text(error.message);
     });
     await poll();
+});
+// W5: Stop using this computer: the starter removes the helper, its work and its files, then the map disconnects it.
+byId('remove').addEventListener('click', async () => {
+    if (!window.confirm(text('removeConfirm'))) {
+        return;
+    }
+    try {
+        await session('POST', {}, '/remove');
+        pageError = 'removing';
+        byId('error').textContent = text('removing');
+    } catch (error) {
+        pageError = error.message;
+        byId('error').textContent = text(error.message);
+    }
 });
 await poll();
 setInterval(poll, 3000);

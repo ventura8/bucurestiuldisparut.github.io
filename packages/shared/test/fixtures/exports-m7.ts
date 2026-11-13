@@ -103,4 +103,16 @@ export const M7_EXPORTS: readonly string[] = [
     'WORKER_PROFILE_WHYS',
     'workerMachineSchema',
     'workerProfileRequestSchema',
+    // W5, household computers (DECISIONS-for-review.md §216): the list, its actions, the removal and the share.
+    'WORKER_HOST_PATTERN',
+    'WORKER_NAME_MAX',
+    'WORKER_REMOVAL_STEPS',
+    'WORKER_REMOVAL_WHYS',
+    'workerNameSchema',
+    'workerRemovalSchema',
+    'workerShareSchema',
+    'WORKER_HOUSEHOLD_PAIR_SECONDS',
+    'WORKER_MANAGE_ACTIONS',
+    'workerManageRequestSchema',
+    'workerManageResponseSchema',
 ];

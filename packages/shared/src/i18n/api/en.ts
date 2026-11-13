@@ -131,6 +131,7 @@ export const en: ApiMessages = {
     'apiError.imagery.localOnly': 'This series’ files are only on your computer, so it cannot run in Google Cloud.',
     'apiError.imagery.rightsUnconfirmed': 'Confirm this map’s rights before it is published.',
     'apiError.imagery.archiveMissing': 'The scanned maps are on the computer that imported them: turn it on, then Try again.',
+    'apiError.imagery.filmMissing': 'The film of this frame is no longer on any computer: choose Locate again, or import the frame again.',
     'apiError.imagery.archiveImported': 'This archive was already imported.',
     'apiError.imagery.archiveYear': 'Type this map’s year first. Maps from before 1800 cannot be imported yet.',
     'apiError.imagery.missingBand': 'The Landsat delivery lacks band {band}: no colour image. Try another scene of that year.',

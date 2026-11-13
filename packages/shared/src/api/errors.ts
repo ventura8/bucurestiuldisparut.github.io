@@ -198,6 +198,7 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.localOnly': spec('failed-precondition'),
     'apiError.imagery.rightsUnconfirmed': spec('failed-precondition'),
     'apiError.imagery.archiveMissing': spec('failed-precondition'),
+    'apiError.imagery.filmMissing': spec('failed-precondition'),
     'apiError.imagery.archiveImported': spec('failed-precondition'),
     'apiError.imagery.archiveYear': spec('failed-precondition'),
     // M25 (docs/research/M25-landsat.md §3): a Landsat delivery without a band the true colour needs {band}.

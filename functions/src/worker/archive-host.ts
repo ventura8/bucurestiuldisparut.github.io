@@ -74,15 +74,16 @@ export async function returnsExhausted(reader: DocumentReader, job: JobDoc, arch
 
 /**
  * The job handed back by a worker without its sheets: queued again, the attempt its claim counted given back, no lease or worker,
- * waiting for a new copy (the last one, if any, did not reach this worker or expired).
+ * waiting for a new copy (the last one, if any, did not reach this worker or expired), or for the computer that holds its stitched
+ * film (`film-copy`, `film-host.ts`).
  */
-export function handedBack(job: JobDoc, now: Date): JobDoc {
+export function handedBack(job: JobDoc, now: Date, reason: 'archive-copy' | 'film-copy' = 'archive-copy'): JobDoc {
     return {
         ...omit(job, ['lease', 'worker', 'retryAt', 'archiveCopy']),
         status: 'queued',
         attempt: Math.max(0, (job.attempt ?? 0) - 1),
         archiveReturns: (job.archiveReturns ?? 0) + 1,
-        waitReason: 'archive-copy',
+        waitReason: reason,
         ...stampOf(IMAGERY_WRITER, now),
     };
 }

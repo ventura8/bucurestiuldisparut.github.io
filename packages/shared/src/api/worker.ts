@@ -42,6 +42,11 @@ export const WORKER_DELETE_FIELD = '__hcmDelete';
  * `worker.pair` for a sign-in of the owner's account; it works this many seconds.
  */
 export const WORKER_PAIR_SECONDS = 600;
+/**
+ * W5 (household computers): the code of "Add another computer"'s one-line command lasts longer, since the computer first
+ * installs Docker and downloads the pipeline (several minutes) before its worker can spend it. Still one use.
+ */
+export const WORKER_HOUSEHOLD_PAIR_SECONDS = 2700;
 export const WORKER_PAIR_CODE_PATTERN = /^[a-z2-7]{26}$/;
 /** `worker.pair` answers at most this many attempts per city in `WORKER_PAIR_WINDOW_SECONDS` (it needs no sign-in). */
 export const WORKER_PAIR_ATTEMPTS = 20;
@@ -73,7 +78,7 @@ export const WORKER_STARTER_TEMPLATES = { posix: 'hcm-worker.sh', windows: 'hcm-
  * build hold equal to the templates' own lines and to the pipeline's `STARTER_VERSION`). The worker's `/state` says the version of
  * the starter that runs it; the admin's "This computer" says whether it is this release's.
  */
-export const WORKER_STARTER_VERSION = '0428b9113175';
+export const WORKER_STARTER_VERSION = 'c99ce4a91e15';
 /** The release's list of the starter files on Hosting, `<admin>/starter.json`: the version and each template's SHA-256. */
 export const WORKER_STARTER_LIST_FILE = 'starter.json';
 /** What an installed starter's last look for a newer one said (`HCM_STARTER_UPDATE`, the worker's `/state` `starter.update`). */
@@ -150,8 +155,11 @@ export const imageryRunOnRequestSchema = z
     .refine((request) => request.jobId === undefined || request.runOn !== 'auto', coded('validation.format', ['runOn']));
 export const imageryRunOnResponseSchema = z.strictObject({ choice: z.enum(RUN_CHOICES), runOn: z.enum(RUN_PLACES).optional() });
 
-/** `worker.pairCode` (admin): a one-time pairing code for the city's worker command, and when it stops working. */
-export const workerPairCodeRequestSchema = z.strictObject({ cityId: cityIdSchema });
+/**
+ * `worker.pairCode` (admin): a one-time pairing code for the city's worker command, and when it stops working; `household`
+ * (W5): for "Add another computer"'s command, which lasts `WORKER_HOUSEHOLD_PAIR_SECONDS`.
+ */
+export const workerPairCodeRequestSchema = z.strictObject({ cityId: cityIdSchema, household: z.boolean().optional() });
 export const workerPairCodeResponseSchema = z.strictObject({ code: z.string().regex(WORKER_PAIR_CODE_PATTERN), expiresAt: isoTimeSchema });
 /** `worker.revoke` (admin): Disconnect this computer: its pairing and its worker refused from now on. */
 export const workerRevokeRequestSchema = z.strictObject({ cityId: cityIdSchema, workerId: z.string().regex(WORKER_ID_PATTERN) });

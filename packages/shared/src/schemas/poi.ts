@@ -82,6 +82,12 @@ export const poiCategorySchema = z.strictObject({
     color: hexColorSchema,
     /** The overlay's opacity until the visitor moves its slider (0 to 1). */
     defaultOpacity: opacitySchema,
+    /** M27: false starts the overlay hidden (the Disappeared streets); absent or true, shown. */
+    defaultVisible: z.boolean().optional(),
+    /** M27: listed in the Layers panel's top strip, below Compare and Map labels, above the historical layers. */
+    pinned: z.boolean().optional(),
+    /** M27: the credit of the category's data (`OpenHistoricalMap (CC0)`), shown while the overlay is visible. */
+    attribution: plainText(500).optional(),
 });
 
 export const poiSchema = z
@@ -100,6 +106,8 @@ export const poiSchema = z
         photoIds: z.array(idSchema).max(MAX_POI_PHOTOS).optional(),
         /** M13: the name its contributor asked to be credited under. */
         credit: plainText(100).optional(),
+        /** M27: the id of the manifest layer the POI was traced on (a disappeared street seen on the map of 1911). */
+        sourceLayer: idSchema.optional(),
     })
     .refine(validYearSpan, coded('validation.yearRange', ['yearEnd']));
 

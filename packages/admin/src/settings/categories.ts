@@ -28,7 +28,16 @@ export const NEW_CATEGORY = '_new';
 const DEFAULT_CATEGORY_COLOR = '#8b5e3c';
 
 /** The fields of the category editor (`CLIENT_WRITES.poiCategory.update` without the order and the stamp). */
-export const CATEGORY_EDITABLE = ['label', 'icon', 'color', 'defaultOpacity'] as const satisfies readonly (keyof PoiCategoryDoc)[];
+// M27: whether it starts hidden, whether it is pinned to the Layers panel's top strip, and its data's credit.
+export const CATEGORY_EDITABLE = [
+    'label',
+    'icon',
+    'color',
+    'defaultOpacity',
+    'defaultVisible',
+    'pinned',
+    'attribution',
+] as const satisfies readonly (keyof PoiCategoryDoc)[];
 
 export interface CategoryItem {
     readonly id: string;

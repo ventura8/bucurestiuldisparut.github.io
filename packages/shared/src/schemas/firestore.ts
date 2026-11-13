@@ -326,6 +326,10 @@ export const poiCategoryDocSchema = z.strictObject({
     icon: iconNameSchema,
     color: hexColorSchema,
     defaultOpacity: opacitySchema,
+    /** M27 (`docs/research/M27-lost-streets.md`): the manifest's `defaultVisible`, `pinned` and `attribution`. */
+    defaultVisible: z.boolean().optional(),
+    pinned: z.boolean().optional(),
+    attribution: plainText(500).optional(),
     order: z.number().int(),
     createdAt: timestampSchema.optional(),
     ...stamp,
@@ -342,6 +346,8 @@ export const poiDocSchema = z
         yearEnd: yearSchema.optional(),
         links: z.array(linkSchema).max(MAX_LINKS).optional(),
         photoIds: z.array(idSchema).max(MAX_POI_PHOTOS).optional(),
+        /** M27: the layer the place was traced on (the manifest drops it when that layer is not listed). */
+        sourceLayer: idSchema.optional(),
         published: z.boolean(),
         ...reviewFields,
         createdAt: timestampSchema.optional(),

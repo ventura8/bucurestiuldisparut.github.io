@@ -1,9 +1,11 @@
 /**
  * `<hcm-poi-detail>`: the details of a point of interest inside the detail sheet (PLAN Addendum 3, scenario V24):
  * its category (icon and colour), years, the Markdown-subset description walked into DOM nodes (markup stays text),
- * its links and the thumbnails of its photos; a thumbnail fires `hcm-photo-select` to open that photo.
+ * its links and the thumbnails of its photos; a thumbnail fires `hcm-photo-select` to open that photo. M27
+ * (`docs/research/M27-lost-streets.md`): its sources, as text: the historical layer it was traced on (`sourceLayer`, looked
+ * up in `layers`; an unknown id says nothing) and the credit of its category's data (`attribution`).
  */
-import { DEFAULT_LOCALE, poiIcon, translate, type Locale, type Photo, type Poi, type PoiCategory } from '@hcm/shared';
+import { DEFAULT_LOCALE, poiIcon, translate, type Layer, type Locale, type Photo, type Poi, type PoiCategory } from '@hcm/shared';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 
 import { cssProperties } from '../components/css-properties.js';
@@ -28,6 +30,7 @@ export class HcmPoiDetail extends LitElement {
     static override readonly properties = {
         poi: { attribute: false },
         category: { attribute: false },
+        layers: { attribute: false },
         photos: { attribute: false },
         locale: { type: String },
         manifestUrl: { type: String, attribute: 'manifest-url' },
@@ -91,6 +94,8 @@ export class HcmPoiDetail extends LitElement {
 
     declare poi: Poi | null;
     declare category: PoiCategory | null;
+    /** M27: the manifest's layers, where `sourceLayer` is looked up. */
+    declare layers: readonly Layer[];
     /** The manifest's photos; the POI's `photoIds` are looked up here (unknown ids are skipped). */
     declare photos: readonly Photo[];
     declare locale: Locale;
@@ -100,6 +105,7 @@ export class HcmPoiDetail extends LitElement {
         super();
         this.poi = null;
         this.category = null;
+        this.layers = [];
         this.photos = [];
         this.locale = DEFAULT_LOCALE;
         this.manifestUrl = '';
@@ -118,7 +124,7 @@ export class HcmPoiDetail extends LitElement {
                     ? nothing
                     : html`<div class="description">${renderMarkdown(localizedText(poi.description, this.locale))}</div>`
             }
-            ${creditLine(poi.credit, this.locale)} ${this.#links(poi)} ${this.#photos(poi)}
+            ${creditLine(poi.credit, this.locale)} ${this.#sources(poi)} ${this.#links(poi)} ${this.#photos(poi)}
         </div>`;
     }
 
@@ -132,6 +138,25 @@ export class HcmPoiDetail extends LitElement {
             <span class="swatch" ${cssProperties(color)}><hcm-icon .name=${poiIcon(category.icon)}></hcm-icon></span>
             <span>${translate(this.locale, 'poi.category', { category: category.label[this.locale] })}</span>
         </p>`;
+    }
+
+    /** M27: the layer the place was traced on and its category's data credit, each a line of text; none, nothing. */
+    #sources(poi: Poi): TemplateResult {
+        const layer = this.layers.find((candidate) => candidate.id === poi.sourceLayer);
+        const attribution = this.category?.attribution;
+        const lines = [
+            ...(layer === undefined ? [] : [translate(this.locale, 'poi.sourceLayer', { layer: layer.label[this.locale] })]),
+            ...(attribution === undefined ? [] : [translate(this.locale, 'layers.attribution', { attribution })]),
+        ];
+        if (lines.length === 0) {
+            return EMPTY;
+        }
+        return html`<section class="sources">
+            <h3>${translate(this.locale, 'poi.sources')}</h3>
+            <ul>
+                ${lines.map((line) => html`<li>${line}</li>`)}
+            </ul>
+        </section>`;
     }
 
     #links(poi: Poi): TemplateResult {

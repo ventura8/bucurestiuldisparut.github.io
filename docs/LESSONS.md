@@ -3933,17 +3933,36 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - **Two panes meant to be compared side by side share their rows in the layout itself (one grid, subgrid), and a test measures them as a pair; a control added to one pane goes in a row both have.**
     - Also found: the map-shows test chose from the list without showing the map pane, so at `admin-c360-ro` it waited for a hidden list until its 480 s ran out (on the base commit too); it now shows the map pane first.
 
-669. **Firebase Auth moves a sign-in out of `sessionStorage` into IndexedDB never.**
+669. **The published 1895-1899 layer had three white patches where three pieces were never placed.**
+    - Seen: 2026-11-13, the owner on layer `1895-1899` (version `ar-mw993zri-s-4054e55659a3`): white patches near Grivița, Obor/Gara de Est and Tineretului. The version's `help.stitched` said `joined 57`, `leftOut` img366, img390, img418 (`no-join`); all three files are in harti.zip, not blank, and are the same printed plan as the overview `Harta Bucuresti 1895.png`.
+    - Cause: `fit_tiles` matches each piece against the whole overview's 20,000 ORB features; on the quiet edges of town (rail yards, fields, a park) a piece's features lose the 0.75 ratio test to look-alikes elsewhere on the sheet, so fewer than 10 inliers survive. The consensus filter only rescues weak fits that exist; a piece with none was dropped, and the series was published with the holes.
+    - Fix and pin: a second pass, `overview_holes.refit_in_holes`: once the others are placed, a left-out piece is turned and scaled by their consensus (as scanned and upside down: img418 was scanned the other way up) and searched by normalised cross-correlation only where it covers uncovered overview, kept when it clearly beats every other place, refined by its features within that window. Real files: 0.96 / 0.91 / 0.90 against next bests 0.66 / 0.51 / 0.15, 60 of 60 placed. `S-P20-HAPPY-OVERVIEW-HOLES`, `S-P20-BAD-OVERVIEW-HOLES-NOT-FOUND`. A published series had no way to be stitched again (its `place` only re-warps the kept picture through the pairs): Locate again now starts a new version that lays it on the overview again with the pairs kept (`S-A122-HAPPY-RESTITCH`, `S-P20-HAPPY-RESTITCH`).
+    - **A placer that leaves parts out has learnt the series' scale, turn and the remaining holes from the parts it placed: search the left-out ones again with that knowledge, in the holes only, before publishing a picture with gaps.**
+670. **Firebase Auth moves a sign-in out of `sessionStorage` into IndexedDB never.**
     - Seen: 2026-11-13, track/adminsite: the admin's own site uses `[indexedDBLocalPersistence, …]`; a user found in `browserSessionPersistence` stays there, because only persistences with `_shouldAllowMigration` (IndexedDB, `localStorage`) are migrated (`PersistenceUserManager.create` of `@firebase/auth`).
     - Fix: the own site's hierarchy is `[indexedDBLocalPersistence, browserLocalPersistence]`; the e2e puts the test's account into `localStorage` once on that origin, which Firebase moves into IndexedDB, so a second tab proves the shared sign-in (`e2e/admin/specs/shell/admin-site.spec.ts`).
     - **Read the SDK's migration rule before you change a persistence; a test that seeds one store proves nothing about another.**
 
-670. **Hosting's redirects come before its files, and its regex is RE2.**
+671. **Hosting's redirects come before its files, and its regex is RE2.**
     - Seen: 2026-11-13, track/adminsite: forwarding the public map's `/admin/**` to the admin's own site would also have forwarded `/admin/starter.json`, which Linux starters already installed fetch with `curl` and no `-L`; RE2 has no lookahead to leave it out.
     - Fix: the forward's pattern lists every string but that name (`everyStringBut`, `scripts/site/src/hosting/admin-site.ts`) and the file stays in the public tree.
     - **Before a redirect replaces a path, list every client already installed that reads it and whether it follows redirects.**
 
-671. **A search reach in fixed shrunk pixels stopped short of a wide segment's overlap.**
+672. **The date menu's peek took every press over the map, and opened over the zoom buttons.**
+    - Seen: 2026-11-13, the tour's new `timeline-peek` state (V68, §195i) at 360 and 1024 wide: the map, the legal line, the compass, the zoom and the menu button "covered" by `hcm-date-menu`, and the menu over the zoom group and the photos chip.
+    - Cause: the viewer's `.modal-layer > * { pointer-events: auto }` sits outside the menu's shadow root and beats its own `:host { pointer-events: none }`; while the menu was always modal its scrim hid that. Its place beside the year ignored the floating controls, which the inert frame under a modal menu had excused.
+    - Fix and pin: `.modal-layer > hcm-date-menu { pointer-events: none }` in `viewer-styles.ts`; the dock measures the compass, the zoom, the menu button and the photos chip as the menu opens and the menu moves the shortest way past them (`date-menu-clear.ts`). Pinned by `timeline-dock-peek.test.ts`, `date-menu-clear.test.ts` and the tour's `timeline-peek`.
+    - **A host's own `:host` rule loses to any rule its parent's shadow root sets on it; a non-modal overlay states its pass-through where it is placed, and keeps clear of the controls it no longer makes inert.**
+673. **A computer without a screen could only be paired by stopping the owner's own worker and tunnelling a port.**
+    - Seen: 2026-11-13, pairing the NUC and the Windows PC by hand (`docs/research/M7-local-worker.md`, *Household computers*).
+    - Cause: the admin's auto-pair posts the code from the browser to the browser's own loopback (`127.0.0.1:8765`); a headless
+      computer has no browser, so its worker was reachable only through an SSH tunnel to the laptop, with the laptop's worker stopped.
+    - Fix and pin: the starter itself takes the one-time code (standard input, never argv) and posts it to its own worker's `/pair`
+      (`S-A143-HAPPY-HEADLESS-PAIR`, `functions/test/worker/starter-household.test.ts`).
+    - **What a browser does for its own computer, the helper on that computer must be able to do too: never route one computer's
+      loopback through another.**
+
+674. **A search reach in fixed shrunk pixels stopped short of a wide segment's overlap.**
     - Seen: 2026-11-13, track/corona68: the 1968 Corona frames DS1103-1058DF026 and DF027 (four 36 070 × 11 374 px segments, lettered right to left) overlap by about 23 % of a segment's width (8 200 px). `coarse_match` searched only the last 1 200 shrunk pixels (6 000 px at the 5 times shrink), so every pair matched a wrong place at 0.8 or so, the frame repeated a third of itself and looked mirrored where the repeats met, and DF027's city fell outside its crop.
     - Fix: the reach is the segment's shrunk height (`SEARCH_HEIGHT_SHARE`), capped at `MAX_OVERLAP_SHARE` of its width (`pipeline/src/hcm_pipeline/steps/stitch.py`; `pipeline/tests/unit/test_stitch_order.py`, S-P01-HAPPY-CORONA-WIDE-OVERLAP). Measured on the real segments: the true offsets score 0.96 to 0.99.
     - **Scale every search window with the image it searches, and check a stitch's offsets against a direct match of the real segments before blaming the film's orientation.**

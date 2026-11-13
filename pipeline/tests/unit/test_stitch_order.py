@@ -104,7 +104,7 @@ def corona_pair(overlap: int) -> tuple[numpy.ndarray, numpy.ndarray]:
 @pytest.mark.parametrize("overlap", [300, 1300])
 def test_happy_path_a_wide_segments_overlap_beyond_its_height_share_is_found(overlap: int) -> None:
     """Scenarios: S-P01-HAPPY-CORONA-WIDE-OVERLAP"""
-    # Lesson 671: an overlap of 29 % of the width lies past the former fixed reach of 1200 shrunk pixels.
+    # Lesson 674: an overlap of 29 % of the width lies past the former fixed reach of 1200 shrunk pixels.
     left, right = corona_pair(overlap)
 
     dx, dy, score = stitch.coarse_match(left, right, 1)

@@ -269,3 +269,30 @@ describe('GeoJSON export', () => {
         expect(JSON.parse(text)).toMatchObject({ features: [], hcm: { categories: [{ id: 'biserici' }] } });
     });
 });
+
+describe('GeoJSON: the old map a street was traced on (M27)', () => {
+    it('happyPath_aSourceLayerIdIsImportedAndExported', () => {
+        const plan = planImport([feature({ category: 'biserici', title: { ro: 'Strada Veche' }, sourceLayer: 'plan-1911' })], CONTEXT);
+        expect(plan.created[0]?.value.sourceLayer).toBe('plan-1911');
+
+        const text = exportText('bucharest', [{ id: 'veche', value: { ...STAVROPOLEOS, sourceLayer: 'plan-1911' } }], CATEGORIES);
+        const parsed = JSON.parse(text) as { features: { properties: Record<string, unknown> }[] };
+        expect(parsed.features[0]?.properties['sourceLayer']).toBe('plan-1911');
+    });
+
+    it('badPath_aSourceLayerThatIsNotAnIdIsDropped', () => {
+        const plan = planImport(
+            [
+                feature({ category: 'biserici', title: { ro: 'A' }, sourceLayer: 'Not an id!' }),
+                feature({ category: 'biserici', title: { ro: 'B' }, sourceLayer: 42 }),
+            ],
+            CONTEXT,
+        );
+        expect(plan.created.map((place) => place.value.sourceLayer)).toEqual([undefined, undefined]);
+        expect(plan.refused).toEqual([]);
+
+        const text = exportText('bucharest', [{ id: 'stavropoleos', value: STAVROPOLEOS }], CATEGORIES);
+        const parsed = JSON.parse(text) as { features: { properties: Record<string, unknown> }[] };
+        expect(parsed.features[0]?.properties).not.toHaveProperty('sourceLayer');
+    });
+});

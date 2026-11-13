@@ -18,7 +18,12 @@ import { at } from './holder.js';
 export type RevokeDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 
 /** The worker's pairing revoked with it (one made with a Google sign-in on its page has none). */
-async function revokePairing(transaction: DocumentTransaction, cityId: string, pair: string | undefined, stamp: Stamp): Promise<void> {
+export async function revokePairing(
+    transaction: DocumentTransaction,
+    cityId: string,
+    pair: string | undefined,
+    stamp: Stamp,
+): Promise<void> {
     if (pair === undefined) {
         return;
     }
@@ -29,7 +34,7 @@ async function revokePairing(transaction: DocumentTransaction, cityId: string, p
     }
 }
 
-interface Stamp {
+export interface Stamp {
     readonly updatedBy: string;
     readonly updatedAt: TimestampLike;
 }
