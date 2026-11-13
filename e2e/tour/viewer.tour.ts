@@ -89,6 +89,22 @@ test(
 );
 
 test(
+    'The year chip under a mouse and under a finger, in a city of many years',
+    {
+        tag: [
+            '@S-V15-HAPPY',
+            '@S-V15-BAD-TEXT-SPACING',
+            '@S-V15-BAD-REFLOW-320',
+            '@S-V14-HAPPY-EVERY-STATE',
+            '@S-V04-HAPPY-YEAR-CHIP-TOUR',
+        ],
+    },
+    async ({ page, context, lang }) => {
+        await expectJourneySound({ page, context, lang }, journey('timeline-chip'));
+    },
+);
+
+test(
     'The compass on a turned map and north up again',
     { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V64-HAPPY-TOUR'] },
     async ({ page, context, lang }) => {

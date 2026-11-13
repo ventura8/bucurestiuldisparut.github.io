@@ -3763,6 +3763,18 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: the viewer's least height is 240 px (`viewer-styles.ts`), so a 270 px window shows it whole; the kit state reads the new advice in both languages; cdn/engine rebuilt.
     - **After merging tracks, run the tour on the merged tree before calling it green: a track's own green tour never saw the other track's states or copy.**
 
+641. **A coalesced scrub lost its last year: the viewer wrote the store's year back into the timeline before the frame sent the newer one.**
+    - Seen: 2026-11-13, track/timeline, `S-V04-HAPPY-TOUCH-SCRUB` at every functional project: a finger moved from 1968 over 1969 to 1970 and held left the slider at 1969.
+    - Cause: during a press `hcm-timeline` sends its first new year at once and the next one at the following animation frame; meanwhile the store's 1969 re-rendered the viewer, whose `.value=${state.year}` set the timeline back to 1969, and the frame then sent `this.value`, 1969, so 1970 was never sent.
+    - Fix and pin: `YearSends` keeps the year it was given and sends that (`timeline-sends.ts`); `hcm-timeline-tip.test.ts` rewrites the value mid-scrub as the viewer does and expects the last year.
+    - **A deferred send must carry the value chosen when it was deferred, never re-read a property the parent may rewrite in between.**
+
+642. **A finger on the timeline's track panned the page instead of scrubbing: the card's `touch-action: none` stopped at its scroller.**
+    - Seen: 2026-11-13, track/timeline, the first Playwright runs with Chromium's own touch events (`S-V04-HAPPY-TOUCH-SCRUB`): one `pointermove`, then `pointercancel`, so every scrub ended a year short; the unit tests' synthetic pointer events never asked the browser.
+    - Cause: a browser computes a touch's allowed gestures from the target up to the nearest scroll container; the card's `.scroller` is one (`overflow: auto`), so the host's `touch-action: none` never applied to the track inside it.
+    - Fix and pin: `.scroller` and `.track` inherit the card's touch-action (`timeline-styles.ts`); `hcm-timeline-tip.test.ts` reads it on the track, roomy and scrolling.
+    - **Set touch-action inside the nearest scroll container of the element a finger lands on, and test a gesture with the browser's own touch events, never only with synthetic pointer events.**
+
 643. **The engine's build emptied the Romanian catalogue, and one module that read it as it loaded broke every page.**
     - Seen: 2026-11-09 (track/langs), the first e2e run after the catalogues left the bundle: every viewer test failed on "uncaught TypeError: Cannot convert undefined or null to object" before `hcm-ready`.
     - Cause: `schemas/validation.ts` built its set of `validation.*` codes from `Object.keys(ro)` at load; the engine's build resolves `ro.ts` to `export const ro = undefined`.

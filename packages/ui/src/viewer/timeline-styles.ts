@@ -10,16 +10,19 @@
  * with a larger one, and left no room for the open FAB menu above it on a 568 px phone. The card holds a scroller with
  * the padding: the track fits it unless the years are closer than 14 px (`density`, `timeline-model.ts`), and only then
  * scrolls, under a finger too, behind a mask that fades the edge with more years beyond (`--hcm-fade-start`, `-end`).
+ * The year chip (`.tip`) is an M3 plain tooltip outside the scroller, so the card's mask never clips it.
  */
 import { css } from 'lit';
 
-import { touchTarget } from '../components/styles.js';
+import { touchTarget, visuallyHidden } from '../components/styles.js';
 import { baseStyles } from './shared-styles.js';
 
 export const timelineStyles = [
     baseStyles,
     // The thumb is 40 px tall; its touch target is 48 × 48 px (the tour checks every target on compact).
     touchTarget,
+    // The polite live region that says the year a drag or a scrub ended on.
+    visuallyHidden,
     css`
         :host {
             --hcm-timeline-spring: cubic-bezier(0.42, 1.67, 0.21, 0.9);
@@ -27,6 +30,8 @@ export const timelineStyles = [
             /* What centres a stop or the thumb on its place: right to left, inline-start is the right edge. */
             --hcm-x: -50%;
 
+            /* The year chip is placed against the card (timeline-tip.ts). */
+            position: relative;
             display: block;
             box-sizing: border-box;
             border-radius: var(--md-sys-shape-corner-extra-large, 28px);
@@ -38,6 +43,15 @@ export const timelineStyles = [
 
         :host(:dir(rtl)) {
             --hcm-x: 50%;
+        }
+
+        /*
+         * The card's touch-action reaches the track: the scroller is a scroll container, where a browser stops looking up
+         * for touch-action, so without it a finger on the track panned and cancelled the scrub (lesson 642).
+         */
+        .scroller,
+        .track {
+            touch-action: inherit;
         }
 
         .scroller {
@@ -240,6 +254,25 @@ export const timelineStyles = [
             transform: translateY(50%) scale(1.12);
         }
 
+        /*
+         * The year chip: an M3 plain tooltip (inverse surface, body small, 24 px tall at least, the extra-small corner), placed
+         * by placeTip over the card lying and beside it standing; it never takes the pointer.
+         */
+        .tip {
+            position: absolute;
+            z-index: 1;
+            box-sizing: border-box;
+            min-block-size: 24px;
+            padding: 4px 8px;
+            border-radius: var(--md-sys-shape-corner-extra-small, 4px);
+            background: var(--md-sys-color-inverse-surface, CanvasText);
+            color: var(--md-sys-color-inverse-on-surface, Canvas);
+            font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
+            line-height: 16px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
         @media (prefers-reduced-motion: reduce) {
             .active,
             .thumb {
@@ -248,7 +281,8 @@ export const timelineStyles = [
         }
 
         @media (forced-colors: active) {
-            .thumb {
+            .thumb,
+            .tip {
                 border: 2px solid ButtonText;
             }
         }

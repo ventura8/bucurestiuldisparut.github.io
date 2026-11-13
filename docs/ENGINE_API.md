@@ -296,6 +296,17 @@ Status (2026-11-08): the owner's request ("add zoom in and out buttons to the ma
 
 Code: `packages/ui/src/viewer/viewer-zoom.ts` (the group), `zoomBy` in `packages/engine/src/core/store.ts` (one level within the range), `packages/ui/src/components/icon-button.ts` (`softDisabled`).
 
+## Timeline
+
+Status (2026-11-13, beta.1): the owner's requests; scenario rows V04 (`S-V04-*-YEAR-CHIP*`, `*-TOUCH-SCRUB`, `*-FAST-SCRUB`), `e2e/specs/viewer/timeline-chip.spec.ts`, the tour's journey `timeline-chip`. DECISIONS-for-review.md §191 and §192.
+
+- **The year on top.** The layer of the year the timeline chose is drawn above every other layer, a newer opaque one too; see `layers` in [URL hash v1](#url-hash-v1) and [Overlays](#overlays).
+- **The year chip** is an M3 plain tooltip that names a year: under a mouse or a pen, over a stop whose year has no label of its own (a dense track labels every other year), and over any year whose layers have several dates, which it names too ("1964 · May 1, Jun 2", at most three, then "…"); under the keyboard, on a selected year of several dates. A labelled year of one date shows none: the label, or the pill for the selected year, already names it. It sits 8 px above a lying timeline and 8 px beside a standing one, within the card's span and the viewport, so it never reaches the compass, the zoom group or the menu button beside the card; the photos chip over the card's start steps aside while it shows. It is decorative (`aria-hidden`): the slider's `aria-valuetext` names the year.
+- **A drag selects live.** A mouse dragged along the track, or a finger, selects each year it enters at once, and that year's layers come to the front; `hcm-year-change` fires for the first year at once and then at most once per animation frame (the latest), so a fast scrub queues no map work, and the end of the drag sends the last one. The hash is written with `replaceState`, so a scrub leaves no history entry per year. When the drag ends, a polite live region says the year once.
+- **A finger** shows the chip all the time it is down, clear of the finger (above a lying timeline, beside a standing one), and selects nothing until it has moved 8 px along the track (or lifts where it went down: a tap); a finger that first moves across the track is a swipe and selects nothing. Each new year gives a light tick (`navigator.vibrate(8)`) where the device has one and reduced motion is off. A swipe that starts off the timeline pans the map as always. On a track that scrolls (more years than the card holds), a finger elsewhere than on the thumb scrolls it and selects only by a tap.
+
+Code: `packages/ui/src/viewer/hcm-timeline.ts`, `timeline-pointer.ts`, `timeline-scrub.ts`, `timeline-sends.ts`, `timeline-tip.ts`; the stack is `packages/engine/src/core/stack.ts`.
+
 ## Compass
 
 Status (2026-11-13, beta.1): the owner's request ("i want us to have a compass for the viewer. (and clicking on it resets to north up)"); scenario rows V64, `e2e/specs/viewer/compass.spec.ts`, the tour's journey `compass`. Additive within v1: no property, event or method for a page to set.
