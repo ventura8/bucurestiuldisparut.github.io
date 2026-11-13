@@ -24,7 +24,7 @@ exit /b
 $Project = $env:HCM_PROJECT
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-$StarterVersion = '5b61f80891bb'
+$StarterVersion = 'f64c28f08c35'
 $City = $env:HCM_CITY
 $Action = $env:HCM_ACTION
 $Name = 'hcm-worker'
@@ -88,9 +88,13 @@ function Test-Docker {
     return $LASTEXITCODE -eq 0
 }
 
-# W5: every docker command of this file, in the helper's own WSL distribution when there is no Docker Desktop.
+# W5: every docker command of this file, in the helper's own WSL distribution when there is no Docker Desktop; what is piped in (the
+# host hints) goes on to it.
 function docker {
-    if ($script:ViaWsl) { & wsl.exe -d $Distro -u root -- docker @args } else { & docker.exe @args }
+    $command = if ($script:ViaWsl) { @('wsl.exe', '-d', $Distro, '-u', 'root', '--', 'docker') } else { @('docker.exe') }
+    $program = $command[0]
+    $rest = @($command | Select-Object -Skip 1) + $args
+    if ($MyInvocation.ExpectingInput) { $input | & $program @rest } else { & $program @rest }
 }
 
 # The helper's own WSL distribution is registered (wsl.exe lists names in UTF-16: its NULs are dropped).
