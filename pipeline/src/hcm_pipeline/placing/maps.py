@@ -19,6 +19,7 @@ from typing import Final
 
 import numpy
 
+from hcm_pipeline.archive import model
 from hcm_pipeline.archive.magic import sniff_file
 from hcm_pipeline.jobs import JobContext, StepResult, Waiting
 from hcm_pipeline.placing import assemble, autoplace, autostitch, joins, owner_layout
@@ -126,8 +127,15 @@ class AtlasPlacer:
         return _series_placed(ctx, "atlas", _atlas_parts)
 
 
-# The older joins (edges, overlaps) are used when the automatic layout is not good and they place at least this share of the parts.
+# The older joins (edges, overlaps) are used when the automatic layout is not good, they place at least this share of the parts, and
+# something vouches for them: their matched features' residual and agreeing matches meet the layout's own bar, or, for pages joined by
+# their edges alone (nothing measured), the layout was only `check`, never `poor` (M20 §19, the fallback).
 LEGACY_SHARE: Final = 0.9
+LEGACY_RMS_PX: Final = float(model.STITCH_GOOD_RMS_PX)
+LEGACY_MIN_INLIERS: Final = 2 * joins.MIN_MATCHES
+# A layout the tile wizard can open names at most this many sheets (`LAYOUT_SHEETS_MAX` of @hcm/shared); a larger series waits.
+SHEETS_MAX: Final = model.LAYOUT_SHEETS_MAX
+TOO_MANY: Final = f"This series has more than {SHEETS_MAX} pages: import it as smaller series, one per area."
 
 
 @dataclass(frozen=True)
@@ -145,6 +153,12 @@ def _series_placed(ctx: JobContext, method: str, legacy: Callable[[Sequence[Shee
     series = paged(ctx, series_of(ctx))
     if isinstance(series, str):
         return wait_for_help(ctx, "low-confidence", series)
+    if len(series.sheets) > SHEETS_MAX:
+        return wait_for_help(ctx, "no-path", TOO_MANY)
+    return _laid_out(ctx, series, method, legacy)
+
+
+def _laid_out(ctx: JobContext, series: SeriesJob, method: str, legacy: Callable[[Sequence[Sheet]], Parts | None]) -> StepResult:
     answer = owner_layout.answer_of(ctx)
     if answer is not None:
         return owner_layout.place(ctx, series, answer, method)
@@ -162,10 +176,18 @@ def _legacy_or_wait(
 ) -> StepResult:
     parts = legacy(series.sheets)
     names = tuple(sheet.name for sheet in series.sheets)
-    if parts is None or len(parts.layout.placed) < LEGACY_SHARE * len(names):
+    if parts is None or not legacy_good(parts, len(names), proposal.quality.verdict):
         return autoplace.wait_layout(ctx, series, proposal)
     ctx.log.info(f"the {method}'s edges or overlaps place {len(parts.layout.placed)} of {len(names)} parts", ctx.step)
     return _assembled(ctx, series, Assembled(parts.canvas(), parts.layout, names, method, parts.quality))
+
+
+def legacy_good(parts: Parts, count: int, verdict: str) -> bool:
+    """True when the older joins place `LEGACY_SHARE` of the parts and are vouched for: their matches as tight as a good layout's, or,
+    with nothing matched (edges alone), a layout that was only `check`."""
+    quality = parts.quality
+    tight = verdict == "check" if quality is None else quality.rms_px <= LEGACY_RMS_PX and quality.mean_inliers >= LEGACY_MIN_INLIERS
+    return tight and len(parts.layout.placed) >= LEGACY_SHARE * count
 
 
 def _atlas_parts(sheets: Sequence[Sheet]) -> Parts:

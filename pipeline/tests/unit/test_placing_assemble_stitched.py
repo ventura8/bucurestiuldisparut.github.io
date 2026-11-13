@@ -40,7 +40,8 @@ def test_happy_path_an_atlas_that_does_not_place_itself_leaves_its_stitched_pict
     assert record["method"] == "names"
     assert (record["parts"], record["joined"], record["leftOutCount"]) == (5, 4, 1)
     assert record["leftOut"] == [{"name": "5.tif", "reason": "blank"}]
-    assert record["width"] == pytest.approx(1000, abs=40)
+    # Four 500 px pages: the seams' sub-pixel offsets may round the canvas up by a pixel, never more.
+    assert (record["width"], record["height"]) == (pytest.approx(1000, abs=1), pytest.approx(1000, abs=1))
     assert str(record["previewPath"]).endswith("/stitched.jpg")
     assert str(record["previewPath"]) in world.gcs.objects
     # The georeferencer opens it like any frame: its scan and the city window's OpenStreetMap lines.

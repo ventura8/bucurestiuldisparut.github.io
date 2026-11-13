@@ -191,10 +191,21 @@ def _counted(plan: Plan) -> int:
     return len(plan.parts) - sum(reason in {"blank", "not-part"} for reason in plan.out.values())
 
 
-def _measures(plan: Plan, answer: bundle.Solved) -> Measures:
+def _held(answer: bundle.Solved) -> int:
+    """The placed sheets the verdict counts: those a kept seam touches (a sheet held by its cell's prior alone proves nothing of the
+    layout); a lone sheet counts as placed."""
+    touched = {seam.a for seam in answer.kept} | {seam.b for seam in answer.kept}
+    placed = set(answer.positions)
+    return len(placed) if len(placed) <= 1 else len(placed & touched)
+
+
+def _measures(plan: Plan, seams: Sequence[Seam], answer: bundle.Solved) -> Measures:
+    """What the verdict reads. Every seam the bundle did not keep (missing, or dropped as disagreeing) scores 0, so a grid whose
+    neighbours mostly say nothing is never `good` however well its few strong seams agree (M20 §19.5)."""
     residuals = [max(residual, seam.rms) for seam, residual in zip(answer.kept, answer.residuals, strict=True)]
+    scores = [seam.score for seam in answer.kept] + [0.0] * (len(seams) - len(answer.kept))
     moved = max(answer.moved.values(), default=0.0)
-    return Measures(len(answer.positions), _counted(plan), [seam.score for seam in answer.kept], residuals, moved)
+    return Measures(_held(answer), _counted(plan), scores, residuals, moved)
 
 
 def _marked(seams: Sequence[Seam], dropped: Sequence[Seam]) -> tuple[Seam, ...]:
@@ -209,10 +220,10 @@ def solved(plan: Plan, grid: sheetnames.NameGrid) -> Proposal:
     cells = {index: cell for index, cell in plan.cells.items() if index not in plan.out}
     from_order = set(cells) if grid.source == "order" else set()
     answer = bundle.solve(cells, seams, plan.cell, from_order)
-    return Proposal(plan, grid, _marked(seams, answer.dropped), answer, judged(_measures(plan, answer)))
+    return Proposal(plan, grid, _marked(seams, answer.dropped), answer, judged(_measures(plan, seams, answer)))
 
 
-def _out(parts: Sequence[Part], grid: sheetnames.NameGrid) -> dict[int, str]:
+def initial_out(parts: Sequence[Part], grid: sheetnames.NameGrid) -> dict[int, str]:
     """The sheets kept out from the start: the blank pages, and the foreign sheets the names did not read."""
     blank = {part.index: "blank" for part in parts if part.blank}
     return blank | {index: "no-join" for index in grid.unread}
@@ -224,7 +235,7 @@ def propose(named: Sequence[tuple[str, Path]]) -> Proposal:
     cell = cell_of(parts)
     names = [name for name, _path in named]
     grid = sheetnames.grid_of(names, cell[0] / cell[1])
-    plan = Plan(parts, dict(grid.cells), _initial(parts, cell), cell, _out(parts, grid))
+    plan = Plan(parts, dict(grid.cells), _initial(parts, cell), cell, initial_out(parts, grid))
     if grid.source == "order":
         grid = _best_order(plan, names)
     orient(plan, set(plan.cells))

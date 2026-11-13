@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy
 import pytest
-from hcm_pipeline.placing import autostitch
+from hcm_pipeline.placing import assemble, autostitch, joins, maps
 
 from tests.synthetic.sheets import Series, SheetsSpec, make_series, seam_errors
 
@@ -133,3 +133,19 @@ def test_happy_path_a_layout_is_cut_into_tiles_within_the_canvas_limit(tmp_path:
     assert len(tiles) == 2
     assert all(tile.width <= 1500 for _index, tile in tiles)
     assert autostitch.tiles_of(proposal.plan, {}, 100) == ([], (1, 1))
+
+
+def test_bad_path_the_older_joins_leave_an_overlapping_named_series_unfinished(tmp_path: Path) -> None:
+    """Scenarios: S-P20-HAPPY-STITCH-NAMES"""
+    # Why §19 exists: the edges and the overlaps of M20 §6 placed 1-6 of these 12 sheets; the layout places all 12.
+    series = make_series(tmp_path, SheetsSpec(overlap=0.06, names="rc"))
+    paths = [path for _name, path in series.named]
+    pages = assemble.Pages.read(paths, maps.page_px(len(paths)))
+    cell = (int(numpy.median([page.shape[1] for page in pages.grey])), int(numpy.median([page.shape[0] for page in pages.grey])))
+    found = joins.joined(paths)
+
+    by_edges = len(assemble.atlas_layout(pages.grey, cell).placed)
+    by_overlaps = 0 if found is None else len(found.layout.placed)
+
+    assert max(by_edges, by_overlaps) < len(paths)
+    assert len(autostitch.propose(series.named).solved.positions) == len(paths)

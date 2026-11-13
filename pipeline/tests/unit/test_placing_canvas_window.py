@@ -16,6 +16,9 @@ from tests.synthetic.town import write_map
 
 # The low-resource principle (M7): the worker runs in 4 GB with two cores; a 100-sheet series of 6000 px scans stays within this.
 PEAK_RSS_BYTES = 1_500_000_000
+# Two colour scans of 12000 x 9000 on a canvas at about their own scale: one tile in RGB and one band (about 690 MB with the
+# layout), where the old paste held the whole scan at 1.05 x three times over (over 1.1 GB).
+COLOUR_PEAK_RSS_BYTES = 800_000_000
 
 
 def _scan(tmp_path: Path, name: str, value: int, size: tuple[int, int] = (200, 100)) -> Path:
@@ -75,32 +78,51 @@ def test_bad_path_a_window_no_tile_covers_has_no_owner() -> None:
     assert numpy.all(canvas_window.owners([tile], (100, 100, 108, 108)) == -1)
 
 
+# The child reports its own high-water mark (`VmHWM`: `ru_maxrss` would carry over the parent's peak, which wrote the scans).
 _CHILD = """
-import resource, sys
+import sys
 from pathlib import Path
 from hcm_pipeline.placing import autostitch
 from hcm_pipeline.placing.canvas_window import Canvas, render
 named = [(line.split("\\t")[0], Path(line.split("\\t")[1])) for line in Path(sys.argv[1]).read_text().splitlines()]
 proposal = autostitch.propose(named)
 tiles, size = proposal.tiles()
-render([tile for _index, tile in tiles], Canvas(Path(sys.argv[2]), size, False))
-print(len(proposal.solved.positions), size[0], size[1], resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+render([tile for _index, tile in tiles], Canvas(Path(sys.argv[2]), size, sys.argv[3] == "colour"))
+peak = next(line.split()[1] for line in Path("/proc/self/status").read_text().splitlines() if line.startswith("VmHWM:"))
+print(len(proposal.solved.positions), size[0], size[1], peak)
 """
+
+
+def _mosaicked(tmp_path: Path, spec: SheetsSpec) -> tuple[int, int, int, int]:
+    """(sheets placed, canvas width, height, the child's peak resident memory in KiB) of laying out and mosaicking `spec`."""
+    series = make_series(tmp_path / "scans", spec)
+    listing = tmp_path / "named.tsv"
+    listing.write_text("\n".join(f"{name}\t{path}" for name, path in series.named), encoding="utf-8")
+    # GDAL's block cache as a 4 GB worker sizes it (`rasters.gdal_memory`: a sixteenth); the default would be 5 % of this machine.
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(sys.path), "GDAL_CACHEMAX": "256"}
+    command = [sys.executable, "-c", _CHILD, str(listing), str(tmp_path / "canvas.tif"), spec.style]
+    done = subprocess.run(command, env=env, capture_output=True, text=True, check=True)
+    placed, width, height, peak_kib = (int(value) for value in done.stdout.split())
+    return placed, width, height, peak_kib
 
 
 def test_happy_path_a_hundred_large_scans_are_laid_out_and_mosaicked_within_the_memory_budget(tmp_path: Path) -> None:
     """Scenarios: S-P20-HAPPY-STITCH-WINDOWED"""
     spec = SheetsSpec(rows=10, cols=10, cell=(400, 300), overlap=0.06, names="rc", style="lineart", out_px=6000)
-    series = make_series(tmp_path / "scans", spec)
-    listing = tmp_path / "named.tsv"
-    listing.write_text("\n".join(f"{name}\t{path}" for name, path in series.named), encoding="utf-8")
-    env = {**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)}
 
-    done = subprocess.run(
-        [sys.executable, "-c", _CHILD, str(listing), str(tmp_path / "canvas.tif")], env=env, capture_output=True, text=True, check=True
-    )
+    placed, width, height, peak_kib = _mosaicked(tmp_path, spec)
 
-    placed, width, height, peak_kib = (int(value) for value in done.stdout.split())
     assert placed == 100
     assert max(width, height) <= 20_000
     assert peak_kib * 1024 <= PEAK_RSS_BYTES
+
+
+def test_happy_path_large_colour_scans_cost_their_box_at_the_canvas_scale_never_the_whole_scan(tmp_path: Path) -> None:
+    """Scenarios: S-P20-HAPPY-STITCH-WINDOWED"""
+    # One 12000 x 9000 colour scan is 324 MB as RGB; the old paste read it whole at 1.05 x and copied it three times more.
+    spec = SheetsSpec(rows=1, cols=2, overlap=0.06, names="rc", style="colour", out_px=12_000)
+
+    placed, _width, _height, peak_kib = _mosaicked(tmp_path, spec)
+
+    assert placed == 2
+    assert peak_kib * 1024 <= COLOUR_PEAK_RSS_BYTES

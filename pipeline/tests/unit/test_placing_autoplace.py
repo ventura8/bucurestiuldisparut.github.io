@@ -13,18 +13,12 @@ from hcm_pipeline.placing.series import SeriesJob
 from hcm_pipeline.steps.place import PlaceStep
 
 from tests.fakes.world import PipelineWorld, dig
-from tests.synthetic.sheets import Series, SheetsSpec, make_series
-from tests.unit.placing_support import originals, series_context
+from tests.synthetic.sheets import Series, SheetsSpec
+from tests.unit.placing_support import originals, staged_series
 
 
 def _series(world: PipelineWorld, tmp_path: Path, spec: SheetsSpec, kind: str = "atlas") -> tuple[JobContext, Series]:
-    staging = make_series(tmp_path / "staging", replace(spec, shuffle=False))
-    ctx = series_context(world, tmp_path, [name for name, _path in staging.named], {"class": kind, "encoding": "grey"})
-    for name, path in staging.named:
-        target = originals(ctx) / name
-        target.parent.mkdir(parents=True, exist_ok=True)
-        path.rename(target)
-    return ctx, staging
+    return staged_series(world, tmp_path, spec, kind)
 
 
 def _stitched(world: PipelineWorld) -> dict[str, object]:
@@ -101,7 +95,7 @@ def _answer(**fields: object) -> dict[str, object]:
 def test_happy_path_the_owners_preview_waits_again_with_the_next_revision_and_keeps_the_answer(
     world: PipelineWorld, tmp_path: Path
 ) -> None:
-    """Scenarios: S-P20-HAPPY-STITCH-NAMES"""
+    """Scenarios: S-P20-HAPPY-STITCH-OWNER"""
     ctx, _staging = _series(world, tmp_path, SheetsSpec(rows=2, cols=2, overlap=0.08, names="img"))
     sheets = [*_sheets()[:3], {"index": 3, "row": 0, "col": 0, "turn": 0, "flip": False, "out": "not-part"}]
     answer = _answer(preview=True, sheets=sheets)
@@ -120,6 +114,7 @@ def test_happy_path_the_owners_preview_waits_again_with_the_next_revision_and_ke
 
 
 def test_happy_path_an_accepted_answer_is_mosaicked_with_the_owners_seams(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P20-HAPPY-STITCH-OWNER"""
     ctx, _staging = _series(world, tmp_path, SheetsSpec(rows=2, cols=2, overlap=0.08, names="rc"))
     seam = {"a": 0, "b": 1, "side": "right", "points": {"a": [470.0, 180.0], "b": [28.0, 180.0]}}
     ctx.update_version({"help": {"reason": "layout-check", "layoutAnswer": _answer(seams=[seam], accepted=True, preview=True)}})
@@ -131,9 +126,12 @@ def test_happy_path_an_accepted_answer_is_mosaicked_with_the_owners_seams(world:
     seams = _layout_file(world)["seams"]
     assert isinstance(seams, list)
     assert any(item["state"] == "owner" and item["dx"] == pytest.approx(442.0, abs=0.5) for item in seams)
+    # The answer outlives the mosaic's wait for points: a later `place` (Locate again) lays the series out the owner's way again.
+    assert dig(world.version(), "help", "layoutAnswer", "revision") == 3
 
 
 def test_happy_path_an_answer_with_no_sheets_takes_the_proposal_as_it_is(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P20-HAPPY-STITCH-OWNER"""
     ctx, staging = _series(world, tmp_path, SheetsSpec(rows=1, cols=2, overlap=0.08, names="rc"))
     answer = owner_layout.Answer(0, (), (), False, {})
 
@@ -143,13 +141,17 @@ def test_happy_path_an_answer_with_no_sheets_takes_the_proposal_as_it_is(world: 
     assert proposal.grid.source == "name"
 
 
-def test_bad_path_a_malformed_answer_leaves_its_sheets_out_and_reads_zeroes() -> None:
+def test_bad_path_a_malformed_answer_reads_zeroes_and_drops_its_malformed_points() -> None:
+    """Scenarios: S-P20-BAD-STITCH-OWNER-MALFORMED"""
     assert owner_layout.number({"row": True}, "row") == 0
-    assert owner_layout.point({"a": [1, "x"]}, "a") == (0.0, 0.0)
+    assert owner_layout.point({"a": [1, "x"]}, "a") is None
+    assert owner_layout.point({"a": [True, 2]}, "a") is None
+    assert owner_layout.point({"a": [1, float("nan")]}, "a") is None
     assert owner_layout.point({"a": [1, 2.5]}, "a") == (1.0, 2.5)
 
 
 def test_bad_path_no_answer_and_a_broken_one(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P20-BAD-STITCH-OWNER-MALFORMED"""
     ctx, _staging = _series(world, tmp_path, SheetsSpec(rows=1, cols=2, overlap=0.08, names="rc"))
     assert owner_layout.answer_of(ctx) is None
 

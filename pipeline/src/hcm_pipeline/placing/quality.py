@@ -1,10 +1,11 @@
 """The verdict on an automatic layout (docs/research/M20-import-local.md §19.5): mosaic it on its own, or ask the owner.
 
-`good` when at least `MIN_PLACED_PCT` of the sheets that are part of the map are placed (blank pages and sheets the owner marked out do
-not count), the seams' median correlation is at least `MIN_SEAM_MEDIAN`, their residual's 95th percentile at most `MAX_RMS_P95_PX`
-cell pixels and no sheet lies more than `MAX_MOVED_CELLS` of a cell from its place on the grid. `poor` when fewer than half are
-placed or the seams say nothing (their median under `POOR_SEAM_MEDIAN`); else `check`. On `check` or `poor` the series is not
-mosaicked: it waits for its owner with `layout-check` and its proposal.
+`good` when at least `MIN_PLACED_PCT` of the sheets that are part of the map are placed and held by a kept seam (blank pages and sheets
+the owner marked out do not count; a sheet only its cell's prior holds is not placed for the verdict), the seams' median correlation
+is at least `MIN_SEAM_MEDIAN` (a missing seam, or one the bundle dropped, scores 0), their residual's 95th percentile at most
+`MAX_RMS_P95_PX` cell pixels and no sheet lies more than `MAX_MOVED_CELLS` of a cell from its place on the grid. `poor` when fewer
+than half are placed or the seams say nothing (their median under `POOR_SEAM_MEDIAN`: most neighbours missing); else `check`. On
+`check` or `poor` the series is not mosaicked: it waits for its owner with `layout-check` and its proposal.
 """
 
 from collections.abc import Sequence
@@ -57,7 +58,8 @@ def _verdict(placed_pct: float, seam_median: float, rms: float, moved: float) ->
 
 @dataclass(frozen=True)
 class Measures:
-    """What the verdict reads: sheets placed of those that count, the kept seams' scores and residuals, the largest move (cells)."""
+    """What the verdict reads: sheets placed (and held by a kept seam) of those that count, every seam's score (0 when not kept), the
+    kept seams' residuals, the largest move (cells)."""
 
     placed: int
     counted: int

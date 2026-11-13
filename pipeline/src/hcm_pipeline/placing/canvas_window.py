@@ -1,11 +1,12 @@
 """The mosaic written in windows (docs/research/M20-import-local.md §19.6): never the whole canvas in memory.
 
-The canvas is a tiled, compressed GeoTIFF (not georeferenced) created paper white. The sheets are pasted one at a time: each is read from
-its own scan once, already reduced to the canvas's scale (GDAL's average, `raster_io.read_working`), cropped to its content box, turned
-and stretched to its cell (`Tile`); then the canvas is visited in windows of at most `WINDOW_PX` over the sheet's box, each read,
-the pixels this sheet owns set and written back. A pixel belongs to the covering sheet whose centre is nearest (a hard seam, never a
-feather: blending line art doubles its lines), worked out per window from the sheets' boxes alone. Peak memory is one sheet and two
-windows, whatever the series' size; GDAL's own block cache is held to `CANVAS_CACHE_BYTES` while the canvas is written.
+The canvas is a tiled, compressed GeoTIFF (not georeferenced) created paper white. The sheets are pasted one at a time: each reads only its
+content box from its own scan, straight at its size on the canvas (GDAL's average, one band at a time into one array,
+`raster_io.read_box`), then turned (`Tile`); then the canvas is visited in windows of at most `WINDOW_PX` over the sheet's box, each
+read, the pixels this sheet owns set and written back. A pixel belongs to the covering sheet whose centre is nearest (a hard seam, never
+a feather: blending line art doubles its lines), worked out per window from the sheets' boxes alone. Peak memory is one sheet at the
+canvas's scale, one band and two windows, never a whole scan, whatever the series' size; GDAL's own block cache is held to
+`CANVAS_CACHE_BYTES` while the canvas is written.
 """
 
 from collections.abc import Iterator, Sequence
@@ -16,8 +17,8 @@ from typing import Final
 import cv2
 import numpy
 
-from hcm_pipeline.placing.raster_io import RGB, read_working
-from hcm_pipeline.placing.sheetwork import Box, oriented
+from hcm_pipeline.placing.raster_io import RGB, read_box
+from hcm_pipeline.placing.sheetwork import Box, oriented, swaps
 from hcm_pipeline.placing.streets import UInt8Array, grey_of
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.rasters import GTIFF_OPTIONS, driver_of
@@ -50,29 +51,17 @@ class Tile:
         return self.left < x1 and self.left + self.width > x0 and self.top < y1 and self.top + self.height > y0
 
 
-def _read_px(tile: Tile) -> int:
-    """The long side the scan is read at so its content box comes out at least the tile's size (never more than the scan)."""
-    across = max(1, tile.box[2] - tile.box[0])
-    down = max(1, tile.box[3] - tile.box[1])
-    shrink = max(tile.width, tile.height) / max(across, down)
-    return max(64, round(1.05 * shrink * max(_scan_size(tile.path))))
-
-
-def _scan_size(path: Path) -> tuple[int, int]:
-    dataset = gdal.Open(str(path))
-    size = dataset.RasterXSize, dataset.RasterYSize
-    dataset.Close()
-    return size
+def _read_size(tile: Tile) -> tuple[int, int]:
+    """The size (width, height) the content box is read at: the tile's own, before it is turned."""
+    return (tile.height, tile.width) if swaps(tile.variant) else (tile.width, tile.height)
 
 
 def picture(tile: Tile, colour: bool) -> UInt8Array:
-    """The tile's pixels on the canvas: read reduced, cropped to its box, turned and stretched to its canvas size."""
-    working = read_working(tile.path, _read_px(tile))
-    left, top, right, bottom = (round(value / working.scale) for value in tile.box)
-    image = working.image if colour else grey_of(working.image)
-    image = _colour(image) if colour else image
-    crop = oriented(image[top:bottom, left:right], tile.variant)
-    return numpy.asarray(cv2.resize(crop, (tile.width, tile.height), interpolation=cv2.INTER_AREA), numpy.uint8)
+    """The tile's pixels on the canvas: only its content box read, by GDAL straight at the tile's size, then turned (a colour sheet
+    costs one copy of itself at the canvas's scale and one band, never its whole scan; M20 §19.6)."""
+    image = read_box(tile.path, tile.box, _read_size(tile))
+    image = _colour(image) if colour else grey_of(image)
+    return oriented(image, tile.variant)
 
 
 def _colour(image: UInt8Array) -> UInt8Array:

@@ -22,6 +22,7 @@ from hcm_pipeline.placing.raster_io import Pair
 DEFAULT_MAXZOOM: Final = 18
 ARCHIVE_MAX_ZOOM: Final = 21
 JUNCTIONS: Final = "junctions"
+LAYOUT_ANSWER: Final = "layoutAnswer"
 
 
 def param_int(params: Mapping[str, object], name: str, default: int | None = None) -> int | None:
@@ -96,13 +97,24 @@ def wait_for_help(
     stitched: Mapping[str, object] | None = None,
 ) -> Waiting:
     """The version waits for a person with why (`help`) and, for a series joined into one picture, that picture (`stitched`,
-    M22 §4.1); the job waits for points."""
+    M22 §4.1); the job waits for points. The owner's tile layout (`help.layoutAnswer`, M20 §19.8) is carried into the new `help` in
+    the same write, so neither a crash between two writes nor a later wait drops it."""
     help_item: dict[str, object] = {"reason": reason, "note": note[:200], "at": ctx.now()}
     if stitched is not None:
         help_item["stitched"] = dict(stitched)
+    answer = _layout_answer(ctx)
+    if answer is not None:
+        help_item[LAYOUT_ANSWER] = answer
     ctx.update_version({"state": "needs_gcps", "help": help_item, **(fields or {})})
     ctx.log.info(f"waits for a person ({reason}): {note[:200]}", ctx.step)
     return Waiting("awaiting_gcps", "gcps", note)
+
+
+def _layout_answer(ctx: JobContext) -> dict[str, object] | None:
+    """The version's `help.layoutAnswer` as it is, or None."""
+    help_item = (ctx.services.store.get(ctx.version_path()) or {}).get("help")
+    found = help_item.get(LAYOUT_ANSWER) if isinstance(help_item, Mapping) else None
+    return dict(found) if isinstance(found, Mapping) else None
 
 
 def _gcp(index: int, pair: Pair, score: float) -> Gcp:
