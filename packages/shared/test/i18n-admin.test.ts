@@ -84,7 +84,7 @@ const CONTENT_FOLDERS = {
     'admin-pois': ['pois'],
     'admin-layers': ['layers'],
     'admin-settings': ['settings'],
-    'admin-ops': ['admins', 'history', 'jobs', 'crashes'],
+    'admin-ops': ['admins', 'history', 'jobs', 'crashes', 'statistics'],
     'admin-imagery': ['imagery'],
     'admin-georef': ['georef'],
     'admin-orders': ['orders'],
