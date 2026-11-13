@@ -115,7 +115,8 @@ describe('the starter categories', () => {
         expect(store.state.editor?.draft?.issues.some((issue) => issue.path === 'category')).toBe(false);
         expect(world.notices.at(-1)).toEqual({ key: 'adminContent.pois.startersAdded' });
         expect(store.state.busy).toBe(false);
-        expect(world.store.listeners(LAYERS)).toBe(0);
+        // The starters' one read of the layers is over; the one listener left is the old maps a street is traced on (M27).
+        expect(world.store.listeners(LAYERS)).toBe(1);
     });
 
     it('badPath_offlineNothingIsWrittenAndTheSnackbarSaysWhy', async () => {

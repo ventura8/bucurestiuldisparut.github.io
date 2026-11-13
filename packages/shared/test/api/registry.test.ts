@@ -34,7 +34,11 @@ describe('the function registry', () => {
         const workers = Object.keys(CALLABLES).filter((name) => name.startsWith('worker.') && !(name in ADMIN_CALLABLES));
 
         expect(workers).toEqual([...WORKER_CALLABLE_NAMES]);
-        expect(Object.keys(ADMIN_CALLABLES).filter((name) => name.startsWith('worker.'))).toEqual(['worker.pairCode', 'worker.revoke']);
+        expect(Object.keys(ADMIN_CALLABLES).filter((name) => name.startsWith('worker.'))).toEqual([
+            'worker.pairCode',
+            'worker.revoke',
+            'worker.manage',
+        ]);
         expect(Object.keys(ADMIN_CALLABLES)).toEqual(Object.keys(CALLABLES).filter((name) => !workers.includes(name)));
         expect(new Set(CALLABLE_NAMES)).toEqual(new Set(Object.keys(CALLABLES)));
         expect(CALLABLE_NAMES).toHaveLength(Object.keys(CALLABLES).length);
@@ -169,5 +173,15 @@ describe('the M5 access of each callable (docs/research/M5-interfaces.md §1.3)'
 
     it('badPath_onlyTheReviewQueueAndARevertAdmitAModerator', () => {
         expect(callablesWith('cityReviewer')).toEqual(['history.revert', 'review.decide', 'suggestions.decide', 'contributors.setBlocked']);
+    });
+});
+
+describe('W5: the share of a worker document', () => {
+    it('happyPath_itsProfilesAndReasonsAreTheGovernors', async () => {
+        const { workerShareSchema } = await import('../../src/schemas/worker.js');
+        const { WORKER_PROFILES, WORKER_PROFILE_WHYS } = await import('../../src/api/worker-machine.js');
+
+        expect(workerShareSchema.shape.profile.options).toEqual([...WORKER_PROFILES]);
+        expect(workerShareSchema.shape.why.options).toEqual([...WORKER_PROFILE_WHYS]);
     });
 });

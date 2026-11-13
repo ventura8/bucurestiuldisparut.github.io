@@ -129,7 +129,7 @@ function fetchStep(target: InstallTarget, params: BuildParams): JsonObject {
             'HCM_RELEASE_TIME=${_RELEASE_TIME}',
             `HCM_FILES=${fetched(target, params)}`,
             `HCM_OUT=/workspace/${TARGET_DIRS[target]}`,
-            // §210: the one redirect the download may follow, to the project's admin site (lesson 671).
+            // §210: the one redirect the download may follow, to the project's admin site (lesson 675).
             `HCM_REDIRECT_ORIGIN=${siteOrigins(adminSiteId(params.projectId))[0]}`,
             ...siteEnv(target, params),
             ...serverEnv(target, params),

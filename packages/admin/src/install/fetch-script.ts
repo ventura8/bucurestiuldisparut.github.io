@@ -18,7 +18,7 @@
  *
  * §210: the public map's `/admin/…` answers 301 to the admin's own site once the project has it, so an admin still open on
  * the old address names a bundle there: one redirect is followed, and only to `HCM_REDIRECT_ORIGIN` (the project's admin
- * site); any other redirect fails the step (lesson 671).
+ * site); any other redirect fails the step (lesson 675).
  *
  * Every download is tried up to four times (2026-11-12: one 10 s connect timeout to Hosting failed a whole Update the map):
  * a network error, a 408, a 429 or a 5xx waits `HCM_FETCH_WAITS` (seconds, comma-separated; 5, 15 and 30 by default) and

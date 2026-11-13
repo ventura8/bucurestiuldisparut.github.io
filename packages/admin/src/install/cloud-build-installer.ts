@@ -68,7 +68,7 @@ export interface CloudBuildInstallerDeps {
 
 /**
  * §210: the admin's own site's address when this tab is still on the public map's `/admin/`, which now answers 301 there
- * (lesson 671): `adminOutdated` then names it, and a reload lands on it. Null on the admin's own site or without a move.
+ * (lesson 675): `adminOutdated` then names it, and a reload lands on it. Null on the admin's own site or without a move.
  */
 async function movedTo(deps: CloudBuildInstallerDeps): Promise<string | null> {
     const answer = deps.adminSite

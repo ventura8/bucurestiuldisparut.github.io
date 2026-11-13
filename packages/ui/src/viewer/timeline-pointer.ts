@@ -6,7 +6,7 @@
  * Selections during a press are live (`select`, coalesced by the timeline to one event per frame); its end `settle`s them,
  * and only a press the visitor lifted (not a cancelled one) may open the date menu of a year with several dates (V13).
  */
-import { startScrub } from './timeline-scrub.js';
+import { startScrub, type PeekPlace } from './timeline-scrub.js';
 
 /** Px a finger may move on a scrolling track and still tap a year (beyond it the browser scrolls). */
 const TAP_SLOP_PX = 8;
@@ -49,6 +49,8 @@ export interface TimelinePointerHost {
     /** A mouse over a stop: the chip if that stop needs one. */
     readonly hint: (index: number) => void;
     readonly hideHint: () => void;
+    /** A scrubbing finger against the peek of its year's dates (`timeline-peek.ts`). */
+    readonly peek: (event: PointerEvent, lifted: boolean) => PeekPlace;
 }
 
 export class TimelinePointer {
@@ -116,6 +118,7 @@ export class TimelinePointer {
             onSelect: (index) => {
                 this.#host.select(index);
             },
+            peek: (event, lifted) => this.#host.peek(event, lifted),
             onEnd: (released) => {
                 this.#stop = () => undefined;
                 this.end(released);

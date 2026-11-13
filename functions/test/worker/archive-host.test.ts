@@ -193,12 +193,10 @@ describe('worker.end returned', () => {
         await expect(readJob(made, JOB)).resolves.toMatchObject({ status: 'failed', error: { code: 'apiError.imagery.archiveMissing' } });
     });
 
-    it('badPath_aJobThatIsNoArchiveSeriesIsNotHandedBack', async () => {
-        const made = await workerWorld();
-        await seedHeld(made);
+    it('badPath_aJobNoLongerHeldIsLeftAsItIs', async () => {
+        const made = await heldBy(OTHER_WORKER, { status: 'succeeded' });
 
-        await expect(end(made)).resolves.toEqual({ status: 'running' });
-        await expect(readJob(made, JOB)).resolves.toMatchObject({ status: 'running', attempt: 1 });
+        await expect(end(made)).resolves.toEqual({ status: 'succeeded' });
     });
 
     it('badPath_aReturnKeepsTheWorkersLastJob', async () => {

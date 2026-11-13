@@ -28,7 +28,9 @@ from hcm_pipeline.worker.api import ARCHIVE_REPORT, WorkerApi
 from hcm_pipeline.worker.app import PageActions
 from hcm_pipeline.worker.args import WorkerArgs
 from hcm_pipeline.worker.copying import copier
+from hcm_pipeline.worker.household import host_on_hello, share_of
 from hcm_pipeline.worker.imports import ImportRoutes
+from hcm_pipeline.worker.local_store import held_films
 from hcm_pipeline.worker.loop import WorkerLoop
 from hcm_pipeline.worker.page import PageSettings, content_security_policy
 from hcm_pipeline.worker.pairing import Connector, Pairing, SessionFile, Signer
@@ -89,7 +91,8 @@ class Worker:
         LOG.info("%s", starter_words(state.starter))
         ids = {"cityId": args.city, "workerId": worker_id}
         # Finding 72: the image the starter's supervisor runs, which `worker.hello` compares with the installed one.
-        actions = PageActions(session, api, state, web_config, {**ids, **({"image": args.image} if args.image else {})})
+        hello = {**ids, "host": host_on_hello(os.environ), **({"image": args.image} if args.image else {})}
+        actions = PageActions(session, api, state, web_config, hello)
         emulators = [host for host in (args.endpoints.auth_emulator,) if host]
         settings = PageSettings(args.project, args.city, LocalServer.new_csrf_token(), args.endpoints.auth_emulator)
         policy = content_security_policy(args.project, emulators)
@@ -120,8 +123,12 @@ class Worker:
         loop.sweep = runtime.sweep
         archives = ArchiveStore(args.work)
         loop.archives = archives.held
+        loop.films = lambda: held_films(args.work, args.city)
         loop.copier = copier(api, args.city, worker_id, archives, signed_client(args.emulators))
         loop.supervised = args.supervised
+        # W5: each claim says the governor's share, so a computer whose person is at it leaves the job to a calm one.
+        loop.share = lambda: share_of(governor.machine())
+        actions.remove_here = loop.remove_here
         return cls(session, api, state, actions, server, loop, runtime, client, worker_id, connector, governor, threading.Event())
 
     def govern(self, lower: Callable[[], None] = idle_io) -> None:

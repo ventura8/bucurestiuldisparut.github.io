@@ -215,6 +215,8 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
             .editor=${editor}
             .role=${cityRoleOfState(this.state)}
             .assist=${view.assist}
+            .traceLayers=${view.traceLayers}
+            .traceOpacity=${view.traceOpacity}
             .categories=${view.categories.items}
             .categoriesKnown=${categoriesListed(view)}
             .photos=${[...view.linkedPhotos, ...(view.photos?.items ?? [])]}

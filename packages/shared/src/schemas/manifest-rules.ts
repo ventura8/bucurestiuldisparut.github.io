@@ -33,6 +33,7 @@ export interface CheckedManifest {
               readonly category: string;
               readonly geometry: Geometry;
               readonly photoIds?: readonly string[] | undefined;
+              readonly sourceLayer?: string | undefined;
           })[]
         | undefined;
     readonly stories?:
@@ -83,12 +84,15 @@ function poiPlaces(manifest: CheckedManifest): RuleIssue[] {
     );
 }
 
-/** A POI's category and photos must exist in the same manifest. */
+/** A POI's category, photos and (M27) source layer must exist in the same manifest. */
 function poiReferences(manifest: CheckedManifest): RuleIssue[] {
     const categories = new Set((manifest.poiCategories ?? []).map((category) => category.id));
     const photos = new Set(manifest.photos.map((photo) => photo.id));
+    const layers = new Set(manifest.layers.map((layer) => layer.id));
+    const layerMissing = (layer: string | undefined): boolean => layer !== undefined && !layers.has(layer);
     return (manifest.pois ?? []).flatMap((poi, index): RuleIssue[] => [
         ...(categories.has(poi.category) ? [] : [{ path: ['pois', index, 'category'], code: 'validation.reference' } as const]),
+        ...(layerMissing(poi.sourceLayer) ? [{ path: ['pois', index, 'sourceLayer'], code: 'validation.reference' } as const] : []),
         ...(poi.photoIds ?? []).flatMap((photoId, photoIndex) =>
             photos.has(photoId) ? [] : [{ path: ['pois', index, 'photoIds', photoIndex], code: 'validation.reference' } as const],
         ),

@@ -1,5 +1,5 @@
 import type { BBox, Geometry } from '@hcm/shared';
-import type { VectorOverlaySpec } from '@hcm/ui/map';
+import type { RasterLayerSpec, VectorOverlaySpec } from '@hcm/ui/map';
 import { describe, expect, it } from 'vitest';
 
 import { testLog } from '../app/fakes.js';
@@ -315,5 +315,62 @@ describe('the places map: the camera', () => {
 
         expect(map.centre()).toEqual([26.12, 44.44]);
         expect(maps.map.callsOf('flyTo')).toEqual([[{ zoom: 16 }, undefined]]);
+    });
+});
+
+const OLD_MAP: RasterLayerSpec = {
+    id: 'plan-1911',
+    source: { type: 'mapbox', tilesetId: 'hcm.plan-1911' },
+    minzoom: 10,
+    maxzoom: 18,
+    visible: true,
+    opacity: 1,
+    order: 1,
+    attribution: '',
+};
+
+function rasters(maps: FakeMaps): RasterLayerSpec[] {
+    return maps.map.callsOf('addRasterLayer').map((args) => args[0] as RasterLayerSpec);
+}
+
+describe('the places map: the old map a street is traced on (M27)', () => {
+    it('happyPath_theChosenOldMapGoesUnderTheDrawingAndFades', async () => {
+        const { map, maps } = await ready();
+        map.showPlaces([CHURCHES]);
+
+        map.showLayer(OLD_MAP);
+        expect(rasters(maps).at(-1)).toEqual(OLD_MAP);
+        expect(overlays(maps, 'biserici').at(-1)).toEqual(CHURCHES);
+
+        map.setLayerOpacity(0.4);
+        maps.frames.run();
+        expect(maps.map.callsOf('setOverlayOpacity')).toContainEqual(['plan-1911', 0.4]);
+        // A later redraw of the places keeps the faded map.
+        map.showPlaces([CHURCHES]);
+        expect(rasters(maps).at(-1)?.opacity).toBeCloseTo(0.4);
+
+        map.showLayer(null);
+        expect(maps.map.callsOf('removeLayer')).toContainEqual(['plan-1911']);
+    });
+
+    it('badPath_withoutAMapOrAnOldMapNothingIsDrawn', async () => {
+        const offline = session(null);
+        offline.map.showLayer(OLD_MAP);
+        offline.map.setLayerOpacity(0.5);
+        expect(offline.maps.maps).toEqual([]);
+
+        const { map, maps } = await ready();
+        map.setLayerOpacity(0.5);
+        maps.frames.run();
+        expect(maps.map.callsOf('setOverlayOpacity').filter((args) => args[0] === 'plan-1911')).toEqual([]);
+    });
+
+    it('happyPath_anOldMapChosenBeforeTheMapIsReadyIsDrawnOnceItIs', async () => {
+        const { map, maps } = session();
+        map.showLayer(OLD_MAP);
+        map.attach(CONTAINER);
+        map.setFrame(FRAME);
+        await settle();
+        expect(rasters(maps).at(-1)).toEqual(OLD_MAP);
     });
 });

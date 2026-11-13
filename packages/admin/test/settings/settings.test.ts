@@ -317,6 +317,17 @@ describe('the categories section', () => {
         expect(preview.calls).toEqual([]);
     });
 
+    it('happyPath_aNewDisappearedStreetsCategoryIsSavedHiddenPinnedAndCredited_badPathAnEmptiedCreditIsLeftOut (M27)', async () => {
+        const { store, world } = open(['categories', '_new']);
+        store.intents.setCategoryLabel('ro', 'Străzi dispărute');
+        store.intents.editCategory({ defaultVisible: false, pinned: true, attribution: 'OSM' });
+        store.intents.editCategory({ attribution: undefined });
+        const saved = world.store.docs.get(CATEGORY_PATH((await store.intents.saveCategory()) ?? ''));
+
+        expect(saved).toMatchObject({ defaultVisible: false, pinned: true });
+        expect(Object.keys(saved ?? {})).not.toContain('attribution');
+    });
+
     it('happyPath_aNewCategorysIconFollowsItsLabelUntilOneIsPicked', () => {
         const { store } = open(['categories', '_new']);
         const icon = (): string | undefined => store.state.category?.value?.icon;

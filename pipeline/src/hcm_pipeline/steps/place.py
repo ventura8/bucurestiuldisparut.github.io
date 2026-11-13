@@ -6,13 +6,16 @@ A class with no placer yet, or a placer that cannot prove a placement, never fai
 (`needs_gcps`) with one line saying why (`help`: the owner's standing rule of 2026-11-09, the shared "Help calibrate" queue), and the job
 waits for points (`awaiting_gcps`). A low-confidence placer leaves its correspondences as suggested pairs first. Once the owner saved
 pairs on the parked series (`imagery.saveGcps`: the version's `georef`, `method: 'gcps'`), `place` warps it through them
-(`placing/owner.py`) and never runs the class's placer again: it only parked the series once more (2026-11-10).
+(`placing/owner.py`) and never runs the class's placer again: it only parked the series once more (2026-11-10). A series stitched
+again (`restitch` in its job's parameters, DECISIONS §216) is first laid on its overview again (`placing/restitch.py`).
 """
 
 from collections.abc import Mapping
 from typing import Final, Protocol
 
+from hcm_pipeline.documents import GeorefInfo
 from hcm_pipeline.jobs import JobContext, StepResult
+from hcm_pipeline.placing import restitch
 from hcm_pipeline.placing.embedded import EmbeddedPlacer
 from hcm_pipeline.placing.grid import GridPlacer
 from hcm_pipeline.placing.maps import AtlasPlacer, PiecesPlacer, SinglePlacer
@@ -49,8 +52,15 @@ class PlaceStep:
     def run(self, ctx: JobContext) -> StepResult:
         pairs = owner_pairs(ctx.version.georef)
         if pairs is not None:
-            return place_from_pairs(ctx, pairs)
+            return self._from_pairs(ctx, pairs)
         placer = self._placers.get(text_param(ctx.job.params, "class"))
         if placer is None:
             return wait_for_help(ctx, "no-path", NO_PATH_NOTE)
         return placer.place(ctx)
+
+    @staticmethod
+    def _from_pairs(ctx: JobContext, pairs: GeorefInfo) -> StepResult:
+        """The owner's pairs; a series stitched again (`restitch`) is laid on its overview first, or waits when it no longer lands."""
+        if restitch.asked(ctx) and not restitch.restitched(ctx):
+            return wait_for_help(ctx, "low-confidence", restitch.NO_OVERVIEW)
+        return place_from_pairs(ctx, pairs)

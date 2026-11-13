@@ -109,6 +109,31 @@ describe('<hcm-poi-detail>', () => {
         expect(element.shadowRoot?.querySelector('.thumbs')).toBeNull();
     });
 
+    it('happyPath_aTracedStreetNamesItsMapAndItsCategorysCredit @S-V71-HAPPY-SOURCES', async () => {
+        const credited = { ...category('cladiri'), attribution: 'OpenHistoricalMap (CC0)' };
+        const element = await detail({
+            poi: { ...poi('casa-uranus'), sourceLayer: 'kh9-1977' },
+            category: credited,
+            layers: MANIFEST.layers,
+            locale: 'en',
+        });
+
+        const text = shadowText(element);
+        expect(text).toContain('Sources');
+        expect(text).toContain(`Seen on: ${MANIFEST.layers.find((layer) => layer.id === 'kh9-1977')?.label.en ?? ''}`);
+        expect(text).toContain('Source: OpenHistoricalMap (CC0)');
+    });
+
+    it('badPath_aSourceLayerTheManifestLacksSaysNothing @S-V71-BAD-UNKNOWN-LAYER', async () => {
+        const element = await detail({
+            poi: { ...poi('casa-uranus'), sourceLayer: 'gone-1911' },
+            category: category('cladiri'),
+            layers: MANIFEST.layers,
+        });
+
+        expect(element.shadowRoot?.querySelector('.sources')).toBeNull();
+    });
+
     it('badPath_noPoiRendersNothing', async () => {
         const element = await detail({ poi: null });
 

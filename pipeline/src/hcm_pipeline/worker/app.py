@@ -23,6 +23,8 @@ from hcm_pipeline.worker.session import SIGNED_OUT, RefreshUnavailableError, Ses
 from hcm_pipeline.worker.state import WorkerState
 from hcm_pipeline.worker.webconfig import WebConfig, WebConfigError
 
+# Why a computer cannot clean itself up: no starter that does it runs this worker (a command started it).
+NO_STARTER: Final = "no-starter"
 LOG = get_logger("worker.app")
 CONFIG_MISSING: Final = "configMissing"
 # `POST /pair` while a session is held: the computer is paired already.
@@ -37,7 +39,7 @@ def _seconds(answer: Mapping[str, object], key: str) -> float | None:
 class PageActions:
     """The worker's side of the page (`server.WorkerApp`)."""
 
-    def __init__(self, session: Session, api: WorkerApi, state: WorkerState, web_config: WebConfig, hello: Mapping[str, str]) -> None:
+    def __init__(self, session: Session, api: WorkerApi, state: WorkerState, web_config: WebConfig, hello: Mapping[str, object]) -> None:
         self._session = session
         self._api = api
         self._state = state
@@ -46,6 +48,8 @@ class PageActions:
         self._offer: Callable[[str], None] | None = None
         # The governor's `choose` (M26): the owner's profile from the admin's card.
         self.choose_profile: Callable[[object, object], bool] = lambda _chosen, _battery: False
+        # W5: the loop's `remove_here` (Stop using this computer on this page); without it, no starter cleans up.
+        self.remove_here: Callable[[], str | None] = lambda: NO_STARTER
 
     def accept_pairing(self, offer: Callable[[str], None]) -> None:
         """Where `pair` hands a code: the connector's `offer` (finding 72)."""
@@ -64,6 +68,10 @@ class PageActions:
     def profile(self, chosen: object, battery_allowed: object) -> bool:
         """The owner's profile for this computer (M26, docs/research/M26-governor.md §6); False when it is not one."""
         return self.choose_profile(chosen, battery_allowed)
+
+    def remove(self) -> str | None:
+        """W5: Stop using this computer, from its own page: None once the loop ends for the starter's cleanup, else why not."""
+        return self.remove_here()
 
     def web_config(self) -> Mapping[str, str] | None:
         try:

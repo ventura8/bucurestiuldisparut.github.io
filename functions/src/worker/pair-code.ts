@@ -2,6 +2,7 @@ import '../global-options.js';
 
 import {
     FIRESTORE_PATHS,
+    WORKER_HOUSEHOLD_PAIR_SECONDS,
     WORKER_PAIR_SECONDS,
     timestampToDate,
     workerPairingDocSchema,
@@ -41,7 +42,9 @@ async function sweep(deps: PairCodeDeps, cityId: string, uid: string, now: Date)
  * `worker.pairCode` (finding 67 of 2026-11-02, `docs/research/M7-local-worker.md` §2.6; S-A62-HAPPY-PAIR): when the
  * worker's panel shows the command, a one-time code for it (`--pair <code>`): 130 random bits, stored only as its id (a
  * SHA-256 prefix) with the caller, the installed pipeline image the command names and its expiry, `WORKER_PAIR_SECONDS`
- * from now. The caller's earlier codes that expired unused are deleted.
+ * from now. The caller's earlier codes that expired unused are deleted. W5 (household computers): `household` codes, for
+ * "Add another computer"'s one-line command, last `WORKER_HOUSEHOLD_PAIR_SECONDS` (that computer installs Docker and pulls the
+ * pipeline before its worker can spend the code); still one use, still bound to the caller and the city.
  */
 async function workerPairCode(
     deps: PairCodeDeps,
@@ -51,7 +54,8 @@ async function workerPairCode(
     const now = deps.clock.now();
     await sweep(deps, request.cityId, caller.uid, now);
     const code = newPairCode();
-    const expiresAt = new Date(now.getTime() + WORKER_PAIR_SECONDS * 1000);
+    const seconds = request.household === true ? WORKER_HOUSEHOLD_PAIR_SECONDS : WORKER_PAIR_SECONDS;
+    const expiresAt = new Date(now.getTime() + seconds * 1000);
     const image = (await installedImage(deps))?.digest;
     await deps.documents.set(FIRESTORE_PATHS.pairing(request.cityId, pairIdOf(code)), workerPairingDocSchema, {
         uid: caller.uid,
@@ -60,7 +64,7 @@ async function workerPairCode(
         updatedBy: caller.uid,
         updatedAt: at(now),
     });
-    deps.log.info('worker pairing code minted', { cityId: request.cityId });
+    deps.log.info('worker pairing code minted', { cityId: request.cityId, household: request.household === true, seconds });
     return { code, expiresAt: expiresAt.toISOString() };
 }
 
