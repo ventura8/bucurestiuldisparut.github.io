@@ -34,6 +34,7 @@ const BUTTON = {
     rightTrigger: 7,
     back: 8,
     start: 9,
+    up: 12,
     down: 13,
     left: 14,
     right: 15,
@@ -41,6 +42,12 @@ const BUTTON = {
 
 function timeline(page: Page, lang: Locale): ReturnType<Page['getByRole']> {
     return page.getByRole('slider', { name: t(lang, 'timeline.label'), exact: true });
+}
+
+/** The D-pad's buttons along the timeline, later then earlier: right and left, or up and down on a phone's standing one. */
+async function alongTimeline(page: Page, lang: Locale): Promise<readonly [number, number]> {
+    const standing = (await timeline(page, lang).getAttribute('aria-orientation')) === 'vertical';
+    return standing ? [BUTTON.up, BUTTON.down] : [BUTTON.right, BUTTON.left];
 }
 
 function helpDialog(page: Page, lang: Locale): ReturnType<Page['getByRole']> {
@@ -248,10 +255,14 @@ test.describe('The gamepad, its buttons and a modal surface (V37)', () => {
             await pressButton(page, BUTTON.down);
             await expect.poll(async () => (await focused(page))?.ringVisible).toBe(true);
 
+            // The D-pad along the focused timeline steps its year (spatial navigation, V65): left and right, or up and down
+            // on a phone's standing one.
+            await timeline(page, lang).focus();
+            const [later, earlier] = await alongTimeline(page, lang);
             const year = await timeline(page, lang).getAttribute('aria-valuetext');
-            await pressButton(page, BUTTON.right);
+            await pressButton(page, later);
             await expect(timeline(page, lang)).not.toHaveAttribute('aria-valuetext', year ?? '');
-            await pressButton(page, BUTTON.left);
+            await pressButton(page, earlier);
             await expect(timeline(page, lang)).toHaveAttribute('aria-valuetext', year ?? '');
 
             await pressButton(page, BUTTON.rb);

@@ -95,7 +95,14 @@ describe('the gamepad and the colour scheme of the page', () => {
     it('happyPath_theWatcherLoadsNothingWithoutAPad', () => {
         const { window } = schemePage(false);
         const env = browserEnvironment(window, RELEASE, createLogger('test'));
-        const surface = { renderRoot: {} as Element, runInput: vi.fn(), mapCovered: () => true, toast: vi.fn() };
+        const surface = {
+            renderRoot: {} as Element,
+            runInput: vi.fn(),
+            mapCovered: () => true,
+            toast: vi.fn(),
+            navigate: vi.fn(),
+            activate: vi.fn(),
+        };
 
         const stop = env.watchGamepads?.(surface, new FakeMap());
 
