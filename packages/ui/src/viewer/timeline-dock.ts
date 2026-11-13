@@ -156,7 +156,6 @@ export function timelineDock(view: DockView, dock: TimelineDock, onYearChange: (
             id="timeline"
             data-layout-check="timeline"
             .stops=${view.stops}
-            .layers=${view.layers}
             .value=${view.year}
             .locale=${view.locale}
             .orientation=${view.orientation}
