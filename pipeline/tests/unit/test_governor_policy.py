@@ -3,7 +3,7 @@
 from dataclasses import replace
 
 import pytest
-from hcm_pipeline.governor.policy import CALM_S, TICK_S, Choice, PolicyState, decide, effective, is_hot, pressure
+from hcm_pipeline.governor.policy import CALM_S, HOT_HOLD_S, TICK_S, Choice, PolicyState, decide, effective, is_hot, pressure
 from hcm_pipeline.governor.signals import Cpu, Gpu, Power, Usage
 from hypothesis import given, settings
 from hypothesis import strategies as st
@@ -56,18 +56,21 @@ def test_on_battery_it_is_quiet_and_pauses_low_unless_allowed() -> None:
     assert effective(decide(LINUX_NVIDIA_CDI, AUTO, calm, 1.0 + CALM_S))[0] == "full"
 
 
-def test_heat_steps_down_one_level_and_back_ten_degrees_below() -> None:
+def test_heat_steps_down_one_level_and_back_five_degrees_below() -> None:
     # A mobile processor at work reads 90 °C (the laptop, 2026-11-13): no step down there.
     assert not is_hot(replace(LINUX_NVIDIA_CDI, cpu=Cpu(16, temp_c=90.0)), was_hot=False)
     hot = replace(LINUX_NVIDIA_CDI, cpu=Cpu(16, temp_c=96.0))
     state = decide(hot, AUTO, PolicyState(), 0.0)
     assert effective(state) == ("quiet", "thermal")
     assert effective(decide(hot, Choice("quiet"), PolicyState(), 0.0)) == ("paused", "thermal")
-    warm = replace(hot, cpu=Cpu(16, temp_c=90.0))
+    warm = replace(hot, cpu=Cpu(16, temp_c=92.0))
     state = decide(warm, AUTO, state, 1.0)
     assert state.hot
-    cool = replace(hot, cpu=Cpu(16, temp_c=84.0))
-    assert not decide(cool, AUTO, state, 2.0).hot
+    # Back at 90, not 85: other programs held the laptop at 88 to 93 °C for hours (2026-11-13), and the worker never resumed.
+    cool = replace(hot, cpu=Cpu(16, temp_c=90.0))
+    # Held for two minutes once hot: no pause and resume every minute at 90 to 95 °C (the laptop on battery, 2026-11-13).
+    assert decide(cool, AUTO, state, 2.0).hot
+    assert not decide(cool, AUTO, state, HOT_HOLD_S).hot
 
 
 def test_a_hot_graphics_card_counts() -> None:

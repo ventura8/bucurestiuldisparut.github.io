@@ -3871,7 +3871,39 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix: the Statistics view computes the funnel (who left before each step) from `runReport` rows of `step_view` in the page's step order (`packages/admin/src/google/analytics-data.ts`).
     - **Check an API method's version before you design on it; build on the stable one and compute what it lacks.**
 
-659. **A label fixed at the source stays wrong in every record written before the fix.**
+659. **The NUC's worker listed nvidia-smi's error sentence as a graphics card, and the admin called the worker out of date.**
+    - Seen: 2026-11-13, the NUC (Intel Arc, NVIDIA's tools installed, no NVIDIA driver): `/state` listed a card named "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver…" and a second with an empty name; the empty name failed `workerMachineSchema`, so "This computer" asked to update a current worker.
+    - Found by: the owner reading `/state`; the starter's test only faked an nvidia-smi that succeeds or is missing, never one that fails on stdout.
+    - Fix and pin: the starter keeps nvidia-smi's rows only on exit 0 and in shape, names cards by `lspci`, says `no-driver` for an NVIDIA card it cannot reach; the worker drops a card with an empty, multi-line or overlong name; the card links to NVIDIA's drivers. `S-A141-BAD-NO-DRIVER` (`starter-governor.test.ts`, `test_governor_probe.py`, `machine.test.ts`).
+    - **A command's output is data only when the command succeeded and the output has the expected shape; never parse a failure's text as a value.**
+
+660. **The worker's governor logged the same line every five seconds, for ever.**
+    - Seen: 2026-11-13, `docker logs hcm-worker` on the laptop: "this computer: quiet (user-active), 4 threads, 5880 MB", then 5881, 5856, … one line a tick.
+    - Cause: the line was written whenever the budget changed, and the memory budget (35 % of what is free) moved by a few megabytes each tick.
+    - Fix and pin: the memory budget counts whole 256 MB steps, and the line is written only when the profile, its reason or the threads change (`test_the_log_says_a_change_of_state_only`).
+    - **Log a state's change, not each reading of a noisy number; quantise a budget that follows a measurement.**
+
+661. **The canvas test passed on one thread and the worker needed 870 MB on sixteen.**
+    - Seen: 2026-11-13, the worker on the laptop and the NUC: two large colour sheets mosaicked past the 800 MB budget that `test_placing_canvas_window.py` held, because the test's child ran GDAL on one thread and the worker runs it on the cores but one.
+    - Cause: GDAL's threads allocate from glibc's per-thread malloc arenas, which keep freed pages; about 115 MB of the layout's reads stayed resident while the canvas read its own.
+    - Fix and pin: `python -m hcm_pipeline` starts with at most two arenas and the canvas gives the free pages back before and after each sheet (`heap.py`); the budget test runs on one thread and on `ALL_CPUS` (`S-P31-HAPPY-CANVAS-THREADS`).
+    - **A memory budget test runs with the thread count production uses (and one), and a threaded C library's freed memory is not free until it is given back.**
+
+662. **A second worker failed every archive series it took: the scanned maps were on another computer.**
+    - Seen: live, 2026-11-13: after the NUC and the PC joined the laptop, five archive series failed at `gather` with "no record of
+      ar-971b77774eee2871 on this computer", and an atlas used up its attempts on the same cause.
+    - Found by: the owner's Jobs page; every test ran one worker, which always held the archive it imported.
+    - Fix and pin: a worker without the sheets hands the job back unspent and the computer with the archive sends a copy through the
+      bucket (M20 §20; `functions/test/worker/archive-host.test.ts`, `pipeline/tests/unit/test_archive_copy.py`).
+    - **Data that lives on one machine needs a test with two workers: one that has it and one that does not.**
+
+663. **`imagery-onJobWrite` ran out of its 256 MiB four times in a day: three frames ending together each read the whole city.**
+    - Seen: 2026-11-13, the admin's Statistics page, Cloud Error Reporting: "Memory limit of 256 MiB exceeded" (4 times, revision `imagery-onjobwrite-00043`); the function's log showed three events in one instance within a second, each ending in "date plan rewritten" over about 480 frames.
+    - Cause: `rewriteDatePlan` reads every scene and every layer version of the city, and the trigger takes 80 events at once (`GLOBAL_OPTIONS.concurrency`), so frames ending together held several copies of the city in memory.
+    - Fix and pin: one rewrite per city at a time in an instance; calls that come meanwhile share one more rewrite that starts after them, so the plan still shows their write (`functions/src/imagery/join-plan.ts`; `functions/test/imagery/join-plan-flight.test.ts` reads the city three times without it).
+    - **A trigger with concurrency above one multiplies whatever one event reads: a read of a whole collection is coalesced per key, not repeated per event.**
+
+664. **A label fixed at the source stays wrong in every record written before the fix.**
     - Seen: 2026-11-13, track/coronacrop: the id rules that name KH-5 Argon frames landed on 2026-11-09, but the 249 `corona2` scenes harvested on 2026-10-25 kept the fallback KH-4A, and the import copied it: an Argon frame, 550 km square, was searched as a Corona strip and shown whole with the city a speck (`DS09065A073MC043`).
     - Fix: `trueSensor` reads a stored fallback camera again by the frame's id at import (`functions/src/imagery/scene-record.ts`, DECISIONS §209).
     - **When a rule that derives a stored field changes, correct the stored records too (or read them through the rule), not only new ones.**

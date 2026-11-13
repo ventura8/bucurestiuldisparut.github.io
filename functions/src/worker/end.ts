@@ -10,6 +10,7 @@ import {
     type CallableRequest,
     type CallableResponse,
     type JobDoc,
+    type WorkerDoc,
 } from '@hcm/shared';
 
 import type { VerifiedCaller } from '../api/access.js';
@@ -19,6 +20,7 @@ import { omit } from '../api/objects.js';
 import { endWork } from '../imagery/end.js';
 import type { Ports } from '../ports/index.js';
 import { IN_RUN, PIPELINE_WRITER, at, holds, requireWorker, type WorkerCall } from './holder.js';
+import { archiveOf, handedBack, returnsExhausted } from './archive-host.js';
 import { paired } from './pairing.js';
 
 export type EndDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
@@ -51,23 +53,81 @@ async function failHeld(deps: EndDeps, call: WorkerCall, request: Request, now: 
     }
 }
 
+/** The archive of a job the worker may hand back: an archive series it still holds unfinished; else undefined. */
+function returnable(job: JobDoc | undefined, call: WorkerCall, now: Date): string | undefined {
+    return job !== undefined && stillRunning(job, call, now) ? archiveOf(job) : undefined;
+}
+
+/**
+ * M20 (2026-11-13): the worker has not the series' sheets and found no copy: it hands the job back, queued again with its attempt
+ * given back, waiting for the computer that has the archive to send a copy. Only an archive series the worker still holds
+ * unfinished; the worker the archive's report came from (its files are gone) and the `ARCHIVE_RETURNS_MAX`th return fail the job
+ * with `archiveMissing` instead (no hand-back loop).
+ */
+async function handBack(deps: EndDeps, call: WorkerCall, request: Request, now: Date): Promise<void> {
+    const path = FIRESTORE_PATHS.job(call.cityId, request.jobId);
+    const lost = await deps.documents.transaction(async (transaction) => {
+        const job = await transaction.get(path, jobDocSchema);
+        const archiveId = returnable(job, call, now);
+        if (job === undefined || archiveId === undefined) {
+            return false;
+        }
+        if (await returnsExhausted(transaction, job, archiveId, call)) {
+            return true;
+        }
+        await transaction.set(path, jobDocSchema, handedBack(job, now));
+        deps.log.info('worker handed back an archive job it has no sheets for', { cityId: call.cityId, jobId: request.jobId, archiveId });
+        return false;
+    });
+    if (lost) {
+        await failHeld(
+            deps,
+            call,
+            {
+                ...request,
+                error: {
+                    code: 'apiError.imagery.archiveMissing',
+                    message: 'the archive is not on its computer, and no copy reached this one',
+                },
+            },
+            now,
+        );
+    }
+}
+
+/** What the run's outcome does to the job: a crash fails it, a hand-back queues it again, `done` leaves it. */
+async function settle(deps: EndDeps, call: WorkerCall, request: Request, now: Date): Promise<void> {
+    if (request.outcome === 'failed') {
+        await failHeld(deps, call, request, now);
+    } else if (request.outcome === 'returned') {
+        await handBack(deps, call, request, now);
+    }
+}
+
+/** The worker's last job as its panel shows it: a hand-back is no job it ran, so the one before stays. */
+function lastJobOf(worker: WorkerDoc, request: Request, now: Date): Pick<WorkerDoc, 'lastJob'> {
+    if (request.outcome === 'returned') {
+        return worker.lastJob === undefined ? {} : { lastJob: worker.lastJob };
+    }
+    return { lastJob: { id: request.jobId, outcome: request.outcome, at: at(now) } };
+}
+
 /**
  * `worker.end` (`docs/research/M7-local-worker.md` §1.2, §2.4): the run is over. `failed` ends a job the worker still
  * holds unfinished (the run crashed outside a step: `error.code`, else `apiError.imagery.processingFailed`); `done` leaves
- * the job as the run left it. The worker is idle again with its last job. Never paused by the budget guard.
+ * the job as the run left it; `returned` hands an archive series back (`handBack`, M20). The worker is idle again with its last
+ * job. Never paused by the budget guard.
  */
 async function workerEnd(deps: EndDeps, caller: VerifiedCaller, request: Request): Promise<CallableResponse<'worker.end'>> {
     const call = { cityId: request.cityId, workerId: request.workerId, uid: caller.uid };
     const now = deps.clock.now();
     const worker = await requireWorker(deps.documents, call);
     const path = FIRESTORE_PATHS.job(call.cityId, request.jobId);
-    if (request.outcome === 'failed') {
-        await failHeld(deps, call, request, now);
-    }
+    await settle(deps, call, request, now);
     await deps.documents.set(FIRESTORE_PATHS.worker(call.cityId, call.workerId), workerDocSchema, {
-        ...omit(worker, ['jobId']),
+        ...omit(worker, ['jobId', 'lastJob']),
         state: 'idle',
-        lastJob: { id: request.jobId, outcome: request.outcome, at: at(now) },
+        ...lastJobOf(worker, request, now),
         lastSeenAt: at(now),
         updatedBy: caller.uid,
         updatedAt: at(now),

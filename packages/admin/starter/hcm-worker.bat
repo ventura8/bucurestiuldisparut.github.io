@@ -21,7 +21,7 @@ exit /b
 $Project = $env:HCM_PROJECT
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-$StarterVersion = '881afefcef25'
+$StarterVersion = '7d4d3f94aee3'
 $City = $env:HCM_CITY
 $Action = $env:HCM_ACTION
 $Name = 'hcm-worker'
@@ -264,10 +264,16 @@ function Get-HostHints {
         $hints.power = @{ source = $source; percent = [int]$battery.EstimatedChargeRemaining }
     }
     if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) {
+        # Only a success's rows, in their shape: a failing nvidia-smi prints its reason on stdout, never a card's name.
         $rows = & nvidia-smi --query-gpu=name,memory.total,memory.used,utilization.gpu,temperature.gpu --format=csv,noheader,nounits 2> $null
+        if ($LASTEXITCODE -ne 0) { $rows = @() }
         foreach ($row in @($rows)) {
             $f = $row -split ',\s*'
-            $hints.gpus += @{ vendor = 'nvidia'; name = $f[0]; vramMb = [int]$f[1]; othersMb = [int]$f[2]; busyPct = [int]$f[3]; tempC = [int]$f[4]; via = 'cuda' }
+            if ($f.Count -ne 5 -or $f[0] -eq '' -or $f[1] -notmatch '^\d+$' -or $f[2] -notmatch '^\d+$') { continue }
+            $busy = if ($f[3] -match '^\d+$') { [int]$f[3] } else { 0 }
+            $temp = if ($f[4] -match '^\d+$') { [int]$f[4] } else { 0 }
+            $name = ($f[0] -replace '["\\]', '')
+            $hints.gpus += @{ vendor = 'nvidia'; name = $name.Substring(0, [Math]::Min(120, $name.Length)); vramMb = [int]$f[1]; othersMb = [int]$f[2]; busyPct = $busy; tempC = $temp; via = 'cuda' }
         }
     }
     return $hints

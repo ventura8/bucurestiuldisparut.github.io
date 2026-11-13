@@ -171,6 +171,7 @@ const SUITES: readonly Suite[] = [
             'e2e/support/a11y-rules.ts',
             'e2e/support/live-regions.ts',
             'e2e/support/violations.ts',
+            'e2e/support/emulator-pool.ts',
         ],
     },
     {

@@ -39,6 +39,8 @@ JOB_WAIT_REASONS: Final = (
     "parts",
     # M20: an archive series waiting for a later day's share of new layers.
     "daily",
+    # M20 (2026-11-13): an archive series waiting for the computer with its archive to send a copy of its sheets.
+    "archive-copy",
 )
 JOB_STEP_STATES: Final = ("pending", "running", "done", "failed", "skipped")
 PIPELINE_STEPS: Final = (

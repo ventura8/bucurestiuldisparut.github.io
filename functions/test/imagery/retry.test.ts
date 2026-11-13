@@ -340,6 +340,10 @@ describe("imagery.retry: a run on the owner's computer costs no cloud compute (l
         ['an archive series failed in place', SERIES],
         ['a frame run on the computer', { runOn: 'local' as const, attempt: JOB_MAX_ATTEMPTS }],
         ['a local run the dispatcher ended at the cap', { ...SERIES, error: { code: 'apiError.imagery.attemptsExhausted', message: 'x' } }],
+        [
+            'an archive series whose sheets never reached another computer',
+            { ...SERIES, archiveReturns: 4, error: { code: 'apiError.imagery.archiveMissing', message: 'x' } },
+        ],
     ])('happyPath_atTheCap_%s_IsQueuedAgainWithItsCountReset @S-A12-HAPPY-LOCAL-RETRY-PAST-CAP', async (_case, overrides) => {
         const world = await readyWorld();
         await seedJob(world, JOB, failed(overrides));
@@ -350,6 +354,7 @@ describe("imagery.retry: a run on the owner's computer costs no cloud compute (l
         const job = await readJob(world, JOB);
         expect(job).toMatchObject({ status: 'queued', attempt: 0, runOn: 'local' });
         expect(job?.error).toBeUndefined();
+        expect(job?.archiveReturns).toBeUndefined();
         expect((await readVersion(world, JOB))?.state).toBe('processing');
     });
 
