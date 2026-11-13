@@ -135,4 +135,21 @@ describe("this computer's versions", () => {
         expect(versionsOf(null)).toMatchObject({ said: false, image: null, imageCurrent: true, starter: null });
         expect(versionsOf({ outdated: false })).toMatchObject({ said: false });
     });
+
+    it('happyPath_theSameInstalledDigestIsCurrentEvenWhileBusy @S-A142-HAPPY-VERSIONS', () => {
+        expect(versionsOf({ image: DIGEST, outdated: false, starter: null }, DIGEST).imageCurrent).toBe(true);
+        expect(versionsOf({ image: DIGEST, outdated: true, starter: null }, DIGEST).imageCurrent).toBe(true);
+    });
+
+    it('badPath_aDifferentDigestIsNotCurrentWhileTheOutdatedFlagIsStillFalse @S-A142-BAD-OLD-STARTER', () => {
+        const installed = `sha256:${'ab'.repeat(32)}`;
+        expect(versionsOf({ image: DIGEST, outdated: false, starter: null }, installed).imageCurrent).toBe(false);
+    });
+
+    it('badPath_anUnknownInstalledDigestFallsBackToTheOutdatedFlag @S-A142-BAD-OLD-STARTER', () => {
+        expect(versionsOf({ image: DIGEST, outdated: false, starter: null }, null).imageCurrent).toBe(true);
+        expect(versionsOf({ image: DIGEST, outdated: true, starter: null }, null).imageCurrent).toBe(false);
+        expect(versionsOf({ image: DIGEST, outdated: false, starter: null }, 'not-a-digest').imageCurrent).toBe(true);
+        expect(versionsOf({ image: DIGEST, outdated: true, starter: null }, 'not-a-digest').imageCurrent).toBe(false);
+    });
 });

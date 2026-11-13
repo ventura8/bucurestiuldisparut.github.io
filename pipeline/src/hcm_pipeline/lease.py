@@ -4,7 +4,8 @@ The run's first transaction takes the lease (`owner` = `CLOUD_RUN_EXECUTION/CLOU
 `LEASE_SECONDS`) when it is absent, lapsed or its own, and sets `running` and `startedAt`; a lease another live owner
 holds makes the run exit 0 without touching the job (`S-P01-BAD-DUPLICATE-EXECUTION`). Every `HEARTBEAT_SECONDS`
 the heartbeat extends the lease while it is still the owner, writes the step and the progress, and reads
-`cancelRequested`; a lease someone else took is raised as `LeaseLostError` at the next checkpoint.
+`cancelRequested` (and `releaseRequested`: this computer was paused, the run hands the job back); a lease someone else took
+is raised as `LeaseLostError` at the next checkpoint.
 """
 
 import threading
@@ -14,7 +15,7 @@ from types import TracebackType
 from typing import Final, Self
 
 from hcm_pipeline.contract import HEARTBEAT_SECONDS, LEASE_SECONDS
-from hcm_pipeline.jobs import CancelledRunError, LeaseLostError, RunFlags
+from hcm_pipeline.jobs import CancelledRunError, LeaseLostError, ReleasedRunError, RunFlags
 from hcm_pipeline.log import get_logger
 from hcm_pipeline.model import Lease, Record, Timestamp, stamp
 from hcm_pipeline.store import DELETE, DocumentStore
@@ -114,12 +115,18 @@ class Heartbeat:
         lease = Lease.of((record or {}).get("lease"))
         return lease is not None and lease.owner == self._owner
 
+    def _asked(self, record: Record) -> None:
+        """What the admin asked of the run: a cancel, or (a paused computer) its job handed back."""
+        if record.get("cancelRequested") is True:
+            self._flags.raise_flag(CancelledRunError)
+        elif record.get("releaseRequested") is True:
+            self._flags.raise_flag(ReleasedRunError)
+
     def _change(self, record: Record | None) -> Record | None:
         if not self._owned(record):
             self._flags.raise_flag(LeaseLostError)
             return None
-        if (record or {}).get("cancelRequested") is True:
-            self._flags.raise_flag(CancelledRunError)
+        self._asked(record or {})
         now = Timestamp.at(self._clock())
         fields: Record = {"lease.until": now.plus(LEASE_SECONDS), "progress": self._flags.progress, **stamp(now)}
         return fields if self._flags.step is None else {**fields, "step": self._flags.step}

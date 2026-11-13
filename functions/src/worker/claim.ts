@@ -21,6 +21,7 @@ import { omit } from '../api/objects.js';
 import { IMAGERY_WRITER } from '../imagery/records.js';
 import type { Ports } from '../ports/index.js';
 import { copyFor } from './archive-host.js';
+import { activePause, afterCommand, pauseAnswer } from './pause-state.js';
 import { filmHere } from './film-host.js';
 import { at, leaseOwnerOf, requireGreen, requireWorker, type WorkerCall } from './holder.js';
 import { holdBack, type HoldBack } from './household.js';
@@ -44,6 +45,8 @@ const CLAIM_RULES: readonly ((job: JobDoc, now: Date) => boolean)[] = [
     // M20 (live report of 2026-11-13): a series waiting for its sheets' copy; the computer with the archive sends it first.
     (job) => job.waitReason !== 'archive-copy',
     (job, now) => [job.dispatchAt, job.retryAt].every((time) => time === undefined || timestampToDate(time) <= now),
+    // Pause (the owner's request of 2026-11-13): a job the owner paused waits for Resume.
+    (job) => job.paused === undefined,
 ];
 
 /** The types the worker's pipeline runs, when it named them: an older image leaves a newer type queued for an updated one. */
@@ -53,7 +56,13 @@ type Runs = readonly string[] | undefined;
 type Films = readonly string[] | undefined;
 
 /** The worker's call with the types it runs and the films it holds. */
-type Claim = WorkerCall & { readonly runs: Runs; readonly films: Films; readonly share?: WorkerShare };
+/** The worker's call: the types it runs, its films, (W5) its governor's share, and its own page's pause command (recorded with the claim). */
+type Claim = WorkerCall & {
+    readonly runs: Runs;
+    readonly films: Films;
+    readonly share?: WorkerShare;
+    readonly pause?: CallableRequest<'worker.claim'>['pause'];
+};
 
 function claimable(job: JobDoc | undefined, now: Date, call: Pick<Claim, 'runs' | 'films'>, jobId: string): job is JobDoc {
     return (
@@ -67,7 +76,7 @@ function claimable(job: JobDoc | undefined, now: Date, call: Pick<Claim, 'runs' 
 /** The job as the worker takes it: `starting`, one more attempt, leased to the worker, no Cloud Run machine. */
 function claimed(job: JobDoc, call: WorkerCall, now: Date): JobDoc {
     return {
-        ...omit(job, ['machine', 'waitReason', 'executionName', 'workerOverdueAt']),
+        ...omit(job, ['machine', 'waitReason', 'executionName', 'workerOverdueAt', 'releaseRequested']),
         status: 'starting',
         attempt: (job.attempt ?? 0) + 1,
         dispatchAt: at(now),
@@ -100,7 +109,7 @@ function take(deps: ClaimDeps, call: Claim, jobId: string, now: Date): Promise<b
     const path = FIRESTORE_PATHS.job(call.cityId, jobId);
     return deps.documents.transaction(async (transaction) => {
         const job = await transaction.get(path, jobDocSchema);
-        const worker = await requireWorker(transaction, call);
+        const worker = afterCommand(await requireWorker(transaction, call), call.pause, now);
         if (!claimable(job, now, call, jobId)) {
             return false;
         }
@@ -136,6 +145,8 @@ async function candidates(deps: ClaimDeps, call: Claim, now: Date): Promise<stri
  * W5 (household computers, `household.ts`): the claim records the computer's share; a computer paused in the admin's list
  * takes nothing (`paused`), and one whose person is busy leaves the job to a calm computer of the city (`yielded`); Remove this
  * computer is answered `remove` instead of a job, and the worker's word on it is a claim with `removal` (`removal.ts`).
+ * Pause (2026-11-13): the computer's own page's `pause` command is recorded first (an expired pause dropped); a paused worker is
+ * answered `paused` with who, when and until when (`pause`); a job the owner paused is taken by nobody.
  */
 async function workerClaim(
     deps: ClaimDeps,
@@ -153,7 +164,9 @@ async function workerClaim(
         runs: request.types,
         films: request.films,
         ...(request.share === undefined ? {} : { share: request.share }),
+        ...(request.pause === undefined ? {} : { pause: request.pause }),
     };
+    logCommand(deps, call, request.pause);
     return claimFor(deps, caller, claim, request.archives);
 }
 
@@ -165,7 +178,8 @@ async function claimFor(
     archives: readonly string[] | undefined,
 ): Promise<CallableResponse<'worker.claim'>> {
     const now = deps.clock.now();
-    const worker = await requireWorker(deps.documents, claim);
+    // Pause: the computer's own page's command first, an expired pause dropped (`pause-state.ts`).
+    const worker = afterCommand(await requireWorker(deps.documents, claim), claim.pause, now);
     const path = FIRESTORE_PATHS.worker(claim.cityId, claim.workerId);
     const order = removalOrder(worker);
     if (order !== undefined) {
@@ -175,10 +189,17 @@ async function claimFor(
     const { outdated, held } = await whyNot(deps, caller, { claim, worker: seen(worker, claim, now), now });
     if (outdated || held !== null) {
         await deps.documents.set(path, workerDocSchema, { ...seen(worker, claim, now), outdated });
-        return noJob(deps, claim, outdated, held);
+        return withPause(noJob(deps, claim, outdated, held), worker, now);
     }
     const seenNow = { ...seen(worker, claim, now), outdated: false, ...filmsOf(claim.films) };
     return (await offerCopy(deps, claim, archives, seenNow)) ?? (await claimJob(deps, claim, seenNow, now));
+}
+
+/** The computer's own page paused or resumed it: said in the log with the worker's ids. */
+function logCommand(deps: ClaimDeps, call: WorkerCall, command: CallableRequest<'worker.claim'>['pause']): void {
+    if (command !== undefined) {
+        deps.log.info(`worker ${command.action}d from its own page`, { cityId: call.cityId, workerId: call.workerId, ...command });
+    }
 }
 
 /** The films the claim named, kept on the worker's document (a hand-back asks who holds a film); none kept when it named none. */
@@ -231,6 +252,12 @@ function noJob(deps: ClaimDeps, claim: Claim, outdated: boolean, held: HoldBack 
         return { job: null, [held]: true };
     }
     return outdated ? { job: null, outdated } : { job: null };
+}
+
+/** A paused worker's answer also says who paused it, when and until when (`pause`), which its governor mirrors. */
+function withPause(answer: CallableResponse<'worker.claim'>, worker: WorkerDoc, now: Date): CallableResponse<'worker.claim'> {
+    const paused = activePause(worker, now);
+    return paused === undefined ? answer : { ...answer, pause: pauseAnswer(paused) };
 }
 
 /** The `worker-claim` callable. */

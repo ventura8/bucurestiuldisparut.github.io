@@ -21,6 +21,14 @@ export const WORKER_AI_STATES = ['idle', 'preparing', 'ready', 'unavailable'] as
 /** Why the local AI is unavailable, in words the panel has (`adminWorker.ai.why.*`). */
 export const WORKER_AI_WHYS = ['old-starter', 'arm64', 'disk', 'pull', 'tampered', 'unreachable', 'no-answer', 'garbage'] as const;
 
+/**
+ * Pause (the owner's request of 2026-11-13): who paused a computer or a job and when. `by` is the account that asked, or
+ * `computer` for a person at the computer itself (its own page, `localhost:8765`); a computer's pause may end on its own (`until`).
+ */
+export const PAUSED_BY_COMPUTER = 'computer';
+export const pausedSchema = z.strictObject({ by: uidSchema, at: timestampSchema, until: timestampSchema.optional() });
+export type Paused = z.infer<typeof pausedSchema>;
+
 export const workerAiSchema = z.strictObject({
     state: z.enum(WORKER_AI_STATES),
     device: z.enum(['gpu', 'cpu']).optional(),
@@ -109,6 +117,11 @@ export const workerDocSchema = z.strictObject({
     films: z.array(idSchema).max(200).optional(),
     /** Disconnect this computer (`worker.revoke`): every later call of this worker is refused. */
     revokedAt: timestampSchema.optional(),
+    /**
+     * Pause this computer (`imagery.pause` from the admin, or the computer's own page through `worker.claim` / `worker.end`): it
+     * claims nothing, hands its job back without using an attempt and frees the processor, until Resume or `until`.
+     */
+    paused: pausedSchema.optional(),
     ...stamp,
 });
 

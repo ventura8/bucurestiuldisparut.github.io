@@ -74,6 +74,28 @@ describe('<hcm-jobs-page>', () => {
         expect(deepText(element)).toContain('Choose a job to see its steps and log.');
     });
 
+    it('happyPath_pauseAllAndResumeAllAskTheStoreAndAPausedJobReadsPaused @S-A170-HAPPY-ALL', async () => {
+        const paused = jobItem({ paused: true, status: 'queued', progress: null });
+        const jobs = area(jobsState({ list: ready([paused]), detail: detail(paused) }));
+        const { element } = await page('jobs', jobs, { params: ['b'] });
+
+        expect(deep(element, 'a.row').textContent).toContain('Paused');
+        expect(deep(element, '.pane [data-paused]').textContent).toBe('Paused');
+        const [pauseAll, resumeAll] = deepAll(element, '[data-pause-all] hcm-button');
+        pauseAll?.click();
+        resumeAll?.click();
+        expect(jobs.named('pauseAll')).toEqual(['pauseAll "pause"', 'pauseAll "resume"']);
+    });
+
+    it('badPath_whilePauseAllIsOnItsWayOrOnAReadOnlyPageItsButtonsAreOff', async () => {
+        const jobs = area(jobsState({ pausingAll: true }));
+        const { element } = await page('jobs', jobs);
+
+        for (const button of deepAll(element, '[data-pause-all] hcm-button')) {
+            expect((button as HTMLElement & { disabled: boolean }).disabled).toBe(true);
+        }
+    });
+
     it('happyPath_cancelAsksFirstThenAsksTheJobToStop', async () => {
         const jobs = area(jobsState({ detail: detail() }));
         const { element } = await page('jobs', jobs, { params: ['b'] });
@@ -175,7 +197,8 @@ describe('<hcm-jobs-page>: waiting, finished and failing jobs', () => {
         await updated(element);
         const alerts = deepAll(element, '[role="alert"]').map((alert) => alert.textContent.trim());
         expect(alerts).toEqual(['Access was refused. Check that you are still an admin.', 'This could not be read. Try again.']);
-        deepAll(element, '.actions hcm-button')[0]?.click();
+        // The list's Try again (Pause all and Resume all sit above the list since 2026-11-13).
+        deepAll(element, '.actions:not([data-pause-all]) hcm-button')[0]?.click();
         expect(jobs.named('retry')).toHaveLength(1);
 
         jobs.set({ list: ready([], { reconnecting: true }), detail: null });

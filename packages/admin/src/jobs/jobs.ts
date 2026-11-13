@@ -25,7 +25,7 @@ import { isoOf, LiveList, LOADING_LIST, type ListState } from '../content/list.j
 import type { ContentQuery, ContentServices, Stored, WriteOutcome } from '../content/services.js';
 import { GuardFeed, resumeGuard, type GuardView } from '../imagery/guard.js';
 import { Store } from '../state/store.js';
-import { rasterFieldsOf, retryRasterJob, type RasterJobFields } from './raster.js';
+import { pauseAllJobs, rasterFieldsOf, retryRasterJob, type RasterJobFields } from './raster.js';
 import type { WorkerFeed } from '../worker/feed.js';
 
 /** The list's status chips: every job, the unfinished ones, the failed ones, the others that ended. */
@@ -65,6 +65,8 @@ interface JobItem extends RasterJobFields {
     /** A job that waits for its date (a deleted layer's tileset, CR-M2c-3): when it may run. */
     readonly dispatchAt: string | null;
     readonly cancelRequested: boolean;
+    /** Pause (2026-11-13): the owner paused it (`imagery.pause`); its row reads Paused. */
+    readonly paused: boolean;
     /** The job's own error: a code and a redacted message, shown as text. */
     readonly error: { readonly code: string; readonly message: string } | null;
 }
@@ -96,6 +98,8 @@ export interface JobsState {
     readonly guard: GuardView | null;
     /** Resume processing is on its way (`imagery.resumeGuard`). */
     readonly resuming: boolean;
+    /** Pause all or Resume all is on its way (`imagery.pause` without a job). */
+    readonly pausingAll: boolean;
 }
 
 export interface JobsIntents {
@@ -110,6 +114,8 @@ export interface JobsIntents {
     retryJob(): Promise<boolean>;
     /** Turns the budget guard green again; true once it is. */
     resumeGuard(): Promise<boolean>;
+    /** Pause all or Resume all (2026-11-13): every queued or running job of the city; true once the server answered. */
+    pauseAll(action: 'pause' | 'resume'): Promise<boolean>;
     /**
      * M7 (`docs/research/M7-local-worker.md` §7): a new feed of the city's local worker, its choice and the free-tier meter,
      * from the lazy `worker` chunk; the Jobs page, the pipeline card and a version's page each start and stop their own.
@@ -121,7 +127,7 @@ export interface JobsIntents {
 
 const INITIAL: JobsState = {
     ...{ filter: 'all', list: LOADING_LIST, detail: null, cancelling: false, retrying: false },
-    ...{ guard: null, resuming: false },
+    ...{ guard: null, resuming: false, pausingAll: false },
 };
 
 function optionalIso(timestamp: TimestampLike | undefined): string | null {
@@ -148,7 +154,7 @@ function jobItemOf(doc: Stored<JobDoc>): JobItem {
         ...{ id: doc.id, type: job.type, status: job.status, finished: !ACTIVE_JOB_STATUSES.includes(job.status) },
         ...{ progress: job.progress ?? null, step: job.step ?? null, steps: stepsOf(job) },
         ...{ createdBy: job.createdBy, createdAt: isoOf(job.createdAt), dispatchAt: optionalIso(job.dispatchAt) },
-        ...{ cancelRequested: job.cancelRequested === true, error: job.error ?? null },
+        ...{ cancelRequested: job.cancelRequested === true, paused: job.paused !== undefined, error: job.error ?? null },
         ...rasterFieldsOf(job),
     };
 }
@@ -235,6 +241,7 @@ class JobsStore implements AreaStore<JobsState, JobsIntents> {
             cancel: () => this.#cancel(),
             retryJob: () => this.#retryJob(),
             resumeGuard: () => this.#resumeGuard(),
+            pauseAll: (action) => this.#pauseAll(action),
             worker: async () => (await import('../worker/worker.js')).createWorkerFeed(services),
             workerElements: async () => {
                 (await import('../worker/worker.js')).defineWorkerElements();
@@ -315,6 +322,16 @@ class JobsStore implements AreaStore<JobsState, JobsIntents> {
         const resumed = await resumeGuard(this.#services);
         this.#cell.update({ resuming: false });
         return resumed;
+    }
+
+    async #pauseAll(action: 'pause' | 'resume'): Promise<boolean> {
+        if (this.#cell.state.pausingAll) {
+            return false;
+        }
+        this.#cell.update({ pausingAll: true });
+        const done = await pauseAllJobs(this.#services, action);
+        this.#cell.update({ pausingAll: false });
+        return done;
     }
 
     #retry(): void {

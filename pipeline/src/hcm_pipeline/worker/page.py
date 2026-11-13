@@ -15,6 +15,10 @@ no error): the SDK's calls from `localhost` carry the project's browser key, whi
 origins (UNVERIFIED as the cause; Chrome's partitioned storage of the auth iframe is the other suspect). So the sign-in
 now gives up after `SIGN_IN_TIMEOUT_MS` with a clear message pointing at the admin's command, and the page still shows
 the worker's state when the SDK cannot be loaded at all.
+
+Pause this computer (the owner's request of 2026-11-13): while signed in the page offers Until I resume, For 1 hour and Until
+tomorrow (the next day at 08:00 on this computer's clock) and, while paused, Resume (`POST /pause` with the CSRF token); the
+state's `paused` says who paused it and until when.
 """
 
 import json
@@ -101,6 +105,17 @@ PAGE_HTML: Final = f"""<!doctype html>
 <dt data-text="workLabel">Work</dt><dd id="work"></dd>
 </dl>
 <p id="error" role="alert"></p>
+<section id="pause" hidden>
+<h2 data-text="pauseTitle">Pause this computer</h2>
+<p id="paused" role="status"></p>
+<p id="pause-note" data-text="pauseNote" hidden>It takes no new work and gave its job back to the queue; nothing is lost.</p>
+<p id="pause-choices">
+<button type="button" data-pause="resume-only" data-text="untilResume">Until I resume</button>
+<button type="button" data-pause="hour" data-text="forHour">For 1 hour</button>
+<button type="button" data-pause="tomorrow" data-text="untilTomorrow">Until tomorrow</button>
+</p>
+<p><button id="resume" type="button" data-text="resume" hidden>Resume</button></p>
+</section>
 <p>
 <button id="sign-in" type="button" data-text="signIn">Sign in with Google</button>
 <button id="sign-out" type="button" data-text="signOut" hidden>Sign out</button>
@@ -120,6 +135,8 @@ dd { margin: 0; overflow-wrap: anywhere; }
 #error { color: #b3261e; min-height: 1.5em; }
 @media (prefers-color-scheme: dark) { #error { color: #f2b8b5; } }
 button { font: inherit; min-height: 48px; padding: 0 24px; border-radius: 24px; cursor: pointer; }
+#pause-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+#pause-choices[hidden] { display: none; }
 """
 
 PAGE_JS: Final = (
@@ -159,6 +176,15 @@ const TEXTS = {
         'apiError.city.notMember': 'This account is not an editor of this city',
         signInTimeout: 'The sign-in did not finish: choose Use this computer in the admin, which connects this computer',
         outdated: 'The imagery pipeline was updated: choose Use this computer in the admin and open the new file',
+        pauseTitle: 'Pause this computer',
+        untilResume: 'Until I resume',
+        forHour: 'For 1 hour',
+        untilTomorrow: 'Until tomorrow',
+        resume: 'Resume',
+        pausedByYou: 'Paused by you',
+        pausedUntil: 'Paused by you until {time}',
+        pauseNote: 'It takes no new work and gave its job back to the queue; nothing is lost.',
+        pauseFailed: 'The pause did not reach the worker: try again',
         remove: 'Stop using this computer',
         removeConfirm: 'Remove the helper, its work and its files from this computer? It is then disconnected from the map.',
         removing: 'Removing the helper from this computer: this page closes in a minute.',
@@ -188,6 +214,15 @@ const TEXTS = {
         'apiError.city.notMember': 'Acest cont nu este editor al acestui oraș',
         signInTimeout: 'Conectarea nu s-a încheiat: alege Folosește acest calculator în administrare, care îl conectează',
         outdated: 'Fluxul de imagini s-a actualizat: alege Folosește acest calculator în administrare și deschide fișierul nou',
+        pauseTitle: 'Pune pe pauză acest calculator',
+        untilResume: 'Până reiau eu',
+        forHour: 'Timp de o oră',
+        untilTomorrow: 'Până mâine',
+        resume: 'Reia',
+        pausedByYou: 'Pus pe pauză de tine',
+        pausedUntil: 'Pus pe pauză de tine până la {time}',
+        pauseNote: 'Nu mai ia lucrări noi și și-a dat lucrarea înapoi la coadă; nu se pierde nimic.',
+        pauseFailed: 'Pauza nu a ajuns la lucrător: încearcă din nou',
         remove: 'Nu mai folosi acest calculator',
         removeConfirm: 'Ștergi ajutorul, lucrul și fișierele lui de pe acest calculator? Apoi e deconectat de la hartă.',
         removing: 'Se șterge ajutorul de pe acest calculator: pagina se închide într-un minut.',
@@ -214,6 +249,48 @@ async function session(method, body, path = '/session') {
     }
 }
 
+/** When a pause choice ends (ISO), or undefined for Until I resume: an hour from now, or tomorrow at 08:00 on this computer. */
+function pauseEnd(choice) {
+    if (choice === 'hour') {
+        return new Date(Date.now() + 3600 * 1000).toISOString();
+    }
+    if (choice === 'tomorrow') {
+        const end = new Date();
+        end.setDate(end.getDate() + 1);
+        end.setHours(8, 0, 0, 0);
+        return end.toISOString();
+    }
+    return undefined;
+}
+
+async function pause(body) {
+    const response = await fetch('/pause', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-HCM-Worker': settings.csrf },
+        body: JSON.stringify(body),
+    }).catch(() => undefined);
+    if (!response?.ok) {
+        byId('error').textContent = text('pauseFailed');
+    }
+}
+
+function pausedText(paused) {
+    if (!paused.until) {
+        return text('pausedByYou');
+    }
+    const time = new Date(paused.until).toLocaleString(lang, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    return text('pausedUntil').replace('{time}', time);
+}
+
+function showPause(state) {
+    byId('pause').hidden = !state.signedIn;
+    const paused = state.paused ?? null;
+    byId('paused').textContent = paused ? pausedText(paused) : '';
+    byId('pause-note').hidden = !paused;
+    byId('pause-choices').hidden = Boolean(paused);
+    byId('resume').hidden = !paused;
+}
+
 // What the page's own last action said (a sign-in that timed out), kept across the state polls until the next action.
 let pageError = null;
 
@@ -226,6 +303,7 @@ function show(state) {
     byId('error').textContent = problem ? text(problem) : '';
     byId('sign-in').hidden = state.signedIn;
     byId('sign-out').hidden = !state.signedIn;
+    showPause(state);
 }
 
 async function poll() {
@@ -272,6 +350,17 @@ byId('sign-in').addEventListener('click', async () => {
         pageError = error.message;
         byId('error').textContent = text(error.message);
     }
+    await poll();
+});
+for (const button of document.querySelectorAll('[data-pause]')) {
+    button.addEventListener('click', async () => {
+        const until = pauseEnd(button.dataset.pause);
+        await pause(until ? { action: 'pause', until } : { action: 'pause' });
+        await poll();
+    });
+}
+byId('resume').addEventListener('click', async () => {
+    await pause({ action: 'resume' });
     await poll();
 });
 byId('sign-out').addEventListener('click', async () => {

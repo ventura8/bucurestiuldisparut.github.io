@@ -118,7 +118,7 @@ class Runtime:
     def _no_m2m() -> M2MConnection:
         raise AssertionError("a scripted run calls no M2M")
 
-    def run(self, job_id: str, asked_to_stop: Callable[[], bool]) -> RunOutcome:
+    def run(self, job_id: str, asked_to_stop: Callable[[], bool], asked_to_release: Callable[[], bool] = lambda: False) -> RunOutcome:
         config = Config(
             job_id=job_id,
             city_id=CITY,
@@ -130,7 +130,12 @@ class Runtime:
             task_attempt=0,
             owner=f"worker:{WORKER}",
         )
-        return JobRunner(config, self._services, self._steps, RunSettings(heartbeat_seconds=3600, asked_to_stop=asked_to_stop)).run()
+        return JobRunner(
+            config,
+            self._services,
+            self._steps,
+            RunSettings(heartbeat_seconds=3600, asked_to_stop=asked_to_stop, asked_to_release=asked_to_release),
+        ).run()
 
 
 class Callables:

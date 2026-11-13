@@ -4,6 +4,8 @@
   tick of input on the host (`idle_s` under `ACTIVE_IDLE_S`), of other processes using more than `OTHERS_BUSY_PCT` of the machine, or
   of a switch to battery; it returns to full only after `CALM_S` with none of those.
 - Below `LOW_BATTERY_PCT` on battery it pauses, unless the owner allowed work on battery.
+- The owner's `paused` (Pause this computer, 2026-11-13) is a choice like the others and a claim block (`worker/pausing.py`): paused,
+  `why: owner`, whatever the heat or the battery say (nothing makes it less paused).
 - Thermal: at `CPU_HOT_C` on the processor or `GPU_HOT_C` on a graphics card it steps down one level (full to quiet, quiet to paused),
   and steps back up only `COOL_MARGIN_C` below both. Before that the budget's threads already shrink with the heat (`budget.py`,
   from `WARM_C`), so the worker's own load seldom takes the processor there.
@@ -34,10 +36,13 @@ STEP_DOWN: Final[dict[Profile, Profile]] = {"full": "quiet", "quiet": "paused", 
 
 @dataclass(frozen=True)
 class Choice:
-    """The owner's: the profile they chose in the admin's card, and whether work on a low battery is allowed."""
+    """The owner's: the profile they chose in the admin's card, and whether work on a low battery is allowed. While `paused`: when the
+    pause ends on its own (`until`, wall-clock epoch seconds; None: until Resume) and the profile it goes back to (`resume_to`)."""
 
     chosen: Chosen = "auto"
     battery_allowed: bool = False
+    until: float | None = None
+    resume_to: Chosen = "auto"
 
 
 @dataclass(frozen=True)
@@ -117,13 +122,13 @@ def decide(signals: Signals, choice: Choice, before: PolicyState, now: float) ->
     """The profile for this tick. `before` is the last tick's answer (its `active` excludes the thermal step, kept in `hot`)."""
     hot, hot_since = _held_hot(signals, before, now)
     state = replace(_chosen(signals, choice, before, now), hot=hot, hot_since=hot_since)
-    if _battery_low(signals, choice):
+    if _battery_low(signals, choice) and choice.chosen != "paused":
         return replace(state, active="paused", why="battery")
     return state
 
 
 def effective(state: PolicyState) -> tuple[Profile, Why]:
-    """The profile in force: one level lower while hot."""
-    if state.hot:
+    """The profile in force: one level lower while hot (a pause stays a pause, with its own reason)."""
+    if state.hot and (state.active, state.why) != ("paused", "owner"):
         return STEP_DOWN[state.active], "thermal"
     return state.active, state.why

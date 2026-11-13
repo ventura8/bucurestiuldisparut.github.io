@@ -2,7 +2,10 @@
 applies it and keeps what `/state` says of this computer (`machine`, `WorkerMachine` of @hcm/shared).
 
 The owner's choice (`POST /profile` from the admin's "This computer" card) is kept in the worker's volume, `governor.json`: it stays on
-this computer, never in Firestore, and survives a restart or an update of the worker.
+this computer, never in Firestore, and survives a restart or an update of the worker. Pause this computer (the owner's request of
+2026-11-13; `worker/pausing.py`) makes the choice `paused`, with when it ends on its own (`until`) and the profile it goes back to
+(`resumeTo`); a tick past `until` resumes by itself. The pause itself is the server's (`cities/{city}/workers/{id}.paused`): the worker
+mirrors it here so the processor, memory and card are freed and `/state` says so.
 """
 
 import json
@@ -27,6 +30,8 @@ from hcm_pipeline.matcher.box import MatcherBudget
 LOG = get_logger("governor")
 CHOICE_FILE: Final = "governor.json"
 CHOICES: Final[dict[object, Chosen]] = {"auto": "auto", "quiet": "quiet", "full": "full"}
+# What `governor.json` may say: the three profiles, and the owner's pause (never chosen through `choose`).
+KEPT: Final[dict[object, Chosen]] = {**CHOICES, "paused": "paused"}
 # The owner's own thread count (the starter's `HCM_WORKER_THREADS`, passed as `GDAL_NUM_THREADS`): no profile goes above it.
 THREADS_ENV: Final = "GDAL_NUM_THREADS"
 
@@ -45,7 +50,21 @@ def load_choice(volume: Path) -> Choice:
         return Choice()
     if not isinstance(raw, dict):
         return Choice()
-    return Choice(CHOICES.get(raw.get("chosen"), "auto"), raw.get("batteryAllowed") is True)
+    until = raw.get("until")
+    return Choice(
+        KEPT.get(raw.get("chosen"), "auto"),
+        raw.get("batteryAllowed") is True,
+        float(until) if isinstance(until, int | float) else None,
+        CHOICES.get(raw.get("resumeTo"), "auto"),
+    )
+
+
+def _kept(choice: Choice) -> dict[str, object]:
+    """`governor.json`'s content: the choice, and while paused its end and the profile it goes back to."""
+    kept: dict[str, object] = {"chosen": choice.chosen, "batteryAllowed": choice.battery_allowed}
+    if choice.chosen == "paused":
+        kept |= {"resumeTo": choice.resume_to, **({"until": choice.until} if choice.until is not None else {})}
+    return kept
 
 
 @dataclass(frozen=True)
@@ -95,6 +114,8 @@ class Governor:
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._probe, self._volume, self._actuators, self._clock = probe, volume, actuators, clock
+        # The wall clock a timed pause ends by (`Choice.until`); the tests set their own.
+        self.wall: Callable[[], float] = time.time
         self._max_threads = max_threads
         self._lock = threading.Lock()
         self._choice = load_choice(volume)
@@ -119,12 +140,53 @@ class Governor:
         if found is None:
             return False
         with self._lock:
-            allowed = battery_allowed if isinstance(battery_allowed, bool) else self._choice.battery_allowed
-            self._choice = Choice(found, allowed)
-        (self._volume / CHOICE_FILE).write_text(json.dumps({"chosen": found, "batteryAllowed": allowed}), encoding="utf-8")
+            before = self._choice
+        allowed = battery_allowed if isinstance(battery_allowed, bool) else before.battery_allowed
+        # While paused, the profile chosen is the one the computer goes back to on Resume.
+        paused = before.chosen == "paused"
+        self._set(replace(before, battery_allowed=allowed, resume_to=found) if paused else Choice(found, allowed))
         LOG.info("the owner chose the %s profile for this computer", found)
         self.tick()
         return True
+
+    @property
+    def owner_paused(self) -> bool:
+        """True while the owner's pause holds this computer (Pause this computer)."""
+        return self.choice.chosen == "paused"
+
+    def pause(self, until: float | None) -> None:
+        """Pause this computer: no processor, memory or card for the worker, until Resume or `until` (wall-clock epoch seconds)."""
+        with self._lock:
+            before = self._choice
+        resume_to = before.resume_to if before.chosen == "paused" else before.chosen
+        self._set(Choice("paused", before.battery_allowed, until, resume_to))
+        LOG.info("this computer is paused by its owner%s", "" if until is None else " for a while")
+        self.tick()
+
+    def resume(self) -> None:
+        """The profile chosen before the pause again; nothing when it is not paused."""
+        if self._resumed():
+            self.tick()
+
+    def _resumed(self) -> bool:
+        with self._lock:
+            before = self._choice
+        if before.chosen != "paused":
+            return False
+        self._set(Choice(before.resume_to, before.battery_allowed))
+        LOG.info("this computer is resumed: back to the %s profile", before.resume_to)
+        return True
+
+    def _expire(self) -> None:
+        """A timed pause past its end resumes by itself."""
+        until = self.choice.until
+        if self.owner_paused and until is not None and self.wall() >= until:
+            self._resumed()
+
+    def _set(self, choice: Choice) -> None:
+        with self._lock:
+            self._choice = choice
+        (self._volume / CHOICE_FILE).write_text(json.dumps(_kept(choice)), encoding="utf-8")
 
     def _capped(self, signals: Signals) -> Signals:
         """The cores within the quota the container started with (the slot of a shared machine, a `--cpus` the owner set): the starter's
@@ -150,7 +212,8 @@ class Governor:
         return Reading(signals, policy, "gpu-busy" if why == "idle" and backend.why == "gpu-busy" else why, budget, backend)
 
     def tick(self) -> Reading:
-        """One reading, applied."""
+        """One reading, applied (a timed pause past its end resumed first)."""
+        self._expire()
         with self._lock:
             before = self._reading
         reading = self._read(before)
@@ -196,7 +259,8 @@ class Governor:
             reading, choice = self._reading, self._choice
         if reading is None:
             return None
-        return machine_record(reading.signals, replace(reading.policy, why=reading.why), choice.chosen, reading.budget, reading.backend)
+        policy = replace(reading.policy, why=reading.why)
+        return machine_record(reading.signals, policy, choice, reading.budget, reading.backend)
 
     def run(self, stop: threading.Event) -> None:
         """Ticks until `stop`; a fault in one tick is logged and the next one tries again."""

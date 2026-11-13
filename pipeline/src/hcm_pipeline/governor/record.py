@@ -1,9 +1,11 @@
 """`/state`'s `machine` (`WorkerMachine` of @hcm/shared, docs/research/M26-governor.md §6): plain JSON, optional fields left out."""
 
+from datetime import UTC, datetime
+
 from hcm_pipeline.governor.backends import Backend
 from hcm_pipeline.governor.budget import Budget
-from hcm_pipeline.governor.policy import PolicyState
-from hcm_pipeline.governor.signals import Chosen, Gpu, Npu, Signals
+from hcm_pipeline.governor.policy import Choice, PolicyState
+from hcm_pipeline.governor.signals import Gpu, Npu, Signals
 
 
 def _some(**fields: object) -> dict[str, object]:
@@ -32,8 +34,13 @@ def _usage(signals: Signals) -> dict[str, object]:
     )
 
 
-def machine_record(signals: Signals, policy: PolicyState, chosen: Chosen, budget: Budget, backend: Backend) -> dict[str, object]:
-    memory, power = signals.memory, signals.power
+def _iso(epoch: float | None) -> str | None:
+    return None if epoch is None else datetime.fromtimestamp(epoch, UTC).isoformat().replace("+00:00", "Z")
+
+
+def machine_record(signals: Signals, policy: PolicyState, choice: Choice, budget: Budget, backend: Backend) -> dict[str, object]:
+    """The owner's `choice` says the profile chosen and, while paused for a while, when the pause ends (`until`)."""
+    memory, power, chosen = signals.memory, signals.power, choice.chosen
     return {
         "cpu": {"cores": signals.cpu.cores},
         "memory": _some(totalMb=memory.total_mb, availableMb=memory.available_mb, limitMb=memory.limit_mb),
@@ -41,7 +48,7 @@ def machine_record(signals: Signals, policy: PolicyState, chosen: Chosen, budget
         "gpus": [_gpu(each) for each in signals.gpus],
         "npus": [_npu(each) for each in signals.npus],
         "backend": backend.as_record(),
-        "profile": {"chosen": chosen, "active": budget.profile, "why": policy.why},
+        "profile": _some(chosen=chosen, active=budget.profile, why=policy.why, until=_iso(choice.until) if chosen == "paused" else None),
         "budget": budget.as_record(),
         "usage": _usage(signals),
     }
