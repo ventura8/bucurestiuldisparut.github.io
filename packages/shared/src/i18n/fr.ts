@@ -147,7 +147,7 @@ export const fr: Messages = {
     'poi.yearStart': 'Depuis {yearStart}',
     'poi.yearEnd': 'Jusqu’en {yearEnd}',
     'poi.links': 'Liens',
-    'poi.sources': 'Sources',
+    'poi.sources': 'Provenance',
     'poi.sourceLayer': 'Visible sur : {layer}',
     'poi.photos': 'Photos de ce lieu',
     'poi.openPhoto': 'Ouvrir la photo : {title}',
