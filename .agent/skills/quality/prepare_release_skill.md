@@ -24,6 +24,7 @@ How a release of **Historic City Map Maker** is prepared. Releases are git tags 
 
 - The engine's `engine.css` changed after the committed `cdn/engine/` (2026-11-12, `docs/research/DECISIONS-for-review.md` §188b: the kit's viewer a flow root, its page an app shell once the viewer is defined): until step 3 runs again, the tour's `kit.loading-note` fails `no-blank-scroll` (the page scrolls 24 px past its note), since the e2e serves the committed release. Step 3 is the fix; never a hand edit of `cdn/engine/`.
 - v1.0.0-beta.1 is prepared on `feat/engine-rewrite` (`docs/research/DECISIONS-for-review.md` §160, §161): every version is 1.0.0-beta.1, `cdn/engine/` and the kit's pins name it, both notes files and the index are written, the repository is `ventura8/historic-city-map-maker`. The ask-first steps of step 8 remain.
+- 2026-11-13: the beta's tag passes `check_release.py`'s pattern and `release.yml` marks it a pre-release, never latest. The notes gained a *New in the last days* section with `TODO (<track>)` lines for the tracks still landing; at the freeze, delete every TODO line, then run step 3 to 5 again (the committed `cdn/engine/` and the description's pinned block are stale until then, and that chain was proved to end in `[release] OK`).
 - §59c needs no answer any more: `npm run release:cdn` writes lit-html's whitespace class with escapes, so the committed engine passes `editorconfig` with no exception. The v1.0.0 notes stay prepared for the release after the betas.
 
 ## What CI does on a tag (`release.yml`)
