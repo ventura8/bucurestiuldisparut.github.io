@@ -78,7 +78,6 @@ export class HcmWorkerHousehold extends LitElement {
                 align-items: center;
                 min-block-size: 48px;
             }
-
         `,
     ];
 
