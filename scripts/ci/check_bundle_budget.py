@@ -215,7 +215,8 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # The Statistics view's live sections (`packages/ui/src/admin/crashes/statistics-live.ts`: the numbers, the apps, the funnels
     # and the period's error groups), fetched the first time the view shows, so the crashes chunk stays within its 5 KB
     # (DECISIONS-for-review.md §203): 3.2 KB measured on 2026-11-13 plus about 20 %, rounded up.
-    "statistics-live": 4,
+    # 6 since 2026-11-13 (§215, the owner's raise): the Material 3 cards and charts took it to 4.6 KB; plus about 20 %.
+    "statistics-live": 6,
     # M7's `worker` chunk (docs/research/M7-local-worker.md §7: `packages/admin/src/worker/worker.ts`, its one dynamic entry,
     # which the Jobs store imports): the local worker's feed, `<hcm-worker-panel>`, `<hcm-run-place>` and their texts
     # (`@hcm/shared/admin-worker`), 5.5 KB measured on 2026-11-02 plus about 20 %, rounded up; 5.7 KB since finding 72
@@ -233,8 +234,9 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # when the city has a plan of its dates or a join opens, 2.4 KB measured on 2026-11-06 plus about 20 %, rounded up; and the
     # Upload view (`packages/ui/src/admin/imagery/upload-panel.ts`), out of the Imagery chunk to make room for the plan's feed
     # and Join frames, fetched when its tab first opens, 1.2 KB measured then. The total did not rise: the line breaks left in
-    # the `css` and `html` templates went (6.4 KB, `scripts/site/src/css-literals.ts`).
-    "join-card": 3,
+    # the `css` and `html` templates went (6.4 KB, `scripts/site/src/css-literals.ts`). 4 since 2026-11-13 (the owner's "raise the
+    # limits you need to raise" for beta.1): the join card reached 3.0 KB with the cloud estimate and the plain messages.
+    "join-card": 4,
     "upload-panel": 2,
     # M12 (docs/research/M12-own-tiles.md, DECISIONS-for-review.md §96): a version's whole page, out of the Imagery chunk, which was at
     # 18.0 of 18 and is at 16.2 with the own tiles' map and Work's pictures in it: 3.5 KB measured on 2026-11-07 plus about 20 %, rounded
@@ -282,7 +284,8 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # The wizard funnels (the owner, 2026-11-13; DECISIONS-for-review.md §200): each wizard page's snapshot and the shared
     # `trackFunnel`, out of `archive`, `imagery`, `worker` and `editor-shared`, which each went 0.1 KB over with them: about
     # 1.5 KB, a row of 2 KB.
-    "funnels": 2,
+    # 3 since 2026-11-13 (§215, the owner's raise): 2.8 KB measured.
+    "funnels": 3,
 }
 # The entry and every chunk together. 620 until M7 (2026-11-02), 630 since: the total counts every lazy chunk, also those
 # loaded only on use, and M7's `worker` chunk (5.5 KB, loaded only by the Jobs page, the pipeline card and a version page)
