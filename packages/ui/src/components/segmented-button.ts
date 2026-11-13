@@ -121,15 +121,20 @@ export class HcmSegmentedButton extends LitElement {
                 inline-size: 100%;
             }
 
-            /* Rows touch, so each row is its own 48 px target: a 40 px row's ring lay under the row after it. */
+            /*
+             * Rows touch, so each row is its own 48 px target: a 40 px row's ring lay under the row after it. A row after
+             * the first draws no top border (the row above draws it), rather than overlapping it by 1 px: a row scrolled to
+             * a strip under the dialog's header had its last pixel covered by the next one (25 languages, 360 px).
+             */
             :host([stacked]) button {
                 min-height: 48px;
-                margin: -1px 0 0;
+                margin: 0;
+                border-block-start-width: 0;
                 border-radius: 0;
             }
 
             :host([stacked]) button:first-child {
-                margin-block-start: 0;
+                border-block-start-width: 1px;
                 border-start-start-radius: var(--md-sys-shape-corner-large);
                 border-start-end-radius: var(--md-sys-shape-corner-large);
             }

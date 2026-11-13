@@ -112,7 +112,7 @@ export function languageList(page: Page): Locator {
 }
 
 /**
- * The menu's Settings (Setări) lists the viewer's sixteen languages by their own names: picks `to`
+ * The menu's Settings (Setări) lists the viewer's 25 languages by their own names: picks `to`
  * there and closes the dialog once the page has switched (`<html lang>`).
  */
 export async function chooseLanguage(page: Page, from: ViewerLocale, to: ViewerLocale): Promise<void> {

@@ -3853,3 +3853,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the e2e only: Vitest's `@hcm/shared` always bundles Romanian and English.
     - Fix and pin: the stored English is spelt beside the keys (`STORED_CREDITS`, held equal to `USGS_ATTRIBUTION`, `LANDSAT_ATTRIBUTION` and the English catalogue by `credits.test.ts`) and matched first; the fetched languages after it.
     - **Code that runs in the engine never needs a catalogue other than the page's own: English is not there unless the page is English or falls back to it.**
+656. **The viewer's Settings stacked 25 languages whose rows overlapped by a pixel, and the tour's scroll sweep found one row covered.**
+    - Seen: 2026-11-13, the merge queue's viewer tour at c360 (`viewer.settings` scrolled through): "Română", scrolled to a 7 px strip under the dialog's header, had its last pixel under "Tiếng Việt"; the Arabic state still expected sixteen languages.
+    - Cause: a stacked segmented button pulled every row after the first up by 1 px (`margin-block-start: -1px`) to share its border; with nine more rows the sweep stopped where a strip just over the 5 px sliver allowance ended on that shared pixel.
+    - Fix and pin: a row after the first draws no top border instead of overlapping (`segmented-button.ts`; `segmented-button.test.ts` holds the rows edge to edge); the tour state counts `VIEWER_LOCALES`.
+    - **Shared borders are drawn by one side, never by overlapping boxes: a pixel of overlap is a covered pixel to the layout checks.**

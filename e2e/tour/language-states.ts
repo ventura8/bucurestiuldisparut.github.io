@@ -1,4 +1,4 @@
-import type { Locale, ViewerLocale } from '@hcm/shared';
+import { VIEWER_LOCALES, type Locale, type ViewerLocale } from '@hcm/shared';
 import { expect, type Page } from '@playwright/test';
 
 import { mapIdle } from '../support/map.js';
@@ -45,11 +45,11 @@ export const LANGUAGE_STATES = {
         shows: arabic,
     },
     'rtl-languages': {
-        title: "Arabic: Settings' list of the sixteen languages, each by its own name",
+        title: "Arabic: Settings' list of the 25 languages, each by its own name",
         enter: async ({ page }) => {
             await chooseMenuItem(page, 'ar', t('ar', 'settings.title'));
             await expect(page.getByRole('dialog', { name: t('ar', 'settings.title') })).toBeVisible();
-            await expect(languageList(page).getByRole('radio')).toHaveCount(16);
+            await expect(languageList(page).getByRole('radio')).toHaveCount(VIEWER_LOCALES.length);
         },
         escape: () => ({ opener: t('ar', 'action.menu') }),
         shows: arabic,
