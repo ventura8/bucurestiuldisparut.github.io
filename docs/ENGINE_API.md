@@ -298,6 +298,7 @@ Status (2026-11-13, beta.1): the owner's requests; scenario rows V04 (`S-V04-*-Y
 - **A finger** shows the chip all the time it is down, clear of the finger (above a lying timeline, beside a standing one), and selects nothing until it has moved 8 px along the track (or lifts where it went down: a tap); a finger that first moves across the track is a swipe and selects nothing. Each new year gives a light tick (`navigator.vibrate(8)`) where the device has one and reduced motion is off. A swipe that starts off the timeline pans the map as always. On a track that scrolls (more years than the card holds), a finger elsewhere than on the thumb scrolls it and selects only by a tap.
 
 Code: `packages/ui/src/viewer/hcm-timeline.ts`, `timeline-pointer.ts`, `timeline-scrub.ts`, `timeline-sends.ts`, `timeline-tip.ts`; the stack is `packages/engine/src/core/stack.ts`.
+
 ## Timeline on a phone, and a year's dates
 
 The timeline (V04) adapts on a phone and offers the dates of a year that has several (V67, V68; the owner 2026-11-13, DECISIONS-for-review.md §195):

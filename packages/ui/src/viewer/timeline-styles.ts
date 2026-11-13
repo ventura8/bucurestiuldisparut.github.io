@@ -256,8 +256,8 @@ export const timelineStyles = [
         }
 
         /*
-         * V13: a year with several dates has a badge on its point, the count in a 16 px M3 badge (error colours, as M3's) over its tick (standing,
-         * at the lane's end beside its label); the selected year's is on the pill's corner.
+         * V13: a year with several dates has a badge on its point, the count in a 16 px M3 badge (error colours, as M3's)
+         * over its tick (standing, at the lane's end beside its label); the selected year's is on the pill's corner.
          */
         .badge {
             position: absolute;
@@ -332,6 +332,9 @@ export const timelineStyles = [
             padding-inline: 8px;
             transform: none;
             transition: none;
+        }
+
+        /*
          * The year chip: an M3 plain tooltip (inverse surface, body small, 24 px tall at least, the extra-small corner), placed
          * by placeTip over the card lying and beside it standing; it never takes the pointer.
          */

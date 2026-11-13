@@ -186,7 +186,23 @@ export class HcmTimeline extends LitElement {
         }
         this.#fadeEdges();
         this.#placeTip();
-        this.toggleAttribute('tipping', this.tip !== null);
+        this.#markTipping();
+    }
+
+    /**
+     * `tipping` while the chip shows (none on the collapsed pill), `tipping="focus"` when it is the keyboard's: the
+     * photos chip under it then stays in the Tab order (`dock-styles.ts`, lesson 644).
+     */
+    #markTipping(): void {
+        this.removeAttribute('tipping');
+        if (this.tip !== null && !this.collapsed) {
+            this.setAttribute('tipping', this.#keyboardTip() ? 'focus' : '');
+        }
+    }
+
+    /** The chip is the keyboard's: the thumb has a visible focus and no finger is down. */
+    #keyboardTip(): boolean {
+        return this.tip?.touch === false && this.renderRoot.querySelector('.thumb:focus-visible') !== null;
     }
 
     /** Puts the chip by its stop, clear of the card's ends and the viewport's edges (`placeTip`). */
@@ -260,7 +276,9 @@ export class HcmTimeline extends LitElement {
         const position = { '--hcm-position': percentText(this.#percent(index)) };
         const fade = { '--hcm-fade-start': this.fade.start ? FADE_PX : '0px', '--hcm-fade-end': this.fade.end ? FADE_PX : '0px' };
         return html`<div class="scroller" ${cssProperties(fade)} @scroll=${this.#onScroll}>${this.#track(index, position)}</div>
-            ${this.tip === null ? nothing : this.#tipChip(this.tip)}<span class="visually-hidden" aria-live="polite">${this.said}</span>`;
+            ${this.tip === null || this.collapsed ? nothing : this.#tipChip(this.tip)}<span class="visually-hidden" aria-live="polite"
+                >${this.said}</span
+            >`;
     }
 
     /** The chip: decorative, the slider's `aria-valuetext` already names the year. */

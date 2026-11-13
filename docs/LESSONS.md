@@ -3774,8 +3774,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: a browser computes a touch's allowed gestures from the target up to the nearest scroll container; the card's `.scroller` is one (`overflow: auto`), so the host's `touch-action: none` never applied to the track inside it.
     - Fix and pin: `.scroller` and `.track` inherit the card's touch-action (`timeline-styles.ts`); `hcm-timeline-tip.test.ts` reads it on the track, roomy and scrolling.
     - **Set touch-action inside the nearest scroll container of the element a finger lands on, and test a gesture with the browser's own touch events, never only with synthetic pointer events.**
+
 643. **A press meant to open the collapsed timeline also moved its year.**
     - Seen: 2026-11-13, track/timeline-b, `timeline-dock.test.ts`: a press on the pill (V67) opened the card and called `setYear(null)`.
     - Cause: the dock's `@pointerdown` listened in the bubbling phase, after the timeline's own track listener inside its shadow root had already selected the stop under the press.
     - Fix and pin: the dock catches the press in the capture phase (`{ capture: true, handleEvent }`), stops it and opens the card; the test asserts no `setYear` call.
     - **A wrapper that must take a press away from the element it wraps listens in the capture phase; a bubbling listener runs after the element has acted.**
+
+644. **Tab from the timeline skipped the photos chip whenever the year had several dates.**
+    - Seen: 2026-11-13, track/timeline-b, the tour's journey `timeline-dates` at c320, c360 and c915l: "Tab never reaches Fotografii din jurul anului 1980".
+    - Cause: the keyboard's year chip shows while the slider has the focus on a year of several dates, and the photos chip under it stepped aside with `visibility: hidden`, which also takes it out of the Tab order; the next Tab went past it.
+    - Fix and pin: under the keyboard's chip (`tipping="focus"`) it steps aside with `opacity: 0` and no pointer (`dock-styles.ts`), so it keeps its place in the Tab order and shows again as the focus reaches it; under a finger's or a mouse's chip it is still hidden; the collapsed pill shows no year chip at all.
+    - **To move a control out of sight for a moment while the keyboard is nearby, never use `visibility: hidden` or `display: none`: they take it out of the Tab order.**

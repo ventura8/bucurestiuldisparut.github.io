@@ -6887,6 +6887,7 @@ The owner: a year without its label shows a chip with the year (and the date whe
 - **192c The finger** (`timeline-scrub.ts`): axis-locked with the opacity slider's `touchIntent` (§178b), no selection before 8 px along the track or a tap; listeners filter by `pointerId`; `navigator.vibrate(8)` per year unless reduced motion. The card keeps `touch-action: none` (pan-x / pan-y where the track scrolls), so a swipe across it does nothing and one that starts on the map pans the map.
 - **192d The pointers moved out of `hcm-timeline.ts`** (`timeline-pointer.ts`) to keep it under 400 lines; `trackRatio` is re-exported. V12 (the phone pill) and V13 (the date picker) are another agent's (track/timeline-b).
 - **192e Tests.** `timeline-tip.test.ts`, `hcm-timeline-tip.test.ts`, `hcm-timeline.test.ts`; S-V04-HAPPY-YEAR-CHIP, S-V04-BAD-YEAR-CHIP-LABELLED, S-V04-HAPPY-TOUCH-SCRUB, S-V04-BAD-FAST-SCRUB, S-V04-HAPPY-YEAR-CHIP-TOUR (the tour's journey `timeline-chip`).
+
 ## 195. The timeline as a pill on a phone, and a year's dates (V12 and V13 of beta.1, the owner 2026-11-13) — APPLIED, no budget raised
 
 The owner: "on phones the timeline collapses to a year pill when idle and expands on tap" (it must cover nothing: the compass, the menu button, the attribution, the Layers sheet, upright and on its side, 568 × 270 included) and "a year with several dates or layers lets the visitor pick the date (badge + compact chooser)", the date picked on top with V15's mechanism (§191). Behaviours V67 and V68, `docs/ENGINE_API.md` → *Timeline on a phone, and a year's dates*.
