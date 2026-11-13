@@ -145,6 +145,8 @@ class App:
         self.paired: list[object] = []
         self.pair_refusal: str | None = None
         self.profiles: list[tuple[object, object]] = []
+        self.removals = 0
+        self.remove_refusal: str | None = None
 
     def web_config(self) -> Mapping[str, str] | None:
         return None
@@ -166,6 +168,10 @@ class App:
     def profile(self, chosen: object, battery_allowed: object) -> bool:
         self.profiles.append((chosen, battery_allowed))
         return chosen in {"auto", "quiet", "full"}
+
+    def remove(self) -> str | None:
+        self.removals += 1
+        return self.remove_refusal
 
 
 HOSTING = f"https://{PROJECT}.web.app"
@@ -471,6 +477,31 @@ def test_happy_path_the_starters_last_run_only_says_done(api: FakeWorkerApi, tmp
     # No kept session in this folder: the word cannot be sent (the loop's tests send it), and the loop never ran.
     assert code == ExitCode.OK
     assert built[0].loop.stopping.is_set() is False
+
+
+def test_happy_path_stop_using_this_computer_on_its_page_asks_the_starter(server: tuple[LocalServer, App]) -> None:
+    """Scenarios: S-A143-HAPPY-REMOVE"""
+    local, app = server
+
+    assert local.answer(request(local, "POST", "/remove", b"{}"))[0] == 202
+    app.remove_refusal = "no-starter"
+    status, body, _type = local.answer(request(local, "POST", "/remove", b"{}"))
+    assert (status, json.loads(body)) == (409, {"error": "no-starter"})
+    # Only the page itself (its token, its origin): the admin's origin, or no token, cannot ask it.
+    assert local.answer(request(local, "POST", "/remove", b"{}", **{"x-hcm-worker": "wrong"}))[0] == 403
+    assert local.answer(from_admin(local, "POST", "/remove", b"{}"))[0] == 403
+    assert app.removals == 2
+
+
+def test_bad_path_page_actions_without_a_cleaning_starter_refuse_to_remove(api: FakeWorkerApi, tmp_path: Path, built: list[Worker]) -> None:
+    """Scenarios: S-A143-BAD-REMOVE-NO-STARTER"""
+    worker = worker_for(api, tmp_path, built)
+
+    assert worker.actions.remove() == "no-starter"
+    worker.loop.removable = True
+    assert worker.actions.remove() is None
+    assert worker.loop.removal == Removal(docker=False, keep=False)
+    assert worker.loop.stopping.is_set()
 
 
 def test_bad_path_the_worker_command_names_a_bad_argument() -> None:

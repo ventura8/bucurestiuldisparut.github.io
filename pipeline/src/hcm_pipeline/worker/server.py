@@ -92,6 +92,8 @@ class WorkerApp(Protocol):
 
     def profile(self, chosen: object, battery_allowed: object) -> bool: ...
 
+    def remove(self) -> str | None: ...
+
 
 Reply = tuple[int, bytes, str]
 
@@ -342,8 +344,8 @@ class LocalServer:
         allowed = cors_path and self.cors_allowed(request.headers.get("origin"))
         return (HTTPStatus.NO_CONTENT, b"", "text/plain") if allowed else _json(HTTPStatus.FORBIDDEN, {})
 
-    def _guarded(self, request: Request, action: Callable[[Mapping[str, object]], Reply]) -> Reply:
-        if request.path != "/session":
+    def _guarded(self, request: Request, action: Callable[[Mapping[str, object]], Reply], path: str = "/session") -> Reply:
+        if request.path != path:
             return _json(HTTPStatus.NOT_FOUND, {})
         if not self._state_change_allowed(request):
             return _json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
@@ -355,6 +357,8 @@ class LocalServer:
             return self._import_post(request)
         if request.path == "/profile":
             return self._profile(request)
+        if request.path == "/remove":
+            return self._guarded(request, self._remove, "/remove")
         return self._pair(request) if request.path == "/pair" else self._guarded(request, self._sign_in)
 
     def _profile(self, request: Request) -> Reply:
@@ -382,6 +386,11 @@ class LocalServer:
     def _sign_in(self, body: Mapping[str, object]) -> Reply:
         refused = self._app.sign_in(body.get("idToken"), body.get("refreshToken"))
         return _json(HTTPStatus.FORBIDDEN, {"error": refused}) if refused else _json(HTTPStatus.OK, self._app.state())
+
+    def _remove(self, _body: Mapping[str, object]) -> Reply:
+        """W5: the page's Stop using this computer (the page's own token): the starter cleans the computer up; 409 with why not."""
+        refused = self._app.remove()
+        return _json(HTTPStatus.CONFLICT, {"error": refused}) if refused else _json(HTTPStatus.ACCEPTED, self._app.state())
 
     def _sign_out(self, _body: Mapping[str, object]) -> Reply:
         self._app.sign_out()

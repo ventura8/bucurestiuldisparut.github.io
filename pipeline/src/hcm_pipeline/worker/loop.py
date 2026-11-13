@@ -228,6 +228,16 @@ class WorkerLoop:
             self.removal = removal
             self.stop()
 
+    def remove_here(self) -> str | None:
+        """W5: Stop using this computer from its own page: the loop ends with an order of no Docker, keeping nothing (the
+        starter's last run says done, which disconnects it); `no-starter` when no starter cleans up."""
+        if not self.removable:
+            return "no-starter"
+        LOG.warning("stop using this computer was pressed on its page: the starter cleans it up")
+        self.removal = Removal(docker=False, keep=False)
+        self.stop()
+        return None
+
     def say_removal(self, word: Mapping[str, object]) -> bool:
         """The worker's word on its removal (a claim that takes no job); the starter's last run says `done` with the kept session."""
         if not self._session.active:

@@ -121,6 +121,7 @@ class Worker:
         loop.supervised = args.supervised
         # W5: each claim says the governor's share, so a computer whose person is at it leaves the job to a calm one.
         loop.share = lambda: share_of(governor.machine())
+        actions.remove_here = loop.remove_here
         return cls(session, api, state, actions, server, loop, runtime, client, worker_id, connector, governor, threading.Event())
 
     def govern(self, lower: Callable[[], None] = idle_io) -> None:

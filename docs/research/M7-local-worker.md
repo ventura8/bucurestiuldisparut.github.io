@@ -905,7 +905,9 @@ only when asked and the note says the helper installed it, through `sudo -n`; wi
 says `dockerLeft` (the admin says so and how). A worker with no such starter (a command, an older starter, Windows until its
 increment) says `failed` `no-starter` and keeps working. The admin shows each step in plain words; **Disconnect now anyway**
 (`worker.revoke`) is offered only for a removal that waits on a computer that is off or failed, and only after it the line or file
-that cleans the computer up by hand (`worker.starter` `uninstall` for the computer's `os`). By hand (`sh hcm-worker.sh uninstall`)
+that cleans the computer up by hand (`worker.starter` `uninstall` for the computer's `os`). On the computer itself, its page (`http://localhost:8765/`) has **Stop using this computer**
+(`POST /remove` with the page's own token, after a confirm): the loop ends with `ExitCode.REMOVE` and the same cleanup follows
+(the server takes the last `done` with no order asked); without a cleaning starter it answers 409 `no-starter`. By hand (`sh hcm-worker.sh uninstall`)
 the same cleanup runs and asks, on a terminal, before removing a Docker the helper installed.
 
 **The governor across computers**: each claim carries `share {profile, why, cores, threads, memoryMb}` from the governor's record
