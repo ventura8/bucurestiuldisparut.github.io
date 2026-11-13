@@ -265,6 +265,7 @@ def _governor(tmp_path: Path, wall: FakeClock) -> tuple[Governor, Gate]:
 
 
 def test_happy_path_the_governor_pauses_keeps_it_in_the_volume_and_resumes_to_the_profile_before(tmp_path: Path) -> None:
+    """Scenarios: S-P32-HAPPY-GOVERNOR-PAUSED"""
     wall = FakeClock()
     governor, gate = _governor(tmp_path, wall)
     governor.choose("quiet")
@@ -298,6 +299,7 @@ def test_bad_path_a_timed_pause_past_its_end_resumes_by_itself(tmp_path: Path) -
 
 
 def test_bad_path_heat_and_a_low_battery_never_make_the_owners_pause_less_paused() -> None:
+    """Scenarios: S-P32-BAD-GOVERNOR-HEAT"""
     hot = replace(LINUX_NVIDIA_CDI, cpu=Cpu(16, None, 99.0), power=Power("battery", 5))
     paused = Choice("paused")
     state = decide(hot, paused, PolicyState(), 0.0)
@@ -308,6 +310,7 @@ def test_bad_path_heat_and_a_low_battery_never_make_the_owners_pause_less_paused
 
 
 def test_happy_path_the_page_and_the_admin_pause_and_resume_this_computer(server: tuple[LocalServer, App]) -> None:
+    """Scenarios: S-P32-HAPPY-LOCAL-PAGE"""
     local, app = server
     page = local.answer(request(local, "POST", "/pause", b'{"action": "pause"}'))
     admin = local.answer(from_admin(local, "POST", "/pause", b'{"action": "resume"}'))
@@ -318,6 +321,7 @@ def test_happy_path_the_page_and_the_admin_pause_and_resume_this_computer(server
 
 
 def test_bad_path_a_stranger_or_a_bad_command_pauses_nothing(server: tuple[LocalServer, App]) -> None:
+    """Scenarios: S-P32-BAD-LOCAL-PAGE"""
     local, app = server
     stranger = local.answer(from_admin(local, "POST", "/pause", b'{"action": "pause"}', headers={"origin": "https://attacker.example"}))
     no_token = local.answer(request(local, "POST", "/pause", b'{"action": "pause"}', **{"x-hcm-worker": "b" * 64}))

@@ -170,6 +170,13 @@ export const en: Readonly<Record<AdminOpsKey, string>> = {
     'adminContent.jobs.retry': 'Run it again',
     'adminContent.jobs.retrying': 'Starting again…',
     'adminContent.jobs.retried': 'The job is queued again.',
+    'adminContent.jobs.status.paused': 'Paused',
+    'adminContent.jobs.pauseAll': 'Pause all',
+    'adminContent.jobs.resumeAll': 'Resume all',
+    'adminContent.jobs.pausedAll': 'Jobs paused: {count}. Running ones stop after the step they are on; Resume all puts them back.',
+    'adminContent.jobs.resumedAll': 'Jobs back in the queue: {count}. Each goes on from the step where it stopped.',
+    'adminContent.jobs.nothingToPause': 'Nothing to pause: no job is queued or running.',
+    'adminContent.jobs.nothingToResume': 'Nothing to resume: no job is paused.',
     'adminContent.jobs.openNewer': 'Open the newer import',
     'adminContent.jobs.openGeoref': 'Open the georeferencer',
     // [end jobs]

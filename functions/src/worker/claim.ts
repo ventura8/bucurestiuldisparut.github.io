@@ -20,6 +20,7 @@ import { omit } from '../api/objects.js';
 import { IMAGERY_WRITER } from '../imagery/records.js';
 import type { Ports } from '../ports/index.js';
 import { copyFor } from './archive-host.js';
+import { activePause, afterCommand, pauseAnswer } from './pause-state.js';
 import { at, leaseOwnerOf, requireGreen, requireWorker, type WorkerCall } from './holder.js';
 import { imageState, paired } from './pairing.js';
 
@@ -40,13 +41,15 @@ const CLAIM_RULES: readonly ((job: JobDoc, now: Date) => boolean)[] = [
     // M20 (live report of 2026-11-13): a series waiting for its sheets' copy; the computer with the archive sends it first.
     (job) => job.waitReason !== 'archive-copy',
     (job, now) => [job.dispatchAt, job.retryAt].every((time) => time === undefined || timestampToDate(time) <= now),
+    // Pause (the owner's request of 2026-11-13): a job the owner paused waits for Resume.
+    (job) => job.paused === undefined,
 ];
 
 /** The types the worker's pipeline runs, when it named them: an older image leaves a newer type queued for an updated one. */
 type Runs = readonly string[] | undefined;
 
-/** The worker's call with the types it runs. */
-type Claim = WorkerCall & { readonly runs: Runs };
+/** The worker's call with the types it runs, and its own page's pause command (recorded with the claim). */
+type Claim = WorkerCall & { readonly runs: Runs; readonly pause?: CallableRequest<'worker.claim'>['pause'] };
 
 function claimable(job: JobDoc | undefined, now: Date, runs: Runs): job is JobDoc {
     return job !== undefined && CLAIM_RULES.every((rule) => rule(job, now)) && (runs === undefined || runs.includes(job.type));
@@ -55,7 +58,7 @@ function claimable(job: JobDoc | undefined, now: Date, runs: Runs): job is JobDo
 /** The job as the worker takes it: `starting`, one more attempt, leased to the worker, no Cloud Run machine. */
 function claimed(job: JobDoc, call: WorkerCall, now: Date): JobDoc {
     return {
-        ...omit(job, ['machine', 'waitReason', 'executionName', 'workerOverdueAt']),
+        ...omit(job, ['machine', 'waitReason', 'executionName', 'workerOverdueAt', 'releaseRequested']),
         status: 'starting',
         attempt: (job.attempt ?? 0) + 1,
         dispatchAt: at(now),
@@ -87,7 +90,7 @@ function take(deps: ClaimDeps, call: Claim, jobId: string, now: Date): Promise<b
     const path = FIRESTORE_PATHS.job(call.cityId, jobId);
     return deps.documents.transaction(async (transaction) => {
         const job = await transaction.get(path, jobDocSchema);
-        const worker = await requireWorker(transaction, call);
+        const worker = afterCommand(await requireWorker(transaction, call), call.pause, now);
         if (!claimable(job, now, call.runs)) {
             return false;
         }
@@ -117,6 +120,8 @@ async function candidates(deps: ClaimDeps, cityId: string, now: Date, runs: Runs
  * leaves a newer type queued; 2026-11-09); either way the worker is seen now. M20 (2026-11-13): a worker that holds an archive
  * whole is first given a series another worker waits for (`copy`), to send its sheets (`archive-host.ts`). Finding 67: a paired
  * worker whose image is no longer the installed pipeline's takes nothing (`outdated`) until the owner runs the new command.
+ * Pause (2026-11-13): the computer's own page's `pause` command is recorded first; a paused worker takes nothing and is answered
+ * `paused` (an expired pause is dropped); a job the owner paused is taken by nobody.
  */
 async function workerClaim(
     deps: ClaimDeps,
@@ -126,7 +131,8 @@ async function workerClaim(
     await requireGreen(deps.documents);
     const call = { cityId: request.cityId, workerId: request.workerId, uid: caller.uid };
     const now = deps.clock.now();
-    const worker = await requireWorker(deps.documents, call);
+    // Pause: the computer's own page's command first, an expired pause dropped (`pause-state.ts`).
+    const worker = afterCommand(await requireWorker(deps.documents, call), request.pause, now);
     // Finding 72: the image `worker.hello` recorded (the supervisor's), else the pairing's.
     const { outdated } = await imageState(deps, caller, call.cityId, worker.image);
     if (outdated) {
@@ -137,9 +143,24 @@ async function workerClaim(
         return { job: null, outdated };
     }
     const seenNow = { ...seen(worker, call, now), outdated: false };
+    const paused = activePause(worker, now);
+    if (paused !== undefined) {
+        logCommand(deps, call, request.pause);
+        await deps.documents.set(FIRESTORE_PATHS.worker(call.cityId, call.workerId), workerDocSchema, seenNow);
+        return { job: null, paused: pauseAnswer(paused) };
+    }
+    logCommand(deps, call, request.pause);
     return (
-        (await offerCopy(deps, call, request.archives, seenNow)) ?? (await claimJob(deps, { ...call, runs: request.types }, seenNow, now))
+        (await offerCopy(deps, call, request.archives, seenNow)) ??
+        (await claimJob(deps, { ...call, runs: request.types, pause: request.pause }, seenNow, now))
     );
+}
+
+/** The computer's own page paused or resumed it: said in the log with the worker's ids. */
+function logCommand(deps: ClaimDeps, call: WorkerCall, command: CallableRequest<'worker.claim'>['pause']): void {
+    if (command !== undefined) {
+        deps.log.info(`worker ${command.action}d from its own page`, { cityId: call.cityId, workerId: call.workerId, ...command });
+    }
 }
 
 /** M20: a series another worker waits for, when this worker holds its archive whole; the worker is seen now. */

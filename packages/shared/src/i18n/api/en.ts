@@ -133,6 +133,9 @@ export const en: ApiMessages = {
     'apiError.imagery.archiveMissing': 'The scanned maps are on the computer that imported them: turn it on, then Try again.',
     'apiError.imagery.archiveImported': 'This archive was already imported.',
     'apiError.imagery.archiveYear': 'Type this map’s year first. Maps from before 1800 cannot be imported yet.',
+    'apiError.imagery.notPausable':
+        'This job cannot be paused now: it has finished, or it waits for USGS, your points or your approval. Nothing changed.',
+    'apiError.imagery.pauseUntil': 'A pause must end within two days. Choose For 1 hour, Until tomorrow or Until I resume.',
     'apiError.imagery.missingBand': 'The Landsat delivery lacks band {band}: no colour image. Try another scene of that year.',
     'apiError.imagery.pipelineOutdated': "This computer's program is too old for this job: Update the map in Setup, then try again.",
     'apiError.imagery.deletePublished': 'A version on the map, or approved for it, is not deleted here: delete its layer.',

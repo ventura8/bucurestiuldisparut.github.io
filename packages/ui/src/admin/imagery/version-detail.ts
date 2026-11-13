@@ -401,12 +401,13 @@ function awaitsDecision(context: ImageryContext, version: VersionViewPort): bool
 
 /**
  * M7 (`docs/research/M7-local-worker.md` §7): where an unfinished job runs, and its switch (the lazy `worker` chunk's
- * `<hcm-run-place>`, which shows itself only while the job holds no run).
+ * `<hcm-run-place>`, which shows itself only while the job holds no run); Pause and Resume of the job (2026-11-13, `<hcm-job-pause>`).
  */
 function runPlace({ context, job }: Shown): TemplateResult {
     return withValue(job?.finished === false ? job : null, (open) => {
         loadWorkerElements(context.app);
-        return html`<hcm-run-place .app=${context.app} .locale=${context.locale} job=${open.id}></hcm-run-place>`;
+        return html`<hcm-job-pause .app=${context.app} .locale=${context.locale} job=${open.id} self=${context.self ?? ''}></hcm-job-pause>
+            <hcm-run-place .app=${context.app} .locale=${context.locale} job=${open.id}></hcm-run-place>`;
     });
 }
 

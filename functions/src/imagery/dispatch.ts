@@ -264,12 +264,18 @@ async function admit(deps: DispatchDeps, cityId: string, jobId: string): Promise
     return takeSlot(deps, cityId, jobId, await busyExecutions(deps));
 }
 
+/** Waiting for a later day's share (M20), or paused by the owner (2026-11-13). */
+function held(job: JobDoc): boolean {
+    return job.waitReason === 'daily' || job.paused !== undefined;
+}
+
 /**
  * A queued job that is not due yet (M20, `docs/research/M20-import-local.md` §1.3: an archive series waiting for a later day's
- * share is not due until `imagery.tick` releases it), or that used up its attempts.
+ * share is not due until `imagery.tick` releases it), or that used up its attempts. A job the owner paused (2026-11-13) waits for
+ * Resume, whose write dispatches it again.
  */
 function notYet(job: JobDoc, now: Date): 'not-due' | 'exhausted' | undefined {
-    if (job.waitReason === 'daily' || !isDue(job, now)) {
+    if (held(job) || !isDue(job, now)) {
         return 'not-due';
     }
     return (job.attempt ?? 0) >= JOB_MAX_ATTEMPTS ? 'exhausted' : undefined;

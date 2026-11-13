@@ -21,7 +21,7 @@ import { trackFunnel } from '@hcm/shared/funnels';
 import { html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { errorTemplate, formatWhen } from '../editing/states.js';
-import type { LocalPort, WorkerSeenPort, WorkerViewPort } from './worker-port.js';
+import type { LocalPort, PauseLengthPort, WorkerSeenPort, WorkerViewPort } from './worker-port.js';
 import { meter, WorkerElement, workerStyles } from './worker-element.js';
 import { workerFunnel } from './worker-funnel.js';
 
@@ -41,6 +41,7 @@ export class HcmWorkerPanel extends WorkerElement {
         ...WorkerElement.properties,
         project: { type: String },
         level: { type: Number },
+        self: { type: String },
         local: { state: true },
     };
 
@@ -50,6 +51,8 @@ export class HcmWorkerPanel extends WorkerElement {
     declare project: string;
     /** The panel's heading level (2 on the Jobs page, 3 in a Setup card). */
     declare level: number;
+    /** The signed-in admin's uid ('' when unknown): their own pause says "by you". */
+    declare self: string;
     /** This computer's part (finding 72), once the lazy chunk answered. */
     declare local: LocalPort | null;
     protected readonly jobId = null;
@@ -60,6 +63,7 @@ export class HcmWorkerPanel extends WorkerElement {
         super();
         this.project = '';
         this.level = 2;
+        this.self = '';
         this.local = null;
     }
 
@@ -121,7 +125,7 @@ export class HcmWorkerPanel extends WorkerElement {
         }
         const when = formatWhen(this.locale, worker.seenAt);
         return html`${this.#presence(view, worker, when)} ${this.#job(view, worker)} ${this.#ai(view, worker)}
-        ${this.#outdated(view, worker)} ${this.#disconnect(view, worker)}`;
+        ${this.#outdated(view, worker)} ${this.#pause(view, worker)} ${this.#disconnect(view, worker)}`;
     }
 
     /**
@@ -172,6 +176,54 @@ export class HcmWorkerPanel extends WorkerElement {
         return view.connected && worker.outdated
             ? html`<p class="alert" data-outdated>${this.t('adminWorker.outdated', { version: worker.version })}</p>`
             : html``;
+    }
+
+    /**
+     * Pause this computer (the owner's request of 2026-11-13): Until I resume, For 1 hour, Until tomorrow; a paused one says who paused it,
+     * until when, that it took no new work and gave its job back, and offers Resume. Not for a disconnected computer.
+     */
+    #pause(view: WorkerViewPort, worker: WorkerSeenPort): TemplateResult {
+        if (worker.revoked) {
+            return html``;
+        }
+        const paused = worker.paused;
+        if (paused === null) {
+            const lengths: readonly PauseLengthPort[] = ['forever', 'hour', 'tomorrow'];
+            return html`<p id="pause-title">${this.t('adminWorker.pause.computer')}</p>
+                <div class="actions" role="group" aria-labelledby="pause-title" data-computer-pause>
+                    ${lengths.map(
+                        (length) =>
+                            html`<hcm-button
+                                variant="tonal"
+                                icon="pause"
+                                ?disabled=${view.acting}
+                                @click=${() => void this.feed?.intents.pauseComputer(length)}
+                                >${this.t(`adminWorker.pause.${length}`)}</hcm-button
+                            >`,
+                    )}
+                </div>`;
+        }
+        const until = paused.until === null ? '' : ` ${this.t('adminWorker.pause.until', { when: formatWhen(this.locale, paused.until) })}`;
+        return html`<p data-computer-paused=${paused.by === 'computer' ? 'computer' : 'admin'}>
+                ${this.#pausedBy(paused.by)}${until} ${this.t('adminWorker.pause.what')}
+            </p>
+            <div class="actions">
+                <hcm-button
+                    variant="filled"
+                    icon="play_arrow"
+                    ?disabled=${view.acting}
+                    @click=${() => void this.feed?.intents.pauseComputer(null)}
+                    >${this.t('adminWorker.pause.resume')}</hcm-button
+                >
+            </div>`;
+    }
+
+    /** Who paused it: the person at the computer, the signed-in admin, or another admin. */
+    #pausedBy(by: string): string {
+        if (by === 'computer') {
+            return this.t('adminWorker.pause.byComputer');
+        }
+        return this.t(by === this.self ? 'adminWorker.pause.byYou' : 'adminWorker.pause.byOther');
     }
 
     /** Disconnect this computer (`worker.revoke`): for a worker not disconnected yet. */

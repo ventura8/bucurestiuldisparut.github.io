@@ -16,6 +16,7 @@ ME = "worker:w-0123456789abcdef"
 
 
 def test_happy_path_a_job_paused_during_a_step_stops_before_the_next_one_and_waits_queued(world: PipelineWorld) -> None:
+    """Scenarios: S-P32-HAPPY-JOB-BOUNDARY"""
     def pause(_ctx: JobContext) -> None:
         world.store.update(world.job_path(JOB), {"paused": PAUSED})
 
@@ -33,6 +34,7 @@ def test_happy_path_a_job_paused_during_a_step_stops_before_the_next_one_and_wai
 
 
 def test_bad_path_a_job_paused_before_its_run_starts_no_step(world: PipelineWorld) -> None:
+    """Scenarios: S-P32-BAD-JOB-BEFORE-RUN"""
     config = seed(world)
     world.store.update(world.job_path(JOB), {"paused": PAUSED, "retryAt": Timestamp.at(NOW)})
     steps = scripted()
@@ -47,6 +49,7 @@ def test_bad_path_a_job_paused_before_its_run_starts_no_step(world: PipelineWorl
 
 
 def test_happy_path_a_paused_computer_hands_the_job_back_with_its_step_pending(world: PipelineWorld) -> None:
+    """Scenarios: S-P32-HAPPY-RELEASE-CHECKPOINT"""
     paused = {"now": False}
 
     def pause_mid_step(ctx: JobContext) -> None:
@@ -67,6 +70,7 @@ def test_happy_path_a_paused_computer_hands_the_job_back_with_its_step_pending(w
 
 
 def test_bad_path_a_computer_paused_between_steps_leaves_the_finished_step_done(world: PipelineWorld) -> None:
+    """Scenarios: S-P32-BAD-RELEASE-BETWEEN-STEPS"""
     paused = {"now": False}
 
     def pause_after(_ctx: JobContext) -> None:

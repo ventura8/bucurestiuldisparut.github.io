@@ -5,7 +5,8 @@
  * list and the job say "Reconnecting…" while their listener lost the server, and keep what they showed. From M3
  * (CR-M3-5, `raster-parts.ts`): why a raster job waits, Run it again on a failed one, the georeferencer on one awaiting
  * its points; while the budget guard pauses the raster work, the list pane says so with the spend and offers Resume
- * processing, asked first (CR-M3-47, `../imagery/guard-banner.ts`).
+ * processing, asked first (CR-M3-47, `../imagery/guard-banner.ts`). Pause (2026-11-13): Pause all and Resume all over the list, a paused
+ * job's row reads Paused, and the open job has Pause or Resume (`<hcm-job-pause>`, the lazy `worker` chunk).
  */
 import type { Locale } from '@hcm/shared';
 import { css, html, nothing, type TemplateResult } from 'lit';
@@ -18,9 +19,9 @@ import { current, errorTemplate, formatWhen, listBody, loadingTemplate, reconnec
 import { guardBanner } from '../imagery/guard-banner.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
-import { FILTERS, jobStatusText, jobTypeText, levelText, percentOf, statusTone, stepNameText, stepStateText } from './job-text.js';
+import { FILTERS, jobStatusText, jobTypeText, levelText, percentOf, statusTone, stepNameText } from './job-text.js';
 import type { JobFilterPort, JobItemPort, JobLogLinePort, JobsIntentsPort, JobsViewState } from './jobs-port.js';
-import { rasterActions, waitLine } from './raster-parts.js';
+import { pauseAllActions, rasterActions, stepsList, waitLine } from './raster-parts.js';
 import { loadWorkerElements } from '../worker/load.js';
 
 export const HCM_JOBS_PAGE_TAG = 'hcm-jobs-page';
@@ -153,6 +154,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
                 </div>
                 ${reconnectingStatus(locale, view.list.reconnecting)}
             </div>
+            ${pauseAllActions(locale, view.pausingAll || this.readOnly, (action) => void this.intents?.pauseAll(action))}
             ${guardBanner(locale, view.guard, {
                 off: view.resuming || this.readOnly,
                 resume: () => {
@@ -188,7 +190,12 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
         };
         return html`<details ?open=${this.#computerOpen} @toggle=${toggled} data-computer>
             <summary>${contentText(locale, 'adminContent.jobs.computerTitle')}</summary>
-            <hcm-worker-panel .app=${this.app} .locale=${locale} project=${this.state?.projectId ?? ''}></hcm-worker-panel>
+            <hcm-worker-panel
+                .app=${this.app}
+                .locale=${locale}
+                project=${this.state?.projectId ?? ''}
+                self=${this.#selfId()}
+            ></hcm-worker-panel>
         </details>`;
     }
 
@@ -207,7 +214,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
 
     #row(locale: Locale, job: JobItemPort, selected: boolean): TemplateResult {
         const percent = percentOf(job);
-        const status = jobStatusText(locale, job.status);
+        const status = job.paused ? contentText(locale, 'adminContent.jobs.status.paused') : jobStatusText(locale, job.status);
         const detail =
             percent === null || job.finished
                 ? status
@@ -252,10 +259,13 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
         });
         return html`<div class="pane">
             <h2 tabindex="-1" data-detail-heading>${jobTypeText(locale, job.type)}</h2>
-            <div class="chips"><span class="tag" data-tone=${statusTone(job)}>${jobStatusText(locale, job.status)}</span></div>
+            <div class="chips">
+                <span class="tag" data-tone=${statusTone(job)}>${jobStatusText(locale, job.status)}</span>
+                ${job.paused ? html`<span class="tag" data-paused>${contentText(locale, 'adminContent.jobs.status.paused')}</span>` : nothing}
+            </div>
             <p class="note">${started}</p>
             ${this.#waiting(locale, job)} ${waitLine(locale, job)} ${this.#progress(locale, job)} ${this.#error(locale, job)}
-            ${this.#raster(locale, view, job)} ${this.#place(locale, job)} ${this.#steps(locale, job)}
+            ${this.#raster(locale, view, job)} ${this.#place(locale, job)} ${stepsList(locale, job)}
             ${reconnectingStatus(locale, isReconnecting(view.detail))}
             <h3>${contentText(locale, 'adminContent.jobs.log')}</h3>
             ${this.#logs(locale, logs.items)} ${this.#cancel(locale, view, job)}
@@ -269,13 +279,24 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
         return rasterActions(locale, job, { retrying: view.retrying, readOnly: this.readOnly, retry });
     }
 
-    /** M7: where an unfinished job runs and its switch (`<hcm-run-place>` shows itself only for a pipeline job holding no run). */
+    /**
+     * M7: where an unfinished job runs and its switch (`<hcm-run-place>` shows itself only for a pipeline job holding no run); Pause and
+     * Resume (2026-11-13, `<hcm-job-pause>`: a pipeline job queued, running or paused).
+     */
     #place(locale: Locale, job: JobItemPort): TemplateResult {
-        return job.finished ? EMPTY : html`<hcm-run-place .app=${this.app} .locale=${locale} job=${job.id}></hcm-run-place>`;
+        return job.finished
+            ? EMPTY
+            : html`<hcm-job-pause .app=${this.app} .locale=${locale} job=${job.id} self=${this.#selfId()}></hcm-job-pause>
+                  <hcm-run-place .app=${this.app} .locale=${locale} job=${job.id}></hcm-run-place>`;
     }
 
     #self(): string | null {
         return this.state?.user?.uid ?? null;
+    }
+
+    /** The signed-in admin's uid, '' when unknown (an attribute's value). */
+    #selfId(): string {
+        return this.#self() ?? '';
     }
 
     #waiting(locale: Locale, job: JobItemPort): TemplateResult {
@@ -302,20 +323,6 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
                   <hcm-icon name="error"></hcm-icon
                   ><span>${contentText(locale, 'adminContent.jobs.error', { message: job.error.message })}</span>
               </p>`;
-    }
-
-    #steps(locale: Locale, job: JobItemPort): TemplateResult {
-        if (job.steps.length === 0) {
-            return EMPTY;
-        }
-        return html`<h3>${contentText(locale, 'adminContent.jobs.steps')}</h3>
-            <dl class="facts">
-                ${job.steps.map(
-                    (step) =>
-                        html`<dt>${stepNameText(locale, step.name)}</dt>
-                            <dd>${stepStateText(locale, step.status)}</dd>`,
-                )}
-            </dl>`;
     }
 
     #logs(locale: Locale, lines: readonly JobLogLinePort[]): TemplateResult {

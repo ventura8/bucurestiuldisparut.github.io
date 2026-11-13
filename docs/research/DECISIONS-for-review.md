@@ -6992,3 +6992,21 @@ The owner: "take me to the analytics permission button", then: the page must sho
 - **204d Step 2** (pending): the copy over the home network (a separate LAN endpoint off unless the city has two paired workers, a
   short-lived read-only token from a callable, archive files only), and pre-seeding under the governor; the bucket stays the fallback.
 - **Verify**: S-A120-HAPPY-ARCHIVE-COPY, S-A120-BAD-ARCHIVE-COPY, S-P20-HAPPY-ARCHIVE-COPY, S-P20-BAD-ARCHIVE-COPY.
+
+## 215. Pause a job, every job or a computer (track/pause, the owner 2026-11-13) — APPLIED, one callable added
+
+- **Asked**: "I want the user to be able to pause jobs, and to pause using a machine!!!!" (the owner, 2026-11-13).
+- **215a No new job status.** A paused job keeps its status (`queued`, or the run's own until its step boundary) and gains
+  `paused: {by, at, inRun?}`; the claim, the dispatcher and the tick's no-computer mark skip it. A new status would have touched every
+  status switch, filter and catalogue for one meaning the field already carries; the rules still let no client write it (`paused`,
+  `releaseRequested` are `imagery.pause`'s alone), and a paused job can still be cancelled.
+- **215b A job stops between steps, a computer at the next checkpoint.** The owner's job pause keeps the step's work (the step
+  finishes); a paused computer must free the processor now, so its step stops at a checkpoint and starts again elsewhere.
+- **215c No attempt is spent by a pause.** The job's Resume gives back the attempt a paused run counted (`inRun`); a computer's hand-back
+  (`worker.end` `released`) gives it back only while the computer is paused or the job was asked back, so it is never a way round
+  the attempts. It mirrors M20's `returned` (§204, archivehost) with its own outcome: a paused computer's job waits for no copy.
+- **215d The server is the truth of a computer's pause**; the worker mirrors the claim's answer into the governor's new `paused`
+  choice (M26 §3), and the computer's own page sends its pause with the next claim or end (`pause` command), so either side pauses it.
+- **215e Until tomorrow is 08:00 tomorrow** on the clock of whoever clicked; a pause ends within 48 hours at most
+  (`PAUSE_UNTIL_MAX_HOURS`, `apiError.imagery.pauseUntil`).
+- **Verify**: S-A160-*, S-A161-*, S-P32-*; `docs/research/M7-local-worker.md` → *Pause*.

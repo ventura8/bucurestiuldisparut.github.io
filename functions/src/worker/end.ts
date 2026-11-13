@@ -22,6 +22,7 @@ import type { Ports } from '../ports/index.js';
 import { IN_RUN, PIPELINE_WRITER, at, holds, requireWorker, type WorkerCall } from './holder.js';
 import { archiveOf, handedBack, returnsExhausted } from './archive-host.js';
 import { paired } from './pairing.js';
+import { activePause, afterCommand, releasedJob } from './pause-state.js';
 
 export type EndDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 
@@ -95,18 +96,55 @@ async function handBack(deps: EndDeps, call: WorkerCall, request: Request, now: 
     }
 }
 
+/** The run that ended: its worker's call, the worker's document (its own page's pause applied) and the time. */
+interface Ended {
+    readonly call: WorkerCall;
+    readonly worker: WorkerDoc;
+    readonly now: Date;
+}
+
+/** True when the computer was asked to give the job back: it is paused, or its job was asked back (`releaseRequested`). */
+function askedBack(job: JobDoc, worker: WorkerDoc, now: Date): boolean {
+    return job.releaseRequested === true || activePause(worker, now) !== undefined;
+}
+
+/**
+ * Pause this computer (2026-11-13): the paused computer's run stopped at a checkpoint and hands the job back, queued where it stopped.
+ * The attempt its claim counted is given back only while the computer is paused or its job was asked back (a Resume that came
+ * between the checkpoint and this call keeps it counted): a hand-back is never a way round the attempts. Only a job the worker still
+ * holds unfinished.
+ */
+async function release(deps: EndDeps, ended: Ended, request: Request): Promise<void> {
+    const { call, worker, now } = ended;
+    const path = FIRESTORE_PATHS.job(call.cityId, request.jobId);
+    const released = await deps.documents.transaction(async (transaction) => {
+        const job = await transaction.get(path, jobDocSchema);
+        if (job === undefined || !stillRunning(job, call, now)) {
+            return false;
+        }
+        await transaction.set(path, jobDocSchema, releasedJob(job, PIPELINE_WRITER, now, askedBack(job, worker, now)));
+        return true;
+    });
+    if (released) {
+        deps.log.info('a paused computer handed its job back', { cityId: call.cityId, workerId: call.workerId, jobId: request.jobId });
+    }
+}
+
 /** What the run's outcome does to the job: a crash fails it, a hand-back queues it again, `done` leaves it. */
-async function settle(deps: EndDeps, call: WorkerCall, request: Request, now: Date): Promise<void> {
+async function settle(deps: EndDeps, ended: Ended, request: Request): Promise<void> {
+    const { call, now } = ended;
     if (request.outcome === 'failed') {
         await failHeld(deps, call, request, now);
     } else if (request.outcome === 'returned') {
         await handBack(deps, call, request, now);
+    } else if (request.outcome === 'released') {
+        await release(deps, ended, request);
     }
 }
 
 /** The worker's last job as its panel shows it: a hand-back is no job it ran, so the one before stays. */
 function lastJobOf(worker: WorkerDoc, request: Request, now: Date): Pick<WorkerDoc, 'lastJob'> {
-    if (request.outcome === 'returned') {
+    if (request.outcome === 'returned' || request.outcome === 'released') {
         return worker.lastJob === undefined ? {} : { lastJob: worker.lastJob };
     }
     return { lastJob: { id: request.jobId, outcome: request.outcome, at: at(now) } };
@@ -116,14 +154,16 @@ function lastJobOf(worker: WorkerDoc, request: Request, now: Date): Pick<WorkerD
  * `worker.end` (`docs/research/M7-local-worker.md` §1.2, §2.4): the run is over. `failed` ends a job the worker still
  * holds unfinished (the run crashed outside a step: `error.code`, else `apiError.imagery.processingFailed`); `done` leaves
  * the job as the run left it; `returned` hands an archive series back (`handBack`, M20). The worker is idle again with its last
- * job. Never paused by the budget guard.
+ * job. `released` hands a paused computer's job back (`release`), the computer's own page's `pause` recorded first. Never paused by
+ * the budget guard.
  */
 async function workerEnd(deps: EndDeps, caller: VerifiedCaller, request: Request): Promise<CallableResponse<'worker.end'>> {
     const call = { cityId: request.cityId, workerId: request.workerId, uid: caller.uid };
     const now = deps.clock.now();
-    const worker = await requireWorker(deps.documents, call);
+    // Pause: the computer's own page paused it during the run; recorded before the job is handed back.
+    const worker = afterCommand(await requireWorker(deps.documents, call), request.pause, now);
     const path = FIRESTORE_PATHS.job(call.cityId, request.jobId);
-    await settle(deps, call, request, now);
+    await settle(deps, { call, worker, now }, request);
     await deps.documents.set(FIRESTORE_PATHS.worker(call.cityId, call.workerId), workerDocSchema, {
         ...omit(worker, ['jobId', 'lastJob']),
         state: 'idle',

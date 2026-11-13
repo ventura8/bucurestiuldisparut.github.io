@@ -69,6 +69,11 @@ One pure function, `decide(signals, choice, before, now) -> PolicyState`, and `e
   after 120 s** with none of those (a calm timer), so it never flaps (a hypothesis property test drives it with any
   sequence of activity).
 - On battery under 30 % it **pauses**, unless the owner allowed work on battery (`batteryAllowed` in `POST /profile`).
+- **The owner's pause** (2026-11-13, M7 → *Pause*): `paused` is a fourth choice, set only by Pause this computer (the admin's
+  `imagery.pause`, mirrored from the claim's answer, or the computer's own page, `POST /pause`), never by `POST /profile`. It is also
+  a claim block: the server answers a paused worker's claim with no job. Chosen paused, the profile is `paused` with `why: owner`,
+  whatever the heat or the battery; `governor.json` keeps `until` (epoch seconds) and `resumeTo` (the profile it goes back to); a tick
+  past `until` resumes by itself. A running step is not held at the gate: the run hands its job back at its next checkpoint.
 - Heat steps **down one level** (full to quiet, quiet to paused) at 95 °C on the processor (90 until 2026-11-13: the
   laptop's package reads 90 with only a local model running, so every mobile processor at work stepped down) or 83 °C on a card, and
   back up only 5 °C below both (`why: thermal`; 10 until 2026-11-13: with a local model, pytest and Prettier holding the laptop at
@@ -168,8 +173,8 @@ needs static shapes; LightGlue stays on a card or the processor), then the proce
 {cpu:{cores}, memory:{totalMb, availableMb, limitMb?}, power:{source:'ac'|'battery'|'unknown', percent?},
  gpus:[{vendor, name, vramMb, via:'cuda'|'rocm'|'openvino'|null, why?: 'no-driver'|'no-passthrough'|…}], npus:[{vendor, name, via, why?}],
  backend:{matcher:'cuda'|'rocm'|'openvino-gpu'|'openvino-npu'|'cpu'|'off', why?},
- profile:{chosen:'auto'|'quiet'|'full', active:'full'|'quiet'|'paused',
-          why:'idle'|'user-active'|'others-busy'|'battery'|'thermal'|'gpu-busy'|'owner'},
+ profile:{chosen:'auto'|'quiet'|'full'|'paused', active:'full'|'quiet'|'paused',
+          why:'idle'|'user-active'|'others-busy'|'battery'|'thermal'|'gpu-busy'|'owner', until?},
  budget:{threads, memoryMb, gpuFraction}, usage:{cpuPct, othersCpuPct, memoryMb, gpuPct?, vramMb?, tempC?}}
 ```
 

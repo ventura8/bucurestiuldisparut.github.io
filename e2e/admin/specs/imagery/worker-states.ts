@@ -76,6 +76,19 @@ export const WORKER_STATES = {
         title: 'Jobs: This computer: its cores and memory, Automatic / Quiet / Full with Quiet chosen, the profile in force and why, where the local AI runs',
         visit: 'specs/imagery/worker-run.spec.ts',
     },
+    // Pause (the owner's request of 2026-11-13; docs/research/M7-local-worker.md → Pause).
+    'worker.job-paused': {
+        title: 'Historical imagery: a version whose job you paused, who and when, Resume',
+        visit: 'specs/imagery/pause.spec.ts',
+    },
+    'worker.jobs-pause-all': {
+        title: 'Jobs: Pause all and Resume all over the list, a paused job reads Paused, and its Resume',
+        visit: 'specs/imagery/pause.spec.ts',
+    },
+    'worker.computer-paused': {
+        title: 'Jobs: your computer paused for an hour by you, until when, what that means, Resume',
+        visit: 'specs/imagery/pause.spec.ts',
+    },
     'worker.place-worker': {
         title: 'Historical imagery: a version waiting for your computer, the Jobs link and Run in Google Cloud',
         visit: 'specs/imagery/worker.spec.ts',

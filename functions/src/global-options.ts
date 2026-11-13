@@ -75,6 +75,7 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'imagery.previewUrl': 'fn-admin',
     'imagery.recalibrate': 'fn-admin',
     'imagery.runOn': 'fn-admin',
+    'imagery.pause': 'fn-admin',
     'imagery.archiveImport': 'fn-admin',
     'imagery.probeTiles': 'fn-admin',
     'imagery.resumeGuard': 'fn-admin',

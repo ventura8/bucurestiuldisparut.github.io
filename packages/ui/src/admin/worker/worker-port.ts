@@ -23,6 +23,16 @@ export interface CloudRunUsePort {
     readonly gibSeconds: number;
 }
 
+/** Pause (2026-11-13): who paused a job or a computer (an account, or `computer`), when, and until when (ISO, or null). */
+export interface PausedPort {
+    readonly by: string;
+    readonly at: string;
+    readonly until: string | null;
+}
+
+/** The three ways to pause a computer. */
+export type PauseLengthPort = 'forever' | 'hour' | 'tomorrow';
+
 export interface WorkerSeenPort {
     readonly id: string;
     readonly state: 'idle' | 'busy';
@@ -35,6 +45,8 @@ export interface WorkerSeenPort {
     readonly revoked: boolean;
     /** Its local AI (`docs/research/M10-local-ai.md`), or null for a worker older than it. */
     readonly ai: WorkerAi | null;
+    /** Pause this computer: who, when, until when; null while it works. */
+    readonly paused: PausedPort | null;
 }
 
 export interface WorkerJobPort {
@@ -48,6 +60,8 @@ export interface WorkerJobPort {
     readonly overdue: boolean;
     /** M20: its files are only on the computer (an archive's series): the cloud is never offered. */
     readonly localOnly?: boolean;
+    /** Pause: who paused it and when; null while it is not paused. */
+    readonly paused: PausedPort | null;
 }
 
 export interface WorkerViewPort {
@@ -129,6 +143,10 @@ interface WorkerIntentsPort {
     disconnect(): Promise<boolean>;
     /** Finding 72: this computer's part, from the lazy `worker-local` chunk (its element registered first). */
     local(project: string): Promise<LocalPort>;
+    /** Pause or Resume the watched job. */
+    pauseJob(action: 'pause' | 'resume'): Promise<boolean>;
+    /** Pause the panel's computer for a length, or Resume it (null). */
+    pauseComputer(length: PauseLengthPort | null): Promise<boolean>;
 }
 
 /** One element's feed: started when it connects (with its version's job, if any), stopped when it goes. */

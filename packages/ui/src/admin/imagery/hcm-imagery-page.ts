@@ -174,6 +174,7 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
         return {
             ...{ locale: this.locale, view, intents: this.intents, readOnly: this.readOnly, app: this.app },
             owner: cityRoleOfState(this.state) === 'owner',
+            self: this.state?.user?.uid ?? '',
             href: (params) => this.href(params),
             go: (params) => {
                 this.go(params);

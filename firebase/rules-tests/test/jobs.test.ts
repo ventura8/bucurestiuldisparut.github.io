@@ -134,6 +134,32 @@ describe('cancel a job', () => {
     });
 });
 
+// Pause (the owner's request of 2026-11-13): only imagery.pause pauses or resumes a job or a computer; a paused job can be cancelled.
+describe('pause a job or a computer @S-A160-BAD-CLIENT-WRITE', () => {
+    it('happyPath_aPausedQueuedJobCanStillBeCancelled', async () => {
+        expect(await cancel('queued')).toBe('allow');
+    });
+
+    it.each([
+        ['a pause', { paused: { by: 'someone', at: serverTime() } }],
+        ['a resume', { paused: deleted() }],
+        ['a computer asked back', { releaseRequested: deleted() }],
+        ['a pause beside a cancel', { cancelRequested: true, paused: deleted() }],
+    ])('badPath_noClientSends_%s', async (_label, changes) => {
+        expect(await cancel('running', changes)).toBe('deny');
+    });
+
+    it('badPath_noClientPausesOrResumesAComputer', async () => {
+        const worker = await seeded(FIRESTORE_PATHS.worker(CITY_ID, 'w-2222222222222222'), workerDoc(world.uid('admin')));
+        const member = world.db('admin');
+
+        expect({
+            resume: await verdict(member.doc(worker).update({ paused: deleted(), ...stampedBy(world.uid('admin')) })),
+            pause: await verdict(member.doc(worker).update({ paused: { by: 'x', at: serverTime() }, ...stampedBy(world.uid('admin')) })),
+        }).toEqual({ resume: 'deny', pause: 'deny' });
+    });
+});
+
 // Review of M18 item 3: an editor placing points on a parked frame marks its job, so imagery.tick leaves it waiting.
 describe('mark a parked frame as getting points', () => {
     async function mark(status: string, changes: Data = { placingPoints: true }, stamp = true): Promise<Verdict> {
