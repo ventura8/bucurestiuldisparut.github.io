@@ -55,7 +55,7 @@ function leftOutOfOverview(stitched: Pick<Stitched, 'method' | 'leftOutCount'> |
 }
 
 /**
- * M20 (DECISIONS-for-review.md §210): a published archive series with pieces left out of its overview mosaic, which Locate again lays
+ * M20 (DECISIONS-for-review.md §216): a published archive series with pieces left out of its overview mosaic, which Locate again lays
  * on the overview again in a new version of its layer. Shared by `imagery.locateAgain` (`restitch.ts`) and the admin's version view.
  */
 export function restitchable(version: RestitchInput): boolean {

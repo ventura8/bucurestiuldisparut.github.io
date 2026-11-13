@@ -1,4 +1,4 @@
-/** M20 (DECISIONS-for-review.md §210): the version view says when Locate again lays a published series on its overview again. */
+/** M20 (DECISIONS-for-review.md §216): the version view says when Locate again lays a published series on its overview again. */
 import type { LayerVersionDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 

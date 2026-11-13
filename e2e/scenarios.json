@@ -18342,7 +18342,7 @@
             "asserts": "the version view marks a published series with pieces left out of its overview mosaic restitchable; the button calls imagery.locateAgain; a new archive-series job (restitch, runOn local) and its processing version on the same layer carry the base's pairs, scan, rights and help; the layer marks it pending and keeps the published version",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §210, layer 1895-1899. Tests: functions/test/imagery/restitch.test.ts, packages/shared/test/restitchable.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
+            "notes": "DECISIONS-for-review.md §216, layer 1895-1899. Tests: functions/test/imagery/restitch.test.ts, packages/shared/test/restitchable.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
         },
         {
             "id": "S-A122-BAD-RESTITCH-NOTHING-LEFT",
@@ -18353,7 +18353,7 @@
             "asserts": "no Locate again button; imagery.locateAgain answers apiError.imagery.versionState (or apiError.layers.busy for a layer with a version on its way) and writes nothing",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §210. Tests: functions/test/imagery/restitch.test.ts, packages/shared/test/restitchable.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
+            "notes": "DECISIONS-for-review.md §216. Tests: functions/test/imagery/restitch.test.ts, packages/shared/test/restitchable.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
         },
         {
             "id": "S-P20-HAPPY-RESTITCH",
@@ -18364,7 +18364,7 @@
             "asserts": "place with restitch publishes the new mosaic as help.stitched and the scan, then warps it through the owner's pairs scaled from the base's scan, landing within 15 m",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §210. Tests: pipeline/tests/unit/test_placing_restitch.py."
+            "notes": "DECISIONS-for-review.md §216. Tests: pipeline/tests/unit/test_placing_restitch.py."
         },
         {
             "id": "S-P20-BAD-RESTITCH-NO-OVERVIEW",
@@ -18375,7 +18375,7 @@
             "asserts": "place answers Waiting, the version needs_gcps with help low-confidence and the note saying so; nothing is warped",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §210. Tests: pipeline/tests/unit/test_placing_restitch.py."
+            "notes": "DECISIONS-for-review.md §216. Tests: pipeline/tests/unit/test_placing_restitch.py."
         },
         {
             "id": "S-A122-HAPPY-GEOREF-FULL-SCREEN",

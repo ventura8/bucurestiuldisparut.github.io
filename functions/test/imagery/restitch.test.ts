@@ -1,6 +1,6 @@
 /**
  * `imagery.locateAgain` on a placed archive series with pieces left out of its overview mosaic (`functions/src/imagery/restitch.ts`,
- * DECISIONS-for-review.md §210): a new version of the same layer lays it on its overview again, the owner's pairs kept.
+ * DECISIONS-for-review.md §216): a new version of the same layer lays it on its overview again, the owner's pairs kept.
  */
 import type { JobDoc, LayerVersionDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';

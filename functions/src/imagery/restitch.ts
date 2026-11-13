@@ -9,7 +9,7 @@ import type { RegeorefDeps } from './regeoref.js';
 import { createWork, jobIdFor, type NewWork } from './versions.js';
 
 /**
- * M20 (`docs/research/M20-import-local.md` §15, DECISIONS-for-review.md §210; S-A122-HAPPY-RESTITCH): a published archive series stitched
+ * M20 (`docs/research/M20-import-local.md` §15, DECISIONS-for-review.md §216; S-A122-HAPPY-RESTITCH): a published archive series stitched
  * on its overview with pieces left out of that mosaic is laid on its overview again in a **new version of the same layer**, the owner's
  * pairs kept when it was placed from them (one placed on its own is placed again by its class's placer). **Locate again** asks it
  * (the published version stays on the map until the new one is approved). The pairs hold because the mosaic's frame is the overview's: the scan's pixels name the same overview pixels before and

@@ -114,6 +114,14 @@ test(
     },
 );
 
+/** The guide is folded under its own summary: the codes' line shows once it opens (once a page: a second click would fold it). */
+async function openHelp(page: Page, lang: 'ro' | 'en') {
+    const help = page.locator('[data-statistics-help]');
+    if ((await help.getAttribute('open')) === null) {
+        await help.getByText(contentText(lang, 'adminContent.statistics.helpTitle'), { exact: true }).click();
+    }
+}
+
 async function shown(page: Page, lang: 'ro' | 'en', consent: GoogleConsent, inputBudget: InputBudget) {
     const opened = await openStatistics(page, lang);
     const popup = await consent.opened(page, () => opened.show.click());
@@ -133,6 +141,7 @@ test(
         await expect(numbers.locator('[data-statistics-pending="notReady"]')).toContainText(
             contentText(lang, 'adminContent.statistics.pending.notReadyFix'),
         );
+        await openHelp(page, lang);
         await expect(page.locator('[data-statistics-codes="notReady"]')).toBeVisible();
         await expect(numbers.getByRole('alert')).toHaveCount(0);
         const bodies = (await upstream.calls('browser', 'analytics-data'))
@@ -171,12 +180,14 @@ test(
         await expect(numbers.locator('[data-statistics-pending="noData"]')).toContainText(
             contentText(lang, 'adminContent.statistics.pending.noDataFix'),
         );
+        await openHelp(page, lang);
         await expect(page.locator('[data-statistics-codes="noData"]')).toBeVisible();
 
         await upstream.scenario('analytics-data.sample', 'browser');
         await numbers.getByRole('button', { name: contentText(lang, 'adminContent.statistics.numbers.refresh') }).click();
         await expect(numbers.locator('[data-funnel="new_city"]')).toContainText('3 (30 %)');
         await expect(numbers.locator('[data-statistics-pending]')).toHaveCount(0);
+        await openHelp(page, lang);
         await expect(page.locator('[data-statistics-codes="ready"]')).toBeVisible();
     },
 );

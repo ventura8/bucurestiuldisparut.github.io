@@ -103,7 +103,7 @@ export interface VersionView {
     readonly archive: ArchiveReport | null;
     /** An archive series waiting with `layout-check`: the tile-import wizard opens it (`helpFlagsOf`, M20 §19). */
     readonly layoutCheck: boolean;
-    /** M20 (§210): published with pieces left out of its overview mosaic: Locate again lays it on it again. */
+    /** M20 (§216): published with pieces left out of its overview mosaic: Locate again lays it on it again. */
     readonly restitchable: boolean;
     /**
      * M20 (§7): the series' rights as the approval card shows them (null: no rights, USGS and uploads). Approve waits
