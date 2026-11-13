@@ -41,10 +41,11 @@ export class LocaleSwitch {
         }
     }
 
-    /** The language changes: the state, the city's stored choice, the hash. */
+    /** The language changes: the state, `locale_change`, the city's stored choice, the hash. */
     #switchTo(locale: ViewerLocale): void {
         const host = this.#host;
         host.set({ ...host.getState(), locale });
+        host.deps.telemetry.logEvent({ name: 'locale_change', locale });
         host.preferences.set(host.getState().manifest?.city.id ?? host.deps.config.cityId, 'lang', locale);
         host.hash.schedule();
     }
