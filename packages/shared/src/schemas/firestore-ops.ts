@@ -558,24 +558,6 @@ export const opsProbeDocSchema = z.strictObject({
 });
 // [end server-bugs probe]
 
-/** How a city's last USGS harvest went: found scenes, found none, or USGS did not answer (every dataset failed). */
-export const HARVEST_OUTCOMES = ['ok', 'empty', 'failed'] as const;
-
-/**
- * `ops/harvest-{city}`: the city's last harvest attempt (CR-M3-47), written on every attempt, so the monthly harvest of
- * `imagery.tick` is keyed on what the harvest itself wrote: the next one is due at `nextAt` (a month after a harvest that
- * answered, an hour after a failure, doubled after each further one), never every five minutes.
- */
-export const harvestStateDocSchema = z.strictObject({
-    attemptedAt: timestampSchema,
-    outcome: z.enum(HARVEST_OUTCOMES),
-    /** Failures in a row (0 after a harvest that answered). */
-    failures: z.number().int().min(0).max(1000),
-    nextAt: timestampSchema,
-    error: apiErrorCodeSchema.optional(),
-    ...stamp,
-});
-
 const skippedDocumentSchema = z.strictObject({
     entity: z.enum(MANIFEST_ENTITIES),
     id: idSchema,
@@ -621,7 +603,6 @@ export type UsageDoc = z.infer<typeof usageDocSchema>;
 export type OpsGuardDoc = z.infer<typeof opsGuardDocSchema>;
 export type OpsDispatchDoc = z.infer<typeof opsDispatchDocSchema>;
 export type OpsProbeDoc = z.infer<typeof opsProbeDocSchema>;
-export type HarvestStateDoc = z.infer<typeof harvestStateDocSchema>;
 export type ManifestStateDoc = z.infer<typeof manifestStateDocSchema>;
 export type JobStatus = (typeof JOB_STATUSES)[number];
 export type JobType = (typeof JOB_TYPES)[number];

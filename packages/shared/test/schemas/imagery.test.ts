@@ -145,7 +145,7 @@ describe('city imagery settings', () => {
             mapAutoPublish: true,
             landsatAuto: true,
             landsatFrom: 1984,
-            landsatTo: 2000,
+            landsatTo: undefined,
         });
         expect(imagerySettingsOf({ autoPublish: false, rmseThresholdM: 8, targetYears: [1966], publishThroughMapbox: true })).toEqual({
             autoPublish: false,
@@ -156,7 +156,7 @@ describe('city imagery settings', () => {
             mapAutoPublish: true,
             landsatAuto: true,
             landsatFrom: 1984,
-            landsatTo: 2000,
+            landsatTo: undefined,
         });
     });
 
@@ -277,7 +277,10 @@ describe('sensors', () => {
             'landsat_tm_c2_l1',
             'landsat_tm_c2_l1',
             'landsat_etm_c2_l1',
+            'landsat_ot_c2_l1',
+            'landsat_ot_c2_l1',
         ]);
+        expect(SENSOR_SPECS['L9-OLI']).toMatchObject({ resolutionM: 15, maxzoom: 14 });
         expect(SENSOR_SPECS['KH-9-pan']).toMatchObject({ maxzoom: 17, machine: 'xl' });
         expect(SENSORS.every((sensor) => SENSOR_SPECS[sensor].minzoom < SENSOR_SPECS[sensor].maxzoom)).toBe(true);
     });

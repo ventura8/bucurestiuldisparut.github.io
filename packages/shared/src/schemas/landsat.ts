@@ -2,7 +2,7 @@
  * M25 (`docs/research/M25-landsat.md`): Landsat over the city. Collection 2 Level-1 scenes come through the same USGS M2M API as the
  * declassified frames, already georeferenced (UTM) and public domain: the harvest searches them in leaf-on months under a cloud
  * cap, the ranking adds the season to the cloud part, the tick imports the best scene of each wanted year on its own (the
- * daily cap counts it as any import), and the pipeline composes true colour (and pan-sharpens ETM+ to 15 m) instead of
+ * daily cap counts it as any cloud import), and the pipeline composes true colour (and pan-sharpens ETM+ and OLI to 15 m) instead of
  * georeferencing. What the pipeline measured is the version's `landsat` report; a version publishes on its own only when it
  * lies within a pixel of Sentinel-2 and the city is clear.
  */
@@ -31,8 +31,10 @@ export const LEAF_ON_MONTHS: readonly number[] = [6, 7, 8];
 export const LANDSAT_SEARCH_MAX_CLOUD = 40;
 export const LANDSAT_AUTO_MAX_CLOUD = 20;
 
-/** The tick starts at most this many Landsat imports a city per run; the daily cap still counts each. */
+/** The tick starts at most this many Landsat imports a city per run in the cloud; the daily cap still counts each. */
 export const LANDSAT_AUTO_PER_TICK = 1;
+/** While the city's computers run the worker: one import per online worker, at most this many a run (placed there: never capped). */
+export const LANDSAT_AUTO_MAX_PER_TICK = 4;
 
 const LANDSAT_SET: ReadonlySet<string> = new Set(LANDSAT_DATASETS);
 
