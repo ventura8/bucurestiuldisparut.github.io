@@ -37,7 +37,7 @@ export class HcmChip extends LitElement {
                 gap: 8px;
                 align-items: center;
                 box-sizing: border-box;
-                height: 32px;
+                height: var(--hcm-chip-size, 32px);
                 padding-inline: 8px 16px;
                 margin: 0;
                 border: 1px solid var(--md-sys-color-outline-variant);

@@ -49,7 +49,7 @@ export class HcmButton extends LitElement {
                 justify-content: center;
                 box-sizing: border-box;
                 min-width: 48px;
-                height: 40px;
+                height: var(--hcm-control-size, 40px);
                 padding-inline: 16px;
                 margin: 0;
                 border: none;
