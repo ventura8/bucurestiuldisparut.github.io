@@ -33,7 +33,7 @@ function isThemeMode(value: string): value is ThemeMode {
     return (THEMES as readonly string[]).includes(value);
 }
 
-function accentOptions(locale: Locale): SegmentOption[] {
+function accentOptions(locale: UiLocale): SegmentOption[] {
     return ACCENT_CHOICES.map((accent) => ({ value: accent, label: translate(locale, `accent.${accent}`) }));
 }
 

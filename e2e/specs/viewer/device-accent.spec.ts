@@ -54,7 +54,10 @@ async function shown(page: Page, own: string): Promise<Shown> {
                 const l = Math.cbrt(0.412_221_470_8 * r + 0.536_332_536_3 * g + 0.051_445_992_9 * b);
                 const m = Math.cbrt(0.211_903_498_2 * r + 0.680_699_545_1 * g + 0.107_396_956_6 * b);
                 const s = Math.cbrt(0.088_302_461_9 * r + 0.281_718_837_6 * g + 0.629_978_700_5 * b);
-                return Math.atan2(0.025_904_037_1 * l + 0.782_771_766_2 * m - 0.808_675_766 * s, 1.977_998_495_1 * l - 2.428_592_205 * m + 0.450_593_709_9 * s);
+                return Math.atan2(
+                    0.025_904_037_1 * l + 0.782_771_766_2 * m - 0.808_675_766 * s,
+                    1.977_998_495_1 * l - 2.428_592_205 * m + 0.450_593_709_9 * s,
+                );
             };
             const primary = style.getPropertyValue(primaryName).trim().toLowerCase();
             return {
@@ -94,9 +97,19 @@ for (const scheme of ['light', 'dark'] as const) {
             expect(Math.abs(colours.luminance - colours.cityLuminance)).toBeLessThan(0.01);
             await chooseMenuItem(page, lang, t(lang, 'settings.title'));
             const settings = page.getByRole('dialog', { name: t(lang, 'settings.title') });
-            await expect(settings.getByRole('radio', { name: t(lang, 'theme.system'), exact: true })).toHaveAttribute('aria-checked', 'true');
-            await expect(settings.getByRole('radio', { name: t(lang, 'accent.device'), exact: true })).toHaveAttribute('aria-checked', 'true');
-            const axe = await new AxeBuilder({ page }).withTags(['wcag2aa']).withRules(['color-contrast']).include('hcm-map-viewer').analyze();
+            await expect(settings.getByRole('radio', { name: t(lang, 'theme.system'), exact: true })).toHaveAttribute(
+                'aria-checked',
+                'true',
+            );
+            await expect(settings.getByRole('radio', { name: t(lang, 'accent.device'), exact: true })).toHaveAttribute(
+                'aria-checked',
+                'true',
+            );
+            const axe = await new AxeBuilder({ page })
+                .withTags(['wcag2aa'])
+                .withRules(['color-contrast'])
+                .include('hcm-map-viewer')
+                .analyze();
             expect(axe.violations.map((violation) => violation.id)).toEqual([]);
         },
     );
@@ -115,16 +128,20 @@ test("Map colours keeps the city's own, and the choice persists", { tag: '@S-V12
     await expect.poll(async () => (await shown(page, own)).primary).toBe(own);
 });
 
-test("Without the device's accent, or with a grey one, the city's own colours show", { tag: '@S-V12-BAD-NO-DEVICE-ACCENT' }, async ({ page, lang }) => {
-    await page.emulateMedia({ colorScheme: 'light' });
-    await openViewer(page, { lang });
-    const own = TOKENS['light']?.[PRIMARY]?.toLowerCase() ?? '';
-    // A Chromium tab: Chrome's AccentColor is its constant there, never the device's.
-    await expect.poll(async () => (await shown(page, own)).primary).toBe(own);
+test(
+    "Without the device's accent, or with a grey one, the city's own colours show",
+    { tag: '@S-V12-BAD-NO-DEVICE-ACCENT' },
+    async ({ page, lang }) => {
+        await page.emulateMedia({ colorScheme: 'light' });
+        await openViewer(page, { lang });
+        const own = TOKENS['light']?.[PRIMARY]?.toLowerCase() ?? '';
+        // A Chromium tab: Chrome's AccentColor is its constant there, never the device's.
+        await expect.poll(async () => (await shown(page, own)).primary).toBe(own);
 
-    await emulateAccent(page, '#808080');
-    await page.reload();
-    await waitForEngineEvent(page, 'hcm-ready');
-    await expect.poll(async () => (await shown(page, own)).primary).toBe(own);
-    expect((await shown(page, own)).onPrimary).toBe(TOKENS['light']?.[ON_PRIMARY]?.toLowerCase());
-});
+        await emulateAccent(page, '#808080');
+        await page.reload();
+        await waitForEngineEvent(page, 'hcm-ready');
+        await expect.poll(async () => (await shown(page, own)).primary).toBe(own);
+        expect((await shown(page, own)).onPrimary).toBe(TOKENS['light']?.[ON_PRIMARY]?.toLowerCase());
+    },
+);

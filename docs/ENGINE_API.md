@@ -114,6 +114,13 @@ A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](rese
 - **The basemap's labels** follow the language where Mapbox's style has names in it (`zh` as `zh-Hans`); elsewhere each place shows its local name.
 - **Fonts.** Latin and Cyrillic come from the engine's `fonts/`; Arabic, Devanagari, Chinese, Japanese and Korean use the system's fonts (`system-ui, sans-serif`), so nothing is fetched from a font CDN.
 
+
+**Theme: Follow my device by default.** The menu's Settings has two choices, each remembered per city in `localStorage` (`hcm:<cityId>:theme`, `hcm:<cityId>:accent`; a visitor who chose Light or Dark before keeps it):
+
+- **Theme**: **Follow my device** (`system`, the default: the system's light or dark scheme, live), **Light** or **Dark**. Every mode also follows `prefers-contrast: more` (the city's high-contrast scheme), `prefers-reduced-motion: reduce` (no spatial motion) and the browser's text size (the type scale is in `rem`); under forced colours (Windows' contrast themes) the system paints the page.
+- **Colours**: **Device accent** (`device`, the default) or **Map colours** (`map`, the city's own). With Device accent the city's four schemes take the hue of the device's accent colour while every colour keeps its tone (its WCAG luminance), so each contrast ratio, the high-contrast schemes' included, stays the city's; the error colours stay red. The accent is CSS's `AccentColor` where the browser gives the device's own: Firefox, and Chrome (150 on desktop) only in an installed web app; Chrome gives a tab, and Safari every page, a constant colour instead, so there, and with a grey accent or none, the city's own colours show. Android's dynamic colour does not reach web pages.
+- **An embedding page can name the accent**: `--hcm-device-accent` on its root (`:root { --hcm-device-accent: #0b57d0; }`, any CSS colour) wins over `AccentColor`; Map colours still turns it off. The engine gains no colour library for this (`packages/ui/src/theme/device-accent.ts`, about 1 KB gzip).
+
 On an extra-large window (1600 px and wider) the Layers pane, always docked there, minimizes with its collapse button (**Restrânge straturile** / **Collapse layers**, `aria-expanded="true"`, where narrower windows have a close) to one floating button on the map's leading edge, at its gutter (**Straturi**, a layers icon, `aria-expanded="false"`, or the `l` key's focus on it), which brings it back; there is no rail, and the map takes the whole width (the owner, 2026-11-09). The minimized pane lasts for the session, also when the window leaves the extra-large layout and comes back: it is not in the URL hash, and the switches and sliders keep their values.
 
 ## `<hcm-map-viewer>`

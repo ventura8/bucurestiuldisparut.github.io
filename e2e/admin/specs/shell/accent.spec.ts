@@ -27,7 +27,9 @@ async function openAdmin(page: Page, content: ContentWorld, accent: string | nul
 
 /** The primary colour the shell wears now. */
 async function primary(page: Page): Promise<string> {
-    return page.locator('hcm-admin-shell').evaluate((shell, name) => getComputedStyle(shell).getPropertyValue(name).trim().toLowerCase(), PRIMARY);
+    return page
+        .locator('hcm-admin-shell')
+        .evaluate((shell, name) => getComputedStyle(shell).getPropertyValue(name).trim().toLowerCase(), PRIMARY);
 }
 
 /** Picks `choice` in the account menu's Colours. */
@@ -41,27 +43,35 @@ async function chooseColours(page: Page, choice: 'accent.device' | 'accent.map')
 }
 
 for (const scheme of ['light', 'dark'] as const) {
-    test(`The ${scheme} admin wears the device's accent by default; Map colours brings the city's back`, { tag: '@S-A21-HAPPY-DEVICE-ACCENT' }, async ({ page, content }) => {
-        await page.emulateMedia({ colorScheme: scheme });
-        await openAdmin(page, content, '#1e8e3e');
-        const accented = await primary(page);
+    test(
+        `The ${scheme} admin wears the device's accent by default; Map colours brings the city's back`,
+        { tag: '@S-A21-HAPPY-DEVICE-ACCENT' },
+        async ({ page, content }) => {
+            await page.emulateMedia({ colorScheme: scheme });
+            await openAdmin(page, content, '#1e8e3e');
+            const accented = await primary(page);
 
-        await chooseColours(page, 'accent.map');
-        await expect.poll(() => primary(page)).not.toBe(accented);
-        const own = await primary(page);
-        await page.reload();
-        await expect.poll(() => primary(page)).toBe(own);
-        await chooseColours(page, 'accent.device');
-        await expect.poll(() => primary(page)).toBe(accented);
-    });
+            await chooseColours(page, 'accent.map');
+            await expect.poll(() => primary(page)).not.toBe(accented);
+            const own = await primary(page);
+            await page.reload();
+            await expect.poll(() => primary(page)).toBe(own);
+            await chooseColours(page, 'accent.device');
+            await expect.poll(() => primary(page)).toBe(accented);
+        },
+    );
 }
 
-test("Without the device's accent the admin wears the city's own colours", { tag: '@S-A21-BAD-NO-DEVICE-ACCENT' }, async ({ page, content }) => {
-    await openAdmin(page, content, null);
-    const shownByDefault = await primary(page);
+test(
+    "Without the device's accent the admin wears the city's own colours",
+    { tag: '@S-A21-BAD-NO-DEVICE-ACCENT' },
+    async ({ page, content }) => {
+        await openAdmin(page, content, null);
+        const shownByDefault = await primary(page);
 
-    await chooseColours(page, 'accent.map');
+        await chooseColours(page, 'accent.map');
 
-    // Nothing to follow: Device accent and Map colours look the same.
-    await expect.poll(() => primary(page)).toBe(shownByDefault);
-});
+        // Nothing to follow: Device accent and Map colours look the same.
+        await expect.poll(() => primary(page)).toBe(shownByDefault);
+    },
+);
