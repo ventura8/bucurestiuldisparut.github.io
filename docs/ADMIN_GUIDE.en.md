@@ -358,6 +358,17 @@ Imagery jobs can run on your own computer instead of Google Cloud, which costs n
 - **The USGS delivery** is deleted from the bucket once the city's crop exists (a later run downloads it again), and the bucket deletes any left after 7 days.
 - **Publishing for free**: a layer whose file is at most 300 MB is published through Mapbox's Uploads API, which uses no compute units (10,000 MB a month are free); a larger one, a layer first published through MTS, or a Mapbox token without the `uploads:read` and `uploads:write` scopes goes through MTS within the month's compute units as before. The version's steps say which way it went: **Free upload to Mapbox** among them, marked skipped when the publish fell back to MTS.
 
+### The computers of your household
+
+Every computer at home can work on the map's imagery jobs, not only the one you use. The **All of this map's computers** list on **Jobs** (under **This computer**) shows each one: its name, **On** or **Off** (and when it was last seen), what it is doing, how much of the computer it may use and why (someone is using it, it is on battery, it got hot), and whether its helper is up to date. The design and the security review: `docs/research/M7-local-worker.md`, *Household computers*.
+
+- **Add another computer**. Pick what kind of computer it is:
+  - **Windows**, **Mac** or **Linux** with a screen: the list shows this admin's address. On Windows without Docker Desktop the helper file turns on WSL (Windows asks your permission once, then the computer restarts and the setup goes on by itself after you sign in), installs its own small Linux with Docker in it, and keeps it awake while it works; **Settings → Apps → Historic City Map Maker helper → Uninstall** removes it. On a Mac without Docker, the helper installs Colima (a small free Docker) with Homebrew; without Homebrew it tells you to install Homebrew from brew.sh first (or Docker Desktop). Open it on that computer, sign in with your Google account and press **Use this computer**; the rest happens by itself, as on your own computer.
+  - **No screen** (a small server, a computer you reach over SSH): the list shows one line. Paste it into a terminal on that computer. It downloads the helper, installs Docker from the computer's own packages when it is missing (it asks that computer's password once, and says how long it takes and how much room it needs), keeps the helper running when nobody is logged in, and connects the computer to the map by itself. The line works once, for 45 minutes; **New line** gives another. The code in it is not a password and is kept nowhere (not in a file, not in the computer's list of running programs).
+- **Rename** gives a computer a name of yours (only for the list). **Pause** stops it taking new work until **Resume**.
+- **Each computer keeps room for its person.** A computer that someone is using, that runs on battery or got hot leaves the next job to another computer of yours that is free; when no other is free, it takes the job anyway, slowly.
+- **Remove this computer** asks the computer to clean itself up: it deletes its helper, its work and its downloaded pipeline (keep the scanned maps you imported if you tick **Keep the imported scanned maps on it**; **Also remove Docker** removes Docker only if the helper installed it, never one you already had), then it is disconnected. You type no command. A computer that is off does it the next time it starts. On the computer itself, its page `http://localhost:8765/` has **Stop using this computer**, which does the same. If it never comes back, **Disconnect now anyway** disconnects it at once, and only then the list shows the line (or the file) that cleans that computer up by hand.
+
 ## Costs
 
 - Google Cloud: about $0.5–2 per month; an installation or update uses Cloud Build minutes (the card names them; a month's releases stay within the free minutes) and the imagery pipeline's image about $0.10 a month; an import downloads on 1 vCPU (about $0.09 an hour) and is processed on 4 vCPU (about $0.37 an hour; 8 vCPU, about $0.75, for a KH-9 panoramic frame), mostly within Cloud Run's monthly free tier; Firebase Hosting is free up to 10 GB stored and 360 MB a day; the $5 budget automatically pauses image processing (never the site), and **Resume processing** in Historical imagery or Jobs starts it again for the rest of the month. An imagery job run on your own computer costs no Cloud Run time at all; the Jobs page shows the month's Cloud Run use against the free tier and asks before a run would pass it.
@@ -484,6 +495,18 @@ The message shown, its cause and what to do, screen by screen.
 | **Local AI unavailable: Docker needs 30 GB free** | not enough room where Docker keeps its images | free the room; the next frame that needs it tries again |
 | **Local AI: processor only** | no graphics card reached the sidecar | it still works, much slower; install the NVIDIA driver and `nvidia-container-toolkit`, and the next frame finds the card |
 | A version waits with the Cloud Run estimate | its run in Google Cloud would pass this month's free tier | **Run in Google Cloud anyway** (it is billed past the free tier) or **Run on my computer** |
+
+### All of this map's computers
+
+| Message | Cause | What to do |
+| --- | --- | --- |
+| "The map refused the code: it was used already or ran out." (on the computer without a screen) | the line was pasted twice, or more than 45 minutes after it was made | **Add another computer**, **New line**, and paste it again: it skips what is already done |
+| "Docker and the map's pipeline need 10 GB free on this computer" | the computer is short of room | free some space, then paste the line again |
+| "Docker could not be installed: the password was refused, or this computer does not allow installing software" | a wrong password, or a work computer that blocks installing | ask the computer's administrator to install Docker, or install it from `https://docs.docker.com/engine/install/`, then paste the line again |
+| "The helper stops when you log out" | that Linux does not let the account keep programs running after logout | run `sudo loginctl enable-linger <your user>` once on it |
+| **It is off: it cleans itself up the next time it starts** | **Remove this computer** waits for that computer | start it; or **Disconnect now anyway**, then run the line shown on it |
+| **It cannot clean itself up: it was started with a command** | the computer ran the Advanced command, not the helper | **Disconnect now anyway**, then run the line shown on it |
+| **Docker stays on it** | removing Docker needs that computer's password | if you want, type `sudo apt-get remove docker.io` on it |
 
 ### The public map
 

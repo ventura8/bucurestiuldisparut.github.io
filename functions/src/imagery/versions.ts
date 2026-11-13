@@ -205,7 +205,8 @@ function processingVersion(work: NewWork, fields: VersionFields): LayerVersionDo
         archive: undefined,
         landsat: undefined,
         rights: fields.rights,
-        help: undefined,
+        // An archive series stitched again starts with its base's `help` (`restitch.ts`), which the pipeline's new picture updates.
+        help: fields.help,
         suggestions: undefined,
         crop: fields.crop,
         output: undefined,

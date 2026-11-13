@@ -35,4 +35,7 @@ export const M22_EXPORTS = [
     'imageryLayoutResponseSchema',
     'helpItemsOf',
     'HELP_ITEM_CODES',
+    // M20 (DECISIONS-for-review.md §216): a published series Locate again lays on its overview again, and the version page's flags.
+    'restitchable',
+    'helpFlagsOf',
 ] as const;

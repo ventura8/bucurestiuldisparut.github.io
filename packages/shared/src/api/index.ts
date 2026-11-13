@@ -320,7 +320,9 @@ export {
     workerPairCodeResponseSchema,
     workerRevokeRequestSchema,
     workerRevokeResponseSchema,
+    WORKER_HOUSEHOLD_PAIR_SECONDS,
 } from './worker.js';
+export { WORKER_MANAGE_ACTIONS, workerManageRequestSchema, workerManageResponseSchema } from './worker-manage.js';
 export type { WorkerOs, WorkerStarterAction, WorkerStarterUpdate } from './worker.js';
 // M26: what the worker says of its computer (`machine` on its `/state`), and the owner's profile.
 export {

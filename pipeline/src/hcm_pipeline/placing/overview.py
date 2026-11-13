@@ -20,8 +20,8 @@ _MIN_KEYPOINTS = 10
 _MIN_INLIERS = 25
 # A weaker fit is kept only when its scale and turn agree with the series' strong fits (harti.zip 1895: 14 of 60 pieces).
 _MIN_WEAK_INLIERS = 10
-_AGREE_SCALE = 0.05
-_AGREE_TURN = 0.05
+AGREE_SCALE = 0.05
+AGREE_TURN = 0.05
 _MIN_CONSENSUS = 2
 _TILE_FEATURES = 4000
 # The overview holds every tile's features at once: 4,000 left 23 of the 60 harti.zip 1895 pieces with too few to match.
@@ -71,7 +71,7 @@ def _base_scale(tile: np.ndarray, overview: np.ndarray) -> float:
     return 1.0 / ratio
 
 
-def _orb_detect(img: np.ndarray, features: int = _TILE_FEATURES) -> tuple[list[Any], np.ndarray | None]:
+def orb_detect(img: np.ndarray, features: int = _TILE_FEATURES) -> tuple[list[Any], np.ndarray | None]:
     """Detect ORB keypoints and descriptors on a grey image."""
     orb = cv2.ORB.create(nfeatures=features)
     kp, des = orb.detectAndCompute(img, None)
@@ -80,7 +80,7 @@ def _orb_detect(img: np.ndarray, features: int = _TILE_FEATURES) -> tuple[list[A
 
 def overview_features(overview: np.ndarray) -> Features:
     """The overview's features, detected once for every tile."""
-    return Features(*_orb_detect(overview, _OVERVIEW_FEATURES))
+    return Features(*orb_detect(overview, _OVERVIEW_FEATURES))
 
 
 def _descriptors_ok(
@@ -168,7 +168,7 @@ def _match_at_scale(
     new_h = max(1, int(tile.shape[0] / scale))
     resized = cv2.resize(tile, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
-    kp_t, des_t = _orb_detect(resized)
+    kp_t, des_t = orb_detect(resized)
     kp_o, des_o = target.keypoints, target.descriptors
     des = _descriptors_ok(des_t, des_o, kp_t, kp_o)
     if des is None:
@@ -215,7 +215,7 @@ def tile_on_overview(
     return fit if fit is not None and fit.inliers >= _MIN_INLIERS else None
 
 
-def _scale_turn(fit: TileFit) -> tuple[float, float]:
+def scale_turn(fit: TileFit) -> tuple[float, float]:
     """The fit's scale and rotation (radians)."""
     return float(np.hypot(fit.matrix[0, 0], fit.matrix[1, 0])), float(np.arctan2(fit.matrix[1, 0], fit.matrix[0, 0]))
 
@@ -224,9 +224,9 @@ def _strong(fits: Sequence[TileFit | None]) -> list[TileFit]:
     return [fit for fit in fits if fit is not None and fit.inliers >= _MIN_INLIERS]
 
 
-def _consensus(fits: Sequence[TileFit | None]) -> tuple[float, float] | None:
+def consensus_of(fits: Sequence[TileFit | None]) -> tuple[float, float] | None:
     """The median scale and turn of the strong fits, or None when fewer than two are strong."""
-    strong = np.array([_scale_turn(fit) for fit in _strong(fits)]).reshape(-1, 2)
+    strong = np.array([scale_turn(fit) for fit in _strong(fits)]).reshape(-1, 2)
     if len(strong) < _MIN_CONSENSUS:
         return None
     middle = np.median(strong, axis=0)
@@ -234,8 +234,8 @@ def _consensus(fits: Sequence[TileFit | None]) -> tuple[float, float] | None:
 
 
 def _agrees(fit: TileFit, consensus: tuple[float, float]) -> bool:
-    scale, turn = _scale_turn(fit)
-    return abs(scale / consensus[0] - 1.0) <= _AGREE_SCALE and abs(turn - consensus[1]) <= _AGREE_TURN
+    scale, turn = scale_turn(fit)
+    return abs(scale / consensus[0] - 1.0) <= AGREE_SCALE and abs(turn - consensus[1]) <= AGREE_TURN
 
 
 def _kept(fit: TileFit | None, consensus: tuple[float, float] | None) -> TileFit | None:
@@ -256,13 +256,13 @@ def fit_tiles(
     area = float(np.median([tile.shape[0] * tile.shape[1] for _, tile in tiles])) if tiles else 1.0
     scale = expected_scale(len(tiles), area, overview.shape)
     fits = [fit_tile(tile, target, grid_hint(name, rows, cols, overview.shape), scale) for name, tile in tiles]
-    consensus = _consensus(fits)
+    consensus = consensus_of(fits)
     return [_kept(fit, consensus) for fit in fits]
 
 
 def detail_of(fits: Sequence[TileFit | None]) -> float | None:
     """Tile pixels per overview pixel, the median over the fits; None when none landed."""
-    scales = [_scale_turn(fit)[0] for fit in fits if fit is not None]
+    scales = [scale_turn(fit)[0] for fit in fits if fit is not None]
     return 1.0 / float(np.median(scales)) if scales else None
 
 

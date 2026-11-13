@@ -27,7 +27,8 @@ export type HelloDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'jobs'>;
  * Finding 67: a paired worker's document also names its pairing and its image, and the answer says the installed image
  * and whether the worker's is outdated (it then claims nothing until the owner runs the admin's new command). Finding 72:
  * a worker the starter's supervisor runs names its image (`image`), which is then the one compared (and recorded). M10: it also says
- * its local AI's state (`ai`), again whenever that changes; `<hcm-worker-panel>` shows it.
+ * its local AI's state (`ai`), again whenever that changes; `<hcm-worker-panel>` shows it. W5: the computer's name and starter
+ * version (`host`), for the admin's list of the city's computers.
  */
 async function workerHello(
     deps: HelloDeps,
@@ -49,6 +50,7 @@ async function workerHello(
             version: request.version,
             ...pairingFields(caller, images),
             ...(request.ai === undefined ? {} : { ai: request.ai }),
+            ...hostFields(request.host),
             lastSeenAt: now,
             updatedBy: caller.uid,
             updatedAt: now,
@@ -69,6 +71,12 @@ async function workerHello(
 function pairingFields(caller: VerifiedCaller, images: ImageState): Partial<WorkerDoc> {
     const pair = caller.worker === undefined ? {} : { pair: caller.worker.pair };
     return { ...pair, ...(images.own === undefined ? {} : { image: images.own }), outdated: images.outdated };
+}
+
+/** W5 (household computers): the computer's own name and its starter's version, when the starter passed them on. */
+function hostFields(host: CallableRequest<'worker.hello'>['host']): Partial<WorkerDoc> {
+    const said = { host: host?.name, os: host?.os, starter: host?.starter };
+    return Object.fromEntries(Object.entries(said).filter(([, value]) => value !== undefined));
 }
 
 /** The `worker-hello` callable. */

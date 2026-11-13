@@ -21,3 +21,10 @@ class ExitCode(enum.IntEnum):
     """The local worker under the starter's supervisor (`worker --supervised`, M7 §1.5) runs an image older than the
     installed pipeline's: the supervisor reads the installed image's digest, pulls it and starts again (75: sysexits'
     EX_TEMPFAIL, apart from Docker's own 125-137)."""
+    REMOVE = 76
+    """W5, Remove this computer (docs/research/M7-local-worker.md, *Household computers*): the admin asked, the worker accepted, and the
+    starter's supervisor now cleans the computer up. 77 also removes Docker (where the helper installed it), 78 keeps the scanned
+    maps, 79 both."""
+    REMOVE_DOCKER = 77
+    REMOVE_KEEP = 78
+    REMOVE_KEEP_DOCKER = 79
