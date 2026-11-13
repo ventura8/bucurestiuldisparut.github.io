@@ -6,6 +6,7 @@
  * longer waits each say so. Text only: every value is bound as a property or text.
  */
 import { translateApiError, type Locale } from '@hcm/shared';
+import type { FunnelSnapshot } from '@hcm/shared/funnels';
 import { css, html, type PropertyValues, type TemplateResult } from 'lit';
 
 import type { AdminRouteIdPort } from '../admin-port.js';
@@ -14,6 +15,7 @@ import { AreaPage } from '../editing/area-page.js';
 import { editingStyles } from '../editing/editing-styles.js';
 import { tilesText as t } from './tiles-text.js';
 import { TILE_STEPS, type TilesIntentsPort, type TileStepPort, type TilesViewState } from './tiles-port.js';
+import { tilesFunnel } from './tiles-funnel.js';
 
 export const HCM_TILES_PAGE_TAG = 'hcm-tiles-page';
 
@@ -84,6 +86,7 @@ class HcmTilesPage extends AreaPage<TilesViewState, TilesIntentsPort> {
     ];
 
     protected readonly route: AdminRouteIdPort = 'help';
+    protected override readonly funnels = (view: TilesViewState): readonly (FunnelSnapshot | null)[] => [tilesFunnel(view)];
 
     protected storeOf(content: ContentPort): AreaPort<TilesViewState, TilesIntentsPort> | null {
         return content.help;

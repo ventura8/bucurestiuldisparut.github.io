@@ -19,4 +19,8 @@ export const FIELD_EXPORTS: readonly string[] = [
     'sanitizeTarget',
     'shortTarget',
     'vitalParams',
+    // The wizard funnels' events and the privacy signal (DECISIONS-for-review.md §200; the funnel itself: @hcm/shared/funnels).
+    'FUNNEL_EVENT_PARAMS',
+    'INPUT_DEVICES',
+    'privacySignal',
 ];

@@ -316,3 +316,44 @@ describe('telemetry: GA4 cookies', () => {
         expect(log.messages()).toContain('analytics cookies not expired');
     });
 });
+
+describe('telemetry: privacy signals and the settled year (§200)', () => {
+    it('badPath_doNotTrackDeclinesWithoutAskingAndSendsNothing', async () => {
+        // @S-V70-BAD-NO-EVENTS-BEFORE-CONSENT: a browser that asks not to be tracked gets no banner and no event.
+        const { telemetry, events, storage } = setup({}, Object.assign(fakeWindow(), { navigator: { doNotTrack: '1' } }));
+        telemetry.setContext?.(CONTEXT);
+        telemetry.logEvent({ name: 'page_view' });
+        telemetry.logEvent({ name: 'compass_reset' });
+        await settle();
+
+        expect(telemetry.consent).toBe('denied');
+        expect(events).toEqual([]);
+        expect(storage.has('hcm:bucuresti:consent')).toBe(false);
+
+        telemetry.setConsent('granted');
+        telemetry.logEvent({ name: 'share' });
+        await settle();
+        // Accepting counts the page view of this page (as without the signal), then what follows.
+        expect(events).toEqual(['page_view', 'share']);
+    });
+
+    it('happyPath_theTimelinesYearLeavesOnceTheYearStaysOrThePageHides', async () => {
+        const { telemetry, events, page, params } = setup({ 'hcm:bucuresti:consent': 'granted' });
+        telemetry.setContext?.(CONTEXT);
+        telemetry.logEvent({ name: 'year_change', year: 1950 });
+        telemetry.logEvent({ name: 'year_change', year: 1966 });
+        await settle();
+        expect(events).toEqual([]);
+
+        page.dispatchEvent(new Event('pagehide'));
+        await settle();
+        expect(events).toEqual(['year_change']);
+        expect(params.at(-1)).toMatchObject({ year: 1966 });
+
+        telemetry.logEvent({ name: 'year_change', year: 1970 });
+        telemetry.destroy();
+        page.dispatchEvent(new Event('pagehide'));
+        await settle();
+        expect(events).toEqual(['year_change']);
+    });
+});

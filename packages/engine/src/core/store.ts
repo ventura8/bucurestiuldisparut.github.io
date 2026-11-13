@@ -18,13 +18,14 @@ import {
     type PhotoView,
 } from '@hcm/shared';
 import type { MapLabels } from '@hcm/shared/map-labels';
-import { isCompactHeight, isDockable, windowClassFor } from '@hcm/ui';
 import { Listeners, type CameraOffset, type Unsubscribe } from '@hcm/ui/map';
 
 import type { Measurement } from '../telemetry/telemetry-port.js';
 import { Boot, type BootHost } from './boot.js';
 import { CompareDriver, type CompareDriverHost } from './compare-driver.js';
-import { resetNorth, watchCamera, type CompassActions } from './compass.js';
+import { resetNorth, watchCamera, zoomBy, type CompassActions } from './compass.js';
+import { inputLogger, measureToast } from './viewer-analytics.js';
+import { withWindowSize } from './window-size.js';
 import type { MountedMap } from './compare-port.js';
 import type { ViewerDeps } from './deps.js';
 import { withRequestedLabels } from './map-labels.js';
@@ -99,6 +100,8 @@ export interface ViewerActions {
     zoomBy(step: number): void;
     /** The visitor shared the page (Web Share or the clipboard): the `share` analytics event (CR-17). */
     logShare(): void;
+    /** A pad or a games console's browser is in use: the `input_device` event, once a page each (V65). */
+    logInput(device: 'gamepad' | 'console'): void;
     setWindowSize(width: number, height: number): void;
     setTheme(theme: ThemeMode): void;
     setConsent(consent: 'granted' | 'denied'): void;
@@ -392,29 +395,24 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         this.#boot.flyMap(view);
     }
 
-    readonly resetNorth: CompassActions['resetNorth'] = () => resetNorth(this.deps.map, this.#boot);
+    readonly resetNorth: CompassActions['resetNorth'] = () => resetNorth(this.deps.map, this.#boot, this.deps.telemetry);
     readonly watchCamera: CompassActions['watchCamera'] = (listener) => watchCamera(this.deps.map, listener);
 
     zoomBy(step: number): void {
-        const city = this.#state.manifest?.city;
-        const view = this.deps.map.getView();
-        const zoom = city === undefined ? view.zoom : clamp(view.zoom + step, city.minZoom, city.maxZoom);
-        if (zoom !== view.zoom) {
-            this.#boot.flyMap({ ...view, zoom });
-        }
+        zoomBy(this.deps.map, this.#boot, this.#state.manifest?.city, step);
     }
 
     logShare(): void {
         this.deps.telemetry.logEvent({ name: 'share' });
     }
 
+    /** A pad or a games console's browser, reported once a page each (V65; `input_device`, after consent). */
+    readonly logInput: ViewerStore['logInput'] = inputLogger(() => this.deps.telemetry);
+
     setWindowSize(width: number, height: number): void {
-        const windowClass = windowClassFor(width);
-        const compactHeight = isCompactHeight(height);
-        const dockable = isDockable(width);
-        const state = this.#state;
-        if (windowClass !== state.windowClass || compactHeight !== state.compactHeight || dockable !== state.dockable) {
-            this.set({ ...state, windowClass, compactHeight, dockable });
+        const next = withWindowSize(this.#state, width, height);
+        if (next !== this.#state) {
+            this.set(next);
         }
     }
 
@@ -432,6 +430,7 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
 
     showToast(key: MessageKey, params?: Readonly<Record<string, string>>): void {
         this.set({ ...this.#state, toast: params === undefined ? { key } : { key, params } });
+        measureToast(this.deps.telemetry, key);
     }
 
     dismissToast(): void {

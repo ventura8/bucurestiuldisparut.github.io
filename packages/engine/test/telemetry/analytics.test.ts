@@ -236,6 +236,21 @@ describe('ConsentStore', () => {
         expect(storage.get('hcm:bucuresti:consent')).toBe('granted');
     });
 
+    it('badPath_aPrivacySignalDeclinesUntilAStoredOrGivenAnswer', () => {
+        const storage = memoryStorage({ 'hcm:cluj:consent': 'granted' });
+        const consent = new ConsentStore(storage, recordingLog().log, undefined, true);
+        const heard: string[] = [];
+        consent.onChange((state) => heard.push(state));
+
+        expect(consent.state).toBe('denied');
+        consent.setCity('bucuresti');
+        expect(consent.state).toBe('denied');
+        expect(storage.has('hcm:bucuresti:consent')).toBe(false);
+        consent.setCity('cluj');
+
+        expect(heard).toEqual(['granted']);
+    });
+
     it('badPath_aBrokenStorageMeansNoAnswerYet', () => {
         const log = recordingLog();
         const consent = new ConsentStore(brokenStorage, log.log, 'bucuresti');

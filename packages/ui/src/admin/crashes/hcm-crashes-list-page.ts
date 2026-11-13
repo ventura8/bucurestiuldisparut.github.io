@@ -4,7 +4,8 @@
  * text, how often, when last), More for the next page; the selected group's count, first and last seen, release and
  * state, with **Open in Error Reporting** (the project's page in the Google Cloud console, a new tab). A disabled Error
  * Reporting API is explained with the way to enable it (Setup's analytics card). The selection is page state: Error
- * Reporting's group ids are never routed. The Setup card's `hcm-crash-groups` stays where it is.
+ * Reporting's group ids are never routed. The Setup card's `hcm-crash-groups` stays where it is. `#/crashes/statistics` is
+ * the Statistics view of the wizards' funnels (`statistics-view.ts`, §200), linked from the list's head.
  */
 import type { Locale } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
@@ -17,6 +18,7 @@ import { formatWhen, loadingTemplate } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText, noticeOf } from '../shell/text.js';
 import type { CrashesIntentsPort, CrashesViewState, CrashGroupPort, CrashPeriodPort } from './crashes-port.js';
+import { statisticsStyles, statisticsView } from './statistics-view.js';
 
 export const HCM_CRASHES_LIST_PAGE_TAG = 'hcm-crashes-list-page';
 
@@ -85,7 +87,7 @@ const crashStyles = css`
 `;
 
 export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntentsPort> {
-    static override readonly styles = [...editingStyles, crashStyles];
+    static override readonly styles = [...editingStyles, crashStyles, statisticsStyles];
 
     protected readonly route: AdminRouteIdPort = 'crashes';
 
@@ -95,6 +97,9 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
 
     override render(): TemplateResult {
         const view = this.view;
+        if (this.params[0] === 'statistics') {
+            return statisticsView(this.locale, this.state?.analytics === true);
+        }
         if (view === null) {
             return EMPTY;
         }
@@ -125,6 +130,7 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
             label: contentText(locale, `adminContent.crashes.period.${String(period) as '24'}`),
         }));
         return html`<div class="list-head">
+                <a href="#/crashes/statistics" data-statistics-link>${contentText(locale, 'adminContent.statistics.link')}</a>
                 <hcm-segmented-button
                     .label=${contentText(locale, 'adminContent.crashes.periodLabel')}
                     .options=${options}

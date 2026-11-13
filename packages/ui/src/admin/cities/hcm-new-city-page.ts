@@ -10,6 +10,7 @@
  * (`area-gesture.ts`); **Move the map** hands the pointer back to the map, **Draw the area** takes it again.
  */
 import { CITY_SPAN_LIMITS, isUsableCityId, type CityBounds, type Locale } from '@hcm/shared';
+import type { FunnelSnapshot } from '@hcm/shared/funnels';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
 import { visuallyHidden } from '../../components/styles.js';
@@ -24,6 +25,7 @@ import { contentText, noticeOf } from '../shell/text.js';
 import { completeBounds, EDGES, nextDraft, type Edge, type EdgeDraft } from './area-edges.js';
 import { AreaGesture } from './area-gesture.js';
 import type { NewCityIntentsPort, NewCityViewState } from './cities-port.js';
+import { newCityFunnel } from './new-city-funnel.js';
 import { publicAddressLink, publicAddressStyles } from './public-address.js';
 
 export const HCM_NEW_CITY_PAGE_TAG = 'hcm-new-city-page';
@@ -98,6 +100,7 @@ export class HcmNewCityPage extends AreaPage<NewCityViewState, NewCityIntentsPor
     static override readonly styles = [...editingStyles, visuallyHidden, newCityStyles, publicAddressStyles];
 
     protected readonly route: AdminRouteIdPort = 'cities';
+    protected override readonly funnels = (view: NewCityViewState): readonly FunnelSnapshot[] => [newCityFunnel(view)];
     readonly #gesture = new AreaGesture((from, to, size) => {
         this.intents?.dragArea(from, to, size);
     });

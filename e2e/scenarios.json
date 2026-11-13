@@ -1121,6 +1121,27 @@
             "name": "The pipeline and the worker on somebody's own computer stay within a memory and processor budget, and an idle worker asks rarely",
             "milestone": "M7",
             "source": "the owner, 2026-11-12: reports/resource-audit.md (the machines are short of memory); docs/research/M7-local-worker.md, Addendum of 2026-11-12"
+        },
+        {
+            "id": "A150",
+            "area": "admin",
+            "name": "Every wizard reports its step funnel and the errors it shows to analytics, after consent, as codes",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (beta.1); docs/ARCHITECTURE.md → Wizard funnels; DECISIONS-for-review.md §200"
+        },
+        {
+            "id": "A151",
+            "area": "admin",
+            "name": "The Statistics view shows each wizard's steps and the way to its funnel in Google Analytics",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (beta.1); DECISIONS-for-review.md §200"
+        },
+        {
+            "id": "V70",
+            "area": "viewer",
+            "name": "The viewer's key actions reach analytics only after consent, and never under Do Not Track",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (beta.1); DECISIONS-for-review.md §200"
         }
     ],
     "scenarios": [
@@ -19427,6 +19448,94 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The review of 2026-11-13 (W1). Test: e2e/admin/specs/imagery/tiles.spec.ts; functions/test/imagery/save-gcps.test.ts; Vitest packages/ui/test/admin/imagery/tiles-link.test.ts."
+        },
+        {
+            "id": "S-A150-HAPPY-FUNNEL-ORDER",
+            "behaviour": "A150",
+            "area": "admin",
+            "path": "happy",
+            "title": "A wizard's funnel events leave in the order the owner walks it",
+            "asserts": "wizard_start, step_view (with the attempt), step_help_opened, step_error, step_complete (with its time), step_back, step_action, wizard_complete reach a mocked telemetry in order; Setup's cards and New city's steps signal as codes",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/cities/new-city.spec.ts (New city's signals in order); Vitest packages/shared/test/telemetry/funnel-hub.test.ts, packages/ui/test/admin/setup/hcm-setup-page.test.ts, packages/ui/test/admin/wizard-funnels.test.ts, packages/admin/test/app/funnels.test.ts."
+        },
+        {
+            "id": "S-A150-BAD-NO-EVENTS-BEFORE-CONSENT",
+            "behaviour": "A150",
+            "area": "admin",
+            "path": "bad",
+            "title": "No funnel event leaves before consent or under Do Not Track",
+            "asserts": "a browser that asks not to be tracked is taken as a refusal: no banner, nothing sent or held; an event before an answer waits in memory and is forgotten on a refusal",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/cities/new-city.spec.ts (no Google script on the page; the e2e admin has no GA4, the firewall refuses any Google host); Vitest packages/admin/test/app/telemetry.test.ts (Do Not Track, held before an answer)."
+        },
+        {
+            "id": "S-A150-BAD-STEP-ERROR-CODE-NOT-TEXT",
+            "behaviour": "A150",
+            "area": "admin",
+            "path": "bad",
+            "title": "A step's error leaves as its code, never as its words",
+            "asserts": "step_error and ui_error refuse free text, an address or an unknown wizard; the hub sends `unknown` for a step or code that is not a short token; an error notice is one ui_error with its key and route",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/cities/new-city.spec.ts (the area's problem leaves as validation.bounds); Vitest packages/shared/test/telemetry/field-events.test.ts, funnel-hub.test.ts, packages/admin/test/app/funnels.test.ts."
+        },
+        {
+            "id": "S-A151-HAPPY-STATISTICS",
+            "behaviour": "A151",
+            "area": "admin",
+            "path": "happy",
+            "title": "The Statistics view lists every wizard's steps with their codes and links Google Analytics",
+            "asserts": "#/crashes/statistics: one item per wizard id, each with its steps in plain words and codes, the way to a funnel exploration, the Google Analytics link; reached from the crash list's head",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/ops.spec.ts (tour state crashes.statistics); Vitest packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A151-BAD-NO-ANALYTICS",
+            "behaviour": "A151",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without Google Analytics the Statistics view says so and leads to Setup",
+            "asserts": "statistics are off: the note says so in plain words and links step g of Setup",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/ops.spec.ts; Vitest packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-V70-HAPPY-KEY-ACTIONS",
+            "behaviour": "V70",
+            "area": "viewer",
+            "path": "happy",
+            "title": "After Accept the compass reset is one GA4 event, valid and private",
+            "asserts": "the GA4 mock receives one compass_reset; every event passes the viewer's guard",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/key-actions.spec.ts; Vitest packages/engine/test/core/store-compass.test.ts, store.test.ts (input_device, ui_error)."
+        },
+        {
+            "id": "S-V70-BAD-NO-EVENTS-BEFORE-CONSENT",
+            "behaviour": "V70",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Under Do Not Track the viewer asks nothing and sends nothing",
+            "asserts": "no consent banner; no request reaches Google or Firebase; no gtag on the page",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/key-actions.spec.ts; Vitest packages/engine/test/telemetry/telemetry.test.ts."
+        },
+        {
+            "id": "S-V70-BAD-YEAR-DRAG-ONE-EVENT",
+            "behaviour": "V70",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A drag along the timeline is one year_change, its last year",
+            "asserts": "the year changes held 1.5 s; a newer one replaces it; hiding the page sends it at once",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Test: e2e/specs/viewer/key-actions.spec.ts (four years along the timeline, one year_change); Vitest packages/engine/test/telemetry/settle.test.ts, telemetry.test.ts."
         }
     ]
 }

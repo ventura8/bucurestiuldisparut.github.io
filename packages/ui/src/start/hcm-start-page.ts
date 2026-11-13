@@ -4,6 +4,7 @@
  * `start.*` catalogue, in logical CSS, with no kit element: this page loads before anything exists, and stays small.
  */
 import { translateStart, type Locale, type StartKey } from '@hcm/shared';
+import { trackFunnel } from '@hcm/shared/funnels';
 import { LitElement, html, nothing, type TemplateResult } from 'lit';
 
 import { defineOnce } from '../components/internal.js';
@@ -13,6 +14,7 @@ import { defineHcmStartLanguage } from './hcm-start-language.js';
 import { closedScreen, introScreen, type StartText } from './start-intro.js';
 import { doneScreen, failurePanel, providerScreen, workScreen, type RunFailure, type RunView } from './start-run.js';
 import { startHostStyles, startStyles } from './start-styles.js';
+import { startFunnel } from './start-funnel.js';
 
 export const HCM_START_PAGE_TAG = 'hcm-start-page';
 
@@ -105,11 +107,19 @@ export class HcmStartPage extends LitElement {
     }
 
     override updated(): void {
+        this.#trackFunnel();
         const screen = this.port?.view.screen;
         if (this.#shown !== undefined && screen !== this.#shown) {
             this.renderRoot.querySelector('h1')?.focus();
         }
         this.#shown = screen;
+    }
+
+    /** The start's funnel (§200): what changed since the last render, as codes. */
+    #trackFunnel(): void {
+        if (this.port !== undefined) {
+            trackFunnel(this, startFunnel(this.port.view));
+        }
     }
 
     #follow(): void {

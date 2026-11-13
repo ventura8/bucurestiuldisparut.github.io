@@ -9,6 +9,7 @@
  * fields are read-only, so what is on screen can still be selected and copied until sign-out.
  */
 import { DEFAULT_LOCALE, type Locale } from '@hcm/shared';
+import { trackFunnel, type FunnelSnapshot } from '@hcm/shared/funnels';
 import { LitElement } from 'lit';
 
 import type { AdminAppPort, AdminRouteIdPort, AdminStatePort } from '../admin-port.js';
@@ -44,6 +45,12 @@ export abstract class AreaPage<State, Intents> extends LitElement {
 
     /** The page's store among the app's areas. */
     protected abstract storeOf(content: ContentPort): AreaPort<State, Intents> | null;
+
+    /**
+     * A wizard's page says where it stands on every change of its store (`trackFunnel` of `@hcm/shared`, §200): New city,
+     * the tile wizard, the georeferencer, the imports. Other pages have none.
+     */
+    protected readonly funnels?: (view: State) => readonly (FunnelSnapshot | null)[];
 
     override connectedCallback(): void {
         super.connectedCallback();
@@ -114,9 +121,20 @@ export abstract class AreaPage<State, Intents> extends LitElement {
         if (store !== null) {
             const stop = store.subscribe((view) => {
                 this.view = view;
+                this.#track(view);
             });
             this.#followed = { store, stop };
             this.view = store.state;
+            this.#track(store.state);
+        }
+    }
+
+    /** The page's funnels, compared with the last ones (nothing when the page has none or the view is not read yet). */
+    #track(view: State | null): void {
+        if (this.funnels !== undefined && view !== null) {
+            for (const snapshot of this.funnels(view)) {
+                trackFunnel(this, snapshot);
+            }
         }
     }
 

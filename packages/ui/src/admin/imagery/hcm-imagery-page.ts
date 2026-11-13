@@ -29,6 +29,7 @@ import { findView } from './scene-list.js';
 import { chunkLoader, chunkTemplate } from './orders/lazy-card.js';
 import { APPROVAL_MAP_CHUNK } from './lazy-version.js';
 import { workView } from './work-list.js';
+import { imageryFunnels } from './imagery-funnels.js';
 
 export const HCM_IMAGERY_PAGE_TAG = 'hcm-imagery-page';
 
@@ -90,6 +91,7 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
     static override readonly styles = [...imageryStyles, orderStyles];
 
     protected readonly route: AdminRouteIdPort = 'imagery';
+    protected override readonly funnels = imageryFunnels;
     /** The open question (Reject, Pay, Cancel), or null. */
     declare question: ImageryQuestion | null;
     /** mapbox-gl.css of the pinned release ('' in tests: no network). */

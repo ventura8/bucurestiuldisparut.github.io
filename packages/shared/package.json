@@ -38,6 +38,10 @@
         "./map-labels": {
             "types": "./src/i18n/map-labels/index.ts",
             "default": "./src/i18n/map-labels/index.ts"
+        },
+        "./funnels": {
+            "types": "./src/telemetry/funnels.ts",
+            "default": "./src/telemetry/funnels.ts"
         }
     },
     "dependencies": {

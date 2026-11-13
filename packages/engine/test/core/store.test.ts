@@ -365,6 +365,28 @@ describe('viewer store: view, window, theme, consent', () => {
 
         expect(store.getState().toast).toEqual({ key: 'error.layer', params: { name: 'Corona' } });
     });
+
+    it('badPath_anErrorToastIsMeasuredByItsKeyAndAnotherToastIsNot', () => {
+        const { store, telemetry } = harness();
+
+        store.showToast('error.layer', { name: 'Corona' });
+        store.showToast('timeline.year', { year: '1966' });
+
+        expect(telemetry.measures.filter((measure) => measure.kind === 'ui_error')).toEqual([{ kind: 'ui_error', code: 'error.layer' }]);
+    });
+
+    it('happyPath_aPadOrAConsoleIsReportedOnceAPageEach', () => {
+        const { store, telemetry } = harness();
+
+        store.logInput('gamepad');
+        store.logInput('gamepad');
+        store.logInput('console');
+
+        expect(telemetry.events.filter((event) => event.name === 'input_device')).toEqual([
+            { name: 'input_device', device: 'gamepad' },
+            { name: 'input_device', device: 'console' },
+        ]);
+    });
 });
 
 describe('viewer store: hash, map events, lifecycle', () => {

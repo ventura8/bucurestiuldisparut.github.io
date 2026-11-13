@@ -3792,3 +3792,20 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: Mapbox reloads every style fragment's 3D models with `Object.keys(this.modelUris[scope])`, and a fragment that never had a model has no entry; the reader-mode script of Firefox for iOS runs in every page and fails on ours.
     - Fix and pin: `packages/ui/src/map/context-restore.ts` gives the missing scopes an empty list in a capture listener that runs before Mapbox's (`packages/ui/test/map/context-restore.test.ts` reproduces the throw without it); `crashNoiseOf` drops injected, extension and aborted errors with their reason (`packages/shared/test/telemetry/crash-noise.test.ts`).
     - **Read the Crashes page's top frames before fixing: a group whose stack is all Mapbox can still be ours to work around, and one whose stack is the page at line 1 is the browser's.**
+
+662. **The telemetry track left three files over their line limit, and nobody saw it until the next track added a line.**
+    - Seen: 2026-11-13, track/analytics merging track/telemetry: ESLint's `max-lines` failed on `packages/shared/src/index.ts` (402), `packages/engine/src/core/store.ts` (404) and `packages/admin/src/app/mount.ts` before any line of this track counted.
+    - Cause: the paused track never ran its `tests` and `static` stages after its last commits (its open items said so).
+    - Fix and pin: the shared index re-exports the field events' types with `export type *` and the funnels from a subpath, the store's zoom and window size moved out (`compass.ts`, `window-size.ts`), the admin's telemetry wiring moved to `telemetry-wiring.ts` (DECISIONS-for-review.md §200h).
+    - **Merging a paused track: run ESLint over every file it touched before adding your own lines, or its debt reads as yours.**
+
+663. **A class field initialised from `this.deps` was undefined: the store's `deps` is a constructor parameter property.**
+    - Seen: 2026-11-13, track/analytics, writing `readonly logInput = inputLogger(this.deps.telemetry)` in the viewer store.
+    - Cause: with `useDefineForClassFields` a field initialiser runs before the constructor body that assigns a parameter property, so an eager read finds nothing (the store's other field arrows read `this.deps` only when called).
+    - Fix and pin: `inputLogger(() => this.deps.telemetry)` reads it when used (`packages/engine/src/core/viewer-analytics.ts`, `packages/engine/test/core/store.test.ts`).
+    - **A class field may close over `this.deps`, never read it while the object is built.**
+
+664. **A catalogue line over 140 columns is refused by the i18n gate, not wrapped.**
+    - Seen: 2026-11-13, track/analytics: Prettier wrapped the Statistics page's long help texts onto two lines and `check_i18n.py` refused them ("not a one-line entry").
+    - Fix: shorter texts, one idea a key (`adminContent.statistics.how1` … `how6`).
+    - **Write a catalogue message to fit its line with its key (about 90 characters): split a long help into numbered keys.**

@@ -6,6 +6,7 @@
  */
 import { axeViolations } from '@hcm/test-support/axe';
 import type { SetupViewState } from '../../../src/admin/setup/setup-port.js';
+import { FUNNEL_EVENT, type FunnelSignal } from '@hcm/shared/funnels';
 import { html } from 'lit';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
@@ -332,5 +333,28 @@ describe('<hcm-new-city-page>: the city found, the id and the done screen', () =
         const empty = document.createElement('hcm-new-city-page');
         await mount<HTMLElement>(html`<div>${empty}</div>`);
         expect(empty.shadowRoot?.textContent.trim()).toBe('');
+    });
+});
+
+describe('<hcm-new-city-page> funnel', () => {
+    afterEach(cleanup);
+
+    it('happyPath_thePageReportsItsFunnelAsItsStoreChanges', async () => {
+        // @S-A150-HAPPY-FUNNEL-ORDER: New city's steps, in order, as codes.
+        const seen: FunnelSignal[] = [];
+        const listen = (event: Event): void => {
+            seen.push((event as CustomEvent<FunnelSignal>).detail);
+        };
+        document.addEventListener(FUNNEL_EVENT, listen);
+        const { area } = await newCityPage(cityState());
+        area.set({ nameRo: 'Cluj', cityId: 'cluj' });
+        area.set({ bounds: AREA, problem: 'validation.tooBig' });
+        document.removeEventListener(FUNNEL_EVENT, listen);
+        expect(seen).toEqual([
+            { kind: 'view', wizard: 'new_city', step: 'names', back: false },
+            { kind: 'complete', wizard: 'new_city', step: 'names' },
+            { kind: 'view', wizard: 'new_city', step: 'area', back: false },
+            { kind: 'error', wizard: 'new_city', step: 'area', code: 'validation.tooBig' },
+        ]);
     });
 });

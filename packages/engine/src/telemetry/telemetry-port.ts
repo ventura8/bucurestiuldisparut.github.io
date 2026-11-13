@@ -18,7 +18,10 @@ export type TelemetryEvent =
     | { readonly name: 'compare_open' }
     | { readonly name: 'story_open'; readonly storyId: string }
     | { readonly name: 'locale_change'; readonly locale: string }
-    | { readonly name: 'theme_change'; readonly theme: string };
+    | { readonly name: 'theme_change'; readonly theme: string }
+    /** The compass turned the map back to north (V64); a pad or a console's browser first used on the page (V65). */
+    | { readonly name: 'compass_reset' }
+    | { readonly name: 'input_device'; readonly device: 'gamepad' | 'console' };
 
 /**
  * A field measurement as GA4 receives it (docs/ARCHITECTURE.md → *Field measurements*): its parameters without the
@@ -42,6 +45,8 @@ export type Measurement =
     | { readonly kind: 'manifest_error'; readonly code: string; readonly retryable: boolean }
     | { readonly kind: 'map_unavailable'; readonly reason: MapUnavailable }
     | { readonly kind: 'map_error'; readonly errorKind: MapErrorKind }
+    /** An error toast the visitor was shown, by its catalogue key (never its words). */
+    | { readonly kind: 'ui_error'; readonly code: string }
     | { readonly kind: 'start'; readonly what: 'photo' | 'compare' }
     | { readonly kind: 'end'; readonly what: 'photo' | 'compare'; readonly ok: boolean };
 

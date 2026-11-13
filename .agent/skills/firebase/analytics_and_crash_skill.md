@@ -53,3 +53,11 @@
 - The browser of a report is `clientLabel(User-Agent)` (`Firefox 145 mobile`), set by the endpoint as `httpRequest.userAgent`: never log the User-Agent string. The admin's report names its route id (`routeOfHash`), never the record after it.
 - Read a crash group's top frames on the Crashes page before deciding: a stack that is all Mapbox may still need a work-around of ours (`packages/ui/src/map/context-restore.ts`).
 - A key journey is an event with ids, codes and milliseconds only: the viewer's `story_open`, `locale_change`, `theme_change` beside the earlier ones; the admin's `admin_action` (`packages/admin/src/app/field-actions.ts`, its `MEASURED_ACTIONS`) with the outcome `ok` or the refusal's code. A new event goes into `VIEWER_EVENT_PARAMS` or `ADMIN_EVENT_PARAMS` with its schema, and only after consent.
+
+## Wizard funnels (DECISIONS §200, 2026-11-13)
+
+- One helper for every wizard: `@hcm/shared/funnels` (a subpath; never import it from the engine). A page returns a snapshot of its wizard (`*-funnel.ts` beside the page, a pure function with its own unit test) and calls `trackFunnel` on every render (an `AreaPage` sets `funnels`); the admin's `FunnelHub` (`packages/admin/src/app/funnels.ts`) listens on the window and sends through `telemetry.measure`, after consent only. A new wizard joins `WIZARD_IDS`, `WIZARD_STEPS` of `statistics-view.ts` and the Statistics strings in ro and en.
+- Codes, never words: a step id and an error code are short tokens (the catalogue key or the refusal's code). The guard's `FUNNEL_EVENT_PARAMS` and the hub's token check drop anything else.
+- Errors shown: the admin's error notices are `ui_error` (`isErrorNotice` decides by the key), the viewer's `error.…` toasts too; never the message's text.
+- Do Not Track and Global Privacy Control are a refusal until the person accepts (`privacySignal`): no banner, nothing stored for it.
+- The owner reads the funnels in GA4 (Crashes → Where people get stuck explains the exploration); the GA4 Data API is not wired (needs `analytics.readonly`).

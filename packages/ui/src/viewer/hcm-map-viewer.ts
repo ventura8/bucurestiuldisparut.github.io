@@ -261,6 +261,9 @@ export class HcmMapViewer extends LitElement {
         const state = store.getState();
         this.#onState(state, idleOf(state));
         this.#subscribe();
+        if (isGameConsole(navigator.userAgent)) {
+            store.logInput?.('console');
+        }
     }
 
     /** Disconnects the store (Show my location stops); the element shows its loading state again. */

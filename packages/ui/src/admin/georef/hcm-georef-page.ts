@@ -9,6 +9,7 @@
  * point, Undo; nothing that edits on a read-only version.
  */
 import { createLogger } from '@hcm/shared';
+import type { FunnelSnapshot } from '@hcm/shared/funnels';
 import { html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { deepActiveElement } from '../../components/focus.js';
@@ -31,6 +32,7 @@ import { georefStyles } from './georef-styles.js';
 import type { HcmScanViewer } from './hcm-scan-viewer.js';
 import { residualTable, type ResidualSort } from './residual-table.js';
 import { SUGGESTIONS_HEADING_ID, suggestionsPanel, suggestionsStyles, type SuggestionDecision } from './suggestions-panel.js';
+import { georefFunnel } from './georef-funnel.js';
 
 export const HCM_GEOREF_PAGE_TAG = 'hcm-georef-page';
 
@@ -50,6 +52,7 @@ class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
     static override readonly styles = [...georefStyles, suggestionsStyles];
 
     protected readonly route: AdminRouteIdPort = 'georef';
+    protected override readonly funnels = (view: GeorefViewState): readonly (FunnelSnapshot | null)[] => [georefFunnel(view)];
     declare sort: ResidualSort;
     /** M22 (§13.2): the actions, the scan and the map fill the window (Esc leaves it). */
     declare full: boolean;

@@ -17,11 +17,13 @@
  * local AI: graphics card, processor only, comes when a frame needs it, or unavailable and why.
  */
 import { RUN_CHOICES, type RunChoice, type WorkerAi } from '@hcm/shared';
+import { trackFunnel } from '@hcm/shared/funnels';
 import { html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { errorTemplate, formatWhen } from '../editing/states.js';
 import type { LocalPort, WorkerSeenPort, WorkerViewPort } from './worker-port.js';
 import { meter, WorkerElement, workerStyles } from './worker-element.js';
+import { workerFunnel } from './worker-funnel.js';
 
 export const HCM_WORKER_PANEL_TAG = 'hcm-worker-panel';
 
@@ -63,9 +65,17 @@ export class HcmWorkerPanel extends WorkerElement {
 
     protected override updated(changed: PropertyValues): void {
         super.updated(changed);
+        this.#trackFunnel();
         if (typeof this.view?.image === 'string' && !this.#localAsked && this.feed !== null) {
             this.#localAsked = true;
             void this.#askLocal();
+        }
+    }
+
+    /** The card's funnel (§200): what changed since the last render, as codes. */
+    #trackFunnel(): void {
+        if (this.view !== null) {
+            trackFunnel(this, workerFunnel(this.view));
         }
     }
 

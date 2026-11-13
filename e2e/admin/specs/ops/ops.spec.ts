@@ -217,6 +217,28 @@ test(
 );
 
 test(
+    'Statistics lists every wizard with its steps, says when analytics is off, and links Google Analytics',
+    { tag: ['@S-A151-HAPPY-STATISTICS', '@S-A151-BAD-NO-ANALYTICS'] },
+    async ({ page, lang }) => {
+        await page.goto(adminPath(lang, 'crashes'));
+        await page.getByRole('link', { name: contentText(lang, 'adminContent.statistics.link') }).click();
+        await expect(page.getByRole('heading', { name: contentText(lang, 'adminContent.statistics.title') })).toBeVisible();
+        await expect(page.getByRole('heading', { name: contentText(lang, 'adminContent.statistics.wizard.new_city') })).toBeVisible();
+        // The e2e admin has no measurement id: the view says statistics are off and leads to Setup's step g.
+        await expect(page.getByText(contentText(lang, 'adminContent.statistics.off'))).toBeVisible();
+        await expect(page.getByRole('link', { name: contentText(lang, 'adminContent.statistics.openSetup') })).toHaveAttribute(
+            'href',
+            '#/setup/analytics',
+        );
+        await expect(page.getByRole('link', { name: contentText(lang, 'adminContent.statistics.open') })).toHaveAttribute(
+            'href',
+            'https://analytics.google.com/analytics/web/',
+        );
+        await expectStateSound(page, adminVisit('crashes.statistics', lang));
+    },
+);
+
+test(
     "The dashboard counts the city, says what waits, and shows each service's state",
     { tag: ['@S-A40-HAPPY', '@S-A40-BAD-SERVICE-NEEDS-ATTENTION'] },
     async ({ page, lang, adminWorld }) => {
