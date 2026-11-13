@@ -9,11 +9,12 @@
  * fields are read-only, so what is on screen can still be selected and copied until sign-out.
  */
 import { DEFAULT_LOCALE, type Locale } from '@hcm/shared';
-import { trackFunnel, type FunnelSnapshot } from '@hcm/shared/funnels';
+import type { FunnelSnapshot } from '@hcm/shared/funnels';
 import { LitElement } from 'lit';
 
 import type { AdminAppPort, AdminRouteIdPort, AdminStatePort } from '../admin-port.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
+import { trackAreaFunnels } from './area-funnel.js';
 
 export abstract class AreaPage<State, Intents> extends LitElement {
     /** The outlet gives a filling page the page area's height and lets it scroll its own panes (CR-M2c-8). */
@@ -121,20 +122,11 @@ export abstract class AreaPage<State, Intents> extends LitElement {
         if (store !== null) {
             const stop = store.subscribe((view) => {
                 this.view = view;
-                this.#track(view);
+                trackAreaFunnels(this, this.funnels, view);
             });
             this.#followed = { store, stop };
             this.view = store.state;
-            this.#track(store.state);
-        }
-    }
-
-    /** The page's funnels, compared with the last ones (nothing when the page has none or the view is not read yet). */
-    #track(view: State | null): void {
-        if (this.funnels !== undefined && view !== null) {
-            for (const snapshot of this.funnels(view)) {
-                trackFunnel(this, snapshot);
-            }
+            trackAreaFunnels(this, this.funnels, store.state);
         }
     }
 

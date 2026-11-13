@@ -266,6 +266,10 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # worker on the computer's loopback (`packages/admin/src/archive/local-run.ts`, the archive feed's one dynamic import), fetched on
     # the first pick: about 1.2 KB, out of the `archive` chunk so that its 10 KB stays (DECISIONS-for-review.md §138d).
     "local-run": 2,
+    # The wizard funnels (the owner, 2026-11-13; DECISIONS-for-review.md §200): each wizard page's snapshot and the shared
+    # `trackFunnel`, out of `archive`, `imagery`, `worker` and `editor-shared`, which each went 0.1 KB over with them: about
+    # 1.5 KB, a row of 2 KB.
+    "funnels": 2,
 }
 # The entry and every chunk together. 620 until M7 (2026-11-02), 630 since: the total counts every lazy chunk, also those
 # loaded only on use, and M7's `worker` chunk (5.5 KB, loaded only by the Jobs page, the pipeline card and a version page)
