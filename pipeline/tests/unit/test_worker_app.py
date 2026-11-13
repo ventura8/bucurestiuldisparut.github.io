@@ -333,7 +333,9 @@ def test_happy_path_the_state_says_the_image_and_the_starters_version(
         ({"HCM_STARTER": "abc", "HCM_STARTER_UPDATE": "no-list"}, {"version": "abc", "update": "no-list"}, "its last look said no-list"),
     ],
 )
-def test_bad_path_an_old_or_missing_starter_is_said_as_it_is(environment: Mapping[str, str], said: Mapping[str, object], words: str) -> None:
+def test_bad_path_an_old_or_missing_starter_is_said_as_it_is(
+    environment: Mapping[str, str], said: Mapping[str, object], words: str
+) -> None:
     """Scenarios: S-A142-BAD-OLD-STARTER"""
     starter = starter_on_state(environment)
 
