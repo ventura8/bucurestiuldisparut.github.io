@@ -5,7 +5,7 @@
  * finger (above a lying timeline, beside a standing one), and selects it on lift (`timeline-scrub.ts`). Pure: the text and
  * the place; `<hcm-timeline>` draws it.
  */
-import { translate, type Layer, type Locale } from '@hcm/shared';
+import { translate, type Layer, type ViewerLocale } from '@hcm/shared';
 
 import type { TimelineStop } from './timeline-model.js';
 
@@ -27,7 +27,7 @@ export function datesOfYear(layers: readonly Pick<Layer, 'year' | 'date'>[], yea
 }
 
 /** An ISO date as the visitor reads it: "12 aug." / "Aug 12" (the year is the chip's first word); a month alone stays as is. */
-function shortDate(iso: string, locale: Locale): string {
+function shortDate(iso: string, locale: ViewerLocale): string {
     const [year, month, day] = iso.split('-').map(Number);
     if (year === undefined || month === undefined || day === undefined || Number.isNaN(day)) {
         return iso;
@@ -36,7 +36,7 @@ function shortDate(iso: string, locale: Locale): string {
 }
 
 /** The chip's text: the year (or "Today"), then its dates when it has several. */
-export function tipText(stop: TimelineStop, dates: readonly string[], locale: Locale): string {
+export function tipText(stop: TimelineStop, dates: readonly string[], locale: ViewerLocale): string {
     const year = stop === null ? translate(locale, 'timeline.present') : String(stop);
     if (dates.length < 2) {
         return year;

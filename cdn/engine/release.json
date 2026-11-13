@@ -36,13 +36,13 @@
         },
         {
             "path": "engine.iife.js",
-            "bytes": 337052,
-            "integrity": "sha384-qJq2igv8wO2PpURASlVKrDPzqH5cc00fDJmuL6d1zWR9mU4I+cd7+YNgfML2q92Y"
+            "bytes": 342155,
+            "integrity": "sha384-KDTvisvDcRupy6pTmK9bnVMRVWP30G+q0FROmncZneah8Q/AerOwHFrj9lqny/hQ"
         },
         {
             "path": "engine.mjs",
-            "bytes": 335581,
-            "integrity": "sha384-epvPYI+JvgZ9tlL1exnjU7F//RBEqqRrlUWJr1zUyDBzwXpa4kB1oEugabM0QYzB"
+            "bytes": 340684,
+            "integrity": "sha384-gxFSNlJvPtTO8wZRmb7J1w9hiFrJcbTCx9ECx6GykDGJly1O9A0YE6lIJUG1KxsN"
         },
         {
             "path": "extra-compare-z_1pqYmf.js",

@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 158 | 1652 | 688 | 964 | 1650 | 2 | 426 |
+| 159 | 1668 | 696 | 972 | 1666 | 2 | 429 |
 
 ## Viewer
 
