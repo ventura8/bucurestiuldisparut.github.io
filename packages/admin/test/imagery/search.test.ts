@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { IMAGERY_SEARCH_TIMEOUT_MS } from '../../src/imagery/search-timeout.js';
-import { HarvestSearch, usgsCanSearch, type SearchState } from '../../src/imagery/search.js';
+import { HarvestSearch, SEARCH_CUT_OFF_MS, searchRefusalOf, usgsCanSearch, type SearchState } from '../../src/imagery/search.js';
 import { failure, settle } from '../app/fakes.js';
 import { answer, callsOf, imageryWorld } from './world.js';
 
@@ -67,5 +67,38 @@ describe('the search', () => {
 
         expect(callsOf(callables, 'imagery.search')).toHaveLength(1);
         expect(harvest.state).toMatchObject({ phase: 'failed', error: { key: 'apiError.usgs.maintenance' } });
+    });
+});
+
+describe('a search the server could not answer', () => {
+    it('badPath_aSearchTheServerCutOffSaysHowLongItRanAndWhatToDoNext @S-A11-BAD-SEARCH-CUT-OFF', async () => {
+        const { harvest, callables, clock } = search();
+        answer(callables, 'imagery.search', () => {
+            clock.current += 540_000;
+            return Promise.reject(failure('internal', 'apiError.internal'));
+        });
+
+        await harvest.search();
+
+        expect(harvest.state).toMatchObject({
+            phase: 'failed',
+            error: { key: 'adminContent.imagery.searchTimedOut', params: { minutes: '9' } },
+        });
+    });
+
+    it('badPath_aSearchThatFailedAtOnceSaysTheServerFailedAndWhatToDoNext @S-A11-BAD-SEARCH-CUT-OFF', async () => {
+        const { harvest, callables } = search();
+        answer(callables, 'imagery.search', () => Promise.reject(failure('internal', 'apiError.internal')));
+
+        await harvest.search();
+
+        expect(harvest.state).toMatchObject({ phase: 'failed', error: { key: 'adminContent.imagery.searchFailed' } });
+    });
+
+    it('happyPath_aNetworkFailureIsNoCallablesAndStillSaysWhatToDoNext', () => {
+        expect(searchRefusalOf(new Error('offline'), 1_000)).toEqual({ key: 'adminContent.imagery.searchFailed' });
+        expect(searchRefusalOf(failure('unavailable', 'apiError.usgs.unavailable'), SEARCH_CUT_OFF_MS)).toEqual({
+            key: 'apiError.usgs.unavailable',
+        });
     });
 });

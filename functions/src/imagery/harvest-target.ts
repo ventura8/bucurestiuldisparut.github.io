@@ -10,6 +10,20 @@ import type { SceneRecord } from './scene-record.js';
 
 /** At most this many records from one search of one dataset. */
 export const MAX_SCENES_PER_DATASET = 500;
+/**
+ * How long a harvest asks USGS for pages (lesson 646): what is found by then is stored, and the callable answers well inside its
+ * timeout (`CALLABLE_TIMEOUT_SECONDS` of `functions/src/api/callable.ts`, 540 s). A target year not searched in time waits for the next harvest.
+ */
+export const SEARCH_BUDGET_MS = 360_000;
+/** Target years searched at once. */
+const YEAR_CONCURRENCY = 2;
+
+/** `work` over `items`, `size` at a time, in order. */
+export async function inBatches<T>(items: readonly T[], size: number, work: (item: T) => Promise<unknown>): Promise<void> {
+    for (let start = 0; start < items.length; start += size) {
+        await Promise.all(items.slice(start, start + size).map(work));
+    }
+}
 
 export interface SearchWindow {
     readonly from?: string;
@@ -81,10 +95,13 @@ export async function withTargetYears(
         cap: MAX_SCENES_PER_DATASET,
     });
     const byEntity = new Map(records.map((record) => [record.entityId, record]));
-    for (const window of windowsOf(context)) {
-        for (const record of await yearRecords(context, window, search)) {
-            byEntity.set(record.entityId, record);
-        }
+    const windows = windowsOf(context);
+    const years: (readonly SceneRecord[])[] = [];
+    await inBatches(windows, YEAR_CONCURRENCY, async (window) => {
+        years[windows.indexOf(window)] = await yearRecords(context, window, search);
+    });
+    for (const record of years.flat()) {
+        byEntity.set(record.entityId, record);
     }
     return [...byEntity.values()];
 }

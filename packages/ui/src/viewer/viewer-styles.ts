@@ -58,11 +58,31 @@ export const viewerStyles = [
 
         /*
          * Ten feet away (docs/research/viewer-input.md §6): a large screen without a fine pointer (a TV's browser, a games
-         * console) gets a focus ring twice as thick, read from across the room.
+         * console) gets a focus ring twice as thick, the kit's buttons and chips 48 px (M3's target, seen and not only
+         * touched) and its text a quarter larger, read from across the room. The type tokens are set on the host by
+         * applyTheme, so the larger ones go on the wrapper inside it.
          */
         @media (width >= 1200px) and (pointer: coarse), (width >= 1200px) and (pointer: none) {
             :host {
                 --hcm-focus-ring-width: 6px;
+                --hcm-control-size: 48px;
+                --hcm-chip-size: 48px;
+            }
+
+            .viewer {
+                --md-sys-typescale-label-small-size: 14px;
+                --md-sys-typescale-label-large-size: 18px;
+                --md-sys-typescale-label-large-line-height: 24px;
+                --md-sys-typescale-body-small-size: 15px;
+                --md-sys-typescale-body-small-line-height: 20px;
+                --md-sys-typescale-body-medium-size: 18px;
+                --md-sys-typescale-body-medium-line-height: 24px;
+                --md-sys-typescale-body-large-size: 20px;
+                --md-sys-typescale-body-large-line-height: 28px;
+                --md-sys-typescale-title-small-size: 18px;
+                --md-sys-typescale-title-small-line-height: 24px;
+                --md-sys-typescale-title-medium-size: 20px;
+                --md-sys-typescale-title-medium-line-height: 28px;
             }
         }
 

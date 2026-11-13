@@ -114,12 +114,12 @@ export const dockStyles = css`
     }
 
     /*
-     * The compass (V64): its own 48 px pill 8 px over the 96 px group. On a short map (under 600 px) that would reach the
+     * The compass (V64): its own 48 px pill 8 px over the 96 px group (two 40 px buttons and 16 px; on a TV two 48 px ones). On a short map (under 600 px) that would reach the
      * band compare's divider handle sweeps (64 to 16 px above the middle) or the compare bar: it sits beside the group's
      * Zoom in instead, on the side towards the map (the tour at 320 x 568 and 915 x 412).
      */
     .dock.compass {
-        inset-block-end: calc(var(--hcm-zoom-end) + 96px + var(--hcm-dock-gap));
+        inset-block-end: calc(var(--hcm-zoom-end) + 2 * var(--hcm-control-size, 40px) + 16px + var(--hcm-dock-gap));
     }
 
     @container hcm-viewer (height < 600px) {
@@ -254,7 +254,7 @@ export const dockStyles = css`
 
     /*
      * The keyboard's year chip shows while the slider has the focus: the photos chip is only transparent then, so it keeps
-     * its place in the Tab order (hidden, Tab from the slider skipped it: the tour's V68 journey, lesson 646).
+     * its place in the Tab order (hidden, Tab from the slider skipped it: the tour's V68 journey, lesson 648).
      */
     .frame:has(hcm-timeline[tipping='focus']) .dock.chip {
         visibility: visible;

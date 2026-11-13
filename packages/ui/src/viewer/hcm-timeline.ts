@@ -191,7 +191,7 @@ export class HcmTimeline extends LitElement {
 
     /**
      * `tipping` while the chip shows (none on the collapsed pill), `tipping="focus"` when it is the keyboard's: the
-     * photos chip under it then stays in the Tab order (`dock-styles.ts`, lesson 646).
+     * photos chip under it then stays in the Tab order (`dock-styles.ts`, lesson 648).
      */
     #markTipping(): void {
         this.removeAttribute('tipping');

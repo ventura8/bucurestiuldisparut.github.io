@@ -12,6 +12,11 @@
  * (`docs/research/M8-join-interfaces.md` §5): a dataset at the cap is searched again per target year
  * (`harvest-target.ts`), and the plan of whole-city dates is rewritten (`join-plan.ts`). M25 (`docs/research/M25-landsat.md` §1): the two
  * Landsat datasets are searched the same way, in summer months under a cloud cap (`harvest-landsat.ts`).
+ *
+ * Lesson 646 of docs/LESSONS.md: run one after another, the five datasets, their target years and 1,500 writes took over seven minutes on
+ * a slow USGS day, past the callable's timeout, and the admin read "Something went wrong on the server". The datasets are searched at
+ * once, the target years `YEAR_CONCURRENCY` at a time, the writes `WRITE_CONCURRENCY` at a time, and no USGS page is asked for once
+ * `SEARCH_BUDGET_MS` has passed (`harvest-target.ts`): the search then keeps what it found and answers in time.
  */
 import {
     BROWSE_PREFETCH,
@@ -39,7 +44,7 @@ import { IMAGERY_WRITER, requireCity, stampOf } from './records.js';
 import { browseSourceOf, sceneFields, type SceneFields, type SceneRecord } from './scene-record.js';
 import { recordHarvest } from './harvest-state.js';
 import { searchOf } from './harvest-landsat.js';
-import { MAX_SCENES_PER_DATASET, withTargetYears, type SearchWindow } from './harvest-target.js';
+import { MAX_SCENES_PER_DATASET, SEARCH_BUDGET_MS, inBatches, withTargetYears, type SearchWindow } from './harvest-target.js';
 import { rewriteDatePlan } from './join-plan.js';
 import { requireUsgs, usgsError, withUsgs } from './usgs-session.js';
 import { rankContextOf, shownYears, type ShownYear } from './versions.js';
@@ -49,6 +54,8 @@ export type HarvestDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'secrets' 
 const PAGE_SIZE = 100;
 /** Browse copies made at once by the prefetch. */
 const BROWSE_CONCURRENCY = 5;
+/** Scene documents written at once. */
+const WRITE_CONCURRENCY = 25;
 
 interface Found {
     readonly dataset: UsgsDataset;
@@ -59,6 +66,8 @@ interface Search {
     readonly request: ImagerySearchRequest;
     readonly bounds: CityDoc['bounds'];
     readonly targetYears: readonly number[];
+    /** When no further USGS page is asked for (epoch ms). */
+    readonly deadline: number;
 }
 
 /** The acquisition window of the request, as `scene-search` takes it (absent ends are open). */
@@ -66,15 +75,20 @@ function windowOf(request: ImagerySearchRequest): SearchWindow {
     return compact<SearchWindow>({ from: request.from, to: request.to });
 }
 
-/** Every page of one search of one dataset over the city's bounds, up to {@link MAX_SCENES_PER_DATASET} records. */
+/** Every page of one search of one dataset over the city's bounds, up to {@link MAX_SCENES_PER_DATASET} records, until the deadline. */
 async function searchPages(
     deps: HarvestDeps,
     apiKey: string,
     base: Omit<Parameters<HarvestDeps['scenes']['search']>[1], 'startingNumber'>,
+    deadline: number,
 ) {
     const records: SceneRecord[] = [];
     let startingNumber: number | undefined = 1;
     while (startingNumber !== undefined && records.length < MAX_SCENES_PER_DATASET) {
+        if (deps.clock.now().getTime() >= deadline) {
+            deps.log.warn('usgs search out of time, kept what it found', { dataset: base.dataset, found: records.length });
+            break;
+        }
         const page = await deps.scenes.search(apiKey, { ...base, startingNumber });
         records.push(...page.records);
         startingNumber = page.records.length === 0 ? undefined : page.next;
@@ -86,7 +100,7 @@ async function searchPages(
 async function searchDataset(deps: HarvestDeps, apiKey: string, dataset: UsgsDataset, search: Search): Promise<Found[]> {
     const window = windowOf(search.request);
     const pagesIn = (within: SearchWindow) =>
-        searchPages(deps, apiKey, { dataset, bounds: search.bounds, maxResults: PAGE_SIZE, ...searchOf(dataset, within) });
+        searchPages(deps, apiKey, { dataset, bounds: search.bounds, maxResults: PAGE_SIZE, ...searchOf(dataset, within) }, search.deadline);
     const context = { log: deps.log, cityId: search.request.cityId, dataset, targetYears: search.targetYears, window };
     const records = await withTargetYears(context, await pagesIn(window), pagesIn);
     return records.map((record): Found => ({ dataset, record }));
@@ -102,29 +116,29 @@ function noAnswer(failures: readonly Error[]): ApiError {
     return new ApiError(codes.size === 1 && only !== undefined && NO_ANSWER_CODES.has(only) ? only : 'apiError.usgs.unavailable');
 }
 
+/** One dataset's frames, or the error it failed with (logged). */
+async function datasetOutcome(deps: HarvestDeps, apiKey: string, dataset: UsgsDataset, search: Search): Promise<Found[] | Error> {
+    try {
+        return await searchDataset(deps, apiKey, dataset, search);
+    } catch (error) {
+        deps.log.warn('usgs dataset not harvested', { cityId: search.request.cityId, dataset, error: String(error) });
+        return usgsError(error);
+    }
+}
+
 /**
- * Each requested dataset searched on its own: a failure (maintenance, 5xx) only removes that dataset; when every one
- * failed, USGS did not answer and the search fails.
+ * Each requested dataset searched on its own, all at once: a failure (maintenance, 5xx) only removes that dataset; when
+ * every one failed, USGS did not answer and the search fails.
  */
 async function searchAll(deps: HarvestDeps, apiKey: string, search: Search) {
-    const request = search.request;
-    const datasets = request.datasets ?? USGS_DATASETS;
-    const found: Found[] = [];
-    const failures: Error[] = [];
-    const failedDatasets: UsgsDataset[] = [];
-    for (const dataset of datasets) {
-        try {
-            found.push(...(await searchDataset(deps, apiKey, dataset, search)));
-        } catch (error) {
-            deps.log.warn('usgs dataset not harvested', { cityId: request.cityId, dataset, error: String(error) });
-            failedDatasets.push(dataset);
-            failures.push(usgsError(error));
-        }
-    }
+    const datasets = search.request.datasets ?? USGS_DATASETS;
+    const outcomes = await Promise.all(datasets.map((dataset) => datasetOutcome(deps, apiKey, dataset, search)));
+    const failures = outcomes.filter((outcome): outcome is Error => outcome instanceof Error);
+    const failedDatasets = datasets.filter((_dataset, index) => outcomes[index] instanceof Error);
     if (failedDatasets.length === datasets.length) {
         throw noAnswer(failures);
     }
-    return { found, failedDatasets };
+    return { found: outcomes.flatMap((outcome) => (outcome instanceof Error ? [] : outcome)), failedDatasets };
 }
 
 /** The browse record a harvested scene gets: the existing copy when its source did not move, else to be copied. */
@@ -210,9 +224,11 @@ async function storeScenes(deps: HarvestDeps, cityId: string, found: readonly Fo
             deps.log.warn('usgs scene skipped', { cityId, dataset: each.dataset, entityId: each.record.entityId });
             continue;
         }
-        await deps.documents.set(FIRESTORE_PATHS.usgsScene(cityId, doc.entityId), usgsSceneDocSchema, doc);
         written.set(doc.entityId, doc);
     }
+    await inBatches([...written.values()], WRITE_CONCURRENCY, (doc) =>
+        deps.documents.set(FIRESTORE_PATHS.usgsScene(cityId, doc.entityId), usgsSceneDocSchema, doc),
+    );
     await rerankUnseen(
         deps,
         cityId,
@@ -228,16 +244,16 @@ async function storeScenes(deps: HarvestDeps, cityId: string, found: readonly Fo
  * the current `RANKING_VERSION`), so the list compares like with like; only a changed rank is written.
  */
 async function rerankUnseen(deps: HarvestDeps, cityId: string, unseen: readonly (readonly [string, UsgsSceneDoc])[], world: RankWorld) {
-    for (const [id, scene] of unseen) {
-        const rank = rankOf(scene, scene.layerId, world);
-        if (JSON.stringify(rank) !== JSON.stringify(scene.rank)) {
-            await deps.documents.set(FIRESTORE_PATHS.usgsScene(cityId, id), usgsSceneDocSchema, {
-                ...scene,
-                rank,
-                ...stampOf(IMAGERY_WRITER, deps.clock.now()),
-            });
-        }
-    }
+    const changed = unseen
+        .map(([id, scene]) => ({ id, scene, rank: rankOf(scene, scene.layerId, world) }))
+        .filter(({ scene, rank }) => JSON.stringify(rank) !== JSON.stringify(scene.rank));
+    await inBatches(changed, WRITE_CONCURRENCY, ({ id, scene, rank }) =>
+        deps.documents.set(FIRESTORE_PATHS.usgsScene(cityId, id), usgsSceneDocSchema, {
+            ...scene,
+            rank,
+            ...stampOf(IMAGERY_WRITER, deps.clock.now()),
+        }),
+    );
 }
 
 /** The best-ranked frames without a browse copy get one, each on its own (a failure is recorded on the scene). */
@@ -246,9 +262,7 @@ async function prefetchBrowse(deps: HarvestDeps, cityId: string, scenes: readonl
         .filter((scene) => scene.browse.state === 'none' && scene.browse.sourceUrl !== undefined)
         .sort((left, right) => right.rank.score - left.rank.score)
         .slice(0, BROWSE_PREFETCH);
-    for (let start = 0; start < pending.length; start += BROWSE_CONCURRENCY) {
-        await Promise.allSettled(pending.slice(start, start + BROWSE_CONCURRENCY).map((scene) => copyBrowse(deps, cityId, scene)));
-    }
+    await inBatches(pending, BROWSE_CONCURRENCY, (scene) => copyBrowse(deps, cityId, scene).catch(() => undefined));
 }
 
 /**
@@ -275,8 +289,9 @@ async function rewriteDatePlanSafely(deps: HarvestDeps, cityId: string): Promise
 async function harvestIn(deps: HarvestDeps, request: ImagerySearchRequest, city: CityDoc): Promise<ImagerySearchResponse> {
     const searchedAt = deps.clock.now();
     const { targetYears } = imagerySettingsOf(city.imagery);
+    const deadline = searchedAt.getTime() + SEARCH_BUDGET_MS;
     const { found, failedDatasets, eeIds } = await withUsgs(deps, async (apiKey) => ({
-        ...(await searchAll(deps, apiKey, { request, bounds: city.bounds, targetYears })),
+        ...(await searchAll(deps, apiKey, { request, bounds: city.bounds, targetYears, deadline })),
         eeIds: await earthExplorerIds(deps, apiKey),
     }));
     const shown = await shownYears(deps.documents, request.cityId);
