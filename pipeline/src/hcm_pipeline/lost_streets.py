@@ -16,7 +16,7 @@ GeoJSON FeatureCollection in the admin's place import format (`packages/admin/sr
 
     python -m hcm_pipeline.lost_streets --bounds 25.93,44.33,26.25,44.55 --out lost-streets.geojson
 
-Never anything from the old site's account (fostulbucuresti): it has no licence and is a visual reference only.
+Only open sources with a licence are fetched (AGENTS.md, project hard constraints).
 """
 
 import argparse
