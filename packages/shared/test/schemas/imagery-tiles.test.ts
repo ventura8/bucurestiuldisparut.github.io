@@ -22,7 +22,10 @@ import { validate } from '../../src/schemas/validation.js';
 const CONTRACTS = resolve(import.meta.dirname, '../../../../pipeline/tests/contracts');
 const SAMPLE = JSON.parse(readFileSync(resolve(CONTRACTS, 'layout.sample.json'), 'utf8')) as LayoutFile;
 /** What the pipeline really writes for a synthetic series (`pipeline/tests/unit/test_placing_layout_contract.py`). */
-const WRITTEN = JSON.parse(readFileSync(resolve(CONTRACTS, 'layout.json'), 'utf8')) as { readonly layout: LayoutFile; readonly summary: unknown };
+const WRITTEN = JSON.parse(readFileSync(resolve(CONTRACTS, 'layout.json'), 'utf8')) as {
+    readonly layout: LayoutFile;
+    readonly summary: unknown;
+};
 const SHEET = { index: 0, row: 0, col: 1, turn: 90, flip: false };
 const SEAM = { a: 0, b: 1, side: 'right', points: { a: [10, 20], b: [3, 21] } };
 const BODY = { revision: 2, sheets: [SHEET], seams: [SEAM], preview: true };

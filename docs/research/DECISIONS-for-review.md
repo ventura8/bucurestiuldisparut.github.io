@@ -6760,7 +6760,6 @@ leftovers of §164. Every figure is the container's cgroup `memory.peak` (page c
   the e2e stage reaches a 12 GB cap with them (measured after 180d and 180i), and the dev stack's 8 GB default holds only
   a manual session's fewer workers.
 
-
 ## 181. Automatic tile stitching: names, seams, one bundle, a windowed mosaic; a doubtful layout waits for its owner (2026-11-12) — APPLIED, the owner's design (track/autostitch)
 
 - **What**: an atlas or pieces are laid out from their names (`sheetnames.py`) and the seams between grid neighbours (`seams.py`, edge strips only), every sheet placed at once (`bundle.py`, IRLS with Huber's loss and a grid prior), judged (`quality.py`) and, when `good`, mosaicked in 2048 px windows (`canvas_window.py`); else the older joins when they place 90 %, else the version waits with `layout-check` and its layout files (`layout.json`, `thumbs.jpg`, `seams.jpg`) for the tile-import wizard. The owner's answer (`help.layoutAnswer`) is fixed as given (`owner_layout.py`). M20 §19.
