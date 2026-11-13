@@ -21,6 +21,8 @@ import { validate } from '../../src/schemas/validation.js';
 
 const CONTRACTS = resolve(import.meta.dirname, '../../../../pipeline/tests/contracts');
 const SAMPLE = JSON.parse(readFileSync(resolve(CONTRACTS, 'layout.sample.json'), 'utf8')) as LayoutFile;
+/** What the pipeline really writes for a synthetic series (`pipeline/tests/unit/test_placing_layout_contract.py`). */
+const WRITTEN = JSON.parse(readFileSync(resolve(CONTRACTS, 'layout.json'), 'utf8')) as { readonly layout: LayoutFile; readonly summary: unknown };
 const SHEET = { index: 0, row: 0, col: 1, turn: 90, flip: false };
 const SEAM = { a: 0, b: 1, side: 'right', points: { a: [10, 20], b: [3, 21] } };
 const BODY = { revision: 2, sheets: [SHEET], seams: [SEAM], preview: true };
@@ -31,6 +33,21 @@ describe('layout.json', () => {
         const result = validate(layoutFileSchema, SAMPLE);
 
         expect(result.ok ? [] : result.issues).toEqual([]);
+    });
+
+    it('happyPath_theLayoutAndSummaryThePipelineWritesPass', () => {
+        const layout = validate(layoutFileSchema, WRITTEN.layout);
+        const summary = validate(stitchLayoutSchema, WRITTEN.summary);
+
+        expect(layout.ok ? [] : layout.issues).toEqual([]);
+        expect(summary.ok ? [] : summary.issues).toEqual([]);
+        // The written series holds the cases the wizard reads: a sheet left out, a strong seam and missing seams.
+        expect(WRITTEN.layout.sheets.some((sheet) => typeof sheet.out === 'string')).toBe(true);
+        expect(new Set(WRITTEN.layout.seams.map((seam) => seam.state))).toEqual(new Set(['strong', 'missing']));
+    });
+
+    it('badPath_aWrittenLayoutWithAFieldTheSchemaDoesNotKnowIsRefused', () => {
+        expect(validate(layoutFileSchema, { ...WRITTEN.layout, sheets: [{ ...WRITTEN.layout.sheets[0], extra: 1 }] }).ok).toBe(false);
     });
 
     it('badPath_aTurnThatIsNotAQuarterIsRefused', () => {
