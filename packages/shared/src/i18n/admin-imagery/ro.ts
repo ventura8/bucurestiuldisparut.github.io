@@ -26,7 +26,6 @@ export const ro = {
     'adminContent.imagery.reason.resolution': 'Detalii de circa {metres} m',
     'adminContent.imagery.reason.season': 'Făcută în luna {month}, în afara verii cu frunziș',
     'adminContent.imagery.reason.cloudCity': 'Nori peste oraș, după previzualizare: cam {percent} %',
-    'adminContent.imagery.fact.cloudCity': 'Nori peste oraș (după previzualizare)',
     'adminContent.imagery.cloudy.tag': 'Probabil înnorat peste oraș: {percent} %',
     'adminContent.imagery.unusable.title': 'Nefolositoare?',
     'adminContent.imagery.cloudy.warning': 'Previzualizarea arată nori peste mare parte din oraș: scanarea poate arăta puține străzi.',

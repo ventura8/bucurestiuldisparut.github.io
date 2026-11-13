@@ -17,7 +17,7 @@ import { lazyJoin } from './join/lazy-card.js';
 import { orderTag } from './orders/order-list.js';
 import { importable, importButton, importRefusal } from './scene-detail.js';
 import { usgsSetupLink } from './scene-refusal.js';
-import { usefulnessTags } from './scene-unusable.js';
+import { usefulnessTags } from './scene-tags.js';
 import { when } from './when.js';
 
 /** The reasons a row shows (the rest on its page). */

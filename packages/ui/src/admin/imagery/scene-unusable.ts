@@ -1,44 +1,29 @@
 /**
  * A scene's usefulness (the owner's report of 2026-11-13: "This scan is useless, too many clouds", a 1964 frame the whole-city plan
  * kept offering to buy): the warning of a frame its browse image shows probably cloudy over the city, on its card and its page, and
- * on its page **Not useful** with why (clouds, haze or blur, wrong area, other), or, once marked, what that did and Undo.
+ * on its page **Not useful** with why (clouds, haze or blur, wrong area, other), or, once marked, what that did and Undo. A chunk of
+ * its own (`scene-unusable-<hash>.js`, fetched when a scene's page opens), so the Imagery area keeps its budget; the card's
+ * chips are `scene-tags.ts`'s.
  */
-import { CLOUDY_CITY_PERCENT, type Locale } from '@hcm/shared';
+
+import type { Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
 import type { ImageryContext } from './context.js';
 import type { SceneItemPort, UnusableReasonPort } from './imagery-port.js';
-import { numberText } from './imagery-text.js';
-import { markRefusalOf, sceneRefusal } from './scene-refusal.js';
+import { sceneRefusal } from './scene-refusal.js';
+import { cloudyShare, percentText } from './scene-tags.js';
 import { when } from './when.js';
 
+/** What the chunk gives the scene's page. */
+export interface SceneUseChunk {
+    readonly cloudyWarning: typeof cloudyWarning;
+    readonly unusableSection: typeof unusableSection;
+}
+
 const REASONS: readonly UnusableReasonPort[] = ['clouds', 'haze', 'area', 'other'];
-
-/** The share of the city clouded, when the frame is probably cloudy over it. */
-function cloudyShare(scene: SceneItemPort): number | null {
-    return scene.cloudCity !== null && scene.cloudCity >= CLOUDY_CITY_PERCENT ? scene.cloudCity : null;
-}
-
-function percentText(locale: Locale, percent: number): string {
-    return numberText(locale, percent, 0);
-}
-
-/** The card's chips: Not useful, or Probably cloudy over the city: N %. */
-export function usefulnessTags(locale: Locale, scene: SceneItemPort): TemplateResult {
-    if (scene.unusable !== null) {
-        return html`<span class="tag" data-tone="error" data-state="unusable"
-            >${contentText(locale, 'adminContent.imagery.unusable.tag')}</span
-        >`;
-    }
-    const share = cloudyShare(scene);
-    return share === null
-        ? EMPTY
-        : html`<span class="tag" data-tone="wait" data-state="cloudy"
-              >${contentText(locale, 'adminContent.imagery.cloudy.tag', { percent: percentText(locale, share) })}</span
-          >`;
-}
 
 /** The page's warning of a frame probably cloudy over the city: what is wrong, why, what to do (before an import or a purchase). */
 export function cloudyWarning(locale: Locale, scene: SceneItemPort): TemplateResult {
@@ -113,7 +98,7 @@ export function unusableSection(context: ImageryContext, scene: SceneItemPort): 
             html`<section class="section" data-scene-unusable>
                 <h3 id="scene-unusable">${contentText(locale, 'adminContent.imagery.unusable.title')}</h3>
                 ${scene.unusable === null ? reasonButtons(context, scene) : marked(context, scene, scene.unusable)}
-                ${sceneRefusal(context, markRefusalOf(context.view), scene)}
+                ${sceneRefusal(context, context.view.orderRefusal?.action === 'unusable' ? context.view.orderRefusal : null, scene)}
             </section>`,
     );
 }

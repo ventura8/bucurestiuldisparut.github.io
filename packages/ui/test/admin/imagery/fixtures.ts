@@ -20,6 +20,7 @@ import { UPLOAD_PANEL_CHUNK } from '../../../src/admin/imagery/hcm-imagery-page.
 import { JOIN_CARD_CHUNK } from '../../../src/admin/imagery/join/lazy-card.js';
 import { ORDER_CARD_CHUNK } from '../../../src/admin/imagery/orders/lazy-card.js';
 import { MAPBOX_CHOICES_CHUNK } from '../../../src/admin/imagery/lazy-approval.js';
+import { SCENE_USE_CHUNK } from '../../../src/admin/imagery/scene-detail.js';
 import { APPROVAL_MAP_CHUNK } from '../../../src/admin/imagery/lazy-version.js';
 import { FakeArea } from '../editing/fake-area.js';
 import { adminState, deep, deepAll, defineAll, FakeAdminApp, mount, updated } from '../shell/fake-app.js';
@@ -38,6 +39,7 @@ export async function defineImagery(): Promise<void> {
     await UPLOAD_PANEL_CHUNK.load();
     await APPROVAL_MAP_CHUNK.load();
     await MAPBOX_CHOICES_CHUNK.load();
+    await SCENE_USE_CHUNK.load();
 }
 
 export function scene(overrides: Partial<SceneItemPort> = {}): SceneItemPort {

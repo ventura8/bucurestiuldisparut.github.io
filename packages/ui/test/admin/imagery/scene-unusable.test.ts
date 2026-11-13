@@ -6,7 +6,7 @@
 import { axeViolations } from '@hcm/test-support/axe';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
-import { cleanup, deep, deepAll, deepText, updated } from '../shell/fake-app.js';
+import { cleanup, deep, deepAll, updated } from '../shell/fake-app.js';
 import { click, defineImagery, imageryPage, imageryState, scene } from './fixtures.js';
 
 const SCENE = { kind: 'scene' as const, id: 'DS1035-1057DA023' };
@@ -65,7 +65,6 @@ describe('<hcm-imagery-page>: Not useful', () => {
         expect(warning.textContent).toContain('Probably cloudy over the city: 46 %');
         expect(warning.textContent).toContain('Look at the preview before you import or buy it.');
         expect(deep(element, '[data-state="cloudy"]').textContent.trim()).toBe('Probably cloudy over the city: 46 %');
-        expect(deepText(element)).toContain('Clouds over the city (from the preview)');
         expect(await axeViolations(element)).toEqual([]);
     });
 

@@ -18,16 +18,6 @@ export function usgsSetupLink(locale: Locale): TemplateResult {
 
 type SceneRefusalPort = ImageryViewState['importRefusal'];
 
-/** The order card's refusal: Not useful's is its own section's. */
-export function orderRefusalOf(view: ImageryViewState): SceneRefusalPort {
-    return view.orderRefusal?.action === 'unusable' ? null : view.orderRefusal;
-}
-
-/** Not useful's refusal. */
-export function markRefusalOf(view: ImageryViewState): SceneRefusalPort {
-    return view.orderRefusal?.action === 'unusable' ? view.orderRefusal : null;
-}
-
 /** `refused`, when it is this scene's, as an alert (nothing otherwise). */
 export function sceneRefusal(context: ImageryContext, refused: SceneRefusalPort, scene: SceneItemPort): TemplateResult {
     return withValue(

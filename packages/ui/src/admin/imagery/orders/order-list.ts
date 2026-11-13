@@ -119,9 +119,8 @@ function paidFrame(context: ImageryContext, entityId: string, cloudy: number | u
         ${withValue(
             cloudy,
             (percent) =>
-                html`<p class="alert" role="note" data-state="join-cloudy">
-                    <hcm-icon name="cloud"></hcm-icon
-                    ><span>${contentText(locale, 'adminContent.imagery.cloudy.beforeBuying', { percent: String(percent) })}</span>
+                html`<p class="note" data-state="join-cloudy">
+                    ${contentText(locale, 'adminContent.imagery.cloudy.beforeBuying', { percent: String(percent) })}
                 </p>`,
         )}
     </li>`;

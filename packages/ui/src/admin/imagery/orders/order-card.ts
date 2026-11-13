@@ -16,7 +16,7 @@ import { contentText, noticeOf } from '../../shell/text.js';
 import type { ImageryContext } from '../context.js';
 import type { SceneItemPort, SceneOrderPort } from '../imagery-port.js';
 import { numberText } from '../imagery-text.js';
-import { orderRefusalOf, sceneRefusal, usgsSetupLink } from '../scene-refusal.js';
+import { sceneRefusal, usgsSetupLink } from '../scene-refusal.js';
 import { when, withValue } from '../when.js';
 
 /** EarthExplorer's home, for a scene whose page is not known yet (the admin searches its entity id there). */
@@ -139,6 +139,11 @@ function buyCard(context: ImageryContext, scene: SceneItemPort): TemplateResult 
 }
 
 /** **I ordered it**; refused, the keyboard goes to the scene's heading (a frame scanned meanwhile takes the card along). */
+/** The order card's refusal: Not useful's is its own section's (`scene-unusable.ts`). */
+function orderRefusalOf(view: ImageryContext['view']): ImageryContext['view']['orderRefusal'] {
+    return view.orderRefusal?.action === 'unusable' ? null : view.orderRefusal;
+}
+
 async function markOrdered(context: ImageryContext, id: string): Promise<void> {
     if ((await context.intents?.markOrdered(id)) === false) {
         context.focusDetail();

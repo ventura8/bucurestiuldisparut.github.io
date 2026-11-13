@@ -24,7 +24,6 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.reason.resolution': 'Detail of about {metres} m',
     'adminContent.imagery.reason.season': 'Taken in month {month}, outside the leaf-on summer',
     'adminContent.imagery.reason.cloudCity': 'Clouds over the city, judged from the preview: about {percent} %',
-    'adminContent.imagery.fact.cloudCity': 'Clouds over the city (from the preview)',
     'adminContent.imagery.cloudy.tag': 'Probably cloudy over the city: {percent} %',
     'adminContent.imagery.unusable.title': 'Not useful?',
     'adminContent.imagery.cloudy.warning': 'The preview shows clouds over much of the city: this scan may show little of its streets.',

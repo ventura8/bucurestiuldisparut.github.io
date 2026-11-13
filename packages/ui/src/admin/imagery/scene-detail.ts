@@ -21,7 +21,8 @@ import { lazyJoin } from './join/lazy-card.js';
 import { lazyOrderCard } from './orders/lazy-card.js';
 import { notFoundPane } from './not-found.js';
 import { sceneRefusal, usgsSetupLink } from './scene-refusal.js';
-import { cloudyWarning, unusableSection } from './scene-unusable.js';
+import { chunkLoader, chunkTemplate, type ChunkLoader } from './orders/lazy-card.js';
+import type { SceneUseChunk } from './scene-unusable.js';
 import { when } from './when.js';
 
 /** Why there is no image, with Try again; a preview that could not be made too: the row's small crop is not the browse image. */
@@ -75,9 +76,6 @@ function facts(locale: Locale, scene: SceneItemPort): TemplateResult {
         ${fact(locale, 'adminContent.imagery.fact.camera', scene.sensorName)}
         ${fact(locale, 'adminContent.imagery.fact.date', dayText(locale, scene.date))}
         ${fact(locale, 'adminContent.imagery.fact.cloud', cloud)}
-        ${when(scene.cloudCity !== null, () =>
-            fact(locale, 'adminContent.imagery.fact.cloudCity', `${numberText(locale, scene.cloudCity ?? 0, 0)} %`),
-        )}
         ${fact(locale, 'adminContent.imagery.fact.resolution', `${numberText(locale, scene.resolutionM)} m`)}
         ${fact(locale, 'adminContent.imagery.fact.coverage', `${numberText(locale, scene.coverage * 100, 0)} %`)}
         ${fact(locale, 'adminContent.imagery.fact.id', scene.displayId)}
@@ -176,6 +174,17 @@ export function importRefusal(context: ImageryContext, scene: SceneItemPort): Te
     return sceneRefusal(context, context.view.importRefusal, scene);
 }
 
+/** Not useful and the cloudy warning, a chunk fetched when a scene's page opens (`scene-unusable.ts`). */
+export const SCENE_USE_CHUNK: ChunkLoader<SceneUseChunk> = chunkLoader(async () => import('./scene-unusable.js'));
+
+function sceneUse(context: ImageryContext, scene: SceneItemPort): TemplateResult {
+    return chunkTemplate(
+        context,
+        SCENE_USE_CHUNK,
+        (chunk) => html`${chunk.cloudyWarning(context.locale, scene)} ${chunk.unusableSection(context, scene)}`,
+    );
+}
+
 function notFound(context: ImageryContext): TemplateResult {
     return notFoundPane(context, 'adminContent.imagery.sceneNotFound');
 }
@@ -185,9 +194,9 @@ function sceneBody(context: ImageryContext, scene: SceneItemPort): TemplateResul
     return html`<div class="pane" data-scene=${scene.id}>
         <h2 tabindex="-1" data-detail-heading>${scene.sensorName} · ${dayText(locale, scene.date)}</h2>
         <p>${contentText(locale, 'adminContent.imagery.score', { score: String(scene.score) })}</p>
-        ${browseImage(context, scene)} ${cloudyWarning(locale, scene)} ${lazyOrderCard(context, scene)}
+        ${browseImage(context, scene)} ${lazyOrderCard(context, scene)}
         ${when(importShown(scene), () => noImport(context, scene) ?? importButton(context, scene))} ${importRefusal(context, scene)}
-        ${lazyJoin(context, null, (chunk) => chunk.sceneOffer(context, scene))} ${unusableSection(context, scene)}
+        ${lazyJoin(context, null, (chunk) => chunk.sceneOffer(context, scene))} ${sceneUse(context, scene)}
         <h3>${contentText(locale, 'adminContent.imagery.why')}</h3>
         <ul class="reasons">
             ${scene.reasons.map((reason) => html`<li>${reasonText(locale, reason)}</li>`)}
