@@ -3896,3 +3896,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: a worker without the sheets hands the job back unspent and the computer with the archive sends a copy through the
       bucket (M20 §20; `functions/test/worker/archive-host.test.ts`, `pipeline/tests/unit/test_archive_copy.py`).
     - **Data that lives on one machine needs a test with two workers: one that has it and one that does not.**
+
+663. **Every Linux worker refused its own local AI: the starter read the worker's image instead of the AI's.**
+    - Seen: 2026-11-13, the owner's PC (WSL) and the laptop: `local AI: refused an unexpected program image` every 20 s (286 times on the PC), the sidecar never started and every locate waited 30 minutes, then "the sidecar did not come up"; the frames fell to the admin's points.
+    - Cause: `ai_image` in `hcm-worker.sh` took the last `"image": "…"` of the whole `/state` line with a greedy `sed`; since the worker added its own `image` (`sha256:…`, after `ai`), that was the match, and the check refused it. The tests fed `/state` as the `ai` record alone, so they never saw the second field. The Windows starter parses the JSON and was right.
+    - Fix and pin: the starter reads `image` inside `"ai": {…}` only; the sidecar tests now feed the worker's whole `/state` (its own `image` and `starter` after `ai`). Starter version `fae0e8664ab5`.
+    - **A test of a parser feeds the producer's real, whole output, never the one field the parser wants; a shell `sed` over JSON is greedy across fields.**
