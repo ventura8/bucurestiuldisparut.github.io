@@ -3,7 +3,7 @@
 from dataclasses import replace
 
 import pytest
-from hcm_pipeline.governor.policy import CALM_S, TICK_S, Choice, PolicyState, decide, effective, is_hot, pressure
+from hcm_pipeline.governor.policy import CALM_S, HOT_HOLD_S, TICK_S, Choice, PolicyState, decide, effective, is_hot, pressure
 from hcm_pipeline.governor.signals import Cpu, Gpu, Power, Usage
 from hypothesis import given, settings
 from hypothesis import strategies as st
@@ -68,7 +68,9 @@ def test_heat_steps_down_one_level_and_back_five_degrees_below() -> None:
     assert state.hot
     # Back at 90, not 85: other programs held the laptop at 88 to 93 °C for hours (2026-11-13), and the worker never resumed.
     cool = replace(hot, cpu=Cpu(16, temp_c=90.0))
-    assert not decide(cool, AUTO, state, 2.0).hot
+    # Held for two minutes once hot: no pause and resume every minute at 90 to 95 °C (the laptop on battery, 2026-11-13).
+    assert decide(cool, AUTO, state, 2.0).hot
+    assert not decide(cool, AUTO, state, HOT_HOLD_S).hot
 
 
 def test_a_hot_graphics_card_counts() -> None:
