@@ -14,6 +14,7 @@ import {
     imageryState,
     jobView,
     scene,
+    sceneButtons,
     versionItem,
     versionPage,
     versionView,
@@ -93,7 +94,7 @@ describe('<hcm-imagery-page>: a scene', () => {
         expect(pending.getAttribute('role')).toBe('alert');
         expect(pending.textContent).toContain('USGS has not approved M2M access for this account yet.');
         expect(deep(pending, 'a').getAttribute('href')).toBe('#/setup/usgs');
-        const imports = deepAll(element, '.pane[data-scene] hcm-button') as (HTMLElement & { disabled: boolean })[];
+        const imports = sceneButtons(element) as (HTMLElement & { disabled: boolean })[];
         expect(imports.map((target) => target.disabled)).toEqual([true]);
         expect(await axeViolations(element)).toEqual([]);
     });

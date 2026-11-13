@@ -134,11 +134,16 @@ function buyCard(context: ImageryContext, scene: SceneItemPort): TemplateResult 
             })}
             ${when(again, () => takeBack(context, scene))}
         </div>
-        ${sceneRefusal(context, context.view.orderRefusal, scene)}
+        ${sceneRefusal(context, orderRefusalOf(context.view), scene)}
     </section>`;
 }
 
 /** **I ordered it**; refused, the keyboard goes to the scene's heading (a frame scanned meanwhile takes the card along). */
+/** The order card's refusal: Not useful's is its own section's (`scene-unusable.ts`). */
+function orderRefusalOf(view: ImageryContext['view']): ImageryContext['view']['orderRefusal'] {
+    return view.orderRefusal?.action === 'unusable' ? null : view.orderRefusal;
+}
+
 async function markOrdered(context: ImageryContext, id: string): Promise<void> {
     if ((await context.intents?.markOrdered(id)) === false) {
         context.focusDetail();
@@ -217,7 +222,7 @@ function watchCard(context: ImageryContext, scene: SceneItemPort): TemplateResul
                     })}
                     ${takeBack(context, scene)}
                 </div>
-                ${sceneRefusal(context, context.view.orderRefusal, scene)}
+                ${sceneRefusal(context, orderRefusalOf(context.view), scene)}
             </section>`,
     );
 }

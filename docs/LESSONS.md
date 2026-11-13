@@ -3848,13 +3848,25 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: the test takes a fresh copy (`vi.resetModules()` and a dynamic `import`) before asserting the unloaded state.
     - **A test of a module's initial state imports a fresh copy; never trust module state left by whoever ran before.**
 
-655. **The e2e count of Create the measurement reports still said 14 after §200 had registered 22 parameters.**
+655. **Every KH-9 panoramic preview failed with "cannot be fetched right now, try again", and Try again never helped.**
+    - Seen: 2026-11-13, the live admin, D3C1207-300256A038 and D3C1212-300570A079; the logs read `UpstreamError: remote call failed: invalid`.
+    - Cause: USGS's Declass 3 browse images are 7 to 13 MB (`curl -I` on `ims.cr.usgs.gov/browse/declass3/…`); `RemoteFiles` stops at `BROWSE_MAX_BYTES` (5 MB) and calls a longer file `invalid`, which the browse proxy turned into the retryable "unavailable".
+    - Fix and pin: the fetch takes up to 30 MB in 30 s and stores a file over 5 MB shrunk to a 4,096 px JPEG; each failure records what failed (`browseNotImage`, `browseTooLarge`, `browseUnavailable`) and says what to do (`functions/test/imagery/browse.test.ts`, S-A12-HAPPY-LARGE-BROWSE, S-A12-BAD-BROWSE-SPECIFIC).
+    - **Measure a real upstream file before choosing a size cap, and never word a failure that a retry cannot fix as "try again".**
+
+656. **The whole-city plan kept offering to buy a scan that is all cloud over the city.**
+    - Seen: 2026-11-13, the owner on DS09066A047MC019 (1964): "This scan is useless (too many clouds!!!)".
+    - Cause: declassified records carry no cloud cover, so the rank scored every frame's clouds "unknown", and nothing let the owner set a scene aside: the client rule allowed `rejected`, but no screen wrote it and a client write would not rewrite the plan.
+    - Fix and pin: the browse image's clouds over the city are measured (`cloud-estimate.ts`) and rank, card, page and Buy this scan say so; `imagery.markScene` sets a scene aside with why and writes the plan again (S-A152-*).
+    - **When a choice the server makes for the owner can be wrong, give the owner a one-click way to overrule it, and make the server act on it at once.**
+
+657. **The e2e count of Create the measurement reports still said 14 after §200 had registered 22 parameters.**
     - Seen: 2026-11-13, track/gadata adding `app_surface`: `e2e/admin/steps/analytics.spec.ts` asserted 14 creations while the unit test of `analytics-reports.ts` said 22.
     - Cause: the track that added eight dimensions updated the Vitest count and not the Playwright one (the e2e tier was not run before the merge).
     - Fix and pin: both counts follow `FIELD_DIMENSIONS` and `FIELD_METRICS` (23 now); a new parameter changes both in the same commit.
     - **A count asserted in two tiers changes in both, or the slower tier keeps the old truth until someone runs it.**
 
-656. **GA4's funnel report is not in the Data API's stable version.**
+658. **GA4's funnel report is not in the Data API's stable version.**
     - Seen: 2026-11-13, track/gadata: `runFunnelReport` exists in `v1alpha` only; `v1beta` has `runReport` and `batchRunReports`.
     - Fix: the Statistics view computes the funnel (who left before each step) from `runReport` rows of `step_view` in the page's step order (`packages/admin/src/google/analytics-data.ts`).
     - **Check an API method's version before you design on it; build on the stable one and compute what it lacks.**

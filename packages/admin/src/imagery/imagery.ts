@@ -184,12 +184,13 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
     }
 
     /** M4: the order card (`docs/research/M4-interfaces.md` §1.7). */
-    #orderIntents(): Pick<ImageryIntents, 'markOrdered' | 'checkOrder' | 'cancelOrder'> {
+    #orderIntents(): Pick<ImageryIntents, 'markOrdered' | 'checkOrder' | 'cancelOrder' | 'markUnusable'> {
         const orders = this.#orders;
         return {
             markOrdered: (id) => orders.markOrdered(id),
             checkOrder: (id) => orders.checkOrder(id),
             cancelOrder: (id) => orders.cancelOrder(id),
+            markUnusable: (id, reason) => orders.markUnusable(id, reason),
         };
     }
 

@@ -34,6 +34,14 @@ export const datePlanRowSchema = z.strictObject({
      * join that came out short offers them. Absent when there are none.
      */
     spareFrames: z.array(idSchema).max(JOIN_MAX_PARTS).optional(),
+    /**
+     * Chosen or paid frames whose browse image shows at least `CLOUDY_CITY_PERCENT` of the city clouded (the owner's report of
+     * 2026-11-13): the row warns before an import or a purchase. Absent when there are none.
+     */
+    cloudyFrames: z
+        .array(z.strictObject({ entityId: idSchema, percent: z.number().int().min(0).max(100) }))
+        .max(JOIN_MAX_PARTS * 2)
+        .optional(),
     /** An estimate from the frames' outlines, worded "about"; the join page shows the measured figure. */
     coveragePct: z.number().min(0).max(100),
     /** Chosen frames not imported yet. */

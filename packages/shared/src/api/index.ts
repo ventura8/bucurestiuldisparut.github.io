@@ -151,6 +151,8 @@ export {
 } from './content.js';
 export type { BuildManifestTask, RebuildManifestRequest, RebuildManifestResponse } from './content.js';
 export {
+    BROWSE_FETCH_MAX_BYTES,
+    BROWSE_LONG_EDGE,
     BROWSE_MAX_BYTES,
     BROWSE_PREFETCH,
     CLOUD_RUN_JOBS,
