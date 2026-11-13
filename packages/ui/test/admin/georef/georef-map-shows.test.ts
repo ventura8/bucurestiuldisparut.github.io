@@ -68,7 +68,7 @@ describe('the list of what the map pane shows', () => {
         const { element } = await georefPage(georefState({ baseLayers: LAYERS, reference: 'osm' }));
         const box = (selector: string): DOMRect => deep(element, selector).getBoundingClientRect();
 
-        // The owner's report of 2026-11-13: the list sat above the map only, 80 px of offset (lesson 655).
+        // The owner's report of 2026-11-13: the list sat above the map only, 80 px of offset (lesson 664).
         expect(box('select#map-shows').height).toBeGreaterThan(0);
         expect(Math.abs(box('.scan-pane hcm-scan-viewer').top - box('.map-pane hcm-admin-map').top)).toBeLessThanOrEqual(1);
         expect(Math.abs(box('.scan-pane hcm-scan-viewer').height - box('.map-pane hcm-admin-map').height)).toBeLessThanOrEqual(1);

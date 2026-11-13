@@ -256,7 +256,7 @@ test(
         await expect(page.locator('[data-state="published-note"]')).toHaveText(georefText(lang, 'adminContent.georef.publishedNote'));
         await expectStateSound(page, adminVisit('georef.edit-published', lang));
         // The map shows: the published layer itself goes under the pairs, on the page's one map; back to OpenStreetMap, it is gone.
-        // On a phone the list is on the map's side of the switch (the test never showed it there: lesson 655).
+        // On a phone the list is on the map's side of the switch (the test never showed it there: lesson 664).
         await showPane(page, lang, 'map');
         const shows = page.getByLabel(georefText(lang, 'adminContent.georef.shows.map'));
         await shows.selectOption(`layer:${layer.id}`);
