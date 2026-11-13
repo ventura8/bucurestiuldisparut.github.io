@@ -1151,6 +1151,13 @@
             "source": "the owner's request of 2026-11-13 (beta.1); DECISIONS-for-review.md §200"
         },
         {
+            "id": "A153",
+            "area": "admin",
+            "name": "The Statistics view shows Google Analytics' numbers and Error Reporting's groups after the owner's read-only consent",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (take me to the analytics permission button); DECISIONS-for-review.md §203"
+        },
+        {
             "id": "V70",
             "area": "viewer",
             "name": "The viewer's key actions reach analytics only after consent, and never under Do Not Track",
@@ -19671,6 +19678,39 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Test: e2e/admin/specs/ops/ops.spec.ts; Vitest packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-HAPPY-NUMBERS",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "happy",
+            "title": "Show the numbers here: one read-only Analytics consent, then the overview, the apps and each wizard's funnel",
+            "asserts": "#/crashes/statistics: the button with Google's note about the read-only scope asks for analytics.readonly only; after the consent the visitors, the apps per role (the start page not measured) and the new_city funnel with who left and the error codes in words show; another period asks the Data API for its own days, coming back to a period asks nothing; Error Reporting's groups of the period link the console",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §203. Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-numbers); Vitest packages/ui/test/admin/ops/statistics.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/admin/test/google/analytics-data.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-CONSENT-REFUSED",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refused Analytics consent reads nothing and says how to try again",
+            "asserts": "the owner closes Google's window without ticking the scope -> the view says the permission was not given and to tick it on the next click; the Data API is never called",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/crashes/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-API-DISABLED",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "The Data API off: the view says so with Setup's Update the map and the console's page",
+            "asserts": "the Data API answers SERVICE_DISABLED -> the alert says the API is off and to run Update the map or turn it on, with links to #/setup and the API's page in the Google Cloud console of the project",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-problem); Vitest packages/ui/test/admin/ops/statistics.test.ts."
         },
         {
             "id": "S-V70-HAPPY-KEY-ACTIONS",

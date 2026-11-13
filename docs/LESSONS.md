@@ -3847,3 +3847,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: another file in the same worker had loaded the colour library, and the module's state is shared by every test of that worker.
     - Fix and pin: the test takes a fresh copy (`vi.resetModules()` and a dynamic `import`) before asserting the unloaded state.
     - **A test of a module's initial state imports a fresh copy; never trust module state left by whoever ran before.**
+
+676. **The e2e count of Create the measurement reports still said 14 after §200 had registered 22 parameters.**
+    - Seen: 2026-11-13, track/gadata adding `app_surface`: `e2e/admin/steps/analytics.spec.ts` asserted 14 creations while the unit test of `analytics-reports.ts` said 22.
+    - Cause: the track that added eight dimensions updated the Vitest count and not the Playwright one (the e2e tier was not run before the merge).
+    - Fix and pin: both counts follow `FIELD_DIMENSIONS` and `FIELD_METRICS` (23 now); a new parameter changes both in the same commit.
+    - **A count asserted in two tiers changes in both, or the slower tier keeps the old truth until someone runs it.**
+
+677. **GA4's funnel report is not in the Data API's stable version.**
+    - Seen: 2026-11-13, track/gadata: `runFunnelReport` exists in `v1alpha` only; `v1beta` has `runReport` and `batchRunReports`.
+    - Fix: the Statistics view computes the funnel (who left before each step) from `runReport` rows of `step_view` in the page's step order (`packages/admin/src/google/analytics-data.ts`).
+    - **Check an API method's version before you design on it; build on the stable one and compute what it lacks.**
+

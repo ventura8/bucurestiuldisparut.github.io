@@ -13,6 +13,7 @@ import type { LoadStatus } from '../content/list.js';
 import type { ContentServices } from '../content/services.js';
 import type { NoticeInput } from '../state/state.js';
 import { Store } from '../state/store.js';
+import { createStatistics, STATISTICS_INITIAL, type StatisticsDays, type StatisticsState } from './statistics.js';
 
 /** The periods Error Reporting is asked about, in hours. */
 type CrashPeriod = 24 | 168 | 720;
@@ -32,6 +33,8 @@ export interface CrashesState {
     /** The failure is a disabled Error Reporting API: the page links to Setup's analytics card, which enables it. */
     readonly apiDisabled: boolean;
     readonly selected: string | null;
+    /** §203: the Statistics view's numbers from Google Analytics (`./statistics.ts`). */
+    readonly statistics: StatisticsState;
 }
 
 export interface CrashesIntents {
@@ -39,6 +42,16 @@ export interface CrashesIntents {
     more(): Promise<void>;
     retry(): void;
     select(groupId: string | null): void;
+    /** §203: **Show the numbers here** (Google's consent window, then the numbers). */
+    showNumbers(): void;
+    /** §203: the Statistics view's period; the error groups follow it (Error Reporting keeps 30 days at most). */
+    setStatisticsDays(days: StatisticsDays): void;
+    refreshStatistics(): void;
+}
+
+/** The error groups' period for a Statistics period: a week, else Error Reporting's longest, 30 days. */
+function periodOfDays(days: StatisticsDays): CrashPeriod {
+    return days === 7 ? 168 : 720;
 }
 
 const INITIAL: CrashesState = {
@@ -50,6 +63,7 @@ const INITIAL: CrashesState = {
     failure: null,
     apiDisabled: false,
     selected: null,
+    statistics: STATISTICS_INITIAL,
 };
 
 function pageRequest(hours: CrashPeriod, pageToken: string | null): ListGroupsRequest {
@@ -77,9 +91,30 @@ class CrashesStore implements AreaStore<CrashesState, CrashesIntents> {
     constructor(services: ContentServices) {
         this.#services = services;
         this.#cell = new Store<CrashesState>(INITIAL, services.log);
+        const statistics = createStatistics(
+            services.statistics,
+            () => this.#cell.state.statistics,
+            (patch) => {
+                this.#cell.update({ statistics: { ...this.#cell.state.statistics, ...patch } });
+            },
+        );
+        const setPeriod = (period: CrashPeriod): void => {
+            this.#cell.update({ period, selected: null });
+            void this.#load(null);
+        };
         this.intents = {
-            setPeriod: (period) => {
-                this.#cell.update({ period, selected: null });
+            setPeriod,
+            showNumbers: () => {
+                statistics.showNumbers();
+            },
+            setStatisticsDays: (days) => {
+                statistics.setDays(days);
+                if (periodOfDays(days) !== this.#cell.state.period) {
+                    setPeriod(periodOfDays(days));
+                }
+            },
+            refreshStatistics: () => {
+                statistics.refresh();
                 void this.#load(null);
             },
             more: () => this.#more(),

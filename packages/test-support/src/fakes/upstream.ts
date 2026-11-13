@@ -1,6 +1,7 @@
 import { FIXTURE_VALUES } from '../api-fixtures/index.js';
 import { createFakeFetch, type FakeAnswer, type FakeFetch, type UpstreamRequest } from './fetch.js';
 import { createAnalyticsAdminFake, type AnalyticsAdminState } from './google-analytics-admin.js';
+import { createAnalyticsDataFake, defaultAnalyticsDataState, type AnalyticsDataState } from './google-analytics-data.js';
 import { createApiKeysFake, type ApiKeysState } from './google-api-keys.js';
 import { createArtifactRegistryFake, defaultArtifactRegistryState, type ArtifactRegistryState } from './google-artifact-registry.js';
 import { createAppCheckFake, createRecaptchaFake, type AppCheckState } from './google-app-check.js';
@@ -77,6 +78,7 @@ export interface UpstreamState {
     readonly monitoring: MonitoringState;
     readonly apiKeys: ApiKeysState;
     readonly analyticsAdmin: AnalyticsAdminState;
+    readonly analyticsData: AnalyticsDataState;
     readonly mapbox: MapboxState;
     readonly usgs: UsgsState;
     readonly stac: StacState;
@@ -147,6 +149,7 @@ function initialState(): UpstreamState {
         monitoring: { channels: new Map(), policies: new Map() },
         apiKeys: { projects: new Map() },
         analyticsAdmin: { settings: new Map(), definitions: new Map(), otherAccount: false },
+        analyticsData: defaultAnalyticsDataState(),
         mapbox: defaultMapboxState(),
         usgs: defaultUsgsState(),
         stac: defaultStacState(),
@@ -184,6 +187,7 @@ function services(state: UpstreamState): readonly ServiceFake[] {
         createMonitoringFake(state.monitoring, projects),
         createApiKeysFake(state.apiKeys, projects),
         createAnalyticsAdminFake(state.analyticsAdmin, state.firebase),
+        createAnalyticsDataFake(state.analyticsData, state.analyticsAdmin),
         createMapboxFake(state.mapbox),
         createUsgsFake(state.usgs),
         createUsgsBrowseFake(),

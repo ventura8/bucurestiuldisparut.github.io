@@ -185,7 +185,8 @@ export class AnalyticsLoader {
     /** The event checked by the guard (`@hcm/shared`), then logged; a dropped one is logged once per reason. */
     #log(loaded: Loaded, event: GaEvent | FieldEvent): void {
         const params = isField(event) ? { ...event.params, ...this.#deps.fieldContext() } : gaParams(event);
-        const checked = loaded.guard.check(event.name, { ...params, page_location: this.#deps.pageLocation() });
+        // §203: every event names its app, so the owner's Statistics view counts the map's visitors apart from the admin's.
+        const checked = loaded.guard.check(event.name, { ...params, app_surface: 'viewer', page_location: this.#deps.pageLocation() });
         if (checked.ok) {
             loaded.sdk.logEvent(loaded.analytics, event.name, checked.params);
         } else if (checked.first) {

@@ -387,7 +387,9 @@ export type { AdjustmentSlider } from './overlays/adjustments.js';
 // Field measurements (DECISIONS-for-review.md §76): GA4's event schemas and guards, Core Web Vitals as GA4 parameters;
 // imported only by the apps' consented lazy chunks (each its own app's table).
 export {
+    APP_SURFACES,
     COMMON_EVENT_PARAMS,
+    SURFACE_PARAMS,
     FIELD_EVENT_BUDGET,
     GA_LIMITS,
     MAP_ERROR_KINDS,
