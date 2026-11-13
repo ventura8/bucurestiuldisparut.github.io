@@ -14,5 +14,6 @@ const LABELS: Partial<Record<ViewerLocale, Readonly<Record<MapLabelsKey, string>
  * too (`i18n/<locale>.json`). A language not here yet gives an empty text; a key its file lacks shows in English.
  */
 export function translateMapLabels(locale: ViewerLocale, key: MapLabelsKey): string {
-    return hasCatalogue(locale) ? (uiText(locale, key, LABELS) ?? '') : '';
+    // An array's join reads a missing text as empty.
+    return hasCatalogue(locale) ? [uiText(locale, key, LABELS)].join('') : '';
 }
