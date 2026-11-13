@@ -3870,3 +3870,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-13, track/gadata: `runFunnelReport` exists in `v1alpha` only; `v1beta` has `runReport` and `batchRunReports`.
     - Fix: the Statistics view computes the funnel (who left before each step) from `runReport` rows of `step_view` in the page's step order (`packages/admin/src/google/analytics-data.ts`).
     - **Check an API method's version before you design on it; build on the stable one and compute what it lacks.**
+
+659. **A label fixed at the source stays wrong in every record written before the fix.**
+    - Seen: 2026-11-13, track/coronacrop: the id rules that name KH-5 Argon frames landed on 2026-11-09, but the 249 `corona2` scenes harvested on 2026-10-25 kept the fallback KH-4A, and the import copied it: an Argon frame, 550 km square, was searched as a Corona strip and shown whole with the city a speck (`DS09065A073MC043`).
+    - Fix: `trueSensor` reads a stored fallback camera again by the frame's id at import (`functions/src/imagery/scene-record.ts`, DECISIONS §209).
+    - **When a rule that derives a stored field changes, correct the stored records too (or read them through the rule), not only new ones.**

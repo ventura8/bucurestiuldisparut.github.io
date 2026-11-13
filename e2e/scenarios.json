@@ -5442,6 +5442,28 @@
             "notes": "docs/research/M9-calibration.md §14. In functions/test/imagery/scene-record.test.ts."
         },
         {
+            "id": "S-A12-HAPPY-STALE-CAMERA",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A scene harvested before the id rules is imported as the camera its id names",
+            "asserts": "DS09065A073MC043 stored as KH-4A (the corona2 fallback) imports as KH-5: the job's params, the version's sensor and label, the reserved layer id and the scene say KH-5 Argon; DS1103 reads KH-4B",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS §209, LESSONS 659. In functions/test/imagery/{scene-record,import}.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-STALE-CAMERA-KEPT",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A stored camera other than the fallback, or an id of no known form, is kept",
+            "asserts": "a stored KH-4B stays KH-4B whatever the id; an unknown id keeps the stored KH-4A",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS §209. In functions/test/imagery/scene-record.test.ts."
+        },
+        {
             "id": "S-A11-HAPPY-SAME-DATE-RANK",
             "behaviour": "A11",
             "area": "admin",
@@ -11292,6 +11314,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Finding 57 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82h). Test: pipeline/tests/unit/test_frames.py."
+        },
+        {
+            "id": "S-P01-HAPPY-RECROP-RIGHT-TO-LEFT",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A point on a whole strip shrunk crops the same place at full resolution, whichever way the film was scanned",
+            "asserts": "a 3-segment strip lettered right to left (and left to right), read whole shrunk 8 times: a point on the city at 73 % along maps to 73 % of the film, and the crop around it is the film's own pixels holding the city",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "DECISIONS §209 (DS1103-1058DF026, 1968). Test: pipeline/tests/unit/test_recrop_order.py."
+        },
+        {
+            "id": "S-P01-BAD-RECROP-MIRRORED",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "The mirror place of the city is never cropped",
+            "asserts": "on the same strips a decoy at 27 % (the city's mirror place) stays out of the crop around the point on the city",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "DECISIONS §209. Test: pipeline/tests/unit/test_recrop_order.py."
         },
         {
             "id": "S-P01-HAPPY-KH9-STRIP",
