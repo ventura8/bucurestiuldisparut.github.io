@@ -151,6 +151,7 @@ export const ro = {
     'adminContent.imagery.versionChecking': 'Fișierul încărcat',
     'adminContent.imagery.openGeoref': 'Deschide georeferențiatorul',
     'adminContent.imagery.editPoints': 'Editează punctele',
+    'adminContent.imagery.openTiles': 'Așază foile',
     'adminContent.imagery.openLayer': 'Deschide stratul publicat',
     'adminContent.imagery.previewOpacity': 'Opacitatea previzualizării pe hartă',
     'adminContent.imagery.approve': 'Aprobă și publică',

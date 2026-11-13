@@ -113,6 +113,9 @@ VERSION_FILES: Final = (
     "align.tif",
     "stitched.jpg",
     "scan-tiles.bin",
+    "layout.json",
+    "thumbs.jpg",
+    "seams.jpg",
 )
 LEASE_SECONDS: Final = 600
 HEARTBEAT_SECONDS: Final = 60

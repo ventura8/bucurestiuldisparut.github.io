@@ -19,6 +19,7 @@ import {
     NOW,
     at,
     goldenGeoref,
+    layoutCheckVersion,
     readJob,
     readLayer,
     readScene,
@@ -248,6 +249,17 @@ describe('imagery.saveGcps: an archive series (2026-11-10)', () => {
         expect(resumed).toMatchObject({ status: 'queued', steps: { gather: { status: 'done' }, place: { status: 'pending' } } });
         expect(resumed?.steps?.['georef']).toBeUndefined();
         expect((await readVersion(world, PLAN))?.georef?.method).toBe('gcps');
+    });
+
+    it('badPath_aSeriesWhoseTilesWaitTakesNoPointsOnItsPreview @S-A-BAD-TILE-WIZARD-POINTS-FIRST', async () => {
+        const world = await waitingWorld();
+        await seedVersion(world, PLAN, needsGcpsVersion({ help: layoutCheckVersion().help }));
+        await seedJob(world, PLAN, job({ type: 'archive-series' }));
+
+        expect(await failureOf(save(world, { versionId: PLAN, gcps: pairs(8) }))).toMatchObject({
+            details: { code: 'apiError.imagery.layoutWaits' },
+        });
+        expect(await readJob(world, PLAN)).toMatchObject({ status: 'awaiting_gcps' });
     });
 });
 

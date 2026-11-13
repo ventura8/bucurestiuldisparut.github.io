@@ -18198,6 +18198,149 @@
             "notes": "Live 2026-11-12 (harti.zip and the local worker, track/workerfix). Tests: pipeline/tests/unit/test_placing_pdf.py."
         },
         {
+            "id": "S-P20-HAPPY-STITCH-NAMES",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "An atlas or pieces named by row and column are laid out on their own",
+            "asserts": "names r1c2, 03-07, C12, 12A quadrants or folders as rows, shuffled, overlapping 6-15 %, grey, colour or line art, framed or with margins, scale off by 5 % -> every sheet placed, seam error median <= 1.5 px and p95 <= 3 px, verdict good; mosaicked window by window and waiting for points with help.stitched.layout and layout.json, thumbs.jpg, seams.jpg",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_sheetnames.py, pipeline/tests/unit/test_placing_autostitch.py, pipeline/tests/unit/test_placing_autoplace.py, pipeline/tests/unit/test_placing_bundle.py."
+        },
+        {
+            "id": "S-P20-HAPPY-STITCH-SEAMS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Sheets named only in order get their columns from the seams",
+            "asserts": "img003 or page numbers in natural order, overlap 3 % -> the likeliest column counts are each tried and the one whose seams join best kept; every sheet placed within the seam-error targets",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_sheetnames.py, pipeline/tests/unit/test_placing_seams.py, pipeline/tests/unit/test_placing_autostitch.py."
+        },
+        {
+            "id": "S-P20-HAPPY-STITCH-TURNED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Sheets scanned turned or mirrored are turned back",
+            "asserts": "three of twelve sheets turned 90/180/270 degrees and some mirrored -> each turned back to the variant its neighbours agree with (surest first), every sheet placed within the targets",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_autostitch.py, pipeline/tests/unit/test_placing_sheetwork.py."
+        },
+        {
+            "id": "S-P20-HAPPY-STITCH-ABUTTING",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Atlas pages that abut with frames and margins are placed whole",
+            "asserts": "pages with no overlap, paper margins and a frame line -> cropped inside the frame, joined by their edges continuing; 100 % placed, verdict good",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_autostitch.py, pipeline/tests/unit/test_placing_seams.py, pipeline/tests/unit/test_placing_sheetwork.py."
+        },
+        {
+            "id": "S-P20-HAPPY-STITCH-WINDOWED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The mosaic is written in windows within the worker's memory",
+            "asserts": "100 scans of 6000 px laid out and mosaicked -> peak RSS of the process <= 1.5 GB (the 4 GB / 2-core worker), canvas <= 20,000 px, tiles pasted turned, cropped and split at the nearest centre",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_canvas_window.py, pipeline/tests/unit/test_placing_autoplace.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-GARBAGE-WAITS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A layout nothing vouches for waits for its owner, never a mosaic",
+            "asserts": "noise sheets, or a check verdict the older joins cannot hold either -> no canvas, a preview of the proposal, the version waits with help reason layout-check and its layout files (weak seams with strips and a suggested point)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_autostitch.py, pipeline/tests/unit/test_placing_autoplace.py, pipeline/tests/unit/test_placing_bundle.py, pipeline/tests/unit/test_placing_assemble.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-FOREIGN-SHEET",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A foreign sheet is never placed",
+            "asserts": "a legend among named sheets, another town's sheet numbered with the pages, missing sheets -> the foreign sheet is left out (no-join or no-seam), the others placed within the targets",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_autostitch.py, pipeline/tests/unit/test_placing_bundle.py, pipeline/tests/unit/test_placing_seams.py, pipeline/tests/unit/test_placing_sheetnames.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-NO-NAMES",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Names no scheme agrees on fall back to the order",
+            "asserts": "names like north, harbour, east, duplicates on one cell, folders of one file -> laid out in natural order and judged by their seams, never a wrong named grid",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_sheetnames.py."
+        },
+        {
+            "id": "S-P20-HAPPY-STITCH-OWNER",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The owner's tile layout is fixed as given and kept for a retry",
+            "asserts": "help.layoutAnswer with cells, turns, flips, an X and an answered seam -> a preview waits again with layout-check and revision + 1; an accepted answer is mosaicked with the owner's seam (state owner); sheets not named keep their automatic reason (no-seam), only the X is not-part; a turn the cell refuses goes back a quarter; the answer stays in help after the mosaic's wait for points",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_autoplace.py, pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-OWNER-MALFORMED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A malformed or outdated owner answer never fixes a seam",
+            "asserts": "points that are not two finite numbers, a seam between sheets no longer neighbours on its side, a broken answer -> no fixed seam (never one at 0, 0), zeroes for malformed numbers, the rest of the layout measured as usual",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_autoplace.py, pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-NAMES-NO-SEAMS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Names read right over seams that say nothing are never judged good",
+            "asserts": "a 2 x 3 rc series whose pictures are swapped (quadrants read in the wrong order) or noise -> grid source name, verdict check or poor, so it waits for its owner instead of a mosaic",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-LEGACY-LOOSE",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "The older joins never mosaic a layout nothing vouches for",
+            "asserts": "a poor proposal with pages joined by edges alone, or a check or poor proposal whose older joins place every part with a 9 px residual -> no mosaic, the version waits with layout-check",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-TOO-MANY",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A series larger than the tile wizard can open waits before any layout",
+            "asserts": "more files than LAYOUT_SHEETS_MAX -> help reason no-path with the note to import smaller series, no layout.json written",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
             "id": "S-A65-HAPPY-JOINED-FRAME",
             "behaviour": "A65",
             "area": "admin",
@@ -18845,6 +18988,149 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/integration/test_memory_budgets.py, pipeline/tests/unit/test_compose_canvas.py."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-ORDER",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner opens the wizard from the series' page and moves a sheet with the pointer",
+            "asserts": "the series' page links #/help/<id>/tiles; the grid names every sheet with its source; a drag swaps two sheets",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-KEYBOARD",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner arranges the sheets with the keyboard",
+            "asserts": "the arrows choose a cell (roving tabindex), Shift and the arrows move the sheet, R turns it, F mirrors it, and the focus follows",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-SEAM",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner accepts a weak seam's guess",
+            "asserts": "the two strips show with the guess; Enter answers the seam; the answer is sent with the layout",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-PREVIEW",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner asks for the real preview and sees the pipeline's answer",
+            "asserts": "imagery.saveLayout with preview writes help.layoutAnswer and resets place; the newer revision shows the joined picture and the meter says good",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; functions/test/imagery/save-layout.test.ts."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-HANDOFF",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner sends the series on to points",
+            "asserts": "imagery.acceptLayout marks the answer accepted and queues the job; the page links the georeferencer",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; functions/test/imagery/save-layout.test.ts."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-STALE-REVISION",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A layout the pipeline wrote again while the owner worked is refused",
+            "asserts": "imagery.saveLayout refuses an older revision with apiError.imagery.layoutStale; the page says so and shows the newer layout",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; functions/test/imagery/save-layout.test.ts."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-ALL-OUT",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "Every sheet taken out of the map",
+            "asserts": "the page says to keep at least one sheet and Place it on the map is off",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-PREVIEW-POOR",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A poor layout",
+            "asserts": "the meter's lines say needs a look and an alert asks to look at the order and the seams again",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-UNREADABLE",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A wrong address, and a layout the bucket cannot give",
+            "asserts": "the page says no series is there; a missing layout.json says it cannot be read, with Try again",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-MOVE",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner moves a sheet with one pointer and no drag, and hears each change",
+            "asserts": "a touch on the grid pans it (touch-action pan-x pan-y, a touch starts no drag); Move then a tap on a cell moves the chosen sheet; a live region says the move, a turn, a mirror and a take-out",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-13 (W2, W3, W4; WCAG 2.5.7). Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/ui/test/admin/tiles/tiles-moves.test.ts."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-SEAM-KEYS",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner answers a seam the app did not find with the keyboard",
+            "asserts": "a missing seam is asked like a weak one, says it has no guess and offers no Accept; on a focused strip the arrows move a cross and Space or Enter picks the point, said in a live region; the answer is sent with the layout",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-13 (contract 1, W5; WCAG 2.1.1). Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/tiles-moves.test.ts."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-SEAM-RESET",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A seam answered before one of its sheets is moved, turned, mirrored or taken out",
+            "asserts": "the seam is dropped from step 2 and from the answer (its strips and points belong to the old orientation; the next preview asks it again)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-13 (contract 3). Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-POINTS-FIRST",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "Points on the doubtful preview of a series whose tiles wait",
+            "asserts": "the series' page links the wizard and not the georeferencer; imagery.saveGcps refuses a version waiting with layout-check with apiError.imagery.layoutWaits and the job keeps waiting",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-13 (W1). Test: e2e/admin/specs/imagery/tiles.spec.ts; functions/test/imagery/save-gcps.test.ts; Vitest packages/ui/test/admin/imagery/tiles-link.test.ts."
         }
     ]
 }

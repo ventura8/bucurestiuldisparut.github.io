@@ -657,3 +657,173 @@ Tests: `pipeline/tests/unit/{test_placing_grid,test_worker_imports,test_worker_a
 `packages/admin/test/archive/{local-import,feed}.test.ts`, `packages/ui/test/admin/{archive/archive,imagery/grid-names}.test.ts`,
 `e2e/admin/specs/imagery/archive.spec.ts`; scenarios `S-A120-HAPPY-GRID-NAMES`, `S-A120-BAD-GRID-NAMES-EDITOR`, `S-P20-HAPPY-GRID-BY-NAMES`,
 `S-A121-HAPPY-LOCAL-TAB`, `S-A121-BAD-LOCAL-TAB`, `S-P20-HAPPY-ADMIN-IMPORT`, `S-P20-BAD-ADMIN-IMPORT`, `S-P20-BAD-ADMIN-IMPORT-CANCELLED`.
+
+## 19. Tile stitching and the tile-import wizard (track/autostitch and track/tilewizard, 2026-11-12)
+
+Why parts were left out before (the worker's "9 parts, 85 left out", "2 parts, 98 left out", "57/3", "135/9"): the atlas edges compared
+1 px ink profiles and needed a mutual best match, which pages with margins and frames almost never give; the SIFT joins found few unique
+matches on repeated hatching and tried no turn or flip; the whole canvas was kept in memory (about 1.2 GB at 20,000 px); names were read
+only beside an overview. The pipeline side of the design (part A and the contract's twins) is in `pipeline/src/hcm_pipeline/placing/`;
+the tile-import wizard (part B) and the callables are track/tilewizard's.
+
+§19.1 to §19.9 are the pipeline's side (DECISIONS-for-review.md §181); §19.10 to §19.12 are the contract both sides build on and the
+admin's half (DECISIONS-for-review.md §182).
+
+### 19.1 The grid from the names (`sheetnames.py`)
+
+`r1c2`, `3_7` / `03-07`, a letter row and a number column (`C12`), a sheet number with an `A`-`D` quadrant (each base sheet's quarters on a
+grid twice as fine), folders as rows, else the natural order (`img003`, a PDF's pages). A scheme must read 80 % of the names, no two on one
+cell; the names it does not read are foreign (`no-join`). For names in order alone the likeliest column counts (the whole map nearest a
+square for the median sheet's shape, exact factorisations first) are each tried and the one whose seams join best is kept. The overview's
+name hint (`overview.grid_hint`) reads names through the same parser (`cell_of`).
+
+### 19.2 The working copies (`sheetwork.py`, `frame.py`)
+
+Each sheet is read reduced (at most 1024 px, smaller for a long series so all copies stay within 160 MB), in grey, cropped to its content:
+inside its frame when the frame has a paper margin around it (an outline inside the drawing, a ring of streets, is no frame), with the
+frame's line trimmed off; else with paper margins of at least 2 % trimmed (a street along the edge is content). The paper level is the
+98th percentile (a map of dark blocks has little paper). A page under 0.3 % ink is `blank`. Every copy is stretched to the series' cell
+(the median shape), which takes out scale differences; its turn and flip are one of eight variants, those its shape allows.
+
+### 19.3 The seams (`seams.py`)
+
+Only edge strips (25 % of the side) are compared. Line art (under 30 % ink) goes through a distance transform clipped at 12 px; filled
+maps are compared on their lightly smoothed grey. Overlap: the first sheet's outermost 2 %, 5 % and 10 % are each searched in the second's
+strip by normalised cross-correlation at a sub-pixel peak, and the reading whose overlap correlates best after alignment wins; its
+residual is the phase correlation (`cv2.phaseCorrelate`, Hanning window) of the aligned overlaps. Abutting pages: the edges' ink profiles,
+shifted, correlated. `strong` from 0.6, `weak` from 0.3, else `missing`. A seam below is a right seam of the sheets transposed.
+Each sheet's variant is chosen surest first: a sheet not strong as it is turns to a variant that fits strongly and gains 0.2, each checked
+again just before it turns, in two passes.
+
+### 19.4 The bundle (`bundle.py`)
+
+Least squares over every sheet's top left: each strong or weak seam weighted by its score squared, a weak grid prior (0.02) holding each
+sheet to its cell at the strong seams' median pitch, IRLS with Huber's loss (2 px). A seam still off by more than 8 px is dropped (marked
+weak); a sheet whose cell came from the order alone with no kept seam is left out (`no-seam`): a foreign sheet numbered with the pages never
+joins.
+
+### 19.5 The verdict (`quality.py`)
+
+`good` when at least 90 % of the sheets that count are placed (blank pages and `not-part` do not count), the seams' median NCC is at least
+0.5, the residuals' 95th percentile at most 3 px and no sheet moved more than a quarter cell from its prior (the thresholds are the shared
+`STITCH_GOOD_*` twins); `poor` under 50 % placed or a median under 0.25; else `check`. A sheet is placed for the verdict only when a kept
+seam touches it (one its cell's prior alone holds proves nothing), and every seam the bundle did not keep (missing, or dropped) scores 0 in
+the median: names read right over pictures whose seams say nothing (the 1895 quadrants read in the wrong order, or noise) are never `good`
+(review of 2026-11-13; `test_placing_stitch_guards.py`, S-P20-BAD-STITCH-NAMES-NO-SEAMS).
+
+### 19.6 The fallback order and the windowed mosaic (`maps.py`, `autoplace.py`, `canvas_window.py`)
+
+Atlas and pieces alike: (1) the owner's layout (`help.layoutAnswer`), (2) the overview, (3) names, seams and bundle, mosaicked when `good`,
+(4) the older edges or SIFT joins when they place at least 90 % of the parts and something vouches for them: their matches' residual
+within `STITCH_GOOD_RMS_PX` with at least 24 agreeing matches a join on average, or, for pages joined by their edges alone (nothing
+measured), a proposal that was only `check`, never `poor` (S-P20-BAD-STITCH-LEGACY-LOOSE), (5) else no mosaic: a preview of the proposal
+and the version waits with `layout-check`. A series of more than `LAYOUT_SHEETS_MAX` (2000) files waits with `no-path` before any layout
+("import it as smaller series"): the wizard could not open its `layout.json` (S-P20-BAD-STITCH-TOO-MANY). The mosaic is a tiled GTiff
+written in 2048 px windows, one sheet at a time: only its content box is read, by GDAL straight at its size on the canvas, one band at a
+time into one array, then turned; each pixel is owned by the covering sheet whose centre is nearest (a hard seam: blending line art doubles
+its lines); GDAL's cache is held to 128 MB. Peak memory is one sheet at the canvas's scale, one band and two windows, never a whole scan
+(two 12000 x 9000 colour scans: about 690 MB with the layout, under the test's 800 MB; the first paste read the scan whole at 1.05 x and
+copied it three times, over 1.1 GB).
+
+### 19.7 The files for the owner (`layout_files.py`)
+
+`help.stitched.layout` (the grid, the revision, the quality, at most 200 weakest seams) and three version files: `layout.json`
+(`layoutFileSchema`: every sheet's cell, turn, flip, why it is out, the grid's source (the same for every sheet, also for one left out),
+its matrix from its oriented pixels to the canvas, an axis-wise stretch and a shift (`sx ≠ sy` when a sheet's shape differs from its
+cell's), every seam's offset and overlap in the first sheet's oriented pixels, and for a weak **or missing** seam one suggested matching
+point and its two strips), `thumbs.jpg` (128 px cells, 32 a row, not turned) and `seams.jpg` (one row per weak or missing seam, weakest
+first, two 256 px squares: the wizard must show both states, and size the sprite from every seam with a `strip`). Residuals (`rmsPx`,
+`quality.seamRmsPx`) are in cell pixels. The revision is one more than the version's current layout's. What the pipeline really writes is
+held in `pipeline/tests/contracts/layout.json` (`test_placing_layout_contract.py`: a series with a foreign sheet, strong and missing seams;
+its shape must match, `HCM_WRITE_CONTRACTS=1` writes it again), which the shared schemas' test parses.
+
+### 19.8 The owner's layout (`owner_layout.py`)
+
+The answer names sheets by index with their cell, turn and flip, or `not-part`. A sheet it does not name keeps its automatic reason
+(`blank`, `no-join` for a name the grid did not read, else `no-seam`): only the owner's X makes a sheet `not-part`, which no longer counts
+(the wizard should still send every sheet with a cell). A turn the cell's shape refuses (a quarter turn of an oblong sheet on an oblong
+cell) goes back a quarter, the flip kept. A seam the owner answered (one point on each side) becomes a fixed seam of full weight only when
+its two sheets are still neighbours on that side of the new grid and both points are two finite numbers: a seam answered before a sheet
+moved or turned, or a malformed point, is ignored (S-P20-BAD-STITCH-OWNER-MALFORMED). The rest are measured and bundled. A `preview` answer
+renders the layout and waits again (revision + 1); an accepted or final one is mosaicked and placed whatever its verdict
+(S-P20-HAPPY-STITCH-OWNER). The answer stays in `help` through every later wait: `output.wait_for_help` carries `help.layoutAnswer` into
+the new `help` in the same write, so a retry of `place` or Locate again lays the series out the owner's way again, and no crash between
+two writes drops it.
+
+### 19.9 Targets and measurements
+
+Synthetic series (`pipeline/tests/synthetic/sheets.py` on the synthetic town): N x M grids, overlap 0-15 %, frames and margins, turns and
+flips, scale ±5 %, grey, colour and line art, every name scheme, shuffled, missing and foreign sheets, noise. Targets, all met in the tests
+(`test_placing_autostitch.py`, `test_placing_canvas_window.py`): every sheet placed at 3 % overlap or more and for named abutting atlases;
+seam error median ≤ 1.5 px and p95 ≤ 3 px; a foreign sheet never placed; noise judged `poor` (it waits, never a mosaic); peak RSS ≤ 1.5 GB
+for 100 sheets of 6000 px and ≤ 800 MB for two colour sheets of 12000 px (the child's own `VmHWM`, GDAL's cache at a 4 GB worker's 256 MB).
+The older edges and SIFT joins place fewer than all 12 sheets of the 6 % overlap series that the layout places whole (pinned in
+`test_placing_autostitch.py`).
+
+Real series (dry run on the NUC, 2026-11-13, `autostitch.propose` alone, no overview; before: the older edges and SIFT joins, §15.1 and the
+worker's log):
+
+| Series | Before | After (placed / verdict) | Peak RSS | Time |
+| --- | --- | --- | --- | --- |
+| Borroczyn 1844-1846 atlas, 99 files in page order | 2 of 94 joined | 38 placed, 1 blank, 60 no seam: `poor`, waits with its proposal | 285 MB | 124 s |
+| 1895-1899 pieces, 60 scans in 4 quadrant folders | 1 of 60 joined (57 of 60 on the overview, unchanged: the overview comes first) | 60 placed on a misread 4 x 15 grid (each folder is a quadrant, not a row): `check`, waits | 369 MB | 124 s |
+| 1969 atlas, 144 pages in order | 2 parts, 98 left out | 102 placed, 42 no seam: `check`, waits | 369 MB | 165 s |
+
+No series was mosaicked wrongly: each waits for the tile-import wizard with its proposal. Next steps: folders that are quadrants (each
+its own grid, nested 2 x 2), and the atlas's index page (OCR) for page numbers that are not row-major.
+
+### 19.10 The contract
+
+| What | Where | Shape |
+| --- | --- | --- |
+| The layout's summary | `help.stitched.layout` (`stitchLayoutSchema`, `packages/shared/src/schemas/imagery-tiles.ts`) | `rows`, `cols`, `revision` (grows by one each time the pipeline writes a layout), `quality {placedPct, seamMedian, seamRmsPx (cell pixels, not the canvas's), verdict}`, `weakSeams` (at most 200: `a`, `b`, `side`, `score`). The Firestore document stays small. |
+| Every sheet and seam | `layout.json`, a version file (`layoutFileSchema`) | `sheets` (name, row, col, turn 0/90/180/270, flip after the turn, `out` reason, `source`, an affine `matrix` into the canvas (as written, an axis-wise stretch and shift: `b = d = 0`, `a` and `e` may differ), the oriented size; `source` is the grid's for every sheet of a name or overview grid, unread ones included) and `seams` (`a`, `b`, `side` right or below, `dx`, `dy`, `score`, `rmsPx`, `overlapPx`, `state`, a weak or missing seam's `suggestion` (a missing one may have none) and its `strip` in `seams.jpg`). Golden file: `pipeline/tests/contracts/layout.sample.json`. |
+| Thumbnails | `thumbs.jpg` | 128 px cells, 32 a row, `min(n, 32)` cells wide; cell `i` is `sheets[i]` as stored (no turn, no flip), its long side 128 px from the cell's top left. |
+| Doubtful seams' strips | `seams.jpg` | One row of 256 px per weak or missing seam with a `strip` (as high as its last row): sheet `a`'s strip in the left square, `b`'s in the right, each scaled into its square from the top left. |
+| The owner's answer | `help.layoutAnswer` (`layoutAnswerSchema`) | `revision`, `sheets` (every sheet in the grid with its cell, turn and mirror, every sheet left out for `no-seam` or `no-join` whose cell is still free, at that cell, and the sheets the owner took out as `not-part`), `seams` (one matching point on each side), `preview`, `accepted`, `by`, `at`. |
+| Enums | `imagery-tiles.ts`, twins in `pipeline/src/hcm_pipeline/archive/model.py` and `pipeline/tests/contracts/enums.json` | `STITCH_METHODS` + `names`, `owner`; `LEFT_OUT_REASONS` + `blank`, `not-part`, `no-seam`; `HELP_REASONS` + `layout-check`; `SEAM_STATES`, `SHEET_SOURCES`, `SHEET_TURNS`, `STITCH_VERDICTS`, `SEAM_SIDES`; the verdict's thresholds (`STITCH_GOOD_*`, `STITCH_MAX_MOVE_CELL`) and the files' limits. |
+| Callables | `functions/src/imagery/save-layout.ts`, `accept-layout.ts`, `layout-wait.ts`; schemas `packages/shared/src/api/imagery-tiles.ts` | `imagery.saveLayout({cityId, versionId, revision, sheets, seams, preview})` (a city editor): refused on a series that is not parked with `layout-check` (`apiError.imagery.versionState`) or on an older revision (`apiError.imagery.layoutStale`); writes `help.layoutAnswer`, the version `processing`, the job `queued` from `place` (as `imagery.saveGcps`). `imagery.acceptLayout({cityId, versionId, revision})`: the earlier answer kept, `accepted: true`, `preview: false`, the same resume. The worker's `place` reads the answer (`placing/owner_layout.py`, the pipeline track). |
+
+No rule changed: the version's files are under `rasters/{city}/`, which a city member reads (`firebase/storage.rules`); the version
+document is written by the functions only.
+
+### 19.11 The wizard
+
+`#/help/<versionId>/tiles` (route `help`, never a navigation destination; its own lazy chunk `help` with its texts
+`@hcm/shared/admin-tiles`). It opens from a series' page (**Arrange the tiles**, `layoutCheck` of `helpItemsOf`) and reads the
+version live, `layout.json` and the three pictures from the private bucket (`packages/admin/src/tiles/`).
+
+| Step | Element | Behaviour |
+| --- | --- | --- |
+| 1 Order | `packages/ui/src/admin/tiles/tile-grid.ts` | The thumbnails in the grid, each with its source as a badge; drag a sheet onto a cell with a mouse or a pen (the sheet there swaps), or choose it, press **Move** and tap the cell (one pointer, no drag), or a roving tabindex: the arrows choose a cell, Shift and the arrows move its sheet, R turns, F mirrors, X takes it out of the map; the left-out sheets with **Put back**. Each change is said in a live region. The grid pans in its own frame on a phone: a touch never starts a drag (`touch-action: pan-x pan-y`). |
+| 2 Seams | `seam-pair.ts` | Each weak or missing seam's two strips with the guess as a dot (a missing seam may have none, and says so); **Accept the guess** (Enter on the pair) or one point on each strip: a click, or the strip focused, a cross moved with the arrows (Shift: farther) and Space or Enter, said in a live region; **Next seam** (N). A seam whose sheet the owner then moves, turns, mirrors or takes out is dropped (the next preview asks it again). |
+| 3 Preview | `tile-preview.ts` | The layout from the thumbnails at once; **Make the real preview** sends the answer with `preview` and waits for the next revision; the joined picture and the meter (`role="meter"` per figure the verdict reads, with its words) and an alert on a poor layout. |
+| 4 Points | `hcm-tiles-page.ts` | **Place it on the map**: `imagery.acceptLayout` when nothing changed, `imagery.saveLayout` without `preview` otherwise; then **Open the georeferencer**. Off while every sheet is out. |
+
+A draft the owner is changing is kept when the pipeline writes a newer revision; sending it is then refused as stale, the page says
+so and shows the newer layout. Back and Next sit in a bar after the step (on a phone too: a bar fixed over the step hid its last lines and buttons). Loading, an address with no
+series, a series that waits for nothing any more and a `layout.json` that cannot be read each say so.
+
+Tests: `functions/test/imagery/save-layout.test.ts`, `packages/shared/test/schemas/{imagery-tiles,help-queue,pipeline-contract}.test.ts`,
+`packages/admin/test/tiles/`, `packages/ui/test/admin/tiles/`, `packages/ui/test/admin/imagery/tiles-link.test.ts`,
+`e2e/admin/specs/imagery/tiles.spec.ts` (tour states `tiles.*`); scenarios `S-A-HAPPY-TILE-WIZARD-{ORDER,KEYBOARD,MOVE,SEAM,SEAM-KEYS,PREVIEW,HANDOFF}`,
+`S-A-BAD-TILE-WIZARD-{STALE-REVISION,SEAM-RESET,POINTS-FIRST,ALL-OUT,PREVIEW-POOR,UNREADABLE}` (behaviour A141). The pipeline's stitching, its scenarios
+`S-P20-*-STITCH-*` and the dry run on `harti.zip` (§15.1) are the pipeline track's.
+
+### 19.12 The review of 2026-11-13: what the admin side changed
+
+An adversarial review of both tracks found the field names agreeing and the behaviour not. The admin's and the functions' half:
+
+| Finding | Change |
+| --- | --- |
+| The wizard dropped `missing` seams, the ones the pipeline is least sure of; `seams.jpg`'s height came from the filtered list | Step 2 asks weak and missing seams; the sprite's height comes from every seam of `layout.json` with a strip (`seams.ts`). |
+| A `no-seam` sheet became `not-part` for good as soon as the owner changed anything (the pipeline reads an unnamed sheet as `not-part`) | The answer names a `no-seam` or `no-join` sheet whose cell is free, at that cell, so the pipeline tries it again (`draft.ts`). The pipeline should also keep an unnamed sheet's own reason (track/autostitch). |
+| A seam answer outlived a turn, mirror, move or take-out of its sheet | The seam is dropped from the draft (`seamsAfter`). The pipeline should also ignore an owner seam that is no neighbour pair of the new grid (track/autostitch). |
+| Points could be placed on the doubtful preview | The series' page offers no georeferencer while `layoutCheck`; `imagery.saveGcps` refuses a version waiting with `layout-check` (`apiError.imagery.layoutWaits`). |
+| A phone could not pan the grid, nor move a sheet without dragging; R, F, X and Shift+arrows were silent; seam points had no keyboard path | `touch-action: pan-x pan-y` and no drag from a touch; **Move** then a tap; a live region in the grid and in the seam pair; the strips' keyboard cross. |
+| The previewing and stale states were not tour states | `tiles.previewing`, `tiles.stale` and `tiles.seam-missing` joined the inventory. |
+| The TS docs called `matrix` a similarity and `seamRmsPx` canvas pixels | `imagery-tiles.ts` says what the pipeline writes (above). |
+
+Left to the pipeline track: a test that serialises `layout_record()` of a synthetic proposal into `pipeline/tests/contracts/` for
+`layoutFileSchema` to parse (the sample is hand-written), and a sheet cap that waits with `no-path` above `LAYOUT_SHEETS_MAX`; the
+golden sample now has a missing seam with a strip and no guess, the shape the wizard asks.

@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import pytest
 from hcm_pipeline.placing import overview as overview_mod
+from hcm_pipeline.placing import sheetnames
 from hcm_pipeline.placing.overview import (
     MosaicReport,
     TileFit,
@@ -338,7 +339,7 @@ def test_match_rejects_when_hint_window_keeps_too_few_points() -> None:
 
 def test_grid_hint_rejects_sheet_outside_the_grid() -> None:
     assert grid_hint("99", 2, 2, (100, 100)) is None
-    assert overview_mod._parse_sheet("tile", 2, 2) is None
+    assert sheetnames.cell_of("tile", 2, 2) is None
 
 
 def test_mosaic_all_unplaced_reports_zero_rms() -> None:

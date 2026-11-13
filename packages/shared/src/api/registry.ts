@@ -8,6 +8,7 @@
 import type { z } from 'zod';
 
 import { imageryArchiveImportRequestSchema, imageryArchiveImportResponseSchema } from './archive.js';
+import { imageryAcceptLayoutRequestSchema, imageryLayoutResponseSchema, imagerySaveLayoutRequestSchema } from './imagery-tiles.js';
 import {
     claimRequestSchema,
     claimResponseSchema,
@@ -288,6 +289,9 @@ export const ADMIN_CALLABLES = {
     'imagery.retry': cityEditor('fn-imagery', imageryRetryRequestSchema, imageryRetryResponseSchema),
     // A frame waiting for points searches again (`functions/src/imagery/locate-again.ts`): what the version page already sends, what Retry answers.
     'imagery.locateAgain': cityEditor('fn-imagery', imageryVersionRequestSchema, imageryRetryResponseSchema),
+    // The tile-import wizard (docs/research/M20-import-local.md §19.10): the owner's layout of a series waiting with `layout-check`.
+    'imagery.saveLayout': cityEditor('fn-imagery', imagerySaveLayoutRequestSchema, imageryLayoutResponseSchema),
+    'imagery.acceptLayout': cityEditor('fn-imagery', imageryAcceptLayoutRequestSchema, imageryLayoutResponseSchema),
     // M12 (docs/research/M12-own-tiles.md): the private archive, signed for an hour, so an image is seen before it is approved.
     'imagery.previewUrl': cityEditor('fn-imagery', imageryVersionRequestSchema, imageryPreviewUrlResponseSchema),
     // M16 (docs/research/M16-recalibrate.md): Refine automatically, or the admin's rough points snapped, on a published layer.

@@ -20,6 +20,7 @@ export const ro = {
     'adminShell.nav.history': 'Istoric',
     'adminShell.nav.crashes': 'Erori',
     'adminShell.nav.georef': 'Georeferențiator',
+    'adminShell.nav.help': 'Așază foile',
     'adminShell.nav.more': 'Mai mult',
     'adminShell.route.notFound': 'Pagina cerută nu există, așa că ai ajuns la Configurare.',
     'adminShell.route.needsBackend': 'Pagina funcționează după ce serverul hărții este instalat. Continuă configurarea.',

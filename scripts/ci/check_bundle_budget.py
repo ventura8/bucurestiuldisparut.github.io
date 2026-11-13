@@ -135,6 +135,9 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # 4.2 KB measured on 2026-11-12 with the turning and the scan pane's drawing (out of `georef-badges`), plus about 20 %, rounded up.
     "georef-panes": 6,
     "layer-geometry": 3,
+    # M20 §19.11: the tile-import wizard's route `#/help/<versionId>/tiles` (`packages/admin/src/tiles/`), its own lazy chunk:
+    # 11.6 KB measured on 2026-11-13 when track/tilewizard merged, plus about 15 %, rounded up (DECISIONS-for-review.md §183).
+    "help": 14,
     # M4's order card (`packages/ui/src/admin/imagery/orders/lazy-card.ts`), fetched the first time a scene that must be
     # bought opens, so the Imagery area stays within its budget with the buy flow: 1.7 KB measured on 2026-10-24 plus about
     # 20 % (DECISIONS-for-review.md §56b).

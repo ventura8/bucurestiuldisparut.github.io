@@ -89,6 +89,7 @@ export const ro = {
     'adminArchive.help.frame-not-found': 'chenarul foilor nu a fost găsit',
     'adminArchive.help.no-scale': 'harta nu are scară',
     'adminArchive.help.archive-missing': 'calculatorul nu mai găsește fișierele',
+    'adminArchive.help.layout-check': 'foile așteaptă să le așezi',
     'adminArchive.openVersion': 'Deschide {title}',
 } as const;
 

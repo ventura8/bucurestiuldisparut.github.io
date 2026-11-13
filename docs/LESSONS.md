@@ -3664,6 +3664,42 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: the import test asks the version whether a sharper scan was written; the fixture names the exports (`exports-m7.ts`); `controller-intents.test.ts` drives the install cards' intents. The same run found the colour library's inline option missing in all but one project (§180h).
     - **After merging branches that each passed alone, run the full `tests` stage on the merge before pushing it.**
 
+624. **A map of dark blocks was cropped by a margin it does not have.**
+    - Seen: 2026-11-12, track/autostitch's synthetic series: sheets of a grey town (blocks filled, streets paper) lost about 20 px on two sides, differently per sheet, so neighbours' overlaps no longer matched.
+    - Cause: the paper level was the 90th percentile, which on a map mostly of ink is the ink; and a ring of streets near the edge read as a frame, its "line" trimmed into the drawing.
+    - Fix and pin: the paper is the 98th percentile; a frame counts only with a paper margin outside it; its line is trimmed only while a row is 90 % ink; a margin is at least 2 % of the side (`frame.content_box`; `test_placing_sheetwork.py`, S-P20-HAPPY-STITCH-ABUTTING).
+    - **Before cropping a page to its content, prove the margin is paper: a crop that differs per sheet breaks every seam after it.**
+
+625. **A turned sheet's neighbours turned too.**
+    - Seen: 2026-11-12, track/autostitch: with three of twelve sheets turned, an upright sheet next to two turned ones was flipped (its seams to them scored better upside down by chance) and a turned one stayed.
+    - Cause: the sheets were turned one after another in file order, each judged against neighbours not yet turned back.
+    - Fix and pin: surest first: each sheet's gain is ranked, a sheet turns only to a variant that fits strongly and gains 0.2, and it is checked again just before it turns (`autostitch.orient`, S-P20-HAPPY-STITCH-TURNED).
+    - **When choices depend on each other, make the surest one first and look again before each next one.**
+
+626. **A seam's residual from chunks of a thin template measured noise.**
+    - Seen: 2026-11-12, track/autostitch: line-art seams placed within 1 px reported a residual of 3-170 px, so good series were judged `check`.
+    - Cause: thirds of a 10 px wide template were matched anywhere in the strip, and on hatching or plain blocks each third found another place.
+    - Fix and pin: the residual is the phase correlation of the two aligned overlaps (`seams._residual`); several template widths are tried and the one whose whole overlap correlates best wins (S-P20-HAPPY-STITCH-SEAMS).
+    - **A quality measure must be measured on the same area the decision used, never on a smaller piece searched again.**
+
+627. **A grid prior made silent seams look like a good layout.**
+    - Seen: 2026-11-13, the adversarial review of track/autostitch: on a named grid a sheet whose seams were all missing still sat at its prior cell, counted as placed and added nothing to the median, so 2 strong seams of 20 gave `good` and a misread grid would have been mosaicked; the older joins then mosaicked even `poor` layouts with no quality bar.
+    - Cause: the measures were taken over the kept seams alone, and a sheet held only by the prior counted as placed.
+    - Fix and pin: a sheet counts as placed only when a kept seam touches it, every seam not kept scores 0, and the older joins need their own matches to meet the bar (S-P20-BAD-STITCH-NAMES-NO-SEAMS, S-P20-BAD-STITCH-LEGACY-LOOSE).
+    - **A verdict must count what was not measured as a failure, never leave it out of the average.**
+
+628. **The tile wizard and the pipeline agreed on every field name and still disagreed on what the fields meant.**
+    - Seen: 2026-11-13, an adversarial review of track/tilewizard against track/autostitch: the wizard showed only `weak` seams while the pipeline ranked `missing` ones lowest; the answer left out `no-seam` sheets, which the pipeline then marked `not-part` for good; a seam answer survived a turn of its sheet. The grid's `touch-action: none` also kept a phone from panning it.
+    - Found by: reading both sides' code paths for the same document; every contract test was green, because they compare enums and shapes against a hand-written sample, and Playwright's mouse never pans.
+    - Fix and pin: M20 §19.12; `S-A-HAPPY-TILE-WIZARD-{MOVE,SEAM-KEYS}`, `S-A-BAD-TILE-WIZARD-{SEAM-RESET,POINTS-FIRST}`, `happyPath_aSheetLeftOutForNoSeamIsTriedAgainAtItsFreeCell`.
+    - **A cross-track contract test pins behaviour, not only names: for each enum value, write down what each side does with it, and test the reader against a file the writer produced.**
+
+629. **A memory budget passed alone and failed in the full run: the child inherited the run's environment.**
+    - Seen: 2026-11-13, merging track/autostitch: the colour memory-budget test failed in the full pipeline pytest and passed alone. Measured on the NUC, the two-sheet 12,000 px colour mosaic peaks at 617 MB with GDAL's default threads and at 852 MB with `GDAL_NUM_THREADS=2` (the bound is 800 MB).
+    - Cause: the budget children (`tests/budget_probe.py`, `test_placing_canvas_window.py`'s child) took `os.environ` whole, so any GDAL, OpenCV, BLAS or `HCM_` setting present in the run sized them differently from the measurement.
+    - Fix and pin: both start without any `GDAL_`, `CPL_`, `VSI_`, `OGR_`, `OPENCV_`, `OMP_`, `OPENBLAS_`, `MKL_`, `HCM_` or `MALLOC_` variable (`test_memory_budgets.probe_env`, `test_bad_path_settings_an_earlier_test_left_behind_never_reach_a_probe`); no budget changed. Open: a worker that sets `GDAL_NUM_THREADS` above 1 needs about 850 MB for two such colour sheets, over the 800 MB the windowed mosaic promises.
+    - **A budget measured in a child process is measured in a known environment: strip every tuning variable, never inherit the test run's.**
+
 630. **"Import every direction from the old site" was already done: the 10 photos without one have no cone there either.**
     - Seen: 2026-11-12, the owner: *only one photo near Gara Obor has a direction in our app; on the old site they all have*.
     - Cause: none in the code. Compared with the old site's live `geojson/photos.json` (56 points, 47 cones), 47 of our 57 photos have a cone there and live Firestore has all 47 directions (0 differences), and the 9 photos at Gara Obor without one are pins without a cone on the old site as well; the viewer's year filter leaves one cone (Parc Ferdinand, 1930) at the 1930s. Local `master` is not the old live site (44 points): the live data is `bucurestiuldisparut/bucurestiuldisparut.github.io` (`docs/research/M5-interfaces.md` → *Directions from the old site*).

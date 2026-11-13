@@ -20,6 +20,7 @@ from hcm_pipeline.steps.gather import SHEETS
 
 from tests.fakes.http import Reply
 from tests.fakes.world import JOB_ID, OVERPASS_PATH, PipelineWorld
+from tests.synthetic.sheets import Series, SheetsSpec, make_series
 from tests.synthetic.town import Line, overpass_of, town_lines
 
 SERIES_ID = "s-0123456789ab"
@@ -64,3 +65,14 @@ def originals(ctx: JobContext) -> Path:
     folder = ArchiveStore(root).files(str(ctx.job.params["archiveId"]))
     folder.mkdir(parents=True, exist_ok=True)
     return folder
+
+
+def staged_series(world: PipelineWorld, tmp_path: Path, spec: SheetsSpec, kind: str = "atlas") -> tuple[JobContext, Series]:
+    """A synthetic series (`tests.synthetic.sheets`, in grid order) moved where the archive keeps its originals, and its job."""
+    staging = make_series(tmp_path / "staging", replace(spec, shuffle=False))
+    ctx = series_context(world, tmp_path, [name for name, _path in staging.named], {"class": kind, "encoding": "grey"})
+    for name, path in staging.named:
+        target = originals(ctx) / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        path.rename(target)
+    return ctx, staging

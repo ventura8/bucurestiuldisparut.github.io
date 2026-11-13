@@ -215,6 +215,11 @@ export function needsGcpsVersion(overrides: Partial<LayerVersionDoc> = {}): Laye
     return { ...(golden('version.needs-gcps.json') as LayerVersionDoc), ...overrides };
 }
 
+/** The golden archive series parked with `layout-check` (`version.layout-check.json`): its tiles wait for the owner. */
+export function layoutCheckVersion(overrides: Partial<LayerVersionDoc> = {}): LayerVersionDoc {
+    return { ...(golden('version.layout-check.json') as LayerVersionDoc), ...overrides };
+}
+
 /** The golden running job (`job.usgs-import.running.json`). */
 export function runningJob(overrides: Partial<JobDoc> = {}): JobDoc {
     return { ...(golden('job.usgs-import.running.json') as JobDoc), ...overrides };

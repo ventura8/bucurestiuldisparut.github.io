@@ -159,3 +159,80 @@ def content_frame(grey: UInt8Array, aspect: float, scale: float = 1.0) -> FloatA
     if not _fits(box, float(width * height)) or abs(shape / aspect - 1.0) > ASPECT_SLACK:
         return None
     return order_corners((box + 0.5) * scale)
+
+
+# M20 §19.2: before seams are measured, a page's margins and frame are cropped, and a blank page is told apart.
+# A page is blank when less than this share of it is ink (a separator, the back of a sheet, an empty grid cell).
+BLANK_INK: Final = 0.003
+# The paper's level: this percentile of the page (a map filled with dark blocks has little paper; its lightest pixels are the paper).
+PAPER_PERCENTILE: Final = 98
+# The frame's own line is left outside the content (it would read as a seam of its own): the frame's box is trimmed while its edge row
+# or column is mostly ink (`LINE_INK`), by at most `FRAME_LINE_SHARE` of the side.
+LINE_INK: Final = 0.9
+OUTSIDE_INK: Final = 0.1
+OUTSIDE_MIN_SHARE: Final = 0.02
+FRAME_LINE_SHARE: Final = 0.015
+# A margin row or column holds less ink than this share.
+MARGIN_INK: Final = 0.004
+MARGIN_MIN_SHARE: Final = 0.02
+
+
+def ink_share(grey: UInt8Array) -> float:
+    """The share of the page that is ink (darker than the paper by `FAINT_LEVELS`, or than Otsu's threshold on an inked page)."""
+    paper = float(numpy.percentile(grey, PAPER_PERCENTILE))
+    return float((grey < paper - 2 * FAINT_LEVELS).mean())
+
+
+def is_blank(grey: UInt8Array) -> bool:
+    return ink_share(grey) < BLANK_INK
+
+
+def _margin(profile: numpy.ndarray) -> int:
+    """How many leading entries of an ink profile are paper margin: under `MARGIN_INK`, and at least `MARGIN_MIN_SHARE` of it (a
+    street along the edge is narrower, and is content)."""
+    inked = numpy.flatnonzero(profile >= MARGIN_INK)
+    run = int(inked[0]) if len(inked) else 0
+    return run if run >= MARGIN_MIN_SHARE * len(profile) else 0
+
+
+def _inked_span(profile: numpy.ndarray) -> tuple[int, int]:
+    """The span inside the paper margins at both ends of an ink profile."""
+    return _margin(profile), len(profile) - _margin(profile[::-1])
+
+
+def _line_trim(profile: numpy.ndarray) -> int:
+    """How many leading entries of an edge's ink profile are the frame's line (mostly ink), at most `FRAME_LINE_SHARE` of it."""
+    limit = max(1, round(FRAME_LINE_SHARE * len(profile)))
+    light = numpy.flatnonzero(profile[:limit] < LINE_INK)
+    return int(light[0]) if len(light) else limit
+
+
+def _inside_frame(ink: numpy.ndarray, corners: FloatArray) -> tuple[int, int, int, int]:
+    """The frame's box, its line trimmed off each side."""
+    height, width = ink.shape
+    left, top = (max(0, int(value)) for value in numpy.ceil(corners.min(axis=0)))
+    right, bottom = min(width, int(numpy.floor(corners.max(axis=0)[0])) + 1), min(height, int(numpy.floor(corners.max(axis=0)[1])) + 1)
+    inside = ink[top:bottom, left:right]
+    columns, rows = inside.mean(axis=0), inside.mean(axis=1)
+    return left + _line_trim(columns), top + _line_trim(rows), right - _line_trim(columns[::-1]), bottom - _line_trim(rows[::-1])
+
+
+def _paper_outside(ink: numpy.ndarray, corners: FloatArray) -> bool:
+    """True when the frame has a paper margin around it: at least `OUTSIDE_MIN_SHARE` of the page lies outside it, under `OUTSIDE_INK`
+    of that ink. An outline found inside the drawing (a ring of streets, a block) has the drawing around it and is no frame."""
+    height, width = ink.shape
+    low = numpy.maximum(0, numpy.floor(corners.min(axis=0))).astype(int)
+    high = numpy.minimum([width, height], numpy.ceil(corners.max(axis=0)) + 1).astype(int)
+    outside = numpy.ones_like(ink, dtype=bool)
+    outside[low[1] : high[1], low[0] : high[0]] = False
+    return float(outside.mean()) >= OUTSIDE_MIN_SHARE and float(ink[outside].mean()) < OUTSIDE_INK
+
+
+def content_box(grey: UInt8Array) -> tuple[int, int, int, int]:
+    """The page's content (left, top, right, bottom): inside its frame, its line trimmed off; else with its paper margins trimmed."""
+    ink = grey < float(numpy.percentile(grey, PAPER_PERCENTILE)) - 2 * FAINT_LEVELS
+    corners = find_frame(grey)
+    if corners is not None and _paper_outside(ink, corners):
+        return _inside_frame(ink, corners)
+    (left, right), (top, bottom) = _inked_span(ink.mean(axis=0)), _inked_span(ink.mean(axis=1))
+    return left, top, right, bottom

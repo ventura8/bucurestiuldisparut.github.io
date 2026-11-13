@@ -12,16 +12,17 @@ pages before it reads anything, the overview search included: GDAL never opens a
 """
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Final
 
 import numpy
 
+from hcm_pipeline.archive import model
 from hcm_pipeline.archive.magic import sniff_file
 from hcm_pipeline.jobs import JobContext, StepResult, Waiting
-from hcm_pipeline.placing import assemble, joins
+from hcm_pipeline.placing import assemble, autoplace, autostitch, joins, owner_layout
 from hcm_pipeline.placing.output import wait_for_help
 from hcm_pipeline.placing.overview import MosaicReport
 from hcm_pipeline.placing.overview_find import CanvasOpts, find_overview, overview_canvas
@@ -35,7 +36,6 @@ from hcm_pipeline.steps.gather import store_of, text_param
 
 PDF_LOCKED: Final = "This PDF needs a password: export its pages as images from a PDF reader, then import them."
 NO_PAGES: Final = "No page of this series could be laid out: add about four points on its pages, or import them as single maps."
-NO_STITCH: Final = "These pieces could not be stitched into one sheet: add about four points on each piece, or import them one by one."
 CANVAS: Final = "canvas.tif"
 
 
@@ -120,32 +120,86 @@ def page_px(count: int) -> int:
 
 
 class AtlasPlacer:
-    """An atlas: on an overview when the archive has one, else laid out by their edges or overlaps."""
+    """An atlas: the owner's layout when given; on an overview when the archive has one; else by its names and seams (M20 §19), by its
+    edges or overlaps when those place nearly all of it, or kept for its owner (`layout-check`)."""
 
     def place(self, ctx: JobContext) -> StepResult:
-        series = paged(ctx, series_of(ctx))
-        if isinstance(series, str):
-            return wait_for_help(ctx, "low-confidence", series)
-        overviewed = _try_overview(ctx, series)
-        if overviewed is not None:
-            return _assembled(ctx, series, overviewed)
-        return _atlas(ctx, series, series.sheets)
+        return _series_placed(ctx, "atlas", _atlas_parts)
 
 
-def _atlas(ctx: JobContext, series: SeriesJob, sheets: Sequence[Sheet]) -> StepResult:
+# The older joins (edges, overlaps) are used when the automatic layout is not good, they place at least this share of the parts, and
+# something vouches for them: their matched features' residual and agreeing matches meet the layout's own bar, or, for pages joined by
+# their edges alone (nothing measured), the layout was only `check`, never `poor` (M20 §19, the fallback).
+LEGACY_SHARE: Final = 0.9
+LEGACY_RMS_PX: Final = float(model.STITCH_GOOD_RMS_PX)
+LEGACY_MIN_INLIERS: Final = 2 * joins.MIN_MATCHES
+# A layout the tile wizard can open names at most this many sheets (`LAYOUT_SHEETS_MAX` of @hcm/shared); a larger series waits.
+SHEETS_MAX: Final = model.LAYOUT_SHEETS_MAX
+TOO_MANY: Final = f"This series has more than {SHEETS_MAX} pages: import it as smaller series, one per area."
+
+
+@dataclass(frozen=True)
+class Parts:
+    """Parts joined by the older code: their canvas (composed only when it is used, a page at a time), layout and joins' quality (None
+    when nothing joined)."""
+
+    canvas: Callable[[], UInt8Array]
+    layout: assemble.Layout
+    quality: JoinQuality | None = None
+
+
+def _series_placed(ctx: JobContext, method: str, legacy: Callable[[Sequence[Sheet]], Parts | None]) -> StepResult:
+    """The fallback order of M20 §19: the owner's layout, the overview, names and seams, the older joins, the owner's check."""
+    series = paged(ctx, series_of(ctx))
+    if isinstance(series, str):
+        return wait_for_help(ctx, "low-confidence", series)
+    if len(series.sheets) > SHEETS_MAX:
+        return wait_for_help(ctx, "no-path", TOO_MANY)
+    return _laid_out(ctx, series, method, legacy)
+
+
+def _laid_out(ctx: JobContext, series: SeriesJob, method: str, legacy: Callable[[Sequence[Sheet]], Parts | None]) -> StepResult:
+    answer = owner_layout.answer_of(ctx)
+    if answer is not None:
+        return owner_layout.place(ctx, series, answer, method)
+    overviewed = _try_overview(ctx, series)
+    if overviewed is not None:
+        return _assembled(ctx, series, overviewed)
+    proposal = autoplace.proposed(ctx, series)
+    if proposal.quality.verdict == "good":
+        return autoplace.mosaicked(ctx, series, proposal, (method, "names"))
+    return _legacy_or_wait(ctx, series, method, legacy, proposal)
+
+
+def _legacy_or_wait(
+    ctx: JobContext, series: SeriesJob, method: str, legacy: Callable[[Sequence[Sheet]], Parts | None], proposal: autostitch.Proposal
+) -> StepResult:
+    parts = legacy(series.sheets)
+    names = tuple(sheet.name for sheet in series.sheets)
+    if parts is None or not legacy_good(parts, len(names), proposal.quality.verdict):
+        return autoplace.wait_layout(ctx, series, proposal)
+    ctx.log.info(f"the {method}'s edges or overlaps place {len(parts.layout.placed)} of {len(names)} parts", ctx.step)
+    return _assembled(ctx, series, Assembled(parts.canvas(), parts.layout, names, method, parts.quality))
+
+
+def legacy_good(parts: Parts, count: int, verdict: str) -> bool:
+    """True when the older joins place `LEGACY_SHARE` of the parts and are vouched for: their matches as tight as a good layout's, or,
+    with nothing matched (edges alone), a layout that was only `check`."""
+    quality = parts.quality
+    tight = verdict == "check" if quality is None else quality.rms_px <= LEGACY_RMS_PX and quality.mean_inliers >= LEGACY_MIN_INLIERS
+    return tight and len(parts.layout.placed) >= LEGACY_SHARE * count
+
+
+def _atlas_parts(sheets: Sequence[Sheet]) -> Parts:
     """The pages cropped to their frames and laid out on their median size by their edges, or by their overlaps when those join
-    more pages; assembled and placed."""
+    more pages."""
     pages, cell = _pages(sheets)
     layout = assemble.atlas_layout(pages.grey, cell)
-    names = tuple(sheet.name for sheet in sheets)
     overlapping = _overlapping(sheets, len(layout.placed))
     if overlapping is not None:
-        ctx.log.info(f"the pages join better by their overlaps: {len(overlapping.layout.placed)} against {len(layout.placed)}", ctx.step)
-        canvas = assemble.compose_canvas(overlapping.images, overlapping.layout)
-        return _assembled(ctx, series, Assembled(canvas, overlapping.layout, names, "atlas", overlapping.quality))
+        return _joined_parts(overlapping)
     sizes = [(page.shape[1], page.shape[0]) for page in pages.grey]
-    canvas = assemble.compose_parts(pages.page, sizes, pages.colour, layout)
-    return _assembled(ctx, series, Assembled(canvas, layout, names, "atlas"))
+    return Parts(lambda: assemble.compose_parts(pages.page, sizes, pages.colour, layout), layout)
 
 
 def _pages(sheets: Sequence[Sheet]) -> tuple[assemble.Pages, tuple[int, int]]:
@@ -191,23 +245,18 @@ def _try_overview(ctx: JobContext, series: SeriesJob) -> Assembled | None:
     return Assembled(canvas, _overview_layout(names, report, (canvas.shape[1], canvas.shape[0])), names, "overview", quality)
 
 
-def _pieces_joined(ctx: JobContext, series: SeriesJob) -> StepResult:
-    found = joins.joined([sheet.path for sheet in series.sheets])
-    if found is None:
-        return wait_for_help(ctx, "low-confidence", NO_STITCH)
-    names = tuple(sheet.name for sheet in series.sheets)
-    canvas = assemble.compose_canvas(found.images, found.layout)
-    return _assembled(ctx, series, Assembled(canvas, found.layout, names, "pieces", found.quality))
+def _joined_parts(found: joins.Joined) -> Parts:
+    return Parts(lambda: assemble.compose_canvas(found.images, found.layout), found.layout, found.quality)
+
+
+def _pieces_parts(sheets: Sequence[Sheet]) -> Parts | None:
+    found = joins.joined([sheet.path for sheet in sheets])
+    return None if found is None else _joined_parts(found)
 
 
 class PiecesPlacer:
-    """Overlapping pieces of one sheet: on an overview when the archive has one, else joined on their overlaps."""
+    """Overlapping pieces of one sheet: the owner's layout when given; on an overview when the archive has one; else by their names
+    and seams (M20 §19), joined on their overlaps when those place nearly all of them, or kept for their owner (`layout-check`)."""
 
     def place(self, ctx: JobContext) -> StepResult:
-        series = paged(ctx, series_of(ctx))
-        if isinstance(series, str):
-            return wait_for_help(ctx, "low-confidence", series)
-        overviewed = _try_overview(ctx, series)
-        if overviewed is not None:
-            return _assembled(ctx, series, overviewed)
-        return _pieces_joined(ctx, series)
+        return _series_placed(ctx, "pieces", _pieces_parts)

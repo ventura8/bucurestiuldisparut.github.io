@@ -28,6 +28,8 @@ export const CONTENT_AREAS = [
     'home',
     'imagery',
     'georef',
+    /** The tile-import wizard (`docs/research/M20-import-local.md` §19.11): an archive series' sheets laid out by the owner. */
+    'help',
     /** M4 (`docs/research/M4-interfaces.md` §5.5): the admin's notifications and push settings. */
     'inbox',
     /** M5 (`docs/research/M5-interfaces.md` §1.6): the project owner's New city flow. */

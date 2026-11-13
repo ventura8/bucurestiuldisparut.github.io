@@ -6760,6 +6760,52 @@ leftovers of §164. Every figure is the container's cgroup `memory.peak` (page c
   the e2e stage reaches a 12 GB cap with them (measured after 180d and 180i), and the dev stack's 8 GB default holds only
   a manual session's fewer workers.
 
+## 181. Automatic tile stitching: names, seams, one bundle, a windowed mosaic; a doubtful layout waits for its owner (2026-11-12) — APPLIED, the owner's design (track/autostitch)
+
+- **What**: an atlas or pieces are laid out from their names (`sheetnames.py`) and the seams between grid neighbours (`seams.py`, edge strips only), every sheet placed at once (`bundle.py`, IRLS with Huber's loss and a grid prior), judged (`quality.py`) and, when `good`, mosaicked in 2048 px windows (`canvas_window.py`); else the older joins when they place 90 %, else the version waits with `layout-check` and its layout files (`layout.json`, `thumbs.jpg`, `seams.jpg`) for the tile-import wizard. The owner's answer (`help.layoutAnswer`) is fixed as given (`owner_layout.py`). M20 §19.
+- **Contract**: the enums and limits twins follow track/tilewizard's `imagery-tiles.ts` (`SEAM_SIDES` `right`/`below`, the `STITCH_GOOD_*` thresholds, `THUMB_SPRITE_COLS`, `SEAM_CELL_PX`); track/autostitch carries only the Python side, so its `pipeline-contract.test.ts` is green once merged with track/tilewizard.
+- **Thresholds chosen**: strong seam 0.6, weak 0.3; a turn wins by 0.2 and must fit strongly; outlier seam 8 px; the working copies within 160 MB; the canvas 20,000 px long at most. Measured on synthetic series (M20 §19.9).
+- **Verify**: `pipeline/tests/unit/test_placing_{sheetnames,sheetwork,seams,bundle,autostitch,canvas_window,autoplace}.py`; scenarios `S-P20-HAPPY-STITCH-*`, `S-P20-BAD-STITCH-*`.
+- **Review of 2026-11-13 (adversarial, pipeline side)**: (1) the verdict counts a sheet as placed only when a kept seam touches it and scores every seam the bundle did not keep 0, so names read right over silent seams are never `good`; (2) the older joins mosaic only when vouched for: matches within `STITCH_GOOD_RMS_PX` and 24 agreeing matches a join on average, or edges alone on a `check` (never `poor`) proposal; (3) a sheet the owner's answer does not name keeps its automatic reason (`blank`, `no-join`, `no-seam`), only the X is `not-part`; (4) an owner seam is fixed only between neighbours on its side of the new grid with two finite points; a refused turn goes back a quarter; (5) `help.layoutAnswer` is carried by every `wait_for_help` in the same write; (6) more than `LAYOUT_SHEETS_MAX` files wait with `no-path`; (7) the mosaic reads each sheet's box straight at its canvas size (a colour 12000 px pair: 690 MB peak, tested ≤ 800 MB); (8) `pipeline/tests/contracts/layout.json` is what the pipeline writes, for the shared schemas' test. For track/tilewizard (not changed here): show and sprite `missing` seams as weak ones, send every sheet with a cell, clear a sheet's answered seams when it turns, flips, moves or goes out, parse `contracts/layout.json`, and document `matrix` as an axis-wise stretch and `seamRmsPx` in cell pixels; its M20 sections become §19.10 onward. Verify: `pipeline/tests/unit/test_placing_{stitch_guards,layout_contract,autoplace,autostitch,canvas_window,assemble_stitched}.py`; scenarios S-P20-HAPPY-STITCH-OWNER, S-P20-BAD-STITCH-{NAMES-NO-SEAMS,OWNER-MALFORMED,LEGACY-LOOSE,TOO-MANY}.
+
+## 182. The tile layout's contract and the tile-import wizard (track/tilewizard, 2026-11-12)
+
+The design of automatic tile stitching and the tile-import wizard (docs/research/M20-import-local.md §19), contract and admin half.
+
+- **182a** The contract is as designed, with these precisions for the pipeline track: the enums' types (`LeftOutReason`,
+  `SeamState`, `SheetSource`, `SheetTurn`, `StitchVerdict`) and `SEAM_SIDES` (`right`, `below`); `layout.json` carries each sheet's
+  oriented `width` and `height`, the canvas size, and each seam's `overlapPx` and, for a weak seam, its `strip` (its row of
+  `seams.jpg` and the two rectangles); `thumbs.jpg` is `min(n, 32)` cells of 128 px wide; `seams.jpg` is 512 px wide, one 256 px row
+  per weak seam with a strip.
+- **182b** The answer holds every sheet in the grid and every sheet the owner took out (`not-part`), so `owner_layout.py` fixes the
+  whole layout the owner saw; `imagery.acceptLayout` keeps the earlier answer and marks it `accepted`.
+- **182c** A new route `help` (`#/help/<versionId>/tiles`), not in the navigation, and its own lazy chunk with its own catalogue
+  `@hcm/shared/admin-tiles` (as `@hcm/shared/admin-archive`), so no other page carries the wizard's texts.
+- **182d** `helpItemsOf` lives in `schemas/imagery-tiles.ts` and `@hcm/shared`'s index exports it directly: a first draft routed
+  the exports through a `help/index.ts` barrel, which lesson 591 forbids; the index gained its lines back by an inline `type` export.
+- **182e** The Help calibrate queue page of M22 §1.1 is not built: the queue's `layoutCheck` item is computed (`helpItemsOf`) and
+  shown on the series' page as **Arrange the tiles**; the meter is the wizard's own (`role="meter"` per figure of `placing/quality.py`).
+- **182f** (the review of 2026-11-13, M20 §19.12) The wizard asks `missing` seams beside `weak` ones, and a missing seam with no
+  guess is answered by two picked points; `seams.jpg`'s height counts every seam with a strip.
+- **182g** The answer names a sheet left out for `no-seam` or `no-join` whose cell is still free, without `out`, so the pipeline
+  tries it again instead of reading it as `not-part`; a blank page, a sheet with no frame or one whose cell another sheet took is
+  not named.
+- **182h** A seam whose sheet the owner moves, turns, mirrors or takes out leaves the draft (answered or not): its strips and points
+  belong to the orientation the pipeline wrote.
+- **182i** A series waiting with `layout-check` takes no points: no georeferencer link, and `imagery.saveGcps` refuses it with the new
+  `apiError.imagery.layoutWaits` (`failed-precondition`).
+- **182j** One pointer and no drag (WCAG 2.5.7): **Move** then a tap on the cell; a touch never starts a drag, so the grid pans. A
+  live region says each change; the seam's strips take a keyboard cross (WCAG 2.1.1). A stale refusal still drops the owner's
+  unsent edits, and its alert already says so; re-applying them to the newer revision is left for later.
+
+## 183. The tile wizard's `help` chunk gets its own bundle budget, 14 KB (2026-11-13) — APPLIED, pre-approved class (a new chunk's budget; no row rose)
+
+- **What**: the merge of track/tilewizard into feat/engine-rewrite built a new lazy admin chunk, `help` (the route
+  `#/help/<versionId>/tiles`, M20 §19.11), which `scripts/ci/check_bundle_budget.py` refused as a chunk without a budget. It
+  measured 11.6 KB gzip; `ADMIN_CHUNK_BUDGETS["help"]` is 14 KB (the measurement plus about 15 %, rounded up). The admin's total
+  budget is unchanged and still met.
+- **Verify**: `PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh` (bundle-budget).
+
 ## 184. Production copy without developer words, and the `copy` gate (track/copy, 2026-11-09; merged 2026-11-12, numbered §125 and lesson 501 on the track, §166 and lesson 578 before the merge, §169 and lesson 594 on track/stale-text, §184 and lesson 631 since) — APPLIED, no budget raised
 
 The owner's report: "this kind of text should not be in production text", for the viewer's "Gamepad standard (încercat doar simulat)" (lesson 631).

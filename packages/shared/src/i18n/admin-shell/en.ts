@@ -17,6 +17,7 @@ export const en: AdminShellMessages = {
     'adminShell.nav.history': 'History',
     'adminShell.nav.crashes': 'Crashes',
     'adminShell.nav.georef': 'Georeferencer',
+    'adminShell.nav.help': 'Arrange the tiles',
     'adminShell.nav.more': 'More',
     'adminShell.route.notFound': 'That page does not exist, so you are on Setup.',
     'adminShell.route.needsBackend': "This page works once the map's server is installed. Continue the setup.",

@@ -263,8 +263,10 @@ function deleteVersionButton(shown: Shown): TemplateResult {
     });
 }
 
+/** The georeferencer, for a version with a scan in a state it takes; never for a series whose tiles wait (the preview is no scan). */
 function georefLink({ context, version }: Shown): TemplateResult {
-    const target = version !== null && version.hasScan && GEOREF_STATES.has(version.state) ? version : null;
+    const offered = version !== null && version.hasScan && GEOREF_STATES.has(version.state) && version.layoutCheck !== true;
+    const target = offered ? version : null;
     return withValue(
         target,
         (shown) =>
@@ -273,6 +275,17 @@ function georefLink({ context, version }: Shown): TemplateResult {
                 data-action=${shown.state === 'published' ? 'edit-points' : 'open-georef'}
                 href=${['#/georef', shown.id].join('/')}
                 >${contentText(context.locale, shown.state === 'published' ? 'adminContent.imagery.editPoints' : 'adminContent.imagery.openGeoref')}</a
+            >`,
+    );
+}
+
+/** An archive series whose tiles wait for the owner: the tile-import wizard (`docs/research/M20-import-local.md` §19.11). */
+function tilesLink({ context, version }: Shown): TemplateResult {
+    return withValue(
+        version?.layoutCheck === true ? version : null,
+        (shown) =>
+            html`<a class="external" href=${['#/help', shown.id, 'tiles'].join('/')}
+                >${contentText(context.locale, 'adminContent.imagery.openTiles')}</a
             >`,
     );
 }
@@ -443,8 +456,8 @@ function body(shown: Shown): TemplateResult {
     return html`<div class="pane" data-version=${page.id} data-state=${stateOf(version, job)}>
         ${heading(shown)} ${reconnectingStatus(locale, reconnecting)} ${progress(locale, job)} ${failure(shown)}
         <div class="actions">
-            ${retryButton(shown)} ${locateButton(shown)} ${uploadAnother(shown)} ${mapboxSetupLink(shown)} ${georefLink(shown)}
-            ${deleteVersionButton(shown)}
+            ${retryButton(shown)} ${locateButton(shown)} ${uploadAnother(shown)} ${mapboxSetupLink(shown)} ${tilesLink(shown)}
+            ${georefLink(shown)} ${deleteVersionButton(shown)}
         </div>
         ${runPlace(shown)} ${refusal(shown)}
         ${withValue(version, (known) => lazyJoin(context, known, (chunk) => chunk.versionJoin(context, known, job)))} ${imageView(shown)}

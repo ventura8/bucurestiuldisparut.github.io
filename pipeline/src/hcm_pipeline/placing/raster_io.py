@@ -76,6 +76,27 @@ def read_working(path: Path, max_px: int) -> Working:
     return Working(numpy.asarray(image, numpy.uint8), 1.0 / scale, width, height)
 
 
+def read_box(path: Path, box: tuple[int, int, int, int], size: tuple[int, int]) -> UInt8Array:
+    """Only the scan's `box` (left, top, right, bottom in scan pixels) read at `size` (width, height) by GDAL's average, each band
+    straight into the one array returned: a colour sheet costs its box at the size it is pasted, never the whole scan (M20 §19.6)."""
+    vrt = normalised(path)
+    try:
+        dataset = gdal.Open(vrt)
+        left, top = max(0, box[0]), max(0, box[1])
+        across, down = max(1, min(dataset.RasterXSize, box[2]) - left), max(1, min(dataset.RasterYSize, box[3]) - top)
+        count = dataset.RasterCount
+        image = numpy.empty((size[1], size[0], count) if count >= RGB else (size[1], size[0]), numpy.uint8)
+        for index in range(count):
+            plane = image[:, :, index] if count >= RGB else image
+            plane[...] = dataset.GetRasterBand(index + 1).ReadAsArray(
+                left, top, across, down, size[0], size[1], resample_alg=gdal.GRIORA_Average
+            )
+        dataset.Close()
+    finally:
+        gdal.Unlink(vrt)
+    return image
+
+
 @dataclass(frozen=True)
 class Pair:
     """One correspondence: a scan pixel (full resolution) and its place in EPSG:3857 metres."""

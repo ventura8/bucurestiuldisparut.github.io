@@ -1,17 +1,21 @@
 """Atlases, pieces and PDFs made one map (docs/research/M20-import-local.md §3, *Atlases and pieces*, *PDFs*), then placed."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import cv2
 import numpy
 import pikepdf
 import pytest
-from hcm_pipeline.jobs import Done, Waiting
-from hcm_pipeline.placing import assemble, joins, maps
+from hcm_pipeline.jobs import Done, JobContext, Waiting
+from hcm_pipeline.placing import assemble, autoplace, joins, maps
+from hcm_pipeline.placing.autostitch import Proposal
 from hcm_pipeline.placing.pdfpages import extract_pages
+from hcm_pipeline.placing.quality import Quality
+from hcm_pipeline.placing.series import SeriesJob
 from hcm_pipeline.steps.place import PlaceStep
 
-from tests.fakes.world import PipelineWorld
+from tests.fakes.world import PipelineWorld, dig
 from tests.synthetic.town import Drawing, draw_map, placement, town_lines, write_map
 from tests.unit.placing_support import originals, series_context
 
@@ -195,22 +199,30 @@ def test_happy_path_an_atlas_of_pages_is_assembled_and_placed_as_one_map(world: 
     assert source["placedCount"] == 4
 
 
-def test_bad_path_pieces_that_would_make_a_huge_canvas_wait_for_a_person(
+def test_bad_path_pieces_the_older_joins_cannot_hold_either_wait_with_their_layout_for_a_check(
     world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Scenarios: S-P20-BAD-STITCH-GARBAGE-WAITS"""
     whole = texture()
     names = ["Bucata/img001.tif", "Bucata/img002.tif"]
     ctx = series_context(world, tmp_path, names, {"class": "pieces", "encoding": "grey"})
     (originals(ctx) / "Bucata").mkdir()
     for name, image in zip(names, [whole[0:400, 0:500], whole[0:400, 400:900]], strict=True):
         write_map(originals(ctx) / name, numpy.dstack([image] * 3), grey=True)
+    proposed = autoplace.proposed
+
+    def doubtful(job: JobContext, series: SeriesJob) -> Proposal:
+        return replace(proposed(job, series), quality=Quality(100.0, 0.4, 1.0, 0.0, "check"))
+
+    monkeypatch.setattr(autoplace, "proposed", doubtful)
+    # The older joins refuse a canvas this large: nothing vouches for the layout, so its owner checks it.
     monkeypatch.setattr(assemble, "CANVAS_MAX_PX", 600)
 
     assert isinstance(PlaceStep().run(ctx), Waiting)
     help_item = world.version()["help"]
     assert isinstance(help_item, dict)
-    assert help_item["note"] == maps.NO_STITCH
-    assert "stitched" not in help_item
+    assert (help_item["reason"], help_item["note"]) == (autoplace.LAYOUT_CHECK, autoplace.NOTE_CHECK)
+    assert dig(help_item, "stitched", "method") == "names"
 
 
 def test_happy_path_pieces_are_stitched_and_placed_as_one_map(world: PipelineWorld, tmp_path: Path) -> None:
