@@ -6993,3 +6993,11 @@ The owner: "take me to the analytics permission button", then: the page must sho
 - **204d Step 2** (pending): the copy over the home network (a separate LAN endpoint off unless the city has two paired workers, a
   short-lived read-only token from a callable, archive files only), and pre-seeding under the governor; the bucket stays the fallback.
 - **Verify**: S-A120-HAPPY-ARCHIVE-COPY, S-A120-BAD-ARCHIVE-COPY, S-P20-HAPPY-ARCHIVE-COPY, S-P20-BAD-ARCHIVE-COPY.
+
+## 205. Under WSL the starter reads Windows' idle time, not logind's (the owner's PC, 2026-11-13) — APPLIED, no gate relaxed
+
+- **205a The fault**: in WSL logind's `IdleHint` is always `no`, which the starter wrote as `"idleS":0` every 5 s; the governor read `user-active` and Automatic never left Quiet (4 of 16 threads).
+- **205b The reading**: under WSL only `GetLastInputInfo` through `powershell.exe -EncodedCommand` (parity with `hcm-worker.bat`), at most every 30 s, from the first `/run/WSL/*_interop` whose process runs in a session other than 0 (session 0 reads the uptime); none answering is an empty `idleS`. Measured on the PC inside a systemd user unit: 1722 s through `4597_interop` in 1.7 s.
+- **205c Cost**: the Automatic profile goes quiet up to 30 s after the owner returns instead of 5 s; the owner's guidance accepted a 30 s cache.
+- **205d Release**: starter version `0428b9113175`; the worker image must match (`ai_state.never_here` refuses the AI with an older starter), so Setup's **Update the map** follows the deploy.
+- **Verify**: S-A141-HAPPY-WSL-IDLE, S-A141-BAD-WSL-NO-INTEROP; Vitest `functions/test/worker/starter-governor.test.ts`.

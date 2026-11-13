@@ -32,7 +32,7 @@ the starter never mounts the volume). Hints older than 60 s are ignored (a stopp
 
 | Hint | Linux | Windows | macOS |
 | --- | --- | --- | --- |
-| `idleS` (seconds since input) | GNOME's `org.gnome.Mutter.IdleMonitor`, else `xprintidle`, else logind's `IdleHint` / `IdleSinceHint` | `GetLastInputInfo` | `ioreg` `HIDIdleTime` |
+| `idleS` (seconds since input) | GNOME's `org.gnome.Mutter.IdleMonitor`, else `xprintidle`, else logind's `IdleHint` / `IdleSinceHint`; under WSL only Windows' `GetLastInputInfo` through powershell.exe (below) | `GetLastInputInfo` | `ioreg` `HIDIdleTime` |
 | `power` | (read in the container) | `Win32_Battery` | `pmset -g batt` |
 | `gpus` | `nvidia-smi` (memory, use, heat; `via: cuda` when `docker info` names the NVIDIA runtime or CDI); `/sys/class/drm/card*/device/vendor` 0x8086 with `/dev/dri` (`via: openvino`), 0x1002 with `/dev/kfd` (`via: rocm`), 0x10de when nvidia-smi fails (`why: no-driver`); each card's model from `lspci -mm -s <slot>` | `nvidia-smi` (`via: cuda`: Docker Desktop's WSL2 passes it) | none |
 | `npus` | `/dev/accel/accel0` (`via: openvino`) | none | none |
@@ -50,6 +50,17 @@ starter's text never reaches `/state`. The Windows file checks `$LASTEXITCODE` a
 
 logind's `IdleHint` turns only after the desktop's own idle delay (GNOME: 5 minutes), so on a desktop without GNOME's
 monitor or `xprintidle` the worker stays quiet longer after the person leaves; it is never less polite.
+
+**Under WSL** (`/proc/version` names `microsoft`; the owner's PC, 2026-11-13) none of those sees the person: logind's `IdleHint`
+is always `no` without a desktop session, so every hint said input and Automatic held Quiet forever. The starter then reads the
+Windows user's `GetLastInputInfo` (the same C# as `hcm-worker.bat`'s `Get-IdleSeconds`) through `powershell.exe -EncodedCommand`,
+at most every 30 s (`WSL_IDLE_SECONDS`; each call costs about half a second, 1.7 s with the sockets that fail) and cached in the
+install folder's `windows-idle`. A systemd service has no `WSL_INTEROP` and Windows refuses `/run/WSL/1_interop`, so it tries
+`/run/WSL/*_interop` (the one that last answered first); a process that sshd's `wsl.exe` started runs in session 0, whose
+reading is the uptime, so only an answer from a session other than 0 counts. With no answer `idleS` is empty, never 0: the
+governor never claims activity it cannot see. The reading reaches the governor up to 30 s late (it goes quiet within 35 s of
+the owner's return, not 5). The roots `HCM_PROC_VERSION`, `HCM_WSL_INTEROP_ROOT` and `HCM_WINDOWS_POWERSHELL` are for tests.
+Scenarios `S-A141-HAPPY-WSL-IDLE`, `S-A141-BAD-WSL-NO-INTEROP`.
 
 ## 2. Signals (`signals.py`)
 
