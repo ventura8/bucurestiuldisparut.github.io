@@ -3908,3 +3908,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: a stacked segmented button pulled every row after the first up by 1 px (`margin-block-start: -1px`) to share its border; with nine more rows the sweep stopped where a strip just over the 5 px sliver allowance ended on that shared pixel.
     - Fix and pin: a row after the first draws no top border instead of overlapping (`segmented-button.ts`; `segmented-button.test.ts` holds the rows edge to edge); the tour state counts `VIEWER_LOCALES`.
     - **Shared borders are drawn by one side, never by overlapping boxes: a pixel of overlap is a covered pixel to the layout checks.**
+
+665. **The translation QA held every Japanese and Chinese hint of several short sentences, whatever their wording.**
+    - Seen: 2026-11-13, the merge queue's viewer QA: `input.padActs` and `input.padMove` in ja and zh failed "use about 6 (3) sentences like the English", and a one-sentence rewrite failed the same way.
+    - Cause: the sentence counter of `hcm-wt/ltrans.py` (`SENT`) wanted a space after a full stop, and CJK writes `。！？` with none, so a CJK text of six sentences counted as one.
+    - Fix and pin: with the owner's OK, `。！？` end a sentence with no space after them; the four strings then passed the validators, the laptop's back-translation and the second judge.
+    - **A text check that counts by spaces counts wrong in the scripts that use none: test each validator on a CJK sample before it holds CJK strings.**
