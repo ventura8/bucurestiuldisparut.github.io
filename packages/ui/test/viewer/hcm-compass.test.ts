@@ -6,7 +6,7 @@ import { defineViewerElements } from '../../src/viewer/define.js';
 import { defineKitDoubles, shadowQuery } from './doubles.js';
 import { FakeStore, readyState } from './fake-store.js';
 import { testManifest } from './fixtures.js';
-import { LANDSCAPE_PHONE, mountViewer, part } from './viewer-harness.js';
+import { LANDSCAPE_PHONE, MEDIUM, mountViewer, part } from './viewer-harness.js';
 
 /**
  * The compass (scenario V64): an icon button at the head of the zoom group whose needle follows the camera's bearing and
@@ -107,7 +107,7 @@ describe('<hcm-map-viewer>: the compass', () => {
 
         expect(mounted.store.callsOf('resetNorth')).toHaveLength(3);
         expect(part(mounted, 'hcm-compass').title).toBe('Busolă: orientează harta spre nord');
-        expect(part(mounted, '.dock.zoom').firstElementChild?.localName).toBe('hcm-compass');
+        expect(part(mounted, '.dock.compass').firstElementChild?.localName).toBe('hcm-compass');
     });
 
     it('happyPath_itFollowsTheAttachedStoreInEveryLayout', async () => {
@@ -118,6 +118,20 @@ describe('<hcm-map-viewer>: the compass', () => {
 
         expect(compass.north).toBe(false);
         expect(mounted.store.cameraWatchers).toBe(1);
+    });
+
+    it('happyPath_overTheGroupOnATallMapBesideItsZoomInOnAShortOne', async () => {
+        const px = (value: string): number => Number.parseFloat(value);
+        const tall = await mountViewer(readyState(testManifest()), MEDIUM);
+        const [tallCompass, tallZoom] = [getComputedStyle(part(tall, '.dock.compass')), getComputedStyle(part(tall, '.dock.zoom'))];
+        expect(px(tallCompass.bottom) - px(tallZoom.bottom)).toBe(104);
+        expect(tallCompass.right).toBe(tallZoom.right);
+        document.body.replaceChildren();
+
+        const short = await mountViewer(readyState(testManifest()), LANDSCAPE_PHONE);
+        const [shortCompass, shortZoom] = [getComputedStyle(part(short, '.dock.compass')), getComputedStyle(part(short, '.dock.zoom'))];
+        expect(px(shortCompass.bottom) - px(shortZoom.bottom)).toBe(48);
+        expect(px(shortCompass.left) - px(shortZoom.left)).toBe(56);
     });
 
     it('badPath_withoutWebglThereIsNoCompass', async () => {

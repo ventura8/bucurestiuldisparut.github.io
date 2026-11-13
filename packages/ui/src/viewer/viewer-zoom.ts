@@ -50,9 +50,10 @@ export interface MapControlHandlers {
 }
 
 /**
- * The group for the camera's `view`: the compass (V64; its needle follows `camera`, the store) at its head, then the two
- * zoom buttons in the city's zoom range and, once the map has a box (`size`), its bounds. A hundredth of a level covers
- * the rounding of the camera Mapbox stopped. The compass's name is its tooltip, as the zoom buttons'.
+ * The compass (V64; its needle follows `camera`, the store) in its own pill over the group, or beside its Zoom in on a
+ * short map (`dock-styles.ts`), then the group of the two zoom buttons for the camera's `view` in the city's zoom range
+ * and, once the map has a box (`size`), its bounds. A hundredth of a level covers the rounding of the camera Mapbox
+ * stopped. The compass's name is its tooltip, as the zoom buttons'.
  */
 export function zoomButtons(
     { locale, mapSize, camera }: { readonly locale: Locale; readonly mapSize: MapSize | null; readonly camera: CameraSource | null },
@@ -62,13 +63,15 @@ export function zoomButtons(
 ): TemplateResult {
     const { maxZoom, bounds } = manifest.city;
     const minZoom = Math.max(manifest.city.minZoom, mapSize === null ? 0 : coverZoom(bounds, mapSize) + 0.01);
-    return html`<div class="dock zoom" data-layout-check="zoom">
-        <hcm-compass .source=${camera} locale=${locale} title=${translate(locale, 'viewer.compass')} @click=${onCompass}></hcm-compass>
-        ${zoomButton(translate(locale, 'viewer.zoomIn'), 'add', view.zoom >= maxZoom, () => {
-            onZoom(1);
-        })}
-        ${zoomButton(translate(locale, 'viewer.zoomOut'), 'remove', view.zoom <= minZoom, () => {
-            onZoom(-1);
-        })}
-    </div>`;
+    return html`<div class="dock compass" data-layout-check="compass">
+            <hcm-compass .source=${camera} locale=${locale} title=${translate(locale, 'viewer.compass')} @click=${onCompass}></hcm-compass>
+        </div>
+        <div class="dock zoom" data-layout-check="zoom">
+            ${zoomButton(translate(locale, 'viewer.zoomIn'), 'add', view.zoom >= maxZoom, () => {
+                onZoom(1);
+            })}
+            ${zoomButton(translate(locale, 'viewer.zoomOut'), 'remove', view.zoom <= minZoom, () => {
+                onZoom(-1);
+            })}
+        </div>`;
 }
