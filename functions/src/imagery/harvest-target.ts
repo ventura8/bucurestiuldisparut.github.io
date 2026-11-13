@@ -11,7 +11,7 @@ import type { SceneRecord } from './scene-record.js';
 /** At most this many records from one search of one dataset. */
 export const MAX_SCENES_PER_DATASET = 500;
 /**
- * How long a harvest asks USGS for pages (lessons 646 and 676): what is found by then is stored, and the callable answers well inside
+ * How long a harvest asks USGS for pages (lessons 646 and 662): what is found by then is stored, and the callable answers well inside
  * its timeout (`CALLABLE_TIMEOUT_SECONDS` of `functions/src/api/callable.ts`, 540 s): the page asked last ends by `PAGES_BUDGET_MS`
  * and the run by `RUN_BUDGET_MS` (`harvest.ts`). A target year not searched in time waits for the next harvest.
  */

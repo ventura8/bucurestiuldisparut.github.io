@@ -19,7 +19,7 @@ interface SceneSearchRequest {
     /** M25: the most cloud a Landsat scene may have, percent (M2M `cloudCoverFilter`, unknown cover left out). */
     readonly maxCloud?: number;
     /**
-     * Lesson 676: how long this one request may take (never sent to M2M); past it, it is aborted and fails `unavailable` with the
+     * Lesson 662: how long this one request may take (never sent to M2M); past it, it is aborted and fails `unavailable` with the
      * reason `TIMED_OUT`. The harvest keeps every request inside its remaining time.
      */
     readonly timeoutMs?: number;

@@ -5340,7 +5340,7 @@
             "asserts": "corona2's page from record 101 is aborted at its own timeout -> corona2 is recorded partial (found 100, next 101, reason requestTimedOut), its first 100 scenes are stored, the run is recorded partial and due again in 15 minutes; the admin's line says what it kept and that the rest comes by itself",
             "tier": "functions",
             "status": "exists",
-            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: functions/test/imagery/harvest-partial.test.ts, functions/test/adapters/upstream-http.test.ts, packages/ui/test/admin/imagery/search-parts.test.ts."
+            "notes": "Lesson 662 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: functions/test/imagery/harvest-partial.test.ts, functions/test/adapters/upstream-http.test.ts, packages/ui/test/admin/imagery/search-parts.test.ts."
         },
         {
             "id": "S-A11-BAD-HARVEST-PARTIAL-STORED",
@@ -5351,7 +5351,7 @@
             "asserts": "corona2's first page uses up the search's time -> declassii is stored and done, corona2 partial with next 101 and reason outOfTime, ops/harvest-{city} partial; the admin's Search shows each dataset's part live, then the answer's",
             "tier": "functions",
             "status": "exists",
-            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: functions/test/imagery/harvest-partial.test.ts, packages/admin/test/imagery/search.test.ts."
+            "notes": "Lesson 662 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: functions/test/imagery/harvest-partial.test.ts, packages/admin/test/imagery/search.test.ts."
         },
         {
             "id": "S-A11-HAPPY-HARVEST-RESUME",
@@ -5362,7 +5362,7 @@
             "asserts": "after a partial run (corona2 stopped at 101) -> the next run asks corona2 from 101 and 201 only, stores the rest and records ok",
             "tier": "functions",
             "status": "exists",
-            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
+            "notes": "Lesson 662 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
         },
         {
             "id": "S-A11-BAD-HARVEST-KILLED",
@@ -5373,7 +5373,7 @@
             "asserts": "ops/harvest-{city} still running 10 minutes after it started -> the next run logs harvest.killed as an error, searches only the dataset that was not done, keeps the done one's part and records ok",
             "tier": "functions",
             "status": "exists",
-            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
+            "notes": "Lesson 662 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
         },
         {
             "id": "S-A11-BAD-BROWSE-HOST-REFUSED",
@@ -18122,7 +18122,7 @@
             "asserts": "the fake USGS answers landsat_ot_c2_l1 -> two scenes stored as L8-OLI and L9-OLI at 15 m, searched in summer months under the cloud cap with a per-request timeout; the Landsat chip lists them, each Free",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/harvest-partial.test.ts, packages/ui/test/admin/imagery/search-parts.test.ts."
+            "notes": "Lesson 662 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: e2e/admin/specs/imagery/landsat.spec.ts, functions/test/imagery/harvest-partial.test.ts, packages/ui/test/admin/imagery/search-parts.test.ts."
         },
         {
             "id": "S-A130-BAD-OLI-UNKNOWN",
@@ -18133,7 +18133,7 @@
             "asserts": "entity ids LX8… and LO9… -> L8-OLI and L9-OLI",
             "tier": "functions",
             "status": "exists",
-            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
+            "notes": "Lesson 662 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
         },
         {
             "id": "S-A130-HAPPY-WORKERS-PACE",
@@ -18144,7 +18144,7 @@
             "asserts": "two workers seen 10 s ago -> imagery.tick's Landsat part starts the 1989 and 1990 imports, both runOn local (never counted by the daily cap)",
             "tier": "functions",
             "status": "exists",
-            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
+            "notes": "Lesson 662 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
         },
         {
             "id": "S-A130-BAD-NO-WORKER-PACE",
@@ -18155,7 +18155,7 @@
             "asserts": "the workers were last seen an hour ago -> one import, placed in the cloud (the daily cap counts it)",
             "tier": "functions",
             "status": "exists",
-            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
+            "notes": "Lesson 662 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: functions/test/imagery/harvest-partial.test.ts."
         },
         {
             "id": "S-A130-BAD-CLOUDY",
@@ -18232,7 +18232,7 @@
             "asserts": "an OLI bundle (B1 to B4, B8, QA_PIXEL) -> red, green and blue from B4, B3, B2, Brovey with B8, output maxzoom 14, report pansharpened and resolution 15",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
+            "notes": "Lesson 662 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Tests: pipeline/tests/integration/test_landsat_job.py, pipeline/tests/unit/test_landsat.py (pipeline-pytest)."
         },
         {
             "id": "S-P30-BAD-OLI-MISSING-BAND",
@@ -18243,7 +18243,7 @@
             "asserts": "an OLI bundle without B4 -> the job fails apiError.imagery.missingBand with band B4",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "Lesson 676 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: pipeline/tests/integration/test_landsat_job.py (pipeline-pytest)."
+            "notes": "Lesson 662 (2026-11-13: no Landsat over Bucharest; the harvest was all or nothing and a run past the callable's 540 s stored and recorded nothing). Test: pipeline/tests/integration/test_landsat_job.py (pipeline-pytest)."
         },
         {
             "id": "S-P30-BAD-MISSING-BAND",

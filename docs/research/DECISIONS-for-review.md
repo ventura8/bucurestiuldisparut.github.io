@@ -6978,7 +6978,7 @@ The owner: "take me to the analytics permission button", then: the page must sho
 
 ## 208. The harvest stores as it goes and resumes; Landsat 8 and 9 OLI; Landsat to the current year; Landsat on the workers (track/landsatfix, the owner 2026-11-13) — APPLIED
 
-The investigation of 2026-11-13: no Landsat over Bucharest, because the harvest was all or nothing and died past the callable's 540 s (`LESSONS.md` 676).
+The investigation of 2026-11-13: no Landsat over Bucharest, because the harvest was all or nothing and died past the callable's 540 s (`LESSONS.md` 662).
 
 - **208a Budgets.** No page after `SEARCH_BUDGET_MS` (300 s, was 360 s); each `scene-search` request its own `AbortController` timeout, at most `PAGE_TIMEOUT_MS` (60 s, the adapters' default stays 20 s) and never past `PAGES_BUDGET_MS` (360 s); the run done by `RUN_BUDGET_MS` (420 s): re-ranking, the browse prefetch and the date plan are skipped past it and done by the next run. A timed-out request is `unavailable` with the reason `TIMED_OUT`, so the harvest records `requestTimedOut` rather than a USGS failure.
 - **208b Stored as it goes.** Each dataset is written as soon as its own search ends; the run keeps only the written ids and the 20 best frames for the browse copy (`StoreTally`), not every document.

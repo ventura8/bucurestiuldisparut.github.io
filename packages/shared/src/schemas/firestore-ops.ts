@@ -543,7 +543,7 @@ export const opsProbeDocSchema = z.strictObject({
 /**
  * How a city's last USGS harvest went: found scenes, found none, USGS did not answer (every dataset failed), `partial` (a dataset
  * was searched only in part: what it found is stored, the rest resumes) or `running` (it has not finished; one still `running` long
- * after the callable's timeout was stopped by the server, lesson 676).
+ * after the callable's timeout was stopped by the server, lesson 662).
  */
 export const HARVEST_OUTCOMES = ['ok', 'empty', 'failed', 'partial', 'running'] as const;
 /** How far one dataset's part of a harvest got: still searching, searched to its end, in part, or not at all. */
@@ -565,7 +565,7 @@ export const harvestDatasetSchema = z.strictObject({
 /**
  * `ops/harvest-{city}`: the city's last harvest attempt (CR-M3-47), written on every attempt, so the monthly harvest of
  * `imagery.tick` is keyed on what the harvest itself wrote: the next one is due at `nextAt` (a month after a harvest that
- * answered, an hour after a failure, doubled after each further one), never every five minutes. Lesson 676: written `running` at
+ * answered, an hour after a failure, doubled after each further one), never every five minutes. Lesson 662: written `running` at
  * the start and again as each dataset is stored (`datasets`, which the admin's Search shows live), so a run the server stops still
  * leaves what it stored and where each dataset resumes; a `partial` run resumes `HARVEST_RESUME_MINUTES` later.
  */

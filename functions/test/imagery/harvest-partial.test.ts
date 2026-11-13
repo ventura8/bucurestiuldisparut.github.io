@@ -1,5 +1,5 @@
 /**
- * Lesson 676 (no Landsat over Bucharest): the harvest is no longer all or nothing. Each dataset is stored as soon as its own search
+ * Lesson 662 (no Landsat over Bucharest): the harvest is no longer all or nothing. Each dataset is stored as soon as its own search
  * ends; each USGS request has its own timeout inside the run's time; a dataset not searched to its end is recorded `partial` with where
  * it resumes, and the next run resumes it there; a run the server stopped is found `running` and counted. Landsat 8 and 9 OLI
  * (`landsat_ot_c2_l1`) is searched beside TM and ETM+, and while the city's computers run the worker the tick imports several Landsat

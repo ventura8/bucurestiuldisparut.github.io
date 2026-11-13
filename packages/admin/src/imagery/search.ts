@@ -30,7 +30,7 @@ export interface SearchState {
     /** Datasets M2M did not answer for (the others were harvested). */
     readonly failedDatasets: readonly UsgsDataset[];
     readonly error: NoticeInput | null;
-    /** Lesson 676: each dataset's part, live from `ops/harvest-{city}` while searching, then the answer's (absent before). */
+    /** Lesson 662: each dataset's part, live from `ops/harvest-{city}` while searching, then the answer's (absent before). */
     readonly datasets?: readonly SearchPart[];
 }
 

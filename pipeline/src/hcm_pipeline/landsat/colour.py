@@ -1,11 +1,11 @@
 """A Landsat scene's colour on the tile grid (docs/research/M25-landsat.md §3): masks, pan-sharpening and the per-scene stretch.
 
-Pure arrays, so every rule is tested without GDAL. The quality band (`QA_PIXEL`, Collection 2 for Landsat 4 to 9: the same bits) marks fill (bit 0),
-dilated cloud (1), cloud (3) and cloud shadow (4); a pixel is valid when it is no fill and every colour band has a value (0 is no data in
-a Level-1 product; OLI's are 16 bits, which the per-band stretch takes as they come). An ETM+ or OLI scene is pan-sharpened by the
-Brovey ratio: each colour band scaled by the panchromatic band over the mean of
-the three, so the 15 m band brings its detail and the colour stays the 30 m bands'. The stretch is per band, between robust percentiles
-of the clear pixels only (haze and clouds do not set the white point; a scene with no clear pixel falls back to every valid one), to
+Pure arrays, so every rule is tested without GDAL. The quality band (`QA_PIXEL`, Collection 2 for Landsat 4 to 9: the same bits)
+marks fill (bit 0), dilated cloud (1), cloud (3) and cloud shadow (4); a pixel is valid when it is no fill and every colour band has a
+value (0 is no data in a Level-1 product; OLI's are 16 bits, which the per-band stretch takes as they come). An ETM+ or OLI scene is
+pan-sharpened by the Brovey ratio: each colour band scaled by the panchromatic band over the mean of the three, so the 15 m band brings
+its detail and the colour stays the 30 m bands'. The stretch is per band, between robust percentiles of the clear pixels only (haze and
+clouds do not set the white point; a scene with no clear pixel falls back to every valid one), to
 1..255, so the alpha band alone says where the image is.
 """
 

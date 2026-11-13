@@ -1,4 +1,4 @@
-/** Lesson 676: each dataset's part of the USGS search, in words, in both languages. */
+/** Lesson 662: each dataset's part of the USGS search, in words, in both languages. */
 import { render } from 'lit';
 import { describe, expect, it } from 'vitest';
 
@@ -33,7 +33,7 @@ describe('the search’s parts', () => {
         const ro = shown([{ dataset: 'corona2', state: 'partial', found: 100, reason: 'outOfTime' }], 'ro');
 
         const [slow, refused, late] = [...en.querySelectorAll('li')].map((item) => item.textContent);
-        expect(slow).toContain('100 scenes kept; USGS was too slow');
+        expect(slow).toContain('100 scenes kept; USGS was slow');
         expect(refused).toContain('USGS did not answer');
         expect(late).toContain('0 scenes kept');
         expect(ro.textContent).toContain('100 scene păstrate');

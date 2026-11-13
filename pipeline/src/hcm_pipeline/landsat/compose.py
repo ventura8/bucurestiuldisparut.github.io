@@ -1,7 +1,8 @@
 """`warp` for a Landsat scene: the colour image on the tile grid, checked against Sentinel-2 (docs/research/M25-landsat.md §3).
 
 The bands `extract` kept are reprojected by GDAL straight onto the city window's tile grid at the camera's zoom (`SENSOR_SPECS`: z13 for
-Landsat 4 and 5 TM's 30 m, z14 for Landsat 7 ETM+'s and Landsat 8 and 9 OLI's 15 m): the colour bands cubic, the quality band nearest. `colour.py` masks, sharpens
+Landsat 4 and 5 TM's 30 m,
+z14 for Landsat 7 ETM+'s and Landsat 8 and 9 OLI's 15 m): the colour bands cubic, the quality band nearest. `colour.py` masks, sharpens
 and stretches them into the RGBA `warped.tif` the shared tail (`export`, `pyramid`, `register`) reads, as a declassified frame's `warp`
 writes it. No georeferencing: the product is on the ground already. One check instead: the image's rigid shift from the window's
 Sentinel-2 (`offset.py`, the reference `reference` cached), in the camera's own pixels, and the share of the city its quality band calls

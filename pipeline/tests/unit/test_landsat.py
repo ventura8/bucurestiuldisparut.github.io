@@ -76,7 +76,8 @@ def test_happy_path_an_oli_scene_takes_its_own_colour_bands_and_its_panchromatic
     assert true_colour("L9-OLI") == ("B4", "B3", "B2")
     assert true_colour("L7-ETM") == true_colour("L5-TM") == ("B3", "B2", "B1")
     assert band_of("LC09_L1TP_183029_20230718_20230718_02_T1_B10.TIF") is None
-    assert (SENSOR_SPECS["L8-OLI"].dataset, SENSOR_SPECS["L8-OLI"].maxzoom, SENSOR_SPECS["L9-OLI"].resolution_m) == ("landsat_ot_c2_l1", 14, 15)
+    oli = SENSOR_SPECS["L8-OLI"]
+    assert (oli.dataset, oli.maxzoom, SENSOR_SPECS["L9-OLI"].resolution_m) == ("landsat_ot_c2_l1", 14, 15)
 
 
 def scene(size: int = 64, pan: bool = False) -> Bands:
