@@ -8,128 +8,19 @@
  * The owner's report of 2026-11-13: a frame probably cloudy over the city says so before Import or Buy, and Not useful sets a
  * scene aside (`scene-unusable.ts`).
  */
-import type { Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { errorTemplate, loadingTemplate } from '../editing/states.js';
-import { contentText, noticeOf } from '../shell/text.js';
-import type { AdminNoticeInputPort } from '../notice-port.js';
+import { contentText } from '../shell/text.js';
 import type { ImageryContext } from './context.js';
 import type { SceneItemPort } from './imagery-port.js';
-import { datasetText, dayText, numberText, reasonText } from './imagery-text.js';
+import { dayText, reasonText } from './imagery-text.js';
 import { lazyJoin } from './join/lazy-card.js';
-import { lazyOrderCard } from './orders/lazy-card.js';
+import { chunkLoader, chunkTemplate, lazyOrderCard, type ChunkLoader } from './orders/lazy-card.js';
 import { notFoundPane } from './not-found.js';
-import { sceneRefusal, usgsSetupLink } from './scene-refusal.js';
-import { chunkLoader, chunkTemplate, type ChunkLoader } from './orders/lazy-card.js';
+import { sceneRefusal } from './scene-refusal.js';
 import type { SceneUseChunk } from './scene-unusable.js';
 import { when } from './when.js';
-
-/** Why there is no image, with Try again; a preview that could not be made too: the row's small crop is not the browse image. */
-function browseFailure(context: ImageryContext, scene: SceneItemPort, error: AdminNoticeInputPort | undefined): TemplateResult {
-    return html`<p class="alert" role="alert" data-state="browse-unavailable">
-            <hcm-icon name="broken_image"></hcm-icon><span>${noticeOf(context.locale, error ?? null)}</span>
-        </p>
-        <div class="actions">
-            <hcm-button
-                variant="tonal"
-                icon="refresh"
-                @click=${() => {
-                    context.intents?.retryBrowse(scene.id);
-                }}
-                >${contentText(context.locale, 'adminContent.common.retry')}</hcm-button
-            >
-        </div>`;
-}
-
-/** The page's picture, the row's until it is made. */
-function largest(image: { readonly url: string; readonly preview?: string | null }): string {
-    return image.preview ?? image.url;
-}
-
-function browseImage(context: ImageryContext, scene: SceneItemPort): TemplateResult {
-    const image = context.view.browse[scene.id] ?? { status: 'loading' };
-    if (image.status === 'loading') {
-        return html`<p class="note" role="status">${contentText(context.locale, 'adminContent.imagery.browseLoading')}</p>`;
-    }
-    return image.status === 'ready' && image.error === undefined
-        ? html`<img
-              class="browse"
-              src=${largest(image)}
-              alt=${contentText(context.locale, 'adminContent.imagery.browseAlt', { name: scene.displayId })}
-          />`
-        : browseFailure(context, scene, image.error);
-}
-
-function fact(locale: Locale, key: Parameters<typeof contentText>[1], value: string): TemplateResult {
-    return html`<dt>${contentText(locale, key)}</dt>
-        <dd>${value}</dd>`;
-}
-
-function facts(locale: Locale, scene: SceneItemPort): TemplateResult {
-    const cloud =
-        scene.cloudCover === null
-            ? contentText(locale, 'adminContent.imagery.cloudUnknown')
-            : `${numberText(locale, scene.cloudCover, 0)} %`;
-    return html`<dl class="facts">
-        ${fact(locale, 'adminContent.imagery.fact.dataset', datasetText(locale, scene.dataset))}
-        ${fact(locale, 'adminContent.imagery.fact.camera', scene.sensorName)}
-        ${fact(locale, 'adminContent.imagery.fact.date', dayText(locale, scene.date))}
-        ${fact(locale, 'adminContent.imagery.fact.cloud', cloud)}
-        ${fact(locale, 'adminContent.imagery.fact.resolution', `${numberText(locale, scene.resolutionM)} m`)}
-        ${fact(locale, 'adminContent.imagery.fact.coverage', `${numberText(locale, scene.coverage * 100, 0)} %`)}
-        ${fact(locale, 'adminContent.imagery.fact.id', scene.displayId)}
-    </dl>`;
-}
-
-/** An imported scene's link: its version while it is unfinished, else its layer; and, while it is free, Import again. */
-function importedLink(context: ImageryContext, scene: SceneItemPort): TemplateResult {
-    const version = context.view.versions.items.find((candidate) => candidate.layerId === scene.layerId);
-    const href = version === undefined ? ['#/layers', scene.layerId ?? ''].join('/') : context.href(['version', version.id]);
-    return html`<p><a href=${href}>${contentText(context.locale, 'adminContent.imagery.importedOpen')}</a></p>
-        ${when(scene.free && scene.layerId !== null && context.view.usgs === 'ok', () => importAgainButton(context, scene))}`;
-}
-
-/** Import again (lesson 645): the scene downloaded and processed once more, a new version that replaces the old one once approved. */
-function importAgainButton(context: ImageryContext, scene: SceneItemPort): TemplateResult {
-    const { locale } = context;
-    return html`<div class="actions">
-            <hcm-button
-                variant="tonal"
-                icon="refresh"
-                ?disabled=${context.view.importing !== null || context.readOnly}
-                @click=${() => void importScene(context, scene.id, true)}
-                >${contentText(locale, 'adminContent.imagery.importAgain')}</hcm-button
-            >
-        </div>
-        <p>${contentText(locale, 'adminContent.imagery.importAgainHint')}</p>`;
-}
-
-/**
- * USGS has not approved the account's downloads yet: Import stays off, with why (`apiError.usgs.accessPending`) and the
- * way to Setup's USGS step (S-A11-BAD-DOWNLOAD-NOT-APPROVED).
- */
-function downloadsPending(context: ImageryContext): TemplateResult {
-    const { locale } = context;
-    return html`<div class="actions">
-            <hcm-button variant="filled" icon="download" disabled>${contentText(locale, 'adminContent.imagery.import')}</hcm-button>
-        </div>
-        <div class="alert" role="alert" data-state="downloads-pending">
-            <hcm-icon name="schedule"></hcm-icon>
-            <div class="alert-body">
-                <p>${noticeOf(locale, { key: 'apiError.usgs.accessPending' })}</p>
-                ${usgsSetupLink(locale)}
-            </div>
-        </div>`;
-}
-
-/** Why Import is not offered, or null when it is. */
-function noImport(context: ImageryContext, scene: SceneItemPort): TemplateResult | null {
-    if (scene.status === 'imported') {
-        return importedLink(context, scene);
-    }
-    return context.view.usgs === 'ok' ? null : downloadsPending(context);
-}
 
 /** M4: an order USGS delivered is imported by the server, and its card says so and links to the import. */
 const ORDER_IMPORTS: readonly SceneItemPort['acquisition'][] = ['delivered', 'importing'];
@@ -144,7 +35,7 @@ export function importable(context: ImageryContext, scene: SceneItemPort): boole
     return importShown(scene) && scene.status !== 'imported' && context.view.usgs === 'ok';
 }
 
-async function importScene(context: ImageryContext, id: string, again = false): Promise<void> {
+export async function importScene(context: ImageryContext, id: string, again = false): Promise<void> {
     const intents = context.intents;
     if (intents === null) {
         return;
@@ -174,15 +65,15 @@ export function importRefusal(context: ImageryContext, scene: SceneItemPort): Te
     return sceneRefusal(context, context.view.importRefusal, scene);
 }
 
-/** Not useful and the cloudy warning, a chunk fetched when a scene's page opens (`scene-unusable.ts`). */
+/**
+ * The scene page's own parts, a chunk fetched when a scene's page opens (`scene-unusable.ts`): what USGS says of it, why Import is
+ * not offered, Not useful and the cloudy warning.
+ */
 export const SCENE_USE_CHUNK: ChunkLoader<SceneUseChunk> = chunkLoader(async () => import('./scene-unusable.js'));
 
-function sceneUse(context: ImageryContext, scene: SceneItemPort): TemplateResult {
-    return chunkTemplate(
-        context,
-        SCENE_USE_CHUNK,
-        (chunk) => html`${chunk.cloudyWarning(context.locale, scene)} ${chunk.unusableSection(context, scene)}`,
-    );
+/** What the scene page's chunk renders, once it is in (Loading until then). */
+function sceneUse(context: ImageryContext, render: (chunk: SceneUseChunk) => TemplateResult): TemplateResult {
+    return chunkTemplate(context, SCENE_USE_CHUNK, render);
 }
 
 function notFound(context: ImageryContext): TemplateResult {
@@ -194,14 +85,15 @@ function sceneBody(context: ImageryContext, scene: SceneItemPort): TemplateResul
     return html`<div class="pane" data-scene=${scene.id}>
         <h2 tabindex="-1" data-detail-heading>${scene.sensorName} · ${dayText(locale, scene.date)}</h2>
         <p>${contentText(locale, 'adminContent.imagery.score', { score: String(scene.score) })}</p>
-        ${browseImage(context, scene)} ${lazyOrderCard(context, scene)}
-        ${when(importShown(scene), () => noImport(context, scene) ?? importButton(context, scene))} ${importRefusal(context, scene)}
-        ${lazyJoin(context, null, (chunk) => chunk.sceneOffer(context, scene))} ${sceneUse(context, scene)}
+        ${sceneUse(context, (chunk) => chunk.browseImage(context, scene))} ${lazyOrderCard(context, scene)}
+        ${when(importShown(scene), () => sceneUse(context, (chunk) => chunk.noImport(context, scene) ?? importButton(context, scene)))}
+        ${importRefusal(context, scene)} ${lazyJoin(context, null, (chunk) => chunk.sceneOffer(context, scene))}
+        ${sceneUse(context, (chunk) => html`${chunk.cloudyWarning(locale, scene)} ${chunk.unusableSection(context, scene)}`)}
         <h3>${contentText(locale, 'adminContent.imagery.why')}</h3>
         <ul class="reasons">
             ${scene.reasons.map((reason) => html`<li>${reasonText(locale, reason)}</li>`)}
         </ul>
-        ${facts(locale, scene)}
+        ${sceneUse(context, (chunk) => chunk.facts(locale, scene))}
     </div>`;
 }
 

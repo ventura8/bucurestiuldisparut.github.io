@@ -977,7 +977,7 @@ until fn-imagery wires them (done: `Omit<Ports, 'jobs' | 'tilesets' | 'scenes' |
 | Address | Shows | Chunk (budget, gzip) |
 | --- | --- | --- |
 | `#/imagery` | the Imagery area: Find (ranked results, map, filters), In progress, Needs you (awaiting approval, points, a choice), Upload | `imagery` (30 KB) |
-| `#/imagery/scene/<entityId>` | a scene: browse image, the cloudy warning, metadata, reasons, Import, Not useful (M4 §1.9) | `imagery` |
+| `#/imagery/scene/<entityId>` | a scene: browse image, the cloudy warning, metadata, reasons, Import, Not useful (M4 §1.9) | `imagery`, its page's own parts in `scene-unusable` (2 KB, fetched when the page opens; DECISIONS §201g) |
 | `#/imagery/version/<versionId>` | a version: live progress, the approval card, the guard's choices, the error with Retry or Open georeferencer | `imagery` |
 | Find, a version, a scene (M8; no new route) | the whole-city dates, the offer to join, a join's frames and report | `join-card` (3 KB, fetched when the city has a plan or a join opens); Upload moved to `upload-panel` (2 KB) |
 | `#/georef/<versionId>` | the georeferencer | `georef` (30 KB) |
