@@ -133,6 +133,8 @@ export const PROVISION_ITEMS = [
     'org-policies',
     'crash-alerts',
     'api-key',
+    // §210: the admin's own Hosting site and its Firebase Auth domains.
+    'admin-site',
 ] as const;
 /**
  * Finding 65 of 2026-11-02: the version of Provision's item set, and the set version in which each item's definition last
@@ -141,26 +143,28 @@ export const PROVISION_ITEMS = [
  * records, in the same click. Version 2 (M7): `artifact-registry`'s public pull of the pipeline image and
  * `bucket-lifecycle`'s 7-day `usgs-raw/`. Version 3 (finding 74 of 2026-11-03): `iam`'s `roles/run.viewer` for
  * `fn-admin@`, whose worker callables read the image the job `raster-pipeline` runs. Version 4 (§203): `apis` turns on
- * `analyticsdata.googleapis.com` for the Statistics view.
+ * `analyticsdata.googleapis.com` for the Statistics view. Version 5 (§210, the admin on its own site): `admin-site` makes
+ * the site and its Firebase Auth domains, `app-check`'s key and `api-key`'s referrers allow it, `bucket-cors` its origins.
  */
-export const PROVISION_SET_VERSION = 4;
+export const PROVISION_SET_VERSION = 5;
 export const PROVISION_CHANGED_IN: Readonly<Record<(typeof PROVISION_ITEMS)[number], number>> = {
     apis: 4,
     'service-accounts': 1,
     iam: 3,
     buckets: 1,
     'artifact-registry': 2,
-    'bucket-cors': 1,
+    'bucket-cors': 5,
     'bucket-lifecycle': 2,
     secrets: 1,
     'task-queues': 1,
     scheduler: 1,
     'workload-identity': 1,
-    'app-check': 1,
+    'app-check': 5,
     'budget-alerts': 1,
     'org-policies': 1,
     'crash-alerts': 1,
-    'api-key': 1,
+    'api-key': 5,
+    'admin-site': 5,
 };
 
 /** The items whose definition changed since the set version `recorded` (absent: 1, before the set had versions). */

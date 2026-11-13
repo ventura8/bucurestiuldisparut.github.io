@@ -306,7 +306,15 @@ export { archiveIssueSchema, archiveReportSchema, archiveSeriesParamsSchema, arc
 export { archiveSourceSchema, creditLine, gridDocSchema, helpItemSchema, layerRightsOf } from './schemas/imagery-archive.js';
 export { layerRightsSchema, mapThresholdM, opsDailyDocSchema, rightsAllowPublish, rightsSchema } from './schemas/imagery-archive.js';
 export type * from './schemas/imagery-archive.js';
-export { STITCH_METHODS, STITCHED_PREVIEW_MAX_PX, stitchedSchema, type Stitched } from './schemas/imagery-help.js';
+export {
+    helpFlagsOf,
+    restitchable,
+    STITCH_METHODS,
+    STITCHED_PREVIEW_MAX_PX,
+    stitchedSchema,
+    type RestitchInput,
+    type Stitched,
+} from './schemas/imagery-help.js';
 export * from './schemas/imagery-tiles.js';
 // M5 (docs/research/M5-interfaces.md): many cities in one project, the static export, engine releases on jsDelivr (every
 // export of these modules is public; `test/index.test.ts` lists them).
@@ -315,6 +323,8 @@ export * from './schemas/city-export.js';
 export * from './schemas/engine-release.js';
 // M6 installer (docs/research/M6-interfaces.md §1): the install bundle, the build log's events, each target's state.
 export * from './schemas/install.js';
+// The admin on its own Hosting site (the owner's decision of 2026-11-13, DECISIONS-for-review.md §210).
+export * from './schemas/admin-site.js';
 export * from './schemas/start-release.js';
 // M5 kit-cli (§3.2): the one CSP table of every engine page, and the starter kit's page (`fillKitPage`).
 export * from './kit/csp.js';

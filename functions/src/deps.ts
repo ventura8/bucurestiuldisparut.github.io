@@ -1,4 +1,4 @@
-import { createLogger, httpsOriginSchema, type Logger } from '@hcm/shared';
+import { SITE_ID_PATTERN, adminSiteId, adminSiteUrl, createLogger, httpsOriginSchema, siteOrigins, type Logger } from '@hcm/shared';
 import { initializeApp, type App, type AppOptions } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -68,6 +68,39 @@ function hostingOrigins(projectId: string): string[] {
     return [`https://${projectId}.web.app`, `https://${projectId}.firebaseapp.com`];
 }
 
+/**
+ * The admin's own Hosting site (`HCM_ADMIN_SITE`, `DECISIONS-for-review.md` §210): `none` for a project without one (the
+ * admin stays under the public map's `/admin/`), a site id once the installer saw the admin served from it (the server
+ * build writes it: the site is then this project's own), unset before that. Unset, the admin's derived site
+ * (`<project>-admin`) joins the allow-lists (its Mapbox token, the crash endpoint), because the admin may already run
+ * there, while links keep the public map's `/admin/`, which Hosting forwards to the admin's site with the same route: a
+ * link never names a site this project was not seen to own.
+ */
+interface AdminSite {
+    readonly origins: readonly string[];
+    readonly url: string;
+}
+
+/** `HCM_ADMIN_SITE` as a site id, `none`, or '' when unset; anything else is refused. */
+function adminSiteSetting(value: string | undefined): string {
+    const setting = value ?? '';
+    if (setting !== '' && setting !== 'none' && !SITE_ID_PATTERN.test(setting)) {
+        throw new Error(`HCM_ADMIN_SITE must be a Hosting site id or none: ${setting}`);
+    }
+    return setting;
+}
+
+function adminSiteOf(projectId: string, value: string | undefined): AdminSite {
+    const main = hostingOrigins(projectId);
+    const fallback = `https://${projectId}.web.app/admin/`;
+    const setting = adminSiteSetting(value);
+    if (setting === 'none') {
+        return { origins: main, url: fallback };
+    }
+    const site = setting === '' ? adminSiteId(projectId) : setting;
+    return { origins: [...main, ...siteOrigins(site)], url: setting === '' ? fallback : adminSiteUrl(setting) };
+}
+
 /** The Functions emulator's stand-in for Application Default Credentials: the fake upstreams accept any bearer token. */
 const EMULATOR_TOKENS: TokenProvider = { accessToken: () => Promise.resolve('emulator-access-token') };
 
@@ -134,14 +167,16 @@ function viewerOriginsOf(value: string | undefined): string[] {
 export function runtimeConfig(env: Env): RuntimeConfig {
     const projectId = requireProjectId(env);
     const viewerOrigins = viewerOriginsOf(env['HCM_VIEWER_ORIGINS']);
+    const admin = adminSiteOf(projectId, env['HCM_ADMIN_SITE']);
     return {
         projectId,
         region: REGION,
         buckets: { private: privateBucket(env), public: `${projectId}-public` },
         viewerOrigins: viewerOrigins.length > 0 ? viewerOrigins : hostingOrigins(projectId),
-        adminOrigins: hostingOrigins(projectId),
+        adminOrigins: admin.origins,
         // M6 (§2.3): the admin's folder on Hosting; invitations and the inbox's and push's links (`adminUrl + #/…`) open it.
-        adminUrl: `https://${projectId}.web.app/admin/`,
+        // §210: on the admin's own site once the installer saw it served there, else the public map's `/admin/` (forwarded).
+        adminUrl: admin.url,
         oauthClientIds: listOf(env['HCM_OAUTH_CLIENT_IDS']),
         errorEndpoint: `https://${REGION}-${projectId}.cloudfunctions.net/telemetry-reportError`,
         appCheck: env['HCM_APP_CHECK'] === 'enforce' ? 'enforce' : 'monitor',

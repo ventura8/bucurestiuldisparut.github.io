@@ -104,7 +104,12 @@ describe('loadInstallBundle', () => {
 
 describe('the bundle helpers', () => {
     it('happyPath_theProjectsHostingOriginsAndTheFolderOfARelease', () => {
-        expect(hostingOrigins('demo-hcm')).toEqual(['https://demo-hcm.web.app', 'https://demo-hcm.firebaseapp.com']);
+        expect(hostingOrigins('demo-hcm')).toEqual([
+            'https://demo-hcm.web.app',
+            'https://demo-hcm.firebaseapp.com',
+            'https://demo-hcm-admin.web.app',
+            'https://demo-hcm-admin.firebaseapp.com',
+        ]);
         expect(bundleFolderUrl(BASE, RELEASE).toString()).toBe('https://demo-hcm.web.app/admin/install/1-0-0-abc1234/');
     });
 

@@ -1172,6 +1172,13 @@
             "source": "the owner, 2026-11-13: \"This scan is useless (too many clouds!!!)\", DS09066A047MC019, a 1964 scan the whole-city plan kept offering to buy; docs/research/M4-interfaces.md, Not useful and the cloud estimate"
         },
         {
+            "id": "A160",
+            "area": "admin",
+            "name": "The admin on its own web address: one sign-in for every tab, the old /admin/ links forwarded",
+            "milestone": "post-M8",
+            "source": "the owner's decision of 2026-11-13; DECISIONS-for-review.md §210; docs/research/M6-interfaces.md addendum \"The admin on its own site\""
+        },
+        {
             "id": "A170",
             "area": "admin",
             "name": "Pause a job and resume it, one at a time or all at once, from Jobs and from its version page",
@@ -5471,7 +5478,7 @@
             "asserts": "DS09065A073MC043 stored as KH-4A (the corona2 fallback) imports as KH-5: the job's params, the version's sensor and label, the reserved layer id and the scene say KH-5 Argon; DS1103 reads KH-4B",
             "tier": "functions",
             "status": "exists",
-            "notes": "DECISIONS §209, LESSONS 664. In functions/test/imagery/{scene-record,import}.test.ts."
+            "notes": "DECISIONS §209, LESSONS 667. In functions/test/imagery/{scene-record,import}.test.ts."
         },
         {
             "id": "S-A12-BAD-STALE-CAMERA-KEPT",
@@ -11026,7 +11033,7 @@
             "asserts": "the owner signed in on /admin/ -> a reload keeps the session; Firebase Auth's user is in the tab's sessionStorage only, never in localStorage or IndexedDB",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 1 of the security-cost review (DECISIONS-for-review.md §73a). Test: e2e/admin/specs/shell/admin-path.spec.ts."
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 1 of the security-cost review (DECISIONS-for-review.md §73a). Test: e2e/admin/specs/shell/admin-path.spec.ts. Since §210 this is the fallback without the admin's own site (S-A160-BAD-NO-ADMIN-SITE); on that site the sign-in is the origin's (S-A160-HAPPY-ONE-SIGN-IN)."
         },
         {
             "id": "S-A58-BAD-VIEWER-READS-NO-SIGN-IN",
@@ -11037,7 +11044,7 @@
             "asserts": "the owner signed in on /admin/ -> the viewer opened at / in another tab of the same browser boots, and its localStorage, sessionStorage and IndexedDB hold no Firebase Auth user",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 1 of the security-cost review. Test: e2e/admin/specs/shell/admin-path.spec.ts."
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 1 of the security-cost review. Test: e2e/admin/specs/shell/admin-path.spec.ts. Since §210 this is the fallback without the admin's own site (S-A160-BAD-NO-ADMIN-SITE); on that site the sign-in is the origin's (S-A160-HAPPY-ONE-SIGN-IN)."
         },
         {
             "id": "S-A59-HAPPY",
@@ -17948,6 +17955,28 @@
             "notes": "harti.zip 1895-1899 pieces stitched 4 of 60 (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_scale.py."
         },
         {
+            "id": "S-P20-HAPPY-OVERVIEW-HOLES",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A piece the overview's features left out is found again in the overview's holes",
+            "asserts": "refit_in_holes places a left-out piece (as scanned, or upside down) where the placed pieces leave the overview uncovered, by correlation at the series' scale and turn refined by its features, within 2 px of its true place; the placed pieces are unchanged",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895-1899: 3 of 60 pieces left out (img366, img390, img418, no-join) were the published layer's three white patches (2026-11-13). Tests: pipeline/tests/unit/test_placing_overview_holes.py."
+        },
+        {
+            "id": "S-P20-BAD-OVERVIEW-HOLES-NOT-FOUND",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A piece the overview does not show stays left out and listed, never forced into a hole",
+            "asserts": "refit_in_holes leaves a piece of another map, a blank piece and a piece whose best place is not clearly better than the next (a repeating pattern) unplaced, so it stays in help.stitched.leftOut",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Real data only: nothing is drawn into a hole the archive's own pieces do not fill. Tests: pipeline/tests/unit/test_placing_overview_holes.py."
+        },
+        {
             "id": "S-P20-HAPPY-OVERVIEW-COLOUR",
             "behaviour": "P20",
             "area": "pipeline",
@@ -18331,6 +18360,50 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M22 §13.2. Tests: functions/test/imagery/locate-again-archive.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
+            "id": "S-A122-HAPPY-RESTITCH",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "happy",
+            "title": "A placed series with pieces left out of its overview mosaic offers Locate again, which lays it on the overview again in a new version",
+            "asserts": "the version view marks a published series with pieces left out of its overview mosaic restitchable; the button calls imagery.locateAgain; a new archive-series job (restitch, runOn local) and its processing version on the same layer carry the base's pairs, scan, rights and help; the layer marks it pending and keeps the published version",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §216, layer 1895-1899. Tests: functions/test/imagery/restitch.test.ts, packages/shared/test/restitchable.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
+        },
+        {
+            "id": "S-A122-BAD-RESTITCH-NOTHING-LEFT",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "bad",
+            "title": "A series with nothing left out, not stitched on an overview, not published or on a busy layer is not stitched again",
+            "asserts": "no Locate again button; imagery.locateAgain answers apiError.imagery.versionState (or apiError.layers.busy for a layer with a version on its way) and writes nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §216. Tests: functions/test/imagery/restitch.test.ts, packages/shared/test/restitchable.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
+        },
+        {
+            "id": "S-P20-HAPPY-RESTITCH",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A series stitched again is laid on its overview and warped through the base's pairs",
+            "asserts": "place with restitch publishes the new mosaic as help.stitched and the scan, then warps it through the owner's pairs scaled from the base's scan, landing within 15 m",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §216. Tests: pipeline/tests/unit/test_placing_restitch.py."
+        },
+        {
+            "id": "S-P20-BAD-RESTITCH-NO-OVERVIEW",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A series stitched again that its overview no longer places waits for points with its pairs",
+            "asserts": "place answers Waiting, the version needs_gcps with help low-confidence and the note saying so; nothing is warped",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §216. Tests: pipeline/tests/unit/test_placing_restitch.py."
         },
         {
             "id": "S-A122-HAPPY-GEOREF-FULL-SCREEN",
@@ -19499,6 +19572,61 @@
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195g). packages/ui/src/viewer/hcm-timeline.ts (#settle, #offerDates), timeline-pointer.ts, timeline-scrub.ts; unit tests in packages/ui/test/viewer/hcm-timeline-dates.test.ts (a drag, a finger scrub, a cancelled press, the arrows). Test: e2e/specs/viewer/timeline-dates.spec.ts."
         },
         {
+            "id": "S-V68-HAPPY-HOVER-PEEK",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Hovering a multi-date year opens its date menu without selecting",
+            "asserts": "at 1440x900 and at 1024x768 with touch, a city whose 1980 has two dates, the timeline on today, the page's clock paused: the mouse resting on 1980's point opens 'Dates in 1980' after 300 ms (none at 250 ms), the slider still on today and the focus not in the menu, the menu inside the window and clear of the compass, the zoom group and the menu button; the mouse moving up into the menu keeps it a second later; a click on March brings it to the front (layers= names it last) and closes the menu",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195i). packages/ui/src/viewer/timeline-peek.ts, hcm-timeline.ts, timeline-scrub.ts, timeline-dock.ts, hcm-date-menu.ts (peek, touchAt); unit tests in packages/ui/test/viewer/timeline-peek.test.ts, hcm-timeline-peek.test.ts, timeline-dock-peek.test.ts and hcm-date-menu.test.ts. Test: e2e/specs/viewer/timeline-peek.spec.ts."
+        },
+        {
+            "id": "S-V68-BAD-HOVER-SWEEP",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Sweeping across years doesn't open menus",
+            "asserts": "at 1440x900 and 1024x768: the mouse swept from today across 1980 and back opens nothing after a second; a menu opened by resting on 1980 closes 300 ms after the mouse left the year and the menu, and on Esc, the year still today; unit: a held button's drag, a sweep and a modal menu opened by Enter are never turned into a peek",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195i). packages/ui/src/viewer/timeline-peek.ts, hcm-timeline.ts, timeline-scrub.ts, timeline-dock.ts, hcm-date-menu.ts (peek, touchAt); unit tests in packages/ui/test/viewer/timeline-peek.test.ts, hcm-timeline-peek.test.ts, timeline-dock-peek.test.ts and hcm-date-menu.test.ts. Test: e2e/specs/viewer/timeline-peek.spec.ts."
+        },
+        {
+            "id": "S-V68-BAD-HOVER-TOUCH",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Touch doesn't open on hover",
+            "asserts": "at 360x800 (a phone) and 768x1024 (a tablet): a tap on today and a second's wait open no menu; unit: a touch pointer over the track never counts as a hover (hcm-timeline-peek.test.ts)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195i). packages/ui/src/viewer/timeline-peek.ts, hcm-timeline.ts, timeline-scrub.ts, timeline-dock.ts, hcm-date-menu.ts (peek, touchAt); unit tests in packages/ui/test/viewer/timeline-peek.test.ts, hcm-timeline-peek.test.ts, timeline-dock-peek.test.ts and hcm-date-menu.test.ts. Test: e2e/specs/viewer/timeline-peek.spec.ts."
+        },
+        {
+            "id": "S-V68-HAPPY-DWELL-PICK",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A finger resting on a multi-date year opens its dates; sliding onto one and lifting picks it",
+            "asserts": "at 360x800 and 768x1024: a finger scrubbing from today onto 1980 and resting 400 ms opens the menu (none at 350 ms) beside it and clear of the controls; slid off the card onto March and lifted, March is picked (the slider on 1980, layers= names it last); lifting on the year instead keeps the menu open, the checked date focused, for a tap; unit: a haptic tick when it opens",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195i). packages/ui/src/viewer/timeline-peek.ts, hcm-timeline.ts, timeline-scrub.ts, timeline-dock.ts, hcm-date-menu.ts (peek, touchAt); unit tests in packages/ui/test/viewer/timeline-peek.test.ts, hcm-timeline-peek.test.ts, timeline-dock-peek.test.ts and hcm-date-menu.test.ts. Test: e2e/specs/viewer/timeline-peek.spec.ts."
+        },
+        {
+            "id": "S-V68-BAD-DWELL-SWEEP",
+            "behaviour": "V68",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A quick finger sweep opens nothing, and moving on closes the menu",
+            "asserts": "at 360x800 and 768x1024: a finger sweeping from today across 1980 and back opens nothing after a second; resting on 1980 opens it, moving on to today closes it while the scrub goes on (the slider on today), and lifting there opens nothing",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §195i). packages/ui/src/viewer/timeline-peek.ts, hcm-timeline.ts, timeline-scrub.ts, timeline-dock.ts, hcm-date-menu.ts (peek, touchAt); unit tests in packages/ui/test/viewer/timeline-peek.test.ts, hcm-timeline-peek.test.ts, timeline-dock-peek.test.ts and hcm-date-menu.test.ts. Test: e2e/specs/viewer/timeline-peek.spec.ts."
+        },
+        {
             "id": "S-V68-HAPPY-TOUR",
             "behaviour": "V68",
             "area": "viewer",
@@ -20124,6 +20252,83 @@
             "tier": "functions",
             "status": "exists",
             "notes": "The owner's report of 2026-11-13. Tests: functions/test/imagery/browse.test.ts."
+        },
+        {
+            "id": "S-A160-HAPPY-ONE-SIGN-IN",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "happy",
+            "title": "Signed in once on the admin's own site, a new tab is signed in too",
+            "asserts": "the admin on its own origin (runtime.json naming it) -> the sign-in lives in the origin's IndexedDB; a second tab opens Home signed in with nothing seeded in it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Test: e2e/admin/specs/shell/admin-site.spec.ts."
+        },
+        {
+            "id": "S-A160-BAD-VIEWER-READS-NOTHING",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "A public map page, on its own origin, reads nothing of the admin's sign-in",
+            "asserts": "the owner signed in on the admin's own origin -> a public map page on the map's origin finds no sign-in in localStorage, sessionStorage or IndexedDB",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Keeps the intent of S-A58-BAD-VIEWER-READS-NO-SIGN-IN across the two origins. Test: e2e/admin/specs/shell/admin-site.spec.ts."
+        },
+        {
+            "id": "S-A160-BAD-NO-ADMIN-SITE",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without the admin's own site the sign-in stays in the admin's tab",
+            "asserts": "the admin served under the public map's /admin/ (runtime.json naming another origin, or none) -> the sign-in is in the tab's sessionStorage only, as since M6",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). The fallback of a self-hosted copy, a starter-kit city or a project whose site could not be made. Test: e2e/admin/specs/shell/admin-site.spec.ts."
+        },
+        {
+            "id": "S-A160-HAPPY-OLD-LINK-FORWARDS",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "happy",
+            "title": "An old admin address forwards to the admin's own site with its route",
+            "asserts": "/admin/?lang=en#/settings on the public map's origin -> 301 (the site build's rule) to the admin's site, the same query and hash, Settings shown",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Tests: e2e/admin/specs/shell/admin-site.spec.ts, scripts/site/test/hosting-admin-site.test.ts."
+        },
+        {
+            "id": "S-A160-BAD-NOT-FORWARDED",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "The starter list and the public map's own pages are never forwarded to the admin's site",
+            "asserts": "/, a city's page and /admin/starter.json (read by a Linux starter's curl without -L) match no forward; the map opens on its own origin",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Test: e2e/admin/specs/shell/admin-site.spec.ts."
+        },
+        {
+            "id": "S-A160-HAPPY-ADMIN-TOKEN",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "happy",
+            "title": "The admin's Mapbox token follows the server's admin origins",
+            "asserts": "setup/status.mapbox.adminAllowedUrls without the admin site -> ops.tick mints an admin token for the server origins and queues the old one for retirement",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Test: functions/test/ops/admin-token.test.ts."
+        },
+        {
+            "id": "S-A160-BAD-ADMIN-TOKEN-REFUSED",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refused admin token mint keeps the old token for the next tick",
+            "asserts": "Mapbox refuses the mint -> the stored admin token and its addresses stay, the step goes on",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Test: functions/test/ops/admin-token.test.ts."
         },
         {
             "id": "S-A170-HAPPY",

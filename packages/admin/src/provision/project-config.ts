@@ -1,4 +1,4 @@
-import { httpsOriginSchema, startFirstCitySchema } from '@hcm/shared';
+import { adminSiteId, httpsOriginSchema, siteOrigins, startFirstCitySchema } from '@hcm/shared';
 import { z } from 'zod';
 
 import { serviceAccountEmail } from '../google/iam.js';
@@ -72,7 +72,10 @@ export function serviceAccountIdsOf(project: Pick<ProjectConfig, 'github'>): rea
 export interface ProjectNames {
     readonly privateBucket: string;
     readonly publicBucket: string;
-    /** The admin's Hosting origins (`https://<projectId>.web.app`, `https://<projectId>.firebaseapp.com`). */
+    /**
+     * The admin's Hosting origins (`https://<projectId>.web.app`, `https://<projectId>.firebaseapp.com`, then its own
+     * site's two, `<projectId>-admin`: §210).
+     */
     readonly adminOrigins: readonly string[];
     /** `serviceAccount:<id>@<projectId>.iam.gserviceaccount.com` */
     member(account: ServiceAccountId): string;
@@ -84,7 +87,11 @@ export function projectNames(project: ProjectConfig): ProjectNames {
     return {
         privateBucket: `${project.projectId}.firebasestorage.app`,
         publicBucket: `${project.projectId}-public`,
-        adminOrigins: [`https://${project.projectId}.web.app`, `https://${project.projectId}.firebaseapp.com`],
+        adminOrigins: [
+            `https://${project.projectId}.web.app`,
+            `https://${project.projectId}.firebaseapp.com`,
+            ...siteOrigins(adminSiteId(project.projectId)),
+        ],
         member: (account) => `serviceAccount:${email(account)}`,
         email,
     };
