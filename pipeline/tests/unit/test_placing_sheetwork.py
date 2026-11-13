@@ -106,3 +106,13 @@ def test_happy_path_a_colour_scan_is_marked_colour(tmp_path: Path) -> None:
     path = write_map(tmp_path / "c.tif", picture)
 
     assert sheetwork.read_part(0, "c.tif", path, 1024).colour
+
+
+def test_bad_path_a_content_box_too_small_to_be_a_page_keeps_the_whole_page(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    path = write_map(tmp_path / "speck.tif", numpy.full((120, 160, 3), 250, numpy.uint8), grey=True)
+    # A speck of dust: the content box finds a few pixels, under MIN_SIDE_PX, which is no page's content.
+    monkeypatch.setattr(sheetwork, "content_box", lambda _grey: (70, 50, 73, 53))
+
+    part = sheetwork.read_part(0, "speck.tif", path, 1024)
+
+    assert part.box == (0, 0, 160, 120)

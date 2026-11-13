@@ -52,6 +52,24 @@ describe('telemetry.listGroups', () => {
         expect(page.groups[0]?.page).toBe('https://viewer.e2e.test/');
     });
 
+    it('happyPath_aGroupWithoutFramesOrPageKeepsNone', async () => {
+        const bare = {
+            groupId: 'e2e-group-2',
+            message: 'TypeError: x is undefined',
+            service: 'admin',
+            count: 1,
+            firstSeen: '2026-10-11T08:00:00.000Z',
+            lastSeen: '2026-10-11T08:00:00.000Z',
+            resolution: 'OPEN',
+        } as const;
+        const { call } = listGroups(fakeErrors({ groups: [bare] }));
+
+        const page = await call;
+
+        expect(page.groups[0]).not.toHaveProperty('frames');
+        expect(page.groups[0]).not.toHaveProperty('page');
+    });
+
     it('badPath_aMissingRoleNamesTheRole', async () => {
         const { call, recording } = listGroups(fakeErrors(new UpstreamError('error-reporting', 'forbidden', { status: 403 })));
 
