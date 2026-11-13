@@ -31,7 +31,7 @@ def test_happy_path_glibc_limits_the_arenas_and_trims_the_free_pages() -> None:
 
 
 def test_happy_path_tcmalloc_is_asked_to_release_its_free_pages_too() -> None:
-    """Scenarios: S-P31-HAPPY-CANVAS-THREADS (the pipeline's image preloads tcmalloc)"""
+    """The pipeline's image preloads tcmalloc. Scenarios: S-P31-HAPPY-CANVAS-THREADS"""
     released: list[bool] = []
     assert heap.give_back(None, lambda: released.append(True))
     assert heap.give_back(FakeLibc(0), lambda: released.append(True))

@@ -61,9 +61,8 @@ export const en: Readonly<Record<AdminWorkerLocalKey, string>> = {
     'adminWorkerLocal.machine.matcher.cpu': 'Local AI: on the processor.',
     'adminWorkerLocal.machine.matcher.off': 'Local AI: off while paused.',
     'adminWorkerLocal.machine.noGpu': 'No graphics card it can reach: the local AI runs on the processor, more slowly.',
-    'adminWorkerLocal.machine.noDriver':
-        'This computer has an NVIDIA graphics card, but its driver is not installed, so the local AI cannot use it and runs on the processor, more slowly. Install the driver, then restart the computer.',
-    'adminWorkerLocal.machine.getDriver': 'Get the NVIDIA driver',
+    'adminWorkerLocal.machine.noDriver': 'An NVIDIA card is here without its driver: the local AI uses the processor, more slowly.',
+    'adminWorkerLocal.machine.getDriver': 'Install the NVIDIA driver, then restart the computer',
     'adminWorkerLocal.machine.failed': 'The worker did not take the choice. Try again.',
     'adminWorkerLocal.versions.title': 'Versions',
     'adminWorkerLocal.versions.worker': 'Worker: {version}.',
