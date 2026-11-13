@@ -5,7 +5,7 @@
  * (at most a month). The tick harvests a city only once that time has come, so a harvest that writes no scene (USGS not
  * answering, revoked credentials, an area without frames) never repeats every five minutes.
  *
- * Lesson 662: the attempt is written `running` at its start and again as each dataset is stored (`HarvestProgress`), so a run the
+ * Lesson 676: the attempt is written `running` at its start and again as each dataset is stored (`HarvestProgress`), so a run the
  * server stops past its timeout still leaves what it stored and where each dataset resumes, and is due again
  * `HARVEST_RESUME_MINUTES` later. A run found still `running` after `HARVEST_KILLED_AFTER_MS` was stopped: the next one says so in the
  * log (`reasonCode` `harvest.killed`) and counts it as unfinished. A `partial` run (a dataset searched only in part) resumes after

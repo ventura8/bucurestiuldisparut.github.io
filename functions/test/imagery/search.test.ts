@@ -385,7 +385,7 @@ describe('imagery.search: browse images and secrets', () => {
 
         const response = await search(world, { cityId: CITY, datasets: ['corona2'] });
 
-        // Lesson 662: `found` counts the scenes stored; the skipped record is only logged.
+        // Lesson 676: `found` counts the scenes stored; the skipped record is only logged.
         expect(response).toMatchObject({ found: 1, added: 1 });
         expect(world.deps.recording.records.map((entry) => entry.message)).toContain('usgs scene skipped');
     });

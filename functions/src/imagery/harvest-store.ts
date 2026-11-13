@@ -1,7 +1,7 @@
 /**
  * The harvest's writes (`docs/research/M3-interfaces.md` §3.1–§3.5): each found record kept as a `usgsScenes/{entityId}` document
  * with its camera, footprint, coverage, download availability and rank. An existing document keeps the admin's status and note, its
- * layer and its browse copy, and (M4) its order and EarthExplorer dataset id. Lesson 662: each dataset is stored as soon as its own
+ * layer and its browse copy, and (M4) its order and EarthExplorer dataset id. Lesson 676: each dataset is stored as soon as its own
  * search ends (`storeDataset`), `WRITE_CONCURRENCY` documents at a time, and only the ids written and the few frames whose browse
  * copy is made at once are kept (`StoreTally`), so a run's memory does not grow with what it found and a run the server stops later
  * keeps every dataset it stored.

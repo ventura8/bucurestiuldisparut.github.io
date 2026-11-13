@@ -63,6 +63,9 @@ class App:
     def pair(self, code: object) -> str | None:
         return None
 
+    def remove(self) -> str | None:
+        return "no-starter"
+
     def profile(self, chosen: object, battery_allowed: object) -> bool:
         return False
 

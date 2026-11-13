@@ -175,7 +175,7 @@ describe('the installer, the invokers and the service agents (the iam item)', ()
         const again = await applyProvision(planProvision(null), world.deps);
 
         expect(report.items.filter((item) => item.state !== 'ok').map((item) => item.id)).toEqual(['scheduler']);
-        expect(report.items).toHaveLength(16);
+        expect(report.items).toHaveLength(17);
         expect(world.fakes.state.iam.projects.get('demo-hcm')?.accounts.has('hcm-installer')).toBe(true);
         expect(world.fakes.state.iam.projects.get('demo-hcm')?.roles.get('hcmInstaller')?.includedPermissions).toEqual([
             'cloudfunctions.functions.setIamPolicy',

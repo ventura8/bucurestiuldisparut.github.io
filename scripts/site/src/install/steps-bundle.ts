@@ -7,7 +7,7 @@
 import { build, type Rolldown } from 'vite';
 
 /** The steps a build runs by name (`node steps/<name>.mjs …`). */
-export const STEP_NAMES = ['deploy-with-retry', 'verify-server', 'run-jobs', 'hosting-config'] as const;
+export const STEP_NAMES = ['deploy-with-retry', 'verify-server', 'run-jobs', 'hosting-config', 'deploy-hosting'] as const;
 
 /** The step modules' entry, relative to the repository. */
 const STEPS_ENTRY = 'scripts/site/src/install/steps/index.ts';

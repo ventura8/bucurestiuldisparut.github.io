@@ -39,6 +39,10 @@ JOB_WAIT_REASONS: Final = (
     "parts",
     # M20: an archive series waiting for a later day's share of new layers.
     "daily",
+    # M20 (2026-11-13): an archive series waiting for the computer with its archive to send a copy of its sheets.
+    "archive-copy",
+    # 2026-11-13: a job whose stitched film is on another computer, waiting for that computer to claim it.
+    "film-copy",
 )
 JOB_STEP_STATES: Final = ("pending", "running", "done", "failed", "skipped")
 PIPELINE_STEPS: Final = (
@@ -226,7 +230,7 @@ SENSOR_SPECS: Final[Mapping[str, SensorSpec]] = {
     "L4-TM": SensorSpec("landsat_tm_c2_l1", "Landsat 4 TM", 30, 8, 13, "std"),
     "L5-TM": SensorSpec("landsat_tm_c2_l1", "Landsat 5 TM", 30, 8, 13, "std"),
     "L7-ETM": SensorSpec("landsat_etm_c2_l1", "Landsat 7 ETM+", 15, 8, 14, "std"),
-    # Lesson 662: Landsat 8 and 9 OLI, pan-sharpened to 15 m as ETM+.
+    # Lesson 676: Landsat 8 and 9 OLI, pan-sharpened to 15 m as ETM+.
     "L8-OLI": SensorSpec("landsat_ot_c2_l1", "Landsat 8 OLI", 15, 8, 14, "std"),
     "L9-OLI": SensorSpec("landsat_ot_c2_l1", "Landsat 9 OLI-2", 15, 8, 14, "std"),
 }

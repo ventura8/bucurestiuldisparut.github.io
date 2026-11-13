@@ -55,6 +55,8 @@ export const ro = {
     'adminContent.imagery.wait.mapbox': 'Mapbox pregătește dalele',
     'adminContent.imagery.wait.parts': 'Așteaptă cadrele',
     'adminContent.imagery.wait.daily': 'Așteaptă o zi următoare: cota de straturi noi de azi s-a folosit',
+    'adminContent.imagery.wait.filmCopy': 'Așteaptă calculatorul care a tăiat cadrul din film: pornește-l, continuă singur.',
+    'adminContent.imagery.wait.archiveCopy': 'Așteaptă calculatorul cu aceste hărți scanate: pornește-l ca să trimită o copie.',
     'adminContent.imagery.version.processing': 'În lucru',
     'adminContent.imagery.version.needsGcps': 'Are nevoie de puncte',
     'adminContent.imagery.version.awaitingApproval': 'Așteaptă aprobarea',

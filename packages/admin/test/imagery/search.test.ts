@@ -106,7 +106,7 @@ describe('a search the server could not answer', () => {
 
 const T0 = { seconds: 1_792_486_800, nanoseconds: 0 };
 
-describe('each dataset’s part of the search (lesson 662)', () => {
+describe('each dataset’s part of the search (lesson 676)', () => {
     it('happyPath_eachDatasetsPartShowsLiveThenTheAnswersPartsWithWhatAPartialOneKept @S-A11-BAD-HARVEST-PARTIAL-STORED', async () => {
         const { harvest, callables, store, states } = search();
         let release: () => void = () => undefined;

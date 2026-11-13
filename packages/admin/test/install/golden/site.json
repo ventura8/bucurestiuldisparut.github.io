@@ -29,6 +29,7 @@
                 "HCM_RELEASE_TIME=${_RELEASE_TIME}",
                 "HCM_FILES=site,server,pipeline",
                 "HCM_OUT=/workspace/site",
+                "HCM_REDIRECT_ORIGIN=https://demo-hcm-admin.web.app",
                 "HCM_KEEP_BUNDLE=public${_BASE}install/${_SLUG}"
             ]
         },
@@ -44,15 +45,7 @@
             "name": "node:24-bookworm-slim@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
             "entrypoint": "node",
             "dir": "site",
-            "args": [
-                "tools/node_modules/firebase-tools/lib/bin/firebase.js",
-                "deploy",
-                "--only",
-                "hosting",
-                "--project",
-                "$PROJECT_ID",
-                "--non-interactive"
-            ]
+            "args": ["steps/deploy-hosting.mjs", "--project", "$PROJECT_ID", "--max-versions", "10"]
         },
         {
             "id": "config",

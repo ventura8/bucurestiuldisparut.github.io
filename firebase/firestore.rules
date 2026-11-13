@@ -426,6 +426,10 @@ service cloud.firestore {
                 && data.color.matches('#[0-9A-Fa-f]{6}')
                 && data.defaultOpacity >= 0 && data.defaultOpacity <= 1
                 && data.order is int
+                // M27: hidden at start, pinned to the Layers panel's top strip, the data's credit.
+                && data.get('defaultVisible', true) is bool
+                && data.get('pinned', false) is bool
+                && data.get('attribution', 'x').matches('[\\s\\S]{1,500}')
                 && stamped(data);
         }
 
@@ -466,6 +470,8 @@ service cloud.firestore {
                 && data.get('photoIds', []) is list
                 && data.get('photoIds', []).size() <= 20
                 && data.get('credit', 'x').matches('[\\s\\S]{1,100}')
+                // M27: the layer the place was traced on.
+                && isId(data.get('sourceLayer', 'x'))
                 && data.published is bool
                 && stamped(data);
         }
@@ -499,6 +505,8 @@ service cloud.firestore {
                 && data.get('poiIds', []) is list
                 && data.get('poiIds', []).size() <= 20
                 && data.get('credit', 'x').matches('[\\s\\S]{1,100}')
+                // M27: the layer the place was traced on.
+                && isId(data.get('sourceLayer', 'x'))
                 && data.published is bool
                 && stamped(data);
         }
@@ -706,7 +714,7 @@ service cloud.firestore {
                         : (isCityUploader(city) && request.resource.data.get('reviewStatus', '') == 'pending'))
                     && isId(poi)
                     && request.resource.data.keys().hasOnly(['category', 'geometry', 'title', 'description', 'yearStart', 'yearEnd',
-                        'links', 'photoIds', 'published', 'credit', 'reviewStatus', 'createdAt', 'createdBy', 'updatedBy', 'updatedAt'])
+                        'links', 'photoIds', 'published', 'credit', 'sourceLayer', 'reviewStatus', 'createdAt', 'createdBy', 'updatedBy', 'updatedAt'])
                     && validPoi(request.resource.data)
                     && dated(request.resource.data)
                     && (isCityMember(city) || request.resource.data.published == false)
@@ -716,7 +724,7 @@ service cloud.firestore {
                         : (isCityUploader(city) && ownItem(resource.data) && resource.data.get('reviewStatus', '') == 'pending'
                             && !('published' in changedKeys())))
                     && changedKeys().hasOnly(['category', 'geometry', 'title', 'description', 'yearStart', 'yearEnd', 'links', 'photoIds',
-                        'published', 'credit', 'updatedBy', 'updatedAt'])
+                        'published', 'credit', 'sourceLayer', 'updatedBy', 'updatedAt'])
                     && validPoi(request.resource.data)
                     && datedOrOnlyFiled(request.resource.data);
                 allow delete: if isCityMember(city)
@@ -761,12 +769,13 @@ service cloud.firestore {
                 allow create: if isCityMember(city)
                     && isId(category)
                     && category != 'photos'
-                    && request.resource.data.keys().hasOnly(['label', 'icon', 'color', 'defaultOpacity', 'order', 'createdAt', 'updatedBy',
-                        'updatedAt'])
+                    && request.resource.data.keys().hasOnly(['label', 'icon', 'color', 'defaultOpacity', 'order', 'defaultVisible', 'pinned',
+                        'attribution', 'createdAt', 'updatedBy', 'updatedAt'])
                     && validCategory(request.resource.data)
                     && request.resource.data.createdAt == request.time;
                 allow update: if isCityMember(city)
-                    && changedKeys().hasOnly(['label', 'icon', 'color', 'defaultOpacity', 'order', 'updatedBy', 'updatedAt'])
+                    && changedKeys().hasOnly(['label', 'icon', 'color', 'defaultOpacity', 'order', 'defaultVisible', 'pinned', 'attribution',
+                        'updatedBy', 'updatedAt'])
                     && validCategory(request.resource.data);
                 allow delete: if isCityMember(city);
 

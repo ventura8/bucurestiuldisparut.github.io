@@ -12,6 +12,7 @@ import { cssProperties } from '../../components/css-properties.js';
 import { listBody } from '../editing/states.js';
 import { conflictBanner, field, issueAt, saveBar, saveStateOf, sliderRow } from '../layers/form-parts.js';
 import { reorderList, type RowDrag } from '../layers/reorder.js';
+import { categoryDisplay } from './category-display.js';
 import { contentText } from '../shell/text.js';
 import { SETTINGS_CONFLICT_TEXTS, SETTINGS_SAVE_TEXTS, sectionTitle, type SectionContext } from './section-parts.js';
 import type { CategoryDeletionPort, CategoryEditorPort, CategoryItemPort, CategoryValuePort } from './settings-port.js';
@@ -323,7 +324,7 @@ function editorBody(context: SectionContext, category: CategoryEditorPort, value
             <h3>${contentText(locale, 'adminContent.settings.color')}</h3>
             ${colourFields(context, category, value)}
         </section>
-        ${opacitySlider(context, value, title)} ${deletion(context, category)}`;
+        ${opacitySlider(context, value, title)} ${categoryDisplay(context, category, value)} ${deletion(context, category)}`;
 }
 
 function categoryEditor(context: SectionContext, category: CategoryEditorPort): TemplateResult {

@@ -39,7 +39,7 @@ test.use({ persona: 'owner', mapOwner: 'owner' });
 const CLEAR_1989 = 'LT51830291989193MTI00';
 const CLOUDY_1989 = 'LT51830291989209MTI00';
 const CLEAR_1990 = 'LT51830291990180MTI00';
-/** Lesson 662: Landsat 8 and 9 OLI (`landsat_ot_c2_l1`), searched beside TM and ETM+. */
+/** Lesson 676: Landsat 8 and 9 OLI (`landsat_ot_c2_l1`), searched beside TM and ETM+. */
 const OLI_2016 = 'LC81830292016198LGN01';
 const OLI_2023 = 'LC91830292023199LGN00';
 /** The six free declassified frames, the three Landsat 5 TM scenes and the two Landsat 8 and 9 OLI ones. */

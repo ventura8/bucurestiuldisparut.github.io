@@ -24,7 +24,18 @@ import { contentWorld } from '../content/world.js';
 const TOKEN = { token: 'e2e-analytics-read-token', expiresAt: 4_000_000_000_000 };
 
 function numbers(visitors: number): StatisticsNumbers {
-    return { visitors, sessions: visitors, pages: [], screens: [], events: [], devices: [], countries: [], surfaces: [], steps: [] };
+    return {
+        visitors,
+        sessions: visitors,
+        pages: [],
+        screens: [],
+        events: [],
+        devices: [],
+        countries: [],
+        surfaces: [],
+        steps: [],
+        pending: null,
+    };
 }
 
 async function settled(): Promise<void> {
@@ -43,6 +54,7 @@ interface Script {
 function scripted(script: Script) {
     const asked: string[] = [];
     const reads: number[] = [];
+    const reported: string[] = [];
     let granted = script.live === true;
     const source: StatisticsSource = {
         ask: () => {
@@ -62,6 +74,9 @@ function scripted(script: Script) {
             const answer = script.read?.(days) ?? numbers(days);
             return answer instanceof Error ? Promise.reject(answer) : Promise.resolve(answer);
         },
+        report: (code) => {
+            reported.push(code);
+        },
     };
     let state: StatisticsState = STATISTICS_INITIAL;
     const intents = createStatistics(
@@ -71,10 +86,37 @@ function scripted(script: Script) {
             state = { ...state, ...patch };
         },
     );
-    return { intents, asked, reads, state: () => state };
+    return { intents, asked, reads, reported, state: () => state };
 }
 
 describe('the Statistics numbers', () => {
+    it('happyPath_incompleteNumbersShowAndTheirReasonIsReported_completeOnesReportNothing', async () => {
+        const pending = { ...numbers(28), pending: { reason: 'notReady' as const, names: ['app_surface'] } };
+        const world = scripted({ read: () => pending });
+        world.intents.showNumbers();
+        await settled();
+        expect(world.state()).toMatchObject({ status: 'ready', numbers: { pending: { reason: 'notReady' } } });
+        expect(world.reported).toEqual(['statistics_notReady']);
+
+        const complete = scripted({});
+        complete.intents.showNumbers();
+        await settled();
+        expect(complete.reported).toEqual([]);
+    });
+
+    it('badPath_aRefusedReadAndARefusedConsentAreReportedByTheirReason', async () => {
+        const refused = scripted({ read: () => new GoogleApiError('analytics-data.batchRunReports', { kind: 'invalid', status: 400 }) });
+        refused.intents.showNumbers();
+        await settled();
+        expect(refused.state()).toMatchObject({ status: 'error', problem: 'refused' });
+        expect(refused.reported).toEqual(['statistics_refused']);
+
+        const closed = scripted({ consent: { granted: false, failure: 'popupClosed' } });
+        closed.intents.showNumbers();
+        await settled();
+        expect(closed.reported).toEqual(['statistics_consent']);
+    });
+
     it('happyPath_theClickAsksGoogleOnceThenReadsAndEachPeriodIsKeptForTheSession', async () => {
         const world = scripted({});
 
@@ -158,7 +200,7 @@ describe('problemOf', () => {
         expect(problemOf(google('forbidden')).problem).toBe('noAccess');
         expect(problemOf(google('unauthorized')).problem).toBe('consent');
         expect(problemOf(google('notFound')).problem).toBe('noProperty');
-        expect(problemOf(google('invalid')).problem).toBe('noReports');
+        expect(problemOf(google('invalid')).problem).toBe('refused');
         expect(problemOf(google('unavailable', { host: 'analyticsdata.googleapis.com' })).problem).toBe('blocked');
         expect(problemOf(google('unavailable')).problem).toBe('unavailable');
     });

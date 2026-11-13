@@ -8,7 +8,7 @@
  * (`dataset-search`, once a run). M8: a dataset at the cap is searched again per target year (`harvest-target.ts`), and the plan of
  * whole-city dates is rewritten (`join-plan.ts`).
  *
- * Lesson 646: the datasets are searched at once. Lesson 662 (no Landsat over Bucharest: the run was all or nothing, and a run past
+ * Lesson 646: the datasets are searched at once. Lesson 676 (no Landsat over Bucharest: the run was all or nothing, and a run past
  * the callable's 540 s stored nothing and recorded nothing): each dataset is stored as soon as its own search ends; each USGS
  * request has its own timeout inside the run's time (`harvest-pages.ts`); the run ends by `RUN_BUDGET_MS` with a margin; the attempt
  * is recorded `running` at the start and as each dataset is stored (`harvest-state.ts`), and a dataset not searched to its end is

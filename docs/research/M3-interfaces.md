@@ -342,7 +342,7 @@ The browser never requests a USGS address (the admin's CSP does not allow one, a
 - `imagery.tick` harvests again, once a month, a city already harvested whose newest `harvestedAt` is older than
   `HARVEST_EVERY_DAYS`, only while `setup/status.usgs` is `ok` or `pending`; a city never harvested, or whose area holds
   no frame, waits for the Imagery area's first visit (CR-M3-44: otherwise every tick would search USGS for it).
-- Lesson 662 (2026-11-13): a run is never all or nothing. Each dataset is stored as soon as its own search ends; each
+- Lesson 676 (2026-11-13): a run is never all or nothing. Each dataset is stored as soon as its own search ends; each
   `scene-search` request has its own timeout (`PAGE_TIMEOUT_MS`, inside `PAGES_BUDGET_MS`); no page is asked for after
   `SEARCH_BUDGET_MS` (300 s) and the run ends by `RUN_BUDGET_MS` (420 s), inside the callable's 540 s. `ops/harvest-{city}` is
   written `running` at the start and as each dataset is stored (`datasets`: state, scenes stored, reason, `next` cursor); a run
@@ -476,6 +476,9 @@ belong to the dispatcher and the lease, so an execution never races its own retr
   imports are not used**; each start counts against `JOB_MAX_ATTEMPTS` as any (`apiError.imagery.attemptsExhausted`), and the budget
   guard stops it (`apiError.guardPaused`). A frame that parks again with the attempts used up can still take the admin's points:
   `imagery.saveGcps` goes on one short of the limit, so the dispatcher starts them instead of failing the job (S-A16-HAPPY-POINTS-AFTER-ATTEMPTS).
+  M20 (DECISIONS-for-review.md §216): on a published archive series with pieces left out of its
+  overview mosaic, it starts a new version of the same layer that lays the series on its overview again with the pairs kept
+  (`restitch.ts`; `apiError.layers.busy` when the layer has a version on its way; S-A122-HAPPY-RESTITCH).
 - **Cancel**: §4.2. The pipeline checks `cancelRequested` at every heartbeat and at its own checkpoints.
 - **SIGTERM** (Cloud Run's cancel, a task timeout): the handler sets a flag; the running step stops at its next
   checkpoint (fetch: every 64 MiB chunk; GDAL calls through their progress callback, which returns 0 to abort); within
@@ -935,7 +938,7 @@ implementation, `maxInstances` 3, as `fn-admin@`; the schemas are done (`package
 | `imagery.crop` | enforce | `{cityId, layerId, ring}` → `{jobId, versionId}` | `notFound`, `imagery.noScan`, `imagery.cropOutsideLayer`, `layers.busy`, `imagery.dailyLimit`, `guardPaused` |
 | `imagery.join` (M8) | enforce | `imageryJoinRequestSchema` → `imageryJoinResponseSchema` (`{jobId, versionId, layerId}`) | `notFound`, `usgs.notConfigured`, `imagery.notScanned`, `imagery.alreadyImported`, `imagery.dailyLimit`, `guardPaused`, `layers.busy`, `imagery.joinMixedFrames`, `imagery.joinTwoPublished`, `imagery.joinPartGone`, `imagery.joinPartHeld` |
 | `imagery.retry` | enforce | `{cityId, jobId}` → `{status, attempt}` | `notFound`, `imagery.versionState`, `imagery.attemptsExhausted`, `guardPaused` |
-| `imagery.locateAgain` | enforce | `{cityId, versionId}` → `{status, attempt}` | `imagery.versionState`, `imagery.attemptsExhausted`, `imagery.locateInputsGone`, `guardPaused` |
+| `imagery.locateAgain` | enforce | `{cityId, versionId}` → `{status, attempt}` | `imagery.versionState`, `imagery.attemptsExhausted`, `imagery.locateInputsGone`, `layers.busy` (a series stitched again), `guardPaused` |
 | `imagery.probeTiles` | enforce | `{cityId, source}` → `{contentType, tile}` | `layers.foreignTileset`, `layers.secretInAddress`, `mapbox.notConfigured`, `imagery.addressRefused`, `imagery.tilesNotFound`, `imagery.tilesNotImage`, `imagery.tilesUnreachable` |
 
 The 28 `apiError.imagery.*` codes are done (`packages/shared/src/api/errors.ts`, both catalogues of
@@ -1453,8 +1456,9 @@ The owner placed points on 1966 Corona frames and hit four things; each is fixed
 
 The owner's requests for beta.1 (DECISIONS-for-review.md §173):
 
-- **The map shows**: a labelled native list above the map pane (`mapShows` in `georef-panes.ts`; a `<select>`, so the keyboard and a
-  screen reader have it as it is) offers the version's references (OpenStreetMap: the base map itself; Sentinel-2: the reference
+- **The map shows**: a labelled native list in the header row the two panes share (`mapShows` in `georef-panes.ts`; a `<select>`, so
+  the keyboard and a screen reader have it as it is; the panes share their rows by CSS subgrid, so the list never pushes the map below
+  the scan: lesson 668, `S-A122-BAD-GEOREF-PANES-MISALIGNED`) offers the version's references (OpenStreetMap: the base map itself; Sentinel-2: the reference
   picture) and the city's **published layers**, by name and year, oldest first (`base-layers.ts`: a `LiveList` of
   `cities/{city}/layers`, `published` only). A layer chosen is drawn opaque through the map's own `preview.show({ layers })`
   (`GeorefMap.showBase`): the page's **one map**, no second instance, and never Mapbox Satellite. It goes on before the pictures when

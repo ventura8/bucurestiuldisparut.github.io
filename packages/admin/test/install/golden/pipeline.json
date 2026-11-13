@@ -28,7 +28,8 @@
                 "HCM_RELEASE=${_RELEASE}",
                 "HCM_RELEASE_TIME=${_RELEASE_TIME}",
                 "HCM_FILES=pipeline",
-                "HCM_OUT=/workspace/pipeline"
+                "HCM_OUT=/workspace/pipeline",
+                "HCM_REDIRECT_ORIGIN=https://demo-hcm-admin.web.app"
             ]
         },
         {

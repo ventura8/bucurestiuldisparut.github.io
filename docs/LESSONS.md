@@ -3889,7 +3889,90 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: `python -m hcm_pipeline` starts with at most two arenas and the canvas gives the free pages back before and after each sheet (`heap.py`); the budget test runs on one thread and on `ALL_CPUS` (`S-P31-HAPPY-CANVAS-THREADS`).
     - **A memory budget test runs with the thread count production uses (and one), and a threaded C library's freed memory is not free until it is given back.**
 
-662. **No Landsat over Bucharest: the USGS harvest was all or nothing, and a run past its timeout stored and recorded nothing.**
+662. **A second worker failed every archive series it took: the scanned maps were on another computer.**
+    - Seen: live, 2026-11-13: after the NUC and the PC joined the laptop, five archive series failed at `gather` with "no record of
+      ar-971b77774eee2871 on this computer", and an atlas used up its attempts on the same cause.
+    - Found by: the owner's Jobs page; every test ran one worker, which always held the archive it imported.
+    - Fix and pin: a worker without the sheets hands the job back unspent and the computer with the archive sends a copy through the
+      bucket (M20 §20; `functions/test/worker/archive-host.test.ts`, `pipeline/tests/unit/test_archive_copy.py`).
+    - **Data that lives on one machine needs a test with two workers: one that has it and one that does not.**
+
+663. **Every Linux worker refused its own local AI: the starter read the worker's image instead of the AI's.**
+    - Seen: 2026-11-13, the owner's PC (WSL) and the laptop: `local AI: refused an unexpected program image` every 20 s (286 times on the PC), the sidecar never started and every locate waited 30 minutes, then "the sidecar did not come up"; the frames fell to the admin's points.
+    - Cause: `ai_image` in `hcm-worker.sh` took the last `"image": "…"` of the whole `/state` line with a greedy `sed`; since the worker added its own `image` (`sha256:…`, after `ai`), that was the match, and the check refused it. The tests fed `/state` as the `ai` record alone, so they never saw the second field. The Windows starter parses the JSON and was right.
+    - Fix and pin: the starter reads `image` inside `"ai": {…}` only; the sidecar tests now feed the worker's whole `/state` (its own `image` and `starter` after `ai`). Starter version `fae0e8664ab5`.
+    - **A test of a parser feeds the producer's real, whole output, never the one field the parser wants; a shell `sed` over JSON is greedy across fields.**
+
+664. **The Statistics view blamed missing measurement names that Setup had just reported as all there.**
+    - Seen: 2026-11-13, the owner's live test: "Google Analytics does not know the map's measurement names yet", while step g said "0 created, 23 already there"; an hour later the read worked, with no values for the custom names yet.
+    - Cause: every HTTP 400 of `batchRunReports` was mapped to `noReports`. GA4 refuses the whole batch for one field its Data API does not list yet, and a name registered a few hours earlier is not listed yet; the fake answered 400 only for unregistered names, so the case never showed.
+    - Fix and pin: the read asks the property's metadata first, sends only the reports it can answer, and says which of not registered, not ready, or no values yet (`analytics-fields.ts`); another 400 is `refused`. `S-A153-BAD-NOT-READY`, `-NOT-REGISTERED`, `-NO-DATA`, `-REFUSED`.
+    - **Map an error code to a cause only when the code means that cause alone; a generic 400 is "refused", and the specific causes are found by asking, not guessed.**
+
+665. **Under WSL the worker read "someone is typing" every five seconds, forever.**
+    - Seen: 2026-11-13, the owner's PC (`ssh w5090`, WSL Ubuntu, the systemd user service `hcm-worker`): `host-hints.json` said `"idleS":0` on every pass, so the governor read `user-active` and Automatic never left Quiet (4 of 16 threads), whether or not the owner was at the PC.
+    - Cause: the POSIX starter's last idle source, logind's `IdleHint`, is always `no` in WSL (there is no desktop session), and `no` was written as 0 seconds. Reading Windows instead has two traps: a systemd service has no `WSL_INTEROP` (powershell.exe fails with "Invalid argument" through `/run/WSL/1_interop`), and a process that sshd's `wsl.exe` started runs in session 0, whose `GetLastInputInfo` never sees a key and returns the uptime (82209 s, against 1614 s from the console session's socket).
+    - Fix and pin: under WSL the starter reads `GetLastInputInfo` through powershell.exe (`-EncodedCommand`, as `hcm-worker.bat` reads it), trying `/run/WSL/*_interop` until a process in a session other than 0 answers, at most every 30 s, the answering socket first next time; no answer is an empty `idleS`, never 0 (`S-A141-HAPPY-WSL-IDLE`, `S-A141-BAD-WSL-NO-INTEROP`).
+    - **An idle source that cannot see the person must say nothing, not "active"; and on Windows, check which session a reading comes from.**
+
+666. **`imagery-onJobWrite` ran out of its 256 MiB four times in a day: three frames ending together each read the whole city.**
+    - Seen: 2026-11-13, the admin's Statistics page, Cloud Error Reporting: "Memory limit of 256 MiB exceeded" (4 times, revision `imagery-onjobwrite-00043`); the function's log showed three events in one instance within a second, each ending in "date plan rewritten" over about 480 frames.
+    - Cause: `rewriteDatePlan` reads every scene and every layer version of the city, and the trigger takes 80 events at once (`GLOBAL_OPTIONS.concurrency`), so frames ending together held several copies of the city in memory.
+    - Fix and pin: one rewrite per city at a time in an instance; calls that come meanwhile share one more rewrite that starts after them, so the plan still shows their write (`functions/src/imagery/join-plan.ts`; `functions/test/imagery/join-plan-flight.test.ts` reads the city three times without it).
+    - **A trigger with concurrency above one multiplies whatever one event reads: a read of a whole collection is coalesced per key, not repeated per event.**
+
+667. **A label fixed at the source stays wrong in every record written before the fix.**
+    - Seen: 2026-11-13, track/coronacrop: the id rules that name KH-5 Argon frames landed on 2026-11-09, but the 249 `corona2` scenes harvested on 2026-10-25 kept the fallback KH-4A, and the import copied it: an Argon frame, 550 km square, was searched as a Corona strip and shown whole with the city a speck (`DS09065A073MC043`).
+    - Fix: `trueSensor` reads a stored fallback camera again by the frame's id at import (`functions/src/imagery/scene-record.ts`, DECISIONS §209).
+    - **When a rule that derives a stored field changes, correct the stored records too (or read them through the rule), not only new ones.**
+
+668. **The map pane's list pushed the map 80 px below the scan, and no check compared the two panes.**
+    - Seen: 2026-11-13, the owner in full screen at about 2000 × 1125 (`#/georef/…`): "The right screen should be the same size and aligned with the left one, as it was before."
+    - Cause: *The map shows* (§173, track/georefbase) went above the map inside the map pane's own flex column, so the map started under it while the scan started at the pane's top; the turn rows and notes followed at different heights. The tour's checkers look at each element (overlap, edges, targets), never at two elements that must line up, so every state stayed green.
+    - Fix and pin: the panes share one grid's rows by subgrid (header, view, turn row, note, `georef-styles.ts`); on a compact window both panes sit in the same cell and the hidden one is `visibility: hidden`, so the switch keeps the view in place. `expectPanesAligned` (`e2e/admin/specs/imagery/georef.ts`) compares the views' top and height and the turn rows' top within 1 px, in the page and in full screen and on the map-shows state (`S-A122-BAD-GEOREF-PANES-MISALIGNED`).
+    - **Two panes meant to be compared side by side share their rows in the layout itself (one grid, subgrid), and a test measures them as a pair; a control added to one pane goes in a row both have.**
+    - Also found: the map-shows test chose from the list without showing the map pane, so at `admin-c360-ro` it waited for a hidden list until its 480 s ran out (on the base commit too); it now shows the map pane first.
+
+669. **The published 1895-1899 layer had three white patches where three pieces were never placed.**
+    - Seen: 2026-11-13, the owner on layer `1895-1899` (version `ar-mw993zri-s-4054e55659a3`): white patches near Grivița, Obor/Gara de Est and Tineretului. The version's `help.stitched` said `joined 57`, `leftOut` img366, img390, img418 (`no-join`); all three files are in harti.zip, not blank, and are the same printed plan as the overview `Harta Bucuresti 1895.png`.
+    - Cause: `fit_tiles` matches each piece against the whole overview's 20,000 ORB features; on the quiet edges of town (rail yards, fields, a park) a piece's features lose the 0.75 ratio test to look-alikes elsewhere on the sheet, so fewer than 10 inliers survive. The consensus filter only rescues weak fits that exist; a piece with none was dropped, and the series was published with the holes.
+    - Fix and pin: a second pass, `overview_holes.refit_in_holes`: once the others are placed, a left-out piece is turned and scaled by their consensus (as scanned and upside down: img418 was scanned the other way up) and searched by normalised cross-correlation only where it covers uncovered overview, kept when it clearly beats every other place, refined by its features within that window. Real files: 0.96 / 0.91 / 0.90 against next bests 0.66 / 0.51 / 0.15, 60 of 60 placed. `S-P20-HAPPY-OVERVIEW-HOLES`, `S-P20-BAD-OVERVIEW-HOLES-NOT-FOUND`. A published series had no way to be stitched again (its `place` only re-warps the kept picture through the pairs): Locate again now starts a new version that lays it on the overview again with the pairs kept (`S-A122-HAPPY-RESTITCH`, `S-P20-HAPPY-RESTITCH`).
+    - **A placer that leaves parts out has learnt the series' scale, turn and the remaining holes from the parts it placed: search the left-out ones again with that knowledge, in the holes only, before publishing a picture with gaps.**
+670. **Firebase Auth moves a sign-in out of `sessionStorage` into IndexedDB never.**
+    - Seen: 2026-11-13, track/adminsite: the admin's own site uses `[indexedDBLocalPersistence, …]`; a user found in `browserSessionPersistence` stays there, because only persistences with `_shouldAllowMigration` (IndexedDB, `localStorage`) are migrated (`PersistenceUserManager.create` of `@firebase/auth`).
+    - Fix: the own site's hierarchy is `[indexedDBLocalPersistence, browserLocalPersistence]`; the e2e puts the test's account into `localStorage` once on that origin, which Firebase moves into IndexedDB, so a second tab proves the shared sign-in (`e2e/admin/specs/shell/admin-site.spec.ts`).
+    - **Read the SDK's migration rule before you change a persistence; a test that seeds one store proves nothing about another.**
+
+671. **Hosting's redirects come before its files, and its regex is RE2.**
+    - Seen: 2026-11-13, track/adminsite: forwarding the public map's `/admin/**` to the admin's own site would also have forwarded `/admin/starter.json`, which Linux starters already installed fetch with `curl` and no `-L`; RE2 has no lookahead to leave it out.
+    - Fix: the forward's pattern lists every string but that name (`everyStringBut`, `scripts/site/src/hosting/admin-site.ts`) and the file stays in the public tree.
+    - **Before a redirect replaces a path, list every client already installed that reads it and whether it follows redirects.**
+
+672. **The date menu's peek took every press over the map, and opened over the zoom buttons.**
+    - Seen: 2026-11-13, the tour's new `timeline-peek` state (V68, §195i) at 360 and 1024 wide: the map, the legal line, the compass, the zoom and the menu button "covered" by `hcm-date-menu`, and the menu over the zoom group and the photos chip.
+    - Cause: the viewer's `.modal-layer > * { pointer-events: auto }` sits outside the menu's shadow root and beats its own `:host { pointer-events: none }`; while the menu was always modal its scrim hid that. Its place beside the year ignored the floating controls, which the inert frame under a modal menu had excused.
+    - Fix and pin: `.modal-layer > hcm-date-menu { pointer-events: none }` in `viewer-styles.ts`; the dock measures the compass, the zoom, the menu button and the photos chip as the menu opens and the menu moves the shortest way past them (`date-menu-clear.ts`). Pinned by `timeline-dock-peek.test.ts`, `date-menu-clear.test.ts` and the tour's `timeline-peek`.
+    - **A host's own `:host` rule loses to any rule its parent's shadow root sets on it; a non-modal overlay states its pass-through where it is placed, and keeps clear of the controls it no longer makes inert.**
+673. **A computer without a screen could only be paired by stopping the owner's own worker and tunnelling a port.**
+    - Seen: 2026-11-13, pairing the NUC and the Windows PC by hand (`docs/research/M7-local-worker.md`, *Household computers*).
+    - Cause: the admin's auto-pair posts the code from the browser to the browser's own loopback (`127.0.0.1:8765`); a headless
+      computer has no browser, so its worker was reachable only through an SSH tunnel to the laptop, with the laptop's worker stopped.
+    - Fix and pin: the starter itself takes the one-time code (standard input, never argv) and posts it to its own worker's `/pair`
+      (`S-A143-HAPPY-HEADLESS-PAIR`, `functions/test/worker/starter-household.test.ts`).
+    - **What a browser does for its own computer, the helper on that computer must be able to do too: never route one computer's
+      loopback through another.**
+
+674. **A search reach in fixed shrunk pixels stopped short of a wide segment's overlap.**
+    - Seen: 2026-11-13, track/corona68: the 1968 Corona frames DS1103-1058DF026 and DF027 (four 36 070 × 11 374 px segments, lettered right to left) overlap by about 23 % of a segment's width (8 200 px). `coarse_match` searched only the last 1 200 shrunk pixels (6 000 px at the 5 times shrink), so every pair matched a wrong place at 0.8 or so, the frame repeated a third of itself and looked mirrored where the repeats met, and DF027's city fell outside its crop.
+    - Fix: the reach is the segment's shrunk height (`SEARCH_HEIGHT_SHARE`), capped at `MAX_OVERLAP_SHARE` of its width (`pipeline/src/hcm_pipeline/steps/stitch.py`; `pipeline/tests/unit/test_stitch_order.py`, S-P01-HAPPY-CORONA-WIDE-OVERLAP). Measured on the real segments: the true offsets score 0.96 to 0.99.
+    - **Scale every search window with the image it searches, and check a stitch's offsets against a direct match of the real segments before blaming the film's orientation.**
+
+675. **A redirect added for people broke a download that refuses redirects.**
+    - Seen: 2026-11-13, track/adminsite: once the public map's `/admin/…` answered 301 to the admin's own site, Update the map from a tab on the old address failed at "Download and check the install files" with `unexpected redirect`: the build's `fetch` uses `redirect: 'error'` and the tab named its own (old) origin as the bundle's.
+    - Fix: the `fetch` step follows one redirect, only to `HCM_REDIRECT_ORIGIN` (the project's admin site); a tab on the old address then installs as from the new one (a reload lands on the new address anyway) (`packages/admin/src/install/fetch-script.ts`).
+    - **Before a path starts to redirect, list every client that fetches it, including build steps and tabs already open.**
+
+676. **No Landsat over Bucharest: the USGS harvest was all or nothing, and a run past its timeout stored and recorded nothing.**
     - Seen: 2026-11-13, `cities/bucharest/usgsScenes` held 525 scenes and none was Landsat; the last good harvest was 2026-10-25; the owner's Search USGS of that day logged "harvest cap reached" for `corona2` and `declassii`, then died at Cloud Run's 540 s.
     - Cause: `SEARCH_BUDGET_MS` only stopped asking for new pages. A page in flight, then the dataset ids, about 1,000 scene writes 25 at a time on 256 MiB, the browse prefetch and the date plan all ran after the search, past the timeout; every write waited for every dataset, and the attempt was recorded only at the end. Landsat 8 and 9 OLI was never searched, and the default years stopped at 2000.
     - Fix and pin: each dataset is stored as soon as its search ends; each request has its own `AbortController` timeout under the remaining time; the run ends by `RUN_BUDGET_MS` with the tail skipped past it; `ops/harvest-{city}` is written `running` at the start and per dataset, with a resume cursor, and a run found still `running` is logged `harvest.killed` and resumed; `landsat_ot_c2_l1` joined the datasets; the default years run to the current year (S-A11-BAD-REQUEST-TIMED-OUT, S-A11-BAD-HARVEST-PARTIAL-STORED, S-A11-HAPPY-HARVEST-RESUME, S-A11-BAD-HARVEST-KILLED, S-A130-HAPPY-OLI, S-P30-HAPPY-OLI).

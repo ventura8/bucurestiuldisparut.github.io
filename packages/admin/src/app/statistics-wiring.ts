@@ -10,6 +10,7 @@ import type { GoogleAccessService } from '../auth/google-service.js';
 import type { StatisticsSource, StatisticsToken } from '../crashes/statistics.js';
 import type { CallablesPort } from '../firebase/ports.js';
 import type { Clock } from './ports.js';
+import type { Measure } from './telemetry.js';
 
 /** A token used for a batch of reads must live at least this long. */
 const MIN_LIFE_MS = 5 * 60_000;
@@ -21,6 +22,8 @@ export interface StatisticsWiringDeps {
     readonly fetch: typeof fetch;
     readonly clock: Clock;
     readonly log: Logger;
+    /** The admin's consent-gated measurements: a statistics problem is one `ui_error` with its reason code. */
+    readonly measure?: Measure;
 }
 
 /** The token without its scope list (the flow needs only the value and when it ends). */
@@ -44,6 +47,10 @@ export function statisticsSourceOf(deps: StatisticsWiringDeps): StatisticsSource
         measurementId: async () => {
             const config = await deps.callables.call('setup.analyticsConfig', { cityId: deps.cityId() });
             return config.analytics.state === 'ok' ? config.measurementId : null;
+        },
+        report: (code) => {
+            deps.log.warn('statistics problem', { code, cityId: deps.cityId() });
+            deps.measure?.({ name: 'ui_error', params: { code, route: 'crashes' } });
         },
         // A lazy chunk (`analytics-data`), fetched on the first read only.
         read: async (access, measurementId, days) =>

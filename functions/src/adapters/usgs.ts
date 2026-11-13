@@ -63,7 +63,7 @@ export interface UsgsOptions {
     readonly log: Logger;
 }
 
-/** One M2M request: its endpoint, its body, and (lesson 662) how long it may take. */
+/** One M2M request: its endpoint, its body, and (lesson 676) how long it may take. */
 interface M2mRequest {
     readonly endpoint: string;
     readonly body: unknown;

@@ -13,7 +13,8 @@
  *
  * Finding 72 of 2026-11-02 ("I should not have to copy and paste"): the computer's part is `<hcm-worker-local>` of the
  * lazy `worker-local` chunk (the starter file, the auto-pair, Stop using this computer, the command behind Advanced),
- * asked of the feed once the image's digest is known and stopped with the panel. M10 (`docs/research/M10-local-ai.md`): the computer's
+ * asked of the feed once the image's digest is known and stopped with the panel. W5: below it, the city's computers
+ * (`<hcm-worker-household>` of the lazy `worker-household` chunk: the list, Add another computer, Remove this computer). M10 (`docs/research/M10-local-ai.md`): the computer's
  * local AI: graphics card, processor only, comes when a frame needs it, or unavailable and why.
  */
 import { RUN_CHOICES, type RunChoice, type WorkerAi } from '@hcm/shared';
@@ -21,7 +22,7 @@ import { trackFunnel } from '@hcm/shared/funnels';
 import { html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { errorTemplate, formatWhen } from '../editing/states.js';
-import type { LocalPort, WorkerSeenPort, WorkerViewPort } from './worker-port.js';
+import type { HouseholdPort, LocalPort, WorkerSeenPort, WorkerViewPort } from './worker-port.js';
 import { meter, WorkerElement, workerStyles } from './worker-element.js';
 import { workerFunnel } from './worker-funnel.js';
 
@@ -42,6 +43,7 @@ export class HcmWorkerPanel extends WorkerElement {
         project: { type: String },
         level: { type: Number },
         local: { state: true },
+        household: { state: true },
     };
 
     static override readonly styles = workerStyles;
@@ -52,6 +54,8 @@ export class HcmWorkerPanel extends WorkerElement {
     declare level: number;
     /** This computer's part (finding 72), once the lazy chunk answered. */
     declare local: LocalPort | null;
+    /** W5: the city's computers, once the lazy chunk answered. */
+    declare household: HouseholdPort | null;
     protected readonly jobId = null;
     /** The computer's part was asked of this feed. */
     #localAsked = false;
@@ -61,6 +65,7 @@ export class HcmWorkerPanel extends WorkerElement {
         this.project = '';
         this.level = 2;
         this.local = null;
+        this.household = null;
     }
 
     protected override updated(changed: PropertyValues): void {
@@ -83,13 +88,36 @@ export class HcmWorkerPanel extends WorkerElement {
         super.detach();
         this.local?.stop();
         this.local = null;
+        this.household?.stop();
+        this.household = null;
         this.#localAsked = false;
     }
 
     async #askLocal(): Promise<void> {
-        const local = (await this.feed?.intents.local(this.project).catch(() => null)) ?? null;
+        const feed = this.feed;
+        if (feed === null) {
+            return;
+        }
+        const [local, household] = await Promise.all([
+            feed.intents.local(this.project).catch(() => null),
+            feed.intents.household(this.project).catch(() => null),
+        ]);
         local?.start();
+        household?.start();
         this.local = local;
+        this.household = household;
+    }
+
+    /** W5: the city's computers, once their chunk answered. */
+    #household(view: WorkerViewPort): TemplateResult {
+        return this.household === null
+            ? html``
+            : html`<hcm-worker-household
+                  .household=${this.household}
+                  .locale=${this.locale}
+                  .city=${view.city}
+                  .level=${this.level + 1}
+              ></hcm-worker-household>`;
     }
 
     override render(): TemplateResult {
@@ -223,12 +251,13 @@ export class HcmWorkerPanel extends WorkerElement {
         return image === undefined || this.local === null
             ? html``
             : html`<hcm-worker-local
-                  .local=${this.local}
-                  .locale=${this.locale}
-                  .project=${this.project}
-                  .city=${view.city}
-                  .image=${image}
-              ></hcm-worker-local>`;
+                      .local=${this.local}
+                      .locale=${this.locale}
+                      .project=${this.project}
+                      .city=${view.city}
+                      .image=${image}
+                  ></hcm-worker-local>
+                  ${this.#household(view)}`;
     }
 }
 

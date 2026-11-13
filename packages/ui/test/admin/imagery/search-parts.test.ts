@@ -1,4 +1,4 @@
-/** Lesson 662: each dataset's part of the USGS search, in words, in both languages. */
+/** Lesson 676: each dataset's part of the USGS search, in words, in both languages. */
 import { render } from 'lit';
 import { describe, expect, it } from 'vitest';
 

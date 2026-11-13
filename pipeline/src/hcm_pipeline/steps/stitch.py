@@ -35,9 +35,11 @@ COARSE_ROWS: Final = 2048
 # The strip of the right segment matched inside the left one: narrower than any overlap USGS leaves.
 TEMPLATE_PX: Final = 160
 MIN_TEMPLATE_PX: Final = 8
-# The coarse search's reach in shrunk pixels, when less than `MAX_OVERLAP_SHARE` of the segment: on a segment wider than about 1.7
-# times its height (a Corona's), where 35 % would search further than any overlap USGS leaves.
-SEARCH_PX: Final = 1200
+# The coarse search's reach, as a share of the segment's height, when less than `MAX_OVERLAP_SHARE` of its width: on a segment wider
+# than about 3 times its height (a Corona's), 35 % would search further than any overlap USGS leaves. Lesson 674: a fixed 1200
+# shrunk pixels (0.53 of the 1968 Corona's 11 374-row segments shrunk 5 times) stopped short of their 23 % overlaps, every pair
+# matched a wrong place, and the frame repeated a third of itself.
+SEARCH_HEIGHT_SHARE: Final = 1.0
 # Finding 76 of 2026-11-03: the right segment starts in this last share of the left one. USGS leaves narrow overlaps (4 to
 # 8 % on a KH-9 panoramic frame); searched across the whole segment, a snow-covered frame of repeating valleys matched a
 # strip 46 % inside the left segment, and the frame was joined wrong.
@@ -103,7 +105,8 @@ def coarse_match(left: UInt8Array, right: UInt8Array, factor: int) -> tuple[int,
     margin = int(height * MARGIN_SHARE)
     skip = _skip(right.shape[1])
     template = right[margin : height - margin, skip : skip + max(MIN_TEMPLATE_PX, TEMPLATE_PX // factor)]
-    reach = min(SEARCH_PX, max(template.shape[1], math.ceil(left.shape[1] * MAX_OVERLAP_SHARE)))
+    reach = min(math.ceil(left.shape[0] * SEARCH_HEIGHT_SHARE), math.ceil(left.shape[1] * MAX_OVERLAP_SHARE))
+    reach = max(template.shape[1], reach)
     start = max(0, left.shape[1] - reach)
     x, y, score = _best(left[:, start:], template)
     # `cv2.meanStdDev`, not `numpy.std`: no float copy of the strip (the bounded-memory test, S-P01-HAPPY-BOUNDED-MEMORY).

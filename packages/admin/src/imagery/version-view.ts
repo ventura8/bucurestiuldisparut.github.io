@@ -7,7 +7,7 @@
 import {
     availableComputeUnits,
     bboxFromRecord,
-    helpItemsOf,
+    helpFlagsOf,
     estimateComputeUnits,
     isApiErrorCode,
     JOB_STEPS,
@@ -101,8 +101,10 @@ export interface VersionView {
     readonly publicUrl: string | null;
     /** Batch 4: an archive series' placement report. */
     readonly archive: ArchiveReport | null;
-    /** An archive series waiting with `layout-check`: the tile-import wizard opens it (`helpItemsOf`, M20 §19). */
+    /** An archive series waiting with `layout-check`: the tile-import wizard opens it (`helpFlagsOf`, M20 §19). */
     readonly layoutCheck: boolean;
+    /** M20 (§216): published with pieces left out of its overview mosaic: Locate again lays it on it again. */
+    readonly restitchable: boolean;
     /**
      * M20 (§7): the series' rights as the approval card shows them (null: no rights, USGS and uploads). Approve waits
      * until `allowPublish` (Confirm the rights when `state` is `needs-confirmation`).
@@ -224,7 +226,7 @@ export function versionViewOf(doc: Stored<LayerVersionDoc>): VersionView {
         ...{ ...sourceOf(version.source), partOf: orNull(version.partOf), join: orNull(version.join) },
         ...{ basedOn: orNull(version.basedOn), recalibration: orNull(version.recalibration), publicUrl: publicUrlOf(version.own) },
         archive: orNull(version.archive),
-        layoutCheck: helpItemsOf([{ id: doc.id, state: version.state, help: version.help }])[0]?.page === 'tiles',
+        ...helpFlagsOf(version),
         rights: rightsOf(version.rights),
     };
 }
@@ -291,6 +293,12 @@ function jobNotice(error: NonNullable<JobDoc['error']>): NoticeInput {
 }
 
 /**
+ * The owner's rule of 2026-11-13: a failure whose sentence already says the cause and the fix shows no technical line under it (an
+ * archive series' "no record of ar-… on this computer" named an id); the detail stays in the job's record and its log.
+ */
+const PLAIN_ONLY: ReadonlySet<string> = new Set(['apiError.imagery.archiveMissing']);
+
+/**
  * The job's error: its notice, and its technical detail unless that is only the code again (finding 60 of 2026-11-02: a
  * failure the server wrote with the code as its message, `apiError.imagery.outOfMemory`, showed the raw code under the
  * translated sentence; the code stays in the job's record, which the Jobs page shows).
@@ -299,7 +307,7 @@ function jobErrorOf(error: JobDoc['error']): JobView['error'] {
     if (error === undefined) {
         return null;
     }
-    const detail = error.message === error.code || isApiErrorCode(error.message) ? '' : error.message;
+    const detail = error.message === error.code || isApiErrorCode(error.message) || PLAIN_ONLY.has(error.code) ? '' : error.message;
     return { notice: jobNotice(error), message: detail };
 }
 

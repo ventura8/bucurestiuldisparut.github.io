@@ -167,8 +167,13 @@ async function whileQueued(
 /** Leaves the job queued with why it waits (the tick tries again). */
 async function wait(deps: DispatchDeps, cityId: string, jobId: string, reason: JobWaitReason): Promise<DispatchOutcome> {
     const stamp = stampOf(IMAGERY_WRITER, deps.clock.now());
-    await whileQueued(deps, cityId, jobId, (job) => (job.waitReason === reason ? undefined : { ...job, waitReason: reason, ...stamp }));
+    await whileQueued(deps, cityId, jobId, (job) => (alreadySays(job, reason) ? undefined : { ...job, waitReason: reason, ...stamp }));
     return 'waiting';
+}
+
+/** The job already says why it waits: an archive series waiting for its sheets' copy, or a job for its film, waits for a worker too. */
+function alreadySays(job: JobDoc, reason: JobWaitReason): boolean {
+    return job.waitReason === reason || (reason === 'worker' && (job.waitReason === 'archive-copy' || job.waitReason === 'film-copy'));
 }
 
 function starting(job: JobDoc, now: Date): JobDoc {

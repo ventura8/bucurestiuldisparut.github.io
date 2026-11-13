@@ -1014,3 +1014,19 @@ addendum is the contract.
 - §1.7: the pipeline card counts as installed when all three jobs run the release (`CLOUD_RUN_JOBS`); a project installed
   before reads as not installed until the pipeline is installed again. The card's cost line names the run costs.
 - §1.10 fakes: the Cloud Run and Cloud Build fakes make, provision and label the three jobs.
+
+## Addendum 2026-11-13: the admin on its own site (the owner's decision, `DECISIONS-for-review.md` §210)
+
+Supersedes §2.3's shared origin for a project that has the site; §2.3 stays the fallback.
+
+| Part | Now |
+| --- | --- |
+| Sites | the public map on the default site `<project>`; the admin on `<project>-admin` (`adminSiteId`, `@hcm/shared`), still under `/admin/` |
+| Made by | Provision's `admin-site` item (the owner's token, Update the map's consent): `sites.create`, then the two host names in Firebase Auth's authorised domains; set version 5 also runs `app-check`, `api-key` and `bucket-cors` |
+| Deployed by | the site build's `hosting` step, `steps/deploy-hosting.mjs`: the project's own site found → the tree split (`scripts/site/src/hosting/admin-site.ts`) and both sites released in one `firebase deploy --only hosting`; else the tree as before |
+| `firebase.json` after the split | `hosting` a list: the public map's entry (no `/admin/**` rewrite or headers; `/admin` and `/admin/…` 301 to the admin site, but `/admin/starter.json`) and the admin's (`public-admin`, the `/admin/**` rewrite and headers, `/` to `/admin/`) |
+| `runtime.json` | the admin site's copy names `adminOrigin`; the admin keeps the sign-in in IndexedDB only on that origin, else `sessionStorage` (§73a) |
+| `release.json` | copied to the admin site's root (Setup's release check reads its own origin) |
+| Links | the functions' `adminUrl` on the admin site once `HCM_ADMIN_SITE` is set (a server build submitted from the admin site), else `/admin/` of the public map, which forwards with the hash route |
+| Allow-lists | the functions' `adminOrigins`, the worker's CORS and Private Network Access, `hostingOrigins()`, the reCAPTCHA key's domains, the browser key's referrers, the private bucket's CORS: each gains the admin site's two origins |
+| Fallback | a project without the site (self-hosted, starter kit, a site id another project holds): the admin under the public map's `/admin/` with the sign-in in the tab |

@@ -14,7 +14,8 @@ from typing import IO, Final
 from hcm_pipeline.objects import ObjectInfo, ObjectStore, ObjectStoreError
 
 LOCAL_PREFIXES: Final = ("usgs-raw/", "work/", "reference/")
-SIGNED_PREFIXES: Final = ("rasters/", "uploads/")
+# M20 (2026-11-13): an archive series' copy of its sheets, read by the job's worker (`archive/copy.py`).
+SIGNED_PREFIXES: Final = ("rasters/", "uploads/", "tmp/archive-copies/")
 
 
 class RoutedObjectStore:

@@ -57,7 +57,7 @@ export const STARTING_STALE_MINUTES = 10;
 export const HARVEST_EVERY_DAYS = 30;
 /** A harvest that failed is tried again after this many hours, doubled after each further failure (at most a month). */
 export const HARVEST_RETRY_HOURS = 1;
-/** Lesson 662: a harvest that stored only part (or was stopped) resumes after this many minutes, doubled after each further one. */
+/** Lesson 676: a harvest that stored only part (or was stopped) resumes after this many minutes, doubled after each further one. */
 export const HARVEST_RESUME_MINUTES = 15;
 /** Browse copies: at most this size; the harvest copies the best-ranked ones ahead, the rest on demand. */
 export const BROWSE_MAX_BYTES = 5_000_000;
@@ -97,7 +97,7 @@ export const imagerySearchResponseSchema = z.strictObject({
     /** Datasets M2M did not answer for (the others are harvested; the screen names these). */
     failedDatasets: z.array(z.enum(USGS_DATASETS)).max(USGS_DATASETS.length),
     searchedAt: isoTimeSchema,
-    /** Lesson 662: each searched dataset's part (found, stored, and where it resumes); absent from an answer before it. */
+    /** Lesson 676: each searched dataset's part (found, stored, and where it resumes); absent from an answer before it. */
     datasets: z.partialRecord(z.enum(USGS_DATASETS), harvestDatasetSchema).optional(),
 });
 

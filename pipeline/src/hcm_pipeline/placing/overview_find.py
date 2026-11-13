@@ -14,6 +14,7 @@ import numpy as np
 
 from hcm_pipeline.placing.assemble import CANVAS_MAX_PX
 from hcm_pipeline.placing.overview import MosaicReport, TileFit, detail_of, fit_tiles, paste_on_overview
+from hcm_pipeline.placing.overview_holes import refit_in_holes
 from hcm_pipeline.placing.raster_io import read_working
 from hcm_pipeline.placing.streets import UInt8Array, grey_of
 
@@ -178,11 +179,12 @@ def _mosaic(
     overview_grey: UInt8Array,
     settings: CanvasOpts,
 ) -> tuple[UInt8Array, MosaicReport]:
-    """The tiles fitted on their grey features; pasted grey, or in their own colour when the series is colour."""
+    """The tiles fitted on their grey features, the left-out ones looked for again in the overview's holes; pasted grey, or in
+    their own colour when the series is colour."""
     side = max(1, math.ceil(math.sqrt(len(loaded))))
     rows = settings.rows if settings.rows is not None else side
     cols = settings.cols if settings.cols is not None else side
-    fits = fit_tiles(loaded, overview_grey, rows, cols)
+    fits = refit_in_holes(loaded, fit_tiles(loaded, overview_grey, rows, cols), overview_grey)
     scale = settings.upscale if settings.upscale is not None else _upscale_of(fits, overview_grey)
     pieces = _colour_tiles(tiles, fits, settings.read_px) if settings.colour else loaded
     return paste_on_overview(pieces, fits, overview_grey.shape, scale, settings.colour)

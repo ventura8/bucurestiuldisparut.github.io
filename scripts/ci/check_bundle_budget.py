@@ -119,7 +119,8 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # M3 (docs/research/M3-interfaces.md §10.1, DECISIONS-for-review.md §47): the Imagery area (15.2 KB measured on
     # 2026-10-23), the georeferencer (14.0 KB) and the layer editor's Crop (`layer-geometry`, 1.9 KB), each the measurement
     # plus about 20 %, under the contract's ceilings of 30, 30 and 8 KB.
-    "imagery": 18,
+    # 20 since 2026-11-13 (§215, the owner's raise for beta.1): 18.0 KB measured.
+    "imagery": 20,
     # The georeferencer: 17 until 2026-11-08, 18 until 2026-11-10, 19 since, the owner's decisions (DECISIONS-for-review.md §110 and
     # §141): M15's terrain map and the merge of the accuracy track into M16 measured 17,160 bytes gzip; the zoom buttons, Undo, the
     # placing guide and the map's pair numbers (2026-11-10) took it to about 18,030, with Snap my points and the published maps
@@ -215,12 +216,14 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # The Statistics view's live sections (`packages/ui/src/admin/crashes/statistics-live.ts`: the numbers, the apps, the funnels
     # and the period's error groups), fetched the first time the view shows, so the crashes chunk stays within its 5 KB
     # (DECISIONS-for-review.md §203): 3.2 KB measured on 2026-11-13 plus about 20 %, rounded up.
-    "statistics-live": 4,
+    # 6 since 2026-11-13 (§215, the owner's raise): the Material 3 cards and charts took it to 4.6 KB; plus about 20 %.
+    "statistics-live": 6,
     # M7's `worker` chunk (docs/research/M7-local-worker.md §7: `packages/admin/src/worker/worker.ts`, its one dynamic entry,
     # which the Jobs store imports): the local worker's feed, `<hcm-worker-panel>`, `<hcm-run-place>` and their texts
     # (`@hcm/shared/admin-worker`), 5.5 KB measured on 2026-11-02 plus about 20 %, rounded up; 5.7 KB since finding 72
     # moved the command into `worker-local`.
-    "worker": 7,
+    # 8 since 2026-11-13 (§215, the owner's raise): 7.3 KB with W5's computers list.
+    "worker": 8,
     # Finding 72 of 2026-11-02 ("Use this computer": `packages/admin/src/worker/worker-local.ts`, the feed's one dynamic
     # import): the starter file, the auto-pair, Stop using this computer, the command behind Advanced, `<hcm-worker-local>`
     # and its texts (`@hcm/shared/admin-worker-local`), fetched when the worker's panel first shows the computer's part:
@@ -229,12 +232,18 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # took it to 8.7 KB, of which the two languages' texts are 3.9 KB; every part is shown with the computer's panel, so
     # nothing was left to split: the measurement plus about 15 %, rounded up.
     "worker-local": 10,
+    # W5, household computers (`packages/admin/src/worker/worker-household.ts`, the feed's other dynamic import, DECISIONS-for-review.md
+    # §216): the city's computers, Add another computer and Remove this computer, `<hcm-worker-household>` and its texts
+    # (`@hcm/shared/admin-worker-household`), fetched with the computer's part; a new chunk, so nothing else grew: 7.4 KB measured
+    # on 2026-11-13 (the two languages' texts about 2.5 KB) plus about 20 %, rounded up.
+    "worker-household": 9,
     # M8 (docs/research/M8-join-interfaces.md §6): the join's screens (`packages/ui/src/admin/imagery/join/join-card.ts`), fetched
     # when the city has a plan of its dates or a join opens, 2.4 KB measured on 2026-11-06 plus about 20 %, rounded up; and the
     # Upload view (`packages/ui/src/admin/imagery/upload-panel.ts`), out of the Imagery chunk to make room for the plan's feed
     # and Join frames, fetched when its tab first opens, 1.2 KB measured then. The total did not rise: the line breaks left in
-    # the `css` and `html` templates went (6.4 KB, `scripts/site/src/css-literals.ts`).
-    "join-card": 3,
+    # the `css` and `html` templates went (6.4 KB, `scripts/site/src/css-literals.ts`). 4 since 2026-11-13 (the owner's "raise the
+    # limits you need to raise" for beta.1): the join card reached 3.0 KB with the cloud estimate and the plain messages.
+    "join-card": 4,
     "upload-panel": 2,
     # M12 (docs/research/M12-own-tiles.md, DECISIONS-for-review.md §96): a version's whole page, out of the Imagery chunk, which was at
     # 18.0 of 18 and is at 16.2 with the own tiles' map and Work's pictures in it: 3.5 KB measured on 2026-11-07 plus about 20 %, rounded
@@ -282,7 +291,8 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # The wizard funnels (the owner, 2026-11-13; DECISIONS-for-review.md §200): each wizard page's snapshot and the shared
     # `trackFunnel`, out of `archive`, `imagery`, `worker` and `editor-shared`, which each went 0.1 KB over with them: about
     # 1.5 KB, a row of 2 KB.
-    "funnels": 2,
+    # 3 since 2026-11-13 (§215, the owner's raise): 2.8 KB measured.
+    "funnels": 3,
 }
 # The entry and every chunk together. 620 until M7 (2026-11-02), 630 since: the total counts every lazy chunk, also those
 # loaded only on use, and M7's `worker` chunk (5.5 KB, loaded only by the Jobs page, the pipeline card and a version page)
@@ -297,7 +307,7 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
 # an admin waits for.
 # 750 since 2026-11-12, the owner's decision (§168d): the georeferencer's panes and its sharper scan's tiles (`georef-panes`,
 # `scan-tiles`) took the total to 701.8 KB; both load only with the georeferencer, and the entry's 450 KB is unchanged.
-ADMIN_TOTAL_KB = 750
+ADMIN_TOTAL_KB = 760  # §215 (the owner's raise, 2026-11-13): 754.8 KB with W5
 
 # M6: the install bundle's folder in the deployed Hosting tree, and each tarball's budget in KB as served (it is gzip
 # already): the contract's ceilings (docs/research/M6-interfaces.md §1.3; DECISIONS-for-review.md §71). Since §73k

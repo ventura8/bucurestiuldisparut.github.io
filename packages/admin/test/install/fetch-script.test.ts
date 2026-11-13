@@ -138,6 +138,12 @@ beforeEach(async () => {
     asked = [];
     server = createServer((request, response) => {
         const name = (request.url ?? '').split('/').pop() ?? '';
+        if ((request.url ?? '').startsWith('/old/')) {
+            // §210: the public map's `/admin/…` answering 301 to the admin's own site (here the same server's `/new/`).
+            response.writeHead(301, { location: `${origin}/new/${name}` });
+            response.end();
+            return;
+        }
         asked.push(name);
         const failure = failing.get(name);
         if (failure !== undefined && failure.count > 0) {
@@ -174,6 +180,37 @@ describe('the fetch step', () => {
         expect(result).toMatchObject({ code: 0, stderr: '' });
         expect(readFileSync(join(work, 'server', 'server.txt'), 'utf8')).toBe('the server');
         expect(existsSync(join(work, 'bundle', 'manifest.json'))).toBe(true);
+    });
+
+    it('happyPath_anAdminOnItsOwnSiteNamesItToTheFunctions_badPath_noneLeavesTheirEnvAlone', async () => {
+        const found = bundle();
+        served = found.files;
+
+        const named = await run(envOf(found, { HCM_ADMIN_SITE: 'demo-hcm-admin' }));
+
+        expect(named.code).toBe(0);
+        // §210: firebase-tools reads `.env` beside `.env.<project>`; the functions' links then open the admin's own site.
+        expect(readFileSync(join(work, 'server', 'functions', 'dist', '.env'), 'utf8')).toContain('\nHCM_ADMIN_SITE=demo-hcm-admin\n');
+        rmSync(join(work, 'server'), { recursive: true, force: true });
+
+        const unnamed = await run(envOf(found));
+
+        expect(unnamed.code).toBe(0);
+        expect(existsSync(join(work, 'server', 'functions', 'dist', '.env'))).toBe(false);
+    });
+
+    it('happyPath_aBundleOnTheOldAddressIsReadFromTheAdminsSite_badPath_aRedirectAnywhereElseStopsTheBuild', async () => {
+        const found = bundle();
+        served = found.files;
+        const old = { HCM_BUNDLE_URL: `${origin}/old/admin/install/1-0-0-abc1234/` };
+
+        const followed = await run(envOf(found, { ...old, HCM_REDIRECT_ORIGIN: origin }));
+        rmSync(join(work, 'server'), { recursive: true, force: true });
+        const refused = await run(envOf(found, { ...old, HCM_REDIRECT_ORIGIN: 'https://demo-hcm-admin.web.app' }));
+
+        expect(followed).toMatchObject({ code: 0, stderr: '' });
+        expect(refused.code).toBe(1);
+        expect(refused.stderr).toContain(`manifest.json: redirected to ${origin}`);
     });
 
     it('happyPath_theSiteKeepsTheWholeBundleInItsTree', async () => {

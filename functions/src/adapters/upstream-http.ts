@@ -50,7 +50,7 @@ export function upstreamError(
     return new UpstreamError(service, failure, errorDetails(response));
 }
 
-/** The `reason` of the `unavailable` error a request that ran out of its time fails with (lesson 662: the harvest records it). */
+/** The `reason` of the `unavailable` error a request that ran out of its time fails with (lesson 676: the harvest records it). */
 export const TIMED_OUT_REASON = 'TIMED_OUT';
 
 /**

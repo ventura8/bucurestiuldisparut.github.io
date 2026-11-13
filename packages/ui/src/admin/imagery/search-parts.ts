@@ -1,5 +1,5 @@
 /**
- * Lesson 662: the USGS search's part of each dataset, live while it runs (`ops/harvest-{city}`) and in its answer: searching, how many
+ * Lesson 676: the USGS search's part of each dataset, live while it runs (`ops/harvest-{city}`) and in its answer: searching, how many
  * scenes it stored, or that it stopped early (USGS too slow, out of time, or not answering), what it kept, and that the rest is searched
  * again by itself, so a slow day never reads as "nothing found".
  */

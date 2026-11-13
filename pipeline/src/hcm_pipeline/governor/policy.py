@@ -26,6 +26,9 @@ GPU_HOT_C: Final = 83.0
 # 5, not 10 (2026-11-13): with other programs holding the laptop's processor at 88 to 93 °C, a resume at 85 never came and the worker
 # paused for hours; at 90 it resumes on the one thread the heat's share leaves it (budget.py), not on a full profile.
 COOL_MARGIN_C: Final = 5.0
+# Once hot, at least this long (2026-11-13: the laptop on battery at 90 to 95 °C paused and resumed about once a minute, a pause,
+# a resume and two log lines each time): a step down holds two minutes, as the calm timer does for the way back to full.
+HOT_HOLD_S: Final = 120.0
 STEP_DOWN: Final[dict[Profile, Profile]] = {"full": "quiet", "quiet": "paused", "paused": "paused"}
 
 
@@ -45,6 +48,7 @@ class PolicyState:
     why: Why = "idle"
     calm_since: float | None = None
     hot: bool = False
+    hot_since: float | None = None
 
 
 def _hottest_gpu(signals: Signals) -> float:
@@ -97,10 +101,22 @@ def _battery_low(signals: Signals, choice: Choice) -> bool:
     return low and not choice.battery_allowed
 
 
+def _held_hot(signals: Signals, before: PolicyState, now: float) -> tuple[bool, float | None]:
+    """Hot (`is_hot`), or still within `HOT_HOLD_S` of becoming hot; with when it became hot."""
+    since = before.hot_since if before.hot else None
+    if is_hot(signals, before.hot) or _holding(since, now):
+        return True, now if since is None else since
+    return False, None
+
+
+def _holding(since: float | None, now: float) -> bool:
+    return since is not None and now - since < HOT_HOLD_S
+
+
 def decide(signals: Signals, choice: Choice, before: PolicyState, now: float) -> PolicyState:
     """The profile for this tick. `before` is the last tick's answer (its `active` excludes the thermal step, kept in `hot`)."""
-    hot = is_hot(signals, before.hot)
-    state = replace(_chosen(signals, choice, before, now), hot=hot)
+    hot, hot_since = _held_hot(signals, before, now)
+    state = replace(_chosen(signals, choice, before, now), hot=hot, hot_since=hot_since)
     if _battery_low(signals, choice):
         return replace(state, active="paused", why="battery")
     return state

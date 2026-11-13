@@ -43,6 +43,7 @@ const FLOATING_CHROME: readonly ChromeSource[] = [
     { kind: 'mapbox-logo', selector: 'a.mapboxgl-ctrl-logo' },
     { kind: 'attribution', selector: '.mapboxgl-ctrl-attrib' },
     { kind: 'mapbox-control', selector: '.mapboxgl-ctrl' },
+    { kind: 'date-menu', selector: 'hcm-date-menu >>> [role="menu"]' },
     { kind: 'marked', selector: '[data-layout-check]' },
 ];
 
@@ -62,6 +63,11 @@ const SANCTIONED_STACKINGS: readonly Sanctioned[] = [
         over: 'context-menu',
         under: '*',
         why: "the map's menu (V62) opens where the visitor pressed, or at the map's centre from the keyboard, so what it covers is the visitor's choice: a transient popup until Esc or a press anywhere else; its own items must still be on top and on screen",
+    },
+    {
+        over: 'date-menu',
+        under: 'content',
+        why: "a timeline year's date menu (V68) is a transient popup over the map until a date is picked, Esc, a press elsewhere, or the pointer leaves (its peek, DECISIONS-for-review.md §195i); it must keep clear of every floating control, and its own items must be on top and on screen",
     },
     {
         over: 'menu',

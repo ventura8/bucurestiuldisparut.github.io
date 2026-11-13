@@ -71,14 +71,14 @@ def test_expected_scale_counts_the_tiles() -> None:
 
 def test_weak_fits_join_only_when_they_agree_with_the_strong_ones() -> None:
     strong = [_fit(0.25, 0.0, 60), _fit(0.25, 0.01, 40)]
-    consensus = overview_mod._consensus(strong)
+    consensus = overview_mod.consensus_of(strong)
     assert consensus is not None
     assert overview_mod._kept(_fit(0.251, 0.0, 12), consensus) is not None
     assert overview_mod._kept(_fit(0.4, 0.0, 12), consensus) is None
     assert overview_mod._kept(_fit(0.25, 0.5, 12), consensus) is None
     assert overview_mod._kept(_fit(0.25, 0.0, 12), None) is None
     assert overview_mod._kept(None, consensus) is None
-    assert overview_mod._consensus([strong[0], _fit(0.25, 0.0, 12), None]) is None
+    assert overview_mod.consensus_of([strong[0], _fit(0.25, 0.0, 12), None]) is None
 
 
 def test_detail_and_upscale_follow_the_fits_within_the_canvas_cap() -> None:

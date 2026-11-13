@@ -176,7 +176,7 @@ function timelineNote(locale: Locale): TemplateResult {
 
 /** A modal surface is over the frame: a modal sheet, About, the lightbox or the timeline's date picker. */
 function frameInert(view: ViewerView): boolean {
-    return modalOpen(view.state, view.layout.sheetMode) || view.dock.dates !== null;
+    return modalOpen(view.state, view.layout.sheetMode) || view.dock.modal();
 }
 
 /** The lift as the properties the styles move Mapbox's bottom corners by (`viewer-styles.ts`); none without a sheet. */
@@ -372,11 +372,8 @@ interface Selection {
     readonly category: PoiCategory | null;
 }
 
-function selectedPoi(ready: Ready): Poi | null {
-    if (ready.state.sheet !== 'poi') {
-        return null;
-    }
-    return (ready.manifest.pois ?? []).find((candidate) => candidate.id === ready.state.selectedPoiId) ?? null;
+function selectedPoi({ state, manifest }: Ready): Poi | null {
+    return state.sheet === 'poi' ? ((manifest.pois ?? []).find((candidate) => candidate.id === state.selectedPoiId) ?? null) : null;
 }
 
 function categoryOf(manifest: Manifest, poi: Poi | null): PoiCategory | null {
@@ -395,6 +392,7 @@ function photoSheet(view: ViewerView, ready: Ready, placement: Placement, handle
         .photo=${photo}
         .poi=${poi}
         .category=${category}
+        .layers=${ready.manifest.layers}
         .photos=${ready.manifest.photos}
         .locale=${view.locale}
         .mode=${placement.mode}

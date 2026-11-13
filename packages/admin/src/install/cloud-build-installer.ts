@@ -57,6 +57,16 @@ export interface CloudBuildInstallerDeps {
      * or whose state cannot be read, keeps them.
      */
     readonly legacyImported: () => Promise<boolean>;
+    /**
+     * §210: the admin's own Hosting site when this page is served from it (so it is the project's), else null; a server
+     * build then names it to the functions (`HCM_ADMIN_SITE`), whose links open it directly.
+     */
+    readonly adminSite?: string | null;
+}
+
+/** §210: the admin's own site for a build's parameters, when the admin runs on it. */
+function adminSiteParam(adminSite: string | null | undefined): { readonly adminSite?: string } {
+    return adminSite === null || adminSite === undefined ? {} : { adminSite };
 }
 
 const NOT_INSTALLED: InstalledInfo = { complete: false, release: null, releaseTime: null, partial: false, newest: null, newestTime: null };
@@ -189,6 +199,7 @@ class CloudBuildInstaller implements InstallerPort {
             legacy: await this.#needsLegacy(target, manifest),
             ...(manifest.projectId === GENERIC_INSTALL_PROJECT ? { adopt: true } : {}),
             ...(options.over === true ? { over: true } : {}),
+            ...adminSiteParam(this.#deps.adminSite),
         });
         this.#deps.log.info('install build submitted', { target, release: manifest.release, over: options.over === true });
         return createCloudBuildClient(this.#transport(access)).create(this.#deps.projectId, this.#deps.region, definition);

@@ -111,6 +111,15 @@ export const viewerStyles = [
         }
 
         /*
+         * The date menu's host spans the viewer and lets pointers through (its scrim and its menu take them): its peek is not
+         * modal, and the rule above, outside its shadow root, would beat its own \`:host\` (lesson 675: the peek's host took
+         * every press over the map).
+         */
+        .modal-layer > hcm-date-menu {
+            pointer-events: none;
+        }
+
+        /*
          * Mapbox's bottom corners move out from under an open modal sheet: above a bottom sheet's top edge, beside a side
          * sheet (the Pixel 9 Pro review, P3: a copy of the credits in a bar took the foot of every sheet). Under the
          * sheet's scrim they stay in view, as the rest of the map does.
