@@ -1,7 +1,8 @@
 /**
  * `<hcm-date-menu>`: the date picker of a timeline year with several dates (V13, the owner 2026-11-13). An M3 menu beside
  * the badge or the slider that asked for it (`hcm-dates-open`, `timeline-dates.ts`): above a lying timeline, on the
- * trailing side of a standing one, kept inside the viewer and clear of the strip of Mapbox's legal line. Each date is a
+ * trailing side of a standing one, kept inside the viewer and clear of the strip of Mapbox's legal line and of the floating
+ * controls it is given (`avoid`, `date-menu-clear.ts`). Each date is a
  * `menuitemradio` (48 px tall), the one on top checked. It is modal: a transparent scrim takes a press anywhere else and
  * closes it, the viewer makes the frame under it inert and gives the focus back to the slider. The arrow keys, Home and End
  * move between the dates, Tab walks them as any button, Esc closes, Enter or a press picks one.
@@ -15,6 +16,7 @@
 import { LitElement, css, html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { EMPTY } from './empty.js';
+import { clearOf } from './date-menu-clear.js';
 import { closeEvent } from './sheet-frame.js';
 import { baseStyles } from './shared-styles.js';
 import type { DateItem, DatesOpenDetail } from './timeline-dates.js';
@@ -64,6 +66,7 @@ export class HcmDateMenu extends LitElement {
         selected: { attribute: false },
         label: { type: String },
         anchor: { attribute: false },
+        avoid: { attribute: false },
         vertical: { type: Boolean },
         peek: { type: Boolean },
     };
@@ -156,6 +159,8 @@ export class HcmDateMenu extends LitElement {
     declare label: string;
     /** The box (client px) the menu opens beside; null: closed. */
     declare anchor: Box | null;
+    /** The floating controls (client px) the menu keeps clear of: the compass, the zoom, the menu button, the photos chip. */
+    declare avoid: readonly Box[];
     /** The timeline stands (a phone held upright): the menu opens on its trailing side, else above it. */
     declare vertical: boolean;
     /** Shown by a resting pointer, not by selecting the year: not modal. */
@@ -167,6 +172,7 @@ export class HcmDateMenu extends LitElement {
         this.selected = null;
         this.label = '';
         this.anchor = null;
+        this.avoid = [];
         this.vertical = false;
         this.peek = false;
     }
@@ -204,8 +210,11 @@ export class HcmDateMenu extends LitElement {
     /** Beside `at` (client px), inside the viewer; the checked date, else the first, takes the focus. */
     #place(menu: HTMLElement, at: Box): void {
         const host = this.getBoundingClientRect();
-        const anchor = { ...at, x: at.x - host.x, y: at.y - host.y };
-        const origin = dateMenuOrigin(anchor, { width: menu.offsetWidth, height: menu.offsetHeight }, host, this.#side());
+        const local = (box: Box): Box => ({ x: box.x - host.x, y: box.y - host.y, width: box.width, height: box.height });
+        const anchor = local(at);
+        const size = { width: menu.offsetWidth, height: menu.offsetHeight };
+        const wanted = { ...dateMenuOrigin(anchor, size, host, this.#side()), ...size };
+        const origin = clearOf(wanted, [anchor, ...this.avoid.map(local)], host, LEGAL_STRIP);
         menu.style.setProperty('left', `${String(origin.x)}px`);
         menu.style.setProperty('top', `${String(origin.y)}px`);
         if (this.peek) {

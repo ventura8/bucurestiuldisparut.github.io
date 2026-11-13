@@ -164,6 +164,18 @@ describe('<hcm-date-menu> as a peek (a pointer resting on the year)', () => {
         expect(closed.touchAt(1, 1, true)).toBe(false);
     });
 
+    it('happyPath_itKeepsClearOfTheControlsItIsGiven', async () => {
+        const control = { x: 180, y: 380, width: 140, height: 120 };
+        const element = await menu({ peek: true, avoid: [control] });
+        const box = shadowQuery(element, '.menu').getBoundingClientRect();
+        const host = element.getBoundingClientRect();
+        const at = { x: control.x + host.x, y: control.y + host.y };
+
+        const meets = box.left < at.x + control.width && at.x < box.right && box.top < at.y + control.height && at.y < box.bottom;
+        expect(meets).toBe(false);
+        expect(box.bottom).toBeLessThanOrEqual(ANCHOR.y + host.y - 8);
+    });
+
     it('happyPath_theMouseEnteringAndLeavingSaysSoAFingerDoesNot', async () => {
         const element = await menu({ peek: true });
         const events = recordEvents(element, 'hcm-date-menu-pointer');

@@ -5,7 +5,7 @@ import { PEEK_LEAVE_MS, datesPeekEvent } from '../../src/viewer/timeline-peek.js
 import { shadowQuery } from './doubles.js';
 import { readyState } from './fake-store.js';
 import { testManifest } from './fixtures.js';
-import { EXPANDED, mountViewer, part, type Mounted } from './viewer-harness.js';
+import { COMPACT, EXPANDED, mountViewer, part, type Mounted } from './viewer-harness.js';
 
 /**
  * V13's peek in `<hcm-map-viewer>` (the owner, 2026-11-13): a pointer resting on a year of several dates shows its menu,
@@ -65,6 +65,21 @@ describe('<hcm-map-viewer>: the peek of a year of several dates (V13)', () => {
         expect(deep?.localName, 'the map under the peek takes the pointer').not.toBe('hcm-date-menu');
         expect(mounted.store.callsOf('setYear')).toEqual([]);
         expect(mounted.store.callsOf('pickLayer')).toEqual([]);
+    });
+
+    it('happyPath_onAPhoneThePeekKeepsClearOfTheCompassTheZoomAndTheMenuButton', async () => {
+        const mounted = await mountViewer(readyState(twoDates(), { year: 1977 }), COMPACT);
+        timelineOf(mounted).collapsed = false;
+        await peek(mounted, 1966);
+        const menu = shadowQuery(part(mounted, 'hcm-date-menu'), '.menu').getBoundingClientRect();
+        const controls = ['hcm-compass', '[data-layout-check="zoom"]', 'hcm-fab-menu'].map((selector) =>
+            part(mounted, selector).getBoundingClientRect(),
+        );
+
+        for (const box of controls) {
+            const meets = menu.left < box.right && box.left < menu.right && menu.top < box.bottom && box.top < menu.bottom;
+            expect(meets, `clear of ${JSON.stringify(box)}`).toBe(false);
+        }
     });
 
     it('happyPath_aDatePickedInThePeekComesToTheFront', async () => {

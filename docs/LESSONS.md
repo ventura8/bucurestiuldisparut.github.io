@@ -3888,3 +3888,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: GDAL's threads allocate from glibc's per-thread malloc arenas, which keep freed pages; about 115 MB of the layout's reads stayed resident while the canvas read its own.
     - Fix and pin: `python -m hcm_pipeline` starts with at most two arenas and the canvas gives the free pages back before and after each sheet (`heap.py`); the budget test runs on one thread and on `ALL_CPUS` (`S-P31-HAPPY-CANVAS-THREADS`).
     - **A memory budget test runs with the thread count production uses (and one), and a threaded C library's freed memory is not free until it is given back.**
+
+662. **The date menu's peek took every press over the map, and opened over the zoom buttons.**
+    - Seen: 2026-11-13, the tour's new `timeline-peek` state (V68, §195i) at 360 and 1024 wide: the map, the legal line, the compass, the zoom and the menu button "covered" by `hcm-date-menu`, and the menu over the zoom group and the photos chip.
+    - Cause: the viewer's `.modal-layer > * { pointer-events: auto }` sits outside the menu's shadow root and beats its own `:host { pointer-events: none }`; while the menu was always modal its scrim hid that. Its place beside the year ignored the floating controls, which the inert frame under a modal menu had excused.
+    - Fix and pin: `.modal-layer > hcm-date-menu { pointer-events: none }` in `viewer-styles.ts`; the dock measures the compass, the zoom, the menu button and the photos chip as the menu opens and the menu moves the shortest way past them (`date-menu-clear.ts`). Pinned by `timeline-dock-peek.test.ts`, `date-menu-clear.test.ts` and the tour's `timeline-peek`.
+    - **A host's own `:host` rule loses to any rule its parent's shadow root sets on it; a non-modal overlay states its pass-through where it is placed, and keeps clear of the controls it no longer makes inert.**
