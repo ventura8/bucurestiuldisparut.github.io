@@ -38,8 +38,8 @@ import { FONT_FILES } from '../ui/src/fonts/font-files.js';
  *   `vite.part.config.ts` into .tsbuild/part/; `sidePartPlugin` (scripts/site/src/side-part.ts) writes its Subresource
  *   Integrity into src/extras-part.ts, which both builds load it with, and serves it here (the owner's "Load extras on
  *   demand", 2026-11-09: about 1.5 KB gzip out of the IIFE).
- * - The IIFE's extras (`engineExtrasPlugin`, scripts/site/src/engine-extras.ts; DECISIONS-for-review.md §183): an IIFE
- *   cannot split, so it inlined the ES build's lazy chunks (about 24 KB gzip of it). Since §183 they are classic scripts
+ * - The IIFE's extras (`engineExtrasPlugin`, scripts/site/src/engine-extras.ts; DECISIONS-for-review.md §186): an IIFE
+ *   cannot split, so it inlined the ES build's lazy chunks (about 24 KB gzip of it). Since §186 they are classic scripts
  *   beside it, `extra-<name>-<hash>.js`, that it loads with their integrity the first time they are wanted
  *   (packages/engine/src/extras/), taking Lit and `@hcm/shared` from the engine's host (`src/extras/host-*.ts`), never
  *   their own copy. A separate run, because one bundle cannot replace `src/extras/imports.ts` for one format only.

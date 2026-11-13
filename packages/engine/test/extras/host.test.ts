@@ -1,4 +1,4 @@
-/** The extras' host on the page (packages/engine/src/extras/host.ts; DECISIONS-for-review.md §183). */
+/** The extras' host on the page (packages/engine/src/extras/host.ts; DECISIONS-for-review.md §186). */
 import { describe, expect, it } from 'vitest';
 
 import { EXTRAS_HOST_GLOBAL, installExtrasHost } from '../../src/extras/host.js';

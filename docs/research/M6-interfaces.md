@@ -350,7 +350,7 @@ the site are submitted from that tab once its look at the server's build sees it
 tab is closed during the server's build, or the token has expired by the time it looks again, the server's update still
 finishes on Google's side, the pipeline and the site are not submitted, and their cards offer Update the map again (the
 local worker keeps the old image meanwhile: safe, but a second click). An update started outside the admin (GitHub
-Actions) has no such guard; the server-side one is proposed in `DECISIONS-for-review.md` §184.
+Actions) has no such guard; the server-side one is proposed in `DECISIONS-for-review.md` §187.
 S-A56-HAPPY-UPDATE-AFTER-SERVER, S-A56-BAD-UPDATE-SERVER-STOPPED.
 
 **Addendum 2026-11-01 (finding 39 of `manual-test-2026-10-25.md`, `DECISIONS-for-review.md` §78a): the release order.**
