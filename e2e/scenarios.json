@@ -5450,7 +5450,7 @@
             "asserts": "DS09065A073MC043 stored as KH-4A (the corona2 fallback) imports as KH-5: the job's params, the version's sensor and label, the reserved layer id and the scene say KH-5 Argon; DS1103 reads KH-4B",
             "tier": "functions",
             "status": "exists",
-            "notes": "DECISIONS §209, LESSONS 664. In functions/test/imagery/{scene-record,import}.test.ts."
+            "notes": "DECISIONS §209, LESSONS 667. In functions/test/imagery/{scene-record,import}.test.ts."
         },
         {
             "id": "S-A12-BAD-STALE-CAMERA-KEPT",

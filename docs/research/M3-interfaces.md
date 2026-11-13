@@ -1450,7 +1450,7 @@ The owner's requests for beta.1 (DECISIONS-for-review.md §173):
 
 - **The map shows**: a labelled native list in the header row the two panes share (`mapShows` in `georef-panes.ts`; a `<select>`, so
   the keyboard and a screen reader have it as it is; the panes share their rows by CSS subgrid, so the list never pushes the map below
-  the scan: lesson 667, `S-A122-BAD-GEOREF-PANES-MISALIGNED`) offers the version's references (OpenStreetMap: the base map itself; Sentinel-2: the reference
+  the scan: lesson 668, `S-A122-BAD-GEOREF-PANES-MISALIGNED`) offers the version's references (OpenStreetMap: the base map itself; Sentinel-2: the reference
   picture) and the city's **published layers**, by name and year, oldest first (`base-layers.ts`: a `LiveList` of
   `cities/{city}/layers`, `published` only). A layer chosen is drawn opaque through the map's own `preview.show({ layers })`
   (`GeorefMap.showBase`): the page's **one map**, no second instance, and never Mapbox Satellite. It goes on before the pictures when
