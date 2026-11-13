@@ -25,7 +25,7 @@ const PRESSED_WHYS: ReadonlySet<WorkerShare['why']> = new Set<WorkerShare['why']
 ]);
 
 /** True when the computer's governor holds it back for its person (or its heat), not by the owner's choice. */
-export function pressed(share: WorkerShare | undefined): boolean {
+function pressed(share: WorkerShare | undefined): boolean {
     return share !== undefined && share.profile !== 'full' && PRESSED_WHYS.has(share.why);
 }
 

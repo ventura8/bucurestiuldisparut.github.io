@@ -241,7 +241,7 @@ export class HcmWorkerHousehold extends LitElement {
         return html`<div class="actions">
             <hcm-button
                 variant="text"
-                icon="link_off"
+                icon="cancel"
                 data-disconnect
                 ?disabled=${view.acting !== null}
                 @click=${() => void context.household.intents.disconnect(computer.id)}

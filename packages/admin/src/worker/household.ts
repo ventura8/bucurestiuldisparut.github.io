@@ -42,7 +42,7 @@ const COMPUTERS_MAX = 20;
 /** The ways "Add another computer" offers: a computer with a screen (its system), or one without. */
 export type AddKind = WorkerOs | 'headless';
 
-export interface ComputerView {
+interface ComputerView {
     readonly id: string;
     /** The owner's name for it, else the computer's own, else null (a helper too old to say). */
     readonly name: string | null;

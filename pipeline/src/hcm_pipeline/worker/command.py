@@ -61,8 +61,13 @@ class WorkerCommand:
         if ctx.env.get(GOVERNOR_ENV) != "off":
             worker.govern()
         worker.serve()
-        if worker.loop.removal is not None:
-            raise StepError("the admin asked to remove this computer: the starter cleans it up", worker.loop.removal.exit_code)
-        if worker.loop.outdated_exit:
-            raise StepError("the installed pipeline is newer than this image: the supervisor pulls it", ExitCode.OUTDATED)
-        return Outcome.DONE
+        return _ended(worker)
+
+
+def _ended(worker: Worker) -> Outcome:
+    """How the served worker ended for its supervisor: Remove this computer (76-79), an outdated image (75), or done."""
+    if worker.loop.removal is not None:
+        raise StepError("the admin asked to remove this computer: the starter cleans it up", worker.loop.removal.exit_code)
+    if worker.loop.outdated_exit:
+        raise StepError("the installed pipeline is newer than this image: the supervisor pulls it", ExitCode.OUTDATED)
+    return Outcome.DONE

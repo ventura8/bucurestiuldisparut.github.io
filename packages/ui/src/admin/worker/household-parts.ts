@@ -22,7 +22,7 @@ export interface PartContext {
     copiedText(what: string): string;
 }
 
-export const ADD_KINDS: readonly AddKindPort[] = ['windows', 'mac', 'linux', 'headless'];
+const ADD_KINDS: readonly AddKindPort[] = ['windows', 'mac', 'linux', 'headless'];
 
 /** The computer's name in the list: the owner's or its own, else "Unnamed computer (w-…)". */
 export function nameOf(t: Translate, computer: ComputerViewPort): string {
@@ -92,7 +92,7 @@ function stepWords({ t }: PartContext, computer: ComputerViewPort): string {
 }
 
 /** A line to copy: the text, a Copy button and its polite word. */
-export function copyable(
+function copyable(
     context: PartContext,
     what: string,
     [label, text, copyLabel]: readonly [string, string, AdminWorkerHouseholdKey],

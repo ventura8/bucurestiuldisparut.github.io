@@ -3847,7 +3847,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: another file in the same worker had loaded the colour library, and the module's state is shared by every test of that worker.
     - Fix and pin: the test takes a fresh copy (`vi.resetModules()` and a dynamic `import`) before asserting the unloaded state.
     - **A test of a module's initial state imports a fresh copy; never trust module state left by whoever ran before.**
-675. **A computer without a screen could only be paired by stopping the owner's own worker and tunnelling a port.**
+655. **A computer without a screen could only be paired by stopping the owner's own worker and tunnelling a port.**
     - Seen: 2026-11-13, pairing the NUC and the Windows PC by hand (`docs/research/M7-local-worker.md`, *Household computers*).
     - Cause: the admin's auto-pair posts the code from the browser to the browser's own loopback (`127.0.0.1:8765`); a headless
       computer has no browser, so its worker was reachable only through an SSH tunnel to the laptop, with the laptop's worker stopped.

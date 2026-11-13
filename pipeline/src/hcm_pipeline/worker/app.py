@@ -39,7 +39,7 @@ def _seconds(answer: Mapping[str, object], key: str) -> float | None:
 class PageActions:
     """The worker's side of the page (`server.WorkerApp`)."""
 
-    def __init__(self, session: Session, api: WorkerApi, state: WorkerState, web_config: WebConfig, hello: Mapping[str, str]) -> None:
+    def __init__(self, session: Session, api: WorkerApi, state: WorkerState, web_config: WebConfig, hello: Mapping[str, object]) -> None:
         self._session = session
         self._api = api
         self._state = state
