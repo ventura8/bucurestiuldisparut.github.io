@@ -28,6 +28,26 @@ export const IDLE_SEARCH: SearchState = { phase: 'idle', found: null, added: nul
 
 const SEARCH_OPTIONS = { timeoutMs: IMAGERY_SEARCH_TIMEOUT_MS } as const;
 
+/**
+ * A search that failed with no reason of the server's after this long was cut off by the server's timeout (lesson 642: the
+ * browser read only "Something went wrong on the server"); it says so, and what to do next.
+ */
+export const SEARCH_CUT_OFF_MS = 300_000;
+/** The server's failures that carry no reason of their own: a cut-off request, a crash. */
+const NO_REASON: ReadonlySet<string> = new Set(['apiError.internal', 'apiError.unavailable']);
+
+/** The notice of a failed search: the server's own reason, else whether it was cut off after `elapsedMs` or failed at once. */
+export function searchRefusalOf(error: unknown, elapsedMs: number): NoticeInput {
+    const refusal = refusalOf(error);
+    if (!NO_REASON.has(refusal.key)) {
+        return refusal;
+    }
+    if (elapsedMs >= SEARCH_CUT_OFF_MS) {
+        return { key: 'adminContent.imagery.searchTimedOut', params: { minutes: String(Math.round(elapsedMs / 60_000)) } };
+    }
+    return { key: 'adminContent.imagery.searchFailed' };
+}
+
 /** USGS states in which a search may run (downloads need `ok`). */
 const CAN_SEARCH: readonly ServiceState[] = ['ok', 'pending'];
 
@@ -75,11 +95,12 @@ export class HarvestSearch {
             return;
         }
         this.#set({ ...IDLE_SEARCH, phase: 'searching' });
+        const started = this.#services.clock.now();
         try {
             const answer = await callImagery(this.#services.callables, 'imagery.search', { cityId: this.#services.cityId }, SEARCH_OPTIONS);
             this.#set({ phase: 'done', found: answer.found, added: answer.added, failedDatasets: answer.failedDatasets, error: null });
         } catch (error) {
-            this.#set({ ...IDLE_SEARCH, phase: 'failed', error: refusalOf(error) });
+            this.#set({ ...IDLE_SEARCH, phase: 'failed', error: searchRefusalOf(error, this.#services.clock.now() - started) });
         }
     }
 

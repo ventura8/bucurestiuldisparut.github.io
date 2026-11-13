@@ -93,6 +93,10 @@ export const ro = {
     'adminContent.imagery.searchingButton': 'Se caută…',
     'adminContent.imagery.searching': 'Se caută scenele USGS de deasupra orașului…',
     'adminContent.imagery.searched': 'Am găsit {found} scene, dintre care {added} noi.',
+    'adminContent.imagery.searchTimedOut':
+        'Căutarea la USGS a durat {minutes} minute și serverul a oprit-o înainte să răspundă. Scenele găsite pot apărea totuși în listă. Pasul următor: așteptați câteva minute, apoi apăsați „Caută din nou la USGS”; dacă se oprește din nou, USGS e lent azi, deci încercați mai târziu.',
+    'adminContent.imagery.searchFailed':
+        'Căutarea la USGS a eșuat pe server înainte să răspundă. Scenele deja din listă rămân. Pasul următor: apăsați „Caută din nou la USGS”; dacă eșuează din nou, încercați mai târziu: jurnalul funcției imagery-search arată cauza.',
     'adminContent.imagery.datasetsFailed': 'Nu au răspuns: {datasets}. Celelalte colecții au fost căutate; încearcă din nou mai târziu.',
     'adminContent.imagery.downloadsPending': 'USGS nu a aprobat încă descărcările: poți căuta, dar importul așteaptă aprobarea.',
     'adminContent.imagery.usgsMissing': 'Conectează USGS ca să cauți imagini istorice ale orașului.',

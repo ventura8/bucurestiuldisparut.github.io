@@ -5192,6 +5192,17 @@
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/search.test.ts (fn-imagery, 2026-10-23)."
         },
         {
+            "id": "S-A11-BAD-SEARCH-CUT-OFF",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A slow USGS search answers in time, and one the server cut off says so and what to do next",
+            "asserts": "every USGS page slower than the search budget -> imagery.search stops asking, stores what it found and answers; a search that failed with no reason after 5 minutes or more -> the admin reads adminContent.imagery.searchTimedOut with the minutes and the next step; one that failed at once -> adminContent.imagery.searchFailed",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Lesson 642 (live 2026-11-13: the harvest ran over 7 minutes, past the 300 s timeout, and the admin read 'Something went wrong on the server'). Tests: functions/test/imagery/search.test.ts, packages/admin/test/imagery/search.test.ts."
+        },
+        {
             "id": "S-A11-BAD-BROWSE-HOST-REFUSED",
             "behaviour": "A11",
             "area": "admin",
@@ -11042,6 +11053,28 @@
             "title": "A copy of the next segment's edge far above its place does not shift the frame",
             "asserts": "the right segment's strip copied into the overlap's columns 8 % of the height higher -> the pair's vertical offset stays within 3 % of the height (a scanner keeps the film straight)",
             "notes": "Finding 83 of docs/research/manual-test-2026-10-25.md (the 1972 frame's false 2,774 px step). In pipeline/tests/unit/test_frames.py."
+        },
+        {
+            "id": "S-P01-HAPPY-KH7-TWO-SEGMENTS",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A strip scanned right to left is joined whole, both halves",
+            "asserts": "a KH-7-like delivery of two segments lettered right to left (`_a` the right half), each with the scanner's bright edge band -> stitch places `_b` left of `_a` by the true overlap, the frame spans the whole strip and its preview is the strip's pixels; a delivery lettered left to right keeps its order",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 641 (the 1966 KH-7 strip DZB00403000026H017001 covered 49 % of Bucharest: its two segments were joined the wrong way). In pipeline/tests/unit/test_stitch_order.py; the generator is pipeline/tests/synthetic/scenes.py (`kh7_segments`, `scanner_edges`, `SceneSpec.right_to_left`)."
+        },
+        {
+            "id": "S-P01-BAD-SEGMENT-OTHER-FRAME",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A segment of another frame is refused, and edge bands never pass for an overlap",
+            "asserts": "a delivery whose second segment comes from another frame -> stitch fails with apiError.imagery.processingFailed naming the segment and no frame.json is written; the strip's halves in the wrong order (the two edge bands side by side) score under MIN_PAIR_SCORE",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 641. In pipeline/tests/unit/test_stitch_order.py."
         },
         {
             "id": "S-P01-HAPPY-ALL-SEGMENTS",

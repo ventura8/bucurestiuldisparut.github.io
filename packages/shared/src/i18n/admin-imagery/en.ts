@@ -91,6 +91,10 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.searchingButton': 'Searching…',
     'adminContent.imagery.searching': 'Searching the USGS scenes over the city…',
     'adminContent.imagery.searched': 'Found {found} scenes, {added} of them new.',
+    'adminContent.imagery.searchTimedOut':
+        'The USGS search ran for {minutes} minutes and the server stopped it before it answered. The scenes it found may still appear in the list. Next: wait a few minutes, then press Search USGS again; if it stops again, USGS is slow today, so try later.',
+    'adminContent.imagery.searchFailed':
+        'The USGS search failed on the server before it answered. The scenes already in the list are kept. Next: press Search USGS again; if it fails again, try later: the imagery-search function log names the cause.',
     'adminContent.imagery.datasetsFailed': 'No answer from: {datasets}. The other collections were searched; try again later.',
     'adminContent.imagery.downloadsPending': 'USGS has not approved downloads yet: you can search, imports wait for the approval.',
     'adminContent.imagery.usgsMissing': 'Connect USGS to search for historical imagery of the city.',

@@ -7,6 +7,7 @@
 import { BROWSE_PREFETCH, FIRESTORE_PATHS, RANKING_VERSION, RASTER_PATHS, USGS_DATASETS, harvestStateDocSchema } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
+import { SEARCH_BUDGET_MS } from '../../src/imagery/harvest-target.js';
 import { searchFunction } from '../../src/imagery/search.js';
 import { UpstreamError } from '../../src/ports/errors.js';
 import { failureOf } from '../admin/world.js';
@@ -280,6 +281,31 @@ describe('imagery.search: failures', () => {
             outcome: 'failed',
             error: 'apiError.internal',
         });
+    });
+});
+
+describe('imagery.search: a slow USGS', () => {
+    it('badPath_aSearchPastItsBudgetKeepsWhatItFoundAndAnswersInTime @S-A11-BAD-SEARCH-CUT-OFF', async () => {
+        const many = Array.from({ length: 130 }, (_, index) => sceneRecord(`DS1105-${String(index).padStart(4, '0')}`));
+        const world = await readyWorld(NOW, { ...records(), corona2: many });
+        const scenes = world.deps.scenes;
+        // Each page takes longer than the whole budget: the first pages arrive, nothing more is asked for.
+        const slow = {
+            ...scenes,
+            search: async (...args: Parameters<typeof scenes.search>) => {
+                const page = await scenes.search(...args);
+                world.deps.clock.set(new Date(world.deps.clock.now().getTime() + SEARCH_BUDGET_MS).toISOString());
+                return page;
+            },
+        };
+
+        const response = await searchFunction(() => ({ ...world.deps, scenes: slow })).run(adminCall({ cityId: CITY }));
+
+        expect(response).toMatchObject({ found: 102, failedDatasets: [] });
+        expect(
+            world.scenes.recorder.argsOf('search').map(([, request]) => (request as { startingNumber: number }).startingNumber),
+        ).not.toContain(101);
+        expect(await readScene(world, MAPPING)).toBeDefined();
     });
 });
 
