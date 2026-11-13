@@ -20,9 +20,9 @@
             "integrity": "sha384-NZofwgzXI0EmIVosInHI7GVMPSCKGE+R0XCzRjD31MKqGXVs9SbLCqWTzxrCxlko"
         },
         {
-            "path": "compare-C2qjM92i.js",
-            "bytes": 10421,
-            "integrity": "sha384-nQHskG82zeRF8n28n1MvkraMkkjFdAgcu4b+jC7thfvrVsx8Dw0HFBzUPbybpcxe"
+            "path": "compare-DtyWF8Hx.js",
+            "bytes": 10450,
+            "integrity": "sha384-scmwaDNtHWpsXyDc5t616THK6EsejZLEw0UGAYqYIrSW+o5k2djky/pUj8F1Ed1T"
         },
         {
             "path": "engine.css",
@@ -36,18 +36,18 @@
         },
         {
             "path": "engine.iife.js",
-            "bytes": 344577,
-            "integrity": "sha384-oB2eZ0PbW8e3+VDygsQmFisbES5eU6HAO7/EhS+d8IRHe9ZSETDoUYmkFpc6om0x"
+            "bytes": 348330,
+            "integrity": "sha384-0H5pjkmJYhiiS1uX7fwCyFL/I2LzUZsRiIwnJP/2flv10g7gv1rHTHKuJ14WvFlw"
         },
         {
             "path": "engine.mjs",
-            "bytes": 343085,
-            "integrity": "sha384-LH9f1BlWAZy1+K16yfItn4HGEtR/jF3hWOHIMViUmyVFPQArTqgajUb2Ld/hVe6F"
+            "bytes": 346838,
+            "integrity": "sha384-PLn9BcNTvvTSaIZQu3+lMZKj1DKY5MbK6F1h4vgA3yGHhyVR1ktV4wohu8UULCuM"
         },
         {
-            "path": "extra-compare-HT4-4whJ.js",
-            "bytes": 18877,
-            "integrity": "sha384-HT4+4whJ4cEXVgl+rum/s32aTqBYj0K1pId8tiSUZoxHbK3ujIJCRCbi1T2nF+IL"
+            "path": "extra-compare-6t3-MoTy.js",
+            "bytes": 18906,
+            "integrity": "sha384-6t3+MoTyDFBfkTCW6swlWCWNbZW5zis8GPebzUOz280QnqwnODw3h4ufHpVAJXdR"
         },
         {
             "path": "extra-field-sdk-o-zNh3jj.js",
