@@ -2254,7 +2254,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "Any of the sixteen languages from the list or the address",
-            "asserts": "Settings' list shows the 16 languages by their own names, each with its lang, the current one checked; German, Arabic and Japanese chosen in turn relabel the whole viewer with no text of another language, the hash keeps lang=<code> and a reload keeps the last; each language's file is fetched once; every other language boots from ?lang=",
+            "asserts": "Settings' Language is one dropdown (a combobox named Limbă / Language, at least 48 px tall, no radio list) of the languages by their own names, each with its lang, the current one selected; German, Arabic and Japanese chosen in turn relabel the whole viewer with no text of another language, the hash keeps lang=<code> and a reload keeps the last; each language's file is fetched once; every other language boots from ?lang=",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts."

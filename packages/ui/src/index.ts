@@ -33,6 +33,7 @@ export { HCM_OVERLAY_LIST_TAG, HcmOverlayList, defineHcmOverlayList } from './co
 export type { OverlayListGroup, OverlayListItem } from './components/overlay-list.js';
 export { HCM_PROGRESS_TAG, HcmProgress, defineHcmProgress } from './components/progress.js';
 export type { ProgressKind } from './components/progress.js';
+export { HCM_LANGUAGE_SELECT_TAG, HcmLanguageSelect, defineHcmLanguageSelect } from './components/language-select.js';
 export { HCM_SEGMENTED_BUTTON_TAG, HcmSegmentedButton, defineHcmSegmentedButton } from './components/segmented-button.js';
 export type { SegmentOption } from './components/segmented-button.js';
 export { HCM_SHEET_TAG, HcmSheet, SHEET_DETENTS, defineHcmSheet, detentHeights, settleDetent } from './components/sheet.js';

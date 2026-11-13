@@ -1,4 +1,4 @@
-import { registerCatalogue, translate, translateAdminContent, translateAdminShell, UI_LANGUAGE_NAMES, type UiLocale } from '@hcm/shared';
+import { registerCatalogue, translate, translateAdminContent, translateAdminShell, type UiLocale } from '@hcm/shared';
 import type { Page } from '@playwright/test';
 
 import { expectStateSound } from '../../../support/state-check.js';
@@ -22,7 +22,7 @@ async function chooseLanguage(page: Page, current: UiLocale, locale: UiLocale): 
         .getByRole('button', { name: translateAdminShell(current, 'adminShell.account.label') })
         .filter({ visible: true })
         .click();
-    await page.getByRole('radio', { name: UI_LANGUAGE_NAMES[locale], exact: true }).click();
+    await page.getByRole('combobox', { name: translate(current, 'language.label'), exact: true }).selectOption(locale);
     await page.keyboard.press('Escape');
 }
 

@@ -83,7 +83,7 @@ describe('the language list', () => {
             city: MANIFEST.city,
             locale: 'de',
         });
-        const list = shadowQuery(about, 'hcm-segmented-button') as HTMLElement & {
+        const list = shadowQuery(about, 'hcm-language-select') as HTMLElement & {
             readonly options: readonly { readonly value: string; readonly label: string; readonly lang?: string }[];
             readonly value: string;
         };
@@ -101,7 +101,7 @@ describe('the language list', () => {
             city: MANIFEST.city,
             locale: 'ro',
         });
-        const list = shadowQuery(about, 'hcm-segmented-button') as HTMLElement & { value: string };
+        const list = shadowQuery(about, 'hcm-language-select') as HTMLElement & { value: string };
         const events = recordEvents(about, 'hcm-locale-change');
 
         fireKitEvent(list, 'hcm-change', { value: 'ja' });

@@ -166,12 +166,12 @@ export class HcmAccountMenu extends LitElement {
         };
         return html`<div class="group">
             <span class="group-label">${label}</span>
-            <hcm-segmented-button
+            <hcm-language-select
                 .label=${label}
                 .options=${UI_LANGUAGE_OPTIONS}
                 .value=${live(state.locale)}
                 @hcm-change=${change}
-            ></hcm-segmented-button>
+            ></hcm-language-select>
         </div>`;
     }
 

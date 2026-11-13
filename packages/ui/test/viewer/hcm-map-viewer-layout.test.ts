@@ -315,12 +315,12 @@ describe('<hcm-map-viewer>: details, lightbox and menu', () => {
         chooseFromMenu(mounted, 'about');
         await mounted.element.updateComplete;
         await expect.element(page.getByRole('dialog', { name: 'Despre' })).toBeVisible();
-        // Settings lists the sixteen languages, each by its own name.
+        // Settings offers the languages in one dropdown, each by its own name.
         chooseFromMenu(mounted, 'settings');
         await mounted.element.updateComplete;
         await expect.element(page.getByRole('dialog', { name: 'Setări' })).toBeVisible();
-        await expect.element(page.getByRole('radio', { name: 'Deutsch' })).toBeVisible();
-        await page.getByRole('radio', { name: 'English' }).click();
+        await expect.element(page.getByRole('option', { name: 'Deutsch' })).toBeInTheDocument();
+        await page.getByRole('combobox', { name: 'Limbă' }).selectOptions('en');
 
         expect(mounted.store.getState().locale).toBe('en');
         expect(mounted.element.getAttribute('lang')).toBe('en');
@@ -340,7 +340,7 @@ describe('<hcm-map-viewer>: details, lightbox and menu', () => {
         const about = part(mounted, 'hcm-about-dialog');
 
         await page.getByRole('radio', { name: 'Întunecată' }).click();
-        await page.getByRole('radio', { name: 'English' }).click();
+        await page.getByRole('combobox', { name: 'Limbă' }).selectOptions('en');
         mounted.store.openSheet('about');
         await mounted.element.updateComplete;
         expect(shadowQueryAll(about, 'hcm-segmented-button')).toEqual([]);

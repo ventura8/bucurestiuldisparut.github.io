@@ -9,8 +9,8 @@ import { testManifest } from './fixtures.js';
 const CITY = testManifest().city;
 
 /** The icons the theme choice passes to the kit's segmented button, per option. */
-/** The icons of the second segmented button (the theme's mode), or of the `index`th one. */
-function themeIcons(element: HcmAboutDialog, index = 1): (string | undefined)[] {
+/** The icons of the first segmented button (the theme's mode; the language is a dropdown), or of the `index`th one. */
+function themeIcons(element: HcmAboutDialog, index = 0): (string | undefined)[] {
     const theme = shadowQueryAll(element, 'hcm-segmented-button').at(index) as unknown as {
         readonly options: readonly { readonly icon?: string }[];
     };
@@ -50,6 +50,7 @@ describe('<hcm-about-dialog>', () => {
         const element = await about({ locale: 'en' });
 
         expect(shadowQueryAll(element, 'hcm-segmented-button')).toEqual([]);
+        expect(shadowQueryAll(element, 'hcm-language-select')).toEqual([]);
         expect(shadowText(element)).not.toContain('Language');
         expect(shadowText(element)).not.toContain('Theme');
     });
@@ -105,8 +106,8 @@ describe('<hcm-about-dialog>', () => {
         expect(shadowText(element)).not.toContain('Mulțumiri');
         expect(themeIcons(element)).toEqual(['brightness_auto', 'light_mode', 'dark_mode']);
         await expect.element(page.getByRole('radio', { name: 'Întunecată' })).toHaveAttribute('aria-checked', 'true');
-        await expect.element(page.getByRole('radio', { name: 'Română' })).toHaveAttribute('aria-checked', 'true');
-        await page.getByRole('radio', { name: 'English' }).click();
+        await expect.element(page.getByRole('combobox', { name: 'Limbă' })).toHaveValue('ro');
+        await page.getByRole('combobox', { name: 'Limbă' }).selectOptions('en');
         await page.getByRole('radio', { name: 'Luminoasă' }).click();
 
         expect(events).toEqual([
@@ -121,7 +122,7 @@ describe('<hcm-about-dialog>', () => {
         await expect.element(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
         // A compact screen has no room for an icon beside every theme label (the kit still shows the check mark).
         expect(themeIcons(element)).toEqual([undefined, undefined, undefined]);
-        expect(themeIcons(element, 2)).toEqual([undefined, undefined]);
+        expect(themeIcons(element, 1)).toEqual([undefined, undefined]);
     });
 
     it('happyPath_settingsFollowTheDeviceAndItsAccentByDefault', async () => {
@@ -130,7 +131,7 @@ describe('<hcm-about-dialog>', () => {
 
         await expect.element(page.getByRole('radio', { name: 'Follow my device' })).toHaveAttribute('aria-checked', 'true');
         await expect.element(page.getByRole('radio', { name: 'Device accent' })).toHaveAttribute('aria-checked', 'true');
-        expect(themeIcons(element, 2)).toEqual(['palette', 'map']);
+        expect(themeIcons(element, 1)).toEqual(['palette', 'map']);
         await page.getByRole('radio', { name: 'Map colours' }).click();
 
         expect(events).toEqual([{ type: 'hcm-theme-change', detail: { accent: 'map' } }]);

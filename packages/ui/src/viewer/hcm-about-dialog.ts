@@ -56,7 +56,7 @@ function creditText(credit: Credit, locale: ViewerLocale): TemplateResult | stri
     return credit.url === undefined ? label : externalLink(credit.url, label);
 }
 
-/** The language list: every viewer language by its own name, in its own language, in `LANGUAGE_NAMES`' fixed order. */
+/** The language dropdown's options: every viewer language by its own name, in its own language, in `LANGUAGE_NAMES`' fixed order. */
 const LANGUAGE_OPTIONS = Object.entries(LANGUAGE_NAMES).map(([value, label]) => ({ value, label, lang: value }));
 
 const THEME_ICONS: Readonly<Record<ThemeMode, string>> = { system: 'brightness_auto', light: 'light_mode', dark: 'dark_mode' };
@@ -250,12 +250,12 @@ export class HcmAboutDialog extends LitElement {
         };
         return html`<section class="preferences">
             <h3>${translate(locale, 'language.label')}</h3>
-            <hcm-segmented-button
+            <hcm-language-select
                 .options=${LANGUAGE_OPTIONS}
                 .value=${live(locale)}
                 .label=${translate(locale, 'language.label')}
                 @hcm-change=${onLanguage}
-            ></hcm-segmented-button>
+            ></hcm-language-select>
             <h3>${translate(locale, 'theme.label')}</h3>
             <hcm-segmented-button
                 .options=${themes}

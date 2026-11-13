@@ -58,15 +58,18 @@ test.describe('the viewer in any of its languages', () => {
 
             await chooseMenuItem(page, lang, t(lang, 'settings.title'));
             await expect(page.getByRole('dialog', { name: t(lang, 'settings.title') })).toBeVisible();
-            const names = languageList(page).getByRole('radio');
-            // Each radio's label (the checked one also draws its check mark's ligature).
-            expect(await names.evaluateAll((radios) => radios.map((radio) => radio.querySelector(':scope > span')?.textContent))).toEqual(
+            // One dropdown named Limba / Language, not a long list: each option a language by its own name, in its own `lang`.
+            await expect(page.getByRole('combobox', { name: t(lang, 'language.label'), exact: true })).toBeVisible();
+            await expect(languageList(page).getByRole('radio')).toHaveCount(0);
+            const names = languageList(page).locator('option');
+            expect(await names.evaluateAll((options) => options.map((option) => option.textContent.trim()))).toEqual(
                 Object.values(LANGUAGE_NAMES),
             );
-            await expect(names.filter({ hasText: LANGUAGE_NAMES[lang] })).toHaveAttribute('aria-checked', 'true');
-            expect(await names.evaluateAll((radios) => radios.map((radio) => radio.getAttribute('lang')))).toEqual(
+            await expect(languageList(page)).toHaveValue(lang);
+            expect(await names.evaluateAll((options) => options.map((option) => option.getAttribute('lang')))).toEqual(
                 Object.keys(LANGUAGE_NAMES),
             );
+            expect((await languageList(page).boundingBox())?.height).toBeGreaterThanOrEqual(48);
             await page.keyboard.press('Escape');
 
             let from: ViewerLocale = lang;
@@ -191,14 +194,11 @@ test.describe('a language that cannot be fetched', () => {
         await openViewer(page, { lang });
 
         await chooseMenuItem(page, lang, t(lang, 'settings.title'));
-        await languageList(page).getByRole('radio', { name: LANGUAGE_NAMES.ko, exact: true }).click();
+        await languageList(page).selectOption('ko');
 
         await holdToast(page, t(lang, 'language.unavailable'));
         await expect(page.locator('html')).toHaveAttribute('lang', lang);
-        await expect(languageList(page).getByRole('radio', { name: LANGUAGE_NAMES[lang], exact: true })).toHaveAttribute(
-            'aria-checked',
-            'true',
-        );
+        await expect(languageList(page)).toHaveValue(lang);
         expect(await page.evaluate(() => location.hash)).not.toContain('lang=ko');
     });
 
@@ -211,7 +211,7 @@ test.describe('a language that cannot be fetched', () => {
         await openViewer(page, { lang });
 
         await chooseMenuItem(page, lang, t(lang, 'settings.title'));
-        await languageList(page).getByRole('radio', { name: LANGUAGE_NAMES.fr, exact: true }).click();
+        await languageList(page).selectOption('fr');
 
         await holdToast(page, t(lang, 'language.unavailable'));
         await expect(page.locator('html')).toHaveAttribute('lang', lang);
