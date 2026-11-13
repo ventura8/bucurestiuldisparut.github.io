@@ -17,6 +17,7 @@ import { AreaPage } from '../editing/area-page.js';
 import { cityRoleOfState } from '../shell/city-role.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
+import { trackAreaFunnels } from '../editing/area-funnel.js';
 import type { ImageryContext, ImageryQuestion } from './context.js';
 import { guardBanner } from './guard-banner.js';
 import type { ImageryIntentsPort, ImageryTabPort, ImageryViewState } from './imagery-port.js';
@@ -91,7 +92,6 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
     static override readonly styles = [...imageryStyles, orderStyles];
 
     protected readonly route: AdminRouteIdPort = 'imagery';
-    protected override readonly funnels = imageryFunnels;
     /** The open question (Reject, Pay, Cancel), or null. */
     declare question: ImageryQuestion | null;
     /** mapbox-gl.css of the pinned release ('' in tests: no network). */
@@ -112,6 +112,8 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
     }
 
     protected override updated(changed: PropertyValues<this>): void {
+        // The wizard's funnel (§200): what changed since the last render, as codes.
+        trackAreaFunnels(this, this.view, imageryFunnels);
         super.updated(changed);
         this.#follow();
     }

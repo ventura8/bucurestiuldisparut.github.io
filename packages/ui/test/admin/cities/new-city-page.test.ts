@@ -346,9 +346,11 @@ describe('<hcm-new-city-page> funnel', () => {
             seen.push((event as CustomEvent<FunnelSignal>).detail);
         };
         document.addEventListener(FUNNEL_EVENT, listen);
-        const { area } = await newCityPage(cityState());
+        const { area, element } = await newCityPage(cityState());
         area.set({ nameRo: 'Cluj', cityId: 'cluj' });
+        await updated(element);
         area.set({ bounds: AREA, problem: 'validation.tooBig' });
+        await updated(element);
         document.removeEventListener(FUNNEL_EVENT, listen);
         expect(seen).toEqual([
             { kind: 'view', wizard: 'new_city', step: 'names', back: false },

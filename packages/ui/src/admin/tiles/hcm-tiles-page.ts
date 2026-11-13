@@ -6,13 +6,13 @@
  * longer waits each say so. Text only: every value is bound as a property or text.
  */
 import { translateApiError, type Locale } from '@hcm/shared';
-import type { FunnelSnapshot } from '@hcm/shared/funnels';
 import { css, html, type PropertyValues, type TemplateResult } from 'lit';
 
 import type { AdminRouteIdPort } from '../admin-port.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
 import { AreaPage } from '../editing/area-page.js';
 import { editingStyles } from '../editing/editing-styles.js';
+import { trackAreaFunnels } from '../editing/area-funnel.js';
 import { tilesText as t } from './tiles-text.js';
 import { TILE_STEPS, type TilesIntentsPort, type TileStepPort, type TilesViewState } from './tiles-port.js';
 import { tilesFunnel } from './tiles-funnel.js';
@@ -86,7 +86,6 @@ class HcmTilesPage extends AreaPage<TilesViewState, TilesIntentsPort> {
     ];
 
     protected readonly route: AdminRouteIdPort = 'help';
-    protected override readonly funnels = (view: TilesViewState): readonly (FunnelSnapshot | null)[] => [tilesFunnel(view)];
 
     protected storeOf(content: ContentPort): AreaPort<TilesViewState, TilesIntentsPort> | null {
         return content.help;
@@ -96,6 +95,8 @@ class HcmTilesPage extends AreaPage<TilesViewState, TilesIntentsPort> {
     #shown: TileStepPort | null = null;
 
     protected override updated(changed: PropertyValues): void {
+        // The wizard's funnel (§200): what changed since the last render, as codes.
+        trackAreaFunnels(this, this.view, (view) => [tilesFunnel(view)]);
         super.updated(changed);
         const step = shownStep(this.view);
         if (step !== null && this.#shown !== null && step !== this.#shown) {

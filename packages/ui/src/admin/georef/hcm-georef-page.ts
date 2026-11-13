@@ -9,7 +9,6 @@
  * point, Undo; nothing that edits on a read-only version.
  */
 import { createLogger } from '@hcm/shared';
-import type { FunnelSnapshot } from '@hcm/shared/funnels';
 import { html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { deepActiveElement } from '../../components/focus.js';
@@ -22,6 +21,7 @@ import { labelText } from '../imagery/imagery-text.js';
 import { when, withValue } from '../imagery/when.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
+import { trackAreaFunnels } from '../editing/area-funnel.js';
 import { FullScreenInert } from './full-screen.js';
 import type { GeorefMenuOpen } from './georef-menu-host.js';
 import type * as GeorefMenuChunk from './georef-menu.js';
@@ -52,7 +52,6 @@ class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
     static override readonly styles = [...georefStyles, suggestionsStyles];
 
     protected readonly route: AdminRouteIdPort = 'georef';
-    protected override readonly funnels = (view: GeorefViewState): readonly (FunnelSnapshot | null)[] => [georefFunnel(view)];
     declare sort: ResidualSort;
     /** M22 (§13.2): the actions, the scan and the map fill the window (Esc leaves it). */
     declare full: boolean;
@@ -113,6 +112,8 @@ class HcmGeorefPage extends AreaPage<GeorefViewState, GeorefIntentsPort> {
     }
 
     protected override updated(changed: PropertyValues<this>): void {
+        // The wizard's funnel (§200): what changed since the last render, as codes.
+        trackAreaFunnels(this, this.view, (view) => [georefFunnel(view)]);
         super.updated(changed);
         if (changed.has('full')) {
             this.#inert.cover(this, this.full);

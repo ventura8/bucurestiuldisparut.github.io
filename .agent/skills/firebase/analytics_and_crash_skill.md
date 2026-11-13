@@ -56,7 +56,7 @@
 
 ## Wizard funnels (DECISIONS §200, 2026-11-13)
 
-- One helper for every wizard: `@hcm/shared/funnels` (a subpath; never import it from the engine). A page returns a snapshot of its wizard (`*-funnel.ts` beside the page, a pure function with its own unit test) and calls `trackFunnel` on every render (an `AreaPage` sets `funnels`); the admin's `FunnelHub` (`packages/admin/src/app/funnels.ts`) listens on the window and sends through `telemetry.measure`, after consent only. A new wizard joins `WIZARD_IDS`, `WIZARD_STEPS` of `statistics-view.ts` and the Statistics strings in ro and en.
+- One helper for every wizard: `@hcm/shared/funnels` (a subpath; never import it from the engine). A page returns a snapshot of its wizard (`*-funnel.ts` beside the page, a pure function with its own unit test) and calls `trackFunnel` on every render (an area page calls `trackAreaFunnels` in its `updated`); the admin's `FunnelHub` (`packages/admin/src/app/funnels.ts`) listens on the window and sends through `telemetry.measure`, after consent only. A new wizard joins `WIZARD_IDS`, `WIZARD_STEPS` of `statistics-view.ts` and the Statistics strings in ro and en.
 - Codes, never words: a step id and an error code are short tokens (the catalogue key or the refusal's code). The guard's `FUNNEL_EVENT_PARAMS` and the hub's token check drop anything else.
 - Errors shown: the admin's error notices are `ui_error` (`isErrorNotice` decides by the key), the viewer's `error.…` toasts too; never the message's text.
 - Do Not Track and Global Privacy Control are a refusal until the person accepts (`privacySignal`): no banner, nothing stored for it.

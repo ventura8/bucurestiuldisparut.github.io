@@ -10,7 +10,6 @@
  * (`area-gesture.ts`); **Move the map** hands the pointer back to the map, **Draw the area** takes it again.
  */
 import { CITY_SPAN_LIMITS, isUsableCityId, type CityBounds, type Locale } from '@hcm/shared';
-import type { FunnelSnapshot } from '@hcm/shared/funnels';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
 import { visuallyHidden } from '../../components/styles.js';
@@ -22,6 +21,7 @@ import { editingStyles } from '../editing/editing-styles.js';
 import { defineHcmAdminMap } from '../map/hcm-admin-map.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText, noticeOf } from '../shell/text.js';
+import { trackAreaFunnels } from '../editing/area-funnel.js';
 import { completeBounds, EDGES, nextDraft, type Edge, type EdgeDraft } from './area-edges.js';
 import { AreaGesture } from './area-gesture.js';
 import type { NewCityIntentsPort, NewCityViewState } from './cities-port.js';
@@ -100,7 +100,6 @@ export class HcmNewCityPage extends AreaPage<NewCityViewState, NewCityIntentsPor
     static override readonly styles = [...editingStyles, visuallyHidden, newCityStyles, publicAddressStyles];
 
     protected readonly route: AdminRouteIdPort = 'cities';
-    protected override readonly funnels = (view: NewCityViewState): readonly FunnelSnapshot[] => [newCityFunnel(view)];
     readonly #gesture = new AreaGesture((from, to, size) => {
         this.intents?.dragArea(from, to, size);
     });
@@ -147,6 +146,8 @@ export class HcmNewCityPage extends AreaPage<NewCityViewState, NewCityIntentsPor
 
     /** The done screen replaced the form: its heading takes the focus, which would otherwise fall to the page. */
     protected override updated(): void {
+        // The wizard's funnel (§200): what changed since the last render, as codes.
+        trackAreaFunnels(this, this.view, (view) => [newCityFunnel(view)]);
         const cityId = this.view?.created?.cityId;
         if (cityId !== undefined && cityId !== this.#focused) {
             this.#focused = cityId;
