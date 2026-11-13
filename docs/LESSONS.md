@@ -3902,3 +3902,21 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `rewriteDatePlan` reads every scene and every layer version of the city, and the trigger takes 80 events at once (`GLOBAL_OPTIONS.concurrency`), so frames ending together held several copies of the city in memory.
     - Fix and pin: one rewrite per city at a time in an instance; calls that come meanwhile share one more rewrite that starts after them, so the plan still shows their write (`functions/src/imagery/join-plan.ts`; `functions/test/imagery/join-plan-flight.test.ts` reads the city three times without it).
     - **A trigger with concurrency above one multiplies whatever one event reads: a read of a whole collection is coalesced per key, not repeated per event.**
+
+664. **Every Linux worker refused its own local AI: the starter read the worker's image instead of the AI's.**
+    - Seen: 2026-11-13, the owner's PC (WSL) and the laptop: `local AI: refused an unexpected program image` every 20 s (286 times on the PC), the sidecar never started and every locate waited 30 minutes, then "the sidecar did not come up"; the frames fell to the admin's points.
+    - Cause: `ai_image` in `hcm-worker.sh` took the last `"image": "…"` of the whole `/state` line with a greedy `sed`; since the worker added its own `image` (`sha256:…`, after `ai`), that was the match, and the check refused it. The tests fed `/state` as the `ai` record alone, so they never saw the second field. The Windows starter parses the JSON and was right.
+    - Fix and pin: the starter reads `image` inside `"ai": {…}` only; the sidecar tests now feed the worker's whole `/state` (its own `image` and `starter` after `ai`). Starter version `fae0e8664ab5`.
+    - **A test of a parser feeds the producer's real, whole output, never the one field the parser wants; a shell `sed` over JSON is greedy across fields.**
+
+665. **The Statistics view blamed missing measurement names that Setup had just reported as all there.**
+    - Seen: 2026-11-13, the owner's live test: "Google Analytics does not know the map's measurement names yet", while step g said "0 created, 23 already there"; an hour later the read worked, with no values for the custom names yet.
+    - Cause: every HTTP 400 of `batchRunReports` was mapped to `noReports`. GA4 refuses the whole batch for one field its Data API does not list yet, and a name registered a few hours earlier is not listed yet; the fake answered 400 only for unregistered names, so the case never showed.
+    - Fix and pin: the read asks the property's metadata first, sends only the reports it can answer, and says which of not registered, not ready, or no values yet (`analytics-fields.ts`); another 400 is `refused`. `S-A153-BAD-NOT-READY`, `-NOT-REGISTERED`, `-NO-DATA`, `-REFUSED`.
+    - **Map an error code to a cause only when the code means that cause alone; a generic 400 is "refused", and the specific causes are found by asking, not guessed.**
+
+666. **Under WSL the worker read "someone is typing" every five seconds, forever.**
+    - Seen: 2026-11-13, the owner's PC (`ssh w5090`, WSL Ubuntu, the systemd user service `hcm-worker`): `host-hints.json` said `"idleS":0` on every pass, so the governor read `user-active` and Automatic never left Quiet (4 of 16 threads), whether or not the owner was at the PC.
+    - Cause: the POSIX starter's last idle source, logind's `IdleHint`, is always `no` in WSL (there is no desktop session), and `no` was written as 0 seconds. Reading Windows instead has two traps: a systemd service has no `WSL_INTEROP` (powershell.exe fails with "Invalid argument" through `/run/WSL/1_interop`), and a process that sshd's `wsl.exe` started runs in session 0, whose `GetLastInputInfo` never sees a key and returns the uptime (82209 s, against 1614 s from the console session's socket).
+    - Fix and pin: under WSL the starter reads `GetLastInputInfo` through powershell.exe (`-EncodedCommand`, as `hcm-worker.bat` reads it), trying `/run/WSL/*_interop` until a process in a session other than 0 answers, at most every 30 s, the answering socket first next time; no answer is an empty `idleS`, never 0 (`S-A141-HAPPY-WSL-IDLE`, `S-A141-BAD-WSL-NO-INTEROP`).
+    - **An idle source that cannot see the person must say nothing, not "active"; and on Windows, check which session a reading comes from.**

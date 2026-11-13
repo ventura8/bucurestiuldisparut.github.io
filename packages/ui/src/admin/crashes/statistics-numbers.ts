@@ -14,6 +14,7 @@ import type {
     CrashesIntentsPort,
     StatisticsDaysPort,
     StatisticsNumbersPort,
+    StatisticsPendingPort,
     StatisticsProblemPort,
     StatisticsViewState,
     SurfaceNumbersPort,
@@ -59,7 +60,7 @@ const FIXES: Readonly<Record<StatisticsProblemPort, (projectId: string) => reado
         { href: dataApiUrl(projectId), key: 'adminContent.statistics.problem.openConsole', external: true },
     ],
     noProperty: () => [SETUP_FIX],
-    noReports: () => [SETUP_FIX],
+    refused: () => [{ href: GA_HOME, key: 'adminContent.statistics.open', external: true }],
     notSetUp: () => [SETUP_FIX],
     noAccess: () => [{ href: GA_HOME, key: 'adminContent.statistics.open', external: true }],
     consent: () => [],
@@ -204,6 +205,25 @@ function overview(locale: Locale, numbers: StatisticsNumbersPort): TemplateResul
     ]);
 }
 
+/**
+ * Why the apps, the admin screens and the wizards' steps are incomplete, with the fix: Setup's step g for a name GA4 does
+ * not know, else when to look again.
+ */
+function pendingTemplate(locale: Locale, pending: StatisticsPendingPort | null): TemplateResult {
+    if (pending === null) {
+        return EMPTY;
+    }
+    const key = pending.reason;
+    return html`<p class="info" role="status" data-statistics-pending=${key}>
+            <hcm-icon name="schedule"></hcm-icon
+            ><span
+                >${contentText(locale, `adminContent.statistics.pending.${key}`)}
+                ${contentText(locale, `adminContent.statistics.pending.${key}Fix`)}</span
+            >
+        </p>
+        ${key === 'notRegistered' ? fixLink(locale, SETUP_FIX) : EMPTY}`;
+}
+
 function numbersTemplate(context: NumbersContext, numbers: StatisticsNumbersPort): TemplateResult {
     const { locale } = context;
     const title = (key: 'pages' | 'screens' | 'events' | 'devices' | 'countries'): string =>
@@ -211,7 +231,7 @@ function numbersTemplate(context: NumbersContext, numbers: StatisticsNumbersPort
     const identity = { name: (value: string): string => value };
     const period = contentText(locale, `adminContent.statistics.numbers.days.${String(context.state.days) as '7'}`);
     const funnels = { locale, period, order: context.order, stepName: context.stepName, wizardName: context.wizardName };
-    return html`${overview(locale, numbers)} ${appsCard(locale, numbers)}
+    return html`${pendingTemplate(locale, numbers.pending)} ${overview(locale, numbers)} ${appsCard(locale, numbers)}
         <div class="grid">
             ${barCard(locale, title('pages'), numbers.pages, { name: (value) => pageName(locale, value), raw: true })}
             ${barCard(locale, title('screens'), numbers.screens, { name: (value) => screenName(locale, value) })}

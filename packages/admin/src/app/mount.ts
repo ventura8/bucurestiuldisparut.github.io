@@ -451,7 +451,7 @@ function contentRegistry<Setup>(
     const { measure, google, ...shellParts } = parts;
     const statistics = (cityId: () => string): StatisticsSource =>
         statisticsSourceOf({
-            ...{ google, callables: parts.callables, cityId },
+            ...{ google, callables: parts.callables, cityId, measure },
             ...{ fetch: deps.fetch, clock: deps.clock, log: deps.log },
         });
     const store = measuredStore(content.store, { measure, now: () => globalThis.performance.now(), epoch: () => deps.clock.now() });

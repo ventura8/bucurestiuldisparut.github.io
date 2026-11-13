@@ -12,7 +12,7 @@ import { html, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
-import type { CrashesIntentsPort, CrashesViewState } from './crashes-port.js';
+import type { CrashesIntentsPort, CrashesViewState, StatisticsNumbersPort } from './crashes-port.js';
 import type * as Live from './statistics-live.js';
 import { loadingTemplate } from '../editing/states.js';
 
@@ -60,7 +60,19 @@ type StepId = (typeof WIZARD_STEPS)[WizardId][number];
 
 const STEP_IDS: ReadonlySet<string> = new Set(Object.values(WIZARD_STEPS).flat());
 
-const HOW = ['how1', 'how2', 'how3', 'how4', 'how5', 'how6'] as const;
+const HOW = ['how1', 'how2', 'how3', 'how4', 'how5'] as const;
+
+type CodesState = 'unknown' | 'ready' | 'notRegistered' | 'notReady' | 'noData';
+
+/** Whether GA4 can show the codes, as the last read of the numbers found (unknown before one). */
+function codesState(view: CrashesViewState | null): CodesState {
+    const numbers = view?.statistics.numbers ?? null;
+    return numbers === null ? 'unknown' : codesOf(numbers);
+}
+
+function codesOf(numbers: StatisticsNumbersPort): CodesState {
+    return numbers.pending?.reason ?? 'ready';
+}
 
 function stepItem(locale: Locale, step: StepId): TemplateResult {
     const name = contentText(locale, `adminContent.statistics.step.${step}`);
@@ -136,7 +148,7 @@ function liveSections(locale: Locale, context: StatisticsContext): TemplateResul
 }
 
 /** How to explore more in Google Analytics: the funnel exploration's steps and every wizard's step codes, folded away. */
-function helpSection(locale: Locale): TemplateResult {
+function helpSection(locale: Locale, view: CrashesViewState | null): TemplateResult {
     return html`<div class="card">
         <details class="help" data-statistics-help>
             <summary>${contentText(locale, 'adminContent.statistics.helpTitle')}</summary>
@@ -144,6 +156,9 @@ function helpSection(locale: Locale): TemplateResult {
                 <h3>${contentText(locale, 'adminContent.statistics.howTitle')}</h3>
                 <ol>
                     ${HOW.map((key) => howItem(locale, key))}
+                    <li data-statistics-codes=${codesState(view)}>
+                        ${contentText(locale, `adminContent.statistics.codes.${codesState(view)}`)}
+                    </li>
                 </ol>
                 <h3>${contentText(locale, 'adminContent.statistics.wizardsTitle')}</h3>
                 <ul class="wizards">
@@ -168,6 +183,6 @@ export function statisticsView(locale: Locale, context: StatisticsContext): Temp
                 ></a>
             </p>
         </div>
-        ${offNote(locale, context.analytics)} ${liveSections(locale, context)} ${helpSection(locale)}
+        ${offNote(locale, context.analytics)} ${liveSections(locale, context)} ${helpSection(locale, context.view)}
     </div>`;
 }

@@ -60,4 +60,8 @@ export const OPS_STATES = {
         title: 'Statistics: the Data API off, said with Setup and the console as the fix',
         visit: 'specs/ops/statistics.spec.ts, the Data API off',
     },
+    'crashes.statistics-pending': {
+        title: 'Statistics: numbers read with the measurement names Google Analytics cannot use yet, said with when to look again',
+        visit: 'specs/ops/statistics.spec.ts, names not ready',
+    },
 } as const;

@@ -18411,6 +18411,28 @@
             "notes": "The NUC's /state of 2026-11-13 listed nvidia-smi's failure as a card's name (and an empty one, which made the whole card read as an older worker). Tests: functions/test/worker/starter-governor.test.ts, pipeline/tests/unit/test_governor_probe.py, packages/ui/test/admin/worker/machine.test.ts."
         },
         {
+            "id": "S-A141-HAPPY-WSL-IDLE",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "A worker in WSL reads the Windows user's idle time, so Automatic leaves Quiet when the owner is away",
+            "asserts": "under WSL (/proc/version names microsoft) the POSIX starter skips GNOME, xprintidle and logind and writes GetLastInputInfo's seconds from powershell.exe into host-hints.json; a socket Windows refuses (1_interop) and one whose process runs in session 0 (sshd's wsl.exe, which reads the uptime) are passed over; powershell.exe runs at most once per 30 s, the socket that answered is tried first next time",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's PC (WSL Ubuntu, systemd user service hcm-worker) wrote idleS 0 every 5 s on 2026-11-13: logind's IdleHint is always no without a desktop session, and the governor held Quiet forever. Tests: functions/test/worker/starter-governor.test.ts."
+        },
+        {
+            "id": "S-A141-BAD-WSL-NO-INTEROP",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A worker in WSL that cannot reach Windows says nothing about the owner's activity, never that they are typing",
+            "asserts": "under WSL with no powershell.exe, or with only sockets Windows refuses or whose process runs in session 0, the hints say idleS null (the governor never claims activity it cannot see), never logind's 0",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Tests: functions/test/worker/starter-governor.test.ts."
+        },
+        {
             "id": "S-A142-HAPPY-VERSIONS",
             "behaviour": "A142",
             "area": "admin",
@@ -19850,6 +19872,72 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-problem); Vitest packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-HAPPY-PARTIAL",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "happy",
+            "title": "The numbers GA4 can answer show even when some measurement names cannot be used",
+            "asserts": "the property's metadata lacks the custom names -> visitors, pages, devices and countries still show; no report naming a missing name is sent (no 400), no alert",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Fix of 2026-11-13 (a 400 for the whole batch was said as 'Google Analytics does not know the names'). Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-pending); Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-HAPPY-DATA-ARRIVES",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "happy",
+            "title": "Once values arrive, Refresh shows the steps and the no-values note goes",
+            "asserts": "after the noData note, the property gets rows -> Refresh shows the new_city funnel, no pending note, and the guide's codes line says Google Analytics knows the codes",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-NOT-REGISTERED",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "A measurement name not registered on the property: said with Setup step g as the fix",
+            "asserts": "the Admin API lists none of the view's names -> the note says some names are unknown and the apps and steps are incomplete, links #/setup/analytics; ui_error statistics_notRegistered; the log names the missing names",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-NOT-READY",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "Names registered but not usable in reports yet: said with when to look again",
+            "asserts": "every name is registered on the Admin API but missing from the Data API metadata -> the note says Google Analytics cannot report on them yet and to look again tomorrow (up to 48 hours); no Setup link; ui_error statistics_notReady",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-pending); Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-NO-DATA",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "Names usable but no values yet: said with when to look again",
+            "asserts": "no step, no admin screen and only '(not set)' apps -> the note says no values yet and that Google shows them 24 to 48 hours after use; the guide's codes line says the same; ui_error statistics_noData",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-REFUSED",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "A report request Google refuses (400) is the admin's fault, not missing names",
+            "asserts": "batchRunReports answers 400 INVALID_ARGUMENT -> the alert says Google Analytics refused the way the admin asked, that it is in the logs, and links Google Analytics; ui_error statistics_refused",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/google/analytics-data.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/ui/test/admin/ops/statistics.test.ts."
         },
         {
             "id": "S-V70-HAPPY-KEY-ACTIONS",
