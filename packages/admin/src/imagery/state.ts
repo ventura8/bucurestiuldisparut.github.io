@@ -3,7 +3,14 @@
  * imagery settings, the search, the ranked scenes with their filters and browse images, the unfinished versions with
  * their jobs, the open scene or version, the upload, and the page's map.
  */
-import { imagerySettingsOf, type DatePlanRow, type ImagerySettings, type PublishChoice, type ServiceState } from '@hcm/shared';
+import {
+    imagerySettingsOf,
+    type DatePlanRow,
+    type ImagerySettings,
+    type PublishChoice,
+    type ServiceState,
+    type UnusableReason,
+} from '@hcm/shared';
 
 import type { ArchiveFeed } from '../archive/feed.js';
 import { LOADING_LIST, type ListState } from '../content/list.js';
@@ -144,6 +151,8 @@ export interface ImageryIntents {
     checkOrder(id: string): Promise<boolean>;
     /** M4: "Take the mark back" (`usgs.cancelOrder`). */
     cancelOrder(id: string): Promise<boolean>;
+    /** The owner's report of 2026-11-13: Not useful with why, or Undo with null (`imagery.markScene`); true once recorded. */
+    markUnusable(id: string, reason: UnusableReason | null): Promise<boolean>;
     /** M8: `imagery.join` of one date's frames: the join version's id (the page opens it), or null when refused. */
     joinFrames(entityIds: readonly string[]): Promise<string | null>;
     /** M8: Add {year} to target years, then search again; true once it is saved. */

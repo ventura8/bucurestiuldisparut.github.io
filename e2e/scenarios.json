@@ -1151,11 +1151,25 @@
             "source": "the owner's request of 2026-11-13 (beta.1); DECISIONS-for-review.md §200"
         },
         {
+            "id": "A153",
+            "area": "admin",
+            "name": "The Statistics view shows Google Analytics' numbers and Error Reporting's groups after the owner's read-only consent",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (take me to the analytics permission button); DECISIONS-for-review.md §203"
+        },
+        {
             "id": "V70",
             "area": "viewer",
             "name": "The viewer's key actions reach analytics only after consent, and never under Do Not Track",
             "milestone": "post-M8",
             "source": "the owner's request of 2026-11-13 (beta.1); DECISIONS-for-review.md §200"
+        },
+        {
+            "id": "A152",
+            "area": "admin",
+            "name": "Not useful on a scene, and a scene its preview shows cloudy over the city is ranked down and warned",
+            "milestone": "M4",
+            "source": "the owner, 2026-11-13: \"This scan is useless (too many clouds!!!)\", DS09066A047MC019, a 1964 scan the whole-city plan kept offering to buy; docs/research/M4-interfaces.md, Not useful and the cloud estimate"
         }
     ],
     "scenarios": [
@@ -18347,10 +18361,21 @@
             "area": "admin",
             "path": "bad",
             "title": "On a low battery the worker pauses; a hot computer steps down; the user at the keyboard gets the computer back",
-            "asserts": "on battery -> quiet; under 30 % -> paused (unless allowed), the running step waits at its next checkpoint with its time limit moved, the local AI off; at 90 C on the processor or 83 C on the card one level down, back 10 C below; input on the host or other programs over 40 % -> quiet within one tick, full again only after 120 s calm; the hysteresis never flaps (property test)",
+            "asserts": "on battery -> quiet; under 30 % -> paused (unless allowed), the running step waits at its next checkpoint with its time limit moved, the local AI off; from 80 C on the processor the threads shrink in proportion to the degrees left to 95 C (at least one), and other programs' busy cores come off the top; at 95 C on the processor or 83 C on the card one level down, back 5 C below; input on the host or other programs over 40 % -> quiet within one tick, full again only after 120 s calm; the hysteresis never flaps (property test); the log says a change of profile, reason, threads or memory step only, never every tick",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "M26. Tests: pipeline/tests/unit/test_governor_policy.py, test_governor_loop.py, test_worker_governor.py, packages/ui/test/admin/worker/machine.test.ts."
+            "notes": "M26. Tests: pipeline/tests/unit/test_governor_policy.py, test_governor_loop.py, test_governor_budget.py, test_worker_governor.py, packages/ui/test/admin/worker/machine.test.ts."
+        },
+        {
+            "id": "S-A141-BAD-NO-DRIVER",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "An NVIDIA card without its driver: the card says to install the driver and links to it; a command's error text is never a card's name",
+            "asserts": "the starter lists a card only from a command that succeeded, in the expected shape (nvidia-smi's exit status, whole numbers for the memory); the cards' names come from lspci (Intel Arc on the NUC: Arrow Lake-P [Arc Pro 130T/140T]); an NVIDIA card in /sys/class/drm with nvidia-smi failing -> via null, why no-driver; the worker drops a card whose name is empty, multi-line or over 120 characters; the admin's card shows the no-driver line with a link to NVIDIA's drivers, ro and en, axe clean",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The NUC's /state of 2026-11-13 listed nvidia-smi's failure as a card's name (and an empty one, which made the whole card read as an older worker). Tests: functions/test/worker/starter-governor.test.ts, pipeline/tests/unit/test_governor_probe.py, packages/ui/test/admin/worker/machine.test.ts."
         },
         {
             "id": "S-A142-HAPPY-VERSIONS",
@@ -19442,6 +19467,28 @@
             "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_gdal_memory.py, test_compose_canvas.py, pipeline/tests/integration/test_memory_budgets.py."
         },
         {
+            "id": "S-P31-HAPPY-CANVAS-THREADS",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Two large colour sheets are laid out and mosaicked within 800 MB whatever GDAL's thread count",
+            "asserts": "two 12,000 px colour sheets laid out and mosaicked in a child process started as python -m hcm_pipeline starts (at most two malloc arenas) -> peak resident memory under 800 MB on one thread and on every core (ALL_CPUS); the C heap's free pages are given back before the first sheet and after each one; the pixels are the same on any thread count",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "2026-11-13, the NUC: one thread 636 MB, every core 870 MB before (the threads' malloc arenas kept the layout's reads); 588 / 653 MB on 1 / 16 threads after (tcmalloc, the worker image: 650 to 690 MB either way), no slower. Tests: pipeline/tests/unit/test_placing_canvas_window.py, test_heap.py."
+        },
+        {
+            "id": "S-P31-BAD-CANVAS-THREADS-NO-GLIBC",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Where the C library is not glibc, or there is nothing to give back, the heap calls do nothing and nothing fails",
+            "asserts": "no libc.so.6, or one without mallopt and malloc_trim -> limit_arenas and give_back answer False and the step goes on; malloc_trim returning 0 (nothing to return) is not an error",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Tests: pipeline/tests/unit/test_heap.py."
+        },
+        {
             "id": "S-P31-HAPPY-TILE-PROCESSES",
             "behaviour": "P31",
             "area": "pipeline",
@@ -19528,6 +19575,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/unit/test_worker_pace.py, test_worker_loop.py, test_worker_app.py, functions/test/worker/starter.test.ts, starter-windows.test.ts, claim.test.ts."
+        },
+        {
+            "id": "S-P31-HAPPY-CLAIM-HEADROOM",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A hot or busy computer leaves a queued job to a cooler or idler worker of the same city",
+            "asserts": "every wait before a claim is stretched by 1 + 3 x (1 - headroom): headroom 1 with room, the heat's share from 80 to 95 C and other programs' load lower it, 0 while paused; with room the worker asks every pollSeconds (30 s), half the room 75 s, none 120 s (240 s when idle), so the cooler worker asks first; a lone worker still takes the job",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13: three workers (laptop, NUC, PC); the laptop held jobs paused for heat. Tests: pipeline/tests/unit/test_worker_pace.py, test_governor_loop.py."
+        },
+        {
+            "id": "S-P31-BAD-CLAIM-HEADROOM-RANGE",
+            "behaviour": "P31",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A headroom out of range neither speeds a claim past the poll nor stretches it past four polls",
+            "asserts": "a headroom over 1 -> the plain poll; under 0 -> four polls; before the governor's first tick the headroom is 1",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Tests: pipeline/tests/unit/test_worker_pace.py, test_governor_loop.py."
         },
         {
             "id": "S-P31-HAPPY-ATLAS-PAGES",
@@ -19750,6 +19819,39 @@
             "notes": "Test: e2e/admin/specs/ops/ops.spec.ts; Vitest packages/ui/test/admin/ops/statistics.test.ts."
         },
         {
+            "id": "S-A153-HAPPY-NUMBERS",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "happy",
+            "title": "Show the numbers here: one read-only Analytics consent, then the overview, the apps and each wizard's funnel",
+            "asserts": "#/crashes/statistics: the button with Google's note about the read-only scope asks for analytics.readonly only; after the consent the visitors, the apps per role (the start page not measured) and the new_city funnel with who left and the error codes in words show; another period asks the Data API for its own days, coming back to a period asks nothing; Error Reporting's groups of the period link the console",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §203. Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-numbers); Vitest packages/ui/test/admin/ops/statistics.test.ts, packages/admin/test/crashes/statistics.test.ts, packages/admin/test/google/analytics-data.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-CONSENT-REFUSED",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refused Analytics consent reads nothing and says how to try again",
+            "asserts": "the owner closes Google's window without ticking the scope -> the view says the permission was not given and to tick it on the next click; the Data API is never called",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts; Vitest packages/admin/test/crashes/statistics.test.ts."
+        },
+        {
+            "id": "S-A153-BAD-API-DISABLED",
+            "behaviour": "A153",
+            "area": "admin",
+            "path": "bad",
+            "title": "The Data API off: the view says so with Setup's Update the map and the console's page",
+            "asserts": "the Data API answers SERVICE_DISABLED -> the alert says the API is off and to run Update the map or turn it on, with links to #/setup and the API's page in the Google Cloud console of the project",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Test: e2e/admin/specs/ops/statistics.spec.ts (tour state crashes.statistics-problem); Vitest packages/ui/test/admin/ops/statistics.test.ts."
+        },
+        {
             "id": "S-V70-HAPPY-KEY-ACTIONS",
             "behaviour": "V70",
             "area": "viewer",
@@ -19781,6 +19883,83 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Test: e2e/specs/viewer/key-actions.spec.ts (four years along the timeline, one year_change); Vitest packages/engine/test/telemetry/settle.test.ts, telemetry.test.ts."
+        },
+        {
+            "id": "S-A152-HAPPY",
+            "behaviour": "A152",
+            "area": "admin",
+            "path": "happy",
+            "title": "A scene marked Not useful leaves the whole-city plan and its Buy this scan, and the list hides it",
+            "asserts": "the scene's page offers Not useful with four reasons, one click each; Clouds -> imagery.markScene stores status rejected and unusable {reason, at}, writes the plan again at once: the date's row keeps the free frames that complete it and lists no Buy this scan for it; Find hides it under Hide not useful and shows it with its Not useful chip once that is off",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (DECISIONS §201). Tests: e2e/admin/specs/imagery/unusable.spec.ts; functions/test/imagery/mark-scene.test.ts; packages/ui/test/admin/imagery/scene-unusable.test.ts."
+        },
+        {
+            "id": "S-A152-HAPPY-UNDO",
+            "behaviour": "A152",
+            "area": "admin",
+            "path": "happy",
+            "title": "Not useful is taken back from the scene's page or the snackbar",
+            "asserts": "the marked scene's page says what the mark did and offers It is useful after all; clicked (or the snackbar's Undo) -> imagery.markScene with null: a candidate again, no unusable field, the plan's Buy this scan is back",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (DECISIONS §201). Tests: e2e/admin/specs/imagery/unusable.spec.ts; functions/test/imagery/mark-scene.test.ts; packages/admin/test/imagery/orders.test.ts."
+        },
+        {
+            "id": "S-A152-BAD-CLOUDY",
+            "behaviour": "A152",
+            "area": "admin",
+            "path": "bad",
+            "title": "A scene its preview shows cloudy over the city is ranked down and warned before an import or a purchase",
+            "asserts": "imagery.browse measures the clouds over the city on a 128 px grey copy of the browse image (bright, flat pixels inside the city's bounds placed through the frame's corners) and stores cloudEstimate; at 40 % or more the rank keeps only its clear share and says so first, the plan's row lists it in cloudyFrames, its card reads Probably cloudy over the city: N %, its page warns what to do, and the date's Buy this scan warns beside the link",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (DECISIONS §201). Tests: e2e/admin/specs/imagery/unusable.spec.ts; functions/test/imagery/cloud-estimate.test.ts; packages/shared/test/imagery/ranking.test.ts; packages/shared/test/imagery/join.test.ts; packages/ui/test/admin/imagery/scene-unusable.test.ts."
+        },
+        {
+            "id": "S-A152-BAD-NOT-EDITOR",
+            "behaviour": "A152",
+            "area": "admin",
+            "path": "bad",
+            "title": "A moderator or an uploader cannot mark a scene, nor can anyone mark an imported one",
+            "asserts": "imagery.markScene by a moderator or an uploader -> apiError.city.notEditor; of an imported scene -> apiError.imagery.alreadyImported; of no scene -> apiError.notFound; an unknown reason -> invalid-argument; the scene is unchanged; a plan that cannot be written leaves the mark standing (logged by code)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (DECISIONS §201). Tests: functions/test/imagery/mark-scene.test.ts; packages/admin/test/imagery/orders.test.ts."
+        },
+        {
+            "id": "S-A152-BAD-CLIENT-MARK",
+            "behaviour": "A152",
+            "area": "admin",
+            "path": "bad",
+            "title": "No client writes a scene's Not useful mark or its cloud estimate",
+            "asserts": "an admin's update of usgsScenes setting or removing unusable, or setting cloudEstimate, is denied (imagery.markScene and imagery.browse write them); candidate and rejected with a note stay allowed",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (DECISIONS §201). Tests: firebase/rules-tests/test/jobs.test.ts."
+        },
+        {
+            "id": "S-A12-HAPPY-LARGE-BROWSE",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A KH-9 panoramic preview over 5 MB is copied, shrunk",
+            "asserts": "USGS's Declass 3 browse images are 7 to 13 MB: imagery.browse fetches up to 30 MB in 30 s and stores one over 5 MB as a JPEG at most 4,096 px long, so its card and page show it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13: every Declass 3 card said the preview could not be fetched. Tests: functions/test/imagery/browse.test.ts; functions/test/adapters/image.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-BROWSE-SPECIFIC",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A preview that cannot be copied says what failed and what to do",
+            "asserts": "a web page in place of the picture -> apiError.imagery.browseNotImage; a file over 30 MB, or one that cannot be shrunk -> apiError.imagery.browseTooLarge (trying again will not help: open the frame in EarthExplorer); USGS not answering -> apiError.imagery.browseUnavailable (try again in a few minutes); each recorded on the scene and answered",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13. Tests: functions/test/imagery/browse.test.ts."
         }
     ]
 }

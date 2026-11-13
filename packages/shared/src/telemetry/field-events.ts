@@ -169,9 +169,26 @@ const PAGE_LOCATION = z
     .max(GA_LIMITS.pageLocationLength)
     .regex(/^https?:\/\/[^\s?#@]+$/);
 
-/** An app's events as strict schemas, `page_location` added to each (an unknown parameter is refused). */
+/**
+ * Which app sent an event, and in the admin with which role (`DECISIONS-for-review.md` §203): the viewer sends `viewer`,
+ * the admin `admin_<role>` of the open city (`admin` before a role is known). Every event may carry it; the Statistics view
+ * counts visitors and visits per value (the start page loads no analytics, so it has none).
+ */
+export const APP_SURFACES = ['viewer', 'admin', 'admin_owner', 'admin_editor', 'admin_moderator', 'admin_uploader'] as const;
+
+export type AppSurface = (typeof APP_SURFACES)[number];
+
+/** The parameters every event of either app may carry besides its own (`page_location` aside). */
+export const SURFACE_PARAMS = { app_surface: z.enum(APP_SURFACES).optional() } as const;
+
+/** An app's events as strict schemas, `page_location` and the common parameters added to each (an unknown one is refused). */
 export function eventSchemas(shapes: EventShapes): ReadonlyMap<string, z.ZodType> {
-    return new Map(Object.entries(shapes).map(([name, shape]) => [name, z.strictObject({ ...shape, page_location: PAGE_LOCATION })]));
+    return new Map(
+        Object.entries(shapes).map(([name, shape]) => [
+            name,
+            z.strictObject({ ...shape, ...SURFACE_PARAMS, page_location: PAGE_LOCATION }),
+        ]),
+    );
 }
 
 /** More parameters than GA4 takes, or a value that is too long or reveals a position, a URL's query or fragment, or PII. */

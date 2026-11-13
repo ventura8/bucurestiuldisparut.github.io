@@ -5,6 +5,7 @@ import { EXPORT_STATES } from '../admin/specs/export/states.js';
 import { JOIN_STATES } from '../admin/specs/imagery/join-states.js';
 import { ORDERS_STATES } from '../admin/specs/imagery/orders-states.js';
 import { SUGGESTIONS_STATES } from '../admin/specs/imagery/suggestions-states.js';
+import { UNUSABLE_STATES } from '../admin/specs/imagery/unusable-states.js';
 import { INSTALL_STATES } from '../admin/specs/install/states.js';
 import { NOTIFY_STATES } from '../admin/specs/notify/states.js';
 import { SETTINGS_ICON_STATES, SETTINGS_STARTER_STATES } from '../admin/specs/settings/states.js';
@@ -66,6 +67,7 @@ export const ADMIN_SECTION_STATES = {
     // M8 (docs/research/M8-join-interfaces.md §8): the join's date rows, offer and page, ids 'imagery.date-rows', 'imagery.join-<state>'.
     // [section join] owner: e2e (M8)
     ...JOIN_STATES,
+    ...UNUSABLE_STATES,
     // [end join]
     // M20 (docs/research/M20-import-local.md §8): Import local files, an archive's report and progress, Settings' drawn maps, ids 'archive.<state>'.
     // [section archive] owner: archive (M20)

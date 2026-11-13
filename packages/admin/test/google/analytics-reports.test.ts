@@ -1,4 +1,4 @@
-import { ADMIN_EVENT_PARAMS, createLogger, VIEWER_EVENT_PARAMS } from '@hcm/shared';
+import { ADMIN_EVENT_PARAMS, createLogger, SURFACE_PARAMS, VIEWER_EVENT_PARAMS } from '@hcm/shared';
 import { createUpstreamFakes, GOOGLE_TOKENS } from '@hcm/test-support/fakes';
 import { describe, expect, it } from 'vitest';
 
@@ -27,7 +27,7 @@ describe('createMeasurementReports', () => {
     it('happyPath_everyFieldParameterIsRegisteredOnTheStreamsPropertyOnce', async () => {
         const { fakes, run } = world();
 
-        await expect(run()).resolves.toEqual({ created: 22, skipped: 0 });
+        await expect(run()).resolves.toEqual({ created: 23, skipped: 0 });
 
         const created = fakes.callsTo('analytics-admin.customDimensions.create').map((call) => JSON.parse(call.body) as unknown);
         expect(created).toContainEqual({ parameterName: 'metric_name', displayName: 'metric_name', scope: 'EVENT' });
@@ -46,7 +46,7 @@ describe('createMeasurementReports', () => {
         const { fakes, run } = world();
         await run();
 
-        await expect(run()).resolves.toEqual({ created: 0, skipped: 22 });
+        await expect(run()).resolves.toEqual({ created: 0, skipped: 23 });
         expect(fakes.callsTo('analytics-admin.customDimensions.create')).toHaveLength(FIELD_DIMENSIONS.length);
     });
 
@@ -69,7 +69,7 @@ describe('createMeasurementReports', () => {
 
     it('happyPath_everyRegisteredParameterIsOneTheFieldEventsSend', () => {
         // The list follows docs/ADMIN_GUIDE.*.md and the guard's schemas of @hcm/shared: no definition GA4 would never fill.
-        const events = [...Object.values(ADMIN_EVENT_PARAMS), ...Object.values(VIEWER_EVENT_PARAMS)];
+        const events = [...Object.values(ADMIN_EVENT_PARAMS), ...Object.values(VIEWER_EVENT_PARAMS), SURFACE_PARAMS];
         const sent = new Set(events.flatMap((params) => Object.keys(params)));
 
         expect([...FIELD_DIMENSIONS, ...Object.keys(FIELD_METRICS)].filter((name) => !sent.has(name))).toEqual([]);

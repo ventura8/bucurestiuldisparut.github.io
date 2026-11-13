@@ -62,6 +62,7 @@ function frameOf(scene: UsgsSceneDoc, version: StoredDocument<LayerVersionDoc> |
         free: scene.downloadAvailable,
         footprint: scene.footprint,
         ...pickDefined(scene, ['displayId', 'corners']),
+        ...(scene.cloudEstimate === undefined ? {} : { cloudPercent: scene.cloudEstimate.percent }),
         ...imported,
     };
 }
@@ -79,7 +80,8 @@ function versionsByLayer(versions: Versions): ReadonlyMap<string, Versions> {
 }
 
 /**
- * The frames the plan chooses from: scenes the admin did not reject, on dates no published join shows yet. M25: never a Landsat scene,
+ * The frames the plan chooses from: scenes the admin did not reject, on dates no published join shows yet (a scene the owner marked not
+ * useful is `rejected` with its reason, so it leaves the plan the same way). M25: never a Landsat scene,
  * which holds the whole city on its own.
  */
 function framesOf(scenes: readonly UsgsSceneDoc[], versions: Versions): DatePlanFrame[] {

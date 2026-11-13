@@ -43,6 +43,16 @@ def _text(record: Mapping[str, object], key: str, default: str = "") -> str:
     return value if isinstance(value, str) else default
 
 
+# A card's name is a model's, one short line: a longer text, an empty one or one with a line break is a command's message (lesson of
+# 2026-11-13: an older starter put nvidia-smi's failure on a computer without NVIDIA's driver in `name`), so the card is dropped.
+NAME_MAX: Final = 120
+
+
+def _named(record: Mapping[str, object]) -> bool:
+    name = record.get("name")
+    return isinstance(name, str) and 0 < len(name) <= NAME_MAX and "\n" not in name
+
+
 VIAS: Final[dict[object, Via]] = {"cuda": "cuda", "rocm": "rocm", "openvino": "openvino"}
 SOURCES: Final[dict[object, PowerSource]] = {"ac": "ac", "battery": "battery", "unknown": "unknown"}
 
@@ -88,7 +98,7 @@ def parse_hints(raw: Mapping[str, object], now: float) -> HostHints:
     at = _number(raw.get("at"))
     if at is None or now - at > HINTS_STALE_S:
         return HostHints()
-    gpus = tuple(_gpu(each) for each in _records(raw.get("gpus")))
+    gpus = tuple(_gpu(each) for each in filter(_named, _records(raw.get("gpus"))))
     npus = tuple(_npu(each) for each in _records(raw.get("npus")))
     return HostHints(_number(raw.get("idleS")), _power(raw.get("power")), gpus, npus)
 

@@ -383,6 +383,9 @@ export function usgsSceneDoc(status = 'candidate'): Data {
         },
         rank: { score: 92, reasons: [{ code: 'free' }, { code: 'coverage', params: { percent: '92' } }], version: 1 },
         layerId: 'corona-1966',
+        // The owner's report of 2026-11-13 (M4 §1.9): Not useful and the browse image's clouds, written by the functions only.
+        unusable: { reason: 'clouds', at: past() },
+        cloudEstimate: { percent: 46, version: 1 },
         // M4 (docs/research/M4-interfaces.md §1): EarthExplorer's dataset id and the order, written by the functions only.
         eeDatasetId: '5e839febdccb64b3',
         order: {

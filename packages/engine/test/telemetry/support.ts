@@ -86,7 +86,7 @@ export function loader(sdk: FirebaseSdk | Error, log = recordingLog(), field: Fi
 
 /** What GA4 receives with every event: the page without its hash. */
 export function withPage(params: Readonly<Record<string, unknown>> = {}): Readonly<Record<string, unknown>> {
-    return { ...params, page_location: PAGE };
+    return { ...params, app_surface: 'viewer', page_location: PAGE };
 }
 
 /** What the viewer adds to every field measurement in these tests. */

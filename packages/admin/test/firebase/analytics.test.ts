@@ -1,7 +1,7 @@
 import { createAdminGuard, type GaParams } from '@hcm/shared';
 import { describe, expect, it, vi } from 'vitest';
 
-import { CONSENT_DENIED, CONSENT_GRANTED, createAnalytics, type AnalyticsSdk } from '../../src/firebase/analytics.js';
+import { CONSENT_DENIED, CONSENT_GRANTED, createAnalytics, surfaceOf, type AnalyticsSdk } from '../../src/firebase/analytics.js';
 import { settle, testLog } from '../app/fakes.js';
 
 const CONTEXT = { app: 'admin', window_class: 'large', release: '1.2.0' } as const;
@@ -35,6 +35,7 @@ function analytics(sdk: ReturnType<typeof fakeSdk>, load = vi.fn(() => Promise.r
         fieldContext: () => CONTEXT,
         log,
         pageLocation: () => 'https://demo-hcm.web.app/',
+        surface: () => 'admin_owner',
     });
     return { port, load, recording, field };
 }
@@ -64,7 +65,11 @@ describe('createAnalytics', () => {
             },
         );
         expect(sdk.logEvent.mock.calls.map(([, name]) => name)).toEqual(['page_view', 'setup_step']);
-        expect(sdk.logEvent.mock.calls[0]?.[2]).toEqual({ route: 'setup', page_location: 'https://demo-hcm.web.app/' });
+        expect(sdk.logEvent.mock.calls[0]?.[2]).toEqual({
+            route: 'setup',
+            app_surface: 'admin_owner',
+            page_location: 'https://demo-hcm.web.app/',
+        });
     });
 
     it('badPath_withoutConsentNothingLoads', async () => {
@@ -186,7 +191,10 @@ describe('createAnalytics: field measurements', () => {
 
         expect(a.field.reporters).toHaveLength(1);
         expect(sdk.logEvent.mock.calls.map(([, name, params]) => [name, params])).toEqual([
-            ['admin_ready', { duration_ms: 1800, restored: true, ...CONTEXT, page_location: 'https://demo-hcm.web.app/' }],
+            [
+                'admin_ready',
+                { duration_ms: 1800, restored: true, ...CONTEXT, app_surface: 'admin_owner', page_location: 'https://demo-hcm.web.app/' },
+            ],
             [
                 'web_vitals',
                 expect.objectContaining({ metric_name: 'INP', window_class: 'large', page_location: 'https://demo-hcm.web.app/' }),
@@ -222,5 +230,12 @@ describe('createAnalytics: field measurements', () => {
         await settle();
 
         expect(sdk.logEvent).toHaveBeenCalledTimes(20);
+    });
+});
+
+describe('surfaceOf', () => {
+    it('happyPath_theOpenCitysRoleNamesTheAdmin_andNoRoleIsTheAdminAlone', () => {
+        expect(surfaceOf('uploader')).toBe('admin_uploader');
+        expect(surfaceOf(null)).toBe('admin');
     });
 });

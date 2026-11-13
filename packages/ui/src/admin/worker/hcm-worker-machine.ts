@@ -15,6 +15,9 @@ import { defineWorkerVersions } from './hcm-worker-versions.js';
 import { workerStyles } from './worker-element.js';
 import type { LocalPort, MachineViewPort } from './worker-port.js';
 
+/** NVIDIA's driver downloads, for a card the worker found without its driver. */
+export const NVIDIA_DRIVERS_URL = 'https://www.nvidia.com/en-us/drivers/';
+
 const HCM_WORKER_MACHINE_TAG = 'hcm-worker-machine';
 const MB_PER_GB = 1024;
 
@@ -96,6 +99,16 @@ class HcmWorkerMachine extends LitElement {
         </section>`;
     }
 
+    /** An NVIDIA card whose driver is missing (the starter's `no-driver`): what to install, and where. */
+    #noDriver(): TemplateResult {
+        return html`<p class="note">
+            ${this.#t('adminWorkerLocal.machine.noDriver')}
+            <a class="external" href=${NVIDIA_DRIVERS_URL} target="_blank" rel="noopener noreferrer"
+                >${this.#t('adminWorkerLocal.machine.getDriver')}</a
+            >
+        </p>`;
+    }
+
     #known(machine: WorkerMachine, failed: boolean): TemplateResult {
         const { budget, profile } = machine;
         const amounts = { threads: String(budget.threads), memory: gigabytes(budget.memoryMb) };
@@ -114,6 +127,7 @@ class HcmWorkerMachine extends LitElement {
                 </p>
                 <p>${this.#t(`adminWorkerLocal.machine.matcher.${machine.backend.matcher}`)}</p>
                 ${machine.backend.matcher === 'cpu' && machine.backend.why !== 'gpu-busy' ? html`<p>${this.#t('adminWorkerLocal.machine.noGpu')}</p>` : nothing}
+                ${machine.gpus.some((gpu) => gpu.why === 'no-driver') ? this.#noDriver() : nothing}
                 ${failed ? html`<p class="note">${this.#t('adminWorkerLocal.machine.failed')}</p>` : nothing}
             </div>`;
     }

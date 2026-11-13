@@ -49,6 +49,9 @@ export interface SceneOrderPort {
     readonly importJobId: string | null;
 }
 
+/** Why the owner set a scene aside (`UNUSABLE_REASONS` of `@hcm/shared`). */
+export type UnusableReasonPort = 'clouds' | 'haze' | 'area' | 'other';
+
 export interface SceneItemPort {
     readonly id: string;
     readonly displayId: string;
@@ -72,6 +75,10 @@ export interface SceneItemPort {
     readonly acquisition: SceneAcquisitionState;
     readonly order: SceneOrderPort | null;
     readonly earthExplorerUrl: string | null;
+    /** Set aside by the owner as not useful, and why (null: not marked). */
+    readonly unusable: UnusableReasonPort | null;
+    /** The share of the city its browse image shows clouded, 0 to 100 (null: not measured). */
+    readonly cloudCity: number | null;
 }
 
 interface SceneFiltersPort {
@@ -318,8 +325,9 @@ export interface ImageryViewState {
     /** The routed scene read by its id (a scene the filters hide, or past the list's page): loading, then it, null or why not. */
     readonly named: { readonly loading: boolean; readonly scene: SceneItemPort | null; readonly failure: StoreFailurePort | null };
     /** M4: the order card's action running, for which scene, and the last refusal on its card. */
-    readonly ordering: { readonly id: string; readonly action: 'mark' | 'check' | 'cancel' } | null;
-    readonly orderRefusal: { readonly id: string; readonly notice: AdminNoticeInputPort } | null;
+    readonly ordering: { readonly id: string; readonly action: 'mark' | 'check' | 'cancel' | 'unusable' } | null;
+    /** The last refusal; `action` 'unusable': Not useful's (its section shows it, the order card does not). */
+    readonly orderRefusal: { readonly id: string; readonly notice: AdminNoticeInputPort; readonly action?: 'unusable' } | null;
     /** M8: the server's plan of each date's whole-city layer, the join on its way (by its first frame), its refusal, the year being saved. */
     readonly dates: readonly DatePlanRow[];
     readonly joining: string | null;
@@ -377,6 +385,8 @@ export interface ImageryIntentsPort {
     markOrdered(id: string): Promise<boolean>;
     checkOrder(id: string): Promise<boolean>;
     cancelOrder(id: string): Promise<boolean>;
+    /** Not useful with why, or its Undo (null); true once recorded. */
+    markUnusable(id: string, reason: UnusableReasonPort | null): Promise<boolean>;
     /** M8: Join frames (the new join's version id, or null when refused) and Add {year} to target years. */
     joinFrames(entityIds: readonly string[]): Promise<string | null>;
     addTargetYear(year: number): Promise<boolean>;
