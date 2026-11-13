@@ -15,7 +15,9 @@ import { rankNow } from './scene-rank.js';
 export type CloudDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'images'>;
 
 /** Stores the estimate and the new rank, the admin's triage meanwhile kept. */
-async function record(deps: CloudDeps, cityId: string, measured: UsgsSceneDoc & Pick<Required<UsgsSceneDoc>, 'cloudEstimate'>): Promise<void> {
+type Measured = UsgsSceneDoc & Pick<Required<UsgsSceneDoc>, 'cloudEstimate'>;
+
+async function record(deps: CloudDeps, cityId: string, measured: Measured): Promise<void> {
     const rank = await rankNow(deps, cityId, measured);
     const path = FIRESTORE_PATHS.usgsScene(cityId, measured.entityId);
     await deps.documents.transaction(async (transaction) => {
