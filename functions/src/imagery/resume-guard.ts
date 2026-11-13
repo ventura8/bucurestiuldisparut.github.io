@@ -12,7 +12,7 @@ import type { Ports } from '../ports/index.js';
  * `ops/guard` red when the month's Google Cloud cost reaches the budget, which pauses imports, retries, the georeferencer's
  * saves, crops and publishes; the admin's banner in Imagery and Jobs shows the spend and **Resume processing**, which
  * turns it green again (the public map never stopped). The admin accepts that budget period's spend (`resumedFor`): its
- * repeated alerts leave the guard green, the next period's pause it again. Waiting work starts on the next tick.
+ * repeated alerts leave the guard green, the next period's pause it again. Waiting work starts on the next tick (within 15 minutes).
  */
 export type ResumeGuardDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 

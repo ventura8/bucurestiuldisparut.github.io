@@ -246,7 +246,7 @@ is needed: they call Google's REST APIs with the metadata server's token.
 | `fetch` | node | as the server's, with `pipeline.tgz` |
 | `build` | docker (§67e) | `docker build -f Dockerfile --target runtime -t us-central1-docker.pkg.dev/<project>/hcm/pipeline:_SLUG .` (the base images are pinned by digest in the Dockerfile) |
 | `push` | docker | `docker push`, writing the pushed digest to `/workspace/digest` |
-| `jobs` | node | `run-jobs.mjs`: creates or patches `raster-pipeline` (4 CPU, 16 GiB) and `raster-pipeline-xl` (8 CPU, 32 GiB) through Run Admin v2 (`jobs` create or patch, the operation polled): the image by digest, `job-raster@`, task timeout 6 h, no retries, one task, args `run`, env `GOOGLE_CLOUD_PROJECT`, `HCM_PRIVATE_BUCKET`, `HCM_PUBLIC_BUCKET`, label `hcm-release: _SLUG`: exactly what D5 of `MANUAL_TEST_PLAN.md` did with `gcloud` |
+| `jobs` | node | `run-jobs.mjs`: creates or patches `raster-pipeline` (4 CPU, 16 GiB; 2 and 8 since 2026-11-12, `JOB_MACHINE_SIZES`) and `raster-pipeline-xl` (8 CPU, 32 GiB; 4 and 16 since) through Run Admin v2 (`jobs` create or patch, the operation polled): the image by digest, `job-raster@`, task timeout 6 h, no retries, one task, args `run`, env `GOOGLE_CLOUD_PROJECT`, `HCM_PRIVATE_BUCKET`, `HCM_PUBLIC_BUCKET`, label `hcm-release: _SLUG`: exactly what D5 of `MANUAL_TEST_PLAN.md` did with `gcloud` |
 
 #### 1.4.3 The public site (`hcm-site`, timeout 1800 s)
 

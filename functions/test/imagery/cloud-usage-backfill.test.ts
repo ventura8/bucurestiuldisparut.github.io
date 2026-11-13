@@ -61,8 +61,8 @@ describe("the month's uncounted cloud runs", () => {
 
         expect(await backfillCloudUsage(world.deps, new Date(NOW))).toBe(true);
 
-        // (600 + 300) s × 4 vCPU and × 16 GiB, two runs.
-        expect(await usage(world)).toMatchObject({ month: '2026-10', vcpuSeconds: 3600, gibSeconds: 14_400, runs: 2 });
+        // (600 + 300) s × 2 vCPU and × 8 GiB (`std` since 2026-11-12), two runs.
+        expect(await usage(world)).toMatchObject({ month: '2026-10', vcpuSeconds: 1800, gibSeconds: 7200, runs: 2 });
         expect((await usage(world))?.backfilledAt).toBeDefined();
 
         // Once: the next tick adds nothing, and a run counted later keeps the mark.
@@ -70,7 +70,7 @@ describe("the month's uncounted cloud runs", () => {
         const before = job({ status: 'running', finishedAt: undefined, dispatchAt: at('2026-10-23T07:50:00.000Z') });
         await seedJob(world, 'later', { ...before, status: 'failed' });
         await countCloudRun(world.deps, CITY, 'later', { before, after: { ...before, status: 'failed' } });
-        expect(await usage(world)).toMatchObject({ vcpuSeconds: 6000, gibSeconds: 24_000, runs: 3 });
+        expect(await usage(world)).toMatchObject({ vcpuSeconds: 3000, gibSeconds: 12_000, runs: 3 });
         expect((await usage(world))?.backfilledAt).toBeDefined();
     });
 

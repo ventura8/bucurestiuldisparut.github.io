@@ -242,7 +242,7 @@ test(
         // The version waiting for the OK: its estimate and the month's use; Run in Google Cloud anyway dispatches it.
         await page.goto(adminPath(lang, 'imagery/version/ok-1'));
         const waiting = place(page);
-        const estimate = text(lang, 'adminWorker.estimate', { vcpu: count(lang, 12_600), gib: count(lang, 50_400) });
+        const estimate = text(lang, 'adminWorker.estimate', { vcpu: count(lang, 7200), gib: count(lang, 28_800) });
         await expect(waiting.getByText(estimate)).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
         await expect(waiting.getByText(text(lang, 'adminWorker.freeTier'))).toBeVisible();
         await expect(waiting.getByText(text(lang, 'adminWorker.meter'))).toBeVisible();

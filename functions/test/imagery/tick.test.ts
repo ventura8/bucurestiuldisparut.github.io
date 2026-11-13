@@ -1,9 +1,9 @@
 /**
  * `imagery.tick` (`functions/src/imagery/{tick,tick-jobs,tick-maintenance}.ts`, `docs/research/M3-interfaces.md` §4.5,
- * §4.6): every five minutes, per city and part by part, due jobs are dispatched, lost executions recovered (out of memory
- * on `std` → again on `xl`; past the attempts → failed), the cancellations, approvals and polls a lost event left behind
- * caught up, deferred publishes started, long-ended versions' files swept and the monthly harvest run; while the budget
- * guard is red only what ends or recovers work runs.
+ * §4.6): every fifteen minutes (every five until 2026-11-12), per city and part by part, due jobs are dispatched, lost
+ * executions recovered (out of memory on `std` → again on `xl`; past the attempts → failed), the cancellations, approvals and
+ * polls a lost event left behind caught up, deferred publishes started, long-ended versions' files swept and the monthly
+ * harvest run; while the budget guard is red only what ends or recovers work runs.
  */
 import {
     CLOUD_RUN_JOBS,
@@ -516,7 +516,7 @@ describe('runImageryTick', () => {
         expect(tick.__endpoint).toMatchObject({
             serviceAccountEmail: 'fn-events@demo-hcm.iam.gserviceaccount.com',
             maxInstances: 1,
-            scheduleTrigger: { schedule: 'every 5 minutes' },
+            scheduleTrigger: { schedule: 'every 15 minutes' },
         });
         expect(world.deps.recording.records.map((record) => record.message)).toContain('imagery tick finished');
     });

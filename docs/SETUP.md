@@ -96,7 +96,7 @@ One command starts the whole product on this machine, seeded with a Bucharest ci
 ```bash
 npm run dev:stack                        # or: bash scripts/dev/dev-stack.sh; Ctrl+C stops it (the emulators shut down cleanly)
 HCM_STACK_SEED=fresh npm run dev:stack   # a new map instead: start-up mode, Setup from the first sign-in
-HCM_STACK_TICKS=0 npm run dev:stack      # without the scheduler clock (imagery.tick every 5 min, ops.tick every 15)
+HCM_STACK_TICKS=0 npm run dev:stack      # without the scheduler clock (imagery.tick and ops.tick every 15 min)
 bash scripts/dev/dev-stack.sh tick       # run imagery.tick and ops.tick once, now (from another terminal)
 bash scripts/dev/dev-stack.sh check      # the stack's own check (below)
 bash scripts/dev/dev-stack.sh stop       # stop it from another terminal

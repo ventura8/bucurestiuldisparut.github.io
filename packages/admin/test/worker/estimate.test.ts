@@ -11,23 +11,23 @@ function job(more: Partial<JobDoc> = {}): JobDoc {
 
 describe('the estimate of a cloud run', () => {
     it('happyPath_aNewImportDownloadsOnFetchThenProcessesOnStd', () => {
-        expect(estimateCloudRun(job())).toEqual({ vcpuSeconds: 1800 + 4 * 2700, gibSeconds: 4 * 1800 + 16 * 2700 });
+        expect(estimateCloudRun(job())).toEqual({ vcpuSeconds: 1800 + 2 * 2700, gibSeconds: 4 * 1800 + 8 * 2700 });
     });
 
     it('happyPath_aKh9PanoramicFrameProcessesOnXlAndADoneDownloadIsNotCountedAgain', () => {
         const steps = { fetch: { status: 'done' }, extract: { status: 'skipped' } } as JobDoc['steps'];
-        expect(estimateCloudRun(job({ params: { sensor: 'KH-9-pan' }, steps }))).toEqual({ vcpuSeconds: 8 * 3600, gibSeconds: 32 * 3600 });
+        expect(estimateCloudRun(job({ params: { sensor: 'KH-9-pan' }, steps }))).toEqual({ vcpuSeconds: 4 * 3600, gibSeconds: 16 * 3600 });
     });
 
     it('badPath_anEscalatedDownloadRunsOnItsLargerMachineAndAnUnknownCameraOnStd', () => {
         expect(estimateCloudRun(job({ machine: 'std', params: { sensor: 'no-such' } }))).toEqual({
-            vcpuSeconds: 2 * 4 * 2700,
-            gibSeconds: 2 * 16 * 2700,
+            vcpuSeconds: 2 * 2 * 2700,
+            gibSeconds: 2 * 8 * 2700,
         });
-        expect(estimateCloudRun(job({ machine: 'xl' }))).toEqual({ vcpuSeconds: 2 * 8 * 3600, gibSeconds: 2 * 32 * 3600 });
+        expect(estimateCloudRun(job({ machine: 'xl' }))).toEqual({ vcpuSeconds: 2 * 4 * 3600, gibSeconds: 2 * 16 * 3600 });
     });
 
     it('happyPath_aRegeoreferenceHasNoDownloadPhase', () => {
-        expect(estimateCloudRun(job({ type: 'regeoref', machine: 'fetch' }))).toEqual({ vcpuSeconds: 4 * 2700, gibSeconds: 16 * 2700 });
+        expect(estimateCloudRun(job({ type: 'regeoref', machine: 'fetch' }))).toEqual({ vcpuSeconds: 2 * 2700, gibSeconds: 8 * 2700 });
     });
 });
