@@ -201,6 +201,9 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.filmMissing': spec('failed-precondition'),
     'apiError.imagery.archiveImported': spec('failed-precondition'),
     'apiError.imagery.archiveYear': spec('failed-precondition'),
+    // Pause (the owner's request of 2026-11-13): a job that finished or waits for something else; a timed pause past two days.
+    'apiError.imagery.notPausable': spec('failed-precondition'),
+    'apiError.imagery.pauseUntil': spec('invalid-argument'),
     // M25 (docs/research/M25-landsat.md §3): a Landsat delivery without a band the true colour needs {band}.
     'apiError.imagery.missingBand': spec('failed-precondition'),
     // A job type the worker's pipeline does not run: its image is older than the job; an updated one's retry runs it.

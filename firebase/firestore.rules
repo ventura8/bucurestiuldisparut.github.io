@@ -786,7 +786,8 @@ service cloud.firestore {
 
             // Jobs are created by the callables and triggers that check them (the budget guard, the daily cap, the
             // version, M3-interfaces §2.8); admins may ask an unfinished one to stop. The dispatcher, the pipeline and
-            // the publisher own every other field.
+            // the publisher own every other field. Pause (2026-11-13): `paused` and `releaseRequested` are imagery.pause's
+            // alone (it logs who paused and when); no client writes them, and a paused job can still be cancelled.
             match /jobs/{job} {
                 allow read: if isCityMember(city);
                 allow update: if isCityMember(city)
@@ -827,8 +828,8 @@ service cloud.firestore {
             }
 
             // M7 (docs/research/M7-local-worker.md §2.4, §3): the city's local workers (`w-…`) and its remembered choice of
-            // where raster jobs run (`choice`), written by the worker callables and imagery.runOn only; the Jobs page, the
-            // pipeline card and the version page read them.
+            // where raster jobs run (`choice`), written by the worker callables, imagery.runOn and imagery.pause (a computer's
+            // `paused`) only; the Jobs page, the pipeline card and the version page read them.
             match /workers/{doc} {
                 allow read: if isCityMember(city);
             }

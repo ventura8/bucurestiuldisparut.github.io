@@ -23,6 +23,8 @@ export interface ImageryContext {
     readonly readOnly: boolean;
     /** Batch 4: the signed-in admin owns the city (Approve the sheet-name placement is the owner's alone). */
     readonly owner?: boolean;
+    /** Pause (2026-11-13): the signed-in admin's uid, so their own pause of a job reads "you" ('' when unknown). */
+    readonly self?: string;
     readonly ask: (question: ImageryQuestion) => void;
     /** Renders the page again: a chunk it fetched on first need settled (`orders/lazy-card.ts`). */
     readonly refresh: () => void;

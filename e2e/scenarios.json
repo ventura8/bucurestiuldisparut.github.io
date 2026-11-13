@@ -1212,6 +1212,27 @@
             "name": "The household's computers: a list, Add another computer with minimum input, Remove this computer that cleans up first, and the jobs left to a calm computer",
             "milestone": "post-M8",
             "source": "the owner's request of 2026-11-13 (beta.1, W5 household computers); DECISIONS-for-review.md §216"
+        },
+        {
+            "id": "A170",
+            "area": "admin",
+            "name": "Pause a job and resume it, one at a time or all at once, from Jobs and from its version page",
+            "milestone": "M7",
+            "source": "the owner, 2026-11-13: \"I want the user to be able to pause jobs, and to pause using a machine\"; docs/research/M7-local-worker.md, Pause"
+        },
+        {
+            "id": "A171",
+            "area": "admin",
+            "name": "Pause a computer (until I resume, for 1 hour, until tomorrow) and resume it from the computers card",
+            "milestone": "M7",
+            "source": "the owner, 2026-11-13: \"I want the user to be able to pause jobs, and to pause using a machine\"; docs/research/M7-local-worker.md, Pause"
+        },
+        {
+            "id": "P32",
+            "area": "pipeline",
+            "name": "A paused job stops at its next step boundary; a paused computer claims nothing and hands its job back without using an attempt",
+            "milestone": "M26",
+            "source": "the owner, 2026-11-13: \"I want the user to be able to pause jobs, and to pause using a machine\"; docs/research/M7-local-worker.md, Pause; docs/research/M26-governor.md"
         }
     ],
     "scenarios": [
@@ -21047,6 +21068,215 @@
             "tier": "e2e-admin",
             "status": "planned",
             "notes": "DECISIONS-for-review.md §210; lesson 675. Unit: packages/admin/test/install/fetch-script.test.ts."
+        },
+        {
+            "id": "S-A170-HAPPY",
+            "behaviour": "A170",
+            "area": "admin",
+            "path": "happy",
+            "title": "A queued job paused from its version page waits; Resume puts it back in the queue",
+            "asserts": "Pause on the version page -> imagery.pause marks the job paused {by, at}; the card says paused by you on the date and offers Resume; worker.claim takes nothing while it is paused; Resume drops the mark and the next claim takes it; a running job is marked inRun, stops at its next step boundary, and its Resume gives back the attempt that run counted; ro and en",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: e2e/admin/specs/imagery/pause.spec.ts (tour state worker.job-paused), functions/test/imagery/pause.test.ts, packages/ui/test/admin/worker/pause.test.ts, packages/admin/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-A170-HAPPY-ALL",
+            "behaviour": "A170",
+            "area": "admin",
+            "path": "happy",
+            "title": "Pause all and Resume all on Jobs",
+            "asserts": "Pause all -> every queued, starting or running pipeline job of the city is paused (a failed or cancelling one is not) and a notice says how many; the row reads Paused; Resume all puts them back and says how many",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: e2e/admin/specs/imagery/pause.spec.ts (tour state worker.jobs-pause-all), functions/test/imagery/pause.test.ts, packages/admin/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-A170-BAD-FINISHED",
+            "behaviour": "A170",
+            "area": "admin",
+            "path": "bad",
+            "title": "A finished job, or one waiting for USGS, points or the approval, cannot be paused",
+            "asserts": "no Pause button on its page; imagery.pause on it -> apiError.imagery.notPausable (what it waits for, nothing changed), said in place; an unknown job -> apiError.notFound",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: e2e/admin/specs/imagery/pause.spec.ts, functions/test/imagery/pause.test.ts, packages/ui/test/admin/worker/pause.test.ts."
+        },
+        {
+            "id": "S-A170-BAD-NOTHING",
+            "behaviour": "A170",
+            "area": "admin",
+            "path": "bad",
+            "title": "Pause all or Resume all with nothing to change says so",
+            "asserts": "Resume all with no paused job -> changed 0 and the notice Nothing to resume: no job is paused; Pause all with nothing queued or running -> Nothing to pause; pausing a paused job or resuming one not paused changes nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: e2e/admin/specs/imagery/pause.spec.ts, functions/test/imagery/pause.test.ts, packages/admin/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-A170-BAD-CLIENT-WRITE",
+            "behaviour": "A170",
+            "area": "admin",
+            "path": "bad",
+            "title": "No client pauses or resumes a job or a computer by writing it",
+            "asserts": "a member writing paused or releaseRequested on a job, or paused on a worker, is denied by the rules; a paused queued job can still be cancelled",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: firebase/rules-tests/test/jobs.test.ts."
+        },
+        {
+            "id": "S-A171-HAPPY",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "happy",
+            "title": "The computer is paused for an hour from the computers card and resumed",
+            "asserts": "Pause this computer: For 1 hour -> imagery.pause marks the worker paused {by, at, until}; the card says Paused by you, when it resumes by itself, that it takes no new work and gave its job back; its running job is asked back (releaseRequested); Resume drops both; Until I resume has no end and Until tomorrow ends at 08:00 tomorrow",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: e2e/admin/specs/imagery/pause.spec.ts (tour state worker.computer-paused), functions/test/imagery/pause.test.ts, packages/ui/test/admin/worker/pause.test.ts, packages/admin/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-A171-BAD-UNTIL",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "bad",
+            "title": "A pause that would end in the past or after two days is refused",
+            "asserts": "imagery.pause with until past 48 hours or before now -> apiError.imagery.pauseUntil (choose For 1 hour, Until tomorrow or Until I resume), the computer unchanged; an unknown computer -> apiError.notFound",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: functions/test/imagery/pause.test.ts."
+        },
+        {
+            "id": "S-P32-HAPPY-PAUSE-PAGE",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The computer's own page pauses it through its next claim and resumes it",
+            "asserts": "worker.claim with pause {action: pause, until} -> the worker is marked paused by computer and answered paused with no job; a later claim with resume drops it and takes the queued job",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: functions/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-P32-BAD-PAUSE-EXPIRED",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A pause past its end ends on its own",
+            "asserts": "a worker paused until 30 minutes ago -> its claim drops the pause and takes the job; a job asked back earlier is claimed without the stale request",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: functions/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-P32-HAPPY-RELEASED",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A paused computer's job goes back to the queue without using an attempt",
+            "asserts": "worker.end released on a held running job asked back -> queued, attempt minus one, no lease, worker or releaseRequested; the worker idle with its last job kept; the page's pause sent with the end counts as asking back",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: functions/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-P32-BAD-RELEASED-UNASKED",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A hand-back nobody asked for keeps its attempt counted",
+            "asserts": "worker.end released while the computer is not paused and the job was not asked back -> queued with its attempt kept; a job the worker no longer holds is not touched",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: functions/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-P32-HAPPY-JOB-BOUNDARY",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A job paused during a step stops before the next one and waits queued",
+            "asserts": "the runner finishes the running step, sees paused at the step boundary, writes status queued (lease and retryAt removed, no step changed) and ends PAUSED; on the computer the run ends done",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_runner_pause.py."
+        },
+        {
+            "id": "S-P32-BAD-JOB-BEFORE-RUN",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A job paused before its run starts no step",
+            "asserts": "a claimed job already marked paused -> no step starts, the job goes back to queued",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_runner_pause.py."
+        },
+        {
+            "id": "S-P32-HAPPY-RELEASE-CHECKPOINT",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A paused computer stops its run at the next checkpoint and leaves the step pending",
+            "asserts": "releaseRequested read by the heartbeat, or the computer paused on its own page, stops the run at its next checkpoint (the governor gate lets go at once); the running step goes back to pending with its start kept, the lease stays for worker.end released; a cancel still wins",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_runner_pause.py."
+        },
+        {
+            "id": "S-P32-BAD-RELEASE-BETWEEN-STEPS",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A computer paused between steps leaves the finished step done",
+            "asserts": "release asked after a step finished -> the done step stays done, nothing else is written",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_runner_pause.py."
+        },
+        {
+            "id": "S-P32-HAPPY-LOCAL-PAGE",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The computer's own page has Pause this computer and Resume",
+            "asserts": "POST /pause from the page (its token) or a Hosting origin -> paused at once, the command sent with the next claim; /state says paused by computer and until; the page offers Until I resume, For 1 hour, Until tomorrow and Resume in ro and en",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_worker_pausing.py."
+        },
+        {
+            "id": "S-P32-BAD-LOCAL-PAGE",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A stranger or a bad command pauses nothing",
+            "asserts": "POST /pause from another origin -> 403; an until that is not a time, in the past or more than 48 hours ahead, or an unknown action -> 400; nothing paused",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_worker_pausing.py."
+        },
+        {
+            "id": "S-P32-HAPPY-GOVERNOR-PAUSED",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The governor keeps the owner's pause as a choice and resumes to the profile before",
+            "asserts": "pause -> chosen paused, active paused, why owner, headroom 0, kept in governor.json with until and the profile to resume to; resume -> that profile again; a timed pause past its end resumes by itself",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_worker_pausing.py."
+        },
+        {
+            "id": "S-P32-BAD-GOVERNOR-HEAT",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Heat and a low battery never make the owner's pause less paused",
+            "asserts": "paused by the owner on battery or hot -> still paused, why owner",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_worker_pausing.py."
         }
     ]
 }

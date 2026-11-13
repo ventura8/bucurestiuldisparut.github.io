@@ -1,16 +1,25 @@
 import '../global-options.js';
 
-import { FIRESTORE_PATHS, workerDocSchema, type CallableRequest, type CallableResponse, type WorkerDoc } from '@hcm/shared';
+import {
+    FIRESTORE_PATHS,
+    timestampToDate,
+    workerDocSchema,
+    type CallableRequest,
+    type CallableResponse,
+    type WorkerDoc,
+} from '@hcm/shared';
 
 import type { VerifiedCaller } from '../api/access.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
-import { omit } from '../api/objects.js';
 import type { Ports } from '../ports/index.js';
+import { askBack } from '../imagery/pause.js';
 import { at } from './holder.js';
+import { pausedWorker, resumedWorker } from './pause-state.js';
 
 export type ManageDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 
 type Request = CallableRequest<'worker.manage'>;
+type Stamp = Pick<WorkerDoc, 'updatedBy' | 'updatedAt'>;
 
 /** The worker's document as the action leaves it. */
 function changed(worker: WorkerDoc, request: Request, stamp: Pick<WorkerDoc, 'updatedBy' | 'updatedAt'>): WorkerDoc {
@@ -21,10 +30,22 @@ function changed(worker: WorkerDoc, request: Request, stamp: Pick<WorkerDoc, 'up
         const removal = { step: 'asked' as const, askedAt: stamp.updatedAt, docker: request.docker, keep: request.keep };
         return { ...worker, removal, ...stamp };
     }
+    // Pause (2026-11-13): one pause for the list and imagery.pause (`pause-state.ts`): who, when; Resume drops it.
     if (request.action === 'pause') {
-        return { ...worker, pausedAt: worker.pausedAt ?? stamp.updatedAt, ...stamp };
+        return worker.paused === undefined
+            ? { ...pausedWorker(worker, stamp.updatedBy, timestampToDate(stamp.updatedAt)), ...stamp }
+            : worker;
     }
-    return { ...omit(worker, ['pausedAt']), ...stamp };
+    return { ...resumedWorker(worker), ...stamp };
+}
+
+/** Pause: the job the computer runs is asked back (it hands it back at its next checkpoint), or, on Resume, no longer. */
+async function askBackOnPause(deps: ManageDeps, request: Request, stamp: Stamp, worker: WorkerDoc): Promise<void> {
+    if (request.action !== 'pause' && request.action !== 'resume') {
+        return;
+    }
+    const busy = worker.state === 'busy' ? worker.jobId : undefined;
+    await askBack(deps, { cityId: request.cityId, action: request.action, stamp }, busy);
 }
 
 /**
@@ -43,10 +64,18 @@ async function workerManage(deps: ManageDeps, caller: VerifiedCaller, request: R
             return false;
         }
         await transaction.set(path, workerDocSchema, changed(worker, request, stamp));
-        return true;
+        return worker;
     });
-    deps.log.info('worker managed', { cityId: request.cityId, workerId: request.workerId, action: request.action, changed: done });
-    return { changed: done };
+    if (done !== false) {
+        await askBackOnPause(deps, request, stamp, done);
+    }
+    deps.log.info('worker managed', {
+        cityId: request.cityId,
+        workerId: request.workerId,
+        action: request.action,
+        changed: done !== false,
+    });
+    return { changed: done !== false };
 }
 
 /** The `worker-manage` callable. */

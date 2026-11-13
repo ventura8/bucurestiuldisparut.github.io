@@ -133,6 +133,8 @@ import {
 import { workerManageRequestSchema, workerManageResponseSchema } from './worker-manage.js';
 import { ERROR_REPORT_MAX_BYTES, errorReportSchema, listGroupsRequestSchema, listGroupsResponseSchema } from './telemetry.js';
 import {
+    imageryPauseRequestSchema,
+    imageryPauseResponseSchema,
     imageryRunOnRequestSchema,
     imageryRunOnResponseSchema,
     workerPairCodeRequestSchema,
@@ -331,6 +333,8 @@ export const ADMIN_CALLABLES = {
     // M7 (docs/research/M7-local-worker.md §3): the admin's choice of where a job runs. The local worker's five callables
     // are `WORKER_CALLABLES` (worker-calls.ts).
     'imagery.runOn': cityEditor('fn-imagery', imageryRunOnRequestSchema, imageryRunOnResponseSchema),
+    // Pause (the owner's request of 2026-11-13): pause and resume a job, every job, or a computer.
+    'imagery.pause': cityEditor('fn-imagery', imageryPauseRequestSchema, imageryPauseResponseSchema),
     // M20 (docs/research/M20-import-local.md §8): one click imports an archive's series; the worker reports them (worker-calls.ts).
     'imagery.archiveImport': cityEditor('fn-imagery', imageryArchiveImportRequestSchema, imageryArchiveImportResponseSchema),
     // Finding 67 of 2026-11-02: the worker command's one-time pairing code, and Disconnect this computer.

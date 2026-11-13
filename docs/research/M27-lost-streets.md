@@ -88,6 +88,19 @@ told from today's street (Calea 13 Septembrie), or a label that reads as another
 Precision is that of the scan: about 10–30 m. The data names no third-party site. Import: Places → Import, the same
 category, after the first batch.
 
+### Second pass (2026-11-13)
+
+`scripts/seed/lost-streets-bucharest-traced-2.geojson` (9 places; the first file holds the same corrections, so either
+import is right): new traces on the 1921 Pantea plan (Antim, Intrarea Antim, Foișorului); Nerva Traian, Logofăt Tăutu,
+Vulturilor, Antim, Intrarea Antim and Foișorului trimmed to the stretch farther than 25 m from today's street of the same
+name (OpenStreetMap, ODbL); three names in the plan's spelling with the list's as "Alte nume" (Dim. D. Dobrescu,
+Alex. Ciurcu, Prof. P. Cumpănici). Dropped: Traian (41 m left after trimming) and Calea Vitan, Calea 13 Septembrie (their
+traced stretch lies on today's street); Bd. G. Coșbuc is the first batch's Bulevardul Maria. Still not traced (28): mostly
+names given after 1948, which no plan of ours prints. Our layers have nothing from 1940–1963: the closest to the 1943–44
+aerial coverage are the 1939 plan and the 1964 Corona frames. Candidate source for that period: the WWII aerial
+photography of the US National Archives (Record Group 373, the German-flown "GX" series and US Army Air Forces sorties; degree
+square 44N026E), viewable and scannable in the Cartographic Research Room at College Park or as NCAP's licensed scans.
+
 ## 4. Our own maps
 
 The georeferenced plans and scans (1846, 1852, 1895–1899, 1911, 1923, 1935 and the rest of the city's layers; Imagery)

@@ -1,7 +1,8 @@
 /**
  * The `imagery.*` functions (`docs/research/M3-interfaces.md` §9): the callables of the Imagery area, the georeferencer
  * and the layer editor; the dispatcher on job writes, the raster upload trigger, the publisher's task queue and the
- * fifteen-minute tick; M7's choice of where a job runs (`imagery.runOn`). `functions/src/index.ts` exports
+ * fifteen-minute tick; M7's choice of where a job runs (`imagery.runOn`); Pause and Resume of a job, every job or a computer
+ * (`imagery.pause`, 2026-11-13). `functions/src/index.ts` exports
  * `imagery = imageryFunctions(getDeps, bucket)`, which deploys `imagery-search`, `imagery-browse`, ..., `imagery-tick`.
  */
 import type { CallableDeps } from '../api/callable.js';
@@ -23,6 +24,7 @@ import { locateAgainFunction } from './locate-again.js';
 import { previewUrlFunction } from './preview-url.js';
 import { recalibrateFunction } from './recalibrate.js';
 import { retryFunction } from './retry.js';
+import { pauseFunction } from './pause.js';
 import { runOnFunction } from './run-on.js';
 import { saveGcpsFunction } from './save-gcps.js';
 import { saveLayoutFunction } from './save-layout.js';
@@ -57,6 +59,7 @@ export function imageryFunctions(getDeps: () => ImageryFamilyDeps, bucket?: stri
         previewUrl: previewUrlFunction(getDeps),
         recalibrate: recalibrateFunction(getDeps),
         runOn: runOnFunction(getDeps),
+        pause: pauseFunction(getDeps),
         archiveImport: archiveImportFunction(getDeps),
         probeTiles: probeTilesFunction(getDeps),
         resumeGuard: resumeGuardFunction(getDeps),

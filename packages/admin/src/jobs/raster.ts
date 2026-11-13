@@ -42,6 +42,26 @@ export async function retryRasterJob(services: ContentServices, jobId: string): 
     return true;
 }
 
+/** The notice of Pause all or Resume all: how many jobs changed, or that there was nothing to change. */
+function pauseAllNotice(action: 'pause' | 'resume', changed: number): NoticeInput {
+    if (changed === 0) {
+        return { key: action === 'pause' ? 'adminContent.jobs.nothingToPause' : 'adminContent.jobs.nothingToResume' };
+    }
+    return { key: action === 'pause' ? 'adminContent.jobs.pausedAll' : 'adminContent.jobs.resumedAll', params: { count: String(changed) } };
+}
+
+/** Pause all or Resume all (the owner's request of 2026-11-13, `imagery.pause` without a job); says how many, or why not. */
+export async function pauseAllJobs(services: ContentServices, action: 'pause' | 'resume'): Promise<boolean> {
+    try {
+        const { changed } = await services.callables.call('imagery.pause', { cityId: services.cityId, action });
+        services.notify(pauseAllNotice(action, changed));
+        return true;
+    } catch (error) {
+        services.notify(refusalOf(error));
+        return false;
+    }
+}
+
 /**
  * A refusal that names a newer import of the same frame (`apiError.imagery.importedAgain`) offers to open it: the old
  * import cannot run again, the newer one is where the frame goes on (the owner's report of 2026-11-13).

@@ -2,16 +2,10 @@
  "type": "FeatureCollection",
  "sources": [
   {
-   "name": "bucuresti-harta-1914-socec",
-   "kind": "traced on our georeferenced plan",
-   "licence": "PD",
-   "count": 1
-  },
-  {
    "name": "harta-bucuresti-1939",
    "kind": "traced on our georeferenced plan",
    "licence": "PD",
-   "count": 99
+   "count": 98
   }
  ],
  "features": [
@@ -2237,41 +2231,6 @@
   },
   {
    "type": "Feature",
-   "id": "ls-trace-traian",
-   "properties": {
-    "category": "lost-streets",
-    "title": {
-     "ro": "Strada Traian",
-     "en": "Strada Traian"
-    },
-    "description": {
-     "ro": "Trasată pe Harta 1914 SOCEC (1914), din harta orașului.",
-     "en": "Traced on Harta 1914 SOCEC (1914), from the city's own map."
-    },
-    "links": [],
-    "sourceLayer": "bucuresti-harta-1914-socec",
-    "published": true
-   },
-   "geometry": {
-    "type": "LineString",
-    "coordinates": [
-     [
-      26.118718,
-      44.425536
-     ],
-     [
-      26.118933,
-      44.426624
-     ],
-     [
-      26.119094,
-      44.427543
-     ]
-    ]
-   }
-  },
-  {
-   "type": "Feature",
    "id": "ls-trace-cpt-p-carp",
    "properties": {
     "category": "lost-streets",
@@ -2365,24 +2324,48 @@
     "type": "LineString",
     "coordinates": [
      [
-      26.122441,
-      44.428693
+      26.122824,
+      44.426877
      ],
      [
-      26.122613,
-      44.428003
+      26.12285,
+      44.426696
      ],
      [
-      26.122774,
-      44.427237
+      26.122875,
+      44.426516
      ],
      [
-      26.122881,
-      44.426471
+      26.122891,
+      44.426336
      ],
      [
-      26.122935,
-      44.425705
+      26.122903,
+      44.426156
+     ],
+     [
+      26.122916,
+      44.425975
+     ],
+     [
+      26.122929,
+      44.425795
+     ],
+     [
+      26.122943,
+      44.425614
+     ],
+     [
+      26.122959,
+      44.425432
+     ],
+     [
+      26.122975,
+      44.42525
+     ],
+     [
+      26.122991,
+      44.425068
      ],
      [
       26.122999,
@@ -2478,32 +2461,108 @@
       44.425513
      ],
      [
-      26.118064,
-      44.424785
+      26.118392,
+      44.425342
      ],
      [
-      26.11756,
-      44.424279
+      26.118291,
+      44.42517
      ],
      [
-      26.11727,
-      44.423597
+      26.11819,
+      44.424999
      ],
      [
-      26.11683,
-      44.422663
+      26.118089,
+      44.424828
      ],
      [
-      26.116101,
-      44.421352
+      26.117948,
+      44.424668
      ],
      [
-      26.115661,
-      44.419942
+      26.117793,
+      44.424513
      ],
      [
-      26.115489,
-      44.419536
+      26.117638,
+      44.424357
+     ],
+     [
+      26.117521,
+      44.424188
+     ],
+     [
+      26.117444,
+      44.424006
+     ],
+     [
+      26.117367,
+      44.423824
+     ],
+     [
+      26.117289,
+      44.423642
+     ],
+     [
+      26.117207,
+      44.423464
+     ],
+     [
+      26.117123,
+      44.423286
+     ],
+     [
+      26.11704,
+      44.423108
+     ],
+     [
+      26.116956,
+      44.42293
+     ],
+     [
+      26.116872,
+      44.422752
+     ],
+     [
+      26.116783,
+      44.422578
+     ],
+     [
+      26.116689,
+      44.422409
+     ],
+     [
+      26.116595,
+      44.42224
+     ],
+     [
+      26.116501,
+      44.422071
+     ],
+     [
+      26.116407,
+      44.421902
+     ],
+     [
+      26.116313,
+      44.421733
+     ],
+     [
+      26.116219,
+      44.421563
+     ],
+     [
+      26.116125,
+      44.421394
+     ],
+     [
+      26.11606,
+      44.42122
+     ],
+     [
+      26.116005,
+      44.421044
      ]
     ]
    }
@@ -2670,12 +2729,12 @@
    "properties": {
     "category": "lost-streets",
     "title": {
-     "ro": "Strada I. Ciurcu",
-     "en": "Strada I. Ciurcu"
+     "ro": "Strada Alex. Ciurcu",
+     "en": "Strada Alex. Ciurcu"
     },
     "description": {
-     "ro": "Trasată pe harta București 1939 (1939), din harta orașului.",
-     "en": "Traced on harta București 1939 (1939), from the city's own map."
+     "ro": "Alte nume: Strada I. Ciurcu. Trasată pe harta București 1939 (1939), din harta orașului.",
+     "en": "Other names: Strada I. Ciurcu. Traced on harta București 1939 (1939), from the city's own map."
     },
     "links": [],
     "sourceLayer": "harta-bucuresti-1939",
@@ -2699,41 +2758,6 @@
      [
       26.12257,
       44.422257
-     ]
-    ]
-   }
-  },
-  {
-   "type": "Feature",
-   "id": "ls-trace-calea-vitan",
-   "properties": {
-    "category": "lost-streets",
-    "title": {
-     "ro": "Calea Vitan",
-     "en": "Calea Vitan"
-    },
-    "description": {
-     "ro": "Trasată pe harta București 1939 (1939), din harta orașului.",
-     "en": "Traced on harta București 1939 (1939), from the city's own map."
-    },
-    "links": [],
-    "sourceLayer": "harta-bucuresti-1939",
-    "published": true
-   },
-   "geometry": {
-    "type": "LineString",
-    "coordinates": [
-     [
-      26.123053,
-      44.42444
-     ],
-     [
-      26.123428,
-      44.423636
-     ],
-     [
-      26.123965,
-      44.422486
      ]
     ]
    }
@@ -2837,8 +2861,40 @@
       44.423812
      ],
      [
+      26.117987,
+      44.423634
+     ],
+     [
+      26.117899,
+      44.423456
+     ],
+     [
+      26.117811,
+      44.423279
+     ],
+     [
+      26.117723,
+      44.423101
+     ],
+     [
       26.117635,
       44.422923
+     ],
+     [
+      26.117577,
+      44.422745
+     ],
+     [
+      26.117519,
+      44.422567
+     ],
+     [
+      26.117461,
+      44.42239
+     ],
+     [
+      26.117403,
+      44.422212
      ],
      [
       26.117345,
@@ -2846,15 +2902,35 @@
      ],
      [
       26.117345,
-      44.421199
+      44.421848
      ],
      [
-      26.117485,
-      44.420203
+      26.117345,
+      44.421663
      ],
      [
-      26.117485,
-      44.41946
+      26.117345,
+      44.421477
+     ],
+     [
+      26.117345,
+      44.421292
+     ],
+     [
+      26.117358,
+      44.421108
+     ],
+     [
+      26.117383,
+      44.420927
+     ],
+     [
+      26.117409,
+      44.420746
+     ],
+     [
+      26.117428,
+      44.42061
      ]
     ]
    }
@@ -3212,12 +3288,12 @@
    "properties": {
     "category": "lost-streets",
     "title": {
-     "ro": "Strada P. Cumpănei",
-     "en": "Strada P. Cumpănei"
+     "ro": "Strada Prof. P. Cumpănici",
+     "en": "Strada Prof. P. Cumpănici"
     },
     "description": {
-     "ro": "Trasată pe harta București 1939 (1939), din harta orașului.",
-     "en": "Traced on harta București 1939 (1939), from the city's own map."
+     "ro": "Alte nume: Strada P. Cumpănei. Trasată pe harta București 1939 (1939), din harta orașului.",
+     "en": "Other names: Strada P. Cumpănei. Traced on harta București 1939 (1939), from the city's own map."
     },
     "links": [],
     "sourceLayer": "harta-bucuresti-1939",
@@ -3251,12 +3327,12 @@
    "properties": {
     "category": "lost-streets",
     "title": {
-     "ro": "Strada M. Dobrescu",
-     "en": "Strada M. Dobrescu"
+     "ro": "Strada Dim. D. Dobrescu",
+     "en": "Strada Dim. D. Dobrescu"
     },
     "description": {
-     "ro": "Trasată pe harta București 1939 (1939), din harta orașului.",
-     "en": "Traced on harta București 1939 (1939), from the city's own map."
+     "ro": "Alte nume: Strada M. Dobrescu. Trasată pe harta București 1939 (1939), din harta orașului.",
+     "en": "Other names: Strada M. Dobrescu. Traced on harta București 1939 (1939), from the city's own map."
     },
     "links": [],
     "sourceLayer": "harta-bucuresti-1939",

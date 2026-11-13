@@ -102,6 +102,16 @@ class CancelledRunError(RunStoppedError):
     """The admin set `cancelRequested`."""
 
 
+class PausedRunError(RunStoppedError):
+    """The owner paused the job (`paused` on the job, the owner's request of 2026-11-13): the run stops before its next step and
+    the job goes back to `queued`, held until Resume."""
+
+
+class ReleasedRunError(RunStoppedError):
+    """This computer was paused (its own page, or `releaseRequested` set by the admin's Pause this computer): the run stops at its
+    next checkpoint and the worker hands the job back (`worker.end` `released`), its attempt given back."""
+
+
 class LeaseLostError(RunStoppedError):
     """Another execution holds the lease now: stop without writing anything."""
 
@@ -141,7 +151,12 @@ class RunFlags:
     between two bytecodes, also while that thread holds `_lock` (`progress_within` from GDAL's callback), and taking
     it there would wait for itself forever (docs/LESSONS.md 342)."""
 
-    def __init__(self, asked_to_stop: Callable[[], bool] = lambda: False, hold: Callable[[Callable[[], bool]], float] = GATE.hold) -> None:
+    def __init__(
+        self,
+        asked_to_stop: Callable[[], bool] = lambda: False,
+        hold: Callable[[Callable[[], bool]], float] = GATE.hold,
+        asked_to_release: Callable[[], bool] = lambda: False,
+    ) -> None:
         self._lock = threading.Lock()
         # The governor's gate (docs/research/M26-governor.md §4): while this computer has no room, a checkpoint waits here.
         self._hold = hold
@@ -149,6 +164,8 @@ class RunFlags:
         self._interrupted = False
         # The local worker's stop (M7): a signal it took before the run's own handler was in place counts too.
         self._asked_to_stop = asked_to_stop
+        # The computer's pause (its own page, or the admin's): the run hands its job back at the next checkpoint.
+        self._asked_to_release = asked_to_release
         self.cancel_requested = False
         self.step: str | None = None
         self.base_progress = 0.0
@@ -172,7 +189,11 @@ class RunFlags:
     def stopping(self) -> type[RunStoppedError] | None:
         with self._lock:
             stop = self._stop
-        return InterruptedRunError if stop is None and (self._interrupted or self._asked_to_stop()) else stop
+        if stop is not None:
+            return stop
+        if self._interrupted or self._asked_to_stop():
+            return InterruptedRunError
+        return ReleasedRunError if self._asked_to_release() else None
 
     def _held(self) -> None:
         """Waits at the governor's gate while it is closed; the time waited is added to the step's time limit."""

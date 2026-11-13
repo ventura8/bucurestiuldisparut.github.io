@@ -4,7 +4,8 @@ answered (how often to claim, how often the heartbeat writes). Thread-safe: the 
 writes it. Finding 72 of 2026-11-02 (auto-pair, M7 §2.7): the admin reads it too, from the project's Hosting origin: the
 worker's id and whether it takes a pairing code now (`pairable`: no session, and not disconnected in the admin). M26: `machine`, the
 governor's word on this computer (its cores, memory, power, cards, the profile in force and the budget), for the admin's card;
-`image` and `starter`, the versions the card compares with the installed release's.
+`image` and `starter`, the versions the card compares with the installed release's. Pause this computer (2026-11-13): `paused`,
+`{by: 'computer' | 'admin', until?}` while paused, else null.
 """
 
 import threading
@@ -54,6 +55,8 @@ class WorkerState:
         self.image: str | None = None
         self.starter: Mapping[str, object] | None = None
         self.pace = Pace()
+        # Pause this computer (`pausing.py`): `{by, until?}` while paused, else None; the build sets it.
+        self.paused: Callable[[], Mapping[str, object] | None] = lambda: None
 
     def busy(self, job_id: str) -> None:
         with self._lock:
@@ -125,4 +128,5 @@ class WorkerState:
                 "machine": self.machine(),
                 "image": self.image,
                 "starter": self.starter,
+                "paused": self.paused(),
             }
