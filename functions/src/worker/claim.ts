@@ -49,16 +49,11 @@ const CLAIM_RULES: readonly ((job: JobDoc, now: Date) => boolean)[] = [
 /** The types the worker's pipeline runs, when it named them: an older image leaves a newer type queued for an updated one. */
 type Runs = readonly string[] | undefined;
 
-<<<<<<< HEAD
-/** The worker's call with the types it runs and (W5) its governor's share now. */
-type Claim = WorkerCall & { readonly runs: Runs; readonly share?: WorkerShare };
-=======
 /** The jobs whose stitched film the worker holds (a job waiting for its film goes only to such a worker). */
 type Films = readonly string[] | undefined;
->>>>>>> b362328f (feat(worker): a stitched film waits for the computer that holds it)
 
 /** The worker's call with the types it runs and the films it holds. */
-type Claim = WorkerCall & { readonly runs: Runs; readonly films: Films };
+type Claim = WorkerCall & { readonly runs: Runs; readonly films: Films; readonly share?: WorkerShare };
 
 function claimable(job: JobDoc | undefined, now: Date, call: Pick<Claim, 'runs' | 'films'>, jobId: string): job is JobDoc {
     return (
@@ -152,9 +147,13 @@ async function workerClaim(
     if (request.removal !== undefined) {
         return reportRemoval(deps, call, request.removal);
     }
-<<<<<<< HEAD
     await requireGreen(deps.documents);
-    const claim: Claim = { ...call, runs: request.types, ...(request.share === undefined ? {} : { share: request.share }) };
+    const claim: Claim = {
+        ...call,
+        runs: request.types,
+        films: request.films,
+        ...(request.share === undefined ? {} : { share: request.share }),
+    };
     return claimFor(deps, caller, claim, request.archives);
 }
 
@@ -178,15 +177,8 @@ async function claimFor(
         await deps.documents.set(path, workerDocSchema, { ...seen(worker, claim, now), outdated });
         return noJob(deps, claim, outdated, held);
     }
-    const seenNow = { ...seen(worker, claim, now), outdated: false };
+    const seenNow = { ...seen(worker, claim, now), outdated: false, ...filmsOf(claim.films) };
     return (await offerCopy(deps, claim, archives, seenNow)) ?? (await claimJob(deps, claim, seenNow, now));
-=======
-    const seenNow = { ...seen(worker, call, now), outdated: false, ...filmsOf(request.films) };
-    return (
-        (await offerCopy(deps, call, request.archives, seenNow)) ??
-        (await claimJob(deps, { ...call, runs: request.types, films: request.films }, seenNow, now))
-    );
->>>>>>> b362328f (feat(worker): a stitched film waits for the computer that holds it)
 }
 
 /** The films the claim named, kept on the worker's document (a hand-back asks who holds a film); none kept when it named none. */

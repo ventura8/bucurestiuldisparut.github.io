@@ -227,14 +227,10 @@ class WorkerLoop:
     def _claim(self) -> tuple[str | None, Mapping[str, object] | None]:
         try:
             # Only the types this image runs: a newer type stays queued for an updated worker, never failed here.
-<<<<<<< HEAD
             share = self.share()
             said = {} if share is None else {"share": share}
             claim = {**self._ids, "types": list(RUN_JOB_TYPES), "archives": self.archives()[:CLAIM_ARCHIVES_MAX], **said}
-=======
-            claim = {**self._ids, "types": list(RUN_JOB_TYPES), "archives": self.archives()[:CLAIM_ARCHIVES_MAX]}
             claim["films"] = self.films()[:CLAIM_ARCHIVES_MAX]
->>>>>>> b362328f (feat(worker): a stitched film waits for the computer that holds it)
             answer = self._api.call(CLAIM, claim)
         except CALL_ERRORS as error:
             LOG.warning("worker.claim failed: %s", error)
