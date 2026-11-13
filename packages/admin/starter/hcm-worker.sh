@@ -32,7 +32,7 @@ set -u
 
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-STARTER_VERSION=f64c28f08c35
+STARTER_VERSION=341c1965e9e7
 
 HCM_PROJECT='__HCM_PROJECT__'
 HCM_CITY='__HCM_CITY__'
@@ -209,6 +209,7 @@ install_docker_linux() {
 	say 'Step 2 of 3: starting Docker and letting your account use it (a few seconds).'
 	as_root systemctl enable --now docker >/dev/null 2>&1 || true
 	as_root usermod -aG docker "$(id -un)" >/dev/null 2>&1 || true
+	install_nvidia_toolkit
 	if docker_ok || docker_by_group; then
 		return 0
 	fi
@@ -257,6 +258,26 @@ install_docker_mac() {
 	say 'Colima is installed but Docker does not answer. Restart the Mac, then open this file again.'
 	say "Help: https://github.com/abiosoft/colima#readme"
 	return 1
+}
+
+# The worker's local AI reaches an NVIDIA card only through NVIDIA's container toolkit and its CDI file (2026-11-13: Docker Engine
+# without it saw no card on the owner's 5090). Installed from NVIDIA's own apt repository, once, when nvidia-smi names a card.
+NVIDIA_REPO=https://nvidia.github.io/libnvidia-container
+install_nvidia_toolkit() {
+	if ! nvidia-smi -L 2>/dev/null | grep -q '^GPU' || command -v nvidia-ctk >/dev/null 2>&1 || ! command -v apt-get >/dev/null 2>&1; then
+		return 0
+	fi
+	say "An NVIDIA card is here: installing NVIDIA's container toolkit so the local AI can use it (about 1 minute, 50 MB)."
+	if curl -fsSL "$NVIDIA_REPO/gpgkey" | as_root gpg --dearmor --yes -o /usr/share/keyrings/nvidia-container-toolkit.gpg &&
+		curl -fsSL "$NVIDIA_REPO/stable/deb/nvidia-container-toolkit.list" |
+		sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit.gpg] https://#' |
+			as_root tee /etc/apt/sources.list.d/nvidia-container-toolkit.list >/dev/null &&
+		as_root apt-get update -q && as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y -q nvidia-container-toolkit </dev/null &&
+		as_root nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml >/dev/null 2>&1; then
+		as_root nvidia-ctk runtime configure --runtime=docker >/dev/null 2>&1 && as_root systemctl restart docker >/dev/null 2>&1
+		return 0
+	fi
+	say "NVIDIA's toolkit could not be installed: the local AI uses the processor (slower). Help: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html"
 }
 
 # Docker must be installed and running, and usable by this account: this helper installs it when it is missing (Linux: the

@@ -24,7 +24,7 @@ exit /b
 $Project = $env:HCM_PROJECT
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-$StarterVersion = 'f64c28f08c35'
+$StarterVersion = '341c1965e9e7'
 $City = $env:HCM_CITY
 $Action = $env:HCM_ACTION
 $Name = 'hcm-worker'
@@ -173,7 +173,7 @@ function Install-Engine {
     Write-Host "Step 3 of 3: installing Docker Engine $DockerVersion in it from Docker's signed repository (about 3 minutes, 600 MB)."
     $lines = @(
         'set -e',
-        'if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then exit 0; fi',
+        'if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then',
         '. /etc/os-release',
         'export DEBIAN_FRONTEND=noninteractive',
         'apt-get update -q && apt-get install -y -q ca-certificates curl gnupg',
@@ -186,8 +186,20 @@ function Install-Engine {
         "v=5:$DockerVersion-1~ubuntu.`$VERSION_ID~`$VERSION_CODENAME",
         'apt-get install -y -q "docker-ce=$v" "docker-ce-cli=$v" containerd.io',
         'apt-mark hold docker-ce docker-ce-cli >/dev/null',
-        'systemctl enable --now docker'
+        'systemctl enable --now docker',
+        'fi'
     )
+    # The local AI reaches the NVIDIA card only through NVIDIA's container toolkit and its CDI file (the owner's 5090, 2026-11-13).
+    if ((& nvidia-smi -L 2> $null) -match '^GPU') {
+        $lines += @(
+            'command -v nvidia-ctk >/dev/null 2>&1 && exit 0',
+            'curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor --yes -o /usr/share/keyrings/nvidia-container-toolkit.gpg',
+            "curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit.gpg] https://#' >/etc/apt/sources.list.d/nvidia-container-toolkit.list",
+            'apt-get update -q && apt-get install -y -q nvidia-container-toolkit',
+            'nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml',
+            'nvidia-ctk runtime configure --runtime=docker && systemctl restart docker'
+        )
+    }
     ($lines -join "`n") | & wsl.exe -d $Distro -u root -- sh -s
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Docker Engine could not be installed in the helper's Linux (no internet, or Docker's repository refused it)."

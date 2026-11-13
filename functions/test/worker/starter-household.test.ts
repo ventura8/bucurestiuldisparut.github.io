@@ -195,6 +195,23 @@ describe('Docker installed when it is missing', () => {
         expect(run.calls.some((call) => call.startsWith('curl') && call.includes('get.docker'))).toBe(false);
     });
 
+    it('happyPath_anNvidiaCardGetsNvidiasContainerToolkitAndItsCdiFile @S-A143-HAPPY-INSTALL-DOCKER', async () => {
+        const run = await starter([], {
+            tools: {
+                docker: 'echo "docker $*" >/dev/null; [ "$1" = info ] && exit 1; exit 0',
+                'nvidia-smi': "echo 'GPU 0: NVIDIA GeForce RTX 5090 (UUID: GPU-1)'",
+                'apt-get': `case "$*" in *nvidia-container-toolkit*) printf '#!/bin/sh\\nexit 0\\n' >"$(dirname "$0")/nvidia-ctk"; chmod 755 "$(dirname "$0")/nvidia-ctk" ;; esac`,
+                gpg: 'cat >/dev/null; exit 0',
+                tee: 'cat >/dev/null; exit 0',
+                usermod: 'exit 0',
+                sg: 'exit 1',
+            },
+        });
+
+        expect(run.calls).toContain('sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml');
+        expect(run.calls).toContain('sudo nvidia-ctk runtime configure --runtime=docker');
+    });
+
     it('badPath_tooLittleDiskIsSaidBeforeAnythingIsInstalled @S-A143-BAD-INSTALL-DOCKER', async () => {
         const run = await starter([], {
             tools: { docker: null, 'apt-get': 'echo apt >&2; exit 0', df: "echo h; echo '/dev/x 100 1 1048576 1% /var'" },

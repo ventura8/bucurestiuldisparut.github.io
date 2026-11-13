@@ -128,14 +128,13 @@ import {
     statusRequestSchema,
     setupStatusViewSchema,
 } from './setup.js';
+import { workerManageRequestSchema, workerManageResponseSchema } from './worker-manage.js';
 import { ERROR_REPORT_MAX_BYTES, errorReportSchema, listGroupsRequestSchema, listGroupsResponseSchema } from './telemetry.js';
 import {
     imageryRunOnRequestSchema,
     imageryRunOnResponseSchema,
     workerPairCodeRequestSchema,
     workerPairCodeResponseSchema,
-    workerManageRequestSchema,
-    workerManageResponseSchema,
     workerRevokeRequestSchema,
     workerRevokeResponseSchema,
     workerStarterQuerySchema,

@@ -12,7 +12,6 @@ import { coded, idSchema } from '../schemas/primitives.js';
 import { cityIdSchema } from '../schemas/paths.js';
 import { RUN_CHOICES, RUN_PLACES, WORKER_ID_PATTERN, type JobMachine } from '../schemas/firestore-ops.js';
 import { STUDIO_MAX_BYTES } from '../schemas/imagery-publish.js';
-import { workerNameSchema } from '../schemas/worker.js';
 import { isoTimeSchema } from './common.js';
 
 /** The local page's port, on the computer's loopback only (`-p 127.0.0.1:8765:8765`). */
@@ -79,7 +78,7 @@ export const WORKER_STARTER_TEMPLATES = { posix: 'hcm-worker.sh', windows: 'hcm-
  * build hold equal to the templates' own lines and to the pipeline's `STARTER_VERSION`). The worker's `/state` says the version of
  * the starter that runs it; the admin's "This computer" says whether it is this release's.
  */
-export const WORKER_STARTER_VERSION = 'f64c28f08c35';
+export const WORKER_STARTER_VERSION = '341c1965e9e7';
 /** The release's list of the starter files on Hosting, `<admin>/starter.json`: the version and each template's SHA-256. */
 export const WORKER_STARTER_LIST_FILE = 'starter.json';
 /** What an installed starter's last look for a newer one said (`HCM_STARTER_UPDATE`, the worker's `/state` `starter.update`). */
@@ -165,17 +164,3 @@ export const workerPairCodeResponseSchema = z.strictObject({ code: z.string().re
 /** `worker.revoke` (admin): Disconnect this computer: its pairing and its worker refused from now on. */
 export const workerRevokeRequestSchema = z.strictObject({ cityId: cityIdSchema, workerId: z.string().regex(WORKER_ID_PATTERN) });
 export const workerRevokeResponseSchema = z.strictObject({ revoked: z.boolean() });
-/** W5 (household computers): what the admin's list of computers may change of one: its name, or whether it takes jobs. */
-export const WORKER_MANAGE_ACTIONS = ['rename', 'pause', 'resume', 'remove'] as const;
-const manageFields = { cityId: cityIdSchema, workerId: z.string().regex(WORKER_ID_PATTERN) };
-/**
- * `worker.manage` (admin): Rename, Pause or Resume a computer of the city, or Remove it (its worker cleans the computer up at its
- * next claim, with Docker when `docker`, keeping the scanned maps when `keep`, then is disconnected); false when it is unknown or
- * already disconnected.
- */
-export const workerManageRequestSchema = z.discriminatedUnion('action', [
-    z.strictObject({ ...manageFields, action: z.literal('rename'), name: workerNameSchema }),
-    z.strictObject({ ...manageFields, action: z.enum(['pause', 'resume']) }),
-    z.strictObject({ ...manageFields, action: z.literal('remove'), docker: z.boolean(), keep: z.boolean() }),
-]);
-export const workerManageResponseSchema = z.strictObject({ changed: z.boolean() });

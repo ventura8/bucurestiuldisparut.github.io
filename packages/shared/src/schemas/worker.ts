@@ -8,7 +8,6 @@ import { z } from 'zod';
 import { stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import { RUN_CHOICES } from './firestore-ops.js';
 import { idSchema } from './primitives.js';
-import { WORKER_PROFILE_WHYS, WORKER_PROFILES } from '../api/worker-machine.js';
 
 const PAIR_ID = /^[0-9a-f]{40}$/;
 const digestSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
@@ -45,8 +44,10 @@ export const workerNameSchema = z
  * last said it with a claim (M26): the profile in force and why, its cores, the threads and memory the worker may use.
  */
 export const workerShareSchema = z.strictObject({
-    profile: z.enum(WORKER_PROFILES),
-    why: z.enum(WORKER_PROFILE_WHYS),
+    // `WORKER_PROFILES` and `WORKER_PROFILE_WHYS` of api/worker-machine.ts, repeated: importing that module would put the whole
+    // machine schema into every chunk that reads a worker document (`packages/shared/test` holds them equal).
+    profile: z.enum(['full', 'quiet', 'paused']),
+    why: z.enum(['idle', 'user-active', 'others-busy', 'battery', 'thermal', 'gpu-busy', 'owner']),
     cores: z.number().int().min(1).max(1024),
     threads: z.number().int().min(0).max(1024),
     memoryMb: z.number().int().min(0),

@@ -174,3 +174,13 @@ describe('the M5 access of each callable (docs/research/M5-interfaces.md §1.3)'
         expect(callablesWith('cityReviewer')).toEqual(['history.revert', 'review.decide', 'suggestions.decide', 'contributors.setBlocked']);
     });
 });
+
+describe('W5: the share of a worker document', () => {
+    it('happyPath_itsProfilesAndReasonsAreTheGovernors', async () => {
+        const { workerShareSchema } = await import('../../src/schemas/worker.js');
+        const { WORKER_PROFILES, WORKER_PROFILE_WHYS } = await import('../../src/api/worker-machine.js');
+
+        expect(workerShareSchema.shape.profile.options).toEqual([...WORKER_PROFILES]);
+        expect(workerShareSchema.shape.why.options).toEqual([...WORKER_PROFILE_WHYS]);
+    });
+});
