@@ -103,6 +103,8 @@ export interface VersionView {
     readonly archive: ArchiveReport | null;
     /** An archive series waiting with `layout-check`: the tile-import wizard opens it (`helpItemsOf`, M20 §19). */
     readonly layoutCheck: boolean;
+    /** M20 (§202): published from the owner's pairs with pieces left out of its overview mosaic: Locate again lays it on it again. */
+    readonly restitchable: boolean;
     /**
      * M20 (§7): the series' rights as the approval card shows them (null: no rights, USGS and uploads). Approve waits
      * until `allowPublish` (Confirm the rights when `state` is `needs-confirmation`).
@@ -212,6 +214,17 @@ function sourceOf(source: LayerVersionDoc['source']): Pick<VersionView, 'entityI
     return { entityId: source?.kind === 'usgs' ? source.entityId : null, parts: [] };
 }
 
+/** Pieces left out of its overview mosaic. */
+function leftOutOfOverview(version: LayerVersionDoc): boolean {
+    const stitched = version.help?.stitched;
+    return stitched?.method === 'overview' && stitched.leftOutCount > 0;
+}
+
+/** M20 (§202): what `imagery.locateAgain` lays on its overview again (`functions/src/imagery/restitch.ts`). */
+function restitchableOf(version: LayerVersionDoc): boolean {
+    return version.state === 'published' && version.georef?.method === 'gcps' && leftOutOfOverview(version);
+}
+
 export function versionViewOf(doc: Stored<LayerVersionDoc>): VersionView {
     const version = doc.data;
     return {
@@ -225,6 +238,7 @@ export function versionViewOf(doc: Stored<LayerVersionDoc>): VersionView {
         ...{ basedOn: orNull(version.basedOn), recalibration: orNull(version.recalibration), publicUrl: publicUrlOf(version.own) },
         archive: orNull(version.archive),
         layoutCheck: helpItemsOf([{ id: doc.id, state: version.state, help: version.help }])[0]?.page === 'tiles',
+        restitchable: restitchableOf(version),
         rights: rightsOf(version.rights),
     };
 }

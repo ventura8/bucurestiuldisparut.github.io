@@ -17843,6 +17843,28 @@
             "notes": "harti.zip 1895-1899 pieces stitched 4 of 60 (2026-11-12). Tests: pipeline/tests/unit/test_placing_overview_scale.py."
         },
         {
+            "id": "S-P20-HAPPY-OVERVIEW-HOLES",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A piece the overview's features left out is found again in the overview's holes",
+            "asserts": "refit_in_holes places a left-out piece (as scanned, or upside down) where the placed pieces leave the overview uncovered, by correlation at the series' scale and turn refined by its features, within 2 px of its true place; the placed pieces are unchanged",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "harti.zip 1895-1899: 3 of 60 pieces left out (img366, img390, img418, no-join) were the published layer's three white patches (2026-11-13). Tests: pipeline/tests/unit/test_placing_overview_holes.py."
+        },
+        {
+            "id": "S-P20-BAD-OVERVIEW-HOLES-NOT-FOUND",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A piece the overview does not show stays left out and listed, never forced into a hole",
+            "asserts": "refit_in_holes leaves a piece of another map, a blank piece and a piece whose best place is not clearly better than the next (a repeating pattern) unplaced, so it stays in help.stitched.leftOut",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Real data only: nothing is drawn into a hole the archive's own pieces do not fill. Tests: pipeline/tests/unit/test_placing_overview_holes.py."
+        },
+        {
             "id": "S-P20-HAPPY-OVERVIEW-COLOUR",
             "behaviour": "P20",
             "area": "pipeline",
@@ -18226,6 +18248,50 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M22 §13.2. Tests: functions/test/imagery/locate-again-archive.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
+            "id": "S-A122-HAPPY-RESTITCH",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "happy",
+            "title": "A placed series with pieces left out of its overview mosaic offers Locate again, which lays it on the overview again in a new version",
+            "asserts": "the version view marks a published series placed from the owner's pairs with pieces left out of its overview mosaic restitchable; the button calls imagery.locateAgain; a new archive-series job (restitch, runOn local) and its processing version on the same layer carry the base's pairs, scan, rights and help; the layer marks it pending and keeps the published version",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §202, layer 1895-1899. Tests: functions/test/imagery/restitch.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
+        },
+        {
+            "id": "S-A122-BAD-RESTITCH-NOTHING-LEFT",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "bad",
+            "title": "A series with nothing left out, not stitched on an overview, placed automatically or on a busy layer is not stitched again",
+            "asserts": "no Locate again button; imagery.locateAgain answers apiError.imagery.versionState (or apiError.layers.busy for a layer with a version on its way) and writes nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §202. Tests: functions/test/imagery/restitch.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
+        },
+        {
+            "id": "S-P20-HAPPY-RESTITCH",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A series stitched again is laid on its overview and warped through the base's pairs",
+            "asserts": "place with restitch publishes the new mosaic as help.stitched and the scan, then warps it through the owner's pairs scaled from the base's scan, landing within 15 m",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §202. Tests: pipeline/tests/unit/test_placing_restitch.py."
+        },
+        {
+            "id": "S-P20-BAD-RESTITCH-NO-OVERVIEW",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A series stitched again that its overview no longer places waits for points with its pairs",
+            "asserts": "place answers Waiting, the version needs_gcps with help low-confidence and the note saying so; nothing is warped",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §202. Tests: pipeline/tests/unit/test_placing_restitch.py."
         },
         {
             "id": "S-A122-HAPPY-GEOREF-FULL-SCREEN",

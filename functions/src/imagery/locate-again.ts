@@ -19,6 +19,7 @@ import { omit } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { appendJobLog, guardIsRed, stampOf, type Stamp } from './records.js';
+import { restitchable, startRestitch } from './restitch.js';
 
 /**
  * `imagery.locateAgain` (a city editor; `docs/research/M3-interfaces.md` §4.5; S-A69-*): a frame that waits for points under an older
@@ -36,7 +37,8 @@ import { appendJobLog, guardIsRed, stampOf, type Stamp } from './records.js';
  * again the same way, before anyone imports it anew; and Locate again is free: never the day's limit, and, for a frame parked for
  * points like the admin's points, one run of its own whatever the runs before used (`attemptForSearch`). A failed crop's run counts
  * as a retry's (review of M18: the same failure would repeat without end). `imagery.tick` asks it by itself for every frame parked
- * under an older pipeline image (`relocate.ts`).
+ * under an older pipeline image (`relocate.ts`). M20 (DECISIONS-for-review.md §202): on a placed archive series with pieces left out of
+ * its overview mosaic, the callable starts a new version of the same layer instead (`restitch.ts`).
  */
 export type LocateAgainDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'blobs'>;
 
@@ -183,11 +185,27 @@ export async function locateAgain(deps: LocateAgainDeps, ask: LocateAsk): Promis
     return job;
 }
 
+/** M20 (§202): a placed archive series with pieces left out of its overview mosaic is stitched again in a new version; else nothing. */
+async function restitched(deps: LocateAgainDeps, uid: string, request: Request): Promise<boolean> {
+    const { cityId, versionId } = request;
+    const base = await deps.documents.get(FIRESTORE_PATHS.layerVersion(cityId, versionId), layerVersionDocSchema);
+    const job = await deps.documents.get(FIRESTORE_PATHS.job(cityId, versionId), jobDocSchema);
+    if (base?.help === undefined || job === undefined || !restitchable(base, job)) {
+        return false;
+    }
+    const jobId = await startRestitch(deps, { cityId, base, job, help: base.help, uid });
+    await appendJobLog(deps, cityId, jobId, { level: 'info', message: `Locate again: ${versionId} laid on its overview again.` });
+    return true;
+}
+
 async function imageryLocateAgain(
     deps: LocateAgainDeps,
     caller: VerifiedCaller,
     request: Request,
 ): Promise<CallableResponse<'imagery.locateAgain'>> {
+    if (await restitched(deps, caller.uid, request)) {
+        return { status: 'queued', attempt: 0 };
+    }
     const message = 'Locate again: the search runs again; no new import, no new download.';
     const job = await locateAgain(deps, { ...request, uid: caller.uid, message });
     return { status: job.status, attempt: job.attempt ?? 0 };
