@@ -18290,6 +18290,17 @@
             "notes": "M22 §13.2. Tests: packages/ui/test/admin/georef/georef-page.test.ts."
         },
         {
+            "id": "S-A122-BAD-GEOREF-PANES-MISALIGNED",
+            "behaviour": "A122",
+            "area": "admin",
+            "path": "bad",
+            "title": "The map's list of what it shows does not push the map below the scan (panes misaligned)",
+            "asserts": "the scan's and the map's views share their top and height within 1 px, and the turn rows under them their top, in the page and in full screen, side by side and on a compact window's switch",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's report of 2026-11-13 (lesson in docs/LESSONS.md). Tests: e2e/admin/specs/imagery/georeferencer.spec.ts, e2e/admin/specs/imagery/layer-geometry.spec.ts."
+        },
+        {
             "id": "S-A125-HAPPY-DELETE-VERSION",
             "behaviour": "A125",
             "area": "admin",

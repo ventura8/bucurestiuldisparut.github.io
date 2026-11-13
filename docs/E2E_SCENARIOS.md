@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 167 | 1716 | 715 | 1001 | 1714 | 2 | 441 |
+| 167 | 1717 | 715 | 1002 | 1715 | 2 | 441 |
 
 ## Viewer
 
@@ -626,6 +626,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-A122-HAPPY-GEOREF-FULL-SCREEN` | A122 | happy | The georeferencer's scan and map take seven tenths of the window, and Full screen fills it; Esc leaves | data-full on the page; Esc clears it | e2e-admin | exists | `e2e/admin/specs/imagery/georeferencer.spec.ts` |
 | `S-A122-HAPPY-PLACE-AGAIN` | A122 | happy | An archive series waiting for points offers Locate again, which places it again from place | the button calls imagery.locateAgain; the job goes back to queued from place, gather kept; the version forgets its help | e2e-admin | exists | `functions/test/imagery/locate-again-archive.test.ts` |
 | `S-A122-BAD-GEOREF-FULL-SCREEN-LEFT` | A122 | bad | Leave full screen by its own button | the page is back in its place | e2e-admin | exists | `e2e/admin/specs/imagery/georeferencer.spec.ts` |
+| `S-A122-BAD-GEOREF-PANES-MISALIGNED` | A122 | bad | The map's list of what it shows does not push the map below the scan (panes misaligned) | the scan's and the map's views share their top and height within 1 px, and the turn rows under them their top, in the page and in full screen, side by side and on a compact window's switch | e2e-admin | exists | `e2e/admin/specs/imagery/georeferencer.spec.ts` |
 | `S-A122-BAD-PLACE-AGAIN-CANCELLED` | A122 | bad | A series asked to stop, or failed, is not placed again | apiError.imagery.versionState; no Locate again on a failed archive series | e2e-admin | exists | `functions/test/imagery/locate-again-archive.test.ts` |
 | `S-A125-HAPPY-DELETE-VERSION` | A125 | happy | Delete this version removes a version that never reached the map, after a question, and returns to the list | a cancelled, rejected or failed version, or an archive series waiting for points (ended first), goes with its job, the job's log, its scratch files and its own private folder; another version's folder, a USGS delivery and an upload's original stay; a failed first import's scene is free again; an archive series leaves its archive's record of jobs, so the archive page offers it again and imagery.archiveImport takes it (the last one leaves the archive unimported); a failed version's page offers this one Delete; the page asks first (what goes, the originals on the computer stay) and then shows the Historical imagery list | e2e-admin | exists | `e2e/admin/specs/imagery/import.spec.ts`<br>`functions/test/imagery/delete-version.test.ts`<br>`functions/test/imagery/legacy-version.test.ts` |
 | `S-A125-BAD-DELETE-PUBLISHED` | A125 | bad | A version on the map, or approved for it, is never deleted from its page | imagery.deleteVersion on published, approved, publishing, superseded or joined -> apiError.imagery.deletePublished and nothing changes; the page offers no Delete this version for a published, waiting or processing version, nor while a job still runs | functions | exists | `functions/test/imagery/delete-version.test.ts` |
