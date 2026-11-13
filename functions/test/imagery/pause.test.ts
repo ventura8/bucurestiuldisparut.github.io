@@ -32,7 +32,9 @@ function pause(world: World, data: Record<string, unknown>) {
 }
 
 function claim(world: World) {
-    return callAs<{ readonly job: unknown; readonly paused?: unknown }>(world, claimFunction, { workerId: WORKER });
+    return callAs<{ readonly job: unknown; readonly paused?: unknown; readonly pause?: unknown }>(world, claimFunction, {
+        workerId: WORKER,
+    });
 }
 
 describe('imagery.pause: a job', () => {
@@ -137,6 +139,7 @@ describe('imagery.pause: a computer', () => {
 
         await expect(pause(world, { action: 'pause', workerId: WORKER, until })).resolves.toEqual({ changed: 1 });
         expect((await readWorker(world))?.paused).toEqual({ by: 'u-admin', at: at(NOW), until: at(until) });
+        expect((await readWorker(world))?.pausedAt).toEqual(at(NOW));
         expect((await readJob(world, JOB))?.releaseRequested).toBe(true);
 
         await pause(world, { action: 'resume', workerId: WORKER });
@@ -151,7 +154,7 @@ describe('imagery.pause: a computer', () => {
 
         await pause(world, { action: 'pause', workerId: WORKER });
 
-        await expect(claim(world)).resolves.toEqual({ job: null, paused: { by: 'u-admin', at: NOW } });
+        await expect(claim(world)).resolves.toEqual({ job: null, paused: true, pause: { by: 'u-admin', at: NOW } });
         expect((await readJob(world, JOB))?.status).toBe('queued');
     });
 

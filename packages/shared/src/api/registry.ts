@@ -130,6 +130,7 @@ import {
     statusRequestSchema,
     setupStatusViewSchema,
 } from './setup.js';
+import { workerManageRequestSchema, workerManageResponseSchema } from './worker-manage.js';
 import { ERROR_REPORT_MAX_BYTES, errorReportSchema, listGroupsRequestSchema, listGroupsResponseSchema } from './telemetry.js';
 import {
     imageryPauseRequestSchema,
@@ -339,6 +340,8 @@ export const ADMIN_CALLABLES = {
     // Finding 67 of 2026-11-02: the worker command's one-time pairing code, and Disconnect this computer.
     'worker.pairCode': cityEditor('fn-worker', workerPairCodeRequestSchema, workerPairCodeResponseSchema),
     'worker.revoke': cityEditor('fn-worker', workerRevokeRequestSchema, workerRevokeResponseSchema),
+    // W5 (household computers): Rename, Pause and Resume in the admin's list of the city's computers.
+    'worker.manage': cityEditor('fn-worker', workerManageRequestSchema, workerManageResponseSchema),
     // M13 (docs/research/M13-roles.md): the Contribute page, the review queue, the suggestions.
     ...COMMUNITY_CALLABLES,
 } as const satisfies Readonly<Record<string, CallableSpec>>;

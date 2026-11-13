@@ -14,8 +14,15 @@
 #   sh hcm-worker.sh governor   the governor's loop alone: host hints and the worker's CPU quota (docs/research/M26-governor.md)
 #   sh hcm-worker.sh update     one look for a newer starter of the installed release (the service looks when it starts, whenever
 #                               the worker ends, and once a day): checked against the release's list, it replaces this file
-#   sh hcm-worker.sh uninstall  removes the service, the worker, the sidecar, their Docker volumes and the sidecar's image
-#                               (the admin's "Stop using this computer" gives this file with uninstall already chosen)
+#   sh hcm-worker.sh uninstall  removes the service, the worker, the sidecar, their Docker volumes and images, and this helper's
+#                               folder; Docker too, after asking, only when this helper installed it (the admin's "Stop using this
+#                               computer" gives this file with uninstall already chosen; "Remove this computer" does it remotely)
+#
+# A computer without a screen (W5, "Add another computer" in the admin): the admin gives one line to paste over SSH,
+#   curl -fsSL '<the admin's address of this file>' -o ~/hcm-worker.sh && echo <one-time code> | sh ~/hcm-worker.sh
+# which installs Docker from the system's own signed packages when it is missing (one sudo prompt), lets the service run while
+# nobody is logged in (loginctl enable-linger), and hands the one-time code to the worker once it runs. The code comes on standard
+# input (or HCM_PAIR_CODE), never as an argument and never in a file; it works once, for 45 minutes.
 #
 # The worker leaves this computer usable (reports/resource-audit.md): it may hold at most 60 % of the memory Docker has
 # (an out-of-memory run ends the job, not the desktop) and yields the processor to everything else. To change that, set
@@ -25,7 +32,7 @@ set -u
 
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-STARTER_VERSION=0428b9113175
+STARTER_VERSION=c99ce4a91e15
 
 HCM_PROJECT='__HCM_PROJECT__'
 HCM_CITY='__HCM_CITY__'
@@ -38,7 +45,20 @@ OUTDATED=75
 USAGE=2
 REFUSALS=3
 LABEL=org.historiccitymap.worker
-GET_DOCKER=https://docs.docker.com/get-started/get-docker/
+GET_DOCKER_LINUX=https://docs.docker.com/engine/install/
+GET_DOCKER_MAC=https://docs.docker.com/desktop/setup/install/mac-install/
+GET_HOMEBREW=https://brew.sh
+# W5 (household computers): the disk Docker and the pipeline's image need, how long the first start may take before the one-time
+# code runs out, the worker's own word that it was asked to remove this computer (76 + 1 with Docker + 2 keeping the scanned maps),
+# and the note that this helper installed Docker (so removing it may take Docker too, never one the owner had).
+DOCKER_MIN_FREE_KB=10485760
+PAIR_WAIT_SECONDS=2700
+REMOVE_EXIT=76
+DOCKER_MARKER=installed-docker
+LOCAL="http://127.0.0.1:8765"
+ORIGIN="https://${HCM_PROJECT}.web.app"
+PAIR_CODE=''
+DOCKER_SG=0
 IMAGE_API="https://us-central1-${HCM_PROJECT}.cloudfunctions.net/worker-image"
 IMAGE_PREFIX="us-central1-docker.pkg.dev/${HCM_PROJECT}/hcm/pipeline@sha256:"
 # The starter the installed release publishes (docs/research/M7-local-worker.md, *The starter updates itself*): the list on the map's
@@ -99,16 +119,191 @@ open_url() {
 	fi
 }
 
-# Docker must be installed and running, and usable by this account.
-check_docker() {
-	if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+docker_ok() {
+	command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1
+}
+
+# Root for one command: itself, else sudo (which asks the password on the terminal once).
+as_root() {
+	if [ "$(id -u)" = 0 ]; then
+		"$@"
+	else
+		sudo "$@"
+	fi
+}
+
+# The system's own package manager, whose packages its distribution signs: apt, dnf, zypper or pacman; nothing when none is known.
+package_manager() {
+	for each in apt-get dnf zypper pacman; do
+		if command -v "$each" >/dev/null 2>&1; then
+			printf '%s' "$each"
+			return 0
+		fi
+	done
+	return 1
+}
+
+# Docker from the distribution's signed packages (never a downloaded script), unattended.
+package_install() {
+	case "$1" in
+	apt-get) as_root apt-get update -q && as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y -q docker.io ;;
+	dnf) as_root dnf install -y -q moby-engine ;;
+	zypper) as_root zypper --non-interactive install docker ;;
+	pacman) as_root pacman -S --noconfirm --needed docker ;;
+	esac </dev/null
+}
+
+package_remove() {
+	case "$1" in
+	apt-get) sudo -n env DEBIAN_FRONTEND=noninteractive apt-get remove -y -q docker.io ;;
+	dnf) sudo -n dnf remove -y -q moby-engine ;;
+	zypper) sudo -n zypper --non-interactive remove docker ;;
+	pacman) sudo -n pacman -R --noconfirm docker ;;
+	colima) remove_colima ;;
+	*) return 1 ;;
+	esac </dev/null >/dev/null 2>&1
+}
+
+# macOS: Colima's machine and the two Homebrew packages this helper installed (no password: Homebrew's own folder).
+remove_colima() {
+	brew services stop colima
+	colima delete -f
+	brew uninstall colima docker
+}
+
+free_kb() {
+	df -Pk "$1" 2>/dev/null | awk 'NR == 2 { print $4 }'
+}
+
+# Docker usable through the docker group this run joined: the group's new member only gets it in a new login, so the service runs
+# under sg (which reads the group file again) until then.
+docker_by_group() {
+	if command -v sg >/dev/null 2>&1 && sg docker -c 'docker info' >/dev/null 2>&1; then
+		DOCKER_SG=1
 		return 0
 	fi
-	say 'Docker is not installed or not running (or this account may not use it).'
-	say "Get Docker: $GET_DOCKER"
-	say 'Start Docker, then open this file again.'
-	open_url "$GET_DOCKER"
 	return 1
+}
+
+# W5: on Linux, Docker installed, started and usable by this account, each step said first, with how long and how much disk; on
+# failure why and the fix with its link. Re-running is safe: what is there already is kept.
+install_docker_linux() {
+	if ! command -v docker >/dev/null 2>&1; then
+		manager=$(package_manager) || {
+			say 'Docker is missing, and this Linux has none of the package managers this helper knows (apt, dnf, zypper, pacman).'
+			say "Install Docker by hand, then run this again: $GET_DOCKER_LINUX"
+			return 1
+		}
+		free=$(free_kb /var)
+		if [ "${free:-0}" -lt "$DOCKER_MIN_FREE_KB" ]; then
+			say "Docker and the map's pipeline need 10 GB free on this computer; it has $((${free:-0} / 1048576)) GB."
+			say 'Free some space (empty the trash, remove old downloads), then run this again.'
+			return 1
+		fi
+		say "Step 1 of 3: installing Docker from your system's own signed packages (1 to 3 minutes, about 500 MB)."
+		say 'Installing software needs your password once (sudo).'
+		if ! package_install "$manager"; then
+			say 'Docker could not be installed: the password was refused, or this computer does not allow installing software'
+			say "(a work computer's administrator may block it). Ask them to install Docker, or install it yourself: $GET_DOCKER_LINUX"
+			return 1
+		fi
+		mkdir -p "$(home_dir)"
+		printf '%s\n' "$manager" >"$(home_dir)/$DOCKER_MARKER"
+	fi
+	say 'Step 2 of 3: starting Docker and letting your account use it (a few seconds).'
+	as_root systemctl enable --now docker >/dev/null 2>&1 || true
+	as_root usermod -aG docker "$(id -un)" >/dev/null 2>&1 || true
+	install_nvidia_toolkit
+	if docker_ok || docker_by_group; then
+		return 0
+	fi
+	say 'Docker is installed but does not answer. Restart this computer, then run this again.'
+	say "Help: $GET_DOCKER_LINUX"
+	return 1
+}
+
+# W5, macOS: Colima (a small free Docker) through Homebrew, which checks every download; its machine set for this Mac's chip (Apple
+# silicon runs the pipeline's amd64 image through Rosetta) and started at each login by Homebrew's own launchd agent. Without
+# Homebrew the helper does not install it for you (its installer asks for the administrator's password and is a script from the
+# internet): it says so and opens its page, or Docker Desktop's.
+install_docker_mac() {
+	if ! command -v brew >/dev/null 2>&1; then
+		say "Docker is missing. On a Mac this helper installs Colima, a small free Docker, with Homebrew, which this Mac does not have."
+		say "Install Homebrew first (it asks your password once): $GET_HOMEBREW, then open this file again."
+		say "Or install Docker Desktop instead: $GET_DOCKER_MAC"
+		open_url "$GET_HOMEBREW"
+		return 1
+	fi
+	free=$(free_kb /)
+	if [ "${free:-0}" -lt "$DOCKER_MIN_FREE_KB" ]; then
+		say "Docker and the map's pipeline need 10 GB free on this Mac; it has $((${free:-0} / 1048576)) GB. Free some space, then open this file again."
+		return 1
+	fi
+	if ! command -v colima >/dev/null 2>&1; then
+		say 'Step 1 of 2: installing Colima and the docker command with Homebrew, which checks each download (about 3 minutes, 1 GB).'
+		if ! brew install colima docker </dev/null; then
+			say "Homebrew could not install Colima (no internet, or Homebrew needs an update: brew update). Help: $GET_HOMEBREW"
+			return 1
+		fi
+		mkdir -p "$(home_dir)"
+		printf 'colima\n' >"$(home_dir)/$DOCKER_MARKER"
+	fi
+	say "Step 2 of 2: starting Colima, a small Linux for Docker that runs in the background and starts when you log in (about 2 minutes)."
+	if [ "$(uname -m)" = arm64 ]; then
+		set -- --vm-type vz --vz-rosetta
+	else
+		set --
+	fi
+	colima start "$@" --cpu 4 --memory 6 --disk 40 </dev/null >/dev/null 2>&1 || true
+	brew services start colima </dev/null >/dev/null 2>&1 || true
+	if docker_ok; then
+		return 0
+	fi
+	say 'Colima is installed but Docker does not answer. Restart the Mac, then open this file again.'
+	say "Help: https://github.com/abiosoft/colima#readme"
+	return 1
+}
+
+# The worker's local AI reaches an NVIDIA card only through NVIDIA's container toolkit and its CDI file (2026-11-13: Docker Engine
+# without it saw no card on the owner's 5090). Installed from NVIDIA's own apt repository, once, when nvidia-smi names a card.
+NVIDIA_REPO=https://nvidia.github.io/libnvidia-container
+install_nvidia_toolkit() {
+	if ! nvidia-smi -L 2>/dev/null | grep -q '^GPU' || command -v nvidia-ctk >/dev/null 2>&1 || ! command -v apt-get >/dev/null 2>&1; then
+		return 0
+	fi
+	say "An NVIDIA card is here: installing NVIDIA's container toolkit so the local AI can use it (about 1 minute, 50 MB)."
+	if curl -fsSL "$NVIDIA_REPO/gpgkey" | as_root gpg --dearmor --yes -o /usr/share/keyrings/nvidia-container-toolkit.gpg &&
+		curl -fsSL "$NVIDIA_REPO/stable/deb/nvidia-container-toolkit.list" |
+		sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit.gpg] https://#' |
+			as_root tee /etc/apt/sources.list.d/nvidia-container-toolkit.list >/dev/null &&
+		as_root apt-get update -q && as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y -q nvidia-container-toolkit </dev/null &&
+		as_root nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml >/dev/null 2>&1; then
+		as_root nvidia-ctk runtime configure --runtime=docker >/dev/null 2>&1 && as_root systemctl restart docker >/dev/null 2>&1
+		return 0
+	fi
+	say "NVIDIA's toolkit could not be installed: the local AI uses the processor (slower). Help: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html"
+}
+
+# Docker must be installed and running, and usable by this account: this helper installs it when it is missing (Linux: the
+# system's packages; macOS: Colima with Homebrew).
+check_docker() {
+	if docker_ok; then
+		return 0
+	fi
+	if is_mac; then
+		install_docker_mac
+	else
+		install_docker_linux
+	fi
+}
+
+host_os() {
+	if is_mac; then printf mac; else printf linux; fi
+}
+
+# This computer's own name for the admin's list (a container's host name is its id).
+host_name() {
+	uname -n 2>/dev/null | tr -cd 'A-Za-z0-9._-' | cut -c1-63
 }
 
 # The installed pipeline image, by digest, as the server names it (worker.image); nothing when it cannot say.
@@ -580,7 +775,8 @@ start_worker() {
 	fi
 	docker run --rm --name "$NAME" "$@" -p "127.0.0.1:$PORT:$PORT" -v "$NAME:/work" \
 		-v "$AI_FILES:/ai/files" -v "$AI_BOX:/ai/box" -e HCM_STARTER="$STARTER_VERSION" -e HCM_STARTER_UPDATE="$update_said" \
-		-e HCM_DOCKER_ARCH="$(docker_arch)" -e HCM_AI_VARIANT="$(ai_variant)" "$image" \
+		-e HCM_DOCKER_ARCH="$(docker_arch)" -e HCM_AI_VARIANT="$(ai_variant)" -e HCM_HOST_NAME="$(host_name)" \
+		-e HCM_HOST_OS="$(host_os)" -e HCM_REMOVABLE=1 "$image" \
 		worker --city "$HCM_CITY" --project "$HCM_PROJECT" --supervised --image "sha256:${image##*@sha256:}"
 }
 
@@ -697,6 +893,10 @@ run_worker() {
 			started=$(date +%s)
 			start_worker "$image"
 			code=$?
+			if [ "$code" -ge "$REMOVE_EXIT" ] && [ "$code" -le $((REMOVE_EXIT + 3)) ]; then
+				remove_by_order "$code" "$image"
+				exit 0
+			fi
 			if [ "$code" -eq "$OUTDATED" ] || [ $(($(date +%s) - started)) -gt 600 ]; then
 				wait_seconds=0
 			fi
@@ -729,7 +929,11 @@ install_linux() {
 		if [ -n "${DOCKER_HOST:-}" ]; then
 			say "Environment=\"DOCKER_HOST=$DOCKER_HOST\""
 		fi
-		say "ExecStart=/bin/sh \"$1\" run"
+		if [ "$DOCKER_SG" = 1 ]; then
+			say "ExecStart=$(command -v sg) docker -c \"/bin/sh '$1' run\""
+		else
+			say "ExecStart=/bin/sh \"$1\" run"
+		fi
 		say 'Restart=always'
 		say 'RestartSec=30'
 		say '[Install]'
@@ -787,34 +991,195 @@ install_worker() {
 	chmod 700 "$copy"
 	if is_mac; then
 		install_mac "$copy" || return 1
-	elif ! install_linux "$copy"; then
+	elif install_linux "$copy"; then
+		enable_linger
+	else
 		install_autostart "$copy"
 	fi
 	say 'This computer is set up: the worker runs in the background and starts with your session.'
-	say 'Go back to the admin: it connects this computer by itself.'
+	if [ -n "$PAIR_CODE" ]; then
+		pair_now
+	else
+		say 'Go back to the admin: it connects this computer by itself.'
+	fi
 }
 
-uninstall_worker() {
-	if is_mac; then
-		launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
-		rm -f "$HOME/Library/LaunchAgents/$LABEL.plist"
-	else
-		systemctl --user disable --now "$NAME.service" >/dev/null 2>&1 || true
-		rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/$NAME.service"
-		systemctl --user daemon-reload >/dev/null 2>&1 || true
-		rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/autostart/$NAME.desktop"
-		pkill -f "$NAME.sh run" >/dev/null 2>&1 || true
+# W5: a computer with no screen (no graphical session) keeps the service running while nobody is logged in.
+enable_linger() {
+	if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] || ! command -v loginctl >/dev/null 2>&1; then
+		return 0
 	fi
-	docker rm -f "$NAME" "$MATCHER" >/dev/null 2>&1 || true
-	docker volume rm "$NAME" "$AI_FILES" "$AI_BOX" >/dev/null 2>&1 || true
-	# Only the images this file pulled, by the names it noted: the owner's other PyTorch images stay.
+	user=$(id -un)
+	if [ "$(loginctl show-user "$user" -p Linger --value 2>/dev/null)" = yes ]; then
+		return 0
+	fi
+	say 'No screen here: letting the helper run while nobody is logged in (loginctl enable-linger, a few seconds).'
+	if loginctl enable-linger "$user" >/dev/null 2>&1 || as_root loginctl enable-linger "$user" >/dev/null 2>&1; then
+		return 0
+	fi
+	say "The helper stops when you log out: this computer did not allow it. To fix, run: sudo loginctl enable-linger $user"
+	say 'Help: https://www.freedesktop.org/software/systemd/man/latest/loginctl.html'
+}
+
+# W5: the one-time code of "Add another computer"'s line, from HCM_PAIR_CODE or one line on standard input; never an argument or a
+# file, and the variable is cleared at once so no process started from here inherits it.
+read_pair_code() {
+	code=${HCM_PAIR_CODE:-}
+	unset HCM_PAIR_CODE
+	if [ -z "$code" ] && [ ! -t 0 ]; then
+		IFS= read -r code || true
+	fi
+	code=$(printf '%s' "$code" | tr -d ' \r')
+	if [ -z "$code" ]; then
+		return 0
+	fi
+	if [ "${#code}" -ne 26 ] || [ -n "$(printf '%s' "$code" | tr -d 'a-z2-7')" ]; then
+		say "That is not a code from the admin: it is ignored. Copy the whole line again from Add another computer."
+		return 0
+	fi
+	PAIR_CODE=$code
+}
+
+local_state() {
+	curl -fsS -m 5 -H "Origin: $ORIGIN" "$LOCAL/state" 2>/dev/null
+}
+
+# The code to the worker's own page, as the admin's auto-pair sends it (the project's origin, a JSON body read from stdin: never argv).
+post_code() {
+	printf '{"code":"%s"}' "$PAIR_CODE" | curl -fsS -m 10 -o /dev/null -X POST -H "Origin: $ORIGIN" \
+		-H 'Content-Type: application/json' --data-binary @- "$LOCAL/pair" >/dev/null 2>&1
+}
+
+# Waits for the worker (the first start downloads the pipeline), gives it the code once, and says how it ended.
+pair_now() {
+	say 'Step 3 of 3: connecting this computer to your map. The first start downloads the pipeline (about 3 GB): 5 to 20 minutes.'
+	waited=0
+	posted=0
+	while [ "$waited" -lt "$PAIR_WAIT_SECONDS" ]; do
+		state=$(local_state)
+		case "$state" in
+		*'"signedIn": true'*)
+			say "This computer is connected. The admin lists it as $(host_name)."
+			return 0
+			;;
+		*'apiError.worker.pairCode'*)
+			say 'The map refused the code: it was used already or ran out. In the admin, Add another computer gives a new line;'
+			say 'running it again here skips the download.'
+			return 1
+			;;
+		*'"pairable": true'*)
+			if [ "$posted" = 0 ] && post_code; then
+				posted=1
+			fi
+			;;
+		esac
+		if [ $((waited % 120)) -eq 0 ] && [ "$waited" -gt 0 ]; then
+			say "Still getting ready ($((waited / 60)) minutes so far)..."
+		fi
+		sleep 10
+		waited=$((waited + 10))
+	done
+	say 'This computer did not start within 45 minutes, so its code ran out. Is Docker running (docker ps)? Is there disk space?'
+	say 'In the admin, Add another computer gives a new line; running it again here skips what is already done.'
+	return 1
+}
+
+# The local AI's sidecar, volumes and the images this file pulled for it (by the names it noted: the owner's other images stay).
+remove_ai() {
+	docker rm -f "$MATCHER" >/dev/null 2>&1 || true
+	docker volume rm "$AI_FILES" "$AI_BOX" >/dev/null 2>&1 || true
 	if [ -s "$(home_dir)/ai-image" ]; then
 		while IFS= read -r each || [ -n "$each" ]; do
 			docker image rm "$each" >/dev/null 2>&1 </dev/null || true
 		done <"$(home_dir)/ai-image"
 	fi
+}
+
+# The worker's container, its volume (or, keeping the scanned maps, only its sign-in in it), the pipeline's images, this folder.
+remove_worker_files() {
+	docker rm -f "$NAME" >/dev/null 2>&1 || true
+	if [ "$1" = 1 ]; then
+		docker run --rm -v "$NAME:/work" --entrypoint sh "$2" -c 'rm -f /work/.hcm-session-*' >/dev/null 2>&1 || true
+	else
+		docker volume rm "$NAME" >/dev/null 2>&1 || true
+	fi
+	docker images --format '{{.Repository}}@{{.Digest}}' 2>/dev/null | grep "^${IMAGE_PREFIX%@sha256:}@" | while IFS= read -r each; do
+		docker image rm "$each" >/dev/null 2>&1 </dev/null || true
+	done
 	rm -rf "$(home_dir)"
+}
+
+# The service or the autostart entry: last, since removing it may stop this very process.
+remove_service() {
+	if is_mac; then
+		rm -f "$HOME/Library/LaunchAgents/$LABEL.plist"
+		launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
+	else
+		rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/$NAME.service" "${XDG_CONFIG_HOME:-$HOME/.config}/autostart/$NAME.desktop"
+		systemctl --user daemon-reload >/dev/null 2>&1 || true
+		systemctl --user disable --now "$NAME.service" >/dev/null 2>&1 || true
+		pkill -f "$NAME.sh run" >/dev/null 2>&1 || true
+	fi
+}
+
+# Docker, only when this helper installed it (its note), on Linux with sudo that needs no password here: true when it is gone.
+remove_docker() {
+	[ -n "$1" ] && package_remove "$1"
+}
+
+# The worker said the admin asked to remove this computer ($1: 76, +1 with Docker, +2 keeping the scanned maps). Clean up first,
+# then the worker once more, with the session still in its volume, says done (the server then disconnects it), then the rest goes.
+remove_by_order() {
+	flags=$(($1 - REMOVE_EXIT))
+	say 'The admin asked to remove this computer: cleaning up.'
+	kill "$matcher_pid" "$governor_pid" "$updater_pid" >/dev/null 2>&1 || true
+	remove_ai
+	marker=$(cat "$(home_dir)/$DOCKER_MARKER" 2>/dev/null) || marker=''
+	# Docker goes only when asked and this helper installed it; with no password to give here it stays, and the admin says so.
+	drop=false
+	left=false
+	if [ $((flags % 2)) = 1 ] && [ -n "$marker" ]; then
+		if [ "$marker" = colima ] || sudo -n true >/dev/null 2>&1; then drop=true; else left=true; fi
+	fi
+	docker run --rm --name "$NAME" -v "$NAME:/work" -e HCM_REMOVAL=done -e HCM_REMOVAL_DOCKER_LEFT="$left" "$2" \
+		worker --city "$HCM_CITY" --project "$HCM_PROJECT" --supervised --image "sha256:${2##*@sha256:}" >/dev/null 2>&1 || true
+	remove_worker_files $((flags / 2)) "$2"
+	if [ "$drop" = true ] && remove_docker "$marker"; then
+		say 'Docker, which this helper had installed, is removed too.'
+	fi
+	say 'This computer no longer works for the map.'
+	remove_service
+}
+
+uninstall_worker() {
+	image=$(docker images --format '{{.Repository}}@{{.Digest}}' 2>/dev/null | grep "^${IMAGE_PREFIX%@sha256:}@" | head -n 1)
+	remove_ai
+	marker=$(cat "$(home_dir)/$DOCKER_MARKER" 2>/dev/null) || marker=''
+	remove_worker_files "${HCM_KEEP_MAPS:-0}" "$image"
+	remove_service
 	say 'The worker is removed from this computer.'
+	if [ -n "$marker" ] && [ -t 0 ]; then
+		printf '%s' 'This helper installed Docker. Remove Docker too? Other programs that use it would stop working. [y/N] '
+		read -r answer
+		case "$answer" in
+		y | Y | yes)
+			if remove_docker "$marker" || package_install_remove "$marker"; then
+				say 'Docker is removed.'
+			fi
+			;;
+		esac
+	fi
+}
+
+# Removing Docker by hand asks the password on the terminal (the remote removal never can).
+package_install_remove() {
+	case "$1" in
+	apt-get) sudo apt-get remove -y docker.io ;;
+	dnf) sudo dnf remove -y moby-engine ;;
+	zypper) sudo zypper --non-interactive remove docker ;;
+	pacman) sudo pacman -R --noconfirm docker ;;
+	*) return 1 ;;
+	esac
 }
 
 case "${1:-$HCM_ACTION}" in
@@ -830,6 +1195,7 @@ uninstall)
 	pause
 	;;
 *)
+	read_pair_code
 	install_worker
 	status=$?
 	pause

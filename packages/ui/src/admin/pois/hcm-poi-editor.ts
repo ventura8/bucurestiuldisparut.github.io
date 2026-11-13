@@ -39,8 +39,10 @@ import type {
     PoiShapePort,
     PoisIntentsPort,
     PoiValuePort,
+    TraceLayerPort,
     VertexEditPort,
 } from './pois-port.js';
+import { traceFields, type TraceChoice } from './trace-field.js';
 
 export const HCM_POI_EDITOR_TAG = 'hcm-poi-editor';
 
@@ -62,6 +64,8 @@ export class HcmPoiEditor extends LitElement {
         who: { attribute: false },
         mode: { state: true },
         assist: { attribute: false },
+        traceLayers: { attribute: false },
+        traceOpacity: { attribute: false },
     };
 
     static override readonly styles = [...poiStyles, ...assistStyles];
@@ -87,6 +91,9 @@ export class HcmPoiEditor extends LitElement {
     declare mode: 'draw' | 'select';
     /** M4 (CR-M4-4): the title suggestions and translation drafts of the open place (none: no assist slots). */
     declare assist: AssistViewPort | null;
+    /** M27: the city's old maps a street can be traced on, and the chosen one's opacity in percent. */
+    declare traceLayers: readonly TraceLayerPort[];
+    declare traceOpacity: number;
     /** The years left since the place opened (they say their problem from then on). */
     readonly #left = new LeftFields(() => {
         this.requestUpdate();
@@ -109,6 +116,8 @@ export class HcmPoiEditor extends LitElement {
         this.who = NOBODY;
         this.mode = 'select';
         this.assist = null;
+        this.traceLayers = [];
+        this.traceOpacity = 100;
     }
 
     /**
@@ -134,6 +143,10 @@ export class HcmPoiEditor extends LitElement {
         const head = this.#headInput(editor, draft);
         return html`<div class="pane form">
             ${editorHead(head)} ${editorBanners(head)} ${this.#shape(editor, draft)}
+            <fieldset>
+                <legend>${poiText(this.locale, 'adminContent.pois.section.trace')}</legend>
+                ${traceFields(this.#context(draft), this.#traceChoice())}
+            </fieldset>
             <fieldset>
                 <legend>${poiText(this.locale, 'adminContent.pois.section.texts')}</legend>
                 ${categoryField(this.#context(draft), this.#categoryChoice())} ${titleFields(this.#context(draft))}
@@ -172,6 +185,13 @@ export class HcmPoiEditor extends LitElement {
         return field === 'title'
             ? html`${titleAssist({ locale: this.locale, view, actions, id: 'place-title', readOnly: this.readOnly })} ${draft}`
             : draft;
+    }
+
+    #traceChoice(): TraceChoice {
+        return {
+            ...{ layers: this.traceLayers, opacity: this.traceOpacity },
+            setOpacity: (percent) => this.intents?.setTraceOpacity(percent),
+        };
     }
 
     #categoryChoice(): CategoryChoice {

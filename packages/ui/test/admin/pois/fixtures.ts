@@ -99,6 +99,8 @@ export function poisState(overrides: Partial<PoisViewState> = {}): PoisViewState
         exporting: false,
         importing: null,
         busy: false,
+        traceLayers: [],
+        traceOpacity: 100,
         assist: { titles: { status: 'idle', suggestions: [], attribution: null, error: null }, drafts: {} },
         ...overrides,
     };

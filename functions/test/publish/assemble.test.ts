@@ -401,3 +401,33 @@ describe('assembleManifest: M13 (docs/research/M13-roles.md §§2, 5)', () => {
         expect(assembly.skipped.map((item) => [item.entity, item.id])).toEqual([['photo', 'lost']]);
     });
 });
+
+describe('assembleManifest: M27 disappeared streets (docs/research/M27-lost-streets.md)', () => {
+    it('happyPath_aPinnedHiddenCategoryAndItsTracedStreetReachTheManifest @S-V71-HAPPY-PINNED', () => {
+        const manifest = manifestOf(
+            assembleManifest(
+                content({
+                    poiCategories: result([
+                        ['churches', categoryDoc({ defaultVisible: false, pinned: true, attribution: 'OpenHistoricalMap (CC0)' })],
+                    ]),
+                    pois: result([['enei', poiDoc({ sourceLayer: 'flight-1940' })]]),
+                }),
+                TEST_CONFIG.errorEndpoint,
+            ),
+        );
+
+        expect(validateManifest(manifest).ok).toBe(true);
+        expect(manifest.poiCategories?.[0]).toMatchObject({ defaultVisible: false, pinned: true, attribution: 'OpenHistoricalMap (CC0)' });
+        expect(manifest.pois?.[0]?.sourceLayer).toBe('flight-1940');
+    });
+
+    it('badPath_aStreetTracedOnALayerTheManifestDoesNotListKeepsTheStreetNotTheLayer @S-V71-BAD-UNKNOWN-LAYER', () => {
+        const manifest = manifestOf(
+            assembleManifest(content({ pois: result([['enei', poiDoc({ sourceLayer: 'retired-1911' })]]) }), TEST_CONFIG.errorEndpoint),
+        );
+
+        expect(validateManifest(manifest).ok).toBe(true);
+        expect(manifest.pois?.map((poi) => [poi.id, poi.sourceLayer])).toEqual([['enei', undefined]]);
+        expect(manifest.poiCategories?.[0]).not.toHaveProperty('pinned', true);
+    });
+});

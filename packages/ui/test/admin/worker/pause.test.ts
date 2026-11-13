@@ -56,6 +56,7 @@ class FakeFeed implements WorkerFeedPort {
         retry: (): void => undefined,
         disconnect: (): Promise<boolean> => Promise.resolve(true),
         local: (): Promise<never> => Promise.reject(new Error('not here')),
+        household: (): Promise<never> => Promise.reject(new Error('not here')),
         pauseJob: (action: string): Promise<boolean> => this.#record(`pauseJob ${action}`),
         pauseComputer: (length: string | null): Promise<boolean> => this.#record(`pauseComputer ${String(length)}`),
     };

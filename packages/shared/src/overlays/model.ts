@@ -54,9 +54,10 @@ function rasterOverlay(layer: Layer): Overlay {
     return atDefaults({ id: layer.id, kind: 'raster', label: layer.label, visible: layer.defaultVisible, opacity: layer.opacity });
 }
 
-/** A POI category starts visible: the manifest gives it a default opacity only. */
+/** A POI category starts visible unless (M27) its `defaultVisible` is false, at its default opacity. */
 function poiOverlay(category: PoiCategory): Overlay {
-    return atDefaults({ id: category.id, kind: 'poi', label: category.label, visible: true, opacity: category.defaultOpacity });
+    const visible = category.defaultVisible !== false;
+    return atDefaults({ id: category.id, kind: 'poi', label: category.label, visible, opacity: category.defaultOpacity });
 }
 
 const PHOTOS_LABEL: OverlayLabel = { ro: translate('ro', 'layers.photos'), en: translate('en', 'layers.photos') };

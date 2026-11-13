@@ -93,4 +93,25 @@ export const WORKER_STATES = {
         title: 'Historical imagery: a version waiting for your computer, the Jobs link and Run in Google Cloud',
         visit: 'specs/imagery/worker.spec.ts',
     },
+    // W5, household computers (docs/research/M7-local-worker.md, Household computers).
+    'worker.household-list': {
+        title: 'Jobs: your computers, each with its name, on or off, what it does, its share and why, Rename, Pause and Remove',
+        visit: 'specs/imagery/household.spec.ts',
+    },
+    'worker.household-add': {
+        title: 'Jobs: Add another computer, without a screen: the one line with its one-time code, Copy and when it ends',
+        visit: 'specs/imagery/household.spec.ts',
+    },
+    'worker.household-add-screen': {
+        title: "Jobs: Add another computer, with a screen: this admin's address to open there, with Copy",
+        visit: 'specs/imagery/household.spec.ts',
+    },
+    'worker.household-remove': {
+        title: 'Jobs: Remove this computer: keep the scanned maps, also remove Docker, Remove it and Cancel',
+        visit: 'specs/imagery/household.spec.ts',
+    },
+    'worker.household-forced': {
+        title: 'Jobs: a computer that is off waits to clean up; Disconnect now anyway, then the line that cleans it by hand',
+        visit: 'specs/imagery/household.spec.ts',
+    },
 } as const;

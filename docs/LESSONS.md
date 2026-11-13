@@ -3953,3 +3953,11 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the viewer's `.modal-layer > * { pointer-events: auto }` sits outside the menu's shadow root and beats its own `:host { pointer-events: none }`; while the menu was always modal its scrim hid that. Its place beside the year ignored the floating controls, which the inert frame under a modal menu had excused.
     - Fix and pin: `.modal-layer > hcm-date-menu { pointer-events: none }` in `viewer-styles.ts`; the dock measures the compass, the zoom, the menu button and the photos chip as the menu opens and the menu moves the shortest way past them (`date-menu-clear.ts`). Pinned by `timeline-dock-peek.test.ts`, `date-menu-clear.test.ts` and the tour's `timeline-peek`.
     - **A host's own `:host` rule loses to any rule its parent's shadow root sets on it; a non-modal overlay states its pass-through where it is placed, and keeps clear of the controls it no longer makes inert.**
+673. **A computer without a screen could only be paired by stopping the owner's own worker and tunnelling a port.**
+    - Seen: 2026-11-13, pairing the NUC and the Windows PC by hand (`docs/research/M7-local-worker.md`, *Household computers*).
+    - Cause: the admin's auto-pair posts the code from the browser to the browser's own loopback (`127.0.0.1:8765`); a headless
+      computer has no browser, so its worker was reachable only through an SSH tunnel to the laptop, with the laptop's worker stopped.
+    - Fix and pin: the starter itself takes the one-time code (standard input, never argv) and posts it to its own worker's `/pair`
+      (`S-A143-HAPPY-HEADLESS-PAIR`, `functions/test/worker/starter-household.test.ts`).
+    - **What a browser does for its own computer, the helper on that computer must be able to do too: never route one computer's
+      loopback through another.**

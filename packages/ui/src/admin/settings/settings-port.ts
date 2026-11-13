@@ -79,7 +79,10 @@ export interface CategoryItemPort {
 }
 
 /** A category's editable value (a new category has no stamp yet). */
-export type CategoryValuePort = Pick<PoiCategoryDoc, 'label' | 'icon' | 'color' | 'defaultOpacity' | 'order'>;
+export type CategoryValuePort = Pick<
+    PoiCategoryDoc,
+    'label' | 'icon' | 'color' | 'defaultOpacity' | 'order' | 'defaultVisible' | 'pinned' | 'attribution'
+>;
 
 export interface CategoryEditorPort {
     readonly id: string;
@@ -157,7 +160,14 @@ export interface SettingsIntentsPort extends ExportIntentsPort, BudgetIntentsPor
     takeTheirs(): void;
     moveCategory(id: string, direction: 'up' | 'down'): Promise<WriteOutcomePort | null>;
     moveCategoryTo(id: string, index: number): Promise<WriteOutcomePort | null>;
-    editCategory(patch: Partial<Pick<PoiCategoryDoc, 'label' | 'icon' | 'color' | 'defaultOpacity'>>): void;
+    /** M27: `undefined` removes an optional field (an emptied credit). */
+    editCategory(
+        patch: Partial<Pick<PoiCategoryDoc, 'label' | 'icon' | 'color' | 'defaultOpacity'>> & {
+            readonly defaultVisible?: boolean | undefined;
+            readonly pinned?: boolean | undefined;
+            readonly attribution?: string | undefined;
+        },
+    ): void;
     setCategoryLabel(locale: Locale, text: string): void;
     setCategoryOpacity(percent: number): void;
     useProposedColor(): void;

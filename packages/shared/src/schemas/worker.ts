@@ -36,6 +36,51 @@ export const workerAiSchema = z.strictObject({
     why: z.enum(WORKER_AI_WHYS).optional(),
 });
 
+/** A computer's name as its system says it (`hostname`, `%COMPUTERNAME%`), passed on by the starter (household, W5). */
+export const WORKER_HOST_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$/;
+/** The owner's name for a computer in the admin's list (Rename). */
+export const WORKER_NAME_MAX = 40;
+export const workerNameSchema = z
+    .string()
+    .trim()
+    .min(1)
+    .max(WORKER_NAME_MAX)
+    .regex(/^[^<>\p{Cc}]+$/u);
+
+/**
+ * W5 (household computers, `docs/research/M7-local-worker.md` *Household computers*): the computer's share as its governor
+ * last said it with a claim (M26): the profile in force and why, its cores, the threads and memory the worker may use.
+ */
+export const workerShareSchema = z.strictObject({
+    // `WORKER_PROFILES` and `WORKER_PROFILE_WHYS` of api/worker-machine.ts, repeated: importing that module would put the whole
+    // machine schema into every chunk that reads a worker document (`packages/shared/test` holds them equal).
+    profile: z.enum(['full', 'quiet', 'paused']),
+    why: z.enum(['idle', 'user-active', 'others-busy', 'battery', 'thermal', 'gpu-busy', 'owner']),
+    cores: z.number().int().min(1).max(1024),
+    threads: z.number().int().min(0).max(1024),
+    memoryMb: z.number().int().min(0),
+});
+
+/**
+ * W5: Remove this computer (the owner, 2026-11-13: "clean up first, disconnect second; the user never runs a command"): asked in
+ * the admin's list, given to the worker with its next claim, accepted by it (its supervisor then cleans the computer up), and
+ * done (the worker's last word, after the cleanup: the server then disconnects it), or failed and why.
+ */
+export const WORKER_REMOVAL_STEPS = ['asked', 'accepted', 'done', 'failed'] as const;
+/** Why a computer could not clean itself up: a worker started by a command has no helper on the host, or a cleanup step failed. */
+export const WORKER_REMOVAL_WHYS = ['no-starter', 'cleanup'] as const;
+export const workerRemovalSchema = z.strictObject({
+    step: z.enum(WORKER_REMOVAL_STEPS),
+    askedAt: timestampSchema,
+    /** Also remove Docker (or WSL), only where the helper installed it. */
+    docker: z.boolean(),
+    /** Keep the scanned maps (the local archives) in the worker's folder. */
+    keep: z.boolean(),
+    why: z.enum(WORKER_REMOVAL_WHYS).optional(),
+    /** Docker stays: removing it needs the computer's password (Linux), said with the done. */
+    dockerLeft: z.boolean().optional(),
+});
+
 /** `cities/{city}/workers/{workerId}`: one local worker process, refreshed by `worker.hello` and `worker.claim`. */
 export const workerDocSchema = z.strictObject({
     uid: uidSchema,
@@ -55,6 +100,19 @@ export const workerDocSchema = z.strictObject({
     outdated: z.boolean().optional(),
     /** Its local AI, as the worker last said through `worker.hello`. */
     ai: workerAiSchema.optional(),
+    /** W5: the owner's name for it (Rename), the computer's own name, its starter's version, its governor's share. */
+    name: workerNameSchema.optional(),
+    host: z.string().regex(WORKER_HOST_PATTERN).optional(),
+    os: z.enum(['linux', 'mac', 'windows']).optional(),
+    starter: z
+        .string()
+        .regex(/^[0-9a-f]{12}$/)
+        .optional(),
+    share: workerShareSchema.optional(),
+    /** W5: Pause in the computers' list: the worker is given no job until Resume. */
+    pausedAt: timestampSchema.optional(),
+    /** W5: Remove this computer, and how far it got. */
+    removal: workerRemovalSchema.optional(),
     /** Disconnect this computer (`worker.revoke`): every later call of this worker is refused. */
     revokedAt: timestampSchema.optional(),
     /**
@@ -102,6 +160,8 @@ export const cloudRunUsageDocSchema = z.strictObject({
 
 export type WorkerDoc = z.infer<typeof workerDocSchema>;
 export type WorkerAi = z.infer<typeof workerAiSchema>;
+export type WorkerShare = z.infer<typeof workerShareSchema>;
+export type WorkerRemoval = z.infer<typeof workerRemovalSchema>;
 export type RunChoiceDoc = z.infer<typeof runChoiceDocSchema>;
 export type CloudRunUsageDoc = z.infer<typeof cloudRunUsageDocSchema>;
 export type WorkerPairingDoc = z.infer<typeof workerPairingDocSchema>;

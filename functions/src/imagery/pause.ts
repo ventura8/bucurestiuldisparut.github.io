@@ -74,7 +74,7 @@ function changedJob(job: JobDoc, action: Request['action'], stamp: Stamp): JobDo
 }
 
 /** What one change is: the city, the action and its stamp (who, when). */
-interface Change {
+export interface Change {
     readonly cityId: string;
     readonly action: Request['action'];
     readonly stamp: Stamp;
@@ -139,7 +139,7 @@ function untilOf(until: string | undefined, now: Date): Date | undefined {
 }
 
 /** The job the computer runs asked back (Pause), or no longer (Resume), when the computer still holds it. */
-async function askBack(deps: PauseDeps, change: Change, jobId: string | undefined): Promise<void> {
+export async function askBack(deps: PauseDeps, change: Change, jobId: string | undefined): Promise<void> {
     if (jobId === undefined) {
         return;
     }

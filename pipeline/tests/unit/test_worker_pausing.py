@@ -135,10 +135,13 @@ def test_happy_path_the_page_pauses_at_once_and_the_server_answer_is_mirrored() 
     sent = control.pending()
     assert (control.paused, control.snapshot(), woken) == (True, {"by": BY_COMPUTER, "until": iso(NOW + HOUR)}, [1])
 
-    control.answered(sent, {"paused": {"by": BY_COMPUTER, "at": iso(NOW), "until": iso(NOW + HOUR)}})
+    control.answered(sent, {"paused": True, "pause": {"by": BY_COMPUTER, "at": iso(NOW), "until": iso(NOW + HOUR)}})
     assert (control.pending(), target.told) == (None, [("pause", NOW + HOUR)])
 
-    control.answered(None, {"paused": {"by": "owner-uid", "at": iso(NOW)}})
+    control.answered(None, {"paused": True, "pause": {"by": "owner-uid", "at": iso(NOW)}})
+    assert control.snapshot() == {"by": BY_ADMIN}
+    # The computers' list (W5) may answer a bare `paused: true`: paused from the admin, with no end.
+    control.answered(None, {"job": None, "paused": True})
     assert control.snapshot() == {"by": BY_ADMIN}
     control.answered(None, {"job": None})
     assert (control.paused, control.snapshot(), target.told[-1]) == (False, None, "resume")
@@ -156,7 +159,7 @@ def test_bad_path_an_answer_older_than_a_newer_command_is_not_mirrored_and_a_pas
     control.local(Command("resume"))
     assert (control.paused, target.told) == (False, [("pause", None), "resume"])
 
-    control.answered(control.pending(), {"paused": {"by": BY_COMPUTER, "at": iso(NOW), "until": iso(NOW + 60)}})
+    control.answered(control.pending(), {"paused": True, "pause": {"by": BY_COMPUTER, "at": iso(NOW), "until": iso(NOW + 60)}})
     clock.now += 61
     assert (control.paused, control.snapshot()) == (False, None)
 
@@ -215,7 +218,7 @@ def loop_with(answers: Answers, runtime: Runtime) -> tuple[WorkerLoop, WorkerSta
 
 
 def test_happy_path_a_pause_from_the_page_while_idle_goes_with_the_next_claim_and_is_mirrored() -> None:
-    answers = Answers({"job": None, "paused": {"by": BY_COMPUTER, "at": iso(NOW), "until": iso(NOW + HOUR)}})
+    answers = Answers({"job": None, "paused": True, "pause": {"by": BY_COMPUTER, "at": iso(NOW), "until": iso(NOW + HOUR)}})
     loop, state = loop_with(answers, Runtime(RunOutcome.DONE))
     loop.pausing.local(Command("pause", NOW + HOUR))
 
@@ -227,7 +230,7 @@ def test_happy_path_a_pause_from_the_page_while_idle_goes_with_the_next_claim_an
 
 
 def test_happy_path_a_pause_asked_during_the_run_goes_with_the_end_and_the_run_was_asked_to_release() -> None:
-    answers = Answers({"job": {"jobId": "job-1"}}, {"job": None, "paused": {"by": BY_COMPUTER, "at": iso(NOW)}})
+    answers = Answers({"job": {"jobId": "job-1"}}, {"job": None, "paused": True, "pause": {"by": BY_COMPUTER, "at": iso(NOW)}})
     runtime = Runtime(RunOutcome.RELEASED)
     loop, state = loop_with(answers, runtime)
     runtime.during = lambda: loop.pausing.local(Command("pause"))

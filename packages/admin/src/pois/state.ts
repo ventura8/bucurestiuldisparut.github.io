@@ -14,6 +14,7 @@ import type { ImportFile, ImportState } from './importer.js';
 import type { MapStatus } from './map-session.js';
 import type { CategoryItem, CityFrame, PoiItem, PoiPatch } from './model.js';
 import type { PhotoChoice, PoisFilter } from './places.js';
+import type { TraceLayerItem } from './trace-layers.js';
 import type { PlaceShape, VertexEdit } from './vertices.js';
 
 export interface PoisState {
@@ -39,6 +40,10 @@ export interface PoisState {
     readonly busy: boolean;
     /** M4 (CR-M4-4): the open place's title suggestions and translation drafts. */
     readonly assist: AssistState;
+    /** M27: the city's old maps a street can be traced on, by year. */
+    readonly traceLayers: readonly TraceLayerItem[];
+    /** M27: the traced-on map's opacity under the drawing, in percent. */
+    readonly traceOpacity: number;
 }
 
 /** A file for the browser to save (the export). */
@@ -87,12 +92,22 @@ export interface PoisIntents extends AssistIntents {
     attachMap(container: HTMLElement): void;
     detachMap(): void;
     zoomBy(delta: number): void;
+    /** M27: fades the old map under the drawing (0..100 %) to compare with today's streets. */
+    setTraceOpacity(percent: number): void;
 }
 
 export type ListIntent =
     'setFilter' | 'more' | 'retry' | 'add' | 'toggleSelected' | 'selectAll' | 'clearSelection' | 'bulk' | 'loadPhotos' | 'morePhotos';
 export type FileIntent =
-    'chooseImport' | 'setImportCategory' | 'commitImport' | 'closeImport' | 'exportPlaces' | 'attachMap' | 'detachMap' | 'zoomBy';
+    | 'chooseImport'
+    | 'setImportCategory'
+    | 'commitImport'
+    | 'closeImport'
+    | 'exportPlaces'
+    | 'attachMap'
+    | 'detachMap'
+    | 'zoomBy'
+    | 'setTraceOpacity';
 
 /** The services the places area is created with: the editors' own and the pois' map factory. */
 export type PoisServices = ContentServices & { readonly maps?: AdminMapFactory | null };
@@ -100,5 +115,5 @@ export type PoisServices = ContentServices & { readonly maps?: AdminMapFactory |
 export const INITIAL_POIS_STATE: PoisState = {
     ...{ filter: { category: null, unpublished: false, search: '' }, list: LOADING_LIST, categories: LOADING_LIST, frame: null },
     ...{ selection: [], editor: null, map: 'none', clicked: null, photos: null, importing: null, busy: false, assist: NO_ASSIST },
-    ...{ linkedPhotos: [], exporting: false },
+    ...{ linkedPhotos: [], exporting: false, traceLayers: [], traceOpacity: 100 },
 };

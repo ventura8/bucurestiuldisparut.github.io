@@ -20,6 +20,7 @@ from hcm_pipeline.urlguard import AddressRefusedError
 from hcm_pipeline.worker.ai_state import STARTER_VERSION, starter_on_state, starter_words
 from hcm_pipeline.worker.args import Endpoints, WorkerArgs
 from hcm_pipeline.worker.command import WorkerCommand, yield_processor
+from hcm_pipeline.worker.household import Removal
 from hcm_pipeline.worker.page import FIREBASE_SDK_VERSION, PageSettings, content_security_policy, render_page
 from hcm_pipeline.worker.runtime import NoSecrets, signed_client, worker_config
 from hcm_pipeline.worker.server import LocalServer, Request
@@ -145,6 +146,8 @@ class App:
         self.pair_refusal: str | None = None
         self.profiles: list[tuple[object, object]] = []
         self.pauses: list[Mapping[str, object]] = []
+        self.removals = 0
+        self.remove_refusal: str | None = None
 
     def web_config(self) -> Mapping[str, str] | None:
         return None
@@ -170,6 +173,10 @@ class App:
     def pause(self, body: Mapping[str, object]) -> bool:
         self.pauses.append(body)
         return body.get("action") in {"pause", "resume"}
+
+    def remove(self) -> str | None:
+        self.removals += 1
+        return self.remove_refusal
 
 
 HOSTING = f"https://{PROJECT}.web.app"
@@ -436,6 +443,70 @@ def test_bad_path_an_outdated_image_under_the_supervisor_exits_75(api: FakeWorke
     assert code == ExitCode.OUTDATED
     assert int(code) == 75
     assert built[0].loop.supervised is True
+
+
+def test_happy_path_remove_this_computer_exits_with_the_orders_code(api: FakeWorkerApi, tmp_path: Path) -> None:
+    """Scenarios: S-A143-HAPPY-REMOVE"""
+    loopback = {"HCM_STAC_URL": "http://127.0.0.1:1/stac", "HCM_OVERPASS_URL": "http://127.0.0.1:1/overpass"}
+    env = {**api.env(), **loopback, "HCM_GOVERNOR": "off", "HCM_REMOVABLE": "1"}
+    built: list[Worker] = []
+
+    def build(args: WorkerArgs) -> Worker:
+        worker = Worker.build(args, "127.0.0.1", api.clock)
+        worker.loop.removal = Removal(docker=False, keep=True)
+        worker.loop.stop()
+        built.append(worker)
+        return worker
+
+    argv = ["worker", "--city", "bucharest", "--project", PROJECT, "--port", "0", "--work", str(tmp_path), "--emulators"]
+    code = main(argv, env, StepRegistry((WorkerCommand(build, lambda _steps: None),)), io.StringIO())
+
+    assert int(code) == 78
+    assert built[0].loop.removable is True
+
+
+def test_happy_path_the_starters_last_run_only_says_done(api: FakeWorkerApi, tmp_path: Path) -> None:
+    """Scenarios: S-A143-HAPPY-REMOVE"""
+    loopback = {"HCM_STAC_URL": "http://127.0.0.1:1/stac", "HCM_OVERPASS_URL": "http://127.0.0.1:1/overpass"}
+    env = {**api.env(), **loopback, "HCM_GOVERNOR": "off", "HCM_REMOVAL": "done", "HCM_REMOVAL_DOCKER_LEFT": "true"}
+    built: list[Worker] = []
+
+    def build(args: WorkerArgs) -> Worker:
+        worker = Worker.build(args, "127.0.0.1", api.clock)
+        built.append(worker)
+        return worker
+
+    argv = ["worker", "--city", "bucharest", "--project", PROJECT, "--port", "0", "--work", str(tmp_path), "--emulators"]
+    code = main(argv, env, StepRegistry((WorkerCommand(build, lambda _steps: None),)), io.StringIO())
+
+    # No kept session in this folder: the word cannot be sent (the loop's tests send it), and the loop never ran.
+    assert code == ExitCode.OK
+    assert built[0].loop.stopping.is_set() is False
+
+
+def test_happy_path_stop_using_this_computer_on_its_page_asks_the_starter(server: tuple[LocalServer, App]) -> None:
+    """Scenarios: S-A143-HAPPY-REMOVE"""
+    local, app = server
+
+    assert local.answer(request(local, "POST", "/remove", b"{}"))[0] == 202
+    app.remove_refusal = "no-starter"
+    status, body, _type = local.answer(request(local, "POST", "/remove", b"{}"))
+    assert (status, json.loads(body)) == (409, {"error": "no-starter"})
+    # Only the page itself (its token, its origin): the admin's origin, or no token, cannot ask it.
+    assert local.answer(request(local, "POST", "/remove", b"{}", **{"x-hcm-worker": "wrong"}))[0] == 403
+    assert local.answer(from_admin(local, "POST", "/remove", b"{}"))[0] == 403
+    assert app.removals == 2
+
+
+def test_bad_path_page_actions_without_a_cleaning_starter_refuse_to_remove(api: FakeWorkerApi, tmp_path: Path, built: list[Worker]) -> None:
+    """Scenarios: S-A143-BAD-REMOVE-NO-STARTER"""
+    worker = worker_for(api, tmp_path, built)
+
+    assert worker.actions.remove() == "no-starter"
+    worker.loop.removable = True
+    assert worker.actions.remove() is None
+    assert worker.loop.removal == Removal(docker=False, keep=False)
+    assert worker.loop.stopping.is_set()
 
 
 def test_bad_path_the_worker_command_names_a_bad_argument() -> None:

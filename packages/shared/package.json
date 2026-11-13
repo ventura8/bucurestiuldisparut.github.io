@@ -27,6 +27,10 @@
             "types": "./src/i18n/admin-worker-local/index.ts",
             "default": "./src/i18n/admin-worker-local/index.ts"
         },
+        "./admin-worker-household": {
+            "types": "./src/i18n/admin-worker-household/index.ts",
+            "default": "./src/i18n/admin-worker-household/index.ts"
+        },
         "./credits": {
             "types": "./src/overlays/credits.ts",
             "default": "./src/overlays/credits.ts"

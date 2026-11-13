@@ -110,6 +110,7 @@ describe('POI fields', () => {
         ['an end year only (built before records began)', { yearStart: deleted() }],
         [`${String(MAX_POI_PHOTOS)} photos`, { photoIds: Array.from({ length: MAX_POI_PHOTOS }, (_, index) => `p${String(index)}`) }],
         ['five links', { links: links(5) }],
+        ['the layer it was traced on (M27)', { sourceLayer: 'plan-1911' }],
     ])('happyPath_adminCreatesAPoiWith_%s', async (_label, changes) => {
         expect(await createPoi(changes)).toBe('allow');
     });
@@ -134,6 +135,7 @@ describe('POI fields', () => {
         ['a client createdAt', { createdAt: past() }],
         ['another editor', { updatedBy: 'someone-else' }],
         ['an unknown field', { style: 'color:red' }],
+        ['a traced-on layer that is not an id (M27)', { sourceLayer: 'a/b' }],
     ])('badPath_adminCannotCreateAPoiWith_%s', async (_label, changes) => {
         expect(await createPoi(changes)).toBe('deny');
     });
@@ -219,11 +221,12 @@ describe('POI years @S-A32-HAPPY-PLACE-YEAR @S-A32-BAD-PLACE-YEAR', () => {
     });
 });
 
-describe('POI categories', () => {
+describe('POI categories @S-A155-HAPPY-DISPLAY @S-A155-BAD-BLANK-CREDIT', () => {
     it.each([
         ['every field', {}],
         ['an English label', { label: { ro: 'Străzi dispărute', en: 'Vanished streets' } }],
         ['a transparent default', { defaultOpacity: 0 }],
+        ['hidden at start, pinned and credited (M27)', { defaultVisible: false, pinned: true, attribution: 'OpenHistoricalMap (CC0)' }],
     ])('happyPath_adminCreatesACategoryWith_%s', async (_label, changes) => {
         expect(await createCategory(changes)).toBe('allow');
     });
@@ -243,6 +246,9 @@ describe('POI categories', () => {
         ['a creator, which categories do not record', { createdBy: 'categories-admin' }],
         ['a client createdAt', { createdAt: past() }],
         ['another editor', { updatedBy: 'someone-else' }],
+        ['a pinned flag that is not a boolean (M27)', { pinned: 'yes' }],
+        ['a start visibility that is not a boolean (M27)', { defaultVisible: 0 }],
+        ['a credit over 500 characters (M27)', { attribution: 'x'.repeat(501) }],
     ])('badPath_adminCannotCreateACategoryWith_%s', async (_label, changes) => {
         expect(await createCategory(changes)).toBe('deny');
     });
@@ -259,5 +265,8 @@ describe('POI categories', () => {
 
         expect(await verdict(db.doc(path).update({ ...stamp, color: '#000000', icon: 'museum' }))).toBe('allow');
         expect(await verdict(db.doc(path).update({ ...stamp, color: 'black' }))).toBe('deny');
+        expect(await verdict(db.doc(path).update({ ...stamp, pinned: true, defaultVisible: false, attribution: 'OSM (ODbL)' }))).toBe(
+            'allow',
+        );
     });
 });

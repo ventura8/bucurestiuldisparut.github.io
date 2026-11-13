@@ -222,7 +222,8 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # which the Jobs store imports): the local worker's feed, `<hcm-worker-panel>`, `<hcm-run-place>` and their texts
     # (`@hcm/shared/admin-worker`), 5.5 KB measured on 2026-11-02 plus about 20 %, rounded up; 5.7 KB since finding 72
     # moved the command into `worker-local`.
-    "worker": 7,
+    # 8 since 2026-11-13 (§215, the owner's raise): 7.3 KB with W5's computers list.
+    "worker": 8,
     # Finding 72 of 2026-11-02 ("Use this computer": `packages/admin/src/worker/worker-local.ts`, the feed's one dynamic
     # import): the starter file, the auto-pair, Stop using this computer, the command behind Advanced, `<hcm-worker-local>`
     # and its texts (`@hcm/shared/admin-worker-local`), fetched when the worker's panel first shows the computer's part:
@@ -231,6 +232,11 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # took it to 8.7 KB, of which the two languages' texts are 3.9 KB; every part is shown with the computer's panel, so
     # nothing was left to split: the measurement plus about 15 %, rounded up.
     "worker-local": 10,
+    # W5, household computers (`packages/admin/src/worker/worker-household.ts`, the feed's other dynamic import, DECISIONS-for-review.md
+    # §216): the city's computers, Add another computer and Remove this computer, `<hcm-worker-household>` and its texts
+    # (`@hcm/shared/admin-worker-household`), fetched with the computer's part; a new chunk, so nothing else grew: 7.4 KB measured
+    # on 2026-11-13 (the two languages' texts about 2.5 KB) plus about 20 %, rounded up.
+    "worker-household": 9,
     # M8 (docs/research/M8-join-interfaces.md §6): the join's screens (`packages/ui/src/admin/imagery/join/join-card.ts`), fetched
     # when the city has a plan of its dates or a join opens, 2.4 KB measured on 2026-11-06 plus about 20 %, rounded up; and the
     # Upload view (`packages/ui/src/admin/imagery/upload-panel.ts`), out of the Imagery chunk to make room for the plan's feed
@@ -301,7 +307,7 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
 # an admin waits for.
 # 750 since 2026-11-12, the owner's decision (§168d): the georeferencer's panes and its sharper scan's tiles (`georef-panes`,
 # `scan-tiles`) took the total to 701.8 KB; both load only with the georeferencer, and the entry's 450 KB is unchanged.
-ADMIN_TOTAL_KB = 750
+ADMIN_TOTAL_KB = 760  # §215 (the owner's raise, 2026-11-13): 754.8 KB with W5
 
 # M6: the install bundle's folder in the deployed Hosting tree, and each tarball's budget in KB as served (it is gzip
 # already): the contract's ceilings (docs/research/M6-interfaces.md §1.3; DECISIONS-for-review.md §71). Since §73k

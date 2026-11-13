@@ -88,11 +88,12 @@ def parse_command(body: Mapping[str, object], now: float) -> Command | None:
     return Command("pause", until) if _until_ok(until, now) else None
 
 
-def _server_pause(value: object) -> tuple[str, float | None] | None:
-    """The claim's `paused` as (who, until), or None when the answer says none."""
-    if not isinstance(value, dict):
-        return None
-    return BY_COMPUTER if value.get("by") == BY_COMPUTER else BY_ADMIN, epoch_of(value.get("until"))
+def _server_pause(answer: Mapping[str, object]) -> tuple[str, float | None] | None:
+    """The claim's pause as (who, until): its `pause` (who, when, until when), else W5's bare `paused: true`; None when it says none."""
+    value = answer.get("pause")
+    if isinstance(value, dict):
+        return BY_COMPUTER if value.get("by") == BY_COMPUTER else BY_ADMIN, epoch_of(value.get("until"))
+    return (BY_ADMIN, None) if answer.get("paused") is True else None
 
 
 class PauseControl:
@@ -141,7 +142,7 @@ class PauseControl:
     def answered(self, sent: Command | None, answer: Mapping[str, object]) -> None:
         """A claim's answer: its `paused` mirrored, unless a newer command came while it was on its way."""
         if self.delivered(sent):
-            self._mirror(_server_pause(answer.get("paused")))
+            self._mirror(_server_pause(answer))
 
     def _mirror(self, found: tuple[str, float | None] | None) -> None:
         with self._lock:

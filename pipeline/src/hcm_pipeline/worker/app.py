@@ -25,6 +25,8 @@ from hcm_pipeline.worker.session import SIGNED_OUT, RefreshUnavailableError, Ses
 from hcm_pipeline.worker.state import WorkerState
 from hcm_pipeline.worker.webconfig import WebConfig, WebConfigError
 
+# Why a computer cannot clean itself up: no starter that does it runs this worker (a command started it).
+NO_STARTER: Final = "no-starter"
 LOG = get_logger("worker.app")
 CONFIG_MISSING: Final = "configMissing"
 # `POST /pair` while a session is held: the computer is paired already.
@@ -39,7 +41,7 @@ def _seconds(answer: Mapping[str, object], key: str) -> float | None:
 class PageActions:
     """The worker's side of the page (`server.WorkerApp`)."""
 
-    def __init__(self, session: Session, api: WorkerApi, state: WorkerState, web_config: WebConfig, hello: Mapping[str, str]) -> None:
+    def __init__(self, session: Session, api: WorkerApi, state: WorkerState, web_config: WebConfig, hello: Mapping[str, object]) -> None:
         self._session = session
         self._api = api
         self._state = state
@@ -51,6 +53,8 @@ class PageActions:
         # Pause this computer (`pausing.py`): the loop's, given by `Worker.build`; the wall clock a timed pause is checked against.
         self.pausing = PauseControl()
         self.wall: Callable[[], float] = time.time
+        # W5: the loop's `remove_here` (Stop using this computer on this page); without it, no starter cleans up.
+        self.remove_here: Callable[[], str | None] = lambda: NO_STARTER
 
     def accept_pairing(self, offer: Callable[[str], None]) -> None:
         """Where `pair` hands a code: the connector's `offer` (finding 72)."""
@@ -78,6 +82,10 @@ class PageActions:
         self.pausing.local(command)
         LOG.info("this computer was %s from its page", "paused" if command.action == "pause" else "resumed")
         return True
+
+    def remove(self) -> str | None:
+        """W5: Stop using this computer, from its own page: None once the loop ends for the starter's cleanup, else why not."""
+        return self.remove_here()
 
     def web_config(self) -> Mapping[str, str] | None:
         try:

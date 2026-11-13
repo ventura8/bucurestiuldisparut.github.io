@@ -27,7 +27,10 @@ import {
 const LATER = new Date(Date.parse(NOW) + 3_600_000).toISOString();
 
 function claim(world: WorkerWorld, extra: Record<string, unknown> = {}) {
-    return callAs<{ readonly job: unknown; readonly paused?: unknown }>(world, claimFunction, { workerId: WORKER, ...extra });
+    return callAs<{ readonly job: unknown; readonly paused?: unknown; readonly pause?: unknown }>(world, claimFunction, {
+        workerId: WORKER,
+        ...extra,
+    });
 }
 
 function end(world: WorkerWorld, data: Record<string, unknown>) {
@@ -42,9 +45,10 @@ describe('worker.claim: Pause this computer', () => {
 
         await expect(claim(world, { pause: { action: 'pause', until: LATER } })).resolves.toEqual({
             job: null,
-            paused: { by: 'computer', at: NOW, until: LATER },
+            paused: true,
+            pause: { by: 'computer', at: NOW, until: LATER },
         });
-        expect((await readWorker(world))?.paused).toEqual({ by: 'computer', at: at(NOW), until: at(LATER) });
+        expect((await readWorker(world))?.paused).toMatchObject({ by: 'computer', at: at(NOW), until: at(LATER) });
 
         await expect(claim(world, { pause: { action: 'resume' } })).resolves.toEqual({ job: { jobId: JOB } });
         expect((await readWorker(world))?.paused).toBeUndefined();

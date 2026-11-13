@@ -38,6 +38,7 @@ import { refusalOf } from '../imagery/api.js';
 import { Store } from '../state/store.js';
 import type { NoticeInput } from '../state/state.js';
 import { estimateCloudRun, type CloudRunUse } from './estimate.js';
+import type { Household } from './household.js';
 import type { LocalComputer } from './local.js';
 import { pausedOf, pauseUntil, type PausedView, type PauseLength } from './pause.js';
 
@@ -112,6 +113,8 @@ export interface WorkerIntents {
     pauseJob(action: 'pause' | 'resume'): Promise<boolean>;
     /** Pause the panel's computer for `length`, or Resume it (`imagery.pause` with the worker); true once the server took it. */
     pauseComputer(length: PauseLength | null): Promise<boolean>;
+    /** W5: the city's computers, Add another computer and Remove this computer (the `worker-household` chunk, its element registered). */
+    household(project: string): Promise<Household>;
 }
 
 const NO_USE: CloudRunUse = { vcpuSeconds: 0, gibSeconds: 0 };
@@ -243,6 +246,11 @@ export class WorkerFeed {
                 const chunk = await import('./worker-local.js');
                 chunk.defineWorkerLocal();
                 return chunk.createLocal(this.#services, project);
+            },
+            household: async (project) => {
+                const chunk = await import('./worker-household.js');
+                chunk.defineWorkerHousehold();
+                return chunk.createHousehold(this.#services, project);
             },
         };
     }

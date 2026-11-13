@@ -11,7 +11,9 @@ import { defineWorkerElements } from '../../../src/admin/worker/define.js';
 import { defineWorkerLocal } from '../../../src/admin/worker/hcm-worker-local.js';
 import { loadWorkerElements } from '../../../src/admin/worker/load.js';
 import type { WorkerFeedPort, WorkerHostPort, WorkerViewPort } from '../../../src/admin/worker/worker-port.js';
+import { FakeHousehold } from './fake-household.js';
 import { FakeLocal } from './fake-local.js';
+import { defineWorkerHousehold } from '../../../src/admin/worker/hcm-worker-household.js';
 import { cleanup, fixture } from '../../helpers.js';
 import { deep, deepAll, deepText, updated } from '../shell/fake-app.js';
 import { setupView, stepView } from '../setup/fixtures.js';
@@ -86,6 +88,11 @@ class FakeFeed implements WorkerFeedPort {
             const local = new FakeLocal();
             this.locals.push(local);
             return Promise.resolve(local);
+        },
+        household: (project: string): Promise<FakeHousehold> => {
+            this.calls.push(`household ${project}`);
+            defineWorkerHousehold();
+            return Promise.resolve(new FakeHousehold());
         },
     };
 
@@ -196,7 +203,7 @@ describe('<hcm-worker-panel>', () => {
         await updated(element);
         const text = deepText(element);
 
-        expect(host.feed.calls).toEqual(['start null', 'local demo-hcm']);
+        expect(host.feed.calls).toEqual(['start null', 'local demo-hcm', 'household demo-hcm']);
         expect(text).toContain(t('en', 'adminWorker.connected', { when: '' }).split(' Seen')[0] ?? '');
         expect(text).toContain(t('en', 'adminWorker.lastDone', { when: '' }).slice(0, 10));
         expect(deep(element, '[data-worker-version]').textContent).toBe(t('en', 'adminWorker.version', { version: '1.0.0' }));
@@ -304,7 +311,7 @@ describe('<hcm-worker-panel>', () => {
         const element = await panel(host);
         const first = host.feed;
         element.remove();
-        expect(first.calls).toEqual(['start null', 'local demo-hcm', 'stop']);
+        expect(first.calls).toEqual(['start null', 'local demo-hcm', 'household demo-hcm', 'stop']);
         document.body.append(element);
         await updated(element);
         expect(host.feeds).toHaveLength(2);
@@ -315,7 +322,7 @@ describe('<hcm-worker-panel>', () => {
         await element.updateComplete;
         (element as LitElement & { app: WorkerHostPort }).app = next;
         await updated(element);
-        expect(next.feed.calls).toEqual(['start null', 'local demo-hcm']);
+        expect(next.feed.calls).toEqual(['start null', 'local demo-hcm', 'household demo-hcm']);
     });
 });
 

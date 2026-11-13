@@ -9,9 +9,14 @@ import { PAUSED_BY_COMPUTER, timestampToDate, type JobDoc, type TimestampLike, t
 import { omit } from '../api/objects.js';
 import { at } from './holder.js';
 
+/** The worker's pause as recorded; W5's list (household) recorded only when, and the account that owns the worker stands for who. */
+function pauseOf(worker: WorkerDoc): WorkerDoc['paused'] {
+    return worker.paused ?? (worker.pausedAt === undefined ? undefined : { by: worker.uid, at: worker.pausedAt });
+}
+
 /** The worker's pause while it lasts; undefined when it has none or its `until` passed. */
 export function activePause(worker: WorkerDoc, now: Date): WorkerDoc['paused'] {
-    const paused = worker.paused;
+    const paused = pauseOf(worker);
     if (paused?.until !== undefined && timestampToDate(paused.until) <= now) {
         return undefined;
     }
@@ -21,12 +26,13 @@ export function activePause(worker: WorkerDoc, now: Date): WorkerDoc['paused'] {
 /** The worker paused by `by` (an account, or the computer itself), until `until` when given. */
 export function pausedWorker(worker: WorkerDoc, by: string, now: Date, until?: Date): WorkerDoc {
     const end = until === undefined ? {} : { until: at(until) };
-    return { ...worker, paused: { by, at: at(now), ...end } };
+    // `pausedAt` too: W5's list and its claim rule (`household.ts`) read it.
+    return { ...worker, paused: { by, at: at(now), ...end }, pausedAt: at(now) };
 }
 
 /** The worker with no pause. */
 export function resumedWorker(worker: WorkerDoc): WorkerDoc {
-    return omit(worker, ['paused']);
+    return omit(worker, ['paused', 'pausedAt']);
 }
 
 /** The worker after the computer's own page's command (none: as it was), with an expired pause dropped either way. */

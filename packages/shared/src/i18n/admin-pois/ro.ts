@@ -157,6 +157,15 @@ export const ro = {
     'adminContent.pois.view': 'Vizualizare',
     'adminContent.pois.view.list': 'Listă',
     'adminContent.pois.view.map': 'Hartă',
+    'adminContent.pois.section.trace': 'Trasare pe o hartă veche',
+    'adminContent.pois.field.traceLayer': 'Trasată pe harta',
+    'adminContent.pois.trace.none': 'Niciuna',
+    'adminContent.pois.trace.layerOption': 'Harta din {year} — {label}',
+    'adminContent.pois.trace.gone': 'O hartă care nu mai există',
+    'adminContent.pois.trace.goneHint': 'Harta veche a fost ștearsă sau înlocuită. Alege altă hartă sau Niciuna, apoi salvează.',
+    'adminContent.pois.trace.hint': 'Alege o hartă veche: apare sub desenul tău, lângă străzile de azi.',
+    'adminContent.pois.field.traceOpacity': 'Opacitatea hărții vechi',
+    'adminContent.pois.trace.opacityHint': 'La 100 % harta veche se vede întreagă; coboar-o ca să vezi străzile de azi.',
     // [end pois]
 } as const;
 

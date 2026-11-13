@@ -889,7 +889,7 @@ sets the worker's `paused: {by, at, until?}` (an `until` in the past or more tha
 On the computer: the heartbeat reads `releaseRequested` and the run stops at its **next checkpoint** (`ReleasedRunError`; the governor's
 gate lets go at once), the running step goes back to `pending` (its start kept), and `worker.end {outcome: 'released'}` queues the job
 again with the attempt its claim counted given back (`pause-state.ts` `releasedJob`; only while the computer is paused or the job was
-asked back, else the attempt stays counted). A paused worker's `worker.claim` is answered `{job: null, paused: {by, at, until?}}`; a
+asked back, else the attempt stays counted). A paused worker's `worker.claim` is answered `{job: null, paused: true, pause: {by, at, until?}}`; a
 pause past its `until` is dropped by the next claim. The worker mirrors the answer into its governor (the owner's `paused` choice,
 M26 §3): no processor threads, no memory budget, no card share, headroom 0; it stays connected and claims every `pollSeconds`, so a
 Resume is seen within about 30 seconds.
@@ -899,8 +899,139 @@ Resume is seen within about 30 seconds.
 and sends the command with the next `worker.claim` (or `worker.end`, when a run was handed back): `pause: {action: 'pause', until?}`
 or `{action: 'resume'}`, recorded as `paused.by: 'computer'`. `GET /state` gains `paused: {by: 'computer' | 'admin', until?} | null`.
 
+**With the computers' list (W5, household).** Its Pause and Resume (`worker.manage`) go through the same pause (`pause-state.ts`):
+the worker's `paused` and `pausedAt` are set and dropped together, and the running job is asked back. A paused worker's claim answers
+W5's `paused: true` and, beside it, `pause: {by, at, until?}`, which the worker mirrors (a bare `paused: true` reads as paused from the
+admin, with no end). The list's rows pause until Resume; the timed choices are on the card above it and on the computer's own page.
+
 The hand-back reuses the shape of M20's (archivehost, §204: `worker.end` `returned`, the attempt given back) with its own outcome,
 because a paused computer's job waits for no copy. Tests: `functions/test/imagery/pause.test.ts`, `functions/test/worker/pause.test.ts`,
 `packages/admin/test/worker/pause.test.ts`, `packages/ui/test/admin/worker/pause.test.ts`, `pipeline/tests/unit/test_runner_pause.py`,
 `test_worker_pausing.py`, the rules' `jobs.test.ts`, `e2e/admin/specs/imagery/pause.spec.ts`; scenarios A170, A171, P32; tour states
 `worker.job-paused`, `worker.jobs-pause-all`, `worker.computer-paused`.
+
+## Addendum of 2026-11-13: household computers (W5)
+
+The owner (beta.1, W5 of `reports/OPEN-ISSUES-beta1.md`): "Make it easy for users to use not only their own computer but also the
+other computers in their household, with minimum input from them. What we did here today for us must be available to our users."
+What was done by hand that day, and what replaces it: on the NUC (Linux, no screen) the starter copied over SSH, `loginctl
+enable-linger` typed, and the pairing made by stopping the laptop's worker and tunnelling the NUC's `127.0.0.1:8765` to the laptop,
+so the admin's auto-pair could reach it; on the Windows PC the same inside WSL, plus a Startup-folder VBS that keeps WSL alive.
+`DECISIONS-for-review.md` §216. Scenarios `S-A143-*` (behaviour A143).
+
+**The list of the city's computers** (`<hcm-worker-household>`, the lazy `worker-household` chunk, `packages/admin/src/worker/household.ts`):
+every `cities/{city}/workers/*` document, live, with the owner's name (`name`, `worker.manage` `rename`) else the computer's own
+(`host`: the starter passes `HCM_HOST_NAME` from `uname -n` or `%COMPUTERNAME%`, since a container's host name is its id), on or off
+(`WORKER_FRESH_SECONDS`), what it does, its share (`share`, below), its system (`os`, `HCM_HOST_OS`) and its helper's version
+(`starter`, `HCM_STARTER`) beside the release's. `worker.hello` takes `host {name?, os?, starter?}`, each only of its shape. Pause
+(`worker.manage` `pause`, `pausedAt`) makes `worker.claim` answer `{job: null, paused: true}` until Resume. A computer disconnected
+more than a day ago leaves the list.
+
+**Add another computer, with a screen**: the admin's own address (`…/admin/#/jobs`) with Copy; on that computer the owner signs in
+with Google and presses Use this computer, and the auto-pair of §2.7 does the rest (the browser there reaches its own loopback).
+Nothing new is trusted.
+
+**Add another computer, without a screen** (the tunnel retired): the wizard mints a code with `worker.pairCode {household: true}`
+(`WORKER_HOUSEHOLD_PAIR_SECONDS`, 45 minutes: the computer may first install Docker and pull the pipeline; still one use, bound to the
+owner and the city) and shows one line:
+
+```text
+curl -fsSL '<worker.starter, linux, install>' -o ~/hcm-worker.sh && echo <code> | sh ~/hcm-worker.sh
+```
+
+The starter reads the code from `HCM_PAIR_CODE` or one line of standard input (checked: 26 base32 characters, else ignored), clears
+the variable at once, installs as before, enables linger where there is no graphical session (`loginctl enable-linger`, else with
+sudo, else the exact command to type), then waits up to 45 minutes for the worker's `GET /state` to say `pairable` and posts the code
+to `POST /pair` itself, with the project's Hosting origin and the JSON body from standard input (`curl --data-binary @-`), exactly as
+the admin's auto-pair does from a browser. It says "This computer is connected. The admin lists it as <name>.", or why not and the fix
+(the code refused: a new line skips the download; no start in 45 minutes: is Docker running, is there room).
+
+**Docker installed when it is missing (Linux)**: the system's own packages, which its distribution signs (`apt-get install docker.io`,
+`dnf install moby-engine`, `zypper install docker`, `pacman -S docker`), with one sudo; never a downloaded script. Before it: 10 GB
+free on `/var`, else how much there is and what to free. Each step says what it does, how long and how much disk ("Step 1 of 3 …").
+A refused password or a blocked work computer says who to ask and Docker's install page; an unknown package manager gives the link.
+Then `systemctl enable --now docker` and `usermod -aG docker`; the new group only counts at a new login, so the service runs under
+`sg docker -c` until then. The note `installed-docker` (the package manager's name) in the helper's folder records that the helper
+installed Docker. Re-running keeps what is there.
+
+**Remove this computer: clean up first, disconnect second, no command** (the owner's order of 2026-11-13). `worker.manage {action:
+'remove', docker, keep}` records `removal {step: 'asked', askedAt, docker, keep}`; the worker's next claim is answered `{job: null,
+remove: {docker, keep}}` (a computer that is off gets it when it next claims). A worker under a starter that cleans up
+(`HCM_REMOVABLE=1`) says `accepted` (a claim with `removal`, taken whatever the guard says) and exits `76 + docker + 2·keep`
+(`ExitCode.REMOVE` … `REMOVE_KEEP_DOCKER`); its supervisor stops the loops beside it, removes the sidecar, its volumes and the images it
+pulled, then runs the worker once more with `HCM_REMOVAL=done` (the kept session in the volume signs it in; it says `done`, and the
+server revokes the worker and its pairing in one transaction), then removes the worker's container, its volume (or, keeping the
+scanned maps, only the `.hcm-session-*` sign-in in it), the pipeline's images, the helper's folder and last the service. Docker goes
+only when asked and the note says the helper installed it, through `sudo -n`; with no password to give there it stays, and the done
+says `dockerLeft` (the admin says so and how). A worker with no such starter (a command, an older starter, Windows until its
+increment) says `failed` `no-starter` and keeps working. The admin shows each step in plain words; **Disconnect now anyway**
+(`worker.revoke`) is offered only for a removal that waits on a computer that is off or failed, and only after it the line or file
+that cleans the computer up by hand (`worker.starter` `uninstall` for the computer's `os`). On the computer itself, its page (`http://localhost:8765/`) has **Stop using this computer**
+(`POST /remove` with the page's own token, after a confirm): the loop ends with `ExitCode.REMOVE` and the same cleanup follows
+(the server takes the last `done` with no order asked); without a cleaning starter it answers 409 `no-starter`. By hand (`sh hcm-worker.sh uninstall`)
+the same cleanup runs and asks, on a terminal, before removing a Docker the helper installed.
+
+**The governor across computers**: each claim carries `share {profile, why, cores, threads, memoryMb}` from the governor's record
+(`hcm_pipeline/worker/household.py`); `worker.claim` records it and, when the claimer is held back for its person (`profile` not
+`full` and `why` one of `user-active`, `others-busy`, `battery`, `thermal`, `gpu-busy`), answers `{job: null, yielded: true}` while
+another computer of the city is on, idle, not paused or removed and at `full` (`functions/src/worker/household.ts`). With no calm
+computer it takes the job at its quiet pace: nothing waits for a computer that is not there. The owner's own Quiet (`why: owner`) is
+no pressure.
+
+**Increments**: one (the list, headless pairing, Docker on Linux, the remote removal by the POSIX starter, the governor); two, Windows
+(below); three, macOS: without Docker the POSIX file (as `hcm-worker.command`) installs **Colima** with Homebrew (`brew install colima docker`:
+Homebrew checks each bottle's SHA-256; Homebrew's current versions, not pinned by us), notes `colima` in `installed-docker`, starts it
+sized for the pipeline (`--cpu 4 --memory 6 --disk 40`; on Apple silicon `--vm-type vz --vz-rosetta`, so the amd64 pipeline image
+runs through Rosetta) and keeps it at each login with `brew services start colima` (Homebrew's own launchd agent). Without Homebrew it
+installs nothing (Homebrew's installer is a script from the internet that asks for the administrator's password): it says why, opens
+brew.sh and names Docker Desktop. The removal takes Colima (`brew services stop`, `colima delete -f`, `brew uninstall colima docker`)
+only by the note, with no password. **UNVERIFIED** until a real Mac: Colima with Rosetta for the pipeline image, Colima's docker
+context in the LaunchAgent's environment.
+
+**Windows without Docker Desktop (increment 2).** `hcm-worker.bat` uses Docker Desktop when it runs. Otherwise, each step said with its
+time and size: 20 GB free on the system drive (else how much and what to free); virtualization on in the firmware (`Win32_Processor.
+VirtualizationFirmwareEnabled`, or a hypervisor already present; else how to turn it on, `https://aka.ms/enablevirtualization`);
+**WSL** turned on with one Windows permission prompt (`wsl --install --no-distribution`, `-Verb RunAs`, the only elevation of the
+file besides turning WSL off again), a RunOnce entry of the user that resumes the setup after the restart, and the note
+`installed-wsl`; then **the helper's own Linux**, `wsl --install Ubuntu-24.04 --name hcm-worker --no-launch` (after `wsl --update`
+when that fails), systemd on, the note `installed-distro`; then **Docker Engine** in it from Docker's apt repository, its key checked
+against Docker's fingerprint `9DC8 5822 9FC7 DD38 854A E2D8 8D81 803C 0EBF CD88`, `docker-ce`/`docker-ce-cli` pinned
+(`$DockerVersion`) and held. Every `docker` of the file then runs there (`wsl -d hcm-worker -u root -- docker`), the worker's port
+reaches Windows' `127.0.0.1:8765` through WSL's localhost forwarding, so the admin's auto-pair works unchanged. **The keep-alive**:
+WSL stops when no Windows program uses it (the owner's PC, 2026-11-13, even with `vmIdleTimeout=-1`), so the supervisor (the task at
+logon, no administrator) starts one hidden `wsl -d hcm-worker -e sleep infinity`. Settings > Apps lists **Historic City Map Maker
+helper** (`HKCU\...\Uninstall\hcm-worker`), whose Uninstall runs the removal; the removal asks before unregistering the helper's
+Linux (and with it its Docker) and before turning WSL off, each only by its note. A headless Windows computer takes
+`HCM_PAIR_CODE` from the environment, clears it and posts it to its worker as the POSIX file does. The remote removal is the POSIX
+file's: `HCM_REMOVABLE=1`, exit 76-79, `Remove-ByOrder` (the helper's own Linux unregistered when Docker is to go: it held only
+the helper's Docker). Tests: the file's structure (`functions/test/worker/starter-windows.test.ts`; the quality image has no
+PowerShell). **UNVERIFIED** until a real Windows computer runs it: `wsl --install --name` (WSL 2.4.4 or later), the RunOnce resume,
+the localhost forwarding of a port Docker publishes on WSL's loopback, the keep-alive under the task at logon.
+
+### §10, the security review of household computers (added)
+
+1. **The code of the headless line (§10.23).** Same entropy and storage as §10.8 (130 bits, stored as its SHA-256 prefix, one use);
+   45 minutes instead of 10, because the computer may install Docker and pull about 3 GB first. It never is an argument of a program
+   (`echo` is the shell's built-in; the starter reads standard input; `curl` reads the JSON body from standard input), so `ps` on a
+   shared computer never shows it; it is never written to a file by us (the shell's own history may keep the pasted line: spent at the
+   first start, useless after 45 minutes). `HCM_PAIR_CODE` is cleared as soon as it is read, so the service and every process the
+   starter starts never inherit it. A stolen line pairs a computer to the owner's account for this city only, with the worker's
+   scope of §10.9, and the list shows it by name: Remove disconnects it.
+2. **Why not the reverse (the computer shows a code the owner types).** A device-code flow keeps the secret on the computer, but it
+   asks the owner to read a code on the other computer and type it back (two transfers instead of one paste), and it opens the known
+   device-code phishing path (someone gets the owner to type their code into the admin). The minted line is simpler and binds the
+   code to the owner who minted it in a signed-in admin with App Check.
+3. **The starter posts to its own worker's page (§10.24).** `POST /pair` with the Hosting origin from a local process is what §10.16
+   already allows a process of the same user; nothing is widened. The tunnel is gone: no port of one computer is exposed to another.
+4. **Installing Docker (§10.25).** Only the distribution's own signed packages through its package manager, which verifies them; no
+   script is downloaded and piped to a shell. sudo asks on the terminal; the starter holds no password. The docker group gives the
+   account root-equivalent power over Docker, as Docker's own post-install steps do; the owner is told in the line's description.
+5. **Remote removal (§10.26).** Only the city's editors can ask it (`worker.manage`, `cityEditor`, App Check); the order reaches only
+   that worker through its own claim; it only deletes what the helper made (by name and by the repository's prefix) and Docker only by
+   the helper's note, never with a password typed by anyone. The last `done` is the worker's own sign-in, which can only revoke itself.
+6. **The share and the names (§10.27).** Written only by the functions from the worker's own calls; read by the city's members, as the
+   worker documents already were. A host name is limited to `[A-Za-z0-9._-]` and rendered as text.
+
+**UNVERIFIED** (§11, added): `loginctl enable-linger` without sudo over SSH on each distribution (polkit's `set-self-linger`), `sg`
+in a user service on each distribution, `apt-get install docker.io` on Debian and Ubuntu releases older than 22.04, and the remote
+removal's last run on a computer whose Docker was just removed. The first headless computer of a real owner proves the line.

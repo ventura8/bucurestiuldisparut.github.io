@@ -5,6 +5,9 @@ rem by itself once the worker runs). Double-click it once: it checks Docker, wri
 rem yours and registers a task of your user at logon (no administrator rights), which runs the worker in the background:
 rem it asks the server for the installed pipeline image, pulls it by digest, runs the worker and starts it again whenever
 rem it ends. "Stop using this computer" in the admin gives this file with uninstall chosen: it removes all of it.
+rem Without Docker Desktop (W5, household computers): it turns WSL on (one Windows permission prompt and a restart, then it goes on
+rem by itself after you sign in), installs its own Ubuntu with Docker Engine from Docker's signed apt repository (a pinned version),
+rem and keeps that Linux awake while the helper runs. Settings > Apps lists the helper, with Uninstall.
 setlocal
 set "HCM_PROJECT=__HCM_PROJECT__"
 set "HCM_CITY=__HCM_CITY__"
@@ -21,7 +24,7 @@ exit /b
 $Project = $env:HCM_PROJECT
 # This file's version: the first 12 hex digits of the SHA-256 of both starter templates with this line emptied
 # (scripts/site/src/admin/starter.ts; a test fails when the files change and it does not). The worker gets it as HCM_STARTER.
-$StarterVersion = '0428b9113175'
+$StarterVersion = 'c99ce4a91e15'
 $City = $env:HCM_CITY
 $Action = $env:HCM_ACTION
 $Name = 'hcm-worker'
@@ -59,13 +62,169 @@ $script:SidecarImage = ''
 # The governor (docs/research/M26-governor.md): what only Windows can say, every few seconds, and the worker's CPU quota.
 $GovernSeconds = 5
 $Hints = '/work/host-hints.json'
+# W5, household computers (docs/research/M7-local-worker.md, Household computers): without Docker Desktop, Docker Engine in the helper's
+# own WSL distribution; the notes of what this helper installed (so a removal takes only that); the removal's exit codes (76, +1 with
+# Docker, +2 keeping the scanned maps); the uninstall entry of Settings > Apps; the resume after the restart WSL needs.
+$Distro = 'hcm-worker'
+$DistroImage = 'Ubuntu-24.04'
+$DockerVersion = '27.5.1'
+$DockerKey = '9DC858229FC7DD38854AE2D88D81803C0EBFCD88'
+$MinFreeGb = 20
+$WslNote = Join-Path $Folder 'installed-wsl'
+$DistroNote = Join-Path $Folder 'installed-distro'
+$RemoveExit = 76
+$UninstallKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$Name"
+$ResumeKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce'
+$WslHelp = 'https://learn.microsoft.com/windows/wsl/install'
+$VirtualizationHelp = 'https://aka.ms/enablevirtualization'
+$Origin = "https://$Project.web.app"
+$script:ViaWsl = $false
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-# Docker must be installed and running.
+# Docker Desktop installed and running.
 function Test-Docker {
-    if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { return $false }
-    & docker info *> $null
+    if (-not (Get-Command docker.exe -ErrorAction SilentlyContinue)) { return $false }
+    & docker.exe info *> $null
     return $LASTEXITCODE -eq 0
+}
+
+# W5: every docker command of this file, in the helper's own WSL distribution when there is no Docker Desktop; what is piped in (the
+# host hints) goes on to it.
+function docker {
+    $command = if ($script:ViaWsl) { @('wsl.exe', '-d', $Distro, '-u', 'root', '--', 'docker') } else { @('docker.exe') }
+    $program = $command[0]
+    $rest = @($command | Select-Object -Skip 1) + $args
+    if ($MyInvocation.ExpectingInput) { $input | & $program @rest } else { & $program @rest }
+}
+
+# The helper's own WSL distribution is registered (wsl.exe lists names in UTF-16: its NULs are dropped).
+function Test-HelperDistro {
+    $names = ((& wsl.exe -l -q 2> $null) -join "`n") -replace "`0", ''
+    return @($names -split "`n" | Where-Object { $_.Trim() -eq $Distro }).Count -gt 0
+}
+
+function Test-Wsl {
+    if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) { return $false }
+    & wsl.exe --status *> $null
+    return $LASTEXITCODE -eq 0
+}
+
+# Virtualization on in the firmware (or Windows already runs on a hypervisor): WSL 2 needs it.
+function Test-Virtualization {
+    $cpu = Get-CimInstance Win32_Processor -ErrorAction SilentlyContinue | Select-Object -First 1
+    $system = Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue
+    return ($system.HypervisorPresent -eq $true) -or ($cpu.VirtualizationFirmwareEnabled -eq $true)
+}
+
+function Test-Room {
+    $drive = Get-PSDrive -Name $env:SystemDrive.TrimEnd(':') -ErrorAction SilentlyContinue
+    if ($drive -and $drive.Free -ge $MinFreeGb * 1GB) { return $true }
+    Write-Host "Docker and the map's pipeline need $MinFreeGb GB free on drive $env:SystemDrive; it has $([int]($drive.Free / 1GB)) GB."
+    Write-Host 'Free some space (empty the Recycle Bin; Settings, System, Storage), then open this file again.'
+    return $false
+}
+
+function Write-Blocked($What) {
+    Write-Host "$What was refused, or this computer does not allow it (a work computer's administrator may block it)."
+    Write-Host "Ask them to turn on WSL, or see $WslHelp, then open this file again."
+}
+
+# WSL turned on with one Windows permission prompt; the setup resumes by itself after the restart (RunOnce of this user).
+function Install-Wsl {
+    if (-not (Test-Virtualization)) {
+        Write-Host 'Virtualization is off on this computer, and the helper needs it for WSL (a small Linux inside Windows).'
+        Write-Host "Turn it on in the computer's BIOS or UEFI settings (Intel VT-x, AMD-V or SVM): $VirtualizationHelp"
+        return $false
+    }
+    Write-Host 'Step 1 of 3: turning on WSL, a small Linux inside Windows where Docker runs (about 5 minutes, 1 GB).'
+    Write-Host 'Windows asks once for your permission (a Yes or No window): choose Yes. Then the computer restarts.'
+    try {
+        $turnedOn = Start-Process -FilePath 'wsl.exe' -ArgumentList '--install', '--no-distribution' -Verb RunAs -Wait -PassThru -ErrorAction Stop
+    } catch { $turnedOn = $null }
+    if ($null -eq $turnedOn -or $turnedOn.ExitCode -ne 0) { Write-Blocked 'Turning on WSL'; return $false }
+    Set-Content -LiteralPath $WslNote -Value 'wsl' -Encoding Ascii
+    Set-ItemProperty -Path $ResumeKey -Name $Name -Value "powershell.exe $Run install"
+    Write-Host 'Restart the computer now: after you sign in again, the setup goes on by itself.'
+    if ((Read-Host 'Restart now? [Y/n]') -notmatch '^[nN]') { Restart-Computer -Force }
+    return $false
+}
+
+# The helper's own Ubuntu, used by nothing else, with systemd (Docker's service starts with it).
+function Install-Distro {
+    Write-Host "Step 2 of 3: installing the helper's own Linux ($DistroImage, about 3 minutes, 1.5 GB); nothing else uses it."
+    & wsl.exe --install $DistroImage --name $Distro --no-launch
+    if ($LASTEXITCODE -ne 0) {
+        & wsl.exe --update
+        & wsl.exe --install $DistroImage --name $Distro --no-launch
+    }
+    if ($LASTEXITCODE -ne 0 -or -not (Test-HelperDistro)) {
+        Write-Host "Windows could not install the helper's Linux. Update WSL (type wsl --update in a terminal), then open this file again."
+        Write-Host "Help: $WslHelp"
+        return $false
+    }
+    Set-Content -LiteralPath $DistroNote -Value $Distro -Encoding Ascii
+    "printf '[boot]\nsystemd=true\n' > /etc/wsl.conf" | & wsl.exe -d $Distro -u root -- sh -s
+    & wsl.exe --terminate $Distro *> $null
+    return $true
+}
+
+# Docker Engine in that Linux from Docker's own apt repository: its key checked by fingerprint, the version pinned and held.
+function Install-Engine {
+    Write-Host "Step 3 of 3: installing Docker Engine $DockerVersion in it from Docker's signed repository (about 3 minutes, 600 MB)."
+    $lines = @(
+        'set -e',
+        'if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then',
+        '. /etc/os-release',
+        'export DEBIAN_FRONTEND=noninteractive',
+        'apt-get update -q && apt-get install -y -q ca-certificates curl gnupg',
+        'install -d -m 0755 /etc/apt/keyrings',
+        'curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /tmp/docker.asc',
+        "gpg --show-keys --with-colons /tmp/docker.asc | grep -q '^fpr:*$($DockerKey):'",
+        'install -m 0644 /tmp/docker.asc /etc/apt/keyrings/docker.asc',
+        'echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $VERSION_CODENAME stable" >/etc/apt/sources.list.d/docker.list',
+        'apt-get update -q',
+        "v=5:$DockerVersion-1~ubuntu.`$VERSION_ID~`$VERSION_CODENAME",
+        'apt-get install -y -q "docker-ce=$v" "docker-ce-cli=$v" containerd.io',
+        'apt-mark hold docker-ce docker-ce-cli >/dev/null',
+        'systemctl enable --now docker',
+        'fi'
+    )
+    # The local AI reaches the NVIDIA card only through NVIDIA's container toolkit and its CDI file (the owner's 5090, 2026-11-13).
+    if ((& nvidia-smi -L 2> $null) -match '^GPU') {
+        $lines += @(
+            'command -v nvidia-ctk >/dev/null 2>&1 && exit 0',
+            'curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor --yes -o /usr/share/keyrings/nvidia-container-toolkit.gpg',
+            "curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit.gpg] https://#' >/etc/apt/sources.list.d/nvidia-container-toolkit.list",
+            'apt-get update -q && apt-get install -y -q nvidia-container-toolkit',
+            'nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml',
+            'nvidia-ctk runtime configure --runtime=docker && systemctl restart docker'
+        )
+    }
+    ($lines -join "`n") | & wsl.exe -d $Distro -u root -- sh -s
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Docker Engine could not be installed in the helper's Linux (no internet, or Docker's repository refused it)."
+        Write-Host 'Check the internet connection and open this file again; it goes on from where it stopped.'
+        return $false
+    }
+    return $true
+}
+
+# Docker for this helper: Docker Desktop when it runs, else (W5) the helper's own Linux with Docker Engine, set up step by step.
+function Initialize-Docker {
+    if (Test-Docker) { return $true }
+    if (-not (Test-Room)) { return $false }
+    if (-not (Test-Wsl)) { return Install-Wsl }
+    if (-not (Test-HelperDistro) -and -not (Install-Distro)) { return $false }
+    $script:ViaWsl = $true
+    return Install-Engine
+}
+
+# Keeps the helper's Linux awake while this supervisor runs: Windows stops WSL when no Windows program uses it (2026-11-13).
+function Start-KeepAlive {
+    if (-not $script:ViaWsl) { return }
+    $awake = Get-CimInstance Win32_Process -Filter "Name = 'wsl.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -like "*$Distro*sleep infinity*" }
+    if (-not $awake) { Start-Process -FilePath 'wsl.exe' -ArgumentList '-d', $Distro, '-e', 'sleep', 'infinity' -WindowStyle Hidden }
 }
 
 # The installed pipeline image, by digest, as the server names it (worker.image); $null when it cannot say.
@@ -413,6 +572,7 @@ function Start-Supervisor {
     Stop-Processes "*$Name.ps1*governor*"
     Start-Process -FilePath 'powershell.exe' -ArgumentList "$Run matcher $PID" -WindowStyle Hidden
     Start-Process -FilePath 'powershell.exe' -ArgumentList "$Run governor $PID" -WindowStyle Hidden
+    Start-KeepAlive
     $wait = 10
     $refused = 0
     while ($true) {
@@ -427,10 +587,14 @@ function Start-Supervisor {
                 $arch = & docker version --format '{{.Server.Arch}}' 2> $null
                 $arguments += @('-v', "${AiFiles}:/ai/files", '-v', "${AiBox}:/ai/box", '-e', "HCM_STARTER=$StarterVersion")
                 $arguments += @('-e', "HCM_STARTER_UPDATE=$($script:UpdateSaid)", '-e', "HCM_DOCKER_ARCH=$arch")
+                # W5: this computer's name and system for the admin's list of the city's computers.
+                $arguments += @('-e', "HCM_HOST_NAME=$($env:COMPUTERNAME -replace '[^A-Za-z0-9._-]', '')", '-e', 'HCM_HOST_OS=windows')
+                $arguments += @('-e', 'HCM_REMOVABLE=1')
                 $arguments += @('-e', "HCM_AI_VARIANT=$(Get-AiVariant)", $image)
                 $arguments += @('worker', '--city', $City, '--project', $Project, '--supervised', '--image', $digest)
                 & docker @arguments
                 $code = $LASTEXITCODE
+                if ($code -ge $RemoveExit -and $code -le $RemoveExit + 3) { Remove-ByOrder $code $image $digest }
                 if ($code -eq $Outdated -or ((Get-Date) - $started).TotalSeconds -gt 600) { $wait = 0 }
                 if ($code -eq $Usage) { $refused += 1 } else { $refused = 0 }
             }
@@ -460,19 +624,32 @@ function Stop-Supervisors {
     & docker rm -f $Name $Matcher *> $null
 }
 
-function Install-Worker {
-    if (-not (Test-Docker)) {
-        Write-Host 'Docker is not installed or not running.'
-        Write-Host "Get Docker: $GetDocker"
-        Write-Host 'Start Docker Desktop, then open this file again.'
-        Start-Process $GetDocker
-        return
-    }
-    Stop-Supervisors
+# The installed copy, which the task at logon runs (and the setup resumes from after WSL's restart).
+function Write-InstalledCopy {
     New-Item -ItemType Directory -Force -Path $Folder | Out-Null
     $part = (Get-Content -LiteralPath $env:HCM_SELF -Raw) -split ('#PS' + '-BEGIN'), 2
     $header = "`$env:HCM_PROJECT = '$Project'`r`n`$env:HCM_CITY = '$City'`r`n`$env:HCM_ACTION = 'run'`r`n"
     Set-Content -LiteralPath $Installed -Value ($header + $part[1]) -Encoding Ascii
+}
+
+# Settings > Apps lists the helper, and its Uninstall runs this file's removal (no administrator rights: the current user's list).
+function Register-UninstallEntry {
+    New-Item -Path $UninstallKey -Force | Out-Null
+    $entry = @{
+        DisplayName = 'Historic City Map Maker helper'; DisplayVersion = $StarterVersion; Publisher = 'Historic City Map Maker'
+        UninstallString = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$Installed`" uninstall"; NoModify = 1; NoRepair = 1
+    }
+    foreach ($key in $entry.Keys) { Set-ItemProperty -Path $UninstallKey -Name $key -Value $entry[$key] }
+}
+
+function Install-Worker {
+    $code = Read-PairCode
+    if ($env:HCM_SELF) { Write-InstalledCopy }
+    if (-not (Initialize-Docker)) {
+        Write-Host "Get Docker by hand instead: $GetDocker"
+        return
+    }
+    Stop-Supervisors
     try {
         $taskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $Run
         $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
@@ -484,26 +661,117 @@ function Install-Worker {
         Set-Content -LiteralPath $Startup -Value "@start `"`" powershell.exe $Run" -Encoding Ascii
         Start-Process -FilePath 'powershell.exe' -ArgumentList $Run -WindowStyle Hidden
     }
+    Register-UninstallEntry
     Write-Host 'This computer is set up: the worker runs in the background and starts when you log on.'
-    Write-Host 'Go back to the admin: it connects this computer by itself.'
+    if ($script:ViaWsl) { Write-Host "It keeps the helper's Linux awake while it runs; Settings, Apps, Historic City Map Maker helper removes all of it." }
+    if ($code) { Connect-WithCode $code } else { Write-Host 'Go back to the admin: it connects this computer by itself.' }
 }
 
-function Uninstall-Worker {
-    Stop-Supervisors
-    Unregister-ScheduledTask -TaskName $Name -Confirm:$false -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath $Startup -Force -ErrorAction SilentlyContinue
-    & docker volume rm $Name $AiFiles $AiBox *> $null
-    # Only the images this file pulled, by the names it noted: the owner's other PyTorch images stay.
+# W5: the one-time code of "Add another computer"'s line (HCM_PAIR_CODE), cleared at once so nothing started from here inherits it.
+function Read-PairCode {
+    $code = [string]$env:HCM_PAIR_CODE
+    Remove-Item Env:HCM_PAIR_CODE -ErrorAction SilentlyContinue
+    if ($code -cmatch '^[a-z2-7]{26}$') { return $code }
+    if ($code) { Write-Host 'That is not a code from the admin: it is ignored. Copy the whole line again from Add another computer.' }
+    return $null
+}
+
+# Waits for the worker (the first start downloads the pipeline) and hands it the code, as the admin's auto-pair does from a browser.
+function Connect-WithCode($Code) {
+    Write-Host 'Connecting this computer to your map. The first start downloads the pipeline (about 3 GB): 5 to 20 minutes.'
+    $headers = @{ Origin = $Origin }
+    $posted = $false
+    for ($waited = 0; $waited -lt 2700; $waited += 10) {
+        try { $state = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/state" -Headers $headers -TimeoutSec 5 -ErrorAction Stop } catch { $state = $null }
+        if ($state.signedIn -eq $true) { Write-Host "This computer is connected. The admin lists it as $env:COMPUTERNAME."; return }
+        if ($state.lastError -eq 'apiError.worker.pairCode') {
+            Write-Host 'The map refused the code: it was used already or ran out. In the admin, Add another computer gives a new line.'
+            return
+        }
+        if ($state.pairable -eq $true -and -not $posted) {
+            $body = '{"code":"' + $Code + '"}'
+            try { Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:$Port/pair" -Headers $headers -ContentType 'application/json' -Body $body -TimeoutSec 10 -ErrorAction Stop | Out-Null; $posted = $true } catch { $posted = $false }
+        }
+        Start-Sleep -Seconds 10
+    }
+    Write-Host 'This computer did not start within 45 minutes, so its code ran out. In the admin, Add another computer gives a new line.'
+}
+
+# The local AI's sidecar, volumes and the images this file pulled for it (by the names it noted: the owner's other images stay).
+function Remove-Ai {
+    & docker rm -f $Matcher *> $null
+    & docker volume rm $AiFiles $AiBox *> $null
     if (Test-Path -LiteralPath $AiImageNote) {
         foreach ($each in Get-Content -LiteralPath $AiImageNote) { if ($each) { & docker image rm $each *> $null } }
     }
+}
+
+# The worker's container, its volume (or, keeping the scanned maps, only its sign-in), the pipeline's images.
+function Remove-WorkerFiles($Keep, $Image) {
+    & docker rm -f $Name *> $null
+    if ($Keep) {
+        & docker run --rm -v "${Name}:/work" --entrypoint sh $Image -c 'rm -f /work/.hcm-session-*' *> $null
+    } else {
+        & docker volume rm $Name *> $null
+    }
+    $prefix = "us-central1-docker.pkg.dev/$Project/hcm/pipeline@"
+    foreach ($each in (& docker images --format '{{.Repository}}@{{.Digest}}' 2> $null)) {
+        if ($each.StartsWith($prefix)) { & docker image rm $each *> $null }
+    }
+}
+
+# The task at logon, the Startup entry, Settings' entry, a pending resume and this folder; last, since it may end this process.
+function Remove-Service {
+    Unregister-ScheduledTask -TaskName $Name -Confirm:$false -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $Startup -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $UninstallKey -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-ItemProperty -Path $ResumeKey -Name $Name -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $Folder -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# W5, Remove this computer: the worker accepted the admin's order and ended with 76-79. Clean up first; the worker then says done
+# (the server disconnects it); then the rest. Docker goes only when asked and it lives in the helper's own Linux (its note).
+function Remove-ByOrder($Code, $Image, $Digest) {
+    $flags = $Code - $RemoveExit
+    Write-Host 'The admin asked to remove this computer: cleaning up.'
+    Stop-Processes "*$Name.ps1*matcher*"
+    Stop-Processes "*$Name.ps1*governor*"
+    Remove-Ai
+    & docker run --rm --name $Name -v "${Name}:/work" -e HCM_REMOVAL=done -e HCM_REMOVAL_DOCKER_LEFT=false $Image worker --city $City --project $Project --supervised --image $Digest *> $null
+    Remove-WorkerFiles ($flags -ge 2) $Image
+    $ownLinux = $script:ViaWsl -and (Test-Path -LiteralPath $DistroNote)
+    Remove-Service
+    if (($flags % 2) -eq 1 -and $ownLinux) { & wsl.exe --unregister $Distro *> $null }
+    Write-Host 'This computer no longer works for the map.'
+    exit 0
+}
+
+function Uninstall-Worker {
+    $ownLinux = Test-Path -LiteralPath $DistroNote
+    $ownWsl = Test-Path -LiteralPath $WslNote
+    if (-not (Test-Docker) -and (Test-HelperDistro)) { $script:ViaWsl = $true }
+    Stop-Supervisors
+    Remove-Ai
+    $image = @(& docker images --format '{{.Repository}}@{{.Digest}}' 2> $null | Where-Object { $_ -like "us-central1-docker.pkg.dev/$Project/hcm/pipeline@*" })[0]
+    Remove-WorkerFiles $false $image
+    Remove-Service
     Write-Host 'The worker is removed from this computer.'
+    if ($ownLinux -and (Read-Host "This helper installed its own Linux with Docker in it. Remove it too? [Y/n]") -notmatch '^[nN]') {
+        & wsl.exe --unregister $Distro *> $null
+        Write-Host "The helper's Linux and its Docker are removed."
+    }
+    if ($ownWsl -and (Read-Host 'This helper turned WSL on. Turn it off too (Windows asks your permission)? [y/N]') -match '^[yY]') {
+        Start-Process -FilePath 'wsl.exe' -ArgumentList '--uninstall' -Verb RunAs -Wait -ErrorAction SilentlyContinue
+    }
 }
 
 # The installed copy started with the word `matcher` and its supervisor's process id is the sidecar's loop (Start-Supervisor starts it).
 if ($args -contains 'matcher') { $Action = 'matcher' }
 if ($args -contains 'governor') { $Action = 'governor' }
+if ($args -contains 'install') { $Action = 'install' }
+if ($args -contains 'uninstall') { $Action = 'uninstall' }
+# W5: no Docker Desktop, but the helper's own Linux: every docker command runs there.
+if ($Action -ne 'install' -and -not (Test-Docker) -and (Test-HelperDistro)) { $script:ViaWsl = $true }
 switch ($Action) {
     'run' { Start-Supervisor }
     'matcher' { Start-MatcherLoop ([int]$args[1]) }
