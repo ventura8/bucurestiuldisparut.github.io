@@ -92,6 +92,7 @@ export const workerDocSchema = z.strictObject({
     outdated: z.boolean().optional(),
     /** Its local AI, as the worker last said through `worker.hello`. */
     ai: workerAiSchema.optional(),
+<<<<<<< HEAD
     /** W5: the owner's name for it (Rename), the computer's own name, its starter's version, its governor's share. */
     name: workerNameSchema.optional(),
     host: z.string().regex(WORKER_HOST_PATTERN).optional(),
@@ -105,6 +106,10 @@ export const workerDocSchema = z.strictObject({
     pausedAt: timestampSchema.optional(),
     /** W5: Remove this computer, and how far it got. */
     removal: workerRemovalSchema.optional(),
+=======
+    /** 2026-11-13: the jobs whose stitched film this computer holds, as its last claim said (a job without its film waits for it). */
+    films: z.array(idSchema).max(200).optional(),
+>>>>>>> b362328f (feat(worker): a stitched film waits for the computer that holds it)
     /** Disconnect this computer (`worker.revoke`): every later call of this worker is refused. */
     revokedAt: timestampSchema.optional(),
     ...stamp,

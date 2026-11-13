@@ -41,6 +41,8 @@ JOB_WAIT_REASONS: Final = (
     "daily",
     # M20 (2026-11-13): an archive series waiting for the computer with its archive to send a copy of its sheets.
     "archive-copy",
+    # 2026-11-13: a job whose stitched film is on another computer, waiting for that computer to claim it.
+    "film-copy",
 )
 JOB_STEP_STATES: Final = ("pending", "running", "done", "failed", "skipped")
 PIPELINE_STEPS: Final = (

@@ -171,9 +171,9 @@ async function wait(deps: DispatchDeps, cityId: string, jobId: string, reason: J
     return 'waiting';
 }
 
-/** The job already says why it waits: an archive series waiting for its sheets' copy waits for a worker too (M20). */
+/** The job already says why it waits: an archive series waiting for its sheets' copy, or a job for its film, waits for a worker too. */
 function alreadySays(job: JobDoc, reason: JobWaitReason): boolean {
-    return job.waitReason === reason || (reason === 'worker' && job.waitReason === 'archive-copy');
+    return job.waitReason === reason || (reason === 'worker' && (job.waitReason === 'archive-copy' || job.waitReason === 'film-copy'));
 }
 
 function starting(job: JobDoc, now: Date): JobDoc {
