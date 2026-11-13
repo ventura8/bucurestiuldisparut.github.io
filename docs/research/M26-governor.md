@@ -72,7 +72,8 @@ One pure function, `decide(signals, choice, before, now) -> PolicyState`, and `e
 - Heat steps **down one level** (full to quiet, quiet to paused) at 95 °C on the processor (90 until 2026-11-13: the
   laptop's package reads 90 with only a local model running, so every mobile processor at work stepped down) or 83 °C on a card, and
   back up only 5 °C below both (`why: thermal`; 10 until 2026-11-13: with a local model, pytest and Prettier holding the laptop at
-  88 to 93 °C, a resume at 85 never came and the worker paused for hours).
+  88 to 93 °C, a resume at 85 never came and the worker paused for hours); once hot it stays hot at least two minutes, `HOT_HOLD_S`: on battery at 90 to 95 °C the laptop paused and resumed
+  about once a minute).
 - **Before the limit** the budget already gives way (§4): from `WARM_C` (80 °C) the threads shrink in proportion to the degrees
   left to 95 (14 threads at 80, 9 at 85, 4 at 90, 1 at 93), so the worker's own load seldom takes the processor to the step-down,
   and a resume at 90 runs on the one or few threads the heat leaves, not on a full profile.
@@ -100,7 +101,8 @@ first quota read is the cap, never one of ours.
 The memory is counted in 256 MB steps (`MEMORY_STEP_MB`) and the log says a line only when the profile, its reason or the threads
 change (`governor._said`): until 2026-11-13 every tick's few megabytes more or less changed the budget, and the worker logged
 "this computer: quiet (user-active), 4 threads, 5880 MB" every 5 s (up to 720 lines an hour; the laptop's last hour of
-2026-11-13: 173 lines, 56 under the new rule, each a real change between user-active, battery, thermal and others-busy).
+2026-11-13: 173 lines, 56 under the new rule, each a real change between user-active, battery, thermal and others-busy). Within one profile a change of fewer than two threads is not made (`governor.steady`): the heat's share moved quiet's threads
+1, 2, 3, 4 in turn on the laptop, a log line and a `docker update` each.
 
 **Headroom and the claim** (2026-11-13: a city with three workers, the laptop, the NUC and the PC). `Governor.headroom()` is 0 to 1:
 the lesser of the heat's share (above) and 1 − others' load (their share of the machine), 0 while paused. The worker's claim pace (`worker/pace.py`)
