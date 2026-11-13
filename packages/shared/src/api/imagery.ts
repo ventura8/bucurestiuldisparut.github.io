@@ -6,7 +6,8 @@
  */
 import { z } from 'zod';
 
-import { JOB_STATUSES, harvestDatasetSchema, type JobDoc } from '../schemas/firestore-ops.js';
+import { JOB_STATUSES, type JobDoc } from '../schemas/firestore-ops.js';
+import { harvestDatasetSchema } from '../schemas/harvest-state.js';
 import { USGS_DATASETS } from '../schemas/firestore.js';
 import { cropRingSchema, enabledGcps, GEOREF_TRANSFORMS, gcpSchema, MAX_GCPS, MIN_GCPS } from '../schemas/georef.js';
 import { RECALIBRATE_MAX_POINTS, RECALIBRATE_STARTED, roughPointSchema } from '../schemas/imagery-recalibration.js';

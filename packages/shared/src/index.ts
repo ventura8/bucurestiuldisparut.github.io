@@ -127,9 +127,6 @@ export {
     FINISHED_JOB_STATUSES,
     GUARD_REASONS,
     GUARD_STATES,
-    HARVEST_DATASET_STATES,
-    HARVEST_OUTCOMES,
-    HARVEST_STOP_REASONS,
     JOB_LOG_LEVELS,
     JOB_MACHINES,
     JOB_STATUSES,
@@ -152,8 +149,6 @@ export {
     WORKER_ID_PATTERN,
     adminDocSchema,
     provisionDue,
-    harvestDatasetSchema,
-    harvestStateDocSchema,
     inviteDocSchema,
     jobDocSchema,
     jobLogDocSchema,
@@ -166,12 +161,11 @@ export {
     usageDocSchema,
     usgsSceneDocSchema,
 } from './schemas/firestore-ops.js';
+export { HARVEST_DATASET_STATES, HARVEST_OUTCOMES, HARVEST_STOP_REASONS, harvestDatasetSchema, harvestStateDocSchema } from './schemas/harvest-state.js';
+export type { HarvestDataset, HarvestDatasets, HarvestStateDoc } from './schemas/harvest-state.js';
 export type {
     AdminDoc,
     AdminRole,
-    HarvestDataset,
-    HarvestDatasets,
-    HarvestStateDoc,
     InviteDoc,
     JobDoc,
     JobLogDoc,
