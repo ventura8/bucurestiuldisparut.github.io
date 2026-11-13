@@ -703,29 +703,49 @@ joins.
 
 `good` when at least 90 % of the sheets that count are placed (blank pages and `not-part` do not count), the seams' median NCC is at least
 0.5, the residuals' 95th percentile at most 3 px and no sheet moved more than a quarter cell from its prior (the thresholds are the shared
-`STITCH_GOOD_*` twins); `poor` under 50 % placed or a median under 0.25; else `check`.
+`STITCH_GOOD_*` twins); `poor` under 50 % placed or a median under 0.25; else `check`. A sheet is placed for the verdict only when a kept
+seam touches it (one its cell's prior alone holds proves nothing), and every seam the bundle did not keep (missing, or dropped) scores 0 in
+the median: names read right over pictures whose seams say nothing (the 1895 quadrants read in the wrong order, or noise) are never `good`
+(review of 2026-11-13; `test_placing_stitch_guards.py`, S-P20-BAD-STITCH-NAMES-NO-SEAMS).
 
 ### 19.6 The fallback order and the windowed mosaic (`maps.py`, `autoplace.py`, `canvas_window.py`)
 
 Atlas and pieces alike: (1) the owner's layout (`help.layoutAnswer`), (2) the overview, (3) names, seams and bundle, mosaicked when `good`,
-(4) the older edges or SIFT joins when they place at least 90 % of the parts, (5) else no mosaic: a preview of the proposal and the version
-waits with `layout-check`. The mosaic is a tiled GTiff written in 2048 px windows, one sheet read at a time at the canvas's scale, each
-pixel owned by the covering sheet whose centre is nearest (a hard seam: blending line art doubles its lines); GDAL's cache is held to
-128 MB. Peak memory is one sheet and two windows.
+(4) the older edges or SIFT joins when they place at least 90 % of the parts and something vouches for them: their matches' residual
+within `STITCH_GOOD_RMS_PX` with at least 24 agreeing matches a join on average, or, for pages joined by their edges alone (nothing
+measured), a proposal that was only `check`, never `poor` (S-P20-BAD-STITCH-LEGACY-LOOSE), (5) else no mosaic: a preview of the proposal
+and the version waits with `layout-check`. A series of more than `LAYOUT_SHEETS_MAX` (2000) files waits with `no-path` before any layout
+("import it as smaller series"): the wizard could not open its `layout.json` (S-P20-BAD-STITCH-TOO-MANY). The mosaic is a tiled GTiff
+written in 2048 px windows, one sheet at a time: only its content box is read, by GDAL straight at its size on the canvas, one band at a
+time into one array, then turned; each pixel is owned by the covering sheet whose centre is nearest (a hard seam: blending line art doubles
+its lines); GDAL's cache is held to 128 MB. Peak memory is one sheet at the canvas's scale, one band and two windows, never a whole scan
+(two 12000 x 9000 colour scans: about 690 MB with the layout, under the test's 800 MB; the first paste read the scan whole at 1.05 x and
+copied it three times, over 1.1 GB).
 
 ### 19.7 The files for the owner (`layout_files.py`)
 
 `help.stitched.layout` (the grid, the revision, the quality, at most 200 weakest seams) and three version files: `layout.json`
-(`layoutFileSchema`: every sheet's cell, turn, flip, why it is out, source, its similarity from its oriented pixels to the canvas; every
-seam's offset and overlap in the first sheet's oriented pixels, and for a weak seam one suggested matching point and its two strips),
-`thumbs.jpg` (128 px cells, 32 a row, not turned) and `seams.jpg` (one row per weak seam, two 256 px squares). The revision is one more
-than the version's current layout's.
+(`layoutFileSchema`: every sheet's cell, turn, flip, why it is out, the grid's source (the same for every sheet, also for one left out),
+its matrix from its oriented pixels to the canvas, an axis-wise stretch and a shift (`sx ≠ sy` when a sheet's shape differs from its
+cell's), every seam's offset and overlap in the first sheet's oriented pixels, and for a weak **or missing** seam one suggested matching
+point and its two strips), `thumbs.jpg` (128 px cells, 32 a row, not turned) and `seams.jpg` (one row per weak or missing seam, weakest
+first, two 256 px squares: the wizard must show both states, and size the sprite from every seam with a `strip`). Residuals (`rmsPx`,
+`quality.seamRmsPx`) are in cell pixels. The revision is one more than the version's current layout's. What the pipeline really writes is
+held in `pipeline/tests/contracts/layout.json` (`test_placing_layout_contract.py`: a series with a foreign sheet, strong and missing seams;
+its shape must match, `HCM_WRITE_CONTRACTS=1` writes it again), which the shared schemas' test parses.
 
 ### 19.8 The owner's layout (`owner_layout.py`)
 
-The answer names sheets by index with their cell, turn and flip, or `not-part`; a sheet it does not name is out. A seam the owner answered
-(one point on each side) becomes a fixed seam of full weight; the rest are measured and bundled. A `preview` answer renders the layout and
-waits again (its answer kept, revision + 1); an accepted or final one is mosaicked and placed whatever its verdict.
+The answer names sheets by index with their cell, turn and flip, or `not-part`. A sheet it does not name keeps its automatic reason
+(`blank`, `no-join` for a name the grid did not read, else `no-seam`): only the owner's X makes a sheet `not-part`, which no longer counts
+(the wizard should still send every sheet with a cell). A turn the cell's shape refuses (a quarter turn of an oblong sheet on an oblong
+cell) goes back a quarter, the flip kept. A seam the owner answered (one point on each side) becomes a fixed seam of full weight only when
+its two sheets are still neighbours on that side of the new grid and both points are two finite numbers: a seam answered before a sheet
+moved or turned, or a malformed point, is ignored (S-P20-BAD-STITCH-OWNER-MALFORMED). The rest are measured and bundled. A `preview` answer
+renders the layout and waits again (revision + 1); an accepted or final one is mosaicked and placed whatever its verdict
+(S-P20-HAPPY-STITCH-OWNER). The answer stays in `help` through every later wait: `output.wait_for_help` carries `help.layoutAnswer` into
+the new `help` in the same write, so a retry of `place` or Locate again lays the series out the owner's way again, and no crash between
+two writes drops it.
 
 ### 19.9 Targets and measurements
 
@@ -733,7 +753,9 @@ Synthetic series (`pipeline/tests/synthetic/sheets.py` on the synthetic town): N
 flips, scale ±5 %, grey, colour and line art, every name scheme, shuffled, missing and foreign sheets, noise. Targets, all met in the tests
 (`test_placing_autostitch.py`, `test_placing_canvas_window.py`): every sheet placed at 3 % overlap or more and for named abutting atlases;
 seam error median ≤ 1.5 px and p95 ≤ 3 px; a foreign sheet never placed; noise judged `poor` (it waits, never a mosaic); peak RSS ≤ 1.5 GB
-for 100 sheets of 6000 px.
+for 100 sheets of 6000 px and ≤ 800 MB for two colour sheets of 12000 px (the child's own `VmHWM`, GDAL's cache at a 4 GB worker's 256 MB).
+The older edges and SIFT joins place fewer than all 12 sheets of the 6 % overlap series that the layout places whole (pinned in
+`test_placing_autostitch.py`).
 
 Real series (dry run on the NUC, 2026-11-13, `autostitch.propose` alone, no overview; before: the older edges and SIFT joins, §15.1 and the
 worker's log):

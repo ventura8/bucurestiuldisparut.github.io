@@ -17472,6 +17472,61 @@
             "notes": "M20 §19 (track/autostitch, 2026-11-12). Tests: pipeline/tests/unit/test_placing_sheetnames.py."
         },
         {
+            "id": "S-P20-HAPPY-STITCH-OWNER",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The owner's tile layout is fixed as given and kept for a retry",
+            "asserts": "help.layoutAnswer with cells, turns, flips, an X and an answered seam -> a preview waits again with layout-check and revision + 1; an accepted answer is mosaicked with the owner's seam (state owner); sheets not named keep their automatic reason (no-seam), only the X is not-part; a turn the cell refuses goes back a quarter; the answer stays in help after the mosaic's wait for points",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_autoplace.py, pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-OWNER-MALFORMED",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A malformed or outdated owner answer never fixes a seam",
+            "asserts": "points that are not two finite numbers, a seam between sheets no longer neighbours on its side, a broken answer -> no fixed seam (never one at 0, 0), zeroes for malformed numbers, the rest of the layout measured as usual",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_autoplace.py, pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-NAMES-NO-SEAMS",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Names read right over seams that say nothing are never judged good",
+            "asserts": "a 2 x 3 rc series whose pictures are swapped (quadrants read in the wrong order) or noise -> grid source name, verdict check or poor, so it waits for its owner instead of a mosaic",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-LEGACY-LOOSE",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "The older joins never mosaic a layout nothing vouches for",
+            "asserts": "a poor proposal with pages joined by edges alone, or a check or poor proposal whose older joins place every part with a 9 px residual -> no mosaic, the version waits with layout-check",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
+            "id": "S-P20-BAD-STITCH-TOO-MANY",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A series larger than the tile wizard can open waits before any layout",
+            "asserts": "more files than LAYOUT_SHEETS_MAX -> help reason no-path with the note to import smaller series, no layout.json written",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M20 §19 (review of 2026-11-13). Tests: pipeline/tests/unit/test_placing_stitch_guards.py."
+        },
+        {
             "id": "S-A65-HAPPY-JOINED-FRAME",
             "behaviour": "A65",
             "area": "admin",

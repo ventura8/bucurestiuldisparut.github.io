@@ -3468,3 +3468,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: thirds of a 10 px wide template were matched anywhere in the strip, and on hatching or plain blocks each third found another place.
     - Fix and pin: the residual is the phase correlation of the two aligned overlaps (`seams._residual`); several template widths are tried and the one whose whole overlap correlates best wins (S-P20-HAPPY-STITCH-SEAMS).
     - **A quality measure must be measured on the same area the decision used, never on a smaller piece searched again.**
+
+591. **A grid prior made silent seams look like a good layout.**
+    - Seen: 2026-11-13, the adversarial review of track/autostitch: on a named grid a sheet whose seams were all missing still sat at its prior cell, counted as placed and added nothing to the median, so 2 strong seams of 20 gave `good` and a misread grid would have been mosaicked; the older joins then mosaicked even `poor` layouts with no quality bar.
+    - Cause: the measures were taken over the kept seams alone, and a sheet held only by the prior counted as placed.
+    - Fix and pin: a sheet counts as placed only when a kept seam touches it, every seam not kept scores 0, and the older joins need their own matches to meet the bar (S-P20-BAD-STITCH-NAMES-NO-SEAMS, S-P20-BAD-STITCH-LEGACY-LOOSE).
+    - **A verdict must count what was not measured as a failure, never leave it out of the average.**
