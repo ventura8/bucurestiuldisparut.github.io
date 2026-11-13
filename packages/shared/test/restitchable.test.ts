@@ -1,7 +1,7 @@
 /** M20 (DECISIONS-for-review.md §205): the shared rule of a series Locate again lays on its overview again. */
 import { describe, expect, it } from 'vitest';
 
-import { restitchable } from '../src/index.js';
+import { helpFlagsOf, restitchable } from '../src/index.js';
 
 const LEFT_OUT = { help: { stitched: { method: 'overview' as const, leftOutCount: 3 } } };
 
@@ -21,5 +21,11 @@ describe('restitchable', () => {
         ['not published', { origin: 'archive', state: 'awaiting_approval', ...LEFT_OUT }],
     ])('badPath_not_%s @S-A122-BAD-RESTITCH-NOTHING-LEFT', (_name, version) => {
         expect(restitchable(version)).toBe(false);
+    });
+
+    it('helpFlagsOf_saysTheLayoutCheckAndTheStitchAgain', () => {
+        expect(helpFlagsOf({ state: 'needs_gcps', help: { reason: 'layout-check' } })).toEqual({ layoutCheck: true, restitchable: false });
+        expect(helpFlagsOf({ state: 'needs_gcps', help: { reason: 'no-scale' } })).toEqual({ layoutCheck: false, restitchable: false });
+        expect(helpFlagsOf({ origin: 'archive', state: 'published', ...LEFT_OUT })).toEqual({ layoutCheck: false, restitchable: true });
     });
 });

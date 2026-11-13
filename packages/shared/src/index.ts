@@ -307,6 +307,7 @@ export { archiveSourceSchema, creditLine, gridDocSchema, helpItemSchema, layerRi
 export { layerRightsSchema, mapThresholdM, opsDailyDocSchema, rightsAllowPublish, rightsSchema } from './schemas/imagery-archive.js';
 export type * from './schemas/imagery-archive.js';
 export {
+    helpFlagsOf,
     restitchable,
     STITCH_METHODS,
     STITCHED_PREVIEW_MAX_PX,

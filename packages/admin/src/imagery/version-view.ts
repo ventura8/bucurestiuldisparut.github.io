@@ -7,12 +7,11 @@
 import {
     availableComputeUnits,
     bboxFromRecord,
-    helpItemsOf,
+    helpFlagsOf,
     estimateComputeUnits,
     isApiErrorCode,
     JOB_STEPS,
     jobRetryable,
-    restitchable,
     rightsAllowPublish,
     type ArchiveReport,
     type BBox,
@@ -102,7 +101,7 @@ export interface VersionView {
     readonly publicUrl: string | null;
     /** Batch 4: an archive series' placement report. */
     readonly archive: ArchiveReport | null;
-    /** An archive series waiting with `layout-check`: the tile-import wizard opens it (`helpItemsOf`, M20 §19). */
+    /** An archive series waiting with `layout-check`: the tile-import wizard opens it (`helpFlagsOf`, M20 §19). */
     readonly layoutCheck: boolean;
     /** M20 (§205): published with pieces left out of its overview mosaic: Locate again lays it on it again. */
     readonly restitchable: boolean;
@@ -227,8 +226,7 @@ export function versionViewOf(doc: Stored<LayerVersionDoc>): VersionView {
         ...{ ...sourceOf(version.source), partOf: orNull(version.partOf), join: orNull(version.join) },
         ...{ basedOn: orNull(version.basedOn), recalibration: orNull(version.recalibration), publicUrl: publicUrlOf(version.own) },
         archive: orNull(version.archive),
-        layoutCheck: helpItemsOf([{ id: doc.id, state: version.state, help: version.help }])[0]?.page === 'tiles',
-        restitchable: restitchable(version),
+        ...helpFlagsOf(version),
         rights: rightsOf(version.rights),
     };
 }

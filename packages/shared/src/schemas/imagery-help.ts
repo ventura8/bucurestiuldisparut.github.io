@@ -46,7 +46,7 @@ export type Stitched = z.infer<typeof stitchedSchema>;
 export interface RestitchInput {
     readonly origin?: string | undefined;
     readonly state: string;
-    readonly help?: { readonly stitched?: Pick<Stitched, 'method' | 'leftOutCount'> | undefined } | undefined;
+    readonly help?: { readonly reason?: string; readonly stitched?: Pick<Stitched, 'method' | 'leftOutCount'> | undefined } | undefined;
 }
 
 /** Pieces left out of an overview mosaic. */
@@ -60,4 +60,12 @@ function leftOutOfOverview(stitched: Pick<Stitched, 'method' | 'leftOutCount'> |
  */
 export function restitchable(version: RestitchInput): boolean {
     return version.origin === 'archive' && version.state === 'published' && leftOutOfOverview(version.help?.stitched);
+}
+
+/**
+ * What a version's page offers from its `help`: the tile-import wizard for a series waiting with `layout-check` (M20 §19), and Locate
+ * again for a series to stitch again (`restitchable`). Kept here, out of the admin's Imagery chunk (its 18 KB budget).
+ */
+export function helpFlagsOf(version: RestitchInput): { readonly layoutCheck: boolean; readonly restitchable: boolean } {
+    return { layoutCheck: version.state === 'needs_gcps' && version.help?.reason === 'layout-check', restitchable: restitchable(version) };
 }
