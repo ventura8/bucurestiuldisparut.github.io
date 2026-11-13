@@ -2,7 +2,8 @@
  * The local worker as the admin's pages show it (`docs/research/M7-local-worker.md` §3, §4.4, §7), in the lazy `worker`
  * chunk: the city's most recently seen worker (`cities/{city}/workers`, live; connected while it was seen within
  * `WORKER_FRESH_SECONDS`), the city's choice of where new jobs run (`workers/choice`, `auto` when absent), the pipeline
- * image's digest the worker's command names (`setup.status`'s `install.pipeline.image`), this month's Cloud Run use
+ * image's digest the worker's command names (`setup.status`'s `install.pipeline.image`; also passed into `LocalComputer` so
+ * Versions can compare digests while a busy worker's `outdated` flag still lags), this month's Cloud Run use
  * (`usage/cloudrun-<month>`) and, on a version's page, its job's place and wait. The choice and a job's place change through
  * `imagery.runOn`; a refusal is said where the change was asked for.
  *
@@ -222,7 +223,7 @@ export class WorkerFeed {
             local: async (project) => {
                 const chunk = await import('./worker-local.js');
                 chunk.defineWorkerLocal();
-                return chunk.createLocal(this.#services, project);
+                return chunk.createLocal(this.#services, project, this.#cell.state.image ?? null);
             },
             household: async (project) => {
                 const chunk = await import('./worker-household.js');

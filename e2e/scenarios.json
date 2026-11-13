@@ -18887,10 +18887,10 @@
             "area": "admin",
             "path": "happy",
             "title": "This computer says the worker's image and the helper file's version, each matching the installed release",
-            "asserts": "the starter files' version is their content's (the SHA-256 of both templates with their version lines emptied), written in both templates, WORKER_STARTER_VERSION and the pipeline's STARTER_VERSION (a guard test and the admin's build fail otherwise); the worker's /state says image and starter {version, wanted, update}; the card's Versions says Worker: sha256:<12> and Helper file: <version>, each 'It matches the installed release'; ro and en; axe clean",
+            "asserts": "the starter files' version is their content's (the SHA-256 of both templates with their version lines emptied), written in both templates, WORKER_STARTER_VERSION and the pipeline's STARTER_VERSION (a guard test and the admin's build fail otherwise); the worker's /state says image and starter {version, wanted, update}; the card's Versions says Worker: sha256:<12> and Helper file: <version>, each 'It matches the installed release' (the pipeline image by comparing digests with setup/status.install.pipeline.image when known); ro and en; axe clean",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner, 2026-11-13 (docs/research/M7-local-worker.md, The starter updates itself). Tests: e2e/admin/specs/imagery/worker-run.spec.ts (tour state worker.local-machine), scripts/site/test/starter-version.test.ts, packages/admin/test/worker/machine.test.ts, packages/ui/test/admin/worker/versions.test.ts, pipeline/tests/unit/test_worker_app.py."
+            "notes": "The owner, 2026-11-13 (docs/research/M7-local-worker.md, The starter updates itself; Versions compares digests while the worker is busy). Tests: e2e/admin/specs/imagery/worker-run.spec.ts (tour state worker.local-machine), scripts/site/test/starter-version.test.ts, packages/admin/test/worker/machine.test.ts, packages/ui/test/admin/worker/versions.test.ts, pipeline/tests/unit/test_worker_app.py. Lesson 696."
         },
         {
             "id": "S-A142-BAD-OLD-STARTER",
@@ -18898,10 +18898,10 @@
             "area": "admin",
             "path": "bad",
             "title": "An out-of-date helper says so in plain words, why it could not update itself, and the one command with Copy",
-            "asserts": "a /state whose starter version is not this release's (the old HCM_STARTER=2 included) -> an alert: the helper is out of date, it updates itself, if it can't run this once; the why of its last look (set up before helpers updated themselves, no list, no file, a refused download, a read-only folder, not the installed copy, not looked since the update); the command for the chosen system (curl ... && sh on Linux and macOS, Invoke-WebRequest on Windows) with Copy, a refused copy says to select it; a worker started by a command says it has no helper and shows no command; an older worker says it does not tell its versions; unknown words and malformed versions are dropped; a template changed without its version stops the build",
+            "asserts": "a /state whose starter version is not this release's (the old HCM_STARTER=2 included) -> an alert: the helper is out of date, it updates itself, if it can't run this once; the why of its last look (set up before helpers updated themselves, no list, no file, a refused download, a read-only folder, not the installed copy, not looked since the update); the command for the chosen system (curl ... && sh on Linux and macOS, Invoke-WebRequest on Windows) with Copy, a refused copy says to select it; a worker started by a command says it has no helper and shows no command; an older worker says it does not tell its versions; unknown words and malformed versions are dropped; a template changed without its version stops the build; a worker image digest that differs from setup/status.install.pipeline.image is not current even when outdated is still false (busy until the next claim); unknown installed digest falls back to the outdated flag",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner, 2026-11-13 (docs/research/M7-local-worker.md, The starter updates itself). Tests: packages/ui/test/admin/worker/versions.test.ts, packages/admin/test/worker/machine.test.ts, scripts/site/test/starter-version.test.ts, pipeline/tests/unit/test_worker_app.py."
+            "notes": "The owner, 2026-11-13 (docs/research/M7-local-worker.md, The starter updates itself; Versions compares digests while the worker is busy). Tests: packages/ui/test/admin/worker/versions.test.ts, packages/admin/test/worker/machine.test.ts, scripts/site/test/starter-version.test.ts, pipeline/tests/unit/test_worker_app.py. Lesson 696."
         },
         {
             "id": "S-A142-HAPPY-SELF-UPDATE",

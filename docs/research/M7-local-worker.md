@@ -849,6 +849,16 @@ The file still holds no secret, and the update never runs a downloaded file befo
 
 Scenarios `S-A142-HAPPY-VERSIONS`, `S-A142-BAD-OLD-STARTER`, `S-A142-HAPPY-SELF-UPDATE`, `S-A142-BAD-SELF-UPDATE`.
 
+### Addendum of 2026-11-13: Versions compares digests while the worker is busy
+
+The card's "It matches the installed release" for the pipeline image must not wait on the worker's `outdated` flag: a busy
+worker only learns that flag at its next `worker.claim`, so Versions said "matches" while the digest on `/state` was already
+behind. `versionsOf` (`packages/admin/src/worker/machine.ts`) compares the worker's `image` with
+`setup/status.install.pipeline.image` (the digest `WorkerFeed` already reads through `setup.status` and passes into
+`LocalComputer`); it falls back to `outdated` only when that installed digest is unknown. Unit tests in
+`packages/admin/test/worker/machine.test.ts` pin same digest → current, different digest with `outdated: false` → not
+current, unknown installed → flag. Lesson 696.
+
 ## Addendum of 2026-11-13: several workers and a local archive (M20 §20)
 
 Every worker claims every job type again; an archive series' sheets, which exist on the computer that imported them, reach another

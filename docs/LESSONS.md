@@ -4091,3 +4091,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `reachedSteps` opened (d) only after (c) was done or its items were; an outdated server leaves (c) unknown.
     - Fix and pin: a server in place but older than the admin counts as a prepared project, so (d) stays open with its update (`packages/admin/test/setup/controller.test.ts`, `S-A03-BAD-OLDER-SERVER-STATUS`).
     - **The way out of a state must never depend on what that state hides.**
+696. **Versions said the busy worker's pipeline image matched the installed release.**
+    - Seen: 2026-11-13, admin "This computer → Versions": the line said "It matches the installed release" while the worker was busy on an older image.
+    - Cause: `versionsOf` used `outdated !== true`, and a worker only learns `outdated` at its next `worker.claim`, so a busy run kept the flag false after a newer pipeline was installed.
+    - Fix and pin: when `setup/status.install.pipeline.image` is known (`WorkerFeed` → `LocalComputer`), compare the worker's reported digest with it; fall back to the flag only when the installed digest is unknown (`packages/admin/src/worker/machine.ts`, `packages/admin/test/worker/machine.test.ts`, S-A142).
+    - **A status flag that updates only on the next poll is late for the UI: compare the facts the UI already has.**

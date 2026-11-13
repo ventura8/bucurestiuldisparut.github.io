@@ -118,11 +118,11 @@ export function starterLinks(functionsBase: string, city: string, os: WorkerOs):
 }
 
 /** The worker's answer, when it is one (any other shape: none). */
-function answerOf(value: unknown): LocalAnswer | null {
+function answerOf(value: unknown, installed: string | null): LocalAnswer | null {
     const answer = value as Partial<LocalAnswer> | null;
     const fields = [answer?.workerId, answer?.city, answer?.project];
     return fields.every((field) => typeof field === 'string')
-        ? { ...(answer as LocalAnswer), machine: machineOf(value), versions: versionsOf(value) }
+        ? { ...(answer as LocalAnswer), machine: machineOf(value), versions: versionsOf(value, installed) }
         : null;
 }
 
@@ -133,6 +133,8 @@ export interface LocalOptions {
     readonly functionsBase: string;
     readonly fetch: Fetch;
     readonly userAgent: string;
+    /** The installed pipeline image digest (`setup/status.install.pipeline.image`), or null when unknown. */
+    readonly installed?: string | null;
 }
 
 export class LocalComputer {
@@ -148,10 +150,13 @@ export class LocalComputer {
     #workerId: string | null = null;
     /** Whether the look at `worker.starter` was made (once per instance, when the panel first shows). */
     #starterAsked = false;
+    /** The installed pipeline digest from `setup.status`, for `versionsOf` (null: fall back to `outdated`). */
+    #installed: string | null;
 
     constructor(services: ContentServices, options: LocalOptions) {
         this.#services = services;
         this.#options = options;
+        this.#installed = options.installed ?? null;
         const os = osOf(options.userAgent);
         // After a reload nothing says the file was just saved: it looks, and the first answer says the rest.
         const phase = this.#remembered() ? 'looking' : 'none';
@@ -281,11 +286,16 @@ export class LocalComputer {
         }
     }
 
+    /** The installed pipeline digest the Versions line compares with (from the feed's `setup.status` read). */
+    useInstalled(installed: string | null): void {
+        this.#installed = installed;
+    }
+
     /** The worker's state, or null (none answers on this computer, or not with a state). */
     async #ask(): Promise<LocalAnswer | null> {
         try {
             const response = await this.#options.fetch(`${LOCAL_WORKER}/state`, { credentials: 'omit', cache: 'no-store' });
-            return response.ok ? answerOf(await response.json()) : null;
+            return response.ok ? answerOf(await response.json(), this.#installed) : null;
         } catch {
             return null;
         }
@@ -369,7 +379,7 @@ export class LocalComputer {
 const SHARED = new WeakMap<ContentServices, Map<string, LocalComputer>>();
 
 /** This computer's part of the worker's panel, over the area's services and the page's `fetch`; shared, see `SHARED`. */
-export function createLocal(services: ContentServices, project: string): LocalComputer {
+export function createLocal(services: ContentServices, project: string, installed: string | null = null): LocalComputer {
     const byProject = SHARED.get(services) ?? new Map<string, LocalComputer>();
     SHARED.set(services, byProject);
     const local =
@@ -379,7 +389,9 @@ export function createLocal(services: ContentServices, project: string): LocalCo
             functionsBase: functionsBaseFor(project, import.meta.env.MODE === 'e2e'),
             fetch: (url, init) => globalThis.fetch(url, init),
             userAgent: globalThis.navigator.userAgent,
+            installed,
         });
+    local.useInstalled(installed);
     byProject.set(project, local);
     return local;
 }
