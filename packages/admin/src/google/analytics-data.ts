@@ -1,3 +1,4 @@
+import { missingParameters, NOT_SET, parametersOf, usableParameters, type StatisticsPending } from './analytics-fields.js';
 import { StatisticsProblem } from './statistics-problem.js';
 import { at, list, records, stringAt } from './json.js';
 import { createGoogleTransport, type GoogleTransport, type GoogleTransportOptions } from './transport.js';
@@ -6,8 +7,10 @@ import { createGoogleTransport, type GoogleTransport, type GoogleTransportOption
  * The Statistics view's numbers (`#/crashes/statistics`, `DECISIONS-for-review.md` §203): read straight from the GA4
  * Data API (`v1beta` `batchRunReports`) with the owner's read-only Analytics token, for the property whose web stream
  * sends the project's measurement id (found the way Setup's Create the measurement reports finds it: the account
- * summaries, then each property's streams; `analytics-reports.ts`). Three calls per period: the wizards and the apps, the
- * overview, the devices and countries. A lazy chunk of its own (`analytics-data`): fetched on the button's click only.
+ * summaries, then each property's streams; `analytics-reports.ts`). The property's metadata first: a report naming a
+ * measurement name GA4 cannot use yet is not asked, and the numbers say why (`analytics-fields.ts`). Then three calls per
+ * period: the wizards and the apps, the overview, the devices and countries. A lazy chunk of its own (`analytics-data`):
+ * fetched on the button's click only.
  */
 
 const DATA_API = 'https://analyticsdata.googleapis.com/v1beta';
@@ -18,6 +21,8 @@ export const KEY_EVENTS: readonly string[] = ['year_change', 'compass_reset', 'l
 const TOP = 10;
 
 export type StatisticsDays = 7 | 28 | 90;
+
+export type { PendingReason, StatisticsPending } from './analytics-fields.js';
 
 export interface NamedCount {
     readonly name: string;
@@ -60,6 +65,8 @@ export interface StatisticsNumbers {
     readonly countries: readonly NamedCount[];
     readonly surfaces: readonly SurfaceNumbers[];
     readonly steps: readonly StepNumbers[];
+    /** Why the apps, the admin screens or the wizards' steps are incomplete, or null when nothing is missing. */
+    readonly pending: StatisticsPending | null;
 }
 
 type Filter = Readonly<Record<string, unknown>>;
@@ -118,7 +125,25 @@ function counts(report: unknown): readonly NamedCount[] {
     return rowsOf(report).map((row) => ({ name: dim(row, 0), count: num(row, 0) }));
 }
 
-async function batch(
+function fieldsOf(spec: ReportSpec): readonly string[] {
+    return [...(spec.dimensions ?? []), ...spec.metrics];
+}
+
+/** One period's question: its days and the custom parameters the property's reports can use. */
+interface Ask {
+    readonly days: StatisticsDays;
+    readonly usable: ReadonlySet<string>;
+}
+
+/** The reports of `specs` in order; a report naming a parameter GA4 cannot use is not asked and reads as empty. */
+async function batch(transport: GoogleTransport, property: string, specs: readonly ReportSpec[], ask: Ask): Promise<readonly unknown[]> {
+    const asks = (spec: ReportSpec): boolean => parametersOf(fieldsOf(spec)).every((name) => ask.usable.has(name));
+    const asked = specs.filter(asks);
+    const queue = asked.length === 0 ? [] : [...(await runReports(transport, property, asked, ask.days))];
+    return specs.map((spec) => (asks(spec) ? queue.shift() : undefined) ?? {});
+}
+
+async function runReports(
     transport: GoogleTransport,
     property: string,
     specs: readonly ReportSpec[],
@@ -160,6 +185,9 @@ const OVERVIEW_REPORTS: readonly ReportSpec[] = [
 ];
 
 const PLACE_REPORTS: readonly ReportSpec[] = [{ dimensions: ['country'], metrics: ['totalUsers'], orderBy: 'totalUsers', limit: TOP }];
+
+/** Every custom parameter the view's reports name. */
+const WANTED: readonly string[] = parametersOf([...WIZARD_REPORTS, ...OVERVIEW_REPORTS, ...PLACE_REPORTS].flatMap(fieldsOf));
 
 const keyOf = (wizard: string, step: string): string => `${wizard}/${step}`;
 
@@ -219,16 +247,30 @@ export async function readStatistics(
 ): Promise<StatisticsNumbers> {
     const transport = createGoogleTransport(options);
     const property = await findProperty(transport, measurementId);
-    const [views, errors, times, surfaceTotals, surfaceDays] = await batch(transport, property, WIZARD_REPORTS, days);
-    const [totals, pages, screens, events, devices] = await batch(transport, property, OVERVIEW_REPORTS, days);
-    const [countries] = await batch(transport, property, PLACE_REPORTS, days);
+    const usable = await usableParameters(transport, property, VIEWER_ROLE);
+    const ask: Ask = { days, usable };
+    const [views, errors, times, surfaceTotals, surfaceDays] = await batch(transport, property, WIZARD_REPORTS, ask);
+    const [totals, pages, screens, events, devices] = await batch(transport, property, OVERVIEW_REPORTS, ask);
+    const [countries] = await batch(transport, property, PLACE_REPORTS, ask);
     const total = rowsOf(totals)[0] ?? { dims: [], values: [] };
-    return {
+    const read = {
         visitors: num(total, 0),
         sessions: num(total, 1),
-        ...{ pages: counts(pages), screens: counts(screens), events: counts(events), devices: counts(devices) },
-        countries: counts(countries),
+        // A page view without a screen name is the public map's, or the admin's before `route` was registered.
+        ...{ pages: counts(pages), screens: counts(screens).filter((item) => item.name !== NOT_SET) },
+        ...{ events: counts(events), devices: counts(devices), countries: counts(countries) },
         surfaces: surfacesOf(surfaceTotals, surfaceDays),
         steps: stepsOf(views, errors, times),
     };
+    const pending = (await missingParameters(transport, { property, role: VIEWER_ROLE }, WANTED, usable)) ?? noValues(read);
+    if (pending !== null) {
+        options.log.warn('statistics incomplete', { property, reason: pending.reason, names: pending.names.join(',') });
+    }
+    return { ...read, pending };
+}
+
+/** Every name usable but none carried yet: no wizard step, no admin screen and no app but `(not set)`. */
+function noValues(read: Omit<StatisticsNumbers, 'pending'>): StatisticsPending | null {
+    const empty = read.steps.length === 0 && read.screens.length === 0 && read.surfaces.every((item) => item.surface === NOT_SET);
+    return empty ? { reason: 'noData', names: [] } : null;
 }

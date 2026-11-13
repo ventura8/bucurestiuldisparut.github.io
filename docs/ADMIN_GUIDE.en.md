@@ -226,7 +226,17 @@ To see it: **Open Google Analytics**, then **Explore → Funnel exploration**; a
 | The Google Analytics Data API is off | the project has not turned it on yet | **Open Setup** and run **Update the map** (it turns the API on), or the console link; then **Refresh** |
 | No Google Analytics property … receives this map's statistics | the account sees no property with the map's measurement id | check step g of Setup |
 | Your Google account has no access | the property belongs to another account | sign in with that account, or ask its owner to add you as a Viewer |
-| Google Analytics does not know the map's measurement names yet | step g's **Create the measurement reports** never ran | run it, then come back |
+| Google Analytics refused the way the admin asked for the numbers | a fault in the admin (it is in the logs) | see the numbers in Google Analytics meanwhile; **Refresh** later |
+
+When only part of the numbers can be read, the others still show, with a note above them:
+
+| The note says | Why | What to do |
+| --- | --- | --- |
+| Google Analytics lacks some measurement names | step g's **Create the measurement reports** never ran (or ran before a name was added) | run it, then **Refresh** |
+| Google Analytics has the names but cannot report on them yet | the names were created less than about 48 hours ago | look again tomorrow |
+| No values yet for the apps, admin screens and wizard steps | Google shows a name's values 24 to 48 hours after people use the admin, and only for events sent after the name was created | look again tomorrow |
+
+The last line of *How to see where people get stuck* says the same after each read. Page views of the public map, and the admin's before screen names were measured, are not listed among the admin screens.
 | Google Analytics is not set up | step g is not done | set it up in step g |
 
 ### From your Save to the visitors' map

@@ -22,7 +22,7 @@ export type StatisticsProblemPort =
     | 'apiDisabled'
     | 'noProperty'
     | 'noAccess'
-    | 'noReports'
+    | 'refused'
     | 'notSetUp'
     | 'unavailable'
     | 'blocked'
@@ -54,6 +54,12 @@ export interface SurfaceNumbersPort {
     readonly daily: readonly DayNumbersPort[];
 }
 
+/** Why the apps, the admin screens or the wizards' steps are incomplete (`packages/admin/src/google/analytics-fields.ts`). */
+export interface StatisticsPendingPort {
+    readonly reason: 'notRegistered' | 'notReady' | 'noData';
+    readonly names: readonly string[];
+}
+
 export interface StatisticsNumbersPort {
     readonly visitors: number;
     readonly sessions: number;
@@ -64,6 +70,7 @@ export interface StatisticsNumbersPort {
     readonly countries: readonly NamedCountPort[];
     readonly surfaces: readonly SurfaceNumbersPort[];
     readonly steps: readonly StepNumbersPort[];
+    readonly pending: StatisticsPendingPort | null;
 }
 
 export interface StatisticsViewState {

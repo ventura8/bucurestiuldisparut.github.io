@@ -3888,3 +3888,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: GDAL's threads allocate from glibc's per-thread malloc arenas, which keep freed pages; about 115 MB of the layout's reads stayed resident while the canvas read its own.
     - Fix and pin: `python -m hcm_pipeline` starts with at most two arenas and the canvas gives the free pages back before and after each sheet (`heap.py`); the budget test runs on one thread and on `ALL_CPUS` (`S-P31-HAPPY-CANVAS-THREADS`).
     - **A memory budget test runs with the thread count production uses (and one), and a threaded C library's freed memory is not free until it is given back.**
+
+662. **The Statistics view blamed missing measurement names that Setup had just reported as all there.**
+    - Seen: 2026-11-13, the owner's live test: "Google Analytics does not know the map's measurement names yet", while step g said "0 created, 23 already there"; an hour later the read worked, with no values for the custom names yet.
+    - Cause: every HTTP 400 of `batchRunReports` was mapped to `noReports`. GA4 refuses the whole batch for one field its Data API does not list yet, and a name registered a few hours earlier is not listed yet; the fake answered 400 only for unregistered names, so the case never showed.
+    - Fix and pin: the read asks the property's metadata first, sends only the reports it can answer, and says which of not registered, not ready, or no values yet (`analytics-fields.ts`); another 400 is `refused`. `S-A153-BAD-NOT-READY`, `-NOT-REGISTERED`, `-NO-DATA`, `-REFUSED`.
+    - **Map an error code to a cause only when the code means that cause alone; a generic 400 is "refused", and the specific causes are found by asking, not guessed.**
