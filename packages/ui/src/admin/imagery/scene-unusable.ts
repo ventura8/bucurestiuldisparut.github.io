@@ -7,7 +7,7 @@
  * its budget; the card's chips are `scene-tags.ts`'s.
  */
 
-import type { Locale } from '@hcm/shared';
+import { CLOUDY_CITY_PERCENT, type Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
@@ -16,9 +16,7 @@ import type { AdminNoticeInputPort } from '../notice-port.js';
 import type { ImageryContext } from './context.js';
 import type { SceneItemPort, UnusableReasonPort } from './imagery-port.js';
 import { datasetText, dayText, numberText } from './imagery-text.js';
-import { importScene } from './scene-detail.js';
 import { sceneRefusal, usgsSetupLink } from './scene-refusal.js';
-import { cloudyShare, percentText } from './scene-tags.js';
 import { when } from './when.js';
 
 /** What the chunk gives the scene's page. */
@@ -34,13 +32,15 @@ const REASONS: readonly UnusableReasonPort[] = ['clouds', 'haze', 'area', 'other
 
 /** The page's warning of a frame probably cloudy over the city: what is wrong, why, what to do (before an import or a purchase). */
 export function cloudyWarning(locale: Locale, scene: SceneItemPort): TemplateResult {
-    const share = cloudyShare(scene);
+    const share = scene.cloudCity !== null && scene.cloudCity >= CLOUDY_CITY_PERCENT ? scene.cloudCity : null;
     return share === null || scene.unusable !== null
         ? EMPTY
         : html`<div class="alert" role="note" data-state="cloudy-warning">
               <hcm-icon name="cloud"></hcm-icon>
               <div class="alert-body">
-                  <p><strong>${contentText(locale, 'adminContent.imagery.cloudy.tag', { percent: percentText(locale, share) })}</strong></p>
+                  <p>
+                      <strong>${contentText(locale, 'adminContent.imagery.cloudy.tag', { percent: numberText(locale, share, 0) })}</strong>
+                  </p>
                   <p>${contentText(locale, 'adminContent.imagery.cloudy.warning')}</p>
                   <p>${contentText(locale, 'adminContent.imagery.cloudy.todo')}</p>
               </div>
@@ -139,6 +139,14 @@ function importedLink(context: ImageryContext, scene: SceneItemPort): TemplateRe
         ${when(scene.free && scene.layerId !== null && context.view.usgs === 'ok', () => importAgainButton(context, scene))}`;
 }
 
+/** Import again's click: the new version's page opens (this chunk imports nothing of the Imagery chunk: `editor-shared` would take it). */
+async function importAgain(context: ImageryContext, id: string): Promise<void> {
+    const versionId = (await context.intents?.importScene(id, true)) ?? null;
+    if (versionId !== null) {
+        context.go(['version', versionId]);
+    }
+}
+
 /** Import again (lesson 645): the scene downloaded and processed once more, a new version that replaces the old one once approved. */
 function importAgainButton(context: ImageryContext, scene: SceneItemPort): TemplateResult {
     const { locale } = context;
@@ -147,7 +155,7 @@ function importAgainButton(context: ImageryContext, scene: SceneItemPort): Templ
                 variant="tonal"
                 icon="refresh"
                 ?disabled=${context.view.importing !== null || context.readOnly}
-                @click=${() => void importScene(context, scene.id, true)}
+                @click=${() => void importAgain(context, scene.id)}
                 >${contentText(locale, 'adminContent.imagery.importAgain')}</hcm-button
             >
         </div>

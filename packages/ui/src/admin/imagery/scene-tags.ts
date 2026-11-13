@@ -12,11 +12,11 @@ import type { SceneItemPort } from './imagery-port.js';
 import { numberText } from './imagery-text.js';
 
 /** The share of the city clouded, when the frame is probably cloudy over it. */
-export function cloudyShare(scene: SceneItemPort): number | null {
+function cloudyShare(scene: SceneItemPort): number | null {
     return scene.cloudCity !== null && scene.cloudCity >= CLOUDY_CITY_PERCENT ? scene.cloudCity : null;
 }
 
-export function percentText(locale: Locale, percent: number): string {
+function percentText(locale: Locale, percent: number): string {
     return numberText(locale, percent, 0);
 }
 

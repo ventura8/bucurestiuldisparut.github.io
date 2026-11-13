@@ -35,7 +35,7 @@ export function importable(context: ImageryContext, scene: SceneItemPort): boole
     return importShown(scene) && scene.status !== 'imported' && context.view.usgs === 'ok';
 }
 
-export async function importScene(context: ImageryContext, id: string, again = false): Promise<void> {
+async function importScene(context: ImageryContext, id: string, again = false): Promise<void> {
     const intents = context.intents;
     if (intents === null) {
         return;
