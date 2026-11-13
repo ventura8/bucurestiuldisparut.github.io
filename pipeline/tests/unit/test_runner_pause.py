@@ -17,6 +17,7 @@ ME = "worker:w-0123456789abcdef"
 
 def test_happy_path_a_job_paused_during_a_step_stops_before_the_next_one_and_waits_queued(world: PipelineWorld) -> None:
     """Scenarios: S-P32-HAPPY-JOB-BOUNDARY"""
+
     def pause(_ctx: JobContext) -> None:
         world.store.update(world.job_path(JOB), {"paused": PAUSED})
 

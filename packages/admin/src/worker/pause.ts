@@ -6,7 +6,7 @@
 import { timestampToDate, type TimestampLike } from '@hcm/shared';
 
 /** The three ways to pause a computer. */
-export const PAUSE_LENGTHS = ['forever', 'hour', 'tomorrow'] as const;
+const PAUSE_LENGTHS = ['forever', 'hour', 'tomorrow'] as const;
 export type PauseLength = (typeof PAUSE_LENGTHS)[number];
 
 /** A pause as the panel and the job's card show it: who (an account, or `computer`), when, and until when (ISO). */

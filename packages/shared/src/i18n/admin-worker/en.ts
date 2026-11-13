@@ -63,13 +63,12 @@ export const en: Readonly<Record<AdminWorkerKey, string>> = {
     'adminWorker.pause.byComputer': 'Paused at the computer itself.',
     'adminWorker.pause.byOther': 'Paused by another admin.',
     'adminWorker.pause.until': 'It resumes by itself on {when}.',
-    'adminWorker.pause.what': 'It takes no new work and gave its job back to the queue; nothing is lost. Resume to use it again.',
+    'adminWorker.pause.what': 'It takes no new work and gave its job back to the queue; nothing is lost.',
     'adminWorker.pause.resume': 'Resume',
     'adminWorker.job.pause': 'Pause',
     'adminWorker.job.resume': 'Resume',
-    'adminWorker.job.paused':
-        'Paused by {who} on {when}. It waits in the queue; Resume puts it back, and it goes on from the step where it stopped.',
-    'adminWorker.job.pausing': 'Pausing (asked by {who} on {when}): it stops after the step it is on, then waits for Resume.',
+    'adminWorker.job.paused': 'Paused by {who} on {when}. Resume puts it back; it goes on from the step where it stopped.',
+    'adminWorker.job.pausing': 'Pausing (asked by {who} on {when}): it stops after the step it is on.',
     'adminWorker.job.you': 'you',
     'adminWorker.job.other': 'another admin',
 };

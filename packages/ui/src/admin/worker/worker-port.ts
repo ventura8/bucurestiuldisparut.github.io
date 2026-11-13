@@ -24,7 +24,7 @@ export interface CloudRunUsePort {
 }
 
 /** Pause (2026-11-13): who paused a job or a computer (an account, or `computer`), when, and until when (ISO, or null). */
-export interface PausedPort {
+interface PausedPort {
     readonly by: string;
     readonly at: string;
     readonly until: string | null;

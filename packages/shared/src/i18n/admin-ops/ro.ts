@@ -175,9 +175,8 @@ export const ro = {
     'adminContent.jobs.status.paused': 'Pusă pe pauză',
     'adminContent.jobs.pauseAll': 'Pune totul pe pauză',
     'adminContent.jobs.resumeAll': 'Reia tot',
-    'adminContent.jobs.pausedAll':
-        'Procesări puse pe pauză: {count}. Cele care rulează se opresc după pasul la care sunt; Reia tot le pune înapoi.',
-    'adminContent.jobs.resumedAll': 'Procesări puse înapoi în coadă: {count}. Fiecare continuă de la pasul unde s-a oprit.',
+    'adminContent.jobs.pausedAll': 'Procesări puse pe pauză: {count}. Cele pornite se opresc după pasul curent; Reia tot le pune înapoi.',
+    'adminContent.jobs.resumedAll': 'Procesări reluate: {count}. Fiecare continuă de la pasul unde s-a oprit.',
     'adminContent.jobs.nothingToPause': 'Nimic de pus pe pauză: nicio procesare nu așteaptă și nu rulează.',
     'adminContent.jobs.nothingToResume': 'Nimic de reluat: nicio procesare nu e pe pauză.',
     'adminContent.jobs.openNewer': 'Deschide importul nou',
