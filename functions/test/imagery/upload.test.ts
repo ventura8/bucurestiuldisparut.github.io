@@ -238,7 +238,6 @@ describe('imagery.onRasterUpload: refusals', () => {
         expect(trigger.__endpoint).toMatchObject({
             serviceAccountEmail: 'fn-events@demo-hcm.iam.gserviceaccount.com',
             maxInstances: 5,
-            availableMemoryMb: 512,
             concurrency: 1,
         });
     });

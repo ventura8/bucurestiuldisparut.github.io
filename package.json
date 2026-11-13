@@ -45,7 +45,7 @@
         "stack:check": "node --import ./scripts/site/register-ts.mjs e2e/stack/check.ts",
         "stack:serve": "node --import ./scripts/site/register-ts.mjs e2e/stack/main.ts serve",
         "stack:tick": "node --import ./scripts/site/register-ts.mjs e2e/stack/main.ts tick",
-        "test": "JAVA_TOOL_OPTIONS=-XX:CICompilerCount=2 firebase emulators:exec --project demo-hcm --only auth,firestore,storage 'bash scripts/ci/run-emulated-tests.sh'",
+        "test": "JAVA_TOOL_OPTIONS='-XX:CICompilerCount=2 -Xmx6g' firebase emulators:exec --project demo-hcm --only auth,firestore,storage 'bash scripts/ci/run-emulated-tests.sh'",
         "test:e2e": "npm run test:e2e --workspace @hcm/e2e",
         "test:unit": "vitest run --coverage",
         "typecheck": "tsc -b"

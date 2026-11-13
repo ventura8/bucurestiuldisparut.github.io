@@ -239,12 +239,12 @@ export async function processRasterUpload(deps: RasterUploadDeps, uploaded: Uplo
 }
 
 /**
- * `imagery-onRasterUpload`: Storage finalize on the private bucket (named when `bucket` is given), 512 MiB, one upload at
- * a time per instance, five instances; no automatic retry (a refusal is recorded on the job).
+ * `imagery-onRasterUpload`: Storage finalize on the private bucket (named when `bucket` is given), 256 MiB (the default; 512
+ * until 2026-11-12: it reads a file's first bytes and writes two documents, `docs/research/M7-local-worker.md` §4.6), one
+ * upload at a time per instance, five instances; no automatic retry (a refusal is recorded on the job).
  */
 export function onRasterUploadFunction(getDeps: () => RasterUploadDeps, bucket?: string): CloudFunction<StorageEvent> {
     const options = {
-        memory: '512MiB',
         concurrency: 1,
         maxInstances: 5,
         timeoutSeconds: 120,

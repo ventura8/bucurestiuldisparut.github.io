@@ -16,22 +16,25 @@
  */
 import { parseArgs } from 'node:util';
 
-import { CLOUD_RUN_JOBS } from '@hcm/shared';
+import { CLOUD_RUN_JOBS, JOB_MACHINE_SIZES, type JobMachine } from '@hcm/shared';
 
 import type { NamedQuota } from './google-error.js';
 import { GoogleCallError, googleJson, logEvent, type StepDeps } from './step-io.js';
 
 const RUN = 'https://run.googleapis.com/v2';
 
+/** One job's machine in Run Admin v2's terms, from `JOB_MACHINE_SIZES` (the free-tier meter's own figures). */
+function jobOf(machine: JobMachine): { readonly name: string; readonly cpu: string; readonly memory: string } {
+    const size = JOB_MACHINE_SIZES[machine];
+    return { name: CLOUD_RUN_JOBS[machine], cpu: String(size.vcpu), memory: `${String(size.gib)}Gi` };
+}
+
 /**
  * The three jobs and their machines (M3 §4.3): the small one runs an import's download (network-bound, finding 56 of
- * 2026-11-01: 8 vCPUs idled at 3 % for half an hour), the other two its processing.
+ * 2026-11-01: 8 vCPUs idled at 3 % for half an hour), the other two its processing (`std` 2 vCPU / 8 GiB, `xl` 4 / 16 since
+ * 2026-11-12: `docs/research/M7-local-worker.md` §4.6).
  */
-export const PIPELINE_JOBS = [
-    { name: CLOUD_RUN_JOBS.fetch, cpu: '1', memory: '4Gi' },
-    { name: CLOUD_RUN_JOBS.std, cpu: '4', memory: '16Gi' },
-    { name: CLOUD_RUN_JOBS.xl, cpu: '8', memory: '32Gi' },
-] as const;
+export const PIPELINE_JOBS = [jobOf('fetch'), jobOf('std'), jobOf('xl')] as const;
 
 const OPERATION_POLLS = 120;
 const OPERATION_POLL_MS = 5000;

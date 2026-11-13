@@ -295,15 +295,16 @@ export async function runPublishTask(deps: PublishDeps, task: PublishTask): Prom
 
 /**
  * The `imagery-publish` task queue: one dispatch at a time and at most two a minute (MTS allows about two publishes a
- * minute), five attempts with backoff, 30 minutes and 1 GiB for streaming a COG. A payload the schema refuses is logged
- * and dropped.
+ * minute), five attempts with backoff, 30 minutes and 512 MiB for streaming a COG (1 GiB until 2026-11-12: both upload paths
+ * stream the file from the bucket, never hold it, `docs/research/M7-local-worker.md` §4.6). A payload the schema refuses is
+ * logged and dropped.
  */
 export function publishFunction(getDeps: () => PublishDeps) {
     return onTaskDispatched(
         {
             retryConfig: { maxAttempts: 5, minBackoffSeconds: 60 },
             rateLimits: { maxConcurrentDispatches: 1, maxDispatchesPerSecond: 2 / 60 },
-            memory: '1GiB',
+            memory: '512MiB',
             timeoutSeconds: 1800,
             maxInstances: 1,
             ...runAs('imagery.publish'),

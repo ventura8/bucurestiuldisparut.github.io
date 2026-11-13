@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CLOUD_RUN_ESTIMATE_SECONDS, JOB_MACHINE_SIZES, imageryRunOnRequestSchema } from '../../src/api/worker.js';
+import { CLOUD_RUN_ESTIMATE_SECONDS, CLOUD_RUN_FREE_TIER, JOB_MACHINE_SIZES, imageryRunOnRequestSchema } from '../../src/api/worker.js';
 import { workerStepRequestSchema, workerUrlsRequestSchema } from '../../src/api/worker-calls.js';
 import { cloudRunUsageDocSchema, runChoiceDocSchema, workerDocSchema } from '../../src/schemas/worker.js';
 import { FIRESTORE_PATHS } from '../../src/schemas/paths.js';
@@ -105,5 +105,24 @@ describe('the M7 documents (§8)', () => {
 
     it('happyPath_theEstimateCoversEveryMachine', () => {
         expect(Object.keys(CLOUD_RUN_ESTIMATE_SECONDS)).toEqual(Object.keys(JOB_MACHINE_SIZES));
+    });
+
+    it('happyPath_aProcessingRunFitsTheFreeTierSixteenTimesAMonth', () => {
+        // 2026-11-12 (reports/resource-audit.md item 7): `std` 2 vCPU / 8 GiB, `xl` 4 / 16; a `std` phase of 2,700 s takes 21,600
+        // GiB-seconds, so 16 of them fit in the month's 360,000, where 4 / 16 fitted 8.
+        expect(JOB_MACHINE_SIZES).toEqual({ fetch: { vcpu: 1, gib: 4 }, std: { vcpu: 2, gib: 8 }, xl: { vcpu: 4, gib: 16 } });
+        const std = JOB_MACHINE_SIZES.std;
+        const runs = Math.min(
+            CLOUD_RUN_FREE_TIER.vcpuSeconds / (std.vcpu * CLOUD_RUN_ESTIMATE_SECONDS.std),
+            CLOUD_RUN_FREE_TIER.gibSeconds / (std.gib * CLOUD_RUN_ESTIMATE_SECONDS.std),
+        );
+        expect(Math.floor(runs)).toBe(16);
+    });
+
+    it('badPath_noProcessingMachineIsLargerThanItsReviewedCeiling', () => {
+        // A larger default silently halves the free runs again: each machine stays at its reviewed ceiling, `xl` above `std`.
+        expect(JOB_MACHINE_SIZES.std.gib).toBeLessThanOrEqual(8);
+        expect(JOB_MACHINE_SIZES.xl.gib).toBeLessThanOrEqual(16);
+        expect(JOB_MACHINE_SIZES.xl.gib).toBeGreaterThan(JOB_MACHINE_SIZES.std.gib);
     });
 });

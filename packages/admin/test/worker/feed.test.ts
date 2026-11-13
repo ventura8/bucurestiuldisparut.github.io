@@ -155,13 +155,13 @@ describe("the local worker feed: a version's job and the failures", () => {
         world.store.docs.set(FIRESTORE_PATHS.job(CITY, 'j1'), jobDoc({ runOn: 'cloud', waitReason: 'free-tier' }));
         const { feed } = feedOf(world, 'j1');
 
-        // The download on `fetch` (1,800 s × 1 vCPU, 4 GiB), the processing on `std` (2,700 s × 4 vCPU, 16 GiB).
+        // The download on `fetch` (1,800 s × 1 vCPU, 4 GiB), the processing on `std` (2,700 s × 2 vCPU, 8 GiB).
         expect(feed.state.job).toEqual({
             id: 'j1',
             status: 'queued',
             runOn: 'cloud',
             waitReason: 'free-tier',
-            estimate: { vcpuSeconds: 12_600, gibSeconds: 50_400 },
+            estimate: { vcpuSeconds: 7200, gibSeconds: 28_800 },
             step: null,
             progress: null,
             overdue: false,

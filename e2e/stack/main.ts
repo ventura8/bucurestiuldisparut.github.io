@@ -8,7 +8,7 @@
 // `serve` starts the mock APIs (e2e/mock-apis/main.ts mock) and the Firebase emulators of project demo-hcm (their output
 // in reports/dev-stack/), waits until both answer, seeds the world (seed.ts; `HCM_STACK_SEED=city|fresh`), opens the
 // stack's admin and site servers last (servers.ts: a browser opened as soon as a port answers finds the world ready),
-// then plays Cloud Scheduler (imagery.tick every 5 minutes, ops.tick every 15; `HCM_STACK_TICKS=0` turns it off). Exit
+// then plays Cloud Scheduler (imagery.tick and ops.tick every 15 minutes; `HCM_STACK_TICKS=0` turns it off). Exit
 // status 1 when a part fails to start, 2 on a usage error.
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createWriteStream, mkdirSync, readFileSync } from 'node:fs';
@@ -31,7 +31,7 @@ const START_TIMEOUT_MS = 300_000;
 const POLL_MS = 1000;
 const MINUTE = 60_000;
 /** Cloud Scheduler's cadence of the two scheduled functions (functions/src/imagery/tick.ts, functions/src/ops/tick.ts). */
-const TICKS = { imagery: 5 * MINUTE, ops: 15 * MINUTE } as const;
+const TICKS = { imagery: 15 * MINUTE, ops: 15 * MINUTE } as const;
 type Tick = keyof typeof TICKS;
 
 function pause(ms: number): Promise<void> {
@@ -131,9 +131,7 @@ function banner(profile: SeedProfile, ticks: boolean): void {
         `  Accounts   ${PERSONAS.owner.email} (owner), ${PERSONAS.admin.email} (admin), ${PERSONAS.editor.email} (invited),` +
             ` ${PERSONAS.stranger.email} (nobody)`,
         `  Logs       ${LOG_DIR}/emulators.log, ${LOG_DIR}/mock-apis.log`,
-        ticks
-            ? '  Clock      imagery.tick every 5 min, ops.tick every 15 min; now: bash scripts/dev/dev-stack.sh tick'
-            : '  Clock      off',
+        ticks ? '  Clock      imagery.tick and ops.tick every 15 min; now: bash scripts/dev/dev-stack.sh tick' : '  Clock      off',
         '  Stop       Ctrl+C here, or bash scripts/dev/dev-stack.sh stop',
     ];
     for (const line of lines) {

@@ -247,7 +247,7 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.notice.cancelRefused': 'The processing could not be stopped.',
     'adminContent.imagery.notice.dismissed': 'The image was deleted.',
     'adminContent.imagery.notice.versionDeleted': 'The version was deleted.',
-    'adminContent.imagery.notice.resumed': 'Processing starts again within five minutes.',
+    'adminContent.imagery.notice.resumed': 'Processing starts again within 15 minutes.',
     'adminContent.imagery.guard.paused': 'Processing paused: Google Cloud cost {cost} of {budget} this month. The public map works.',
     'adminContent.imagery.guard.pausedPlain': 'Processing is paused: the monthly budget was reached. The public map keeps working.',
     'adminContent.imagery.guard.resume': 'Resume processing',

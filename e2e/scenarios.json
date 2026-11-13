@@ -4840,6 +4840,28 @@
             "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/photos/upload.test.ts."
         },
         {
+            "id": "S-A08-HAPPY-THUMB-FROM-WEB",
+            "behaviour": "A08",
+            "area": "admin",
+            "path": "happy",
+            "title": "The original is decoded once; the thumbnail comes upright from the web derivative",
+            "asserts": "a 3000 x 1000 JPEG with EXIF orientation 6 -> the processor is given the original once (web, 683 x 2048) and the web WebP for the thumbnail (133 x 400, upright); photos.onUpload deploys at 1 GiB",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Resource audit item 10 (docs/research/M7-local-worker.md §4.6; 200 MP measured at 321 MB peak; track/optcloud, 2026-11-12). Tests: functions/test/photos/upload.test.ts, on-upload.test.ts."
+        },
+        {
+            "id": "S-A08-BAD-NO-THUMB-ATTEMPT",
+            "behaviour": "A08",
+            "area": "admin",
+            "path": "bad",
+            "title": "An original that does not decode makes no thumbnail attempt",
+            "asserts": "the web derivative's decode fails (unreadable) -> one decode only (2048), the photo fails with apiError.photo.unreadable, nothing public is written",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Resource audit item 10 (track/optcloud, 2026-11-12). Test: functions/test/photos/upload.test.ts."
+        },
+        {
             "id": "S-A08-BAD-NOT-A-PHOTO",
             "behaviour": "A08",
             "area": "admin",
@@ -5652,6 +5674,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/dispatch.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A12-HAPPY-FREED-PLACE",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A run that ends starts the job waiting for its place at once",
+            "asserts": "two runs hold both places, a third job waits (capacity); one run succeeds -> imagery.onJobWrite dispatches every city's queued jobs at once: the third starts (one execution), without waiting for imagery.tick, which runs every 15 minutes",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Resource audit item 9 (reports/resource-audit.md, docs/research/M7-local-worker.md §4.6; track/optcloud, 2026-11-12). Test: functions/test/imagery/dispatch.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-NO-FREED-PLACE",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A write that frees no place starts nothing; a dispatch that fails leaves the others",
+            "asserts": "a heartbeat, a start or a new job that ended frees no place -> no execution, the waiting job stays queued; a queued job whose dispatch throws is logged (queued job not dispatched) and the next queued job still starts",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Resource audit item 9 (docs/research/M7-local-worker.md §4.6; track/optcloud, 2026-11-12). Test: functions/test/imagery/dispatch.test.ts."
         },
         {
             "id": "S-A12-HAPPY-DISPATCH-PHASES",

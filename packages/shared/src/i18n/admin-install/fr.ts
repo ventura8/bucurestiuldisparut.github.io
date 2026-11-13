@@ -9,8 +9,6 @@ export const fr: Readonly<Partial<Record<AdminInstallKey, string>>> = {
     'adminSetup.step.site': 'Publication de la carte.',
     'adminSetup.why.pipeline': "The pipeline turns USGS scans into the map's layers; it installs with the server.",
     'adminSetup.why.site': "Visitors see the map at the project's address, and the admin stays at /admin/.",
-    'adminSetup.cost.pipeline':
-        'Image : 0,10 USD par mois ; un import télécharge sur 1 vCPU (0,09 USD/h), puis traite les données sur 4 vCPU (0,37 USD/h).',
     'adminSetup.cost.site': "Hébergement Firebase : gratuit jusqu'à 10 Go de stockage et 360 Mo de transfert par jour.",
     'adminSetup.install.server.explain':
         'Nous installons le serveur ici, à l’aide de Google Cloud Build, dans votre projet : cela prend environ 15 minutes.',

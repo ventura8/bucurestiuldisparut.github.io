@@ -3640,6 +3640,30 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: `hcm-unplaced-gallery.ts` gives its link a 48 px box; `.stories-sheet` is `display: contents` beside `.photos-sheet` (`viewer-styles.ts`); the arrows' gap is 16 px under 360 px (`lightbox-styles.ts`); `S-V40-BAD-SUGGEST-SMALL-TARGET`, `S-V50-BAD-TEXT-SPACING-ALL-STORIES`, `S-V61-BAD-ZOOMED-TAB-ORDER` on the tour.
     - **A rule scoped to one component's class does not reach the same pattern elsewhere: when one sheet's wrapper or lone link is fixed, fix every sibling with the same shape.**
 
+620. **The grouped lint passed every group and still failed: its EXIT trap named a variable local to `main`.**
+    - Seen: 2026-11-12, track/optdev: `scripts/ci/lint.sh` said `out: unbound variable` after the last group, and the `eslint` gate failed with every group clean.
+    - Cause: `trap 'rm -rf "$out"' EXIT` runs after `main` has returned, when its `local out` is gone, and `set -u` turns that into exit 1.
+    - Found by: the `static` stage on the NUC. Fix: the folder is a global, `LINT_OUT` (§180a); a planted violation then failed the gate and only it.
+    - **An EXIT trap reads only globals; a lint wrapper is proved by a planted violation as well as by a clean run.**
+
+621. **The e2e stage in a 12 GB container lost its Firestore emulator to the kernel.**
+    - Seen: 2026-11-12, track/optdev: the admin tests failed in under 100 ms each; the kernel log named the killed `java`.
+    - Cause: the Functions emulator keeps one Node worker per function trigger (more under concurrent calls), about 250 MB each and never stopped while idle: 46 of them held 8.8 GB.
+    - Found by: sampling the container's processes during the run (§180c). Fix so far: the JVMs' heap ceilings (§180d); the workers are §180f.
+    - **Measure a tier's peak under the cap it will run with; a run killed for memory looks like a flood of fast test failures.**
+
+622. **The rule-coverage report ran the Firestore emulator out of heap under a 12 GB container.**
+    - Seen: 2026-11-12, track/optdev: `ruleCoverage` answered HTTP 500, `firestore-debug.log` said "Java heap space", and the `vitest` and `rules-coverage` gates failed with every test green.
+    - Cause: the emulator builds the report whole in its heap: 582 MB of indented JSON, and the HTML view of the same data was asked for at once. The JVM's default heap is a quarter of the container's cap (3 GB); with the JSON alone 3 and 4 GB still ran out.
+    - Found by: sampling the emulator's resident memory per heap ceiling on the NUC (§180g). Fix: `-Xmx6g` in `npm test`, the JSON alone streamed to disk, the values dropped as the check parses them; a stubbed short body then showed that `HTTPResponse.read(n)` returns quietly when a transfer breaks, so the save compares what was announced with what came.
+    - **A report a gate needs is sized under the cap the gate runs with; a sized read of an HTTP body does not raise on a short body: check `response.length`.**
+
+623. **Three merges on one day left three tests that each branch had passed: a file list, an export fixture and a function count.**
+    - Seen: 2026-11-13, the `tests` stage of track/optdev after merging `origin/feat/engine-rewrite`: `test_import_job.py` expected `scan-tiles.bin` (track/georefux) for a crop that track/stripfix now keeps under the preview's 4,096 px; the shared API fixture lacked the governor's eight exports (track/hwgov); `packages/admin/src/setup/controller.ts` fell to 89 % of its functions after the install override (track/prerelease).
+    - Cause: each branch ran its targeted tests; nothing ran the whole `tests` stage on the merged tree.
+    - Fix and pin: the import test asks the version whether a sharper scan was written; the fixture names the exports (`exports-m7.ts`); `controller-intents.test.ts` drives the install cards' intents. The same run found the colour library's inline option missing in all but one project (§180h).
+    - **After merging branches that each passed alone, run the full `tests` stage on the merge before pushing it.**
+
 624. **"Import every direction from the old site" was already done: the 10 photos without one have no cone there either.**
     - Seen: 2026-11-12, the owner: *only one photo near Gara Obor has a direction in our app; on the old site they all have*.
     - Cause: none in the code. Compared with the old site's live `geojson/photos.json` (56 points, 47 cones), 47 of our 57 photos have a cone there and live Firestore has all 47 directions (0 differences), and the 9 photos at Gara Obor without one are pins without a cone on the old site as well; the viewer's year filter leaves one cone (Parc Ferdinand, 1930) at the 1930s. Local `master` is not the old live site (44 points): the live data is `bucurestiuldisparut/bucurestiuldisparut.github.io` (`docs/research/M5-interfaces.md` → *Directions from the old site*).

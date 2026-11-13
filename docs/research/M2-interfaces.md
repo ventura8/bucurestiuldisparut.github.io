@@ -296,7 +296,7 @@ restore.
 1. The admin creates `cities/{city}/photos/{photo}` (`processing: 'pending'`, `published: false`, the sticky author,
    source and licence, the last pin as `location`), then uploads the file to `STORAGE_PATHS.photoUpload(city, uid,
    photo, '<nonce>.<ext>')` with `customMetadata.originalName`.
-2. **`photos.onUpload`** (Storage finalize on the private bucket, 2 GiB, concurrency 1, `maxInstances` 5):
+2. **`photos.onUpload`** (Storage finalize on the private bucket, 2 GiB (1 GiB since 2026-11-12, `docs/research/M7-local-worker.md` §4.6), concurrency 1, `maxInstances` 5):
    `parsePhotoUploadPath` (anything else is ignored); the photo document must exist (else the upload is deleted);
    `images.inspect` sniffs the bytes: not an accepted type → `processing: 'failed'`, `processingError:
    apiError.photo.unsupportedType`; over `PHOTO_LIMITS.maxInputPixels` → `apiError.photo.tooLarge` (`{megapixels:

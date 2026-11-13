@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # `npm run lint:changed`: ESLint on the TypeScript and JavaScript files that differ from the work branch's remote
 # (origin/feat/engine-rewrite, or the ref in LINT_BASE), on one worker: the check before a commit. Only the TypeScript
-# programs of the changed files' projects are built (the whole tree takes 8.8 GB on one worker and 17.8 GB on four,
+# programs of the changed files' projects are built (the whole tree in one process took 8.8 GB on one worker and 17.8 GB on four,
 # 2026-11-12). The full gate stays `npm run lint` in the pipeline's static stage.
 set -euo pipefail
 

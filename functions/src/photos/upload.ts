@@ -205,13 +205,19 @@ interface Rendered {
     readonly sha256: string;
 }
 
-/** Both derivatives in memory: every decoding problem shows here, before anything is written. */
+/**
+ * Both derivatives in memory: every decoding problem shows here, before anything is written. The original is decoded once, for the
+ * web derivative; the thumbnail is made from that 2,048 px WebP, already turned upright and without metadata (2026-11-12,
+ * reports/resource-audit.md item 10: a second decode of a 200 MP original cost as much CPU again; measured on a 200 MP JPEG, 1.8 to
+ * 1.1 CPU-seconds, and on a 200 MP PNG 3.3 to 1.6, peak 321 MB either way, so the function runs at 1 GiB).
+ */
 async function render(deps: PhotoDeps, bytes: Uint8Array): Promise<readonly [Derivative, Derivative]> {
-    const encode = async (variant: PhotoVariant): Promise<Derivative> => ({
+    const encode = async (variant: PhotoVariant, from: Uint8Array): Promise<Derivative> => ({
         variant,
-        ...(await deps.images.webp(bytes, DERIVATIVES[variant]).catch(refuseUnreadable)),
+        ...(await deps.images.webp(from, DERIVATIVES[variant]).catch(refuseUnreadable)),
     });
-    return [await encode('web'), await encode('thumb')];
+    const web = await encode('web', bytes);
+    return [web, await encode('thumb', web.bytes)];
 }
 
 /** One derivative, created once: a redelivered event finds the same content-hashed object (a conflict) and moves on. */
