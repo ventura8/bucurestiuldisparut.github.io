@@ -29,7 +29,7 @@ export const I18N_AND_LOGGING_EXPORTS = [
     'translate',
 ];
 
-/** The viewer's languages (DECISIONS-for-review.md §192), for `index.test.ts`. */
+/** The viewer's languages (DECISIONS-for-review.md §194), for `index.test.ts`. */
 export const VIEWER_I18N_EXPORTS = [
     'LANGUAGE_NAMES',
     'VIEWER_LOCALES',
