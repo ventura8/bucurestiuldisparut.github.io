@@ -97,6 +97,23 @@ test(
 );
 
 test(
+    "The timeline's pill on a phone and the menu of a year's dates",
+    {
+        tag: [
+            '@S-V15-HAPPY',
+            '@S-V15-BAD-TEXT-SPACING',
+            '@S-V15-BAD-REFLOW-320',
+            '@S-V14-HAPPY-EVERY-STATE',
+            '@S-V67-HAPPY-TOUR',
+            '@S-V68-HAPPY-TOUR',
+        ],
+    },
+    async ({ page, context, lang }) => {
+        await expectJourneySound({ page, context, lang }, journey('timeline-dates'));
+    },
+);
+
+test(
     "A photo's versions in its sheet and in the full-size view, zoomed in",
     {
         tag: [

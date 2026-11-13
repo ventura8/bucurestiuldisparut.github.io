@@ -35,6 +35,7 @@ import {
     isCompareLayer,
     locateTarget,
     sheetAfterClosing,
+    withFrontLayer,
     withLayerYear,
     withStory,
     withYear,
@@ -58,6 +59,8 @@ export interface ViewerActions {
     retry(): Promise<void>;
     setLocale(locale: Locale): void;
     setYear(year: number | null): void;
+    /** V13: a date of the timeline's year picked: its layer's year on the timeline, that layer on top (V15). */
+    pickLayer(layerId: string): void;
     /**
      * Any overlay id (layer, `photos`, POI category); without `visible` it toggles. The map follows; a layer switched on
      * moves the timeline to its year.
@@ -165,18 +168,15 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
                 this.set({ ...this.#state, consent });
             }),
         );
-        const onScheme = deps.colorScheme?.subscribe((systemDark) => {
-            this.set({ ...this.#state, systemDark });
-        });
-        if (onScheme !== undefined) {
-            this.#unsubscribe.push(onScheme);
-        }
-        const onHash = deps.location.subscribe?.(() => {
-            this.#boot.applyLocationHash();
-        });
-        if (onHash !== undefined) {
-            this.#unsubscribe.push(onHash);
-        }
+        const optional = [
+            deps.colorScheme?.subscribe((systemDark) => {
+                this.set({ ...this.#state, systemDark });
+            }),
+            deps.location.subscribe?.(() => {
+                this.#boot.applyLocationHash();
+            }),
+        ];
+        this.#unsubscribe.push(...optional.filter((stop) => stop !== undefined));
     }
 
     get destroyed(): boolean {
@@ -224,10 +224,13 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         this.hash.schedule();
     }
 
-    setYear(year: number | null): void {
-        const next = withYear(this.#state, year);
+    readonly setYear = (year: number | null): boolean => this.#moveTimeline(withYear(this.#state, year));
+    readonly pickLayer = (layerId: string): boolean => this.#moveTimeline(withFrontLayer(this.#state, layerId));
+
+    /** The timeline's stop or front changed: the state, `year_change` when the year did, then the hash; false: no change. */
+    #moveTimeline(next: ViewerState): boolean {
         if (next === this.#state) {
-            return;
+            return false;
         }
         const changed = next.year !== this.#state.year;
         this.set(next);
@@ -235,6 +238,7 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
             this.deps.telemetry.logEvent({ name: 'year_change', year: next.year });
         }
         this.hash.schedule();
+        return true;
     }
 
     toggleOverlay(overlayId: string, visible?: boolean): void {

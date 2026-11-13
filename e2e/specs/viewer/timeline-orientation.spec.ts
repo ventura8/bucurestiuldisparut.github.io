@@ -4,7 +4,7 @@ import { siteManifestData } from '../../fixtures/manifest.js';
 import { E2E_XYZ_LAYER } from '../../fixtures/world.js';
 import { overlaps, visibleBoxes, type Box } from '../../support/layout.js';
 import { expect, test } from '../../support/test.js';
-import { menuButton, openViewer, serveManifest, t, viewer } from '../../support/viewer.js';
+import { menuButton, openTimelineCard, openViewer, serveManifest, t, viewer } from '../../support/viewer.js';
 
 /**
  * The timeline's orientation (behaviour V04; the owner, 2026-11-08: "for phone or small width setup, maybe it would be
@@ -75,6 +75,7 @@ test(
     async ({ page, lang }) => {
         await page.setViewportSize({ width: 375, height: 812 });
         await openViewer(page, { lang, hash: OBOR_VIEW });
+        await openTimelineCard(page);
         await expect(slider(page, lang)).toHaveAttribute('aria-orientation', 'vertical');
 
         await walk(page, lang, 'ArrowUp', 'ArrowDown');
@@ -99,6 +100,7 @@ test(
     async ({ page, lang }) => {
         await page.setViewportSize({ width: 915, height: 412 });
         await openViewer(page, { lang, hash: OBOR_VIEW });
+        await openTimelineCard(page);
         await expect(slider(page, lang)).toHaveAttribute('aria-orientation', 'horizontal');
 
         await walk(page, lang, 'ArrowRight', 'ArrowLeft');
@@ -124,6 +126,7 @@ test(
         // The review at 568 x 320: the chip sat on the map's centre point and the open three-column menu covered it.
         await page.setViewportSize({ width: 568, height: 320 });
         await openViewer(page, { lang, hash: OBOR_VIEW });
+        await openTimelineCard(page);
         await expect(slider(page, lang)).toHaveAttribute('aria-orientation', 'horizontal');
         await slider(page, lang).focus();
         await slider(page, lang).press('Home');
@@ -192,6 +195,8 @@ test(
         ]) {
             await page.setViewportSize(size);
             await openViewer(page, { lang, hash: OBOR_VIEW });
+            await openTimelineCard(page);
+            await openTimelineCard(page);
             const thumb = slider(page, lang);
             await expect(thumb).toHaveAttribute('aria-valuemax', String(OWNERS_YEARS.length));
             await thumb.focus();
@@ -278,6 +283,8 @@ test(
         for (const size of CARD_SIZES) {
             await page.setViewportSize(size);
             await openViewer(page, { lang, hash: OBOR_VIEW });
+            await openTimelineCard(page);
+            await openTimelineCard(page);
             const thumb = slider(page, lang);
             await expect(thumb).toHaveAttribute('aria-valuemax', '21');
             await thumb.focus();
@@ -321,6 +328,8 @@ test(
         ]) {
             await page.setViewportSize(size);
             await openViewer(page, { lang, hash: OBOR_VIEW });
+            await openTimelineCard(page);
+            await openTimelineCard(page);
             const thumb = slider(page, lang);
             await expect(thumb).toHaveAttribute('aria-valuemax', '61');
             await thumb.focus();

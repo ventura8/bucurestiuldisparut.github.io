@@ -10,6 +10,7 @@
  * with a larger one, and left no room for the open FAB menu above it on a 568 px phone. The card holds a scroller with
  * the padding: the track fits it unless the years are closer than 14 px (`density`, `timeline-model.ts`), and only then
  * scrolls, under a finger too, behind a mask that fades the edge with more years beyond (`--hcm-fade-start`, `-end`).
+ * A year with several dates has a badge on its point (V13); on a phone, idle, the card collapses to its pill (V12).
  */
 import { css } from 'lit';
 
@@ -238,6 +239,85 @@ export const timelineStyles = [
 
         :host([dragging][orientation='vertical']) .thumb {
             transform: translateY(50%) scale(1.12);
+        }
+
+        /*
+         * V13: a year with several dates has a badge on its point, the count in a 16 px M3 badge (error colours, as M3's) over its tick (standing,
+         * at the lane's end beside its label); the selected year's is on the pill's corner.
+         */
+        .badge {
+            position: absolute;
+            display: grid;
+            place-items: center;
+            box-sizing: border-box;
+            min-inline-size: 16px;
+            block-size: 16px;
+            padding-inline: 4px;
+            border-radius: 8px;
+            background: var(--md-sys-color-error, Mark);
+            color: var(--md-sys-color-on-error, MarkText);
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1;
+            visibility: visible;
+            cursor: pointer;
+
+            /* Above the thumb's 48 px touch ring, which would take its press. */
+            z-index: 1;
+        }
+
+        .thumb .badge {
+            inset-block-start: -6px;
+            inset-inline-end: -6px;
+        }
+
+        .stop .badge {
+            inset-block-start: -4px;
+            inset-inline-start: 50%;
+            transform: translateX(var(--hcm-x));
+        }
+
+        :host([orientation='vertical']) .stop .badge {
+            inset-block-start: 50%;
+            inset-inline: auto -6px;
+            transform: translateY(-50%);
+        }
+
+        /*
+         * V12: on a phone, idle, the card is only the pill of its year (8 + 40 px tall: a 48 px target), the rail and the
+         * years hidden; the viewer docks it (timeline-dock.ts). A tap on it opens the whole card again.
+         */
+        :host([collapsed][orientation]) {
+            inline-size: max-content;
+            block-size: auto;
+            touch-action: manipulation;
+        }
+
+        :host([collapsed][orientation]) .scroller {
+            block-size: auto;
+            padding: 4px;
+            overflow: visible;
+            mask-image: none;
+        }
+
+        :host([collapsed][orientation]) .track {
+            inline-size: auto;
+            min-inline-size: 0;
+            block-size: 40px;
+            min-block-size: 0;
+        }
+
+        :host([collapsed][orientation]) :is(.rail, .active, .stops) {
+            display: none;
+        }
+
+        :host([collapsed][orientation]) .thumb {
+            position: relative;
+            inset: auto;
+            min-inline-size: 60px;
+            padding-inline: 8px;
+            transform: none;
+            transition: none;
         }
 
         @media (prefers-reduced-motion: reduce) {

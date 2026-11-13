@@ -108,3 +108,15 @@ export function siteManifestData(options: FixtureOptions = {}): Json {
     const places = options.pois === false ? {} : { photosOverlay, poiCategories, pois };
     return { ...withoutPois, ...places, city: { ...city, analytics }, layers: options.layers === false ? [] : served['layers'] };
 }
+
+/**
+ * The site's manifest with both layers in 1980 (V68, the timeline's date picker): the tileset dated 14 March and named
+ * `Corona (e2e)`, the xyz one dated 2 August and opaque, so a probe tells which is on top.
+ */
+export function twoDatesOf1980(): Json {
+    const manifest = siteManifestData();
+    const [tileset, xyz] = manifest['layers'] as [Json, Json];
+    Object.assign(tileset, { year: 1980, date: '1980-03-14', label: { ro: 'Corona (e2e)', en: 'Corona (e2e)' } });
+    Object.assign(xyz, { date: '1980-08-02', opacity: 1 });
+    return manifest;
+}

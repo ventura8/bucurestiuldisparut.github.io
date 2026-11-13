@@ -23,6 +23,7 @@ import { watchMapMenu, type MenuPoint } from './map-menu-trigger.js';
 import { stopMyLocation } from './my-location.js';
 import { browserServices, type ViewerServices } from './services.js';
 import type { Unsubscribe, ViewerController, ViewerError, ViewerState, ViewerStorePort } from './store-port.js';
+import { TimelineDock } from './timeline-dock.js';
 import { timelineStops, type TimelineStop } from './timeline-model.js';
 import { syncLocale } from './viewer-actions.js';
 import { withViewerBaseline } from './viewer-baseline.js';
@@ -145,6 +146,8 @@ export class HcmMapViewer extends LitElement {
         },
     );
     readonly #tracker = new OverlayChangeTracker();
+    /** The timeline's pill on a phone (V12) and its date picker (V13). */
+    readonly #dock = new TimelineDock(this);
     readonly #openers: Record<Opener, Element | null> = { sheet: null, lightbox: null };
     readonly #resizeObserver = new ResizeObserver((entries) => {
         this.#onResize(entries);
@@ -177,7 +180,11 @@ export class HcmMapViewer extends LitElement {
             this.mapMenu = point;
         },
         focusTimeline: () => {
+            this.#dock.expand();
             this.renderRoot.querySelector<HcmTimeline>('#timeline')?.focus();
+        },
+        closeDates: () => {
+            this.#dock.closeDates();
         },
     });
 
@@ -327,6 +334,7 @@ export class HcmMapViewer extends LitElement {
             mapMenu: this.mapMenu,
             legalLift: this.legalLift,
             finePointer: this.finePointer,
+            dock: this.#dock,
         };
         return renderViewer(view, this.#handlers);
     }

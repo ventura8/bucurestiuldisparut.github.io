@@ -17,6 +17,7 @@ import { LitElement, html, type PropertyValues, type TemplateResult } from 'lit'
 import { classMap } from 'lit/directives/class-map.js';
 
 import { cssProperties } from '../components/css-properties.js';
+import { countOf, dateBadge, datesOpenEvent, datesValueText } from './timeline-dates.js';
 import { labelShown, SCROLL_GAP_PX, stopIndex, timelineDensity, type TimelineDensity, type TimelineStop } from './timeline-model.js';
 import { timelineStyles } from './timeline-styles.js';
 
@@ -86,6 +87,8 @@ export class HcmTimeline extends LitElement {
         density: { type: String, reflect: true },
         gapPx: { state: true },
         fade: { state: true },
+        collapsed: { type: Boolean, reflect: true },
+        dateCounts: { attribute: false },
     };
 
     static override readonly styles = timelineStyles;
@@ -101,6 +104,10 @@ export class HcmTimeline extends LitElement {
     declare gapPx: number;
     /** The edges with more years beyond them: the scroll's start (left, right right to left, top standing) and end. */
     declare fade: { readonly start: boolean; readonly end: boolean };
+    /** V12: on a phone, idle, the card is only its year's pill (the viewer's `timeline-dock.ts` decides). */
+    declare collapsed: boolean;
+    /** V13: the years with several dates, and how many (`timeline-dates.ts`): their stops carry a badge. */
+    declare dateCounts: ReadonlyMap<number, number>;
 
     /** Removes the window listeners of the current drag (none between drags). */
     #stopDrag: () => void = () => undefined;
@@ -118,6 +125,8 @@ export class HcmTimeline extends LitElement {
         this.density = 'roomy';
         this.gapPx = Number.POSITIVE_INFINITY;
         this.fade = { start: false, end: false };
+        this.collapsed = false;
+        this.dateCounts = new Map();
     }
 
     override connectedCallback(): void {
@@ -227,6 +236,7 @@ export class HcmTimeline extends LitElement {
                 @keydown=${this.#onKeyDown}
             >
                 <span class="thumb-label" aria-hidden="true">${this.#shortLabel(this.stops[index] ?? null)}</span>
+                ${this.#badge(this.stops[index] ?? null)}
             </div>
         </div>`;
     }
@@ -235,8 +245,18 @@ export class HcmTimeline extends LitElement {
         const classes = { stop: true, selected: stopAt === selected, minor: !this.#labelled(stopAt, selected) };
         return html`<li class=${classMap(classes)} ${cssProperties({ '--hcm-stop': percentText(this.#percent(stopAt)) })}>
             <span class="tick"></span><span class="label">${this.#shortLabel(stop)}</span>
+            ${stopAt === selected ? '' : this.#badge(stop)}
         </li>`;
     }
+
+    /** V13: the badge of a year with several dates; a press on it asks for the date picker. */
+    #badge(stop: TimelineStop): TemplateResult {
+        return dateBadge(stop, countOf(this.dateCounts, stop), this.#openDates);
+    }
+
+    readonly #openDates = (year: number, from: Element): void => {
+        this.dispatchEvent(datesOpenEvent(year, from));
+    };
 
     /** Whether a stop shows its year: `labelShown`, and standing, not under the pill (the pill names the selected year). */
     #labelled(stopAt: number, selected: number): boolean {
@@ -257,10 +277,17 @@ export class HcmTimeline extends LitElement {
     }
 
     #valueText(stop: TimelineStop): string {
-        return stop === null ? translate(this.locale, 'timeline.present') : translate(this.locale, 'timeline.year', { year: String(stop) });
+        if (stop === null) {
+            return translate(this.locale, 'timeline.present');
+        }
+        return datesValueText(this.locale, translate(this.locale, 'timeline.year', { year: String(stop) }), countOf(this.dateCounts, stop));
     }
 
     readonly #onKeyDown = (event: KeyboardEvent): void => {
+        if (event.key === 'Enter') {
+            this.#datesByKey(event);
+            return;
+        }
         const step = KEY_STEPS[event.key];
         if (step === undefined) {
             return;
@@ -269,6 +296,15 @@ export class HcmTimeline extends LitElement {
         const turned = /^Arrow[LR]/.test(event.key) && this.#rtl();
         this.#select(stopIndex(this.stops, this.value) + (turned ? -step : step));
     };
+
+    /** V13: Enter on a year with several dates asks for its date picker, beside the thumb. */
+    #datesByKey(event: KeyboardEvent): void {
+        const stop = this.stops[stopIndex(this.stops, this.value)] ?? null;
+        if (stop !== null && countOf(this.dateCounts, stop) > 1) {
+            event.preventDefault();
+            this.#openDates(stop, event.currentTarget as Element);
+        }
+    }
 
     /**
      * A press on the track selects the stop under it; the drag continues on the window until release. On a scrolling

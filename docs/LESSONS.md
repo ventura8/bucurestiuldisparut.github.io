@@ -3762,3 +3762,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: track/layout made the city pages app shells (`overflow: hidden` on the root) while the viewer kept `min-block-size: 320px`, taller than the window; track/stale-text reworded the kit's late note to "Reload the page." but `e2e/tour/kit-states.ts` still read the old sentence.
     - Fix and pin: the viewer's least height is 240 px (`viewer-styles.ts`), so a 270 px window shows it whole; the kit state reads the new advice in both languages; cdn/engine rebuilt.
     - **After merging tracks, run the tour on the merged tree before calling it green: a track's own green tour never saw the other track's states or copy.**
+
+641. **A press meant to open the collapsed timeline also moved its year.**
+    - Seen: 2026-11-13, track/timeline-b, `timeline-dock.test.ts`: a press on the pill (V67) opened the card and called `setYear(null)`.
+    - Cause: the dock's `@pointerdown` listened in the bubbling phase, after the timeline's own track listener inside its shadow root had already selected the stop under the press.
+    - Fix and pin: the dock catches the press in the capture phase (`{ capture: true, handleEvent }`), stops it and opens the card; the test asserts no `setYear` call.
+    - **A wrapper that must take a press away from the element it wraps listens in the capture phase; a bubbling listener runs after the element has acted.**

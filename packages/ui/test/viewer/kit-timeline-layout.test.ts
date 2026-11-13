@@ -59,6 +59,9 @@ async function viewerAt(box: Box, year: number | null = null): Promise<{ element
         expect(store.callsOf('setWindowSize').at(-1)).toEqual([box.width, box.height]);
     });
     await element.updateComplete;
+    // On a phone the timeline rests as its pill (V12): these checks are of the whole card, which a press opens.
+    element.shadowRoot?.querySelector('hcm-timeline')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true }));
+    await element.updateComplete;
     return { element, store };
 }
 
