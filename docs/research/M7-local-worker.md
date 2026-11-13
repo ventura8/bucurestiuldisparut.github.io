@@ -558,7 +558,7 @@ contract:
   `/pair` (again after a minute at most); a signed-in one shows **This computer is connected**. The admin's CSP
   `connect-src` names `http://127.0.0.1:8765` and `http://localhost:8765`. The copyable command stays behind **Advanced**,
   its code minted when Advanced opens (no code is minted any more when the panel merely shows).
-- **§7 as changed**: the `worker` chunk keeps the panel; the new lazy chunk `worker-local` (budget 5 KB, 4.3 KB measured)
+- **§7 as changed**: the `worker` chunk keeps the panel; the new lazy chunk `worker-local` (budget 5 KB, 4.3 KB measured; 10 KB since 2026-11-13 at 8.7 KB, DECISIONS-for-review.md §168e)
   holds the starter file, the auto-pair, Stop using this computer, the command and `<hcm-worker-local>`, with its texts in
   `packages/shared/src/i18n/admin-worker-local/`.
 
