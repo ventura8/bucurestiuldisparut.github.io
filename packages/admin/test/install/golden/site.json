@@ -44,15 +44,7 @@
             "name": "node:24-bookworm-slim@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
             "entrypoint": "node",
             "dir": "site",
-            "args": [
-                "tools/node_modules/firebase-tools/lib/bin/firebase.js",
-                "deploy",
-                "--only",
-                "hosting",
-                "--project",
-                "$PROJECT_ID",
-                "--non-interactive"
-            ]
+            "args": ["steps/deploy-hosting.mjs", "--project", "$PROJECT_ID", "--max-versions", "10"]
         },
         {
             "id": "config",

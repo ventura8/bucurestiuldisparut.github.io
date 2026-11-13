@@ -4,6 +4,7 @@ import type { GoogleClients } from '../google/clients.js';
 import { failureMessage, googleFailureOf, type AdminMessageKey, type GoogleFailure } from '../google/failure.js';
 import type { ApiWaits } from '../google/transport.js';
 import type { Observation, OrgFindings, ProvisionContext, ProvisionItemSpec, WebAppIdentity } from './item.js';
+import { ADMIN_SITE_ITEMS } from './items-admin-site.js';
 import { CORE_ITEMS, readOrgFindings } from './items-core.js';
 import { EXTRA_ITEMS } from './items-extra.js';
 import { IAM_ITEMS } from './items-iam.js';
@@ -35,13 +36,14 @@ export const PROVISION_ORDER: readonly ProvisionItem[] = [
     'app-check',
     'crash-alerts',
     'api-key',
+    'admin-site',
     'task-queues',
     'scheduler',
 ];
 
 /** Every item by id (`provisioner.test.ts` pins that each of `PROVISION_ITEMS` has exactly one). */
 const SPECS = Object.fromEntries(
-    [...CORE_ITEMS, ...STORAGE_ITEMS, ...IAM_ITEMS, ...EXTRA_ITEMS].map((spec) => [spec.id, spec]),
+    [...CORE_ITEMS, ...STORAGE_ITEMS, ...IAM_ITEMS, ...EXTRA_ITEMS, ...ADMIN_SITE_ITEMS].map((spec) => [spec.id, spec]),
 ) as Readonly<Record<ProvisionItem, ProvisionItemSpec>>;
 
 /** One doctor line: what the card shows and `setup.recordCloud` records (no token, no address, no secret). */

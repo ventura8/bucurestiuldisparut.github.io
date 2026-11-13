@@ -19,6 +19,7 @@ import { ApiError } from '../api/api-error.js';
 import { UpstreamError } from '../ports/errors.js';
 import type { Ports } from '../ports/index.js';
 import { expireInvites, removeStaleUsers } from './accounts.js';
+import { refreshAdminToken } from './admin-token.js';
 import { checkCrashSpike } from './crash-spike.js';
 import { expireExports } from './exports.js';
 import { nightlyManifests } from './manifests.js';
@@ -88,6 +89,8 @@ const STEPS: Readonly<Record<OpsStep, Step>> = {
         await retireTokens(deps, context.now);
         // M6 (docs/research/M6-interfaces.md §2.6; owner: hosting): each city's viewer token follows the server's origins.
         deps.log.info('viewer tokens replaced', { count: await refreshViewerTokens(deps, context.now) });
+        // §210: the admin's token follows the server's admin origins (the admin's own site among them).
+        await refreshAdminToken(deps, context.now);
         return {};
     },
     invites: async (deps, context) => {

@@ -36,7 +36,7 @@ import type { SetupModule } from './setup/module.js';
 import type { SetupState } from './setup/state.js';
 import { initFirebase, loadAnalyticsSdk, loadFieldSdk, type FirebaseHandles } from './firebase/app.js';
 import { firebaseSdk } from './firebase/sdk.js';
-import { hostingOrigins } from './install/bundle.js';
+import { adminReleaseFields, installPlace } from './app/admin-site.js';
 import { AREA_CHUNKS, areaPageLoader, type ContentModuleSlots } from './routing/area-pages.js';
 import { PageRegistry, type PageLoader } from './routing/pages.js';
 import type { AdminRouteId } from './routing/routes.js';
@@ -249,10 +249,8 @@ interface SetupParts {
     readonly config: FirebaseWebConfig;
     readonly firebase: FirebasePorts;
     readonly fetch: typeof fetch;
-    /** The admin's `runtime.json` release (M6: what the install cards install). */
-    readonly release: string;
-    /** Its build time (`runtime.json`'s `releaseTime`, finding 39 of 2026-11-01), or null when the build knows none. */
-    readonly releaseTime: number | null;
+    /** The admin's `runtime.json`: its release and build time (M6: what the install cards install), its own site (§210). */
+    readonly runtime: AdminRuntime;
     /** Finding 29 of 2026-10-31: whether Hosting still serves this release (read before an install build). */
     readonly releases: Pick<ReleaseWatch, 'check'>;
 }
@@ -267,10 +265,9 @@ function setupFor(setup: SetupParts, project: ProjectConfig | null): SetupModule
         ...{ config: setup.config, project, firebase: setup.firebase, fetch: setup.fetch, clock: setup.parts.clock, log: setup.parts.log },
         baseUrl: setup.parts.win.document.baseURI,
         nonce: globalThis.crypto.randomUUID.bind(globalThis.crypto),
-        release: setup.release,
-        releaseTime: setup.releaseTime,
+        ...adminReleaseFields(setup.runtime),
         newerAdmin: () => setup.releases.check(),
-        installOrigins: setup.parts.e2e === null ? hostingOrigins(setup.config.projectId) : [setup.parts.win.location.origin],
+        ...installPlace(setup.config.projectId, setup.runtime, setup.parts.win.location.origin, setup.parts.e2e === null),
     });
 }
 
@@ -319,7 +316,7 @@ export function contentDepsFor(
 export function browserDeps(parts: BrowserParts): BootEnvironment<EntrySetup, EntryIntents>['build'] {
     const { win, e2e, log, clock } = parts;
     return (config: FirebaseWebConfig, runtime: AdminRuntime, project: ProjectConfig | null) => {
-        const handles = initFirebase(firebaseSdk, config, runtime, e2e !== null);
+        const handles = initFirebase(firebaseSdk, config, runtime, { emulators: e2e !== null, origin: win.location.origin });
         const fetcher: typeof fetch = (input, init) => win.fetch(input, init);
         const firebase = firebasePorts(firebaseSdk, handles);
         const visibility = documentVisibility(win.document);
@@ -331,10 +328,7 @@ export function browserDeps(parts: BrowserParts): BootEnvironment<EntrySetup, En
             languages: win.navigator.languages,
             pages: PAGES,
             telemetry: telemetryFor(parts, handles, config, runtime.release),
-            setup: setupFor(
-                { parts, config, firebase, fetch: fetcher, release: runtime.release, releaseTime: runtime.releaseTime ?? null, releases },
-                project,
-            ),
+            setup: setupFor({ parts, config, firebase, fetch: fetcher, runtime, releases }, project),
             content: contentDepsFor(parts, handles, fetcher, runtime),
             funnelWindow: win,
         };

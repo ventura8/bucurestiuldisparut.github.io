@@ -49,6 +49,12 @@ export interface BuildParams {
      * the build carries `OVER_TAG`, so Cloud Build's history keeps the rollback.
      */
     readonly over?: boolean;
+    /**
+     * §210: the admin's own Hosting site, named only by an admin served from it (the site is then this project's). A server
+     * build's `fetch` writes it into the functions' `.env` (`HCM_ADMIN_SITE`), so their links open it directly; the other
+     * targets ignore it.
+     */
+    readonly adminSite?: string;
 }
 
 /** Every build's tag, and each target's own (the cards list builds by it). */
@@ -99,6 +105,11 @@ function siteEnv(target: InstallTarget, params: BuildParams): readonly string[] 
     return [...(params.legacy ? [keep, 'HCM_UNPACK=legacy'] : [keep]), ...adopt];
 }
 
+/** The server build's extra env: the admin's own site for the functions' `.env` (§210), when the admin named one. */
+function serverEnv(target: InstallTarget, params: BuildParams): readonly string[] {
+    return target === 'server' && params.adminSite !== undefined ? [`HCM_ADMIN_SITE=${params.adminSite}`] : [];
+}
+
 /** The tarballs `fetch` downloads (`FETCHED`), with `legacy.tgz` for a site build that needs it. */
 function fetched(target: InstallTarget, params: BuildParams): string {
     return target === 'site' && params.legacy ? `${FETCHED.site},legacy` : FETCHED[target];
@@ -119,6 +130,7 @@ function fetchStep(target: InstallTarget, params: BuildParams): JsonObject {
             `HCM_FILES=${fetched(target, params)}`,
             `HCM_OUT=/workspace/${TARGET_DIRS[target]}`,
             ...siteEnv(target, params),
+            ...serverEnv(target, params),
         ],
     };
 }
@@ -206,7 +218,8 @@ function siteSteps(params: BuildParams): readonly JsonObject[] {
     return [
         fetchStep('site', params),
         toolsStep('site', params),
-        nodeStep('hosting', 'site', params, [FIREBASE_BIN, 'deploy', '--only', 'hosting', ...project, '--non-interactive']),
+        // §210: deploys the admin's own site beside the public map's when the project has it (`steps/deploy-hosting.mjs`).
+        nodeStep('hosting', 'site', params, ['steps/deploy-hosting.mjs', ...project, '--max-versions', String(HOSTING_MAX_VERSIONS)]),
         nodeStep('config', 'site', params, ['steps/hosting-config.mjs', ...project, '--max-versions', String(HOSTING_MAX_VERSIONS)]),
     ];
 }
