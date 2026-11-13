@@ -143,7 +143,7 @@ function controls(context: NumbersContext): TemplateResult {
         <div class="actions">
             <hcm-button
                 variant=${ready ? 'tonal' : 'filled'}
-                icon=${ready ? 'refresh' : 'insights'}
+                icon=${ready ? 'refresh' : 'visibility'}
                 ?disabled=${state.status === 'loading'}
                 @click=${show}
                 >${contentText(locale, ready ? 'adminContent.statistics.numbers.refresh' : 'adminContent.statistics.numbers.show')}</hcm-button
