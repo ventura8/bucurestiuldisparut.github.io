@@ -1095,6 +1095,13 @@
             "source": "the owner, 2026-11-09: go to Google Street View from a right-click panel (hold on a touch screen) on the map, and from a photo's details"
         },
         {
+            "id": "V64",
+            "area": "viewer",
+            "name": "The compass: its needle turns with the map, and a press, Enter or Space turns the map back to north up and level",
+            "milestone": "M17",
+            "source": "the owner, 2026-11-13 (beta.1): i want us to have a compass for the viewer (and clicking on it resets to north up)"
+        },
+        {
             "id": "P31",
             "area": "pipeline",
             "name": "The pipeline and the worker on somebody's own computer stay within a memory and processor budget, and an idle worker asks rarely",
@@ -18823,6 +18830,83 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-09 (DECISIONS-for-review.md §167h). Tests: e2e/tour/viewer.tour.ts (e2e/tour/map-menu-states.ts)."
+        },
+        {
+            "id": "S-V64-HAPPY-COMPASS-RESET",
+            "behaviour": "V64",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A click on the compass turns a turned map back to north up and the address drops its bearing",
+            "asserts": "#16/.../45 -> the compass not north, described 'turned 45° from north'; a click -> the address 16/lat/lng without a bearing, the camera's bearing 0 at rest, the compass north and described 'faces north'",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: e2e/specs/viewer/compass.spec.ts, packages/engine/test/core/store-compass.test.ts, packages/ui/test/viewer/hcm-compass.test.ts."
+        },
+        {
+            "id": "S-V64-HAPPY-NEEDLE-FOLLOWS",
+            "behaviour": "V64",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The needle follows the map's own rotate gesture, and Space levels a turned and tilted map",
+            "asserts": "a right-drag over the map turns it more than 1° and tilts it -> the compass leaves north; Space on the focused compass -> bearing 0 and pitch 0, the compass north, the focus kept",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: e2e/specs/viewer/compass.spec.ts, packages/ui/test/viewer/hcm-compass.test.ts."
+        },
+        {
+            "id": "S-V64-HAPPY-COMPARE",
+            "behaviour": "V64",
+            "area": "viewer",
+            "path": "happy",
+            "title": "In swipe compare the compass turns both maps north",
+            "asserts": "#15/.../90 in compare, a click on the compass -> every live map ends at bearing 0, at rest on one camera; the address drops its bearing",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: e2e/specs/viewer/compass.spec.ts, packages/engine/test/compare/session.test.ts."
+        },
+        {
+            "id": "S-V64-HAPPY-TOUR",
+            "behaviour": "V64",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The compass passes the layout and accessibility checks on every window class",
+            "asserts": "expectStateSound on the compass journey (turned 45° and focused, north up again after Enter with the focus kept) and on every other map state, which shows it by the zoom group",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: e2e/tour/viewer.tour.ts (e2e/tour/compass-states.ts)."
+        },
+        {
+            "id": "S-V64-BAD-ALREADY-NORTH",
+            "behaviour": "V64",
+            "area": "viewer",
+            "path": "bad",
+            "title": "North up already, the compass stays, quiet, and a press or Enter changes nothing",
+            "asserts": "#16/... north up -> the compass visible with the north attribute; a click and Enter fire no map move, leave the address and the camera unchanged, the focus on the compass",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: e2e/specs/viewer/compass.spec.ts, packages/engine/test/core/store-compass.test.ts."
+        },
+        {
+            "id": "S-V64-BAD-REDUCED-MOTION",
+            "behaviour": "V64",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Under reduced motion the compass jumps north instead of turning",
+            "asserts": "prefers-reduced-motion: reduce, #16/.../200, a click -> the address drops its bearing after at most 2 map moves (a jump, not a turn), bearing 0, the compass north",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: e2e/specs/viewer/compass.spec.ts, packages/engine/test/core/store-compass.test.ts."
+        },
+        {
+            "id": "S-V64-BAD-NO-WEBGL",
+            "behaviour": "V64",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Without WebGL there is no map and no compass",
+            "asserts": "webgl false -> no hcm-compass in the viewer",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: packages/ui/test/viewer/hcm-compass.test.ts, e2e/specs/viewer/no-webgl.spec.ts."
         },
         {
             "id": "S-P31-HAPPY-GDAL-MEMORY",

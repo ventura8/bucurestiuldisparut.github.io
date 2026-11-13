@@ -288,6 +288,22 @@ Status (2026-11-08): the owner's request ("add zoom in and out buttons to the ma
 
 Code: `packages/ui/src/viewer/viewer-zoom.ts` (the group), `zoomBy` in `packages/engine/src/core/store.ts` (one level within the range), `packages/ui/src/components/icon-button.ts` (`softDisabled`).
 
+## Compass
+
+Status (2026-11-13, beta.1): the owner's request ("i want us to have a compass for the viewer. (and clicking on it resets to north up)"); scenario rows V64, `e2e/specs/viewer/compass.spec.ts`, the tour's journey `compass`. Additive within v1: no property, event or method for a page to set.
+
+**Busolă: orientează harta spre nord** / **Compass: turn the map north up** is a 48 px icon button in its own pill beside the zoom group, its name its tooltip: 8 px above the group wherever the group goes; on a map shorter than 600 px (a phone held landscape, a 320 × 568 phone), where that would reach the band swipe compare's divider handle sweeps or the compare bar, beside the group's Zoom in, on the side towards the map. While the menu is open, which grows over it, it is hidden like the group.
+
+- **The needle** turns with the map's bearing on every frame the camera moves (a drag, Mapbox's own rotate gestures, a flight, compare's sync) and leans back as the map tilts. Only the compass repaints on those frames, not the viewer.
+- **North up and level** it stays, quiet: the needle in the surface's text colour. Turned or tilted, its north point takes the primary colour. Its description (`aria-describedby`) says where the map points ("The map is turned 45° from north.", "… and tilted 30°.", "The map faces north."), in whole degrees; it is no live region, so a turning map never floods a screen reader.
+- **A press, Enter or Space** turns the map back to bearing 0 and tilt 0, animated as the map's own moves, a jump under reduced motion (read when the button is pressed); the URL hash drops its bearing when the camera stops. North up already (within a twentieth of a degree), a press changes nothing: no map move, the address keeps what it says.
+- **Gestures**: Mapbox's defaults turn the map, and the viewer keeps them: a right-drag or Ctrl with a drag on a desktop, two fingers on a touch screen; a right-drag tilts too.
+- **Compare**: the second map follows the first's bearing and now its tilt too, so one press turns both maps north.
+- **Without WebGL** there is no map and no compass.
+- **Our own element, not Mapbox's `NavigationControl`**, for the same reasons as the zoom buttons, and because the control's look comes from Mapbox's own control styles: `<hcm-compass>` draws its needle as an inline SVG (the icon font's subset has no compass with two halves), turned through the CSSOM under the page's CSP.
+
+Code: `packages/ui/src/viewer/hcm-compass.ts` (the element), `packages/engine/src/core/compass.ts` (`watchCamera`, `resetNorth`), `getPitch` of `packages/ui/src/map/viewer-map.ts`, `FlyOptions.pitch` of `packages/ui/src/map/map-port.ts`.
+
 ## The full-size view
 
 Status (2026-11-12, shipped with v1.0.0-beta.1's branch): the owner's request ("add + and - buttons for when viewing a photo full screen"); scenario rows V60, `e2e/specs/viewer/photo-versions.spec.ts`, the tour's journey `photo-versions`. Additive within v1.

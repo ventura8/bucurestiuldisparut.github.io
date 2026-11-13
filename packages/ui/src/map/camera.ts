@@ -7,6 +7,7 @@
  */
 import type { BBox, MapView } from '@hcm/shared';
 
+import type { FlyOptions } from './map-port.js';
 import type { CameraOffset, MapboxCameraOptions, MapboxMap } from './mapbox-types.js';
 
 /** Whether a camera move animates: the caller's word, else the mount's reduced-motion preference. */
@@ -19,10 +20,27 @@ export interface CameraMove {
     readonly animate: boolean;
     readonly essential: boolean;
     readonly offset: CameraOffset | undefined;
+    /** The tilt at the end (the viewer's compass levels the map); undefined keeps it. */
+    readonly pitch?: number | undefined;
 }
 
-export function moveCamera(map: MapboxMap, view: Partial<MapView>, { animate, essential, offset }: CameraMove): void {
-    const camera: MapboxCameraOptions = offset === undefined ? view : { ...view, offset };
+/** `MapPort.flyTo`'s options as a `CameraMove`, the mount's reduced-motion preference deciding when they do not. */
+export function cameraMove(options: FlyOptions | undefined, reducedMotion: boolean): CameraMove {
+    const { animate, offset, pitch } = options ?? {};
+    return { animate: animates(options, reducedMotion), essential: animate === true, offset, pitch };
+}
+
+/** Where `moveCamera` takes the camera: a view, and the tilt when the caller sets it (the viewer's compass). */
+export type CameraTarget = Partial<MapView> & { readonly pitch?: number };
+
+/** The view with the tilt the caller set (unset keeps the camera's). */
+function withPitch(view: CameraTarget, pitch: number | undefined): MapboxCameraOptions {
+    return pitch === undefined ? view : { ...view, pitch };
+}
+
+export function moveCamera(map: MapboxMap, view: CameraTarget, { animate, essential, offset, pitch }: CameraMove): void {
+    const target = withPitch(view, pitch);
+    const camera: MapboxCameraOptions = offset === undefined ? target : { ...target, offset };
     if (animate) {
         map.flyTo(essential ? { ...camera, essential } : camera);
     } else if (offset === undefined) {

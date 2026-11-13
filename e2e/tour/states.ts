@@ -10,6 +10,7 @@ import { INPUT_JOURNEY, INPUT_STATES } from './input-states.js';
 import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
 import { MY_LOCATION_STATES } from './my-location-states.js';
 import { ZOOM_JOURNEY, ZOOM_STATES } from './zoom-states.js';
+import { COMPASS_JOURNEY, COMPASS_STATES } from './compass-states.js';
 import { PHOTO_VERSION_JOURNEY, PHOTO_VERSION_STATES } from './photo-version-states.js';
 import { MAP_MENU_JOURNEY, MAP_MENU_STATES } from './map-menu-states.js';
 import { PHOTO_SOURCE_JOURNEY, PHOTO_SOURCE_STATES } from './photo-source-states.js';
@@ -107,6 +108,7 @@ const VIEWER_STATES = {
     ...INPUT_STATES,
     ...MY_LOCATION_STATES,
     ...ZOOM_STATES,
+    ...COMPASS_STATES,
     ...PHOTO_VERSION_STATES,
     ...MAP_MENU_STATES,
     ...SETTINGS_STATES,
@@ -448,6 +450,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
     },
     INPUT_JOURNEY,
     ZOOM_JOURNEY,
+    COMPASS_JOURNEY,
     PHOTO_VERSION_JOURNEY,
     MAP_MENU_JOURNEY,
     THEME_MENU_JOURNEY,

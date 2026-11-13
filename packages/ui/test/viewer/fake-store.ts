@@ -4,7 +4,7 @@
  * The engine's real store is tested in `packages/engine`; this one only has to be faithful enough to drive the UI.
  */
 import { isCompactHeight, isDockable, windowClassFor } from '../../src/theme/tokens.js';
-import type { MyLocationState, SheetName, ThemeMode, ViewerState, ViewerStorePort } from '../../src/viewer/store-port.js';
+import type { MapCamera, MyLocationState, SheetName, ThemeMode, ViewerState, ViewerStorePort } from '../../src/viewer/store-port.js';
 import {
     overlaysFromManifest,
     withOverlayOpacity,
@@ -190,6 +190,33 @@ export class FakeStore implements ViewerStorePort {
 
     zoomBy(step: number): void {
         this.#record('zoomBy', step);
+    }
+
+    resetNorth(): void {
+        this.#record('resetNorth');
+    }
+
+    /** The compass's camera: `moveCamera` plays a frame of the map's `move` to every watcher. */
+    camera: MapCamera = { bearing: 0, pitch: 0 };
+    readonly #cameraWatchers = new Set<(camera: MapCamera) => void>();
+
+    get cameraWatchers(): number {
+        return this.#cameraWatchers.size;
+    }
+
+    watchCamera(listener: (camera: MapCamera) => void): () => void {
+        this.#cameraWatchers.add(listener);
+        listener(this.camera);
+        return () => {
+            this.#cameraWatchers.delete(listener);
+        };
+    }
+
+    moveCamera(camera: MapCamera): void {
+        this.camera = camera;
+        for (const listener of [...this.#cameraWatchers]) {
+            listener(camera);
+        }
     }
 
     setShortcuts(enabled: boolean): void {

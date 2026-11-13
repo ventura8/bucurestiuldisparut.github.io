@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 157 | 1639 | 680 | 959 | 1637 | 2 | 424 |
+| 158 | 1646 | 684 | 962 | 1644 | 2 | 425 |
 
 ## Viewer
 
@@ -301,6 +301,13 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V63-HAPPY-EXTRAS-CONSENT-AND-PAD` | V63 | happy | The IIFE fetches the analytics extras only after the consent and the gamepad extra only with a pad, each once | a page with engine.iife.js and a city with GA4 requests no extra-*.js before an answer; after Accept it requests extra-firebase-sdk-<hash>.js and extra-field-sdk-<hash>.js once each, as head scripts with integrity sha384-… and crossorigin anonymous, and GA4 receives viewer_timing; a connected pad adds extra-gamepad-<hash>.js once the same way and the toast 'gamepad.ready' shows | e2e-viewer | exists | `e2e/specs/viewer/extras.spec.ts` |
 | `S-V63-HAPPY-EXTRAS-ON-DEMAND` | V63 | happy | The IIFE fetches swipe compare only at the first Compare, once, as a script with its integrity | a page with engine.iife.js mounts the viewer and requests no extra-*.js; openCompare(null) adds one head script extra-compare-<hash>.js with integrity sha384-… and crossorigin anonymous, the compare bar shows and the second map is created (2 made, 0 removed); closing and comparing again requests nothing more | e2e-viewer | exists | `e2e/specs/viewer/extras.spec.ts` |
 | `S-V63-BAD-EXTRAS-CHUNK-FAILS` | V63 | bad | An extra that does not arrive closes compare with a message to try again, and the next Compare fetches it afresh | extra-compare-<hash>.js refused -> a toast 'error.extraLoad', no compare bar, no extra script left in head, one map only and the map still shown; once the file is served again, Compare requests it a second time and opens with the second map | e2e-viewer | exists | `e2e/specs/viewer/extras.spec.ts` |
+| `S-V64-HAPPY-COMPARE` | V64 | happy | In swipe compare the compass turns both maps north | #15/.../90 in compare, a click on the compass -> every live map ends at bearing 0, at rest on one camera; the address drops its bearing | e2e-viewer | exists | `e2e/specs/viewer/compass.spec.ts` |
+| `S-V64-HAPPY-COMPASS-RESET` | V64 | happy | A click on the compass turns a turned map back to north up and the address drops its bearing | #16/.../45 -> the compass not north, described 'turned 45° from north'; a click -> the address 16/lat/lng without a bearing, the camera's bearing 0 at rest, the compass north and described 'faces north' | e2e-viewer | exists | `e2e/specs/viewer/compass.spec.ts` |
+| `S-V64-HAPPY-NEEDLE-FOLLOWS` | V64 | happy | The needle follows the map's own rotate gesture, and Space levels a turned and tilted map | a right-drag over the map turns it more than 1° and tilts it -> the compass leaves north; Space on the focused compass -> bearing 0 and pitch 0, the compass north, the focus kept | e2e-viewer | exists | `e2e/specs/viewer/compass.spec.ts` |
+| `S-V64-HAPPY-TOUR` | V64 | happy | The compass passes the layout and accessibility checks on every window class | expectStateSound on the compass journey (turned 45° and focused, north up again after Enter with the focus kept) and on every other map state, which shows it by the zoom group | e2e-viewer | exists | `e2e/tour/viewer.tour.ts` |
+| `S-V64-BAD-ALREADY-NORTH` | V64 | bad | North up already, the compass stays, quiet, and a press or Enter changes nothing | #16/... north up -> the compass visible with the north attribute; a click and Enter fire no map move, leave the address and the camera unchanged, the focus on the compass | e2e-viewer | exists | `e2e/specs/viewer/compass.spec.ts` |
+| `S-V64-BAD-NO-WEBGL` | V64 | bad | Without WebGL there is no map and no compass | webgl false -> no hcm-compass in the viewer | e2e-viewer | exists | `e2e/specs/viewer/no-webgl.spec.ts` |
+| `S-V64-BAD-REDUCED-MOTION` | V64 | bad | Under reduced motion the compass jumps north instead of turning | prefers-reduced-motion: reduce, #16/.../200, a click -> the address drops its bearing after at most 2 map moves (a jump, not a turn), bearing 0, the compass north | e2e-viewer | exists | `e2e/specs/viewer/compass.spec.ts` |
 
 ## Admin
 
