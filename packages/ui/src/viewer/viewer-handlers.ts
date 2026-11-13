@@ -17,6 +17,8 @@ export interface HandlerHost {
     setOpacity(store: ViewerStorePort, detail: OverlayOpacityDetail): void;
     services(): ViewerServices;
     focusTimeline(): void;
+    /** V13: closes the timeline's date picker (the focus goes back to the slider). */
+    closeDates(): void;
     /** Opens the map's menu at a point, or closes it (null). */
     mapMenu(point: MenuPoint | null): void;
 }
@@ -184,5 +186,9 @@ export function createHandlers(host: HandlerHost): ViewerHandlers {
                 store.openSheet('photos');
             });
         },
+        onDatePick: on((store, event) => {
+            store.pickLayer(event.detail.layerId);
+            host.closeDates();
+        }),
     };
 }

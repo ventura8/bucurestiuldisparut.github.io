@@ -94,8 +94,12 @@ export const imagerySearchResponseSchema = z.strictObject({
 export const imageryBrowseRequestSchema = z.strictObject({ cityId: cityIdSchema, entityId: idSchema });
 export const imageryBrowseResponseSchema = z.strictObject({ path: z.string().max(300), contentType: z.enum(['image/jpeg', 'image/png']) });
 
-/** `imagery.import` (admin): import an already-scanned scene; the job, its version and the reserved layer id. */
-export const imageryImportRequestSchema = z.strictObject({ cityId: cityIdSchema, entityId: idSchema });
+/**
+ * `imagery.import` (admin): import an already-scanned scene; the job, its version and the reserved layer id. `again`: a scene
+ * imported before is downloaded and processed once more into a new version of its own layer, which replaces the old one once
+ * approved (lesson 645: the 1966 KH-7 strip joined half, before the stitch was fixed).
+ */
+export const imageryImportRequestSchema = z.strictObject({ cityId: cityIdSchema, entityId: idSchema, again: z.literal(true).optional() });
 export const imageryImportResponseSchema = z.strictObject({ jobId: idSchema, versionId: idSchema, layerId: idSchema });
 
 /** `imagery.approve` and `imagery.reject` (admin) take one version. */

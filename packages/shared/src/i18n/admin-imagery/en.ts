@@ -137,6 +137,8 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.import': 'Import (free)',
     'adminContent.imagery.importing': 'Importing…',
     'adminContent.imagery.importedOpen': 'Imported: open its version or layer',
+    'adminContent.imagery.importAgain': 'Import again (free)',
+    'adminContent.imagery.importAgainHint': 'A new download and run: a new version that replaces this one once you approve it.',
     'adminContent.imagery.sceneNotFound': 'No scene has this address',
     'adminContent.imagery.backToList': 'Back to historical imagery',
     'adminContent.imagery.needsYou': 'Waiting for you',

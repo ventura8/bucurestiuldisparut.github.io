@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 
 import { expect, test } from '../../support/test.js';
 import { fingers, lift, manyYearsManifest, meet, stopCentre, timelineCard, touch, yearChip, type Rect } from '../../support/timeline.js';
-import { currentHash, hashParam, openViewer, serveManifest, t } from '../../support/viewer.js';
+import { currentHash, hashParam, openTimelineCard, openViewer, serveManifest, t } from '../../support/viewer.js';
 
 /**
  * The timeline's year chip and its finger (behaviour V04; the owner, 2026-11-13): a mouse over a year without its own
@@ -55,6 +55,7 @@ async function openYears(page: Page, lang: Locale, size: { readonly width: numbe
     await page.setViewportSize(size);
     await serveManifest(page, manyYearsManifest(YEARS.slice(1), [1964]));
     await openViewer(page, { lang, hash: OBOR_VIEW });
+    await openTimelineCard(page);
     await expect(slider(page, lang)).toHaveAttribute('aria-valuemax', '21');
 }
 

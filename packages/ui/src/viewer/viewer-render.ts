@@ -21,6 +21,7 @@ import { DOCKED_OPEN, type Placement, type SheetMode, type ViewerLayout } from '
 import type { LegalLift } from './legal-lift.js';
 import { renderSheetFrame } from './sheet-frame.js';
 import type { ViewerError, ViewerState } from './store-port.js';
+import { dateMenu, timelineDock, type TimelineDock } from './timeline-dock.js';
 import { photosNearYear, type TimelineStop } from './timeline-model.js';
 import type { MenuPoint } from './map-menu-trigger.js';
 import { lightbox, mapMenu, type LightboxHandlers, type MapMenuHandlers } from './viewer-lightbox.js';
@@ -52,6 +53,8 @@ export interface ViewerView {
     readonly legalLift: LegalLift;
     /** A mouse, not a finger, is the main pointer (`(pointer: fine)`): only then a large window shows text chips. */
     readonly finePointer: boolean;
+    /** The timeline's pill on a phone (V12) and its date picker (V13). */
+    readonly dock: TimelineDock;
     /** A games console's browser (`game-console.ts`): the no-WebGL message says what it lacks. */
     readonly gameConsole?: boolean;
 }
@@ -105,6 +108,8 @@ export interface ViewerHandlers extends LightboxHandlers, MapMenuHandlers {
     readonly onHelpOpen: (event: Event) => void;
     readonly onSkip: () => void;
     readonly onNearYear: () => void;
+    /** V13: a date picked in the timeline's date picker. */
+    readonly onDatePick: (event: CustomEvent<{ readonly layerId: string }>) => void;
 }
 
 /** A ready viewer: the state with its manifest. */
@@ -148,10 +153,15 @@ function hasTimeline(view: ViewerView, ready: Ready | null): boolean {
     return ready !== null && ready.state.webgl && view.stops.length > 1;
 }
 
+/** V12: the timeline rests as its pill on a phone, upright (standing) or on its side (a short window). */
+function timelineCollapsed(view: ViewerView, ready: Ready | null): boolean {
+    return hasTimeline(view, ready) && view.dock.collapsed(view.layout.timeline === 'vertical' || ready?.state.compactHeight === true);
+}
+
 /** A city without historical layers yet (Bucharest until M3) has no timeline: a note says the layers are coming. */
 function timelineArea(view: ViewerView, ready: Ready, handlers: ViewerHandlers): TemplateResult {
     if (hasTimeline(view, ready)) {
-        return timeline(view, ready.state, handlers);
+        return timeline(view, ready, handlers);
     }
     return ready.state.webgl ? timelineNote(view.locale) : EMPTY;
 }
@@ -162,6 +172,11 @@ function timelineNote(locale: Locale): TemplateResult {
             <hcm-icon name="timeline"></hcm-icon><span>${translate(locale, 'timeline.empty')}</span>
         </p>
     </div>`;
+}
+
+/** A modal surface is over the frame: a modal sheet, About, the lightbox or the timeline's date picker. */
+function frameInert(view: ViewerView): boolean {
+    return modalOpen(view.state, view.layout.sheetMode) || view.dock.dates !== null;
 }
 
 /** The lift as the properties the styles move Mapbox's bottom corners by (`viewer-styles.ts`); none without a sheet. */
@@ -179,7 +194,8 @@ export function renderViewer(view: ViewerView, handlers: ViewerHandlers): Templa
                 data-panes=${panes(view, ready)}
                 ?data-compact-height=${view.state?.compactHeight === true}
                 data-timeline=${hasTimeline(view, ready) ? view.layout.timeline : nothing}
-                ?inert=${modalOpen(view.state, view.layout.sheetMode)}
+                ?data-timeline-collapsed=${timelineCollapsed(view, ready)}
+                ?inert=${frameInert(view)}
                 ${cssProperties(liftProperties(view.legalLift))}
             >
                 ${skipLink(view, ready, handlers)} ${leadingPane(view, ready, handlers)}
@@ -304,19 +320,10 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
         ${mapMenu(view, state, handlers)}`;
 }
 
-function timeline(view: ViewerView, state: ViewerState, handlers: ViewerHandlers): TemplateResult {
-    return html`<div class="dock timeline">
-        <hcm-timeline
-            id="timeline"
-            data-layout-check="timeline"
-            .stops=${view.stops}
-            .layers=${state.manifest?.layers ?? []}
-            .value=${state.year}
-            .locale=${view.locale}
-            .orientation=${view.layout.timeline}
-            @hcm-year-change=${handlers.onYearChange}
-        ></hcm-timeline>
-    </div>`;
+function timeline(view: ViewerView, ready: Ready, handlers: ViewerHandlers): TemplateResult {
+    const { layers } = ready.manifest;
+    const dock = { ...view, year: ready.state.year, orientation: view.layout.timeline, layers, collapsed: timelineCollapsed(view, ready) };
+    return timelineDock(dock, view.dock, handlers.onYearChange);
 }
 
 function toast(view: ViewerView, state: ViewerState, handlers: ViewerHandlers): TemplateResult {
@@ -467,7 +474,8 @@ function overlays(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
             @hcm-shortcuts-change=${handlers.onShortcuts}
             @hcm-help-open=${handlers.onHelpOpen}
         ></hcm-about-dialog>
-        ${lightbox(state, manifest.photos, view, handlers)}`;
+        ${lightbox(state, manifest.photos, view, handlers)}
+        ${dateMenu({ ...view, layers: manifest.layers, orientation: view.layout.timeline, front: state.front }, view.dock, handlers.onDatePick)}`;
 }
 
 /**

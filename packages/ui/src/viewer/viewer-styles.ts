@@ -16,6 +16,7 @@
 import { css } from 'lit';
 
 import { dockStyles } from './dock-styles.js';
+import { timelineDockStyles } from './timeline-dock-styles.js';
 import { baseStyles, sheetStyles } from './shared-styles.js';
 
 export const viewerStyles = [
@@ -327,4 +328,5 @@ export const viewerStyles = [
         }
     `,
     dockStyles,
+    timelineDockStyles,
 ];

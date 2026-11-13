@@ -12,6 +12,7 @@ import {
     isDocked,
     menuButton,
     openLayers,
+    openTimelineCard,
     openViewer,
     serveManifest,
     t,
@@ -86,6 +87,7 @@ test('A year without a layer snaps to the nearest stop', { tag: '@S-V04-BAD-YEAR
     await expect.poll(() => hashParam(page, 'layers')).toBe(E2E_XYZ_LAYER.id);
 
     // A tap between two stops on the track lands on the nearer one (a fifth of the way from 1966: up a phone's standing one).
+    await openTimelineCard(page);
     const track = viewer(page).locator('hcm-timeline .track');
     const box = (await track.boundingBox()) ?? EMPTY_BOX;
     expect(box.width).toBeGreaterThan(0);
@@ -148,7 +150,8 @@ const EMPTY_BOX: Box = { x: 0, y: 0, width: 0, height: 0 };
  */
 async function expectChipOnTheTimeline(page: Page): Promise<void> {
     const { chip, timeline } = await chipAndTimeline(page);
-    if (timeline.height > timeline.width) {
+    // Standing, as a card or as its pill (V67).
+    if ((await viewer(page).locator('hcm-timeline').getAttribute('orientation')) === 'vertical') {
         expect(
             Math.abs(chip.x + chip.width / 2 - (timeline.x + timeline.width / 2)),
             "on the standing timeline's axis",

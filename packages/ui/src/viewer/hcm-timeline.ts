@@ -19,6 +19,7 @@ import { LitElement, html, nothing, type PropertyValues, type TemplateResult } f
 import { classMap } from 'lit/directives/class-map.js';
 
 import { cssProperties } from '../components/css-properties.js';
+import { countOf, dateBadge, datesOpenEvent, datesValueText } from './timeline-dates.js';
 import { labelShown, SCROLL_GAP_PX, stopIndex, timelineDensity, type TimelineDensity, type TimelineStop } from './timeline-model.js';
 import { TimelinePointer } from './timeline-pointer.js';
 import { YearSends } from './timeline-sends.js';
@@ -76,6 +77,8 @@ export class HcmTimeline extends LitElement {
         layers: { attribute: false },
         gapPx: { state: true },
         fade: { state: true },
+        collapsed: { type: Boolean, reflect: true },
+        dateCounts: { attribute: false },
         tip: { state: true },
         said: { state: true },
     };
@@ -93,6 +96,10 @@ export class HcmTimeline extends LitElement {
     declare gapPx: number;
     /** The edges with more years beyond them: the scroll's start (left, right right to left, top standing) and end. */
     declare fade: { readonly start: boolean; readonly end: boolean };
+    /** V12: on a phone, idle, the card is only its year's pill (the viewer's `timeline-dock.ts` decides). */
+    declare collapsed: boolean;
+    /** V13: the years with several dates, and how many (`timeline-dates.ts`): their stops carry a badge. */
+    declare dateCounts: ReadonlyMap<number, number>;
     /** The manifest's layers: the dates the chip names for a year of several. */
     declare layers: readonly Pick<Layer, 'year' | 'date'>[];
     /** The year chip, or null. */
@@ -147,6 +154,8 @@ export class HcmTimeline extends LitElement {
         this.density = 'roomy';
         this.gapPx = Number.POSITIVE_INFINITY;
         this.fade = { start: false, end: false };
+        this.collapsed = false;
+        this.dateCounts = new Map();
         this.layers = [];
         this.tip = null;
         this.said = '';
@@ -177,7 +186,23 @@ export class HcmTimeline extends LitElement {
         }
         this.#fadeEdges();
         this.#placeTip();
-        this.toggleAttribute('tipping', this.tip !== null);
+        this.#markTipping();
+    }
+
+    /**
+     * `tipping` while the chip shows (none on the collapsed pill), `tipping="focus"` when it is the keyboard's: the
+     * photos chip under it then stays in the Tab order (`dock-styles.ts`, lesson 648).
+     */
+    #markTipping(): void {
+        this.removeAttribute('tipping');
+        if (this.tip !== null && !this.collapsed) {
+            this.setAttribute('tipping', this.#keyboardTip() ? 'focus' : '');
+        }
+    }
+
+    /** The chip is the keyboard's: the thumb has a visible focus and no finger is down. */
+    #keyboardTip(): boolean {
+        return this.tip?.touch === false && this.renderRoot.querySelector('.thumb:focus-visible') !== null;
     }
 
     /** Puts the chip by its stop, clear of the card's ends and the viewport's edges (`placeTip`). */
@@ -251,7 +276,9 @@ export class HcmTimeline extends LitElement {
         const position = { '--hcm-position': percentText(this.#percent(index)) };
         const fade = { '--hcm-fade-start': this.fade.start ? FADE_PX : '0px', '--hcm-fade-end': this.fade.end ? FADE_PX : '0px' };
         return html`<div class="scroller" ${cssProperties(fade)} @scroll=${this.#onScroll}>${this.#track(index, position)}</div>
-            ${this.tip === null ? nothing : this.#tipChip(this.tip)}<span class="visually-hidden" aria-live="polite">${this.said}</span>`;
+            ${this.tip === null || this.collapsed ? nothing : this.#tipChip(this.tip)}<span class="visually-hidden" aria-live="polite"
+                >${this.said}</span
+            >`;
     }
 
     /** The chip: decorative, the slider's `aria-valuetext` already names the year. */
@@ -320,6 +347,7 @@ export class HcmTimeline extends LitElement {
                 @blur=${this.#onBlur}
             >
                 <span class="thumb-label" aria-hidden="true">${this.#shortLabel(this.stops[index] ?? null)}</span>
+                ${this.#badge(this.stops[index] ?? null)}
             </div>
         </div>`;
     }
@@ -328,8 +356,18 @@ export class HcmTimeline extends LitElement {
         const classes = { stop: true, selected: stopAt === selected, minor: !this.#labelled(stopAt, selected) };
         return html`<li class=${classMap(classes)} ${cssProperties({ '--hcm-stop': percentText(this.#percent(stopAt)) })}>
             <span class="tick"></span><span class="label">${this.#shortLabel(stop)}</span>
+            ${stopAt === selected ? '' : this.#badge(stop)}
         </li>`;
     }
+
+    /** V13: the badge of a year with several dates; a press on it asks for the date picker. */
+    #badge(stop: TimelineStop): TemplateResult {
+        return dateBadge(stop, countOf(this.dateCounts, stop), this.#openDates);
+    }
+
+    readonly #openDates = (year: number, from: Element): void => {
+        this.dispatchEvent(datesOpenEvent(year, from));
+    };
 
     /** Whether a stop shows its year: `labelShown`, and standing, not under the pill (the pill names the selected year). */
     #labelled(stopAt: number, selected: number): boolean {
@@ -350,10 +388,17 @@ export class HcmTimeline extends LitElement {
     }
 
     #valueText(stop: TimelineStop): string {
-        return stop === null ? translate(this.locale, 'timeline.present') : translate(this.locale, 'timeline.year', { year: String(stop) });
+        if (stop === null) {
+            return translate(this.locale, 'timeline.present');
+        }
+        return datesValueText(this.locale, translate(this.locale, 'timeline.year', { year: String(stop) }), countOf(this.dateCounts, stop));
     }
 
     readonly #onKeyDown = (event: KeyboardEvent): void => {
+        if (event.key === 'Enter') {
+            this.#datesByKey(event);
+            return;
+        }
         const step = KEY_STEPS[event.key];
         if (step === undefined) {
             return;
@@ -363,6 +408,15 @@ export class HcmTimeline extends LitElement {
         this.#select(stopIndex(this.stops, this.value) + (turned ? -step : step));
         this.#hintAt(stopIndex(this.stops, this.value));
     };
+
+    /** V13: Enter on a year with several dates asks for its date picker, beside the thumb. */
+    #datesByKey(event: KeyboardEvent): void {
+        const stop = this.stops[stopIndex(this.stops, this.value)] ?? null;
+        if (stop !== null && countOf(this.dateCounts, stop) > 1) {
+            event.preventDefault();
+            this.#openDates(stop, event.currentTarget as Element);
+        }
+    }
 
     #rtl(): boolean {
         return this.matches(':dir(rtl)');

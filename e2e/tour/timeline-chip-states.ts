@@ -3,7 +3,7 @@ import { expect, type Page } from '@playwright/test';
 
 import { mapIdle } from '../support/map.js';
 import { fingers, manyYearsManifest, stopCentre, touch, yearChip } from '../support/timeline.js';
-import { openViewer, serveManifest, t } from '../support/viewer.js';
+import { openTimelineCard, openViewer, serveManifest, t } from '../support/viewer.js';
 
 /**
  * The timeline's states in the tour's inventory: a historical year and a keyboard step (visited by the journey `year`
@@ -67,6 +67,8 @@ export const TIMELINE_CHIP_JOURNEY = {
     boot: async ({ page, lang }: TimelineChipTour) => {
         await serveManifest(page, manyYearsManifest(YEARS));
         await openViewer(page, { lang, hash: '16/44.44763/26.13822' });
+        // On a phone the timeline rests as its pill (V67): a tap opens the card the chip's states need.
+        await openTimelineCard(page);
     },
     states: ['timeline-chip-hover', 'timeline-chip-finger'],
 } as const;

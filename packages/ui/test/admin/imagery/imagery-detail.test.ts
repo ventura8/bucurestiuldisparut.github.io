@@ -153,6 +153,35 @@ describe('<hcm-imagery-page>: a scene', () => {
     });
 });
 
+describe('<hcm-imagery-page>: an imported scene', () => {
+    beforeAll(defineImagery);
+    afterEach(cleanup);
+
+    it('happyPath_anImportedFreeSceneOffersImportAgainWhichOpensTheNewVersion @S-A12-HAPPY-IMPORT-AGAIN', async () => {
+        const imported = scene({ status: 'imported', layerId: 'kh-7-1966' });
+        const state = imageryState({ detail: SCENE, scenes: { ...imageryState().scenes, items: [imported] }, visible: [imported] });
+        const { element, area, app } = await imageryPage(state, { params: ['scene', SCENE.id] });
+
+        click(button(element, 'Import again (free)'));
+        await updated(element);
+
+        expect(calls(area)).toEqual([`importScene "${SCENE.id}" true`]);
+        expect(app.named('navigate')).toEqual(['navigate {"id":"imagery","params":["version","job-new"]}']);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_anImportedSceneToOrderOrWithoutDownloadsOffersNoImportAgain @S-A12-BAD-IMPORT-AGAIN-MOVED', async () => {
+        const toOrder = scene({ status: 'imported', layerId: 'kh-7-1966', free: false });
+        const state = imageryState({ detail: SCENE, scenes: { ...imageryState().scenes, items: [toOrder] }, visible: [toOrder] });
+        const { element, area } = await imageryPage(state, { params: ['scene', SCENE.id] });
+        const offered = deepText(element).includes('Import again');
+        area.set({ usgs: 'pending', scenes: { ...imageryState().scenes, items: [scene({ status: 'imported', layerId: 'kh-7-1966' })] } });
+        await updated(element);
+
+        expect([offered, deepText(element).includes('Import again')]).toEqual([false, false]);
+    });
+});
+
 describe('<hcm-imagery-page>: a version', () => {
     beforeAll(defineImagery);
     afterEach(cleanup);

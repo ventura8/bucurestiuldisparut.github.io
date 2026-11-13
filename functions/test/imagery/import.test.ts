@@ -184,6 +184,40 @@ describe('imagery.import', () => {
     });
 });
 
+describe('imagery.import: again', () => {
+    function importAgain(world: ImageryWorld) {
+        return importFunction(() => world.deps).run(adminCall({ cityId: CITY, entityId: ENTITY, again: true }));
+    }
+
+    it('happyPath_anImportedSceneImportedAgainIsANewVersionOfItsOwnLayer @S-A12-HAPPY-IMPORT-AGAIN', async () => {
+        const world = await scannedWorld();
+        const first = await importScene(world);
+        world.deps.clock.set(new Date(Date.parse(NOW) + 3_600_000).toISOString());
+
+        const second = await importAgain(world);
+
+        expect(second.layerId).toBe(first.layerId);
+        expect(second.jobId).not.toBe(first.jobId);
+        expect(world.deps.documents.paths(FIRESTORE_PATHS.jobs(CITY))).toHaveLength(2);
+        expect(await readScene(world, ENTITY)).toMatchObject({ status: 'imported', layerId: first.layerId });
+    });
+
+    it('badPath_importAgainOfASceneMovedToAnotherLayerMeanwhileIsAConflict @S-A12-BAD-IMPORT-AGAIN-MOVED', async () => {
+        const world = await scannedWorld();
+        await importScene(world);
+        world.deps.clock.set(new Date(Date.parse(NOW) + 3_600_000).toISOString());
+        const original = world.deps.scenes.downloadOptions.bind(world.deps.scenes);
+        world.deps.scenes.downloadOptions = async (...args) => {
+            const options = await original(...args);
+            await seedScene(world, ENTITY, { status: 'imported', layerId: 'raced' });
+            return options;
+        };
+
+        expect(await failureOf(importAgain(world))).toMatchObject({ details: { code: 'apiError.conflict' } });
+        expect(world.deps.documents.paths(FIRESTORE_PATHS.jobs(CITY))).toHaveLength(1);
+    });
+});
+
 describe('imagery.import: the limits', () => {
     it('badPath_theBudgetGuardPausesImportsAndQueuedJobsNeverTheSite @S-A12-BAD-GUARD-PAUSED', async () => {
         const world = await scannedWorld();

@@ -3791,7 +3791,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Seen: 2026-11-13, live: the KH-7 GAMBIT frame DZB00403000026H017001 (12 July 1966) covers all of Bucharest, but its layer `kh-7-gambit-12-iulie-1966` covered 49 % (lat 44.437 to 44.55); the crop stopped at a white edge.
     - Cause: USGS letters the strip's two segments in the film's order, right to left (`_b` lies left of `_a`), and `stitch` always put `_b` right of `_a`. Its match strip was the segment's first 160 px, the scanner's bright edge band, and it matched the other segment's band at 0.90, so the wrong join looked sure; `locate` then proved the city on `_a` alone.
     - Found by: the rehearsal's own copies on the NUC (`frame.json` placed `_b` at x 36 046 of `_a`'s 36 346) and the preview, where the city lay at `_a`'s left edge and `_b`'s right one; the first pair matched both ways on every real multi-segment frame.
-    - Fix and pin: the matched strip starts `EDGE_SKIP_SHARE` in from the edge; the first pair is matched both ways and the better way holds for the frame; a pair under `MIN_PAIR_SCORE` either way is a segment of another frame and fails the step (S-P01-HAPPY-KH7-TWO-SEGMENTS, S-P01-BAD-SEGMENT-OTHER-FRAME; the generator's `kh7_segments`).
+    - Fix and pin: the matched strip starts `EDGE_SKIP_SHARE` in from the edge; the first pair is matched both ways and the better way holds for the frame; a pair under `MIN_PAIR_SCORE` either way is a segment of another frame and fails the step (S-P01-HAPPY-KH7-TWO-SEGMENTS, S-P01-BAD-SEGMENT-OTHER-FRAME; the generator's `kh7_segments`). An imported scene had no way back in: the scene page's **Import again (free)** (`imagery.import` with `again`) makes a new version of its layer that replaces the old one once approved (S-A12-HAPPY-IMPORT-AGAIN, S-A12-BAD-IMPORT-AGAIN-MOVED).
     - **A delivery's file order is the film's, not the image's: find the order from the pixels, and never match on a scan's own edge.**
 
 646. **A search that outgrew its timeout told the owner only "Something went wrong on the server".**
@@ -3801,25 +3801,37 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: datasets at once, target years two at a time, writes 25 at a time, no USGS page after `SEARCH_BUDGET_MS` (360 s), timeouts 540 s and 550 s; a search that failed with no reason after 5 minutes says it was cut off and what to do next (S-A11-BAD-SEARCH-CUT-OFF).
     - **A long call needs a budget of its own inside its timeout, and a failure the browser cannot read must still be told from the call's own context.**
 
-647. **A WebGL context restore threw inside Mapbox and left a blank map; a browser's own script filled the crash list.**
+647. **A press meant to open the collapsed timeline also moved its year.**
+    - Seen: 2026-11-13, track/timeline-b, `timeline-dock.test.ts`: a press on the pill (V67) opened the card and called `setYear(null)`.
+    - Cause: the dock's `@pointerdown` listened in the bubbling phase, after the timeline's own track listener inside its shadow root had already selected the stop under the press.
+    - Fix and pin: the dock catches the press in the capture phase (`{ capture: true, handleEvent }`), stops it and opens the card; the test asserts no `setYear` call.
+    - **A wrapper that must take a press away from the element it wraps listens in the capture phase; a bubbling listener runs after the element has acted.**
+
+648. **Tab from the timeline skipped the photos chip whenever the year had several dates.**
+    - Seen: 2026-11-13, track/timeline-b, the tour's journey `timeline-dates` at c320, c360 and c915l: "Tab never reaches Fotografii din jurul anului 1980".
+    - Cause: the keyboard's year chip shows while the slider has the focus on a year of several dates, and the photos chip under it stepped aside with `visibility: hidden`, which also takes it out of the Tab order; the next Tab went past it.
+    - Fix and pin: under the keyboard's chip (`tipping="focus"`) it steps aside with `opacity: 0` and no pointer (`dock-styles.ts`), so it keeps its place in the Tab order and shows again as the focus reaches it; under a finger's or a mouse's chip it is still hidden; the collapsed pill shows no year chip at all.
+    - **To move a control out of sight for a moment while the keyboard is nearby, never use `visibility: hidden` or `display: none`: they take it out of the Tab order.**
+
+649. **A WebGL context restore threw inside Mapbox and left a blank map; a browser's own script filled the crash list.**
     - Seen: 2026-11-08 and 11-11, the admin's Crashes page: "Cannot convert undefined or null to object" at `ModelManager.load ← reloadModels ← Map._contextRestored` (mapbox-gl 3.34.1), and two Firefox-for-iOS groups (`__firefox__`) whose only frame was the page's address at line 1.
     - Cause: Mapbox reloads every style fragment's 3D models with `Object.keys(this.modelUris[scope])`, and a fragment that never had a model has no entry; the reader-mode script of Firefox for iOS runs in every page and fails on ours.
     - Fix and pin: `packages/ui/src/map/context-restore.ts` gives the missing scopes an empty list in a capture listener that runs before Mapbox's (`packages/ui/test/map/context-restore.test.ts` reproduces the throw without it); `crashNoiseOf` drops injected, extension and aborted errors with their reason (`packages/shared/test/telemetry/crash-noise.test.ts`).
     - **Read the Crashes page's top frames before fixing: a group whose stack is all Mapbox can still be ours to work around, and one whose stack is the page at line 1 is the browser's.**
 
-648. **The telemetry track left three files over their line limit, and nobody saw it until the next track added a line.**
+650. **The telemetry track left three files over their line limit, and nobody saw it until the next track added a line.**
     - Seen: 2026-11-13, track/analytics merging track/telemetry: ESLint's `max-lines` failed on `packages/shared/src/index.ts` (402), `packages/engine/src/core/store.ts` (404) and `packages/admin/src/app/mount.ts` before any line of this track counted.
     - Cause: the paused track never ran its `tests` and `static` stages after its last commits (its open items said so).
     - Fix and pin: the shared index re-exports the field events' types with `export type *` and the funnels from a subpath, the store's zoom and window size moved out (`compass.ts`, `window-size.ts`), the admin's telemetry wiring moved to `telemetry-wiring.ts` (DECISIONS-for-review.md §200h).
     - **Merging a paused track: run ESLint over every file it touched before adding your own lines, or its debt reads as yours.**
 
-649. **A class field initialised from `this.deps` was undefined: the store's `deps` is a constructor parameter property.**
+651. **A class field initialised from `this.deps` was undefined: the store's `deps` is a constructor parameter property.**
     - Seen: 2026-11-13, track/analytics, writing `readonly logInput = inputLogger(this.deps.telemetry)` in the viewer store.
     - Cause: with `useDefineForClassFields` a field initialiser runs before the constructor body that assigns a parameter property, so an eager read finds nothing (the store's other field arrows read `this.deps` only when called).
     - Fix and pin: `inputLogger(() => this.deps.telemetry)` reads it when used (`packages/engine/src/core/viewer-analytics.ts`, `packages/engine/test/core/store.test.ts`).
     - **A class field may close over `this.deps`, never read it while the object is built.**
 
-650. **A catalogue line over 140 columns is refused by the i18n gate, not wrapped.**
+652. **A catalogue line over 140 columns is refused by the i18n gate, not wrapped.**
     - Seen: 2026-11-13, track/analytics: Prettier wrapped the Statistics page's long help texts onto two lines and `check_i18n.py` refused them ("not a one-line entry").
     - Fix: shorter texts, one idea a key (`adminContent.statistics.how1` … `how6`).
     - **Write a catalogue message to fit its line with its key (about 90 characters): split a long help into numbered keys.**
