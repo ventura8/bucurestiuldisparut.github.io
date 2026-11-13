@@ -107,6 +107,12 @@ export const statisticsStyles = css`
         padding-inline-start: 1em;
     }
 
+    /* The period's 48 px touch targets reach 4 px past its 40 px row: room above and below, so nothing covers them. */
+    .statistics .numbers hcm-segmented-button {
+        display: block;
+        margin-block: 8px;
+    }
+
     .statistics svg.daily {
         color: var(--md-sys-color-primary, LinkText);
     }
