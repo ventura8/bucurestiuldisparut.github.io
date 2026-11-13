@@ -27,6 +27,8 @@ import { timelineStops, type TimelineStop } from './timeline-model.js';
 import { syncLocale } from './viewer-actions.js';
 import { withViewerBaseline } from './viewer-baseline.js';
 import { createHandlers } from './viewer-handlers.js';
+import { isGameConsole } from './game-console.js';
+import { activate as activateIn, askForPadKeys, navigate as navigateIn, spatialKey, type Direction } from './spatial-nav.js';
 import { isViewerKey, shortcutOf } from './viewer-keyboard.js';
 import { modalOpen } from './viewer-legal.js';
 import { renderViewer, type OverlayOpacityDetail, type ViewerHandlers } from './viewer-render.js';
@@ -159,7 +161,9 @@ export class HcmMapViewer extends LitElement {
 
     readonly #onKey = (event: KeyboardEvent): void => {
         const command = this.viewState?.shortcuts === true ? shortcutOf(event) : null;
-        if (command !== null && isViewerKey(this, event)) {
+        if (command === null) {
+            spatialKey(this, event, isViewerKey);
+        } else if (isViewerKey(this, event)) {
             event.preventDefault();
             this.runInput(command);
         }
@@ -232,6 +236,16 @@ export class HcmMapViewer extends LitElement {
         return state?.status !== 'ready' || !state.webgl || modalOpen(state, layoutOf(state).sheetMode);
     }
 
+    /** The D-pad (the gamepad's lazy chunk, the Xbox's key emulation): spatial navigation (`spatial-nav.ts`). */
+    navigate(direction: Direction): void {
+        navigateIn(this, direction);
+    }
+
+    /** A on the pad: click what has the focus, or Enter on the map. */
+    activate(): void {
+        activateIn(this);
+    }
+
     /** A toast from the gamepad's lazy chunk. */
     toast(key: MessageKey): void {
         this.#act(null, (store) => {
@@ -264,6 +278,7 @@ export class HcmMapViewer extends LitElement {
         this.#resizeObserver.observe(this);
         this.ownerDocument.addEventListener('keydown', this.#onKey);
         this.ownerDocument.addEventListener('visibilitychange', this.#onVisibility);
+        askForPadKeys(navigator);
         this.#pointer.addEventListener('change', this.#onPointer);
         this.#onPointer();
         this.#applyTheme(this.viewState);
@@ -327,6 +342,7 @@ export class HcmMapViewer extends LitElement {
             mapMenu: this.mapMenu,
             legalLift: this.legalLift,
             finePointer: this.finePointer,
+            gameConsole: isGameConsole(navigator.userAgent),
         };
         return renderViewer(view, this.#handlers);
     }

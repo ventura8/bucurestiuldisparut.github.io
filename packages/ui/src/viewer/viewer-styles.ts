@@ -55,6 +55,16 @@ export const viewerStyles = [
             background: var(--md-sys-color-surface);
         }
 
+        /*
+         * Ten feet away (docs/research/viewer-input.md §6): a large screen without a fine pointer (a TV's browser, a games
+         * console) gets a focus ring twice as thick, read from across the room.
+         */
+        @media (width >= 1200px) and (pointer: coarse), (width >= 1200px) and (pointer: none) {
+            :host {
+                --hcm-focus-ring-width: 6px;
+            }
+        }
+
         /* A wrapper, not the host, is the grid: a page may set the element's own display (display: block). */
         .viewer {
             position: relative;
@@ -112,11 +122,16 @@ export const viewerStyles = [
          * with no space below its links: they take a ring without offset, and the attribution the 3 px it needs.
          */
         .mapboxgl-canvas:focus-visible {
-            outline-offset: -3px;
+            outline-offset: calc(-1 * var(--hcm-focus-ring-width, 3px));
         }
 
         .mapboxgl-ctrl-attrib:not(.mapboxgl-compact) {
-            padding-block: 3px;
+            padding-block: var(--hcm-focus-ring-width, 3px);
+        }
+
+        /* Mapbox's logo sits 6 px from the box's foot: a TV's 6 px ring comes 1 px in, or the box cut it (the tour). */
+        .mapboxgl-ctrl-logo:focus-visible {
+            outline-offset: calc(5px - var(--hcm-focus-ring-width, 3px));
         }
 
         .mapboxgl-ctrl-attrib a:focus-visible {

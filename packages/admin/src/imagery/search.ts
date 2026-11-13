@@ -29,7 +29,7 @@ export const IDLE_SEARCH: SearchState = { phase: 'idle', found: null, added: nul
 const SEARCH_OPTIONS = { timeoutMs: IMAGERY_SEARCH_TIMEOUT_MS } as const;
 
 /**
- * A search that failed with no reason of the server's after this long was cut off by the server's timeout (lesson 644: the
+ * A search that failed with no reason of the server's after this long was cut off by the server's timeout (lesson 646: the
  * browser read only "Something went wrong on the server"); it says so, and what to do next.
  */
 export const SEARCH_CUT_OFF_MS = 300_000;

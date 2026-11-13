@@ -21,11 +21,12 @@ export const baseStyles = css`
  * The M3 focus indicator: a 3 px secondary-colour ring outside the focused control, keyboard focus only. A surface whose
  * own colour is close to secondary sets `--hcm-focus-ring-color` for everything on it (the snackbar's inverse surface,
  * the error container): the ring needs 3:1 against what is around it (WCAG 2.4.13, 1.4.11; the tour found 1.62:1 on the
- * snackbar).
+ * snackbar). A viewer on a TV sets `--hcm-focus-ring-width` thicker (docs/research/viewer-input.md §6).
  */
 export const focusRing = css`
     :focus-visible {
-        outline: var(--md-sys-state-focus-indicator-thickness) solid var(--hcm-focus-ring-color, var(--md-sys-color-secondary));
+        outline: var(--hcm-focus-ring-width, var(--md-sys-state-focus-indicator-thickness)) solid
+            var(--hcm-focus-ring-color, var(--md-sys-color-secondary));
         outline-offset: var(--md-sys-state-focus-indicator-outer-offset);
     }
 

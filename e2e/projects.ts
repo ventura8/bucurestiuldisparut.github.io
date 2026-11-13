@@ -136,6 +136,8 @@ const ONE_PROJECT_SPECS = [
     'viewer/no-javascript.spec.ts',
     // Swipe compare sets the window each test needs (a second map from 600 px wide, a toggle below: M4, V06).
     'viewer/compare.spec.ts',
+    // Games consoles and the 10-foot view (V65, V66): the TV's 1920 x 1080 window with a coarse pointer is set by the spec.
+    'viewer/consoles.spec.ts',
     'viewer/public-manifest.spec.ts',
     // M6 (docs/research/M6-interfaces.md §2): the public map on the e2e Hosting site; its pages are the viewer's own.
     'viewer/hosting.spec.ts',

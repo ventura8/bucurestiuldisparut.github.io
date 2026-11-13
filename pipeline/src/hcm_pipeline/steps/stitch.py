@@ -1,7 +1,7 @@
 """`stitch`: where the segments lie in one frame, its film border cropped (docs/research/M3-interfaces.md §5.3).
 
 USGS scans a long film frame in overlapping parts (`_a` to `_n`), in the film's order: left to right on a KH-9 or a Corona
-frame, right to left on the 1966 KH-7 strip (lesson 643: its `_b` lies left of its `_a`, and a frame joined the other way
+frame, right to left on the 1966 KH-7 strip (lesson 645: its `_b` lies left of its `_a`, and a frame joined the other way
 ended at the seam, half the city). Each pair's offset is found by matching the right segment's left strip inside the left
 segment's right part (its last `MAX_OVERLAP_SHARE`, finding 76): first on images shrunk to about 2048 rows, then at full
 resolution within a few pixels of that, so it is exact within 1 px. The first pair is matched both ways and the better way
@@ -44,7 +44,7 @@ SEARCH_PX: Final = 1200
 MAX_OVERLAP_SHARE: Final = 0.35
 REFINE_PX: Final = 6
 # The right segment's strip starts this share of its width in from its edge: the scanner's edge band (the 1966 KH-7 strip's runs
-# white for 240 px, lesson 643) is no image, and two such bands matched each other at 0.90, which joined the strip the wrong way.
+# white for 240 px, lesson 645) is no image, and two such bands matched each other at 0.90, which joined the strip the wrong way.
 # USGS overlaps are 4 % at the least, so the strip still lies inside one.
 EDGE_SKIP_SHARE: Final = 0.01
 # A strip whose pixels vary less than this (grey levels, standard deviation) is film border, not image: OpenCV scores such a strip
@@ -64,7 +64,7 @@ MIN_GAP_SHARE: Final = 0.01
 # ... when no more than this share of the width lies beyond it: a real gap leaves only a fragment of the next exposure (5 % on the
 # 1972 frame, 24 813 columns), so a dark band with more film after it (a sea, a cloud's shadow) lies inside the exposure.
 MAX_FRAGMENT_SHARE: Final = 0.1
-# The coarse match's normalised correlation under which two segments are not neighbours on one film (lesson 643). On the eleven
+# The coarse match's normalised correlation under which two segments are not neighbours on one film (lesson 645). On the eleven
 # real multi-segment frames of 2026-11 every true pair scored 0.42 (the 1978 KH-9 mapping frame) to 0.98, the KH-7 strip's 0.52; a
 # first pair the wrong way at most 0.27 (the KH-7 strip's), its edge bands skipped and the film border scored 0.
 MIN_PAIR_SCORE: Final = 0.35

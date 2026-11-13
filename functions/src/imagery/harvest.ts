@@ -13,7 +13,7 @@
  * (`harvest-target.ts`), and the plan of whole-city dates is rewritten (`join-plan.ts`). M25 (`docs/research/M25-landsat.md` §1): the two
  * Landsat datasets are searched the same way, in summer months under a cloud cap (`harvest-landsat.ts`).
  *
- * Lesson 644 of docs/LESSONS.md: run one after another, the five datasets, their target years and 1,500 writes took over seven minutes on
+ * Lesson 646 of docs/LESSONS.md: run one after another, the five datasets, their target years and 1,500 writes took over seven minutes on
  * a slow USGS day, past the callable's timeout, and the admin read "Something went wrong on the server". The datasets are searched at
  * once, the target years `YEAR_CONCURRENCY` at a time, the writes `WRITE_CONCURRENCY` at a time, and no USGS page is asked for once
  * `SEARCH_BUDGET_MS` has passed (`harvest-target.ts`): the search then keeps what it found and answers in time.
