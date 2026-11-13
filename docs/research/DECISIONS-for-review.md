@@ -7014,5 +7014,5 @@ The owner: "There is no Bucharest in the left screen" on `DS09065A073MC043` (18 
 
 ## 215. The join card's budget is 4 KB (the owner, 2026-11-13: "raise the limits you need to raise") — APPLIED, gate relaxed with approval
 
-`scripts/ci/check_bundle_budget.py`: `join-card` 3 → 4 KB, `statistics-live` 4 → 6 KB (Material 3 redesign, 4.6 KB), `funnels` 2 → 3 KB (2.8 KB). The chunk measured 3.0 KB after the cloud estimate and the plain
+`scripts/ci/check_bundle_budget.py`: `join-card` 3 → 4 KB, `statistics-live` 4 → 6 KB (Material 3 redesign, 4.6 KB), `funnels` 2 → 3 KB (2.8 KB), `imagery` 18 → 20 KB (18.0 KB). The chunk measured 3.0 KB after the cloud estimate and the plain
 messages, failing the budget gate for every track. The owner approved raising budgets that block beta.1.
