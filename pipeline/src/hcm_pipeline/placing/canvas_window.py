@@ -8,7 +8,7 @@ a feather: blending line art doubles its lines), worked out per window from the 
 canvas's scale, one band and two windows, never a whole scan, whatever the series' size; GDAL's own block cache is held to
 `CANVAS_CACHE_BYTES` while the canvas is written, and the C heap's free pages are given back before the first sheet and after each
 one (`heap.give_back`: with GDAL's threads, the layout's reads and each sheet's stayed resident in their malloc arenas, 870 MB
-against the 800 MB budget for two 12,000 px colour sheets on 16 threads; 666 MB now).
+against the 800 MB budget for two 12,000 px colour sheets on 16 threads; 653 MB now).
 """
 
 from collections.abc import Iterator, Sequence

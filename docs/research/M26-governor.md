@@ -112,8 +112,8 @@ it, only later. Scenarios `S-P31-HAPPY-CLAIM-HEADROOM`, `S-P31-BAD-CLAIM-HEADROO
 later: two 12,000 px colour sheets laid out and mosaicked peaked at 636 MB on one thread and 870 MB on every core, against the
 800 MB budget (about 115 MB of the layout's reads stayed resident). `python -m hcm_pipeline` (the worker and the Cloud Run job)
 now starts with at most two arenas (`limit_arenas`, before any GDAL thread), and the windowed canvas gives the free pages back
-before its first sheet and after each one (`give_back`, `malloc_trim(0)`): 587, 615 and 666 MB on 1, 4 and 16 threads, the same
-pixels, no slower (the NUC). The budget test runs on one thread and on `ALL_CPUS` (`S-P31-HAPPY-CANVAS-THREADS`). The budget was
+before its first sheet and after each one (`give_back`, `malloc_trim(0)`, and tcmalloc's release in the worker's image): on glibc
+588 MB on one thread and 653 MB on 16, the same pixels, no slower; under tcmalloc 650 to 690 MB either way (the NUC). The budget test runs on one thread and on `ALL_CPUS` (`S-P31-HAPPY-CANVAS-THREADS`). The budget was
 not loosened.
 
 Actuators:

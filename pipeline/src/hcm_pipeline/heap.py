@@ -4,8 +4,8 @@ GDAL's worker threads (`GDAL_NUM_THREADS` above 1: the governor gives the worker
 glibc's per-thread arenas, and glibc keeps an arena's freed pages for the next allocation instead of returning them. Measured on
 the NUC, two 12,000 px colour sheets laid out and mosaicked: one thread peaked at 636 MB; with every core 870 MB, against the
 800 MB budget, because about 115 MB of the layout's reads stayed resident in the threads' arenas and the canvas's own reads added
-their own. With at most `ARENAS` arenas and the free pages trimmed after the layout and after each sheet (`give_back`): 587 MB
-on one thread, 615 on four, 666 on sixteen, the same pixels and no slower.
+their own. With at most `ARENAS` arenas and the free pages trimmed after the layout and after each sheet (`give_back`): 588 MB
+on one thread, 653 on sixteen, the same pixels and no slower (under the worker image's tcmalloc: 650 to 690 MB either way).
 
 `limit_arenas` runs once at the process's start (`python -m hcm_pipeline`: the worker and the Cloud Run job), before GDAL starts
 its threads; the canvas gives the heap back before its first sheet and after each one (`placing/canvas_window.render`).
