@@ -558,7 +558,6 @@ export const opsProbeDocSchema = z.strictObject({
 });
 // [end server-bugs probe]
 
-
 const skippedDocumentSchema = z.strictObject({
     entity: z.enum(MANIFEST_ENTITIES),
     id: idSchema,
