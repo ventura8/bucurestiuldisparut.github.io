@@ -137,19 +137,21 @@ function liveSections(locale: Locale, context: StatisticsContext): TemplateResul
 
 /** How to explore more in Google Analytics: the funnel exploration's steps and every wizard's step codes, folded away. */
 function helpSection(locale: Locale): TemplateResult {
-    return html`<div class="card"><details class="help" data-statistics-help>
-        <summary>${contentText(locale, 'adminContent.statistics.helpTitle')}</summary>
-        <div class="help-body">
-            <h3>${contentText(locale, 'adminContent.statistics.howTitle')}</h3>
-            <ol>
-                ${HOW.map((key) => howItem(locale, key))}
-            </ol>
-            <h3>${contentText(locale, 'adminContent.statistics.wizardsTitle')}</h3>
-            <ul class="wizards">
-                ${WIZARD_IDS.map((wizard) => wizardItem(locale, wizard))}
-            </ul>
-        </div>
-    </details></div>`;
+    return html`<div class="card">
+        <details class="help" data-statistics-help>
+            <summary>${contentText(locale, 'adminContent.statistics.helpTitle')}</summary>
+            <div class="help-body">
+                <h3>${contentText(locale, 'adminContent.statistics.howTitle')}</h3>
+                <ol>
+                    ${HOW.map((key) => howItem(locale, key))}
+                </ol>
+                <h3>${contentText(locale, 'adminContent.statistics.wizardsTitle')}</h3>
+                <ul class="wizards">
+                    ${WIZARD_IDS.map((wizard) => wizardItem(locale, wizard))}
+                </ul>
+            </div>
+        </details>
+    </div>`;
 }
 
 /** The whole view: the title, the numbers and the errors, then the help, folded. */

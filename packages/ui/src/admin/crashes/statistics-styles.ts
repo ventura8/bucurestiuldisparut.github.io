@@ -101,5 +101,4 @@ export const statisticsStyles = css`
         flex-direction: column;
         gap: 16px;
     }
-
 `;

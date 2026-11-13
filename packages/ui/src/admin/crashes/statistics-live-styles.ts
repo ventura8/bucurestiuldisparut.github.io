@@ -295,5 +295,4 @@ export const statisticsLiveStyles = css`
             animation: none;
         }
     }
-
 `;

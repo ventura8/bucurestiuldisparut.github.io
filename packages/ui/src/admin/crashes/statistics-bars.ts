@@ -113,7 +113,13 @@ function rest(items: readonly NamedCountPort[], scale: BarScale): TemplateResult
 /** A ranked list as a card: its title, then a bar per row (the most first) with the number and its share of the list. */
 export function barCard(locale: Locale, title: string, items: readonly NamedCountPort[], names: BarNames): TemplateResult {
     const max = Math.max(0, ...items.map((item) => item.count));
-    const scale: BarScale = { locale, max, total: items.reduce((sum, item) => sum + item.count, 0), name: names.name, raw: names.raw === true };
+    const scale: BarScale = {
+        locale,
+        max,
+        total: items.reduce((sum, item) => sum + item.count, 0),
+        name: names.name,
+        raw: names.raw === true,
+    };
     const body =
         items.length === 0
             ? html`<p class="note">${contentText(locale, 'adminContent.statistics.numbers.none')}</p>`
