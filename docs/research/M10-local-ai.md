@@ -314,3 +314,11 @@ card's memory share (`torch.cuda.set_per_process_memory_fraction`, ≤ 0.7 full,
 programs leave the card less than the matcher's 2 GB, the child runs that request on the processor and says
 `fallback: gpu-busy` (never a silent processor run: the reason is in the answer and in the proposer's record).
 `docs/research/M26-governor.md` §4–§5.
+
+## Addendum of 2026-11-13: the processor's sidecar and its lighter search (M26 h2, i)
+
+A computer with no NVIDIA card no longer pulls PyTorch's CUDA image (9.68 GB): the starter passes `HCM_AI_VARIANT=cpu`,
+the worker fetches `matcher/pins-cpu.json` into `lib-cpu/` (276 MB fetched, 830 MB unpacked) and the sidecar runs from
+the worker's own image, under the same flags. On the processor the search runs at half resolution with the full
+keypoints: 64 s a request on the NUC against 553 s, the same verdict on ten requests of three frames. Numbers, the
+rejected settings and what is unproved: `docs/research/M26-governor.md` §5, §9, §10.

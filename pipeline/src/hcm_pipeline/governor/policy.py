@@ -18,7 +18,9 @@ ACTIVE_IDLE_S: Final = 2 * TICK_S
 CALM_S: Final = 120.0
 OTHERS_BUSY_PCT: Final = 40.0
 LOW_BATTERY_PCT: Final = 30
-CPU_HOT_C: Final = 90.0
+# 95, not 90 (measured 2026-11-13): the laptop's package sat at 90 °C with only a local model running and the NUC at 82 to 86 under a
+# matcher run; their trip points are 100 to 110. At 90 the governor would step down on every mobile processor at work, all day.
+CPU_HOT_C: Final = 95.0
 GPU_HOT_C: Final = 83.0
 COOL_MARGIN_C: Final = 10.0
 STEP_DOWN: Final[dict[Profile, Profile]] = {"full": "quiet", "quiet": "paused", "paused": "paused"}

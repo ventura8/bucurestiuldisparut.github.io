@@ -9,6 +9,7 @@ from hcm_pipeline.matcher.search import (
     TILE_PX,
     _kept_inliers,
     consensus,
+    decimated,
     film_tiles,
     norm8,
     pair_inliers,
@@ -139,3 +140,34 @@ def test_happy_path_two_places_stay_two_proposals_and_one_place_is_merged() -> N
     assert [each.pairs for each in found] == [3, 2]
     matrix = to_matrix(found[0])
     assert abs((matrix @ numpy.array([1.0, 1.0, 1.0]))[0] - 101.0) < 1.0
+
+
+def test_happy_path_the_processors_search_at_half_resolution_finds_the_same_place() -> None:
+    """M26 h2: a window of two tiles a side or more is searched at half its resolution; the grids follow the coarse pixels.
+
+    Scenarios: S-P07-HAPPY-CPU-FALLBACK
+    """
+    world = render_world(7, 3600).pixels
+    window = world[600:3000, 600:3000]
+    film = numpy.maximum(numpy.roll(numpy.roll(world, SHIFT[1], axis=0), SHIFT[0], axis=1)[300:3300, 300:3300], 1)
+    reference_grid = numpy.array([[PIXEL, 0.0, 1000.0], [0.0, -PIXEL, 90000.0], [0.0, 0.0, 1.0]], numpy.float64)
+    film_grid = numpy.array([[PIXEL, 0.0, 1000.0 - 300 * PIXEL], [0.0, -PIXEL, 90000.0 + 300 * PIXEL], [0.0, 0.0, 1.0]], numpy.float64)
+    request = Request(numpy.asarray(film, numpy.uint8), window, film_grid, reference_grid, GROUND)
+
+    coarse = decimated(request, 2)
+    assert coarse.reference.shape == (1200, 1200)
+    # The coarse pixel (0, 0) averages the fine (0, 0) to (1, 1): its place is the fine (0.5, 0.5)'s.
+    assert numpy.allclose(coarse.reference_grid @ [0.0, 0.0, 1.0], reference_grid @ [0.5, 0.5, 1.0])
+    found = search(request, OrbBackend(), nothing, 2)
+    assert found
+    moved = found[0].matrix @ numpy.array([20000.0, 70000.0, 1.0])
+    assert abs(moved[0] - 20000.0 + SHIFT[0] * PIXEL) < 60.0
+    assert abs(moved[1] - 70000.0 - SHIFT[1] * PIXEL) < 60.0
+
+
+def test_bad_path_a_window_under_two_tiles_is_searched_as_it_is() -> None:
+    """Scenarios: S-P07-HAPPY-SMALL-WINDOW"""
+    request = world_request()
+
+    assert decimated(request, 2) is request
+    assert decimated(request, 1) is request

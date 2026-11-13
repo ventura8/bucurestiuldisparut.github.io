@@ -3591,3 +3591,15 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `numpy.load(allow_pickle=False)` refuses lazily, field by field; the order of reads decides which fault is seen first.
     - Fix and pin: the film's arrays are read first, as before, and the new `budget` only when it is present (an old request reads as the default budget).
     - **When a file is checked lazily by its reader, read the fields that carry the risk first, and add new fields as optional so an old file keeps its meaning.**
+
+612. **The governor's heat limit sat inside a laptop's normal day.**
+    - Seen: 2026-11-13, M26 measured: the laptop's package read 90 °C with only a local model running, the NUC 82 to 86 °C under a matcher run; the governor stepped down at 90 °C and back up only under 80 °C, and its load test on the NUC read `paused` throughout.
+    - Cause: the limit was chosen from a desktop's habits; mobile processors run at 85 to 95 °C under load and their own trip points are 100 to 110 °C (the NUC's `TCPU` passive at 110).
+    - Fix and pin: `CPU_HOT_C` 95 (back up under 85); `test_heat_steps_down_one_level_and_back_ten_degrees_below` asserts 90 °C is not hot.
+    - **A threshold on a sensor is set from readings of the machines it will run on, never from a round number.**
+
+613. **A faster matcher measured on easy frames lost the hard one.**
+    - Seen: 2026-11-13, M26 h2 on the NUC: half resolution with 1,024 keypoints answered in 38 s against 553 s and still found F007 and F003 on Bucharest, but proposed nothing for F006 on Fetești, which the card finds with 3 pairs; 1,024 keypoints at full resolution also found nothing.
+    - Cause: fewer keypoints a tile leave too few inliers on a frame that only just passes the 12-inlier pair gate.
+    - Fix and pin: the processor searches at half resolution with the budget's 2,048 keypoints (64 s, F006 found), and the governor's quiet profile keeps 2,048 too (slower, never blinder).
+    - **A speed-up of a search is measured on its hardest fixture (the fewest inliers the reference finds), not only on the ones it finds easily.**

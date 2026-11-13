@@ -172,6 +172,7 @@ describe('worker.starter', () => {
 async function supervise(
     code: number,
     environment: Readonly<Record<string, string>> = {},
+    extra: Readonly<Record<string, string>> = {},
 ): Promise<{ readonly output: string; readonly log: readonly string[]; readonly runs: readonly string[] }> {
     const folder = mkdtempSync(join(tmpdir(), 'hcm-supervisor-'));
     const bin = join(folder, 'bin');
@@ -184,6 +185,7 @@ async function supervise(
         docker: `[ "$1" = info ] && { echo 8000000000; exit 0; }\n[ "$1" = run ] && { echo run >>"${log}"; echo "$*" >>"${runs}"; exit ${String(code)}; }\nexit 0`,
         // The fourth wait ends the supervisor (its parent shell), as a stop of the service would; the sidecar's loop beside it waits apart.
         sleep: `case "$1" in 20 | 5) exec /bin/sleep 0.05 ;; esac\necho "sleep $1" >>"${log}"\n[ "$(grep -c sleep "${log}")" -ge 4 ] && kill -9 "$PPID"\nexit 0`,
+        ...extra,
     };
     for (const [name, body] of Object.entries(tools)) {
         writeFileSync(join(bin, name), `#!/bin/sh\n${body}\n`);
@@ -230,6 +232,26 @@ describe('the supervisor (finding 74 of 2026-11-03)', () => {
         expect(own.runs[0]).toContain('--cpu-shares 256 --memory 3g --memory-swap 3g -e GDAL_NUM_THREADS=2 -p 127.0.0.1');
         expect(free.runs[0]).toContain('--name hcm-worker --cpu-shares 256 -p 127.0.0.1');
         expect(free.runs[0]).not.toContain('--memory');
+    });
+
+    it('happyPath_theWorkerIsToldWhichSidecarThisComputerGetsByItsNvidiaCard @S-P07-HAPPY-CPU-IMAGE', async () => {
+        const none = await supervise(WORKER_OUTDATED_EXIT, {}, { 'nvidia-smi': 'exit 127' });
+        const card = await supervise(
+            WORKER_OUTDATED_EXIT,
+            {},
+            { 'nvidia-smi': "echo 'GPU 0: NVIDIA GeForce RTX 3080 Laptop GPU (UUID: GPU-1)'" },
+        );
+
+        expect(none.runs[0]).toContain('-e HCM_AI_VARIANT=cpu ');
+        expect(card.runs[0]).toContain('-e HCM_AI_VARIANT=gpu ');
+    });
+
+    it('badPath_theOwnersVariantWinsAndAnythingElseIsLeftToTheCard @S-P07-BAD-CPU-IMAGE', async () => {
+        const forced = await supervise(WORKER_OUTDATED_EXIT, { HCM_AI_VARIANT: 'cpu' }, { 'nvidia-smi': "echo 'GPU 0: RTX'" });
+        const odd = await supervise(WORKER_OUTDATED_EXIT, { HCM_AI_VARIANT: 'turbo' }, { 'nvidia-smi': "echo 'GPU 0: RTX'" });
+
+        expect(forced.runs[0]).toContain('-e HCM_AI_VARIANT=cpu ');
+        expect(odd.runs[0]).toContain('-e HCM_AI_VARIANT=gpu ');
     });
 
     it('happyPath_anOutdatedWorkerIsStartedAgainAtOnceAndNothingIsSaid', async () => {

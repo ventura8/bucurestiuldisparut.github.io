@@ -240,7 +240,7 @@ describe('the local AI in the starter (docs/research/M10-local-ai.md)', () => {
         expect(text.indexOf("Test-AiGpu $Image @('--gpus', 'all')")).toBeLessThan(
             text.indexOf("Test-AiGpu $Image @('--device', 'nvidia.com/gpu=all')"),
         );
-        expect(text.indexOf("'nvidia.com/gpu=all')))")).toBeLessThan(text.indexOf("Start-Sidecar $Image 'cpu' 'no-gpu'"));
+        expect(text.indexOf("'nvidia.com/gpu=all')))")).toBeLessThan(text.lastIndexOf("Start-Sidecar $Image 'cpu' 'no-gpu'"));
         expect(text).toContain("'--memory', '4g', '--memory-swap', '4g', '--cpu-shares', '128', '--shm-size', '1g', '--pids-limit', '512'");
         expect(text).toContain("$AiImagePattern = '^pytorch/pytorch(:[A-Za-z0-9._-]+)?@sha256:[0-9a-f]{64}$'");
     });
@@ -378,6 +378,35 @@ describe('the sidecar lives only while a frame wants it', () => {
 
         spawnSync('/bin/sh', [script, 'run'], { encoding: 'utf8', env: { PATH: `${bin}:/usr/bin:/bin`, HOME: folder }, timeout: 20_000 });
 
-        expect(readFileSync(log, 'utf8')).toContain(`-e HCM_DOCKER_ARCH=${said} ${pipeline} worker`);
+        expect(readFileSync(log, 'utf8')).toMatch(
+            new RegExp(`-e HCM_DOCKER_ARCH=${said} -e HCM_AI_VARIANT=(cpu|gpu) ${pipeline.replaceAll('.', '\\.')} worker`),
+        );
+    });
+});
+
+describe("the processor's sidecar in the worker's own image (docs/research/M26-governor.md §5)", () => {
+    it('happyPath_aComputerWithNoNvidiaCardRunsTheWorkersOwnImageOnTheProcessorAndPullsNothing @S-P07-HAPPY-CPU-IMAGE', async () => {
+        const { output, calls } = await matcherLoop({ state: wantedOf('worker') });
+        const [sidecar] = sidecars(calls);
+
+        expect(output).toContain("local AI: on the processor, in the worker's own image");
+        expect(calls.filter((call) => call.startsWith('pull ') || call.includes('probe gpu'))).toEqual([]);
+        expect(sidecar).toContain('-e HCM_AI_DEVICE=cpu -e HCM_AI_WHY=no-gpu');
+        expect(sidecar).toContain('PYTHONPATH=/ai/files/code:/ai/files/lib-cpu');
+        expect(sidecar).toContain('--entrypoint python worker-image -m matcher.serve');
+        expect(sidecar).toContain('--network none --cap-drop ALL');
+        // PyTorch's own image keeps its own folder: the processor's PyTorch never shadows the card's.
+        const card = sidecars((await matcherLoop({ state: WANTED, gpu: ['--gpus'] })).calls)[0];
+        expect(card).toContain('PYTHONPATH=/ai/files/code:/ai/files/lib ');
+    });
+
+    it.each([
+        ['a word that is not worker', 'workers'],
+        ['a word that breaks out of the shell', 'worker$(id)'],
+    ])('badPath_%s_isRefused @S-P07-BAD-CPU-IMAGE', async (_case, image) => {
+        const { output, calls } = await matcherLoop({ state: wantedOf(image) });
+
+        expect(output).toContain('not pytorch/pytorch by digest: refused');
+        expect(sidecars(calls)).toEqual([]);
     });
 });

@@ -204,8 +204,8 @@ def _first(rows: Sequence[dict[str, object]], key: str) -> object:
 
 
 def _over_memory(rows: Sequence[dict[str, object]]) -> int:
-    """Passes whose memory went above the budget's."""
-    return sum(1 for row in rows if isinstance(row["memoryMb"], int) and int(str(row["rssMb"])) > int(str(row["memoryMb"])))
+    """Passes whose memory went above the budget's; a paused pass has a budget of 0 by design (its step waits holding its memory)."""
+    return sum(1 for row in rows if isinstance(row["memoryMb"], int) and 0 < row["memoryMb"] < int(str(row["rssMb"])))
 
 
 def _passed(share: float, loaded: dict[str, float], quiet_after: float | None, over_memory: int) -> bool:

@@ -5,10 +5,15 @@ that agrees on a similarity near the identity is one vote, and the consensus of 
 accepts anything: the worker's proof does, and a matcher's count never reaches a gate. Settings are those of Tests A and C and gate R1,
 not tuned: tiles of 768 pixels at 15 m, 12 inliers a pair; 500 m of tolerance and 1 km apart on a whole window, 150 m and 500 m on one
 smaller than a tile.
+
+On the processor (`docs/research/M26-governor.md` §5, item h2) the request is searched at half its resolution (`decimated`: tiles of
+768 pixels at 30 m, a quarter as many on each side, so about a tenth of the pairs), with the budget's keypoints: the same search,
+coarser; the worker's proof still measures at full resolution. A window under two tiles a side is searched as it is. Measured on the NUC
+(2026-11-13): 553 s a request before, 64 s after; with 1,024 keypoints as well, 38 s, but F006 on Fetești was no longer found.
 """
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Final, Protocol
 
 import cv2
@@ -18,6 +23,8 @@ from numpy.typing import NDArray
 from .box import MATRIX_SIDE, MAX_PROPOSALS, FloatArray, Found, Request, UInt8Array
 
 TILE_PX: Final = 768
+# The processor's lighter search: half the resolution (fewer keypoints as well lost a frame the card finds: see above).
+CPU_DECIMATION: Final = 2
 PAIR_MIN_INLIERS: Final = 12
 PAIR_RANSAC_PX: Final = 2.5
 PAIR_MIN_SCALE: Final = 0.85
@@ -261,8 +268,36 @@ def _settings(small: bool) -> tuple[float, float]:
     return (SMALL_TOLERANCE_GROUND_M, SMALL_DISTINCT_GROUND_M) if small else (WHOLE_TOLERANCE_GROUND_M, WHOLE_DISTINCT_GROUND_M)
 
 
-def search(request: Request, backend: Backend, tick: Callable[[], None]) -> tuple[Found, ...]:
-    """What the matcher proposes for one orientation: at most three, best first; none for a film that matches nothing."""
+def _shrunk(image: UInt8Array, factor: int) -> UInt8Array:
+    height, width = image.shape
+    return numpy.asarray(cv2.resize(image, (width // factor, height // factor), interpolation=cv2.INTER_AREA), numpy.uint8)
+
+
+def _coarser(grid: FloatArray, factor: int) -> FloatArray:
+    """The grid of an image shrunk by `factor`: a coarse pixel's centre is the mean of the fine pixels it averages."""
+    coarse = numpy.array(grid, numpy.float64)
+    coarse[:2, 2] = grid[:2, 2] + grid[:2, :2] @ numpy.full(2, (factor - 1) / 2)
+    coarse[:2, :2] = grid[:2, :2] * factor
+    return coarse
+
+
+def decimated(request: Request, factor: int) -> Request:
+    """The request at 1/`factor` of its resolution, when its reference keeps a whole tile a side after; else as it is."""
+    if factor <= 1 or min(request.reference.shape) < factor * TILE_PX:
+        return request
+    return replace(
+        request,
+        film=_shrunk(request.film, factor),
+        reference=_shrunk(request.reference, factor),
+        film_grid=_coarser(request.film_grid, factor),
+        reference_grid=_coarser(request.reference_grid, factor),
+    )
+
+
+def search(request: Request, backend: Backend, tick: Callable[[], None], decimation: int = 1) -> tuple[Found, ...]:
+    """What the matcher proposes for one orientation: at most three, best first; none for a film that matches nothing. `decimation`:
+    the processor's lighter search (`CPU_DECIMATION`)."""
+    request = decimated(request, decimation)
     tile, small = tile_size(request.reference)
     cv2.setRNGSeed(0)
     film, reference = film_tiles(request.film, tile), reference_tiles(request.reference, tile)

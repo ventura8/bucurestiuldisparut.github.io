@@ -43,7 +43,9 @@ $AiSeconds = 20
 $AiImagePattern = '^pytorch/pytorch(:[A-Za-z0-9._-]+)?@sha256:[0-9a-f]{64}$'
 $AiImageNote = Join-Path $Folder 'ai-image'
 $SidecarFlags = @('--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '-u', '10001:10001', '-e', 'HOME=/tmp', '--tmpfs', '/tmp')
-$SidecarFlags += @('-e', 'HCM_AI_ROOT=/ai', '-e', 'PYTHONPATH=/ai/files/code:/ai/files/lib', '-v', "${AiFiles}:/ai/files:ro", '-v', "${AiBox}:/ai/box", '--entrypoint', 'python')
+$SidecarFlags += @('-e', 'HCM_AI_ROOT=/ai', '-v', "${AiFiles}:/ai/files:ro", '-v', "${AiBox}:/ai/box", '--entrypoint', 'python')
+# The sidecar's folder of unpacked packages: lib for PyTorch's image, lib-cpu for the worker's own (Start-Matcher).
+$script:AiLib = 'lib'
 $script:SidecarImage = ''
 # The governor (docs/research/M26-governor.md): what only Windows can say, every few seconds, and the worker's CPU quota.
 $GovernSeconds = 5
@@ -127,7 +129,7 @@ function Set-AiImageNote($Wanted) {
 # What PyTorch sees under these flags, inside the sidecar's own image: true when it may use the card; else why not, said: a Docker or a
 # driver that refused this once is not a computer with no card. `none` is the reason's place: Windows PowerShell drops an empty argument.
 function Test-AiGpu($Image, $Flags) {
-    & docker run --rm @Flags @SidecarFlags $Image -m matcher.child probe gpu none *> $null
+    & docker run --rm @Flags @SidecarFlags -e "PYTHONPATH=/ai/files/code:/ai/files/$script:AiLib" $Image -m matcher.child probe gpu none *> $null
     $code = $LASTEXITCODE
     if ($code -ne 0) { Write-Host "local AI: the look at the graphics card ($Flags) ended with $code (77: none seen, 76: under 2 GB, else Docker or the driver refused)" }
     return $code -eq 0
@@ -137,7 +139,8 @@ function Test-AiGpu($Image, $Flags) {
 function Start-Sidecar($Image, $Device, $Why, $Flags) {
     & docker rm -f $Matcher *> $null
     $limits = @('--memory', '4g', '--memory-swap', '4g', '--cpu-shares', '128', '--shm-size', '1g', '--pids-limit', '512')
-    & docker run -d --rm --name $Matcher @Flags @limits -e "HCM_AI_DEVICE=$Device" -e "HCM_AI_WHY=$Why" @SidecarFlags $Image -m matcher.serve *> $null
+    $path = "PYTHONPATH=/ai/files/code:/ai/files/$script:AiLib"
+    & docker run -d --rm --name $Matcher @Flags @limits -e "HCM_AI_DEVICE=$Device" -e "HCM_AI_WHY=$Why" -e $path @SidecarFlags $Image -m matcher.serve *> $null
 }
 
 # The sidecar this loop started gone: what a frame no longer wants, or a worker no longer here, holds no container.
@@ -164,7 +167,13 @@ function Update-Sidecar($Image) {
 # sidecar lives only while a frame wants it, so a driver installed later, or a card back from a suspend, is found by the next frame. A
 # silent processor run is impossible: the sidecar refuses HCM_AI_DEVICE=cpu without a reason.
 function Start-Matcher($Image) {
-    if (Test-AiGpu $Image @('--gpus', 'all')) {
+    $script:AiLib = 'lib'
+    $workerImage = & docker inspect --format '{{.Config.Image}}' $Name 2> $null
+    if ($Image -eq $workerImage) {
+        $script:AiLib = 'lib-cpu'
+        Write-Host "local AI: on the processor, in the worker's own image (no NVIDIA card on this computer, so nothing big to fetch)"
+        Start-Sidecar $Image 'cpu' 'no-gpu' @()
+    } elseif (Test-AiGpu $Image @('--gpus', 'all')) {
         Write-Host 'local AI: graphics card through --gpus all'
         Start-Sidecar $Image 'gpu' '' @('--gpus', 'all')
     } elseif (((& docker info 2> $null) -match 'nvidia\.com/gpu') -and (Test-AiGpu $Image @('--device', 'nvidia.com/gpu=all'))) {
@@ -196,9 +205,11 @@ function Start-MatcherLoop($Supervisor) {
             $missed = 0
             $wanted = [string]$state.ai.image
             $workerImage = & docker inspect --format '{{.Config.Image}}' $Name 2> $null
-            if ($wanted -cnotmatch $AiImagePattern) {
+            if ($wanted -ceq 'worker' -and $workerImage) { $wanted = $workerImage }
+            if ($wanted -cnotmatch $AiImagePattern -and $wanted -ne $workerImage) {
                 Write-Host 'local AI: the worker named an image that is not pytorch/pytorch by digest: refused'
             } elseif ($workerImage) {
+                if ($pulled -ne $wanted -and $wanted -eq $workerImage) { $pulled = $wanted }
                 if ($pulled -ne $wanted -and (Get-AiImage $workerImage $wanted)) { $pulled = $wanted }
                 if ($pulled -eq $wanted -and $state.ai.files) { Update-Sidecar $wanted }
             }
@@ -271,6 +282,16 @@ function Start-GovernorLoop($Supervisor) {
 # What the worker may use of this computer (reports/resource-audit.md): at most 60 % of the memory Docker has, and a light
 # weight against other containers. HCM_WORKER_MEMORY (a Docker size as 8g, or none) and HCM_WORKER_THREADS (GDAL's threads)
 # in the environment change that.
+# Which sidecar this computer gets (docs/research/M26-governor.md §5): gpu when an NVIDIA card answers here, PyTorch's own image of
+# about 10 GB; else cpu, the worker's own image and PyTorch for the processor in the AI's volume, about 1 GB. HCM_AI_VARIANT decides.
+function Get-AiVariant {
+    if ($env:HCM_AI_VARIANT -ceq 'gpu' -or $env:HCM_AI_VARIANT -ceq 'cpu') { return $env:HCM_AI_VARIANT }
+    if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) {
+        if ((& nvidia-smi -L 2> $null) -match '^GPU') { return 'gpu' }
+    }
+    return 'cpu'
+}
+
 function Get-WorkerLimits {
     $limits = @('--cpu-shares', '256')
     $memory = $env:HCM_WORKER_MEMORY
@@ -307,7 +328,8 @@ function Start-Supervisor {
                 $digest = 'sha256:' + $image.Split('@')[1].Substring(7)
                 $arguments = @('run', '--rm', '--name', $Name) + (Get-WorkerLimits) + @('-p', "127.0.0.1:${Port}:${Port}", '-v', "${Name}:/work")
                 $arch = & docker version --format '{{.Server.Arch}}' 2> $null
-                $arguments += @('-v', "${AiFiles}:/ai/files", '-v', "${AiBox}:/ai/box", '-e', 'HCM_STARTER=2', '-e', "HCM_DOCKER_ARCH=$arch", $image)
+                $arguments += @('-v', "${AiFiles}:/ai/files", '-v', "${AiBox}:/ai/box", '-e', 'HCM_STARTER=2', '-e', "HCM_DOCKER_ARCH=$arch")
+                $arguments += @('-e', "HCM_AI_VARIANT=$(Get-AiVariant)", $image)
                 $arguments += @('worker', '--city', $City, '--project', $Project, '--supervised', '--image', $digest)
                 & docker @arguments
                 $code = $LASTEXITCODE

@@ -13157,6 +13157,28 @@
             "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_matcher_serve.py, test_matcher_torch.py, test_local_matcher.py, functions/test/worker/starter-sidecar.test.ts. PowerShell: starter-windows.test.ts."
         },
         {
+            "id": "S-P07-HAPPY-CPU-IMAGE",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A computer with no NVIDIA card runs the local AI in the worker's own image, about 1 GB instead of 10, and searches lighter",
+            "asserts": "no nvidia-smi GPU -> the starter starts the worker with HCM_AI_VARIANT=cpu; the worker fetches pins-cpu.json (PyTorch for the processor) into lib-cpu and names the image `worker`; the starter pulls nothing, says so, and runs the sidecar from the worker's image on the processor with lib-cpu; on the processor the search runs at half resolution (553 s a request before, 64 s after, on the NUC)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M26-governor.md §5 (items h2, i). Tests: pipeline/tests/unit/test_ai_files.py, test_matcher_search.py, test_matcher_torch.py, functions/test/worker/starter-sidecar.test.ts, starter-windows.test.ts."
+        },
+        {
+            "id": "S-P07-BAD-CPU-IMAGE",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Only the worker's own image or PyTorch's by digest is ever run; anything but cpu keeps the card's image",
+            "asserts": "a variant other than exactly cpu keeps pins.json and lib; a /state naming another image is refused; a card that answers nvidia-smi keeps the variant gpu; a wheel keeps only the matcher's packages",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Tests: pipeline/tests/unit/test_ai_files.py, functions/test/worker/starter-sidecar.test.ts."
+        },
+        {
             "id": "S-P07-HAPPY-SMALL-WINDOW",
             "behaviour": "P07",
             "area": "pipeline",

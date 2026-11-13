@@ -17,6 +17,7 @@ from hcm_pipeline.worker.ai_files import (
     LIGHTGLUE_MEMBERS,
     MATCHER_DIR,
     PINS,
+    PINS_CPU,
     AiFiles,
     AiFilesError,
     ai_client,
@@ -24,6 +25,7 @@ from hcm_pipeline.worker.ai_files import (
     load_pins,
     safe_name,
     unpack_lightglue,
+    variant_of,
     wheel_members,
 )
 
@@ -338,3 +340,39 @@ def test_happy_path_intact_weights_are_neither_placed_nor_fetched_again(tmp_path
 
     assert asked == []
     assert (root / "weights" / "w.pth").stat().st_mtime_ns == stamp
+
+
+def test_happy_path_a_computer_without_a_card_gets_the_processors_files_in_their_own_folder(tmp_path: Path) -> None:
+    """M26 item i: the worker's own image and PyTorch for the processor, never mixed with the card's image's packages.
+
+    Scenarios: S-P07-HAPPY-CPU-IMAGE
+    """
+    assert variant_of({"HCM_AI_VARIANT": "cpu"}) == (PINS_CPU, "lib-cpu")
+    asked: list[str] = []
+    files = AiFiles(tmp_path / "files", serving(good_files(), asked), pins_file(tmp_path, good_files()), "lib-cpu")
+    files.ensure()
+
+    root = tmp_path / "files"
+    assert (root / "lib-cpu" / "kornia" / "__init__.py").exists()
+    assert (root / "lib-cpu" / "lightglue" / "__init__.py").exists()
+    assert not (root / "lib").exists()
+    image, pins = load_pins(PINS_CPU)
+    assert image == "worker"
+    names = {pin.name for pin in pins}
+    assert {name.split("-")[0] for name in names if name.endswith(".whl")} >= {"torch", "torchvision", "kornia", "kornia_rs"}
+    assert all("cp312" not in name for name in names)
+    # The same weights as the card's: one proof, whichever sidecar ran.
+    weights = {(pin.name, pin.sha256) for pin in pins if pin.kind == "weights"}
+    assert weights == {(pin.name, pin.sha256) for pin in load_pins(PINS)[1] if pin.kind == "weights"}
+    for pin in pins:
+        assert httpx.URL(pin.url).host in AI_FILE_HOSTS
+        assert len(pin.sha256) == 64
+
+
+@pytest.mark.parametrize("said", ["gpu", "CPU", "", "cpu "])
+def test_bad_path_anything_but_cpu_keeps_the_cards_image_and_a_wheel_keeps_only_its_packages(said: str) -> None:
+    """Scenarios: S-P07-BAD-CPU-IMAGE"""
+    assert variant_of({"HCM_AI_VARIANT": said}) == (PINS, "lib")
+    assert variant_of({}) == (PINS, "lib")
+    names = ["torch/__init__.py", "torch/lib/libgomp.so.1", "caffe2/evil.py", "../torch/x.py", "typing_extensions.py", "isympy.py"]
+    assert wheel_members(names) == ["torch/__init__.py", "torch/lib/libgomp.so.1", "typing_extensions.py"]

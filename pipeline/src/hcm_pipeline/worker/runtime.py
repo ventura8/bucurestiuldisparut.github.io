@@ -25,7 +25,7 @@ from hcm_pipeline.secrets import SecretUnavailableError
 from hcm_pipeline.services import delivery_client, emulated_guard, guarded, http
 from hcm_pipeline.stac import StacClient
 from hcm_pipeline.urlguard import resolve
-from hcm_pipeline.worker.ai_files import AiFiles, ai_client
+from hcm_pipeline.worker.ai_files import AiFiles, ai_client, variant_of
 from hcm_pipeline.worker.ai_state import AiState
 from hcm_pipeline.worker.api import WorkerApi
 from hcm_pipeline.worker.args import WorkerArgs
@@ -121,7 +121,7 @@ class WorkerRuntime:
 
     def _matcher(self) -> LocalMatcher:
         """Only here does a run get a matcher: Cloud Run's `services.build` keeps `NullProposalMatcher` (M10)."""
-        files = AiFiles(self.ai_root / "files", self._ai_client)
+        files = AiFiles(self.ai_root / "files", self._ai_client, *variant_of(os.environ))
         return LocalMatcher(
             Ports(
                 self.ai_root / "box",

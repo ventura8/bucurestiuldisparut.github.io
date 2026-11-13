@@ -21,7 +21,8 @@ from hcm_pipeline.rasters import gdal_memory
 
 MEMORY_SHARE: Final[dict[Profile, float]] = {"full": 0.60, "quiet": 0.35, "paused": 0.0}
 GPU_FRACTION: Final[dict[Profile, float]] = {"full": 0.7, "quiet": 0.4, "paused": 0.0}
-KEYPOINTS: Final[dict[Profile, int]] = {"full": 2048, "quiet": 1024, "paused": 0}
+# Quiet keeps the full keypoints: 1,024 lost F006 on Fetești on the NUC (2026-11-13), so quiet is slower, never less accurate.
+KEYPOINTS: Final[dict[Profile, int]] = {"full": 2048, "quiet": 2048, "paused": 0}
 BIG_MACHINE_CORES: Final = 8
 QUIET_DIVISOR: Final = 4
 # `steps/pyramid.py`: a tile process holds about 170 MB; a quarter of the memory at 256 MB each.
