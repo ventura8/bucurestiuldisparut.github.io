@@ -6685,3 +6685,69 @@ relaxed; one new e2e budget.
 - **Guard**: `functions/test/cost-shape.test.ts` fails on any `minInstances`, explicit CPU, memory or timeout outside the reviewed table, more than 5 instances, or a schedule under 15 minutes; `packages/shared/test/api/worker.test.ts` and `scripts/site/test/install-steps.test.ts` hold the jobs' sizes.
 - **Merge order**: `track/stripfix` (GDAL's cache and the warp's memory from the machine's, the atlas pasted part by part, an idle worker's slower claims) is on `feat/engine-rewrite` since 2026-11-13 (`8c794234`), so the smaller jobs ship with what they rest on; a frame that still outgrows 8 GiB fails once on `std` and runs again on `xl` (4 / 16, the old `std`).
 - **Verify**: `PIPELINE_STAGE=tests` and `static`; after the next deploy, the jobs' `cpu` and `memory` in Cloud Run and the Scheduler job `firebase-schedule-imagery-tick-us-central1` at `every 15 minutes`.
+
+## 180. Dev tooling on modest hardware: ESLint by project groups, the containers' caps, the emulators' heaps, a smaller image (track/optdev, 2026-11-12) — APPLIED (pre-approved class: keeps a tool working, no gate, rule or threshold relaxed)
+
+The owner's priority "optimizations first", the product principle "runs on modest hardware", the audit's area 5 and the
+leftovers of §164. Every figure is the container's cgroup `memory.peak` (page cache included) on the NUC unless named.
+
+- **180a ESLint, one process per group of TypeScript projects** (`scripts/ci/lint.sh`). The debug log of
+  typescript-eslint's `projectService` showed no file in a default project: every file falls in one of the 22 `tsconfig`
+  projects, and one process over the whole tree held 21 TypeScript programs at once, because the service keeps every
+  program it opens until the process ends and a test project's program also loads its package and every package it
+  imports. Seven groups (functions, admin, shared, ui, e2e, scripts, the small packages with `firebase/`) and the rest of
+  the tree (`.` with the groups' folders ignored, so a new folder is still linted) run as separate processes. Before: one
+  worker 181 to 228 s and 8.6 to 8.8 GB, two 14.2 GB, four 17.8 GB. After, one group at a time: 222 s and 2.9 GB on the
+  NUC, 301 s and 3.08 GB on the laptop under `q.sh`'s 8 GB cap, with a planted `no-var`/`no-console` file reported and
+  the gate failed. Every rule runs on every file; a group's programs are the ones a whole-tree run builds for its files.
+  `scripts/ci/parallel.py lint` now counts groups: one per 2 CPUs and 4 GiB available. A solution-style `tsconfig` was
+  not needed: the programs were not duplicated per file, only held together.
+- **180b The available memory includes the container's own cap**: `parallel.py` takes the smaller of `MemAvailable`
+  (the host's, inside a container) and cgroup v2 `memory.max` less `memory.current`, so a run under a 8 or 12 GB cap
+  picks fewer workers. `HCM_MEM_GB=<n>` caps `run-all-checks.sh`'s container; `scripts/dev/dev-stack.sh` caps the stack at
+  `HCM_STACK_MEM_GB` (default 8) with `--oom-score-adj 500`.
+- **180c Peak memory per stage** (NUC, 12 GB slot, `HCM_LINT_WORKERS=1`): `static` 6.6 GB (ESLint 3.0, `tsc -b` 2.0,
+  `npm ci` 1.2, dependency-cruiser 0.8, knip 0.7); `build` 2.2 GB (`npm ci` 1.2, the install bundle's build 0.55, the
+  functions' build 0.47); `tests` 9.6 GB (after 180g: the Firestore JVM 6.4 GB while it builds the rule-coverage report, the check 1.7 GB; before it the report failed, 180g) `e2e` hit the 12 GB cap: 46 Functions emulator workers held 8.8 GB (one Node
+  process per function trigger and more under concurrent calls, each about 250 MB, kept while idle), the browsers 1.4 GB,
+  Playwright's runner 0.7 GB, and the kernel killed the Firestore JVM, after which the admin tests failed in under 100 ms.
+- **180d The emulators' JVMs get a heap ceiling** through `JAVA_TOOL_OPTIONS`: unset, each takes up to a quarter of the
+  machine's (or the container's) memory. `npm test`: 6 GB (180g), because 1.5 GB ran the Firestore emulator out of heap while it
+  built the rule-coverage report (`ruleCoverage` answered HTTP 500 and the `rules-coverage` gate failed). The e2e and
+  stack emulators (`EMULATOR_ENV`, `e2e/admin/world.ts`): 2 GB, which also gives them the tests tier's
+  `-XX:CICompilerCount=2`; their Firestore JVM held 0.86 GB when it was killed.
+- **180e The quality image** (6.09 GB; its largest layer 2.62 GB: browsers 1.3 GB, emulators 0.29, npm cache 0.18): Chromium
+  is installed as its headless shell only (`--only-shell`), as every Vitest and Playwright project launches it headless:
+  403 MB less. Checked with the full Chromium hidden from Playwright: Chromium (WebGL on), Firefox and WebKit launch and a
+  Vitest browser file passes. Firefox and WebKit stay (the admin's forms run on both); the Pub/Sub zip next to its
+  unpacked folder stays, as `firebase` re-downloads an emulator whose archive is missing.
+- **180g The rule-coverage report fits a 12 GB container** (the `tests` stage's `vitest` and `rules-coverage` gates). The
+  Firestore emulator builds `ruleCoverage` whole in its heap: 582 MB of indented JSON (132 MB of values without the
+  indentation), and its HTML view of the same data was asked for at the same time (§30c). Under a 12 GB cap the unset
+  heap is 3 GB; measured on the NUC with the JSON alone: 3 and 4 GB ran out ("Java heap space", HTTP 500), 6 GB passed
+  with the emulator at 6.46 GB resident and the container at 8.2 GB. So: `npm test` gives the JVMs `-Xmx6g`; `save` asks
+  only for the JSON (the HTML is a view of the same report, read by no gate: replaces §30c) and streams it to disk through
+  a `.part` file that a short body never replaces; `check` drops each evaluated value as it parses it (an object hook),
+  1.69 GB and 3.4 s instead of 2.2 GB. Every expression and every condition is checked as before (0 problems on the same
+  report). No rule, condition or gate dropped; the emulator offers no smaller or streamed report.
+- **180h The colour library is inlined in every Vitest project** (`vitest.config.ts`, a config edit of the pre-approved
+  class: it keeps a tool working, no threshold or file excluded). `@material/material-color-utilities` imports without
+  file extensions, which Node refuses; only `create-historic-city` had it in `server.deps.inline`. With fewer workers
+  (a capped container, 180b) a worker that had run `admin` files (`isolate: false`, which also reach the library through
+  `@hcm/ui/dynamic-color`) went on to the CLI's files, and all six failed with "Cannot find module …/dynamic_color";
+  `admin` + `create-historic-city` on 5 workers failed every time, with or without `--coverage`. The option now sits in the
+  root `test` config that every project extends: the same command passes 230 files. Found while it, the shared API's
+  fixture lacked the governor's eight exports (§176): added to `exports-m7.ts`.
+- **180i The Functions emulator's workers in the e2e stage** (NUC, 12 GB slot, sampled every 3 s). Every Node process the
+  emulators start now inherits `NODE_OPTIONS=--max-semi-space-size=1` (`EMULATOR_ENV`): one worker that loaded the functions
+  went from 102 to 48 MB of heap and 148 to 122 MB resident; in the stage, about 250 to 165 MB a worker. The count is the
+  problem: the emulator keeps one worker per function trigger for the whole run and never stops an idle one, 61 to 65 at
+  the end (10.6 GB), so the stage still reaches the 12 GB cap (the browsers 2 to 3 GB beside them). Tried and not adopted:
+  `--inspect-functions`, whose shared pool kept one worker (0.4 GB, the container's peak 9.9 GB) but served the calls one at
+  a time: past 2 hours for about 2,370 of 3,137 tests, with 43 failures, against 45 minutes. A per-worker heap ceiling saves
+  little (the code loaded is most of a worker). What would fit: the functions' entry loading each group's module on its
+  first call instead of the whole bundle in every worker, a change to the deployed code's cold start that needs its own
+  measurement; until then the e2e stage needs about 14 GB (CI's runners have 16).
+- **180f Left**: the Functions emulator's workers (180c, 180i) are the largest consumer of the e2e tier and the dev stack;
+  the e2e stage reaches a 12 GB cap with them (measured after 180d and 180i), and the dev stack's 8 GB default holds only
+  a manual session's fewer workers.

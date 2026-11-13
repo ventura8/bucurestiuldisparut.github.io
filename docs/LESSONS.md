@@ -3627,3 +3627,27 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: Mapbox GL loads `async` and the map adapter takes a promise of it (§178f); `S-V01-BAD-SLOW-MAPBOX-FIRST-PAINT`.
     - Then: with Mapbox's CDN two seconds slower the first paint still came at 2.9 s: `mapbox-gl.css` in the page's head was render-blocking, and unused (the viewer links it in its shadow root). The pages link none now.
     - **A third-party script or stylesheet the first paint does not need is `async` or absent, and the code that needs it waits for it, not the page; measure with the third party slow, not only cold.**
+
+618. **The grouped lint passed every group and still failed: its EXIT trap named a variable local to `main`.**
+    - Seen: 2026-11-12, track/optdev: `scripts/ci/lint.sh` said `out: unbound variable` after the last group, and the `eslint` gate failed with every group clean.
+    - Cause: `trap 'rm -rf "$out"' EXIT` runs after `main` has returned, when its `local out` is gone, and `set -u` turns that into exit 1.
+    - Found by: the `static` stage on the NUC. Fix: the folder is a global, `LINT_OUT` (§180a); a planted violation then failed the gate and only it.
+    - **An EXIT trap reads only globals; a lint wrapper is proved by a planted violation as well as by a clean run.**
+
+619. **The e2e stage in a 12 GB container lost its Firestore emulator to the kernel.**
+    - Seen: 2026-11-12, track/optdev: the admin tests failed in under 100 ms each; the kernel log named the killed `java`.
+    - Cause: the Functions emulator keeps one Node worker per function trigger (more under concurrent calls), about 250 MB each and never stopped while idle: 46 of them held 8.8 GB.
+    - Found by: sampling the container's processes during the run (§180c). Fix so far: the JVMs' heap ceilings (§180d); the workers are §180f.
+    - **Measure a tier's peak under the cap it will run with; a run killed for memory looks like a flood of fast test failures.**
+
+620. **The rule-coverage report ran the Firestore emulator out of heap under a 12 GB container.**
+    - Seen: 2026-11-12, track/optdev: `ruleCoverage` answered HTTP 500, `firestore-debug.log` said "Java heap space", and the `vitest` and `rules-coverage` gates failed with every test green.
+    - Cause: the emulator builds the report whole in its heap: 582 MB of indented JSON, and the HTML view of the same data was asked for at once. The JVM's default heap is a quarter of the container's cap (3 GB); with the JSON alone 3 and 4 GB still ran out.
+    - Found by: sampling the emulator's resident memory per heap ceiling on the NUC (§180g). Fix: `-Xmx6g` in `npm test`, the JSON alone streamed to disk, the values dropped as the check parses them; a stubbed short body then showed that `HTTPResponse.read(n)` returns quietly when a transfer breaks, so the save compares what was announced with what came.
+    - **A report a gate needs is sized under the cap the gate runs with; a sized read of an HTTP body does not raise on a short body: check `response.length`.**
+
+621. **Three merges on one day left three tests that each branch had passed: a file list, an export fixture and a function count.**
+    - Seen: 2026-11-13, the `tests` stage of track/optdev after merging `origin/feat/engine-rewrite`: `test_import_job.py` expected `scan-tiles.bin` (track/georefux) for a crop that track/stripfix now keeps under the preview's 4,096 px; the shared API fixture lacked the governor's eight exports (track/hwgov); `packages/admin/src/setup/controller.ts` fell to 89 % of its functions after the install override (track/prerelease).
+    - Cause: each branch ran its targeted tests; nothing ran the whole `tests` stage on the merged tree.
+    - Fix and pin: the import test asks the version whether a sharper scan was written; the fixture names the exports (`exports-m7.ts`); `controller-intents.test.ts` drives the install cards' intents. The same run found the colour library's inline option missing in all but one project (§180h).
+    - **After merging branches that each passed alone, run the full `tests` stage on the merge before pushing it.**

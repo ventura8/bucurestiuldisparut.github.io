@@ -197,63 +197,43 @@ class RecordingFetch:
     def __init__(self) -> None:
         self.calls: list[tuple[str, str]] = []
 
-    def __call__(self, host: str, path: str) -> bytes:
+    def __call__(self, host: str, path: str, target: Path) -> None:
         self.calls.append((host, path))
-        return f"report for {path}".encode()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(f"report for {path}", encoding="utf-8")
 
 
-def test_happy_path_save_writes_json_and_html_reports(repo: Path, log: pytest.LogCaptureFixture) -> None:
+def test_happy_path_save_writes_only_the_json_report(repo: Path, log: pytest.LogCaptureFixture) -> None:
     fetch = RecordingFetch()
     env = {"FIRESTORE_EMULATOR_HOST": "127.0.0.1:8080", "GCLOUD_PROJECT": "demo-other"}
 
     assert coverage.main(["save", "--root", str(repo)], env=env, fetch=fetch) == 0
 
-    assert sorted(fetch.calls) == [
-        ("127.0.0.1:8080", "/emulator/v1/projects/demo-other:ruleCoverage"),
-        ("127.0.0.1:8080", "/emulator/v1/projects/demo-other:ruleCoverage.html"),
-    ]
+    # The HTML view of the same report doubled the emulator's work and ran it out of memory: never asked for.
+    assert fetch.calls == [("127.0.0.1:8080", "/emulator/v1/projects/demo-other:ruleCoverage")]
     assert (repo / coverage.JSON_REPORT).read_text(encoding="utf-8") == "report for /emulator/v1/projects/demo-other:ruleCoverage"
-    assert (repo / coverage.HTML_REPORT).read_text(encoding="utf-8") == "report for /emulator/v1/projects/demo-other:ruleCoverage.html"
-    assert log.messages == [
-        "rules coverage report saved: reports/rules/firestore-coverage.json",
-        "rules coverage report saved: reports/rules/firestore-coverage.html",
-    ]
+    assert sorted(path.name for path in (repo / coverage.JSON_REPORT).parent.iterdir()) == ["firestore-coverage.json"]
+    assert log.messages == ["rules coverage report saved: reports/rules/firestore-coverage.json"]
 
 
 def test_happy_path_save_defaults_to_the_demo_project(repo: Path) -> None:
     fetch = RecordingFetch()
 
-    coverage.save_report(repo, {"FIRESTORE_EMULATOR_HOST": "127.0.0.1:8080"}, fetch)
+    assert coverage.save_report(repo, {"FIRESTORE_EMULATOR_HOST": "127.0.0.1:8080"}, fetch) == repo / coverage.JSON_REPORT
 
-    assert ("127.0.0.1:8080", "/emulator/v1/projects/demo-hcm:ruleCoverage") in fetch.calls
-
-
-def test_happy_path_save_asks_for_both_reports_at_once(repo: Path) -> None:
-    # Each answer costs the emulator seconds: the second request must not wait for the first answer. A fetch that
-    # answers only once both requests have arrived passes only when they are in flight together.
-    both_asked = threading.Barrier(2, timeout=10)
-
-    def fetch(host: str, path: str) -> bytes:
-        both_asked.wait()
-        return f"{host}{path}".encode()
-
-    written = coverage.save_report(repo, {"FIRESTORE_EMULATOR_HOST": "127.0.0.1:8080"}, fetch)
-
-    assert [path.relative_to(repo) for path in written] == [coverage.JSON_REPORT, coverage.HTML_REPORT]
+    assert fetch.calls == [("127.0.0.1:8080", "/emulator/v1/projects/demo-hcm:ruleCoverage")]
 
 
 def test_bad_path_a_failed_report_fails_the_save(repo: Path, log: pytest.LogCaptureFixture) -> None:
-    def fetch(host: str, path: str) -> bytes:
-        if path.endswith(".html"):
-            raise coverage.CoverageError(f"GET {path} from {host} returned HTTP 500")
-        return b"{}"
+    def fetch(host: str, path: str, _target: Path) -> None:
+        raise coverage.CoverageError(f"GET {path} from {host} returned HTTP 500")
 
     assert (
         coverage.main(["save", "--root", str(repo)], env={"FIRESTORE_EMULATOR_HOST": "127.0.0.1:8080"}, fetch=fetch)
         == coverage.EXIT_FAILURE
     )
     assert errors(log) == [
-        "[FAILURE] rules coverage: GET /emulator/v1/projects/demo-hcm:ruleCoverage.html from 127.0.0.1:8080 returned HTTP 500"
+        "[FAILURE] rules coverage: GET /emulator/v1/projects/demo-hcm:ruleCoverage from 127.0.0.1:8080 returned HTTP 500"
     ]
 
 
@@ -265,18 +245,23 @@ def test_bad_path_save_outside_the_emulators_fails(repo: Path, log: pytest.LogCa
 # --- HTTP ------------------------------------------------------------------------------------------
 
 
+# A body larger than one streamed piece, so the copy takes more than one read.
+BODY = b'{"report": []}' + b" " * coverage.CHUNK_BYTES
+
+
 class EmulatorHandler(socketserver.StreamRequestHandler):
-    """Answers like the emulator: 200 with a JSON body for the coverage path, 404 otherwise."""
+    """Answers like the emulator: 200 with a JSON body for the coverage path, a body cut short for `/cut`, 404 otherwise."""
 
     @override
     def handle(self) -> None:
         path = self.rfile.readline().decode("ascii").split()[1]
         while self.rfile.readline().strip():
             continue
-        status = "200 OK" if path.endswith(":ruleCoverage") else "404 Not Found"
-        body = b'{"report": []}'
-        head = f"HTTP/1.1 {status}\r\nContent-Length: {len(body)}\r\nConnection: close\r\n\r\n"
-        self.wfile.write(head.encode("ascii") + body)
+        status = "404 Not Found" if path == "/missing" else "200 OK"
+        # `/cut` promises more bytes than it sends, then closes: a transfer broken halfway.
+        length = len(BODY) * 2 if path == "/cut" else len(BODY)
+        head = f"HTTP/1.1 {status}\r\nContent-Length: {length}\r\nConnection: close\r\n\r\n"
+        self.wfile.write(head.encode("ascii") + BODY)
 
 
 @pytest.fixture
@@ -290,22 +275,72 @@ def emulator() -> Iterator[str]:
     server.server_close()
 
 
-def test_happy_path_fetch_http_reads_the_body(emulator: str) -> None:
-    assert coverage.fetch_http(emulator, "/emulator/v1/projects/demo-hcm:ruleCoverage") == b'{"report": []}'
+def test_happy_path_fetch_http_streams_the_body_into_the_report(emulator: str, tmp_path: Path) -> None:
+    target = tmp_path / "reports" / "rules" / "firestore-coverage.json"
+
+    coverage.fetch_http(emulator, "/emulator/v1/projects/demo-hcm:ruleCoverage", target)
+
+    assert target.read_bytes() == BODY
+    assert [path.name for path in target.parent.iterdir()] == ["firestore-coverage.json"]
 
 
-def test_bad_path_fetch_http_rejects_non_200(emulator: str) -> None:
+def test_bad_path_fetch_http_rejects_non_200_and_writes_nothing(emulator: str, tmp_path: Path) -> None:
+    target = tmp_path / "firestore-coverage.json"
+
     with pytest.raises(coverage.CoverageError, match="returned HTTP 404"):
-        coverage.fetch_http(emulator, "/missing")
+        coverage.fetch_http(emulator, "/missing", target)
+    assert list(tmp_path.iterdir()) == []
 
 
-def test_bad_path_fetch_http_reports_an_unreachable_emulator() -> None:
+def test_bad_path_fetch_http_leaves_no_truncated_report_when_the_transfer_breaks(emulator: str, tmp_path: Path) -> None:
+    target = tmp_path / "firestore-coverage.json"
+    target.write_text("the previous run's report", encoding="utf-8")
+
+    with pytest.raises(coverage.CoverageError, match=f"ended {len(BODY)} bytes early"):
+        coverage.fetch_http(emulator, "/cut", target)
+    assert target.read_text(encoding="utf-8") == "the previous run's report"
+    assert [path.name for path in tmp_path.iterdir()] == ["firestore-coverage.json"]
+
+
+def test_bad_path_fetch_http_reports_an_unreachable_emulator(tmp_path: Path) -> None:
     server = socketserver.TCPServer(("127.0.0.1", 0), EmulatorHandler)
     host = f"127.0.0.1:{server.server_address[1]}"
     server.server_close()
 
     with pytest.raises(coverage.CoverageError, match="cannot reach the Firestore emulator"):
-        coverage.fetch_http(host, "/emulator/v1/projects/demo-hcm:ruleCoverage")
+        coverage.fetch_http(host, "/emulator/v1/projects/demo-hcm:ruleCoverage", tmp_path / "firestore-coverage.json")
+
+
+# --- reading a large report ------------------------------------------------------------------------
+
+
+def test_happy_path_an_entry_keeps_only_what_its_outcome_needs() -> None:
+    document = {"mapValue": {"fields": {"value": {"stringValue": "x" * 1000}, "title": {"stringValue": "y"}}}}
+
+    assert coverage.compact_entry({"value": document, "count": 3}) == {"value": {"value": True}}
+    assert coverage.compact_entry({"value": TRUE, "count": 1}) == {"value": TRUE}
+    assert coverage.compact_entry({"value": ERROR, "count": 1}) == {"value": {"undefined": True}}
+    assert coverage.compact_entry({"value": SKIPPED, "count": 1}) == {"value": {}}
+
+
+def test_bad_path_other_objects_of_the_report_are_left_as_they_are() -> None:
+    position = {"line": 1, "column": 1, "currentOffset": 0, "endOffset": 1}
+    tree: dict[str, object] = {"sourcePosition": position, "values": [], "children": []}
+
+    assert coverage.compact_entry(tree) == tree
+    assert coverage.compact_entry({"value": "text"}) == {"value": "text"}
+    assert coverage.compact_entry({"value": MAP, "name": "kept"}) == {"value": MAP, "name": "kept"}
+
+
+def test_happy_path_a_compacted_report_gives_the_same_verdict(repo: Path) -> None:
+    deep = {"mapValue": {"fields": {"value": {"mapValue": {"fields": {"value": FALSE}}}}}}
+    report = full_report()
+    roots = report["report"]
+    assert isinstance(roots, list)
+    report["report"] = [*roots, node("signedIn()", (deep,))]
+    save(repo, report)
+
+    assert coverage.check_report(repo) == []
 
 
 # --- CLI -------------------------------------------------------------------------------------------

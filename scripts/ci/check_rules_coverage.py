@@ -5,8 +5,11 @@ Sonar and v8 cannot measure security rules, so the Firestore emulator's own rule
 the measure (docs/research/design-review-testability.md §3.5). Two subcommands:
 
 * `save` runs INSIDE `firebase emulators:exec`, right after Vitest (scripts/ci/run-emulated-tests.sh):
-  it fetches `/emulator/v1/projects/<project>:ruleCoverage` (JSON) and `...:ruleCoverage.html` from
-  FIRESTORE_EMULATOR_HOST, both at once, and writes reports/rules/firestore-coverage.{json,html}.
+  it fetches `/emulator/v1/projects/<project>:ruleCoverage` (JSON) from FIRESTORE_EMULATOR_HOST and
+  streams it into reports/rules/firestore-coverage.json. The emulator builds the answer in its heap from
+  every evaluation of the run (about 290 MB of JSON), so only the JSON is asked for: the HTML view of the
+  same report doubled that work and, asked at once, ran the emulator out of memory
+  (docs/research/DECISIONS-for-review.md §180g). While the emulators run, `curl` gives it by hand.
 * `check` (the `rules-coverage` gate) reads the saved JSON report and fails when
   1. an expression was never evaluated (an operand skipped by `&&`/`||` short-circuiting does not
      count as evaluated), or
@@ -24,11 +27,10 @@ import http.client
 import json
 import os
 import re
+import shutil
 import sys
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from functools import partial
 from http import HTTPStatus
 from pathlib import Path
 
@@ -39,11 +41,11 @@ ROOT = Path(__file__).resolve().parents[2]
 
 RULES = Path("firebase", "firestore.rules")
 JSON_REPORT = Path("reports", "rules", "firestore-coverage.json")
-HTML_REPORT = Path("reports", "rules", "firestore-coverage.html")
-# Each saved report with the suffix of its emulator endpoint.
-REPORTS = ((JSON_REPORT, ""), (HTML_REPORT, ".html"))
 DEFAULT_PROJECT = "demo-hcm"
 TIMEOUT_SECONDS = 30
+CHUNK_BYTES = 1 << 20
+# The keys of one `values` entry of the report: the evaluated value and how often it was seen.
+ENTRY_KEYS = frozenset({"value", "count"})
 EXIT_FAILURE = 1
 SNIPPET_LENGTH = 72
 
@@ -52,7 +54,7 @@ ALLOW_PREFIX = re.compile(r"allow\s+\w+(?:\s*,\s*\w+)*\s*:\s*if\s*$")
 PREFIX_WINDOW = 160
 CONSTANT_CONDITIONS = frozenset({"true", "false"})
 
-Fetch = Callable[[str, str], bytes]
+Fetch = Callable[[str, str, Path], None]
 
 
 class CoverageError(RuntimeError):
@@ -73,43 +75,65 @@ class Expression:
         return f"{RULES}:{self.line}:{self.column}"
 
 
-def fetch_http(host: str, path: str) -> bytes:
-    """GET http://<host><path> from the local emulator; raises CoverageError unless it answers 200."""
+def fetch_http(host: str, path: str, target: Path) -> None:
+    """GET http://<host><path> from the local emulator, streamed into `target`; raises CoverageError unless it answers 200.
+
+    The body goes to `<target>.part` in 1 MiB pieces and replaces `target` once complete (as long as its `Content-Length`): the
+    report is never held whole here, and a broken transfer leaves no truncated report behind.
+    """
     connection = http.client.HTTPConnection(host, timeout=TIMEOUT_SECONDS)
+    part = target.with_name(f"{target.name}.part")
     try:
         connection.request("GET", path)
         response = connection.getresponse()
-        body = response.read()
-    except OSError as error:
-        raise CoverageError(f"cannot reach the Firestore emulator at {host}: {error}") from error
+        if response.status != HTTPStatus.OK:
+            raise CoverageError(f"GET {path} from {host} returned HTTP {response.status}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with part.open("wb") as out:
+            shutil.copyfileobj(response, out, CHUNK_BYTES)
+        # A body cut short ends a read of a given size quietly: what the emulator announced and never sent is left over.
+        if response.length:
+            raise CoverageError(f"GET {path} from {host} ended {response.length} bytes early")
+        part.replace(target)
+    except (OSError, http.client.HTTPException) as error:
+        raise CoverageError(f"cannot reach the Firestore emulator at {host}: {error!r}") from error
     finally:
         connection.close()
-    if response.status != HTTPStatus.OK:
-        raise CoverageError(f"GET {path} from {host} returned HTTP {response.status}")
-    return body
+        part.unlink(missing_ok=True)
 
 
-def save_report(root: Path, env: Mapping[str, str], fetch: Fetch) -> list[Path]:
-    """Fetches the JSON and HTML coverage reports from the running emulator into reports/rules/.
-
-    The emulator builds each answer from every evaluation of the run (about 250 MB, 3 to 8 s of its CPU), so both
-    requests go out at once: the save lasts as long as the slower one, not their sum
-    (docs/research/pipeline-baseline.md, the tests addendum).
-    """
+def save_report(root: Path, env: Mapping[str, str], fetch: Fetch) -> Path:
+    """Fetches the JSON coverage report from the running emulator into reports/rules/firestore-coverage.json."""
     host = env.get("FIRESTORE_EMULATOR_HOST")
     if not host:
         raise CoverageError("FIRESTORE_EMULATOR_HOST is not set: run inside `firebase emulators:exec`")
     project = env.get("GCLOUD_PROJECT") or DEFAULT_PROJECT
-    paths = [f"/emulator/v1/projects/{project}:ruleCoverage{suffix}" for _, suffix in REPORTS]
-    with ThreadPoolExecutor(max_workers=len(REPORTS)) as pool:
-        bodies = list(pool.map(partial(fetch, host), paths))
-    written: list[Path] = []
-    for (relative, _), body in zip(REPORTS, bodies, strict=True):
-        target = root / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(body)
-        written.append(target)
-    return written
+    target = root / JSON_REPORT
+    fetch(host, f"/emulator/v1/projects/{project}:ruleCoverage", target)
+    return target
+
+
+def compact_entry(entry: dict[str, object]) -> dict[str, object]:
+    """`json.load`'s object_hook: a `values` entry keeps only what `outcome` reads of its value.
+
+    An evaluated value can be a whole request or document (a `mapValue` of every field): kept, the report's ~290 MB took
+    gigabytes of Python objects. Hooks run innermost first, so each entry's value is dropped as soon as it is read.
+    """
+    value = entry.get("value")
+    if not isinstance(value, dict) or not entry.keys() <= ENTRY_KEYS:
+        return entry
+    return {"value": essence(value)}
+
+
+def essence(value: Mapping[str, object]) -> dict[str, object]:
+    """What `outcome` tells apart: skipped (`{}`), an error, a boolean and its value, or any other value."""
+    if not value:
+        return {}
+    if "undefined" in value:
+        return {"undefined": True}
+    if "boolValue" in value:
+        return {"boolValue": value["boolValue"]}
+    return {"value": True}
 
 
 def outcome(value: Mapping[str, object]) -> str | None:
@@ -197,7 +221,8 @@ def report_rules(report: Mapping[str, object]) -> str:
 
 def load_report(path: Path) -> Mapping[str, object]:
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        with path.open(encoding="utf-8") as report:
+            data = json.load(report, object_hook=compact_entry)
     except FileNotFoundError as error:
         raise CoverageError(f"{path} not found: run the tests stage (Vitest under `firebase emulators:exec`) first") from error
     except json.JSONDecodeError as error:
@@ -229,8 +254,7 @@ def run_check(root: Path) -> int:
 
 
 def run_save(root: Path, env: Mapping[str, str], fetch: Fetch) -> int:
-    for path in save_report(root, env, fetch):
-        LOG.info("rules coverage report saved: %s", path.relative_to(root))
+    LOG.info("rules coverage report saved: %s", save_report(root, env, fetch).relative_to(root))
     return 0
 
 
