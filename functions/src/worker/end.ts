@@ -18,9 +18,11 @@ import { ApiError } from '../api/api-error.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
 import { omit } from '../api/objects.js';
 import { endWork } from '../imagery/end.js';
+import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { IN_RUN, PIPELINE_WRITER, at, holds, requireWorker, type WorkerCall } from './holder.js';
 import { archiveOf, handedBack, returnsExhausted } from './archive-host.js';
+import { filmHeldElsewhere } from './film-host.js';
 import { paired } from './pairing.js';
 import { activePause, afterCommand, releasedJob } from './pause-state.js';
 
@@ -54,45 +56,65 @@ async function failHeld(deps: EndDeps, call: WorkerCall, request: Request, now: 
     }
 }
 
-/** The archive of a job the worker may hand back: an archive series it still holds unfinished; else undefined. */
-function returnable(job: JobDoc | undefined, call: WorkerCall, now: Date): string | undefined {
-    return job !== undefined && stillRunning(job, call, now) ? archiveOf(job) : undefined;
+/** Why a handed-back job cannot wait: its files are on no computer that could run it. */
+type Lost = NonNullable<Request['error']> | undefined;
+
+const ARCHIVE_LOST: Lost = {
+    code: 'apiError.imagery.archiveMissing',
+    message: 'the archive is not on its computer, and no copy reached this one',
+};
+const FILM_LOST: Lost = { code: 'apiError.imagery.filmMissing', message: 'the stitched film is on no computer of the city any more' };
+
+/** A hand-back's job, the worker's call and what the other workers hold. */
+interface Returning {
+    readonly job: JobDoc;
+    readonly call: WorkerCall;
+    readonly jobId: string;
+    readonly now: Date;
+    readonly filmElsewhere: boolean;
+}
+
+/** An archive series goes back for a copy of its sheets, unless the returns are exhausted. */
+async function returnArchive(deps: EndDeps, transaction: DocumentTransaction, back: Returning, archiveId: string): Promise<Lost> {
+    if (await returnsExhausted(transaction, back.job, archiveId, back.call)) {
+        return ARCHIVE_LOST;
+    }
+    await transaction.set(FIRESTORE_PATHS.job(back.call.cityId, back.jobId), jobDocSchema, handedBack(back.job, back.now));
+    deps.log.info('worker handed back an archive job it has no sheets for', { cityId: back.call.cityId, jobId: back.jobId, archiveId });
+    return undefined;
+}
+
+/** Any other job went back for its stitched film: it waits for the computer that holds it, or fails when none does. */
+async function returnFilm(deps: EndDeps, transaction: DocumentTransaction, back: Returning): Promise<Lost> {
+    if (!back.filmElsewhere) {
+        return FILM_LOST;
+    }
+    await transaction.set(FIRESTORE_PATHS.job(back.call.cityId, back.jobId), jobDocSchema, handedBack(back.job, back.now, 'film-copy'));
+    deps.log.info('worker handed back a job whose film is on another computer', { cityId: back.call.cityId, jobId: back.jobId });
+    return undefined;
 }
 
 /**
  * M20 (2026-11-13): the worker has not the series' sheets and found no copy: it hands the job back, queued again with its attempt
- * given back, waiting for the computer that has the archive to send a copy. Only an archive series the worker still holds
- * unfinished; the worker the archive's report came from (its files are gone) and the `ARCHIVE_RETURNS_MAX`th return fail the job
- * with `archiveMissing` instead (no hand-back loop).
+ * given back, waiting for the computer that has the archive to send a copy. Only a job the worker still holds unfinished; the worker
+ * the archive's report came from (its files are gone) and the `ARCHIVE_RETURNS_MAX`th return fail the job with `archiveMissing`
+ * instead (no hand-back loop). Any other job came back for its stitched film (`film-host.ts`): it waits for the computer that holds
+ * the film, or fails `filmMissing` when no worker of the city says it does.
  */
 async function handBack(deps: EndDeps, call: WorkerCall, request: Request, now: Date): Promise<void> {
     const path = FIRESTORE_PATHS.job(call.cityId, request.jobId);
-    const lost = await deps.documents.transaction(async (transaction) => {
+    const filmElsewhere = await filmHeldElsewhere(deps.documents, call, request.jobId, now);
+    const lost = await deps.documents.transaction(async (transaction): Promise<Lost> => {
         const job = await transaction.get(path, jobDocSchema);
-        const archiveId = returnable(job, call, now);
-        if (job === undefined || archiveId === undefined) {
-            return false;
+        if (job === undefined || !stillRunning(job, call, now)) {
+            return undefined;
         }
-        if (await returnsExhausted(transaction, job, archiveId, call)) {
-            return true;
-        }
-        await transaction.set(path, jobDocSchema, handedBack(job, now));
-        deps.log.info('worker handed back an archive job it has no sheets for', { cityId: call.cityId, jobId: request.jobId, archiveId });
-        return false;
+        const back = { job, call, jobId: request.jobId, now, filmElsewhere };
+        const archiveId = archiveOf(job);
+        return archiveId === undefined ? returnFilm(deps, transaction, back) : returnArchive(deps, transaction, back, archiveId);
     });
-    if (lost) {
-        await failHeld(
-            deps,
-            call,
-            {
-                ...request,
-                error: {
-                    code: 'apiError.imagery.archiveMissing',
-                    message: 'the archive is not on its computer, and no copy reached this one',
-                },
-            },
-            now,
-        );
+    if (lost !== undefined) {
+        await failHeld(deps, call, { ...request, error: lost }, now);
     }
 }
 

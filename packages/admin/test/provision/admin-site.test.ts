@@ -60,14 +60,14 @@ describe('the admin-site item', () => {
         expect(report.items).toEqual([{ id: 'admin-site', state: 'unavailable', detail: 'apiError.unavailable' }]);
     });
 
-    it('badPath_aSiteTheOwnerMayNotReadIsNotTheirsAndItsCreateNamesTheMissingRole', async () => {
+    it('badPath_aSiteTheOwnerMayNotReadStopsTheItemWithTheMissingRole', async () => {
         const world = provisionWorld();
         world.fakes.fail('firebase-hosting', 'forbidden');
 
         const report = await applyProvision(planProvision(null, ['admin-site']), world.deps);
 
         expect(report.items[0]).toMatchObject({ id: 'admin-site', state: 'invalid' });
-        expect(world.fakes.callsTo('start.hosting.sites.create').length).toBeGreaterThan(0);
+        expect(world.fakes.callsTo('start.hosting.sites.create')).toEqual([]);
         expect(world.fakes.callsTo('identity-toolkit.updateConfig')).toEqual([]);
     });
 

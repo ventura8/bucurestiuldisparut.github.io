@@ -145,6 +145,8 @@ class WorkerLoop:
         self.sweep: Callable[[str | None], None] = lambda _claimed: None
         # M20 (2026-11-13): the local archives this computer holds whole (`ArchiveStore.held`): it sends their series' copies.
         self.archives: Callable[[], list[str]] = list
+        # 2026-11-13: the jobs whose stitched film is in this work folder (`held_films`): a job waiting for its film comes here.
+        self.films: Callable[[], list[str]] = list
         # M20: the copy of a series another worker waits for, sent before any job (`CopySender.send`).
         self.copier: Callable[[Mapping[str, object]], None] = lambda _duty: None
         # Finding 72: under the starter's supervisor an outdated image ends the loop (the supervisor updates it).
@@ -268,6 +270,7 @@ class WorkerLoop:
         share = self.share()
         said: dict[str, object] = {} if share is None else {"share": share}
         claim: dict[str, object] = {**self._ids, "types": list(RUN_JOB_TYPES), "archives": self.archives()[:CLAIM_ARCHIVES_MAX], **said}
+        claim["films"] = self.films()[:CLAIM_ARCHIVES_MAX]
         return claim if sent is None else {**claim, "pause": sent.wire()}
 
     def _asked_to_release(self) -> bool:

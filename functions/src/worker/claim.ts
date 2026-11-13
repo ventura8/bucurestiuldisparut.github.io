@@ -22,6 +22,7 @@ import { IMAGERY_WRITER } from '../imagery/records.js';
 import type { Ports } from '../ports/index.js';
 import { copyFor } from './archive-host.js';
 import { activePause, afterCommand, pauseAnswer } from './pause-state.js';
+import { filmHere } from './film-host.js';
 import { at, leaseOwnerOf, requireGreen, requireWorker, type WorkerCall } from './holder.js';
 import { holdBack, type HoldBack } from './household.js';
 import { imageState, paired } from './pairing.js';
@@ -51,15 +52,25 @@ const CLAIM_RULES: readonly ((job: JobDoc, now: Date) => boolean)[] = [
 /** The types the worker's pipeline runs, when it named them: an older image leaves a newer type queued for an updated one. */
 type Runs = readonly string[] | undefined;
 
-/** The worker's call with the types it runs, (W5) its governor's share now, and its own page's pause command (recorded with the claim). */
+/** The jobs whose stitched film the worker holds (a job waiting for its film goes only to such a worker). */
+type Films = readonly string[] | undefined;
+
+/** The worker's call with the types it runs and the films it holds. */
+/** The worker's call: the types it runs, its films, (W5) its governor's share, and its own page's pause command (recorded with the claim). */
 type Claim = WorkerCall & {
     readonly runs: Runs;
+    readonly films: Films;
     readonly share?: WorkerShare;
     readonly pause?: CallableRequest<'worker.claim'>['pause'];
 };
 
-function claimable(job: JobDoc | undefined, now: Date, runs: Runs): job is JobDoc {
-    return job !== undefined && CLAIM_RULES.every((rule) => rule(job, now)) && (runs === undefined || runs.includes(job.type));
+function claimable(job: JobDoc | undefined, now: Date, call: Pick<Claim, 'runs' | 'films'>, jobId: string): job is JobDoc {
+    return (
+        job !== undefined &&
+        CLAIM_RULES.every((rule) => rule(job, now)) &&
+        (call.runs === undefined || call.runs.includes(job.type)) &&
+        filmHere(job, jobId, call.films)
+    );
 }
 
 /** The job as the worker takes it: `starting`, one more attempt, leased to the worker, no Cloud Run machine. */
@@ -85,7 +96,7 @@ function seen(worker: WorkerDoc, call: WorkerCall & { readonly share?: WorkerSha
 
 /** The first of the city's claimable jobs this worker takes, or null. */
 async function takeFirst(deps: ClaimDeps, call: Claim, now: Date): Promise<string | null> {
-    for (const jobId of await candidates(deps, call.cityId, now, call.runs)) {
+    for (const jobId of await candidates(deps, call, now)) {
         if (await take(deps, call, jobId, now)) {
             return jobId;
         }
@@ -99,18 +110,21 @@ function take(deps: ClaimDeps, call: Claim, jobId: string, now: Date): Promise<b
     return deps.documents.transaction(async (transaction) => {
         const job = await transaction.get(path, jobDocSchema);
         const worker = afterCommand(await requireWorker(transaction, call), call.pause, now);
-        if (!claimable(job, now, call.runs)) {
+        if (!claimable(job, now, call, jobId)) {
             return false;
         }
         await transaction.set(path, jobDocSchema, claimed(job, call, now));
-        await transaction.set(FIRESTORE_PATHS.worker(call.cityId, call.workerId), workerDocSchema, seen(worker, call, now, jobId));
+        await transaction.set(FIRESTORE_PATHS.worker(call.cityId, call.workerId), workerDocSchema, {
+            ...seen(worker, call, now, jobId),
+            ...filmsOf(call.films),
+        });
         return true;
     });
 }
 
 /** The oldest queued local jobs of the city, oldest first (index `jobs`: `runOn`, `status`, `createdAt`). */
-async function candidates(deps: ClaimDeps, cityId: string, now: Date, runs: Runs): Promise<string[]> {
-    const found = await deps.documents.query(FIRESTORE_PATHS.jobs(cityId), jobDocSchema, {
+async function candidates(deps: ClaimDeps, call: Claim, now: Date): Promise<string[]> {
+    const found = await deps.documents.query(FIRESTORE_PATHS.jobs(call.cityId), jobDocSchema, {
         where: [
             ['runOn', '==', 'local'],
             ['status', '==', 'queued'],
@@ -118,7 +132,7 @@ async function candidates(deps: ClaimDeps, cityId: string, now: Date, runs: Runs
         orderBy: ['createdAt', 'asc'],
         limit: CLAIM_SCAN,
     });
-    return found.documents.filter((job) => claimable(job.data, now, runs)).map((job) => job.id);
+    return found.documents.filter((job) => claimable(job.data, now, call, job.id)).map((job) => job.id);
 }
 
 /**
@@ -145,8 +159,13 @@ async function workerClaim(
         return reportRemoval(deps, call, request.removal);
     }
     await requireGreen(deps.documents);
-    const share = request.share === undefined ? {} : { share: request.share };
-    const claim: Claim = { ...call, runs: request.types, ...share, ...(request.pause === undefined ? {} : { pause: request.pause }) };
+    const claim: Claim = {
+        ...call,
+        runs: request.types,
+        films: request.films,
+        ...(request.share === undefined ? {} : { share: request.share }),
+        ...(request.pause === undefined ? {} : { pause: request.pause }),
+    };
     logCommand(deps, call, request.pause);
     return claimFor(deps, caller, claim, request.archives);
 }
@@ -172,7 +191,7 @@ async function claimFor(
         await deps.documents.set(path, workerDocSchema, { ...seen(worker, claim, now), outdated });
         return withPause(noJob(deps, claim, outdated, held), worker, now);
     }
-    const seenNow = { ...seen(worker, claim, now), outdated: false };
+    const seenNow = { ...seen(worker, claim, now), outdated: false, ...filmsOf(claim.films) };
     return (await offerCopy(deps, claim, archives, seenNow)) ?? (await claimJob(deps, claim, seenNow, now));
 }
 
@@ -181,6 +200,11 @@ function logCommand(deps: ClaimDeps, call: WorkerCall, command: CallableRequest<
     if (command !== undefined) {
         deps.log.info(`worker ${command.action}d from its own page`, { cityId: call.cityId, workerId: call.workerId, ...command });
     }
+}
+
+/** The films the claim named, kept on the worker's document (a hand-back asks who holds a film); none kept when it named none. */
+function filmsOf(films: Films): Pick<WorkerDoc, 'films'> {
+    return films === undefined ? {} : { films: [...films] };
 }
 
 /** M20: a series another worker waits for, when this worker holds its archive whole; the worker is seen now. */

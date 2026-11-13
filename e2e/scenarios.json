@@ -11328,6 +11328,17 @@
             "notes": "Lesson 645 (the 1966 KH-7 strip DZB00403000026H017001 covered 49 % of Bucharest: its two segments were joined the wrong way). In pipeline/tests/unit/test_stitch_order.py; the generator is pipeline/tests/synthetic/scenes.py (`kh7_segments`, `scanner_edges`, `SceneSpec.right_to_left`)."
         },
         {
+            "id": "S-P01-HAPPY-CORONA-WIDE-OVERLAP",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A wide Corona segment's overlap is found however far it reaches",
+            "asserts": "two segments 3.2 times as wide as tall overlapping by 7 % or 29 % of their width (past the former fixed reach of 1200 px) -> the coarse match finds the true offset with a score over 0.9; an overlap wider than the overlap share is not searched",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 674 (the 1968 Corona DS1103-1058DF026 repeated a third of itself: a fixed reach of 1200 shrunk pixels stopped short of its 23 % overlaps). In pipeline/tests/unit/test_stitch_order.py."
+        },
+        {
             "id": "S-P01-BAD-SEGMENT-OTHER-FRAME",
             "behaviour": "P01",
             "area": "pipeline",
@@ -17323,6 +17334,28 @@
             "notes": "M20 §20 (live report of 2026-11-13; DECISIONS §204). Tests: functions/test/worker/archive-host.test.ts."
         },
         {
+            "id": "S-A120-HAPPY-FILM-HOST",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "happy",
+            "title": "A job whose stitched film is on another computer waits for that computer",
+            "asserts": "a worker without the film returns the job: queued, attempt given back, waitReason film-copy; a claim keeps its films on the worker document; only a claim naming the job in films takes it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live report of 2026-11-13 (1968 Corona F026, film no longer stored); M20 §21, DECISIONS §217. Tests: functions/test/worker/film-host.test.ts."
+        },
+        {
+            "id": "S-A120-BAD-FILM-GONE",
+            "behaviour": "A120",
+            "area": "admin",
+            "path": "bad",
+            "title": "A film no computer holds fails the job with what to do",
+            "asserts": "no other worker names the film, or only a disconnected one or one unseen for more than 14 days -> failed apiError.imagery.filmMissing (Locate again, or import the frame again); the dispatcher keeps the film-copy wait",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live report of 2026-11-13 (1968 Corona F026, film no longer stored); M20 §21, DECISIONS §217. Tests: functions/test/worker/film-host.test.ts."
+        },
+        {
             "id": "S-A121-HAPPY-PANEL",
             "behaviour": "A121",
             "area": "admin",
@@ -18839,6 +18872,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M20 §20 (live report of 2026-11-13). Tests: pipeline/tests/unit/test_archive_copy.py, test_worker_loop.py."
+        },
+        {
+            "id": "S-P20-HAPPY-FILM-HOST",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A worker names the films it holds in every claim",
+            "asserts": "held_films lists the jobs with work/{city}/{job}/frame.json, newest first; the claim sends them as films",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live report of 2026-11-13 (1968 Corona F026, film no longer stored); M20 §21, DECISIONS §217. Tests: pipeline/tests/unit/test_film_host.py, test_worker_loop.py."
+        },
+        {
+            "id": "S-P20-BAD-FILM-GONE",
+            "behaviour": "P20",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A film not on this computer hands the job back on a worker, and fails in the cloud",
+            "asserts": "recrop on a worker without frame.json or a segment raises FilmElsewhereError and the run ends RETURNED; in Cloud Run it fails processingFailed with Locate again",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Live report of 2026-11-13 (1968 Corona F026, film no longer stored); M20 §21, DECISIONS §217. Tests: pipeline/tests/unit/test_film_host.py."
         },
         {
             "id": "S-A65-HAPPY-JOINED-FRAME",
@@ -20676,6 +20731,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "docs/research/M7-local-worker.md, Household computers (macOS). Tests: functions/test/worker/starter-household.test.ts."
+        },
+        {
+            "id": "S-A160-HAPPY-OLD-ADDRESS-INSTALL",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "happy",
+            "title": "A build submitted from the old address reads its files from the admin's own site",
+            "asserts": "the bundle URL on the public map's /admin/ answers 301 to the project's admin site -> fetch follows that one redirect and unpacks the checked files; a redirect anywhere else stops the step naming where it went",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "DECISIONS-for-review.md §210; lesson 675. Unit: packages/admin/test/install/fetch-script.test.ts."
+        },
+        {
+            "id": "S-A160-BAD-FOREIGN-REDIRECT",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "A bundle redirected anywhere but the project's admin site stops the build",
+            "asserts": "the bundle URL answers 301 to another origin -> fetch fails naming where it was sent; nothing is unpacked",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "DECISIONS-for-review.md §210; lesson 675. Unit: packages/admin/test/install/fetch-script.test.ts."
         },
         {
             "id": "S-A170-HAPPY",

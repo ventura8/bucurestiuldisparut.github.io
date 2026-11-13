@@ -113,6 +113,8 @@ export const workerDocSchema = z.strictObject({
     pausedAt: timestampSchema.optional(),
     /** W5: Remove this computer, and how far it got. */
     removal: workerRemovalSchema.optional(),
+    /** 2026-11-13: the jobs whose stitched film this computer holds, as its last claim said (a job without its film waits for it). */
+    films: z.array(idSchema).max(200).optional(),
     /** Disconnect this computer (`worker.revoke`): every later call of this worker is refused. */
     revokedAt: timestampSchema.optional(),
     /**

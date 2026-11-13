@@ -16,6 +16,10 @@
  * §210: a server build whose admin runs on its own Hosting site (`HCM_ADMIN_SITE`) adds that site to the functions' `.env`
  * (`functions/dist/.env`, which `firebase-tools` reads beside `.env.<project>`), so their links open it directly.
  *
+ * §210: the public map's `/admin/…` answers 301 to the admin's own site once the project has it, so an admin still open on
+ * the old address names a bundle there: one redirect is followed, and only to `HCM_REDIRECT_ORIGIN` (the project's admin
+ * site); any other redirect fails the step (lesson 675).
+ *
  * Every download is tried up to four times (2026-11-12: one 10 s connect timeout to Hosting failed a whole Update the map):
  * a network error, a 408, a 429 or a 5xx waits `HCM_FETCH_WAITS` (seconds, comma-separated; 5, 15 and 30 by default) and
  * tries again, each wait one line of the step's log; any other answer (a 404, a digest that differs) fails at once.
@@ -35,7 +39,10 @@ export const FETCH_BUNDLE_SCRIPT = [
     'const pause = (seconds) => new Promise((done) => setTimeout(done, seconds * 1000));',
     'async function attempt(url, name) {',
     '    try {',
-    "        const response = await fetch(url, { redirect: 'error' });",
+    "        let response = await fetch(url, { redirect: 'manual' });",
+    "        const to = response.headers.get('location') && new URL(response.headers.get('location'), url);",
+    "        if (to && to.origin !== env.HCM_REDIRECT_ORIGIN) fail(name + ': redirected to ' + to.origin);",
+    "        if (to) response = await fetch(to, { redirect: 'error' });",
     '        if (response.ok) return { bytes: Buffer.from(await response.arrayBuffer()) };',
     "        if (!passing(response.status)) fail(name + ': HTTP ' + response.status);",
     "        return { why: 'HTTP ' + response.status };",

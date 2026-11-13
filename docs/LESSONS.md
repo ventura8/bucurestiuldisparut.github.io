@@ -3961,3 +3961,13 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
       (`S-A143-HAPPY-HEADLESS-PAIR`, `functions/test/worker/starter-household.test.ts`).
     - **What a browser does for its own computer, the helper on that computer must be able to do too: never route one computer's
       loopback through another.**
+
+674. **A search reach in fixed shrunk pixels stopped short of a wide segment's overlap.**
+    - Seen: 2026-11-13, track/corona68: the 1968 Corona frames DS1103-1058DF026 and DF027 (four 36 070 × 11 374 px segments, lettered right to left) overlap by about 23 % of a segment's width (8 200 px). `coarse_match` searched only the last 1 200 shrunk pixels (6 000 px at the 5 times shrink), so every pair matched a wrong place at 0.8 or so, the frame repeated a third of itself and looked mirrored where the repeats met, and DF027's city fell outside its crop.
+    - Fix: the reach is the segment's shrunk height (`SEARCH_HEIGHT_SHARE`), capped at `MAX_OVERLAP_SHARE` of its width (`pipeline/src/hcm_pipeline/steps/stitch.py`; `pipeline/tests/unit/test_stitch_order.py`, S-P01-HAPPY-CORONA-WIDE-OVERLAP). Measured on the real segments: the true offsets score 0.96 to 0.99.
+    - **Scale every search window with the image it searches, and check a stitch's offsets against a direct match of the real segments before blaming the film's orientation.**
+
+675. **A redirect added for people broke a download that refuses redirects.**
+    - Seen: 2026-11-13, track/adminsite: once the public map's `/admin/…` answered 301 to the admin's own site, Update the map from a tab on the old address failed at "Download and check the install files" with `unexpected redirect`: the build's `fetch` uses `redirect: 'error'` and the tab named its own (old) origin as the bundle's.
+    - Fix: the `fetch` step follows one redirect, only to `HCM_REDIRECT_ORIGIN` (the project's admin site); a tab on the old address then installs as from the new one (a reload lands on the new address anyway) (`packages/admin/src/install/fetch-script.ts`).
+    - **Before a path starts to redirect, list every client that fetches it, including build steps and tabs already open.**

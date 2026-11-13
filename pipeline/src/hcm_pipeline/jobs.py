@@ -85,6 +85,11 @@ class ArchiveElsewhereError(Exception):
     `returned`), so the computer that holds the files runs it, and no attempt is spent."""
 
 
+class FilmElsewhereError(ArchiveElsewhereError):
+    """2026-11-13: the frame's film (the segments `stitch` made, under `work/`) is on the computer that stitched it, not here; the worker
+    hands the job back, so that computer runs it, and no attempt is spent (the server fails it `filmMissing` when no computer has it)."""
+
+
 class RunStoppedError(Exception):
     """The run must stop at this checkpoint."""
 

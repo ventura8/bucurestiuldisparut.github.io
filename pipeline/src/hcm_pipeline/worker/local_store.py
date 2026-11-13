@@ -233,3 +233,9 @@ class LocalObjectStore:
         file.parent.mkdir(parents=True, exist_ok=True)
         part.replace(file)
         return self._info(path, file)
+
+
+def held_films(root: Path, city_id: str) -> list[str]:
+    """2026-11-13: the jobs whose stitched film (`work/{city}/{job}/frame.json`) is in this work folder, newest first."""
+    frames = [path for path in (root / "work" / city_id).glob("*/frame.json") if path.is_file()]
+    return [path.parent.name for path in sorted(frames, key=_written_at, reverse=True)]

@@ -84,6 +84,8 @@ export const JOB_WAIT_REASONS = [
     'daily',
     // M20 (2026-11-13): an archive series waiting for the computer that has its scanned maps to send a copy of its sheets.
     'archive-copy',
+    // 2026-11-13: a job whose stitched film is on the computer that stitched it, waiting for that computer to claim it.
+    'film-copy',
 ] as const;
 /** M7 (`docs/research/M7-local-worker.md` §3): where a raster job runs, the owner's computer or Cloud Run. */
 export const RUN_PLACES = ['local', 'cloud'] as const;

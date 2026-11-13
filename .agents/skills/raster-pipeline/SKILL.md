@@ -62,7 +62,7 @@ The Python + GDAL pipeline that turns declassified USGS film scans (Corona KH-4,
 
 - `hcm_pipeline/lost_streets.py` is a CLI, not a job step: `python -m hcm_pipeline.lost_streets --bounds W,S,E,N --out f.geojson` writes the admin's POI import format from OpenHistoricalMap (CC0), OSM's lifecycle-prefixed highways (ODbL) and Wikidata (CC0).
 - Every request carries the project User-Agent (Wikidata refuses a generic one) and nothing personal; a failed source writes nothing (exit 1).
-- Never fetch fostulbucuresti data (no licence). Line thinning is iterative Douglas-Peucker: the recursive one hit Python's recursion limit on a zigzag.
+- Only licensed open sources are fetched. Line thinning is iterative Douglas-Peucker: the recursive one hit Python's recursion limit on a zigzag.
 
 ## Job state machine (`cities/{c}/jobs/{id}`)
 

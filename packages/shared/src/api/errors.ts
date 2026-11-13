@@ -198,6 +198,7 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.localOnly': spec('failed-precondition'),
     'apiError.imagery.rightsUnconfirmed': spec('failed-precondition'),
     'apiError.imagery.archiveMissing': spec('failed-precondition'),
+    'apiError.imagery.filmMissing': spec('failed-precondition'),
     'apiError.imagery.archiveImported': spec('failed-precondition'),
     'apiError.imagery.archiveYear': spec('failed-precondition'),
     // Pause (the owner's request of 2026-11-13): a job that finished or waits for something else; a timed pause past two days.
