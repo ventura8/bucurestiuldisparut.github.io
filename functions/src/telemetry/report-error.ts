@@ -7,6 +7,8 @@ import {
     ERROR_REPORT_MAX_BYTES,
     HTTP_ENDPOINTS,
     apiErrorDetails,
+    clientLabel,
+    crashNoiseOf,
     errorReportSchema,
     validate,
     type ApiErrorCode,
@@ -36,6 +38,8 @@ export interface ReportRequest {
     readonly client: string;
     /** The raw body: JSON, whether sent as `text/plain` (the engine: no preflight) or `application/json`. */
     readonly body: Uint8Array | undefined;
+    /** The `User-Agent` header, reduced to `clientLabel` before it is logged (never logged whole). */
+    readonly userAgent?: string | undefined;
 }
 
 /** The answer: a status, its headers and, for a refusal, the JSON `ApiErrorDetails`. */
@@ -118,16 +122,35 @@ function accept(deps: ReportErrorDeps, limiter: RateLimiter, request: ReportRequ
         return refusal('apiError.rateLimited', { ...cors, 'retry-after': RETRY_AFTER_SECONDS });
     }
     const report = parseReport(body);
-    return report.ok ? deliver(deps, report.value, origin, cors) : refusal('apiError.invalidRequest', cors, report.issues);
+    if (!report.ok) {
+        deps.log.warn('crash report refused: invalid body', { fields: report.issues.map((issue) => issue.path).join(',') });
+        return refusal('apiError.invalidRequest', cors, report.issues);
+    }
+    return deliver(deps, report.value, { origin, cors, userAgent: request.userAgent });
+}
+
+/** The reason a report is no crash of the page's (an older page sends it unfiltered), else null. */
+function noiseOf(report: ErrorReport): string | null {
+    const name = report.message.split(':', 1)[0] ?? '';
+    return crashNoiseOf({ name, message: report.message, stack: report.stack ?? '' });
 }
 
 /** A valid report: logged for Error Reporting as its page's service, or refused when its page is not on its origin. */
-function deliver(deps: ReportErrorDeps, report: ErrorReport, origin: string, cors: Headers): ReportResponse {
+function deliver(
+    deps: ReportErrorDeps,
+    report: ErrorReport,
+    { origin, cors, userAgent }: { readonly origin: string; readonly cors: Headers; readonly userAgent: string | undefined },
+): ReportResponse {
     const service = serviceOf(deps.config, origin, report.page);
     if (service === undefined) {
         return refusal('apiError.telemetry.origin', cors);
     }
-    deps.errors.report(toReportedErrorEvent(report, service));
+    const noise = noiseOf(report);
+    if (noise !== null) {
+        deps.log.info('crash report dropped: the page did not cause it', { reason: noise, service, release: report.release });
+        return { status: 204, headers: cors };
+    }
+    deps.errors.report(toReportedErrorEvent(report, service, undefined, userAgent === undefined ? undefined : clientLabel(userAgent)));
     return { status: 204, headers: cors };
 }
 
@@ -136,9 +159,12 @@ function deliver(deps: ReportErrorDeps, report: ErrorReport, origin: string, cor
  * viewer and the admin. A preflight from an allowed origin → 204 with the CORS headers; any other method but POST →
  * 405; an origin outside `viewerOrigins` and `adminOrigins` → 403 `telemetry.origin` without CORS headers; a body over
  * 16 KiB → 413 before parsing; over the rate limits → 429 with `Retry-After`; a body `errorReportSchema` refuses →
- * 400 with the issues; a report whose page is not on its `Origin` → 403 `telemetry.origin` (M6); otherwise the redacted
- * `ReportedErrorEvent` is logged for Cloud Error Reporting, as the viewer's or the admin's by its page (`serviceOf`) → 204.
- * Nothing is written to Firestore and nothing but the accepted report is logged.
+ * 400 with the issues (logged with the refused fields); a report whose page is not on its `Origin` → 403
+ * `telemetry.origin` (M6); a report `crashNoiseOf` names noise → 204, dropped with its reason in the log; otherwise the
+ * redacted `ReportedErrorEvent` is logged for Cloud Error Reporting, with the browser's `clientLabel` (never its
+ * User-Agent), as the viewer's or the admin's by its page (`serviceOf`) → 204.
+ * Nothing is written to Firestore; besides the accepted report only a refused body (its fields, after the rate limit) and a
+ * dropped noise report (its reason) are logged, so a flood from a foreign origin costs no logging.
  */
 export function handleErrorReport(deps: ReportErrorDeps, limiter: RateLimiter, request: ReportRequest): ReportResponse {
     const allowed = allowedOrigin(deps, request.origin);
@@ -194,6 +220,7 @@ export function serveErrorReports(getDeps: () => ReportErrorDeps, limiter: RateL
             origin: request.get('origin'),
             client: clientOf(request),
             body: request.rawBody,
+            userAgent: request.get('user-agent'),
         });
         response.status(answer.status).set(answer.headers);
         if (answer.body === undefined) {

@@ -220,6 +220,7 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
             return;
         }
         this.set({ ...this.#state, locale });
+        this.deps.telemetry.logEvent({ name: 'locale_change', locale });
         this.preferences.set(this.#state.manifest?.city.id ?? this.deps.config.cityId, 'lang', locale);
         this.hash.schedule();
     }
@@ -338,6 +339,9 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
             return;
         }
         this.set(next);
+        if (storyId !== null) {
+            this.deps.telemetry.logEvent({ name: 'story_open', storyId });
+        }
         this.hash.schedule();
     }
 
@@ -417,6 +421,7 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
     setTheme(theme: ThemeMode): void {
         if (theme !== this.#state.theme) {
             this.set({ ...this.#state, theme });
+            this.deps.telemetry.logEvent({ name: 'theme_change', theme });
             this.preferences.set(this.#state.manifest?.city.id ?? this.deps.config.cityId, 'theme', theme);
         }
     }

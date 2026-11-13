@@ -15,6 +15,10 @@ export const ERROR_REPORTING_VIEWER_ROLE = 'roles/errorreporting.viewer';
 
 /** `listGroupsResponseSchema` keeps at most this much of a group's message. */
 const MAX_MESSAGE = 500;
+const MAX_FRAME = 300;
+const MAX_PAGE = 2048;
+
+type Group = CallableResponse<'telemetry.listGroups'>['groups'][number];
 
 /** A refused call names the missing role or the disabled API; anything else Error Reporting fails with is "unavailable, retry". */
 function toApiError(error: unknown, deps: ListGroupsDeps): never {
@@ -42,7 +46,18 @@ async function telemetryListGroups(
     data: CallableRequest<'telemetry.listGroups'>,
 ): Promise<CallableResponse<'telemetry.listGroups'>> {
     const page = await deps.errors.listGroups(data).catch((error: unknown) => toApiError(error, deps));
-    return { ...page, groups: page.groups.map((group) => ({ ...group, message: redactText(group.message).slice(0, MAX_MESSAGE) })) };
+    return { ...page, groups: page.groups.map(redactGroup) };
+}
+
+/** Every free text of a group redacted again: the message, the top frames and the page. */
+function redactGroup(group: Group): Group {
+    const { frames, page } = group;
+    return {
+        ...group,
+        message: redactText(group.message).slice(0, MAX_MESSAGE),
+        ...(frames === undefined ? {} : { frames: frames.map((frame) => redactText(frame).slice(0, MAX_FRAME)) }),
+        ...(page === undefined ? {} : { page: redactText(page).slice(0, MAX_PAGE) }),
+    };
 }
 
 /** The `telemetry-listGroups` callable. */

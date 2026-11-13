@@ -156,6 +156,7 @@ GATES: dict[str, Gate] = {
         Gate("i18n", ("python3", "scripts/ci/check_i18n.py")),
         # Production copy: no test, build or milestone words in any catalogue or user-facing source (check_copy.toml).
         Gate("copy", ("python3", "scripts/ci/check_copy.py")),
+        Gate("plain-messages", ("python3", "scripts/ci/check_plain_messages.py")),
         # The kit's self-hosted fonts (packages/ui/fonts) are rebuilt in memory and must match byte for byte; every
         # icon name in packages/ui/src/icons.ts must shape to one glyph of the committed subset (M1 CR-14).
         Gate("fonts", (*NPM_RUN, "fonts:check", "--workspace", "@hcm/ui")),
@@ -273,6 +274,7 @@ STAGES: dict[str, tuple[str, ...]] = {
         "i18n",
         "fonts",
         "copy",
+        "plain-messages",
         "prettier",
         "tsc",
         "eslint",

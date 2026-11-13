@@ -38,6 +38,8 @@ export const ADMIN_EVENT_PARAMS = {
         ...CONTEXT_PARAMS,
     },
     job_done: { job_type: tokenSchema, status: tokenSchema, duration_ms: msSchema, ...CONTEXT_PARAMS },
+    /** A journey's step (`field-actions.ts`): `imagery_import`, `imagery_saveGcps`, `imagery_approve`… and its outcome. */
+    admin_action: { action: tokenSchema, outcome: tokenSchema, duration_ms: msSchema, ...CONTEXT_PARAMS },
 };
 
 export type AdminEventName = keyof typeof ADMIN_EVENT_PARAMS;

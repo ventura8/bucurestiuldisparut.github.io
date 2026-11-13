@@ -69,7 +69,7 @@ export const ro = {
     'adminSetup.install.update': 'O actualizare este gata: {release}.',
     'adminSetup.install.updateAction': 'Actualizează harta',
     'adminSetup.install.provisionDue': 'Actualizarea aduce la zi și aceste setări ale proiectului: {items}.',
-    'adminSetup.install.newer': 'Instalat {release}, mai nou decât această administrare: reîncarcă pagina.',
+    'adminSetup.install.newer': 'Pagina e mai veche decât versiunea instalată ({release}). Reîncarcă pagina pentru administrarea nouă.',
     'adminSetup.install.over.action': 'Instalează totuși versiunea acestei administrări',
     'adminSetup.install.over.title': 'Înlocuiești o versiune mai nouă?',
     'adminSetup.install.over.body': 'Înlocuiește {installed}, mai nouă, cu {release}, mai veche: o revenire, marcată în Cloud Build.',

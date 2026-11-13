@@ -1,4 +1,4 @@
-import { ERROR_GROUP_RESOLUTIONS, type ListGroupsRequest, type ListGroupsResponse } from '@hcm/shared';
+import { CRASH_TOP_FRAMES, ERROR_GROUP_RESOLUTIONS, type ListGroupsRequest, type ListGroupsResponse } from '@hcm/shared';
 import type { LogEntry } from 'firebase-functions/logger';
 
 import type { ErrorReporter } from '../ports/error-reporter.js';
@@ -12,7 +12,7 @@ export const ERROR_REPORTING_API = 'https://clouderrorreporting.googleapis.com/v
 const PERIODS: Readonly<Record<ListGroupsRequest['hours'], string>> = { 24: 'PERIOD_1_DAY', 168: 'PERIOD_1_WEEK', 720: 'PERIOD_30_DAYS' };
 
 /** The limits of `listGroupsResponseSchema`: longer upstream values are cut, never refused. */
-const LIMITS = { groupId: 200, message: 500, service: 100, version: 64 } as const;
+const LIMITS = { groupId: 200, message: 500, service: 100, version: 64, frame: 300, page: 2048, client: 60 } as const;
 
 const FAILURES: Readonly<Partial<Record<number, UpstreamFailure>>> = {
     401: 'unauthorized',
@@ -57,6 +57,33 @@ function resolutionOf(value: unknown): Group['resolution'] {
     return ERROR_GROUP_RESOLUTIONS.find((resolution) => resolution === value) ?? 'OPEN';
 }
 
+/** The representative's top stack frames: the lines after the message that look like frames, at most `CRASH_TOP_FRAMES`. */
+function topFrames(message: string): Pick<Group, 'frames'> {
+    const frames = message
+        .split('\n')
+        .slice(1)
+        .map((line) => line.trim())
+        .filter((line) => line.startsWith('at ') || line.includes('@'))
+        .slice(0, CRASH_TOP_FRAMES)
+        .map((line) => line.slice(0, LIMITS.frame));
+    return frames.length === 0 ? {} : { frames };
+}
+
+/** The representative report's page and browser label (`context.httpRequest` of the logged event). */
+function requestFields(representative: Fields): Pick<Group, 'page' | 'client'> {
+    const request = fields(fields(representative['context'])['httpRequest']);
+    const [page, client] = [text(request['url']), text(request['userAgent'])];
+    return {
+        ...(page === undefined ? {} : { page: page.slice(0, LIMITS.page) }),
+        ...(client === undefined ? {} : { client: client.slice(0, LIMITS.client) }),
+    };
+}
+
+function affectedOf(value: unknown): Pick<Group, 'affectedUsers'> {
+    const count = countOf(value);
+    return count > 0 ? { affectedUsers: count } : {};
+}
+
 /** The first line of the representative message (the error, not its stack). */
 function firstLine(message: string): string {
     const end = message.indexOf('\n');
@@ -82,17 +109,21 @@ function toGroups(value: unknown): Group[] {
     if (groupId === undefined || firstSeen === undefined || lastSeen === undefined) {
         return [];
     }
-    return [
-        {
-            groupId: groupId.slice(0, LIMITS.groupId),
-            message: firstLine(text(representative['message']) ?? ''),
-            ...serviceFields(representative),
-            count: countOf(stats['count']),
-            firstSeen,
-            lastSeen,
-            resolution: resolutionOf(group['resolutionStatus']),
-        },
-    ];
+    return [{ ...groupFields(groupId, stats, representative), firstSeen, lastSeen, resolution: resolutionOf(group['resolutionStatus']) }];
+}
+
+/** The fields of a readable group but its times and state. */
+function groupFields(groupId: string, stats: Fields, representative: Fields): Omit<Group, 'firstSeen' | 'lastSeen' | 'resolution'> {
+    const message = text(representative['message']) ?? '';
+    return {
+        groupId: groupId.slice(0, LIMITS.groupId),
+        message: firstLine(message),
+        ...topFrames(message),
+        ...requestFields(representative),
+        ...affectedOf(stats['affectedUsersCount']),
+        ...serviceFields(representative),
+        count: countOf(stats['count']),
+    };
 }
 
 function toResponse(body: unknown): ListGroupsResponse {

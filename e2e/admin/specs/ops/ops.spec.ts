@@ -190,6 +190,11 @@ test(
             ),
         );
         await expect(page.getByRole('definition').first()).toHaveText('12');
+        // The top of the stack, as text, and the release's notes beside the console link.
+        await expect(page.getByRole('listitem').filter({ hasText: 'at applyManifest (engine.mjs:1:2345)' })).toBeVisible();
+        await expect(
+            page.getByRole('link', { name: contentText(lang, 'adminContent.crashes.release', { version: '1.0.0' }) }),
+        ).toHaveAttribute('href', 'https://github.com/ventura8/historic-city-map-maker/releases/tag/v1.0.0');
         await expect(page.getByRole('link', { name: contentText(lang, 'adminContent.crashes.openConsole') })).toHaveAttribute(
             'href',
             /^https:\/\/console\.cloud\.google\.com\/errors\/detail\/[^/?]+\?project=/,

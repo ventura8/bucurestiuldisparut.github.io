@@ -31,8 +31,37 @@ export function errorGroupUrl(projectId: string, groupId: string): string {
 
 const PERIODS: readonly CrashPeriodPort[] = [24, 168, 720];
 
+/** A count as text, or undefined without one. */
+function countText(count: number | undefined): string | undefined {
+    return count === undefined ? undefined : String(count);
+}
+
+/** The optional facts of a group, by their catalogue keys. */
+const FACT_KEYS = {
+    page: 'adminContent.crashes.page',
+    client: 'adminContent.crashes.client',
+    affectedUsers: 'adminContent.crashes.affectedUsers',
+} as const;
+
+const RELEASE_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?$/;
+
+/** The engine release's notes on GitHub for a semantic version, else null (a build without a release). */
+export function releaseUrl(version: string | undefined): string | null {
+    return version !== undefined && RELEASE_VERSION.test(version)
+        ? `https://github.com/ventura8/historic-city-map-maker/releases/tag/v${version}`
+        : null;
+}
+
 const crashStyles = css`
     .message {
+        overflow-wrap: anywhere;
+    }
+
+    ol.frames {
+        margin: 0;
+        padding-inline-start: 1.5em;
+        font-family: var(--hcm-font-mono, ui-monospace, monospace);
+        font-size: 0.875em;
         overflow-wrap: anywhere;
     }
 
@@ -182,16 +211,51 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
                 <dt>${contentText(locale, 'adminContent.crashes.lastSeen')}</dt>
                 <dd>${formatWhen(locale, group.lastSeen)}</dd>
                 <dt>${contentText(locale, 'adminContent.crashes.service')}</dt>
-                <dd>${group.version === undefined ? group.service : `${group.service} ${group.version}`}</dd>
+                <dd>${[group.service, group.version ?? ''].join(' ').trim()}</dd>
                 <dt>${contentText(locale, 'adminContent.crashes.state')}</dt>
                 <dd>${contentText(locale, `adminContent.crashes.resolution.${group.resolution}`)}</dd>
+                ${this.#fact(locale, 'page', group.page)}${this.#fact(locale, 'client', group.client)}
+                ${this.#fact(locale, 'affectedUsers', countText(group.affectedUsers))}
             </dl>
+            ${this.#frames(locale, group)} ${this.#release(locale, group.version)}
             <p>
                 <a class="external" href=${errorGroupUrl(projectId, group.groupId)} target="_blank" rel="noopener noreferrer"
                     >${contentText(locale, 'adminContent.crashes.openConsole')}<hcm-icon name="open_in_new"></hcm-icon
                 ></a>
             </p>
         </div>`;
+    }
+
+    #fact(locale: Locale, key: 'page' | 'client' | 'affectedUsers', value: string | undefined): TemplateResult {
+        const term = contentText(locale, FACT_KEYS[key]);
+        return value === undefined
+            ? EMPTY
+            : html`<dt>${term}</dt>
+                  <dd class="message">${value}</dd>`;
+    }
+
+    #frames(locale: Locale, group: CrashGroupPort): TemplateResult {
+        const frames = group.frames ?? [];
+        if (frames.length === 0) {
+            return html`<p>${contentText(locale, 'adminContent.crashes.noFrames')}</p>`;
+        }
+        return html`<h3>${contentText(locale, 'adminContent.crashes.frames')}</h3>
+            <ol class="frames">
+                ${frames.map((frame) => html`<li>${frame}</li>`)}
+            </ol>`;
+    }
+
+    #release(locale: Locale, version: string | undefined): TemplateResult {
+        const url = releaseUrl(version);
+        return url === null
+            ? EMPTY
+            : html`<p>
+                  <a class="external" href=${url} target="_blank" rel="noopener noreferrer"
+                      >${contentText(locale, 'adminContent.crashes.release', { version: version ?? '' })}<hcm-icon
+                          name="open_in_new"
+                      ></hcm-icon
+                  ></a>
+              </p>`;
     }
 }
 

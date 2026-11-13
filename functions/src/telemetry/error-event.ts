@@ -2,7 +2,8 @@
  * A crash report as Cloud Error Reporting reads it (`docs/research/M2-interfaces.md` §3.4): every free-text value
  * redacted again (the body comes from outside), `message` = the stack with the error's message, and a
  * `context.reportLocation` always, so errors whose stack Error Reporting cannot parse (Firefox, Safari) are grouped
- * by their first frame or, without one, by the page.
+ * by their first frame or, without one, by the page. `context.httpRequest.userAgent` is the browser's `clientLabel`
+ * (`Firefox 145 mobile`), which Error Reporting and the admin's Crashes page show; `hcm.route` the area or panel.
  */
 import { REPORTED_ERROR_EVENT_TYPE, REPORTED_EVENT_MAX_BYTES, redactText, type ErrorReport, type ReportedErrorEvent } from '@hcm/shared';
 
@@ -10,12 +11,13 @@ import { REPORTED_ERROR_EVENT_TYPE, REPORTED_EVENT_MAX_BYTES, redactText, type E
  * `reportedErrorEventSchema` limits. A redacted value can be longer than the report's (`[redacted]` replaces an
  * address as short as `a@b.cd`), so every value is cut to its limit after redaction.
  */
-const MAX = { message: 10_000, url: 2048, functionName: 200, version: 64, windowClass: 32, locale: 16 } as const;
+const MAX = { message: 10_000, url: 2048, functionName: 200, version: 64, windowClass: 32, locale: 16, client: 60 } as const;
 
 const ANONYMOUS = '<anonymous>';
 
 type ReportLocation = ReportedErrorEvent['context']['reportLocation'];
 type ErrorService = ReportedErrorEvent['serviceContext']['service'];
+type HttpRequest = ReportedErrorEvent['context']['httpRequest'];
 
 interface FrameParts {
     readonly functionName: string;
@@ -108,18 +110,23 @@ export function toReportedErrorEvent(
     report: ErrorReport,
     service: ErrorService,
     limit: number = REPORTED_EVENT_MAX_BYTES,
+    client?: string,
 ): ReportedErrorEvent {
     const stack = report.stack === undefined ? undefined : redactText(report.stack);
     const page = redactText(report.page).slice(0, MAX.url);
-    return fitted(eventOf(report, service, stack, page), limit);
+    return fitted(
+        eventOf(report, service, stack, { url: page, ...(client === undefined ? {} : { userAgent: client.slice(0, MAX.client) }) }),
+        limit,
+    );
 }
 
-function eventOf(report: ErrorReport, service: ErrorService, stack: string | undefined, page: string): ReportedErrorEvent {
+function eventOf(report: ErrorReport, service: ErrorService, stack: string | undefined, request: HttpRequest): ReportedErrorEvent {
+    const page = request.url;
     return {
         '@type': REPORTED_ERROR_EVENT_TYPE,
         message: stackMessage(redactText(report.message), stack).slice(0, MAX.message),
         serviceContext: { service, version: redactText(report.release).slice(0, MAX.version) },
-        context: { httpRequest: { url: page }, reportLocation: reportLocation(report.stack, page, report.source) },
+        context: { httpRequest: request, reportLocation: reportLocation(report.stack, page, report.source) },
         hcm: {
             cityId: report.cityId,
             windowClass: redactText(report.windowClass).slice(0, MAX.windowClass),
@@ -127,6 +134,7 @@ function eventOf(report: ErrorReport, service: ErrorService, stack: string | und
             viewport: report.viewport,
             fatal: report.fatal,
             source: report.source,
+            ...(report.route === undefined ? {} : { route: report.route }),
         },
     };
 }

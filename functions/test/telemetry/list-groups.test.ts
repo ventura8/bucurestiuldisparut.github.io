@@ -20,6 +20,8 @@ const PAGE: ListGroupsResponse = {
             service: 'viewer',
             version: '1.0.0',
             count: 3,
+            frames: ['at tile (https://viewer.e2e.test/engine.mjs?k=e2e-value:3:1)'],
+            page: 'https://viewer.e2e.test/?mail=ana@example.test',
             firstSeen: '2026-10-11T08:00:00.000Z',
             lastSeen: '2026-10-12T08:00:00.000Z',
             resolution: 'OPEN',
@@ -46,6 +48,8 @@ describe('telemetry.listGroups', () => {
         expect(errors.requests).toEqual([{ hours: 24, pageSize: 20 }]);
         expect(page.nextPageToken).toBe('e2e-next-page');
         expect(page.groups[0]?.message).toBe('TypeError: tile https://api.mapbox.com/x.png failed for [redacted]');
+        expect(JSON.stringify(page.groups[0]?.frames)).not.toContain('e2e-value');
+        expect(page.groups[0]?.page).toBe('https://viewer.e2e.test/');
     });
 
     it('badPath_aMissingRoleNamesTheRole', async () => {

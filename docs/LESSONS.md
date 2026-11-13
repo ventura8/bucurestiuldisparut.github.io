@@ -3786,3 +3786,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the canvas's inner ring was `outline-offset: -3px` and the logo kept the kit's 2 px offset, both fitted to the 3 px ring; the 6 px one reached past the box.
     - Fix and pin: both offsets follow `--hcm-focus-ring-width` (`viewer-styles.ts`), the full attribution's padding too.
     - **A ring width that changes must change every offset written for the old width; search the styles for the old number.**
+
+661. **A WebGL context restore threw inside Mapbox and left a blank map; a browser's own script filled the crash list.**
+    - Seen: 2026-11-08 and 11-11, the admin's Crashes page: "Cannot convert undefined or null to object" at `ModelManager.load ← reloadModels ← Map._contextRestored` (mapbox-gl 3.34.1), and two Firefox-for-iOS groups (`__firefox__`) whose only frame was the page's address at line 1.
+    - Cause: Mapbox reloads every style fragment's 3D models with `Object.keys(this.modelUris[scope])`, and a fragment that never had a model has no entry; the reader-mode script of Firefox for iOS runs in every page and fails on ours.
+    - Fix and pin: `packages/ui/src/map/context-restore.ts` gives the missing scopes an empty list in a capture listener that runs before Mapbox's (`packages/ui/test/map/context-restore.test.ts` reproduces the throw without it); `crashNoiseOf` drops injected, extension and aborted errors with their reason (`packages/shared/test/telemetry/crash-noise.test.ts`).
+    - **Read the Crashes page's top frames before fixing: a group whose stack is all Mapbox can still be ours to work around, and one whose stack is the page at line 1 is the browser's.**

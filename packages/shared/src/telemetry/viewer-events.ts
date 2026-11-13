@@ -29,6 +29,10 @@ export const VIEWER_EVENT_PARAMS = {
     poi_open: { poi_id: idSchema },
     share: {},
     compare_open: {},
+    /** A story opened (M17), by its id; the visitor's own choices of language and theme, by their value. */
+    story_open: { story_id: idSchema },
+    locale_change: { locale: z.enum(['ro', 'en']) },
+    theme_change: { theme: z.enum(['system', 'light', 'dark']) },
     ...COMMON_EVENT_PARAMS,
     viewer_timing: { phase: z.enum(VIEWER_PHASES), duration_ms: msSchema, since_start_ms: msSchema, ...CONTEXT_PARAMS },
     manifest_error: { code: tokenSchema, retryable: z.boolean(), ...CONTEXT_PARAMS },

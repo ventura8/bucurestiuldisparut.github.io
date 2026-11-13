@@ -114,6 +114,7 @@ export type {
 export { USGS_ACCESS_PENDING, setupDone, usgsReadiness } from './setup-done.js';
 export type { SetupDoneInput, UsgsReadiness } from './setup-done.js';
 export {
+    CRASH_TOP_FRAMES,
     ERROR_GROUP_RESOLUTIONS,
     ERROR_REPORT_LIMITS,
     ERROR_REPORT_MAX_BYTES,
@@ -127,6 +128,8 @@ export {
     reportedErrorEventSchema,
 } from './telemetry.js';
 export type { ErrorReport, ListGroupsRequest, ListGroupsResponse, ReportedErrorEvent } from './telemetry.js';
+// What a crash report is not, and the browser of one (the reporters and `telemetry.reportError`).
+export { clientLabel, crashNoiseOf } from '../telemetry/crash-noise.js';
 export {
     DERIVATIVE_WRITTEN_AT,
     IMMUTABLE_CACHE_CONTROL,

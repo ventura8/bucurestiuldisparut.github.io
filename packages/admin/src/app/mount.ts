@@ -23,6 +23,7 @@ import { Store } from '../state/store.js';
 import type { AdminRuntime, FirebaseWebConfig } from './config.js';
 import { contentServices } from './content-services.js';
 import { FieldWatch, measuredStore } from './field.js';
+import { measuredCallables } from './field-actions.js';
 import { chooseCity, cityRefresher, switchTo, type CityChoiceDeps } from './current-city.js';
 import { Navigation } from './navigation.js';
 import { rememberedSetupReady } from './setup-readiness.js';
@@ -474,8 +475,10 @@ function contentRegistry<Setup>(
     }
     const { measure, ...shellParts } = parts;
     const store = measuredStore(content.store, { measure, now: () => globalThis.performance.now(), epoch: () => deps.clock.now() });
+    const callables = measuredCallables(shellParts.callables, measure, () => globalThis.performance.now());
     const services = contentServices({
         ...shellParts,
+        callables,
         content: { ...content, store },
         ...{ cities: deps.project.cities, firstCity: deps.project.firstCity },
         ...{ clock: deps.clock, local: deps.local, log: deps.log },

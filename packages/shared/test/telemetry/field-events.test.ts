@@ -26,6 +26,9 @@ const VALID: Readonly<Record<keyof typeof VIEWER_EVENT_PARAMS | keyof typeof ADM
     poi_open: { poi_id: 'poi-7', page_location: PAGE },
     share: { page_location: PAGE },
     compare_open: { page_location: PAGE },
+    story_open: { story_id: 'teatrul', page_location: PAGE },
+    locale_change: { locale: 'en', page_location: PAGE },
+    theme_change: { theme: 'dark', page_location: PAGE },
     exception: { description: 'TypeError: x is undefined', fatal: false, page_location: PAGE },
     setup_step: { step: 'billing', state: 'ok', page_location: PAGE },
     legacy_import: { imported: 120, failed: 2, page_location: PAGE },
@@ -53,6 +56,7 @@ const VALID: Readonly<Record<keyof typeof VIEWER_EVENT_PARAMS | keyof typeof ADM
     provision_item: { item: 'iam', outcome: 'ok', ...CONTEXT },
     editor_save: { area: 'photos', operation: 'update', outcome: 'ok', duration_ms: 310, ...CONTEXT },
     job_done: { job_type: 'raster', status: 'succeeded', duration_ms: 3_600_000, ...CONTEXT },
+    admin_action: { action: 'imagery_approve', outcome: 'apiError.imagery.versionState', duration_ms: 820, ...CONTEXT, app: 'admin' },
 };
 
 describe('field events', () => {

@@ -1,7 +1,8 @@
 import { FIRESTORE_PATHS } from '@hcm/shared';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { JOBS_MODULE } from '../../src/jobs/jobs.js';
+import { withNewerImport } from '../../src/jobs/raster.js';
 import { failure, settle } from '../app/fakes.js';
 import { at, CITY, contentWorld } from '../content/world.js';
 import { answer, callsOf } from '../imagery/world.js';
@@ -85,6 +86,28 @@ describe('the jobs area: raster jobs', () => {
         expect(spent).toBe(false);
         expect(callsOf(callables, 'imagery.retry')).toHaveLength(1);
         expect(notices.map((notice) => notice.key)).toEqual(['apiError.imagery.attemptsExhausted']);
+    });
+
+    it('badPath_anImportDoneAgainLaterOffersTheNewerOneInsteadOfABareRefusal', async () => {
+        // The owner's report of 2026-11-13: the 1972 frame's old import, set aside after a newer import of the frame.
+        const { jobs, callables, notices } = world();
+        callables.fail(
+            'imagery.retry',
+            failure('failed-precondition', 'apiError.imagery.importedAgain', { versionId: 'im-new-D3C1202-200149F039' }),
+        );
+        jobs.open(['failed']);
+        await settle();
+
+        await expect(jobs.intents.retryJob()).resolves.toBe(false);
+
+        const place = { hash: '' };
+        vi.stubGlobal('location', place);
+        const [notice] = notices;
+        expect(notice).toMatchObject({ key: 'apiError.imagery.importedAgain', action: { key: 'adminContent.jobs.openNewer' } });
+        notice?.action?.run();
+        expect(place.hash).toBe('#/imagery/version/im-new-D3C1202-200149F039');
+        vi.unstubAllGlobals();
+        expect(withNewerImport({ key: 'apiError.imagery.importedAgain' })).toEqual({ key: 'apiError.imagery.importedAgain' });
     });
 
     it('badPath_noOpenJobRetriesNothing', async () => {

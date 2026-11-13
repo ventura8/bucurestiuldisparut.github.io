@@ -172,6 +172,7 @@ export const ro = {
     'adminContent.jobs.retry': 'Rulează din nou',
     'adminContent.jobs.retrying': 'Pornește din nou…',
     'adminContent.jobs.retried': 'Procesarea a fost pusă din nou în coadă.',
+    'adminContent.jobs.openNewer': 'Deschide importul nou',
     'adminContent.jobs.openGeoref': 'Deschide georeferențiatorul',
     // [end jobs]
     // [section crashes] owner: ops-screens; keys adminContent.crashes.*
@@ -196,6 +197,12 @@ export const ro = {
     'adminContent.crashes.openConsole': 'Deschide în Error Reporting (filă nouă)',
     'adminContent.crashes.apiDisabled': 'Error Reporting nu este activat în proiect. Activează-l din cardul de analiză al configurării.',
     'adminContent.crashes.openSetup': 'Deschide configurarea analizei',
+    'adminContent.crashes.page': 'Pagina',
+    'adminContent.crashes.client': 'Browserul și dispozitivul',
+    'adminContent.crashes.affectedUsers': 'Persoane afectate',
+    'adminContent.crashes.frames': 'Unde s-a întâmplat (vârful stivei, cel mai nou apel primul)',
+    'adminContent.crashes.noFrames': 'Browserul nu a trimis stiva acestei erori: deschide-o în Error Reporting pentru raportul complet.',
+    'adminContent.crashes.release': 'Notele versiunii {version} (filă nouă)',
     // [end crashes]
 } as const;
 
