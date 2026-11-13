@@ -117,12 +117,20 @@ function mapMenuHandlers(host: HandlerHost): Pick<ViewerHandlers, 'onMapMenuClos
     };
 }
 
-/** The zoom buttons (V52): one level in (1) or out (-1); a click is no event of a part, nothing to stop. */
-function zoomHandler(host: HandlerHost): Pick<ViewerHandlers, 'onZoom'> {
+/**
+ * The zoom buttons (V52): one level in (1) or out (-1); the compass (V64): north up and level. A click is no event of a
+ * part, nothing to stop.
+ */
+function zoomHandler(host: HandlerHost): Pick<ViewerHandlers, 'onZoom' | 'onCompass'> {
     return {
         onZoom: (step) => {
             host.act(null, (store) => {
                 store.zoomBy(step);
+            });
+        },
+        onCompass: () => {
+            host.act(null, (store) => {
+                store.resetNorth();
             });
         },
     };

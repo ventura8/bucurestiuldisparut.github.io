@@ -89,6 +89,14 @@ test(
 );
 
 test(
+    'The compass on a turned map and north up again',
+    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V64-HAPPY-TOUR'] },
+    async ({ page, context, lang }) => {
+        await expectJourneySound({ page, context, lang }, journey('compass'));
+    },
+);
+
+test(
     "A photo's versions in its sheet and in the full-size view, zoomed in",
     {
         tag: [

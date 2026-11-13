@@ -29,6 +29,8 @@ export interface ViewerMapPort extends MapPort {
     setMyLocation(fix: MyLocationFix | null): void;
     /** A ring around a photo's place (the photo sheet's Locate), null takes it away; nothing before `mount` has resolved. */
     markPhoto(center: LngLat | null): void;
+    /** The camera's tilt in degrees (0 before `mount` has resolved): the compass draws it, swipe compare's second map follows it. */
+    getPitch(): number;
 }
 
 /** Mapbox answers null, or throws, for a style without the import or the property. */
@@ -71,5 +73,6 @@ export function createViewerMapPort(gl: MapboxGl | Promise<MapboxGl>, env?: Adap
         setBasemapOption: write,
         setMyLocation: onMap(drawMyLocation),
         markPhoto: onMap(drawPhotoMark),
+        getPitch: () => nativeMap(port)?.getPitch() ?? 0,
     });
 }

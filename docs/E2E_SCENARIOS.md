@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 156 | 1628 | 674 | 954 | 1626 | 2 | 422 |
+| 157 | 1635 | 678 | 957 | 1633 | 2 | 423 |
 
 ## Viewer
 
@@ -296,6 +296,13 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V62-BAD-ESC-EDGE` | V62 | bad | Esc closes the menu; near the edge it stays inside the map | a right click 4 px from the right edge -> the menu lies inside the map; Esc -> no menu | e2e-viewer | exists | `e2e/specs/viewer/map-menu.spec.ts` |
 | `S-V62-BAD-LONE-LINKS-SMALL` | V62 | bad | A photo's sheet keeps its lone links, Street View and Suggest a correction, 48 px tall | a photo with a bearing and a manifest with contributeUrl -> the sheet's Street View and Suggest a correction links are visible and at least 48 px tall | e2e-viewer | exists | `e2e/specs/viewer/map-menu.spec.ts` |
 | `S-V62-BAD-SHORT-TAP` | V62 | bad | A short tap on the map lets the browser select again once the finger lifts, and opens no menu | a touch pointer down and up at once -> no menu; selectstart is no longer cancelled | e2e-viewer | exists | `e2e/specs/viewer/map-menu.spec.ts` |
+| `S-V64-HAPPY-COMPARE` | V64 | happy | In swipe compare the compass turns both maps north | #15/.../90 in compare, a click on the compass -> every live map ends at bearing 0, at rest on one camera; the address drops its bearing | e2e-viewer | exists | `e2e/specs/viewer/compass.spec.ts` |
+| `S-V64-HAPPY-COMPASS-RESET` | V64 | happy | A click on the compass turns a turned map back to north up and the address drops its bearing | #16/.../45 -> the compass not north, described 'turned 45° from north'; a click -> the address 16/lat/lng without a bearing, the camera's bearing 0 at rest, the compass north and described 'faces north' | e2e-viewer | exists | `e2e/specs/viewer/compass.spec.ts` |
+| `S-V64-HAPPY-NEEDLE-FOLLOWS` | V64 | happy | The needle follows the map's own rotate gesture, and Space levels a turned and tilted map | a right-drag over the map turns it more than 1° and tilts it -> the compass leaves north; Space on the focused compass -> bearing 0 and pitch 0, the compass north, the focus kept | e2e-viewer | exists | `e2e/specs/viewer/compass.spec.ts` |
+| `S-V64-HAPPY-TOUR` | V64 | happy | The compass passes the layout and accessibility checks on every window class | expectStateSound on the compass journey (turned 45° and focused, north up again after Enter with the focus kept) and on every other map state, which shows it at the head of the zoom group | e2e-viewer | exists | `e2e/tour/viewer.tour.ts` |
+| `S-V64-BAD-ALREADY-NORTH` | V64 | bad | North up already, the compass stays, quiet, and a press or Enter changes nothing | #16/... north up -> the compass visible with the north attribute; a click and Enter fire no map move, leave the address and the camera unchanged, the focus on the compass | e2e-viewer | exists | `e2e/specs/viewer/compass.spec.ts` |
+| `S-V64-BAD-NO-WEBGL` | V64 | bad | Without WebGL there is no map and no compass | webgl false -> no hcm-compass in the viewer | e2e-viewer | exists | `e2e/specs/viewer/no-webgl.spec.ts` |
+| `S-V64-BAD-REDUCED-MOTION` | V64 | bad | Under reduced motion the compass jumps north instead of turning | prefers-reduced-motion: reduce, #16/.../200, a click -> the address drops its bearing after at most 2 map moves (a jump, not a turn), bearing 0, the compass north | e2e-viewer | exists | `e2e/specs/viewer/compass.spec.ts` |
 
 ## Admin
 

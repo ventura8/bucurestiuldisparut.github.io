@@ -48,6 +48,23 @@ describe('the viewer map port', () => {
         expect(port.mapLoadCount).toBe(1);
     });
 
+    it('happyPath_theTiltIsReadAndAFlightCanLevelIt', async () => {
+        const gl = new FakeMapboxGl();
+        const port = createViewerMapPort(gl, fakeAdapterEnv());
+        expect(port.getPitch()).toBe(0);
+        const mounting = port.mount({} as HTMLElement, OPTIONS);
+        gl.map.fire('load');
+        await mounting;
+        gl.map.pitch = 40;
+
+        expect(port.getPitch()).toBe(40);
+        port.flyTo({ bearing: 0 }, { pitch: 0 });
+        port.flyTo({ zoom: 15 });
+
+        expect(gl.map.callsOf('flyTo')).toEqual([[{ bearing: 0, pitch: 0 }], [{ zoom: 15 }]]);
+        expect(port.getPitch()).toBe(0);
+    });
+
     it('badPath_aFlagIsNoOption', async () => {
         const gl = new FakeMapboxGl();
         const port = createViewerMapPort(gl, fakeAdapterEnv());

@@ -1,14 +1,16 @@
 /**
  * The map's zoom buttons (the owner, 2026-11-08; scenario V52): Zoom in and Zoom out, a vertical M3 button group on the
  * map's trailing edge (a row beside the vertical timeline on a phone held landscape; `viewer-styles.ts`). Our own icon
- * buttons, not Mapbox's NavigationControl: the kit's 48 px targets, theme and languages, no compass
- * (DECISIONS-for-review.md §128). A click asks the store for one level (`zoomBy`); at the city's zoom limit the button
+ * buttons, not Mapbox's NavigationControl: the kit's 48 px targets, theme and languages (DECISIONS-for-review.md §128);
+ * the group's head is our own compass (V64, `hcm-compass.ts`). A click asks the store for one level (`zoomBy`); at the city's zoom limit the button
  * is soft-disabled: it says so and keeps the focus. In swipe compare the second map follows the first, so one pair serves both.
  * Zoom out's limit is the higher of `city.minZoom` and the zoom at which the city's bounds just cover the map: Mapbox keeps
  * the view inside `maxBounds`, so on most screens it stops there first (Bucharest: about 10.8 on a phone, 11.6 at 1440 px).
  */
 import { translate, type BBox, type Locale, type Manifest, type MapView } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
+
+import type { CameraSource } from './hcm-compass.js';
 
 /**
  * One button: its name is also its tooltip; at the limit it is soft-disabled and its press never reaches the store (Zoom
@@ -41,19 +43,27 @@ export function coverZoom([[west, south], [east, north]]: BBox, size: MapSize): 
     return Math.log2(Math.max((size.width * 360) / (east - west), size.height / (mercatorY(north) - mercatorY(south))) / 512);
 }
 
+/** What the group's buttons do: one level in (1) or out (-1), and the compass's press (north up, V64). */
+export interface MapControlHandlers {
+    readonly onZoom: (step: number) => void;
+    readonly onCompass: () => void;
+}
+
 /**
- * The two buttons for the camera's `view` in the city's zoom range and, once the map has a box (`size`), its bounds;
- * `onZoom` gets 1 or -1. A hundredth of a level covers the rounding of the camera Mapbox stopped.
+ * The group for the camera's `view`: the compass (V64; its needle follows `camera`, the store) at its head, then the two
+ * zoom buttons in the city's zoom range and, once the map has a box (`size`), its bounds. A hundredth of a level covers
+ * the rounding of the camera Mapbox stopped. The compass's name is its tooltip, as the zoom buttons'.
  */
 export function zoomButtons(
-    { locale, mapSize }: { readonly locale: Locale; readonly mapSize: MapSize | null },
+    { locale, mapSize, camera }: { readonly locale: Locale; readonly mapSize: MapSize | null; readonly camera: CameraSource | null },
     view: MapView,
     manifest: Manifest,
-    onZoom: (step: number) => void,
+    { onZoom, onCompass }: MapControlHandlers,
 ): TemplateResult {
     const { maxZoom, bounds } = manifest.city;
     const minZoom = Math.max(manifest.city.minZoom, mapSize === null ? 0 : coverZoom(bounds, mapSize) + 0.01);
     return html`<div class="dock zoom" data-layout-check="zoom">
+        <hcm-compass .source=${camera} locale=${locale} title=${translate(locale, 'viewer.compass')} @click=${onCompass}></hcm-compass>
         ${zoomButton(translate(locale, 'viewer.zoomIn'), 'add', view.zoom >= maxZoom, () => {
             onZoom(1);
         })}

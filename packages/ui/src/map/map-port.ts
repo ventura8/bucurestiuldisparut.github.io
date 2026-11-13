@@ -140,6 +140,8 @@ export interface MapPadding {
 export interface FlyOptions {
     readonly animate?: boolean;
     readonly offset?: CameraOffset;
+    /** The camera's tilt in degrees at the end (the viewer's compass resets it to 0); unset keeps the tilt. */
+    readonly pitch?: number;
 }
 
 export interface MapPort {

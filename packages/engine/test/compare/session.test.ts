@@ -160,7 +160,7 @@ describe('swipe compare session', () => {
         second.flyTo({ ...VIEW, zoom: 16 });
 
         expect(followed).toEqual(VIEW);
-        expect(second.callsOf('flyTo').at(-2)).toEqual([VIEW, { animate: false }]);
+        expect(second.callsOf('flyTo').at(-2)).toEqual([VIEW, { animate: false, pitch: 0 }]);
         expect(map.getView()).toEqual({ ...VIEW, zoom: 16 });
         expect(second.callsOf('flyTo')).toHaveLength(afterMain + 1);
         expect(map.callsOf('flyTo')).toHaveLength(1);
@@ -499,6 +499,20 @@ describe('compare labels and the camera link', () => {
         expect(compared.compare).toBeNull();
         expect(compared.overlays.find((overlay) => overlay.id === 'kh9-1980')?.visible).toBe(true);
         expect(comparedState(state).overlays.filter((overlay) => overlay.kind === 'raster' && overlay.visible)).toHaveLength(0);
+    });
+
+    it('happyPath_theTiltFollowsToo', () => {
+        const main = new FakeMap();
+        const second = new FakeMap();
+        linkCameras(main, second);
+
+        main.pitch = 40;
+        main.emit('move', VIEW);
+        second.pitch = 10;
+        second.emit('move', VIEW);
+
+        expect(second.callsOf('flyTo').at(-1)).toEqual([VIEW, { animate: false, pitch: 40 }]);
+        expect(main.pitch).toBe(10);
     });
 
     it('badPath_unlinkedCamerasNoLongerFollowEachOther', () => {

@@ -1,0 +1,128 @@
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { page, userEvent } from 'vitest/browser';
+
+import { compassDescription, defineHcmCompass, type HcmCompass } from '../../src/viewer/hcm-compass.js';
+import { defineViewerElements } from '../../src/viewer/define.js';
+import { defineKitDoubles, shadowQuery } from './doubles.js';
+import { FakeStore, readyState } from './fake-store.js';
+import { testManifest } from './fixtures.js';
+import { LANDSCAPE_PHONE, mountViewer, part } from './viewer-harness.js';
+
+/**
+ * The compass (scenario V64): an icon button at the head of the zoom group whose needle follows the camera's bearing and
+ * tilt frame by frame, quiet when the map is north up and level, and whose press asks the store for north up.
+ */
+beforeAll(() => {
+    defineKitDoubles();
+    defineViewerElements();
+});
+
+async function compassWith(store: FakeStore | null, locale: 'ro' | 'en' = 'ro'): Promise<HcmCompass> {
+    defineHcmCompass();
+    const compass = document.createElement('hcm-compass');
+    compass.source = store;
+    compass.locale = locale;
+    document.body.append(compass);
+    await compass.updateComplete;
+    return compass;
+}
+
+function description(compass: HcmCompass): string {
+    const button = shadowQuery(compass, 'button');
+    return shadowQuery(compass, `#${button.getAttribute('aria-describedby') ?? ''}`).textContent;
+}
+
+describe('<hcm-compass>', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_theNeedleFollowsTheCameraAndTheDescriptionSaysWhere', async () => {
+        const store = new FakeStore(readyState());
+        const compass = await compassWith(store);
+        expect(compass.north).toBe(true);
+        expect(description(compass)).toBe('Harta este orientată spre nord.');
+
+        store.moveCamera({ bearing: 90, pitch: 0 });
+        await compass.updateComplete;
+        expect(compass.hasAttribute('north')).toBe(false);
+        expect(description(compass)).toBe('Harta este rotită cu 90° față de nord.');
+        expect(shadowQuery(compass, 'svg').style.transform).toBe('rotateX(0deg) rotate(-90deg)');
+
+        store.moveCamera({ bearing: 270.4, pitch: 35.2 });
+        await compass.updateComplete;
+        expect(description(compass)).toBe('Harta este rotită cu 270° față de nord și înclinată cu 35°.');
+        expect(shadowQuery(compass, 'svg').style.transform).toBe('rotateX(35deg) rotate(-270.4deg)');
+    });
+
+    it('happyPath_englishNameAndDescription', async () => {
+        const store = new FakeStore(readyState());
+        store.camera = { bearing: 12, pitch: 0 };
+        const compass = await compassWith(store, 'en');
+
+        await expect.element(page.getByRole('button', { name: 'Compass: turn the map north up' })).toBeVisible();
+        expect(description(compass)).toBe('The map is turned 12° from north.');
+    });
+
+    it('badPath_almostNorthIsNorthAndQuiet', async () => {
+        const store = new FakeStore(readyState());
+        store.camera = { bearing: 359.6, pitch: 0.3 };
+        const compass = await compassWith(store);
+
+        expect(compass.north).toBe(true);
+        expect(compassDescription('en', { bearing: 359.6, pitch: 0 })).toBe('The map faces north.');
+        expect(getComputedStyle(shadowQuery(compass, 'button')).color).not.toBe('');
+    });
+
+    it('badPath_withoutASourceItShowsNorthAndADetachedOneStopsBeingWatched', async () => {
+        const compass = await compassWith(null);
+        expect(description(compass)).toBe('Harta este orientată spre nord.');
+
+        const first = new FakeStore(readyState());
+        const second = new FakeStore(readyState());
+        compass.source = first;
+        await compass.updateComplete;
+        compass.source = second;
+        await compass.updateComplete;
+        expect([first.cameraWatchers, second.cameraWatchers]).toEqual([0, 1]);
+
+        compass.remove();
+        expect(second.cameraWatchers).toBe(0);
+    });
+});
+
+describe('<hcm-map-viewer>: the compass', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_aClickOrEnterAsksTheStoreForNorthUp', async () => {
+        const mounted = await mountViewer(readyState(testManifest()));
+        const compass = page.getByRole('button', { name: 'Busolă: orientează harta spre nord' });
+
+        await userEvent.click(compass);
+        shadowQuery(part(mounted, 'hcm-compass'), 'button').focus();
+        await userEvent.keyboard('{Enter}');
+        await userEvent.keyboard(' ');
+
+        expect(mounted.store.callsOf('resetNorth')).toHaveLength(3);
+        expect(part(mounted, 'hcm-compass').title).toBe('Busolă: orientează harta spre nord');
+        expect(part(mounted, '.dock.zoom').firstElementChild?.localName).toBe('hcm-compass');
+    });
+
+    it('happyPath_itFollowsTheAttachedStoreInEveryLayout', async () => {
+        const mounted = await mountViewer(readyState(testManifest()), LANDSCAPE_PHONE);
+        mounted.store.moveCamera({ bearing: 45, pitch: 0 });
+        const compass = part(mounted, 'hcm-compass') as HcmCompass;
+        await compass.updateComplete;
+
+        expect(compass.north).toBe(false);
+        expect(mounted.store.cameraWatchers).toBe(1);
+    });
+
+    it('badPath_withoutWebglThereIsNoCompass', async () => {
+        const mounted = await mountViewer(readyState(testManifest(), { webgl: false }));
+
+        expect(mounted.element.shadowRoot?.querySelector('hcm-compass')).toBeNull();
+    });
+});

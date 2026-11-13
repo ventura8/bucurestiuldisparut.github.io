@@ -6805,3 +6805,15 @@ The design of automatic tile stitching and the tile-import wizard (docs/research
   measured 11.6 KB gzip; `ADMIN_CHUNK_BUDGETS["help"]` is 14 KB (the measurement plus about 15 %, rounded up). The admin's total
   budget is unchanged and still met.
 - **Verify**: `PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh` (bundle-budget).
+
+## 190. The viewer's compass (2026-11-13, beta.1) — APPLIED
+
+The owner: "i want us to have a compass for the viewer. (and clicking on it resets to north up)". Behaviour V64, `docs/ENGINE_API.md` → *Compass*.
+
+- **190a Our own element at the head of the zoom group**, not Mapbox's `NavigationControl` (§128a's reasons, and its look comes from Mapbox's control styles). In the group it goes wherever the zoom buttons go at every window size (§128h), so no new dock and no new place to keep clear of the FAB, the timeline, the chip, the sheets and the legal line; the group is 56 px taller.
+- **190b The needle repaints alone.** `<hcm-compass>` subscribes to the store's `watchCamera` (Mapbox's `move`, every frame); the live bearing is not `ViewerState`, which changes only on `moveend` (a state per frame would re-render the whole viewer and touch the hash writer).
+- **190c Always visible**, as asked; north up and level it is quiet (the needle in `on-surface-variant`), turned or tilted its north point is `primary`. Not soft-disabled north up: it still reads the map's direction. A press there changes nothing (within 0.05°, the hash's precision).
+- **190d The reset levels the tilt too** (`FlyOptions.pitch`, new and optional; `ViewerMapPort.getPitch`). Swipe compare's camera link now carries the tilt as well, so both maps level together; before, a tilt on one map was not followed.
+- **190e Rotation stays on.** The viewer never disabled Mapbox's `dragRotate` or `touchZoomRotate` rotation, and no entry here forbids them: a right-drag or Ctrl with a drag on a desktop, two fingers on a touch screen (§167h already relies on the right-drag).
+- **190f A description, not a live region**: the bearing and tilt in whole degrees through `aria-describedby`; the needle is an inline SVG (the icon subset has no two-part compass glyph; no font rebuild), turned through `cssProperties` under the page's CSP.
+- **Verify**: S-V64-HAPPY-COMPASS-RESET, S-V64-HAPPY-NEEDLE-FOLLOWS, S-V64-HAPPY-COMPARE, S-V64-HAPPY-TOUR, S-V64-BAD-ALREADY-NORTH, S-V64-BAD-REDUCED-MOTION, S-V64-BAD-NO-WEBGL.
