@@ -57,8 +57,8 @@ export class HcmFab extends LitElement {
             }
 
             :host([size='small']) button {
-                min-width: 40px;
-                height: 40px;
+                min-width: var(--hcm-control-size, 40px);
+                height: var(--hcm-control-size, 40px);
                 padding-inline: 8px;
                 border-radius: var(--md-sys-shape-corner-medium);
             }
