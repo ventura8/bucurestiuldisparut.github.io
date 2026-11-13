@@ -5,6 +5,7 @@
  * whose page does not serve one) there is no Setup Assistant: the page says it is not available.
  */
 import { FIRESTORE_PATHS, type Logger } from '@hcm/shared';
+import { citySourcesSchema } from '@hcm/shared/sources';
 
 import type { FirebasePorts } from '../firebase/ports.js';
 import { bundleUrl } from '../import/bundle.js';
@@ -17,7 +18,7 @@ import { createLegacyImport } from '../import/legacy-import.js';
 import type { ProjectConfig } from '../provision/project-config.js';
 import { createSetupCloud } from '../provision/setup-cloud.js';
 import { createSetupModule, type SetupModule, type SetupModuleOptions } from '../setup/module.js';
-import type { SetupLegacyImport } from '../setup/ports.js';
+import type { SetupLegacyImport, SetupSourcesPort } from '../setup/ports.js';
 import type { FirebaseWebConfig } from './config.js';
 import { legacyFixStore, legacyPhotoStore, legacyReprocess } from './legacy-photos.js';
 import type { Clock } from './ports.js';
@@ -117,6 +118,26 @@ export function legacyImportedCheck(importer: Pick<SetupLegacyImport, 'detect'>)
     };
 }
 
+/**
+ * M28: the city's `sources` over the Firestore SDK (`CLIENT_WRITES.city`: the field on its own with the admin's stamp, as
+ * the rules check it). A stored value the schema refuses reads as no choice, so the step asks again.
+ */
+export function setupSourcesPort(firebase: Pick<FirebasePorts, 'documents'>, cityId: string, uid: () => string | null): SetupSourcesPort {
+    const path = FIRESTORE_PATHS.city(cityId);
+    return {
+        read: async () => {
+            const parsed = citySourcesSchema.safeParse((await firebase.documents.get(path))?.['sources']);
+            return parsed.success ? parsed.data : undefined;
+        },
+        save: (sources) =>
+            firebase.documents.set(
+                path,
+                { sources: { ...sources }, updatedBy: uid(), updatedAt: firebase.documents.serverTimestamp() },
+                { merge: true },
+            ),
+    };
+}
+
 /** M6: the admin's own install bundle, read once it is found (`../install/bundle.ts`). */
 export function installBundleLoader(deps: SetupWiringDeps): () => Promise<InstallBundle> {
     const { config, fetch: fetcher, baseUrl, release, releaseTime, installOrigins } = deps;
@@ -182,7 +203,19 @@ export function setupOptionsFor(deps: SetupWiringDeps): SetupModuleOptions {
     const installer = installerFor(deps, cityId, sleep, importer);
     const siteAddress = `https://${config.projectId}.web.app/`;
     const release = { release: deps.release, releaseTime: deps.releaseTime };
-    return { cloud, importer, createCity, cityId, github: !ownProject, cityBBox: bboxOf(deps.project), installer, ...release, siteAddress };
+    const sources = setupSourcesPort(firebase, cityId, uid);
+    return {
+        cloud,
+        importer,
+        sources,
+        createCity,
+        cityId,
+        github: !ownProject,
+        cityBBox: bboxOf(deps.project),
+        installer,
+        ...release,
+        siteAddress,
+    };
 }
 
 export function setupModuleFor(deps: SetupWiringDeps): SetupModule {

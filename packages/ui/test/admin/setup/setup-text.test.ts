@@ -109,8 +109,10 @@ describe('defineSetupElements', () => {
             'hcm-setup-mapbox',
             'hcm-setup-page',
             'hcm-setup-pipeline',
+            'hcm-setup-platform',
             'hcm-setup-provision',
             'hcm-setup-site',
+            'hcm-setup-sources',
             'hcm-setup-step',
             'hcm-setup-usgs',
         ]);

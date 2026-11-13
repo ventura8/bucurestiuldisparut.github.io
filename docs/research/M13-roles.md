@@ -224,3 +224,7 @@ account with no city at all, as before), so a moderator is not told about imager
   - a pending photo's earlier held pictures stay in the private bucket when its uploader replaces the file, until the same sweep;
   - an uploader's list shows no thumbnail for a pending photo (the Review page does, with the Storage rule);
   - no daily cap on an uploader's uploads, and the credit field exists on the photo editor only (a place takes `credit` through the rules and the schema, with no field yet).
+
+## 11. The sources an uploader may use (M28, the owner 2026-11-13)
+
+`docs/research/M28-sources.md` §7. An uploader uses every photo, map and data source the owner turned on in Setup → Sources (the collections drawn from by hand, Facebook's "ask the author", the open data) through Contribute, and everything they bring waits in Review as before. The online satellite sources (USGS, Landsat, Sentinel-2 searching and importing) cost money or the owner's quota and stay with the owner and the editors: `imagery.search` and the imports are `cityEditor`, the `usgsScenes` rules ask for a city member, the Imagery route is not in `LIMITED_ROUTES.uploader`, and Contribute tells an uploader why (`adminContent.contribute.satelliteNote`). An uploader's own map or satellite image, held for review, is planned (raster upload stays the editors' and the owner's). Rows: A173.

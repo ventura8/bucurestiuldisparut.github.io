@@ -7018,6 +7018,8 @@ The owner: "There is no Bucharest in the left screen" on `DS09065A073MC043` (18 
 `scripts/ci/check_bundle_budget.py`: `join-card` 3 → 4 KB, `statistics-live` 4 → 6 KB (Material 3 redesign, 4.6 KB), `funnels` 2 → 3 KB (2.8 KB), `imagery` 18 → 20 KB (18.0 KB). The chunk measured 3.0 KB after the cloud estimate and the plain
 messages, failing the budget gate for every track. The owner approved raising budgets that block beta.1.
 
+- **215b (track/sources, M28):** the Setup chunk carries the Platform and Sources cards and their catalogue (`@hcm/shared/admin-sources`, about 360 texts in two languages); any budget the change outgrows is raised to its measured size plus room, under the same approval (the values are in `scripts/ci/check_bundle_budget.py`, with this section named beside them).
+
 ## 216. The 1895-1899 layer's white patches: left-out pieces found again in the overview's holes, and a placed series stitched again (the owner 2026-11-13) — APPLIED
 
 The owner: the published layer `1895-1899` (archive version `ar-mw993zri-s-4054e55659a3`, 60 pieces, "placed by gcps", checkpoint 22.5 m) shows three white patches near Grivița, Obor/Gara de Est and Tineretului; fill them with real map data only, nothing generated. `docs/research/M20-import-local.md` §15 (*Atlases and pieces*), LESSONS 669.
@@ -7078,3 +7080,14 @@ The investigation of 2026-11-13: no Landsat over Bucharest, because the harvest 
 - **208f Default Landsat years 1984 to the current year** (was 2000): `landsatTo` absent means "up to this year" (`landsatYearsOf(settings, thisYear)`); Settings shows it empty; a city that set an end keeps it.
 - **208g The pace.** While the city's workers are online (seen within `WORKER_FRESH_SECONDS`), the tick starts one Landsat import per online worker, at most `LANDSAT_AUTO_MAX_PER_TICK` (4), each `runOn: 'local'` (the daily cap never counts a job on the computer; the budget guard still refuses); with none online, one a tick in the cloud within the daily cap, as before. Still one clear summer scene per year.
 - **Verify**: S-A11-BAD-REQUEST-TIMED-OUT, S-A11-BAD-HARVEST-PARTIAL-STORED, S-A11-HAPPY-HARVEST-RESUME, S-A11-BAD-HARVEST-KILLED, S-A130-HAPPY-OLI, S-A130-BAD-OLI-UNKNOWN, S-A130-HAPPY-WORKERS-PACE, S-A130-BAD-NO-WORKER-PACE, S-P30-HAPPY-OLI, S-P30-BAD-OLI-MISSING-BAND.
+
+## 218. The map's sources and the app's platform in Setup (M28, the owner 2026-11-13, beta.1, priority 3) — APPLIED
+
+`docs/research/M28-sources.md`. Two cards after Mapbox: **The app's platform** (e1, no input; Google Cloud, Firebase, Firestore, storage and processing, Mapbox, each with its role, costs, limits, sign-up help and state, read from steps b to e) and **The map's sources** (e2, one input: Save my choice). The owner's corrections of the same day are applied: the platform is not a source and is one card, not three (Mapbox, Firebase and Firestore were first to be separate steps, then grouped); the old step ids, deep links and funnel steps stay as they were, the card only links them; collections such as Facebook groups, Fortepan, Europeana and the US National Archives' air photos are drawn from by hand with an honest "may it go public" and "automatic import: planned or none"; uploaders keep the photo and data sources, the satellite ones stay with the owner and the editors.
+
+- **218a Storage:** `cities/{city}.sources`, saved on its own as the imagery settings are (rules `validSources`; refused beside any other field). Per city, as Setup's `host.cityId`.
+- **218b USGS left out:** with neither the declassified frames nor Landsat on, the USGS step leaves Setup's list and USGS is recorded as postponed through `setup.recordCloud`, so `setupDone` (server side) holds without it. Turning either on brings the step back as Later.
+- **218c Defaults:** free and open on, paid off (`usgsOrders`, `cloudAi`). Not in `setupDone`: a map from before M28 stays done.
+- **218d Figures:** only those the product already uses (Setup's Blaze line, the scan price, the AI cap, the free tiers of the install and worker cards); everything else links the provider's official pricing page; the estimate says the date checked (`SOURCES_CHECKED_ON`).
+- **218e Not built (planned):** the harvest's dataset list on the server, the AI drafts refused when the cloud AI is off, the local matcher off, automatic imports from Commons, Europeana, Fortepan, Rumsey, the Library of Congress and Mapillary, and an uploader's own map or satellite image held for review.
+- **Verify:** S-A171-HAPPY-SAVE-DEFAULTS, S-A171-HAPPY-RULES-SAVE, S-A171-BAD-RULES-SHAPE, S-A171-BAD-LANDSAT-OFF, S-A172-HAPPY-PLATFORM, and the planned rows of A171–A173 (unit-tested).

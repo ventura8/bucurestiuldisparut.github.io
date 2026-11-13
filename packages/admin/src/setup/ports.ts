@@ -30,6 +30,7 @@ import type {
     ServiceState,
     SetupStatusView,
 } from '@hcm/shared';
+import type { CitySources } from '@hcm/shared/sources';
 
 import type { GoogleScope } from '../google/scopes.js';
 import type { InstallerPort } from '../install/ports.js';
@@ -242,12 +243,24 @@ export interface SetupNotice {
     readonly action?: { readonly key: AdminSetupKey; run(): void };
 }
 
+/**
+ * M28 (`docs/research/M28-sources.md` §4): the city's `sources`, read and written with the Firestore SDK by the signed-in
+ * admin (`CLIENT_WRITES.city`, saved on their own as the imagery settings are; `../app/setup-wiring.ts`).
+ */
+export interface SetupSourcesPort {
+    /** The city's stored choice, or undefined when none was made yet; rejects with Firestore's code when it cannot be read. */
+    read(): Promise<CitySources | undefined>;
+    save(sources: CitySources): Promise<void>;
+}
+
 export interface SetupDeps {
     readonly host: SetupHost;
     readonly google: SetupGoogleAuth;
     readonly cloud: SetupCloud;
     readonly backend: SetupBackend;
     readonly importer: SetupLegacyImport;
+    /** M28: the city's sources. */
+    readonly sources: SetupSourcesPort;
     readonly clock: SetupClock;
     readonly visibility: VisibilityPort;
     readonly session: SessionStore;

@@ -31,6 +31,14 @@
             "types": "./src/i18n/admin-worker-household/index.ts",
             "default": "./src/i18n/admin-worker-household/index.ts"
         },
+        "./admin-sources": {
+            "types": "./src/i18n/admin-sources/index.ts",
+            "default": "./src/i18n/admin-sources/index.ts"
+        },
+        "./sources": {
+            "types": "./src/sources.ts",
+            "default": "./src/sources.ts"
+        },
         "./credits": {
             "types": "./src/overlays/credits.ts",
             "default": "./src/overlays/credits.ts"

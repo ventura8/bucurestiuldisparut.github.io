@@ -1205,6 +1205,27 @@
             "name": "The household's computers: a list, Add another computer with minimum input, Remove this computer that cleans up first, and the jobs left to a calm computer",
             "milestone": "post-M8",
             "source": "the owner's request of 2026-11-13 (beta.1, W5 household computers); DECISIONS-for-review.md §216"
+        },
+        {
+            "id": "A171",
+            "area": "admin",
+            "name": "Setup's Sources step: each source's facts, pros, cons, costs and account, switches saved as the city's sources, the month's estimate, the USGS step and the importers following the choice",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (beta.1, Setup's Sources and Platform steps); docs/research/M28-sources.md; DECISIONS-for-review.md §218"
+        },
+        {
+            "id": "A172",
+            "area": "admin",
+            "name": "Setup's Platform step: Google Cloud, Firebase, Firestore, storage and processing, and Mapbox in one card, each with its role, costs, limits, sign-up help and state",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (beta.1, Setup's Sources and Platform steps); docs/research/M28-sources.md; DECISIONS-for-review.md §218"
+        },
+        {
+            "id": "A173",
+            "area": "admin",
+            "name": "Uploaders and the sources: photos and open data allowed through Contribute and review, the satellite sources kept for the owner and the editors",
+            "milestone": "post-M8",
+            "source": "the owner's request of 2026-11-13 (beta.1, Setup's Sources and Platform steps); docs/research/M28-sources.md; DECISIONS-for-review.md §218"
         }
     ],
     "scenarios": [
@@ -20842,6 +20863,182 @@
             "tier": "e2e-admin",
             "status": "planned",
             "notes": "DECISIONS-for-review.md §210; lesson 675. Unit: packages/admin/test/install/fetch-script.test.ts."
+        },
+        {
+            "id": "S-A171-HAPPY-SAVE-DEFAULTS",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "happy",
+            "title": "After Mapbox the Sources card opens with the suggested switches and Save my choice keeps them",
+            "asserts": "the card shows the free sources on and the paid ones off, the month's estimate with the platform's fixed line -> Save my choice (one input) writes cities/<city>.sources and the chip reads Done; USGS stays in the list",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "journey.spec.ts step 5b. Unit: packages/admin/test/setup/sources.test.ts, packages/ui/test/admin/setup/hcm-setup-sources.test.ts."
+        },
+        {
+            "id": "S-A171-HAPPY-RULES-SAVE",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "happy",
+            "title": "An editor saves the city's sources on their own",
+            "asserts": "an update of cities/<city> that changes only sources (each a boolean) with the admin's stamp -> allowed",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "firebase/rules-tests/test/cities.test.ts."
+        },
+        {
+            "id": "S-A171-BAD-RULES-SHAPE",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "bad",
+            "title": "Sources that are not a map of known booleans, or mixed with a city setting, are refused",
+            "asserts": "sources 'all', an unknown source, a non-boolean, or sources with zoom in one write -> denied",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "firebase/rules-tests/test/cities.test.ts."
+        },
+        {
+            "id": "S-A171-HAPPY-USGS-LEFT-OUT",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "happy",
+            "title": "Without the USGS photos and Landsat the USGS account step leaves the list and Setup is done without it",
+            "asserts": "both switches off -> Save my choice -> the USGS card is gone, the count drops by one, USGS is recorded for later so Home and the header read done",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/admin/test/setup/sources.test.ts (happyPath_withoutUsgsAndLandsat…, ready without USGS)."
+        },
+        {
+            "id": "S-A171-BAD-USGS-OFF",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "bad",
+            "title": "Paid scans wait for the declassified photos",
+            "asserts": "the declassified photos off -> the paid-scans switch is off and disabled, with the line saying to turn the photos on first",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/setup/hcm-setup-sources.test.ts."
+        },
+        {
+            "id": "S-A171-BAD-SAVE-REFUSED",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "bad",
+            "title": "A choice the database refuses is not lost and says what to do",
+            "asserts": "the write is refused -> the card says the choice was not saved, why, and to press Save again or open Admins; the switches keep the choice; the log names the code",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/admin/test/setup/sources.test.ts."
+        },
+        {
+            "id": "S-A171-HAPPY-ACCOUNT-STATES",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "happy",
+            "title": "A chosen source's account reads Account needed, Waiting for approval or Signed in, with its next action",
+            "asserts": "no USGS account -> Account needed with Create the free USGS account (ERS) and Open the USGS step; a saved key waiting -> Waiting for approval with the usual 24–48 working hours and that the map goes on by itself; USGS ok -> Signed in",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/setup/hcm-setup-sources.test.ts."
+        },
+        {
+            "id": "S-A171-BAD-ACCOUNT-BILLING",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "bad",
+            "title": "The cloud AI drafts without a billing account send to the billing step",
+            "asserts": "cloud AI on, billing not done -> Account needed and Open the billing step (#/setup/billing)",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/setup/hcm-setup-sources.test.ts."
+        },
+        {
+            "id": "S-A171-HAPPY-IMAGERY-GATED",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "happy",
+            "title": "Imagery follows the sources: Landsat alone keeps Find",
+            "asserts": "the declassified photos off, Landsat on -> Imagery → Find still searches",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/imagery/sources-off.test.ts."
+        },
+        {
+            "id": "S-A171-BAD-IMAGERY-OFF",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "bad",
+            "title": "With the USGS photos and Landsat off, Find says why and links Sources; without scanned maps the local import is off",
+            "asserts": "both off -> Find shows the plain line and Open Sources (#/setup/sources); archives off -> Upload shows the line instead of the archive panel",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/imagery/sources-off.test.ts."
+        },
+        {
+            "id": "S-A171-BAD-LANDSAT-OFF",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "bad",
+            "title": "Landsat left out of the sources imports nothing on its own",
+            "asserts": "sources.landsat false -> imagery.tick's Landsat part picks no scene",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "functions/test/imagery/landsat.test.ts."
+        },
+        {
+            "id": "S-A171-HAPPY-SETTINGS-ROW",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "happy",
+            "title": "Settings lists the map's sources, which open Setup's Sources step",
+            "asserts": "Settings' list ends with The map's sources -> #/setup/sources",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/settings/settings-page.test.ts."
+        },
+        {
+            "id": "S-A172-HAPPY-PLATFORM",
+            "behaviour": "A172",
+            "area": "admin",
+            "path": "happy",
+            "title": "The platform card shows five sections with their state, costs, limits and steps",
+            "asserts": "Google Cloud, Firebase, Firestore, storage and processing, Mapbox -> each Ready or To do in its step, its details folded, Open the step to its card; the generic checkers pass",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "journey.spec.ts step 5b. Unit: packages/ui/test/admin/setup/hcm-setup-sources.test.ts, packages/admin/test/setup/sources.test.ts."
+        },
+        {
+            "id": "S-A172-BAD-SIGN-UP",
+            "behaviour": "A172",
+            "area": "admin",
+            "path": "bad",
+            "title": "A section still to do offers the provider's sign-up page",
+            "asserts": "Mapbox not done -> Sign up or sign in: Mapbox opens Mapbox's sign-up page in a new tab; the app never types a credential",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/setup/hcm-setup-sources.test.ts."
+        },
+        {
+            "id": "S-A173-HAPPY-UPLOADER-PHOTOS",
+            "behaviour": "A173",
+            "area": "admin",
+            "path": "happy",
+            "title": "An uploader sends a photo found in an allowed source, held for review",
+            "asserts": "an uploader adds a photo with its author, licence and source address through Contribute -> it waits in Review until a moderator approves",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "The existing M13 path (S-A92, S-A93); docs/research/M28-sources.md §7."
+        },
+        {
+            "id": "S-A173-BAD-UPLOADER-SATELLITE",
+            "behaviour": "A173",
+            "area": "admin",
+            "path": "bad",
+            "title": "An uploader is told why satellite search is missing",
+            "asserts": "an uploader on Contribute -> the line says satellite search is for the map's owner because it uses paid quota; imagery.search refuses an uploader (cityEditor) and the Imagery route is not offered",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Unit: packages/ui/test/admin/contribute/contribute-page.test.ts; the callable's access in packages/shared/src/api/registry.ts."
         }
     ]
 }

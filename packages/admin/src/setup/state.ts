@@ -10,7 +10,6 @@ import {
     HTTP_ENDPOINTS,
     MAPBOX_BOOTSTRAP_SCOPES,
     PROVISION_ITEMS,
-    usgsReadiness,
     type MapboxTokenAudience,
     type ProvisionItem,
     type SelfTestCheck,
@@ -24,6 +23,7 @@ import { DEFAULT_BUDGET_CURRENCY, budgetAmountFor } from './budget.js';
 import { setupLink, stepLinks, type SetupLinkView } from './links.js';
 import type { SetupMessage } from './messages.js';
 import type { BillingAccount, LegacyImportFailure, SetupHost } from './ports.js';
+import { NO_SOURCES, hiddenSteps, usgsPart, withPlatform, type SourcesSlice } from './sources-state.js';
 import { SETUP_STEP_SPECS, SETUP_STEPS, nextSetupStep, type SetupStepId, type SetupStepSpec } from './steps.js';
 
 export type SetupMode = 'bootstrap' | 'normal';
@@ -205,8 +205,10 @@ export interface SetupState {
     readonly authDomain: string;
     /** The expanded card: the first incomplete step unless the address or a click named another. */
     readonly openStep: SetupStepId | null;
-    /** Screen order. */
+    /** Screen order (derived: this project's steps without the ones its sources leave out, M28). */
     readonly order: readonly SetupStepId[];
+    /** This project's steps (a project of the owner's own has no legacy import). */
+    readonly stepOrder: readonly SetupStepId[];
     readonly steps: Readonly<Record<SetupStepId, SetupStepState>>;
     readonly done: number;
     readonly total: number;
@@ -242,6 +244,7 @@ export interface SetupState {
     readonly analytics: AnalyticsSlice;
     readonly crashes: CrashSlice;
     readonly legacyImport: ImportSlice;
+    readonly sources: SourcesSlice;
     // [section install] owner: installer (M6, docs/research/M6-interfaces.md §1.7): the server, the pipeline, the site.
     readonly install: InstallSlice;
     // [end install]
@@ -356,8 +359,7 @@ export function initialSetupState(host: SetupHost, mode: SetupMode): SetupState 
         projectId: host.projectId,
         authDomain: host.authDomain,
         openStep: null,
-        order: stepsOf(host),
-        steps,
+        ...{ order: stepsOf(host), stepOrder: stepsOf(host), steps },
         done: 0,
         total: stepsOf(host).length,
         ready: false,
@@ -404,6 +406,7 @@ export function initialSetupState(host: SetupHost, mode: SetupMode): SetupState 
         analytics: { measurementId: null, pageChangesOff: false, crashEmails: true, watching: false, reports: null },
         crashes: { loaded: false, busy: false, groups: [], error: null, disabledApi: null, lastReportAt: null },
         legacyImport: { done: 0, total: 0, failed: [], running: false },
+        sources: NO_SOURCES,
         install: initialInstallSlice(host.release, host.siteAddress, host.releaseTime),
         selfTest: { checks: [] },
     });
@@ -418,19 +421,15 @@ function laterSteps(state: SetupState): readonly SetupStepId[] {
     return state.order.filter((id) => state.steps[id].postponed && state.steps[id].state !== 'ok');
 }
 
-/** The steps the next one to open comes after: the done ones and the postponed ones (CR-M6-4: a postponed step waits). */
+/**
+ * The steps the next one to open comes after: the done ones, the postponed ones (CR-M6-4: a postponed step waits) and the
+ * ones the sources leave out (M28).
+ */
 function settledSteps(state: SetupState): ReadonlySet<SetupStepId> {
-    return new Set([...doneSteps(state), ...laterSteps(state)]);
+    return new Set([...doneSteps(state), ...laterSteps(state), ...hiddenSteps(state)]);
 }
 
-/** USGS's part in "done" (`usgsReadiness` of `@hcm/shared`), from the card's state and its recorded reason. */
-function usgsPart(state: SetupState): ReturnType<typeof usgsReadiness> {
-    const step = state.steps.usgs;
-    const postponedAt = state.usgs.postponedAt ?? undefined;
-    return usgsReadiness({ state: step.state, detail: step.detail?.key, ...(postponedAt === undefined ? {} : { postponedAt }) });
-}
-
-const DONE_NOTES: Readonly<Record<ReturnType<typeof usgsReadiness>, SetupState['doneNote']>> = {
+const DONE_NOTES: Readonly<Record<ReturnType<typeof usgsPart>, SetupState['doneNote']>> = {
     ok: null,
     postponed: 'usgsLater',
     approvalPending: 'usgsPending',
@@ -492,7 +491,9 @@ function reachedSteps(state: SetupState, done: ReadonlySet<SetupStepId>): Readon
 }
 
 /** Recomputes what follows from the steps: availability, the progress, `ready` and the totals. */
-export function refreshDerived(state: SetupState): SetupState {
+export function refreshDerived(current: SetupState): SetupState {
+    const order = current.stepOrder.filter((id) => !hiddenSteps(current).includes(id));
+    const state = { ...current, order, total: order.length, steps: withPlatform(current.steps) };
     const done = doneSteps(state);
     const reached = reachedSteps(state, done);
     const behind = serverBehind(state);

@@ -15,6 +15,7 @@ import { apiErrorCodeSchema } from '../api/errors.js';
 import { sha256Schema, stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import { geometryDocSchema } from './geometry.js';
 import { cityImagerySchema, JOIN_MAX_PARTS } from './imagery-settings.js';
+import { citySourcesSchema } from './sources.js';
 import {
     analyticsSchema,
     basemapSchema,
@@ -120,6 +121,8 @@ export const cityDocSchema = z.strictObject({
     photosOverlay: photosOverlaySchema.optional(),
     /** M3: auto-publish, its RMSE threshold, the target years (`imagery-settings.ts`). */
     imagery: cityImagerySchema.optional(),
+    /** M28 (`docs/research/M28-sources.md`): the sources the map uses, chosen on Setup's Sources step; absent: not chosen yet. */
+    sources: citySourcesSchema.optional(),
     /**
      * M5 (`docs/research/M5-interfaces.md` §1.8): the city's share of the project's budgets, server-owned (written by
      * `cities.create` and `cities.setLimits`, whose `cityLimitsSchema` holds the upper bounds); absent, the project's own

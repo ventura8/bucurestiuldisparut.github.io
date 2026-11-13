@@ -29,6 +29,7 @@ import {
     type UsgsRole,
     type UsgsSceneDoc,
 } from '@hcm/shared';
+import { sourcesOf, type SourceChoices } from '@hcm/shared/sources';
 
 import { LiveDoc, type DocState, type LiveDocDeps } from '../content/doc.js';
 import { isoOf, LiveList, type ListState } from '../content/list.js';
@@ -56,6 +57,8 @@ const SCENE_PAGE = 100;
 export interface FeedsPatch {
     readonly usgs?: ServiceState | null;
     readonly settings?: ImagerySettings;
+    /** M28: the city's sources. */
+    readonly sources?: SourceChoices;
     readonly frame?: CityFrame;
     /** The footprints' colours, from the city's theme (finding 51). */
     readonly colors?: FootprintColors;
@@ -287,7 +290,10 @@ export class ImageryFeeds {
     #cityChanged(state: DocState<CityDoc>): void {
         const city = state.doc?.data;
         if (city !== undefined) {
-            this.#changed({ settings: imagerySettingsOf(city.imagery), frame: frameOf(city), colors: footprintColorsOf(city.theme) });
+            this.#changed({
+                ...{ settings: imagerySettingsOf(city.imagery), sources: sourcesOf(city.sources) },
+                ...{ frame: frameOf(city), colors: footprintColorsOf(city.theme) },
+            });
         }
     }
 

@@ -179,6 +179,7 @@ export function imageryState(overrides: Partial<ImageryViewState> = {}): Imagery
             tab: 'find',
             usgs: 'ok',
             settings: { autoPublish: true, rmseThresholdM: 15, targetYears: [1966], publishThroughMapbox: true },
+            sources: { usgs: true, landsat: true, archives: true },
         },
         search: { phase: 'idle', found: null, added: null, failedDatasets: [], error: null },
         filters: { freeOnly: true, datasets: [], fromYear: null, toYear: null, hideRejected: true },

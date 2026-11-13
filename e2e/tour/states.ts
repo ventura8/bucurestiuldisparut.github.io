@@ -592,6 +592,9 @@ const ADMIN_STATES = {
     },
     'mapbox-open': { title: 'Setup, Mapbox: the token box (normal mode, every destination)', visit: 'journey.spec.ts, step 4' },
     'mapbox-trial': { title: 'Setup, Mapbox: a demo account refused, with the alert', visit: 'journey.spec.ts, step 5' },
+    // M28 (docs/research/M28-sources.md): the app's platform in one card, and the map's sources.
+    'setup-platform': { title: "Setup, the app's platform: five sections with their state and steps", visit: 'journey.spec.ts, step 5b' },
+    'setup-sources': { title: "Setup, the map's sources: switches, accounts and the month's estimate", visit: 'journey.spec.ts, step 5b' },
     'usgs-countdown': { title: 'Setup, USGS: the paste box and the 60 s countdown', visit: 'journey.spec.ts, step 10' },
     'usgs-pending': { title: "Setup, USGS: waiting for USGS's approval", visit: 'journey.spec.ts, step 10' },
     analytics: { title: 'Setup, analytics: detected, the stream setting and the crash reports', visit: 'journey.spec.ts, step 7' },

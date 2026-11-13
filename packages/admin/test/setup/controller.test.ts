@@ -92,7 +92,8 @@ describe('start', () => {
 
         expect(harness.backend.status).toHaveBeenCalledTimes(1);
         expect(harness.importer.detect).toHaveBeenCalledTimes(1);
-        expect(controller.getState()).toMatchObject({ openStep: 'mapbox', error: null, done: 5 });
+        // M28: the harness's city holds a choice of sources, so that step is done too.
+        expect(controller.getState()).toMatchObject({ openStep: 'mapbox', error: null, done: 6 });
     });
 
     it('badPath_aCardOpenedWhileTheFirstChecksRunStaysOpen', async () => {
@@ -203,7 +204,7 @@ describe('the first checks (finding 32 of 2026-10-31)', () => {
 
         detection.finish?.({ done: 45, total: 45, failed: [] });
         await starting;
-        expect(controller.getState()).toMatchObject({ loading: false, done: 6 });
+        expect(controller.getState()).toMatchObject({ loading: false, done: 7 });
         expect(firstChecks(controller.getState())).toEqual([]);
     });
 

@@ -30,6 +30,8 @@ const STEP_NAMES: ReadonlySet<string> = new Set<SetupStepId>([
     'deploy',
     'claim',
     'mapbox',
+    'platform',
+    'sources',
     'usgs',
     'analytics',
     'legacyImport',
@@ -119,6 +121,16 @@ export function formatDateTime(locale: Locale, iso: string): string {
     return new Intl.DateTimeFormat(INTL_LOCALES[locale], { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Bucharest' }).format(
         new Date(iso),
     );
+}
+
+/** A US-dollar amount as the cost lines write it after "USD" (up to two decimals: 0.5, 35). */
+export function formatUsd(locale: Locale, amount: number): string {
+    return new Intl.NumberFormat(INTL_LOCALES[locale], { maximumFractionDigits: 2 }).format(amount);
+}
+
+/** A day (`2026-11-13`) written out in the page's language. */
+export function formatDay(locale: Locale, day: string): string {
+    return new Intl.DateTimeFormat(INTL_LOCALES[locale], { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`));
 }
 
 /** "5 USD" / "US$5": the budget in its currency, whole units. */

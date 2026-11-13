@@ -11,6 +11,7 @@ import {
     type ServiceState,
     type UnusableReason,
 } from '@hcm/shared';
+import { sourcesOf, type SourceChoices } from '@hcm/shared/sources';
 
 import type { ArchiveFeed } from '../archive/feed.js';
 import { LOADING_LIST, type ListState } from '../content/list.js';
@@ -52,6 +53,8 @@ export interface ImageryState extends OrderActionsState, JoinActionsState {
     /** `setup/status.usgs.state` (null while reading): `missing` or `invalid` is the "set up USGS" state. */
     readonly usgs: ServiceState | null;
     readonly settings: ImagerySettings;
+    /** M28: the city's sources (defaults until it chose): the USGS search and the local import follow them. */
+    readonly sources: SourceChoices;
     readonly search: SearchState;
     readonly filters: SceneFilters;
     /** The scenes as read (free only when the filter says so, best score first). */
@@ -91,7 +94,8 @@ export interface ImageryState extends OrderActionsState, JoinActionsState {
 }
 
 export const INITIAL_IMAGERY: ImageryState = {
-    ...{ tab: 'find', usgs: null, settings: imagerySettingsOf(undefined), search: IDLE_SEARCH, filters: DEFAULT_FILTERS },
+    ...{ tab: 'find', usgs: null, settings: imagerySettingsOf(undefined), sources: sourcesOf(undefined) },
+    ...{ search: IDLE_SEARCH, filters: DEFAULT_FILTERS },
     ...{ scenes: LOADING_LIST, visible: [], browse: {}, versions: LOADING_LIST, jobs: {}, detail: null, version: null },
     ...{ importing: null, importRefusal: null, upload: IDLE_UPLOAD, map: 'none', previewOpacity: 1 },
     ...{ replaceLayer: null, guard: null, resuming: false, orders: LOADING_LIST, named: NO_NAMED_SCENE, ...IDLE_ORDERS },

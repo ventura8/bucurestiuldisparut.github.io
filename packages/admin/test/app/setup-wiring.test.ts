@@ -9,6 +9,7 @@ import {
     publishedMapCheck,
     setupModuleFor,
     setupOptionsFor,
+    setupSourcesPort,
     wiringHelpers,
     type SetupWiringDeps,
 } from '../../src/app/setup-wiring.js';
@@ -119,6 +120,27 @@ describe('wiringHelpers', () => {
 
         await expect(slept).resolves.toBeUndefined();
         expect([helpers.uid(), helpers.ownerEmail()]).toEqual([OWNER.uid, OWNER.email]);
+    });
+});
+
+// M28 (docs/research/M28-sources.md §4): the city's sources over the Firestore SDK.
+describe('the sources wiring', () => {
+    it('happyPath_theChoiceIsWrittenOnItsOwnWithTheAdminsStamp_andReadBack', async () => {
+        const documents = new FakeDocuments();
+        const port = setupSourcesPort({ documents }, 'bucharest', () => OWNER.uid);
+
+        await expect(port.read()).resolves.toBeUndefined();
+        await port.save({ usgs: false, landsat: true });
+
+        expect(await documents.get('cities/bucharest')).toMatchObject({ sources: { usgs: false, landsat: true }, updatedBy: OWNER.uid });
+        await expect(port.read()).resolves.toEqual({ usgs: false, landsat: true });
+    });
+
+    it('badPath_aStoredValueTheSchemaRefusesReadsAsNoChoice', async () => {
+        const documents = new FakeDocuments();
+        await documents.set('cities/bucharest', { sources: { usgs: 'yes' } });
+
+        await expect(setupSourcesPort({ documents }, 'bucharest', () => null).read()).resolves.toBeUndefined();
     });
 });
 

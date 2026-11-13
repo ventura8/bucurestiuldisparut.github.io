@@ -19,10 +19,23 @@ import type {
     TransientDeployReason,
     UsgsRole,
 } from '@hcm/shared';
+import type { SourceChoices, SourceToggle } from '@hcm/shared/sources';
 
 // [section install] owner: installer (M6, CR-M6-6): the imagery pipeline (d3) and Publish the map (i) join the steps.
 export type SetupStepId =
-    'signIn' | 'billing' | 'provision' | 'deploy' | 'claim' | 'pipeline' | 'mapbox' | 'usgs' | 'analytics' | 'legacyImport' | 'site';
+    | 'signIn'
+    | 'billing'
+    | 'provision'
+    | 'deploy'
+    | 'claim'
+    | 'pipeline'
+    | 'mapbox'
+    | 'platform'
+    | 'sources'
+    | 'usgs'
+    | 'analytics'
+    | 'legacyImport'
+    | 'site';
 // [end install]
 
 type SetupMode = 'bootstrap' | 'normal';
@@ -199,6 +212,8 @@ export interface SetupViewState {
         /** The city's credits do not name every old photo's author yet: the next click adds them. */
         readonly credits?: boolean;
     };
+    /** M28: the Sources step's switches and what the city holds (null: not chosen yet). */
+    readonly sources: { readonly choices: SourceChoices; readonly saved: SourceChoices | null };
     /** The last self-test's checks (Check again in normal mode), each with its state and a failure's reason. */
     readonly selfTest: {
         readonly checks: readonly {
@@ -301,6 +316,10 @@ export interface SetupIntentsPort {
     enableApi(api: string): void;
     loadCrashGroups(): void;
     importLegacy(): void;
+    /** M28: one switch of the Sources step. */
+    chooseSource(id: SourceToggle, on: boolean): void;
+    /** M28: Save my choice. */
+    saveSources(): void;
     // [section install] owner: installer (M6)
     /** Install the server (d): it also starts the imagery pipeline. */
     installServer(): void;

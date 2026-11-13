@@ -14,7 +14,7 @@ import { capture } from '../support/capture.js';
 import type { GoogleConsent } from '../support/consent.js';
 import type { ServerDeployment } from '../support/deployment.js';
 import type { EmulatorWorld } from '../support/emulators.js';
-import { apiText, setupText, shellText } from '../support/i18n.js';
+import { apiText, setupText, shellText, sourcesText } from '../support/i18n.js';
 import {
     followSiteRelease,
     INSTALL_RELEASE,
@@ -281,6 +281,30 @@ async function connectMapbox({ page, lang, setup, setupBudget, upstream, console
     expect(JSON.stringify([city, await emulators.document('setup/status')])).not.toContain(MAPBOX_TOKENS.trial);
 }
 
+/**
+ * 5b. M28: the app's platform (read from the steps before it, no input) and the map's sources: after Mapbox the Sources card
+ * opens with the suggested switches and the month's estimate; Save my choice (one input) writes the city's `sources` and
+ * USGS stays in the list (its frames and Landsat are on by default).
+ */
+async function chooseSources({ page, lang, setup, setupBudget, emulators }: Journey): Promise<void> {
+    const platform = await setup.show('platform');
+    await expect(platform.locator('[data-platform]')).toHaveCount(5);
+    await checkpoint(page, lang, '06b-platform', 'setup-platform');
+    const sources = await setup.show('sources');
+    await expect(sources.getByRole('switch', { name: sourcesText(lang, 'adminSources.usgs.title') })).toHaveAttribute(
+        'aria-checked',
+        'true',
+    );
+    await expect(sources.getByText(startOf(sourcesText(lang, 'adminSources.summary.total')))).toBeVisible();
+    await checkpoint(page, lang, '06c-sources', 'setup-sources');
+    await setupBudget.inputs('sources').click(sources.getByRole('button', { name: sourcesText(lang, 'adminSources.save') }));
+    await setup.expectState('sources', 'ok');
+    await expect
+        .poll(async () => (await emulators.document('cities/bucharest'))?.['sources'])
+        .toMatchObject({ usgs: true, cloudAi: false });
+    await expect(setup.card('usgs')).toBeVisible();
+}
+
 /** 6. USGS can wait: Do it later (one input of its own budget); the chip says Later and Setup goes on. */
 async function postponeUsgs({ lang, setup, skipUsgs, page }: Journey): Promise<void> {
     const usgs = await setup.show('usgs');
@@ -467,6 +491,8 @@ test(
             '@S-A28-HAPPY',
             '@S-A31-HAPPY',
             '@S-A31-BAD-ALERTS',
+            '@S-A171-HAPPY-SAVE-DEFAULTS',
+            '@S-A172-HAPPY-PLATFORM',
         ],
     },
     async ({ page, lang, consent, inputBudget, setupBudget, upstream, serverDeployment, consoleErrors, adminWorld }) => {
@@ -507,6 +533,7 @@ test(
 
         await installTheServer(journey, adminWorld.accounts.owner.uid);
         await connectMapbox(journey);
+        await chooseSources(journey);
         await postponeUsgs(journey);
         await enableAnalytics(journey);
         await importLegacyPhotos(journey);
