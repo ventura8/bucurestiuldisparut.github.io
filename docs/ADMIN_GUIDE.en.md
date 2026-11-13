@@ -291,17 +291,21 @@ One project can hold up to 20 cities, each with its own photos, places, layers, 
 ### Arranging the tiles of a series (M20)
 
 A series of map sheets, atlas pages or pieces that the app could not join surely waits with **the tiles wait for you to arrange
-them**. Its page has **Arrange the tiles**, which opens a wizard in four steps (`docs/research/M20-import-local.md` §19):
+them**. Its page has **Arrange the tiles**, which opens a wizard in four steps (`docs/research/M20-import-local.md` §19.11):
 
 - **Order**: every sheet's thumbnail in the grid the app inferred, with where its place came from (its name, the overview map, its
-  seams, the files' order). Drag a sheet onto its cell, or choose a cell with the arrow keys: Shift and an arrow moves the sheet, R
-  turns it, F mirrors it, X takes it out of the map. Blank pages and sheets that are not part of the map are listed under the grid
+  seams, the files' order). Drag a sheet onto its cell; or tap it, press **Move** and tap the cell (on a phone a swipe on the grid
+  scrolls it, it never drags); or choose a cell with the arrow keys: Shift and an arrow moves the sheet, R turns it, F mirrors it, X
+  takes it out of the map. A line under the grid says what each change did. Blank pages and sheets that are not part of the map are listed under the grid
   with **Put back**.
-- **Seams**: each doubtful seam's two strips side by side, with the app's guess as a dot on each. **Accept the guess** (Enter), or
-  click one matching point on each strip; **Next seam** (N).
+- **Seams**: each doubtful seam, and each seam the app did not find, with its two strips side by side and the app's guess as a dot
+  on each (a seam it did not find may have no guess: pick the points yourself). **Accept the guess** (Enter), or pick one matching
+  point on each strip: click it, or go to the strip with Tab, move the cross with the arrows (Shift: farther) and press Space;
+  **Next seam** (N). A seam whose sheet you move, turn, mirror or take out afterwards leaves the list: the next preview asks it again.
 - **Preview**: your layout drawn from the thumbnails at once; **Make the real preview** asks your computer to join the sheets your
   way (a few minutes), then shows the joined picture and the quality: sheets placed, how well the seams agree, the seams' error.
-- **Points**: **Place it on the map** sends the series on; the joined picture then opens in the georeferencer for its points.
+- **Points**: **Place it on the map** sends the series on; the joined picture then opens in the georeferencer for its points. Until
+  then the series' page offers no georeferencer: points on the doubtful preview would place a picture nobody checked.
 
 If the app wrote a newer layout while you worked, your changes are refused and the newer layout shows: look at it and arrange again.
 

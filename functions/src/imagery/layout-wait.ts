@@ -16,7 +16,7 @@ import type { DocumentTransaction } from '../ports/documents.js';
 import { stampOf } from './records.js';
 
 /**
- * The tile-import wizard's shared step (`docs/research/M20-import-local.md` §19; `save-layout.ts`, `accept-layout.ts`): an archive
+ * The tile-import wizard's shared step (`docs/research/M20-import-local.md` §19.10; `save-layout.ts`, `accept-layout.ts`): an archive
  * series waiting with `layout-check` takes the owner's answer as `help.layoutAnswer` and runs again from `place`, which fixes it
  * (`pipeline/src/hcm_pipeline/placing/owner_layout.py`), as `imagery.saveGcps` resumes a series from the owner's pairs.
  */

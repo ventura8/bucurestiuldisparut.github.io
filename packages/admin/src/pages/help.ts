@@ -1,4 +1,4 @@
-/** The tile-import wizard as one lazy chunk (`docs/research/M20-import-local.md` §19): its page's elements and its store's module. */
+/** The tile-import wizard as one lazy chunk (`docs/research/M20-import-local.md` §19.11): its page's elements and its store's module. */
 import { AREA_ELEMENTS } from '@hcm/ui/admin/areas/help';
 
 import type { AreaChunk } from '../routing/area-chunk.js';

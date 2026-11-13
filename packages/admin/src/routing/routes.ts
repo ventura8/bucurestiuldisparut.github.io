@@ -24,7 +24,7 @@ export const ADMIN_ROUTES = [
     'history',
     'crashes',
     'georef',
-    /** The tile-import wizard (`#/help/<versionId>/tiles`, docs/research/M20-import-local.md §19): from a series' page. */
+    /** The tile-import wizard (`#/help/<versionId>/tiles`, docs/research/M20-import-local.md §19.11): from a series' page. */
     'help',
     'cities',
     /** M13 (`docs/research/M13-roles.md` §8): the review queue. */

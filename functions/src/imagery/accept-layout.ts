@@ -8,7 +8,7 @@ import { resumeWithLayout } from './layout-wait.js';
 import type { SaveLayoutDeps } from './save-layout.js';
 
 /**
- * `imagery.acceptLayout` (a city editor; `docs/research/M20-import-local.md` §19): the layout of `revision` as it stands, accepted.
+ * `imagery.acceptLayout` (a city editor; `docs/research/M20-import-local.md` §19.10): the layout of `revision` as it stands, accepted.
  * The owner's earlier answer is kept (its sheets and seams, which that layout already shows), marked `accepted`, and the job runs
  * again from `place`, which mosaics the series with it and sends it on to points (`layout-wait.ts`).
  */

@@ -1,5 +1,5 @@
 /**
- * The tile-import wizard's store (`#/help/<versionId>/tiles`, `docs/research/M20-import-local.md` §19; S-A-*-TILE-WIZARD-*): an
+ * The tile-import wizard's store (`#/help/<versionId>/tiles`, `docs/research/M20-import-local.md` §19.11; S-A-*-TILE-WIZARD-*): an
  * archive series waiting with `layout-check`. It follows the version; reads `layout.json` and the sprites of each new layout the
  * pipeline writes (a draft the owner is changing is kept until it is sent, so a newer layout refuses it as stale); keeps the owner's
  * draft; sends it for the real preview (`imagery.saveLayout` with `preview`) or on to points (`imagery.saveLayout`, or
@@ -18,7 +18,7 @@ import { Store } from '../state/store.js';
 import { ownerSheetsOf, sheetsOf, thumbSpriteOf, type DraftSheet } from './draft.js';
 import { tilesIntentsOf, type TilesHost } from './intents.js';
 import { loadLayout, releaseLayout, type LoadedLayout } from './load.js';
-import { ownerSeamsOf, seamSpriteOf, weakSeamsOf, type DraftSeam } from './seams.js';
+import { ownerSeamsOf, seamsAfter, seamSpriteOf, weakSeamsOf, type DraftSeam } from './seams.js';
 import { INITIAL_TILES, seamPortOf, sheetPortOf } from './view.js';
 
 /** The stitched picture of a series that waits for its tiles, with its layout. */
@@ -123,8 +123,10 @@ class TilesStore implements AreaStore<TilesViewState, TilesIntentsPort>, TilesHo
 
     setSheets(sheets: readonly DraftSheet[], selected = this.#cell.state.selected): void {
         if (sheets !== this.#sheets) {
+            this.#seams = seamsAfter(this.#seams, this.#sheets, sheets);
             this.#sheets = sheets;
-            this.#cell.update({ sheets: sheets.map(sheetPortOf), seams: this.#seamPorts(), dirty: true, refusal: null });
+            const seam = Math.min(this.#cell.state.seam, Math.max(this.#seams.length - 1, 0));
+            this.#cell.update({ sheets: sheets.map(sheetPortOf), seams: this.#seamPorts(), seam, dirty: true, refusal: null });
         }
         this.#cell.update({ selected });
     }
@@ -229,10 +231,13 @@ class TilesStore implements AreaStore<TilesViewState, TilesIntentsPort>, TilesHo
         void this.#load(version.layerId, stitched.previewPath, revision);
     }
 
-    /** No layout waits any more: handed off, or a preview under way, or another wait. */
+    /**
+     * No layout waits any more: handed off, or a preview under way, or another wait. While a call is in flight its own write
+     * arrives first (the snapshot outruns the callable's answer): that is no move away.
+     */
     #gone(): void {
-        const { previewing, handedOff } = this.#cell.state;
-        if (!previewing && !handedOff) {
+        const { previewing, handedOff, busy } = this.#cell.state;
+        if (!previewing && !handedOff && !busy) {
             this.#cell.update({ status: 'moved' });
         }
     }
@@ -263,7 +268,7 @@ class TilesStore implements AreaStore<TilesViewState, TilesIntentsPort>, TilesHo
             ...{ sheets: this.#sheets.map(sheetPortOf), seams: this.#seamPorts(), seam: 0, dirty: false },
             ...{ selected: { row: 0, col: 0 }, stitched: loaded.stitched },
             thumbs: loaded.thumbs === null ? null : { url: loaded.thumbs, ...thumbSpriteOf(file.sheets.length) },
-            seamsSprite: loaded.seams === null ? null : { url: loaded.seams, ...seamSpriteOf(this.#seams) },
+            seamsSprite: loaded.seams === null ? null : { url: loaded.seams, ...seamSpriteOf(file.seams) },
             previewing: this.#cell.state.previewing && !answered,
         });
     }

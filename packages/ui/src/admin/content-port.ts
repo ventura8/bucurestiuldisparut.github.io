@@ -64,7 +64,7 @@ export interface ContentPort {
     // [section stories] owner: stories (docs/research/M17-stories.md §6)
     readonly stories: AreaPort<StoriesViewState, StoriesIntentsPort> | null;
     // [end stories]
-    // [section help] owner: tilewizard (docs/research/M20-import-local.md §19)
+    // [section help] owner: tilewizard (docs/research/M20-import-local.md §19.11)
     readonly help: AreaPort<TilesViewState, TilesIntentsPort> | null;
     // [end help]
     // [section cities] owner: multi-city (docs/research/M5-interfaces.md §1.6)

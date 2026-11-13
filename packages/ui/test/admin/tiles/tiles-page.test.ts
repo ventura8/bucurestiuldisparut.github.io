@@ -1,5 +1,5 @@
 /**
- * `<hcm-tiles-page>` and its steps (`docs/research/M20-import-local.md` §19): the grid with its keyboard and drag, the weak seam with
+ * `<hcm-tiles-page>` and its steps (`docs/research/M20-import-local.md` §19.11): the grid with its keyboard and drag, the weak seam with
  * its clicks and keys, the preview with its meter, the hand-off, and the page's other states. Axe-clean.
  */
 import { axeViolations } from '@hcm/test-support/axe';
@@ -7,39 +7,10 @@ import { html } from 'lit';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { AREA_ELEMENTS } from '../../../src/admin/areas/help.js';
-import type { TilesIntentsPort, TilesViewState } from '../../../src/admin/tiles/tiles-port.js';
-import { FakeArea } from '../editing/fake-area.js';
+import type { TilesViewState } from '../../../src/admin/tiles/tiles-port.js';
 import { adminState, cleanup, deep, deepAll, deepText, defineAll, FakeAdminApp, mount, updated } from '../shell/fake-app.js';
 import { tilesView } from './fixtures.js';
-
-async function page(view: TilesViewState, width = 1200) {
-    const area = new FakeArea<TilesViewState, TilesIntentsPort>(view, { preview: Promise.resolve(), handOff: Promise.resolve() });
-    const app = new FakeAdminApp(adminState({ route: { id: 'help', params: [view.versionId, 'tiles'] } }));
-    app.areas.help = area;
-    AREA_ELEMENTS.define(customElements);
-    const host = await mount<HTMLElement>(html`<hcm-tiles-page .app=${app} .state=${app.state}></hcm-tiles-page>`, width);
-    await updated(host);
-    return { host, area };
-}
-
-async function settled(host: HTMLElement): Promise<void> {
-    await updated(host);
-    for (const element of deepAll(host, 'hcm-tile-grid, hcm-seam-pair, hcm-tile-preview')) {
-        await updated(element);
-    }
-}
-
-function button(host: HTMLElement, label: string): HTMLButtonElement {
-    const found = deepAll(host, 'hcm-button').find((item) => item.textContent.includes(label));
-    if (found === undefined) {
-        throw new Error(`no ${label}`);
-    }
-    return deep(found, 'button') as HTMLButtonElement;
-}
-
-function key(target: HTMLElement, name: string, shiftKey = false): void {
-    target.dispatchEvent(new KeyboardEvent('keydown', { key: name, shiftKey, bubbles: true, composed: true }));
-}
+import { button, key, page, settled } from './harness.js';
 
 describe('<hcm-tiles-page>: step 1, the order @S-A-HAPPY-TILE-WIZARD-ORDER', () => {
     beforeAll(() => {

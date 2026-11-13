@@ -1,11 +1,10 @@
 import type { AdminTilesKey } from './ro.js';
 
-/** The tile-import wizard's texts in English (`docs/research/M20-import-local.md` §19), typed against `ro.ts`. */
+/** The tile-import wizard's texts in English (`docs/research/M20-import-local.md` §19.11), typed against `ro.ts`. */
 export const en: Readonly<Record<AdminTilesKey, string>> = {
     // [section tiles] owner: tilewizard; keys adminTiles.*
     'adminTiles.title': 'Arrange the tiles',
-    'adminTiles.intro':
-        'The app could not join every sheet surely. Put each sheet in its place, check the doubtful seams, then look at the result.',
+    'adminTiles.intro': 'The app could not join every sheet surely. Place each sheet, check the doubtful seams, then look at the result.',
     'adminTiles.stepsLabel': 'Steps',
     'adminTiles.step.order': 'Order',
     'adminTiles.step.seams': 'Seams',
@@ -15,8 +14,8 @@ export const en: Readonly<Record<AdminTilesKey, string>> = {
     'adminTiles.back': 'Back',
     'adminTiles.next': 'Next',
     'adminTiles.gridLabel': 'The sheets in their grid',
-    'adminTiles.gridHelp':
-        'Drag a sheet to its cell, or choose it with the arrows: Shift and the arrows move it, R turns it, F mirrors it, X takes it out of the map.',
+    'adminTiles.gridHelp': 'Drag a sheet to its cell, or choose it, press Move and tap the cell.',
+    'adminTiles.gridKeys': 'Keys: the arrows choose, Shift and the arrows move, R turns, F mirrors, X takes the sheet out of the map.',
     'adminTiles.cellEmpty': 'Empty cell, row {row}, column {col}',
     'adminTiles.cellSheet': '{name}, row {row}, column {col}',
     'adminTiles.turned': 'turned {turn}°',
@@ -30,6 +29,13 @@ export const en: Readonly<Record<AdminTilesKey, string>> = {
     'adminTiles.flip': 'Mirror',
     'adminTiles.notPart': 'Not part of this map',
     'adminTiles.putBack': 'Put {name} back',
+    'adminTiles.move': 'Move',
+    'adminTiles.movePick': 'Tap the cell to move {name} to.',
+    'adminTiles.said.turned': '{name}: turned a quarter clockwise.',
+    'adminTiles.said.mirrored': '{name}: mirrored.',
+    'adminTiles.said.out': '{name}: taken out of the map.',
+    'adminTiles.said.moved': '{name}: moved to row {row}, column {col}.',
+    'adminTiles.said.empty': 'No sheet in this cell.',
     'adminTiles.outLabel': 'Sheets left out',
     'adminTiles.out.no-frame': 'no frame',
     'adminTiles.out.no-join': 'no shared edge',
@@ -40,9 +46,12 @@ export const en: Readonly<Record<AdminTilesKey, string>> = {
     'adminTiles.seamsLabel': 'Doubtful seams',
     'adminTiles.seamOf': 'Seam {n} of {total}: {a} and {b}',
     'adminTiles.noSeams': 'No doubtful seams: every neighbour agrees.',
-    'adminTiles.seamHelp':
-        "The dots are the app's guess. Accept it, or click one matching point on each strip. N: next seam, Enter: accept.",
+    'adminTiles.seamHelp': "The dots are the app's guess: accept it, or click a matching point on each strip. N: next seam.",
+    'adminTiles.seamKeys': 'Or go to a strip, move the cross with the arrows (Shift: farther) and press Space.',
     'adminTiles.strip': 'Strip of {name}',
+    'adminTiles.cursorAt': 'The cross on {name}: x {x}, y {y}.',
+    'adminTiles.pointPicked': 'Point picked on {name}: x {x}, y {y}.',
+    'adminTiles.noGuess': 'The app did not find this seam: pick one point on each strip yourself.',
     'adminTiles.acceptSeam': 'Accept the guess',
     'adminTiles.nextSeam': 'Next seam',
     'adminTiles.seamAnswered': 'Answered',

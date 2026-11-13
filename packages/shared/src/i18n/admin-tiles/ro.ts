@@ -1,12 +1,11 @@
 /**
- * The tile-import wizard's texts (`docs/research/M20-import-local.md` §19, `#/help/<versionId>/tiles`), Romanian: the source of truth
+ * The tile-import wizard's texts (`docs/research/M20-import-local.md` §19.11, `#/help/<versionId>/tiles`), Romanian: the source of truth
  * of `AdminTilesKey`; `en.ts` is typed against it. One entry per line (scripts/ci/check_i18n.py).
  */
 export const ro = {
     // [section tiles] owner: tilewizard; keys adminTiles.*
     'adminTiles.title': 'Așază foile',
-    'adminTiles.intro':
-        'Aplicația nu a putut îmbina sigur toate foile. Pune fiecare foaie la locul ei, verifică îmbinările îndoielnice, apoi privește rezultatul.',
+    'adminTiles.intro': 'Aplicația nu a îmbinat sigur toate foile. Așază-le, verifică îmbinările îndoielnice, apoi privește rezultatul.',
     'adminTiles.stepsLabel': 'Pașii',
     'adminTiles.step.order': 'Ordinea',
     'adminTiles.step.seams': 'Îmbinările',
@@ -16,8 +15,8 @@ export const ro = {
     'adminTiles.back': 'Înapoi',
     'adminTiles.next': 'Mai departe',
     'adminTiles.gridLabel': 'Foile în grila lor',
-    'adminTiles.gridHelp':
-        'Trage o foaie în celula ei sau alege-o cu săgețile: Shift și săgețile o mută, R o rotește, F o oglindește, X o scoate din hartă.',
+    'adminTiles.gridHelp': 'Trage o foaie în celula ei, sau alege-o, apasă Mută și atinge celula.',
+    'adminTiles.gridKeys': 'Taste: săgețile aleg, Shift și săgețile mută, R rotește, F oglindește, X scoate foaia din hartă.',
     'adminTiles.cellEmpty': 'Celulă goală, rândul {row}, coloana {col}',
     'adminTiles.cellSheet': '{name}, rândul {row}, coloana {col}',
     'adminTiles.turned': 'rotită {turn}°',
@@ -31,6 +30,13 @@ export const ro = {
     'adminTiles.flip': 'Oglindește',
     'adminTiles.notPart': 'Nu face parte din hartă',
     'adminTiles.putBack': 'Pune înapoi {name}',
+    'adminTiles.move': 'Mută',
+    'adminTiles.movePick': 'Atinge celula în care muți {name}.',
+    'adminTiles.said.turned': '{name}: rotită un sfert de tură spre dreapta.',
+    'adminTiles.said.mirrored': '{name}: oglindită.',
+    'adminTiles.said.out': '{name}: scoasă din hartă.',
+    'adminTiles.said.moved': '{name}: mutată pe rândul {row}, coloana {col}.',
+    'adminTiles.said.empty': 'Nicio foaie în această celulă.',
     'adminTiles.outLabel': 'Foile lăsate deoparte',
     'adminTiles.out.no-frame': 'fără chenar',
     'adminTiles.out.no-join': 'fără margine comună',
@@ -41,9 +47,12 @@ export const ro = {
     'adminTiles.seamsLabel': 'Îmbinările îndoielnice',
     'adminTiles.seamOf': 'Îmbinarea {n} din {total}: {a} și {b}',
     'adminTiles.noSeams': 'Nicio îmbinare îndoielnică: toate foile vecine se potrivesc.',
-    'adminTiles.seamHelp':
-        'Punctele sunt presupunerea aplicației. Accept-o sau dă clic pe câte un punct care se potrivește pe fiecare fâșie. N: îmbinarea următoare, Enter: acceptă.',
+    'adminTiles.seamHelp': 'Punctele sunt ghicite de aplicație: acceptă-le sau alege un punct potrivit pe fiecare fâșie. N: următoarea.',
+    'adminTiles.seamKeys': 'Sau du-te pe o fâșie, mută crucea cu săgețile (Shift: mai departe) și apasă Spațiu.',
     'adminTiles.strip': 'Fâșia foii {name}',
+    'adminTiles.cursorAt': 'Crucea pe {name}: x {x}, y {y}.',
+    'adminTiles.pointPicked': 'Punct ales pe {name}: x {x}, y {y}.',
+    'adminTiles.noGuess': 'Aplicația nu a găsit această îmbinare: alege tu câte un punct pe fiecare fâșie.',
     'adminTiles.acceptSeam': 'Acceptă presupunerea',
     'adminTiles.nextSeam': 'Îmbinarea următoare',
     'adminTiles.seamAnswered': 'Răspuns dat',

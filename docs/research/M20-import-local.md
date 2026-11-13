@@ -662,24 +662,25 @@ Tests: `pipeline/tests/unit/{test_placing_grid,test_worker_imports,test_worker_a
 
 The owner's worker log said "9 parts, 85 left out" for the 94-page atlas: 1 px edge profiles, SIFT on line art and a whole canvas in
 memory leave most pages out. The design (names grid, seams by phase correlation, a bundle adjustment, a quality verdict, windowed
-canvas) is the pipeline track's; this section is the contract both tracks build on and the admin's half. DECISIONS-for-review.md §169.
+canvas) is the pipeline track's (§19.1 to §19.9 on track/autostitch); §19.10 to §19.12 are the contract both tracks build on and the
+admin's half. DECISIONS-for-review.md §169.
 
-### 19.1 The contract
+### 19.10 The contract
 
 | What | Where | Shape |
 | --- | --- | --- |
-| The layout's summary | `help.stitched.layout` (`stitchLayoutSchema`, `packages/shared/src/schemas/imagery-tiles.ts`) | `rows`, `cols`, `revision` (grows by one each time the pipeline writes a layout), `quality {placedPct, seamMedian, seamRmsPx, verdict}`, `weakSeams` (at most 200: `a`, `b`, `side`, `score`). The Firestore document stays small. |
-| Every sheet and seam | `layout.json`, a version file (`layoutFileSchema`) | `sheets` (name, row, col, turn 0/90/180/270, flip after the turn, `out` reason, `source`, a similarity `matrix` into the canvas, the oriented size) and `seams` (`a`, `b`, `side` right or below, `dx`, `dy`, `score`, `rmsPx`, `overlapPx`, `state`, a weak seam's `suggestion` and its `strip` in `seams.jpg`). Golden file: `pipeline/tests/contracts/layout.sample.json`. |
+| The layout's summary | `help.stitched.layout` (`stitchLayoutSchema`, `packages/shared/src/schemas/imagery-tiles.ts`) | `rows`, `cols`, `revision` (grows by one each time the pipeline writes a layout), `quality {placedPct, seamMedian, seamRmsPx (cell pixels, not the canvas's), verdict}`, `weakSeams` (at most 200: `a`, `b`, `side`, `score`). The Firestore document stays small. |
+| Every sheet and seam | `layout.json`, a version file (`layoutFileSchema`) | `sheets` (name, row, col, turn 0/90/180/270, flip after the turn, `out` reason, `source`, an affine `matrix` into the canvas (as written, an axis-wise stretch and shift: `b = d = 0`, `a` and `e` may differ), the oriented size; `source` is the grid's for every sheet of a name or overview grid, unread ones included) and `seams` (`a`, `b`, `side` right or below, `dx`, `dy`, `score`, `rmsPx`, `overlapPx`, `state`, a weak or missing seam's `suggestion` (a missing one may have none) and its `strip` in `seams.jpg`). Golden file: `pipeline/tests/contracts/layout.sample.json`. |
 | Thumbnails | `thumbs.jpg` | 128 px cells, 32 a row, `min(n, 32)` cells wide; cell `i` is `sheets[i]` as stored (no turn, no flip), its long side 128 px from the cell's top left. |
-| Weak seams' strips | `seams.jpg` | One row of 256 px per weak seam with a `strip`: sheet `a`'s strip in the left square, `b`'s in the right, each scaled into its square from the top left. |
-| The owner's answer | `help.layoutAnswer` (`layoutAnswerSchema`) | `revision`, `sheets` (every sheet in the grid with its cell, turn and mirror, and the sheets the owner took out as `not-part`), `seams` (one matching point on each side), `preview`, `accepted`, `by`, `at`. |
+| Doubtful seams' strips | `seams.jpg` | One row of 256 px per weak or missing seam with a `strip` (as high as its last row): sheet `a`'s strip in the left square, `b`'s in the right, each scaled into its square from the top left. |
+| The owner's answer | `help.layoutAnswer` (`layoutAnswerSchema`) | `revision`, `sheets` (every sheet in the grid with its cell, turn and mirror, every sheet left out for `no-seam` or `no-join` whose cell is still free, at that cell, and the sheets the owner took out as `not-part`), `seams` (one matching point on each side), `preview`, `accepted`, `by`, `at`. |
 | Enums | `imagery-tiles.ts`, twins in `pipeline/src/hcm_pipeline/archive/model.py` and `pipeline/tests/contracts/enums.json` | `STITCH_METHODS` + `names`, `owner`; `LEFT_OUT_REASONS` + `blank`, `not-part`, `no-seam`; `HELP_REASONS` + `layout-check`; `SEAM_STATES`, `SHEET_SOURCES`, `SHEET_TURNS`, `STITCH_VERDICTS`, `SEAM_SIDES`; the verdict's thresholds (`STITCH_GOOD_*`, `STITCH_MAX_MOVE_CELL`) and the files' limits. |
 | Callables | `functions/src/imagery/save-layout.ts`, `accept-layout.ts`, `layout-wait.ts`; schemas `packages/shared/src/api/imagery-tiles.ts` | `imagery.saveLayout({cityId, versionId, revision, sheets, seams, preview})` (a city editor): refused on a series that is not parked with `layout-check` (`apiError.imagery.versionState`) or on an older revision (`apiError.imagery.layoutStale`); writes `help.layoutAnswer`, the version `processing`, the job `queued` from `place` (as `imagery.saveGcps`). `imagery.acceptLayout({cityId, versionId, revision})`: the earlier answer kept, `accepted: true`, `preview: false`, the same resume. The worker's `place` reads the answer (`placing/owner_layout.py`, the pipeline track). |
 
 No rule changed: the version's files are under `rasters/{city}/`, which a city member reads (`firebase/storage.rules`); the version
 document is written by the functions only.
 
-### 19.2 The wizard
+### 19.11 The wizard
 
 `#/help/<versionId>/tiles` (route `help`, never a navigation destination; its own lazy chunk `help` with its texts
 `@hcm/shared/admin-tiles`). It opens from a series' page (**Arrange the tiles**, `layoutCheck` of `helpItemsOf`) and reads the
@@ -687,17 +688,35 @@ version live, `layout.json` and the three pictures from the private bucket (`pac
 
 | Step | Element | Behaviour |
 | --- | --- | --- |
-| 1 Order | `packages/ui/src/admin/tiles/tile-grid.ts` | The thumbnails in the grid, each with its source as a badge; drag a sheet onto a cell (the sheet there swaps), or a roving tabindex: the arrows choose a cell, Shift and the arrows move its sheet, R turns, F mirrors, X takes it out of the map; the left-out sheets with **Put back**. The grid pans in its own frame on a phone. |
-| 2 Seams | `seam-pair.ts` | Each weak seam's two strips with the guess as a dot; **Accept the guess** (Enter on the pair) or one click on each strip; **Next seam** (N). |
+| 1 Order | `packages/ui/src/admin/tiles/tile-grid.ts` | The thumbnails in the grid, each with its source as a badge; drag a sheet onto a cell with a mouse or a pen (the sheet there swaps), or choose it, press **Move** and tap the cell (one pointer, no drag), or a roving tabindex: the arrows choose a cell, Shift and the arrows move its sheet, R turns, F mirrors, X takes it out of the map; the left-out sheets with **Put back**. Each change is said in a live region. The grid pans in its own frame on a phone: a touch never starts a drag (`touch-action: pan-x pan-y`). |
+| 2 Seams | `seam-pair.ts` | Each weak or missing seam's two strips with the guess as a dot (a missing seam may have none, and says so); **Accept the guess** (Enter on the pair) or one point on each strip: a click, or the strip focused, a cross moved with the arrows (Shift: farther) and Space or Enter, said in a live region; **Next seam** (N). A seam whose sheet the owner then moves, turns, mirrors or takes out is dropped (the next preview asks it again). |
 | 3 Preview | `tile-preview.ts` | The layout from the thumbnails at once; **Make the real preview** sends the answer with `preview` and waits for the next revision; the joined picture and the meter (`role="meter"` per figure the verdict reads, with its words) and an alert on a poor layout. |
 | 4 Points | `hcm-tiles-page.ts` | **Place it on the map**: `imagery.acceptLayout` when nothing changed, `imagery.saveLayout` without `preview` otherwise; then **Open the georeferencer**. Off while every sheet is out. |
 
 A draft the owner is changing is kept when the pipeline writes a newer revision; sending it is then refused as stale, the page says
-so and shows the newer layout. Back and Next sit in a bar at the bottom of the window on a phone. Loading, an address with no
+so and shows the newer layout. Back and Next sit in a bar after the step (on a phone too: a bar fixed over the step hid its last lines and buttons). Loading, an address with no
 series, a series that waits for nothing any more and a `layout.json` that cannot be read each say so.
 
 Tests: `functions/test/imagery/save-layout.test.ts`, `packages/shared/test/schemas/{imagery-tiles,help-queue,pipeline-contract}.test.ts`,
 `packages/admin/test/tiles/`, `packages/ui/test/admin/tiles/`, `packages/ui/test/admin/imagery/tiles-link.test.ts`,
-`e2e/admin/specs/imagery/tiles.spec.ts` (tour states `tiles.*`); scenarios `S-A-HAPPY-TILE-WIZARD-{ORDER,KEYBOARD,SEAM,PREVIEW,HANDOFF}`,
-`S-A-BAD-TILE-WIZARD-{STALE-REVISION,ALL-OUT,PREVIEW-POOR,UNREADABLE}` (behaviour A141). The pipeline's stitching, its scenarios
+`e2e/admin/specs/imagery/tiles.spec.ts` (tour states `tiles.*`); scenarios `S-A-HAPPY-TILE-WIZARD-{ORDER,KEYBOARD,MOVE,SEAM,SEAM-KEYS,PREVIEW,HANDOFF}`,
+`S-A-BAD-TILE-WIZARD-{STALE-REVISION,SEAM-RESET,POINTS-FIRST,ALL-OUT,PREVIEW-POOR,UNREADABLE}` (behaviour A141). The pipeline's stitching, its scenarios
 `S-P20-*-STITCH-*` and the dry run on `harti.zip` (§15.1) are the pipeline track's.
+
+### 19.12 The review of 2026-11-13: what the admin side changed
+
+An adversarial review of both tracks found the field names agreeing and the behaviour not. The admin's and the functions' half:
+
+| Finding | Change |
+| --- | --- |
+| The wizard dropped `missing` seams, the ones the pipeline is least sure of; `seams.jpg`'s height came from the filtered list | Step 2 asks weak and missing seams; the sprite's height comes from every seam of `layout.json` with a strip (`seams.ts`). |
+| A `no-seam` sheet became `not-part` for good as soon as the owner changed anything (the pipeline reads an unnamed sheet as `not-part`) | The answer names a `no-seam` or `no-join` sheet whose cell is free, at that cell, so the pipeline tries it again (`draft.ts`). The pipeline should also keep an unnamed sheet's own reason (track/autostitch). |
+| A seam answer outlived a turn, mirror, move or take-out of its sheet | The seam is dropped from the draft (`seamsAfter`). The pipeline should also ignore an owner seam that is no neighbour pair of the new grid (track/autostitch). |
+| Points could be placed on the doubtful preview | The series' page offers no georeferencer while `layoutCheck`; `imagery.saveGcps` refuses a version waiting with `layout-check` (`apiError.imagery.layoutWaits`). |
+| A phone could not pan the grid, nor move a sheet without dragging; R, F, X and Shift+arrows were silent; seam points had no keyboard path | `touch-action: pan-x pan-y` and no drag from a touch; **Move** then a tap; a live region in the grid and in the seam pair; the strips' keyboard cross. |
+| The previewing and stale states were not tour states | `tiles.previewing`, `tiles.stale` and `tiles.seam-missing` joined the inventory. |
+| The TS docs called `matrix` a similarity and `seamRmsPx` canvas pixels | `imagery-tiles.ts` says what the pipeline writes (above). |
+
+Left to the pipeline track: a test that serialises `layout_record()` of a synthetic proposal into `pipeline/tests/contracts/` for
+`layoutFileSchema` to parse (the sample is hand-written), and a sheet cap that waits with `no-path` above `LAYOUT_SHEETS_MAX`; the
+golden sample now has a missing seam with a strip and no guess, the shape the wizard asks.

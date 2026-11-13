@@ -1,5 +1,5 @@
 /**
- * The tile-import wizard's draft of a series' sheets (`docs/research/M20-import-local.md` §19): the grid of `layout.json` as the
+ * The tile-import wizard's draft of a series' sheets (`docs/research/M20-import-local.md` §19.11): the grid of `layout.json` as the
  * owner rearranges it. Pure functions; every change gives a new list, each sheet it touched now the owner's (`source: 'owner'`).
  */
 import {
@@ -141,9 +141,28 @@ function ownerSheetOf(sheet: DraftSheet): OwnerSheet {
     return sheet.out === 'not-part' ? { index, row, col, turn, flip, out: 'not-part' } : { index, row, col, turn, flip };
 }
 
-/** The owner's answer: every sheet in the grid, and every sheet the owner took out of the map. */
+/**
+ * The reasons a sheet keeps a cell of the pipeline's grid while it is left out: no seam to its neighbours was found (or no shared
+ * edge, the older joins). Such a sheet is tried again at its cell (`docs/research/M20-import-local.md` §19.11): the pipeline marks
+ * every sheet an answer does not name `not-part` for good.
+ */
+const RETRIED: ReadonlySet<LeftOutReason> = new Set<LeftOutReason>(['no-seam', 'no-join']);
+
+/** A sheet the answer names: in the grid, taken out by the owner, or left out for no seam with its cell still free. */
+function named(sheet: DraftSheet, sheets: readonly DraftSheet[]): boolean {
+    if (sheet.out === null || sheet.out === 'not-part') {
+        return true;
+    }
+    return RETRIED.has(sheet.out) && sheetAt(sheets, sheet) === undefined;
+}
+
+/**
+ * The owner's answer: every sheet in the grid, every sheet the owner took out of the map, and every sheet left out for no seam
+ * whose cell no other sheet took (it goes back to that cell, so the pipeline seeks its seams again). A blank page or a sheet with no
+ * frame is not named.
+ */
 export function ownerSheetsOf(sheets: readonly DraftSheet[]): OwnerSheet[] {
-    return sheets.filter((sheet) => sheet.out === null || sheet.out === 'not-part').map(ownerSheetOf);
+    return sheets.filter((sheet) => named(sheet, sheets)).map(ownerSheetOf);
 }
 
 /**

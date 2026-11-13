@@ -263,8 +263,10 @@ function deleteVersionButton(shown: Shown): TemplateResult {
     });
 }
 
+/** The georeferencer, for a version with a scan in a state it takes; never for a series whose tiles wait (the preview is no scan). */
 function georefLink({ context, version }: Shown): TemplateResult {
-    const target = version !== null && version.hasScan && GEOREF_STATES.has(version.state) ? version : null;
+    const offered = version !== null && version.hasScan && GEOREF_STATES.has(version.state) && version.layoutCheck !== true;
+    const target = offered ? version : null;
     return withValue(
         target,
         (shown) =>
@@ -274,7 +276,7 @@ function georefLink({ context, version }: Shown): TemplateResult {
     );
 }
 
-/** An archive series whose tiles wait for the owner: the tile-import wizard (`docs/research/M20-import-local.md` §19). */
+/** An archive series whose tiles wait for the owner: the tile-import wizard (`docs/research/M20-import-local.md` §19.11). */
 function tilesLink({ context, version }: Shown): TemplateResult {
     return withValue(
         version?.layoutCheck === true ? version : null,

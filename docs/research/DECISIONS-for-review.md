@@ -6547,3 +6547,15 @@ The design of automatic tile stitching and the tile-import wizard (docs/research
   the exports through a `help/index.ts` barrel, which lesson 591 forbids; the index gained its lines back by an inline `type` export.
 - **169e** The Help calibrate queue page of M22 §1.1 is not built: the queue's `layoutCheck` item is computed (`helpItemsOf`) and
   shown on the series' page as **Arrange the tiles**; the meter is the wizard's own (`role="meter"` per figure of `placing/quality.py`).
+- **169f** (the review of 2026-11-13, M20 §19.12) The wizard asks `missing` seams beside `weak` ones, and a missing seam with no
+  guess is answered by two picked points; `seams.jpg`'s height counts every seam with a strip.
+- **169g** The answer names a sheet left out for `no-seam` or `no-join` whose cell is still free, without `out`, so the pipeline
+  tries it again instead of reading it as `not-part`; a blank page, a sheet with no frame or one whose cell another sheet took is
+  not named.
+- **169h** A seam whose sheet the owner moves, turns, mirrors or takes out leaves the draft (answered or not): its strips and points
+  belong to the orientation the pipeline wrote.
+- **169i** A series waiting with `layout-check` takes no points: no georeferencer link, and `imagery.saveGcps` refuses it with the new
+  `apiError.imagery.layoutWaits` (`failed-precondition`).
+- **169j** One pointer and no drag (WCAG 2.5.7): **Move** then a tap on the cell; a touch never starts a drag, so the grid pans. A
+  live region says each change; the seam's strips take a keyboard cross (WCAG 2.1.1). A stale refusal still drops the owner's
+  unsent edits, and its alert already says so; re-applying them to the newer revision is left for later.

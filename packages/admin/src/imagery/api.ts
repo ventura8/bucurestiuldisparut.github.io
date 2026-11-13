@@ -68,7 +68,7 @@ const IMAGERY_RESPONSES = {
     'imagery.previewUrl': imageryPreviewUrlResponseSchema,
     'imagery.probeTiles': imageryProbeResponseSchema,
     'imagery.resumeGuard': imageryResumeGuardResponseSchema,
-    // The tile-import wizard (docs/research/M20-import-local.md §19).
+    // The tile-import wizard (docs/research/M20-import-local.md §19.11).
     'imagery.saveLayout': imageryLayoutResponseSchema,
     'imagery.acceptLayout': imageryLayoutResponseSchema,
 } as const;

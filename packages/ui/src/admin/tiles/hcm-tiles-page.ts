@@ -1,8 +1,8 @@
 /**
- * `<hcm-tiles-page>`: the tile-import wizard (`#/help/<versionId>/tiles`, `docs/research/M20-import-local.md` §19; behaviour
+ * `<hcm-tiles-page>`: the tile-import wizard (`#/help/<versionId>/tiles`, `docs/research/M20-import-local.md` §19.11; behaviour
  * A-TILE-WIZARD). An archive series waiting with `layout-check`, in four steps: the sheets' order (`<hcm-tile-grid>`), the weak seams
  * (`<hcm-seam-pair>`), the preview and its quality meter (`<hcm-tile-preview>`), and the hand-off to the georeferencer. Back and Next
- * sit in a bar at the bottom of the window on a phone. Loading, a layout that cannot be read, a wrong address and a series that no
+ * sit in a bar after the step (on a phone too: fixed over the step, it hid its last lines and buttons). Loading, a layout that cannot be read, a wrong address and a series that no
  * longer waits each say so. Text only: every value is bound as a property or text.
  */
 import { translateApiError, type Locale } from '@hcm/shared';
@@ -71,8 +71,6 @@ class HcmTilesPage extends AreaPage<TilesViewState, TilesIntentsPort> {
 
             @media (width < 600px) {
                 .bar {
-                    position: sticky;
-                    inset-block-end: 0;
                     border-block-start: 1px solid var(--md-sys-color-outline-variant, GrayText);
                 }
             }

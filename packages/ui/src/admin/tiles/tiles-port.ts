@@ -1,5 +1,5 @@
 /**
- * The tile-import wizard's port (`#/help/<versionId>/tiles`, `docs/research/M20-import-local.md` §19): what
+ * The tile-import wizard's port (`#/help/<versionId>/tiles`, `docs/research/M20-import-local.md` §19.11): what
  * `packages/admin/src/tiles/` gives `<hcm-tiles-page>`. An archive series waiting with `layout-check` shows its sheets in their
  * inferred grid (step 1), its weak seams one at a time (step 2), the layout from its thumbnails and then the pipeline's real preview
  * with the quality meter (step 3), and the hand-off to the georeferencer (step 4). Every value is data; the page binds it as text.

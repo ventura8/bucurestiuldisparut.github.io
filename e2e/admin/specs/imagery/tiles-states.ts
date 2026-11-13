@@ -1,5 +1,5 @@
 /**
- * The tile-import wizard's states of the tour inventory (docs/research/M20-import-local.md §19; `ADMIN_SECTION_STATES` of
+ * The tile-import wizard's states of the tour inventory (docs/research/M20-import-local.md §19.11; `ADMIN_SECTION_STATES` of
  * e2e/tour/admin-sections.ts spreads them), ids `tiles.<state>`, each reached by specs/imagery/tiles.spec.ts at every admin project
  * (a phone, a tablet, a laptop).
  */
@@ -18,6 +18,18 @@ export const TILES_STATES = {
     },
     'tiles.preview-poor': {
         title: 'The tile-import wizard, step 3: a poor layout, said in the meter and in an alert',
+        visit: 'specs/imagery/tiles.spec.ts',
+    },
+    'tiles.previewing': {
+        title: 'The tile-import wizard, step 3: the real preview asked for, waiting for the pipeline, said in a status line',
+        visit: 'specs/imagery/tiles.spec.ts',
+    },
+    'tiles.stale': {
+        title: "The tile-import wizard after a stale refusal: the alert says the owner's changes were not saved, the newer layout shown",
+        visit: 'specs/imagery/tiles.spec.ts',
+    },
+    'tiles.seam-missing': {
+        title: 'The tile-import wizard, step 2: a seam the app did not find, no guess, a point picked with the keyboard on each strip',
         visit: 'specs/imagery/tiles.spec.ts',
     },
     'tiles.handed-off': {

@@ -1,4 +1,4 @@
-/** The tile-import wizard's draft (`docs/research/M20-import-local.md` §19): moving, turning, taking out and answering sheets and seams. */
+/** The tile-import wizard's draft (`docs/research/M20-import-local.md` §19.11): moving, turning, taking out and answering sheets and seams. */
 import { layoutFileSchema, validate, type LayerVersionDoc, type LayoutFile } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
@@ -19,7 +19,7 @@ import {
     thumbSpriteOf,
     turned,
 } from '../../src/tiles/draft.js';
-import { acceptGuess, ownerSeamsOf, pickPoint, seamSpriteOf, spriteRectOf, weakSeamsOf } from '../../src/tiles/seams.js';
+import { acceptGuess, ownerSeamsOf, pickPoint, seamsAfter, seamSpriteOf, spriteRectOf, weakSeamsOf } from '../../src/tiles/seams.js';
 import { versionViewOf } from '../../src/imagery/version-view.js';
 import { seamPortOf } from '../../src/tiles/view.js';
 import { golden } from '../imagery/world.js';
@@ -88,6 +88,27 @@ describe('the draft of the sheets', () => {
         ]);
     });
 
+    it('happyPath_aSheetLeftOutForNoSeamIsTriedAgainAtItsFreeCell', () => {
+        const file = sample();
+        const noSeam = {
+            ...file,
+            sheets: file.sheets.map((sheet, index) => (index === 3 ? { ...sheet, out: 'no-seam' as const } : sheet)),
+        };
+        const sheets = sheetsOf(noSeam);
+        expect(ownerSheetsOf(sheets).map((sheet) => sheet.index)).toEqual([0, 1, 2, 3]);
+        expect(ownerSheetsOf(sheets)[3]).toEqual({ index: 3, row: 1, col: 1, turn: 0, flip: false });
+    });
+
+    it('badPath_aSheetLeftOutForNoSeamWhoseCellIsTakenOrABlankPageIsNotNamed', () => {
+        const file = sample();
+        const noJoin = {
+            ...file,
+            sheets: file.sheets.map((sheet, index) => (index === 3 ? { ...sheet, out: 'no-join' as const } : sheet)),
+        };
+        const taken = placeAt(sheetsOf(noJoin), 2, { row: 1, col: 1 });
+        expect(ownerSheetsOf(taken).map((sheet) => sheet.index)).toEqual([0, 1, 2]);
+    });
+
     it('happyPath_aThumbnailIsItsSpriteCellAsStored', () => {
         const [first, , third] = sheetsOf(sample());
         expect(first && thumbOf(first)).toEqual([0, 0, 128, 85]);
@@ -101,7 +122,10 @@ describe('the draft of the sheets', () => {
 describe('the weak seams', () => {
     it('happyPath_theGuessOrTwoClicksAnswerASeam', () => {
         const seams = weakSeamsOf(sample());
-        expect(seams).toHaveLength(1);
+        expect(seams.map((seam) => [seam.a, seam.b, seam.suggestion === null])).toEqual([
+            [1, 3, false],
+            [2, 3, true],
+        ]);
         expect(ownerSeamsOf(seams)).toEqual([]);
         const accepted = acceptGuess(seams, 0);
         expect(ownerSeamsOf(accepted)).toEqual([{ a: 1, b: 3, side: 'below', points: { a: [1500, 1990], b: [1497, 42] } }]);
@@ -117,7 +141,7 @@ describe('the weak seams', () => {
         expect(seams[0]).toMatchObject({ strip: null, suggestion: null });
         const [seam] = seams;
         expect(seam && seamPortOf(seam, [])).toMatchObject({ nameA: '1', nameB: '3', strips: null });
-        expect(seamSpriteOf(seams)).toEqual({ width: 512, height: 0 });
+        expect(seamSpriteOf(bare.seams)).toEqual({ width: 512, height: 0 });
     });
 
     it('happyPath_anAnswerChangesOnlyItsOwnSeam', () => {
@@ -132,10 +156,20 @@ describe('the weak seams', () => {
         expect(acceptGuess(seams, 0)[0]?.answered).toBe(false);
     });
 
+    it('happyPath_aSeamKeepsWhileItsSheetsStayAndGoesWhenOneChanges', () => {
+        const seams = weakSeamsOf(sample());
+        const sheets = sheetsOf(sample());
+        expect(seamsAfter(seams, sheets, [...sheets])).toBe(seams);
+        const mirroredOne = changeAt(sheets, { row: 1, col: 0 }, mirrored);
+        expect(seamsAfter(seams, sheets, mirroredOne).map((seam) => [seam.a, seam.b])).toEqual([[1, 3]]);
+        const outOne = changeAt(sheets, { row: 1, col: 1 }, notPart);
+        expect(seamsAfter(seams, sheets, outOne)).toEqual([]);
+    });
+
     it('happyPath_theStripsSitInTheirSquaresOfTheSprite', () => {
         expect(spriteRectOf(2, 'a', [0, 1500, 3000, 500])).toEqual([0, 512, 256, 43]);
         expect(spriteRectOf(0, 'b', [0, 0, 500, 1000])).toEqual([256, 0, 128, 256]);
-        expect(seamSpriteOf(weakSeamsOf(sample()))).toEqual({ width: 512, height: 256 });
+        expect(seamSpriteOf(sample().seams)).toEqual({ width: 512, height: 512 });
         expect(seamSpriteOf([])).toEqual({ width: 512, height: 0 });
     });
 });
@@ -145,6 +179,6 @@ describe("a version's page", () => {
         const stored = { id: 'v', path: 'p', version: '1', pending: false };
         const waiting = golden('version.layout-check.json') as unknown as LayerVersionDoc;
         expect(versionViewOf({ ...stored, data: waiting }).layoutCheck).toBe(true);
-        expect(versionViewOf({ ...stored, data: { ...waiting, help: undefined } as LayerVersionDoc }).layoutCheck).toBe(false);
+        expect(versionViewOf({ ...stored, data: { ...waiting, help: undefined } }).layoutCheck).toBe(false);
     });
 });

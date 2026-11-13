@@ -9,7 +9,7 @@ import { uploadObject } from '../../support/imagery-store.js';
 import { seedCity, seedJob } from '../../support/ops.js';
 
 /**
- * The tile-import wizard's world (docs/research/M20-import-local.md §19): an archive series of the content world's own city parked
+ * The tile-import wizard's world (docs/research/M20-import-local.md §19.11): an archive series of the content world's own city parked
  * with `layout-check`, as the worker leaves it: its job waiting for the owner, its version with the layout's summary, and the
  * version's files (`layout.json`, `thumbs.jpg`, `seams.jpg`, `stitched.jpg`) in the private bucket. The pipeline's answer to a
  * preview is written the same way (`answerPreview`): the worker is the boundary, and its writes are what it leaves.
@@ -71,7 +71,7 @@ async function storeFiles(world: ContentWorld, revision: number, quality: Qualit
         await store(world, 'layout.json', Buffer.from(JSON.stringify(layoutFile(revision, quality))), 'application/json');
     }
     await store(world, 'thumbs.jpg', await grey(640, 128, 170), 'image/jpeg');
-    await store(world, 'seams.jpg', await grey(512, 256, 150), 'image/jpeg');
+    await store(world, 'seams.jpg', await grey(512, 512, 150), 'image/jpeg');
     await store(world, 'stitched.jpg', await grey(590, 395, 190), 'image/jpeg');
 }
 
@@ -81,10 +81,8 @@ export interface SeriesOptions {
     readonly withLayout?: boolean;
 }
 
-/** The city, the parked series' job and version at revision 2, and its files. */
-export async function seedWaitingSeries(world: ContentWorld, options: SeriesOptions = {}): Promise<void> {
-    const quality = options.quality ?? CHECK;
-    await seedCity(world, AT);
+/** The series' job as the worker leaves it parked for the owner: waiting with its version, `place` done. */
+async function seedWaitingJob(world: ContentWorld): Promise<void> {
     await seedJob(
         world,
         SERIES,
@@ -99,13 +97,21 @@ export async function seedWaitingSeries(world: ContentWorld, options: SeriesOpti
         },
         AT,
     );
+}
+
+/** The city, the parked series' job and version at revision 2, and its files. */
+export async function seedWaitingSeries(world: ContentWorld, options: SeriesOptions = {}): Promise<void> {
+    const quality = options.quality ?? CHECK;
+    await seedCity(world, AT);
+    await seedWaitingJob(world);
     await storeFiles(world, 2, quality, options.withLayout ?? true);
     await world.emulators.setDocument(`cities/${world.city}/layerVersions/${SERIES}`, versionOf(world, 2, quality));
 }
 
-/** What the worker leaves after placing the series again: a newer layout (`revision`), and the version waiting with it again. */
+/** What the worker leaves after placing the series again: a newer layout (`revision`), its job and version waiting with it again. */
 export async function answerPreview(world: ContentWorld, revision: number, quality: Quality): Promise<void> {
     await store(world, 'layout.json', Buffer.from(JSON.stringify(layoutFile(revision, quality))), 'application/json');
+    await seedWaitingJob(world);
     await world.emulators.setDocument(`cities/${world.city}/layerVersions/${SERIES}`, versionOf(world, revision, quality));
 }
 

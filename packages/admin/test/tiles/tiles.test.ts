@@ -1,5 +1,5 @@
 /**
- * The tile-import wizard's store (`docs/research/M20-import-local.md` §19; S-A-*-TILE-WIZARD-*): it reads the waiting series'
+ * The tile-import wizard's store (`docs/research/M20-import-local.md` §19.11; S-A-*-TILE-WIZARD-*): it reads the waiting series'
  * layout, keeps the owner's draft, sends it for the preview or on to points, and gives way to a newer layout when the server says
  * the draft is stale.
  */
@@ -51,10 +51,11 @@ describe('the tile-import wizard store @S-A-HAPPY-TILE-WIZARD-ORDER', () => {
             ['atlas/r2c2.jpg', null],
             ['atlas/blank.jpg', 'blank'],
         ]);
-        expect(state.seams).toHaveLength(1);
+        expect(state.seams).toHaveLength(2);
         expect(state.seams[0]).toMatchObject({ nameA: 'atlas/r1c2.jpg', nameB: 'atlas/r2c2.jpg' });
+        expect(state.seams[1]).toMatchObject({ nameA: 'atlas/r2c1.jpg', nameB: 'atlas/r2c2.jpg', suggestion: null });
         expect(state.thumbs).toEqual({ url: `blob:${file('thumbs.jpg')}`, width: 640, height: 128 });
-        expect(state.seamsSprite).toEqual({ url: `blob:${file('seams.jpg')}`, width: 512, height: 256 });
+        expect(state.seamsSprite).toEqual({ url: `blob:${file('seams.jpg')}`, width: 512, height: 512 });
         expect(state.quality?.verdict).toBe('check');
         tiles.open([ID, 'tiles']);
         expect(tiles.state.status).toBe('ready');
@@ -63,26 +64,62 @@ describe('the tile-import wizard store @S-A-HAPPY-TILE-WIZARD-ORDER', () => {
     it('happyPath_editsMakeTheDraftDirtyAndThePreviewSendsIt @S-A-HAPPY-TILE-WIZARD-PREVIEW', async () => {
         const { tiles, callables } = await opened();
         answer(callables, 'imagery.saveLayout', () => ({ jobId: ID, versionId: ID }));
-        tiles.intents.select(0, 0);
-        tiles.intents.shift(0, 1);
-        tiles.intents.rotate();
-        tiles.intents.flip();
-        tiles.intents.place(2, 1, 1);
-        tiles.intents.select(1, 0);
-        tiles.intents.takeOut();
-        tiles.intents.putBack(2);
         tiles.intents.goTo('seams');
         tiles.intents.acceptSeam();
         tiles.intents.pick('a', [1, 2]);
         tiles.intents.nextSeam();
+        tiles.intents.select(0, 0);
+        tiles.intents.rotate();
+        tiles.intents.flip();
+        tiles.intents.select(1, 0);
+        tiles.intents.takeOut();
+        tiles.intents.putBack(2);
         expect(tiles.hasUnsavedChanges()).toBe(true);
         expect(tiles.state).toMatchObject({ step: 'seams', selected: { row: 1, col: 0 }, seam: 0 });
+        expect(tiles.state.seams).toHaveLength(1);
         await tiles.intents.preview();
         expect(tiles.state).toMatchObject({ previewing: true, dirty: false, busy: false });
         const [request] = callsOf(callables, 'imagery.saveLayout') as { sheets: unknown[]; seams: unknown[]; preview: boolean }[];
         expect(request).toMatchObject({ cityId: CITY, versionId: ID, revision: 2, preview: true });
-        expect(request?.sheets).toContainEqual({ index: 0, row: 0, col: 1, turn: 90, flip: true });
+        expect(request?.sheets).toContainEqual({ index: 0, row: 0, col: 0, turn: 90, flip: true });
         expect(request?.seams).toEqual([{ a: 1, b: 3, side: 'below', points: { a: [1, 2], b: [1497, 42] } }]);
+    });
+
+    it('badPath_aSheetMovedTurnedOrTakenOutDropsTheSeamsItBelongsTo @S-A-BAD-TILE-WIZARD-SEAM-RESET', async () => {
+        const { tiles, callables } = await opened();
+        answer(callables, 'imagery.saveLayout', () => ({ jobId: ID, versionId: ID }));
+        expect(tiles.state.seams.map((seam) => [seam.a, seam.b])).toEqual([
+            [1, 3],
+            [2, 3],
+        ]);
+        tiles.intents.nextSeam();
+        tiles.intents.pick('a', [5, 6]);
+        tiles.intents.pick('b', [7, 8]);
+        tiles.intents.select(1, 0);
+        tiles.intents.takeOut();
+        expect(tiles.state.seams.map((seam) => [seam.a, seam.b])).toEqual([[1, 3]]);
+        expect(tiles.state.seam).toBe(0);
+        tiles.intents.select(0, 0);
+        tiles.intents.shift(0, 1);
+        expect(tiles.state.seams).toEqual([]);
+        expect(tiles.state.seam).toBe(0);
+        tiles.intents.place(3, 1, 0);
+        expect(tiles.state.selected).toEqual({ row: 1, col: 0 });
+        await tiles.intents.preview();
+        const [request] = callsOf(callables, 'imagery.saveLayout') as { seams: unknown[] }[];
+        expect(request?.seams).toEqual([]);
+    });
+
+    it('happyPath_theCallsOwnWriteArrivingFirstIsNoMoveAway', async () => {
+        const { tiles, callables, store } = await opened();
+        const version = golden('version.layout-check.json');
+        answer(callables, 'imagery.saveLayout', () => {
+            store.put(VERSIONS(ID), { ...version, state: 'processing', help: undefined });
+            return { jobId: ID, versionId: ID };
+        });
+        await tiles.intents.preview();
+        await settle();
+        expect(tiles.state).toMatchObject({ status: 'ready', previewing: true });
     });
 
     it('happyPath_thePipelinesNewRevisionEndsThePreview', async () => {
@@ -136,7 +173,10 @@ describe('the tile-import wizard store refuses and recovers', () => {
     it('badPath_noWeakSeamsLeaveTheSeamWhereItIsAndALaterReadWins', async () => {
         const made = setup();
         const bare = golden('layout.sample.json') as { seams: { state: string }[] };
-        made.files.put(file('layout.json'), JSON.stringify({ ...bare, seams: bare.seams.filter((seam) => seam.state !== 'weak') }));
+        made.files.put(
+            file('layout.json'),
+            JSON.stringify({ ...bare, seams: bare.seams.filter((seam) => seam.state !== 'weak' && seam.state !== 'missing') }),
+        );
         made.files.hold = true;
         made.tiles.open([ID, 'tiles']);
         await settle();

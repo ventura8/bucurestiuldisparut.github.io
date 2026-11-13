@@ -1,11 +1,13 @@
 /**
- * `<hcm-tile-grid>`: step 1 of the tile-import wizard (`docs/research/M20-import-local.md` §19; S-A-HAPPY-TILE-WIZARD-ORDER,
- * -KEYBOARD). The sheets' thumbnails in the inferred grid, each with the source of its place as a badge. A sheet is dragged to a cell
- * with the pointer, or chosen with the arrows (a roving tabindex): Shift and the arrows move it, R turns it, F mirrors it, X takes it
- * out of the map. The sheets left out are listed under the grid with Put back. On a phone the grid pans in its own frame.
+ * `<hcm-tile-grid>`: step 1 of the tile-import wizard (`docs/research/M20-import-local.md` §19.11; S-A-HAPPY-TILE-WIZARD-ORDER,
+ * -KEYBOARD, -MOVE). The sheets' thumbnails in the inferred grid, each with the source of its place as a badge. A sheet is dragged to
+ * a cell with a mouse or a pen; chosen, then Move and a tap on the cell (one pointer, no drag: a phone); or chosen with the arrows (a
+ * roving tabindex): Shift and the arrows move it, R turns it, F mirrors it, X takes it out of the map. Each change is said in a live
+ * region. The sheets left out are listed under the grid with Put back. On a phone the grid pans in its own frame: a touch never
+ * starts a drag, so a swipe on the cells scrolls.
  */
 import type { Locale } from '@hcm/shared';
-import { css, html, LitElement, type TemplateResult } from 'lit';
+import { css, html, LitElement, type PropertyValues, type TemplateResult } from 'lit';
 
 import { cssProperties } from '../../components/css-properties.js';
 import { adminBase } from '../shell/admin-styles.js';
@@ -22,7 +24,23 @@ const MOVES: Readonly<Record<string, readonly [number, number]>> = {
     ArrowRight: [0, 1],
 };
 
-const ACTIONS: Readonly<Record<string, 'rotate' | 'flip' | 'takeOut'>> = { r: 'rotate', f: 'flip', x: 'takeOut' };
+type Action = 'rotate' | 'flip' | 'takeOut';
+
+type SaidKey = 'adminTiles.said.turned' | 'adminTiles.said.mirrored' | 'adminTiles.said.out' | 'adminTiles.said.moved';
+
+const ACTIONS: Readonly<Record<string, Action>> = { r: 'rotate', f: 'flip', x: 'takeOut' };
+
+/** What the live region says after each change. */
+const SAID: Readonly<Record<Action, SaidKey>> = {
+    rotate: 'adminTiles.said.turned',
+    flip: 'adminTiles.said.mirrored',
+    takeOut: 'adminTiles.said.out',
+};
+
+/** The sheet placed in a cell, if any. */
+function sheetIn(view: TilesViewState, row: number, col: number): TileSheetPort | undefined {
+    return view.sheets.find((one) => one.out === null && one.row === row && one.col === col);
+}
 
 /** A thumbnail's CSS properties: its size and its place in the sprite (in sprite pixels), the sprite, its turn and mirror. */
 export function thumbProperties(sheet: TileSheetPort, sprite: TilesViewState['thumbs']): Readonly<Record<string, string>> {
@@ -64,7 +82,13 @@ function cellLabel(locale: Locale, sheet: TileSheetPort | undefined, row: number
 }
 
 class HcmTileGrid extends LitElement {
-    static override readonly properties = { view: { attribute: false }, intents: { attribute: false }, locale: { type: String } };
+    static override readonly properties = {
+        view: { attribute: false },
+        intents: { attribute: false },
+        locale: { type: String },
+        moving: { state: true },
+        said: { state: true },
+    };
 
     static override readonly styles = [
         adminBase,
@@ -104,7 +128,7 @@ class HcmTileGrid extends LitElement {
                 border: 1px dashed var(--md-sys-color-outline-variant, GrayText);
                 border-radius: var(--md-sys-shape-corner-small, 8px);
                 cursor: grab;
-                touch-action: none;
+                touch-action: pan-x pan-y;
             }
 
             [role='gridcell'][aria-selected='true'] {
@@ -138,18 +162,35 @@ class HcmTileGrid extends LitElement {
     declare view: TilesViewState | null;
     declare intents: TilesIntentsPort | null;
     declare locale: Locale;
-    #dragging: number | null = null;
+    /** Move was pressed: the next cell tapped takes the chosen sheet. */
+    declare moving: boolean;
+    /** The live region's text: what the last change did. */
+    declare said: string;
+    /** The sheet a mouse or pen pressed, and its cell. */
+    /** An arrow key was pressed: focus the chosen cell after the next view. */
+    #refocus = false;
+    #dragging: { readonly index: number; readonly row: number; readonly col: number } | null = null;
 
     constructor() {
         super();
         this.view = null;
         this.intents = null;
         this.locale = 'ro';
+        this.moving = false;
+        this.said = '';
     }
 
     /** Moves the focus to the chosen cell after a keyboard move (the roving tabindex follows the selection). */
     focusSelected(): void {
         this.renderRoot.querySelector<HTMLElement>('[role="gridcell"][tabindex="0"]')?.focus();
+    }
+
+    /** After an arrow key, the focus follows the chosen cell once the store's new view is drawn (not the live region's redraw). */
+    protected override updated(changed: PropertyValues): void {
+        if (this.#refocus && changed.has('view')) {
+            this.#refocus = false;
+            this.focusSelected();
+        }
     }
 
     override render(): TemplateResult {
@@ -158,7 +199,7 @@ class HcmTileGrid extends LitElement {
             return html``;
         }
         const rows = Array.from({ length: view.rows }, (_, row) => row);
-        return html`<p class="note" id="grid-help">${t(this.locale, 'adminTiles.gridHelp')}</p>
+        return html`<p class="note" id="grid-help">${t(this.locale, 'adminTiles.gridHelp')} ${t(this.locale, 'adminTiles.gridKeys')}</p>
             <div class="frame">
                 <div
                     class="grid"
@@ -172,7 +213,24 @@ class HcmTileGrid extends LitElement {
                     ${rows.map((row) => this.#row(view, row))}
                 </div>
             </div>
-            ${this.#tools()} ${this.#left(view)}`;
+            <p class="note" role="status">${this.said}</p>
+            ${this.#tools(view)} ${this.#left(view)}`;
+    }
+
+    /** The sheet in the chosen cell, if any. */
+    #chosen(view: TilesViewState): TileSheetPort | undefined {
+        return sheetIn(view, view.selected.row, view.selected.col);
+    }
+
+    /** The sheet in the chosen cell of the view as it stands, if any. */
+    #current(): TileSheetPort | undefined {
+        return this.view === null ? undefined : this.#chosen(this.view);
+    }
+
+    /** Says what a change did to the chosen sheet, by its name. */
+    #say(key: SaidKey, params: Readonly<Record<string, string>> = {}): void {
+        const sheet = this.#current();
+        this.said = sheet === undefined ? t(this.locale, 'adminTiles.said.empty') : t(this.locale, key, { name: sheet.name, ...params });
     }
 
     #row(view: TilesViewState, row: number): TemplateResult {
@@ -181,7 +239,7 @@ class HcmTileGrid extends LitElement {
     }
 
     #cell(view: TilesViewState, row: number, col: number): TemplateResult {
-        const sheet = view.sheets.find((one) => one.out === null && one.row === row && one.col === col);
+        const sheet = sheetIn(view, row, col);
         const selected = view.selected.row === row && view.selected.col === col;
         const label = cellLabel(this.locale, sheet, row, col);
         return html`<div
@@ -191,9 +249,11 @@ class HcmTileGrid extends LitElement {
             aria-label=${label}
             data-row=${row}
             data-col=${col}
-            @click=${() => this.intents?.select(row, col)}
-            @pointerdown=${() => {
-                this.#dragging = sheet === undefined ? null : sheet.index;
+            @click=${() => {
+                this.#tap(row, col);
+            }}
+            @pointerdown=${(event: PointerEvent) => {
+                this.#dragging = sheet === undefined || event.pointerType === 'touch' ? null : { index: sheet.index, row, col };
             }}
         >
             ${sheet === undefined ? '' : this.#thumb(view, sheet)}
@@ -206,15 +266,80 @@ class HcmTileGrid extends LitElement {
             ><span class="badge" aria-hidden="true">${source}</span>`;
     }
 
-    #tools(): TemplateResult {
-        const intents = this.intents;
+    #tools(view: TilesViewState): TemplateResult {
+        const chosen = this.#chosen(view);
         return html`<div class="tools">
-            <hcm-button variant="tonal" icon="refresh" @click=${() => intents?.rotate()}>${t(this.locale, 'adminTiles.rotate')}</hcm-button>
-            <hcm-button variant="tonal" icon="compare" @click=${() => intents?.flip()}>${t(this.locale, 'adminTiles.flip')}</hcm-button>
-            <hcm-button variant="outlined" icon="layers_clear" @click=${() => intents?.takeOut()}
+            <hcm-button
+                variant="tonal"
+                icon="open_with"
+                .pressed=${this.moving}
+                ?disabled=${chosen === undefined}
+                @click=${() => {
+                    this.#toggleMove(chosen);
+                }}
+                >${t(this.locale, 'adminTiles.move')}</hcm-button
+            >
+            <hcm-button
+                variant="tonal"
+                icon="refresh"
+                @click=${() => {
+                    this.#do('rotate');
+                }}
+                >${t(this.locale, 'adminTiles.rotate')}</hcm-button
+            >
+            <hcm-button
+                variant="tonal"
+                icon="compare"
+                @click=${() => {
+                    this.#do('flip');
+                }}
+                >${t(this.locale, 'adminTiles.flip')}</hcm-button
+            >
+            <hcm-button
+                variant="outlined"
+                icon="layers_clear"
+                @click=${() => {
+                    this.#do('takeOut');
+                }}
                 >${t(this.locale, 'adminTiles.notPart')}</hcm-button
             >
         </div>`;
+    }
+
+    /** R, F or X (or its button): the chosen sheet turned, mirrored or taken out, and said. */
+    #do(action: Action): void {
+        this.#say(SAID[action]);
+        this.intents?.[action]();
+    }
+
+    /** Move: on, it waits for the cell to tap (and says so); pressed again, or with no sheet chosen, it is off. */
+    #toggleMove(chosen: TileSheetPort | undefined): void {
+        if (chosen === undefined || this.moving) {
+            this.moving = false;
+            this.said = '';
+            return;
+        }
+        this.moving = true;
+        this.said = t(this.locale, 'adminTiles.movePick', { name: chosen.name });
+    }
+
+    /** A tap on a cell: with Move pressed, the chosen sheet goes there; else the cell is chosen. */
+    #tap(row: number, col: number): void {
+        if (this.moving) {
+            this.moving = false;
+            this.#moveTo(row, col);
+            return;
+        }
+        this.intents?.select(row, col);
+    }
+
+    /** The chosen sheet dropped on a cell (Move, then a tap), said. */
+    #moveTo(row: number, col: number): void {
+        const sheet = this.#current();
+        if (sheet !== undefined) {
+            this.#say('adminTiles.said.moved', { row: String(row + 1), col: String(col + 1) });
+            this.intents?.place(sheet.index, row, col);
+        }
     }
 
     #left(view: TilesViewState): TemplateResult {
@@ -253,34 +378,47 @@ class HcmTileGrid extends LitElement {
         const action = event.ctrlKey || event.metaKey ? undefined : ACTIONS[event.key.toLowerCase()];
         if (action !== undefined) {
             event.preventDefault();
-            this.intents?.[action]();
+            this.#do(action);
         }
     }
 
     #moveBy([rows, cols]: readonly [number, number], shifted: boolean): void {
         const intents = this.intents;
-        const selected = this.view?.selected;
-        if (intents === null || selected === undefined) {
+        const view = this.view;
+        if (intents === null || view === null) {
             return;
         }
         if (shifted) {
+            this.#shifted(view, rows, cols);
             intents.shift(rows, cols);
         } else {
-            intents.select(selected.row + rows, selected.col + cols);
+            intents.select(view.selected.row + rows, view.selected.col + cols);
         }
-        void this.updateComplete.then(() => {
-            this.focusSelected();
-        });
+        this.#refocus = true;
+    }
+
+    /** Says where Shift and an arrow move the chosen sheet (inside the grid). */
+    #shifted(view: TilesViewState, rows: number, cols: number): void {
+        const row = Math.min(Math.max(view.selected.row + rows, 0), view.rows - 1);
+        const col = Math.min(Math.max(view.selected.col + cols, 0), view.cols - 1);
+        this.#say('adminTiles.said.moved', { row: String(row + 1), col: String(col + 1) });
     }
 
     #drop = (event: PointerEvent): void => {
-        const index = this.#dragging;
+        const drag = this.#dragging;
         this.#dragging = null;
-        const target = this.#cellAt(event);
-        if (index !== null && target !== null) {
-            this.intents?.place(index, Number(target.dataset['row']), Number(target.dataset['col']));
+        const target = drag === null ? null : this.#cellAt(event);
+        if (drag !== null && target !== null) {
+            this.#dropOn(drag, Number(target.dataset['row']), Number(target.dataset['col']));
         }
     };
+
+    /** A pressed sheet let go on a cell: placed there, unless it is its own cell (a plain click, which chooses it). */
+    #dropOn(drag: { readonly index: number; readonly row: number; readonly col: number }, row: number, col: number): void {
+        if (row !== drag.row || col !== drag.col) {
+            this.intents?.place(drag.index, row, col);
+        }
+    }
 
     /** The grid's cell under the pointer, if any. */
     #cellAt(event: PointerEvent): HTMLElement | null {

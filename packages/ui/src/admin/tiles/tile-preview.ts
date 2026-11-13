@@ -1,5 +1,5 @@
 /**
- * `<hcm-tile-preview>`: step 3 of the tile-import wizard (`docs/research/M20-import-local.md` §19; S-A-HAPPY-TILE-WIZARD-PREVIEW,
+ * `<hcm-tile-preview>`: step 3 of the tile-import wizard (`docs/research/M20-import-local.md` §19.11; S-A-HAPPY-TILE-WIZARD-PREVIEW,
  * S-A-BAD-TILE-WIZARD-PREVIEW-POOR). At once, the owner's layout drawn from the thumbnails; then, on request, the pipeline's real
  * preview (`imagery.saveLayout` with `preview`) and the quality meter: one `role="meter"` line per figure the verdict reads
  * (`placing/quality.py`), each saying in words whether it holds.

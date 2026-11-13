@@ -114,7 +114,12 @@
             "score": 0,
             "rmsPx": 0,
             "overlapPx": 0,
-            "state": "missing"
+            "state": "missing",
+            "strip": {
+                "row": 1,
+                "a": [2500, 0, 500, 2000],
+                "b": [0, 0, 500, 2000]
+            }
         }
     ],
     "quality": {

@@ -1,5 +1,5 @@
 /**
- * The tile-import wizard's files (`docs/research/M20-import-local.md` §19): `layout.json` read and checked against its schema, the
+ * The tile-import wizard's files (`docs/research/M20-import-local.md` §19.11): `layout.json` read and checked against its schema, the
  * sheets' and the weak seams' sprites and the stitched preview as `blob:` addresses (each released when the wizard closes or reads
  * a newer layout).
  */

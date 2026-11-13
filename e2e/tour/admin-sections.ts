@@ -71,7 +71,7 @@ export const ADMIN_SECTION_STATES = {
     // [section archive] owner: archive (M20)
     ...ARCHIVE_STATES,
     // [end archive]
-    // The tile-import wizard (docs/research/M20-import-local.md §19), ids 'tiles.<state>'.
+    // The tile-import wizard (docs/research/M20-import-local.md §19.11), ids 'tiles.<state>'.
     // [section tiles] owner: tilewizard
     ...TILES_STATES,
     // [end tiles]

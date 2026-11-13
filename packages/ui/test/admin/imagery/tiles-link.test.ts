@@ -1,6 +1,6 @@
 /**
- * An archive series waiting with `layout-check` (`docs/research/M20-import-local.md` §19): its page links the tile-import wizard
- * (`#/help/<versionId>/tiles`); any other version has no such link.
+ * An archive series waiting with `layout-check` (`docs/research/M20-import-local.md` §19.11): its page links the tile-import wizard
+ * (`#/help/<versionId>/tiles`) and not the georeferencer (its scan is the doubtful preview, §19.11); any other version has no wizard link.
  */
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
@@ -30,5 +30,10 @@ describe('the tile-import wizard from a version @S-A-HAPPY-TILE-WIZARD-ORDER', (
 
     it('badPath_anyOtherVersionHasNoLink', async () => {
         expect(await links(false)).not.toContain('#/help/job-1966/tiles');
+    });
+
+    it('badPath_aSeriesWhoseTilesWaitOffersNoPointsOnItsPreview @S-A-BAD-TILE-WIZARD-POINTS-FIRST', async () => {
+        expect(await links(true)).not.toContain('#/georef/job-1966');
+        expect(await links(false)).toContain('#/georef/job-1966');
     });
 });

@@ -17966,6 +17966,50 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-MOVE",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner moves a sheet with one pointer and no drag, and hears each change",
+            "asserts": "a touch on the grid pans it (touch-action pan-x pan-y, a touch starts no drag); Move then a tap on a cell moves the chosen sheet; a live region says the move, a turn, a mirror and a take-out",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-13 (W2, W3, W4; WCAG 2.5.7). Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/ui/test/admin/tiles/tiles-moves.test.ts."
+        },
+        {
+            "id": "S-A-HAPPY-TILE-WIZARD-SEAM-KEYS",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner answers a seam the app did not find with the keyboard",
+            "asserts": "a missing seam is asked like a weak one, says it has no guess and offers no Accept; on a focused strip the arrows move a cross and Space or Enter picks the point, said in a live region; the answer is sent with the layout",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-13 (contract 1, W5; WCAG 2.1.1). Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/ and packages/ui/test/admin/tiles/tiles-moves.test.ts."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-SEAM-RESET",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "A seam answered before one of its sheets is moved, turned, mirrored or taken out",
+            "asserts": "the seam is dropped from step 2 and from the answer (its strips and points belong to the old orientation; the next preview asks it again)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-13 (contract 3). Test: e2e/admin/specs/imagery/tiles.spec.ts; Vitest packages/admin/test/tiles/."
+        },
+        {
+            "id": "S-A-BAD-TILE-WIZARD-POINTS-FIRST",
+            "behaviour": "A141",
+            "area": "admin",
+            "path": "bad",
+            "title": "Points on the doubtful preview of a series whose tiles wait",
+            "asserts": "the series' page links the wizard and not the georeferencer; imagery.saveGcps refuses a version waiting with layout-check with apiError.imagery.layoutWaits and the job keeps waiting",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-13 (W1). Test: e2e/admin/specs/imagery/tiles.spec.ts; functions/test/imagery/save-gcps.test.ts; Vitest packages/ui/test/admin/imagery/tiles-link.test.ts."
         }
     ]
 }

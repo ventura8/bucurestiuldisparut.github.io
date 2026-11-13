@@ -1,5 +1,5 @@
 /**
- * The tile layout of an archive series (`docs/research/M20-import-local.md` §19, `docs/research/M22-help-calibrate.md` §13.3): where the
+ * The tile layout of an archive series (`docs/research/M20-import-local.md` §19.10, `docs/research/M22-help-calibrate.md` §13.3): where the
  * pipeline put each sheet, page or piece, how well the seams between neighbours agree, and the owner's answer from the tile-import
  * wizard (`#/help/{versionId}/tiles`).
  *
@@ -7,9 +7,9 @@
  * - `layout.json` (a version file, `VERSION_FILES`): every sheet and every seam (`layoutFileSchema`).
  * - `thumbs.jpg`: each sheet's thumbnail, as stored (no turn, no flip), in a sprite of `THUMB_CELL_PX` cells, `THUMB_SPRITE_COLS` a row;
  *   cell `i` is `sheets[i]`.
- * - `seams.jpg`: each strip of a weak seam, one sprite row per seam (`strip.row`), sheet `a`'s strip in the left `SEAM_CELL_PX` square
- *   and sheet `b`'s in the right one, each scaled uniformly into its square from the top left (`strip.a`, `strip.b`: the rectangles in
- *   the oriented sheet's pixels).
+ * - `seams.jpg`: each strip of a weak or missing seam, one sprite row per seam (`strip.row`), sheet `a`'s strip in the left
+ *   `SEAM_CELL_PX` square and sheet `b`'s in the right one, each scaled uniformly into its square from the top left (`strip.a`,
+ *   `strip.b`: the rectangles in the oriented sheet's pixels).
  * - `help.layoutAnswer` (Firestore, `imagery.saveLayout`): the owner's sheets and seams, which `placing/owner_layout.py` fixes.
  */
 import { z } from 'zod';
@@ -66,7 +66,10 @@ export const LAYOUT_SEAMS_MAX = 8000;
  */
 export const THUMB_CELL_PX = 128;
 export const THUMB_SPRITE_COLS = 32;
-/** `seams.jpg`: each strip's square, two a row (`a`, then `b`): `2 · SEAM_CELL_PX` wide, one row per weak seam with a `strip`. */
+/**
+ * `seams.jpg`: each strip's square, two a row (`a`, then `b`): `2 · SEAM_CELL_PX` wide, one row per seam with a `strip` (weak or
+ * missing), as high as its last row.
+ */
 export const SEAM_CELL_PX = 256;
 
 const cellSchema = z.number().int().min(0).max(LAYOUT_SHEETS_MAX);
@@ -93,7 +96,7 @@ export const stitchQualitySchema = z.strictObject({
     placedPct: z.number().min(0).max(100),
     /** The median normalised cross-correlation of the seams after alignment, -1 to 1. */
     seamMedian: z.number().min(-1).max(1),
-    /** The seams' residual, 95th percentile, in canvas pixels. */
+    /** The seams' residual, 95th percentile, in cell pixels (each sheet scaled to its cell of the grid), not the canvas's. */
     seamRmsPx: z.number().min(0),
     verdict: z.enum(STITCH_VERDICTS),
 });
@@ -133,8 +136,16 @@ export const layoutSheetSchema = z.strictObject({
     flip: z.boolean(),
     /** Why the sheet is not in the picture; absent when it is. */
     out: z.enum(LEFT_OUT_REASONS).optional(),
+    /**
+     * Where its cell came from. The pipeline writes the grid's source for every sheet of a grid read by name or overview, a sheet it
+     * left out unread (`no-join`, `no-frame`) included: read it as the grid's, not as the sheet's own evidence.
+     */
     source: z.enum(SHEET_SOURCES),
-    /** The oriented sheet's pixels into the canvas: a similarity `[a, b, c, d, e, f]`, `x' = a·x + b·y + c`, `y' = d·x + e·y + f`. */
+    /**
+     * The oriented sheet's pixels into the canvas: an affine `[a, b, c, d, e, f]`, `x' = a·x + b·y + c`, `y' = d·x + e·y + f`. As
+     * `placing/layout_files.py` writes it, an axis-wise stretch and shift (`b = d = 0`; `a` and `e` differ when the sheet is stretched
+     * into its cell), not a similarity.
+     */
     matrix: z.tuple([z.number(), z.number(), z.number(), z.number(), z.number(), z.number()]),
     /** The oriented sheet's size in pixels. */
     width: z.number().int().min(1).max(200_000),
@@ -155,9 +166,9 @@ export const layoutSeamSchema = z.strictObject({
     rmsPx: z.number().min(0),
     overlapPx: z.number().int().min(0),
     state: z.enum(SEAM_STATES),
-    /** For a weak seam: one point on each side that the pipeline believes match. */
+    /** For a weak or missing seam: one point on each side that the pipeline believes match (none: it has no guess). */
     suggestion: seamPointsSchema.optional(),
-    /** For a weak seam: its row of `seams.jpg` and the two strips' rectangles. */
+    /** For a weak or missing seam (the wizard asks both): its row of `seams.jpg` and the two strips' rectangles. */
     strip: z
         .strictObject({
             row: z
@@ -188,7 +199,11 @@ export const layoutFileSchema = z.strictObject({
 
 export type LayoutFile = z.infer<typeof layoutFileSchema>;
 
-/** One sheet as the owner leaves it: its cell, turn and flip, or `not-part` (the X key). */
+/**
+ * One sheet as the owner leaves it: its cell, turn and flip, or `not-part` (the X key). The wizard names every sheet in the grid,
+ * every sheet the owner took out, and every sheet left out for no seam whose cell is still free (tried again there); the pipeline
+ * reads a sheet the answer does not name as `not-part`.
+ */
 export const ownerSheetSchema = z.strictObject({
     index: sheetIndexSchema,
     row: cellSchema,

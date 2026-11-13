@@ -1,9 +1,12 @@
 /**
- * The tile-import wizard's weak seams (step 2, `docs/research/M20-import-local.md` §19): each seam of `layout.json` the pipeline
- * doubted, with its two strips in `seams.jpg`, its guess, and the owner's answer: the guess accepted, or one point clicked on each
- * side. Pure functions.
+ * The tile-import wizard's doubtful seams (step 2, `docs/research/M20-import-local.md` §19.11): each seam of `layout.json` the
+ * pipeline doubted (`weak`) or did not find (`missing`), with its two strips in `seams.jpg`, its guess, and the owner's answer: the
+ * guess accepted, or one point picked on each side. A seam whose sheet the owner then moves, turns, mirrors or takes out is dropped:
+ * its strips and points belong to the layout as the pipeline wrote it (the next preview asks it again). Pure functions.
  */
 import { SEAM_CELL_PX, type LayoutFile, type LayoutSeam, type OwnerSeam } from '@hcm/shared';
+
+import type { DraftSheet } from './draft.js';
 
 type Point = readonly [number, number];
 type Rect = readonly [number, number, number, number];
@@ -33,9 +36,24 @@ function draftOf(seam: LayoutSeam): DraftSeam {
     };
 }
 
-/** The seams the pipeline doubted, in `layout.json`'s order. */
+/** The states of a seam the owner is asked about: doubted, or not found at all (the weakest). */
+const DOUBTFUL: ReadonlySet<LayoutSeam['state']> = new Set<LayoutSeam['state']>(['weak', 'missing']);
+
+/** The seams the pipeline doubted or did not find, in `layout.json`'s order. */
 export function weakSeamsOf(file: LayoutFile): readonly DraftSeam[] {
-    return file.seams.filter((seam) => seam.state === 'weak').map(draftOf);
+    return file.seams.filter((seam) => DOUBTFUL.has(seam.state)).map(draftOf);
+}
+
+/** A sheet's place as the seams depend on it: its cell, turn, mirror and whether it is out. */
+function placeOf(sheet: DraftSheet): string {
+    return [sheet.row, sheet.col, sheet.turn, sheet.flip ? 1 : 0, sheet.out ?? ''].join(':');
+}
+
+/** The seams that still hold after the sheets changed from `before` to `after`: those whose two sheets kept their place. */
+export function seamsAfter(seams: readonly DraftSeam[], before: readonly DraftSheet[], after: readonly DraftSheet[]): readonly DraftSeam[] {
+    const was = new Map(before.map((sheet) => [sheet.index, placeOf(sheet)]));
+    const changed = new Set(after.filter((sheet) => was.get(sheet.index) !== placeOf(sheet)).map((sheet) => sheet.index));
+    return changed.size === 0 ? seams : seams.filter((seam) => !changed.has(seam.a) && !changed.has(seam.b));
 }
 
 function changed(seams: readonly DraftSeam[], at: number, change: (seam: DraftSeam) => DraftSeam): readonly DraftSeam[] {
@@ -68,8 +86,8 @@ export function spriteRectOf(row: number, side: 'a' | 'b', sheet: Rect): Rect {
     return [side === 'a' ? 0 : SEAM_CELL_PX, row * SEAM_CELL_PX, Math.round(sheet[2] * scale), Math.round(sheet[3] * scale)];
 }
 
-/** `seams.jpg`'s size: two squares a row, one row per seam with a strip. */
-export function seamSpriteOf(seams: readonly DraftSeam[]): { readonly width: number; readonly height: number } {
+/** `seams.jpg`'s size: two squares a row, one row per seam of `layout.json` with a strip (whatever its state). */
+export function seamSpriteOf(seams: readonly LayoutSeam[]): { readonly width: number; readonly height: number } {
     const rows = seams.reduce((most, seam) => Math.max(most, (seam.strip?.row ?? -1) + 1), 0);
     return { width: 2 * SEAM_CELL_PX, height: rows * SEAM_CELL_PX };
 }

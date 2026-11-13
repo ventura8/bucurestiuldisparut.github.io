@@ -9,7 +9,7 @@ import { FUNCTIONS_TIMEOUT_MS } from '../../support/emulators.js';
 import { answerPreview, GOOD, POOR, SERIES, seedWaitingSeries, seriesVersion, tilesText } from './tiles-world.js';
 
 /**
- * The tile-import wizard (docs/research/M20-import-local.md §19; behaviour A141), in a city of the admin's own (the content world: no
+ * The tile-import wizard (docs/research/M20-import-local.md §19.11; behaviour A141), in a city of the admin's own (the content world: no
  * lock): an archive series parked with `layout-check` opens from its version's page; the owner moves, turns and takes out sheets
  * with the pointer and the keyboard, accepts a weak seam's guess, asks for the real preview (the worker's answer is what it leaves in
  * Firestore and the bucket), and sends the series on to the georeferencer. `imagery.saveLayout` and `imagery.acceptLayout` run in
@@ -37,6 +37,11 @@ function step(
         .getByRole('button', { name: tilesText(lang, key) });
 }
 
+/** A live region that says `text`. */
+function said(page: Page, text: string): Locator {
+    return page.getByRole('status').filter({ hasText: text });
+}
+
 /** Opens the series' page and, from it, the wizard. */
 async function openWizard(page: Page, lang: Lang, content: ContentWorld): Promise<void> {
     await page.goto(content.address(lang, `imagery/version/${SERIES}`, { map: false }));
@@ -52,7 +57,7 @@ test(
         await seedWaitingSeries(content);
         await openWizard(page, lang, content);
         await expect(sheetCell(page, lang, 'atlas/r1c1.jpg')).toHaveAttribute('aria-selected', 'true');
-        await expect(page.getByText('atlas/blank.jpg')).toBeVisible();
+        await expect(page.getByRole('button', { name: tilesText(lang, 'adminTiles.putBack', { name: 'atlas/blank.jpg' }) })).toBeVisible();
         await expectStateSound(page, adminVisit('tiles.order', lang));
 
         // The keyboard: Shift and the arrows move the chosen sheet, R turns it, F mirrors it.
@@ -96,7 +101,7 @@ test(
         await openWizard(page, lang, content);
         await step(page, lang, 'adminTiles.step.seams').click();
         const pair = page.getByRole('group', { name: tilesText(lang, 'adminTiles.seamsLabel') });
-        await expect(pair.getByRole('img')).toHaveCount(2);
+        await expect(pair.getByRole('application')).toHaveCount(2);
         await expectStateSound(page, adminVisit('tiles.seams', lang));
         await pair.focus();
         await page.keyboard.press('Enter');
@@ -106,6 +111,7 @@ test(
         await expect(page.getByRole('meter')).toHaveCount(3);
         await page.getByRole('button', { name: tilesText(lang, 'adminTiles.makePreview') }).click();
         await expect(page.getByText(tilesText(lang, 'adminTiles.previewing'))).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+        await expectStateSound(page, adminVisit('tiles.previewing', lang));
         const asked = await seriesVersion(content);
         expect(asked).toMatchObject({ state: 'processing', help: { layoutAnswer: { revision: 2, preview: true } } });
         expect((asked?.['help'] as { layoutAnswer: { seams: unknown[] } }).layoutAnswer.seams).toEqual([
@@ -135,9 +141,91 @@ test(
 );
 
 test(
+    'The owner moves a sheet with Move and a tap, and each change is said',
+    { tag: '@S-A-HAPPY-TILE-WIZARD-MOVE' },
+    async ({ page, lang, content }) => {
+        await seedWaitingSeries(content);
+        await openWizard(page, lang, content);
+        await expect(sheetCell(page, lang, 'atlas/r1c1.jpg')).toHaveCSS('touch-action', 'pan-x pan-y');
+        await sheetCell(page, lang, 'atlas/r1c1.jpg').click();
+        await page.getByRole('button', { name: tilesText(lang, 'adminTiles.move'), exact: true }).click();
+        await expect(said(page, tilesText(lang, 'adminTiles.movePick', { name: 'atlas/r1c1.jpg' }))).toBeVisible();
+        await sheetCell(page, lang, 'atlas/r2c2.jpg').click();
+        await expect(said(page, tilesText(lang, 'adminTiles.said.moved', { name: 'atlas/r1c1.jpg', row: '2', col: '2' }))).toBeVisible();
+        await expect(sheetCell(page, lang, 'atlas/r1c1.jpg')).toHaveAttribute(
+            'aria-label',
+            new RegExp(tilesText(lang, 'adminTiles.cellSheet', { name: 'atlas/r1c1.jpg', row: '2', col: '2' }).replace('.', '\\.')),
+        );
+        await page.getByRole('button', { name: tilesText(lang, 'adminTiles.rotate'), exact: true }).click();
+        await expect(said(page, tilesText(lang, 'adminTiles.said.turned', { name: 'atlas/r1c1.jpg' }))).toBeVisible();
+    },
+);
+
+test(
+    'A seam the app did not find is answered with the keyboard on each strip',
+    { tag: '@S-A-HAPPY-TILE-WIZARD-SEAM-KEYS' },
+    async ({ page, lang, content }) => {
+        await seedWaitingSeries(content);
+        await openWizard(page, lang, content);
+        await step(page, lang, 'adminTiles.step.seams').click();
+        const pair = page.getByRole('group', { name: tilesText(lang, 'adminTiles.seamsLabel') });
+        await pair.focus();
+        await page.keyboard.press('n');
+        await expect(page.getByText(tilesText(lang, 'adminTiles.noGuess'))).toBeVisible();
+        await expect(page.getByRole('button', { name: tilesText(lang, 'adminTiles.acceptSeam') })).toBeDisabled();
+        await pair.getByRole('application', { name: tilesText(lang, 'adminTiles.strip', { name: 'atlas/r2c1.jpg' }) }).focus();
+        await page.keyboard.press('ArrowRight');
+        await page.keyboard.press('Space');
+        await expect(said(page, tilesText(lang, 'adminTiles.pointPicked', { name: 'atlas/r2c1.jpg', x: '2760', y: '1000' }))).toBeVisible();
+        await pair.getByRole('application', { name: tilesText(lang, 'adminTiles.strip', { name: 'atlas/r2c2.jpg' }) }).focus();
+        await page.keyboard.press('Enter');
+        await expect(page.getByRole('status').filter({ hasText: tilesText(lang, 'adminTiles.seamAnswered') })).toBeVisible();
+        await expectStateSound(page, adminVisit('tiles.seam-missing', lang));
+
+        await step(page, lang, 'adminTiles.step.preview').click();
+        await page.getByRole('button', { name: tilesText(lang, 'adminTiles.makePreview') }).click();
+        await expect(page.getByText(tilesText(lang, 'adminTiles.previewing'))).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+        expect((await seriesVersion(content))?.['help']).toMatchObject({
+            layoutAnswer: { seams: [{ a: 2, b: 3, side: 'right', points: { a: [2760, 1000], b: [250, 1000] } }] },
+        });
+    },
+);
+
+test(
+    'A seam answered before its sheet is turned is asked again, not sent',
+    { tag: '@S-A-BAD-TILE-WIZARD-SEAM-RESET' },
+    async ({ page, lang, content }) => {
+        await seedWaitingSeries(content);
+        await openWizard(page, lang, content);
+        await step(page, lang, 'adminTiles.step.seams').click();
+        await page.getByRole('group', { name: tilesText(lang, 'adminTiles.seamsLabel') }).focus();
+        await page.keyboard.press('Enter');
+        await expect(page.getByRole('status').filter({ hasText: tilesText(lang, 'adminTiles.seamAnswered') })).toBeVisible();
+        await step(page, lang, 'adminTiles.step.order').click();
+        await sheetCell(page, lang, 'atlas/r2c2.jpg').click();
+        await page.getByRole('button', { name: tilesText(lang, 'adminTiles.rotate'), exact: true }).click();
+        await step(page, lang, 'adminTiles.step.seams').click();
+        await expect(page.getByText(tilesText(lang, 'adminTiles.noSeams'))).toBeVisible();
+    },
+);
+
+test(
+    'A series whose tiles wait offers no points on its preview',
+    { tag: '@S-A-BAD-TILE-WIZARD-POINTS-FIRST' },
+    async ({ page, lang, content }) => {
+        await seedWaitingSeries(content);
+        await page.goto(content.address(lang, `imagery/version/${SERIES}`, { map: false }));
+        await expect(page.getByRole('link', { name: translateAdminContent(lang, 'adminContent.imagery.openTiles') })).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expect(page.getByRole('link', { name: translateAdminContent(lang, 'adminContent.imagery.openGeoref') })).toHaveCount(0);
+    },
+);
+
+test(
     'A layout the pipeline wrote again while the owner worked is refused as stale',
     { tag: '@S-A-BAD-TILE-WIZARD-STALE-REVISION' },
-    async ({ page, lang, content }) => {
+    async ({ page, lang, content, consoleErrors }) => {
         await seedWaitingSeries(content);
         await openWizard(page, lang, content);
         await sheetCell(page, lang, 'atlas/r1c1.jpg').focus();
@@ -150,6 +238,9 @@ test(
         });
         await expect(page.getByText(tilesText(lang, 'adminTiles.poor'))).toBeVisible();
         expect(await seriesVersion(content)).toMatchObject({ state: 'needs_gcps' });
+        await expectStateSound(page, adminVisit('tiles.stale', lang));
+        // The refusal itself: the browser logs the callable's failed-precondition.
+        await expect.poll(() => consoleErrors.takeMatching(/status of 400 .*imagery-saveLayout/).length).toBe(1);
     },
 );
 
@@ -185,7 +276,7 @@ test('A poor layout says so in the meter and an alert', { tag: '@S-A-BAD-TILE-WI
 test(
     'A wrong address and a layout that cannot be read each say so',
     { tag: '@S-A-BAD-TILE-WIZARD-UNREADABLE' },
-    async ({ page, lang, content }) => {
+    async ({ page, lang, content, consoleErrors }) => {
         await seedWaitingSeries(content, { withLayout: false });
         await page.goto(content.address(lang, 'help/ar-nothing-here/tiles', { map: false }));
         await expect(page.getByText(tilesText(lang, 'adminTiles.notFound'))).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
@@ -196,5 +287,7 @@ test(
         });
         await expect(page.getByRole('button', { name: tilesText(lang, 'adminTiles.retry') })).toBeVisible();
         await expectStateSound(page, adminVisit('tiles.error', lang));
+        // The layout the worker never wrote: the browser logs the bucket's 404.
+        await expect.poll(() => consoleErrors.takeMatching(/status of 404 .*layout\.json/).length).toBeGreaterThan(0);
     },
 );
