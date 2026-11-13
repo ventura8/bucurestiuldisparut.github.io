@@ -6,7 +6,7 @@ import { ADMIN_SECTION_STATES } from './admin-sections.js';
 import { COMPARE_STATES, openComparing } from './compare-states.js';
 import { UNPLACED_JOURNEY, unplacedStates } from './unplaced-states.js';
 import { STORY_JOURNEY, storyStates } from './story-states.js';
-import { INPUT_JOURNEY, INPUT_STATES } from './input-states.js';
+import { INPUT_JOURNEY, INPUT_STATES, TV_JOURNEY } from './input-states.js';
 import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
 import { MY_LOCATION_STATES } from './my-location-states.js';
 import { ZOOM_JOURNEY, ZOOM_STATES } from './zoom-states.js';
@@ -451,6 +451,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
     INPUT_JOURNEY,
     ZOOM_JOURNEY,
     COMPASS_JOURNEY,
+    TV_JOURNEY,
     PHOTO_VERSION_JOURNEY,
     MAP_MENU_JOURNEY,
     THEME_MENU_JOURNEY,

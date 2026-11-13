@@ -1102,6 +1102,20 @@
             "source": "the owner, 2026-11-13 (beta.1): i want us to have a compass for the viewer (and clicking on it resets to north up)"
         },
         {
+            "id": "V65",
+            "area": "viewer",
+            "name": "Spatial navigation on games consoles: the D-pad, the arrow keys and the Xbox's keys",
+            "milestone": "post-M8",
+            "source": "docs/research/viewer-input.md §6; the owner's request of 2026-11-13"
+        },
+        {
+            "id": "V66",
+            "area": "viewer",
+            "name": "The 10-foot view and a console without WebGL",
+            "milestone": "post-M8",
+            "source": "docs/research/viewer-input.md §6; the owner's request of 2026-11-13"
+        },
+        {
             "id": "P31",
             "area": "pipeline",
             "name": "The pipeline and the worker on somebody's own computer stay within a memory and processor budget, and an idle worker asks rarely",
@@ -15394,7 +15408,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "Its buttons: the menu, a visible focus, close, Layers, photos, the year and help",
-            "asserts": "Start opens the menu, the D-pad moves a focus with a visible ring, B closes, left and right step the year, RB and LB step the photos, Y opens Layers, Back opens help",
+            "asserts": "Start opens the menu, the D-pad moves a focus with a visible ring, B closes, on the focused timeline left and right step the year, RB and LB step the photos, Y opens Layers, Back opens help",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
@@ -18907,6 +18921,105 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-13 (DECISIONS-for-review.md §190). Test: packages/ui/test/viewer/hcm-compass.test.ts, e2e/specs/viewer/no-webgl.spec.ts."
+        },
+        {
+            "id": "S-V65-HAPPY-DPAD-ROUND",
+            "behaviour": "V65",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The D-pad goes round the controls, reaches the timeline and steps its year at once",
+            "asserts": "a fake pad at 1920 x 1080: D-pad down from the map reaches the timeline, each control on the way outlined; right and left change its year and back at once; up leaves it to another outlined control",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-13 (PS and Xbox). Test: e2e/specs/viewer/consoles.spec.ts."
+        },
+        {
+            "id": "S-V65-HAPPY-ARROWS",
+            "behaviour": "V65",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The arrow keys move the focus the way they point",
+            "asserts": "the menu button focused: ArrowUp moves the focus to another control with a visible ring, ArrowDown comes back",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-13 (PS and Xbox). Test: e2e/specs/viewer/consoles.spec.ts."
+        },
+        {
+            "id": "S-V65-BAD-MAP-KEEPS-ARROWS",
+            "behaviour": "V65",
+            "area": "viewer",
+            "path": "bad",
+            "title": "On the map the arrows still pan it and the focus stays",
+            "asserts": "the map's canvas focused: ArrowRight changes the hash's view, the canvas keeps the focus",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-13 (PS and Xbox). Test: e2e/specs/viewer/consoles.spec.ts."
+        },
+        {
+            "id": "S-V65-HAPPY-XBOX-KEYS",
+            "behaviour": "V65",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The Xbox's key emulation is asked for and its keys act",
+            "asserts": "navigator.gamepadInputEmulation 'mouse' becomes 'keyboard'; GamepadDPadDown focuses a control, GamepadView opens help, GamepadB closes it",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-13 (PS and Xbox). Test: e2e/specs/viewer/consoles.spec.ts."
+        },
+        {
+            "id": "S-V65-BAD-DISCONNECT",
+            "behaviour": "V65",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A pad that leaves ends the loop: nothing reads the pads any more",
+            "asserts": "a connected pad is read every frame; after gamepaddisconnected and two frames the read count stays the same",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-13 (PS and Xbox). Test: e2e/specs/viewer/consoles.spec.ts."
+        },
+        {
+            "id": "S-V66-HAPPY-TV-RING",
+            "behaviour": "V66",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A ring twice as thick, read from across the room",
+            "asserts": "1920 x 1080 with a coarse pointer: the focused control's outline is 6 px",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-13 (PS and Xbox). Test: e2e/specs/viewer/consoles.spec.ts."
+        },
+        {
+            "id": "S-V66-BAD-FINE-POINTER",
+            "behaviour": "V66",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A large screen with a mouse keeps the desk ring",
+            "asserts": "1920 x 1080 with a fine pointer: the outline stays 3 px",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-13 (PS and Xbox). Test: e2e/specs/viewer/consoles.spec.ts."
+        },
+        {
+            "id": "S-V66-BAD-NO-WEBGL-CONSOLE",
+            "behaviour": "V66",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A console's browser without WebGL says what it lacks and where the map works",
+            "asserts": "Xbox user agent without WebGL: the card says the console's browser lacks the 3D graphics, the photo list still works, see the photos below or open the map on a phone; no 'WebGL' word; the photo list is there",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-13 (PS and Xbox). Test: e2e/specs/viewer/no-webgl.spec.ts (project nogl)."
+        },
+        {
+            "id": "S-V66-HAPPY-TOUR",
+            "behaviour": "V66",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The tour's TV states pass the layout and accessibility checkers",
+            "asserts": "the journey tv at 1920 x 1080 with a coarse pointer: the D-pad's focus with a 6 px ring, the timeline focused, Layers from Y; each passes expectStateSound",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-13 (PS and Xbox). Test: e2e/tour/viewer.tour.ts, journey tv (e2e/tour/tv-states.ts)."
         },
         {
             "id": "S-P31-HAPPY-GDAL-MEMORY",

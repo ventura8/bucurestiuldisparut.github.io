@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 158 | 1646 | 684 | 962 | 1644 | 2 | 425 |
+| 160 | 1655 | 689 | 966 | 1653 | 2 | 426 |
 
 ## Viewer
 
@@ -233,7 +233,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V36-BAD-TYPING` | V36 | bad | Typing in a field of the page takes no shortcut, nor does a key with a modifier | every shortcut typed into a host page's input lands in the field and changes nothing; Alt+? opens nothing | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 | `S-V37-HAPPY` | V37 | happy | Its chunk comes only with a pad; the sticks and triggers move the map | no gamepad chunk before a fake pad connects, one after; the left stick moves the view, the triggers and the right stick zoom; one map | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 | `S-V37-HAPPY-ACTIVATE` | V37 | happy | A presses what has the focus, and with none the photo at the map's centre | nothing focused -> A opens the photo at the centre; the menu button focused -> A opens the menu | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
-| `S-V37-HAPPY-BUTTONS` | V37 | happy | Its buttons: the menu, a visible focus, close, Layers, photos, the year and help | Start opens the menu, the D-pad moves a focus with a visible ring, B closes, left and right step the year, RB and LB step the photos, Y opens Layers, Back opens help | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
+| `S-V37-HAPPY-BUTTONS` | V37 | happy | Its buttons: the menu, a visible focus, close, Layers, photos, the year and help | Start opens the menu, the D-pad moves a focus with a visible ring, B closes, on the focused timeline left and right step the year, RB and LB step the photos, Y opens Layers, Back opens help | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 | `S-V37-HAPPY-RING` | V37 | happy | After a mouse click the pad still shows where the focus went | a click on the map, then Y into Layers or Start into the menu -> an outline on the focused control | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 | `S-V37-BAD-COVERED-MAP` | V37 | bad | A modal surface keeps the map still | the help panel open -> a tilted stick leaves the hash as it was | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 | `S-V37-BAD-NOT-STANDARD` | V37 | bad | A pad without the standard layout is refused and moves nothing | mapping '' -> the refused toast, a tilted stick leaves the hash as it was | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
@@ -308,6 +308,15 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V64-BAD-ALREADY-NORTH` | V64 | bad | North up already, the compass stays, quiet, and a press or Enter changes nothing | #16/... north up -> the compass visible with the north attribute; a click and Enter fire no map move, leave the address and the camera unchanged, the focus on the compass | e2e-viewer | exists | `e2e/specs/viewer/compass.spec.ts` |
 | `S-V64-BAD-NO-WEBGL` | V64 | bad | Without WebGL there is no map and no compass | webgl false -> no hcm-compass in the viewer | e2e-viewer | exists | `e2e/specs/viewer/no-webgl.spec.ts` |
 | `S-V64-BAD-REDUCED-MOTION` | V64 | bad | Under reduced motion the compass jumps north instead of turning | prefers-reduced-motion: reduce, #16/.../200, a click -> the address drops its bearing after at most 2 map moves (a jump, not a turn), bearing 0, the compass north | e2e-viewer | exists | `e2e/specs/viewer/compass.spec.ts` |
+| `S-V65-HAPPY-ARROWS` | V65 | happy | The arrow keys move the focus the way they point | the menu button focused: ArrowUp moves the focus to another control with a visible ring, ArrowDown comes back | e2e-viewer | exists | `e2e/specs/viewer/consoles.spec.ts` |
+| `S-V65-HAPPY-DPAD-ROUND` | V65 | happy | The D-pad goes round the controls, reaches the timeline and steps its year at once | a fake pad at 1920 x 1080: D-pad down from the map reaches the timeline, each control on the way outlined; right and left change its year and back at once; up leaves it to another outlined control | e2e-viewer | exists | `e2e/specs/viewer/consoles.spec.ts` |
+| `S-V65-HAPPY-XBOX-KEYS` | V65 | happy | The Xbox's key emulation is asked for and its keys act | navigator.gamepadInputEmulation 'mouse' becomes 'keyboard'; GamepadDPadDown focuses a control, GamepadView opens help, GamepadB closes it | e2e-viewer | exists | `e2e/specs/viewer/consoles.spec.ts` |
+| `S-V65-BAD-DISCONNECT` | V65 | bad | A pad that leaves ends the loop: nothing reads the pads any more | a connected pad is read every frame; after gamepaddisconnected and two frames the read count stays the same | e2e-viewer | exists | `e2e/specs/viewer/consoles.spec.ts` |
+| `S-V65-BAD-MAP-KEEPS-ARROWS` | V65 | bad | On the map the arrows still pan it and the focus stays | the map's canvas focused: ArrowRight changes the hash's view, the canvas keeps the focus | e2e-viewer | exists | `e2e/specs/viewer/consoles.spec.ts` |
+| `S-V66-HAPPY-TOUR` | V66 | happy | The tour's TV states pass the layout and accessibility checkers | the journey tv at 1920 x 1080 with a coarse pointer: the D-pad's focus with a 6 px ring, the timeline focused, Layers from Y; each passes expectStateSound | e2e-viewer | exists | `e2e/tour/viewer.tour.ts` |
+| `S-V66-HAPPY-TV-RING` | V66 | happy | A ring twice as thick, read from across the room | 1920 x 1080 with a coarse pointer: the focused control's outline is 6 px | e2e-viewer | exists | `e2e/specs/viewer/consoles.spec.ts` |
+| `S-V66-BAD-FINE-POINTER` | V66 | bad | A large screen with a mouse keeps the desk ring | 1920 x 1080 with a fine pointer: the outline stays 3 px | e2e-viewer | exists | `e2e/specs/viewer/consoles.spec.ts` |
+| `S-V66-BAD-NO-WEBGL-CONSOLE` | V66 | bad | A console's browser without WebGL says what it lacks and where the map works | Xbox user agent without WebGL: the card says the console's browser lacks the 3D graphics, the photo list still works, see the photos below or open the map on a phone; no 'WebGL' word; the photo list is there | e2e-viewer | exists | `e2e/specs/viewer/no-webgl.spec.ts` |
 
 ## Admin
 

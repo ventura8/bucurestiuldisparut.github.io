@@ -1,11 +1,12 @@
 import { FakeMap } from '@hcm/test-support/fake-map';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { movedView, startGamepad, stick, type GamepadSurface } from '../../src/viewer/gamepad/gamepad.js';
+import { movedView, startGamepad, stick, turnedView, type GamepadSurface } from '../../src/viewer/gamepad/gamepad.js';
 import type { PadWindow } from '../../src/viewer/gamepad/pads.js';
 import { connectedPads } from '../../src/viewer/gamepad/pads.js';
 import { watchGamepads } from '../../src/viewer/gamepad/watch.js';
 import type { InputCommand } from '../../src/viewer/input-commands.js';
+import type { Direction } from '../../src/viewer/spatial-nav.js';
 
 /** A fake pad, as the Gamepad API shows one (no real hardware in the tests). */
 function fakePad(
@@ -85,6 +86,8 @@ interface World {
     readonly root: HTMLElement;
     readonly commands: InputCommand[];
     readonly toasts: string[];
+    /** What the D-pad and A asked of the viewer: a direction, or `activate`. */
+    readonly moves: (Direction | 'activate')[];
     readonly surface: GamepadSurface;
     covered: boolean;
 }
@@ -94,7 +97,9 @@ function world(): World {
     document.body.append(root);
     const commands: InputCommand[] = [];
     const toasts: string[] = [];
+    const moves: (Direction | 'activate')[] = [];
     const state: World = {
+        moves,
         win: new FakeWindow(),
         map: new FakeMap(),
         root,
@@ -109,6 +114,12 @@ function world(): World {
             mapCovered: () => state.covered,
             toast: (key) => {
                 toasts.push(key);
+            },
+            navigate: (direction) => {
+                moves.push(direction);
+            },
+            activate: () => {
+                moves.push('activate');
             },
         },
     };
@@ -136,6 +147,14 @@ describe('stick', () => {
     it('happyPath_pastTheDeadZoneItIsTheTilt', () => {
         expect(stick(1, 0)).toEqual([1, 0]);
         expect(stick(0.16, 0)).toEqual([0.16, 0]);
+    });
+});
+
+describe('turnedView', () => {
+    it('happyPath_theBearingStaysInItsCircle', () => {
+        const view = { center: [0, 0] as [number, number], zoom: 3, bearing: 350 };
+        expect(turnedView(view, 20).bearing).toBeCloseTo(10);
+        expect(turnedView({ ...view, bearing: 5 }, -10).bearing).toBeCloseTo(355);
     });
 });
 
@@ -225,8 +244,6 @@ describe('the gamepad session', () => {
             [4, 'photo-previous'],
             [5, 'photo-next'],
             [8, 'help'],
-            [14, 'year-previous'],
-            [15, 'year-next'],
             [1, 'close'],
         ];
         let now = 1000;
@@ -280,6 +297,59 @@ describe('the gamepad session', () => {
 
         expect(clicks).toBe(2);
         expect(w.commands).toEqual([]);
+    });
+});
+
+describe('the gamepad session: turning, the D-pad and the Xbox keys', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_theRightStickTurnsTheMap', () => {
+        const w = world();
+        const pad = fakePad();
+        started(w, pad);
+        pad.axes[2] = 1;
+
+        w.win.frame(1100);
+
+        expect(w.map.view.bearing).toBeCloseTo(9);
+    });
+
+    it('happyPath_theDpadAndANavigateTheViewer', () => {
+        const w = world();
+        const pad = fakePad();
+        started(w, pad);
+        let now = 1000;
+        for (const index of [12, 13, 14, 15, 0]) {
+            pad.press(index);
+            now += 16;
+            w.win.frame(now);
+            pad.press(index, false);
+            now += 16;
+            w.win.frame(now);
+        }
+
+        expect(w.moves).toEqual(['up', 'down', 'left', 'right', 'activate']);
+    });
+
+    it('badPath_underTheXboxKeyEmulationTheKeysItSendsAreNotDoubled', () => {
+        const w = world();
+        Object.assign(w.win.navigator, { gamepadInputEmulation: 'keyboard' });
+        const pad = fakePad();
+        started(w, pad);
+        let now = 1000;
+        for (const index of [0, 1, 3, 8, 12, 15, 5]) {
+            pad.press(index);
+            now += 16;
+            w.win.frame(now);
+            pad.press(index, false);
+            now += 16;
+            w.win.frame(now);
+        }
+
+        expect(w.moves).toEqual([]);
+        expect(w.commands).toEqual(['photo-next']);
     });
 });
 
@@ -397,10 +467,11 @@ describe('the gamepad session: the ring', () => {
         const pad = fakePad();
         const target = document.createElement('button');
         w.root.append(target);
+        target.focus();
         started(w, pad);
-        pad.press(13);
+        pad.press(5);
         w.win.frame(1016);
-        pad.press(13, false);
+        pad.press(5, false);
         w.win.frame(1032);
 
         target.blur();
@@ -409,129 +480,6 @@ describe('the gamepad session: the ring', () => {
         w.win.frame(1048);
 
         expect(target.style.outline).toContain('3px');
-    });
-});
-
-describe('the gamepad session: focus and A', () => {
-    afterEach(() => {
-        document.body.replaceChildren();
-    });
-
-    it('happyPath_theDpadMovesAVisibleFocusSkippingInert', () => {
-        const w = world();
-        const pad = fakePad();
-        const [first, inert, last] = [document.createElement('button'), document.createElement('button'), document.createElement('button')];
-        const wall = document.createElement('div');
-        wall.setAttribute('inert', '');
-        wall.append(inert);
-        w.root.append(first, wall, last);
-        started(w, pad);
-
-        pad.press(13);
-        w.win.frame(1016);
-        expect(document.activeElement).toBe(first);
-        expect(first.style.outline).toContain('3px');
-        pad.press(13, false);
-        w.win.frame(1032);
-        pad.press(13);
-        w.win.frame(1048);
-        expect(document.activeElement).toBe(last);
-        expect(first.style.outline).toBe('');
-        pad.press(13, false);
-        w.win.frame(1064);
-        pad.press(12);
-        w.win.frame(1080);
-        expect(document.activeElement).toBe(first);
-    });
-
-    it('edge_insideShadowHostsInertStillCounts', () => {
-        const w = world();
-        const pad = fakePad();
-        const host = document.createElement('div');
-        host.setAttribute('inert', '');
-        const inner = host.attachShadow({ mode: 'open' });
-        inner.append(document.createElement('button'));
-        const free = document.createElement('button');
-        w.root.append(host, free);
-        started(w, pad);
-
-        pad.press(13);
-        w.win.frame(1016);
-
-        expect(document.activeElement).toBe(free);
-    });
-
-    it('happyPath_insideTheMenuTheDpadSendsItsArrowKeys', () => {
-        const w = world();
-        const pad = fakePad();
-        const item = document.createElement('button');
-        item.setAttribute('role', 'menuitem');
-        const seen: string[] = [];
-        item.addEventListener('keydown', (event) => {
-            seen.push(event.key);
-        });
-        w.root.append(item);
-        item.focus();
-        started(w, pad);
-
-        pad.press(13);
-        w.win.frame(1016);
-        pad.press(13, false);
-        pad.press(12);
-        w.win.frame(1032);
-
-        expect(seen).toEqual(['ArrowDown', 'ArrowUp']);
-    });
-
-    it('happyPath_aClicksWhatHasTheFocus', () => {
-        const w = world();
-        const pad = fakePad();
-        const button = document.createElement('button');
-        const click = vi.fn();
-        button.addEventListener('click', click);
-        w.root.append(button);
-        button.focus();
-        started(w, pad);
-
-        pad.press(0);
-        w.win.frame(1016);
-
-        expect(click).toHaveBeenCalledOnce();
-    });
-
-    it('happyPath_aWithNoFocusDoesWhatEnterDoesOnTheMap', () => {
-        const w = world();
-        const pad = fakePad();
-        const canvas = document.createElement('canvas');
-        canvas.tabIndex = 0;
-        const seen: string[] = [];
-        canvas.addEventListener('keydown', (event) => {
-            seen.push(event.key);
-        });
-        w.root.append(canvas);
-        started(w, pad);
-
-        pad.press(0);
-        w.win.frame(1016);
-
-        expect(seen).toEqual(['Enter']);
-        expect(document.activeElement).toBe(canvas);
-    });
-
-    it('badPath_aOnACoveredMapDoesNothing', () => {
-        const w = world();
-        const pad = fakePad();
-        const canvas = document.createElement('canvas');
-        const seen = vi.fn();
-        canvas.addEventListener('keydown', seen);
-        w.root.append(canvas);
-        w.covered = true;
-        started(w, pad);
-
-        pad.press(0);
-        w.win.frame(1016);
-
-        expect(seen).not.toHaveBeenCalled();
     });
 });
 

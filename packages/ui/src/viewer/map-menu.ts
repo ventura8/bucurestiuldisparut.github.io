@@ -138,7 +138,7 @@ export class HcmMapMenu extends LitElement {
             .item:hover,
             .item:focus-visible {
                 background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
-                outline: 2px solid var(--md-sys-color-secondary);
+                outline: var(--hcm-focus-ring-width, 2px) solid var(--md-sys-color-secondary);
                 outline-offset: -2px;
             }
         `,

@@ -97,6 +97,14 @@ test(
 );
 
 test(
+    'A TV or a games console: the D-pad, the timeline and Layers at 1920 × 1080 with a coarse pointer',
+    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V66-HAPPY-TOUR'] },
+    async ({ page, context, lang }) => {
+        await expectJourneySound({ page, context, lang }, journey('tv'));
+    },
+);
+
+test(
     "A photo's versions in its sheet and in the full-size view, zoomed in",
     {
         tag: [

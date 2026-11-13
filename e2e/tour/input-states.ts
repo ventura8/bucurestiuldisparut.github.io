@@ -4,11 +4,15 @@ import { expect, type Page } from '@playwright/test';
 import { E2E_XYZ_LAYER } from '../fixtures/world.js';
 import { connectPad, installFakePads } from '../support/gamepad.js';
 import { dismissToast, holdToast, openViewer, t } from '../support/viewer.js';
+import { TV_STATES } from './tv-states.js';
+
+export { TV_JOURNEY } from './tv-states.js';
 
 /**
  * The shortcuts' and the gamepad's states in the tour's inventory (behaviours V36, V37; docs/research/viewer-input.md),
  * visited by the journey `input` of e2e/tour/states.ts at every viewer viewport. Each runs the generic layout and
- * accessibility checkers like every other state. The fake pad is e2e/support/gamepad.ts.
+ * accessibility checkers like every other state. The fake pad is e2e/support/gamepad.ts. The TV's states (V65, V66) have
+ * their own journey, `tv` (e2e/tour/tv-states.ts), and join the inventory here.
  */
 
 export interface InputTour {
@@ -47,6 +51,7 @@ export const INPUT_STATES = {
         },
         announcements: (lang: Locale) => [t(lang, 'gamepad.refused')],
     },
+    ...TV_STATES,
 } as const;
 
 /** The journey of these states in e2e/tour/states.ts. */
