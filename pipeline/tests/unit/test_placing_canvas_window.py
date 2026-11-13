@@ -19,6 +19,8 @@ PEAK_RSS_BYTES = 1_500_000_000
 # Two colour scans of 12000 x 9000 on a canvas at about their own scale: one tile in RGB and one band (about 690 MB with the
 # layout), where the old paste held the whole scan at 1.05 x three times over (over 1.1 GB).
 COLOUR_PEAK_RSS_BYTES = 800_000_000
+# The environment variables that tune GDAL, OpenCV, the BLAS and the pipeline: a child starts without any of them.
+SETTING_PREFIXES = ("GDAL_", "CPL_", "VSI_", "OGR_", "OPENCV_", "OMP_", "OPENBLAS_", "MKL_", "HCM_", "MALLOC_")
 
 
 def _scan(tmp_path: Path, name: str, value: int, size: tuple[int, int] = (200, 100)) -> Path:
@@ -99,7 +101,10 @@ def _mosaicked(tmp_path: Path, spec: SheetsSpec) -> tuple[int, int, int, int]:
     listing = tmp_path / "named.tsv"
     listing.write_text("\n".join(f"{name}\t{path}" for name, path in series.named), encoding="utf-8")
     # GDAL's block cache as a 4 GB worker sizes it (`rasters.gdal_memory`: a sixteenth); the default would be 5 % of this machine.
-    env = {**os.environ, "PYTHONPATH": os.pathsep.join(sys.path), "GDAL_CACHEMAX": "256"}
+    # GDAL's, OpenCV's and the pipeline's own settings are never inherited: what an earlier test of a full run left in the environment
+    # would size the child differently (the colour case passed alone and failed in a full run, 2026-11-13).
+    kept = {name: value for name, value in os.environ.items() if not name.startswith(SETTING_PREFIXES)}
+    env = {**kept, "PYTHONPATH": os.pathsep.join(sys.path), "GDAL_CACHEMAX": "256"}
     command = [sys.executable, "-c", _CHILD, str(listing), str(tmp_path / "canvas.tif"), spec.style]
     done = subprocess.run(command, env=env, capture_output=True, text=True, check=True)
     placed, width, height, peak_kib = (int(value) for value in done.stdout.split())

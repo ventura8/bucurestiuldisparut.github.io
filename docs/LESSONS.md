@@ -3693,3 +3693,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: reading both sides' code paths for the same document; every contract test was green, because they compare enums and shapes against a hand-written sample, and Playwright's mouse never pans.
     - Fix and pin: M20 §19.12; `S-A-HAPPY-TILE-WIZARD-{MOVE,SEAM-KEYS}`, `S-A-BAD-TILE-WIZARD-{SEAM-RESET,POINTS-FIRST}`, `happyPath_aSheetLeftOutForNoSeamIsTriedAgainAtItsFreeCell`.
     - **A cross-track contract test pins behaviour, not only names: for each enum value, write down what each side does with it, and test the reader against a file the writer produced.**
+
+629. **A memory budget passed alone and failed in the full run: the child inherited the run's environment.**
+    - Seen: 2026-11-13, merging track/autostitch: the colour memory-budget test failed in the full pipeline pytest and passed alone. Measured on the NUC, the two-sheet 12,000 px colour mosaic peaks at 617 MB with GDAL's default threads and at 852 MB with `GDAL_NUM_THREADS=2` (the bound is 800 MB).
+    - Cause: the budget children (`tests/budget_probe.py`, `test_placing_canvas_window.py`'s child) took `os.environ` whole, so any GDAL, OpenCV, BLAS or `HCM_` setting present in the run sized them differently from the measurement.
+    - Fix and pin: both start without any `GDAL_`, `CPL_`, `VSI_`, `OGR_`, `OPENCV_`, `OMP_`, `OPENBLAS_`, `MKL_`, `HCM_` or `MALLOC_` variable (`test_memory_budgets.probe_env`, `test_bad_path_settings_an_earlier_test_left_behind_never_reach_a_probe`); no budget changed. Open: a worker that sets `GDAL_NUM_THREADS` above 1 needs about 850 MB for two such colour sheets, over the 800 MB the windowed mosaic promises.
+    - **A budget measured in a child process is measured in a known environment: strip every tuning variable, never inherit the test run's.**
