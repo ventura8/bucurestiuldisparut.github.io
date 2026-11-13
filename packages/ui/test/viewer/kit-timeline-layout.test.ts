@@ -192,12 +192,29 @@ describe('<hcm-map-viewer> the chip as an icon button under the standing timelin
     it.each([
         { width: 768, height: 1024 },
         { width: 915, height: 412 },
-    ])('badPath_at $width x $height: theLyingTimelineKeepsTheTextChip', async (size) => {
+    ])('badPath_at $width x $height: aTabletOrAShortWindowGetsTheIconButtonBesideTheLyingTimeline', async (size) => {
+        // The owner, 2026-11-13: the text chip only on large screens.
         const { element } = await viewerAt(size, 1977);
-        const chip = partOf(element, '.dock.chip [data-layout-check="near-year"]');
+        const chip = partOf(element, '.dock.chip [data-layout-check="near-year"]') as HTMLElement & { label: string };
 
-        expect([chip.localName, chip.textContent.trim()]).toEqual(['hcm-button', 'Fotografii din jurul anului 1977']);
-        expect(element.shadowRoot?.querySelector('.dock.chip hcm-icon-button')).toBeNull();
+        expect([chip.localName, chip.label, chip.title]).toEqual([
+            'hcm-icon-button',
+            'Fotografii din jurul anului 1977',
+            'Fotografii din jurul anului 1977',
+        ]);
+        expect(element.shadowRoot?.querySelector('.dock.chip hcm-button')).toBeNull();
+    });
+
+    it('happyPath_aLargeWindowShowsTheTextChipUnderAMouseAndTheIconButtonUnderAFinger', async () => {
+        // A tablet on its side is as wide as a laptop: the main pointer decides (`finePointer`, from `(pointer: fine)`).
+        const { element } = await viewerAt({ width: 1280, height: 800 }, 1977);
+
+        expect(element.finePointer).toBe(true);
+        expect(partOf(element, '.dock.chip [data-layout-check="near-year"]').localName).toBe('hcm-button');
+        element.finePointer = false;
+        await element.updateComplete;
+        expect(partOf(element, '.dock.chip [data-layout-check="near-year"]').localName).toBe('hcm-icon-button');
+        expect(element.shadowRoot?.querySelector('.dock.chip hcm-button')).toBeNull();
     });
 });
 

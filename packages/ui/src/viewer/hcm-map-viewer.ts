@@ -97,6 +97,7 @@ export class HcmMapViewer extends LitElement {
         engineVersion: { attribute: false },
         viewState: { state: true },
         mapMenu: { state: true },
+        finePointer: { state: true },
         legalLift: {
             state: true,
             hasChanged: (next: LegalLift, previous?: LegalLift) => previous === undefined || !sameLift(next, previous),
@@ -125,8 +126,14 @@ export class HcmMapViewer extends LitElement {
     declare mapMenu: MenuPoint | null;
     /** How far Mapbox's bottom corners move out from under the open modal sheet (V18, `legal-lift.ts`). */
     declare legalLift: LegalLift;
+    /** A mouse is the main pointer: a large window shows the text chip, a tablet's finger the icon button (`viewer-near-year.ts`). */
+    declare finePointer: boolean;
 
     #store: ViewerStorePort | null = null;
+    readonly #pointer = window.matchMedia('(pointer: fine)');
+    readonly #onPointer = (): void => {
+        this.finePointer = this.#pointer.matches;
+    };
     #controller: ViewerController | null = null;
     #unsubscribe: Unsubscribe = () => undefined;
     #stopWatching: () => void = () => undefined;
@@ -187,6 +194,7 @@ export class HcmMapViewer extends LitElement {
         this.viewState = null;
         this.mapMenu = null;
         this.legalLift = NO_LIFT;
+        this.finePointer = true;
     }
 
     /** The controller `mount` returned for this element; null before the engine attached one. */
@@ -256,6 +264,8 @@ export class HcmMapViewer extends LitElement {
         this.#resizeObserver.observe(this);
         this.ownerDocument.addEventListener('keydown', this.#onKey);
         this.ownerDocument.addEventListener('visibilitychange', this.#onVisibility);
+        this.#pointer.addEventListener('change', this.#onPointer);
+        this.#onPointer();
         this.#applyTheme(this.viewState);
         this.#subscribe();
         this.#watchMapContainer();
@@ -268,6 +278,7 @@ export class HcmMapViewer extends LitElement {
         this.#resizeObserver.disconnect();
         this.ownerDocument.removeEventListener('keydown', this.#onKey);
         this.ownerDocument.removeEventListener('visibilitychange', this.#onVisibility);
+        this.#pointer.removeEventListener('change', this.#onPointer);
         this.#stopMyLocation();
         this.#unsubscribe();
         this.#unsubscribe = () => undefined;
@@ -314,6 +325,7 @@ export class HcmMapViewer extends LitElement {
             mapSize: sizeOf(this.mapContainer),
             mapMenu: this.mapMenu,
             legalLift: this.legalLift,
+            finePointer: this.finePointer,
         };
         return renderViewer(view, this.#handlers);
     }

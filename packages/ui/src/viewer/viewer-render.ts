@@ -25,7 +25,7 @@ import { photosNearYear, type TimelineStop } from './timeline-model.js';
 import type { MenuPoint } from './map-menu-trigger.js';
 import { lightbox, mapMenu, type LightboxHandlers, type MapMenuHandlers } from './viewer-lightbox.js';
 import { menuActions, menuItem } from './viewer-menu.js';
-import { nearYearChip } from './viewer-near-year.js';
+import { nearYearChip, textChip } from './viewer-near-year.js';
 import { storiesSheet } from './viewer-stories.js';
 import { unplacedSheet } from './viewer-unplaced.js';
 import { zoomButtons, type MapSize } from './viewer-zoom.js';
@@ -47,6 +47,8 @@ export interface ViewerView {
     readonly mapMenu: MenuPoint | null;
     /** How far Mapbox's bottom corners move out from under the open modal sheet (V18, `legal-lift.ts`). */
     readonly legalLift: LegalLift;
+    /** A mouse, not a finger, is the main pointer (`(pointer: fine)`): only then a large window shows text chips. */
+    readonly finePointer: boolean;
 }
 
 /** `hcm-photo-locate` of `<hcm-photo-sheet>`: the photo, and its place's offset from the map's centre (`locateOffset`). */
@@ -270,7 +272,13 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
     const items = menuActions({ webgl: state.webgl, layersDocked: view.layout.layersDocked, manifest }).map((action) =>
         menuItem(action, view.locale, state.myLocation !== null),
     );
-    return html`${timelineArea(view, ready, handlers)} ${nearYearChip(view, ready.state.year, ready.manifest.photos, handlers.onNearYear)}
+    return html`${timelineArea(view, ready, handlers)}
+        ${nearYearChip(
+            { locale: view.locale, wide: view.finePointer && textChip(state.windowClass, state.compactHeight) },
+            state.year,
+            manifest.photos,
+            handlers.onNearYear,
+        )}
         <div class="dock menu">
             <hcm-fab-menu
                 data-layout-check="menu"

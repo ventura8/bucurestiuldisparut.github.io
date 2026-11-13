@@ -6671,3 +6671,8 @@ relaxed; one new e2e budget.
   gives them a modelled cold CDN time (three round trips and their gzip bytes at Fast 4G) — the only timed wait in the
   e2e suite, a network model rather than a wait for the page. The starter kit's own `index.html` keeps its order (it
   works either way).
+- **178g The photos-near-the-year button** (the owner, 2026-11-13): its text only on a large screen. The text chip
+  shows on an expanded or wider window that is not short and whose main pointer is a mouse (`finePointer` of
+  `<hcm-map-viewer>`, from `(pointer: fine)` and its changes: a tablet on its side, 1280 px, is as wide as a laptop);
+  everywhere else, phones and tablets, the icon button, whose accessible name and tooltip are the full text
+  (`packages/ui/src/viewer/viewer-near-year.ts` `textChip`; `S-V04-HAPPY-TABLET-ICON-CHIP`).

@@ -1469,10 +1469,21 @@
             "area": "viewer",
             "path": "bad",
             "title": "On a phone no year, or a year without photos, shows no button; a wide window keeps the text chip",
-            "asserts": "at 390x844 at today (the year is null) there is no chip dock and no button; back at today after a year with photos the button is gone; the same year at 1024x768 shows the text chip and no icon button",
+            "asserts": "at 390x844 at today (the year is null) there is no chip dock and no button; back at today after a year with photos the button is gone; the same year at 1024x768 shows the text chip under a mouse (the icon button in a touch project)",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-12. Tests: e2e/specs/viewer/timeline.spec.ts; packages/ui/test/viewer/kit-timeline-layout.test.ts."
+        },
+        {
+            "id": "S-V04-HAPPY-TABLET-ICON-CHIP",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A tablet gets the icon button named in full, upright and on its side under a finger; only a mouse gets the text",
+            "asserts": "at 800x1280 the photos-near-the-year button is the icon button, its name and tooltip the full text, no text chip; at 1280x800 a mouse sees the text chip, and with touch emulation ((pointer: coarse)) the icon button again",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-13: the text only on large screens. packages/ui/src/viewer/viewer-near-year.ts (textChip), hcm-map-viewer.ts (finePointer from (pointer: fine)). Tests: e2e/specs/viewer/timeline.spec.ts; packages/ui/test/viewer/viewer-near-year.test.ts."
         },
         {
             "id": "S-V04-HAPPY-VERTICAL-ON-PHONE",
@@ -1491,7 +1502,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "A short window lays the timeline at the foot of the map",
-            "asserts": "at 915x412 the slider is aria-orientation horizontal and wider than tall; Right selects the later year and Left the earlier; the chip sits 8 px above the card on its trailing edge; the open two-column menu on the leading edge covers neither the chip nor the timeline",
+            "asserts": "at 915x412 the slider is aria-orientation horizontal and wider than tall; Right selects the later year and Left the earlier; the chip (an icon button: a short window) sits 8 px above the card on its trailing edge; while the menu is open only it is shown (the card and the chip step aside, P1) and both are back once Escape closes it",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner, 2026-11-08: 'when height is short, we should display the timeline horizontally'. packages/ui/src/viewer/layout.ts (COMPACT_HEIGHT), viewer-styles.ts."
@@ -1513,7 +1524,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "On a narrow short phone the chip ends at the gutter, off the map's centre and clear of the open menu",
-            "asserts": "at 568x320 the lying card and the chip end 16 px from the trailing edge, the chip on the card's trailing edge and off the map's centre point; the open three-column menu's items end above the chip's row and cover neither the chip nor the timeline",
+            "asserts": "at 568x320 the lying card and the chip end 16 px from the trailing edge, the chip on the card's trailing edge and off the map's centre point; while the menu is open only it is shown, on screen (the card and the chip step aside, P1), and both are back once Escape closes it",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The review of track/yearchip, 2026-11-08: at 568x320 the chip sat on the map's centre and 'Distribuie' and 'Despre' covered it. packages/ui/src/viewer/viewer-styles.ts; unit tests in packages/ui/test/viewer/kit-timeline-layout.test.ts."
