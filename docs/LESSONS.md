@@ -3775,13 +3775,13 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: `.scroller` and `.track` inherit the card's touch-action (`timeline-styles.ts`); `hcm-timeline-tip.test.ts` reads it on the track, roomy and scrolling.
     - **Set touch-action inside the nearest scroll container of the element a finger lands on, and test a gesture with the browser's own touch events, never only with synthetic pointer events.**
 
-650. **Spatial navigation stepped from a button into the map: the canvas under every control was the nearest box "to the right".**
+643. **Spatial navigation stepped from a button into the map: the canvas under every control was the nearest box "to the right".**
     - Seen: 2026-11-13, track/consoles, `packages/ui/test/viewer/spatial-nav.test.ts`: ArrowRight from a top-left button focused the map's canvas, not the menu button.
     - Cause: the canvas is tabbable and covers the whole viewer; its centre lies right of (and below) every control, with no gap ahead or across, so it always scored best.
     - Fix and pin: a box that holds the middle of the focused control is around it, not beside it, and is never a step's target (`encloses` in `spatial-nav.ts`); a step from the map starts from the viewer's middle.
     - **A geometric focus search must skip the containers under the focus (the map, a scrolling pane), or the biggest box wins every direction.**
 
-651. **A thicker focus ring for the TV was cut by Mapbox's box on the map and on its logo.**
+644. **A thicker focus ring for the TV was cut by Mapbox's box on the map and on its logo.**
     - Seen: 2026-11-13, track/consoles, the tour's journey `tv` at 1920 × 1080: `[focus-ring]` on the canvas and on Mapbox's logo, cut by `div.map.mapboxgl-map`, which hides its overflow.
     - Cause: the canvas's inner ring was `outline-offset: -3px` and the logo kept the kit's 2 px offset, both fitted to the 3 px ring; the 6 px one reached past the box.
     - Fix and pin: both offsets follow `--hcm-focus-ring-width` (`viewer-styles.ts`), the full attribution's padding too.

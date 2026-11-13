@@ -53,7 +53,7 @@ export const INPUT_STATES = {
 } as const;
 
 /** The journey of these states in e2e/tour/states.ts. */
-export const INPUT_JOURNEY = {
+const INPUT_JOURNEY = {
     title: 'The shortcuts, their help panel and a refused gamepad',
     id: 'input',
     boot: bootInputJourney,
