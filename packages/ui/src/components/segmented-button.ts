@@ -1,7 +1,8 @@
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
+import { ifDefined } from 'lit/directives/if-defined.js';
 
 import { defineHcmIcon } from './icon.js';
-import { defineOnce, emit } from './internal.js';
+import { defineOnce, emit, logicalKey } from './internal.js';
 import { baseStyles, focusRing, stateLayer, touchTarget, typeStyles } from './styles.js';
 
 export const HCM_SEGMENTED_BUTTON_TAG = 'hcm-segmented-button';
@@ -11,6 +12,8 @@ export interface SegmentOption {
     /** Already localized. */
     readonly label: string;
     readonly icon?: string;
+    /** The label's own language, when it is not the page's (a language list's names: WCAG 3.1.2). */
+    readonly lang?: string;
 }
 
 const NEXT_KEYS: Readonly<Record<string, number>> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
@@ -118,15 +121,20 @@ export class HcmSegmentedButton extends LitElement {
                 inline-size: 100%;
             }
 
-            /* Rows touch, so each row is its own 48 px target: a 40 px row's ring lay under the row after it. */
+            /*
+             * Rows touch, so each row is its own 48 px target: a 40 px row's ring lay under the row after it. A row after
+             * the first draws no top border (the row above draws it), rather than overlapping it by 1 px: a row scrolled to
+             * a strip under the dialog's header had its last pixel covered by the next one (25 languages, 360 px).
+             */
             :host([stacked]) button {
                 min-height: 48px;
-                margin: -1px 0 0;
+                margin: 0;
+                border-block-start-width: 0;
                 border-radius: 0;
             }
 
             :host([stacked]) button:first-child {
-                margin-block-start: 0;
+                border-block-start-width: 1px;
                 border-start-start-radius: var(--md-sys-shape-corner-large);
                 border-start-end-radius: var(--md-sys-shape-corner-large);
             }
@@ -226,6 +234,7 @@ export class HcmSegmentedButton extends LitElement {
             aria-checked=${String(checked)}
             tabindex=${tabStop ? '0' : '-1'}
             data-value=${option.value}
+            lang=${ifDefined(option.lang)}
             @click=${() => {
                 this.select(option.value);
             }}
@@ -257,7 +266,7 @@ export class HcmSegmentedButton extends LitElement {
     /** The option index a key moves to (wrapping), or -1 for a key the group does not handle. */
     private keyIndex(key: string, index: number): number {
         const count = this.options.length;
-        const step = NEXT_KEYS[key];
+        const step = NEXT_KEYS[logicalKey(key, this)];
         if (step !== undefined) {
             return (Math.max(index, 0) + step + count) % count;
         }

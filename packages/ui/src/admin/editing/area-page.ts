@@ -8,7 +8,7 @@
  * (`readOnly`, the host's `read-only` attribute, §42d): its editors disable Save and every action that writes, and their
  * fields are read-only, so what is on screen can still be selected and copied until sign-out.
  */
-import { DEFAULT_LOCALE, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, type UiLocale } from '@hcm/shared';
 import { LitElement } from 'lit';
 
 import type { AdminAppPort, AdminRouteIdPort, AdminStatePort } from '../admin-port.js';
@@ -81,7 +81,7 @@ export abstract class AreaPage<State, Intents> extends LitElement {
         return this.#followed?.store.intents ?? null;
     }
 
-    protected get locale(): Locale {
+    protected get locale(): UiLocale {
         return this.state?.locale ?? DEFAULT_LOCALE;
     }
 

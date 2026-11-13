@@ -11,7 +11,7 @@ import {
     type AdminContentKey,
     type Calibration,
     type CalibrationHow,
-    type Locale,
+    type UiLocale,
 } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
@@ -28,7 +28,7 @@ function howKey(how: Exclude<CalibrationHow, 'none'>): AdminContentKey {
 }
 
 /** The heading: the local AI proposed this place (M10), on which device; `georef`'s matcher may have fitted it since, the proof stands. */
-function howText(locale: Locale, { how, proposer }: Calibration & { readonly how: Exclude<CalibrationHow, 'none'> }): string {
+function howText(locale: UiLocale, { how, proposer }: Calibration & { readonly how: Exclude<CalibrationHow, 'none'> }): string {
     if (proposer === undefined || (how !== 'local-ai' && how !== 'matcher')) {
         return contentText(locale, howKey(how));
     }
@@ -37,7 +37,7 @@ function howText(locale: Locale, { how, proposer }: Calibration & { readonly how
 }
 
 /** Each figure the block has, in words: `georef`'s matcher, having fitted a frame, leaves it none of the proof's (`georef.py`). */
-function facts(locale: Locale, { tiles, crossValidatedM, alignment }: Calibration, covered: number | undefined): readonly string[] {
+function facts(locale: UiLocale, { tiles, crossValidatedM, alignment }: Calibration, covered: number | undefined): readonly string[] {
     return [
         ...(tiles === undefined
             ? []
@@ -59,7 +59,7 @@ function facts(locale: Locale, { tiles, crossValidatedM, alignment }: Calibratio
 }
 
 /** The block of a version `locate` measured; nothing for one it never saw (an upload, a join, a re-rendered version). */
-export function calibrationCard(locale: Locale, version: VersionViewPort): TemplateResult {
+export function calibrationCard(locale: UiLocale, version: VersionViewPort): TemplateResult {
     return withValue(version.calibration, (calibration) => {
         const { how } = calibration;
         if (how === 'none') {
@@ -89,12 +89,12 @@ const GAPS: readonly ((version: VersionViewPort) => boolean)[] = [
     ({ calibration }) => (calibration?.measuredPct ?? 0) < AUTO_MIN_MEASURED_PCT,
 ];
 
-function waits(locale: Locale, name: string, key: AdminContentKey): TemplateResult {
+function waits(locale: UiLocale, name: string, key: AdminContentKey): TemplateResult {
     return html`<p class="note" data-waits=${name}>${contentText(locale, key)}</p>`;
 }
 
 /** On the approval card: why this frame waits for a click whatever its error (`functions/src/imagery/approval.ts`). */
-export function calibrationWaits(locale: Locale, version: VersionViewPort): TemplateResult {
+export function calibrationWaits(locale: UiLocale, version: VersionViewPort): TemplateResult {
     return html`${when(version.entityId !== null && GAPS.some((gap) => gap(version)), () => waits(locale, 'not-proved', 'adminContent.imagery.calibration.waits.notProved'))}
     ${when(short(version), () => waits(locale, 'coverage', 'adminContent.imagery.calibration.waits.coverage'))}`;
 }

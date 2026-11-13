@@ -40,6 +40,7 @@ export function jobItem(overrides: Partial<JobItemPort> = {}): JobItemPort {
         createdAt: '2026-10-17T09:00:00.000Z',
         dispatchAt: null,
         cancelRequested: false,
+        paused: false,
         error: null,
         ...{ waitReason: null, retryAt: null, versionId: null, retryable: false },
         ...overrides,
@@ -55,6 +56,7 @@ export function jobsState(overrides: Partial<JobsViewState> = {}): JobsViewState
         retrying: false,
         guard: null,
         resuming: false,
+        pausingAll: false,
         ...overrides,
     };
 }

@@ -5,7 +5,7 @@
  * period are one quiet line, and a period without any is one line too. The bars are decoration (`aria-hidden`): the
  * numbers are the steps' own text.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { WIZARD_IDS, type WizardId } from '@hcm/shared/funnels';
 import { html, type TemplateResult } from 'lit';
 
@@ -19,7 +19,7 @@ import { errorName, formatCount, formatDuration } from './statistics-format.js';
 const TOP_ERRORS = 3;
 
 export interface FunnelNames {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     /** The period in words (`28 days`). */
     readonly period: string;
     /** A wizard's steps in order (the view's table); a step not listed follows by its people. */
@@ -40,7 +40,7 @@ function ordered(names: FunnelNames, numbers: StatisticsNumbersPort, wizard: Wiz
 }
 
 /** Who left between the step before and this one: the count and its share; a dash for the first step. */
-function leftText(locale: Locale, before: StepNumbersPort | undefined, step: StepNumbersPort): string {
+function leftText(locale: UiLocale, before: StepNumbersPort | undefined, step: StepNumbersPort): string {
     if (before === undefined || before.visitors === 0) {
         return '—';
     }
@@ -51,7 +51,7 @@ function leftText(locale: Locale, before: StepNumbersPort | undefined, step: Ste
     });
 }
 
-function errorChips(locale: Locale, step: StepNumbersPort): TemplateResult {
+function errorChips(locale: UiLocale, step: StepNumbersPort): TemplateResult {
     const errors = step.errors.slice(0, TOP_ERRORS);
     if (errors.length === 0) {
         return EMPTY;

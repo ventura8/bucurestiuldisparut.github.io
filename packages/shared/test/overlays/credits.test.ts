@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { translate } from '../../src/i18n/index.js';
-import { creditParts, localizedCredit } from '../../src/overlays/credits.js';
+import { creditParts, localizedCredit, STORED_CREDITS } from '../../src/overlays/credits.js';
 import { LANDSAT_ATTRIBUTION } from '../../src/schemas/landsat.js';
 import { DEM_ATTRIBUTION, USGS_ATTRIBUTION } from '../../src/schemas/usgs-scene.js';
 
@@ -9,6 +9,8 @@ describe('localizedCredit', () => {
     it('happyPath_theStoredCreditsAreTheEnglishTexts', () => {
         expect(translate('en', 'layers.attribution.usgs')).toBe(USGS_ATTRIBUTION);
         expect(translate('en', 'layers.attribution.landsat')).toBe(LANDSAT_ATTRIBUTION);
+        // The engine fetches only the page's language: the stored English is matched without the English catalogue.
+        expect(STORED_CREDITS).toEqual({ 'layers.attribution.usgs': USGS_ATTRIBUTION, 'layers.attribution.landsat': LANDSAT_ATTRIBUTION });
     });
 
     it('happyPath_aKnownCreditIsInTheVisitorsLanguage', () => {

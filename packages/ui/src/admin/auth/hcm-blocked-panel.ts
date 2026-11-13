@@ -7,7 +7,7 @@
  * heading, "the map is resting" (Try again) or "not open yet" (`contributeClosed`), and Back to the map; never the
  * administration's name nor another account.
  */
-import type { AdminShellKey, Locale } from '@hcm/shared';
+import type { AdminShellKey, UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import type { AdminAppPort, AdminAuthStatePort, AdminStatePort, AdminWelcomePort } from '../admin-port.js';
@@ -105,7 +105,7 @@ export class HcmBlockedPanel extends AdminPanel {
         </section>`;
     }
 
-    #action(spec: BlockedSpec, locale: Locale): TemplateResult {
+    #action(spec: BlockedSpec, locale: UiLocale): TemplateResult {
         const action = spec.action;
         if (action === null) {
             return EMPTY;

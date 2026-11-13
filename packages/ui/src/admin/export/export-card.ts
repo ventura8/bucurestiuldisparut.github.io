@@ -5,7 +5,7 @@
  * ready (the signed address goes straight into a download, never on screen). An editor sees the export read-only, a city
  * never published says to publish it first. Inputs: `exportCity` 2, `exportWithRasters` 3.
  */
-import { EXPORT_LIMITS, pluralOf, translateApiError, type ExportState, type Locale } from '@hcm/shared';
+import { EXPORT_LIMITS, pluralOf, translateApiError, type ExportState, type UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { errorTemplate, formatWhen, loadingTemplate } from '../editing/states.js';
@@ -16,7 +16,7 @@ import type { ExportIntentsPort, ExportRecordPort, ExportSectionPort } from './e
 
 /** What the card needs of the settings page. */
 export interface ExportCardContext {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly view: ExportSectionPort;
     readonly intents: ExportIntentsPort | null;
     /** A revoked admin's page: no control that writes (`DECISIONS-for-review.md` §42d). */
@@ -33,13 +33,13 @@ const UNITS = [
 ] as const;
 
 /** A size in the admin's language (`1,4 MB`, `12 kB`, `512 byte`). */
-export function sizeText(locale: Locale, bytes: number): string {
+export function sizeText(locale: UiLocale, bytes: number): string {
     const [divisor, unit] = UNITS.find(([size]) => bytes >= size) ?? [1, 'byte'];
     return new Intl.NumberFormat(locale, { style: 'unit', unit, maximumFractionDigits: 1 }).format(bytes / divisor);
 }
 
 /** A failed export's reason; the size limit's numbers are sizes. */
-export function failureReason(locale: Locale, error: NonNullable<ExportRecordPort['error']>): string {
+export function failureReason(locale: UiLocale, error: NonNullable<ExportRecordPort['error']>): string {
     const params =
         error.code === 'apiError.export.tooLarge'
             ? {
@@ -56,25 +56,25 @@ function wrappable(group: string): TemplateResult {
 }
 
 /** The SHA-256 in groups of eight that may wrap at a narrow width (a copy keeps it whole). */
-function checksum(locale: Locale, sha256: string): TemplateResult {
+function checksum(locale: UiLocale, sha256: string): TemplateResult {
     const groups = sha256.match(/.{1,8}/g) ?? [];
     const prefix = contentText(locale, 'adminContent.export.checksum', { sha256: '' });
     return html`<p class="note" data-field="sha256">${prefix}<code>${groups.map(wrappable)}</code></p>`;
 }
 
-function restrictedLine(locale: Locale, count: number): TemplateResult {
+function restrictedLine(locale: UiLocale, count: number): TemplateResult {
     const key = `adminContent.export.restricted.${pluralOf(locale, count)}` as const;
     return html`<p class="note" data-field="restricted">${contentText(locale, key, { count: String(count) })}</p>`;
 }
 
 const NO_COUNTS: NonNullable<ExportRecordPort['counts']> = { photos: 0, restrictedPhotos: 0, layers: 0, rasters: 0, pois: 0 };
 
-function expiryLine(locale: Locale, expiresAt: string): TemplateResult {
+function expiryLine(locale: UiLocale, expiresAt: string): TemplateResult {
     return html`<p class="note">${contentText(locale, 'adminContent.export.expires', { date: formatWhen(locale, expiresAt) })}</p>`;
 }
 
 /** A ready export's size and counts. */
-function readySummary(locale: Locale, latest: ExportRecordPort): string {
+function readySummary(locale: UiLocale, latest: ExportRecordPort): string {
     const counts = latest.counts ?? NO_COUNTS;
     return contentText(locale, 'adminContent.export.ready', {
         size: sizeText(locale, latest.bytes ?? 0),
@@ -92,7 +92,7 @@ function readyBody(context: ExportCardContext, latest: ExportRecordPort): Templa
         ${when(counts.restrictedPhotos > 0, () => restrictedLine(locale, counts.restrictedPhotos))}`;
 }
 
-function progressBody(locale: Locale, state: 'queued' | 'building'): TemplateResult {
+function progressBody(locale: UiLocale, state: 'queued' | 'building'): TemplateResult {
     const text = contentText(locale, `adminContent.export.${state}`);
     return html`<div class="export-progress" data-state=${state}>
         <hcm-loading-indicator .label=${text}></hcm-loading-indicator>

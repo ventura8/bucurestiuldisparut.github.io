@@ -849,6 +849,16 @@ The file still holds no secret, and the update never runs a downloaded file befo
 
 Scenarios `S-A142-HAPPY-VERSIONS`, `S-A142-BAD-OLD-STARTER`, `S-A142-HAPPY-SELF-UPDATE`, `S-A142-BAD-SELF-UPDATE`.
 
+### Addendum of 2026-11-13: Versions compares digests while the worker is busy
+
+The card's "It matches the installed release" for the pipeline image must not wait on the worker's `outdated` flag: a busy
+worker only learns that flag at its next `worker.claim`, so Versions said "matches" while the digest on `/state` was already
+behind. `versionsOf` (`packages/admin/src/worker/machine.ts`) compares the worker's `image` with
+`setup/status.install.pipeline.image` (the digest `WorkerFeed` already reads through `setup.status` and passes into
+`LocalComputer`); it falls back to `outdated` only when that installed digest is unknown. Unit tests in
+`packages/admin/test/worker/machine.test.ts` pin same digest → current, different digest with `outdated: false` → not
+current, unknown installed → flag. Lesson 696.
+
 ## Addendum of 2026-11-13: several workers and a local archive (M20 §20)
 
 Every worker claims every job type again; an archive series' sheets, which exist on the computer that imported them, reach another
@@ -858,6 +868,57 @@ worker as a copy through the private bucket (`tmp/archive-copies/{city}/{job}/`,
 `archive-copy`). The new callable `worker.archiveCopy` signs the copy's files for the holder and marks the copy done. A job waiting
 `archive-copy` is claimed by nobody until its copy is done. `RoutedObjectStore` reads `tmp/archive-copies/` through `worker.urls`,
 whose allow-list adds the job's own copy folder (`isOwnArchiveCopy`).
+
+## Addendum of 2026-11-13: Pause (a job, every job, a computer)
+
+The owner, 2026-11-13: "I want the user to be able to pause jobs, and to pause using a machine". DECISIONS-for-review.md §216.
+
+**A job.** On the Jobs page's open job and on a version's page (`<hcm-job-pause>`, the lazy `worker` chunk), a pipeline job that is
+queued, starting or running has **Pause**, and a paused one **Resume**; the Jobs list has **Pause all** and **Resume all**, and a
+paused job's row reads Paused. All of them call `imagery.pause {cityId, action: 'pause' | 'resume', jobId?}` (a city editor; no
+`jobId`: every job of the city still queued, starting or running, at most 500). The job gets `paused: {by, at, inRun?}`:
+
+| The job was | Pause does | Resume does |
+| --- | --- | --- |
+| queued (any wait) | nobody claims it (`worker.claim`'s rules) and the dispatcher does not send it (`dispatch.ts` `held`); `imagery.tick` never marks it overdue | drops the mark; its trigger dispatches it, or the next claim takes it, where it left off |
+| starting or running | `inRun: true`; the run stops at its **next step boundary** (`runner.py` `_refresh` raises `PausedRunError`): the step it is in finishes, then `status: queued`, lease and `retryAt` removed, no step changed (Cloud Run and the computer alike); on the computer `worker.end` says `done` | drops the mark; once the run stopped (`queued`) it gives back the attempt that run counted |
+| finished, or waiting for USGS, points or the approval | `apiError.imagery.notPausable` (what it waits for, nothing changed) | — |
+
+A paused job can still be cancelled (the rules' cancel is unchanged). The screen says who paused it and when, that it waits in the
+queue, and that Resume puts it back to go on from the step where it stopped; a running one says it stops after the step it is on.
+`imagery_pause` is measured as an `admin_action` (its outcome or refusal code); the functions log `job paused`, `every job paused`,
+`computer paused` with the uid, city, job or worker.
+
+**A computer.** The computers card (`<hcm-worker-panel>`, "Your computer": the city's most recently seen worker; the household list
+of track/household will put the same controls on each row) has **Pause this computer:** Until I resume, For 1 hour, Until tomorrow
+(08:00 tomorrow on the admin's clock), and on a paused computer who paused it (you, another admin, or the computer itself), until
+when, "It takes no new work and gave its job back to the queue; nothing is lost", and **Resume**. `imagery.pause {workerId, until?}`
+sets the worker's `paused: {by, at, until?}` (an `until` in the past or more than `PAUSE_UNTIL_MAX_HOURS`, 48, ahead:
+`apiError.imagery.pauseUntil`) and, when the worker runs a job, asks it back (`releaseRequested: true`). Resume drops both.
+
+On the computer: the heartbeat reads `releaseRequested` and the run stops at its **next checkpoint** (`ReleasedRunError`; the governor's
+gate lets go at once), the running step goes back to `pending` (its start kept), and `worker.end {outcome: 'released'}` queues the job
+again with the attempt its claim counted given back (`pause-state.ts` `releasedJob`; only while the computer is paused or the job was
+asked back, else the attempt stays counted). A paused worker's `worker.claim` is answered `{job: null, paused: true, pause: {by, at, until?}}`; a
+pause past its `until` is dropped by the next claim. The worker mirrors the answer into its governor (the owner's `paused` choice,
+M26 §3): no processor threads, no memory budget, no card share, headroom 0; it stays connected and claims every `pollSeconds`, so a
+Resume is seen within about 30 seconds.
+
+**The computer's own page** (`http://localhost:8765`) has the same three buttons and Resume (ro and en). `POST /pause {action, until?}`
+(the page's own origin with its token, or a Hosting origin, like `POST /profile`; 400 for a bad body, 403 otherwise) pauses at once
+and sends the command with the next `worker.claim` (or `worker.end`, when a run was handed back): `pause: {action: 'pause', until?}`
+or `{action: 'resume'}`, recorded as `paused.by: 'computer'`. `GET /state` gains `paused: {by: 'computer' | 'admin', until?} | null`.
+
+**With the computers' list (W5, household).** Its Pause and Resume (`worker.manage`) go through the same pause (`pause-state.ts`):
+the worker's `paused` and `pausedAt` are set and dropped together, and the running job is asked back. A paused worker's claim answers
+W5's `paused: true` and, beside it, `pause: {by, at, until?}`, which the worker mirrors (a bare `paused: true` reads as paused from the
+admin, with no end). The list's rows pause until Resume; the timed choices are on the card above it and on the computer's own page.
+
+The hand-back reuses the shape of M20's (archivehost, §204: `worker.end` `returned`, the attempt given back) with its own outcome,
+because a paused computer's job waits for no copy. Tests: `functions/test/imagery/pause.test.ts`, `functions/test/worker/pause.test.ts`,
+`packages/admin/test/worker/pause.test.ts`, `packages/ui/test/admin/worker/pause.test.ts`, `pipeline/tests/unit/test_runner_pause.py`,
+`test_worker_pausing.py`, the rules' `jobs.test.ts`, `e2e/admin/specs/imagery/pause.spec.ts`; scenarios A170, A171, P32; tour states
+`worker.job-paused`, `worker.jobs-pause-all`, `worker.computer-paused`.
 
 ## Addendum of 2026-11-13: household computers (W5)
 

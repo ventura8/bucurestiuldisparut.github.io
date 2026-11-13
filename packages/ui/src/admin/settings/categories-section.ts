@@ -5,7 +5,7 @@
  * open category's editor: names, icon, colour (the nearest readable tone proposed when the white glyph does not read on
  * it), default opacity (previewed live), Save, and Delete, which asks where a category's places go when it is in use.
  */
-import { MAX_POI_CATEGORIES, POI_ICONS, type Locale } from '@hcm/shared';
+import { MAX_POI_CATEGORIES, POI_ICONS, type UiLocale } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import { cssProperties } from '../../components/css-properties.js';
@@ -21,7 +21,7 @@ import { startersButton, startersReason } from './starter-actions.js';
 /** The route of a category not saved yet. */
 const NEW_CATEGORY = '_new';
 
-function labelText(label: { readonly ro: string; readonly en?: string | undefined }, locale: Locale): string {
+function labelText(label: { readonly ro: string; readonly en?: string | undefined }, locale: UiLocale): string {
     return locale === 'en' ? (label.en ?? label.ro) : label.ro;
 }
 

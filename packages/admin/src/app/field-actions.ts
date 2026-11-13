@@ -1,6 +1,7 @@
 /**
  * The admin's key journeys as GA4 events (`docs/ARCHITECTURE.md` → *Field measurements*, the owner's request of
- * 2026-11-12): an import started, a georeferencing saved, a layer approved or rejected, published, joined, a new city.
+ * 2026-11-12): an import started, a georeferencing saved, a layer approved or rejected, published, joined, a new city, a job or
+ * a computer paused or resumed (`imagery_pause`).
  * Each is one `admin_action` event when its callable answers: the action's name (`imagery_import`), the outcome (`ok`,
  * or the refusal's code, which names the cause: `apiError.imagery.notReady`) and how long it took. Ids, codes and
  * milliseconds only, never a request's data; sent like every measurement, only after the admin's consent.
@@ -21,6 +22,8 @@ const MEASURED_ACTIONS: ReadonlySet<string> = new Set([
     'imagery.join',
     'imagery.recalibrate',
     'imagery.retry',
+    // Pause (2026-11-13): Pause and Resume of a job, every job or a computer, with the refusal's code when refused.
+    'imagery.pause',
     'setup.createCity',
 ]);
 

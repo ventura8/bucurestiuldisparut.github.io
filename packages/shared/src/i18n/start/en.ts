@@ -5,6 +5,7 @@ export const en: Readonly<Record<StartKey, string>> = {
     'start.title': 'Start your own historical map',
     'start.lede': "Your city's old photos and historical layers on today's map, in a Google project of your own.",
     'start.language': 'Language',
+    'start.languageUnavailable': 'The texts of this language could not be loaded. The language stays as it was.',
     'start.get.title': 'What you get',
     'start.get.map': 'a public map of the city, with photos, places and historical layers;',
     'start.get.admin': 'an admin app where you add and publish everything, with no terminal;',

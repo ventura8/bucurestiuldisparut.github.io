@@ -3,7 +3,7 @@
  * intents, the page's addresses, whether the admin may write, and the page's questions (Reject, Dismiss, Pay, Cancel and
  * Resume processing ask first).
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 
 import type { ArchiveHostPort } from '../archive/archive-port.js';
 import type { WorkerHostPort } from '../worker/worker-port.js';
@@ -13,7 +13,7 @@ import type { ImageryIntentsPort, ImageryViewState } from './imagery-port.js';
 export type ImageryQuestion = 'reject' | 'pay' | 'cancel' | 'resume' | 'drop' | 'approveWorse' | 'rejectRecalibration' | 'deleteVersion';
 
 export interface ImageryContext {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly view: ImageryViewState;
     readonly intents: ImageryIntentsPort | null;
     /** `#/imagery/<params>`. */
@@ -23,6 +23,8 @@ export interface ImageryContext {
     readonly readOnly: boolean;
     /** Batch 4: the signed-in admin owns the city (Approve the sheet-name placement is the owner's alone). */
     readonly owner?: boolean;
+    /** Pause (2026-11-13): the signed-in admin's uid, so their own pause of a job reads "you" ('' when unknown). */
+    readonly self?: string;
     readonly ask: (question: ImageryQuestion) => void;
     /** Renders the page again: a chunk it fetched on first need settled (`orders/lazy-card.ts`). */
     readonly refresh: () => void;

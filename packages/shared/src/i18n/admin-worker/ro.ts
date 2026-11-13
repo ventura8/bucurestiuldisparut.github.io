@@ -55,6 +55,22 @@ export const ro = {
     'adminWorker.startWorker': 'Folosește calculatorul tău (pagina Procesări)',
     'adminWorker.freeTier': 'În Google Cloud ar depăși nivelul gratuit al lunii: așteaptă acordul tău.',
     'adminWorker.estimate': 'Estimarea rulării: {vcpu} secunde de procesor · {gib} GiB-secunde de memorie.',
+    'adminWorker.pause.computer': 'Pune pe pauză acest calculator:',
+    'adminWorker.pause.forever': 'Până reiau eu',
+    'adminWorker.pause.hour': 'Timp de o oră',
+    'adminWorker.pause.tomorrow': 'Până mâine',
+    'adminWorker.pause.byYou': 'Pus pe pauză de tine.',
+    'adminWorker.pause.byComputer': 'Pus pe pauză de la calculator.',
+    'adminWorker.pause.byOther': 'Pus pe pauză de alt administrator.',
+    'adminWorker.pause.until': 'Reia singur pe {when}.',
+    'adminWorker.pause.what': 'Nu ia procesări noi și și-a dat procesarea înapoi la coadă; nu se pierde nimic. Reia îl pornește.',
+    'adminWorker.pause.resume': 'Reia',
+    'adminWorker.job.pause': 'Pune pe pauză',
+    'adminWorker.job.resume': 'Reia',
+    'adminWorker.job.paused': 'Pusă pe pauză de {who} pe {when}. Reia o pune înapoi; continuă de la pasul unde s-a oprit.',
+    'adminWorker.job.pausing': 'Se pune pe pauză (cerut de {who} pe {when}): se oprește după pasul curent.',
+    'adminWorker.job.you': 'tine',
+    'adminWorker.job.other': 'alt administrator',
 } as const;
 
 export type AdminWorkerKey = keyof typeof ro;

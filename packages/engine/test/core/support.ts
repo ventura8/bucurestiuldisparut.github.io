@@ -106,8 +106,8 @@ export function jsonResponse(body: unknown, status = 200): Response {
     return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 }
 
-/** Lets pending promise callbacks run (a few microtask turns). */
-export async function settle(turns = 10): Promise<void> {
+/** Lets pending promise callbacks run (a few microtask turns: the boot waits for the manifest and the language's texts). */
+export async function settle(turns = 20): Promise<void> {
     for (let turn = 0; turn < turns; turn += 1) {
         await Promise.resolve();
     }

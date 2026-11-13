@@ -274,8 +274,7 @@ export function jobDoc(creator: string, status = 'running'): Data {
         steps: { fetch: { status: 'running', gcsPath: 'usgs-raw/rules/frame.tgz', generation: '1700000000000000', sha256: SHA } },
         mapboxJobId: 'mts-job-1',
         error: { code: 'apiError.usgs.unavailable', message: 'USGS did not answer.', params: { attempt: '1' } },
-        layerId: 'corona-1966',
-        versionId: 'job-1966',
+        ...{ layerId: 'corona-1966', versionId: 'job-1966' },
         waitReason: 'usgs-preparing',
         startedAt: past(),
         finishedAt: later(),
@@ -293,6 +292,8 @@ export function jobDoc(creator: string, status = 'running'): Data {
         placingPoints: true,
         // M20 (docs/research/M20-import-local.md §1.1, §1.3): an archive series' originals on the computer, and the day it counted.
         ...archiveJobFields(),
+        // Pause (the owner's request of 2026-11-13): the owner paused it, and its computer was paused (imagery.pause only).
+        ...{ paused: { by: creator, at: past(), inRun: true }, releaseRequested: true },
         ...systemStamp('pipeline'),
     };
 }
@@ -316,11 +317,11 @@ export function workerDoc(uid: string): Data {
         version: '1.0.0',
         startedAt: past(),
         lastSeenAt: past(),
-        state: 'busy',
-        jobId: 'job-1966',
+        ...{ state: 'busy', jobId: 'job-1966' },
         lastJob: { id: 'job-1965', outcome: 'done', at: past() },
-        updatedBy: uid,
-        updatedAt: past(),
+        // Pause this computer (2026-11-13): imagery.pause, or the computer's own page through worker.claim.
+        paused: { by: uid, at: past(), until: later() },
+        ...{ updatedBy: uid, updatedAt: past() },
     };
 }
 

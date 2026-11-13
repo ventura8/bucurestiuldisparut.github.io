@@ -8,7 +8,7 @@
  * the starter categories in one click or a link to add one (finding 35 of 2026-11-01). Native inputs, styled by the
  * editing kit.
  */
-import { MAX_LINKS, STARTER_POI_CATEGORIES, type AdminContentKey, type CityRole, type Locale, type ValidationIssue } from '@hcm/shared';
+import { MAX_LINKS, STARTER_POI_CATEGORIES, type AdminContentKey, type CityRole, type UiLocale, type ValidationIssue } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import { renderMarkdown } from '../../viewer/markdown.js';
@@ -18,7 +18,7 @@ import { fieldIssue, issueText, localized, poiText } from './poi-text.js';
 import type { CategoryItemPort, PhotoChoicePort, PoiLinkPort, PoiPatchPort, PoiTextPort, PoiValuePort } from './pois-port.js';
 
 export interface FieldContext {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly value: PoiValuePort;
     readonly issues: readonly ValidationIssue[];
     readonly edit: (patch: PoiPatchPort) => void;
@@ -37,7 +37,7 @@ function inputOf(event: Event): string {
 }
 
 /** A note line, or nothing when `shown` is false. */
-function noteIf(shown: boolean, locale: Locale, key: AdminContentKey, params?: Readonly<Record<string, string>>): TemplateResult {
+function noteIf(shown: boolean, locale: UiLocale, key: AdminContentKey, params?: Readonly<Record<string, string>>): TemplateResult {
     return shown ? html`<p class="note">${poiText(locale, key, params)}</p>` : EMPTY;
 }
 
@@ -187,7 +187,7 @@ function described(context: FieldContext, language: Language, typed: string): Po
     return { description: description.ro === '' && description.en === undefined ? undefined : description };
 }
 
-function preview(locale: Locale, language: Language, text: string): TemplateResult {
+function preview(locale: UiLocale, language: Language, text: string): TemplateResult {
     const label = poiText(locale, 'adminContent.pois.field.preview', {
         language: poiText(locale, `adminContent.pois.language.${language}`),
     });

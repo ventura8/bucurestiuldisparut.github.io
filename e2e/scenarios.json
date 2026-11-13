@@ -1137,6 +1137,13 @@
             "source": "the owner, 2026-11-12: reports/resource-audit.md (the machines are short of memory); docs/research/M7-local-worker.md, Addendum of 2026-11-12"
         },
         {
+            "id": "A95",
+            "area": "admin",
+            "name": "The interface in 25 languages: the admin's language picker, right to left, the fallback to English",
+            "milestone": "M26",
+            "source": "docs/I18N.md (the owner, 2026-11-12: every UI text in 25 languages)"
+        },
+        {
             "id": "A150",
             "area": "admin",
             "name": "Every wizard reports its step funnel and the errors it shows to analytics, after consent, as codes",
@@ -1205,6 +1212,27 @@
             "name": "The household's computers: a list, Add another computer with minimum input, Remove this computer that cleans up first, and the jobs left to a calm computer",
             "milestone": "post-M8",
             "source": "the owner's request of 2026-11-13 (beta.1, W5 household computers); DECISIONS-for-review.md §216"
+        },
+        {
+            "id": "A170",
+            "area": "admin",
+            "name": "Pause a job and resume it, one at a time or all at once, from Jobs and from its version page",
+            "milestone": "M7",
+            "source": "the owner, 2026-11-13: \"I want the user to be able to pause jobs, and to pause using a machine\"; docs/research/M7-local-worker.md, Pause"
+        },
+        {
+            "id": "A171",
+            "area": "admin",
+            "name": "Pause a computer (until I resume, for 1 hour, until tomorrow) and resume it from the computers card",
+            "milestone": "M7",
+            "source": "the owner, 2026-11-13: \"I want the user to be able to pause jobs, and to pause using a machine\"; docs/research/M7-local-worker.md, Pause"
+        },
+        {
+            "id": "P32",
+            "area": "pipeline",
+            "name": "A paused job stops at its next step boundary; a paused computer claims nothing and hands its job back without using an attempt",
+            "milestone": "M26",
+            "source": "the owner, 2026-11-13: \"I want the user to be able to pause jobs, and to pause using a machine\"; docs/research/M7-local-worker.md, Pause; docs/research/M26-governor.md"
         }
     ],
     "scenarios": [
@@ -2181,8 +2209,8 @@
             "behaviour": "V11",
             "area": "viewer",
             "path": "happy",
-            "title": "Romanian by default; English chosen in the menu's Settings persists after reload",
-            "asserts": "RO by default; English chosen in Settings (Setări) persists after reload; html lang; localized dates",
+            "title": "Romanian by default; English chosen from the language list in the menu's Settings persists after reload",
+            "asserts": "RO by default; the menu's Settings (Setări) lists the sixteen languages, English chosen there persists after reload; html lang and dir; localized dates",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1. The owner, 2026-11-08 (track/settings): the language is chosen in the menu's Settings, no longer by a one-tap menu item or in About."
@@ -2192,8 +2220,8 @@
             "behaviour": "V11",
             "area": "viewer",
             "path": "bad",
-            "title": "An unsupported language falls back to Romanian",
-            "asserts": "?lang=fr -> RO",
+            "title": "A language the viewer does not have falls back to Romanian",
+            "asserts": "?lang=sv and #…&lang=xx -> RO (sv and xx are no viewer language; fr, de and the other 13 are)",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1."
@@ -2204,7 +2232,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "A missing English key falls back to Romanian",
-            "asserts": "English viewer: a photo title without its English text shows the Romanian one; no raw message key appears on the page (a missing catalogue key is a compile error and an i18n gate failure)",
+            "asserts": "English viewer: a photo title without its English text shows the Romanian one, and a note names its language ('Text language: Română (not translated yet)'); no raw message key appears on the page (a missing catalogue key is a compile error and an i18n gate failure)",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1."
@@ -2215,10 +2243,131 @@
             "area": "viewer",
             "path": "bad",
             "title": "A language switch in Settings also relabels the map's own controls, and the menu has no language item",
-            "asserts": "English viewer switched to Romanian in Settings: the map canvas, the Mapbox logo link and the attribution toggle carry their Romanian names; the menu has no one-tap language item; no English-only text is left on the page",
+            "asserts": "English viewer switched to Romanian from Settings' language list: the map canvas, the Mapbox logo link and the attribution toggle carry their Romanian names; the menu has no one-tap language item; no text of another language is left on the page",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Since 2026-10-17. The tour's i18n check found Mapbox's own labels ('Map', 'Mapbox homepage', the toggle) in the first language after a switch (docs/research/layout-a11y-findings.md): Mapbox sets them once, so the engine rewrites them through MapPort.setLocale (docs/research/M1-interfaces.md CR-22)."
+        },
+        {
+            "id": "S-V11-HAPPY-ALL-LANGS",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Any of the sixteen languages from the list or the address",
+            "asserts": "Settings' list shows the 16 languages by their own names, each with its lang, the current one checked; German, Arabic and Japanese chosen in turn relabel the whole viewer with no text of another language, the hash keeps lang=<code> and a reload keeps the last; each language's file is fetched once; every other language boots from ?lang=",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts."
+        },
+        {
+            "id": "S-V11-HAPPY-RTL",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Arabic reads right to left, the map does not",
+            "asserts": "?lang=ar: html and the viewer dir=rtl, the map container left to right, the timeline's today on the left, no text of another language",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts, packages/ui/test/viewer/languages.test.ts, packages/ui/test/components/rtl.test.ts."
+        },
+        {
+            "id": "S-V11-HAPPY-FALLBACK-TEXT",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A city's text the language lacks shows the one the city has, named by its language",
+            "asserts": "German viewer, a photo whose title is only in Romanian: the Romanian title and the note 'Sprache des Textes: Română (noch nicht übersetzt)'; a text with English shows the English one with lang=en (unit: languages.test.ts)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts."
+        },
+        {
+            "id": "S-V11-HAPPY-TRANSLATING-FALLS-BACK",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The list offers all 25 languages; Persian, still being translated, reads right to left in English",
+            "asserts": "the Settings list names the 25 languages (LANGUAGE_NAMES); Persian chosen: html and the viewer dir=rtl, fa.json and en.json fetched (the file says fallback: en), the menu and the timeline named in English, no text of a third language",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25; docs/I18N.md -> Fallback, DECISIONS-for-review.md §219). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts, packages/shared/test/i18n-viewer.test.ts."
+        },
+        {
+            "id": "S-V11-BAD-MISSING-KEY-FALLS-BACK",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A text a language's file lacks shows in English",
+            "asserts": "de.json served without timeline.label (fallback: en): html lang de, the timeline's slider named in English, the rest in German",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25; docs/I18N.md -> Fallback). Test: e2e/specs/viewer/languages.spec.ts, scripts/site/test/i18n-catalogues.test.ts."
+        },
+        {
+            "id": "S-V11-HAPPY-RTL-TOUR",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Arabic passes the tour at every per-push viewport",
+            "asserts": "tour: a photo, home and the language list in Arabic, right to left, through the layout, accessibility and i18n checkers at the phone, the phone held landscape, the laptop and the 4K screen",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
+        },
+        {
+            "id": "S-V11-HAPPY-CJK-TOUR",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Japanese passes the tour at every per-push viewport",
+            "asserts": "tour: home and the Layers panel in Japanese, in the system's Japanese font, through the layout, accessibility and i18n checkers at the per-push viewports",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/tour/viewer.tour.ts, e2e/tour/language-states.ts."
+        },
+        {
+            "id": "S-V11-BAD-CATALOGUE-404",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A language whose file cannot be fetched keeps the page as it was",
+            "asserts": "i18n/ko.json answers 404: Korean chosen from the list leaves the page in its language, the list's selection back on it, the hash without lang=ko, and the snackbar says the language could not be loaded",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/store-language.test.ts."
+        },
+        {
+            "id": "S-V11-BAD-CATALOGUE-STALE",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A language file of another engine is refused",
+            "asserts": "i18n/fr.json names engine 0.0.1: French is refused like a missing file, with the same message",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/core/catalogues.test.ts."
+        },
+        {
+            "id": "S-V11-BAD-BOOT-CATALOGUE",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A boot language that cannot load leaves Romanian, else the engine's own card",
+            "asserts": "?lang=hi with i18n/hi.json refused: the viewer boots in Romanian and says the language could not be loaded; every file refused: the engine's one bilingual card (Romanian and English lines, each with its lang) and a Retry that reloads",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
+        },
+        {
+            "id": "S-V11-BAD-UNKNOWN-HASH-LANG",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "bad",
+            "title": "An unknown language in the hash is ignored",
+            "asserts": "#…&lang=xx -> Romanian, the hash's view still applied; setLang('xx') is ignored too",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-11-09 (track/langs; docs/ENGINE_API.md -> Language, DECISIONS-for-review.md §218). Test: e2e/specs/viewer/languages.spec.ts, packages/engine/test/mount-language.test.ts."
         },
         {
             "id": "S-V12-HAPPY",
@@ -2252,6 +2401,28 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The Pixel 9 Pro review, 2026-11-12 (P2). Tests: e2e/specs/viewer/dark-theme-for-sites.spec.ts (its own Chromium with --blink-settings=forceDarkModeEnabled=true); the tour's rendered contrast (e2e/support/rendered-contrast.ts) at the dark tours, state other-theme-menu; packages/ui/test/theme/apply.test.ts."
+        },
+        {
+            "id": "S-V12-HAPPY-CHIPS-FOLLOW-THEME",
+            "behaviour": "V12",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The timeline's chips follow the theme: light in the light theme and dark in the dark one, painted with its roles",
+            "asserts": "at the project's window (a phone's pill or a desktop's card), light then dark: the year's pill takes primary-container and on-primary-container, its dates' badge error-container and on-error-container, the date menu surface-container and on-surface, the year chip over an unlabelled year surface-container-highest and on-surface; each fill dark only in the dark theme, its text at 4.5:1 or more",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's Android in dark, 2026-11-13: the year chips were light (M3's inverse surface, primary and error are light tones in the dark theme). Tests: e2e/specs/viewer/timeline-chip-theme.spec.ts (fn-c360-ro, fn-c360-dark, fn-l1440-ro and the other functional projects); packages/ui/test/viewer/hcm-timeline-theme.test.ts."
+        },
+        {
+            "id": "S-V12-BAD-DARK-CHIPS-NOT-LIGHT",
+            "behaviour": "V12",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Under Chrome's dark theme for sites the timeline's chips stay the viewer's own dark, never light",
+            "asserts": "a 360 x 800 phone, a dark system with Chrome's dark theme for sites: the collapsed pill and its badge have dark fills and the pill is painted with its contrast; the year chip over an unlabelled year has a dark fill and is painted with its contrast",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's Android in dark, 2026-11-13. Tests: e2e/specs/viewer/dark-theme-for-sites.spec.ts (its own Chromium with --blink-settings=forceDarkModeEnabled=true); packages/ui/test/viewer/hcm-timeline-theme.test.ts."
         },
         {
             "id": "S-V12-BAD-ABOUT-NO-PREFERENCES",
@@ -3249,7 +3420,7 @@
             "area": "starter-kit",
             "path": "bad",
             "title": "An export opened by double-click says the map could not load",
-            "asserts": "index.html opened from file:// -> the engine runs but city.json cannot be fetched -> error.manifest.network with Retry; the README's first step says to serve the folder",
+            "asserts": "index.html opened from file:// -> the engine runs but can fetch neither city.json nor its language's texts (engine/i18n/) -> its own card in Romanian and English with Retry, hcm-error error.manifest.network; the README's first step says to serve the folder",
             "tier": "e2e-starter-kit",
             "status": "exists",
             "notes": "Milestone M5 (docs/research/M5-interfaces.md §5.7; owner: export). Test: e2e/specs/starter-kit/export.spec.ts."
@@ -4162,7 +4333,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A setup.status the admin cannot read says Update the server to check, never To do",
-            "asserts": "setup.status answers in a shape the admin does not know -> the page says the server is older than the admin (update it in step d); sign-in, server and claim are Done (it answered this admin); Mapbox and USGS read Update the server to check, never To do",
+            "asserts": "setup.status answers in a shape the admin does not know -> the page says the server is older than the admin (update it in step d); sign-in, server and claim are Done (it answered this admin); Mapbox and USGS read Update the server to check, never To do; step d stays open with its update even while (b) and (c) cannot be checked (2026-11-13: it waited for them, and the owner could never update)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Live test of 2026-10-31, finding 27 of docs/research/manual-test-2026-10-25.md. Tests: e2e/admin/steps/older-server.spec.ts, packages/admin/test/setup/controller.test.ts; tour state setup.older-server-status."
@@ -18737,10 +18908,10 @@
             "area": "admin",
             "path": "happy",
             "title": "This computer says the worker's image and the helper file's version, each matching the installed release",
-            "asserts": "the starter files' version is their content's (the SHA-256 of both templates with their version lines emptied), written in both templates, WORKER_STARTER_VERSION and the pipeline's STARTER_VERSION (a guard test and the admin's build fail otherwise); the worker's /state says image and starter {version, wanted, update}; the card's Versions says Worker: sha256:<12> and Helper file: <version>, each 'It matches the installed release'; ro and en; axe clean",
+            "asserts": "the starter files' version is their content's (the SHA-256 of both templates with their version lines emptied), written in both templates, WORKER_STARTER_VERSION and the pipeline's STARTER_VERSION (a guard test and the admin's build fail otherwise); the worker's /state says image and starter {version, wanted, update}; the card's Versions says Worker: sha256:<12> and Helper file: <version>, each 'It matches the installed release' (the pipeline image by comparing digests with setup/status.install.pipeline.image when known); ro and en; axe clean",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner, 2026-11-13 (docs/research/M7-local-worker.md, The starter updates itself). Tests: e2e/admin/specs/imagery/worker-run.spec.ts (tour state worker.local-machine), scripts/site/test/starter-version.test.ts, packages/admin/test/worker/machine.test.ts, packages/ui/test/admin/worker/versions.test.ts, pipeline/tests/unit/test_worker_app.py."
+            "notes": "The owner, 2026-11-13 (docs/research/M7-local-worker.md, The starter updates itself; Versions compares digests while the worker is busy). Tests: e2e/admin/specs/imagery/worker-run.spec.ts (tour state worker.local-machine), scripts/site/test/starter-version.test.ts, packages/admin/test/worker/machine.test.ts, packages/ui/test/admin/worker/versions.test.ts, pipeline/tests/unit/test_worker_app.py. Lesson 696."
         },
         {
             "id": "S-A142-BAD-OLD-STARTER",
@@ -18748,10 +18919,10 @@
             "area": "admin",
             "path": "bad",
             "title": "An out-of-date helper says so in plain words, why it could not update itself, and the one command with Copy",
-            "asserts": "a /state whose starter version is not this release's (the old HCM_STARTER=2 included) -> an alert: the helper is out of date, it updates itself, if it can't run this once; the why of its last look (set up before helpers updated themselves, no list, no file, a refused download, a read-only folder, not the installed copy, not looked since the update); the command for the chosen system (curl ... && sh on Linux and macOS, Invoke-WebRequest on Windows) with Copy, a refused copy says to select it; a worker started by a command says it has no helper and shows no command; an older worker says it does not tell its versions; unknown words and malformed versions are dropped; a template changed without its version stops the build",
+            "asserts": "a /state whose starter version is not this release's (the old HCM_STARTER=2 included) -> an alert: the helper is out of date, it updates itself, if it can't run this once; the why of its last look (set up before helpers updated themselves, no list, no file, a refused download, a read-only folder, not the installed copy, not looked since the update); the command for the chosen system (curl ... && sh on Linux and macOS, Invoke-WebRequest on Windows) with Copy, a refused copy says to select it; a worker started by a command says it has no helper and shows no command; an older worker says it does not tell its versions; unknown words and malformed versions are dropped; a template changed without its version stops the build; a worker image digest that differs from setup/status.install.pipeline.image is not current even when outdated is still false (busy until the next claim); unknown installed digest falls back to the outdated flag",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "The owner, 2026-11-13 (docs/research/M7-local-worker.md, The starter updates itself). Tests: packages/ui/test/admin/worker/versions.test.ts, packages/admin/test/worker/machine.test.ts, scripts/site/test/starter-version.test.ts, pipeline/tests/unit/test_worker_app.py."
+            "notes": "The owner, 2026-11-13 (docs/research/M7-local-worker.md, The starter updates itself; Versions compares digests while the worker is busy). Tests: packages/ui/test/admin/worker/versions.test.ts, packages/admin/test/worker/machine.test.ts, scripts/site/test/starter-version.test.ts, pipeline/tests/unit/test_worker_app.py. Lesson 696."
         },
         {
             "id": "S-A142-HAPPY-SELF-UPDATE",
@@ -20019,6 +20190,61 @@
             "notes": "reports/resource-audit.md (2026-11-12, track/stripfix); docs/research/M7-local-worker.md, Addendum of 2026-11-12. Tests: pipeline/tests/integration/test_memory_budgets.py, pipeline/tests/unit/test_compose_canvas.py."
         },
         {
+            "id": "S-A95-HAPPY-LANGUAGE-PICKER",
+            "behaviour": "A95",
+            "area": "admin",
+            "path": "happy",
+            "title": "The account menu lists the 25 languages; French is fetched, shown and kept after a reload; Arabic turns the page right to left",
+            "asserts": "25 radios by their own names; /admin/i18n/fr.json fetched, the photos page's empty text in French, html lang fr, again after a reload; Arabic: html dir rtl, the page's area marked lang en (no Arabic admin file yet), the tour's layout, axe and i18n checks read as Arabic (admin.shell.language-rtl); the latest choice wins over a file still loading (packages/admin/test/app/language.test.ts)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+        },
+        {
+            "id": "S-A95-BAD-MISSING-KEY-FALLS-BACK",
+            "behaviour": "A95",
+            "area": "admin",
+            "path": "bad",
+            "title": "A key the chosen language's file lacks shows in English",
+            "asserts": "fr.json served without adminContent.photos.empty: html lang fr, the empty text in English",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+        },
+        {
+            "id": "S-A95-BAD-CATALOGUE-UNAVAILABLE",
+            "behaviour": "A95",
+            "area": "admin",
+            "path": "bad",
+            "title": "A language whose file cannot be fetched keeps the page's language and says so",
+            "asserts": "de.json 404: the snackbar names Deutsch, html lang and the page's texts unchanged",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+        },
+        {
+            "id": "S-A76-HAPPY-LANGUAGE-PICKER",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "happy",
+            "title": "The start page lists the 25 languages; Urdu is fetched, shown right to left and kept after a reload",
+            "asserts": "25 options; Urdu chosen: html lang ur, dir rtl, kept after a reload (localStorage); main marked lang en (no Urdu file yet); the tour's layout, axe and i18n checks read as Urdu (admin.start.language-rtl); the latest choice wins (packages/admin/test/start/controller.test.ts)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+        },
+        {
+            "id": "S-A76-BAD-LANGUAGE-UNAVAILABLE",
+            "behaviour": "A76",
+            "area": "admin",
+            "path": "bad",
+            "title": "A language whose file cannot be fetched keeps the start page's language and says so",
+            "asserts": "de.json 404: start.languageUnavailable in an alert, html lang and the list unchanged",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner, 2026-11-12 (track/langs25): docs/I18N.md."
+        },
+        {
             "id": "S-A-HAPPY-TILE-WIZARD-ORDER",
             "behaviour": "A141",
             "area": "admin",
@@ -20842,6 +21068,215 @@
             "tier": "e2e-admin",
             "status": "planned",
             "notes": "DECISIONS-for-review.md §210; lesson 675. Unit: packages/admin/test/install/cloud-build-installer.test.ts."
+        },
+        {
+            "id": "S-A170-HAPPY",
+            "behaviour": "A170",
+            "area": "admin",
+            "path": "happy",
+            "title": "A queued job paused from its version page waits; Resume puts it back in the queue",
+            "asserts": "Pause on the version page -> imagery.pause marks the job paused {by, at}; the card says paused by you on the date and offers Resume; worker.claim takes nothing while it is paused; Resume drops the mark and the next claim takes it; a running job is marked inRun, stops at its next step boundary, and its Resume gives back the attempt that run counted; ro and en",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: e2e/admin/specs/imagery/pause.spec.ts (tour state worker.job-paused), functions/test/imagery/pause.test.ts, packages/ui/test/admin/worker/pause.test.ts, packages/admin/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-A170-HAPPY-ALL",
+            "behaviour": "A170",
+            "area": "admin",
+            "path": "happy",
+            "title": "Pause all and Resume all on Jobs",
+            "asserts": "Pause all -> every queued, starting or running pipeline job of the city is paused (a failed or cancelling one is not) and a notice says how many; the row reads Paused; Resume all puts them back and says how many",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: e2e/admin/specs/imagery/pause.spec.ts (tour state worker.jobs-pause-all), functions/test/imagery/pause.test.ts, packages/admin/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-A170-BAD-FINISHED",
+            "behaviour": "A170",
+            "area": "admin",
+            "path": "bad",
+            "title": "A finished job, or one waiting for USGS, points or the approval, cannot be paused",
+            "asserts": "no Pause button on its page; imagery.pause on it -> apiError.imagery.notPausable (what it waits for, nothing changed), said in place; an unknown job -> apiError.notFound",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: e2e/admin/specs/imagery/pause.spec.ts, functions/test/imagery/pause.test.ts, packages/ui/test/admin/worker/pause.test.ts."
+        },
+        {
+            "id": "S-A170-BAD-NOTHING",
+            "behaviour": "A170",
+            "area": "admin",
+            "path": "bad",
+            "title": "Pause all or Resume all with nothing to change says so",
+            "asserts": "Resume all with no paused job -> changed 0 and the notice Nothing to resume: no job is paused; Pause all with nothing queued or running -> Nothing to pause; pausing a paused job or resuming one not paused changes nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: e2e/admin/specs/imagery/pause.spec.ts, functions/test/imagery/pause.test.ts, packages/admin/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-A170-BAD-CLIENT-WRITE",
+            "behaviour": "A170",
+            "area": "admin",
+            "path": "bad",
+            "title": "No client pauses or resumes a job or a computer by writing it",
+            "asserts": "a member writing paused or releaseRequested on a job, or paused on a worker, is denied by the rules; a paused queued job can still be cancelled",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: firebase/rules-tests/test/jobs.test.ts."
+        },
+        {
+            "id": "S-A171-HAPPY",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "happy",
+            "title": "The computer is paused for an hour from the computers card and resumed",
+            "asserts": "Pause this computer: For 1 hour -> imagery.pause marks the worker paused {by, at, until}; the card says Paused by you, when it resumes by itself, that it takes no new work and gave its job back; its running job is asked back (releaseRequested); Resume drops both; Until I resume has no end and Until tomorrow ends at 08:00 tomorrow",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: e2e/admin/specs/imagery/pause.spec.ts (tour state worker.computer-paused), functions/test/imagery/pause.test.ts, packages/ui/test/admin/worker/pause.test.ts, packages/admin/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-A171-BAD-UNTIL",
+            "behaviour": "A171",
+            "area": "admin",
+            "path": "bad",
+            "title": "A pause that would end in the past or after two days is refused",
+            "asserts": "imagery.pause with until past 48 hours or before now -> apiError.imagery.pauseUntil (choose For 1 hour, Until tomorrow or Until I resume), the computer unchanged; an unknown computer -> apiError.notFound",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: functions/test/imagery/pause.test.ts."
+        },
+        {
+            "id": "S-P32-HAPPY-PAUSE-PAGE",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The computer's own page pauses it through its next claim and resumes it",
+            "asserts": "worker.claim with pause {action: pause, until} -> the worker is marked paused by computer and answered paused with no job; a later claim with resume drops it and takes the queued job",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: functions/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-P32-BAD-PAUSE-EXPIRED",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A pause past its end ends on its own",
+            "asserts": "a worker paused until 30 minutes ago -> its claim drops the pause and takes the job; a job asked back earlier is claimed without the stale request",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: functions/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-P32-HAPPY-RELEASED",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A paused computer's job goes back to the queue without using an attempt",
+            "asserts": "worker.end released on a held running job asked back -> queued, attempt minus one, no lease, worker or releaseRequested; the worker idle with its last job kept; the page's pause sent with the end counts as asking back",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: functions/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-P32-BAD-RELEASED-UNASKED",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A hand-back nobody asked for keeps its attempt counted",
+            "asserts": "worker.end released while the computer is not paused and the job was not asked back -> queued with its attempt kept; a job the worker no longer holds is not touched",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: functions/test/worker/pause.test.ts."
+        },
+        {
+            "id": "S-P32-HAPPY-JOB-BOUNDARY",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A job paused during a step stops before the next one and waits queued",
+            "asserts": "the runner finishes the running step, sees paused at the step boundary, writes status queued (lease and retryAt removed, no step changed) and ends PAUSED; on the computer the run ends done",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_runner_pause.py."
+        },
+        {
+            "id": "S-P32-BAD-JOB-BEFORE-RUN",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A job paused before its run starts no step",
+            "asserts": "a claimed job already marked paused -> no step starts, the job goes back to queued",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_runner_pause.py."
+        },
+        {
+            "id": "S-P32-HAPPY-RELEASE-CHECKPOINT",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A paused computer stops its run at the next checkpoint and leaves the step pending",
+            "asserts": "releaseRequested read by the heartbeat, or the computer paused on its own page, stops the run at its next checkpoint (the governor gate lets go at once); the running step goes back to pending with its start kept, the lease stays for worker.end released; a cancel still wins",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_runner_pause.py."
+        },
+        {
+            "id": "S-P32-BAD-RELEASE-BETWEEN-STEPS",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A computer paused between steps leaves the finished step done",
+            "asserts": "release asked after a step finished -> the done step stays done, nothing else is written",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_runner_pause.py."
+        },
+        {
+            "id": "S-P32-HAPPY-LOCAL-PAGE",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The computer's own page has Pause this computer and Resume",
+            "asserts": "POST /pause from the page (its token) or a Hosting origin -> paused at once, the command sent with the next claim; /state says paused by computer and until; the page offers Until I resume, For 1 hour, Until tomorrow and Resume in ro and en",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_worker_pausing.py."
+        },
+        {
+            "id": "S-P32-BAD-LOCAL-PAGE",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A stranger or a bad command pauses nothing",
+            "asserts": "POST /pause from another origin -> 403; an until that is not a time, in the past or more than 48 hours ahead, or an unknown action -> 400; nothing paused",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_worker_pausing.py."
+        },
+        {
+            "id": "S-P32-HAPPY-GOVERNOR-PAUSED",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The governor keeps the owner's pause as a choice and resumes to the profile before",
+            "asserts": "pause -> chosen paused, active paused, why owner, headroom 0, kept in governor.json with until and the profile to resume to; resume -> that profile again; a timed pause past its end resumes by itself",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_worker_pausing.py."
+        },
+        {
+            "id": "S-P32-BAD-GOVERNOR-HEAT",
+            "behaviour": "P32",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Heat and a low battery never make the owner's pause less paused",
+            "asserts": "paused by the owner on battery or hot -> still paused, why owner",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Pause, 2026-11-13. Tests: pipeline/tests/unit/test_worker_pausing.py."
         }
     ]
 }

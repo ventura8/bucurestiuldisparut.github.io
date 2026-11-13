@@ -138,6 +138,8 @@ export const ro = {
     'apiError.imagery.filmMissing': 'Filmul cadrului nu mai e pe niciun calculator: alege Localizează din nou sau importă iar cadrul.',
     'apiError.imagery.archiveImported': 'Arhiva aceasta a fost deja importată.',
     'apiError.imagery.archiveYear': 'Scrie mai întâi anul hărții. Hărțile de dinainte de 1800 nu pot fi importate încă.',
+    'apiError.imagery.notPausable': 'Nu se poate pune pe pauză: s-a terminat sau așteaptă USGS, punctele ori aprobarea ta.',
+    'apiError.imagery.pauseUntil': 'Pauza ține cel mult două zile. Alege Timp de o oră, Până mâine sau Până reiau eu.',
     'apiError.imagery.missingBand': 'Livrarea Landsat nu are banda {band}: nu iese imaginea color. Alege altă scenă din acel an.',
     'apiError.imagery.pipelineOutdated': 'Programul calculatorului e prea vechi: Actualizează harta în Configurare, apoi reîncearcă.',
     'apiError.imagery.deletePublished': 'O versiune de pe hartă sau aprobată pentru ea nu se șterge aici: șterge stratul ei.',

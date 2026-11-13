@@ -183,7 +183,7 @@ describe('the governor across computers', () => {
         const world = await twoComputers({});
         await seedWorker(world, WORKER, { pausedAt: minutes(-1) });
 
-        await expect(callAs(world, claimFunction, { workerId: WORKER, share: CALM })).resolves.toEqual({ job: null, paused: true });
+        await expect(callAs(world, claimFunction, { workerId: WORKER, share: CALM })).resolves.toMatchObject({ job: null, paused: true });
     });
 
     it('happyPath_theOwnersQuietChoiceIsNotPressure', async () => {

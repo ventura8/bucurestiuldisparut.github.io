@@ -1,5 +1,5 @@
 /** What the start page shows (`docs/research/M14-start-your-map.md`), which `StartController` keeps and `<hcm-start-page>` renders. */
-import type { Locale, StartKey } from '@hcm/shared';
+import type { UiLocale, StartKey } from '@hcm/shared';
 
 import { START_STEPS, type StartStepId } from './deploy.js';
 import type { StartFailure } from './failure.js';
@@ -13,7 +13,7 @@ export type StepState = 'waiting' | 'working' | 'done' | 'failed';
 
 export interface StartView {
     readonly screen: StartScreen;
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly form: StartForm;
     /** The owner's projects; null until read. */
     readonly projects: readonly OwnProject[] | null;

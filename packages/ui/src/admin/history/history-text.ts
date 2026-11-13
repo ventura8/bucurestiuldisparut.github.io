@@ -2,7 +2,7 @@
  * History's words (`docs/research/M2c-interfaces.md` §9.2): the entities, the actions, an entry's one-line summary and a
  * document's name in the admin's language.
  */
-import type { AdminContentKey, Locale } from '@hcm/shared';
+import type { AdminContentKey, UiLocale } from '@hcm/shared';
 
 import { fieldNames } from '../editing/field-names.js';
 import { formatWhen, whoText } from '../editing/states.js';
@@ -47,16 +47,16 @@ const DONE: Readonly<Record<HistoryActionPort, AdminContentKey>> = {
     revert: 'adminContent.history.done.revert',
 };
 
-export function entityFilterText(locale: Locale, entity: HistoryEntityPort | 'all'): string {
+export function entityFilterText(locale: UiLocale, entity: HistoryEntityPort | 'all'): string {
     return contentText(locale, ENTITIES[entity]);
 }
 
-export function actionFilterText(locale: Locale, action: HistoryActionFilterPort): string {
+export function actionFilterText(locale: UiLocale, action: HistoryActionFilterPort): string {
     return contentText(locale, ACTIONS[action]);
 }
 
 /** A document's name as the entry knew it, else its kind and id ("Place gara-de-nord"). */
-export function nameText(locale: Locale, item: Pick<HistoryItemPort, 'name' | 'entity' | 'entityId'>): string {
+export function nameText(locale: UiLocale, item: Pick<HistoryItemPort, 'name' | 'entity' | 'entityId'>): string {
     if (item.name !== null) {
         return locale === 'en' && item.name.en !== undefined ? item.name.en : item.name.ro;
     }
@@ -80,12 +80,17 @@ export function currentName(data: Readonly<Record<string, unknown>> | null | und
 }
 
 /** "Changed by you on 17 Oct 2026, 14:02". */
-export function summaryText(locale: Locale, item: HistoryItemPort, self: string | null, people: Readonly<Record<string, string>>): string {
+export function summaryText(
+    locale: UiLocale,
+    item: HistoryItemPort,
+    self: string | null,
+    people: Readonly<Record<string, string>>,
+): string {
     return contentText(locale, DONE[item.action], { who: whoText(locale, item.by, self, people), date: formatWhen(locale, item.at) });
 }
 
 /** The changed fields, by their names in the admin's language ("Title, Changed on"; an unknown field as stored). */
-export function fieldsText(locale: Locale, item: HistoryItemPort): string {
+export function fieldsText(locale: UiLocale, item: HistoryItemPort): string {
     return item.changedFields.length === 0
         ? contentText(locale, 'adminContent.history.noFields')
         : contentText(locale, 'adminContent.history.fields', { fields: fieldNames(locale, item.changedFields) });

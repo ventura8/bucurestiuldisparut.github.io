@@ -4,7 +4,7 @@
  * Restore on each); a document's versions, with the selected entry's fields before and after as text and **Revert**
  * (asked first). A refused revert stays as an alert with the server's reason and changes nothing.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import type { AdminRouteIdPort } from '../admin-port.js';
@@ -35,7 +35,7 @@ function shownEntry(entries: readonly HistoryItemPort[], selected: string | null
 }
 
 /** "Deleted now" when the document no longer exists (an address that names no document says nothing). */
-function deletedTag(locale: Locale, document: HistoryDocumentPort): TemplateResult {
+function deletedTag(locale: UiLocale, document: HistoryDocumentPort): TemplateResult {
     const deleted = document.current.status === 'ready' && document.current.doc === null && document.document !== null;
     return deleted
         ? html`<div class="chips">
@@ -73,7 +73,7 @@ export class HcmHistoryPage extends AreaPage<HistoryViewState, HistoryIntentsPor
     }
 
     #frame(
-        locale: Locale,
+        locale: UiLocale,
         parts: { readonly detail: boolean; readonly key: string; readonly list: TemplateResult; readonly body: TemplateResult },
     ): TemplateResult {
         const back = (): void => {
@@ -93,7 +93,7 @@ export class HcmHistoryPage extends AreaPage<HistoryViewState, HistoryIntentsPor
         </hcm-list-detail>`;
     }
 
-    #recent(locale: Locale, view: HistoryViewState): TemplateResult {
+    #recent(locale: UiLocale, view: HistoryViewState): TemplateResult {
         const intents = this.intents;
         const list = html`<div class="list-head">
                 <div class="filters">${this.#entitySelect(locale, view)} ${this.#actionSelect(locale, view)}</div>
@@ -116,7 +116,7 @@ export class HcmHistoryPage extends AreaPage<HistoryViewState, HistoryIntentsPor
         return this.#frame(locale, { detail: false, key: '', list, body });
     }
 
-    #entitySelect(locale: Locale, view: HistoryViewState): TemplateResult {
+    #entitySelect(locale: UiLocale, view: HistoryViewState): TemplateResult {
         const change = (event: Event): void => {
             this.intents?.setFilter({ entity: (event.currentTarget as HTMLSelectElement).value as HistoryViewState['filter']['entity'] });
         };
@@ -128,7 +128,7 @@ export class HcmHistoryPage extends AreaPage<HistoryViewState, HistoryIntentsPor
         </div>`;
     }
 
-    #actionSelect(locale: Locale, view: HistoryViewState): TemplateResult {
+    #actionSelect(locale: UiLocale, view: HistoryViewState): TemplateResult {
         const change = (event: Event): void => {
             this.intents?.setFilter({ action: (event.currentTarget as HTMLSelectElement).value as HistoryViewState['filter']['action'] });
         };
@@ -140,7 +140,7 @@ export class HcmHistoryPage extends AreaPage<HistoryViewState, HistoryIntentsPor
         </div>`;
     }
 
-    #recentRow(locale: Locale, view: HistoryViewState, item: HistoryItemPort): TemplateResult {
+    #recentRow(locale: UiLocale, view: HistoryViewState, item: HistoryItemPort): TemplateResult {
         const self = this.state?.user?.uid ?? null;
         const open = (): void => {
             this.intents?.select(item.entryId);
@@ -154,7 +154,7 @@ export class HcmHistoryPage extends AreaPage<HistoryViewState, HistoryIntentsPor
         </li>`;
     }
 
-    #restoreButton(locale: Locale, view: HistoryViewState, item: HistoryItemPort): TemplateResult {
+    #restoreButton(locale: UiLocale, view: HistoryViewState, item: HistoryItemPort): TemplateResult {
         const ask = (): void => {
             this.confirming = item;
         };
@@ -163,7 +163,7 @@ export class HcmHistoryPage extends AreaPage<HistoryViewState, HistoryIntentsPor
         >`;
     }
 
-    #document(locale: Locale, view: HistoryViewState, document: HistoryDocumentPort): TemplateResult {
+    #document(locale: UiLocale, view: HistoryViewState, document: HistoryDocumentPort): TemplateResult {
         const shown = shownEntry(document.entries.items, view.selected);
         const explicit = view.selected !== null && shown?.entryId === view.selected;
         const list = html`<div class="list-head">
@@ -188,14 +188,14 @@ export class HcmHistoryPage extends AreaPage<HistoryViewState, HistoryIntentsPor
         return this.#frame(locale, { detail: explicit, key: explicit ? shown.entryId : '', list, body: this.#shown(locale, view, shown) });
     }
 
-    #shown(locale: Locale, view: HistoryViewState, shown: HistoryItemPort | null): TemplateResult {
+    #shown(locale: UiLocale, view: HistoryViewState, shown: HistoryItemPort | null): TemplateResult {
         return shown === null
             ? html`<hcm-empty-state icon="history" .text=${contentText(locale, 'adminContent.history.notFound')}></hcm-empty-state>`
             : this.#entry(locale, view, shown);
     }
 
     /** "Versions of …": the document's name now, else as its newest version knew it; plain "Versions" before any. */
-    #documentTitle(locale: Locale, document: HistoryDocumentPort): string {
+    #documentTitle(locale: UiLocale, document: HistoryDocumentPort): string {
         const newest = document.entries.items[0];
         if (newest === undefined) {
             return contentText(locale, 'adminContent.history.title');
@@ -204,7 +204,7 @@ export class HcmHistoryPage extends AreaPage<HistoryViewState, HistoryIntentsPor
         return contentText(locale, 'adminContent.history.of', { name: nameText(locale, { ...newest, name }) });
     }
 
-    #versionRow(locale: Locale, view: HistoryViewState, entry: HistoryItemPort, shown: boolean): TemplateResult {
+    #versionRow(locale: UiLocale, view: HistoryViewState, entry: HistoryItemPort, shown: boolean): TemplateResult {
         const select = (): void => {
             this.intents?.select(entry.entryId);
         };
@@ -216,7 +216,7 @@ export class HcmHistoryPage extends AreaPage<HistoryViewState, HistoryIntentsPor
         </li>`;
     }
 
-    #entry(locale: Locale, view: HistoryViewState, entry: HistoryItemPort): TemplateResult {
+    #entry(locale: UiLocale, view: HistoryViewState, entry: HistoryItemPort): TemplateResult {
         const ask = (): void => {
             this.confirming = entry;
         };
@@ -232,13 +232,13 @@ export class HcmHistoryPage extends AreaPage<HistoryViewState, HistoryIntentsPor
         });
     }
 
-    #refusal(locale: Locale, view: HistoryViewState): TemplateResult {
+    #refusal(locale: UiLocale, view: HistoryViewState): TemplateResult {
         return view.refusal === null
             ? EMPTY
             : html`<p class="alert" role="alert"><hcm-icon name="error"></hcm-icon><span>${noticeOf(locale, view.refusal)}</span></p>`;
     }
 
-    #confirm(locale: Locale): TemplateResult {
+    #confirm(locale: UiLocale): TemplateResult {
         const item = this.confirming;
         const restore = item?.action === 'delete';
         const confirm = (): void => {

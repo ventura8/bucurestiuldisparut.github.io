@@ -17,7 +17,7 @@
  * A mouse resting on such a year, or a scrubbing finger resting on it, shows the menu without selecting the year
  * (`hcm-dates-peek`, `timeline-peek.ts`).
  */
-import { DEFAULT_LOCALE, translate, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, translate, type ViewerLocale } from '@hcm/shared';
 import { LitElement, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 
@@ -90,7 +90,7 @@ export class HcmTimeline extends LitElement {
 
     declare stops: readonly TimelineStop[];
     declare value: TimelineStop;
-    declare locale: Locale;
+    declare locale: ViewerLocale;
     declare orientation: TimelineOrientation;
     declare dragging: boolean;
     /** How the years fit the card (reflected for the styles), from the card's size and the number of stops. */

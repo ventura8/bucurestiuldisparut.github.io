@@ -13,7 +13,7 @@ import {
     type JoinReport,
     type JoinSeam,
     type LayerVersionState,
-    type Locale,
+    type UiLocale,
 } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
@@ -318,7 +318,7 @@ export function versionJoin(context: ImageryContext, version: VersionViewPort, j
 }
 
 /** A seam in words: what it measured before and after; a seam whose correction did not help moved nothing, and says so. */
-function seamLine(locale: Locale, seam: JoinSeam): TemplateResult {
+function seamLine(locale: UiLocale, seam: JoinSeam): TemplateResult {
     const names = { a: frameName(seam.a), b: frameName(seam.b) };
     const before = seam.measured ? seam.beforeRmseM : undefined;
     if (before === undefined) {
@@ -332,7 +332,7 @@ function seamLine(locale: Locale, seam: JoinSeam): TemplateResult {
     return html`<li data-seam="applied">${contentText(locale, 'adminContent.imagery.join.seam', figures)}</li>`;
 }
 
-function reportOf(locale: Locale, join: JoinReport): TemplateResult {
+function reportOf(locale: UiLocale, join: JoinReport): TemplateResult {
     const omitted = join.omitted.map(frameName).join(', ');
     return html`<div class="choices" data-join-report>
         <p data-coverage>

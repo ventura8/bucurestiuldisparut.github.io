@@ -2,7 +2,8 @@
  * The local worker as the admin's pages show it (`docs/research/M7-local-worker.md` §3, §4.4, §7), in the lazy `worker`
  * chunk: the city's most recently seen worker (`cities/{city}/workers`, live; connected while it was seen within
  * `WORKER_FRESH_SECONDS`), the city's choice of where new jobs run (`workers/choice`, `auto` when absent), the pipeline
- * image's digest the worker's command names (`setup.status`'s `install.pipeline.image`), this month's Cloud Run use
+ * image's digest the worker's command names (`setup.status`'s `install.pipeline.image`; also passed into `LocalComputer` so
+ * Versions can compare digests while a busy worker's `outdated` flag still lags), this month's Cloud Run use
  * (`usage/cloudrun-<month>`) and, on a version's page, its job's place and wait. The choice and a job's place change through
  * `imagery.runOn`; a refusal is said where the change was asked for.
  *
@@ -40,6 +41,7 @@ import type { NoticeInput } from '../state/state.js';
 import { estimateCloudRun, type CloudRunUse } from './estimate.js';
 import type { Household } from './household.js';
 import type { LocalComputer } from './local.js';
+import { pausedOf, pauseUntil, type PausedView, type PauseLength } from './pause.js';
 
 export interface WorkerSeen {
     readonly id: string;
@@ -55,6 +57,8 @@ export interface WorkerSeen {
     readonly revoked: boolean;
     /** Its local AI (M10), or null for a worker older than it. */
     readonly ai: WorkerAi | null;
+    /** Pause this computer (2026-11-13): who paused it, when and until when, or null while it works. */
+    readonly paused: PausedView | null;
 }
 
 /** The job of a version's page: where it runs, why it waits, and what a cloud run of it would use. */
@@ -71,6 +75,8 @@ interface WorkerJob {
     readonly overdue: boolean;
     /** M20: its files are only on the computer (an archive's series): never offered the cloud. */
     readonly localOnly?: boolean;
+    /** Pause (2026-11-13): who paused it and when, or null. */
+    readonly paused: PausedView | null;
 }
 
 export interface WorkerState {
@@ -104,6 +110,10 @@ export interface WorkerIntents {
     disconnect(): Promise<boolean>;
     /** Finding 72: the computer the admin is open on, for `project` (the `worker-local` chunk, its element registered). */
     local(project: string): Promise<LocalComputer>;
+    /** Pause or Resume the watched job (`imagery.pause`); true once the server took it. */
+    pauseJob(action: 'pause' | 'resume'): Promise<boolean>;
+    /** Pause the panel's computer for `length`, or Resume it (`imagery.pause` with the worker); true once the server took it. */
+    pauseComputer(length: PauseLength | null): Promise<boolean>;
     /** W5: the city's computers, Add another computer and Remove this computer (the `worker-household` chunk, its element registered). */
     household(project: string): Promise<Household>;
 }
@@ -119,7 +129,7 @@ function seenOf(doc: Stored<WorkerDoc>): WorkerSeen {
     const { state, jobId, lastJob, lastSeenAt } = doc.data;
     const last = lastJob === undefined ? null : { id: lastJob.id, outcome: lastJob.outcome, at: isoOf(lastJob.at) };
     const flags = { outdated: doc.data.outdated === true, revoked: doc.data.revokedAt !== undefined };
-    const said = { version: doc.data.version, ai: doc.data.ai ?? null };
+    const said = { version: doc.data.version, ai: doc.data.ai ?? null, paused: pausedOf(doc.data.paused) };
     return { id: doc.id, state, seenAt: isoOf(lastSeenAt), jobId: jobId ?? null, lastJob: last, ...said, ...flags };
 }
 
@@ -145,6 +155,7 @@ function jobOf(doc: Stored<JobDoc> | null): WorkerJob | null {
         runOn: job.runOn ?? null,
         waitReason: job.waitReason ?? null,
         estimate: estimateCloudRun(job),
+        paused: pausedOf(job.paused),
         ...runOf(job),
     };
 }
@@ -153,6 +164,17 @@ function jobOf(doc: Stored<JobDoc> | null): WorkerJob | null {
 function runOf(job: JobDoc): Pick<WorkerJob, 'step' | 'progress' | 'overdue' | 'localOnly'> {
     const run = { step: job.step ?? null, progress: job.progress ?? null, overdue: job.workerOverdueAt !== undefined };
     return job.localOnly === true ? { ...run, localOnly: true } : run;
+}
+
+/** The worker as shown: a pause whose end passed is over (the worker's next claim drops it). */
+function withoutEnded(worker: WorkerSeen | null, now: number): WorkerSeen | null {
+    return worker !== null && pauseEnded(worker.paused, now) ? { ...worker, paused: null } : worker;
+}
+
+/** True when a timed pause's end has passed. */
+function pauseEnded(paused: PausedView | null, now: number): boolean {
+    const until = paused?.until ?? null;
+    return until !== null && Date.parse(until) <= now;
 }
 
 /** The pipeline image's digest `setup.status` names, or null. */
@@ -219,10 +241,12 @@ export class WorkerFeed {
                 this.#workers.retry();
             },
             disconnect: () => this.#disconnect(),
+            pauseJob: (action) => this.#pauseJob(action),
+            pauseComputer: (length) => this.#pauseComputer(length),
             local: async (project) => {
                 const chunk = await import('./worker-local.js');
                 chunk.defineWorkerLocal();
-                return chunk.createLocal(this.#services, project);
+                return chunk.createLocal(this.#services, project, this.#cell.state.image ?? null);
             },
             household: async (project) => {
                 const chunk = await import('./worker-household.js');
@@ -306,10 +330,50 @@ export class WorkerFeed {
         }
     }
 
+    async #pauseJob(action: 'pause' | 'resume'): Promise<boolean> {
+        const job = this.#cell.state.job;
+        return job !== null && this.#pause({ action, jobId: job.id });
+    }
+
+    async #pauseComputer(length: PauseLength | null): Promise<boolean> {
+        const worker = this.#cell.state.worker;
+        if (worker === null) {
+            return false;
+        }
+        const until = length === null ? undefined : pauseUntil(length, new Date(this.#services.clock.now()));
+        const timed = until === undefined ? {} : { until };
+        return this.#pause({ action: length === null ? 'resume' : 'pause', workerId: worker.id, ...timed });
+    }
+
+    async #pause(request: {
+        readonly action: 'pause' | 'resume';
+        readonly jobId?: string;
+        readonly workerId?: string;
+        readonly until?: string;
+    }): Promise<boolean> {
+        return this.#act(() => this.#services.callables.call('imagery.pause', { cityId: this.#services.cityId, ...request }));
+    }
+
+    /** One change on the server: `acting` while it is on its way, its refusal said where it was asked. */
+    async #act(call: () => Promise<unknown>): Promise<boolean> {
+        if (this.#cell.state.acting) {
+            return false;
+        }
+        this.#cell.update({ acting: true, refusal: null });
+        try {
+            await call();
+            this.#cell.update({ acting: false });
+            return true;
+        } catch (error) {
+            this.#cell.update({ acting: false, refusal: refusalOf(error) });
+            return false;
+        }
+    }
+
     /** The workers' answer; while the worker counts as connected, a timer says when it no longer does. */
     #seen(list: ListState<WorkerSeen>): void {
         const { clock } = this.#services;
-        const worker = list.items[0] ?? null;
+        const worker = withoutEnded(list.items[0] ?? null, clock.now());
         const left = worker === null || worker.revoked ? 0 : Date.parse(worker.seenAt) + WORKER_FRESH_SECONDS * 1000 - clock.now();
         clock.clearTimeout(this.#stale);
         if (left > 0) {
@@ -330,18 +394,7 @@ export class WorkerFeed {
     }
 
     async #runOn(request: { readonly jobId?: string; readonly runOn: RunChoice; readonly freeTierOk?: boolean }): Promise<boolean> {
-        if (this.#cell.state.acting) {
-            return false;
-        }
-        this.#cell.update({ acting: true, refusal: null });
-        try {
-            await this.#services.callables.call('imagery.runOn', { cityId: this.#services.cityId, ...request });
-            this.#cell.update({ acting: false });
-            return true;
-        } catch (error) {
-            this.#cell.update({ acting: false, refusal: refusalOf(error) });
-            return false;
-        }
+        return this.#act(() => this.#services.callables.call('imagery.runOn', { cityId: this.#services.cityId, ...request }));
     }
 }
 

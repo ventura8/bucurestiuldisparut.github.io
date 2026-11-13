@@ -2,7 +2,7 @@
  * What every settings section shares: its context (the language, the area's state and intents, the page's addresses
  * and its polite region) and the top of a section that edits the city (heading, save row, conflict banner).
  */
-import type { CityDoc, Locale } from '@hcm/shared';
+import type { CityDoc, UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import type { WhoPort } from '../editing/conflict.js';
@@ -11,7 +11,7 @@ import { contentText } from '../shell/text.js';
 import type { SettingsIntentsPort, SettingsSectionPort, SettingsViewState } from './settings-port.js';
 
 export interface SectionContext {
-    readonly locale: Locale;
+    readonly locale: UiLocale;
     readonly view: SettingsViewState;
     readonly intents: SettingsIntentsPort | null;
     /** `#/settings/<params>`. */
@@ -76,14 +76,14 @@ export function cityOf(context: SectionContext): CityDoc | null {
 
 /** A section heading's text. */
 export function sectionTitle(
-    locale: Locale,
+    locale: UiLocale,
     section: 'area' | 'texts' | 'theme' | 'icon' | 'imagery' | 'publish' | 'categories' | 'overlays',
 ): string {
     return contentText(locale, `adminContent.settings.section.${section}`);
 }
 
 /** A section row's title and hint (M5's export names itself in its own catalogue, `adminContent.export.*`). */
-export function sectionRowTexts(locale: Locale, section: SettingsSectionPort): { readonly title: string; readonly hint: string } {
+export function sectionRowTexts(locale: UiLocale, section: SettingsSectionPort): { readonly title: string; readonly hint: string } {
     if (section === 'export') {
         return { title: contentText(locale, 'adminContent.export.title'), hint: contentText(locale, 'adminContent.export.intro') };
     }

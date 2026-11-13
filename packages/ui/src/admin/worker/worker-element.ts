@@ -3,7 +3,7 @@
  * of the Jobs area's store through the app: `WorkerHostPort`), their texts (`translateAdminWorker`, a catalogue of the
  * `worker` chunk only), the numbers in the page's language, a refusal's live region and Cloud Run's free-tier meter.
  */
-import { CLOUD_RUN_FREE_TIER, DEFAULT_LOCALE, type Locale } from '@hcm/shared';
+import { CLOUD_RUN_FREE_TIER, DEFAULT_LOCALE, type UiLocale } from '@hcm/shared';
 import { translateAdminWorker, type AdminWorkerKey } from '@hcm/shared/admin-worker';
 import { css, html, LitElement, type PropertyValues, type TemplateResult } from 'lit';
 
@@ -14,17 +14,17 @@ import type { CloudRunUsePort, WorkerFeedPort, WorkerHostPort, WorkerViewPort } 
 
 type Params = Readonly<Record<string, string>>;
 
-function workerText(locale: Locale, key: AdminWorkerKey, params?: Params): string {
+function workerText(locale: UiLocale, key: AdminWorkerKey, params?: Params): string {
     return translateAdminWorker(locale, key, params);
 }
 
 /** A whole number in the page's language (`12,345`, `12.345`). */
-export function count(locale: Locale, value: number): string {
+export function count(locale: UiLocale, value: number): string {
     return new Intl.NumberFormat(locale).format(Math.round(value));
 }
 
 /** "Cloud Run this month (estimate)": the month's use of each figure of the free tier, and a bar for the larger share. */
-export function meter(locale: Locale, usage: CloudRunUsePort): TemplateResult {
+export function meter(locale: UiLocale, usage: CloudRunUsePort): TemplateResult {
     const free = CLOUD_RUN_FREE_TIER;
     const share = Math.max(usage.vcpuSeconds / free.vcpuSeconds, usage.gibSeconds / free.gibSeconds);
     const use = {
@@ -89,7 +89,7 @@ export abstract class WorkerElement extends LitElement {
     };
 
     declare app: WorkerHostPort | null;
-    declare locale: Locale;
+    declare locale: UiLocale;
     /** The feed's state, or null before it answers. */
     declare view: WorkerViewPort | null;
     protected feed: WorkerFeedPort | null = null;

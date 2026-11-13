@@ -4,7 +4,7 @@
  * currency), that the public map keeps working, and offers **Resume processing** (the page asks first). Nothing while the
  * guard is green or still reading.
  */
-import type { Locale } from '@hcm/shared';
+import type { UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
@@ -13,14 +13,14 @@ import type { GuardPort } from './guard-port.js';
 import { numberText } from './imagery-text.js';
 
 /** An amount in the admin's language, in its currency when the alert named one. */
-export function moneyText(locale: Locale, amount: number, currency: string | null): string {
+export function moneyText(locale: UiLocale, amount: number, currency: string | null): string {
     if (currency === null) {
         return numberText(locale, amount, 2);
     }
     return new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount);
 }
 
-function pausedText(locale: Locale, guard: GuardPort): string {
+function pausedText(locale: UiLocale, guard: GuardPort): string {
     const { costAmount, budgetAmount, currency } = guard;
     if (costAmount === null || budgetAmount === null) {
         return contentText(locale, 'adminContent.imagery.guard.pausedPlain');
@@ -36,7 +36,7 @@ export interface GuardBannerOptions {
     readonly resume: () => void;
 }
 
-export function guardBanner(locale: Locale, guard: GuardPort | null, options: GuardBannerOptions): TemplateResult {
+export function guardBanner(locale: UiLocale, guard: GuardPort | null, options: GuardBannerOptions): TemplateResult {
     if (guard?.paused !== true) {
         return EMPTY;
     }

@@ -1,3 +1,4 @@
+import { registerCatalogue } from '@hcm/shared';
 import { axeViolations } from '@hcm/test-support/axe';
 import { html } from 'lit';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
@@ -222,6 +223,31 @@ describe('<hcm-admin-shell> a newer admin', () => {
         deep(deep(banner, 'hcm-button'), 'button').click();
         expect(app.calls).toContain('reload');
         expect(await axeViolations(element)).toEqual([]);
+    });
+});
+
+describe('<hcm-admin-shell> in a language being translated', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('a11y_aLanguageWithoutTheAdminsTextsMarksTheirEnglishFallback_happyPath_aTranslatedOneDoesNot', async () => {
+        registerCatalogue('fa', { 'adminShell.nav.admins': 'مدیران' });
+        const persian = await shell(
+            new FakeAdminApp(adminState({ destinations: DESTINATIONS, route: { id: 'admins', params: [] }, locale: 'fa' })),
+        );
+
+        expect(document.documentElement.lang).toBe('fa');
+        expect(deep(persian, '.scroller').getAttribute('lang')).toBe('en');
+        expect(deep(persian, '.top-bar h1 span').getAttribute('lang')).toBe('fa');
+        const labels = deepAll(deep(persian, 'hcm-admin-nav'), 'a.item .label').map((label) => label.getAttribute('lang'));
+        expect(labels).toContain('fa');
+        expect(labels).toContain('en');
+        cleanup();
+
+        const romanian = await shell(
+            new FakeAdminApp(adminState({ destinations: DESTINATIONS, route: { id: 'admins', params: [] }, locale: 'ro' })),
+        );
+        expect(deep(romanian, '.scroller').getAttribute('lang')).toBe('ro');
     });
 });
 

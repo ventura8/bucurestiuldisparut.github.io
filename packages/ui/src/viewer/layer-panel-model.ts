@@ -2,14 +2,14 @@
  * The Layers panel's pure parts (`<hcm-layer-panel>`): the list rows, the group headings, the attribution lines, the Map
  * labels note and (M27, `docs/research/M27-lost-streets.md`) the split of the pinned POI categories from the list below.
  */
-import { overlayLabel, poiIcon, translate, type Locale, type Manifest, type Overlay } from '@hcm/shared';
+import { overlayLabel, poiIcon, translate, type ViewerLocale, type Manifest, type Overlay } from '@hcm/shared';
 import { creditParts } from '@hcm/shared/credits';
 import { translateMapLabels } from '@hcm/shared/map-labels';
 
 import type { OverlayListGroup, OverlayListItem } from '../components/overlay-list.js';
 
 /** The list rows: overlay labels in `locale`; a POI category also gets its colour and its bundled icon. */
-export function overlayItems(overlays: readonly Overlay[], manifest: Manifest, locale: Locale): readonly OverlayListItem[] {
+export function overlayItems(overlays: readonly Overlay[], manifest: Manifest, locale: ViewerLocale): readonly OverlayListItem[] {
     const categories = new Map((manifest.poiCategories ?? []).map((category) => [category.id, category]));
     return overlays.map((overlay) => {
         const item = {
@@ -36,7 +36,7 @@ export function splitPinned(overlays: readonly Overlay[], manifest: Manifest, pi
 }
 
 /** The group headings: historical layers always, places only when the manifest has POI categories. */
-export function overlayGroups(manifest: Manifest, locale: Locale): readonly OverlayListGroup[] {
+export function overlayGroups(manifest: Manifest, locale: ViewerLocale): readonly OverlayListGroup[] {
     const historical: OverlayListGroup = { kind: 'raster', label: translate(locale, 'layers.group.historical') };
     const hasPlaces = (manifest.poiCategories ?? []).length > 0;
     return hasPlaces ? [historical, { kind: 'poi', label: translate(locale, 'layers.group.places') }] : [historical];
@@ -46,7 +46,7 @@ export function overlayGroups(manifest: Manifest, locale: Locale): readonly Over
  * `Sursa: USGS EROS, …` once per credit of the visible historical layers and (M27) the visible POI categories that carry
  * one, in list order and in `locale` (the Pixel Tablet found the same English line once per layer: `creditParts`).
  */
-export function attributionLines(overlays: readonly Overlay[], manifest: Manifest, locale: Locale): readonly string[] {
+export function attributionLines(overlays: readonly Overlay[], manifest: Manifest, locale: ViewerLocale): readonly string[] {
     const credited = new Map<string, string>([
         ...manifest.layers.map((layer) => [layer.id, layer.attribution] as const),
         ...(manifest.poiCategories ?? []).flatMap((category) =>
@@ -60,7 +60,7 @@ export function attributionLines(overlays: readonly Overlay[], manifest: Manifes
 }
 
 /** The note below the switches: what they are, and how they differ from the city's own places when it has some. */
-export function labelsNote(manifest: Manifest, locale: Locale): string {
+export function labelsNote(manifest: Manifest, locale: ViewerLocale): string {
     const note = translateMapLabels(locale, 'mapLabels.note');
     return (manifest.poiCategories ?? []).length > 0 ? `${note} ${translateMapLabels(locale, 'mapLabels.notePlaces')}` : note;
 }

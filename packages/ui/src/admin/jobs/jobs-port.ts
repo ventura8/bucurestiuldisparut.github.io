@@ -34,6 +34,8 @@ export interface JobItemPort {
     readonly createdAt: string;
     readonly dispatchAt: string | null;
     readonly cancelRequested: boolean;
+    /** Pause (2026-11-13): the owner paused it. */
+    readonly paused: boolean;
     readonly error: { readonly code: string; readonly message: string } | null;
     // M3 (CR-M3-5): why it waits and until when, its layer version, and whether Retry is offered.
     readonly waitReason: JobWaitReason | null;
@@ -59,6 +61,8 @@ export interface JobsViewState {
     /** The budget guard (null while reading; CR-M3-47). */
     readonly guard: GuardPort | null;
     readonly resuming: boolean;
+    /** Pause all or Resume all is on its way. */
+    readonly pausingAll: boolean;
 }
 
 export interface JobsIntentsPort {
@@ -68,6 +72,8 @@ export interface JobsIntentsPort {
     cancel(): Promise<unknown>;
     retryJob(): Promise<unknown>;
     resumeGuard(): Promise<unknown>;
+    /** Pause all or Resume all (2026-11-13). */
+    pauseAll(action: 'pause' | 'resume'): Promise<unknown>;
     /** M7: a new feed of the city's local worker (the lazy `worker` chunk); optional, so a page without it shows none. */
     worker?(): Promise<WorkerFeedPort>;
     /** M7: registers the `worker` chunk's elements (`../worker/load.ts`). */

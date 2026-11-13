@@ -28,6 +28,7 @@ import { START_SITE_STYLESHEET_FILE, startFooter } from './legal.js';
  *
  * ```text
  * index.html, start.mjs, start-config.json       the page: dist/start-app's build, its policy and its configuration
+ * i18n/<locale>.json                             the languages beyond ro and en, fetched when chosen (docs/I18N.md)
  * privacy.html, terms.html, start-site.css       what Google's OAuth verification asks for (`legal.ts`), and its file
  * release/<slug>/start-release.json              every file below, with its SHA-256, and Hosting's rules
  * release/<slug>/tree/…                          what a new project's first Hosting release holds
@@ -182,6 +183,13 @@ function readApp(inputs: StartTreeInputs, files: SiteFileSystem): void {
     }
 }
 
+/** The languages the page fetches when chosen (`i18n/<locale>.json`, docs/I18N.md → Loading), beside `start.mjs`. */
+function copyLanguages(inputs: StartTreeInputs, files: SiteFileSystem): void {
+    for (const path of files.listFiles(inputs.appDir).filter((file) => file.startsWith('i18n/'))) {
+        files.copy(`${inputs.appDir}/${path}`, `${inputs.outDir}/${path}`);
+    }
+}
+
 /** Writes the start site; the install bundle joins the tree first (`build.ts`), so the manifest lists it. */
 export function writeStartSite(
     inputs: StartTreeInputs,
@@ -209,5 +217,6 @@ export function writeStartSite(
     files.write(`${inputs.outDir}/${START_CONFIG_FILE}`, json(config));
     files.write(`${inputs.outDir}/index.html`, renderStartPage());
     files.copy(`${inputs.appDir}/start.mjs`, `${inputs.outDir}/start.mjs`);
+    copyLanguages(inputs, files);
     return manifest;
 }

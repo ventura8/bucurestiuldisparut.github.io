@@ -193,6 +193,8 @@ class Job:
     steps: dict[str, StepRecord] = field(default_factory=dict)
     lease: Lease | None = None
     cancel_requested: bool = False
+    # Pause (the owner's request of 2026-11-13): the owner paused the job; the run stops at its next step boundary.
+    paused: bool = False
     attempt: int = 0
     # The Cloud Run job this run was dispatched to (`fetch`, `std`, `xl`), None for a job no dispatcher sized.
     machine: str | None = None
@@ -210,6 +212,7 @@ class Job:
             steps=_steps_of(record.get("steps")),
             lease=Lease.of(record.get("lease")),
             cancel_requested=record.get("cancelRequested") is True,
+            paused=isinstance(record.get("paused"), dict),
             attempt=attempt if isinstance(attempt, int) else 0,
             machine=optional_str(record.get("machine")),
         )

@@ -41,6 +41,8 @@ export interface StartWorld {
     readonly fakes: UpstreamFakes;
     deps: StartDeps;
     readonly session: Map<string, string>;
+    /** The visitor's `localStorage` (the language choice). */
+    readonly local: Map<string, string>;
     readonly assigned: string[];
     /** The fragment the next `start()` reads. */
     fragment: string;
@@ -62,10 +64,12 @@ export function startWorld(): StartWorld {
     const fakes = createUpstreamFakes();
     fakes.scenario('firebase-hosting.fresh');
     const session = new Map<string, string>();
+    const local = new Map<string, string>();
     const assigned: string[] = [];
     const world: StartWorld = {
         fakes,
         session,
+        local,
         assigned,
         fragment: '',
         files: new Map([
@@ -100,16 +104,17 @@ export function startWorld(): StartWorld {
         const headers = url.includes('upload-firebasehosting') ? { ...headersOf(init), 'x-hcm-checked': hash } : headersOf(init);
         return fakes.fetch(input, { ...init, headers });
     };
-    const store = {
-        get: (key: string) => session.get(key) ?? null,
+    const storeOf = (map: Map<string, string>): StartDeps['session'] => ({
+        get: (key: string) => map.get(key) ?? null,
         set: (key: string, value: string) => {
-            session.set(key, value);
+            map.set(key, value);
         },
         remove: (key: string) => {
-            session.delete(key);
+            map.delete(key);
         },
-        keys: () => [...session.keys()],
-    };
+        keys: () => [...map.keys()],
+    });
+    const store = storeOf(session);
     world.deps = {
         fetch: fetchAny,
         tools: {
@@ -126,6 +131,7 @@ export function startWorld(): StartWorld {
             clearTimeout: () => undefined,
         },
         session: store,
+        local: storeOf(local),
         log: testLog().log,
         baseUrl: BASE,
         fragment: () => world.fragment,

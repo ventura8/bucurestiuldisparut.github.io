@@ -3,7 +3,7 @@
  * holds (the map shades the rest), whether the map shows its full detail or a small picture and why, **Actual pixels**, **See the image**
  * for a phone's card below the map, and what publishing costs in the owner's words.
  */
-import { ENDED_VERSION_STATES, type AdminContentKey, type LayerVersionState, type Locale } from '@hcm/shared';
+import { ENDED_VERSION_STATES, type AdminContentKey, type LayerVersionState, type UiLocale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { noticeOf, contentText } from '../shell/text.js';
@@ -21,7 +21,7 @@ const MB = 1e6;
 const GB = 1e9;
 
 /** The picture's share of the city, once measured. */
-function coverage(locale: Locale, output: Output): TemplateResult {
+function coverage(locale: UiLocale, output: Output): TemplateResult {
     return withValue(
         output.coveragePct,
         (percent) =>
@@ -48,7 +48,7 @@ function smallKey(state: LayerVersionState, throughMapbox: boolean): AdminConten
     return ENDED.has(state) || throughMapbox ? 'adminContent.imagery.view.smallNone' : 'adminContent.imagery.view.small';
 }
 
-function failed(locale: Locale, notice: AdminNoticeInputPort, retry: () => void): TemplateResult {
+function failed(locale: UiLocale, notice: AdminNoticeInputPort, retry: () => void): TemplateResult {
     return html`<div class="alert" role="alert" data-image="failed">
             <hcm-icon name="error"></hcm-icon><span>${noticeOf(locale, notice)}</span>
         </div>
@@ -99,7 +99,7 @@ export function imageView(context: ImageryContext, output: Output, state: LayerV
 }
 
 /** The owner's cost, the version's own size; nothing is paid here and nothing is hidden. A version with no tiles yet says its size later. */
-export function ownCost(locale: Locale, version: VersionViewPort): TemplateResult {
+export function ownCost(locale: UiLocale, version: VersionViewPort): TemplateResult {
     return withValue(version.output?.tiles ?? null, ({ bytes }) => {
         const megabytes = numberText(locale, Math.max(1, Math.round(bytes / MB)), 0);
         const cents = numberText(locale, (bytes / GB) * STORAGE_CENTS_PER_GB_MONTH, 1);
