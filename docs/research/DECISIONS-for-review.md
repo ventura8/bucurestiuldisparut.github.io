@@ -7012,6 +7012,11 @@ The owner: "There is no Bucharest in the left screen" on `DS09065A073MC043` (18 
 - **209d DS1103-1058DF026 (1968, stitched right to left)**: its crop around the rough points showed farmland. The mapping is not mirrored: the whole scan (`SegmentReader`) and the crop (`write_crop`) read the same `frame.json` window by window, and `WholeFrame.to_film` is the scan's own shrink and left edge; the log's crop, film columns 80,028 to 109,449 of 128,514, holds the points at 73 to 74 % along, where they were placed. A regression test pins this for a strip lettered either way (S-P01-HAPPY-RECROP-RIGHT-TO-LEFT, S-P01-BAD-RECROP-MIRRORED). The crop holds a single-runway airfield near its left edge (about 67 % along, row 7,140 of 8,631), likely Otopeni, while the point named Otopeni sits at 74 %, row 2,398: the points were placed on other features. The frame covers only about 17 km north to south, so most of the city lies on DF027, and the join is what holds it.
 - **Verify**: S-A12-HAPPY-STALE-CAMERA, S-A12-BAD-STALE-CAMERA-KEPT, S-P01-HAPPY-RECROP-RIGHT-TO-LEFT, S-P01-BAD-RECROP-MIRRORED; pytest `pipeline/tests/unit/test_recrop_order.py`; Vitest `functions/test/imagery/scene-record.test.ts`, `functions/test/imagery/import.test.ts`.
 
+## 215. The join card's budget is 4 KB (the owner, 2026-11-13: "raise the limits you need to raise") — APPLIED, gate relaxed with approval
+
+`scripts/ci/check_bundle_budget.py`: `join-card` 3 → 4 KB, `statistics-live` 4 → 6 KB (Material 3 redesign, 4.6 KB), `funnels` 2 → 3 KB (2.8 KB), `imagery` 18 → 20 KB (18.0 KB). The chunk measured 3.0 KB after the cloud estimate and the plain
+messages, failing the budget gate for every track. The owner approved raising budgets that block beta.1.
+
 ## 210. The admin on its own web address: one sign-in for every tab, kept when Chrome closes (track/adminsite, the owner 2026-11-13) — APPLIED; reverses 75c
 
 The owner: the admin moves to its own web address, so one sign-in can be shared safely across tabs and survive closing Chrome. Since M6 the admin lived under `/admin/` of the public map's origin and, for the risk of §73a, kept Firebase Auth in each tab's `sessionStorage`: the owner signed in again in every tab and every notification link.

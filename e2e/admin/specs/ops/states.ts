@@ -49,11 +49,11 @@ export const OPS_STATES = {
         visit: 'specs/ops/ops.spec.ts, crash reports',
     },
     'crashes.statistics': {
-        title: "Statistics: each wizard's steps and the way to its funnel in Google Analytics (statistics off: the way to Setup)",
+        title: "Statistics: the guide opened (each wizard's steps and the way to its funnel in Google Analytics; statistics off: the way to Setup)",
         visit: 'specs/ops/ops.spec.ts, statistics',
     },
     'crashes.statistics-numbers': {
-        title: "Statistics: Google Analytics' numbers after the read-only consent (overview, apps, funnels) and Error Reporting's groups",
+        title: "Statistics: Google Analytics' numbers after the read-only consent (stat cards, apps, bar lists, step bars) and Error Reporting's cards",
         visit: 'specs/ops/statistics.spec.ts, the numbers',
     },
     'crashes.statistics-problem': {
