@@ -316,7 +316,9 @@ describe('imagery.search: a slow USGS', () => {
 
         const response = await searchFunction(() => ({ ...world.deps, scenes: slow })).run(adminCall({ cityId: CITY }));
 
-        expect(response).toMatchObject({ found: 102, failedDatasets: [] });
+        // Two datasets at a time (M2M's rate limit): corona2 and declassii answer, the rest wait and run out of time, recorded partial.
+        expect(response).toMatchObject({ found: 101 });
+        expect(response.datasets?.declassiii).toMatchObject({ state: 'failed', reason: 'outOfTime', next: 1 });
         expect(
             world.scenes.recorder.argsOf('search').map(([, request]) => (request as { startingNumber: number }).startingNumber),
         ).not.toContain(101);

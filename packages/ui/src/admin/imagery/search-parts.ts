@@ -16,7 +16,11 @@ function partText(locale: UiLocale, part: SearchPartPort): string {
         return `${dataset}: ${contentText(locale, 'adminContent.imagery.searchingButton')}`;
     }
     const found = String(part.found);
-    return part.state === 'done' ? `${dataset}: ${found}` : contentText(locale, 'adminContent.imagery.partStopped', { dataset, found });
+    if (part.state === 'done') {
+        return `${dataset}: ${found}`;
+    }
+    const key = part.reason === 'usgsFailed' ? 'adminContent.imagery.partRefused' : 'adminContent.imagery.partStopped';
+    return contentText(locale, key, { dataset, found });
 }
 
 /** One line per searched dataset, or nothing before a search. */

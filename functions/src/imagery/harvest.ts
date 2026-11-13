@@ -36,7 +36,7 @@ import type { Ports } from '../ports/index.js';
 import { searchDataset, type DatasetRun, type HarvestBudget } from './harvest-pages.js';
 import { HarvestProgress, harvestStateOf, wasKilled } from './harvest-state.js';
 import { prefetchBrowse, rerankUnseen, StoreTally, storeDataset, type RankWorld } from './harvest-store.js';
-import { SEARCH_BUDGET_MS } from './harvest-target.js';
+import { SEARCH_BUDGET_MS, inBatches } from './harvest-target.js';
 import { rewriteDatePlan } from './join-plan.js';
 import { requireCity } from './records.js';
 import { requireUsgs, withUsgs } from './usgs-session.js';
@@ -51,6 +51,12 @@ export type HarvestDeps = Pick<
 const PAGES_BUDGET_MS = 360_000;
 /** The whole run is done by then: 2 min inside the callable's 540 s (`CALLABLE_TIMEOUT_SECONDS`) for the last writes and logout. */
 const RUN_BUDGET_MS = 420_000;
+
+/**
+ * Datasets searched at once: M2M answers `RATE_LIMIT` to more concurrent requests (2026-11-13: six at once, and the dataset ids,
+ * were all refused); the others wait their turn, each stored as soon as it ends.
+ */
+const DATASET_CONCURRENCY = 2;
 
 /** One dataset of a run and the M2M `startingNumber` it starts from (1, or where an earlier run stopped). */
 type Planned = readonly [dataset: UsgsDataset, from: number];
@@ -195,8 +201,11 @@ async function runOf(deps: HarvestDeps, request: ImagerySearchRequest, city: Cit
 async function harvestIn(deps: HarvestDeps, request: ImagerySearchRequest, run: Run, plan: Plan): Promise<ImagerySearchResponse> {
     const searchedAt = deps.clock.now();
     const { parts, eeIds } = await withUsgs(deps, async (apiKey) => {
-        const session: Session = { apiKey, eeIds: earthExplorerIds(deps, apiKey) };
-        const searched = await Promise.all(plan.datasets.map((planned) => harvestDataset(deps, session, planned, run)));
+        const session: Session = { apiKey, eeIds: Promise.resolve(await earthExplorerIds(deps, apiKey)) };
+        const searched: HarvestDataset[] = [];
+        await inBatches(plan.datasets, DATASET_CONCURRENCY, async (planned) => {
+            searched[plan.datasets.indexOf(planned)] = await harvestDataset(deps, session, planned, run);
+        });
         return { parts: searched, eeIds: await session.eeIds };
     });
     refuseNoAnswer(parts);

@@ -34,7 +34,7 @@ describe('the search’s parts', () => {
 
         const [slow, refused, late] = [...en.querySelectorAll('li')].map((item) => item.textContent);
         expect(slow).toContain('100 kept; USGS was too slow');
-        expect(refused).toContain('0 kept');
+        expect(refused).toContain('0 kept; USGS turned it away');
         expect(late).toContain('The rest comes in 15 minutes');
         expect(ro.textContent).toContain('100 păstrate');
     });

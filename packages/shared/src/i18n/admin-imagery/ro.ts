@@ -115,6 +115,7 @@ export const ro = {
     'adminContent.imagery.searched': 'Am găsit {found} scene, dintre care {added} noi.',
     'adminContent.imagery.searchTimedOut': 'Serverul a oprit căutarea USGS, prea lentă, după {minutes} min. Reîncercați în câteva minute.',
     'adminContent.imagery.partStopped': '{dataset}: {found} păstrate; USGS a fost lent. Restul vine în 15 minute, sau caută din nou.',
+    'adminContent.imagery.partRefused': '{dataset}: {found} păstrate; USGS a refuzat. Restul vine în 15 minute, sau caută din nou.',
     'adminContent.imagery.searchFailed': 'Căutarea USGS a eșuat pe server. Reîncercați; dacă eșuează din nou, încercați mai târziu.',
     'adminContent.imagery.datasetsFailed': 'Nu au răspuns: {datasets}. Celelalte colecții au fost căutate; încearcă din nou mai târziu.',
     'adminContent.imagery.downloadsPending': 'USGS nu a aprobat încă descărcările: poți căuta, dar importul așteaptă aprobarea.',

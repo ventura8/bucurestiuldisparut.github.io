@@ -113,6 +113,7 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.searched': 'Found {found} scenes, {added} of them new.',
     'adminContent.imagery.searchTimedOut': 'The server stopped the slow USGS search after {minutes} min. Search again in a few minutes.',
     'adminContent.imagery.partStopped': '{dataset}: {found} kept; USGS was too slow. The rest comes in 15 minutes, or search again.',
+    'adminContent.imagery.partRefused': '{dataset}: {found} kept; USGS turned it away. The rest comes in 15 minutes, or search again.',
     'adminContent.imagery.searchFailed': 'The USGS search failed on the server. Search again; if it fails again, try later.',
     'adminContent.imagery.datasetsFailed': 'No answer from: {datasets}. The other collections were searched; try again later.',
     'adminContent.imagery.downloadsPending': 'USGS has not approved downloads yet: you can search, imports wait for the approval.',
