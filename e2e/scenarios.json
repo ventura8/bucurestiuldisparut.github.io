@@ -12757,6 +12757,17 @@
             "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join-dates.spec.ts, functions/test/imagery/join*.test.ts."
         },
         {
+            "id": "S-A66-BAD-REWRITES-AT-ONCE",
+            "behaviour": "A66",
+            "area": "admin",
+            "path": "bad",
+            "title": "Frames that end together keep the whole-city dates up to date without running the function out of memory",
+            "asserts": "three rewrites of one city's plan asked at once -> the city is read twice, not three times, and the plan lists the frame written while the first ran; a rewrite that fails fails its waiters and the next call reads again; another city is not held behind it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Cloud Error Reporting, 2026-11-13: imagery-onJobWrite over its 256 MiB (docs/LESSONS.md 659). Test: functions/test/imagery/join-plan-flight.test.ts."
+        },
+        {
             "id": "S-A66-BAD-NO-NEIGHBOUR",
             "behaviour": "A66",
             "area": "admin",

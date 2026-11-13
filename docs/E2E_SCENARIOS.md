@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 167 | 1698 | 708 | 990 | 1696 | 2 | 436 |
+| 167 | 1699 | 708 | 991 | 1697 | 2 | 437 |
 
 ## Viewer
 
@@ -1238,6 +1238,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-A66-BAD-NO-NEIGHBOUR` | A66 | bad | A frame with no neighbour has no row and no offer | one frame of its date -> the plan has no rows, Find shows no whole-city dates and the scene's page no offer | e2e-admin | exists | `e2e/admin/specs/imagery/join-dates.spec.ts`<br>`functions/test/imagery/join-plan.test.ts` |
 | `S-A66-BAD-PAID-FRAME` | A66 | bad | A frame that must be ordered is named, never joined | a date whose other frame is paid -> the row says 1 more would need ordering, links that frame's page with Buy this scan: F022 and has no Join frames | e2e-admin | exists | `e2e/admin/specs/imagery/join-dates.spec.ts`<br>`functions/test/imagery/join-plan.test.ts` |
 | `S-A66-BAD-PAID-ORDERED` | A66 | bad | A paid frame ordered already is not offered for buying again | one of the row's paid frames has an open order -> its line reads Your order: F022 with the Ordered chip, while the other still reads Buy this scan: F023 | e2e-admin | exists | `e2e/admin/specs/imagery/join-dates.spec.ts` |
+| `S-A66-BAD-REWRITES-AT-ONCE` | A66 | bad | Frames that end together keep the whole-city dates up to date without running the function out of memory | three rewrites of one city's plan asked at once -> the city is read twice, not three times, and the plan lists the frame written while the first ran; a rewrite that fails fails its waiters and the next call reads again; another city is not held behind it | functions | exists | `functions/test/imagery/join-plan-flight.test.ts` |
 | `S-A66-BAD-WINDOW-BOX` | A66 | bad | A frame rendered on the whole window is planned by what it shows | a frame fitted by points shows 40 % of the city on a grid the size of its window -> the row reads its output.outline and offers its neighbour; without an outline its box would let one frame stand for the whole city and the plan would stop | functions | exists | `functions/test/imagery/join-plan.test.ts` |
 | `S-A67-HAPPY-ALIGNED` | A67 | happy | A frame lined up with earlier photos says which, and that they stayed where they are | calibration.alignment with two used partners (1972, 1977; 1,420 and 810 ties) and one with too few -> on the version page: lined up with your photos of 1972, 1977 at 2230 shared points; they stay where they are, and lining them up with this one is your choice; the one with too few says nothing; in the page language | e2e-admin | exists | `e2e/admin/specs/imagery/calibration.spec.ts` |
 | `S-A67-HAPPY-CALIBRATION` | A67 | happy | A frame found with no landmark says how, what agrees, its error and the city it covers | a proved frame -> found automatically, 712 of 946 areas agree, measured error 16.3 m, covers 96 % of the city, on the version's page in the page's language | e2e-admin | exists | `e2e/admin/specs/imagery/calibration.spec.ts` |
