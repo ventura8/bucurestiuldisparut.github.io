@@ -178,11 +178,13 @@ describe("<hcm-map-viewer> floating controls with the real kit (the user's repor
         const fab = boxOf(element, 'hcm-fab-menu', '.fab');
         const chip = boxOf(element, '.dock.chip [data-layout-check="near-year"]');
 
-        expect(timeline.width).toBe(68);
+        // The owner's larger pill (2026-11-13): 64 px tall, 96 px wide or more, a row above the chip, the FAB a row lower.
+        expect(timeline.height).toBe(64);
+        expect(timeline.width).toBeGreaterThanOrEqual(96);
         expect(frame.bottom - fab.bottom).toBeGreaterThanOrEqual(MAPBOX_STRIP_PX);
         expect(chip.top - timeline.bottom).toBeGreaterThanOrEqual(TARGET_GAP_PX);
         expect(fab.top - chip.bottom).toBeGreaterThanOrEqual(TARGET_GAP_PX);
-        expect(fab.left - timeline.right).toBeGreaterThanOrEqual(TARGET_GAP_PX);
+        expect(fab.top - timeline.bottom).toBeGreaterThanOrEqual(TARGET_GAP_PX);
     });
 
     it('badPath_onTheSmallestPhoneTheOpenMenuStaysOnScreen', async () => {
@@ -200,6 +202,24 @@ describe("<hcm-map-viewer> floating controls with the real kit (the user's repor
         for (const item of items) {
             expect(item.getBoundingClientRect().top).toBeGreaterThanOrEqual(frame.top);
         }
+    });
+
+    it('badPath_atTheSmallestPhoneTheLargerPillStepsAsideWhileTheMenuIsOpen', async () => {
+        // The owner's larger pill (2026-11-13) is wider than the 68 px column the open menu keeps clear.
+        const element = await viewer(new FakeStore(readyState(undefined, { year: 1977 })));
+        setBox(element, { width: 320, height: 568 });
+        await element.updateComplete;
+        const pill = partOf(element, 'hcm-timeline');
+        expect(getComputedStyle(pill).visibility).toBe('visible');
+
+        await page.getByRole('button', { name: 'Meniu' }).click();
+        await expect.element(page.getByRole('menu', { name: 'Meniu' })).toBeVisible();
+        expect(getComputedStyle(pill).visibility).toBe('hidden');
+        await userEvent.keyboard('{Escape}');
+
+        await vi.waitFor(() => {
+            expect(getComputedStyle(pill).visibility).toBe('visible');
+        });
     });
 
     it('badPath_withoutATimelineTheFabStillClearsMapbox', async () => {
@@ -250,8 +270,9 @@ describe("<hcm-map-viewer> floating controls with the real kit (the user's repor
 
         const dock = boxOf(element, '.dock.toast');
         const timeline = boxOf(element, 'hcm-timeline');
-        expect(dock.left - timeline.right).toBeGreaterThanOrEqual(TARGET_GAP_PX);
-        const centre = { x: timeline.left + timeline.width / 2, y: timeline.top + 40 };
+        // Resting, the pill is at the column's foot, far below the toast's row; open, the card begins before the toast.
+        expect(timeline.top - dock.bottom).toBeGreaterThanOrEqual(TARGET_GAP_PX);
+        const centre = { x: timeline.left + timeline.width / 2, y: timeline.top + 32 };
         expect(element.shadowRoot?.elementFromPoint(centre.x, centre.y)?.localName).toBe('hcm-timeline');
     });
 });

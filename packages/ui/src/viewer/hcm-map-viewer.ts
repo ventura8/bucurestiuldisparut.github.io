@@ -220,7 +220,7 @@ export class HcmMapViewer extends LitElement {
     /** A keyboard shortcut or a gamepad button: what the state allows of `command` (docs/research/viewer-input.md §1). */
     runInput(command: InputCommand): void {
         this.#act(null, (store) => {
-            if (commandAllowed(store.getState(), command)) {
+            if (!this.#dock.closedBy(command) && commandAllowed(store.getState(), command)) {
                 runInputCommand(store, command);
                 this.#focusLayers(command);
             }
