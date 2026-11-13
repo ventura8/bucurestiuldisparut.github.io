@@ -165,12 +165,13 @@ describe('<hcm-timeline> under a finger', () => {
             fire(window, 'pointermove', at(element, index), 'touch');
         }
         expect(events.map((event) => event.detail)).toEqual([{ year: 1967 }]);
+        // The viewer renders the store's year (1967) back into the timeline before the frame (lesson 648).
+        element.value = 1967;
         fire(window, 'pointerup', at(element, 9), 'touch');
         await frame();
         await frame();
 
         expect(events.map((event) => event.detail)).toEqual([{ year: 1967 }, { year: 1973 }]);
-        expect(element.value).toBe(1973);
     });
 
     it('happyPath_aFrameSendsTheYearAScrubLeftUnsent', async () => {

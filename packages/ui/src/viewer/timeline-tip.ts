@@ -10,7 +10,7 @@ import { translate, type Layer, type Locale } from '@hcm/shared';
 import type { TimelineStop } from './timeline-model.js';
 
 /** Px between the chip and the timeline's card, and between the chip and the viewport's edge. */
-export const TIP_GAP_PX = 8;
+const TIP_GAP_PX = 8;
 /** At most this many dates are named; more end with "…". */
 const MAX_DATES = 3;
 

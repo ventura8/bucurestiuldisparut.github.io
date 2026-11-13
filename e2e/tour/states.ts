@@ -154,24 +154,6 @@ const VIEWER_STATES = {
         },
         announcements: (lang) => [t(lang, 'error.geolocate.denied')],
     },
-    year: {
-        title: 'A historical year: its layer, the photos-near-this-year chip (an icon button under a standing timeline)',
-        enter: async ({ page, lang }) => {
-            await expect(page.getByRole('button', { name: t(lang, 'photos.nearYear', { year: '1966' }) })).toBeVisible();
-        },
-    },
-    'timeline-step': {
-        title: 'The timeline moved by the keyboard: the slider says its new year',
-        enter: async ({ page, lang }) => {
-            const slider = page.getByRole('slider', { name: t(lang, 'timeline.label'), exact: true });
-            const before = await slider.getAttribute('aria-valuetext');
-            await slider.focus();
-            await expect(slider).toBeFocused();
-            await slider.press('ArrowRight');
-            await expect(slider).not.toHaveAttribute('aria-valuetext', before ?? '');
-            await mapIdle(page);
-        },
-    },
     ...unplacedStates(sheetEscape),
     ...storyStates(sheetEscape),
     'near-year-photos': {

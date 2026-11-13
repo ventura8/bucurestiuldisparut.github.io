@@ -129,11 +129,6 @@ export const dockStyles = css`
         }
     }
 
-    /* The timeline's year chip shows over the lying card where the photos chip docks: that one steps aside meanwhile. */
-    .frame:has(hcm-timeline[tipping]) .dock.chip {
-        visibility: hidden;
-    }
-
     /* Beside a standing timeline the chip there is a 40 px icon button (the owner, 2026-11-12) centred under the 68 px card: 14 px in. */
     .frame[data-timeline='vertical'] .dock.chip {
         inset-inline-start: calc(var(--hcm-gutter) + 14px);
@@ -249,6 +244,11 @@ export const dockStyles = css`
 
     /* The open menu grows over the group and the compass: they step aside until it closes (the tour's overlap check). */
     .dock.menu:has(> [open]) ~ :is(.dock.zoom, .dock.compass) {
+        visibility: hidden;
+    }
+
+    /* The year chip shows where the photos chip docks: that one steps aside meanwhile (last: it outranks every chip rule). */
+    .frame:has(hcm-timeline[tipping]) .dock.chip {
         visibility: hidden;
     }
 `;

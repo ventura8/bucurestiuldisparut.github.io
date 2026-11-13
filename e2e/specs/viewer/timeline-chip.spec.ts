@@ -89,9 +89,13 @@ test('A mouse over a labelled year of one date shows no chip', { tag: '@S-V04-BA
     expect(await yearChip(page)).toBeNull();
 });
 
-for (const size of [
-    { width: 360, height: 800 },
-    { width: 768, height: 1024 },
+/** Where the chip goes clear of the finger: beside a standing card (a phone upright), above a lying one. */
+const BESIDE = (chip: Rect, card: Rect): boolean => chip.x >= card.x + card.width;
+const ABOVE = (chip: Rect, card: Rect): boolean => chip.y + chip.height <= card.y;
+
+for (const { clear, ...size } of [
+    { width: 360, height: 800, clear: BESIDE },
+    { width: 768, height: 1024, clear: ABOVE },
 ]) {
     const where = `${String(size.width)}x${String(size.height)}`;
 
@@ -102,18 +106,13 @@ for (const size of [
             await openYears(page, lang, size);
             const cdp = await fingers(page);
             const card = await timelineCard(page);
-            const vertical = size.width < 600;
 
             await touch(cdp, await stopCentre(page, 4), [await stopCentre(page, 5), await stopCentre(page, 6)], false);
 
             await expect(slider(page, lang)).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: '1970' }));
             await expect.poll(async () => (await yearChip(page))?.text).toBe('1970');
             const chip = (await yearChip(page))?.box ?? { x: 0, y: 0, width: 0, height: 0 };
-            if (vertical) {
-                expect(chip.x, 'beside the standing card').toBeGreaterThanOrEqual(card.x + card.width);
-            } else {
-                expect(chip.y + chip.height, 'above the lying card').toBeLessThanOrEqual(card.y);
-            }
+            expect(clear(chip, card), 'clear of the finger: beside a standing card, above a lying one').toBe(true);
             await expect.poll(() => hashParam(page, 'layers')).toBe('e2e-1970');
             await lift(cdp);
             await expect.poll(() => yearChip(page)).toBeNull();

@@ -101,8 +101,8 @@ export class HcmTimeline extends LitElement {
     declare said: string;
 
     /** Sends `hcm-year-change`: at once for a key, at most once per frame during a press (`timeline-sends.ts`). */
-    readonly #sends = new YearSends(() => {
-        this.dispatchEvent(new CustomEvent('hcm-year-change', { bubbles: true, detail: { year: this.value } }));
+    readonly #sends = new YearSends((year) => {
+        this.dispatchEvent(new CustomEvent('hcm-year-change', { bubbles: true, detail: { year } }));
     });
 
     /** The track's pointers: a mouse's drag and hover, a finger's scrub and tap (`timeline-pointer.ts`). */
@@ -374,7 +374,7 @@ export class HcmTimeline extends LitElement {
         const stop = this.stops[clamped] ?? null;
         if (stop !== this.value) {
             this.value = stop;
-            this.#sends.changed(live);
+            this.#sends.changed(stop, live);
         }
     }
 

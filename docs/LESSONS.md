@@ -3762,3 +3762,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: track/layout made the city pages app shells (`overflow: hidden` on the root) while the viewer kept `min-block-size: 320px`, taller than the window; track/stale-text reworded the kit's late note to "Reload the page." but `e2e/tour/kit-states.ts` still read the old sentence.
     - Fix and pin: the viewer's least height is 240 px (`viewer-styles.ts`), so a 270 px window shows it whole; the kit state reads the new advice in both languages; cdn/engine rebuilt.
     - **After merging tracks, run the tour on the merged tree before calling it green: a track's own green tour never saw the other track's states or copy.**
+
+648. **A coalesced scrub lost its last year: the viewer wrote the store's year back into the timeline before the frame sent the newer one.**
+    - Seen: 2026-11-13, track/timeline, `S-V04-HAPPY-TOUCH-SCRUB` at every functional project: a finger moved from 1968 over 1969 to 1970 and held left the slider at 1969.
+    - Cause: during a press `hcm-timeline` sends its first new year at once and the next one at the following animation frame; meanwhile the store's 1969 re-rendered the viewer, whose `.value=${state.year}` set the timeline back to 1969, and the frame then sent `this.value`, 1969, so 1970 was never sent.
+    - Fix and pin: `YearSends` keeps the year it was given and sends that (`timeline-sends.ts`); `hcm-timeline-tip.test.ts` rewrites the value mid-scrub as the viewer does and expects the last year.
+    - **A deferred send must carry the value chosen when it was deferred, never re-read a property the parent may rewrite in between.**
