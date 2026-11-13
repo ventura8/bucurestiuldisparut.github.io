@@ -62,6 +62,7 @@ function frameOf(scene: UsgsSceneDoc, version: StoredDocument<LayerVersionDoc> |
         free: scene.downloadAvailable,
         footprint: scene.footprint,
         ...pickDefined(scene, ['displayId', 'corners']),
+        ...(scene.cloudEstimate === undefined ? {} : { cloudPercent: scene.cloudEstimate.percent }),
         ...imported,
     };
 }
@@ -79,7 +80,8 @@ function versionsByLayer(versions: Versions): ReadonlyMap<string, Versions> {
 }
 
 /**
- * The frames the plan chooses from: scenes the admin did not reject, on dates no published join shows yet. M25: never a Landsat scene,
+ * The frames the plan chooses from: scenes the admin did not reject, on dates no published join shows yet (a scene the owner marked not
+ * useful is `rejected` with its reason, so it leaves the plan the same way). M25: never a Landsat scene,
  * which holds the whole city on its own.
  */
 function framesOf(scenes: readonly UsgsSceneDoc[], versions: Versions): DatePlanFrame[] {
@@ -92,7 +94,7 @@ function framesOf(scenes: readonly UsgsSceneDoc[], versions: Versions): DatePlan
 }
 
 /** Writes the city's plan again from its scenes and versions (a deleted city has none). */
-export async function rewriteDatePlan(deps: DatePlanDeps, cityId: string): Promise<void> {
+async function writeDatePlan(deps: DatePlanDeps, cityId: string): Promise<void> {
     const city = await deps.documents.get(FIRESTORE_PATHS.city(cityId), cityDocSchema);
     if (city === undefined) {
         return;
@@ -111,6 +113,50 @@ export async function rewriteDatePlan(deps: DatePlanDeps, cityId: string): Promi
         updatedAt: timestampFromDate(deps.clock.now()),
     });
     deps.log.info('date plan rewritten', { cityId, frames: frames.length, rows: rows.length });
+}
+
+/** A city's rewrite under way in this instance, and whether a write that came meanwhile asks for one more. */
+interface Rewrite {
+    done: Promise<void>;
+    again: boolean;
+}
+
+const rewrites = new Map<string, Rewrite>();
+
+/** Whether a write asked for one more rewrite since the last began; the ask is taken. */
+function takeAgain(rewrite: Rewrite): boolean {
+    const again = rewrite.again;
+    rewrite.again = false;
+    return again;
+}
+
+/** Rewrites until no write asked for one more while the last ran; the city leaves the map whatever happens. */
+async function rewriteUntilSettled(deps: DatePlanDeps, cityId: string, rewrite: Rewrite): Promise<void> {
+    try {
+        do {
+            await writeDatePlan(deps, cityId);
+        } while (takeAgain(rewrite));
+    } finally {
+        rewrites.delete(cityId);
+    }
+}
+
+/**
+ * Writes the city's plan again, one rewrite per city at a time in an instance. Each reads every scene and version of the city
+ * (about 480 frames for Bucharest), and `imagery-onJobWrite` takes 80 events at once in 256 MiB: three frames ending together
+ * read the city three times over and ran out of memory (Cloud Error Reporting, 2026-11-13; LESSONS 663). A call that comes while
+ * one runs waits for one more rewrite that starts after it, so it still sees its own write; any number of them share that one.
+ */
+export function rewriteDatePlan(deps: DatePlanDeps, cityId: string): Promise<void> {
+    const running = rewrites.get(cityId);
+    if (running !== undefined) {
+        running.again = true;
+        return running.done;
+    }
+    const rewrite: Rewrite = { done: Promise.resolve(), again: false };
+    rewrites.set(cityId, rewrite);
+    rewrite.done = rewriteUntilSettled(deps, cityId, rewrite);
+    return rewrite.done;
 }
 
 /** The tick: a city with no plan gets one from what it already has (nothing else writes it until a search or a job moves). */

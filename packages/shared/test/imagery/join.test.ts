@@ -220,6 +220,17 @@ describe('planDate', () => {
         expect(row?.coveragePct).toBe(50);
     });
 
+    it('badPath_aCloudyPaidFrameIsListedWithItsWarning @S-A152-BAD-CLOUDY', () => {
+        const row = planDate([band('free', 0, 0.5, { cloudPercent: 39 }), band('paid', 0.5, 1, { free: false, cloudPercent: 70 })], CITY);
+
+        expect(row?.paidFrames).toEqual(['paid']);
+        expect(row?.cloudyFrames).toEqual([{ entityId: 'paid', percent: 70 }]);
+    });
+
+    it('happyPath_clearFramesCarryNoCloudWarning', () => {
+        expect(planDate([band('a', 0, 0.5, { cloudPercent: 5 }), band('b', 0.5, 1)], CITY)).not.toHaveProperty('cloudyFrames');
+    });
+
     it('happyPath_aPaidFrameThatAddsNothingIsNotListed', () => {
         const row = planDate([band('a', 0, 0.5), band('b', 0.5, 1), band('paid', 0, 1, { free: false })], CITY);
 

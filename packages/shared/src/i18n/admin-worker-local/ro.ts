@@ -60,6 +60,8 @@ export const ro = {
     'adminWorkerLocal.machine.matcher.cpu': 'IA locală: pe procesor.',
     'adminWorkerLocal.machine.matcher.off': 'IA locală: oprită cât e în pauză.',
     'adminWorkerLocal.machine.noGpu': 'Nicio placă video la care să ajungă: IA locală merge pe procesor, mai încet.',
+    'adminWorkerLocal.machine.noDriver': 'Placa NVIDIA de aici nu are driver: IA locală merge pe procesor, mai încet.',
+    'adminWorkerLocal.machine.getDriver': 'Instalează driverul NVIDIA, apoi repornește calculatorul',
     'adminWorkerLocal.machine.failed': 'Lucrătorul n-a primit alegerea. Încearcă din nou.',
     'adminWorkerLocal.versions.title': 'Versiuni',
     'adminWorkerLocal.versions.worker': 'Lucrătorul: {version}.',

@@ -21,6 +21,8 @@ from hcm_pipeline.archive.safepath import UnsafePathError, inside, relative_path
 ARCHIVE_PREFIX: Final = "ar-"
 ID_HEX_CHARS: Final = 16
 RECORD: Final = "archive.json"
+# M20 (live report of 2026-11-13): a record made of copied sheets, not of this computer's own scan.
+PARTIAL: Final = "partial"
 FILES: Final = "x"
 MAX_FILE_BYTES: Final = zipread.MAX_ENTRY_BYTES
 WORLD_SUFFIXES: Final = (".tfw", ".tifw", ".jgw", ".pgw", ".wld", ".prj", ".aux.xml")
@@ -126,6 +128,44 @@ class ArchiveStore:
         }
         (self.folder(archive_id) / RECORD).write_text(json.dumps(record), encoding="utf-8")
 
+    def holds(self, archive_id: str) -> bool:
+        """True when this computer holds the whole archive: its own scan's record, not a copy of a few sheets (`PARTIAL`)."""
+        try:
+            return self.record(archive_id).get(PARTIAL) is not True
+        except ValueError:
+            return False
+
+    def has_series(self, archive_id: str, series_id: str) -> bool:
+        """True when this computer's record of the archive (its scan's, or a copy's) names the series."""
+        try:
+            series = self.record(archive_id).get("series")
+        except ValueError:
+            return False
+        return isinstance(series, dict) and series_id in series
+
+    def held(self) -> list[str]:
+        """The archives this computer holds whole, newest first: what its `worker.claim` names (M20 §4.1, live report of 2026-11-13)."""
+        found = [folder for folder in self.root.iterdir() if self.holds(folder.name)] if self.root.is_dir() else []
+        return [folder.name for folder in sorted(found, key=lambda folder: (folder / RECORD).stat().st_mtime, reverse=True)]
+
+    def merge_copy(self, archive_id: str, files: list[dict[str, object]], series: dict[str, object]) -> None:
+        """A copy's sheets recorded beside the ones already copied here (`PARTIAL`: never named as held whole)."""
+        try:
+            before = self.record(archive_id)
+        except IntakeError:
+            before = {}
+        kept = {str(row.get("path")): row for row in _rows(before)}
+        kept.update({str(row.get("path")): row for row in files})
+        known = before.get("series")
+        record = {
+            "archiveId": archive_id,
+            PARTIAL: True,
+            "files": list(kept.values()),
+            "series": {**(known if isinstance(known, dict) else {}), **series},
+        }
+        self.folder(archive_id).mkdir(parents=True, exist_ok=True)
+        (self.folder(archive_id) / RECORD).write_text(json.dumps(record), encoding="utf-8")
+
     def record(self, archive_id: str) -> dict[str, object]:
         """`archive.json`, or `IntakeError` when this computer has none for the archive."""
         path = self.folder(archive_id) / RECORD
@@ -133,6 +173,11 @@ class ArchiveStore:
             raise IntakeError(f"no record of {archive_id} on this computer")
         loaded = json.loads(path.read_text(encoding="utf-8"))
         return loaded if isinstance(loaded, dict) else {}
+
+
+def _rows(record: dict[str, object]) -> list[dict[str, object]]:
+    files = record.get("files")
+    return [row for row in files if isinstance(row, dict)] if isinstance(files, list) else []
 
 
 def _regular_files(root: Path) -> Iterator[Path]:

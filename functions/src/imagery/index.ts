@@ -27,6 +27,7 @@ import { runOnFunction } from './run-on.js';
 import { saveGcpsFunction } from './save-gcps.js';
 import { saveLayoutFunction } from './save-layout.js';
 import { acceptLayoutFunction } from './accept-layout.js';
+import { markSceneFunction } from './mark-scene.js';
 import { searchFunction } from './search.js';
 import { chooseFunction, studioDoneFunction } from './studio.js';
 import { tickFunction, type TickDeps } from './tick.js';
@@ -38,6 +39,7 @@ export function imageryFunctions(getDeps: () => ImageryFamilyDeps, bucket?: stri
     return {
         search: searchFunction(getDeps),
         browse: browseFunction(getDeps),
+        markScene: markSceneFunction(getDeps),
         import: importFunction(getDeps),
         approve: approveFunction(getDeps),
         reject: rejectFunction(getDeps),

@@ -85,6 +85,7 @@ describe('the function registry', () => {
             'worker.urls',
             'worker.end',
             'worker.archiveReport',
+            'worker.archiveCopy',
         ]);
     });
 

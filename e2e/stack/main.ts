@@ -205,8 +205,10 @@ async function serve(): Promise<void> {
         child('mock-apis', process.execPath, ['--import', './scripts/site/register-ts.mjs', 'e2e/mock-apis/main.ts', 'mock']),
     );
     const only = ['--project', E2E_PROJECT_ID, '--only', ADMIN_EMULATORS.join(',')];
+    // firebase-tools' CLI with the Functions workers capped (e2e/support/emulator-pool.ts), as the e2e tier runs it.
+    const FIREBASE = ['--import', './scripts/site/register-ts.mjs', 'e2e/stack/firebase.ts'];
     running.children.push(
-        child('emulators', 'node_modules/.bin/firebase', ['emulators:start', ...only], { ...process.env, ...EMULATOR_ENV }),
+        child('emulators', process.execPath, [...FIREBASE, 'emulators:start', ...only], { ...process.env, ...EMULATOR_ENV }),
     );
     const stop = stopped(running.children);
     try {

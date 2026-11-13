@@ -11,6 +11,7 @@
  */
 import { CLIENT_WRITES, STORAGE_PATHS, publicObjectUrl, type ClientCollection } from '@hcm/shared';
 
+import { archiveJobFields } from './archive-fields.js';
 import { derivative, reviewedFields, versionEdits, versionFields } from './photo-fields.js';
 import { STORY_EDITS } from './stories.js';
 import { later, past, serverTime, stampedBy, systemStamp, type Data } from './world.js';
@@ -309,8 +310,7 @@ export function jobDoc(creator: string, status = 'running'): Data {
         // Review of M18 item 3: an editor placing points on the parked frame (the georeferencer's mark).
         placingPoints: true,
         // M20 (docs/research/M20-import-local.md §1.1, §1.3): an archive series' originals on the computer, and the day it counted.
-        localOnly: true,
-        countedAt: past(),
+        ...archiveJobFields(),
         ...systemStamp('pipeline'),
     };
 }
@@ -383,6 +383,9 @@ export function usgsSceneDoc(status = 'candidate'): Data {
         },
         rank: { score: 92, reasons: [{ code: 'free' }, { code: 'coverage', params: { percent: '92' } }], version: 1 },
         layerId: 'corona-1966',
+        // The owner's report of 2026-11-13 (M4 §1.9): Not useful and the browse image's clouds, written by the functions only.
+        unusable: { reason: 'clouds', at: past() },
+        cloudEstimate: { percent: 46, version: 1 },
         // M4 (docs/research/M4-interfaces.md §1): EarthExplorer's dataset id and the order, written by the functions only.
         eeDatasetId: '5e839febdccb64b3',
         order: {

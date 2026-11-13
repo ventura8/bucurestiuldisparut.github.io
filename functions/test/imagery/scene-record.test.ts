@@ -2,7 +2,7 @@
 import type { BoundsRecord, UsgsDataset } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
-import { sceneFields } from '../../src/imagery/scene-record.js';
+import { sceneFields, trueSensor } from '../../src/imagery/scene-record.js';
 import { sceneRecord } from '../support/imagery-fakes.js';
 
 const BOUNDS: BoundsRecord = { west: 25.9, south: 44.3, east: 26.3, north: 44.6 };
@@ -33,5 +33,17 @@ describe('the camera of a scene', () => {
         expect(sensorOf('corona2', 'DS1105-1071DF075', { 'Camera Type': 'KH-4A' })).toBe('KH-4A');
         expect(sensorOf('corona2', 'XYZ001')).toBe('KH-4A');
         expect(sensorOf('declassii', 'XYZ001')).toBe('KH-9-mapping');
+    });
+});
+
+describe('the camera of a stored scene', () => {
+    it('happyPath_aSceneHarvestedBeforeTheIdRulesIsReadByItsId @S-A12-HAPPY-STALE-CAMERA', () => {
+        expect(trueSensor({ dataset: 'corona2', entityId: 'DS09065A073MC043', sensor: 'KH-4A' })).toBe('KH-5');
+        expect(trueSensor({ dataset: 'corona2', entityId: 'DS1103-1058DF027', sensor: 'KH-4A' })).toBe('KH-4B');
+    });
+
+    it('badPath_aNamedCameraOrAnIdOfNoKnownFormIsKept @S-A12-BAD-STALE-CAMERA-KEPT', () => {
+        expect(trueSensor({ dataset: 'corona2', entityId: 'DS09065A073MC043', sensor: 'KH-4B' })).toBe('KH-4B');
+        expect(trueSensor({ dataset: 'corona2', entityId: 'XYZ001', sensor: 'KH-4A' })).toBe('KH-4A');
     });
 });

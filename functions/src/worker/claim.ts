@@ -20,6 +20,7 @@ import { defineCallable, type CallableDeps } from '../api/callable.js';
 import { omit } from '../api/objects.js';
 import { IMAGERY_WRITER } from '../imagery/records.js';
 import type { Ports } from '../ports/index.js';
+import { copyFor } from './archive-host.js';
 import { at, leaseOwnerOf, requireGreen, requireWorker, type WorkerCall } from './holder.js';
 import { holdBack, type HoldBack } from './household.js';
 import { imageState, paired } from './pairing.js';
@@ -39,6 +40,8 @@ const CLAIM_RULES: readonly ((job: JobDoc, now: Date) => boolean)[] = [
     (job) => job.waitReason !== 'parts',
     // M20 (docs/research/M20-import-local.md §1.3): an archive series waiting for a later day's share; imagery.tick releases it.
     (job) => job.waitReason !== 'daily',
+    // M20 (live report of 2026-11-13): a series waiting for its sheets' copy; the computer with the archive sends it first.
+    (job) => job.waitReason !== 'archive-copy',
     (job, now) => [job.dispatchAt, job.retryAt].every((time) => time === undefined || timestampToDate(time) <= now),
 ];
 
@@ -115,7 +118,8 @@ async function candidates(deps: ClaimDeps, cityId: string, now: Date, runs: Runs
  * `worker.claim` (`docs/research/M7-local-worker.md` §1.2, §2.4; S-A62-HAPPY-CLAIM): the oldest due queued job of the city
  * chosen for the owner's computer, taken in one transaction (`starting`, its attempt counted, the lease and `worker`
  * naming this worker, no Cloud Run machine or wait), or none, of the types the worker said its pipeline runs (an older image
- * leaves a newer type queued; 2026-11-09); either way the worker is seen now. Finding 67: a paired
+ * leaves a newer type queued; 2026-11-09); either way the worker is seen now. M20 (2026-11-13): a worker that holds an archive
+ * whole is first given a series another worker waits for (`copy`), to send its sheets (`archive-host.ts`). Finding 67: a paired
  * worker whose image is no longer the installed pipeline's takes nothing (`outdated`) until the owner runs the new command.
  * W5 (household computers, `household.ts`): the claim records the computer's share; a computer paused in the admin's list
  * takes nothing (`paused`), and one whose person is busy leaves the job to a calm computer of the city (`yielded`); Remove this
@@ -132,11 +136,17 @@ async function workerClaim(
         return reportRemoval(deps, call, request.removal);
     }
     await requireGreen(deps.documents);
-    return claimFor(deps, caller, { ...call, runs: request.types, ...(request.share === undefined ? {} : { share: request.share }) });
+    const claim: Claim = { ...call, runs: request.types, ...(request.share === undefined ? {} : { share: request.share }) };
+    return claimFor(deps, caller, claim, request.archives);
 }
 
 /** The claim of a worker in good standing: the removal's order, else a job, else why none. */
-async function claimFor(deps: ClaimDeps, caller: VerifiedCaller, claim: Claim): Promise<CallableResponse<'worker.claim'>> {
+async function claimFor(
+    deps: ClaimDeps,
+    caller: VerifiedCaller,
+    claim: Claim,
+    archives: readonly string[] | undefined,
+): Promise<CallableResponse<'worker.claim'>> {
     const now = deps.clock.now();
     const worker = await requireWorker(deps.documents, claim);
     const path = FIRESTORE_PATHS.worker(claim.cityId, claim.workerId);
@@ -146,13 +156,39 @@ async function claimFor(deps: ClaimDeps, caller: VerifiedCaller, claim: Claim): 
         return order;
     }
     const { outdated, held } = await whyNot(deps, caller, { claim, worker: seen(worker, claim, now), now });
-    const jobId = outdated || held !== null ? null : await takeFirst(deps, claim, now);
+    if (outdated || held !== null) {
+        await deps.documents.set(path, workerDocSchema, { ...seen(worker, claim, now), outdated });
+        return noJob(deps, claim, outdated, held);
+    }
+    const seenNow = { ...seen(worker, claim, now), outdated: false };
+    return (await offerCopy(deps, claim, archives, seenNow)) ?? (await claimJob(deps, claim, seenNow, now));
+}
+
+/** M20: a series another worker waits for, when this worker holds its archive whole; the worker is seen now. */
+async function offerCopy(
+    deps: ClaimDeps,
+    call: WorkerCall,
+    archives: readonly string[] | undefined,
+    seenNow: WorkerDoc,
+): Promise<CallableResponse<'worker.claim'> | undefined> {
+    const copy = await copyFor(deps, call.cityId, archives);
+    if (copy === undefined) {
+        return undefined;
+    }
+    deps.log.info('worker asked to copy an archive series', { cityId: call.cityId, workerId: call.workerId, ...copy });
+    await deps.documents.set(FIRESTORE_PATHS.worker(call.cityId, call.workerId), workerDocSchema, seenNow);
+    return { job: null, copy };
+}
+
+/** The first claimable job taken, or none; the worker is seen now either way. */
+async function claimJob(deps: ClaimDeps, call: Claim, seenNow: WorkerDoc, now: Date): Promise<CallableResponse<'worker.claim'>> {
+    const jobId = await takeFirst(deps, call, now);
     if (jobId !== null) {
         deps.log.info('worker claimed a job', { cityId: claim.cityId, workerId: claim.workerId, jobId });
         return { job: { jobId } };
     }
-    await deps.documents.set(path, workerDocSchema, { ...seen(worker, claim, now), outdated });
-    return noJob(deps, claim, outdated, held);
+    await deps.documents.set(FIRESTORE_PATHS.worker(call.cityId, call.workerId), workerDocSchema, seenNow);
+    return { job: null };
 }
 
 /** Why the worker takes no job now: its image is outdated, or it is held back (paused, yielded); neither when it may. */

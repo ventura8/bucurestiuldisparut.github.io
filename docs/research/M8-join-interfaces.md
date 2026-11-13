@@ -278,7 +278,7 @@ At F039's 51.6 m the join waits for Approve, which is correct.
 | `approve.ts`, `regeoref.ts`, `save-gcps.ts`, `layers/delete.ts` | Call `refuseHeldPart`. |
 | `end.ts`, `versions.ts`, `worker/step-update.ts` | Handle `joined`. |
 | `worker/allow-list.ts` | `baseVersionOf` becomes plural `inputVersionsOf(job)`. Parts map to the read-only `base` target. `inputsOf` adds `RASTER_PATHS.version(city, part.layerId, part.versionId, 'scan.tif')` from params. `WORKER_VERSION_FIELDS` gains `join`. |
-| `imagery/join-plan.ts` | Rewrites the plan doc after a harvest and when a part reaches `awaiting_approval`. |
+| `imagery/join-plan.ts` | Rewrites the plan doc after a harvest and when a part reaches `awaiting_approval`. One rewrite per city at a time in an instance; calls that come meanwhile share one more rewrite that starts after them (2026-11-13: three at once ran `imagery-onJobWrite` out of its 256 MiB; `docs/LESSONS.md` 659). |
 | `harvest-target.ts`, `harvest.ts` | Warn when a dataset hits `MAX_SCENES_PER_DATASET`. For such a dataset only, run one windowed search per target year, so a targeted date cannot be lost to the cap. |
 | `rankOf`, `shownYears` | Pass `pendingDates`. |
 | `firebase/firestore.rules` | `match /imageryPlans/{id} { allow read: if isCityMember(city); }`, plus rules tests. |

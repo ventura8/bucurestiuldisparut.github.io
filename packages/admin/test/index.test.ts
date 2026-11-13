@@ -234,7 +234,12 @@ describe('the entry', () => {
         const w = fakeWindow();
         const deps = browserDeps(browserParts(w.win, E2E, testLog().log))(CONFIG, { release: 'e2e' }, null);
 
-        const telemetry = deps.telemetry({ locale: () => 'en', windowClass: () => 'large', serverAnswers: () => true });
+        const telemetry = deps.telemetry({
+            locale: () => 'en',
+            windowClass: () => 'large',
+            serverAnswers: () => true,
+            role: () => 'owner',
+        });
         w.target.dispatchEvent(Object.assign(new Event('error'), { error: new Error('boom') }));
         telemetry.setConsent('granted');
         telemetry.setConsent('denied');
@@ -287,7 +292,12 @@ describe('the entry: sign-in, telemetry and start', () => {
 
         await expect(deps.google.request(null, {})).rejects.toMatchObject({ failure: 'failed' });
         expect(w.win.open).not.toHaveBeenCalled();
-        const telemetry = deps.telemetry({ locale: () => 'ro', windowClass: () => 'compact', serverAnswers: () => false });
+        const telemetry = deps.telemetry({
+            locale: () => 'ro',
+            windowClass: () => 'compact',
+            serverAnswers: () => false,
+            role: () => null,
+        });
         telemetry.reportError(new Error('before the server'), { fatal: false, source: 'window' });
         expect(w.fetcher.calls.filter((call) => call.method === 'POST')).toEqual([]);
     });
@@ -306,12 +316,13 @@ describe('the entry: sign-in, telemetry and start', () => {
             locale: () => 'ro',
             windowClass: () => 'compact',
             serverAnswers: () => true,
+            role: () => null,
         });
         telemetry.reportError(new Error('without GA4'), { fatal: false, source: 'window' });
 
         expect(telemetry.available).toBe(false);
-        expect(analyticsFor(undefined, {} as never, parts, '1.2.0')).toBeNull();
-        const ga4 = analyticsFor('G-E2E0000000', {} as never, parts, '1.2.0');
+        expect(analyticsFor(undefined, {} as never, parts, { release: '1.2.0' })).toBeNull();
+        const ga4 = analyticsFor('G-E2E0000000', {} as never, parts, { release: '1.2.0' });
         expect(ga4).not.toBeNull();
         // Without consent a field measurement goes nowhere (its context is still the window's class and the release).
         ga4?.field('admin_ready', { duration_ms: 1, restored: true });

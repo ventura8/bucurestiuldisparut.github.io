@@ -55,17 +55,20 @@ export interface Frame {
     readonly sensor?: Sensor;
     readonly dataset?: string;
     readonly corners?: Readonly<Record<'nw' | 'ne' | 'se' | 'sw', { readonly lat: number; readonly lng: number }>>;
+    /** The share of the city its browse image shows clouded, as `imagery.browse` measured it (the owner's report of 2026-11-13). */
+    readonly cloudPercent?: number;
 }
 
 /** The frame's `usgsScenes` document, as the harvest writes it. */
 export async function seedFrame(imagery: ImageryWorld, frame: Frame): Promise<void> {
-    const { entityId, bounds, date = DATE, free = true, sensor = SENSOR, dataset = 'declassiii', corners } = frame;
+    const { entityId, bounds, date = DATE, free = true, sensor = SENSOR, dataset = 'declassiii', corners, cloudPercent } = frame;
     const document = {
         entityId,
         displayId: entityId,
         dataset,
         sensor,
         ...(corners === undefined ? {} : { corners }),
+        ...(cloudPercent === undefined ? {} : { cloudEstimate: { percent: cloudPercent, version: 1 } }),
         acquisitionDate: date,
         status: 'candidate',
         downloadAvailable: free,

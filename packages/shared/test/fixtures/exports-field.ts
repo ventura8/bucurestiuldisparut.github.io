@@ -1,9 +1,11 @@
 /** The field measurements' part of the public API (DECISIONS-for-review.md §76), listed apart as the M6 parts are. */
 export const FIELD_EXPORTS: readonly string[] = [
     'ADMIN_EVENT_PARAMS',
+    'APP_SURFACES',
     'COMMON_EVENT_PARAMS',
     'FIELD_EVENT_BUDGET',
     'GA_LIMITS',
+    'SURFACE_PARAMS',
     'MAP_ERROR_KINDS',
     'VIEWER_EVENT_PARAMS',
     'VIEWER_PHASES',

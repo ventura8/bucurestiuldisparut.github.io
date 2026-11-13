@@ -865,7 +865,9 @@ service cloud.firestore {
             // USGS scenes are harvested server-side; admins triage them (candidate, rejected) and annotate
             // them, whatever state the harvest left them in. M4 (docs/research/M4-interfaces.md §1.8): an
             // order is usgs.markOrdered's, which asks USGS first, so no client writes `ordered` or `available`,
-            // and `order` and `eeDatasetId` are server-owned like every field outside the list below.
+            // and `order` and `eeDatasetId` are server-owned like every field outside the list below. The owner's
+            // "not useful" (`unusable`, imagery.markScene, which writes the plan again) and the browse image's
+            // `cloudEstimate` are server-owned too (2026-11-13).
             match /usgsScenes/{scene} {
                 allow read: if isCityMember(city);
                 allow update: if isCityMember(city)

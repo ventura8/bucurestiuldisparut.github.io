@@ -9,7 +9,7 @@ import { roundTo } from '../geo/math.js';
 import { DATE_PLAN_MAX_ROWS, type DatePlanRow } from '../schemas/imagery-plan.js';
 import { JOIN_MAX_PARTS } from '../schemas/imagery-settings.js';
 import type { LayerVersionState } from '../schemas/imagery.js';
-import type { Sensor, UsgsSceneDoc } from '../schemas/usgs-scene.js';
+import { CLOUDY_CITY_PERCENT, type Sensor, type UsgsSceneDoc } from '../schemas/usgs-scene.js';
 import { coverageRing, type FootprintVertex } from './coverage.js';
 
 /** What the plan reads of a frame: its scene, and its version once it was imported. */
@@ -29,6 +29,8 @@ export interface DatePlanFrame {
     readonly renderedBounds?: BoundsRecord;
     /** M9: the frame's edge over the city, measured (`calibration.outline`, else the render's `output.outline`), so it comes first. */
     readonly measuredOutline?: readonly FootprintVertex[];
+    /** The share of the city its browse image shows clouded (`cloudEstimate.percent`), when measured. */
+    readonly cloudPercent?: number;
 }
 
 /** A frame with the grid cells it covers. */
@@ -193,15 +195,26 @@ interface Picked {
     readonly spare: string[];
 }
 
+/** The chosen and paid frames probably cloudy over the city: the row warns before anyone imports or buys them. */
+function cloudyOf(candidates: readonly Candidate[]): NonNullable<DatePlanRow['cloudyFrames']> {
+    return candidates.flatMap(({ frame }) =>
+        frame.cloudPercent !== undefined && frame.cloudPercent >= CLOUDY_CITY_PERCENT
+            ? [{ entityId: frame.entityId, percent: frame.cloudPercent }]
+            : [],
+    );
+}
+
 /** The row of what was picked. */
 function rowOf({ chosen, paid, spare }: Picked, total: number, first: DatePlanFrame): DatePlanRow {
     const frames = chosen.map((candidate) => candidate.frame);
+    const cloudy = cloudyOf([...chosen, ...paid]);
     return {
         date: first.date,
         sensor: first.sensor,
         frames: frames.map(rowFrame),
         paidFrames: paid.map((candidate) => candidate.frame.entityId),
         ...(spare.length === 0 ? {} : { spareFrames: spare }),
+        ...(cloudy.length === 0 ? {} : { cloudyFrames: cloudy }),
         coveragePct: roundTo((unionOf(chosen).size / total) * 100, 1),
         framesToDownload: frames.filter((frame) => frame.versionId === undefined).length,
         winter: WINTER_MONTHS.has(first.date.slice(5, 7)),

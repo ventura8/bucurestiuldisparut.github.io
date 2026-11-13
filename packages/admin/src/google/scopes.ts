@@ -14,6 +14,8 @@ export const GOOGLE_SCOPES = {
     cloudPlatform: 'https://www.googleapis.com/auth/cloud-platform',
     /** Step (g): the GA4 web stream's enhanced-measurement settings (Analytics Admin API, CR-M2-37). */
     analyticsEdit: 'https://www.googleapis.com/auth/analytics.edit',
+    /** §203: the Statistics view's numbers (GA4 Data API and the Admin API's account summaries), read only. */
+    analyticsRead: 'https://www.googleapis.com/auth/analytics.readonly',
 } as const;
 
 export type GoogleScope = keyof typeof GOOGLE_SCOPES;
@@ -24,6 +26,7 @@ const SATISFIED_BY: Readonly<Record<GoogleScope, readonly GoogleScope[]>> = {
     cloudBilling: ['cloudBilling', 'cloudPlatform'],
     cloudPlatform: ['cloudPlatform'],
     analyticsEdit: ['analyticsEdit'],
+    analyticsRead: ['analyticsRead'],
 };
 
 /**

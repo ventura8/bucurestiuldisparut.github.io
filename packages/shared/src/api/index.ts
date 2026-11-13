@@ -151,6 +151,8 @@ export {
 } from './content.js';
 export type { BuildManifestTask, RebuildManifestRequest, RebuildManifestResponse } from './content.js';
 export {
+    BROWSE_FETCH_MAX_BYTES,
+    BROWSE_LONG_EDGE,
     BROWSE_MAX_BYTES,
     BROWSE_PREFETCH,
     CLOUD_RUN_JOBS,
@@ -355,7 +357,10 @@ export type {
 } from './registry.js';
 // M7: the local worker's callables, and the whole table (the functions' and the tests'; the admin reads ADMIN_CALLABLES).
 export {
+    ARCHIVE_COPY_MAX_BYTES,
     WORKER_CALLABLES,
+    workerArchiveCopyRequestSchema,
+    workerArchiveCopyResponseSchema,
     workerClaimRequestSchema,
     workerClaimResponseSchema,
     workerEndRequestSchema,

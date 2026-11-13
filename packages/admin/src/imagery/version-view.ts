@@ -291,6 +291,12 @@ function jobNotice(error: NonNullable<JobDoc['error']>): NoticeInput {
 }
 
 /**
+ * The owner's rule of 2026-11-13: a failure whose sentence already says the cause and the fix shows no technical line under it (an
+ * archive series' "no record of ar-… on this computer" named an id); the detail stays in the job's record and its log.
+ */
+const PLAIN_ONLY: ReadonlySet<string> = new Set(['apiError.imagery.archiveMissing']);
+
+/**
  * The job's error: its notice, and its technical detail unless that is only the code again (finding 60 of 2026-11-02: a
  * failure the server wrote with the code as its message, `apiError.imagery.outOfMemory`, showed the raw code under the
  * translated sentence; the code stays in the job's record, which the Jobs page shows).
@@ -299,7 +305,7 @@ function jobErrorOf(error: JobDoc['error']): JobView['error'] {
     if (error === undefined) {
         return null;
     }
-    const detail = error.message === error.code || isApiErrorCode(error.message) ? '' : error.message;
+    const detail = error.message === error.code || isApiErrorCode(error.message) || PLAIN_ONLY.has(error.code) ? '' : error.message;
     return { notice: jobNotice(error), message: detail };
 }
 

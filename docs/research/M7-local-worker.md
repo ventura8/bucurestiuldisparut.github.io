@@ -773,7 +773,7 @@ The export's memory follows the threads as well as the cache, and four tile thre
 
 - **Limits** (`packages/admin/starter/hcm-worker.sh`, `hcm-worker.bat`): the worker's container runs with `--memory` and `--memory-swap` at 60 % of the memory Docker has (`docker info`'s `MemTotal`; on Docker Desktop, of its virtual machine) and `--cpu-shares 256`. An out-of-memory run now ends the job, not the desktop. `HCM_WORKER_MEMORY` (a Docker size, or `none`) and `HCM_WORKER_THREADS` in the service's environment override. The one-line command behind **Advanced** is unchanged: it has no limit of its own.
 - **Priority and threads** (`worker/command.py`): the process is niced by 10 (`HCM_WORKER_NICE`; 0: not at all) and GDAL takes the cores but one unless `GDAL_NUM_THREADS` is set. Cloud Run's jobs are not niced and keep every core.
-- **Claims** (`worker/pace.py`, `worker.hello`'s `idlePollSeconds`): awake, a claim every `pollSeconds` (30 s): for ten minutes after the worker's start, a job it ran, or the admin's page looking at it (`GET /state` from a Hosting origin). Then each idle pass waits up to `WORKER_IDLE_POLL_SECONDS` (60 s), a tenth more or less: a new job starts within about a minute, and a month idle is about 43,200 claims, not 86,400. A first version went to 300 s with the presence window at 570 s; the owner refused the five-minute wait (2026-11-13). A listener was not possible: the worker reaches the project only through its callables (no Firestore SDK, no rule lets it read jobs), and a long-poll callable would hold a function instance through every idle minute, more GiB-seconds than the claims it saves. `WORKER_FRESH_SECONDS` stays 180 s. A server older than this image names no `idlePollSeconds` and is asked every 30 s as before.
+- **Claims** (`worker/pace.py`, `worker.hello`'s `idlePollSeconds`): awake, a claim every `pollSeconds` (30 s): for ten minutes after the worker's start, a job it ran, or the admin's page looking at it (`GET /state` from a Hosting origin). Then each idle pass waits up to `WORKER_IDLE_POLL_SECONDS` (60 s), a tenth more or less: a new job starts within about a minute, and a month idle is about 43,200 claims, not 86,400. A first version went to 300 s with the presence window at 570 s; the owner refused the five-minute wait (2026-11-13). A listener was not possible: the worker reaches the project only through its callables (no Firestore SDK, no rule lets it read jobs), and a long-poll callable would hold a function instance through every idle minute, more GiB-seconds than the claims it saves. `WORKER_FRESH_SECONDS` stays 180 s. A server older than this image names no `idlePollSeconds` and is asked every 30 s as before. **Several workers in one city** (2026-11-13): every wait is stretched by 1 + 3 × (1 − the governor's headroom), so a hot, busy or paused computer asks up to four times later and a cooler or idler one takes the queued job (`docs/research/M26-governor.md` §4, *Headroom and the claim*).
 - A starter already installed keeps running without the limits until the owner downloads it again; the priority, the threads and the claims come with the image.
 
 ### The minimum machine (2026-11-12)
@@ -849,6 +849,16 @@ The file still holds no secret, and the update never runs a downloaded file befo
 
 Scenarios `S-A142-HAPPY-VERSIONS`, `S-A142-BAD-OLD-STARTER`, `S-A142-HAPPY-SELF-UPDATE`, `S-A142-BAD-SELF-UPDATE`.
 
+## Addendum of 2026-11-13: several workers and a local archive (M20 §20)
+
+Every worker claims every job type again; an archive series' sheets, which exist on the computer that imported them, reach another
+worker as a copy through the private bucket (`tmp/archive-copies/{city}/{job}/`, deleted after a day). Two contract changes:
+`worker.claim` takes `archives` (the archives this computer holds whole) and may answer `copy` (a series to send before any job), and
+`worker.end` takes `outcome: 'returned'` (no sheets and no copy: the job goes back queued, its attempt given back, waiting
+`archive-copy`). The new callable `worker.archiveCopy` signs the copy's files for the holder and marks the copy done. A job waiting
+`archive-copy` is claimed by nobody until its copy is done. `RoutedObjectStore` reads `tmp/archive-copies/` through `worker.urls`,
+whose allow-list adds the job's own copy folder (`isOwnArchiveCopy`).
+
 ## Addendum of 2026-11-13: household computers (W5)
 
 The owner (beta.1, W5 of `reports/OPEN-ISSUES-beta1.md`): "Make it easy for users to use not only their own computer but also the
@@ -856,7 +866,7 @@ other computers in their household, with minimum input from them. What we did he
 What was done by hand that day, and what replaces it: on the NUC (Linux, no screen) the starter copied over SSH, `loginctl
 enable-linger` typed, and the pairing made by stopping the laptop's worker and tunnelling the NUC's `127.0.0.1:8765` to the laptop,
 so the admin's auto-pair could reach it; on the Windows PC the same inside WSL, plus a Startup-folder VBS that keeps WSL alive.
-`DECISIONS-for-review.md` §207. Scenarios `S-A143-*` (behaviour A143).
+`DECISIONS-for-review.md` §216. Scenarios `S-A143-*` (behaviour A143).
 
 **The list of the city's computers** (`<hcm-worker-household>`, the lazy `worker-household` chunk, `packages/admin/src/worker/household.ts`):
 every `cities/{city}/workers/*` document, live, with the owner's name (`name`, `worker.manage` `rename`) else the computer's own

@@ -12,7 +12,7 @@ import {
     visibleScenes,
     type SceneItem,
 } from '../../src/imagery/model.js';
-import { jobDoc, sceneDoc, versionDoc } from './world.js';
+import { at, jobDoc, sceneDoc, versionDoc } from './world.js';
 
 function stored<T>(id: string, data: T): Stored<T> {
     return { id, path: `x/${id}`, data, version: '2026-10-20T09:00:00.000Z', pending: false };
@@ -59,6 +59,17 @@ describe('a scene as the list shows it', () => {
             'apiError.imagery.browseUnavailable',
         ]);
         expect(orNull(undefined)).toBeNull();
+        expect([item.unusable, item.cloudCity]).toEqual([null, null]);
+    });
+
+    it('happyPath_theOwnersMarkAndTheCloudsOverTheCity', () => {
+        const item = scene('DS3', {
+            status: 'rejected',
+            unusable: { reason: 'clouds', at: at('2026-11-13T12:00:00Z') },
+            cloudEstimate: { percent: 46, version: 1 },
+        });
+
+        expect([item.status, item.unusable, item.cloudCity]).toEqual(['rejected', 'clouds', 46]);
     });
 });
 

@@ -11,6 +11,8 @@ import { AuthController } from '../auth/controller.js';
 import { GoogleAccessStore } from '../auth/google-access.js';
 import type { GoogleAuthPort } from '../auth/google-auth.js';
 import { GoogleAccessService } from '../auth/google-service.js';
+import type { StatisticsSource } from '../crashes/statistics.js';
+import { statisticsSourceOf } from './statistics-wiring.js';
 import { checkOwnership, enableService } from '../auth/ownership.js';
 import type { ContentStores } from '../content/areas.js';
 import { ContentRegistry, type ContentDeps } from '../content/registry.js';
@@ -381,7 +383,7 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
     };
     const firebase: FirebasePorts = { ...deps.firebase, callables: guardCallables(deps.firebase.callables, denied) };
     const track = telemetry.track.bind(telemetry);
-    const content = contentRegistry(deps, { shell, callables: firebase.callables, denied, measure: measureOf(telemetry) });
+    const content = contentRegistry(deps, { shell, callables: firebase.callables, denied, measure: measureOf(telemetry), google });
     const { open: openCity, opening } = cityOpener(deps);
     // Once another city opens (its address set, the page reloading), an edit the admin chose to discard holds nothing back.
     const unsaved = (): boolean => !opening() && content.hasUnsavedChanges();
@@ -436,6 +438,8 @@ function contentRegistry<Setup>(
         readonly denied: () => void;
         /** §76: the editors' writes and the jobs' ends are measured (`field.ts`). */
         readonly measure: Measure;
+        /** §203: the shell's Google consent, for the Statistics view's numbers. */
+        readonly google: GoogleAccessService;
     },
 ): ContentRegistry {
     const content = deps.content;
@@ -444,12 +448,18 @@ function contentRegistry<Setup>(
             throw new Error('no content services');
         });
     }
-    const { measure, ...shellParts } = parts;
+    const { measure, google, ...shellParts } = parts;
+    const statistics = (cityId: () => string): StatisticsSource =>
+        statisticsSourceOf({
+            ...{ google, callables: parts.callables, cityId, measure },
+            ...{ fetch: deps.fetch, clock: deps.clock, log: deps.log },
+        });
     const store = measuredStore(content.store, { measure, now: () => globalThis.performance.now(), epoch: () => deps.clock.now() });
     const callables = measuredCallables(shellParts.callables, measure, () => globalThis.performance.now());
     const services = contentServices({
         ...shellParts,
         callables,
+        statistics,
         content: { ...content, store },
         ...{ cities: deps.project.cities, firstCity: deps.project.firstCity },
         ...{ clock: deps.clock, local: deps.local, log: deps.log },

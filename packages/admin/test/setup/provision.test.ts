@@ -243,6 +243,7 @@ describe('provision: an update applies the items that changed (finding 65 of 202
         const { harness, ctx, flow } = prepared();
         harness.cloud.provision.mockImplementation(
             reporting([
+                { id: 'apis', state: 'ok' },
                 { id: 'iam', state: 'ok' },
                 { id: 'artifact-registry', state: 'ok' },
                 { id: 'bucket-lifecycle', state: 'ok' },
@@ -256,12 +257,19 @@ describe('provision: an update applies the items that changed (finding 65 of 202
 
         await flow.update(access(Date.now(), 'cloudPlatform'));
 
-        // Set version 2 (M7) changed artifact-registry and bucket-lifecycle; 3 (finding 74) iam's run.viewer for fn-admin@.
-        expect(harness.cloud.provision.mock.calls[0]?.[1]).toEqual<ProvisionItem[]>(['iam', 'artifact-registry', 'bucket-lifecycle']);
+        // Set version 2 (M7) changed artifact-registry and bucket-lifecycle; 3 (finding 74) iam's run.viewer for fn-admin@;
+        // 4 (§203) the apis item's GA4 Data API.
+        expect(harness.cloud.provision.mock.calls[0]?.[1]).toEqual<ProvisionItem[]>([
+            'apis',
+            'iam',
+            'artifact-registry',
+            'bucket-lifecycle',
+        ]);
         expect(harness.google.requests).toEqual([]);
         expect(harness.backend.recordCloud).toHaveBeenCalledWith({
             provision: {
                 items: [
+                    { id: 'apis', state: 'ok' },
                     { id: 'iam', state: 'ok' },
                     { id: 'artifact-registry', state: 'ok' },
                     { id: 'bucket-lifecycle', state: 'ok' },
@@ -278,6 +286,7 @@ describe('provision: an update applies the items that changed (finding 65 of 202
         const { harness, ctx, flow } = prepared();
         harness.cloud.provision.mockImplementation(
             reporting([
+                { id: 'apis', state: 'ok' },
                 { id: 'iam', state: 'ok' },
                 { id: 'artifact-registry', state: 'ok' },
                 { id: 'bucket-lifecycle', state: 'ok' },
@@ -317,14 +326,24 @@ describe('provision: an update applies the items that changed (finding 65 of 202
         expect(ctx.state().steps.provision.busy).toBe(false);
     });
 
-    it('happyPath_aProjectAtM7sVersionRunsOnlyTheIamItem', async () => {
+    it('happyPath_aProjectAtM7sVersionRunsOnlyTheApisAndIamItems', async () => {
         const { harness, flow } = prepared(2);
         harness.cloud.provision.mockImplementation(reporting([{ id: 'iam', state: 'ok' }]));
         harness.backend.recordCloud.mockResolvedValue({ status: statusView() });
 
         await flow.update(access(Date.now(), 'cloudPlatform'));
 
-        expect(harness.cloud.provision.mock.calls[0]?.[1]).toEqual<ProvisionItem[]>(['iam']);
+        expect(harness.cloud.provision.mock.calls[0]?.[1]).toEqual<ProvisionItem[]>(['apis', 'iam']);
+    });
+
+    it('happyPath_aProjectAtVersion3RunsOnlyTheApisItem', async () => {
+        const { harness, flow } = prepared(3);
+        harness.cloud.provision.mockImplementation(reporting([{ id: 'apis', state: 'ok' }]));
+        harness.backend.recordCloud.mockResolvedValue({ status: statusView() });
+
+        await flow.update(access(Date.now(), 'cloudPlatform'));
+
+        expect(harness.cloud.provision.mock.calls[0]?.[1]).toEqual<ProvisionItem[]>(['apis']);
     });
 
     it.each([

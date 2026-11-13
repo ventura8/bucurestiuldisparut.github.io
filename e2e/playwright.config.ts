@@ -80,7 +80,9 @@ const HOSTING_SERVER: WebServer = {
 
 /** The emulators, only for a run that opens the admin (its tier, or the tour's admin journeys). */
 function adminServers(): WebServer[] {
-    const emulators = `npx firebase emulators:start --project ${E2E_PROJECT_ID} --only ${ADMIN_EMULATORS.join(',')}`;
+    // `e2e/stack/firebase.ts`: firebase-tools' own CLI, its Functions workers capped (e2e/support/emulator-pool.ts).
+    const firebase = 'node --import ./scripts/site/register-ts.mjs e2e/stack/firebase.ts';
+    const emulators = `${firebase} emulators:start --project ${E2E_PROJECT_ID} --only ${ADMIN_EMULATORS.join(',')}`;
     return [
         {
             command: emulators,
