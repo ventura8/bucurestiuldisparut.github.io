@@ -6,7 +6,7 @@
  * comes from data: the project, region and release are the admin's own, the origin and base path its own address.
  * `build-spec.test.ts` pins each definition against golden JSON.
  */
-import { INSTALLER_ACCOUNT, PIPELINE_REPOSITORY, type InstallTarget } from '@hcm/shared';
+import { INSTALLER_ACCOUNT, PIPELINE_REPOSITORY, adminSiteId, siteOrigins, type InstallTarget } from '@hcm/shared';
 
 import type { JsonObject } from '../google/json.js';
 import { FETCH_BUNDLE_SCRIPT } from './fetch-script.js';
@@ -129,6 +129,8 @@ function fetchStep(target: InstallTarget, params: BuildParams): JsonObject {
             'HCM_RELEASE_TIME=${_RELEASE_TIME}',
             `HCM_FILES=${fetched(target, params)}`,
             `HCM_OUT=/workspace/${TARGET_DIRS[target]}`,
+            // §210: the one redirect the download may follow, to the project's admin site (lesson 671).
+            `HCM_REDIRECT_ORIGIN=${siteOrigins(adminSiteId(params.projectId))[0]}`,
             ...siteEnv(target, params),
             ...serverEnv(target, params),
         ],

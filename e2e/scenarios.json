@@ -20187,6 +20187,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "DECISIONS-for-review.md §210 (the owner's decision of 2026-11-13). Test: functions/test/ops/admin-token.test.ts."
+        },
+        {
+            "id": "S-A160-HAPPY-OLD-ADDRESS-INSTALL",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "happy",
+            "title": "A build submitted from the old address reads its files from the admin's own site",
+            "asserts": "the bundle URL on the public map's /admin/ answers 301 to the project's admin site -> fetch follows that one redirect and unpacks the checked files; a redirect anywhere else stops the step naming where it went",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "DECISIONS-for-review.md §210; lesson 671. Unit: packages/admin/test/install/fetch-script.test.ts."
+        },
+        {
+            "id": "S-A160-BAD-STALE-OLD-ADDRESS-TAB",
+            "behaviour": "A160",
+            "area": "admin",
+            "path": "bad",
+            "title": "An admin tab left on the old address names the new one instead of installing",
+            "asserts": "Update the map in a tab still on <project>.web.app/admin/ after the move -> no build is submitted; the card says a newer admin (https://<project>-admin.web.app/admin/) is out and to reload, which lands there",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "DECISIONS-for-review.md §210; lesson 671. Unit: packages/admin/test/install/cloud-build-installer.test.ts."
         }
     ]
 }

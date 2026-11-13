@@ -1,11 +1,9 @@
-import { googleFailureOf } from './failure.js';
 import { at, strings } from './json.js';
 import type { GoogleTransport } from './transport.js';
 
 /**
  * Firebase Hosting's sites and Firebase Auth's authorised domains for the `admin-site` item (`DECISIONS-for-review.md`
- * §210): the admin's own site (`projects.sites.get` finds it among the project's own; another project's answers 404 or
- * 403, never its body) is made with `projects.sites.create`, then its two host names join the domains Firebase Auth lets
+ * §210): the admin's own site (`projects.sites.get` finds it among the project's own; another project's answers 404) is made with `projects.sites.create`, then its two host names join the domains Firebase Auth lets
  * a sign-in finish on (Identity Toolkit admin v2 `projects.getConfig`, `updateConfig` with the mask
  * `authorizedDomains`: the list read, the two added, every other domain kept).
  */
@@ -26,22 +24,12 @@ export interface HostingSitesClient {
 
 export function createHostingSitesClient(transport: GoogleTransport): HostingSitesClient {
     return {
-        ownSite: async (projectId, siteId) => {
-            const call = {
+        ownSite: async (projectId, siteId) =>
+            (await transport.find({
                 operation: 'firebase-hosting.sites.get',
                 url: `${HOSTING}/projects/${projectId}/sites/${siteId}`,
                 role: HOSTING_ROLE,
-            };
-            try {
-                return (await transport.find(call)) !== undefined;
-            } catch (error) {
-                // Another project's site answers 403 to the owner of this one: not this project's.
-                if (googleFailureOf(error)?.kind === 'forbidden') {
-                    return false;
-                }
-                throw error;
-            }
-        },
+            })) !== undefined,
         createSite: async (projectId, siteId) => {
             await transport.call({
                 operation: 'firebase-hosting.sites.create',

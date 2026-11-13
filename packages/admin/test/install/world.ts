@@ -50,9 +50,15 @@ export interface InstallWorld {
     newerAdmin: string | null;
     /** §73k: whether step (h)'s legacy import is complete. */
     legacyImported: boolean;
+    /** §210: the public map's `/admin/` answers 301 to the admin's own site (this tab is on the old address). */
+    moved: boolean;
 }
 
 function ownOrigin(world: InstallWorld, url: URL): Response {
+    if (url.pathname === '/admin/runtime.json' && world.moved) {
+        // What `fetch` gives for a redirect it was told not to follow (`redirect: 'manual'`).
+        return { type: 'opaqueredirect', status: 0, ok: false } as Response;
+    }
     if (url.pathname.endsWith('/manifest.json')) {
         return world.manifest === null ? new Response('missing', { status: 404 }) : jsonResponse(world.manifest);
     }
@@ -76,6 +82,7 @@ export async function installWorld(options: { readonly provisioned?: boolean } =
         release: null,
         published: true,
         newerAdmin: null,
+        moved: false,
         legacyImported: false,
     };
     const fetcher: typeof fetch = (input, init) => {
