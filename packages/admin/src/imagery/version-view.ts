@@ -12,6 +12,7 @@ import {
     isApiErrorCode,
     JOB_STEPS,
     jobRetryable,
+    restitchable,
     rightsAllowPublish,
     type ArchiveReport,
     type BBox,
@@ -214,11 +215,6 @@ function sourceOf(source: LayerVersionDoc['source']): Pick<VersionView, 'entityI
     return { entityId: source?.kind === 'usgs' ? source.entityId : null, parts: [] };
 }
 
-/** M20 (§204): published with pieces left out of its overview mosaic, which `imagery.locateAgain` lays on it again (`restitch.ts`). */
-function restitchableOf({ state, help }: LayerVersionDoc): boolean {
-    return state === 'published' && help?.stitched?.method === 'overview' && help.stitched.leftOutCount > 0;
-}
-
 export function versionViewOf(doc: Stored<LayerVersionDoc>): VersionView {
     const version = doc.data;
     return {
@@ -232,7 +228,7 @@ export function versionViewOf(doc: Stored<LayerVersionDoc>): VersionView {
         ...{ basedOn: orNull(version.basedOn), recalibration: orNull(version.recalibration), publicUrl: publicUrlOf(version.own) },
         archive: orNull(version.archive),
         layoutCheck: helpItemsOf([{ id: doc.id, state: version.state, help: version.help }])[0]?.page === 'tiles',
-        restitchable: restitchableOf(version),
+        restitchable: restitchable(version),
         rights: rightsOf(version.rights),
     };
 }

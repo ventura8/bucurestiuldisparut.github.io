@@ -1,4 +1,4 @@
-import { FIRESTORE_PATHS, layerDocSchema, type HelpItem, type JobDoc, type LayerVersionDoc, type LayerVersionState } from '@hcm/shared';
+import { FIRESTORE_PATHS, layerDocSchema, restitchable, type HelpItem, type JobDoc, type LayerVersionDoc } from '@hcm/shared';
 
 import { ApiError } from '../api/api-error.js';
 import { omit } from '../api/objects.js';
@@ -17,19 +17,9 @@ import { createWork, jobIdFor, type NewWork } from './versions.js';
  * other way, or with nothing left out, is not offered it.
  */
 
-/** The states a placed series is stitched again from (a waiting one is placed again by its own new pairs, `imagery.saveGcps`). */
-const PLACED: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>(['published']);
-
-/** Stitched on its overview with at least one piece left out. */
-function leftOutOfOverview(version: LayerVersionDoc): boolean {
-    const stitched = version.help?.stitched;
-    return stitched?.method === 'overview' && stitched.leftOutCount > 0;
-}
-
-/** A published archive series stitched on its overview with at least one piece left out. */
-export function restitchable(version: LayerVersionDoc, job: JobDoc): boolean {
-    const series = job.type === 'archive-series' && version.origin === 'archive' && PLACED.has(version.state);
-    return series && leftOutOfOverview(version);
+/** A published archive series with pieces left out of its overview mosaic (`restitchable` of `@hcm/shared`), and its own job. */
+export function restitchableWith(version: LayerVersionDoc, job: JobDoc): boolean {
+    return job.type === 'archive-series' && restitchable(version);
 }
 
 /** What the new version starts with: the base's label, year, source, rights, scan, pairs and help (the pipeline maps them on the new mosaic). */

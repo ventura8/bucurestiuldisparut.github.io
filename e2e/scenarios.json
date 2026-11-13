@@ -18265,7 +18265,7 @@
             "asserts": "the version view marks a published series with pieces left out of its overview mosaic restitchable; the button calls imagery.locateAgain; a new archive-series job (restitch, runOn local) and its processing version on the same layer carry the base's pairs, scan, rights and help; the layer marks it pending and keeps the published version",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §204, layer 1895-1899. Tests: functions/test/imagery/restitch.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
+            "notes": "DECISIONS-for-review.md §204, layer 1895-1899. Tests: functions/test/imagery/restitch.test.ts, packages/shared/test/restitchable.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
         },
         {
             "id": "S-A122-BAD-RESTITCH-NOTHING-LEFT",
@@ -18276,7 +18276,7 @@
             "asserts": "no Locate again button; imagery.locateAgain answers apiError.imagery.versionState (or apiError.layers.busy for a layer with a version on its way) and writes nothing",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "DECISIONS-for-review.md §204. Tests: functions/test/imagery/restitch.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
+            "notes": "DECISIONS-for-review.md §204. Tests: functions/test/imagery/restitch.test.ts, packages/shared/test/restitchable.test.ts, packages/admin/test/imagery/version-restitch.test.ts, packages/ui/test/admin/imagery/imagery-restitch.test.ts."
         },
         {
             "id": "S-P20-HAPPY-RESTITCH",

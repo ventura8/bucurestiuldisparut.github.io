@@ -41,3 +41,23 @@ export const stitchedSchema = z.strictObject({
 });
 
 export type Stitched = z.infer<typeof stitchedSchema>;
+
+/** What `restitchable` reads of a version. */
+export interface RestitchInput {
+    readonly origin?: string | undefined;
+    readonly state: string;
+    readonly help?: { readonly stitched?: Pick<Stitched, 'method' | 'leftOutCount'> | undefined } | undefined;
+}
+
+/** Pieces left out of an overview mosaic. */
+function leftOutOfOverview(stitched: Pick<Stitched, 'method' | 'leftOutCount'> | undefined): boolean {
+    return stitched?.method === 'overview' && stitched.leftOutCount > 0;
+}
+
+/**
+ * M20 (DECISIONS-for-review.md §204): a published archive series with pieces left out of its overview mosaic, which Locate again lays
+ * on the overview again in a new version of its layer. Shared by `imagery.locateAgain` (`restitch.ts`) and the admin's version view.
+ */
+export function restitchable(version: RestitchInput): boolean {
+    return version.origin === 'archive' && version.state === 'published' && leftOutOfOverview(version.help?.stitched);
+}

@@ -19,7 +19,7 @@ import { omit } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { appendJobLog, guardIsRed, stampOf, type Stamp } from './records.js';
-import { restitchable, startRestitch } from './restitch.js';
+import { restitchableWith, startRestitch } from './restitch.js';
 
 /**
  * `imagery.locateAgain` (a city editor; `docs/research/M3-interfaces.md` §4.5; S-A69-*): a frame that waits for points under an older
@@ -190,7 +190,7 @@ async function restitched(deps: LocateAgainDeps, uid: string, request: Request):
     const { cityId, versionId } = request;
     const base = await deps.documents.get(FIRESTORE_PATHS.layerVersion(cityId, versionId), layerVersionDocSchema);
     const job = await deps.documents.get(FIRESTORE_PATHS.job(cityId, versionId), jobDocSchema);
-    if (base?.help === undefined || job === undefined || !restitchable(base, job)) {
+    if (base?.help === undefined || job === undefined || !restitchableWith(base, job)) {
         return false;
     }
     const jobId = await startRestitch(deps, { cityId, base, job, help: base.help, uid });
